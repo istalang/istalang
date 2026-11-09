@@ -62,7 +62,7 @@ function readersOf(depth: number): string {
 describe('a member of a recursive union flattened into a recursive union', () => {
   const forest = lines('type Tree = Int | Array<Tree>', 'type Forest = Tree | Array<Forest>');
 
-  it('goes into the outer union in a constant, a return, an argument and a literal item', () => {
+  it('goes into the outer union in a constant, a return, an argument and a literal item', async () => {
     const declarations = lines(
       forest,
       'const e: Forest | String = 7',
@@ -78,7 +78,7 @@ describe('a member of a recursive union flattened into a recursive union', () =>
     );
     expect(reported(declarations)).toEqual(reportedNothing);
     expect(
-      mainGives(
+      await mainGives(
         'Int',
         'return read(e) + read(returned()) + read(passed(7)) + items()',
         declarations,
@@ -86,7 +86,7 @@ describe('a member of a recursive union flattened into a recursive union', () =>
     ).toBe(28);
   });
 
-  it('merges into the union it joins, written or made by an instantiation', () => {
+  it('merges into the union it joins, written or made by an instantiation', async () => {
     const declarations = lines(
       forest,
       'fn wrap<U>(x: U) -> U | Forest | String: x',
@@ -94,15 +94,15 @@ describe('a member of a recursive union flattened into a recursive union', () =>
       'fn isForest() -> Bool: wrap(42) is Forest',
     );
     expect(reported(declarations)).toEqual(reportedNothing);
-    expect(mainGives('Bool', 'return isForest()', declarations)).toBe(true);
+    expect(await mainGives('Bool', 'return isForest()', declarations)).toBe(true);
   });
 
-  it('is selected by type patterns at every level, through a chain of any length, one type', () => {
-    fc.assert(
-      fc.property(
+  it('is selected by type patterns at every level, through a chain of any length, one type', async () => {
+    await fc.assert(
+      fc.asyncProperty(
         fc.integer({ min: 1, max: 4 }),
         fc.constantFrom('constant', 'return', 'argument'),
-        (depth, position) => {
+        async (depth, position) => {
           const outer = `A${depth} | String`;
           const value = {
             constant: lines(`const v: ${outer} = 7`, `fn given() -> ${outer}: v`),
@@ -114,8 +114,8 @@ describe('a member of a recursive union flattened into a recursive union', () =>
           }[position];
           const declarations = lines(chainOf(depth), readersOf(depth), value);
           expect(reported(declarations)).toEqual(reportedNothing);
-          expect(mainGives('Int', 'return read(given())', declarations)).toBe(depth - 1 + 7);
-          expect(mainGives('Int', 'return innermost(given())', declarations)).toBe(7);
+          expect(await mainGives('Int', 'return read(given())', declarations)).toBe(depth - 1 + 7);
+          expect(await mainGives('Int', 'return innermost(given())', declarations)).toBe(7);
         },
       ),
       { numRuns: 12 },

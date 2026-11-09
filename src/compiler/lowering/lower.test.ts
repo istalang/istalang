@@ -182,7 +182,7 @@ describe('lowering', () => {
     expect(natives).toContain('main.dispose(main.Lease<T>)');
   });
 
-  it('stores a constant once, computed in its own module even when another imports it', () => {
+  it('stores a constant once, computed in its own module even when another imports it', async () => {
     const program = stdProgramOf({
       main: "import limits from 'lib'\nasync fn main(): limits.high + limits.high",
       lib: 'struct Limits { high: Int }\nconst base = 7\nconst limits = Limits{high: base}',
@@ -190,7 +190,10 @@ describe('lowering', () => {
     const definition = compiledDefinition(program, 'main');
     const test = testRuntime();
     const deployed = test.runtime.deploy(definitionFormat.write(definition).text);
-    expect(runToEnd(test, 'i', deployed.start('i'))).toEqual({ kind: 'finished', outcome: '14' });
+    expect(await runToEnd(test, 'i', await deployed.start('i'))).toEqual({
+      kind: 'finished',
+      outcome: '14',
+    });
     const structs = definition.constants.filter(
       (constant) => typeof constant === 'object' && constant?.kind === 'struct',
     );
@@ -198,7 +201,7 @@ describe('lowering', () => {
     expect(structs).toEqual([{ kind: 'struct', type: limits, fields: [7n] }]);
   });
 
-  it("calls a namespace's function-typed constant, and spawns one", () => {
+  it("calls a namespace's function-typed constant, and spawns one", async () => {
     const program = stdProgramOf({
       main: [
         "import * as lib from 'lib'",
@@ -213,7 +216,10 @@ describe('lowering', () => {
     const deployed = test.runtime.deploy(
       definitionFormat.write(compiledDefinition(program, 'main')).text,
     );
-    expect(runToEnd(test, 'i', deployed.start('i'))).toEqual({ kind: 'finished', outcome: '42' });
+    expect(await runToEnd(test, 'i', await deployed.start('i'))).toEqual({
+      kind: 'finished',
+      outcome: '42',
+    });
   });
 
   it('gives a variable passed by & a cell, typed as the _Cell<T> it is created as', () => {
@@ -302,14 +308,17 @@ describe('lowering', () => {
     ).toEqual([['x'], ['x', 'y']]);
   });
 
-  it('lowers a select with only an else to its else body', () => {
+  it('lowers a select with only an else to its else body', async () => {
     const program = stdProgramOf({
       main: ['async fn main() -> Future<Int>:', '  select:', '    else: 42'].join('\n'),
     });
     const definition = compiledDefinition(program, 'main');
     const test = testRuntime();
     const deployed = test.runtime.deploy(definitionFormat.write(definition).text);
-    expect(runToEnd(test, 'i', deployed.start('i'))).toEqual({ kind: 'finished', outcome: '42' });
+    expect(await runToEnd(test, 'i', await deployed.start('i'))).toEqual({
+      kind: 'finished',
+      outcome: '42',
+    });
   });
 
   it('compiles every program the checker accepts into a Definition the runtime loads', () => {

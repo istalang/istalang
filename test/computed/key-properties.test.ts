@@ -46,9 +46,9 @@ describe('keys and mapped types of generated structs', () => {
     );
   });
 
-  it('reads and writes a field by a generic key as by its name, one key or several', () => {
-    fc.assert(
-      fc.property(generatedFieldsArbitrary, fc.nat(), (fields, pick) => {
+  it('reads and writes a field by a generic key as by its name, one key or several', async () => {
+    await fc.assert(
+      fc.asyncProperty(generatedFieldsArbitrary, fc.nat(), async (fields, pick) => {
         const field = fields[pick % fields.length] ?? fields[0];
         if (field === undefined) {
           return;
@@ -60,7 +60,7 @@ describe('keys and mapped types of generated structs', () => {
           '  s[k] = v',
         ];
         const init = fields.map((f) => `${f.name}: ${f.value}`).join(', ');
-        const outcome = runMain(
+        const outcome = await runMain(
           'Bool',
           [
             `let s = Gen{${init}}`,

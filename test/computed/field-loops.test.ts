@@ -32,12 +32,15 @@ const formDeclarations = [
 ];
 
 /** Runs `lines` as `main`'s body, giving a String. */
-function runText(lines: readonly string[], declarations: readonly string[]): unknown {
-  return runMain('String', lines.join('\n  '), declarations);
+async function runText(
+  lines: readonly string[],
+  declarations: readonly string[],
+): Promise<unknown> {
+  return await runMain('String', lines.join('\n  '), declarations);
 }
 
 describe('a field loop', () => {
-  it("visits every struct's fields in name order, a declaration's and a shape's", () => {
+  it("visits every struct's fields in name order, a declaration's and a shape's", async () => {
     const visit = (value: string) => [
       'let order: Array<String> = []',
       `for k, v in ...${value}:`,
@@ -45,11 +48,11 @@ describe('a field loop', () => {
       'order.join(",")',
     ];
     const declarations = ['struct Misordered { z: Int, a: Int, m: Int }'];
-    expect(runText(visit('Misordered{z: 1, a: 2, m: 3}'), declarations)).toBe('a=2,m=3,z=1');
-    expect(runText(visit('struct{z: 1, a: 2, m: 3}'), declarations)).toBe('a=2,m=3,z=1');
+    expect(await runText(visit('Misordered{z: 1, a: 2, m: 3}'), declarations)).toBe('a=2,m=3,z=1');
+    expect(await runText(visit('struct{z: 1, a: 2, m: 3}'), declarations)).toBe('a=2,m=3,z=1');
   });
 
-  it("checks its body once per field, each pass choosing that field's overload", () => {
+  it("checks its body once per field, each pass choosing that field's overload", async () => {
     const declarations = [
       'struct Mixed { s: String, n: Int }',
       'fn show(x: Int) -> String: `int ${x}`',
@@ -61,10 +64,10 @@ describe('a field loop', () => {
       '  out = `${out}${k}:${show(v)};`',
       'out',
     ];
-    expect(runText(lines, declarations)).toBe('n:int 1;s:str a;');
+    expect(await runText(lines, declarations)).toBe('n:int 1;s:str a;');
   });
 
-  it('runs over a constrained type parameter: its named entries, then the others', () => {
+  it('runs over a constrained type parameter: its named entries, then the others', async () => {
     const declarations = [
       ...formDeclarations,
       'fn names<S is struct { title: String, [_] is FormNode }>(form: S) -> Array<String>:',
@@ -78,10 +81,10 @@ describe('a field loop', () => {
       'const group = Group{fields: struct{qty: Field<Int>{value: 3}, country: Field<String>{value: none}}}',
       '`${names(form).join(",")}|${group.validate(struct{country: "x", qty: 1}).join(",")}`',
     ];
-    expect(runText(lines, declarations)).toBe('a,title,z|country: missing');
+    expect(await runText(lines, declarations)).toBe('a,title,z|country: missing');
   });
 
-  it('matches its key by literal patterns in every pass, the others pass too', () => {
+  it('matches its key by literal patterns in every pass, the others pass too', async () => {
     const declarations = [
       ...formDeclarations,
       'fn tags<S is struct { title: String, [_] is FormNode }>(form: S) -> Array<String>:',
@@ -98,10 +101,10 @@ describe('a field loop', () => {
       'const form = struct{title: "t", region: Field<String>{value: "eu"}, a: Field<Int>{value: 1}}',
       'tags(form).join(",")',
     ];
-    expect(runText(lines, declarations)).toBe('a,=a,R,T');
+    expect(await runText(lines, declarations)).toBe('a,=a,R,T');
   });
 
-  it('runs over no field of an empty struct, and over the value behind a shared struct', () => {
+  it('runs over no field of an empty struct, and over the value behind a shared struct', async () => {
     const declarations = ['struct Empty', 'shared struct SharedPair { b: Int, a: Int }'];
     const lines = [
       'let count: Int = 0',
@@ -113,10 +116,10 @@ describe('a field loop', () => {
       '  shared.push(`${k}=${v}`)',
       '`${count}|${shared.join(",")}`',
     ];
-    expect(runText(lines, declarations)).toBe('0|a=1,b=2');
+    expect(await runText(lines, declarations)).toBe('0|a=1,b=2');
   });
 
-  it('is a loop: break, continue, labels, await and a destructured value', () => {
+  it('is a loop: break, continue, labels, await and a destructured value', async () => {
     const declarations = [
       "import * as runtime from 'runtime'",
       'struct Pairs { c: (Int, String), b: (Int, String), a: (Int, String) }',
@@ -133,10 +136,10 @@ describe('a field loop', () => {
       '    break',
       'seen.join(",")',
     ];
-    expect(runText(lines, declarations)).toBe('b:2:two');
+    expect(await runText(lines, declarations)).toBe('b:2:two');
   });
 
-  it('makes a lambda per pass, capturing that pass key and value', () => {
+  it('makes a lambda per pass, capturing that pass key and value', async () => {
     const declarations = ['struct Pair { b: String, a: Int }'];
     const lines = [
       'let made: Array<fn() -> String> = []',
@@ -144,10 +147,10 @@ describe('a field loop', () => {
       '  made.push(fn(): `${k}=${v}`)',
       '[for each in made: each()].join(",")',
     ];
-    expect(runText(lines, declarations)).toBe('a=1,b=x');
+    expect(await runText(lines, declarations)).toBe('a=1,b=x');
   });
 
-  it("has a single key: y[key] reads and writes the field it names in y's type", () => {
+  it("has a single key: y[key] reads and writes the field it names in y's type", async () => {
     const declarations = [
       'struct Counts { b: Int, a: Int }',
       'fn doubled<S is struct { [_]: Int }>(s: S) -> S:',
@@ -163,7 +166,7 @@ describe('a field loop', () => {
       'const twice = doubled(counts)',
       '`${counts.a},${counts.b}|${twice.a},${twice.b}`',
     ];
-    expect(runText(lines, declarations)).toBe('11,12|22,24');
+    expect(await runText(lines, declarations)).toBe('11,12|22,24');
   });
 
   it('is refused over what has no fields, with targets other than a key and a value', () => {
@@ -201,7 +204,7 @@ describe('a field loop', () => {
     expect(codesOf("import Encodable from 'json'", ...lines)).toEqual([5001, 5101]);
   });
 
-  it("compares and matches its key with any field's name, warning of a case no pass reaches", () => {
+  it("compares and matches its key with any field's name, warning of a case no pass reaches", async () => {
     const declarations = ['struct P { b: Int, a: Int }'];
     const lines = [
       'let out = ""',
@@ -212,7 +215,7 @@ describe('a field loop', () => {
       '  out = `${out}${tag}${if k == "b": "!" else: ""};`',
       'out',
     ];
-    expect(runText(lines, declarations)).toBe('first;second!;');
+    expect(await runText(lines, declarations)).toBe('first;second!;');
     const unreached = [
       'struct P { b: Int, a: Int }',
       'fn f(p: P) -> Int:',
@@ -241,9 +244,9 @@ describe('a field loop in an editor', () => {
 });
 
 describe('the commute law of a field loop', () => {
-  it('agrees: generic and instantiated, over the concrete struct, and written out by hand', () => {
-    fc.assert(
-      fc.property(generatedFieldsArbitrary, (fields) => {
+  it('agrees: generic and instantiated, over the concrete struct, and written out by hand', async () => {
+    await fc.assert(
+      fc.asyncProperty(generatedFieldsArbitrary, async (fields) => {
         const declared = fields.map((field) => `${field.name}: ${field.type}`).join(', ');
         const value = `Generated{${fields.map((field) => `${field.name}: ${field.value}`).join(', ')}}`;
         const byHand = fields
@@ -268,7 +271,7 @@ describe('the commute law of a field loop', () => {
           '  out',
         ];
         const lines = [`const s = ${value}`, '`${generic(s)}|${concrete(s)}|${written(s)}`'];
-        const [generic, concrete, written] = String(runText(lines, declarations)).split('|');
+        const [generic, concrete, written] = String(await runText(lines, declarations)).split('|');
         expect(generic).toBe(written);
         expect(concrete).toBe(written);
       }),

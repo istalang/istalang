@@ -112,32 +112,36 @@ describe('union normalization (§1, §3, §4)', () => {
     expect(compared.sameKey).toBe(false);
   });
 
-  it('collapses unions after generic type-parameter substitution', () => {
+  it('collapses unions after generic type-parameter substitution', async () => {
     expect(
-      runMain('Int', 'idOrInt<Int>(7) + (optOrNone<Int?>(3) ?? 0) + strOrLit<"a">("x").length()', [
-        'fn idOrInt<T>(x: T | Int) -> T | Int: x',
-        'fn optOrNone<T>(x: T?) -> T?: x',
-        'fn strOrLit<T>(x: T | String) -> T | String: x',
-      ]),
+      await runMain(
+        'Int',
+        'idOrInt<Int>(7) + (optOrNone<Int?>(3) ?? 0) + strOrLit<"a">("x").length()',
+        [
+          'fn idOrInt<T>(x: T | Int) -> T | Int: x',
+          'fn optOrNone<T>(x: T?) -> T?: x',
+          'fn strOrLit<T>(x: T | String) -> T | String: x',
+        ],
+      ),
     ).toBe(11);
   });
 
-  it('unwraps an optional collapsed into None or a wider optional with `!` as absent on none', () => {
+  it('unwraps an optional collapsed into None or a wider optional with `!` as absent on none', async () => {
     const declarations = ['fn force<T>(x: T?) -> T: x!'];
-    expect(runMain('Int', 'force<Int?>(3) ?? 0', declarations)).toBe(3);
-    expect(runMain('Int?', 'force<Int?>(none)', declarations)).toMatchObject({
+    expect(await runMain('Int', 'force<Int?>(3) ?? 0', declarations)).toBe(3);
+    expect(await runMain('Int?', 'force<Int?>(none)', declarations)).toMatchObject({
       kind: 'panicked',
       message: 'Force-unwrapped none.',
     });
-    expect(runMain('None', 'force<None>(none)', declarations)).toMatchObject({
+    expect(await runMain('None', 'force<None>(none)', declarations)).toMatchObject({
       kind: 'panicked',
       message: 'Force-unwrapped none.',
     });
   });
 
-  it('makes Map<K, V?>.get(k) return V?, with missing and stored none alike', () => {
+  it('makes Map<K, V?>.get(k) return V?, with missing and stored none alike', async () => {
     expect(
-      runMain(
+      await runMain(
         'String',
         [
           'const m: Map<String, Int?> = ["present": 5, "empty": none]',

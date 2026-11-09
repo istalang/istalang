@@ -18,7 +18,7 @@ import {
 } from './computed.test-kit.ts';
 
 describe('a rest through a union member an instantiation collapses', () => {
-  it('reads the member’s value whether the union collapsed or not', () => {
+  it('reads the member’s value whether the union collapsed or not', async () => {
     const declarations = [
       'struct Pair { first: Int, second: Int, third: Int }',
       'fn matchRestG<T>(x: T | Pair) -> Int:',
@@ -42,12 +42,12 @@ describe('a rest through a union member an instantiation collapses', () => {
       'const g4 = matchTupleG<String>((p, 5))',
       '`${g1}:${g2}:${m1}:${g3}:${g4}`',
     ].join('\n  ');
-    expect(runMain('String', body, declarations)).toBe('60:60:60:65:65');
+    expect(await runMain('String', body, declarations)).toBe('60:60:60:65:65');
   });
 });
 
 describe('a struct that is also iterable', () => {
-  it('iterates with `for x in s` and loops over its fields with `for k, v in ...s`', () => {
+  it('iterates with `for x in s` and loops over its fields with `for k, v in ...s`', async () => {
     const declarations = [
       'struct Pairs { b: (Int, String), a: (Int, String) }',
       'fn iterate(self: Pairs) -> fn() -> Step<Int>:',
@@ -69,14 +69,14 @@ describe('a struct that is also iterable', () => {
       '  fields.push(`${k}:${n}:${label}`)',
       '`${iterated}|${fields.join(",")}`',
     ].join('\n  ');
-    expect(runMain('String', body, declarations)).toBe('99|a:1:one,b:2:two');
+    expect(await runMain('String', body, declarations)).toBe('99|a:1:one,b:2:two');
   });
 });
 
 describe('every computed construct over a generated struct', () => {
-  it('agrees with its fields in name order', () => {
-    fc.assert(
-      fc.property(generatedFieldsArbitrary, (fields) => {
+  it('agrees with its fields in name order', async () => {
+    await fc.assert(
+      fc.asyncProperty(generatedFieldsArbitrary, async (fields) => {
         const [first] = fields;
         if (first === undefined) {
           return;
@@ -102,7 +102,7 @@ describe('every computed construct over a generated struct', () => {
           `const readFirst = s["${first.name}"] == ${first.name}`,
           '`${keys.join(",")}|${copied == rebuilt}|${readFirst}`',
         ].join('\n  ');
-        expect(runMain('String', body, declarations)).toBe(
+        expect(await runMain('String', body, declarations)).toBe(
           `${sorted.map((field) => field.name).join(',')}|true|true`,
         );
       }),
@@ -131,9 +131,9 @@ describe('generic code over computed types, instantiated', () => {
     '  rest["b"]',
   ];
 
-  it('agrees with the same code written for the type substituted', () => {
-    fc.assert(
-      fc.property(typeArguments, ({ type, value, other }) => {
+  it('agrees with the same code written for the type substituted', async () => {
+    await fc.assert(
+      fc.asyncProperty(typeArguments, async ({ type, value, other }) => {
         const generic = templates.map((line) => line.replace('$', 'G<T>'));
         const substituted = templates.map((line) =>
           line.replace('$', 'M').replaceAll(/\bT\b/gu, `(${type})`),
@@ -156,7 +156,7 @@ describe('generic code over computed types, instantiated', () => {
           `const c4 = restG<(${type})>(p) == restM(p)`,
           '`${c1}:${c2}:${c3}:${c4}`',
         ].join('\n  ');
-        expect(runMain('String', body, declarations)).toBe('true:true:true:true');
+        expect(await runMain('String', body, declarations)).toBe('true:true:true:true');
       }),
       { numRuns: 15 },
     );

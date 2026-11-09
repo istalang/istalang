@@ -6,17 +6,21 @@
  *   validates all of it, binds every extern to its native and stores it by hash, so a Definition
  *   that couldn't run is refused before anything runs. A runtime writes each Definition once, after
  *   its externs are recorded, so deploying it again writes nothing.
- * - An instance lives in the store between calls; the options it starts with (`crashEveryAwait`,
- *   §10) hold for its whole life. Starting or waking one advances it as far as it goes without
- *   waiting, committing every segment (../scheduler/wake.ts), and says where it stands: waiting
- *   until its next timer, finished with its outcome, or panicked with a message and a trace
- *   (§3.12), and which instances it spawned (§9), which the host wakes like any other. The host
- *   decides when to wake each again (settle.ts drives that loop for a host that only waits); the
- *   runtime holds no timers of its own.
+ * - Every call that runs an instance's code gives a promise, so a host awaits it whatever the
+ *   instance waits on; one the runtime refuses rejects with the Refusal.
+ * - An instance stays in memory while it is active (../scheduler/resident.ts), each commit also
+ *   written to the store; the options it starts with (`crashEveryAwait`, §10) hold for its whole
+ *   life. Starting or waking one advances it as far as it goes without waiting, committing every
+ *   segment (../scheduler/wake.ts), and says where it stands: waiting until its next timer,
+ *   finished with its outcome, or panicked with a message and a trace (§3.12), and which instances
+ *   it spawned (§9), which the host wakes like any other. The host decides when to wake each again
+ *   (drive.ts runs that loop); the runtime holds no timers of its own.
  * - Inspecting an instance reads its last commit only: where it stands, and where each of its
  *   executions waits (§9, §10).
- * - Waking reads the instance's snapshot and the Definition it names from the store, so a fresh
- *   runtime on the same store continues where an earlier one committed (§5).
+ * - An instance the runtime doesn't hold, one that has ended or panicked, or any after a restart,
+ *   is read from the store with the Definition its snapshot names, so a fresh runtime on the same
+ *   store continues where an earlier one committed (§5). While a runtime runs, it is its store's
+ *   only driver.
  * - Values cross as JSON (§9), so a host never reads the runtime's value shapes: the externs it
  *   implements take and give JSON (../boundary/host-natives.ts), it starts a function by its key with
  *   JSON arguments and reads the outcome as JSON (`outcome`) or its text (`outcomeText`), and it
@@ -38,6 +42,7 @@ import { Refusal } from '../refusal.ts';
 import { inspection } from '../scheduler/inspect.ts';
 import { spawnedSeparator } from '../scheduler/instance/instance-names.ts';
 import { type LoadedDefinition, loadDefinition } from '../scheduler/loaded-definition.ts';
+import { Resident } from '../scheduler/resident.ts';
 import {
   type AdvanceFirst,
   advance,
@@ -46,10 +51,10 @@ import {
   terminate,
   unstarted,
 } from '../scheduler/wake.ts';
-import { checkSnapshot } from '../snapshot/check.ts';
 import { seedTextOf } from '../snapshot/random.ts';
-import { type PanickedSnapshot, type Snapshot, snapshotFormat } from '../snapshot/snapshot.ts';
+import type { PanickedSnapshot, Snapshot } from '../snapshot/snapshot.ts';
 import type { InstanceStore } from '../store.ts';
+import { storedInstance } from './stored-instances.ts';
 
 export interface RuntimeSeams {
   readonly natives: Natives;
@@ -90,7 +95,7 @@ export interface DeployedProgram {
    * Starts what `request` names as a new instance named `instance`: a Refusal if the store already
    * has one, if no function has the key, or if the arguments don't fit it.
    */
-  readonly start: (instance: string, request?: StartRequest) => Advanced;
+  readonly start: (instance: string, request?: StartRequest) => Promise<Advanced>;
 }
 
 export interface Runtime {
@@ -104,7 +109,7 @@ export interface Runtime {
    * store lacks the instance or its Definition, or when its snapshot doesn't fit the Definition; a
    * FormatError when a stored text has an unknown format or version.
    */
-  readonly wake: (instance: string) => Advanced;
+  readonly wake: (instance: string) => Promise<Advanced>;
   /** The program a stored instance runs; the same Refusals and FormatErrors as `wake`. */
   readonly programOf: (instance: string) => DeployedProgram;
   /** Where a stored instance stands and waits, read from its last commit; as `wake` refuses. */
@@ -113,17 +118,17 @@ export interface Runtime {
    * Fills the future the host named `token` with `json` and advances the instance (§9); a Refusal,
    * with nothing committed, when no such future waits or the JSON doesn't fit it.
    */
-  readonly fill: (instance: string, token: string, json: unknown) => Advanced;
+  readonly fill: (instance: string, token: string, json: unknown) => Promise<Advanced>;
   /**
    * Runs a panicked instance again from its last commit, the failed segment at the time it first
    * started (§3.12, §5); a Refusal for an instance that hasn't panicked.
    */
-  readonly retry: (instance: string) => Advanced;
+  readonly retry: (instance: string) => Promise<Advanced>;
   /**
    * Ends a panicked instance as terminated (§3.12), disposing everything it holds (§7) from its last
    * commit; a Refusal for one that hasn't panicked.
    */
-  readonly terminate: (instance: string) => Advanced;
+  readonly terminate: (instance: string) => Promise<Advanced>;
 }
 
 export function createRuntime(seams: RuntimeSeams): Runtime {
@@ -134,8 +139,10 @@ export function createRuntime(seams: RuntimeSeams): Runtime {
       `The runtime implements ${shadowed.join(', ')} itself, so a host can't.`,
     );
   }
-  const bind = programBinder(seams);
-  const stored = (instance: string) => storedInstance(seams.store, bind, instance);
+  const held = heldInstances(seams);
+  const bind = programBinder({ ...seams, advance: held.advance });
+  const residentOf = (instance: string) =>
+    held.of(instance) ?? storedInstance(seams.store, (text) => bind(text).program, instance);
   const written = new Set<string>();
   return {
     deploy: (text) => {
@@ -147,46 +154,115 @@ export function createRuntime(seams: RuntimeSeams): Runtime {
       }
       return program;
     },
-    wake: (instance) => {
-      const { snapshot, program } = stored(instance);
-      const { kind } = snapshot.status;
-      return kind === 'active' || kind === 'unstarted'
-        ? program.resume(snapshot)
-        : { state: stateOf(snapshot), spawned: [], logs: [] };
-    },
-    programOf: (instance) => stored(instance).program,
+    wake: (instance) =>
+      promised(() => {
+        const resident = residentOf(instance);
+        const { kind } = resident.committed.status;
+        return kind === 'active' || kind === 'unstarted'
+          ? held.advance(resident)
+          : unadvanced(resident.committed);
+      }),
+    programOf: (instance) => residentOf(instance).loaded,
     inspect: (instance) => {
-      const { snapshot, program } = stored(instance);
-      return inspection(program.definition, snapshot);
+      const { committed, loaded } = residentOf(instance);
+      return inspection(loaded.definition, committed);
     },
-    fill: (instance, token, json) => {
-      const { snapshot, program } = stored(instance);
-      const { kind } = snapshot.status;
-      if (kind === 'panicked') {
-        throw new Refusal(
-          'panicked',
-          `Instance '${instance}' has panicked; retry it before filling its futures.`,
-        );
+    fill: (instance, token, json) =>
+      promised(() => {
+        const resident = residentOf(instance);
+        const arrival = arrivalAt(resident, token, json);
+        return arrival === undefined
+          ? unadvanced(resident.committed)
+          : held.advance(resident, arrival);
+      }),
+    retry: (instance) =>
+      promised(() => {
+        const { resident, first } = retried(residentOf(instance));
+        return held.advance(resident, first);
+      }),
+    terminate: (instance) =>
+      promised(() => {
+        const resident = residentOf(instance);
+        panicked(resident.committed);
+        return terminate(seams, resident);
+      }),
+  };
+}
+
+/**
+ * The instances a runtime holds, those whose last commit has them active (§5): whatever advancing
+ * one did, it is held once it committed active, and let go of otherwise, from when on the store has
+ * it, or never had it when its first commit failed.
+ */
+function heldInstances(seams: SchedulerSeams) {
+  const held = new Map<string, Resident<BoundProgram>>();
+  return {
+    of: (instance: string): Resident<BoundProgram> | undefined => held.get(instance),
+    advance: (resident: Resident<BoundProgram>, first?: AdvanceFirst): Advanced => {
+      try {
+        return advance(seams, resident, first);
+      } finally {
+        const { instance, status } = resident.committed;
+        if (status.kind === 'active') {
+          held.set(instance, resident);
+        } else {
+          held.delete(instance);
+        }
       }
-      const arrival = { token, value: jsonIn(program.definition, json) };
-      return kind === 'active'
-        ? program.resume(snapshot, { kind: 'arrival', arrival })
-        : { state: stateOf(snapshot), spawned: [], logs: [] };
-    },
-    retry: (instance) => {
-      const { snapshot, program } = stored(instance);
-      const { replay, segmentStartedAt: startedAt } = panicked(snapshot).status;
-      const status: Snapshot['status'] =
-        replay?.kind === 'call' ? { kind: 'unstarted', call: replay.call } : { kind: 'active' };
-      const step =
-        replay !== undefined && replay.kind !== 'call' ? replay : ({ kind: 'none' } as const);
-      return program.resume({ ...snapshot, status }, { ...step, startedAt });
-    },
-    terminate: (instance) => {
-      const { snapshot, program } = stored(instance);
-      return program.terminate(panicked(snapshot));
     },
   };
+}
+
+/**
+ * What filling the future `resident`'s host named `token` with `json` starts its next advance
+ * with; undefined once it no longer waits. A Refusal when it panicked, or the JSON doesn't fit.
+ */
+function arrivalAt(
+  resident: Resident<BoundProgram>,
+  token: string,
+  json: unknown,
+): AdvanceFirst | undefined {
+  const { status, instance } = resident.committed;
+  if (status.kind === 'panicked') {
+    throw new Refusal(
+      'panicked',
+      `Instance '${instance}' has panicked; retry it before filling its futures.`,
+    );
+  }
+  const arrival = { token, value: jsonIn(resident.loaded.definition, json) };
+  return status.kind === 'active' ? { kind: 'arrival', arrival } : undefined;
+}
+
+/**
+ * `resident`, which panicked, made ready to run its failed segment again from its last commit, at
+ * the time that segment first started (§3.12, §5); a Refusal when it hasn't panicked.
+ */
+function retried(resident: Resident<BoundProgram>): {
+  readonly resident: Resident<BoundProgram>;
+  readonly first: AdvanceFirst;
+} {
+  const { committed, loaded } = resident;
+  const { replay, segmentStartedAt: startedAt } = panicked(committed).status;
+  const status: Snapshot['status'] =
+    replay?.kind === 'call' ? { kind: 'unstarted', call: replay.call } : { kind: 'active' };
+  const step =
+    replay !== undefined && replay.kind !== 'call' ? replay : ({ kind: 'none' } as const);
+  return {
+    resident: new Resident(loaded, { ...committed, status }),
+    first: { ...step, startedAt },
+  };
+}
+
+/** What `run` gives, as a promise: a throw rejects it, as one in an async call would. */
+function promised<T>(run: () => T): Promise<T> {
+  return new Promise((resolve) => {
+    resolve(run());
+  });
+}
+
+/** What a host call that runs nothing says of an instance: where its last commit has it. */
+function unadvanced(committed: Snapshot): Advanced {
+  return { state: stateOf(committed), spawned: [], logs: [] };
 }
 
 /** `snapshot`, an instance that panicked; a Refusal for any other (§3.12). */
@@ -198,11 +274,8 @@ function panicked(snapshot: Snapshot): PanickedSnapshot {
   return { ...snapshot, status };
 }
 
-/** A deployed program as the runtime holds it: bound, and able to resume its instances. */
-interface BoundProgram extends DeployedProgram, LoadedDefinition {
-  readonly resume: (snapshot: Snapshot, first?: AdvanceFirst) => Advanced;
-  readonly terminate: (snapshot: PanickedSnapshot) => Advanced;
-}
+/** A deployed program as the runtime holds it: bound to its natives, the program it loads. */
+interface BoundProgram extends DeployedProgram, LoadedDefinition {}
 
 /** A Definition text bound to its program, with the canonical text the store keeps. */
 interface Binding {
@@ -210,12 +283,17 @@ interface Binding {
   readonly canonical: string;
 }
 
+/** What binding a program needs: its natives, its host's, seeds, and how to advance an instance. */
+interface BindingSeams extends Pick<RuntimeSeams, 'natives' | 'host' | 'seed' | 'store'> {
+  readonly advance: (resident: Resident<BoundProgram>) => Advanced;
+}
+
 /**
  * Reads and binds Definition texts: each text is read, validated and written back once, and each
  * hash bound once, since every operation on a stored instance binds the text its snapshot names.
  * The canonical text finds its binding too, as the store gives that text back. It writes nothing.
  */
-function programBinder(seams: SchedulerSeams & Pick<RuntimeSeams, 'natives' | 'host' | 'seed'>) {
+function programBinder(seams: BindingSeams) {
   const byHash = new Map<string, Binding>();
   const byText = new Map<string, Binding>();
   return (text: string): Binding =>
@@ -230,40 +308,36 @@ function programBinder(seams: SchedulerSeams & Pick<RuntimeSeams, 'natives' | 'h
     });
 }
 
-/** `definition`, bound to its natives and able to start and resume its instances. */
-function boundProgram(
-  seams: SchedulerSeams & Pick<RuntimeSeams, 'natives' | 'host' | 'seed'>,
-  definition: Definition,
-  hash: string,
-): BoundProgram {
+/** `definition`, bound to its natives and able to start its instances. */
+function boundProgram(seams: BindingSeams, definition: Definition, hash: string): BoundProgram {
   const loaded = loadDefinition(definition, hash, {
     ...seams.natives,
     ...hostNatives(seams.host ?? {}),
   });
-  return {
+  const program: BoundProgram = {
     ...loaded,
     starts: definition.starts.map(({ key }) => key),
     outcome: (finished) => outcomeJson(finished, definition),
     outcomeText: (finished) => outcomeText(finished, definition),
-    start: (instance, { function: key, arguments: given = [], ...options } = {}) => {
-      if (instance.includes(spawnedSeparator)) {
-        throw new Refusal(
-          'reservedName',
-          `'${instance}' names a spawned instance: a host's names have no '${spawnedSeparator}'.`,
-        );
-      }
-      if (seams.store.readSnapshot(instance) !== undefined) {
-        throw new Refusal('instanceExists', `The store already holds an instance '${instance}'.`);
-      }
-      const { entry, encoder } = startOf(definition, key, given.length);
-      const values = given.map((json) => jsonIn(definition, json));
-      const call = { function: entry, captures: [], arguments: values };
-      const beginning = { ...options, seed: seedTextOf(seams.seed()), encoder };
-      return advance(seams, loaded, unstarted(loaded, instance, call, beginning));
-    },
-    resume: (snapshot, first) => advance(seams, loaded, snapshot, first),
-    terminate: (snapshot) => terminate(seams, loaded, snapshot),
+    start: (instance, { function: key, arguments: given = [], ...options } = {}) =>
+      promised(() => {
+        if (instance.includes(spawnedSeparator)) {
+          throw new Refusal(
+            'reservedName',
+            `'${instance}' names a spawned instance: a host's names have no '${spawnedSeparator}'.`,
+          );
+        }
+        if (seams.store.readSnapshot(instance) !== undefined) {
+          throw new Refusal('instanceExists', `The store already holds an instance '${instance}'.`);
+        }
+        const { entry, encoder } = startOf(definition, key, given.length);
+        const values = given.map((json) => jsonIn(definition, json));
+        const call = { function: entry, captures: [], arguments: values };
+        const beginning = { ...options, seed: seedTextOf(seams.seed()), encoder };
+        return seams.advance(new Resident(program, unstarted(program, instance, call, beginning)));
+      }),
   };
+  return program;
 }
 
 /**
@@ -305,33 +379,4 @@ function jsonIn(definition: Definition, json: unknown): Value {
     }
     throw error;
   }
-}
-
-/** A stored instance's snapshot and the program it runs, checked against each other. */
-function storedInstance(
-  store: InstanceStore,
-  bind: (text: string) => Binding,
-  instance: string,
-): { readonly snapshot: Snapshot; readonly program: BoundProgram } {
-  const text = store.readSnapshot(instance);
-  if (text === undefined) {
-    throw new Refusal('unknownInstance', `The store holds no instance '${instance}'.`);
-  }
-  const snapshot = snapshotFormat.read(text);
-  const definition = store.readDefinition(snapshot.definition);
-  if (definition === undefined) {
-    throw new Refusal(
-      'unknownDefinition',
-      `The store holds no Definition ${snapshot.definition} for instance '${instance}'.`,
-    );
-  }
-  const { program } = bind(definition);
-  if (program.hash !== snapshot.definition) {
-    throw new Refusal(
-      'snapshotMismatch',
-      `The store's Definition ${snapshot.definition} for instance '${instance}' hashes to ${program.hash}.`,
-    );
-  }
-  checkSnapshot(program.definition, snapshot);
-  return { snapshot, program };
 }

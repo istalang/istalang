@@ -119,7 +119,7 @@ describe('finiteness and regularity rules (§2, §3.1, §3.5)', () => {
     );
   });
 
-  it('closes an alias naming itself in a union inside its own union body, which flattens', () => {
+  it('closes an alias naming itself in a union inside its own union body, which flattens', async () => {
     const declarations = lines(
       'type R = Int | Array<R?>',
       'fn count(r: R) -> Int:',
@@ -128,7 +128,7 @@ describe('finiteness and regularity rules (§2, §3.1, §3.5)', () => {
       '    case Array<R?> as items: return items.length()',
     );
     expect(reported(declarations)).toEqual(reportedNothing);
-    expect(mainGives('Int', 'return count([1, none, [2]]) + count(4)', declarations)).toBe(7);
+    expect(await mainGives('Int', 'return count([1, none, [2]]) + count(4)', declarations)).toBe(7);
   });
 
   it('refuses an alias reached again where it must be known first, guarded or not (5106)', () => {
@@ -163,7 +163,7 @@ describe('identity, typeKey, sameType, substitution and union absorption (§2, n
     expect(typeKeys.typeKey(instantiated)).toBe(typeKeys.typeKey(concreteTree));
   });
 
-  it('makes two recursive aliases with equal bodies one type (equi-recursive), inside containers too', () => {
+  it('makes two recursive aliases with equal bodies one type (equi-recursive), inside containers too', async () => {
     const { types } = parameterTypesOf(
       lines(
         'type A = Int | Array<A>',
@@ -185,10 +185,10 @@ describe('identity, typeKey, sameType, substitution and union absorption (§2, n
       'fn mix(xs: Array<A>) -> Array<B>: xs',
     );
     expect(reported(mixed)).toEqual(reportedNothing);
-    expect(mainGives('Int', 'return mix([1, [2]]).length()', mixed)).toBe(2);
+    expect(await mainGives('Int', 'return mix([1, [2]]).length()', mixed)).toBe(2);
   });
 
-  it('passes recursive form data into a domain function written with its own alias', () => {
+  it('passes recursive form data into a domain function written with its own alias', async () => {
     const declarations = lines(
       'type FormCategory = { name: String, children: Array<FormCategory> }',
       'type CrmCategory = { name: String, children: Array<CrmCategory> }',
@@ -197,10 +197,10 @@ describe('identity, typeKey, sameType, substitution and union absorption (§2, n
       '  return FormCategory{name: "a", children: [FormCategory{name: "b", children: []}]}',
     );
     expect(reported(declarations)).toEqual(reportedNothing);
-    expect(mainGives('Int', 'return saveTree(submitted())', declarations)).toBe(1);
+    expect(await mainGives('Int', 'return saveTree(submitted())', declarations)).toBe(1);
   });
 
-  it('builds a literal against an alias flattening another as the one member it fits', () => {
+  it('builds a literal against an alias flattening another as the one member it fits', async () => {
     const declarations = lines(
       'type Tree = Int | Array<Tree>',
       'type Forest = Tree | Array<Forest>',
@@ -218,7 +218,11 @@ describe('identity, typeKey, sameType, substitution and union absorption (§2, n
     );
     expect(reported(declarations)).toEqual(reportedNothing);
     expect(
-      mainGives('Int', 'return size(same([1, 2, 3])) * 100 + one() * 10 + two()', declarations),
+      await mainGives(
+        'Int',
+        'return size(same([1, 2, 3])) * 100 + one() * 10 + two()',
+        declarations,
+      ),
     ).toBe(312);
   });
 
@@ -257,7 +261,7 @@ describe('identity, typeKey, sameType, substitution and union absorption (§2, n
     ]);
   });
 
-  it('spells a recursive alias by its alias name in typeText and supports static functions on it', () => {
+  it('spells a recursive alias by its alias name in typeText and supports static functions on it', async () => {
     const { types } = parameterTypesOf(
       lines(
         'type Tree<T> = T | Array<Tree<T>>',
@@ -270,7 +274,7 @@ describe('identity, typeKey, sameType, substitution and union absorption (§2, n
       'type Tree<T> = T | Array<Tree<T>>',
       'fn Tree.leaf<T>(value: T) -> Tree<T>: value',
     );
-    expect(mainGives('Bool', 'Tree.leaf(42) is Int', decls)).toBe(true);
+    expect(await mainGives('Bool', 'Tree.leaf(42) is Int', decls)).toBe(true);
   });
 
   it('holds typeKey(a) === typeKey(b) iff sameType(a, b) over generated types built with recursive aliases', () => {
@@ -293,7 +297,7 @@ describe('identity, typeKey, sameType, substitution and union absorption (§2, n
 });
 
 describe('recursive aliases through tuples and functions, which have no entry of their own (§3.17)', () => {
-  it('builds and reads a chain through a tuple and an optional', () => {
+  it('builds and reads a chain through a tuple and an optional', async () => {
     const decls = lines(
       'type Chain = (Int, Chain?)',
       'fn total(c: Chain?) -> Int:',
@@ -304,22 +308,22 @@ describe('recursive aliases through tuples and functions, which have no entry of
       '  const c: Chain = (1, (2, none))',
       '  return total(c)',
     );
-    expect(mainGives('Int', 'run()', decls)).toBe(3);
+    expect(await mainGives('Int', 'run()', decls)).toBe(3);
   });
 
-  it('lowers a function type that returns itself, held in a struct', () => {
+  it('lowers a function type that returns itself, held in a struct', async () => {
     const decls = lines(
       'type Machine = fn(Int) -> Machine',
       'struct Holder { step: Machine }',
       'fn start(n: Int) -> Machine: start',
       'fn steps(h: Holder) -> Int: 2',
     );
-    expect(mainGives('Int', 'steps(Holder{step: start})', decls)).toBe(2);
+    expect(await mainGives('Int', 'steps(Holder{step: start})', decls)).toBe(2);
   });
 });
 
 describe('using recursive aliases without fold/unfold: conversions, fields and exhaustive matching (§2)', () => {
-  it('converts values into a recursive union at any depth and matches them exhaustively', () => {
+  it('converts values into a recursive union at any depth and matches them exhaustively', async () => {
     const decls = lines(
       'type Tree<T> = T | Array<Tree<T>>',
       'fn sumTree(t: Tree<Int>) -> Int:',
@@ -336,10 +340,10 @@ describe('using recursive aliases without fold/unfold: conversions, fields and e
       '  const tree: Tree<Int> = [1, [2, 3], [[4], 5]]',
       '  sumTree(tree)',
     );
-    expect(mainGives('Int', 'run()', lines(decls, run))).toBe(15);
+    expect(await mainGives('Int', 'run()', lines(decls, run))).toBe(15);
   });
 
-  it('constructs and traverses a recursive shape (List) and reports non-exhaustive matches', () => {
+  it('constructs and traverses a recursive shape (List) and reports non-exhaustive matches', async () => {
     const decls = lines(
       'type List = { head: Int, tail: List? }',
       'fn sumList(list: List?) -> Int:',
@@ -356,7 +360,7 @@ describe('using recursive aliases without fold/unfold: conversions, fields and e
       '        tail: none',
       '  sumList(items)',
     );
-    expect(mainGives('Int', 'run()', decls)).toBe(60);
+    expect(await mainGives('Int', 'run()', decls)).toBe(60);
 
     const nonExhaustive = lines(
       'type Tree<T> = T | Array<Tree<T>>',

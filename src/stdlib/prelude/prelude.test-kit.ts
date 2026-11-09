@@ -9,9 +9,9 @@ import { startToEnd, testRuntime } from '../../runtime/runtime.test-kit.ts';
  * the ended state when it doesn't finish. `body` is one line or several, each indented under
  * `main` here, so a caller writes them as at a module's top level.
  */
-export function mainGives(result: string, body: string, declarations = ''): unknown {
+export async function mainGives(result: string, body: string, declarations = ''): Promise<unknown> {
   const lines = body.trimEnd().split('\n').join('\n  ');
   const program = `${declarations}\nasync fn main() -> Future<${result}>:\n  ${lines}`;
-  const state = startToEnd(testRuntime(), compiledText(program));
+  const state = await startToEnd(testRuntime(), compiledText(program));
   return state.kind === 'finished' ? decodeJson(String(state.outcome)) : state;
 }

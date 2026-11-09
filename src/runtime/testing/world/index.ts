@@ -3,16 +3,17 @@
  * instance it starts or spawns, and the seam (scheduler/testing/test-world.ts) through which those
  * reach each other.
  *
- * - Instances run one at a time, each advanced from its last commit: what one reads of another is
- *   that one's last commit, as a host would see it. An instance calling a mock another holds runs
+ * - Instances run one at a time, each advanced from its last commit and held in memory between
+ *   (scheduler/resident.ts): what one reads of another is that one's last commit, as a host would
+ *   see it. An instance calling a mock another holds runs
  *   the holder's replacement inside its own segment (scheduler/testing/mocks.ts); the answers the
  *   holder gives later are filled in once the caller's advance is over, as a host fills a future.
  *   The holder may run on meanwhile, and sees the caller neither idle nor at a waypoint, since the
  *   caller's segment hasn't committed.
- * - Each pass runs what can run now: answers to deliver, ready instances, then instances whose
- *   watches hold. When nothing can, the world waits for the earliest timer, on real time unless
- *   the test mocked it (§10), and that wait is the caller's to make, as `settle` leaves it
- *   (runtime/host/settle.ts), so the runtime never sleeps. A wait past the deadline ends the test.
+ * - The world is driven as any host's instances are (runtime/host/drive.ts). What it runs first is
+ *   what can run now: answers to deliver, ready instances, then instances whose watches hold. When
+ *   nothing can, it waits for the earliest timer on the clock it is given, real time unless the
+ *   test mocked it (§10), so the runtime never sleeps. A wait past the deadline ends the test.
  * - The test ends when its own instance finishes, or when any instance panics, which fails it at
  *   once with that panic (§10), unless an instance waits for its end (`result()`, as `expectPanic`
  *   does). Such a wait ends once it is answered, so the world remembers each panic waited for as it
@@ -26,6 +27,8 @@ import type { FunctionId } from '../../../definition/operands.ts';
 import type { Value } from '../../../definition/values/values.ts';
 import { memo } from '../../../foundation/structures/memo.ts';
 import { unreachable } from '../../../foundation/structures/unreachable.ts';
+import type { Clock } from '../../host/clock.ts';
+import { drive } from '../../host/drive.ts';
 import { InstanceGroup } from '../../host/instance-group.ts';
 import type { Inspection, LogRecord } from '../../instance-state.ts';
 import type { Natives } from '../../natives.ts';
@@ -33,6 +36,7 @@ import { inspection } from '../../scheduler/inspect.ts';
 import type { Answered } from '../../scheduler/instance/futures.ts';
 import { storedSnapshot } from '../../scheduler/instance/instance-ends.ts';
 import { type LoadedDefinition, loadDefinition } from '../../scheduler/loaded-definition.ts';
+import { Resident } from '../../scheduler/resident.ts';
 import type { MockAnswer, MockCall, TestWorld } from '../../scheduler/testing/test-world.ts';
 import {
   type Advance,
@@ -66,8 +70,7 @@ export interface WorldSeams {
   readonly definition: Definition;
   readonly hash: string;
   readonly natives: Natives;
-  /** Milliseconds since the Unix epoch. */
-  readonly now: () => bigint;
+  readonly clock: Clock;
   /** The seed of the test's instance's random source (§3.8 `random`, random.ts). */
   readonly seed: string;
   /** When the test must have ended, in milliseconds since the Unix epoch. */
@@ -81,7 +84,10 @@ const allowTest = (): void => undefined;
 
 export class World implements TestWorld {
   readonly #seams: SchedulerSeams;
+  readonly #clock: Clock;
   readonly #loaded: LoadedDefinition;
+  /** Every instance of the world, at its last commit; one spawned joins it from the store. */
+  readonly #residents = new Map<string, Resident>();
   readonly #deadline: bigint;
   readonly #seed: string;
   readonly #group = new InstanceGroup();
@@ -95,8 +101,9 @@ export class World implements TestWorld {
   readonly #expectedPanics = new Set<string>();
   #handles = 0;
 
-  constructor({ definition, hash, natives, now, seed, deadline }: WorldSeams) {
-    this.#seams = { store: memoryStore(), now };
+  constructor({ definition, hash, natives, clock, seed, deadline }: WorldSeams) {
+    this.#seams = { store: memoryStore(), now: clock.now };
+    this.#clock = clock;
     this.#deadline = deadline;
     this.#seed = seed;
     this.#loaded = loadDefinition(
@@ -107,35 +114,40 @@ export class World implements TestWorld {
     );
   }
 
-  /**
-   * Runs `call` as the test's instance, with what it starts and spawns, until it ends: yields each
-   * time everything waits on a timer, the time to wait until, and is resumed once it is due.
-   */
-  *run(call: InstanceCall): Generator<bigint, Ended, undefined> {
-    this.#record(
-      testInstance,
-      advance(
-        this.#seams,
-        this.#loaded,
-        unstarted(this.#loaded, testInstance, call, { seed: this.#seed }),
-      ),
+  /** Runs `call` as the test's instance, with what it starts and spawns, until it ends. */
+  async run(call: InstanceCall): Promise<Ended> {
+    const test = new Resident(
+      this.#loaded,
+      unstarted(this.#loaded, testInstance, call, { seed: this.#seed }),
     );
-    for (let ended = this.#ended(); ended === undefined; ended = this.#ended()) {
-      if (!this.#step()) {
-        const due = this.#group.earliestTimer();
-        if (due === undefined) {
-          return this.#failure('The test waits on nothing that can wake it');
+    this.#residents.set(testInstance, test);
+    this.#record(testInstance, advance(this.#seams, test));
+    const driven = await drive({
+      group: this.#group,
+      now: this.#clock.now,
+      runNext: () => Promise.resolve(this.#step()),
+      wake: (instance) => Promise.resolve(this.#advance(instance)),
+      wait: async (due) => {
+        if (due !== undefined) {
+          await this.#clock.until(due);
         }
-        if (due > this.#deadline) {
-          return this.#failure('The test waits past its timeout');
-        }
-        if (due > this.#seams.now()) {
-          yield due;
-        }
-        this.#wakeDue();
+        return false;
+      },
+      ends: () => this.#ended() !== undefined,
+      deadline: this.#deadline,
+    });
+    switch (driven) {
+      case 'ended':
+        return this.#ended() ?? unreachable('The test ended.');
+      case 'late':
+        return this.#failure('The test waits past its timeout');
+      case 'settled':
+        return this.#failure('The test waits on nothing that can wake it');
+      default: {
+        const unhandled: never = driven;
+        return unhandled;
       }
     }
-    return this.#ended() ?? unreachable('The test ended.');
   }
 
   mockOf(holder: string, target: FunctionId): number | undefined {
@@ -144,14 +156,14 @@ export class World implements TestWorld {
   }
 
   answer(holder: string, call: MockCall): MockAnswer {
-    const snapshot = this.#snapshotOf(holder);
-    if (snapshot?.status.kind !== 'active') {
+    const resident = this.#resident(holder);
+    if (resident?.committed.status.kind !== 'active') {
       return { kind: 'failed' };
     }
     this.#calling.add(call.instance);
     let advanced: Advance;
     try {
-      advanced = advance(this.#seams, this.#loaded, snapshot, { kind: 'answer', call });
+      advanced = advance(this.#seams, resident, { kind: 'answer', call });
     } finally {
       this.#calling.delete(call.instance);
     }
@@ -228,16 +240,9 @@ export class World implements TestWorld {
 
   /** Advances `instance` from its last commit, starting with `first`. */
   #advance(instance: string, first?: AdvanceFirst): void {
-    const snapshot = this.#snapshotOf(instance);
-    if (snapshot !== undefined) {
-      this.#record(instance, advance(this.#seams, this.#loaded, snapshot, first));
-    }
-  }
-
-  /** Wakes every instance whose next timer is due now. */
-  #wakeDue(): void {
-    for (const instance of this.#group.dueBy(this.#seams.now())) {
-      this.#advance(instance);
+    const resident = this.#resident(instance);
+    if (resident !== undefined) {
+      this.#record(instance, advance(this.#seams, resident, first));
     }
   }
 
@@ -308,9 +313,24 @@ export class World implements TestWorld {
     );
   }
 
-  /** `instance`'s last commit; undefined before its first. Read once per commit. */
+  /** `instance`'s last commit; undefined before its first. */
   #snapshotOf(instance: string): Snapshot | undefined {
-    return storedSnapshot(this.#seams.store, instance);
+    return this.#resident(instance)?.committed;
+  }
+
+  /** `instance`, held since it joined the world; one spawned joins it from the store. */
+  #resident(instance: string): Resident | undefined {
+    const held = this.#residents.get(instance);
+    if (held !== undefined) {
+      return held;
+    }
+    const stored = storedSnapshot(this.#seams.store, instance);
+    if (stored === undefined) {
+      return undefined;
+    }
+    const resident = new Resident(this.#loaded, stored);
+    this.#residents.set(instance, resident);
+    return resident;
   }
 }
 

@@ -132,15 +132,15 @@ function comparisons(type: string, value: string): readonly string[] {
 }
 
 describe('generic code over unions, instantiated (§3.5)', () => {
-  it('gives what the same code written for the type argument gives', () => {
-    fc.assert(
-      fc.property(typeArgument, ({ text, values }) => {
+  it('gives what the same code written for the type argument gives', async () => {
+    await fc.assert(
+      fc.asyncProperty(typeArgument, async ({ text, values }) => {
         const named = values.map((value, index) => ({ name: `a${index}`, value }));
         const body = [
           ...named.map(({ name, value }) => `const ${name}: (${text}) = ${value}`),
           `[${named.flatMap(({ name }) => comparisons(text, name).map((each) => `\`${each}\``)).join(', ')}]`,
         ];
-        const outcome = runMain('Array<String>', body.join('\n  '), declarations(text));
+        const outcome = await runMain('Array<String>', body.join('\n  '), declarations(text));
         expect(outcome, `T = ${text}`).toEqual(
           named.flatMap(({ name }) => comparisons(text, name).map(() => 'true')),
         );

@@ -187,7 +187,7 @@ describe('a function named as a value where what it gives is still open', () => 
     }
   });
 
-  it('runs as the function its settled parameters chose, instantiated as the scope solved it', () => {
+  it('runs as the function its settled parameters chose, instantiated as the scope solved it', async () => {
     const unwrapped = [
       'fn unwrapped(r: Result<Int, String>) -> Int:',
       '  match r:',
@@ -195,7 +195,11 @@ describe('a function named as a value where what it gives is still open', () => 
       '    case Err(error): error.length()',
     ].join('\n');
     expect(
-      mainGives('Int', 'pairWith(42, Result.Ok, unwrapped)', [...functions, unwrapped].join('\n')),
+      await mainGives(
+        'Int',
+        'pairWith(42, Result.Ok, unwrapped)',
+        [...functions, unwrapped].join('\n'),
+      ),
     ).toBe(42);
   });
 });

@@ -23,20 +23,20 @@ function literalOf(text: string): string {
 }
 
 describe('a cursor', () => {
-  it('gives the ints from a range start below its end, and nothing from any other', () => {
-    fc.assert(
-      fc.property(ends, ends, (start, end) => {
+  it('gives the ints from a range start below its end, and nothing from any other', async () => {
+    await fc.assert(
+      fc.asyncProperty(ends, ends, async (start, end) => {
         const ints = Array.from(
           { length: Math.max(0, end - start) },
           (_, offset) => start + offset,
         );
-        expect(mainGives('Array<Int>', `[for i in ${start}..${end}: i]`)).toEqual(ints);
+        expect(await mainGives('Array<Int>', `[for i in ${start}..${end}: i]`)).toEqual(ints);
       }),
       { numRuns: 10 },
     );
   });
 
-  it('steps a range one int at a time, never holding the ints it covers', () => {
+  it('steps a range one int at a time, never holding the ints it covers', async () => {
     const body = [
       'let last = 0',
       'for i in 0..4_294_967_301:',
@@ -44,37 +44,42 @@ describe('a cursor', () => {
       '  if i == 3: break',
       'last',
     ];
-    expect(mainGives('Int', body.join('\n'))).toBe(3);
+    expect(await mainGives('Int', body.join('\n'))).toBe(3);
   });
 
-  it("gives a string's code points, astral ones whole", () => {
-    fc.assert(
-      fc.property(fc.string({ unit: 'binary', maxLength: 6 }), (text) => {
-        expect(mainGives('Array<String>', `[for c in ${literalOf(text)}: c]`)).toEqual([...text]);
+  it("gives a string's code points, astral ones whole", async () => {
+    await fc.assert(
+      fc.asyncProperty(fc.string({ unit: 'binary', maxLength: 6 }), async (text) => {
+        expect(await mainGives('Array<String>', `[for c in ${literalOf(text)}: c]`)).toEqual([
+          ...text,
+        ]);
       }),
       { numRuns: 10 },
     );
   });
 
-  it("gives a map's entries in its order", () => {
-    expect(mainGives('Array<String>', '[for k, v in ["b": 1, "a": 2]: k + v]')).toEqual([
+  it("gives a map's entries in its order", async () => {
+    expect(await mainGives('Array<String>', '[for k, v in ["b": 1, "a": 2]: k + v]')).toEqual([
       'b1',
       'a2',
     ]);
   });
 
-  it('gives every item of an array of optionals, a stored none never ending it', () => {
-    fc.assert(
-      fc.property(fc.array(fc.option(ends, { nil: null }), { maxLength: 4 }), (items) => {
-        const literal = items.map((item) => item ?? 'none').join(', ');
-        const body = `const xs: Array<Int?> = [${literal}]\n[for x in xs: x]`;
-        expect(mainGives('Array<Int?>', body)).toEqual(items);
-      }),
+  it('gives every item of an array of optionals, a stored none never ending it', async () => {
+    await fc.assert(
+      fc.asyncProperty(
+        fc.array(fc.option(ends, { nil: null }), { maxLength: 4 }),
+        async (items) => {
+          const literal = items.map((item) => item ?? 'none').join(', ');
+          const body = `const xs: Array<Int?> = [${literal}]\n[for x in xs: x]`;
+          expect(await mainGives('Array<Int?>', body)).toEqual(items);
+        },
+      ),
       { numRuns: 10 },
     );
   });
 
-  it('runs over what it was given, whatever the loop changes meanwhile', () => {
+  it('runs over what it was given, whatever the loop changes meanwhile', async () => {
     const body = [
       'let xs = [1, 2]',
       'let seen = 0',
@@ -83,7 +88,7 @@ describe('a cursor', () => {
       '  seen += 1',
       'seen',
     ];
-    expect(mainGives('Int', body.join('\n'))).toBe(2);
+    expect(await mainGives('Int', body.join('\n'))).toBe(2);
   });
 });
 
@@ -103,7 +108,7 @@ describe('a spread', () => {
       '["a": 0, ...["b": 1], ...[("c", 2)], "a": 3]',
       { a: 3, b: 1, c: 2 },
     ],
-  ])('takes the items of %s', (_, type, literal, expected) => {
-    expect(mainGives(type, literal)).toEqual(expected);
+  ])('takes the items of %s', async (_, type, literal, expected) => {
+    expect(await mainGives(type, literal)).toEqual(expected);
   });
 });

@@ -232,7 +232,7 @@ function analyzeProfile(profile: Profiler.Profile): ProfileSummary {
 export async function withCpuProfile<T>(
   outDir: string | undefined,
   name: string,
-  fn: () => T,
+  fn: () => T | Promise<T>,
 ): Promise<{ readonly result: T; readonly wallMs: number; readonly summary: ProfileSummary }> {
   const session = new Session();
   session.connect();
@@ -240,7 +240,7 @@ export async function withCpuProfile<T>(
   await session.post('Profiler.setSamplingInterval', { interval: samplingIntervalUs });
   await session.post('Profiler.start');
   const t0 = performance.now();
-  const result = fn();
+  const result = await fn();
   const wallMs = performance.now() - t0;
   const { profile } = await session.post('Profiler.stop');
   session.disconnect();

@@ -21,9 +21,9 @@ const baseDecls = [
 ];
 
 describe('conversions into a union (§2)', () => {
-  it('prefers an exact member match over a conversion to another member', () => {
+  it('prefers an exact member match over a conversion to another member', async () => {
     expect(
-      runMain('String', 'which(Pixel{x: 3, y: 4}) + ":" + which(struct{x: 1, y: 2})', [
+      await runMain('String', 'which(Pixel{x: 3, y: 4}) + ":" + which(struct{x: 1, y: 2})', [
         ...baseDecls,
         'fn which(v: Pixel | Point) -> String:',
         '  match v:',
@@ -33,9 +33,9 @@ describe('conversions into a union (§2)', () => {
     ).toBe('pixel:3:point:1');
   });
 
-  it('converts into the single matching member via any, shape, async fn, 1-tuple, or literal base', () => {
+  it('converts into the single matching member via any, shape, async fn, 1-tuple, or literal base', async () => {
     expect(
-      runMain(
+      await runMain(
         'String',
         [
           'const a: (any Stringable) | Bool = Email{to: "cfo"}',
@@ -70,9 +70,9 @@ describe('conversions into a union (§2)', () => {
     ).toBe('mail:cfo|7|11|9|4|draft');
   });
 
-  it('converts a narrow union into a wider union', () => {
+  it('converts a narrow union into a wider union', async () => {
     expect(
-      runMain(
+      await runMain(
         'String',
         [
           'const small: "draft" | "sent" = "sent"',
@@ -131,9 +131,9 @@ describe('conversions into a union (§2)', () => {
     ]);
   });
 
-  it('builds struct/array/map literals, lambdas, bare variants, and literals from the one expected member they fit', () => {
+  it('builds struct/array/map literals, lambdas, bare variants, and literals from the one expected member they fit', async () => {
     expect(
-      runMain(
+      await runMain(
         'String',
         [
           'const pt: Point | String = struct{x: 3, y: 4}',
@@ -175,7 +175,7 @@ describe('conversions into a union (§2)', () => {
     ).toBeGreaterThan(0);
   });
 
-  it('propagates `Err` with `?` when its error type converts into the enclosing function error union', () => {
+  it('propagates `Err` with `?` when its error type converts into the enclosing function error union', async () => {
     const errDecls = [
       'struct NotFound { id: String }',
       'struct Timeout { ms: Int }',
@@ -190,7 +190,7 @@ describe('conversions into a union (§2)', () => {
       '  Ok(x + y)',
     ];
     expect(
-      runMain(
+      await runMain(
         'String',
         [
           'const r1 = both(true, true)',
@@ -219,9 +219,9 @@ describe('conversions into a union (§2)', () => {
     ).toEqual([checkerDiagnostics.propagateErrorType.code]);
   });
 
-  it('infers type parameters against a union from what other members do not take, and never infers a union unprompted', () => {
+  it('infers type parameters against a union from what other members do not take, and never infers a union unprompted', async () => {
     expect(
-      runMain(
+      await runMain(
         'Int',
         [
           'const a = unwrapOr(5, 0)',
@@ -242,7 +242,7 @@ describe('conversions into a union (§2)', () => {
     ).toBe(30);
 
     expect(
-      runMain(
+      await runMain(
         'String',
         [
           'const s: Status = "sent"',
@@ -274,9 +274,9 @@ describe('conversions into a union (§2)', () => {
 });
 
 describe('literal types (§4)', () => {
-  it('gives `none` type `None` without needing an expected type', () => {
+  it('gives `none` type `None` without needing an expected type', async () => {
     expect(hoverCodeAt('fn f():', '  const x = no‸ne', '  _ = x')).toEqual(['None']);
-    expect(runMain('Bool', 'const x = none\n  x == none')).toBe(true);
+    expect(await runMain('Bool', 'const x = none\n  x == none')).toBe(true);
   });
 
   it('infers base types for literals unless a literal type or union holding one is expected', () => {
@@ -291,9 +291,9 @@ describe('literal types (§4)', () => {
     ).toEqual(['"draft"']);
   });
 
-  it('fits a literal type or union of literals of one base into that base type, and never base into literal', () => {
+  it('fits a literal type or union of literals of one base into that base type, and never base into literal', async () => {
     expect(
-      runMain(
+      await runMain(
         'String',
         [
           'const s: Status = "draft"',
@@ -325,9 +325,9 @@ describe('literal types (§4)', () => {
     ]);
   });
 
-  it('agrees on the base type when values of literal types of one base meet with no expected type', () => {
+  it('agrees on the base type when values of literal types of one base meet with no expected type', async () => {
     expect(
-      runMain(
+      await runMain(
         'String',
         [
           'const k1: "a" = "a"',
@@ -350,9 +350,9 @@ describe('literal types (§4)', () => {
     ).toEqual(['(variable) branch: String']);
   });
 
-  it('allows `==` and `!=` when either operand fits the other type', () => {
+  it('allows `==` and `!=` when either operand fits the other type', async () => {
     expect(
-      runMain(
+      await runMain(
         'String',
         [
           'const s: Status = "draft"',
@@ -367,9 +367,9 @@ describe('literal types (§4)', () => {
     ).toBe('true:true:true:true');
   });
 
-  it('parses `a < 1 > (b)` and `a < Int | String > (b)` as generic calls, and `(a < 1) > b` as a comparison', () => {
+  it('parses `a < 1 > (b)` and `a < Int | String > (b)` as generic calls, and `(a < 1) > b` as a comparison', async () => {
     expect(
-      runMain(
+      await runMain(
         'String',
         ['const c1 = pick<1>(1)', 'const c2 = either<Int | String>("ok")', '`${c1}:${c2}`'].join(
           '\n  ',

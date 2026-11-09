@@ -51,9 +51,9 @@ describe('an `any` member absorbing after substitution (§2, §3.5)', () => {
     );
   });
 
-  it('gives a generic function instantiated the values of the union written for it', () => {
+  it('gives a generic function instantiated the values of the union written for it', async () => {
     expect(
-      runMain(
+      await runMain(
         'Bool',
         'const a: any Stringable = "hello"\n  wrap<String>(a) == wrap<String>("hello")',
         declarations,
@@ -223,9 +223,9 @@ function fixedCalls(type: string): readonly (readonly [string, string])[] {
 }
 
 describe('generic code on values of members an `any` member took whole (§2, §3.5)', () => {
-  it('puts, tests and carries them as the value says', () => {
-    fc.assert(
-      fc.property(valuedArgument, ({ text, values }) => {
+  it('puts, tests and carries them as the value says', async () => {
+    await fc.assert(
+      fc.asyncProperty(valuedArgument, async ({ text, values }) => {
         const type = `(${text})`;
         const all = [
           ...values.flatMap((value, index) => callsOn(type, `a${index}`, value)),
@@ -235,9 +235,9 @@ describe('generic code on values of members an `any` member took whole (§2, §3
           ...values.map((value, index) => `const a${index}: ${type} = ${value}`),
           `[${all.map(([call]) => call).join(', ')}]`,
         ];
-        expect(runMain('Array<String>', body.join('\n  '), [...declarations, ...generic])).toEqual(
-          all.map(([, expected]) => expected),
-        );
+        expect(
+          await runMain('Array<String>', body.join('\n  '), [...declarations, ...generic]),
+        ).toEqual(all.map(([, expected]) => expected));
       }),
       { numRuns: 30 },
     );
@@ -260,9 +260,9 @@ const typeParameter = /\bT\b/gu;
 const genericCall = /G<[^>]*(?:<[^>]*>)?[^>]*>\(/u;
 
 describe('commutation: generic code instantiated, or written for the type it is instantiated with', () => {
-  it('compiles alike and gives the same', () => {
-    fc.assert(
-      fc.property(valuedArgument, ({ text, values }) => {
+  it('compiles alike and gives the same', async () => {
+    await fc.assert(
+      fc.asyncProperty(valuedArgument, async ({ text, values }) => {
         const type = `(${text})`;
         const all = [
           ...values.flatMap((value, index) => callsOn(type, `a${index}`, value)),
@@ -273,7 +273,7 @@ describe('commutation: generic code instantiated, or written for the type it is 
           ...values.map((value, index) => `const a${index}: ${type} = ${value}`),
           `[${[...all, ...written].join(', ')}]`,
         ];
-        const results = runMain('Array<String>', body.join('\n  '), [
+        const results = await runMain('Array<String>', body.join('\n  '), [
           ...declarations,
           ...generic,
           ...writtenFor(type),

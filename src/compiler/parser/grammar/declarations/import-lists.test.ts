@@ -146,7 +146,7 @@ describe('import renames ("c as see") in bare and parenthesized imports (§7)', 
     expect(formatText(formatted)).toBe(formatted);
   });
 
-  it('binds only the alias in scope, allows importing one export under two names, and checks clashes on bound names', () => {
+  it('binds only the alias in scope, allows importing one export under two names, and checks clashes on bound names', async () => {
     const decls = lines(
       'import (',
       '  Duration as Span',
@@ -155,7 +155,9 @@ describe('import renames ("c as see") in bare and parenthesized imports (§7)', 
       ") from 'time'",
       'fn makeSpan() -> Span: Span{value: 500}',
     );
-    expect(mainGives('Int', 'makeSpan().value + Duration{value: 100}.value', decls)).toBe(600);
+    expect(await mainGives('Int', 'makeSpan().value + Duration{value: 100}.value', decls)).toBe(
+      600,
+    );
 
     expect(
       checkReported(lines("import Duration as Span from 'time'", 'fn f(d: Duration): ()')).codes,

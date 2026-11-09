@@ -11,11 +11,11 @@ import { reported } from '../../../check.test-kit.ts';
 const declarations = 'struct S { a: Int, b: Int = 2 }';
 
 describe('a struct{…} expected as a union', () => {
-  it('builds the member its fields give', () => {
+  it('builds the member its fields give', async () => {
     const text = [declarations, 'fn f() -> S | Int: struct{a: 1}', 'async fn main(): 0'].join('\n');
     expect(reported(text)).toEqual(reportedNothing);
     expect(
-      mainGives(
+      await mainGives(
         'Int',
         'const s: S | Int = struct{a: 1}\nmatch s:\n  case S{b}: b\n  case _: 0',
         declarations,

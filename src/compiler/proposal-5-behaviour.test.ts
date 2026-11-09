@@ -33,19 +33,19 @@ function parameterTypesOf(source: string): { readonly types: readonly Type[] } {
 }
 
 describe('proposal 5 behaviour table: row by row', () => {
-  it('row 1: "const c: Config =" with "retries: 3" indented below builds Config{retries: 3}', () => {
+  it('row 1: "const c: Config =" with "retries: 3" indented below builds Config{retries: 3}', async () => {
     const decls = 'struct Config { retries: Int }';
     const body = lines('const c: Config =', '  retries: 3', 'c.retries');
-    expect(mainGives('Int', body, decls)).toBe(3);
+    expect(await mainGives('Int', body, decls)).toBe(3);
   });
 
-  it('row 2: "const c = Config:" with an indented block builds Config{…}', () => {
+  it('row 2: "const c = Config:" with an indented block builds Config{…}', async () => {
     const decls = 'struct Config { retries: Int, region: String = "eu" }';
     const body = lines('const c = Config:', '  retries: 5', '`${c.region}:${c.retries}`');
-    expect(mainGives('String', body, decls)).toBe('eu:5');
+    expect(await mainGives('String', body, decls)).toBe('eu:5');
   });
 
-  it('row 3: "return" with an indented block returns the value built for the return type', () => {
+  it('row 3: "return" with an indented block returns the value built for the return type', async () => {
     const decls = lines(
       'struct Config { retries: Int, region: String }',
       'fn makeConfig() -> Config:',
@@ -53,9 +53,9 @@ describe('proposal 5 behaviour table: row by row', () => {
       '    retries: 4',
       '    region: "us"',
     );
-    expect(mainGives('String', '`${makeConfig().region}:${makeConfig().retries}`', decls)).toBe(
-      'us:4',
-    );
+    expect(
+      await mainGives('String', '`${makeConfig().region}:${makeConfig().retries}`', decls),
+    ).toBe('us:4');
   });
 
   it('row 4: a body line "Config:" with a block below is still a label (warning 5711, or error 2130)', () => {
@@ -66,12 +66,12 @@ describe('proposal 5 behaviour table: row by row', () => {
     expect(reported(danglingLabel).codes).toContain(parserDiagnostics.misplacedLabel.code);
   });
 
-  it('row 5: "- 1" lines under "const xs: Array<Int> =" build [1, …]', () => {
+  it('row 5: "- 1" lines under "const xs: Array<Int> =" build [1, …]', async () => {
     const body = lines('const xs: Array<Int> =', '  - 1', '  - 2', '  - 3', 'xs');
-    expect(mainGives('Array<Int>', body)).toEqual([1, 2, 3]);
+    expect(await mainGives('Array<Int>', body)).toEqual([1, 2, 3]);
   });
 
-  it('row 6: \'"x-id": "1"\' under a Map<String, String> field builds the entry \'"x-id": "1"\'', () => {
+  it('row 6: \'"x-id": "1"\' under a Map<String, String> field builds the entry \'"x-id": "1"\'', async () => {
     const decls = 'struct Req { headers: Map<String, String> }';
     const body = lines(
       'const r = Req:',
@@ -80,10 +80,10 @@ describe('proposal 5 behaviour table: row by row', () => {
       '    "x-env": "prod"',
       'r.headers["x-id"] + ":" + r.headers["x-env"]',
     );
-    expect(mainGives('String', body, decls)).toBe('1:prod');
+    expect(await mainGives('String', body, decls)).toBe('1:prod');
   });
 
-  it('row 7: "type Tree = Int | Array<Tree>" is a recursive union', () => {
+  it('row 7: "type Tree = Int | Array<Tree>" is a recursive union', async () => {
     const decls = lines(
       'type Tree = Int | Array<Tree>',
       'fn total(t: Tree) -> Int:',
@@ -95,10 +95,10 @@ describe('proposal 5 behaviour table: row by row', () => {
       '        s += total(x)',
       '      return s',
     );
-    expect(mainGives('Int', 'total([1, [2, [3, 4]]])', decls)).toBe(10);
+    expect(await mainGives('Int', 'total([1, [2, [3, 4]]])', decls)).toBe(10);
   });
 
-  it('row 8: "type List = { head: Int, tail: List? }" is a recursive shape', () => {
+  it('row 8: "type List = { head: Int, tail: List? }" is a recursive shape', async () => {
     const decls = 'type List = { head: Int, tail: List? }';
     const body = lines(
       'const l: List =',
@@ -108,20 +108,20 @@ describe('proposal 5 behaviour table: row by row', () => {
       '    tail: none',
       'l.head + (l.tail?.head ?? 0)',
     );
-    expect(mainGives('Int', body, decls)).toBe(15);
+    expect(await mainGives('Int', body, decls)).toBe(15);
   });
 
   it('row 9: "type A = A | Int" is still error 5106', () => {
     expect(reported('type A = A | Int').codes).toEqual([checkerDiagnostics.aliasCycle.code]);
   });
 
-  it('row 10: a Json literal is written ["a": 1, "b": [true, none]] without variant wrappers', () => {
+  it('row 10: a Json literal is written ["a": 1, "b": [true, none]] without variant wrappers', async () => {
     const decls = "import * as json from 'json'\nimport Json from 'json'";
     const body = lines('const j: Json = ["a": 1, "b": [true, none]]', 'json.stringify(j)');
-    expect(mainGives('String', body, decls)).toBe('{"a":1,"b":[true,null]}');
+    expect(await mainGives('String', body, decls)).toBe('{"a":1,"b":[true,null]}');
   });
 
-  it('row 11: "case Text{value}" on a Json is gone; "case String as value" binds the String', () => {
+  it('row 11: "case Text{value}" on a Json is gone; "case String as value" binds the String', async () => {
     const decls = "import Json from 'json'";
     const oldPattern = lines(
       decls,
@@ -137,7 +137,7 @@ describe('proposal 5 behaviour table: row by row', () => {
       '  case String as value: value',
       '  case _: ""',
     );
-    expect(mainGives('String', newPattern, decls)).toBe('hello');
+    expect(await mainGives('String', newPattern, decls)).toBe('hello');
   });
 
   it('row 12: "Json?" is "Json"', () => {
@@ -146,12 +146,12 @@ describe('proposal 5 behaviour table: row by row', () => {
     expect(plain !== undefined && optional !== undefined && sameType(plain, optional)).toBe(true);
   });
 
-  it('row 13: "[]" where "Array<Int> | Map<String, Int>" is expected builds the empty array', () => {
+  it('row 13: "[]" where "Array<Int> | Map<String, Int>" is expected builds the empty array', async () => {
     const body = lines('const x: Array<Int> | Map<String, Int> = []', 'x is Array<Int>');
-    expect(mainGives('Bool', body)).toBe(true);
+    expect(await mainGives('Bool', body)).toBe(true);
   });
 
-  it('row 14: "{ sku: String, qty: Int }", "struct R { id: Int, value: String }", "enum Color { Red, Green }" build the shape, struct and enum', () => {
+  it('row 14: "{ sku: String, qty: Int }", "struct R { id: Int, value: String }", "enum Color { Red, Green }" build the shape, struct and enum', async () => {
     const decls = lines(
       'type Item = { sku: String, qty: Int }',
       'struct R { id: Int, value: String }',
@@ -163,7 +163,7 @@ describe('proposal 5 behaviour table: row by row', () => {
       'const c = Color.Green',
       '(r.id + item.qty, r.value, c is Color)',
     );
-    expect(mainGives('(Int, String, Bool)', body, decls)).toEqual([4, 'p1', true]);
+    expect(await mainGives('(Int, String, Bool)', body, decls)).toEqual([4, 'p1', true]);
   });
 
   it('row 15: "{ sku: String; qty: Int }" and "enum Color { Red; Green }" are errors (";" separates only statements)', () => {
@@ -171,7 +171,7 @@ describe('proposal 5 behaviour table: row by row', () => {
     expect(reported('enum Color { Red; Green }').codes.length).toBeGreaterThan(0);
   });
 
-  it('row 16: "x = 1; y = 2" and "{ log(msg); save(msg) }" keep statements sharing a line', () => {
+  it('row 16: "x = 1; y = 2" and "{ log(msg); save(msg) }" keep statements sharing a line', async () => {
     const body = lines(
       'let x = 0',
       'let y = 0',
@@ -179,30 +179,30 @@ describe('proposal 5 behaviour table: row by row', () => {
       'const z = { x += 10; y += 20; x + y }',
       'z',
     );
-    expect(mainGives('Int', body)).toBe(33);
+    expect(await mainGives('Int', body)).toBe(33);
   });
 
-  it('row 17: "ps.map(fn(struct{x, y}): x + y)" takes each Point apart', () => {
+  it('row 17: "ps.map(fn(struct{x, y}): x + y)" takes each Point apart', async () => {
     const decls = 'struct Point { x: Int, y: Int }';
     const body = lines(
       'const ps = [Point{x: 1, y: 2}, Point{x: 10, y: 20}]',
       'ps.map(fn(struct{x, y}): x + y)',
     );
-    expect(mainGives('Array<Int>', body, decls)).toEqual([3, 30]);
+    expect(await mainGives('Array<Int>', body, decls)).toEqual([3, 30]);
   });
 
-  it('row 18: "pairs.map(fn((a, b)): a + b)" takes each pair apart', () => {
+  it('row 18: "pairs.map(fn((a, b)): a + b)" takes each pair apart', async () => {
     const body = lines('const pairs = [(1, 2), (3, 4)]', 'pairs.map(fn((a, b)): a + b)');
-    expect(mainGives('Array<Int>', body)).toEqual([3, 7]);
+    expect(await mainGives('Array<Int>', body)).toEqual([3, 7]);
   });
 
-  it('row 19: "fn norm(Point{x, y}) -> Float" declares a function of a Point', () => {
+  it('row 19: "fn norm(Point{x, y}) -> Float" declares a function of a Point', async () => {
     const decls = lines(
       "import * as math from 'math'",
       'struct Point { x: Float, y: Float }',
       'fn norm(Point{x, y}) -> Float: math.sqrt(x * x + y * y)',
     );
-    expect(mainGives('Float', 'norm(Point{x: 3.0, y: 4.0})', decls)).toBe(5);
+    expect(await mainGives('Float', 'norm(Point{x: 3.0, y: 4.0})', decls)).toBe(5);
   });
 
   it('row 20: "fn f(Ok(value))" is still an error because the pattern can fail', () => {
@@ -211,13 +211,13 @@ describe('proposal 5 behaviour table: row by row', () => {
     );
   });
 
-  it('row 21: "P{" over the lines \'id: "x"\' and "qty: 2", then "}" builds two fields', () => {
+  it('row 21: "P{" over the lines \'id: "x"\' and "qty: 2", then "}" builds two fields', async () => {
     const decls = 'struct P { id: String, qty: Int }';
     const body = lines('const p = P{', '  id: "x"', '  qty: 2', '}', '`${p.id}:${p.qty}`');
-    expect(mainGives('String', body, decls)).toBe('x:2');
+    expect(await mainGives('String', body, decls)).toBe('x:2');
   });
 
-  it('row 22: "[" over lines "1" and "2", then "]", and "g(" over "1" and "2" build two items and two arguments', () => {
+  it('row 22: "[" over lines "1" and "2", then "]", and "g(" over "1" and "2" build two items and two arguments', async () => {
     const decls = 'fn g(a: Int, b: Int) -> Int: a * 10 + b';
     const body = lines(
       'const xs = [',
@@ -230,7 +230,7 @@ describe('proposal 5 behaviour table: row by row', () => {
       ')',
       '(xs, called)',
     );
-    expect(mainGives('(Array<Int>, Int)', body, decls)).toEqual([[1, 2], 12]);
+    expect(await mainGives('(Array<Int>, Int)', body, decls)).toEqual([[1, 2], 12]);
   });
 
   it('row 23: "[g" with "(1)]" on the next line parses as two items, g and (1)', () => {
@@ -239,14 +239,14 @@ describe('proposal 5 behaviour table: row by row', () => {
     );
   });
 
-  it('row 24: "[a" with "-1]" on the next line parses as two items, a and -1', () => {
+  it('row 24: "[a" with "-1]" on the next line parses as two items, a and -1', async () => {
     const body = lines('const a = 10', 'const xs = [a', '  -1]', 'xs');
-    expect(mainGives('Array<Int>', body)).toEqual([10, -1]);
+    expect(await mainGives('Array<Int>', body)).toEqual([10, -1]);
   });
 
-  it('row 25: "[a" with "- 1]" on the next line is still a - 1', () => {
+  it('row 25: "[a" with "- 1]" on the next line is still a - 1', async () => {
     const body = lines('const a = 10', 'const xs = [a', '  - 1]', 'xs');
-    expect(mainGives('Array<Int>', body)).toEqual([9]);
+    expect(await mainGives('Array<Int>', body)).toEqual([9]);
   });
 
   it('row 26: "ista fmt" on a list too long for its line prints one item per line with no ","', () => {
@@ -265,9 +265,11 @@ describe('proposal 5 behaviour table: row by row', () => {
     );
   });
 
-  it('row 27: "import (a, b) from \'x\'", or "(" over lines "a" and "b", then ") from \'x\'" imports a and b', () => {
+  it('row 27: "import (a, b) from \'x\'", or "(" over lines "a" and "b", then ") from \'x\'" imports a and b', async () => {
     const decls = lines('import (', '  Duration', '  Time', ") from 'time'");
-    expect(mainGives('Int', 'Duration{value: 3}.value + Time{value: 4}.value', decls)).toBe(7);
+    expect(await mainGives('Int', 'Duration{value: 3}.value + Time{value: 4}.value', decls)).toBe(
+      7,
+    );
   });
 
   it('row 28: "import a," with "b from \'x\'" on the next line is still an error', () => {
@@ -276,9 +278,9 @@ describe('proposal 5 behaviour table: row by row', () => {
     );
   });
 
-  it('row 29: "import a as x from \'x\'" binds the export a as x', () => {
+  it('row 29: "import a as x from \'x\'" binds the export a as x', async () => {
     const decls = "import Duration as Span from 'time'";
-    expect(mainGives('Int', 'Span{value: 12}.value', decls)).toBe(12);
+    expect(await mainGives('Int', 'Span{value: 12}.value', decls)).toBe(12);
   });
 
   it('row 30: "ista fmt" on a bare import too long for its line formats it parenthesized, one name per line', () => {

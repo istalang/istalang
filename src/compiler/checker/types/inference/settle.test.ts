@@ -66,7 +66,7 @@ describe('the expected type, inside the result', () => {
     expect(errorsOf('const ys: Array<Int?> = sorted(xs)')).toEqual([]);
   });
 
-  it('compiles and runs settled calls end to end', () => {
+  it('compiles and runs settled calls end to end', async () => {
     const body = [
       'const vs = [10, 20]',
       'const r1: Array<Result<Int, String>> = vs.map(Result.Ok)',
@@ -84,7 +84,9 @@ describe('the expected type, inside the result', () => {
       '  case _: 0',
       '`${r1.length()}:${r2.length()}:${r3.length()}:${ys[0] ?? 0}:${box.value ?? 0}:${zs[1] ?? 0}:${top ?? 0}:${status}:${jNum}`',
     ].join('\n');
-    expect(mainGives('String', body, declarations.join('\n'))).toBe('2:2:2:1:5:20:9:draft:42');
+    expect(await mainGives('String', body, declarations.join('\n'))).toBe(
+      '2:2:2:1:5:20:9:draft:42',
+    );
   });
 
   it('decomposes a head against a union only when exactly one member matches', () => {
@@ -147,7 +149,7 @@ describe("a method's receiver", () => {
 });
 
 describe('postponed arguments and bounds propagation', () => {
-  it('joins a postponed lambda or function value result with other arguments lower bounds', () => {
+  it('joins a postponed lambda or function value result with other arguments lower bounds', async () => {
     const helpers = [
       'fn inc(x: Int) -> Int: x + 1',
       'fn inc(x: String) -> String: x',
@@ -163,16 +165,16 @@ describe('postponed arguments and bounds propagation', () => {
       'const e = pipeFirst(fn n: n * 2, [fn x: x + 1], 4)',
       'a + b + c + d + e',
     ].join('\n');
-    expect(mainGives('Int', body, helpers)).toBe(22);
+    expect(await mainGives('Int', body, helpers)).toBe(22);
   });
 
-  it('guides a postponed lambda body without forcing a rejected or constrained expected type', () => {
+  it('guides a postponed lambda body without forcing a rejected or constrained expected type', async () => {
     const helpers = [
       'fn applyTo<T, U is Comparable>(x: T, f: fn(T) -> U) -> U: f(x)',
       'fn mapSorted<T, U is Comparable>(xs: Array<T>, f: fn(T) -> U) -> Array<U>: [f(xs[0])]',
     ].join('\n');
     expect(
-      mainGives(
+      await mainGives(
         'Int',
         'const y: Int? = applyTo(1, fn x: x + 1)\nconst ys: Array<Int?> = mapSorted([2], fn x: x + 3)\n(y ?? 0) + (ys[0] ?? 0)',
         helpers,

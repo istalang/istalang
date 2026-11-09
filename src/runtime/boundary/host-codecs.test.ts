@@ -10,7 +10,7 @@ import { runToEnd, testRuntime } from '../runtime.test-kit.ts';
 import type { HostExterns } from './host-natives.ts';
 
 describe('a value crossing to its host', () => {
-  it('crosses through the codecs its type declares, both ways', () => {
+  it('crosses through the codecs its type declares, both ways', async () => {
     const program = compiledText(
       [
         "import Json from 'json'",
@@ -27,11 +27,14 @@ describe('a value crossing to its host', () => {
     );
     const host: HostExterns = { 'main.greet(main.Name)': ([name]) => `hello ${String(name)}` };
     const test = testRuntime({ host });
-    const started = test.runtime.deploy(program).start('g');
-    expect(runToEnd(test, 'g', started)).toEqual({ kind: 'finished', outcome: '"hello ada"' });
+    const started = await test.runtime.deploy(program).start('g');
+    expect(await runToEnd(test, 'g', started)).toEqual({
+      kind: 'finished',
+      outcome: '"hello ada"',
+    });
   });
 
-  it("is written by the codec declared beside a generic extern's type argument", () => {
+  it("is written by the codec declared beside a generic extern's type argument", async () => {
     const program = compiledText(
       [
         "import Json from 'json'",
@@ -60,11 +63,11 @@ describe('a value crossing to its host', () => {
       },
     };
     const test = testRuntime({ host });
-    runToEnd(test, 's', test.runtime.deploy(program).start('s'));
+    await runToEnd(test, 's', await test.runtime.deploy(program).start('s'));
     expect(sent).toEqual(['point 1']);
   });
 
-  it('keeps a disposable host type its own JSON inside an array and an optional', () => {
+  it('keeps a disposable host type its own JSON inside an array and an optional', async () => {
     const program = compiledText(
       [
         'extern shared struct Lease',
@@ -88,8 +91,8 @@ describe('a value crossing to its host', () => {
       'main.release(main.Lease)': () => null,
     };
     const test = testRuntime({ host });
-    const started = test.runtime.deploy(program).start('l');
-    expect(runToEnd(test, 'l', started)).toEqual({
+    const started = await test.runtime.deploy(program).start('l');
+    expect(await runToEnd(test, 'l', started)).toEqual({
       kind: 'finished',
       outcome: JSON.stringify(JSON.stringify([[{ id: 'a' }, { id: 'b' }], { id: 'c' }])),
     });

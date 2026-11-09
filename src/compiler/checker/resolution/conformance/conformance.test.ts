@@ -30,8 +30,8 @@ function unmet(text: string, others: Readonly<Record<string, string>> = {}): boo
   return codes.length > 0;
 }
 
-function runSource(source: string): unknown {
-  const state = startToEnd(testRuntime(), compiledText(source));
+async function runSource(source: string): Promise<unknown> {
+  const state = await startToEnd(testRuntime(), compiledText(source));
   return state.kind === 'finished' ? decodeJson(String(state.outcome)) : state;
 }
 
@@ -299,7 +299,7 @@ describe('coinductive struct-constraint and union-member conformance', () => {
     '  Group{fields: CategoryModel{name: new Field<String>{}, children: new List<Group<CategoryModel>>{make: fn(): categoryModel()}}}',
   ].join('\n');
 
-  it('checks and runs recursive CategoryModel through List<Group<CategoryModel>> and struct { [_] is FormNode }', () => {
+  it('checks and runs recursive CategoryModel through List<Group<CategoryModel>> and struct { [_] is FormNode }', async () => {
     const source = [
       formBuilderBase,
       'async fn main() -> Future<String>:',
@@ -310,10 +310,10 @@ describe('coinductive struct-constraint and union-member conformance', () => {
       '    case Err(error): error.message',
     ].join('\n');
     expect(reported(source).codes).toEqual([]);
-    expect(runSource(source)).toBe('Hardware:1');
+    expect(await runSource(source)).toBe('Hardware:1');
   });
 
-  it('checks and runs a recursive union meeting a user trait through its members', () => {
+  it('checks and runs a recursive union meeting a user trait through its members', async () => {
     const source = [
       'trait Pretty { fn pretty(self: Self) -> String }',
       'fn pretty(self: String) -> String: self',
@@ -329,7 +329,7 @@ describe('coinductive struct-constraint and union-member conformance', () => {
       '  showUnion(root)',
     ].join('\n');
     expect(reported(source).codes).toEqual([]);
-    expect(runSource(source)).toBe('{label=a,next={label=b,next=none}}');
+    expect(await runSource(source)).toBe('{label=a,next={label=b,next=none}}');
   });
 
   it('still refuses blanket, mutual-blanket and expanding witness cycles with 5114, and reports 5134 on a truly failing field', () => {

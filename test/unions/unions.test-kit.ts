@@ -99,13 +99,13 @@ export function codesOf(...lines: readonly string[]): readonly number[] {
  * Compiles and runs `async fn main() -> Future<result>: body` after `declarations`, returning the
  * decoded JSON outcome when it finishes, or the ended state otherwise.
  */
-export function runMain(
+export async function runMain(
   result: string,
   body: string,
   declarations: readonly string[] = [],
-): unknown {
+): Promise<unknown> {
   const source = [...declarations, `async fn main() -> Future<${result}>:`, `  ${body}`].join('\n');
-  const state = startToEnd(testRuntime(), compiledText(source));
+  const state = await startToEnd(testRuntime(), compiledText(source));
   return state.kind === 'finished' ? decodeJson(String(state.outcome)) : state;
 }
 

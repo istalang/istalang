@@ -33,37 +33,37 @@ const readBack = (store: RecordingStore): readonly Snapshot[] =>
   store.commits.map((text) => snapshotFormat.read(text));
 
 describe('spawning an instance', () => {
-  it('runs each child on its own snapshot, named after its parent, to its own outcome', () => {
+  it('runs each child on its own snapshot, named after its parent, to its own outcome', async () => {
     const test = testRuntime();
-    const started = test.runtime.deploy(compiledText(spawningMain)).start('p');
+    const started = await test.runtime.deploy(compiledText(spawningMain)).start('p');
     expect(started.spawned).toEqual(['p/1']);
-    const settled = settleAll(test, 'p', started);
+    const settled = await settleAll(test, 'p', started);
     expect([...settled.keys()]).toEqual(['p', 'p/1', 'p/2']);
-    expect(runToEnd(test, 'p', started)).toEqual({ kind: 'finished', outcome: '5' });
+    expect(await runToEnd(test, 'p', started)).toEqual({ kind: 'finished', outcome: '5' });
     expect(settled.get('p/1')).toMatchObject({ kind: 'finished', outcome: 2n });
     expect(settled.get('p/2')).toMatchObject({ kind: 'finished', outcome: 4n });
   });
 
-  it("writes a child before its parent's commit, as a call not yet started", () => {
+  it("writes a child before its parent's commit, as a call not yet started", async () => {
     const test = testRuntime();
-    test.runtime.deploy(compiledText(spawningMain)).start('p');
+    await test.runtime.deploy(compiledText(spawningMain)).start('p');
     const [child, parent] = readBack(test.store);
     expect(child?.instance).toBe('p/1');
     expect(child?.status).toMatchObject({ kind: 'unstarted' });
     expect(parent).toMatchObject({ instance: 'p', spawned: 1 });
   });
 
-  it('spawns nothing from a segment that panics', () => {
+  it('spawns nothing from a segment that panics', async () => {
     const text = compiledText(
       spawningMain.replace('  spawn child(1)', '  spawn child(1)\n  panic("no")'),
     );
     const test = testRuntime();
-    const started = test.runtime.deploy(text).start('p');
+    const started = await test.runtime.deploy(text).start('p');
     expect(started).toMatchObject({ state: { kind: 'panicked' }, spawned: [] });
     expect(readBack(test.store).map((snapshot) => snapshot.instance)).toEqual(['p']);
   });
 
-  it("doesn't write a child twice when its parent's segment re-runs after a crash", () => {
+  it("doesn't write a child twice when its parent's segment re-runs after a crash", async () => {
     const inner = recordingStore();
     let crashed = false;
     const crashingOnce: RecordingStore = {
@@ -77,24 +77,24 @@ describe('spawning an instance', () => {
       },
     };
     const text = compiledText(spawningMain);
-    expect(() => testRuntime({ store: crashingOnce }).runtime.deploy(text).start('p')).toThrow(
-      'crash',
-    );
-    const started = testRuntime({ store: inner }).runtime.deploy(text).start('p');
+    await expect(
+      testRuntime({ store: crashingOnce }).runtime.deploy(text).start('p'),
+    ).rejects.toThrow('crash');
+    const started = await testRuntime({ store: inner }).runtime.deploy(text).start('p');
     expect(started.spawned).toEqual(['p/1']);
     const children = readBack(inner).filter((snapshot) => snapshot.instance === 'p/1');
     expect(children).toHaveLength(1);
   });
 
-  it("gives a child its parent's crashEveryAwait", () => {
+  it("gives a child its parent's crashEveryAwait", async () => {
     const test = testRuntime();
-    test.runtime.deploy(compiledText(spawningMain)).start('p', { crashEveryAwait: true });
+    await test.runtime.deploy(compiledText(spawningMain)).start('p', { crashEveryAwait: true });
     expect(readBack(test.store).find((snapshot) => snapshot.instance === 'p/1')).toMatchObject({
       crashEveryAwait: true,
     });
   });
 
-  it("carries a sendable closure's captures into the child", () => {
+  it("carries a sendable closure's captures into the child", async () => {
     const text = compiledText(
       [
         'async fn main() -> Future<Int>:',
@@ -105,8 +105,8 @@ describe('spawning an instance', () => {
       ].join('\n'),
     );
     const test = testRuntime();
-    const started = test.runtime.deploy(text).start('p');
-    expect(settleAll(test, 'p', started).get('p/1')).toMatchObject({
+    const started = await test.runtime.deploy(text).start('p');
+    expect((await settleAll(test, 'p', started)).get('p/1')).toMatchObject({
       kind: 'finished',
       outcome: 42n,
     });
@@ -114,9 +114,9 @@ describe('spawning an instance', () => {
 });
 
 describe('inspecting an instance', () => {
-  it('shows where each execution waits, and how the instance stands', () => {
+  it('shows where each execution waits, and how the instance stands', async () => {
     const test = testRuntime();
-    test.runtime.deploy(compiledText(spawningMain)).start('p');
+    await test.runtime.deploy(compiledText(spawningMain)).start('p');
     const { state, waitingAt } = test.runtime.inspect('p');
     expect(state).toEqual({ kind: 'waiting', until: 1n, watching: [] });
     expect(waitingAt).toEqual([{ waypoint: undefined, location: 'memory:main:7:3' }]);

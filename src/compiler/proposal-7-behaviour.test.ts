@@ -27,11 +27,11 @@ function messagesOf(text: string, code: number): readonly string[] {
 }
 
 describe('proposal 7 behaviour table: row by row', () => {
-  it('row 1: a variant declares its fields in parentheses, a default among them', () => {
+  it('row 1: a variant declares its fields in parentheses, a default among them', async () => {
     const decls = 'enum V { R(by: String, reason: String = "") }';
-    expect(mainGives('String', 'match V.R("x"):\n  case R(by, reason): by + reason', decls)).toBe(
-      'x',
-    );
+    expect(
+      await mainGives('String', 'match V.R("x"):\n  case R(by, reason): by + reason', decls),
+    ).toBe('x');
   });
 
   it('row 2: braces declaring a variant are refused, naming its parenthesized form', () => {
@@ -46,32 +46,34 @@ describe('proposal 7 behaviour table: row by row', () => {
     expect(reported(text).codes).toEqual([checkerDiagnostics.defaultMissing.code]);
   });
 
-  it('row 4: `Ok(v)` builds `Ok` with `value` = `v`', () => {
+  it('row 4: `Ok(v)` builds `Ok` with `value` = `v`', async () => {
     const decls = 'fn f(v: Int) -> Result<Int>: Ok(v)';
-    expect(mainGives('Int', 'match f(4):\n  case Ok(value): value\n  case _: 0', decls)).toBe(4);
+    expect(await mainGives('Int', 'match f(4):\n  case Ok(value): value\n  case _: 0', decls)).toBe(
+      4,
+    );
   });
 
-  it("row 5: a call leaves a variant's defaulted field to its default", () => {
+  it("row 5: a call leaves a variant's defaulted field to its default", async () => {
     const body =
       'match Verdict.Rejected(by: "x"):\n  case Rejected(_, reason): reason\n  case _: ""';
-    expect(mainGives('String', body, verdict)).toBe('no reason given');
+    expect(await mainGives('String', body, verdict)).toBe('no reason given');
   });
 
-  it("row 6: a call's arguments past the fixed fields go into the rest field", () => {
+  it("row 6: a call's arguments past the fixed fields go into the rest field", async () => {
     const decls = lines('enum Node:', '  Leaf', '  Group(title: String, ...children: Array<Node>)');
     const body =
       'match Node.Group("t", Node.Leaf, Node.Leaf):\n  case Group(_, ...children): children.length()\n  case _: 0';
-    expect(mainGives('Int', body, decls)).toBe(2);
+    expect(await mainGives('Int', body, decls)).toBe(2);
   });
 
-  it('row 7: a variant named as a value is a function, `vs.map(Result.Ok)`', () => {
+  it('row 7: a variant named as a value is a function, `vs.map(Result.Ok)`', async () => {
     const body = 'const rs: Array<Result<Int>> = [1, 2].map(Result.Ok)\nrs == [Ok(1), Ok(2)]';
-    expect(mainGives('Bool', body)).toBe(true);
+    expect(await mainGives('Bool', body)).toBe(true);
   });
 
-  it("row 8: a bare variant is a function value where the expected function's result is its enum", () => {
+  it("row 8: a bare variant is a function value where the expected function's result is its enum", async () => {
     const body = 'const f: fn(Int) -> Result<Int> = Ok\nf(5) == Ok(5)';
-    expect(mainGives('Bool', body)).toBe(true);
+    expect(await mainGives('Bool', body)).toBe(true);
   });
 
   it('row 9: a bare variant with no enum to find it in is refused, naming it qualified', () => {
@@ -86,9 +88,9 @@ describe('proposal 7 behaviour table: row by row', () => {
     ]);
   });
 
-  it('row 10: `case Ok(v)` binds `v` to the value', () => {
+  it('row 10: `case Ok(v)` binds `v` to the value', async () => {
     const body = 'const r: Result<Int> = Ok(7)\nmatch r:\n  case Ok(v): v\n  case Err(_): 0';
-    expect(mainGives('Int', body)).toBe(7);
+    expect(await mainGives('Int', body)).toBe(7);
   });
 
   it("row 11: `as` binds the enum, so a variant's field doesn't read through it", () => {
@@ -103,10 +105,10 @@ describe('proposal 7 behaviour table: row by row', () => {
     expect(reported(text).spanTexts).toEqual(['by']);
   });
 
-  it('row 12: a bare variant with fields matches any of its values, warned of with its call', () => {
+  it('row 12: a bare variant with fields matches any of its values, warned of with its call', async () => {
     const body =
       'match Verdict.Rejected("x"):\n  case Rejected as r: r == Rejected("x")\n  case _: false';
-    expect(mainGives('Bool', body, verdict)).toBe(true);
+    expect(await mainGives('Bool', body, verdict)).toBe(true);
     const text = lines(
       verdict,
       'fn f(v: Verdict) -> Int:',
@@ -124,10 +126,10 @@ describe('proposal 7 behaviour table: row by row', () => {
     ]);
   });
 
-  it('row 13: `case Expired()` matches `Expired`, warned of with its name', () => {
+  it('row 13: `case Expired()` matches `Expired`, warned of with its name', async () => {
     const decls = 'enum Decision { Approved, Expired }';
     const body = 'match Decision.Expired:\n  case Expired(): 1\n  case _: 0';
-    expect(mainGives('Int', body, decls)).toBe(1);
+    expect(await mainGives('Int', body, decls)).toBe(1);
     const text = lines(
       decls,
       'fn f(d: Decision) -> Int:',
@@ -141,10 +143,10 @@ describe('proposal 7 behaviour table: row by row', () => {
     ]);
   });
 
-  it('row 14: `case List()` matches any `List`, warned of naming `List(...)`', () => {
+  it('row 14: `case List()` matches any `List`, warned of naming `List(...)`', async () => {
     const decls = 'enum Bag { List(...items: Array<Int>), Empty }';
     const body = 'match Bag.List(1, 2):\n  case List(): 1\n  case _: 0';
-    expect(mainGives('Int', body, decls)).toBe(1);
+    expect(await mainGives('Int', body, decls)).toBe(1);
     const text = lines(
       decls,
       'fn f(b: Bag) -> Int:',
@@ -193,9 +195,9 @@ describe('proposal 7 behaviour table: row by row', () => {
     expect(reported(text).codes).toEqual([checkerDiagnostics.variantInBracesPattern.code]);
   });
 
-  it('row 17: `Expired()` is `Expired`, warned of with its name', () => {
+  it('row 17: `Expired()` is `Expired`, warned of with its name', async () => {
     const decls = 'enum Decision { Approved, Expired }';
-    expect(mainGives('Bool', 'Decision.Expired() == Decision.Expired', decls)).toBe(true);
+    expect(await mainGives('Bool', 'Decision.Expired() == Decision.Expired', decls)).toBe(true);
     const text = lines(decls, 'fn f() -> Decision: Decision.Expired()', 'async fn main(): 0');
     expect(messagesOf(text, checkerDiagnostics.fieldlessCalled.code)).toEqual([
       expect.stringContaining("'Expired'"),

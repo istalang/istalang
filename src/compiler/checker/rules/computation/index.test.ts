@@ -98,9 +98,9 @@ const initializers = shapes.chain((shape) =>
 );
 
 describe('computed constants', () => {
-  it('equal their initializer run as a local', () => {
-    fc.assert(
-      fc.property(initializers, ({ type, value }) => {
+  it('equal their initializer run as a local', async () => {
+    await fc.assert(
+      fc.asyncProperty(initializers, async ({ type, value }) => {
         const main = [
           `const computed: ${type} = ${value}`,
           '',
@@ -108,7 +108,7 @@ describe('computed constants', () => {
           `  const local: ${type} = ${value}`,
           '  computed == local',
         ].join('\n');
-        expect(startToEnd(testRuntime(), compiledText(main))).toEqual({
+        expect(await startToEnd(testRuntime(), compiledText(main))).toEqual({
           kind: 'finished',
           outcome: 'true',
         });
@@ -117,7 +117,7 @@ describe('computed constants', () => {
     );
   });
 
-  it('apply one-element tuple conversions recorded on the initializer and its parts', () => {
+  it('apply one-element tuple conversions recorded on the initializer and its parts', async () => {
     const main = [
       'const tupled: (Int,) = 3',
       'const untupled: Int = (4,)',
@@ -129,13 +129,13 @@ describe('computed constants', () => {
       '  const localNested: Array<(Int,)> = [5, (6,)]',
       '  (tupled, untupled, nested) == (localTupled, localUntupled, localNested)',
     ].join('\n');
-    expect(startToEnd(testRuntime(), compiledText(main))).toEqual({
+    expect(await startToEnd(testRuntime(), compiledText(main))).toEqual({
       kind: 'finished',
       outcome: 'true',
     });
   });
 
-  it('put a value into a union as one of its members, at any depth', () => {
+  it('put a value into a union as one of its members, at any depth', async () => {
     const main = [
       'const wrapped: Int? = 1',
       'const missing: Int? = none',
@@ -147,7 +147,7 @@ describe('computed constants', () => {
       '  const localMixed: Array<Int | String> = [1, "a"]',
       '  (wrapped, missing, mixed) == (localWrapped, localMissing, localMixed)',
     ].join('\n');
-    expect(startToEnd(testRuntime(), compiledText(main))).toEqual({
+    expect(await startToEnd(testRuntime(), compiledText(main))).toEqual({
       kind: 'finished',
       outcome: 'true',
     });

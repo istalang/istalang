@@ -21,7 +21,7 @@ const declarations = [
 ];
 
 describe('an infer variable', () => {
-  it("carries the constraints of the parameter it stands at, so the case's type may use them", () => {
+  it("carries the constraints of the parameter it stands at, so the case's type may use them", async () => {
     const lines = [
       ...declarations,
       'type ShownOf<D> = match D:',
@@ -37,7 +37,7 @@ describe('an infer variable', () => {
       'const c: BothOf<Field<Word>> = Both{inner: Word{text: "def"}}',
       '`${a.inner.show()}|${b.inner.show()}|${c.inner.size()}`',
     ];
-    expect(runMain('String', body.join('\n  '), lines)).toBe('ab|c|3');
+    expect(await runMain('String', body.join('\n  '), lines)).toBe('ab|c|3');
   });
 
   it('carries nothing a written use needs beyond its place: other constraints are refused', () => {

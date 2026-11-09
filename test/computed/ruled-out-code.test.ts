@@ -45,7 +45,7 @@ describe('a loop over a struct with no fields', () => {
     ).toContain(5002);
   });
 
-  it('accepts a body that fits any field, reads members of its value, and runs nothing', () => {
+  it('accepts a body that fits any field, reads members of its value, and runs nothing', async () => {
     const declarations = ['struct Empty', 'trait Named:', '  fn name(self: Self) -> String'];
     const lines = [
       'let seen: Array<String> = []',
@@ -58,7 +58,7 @@ describe('a loop over a struct with no fields', () => {
     expect(codesOf(...declarations, 'fn f() -> ():', `  ${lines.join('\n  ')}`, '  ()')).toEqual(
       [],
     );
-    expect(runMain('String', lines.join('\n  '), declarations)).toBe('0|0');
+    expect(await runMain('String', lines.join('\n  '), declarations)).toBe('0|0');
   });
 });
 
@@ -80,9 +80,9 @@ describe('a value of type Never', () => {
     '  "ran"',
   ];
 
-  it('is operated on silently, and the code compiles and runs up to it', () => {
+  it('is operated on silently, and the code compiles and runs up to it', async () => {
     expect(codesOf(...declarations)).toEqual([]);
-    expect(runMain('String', 'stopped(false)', declarations)).toBe('ran');
+    expect(await runMain('String', 'stopped(false)', declarations)).toBe('ran');
   });
 
   it("still reports what doesn't depend on it, and decides no condition", () => {
@@ -104,7 +104,7 @@ describe('a value of type Never', () => {
 const mixed = ['struct Mixed { count: Int, name: String, size: Int }'];
 
 describe('a condition decided by types', () => {
-  it("rules out a field loop pass's branch, so each field's code is checked where it runs", () => {
+  it("rules out a field loop pass's branch, so each field's code is checked where it runs", async () => {
     const lines = [
       'const m = Mixed{count: 2, name: "x", size: 5}',
       'let total = 0',
@@ -122,7 +122,7 @@ describe('a condition decided by types', () => {
       '`${total}|${names.join(",")}|${seen}`',
     ];
     expect(codesOf(...mixed, 'fn f() -> String:', `  ${lines.join('\n  ')}`)).toEqual([]);
-    expect(runMain('String', lines.join('\n  '), mixed)).toBe('7|x|+1+');
+    expect(await runMain('String', lines.join('\n  '), mixed)).toBe('7|x|+1+');
   });
 
   it('is warned of where it rules out code everywhere, and outside a loop too', () => {
@@ -147,7 +147,7 @@ describe('a condition decided by types', () => {
     expect(codesOf(...lines)).not.toContain(5401);
   });
 
-  it("is decided false over the others' key for a name the constraint lists", () => {
+  it("is decided false over the others' key for a name the constraint lists", async () => {
     const declarations = [
       'fn sizes<S is struct { title: String, [_]: Int }>(s: S) -> Int:',
       '  let total = 0',
@@ -159,7 +159,7 @@ describe('a condition decided by types', () => {
     ];
     const body = 'sizes(Doc{title: "t", pages: 3, notes: 4})';
     expect(codesOf(...declarations)).toEqual([]);
-    expect(runMain('Int', body, declarations)).toBe(7);
+    expect(await runMain('Int', body, declarations)).toBe(7);
   });
 });
 
@@ -176,12 +176,12 @@ function onlyFor(type: GeneratedField['type'], v: string): string {
 }
 
 describe('the commute law for decided conditions', () => {
-  it('agrees: a generic loop instantiated, the loop over the struct, and the body by hand', () => {
+  it('agrees: a generic loop instantiated, the loop over the struct, and the body by hand', async () => {
     const fieldsAndTarget = generatedFieldsArbitrary.chain((fields) =>
       fc.tuple(fc.constant(fields), fc.constantFrom(...fields.map((f) => f.name))),
     );
-    fc.assert(
-      fc.property(fieldsAndTarget, ([fields, name]) => {
+    await fc.assert(
+      fc.asyncProperty(fieldsAndTarget, async ([fields, name]) => {
         const targetType = fields.find((f) => f.name === name)?.type ?? 'Int';
         const code = (v: string) => onlyFor(targetType, v);
         const constraint = fields.map((f) => `${f.name}: ${f.type}`).join(', ');
@@ -207,9 +207,9 @@ describe('the commute law for decided conditions', () => {
           '  out',
         ];
         const body = `\`\${generic(${value})}|\${concrete(${value})}|\${byHand(${value})}\``;
-        const [generic, concrete, byHand] = String(runMain('String', body, declarations)).split(
-          '|',
-        );
+        const [generic, concrete, byHand] = String(
+          await runMain('String', body, declarations),
+        ).split('|');
         expect([generic, byHand]).toEqual([concrete, concrete]);
         expect(codesOf(...declarations).filter((each) => each !== 5421 && each !== 5009)).toEqual(
           [],
@@ -221,7 +221,7 @@ describe('the commute law for decided conditions', () => {
 });
 
 describe('a member parameter compared with a literal no member is', () => {
-  it('compares, always unequal, and a case of it is ruled out', () => {
+  it('compares, always unequal, and a case of it is ruled out', async () => {
     const declarations = [
       'fn typo<K in "a" | "b">(k: K) -> String:',
       '  match k:',
@@ -231,7 +231,7 @@ describe('a member parameter compared with a literal no member is', () => {
       '  k == "c"',
     ];
     expect(codesOf(...declarations)).toEqual([5422, 5421]);
-    expect(runMain('String', '`${typo("a")}|${typoEquals("b")}`', declarations)).toBe(
+    expect(await runMain('String', '`${typo("a")}|${typoEquals("b")}`', declarations)).toBe(
       'other|false',
     );
   });

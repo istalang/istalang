@@ -67,26 +67,26 @@ describe('lowering trait objects', () => {
     expect(variantsOf(definition, 'any main.Named')).toEqual(['main.Email', 'main.Sms']);
   });
 
-  it('runs a mixed Array<any T> the same with every segment re-run from its snapshot', () => {
+  it('runs a mixed Array<any T> the same with every segment re-run from its snapshot', async () => {
     const text = compiledText(
       readFileSync(`${corpusDirectory}trait-objects/dispatch.ista`, 'utf8'),
     );
-    const uninterrupted = startToEnd(testRuntime(), text);
+    const uninterrupted = await startToEnd(testRuntime(), text);
     expect(uninterrupted.kind).toBe('finished');
-    expect(startToEnd(testRuntime(), text, { crashEveryAwait: true })).toEqual(uninterrupted);
+    expect(await startToEnd(testRuntime(), text, { crashEveryAwait: true })).toEqual(uninterrupted);
   });
 });
 
 /** The outcome `main`, after `lines`, finishes with, as JSON text. */
-function outcomeOf(lines: readonly string[]): unknown {
-  const ended = startToEnd(testRuntime(), compiledText(lines.join('\n')));
+async function outcomeOf(lines: readonly string[]): Promise<unknown> {
+  const ended = await startToEnd(testRuntime(), compiledText(lines.join('\n')));
   return ended.kind === 'finished' ? ended.outcome : ended;
 }
 
 describe('lowering a call through an instantiation standing for another (§3.10)', () => {
-  it('converts what it gives into what the call through `any` gives, a tagged optional', () => {
+  it('converts what it gives into what the call through `any` gives, a tagged optional', async () => {
     expect(
-      outcomeOf([
+      await outcomeOf([
         'trait Source<T>:',
         '  fn next(self: Self) -> T',
         'struct Counter { n: Int }',
@@ -101,9 +101,9 @@ describe('lowering a call through an instantiation standing for another (§3.10)
     ).toBe('6');
   });
 
-  it('calls the closest of the instantiations that fit, converting what it takes', () => {
+  it('calls the closest of the instantiations that fit, converting what it takes', async () => {
     expect(
-      outcomeOf([
+      await outcomeOf([
         'trait Each<T>:',
         '  fn each(self: Self, f: fn(T) -> Int) -> Int',
         'struct Both { k: Int }',
@@ -121,12 +121,12 @@ describe('lowering a call through an instantiation standing for another (§3.10)
     ).toBe('10');
   });
 
-  it('runs the corpus of conversions through `any` the same with every segment re-run', () => {
+  it('runs the corpus of conversions through `any` the same with every segment re-run', async () => {
     const text = compiledText(
       readFileSync(`${corpusDirectory}trait-objects/variance.ista`, 'utf8'),
     );
-    const uninterrupted = startToEnd(testRuntime(), text);
+    const uninterrupted = await startToEnd(testRuntime(), text);
     expect(uninterrupted.kind).toBe('finished');
-    expect(startToEnd(testRuntime(), text, { crashEveryAwait: true })).toEqual(uninterrupted);
+    expect(await startToEnd(testRuntime(), text, { crashEveryAwait: true })).toEqual(uninterrupted);
   });
 });

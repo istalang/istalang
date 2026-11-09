@@ -12,9 +12,9 @@ import { checkerDiagnostics } from '../../src/compiler/checker/diagnostics/index
 import { codesOf, hoverCodeAt, runMain, spelledTypeOf } from './unions.test-kit.ts';
 
 describe('optional join across branching constructs and returns (§2, §4)', () => {
-  it('joins `T` and `none` into `T?` in `if`, `match`, and `select` in any order, wrapping values at runtime', () => {
+  it('joins `T` and `none` into `T?` in `if`, `match`, and `select` in any order, wrapping values at runtime', async () => {
     expect(
-      runMain(
+      await runMain(
         'String',
         [
           'const s1 = Slot.create<Int>()',
@@ -50,9 +50,9 @@ describe('optional join across branching constructs and returns (§2, §4)', () 
     ]);
   });
 
-  it('agrees across nested branching expressions in either order', () => {
+  it('agrees across nested branching expressions in either order', async () => {
     expect(
-      runMain(
+      await runMain(
         'String',
         [
           'const k1: "a" = "a"',
@@ -66,7 +66,7 @@ describe('optional join across branching constructs and returns (§2, §4)', () 
     ).toBe('-1:-1:b');
   });
 
-  it('infers `T?` for functions, async functions, local functions, and lambdas returning `T` and `none` in any order', () => {
+  it('infers `T?` for functions, async functions, local functions, and lambdas returning `T` and `none` in any order', async () => {
     const decls = [
       'fn syncNoneFirst(miss: Bool):',
       '  if miss:',
@@ -92,7 +92,7 @@ describe('optional join across branching constructs and returns (§2, §4)', () 
       '  (k2, 2)',
     ];
     expect(
-      runMain(
+      await runMain(
         'String',
         [
           'fn localJoin(c: Bool):',
@@ -116,14 +116,14 @@ describe('optional join across branching constructs and returns (§2, §4)', () 
 });
 
 describe('optional join in collections, spreads, and field comprehensions (§2, §4)', () => {
-  it('joins items, keys, and values with `none` in array, map, indented, and top-level `const` literals', () => {
+  it('joins items, keys, and values with `none` in array, map, indented, and top-level `const` literals', async () => {
     const decls = [
       'const topArr1 = [1, none]',
       'const topArr2 = [none, 2]',
       'const topMap = ["a": 3, "b": none]',
     ];
     expect(
-      runMain(
+      await runMain(
         'String',
         [
           'const a1 = [1, none]',
@@ -145,9 +145,9 @@ describe('optional join in collections, spreads, and field comprehensions (§2, 
     ).toBe('1:2:3:-1:-1:-1:-1:2:2:5:6');
   });
 
-  it('wraps spread items once the array literal agrees on `T?`, in any order, for variables, literals, and iterables', () => {
+  it('wraps spread items once the array literal agrees on `T?`, in any order, for variables, literals, and iterables', async () => {
     expect(
-      runMain(
+      await runMain(
         'String',
         [
           'const xs = [1, 2]',
@@ -170,7 +170,7 @@ describe('optional join in collections, spreads, and field comprehensions (§2, 
     ).toBe('1,-1|-1,1|-1|-1|1,-1|-1,1|4|4|-1|1,-1');
   });
 
-  it('joins literal types, literal unions, written optionals, and composite literals with `none` in any order', () => {
+  it('joins literal types, literal unions, written optionals, and composite literals with `none` in any order', async () => {
     const decls = [
       'type Status = "draft" | "sent"',
       'type MaybeString = String?',
@@ -180,7 +180,7 @@ describe('optional join in collections, spreads, and field comprehensions (§2, 
       '  if a: k elif b: m else: none',
     ];
     expect(
-      runMain(
+      await runMain(
         'String',
         [
           'const k1: "a" = "a"',
@@ -217,7 +217,7 @@ describe('optional join in collections, spreads, and field comprehensions (§2, 
     ).toEqual(['(variable) y: MaybeString = String?']);
   });
 
-  it('agrees on `T?` and `String?` across field-loop comprehensions over concrete and generic structs', () => {
+  it('agrees on `T?` and `String?` across field-loop comprehensions over concrete and generic structs', async () => {
     const decls = [
       'struct OneField { a: Int }',
       'struct TwoFields { a: Int, b: Int }',
@@ -226,7 +226,7 @@ describe('optional join in collections, spreads, and field comprehensions (§2, 
       '  [for k, v in ...s: if c: k else: none]',
     ];
     expect(
-      runMain(
+      await runMain(
         'String',
         [
           'const k1 = [for k, v in ...OneField{a: 1}: if v > 0: k else: none]',
@@ -250,14 +250,14 @@ describe('optional join in collections, spreads, and field comprehensions (§2, 
 });
 
 describe('optional-joined expressions passed as call arguments (§2, §3.5)', () => {
-  it('passes optional-joined branches and collection literals to generic functions in any order', () => {
+  it('passes optional-joined branches and collection literals to generic functions in any order', async () => {
     const decls = [
       "import * as json from 'json'",
       'fn id<T>(x: T) -> T: x',
       'fn len<T>(xs: Array<T>) -> Int: xs.length()',
     ];
     expect(
-      runMain(
+      await runMain(
         'String',
         [
           'const c = true',
@@ -309,9 +309,9 @@ describe('refusal of non-optional union inference and mismatched producers (§2,
     ]);
   });
 
-  it("widens a map spread's pairs through the literal, on either side of a `none` (§3.5)", () => {
+  it("widens a map spread's pairs through the literal, on either side of a `none` (§3.5)", async () => {
     expect(
-      runMain(
+      await runMain(
         'String',
         [
           'const m: Map<String, Int> = ["a": 1]',

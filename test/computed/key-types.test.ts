@@ -35,13 +35,13 @@ describe('key types: `keyof S`, `S[K]`, `s[k]`, and `Entry` / `AnyEntry` (§8)',
     );
   });
 
-  it('parses `a < b[c] > (d)` as a call with type argument `b[c]` (§3.5)', () => {
+  it('parses `a < b[c] > (d)` as a call with type argument `b[c]` (§3.5)', async () => {
     expect(
-      runMain('Int', 'id<Settings["retries"]>(42)', [...keyDecls, 'fn id<T>(x: T) -> T: x']),
+      await runMain('Int', 'id<Settings["retries"]>(42)', [...keyDecls, 'fn id<T>(x: T) -> T: x']),
     ).toBe(42);
   });
 
-  it('reads `s[k]` before any `index` when `K` is within `keyof S`, and calls `index` on `s["field"]` when `S` declares `index`', () => {
+  it('reads `s[k]` before any `index` when `K` is within `keyof S`, and calls `index` on `s["field"]` when `S` declares `index`', async () => {
     const decls = [
       ...keyDecls,
       'struct WithIndex { region: String }',
@@ -49,7 +49,7 @@ describe('key types: `keyof S`, `S[K]`, `s[k]`, and `Entry` / `AnyEntry` (§8)',
       'fn readKey(s: Settings, k: keyof Settings) -> Int | String: s[k]',
     ];
     expect(
-      runMain(
+      await runMain(
         'String',
         [
           'const s = Settings{retries: 3, region: "eu"}',
@@ -70,7 +70,7 @@ describe('key types: `keyof S`, `S[K]`, `s[k]`, and `Entry` / `AnyEntry` (§8)',
     ).toBe('eu|3|indexed:region|us');
   });
 
-  it('treats `s[k]` with a single key as a place (write, `+=`, `&s[k]` including to async fns, and `&self` methods), and supports multi-key writes', () => {
+  it('treats `s[k]` with a single key as a place (write, `+=`, `&s[k]` including to async fns, and `&self` methods), and supports multi-key writes', async () => {
     const decls = [
       'struct Lists { a: Array<Int>, b: Array<Int> }',
       'struct Widened { a: Int?, b: Int | String }',
@@ -82,7 +82,7 @@ describe('key types: `keyof S`, `S[K]`, `s[k]`, and `Entry` / `AnyEntry` (§8)',
       '  s[k] = v',
     ];
     expect(
-      runMain(
+      await runMain(
         'String',
         [
           'let counts = Counts{x: 1, y: 2}',
@@ -141,7 +141,7 @@ describe('key types: `keyof S`, `S[K]`, `s[k]`, and `Entry` / `AnyEntry` (§8)',
     ).toBeGreaterThan(0);
   });
 
-  it('reads and writes `S[K]` for a key of several fields as their one exact type, else opaque', () => {
+  it('reads and writes `S[K]` for a key of several fields as their one exact type, else opaque', async () => {
     const declarations = [
       'trait Shown:',
       '  fn show(self: Self) -> String',
@@ -153,7 +153,7 @@ describe('key types: `keyof S`, `S[K]`, `s[k]`, and `Entry` / `AnyEntry` (§8)',
     ];
     expect(codesOf(...declarations)).toEqual([]);
     expect(
-      runMain('Int', 'both(P{a: 1, b: 5})', [
+      await runMain('Int', 'both(P{a: 1, b: 5})', [
         ...declarations,
         'struct P { a: Int, b: Int }',
         'fn both(given: P) -> Int:',
@@ -183,9 +183,9 @@ describe('key types: `keyof S`, `S[K]`, `s[k]`, and `Entry` / `AnyEntry` (§8)',
     ).toEqual([5001]);
   });
 
-  it('runs the `Entry` / `AnyEntry` example: a union of entries applies through the trait its members meet', () => {
+  it('runs the `Entry` / `AnyEntry` example: a union of entries applies through the trait its members meet', async () => {
     expect(
-      runMain(
+      await runMain(
         'String',
         [
           'let settings = Settings{retries: 1, region: "us"}',

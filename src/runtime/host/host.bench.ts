@@ -23,7 +23,7 @@ async fn main() -> Future<String>:
 
 it('inspect a finished instance', async ({ bench, expect }) => {
   const { runtime } = testRuntime();
-  runtime.deploy(text).start('finished');
+  await runtime.deploy(text).start('finished');
   expect(runtime.inspect('finished').state.kind).toBe('finished');
   await bench('inspect', () => {
     runtime.inspect('finished');

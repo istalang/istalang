@@ -1,8 +1,8 @@
 /**
  * A running instance in memory: its heap, the executions ready to run, and what its segment
  * spawned (spec §5, §9). It is made from a snapshot, a new instance's `unstarted` one included,
- * and turned back into a snapshot at every commit; the scheduler runs it in between (../segment/,
- * wake.ts).
+ * turned back into a snapshot at every commit, and runs on from it (`continueFrom`, ../resident.ts);
+ * the scheduler runs it in between (../segment/, wake.ts).
  *
  * - An execution waits at its top frame's `await` or `select`: what it waits on is read from that
  *   instruction's registers, never stored (futures.ts). A ready execution always stands at a wait
@@ -79,11 +79,14 @@ export class Instance {
       }
     },
   };
-  /** The snapshot this instance was made from, which its commit changes only where it ran. */
-  readonly #from: Snapshot;
-  readonly #spawns: Spawn[] = [];
-  readonly #answered: Answered[] = [];
-  readonly #logs: LogRecord[] = [];
+  /**
+   * The snapshot this instance was made from, or last committed, which its next commit changes only
+   * where it ran.
+   */
+  #from: Snapshot;
+  #spawns: Spawn[] = [];
+  #answered: Answered[] = [];
+  #logs: LogRecord[] = [];
   /** How many random draws this segment made. */
   #draws = 0;
   readonly #ready: number[];
@@ -173,6 +176,20 @@ export class Instance {
       objects: active ? [...objects] : [],
       ready: active ? [...this.#ready] : [],
     };
+  }
+
+  /**
+   * Runs on from `committed`, the snapshot this instance just committed, as an instance restored
+   * from it would (§5): what the commit left out is gone, and what its segment spawned, answered,
+   * logged and drew was committed with it.
+   */
+  continueFrom(committed: Snapshot): void {
+    this.heap.keepOnly(new Set(committed.objects.map(({ id }) => id)));
+    this.#from = committed;
+    this.#spawns = [];
+    this.#answered = [];
+    this.#logs = [];
+    this.#draws = 0;
   }
 
   /** The instance's name, as its host gave it or as its parent's spawn made it (§9). */

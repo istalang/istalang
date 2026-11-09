@@ -54,23 +54,23 @@ function linesOf(outcome: unknown): readonly unknown[] {
 }
 
 describe("an Error's trace", () => {
-  it('names each frame, innermost first, at the line and column it stands at', () => {
-    expect(linesOf(mainGives('String', 'traced()', declarations))).toEqual(
+  it('names each frame, innermost first, at the line and column it stands at', async () => {
+    expect(linesOf(await mainGives('String', 'traced()', declarations))).toEqual(
       frameLines.map((line) => expect.stringMatching(line)),
     );
   });
 
-  it("built in a default, starts at the default's line, as a panic there would", () => {
-    expect(linesOf(mainGives('String', 'made().failure.trace', builtInDefaults))).toEqual([
+  it("built in a default, starts at the default's line, as a panic there would", async () => {
+    expect(linesOf(await mainGives('String', 'made().failure.trace', builtInDefaults))).toEqual([
       expect.stringMatching(failureLine),
       expect.stringMatching(madeLine),
       expect.stringMatching(mainLine),
     ]);
   });
 
-  it("built by a native in a default, starts at the default's line, as a panic there would", () => {
+  it("built by a native in a default, starts at the default's line, as a panic there would", async () => {
     const read = 'match made().number:\n    case Ok(value): ""\n    case Err(error): error.trace';
-    expect(linesOf(mainGives('String', read, builtInDefaults))).toEqual([
+    expect(linesOf(await mainGives('String', read, builtInDefaults))).toEqual([
       expect.stringMatching(numberLine),
       expect.stringMatching(madeLine),
       expect.stringMatching(mainMatchLine),

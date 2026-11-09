@@ -6,29 +6,14 @@
 import type { Value } from '../definition/values/values.ts';
 import { stdNatives } from '../stdlib/natives.ts';
 import type { HostExterns } from './boundary/host-natives.ts';
+import { ManualClock } from './host/clock.ts';
+import { type Settled, settle } from './host/drive.ts';
 import { createRuntime, type DeployedProgram, type Runtime } from './host/index.ts';
-import { type Settled, settle } from './host/settle.ts';
 import type { Advanced, StartOptions } from './instance-state.ts';
 import type { FullNativeContext, Natives } from './natives.ts';
 import { Refusal } from './refusal.ts';
 import { seedBytes } from './snapshot/random.ts';
 import { type InstanceStore, memoryStore } from './store.ts';
-
-/** A clock that reads `at` until a test moves it. */
-export interface ManualClock {
-  readonly now: () => bigint;
-  readonly set: (at: bigint) => void;
-}
-
-export function manualClock(start = 0n): ManualClock {
-  let at = start;
-  return {
-    now: () => at,
-    set: (next) => {
-      at = next;
-    },
-  };
-}
 
 /** A store that also keeps what was written to it, in order: snapshot texts, and Definition hashes. */
 export interface RecordingStore extends InstanceStore {
@@ -79,7 +64,7 @@ export interface TestRuntime {
 export function testRuntime({
   natives = stdNatives,
   store = recordingStore(),
-  clock = manualClock(),
+  clock = new ManualClock(),
   host = {},
   seed = () => testSeed,
 }: TestRuntimeOptions = {}): TestRuntime {
@@ -98,15 +83,20 @@ export function settleAll(
   { runtime, clock }: TestRuntime,
   instance: string,
   initial: Advanced,
-): ReadonlyMap<string, Settled> {
-  const steps = settle((name) => runtime.wake(name), { instance, advanced: initial });
-  let step = steps.next();
-  for (; !step.done; step = steps.next([])) {
-    if (step.value !== undefined) {
-      clock.set(step.value);
-    }
-  }
-  return step.value;
+): Promise<ReadonlyMap<string, Settled>> {
+  return settle(
+    {
+      wake: async (name) => await runtime.wake(name),
+      now: clock.now,
+      wait: async (due) => {
+        if (due !== undefined) {
+          await clock.until(due);
+        }
+        return [];
+      },
+    },
+    { instance, advanced: initial },
+  );
 }
 
 /** How an instance ended, an outcome its start wrapper encoded (§9) read as its JSON text. */
@@ -119,8 +109,12 @@ export type Ended =
  * outcome a host can read, `main`'s or another started instance's, is its JSON text; a spawned
  * instance's is the value its function gave.
  */
-export function runToEnd(test: TestRuntime, instance: string, initial: Advanced): Ended {
-  const settled = settleAll(test, instance, initial).get(instance);
+export async function runToEnd(
+  test: TestRuntime,
+  instance: string,
+  initial: Advanced,
+): Promise<Ended> {
+  const settled = (await settleAll(test, instance, initial)).get(instance);
   if (settled === undefined || settled.kind === 'stuck') {
     throw new Error(`Instance ${instance} waits on nothing that can wake it.`);
   }
@@ -141,13 +135,13 @@ export function runToEnd(test: TestRuntime, instance: string, initial: Advanced)
 }
 
 /** Deploys `text`, starts `main` as an instance and runs it to its end. */
-export function startToEnd(
+export async function startToEnd(
   test: TestRuntime,
   text: string,
   { instance = 'test', ...options }: StartOptions & { readonly instance?: string } = {},
-): Ended {
+): Promise<Ended> {
   const program: DeployedProgram = test.runtime.deploy(text);
-  return runToEnd(test, instance, program.start(instance, options));
+  return await runToEnd(test, instance, await program.start(instance, options));
 }
 
 /** A context for natives that never use theirs; touching it is a bug in the test. */

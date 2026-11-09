@@ -24,17 +24,24 @@ const waitingProgram = compiledText(
   ].join('\n'),
 );
 
-/** A runtime holding one instance of `waitingProgram`, committed while it waits. */
-function waitingInstance() {
+/**
+ * A store holding one instance of `waitingProgram`, committed while it waits, and a runtime
+ * restarted on it, which reads the instance back from the store when it next touches it.
+ */
+async function waitingInstance() {
   const test = testRuntime();
   const program = test.runtime.deploy(waitingProgram);
-  program.start('i');
+  await program.start('i');
   const text = test.store.readSnapshot('i') ?? '';
-  return { ...test, program, snapshot: snapshotFormat.read(text) };
+  const restarted = testRuntime({ store: test.store, clock: test.clock });
+  return { ...restarted, program, snapshot: snapshotFormat.read(text) };
 }
 
 /** The stored instance `i` replaced by `change` of its snapshot. */
-function storeChanged(test: ReturnType<typeof waitingInstance>, change: (s: Snapshot) => Snapshot) {
+function storeChanged(
+  test: Awaited<ReturnType<typeof waitingInstance>>,
+  change: (s: Snapshot) => Snapshot,
+) {
   test.store.writeSnapshot('i', snapshotFormat.write(change(test.snapshot)).text);
 }
 
@@ -68,24 +75,24 @@ const withVersion = (text: string, version: number) =>
   text.replace(versionAtEnd, `"version":${version}}`);
 
 describe('reading an instance back', () => {
-  it('refuses a snapshot of a version this runtime does not know, saying so', () => {
-    const test = waitingInstance();
+  it('refuses a snapshot of a version this runtime does not know, saying so', async () => {
+    const test = await waitingInstance();
     test.store.writeSnapshot('i', withVersion(test.store.readSnapshot('i') ?? '', 99));
-    expect(() => test.runtime.wake('i')).toThrow(FormatError);
-    expect(() => test.runtime.wake('i')).toThrow(version99Refused);
+    await expect(test.runtime.wake('i')).rejects.toThrow(FormatError);
+    await expect(test.runtime.wake('i')).rejects.toThrow(version99Refused);
   });
 
-  it('refuses a stored Definition of a version this runtime does not know', () => {
-    const test = waitingInstance();
+  it('refuses a stored Definition of a version this runtime does not know', async () => {
+    const test = await waitingInstance();
     test.store.writeDefinition(test.program.hash, withVersion(waitingProgram, 7));
     const fresh = testRuntime({ store: test.store, clock: test.clock });
-    expect(() => fresh.runtime.wake('i')).toThrow(version7Refused);
+    await expect(fresh.runtime.wake('i')).rejects.toThrow(version7Refused);
   });
 
-  it('refuses a snapshot whose Definition the store lacks', () => {
-    const test = waitingInstance();
+  it('refuses a snapshot whose Definition the store lacks', async () => {
+    const test = await waitingInstance();
     storeChanged(test, (snapshot) => ({ ...snapshot, definition: '0'.repeat(64) }));
-    expect(() => test.runtime.wake('i')).toThrow(
+    await expect(test.runtime.wake('i')).rejects.toThrow(
       expect.objectContaining({ reason: 'unknownDefinition' }),
     );
   });
@@ -98,8 +105,8 @@ describe('reading an instance back', () => {
       (frame) => ({ ...frame, registers: [...frame.registers, [10_000, 1n]] }),
     ],
     ['a frame of a function that is not code', (frame) => ({ ...frame, function: 10_000 })],
-  ])('refuses a snapshot with %s, before resuming', (_case, change) => {
-    const test = waitingInstance();
+  ])('refuses a snapshot with %s, before resuming', async (_case, change) => {
+    const test = await waitingInstance();
     storeChanged(test, (snapshot) => ({
       ...snapshot,
       objects: snapshot.objects.map((object) =>
@@ -107,7 +114,7 @@ describe('reading an instance back', () => {
       ),
     }));
     test.clock.set(10n);
-    expect(() => test.runtime.wake('i')).toThrow(mismatch);
+    await expect(test.runtime.wake('i')).rejects.toThrow(mismatch);
     expect(test.store.commits).toHaveLength(2);
   });
 
@@ -121,8 +128,8 @@ describe('reading an instance back', () => {
       'a struct whose fields disagree with its type',
       { kind: 'struct', type: 0, fields: [1n, 2n, 3n, 4n] },
     ],
-  ])('refuses a snapshot holding %s', (_case, value) => {
-    const test = waitingInstance();
+  ])('refuses a snapshot holding %s', async (_case, value) => {
+    const test = await waitingInstance();
     storeChanged(test, (snapshot) => ({
       ...snapshot,
       objects: snapshot.objects.map((object) =>
@@ -137,20 +144,20 @@ describe('reading an instance back', () => {
           : object,
       ),
     }));
-    expect(() => test.runtime.wake('i')).toThrow(mismatch);
+    await expect(test.runtime.wake('i')).rejects.toThrow(mismatch);
   });
 
-  it('refuses a resource of a type that is not extern', () => {
-    const test = waitingInstance();
+  it('refuses a resource of a type that is not extern', async () => {
+    const test = await waitingInstance();
     storeChanged(test, (snapshot) => ({
       ...snapshot,
       objects: [...snapshot.objects, { kind: 'resource', id: 1000, type: 0, payload: null }],
     }));
-    expect(() => test.runtime.wake('i')).toThrow(mismatch);
+    await expect(test.runtime.wake('i')).rejects.toThrow(mismatch);
   });
 
-  it('refuses a ready execution that is not at an await', () => {
-    const test = waitingInstance();
+  it('refuses a ready execution that is not at an await', async () => {
+    const test = await waitingInstance();
     storeChanged(test, (snapshot) => ({
       ...snapshot,
       ready: snapshot.objects.flatMap((object) => (object.kind === 'execution' ? [object.id] : [])),
@@ -160,7 +167,7 @@ describe('reading an instance back', () => {
           : object,
       ),
     }));
-    expect(() => test.runtime.wake('i')).toThrow(mismatch);
+    await expect(test.runtime.wake('i')).rejects.toThrow(mismatch);
   });
 
   it.each<[string, (snapshot: Snapshot) => Snapshot]>([
@@ -216,35 +223,35 @@ describe('reading an instance back', () => {
       "an outcome encoder that can't encode",
       (snapshot) => ({ ...snapshot, encoder: frameEntry(snapshot) }),
     ],
-  ])('refuses a snapshot with %s', (_case, change) => {
-    const test = waitingInstance();
+  ])('refuses a snapshot with %s', async (_case, change) => {
+    const test = await waitingInstance();
     storeChanged(test, change);
-    expect(() => test.runtime.wake('i')).toThrow(mismatch);
+    await expect(test.runtime.wake('i')).rejects.toThrow(mismatch);
   });
 
-  it("refuses a snapshot whose stored Definition doesn't hash to the one it names", () => {
-    const test = waitingInstance();
+  it("refuses a snapshot whose stored Definition doesn't hash to the one it names", async () => {
+    const test = await waitingInstance();
     test.store.writeDefinition(test.program.hash, compiledText('async fn main(): 2'));
     const fresh = testRuntime({ store: test.store, clock: test.clock });
-    expect(() => fresh.runtime.wake('i')).toThrow(mismatch);
+    await expect(fresh.runtime.wake('i')).rejects.toThrow(mismatch);
   });
 
-  it('reads the store on a wake without writing the Definition back', () => {
-    const test = waitingInstance();
+  it('reads the store on a wake without writing the Definition back', async () => {
+    const test = await waitingInstance();
     const store = recordingStore(test.store);
     const fresh = testRuntime({ store, clock: test.clock });
     test.clock.set(10n);
-    expect(runToEnd(fresh, 'i', fresh.runtime.wake('i'))).toEqual({
+    expect(await runToEnd(fresh, 'i', await fresh.runtime.wake('i'))).toEqual({
       kind: 'finished',
       outcome: '1',
     });
     expect(store.definitions).toEqual([]);
   });
 
-  it('refuses to wake an instance the store lacks, and to start one it already has', () => {
-    const test = waitingInstance();
-    expect(() => test.runtime.wake('nobody')).toThrow(Refusal);
-    expect(() => test.program.start('i')).toThrow(
+  it('refuses to wake an instance the store lacks, and to start one it already has', async () => {
+    const test = await waitingInstance();
+    await expect(test.runtime.wake('nobody')).rejects.toThrow(Refusal);
+    await expect(test.program.start('i')).rejects.toThrow(
       expect.objectContaining({ reason: 'instanceExists' }),
     );
   });

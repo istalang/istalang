@@ -40,34 +40,34 @@ function hostOf(overrides: HostExterns = {}): HostExterns {
 }
 
 describe('host fills and constants at the boundary', () => {
-  it('ignores a fill of a future that was disposed, leaving the instance waiting on its own', () => {
+  it('ignores a fill of a future that was disposed, leaving the instance waiting on its own', async () => {
     const test = testRuntime({ host: hostOf() });
-    const started = test.runtime.deploy(program).start('d', { function: 'main.dropped()' });
+    const started = await test.runtime.deploy(program).start('d', { function: 'main.dropped()' });
     expect(started.state).toMatchObject({ kind: 'waiting' });
-    const ignored = test.runtime.fill('d', 'slow a', 1);
+    const ignored = await test.runtime.fill('d', 'slow a', 1);
     expect(ignored.state).toMatchObject({ kind: 'waiting' });
-    const filled = test.runtime.fill('d', 'gate', 7);
-    expect(runToEnd(test, 'd', filled)).toEqual({ kind: 'finished', outcome: '7' });
+    const filled = await test.runtime.fill('d', 'gate', 7);
+    expect(await runToEnd(test, 'd', filled)).toEqual({ kind: 'finished', outcome: '7' });
   });
 
-  it('panics the instance when an extern constant is not of its declared type', () => {
+  it('panics the instance when an extern constant is not of its declared type', async () => {
     const test = testRuntime({ host: hostOf() });
-    const started = test.runtime.deploy(program).start('c', { function: 'main.readLimit()' });
+    const started = await test.runtime.deploy(program).start('c', { function: 'main.readLimit()' });
     expect(started.state).toMatchObject({ kind: 'panicked' });
   });
 
-  it('panics the instance when the host names a future as one it has yet to fill', () => {
+  it('panics the instance when the host names a future as one it has yet to fill', async () => {
     const test = testRuntime({
       host: hostOf({ 'main.gate()': (_, call: HostCall) => call.pending('slow a') }),
     });
-    const started = test.runtime.deploy(program).start('t', { function: 'main.twice()' });
+    const started = await test.runtime.deploy(program).start('t', { function: 'main.twice()' });
     expect(started.state).toMatchObject({ kind: 'panicked' });
   });
 
-  it('ignores a fill after the instance ended', () => {
+  it('ignores a fill after the instance ended', async () => {
     const test = testRuntime({ host: hostOf({ 'main.limit': () => 3 }) });
-    const started = test.runtime.deploy(program).start('e', { function: 'main.readLimit()' });
-    expect(runToEnd(test, 'e', started)).toEqual({ kind: 'finished', outcome: '3' });
-    expect(test.runtime.fill('e', 'gate', 1).state).toMatchObject({ kind: 'finished' });
+    const started = await test.runtime.deploy(program).start('e', { function: 'main.readLimit()' });
+    expect(await runToEnd(test, 'e', started)).toEqual({ kind: 'finished', outcome: '3' });
+    expect((await test.runtime.fill('e', 'gate', 1)).state).toMatchObject({ kind: 'finished' });
   });
 });

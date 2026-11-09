@@ -87,7 +87,7 @@ describe('mapped struct types (§3)', () => {
     ).toEqual(sameComputedType);
   });
 
-  it('converts a nominal struct into an equal mapped shape, drops defaults and annotations from `S`, and encodes/decodes as JSON', () => {
+  it('converts a nominal struct into an equal mapped shape, drops defaults and annotations from `S`, and encodes/decodes as JSON', async () => {
     const decls = [
       "import * as json from 'json'",
       'struct Annotated {',
@@ -99,7 +99,7 @@ describe('mapped struct types (§3)', () => {
       'fn takeCloned(c: Cloned) -> String: json.stringify(c)',
     ];
     // Nominal `Plain` converts to `Cloned`, and `@JsonName{"custom_id"}` was NOT carried over:
-    expect(runMain('String', 'takeCloned(Plain{id: 1, name: "ada"})', decls)).toBe(
+    expect(await runMain('String', 'takeCloned(Plain{id: 1, name: "ada"})', decls)).toBe(
       '{"id":1,"name":"ada"}',
     );
 

@@ -7,7 +7,7 @@ import { describe, expect, it } from 'vitest';
 import { outcomesOf, reportsOf, testModule } from './testing.test-kit.ts';
 
 describe('the runner', () => {
-  it('reports each test under its full title, as passed, failed or skipped', () => {
+  it('reports each test under its full title, as passed, failed or skipped', async () => {
     const source = testModule(`
 async fn passes():
   ()
@@ -25,7 +25,7 @@ fn first() -> Array<Test>: [
 @Suite{"second"}
 fn second() -> Array<Test>: [skip(group("all", [test("inherits", fails)]))]
 `);
-    expect(outcomesOf(reportsOf(source))).toEqual([
+    expect(outcomesOf(await reportsOf(source))).toEqual([
       'first › passes: passed',
       'first › group › fails: failed: on purpose',
       'first › skipped: skipped',
@@ -33,7 +33,7 @@ fn second() -> Array<Test>: [skip(group("all", [test("inherits", fails)]))]
     ]);
   });
 
-  it('runs only the focused tests when any is, and only those a filter names', () => {
+  it('runs only the focused tests when any is, and only those a filter names', async () => {
     const source = testModule(`
 async fn passes():
   ()
@@ -44,16 +44,16 @@ fn one() -> Array<Test>: [test("a", passes), only(test("b", passes))]
 @Suite{"two"}
 fn two() -> Array<Test>: [only(group("g", [test("c", passes)])), test("d", passes)]
 `);
-    expect(outcomesOf(reportsOf(source))).toEqual([
+    expect(outcomesOf(await reportsOf(source))).toEqual([
       'one › a: skipped',
       'one › b: passed',
       'two › g › c: passed',
       'two › d: skipped',
     ]);
-    expect(outcomesOf(reportsOf(source, { filter: 'g ›' }))).toEqual(['two › g › c: passed']);
+    expect(outcomesOf(await reportsOf(source, { filter: 'g ›' }))).toEqual(['two › g › c: passed']);
   });
 
-  it('skips a test skip marks, whatever only marks, and at whatever level', () => {
+  it('skips a test skip marks, whatever only marks, and at whatever level', async () => {
     const source = testModule(`
 async fn passes():
   ()
@@ -65,7 +65,7 @@ fn marks() -> Array<Test>: [
   only(group("g", [skip(test("skip inside only", passes)), test("focused", passes)])),
 ]
 `);
-    expect(outcomesOf(reportsOf(source))).toEqual([
+    expect(outcomesOf(await reportsOf(source))).toEqual([
       'marks › only over skip: skipped',
       'marks › skip over only: skipped',
       'marks › g › skip inside only: skipped',
@@ -73,7 +73,7 @@ fn marks() -> Array<Test>: [
     ]);
   });
 
-  it('fails a test whose suite lists other tests in its instance than it listed before', () => {
+  it('fails a test whose suite lists other tests in its instance than it listed before', async () => {
     const source = testModule(`
 async fn passes():
   ()
@@ -83,24 +83,24 @@ fn title() -> String: "at " + time.now().value
 @Suite{"changing"}
 fn changing() -> Array<Test>: [test(title(), passes)]
 `);
-    const [report] = reportsOf(source, { tick: (before) => before + 1n });
+    const [report] = await reportsOf(source, { tick: (before) => before + 1n });
     expect(report?.outcome).toMatchObject({ kind: 'failed' });
-    expect(reportsOf(source)[0]?.outcome).toEqual({ kind: 'passed' });
+    expect((await reportsOf(source))[0]?.outcome).toEqual({ kind: 'passed' });
   });
 
-  it('reports a suite that panics while listing as one failed test', () => {
+  it('reports a suite that panics while listing as one failed test', async () => {
     const source = testModule(`
 fn broken() -> Array<Test>: panic("no tests")
 
 @Suite{"broken"}
 fn suite() -> Array<Test>: broken()
 `);
-    expect(outcomesOf(reportsOf(source))).toEqual(['broken: failed: no tests']);
+    expect(outcomesOf(await reportsOf(source))).toEqual(['broken: failed: no tests']);
   });
 });
 
 describe('spawned instances', () => {
-  it('are watched through idle, reaches, waitingAt, state and result', () => {
+  it('are watched through idle, reaches, waitingAt, state and result', async () => {
     const source = testModule(`
 async fn sleeper(days: Int) -> Future<String>:
   @Waypoint{"sleeping"}
@@ -120,10 +120,10 @@ async fn watched():
 @Suite{"watches"}
 fn watches() -> Array<Test>: [test("watched", watched)]
 `);
-    expect(outcomesOf(reportsOf(source))).toEqual(['watches › watched: passed']);
+    expect(outcomesOf(await reportsOf(source))).toEqual(['watches › watched: passed']);
   });
 
-  it("aren't idle while a segment of theirs calls the test's mocks", () => {
+  it("aren't idle while a segment of theirs calls the test's mocks", async () => {
     const source = testModule(`
 fn first() -> Int: 1
 fn second() -> Int: 2
@@ -149,10 +149,10 @@ async fn idleAfterCalls():
 @Suite{"idle"}
 fn suite() -> Array<Test>: [test("after calls", idleAfterCalls)]
 `);
-    expect(outcomesOf(reportsOf(source))).toEqual(['idle › after calls: passed']);
+    expect(outcomesOf(await reportsOf(source))).toEqual(['idle › after calls: passed']);
   });
 
-  it('fail the test at once when one panics, naming the instance', () => {
+  it('fail the test at once when one panics, naming the instance', async () => {
     const source = testModule(`
 async fn breaks() -> Future<Unit>:
   panic("broken")
@@ -164,12 +164,12 @@ async fn starts():
 @Suite{"panics"}
 fn panics() -> Array<Test>: [test("starts", starts)]
 `);
-    expect(outcomesOf(reportsOf(source))).toEqual([
+    expect(outcomesOf(await reportsOf(source))).toEqual([
       'panics › starts: failed: Instance test/1 panicked: broken',
     ]);
   });
 
-  it('fail no test with a panic some instance waits for, which reads it as an Err', () => {
+  it('fail no test with a panic some instance waits for, which reads it as an Err', async () => {
     const source = testModule(`
 async fn breaks() -> Future<Int>:
   panic("broken")
@@ -181,10 +181,10 @@ async fn awaited():
 @Suite{"awaited"}
 fn awaitedPanics() -> Array<Test>: [test("awaited", awaited)]
 `);
-    expect(outcomesOf(reportsOf(source))).toEqual(['awaited › awaited: passed']);
+    expect(outcomesOf(await reportsOf(source))).toEqual(['awaited › awaited: passed']);
   });
 
-  it('run each segment twice before committing it with spawnCrashingEveryAwait', () => {
+  it('run each segment twice before committing it with spawnCrashingEveryAwait', async () => {
     const source = testModule(`
 extern fn effect(n: Int) -> Int
 
@@ -201,12 +201,12 @@ async fn crashing():
 @Suite{"crash"}
 fn crash() -> Array<Test>: [test("crashing", crashing)]
 `);
-    expect(outcomesOf(reportsOf(source))).toEqual(['crash › crashing: passed']);
+    expect(outcomesOf(await reportsOf(source))).toEqual(['crash › crashing: passed']);
   });
 });
 
 describe('handles', () => {
-  it('equal no other, and come back the same through a mock a spawned instance calls', () => {
+  it('equal no other, and come back the same through a mock a spawned instance calls', async () => {
     const source = testModule(`
 extern sendable struct Queue
 extern fn open() -> Queue
@@ -225,12 +225,12 @@ async fn handles():
 @Suite{"handles"}
 fn suite() -> Array<Test>: [test("handles", handles)]
 `);
-    expect(outcomesOf(reportsOf(source))).toEqual(['handles › handles: passed']);
+    expect(outcomesOf(await reportsOf(source))).toEqual(['handles › handles: passed']);
   });
 });
 
 describe("a host type's dispose", () => {
-  it('does nothing unless a mock replaces it, and reaches the mock when one does', () => {
+  it('does nothing unless a mock replaces it, and reaches the mock when one does', async () => {
     const source = testModule(`
 extern shared struct Queue
 extern fn dispose(self: Queue)
@@ -262,13 +262,13 @@ async fn mockedDispose():
 @Suite{"disposal"}
 fn suite() -> Array<Test>: [test("unmocked", unmockedDispose), test("mocked", mockedDispose)]
 `);
-    expect(outcomesOf(reportsOf(source))).toEqual([
+    expect(outcomesOf(await reportsOf(source))).toEqual([
       'disposal › unmocked: passed',
       'disposal › mocked: passed',
     ]);
   });
 
-  it('runs once, in the instance owning the value, never in the test that answered with it', () => {
+  it('runs once, in the instance owning the value, never in the test that answered with it', async () => {
     const source = testModule(`
 extern shared struct Sent
 extern fn dispose(self: Sent)
@@ -287,12 +287,12 @@ async fn handedOut():
 @Suite{"ownership"}
 fn suite() -> Array<Test>: [test("handed out", handedOut)]
 `);
-    expect(outcomesOf(reportsOf(source))).toEqual(['ownership › handed out: passed']);
+    expect(outcomesOf(await reportsOf(source))).toEqual(['ownership › handed out: passed']);
   });
 });
 
 describe('a failing test', () => {
-  it('fails on an extern no mock replaces, on waiting forever, and on waiting past its timeout', () => {
+  it('fails on an extern no mock replaces, on waiting forever, and on waiting past its timeout', async () => {
     const source = testModule(`
 extern fn charge(amount: Int) -> String
 
@@ -308,7 +308,7 @@ async fn tooLong():
 @Suite{"failing"}
 fn failing() -> Array<Test>: [test("unmocked", unmocked), test("forever", forever), test("long", tooLong)]
 `);
-    const messages = reportsOf(source, { timeout: 1000n }).map(({ outcome }) =>
+    const messages = (await reportsOf(source, { timeout: 1000n })).map(({ outcome }) =>
       outcome.kind === 'failed' ? outcome.message : outcome.kind,
     );
     expect(messages[0]).toContain('No mock replaces main.test.ista.charge');

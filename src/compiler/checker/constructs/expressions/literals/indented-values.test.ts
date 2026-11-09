@@ -53,7 +53,7 @@ describe('meaning by type: structs, variants, shapes, aliases and shared structs
     '  retry: Retry',
   );
 
-  it('builds a nominal struct with defaults, nested blocks, maps and arrays', () => {
+  it('builds a nominal struct with defaults, nested blocks, maps and arrays', async () => {
     const body = lines(
       'const api = Service:',
       '  name: "api"',
@@ -68,11 +68,11 @@ describe('meaning by type: structs, variants, shapes, aliases and shared structs
       '(api.name, api.replicas, api.ports, api.env["LOG_LEVEL"], api.env["x-region"], api.retry.times, api.retry.backoffMs)',
     );
     expect(
-      mainGives('(String, Int, Array<Int>, String, String, Int, Int)', body, serviceDecls),
+      await mainGives('(String, Int, Array<Int>, String, String, Int, Int)', body, serviceDecls),
     ).toEqual(['api', 1, [80, 443], 'debug', 'eu', 3, 500]);
   });
 
-  it('builds shapes, aliases of shapes, and shared structs via new T:', () => {
+  it('builds shapes, aliases of shapes, and shared structs via new T:', async () => {
     const decls = lines(
       'type Point = { x: Int, y: Int }',
       'shared struct Counter { count: Int, tag: String = "c" }',
@@ -87,7 +87,7 @@ describe('meaning by type: structs, variants, shapes, aliases and shared structs
       'c->count += p1.x + p2.y',
       '`${c->count}:${c->tag}`',
     );
-    expect(mainGives('String', body, decls)).toBe('58:c');
+    expect(await mainGives('String', body, decls)).toBe('58:c');
   });
 
   it('refuses a variant named before a block, bare or qualified, naming its call (ยง3.11)', () => {
@@ -114,7 +114,7 @@ describe('meaning by type: structs, variants, shapes, aliases and shared structs
     }
   });
 
-  it('supports shorthand names, a leading spread, and a trailing struct comprehension', () => {
+  it('supports shorthand names, a leading spread, and a trailing struct comprehension', async () => {
     const decls = 'struct Scores { a: Int, b: Int, c: Int }';
     const body = lines(
       'const a = 10',
@@ -130,12 +130,12 @@ describe('meaning by type: structs, variants, shapes, aliases and shared structs
       '  for k, v in ...rest: [k]: v * 10',
       '(updated.a, updated.b, updated.c, comp.a, comp.b, comp.c)',
     );
-    expect(mainGives('(Int, Int, Int, Int, Int, Int)', body, decls)).toEqual([
+    expect(await mainGives('(Int, Int, Int, Int, Int, Int)', body, decls)).toEqual([
       10, 25, 30, 1, 20, 30,
     ]);
   });
 
-  it('evaluates fields in written order while storing them in canonical field order', () => {
+  it('evaluates fields in written order while storing them in canonical field order', async () => {
     const body = lines(
       'let log: Array<String> = []',
       'fn step(label: String, value: Int) -> Int: { log.push(label); value }',
@@ -144,12 +144,12 @@ describe('meaning by type: structs, variants, shapes, aliases and shared structs
       '  first: step("first", 1)',
       '(log, s.first, s.second)',
     );
-    expect(mainGives('(Array<String>, Int, Int)', body)).toEqual([['second', 'first'], 1, 2]);
+    expect(await mainGives('(Array<String>, Int, Int)', body)).toEqual([['second', 'first'], 1, 2]);
   });
 });
 
 describe('meaning by type: maps, arrays, unions, untyped blocks and constants (ยง1)', () => {
-  it('builds a Map with bare keys (including screaming snake case), quoted reserved words, shorthands, spreads and duplicate keys where the later wins', () => {
+  it('builds a Map with bare keys (including screaming snake case), quoted reserved words, shorthands, spreads and duplicate keys where the later wins', async () => {
     const body = lines(
       'const host = "localhost"',
       'const base: Map<String, String> =',
@@ -162,7 +162,7 @@ describe('meaning by type: maps, arrays, unions, untyped blocks and constants (ย
       '  dup: "first", "dup": "second"',
       '(env["LOG_LEVEL"], env["for"], env["host"], env["dup"], env.size())',
     );
-    expect(mainGives('(String, String, String, String, Int)', body)).toEqual([
+    expect(await mainGives('(String, String, String, String, Int)', body)).toEqual([
       'debug',
       'loop',
       'prod.internal',
@@ -171,7 +171,7 @@ describe('meaning by type: maps, arrays, unions, untyped blocks and constants (ย
     ]);
   });
 
-  it('builds a Map whose key type is a String literal union, and a struct that also has a default(), which the table builds as a struct', () => {
+  it('builds a Map whose key type is a String literal union, and a struct that also has a default(), which the table builds as a struct', async () => {
     const decls = lines(
       'type EnvKey = "region" | "tier"',
       'struct Dict { entries: Map<String, Int> }',
@@ -187,10 +187,10 @@ describe('meaning by type: maps, arrays, unions, untyped blocks and constants (ย
       '    alpha: 10, "beta": 20',
       '(m == same, m.size(), d.entries["alpha"] + d.entries["beta"])',
     );
-    expect(mainGives('(Bool, Int, Int)', body, decls)).toEqual([true, 2, 30]);
+    expect(await mainGives('(Bool, Int, Int)', body, decls)).toEqual([true, 2, 30]);
   });
 
-  it('builds arrays from "- value", "- -1", "- ...xs", nested "-" blocks and "- key: value" aligned items', () => {
+  it('builds arrays from "- value", "- -1", "- ...xs", nested "-" blocks and "- key: value" aligned items', async () => {
     const body = lines(
       'const extra = [10, 20]',
       'const nums: Array<Int> =',
@@ -213,7 +213,7 @@ describe('meaning by type: maps, arrays, unions, untyped blocks and constants (ย
       '      ok: false',
       '(nums, grid[0][1] + grid[1][0], rows[0].name, rows[1].port, rows[0].meta.ok)',
     );
-    expect(mainGives('(Array<Int>, Int, String, Int, Bool)', body)).toEqual([
+    expect(await mainGives('(Array<Int>, Int, String, Int, Bool)', body)).toEqual([
       [1, -1, 10, 20],
       5,
       'api',
@@ -222,7 +222,7 @@ describe('meaning by type: maps, arrays, unions, untyped blocks and constants (ย
     ]);
   });
 
-  it('builds the one member of an expected union that the indented value fits', () => {
+  it('builds the one member of an expected union that the indented value fits', async () => {
     const decls = lines(
       'struct Settings { retries: Int, region: String }',
       'struct Entry<S is struct, K in keyof S> { key: K, value: S[K] }',
@@ -243,7 +243,7 @@ describe('meaning by type: maps, arrays, unions, untyped blocks and constants (ย
       '  case Entry<Settings, "retries">{value}: `${value}`',
       '(matched, opt?.region ?? "none", u2 is Array<Int>)',
     );
-    expect(mainGives('(String, String, Bool)', body, decls)).toEqual(['eu', 'ap', true]);
+    expect(await mainGives('(String, String, Bool)', body, decls)).toEqual(['eu', 'ap', true]);
   });
 
   it('types an untyped indented value as a shape when all keys are bare, a Map<String, V> when any key is quoted, and an Array<T> when items', () => {
@@ -254,7 +254,7 @@ describe('meaning by type: maps, arrays, unions, untyped blocks and constants (ย
     expect(constantTypeText(lines('const target =', '  - 1', '  - 2'))).toBe('Array<Int>');
   });
 
-  it('computes top-level constants built with indented values at compile time', () => {
+  it('computes top-level constants built with indented values at compile time', async () => {
     const decls = lines(
       'struct Pair { a: Int, b: Int = 5 }',
       'const first = Pair:',
@@ -265,7 +265,9 @@ describe('meaning by type: maps, arrays, unions, untyped blocks and constants (ย
       '  - first',
       '  - a: 10',
     );
-    expect(mainGives('Int', 'items[0].a + items[0].b + items[1].a + table["k"].b', decls)).toBe(22);
+    expect(
+      await mainGives('Int', 'items[0].a + items[0].b + items[1].a + table["k"].b', decls),
+    ).toBe(22);
   });
 });
 
@@ -382,9 +384,9 @@ describe('commutation property: indented values vs brace and bracket literals (ย
     ),
   })).val;
 
-  it('checks to the same type and runs to the same value whether written indented or with braces/brackets', () => {
-    fc.assert(
-      fc.property(nestedValues, (generated) => {
+  it('checks to the same type and runs to the same value whether written indented or with braces/brackets', async () => {
+    await fc.assert(
+      fc.asyncProperty(nestedValues, async (generated) => {
         const source = lines(
           `const firstVal: ${generated.type} = ${generated.braced}`,
           `const secondVal: ${generated.type} = ${generated.indented(2)}`,
@@ -393,7 +395,7 @@ describe('commutation property: indented values vs brace and bracket literals (ย
         const typeA = constantTypeOf(source, 'firstVal');
         const typeB = constantTypeOf(source, 'secondVal');
         expect(typeA !== undefined && typeB !== undefined && sameType(typeA, typeB)).toBe(true);
-        expect(mainGives('Bool', 'firstVal == secondVal', source)).toBe(true);
+        expect(await mainGives('Bool', 'firstVal == secondVal', source)).toBe(true);
       }),
       { numRuns: 35 },
     );

@@ -7,7 +7,7 @@ import { describe, expect, it } from 'vitest';
 import { outcomesOf, reportsOf, testModule } from './testing.test-kit.ts';
 
 describe('mocks', () => {
-  it('replace own, std and host functions, in the test and every instance it spawns or they spawn', () => {
+  it('replace own, std and host functions, in the test and every instance it spawns or they spawn', async () => {
     const source = testModule(`
 extern fn charge(amount: Int) -> String
 
@@ -35,10 +35,10 @@ async fn everywhere():
 @Suite{"mocks"}
 fn mocks() -> Array<Test>: [test("everywhere", everywhere)]
 `);
-    expect(outcomesOf(reportsOf(source))).toEqual(['mocks › everywhere: passed']);
+    expect(outcomesOf(await reportsOf(source))).toEqual(['mocks › everywhere: passed']);
   });
 
-  it('replace a generic function named with its type arguments, at that instantiation', () => {
+  it('replace a generic function named with its type arguments, at that instantiation', async () => {
     const source = testModule(`
 fn listed<T>(value: T) -> Array<T>: [value]
 
@@ -50,10 +50,10 @@ async fn typed():
 @Suite{"mocks"}
 fn mocks() -> Array<Test>: [test("typed", typed)]
 `);
-    expect(outcomesOf(reportsOf(source))).toEqual(['mocks › typed: passed']);
+    expect(outcomesOf(await reportsOf(source))).toEqual(['mocks › typed: passed']);
   });
 
-  it('are released with their holder, the newest reaching calls, and record each call as a tuple', () => {
+  it('are released with their holder, the newest reaching calls, and record each call as a tuple', async () => {
     const source = testModule(`
 fn greet() -> String: "hello"
 fn one(a: Int) -> Int: a
@@ -80,13 +80,13 @@ async fn recorded():
 @Suite{"holders"}
 fn holders() -> Array<Test>: [test("released", released), test("recorded", recorded)]
 `);
-    expect(outcomesOf(reportsOf(source))).toEqual([
+    expect(outcomesOf(await reportsOf(source))).toEqual([
       'holders › released: passed',
       'holders › recorded: passed',
     ]);
   });
 
-  it('answer a spawned instance with a native replacement, and fail the test when one panics', () => {
+  it('answer a spawned instance with a native replacement, and fail the test when one panics', async () => {
     const source = testModule(`
 fn describe(n: Int) -> String: "number"
 
@@ -104,13 +104,13 @@ async fn breaking():
 @Suite{"replacements"}
 fn suite() -> Array<Test>: [test("native", native), test("breaking", breaking)]
 `);
-    expect(outcomesOf(reportsOf(source))).toEqual([
+    expect(outcomesOf(await reportsOf(source))).toEqual([
       'replacements › native: passed',
       'replacements › breaking: failed: the replacement broke',
     ]);
   });
 
-  it('drop an answer whose caller let go of its future, so a receive losing a select takes nothing', () => {
+  it('drop an answer whose caller let go of its future, so a receive losing a select takes nothing', async () => {
     const source = testModule(`
 extern sendable struct Queue<T is Sendable>
 extern fn receive<T is Decodable>(self: Queue<T>) -> Future<T>
@@ -136,12 +136,12 @@ async fn posted():
 @Suite{"withdrawn"}
 fn suite() -> Array<Test>: [test("posted after a lost select", posted)]
 `);
-    expect(outcomesOf(reportsOf(source))).toEqual([
+    expect(outcomesOf(await reportsOf(source))).toEqual([
       'withdrawn › posted after a lost select: passed',
     ]);
   });
 
-  it('of a failed test reach no later test, each running in a world of its own', () => {
+  it('of a failed test reach no later test, each running in a world of its own', async () => {
     const source = testModule(`
 fn greet() -> String: "hello"
 
@@ -155,7 +155,7 @@ async fn unmocked():
 @Suite{"isolated"}
 fn isolated() -> Array<Test>: [test("fails", failsMocked), test("next", unmocked)]
 `);
-    expect(outcomesOf(reportsOf(source))).toEqual([
+    expect(outcomesOf(await reportsOf(source))).toEqual([
       'isolated › fails: failed: failed',
       'isolated › next: passed',
     ]);

@@ -21,10 +21,10 @@ describe('a type match rebuilding its subject', () => {
     '  case _: D',
   ];
 
-  it('is a finite recursion, which checks and runs', () => {
+  it('is a finite recursion, which checks and runs', async () => {
     expect(codesOf(...rebuilt, 'fn probe(x: Data<Node<Int>>): ()')).toEqual([]);
     expect(
-      runMain(
+      await runMain(
         'Int',
         'total(struct{value: 1, next: [struct{value: 2, next: []}, struct{value: 3, next: []}]})',
         [
@@ -94,7 +94,7 @@ describe('a type match growing its subject', () => {
 });
 
 describe('an associated type whose body is a type `match`', () => {
-  it('reduces, recurses and grows as an alias whose body is one does', () => {
+  it('reduces, recurses and grows as an alias whose body is one does', async () => {
     const owner = (body: string) => ['struct W<T>:', '  value: T', '  type Grow = match T:', body];
     expect(codesOf(...owner('    case _: W<Array<T>>.Grow'), 'fn f(x: W<Int>.Grow): ()')).toEqual(
       codesOf('type G<T> = match T:', '  case _: G<Array<T>>', 'fn f(x: G<Int>): ()'),
@@ -110,6 +110,6 @@ describe('an associated type whose body is a type `match`', () => {
       '    case _: { leaf: T, next: Array<Flat> }',
       'fn f(x: Box<Box<Int>>.Flat) -> Int: x.leaf + x.next.length()',
     ];
-    expect(runMain('Int', 'f(struct{leaf: 3, next: []})', flat)).toBe(3);
+    expect(await runMain('Int', 'f(struct{leaf: 3, next: []})', flat)).toBe(3);
   });
 });

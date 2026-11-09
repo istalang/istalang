@@ -261,7 +261,7 @@ describe('a placeholder', () => {
     ).toEqual(reportedNothing);
   });
 
-  it('compiles and runs a scoped view inside a mapped case with no type arguments written', () => {
+  it('compiles and runs a scoped view inside a mapped case with no type arguments written', async () => {
     const decls = [
       'trait View<Sc> { fn run(self: Self, sc: Sc) -> Int }',
       'struct Leaf<Sc> { body: fn(Sc) -> Int }',
@@ -287,7 +287,7 @@ describe('a placeholder', () => {
       '    }',
       '  }',
     ].join('\n');
-    expect(mainGives('Int', 'pickX(makeView(), struct{a: 3})', decls)).toBe(41);
+    expect(await mainGives('Int', 'pickX(makeView(), struct{a: 3})', decls)).toBe(41);
   });
 
   it('refuses a candidate it can be no value of, so overloads choose by it', () => {

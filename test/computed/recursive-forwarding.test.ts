@@ -20,10 +20,12 @@ describe('a recursive alias forwarding to another of its group', () => {
       'reached through a type match given itself',
       ['type Wrap<T> = match T:', '  case _: Int | Array<T>', 'type A = Wrap<A>'],
     ],
-  ])('is that alias, %s', (_case, declarations) => {
+  ])('is that alias, %s', async (_case, declarations) => {
     const written = [tree, ...declarations];
     expect(compareWrittenTypes('A', 'Tree', written)).toEqual(sameComputedType);
     expect(codesOf(...written, 'fn f(x: A) -> Int: 0')).toEqual([]);
-    expect(runMain('Int', 'take([1, [2, [3]]])', [...written, 'fn take(a: A) -> Int: 7'])).toBe(7);
+    expect(
+      await runMain('Int', 'take([1, [2, [3]]])', [...written, 'fn take(a: A) -> Int: 7']),
+    ).toBe(7);
   });
 });

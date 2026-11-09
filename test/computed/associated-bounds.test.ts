@@ -43,10 +43,10 @@ describe('a union or an `any` type has no associated type', () => {
     ]);
   });
 
-  it('still calls through the trait on a union value, each member with its own', () => {
-    expect(runMain('String', 'const u: A | B = B\n  `${u.label()}${metaOf(A, 7)}`', labelled)).toBe(
-      'ba',
-    );
+  it('still calls through the trait on a union value, each member with its own', async () => {
+    expect(
+      await runMain('String', 'const u: A | B = B\n  `${u.label()}${metaOf(A, 7)}`', labelled),
+    ).toBe('ba');
   });
 });
 
@@ -66,8 +66,8 @@ describe('`T.Data` is one type', () => {
     'fn both<T is HasShown & HasSized>(d: T.Data) -> String: `${d.show()}/${d.size()}`',
   ];
 
-  it('meets the bound of every trait requiring it', () => {
-    expect(runMain('String', 'both<Both>(21)', decls)).toBe('#21/42');
+  it('meets the bound of every trait requiring it', async () => {
+    expect(await runMain('String', 'both<Both>(21)', decls)).toBe('#21/42');
   });
 
   it('is met only by a type meeting every bound', () => {
@@ -83,8 +83,8 @@ describe('`T.Data` is one type', () => {
 });
 
 describe('a shared struct', () => {
-  it('declares associated types as any struct does', () => {
+  it('declares associated types as any struct does', async () => {
     const decls = ['shared struct Inbox<T>:', '  items: Array<T>', '  type Item = T'];
-    expect(runMain('Int', 'const x: Inbox<Int>.Item = 4\n  x + 1', decls)).toBe(5);
+    expect(await runMain('Int', 'const x: Inbox<Int>.Item = 4\n  x + 1', decls)).toBe(5);
   });
 });

@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-10-29
-last_updated: 2026-10-29
+last_updated: 2026-11-10
 tags: [reuse, testing, test-kit, arbitraries, fast-check, corpus]
 ---
 
@@ -41,8 +41,8 @@ tags: [reuse, testing, test-kit, arbitraries, fast-check, corpus]
 - check a `main.ista` snippet with all std modules or wrap statements in a function → `reported`, `inFunction` (`src/compiler/checker/check.test-kit.ts`)
 - check a rule across every std module at once → `everyStdModule` (`src/stdlib/std-modules.test-kit.ts`)
 - compile in-memory sources to a `Definition` or its text → `compiledDefinition`, `compiledText`, `diagnosedAt` (`src/compiler/compile.test-kit.ts`)
-- create a test `Runtime` with manual clock and store → `testRuntime`, `manualClock`, `recordingStore`, `testSeed` (`src/runtime/runtime.test-kit.ts`)
-- advance a test `Runtime` instance and its spawns until settled → `settleAll`, `runToEnd`, `startToEnd` (`src/runtime/runtime.test-kit.ts`)
+- create a test `Runtime` with manual clock and store → `testRuntime`, `recordingStore`, `testSeed` (`src/runtime/runtime.test-kit.ts`), `ManualClock` (`src/runtime/host/clock.ts`)
+- advance a test `Runtime` instance and its spawns until settled, awaited → `settleAll`, `runToEnd`, `startToEnd` (`src/runtime/runtime.test-kit.ts`)
 - ignore `Futures` events in unit tests → `ignoredEvents` (`src/runtime/scheduler/instance/futures.test-kit.ts`)
 - compile and run `main()` for a body of one line or several, written unindented, beside declarations → `mainGives` (`src/stdlib/prelude/prelude.test-kit.ts`)
 - compile and run an `.ista` test module in memory on a manual clock → `reportsOf`, `outcomesOf`, `testModule` (`src/runtime/testing/testing.test-kit.ts`)

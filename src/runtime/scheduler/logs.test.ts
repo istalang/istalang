@@ -27,10 +27,10 @@ const messagesOf = (logs: readonly { readonly message: string }[]) =>
   logs.map(({ message }) => message);
 
 describe('log records', () => {
-  it('reach the host with their segments, stamped with the instance and the segment time', () => {
+  it('reach the host with their segments, stamped with the instance and the segment time', async () => {
     const { runtime, clock } = testRuntime();
     clock.set(1000n);
-    const advanced = runtime.deploy(compiledText(loggingMain(false))).start('main');
+    const advanced = await runtime.deploy(compiledText(loggingMain(false))).start('main');
     expect(advanced.logs).toEqual([
       { instance: 'main', time: 1000n, level: 'info', message: 'first', fields: { n: 1n } },
       { instance: 'main', time: 1000n, level: 'warn', message: 'second', fields: {} },
@@ -38,17 +38,17 @@ describe('log records', () => {
     ]);
   });
 
-  it('are lost with a segment that panics, and kept with those that committed before it', () => {
+  it('are lost with a segment that panics, and kept with those that committed before it', async () => {
     const { runtime } = testRuntime();
-    const advanced = runtime.deploy(compiledText(loggingMain(true))).start('main');
+    const advanced = await runtime.deploy(compiledText(loggingMain(true))).start('main');
     expect(advanced.state.kind).toBe('panicked');
     expect(messagesOf(advanced.logs)).toEqual(['first', 'second']);
   });
 
-  it("are reported once when crashEveryAwait discards each segment's first run", () => {
+  it("are reported once when crashEveryAwait discards each segment's first run", async () => {
     const { runtime } = testRuntime();
     const program = runtime.deploy(compiledText(loggingMain(false)));
-    const advanced = program.start('main', { crashEveryAwait: true });
+    const advanced = await program.start('main', { crashEveryAwait: true });
     expect(advanced.state.kind).toBe('finished');
     expect(messagesOf(advanced.logs)).toEqual(['first', 'second', 'lost']);
   });

@@ -2,7 +2,7 @@
  * A group of instances a host drives together (§9): where each stands, as its last advance said,
  * an instance an advance spawned joining it ready. Every loop over such a group asks it the same
  * questions, which instance can run now, which timer is due first and which instances are due by a
- * time, so they are answered here once, for settle.ts and for a test's world (runtime/testing/).
+ * time, so they are answered here once, for drive.ts and for a test's world (runtime/testing/).
  *
  * An instance can run now when it was spawned and hasn't run yet, or when it waits for the end of
  * an instance of the group that has ended (§9), since its next segment resolves that wait. Those

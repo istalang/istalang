@@ -13,7 +13,7 @@ import { stdNatives } from '../../stdlib/natives.ts';
 import type { Finished, InstanceState } from '../instance-state.ts';
 import { type Natives, Panic } from '../natives.ts';
 import { Refusal } from '../refusal.ts';
-import { testRuntime } from '../runtime.test-kit.ts';
+import { type RecordingStore, recordingStore, testRuntime } from '../runtime.test-kit.ts';
 
 const subsetText = definitionFormat.write(subsetDefinition).text;
 const innermostLocation = /\(main:6:\d+\)$/u;
@@ -33,26 +33,26 @@ function load(natives: Natives = stdNatives) {
   let instances = 0;
   return {
     ...program,
-    run: () => {
+    run: async () => {
       instances += 1;
-      return program.start(`instance-${instances}`).state;
+      return (await program.start(`instance-${instances}`)).state;
     },
   };
 }
 
 describe('the runtime', () => {
-  it('runs the subset fixture to its outcome', () => {
-    expect(load().run()).toEqual({ kind: 'finished', outcome: subsetOutcome });
+  it('runs the subset fixture to its outcome', async () => {
+    expect(await load().run()).toEqual({ kind: 'finished', outcome: subsetOutcome });
   });
 
-  it('turns a panic into the outcome, with a trace from the innermost frame out', () => {
+  it('turns a panic into the outcome, with a trace from the innermost frame out', async () => {
     const natives = {
       ...stdNatives,
       'prelude.subtract(Int, Int)': () => {
         throw new Panic('no subtraction today');
       },
     };
-    const outcome = load(natives).run();
+    const outcome = await load(natives).run();
     expect(outcome.kind).toBe('panicked');
     expect(outcome).toMatchObject({ message: 'no subtraction today' });
     const frames = outcome.kind === 'panicked' ? outcome.trace.split('\n') : [];
@@ -65,12 +65,12 @@ describe('the runtime', () => {
     expect(() => load({})).toThrow(Refusal);
   });
 
-  it('gives an encoded outcome as JSON or its text, refusing one with no JSON', () => {
+  it('gives an encoded outcome as JSON or its text, refusing one with no JSON', async () => {
     const test = testRuntime();
     const program = test.runtime.deploy(
       compiledText('async fn main() -> Future<(Float, Int)>: (0.0 / 0.0, 12345678901234567890)'),
     );
-    const state = finished(program.start('i').state);
+    const state = finished((await program.start('i')).state);
     expect(program.outcome(state)).toEqual([null, 12345678901234567890n]);
     expect(program.outcomeText(state)).toBe('[null,12345678901234567890]');
     const unencoded = { kind: 'finished', outcome: 98n } as const;
@@ -78,7 +78,7 @@ describe('the runtime', () => {
     expect(() => load().outcomeText(unencoded)).toThrow(Refusal);
   });
 
-  it("gives a spawned instance's outcome as JSON when a codec writes its type, refusing one none writes", () => {
+  it("gives a spawned instance's outcome as JSON when a codec writes its type, refusing one none writes", async () => {
     const test = testRuntime();
     const program = test.runtime.deploy(
       compiledText(
@@ -92,41 +92,60 @@ describe('the runtime', () => {
         ].join('\n'),
       ),
     );
-    const [encoded, unencoded] = program
-      .start('i')
-      .spawned.map((name) => finished(test.runtime.wake(name).state));
+    const [encoded, unencoded] = await Promise.all(
+      (await program.start('i')).spawned.map(async (name) =>
+        finished((await test.runtime.wake(name)).state),
+      ),
+    );
     expect(encoded && program.outcomeText(encoded)).toBe('42');
     expect(() => unencoded && program.outcome(unencoded)).toThrow(Refusal);
   });
 
-  it("encodes the root's outcome before what its frame holds is disposed, so a defer's panic is traced from main", () => {
+  it("encodes the root's outcome before what its frame holds is disposed, so a defer's panic is traced from main", async () => {
     const program = testRuntime().runtime.deploy(
       compiledText('async fn main() -> Future<Int>:\n  defer fn(): panic("boom")\n  42'),
     );
-    const { state } = program.start('i');
+    const { state } = await program.start('i');
     expect(state).toMatchObject({ kind: 'panicked', message: 'boom' });
     const frames = state.kind === 'panicked' ? state.trace.split('\n') : [];
     expect(frames.map((frame) => frame.split(' ')[1])).toEqual(['main.main.lambda@2:9']);
   });
 
-  it('refuses a start whose seed from the host has the wrong length, writing nothing', () => {
+  it('refuses a start whose seed from the host has the wrong length, writing nothing', async () => {
     const { runtime, store } = testRuntime({ seed: () => new Uint8Array(3) });
     const program = runtime.deploy(subsetText);
-    expect(() => program.start('short')).toThrow(expect.objectContaining({ reason: 'unfitSeed' }));
+    await expect(program.start('short')).rejects.toThrow(
+      expect.objectContaining({ reason: 'unfitSeed' }),
+    );
     expect(store.readSnapshot('short')).toBeUndefined();
+  });
+
+  it('holds no instance whose first commit failed, so the store decides it was never started', async () => {
+    const inner = recordingStore();
+    const failing: RecordingStore = {
+      ...inner,
+      writeSnapshot: () => {
+        throw new Error('the store is down');
+      },
+    };
+    const { runtime } = testRuntime({ store: failing });
+    await expect(runtime.deploy(subsetText).start('lost')).rejects.toThrow('the store is down');
+    await expect(runtime.wake('lost')).rejects.toThrow(
+      expect.objectContaining({ reason: 'unknownInstance' }),
+    );
   });
 
   it('refuses a text that is not a Definition', () => {
     expect(() => testRuntime({ natives: stdNatives }).runtime.deploy('{}')).toThrow(FormatError);
   });
 
-  it('lets an error a native throws for any other reason propagate', () => {
+  it('lets an error a native throws for any other reason propagate', async () => {
     const natives = {
       ...stdNatives,
       'prelude.add(Int, Int)': () => {
         throw new RangeError('a bug in the native');
       },
     };
-    expect(() => load(natives).run()).toThrow(RangeError);
+    await expect(load(natives).run()).rejects.toThrow(RangeError);
   });
 });

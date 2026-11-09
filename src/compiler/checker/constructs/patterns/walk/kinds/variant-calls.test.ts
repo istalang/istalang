@@ -189,15 +189,15 @@ function matcher(name: string, pattern: string, bound: readonly string[]): strin
   ].join('\n');
 }
 
-function outcomeOf(source: string): unknown {
-  const state = startToEnd(testRuntime(), compiledText(source));
+async function outcomeOf(source: string): Promise<unknown> {
+  const state = await startToEnd(testRuntime(), compiledText(source));
   return state.kind === 'finished' ? decodeJson(String(state.outcome)) : state;
 }
 
 describe('a call pattern', () => {
-  it('matches and binds what the call pattern naming each field it gives does', () => {
-    fc.assert(
-      fc.property(
+  it('matches and binds what the call pattern naming each field it gives does', async () => {
+    await fc.assert(
+      fc.asyncProperty(
         variants.chain((variant) =>
           fc.record({
             variant: fc.constant(variant),
@@ -205,7 +205,7 @@ describe('a call pattern', () => {
             values: valuesOf(variant),
           }),
         ),
-        ({ variant, pattern, values }) => {
+        async ({ variant, pattern, values }) => {
           const bound = boundNames(pattern);
           const source = [
             declaration(variant),
@@ -215,7 +215,7 @@ describe('a call pattern', () => {
             `  const values: Array<E> = [${values.map((value) => literal(variant, value)).join(', ')}, E.Other]`,
             '  [values.map(byCall).join(";"), values.map(byName).join(";")]',
           ].join('\n');
-          const outcome = outcomeOf(source);
+          const outcome = await outcomeOf(source);
           expect(Array.isArray(outcome)).toBe(true);
           const [byCall = '', byName] = outcome as readonly string[];
           expect(byCall).toBe(byName);

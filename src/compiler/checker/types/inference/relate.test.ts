@@ -31,14 +31,14 @@ const tree =
   'fn tree(): Layout<Scope>{ f: fn(s: Scope): s.a, kids: [Layout{ f: fn(s): s.a * 10 }] }';
 
 /** What `main` gives after the declarations above and `functions`. */
-function outcome(body: string, ...functions: readonly string[]): unknown {
+async function outcome(body: string, ...functions: readonly string[]): Promise<unknown> {
   const source = [
     ...declarations,
     ...functions,
     'async fn main() -> Future<Int>:',
     `  ${body}`,
   ].join('\n');
-  const state = startToEnd(testRuntime(), compiledText(source));
+  const state = await startToEnd(testRuntime(), compiledText(source));
   return state.kind === 'finished' ? decodeJson(String(state.outcome)) : state;
 }
 
@@ -48,13 +48,13 @@ function codesAfter(...functions: readonly string[]): readonly number[] {
 }
 
 describe('a conversion into an `any` type while inferring', () => {
-  it('bounds the variables of a literal converted into an `any` type it meets', () => {
+  it('bounds the variables of a literal converted into an `any` type it meets', async () => {
     expect(codesAfter(tree)).toEqual([]);
-    expect(outcome('tree().draw(Scope{a: 2})', tree)).toBe(22);
+    expect(await outcome('tree().draw(Scope{a: 2})', tree)).toBe(22);
   });
 
-  it("bounds the variables of the `any` type a value converts into by what the value's type meets", () => {
-    expect(outcome('takes(tree(), Scope{a: 2})', tree)).toBe(22);
+  it("bounds the variables of the `any` type a value converts into by what the value's type meets", async () => {
+    expect(await outcome('takes(tree(), Scope{a: 2})', tree)).toBe(22);
   });
 
   it("proposes what a witness's signature makes, judging its own constraints once settled", () => {
@@ -69,26 +69,26 @@ describe('a conversion into an `any` type while inferring', () => {
     expect(codesAfter(...conditional, 'fn tag(self: Scope) -> Int: 0')).toEqual([]);
   });
 
-  it('makes a value holding variables the instantiation its witness is declared for', () => {
+  it('makes a value holding variables the instantiation its witness is declared for', async () => {
     const declared = ['struct Box<T> { x: T }', 'fn draw(self: Box<Scope>, s: Scope) -> Int: s.a'];
-    expect(outcome('takes(Box{x: Scope{a: 1}}, Scope{a: 2})', ...declared)).toBe(2);
+    expect(await outcome('takes(Box{x: Scope{a: 1}}, Scope{a: 2})', ...declared)).toBe(2);
   });
 
-  it('infers what only the instantiation its witness is declared for gives', () => {
+  it('infers what only the instantiation its witness is declared for gives', async () => {
     const declared = ['struct Box<T> { x: T? }', 'fn draw(self: Box<Scope>, s: Scope) -> Int: s.a'];
-    expect(outcome('takes(Box{x: none}, Scope{a: 2})', ...declared)).toBe(2);
+    expect(await outcome('takes(Box{x: none}, Scope{a: 2})', ...declared)).toBe(2);
   });
 
-  it('gives nothing where the type meets several instantiations, the other arguments deciding', () => {
+  it('gives nothing where the type meets several instantiations, the other arguments deciding', async () => {
     const both = [
       'struct Both {}',
       'fn draw(self: Both, s: Int) -> Int: 3',
       'fn draw(self: Both, s: String) -> Int: 4',
     ];
-    expect(outcome('takes(Both, "s")', ...both)).toBe(4);
+    expect(await outcome('takes(Both, "s")', ...both)).toBe(4);
   });
 
-  it('relates through the one instantiation that relates, and chooses no overload none does', () => {
+  it('relates through the one instantiation that relates, and chooses no overload none does', async () => {
     const overloads = [
       'struct Both {}',
       'fn draw(self: Both, s: Int) -> Int: 1',
@@ -104,8 +104,10 @@ describe('a conversion into an `any` type while inferring', () => {
       'struct Box<T> { x: T }',
     ];
     expect(
-      ['takesPair(Both)', 'f(Held{a: 1}, 1)', 'g(Box{x: 1}, 2)'].map((call) =>
-        outcome(call, ...overloads),
+      await Promise.all(
+        ['takesPair(Both)', 'f(Held{a: 1}, 1)', 'g(Box{x: 1}, 2)'].map((call) =>
+          outcome(call, ...overloads),
+        ),
       ),
     ).toEqual([0, 6, 8]);
   });
@@ -144,7 +146,7 @@ describe('a conversion into an `any` type while inferring', () => {
     ]);
   });
 
-  it('relates a contravariant receiver and an `any` value by the trait variance in either argument order', () => {
+  it('relates a contravariant receiver and an `any` value by the trait variance in either argument order', async () => {
     const varied = [
       'type ScopeShape = { a: Int }',
       'fn directLayout() -> Layout<ScopeShape>: Layout<ScopeShape>{ f: fn(s: ScopeShape): s.a }',
@@ -155,9 +157,9 @@ describe('a conversion into an `any` type while inferring', () => {
       '  (pick(directLayout(), Scope{a: 1}), pick(directShape(), Scope{a: 2}), pickRev(Scope{a: 3}, directLayout()))',
     ];
     expect(codesAfter(...varied)).toEqual([]);
-    expect(outcome('{ const a, b, c = chosen(); a.a + b.a * 10 + c.a * 100 }', ...varied)).toBe(
-      321,
-    );
+    expect(
+      await outcome('{ const a, b, c = chosen(); a.a + b.a * 10 + c.a * 100 }', ...varied),
+    ).toBe(321);
   });
 
   it('joins a covariant trait bound with `none` in either argument order, for concrete and `any` sources', () => {
@@ -174,7 +176,7 @@ describe('a conversion into an `any` type while inferring', () => {
     expect(codesAfter(...sources)).toEqual([]);
   });
 
-  it('infers through a trait whose receiver parameter defaults to `Self` (`Iterable<T, C = Self>`)', () => {
+  it('infers through a trait whose receiver parameter defaults to `Self` (`Iterable<T, C = Self>`)', async () => {
     const iterables = [
       'struct Bag<T> { items: Array<T> = [] }',
       'fn iterate<T>(self: Bag<T>) -> fn() -> Step<T>: self.items.iterate()',
@@ -185,6 +187,8 @@ describe('a conversion into an `any` type while inferring', () => {
       '  none',
     ];
     expect(codesAfter(...iterables)).toEqual([]);
-    expect(outcome('(firstOf([7, 8]) ?? 0) + (firstOf(emptyBag()) ?? 1)', ...iterables)).toBe(8);
+    expect(await outcome('(firstOf([7, 8]) ?? 0) + (firstOf(emptyBag()) ?? 1)', ...iterables)).toBe(
+      8,
+    );
   });
 });

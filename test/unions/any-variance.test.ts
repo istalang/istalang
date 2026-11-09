@@ -22,14 +22,14 @@ const baseTraits = [
 ];
 
 describe('design.md §9 acceptance anchors and exact `self` on witnesses (§3.10)', () => {
-  it('widens `any Source<Int>` to `any Source<Int?>` and converts `next()` to `Int?`', () => {
+  it('widens `any Source<Int>` to `any Source<Int?>` and converts `next()` to `Int?`', async () => {
     const decls = [
       ...baseTraits,
       'struct IntSource { value: Int }',
       'fn next(self: IntSource) -> Int: self.value',
     ];
     expect(
-      runMain(
+      await runMain(
         '(Int, Bool)',
         [
           'const narrow: any Source<Int> = IntSource{value: 42}',
@@ -45,7 +45,7 @@ describe('design.md §9 acceptance anchors and exact `self` on witnesses (§3.10
     ).toEqual([42, true]);
   });
 
-  it('converts `IntSource{}` directly into `any Source<Int?>` and admits `case IntSource` without warning', () => {
+  it('converts `IntSource{}` directly into `any Source<Int?>` and admits `case IntSource` without warning', async () => {
     const decls = [
       ...baseTraits,
       'struct IntSource { value: Int }',
@@ -65,7 +65,7 @@ describe('design.md §9 acceptance anchors and exact `self` on witnesses (§3.10
     ).toEqual([]);
 
     expect(
-      runMain(
+      await runMain(
         '(Int, Bool)',
         [
           'const s: any Source<Int?> = IntSource{value: 7}',
@@ -90,7 +90,7 @@ describe('design.md §9 acceptance anchors and exact `self` on witnesses (§3.10
     ).toEqual([checkerDiagnostics.heldNoValue.code]);
   });
 
-  it('rejects widening `any Sink<Int>` to `any Sink<Int?>` (5001) and allows narrowing `any Sink<Int?>` to `any Sink<Int>`', () => {
+  it('rejects widening `any Sink<Int>` to `any Sink<Int?>` (5001) and allows narrowing `any Sink<Int?>` to `any Sink<Int>`', async () => {
     const decls = [
       ...baseTraits,
       'struct OptSink { offset: Int }',
@@ -109,7 +109,7 @@ describe('design.md §9 acceptance anchors and exact `self` on witnesses (§3.10
     ).toEqual([checkerDiagnostics.notConforming.code]);
 
     expect(
-      runMain(
+      await runMain(
         '(Int, Int)',
         [
           'const wide: any Sink<Int?> = OptSink{offset: 10}',
@@ -189,7 +189,7 @@ describe('trait variance derivation and composition (§3.5, §3.10)', () => {
     ]);
   });
 
-  it('converts callback arguments, multi-trait `any` objects, and unions through `any` at runtime', () => {
+  it('converts callback arguments, multi-trait `any` objects, and unions through `any` at runtime', async () => {
     const decls = [
       ...baseTraits,
       'trait Subscribable<T> { fn onItem(self: Self, cb: fn(T) -> Int) -> Int }',
@@ -201,7 +201,7 @@ describe('trait variance derivation and composition (§3.5, §3.10)', () => {
       'fn put(self: OptEmitter, x: Int?) -> Int: (x ?? 0) + (self.v ?? 0)',
     ];
     expect(
-      runMain(
+      await runMain(
         '(Int, Int?, Int?, Int)',
         [
           'const sub: any Subscribable<Int?> = Emitter{v: 9}',
@@ -234,9 +234,9 @@ describe('trait variance derivation and composition (§3.5, §3.10)', () => {
 });
 
 describe('prelude generic traits (`Iterable`, `Container`, `Indexable`) through `any` (§3.8, §3.10)', () => {
-  it('converts `Array<Int>` and `any Iterable<Int>` into `any Iterable<Int?>`, `any Container<Int>`, and `any Indexable<Int, Int?>`', () => {
+  it('converts `Array<Int>` and `any Iterable<Int>` into `any Iterable<Int?>`, `any Container<Int>`, and `any Indexable<Int, Int?>`', async () => {
     expect(
-      runMain(
+      await runMain(
         '(Array<Int>, Array<Int>, Bool, Int?)',
         [
           'const directIt: any Iterable<Int?> = [1, 2, 3]',
@@ -251,9 +251,9 @@ describe('prelude generic traits (`Iterable`, `Container`, `Indexable`) through 
     ).toEqual([[1, 2, 3], [40, 50], true, 8]);
   });
 
-  it('lowers `any Iterable<Int>` widened to `any Iterable<Int?>` without crashing', () => {
+  it('lowers `any Iterable<Int>` widened to `any Iterable<Int?>` without crashing', async () => {
     expect(
-      runMain(
+      await runMain(
         'Array<Int>',
         'const narrowIt: any Iterable<Int> = [4, 5]\n  const wideIt: any Iterable<Int?> = narrowIt\n  [for x in wideIt: (x ?? 0) * 10]',
       ),
@@ -262,14 +262,14 @@ describe('prelude generic traits (`Iterable`, `Container`, `Indexable`) through 
 });
 
 describe('witnesses with defaults, generic requirements, generic witnesses, and literal receivers (§2, §3.10)', () => {
-  it('supports witnesses with trailing default parameters in both direct and indirect `any` conversions', () => {
+  it('supports witnesses with trailing default parameters in both direct and indirect `any` conversions', async () => {
     const decls = [
       ...baseTraits,
       'struct Stepper { start: Int }',
       'fn next(self: Stepper, step: Int = 5) -> Int: self.start + step',
     ];
     expect(
-      runMain(
+      await runMain(
         '(Int?, Int?)',
         [
           'const direct: any Source<Int?> = Stepper{start: 10}',
@@ -282,7 +282,7 @@ describe('witnesses with defaults, generic requirements, generic witnesses, and 
     ).toEqual([15, 25]);
   });
 
-  it('supports traits with generic required functions and generic witnesses through `any` variance', () => {
+  it('supports traits with generic required functions and generic witnesses through `any` variance', async () => {
     const decls = [
       'trait Mapper<T>:',
       '  fn mapWith<U>(self: Self, f: fn(T) -> U) -> Array<U>',
@@ -290,7 +290,7 @@ describe('witnesses with defaults, generic requirements, generic witnesses, and 
       'fn mapWith<V>(self: IntBox, f: fn(Int) -> V) -> Array<V>: [f(self.x)]',
     ];
     expect(
-      runMain(
+      await runMain(
         '(Array<Int>, Array<Int>)',
         [
           'const directMap: any Mapper<Int?> = IntBox{x: 4}',
@@ -303,10 +303,10 @@ describe('witnesses with defaults, generic requirements, generic witnesses, and 
     ).toEqual([[5], [12]]);
   });
 
-  it('allows a literal type to meet `any Source<Int?>` through its base type’s by-value witness (§2)', () => {
+  it('allows a literal type to meet `any Source<Int?>` through its base type’s by-value witness (§2)', async () => {
     const decls = [...baseTraits, 'fn next(self: String) -> Int: self.length()'];
     expect(
-      runMain(
+      await runMain(
         'Int?',
         ['const tag: "draft" = "draft"', 'const s: any Source<Int?> = tag', 's.next()'].join(
           '\n  ',
@@ -318,7 +318,7 @@ describe('witnesses with defaults, generic requirements, generic witnesses, and 
 });
 
 describe('constrained and computed types meeting `any` through variance (§3.5, §3.10)', () => {
-  it('converts associated types and keyed fields with trait bounds into `any` through variance', () => {
+  it('converts associated types and keyed fields with trait bounds into `any` through variance', async () => {
     const decls = [
       ...baseTraits,
       'trait HasSource { type Data is Source<Int> }',
@@ -329,7 +329,7 @@ describe('constrained and computed types meeting `any` through variance (§3.5, 
       'fn fromKeyed<S is struct { [_] is Source<Int> }, K in keyof S>(s: S, k: K) -> any Source<Int?>: s[k]',
     ];
     expect(
-      runMain(
+      await runMain(
         '(Int?, Int?)',
         [
           'const b = Boxed{v: 33}',
@@ -341,7 +341,7 @@ describe('constrained and computed types meeting `any` through variance (§3.5, 
     ).toEqual([33, 33]);
   });
 
-  it('converts type parameters with struct constraints or blanket witnesses into `any` through variance', () => {
+  it('converts type parameters with struct constraints or blanket witnesses into `any` through variance', async () => {
     const decls = [
       ...baseTraits,
       'trait Tag {}',
@@ -351,7 +351,7 @@ describe('constrained and computed types meeting `any` through variance (§3.5, 
       'fn fromBlanket<S is Tag>(s: S) -> any Source<Int?>: s',
     ];
     expect(
-      runMain(
+      await runMain(
         '(Int?, Int?)',
         [
           'const t = Tagged{v: 1, size: 9}',
@@ -389,8 +389,8 @@ describe('several instantiations fitting, none closer (§3.10)', () => {
     ]);
   });
 
-  it('runs the first declared for a value another `any` type brought, and finds it by its type', () => {
-    expect(runMain('(Int, Int, Int)', body, either(optional, union))).toEqual([105, 105, 1]);
-    expect(runMain('(Int, Int, Int)', body, either(union, optional))).toEqual([200, 200, 1]);
+  it('runs the first declared for a value another `any` type brought, and finds it by its type', async () => {
+    expect(await runMain('(Int, Int, Int)', body, either(optional, union))).toEqual([105, 105, 1]);
+    expect(await runMain('(Int, Int, Int)', body, either(union, optional))).toEqual([200, 200, 1]);
   });
 });

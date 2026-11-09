@@ -32,7 +32,7 @@ const program = compiledText(
 );
 
 describe('terminating an instance', () => {
-  it("runs the cleanup of a call its root held, as that call's disposal", () => {
+  it("runs the cleanup of a call its root held, as that call's disposal", async () => {
     const notes: unknown[] = [];
     const host: HostExterns = {
       'main.note(String)': ([text]) => {
@@ -43,10 +43,12 @@ describe('terminating an instance', () => {
       'main.gate()': (_, call: HostCall) => call.pending('gate'),
     };
     const test = testRuntime({ host });
-    test.runtime.deploy(program).start('t');
-    expect(test.runtime.fill('t', 'approval', false).state).toMatchObject({ kind: 'panicked' });
+    await test.runtime.deploy(program).start('t');
+    expect((await test.runtime.fill('t', 'approval', false)).state).toMatchObject({
+      kind: 'panicked',
+    });
     expect(notes).toEqual([]);
-    expect(test.runtime.terminate('t').state).toMatchObject({ kind: 'terminated' });
+    expect((await test.runtime.terminate('t')).state).toMatchObject({ kind: 'terminated' });
     expect(notes).toEqual(['child cleaned up']);
   });
 });

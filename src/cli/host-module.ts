@@ -16,8 +16,8 @@ import { randomUUID } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import type { HostCall, HostExterns } from '../runtime/boundary/host-natives.ts';
+import type { Arrived } from '../runtime/host/drive.ts';
 import type { Runtime } from '../runtime/host/index.ts';
-import type { Arrived } from '../runtime/host/settle.ts';
 import { Refusal } from '../runtime/refusal.ts';
 
 /** A JSON value a promise gave, for the future `token` of `instance`. */
@@ -35,7 +35,10 @@ export interface HostModule {
   /** Settles once the next promise does. */
   readonly nextSettled: () => Promise<void>;
   /** Fills every future whose promise settled since the last call; how each instance advanced. */
-  readonly arrivals: (runtime: Runtime, report: (message: string) => void) => readonly Arrived[];
+  readonly arrivals: (
+    runtime: Runtime,
+    report: (message: string) => void,
+  ) => Promise<readonly Arrived[]>;
 }
 
 /** A host module loaded, or why it can't implement externs: the user's to fix. */
@@ -107,13 +110,15 @@ function promising(entries: readonly [string, ModuleExtern][]): HostModule {
     externs: Object.fromEntries(entries.map(([key, extern]) => [key, adapt(key, extern)])),
     waiting: () => pending.size > 0,
     nextSettled: () => Promise.race(pending),
-    arrivals: (runtime, report) => {
+    arrivals: async (runtime, report) => {
       for (const failure of failures.splice(0)) {
         report(failure);
       }
-      return settled.splice(0).flatMap(({ instance, token, json }) => {
+      const arrived: Arrived[] = [];
+      for (const { instance, token, json } of settled.splice(0)) {
         try {
-          return [{ instance, advanced: runtime.fill(instance, token, json) }];
+          // biome-ignore lint/performance/noAwaitInLoops: fills run one at a time, as wakes do.
+          arrived.push({ instance, advanced: await runtime.fill(instance, token, json) });
         } catch (error) {
           if (!(error instanceof Refusal)) {
             throw error;
@@ -121,9 +126,9 @@ function promising(entries: readonly [string, ModuleExtern][]): HostModule {
           report(
             `ista: the host couldn't fill a future of instance ${instance}: ${error.message}\n`,
           );
-          return [];
         }
-      });
+      }
+      return arrived;
     },
   };
 }

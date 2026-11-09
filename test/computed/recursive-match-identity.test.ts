@@ -20,7 +20,7 @@ const dataDecls = [
 ];
 
 describe('a recursive type `match` use', () => {
-  it('is one type with a recursive alias of its structure, both ways', () => {
+  it('is one type with a recursive alias of its structure, both ways', async () => {
     const declarations = [
       ...dataDecls,
       'type Chain = { value: Int, next: Array<Chain> }',
@@ -29,7 +29,7 @@ describe('a recursive type `match` use', () => {
     ];
     expect(codesOf(...declarations)).toEqual([]);
     expect(
-      runMain(
+      await runMain(
         'Int',
         'toData(toChain(struct{value: 3, next: [struct{value: 4, next: []}]})).next.length()',
         declarations,
@@ -48,7 +48,7 @@ describe('a recursive type `match` use', () => {
     expect(codesOf(...declarations)).toEqual([]);
   });
 
-  it('reduces a type `match` its own use is given inside its body, once that use is closed', () => {
+  it('reduces a type `match` its own use is given inside its body, once that use is closed', async () => {
     const declarations = [
       'struct Node { v: Int }',
       'type Wrap<X> = match X:',
@@ -59,10 +59,10 @@ describe('a recursive type `match` use', () => {
       'fn first(a: A<Node>) -> Int: a.w[0] + a.n',
     ];
     expect(codesOf(...declarations)).toEqual([]);
-    expect(runMain('Int', 'first(struct{w: [5], n: 2})', declarations)).toBe(7);
+    expect(await runMain('Int', 'first(struct{w: [5], n: 2})', declarations)).toBe(7);
   });
 
-  it('closes a type `match` its own use is given inside its body when it holds itself in turn', () => {
+  it('closes a type `match` its own use is given inside its body when it holds itself in turn', async () => {
     const declarations = [
       'struct Node { v: Int }',
       'type Box<X> = match X:',
@@ -73,7 +73,11 @@ describe('a recursive type `match` use', () => {
     ];
     expect(codesOf(...declarations)).toEqual([]);
     expect(
-      runMain('Int', 'depth(struct{w: [struct{inner: [struct{inner: []}]}], n: 1})', declarations),
+      await runMain(
+        'Int',
+        'depth(struct{w: [struct{inner: [struct{inner: []}]}], n: 1})',
+        declarations,
+      ),
     ).toBe(1);
   });
 

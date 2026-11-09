@@ -23,7 +23,7 @@ const { heldNoValue, decidedCondition, unreachableCase } = checkerDiagnostics;
 const warnings = new Set([heldNoValue.code, decidedCondition.code, unreachableCase.code]);
 
 describe('a field loop over fields of different types', () => {
-  it('matches each field by its type and its key, with nothing reported', () => {
+  it('matches each field by its type and its key, with nothing reported', async () => {
     const declarations = [
       'struct Mixed { a: Int, b: String, c: Bool }',
       'fn describe(m: Mixed) -> String:',
@@ -40,7 +40,7 @@ describe('a field loop over fields of different types', () => {
       '  out',
     ];
     expect(codesOf(...declarations)).toEqual([]);
-    expect(runMain('String', 'describe(Mixed{a: 1, b: "x", c: true})', declarations)).toBe(
+    expect(await runMain('String', 'describe(Mixed{a: 1, b: "x", c: true})', declarations)).toBe(
       'a:int 1A;b:str x-;c:other-;',
     );
   });
@@ -77,14 +77,14 @@ describe('a case its subject’s type rules out, written over one type', () => {
     expect(codesOf(text)).toEqual([heldNoValue.code]);
   });
 
-  it('leaves the cases that run as they are', () => {
+  it('leaves the cases that run as they are', async () => {
     const declarations = [
       'fn f(x: Int) -> Int:',
       '  match x:',
       '    case String: 0',
       '    case n: n + 1',
     ];
-    expect(runMain('Int', 'f(4)', declarations)).toBe(5);
+    expect(await runMain('Int', 'f(4)', declarations)).toBe(5);
   });
 });
 
@@ -102,7 +102,7 @@ describe('a union subject', () => {
     expect(codesOf(text)).toEqual([heldNoValue.code]);
   });
 
-  it('keeps an alternative that runs, leaving out the one ruled out', () => {
+  it('keeps an alternative that runs, leaving out the one ruled out', async () => {
     const declarations = [
       'fn f(x: "a" | "b") -> String:',
       '  match x:',
@@ -110,7 +110,7 @@ describe('a union subject', () => {
       '    case "b": "b"',
     ];
     expect(codesOf(...declarations)).toEqual([]);
-    expect(runMain('String', '`${f("a")}${f("b")}`', declarations)).toBe('ab');
+    expect(await runMain('String', '`${f("a")}${f("b")}`', declarations)).toBe('ab');
   });
 
   it.each([
@@ -118,9 +118,9 @@ describe('a union subject', () => {
     ['!=', 'fn f(x: "a" | "b") -> Bool: x != "c"', true],
     ['is', 'fn f(x: "a" | "b") -> Bool: x is "c"', false],
     ['== against a type that never holds it', 'fn f(x: Int | String) -> Bool: x == true', false],
-  ])('decides %s by the types, warned of once', (_case, text, value) => {
+  ])('decides %s by the types, warned of once', async (_case, text, value) => {
     expect(codesOf(text)).toEqual([decidedCondition.code]);
-    expect(runMain('Bool', 'f("a")', [text])).toBe(value);
+    expect(await runMain('Bool', 'f("a")', [text])).toBe(value);
   });
 });
 
@@ -146,14 +146,14 @@ function matchesOf(v: string, k: string, name: string, keyOnly = false): readonl
 }
 
 /** What each of `functions`, `fn name(s: Gen) -> String`, gives on the struct of `fields`. */
-function outcomes(
+async function outcomes(
   fields: readonly GeneratedField[],
   declarations: readonly string[],
   functions: readonly string[],
-): readonly string[] {
+): Promise<readonly string[]> {
   const value = `Gen{${fields.map((f) => `${f.name}: ${f.value}`).join(', ')}}`;
   const body = `[${functions.map((each) => `${each}(${value})`).join(', ')}]`;
-  return runMain('Array<String>', body, declarations) as readonly string[];
+  return (await runMain('Array<String>', body, declarations)) as readonly string[];
 }
 
 /** The errors `declarations` report, leaving out what code its types rule out is warned of by. */
@@ -166,25 +166,25 @@ const fieldsAndTarget = generatedFieldsArbitrary.chain((fields) =>
 );
 
 describe('the commute law for ruled-out cases', () => {
-  it('agrees: the loop over the struct and the body by hand, on types and keys', () => {
-    fc.assert(
-      fc.property(fieldsAndTarget, ([fields, name]) => {
+  it('agrees: the loop over the struct and the body by hand, on types and keys', async () => {
+    await fc.assert(
+      fc.asyncProperty(fieldsAndTarget, async ([fields, name]) => {
         const declarations = [
           structOf(fields),
           ...loopOver('concrete', 'Gen', { name }),
           ...byHand(fields, name),
         ];
         expect(errorsOf(declarations)).toEqual([]);
-        const [concrete, hand] = outcomes(fields, declarations, ['concrete', 'byHand']);
+        const [concrete, hand] = await outcomes(fields, declarations, ['concrete', 'byHand']);
         expect(hand).toBe(concrete);
       }),
       { numRuns: 12 },
     );
   });
 
-  it('agrees: a generic loop instantiated, the loop over the struct, and by hand, on keys', () => {
-    fc.assert(
-      fc.property(fieldsAndTarget, ([fields, name]) => {
+  it('agrees: a generic loop instantiated, the loop over the struct, and by hand, on keys', async () => {
+    await fc.assert(
+      fc.asyncProperty(fieldsAndTarget, async ([fields, name]) => {
         const constraint = `S is struct { ${fieldList(fields)} }`;
         const declarations = [
           structOf(fields),
@@ -193,7 +193,7 @@ describe('the commute law for ruled-out cases', () => {
           ...byHand(fields, name, true),
         ];
         expect(errorsOf(declarations)).toEqual([]);
-        const [generic, concrete, hand] = outcomes(fields, declarations, [
+        const [generic, concrete, hand] = await outcomes(fields, declarations, [
           'generic',
           'concrete',
           'byHand',

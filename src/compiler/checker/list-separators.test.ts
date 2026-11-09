@@ -12,7 +12,7 @@ import { reported } from './check.test-kit.ts';
 import { checkerDiagnostics } from './diagnostics/index.ts';
 
 describe('comma-separated declarations, constraints and mapped types (§4)', () => {
-  it('checks and runs all declaration and type forms from §4 written with ","', () => {
+  it('checks and runs all declaration and type forms from §4 written with ","', async () => {
     const decls = lines(
       'type Item = { sku: String, qty: Int }',
       'struct Req { id: Int, value: String }',
@@ -37,18 +37,18 @@ describe('comma-separated declarations, constraints and mapped types (§4)', () 
       '`${t}:${m.id}:${m.count}:${xs[0]}:${Color.Green is Color}:${Decision.Approved is Decision}`',
     );
     expect(reported(`${decls}\nfn check(): ()`)).toEqual(reportedNothing);
-    expect(mainGives('String', body, decls)).toBe('form:ok:12:6:true:true');
+    expect(await mainGives('String', body, decls)).toBe('form:ok:12:6:true:true');
   });
 });
 
 describe('empty [] and [:] literals against union types (§3)', () => {
-  it('selects Array<T> for [] and Map<K, V> for [:] when a union holds both', () => {
+  it('selects Array<T> for [] and Map<K, V> for [:] when a union holds both', async () => {
     const body = lines(
       'const a: Array<Int> | Map<String, Int> = []',
       'const m: Array<Int> | Map<String, Int> = [:]',
       '(a is Array<Int>, m is Map<String, Int>)',
     );
-    expect(mainGives('(Bool, Bool)', body)).toEqual([true, true]);
+    expect(await mainGives('(Bool, Bool)', body)).toEqual([true, true]);
   });
 
   it('still reports 5300 when [] or [:] has no expected type or fits multiple array/map members', () => {

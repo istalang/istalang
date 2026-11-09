@@ -15,7 +15,7 @@ import { reported } from '../../check.test-kit.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 
 describe('parameter patterns in declared functions and lambdas (§5)', () => {
-  it('destructures named structs, generic structs, annotated shapes, {…} shorthands and tuples', () => {
+  it('destructures named structs, generic structs, annotated shapes, {…} shorthands and tuples', async () => {
     const decls = lines(
       'struct Point { x: Int, y: Int }',
       'struct Pair<A, B> { first: A, second: B }',
@@ -31,19 +31,25 @@ describe('parameter patterns in declared functions and lambdas (§5)', () => {
       'const r: Rect = struct{w: 5, h: 6}',
       '(sumPoint(p), joinPair(Pair{first: "k", second: 9}), area(r), perim(r), tupleSum((7, 8)))',
     );
-    expect(mainGives('(Int, String, Int, Int, Int)', body, decls)).toEqual([7, 'k:9', 30, 22, 15]);
+    expect(await mainGives('(Int, String, Int, Int, Int)', body, decls)).toEqual([
+      7,
+      'k:9',
+      30,
+      22,
+      15,
+    ]);
   });
 
-  it('destructures nested patterns with field renames, struct rest, and implicit nominal-to-shape conversion', () => {
+  it('destructures nested patterns with field renames, struct rest, and implicit nominal-to-shape conversion', async () => {
     const decls = lines(
       'struct Pixel { x: Int, y: Int, z: Int }',
       'fn takeRest({x as px, ...rest}: { x: Int, y: Int, z: Int }) -> Int:',
       '  px * 100 + rest.y * 10 + rest.z',
     );
-    expect(mainGives('Int', 'takeRest(Pixel{x: 1, y: 2, z: 3})', decls)).toBe(123);
+    expect(await mainGives('Int', 'takeRest(Pixel{x: 1, y: 2, z: 3})', decls)).toBe(123);
   });
 
-  it('infers lambda parameter pattern types from the expected function type, including generic structs', () => {
+  it('infers lambda parameter pattern types from the expected function type, including generic structs', async () => {
     const decls = lines(
       'struct Point { x: Int, y: Int }',
       'struct Box<T> { value: T, weight: Int }',
@@ -60,7 +66,11 @@ describe('parameter patterns in declared functions and lambdas (§5)', () => {
       '(sums1, sums2, sums3, labels, formatted)',
     );
     expect(
-      mainGives('(Array<Int>, Array<Int>, Array<Int>, Array<String>, Array<String>)', body, decls),
+      await mainGives(
+        '(Array<Int>, Array<Int>, Array<Int>, Array<String>, Array<String>)',
+        body,
+        decls,
+      ),
     ).toEqual([
       [3, 7],
       [2, 12],
@@ -70,7 +80,7 @@ describe('parameter patterns in declared functions and lambdas (§5)', () => {
     ]);
   });
 
-  it('supports "as self" methods, "as name" named arguments, and defaults using earlier pattern bindings', () => {
+  it('supports "as self" methods, "as name" named arguments, and defaults using earlier pattern bindings', async () => {
     const decls = lines(
       'struct Point { x: Int, y: Int }',
       'struct Span { start: Int, end: Int }',
@@ -83,19 +93,19 @@ describe('parameter patterns in declared functions and lambdas (§5)', () => {
       'const p = Point{x: 4, y: 5}',
       '(p.manhattan(), manhattan(p), shift(origin: p, dx: 10), shift(p), window(), window(Span{start: 1, end: 4}))',
     );
-    expect(mainGives('(Int, Int, Int, Int, Int, Int)', body, decls)).toEqual([
+    expect(await mainGives('(Int, Int, Int, Int, Int, Int)', body, decls)).toEqual([
       9, 9, 19, 13, 297, 143,
     ]);
   });
 
-  it("takes a spawned function's argument apart in the instance it starts, from its JSON", () => {
+  it("takes a spawned function's argument apart in the instance it starts, from its JSON", async () => {
     const decls = lines(
       'struct Point { x: Int, y: Int }',
       'async fn sum(Point{x, y} as p, (a, b): (Int, Int)) -> Future<Int>:',
       '  x * 1000 + y * 100 + p.x * 10 + a + b',
     );
     const body = 'await spawn sum(Point{x: 1, y: 2}, (3, 4)).result()';
-    expect(mainGives('Result<Int>', body, decls)).toEqual({ _type: 'Ok', value: 1217 });
+    expect(await mainGives('Result<Int>', body, decls)).toEqual({ _type: 'Ok', value: 1217 });
   });
 
   it('detects overload clashes between a pattern parameter and a plain parameter of the same type', () => {
@@ -262,10 +272,10 @@ describe('a pattern naming its type types its parameter, as an annotation does (
     'fn applyOnly<T>(f: fn(T) -> Float, value: T) -> Float: f(value)',
   );
 
-  it("chooses an overload and infers a type argument by a lambda's pattern-named type", () => {
+  it("chooses an overload and infers a type argument by a lambda's pattern-named type", async () => {
     const body =
       '(apply(fn(Point{x, y}): x + y), applyOnly(fn(Rect{w, h}): w * h, Rect{w: 2.0, h: 5.0}))';
-    expect(mainGives('(Float, Float)', body, shapes)).toEqual([3, 10]);
+    expect(await mainGives('(Float, Float)', body, shapes)).toEqual([3, 10]);
   });
 
   it('reads a default of a parameter whose pattern names its type as one of an annotated parameter', () => {
@@ -314,9 +324,9 @@ describe('equivalence property: parameter pattern vs body destructuring (§5, no
       };
     });
 
-  it('runs a function taking a parameter pattern to the exact same value as one destructuring in its first line', () => {
-    fc.assert(
-      fc.property(patternCases, (testCase) => {
+  it('runs a function taking a parameter pattern to the exact same value as one destructuring in its first line', async () => {
+    await fc.assert(
+      fc.asyncProperty(patternCases, async (testCase) => {
         const decls = lines(
           `fn byParam(${testCase.paramPattern}) -> Int:`,
           `  ${testCase.expr}`,
@@ -325,7 +335,7 @@ describe('equivalence property: parameter pattern vs body destructuring (§5, no
           `  ${testCase.expr}`,
         );
         const body = `byParam(${testCase.value}) == byConst(${testCase.value})`;
-        expect(mainGives('Bool', body, decls)).toBe(true);
+        expect(await mainGives('Bool', body, decls)).toBe(true);
       }),
       { numRuns: 40 },
     );

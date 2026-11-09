@@ -29,12 +29,12 @@ const argumentsAndValues = [
 ] as const;
 
 describe('a type match under instantiation', () => {
-  it('gives what the substituted program gives', () => {
-    fc.assert(
-      fc.property(fc.constantFrom(...argumentsAndValues), ({ written, value }) => {
+  it('gives what the substituted program gives', async () => {
+    await fc.assert(
+      fc.asyncProperty(fc.constantFrom(...argumentsAndValues), async ({ written, value }) => {
         const result = `Unwrap<${written}>`;
-        const generic = runMain(result, `kept<${written}>(${value})`, declarations);
-        const substituted = runMain(result, `direct(${value})`, [
+        const generic = await runMain(result, `kept<${written}>(${value})`, declarations);
+        const substituted = await runMain(result, `direct(${value})`, [
           ...declarations,
           `fn direct(x: ${result}) -> ${result}: x`,
         ]);

@@ -58,7 +58,7 @@ function counting(): { readonly host: HostExterns; readonly reads: () => number 
 }
 
 describe('the host API', () => {
-  it('lists what a host may start by key, and starts one with JSON arguments', () => {
+  it('lists what a host may start by key, and starts one with JSON arguments', async () => {
     const test = testRuntime({ host: counting().host });
     const deployed = test.runtime.deploy(program);
     expect(deployed.starts).toEqual(
@@ -68,35 +68,37 @@ describe('the host API', () => {
       { id: 'a', amount: 2 },
       { id: 'b', amount: 3 },
     ];
-    const started = deployed.start('t', {
+    const started = await deployed.start('t', {
       function: 'main.total(prelude.Array<main.Order>, Float)',
       arguments: [orders, 1.5],
     });
-    expect(runToEnd(test, 't', started)).toEqual({ kind: 'finished', outcome: '7.5' });
+    expect(await runToEnd(test, 't', started)).toEqual({ kind: 'finished', outcome: '7.5' });
   });
 
-  it("refuses a start whose JSON doesn't fit, or names no startable function, storing nothing", () => {
+  it("refuses a start whose JSON doesn't fit, or names no startable function, storing nothing", async () => {
     const test = testRuntime({ host: counting().host });
     const deployed = test.runtime.deploy(program);
     const key = 'main.total(prelude.Array<main.Order>, Float)';
-    expect(() => deployed.start('a', { function: key, arguments: [[{ id: 'a' }], 1] })).toThrow(
+    await expect(
+      deployed.start('a', { function: key, arguments: [[{ id: 'a' }], 1] }),
+    ).rejects.toThrow(
       expect.objectContaining({
         reason: 'unfitJson',
         message: expect.stringContaining('amount: missing'),
       }),
     );
-    expect(() => deployed.start('b', { function: key, arguments: [[]] })).toThrow(
+    await expect(deployed.start('b', { function: key, arguments: [[]] })).rejects.toThrow(
       expect.objectContaining({ reason: 'notStartable' }),
     );
-    expect(() => deployed.start('c', { function: 'main.nothing()' })).toThrow(Refusal);
+    await expect(deployed.start('c', { function: 'main.nothing()' })).rejects.toThrow(Refusal);
     expect(test.store.commits).toEqual([]);
   });
 
-  it('fills a named future with JSON, refusing JSON that does not fit and ignoring a token nothing waits on, without committing', () => {
+  it('fills a named future with JSON, refusing JSON that does not fit and ignoring a token nothing waits on, without committing', async () => {
     const { host } = counting();
     const test = testRuntime({ host });
     const deployed = test.runtime.deploy(program);
-    const started = deployed.start('d', {
+    const started = await deployed.start('d', {
       function: 'main.decide(main.Order)',
       arguments: [{ id: 'o1', amount: 1 }],
     });
@@ -105,32 +107,40 @@ describe('the host API', () => {
       'approval',
     );
     const commits = test.store.commits.length;
-    expect(() => test.runtime.fill('d', 'approve o1', 'yes')).toThrow(
+    await expect(test.runtime.fill('d', 'approve o1', 'yes')).rejects.toThrow(
       expect.objectContaining({ reason: 'unfitJson' }),
     );
     expect(test.store.commits).toHaveLength(commits);
-    const ignored = test.runtime.fill('d', 'approve nobody', true);
+    const ignored = await test.runtime.fill('d', 'approve nobody', true);
     expect(ignored.state).toEqual(started.state);
     expect(test.store.commits).toHaveLength(commits);
-    const filled = test.runtime.fill('d', 'approve o1', true);
-    expect(runToEnd(test, 'd', filled)).toEqual({ kind: 'finished', outcome: '"o1 1/1"' });
+    const filled = await test.runtime.fill('d', 'approve o1', true);
+    expect(await runToEnd(test, 'd', filled)).toEqual({ kind: 'finished', outcome: '"o1 1/1"' });
   });
 
-  it('reads an extern constant once per instance, keeping it across commits', () => {
+  it('reads an extern constant once per instance, keeping it across commits', async () => {
     const { host, reads } = counting();
     const test = testRuntime({ host });
     const deployed = test.runtime.deploy(program);
     const order = { id: 'o', amount: 1 };
-    deployed.start('first', { function: 'main.decide(main.Order)', arguments: [order] });
-    deployed.start('second', { function: 'main.decide(main.Order)', arguments: [order] });
-    const first = runToEnd(test, 'first', test.runtime.fill('first', 'approve o', true));
+    await deployed.start('first', { function: 'main.decide(main.Order)', arguments: [order] });
+    await deployed.start('second', { function: 'main.decide(main.Order)', arguments: [order] });
+    const first = await runToEnd(
+      test,
+      'first',
+      await test.runtime.fill('first', 'approve o', true),
+    );
     expect(first).toEqual({ kind: 'finished', outcome: '"o 1/1"' });
-    const second = runToEnd(test, 'second', test.runtime.fill('second', 'approve o', true));
+    const second = await runToEnd(
+      test,
+      'second',
+      await test.runtime.fill('second', 'approve o', true),
+    );
     expect(second).toEqual({ kind: 'finished', outcome: '"o 2/2"' });
     expect(reads()).toBe(2);
   });
 
-  it('retries a panicked instance at the time its failed segment started, or terminates it', () => {
+  it('retries a panicked instance at the time its failed segment started, or terminates it', async () => {
     const retried = compiledText(
       [
         "import * as time from 'time'",
@@ -149,30 +159,33 @@ describe('the host API', () => {
     const test = testRuntime({ host: { 'main.ready()': ready } });
     test.clock.set(5n);
     const deployed = test.runtime.deploy(retried);
-    expect(deployed.start('r').state).toMatchObject({ kind: 'panicked', message: 'not ready' });
+    expect((await deployed.start('r')).state).toMatchObject({
+      kind: 'panicked',
+      message: 'not ready',
+    });
     test.clock.set(9n);
-    expect(runToEnd(test, 'r', test.runtime.retry('r'))).toEqual({
+    expect(await runToEnd(test, 'r', await test.runtime.retry('r'))).toEqual({
       kind: 'finished',
       outcome: '5',
     });
-    expect(() => test.runtime.retry('r')).toThrow(
+    await expect(test.runtime.retry('r')).rejects.toThrow(
       expect.objectContaining({ reason: 'notPanicked' }),
     );
     calls = 0;
-    deployed.start('t');
-    expect(() => test.runtime.fill('t', 'any', true)).toThrow(
+    await deployed.start('t');
+    await expect(test.runtime.fill('t', 'any', true)).rejects.toThrow(
       expect.objectContaining({ reason: 'panicked' }),
     );
-    expect(test.runtime.terminate('t').state).toMatchObject({
+    expect((await test.runtime.terminate('t')).state).toMatchObject({
       kind: 'terminated',
       message: 'not ready',
     });
-    expect(test.runtime.wake('t').state).toMatchObject({ kind: 'terminated' });
-    expect(test.runtime.fill('t', 'any', true).state).toMatchObject({ kind: 'terminated' });
-    expect(() => test.runtime.terminate('t')).toThrow(Refusal);
+    expect((await test.runtime.wake('t')).state).toMatchObject({ kind: 'terminated' });
+    expect((await test.runtime.fill('t', 'any', true)).state).toMatchObject({ kind: 'terminated' });
+    await expect(test.runtime.terminate('t')).rejects.toThrow(Refusal);
   });
 
-  it("keeps a spawned instance's name the runtime's, and its call the committing run's", () => {
+  it("keeps a spawned instance's name the runtime's, and its call the committing run's", async () => {
     const spawning = compiledText(
       [
         'extern fn pick() -> Int',
@@ -201,11 +214,13 @@ describe('the host API', () => {
     };
     const host = { 'main.pick()': pick };
     const first = testRuntime({ store: crashingOnce, host }).runtime.deploy(spawning);
-    expect(() => first.start('a/1')).toThrow(expect.objectContaining({ reason: 'reservedName' }));
-    expect(() => first.start('p')).toThrow('crash');
+    await expect(first.start('a/1')).rejects.toThrow(
+      expect.objectContaining({ reason: 'reservedName' }),
+    );
+    await expect(first.start('p')).rejects.toThrow('crash');
     const test = testRuntime({ store: inner, host });
-    const started = test.runtime.deploy(spawning).start('p');
-    expect(settleAll(test, 'p', started).get('p/1')).toMatchObject({
+    const started = await test.runtime.deploy(spawning).start('p');
+    expect((await settleAll(test, 'p', started)).get('p/1')).toMatchObject({
       kind: 'finished',
       outcome: 2n,
     });
@@ -228,7 +243,7 @@ describe('the host API', () => {
     );
   });
 
-  it('fills a future once, however many segments the fill runs, crashEveryAwait included', () => {
+  it('fills a future once, however many segments the fill runs, crashEveryAwait included', async () => {
     const waiting = compiledText(
       [
         "import * as time from 'time'",
@@ -243,14 +258,14 @@ describe('the host API', () => {
       'main.approval()': (_: readonly unknown[], call: HostCall) => call.pending('a'),
     };
     const test = testRuntime({ host });
-    test.runtime.deploy(waiting).start('c', { crashEveryAwait: true });
-    expect(runToEnd(test, 'c', test.runtime.fill('c', 'a', true))).toEqual({
+    await test.runtime.deploy(waiting).start('c', { crashEveryAwait: true });
+    expect(await runToEnd(test, 'c', await test.runtime.fill('c', 'a', true))).toEqual({
       kind: 'finished',
       outcome: 'true',
     });
   });
 
-  it('retries a panic in the segment a fill ran, filling the future again', () => {
+  it('retries a panic in the segment a fill ran, filling the future again', async () => {
     const filled = compiledText(
       [
         'extern fn approval() -> Future<Bool>',
@@ -272,9 +287,9 @@ describe('the host API', () => {
       'main.ready()': ready,
     };
     const test = testRuntime({ host });
-    test.runtime.deploy(filled).start('r');
-    expect(test.runtime.fill('r', 'a', true).state).toMatchObject({ kind: 'panicked' });
-    expect(runToEnd(test, 'r', test.runtime.retry('r'))).toEqual({
+    await test.runtime.deploy(filled).start('r');
+    expect((await test.runtime.fill('r', 'a', true)).state).toMatchObject({ kind: 'panicked' });
+    expect(await runToEnd(test, 'r', await test.runtime.retry('r'))).toEqual({
       kind: 'finished',
       outcome: 'true',
     });
@@ -284,7 +299,7 @@ describe('the host API', () => {
     expect(() => testRuntime({ host: { 'time.now()': () => 0 } })).toThrow(Refusal);
   });
 
-  it('gives a host every int as a bigint, and takes back a bigint or a whole number for one', () => {
+  it('gives a host every int as a bigint, and takes back a bigint or a whole number for one', async () => {
     const given: unknown[] = [];
     const host: HostExterns = {
       'main.echo(Int, Float)': ([count, rate]) => {
@@ -299,8 +314,8 @@ describe('the host API', () => {
       ].join('\n'),
     );
     const test = testRuntime({ host });
-    const started = test.runtime.deploy(echoing).start('e');
-    expect(runToEnd(test, 'e', started)).toEqual({
+    const started = await test.runtime.deploy(echoing).start('e');
+    expect(await runToEnd(test, 'e', started)).toEqual({
       kind: 'finished',
       outcome: '[12345678901234567890,2]',
     });

@@ -51,8 +51,8 @@ describe('requireFrameDepth', () => {
       'eager async',
       'async fn loop(n: Int) -> Future<Int>: await loop(n + 1)\nasync fn main(): await loop(0)',
     ],
-  ])('panics an instance whose %s recursion exceeds the frame limit', (_, source) => {
-    expect(startToEnd(testRuntime(), compiledText(source))).toMatchObject({
+  ])('panics an instance whose %s recursion exceeds the frame limit', async (_, source) => {
+    expect(await startToEnd(testRuntime(), compiledText(source))).toMatchObject({
       kind: 'panicked',
       message: expect.stringContaining('frames'),
     });

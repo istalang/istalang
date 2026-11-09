@@ -24,12 +24,15 @@ const formDeclarations = [
 ];
 
 /** Runs `lines` as `main`'s body, giving a String. */
-function runText(lines: readonly string[], declarations: readonly string[]): unknown {
-  return runMain('String', lines.join('\n  '), declarations);
+async function runText(
+  lines: readonly string[],
+  declarations: readonly string[],
+): Promise<unknown> {
+  return await runMain('String', lines.join('\n  '), declarations);
 }
 
 describe('an array comprehension over fields', () => {
-  it('gives one element per field in name order, agreeing on one type', () => {
+  it('gives one element per field in name order, agreeing on one type', async () => {
     const declarations = ['struct Misordered { z: Int, a: Int, m: Int }', 'struct Empty'];
     const lines = [
       'const s = Misordered{z: 1, a: 2, m: 3}',
@@ -39,7 +42,7 @@ describe('an array comprehension over fields', () => {
       'const optional: Array<Int?> = [for k, v in ...s: if k == "a": none else: v]',
       '`${keys.join(",")}|${tens.map(fn t: `${t}`).join(",")}|${empty.length()}|${optional[1] ?? 0}`',
     ];
-    expect(runText(lines, declarations)).toBe('a,m,z|20,30,10|0|3');
+    expect(await runText(lines, declarations)).toBe('a,m,z|20,30,10|0|3');
   });
 
   it('refuses elements that agree on no type, with nothing expected', () => {
@@ -55,7 +58,7 @@ describe('an array comprehension over fields', () => {
 });
 
 describe('elements holding keys', () => {
-  it('agree as an array literal of the same values does, each built as the widened type', () => {
+  it('agree as an array literal of the same values does, each built as the widened type', async () => {
     const declarations = ['struct P { b: Int, a: Int }'];
     const lines = [
       'const pairs = [for k, v in ...P{b: 1, a: 2}: (k, v)]',
@@ -65,10 +68,10 @@ describe('elements holding keys', () => {
       'const both: Array<(String, Int)> = [...pairs, ...written]',
       'both.map(fn pair: `${pair.0}${pair.1}`).join(",")',
     ];
-    expect(runText(lines, declarations)).toBe('a2,b1,a2,b1');
+    expect(await runText(lines, declarations)).toBe('a2,b1,a2,b1');
   });
 
-  it('agree whatever expressions give the other items, checked once', () => {
+  it('agree whatever expressions give the other items, checked once', async () => {
     const declarations = ['struct P { b: Int, a: Int }', 'fn twice(n: Int) -> Int: n * 2'];
     const lines = [
       'const p = P{b: 1, a: 2}',
@@ -81,12 +84,12 @@ describe('elements holding keys', () => {
       'const all: Array<(String, Int)> = [...sums, ...calls, ...written]',
       '`${all.map(fn pair: `${pair.0}${pair.1}`).join(",")};${texts.length()}`',
     ];
-    expect(runText(lines, declarations)).toBe('a3,b2,a4,b2,a2,b4;2');
+    expect(await runText(lines, declarations)).toBe('a3,b2,a4,b2,a2,b4;2');
   });
 
-  it('agree over any struct, as the array literal written out per field', () => {
-    fc.assert(
-      fc.property(generatedFieldsArbitrary, (fields) => {
+  it('agree over any struct, as the array literal written out per field', async () => {
+    await fc.assert(
+      fc.asyncProperty(generatedFieldsArbitrary, async (fields) => {
         const struct = `struct S { ${fields.map(({ name, type }) => `${name}: ${type}`).join(', ')} }`;
         const literal = `S{${fields.map(({ name, value }) => `${name}: ${value}`).join(', ')}}`;
         const names = fields.map(({ name }) => name).sort();
@@ -94,8 +97,10 @@ describe('elements holding keys', () => {
         const written = `[${names.map((name) => `(key${name}, 1)`).join(', ')}]`;
         const join = '.map(fn pair: `${pair.0}${pair.1}`).join(",")';
         const expected = names.map((name) => `${name}1`).join(',');
-        expect(runText([`[for k, _ in ...${literal}: (k, 1)]${join}`], [struct])).toBe(expected);
-        expect(runText([...keys, `${written}${join}`], [struct])).toBe(expected);
+        expect(await runText([`[for k, _ in ...${literal}: (k, 1)]${join}`], [struct])).toBe(
+          expected,
+        );
+        expect(await runText([...keys, `${written}${join}`], [struct])).toBe(expected);
       }),
       { numRuns: 20 },
     );
@@ -103,7 +108,7 @@ describe('elements holding keys', () => {
 });
 
 describe('a struct comprehension', () => {
-  it('builds structs with and without an expected type, evaluating named fields first', () => {
+  it('builds structs with and without an expected type, evaluating named fields first', async () => {
     const declarations = [
       ...formDeclarations,
       'struct SettingsForm { retries: Field<Int>, region: Field<String> }',
@@ -131,12 +136,12 @@ describe('a struct comprehension', () => {
       'const parts = [`${cur.retries ?? -1}:${cur.region ?? "none"}`, `${exp.retries}:${exp.region}`]',
       '`${parts.join("|")}|${inf.tag}:${inf.retries}|${log.join(",")}|${built.a}:${built.m}:${built.z}`',
     ];
-    expect(runText(lines, declarations)).toBe(
+    expect(await runText(lines, declarations)).toBe(
       '3:none|5:eu|v1:7|named-z,named-first,comp-a,comp-m|20:30:9',
     );
   });
 
-  it('builds a mapped struct type over a constrained type parameter, generically', () => {
+  it('builds a mapped struct type over a constrained type parameter, generically', async () => {
     const declarations = [
       ...formDeclarations,
       'fn current<S is struct { [_]: Field<Int> }>(s: S) -> { [F in keyof S]: S[F].Data? }:',
@@ -146,7 +151,7 @@ describe('a struct comprehension', () => {
       'const cur = current(struct{b: Field<Int>{value: 1}, a: Field<Int>{value: none}})',
       '`${cur.a ?? -1}:${cur.b ?? 0}`',
     ];
-    expect(runText(lines, declarations)).toBe('-1:1');
+    expect(await runText(lines, declarations)).toBe('-1:1');
   });
 
   it('refuses fields given twice, unknown or missing, and fields not all known without a type', () => {
@@ -180,9 +185,9 @@ describe('a struct comprehension', () => {
 });
 
 describe('the commute law of a struct comprehension', () => {
-  it('agrees: generic and instantiated, over the concrete struct, and written out by hand', () => {
-    fc.assert(
-      fc.property(generatedFieldsArbitrary, (fields) => {
+  it('agrees: generic and instantiated, over the concrete struct, and written out by hand', async () => {
+    await fc.assert(
+      fc.asyncProperty(generatedFieldsArbitrary, async (fields) => {
         const declared = fields.map((field) => `${field.name}: ${field.type}`).join(', ');
         const value = `Generated{${fields.map((field) => `${field.name}: ${field.value}`).join(', ')}}`;
         const byHand = fields.map((field) => `${field.name}: s.${field.name}`).join(', ');
@@ -207,15 +212,15 @@ describe('the commute law of a struct comprehension', () => {
           .toSorted((first, second) => (first.name < second.name ? -1 : 1))
           .map((field) => `${field.name}=${field.value.replaceAll('"', '')}`)
           .join(',');
-        expect(runText(lines, declarations)).toBe(`true|true|true|${visited}|${visited}`);
+        expect(await runText(lines, declarations)).toBe(`true|true|true|${visited}|${visited}`);
       }),
       { numRuns: 15 },
     );
   });
 
-  it('evaluates the named fields as written, then the comprehension in name order', () => {
-    fc.assert(
-      fc.property(generatedFieldsArbitrary, fc.nat(), (fields, cut) => {
+  it('evaluates the named fields as written, then the comprehension in name order', async () => {
+    await fc.assert(
+      fc.asyncProperty(generatedFieldsArbitrary, fc.nat(), async (fields, cut) => {
         const named = fields.slice(0, cut % (fields.length + 1));
         const comprehended = fields.slice(named.length);
         const logged = (field: { readonly name: string }) =>
@@ -240,7 +245,7 @@ describe('the commute law of a struct comprehension', () => {
           ...comprehended.map((field) => field.name),
           ...comprehended.map((field) => `comp-${field.name}`).toSorted(),
         ];
-        expect(runText(lines, declarations)).toBe(expected.join(','));
+        expect(await runText(lines, declarations)).toBe(expected.join(','));
       }),
       { numRuns: 15 },
     );

@@ -2,19 +2,19 @@
  * Advancing an instance (spec §5): segment after segment, each committed before the next runs,
  * until the instance waits, finishes or panics.
  *
- * - An instance advances from a snapshot: a committed one, or a new instance's `unstarted` one,
- *   whose first segment starts its call (§9).
+ * - An instance advances from its last commit (resident.ts): a committed snapshot, or a new
+ *   instance's `unstarted` one, whose first segment starts its call (§9). Each segment runs on the
+ *   instance its last one committed, which is exactly what a restart would restore from the store.
  * - A segment starts by resolving the timers due at its start time, which is also what `now()`
- *   returns inside it. It runs from the last committed snapshot, restored, so every segment starts
- *   from exactly what a restart would see.
+ *   returns inside it.
  * - A commit writes the snapshot through the store and only then goes on (§5). With nothing ready
  *   and no timer due, nothing changed since the last commit, so nothing is written.
  * - What a segment spawned becomes instances at its commit: each is written as `unstarted`, named
  *   `<parent>/<n>`, before the parent's snapshot. A segment that re-runs after a crash between the
  *   two finds the child there already and doesn't write it again (§9).
  * - With `crashEveryAwait` (§10), an option the instance keeps in its snapshot, every segment
- *   runs, is discarded and runs again from the same snapshot and start time before the second run
- *   commits. A second run that ends, spawns or logs differently panics the instance, so
+ *   runs, is discarded and runs again from the same snapshot, restored, and start time before the
+ *   second run commits. A second run that ends, spawns or logs differently panics the instance, so
  *   extern calls that aren't idempotent, and code that differs between runs, show. Instances it
  *   spawns run with the option too.
  * - A panic commits nothing (§3.12): the instance stays at its last commit, marked panicked, with
@@ -34,20 +34,21 @@
 
 import { encodeJson } from '../../definition/formats/codec.ts';
 import type { Value } from '../../definition/values/values.ts';
+import { unreachable } from '../../foundation/structures/unreachable.ts';
 import type { Advanced, InstanceState, LogRecord, SpawnOptions } from '../instance-state.ts';
 import type { HeapObject, Watch } from '../snapshot/objects.ts';
 import {
   type InstanceCall,
-  type PanickedSnapshot,
   type Replay,
   type Snapshot,
   snapshotFormat,
 } from '../snapshot/snapshot.ts';
 import type { InstanceStore } from '../store.ts';
 import type { Answered } from './instance/futures.ts';
-import { Instance } from './instance/index.ts';
+import type { Instance } from './instance/index.ts';
 import { storedEnds } from './instance/instance-ends.ts';
 import type { LoadedDefinition } from './loaded-definition.ts';
+import type { Resident } from './resident.ts';
 import { endInstance, runSegment, type SegmentEnd } from './segment/index.ts';
 import { arriving } from './testing/mocks.ts';
 import type { CallerFuture, MockCall } from './testing/test-world.ts';
@@ -109,77 +110,77 @@ export interface Advance extends Advanced {
 }
 
 /**
- * Advances an instance of `loaded` from `snapshot` as far as it goes without waiting. The future
+ * Advances `resident` from its last commit as far as it goes without waiting. The future
  * `first.arrival` names is filled in its first segment, which runs whoever waits on it and commits
  * the filled future even when nobody does; a panic there keeps the arrival with the panic, so a
  * retry fills it again.
  */
 export function advance(
   seams: SchedulerSeams,
-  loaded: LoadedDefinition,
-  snapshot: Snapshot,
+  resident: Resident,
   first: AdvanceFirst = noneFirst,
 ): Advance {
-  let committed = snapshot;
   let pending: AdvanceFirst = first;
   const spawned: string[] = [];
   const logs: LogRecord[] = [];
   const answered: Answered[] = [];
   const advanced = (state: InstanceState): Advance => ({ state, spawned, logs, answered });
+  const { loaded } = resident;
   const ends = storedEnds(seams.store, loaded.definition.types);
-  const running: Running = {
-    loaded,
-    watched: ({ instance, until }) =>
-      until.kind === 'ended' ? ends(instance, until.result) : loaded.world.watched(instance, until),
-  };
+  const watched = ({ instance, until }: Watch) =>
+    until.kind === 'ended' ? ends(instance, until.result) : loaded.world.watched(instance, until);
   for (;;) {
     const { startedAt = seams.now(), ...step } = pending;
     pending = noneFirst;
-    const run = runFrom(running, committed, startedAt, step);
+    const { committed } = resident;
+    const run = runFrom(resident, watched, startedAt, step);
     if (run === undefined) {
       return advanced(stateOf(committed));
     }
     const { instance, end } = run.instance.crashEveryAwait
-      ? rerun(run, runFrom(running, committed, startedAt, step))
+      ? rerun(run, runFrom(resident, watched, startedAt, step))
       : run;
     if (end.kind === 'panicked') {
       const replay = replayOf(committed.status, step);
       const status = { ...end, segmentStartedAt: startedAt, ...(replay && { replay }) };
       const frozen = commit(seams.store, { ...committed, status });
+      resident.frozenAt(frozen);
       if (!frozen.terminatesOnPanic) {
         return advanced(stateOf(frozen));
       }
-      const ended = terminate(seams, loaded, { ...frozen, status });
+      const ended = terminate(seams, resident);
       spawned.push(...ended.spawned);
       logs.push(...ended.logs);
       return advanced(ended.state);
     }
     spawned.push(...commitChildren(seams.store, instance));
-    committed = commit(seams.store, instance.snapshot(statusOf(end), objectsOf(end)));
+    const next = commit(seams.store, instance.snapshot(statusOf(end), objectsOf(end)));
     logs.push(...instance.logs());
     const given = instance.answered();
     answered.push(...given);
+    resident.committedBy(instance, next);
     if (end.kind === 'finished' || given.length > 0) {
-      return advanced(stateOf(committed));
+      return advanced(stateOf(next));
     }
   }
 }
 
 /**
- * Ends a panicked instance of `loaded` as terminated (§3.12), keeping its panic: from its last
+ * Ends `resident`, which has panicked, as terminated (§3.12), keeping its panic: from its last
  * commit, every execution stops where it waits and everything it held is disposed, a disposal's
  * code run as code (§7).
  */
-export function terminate(
-  seams: SchedulerSeams,
-  loaded: LoadedDefinition,
-  snapshot: PanickedSnapshot,
-): Advanced {
-  const instance = Instance.restore(loaded, snapshot);
+export function terminate(seams: SchedulerSeams, resident: Resident): Advanced {
+  const { status } = resident.committed;
+  if (status.kind !== 'panicked') {
+    unreachable(`Instance '${resident.committed.instance}' hasn't panicked.`);
+  }
+  const instance = resident.take();
   endInstance(instance, seams.now());
   const spawned = commitChildren(seams.store, instance);
-  const { message, trace } = snapshot.status;
+  const { message, trace } = status;
   const ended = commit(seams.store, instance.snapshot({ kind: 'terminated', message, trace }, []));
+  resident.frozenAt(ended);
   return { state: stateOf(ended), spawned, logs: instance.logs() };
 }
 
@@ -197,36 +198,30 @@ interface SegmentRun {
   readonly end: SegmentEnd;
 }
 
-/** What every segment of an advance runs: the program, and what tells which watches hold. */
-interface Running {
-  readonly loaded: LoadedDefinition;
-  readonly watched: (watch: Watch) => Value | undefined;
-}
-
 /**
- * Runs one segment from `committed`: the future `arrival` names filled first, or the answer to
- * `answering` started first, once the answers that would fill `withdrawn` are dropped, and every
- * watch that holds resolved. Undefined when nothing can run and nothing arrived or resolved, or
- * when `arrival` names no future the instance waits on: one it disposed, whose later fill changes
- * nothing (§7), or one it never had.
+ * Runs one segment of `resident` from its last commit: the future `arrival` names filled first, or
+ * the answer to `answering` started first, once the answers that would fill `withdrawn` are
+ * dropped, and every watch `watched` says holds resolved. Undefined when nothing can run and
+ * nothing arrived or resolved, or when `arrival` names no future the instance waits on: one it
+ * disposed, whose later fill changes nothing (§7), or one it never had.
  */
 function runFrom(
-  { loaded, watched }: Running,
-  committed: Snapshot,
+  resident: Resident,
+  watched: (watch: Watch) => Value | undefined,
   startedAt: bigint,
   step: FirstStep,
 ): SegmentRun | undefined {
-  if (committed.status.kind === 'unstarted') {
-    const instance = Instance.start(loaded, committed);
+  const instance = resident.take();
+  if (resident.committed.status.kind === 'unstarted') {
     const root = instance.root();
     const first = root === undefined ? undefined : ({ kind: 'driver', execution: root } as const);
     return { instance, end: runSegment(instance, startedAt, first) };
   }
-  const instance = Instance.restore(loaded, committed);
   if (
     step.kind === 'arrival' &&
     !instance.futures.resolveHost(step.arrival.token, arriving(instance, step.arrival.value))
   ) {
+    resident.giveBack(instance);
     return undefined;
   }
   if (step.kind === 'withdraw') {
@@ -237,6 +232,7 @@ function runFrom(
   const timerResolved = instance.futures.resolveDueTimers(startedAt);
   const watchResolved = instance.futures.resolveWatches(watched);
   if (instance.idle && !timerResolved && !watchResolved && step.kind === 'none') {
+    resident.giveBack(instance);
     return undefined;
   }
   const first = step.kind === 'answer' ? ({ kind: 'answer', call: step.call } as const) : undefined;
@@ -297,8 +293,9 @@ function childrenOf(instance: Instance): readonly Snapshot[] {
 }
 
 /**
- * Writes `snapshot` through the store; the snapshot as it reads back, which the next segment
- * restores.
+ * Writes `snapshot` through the store; the snapshot as it reads back, so that whatever restores an
+ * instance from its last commit (a retry, crashEveryAwait's second run) restores what the store
+ * holds, and what a host reads of it is the store's too.
  */
 function commit(store: InstanceStore, snapshot: Snapshot): Snapshot {
   const { text } = snapshotFormat.write(snapshot);

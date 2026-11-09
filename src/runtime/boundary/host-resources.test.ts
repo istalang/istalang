@@ -69,18 +69,18 @@ const terminated = compiledText(
 );
 
 describe('a disposable host type', () => {
-  it('keeps what the host gave across commits, and tells the host once nothing holds it', () => {
+  it('keeps what the host gave across commits, and tells the host once nothing holds it', async () => {
     const { host, released } = leasingHost();
     const test = testRuntime({ host });
-    const started = test.runtime.deploy(leasing).start('l');
+    const started = await test.runtime.deploy(leasing).start('l');
     expect(started.state).toEqual({ kind: 'waiting', until: undefined, watching: [] });
     expect(released).toEqual([]);
-    const filled = test.runtime.fill('l', 'approval', 'leased ');
-    expect(runToEnd(test, 'l', filled)).toEqual({ kind: 'finished', outcome: '"leased a"' });
+    const filled = await test.runtime.fill('l', 'approval', 'leased ');
+    expect(await runToEnd(test, 'l', filled)).toEqual({ kind: 'finished', outcome: '"leased a"' });
     expect(released).toEqual([{ id: 'a' }]);
   });
 
-  it('is disposed when its panicked instance is terminated, even after another disposal panics', () => {
+  it('is disposed when its panicked instance is terminated, even after another disposal panics', async () => {
     const { host, released } = leasingHost();
     const refusing: HostExterns = {
       ...host,
@@ -90,10 +90,12 @@ describe('a disposable host type', () => {
       },
     };
     const test = testRuntime({ host: refusing });
-    test.runtime.deploy(terminated).start('t');
-    expect(test.runtime.fill('t', 'approval', false).state).toMatchObject({ kind: 'panicked' });
+    await test.runtime.deploy(terminated).start('t');
+    expect((await test.runtime.fill('t', 'approval', false)).state).toMatchObject({
+      kind: 'panicked',
+    });
     expect(released).toEqual([]);
-    expect(test.runtime.terminate('t')).toEqual({
+    expect(await test.runtime.terminate('t')).toEqual({
       state: { kind: 'terminated', message: 'refused', trace: expect.any(String) },
       spawned: [],
       logs: [],
@@ -101,7 +103,7 @@ describe('a disposable host type', () => {
     expect(released).toEqual([{ id: 'refusing' }, { id: 'plain' }]);
   });
 
-  it("is disposed by its host when the host implements its 'dispose'", () => {
+  it("is disposed by its host when the host implements its 'dispose'", async () => {
     const disposed: unknown[] = [];
     const host: HostExterns = {
       'main.open(String)': ([name]) => ({ id: name }),
@@ -119,12 +121,12 @@ describe('a disposable host type', () => {
       ].join('\n'),
     );
     const test = testRuntime({ host });
-    const started = test.runtime.deploy(program).start('h');
-    expect(runToEnd(test, 'h', started)).toEqual({ kind: 'finished', outcome: '1' });
+    const started = await test.runtime.deploy(program).start('h');
+    expect(await runToEnd(test, 'h', started)).toEqual({ kind: 'finished', outcome: '1' });
     expect(disposed).toEqual([{ id: 'b' }]);
   });
 
-  it('is retracted by its host once the Revertible holding it is released', () => {
+  it('is retracted by its host once the Revertible holding it is released', async () => {
     const calls: unknown[][] = [];
     const host: HostExterns = {
       'main.announcements(String)': ([user]) => ({ queue: user }),
@@ -160,10 +162,10 @@ describe('a disposable host type', () => {
       ].join('\n'),
     );
     const test = testRuntime({ host });
-    test.runtime.deploy(program).start('r');
+    await test.runtime.deploy(program).start('r');
     expect(calls).toEqual([['send', { queue: 'ann' }, 'hello']]);
-    const filled = test.runtime.fill('r', 'gate', null);
-    expect(runToEnd(test, 'r', filled)).toEqual({ kind: 'finished', outcome: '1' });
+    const filled = await test.runtime.fill('r', 'gate', null);
+    expect(await runToEnd(test, 'r', filled)).toEqual({ kind: 'finished', outcome: '1' });
     expect(calls.at(-1)).toEqual(['retract', { message: 7n }]);
   });
 });

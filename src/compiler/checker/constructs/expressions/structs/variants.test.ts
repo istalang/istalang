@@ -89,8 +89,8 @@ function everyFieldNamed(
   return `E.V(${[...fields, ...rest].join(', ')})`;
 }
 
-function outcomeOf(source: string): unknown {
-  const state = startToEnd(testRuntime(), compiledText(source));
+async function outcomeOf(source: string): Promise<unknown> {
+  const state = await startToEnd(testRuntime(), compiledText(source));
   return state.kind === 'finished' ? decodeJson(String(state.outcome)) : state;
 }
 
@@ -128,18 +128,18 @@ function argumentsOf({ taken, takesRest, extra }: GeneratedShape, spread: boolea
 }
 
 describe('a variant call', () => {
-  it('builds what the call naming every field, defaults written out, builds', () => {
-    fc.assert(
-      fc.property(
+  it('builds what the call naming every field, defaults written out, builds', async () => {
+    await fc.assert(
+      fc.asyncProperty(
         variants.chain((variant) => callsOf(variant).map((made) => ({ variant, made }))),
-        ({ variant, made }) => {
+        async ({ variant, made }) => {
           const source = [
             declaration(variant),
             'async fn main() -> Future<Bool>:',
             `  const called: E = ${call(made)}`,
             `  called == ${everyFieldNamed(variant, made)}`,
           ].join('\n');
-          expect(outcomeOf(source)).toBe(true);
+          expect(await outcomeOf(source)).toBe(true);
         },
       ),
       { numRuns: 40 },
@@ -148,11 +148,11 @@ describe('a variant call', () => {
 });
 
 describe('a variant named as a value', () => {
-  it('builds what calling the variant builds, and is a sendable value equal to another naming it', () => {
-    fc.assert(
-      fc.property(
+  it('builds what calling the variant builds, and is a sendable value equal to another naming it', async () => {
+    await fc.assert(
+      fc.asyncProperty(
         variants.chain((variant) => shapesOf(variant).map((shape) => ({ variant, shape }))),
-        ({ variant, shape }) => {
+        async ({ variant, shape }) => {
           const type = functionType(shape);
           const source = [
             declaration(variant),
@@ -161,7 +161,7 @@ describe('a variant named as a value', () => {
             `  const again: sendable ${type} = E.V`,
             `  made == again and made(${argumentsOf(shape, false)}) == E.V(${argumentsOf(shape, true)})`,
           ].join('\n');
-          expect(outcomeOf(source)).toBe(true);
+          expect(await outcomeOf(source)).toBe(true);
         },
       ),
       { numRuns: 40 },

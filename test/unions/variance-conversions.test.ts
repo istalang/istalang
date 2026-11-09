@@ -15,14 +15,14 @@ import { snapshotFormat } from '../../src/runtime/snapshot/snapshot.ts';
 import { codesOf, definitionOf, runMain } from './unions.test-kit.ts';
 
 describe('contextual variance words `gives` and `takes` (§2, §3.5)', () => {
-  it('allows `gives` and `takes` as ordinary identifiers outside type parameter prefixes', () => {
+  it('allows `gives` and `takes` as ordinary identifiers outside type parameter prefixes', async () => {
     const decls = [
       'struct Holder { takes: Int }',
       'fn takes(gives: Holder) -> Int: gives.takes',
       'struct Box<gives T> { gives: T, takes: Int }',
     ];
     expect(
-      runMain(
+      await runMain(
         'Int',
         [
           'const g = Holder{takes: 10}',
@@ -137,7 +137,7 @@ describe('variance derivation across positions and recursive declarations (§3.5
     ).toEqual(Array.from({ length: 8 }, () => checkerDiagnostics.typeMismatch.code));
   });
 
-  it('flips variance when a covariant struct with an unused parameter stands in a function parameter', () => {
+  it('flips variance when a covariant struct with an unused parameter stands in a function parameter', async () => {
     const decls = [
       'struct Phantom<T> { n: Int }',
       'struct PhantomList<T> { next: PhantomList<T>? }',
@@ -153,7 +153,7 @@ describe('variance derivation across positions and recursive declarations (§3.5
     ).toEqual([checkerDiagnostics.typeMismatch.code, checkerDiagnostics.typeMismatch.code]);
 
     expect(
-      runMain(
+      await runMain(
         'Int',
         [
           'const h1: Holder<Int?> = Holder{f: fn(p): p.n + 1}',
@@ -167,7 +167,7 @@ describe('variance derivation across positions and recursive declarations (§3.5
     ).toBe(42);
   });
 
-  it('keeps self-contravariant `Loop<T>` invariant while recursive covariant `PhantomList<T>` converts', () => {
+  it('keeps self-contravariant `Loop<T>` invariant while recursive covariant `PhantomList<T>` converts', async () => {
     const decls = [
       'struct Loop<T> { f: fn(Loop<T>) -> Int }',
       'struct PhantomList<gives T> { next: PhantomList<T>? }',
@@ -181,7 +181,7 @@ describe('variance derivation across positions and recursive declarations (§3.5
     ).toEqual([checkerDiagnostics.typeMismatch.code, checkerDiagnostics.typeMismatch.code]);
 
     expect(
-      runMain(
+      await runMain(
         'Bool',
         [
           'const p1: PhantomList<Int> = PhantomList{next: PhantomList{next: none}}',
@@ -195,7 +195,7 @@ describe('variance derivation across positions and recursive declarations (§3.5
 });
 
 describe('conversions composing inside types (§2, §3.1, §3.5, §3.14, §3.15)', () => {
-  it('converts `Array<Int>` into `Array<Int?>`, persists across a commit, and round-trips through JSON', () => {
+  it('converts `Array<Int>` into `Array<Int?>`, persists across a commit, and round-trips through JSON', async () => {
     const decls = ['import * as json from "json"', 'import * as time from "time"'];
     const body = [
       'const ints: Array<Int> = [10, 20, 30]',
@@ -210,7 +210,7 @@ describe('conversions composing inside types (§2, §3.1, §3.5, §3.14, §3.15)
     const source = [...decls, 'async fn main() -> Future<String>:', `  ${body}`].join('\n');
     const definition = definitionOf(source);
     const env = testRuntime();
-    const ended = startToEnd(env, compiledText(source));
+    const ended = await startToEnd(env, compiledText(source));
     expect(env.store.commits.length).toBeGreaterThan(0);
     for (const saved of env.store.commits) {
       expect(() => checkSnapshot(definition, snapshotFormat.read(saved))).not.toThrow();
@@ -218,13 +218,13 @@ describe('conversions composing inside types (§2, §3.1, §3.5, §3.14, §3.15)
     expect(ended).toEqual({ kind: 'finished', outcome: '"[10,20,30]:60"' });
   });
 
-  it('converts contravariant structs, function parameters/results, and async fits inside containers', () => {
+  it('converts contravariant structs, function parameters/results, and async fits inside containers', async () => {
     const decls = [
       'struct Sink<T> { take: fn(T) -> Int }',
       'fn handleOpt(x: Int?) -> Int: (x ?? 5) * 2',
     ];
     expect(
-      runMain(
+      await runMain(
         'Int',
         [
           'const sOpt: Sink<Int?> = Sink{take: handleOpt}',
@@ -238,7 +238,7 @@ describe('conversions composing inside types (§2, §3.1, §3.5, §3.14, §3.15)
     ).toBe(26);
   });
 
-  it('keeps one-element tuple conversions at the top only, including for recursive tuple aliases in unions', () => {
+  it('keeps one-element tuple conversions at the top only, including for recursive tuple aliases in unions', async () => {
     expect(
       codesOf(
         'fn a(xs: Array<(Int,)>) -> Array<Int>: xs',
@@ -256,7 +256,7 @@ describe('conversions composing inside types (§2, §3.1, §3.5, §3.14, §3.15)
       'const topList: List? = Node{tail: none, head: 9}',
     ];
     expect(
-      runMain(
+      await runMain(
         'Int',
         [
           'const xs: Array<SingleBox> = []',
@@ -271,7 +271,7 @@ describe('conversions composing inside types (§2, §3.1, §3.5, §3.14, §3.15)
     ).toBe(9);
   });
 
-  it('converts recursive `Tree<T>`, `List<T>`, and nested containers into `Json` and wider recursive types', () => {
+  it('converts recursive `Tree<T>`, `List<T>`, and nested containers into `Json` and wider recursive types', async () => {
     const decls = [
       'import * as json from "json"',
       'type Tree<T> = T | Array<Tree<T>>',
@@ -291,7 +291,7 @@ describe('conversions composing inside types (§2, §3.1, §3.5, §3.14, §3.15)
       '    case node: (node.head ?? 0) + sumList(node.tail)',
     ];
     expect(
-      runMain(
+      await runMain(
         'String',
         [
           'const tree: Tree<Int> = [1, [2, 3]]',
@@ -314,14 +314,14 @@ describe('conversions composing inside types (§2, §3.1, §3.5, §3.14, §3.15)
     ).toBe('6:[1,[2,3]]:9:3');
   });
 
-  it('commutes generic union-part conversions with instantiation when the target union collapses', () => {
+  it('commutes generic union-part conversions with instantiation when the target union collapses', async () => {
     const decls = [
       'struct Box<T> { value: T }',
       'fn widenUnion<T>(x: T | Array<Int>) -> T | Array<Int?>: x',
       'fn widenBoxed<T>(b: Box<T | Array<Int>>) -> Box<T | Array<Int?>>: b',
     ];
     expect(
-      runMain(
+      await runMain(
         'Int',
         [
           'const xs: Array<Int?> = widenUnion<Array<Int?>>([10, 20])',
@@ -332,21 +332,21 @@ describe('conversions composing inside types (§2, §3.1, §3.5, §3.14, §3.15)
       ),
     ).toBe(60);
   });
-  it('converts top-level constants part by part, including unions of literals to their base', () => {
+  it('converts top-level constants part by part, including unions of literals to their base', async () => {
     const decls = [
       'type Status = "draft" | "sent"',
       'const statuses: Array<Status> = ["draft", "sent"]',
       'const strings: Array<String> = statuses',
     ];
-    expect(runMain('String', '`${strings[0]}:${strings[1]}`', decls)).toBe('draft:sent');
+    expect(await runMain('String', '`${strings[0]}:${strings[1]}`', decls)).toBe('draft:sent');
   });
 });
 
 describe('runtime equality (`==`) and `Map` keys by declaration (§3.5, §3.8, §3.9)', () => {
-  it('compares structs, variants, and collections widened without layout change equal to freshly built ones', () => {
+  it('compares structs, variants, and collections widened without layout change equal to freshly built ones', async () => {
     const decls = ['struct Box<T> { value: T }', 'enum Choice<T> { Pick(value: T), Empty }'];
     expect(
-      runMain(
+      await runMain(
         'String',
         [
           'const bLit: Box<"s"> = Box{value: "s"}',

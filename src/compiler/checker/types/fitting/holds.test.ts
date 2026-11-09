@@ -35,17 +35,17 @@ function reportedAfter(...functions: readonly string[]) {
  * What `async fn main() -> Future<result>:` with `body` gives, after the declarations above and
  * `extra`.
  */
-function outcome(
+async function outcome(
   body: readonly string[],
   { extra = [], result = 'String' }: { extra?: readonly string[]; result?: string } = {},
-): unknown {
+): Promise<unknown> {
   const source = [
     ...declarations,
     ...extra,
     `async fn main() -> Future<${result}>:`,
     ...body.map((line) => `  ${line}`),
   ].join('\n');
-  const state = startToEnd(testRuntime(), compiledText(source));
+  const state = await startToEnd(testRuntime(), compiledText(source));
   return state.kind === 'finished' ? decodeJson(String(state.outcome)) : state;
 }
 
@@ -89,9 +89,9 @@ describe('producers holding one another only by a conversion inside a type', () 
     ).toEqual(checksCleanly);
   });
 
-  it('convert the held one when it is the value', () => {
+  it('convert the held one when it is the value', async () => {
     expect(
-      outcome([
+      await outcome([
         'const xs: Array<Int> = [1]',
         'const ys: Array<Int?> = [none]',
         'const zs = if xs.length() > 0: xs else: ys',
@@ -147,7 +147,7 @@ describe('producers holding one another only by a conversion inside a type', () 
     ).toEqual(checksCleanly);
   });
 
-  it('rebuild held values into the holder representation across producer constructs and generic instantiations', () => {
+  it('rebuild held values into the holder representation across producer constructs and generic instantiations', async () => {
     const extra = [
       'fn ret1(c: Bool, xs: Array<Int>, ys: Array<Int?>):',
       '  if c:',
@@ -187,7 +187,7 @@ describe('producers holding one another only by a conversion inside a type', () 
       'const gp2 = genericPick(false, ys, ys)',
       '[firstOrMinusOne(if1), firstOrMinusOne(if2), firstOrMinusOne(arr1), firstOrMinusOne(arr2), firstOrMinusOne(sp1), firstOrMinusOne(sp2), firstOrMinusOne(mp1), firstOrMinusOne(mp2), firstOrMinusOne(msp1), firstOrMinusOne(msp2), firstOrMinusOne(r1), firstOrMinusOne(r2), firstOrMinusOne(sm1), firstOrMinusOne(sm2), firstOrMinusOne(fc1), firstOrMinusOne(fc2), firstOrMinusOne(gp1), firstOrMinusOne(gp2)]',
     ];
-    expect(outcome(body, { extra, result: 'Array<Int>' })).toEqual([
+    expect(await outcome(body, { extra, result: 'Array<Int>' })).toEqual([
       ...Array.from({ length: 17 }, () => 10),
       -1,
     ]);

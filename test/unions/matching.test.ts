@@ -26,7 +26,7 @@ const matchDecls = [
 ];
 
 describe('matching on unions and literal types (§3, §5)', () => {
-  it('runs the proposal describe and label examples with remaining-type narrowing', () => {
+  it('runs the proposal describe and label examples with remaining-type narrowing', async () => {
     const code = [
       ...matchDecls,
       'fn describe(x: Int | String | None) -> String:',
@@ -44,7 +44,7 @@ describe('matching on unions and literal types (§3, §5)', () => {
       '    case Sms{number}: "sms:" + number',
     ];
     expect(
-      runMain(
+      await runMain(
         'String',
         '`${describe(none)}|${describe(42)}|${describe("ok")}|${label("draft")}|${label("failed")}|${contactTo(Email{to: "cfo"})}`',
         code,
@@ -52,9 +52,9 @@ describe('matching on unions and literal types (§3, §5)', () => {
     ).toBe('nothing|number 42|ok|Draft|Done|mail:cfo');
   });
 
-  it('compiles `case Int` and `case 1` against `Int?`, and rejects removed `Some`', () => {
+  it('compiles `case Int` and `case 1` against `Int?`, and rejects removed `Some`', async () => {
     expect(
-      runMain(
+      await runMain(
         'String',
         '`${checkInt(5)}:${checkInt(none)}:${checkLit(1)}:${checkLit(2)}:${checkLit(none)}`',
         [
@@ -81,7 +81,7 @@ describe('matching on unions and literal types (§3, §5)', () => {
     ).toBeGreaterThan(0);
   });
 
-  it('selects all literal members of a base type when matching that base type', () => {
+  it('selects all literal members of a base type when matching that base type', async () => {
     const lines = [
       ...matchDecls,
       'fn split(x: Status | Int) -> String:',
@@ -93,7 +93,7 @@ describe('matching on unions and literal types (§3, §5)', () => {
     // as the literals they are, not as the alias `Status` they came from.
     expect(hoverCodeAt(...lines)).toEqual(['(variable) s: "draft" | "sent" | "failed"']);
     expect(
-      runMain(
+      await runMain(
         'String',
         'split("sent") + ":" + split(7)',
         lines.map((l) => l.replace('‸', '')),
@@ -112,9 +112,9 @@ describe('matching on unions and literal types (§3, §5)', () => {
     expect(hoverCodeAt(...lines)).toEqual(['(variable) s: Status = "draft" | "sent" | "failed"']);
   });
 
-  it('matches bare variants through enum members, and requires qualification when ambiguous', () => {
+  it('matches bare variants through enum members, and requires qualification when ambiguous', async () => {
     expect(
-      runMain('String', 'show(Approved("legal")) + ":" + show(Expired) + ":" + show(9)', [
+      await runMain('String', 'show(Approved("legal")) + ":" + show(Expired) + ":" + show(9)', [
         ...matchDecls,
         'fn show(x: Decision | Int) -> String:',
         '  match x:',
@@ -126,7 +126,7 @@ describe('matching on unions and literal types (§3, §5)', () => {
 
     const twoEnums = ['enum First { Shared, OnlyFirst }', 'enum Second { Shared, OnlySecond }'];
     expect(
-      runMain('String', 'pick(First.Shared) + ":" + pick(Second.Shared)', [
+      await runMain('String', 'pick(First.Shared) + ":" + pick(Second.Shared)', [
         ...twoEnums,
         'fn pick(x: First | Second) -> String:',
         '  match x:',
@@ -148,9 +148,9 @@ describe('matching on unions and literal types (§3, §5)', () => {
     ).toBeGreaterThan(0);
   });
 
-  it('matches generic union members bare when unique, and with type arguments when several instantiate the generic', () => {
+  it('matches generic union members bare when unique, and with type arguments when several instantiate the generic', async () => {
     expect(
-      runMain(
+      await runMain(
         'String',
         'oneGeneric(Box{value: 3}) + ":" + twoGenerics(Box{value: 4}) + ":" + twoGenerics(Box{value: "hi"})',
         [
@@ -178,9 +178,9 @@ describe('matching on unions and literal types (§3, §5)', () => {
     ).toBeGreaterThan(0);
   });
 
-  it('selects shape members by field or alias, and reports an error when several member shapes have the fields', () => {
+  it('selects shape members by field or alias, and reports an error when several member shapes have the fields', async () => {
     expect(
-      runMain(
+      await runMain(
         'String',
         'byField(struct{a: 5}) + ":" + byField(struct{b: "ok"}) + ":" + byAlias(struct{x: 1, y: 2})',
         [
@@ -330,15 +330,15 @@ describe('fast-check properties: union exhaustiveness and collapse (note 12)', (
     );
   });
 
-  it('keeps the first matching arm when a union collapses after substitution, without unreachable warnings', () => {
+  it('keeps the first matching arm when a union collapses after substitution, without unreachable warnings', async () => {
     const concreteTypes = fc.constantFrom(
       { type: 'Int', value: '7', tag: 'int' },
       { type: 'String', value: '"hi"', tag: 'str' },
       { type: 'Bool', value: 'true', tag: 'bool' },
     );
 
-    fc.assert(
-      fc.property(concreteTypes, fc.boolean(), ({ type, value, tag }, genericFirst) => {
+    await fc.assert(
+      fc.asyncProperty(concreteTypes, fc.boolean(), async ({ type, value, tag }, genericFirst) => {
         const boxCases = genericFirst
           ? [
               `    case Box<T>{value}: "first:${tag}"`,
@@ -367,7 +367,7 @@ describe('fast-check properties: union exhaustiveness and collapse (note 12)', (
         expect(diag.codes).not.toContain(checkerDiagnostics.unreachableCase.code);
         expect(diag.codes).toEqual([]);
         expect(
-          runMain(
+          await runMain(
             'String',
             `collapsed<${type}>(${value}) + ":" + boxed<${type}>(Box{value: ${value}})`,
             decls,

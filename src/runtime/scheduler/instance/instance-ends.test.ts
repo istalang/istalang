@@ -8,13 +8,8 @@
 
 import { describe, expect, it } from 'vitest';
 import { compiledText } from '../../../compiler/compile.test-kit.ts';
-import {
-  manualClock,
-  recordingStore,
-  runToEnd,
-  settleAll,
-  testRuntime,
-} from '../../runtime.test-kit.ts';
+import { ManualClock } from '../../host/clock.ts';
+import { recordingStore, runToEnd, settleAll, testRuntime } from '../../runtime.test-kit.ts';
 
 /** `main` waiting for a child that waits first, then isolating a function that panics. */
 const waitingMain = compiledText(
@@ -35,34 +30,37 @@ const waitingMain = compiledText(
 );
 
 describe("waiting for an instance's end", () => {
-  it("gives a child's outcome, and an isolated panic as an Err, terminating that child", () => {
+  it("gives a child's outcome, and an isolated panic as an Err, terminating that child", async () => {
     const test = testRuntime();
-    const started = test.runtime.deploy(waitingMain).start('p');
+    const started = await test.runtime.deploy(waitingMain).start('p');
     expect(started.state).toEqual({ kind: 'waiting', until: undefined, watching: ['p/1'] });
-    const settled = settleAll(test, 'p', started);
-    expect(runToEnd(test, 'p', test.runtime.wake('p'))).toEqual({
+    const settled = await settleAll(test, 'p', started);
+    expect(await runToEnd(test, 'p', await test.runtime.wake('p'))).toEqual({
       kind: 'finished',
       outcome: '"42 panic broken"',
     });
     expect(settled.get('p/2')).toMatchObject({ kind: 'terminated', message: 'broken' });
   });
 
-  it('wakes the waiting parent on a fresh runtime once its child has ended there', () => {
+  it('wakes the waiting parent on a fresh runtime once its child has ended there', async () => {
     const store = recordingStore();
-    const clock = manualClock();
+    const clock = new ManualClock();
     const first = testRuntime({ store, clock });
-    first.runtime.deploy(waitingMain).start('p');
-    expect(first.runtime.wake('p/1').state).toMatchObject({ kind: 'waiting', until: 10n });
+    await first.runtime.deploy(waitingMain).start('p');
+    expect((await first.runtime.wake('p/1')).state).toMatchObject({ kind: 'waiting', until: 10n });
     const restarted = testRuntime({ store, clock });
     clock.set(10n);
-    expect(restarted.runtime.wake('p/1').state).toMatchObject({ kind: 'finished', outcome: 42n });
-    expect(runToEnd(restarted, 'p', restarted.runtime.wake('p'))).toEqual({
+    expect((await restarted.runtime.wake('p/1')).state).toMatchObject({
+      kind: 'finished',
+      outcome: 42n,
+    });
+    expect(await runToEnd(restarted, 'p', await restarted.runtime.wake('p'))).toEqual({
       kind: 'finished',
       outcome: '"42 panic broken"',
     });
   });
 
-  it('resolves a wait on an instance that ended before the wait began', () => {
+  it('resolves a wait on an instance that ended before the wait began', async () => {
     const text = compiledText(
       [
         "import * as time from 'time'",
@@ -76,11 +74,11 @@ describe("waiting for an instance's end", () => {
       ].join('\n'),
     );
     const test = testRuntime();
-    const started = test.runtime.deploy(text).start('p');
-    expect(runToEnd(test, 'p', started)).toEqual({ kind: 'finished', outcome: '"7"' });
+    const started = await test.runtime.deploy(text).start('p');
+    expect(await runToEnd(test, 'p', started)).toEqual({ kind: 'finished', outcome: '"7"' });
   });
 
-  it('commits a resolved wait nothing awaits, so its instance stops being woken for it', () => {
+  it('commits a resolved wait nothing awaits, so its instance stops being woken for it', async () => {
     const text = compiledText(
       [
         "import * as time from 'time'",
@@ -94,11 +92,18 @@ describe("waiting for an instance's end", () => {
       ].join('\n'),
     );
     const test = testRuntime();
-    const started = test.runtime.deploy(text).start('p');
+    const started = await test.runtime.deploy(text).start('p');
     expect(started.state).toMatchObject({ watching: ['p/1'] });
-    const child = test.runtime.wake('p/1');
+    const child = await test.runtime.wake('p/1');
     expect(child.state).toMatchObject({ kind: 'finished', outcome: 7n });
-    expect(test.runtime.wake('p').state).toEqual({ kind: 'waiting', until: 5n, watching: [] });
-    expect(runToEnd(test, 'p', test.runtime.wake('p'))).toEqual({ kind: 'finished', outcome: '7' });
+    expect((await test.runtime.wake('p')).state).toEqual({
+      kind: 'waiting',
+      until: 5n,
+      watching: [],
+    });
+    expect(await runToEnd(test, 'p', await test.runtime.wake('p'))).toEqual({
+      kind: 'finished',
+      outcome: '7',
+    });
   });
 });

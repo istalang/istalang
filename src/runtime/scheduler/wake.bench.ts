@@ -43,8 +43,8 @@ async fn main() -> Future<Int>:
 
 it(`${workers} workers on one inbox`, async ({ bench, expect }) => {
   const sum = String((workers * (workers - 1)) / 2);
-  expect(startToEnd(testRuntime(), text)).toEqual({ kind: 'finished', outcome: sum });
-  await bench('start to end', () => {
-    startToEnd(testRuntime(), text);
+  expect(await startToEnd(testRuntime(), text)).toEqual({ kind: 'finished', outcome: sum });
+  await bench('start to end', async () => {
+    await startToEnd(testRuntime(), text);
   }).run({ time: 0, iterations: 3, warmupTime: 0, warmupIterations: 1 });
 });

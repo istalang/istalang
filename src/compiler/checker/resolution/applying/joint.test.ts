@@ -43,9 +43,9 @@ function reportedImporting(imports: readonly string[], ...functions: readonly st
 }
 
 /** What `async fn main() -> Future<String>: body` gives after the declarations above. */
-function outcome(body: string): unknown {
+async function outcome(body: string): Promise<unknown> {
   const source = [...declarations, 'async fn main() -> Future<String>:', `  ${body}`].join('\n');
-  const state = startToEnd(testRuntime(), compiledText(source));
+  const state = await startToEnd(testRuntime(), compiledText(source));
   return state.kind === 'finished' ? decodeJson(String(state.outcome)) : state;
 }
 
@@ -71,35 +71,37 @@ describe('a generic call or literal passed to a call', () => {
     ).toEqual(checksCleanly);
   });
 
-  it("checks a lambda inside it once the outermost call's expected type gives its parameter", () => {
+  it("checks a lambda inside it once the outermost call's expected type gives its parameter", async () => {
     expect(reportedAfter('fn lambda() -> Box<fn(Int) -> Int>: boxed(twice(fn x: x + 1))')).toEqual(
       checksCleanly,
     );
     expect(
-      outcome('const b: Box<fn(Int) -> Int> = boxed(twice(fn x: x + 1))\n  `${(b.value)(1)}`'),
+      await outcome(
+        'const b: Box<fn(Int) -> Int> = boxed(twice(fn x: x + 1))\n  `${(b.value)(1)}`',
+      ),
     ).toBe('3');
   });
 
-  it("lets a lambda's value join it where what it expects of the lambda's result is still open", () => {
+  it("lets a lambda's value join it where what it expects of the lambda's result is still open", async () => {
     expect(reportedAfter('fn tail() -> Outcome<Int, String>: good(fn x: Good(x + 1))')).toEqual(
       checksCleanly,
     );
     expect(
-      outcome(
+      await outcome(
         'match good(fn x: Good(x + 1)):\n    case Good(value): `good ${value}`\n    case Bad(error): error',
       ),
     ).toBe('good 2');
   });
 
-  it("joins what the outermost call's other arguments give", () => {
-    expect(outcome('const xs = pair(id(1), id(none))\n  `${xs.length()} ${xs[1] ?? 0}`')).toBe(
-      '2 0',
-    );
+  it("joins what the outermost call's other arguments give", async () => {
+    expect(
+      await outcome('const xs = pair(id(1), id(none))\n  `${xs.length()} ${xs[1] ?? 0}`'),
+    ).toBe('2 0');
   });
 
-  it('builds a value at the type its type arguments settle to', () => {
+  it('builds a value at the type its type arguments settle to', async () => {
     expect(
-      outcome(
+      await outcome(
         'const o: Options<"s" | "m"> = items([Item{value: "s"}, Item{value: "m"}])\n' +
           '  match o:\n' +
           '    case Items(xs): `${xs.length()} ${xs[0].value}${xs[1].value}`\n' +
@@ -219,9 +221,9 @@ describe('what the expected type bounds', () => {
 });
 
 describe('a lambda its scope judges once it settles', () => {
-  it('is checked inside the functions it is written in, each capturing what it names', () => {
+  it('is checked inside the functions it is written in, each capturing what it names', async () => {
     const lambda = 'fn(x: Int) -> Outcome<Int, String>: good(fn y: Good(y + x + base))';
-    expect(outcome(`{ const base = 100; String([1, 2].map(${lambda}).length()) }`)).toBe('2');
+    expect(await outcome(`{ const base = 100; String([1, 2].map(${lambda}).length()) }`)).toBe('2');
   });
 });
 

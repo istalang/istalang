@@ -155,7 +155,7 @@ describe('type `match` (§4 and pre-P4 debt #1)', () => {
     );
   });
 
-  it('reduces in a generic body when the first possible case always matches, and stays opaque otherwise', () => {
+  it('reduces in a generic body when the first possible case always matches, and stays opaque otherwise', async () => {
     const decls = [
       ...dataOfDecls,
       // `DataOf<Field<T>>` always matches the first case `case Field<infer T>: T`, so it reduces to `T`
@@ -163,9 +163,9 @@ describe('type `match` (§4 and pre-P4 debt #1)', () => {
       // `DataOf<D>` for unconstrained `D` cannot reduce yet: equal to `DataOf<D>`, not to `D`
       'fn keepUnreduced<D>(x: DataOf<D>) -> DataOf<D>: x',
     ];
-    expect(runMain('Int', 'unwrapFieldData<Int>(15) + keepUnreduced<Field<Int>>(27)', decls)).toBe(
-      42,
-    );
+    expect(
+      await runMain('Int', 'unwrapFieldData<Int>(15) + keepUnreduced<Field<Int>>(27)', decls),
+    ).toBe(42);
 
     expect(codesOf(...dataOfDecls, 'fn badOpaque<D>(x: DataOf<D>) -> D: x')).toEqual([
       checkerDiagnostics.typeMismatch.code,
@@ -176,7 +176,7 @@ describe('type `match` (§4 and pre-P4 debt #1)', () => {
     ).toEqual([checkerDiagnostics.typeMismatch.code]);
   });
 
-  it('supports finite recursive type `match` (`DataOf<Tree>`) and reports endless reductions (`W<T> -> W<Array<T>>`) (pre-P4 debt #1)', () => {
+  it('supports finite recursive type `match` (`DataOf<Tree>`) and reports endless reductions (`W<T> -> W<Array<T>>`) (pre-P4 debt #1)', async () => {
     // `Tree` is finite (§3.1): its children sit in a collection, which a `Repeat`'s single row
     // isn't, so the recursive schema maps a `Many` of rows.
     const recursiveDecls = [
@@ -203,7 +203,9 @@ describe('type `match` (§4 and pre-P4 debt #1)', () => {
       'fn wide() -> TreeData:',
       '  struct{label: "root", children: [struct{label: "a", children: []}, struct{label: "b", children: []}]}',
     ];
-    expect(runMain('Int', 'countNodes(wide()) + countNodes(makeTree())', treeFormDecls)).toBe(5);
+    expect(await runMain('Int', 'countNodes(wide()) + countNodes(makeTree())', treeFormDecls)).toBe(
+      5,
+    );
     expect(compareWrittenTypes('TreeOf<Tree>', 'TreeOf<Many<Tree>>', recursiveDecls).same).toBe(
       false,
     );

@@ -16,7 +16,7 @@ const chain = 'type Chain = (Int, Chain?)';
 const tree = 'type Tree = Int | Array<Tree>';
 
 describe('a value of a recursive use whose body is a tuple, a function or a nominal type', () => {
-  it('takes a tuple out of an optional with ! and ??, as its own variant', () => {
+  it('takes a tuple out of an optional with ! and ??, as its own variant', async () => {
     const declarations = lines(
       chain,
       'fn force(c: Chain?) -> Int:',
@@ -27,7 +27,11 @@ describe('a value of a recursive use whose body is a tuple, a function or a nomi
       '  return got.0',
     );
     expect(
-      mainGives('Int', 'return force((10, none)) + orElse(none) + orElse((5, none))', declarations),
+      await mainGives(
+        'Int',
+        'return force((10, none)) + orElse(none) + orElse((5, none))',
+        declarations,
+      ),
     ).toBe(15);
   });
 
@@ -42,7 +46,7 @@ describe('a value of a recursive use whose body is a tuple, a function or a nomi
     expect(reported(source)).toEqual(reportedNothing);
   });
 
-  it('reads through ?. into a tuple and a function', () => {
+  it('reads through ?. into a tuple and a function', async () => {
     const source = lines(
       chain,
       'type Machine = fn(Int) -> Machine',
@@ -51,7 +55,7 @@ describe('a value of a recursive use whose body is a tuple, a function or a nomi
     );
     expect(reported(source)).toEqual(reportedNothing);
     expect(
-      mainGives(
+      await mainGives(
         'Int?',
         'return first((7, none))',
         lines(chain, 'fn first(c: Chain?) -> Int?: c?.0'),
@@ -70,7 +74,7 @@ describe('a value of a recursive use whose body is a tuple, a function or a nomi
 });
 
 describe('a member a recursive member of a union holds', () => {
-  it('goes into the union through that member', () => {
+  it('goes into the union through that member', async () => {
     const declarations = lines(
       tree,
       'fn wrap<U>(x: U) -> U | Tree | String: x',
@@ -82,11 +86,11 @@ describe('a member a recursive member of a union holds', () => {
       '    case _: return 0',
     );
     expect(reported(declarations)).toEqual(reportedNothing);
-    expect(mainGives('Bool', 'return isTree()', declarations)).toBe(true);
-    expect(mainGives('Int', 'return widened()', declarations)).toBe(42);
+    expect(await mainGives('Bool', 'return isTree()', declarations)).toBe(true);
+    expect(await mainGives('Int', 'return widened()', declarations)).toBe(42);
   });
 
-  it('goes into a top-level constant through that member', () => {
+  it('goes into a top-level constant through that member', async () => {
     const declarations = lines(
       tree,
       'const c: Tree | String = 42',
@@ -102,7 +106,7 @@ describe('a member a recursive member of a union holds', () => {
     );
     expect(reported(declarations)).toEqual(reportedNothing);
     expect(
-      mainGives(
+      await mainGives(
         'Int',
         'return read(c) + read(d) + (if c is Tree and d is Tree: 100 else: 0)',
         declarations,
@@ -120,10 +124,10 @@ describe('a literal built as a recursive use, at any depth, with any items', () 
     ],
     ['arithmetic in an array against Json', 'fn f() -> Json: [1 + 1]', [2]],
     ['arithmetic in a map against Json', 'fn f() -> Json: ["a": 1 + 1]', { a: 2 }],
-  ])('%s', (_name, declarations, expected) => {
+  ])('%s', async (_name, declarations, expected) => {
     const source = lines("import Json from 'json'", declarations);
     expect(reported(source)).toEqual(reportedNothing);
-    expect(mainGives('Json', 'return f()', source)).toEqual(expected);
+    expect(await mainGives('Json', 'return f()', source)).toEqual(expected);
   });
 
   it.each([
@@ -133,7 +137,7 @@ describe('a literal built as a recursive use, at any depth, with any items', () 
     ['a call beside a map', '[t(), ["k": 1]]', '[3, {"k": 1}]'],
     ['a map of arithmetic beside a String', '["a": 1 + 1, "b": "x"]', '{"a": 2, "b": "x"}'],
     ['mixed items two levels down', '[["a": [t(), "b"]], 1 + 1]', '[{"a": [3, "b"]}, 2]'],
-  ])('builds %s into Json, each item against Json', (_name, literal, text) => {
+  ])('builds %s into Json, each item against Json', async (_name, literal, text) => {
     const declarations = lines(
       "import * as json from 'json'",
       "import Json from 'json'",
@@ -145,7 +149,7 @@ describe('a literal built as a recursive use, at any depth, with any items', () 
       '    case Err(error): panic(error.message)',
     );
     expect(reported(declarations)).toEqual(reportedNothing);
-    expect(mainGives('Bool', 'return built() == parsed()', declarations)).toBe(true);
+    expect(await mainGives('Bool', 'return built() == parsed()', declarations)).toBe(true);
   });
 
   it('builds arithmetic beside a nested array into a recursive alias of its own', () => {
@@ -163,7 +167,7 @@ describe('a literal built as a recursive use, at any depth, with any items', () 
     ['a spread two levels down', '[["a": [...ints(), "b"]], t()]', '[{"a": [1, 2, "b"]}, 3]'],
   ])(
     'passes %s as an argument built as Json, as it builds after return',
-    (_name, literal, text) => {
+    async (_name, literal, text) => {
       const declarations = lines(
         "import * as json from 'json'",
         "import Json from 'json'",
@@ -179,12 +183,16 @@ describe('a literal built as a recursive use, at any depth, with any items', () 
       );
       expect(reported(declarations)).toEqual(reportedNothing);
       expect(
-        mainGives('Bool', 'return passed() == parsed() and returned() == parsed()', declarations),
+        await mainGives(
+          'Bool',
+          'return passed() == parsed() and returned() == parsed()',
+          declarations,
+        ),
       ).toBe(true);
     },
   );
 
-  it('chooses among overloads a literal of mixed items as one of plain items chooses', () => {
+  it('chooses among overloads a literal of mixed items as one of plain items chooses', async () => {
     const declarations = lines(
       "import Json from 'json'",
       tree,
@@ -194,20 +202,22 @@ describe('a literal built as a recursive use, at any depth, with any items', () 
       'fn k(t: Tree) -> Int: 10',
       'fn k(s: String) -> Int: 20',
     );
-    expect(mainGives('Int', 'return g([t(), "a"]) + k([t(), [1 + 1]])', declarations)).toBe(11);
+    expect(await mainGives('Int', 'return g([t(), "a"]) + k([t(), [1 + 1]])', declarations)).toBe(
+      11,
+    );
   });
 
-  it('chooses the more specific of two overloads both building a literal of mixed items', () => {
+  it('chooses the more specific of two overloads both building a literal of mixed items', async () => {
     const declarations = lines(
       "import Json from 'json'",
       'fn t() -> Int: 3',
       'fn a(j: Json) -> Int: 1',
       'fn a(xs: Array<String | Int>) -> Int: 2',
     );
-    expect(mainGives('Int', 'return a([t(), "a"])', declarations)).toBe(2);
+    expect(await mainGives('Int', 'return a([t(), "a"])', declarations)).toBe(2);
   });
 
-  it('keeps the type of its own a literal of items agreeing once checked, choosing and inferring by it', () => {
+  it('keeps the type of its own a literal of items agreeing once checked, choosing and inferring by it', async () => {
     const declarations = lines(
       'fn t() -> Int: 3',
       'fn f(xs: Array<Int>) -> Int: 1',
@@ -216,7 +226,7 @@ describe('a literal built as a recursive use, at any depth, with any items', () 
       'fn same<T>(a: T, b: T) -> Int: if a == b: 1 else: 0',
     );
     expect(
-      mainGives(
+      await mainGives(
         'Int',
         'return f([t(), 1 + 1]) + first([t(), t()]) + same((t(), 1), (t(), 1))',
         declarations,
@@ -254,7 +264,7 @@ describe('a literal built as a recursive use, at any depth, with any items', () 
     expect(reported(source)).toEqual(reportedNothing);
   });
 
-  it('runs a deep tuple literal into its alias', () => {
+  it('runs a deep tuple literal into its alias', async () => {
     const declarations = lines(
       chain,
       'fn sum(c: Chain?) -> Int:',
@@ -262,14 +272,14 @@ describe('a literal built as a recursive use, at any depth, with any items', () 
       '    case None: return 0',
       '    case Chain as link: return link.0 + sum(link.1)',
     );
-    expect(mainGives('Int', 'return sum((1, (2, (3, none))))', declarations)).toBe(6);
+    expect(await mainGives('Int', 'return sum((1, (2, (3, none))))', declarations)).toBe(6);
   });
 });
 
 describe('a recursive shape alias and a generic recursive alias named where a type is', () => {
   const list = 'type List = { head: Int, tail: List? }';
 
-  it('builds a recursive shape alias from braces and from an indented value', () => {
+  it('builds a recursive shape alias from braces and from an indented value', async () => {
     const declarations = lines(
       list,
       'fn braces() -> List: List{head: 1, tail: none}',
@@ -279,17 +289,17 @@ describe('a recursive shape alias and a generic recursive alias named where a ty
       '    tail: none',
     );
     expect(reported(declarations)).toEqual(reportedNothing);
-    expect(mainGives('Int', 'return braces().head + indented().head', declarations)).toBe(3);
+    expect(await mainGives('Int', 'return braces().head + indented().head', declarations)).toBe(3);
   });
 
-  it('matches a generic recursive alias by name with its arguments, and names none without', () => {
+  it('matches a generic recursive alias by name with its arguments, and names none without', async () => {
     const declarations = lines(
       'type Tree<T> = T | Array<Tree<T>>',
       'fn named(x: Tree<Int> | String) -> Bool: x is Tree<Int>',
     );
     expect(reported(declarations)).toEqual(reportedNothing);
     expect(
-      mainGives('Bool', 'return named(1) and named([2]) and not named("s")', declarations),
+      await mainGives('Bool', 'return named(1) and named([2]) and not named("s")', declarations),
     ).toBe(true);
     const bare = lines(declarations, 'fn bare(x: Tree<Int> | String) -> Bool: x is Tree');
     expect(reported(bare).codes.length).toBeGreaterThan(0);

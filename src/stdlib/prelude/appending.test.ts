@@ -8,25 +8,30 @@ import { describe, expect, it } from 'vitest';
 import { mainGives } from './prelude.test-kit.ts';
 
 /** The string `main` gives, returning `expression` beside `declarations`. */
-function appended(expression: string, declarations = ''): unknown {
-  return mainGives('String', expression, declarations);
+async function appended(expression: string, declarations = ''): Promise<unknown> {
+  return await mainGives('String', expression, declarations);
 }
 
 describe('appending to a string', () => {
-  it('appends an int on either side, as its toString writes it', () => {
-    fc.assert(
-      fc.property(fc.bigInt(), (value) => {
-        expect(appended(`"<" + ${value} + "|" + (${value} + ">")`)).toBe(`<${value}|${value}>`);
+  it('appends an int on either side, as its toString writes it', async () => {
+    await fc.assert(
+      fc.asyncProperty(fc.bigInt(), async (value) => {
+        expect(await appended(`"<" + ${value} + "|" + (${value} + ">")`)).toBe(
+          `<${value}|${value}>`,
+        );
       }),
       { numRuns: 10 },
     );
   });
 
-  it("appends a program's own Stringable type, a float and a bool on either side", () => {
+  it("appends a program's own Stringable type, a float and a bool on either side", async () => {
     const money =
       'struct Money { cents: Int }\nfn toString(self: Money) -> String: String(self.cents) + "c"';
     expect(
-      appended('Money{cents: 5} + " and " + 1.5 + ", " + (true + "") + Money{cents: 2}', money),
+      await appended(
+        'Money{cents: 5} + " and " + 1.5 + ", " + (true + "") + Money{cents: 2}',
+        money,
+      ),
     ).toBe('5c and 1.5, true2c');
   });
 });

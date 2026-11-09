@@ -29,12 +29,15 @@ const formDeclarations = [
 ];
 
 /** Runs `lines` as `main`'s body, giving a String. */
-function runText(lines: readonly string[], declarations: readonly string[]): unknown {
-  return runMain('String', lines.join('\n  '), declarations);
+async function runText(
+  lines: readonly string[],
+  declarations: readonly string[],
+): Promise<unknown> {
+  return await runMain('String', lines.join('\n  '), declarations);
 }
 
 describe('a rest over a struct whose fields are known', () => {
-  it('binds the shape of the fields left, in targets, cases and `is`, in name order', () => {
+  it('binds the shape of the fields left, in targets, cases and `is`, in name order', async () => {
     const declarations = [
       'struct Page { views: Int, title: String, draft: Bool }',
       'fn summarize(p: Page) -> String:',
@@ -58,12 +61,12 @@ describe('a rest over a struct whose fields are known', () => {
       'const e = twice(Page{title: "T", views: 2, draft: false})',
       '`${a}|${b}|${c}|${d}|${e}`',
     ];
-    expect(runText(lines, declarations)).toBe(
+    expect(await runText(lines, declarations)).toBe(
       'untitled:10:true|zero:Home:false|Docs:5|draft=true,title=T|T/2/false',
     );
   });
 
-  it('is a shape: equal to the literal of its fields, sent as JSON, and taken by a loop target', () => {
+  it('is a shape: equal to the literal of its fields, sent as JSON, and taken by a loop target', async () => {
     const declarations = [
       "import * as json from 'json'",
       'struct Settings { retries: Int, region: String, debug: Bool }',
@@ -80,12 +83,12 @@ describe('a rest over a struct whose fields are known', () => {
       'const copy: { region: String, retries: Int } = struct{for k, v in ...base: [k]: v}',
       '`${same}|${json.stringify(base)}|${total([s, s])}|${copy.region}|${debug}`',
     ];
-    expect(runText(lines, declarations)).toBe('true|{"region":"eu","retries":2}|2|eu|true');
+    expect(await runText(lines, declarations)).toBe('true|{"region":"eu","retries":2}|2|eu|true');
   });
 });
 
 describe('a rest over a type parameter with a struct constraint', () => {
-  it('takes the named fields by name and loops, comprehends and keys over the rest', () => {
+  it('takes the named fields by name and loops, comprehends and keys over the rest', async () => {
     const declarations = [
       ...formDeclarations,
       'fn fieldNames<S is struct { title: String, [_] is FormNode }>(form: S) -> Array<String>:',
@@ -109,7 +112,7 @@ describe('a rest over a type parameter with a struct constraint', () => {
       'const sum = viaKeys(struct{id: 1, x: 10, y: 100})',
       '`${names.join(",")}|${count}|${sum}`',
     ];
-    expect(runText(lines, declarations)).toBe('cfg.a,cfg.b|3|111');
+    expect(await runText(lines, declarations)).toBe('cfg.a,cfg.b|3|111');
   });
 
   it('reaches no field its constraint doesn’t name, and gives no shape without an expected type', () => {
@@ -193,9 +196,9 @@ function splitText(named: GeneratedField, rest: readonly GeneratedField[]): stri
 }
 
 describe('the commute law for rests', () => {
-  it('agrees generic, over the concrete struct and written by hand, empty rests included', () => {
-    fc.assert(
-      fc.property(generatedFieldsArbitrary, (fields) => {
+  it('agrees generic, over the concrete struct and written by hand, empty rests included', async () => {
+    await fc.assert(
+      fc.asyncProperty(generatedFieldsArbitrary, async (fields) => {
         const [named, ...rest] = fields;
         if (named === undefined) {
           return;
@@ -220,7 +223,7 @@ describe('the commute law for rests', () => {
         const value = `Generated{${fields.map((field) => `${field.name}: ${field.value}`).join(', ')}}`;
         const lines = [`const g = ${value}`, '`${generic(g)}#${concrete(g)}#${rebuilt(g)}`'];
         const expected = splitText(named, rest);
-        expect(runText(lines, declarations)).toBe(`${expected}#${expected}#true`);
+        expect(await runText(lines, declarations)).toBe(`${expected}#${expected}#true`);
       }),
       { numRuns: 25 },
     );

@@ -98,7 +98,7 @@ export class Heap {
 
   constructor(objects: readonly LiveObject[]) {
     this.#objects = new Map(objects.map((object) => [object.id, object]));
-    this.#next = Math.max(-1, ...this.#objects.keys()) + 1;
+    this.#next = nextId(this.#objects.keys());
     for (const object of objects) {
       this.#enter(object);
     }
@@ -141,10 +141,30 @@ export class Heap {
     const old = this.#objects.get(id);
     if (old !== undefined) {
       this.#noteHoldings(old);
-      this.#leave(old);
-      this.#kinds.get(old.kind)?.delete(id);
-      this.#objects.delete(id);
+      this.#drop(old);
     }
+  }
+
+  /**
+   * Keeps only the objects `kept` names, those a commit persisted (§5), so the heap is the one made
+   * from that commit's snapshot: it counts on from the highest id kept, and has nothing noted, as
+   * whatever a commit keeps is held.
+   */
+  keepOnly(kept: ReadonlySet<number>): void {
+    for (const object of this.objects()) {
+      if (!kept.has(object.id)) {
+        this.#drop(object);
+      }
+    }
+    this.#next = nextId(this.#objects.keys());
+    this.#released.length = 0;
+  }
+
+  /** Takes `object` off the heap and out of every index. */
+  #drop(object: LiveObject): void {
+    this.#leave(object);
+    this.#kinds.get(object.kind)?.delete(object.id);
+    this.#objects.delete(object.id);
   }
 
   /** The objects index `name` holds under `key`, in creation order. */
@@ -240,6 +260,11 @@ function keysOf(object: LiveObject): readonly (readonly [IndexName, unknown])[] 
     const { kind, keys } = indexes[name] as Index<LiveKind, unknown>;
     return kind === object.kind ? keys(object).map((key) => [name, key] as const) : [];
   });
+}
+
+/** The id after the highest of `ids`, the first a heap holding them gives a new object. */
+function nextId(ids: Iterable<number>): number {
+  return Math.max(-1, ...ids) + 1;
 }
 
 /** The object `handle` names; anything else is a bug the checker rules out. */

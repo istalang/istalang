@@ -47,9 +47,9 @@ describe("a field loop's passes", () => {
     );
   });
 
-  it('each choose the overload their own field takes', () => {
+  it('each choose the overload their own field takes', async () => {
     const body =
       'const s = S{a: 1, b: "x"}\nconst y = struct{for k, v in ...s: [k]: show(v)}\n`${y.a} ${y.b}`';
-    expect(mainGives('String', body, declarations)).toBe('int str');
+    expect(await mainGives('String', body, declarations)).toBe('int str');
   });
 });

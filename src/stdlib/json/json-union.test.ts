@@ -29,7 +29,7 @@ const jsonImports = lines(
 );
 
 describe('Json as a recursive union: literals, matching and codecs (§3)', () => {
-  it('builds nested Json values from plain bracket literals and indented values with no wrapping', () => {
+  it('builds nested Json values from plain bracket literals and indented values with no wrapping', async () => {
     const body = lines(
       'const inline: Json = ["name": "api", "tags": ["web", 1, 2.5, true, none], "emptyArr": [], "emptyMap": [:]]',
       'const indented: Json =',
@@ -44,16 +44,16 @@ describe('Json as a recursive union: literals, matching and codecs (§3)', () =>
       '  emptyMap: [:]',
       'inline == indented and json.stringify(inline) == json.stringify(indented)',
     );
-    expect(mainGives('Bool', body, jsonImports)).toBe(true);
+    expect(await mainGives('Bool', body, jsonImports)).toBe(true);
   });
 
-  it('disambiguates [] as Array<Json> and [:] as Map<String, Json>', () => {
+  it('disambiguates [] as Array<Json> and [:] as Map<String, Json>', async () => {
     const body = lines(
       'const arr: Json = []',
       'const obj: Json = [:]',
       '(arr is Array<Json>, obj is Map<String, Json>, json.stringify(arr), json.stringify(obj))',
     );
-    expect(mainGives('(Bool, Bool, String, String)', body, jsonImports)).toEqual([
+    expect(await mainGives('(Bool, Bool, String, String)', body, jsonImports)).toEqual([
       true,
       true,
       '[]',
@@ -61,7 +61,7 @@ describe('Json as a recursive union: literals, matching and codecs (§3)', () =>
     ]);
   });
 
-  it('matches all seven Json members exhaustively with type patterns and no "case _"', () => {
+  it('matches all seven Json members exhaustively with type patterns and no "case _"', async () => {
     const decls = lines(
       jsonImports,
       'fn describe(j: Json) -> String:',
@@ -79,7 +79,7 @@ describe('Json as a recursive union: literals, matching and codecs (§3)', () =>
       '[for each in samples: describe(each)]',
     );
     expect(reported(decls)).toEqual(reportedNothing);
-    expect(mainGives('Array<String>', body, decls)).toEqual([
+    expect(await mainGives('Array<String>', body, decls)).toEqual([
       'null',
       'bool:true',
       'int:42',
@@ -90,14 +90,14 @@ describe('Json as a recursive union: literals, matching and codecs (§3)', () =>
     ]);
   });
 
-  it('collapses Json? to Json while Map.has(k) still tells a missing key from a stored none', () => {
+  it('collapses Json? to Json while Map.has(k) still tells a missing key from a stored none', async () => {
     const body = lines(
       'const obj: Map<String, Json> = ["presentNull": none, "num": 1]',
       'const gotMissing: Json? = obj.get("missing")',
       'const gotNull: Json? = obj.get("presentNull")',
       '(gotMissing == none, gotNull == none, obj.has("missing"), obj.has("presentNull"))',
     );
-    expect(mainGives('(Bool, Bool, Bool, Bool)', body, jsonImports)).toEqual([
+    expect(await mainGives('(Bool, Bool, Bool, Bool)', body, jsonImports)).toEqual([
       true,
       true,
       false,
@@ -105,7 +105,7 @@ describe('Json as a recursive union: literals, matching and codecs (§3)', () =>
     ]);
   });
 
-  it('keeps toJson and Json.fromJson as the identity, and reads integer tokens as Int and fractional tokens as Float', () => {
+  it('keeps toJson and Json.fromJson as the identity, and reads integer tokens as Int and fractional tokens as Float', async () => {
     const body = lines(
       'const read = parsed("{\\"i\\":42,\\"f\\":42.5,\\"a\\":[true,null,\\"x\\"]}")',
       'const encoded = json.encode(read)',
@@ -115,7 +115,7 @@ describe('Json as a recursive union: literals, matching and codecs (§3)', () =>
       '    (read == decoded, m["i"] is Int, m["f"] is Float, m["i"] == 42, m["f"] == 42.5)',
       '  case _: (false, false, false, false, false)',
     );
-    expect(mainGives('(Bool, Bool, Bool, Bool, Bool)', body, jsonImports)).toEqual([
+    expect(await mainGives('(Bool, Bool, Bool, Bool, Bool)', body, jsonImports)).toEqual([
       true,
       true,
       true,
@@ -124,7 +124,7 @@ describe('Json as a recursive union: literals, matching and codecs (§3)', () =>
     ]);
   });
 
-  it('round-trips stdlib text-encoded types (Time, Duration, Decimal, Regex) and derived struct codecs through the union Json', () => {
+  it('round-trips stdlib text-encoded types (Time, Duration, Decimal, Regex) and derived struct codecs through the union Json', async () => {
     const decls = lines(
       jsonImports,
       "import * as time from 'time'",
@@ -143,7 +143,12 @@ describe('Json as a recursive union: literals, matching and codecs (§3)', () =>
       'const asJson = json.encode(p)',
       '(asJson is Map<String, Json>, back(asJson) == p, p.cost.toJson() == "42", p.wait.toJson() is String)',
     );
-    expect(mainGives('(Bool, Bool, Bool, Bool)', body, decls)).toEqual([true, true, true, true]);
+    expect(await mainGives('(Bool, Bool, Bool, Bool)', body, decls)).toEqual([
+      true,
+      true,
+      true,
+      true,
+    ]);
   });
 });
 
@@ -227,16 +232,16 @@ describe('property: Json literals of generated nesting equal json.parse<Json> of
     ),
   })).pair;
 
-  it('evaluates every generated Json literal to the same value as json.parse<Json> of its JSON text', () => {
-    fc.assert(
-      fc.property(jsonPairs, ({ istaLiteral, jsonText }) => {
+  it('evaluates every generated Json literal to the same value as json.parse<Json> of its JSON text', async () => {
+    await fc.assert(
+      fc.asyncProperty(jsonPairs, async ({ istaLiteral, jsonText }) => {
         const body = lines(
           `const literalValue: Json = ${istaLiteral}`,
           `const parsedValue: Json = parsed(${JSON.stringify(jsonText)})`,
           'const roundTripped: Json = parsed(json.stringify(literalValue))',
           'literalValue == parsedValue and literalValue == roundTripped',
         );
-        expect(mainGives('Bool', body, jsonImports)).toBe(true);
+        expect(await mainGives('Bool', body, jsonImports)).toBe(true);
       }),
       { numRuns: 45 },
     );

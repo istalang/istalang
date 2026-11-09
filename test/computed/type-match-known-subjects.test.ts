@@ -30,10 +30,12 @@ describe('a type match given a known subject', () => {
     ['an optional of a recursive alias, inside a type', 'Box<List<infer T>?>', 'Box<List<Int>?>'],
     ['an optional array, inside a type', 'Box<Array<infer T>?>', 'Box<Array<Int>?>'],
     ["a recursive alias's members", 'Tree<infer T>', 'Tree<Int>'],
-  ])('matches %s, its variable bound', (_case, pattern, subject) => {
+  ])('matches %s, its variable bound', async (_case, pattern, subject) => {
     const written = [...declarations, ...matchOf(pattern, 'T')];
     expect(codesOf(...written, `fn f(x: Int) -> M<${subject}>: x`)).toEqual([]);
-    expect(runMain('Int', 'take(1)', [...written, `fn take(x: M<${subject}>) -> Int: x`])).toBe(1);
+    expect(
+      await runMain('Int', 'take(1)', [...written, `fn take(x: M<${subject}>) -> Int: x`]),
+    ).toBe(1);
   });
 
   it('leaves a generic subject undecided, never falling through', () => {

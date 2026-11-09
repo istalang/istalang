@@ -109,9 +109,9 @@ describe('a recursive use and what it unfolds to', () => {
     }
   });
 
-  it('build a literal of any nesting to one value, against the alias or its body written out', () => {
-    fc.assert(
-      fc.property(fc.constantFrom(...kinds), fc.nat({ max: 3 }), (kind, depth) => {
+  it('build a literal of any nesting to one value, against the alias or its body written out', async () => {
+    await fc.assert(
+      fc.asyncProperty(fc.constantFrom(...kinds), fc.nat({ max: 3 }), async (kind, depth) => {
         const literal = kind.literal(depth);
         const declarations = lines(
           `type R = ${kind.body}`,
@@ -119,8 +119,8 @@ describe('a recursive use and what it unfolds to', () => {
           `fn asAlias() -> R: ${literal}`,
           `fn asBody() -> ${kind.body}: ${literal}`,
         );
-        const alias = mainGives('Int', 'return measure(asAlias())', declarations);
-        const body = mainGives('Int', 'return measure(asBody())', declarations);
+        const alias = await mainGives('Int', 'return measure(asAlias())', declarations);
+        const body = await mainGives('Int', 'return measure(asBody())', declarations);
         expect(alias).toBe(depth + 1);
         expect(body).toBe(alias);
       }),
@@ -128,9 +128,9 @@ describe('a recursive use and what it unfolds to', () => {
     );
   });
 
-  it('build a literal mixing items only checking types with items of other types, wherever it goes', () => {
-    fc.assert(
-      fc.property(mixedItems, (literal) => {
+  it('build a literal mixing items only checking types with items of other types, wherever it goes', async () => {
+    await fc.assert(
+      fc.asyncProperty(mixedItems, async (literal) => {
         const declarations = lines(
           'type R = Int | String | Array<R>',
           'fn one() -> Int: 1',
@@ -152,9 +152,12 @@ describe('a recursive use and what it unfolds to', () => {
           `  const r: R = ${literal.text}`,
           '  return r',
         );
-        for (const built of ['asAlias()', 'asBody()', 'asArgument()', 'asConstant()']) {
-          expect(mainGives('Int', `return weight(${built})`, declarations)).toBe(literal.weight);
-        }
+        const weights = await Promise.all(
+          ['asAlias()', 'asBody()', 'asArgument()', 'asConstant()'].map((built) =>
+            mainGives('Int', `return weight(${built})`, declarations),
+          ),
+        );
+        expect(weights).toEqual(weights.map(() => literal.weight));
       }),
       { numRuns: 24 },
     );

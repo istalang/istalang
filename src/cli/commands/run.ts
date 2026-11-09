@@ -26,8 +26,8 @@ import { compileProgram, diagnose } from '../../compiler/compile.ts';
 import { definitionFormat } from '../../definition/definition.ts';
 import { FormatError } from '../../definition/formats/format.ts';
 import { loadProject } from '../../project/project.ts';
+import { type Settled, settle } from '../../runtime/host/drive.ts';
 import { createRuntime, type DeployedProgram, type Runtime } from '../../runtime/host/index.ts';
-import { type Settled, settle } from '../../runtime/host/settle.ts';
 import type { Advanced } from '../../runtime/instance-state.ts';
 import { Refusal } from '../../runtime/refusal.ts';
 import { seedBytes } from '../../runtime/snapshot/random.ts';
@@ -92,7 +92,7 @@ async function run(
       options.store === undefined
         ? memoryStore()
         : directoryStore(resolve(environment.cwd, options.store)),
-    now: clock,
+    now: clock.now,
     seed: () => randomBytes(seedBytes),
     ...(host === undefined ? {} : { host: host.externs }),
   });
@@ -131,13 +131,13 @@ async function start(session: Session, entry: string, options: RunOptions): Prom
       return exitCodes.problems;
     case 'compiled': {
       const { text } = definitionFormat.write(compilation.definition);
-      const outcome = await unlessRefused(environment, () => {
+      const outcome = await unlessRefused(environment, async () => {
         const deployed = runtime.deploy(text);
         const name = randomUUID();
         if (options.store !== undefined) {
           environment.writeError(`ista: instance ${name}\n`);
         }
-        return finish(session, { program: deployed, name }, deployed.start(name));
+        return finish(session, { program: deployed, name }, await deployed.start(name));
       });
       return outcome ?? exitCodes.problems;
     }
@@ -148,9 +148,9 @@ async function start(session: Session, entry: string, options: RunOptions): Prom
   }
 }
 
-function resume(session: Session, name: string): Promise<ExitCode> {
+async function resume(session: Session, name: string): Promise<ExitCode> {
   const { runtime } = session;
-  return finish(session, { program: runtime.programOf(name), name }, runtime.wake(name));
+  return finish(session, { program: runtime.programOf(name), name }, await runtime.wake(name));
 }
 
 /** An instance the command runs: its name, and its program. */
@@ -174,26 +174,25 @@ async function finish(
       environment.writeError(`${logLine(record)}\n`);
     }
   };
-  const steps = settle(
-    (instance) => runtime.wake(instance),
+  const settled = await settle(
+    {
+      wake: (instance) => runtime.wake(instance),
+      now: clock.now,
+      wait: (due) => arrivalsBy(due, { runtime, host, environment }),
+      seen: writeLogs,
+    },
     { instance: name, advanced: initial },
-    writeLogs,
   );
-  let step = steps.next();
-  while (!step.done) {
-    // biome-ignore lint/performance/noAwaitInLoops: each wake depends on what the last one returned.
-    step = steps.next(await arrivalsBy(step.value, { runtime, host, environment }));
-  }
-  const unfinished = [...step.value].flatMap(([instance, ending]) => {
+  const unfinished = [...settled].flatMap(([instance, ending]) => {
     const role = instance === name ? 'main' : 'spawned';
     return failsRun(ending, role) ? [unfinishedText(runtime, instance, ending, role)] : [];
   });
   for (const text of unfinished) {
     environment.writeError(text);
   }
-  const settled = step.value.get(name);
-  if (settled?.kind === 'finished') {
-    environment.write(`${program.outcomeText(settled)}\n`);
+  const ended = settled.get(name);
+  if (ended?.kind === 'finished') {
+    environment.write(`${program.outcomeText(ended)}\n`);
   }
   return unfinished.length === 0 ? exitCodes.clean : exitCodes.problems;
 }
@@ -208,7 +207,7 @@ async function arrivalsBy(due: bigint | undefined, session: Session) {
   for (;;) {
     // biome-ignore lint/performance/noAwaitInLoops: each wait depends on what the last one settled.
     const woke = await nextWake(due, session);
-    const arrived = host?.arrivals(runtime, environment.writeError) ?? [];
+    const arrived = (await host?.arrivals(runtime, environment.writeError)) ?? [];
     if (arrived.length > 0 || due !== undefined || woke === 'idle' || host?.waiting() !== true) {
       return arrived;
     }
@@ -231,7 +230,7 @@ async function nextWake(due: bigint | undefined, { host, environment }: Session)
   const sleeping = new AbortController();
   const waits: Promise<Wake>[] = [];
   if (due !== undefined) {
-    const delay = Math.max(0, Number(due - clock()));
+    const delay = Math.max(0, Number(due - clock.now()));
     waits.push(sleep(delay, 'woke', { signal: sleeping.signal }));
   }
   if (host?.waiting() === true) {

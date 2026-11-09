@@ -11,8 +11,8 @@
  * - A suite whose listing fails is reported as one failed test, titled by the suite.
  * - Each test's random values come from a seed made from its full title, so a run repeats them
  *   (§10).
- * - Each test may wait on timers; the generator yields every such wait, as `World.run` does, for
- *   the caller to make, and reports each test as it ends.
+ * - Each test may wait on timers, on the clock the run is given; the run yields each test's
+ *   report as it ends.
  */
 
 import { createHash } from 'node:crypto';
@@ -21,6 +21,7 @@ import { listingArguments, runningArguments } from '../../definition/tables/test
 import { fieldValueOf } from '../../definition/values/declared-values.ts';
 import { elementsOf, type Value } from '../../definition/values/values.ts';
 import { unreachable } from '../../foundation/structures/unreachable.ts';
+import type { Clock } from '../host/clock.ts';
 import type { Natives } from '../natives.ts';
 import { seedFrom } from '../snapshot/random.ts';
 import type { InstanceCall } from '../snapshot/snapshot.ts';
@@ -28,8 +29,7 @@ import { type Ended, type Failed, World } from './world/index.ts';
 
 export interface TestRunOptions {
   readonly natives: Natives;
-  /** Milliseconds since the Unix epoch. */
-  readonly now: () => bigint;
+  readonly clock: Clock;
   /** How long one test may run, in milliseconds. */
   readonly timeout: bigint;
   /** Run only the tests whose full title contains this. */
@@ -59,30 +59,28 @@ interface Listing {
   readonly listed: readonly Listed[];
 }
 
-/**
- * Runs `call` as the instance of the test or listing titled `title`, in a world of its own: yields
- * each wait, returns its end.
- */
-type RunInWorld = (call: InstanceCall, title: string) => Generator<bigint, Ended, undefined>;
+/** Runs `call` as the instance of the test or listing titled `title`, in a world of its own. */
+type RunInWorld = (call: InstanceCall, title: string) => Promise<Ended>;
 
 /**
- * Runs the tests of the Definition `text`, yielding each wait until a time and each report; the
- * Definition must be one built to run tests.
+ * Runs the tests of the Definition `text`, yielding each report; the Definition must be one built
+ * to run tests.
  */
-export function* runTests(
+export async function* runTests(
   text: string,
   options: TestRunOptions,
-): Generator<bigint | TestReport, void, undefined> {
+): AsyncGenerator<TestReport, void, undefined> {
   const { value: definition, hash } = definitionFormat.readCanonical(text);
   const tests = definition.tests ?? unreachable('This Definition was not built to run tests.');
-  const run: RunInWorld = function* (call, title) {
-    const deadline = options.now() + options.timeout;
+  const run: RunInWorld = (call, title) => {
+    const deadline = options.clock.now() + options.timeout;
     const seed = seedFrom(createHash('sha256').update(title).digest());
-    return yield* new World({ ...options, definition, hash, seed, deadline }).run(call);
+    return new World({ ...options, definition, hash, seed, deadline }).run(call);
   };
   const listings: Listing[] = [];
   for (const { title, function: suite } of tests.suites) {
-    const listing = yield* run(callOf(tests.list, listingArguments(suite, title)), title);
+    // biome-ignore lint/performance/noAwaitInLoops: tests run one at a time, each in its own world.
+    const listing = await run(callOf(tests.list, listingArguments(suite, title)), title);
     if (listing.kind === 'failed') {
       yield { title, outcome: listing };
     } else {
@@ -106,16 +104,17 @@ interface ListedRun {
 }
 
 /** Runs the tests of `listing` the filter leaves in, skipping those the run skips. */
-function* runListed(
+async function* runListed(
   { suite, title, listed }: Listing,
   { run, runner, focused, filter }: ListedRun,
-): Generator<bigint | TestReport, void, undefined> {
+): AsyncGenerator<TestReport, void, undefined> {
   for (const [position, test] of listed.entries()) {
     if (filter === undefined || test.title.includes(filter)) {
       if (test.skipped || (focused && !test.only)) {
         yield { title: test.title, outcome: { kind: 'skipped' } };
       } else {
-        const ended = yield* run(
+        // biome-ignore lint/performance/noAwaitInLoops: tests run one at a time, each in its own world.
+        const ended = await run(
           callOf(runner, runningArguments({ suite, title, position, expected: test.title })),
           test.title,
         );

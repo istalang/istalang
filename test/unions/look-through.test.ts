@@ -26,9 +26,9 @@ const declarations = [
 ];
 
 describe('a pattern on a union with an `any` member', () => {
-  it('downcasts through the member a type or struct pattern names a type it took', () => {
+  it('downcasts through the member a type or struct pattern names a type it took', async () => {
     expect(
-      runMain(
+      await runMain(
         'Array<String>',
         'const s: any Shows = "s"\n  [tag(3), tag(Point{x: 2}), tag(Plain{id: 1}), tag(s)]',
         [...declarations, 'fn show(self: String) -> String: self'],
@@ -50,9 +50,9 @@ describe('a pattern on a union with an `any` member', () => {
 });
 
 describe('a union going into another through its `any` member', () => {
-  it('takes each member into the member holding it', () => {
+  it('takes each member into the member holding it', async () => {
     expect(
-      runMain(
+      await runMain(
         'Array<String>',
         'const a: Int | Plain = 4\n  const b: Int | Plain = Plain{id: 1}\n  [tag(a), tag(b)]',
         declarations,
@@ -73,9 +73,9 @@ describe('a type whose `any` member took `None` whole', () => {
     'fn forced(x: Plain | any Sendable) -> String: which(x!)',
   ];
 
-  it('is tested for `none` by `??`, `!` and `case none`', () => {
+  it('is tested for `none` by `??`, `!` and `case none`', async () => {
     expect(
-      runMain(
+      await runMain(
         'Array<String>',
         '[which(orSeven(none)), which(orSeven(2)), which(none), which("s"), forced(5)]',
         optional,
@@ -83,7 +83,7 @@ describe('a type whose `any` member took `None` whole', () => {
     ).toEqual(['int:7', 'int:2', 'none', 'other', 'int:5']);
   });
 
-  it('panics forcing `none` out of it', () => {
-    expect(runMain('String', 'forced(none)', optional)).toMatchObject({ kind: 'panicked' });
+  it('panics forcing `none` out of it', async () => {
+    expect(await runMain('String', 'forced(none)', optional)).toMatchObject({ kind: 'panicked' });
   });
 });

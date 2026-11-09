@@ -48,9 +48,9 @@ describe('an associated type of a generic type (§1)', () => {
     );
   });
 
-  it('runs a generic body reading it as the body written for the argument does', () => {
-    fc.assert(
-      fc.property(argument, body, (given, shape) => {
+  it('runs a generic body reading it as the body written for the argument does', async () => {
+    await fc.assert(
+      fc.asyncProperty(argument, body, async (given, shape) => {
         const written = shape.written(`(${given.type})`);
         const declarations = [
           'struct Holder<T>:',
@@ -62,7 +62,7 @@ describe('an associated type of a generic type (§1)', () => {
           `const data: ${written} = ${shape.value(given.value)}`,
           `echo<${given.type}>(data) == direct(data)`,
         ].join('\n  ');
-        expect(runMain('Bool', run, declarations)).toBe(true);
+        expect(await runMain('Bool', run, declarations)).toBe(true);
       }),
       { numRuns: 20 },
     );
@@ -111,7 +111,7 @@ describe('meeting a struct constraint (§2)', () => {
     );
   });
 
-  it('is met by a constrained type parameter whose own constraint states as much', () => {
+  it('is met by a constrained type parameter whose own constraint states as much', async () => {
     const declarations = [
       'fn inner<S is struct { title: String, [_]: Int }>(s: S) -> String: s.title',
       'fn outer<S is struct { title: String, count: Int, [_]: Int }>(s: S) -> String: inner(s)',
@@ -120,7 +120,7 @@ describe('meeting a struct constraint (§2)', () => {
     expect(codesOf(...declarations.slice(0, 2))).toEqual([]);
     expect(codesOf(declarations[0] ?? '', declarations[2] ?? '')).toEqual(notMet);
     const call = 'outer(struct{title: "t", count: 1, extra: 2})';
-    expect(runMain('String', call, declarations.slice(0, 2))).toBe('t');
+    expect(await runMain('String', call, declarations.slice(0, 2))).toBe('t');
   });
 
   it('names an associated type after a struct in a type, which it lacks', () => {

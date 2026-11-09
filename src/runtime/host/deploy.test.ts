@@ -14,14 +14,17 @@ import { recordingStore, testRuntime } from '../runtime.test-kit.ts';
 const { text } = definitionFormat.write(subsetDefinition);
 
 describe('deploying a Definition', () => {
-  it('writes it to the store once, however often the same runtime deploys it', () => {
+  it('writes it to the store once, however often the same runtime deploys it', async () => {
     const store = recordingStore();
     const { runtime } = testRuntime({ natives: stdNatives, store });
     const first = runtime.deploy(text);
     const second = runtime.deploy(text);
     expect(store.definitions).toEqual([first.hash]);
     expect(second.hash).toBe(first.hash);
-    expect(second.start('again').state).toEqual({ kind: 'finished', outcome: subsetOutcome });
+    expect((await second.start('again')).state).toEqual({
+      kind: 'finished',
+      outcome: subsetOutcome,
+    });
   });
 
   it('writes it again for a fresh runtime whose store lacks it', () => {
@@ -51,11 +54,11 @@ describe('deploying a Definition', () => {
     expect(store.definitions).toEqual([program.hash]);
   });
 
-  it('reads a text once, though the store gives back its canonical text', () => {
+  it('reads a text once, though the store gives back its canonical text', async () => {
     const reads = vi.spyOn(definitionFormat, 'readCanonical');
     try {
       const { runtime } = testRuntime({ natives: stdNatives });
-      runtime.deploy(` ${text}`).start('spaced');
+      await runtime.deploy(` ${text}`).start('spaced');
       runtime.inspect('spaced');
       expect(reads).toHaveBeenCalledTimes(1);
     } finally {

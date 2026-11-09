@@ -9,6 +9,7 @@ import { compileTests, diagnose } from '../../compiler/compile.ts';
 import { definitionFormat } from '../../definition/definition.ts';
 import { renderDiagnostic } from '../../foundation/diagnostics/render.ts';
 import { stdNatives } from '../../stdlib/natives.ts';
+import { ManualClock } from '../host/clock.ts';
 import { runTests, type TestReport } from './run-tests.ts';
 
 export interface ReportsOptions {
@@ -20,7 +21,10 @@ export interface ReportsOptions {
 }
 
 /** The reports of running the tests of `source`, a test module importing what it needs. */
-export function reportsOf(source: string, options: ReportsOptions = {}): readonly TestReport[] {
+export async function reportsOf(
+  source: string,
+  options: ReportsOptions = {},
+): Promise<readonly TestReport[]> {
   const program = stdProgramOf({ 'main.test.ista': source });
   const compiled = compileTests(program);
   if (compiled.kind !== 'compiled') {
@@ -29,23 +33,24 @@ export function reportsOf(source: string, options: ReportsOptions = {}): readonl
     );
     throw new Error(`The test module didn't compile (${compiled.kind}):\n${problems.join('\n')}`);
   }
-  let clock = 1_000_000n;
+  const clock = new ManualClock(1_000_000n);
+  const { tick } = options;
   const reports: TestReport[] = [];
-  const run = runTests(definitionFormat.write(compiled.definition).text, {
+  for await (const report of runTests(definitionFormat.write(compiled.definition).text, {
     natives: stdNatives,
-    now: () => {
-      clock = options.tick?.(clock) ?? clock;
-      return clock;
+    clock: {
+      now: () => {
+        if (tick !== undefined) {
+          clock.set(tick(clock.now()));
+        }
+        return clock.now();
+      },
+      until: clock.until,
     },
     timeout: options.timeout ?? 5000n,
     ...(options.filter === undefined ? {} : { filter: options.filter }),
-  });
-  for (let step = run.next(); step.done !== true; step = run.next()) {
-    if (typeof step.value === 'bigint') {
-      clock = step.value;
-    } else {
-      reports.push(step.value);
-    }
+  })) {
+    reports.push(report);
   }
   return reports;
 }

@@ -9,14 +9,9 @@ import { describe, expect, it } from 'vitest';
 import { runPrograms } from '../../../test/corpus/programs.ts';
 import { compiledText } from '../../compiler/compile.test-kit.ts';
 import { stdNatives } from '../../stdlib/natives.ts';
+import { ManualClock } from '../host/clock.ts';
 import type { Native, Natives } from '../natives.ts';
-import {
-  manualClock,
-  recordingStore,
-  runToEnd,
-  startToEnd,
-  testRuntime,
-} from '../runtime.test-kit.ts';
+import { recordingStore, runToEnd, startToEnd, testRuntime } from '../runtime.test-kit.ts';
 import { type Snapshot, snapshotFormat } from '../snapshot/snapshot.ts';
 
 const childAndMain = [
@@ -86,9 +81,9 @@ const committed = (texts: readonly string[]): readonly Snapshot[] =>
   texts.map((text) => snapshotFormat.read(text));
 
 describe('advancing an instance', () => {
-  it("runs an async callee inside its caller's segment, so its first await commits nothing", () => {
+  it("runs an async callee inside its caller's segment, so its first await commits nothing", async () => {
     const test = testRuntime();
-    expect(startToEnd(test, compiledText(childAndMain))).toEqual({
+    expect(await startToEnd(test, compiledText(childAndMain))).toEqual({
       kind: 'finished',
       outcome: '42',
     });
@@ -102,62 +97,68 @@ describe('advancing an instance', () => {
     );
   });
 
-  it('rolls an eager callee back with its caller when the caller panics in the same segment', () => {
+  it('rolls an eager callee back with its caller when the caller panics in the same segment', async () => {
     const text = compiledText(
       childAndMain.replace('  const x = await child(41)', '  const x = await child(panic("no"))'),
     );
     const test = testRuntime();
-    expect(startToEnd(test, text)).toMatchObject({ kind: 'panicked', message: 'no' });
+    expect(await startToEnd(test, text)).toMatchObject({ kind: 'panicked', message: 'no' });
     const [only, ...more] = committed(test.store.commits);
     expect(more).toEqual([]);
     expect(only?.objects).toEqual([]);
     expect(only?.status).toMatchObject({ kind: 'panicked', segmentStartedAt: 0n });
   });
 
-  it('commits at await runtime.commit() and goes on without waiting', () => {
+  it('commits at await runtime.commit() and goes on without waiting', async () => {
     const text = compiledText(
       "import * as runtime from 'runtime'\nasync fn main():\n  await runtime.commit()\n  7",
     );
     const test = testRuntime();
-    expect(runToEnd(test, 'i', test.runtime.deploy(text).start('i'))).toEqual({
+    expect(await runToEnd(test, 'i', await test.runtime.deploy(text).start('i'))).toEqual({
       kind: 'finished',
       outcome: '7',
     });
     expect(test.store.commits).toHaveLength(2);
   });
 
-  it('continues on a fresh runtime from the store where the first one committed', () => {
+  it('continues on a fresh runtime from the store where the first one committed', async () => {
     const text = compiledText(severalAwaits);
-    const uninterrupted = startToEnd(testRuntime(), text);
+    const uninterrupted = await startToEnd(testRuntime(), text);
     const store = recordingStore();
-    const clock = manualClock();
-    const first = testRuntime({ store, clock }).runtime.deploy(text).start('restarted');
+    const clock = new ManualClock();
+    const first = await testRuntime({ store, clock }).runtime.deploy(text).start('restarted');
     expect(first.state).toEqual({ kind: 'waiting', until: 5n, watching: [] });
     const second = testRuntime({ store, clock });
-    expect(runToEnd(second, 'restarted', second.runtime.wake('restarted'))).toEqual(uninterrupted);
+    expect(await runToEnd(second, 'restarted', await second.runtime.wake('restarted'))).toEqual(
+      uninterrupted,
+    );
     expect(uninterrupted).toEqual({ kind: 'finished', outcome: '5' });
   });
 
-  it("keeps a reference to its caller's variable across a restart and crashEveryAwait", () => {
+  it("keeps a reference to its caller's variable across a restart and crashEveryAwait", async () => {
     const text = compiledText(referenceAcrossAwaits);
-    const uninterrupted = startToEnd(testRuntime(), text);
+    const uninterrupted = await startToEnd(testRuntime(), text);
     expect(uninterrupted).toEqual({ kind: 'finished', outcome: '5' });
-    expect(startToEnd(testRuntime(), text, { crashEveryAwait: true })).toEqual(uninterrupted);
+    expect(await startToEnd(testRuntime(), text, { crashEveryAwait: true })).toEqual(uninterrupted);
     const store = recordingStore();
-    const clock = manualClock();
-    const first = testRuntime({ store, clock }).runtime.deploy(text).start('restarted');
+    const clock = new ManualClock();
+    const first = await testRuntime({ store, clock }).runtime.deploy(text).start('restarted');
     expect(first.state).toEqual({ kind: 'waiting', until: 5n, watching: [] });
     const second = testRuntime({ store, clock });
-    expect(runToEnd(second, 'restarted', second.runtime.wake('restarted'))).toEqual(uninterrupted);
+    expect(await runToEnd(second, 'restarted', await second.runtime.wake('restarted'))).toEqual(
+      uninterrupted,
+    );
   });
 
-  it('with crashEveryAwait, runs every segment twice and commits what a normal run commits', () => {
+  it('with crashEveryAwait, runs every segment twice and commits what a normal run commits', async () => {
     const text = compiledText(severalAwaits);
     const normalCalls = { count: 0 };
     const normal = testRuntime({ natives: countingAdd(normalCalls) });
     const crashingCalls = { count: 0 };
     const crashing = testRuntime({ natives: countingAdd(crashingCalls) });
-    expect(startToEnd(crashing, text, { crashEveryAwait: true })).toEqual(startToEnd(normal, text));
+    expect(await startToEnd(crashing, text, { crashEveryAwait: true })).toEqual(
+      await startToEnd(normal, text),
+    );
     const withoutOption = ({ crashEveryAwait: _, ...rest }: Snapshot) => rest;
     expect(committed(crashing.store.commits).map(withoutOption)).toEqual(
       committed(normal.store.commits).map(withoutOption),
@@ -166,31 +167,31 @@ describe('advancing an instance', () => {
     expect(crashingCalls.count).toBe(2 * normalCalls.count);
   });
 
-  it('with crashEveryAwait, keeps re-running segments on a fresh runtime after a restart', () => {
+  it('with crashEveryAwait, keeps re-running segments on a fresh runtime after a restart', async () => {
     const text = compiledText(severalAwaits);
     const normalCalls = { count: 0 };
-    startToEnd(testRuntime({ natives: countingAdd(normalCalls) }), text);
+    await startToEnd(testRuntime({ natives: countingAdd(normalCalls) }), text);
     const store = recordingStore();
-    const clock = manualClock();
+    const clock = new ManualClock();
     const crashingCalls = { count: 0 };
     const first = testRuntime({ natives: countingAdd(crashingCalls), store, clock });
-    first.runtime.deploy(text).start('restarted', { crashEveryAwait: true });
+    await first.runtime.deploy(text).start('restarted', { crashEveryAwait: true });
     const second = testRuntime({ natives: countingAdd(crashingCalls), store, clock });
-    runToEnd(second, 'restarted', second.runtime.wake('restarted'));
+    await runToEnd(second, 'restarted', await second.runtime.wake('restarted'));
     expect(crashingCalls.count).toBe(2 * normalCalls.count);
   });
 
-  it('with crashEveryAwait, panics an instance whose segment runs differently the second time', () => {
+  it('with crashEveryAwait, panics an instance whose segment runs differently the second time', async () => {
     const crashing = testRuntime({ natives: countingAdd({ count: 0 }, true) });
     expect(
-      startToEnd(crashing, compiledText(severalAwaits), { crashEveryAwait: true }),
+      await startToEnd(crashing, compiledText(severalAwaits), { crashEveryAwait: true }),
     ).toMatchObject({
       kind: 'panicked',
       message: 'This segment ran differently when crashEveryAwait re-ran it.',
     });
   });
 
-  it('answers now() with the time its segment started', () => {
+  it('answers now() with the time its segment started', async () => {
     const text = compiledText(
       [
         "import * as time from 'time'",
@@ -200,20 +201,28 @@ describe('advancing an instance', () => {
         '  time.now().value - before.value',
       ].join('\n'),
     );
-    const test = testRuntime({ clock: manualClock(1000n) });
-    expect(startToEnd(test, text)).toEqual({ kind: 'finished', outcome: '500' });
+    const test = testRuntime({ clock: new ManualClock(1000n) });
+    expect(await startToEnd(test, text)).toEqual({ kind: 'finished', outcome: '500' });
   });
 
-  it('waits until the earliest timer, and wakes to nothing new before it is due', () => {
+  it('waits until the earliest timer, and wakes to nothing new before it is due', async () => {
     const test = testRuntime();
     const program = test.runtime.deploy(compiledText(childAndMain));
-    expect(program.start('early').state).toEqual({ kind: 'waiting', until: 10n, watching: [] });
+    expect((await program.start('early')).state).toEqual({
+      kind: 'waiting',
+      until: 10n,
+      watching: [],
+    });
     test.clock.set(9n);
-    expect(test.runtime.wake('early').state).toEqual({ kind: 'waiting', until: 10n, watching: [] });
+    expect((await test.runtime.wake('early')).state).toEqual({
+      kind: 'waiting',
+      until: 10n,
+      watching: [],
+    });
     expect(test.store.commits).toHaveLength(1);
   });
 
-  it('commits a timer that came due while nothing waited on it, so its host stops waking it', () => {
+  it('commits a timer that came due while nothing waited on it, so its host stops waking it', async () => {
     const text = compiledText(
       [
         "import * as time from 'time'",
@@ -225,20 +234,20 @@ describe('advancing an instance', () => {
       ].join('\n'),
     );
     const test = testRuntime();
-    expect(test.runtime.deploy(text).start('held').state).toMatchObject({ until: 5n });
+    expect((await test.runtime.deploy(text).start('held')).state).toMatchObject({ until: 5n });
     test.clock.set(5n);
-    expect(test.runtime.wake('held').state).toEqual({
+    expect((await test.runtime.wake('held')).state).toEqual({
       kind: 'waiting',
       until: 10n,
       watching: [],
     });
-    expect(runToEnd(test, 'held', test.runtime.wake('held'))).toEqual({
+    expect(await runToEnd(test, 'held', await test.runtime.wake('held'))).toEqual({
       kind: 'finished',
       outcome: '1',
     });
   });
 
-  it('keeps a panicked instance frozen at its last commit', () => {
+  it('keeps a panicked instance frozen at its last commit', async () => {
     const text = compiledText(
       [
         "import * as time from 'time'",
@@ -248,22 +257,25 @@ describe('advancing an instance', () => {
       ].join('\n'),
     );
     const test = testRuntime();
-    const state = startToEnd(test, text);
+    const state = await startToEnd(test, text);
     expect(state).toMatchObject({ kind: 'panicked', message: 'late' });
-    expect(test.runtime.wake('test').state).toEqual(state);
+    expect((await test.runtime.wake('test')).state).toEqual(state);
     const [waiting, panicked] = committed(test.store.commits);
     expect(panicked?.objects).toEqual(waiting?.objects);
     expect(panicked?.status).toMatchObject({ kind: 'panicked', segmentStartedAt: 1n });
   });
 
-  it.each(runPrograms)('runs $name to the outcome it states', ({ text, expects, expected }) => {
-    const test = testRuntime();
-    const program = test.runtime.deploy(compiledText(text));
-    const state = runToEnd(test, 'corpus', program.start('corpus'));
-    const ended =
-      state.kind === 'finished'
-        ? { expects: 'outcome', expected: state.outcome }
-        : { expects: 'panic', expected: state.kind === 'panicked' ? state.message : '' };
-    expect(ended).toEqual({ expects, expected });
-  });
+  it.each(runPrograms)(
+    'runs $name to the outcome it states',
+    async ({ text, expects, expected }) => {
+      const test = testRuntime();
+      const program = test.runtime.deploy(compiledText(text));
+      const state = await runToEnd(test, 'corpus', await program.start('corpus'));
+      const ended =
+        state.kind === 'finished'
+          ? { expects: 'outcome', expected: state.outcome }
+          : { expects: 'panic', expected: state.kind === 'panicked' ? state.message : '' };
+      expect(ended).toEqual({ expects, expected });
+    },
+  );
 });

@@ -87,7 +87,7 @@ describe('struct layout', () => {
     expect(fieldNames('')).toEqual([['aZ', 'x', 'y']]);
   });
 
-  it('reads JSON into a struct field by field in name order, reporting the first mismatch (§9)', () => {
+  it('reads JSON into a struct field by field in name order, reporting the first mismatch (§9)', async () => {
     const text = compiledText(
       [
         "import * as json from 'json'",
@@ -98,21 +98,21 @@ describe('struct layout', () => {
         '    case Err(error): error.message',
       ].join('\n'),
     );
-    const state = startToEnd(testRuntime(), text);
+    const state = await startToEnd(testRuntime(), text);
     expect(state.kind === 'finished' && decodeJson(String(state.outcome))).toBe('$.a: missing');
   });
 
-  it('builds a range by its fields, whatever order they are laid out in (§3.8)', () => {
+  it('builds a range by its fields, whatever order they are laid out in (§3.8)', async () => {
     const text = compiledText(
       ['async fn main() -> Future<Array<Int>>:', '  [for i in 1..7 by 2: i]'].join('\n'),
     );
-    const state = startToEnd(testRuntime(), text);
+    const state = await startToEnd(testRuntime(), text);
     expect(state.kind === 'finished' && decodeJson(String(state.outcome))).toEqual([1, 3, 5]);
   });
 
-  it('gives every field its value, defaults evaluated in declaration order', () => {
-    fc.assert(
-      fc.property(declaredFields, (fields) => {
+  it('gives every field its value, defaults evaluated in declaration order', async () => {
+    await fc.assert(
+      fc.asyncProperty(declaredFields, async (fields) => {
         const reads = fields.map(({ name }) => `s.${name}`).join(', ');
         const shapeReads = fields.map(({ name }) => `shape.${name}`).join(', ');
         const shapeType = fields.map(({ name }) => `${name}: Int`).join(', ');
@@ -129,7 +129,7 @@ describe('struct layout', () => {
         expect(entry?.kind === 'struct' && entry.fields.map((f) => f.name)).toEqual(
           inNameOrder(fields),
         );
-        const state = startToEnd(testRuntime(), compiledText(main));
+        const state = await startToEnd(testRuntime(), compiledText(main));
         const expected = expectedValues(fields);
         const values = fields.map(({ name }) => expected[name]);
         expect(state.kind === 'finished' && decodeJson(String(state.outcome))).toEqual([

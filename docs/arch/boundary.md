@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-10-26
-last_updated: 2026-11-08
+last_updated: 2026-11-10
 tags: [boundary, json, externs, host, runtime, lowering]
 ---
 
@@ -76,7 +76,7 @@ its instance is numbered by, so its native sees only JSON:
   wrapper is async: it awaits the raw future and decodes, so it is an execution of its own, which
   `inspect` shows waiting at the extern's declaration. The host fills the future later
   (`Runtime.fill`), which runs the waiting wrapper in the same call, so JSON that doesn't decode
-  (`_hostInput`, `_refuse`) fails the host's call and nothing commits.
+  (`_hostInput`, `_refuse`) rejects the host's call and nothing commits.
 - An extern constant is read through an entry that decodes the native's value; the runtime calls
   the native once per instance and pins the value in the snapshot (`pinned`).
 - A host type a `dispose` makes disposable (an extern its host implements, or code passing the
@@ -127,6 +127,30 @@ a disposal that panics counts as done, so the rest still tell their hosts. A fil
 on, disposed or never there, changes nothing: the runtime keeps no record of disposed tokens,
 which would grow without end. A panicked instance refuses fills until retried. A name with `/` is
 the runtime's, for spawned instances.
+
+## The host contract
+
+The host API (`runtime/host/index.ts`) is asynchronous: every call that runs an instance's code
+(`start`, `wake`, `fill`, `retry`, `terminate`) gives a promise, and a refusal rejects it, so a
+host awaits the same way whatever an instance waits on. Calls that only read (`deploy`,
+`programOf`, `inspect`, `outcome`) answer at once.
+
+- **Residency.** A runtime keeps each active instance in memory between calls
+  (`scheduler/resident.ts`): its next segment runs on the instance its last segment committed,
+  never restored from the store, and every commit is still written through the store before the
+  instance goes on (§5). Running on is the same as restoring: a commit drops what it didn't persist
+  and the heap counts on from the highest id kept. An instance that ended or panicked leaves memory;
+  a panic's segment, and the run `crashEveryAwait` discards, never become the instance that runs on.
+- **The store's one driver.** While a runtime runs, it is its store's only driver: it doesn't
+  re-read an instance it holds, so a store changed under it is seen only by a runtime started after
+  (a restart, §5), which reads every instance from the store and checks it against its Definition.
+- **One driver loop.** A host drives a group of instances with `drive` (`runtime/host/drive.ts`):
+  run what can run, wait for the earliest timer, wake what is due, until nothing can wake them. What
+  differs between hosts is passed in: what can run now, how to wait (a `Clock`,
+  `runtime/host/clock.ts`, or the CLI's sleep racing its host's promises), when to end and a
+  deadline. `settle` is a host's drive of what its start or wake gave; a test's world
+  (`runtime/testing/world/`) drives its instances with the same loop, delivering its answers and
+  resolving its own waits first.
 
 ## Packages
 

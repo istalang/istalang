@@ -14,22 +14,22 @@ const shapes = ['struct Inner { code: Int }', 'struct Outer { inner: Inner? }'];
 const unwrapFrame = /^at \S*main \(\S+:5:3\)$/u;
 
 /** How `main`, giving a `result` with `body`, ends. */
-function ended(result: string, body: string) {
+async function ended(result: string, body: string) {
   const program = [...shapes, `async fn main() -> Future<${result}>:`, `  ${body}`].join('\n');
-  return startToEnd(testRuntime(), compiledText(program));
+  return await startToEnd(testRuntime(), compiledText(program));
 }
 
 describe("'!'", () => {
-  it('gives the value inside an optional, unwrapping a whole chain', () => {
-    const state = ended(
+  it('gives the value inside an optional, unwrapping a whole chain', async () => {
+    const state = await ended(
       '(Int, Int)',
       'const outer: Outer? = Outer{Inner{7}}\n  const maybe: Int? = 3\n  (maybe! + 1, outer?.inner?.code!)',
     );
     expect(state).toMatchObject({ kind: 'finished', outcome: '[4,7]' });
   });
 
-  it('panics on none, where it was written', () => {
-    const state = ended('Int', 'const missing: Int? = none\n  missing! + 1');
+  it('panics on none, where it was written', async () => {
+    const state = await ended('Int', 'const missing: Int? = none\n  missing! + 1');
     expect(state).toMatchObject({ kind: 'panicked', message: 'Force-unwrapped none.' });
     expect(state.kind === 'panicked' ? state.trace : '').toMatch(unwrapFrame);
   });

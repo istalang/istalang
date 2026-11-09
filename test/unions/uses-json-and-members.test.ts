@@ -42,9 +42,9 @@ describe('using a union: traits, overloads, clashes, equality, sendability, must
     ).toEqual([checkerDiagnostics.unknownField.code, checkerDiagnostics.operatorTypes.code]);
   });
 
-  it('dispatches calls on a union through visible object-safe traits, and meets generic and `any` bounds', () => {
+  it('dispatches calls on a union through visible object-safe traits, and meets generic and `any` bounds', async () => {
     expect(
-      runMain(
+      await runMain(
         'String',
         [
           'const c1: Contact = Email{to: "cfo"}',
@@ -64,7 +64,7 @@ describe('using a union: traits, overloads, clashes, equality, sendability, must
     ).toBe('mail(cfo):hi|sms(555):yo|42|Email(ops)|42|Email(ops)|-1');
   });
 
-  it('infers the arguments of a trait nothing names from a call on a union, refusing those a member does not meet', () => {
+  it('infers the arguments of a trait nothing names from a call on a union, refusing those a member does not meet', async () => {
     const decls = [
       'trait Feeds<F>:',
       '  fn feed(self: Self, food: F) -> String',
@@ -78,7 +78,7 @@ describe('using a union: traits, overloads, clashes, equality, sendability, must
       'fn make(self: Dog) -> Int: 2',
     ];
     expect(
-      runMain(
+      await runMain(
         'String',
         [
           'const a: Cat | Dog = Cat{name: "c"}',
@@ -125,7 +125,7 @@ describe('using a union: traits, overloads, clashes, equality, sendability, must
     ).toBeGreaterThan(0);
   });
 
-  it('enforces union overload resolution, choosing the most specific of overloads', () => {
+  it('enforces union overload resolution, choosing the most specific of overloads', async () => {
     expect(
       codesOf(
         'fn f(x: Int) -> Int: x',
@@ -144,13 +144,17 @@ describe('using a union: traits, overloads, clashes, equality, sendability, must
     ];
     expect(codesOf(...overloads)).toEqual([]);
     expect(
-      runMain('String', '`${g(1)}:${g("x")}:${h("a")}:${h("b")}:${k("a")}:${k("b")}`', overloads),
+      await runMain(
+        'String',
+        '`${g(1)}:${g("x")}:${h("a")}:${h("b")}:${k("a")}:${k("b")}`',
+        overloads,
+      ),
     ).toBe('1:0:1:2:1:2');
   });
 
-  it('compares union values by member type then value, allows unions as Map keys, and checks Sendable and must-use', () => {
+  it('compares union values by member type then value, allows unions as Map keys, and checks Sendable and must-use', async () => {
     expect(
-      runMain(
+      await runMain(
         'String',
         [
           'const a: Int | String = 1',
@@ -181,9 +185,9 @@ describe('using a union: traits, overloads, clashes, equality, sendability, must
 });
 
 describe('JSON codecs for `T | None`, `T??`, and literal unions (§6, §9)', () => {
-  it('encodes and decodes `T | None`, collapsed `T??`, and literal unions, refusing invalid literals', () => {
+  it('encodes and decodes `T | None`, collapsed `T??`, and literal unions, refusing invalid literals', async () => {
     expect(
-      runMain(
+      await runMain(
         'String',
         [
           'const s1: Status = "sent"',
@@ -211,9 +215,9 @@ describe('JSON codecs for `T | None`, `T??`, and literal unions (§6, §9)', () 
     ).toBe('"sent"|draft|err|-1|42|0|null|7');
   });
 
-  it('encodes `None` itself, which a `none` leaves no `T?` to fill, as null', () => {
+  it('encodes `None` itself, which a `none` leaves no `T?` to fill, as null', async () => {
     expect(
-      runMain(
+      await runMain(
         'String',
         'const n: None = none\n  `${json.stringify(n)}|${json.stringify(Holder{n: none})}`',
         ["import * as json from 'json'", 'struct Holder { n: None }'],
@@ -240,7 +244,7 @@ describe('JSON codecs for `T | None`, `T??`, and literal unions (§6, §9)', () 
 });
 
 describe('member type parameters `T in U` (§7)', () => {
-  it('infers a single member from a literal or narrowed member, instantiates per member, and builds Entry from expected union', () => {
+  it('infers a single member from a literal or narrowed member, instantiates per member, and builds Entry from expected union', async () => {
     const memberDecls = [
       ...commonDecls,
       'fn describeStatus<S in Status>(s: S) -> String: `status:${s}`',
@@ -248,7 +252,7 @@ describe('member type parameters `T in U` (§7)', () => {
       'type AnyEntry = Entry<Int, "draft"> | Entry<String, "sent">',
     ];
     expect(
-      runMain(
+      await runMain(
         'String',
         [
           'const d1 = describeStatus("draft")',

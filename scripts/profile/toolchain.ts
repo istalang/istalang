@@ -29,6 +29,7 @@ import { formatSource } from '../../src/formatter/format.ts';
 import { createSourceText } from '../../src/foundation/text/source-text.ts';
 import { findProjectSources, findSources, loadProject } from '../../src/project/project.ts';
 import { diskFiles } from '../../src/project/project-files.ts';
+import { ManualClock } from '../../src/runtime/host/clock.ts';
 import { runTests } from '../../src/runtime/testing/run-tests.ts';
 import { stdNatives } from '../../src/stdlib/natives.ts';
 import { round, withCpuProfile } from './cpu-profile.ts';
@@ -193,21 +194,18 @@ async function profileFormBuilderTools(outDir: string | undefined, fbDir: string
 
 function profileStdTests(outDir: string | undefined, root: string) {
   const stdTestFiles = findSources(resolve(root, 'src/stdlib'), '.test.ista');
-  return withCpuProfile(outDir, 'std-tests', () => {
+  return withCpuProfile(outDir, 'std-tests', async () => {
     const { program } = loadProject(root, stdTestFiles);
     const compiled = compileTests(program);
     if (compiled.kind === 'compiled') {
       const { text } = definitionFormat.write(compiled.definition);
-      let now = initialClockMs;
-      const run = runTests(text, {
+      const clock = new ManualClock(initialClockMs);
+      for await (const _ of runTests(text, {
         natives: stdNatives,
-        now: () => now,
+        clock,
         timeout: defaultTimeoutMs,
-      });
-      for (let step = run.next(); step.done !== true; step = run.next()) {
-        if (typeof step.value === 'bigint') {
-          now = step.value;
-        }
+      })) {
+        // Only the run's time is measured, not its reports.
       }
     }
   });

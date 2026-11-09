@@ -55,7 +55,7 @@ describe('recursive type `match` uses under substitution', () => {
     );
   });
 
-  it('agree with the program written for the arguments, recursive or not', () => {
+  it('agree with the program written for the arguments, recursive or not', async () => {
     const generic = [
       ...dataDecls,
       'fn firstOf<D>(d: Data<D>, read: fn(Data<D>) -> Int) -> Int: read(d)',
@@ -63,14 +63,14 @@ describe('recursive type `match` uses under substitution', () => {
     const recursive =
       'firstOf<Node<Int>>(struct{value: 4, next: []}, fn(d): d.value + d.next.length())';
     const plain = 'firstOf<Leaf<Int>>(struct{value: 7}, fn(d): d.value)';
-    expect(runMain('Int', `${recursive} + ${plain}`, generic)).toBe(11);
+    expect(await runMain('Int', `${recursive} + ${plain}`, generic)).toBe(11);
     const written = [
       ...dataDecls,
       'fn nodeFirst(d: Data<Node<Int>>) -> Int: d.value + d.next.length()',
       'fn leafFirst(d: Data<Leaf<Int>>) -> Int: d.value',
     ];
     expect(
-      runMain(
+      await runMain(
         'Int',
         'nodeFirst(struct{value: 4, next: []}) + leafFirst(struct{value: 7})',
         written,
@@ -82,13 +82,13 @@ describe('recursive type `match` uses under substitution', () => {
 describe('a type `match` using itself with fixed arguments', () => {
   const selfDecls = ['type T1<T> = match T:', '  case _: { next: Array<T1<Int>> }'];
 
-  it('is one finite recursive type, whatever its own argument', () => {
+  it('is one finite recursive type, whatever its own argument', async () => {
     const { types, diagnosticCodes } = resolveWrittenTypes(['T1<String>', 'T1<Int>'], selfDecls);
     expect(diagnosticCodes).toEqual([]);
     expect(types.map((type) => type.kind)).toEqual(['recursive', 'recursive']);
     expect(new Set(types.map((type) => typeKeys.typeKey(type))).size).toBe(1);
     expect(
-      runMain(
+      await runMain(
         'Int',
         'const v: T1<String> = struct{next: [struct{next: []}, struct{next: []}]}\n  v.next.length()',
         selfDecls,
@@ -128,12 +128,12 @@ describe('a literal matching a case naming its base type', () => {
 });
 
 describe('a `struct{…}` literal passed as a call argument', () => {
-  it('takes its type from the parameter, as a typed literal would', () => {
+  it('takes its type from the parameter, as a typed literal would', async () => {
     expect(
       codesOf('fn g(x: { a: Array<Int> }) -> Int: 1', 'fn h() -> Int: g(struct{a: []})'),
     ).toEqual([]);
     expect(
-      runMain(
+      await runMain(
         'Int',
         'g(struct{a: [], b: struct{c: none}}) + g(struct{a: [1, 2], b: struct{c: none}})',
         ['fn g(x: { a: Array<Int>, b: { c: Int? } }) -> Int: x.a.length() + (x.b.c ?? 1)'],
@@ -141,7 +141,7 @@ describe('a `struct{…}` literal passed as a call argument', () => {
     ).toBe(4);
   });
 
-  it('builds the recursive type a parameter expects', () => {
+  it('builds the recursive type a parameter expects', async () => {
     const decls = [
       'struct Field<T> { value: T? }',
       'struct Many<Row> { rows: Array<Row> }',
@@ -158,29 +158,29 @@ describe('a `struct{…}` literal passed as a call argument', () => {
     ];
     const tree =
       'struct{label: "root", children: [struct{label: "a", children: []}, struct{label: "b", children: []}]}';
-    expect(runMain('Int', `count(${tree})`, decls)).toBe(3);
+    expect(await runMain('Int', `count(${tree})`, decls)).toBe(3);
   });
 
-  it('agrees with the literal given the parameter type, for any fields a call decides', () => {
+  it('agrees with the literal given the parameter type, for any fields a call decides', async () => {
     const field = fc.constantFrom(
       { type: 'Array<Int>', literal: '[]', length: 'x.f.length()' },
       { type: 'Int?', literal: 'none', length: '(x.f ?? 0)' },
       { type: 'Array<String>', literal: '["a"]', length: 'x.f.length()' },
     );
-    fc.assert(
-      fc.property(
+    await fc.assert(
+      fc.asyncProperty(
         fc.uniqueArray(fc.tuple(fc.constantFrom('p', 'q', 'r'), field), {
           minLength: 1,
           maxLength: 3,
           selector: ([name]) => name,
         }),
-        (fields) => {
+        async (fields) => {
           const shape = `{ ${fields.map(([name, f]) => `${name}: ${f.type}`).join(', ')} }`;
           const literal = `struct{${fields.map(([name, f]) => `${name}: ${f.literal}`).join(', ')}}`;
           const total = fields.map(([name, f]) => f.length.replace('x.f', `x.${name}`)).join(' + ');
           const decls = [`fn g(x: ${shape}) -> Int: ${total}`];
-          expect(runMain('Int', `g(${literal})`, decls)).toBe(
-            runMain('Int', `const typed: ${shape} = ${literal}\n  g(typed)`, decls),
+          expect(await runMain('Int', `g(${literal})`, decls)).toBe(
+            await runMain('Int', `const typed: ${shape} = ${literal}\n  g(typed)`, decls),
           );
         },
       ),

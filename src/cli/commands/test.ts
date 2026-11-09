@@ -13,7 +13,6 @@
 
 import { statSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { setTimeout as sleep } from 'node:timers/promises';
 import { compileTests, diagnose } from '../../compiler/compile.ts';
 import { definitionFormat } from '../../definition/definition.ts';
 import { testModuleSuffix } from '../../foundation/language/well-known/testing.ts';
@@ -88,21 +87,14 @@ async function test(
   }
   const { text } = definitionFormat.write(compiled.definition);
   const counts = { passed: 0, failed: 0, skipped: 0 };
-  const run = runTests(text, {
+  for await (const report of runTests(text, {
     natives: stdNatives,
-    now: clock,
+    clock,
     timeout,
     ...(options.filter === undefined ? {} : { filter: options.filter }),
-  });
-  for (let step = run.next(); step.done !== true; step = run.next()) {
-    const { value } = step;
-    if (typeof value === 'bigint') {
-      // biome-ignore lint/performance/noAwaitInLoops: the tests run one at a time, each wait in turn.
-      await sleep(Math.max(0, Number(value - clock())));
-    } else {
-      counts[value.outcome.kind] += 1;
-      environment.write(reportOf(value));
-    }
+  })) {
+    counts[report.outcome.kind] += 1;
+    environment.write(reportOf(report));
   }
   environment.write(
     `${counts.passed} passed, ${counts.failed} failed, ${counts.skipped} skipped.\n`,

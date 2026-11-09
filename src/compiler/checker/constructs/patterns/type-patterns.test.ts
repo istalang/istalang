@@ -31,19 +31,19 @@ const emailDeclarations = [
 ].join('\n');
 
 describe('type patterns', () => {
-  it('match exactly the values converted from their type into an any', () => {
+  it('match exactly the values converted from their type into an any', async () => {
     const converted = fc.oneof(
       ...typedValues.map(([type, literals]) => literals.map((literal) => ({ type, literal }))),
     );
-    fc.assert(
-      fc.property(converted, ({ type, literal }) => {
+    await fc.assert(
+      fc.asyncProperty(converted, async ({ type, literal }) => {
         const main = [
           emailDeclarations,
           'async fn main() -> Future<Array<Bool>>:',
           `  const value: any Stringable = ${literal}`,
           `  [${testedTypes.map((tested) => `value is ${tested}`).join(', ')}]`,
         ].join('\n');
-        expect(startToEnd(testRuntime(), compiledText(main))).toEqual({
+        expect(await startToEnd(testRuntime(), compiledText(main))).toEqual({
           kind: 'finished',
           outcome: JSON.stringify(testedTypes.map((tested) => tested === type)),
         });

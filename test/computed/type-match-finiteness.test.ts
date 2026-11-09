@@ -57,10 +57,10 @@ describe('a type match use reaching itself with no struct type on the way', () =
     expect(firstX.some((message) => message.includes('Y1'))).toBe(true);
   });
 
-  it('leaves the uses whose cases end alone', () => {
+  it('leaves the uses whose cases end alone', async () => {
     const declarations = ['type L<T> = match T:', '  case Int: L<T>', '  case _: T'];
     expect(
-      runMain('String', 'f("s")', [...declarations, 'fn f(x: L<String>) -> L<String>: x']),
+      await runMain('String', 'f("s")', [...declarations, 'fn f(x: L<String>) -> L<String>: x']),
     ).toBe('s');
   });
 });
@@ -71,7 +71,7 @@ describe('a recursive type match use', () => {
     expect(codesOf(...declarations, 'fn f(x: R<Int>) -> Int: 1')).toEqual([holdsItself]);
   });
 
-  it('ending in an optional or a collection checks and runs', () => {
+  it('ending in an optional or a collection checks and runs', async () => {
     const declarations = [
       'type Q<T> = match T:',
       '  case _: { a: Q<T>?, rest: Array<Q<T>> }',
@@ -82,7 +82,7 @@ describe('a recursive type match use', () => {
     ];
     expect(codesOf(...declarations)).toEqual([]);
     expect(
-      runMain('Int', 'depth(struct{a: struct{a: none, rest: []}, rest: []})', declarations),
+      await runMain('Int', 'depth(struct{a: struct{a: none, rest: []}, rest: []})', declarations),
     ).toBe(2);
   });
 });

@@ -26,9 +26,9 @@ describe('a type meeting `any` through its own constraints of another trait (§3
     'fn directAny(x: any MySource<Int>) -> any Source<Int?>: x',
   ];
 
-  it('converts a type parameter and an `any` type through the requirement they carry', () => {
+  it('converts a type parameter and an `any` type through the requirement they carry', async () => {
     expect(
-      runMain(
+      await runMain(
         '(Int?, Int?)',
         '(direct(Counter{n: 1}).next(), directAny(Counter{n: 2}).next())',
         decls,
@@ -36,7 +36,7 @@ describe('a type meeting `any` through its own constraints of another trait (§3
     ).toEqual([1, 2]);
   });
 
-  it("converts a keyed field whose struct constraint names a field beside its '[_]' entry", () => {
+  it("converts a keyed field whose struct constraint names a field beside its '[_]' entry", async () => {
     const keyed = [
       ...baseTraits,
       'struct Boxed { n: Int }',
@@ -48,7 +48,7 @@ describe('a type meeting `any` through its own constraints of another trait (§3
     ];
     const body =
       'const p = Pair{a: Boxed{n: 3}, b: Other{m: 4}}\n  (named(p, "a").next(), named(p, "b").next())';
-    expect(runMain('(Int, Int)', body, keyed)).toEqual([3, 40]);
+    expect(await runMain('(Int, Int)', body, keyed)).toEqual([3, 40]);
   });
 });
 

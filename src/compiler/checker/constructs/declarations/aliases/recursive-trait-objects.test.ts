@@ -17,7 +17,7 @@ describe('a recursive alias through a trait object', () => {
     expect(reported(lines(holds, 'type A = { f: any Holds<A>, n: Int }'))).toEqual(reportedNothing);
   });
 
-  it('builds and walks a tree whose children are any iterable of trees', () => {
+  it('builds and walks a tree whose children are any iterable of trees', async () => {
     const declarations = lines(
       'type Tree = { n: Int, kids: any Iterable<Tree> }',
       'fn total(t: Tree) -> Int:',
@@ -31,7 +31,7 @@ describe('a recursive alias through a trait object', () => {
       '  return struct{n: 1, kids: [leaf, struct{n: 2, kids: empty}]}',
     );
     expect(reported(declarations)).toEqual(reportedNothing);
-    expect(mainGives('Int', 'return total(grown())', declarations)).toBe(6);
+    expect(await mainGives('Int', 'return total(grown())', declarations)).toBe(6);
   });
 
   it('makes two aliases alike up to their constraints written order one type', () => {

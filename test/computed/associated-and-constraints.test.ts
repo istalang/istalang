@@ -41,7 +41,7 @@ const assocDecls = [
 ];
 
 describe('associated types on structs, enums, and traits (§1)', () => {
-  it('declares associated types in structs (indented or braced) and enums, in any order, usable bare by fields and sibling associated types', () => {
+  it('declares associated types in structs (indented or braced) and enums, in any order, usable bare by fields and sibling associated types', async () => {
     const decls = [
       ...assocDecls,
       'struct Ordered<T>:',
@@ -60,7 +60,7 @@ describe('associated types on structs, enums, and traits (§1)', () => {
     expect(compareWrittenTypes('Ordered<Int>.Item', 'Int', decls)).toEqual(sameComputedType);
 
     expect(
-      runMain(
+      await runMain(
         'Int',
         [
           'const o = Ordered<Int>{first: (3, 4), second: 5}',
@@ -75,11 +75,11 @@ describe('associated types on structs, enums, and traits (§1)', () => {
     ).toBe(22);
   });
 
-  it('keeps `type` contextual so `type: X` is still a field named `type` beside `type Data = T`', () => {
+  it('keeps `type` contextual so `type: X` is still a field named `type` beside `type Data = T`', async () => {
     const decls = ['struct Token<T>:', '  type: String', '  type Data = T', '  payload: Data'];
     expect(compareWrittenTypes('Token<Int>.Data', 'Int', decls)).toEqual(sameComputedType);
     expect(
-      runMain(
+      await runMain(
         'String',
         'const t = Token<Int>{type: "bearer", payload: 7}\n  `${t.type}:${t.payload}`',
         decls,
@@ -87,7 +87,7 @@ describe('associated types on structs, enums, and traits (§1)', () => {
     ).toBe('bearer:7');
   });
 
-  it('substitutes `Type.Name` on generic types (including open type parameters) and chains `A.B.C`', () => {
+  it('substitutes `Type.Name` on generic types (including open type parameters) and chains `A.B.C`', async () => {
     const decls = [
       ...assocDecls,
       'struct Outer<T>:',
@@ -97,10 +97,10 @@ describe('associated types on structs, enums, and traits (§1)', () => {
     expect(compareWrittenTypes('Outer<Int>.Inner.Data', 'Array<Int>', decls)).toEqual(
       sameComputedType,
     );
-    expect(runMain('Int', 'echo<Int>([10, 20]).length()', decls)).toBe(2);
+    expect(await runMain('Int', 'echo<Int>([10, 20]).length()', decls)).toBe(2);
   });
 
-  it('calls static functions through `Type.Name` and constrained `T.Name`', () => {
+  it('calls static functions through `Type.Name` and constrained `T.Name`', async () => {
     // No primitive meets `Default` (prelude), and a witness is declared beside its type or trait
     // (§3.10), so the bound is met by a type of this module.
     const decls = [
@@ -119,7 +119,7 @@ describe('associated types on structs, enums, and traits (§1)', () => {
       '  H.Data.parse(s)',
     ];
     expect(
-      runMain(
+      await runMain(
         'Int',
         [
           'const direct = match IntHolder.Data.parse("39"):',
@@ -135,7 +135,7 @@ describe('associated types on structs, enums, and traits (§1)', () => {
     ).toBe(42);
   });
 
-  it('treats `T.Data` on a constrained type parameter as opaque, equal only to itself and meeting its bound', () => {
+  it('treats `T.Data` on a constrained type parameter as opaque, equal only to itself and meeting its bound', async () => {
     const decls = [
       ...assocDecls,
       'struct User { id: Int, type Key = Int }',
@@ -143,7 +143,7 @@ describe('associated types on structs, enums, and traits (§1)', () => {
       'fn sameOpaque<A is Keyed>(x: A.Key) -> A.Key: x',
       'fn formatKey<A is Keyed>(item: A) -> String: `${item.key()}`',
     ];
-    expect(runMain('String', 'formatKey(User{id: 99})', decls)).toBe('99');
+    expect(await runMain('String', 'formatKey(User{id: 99})', decls)).toBe('99');
 
     expect(
       codesOf(...assocDecls, 'fn mismatchOpaque<A is Keyed, B is Keyed>(x: A.Key) -> B.Key: x'),
@@ -154,14 +154,14 @@ describe('associated types on structs, enums, and traits (§1)', () => {
     ]);
   });
 
-  it('substitutes `Self.Name` with the implementing type’s associated type when meeting trait requirements', () => {
+  it('substitutes `Self.Name` with the implementing type’s associated type when meeting trait requirements', async () => {
     const decls = [
       ...assocDecls,
       'fn runNode<N is FormNode>(node: N, data: N.Data) -> Array<String>:',
       '  node.validate(data)',
     ];
     expect(
-      runMain(
+      await runMain(
         'String',
         [
           'const a = runNode(Field<Int>{value: 5}, 5)',
@@ -173,7 +173,7 @@ describe('associated types on structs, enums, and traits (§1)', () => {
     ).toBe('0:missing');
   });
 
-  it('counts `Self.Name` as `Self` for object safety (`any` and union member conformance)', () => {
+  it('counts `Self.Name` as `Self` for object safety (`any` and union member conformance)', async () => {
     const decls = [
       ...assocDecls,
       'trait SafeWithAssoc:',
@@ -202,7 +202,7 @@ describe('associated types on structs, enums, and traits (§1)', () => {
 
     // `SafeWithAssoc` declares `type Meta` but never uses `Self.Meta` in its function signatures:
     expect(
-      runMain(
+      await runMain(
         'String',
         'const x: any SafeWithAssoc = A\n  const u: A | B = B\n  `${x.label()}:${u.label()}`',
         decls,
@@ -210,7 +210,7 @@ describe('associated types on structs, enums, and traits (§1)', () => {
     ).toBe('a:b');
   });
 
-  it('never infers a type parameter through an associated type `Field<T>.Data`', () => {
+  it('never infers a type parameter through an associated type `Field<T>.Data`', async () => {
     const decls = [
       ...assocDecls,
       'fn onlyAssoc<T>(x: Field<T>.Data) -> T: x',
@@ -220,7 +220,9 @@ describe('associated types on structs, enums, and traits (§1)', () => {
     expect(codesOf(...decls, 'fn bad(): _ = onlyAssoc(42)')).toEqual([
       checkerDiagnostics.cannotInfer.code,
     ]);
-    expect(runMain('Int', 'onlyAssoc<Int>(10) + withOther(Field{value: 1}, 32)', decls)).toBe(42);
+    expect(await runMain('Int', 'onlyAssoc<Int>(10) + withOther(Field{value: 1}, 32)', decls)).toBe(
+      42,
+    );
   });
 
   it('rejects invalid associated type declarations and uses', () => {
@@ -276,9 +278,9 @@ describe('struct constraints (§2)', () => {
     'fn allInts<S is struct { [_]: Int }>(s: S) -> Int: 5',
   ];
 
-  it('accepts nominal structs and shapes meeting each row of §2’s table, including open extra fields', () => {
+  it('accepts nominal structs and shapes meeting each row of §2’s table, including open extra fields', async () => {
     expect(
-      runMain(
+      await runMain(
         'String',
         [
           'const c1 = anyStruct(Empty) + anyStruct(struct{x: 1})',
@@ -293,7 +295,7 @@ describe('struct constraints (§2)', () => {
     ).toBe('2|2|order|doc:shape|10');
   });
 
-  it('supports reading and writing named fields on a constrained type parameter, nested struct constraints, and `&` inside and outside braces', () => {
+  it('supports reading and writing named fields on a constrained type parameter, nested struct constraints, and `&` inside and outside braces', async () => {
     const decls = [
       ...assocDecls,
       'fn renameTitle<S is struct { title: String, meta is struct { tag: String }, [_] is FormNode & Sendable } & Sendable>(form: &S, next: String) -> String:',
@@ -302,7 +304,7 @@ describe('struct constraints (§2)', () => {
       '  old',
     ];
     expect(
-      runMain(
+      await runMain(
         'String',
         [
           'let form = struct{title: "v1", meta: struct{tag: "draft", rev: 1}, f: Field<Int>{value: 3}}',
@@ -364,13 +366,13 @@ describe('struct constraints (§2)', () => {
     ).toBeGreaterThan(0);
   });
 
-  it('resolves aliases in `name: Type` entries of a struct constraint', () => {
+  it('resolves aliases in `name: Type` entries of a struct constraint', async () => {
     const decls = [
       'type Label = String',
       'fn readLabel<S is struct { name: Label }>(s: S) -> String: s.name',
     ];
     expect(spelledTypeOf('Label', decls)).toBe('Label');
     expect(resolveWrittenTypes(['{ name: String }'], decls).diagnosticCodes).toEqual([]);
-    expect(runMain('String', 'readLabel(struct{name: "ok", extra: 1})', decls)).toBe('ok');
+    expect(await runMain('String', 'readLabel(struct{name: "ok", extra: 1})', decls)).toBe('ok');
   });
 });
