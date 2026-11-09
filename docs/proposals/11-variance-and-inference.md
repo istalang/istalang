@@ -45,19 +45,20 @@ in `plan.md` beside it. This proposal gives the outline, why it is built this wa
 | I1 Constraint inference per call | Bounds on call variables, the settling policy, postponed arguments, the "most specific" overload rank | `9aaf0196` |
 | I2 Joint solving | One constraint scope per body expression: nested calls and literals settle together; variants become plain generic calls; §3.7 literal building deleted | `daa0774a`–`23bf0ed5` |
 
-**Next:**
-1. **Merge review** of the whole feature (`c3506066..23bf0ed5`), then its fixes. Running.
-2. **Follow-up phase:**
-   - B46: inference relating through an `any` type's witness, so a nested `LayoutView{…}` under
-     `Array<any View<Sc>>` infers its `Sc` and form builder's views needn't spell it;
-   - B44: overload clashes through conversions inside types;
-   - B37: a host extern's type arguments checked at the host boundary;
-   - B41: a keyed field meeting a trait beside a named field;
-   - B40: a union inside a trait object normalized when substituted.
+**Next:** the merge review (`c3506066..23bf0ed5`) asked for changes. Its findings, their root
+causes and the structural changes are in `docs/work/variance-inference/merge-analysis.md`.
+1. **Corrections** (`plan.md`):
+   - C1, the scope protocol: one table for what joins a constraint scope, explicit roles for a
+     bound, function values joining as calls do;
+   - C2, trait meeting: one search for the instantiation a type meets, used by inference too
+     (B46, so a nested `LayoutView{…}` infers its `Sc`), with B37, B40 and B41;
+   - C3, after C1: one "holds" relation for joining, settling, choosing and clashes (B44).
+2. **Re-check** by the merge reviewer.
 3. **Later, filed:**
    - F26: `each` for packs;
    - F27: view handles, so `gives`/`takes` reach handles;
-   - F28: proposal 8's function-type qualifiers as subtyping in the constraint system.
+   - F28: proposal 8's function-type qualifiers as subtyping in the constraint system;
+   - Q46: inference variables as a key of their own; Q47: every expression checked in a scope.
 
 ## Rules
 
@@ -169,4 +170,4 @@ Design §9 lists every anchor with its result before and after. In short:
    first, opt-in joining, which left nested calls orphaned when the outer call failed.
 7. **I2 deletes §3.7 literal building and fixes B43** (a postponed lambda whose result is only
    partly known).
-8. **Inference through an `any` type's witness (B46) goes into the follow-up phase.**
+8. **The merge review's corrections run as C1–C3,** B46 and the other bugs folded into C2 and C3.
