@@ -4,7 +4,7 @@
  * - every construction agrees with the type it names
  * - every call to a known function passes its parameters' number and kind (value or `&`), and
  *   every closure carries its function's captures
- * - code never runs off its end, and only async functions wait
+ * - code never runs off its end, and only code running as an execution waits
  *
  * Instructions are walked through `operandsOf` for indexes; the rules about particular
  * instructions live in instruction-rules.ts. Each problem becomes a zod issue at the path of the
@@ -69,15 +69,18 @@ export function checkReferences(tables: Tables, refinement: z.RefinementCtx): vo
   });
 }
 
-/** The Definition's `main` field (the paths below name it), which must point at an async entry. */
+/**
+ * The Definition's `main` field (the paths below name it), which must point at code running as an
+ * execution.
+ */
 function checkMain(context: Context): void {
   const { main } = context.tables;
   if (main === undefined || !inRange(context, { functions: [main] }, ['main'])) {
     return;
   }
   const entry = context.tables.functions[main];
-  if (entry?.kind !== 'code' || !entry.async || entry.parameters.length > 0) {
-    context.report(['main'], 'main must be an async function with code and no parameters.');
+  if (entry?.kind !== 'code' || entry.mode === 'plain' || entry.parameters.length > 0) {
+    context.report(['main'], 'main must be code running as an execution, with no parameters.');
   }
 }
 

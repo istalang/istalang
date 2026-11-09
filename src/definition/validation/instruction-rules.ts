@@ -6,7 +6,8 @@
  * - a direct call or `spawn` passes the callee's parameters in number and kind (value or `&`), and
  *   a function with captures is called only through its closure value, never directly
  * - a closure carries its function's captures
- * - only async code waits
+ * - only code that runs as an execution waits, in a mode (`await`, a blocking `select`, and only
+ *   those), and ephemeral code only in memory (proposal 8, Rules 2 and 3)
  * - `keep` adds to a register other than those it keeps
  *
  * The rules are a typed table with one entry per instruction kind, like `operandsOf`
@@ -42,12 +43,14 @@ export interface Construction {
 /** The rule of a kind that needs nothing beyond in-range indexes. */
 const none = (): undefined => undefined;
 
-/** `currentCall` names the async call it runs in, so only async code has one. */
-const asyncOnly = (_tables: Tables, _instruction: Instruction, owner: CodeFunction) =>
-  owner.async ? undefined : 'only an async function can use it.';
+/** `currentCall` names the execution it runs in, so only code running as one has it. */
+const executionOnly = (_tables: Tables, _instruction: Instruction, owner: CodeFunction) =>
+  owner.mode === 'plain' ? 'only code running as an execution can use it.' : undefined;
 
-const waitsOnlyInAsync = (_tables: Tables, instruction: Instruction, owner: CodeFunction) =>
-  owner.async || !waits(instruction) ? undefined : 'only an async function can wait.';
+const waitsOnlyInExecutions = (_tables: Tables, instruction: Instruction, owner: CodeFunction) =>
+  owner.mode === 'plain' && waits(instruction)
+    ? 'only code running as an execution can wait.'
+    : undefined;
 
 const rules: Handlers<Tables, Instruction, [CodeFunction], string | undefined> = {
   constant: none,
@@ -105,9 +108,9 @@ const rules: Handlers<Tables, Instruction, [CodeFunction], string | undefined> =
         : `type ${i.type} is not an Instance's.`)
     );
   },
-  currentCall: asyncOnly,
-  await: waitsOnlyInAsync,
-  select: waitsOnlyInAsync,
+  currentCall: executionOnly,
+  await: waitsOnlyInExecutions,
+  select: waitsOnlyInExecutions,
   release: none,
   keep: (_, i) =>
     i.registers.includes(i.into) ? `keeps register ${i.into} into itself.` : undefined,

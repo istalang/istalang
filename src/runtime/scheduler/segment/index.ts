@@ -190,7 +190,7 @@ class SegmentRunner implements Machine {
       return;
     }
     const { entry } = target;
-    if (entry.code.async) {
+    if (entry.code.mode !== 'plain') {
       const future = this.#instance.futures.create({ kind: 'call' });
       this.#runStack.push(
         this.#instance.startExecution(entry, target.contents, target.captures, future),

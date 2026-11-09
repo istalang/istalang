@@ -138,7 +138,7 @@ function relayCall(call: CallToMock, held: HeldMock): Value {
   }
   const value = arriving(instance, given.value);
   const entry = instance.loaded.definition.functions[target];
-  if (given.followed || (entry?.kind === 'code' && entry.async)) {
+  if (given.followed || (entry?.kind === 'code' && entry.mode !== 'plain')) {
     instance.futures.resolve(future.id, value);
     return handle;
   }

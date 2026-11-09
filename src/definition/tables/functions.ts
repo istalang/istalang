@@ -4,7 +4,7 @@
  * An entry is code or an extern binding. Calls never distinguish the two (instructions/calls.ts),
  * so mocking, tracing and recording treat host functions and program functions alike. The two
  * shapes are kept apart so that each states only what applies to it: an extern has no frame,
- * captures or `async` (it returns a future instead), and its parameters carry types. Either kind
+ * captures or mode (it returns a future instead), and its parameters carry types. Either kind
  * may take a parameter by `&`: the prelude's mutating externs, such as `push` and `setIndex`, do.
  *
  * Register layout of a code frame: the parameters first, then the closure's captures, then
@@ -35,10 +35,19 @@ const common = {
  */
 const cell = z.strictObject({ register, type: typeId });
 
+/**
+ * A code entry's kind (proposal 8, Rule 2): a plain one runs as a frame on its caller's execution,
+ * never waiting; a `live` or `ista` one runs as an execution of its own, given a future. Live code
+ * waits in memory and never commits; ista code runs in an instance, every wait committing.
+ */
+export const codeMode = z.enum(['plain', 'live', 'ista']);
+
+export type CodeMode = z.output<typeof codeMode>;
+
 const code = z.strictObject({
   kind: z.literal('code'),
   ...common,
-  async: z.boolean(),
+  mode: codeMode,
   /** Whether the entry gives a parameter or a field its default (spec §3.1, §3.3). */
   givesDefault: z.boolean(),
   parameters: z.array(z.strictObject({ reference: z.boolean() })),
@@ -96,7 +105,7 @@ export function capturesOf(entry: FunctionDefinition): number {
  */
 export function encoderProblem(entry: FunctionDefinition): string | undefined {
   const takesOneValue = entry.parameters.length === 1 && !takesReference(entry, 0);
-  const waits = entry.kind === 'code' && entry.async;
+  const waits = entry.kind === 'code' && entry.mode !== 'plain';
   return takesOneValue && !waits && capturesOf(entry) === 0
     ? undefined
     : `${entry.name} can't encode an outcome: an encoder takes one value and gives its JSON at once`;

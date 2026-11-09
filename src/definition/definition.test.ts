@@ -180,7 +180,7 @@ describe('definition format', () => {
       (json) => {
         json.body.main = 3;
       },
-      'main must be an async function with code and no parameters',
+      'main must be code running as an execution, with no parameters',
       'at main',
     ],
     [
@@ -281,12 +281,12 @@ describe('definition format', () => {
       'functions[3].instructions',
     ],
     [
-      'an await outside an async function',
+      'an await in plain code',
       (json) => {
         const { span } = instructionAt(json, 3, 4);
         at(json, 'functions', 3, 'instructions')[4] = { kind: 'await', span, dst: 0, future: 0 };
       },
-      'await: only an async function can wait',
+      'await: only code running as an execution can wait',
       'functions[3].instructions[4]',
     ],
     [
@@ -383,7 +383,7 @@ describe('definition format', () => {
 
   it('refuses to write an invalid Definition, with the same readable error as reading', () => {
     expect(() => definitionFormat.write({ ...subsetDefinition, main: 3 })).toThrow(
-      'main must be an async function with code and no parameters',
+      'main must be code running as an execution, with no parameters',
     );
   });
 });

@@ -31,6 +31,7 @@ import { payloadOf, payloadOr } from '../constructs/expressions/structs/variants
 import type { CellRegister } from '../constructs/statements/variables.ts';
 import type { CodeContext } from '../context.ts';
 import { CodeWriter } from '../functions/code-writer.ts';
+import { codeModeOf } from '../functions/modes.ts';
 import { emitConstant } from '../tables/constants.ts';
 import type { DefinitionTables, EntryHeader } from '../tables/tables.ts';
 import { construct } from '../values/struct-values.ts';
@@ -160,7 +161,7 @@ export class SynthesizedCode implements CodeContext {
     return {
       kind: 'code',
       ...header,
-      async: isAsync,
+      mode: codeModeOf(isAsync),
       givesDefault: false,
       parameters: this.parameters.map((_, index) => ({ reference: references[index] === true })),
       captures: this.captures.length,

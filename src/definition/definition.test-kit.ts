@@ -18,7 +18,7 @@ import {
   type Sizes,
   span,
 } from './instructions/instruction.test-kit.ts';
-import { encoderProblem, type FunctionDefinition } from './tables/functions.ts';
+import { codeMode, encoderProblem, type FunctionDefinition } from './tables/functions.ts';
 import {
   type ExternRole,
   hasRole,
@@ -111,7 +111,7 @@ function signature(sizes: Sizes): fc.Arbitrary<FunctionDefinition> {
     fc
       .record({
         ...common,
-        async: fc.boolean(),
+        mode: fc.constantFrom(...codeMode.options),
         givesDefault: fc.boolean(),
         parameters: fc.array(fc.record({ reference: fc.boolean() }), { maxLength: 3 }),
         captures: fc.nat({ max: 2 }),
@@ -165,7 +165,7 @@ function body(
           { maxLength: 2 },
         );
   return fc.integer({ min: 1, max: 8 }).chain((labels) => {
-    const inScope = { ...scope, registers: entry.registers, labels, async: entry.async };
+    const inScope = { ...scope, registers: entry.registers, labels, async: entry.mode !== 'plain' };
     return fc
       .record({
         instructions: fc.array(instruction(inScope), {
@@ -216,7 +216,9 @@ export const definitionArbitrary: fc.Arbitrary<Definition> = fc
         const scope = { sizes, types, signatures, registers: 1, async: false };
         return fc.tuple(...signatures.map((entry) => body(scope, entry))).chain((functions) => {
           const mains = functions.flatMap((entry, id) =>
-            entry.kind === 'code' && entry.async && entry.parameters.length === 0 ? [id] : [],
+            entry.kind === 'code' && entry.mode !== 'plain' && entry.parameters.length === 0
+              ? [id]
+              : [],
           );
           const encoders = functions.flatMap((entry, id) =>
             encoderProblem(entry) === undefined ? [id] : [],
