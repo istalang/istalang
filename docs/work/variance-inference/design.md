@@ -16,7 +16,7 @@ and the analysis in `docs/work/proposals/f25-expected-type-first.md`.
 **Goals, in priority order:**
 1. Nothing surprises a user coming from TypeScript, Kotlin, Swift, C# or Rust.
 2. Nothing that can be inferred has to be written.
-3. Room for variadic type parameters (`each`) and proposal 8's function kinds.
+3. Room for variadic type parameters (proposal 12) and proposal 8's function kinds.
 
 ## 1. Identity and reach, read off declarations
 
@@ -82,8 +82,8 @@ invariant rather than oscillating.
 - **Every field of a `shared struct` is invariant,** because `->` reads and writes its cell.
 - **Written, on externs:** `<gives T>` is covariant, `<takes T>` is contravariant, and nothing
   written means invariant.
-  - The words are contextual, prefixing a PascalCase name, the slot a future `each` will share:
-    `<gives each A>`. Writing both on one parameter is an error.
+  - The words are contextual, prefixing a PascalCase name: `<gives A is tuple>` once a type may
+    take a pack (proposal 12). Writing both on one parameter is an error.
   - **Meaning:** no operation puts a `T` into an existing value of the type (`gives`), or takes one
     out of it (`takes`). Values satisfy `gives` by immutability: any change builds a new value in a
     `&` place, whose type is fixed. On an extern value, `gives` is the runtime's promise that it can
@@ -393,8 +393,8 @@ base (today's widening), and a type with `None` into its optional.
 
 ## 7. Hooks for what comes later
 
-- **`each` (tracker F26):** `<each A>` replaces `<...A>` in declarations. It shares the prefix
-  slot with `gives` and `takes`, and the solver already treats a pack as a tuple variable.
+- **Variadic tuples (proposal 12, tracker F3):** a pack becomes `A is tuple`, read through
+  proposal 4's key machinery; a mapping of a parameter's own keys takes its variance per element.
 - **View handles (tracker F27):** they let `gives` and `takes` apply to handles. A converted
   handle becomes a view that converts each value as it leaves (or enters), with `==` comparing the
   underlying object. Candidates: `Future<gives T, K>`, `Instance<gives T>`, `WeakRef<gives T>`,

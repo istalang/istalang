@@ -1,7 +1,7 @@
 ---
-description: design analysis for variadic packs beyond level 1 (tracker F3, superseding F26's `each`) — a pack as a tuple-constrained type parameter, tuples joining structs as products keyed by position so `keyof`, `S[K]`, mapped types, field loops and comprehensions serve both; today's pack code and its duplication, the five changes with sizes, what stays out, order against C3/C4, proposal 8 and F28, decisions left to the human; read before specifying or planning F3 or F26
+description: superseded by docs/proposals/12-variadic-tuples.md; design analysis for variadic packs beyond level 1 (tracker F3, superseding F26's `each`) — a pack as a tuple-constrained type parameter, tuples joining structs as products keyed by position so `keyof`, `S[K]`, mapped types, field loops and comprehensions serve both; today's pack code and its duplication, the five changes with sizes, what stays out, order against C3/C4, proposal 8 and F28, decisions left to the human; read before specifying or planning F3 or F26
 owner: tech-lead
-status: active
+status: archived
 applies_to: istalang
 last_verified: 2026-11-09
 last_updated: 2026-11-09

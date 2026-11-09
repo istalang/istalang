@@ -28,7 +28,7 @@ Now all of them check: the expected type takes part in inference, an `Array` con
 and an `Int` with a `None` joins into an `Int?`.
 
 **Goals, in priority order:** nothing surprises a user coming from those languages; nothing that
-can be inferred has to be written; room for variadic type parameters (`each`) and proposal 8's
+can be inferred has to be written; room for variadic type parameters (proposal 12) and proposal 8's
 function kinds.
 
 The full rules, examples and risks are in `docs/work/variance-inference/design.md`, and the phases
@@ -58,7 +58,7 @@ causes and the structural changes are in `docs/work/variance-inference/merge-ana
      what is now inferred.
 2. **Re-check** by the merge reviewer.
 3. **Later, filed:**
-   - F26: `each` for packs;
+   - F3: variadic tuples (proposal 12);
    - F27: view handles, so `gives`/`takes` reach handles;
    - F28: proposal 8's function-type qualifiers as subtyping in the constraint system;
    - Q46: inference variables as a key of their own; Q47: every expression checked in a scope.
