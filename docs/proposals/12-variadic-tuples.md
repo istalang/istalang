@@ -203,37 +203,49 @@ key-typed members, `I in keyof A`; variance per element; one set of tools for st
 **Brackets nest without recursion.** `testing.setups` combines "around" setups,
 `Setup<E> = async fn(async fn(E))`, the first outermost. It looks like a fold: each step nests
 inside the last, and the environment's type grows. But what nests is lifetimes, and concurrent
-executions express that with no type-changing accumulator:
-- each setup runs in its own execution, parked inside its callback until the test ends;
-- the environments fill a tuple of slots typed by key;
-- a tuple comprehension hands the test its `A`.
+executions express that with no type-changing accumulator.
+
+The reusable part is **entering a bracket**: running an around function in its own execution,
+parked inside its callback, so its value can be used outside it until it is left. That is
+Haskell's `managed` and Python's `ExitStack.enter_context`. It is a std function beside a general
+`Bracket<E>`, which `Setup<E>` names:
 
 ```python
-fn setups<A is tuple>(...each: ( [I in keyof A]: Setup<A[I]> )) -> Setup<A>:
-    async fn(test: async fn(A) -> Unit):
-        const envs: ( [I in keyof A]: Slot<A[I]> ) = (for _, _ in ...each: Slot.create())
-        let stops: Array<(Slot<Unit>, Future<Unit>)> = []
-        for i, setup in ...each:                      # in order: the first is outermost
-            const done = Slot.create<Unit>()
-            const run = setup(async fn(env):          # its own execution
-                await envs[i].put(env)
-                await done.take())                    # holds what it prepared until the test ends
-            stops.push((done, run))
-            await envs[i].read()                      # prepared before the next one starts
-        await test((for i, _ in ...each: await envs[i].take()))
-        stops.reverse()                               # torn down innermost first
-        for done, run in stops:
+type Bracket<E> = async fn(async fn(E) -> Unit) -> Unit
+struct Entered<E> { value: E, leave: async fn() -> Unit }
+
+async fn enter<E>(bracket: Bracket<E>) -> Entered<E>:
+    const value = Slot.create<E>()
+    const done = Slot.create<Unit>()
+    const run = bracket(async fn(v):              # its own execution
+        await value.put(v)
+        await done.take())                        # parked: holds what it prepared
+    Entered{
+        value: await value.read()
+        leave: async fn():
             await done.put(())
             await run
+    }
+
+fn setups<A is tuple>(...each: ( [I in keyof A]: Setup<A[I]> )) -> Setup<A>:
+    async fn(test: async fn(A) -> Unit):
+        const entered = (for _, setup in ...each: await enter(setup))   # in order, first outermost
+        await test((for _, e in ...entered: e.value))
+        const leaves = [for _, e in ...entered: e.leave]
+        leaves.reverse()                                                # innermost first
+        for leave in leaves: await leave()
 ```
 
-- Holdings such as mocks live while their setup is parked. Order and teardown are as nested
+- Holdings such as mocks live while their bracket is parked. Order and teardown are as nested
   frames give them.
-- A setup that never calls its callback, or fails while preparing, must end the wait for its
-  environment: the wait races the setup's run, and fails if the run ends first.
-- A named rest (`setups(db: withDb, host: withHost)`) types the same way, but named arguments
-  carry no order, so the nesting would follow name order instead of the call's. Positional
-  stays.
+- **`enter`'s wait for the value** races the bracket's run, failing if the run ends first, so a
+  bracket that never calls its callback, or fails while preparing, can't hang it. A bracket is
+  entered once.
+- **Under proposal 8,** `enter` waits through its one-shot resolvers rather than slots, in
+  whichever kind its bracket is.
+- **A named rest** (`setups(db: withDb, host: withHost)`) types the same way, but named
+  arguments carry no order, so the nesting would follow name order instead of the call's.
+  Positional stays.
 
 **Still out: chains,** where an element's type depends on its neighbour's: `pipe(f, g, h)` needs
 `fn(A) -> B`, then `fn(B) -> C`. Keys relate only by equality, never by position plus one.
