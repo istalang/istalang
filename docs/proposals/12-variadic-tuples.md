@@ -1,5 +1,5 @@
 ---
-description: proposal 12 of docs/proposals, for variadic type parameters as tuples — a tuple as a product keyed by position on top of proposal 4's struct machinery (`keyof`, `T[I]`, mapped types, field loops, comprehensions, type `match`), a pack as a type parameter constrained to tuples, struct rests taking named arguments with the struct's defaults, several tuple rests when their keys are equal, a `where` clause for relations between type parameters, and `enter` for brackets; supersedes the `<...A>` spelling and tracker F26's `each`, implements F3; read before designing or changing packs, rest parameters, tuples' keys or `where`
+description: proposal 12 of docs/proposals, for variadic type parameters as tuples — a tuple as a product keyed by position on top of proposal 4's struct machinery (`keyof`, `T[I]`, mapped types, field loops, comprehensions, type `match`), a pack as a type parameter constrained to tuples, struct rests taking named arguments with the struct's defaults, several tuple rests when their keys are equal, a `where` clause for relations between type parameters, `enter` for brackets, and as a second stage refinement by patterns with spreads inside tuples typed by segments; supersedes the `<...A>` spelling and tracker F26's `each`, implements F3; read before designing or changing packs, rest parameters, tuples' keys, `where` or what patterns teach about types
 owner: tech-lead
 status: active
 applies_to: istalang
@@ -121,8 +121,8 @@ call, in the product their type names:
   keys, or a `where` says so (§4).
   - A spread of a known tuple first becomes its elements.
   - Each rest then takes single values or one spread of a tuple whose elements aren't known, as
-    one rest does today. Single values and such a spread in one rest would make its tuple
-    `(X, ...A)`, which waits for spreads inside tuple types (Left for later).
+    one rest does today. Single values and such a spread in one rest make its tuple `(X, ...A)`,
+    which spreads inside tuple types give (§7).
   - The rests' equal keys then decide the split:
     - with single values only, k rests split m values m / k each, in order, and a count k
       doesn't divide doesn't fit, as a wrong count doesn't today;
@@ -274,6 +274,71 @@ fn setups<A is tuple>(...each: ( [I in keyof A]: Setup<A[I]> )) -> Setup<A>:
   arguments carry no order, so the nesting would follow name order instead of the call's.
   Positional stays.
 
+### 7. Refinement by patterns
+
+A second stage, built after §1–6. A pattern that succeeds teaches facts about the types it tested,
+so a body can recurse over a product and still be checked once. `setups` keeps `enter` (§6); its
+fold, written by recursion, shows what this checks:
+
+```python
+fn nested<A is tuple>(...each: ( [I in keyof A]: Setup<A[I]> )) -> Setup<A>:
+    match each:
+        case (): async fn(test): await test(())                # A is () here
+        case (first, ...rest): async fn(test):                 # A is (A[0], ...T) here
+            await first(async fn(x):
+                await nested(...rest)(async fn(xs): await test((x, ...xs))))
+```
+
+- **The pattern walk is the one home.** Facts come wherever a pattern succeeds: a `match` case
+  and its guard, and `x is P` in an `if`, a `while` or the right side of `and`. They hold exactly
+  where its bindings do. So `if s is struct{meta, ...rest}: log(meta)` refines as a case does.
+- **Shape facts refine the type parameter itself.**
+  - `()` teaches that `keyof A` is `Never`. `(h, ...t)` teaches that `0` is a key, `h: A[0]`.
+    `struct{meta, ...rest}` teaches that `"meta"` is a key of `S`; on an opaque `S` this is a
+    test that can fail, where today it's refused.
+  - Sound because a tuple or struct constraint stands for one product, never a union or `Never`,
+    so each instantiation decides the pattern.
+  - The parameter's key-equality class learns them too (§4), and so does a value of a mapping of
+    its keys, as `each` above.
+  - In the branch, result types and type `match`es over the parameter reduce by them, as a type
+    `match`'s `case struct` already does for its case's type.
+  - A mapping of `T`'s keys relates to a mapping of `A`'s through the same `G`, binding `A` to
+    `T` (§5), so `nested(...rest)` infers.
+- **Element tests narrow only binders.** In `case (h, ...t) if h is Awaitable`, `A[0]` may
+  become a union, so the test picks members per value.
+  - `h` gets the part of `A[0]` the pattern matches: a computed type that an instantiation reduces
+    by today's member selection, the remaining type of §3.11 made lazy.
+  - `A[0]` itself stays as it was. A result type that follows an element's type needs a test on
+    types, a type `match`.
+- **Trait names are patterns.** `h is Awaitable` matches a value whose type, or member, meets the
+  trait, binding it with the trait known. Type `match`'s `infer T is C` is the same test on types.
+- **A failed test teaches its complement.** Later cases and `else` learn "no key `meta`", "not
+  empty" or "not `Awaitable`", as exhaustiveness already works out.
+- **Facts end with their bindings.** An early exit, `if not (s is P): return`, teaches nothing
+  after it, as today.
+- **Spreads inside tuple types and values,** `(X, ...T)` and `(x, ...xs)`, are typed by segments,
+  not arithmetic on keys:
+  - a tuple type is a list of single elements and opaque spreads, normalized at construction: a
+    known spread flattens;
+  - a key is a segment and its key inside it;
+  - mappings, field loops and comprehensions work per segment: one pass per single element, one
+    "others" pass per spread;
+  - two tuples have equal keys when their segments do, so `(X, ...T)` and `(...U, Y)` are never
+    proven equal.
+  - The tail of `(h, ...t)` is its own segment: `t: T`, keeping `T`'s keys. Renumbering `A`'s keys
+    from `0` instead would let a loop over `t` read the wrong element of a tuple tied to `A`.
+  - A rest takes single values beside a spread, and k tuple rests split the arguments into k runs
+    alike: equal counts, single values and spreads at the same places, the spreads' keys tied.
+    §3's two cases are this rule's runs of single values and of one spread.
+- **Exhaustiveness:** an opaque tuple's cases are its lengths, as an `Array`'s are, so `()` and
+  `(h, ...t)` cover it.
+- **Still one pass, finitely instantiated.**
+  - Each branch is checked once under its facts; a branch that contradicts known keys is ruled out
+    (§3.11).
+  - Each instantiation decides a shape test, so lowering emits only the branch that runs; an
+    element test on a union runs as member selection does today.
+  - The expansion rule accepts a recursive call on a strict tail as shrinking.
+
 ## Why
 
 - **One machinery for products.** Proposal 4 built `keyof`, `S[K]`, mapped types, field loops,
@@ -306,6 +371,9 @@ fn setups<A is tuple>(...each: ( [I in keyof A]: Setup<A[I]> )) -> Setup<A>:
   type checks, where exact binding refused it.
 - A struct-constrained parameter's derived traits imply its fields' and back.
 - `testing.setups` is one declaration over `enter`, replacing five overloads.
+- With §7: recursion over a tuple checks; `struct{meta, ...}` on an opaque struct tests the field,
+  where it's refused today; trait names are patterns; `(x, ...xs)` and `(X, ...A)` check, and a
+  rest takes single values beside a spread.
 - Programs that check today keep their meaning.
 
 ## What changes in power
@@ -316,7 +384,7 @@ fn setups<A is tuple>(...each: ( [I in keyof A]: Setup<A[I]> )) -> Setup<A>:
 | Scala 3 | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | partly |
 | TypeScript | ✓ | ✓ | ✓ | ✗ | ✓ | ✓ | types only | ✓ |
 | Swift | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✗ | ✓ |
-| **Ista** | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ equal keys | brackets only | ✓ |
+| **Ista** | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ equal keys | ✓ by refinement (§7) | ✓ |
 | Python 646 | ✓ | ✗ | ✗ | ✗ | ✓ | one per tuple | ✗ | ✓ |
 
 Only Ista has these:
@@ -327,9 +395,9 @@ Only Ista has these:
 
 **Still out: chains,** where an element's type depends on its neighbour's: `pipe(f, g, h)` needs
 `fn(A) -> B`, then `fn(B) -> C`. Keys relate only by equality, never by position plus one.
-Checking such a body once is induction over the length, which needs type parameters refined by a
-`match` (Left for later). C++ and Scala instead check each instantiation, and TypeScript casts in
-the body.
+Refinement (§7) checks such a body, but the chain's type needs a recursive type `match`, and a call
+needs inference through one, which nothing does (Left for later). C++ and Scala check each
+instantiation, and TypeScript falls back to overloads.
 
 ## Spec changes
 
@@ -342,6 +410,8 @@ the body.
 - §3.14: function types' trailing spreads; a named rest as one parameter.
 - §3.15: tuples as products; `t[i]`, `t.0` through keys.
 - §3.17: `case tuple`, `case fn(...infer A) -> infer R`.
+- §3.11 (§7): facts from patterns, trait patterns, complements, opaque tuples' lengths in
+  exhaustiveness; §3.15: spreads inside tuples by segments; §3.3: the split into equal runs.
 - §4: field loops and comprehensions over tuples.
 - §10: `setups` over `enter`, and `enter` itself.
 - The cheat sheet and `guide.md`.
@@ -386,6 +456,15 @@ the body.
      key-equality class, and relates rests element by element.
    - `types/variance/usage-walk.ts` reads such a mapping per element.
 5. **`enter` and `setups`** in std, once 1–4 land.
+6. **Refinement (§7, behavioural), a second stage after 1–5.**
+   - Tuple types hold segments (`type/index.ts`), normalized at construction; keys, mappings and
+     field passes go per segment.
+   - The pattern walk (`constructs/patterns/walk/`) records facts beside bindings, into one store
+     scoped to a branch in the body context. Key reasoning, decided conditions and type `match`
+     reduction read it; `where`'s key equality moves into it.
+   - A computed type for a binder's matched part on an opaque type, reduced by member selection.
+   - Exhaustiveness (`exhaustiveness.ts`) reads an opaque tuple's lengths as an `Array`'s.
+   - The expansion rule (`rules/expansion/functions.ts`) accepts recursion on a strict tail.
 
 Lowering is otherwise unchanged: a tuple is concrete once instantiated, and field loops already
 unroll.
@@ -395,16 +474,12 @@ inference. Independent of proposal 8; before F28, since change 3 removes `relate
 
 ## Left for later
 
-- **Spreads inside tuple types and values,** `(X, ...A, Y)` and `(x, ...a, y)`, and so single
-  values beside a spread in one rest.
-  - A position after a spread whose length isn't known has no key without arithmetic on keys
-    (`keyof (X, ...A)` is `0` and `keyof A` shifted by one).
-  - They come with refinement, below.
-- **Type refinement by `match`** over a tuple or struct value (`case ()`, `case (h, ...t)`):
-  - each branch learns its type parameter's form;
-  - each instantiation recurses on a shorter tuple, so it ends;
-  - it unlocks chains such as `pipe`, and belongs with the narrowing guarantees of §4.
-- Relations in `where` beyond key equality, and narrowing guarantees (§4).
+- **Chains** such as `pipe`: a chain type written as a recursive type `match`, and inference
+  through one.
+- Relations in `where` beyond key equality, narrowing guarantees (§4), and facts that outlive
+  their bindings, after an early exit.
+- A struct's first field by name order, for recursion over structs; field loops cover per-field
+  work.
 - Two named rests, even with disjoint fields.
 - Partial type arguments at a call: a separate change.
 
@@ -428,3 +503,6 @@ inference. Independent of proposal 8; before F28, since change 3 removes `relate
    comprehension is `(for i, v in ...t: e)`.
 6. **A `where` clause before the body's `:`** holds relations between type parameters, open to
    more relations later, such as type equality and narrowing after a call.
+7. **Refinement by patterns** (§7), wherever a pattern succeeds, `x is P` being the `if` form:
+   shape facts refine the type parameter, element tests only binders; failed tests teach
+   complements; facts end with their bindings; spreads inside tuples are typed by segments.
