@@ -202,13 +202,20 @@ key-typed members, `I in keyof A`; variance per element; one set of tools for st
 
 **Brackets nest without recursion.** `testing.setups` combines "around" setups,
 `Setup<E> = async fn(async fn(E))`, the first outermost. It looks like a fold: each step nests
-inside the last, and the environment's type grows. But what nests is lifetimes, and concurrent
-executions express that with no type-changing accumulator.
+inside the last, and the environment's type grows. But what nests is lifetimes, and an
+instance's executions express that with no type-changing accumulator.
 
-The reusable part is **entering a bracket**: running an around function in its own execution,
-parked inside its callback, so its value can be used outside it until it is left. That is
-Haskell's `managed` and Python's `ExitStack.enter_context`. It is a std function beside a general
-`Bracket<E>`, which `Setup<E>` names:
+An instance runs its executions on one thread, in a deterministic order:
+- calling an `async fn` runs the callee at once, up to its first `await` (§3.3);
+- a slot operation that can complete does so at once (§6);
+- awaiting resumes after every execution that became ready before it (§6).
+
+So a bracket can be left suspended inside its own callback, holding its frame and what it
+prepared, while the caller goes on with its value.
+
+The reusable part is **entering a bracket**, as Haskell's `managed` and Python's
+`ExitStack.enter_context` do. It is a std function beside a general `Bracket<E>`, which `Setup<E>`
+names:
 
 ```python
 type Bracket<E> = async fn(async fn(E) -> Unit) -> Unit
@@ -217,13 +224,16 @@ struct Entered<E> { value: E, leave: async fn() -> Unit }
 async fn enter<E>(bracket: Bracket<E>) -> Entered<E>:
     const value = Slot.create<E>()
     const done = Slot.create<Unit>()
-    const run = bracket(async fn(v):              # its own execution
-        await value.put(v)
-        await done.take())                        # parked: holds what it prepared
+    const run = bracket(async fn(v):              # runs at once, up to its first await
+        await value.put(v)                        # completes at once: the slot is empty
+        await done.take())                        # suspended here, holding the bracket's frame
+    const v = await select:
+        case value.read() as v: v
+        case run: panic("The bracket ended without calling its callback.")
     Entered{
-        value: await value.read()
+        value: v
         leave: async fn():
-            await done.put(())
+            await done.put(())                    # resumes the callback, then the bracket's teardown
             await run
     }
 
@@ -236,13 +246,16 @@ fn setups<A is tuple>(...each: ( [I in keyof A]: Setup<A[I]> )) -> Setup<A>:
         for leave in leaves: await leave()
 ```
 
-- Holdings such as mocks live while their bracket is parked. Order and teardown are as nested
-  frames give them.
-- **`enter`'s wait for the value** races the bracket's run, failing if the run ends first, so a
-  bracket that never calls its callback, or fails while preparing, can't hang it. A bracket is
-  entered once.
-- **Under proposal 8,** `enter` waits through its one-shot resolvers rather than slots, in
-  whichever kind its bracket is.
+- **Order** is the call's: `enter` returns only once its bracket has prepared, so the next one
+  starts after it. Teardown runs innermost first, each finishing before the next begins.
+- **Holdings** such as mocks live while their bracket is suspended.
+- **Failure:** a bracket that never calls its callback ends its run first, and `select` turns
+  that into a panic instead of a hang.
+- **Leaving:** a bracket is entered once. An `Entered` released without `leave` releases its
+  run, which is stopped at its `await` (§7): holdings are released, and code after the callback
+  doesn't run.
+- **Under proposal 8,** `enter` waits through one-shot resolvers rather than slots, in whichever
+  kind its bracket is.
 - **A named rest** (`setups(db: withDb, host: withHost)`) types the same way, but named
   arguments carry no order, so the nesting would follow name order instead of the call's.
   Positional stays.
