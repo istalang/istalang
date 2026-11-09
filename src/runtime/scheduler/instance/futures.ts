@@ -236,8 +236,8 @@ export class Futures {
     return future;
   }
 
-  /** Resolves every timer due at `now`, earliest first. */
-  resolveDueTimers(now: bigint): void {
+  /** Resolves every timer due at `now`, earliest first; whether any was. */
+  resolveDueTimers(now: bigint): boolean {
     const due = this.#heap
       .find('pending', 'timer')
       .flatMap(({ id, state }) =>
@@ -249,6 +249,7 @@ export class Futures {
     for (const { id } of due) {
       this.resolve(id, null);
     }
+    return due.length > 0;
   }
 
   /** A handle to a future of the first of `handles` to resolve (spec §3.8, `futures.first`). */

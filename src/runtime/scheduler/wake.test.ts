@@ -213,6 +213,31 @@ describe('advancing an instance', () => {
     expect(test.store.commits).toHaveLength(1);
   });
 
+  it('commits a timer that came due while nothing waited on it, so its host stops waking it', () => {
+    const text = compiledText(
+      [
+        "import * as time from 'time'",
+        'async fn main():',
+        '  const early = time.delay(5ms)',
+        '  await time.delay(10ms)',
+        '  await early',
+        '  1',
+      ].join('\n'),
+    );
+    const test = testRuntime();
+    expect(test.runtime.deploy(text).start('held').state).toMatchObject({ until: 5n });
+    test.clock.set(5n);
+    expect(test.runtime.wake('held').state).toEqual({
+      kind: 'waiting',
+      until: 10n,
+      watching: [],
+    });
+    expect(runToEnd(test, 'held', test.runtime.wake('held'))).toEqual({
+      kind: 'finished',
+      outcome: '1',
+    });
+  });
+
   it('keeps a panicked instance frozen at its last commit', () => {
     const text = compiledText(
       [

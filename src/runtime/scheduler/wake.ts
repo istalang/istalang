@@ -232,10 +232,11 @@ function runFrom(
   if (step.kind === 'withdraw') {
     instance.futures.withdraw(step.withdrawn);
   }
-  instance.futures.resolveDueTimers(startedAt);
-  // A resolved watch commits even when nothing waits on it, so a host stops waking its instance.
+  // A resolved timer or watch commits even when nothing waits on it, so a host stops waking its
+  // instance for it.
+  const timerResolved = instance.futures.resolveDueTimers(startedAt);
   const watchResolved = instance.futures.resolveWatches(watched);
-  if (instance.idle && !watchResolved && step.kind === 'none') {
+  if (instance.idle && !timerResolved && !watchResolved && step.kind === 'none') {
     return undefined;
   }
   const first = step.kind === 'answer' ? ({ kind: 'answer', call: step.call } as const) : undefined;
