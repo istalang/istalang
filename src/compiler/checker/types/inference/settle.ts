@@ -133,17 +133,14 @@ function nextToSettle(
   };
   const closed = (candidate: ParameterKey) =>
     !waitsOn(candidate).some((other) => isPending(other, candidate));
-  // A variable settles after those below it with bounds of their own, which hand it what they
-  // settle to; one with none settles from what those it is related to settled to.
-  const hasOwn = (variable: ParameterKey) => hasOwnBounds(view.boundsOf(variable));
-  const settlesBelow = (other: ParameterKey, candidate: ParameterKey) =>
-    isPending(other, candidate) && hasOwn(other);
+  // A variable settles after those below it with bounds of their own (`ownBoundedBelow`); one with
+  // none settles from what those it is related to settled to.
   const ready = (candidate: ParameterKey) =>
     closed(candidate) &&
     (given.has(candidate) ||
-      ((hasOwn(candidate) ||
+      ((hasOwnBounds(view.boundsOf(candidate)) ||
         !relatives(view.relatedOf(candidate)).some((other) => isPending(other, candidate))) &&
-        !view.relatedOf(candidate).below.some((other) => settlesBelow(other, candidate))));
+        !ownBoundedBelow(candidate, view).some((other) => isPending(other, candidate))));
   const index = pending.findIndex(ready);
   return index >= 0 ? index : Math.max(0, pending.findIndex(closed));
 }
@@ -158,8 +155,30 @@ function hasBounds({ equal, lower, upper }: VariableBounds): boolean {
  * settle by: any but an item apart's (bounds.ts), which bounds nothing settling reads first, its
  * variable settling from above.
  */
-export function hasOwnBounds(bounds: VariableBounds): boolean {
+function hasOwnBounds(bounds: VariableBounds): boolean {
   return hasBounds({ ...bounds, lower: bounds.lower.filter(({ isApart }) => isApart !== true) });
+}
+
+/**
+ * The variables below `parameter` with bounds of their own, which it settles after, as they hand it
+ * what they settle to.
+ */
+function ownBoundedBelow(
+  parameter: ParameterKey,
+  view: Pick<SettlingView, 'boundsOf' | 'relatedOf'>,
+): readonly ParameterKey[] {
+  return view.relatedOf(parameter).below.filter((other) => hasOwnBounds(view.boundsOf(other)));
+}
+
+/**
+ * What settling `parameter` waits on (`settleAll`): the variables its bounds mention, and those
+ * below it with bounds of their own (`ownBoundedBelow`).
+ */
+export function waitedOn(
+  parameter: ParameterKey,
+  view: Pick<SettlingView, 'boundsOf' | 'relatedOf'>,
+): readonly ParameterKey[] {
+  return [...mentionedBy(view.boundsOf(parameter)), ...ownBoundedBelow(parameter, view)];
 }
 
 /** The type `parameter` settles to, its bounds read with `settled`; undefined when none. */

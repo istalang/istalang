@@ -20,7 +20,7 @@ import {
   type Related,
   type VariableBounds,
 } from './bounds.ts';
-import { hasOwnBounds, type Settling, type SettlingView, settleOne } from './settle.ts';
+import { type Settling, type SettlingView, settleOne, waitedOn } from './settle.ts';
 import type { CallVariables } from './variables.ts';
 
 /** What reading a system's variables needs of it. */
@@ -222,19 +222,14 @@ export function tentativeSubstitution(
 }
 
 /**
- * What settling `variable` waits on, not fixed yet, in the order settling them all would (settle.ts
- * `settleAll`): the variables its equality mentions, and those below it with bounds of their own,
- * which hand it what they settle to.
+ * What settling `variable` waits on, not fixed yet, as settling them all would order them (settle.ts
+ * `waitedOn`).
  */
 export function settledBefore(
   variable: ParameterKey,
   reading: SystemReading,
 ): readonly ParameterKey[] {
-  const { equal } = reading.boundsOf(variable);
-  const below = reading
-    .relatedOf(variable)
-    .below.filter((other) => hasOwnBounds(reading.boundsOf(other)));
-  return [...(equal === undefined ? [] : parametersIn(equal.type)), ...below].filter(
+  return waitedOn(variable, reading).filter(
     (other) => reading.isVariable(other) && fixedOf(other, reading) === undefined,
   );
 }
@@ -306,12 +301,12 @@ export function fixingToward(
       lower: lower.filter(isFree),
       upper: upper.filter(isFree),
     };
-    const waitedOn =
+    const isWaitedOn =
       mentionedNear.has(variable) ||
       mentionedBy({ equal, lower, upper }).some((key) => near.has(key));
     const hasFree = free.equal !== undefined || free.lower.length > 0 || free.upper.length > 0;
     const stuck =
-      waitedOn && hasFree && !near.has(variable) && fixedOf(variable, reading) === undefined;
+      isWaitedOn && hasFree && !near.has(variable) && fixedOf(variable, reading) === undefined;
     const freeView = {
       ...view,
       boundsOf: (each: ParameterKey) => (each === variable ? free : view.boundsOf(each)),

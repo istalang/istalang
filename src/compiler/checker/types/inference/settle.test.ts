@@ -194,6 +194,22 @@ describe('postponed arguments and bounds propagation', () => {
   });
 });
 
+describe("a postponed lambda's inputs", () => {
+  it('are fixed after what their bounds mention, as settling them all would', () => {
+    const main = [
+      'struct Box<T> { value: T }',
+      'fn makeBox<T>(x: T) -> Box<T>: Box{value: x}',
+      'fn pair<W>(a: W, b: W) -> Array<W>: [a, b]',
+      'fn withVal<U>(x: U, f: fn(U) -> Int) -> Int: f(x)',
+      'fn g() -> Int: withVal(makeBox(1), fn b: b.value)',
+      'fn h() -> Int: withVal(Box{value: 1}, fn b: b.value)',
+      'fn i() -> Int: withVal([1, 2], fn xs: xs.length())',
+      'fn j() -> Int: withVal(pair(1, 2), fn xs: xs[0] + 1)',
+    ].join('\n');
+    expect(reportedErrors(main)).toEqual([]);
+  });
+});
+
 describe('a call checking without an expected type', () => {
   const extraDeclarations = [
     ...declarations,
