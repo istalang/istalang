@@ -1,219 +1,331 @@
 ---
-description: proposal 10 of docs/proposals, for moving running persistent work to a new build with no migration code — every call of an `ista fn`, every `delegate` and every `spawn` is a node in a tree; finished nodes keep their results, nodes waiting in unchanged functions stay where they wait, nodes waiting in changed functions restart with the same arguments and claim their old calls by function and arguments; unclaimed nodes are kept for review; host effects go only through `delegate`, `ista fn` arguments are data, and lambdas that outlive a commit are named; replaces proposal 9's Versions section and §5's Versioning; read before designing deploys, the node tree, `delegate`, or anything that changes how persistent code reaches the outside world
+description: proposal 10 of docs/proposals, for moving running persistent work to new releases — a build holds every release and each frame runs its own release's code; frames move to a newer release at named `checkpoint`s and at a boundary `ista fn`'s entry, their state moved by name and checked at compile time; `inline ista fn` runs at its caller's release; `x is unassigned` for state an older release lacks, decided per compiled entry; migration files, diffs kept like SQL migrations from any release to a later one, that add checkpoints to old code, fill state, `restart` or `keep` a function; a committing `await` stands at statement level; replaces proposal 9's Versions and §5's Versioning; read before designing releases, deploys, frames, checkpoints, migration files or their tooling
 owner: tech-lead
 status: active
 applies_to: istalang
-last_verified: 2026-11-08
-last_updated: 2026-11-08
-tags: [proposal, runtime, persistence, versions, upgrade]
+last_verified: 2026-11-09
+last_updated: 2026-11-09
+tags: [proposal, runtime, persistence, versions, upgrade, migration]
 ---
 
 # Proposal: upgrading persistent work
 
-A workflow may wait for days, and a fix may ship meanwhile. Today an instance finishes on the build that started it (§5 *Versioning*, proposal 9's *Versions*), so a fix never reaches it. This proposal moves every running instance to each new build, with no migration code.
+A workflow may wait for weeks, and a fix may ship meanwhile. Today an instance finishes on the build that started it (§5 *Versioning*, proposal 9's *Versions*), so a fix never reaches it. This proposal lets running work move to a new release at points the code names, checked by the compiler, with migration code only where a developer wants control.
 
-**A call is a unit of work.** A release leaves most of a workflow's calls untouched:
-- finished calls keep their results;
-- calls waiting in unchanged functions stay where they wait;
-- calls waiting in changed functions run again from their start, with the same arguments. When they call what they called before, they get the old call back, finished or still waiting, instead of a new one.
+**The model is Erlang's hot code loading, made static.**
+- A build holds every release, and each frame runs the code of its own release.
+- A frame moves to a newer release only at a **checkpoint**: a `checkpoint name` statement, or the entry of a boundary function. Its state moves by name.
+- For every older release, the compiler checks that each checkpoint's state fits the newer code. A mismatch is a compile error.
+- A **migration file** adds checkpoints to code that had none, fills in state, or decides a function's fate: `restart` or `keep`.
 
 It builds on proposals 8 and 9. The human chose the design and the decisions at the end; the other rules close gaps found while reviewing it. Section numbers refer to `docs/spec.md`.
 
 ## Example
 
+Release `r1`:
+
 ```python
 ista fn openBusiness(app: Application) -> Business:
     const name = await reserveName(app)
     const license = await getLicense(app, name)
-    await delegate register(app, name, license)
+    await register(app, name, license)
 ```
 
-An instance has reserved its name and waits inside `getLicense`. Release 2 adds a step:
+Release `r2` adds a tax id. Instances of `r1` wait inside `getLicense`, which can take weeks, and must get a tax id without applying for a license again. `migrations/r1..r2.ista-migration`:
 
 ```python
-ista fn openBusiness(app: Application) -> Business:
-    const name = await reserveName(app)              # claims the finished call: its old result
-    const taxId = await getTaxId(app)                # nothing to claim: a new call
-    const license = await getLicense(app, name)      # claims the waiting call, as it was
-    await delegate register(app, name, taxId, license)
+  ista fn openBusiness(app: Application) -> Business:
+      const name = await reserveName(app)
++     const taxId = await getTaxId(app)
+      const license = await getLicense(app, name)
+>     checkpoint licensed
++     checkpoint licensed
++     if taxId is unassigned:
++         taxId = await getTaxId(app)
+-     await register(app, name, license)
++     await register(app, name, taxId, license)
 ```
 
-- `openBusiness` changed, so it restarts.
-- `reserveName(app)` was called before: the restart gets its result without calling it again.
-- `getTaxId` is new, and runs.
-- `getLicense` didn't change. Its call waits, frozen, until the restart calls it with the same arguments and takes it over, with whatever progress it made: a license already issued stays issued.
-- Had release 2 dropped `getLicense`, its call would be kept unclaimed, for an operator to review.
+- The `>` line adds `checkpoint licensed` to `r1`'s code, after its `getLicense` await.
+- An `r1` frame keeps waiting on its pending license. Once it arrives, the frame reaches the added checkpoint and moves to `r2`'s `licensed`, carrying `app`, `name` and `license`.
+- `r1`'s state has no `taxId`, so in this entry `taxId is unassigned` is true, and the guard fetches it. At `r2`'s own entry it is false, and the branch is neither compiled nor run.
+- Had `r1` written `checkpoint licensed` itself, no migration file would be needed.
+- Without the file, `r1` frames would finish on `r1`'s code, with no tax id.
 
 ## Rules
 
-### 1. Nodes
+### 1. Releases
 
-- **A node** is a call persistent code makes and can wait on: a call of an `ista fn`, a `delegate` or a `spawn`. Its parent is its caller, so a context's nodes form a forest, one tree per invocation (proposal 9).
-- **A node's id** is fixed when it is created, and kept through crashes, restarts and upgrades. A `delegate`'s job runs under it (proposal 9's stable key), so a job can pass it to an outside API as its idempotency key.
-- **A running `ista` node has a frame.** A running `delegate` is a job in flight. A `spawn` is an instance of its own, which upgrades by itself.
-- **A finished node keeps its record** while its parent runs: function, arguments, result, start and finish times. Once the parent finishes, the parent's record is enough. A running node keeps its start time, its seed and the messages it received.
+- **`ista release <name>` records the program as a release:** its definition and its frame schema, under `releases/<name>/`, committed with the code.
+- **A build holds every release not retired.** The program being built is the newest.
+- **A frame records its release.** New work runs on the newest: an instance the host starts, a spawn, a call to a boundary function (rule 2).
+- **A function is the same across releases** when its key is: its module and name, with its parameter types only for an overloaded name. A type is the same when its key and definition are.
+- **A function's version** is a hash of:
+  - its body, and the bodies of the inline code it reaches, transitively (rule 2);
+  - the types live at its suspension points and checkpoints;
+  - its signature, and the signatures of the boundary functions it calls.
 
-### 2. What changed
+  Two releases share a function whose version is equal, and nothing about it is checked or moved.
+- **`ista release retire <store>`** drops releases that no frame in the store runs on, from the build and from the checks.
 
-- **A function's version** is a hash of its lowered code, its frame's types and the signatures of what it calls. A function changed when its version differs between the builds, or it is gone.
-- **Functions are found by name** in both builds. A rename is a removal and an addition.
-- **An unchanged function's frame is valid as it is** in the new build. Nothing in a frame is ever mapped or migrated: positions, temporaries, cursors and holdings stay, or the frame is dropped whole.
-- **A lambda that outlives a commit is named** (§3.14 *Named lambdas*): an `ista` lambda, and any function value live across a committing `await`. A positional name would change with every edit above it. Every other lambda, such as one passed to `map` before an `await`, may stay anonymous.
+### 2. Boundaries and inline code
 
-### 3. Upgrading a context
+- **A boundary is an `ista fn` not declared `inline`.** Everything else is inline: a plain `fn`, an `async fn`, an `inline ista fn`, a lambda, a local function.
+- **A call to a boundary function runs at the caller's target release** (rule 7): the newest, unless a migration file says otherwise.
+- **Inline code runs at its caller's release.** A lambda runs at the release of the frame that made it. A boundary function named as a value runs at the target release when called.
+- **An `inline ista fn` has no checkpoints**, and its entry isn't one. Its frames run their release's code until they return.
+- **Disposal is inline.** A `dispose` or a `defer` runs at the release of the frame that releases its value.
 
-A context, or an instance before proposal 9, upgrades when the new build first loads it, in one commit.
+### 3. Checkpoints
 
-1. **Settle** each root, recursively:
-   - **unchanged:** the node stays where it waits, and its running children settle;
-   - **changed:** the node **restarts**: its frame is dropped and its function runs again from its entry, with the same arguments. Its caller stays where it waits, on the same future;
-   - **under a restarting node,** at any depth, a node, running or finished, becomes a **candidate**: frozen, with no timer firing and no mailbox read, until a call claims it.
-2. **Replay.** Restarted nodes run. Each call they make claims a candidate (rule 4), or is a new node.
-3. **Commit** once every execution waits on something new. What the replay started, such as a new job, starts at this commit (proposal 8, Rule 6).
+- **`checkpoint name`** is a statement in a boundary function, with the name unique in the function. It neither waits nor commits.
+- **A checkpoint's state** consists of:
+  - the named variables live there;
+  - the iterators of its enclosing loops, named by their loop variables;
+  - the holdings of its enclosing blocks.
+- **A function's entry is a checkpoint** whose state is its parameters.
+- **A frame reaching a checkpoint moves to its target release's checkpoint of the same name,** if its release isn't already the target. Its state moves by name (rule 5), in memory and inside the same segment, and the frame then runs the target's code.
+  - A crash before the next commit runs the segment again on the older release, which moves again at the same checkpoint.
+- **A frame meeting no checkpoint runs its release's code to its end.**
+- **A moved frame still owes its old caller a result.** That caller expects the old release's result type, so the result converts back (rule 5).
+- **A checkpoint isn't a waypoint.** `@Waypoint` (§10) names a suspension point for tests and operators. A checkpoint is where code may change.
 
-**A claimed node joins its claimer.** A finished one gives its result at once. A running one sends its result to the claimer, and settles as in step 1.
+### 4. A committing `await` stands at statement level
 
-### 4. Claiming
+- **In an `ista fn`, a committing `await` is a whole statement or a whole right side:** `await e`, `const x = await e`, `let x = await e`, `x = await e` or `return await e`.
+  - `f(await a(), await b())` or `if (await x).ok:` is a compile error there. An in-memory `await` is free.
+- **A frame is therefore:**
+  - its release, its function, and the entry it came through (rule 6);
+  - its suspension point;
+  - its named values, the pending future, its loop iterators and its holdings.
+- **Frames are persisted by meaning, never by compiler layout,** so a later compiler reads an older release's frames.
 
-- **A call claims the first unclaimed candidate with the same function and equal arguments.** It searches the old children of the node making the call first, then the rest of the context's tree, depth first.
-- **So the k-th call of `f(x)` claims the k-th old `f(x)`** of the same parent, and a call moved elsewhere in the code still finds its node.
-- **Arguments are equal by value** (rule 8).
-- **A finished candidate whose result doesn't decode** into the new result type (rule 9) can't be claimed.
+### 5. Moving state, and the check
 
-### 5. Mailboxes during a restart
+- **A value of an unchanged type moves as it is.**
+- **A value of a changed data type converts through codecs:** the older type's `toJson`, then the newer type's `fromJson`. A newer type's declared `fromJson` may accept older shapes.
+- **A handle moves only when its type is unchanged:** a slot, an inbox, a shared struct, a future or a resolver. Other frames may hold the same handle at another release.
+- **A result converts the other way:** the newer `toJson`, then the older `fromJson`.
+- **The check.** For every release R in the build other than the newest, take R's target S. For every boundary function whose version differs between R and S, and for every checkpoint of R's function, its entry included:
+  - S's function is compiled from that checkpoint, with R's state after the migration's block, if any;
+  - every name S's code needs that the state doesn't give starts unassigned (rule 6);
+  - the result must pass definite assignment and type checking;
+  - S's result must convert into R's.
+- **A failure is a compile error.** It names the release, the function and the checkpoint. A checkpoint or a function that S lacks fails too. A migration file resolves each failure (rule 8).
+- **A conversion that fails at runtime,** a value that doesn't decode, stops the move. The frame runs on in its release, and `ista upgrade check` reports it.
 
-- **Messages a restarted node received go back** to the front of their mailbox, in their order and with their receipt times, so the replay receives them again.
-- **Sends are keyed** by node and occurrence. A restart sending what it sent before sends nothing, so a node that already received it doesn't get it twice.
+### 6. `is unassigned`
 
-### 6. Time and randomness
+- **`x is unassigned`** tests a local of the function. It is decided per compiled entry, like §4's conditions decided by types:
+  - it is false at the function's own entry, and wherever `x` is definitely assigned;
+  - it is true where an older release's state lacks `x` and nothing has assigned it yet.
+- **The branch it rules out is neither checked nor run,** so the test costs nothing at runtime. A name assigned on only some paths there is a compile error, because the test must be decided.
+- **Inside the branch, `x = …` assigns `x` once,** a `const` included.
+- **A boundary function is compiled once per entry:** its own, and each older release's checkpoint that reaches it. A frame records which entry it came through.
+- **A guard that no entry in the build decides true is warned about.** It is dead once the releases that needed it have retired.
 
-- **A restart keeps its old times while it follows its old path.**
-  - Its first segment starts at the node's original start time.
-  - Each later segment starts when its awaited value originally arrived: a claimed node's finish time, a returned message's receipt time, or a timer's deadline.
-  - Its timers keep their old deadlines, and a `select` takes whichever came first.
-- **Once it waits on something new,** such as a new node, a message it never received or a timer due after now, its time is real again. Time never goes back.
-- **`now()` stays its segment's start time** (proposal 8, Rule 6).
-- **A restart keeps its node's seed,** so `random` draws the same values in the same order.
-- **Readonly calls run again, live,** and may return today's values. A restart may then take another path, and leave more unclaimed.
+### 7. Migration files
 
-### 7. Unclaimed nodes
+- **`migrations/<from>..<to>.ista-migration`** moves frames on release `from` to release `to`, any later release. Files are committed and kept, like SQL migrations. Some releases never get one.
+- **A frame's target:**
+  - a frame on R targets the `to` of R's migration file with the newest `to`;
+  - with no file from R, it targets the newest release, through an implicit empty file;
+  - a frame moved to S then targets S's own target at its next checkpoint.
+- **A file is the diff of the two releases,** for the functions that differ. The first column gives each line's kind:
 
-- **A candidate stays claimable while the restart above it runs.** After that, it is kept frozen, with its arguments, state and finished children, for an operator to review (§9). Nothing it did is undone.
-- **A root that can't restart is frozen** with its tree, for review: its function is gone, or its parameters no longer take its arguments. Only a root can be stuck this way: a call's arguments are the caller's code, so the caller changed too, and restarts.
+  | Prefix | Kind | Meaning |
+  | --- | --- | --- |
+  | `-` | old | only in `from` |
+  | `+` | new | only in `to` |
+  | (space) | context | in both |
+  | `>` | migration | rule 8 |
 
-### 8. Persistent code and the outside world
+  The `-` and context lines must equal `from`'s source exactly, and the `+` and context lines `to`'s, so the file checks itself against both.
+- **`ista migration new <from> <to>`** generates the file, with a `> ???` hole wherever the check fails. A hole fails to compile until it is filled.
 
-- **Host effects from persistent code go only through `delegate`.** A call from an `ista fn` that reaches a non-readonly extern, directly or through what it calls, is a compile error. `await delegate charge(o)` runs it as a job, whose result persists.
-  - Readonly externs are called directly.
-  - The runtime's own operations aren't host effects: mailboxes, slots, timers and logs, `delegate` and `spawn`.
-  - **Why:** a restart runs a node's segments again. Every host effect they made is a finished `delegate` node, which the restart claims, so no effect happens twice.
-- **`ista fn` parameters are data:** no slot, inbox, handle, cell or future, and no function value holding one. An `ista` lambda's captures follow the same rule.
-  - Nodes in a context share by mailbox name (proposal 9), so a claim compares arguments by value.
-  - A restarted node shares no memory with a node that stays.
+### 8. What `>` lines say
 
-### 9. Decoding
+- **Above a function's header,** a directive applies to `from`'s frames of that function:
+  - **`> restart`** acts when the build first loads the instance, in one commit.
+    - Each such frame is disposed: everything it holds is released as §7 releases it, so pending calls stop, `defer`s run and revertible messages retract.
+    - Then `to`'s function is called again with the same arguments, through its entry, on the future its caller waits on.
+    - The new run is a new run: real `now()` and fresh draws. What the function did before its `await` runs again. As after a crash, idempotency is the program's.
+  - **`> keep`:** the frames never move, and `from`'s calls of the function run `from`'s function. Its checkpoints pass without moving.
+- **Right after the header,** an entry block runs for calls from `from`'s code into `to`'s function.
+  - `from`'s parameters are in scope, and the block gives `to`'s.
+  - A parameter that `to` added with a default needs nothing.
+  - A block for a function that `to` lacks must `return`: `> return await openCompany(app)` redirects a renamed one.
+- **`> checkpoint X`** adds checkpoint `X` to `from`'s code at that point: after the last `-` or context line above it, usually right after an `await`.
+- **Lines right after a checkpoint of `from`,** written or added, form a block. It runs when a frame moves there, before `to`'s code goes on from its own `X`.
+- **In a block:**
+  - `from`'s names are in scope with `from`'s types. A type that changed is written `from.T`.
+  - A block may rebind a name: `const deadline = convert(deadline)`, the right side reading `from`'s.
+  - A block may `await`. A frame waiting in a block is a frame of `to`'s function, entered through that block, and is persisted and upgraded like any other.
+  - `goto Y` goes on at `to`'s checkpoint `Y` instead. `return v` completes the function with `to`'s result type.
+  - What `to`'s code needs and the block doesn't give is unassigned there (rule 6).
+- **`>` lines outside any function** declare helpers for the file's blocks, such as `fn convert(o: from.Order) -> Order`.
 
-- **Arguments, finished results and messages** decode into the new build's types through their JSON codecs, missing fields taking their defaults.
-- **A message that doesn't decode** is kept aside, for review.
-- **An argument or result that doesn't decode:** rules 4 and 7.
+```python
+> restart
+- ista fn review(req: Request) -> Verdict:
++ ista fn review(req: Request, level: Int = 1) -> Verdict:
+```
 
-### 10. Checking a release
+### 9. Tools and tests
 
-- **`ista upgrade check <store>`** runs every context's upgrade against the store without committing. It reports per context:
-  - nodes kept, restarted, claimed, new and unclaimed;
-  - frozen roots and undecodable messages.
-- **Small functions restart little.** A change restarts only the calls waiting in the functions it touches, so workflows should be split into small functions.
+- **`ista upgrade check <store>`** runs the build against a store without committing. For each release, function and suspension point, it reports:
+  - frames, and the checkpoint where each will move;
+  - restarts and keeps;
+  - conversions that fail.
+- **`testing.spawnOn(release, f)`** spawns `f` as if `release` were the newest, and **`inst.upgrade()`** moves the instance to the build's newest release, as a deploy does:
+  - restarts happen at once;
+  - later checkpoints and boundary calls go to the newest release.
+
+  With `reaches` (§10), a test drives an instance to a point, upgrades it and asserts on how it ends.
+- **A committing `await` in a loop body with no checkpoint in that loop is warned about:** "frames in this loop run their release's code until it ends."
 
 ## Why
 
-- **Frames are data.** A release leaves most of a workflow untouched, and only the calls waiting in what it changed run again. Temporal replays a workflow's whole history and wants a `patched()` branch around every change. Golem replays its operation log. Here a finished call is never run again, and no code carries version branches.
-- **A call is the unit everyone already writes.** Functions, arguments and results are what a developer reads in their code. A frame's positions, temporaries and holdings are not, so nothing asks for them.
-- **Progress made stays made.** A finished call, or one past a change in a branch that didn't change, may not be repeatable: a license issued, a card charged. Claiming keeps it.
+- **Erlang's model, checked.**
+  - In Erlang, a module has a current and an old version, and a process switches to the current one at its next fully qualified call. A checkpoint is that call written inside a function, `rest(liveState)`.
+  - Boundary functions are Erlang's external calls, and inline code its local calls.
+  - Unlike Erlang:
+    - any number of releases run side by side;
+    - frames persist;
+    - every move is type-checked before a deploy;
+    - a migration may add points that the old code never had.
+- **Predictable in large programs.**
+  - Code changes only at checkpoints and boundary entries, both visible in the source.
+  - Nothing runs twice, except under an explicit `restart`.
+  - States are matched by name, never by aligning two texts.
+- **Static.** Every frame's state is (release, function, entry, point), a finite set known at compile time. So every check is a compile error, and running instances never need to be read to find one.
+- **Control where it's wanted.** A migration file gives the full power of code at the exact point. Most releases need none.
 
 **Considered and dropped.**
-- **Old builds side by side** (proposal 9's *Versions*, Temporal's worker versioning, Restate): a fix never reaches running work, so long workflows run old bugs for months.
-- **Migration code over frames:** naming every temporary, cursor, holding and caller position for a script is unworkable.
-- **Naming awaits** (`await(name) f()`) to map positions between builds: this design never maps a position.
-- **Replaying the whole history:** every input logged, and every change risks a mismatch.
-- **Rewinding the whole instance** to an earlier commit: throws away progress on branches that didn't change.
-- **Semver levels in `ista.json`:** what changed is derived per function, and `ista upgrade check` shows its effect on real instances.
+- **Old builds beside the new one, and nothing moves** (proposal 9's *Versions*, Temporal's worker versioning): a fix never reaches running work. Here `keep` is one choice among others.
+- **One live build** (an earlier draft of this proposal):
+  - Changed functions restart, and their calls claim old calls by function and arguments.
+  - Rejected: what restarts and what is claimed is hard to predict in a large program, and whether a claim happens depends on runtime values.
+- **A migration at every changed `await`** (the diff-migration draft):
+  - Every release needs written code, and positions inside frames become an API.
+  - Its file format stays, for where it's wanted.
+- **Rewinding to an earlier point,** chosen by the compiler: everything between that point and the frame's position must be repeatable or reclaimable.
+- **Replaying the whole history** (Temporal): every input is logged, and every change risks a mismatch.
+- **`@name` for the old frame's values:** rebinding reads as ordinary code.
 
 ## What changes in behaviour
 
-| Change in a release | Today | Proposed |
+| Change | Today | Proposed |
 | --- | --- | --- |
-| any change, with instances running | they finish on their old build | they move to the new build when it loads them |
-| a function nothing waits in | old instances keep the old one | the next call runs the new one |
-| a function a call waits in | (no upgrade) | the call restarts with the same arguments; its caller keeps waiting |
-| a new step before a waiting call (the example) | (no upgrade) | the step runs; the waiting call is claimed when reached |
-| a step removed, its call waiting | (no upgrade) | the call is kept unclaimed, for review |
-| a call's arguments changed | (no upgrade) | the old call isn't claimed; a new one runs |
-| a deadline cut from 5 to 3 days, waited on since day 4 | (no upgrade) | the restart times the timer from the old start: due on day 3, before anything else, so the timeout path runs |
-| the same, but the approval came on day 2 and the card was charged | (no upgrade) | the restart claims the charge; nothing runs twice |
-| a root's parameters no longer take its arguments | (no upgrade) | the root is frozen with its tree, for review |
-| `await charge(o)` in an `ista fn`, `charge` not readonly | legal after the segment's last in-memory `await` (proposal 8) | error: `await delegate charge(o)` |
-| `ista fn sync(box: Inbox<Msg>)` | legal | error: a parameter must be data; share by mailbox name |
-| an anonymous `ista` lambda | legal | error: name it |
+| any release, with instances running | they finish on their build | frames run their release, and move at checkpoints and boundary entries |
+| a boundary function's body | old instances keep the old one | the next call, from any release, runs the target's |
+| a plain function's body | old instances keep the old one | older frames call their own release's until they move |
+| a value added before a checkpoint | (no upgrade) | a guard or a block gives it, or a compile error |
+| a parameter added with a default | (no upgrade) | older call sites get the default |
+| a parameter added without one | (no upgrade) | a compile error until an entry block gives it, or `keep` |
+| a checkpoint removed | (no upgrade) | a compile error until a block `goto`s another, or `keep` |
+| a step inserted before a long wait (the example) | (no upgrade) | the frame waits as it was, moves at the added checkpoint, and the guard runs the step |
+| `> restart` on a function | (no upgrade) | its frames are disposed and called again with the same arguments |
+| an `Inbox<T>` live at a checkpoint, `T` changed | (no upgrade) | a compile error: a handle moves only unchanged |
+| `f(await a(), await b())` in an `ista fn` | legal | error: a committing `await` stands alone |
+| `runtime.version()` | the program's hash, fixed for the instance | the calling frame's release |
 
 ## What changes in power
 
 **Gained.**
-- Fixes reach running work, with no migration code and no version branches.
-- A job's idempotency key, stable across crashes, restarts and upgrades.
+- Fixes reach running work at points the code names.
+- Old and new releases run side by side, in one build.
+- Every upgrade is checked at compile time.
+- An upgrade can be partial: per function, per checkpoint, per release.
+- Migration code can wait, and continues as ordinary code.
 
 **Lost.**
-- Running two builds at once.
-- Host effects called directly from persistent code.
-- Slots, inboxes and handles passed to an `ista fn`: sharing is by mailbox name.
-- Anonymous lambdas that outlive a commit.
+- An instance no longer runs one program from start to end.
+- A committing `await` inside a larger expression.
+- Moving a handle whose type changed.
+- Small builds: a build carries every release until it retires.
 
 ## Spec and proposal changes
 
-- **Guide, principle 8:** "Deploys freeze code" becomes "Deploys upgrade running work".
-- **§3.3, §3.14:** `ista fn` parameters and `ista` lambda captures are data. A lambda that outlives a commit is named.
-- **§3.6:** a non-readonly extern is reached from persistent code only through `delegate`.
-- **§3.8:** `runtime.version()` is the running build's hash, no longer fixed for an instance's life.
-- **§5:** *Versioning* is rewritten as this proposal's rules. Re-run state gains the restart's clock and the node's seed.
-- **§9:** the operator's view gains unclaimed nodes, frozen roots and undecodable messages.
-- **Proposal 8, Rule 8 and decision 9:** a non-readonly extern no longer runs in a persistent segment: `delegate` runs it.
-- **Proposal 9:** *Versions* is replaced by this proposal. *Effects* runs an app's effects through `delegate`. *Left for later* loses "Moving frames between builds".
+- **Guide, principle 8:** "Deploys freeze code" becomes "Deploys move running work at checkpoints".
+- **§2:** grammar words:
+  - `checkpoint`, at a statement's start;
+  - `inline`, before `ista`;
+  - `unassigned`, as the whole pattern of `is`.
+- **§3.3:** boundary and inline `ista` functions. An `inline ista fn` takes no checkpoint.
+- **§3.8:** `runtime.version()` gives the calling frame's release.
+- **§3.14:** a function value runs at the release that made it, or, naming a boundary function, at the target. This replaces "keeps it from crossing versions".
+- **§4:** the `checkpoint` statement. `x is unassigned` among the conditions decided by types, and a `const` assigned once in its branch.
+- **§5:**
+  - *Versioning* is rewritten as this proposal's rules.
+  - A committing `await` stands at statement level.
+  - Frames are persisted by meaning.
+- **§9:**
+  - The host starts work on the newest release.
+  - The operator's view shows each frame's release.
+  - `ista release`, `ista upgrade check` and `ista migration new`.
+- **§10:** `testing.spawnOn` and `upgrade`, and the loop warning.
+- **Proposal 8:** the statement-level rule for a committing `await`. In Rule 4's modifier order, `inline` stands before `async` or `ista`.
+- **Proposal 9:** *Versions* is replaced by this proposal, and *Left for later* loses "Moving frames between builds".
 
 ## Implementation notes
 
-1. **Definition** (`src/definition/`, `docs/arch/definition.md`): a version per function, hashed from its code, register types and the signatures it refers to. Named lambdas give their entries stable names.
+1. **Syntax** (`compiler/syntax/`, `compiler/parser/grammar/`):
+   - a `checkpoint` statement, the `inline` modifier and the `unassigned` pattern;
+   - `test/vscode-grammar.test.ts` holds the VS Code grammar to them.
 2. **Checker:**
-   - parameters and captures of `ista` functions are data;
-   - host effects reach persistent code only through `delegate`, from proposal 8's function summaries, with the runtime's externs marked as not host effects;
-   - a function value live at a committing `await` is named, beside check 1.
-3. **Snapshot** (`src/runtime/snapshot/`): nodes with id, parent, function, arguments, status, result, times, seed and received messages, beside today's executions and their `resolves` futures.
-4. **Runtime** (`src/runtime/scheduler/`): upgrade on load (settle, replay, claim, commit), the restart's clock, returned messages and keyed sends.
-5. **Codecs:** decoding fills missing fields from their defaults.
-6. **Tools:** `ista upgrade check`, and the host's view of unclaimed nodes and frozen roots.
-7. **Tests** (fast-check):
-   - upgrading to the same build changes nothing;
-   - with no node waiting in a changed function, every frame stays as it was;
-   - a restart whose function changed only after its last call claims every old node;
-   - no job runs twice under one key, across crashes and upgrades;
-   - an upgrade is deterministic given the store and the build, readonly results held fixed.
+   - a committing `await` at statement level;
+   - checkpoint names unique, and none in inline functions;
+   - **definite assignment**, a new flow pass placed per `docs/arch/architecture.md`. It serves `is unassigned`, the once-only assignment in its branch, and the cross-release check;
+   - each boundary function checked once per entry.
+3. **Definition** (`src/definition/`, `docs/arch/definition.md`): a release record holding:
+   - function keys and versions;
+   - the frame schema: suspension points and checkpoints, each with its named state and types, loop iterators and holdings.
+4. **Releases:** a new feature folder. It:
+   - loads every unretired release into a build;
+   - resolves calls, boundary to the target and inline to the caller's release;
+   - runs the check of rule 5.
+5. **Migration files:** a new feature folder. It:
+   - scans lines by their first column and checks the two projections against the sources;
+   - turns blocks, added checkpoints and directives into entries checked by the normal checker;
+   - generates files with holes.
+6. **Snapshot** (`src/runtime/snapshot/`): frames by meaning, each with its release, entry and point.
+7. **Runtime** (`src/runtime/scheduler/`):
+   - moving at checkpoints, with conversions through codecs, and a failed conversion leaving the frame where it is;
+   - restarts at load.
+8. **Tools:**
+   - `ista release`, `ista release retire`, `ista migration new` and `ista upgrade check`;
+   - the VS Code grammar for migration files, colouring the four kinds of line;
+   - the operator's view of releases per frame.
+9. **Tests** (fast-check):
+   - a release whose code is unchanged moves no frame, and changes no behaviour;
+   - moving through a checkpoint whose state and code after it are unchanged equals not moving;
+   - a migration file's two projections equal the two sources;
+   - `is unassigned` is decided per entry, and its ruled-out branch never runs;
+   - a generated hole fails, and a filled one passes;
+   - a crash at every commit around a move ends as an uncrashed run does;
+   - every refusal in the behaviour table.
 
 ## Left for later
 
-- **Long-lived nodes,** such as a loop serving a mailbox, whose finished children and received messages keep growing: handing over to a fresh call.
-- **Messages received by nodes left unclaimed.**
-- **A restarted node's holdings:** released, running their `dispose`, or handed to the restart.
-- **Passing slots or handles to an `ista fn`,** by giving objects an identity from their creating node and occurrence.
-- **What an operator can do with an unclaimed node:** resume it, attach it elsewhere, or discard it.
-- **How a test states two builds** (`'testing'`).
+- **Converting a handle whose type changed.**
+- **Packages:** a library shipping migration files for its own functions (§11).
+- **Upgrading at every commit,** as `spawnCrashingEveryAwait` crashes at every one: a sweep that moves a test's instance at each point in turn.
+- **What the generator suggests beyond holes,** such as a checkpoint after each `await` whose state already fits.
+- **Several processes on one store** running different builds.
+- **Operator actions on single frames:** restart one, or keep one.
 
 ## Decisions (the human's)
 
-1. **One live build.** Every running instance moves to each new build. No old build runs beside it.
-2. **A function call is the unit of upgrade.** A finished call's result is reused, even when its function changed.
-3. **A call waiting in an unchanged function stays where it waits.**
-4. **A call waiting in a changed function restarts** from its entry with the same arguments. Its caller stays where it waits.
-5. **A restart's calls claim the old ones:** the first unused with the same function and arguments, among the old parent's children first, then the rest of the tree.
-6. **Unclaimed calls are kept,** with everything they did, for an operator to review.
-7. **Host effects from persistent code go only through `delegate`,** whose results persist. Readonly externs are called directly.
-8. **Lambdas may be anonymous,** except where they outlive a commit.
-9. **A restart keeps its old times** while it follows its old path, and real time once it waits on something new.
-10. **Workflows should be split into small functions,** so a change restarts little.
+1. **A build holds every release, and each frame runs its own release's code.** New work starts on the newest.
+2. **Migration files are kept like SQL migrations,** each from one release to any later one. A later file may move an older release directly. Some releases never get one, and their frames finish on their own code.
+3. **A frame moves only at a checkpoint:** a `checkpoint name` statement, separate from `await`, or a boundary function's entry.
+4. **A changed function with no checkpoint ahead runs to its end,** unless a migration file says `restart` or adds a checkpoint.
+5. **A restart always disposes the old frame,** then calls the function again from its start.
+6. **A migration file adds checkpoints after old `await`s and fills their state with `>` lines.** Migration code may `await`, and a frame continues in the newer code.
+7. **`x is unassigned`** handles state an older release lacks, in the newer code. Tools find the guards that no release still needs.
+8. **`inline ista fn` isn't a boundary.** A boundary call runs the newest release, and inline code the caller's.
+9. **A checkpoint that fails the check is a compile error.**
+10. **The compiler checks a move by splicing:** the older release's state at the point, then the migration's lines, then the newer release's code from there.
+11. **Releases no frame runs on are retired** from the build.
+12. **A committing `await` stands at statement level.**

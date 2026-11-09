@@ -94,4 +94,4 @@ never by importing `rules/`. A contract amendment goes to the tech-lead.
 | Merge | — | yes | `main` since A0's base |
 
 **Out of scope, filed:** the rest of proposal 9 (CX's list, the native runtime, where `spawn` lives
-long-term); proposal 10's `delegate`.
+long-term) and its `delegate` jobs.
