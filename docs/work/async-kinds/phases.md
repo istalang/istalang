@@ -332,7 +332,7 @@ declared `readonly` requirement met by a non-readonly method errors at the metho
   interim ends: the rewriter moves each `ista fn main`'s body into an `ista fn` that an
   `async fn main` runs in a context. The test runner, `World`, the test kits and `testing`'s
   crash-every-await (a context option) follow.
-- Left to proposal 9, filed: mailboxes and methods as typed names, `ctx.delete()` and a context's
+- Left to proposal 9, filed: inboxes and methods as typed names, `ctx.delete()` and a context's
   end, how long results are kept, `Kv` stores, versions.
 
 **Accept.** `async fn main(): await runtime.at("o/1").call purchase(order)` runs `purchase`

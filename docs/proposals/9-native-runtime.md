@@ -1,10 +1,10 @@
 ---
-description: proposal 9 of docs/proposals, a sketch of the native runtime — a program written entirely in Istalang, its own host, persisting through a key-value store it provides, running persistent work in keyed contexts it reaches with `rt.at(key)` and `ctx.call f(args)`, with mailboxes and methods declared as typed names; how far it was discussed, examples of how it will look, and what is left to design; read before designing the native runtime or the standard library around it, or after proposal 8 to see where its runtime-side mechanisms went
+description: proposal 9 of docs/proposals, a sketch of the native runtime — a program written entirely in Istalang, its own host, persisting through a key-value store it provides, running persistent work in keyed contexts it reaches with `rt.at(key)` and `ctx.call f(args)`, with per-context inboxes and methods declared as typed names; how far it was discussed, examples of how it will look, and what is left to design; read before designing the native runtime or the standard library around it, or after proposal 8 to see where its runtime-side mechanisms went
 owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-11-07
-last_updated: 2026-11-07
+last_updated: 2026-11-10
 tags: [proposal, runtime, native, persistence, host]
 ---
 
@@ -41,7 +41,7 @@ trait Kv:
 
 ## Contexts
 
-A context is a persistent instance named by a key. The functions called in it share its memory and its mailboxes, as an instance's executions share its slots (§6).
+A context is a persistent instance named by a key. The functions called in it share its memory and its inboxes, as an instance's executions share its slots (§6).
 
 - **`rt.at(key)`** gives the context, creating it if it doesn't exist. It is a plain call; the context is written to the store with the first invocation that commits. Persistent code reaches other contexts with `runtime.at(key)`, which commits with its segment.
 - **`ctx.call f(args)`** runs `f` in the context, through proposal 8's deferred-call form. It gives a `Call<R>`, an awaitable of the caller's kind:
@@ -49,17 +49,17 @@ A context is a persistent instance named by a key. The functions called in it sh
   - `run.accepted()` resolves once the invocation is persisted.
 - **Invocations are identified by their function and arguments.** The same call joins the invocation already running, or gets its recorded result, so retries are safe; two that must stay apart differ in an argument. The context keeps results until it ends.
 - **An invocation belongs to the context, not its caller.** Releasing a `Call` without awaiting it doesn't cancel it.
-- **A context ends** when nothing runs in it and its mailboxes are empty, or on `ctx.delete()`.
-- **Within a context, functions find what they share by name,** never passed in: an `ista fn` runs in a context from the moment it is called there, so its mailboxes are well defined.
+- **A context ends** when nothing runs in it and its inboxes are empty, or on `ctx.delete()`.
+- **Within a context, functions find what they share by name,** never passed in: an `ista fn` runs in a context from the moment it is called there, so its inboxes are well defined.
 
-## Mailboxes and methods
+## Inboxes and methods
 
 ```python
-const verdicts = Mailbox<Verdict>{"verdicts"}           # a typed name: plain data
+const verdicts = InboxName<Verdict>{"verdicts"}         # a typed name: plain data
 const approvals = Method<Verdict, String>{"approve"}
 ```
 
-- **A typed name is declared once,** at the top level, so no string is written twice with two types. It holds no state: each context has its own mailbox of that name.
+- **A typed name is declared once,** at the top level, so no string is written twice with two types. It holds no state: each context has its own `Inbox<Verdict>` of that name, the standard library's queue on slots (§6).
 - **In an `ista fn`,** its operations act on the current context. **Outside one,** they need a context: `ctx.send(verdicts, v)`.
 - **A method** is served by a running function and called from outside, `await ctx.call(approvals, v)`, for when the running workflow itself must answer: Temporal's "update". A plain handler, called with `ctx.call`, is simpler.
 
@@ -67,14 +67,14 @@ const approvals = Method<Verdict, String>{"approve"}
 
 ```python
 # workflow.ista
-const verdicts = Mailbox<Verdict>{"verdicts"}
+const verdicts = InboxName<Verdict>{"verdicts"}
 
 ista fn purchase(order: Order) -> String:
-    const v = await verdicts.receive()                  # this context's mailbox
+    const v = await verdicts.receive()                  # this context's inbox
     if v.ok: "approved" else: "rejected"
 
 ista fn approve(v: Verdict) -> String:
-    verdicts.send(v)                                    # same context, same mailbox
+    verdicts.send(v)                                    # same context, same inbox
     "noted"
 ```
 
@@ -119,7 +119,7 @@ These are the runtime's implementation details, not language: they decide nothin
 - **`spawn`:** an independent instance, with its own memory, version, panic and operator view (§9). Proposal 8 makes it no keyword: it is a runtime function, called in the deferred form.
 - **Jobs (`delegate`):** a runtime function in the deferred form too, for persistent code running ephemeral work through an internal job inbox, the transactional outbox: queued at the commit, run by the runtime's loop, run again after a crash under a stable key, its result committed into a persistent future.
 - **Ephemeral views:** a `Call` awaited from ephemeral code is an in-memory listener on persistent work. It replaces a separate `watch`.
-- **Resolvers** wrap callback-style native libraries into ephemeral awaitables. Persistent futures are filled only by the runtime: timers, mailboxes, results and jobs.
+- **Resolvers** wrap callback-style native libraries into ephemeral awaitables. Persistent futures are filled only by the runtime: timers, inboxes, results and jobs.
 - **Today's JavaScript host** becomes one more implementation: a store and the OS layer, written in JavaScript.
 
 ## Versions
