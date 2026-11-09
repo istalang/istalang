@@ -133,14 +133,15 @@ function pairsOf(
   return [];
 }
 
-/** A shape's fields paired with another's of the same names. */
+/**
+ * A shape's fields paired with another's of the same names, by their index in the one field order
+ * every struct lays its fields out in (types/type/field-order.ts).
+ */
 function shapePairs(
   from: AnonymousStructType,
   to: AnonymousStructType,
 ): readonly (readonly [Type, Type])[] {
-  return from.fields.flatMap((field) =>
-    paired(field.type, to.fields.find(({ name }) => name === field.name)?.type),
-  );
+  return from.fields.flatMap((field, index) => paired(field.type, to.fields[index]?.type));
 }
 
 /** A function's parameters paired the other way round, `to`'s into its own, and its results. */
@@ -233,8 +234,9 @@ function rebuiltTuple(
 }
 
 /**
- * A struct's or a shape's value as one of `to`, a struct or a shape, field by field in name order
- * (§3.1): of the same declaration, or a struct's value as a shape.
+ * A struct's or a shape's value as one of `to`, a struct or a shape of the same fields, field by
+ * field in name order (§3.1), so each field's index is its index in `to`: of the same declaration,
+ * or a struct's value as a shape.
  */
 function rebuiltStruct(
   context: CodeContext,
@@ -247,7 +249,7 @@ function rebuiltStruct(
   const targets = checker.fieldsOf(to) ?? [];
   const named = new Map(
     fields.map((field, index) => {
-      const target = targets.find(({ name }) => name === field.name)?.type ?? field.type;
+      const target = targets[index]?.type ?? field.type;
       const part = { register: context.code.field(register, index, how.span), type: field.type };
       return [field.name, how.converted(part, target)] as const;
     }),

@@ -19,7 +19,7 @@ import { mentionsAnyVariable } from '../../types/inference/variables.ts';
 import type { CallApplication } from '../applying/applied-call.ts';
 import { writtenFor } from '../choosing/applicability.ts';
 import { argumentSlotsOf, bindArguments, isBinding } from '../choosing/binding.ts';
-import { signatureOf } from '../choosing/choice.ts';
+import { candidateSignature } from '../choosing/choice.ts';
 import { settlingAt } from '../conformance/conformance.ts';
 
 /** Records, for each argument of `request` written so far, the type its parameter will be. */
@@ -29,12 +29,7 @@ export function expectWrittenArguments(context: BodyContext, request: CallApplic
     return;
   }
   const { checker } = context;
-  const signature = signatureOf(
-    checker,
-    candidate.declaration,
-    candidate.requirement?.substitution,
-    candidate.requirement?.inferred,
-  );
+  const signature = candidateSignature(checker, candidate);
   const lenient = signature.parameters.map((slot) => ({ ...slot, hasDefault: true }));
   const callArguments = request.arguments;
   const binding = bindArguments(lenient, callArguments);

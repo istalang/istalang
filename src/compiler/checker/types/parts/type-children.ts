@@ -69,7 +69,8 @@ export function typeChildren(type: Type): readonly Type[] {
 /**
  * `type` with the types it is built from replaced by `children`, given in `typeChildren`'s order,
  * still of its kind, written through no alias: a caller rebuilding a type's structure changes what
- * was written. A recursive type is rebuilt from its parts by closing its graph again, not here.
+ * was written. A recursive type is rebuilt from its parts by closing its graph again, and a union
+ * by its constructor (../unions/unions.ts), which normalizes it, not here.
  */
 export function withTypeChildren(type: Type, children: readonly Type[]): Type {
   let next = 0;
@@ -134,7 +135,7 @@ function withListedParts(type: Type, child: () => Type): Type {
     case 'tuple':
       return { ...type, elements: type.elements.map(child) };
     case 'union':
-      return { ...type, members: type.members.map(child) };
+      return unreachable('A union is rebuilt by its constructor, which normalizes it.');
     case 'associated':
     case 'keys':
       return { ...type, of: child() };

@@ -26,9 +26,8 @@ import {
 import type { CheckerContext } from '../../contexts/context.ts';
 import type { MembersRequirement } from '../../surface/resolved-call.ts';
 import { sameType } from '../../types/identity/identity.ts';
-import { substitute } from '../../types/parts/substitution.ts';
+import { constraintOn, substitute } from '../../types/parts/substitution.ts';
 import {
-  constraintOn,
   constraintSubstitution,
   type Requirement,
   requiredFunctions,

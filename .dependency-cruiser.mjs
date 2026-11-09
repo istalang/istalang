@@ -185,6 +185,7 @@ const checkerSurface = [
   'types/unions/unions.ts',
   'types/unions/union-members.ts',
   'types/identity/recursive-types.ts',
+  'types/identity/folding.ts',
   'types/identity/type-keys.ts',
   'types/type/type-text.ts',
   'types/type/well-known.ts',

@@ -23,7 +23,7 @@ import { qualifiedName, wellKnown } from '../../../foundation/language/well-know
 import { memo } from '../../../foundation/structures/memo.ts';
 import { unreachable } from '../../../foundation/structures/unreachable.ts';
 import type { Checker } from '../../checker/check.ts';
-import { folded } from '../../checker/types/identity/recursive-types.ts';
+import { folded } from '../../checker/types/identity/folding.ts';
 import { substitute, substitutionFor } from '../../checker/types/parts/substitution.ts';
 import type { DeclaredAliasUse } from '../../checker/types/type/alias-uses.ts';
 import type { RecursiveType } from '../../checker/types/type/computed-types.ts';

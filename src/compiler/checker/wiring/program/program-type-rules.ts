@@ -13,15 +13,31 @@
  * key, so what expanding it reads is logged like any entry's reads and an edit changing it is seen.
  * One under way expands as its expansion stands (types/traits/known-constraints.ts), never kept.
  * Reached again while it expands, it is the error type, as an alias reached again is.
+ *
+ * The instantiation a type meets in an `any` constraint's place, and those a type may meet, are
+ * entries too, keyed by the type's spelling and the constraint's or the trait's: fitting, dispatch
+ * and reports ask the first, inference the second, at every conversion into an `any` type.
  */
 
 import type { EntryTable } from '../../../../foundation/structures/entries/index.ts';
 import { sameItems } from '../../../../foundation/structures/equality.ts';
 import { withEmptied } from '../../../../foundation/structures/stack.ts';
+import type { TraitDeclaration } from '../../../syntax/declarations/index.ts';
 import type { CheckerContext, CheckerNote } from '../../contexts/context.ts';
+import {
+  instantiationsOf,
+  proposedInstantiations,
+  searchMetInstantiation,
+} from '../../resolution/conformance/met-instantiations/index.ts';
 import { absorbs, meetsAny } from '../../resolution/conformance/trait-objects.ts';
+import { goalKey } from '../../resolution/conformance/witness-outcomes.ts';
 import { TypeMatchReductions } from '../../resolution/type-matches/type-matches.ts';
 import type { Fitting } from '../../types/fitting/fit/index.ts';
+import type {
+  MetInstantiation,
+  ProposedInstantiation,
+} from '../../types/fitting/met-instantiation.ts';
+import { sameConstraint, sameType } from '../../types/identity/identity.ts';
 import { typeKeys } from '../../types/identity/type-keys.ts';
 import { sameTypeSpelled } from '../../types/parts/type-parts.ts';
 import {
@@ -33,7 +49,7 @@ import {
 import { associatedTypeOf, type Expansion } from '../../types/traits/known-constraints.ts';
 import { fieldTypeOf, isKeyWithin, keysOf, mappedTypeOf } from '../../types/traits/struct-keys.ts';
 import { unfolded } from '../../types/type/computed-types.ts';
-import type { AnonymousStructType, AnyType, Type } from '../../types/type/index.ts';
+import type { AnonymousStructType, AnyType, Constraint, Type } from '../../types/type/index.ts';
 import { errorType } from '../../types/type/primitives.ts';
 import type { TypeRules } from '../../types/type/type-rules.ts';
 import type { Variance } from '../../types/variance/lattice.ts';
@@ -48,6 +64,18 @@ import {
 interface Associated {
   readonly of: Type;
   readonly name: string;
+}
+
+/** A type and a constraint whose trait's instantiation it meets in its place is sought. */
+interface Sought {
+  readonly found: Type;
+  readonly constraint: Constraint;
+}
+
+/** A type, and a trait whose instantiations it may meet are proposed. */
+interface Proposing {
+  readonly type: Type;
+  readonly trait: TraitDeclaration;
 }
 
 /** An `any` member of a union, and another member it may take whole. */
@@ -117,12 +145,69 @@ export function programTypeRules(
     ...typeRules,
     varianceOf: (declaration) => variances.get(declaration),
     meetsAny: (type, target) => meetsAny(checker, type, target),
+    ...instantiationsIn(checker),
     shapeOf: (type) => layouts.nominalShapeOf(type),
     memberUnionOf: ({ declaration, within }) =>
       within ??
       (declaration.kind === 'TypeParameter' ? checker.memberUnionOf(declaration) : undefined),
   };
   return { typeRules, fitting };
+}
+
+/**
+ * The answers of the one search for the instantiations a type meets (`Fitting.metInstantiation`,
+ * `Fitting.proposedInstantiations`), kept in `checker`'s entries: fitting, dispatch and a misfit's
+ * report ask the first at every conversion into an `any` type, inference the second at every one
+ * it relates. A search reached again while it runs searches afresh, as a root goal does.
+ */
+function instantiationsIn(
+  checker: CheckerContext,
+): Pick<Fitting, 'metInstantiation' | 'proposedInstantiations'> {
+  const met: EntryTable<CheckerNote, string, MetInstantiation, Sought> = checker.entries.table({
+    name: 'met instantiations',
+    compute: (_key, { found, constraint }: Sought) =>
+      searchMetInstantiation(checker, found, constraint),
+    equal: sameMet,
+  });
+  const proposed: EntryTable<CheckerNote, string, readonly ProposedInstantiation[], Proposing> =
+    checker.entries.table({
+      name: 'proposed instantiations',
+      compute: (_key, { type, trait }: Proposing) => instantiationsOf(checker, type, trait),
+      equal: sameItems(sameProposed),
+    });
+  const { typeKeys: keys } = checker;
+  return {
+    metInstantiation: (found, constraint) => {
+      const key = goalKey(keys, found, constraint, (each) => keys.spelledKey(each));
+      return met.running(key)
+        ? searchMetInstantiation(checker, found, constraint)
+        : met.get(key, { found, constraint });
+    },
+    proposedInstantiations: (found, trait) =>
+      proposedInstantiations(checker, { found, trait }, (type) => {
+        const key = `${keys.spelledKey(type)} ${keys.identityOf(trait)}`;
+        return proposed.running(key)
+          ? instantiationsOf(checker, type, trait)
+          : proposed.get(key, { type, trait });
+      }),
+  };
+}
+
+/** Whether two instantiations proposed are one. */
+function sameProposed(first: ProposedInstantiation, second: ProposedInstantiation): boolean {
+  return sameType(first.self, second.self) && sameConstraint(first.constraint, second.constraint);
+}
+
+/** Whether two answers of the search are one. */
+function sameMet(first: MetInstantiation, second: MetInstantiation): boolean {
+  switch (first.kind) {
+    case 'met':
+      return second.kind === 'met' && sameConstraint(first.constraint, second.constraint);
+    case 'several':
+      return second.kind === 'several' && sameItems(sameConstraint)(first.fitting, second.fitting);
+    default:
+      return second.kind === first.kind;
+  }
 }
 
 /**

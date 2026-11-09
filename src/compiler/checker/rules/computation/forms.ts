@@ -17,7 +17,6 @@ import type { CheckerContext } from '../../contexts/context.ts';
 import { type ConstantForm, formSemantics } from '../../surface/constant-form.ts';
 import type { Fit } from '../../types/fitting/fit/index.ts';
 import { unfolded } from '../../types/type/computed-types.ts';
-import { laidOut, namedValues } from '../../types/type/field-order.ts';
 import type { StructValueType, Type } from '../../types/type/index.ts';
 import { errorType, tupleElements } from '../../types/type/primitives.ts';
 import { arrayElement, wellKnownArguments } from '../../types/type/well-known.ts';
@@ -89,8 +88,8 @@ function convertedForm(
       if (form.kind !== 'struct') {
         return unreachable("Only a struct's value converts into its shape.");
       }
-      const named = namedValues(checker.fieldsOf(form.type) ?? [], form.fields);
-      return { kind: 'struct', type: conversion.to, fields: laidOut(conversion.to.fields, named) };
+      // A struct and its shape lay out the same fields in one order (field-order.ts).
+      return { kind: 'struct', type: conversion.to, fields: form.fields };
     }
     case 'parts':
       return partsForm({ form, from }, conversion.to, checker);
@@ -160,7 +159,10 @@ function partsForm(
   }
 }
 
-/** A struct's form as one of `to`, field by field in name order (§3.1). */
+/**
+ * A struct's form as one of `to`, a struct or a shape of the same fields, field by field in name
+ * order (§3.1), so each field's index is its index in `to`.
+ */
 function structForm(
   form: Extract<ConstantForm, { readonly kind: 'struct' }>,
   to: StructValueType,
@@ -171,14 +173,10 @@ function structForm(
   const fields = allFitted(
     form.fields,
     (index) => own[index]?.type ?? errorType,
-    (index) => targets.find(({ name }) => name === own[index]?.name)?.type,
+    (index) => targets[index]?.type,
     checker,
   );
-  if (fields === undefined) {
-    return undefined;
-  }
-  const named = namedValues(own, fields);
-  return { kind: 'struct', type: to, fields: laidOut(targets, named) };
+  return fields === undefined ? undefined : { kind: 'struct', type: to, fields };
 }
 
 /** Each of `forms`, a value of `fromAt` its position, fitted to `toAt` it; undefined if one can't be. */

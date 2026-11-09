@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-11-08
-last_updated: 2026-11-08
+last_updated: 2026-11-09
 tags: [architecture, compiler, runtime, tooling]
 ---
 
@@ -97,7 +97,8 @@ src/
                                                                  path takes
         identity/                                                identity as key equality (a shape is its fields in name order), and
                                                                  recursive types as minimized graphs, equi-recursive, closed by one
-                                                                 constructor (recursive-types.ts)
+                                                                 constructor (recursive-types.ts), and a type folded into the recursive
+                                                                 type it equals (folding.ts)
         parts/                                                   a type's parts one level down, walking them, and substitution
         unions/                                                  unions and literal types built normalized (unions.ts, by union-members.ts),
                                                                  `T?` being `T | None`, widening, what types decide of `==`, and
@@ -124,7 +125,8 @@ src/
                                                                  (calls-made.ts)
         conformance/                                             witnesses and why there is none, the traits the compiler derives (derived-traits.ts: one
                                                                  table), unions meeting traits through their members, the instantiation a type meets in an
-                                                                 `any` constraint's place through its trait's variance (met-instantiations.ts)
+                                                                 `any` constraint's place through its trait's variance, and every one it may meet, which
+                                                                 inference relates through (met-instantiations/index.ts)
         type-matches/                                            a type `match`'s use reduced and its cases matched, and the type `match`es and associated
                                                                  types an instantiation reaches, checked to name a type whose values end where it is written
         applying/                                                a chosen call applied: every call chosen, instantiated and fitted in one place

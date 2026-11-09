@@ -198,7 +198,7 @@ export function checkProgram(
  * How values of `any` types are called, read and taken apart (§3.10): through the functions each
  * value's own type meets a trait with, at the instantiation it meets in the `any` type's
  * constraint's place, which the trait's variance may let differ, what is taken and given then
- * converting between the two (resolution/conformance/met-instantiations.ts).
+ * converting between the two (resolution/conformance/met-instantiations/index.ts).
  */
 export interface TraitObjects {
   /**

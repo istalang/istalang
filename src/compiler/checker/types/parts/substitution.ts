@@ -155,3 +155,8 @@ export function substituteConstraint(
     arguments: constraint.arguments.map((argument) => substitute(argument, substitution, rules)),
   };
 }
+
+/** `constraint` of an `any` type as met by `type`: its trait's own `Self` replaced by `type`. */
+export function constraintOn(constraint: Constraint, type: Type, rules: TypeRules): Constraint {
+  return substituteConstraint(constraint, new Map([[constraint.trait, type]]), rules);
+}

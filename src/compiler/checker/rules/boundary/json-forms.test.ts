@@ -1,9 +1,9 @@
 /**
  * Which types cross as JSON (§3.10, §9): those with codecs, declared or derived. A struct, an enum,
  * a tuple and a recursive type derive theirs from what they hold, and a literal type or a union of
- * literals its literals; a type declaring one codec has the other neither derived nor
- * otherwise; a function, a handle, a map whose keys aren't Stringable and a union that is neither
- * optional nor of literals have none.
+ * literals its literals, and a host type its host's JSON when its type arguments cross; a type
+ * declaring one codec has the other neither derived nor otherwise; a function, a handle, a map whose
+ * keys aren't Stringable and a union that is neither optional nor of literals have none.
  */
 
 import { describe, expect, it } from 'vitest';
@@ -23,6 +23,7 @@ const declarations = [
   'struct Label { text: String }',
   'fn toJson(self: Label) -> Json: self.text',
   'struct Tagged { label: Label }',
+  'extern struct Box<T>',
   'fn writes<T is Encodable>() -> Int: 1',
   'fn reads<T is Decodable>() -> Int: 1',
 ].join('\n');
@@ -58,6 +59,8 @@ describe('a type crossing as JSON', () => {
     ['fn() -> Int', false, false],
     ['Map<Point, Int>', false, false],
     ['Slot<Int>', false, false],
+    ['Box<Int>', true, true],
+    ['Box<fn() -> Int>', false, false],
     ['"draft"', true, true],
     ['true', true, true],
     ['"draft" | "sent"', true, true],

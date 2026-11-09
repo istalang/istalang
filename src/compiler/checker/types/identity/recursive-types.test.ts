@@ -18,6 +18,7 @@ import {
   duplicated,
   groups,
   open,
+  type Spec,
   selfOf,
   showingRules,
 } from './recursive-types.test-kit.ts';
@@ -97,7 +98,42 @@ describe('equi-recursive identity', () => {
           );
         },
       ),
-      { numRuns: 300 },
+      { numRuns: 300, examples: [[unionUnderBoundSelf, boolType, 0]] },
     );
   });
 });
+
+/**
+ * A union inside a trait object binding `Self`, beside a member the substitution makes a duplicate
+ * of another (`T | Bool` with `T = Bool`): rebuilt, it is normalized as every union is.
+ */
+const unionUnderBoundSelf: readonly Spec[] = [
+  {
+    kind: 'union',
+    leaves: ['Int'],
+    parts: [
+      {
+        kind: 'traits',
+        constraints: [
+          { trait: 'pairs', arguments: [{ kind: 'body', body: 1 }, { kind: 'self' }] },
+          { trait: 'holds', arguments: [{ kind: 'body', body: 0 }] },
+        ],
+      },
+    ],
+  },
+  {
+    kind: 'union',
+    leaves: ['open', 'Bool'],
+    parts: [{ kind: 'traits', constraints: [{ trait: 'holds', arguments: [{ kind: 'self' }] }] }],
+  },
+  {
+    kind: 'union',
+    leaves: ['Int'],
+    parts: [
+      {
+        kind: 'traits',
+        constraints: [{ trait: 'pairs', arguments: [{ kind: 'self' }, { kind: 'open' }] }],
+      },
+    ],
+  },
+];

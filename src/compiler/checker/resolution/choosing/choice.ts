@@ -90,6 +90,12 @@ export function signatureOf(
   };
 }
 
+/** What `candidate` takes and gives, a requirement's trait mapped as its constraint says. */
+export function candidateSignature(checker: CheckerContext, candidate: Candidate): Signature {
+  const { declaration, requirement } = candidate;
+  return signatureOf(checker, declaration, requirement?.substitution, requirement?.inferred);
+}
+
 /**
  * A function's own slots, mapped by no requirement, by the parameters they are made from. Choosing
  * asks a candidate's signature at every call it may mean; a requirement's substitution differs per
@@ -242,12 +248,7 @@ function applicationOf(
   candidate: Candidate,
   given: Given,
 ): Application | Inapplicability {
-  const signature = signatureOf(
-    checker,
-    candidate.declaration,
-    candidate.requirement?.substitution,
-    candidate.requirement?.inferred,
-  );
+  const signature = candidateSignature(checker, candidate);
   const taken = takenBy(checker, signature, given);
   return 'inference' in taken ? { candidate, signature, ...taken } : taken;
 }

@@ -16,6 +16,8 @@ import { literalType, optionalOf, unionOf } from './unions.ts';
 const fitting = {
   ...noProgramRules,
   meetsAny: () => false,
+  metInstantiation: () => ({ kind: 'none' }) as const,
+  proposedInstantiations: () => [],
   shapeOf: () => undefined,
   memberUnionOf: () => undefined,
   varianceOf: () => [],

@@ -20,9 +20,6 @@
  * - A recursive type's parts replaced (substitution, `mapRecursive`) closes its graph again from
  *   its nodes' bodies, each node's own type standing as a placeholder for it, so substituting then
  *   closing and closing then substituting give one type.
- * - `folded` gives the labelled recursive type a type holding recursion is equal to, when a graph
- *   it reaches has one, so a union naming a recursive alias's members, or a recursive member with
- *   more of its members, reads as that alias.
  */
 
 import { sameItems } from '../../../../foundation/structures/equality.ts';
@@ -41,6 +38,7 @@ import { mapAliasUse, type RecursiveLabel } from '../type/alias-uses.ts';
 import { isComputed, type RecursiveGraph, type RecursiveType } from '../type/computed-types.ts';
 import type { ParameterKey, Type } from '../type/index.ts';
 import type { TypeRules } from '../type/type-rules.ts';
+import { unionOf } from '../unions/unions.ts';
 import { type Slot, TermGraph } from './recursive-terms.ts';
 import { typeKeys } from './type-keys.ts';
 
@@ -85,7 +83,7 @@ function closedOnce(group: RecursiveGroup): Closed {
   });
   const roots = group.bodies.map((_, index) => terms.bodySlot(index));
   terms.minimize();
-  const nodes = new GraphNodes(terms);
+  const nodes = new GraphNodes(terms, group.rules);
   for (const [index, slot] of roots.entries()) {
     nodes.name(slot, group.labels[index]);
   }
@@ -183,7 +181,7 @@ function reducedOver(type: Type, graph: RecursiveGraph, rules: TypeRules): Type 
   const reduced = children.map((child) => reducedOver(child, graph, rules));
   const rebuilt = reduced.every((child, at) => child === children[at])
     ? type
-    : withTypeChildren(type, reduced);
+    : rebuiltFrom(type, reduced, rules);
   return isComputed(rebuilt) && namesNodeOf(rebuilt, graph)
     ? reducedComputed(rebuilt, (child) => child, rules)
     : rebuilt;
@@ -195,9 +193,11 @@ class GraphNodes {
   readonly #nodeOfClass = new Map<number, number>();
   readonly #representatives: number[] = [];
   readonly #labels: (RecursiveLabel | undefined)[] = [];
+  readonly #rules: TypeRules;
 
-  constructor(terms: TermGraph) {
+  constructor(terms: TermGraph, rules: TypeRules) {
     this.#terms = terms;
+    this.#rules = rules;
   }
 
   /**
@@ -303,7 +303,7 @@ class GraphNodes {
         : (types[node] ?? unreachable('A node has no type.'));
     };
     const rebuilt = (term: number): Type =>
-      rebuiltFrom(terms.typeOf(term), terms.partsOf(term).map(typeOfSlot));
+      rebuiltFrom(terms.typeOf(term), terms.partsOf(term).map(typeOfSlot), this.#rules);
     for (const term of this.#representatives) {
       nodes.push(rebuilt(term));
     }
@@ -347,6 +347,7 @@ export function mapRecursive(
     return rebuiltFrom(
       each,
       typeChildren(each).map((child) => remapped(child, inner)),
+      rules,
     );
   };
   const bodies = graph.nodes.map((body) => rebuiltWithin(body, new Set()));
@@ -361,40 +362,16 @@ export function mapRecursive(
   return type.alias === undefined ? result : { ...result, alias: type.alias };
 }
 
-/** `type` rebuilt from `children`, a union as the set of them, which closing normalizes. */
-function rebuiltFrom(type: Type, children: readonly Type[]): Type {
-  return type.kind === 'union'
+/**
+ * `type` rebuilt from `children`: a union holding recursion as the set of them, which closing
+ * normalizes, flattening the recursive members only it can; one holding none by the union
+ * constructor, normalized where it is built as every union is (../unions/unions.ts).
+ */
+function rebuiltFrom(type: Type, children: readonly Type[], rules: TypeRules): Type {
+  if (type.kind !== 'union') {
+    return withTypeChildren(type, children);
+  }
+  return children.some(holdsRecursion)
     ? { kind: 'union', members: children }
-    : withTypeChildren(type, children);
-}
-
-/** The recursive type equal to `type` among the nodes of the graphs it reaches (the banner). */
-export function folded(type: Type): Type {
-  if (type.kind === 'recursive' || !holdsRecursion(type)) {
-    return type;
-  }
-  const key = typeKeys.typeKey(type);
-  for (const graph of graphsIn(type)) {
-    const equal = graph.types.find(
-      (node) => node.alias !== undefined && typeKeys.typeKey(node) === key,
-    );
-    if (equal !== undefined) {
-      return type.alias === undefined ? equal : { ...equal, alias: type.alias };
-    }
-  }
-  return type;
-}
-
-/** The graphs of the recursive types `type` is or is built from. */
-function graphsIn(type: Type): ReadonlySet<RecursiveGraph> {
-  const graphs = new Set<RecursiveGraph>();
-  const visit = (each: Type): void => {
-    if (each.kind === 'recursive') {
-      graphs.add(each.graph);
-    } else if (holdsRecursion(each)) {
-      typeChildren(each).forEach(visit);
-    }
-  };
-  visit(type);
-  return graphs;
+    : unionOf(children, rules);
 }

@@ -1,10 +1,10 @@
 /**
  * How a value becomes an `any` type's (§3.10): a type converts into `any A & B` when it meets each
  * constraint, its own type standing for the constraint's `Self`, or an instantiation of its trait
- * that the trait's variance lets stand for it (met-instantiations.ts), and an `any` type converts
- * into another whose constraints its own stand for so. A union converts when each of its members
- * does (§6), since a value inside an `any` type is a value of its own type, never of a union: one
- * converts as whichever member it is.
+ * that the trait's variance lets stand for it (met-instantiations/index.ts), and an `any` type
+ * converts into another whose constraints its own stand for so. A union converts when each of its
+ * members does (§6), since a value inside an `any` type is a value of its own type, never of a
+ * union: one converts as whichever member it is.
  *
  * Meeting is decided once per type and constraint, wherever it is asked (coherence, §3.10), so a
  * conversion records no witnesses: lowering finds them again for each type a value converts from,
@@ -23,9 +23,8 @@ import type { CheckerContext } from '../../contexts/context.ts';
 import { searchSite, type UseSite } from '../../contexts/use-site.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import { sameConstraint } from '../../types/identity/identity.ts';
-import { substitute, substitutionFor } from '../../types/parts/substitution.ts';
+import { constraintOn, substitute, substitutionFor } from '../../types/parts/substitution.ts';
 import {
-  constraintOn,
   constraintSubstitution,
   requiredFieldType,
   requirementType,
@@ -33,14 +32,14 @@ import {
 import type { AnyType, Constraint, FunctionType, Type } from '../../types/type/index.ts';
 import { constraintText, typeText } from '../../types/type/type-text.ts';
 import { meets, witnessesFor } from './conformance.ts';
-import { memberConstraint, metInstantiation } from './met-instantiations.ts';
+import { memberConstraint } from './met-instantiations/index.ts';
 
 /** Whether a value of `found` converts into `target` (§3.10). */
 export function meetsAny(checker: CheckerContext, found: Type, target: AnyType): boolean {
   return meetsEach(
     checker,
     { found, target },
-    (type, constraint) => metInstantiation(checker, type, constraint).kind === 'met',
+    (type, constraint) => checker.fitting.metInstantiation(type, constraint).kind === 'met',
   );
 }
 
@@ -65,19 +64,17 @@ function meetsEach(
 }
 
 /**
- * Reports at `site` the first constraint of `target` that `found`, or a member of it, not an `any`
- * type, doesn't meet; whether there was one.
+ * Reports at `site` the first constraint of `target` that `found`, or a member of it, doesn't meet;
+ * whether there was one. An `any` type meeting none is left to read as the misfit it is, a type of
+ * traits it doesn't have; meeting several, none closer, it is as ambiguous as any type.
  */
 export function reportUnmet(site: UseSite, found: Type, target: AnyType): boolean {
   if (found.kind === 'union') {
     return found.members.some((member) => reportUnmet(site, member, target));
   }
-  if (found.kind === 'any') {
-    return false;
-  }
   return target.constraints.some((constraint) => {
     const own = constraintOn(constraint, found, site.checker.typeRules);
-    const met = metInstantiation(site.checker, found, own);
+    const met = site.checker.fitting.metInstantiation(found, own);
     switch (met.kind) {
       case 'met':
         return false;
@@ -92,7 +89,7 @@ export function reportUnmet(site: UseSite, found: Type, target: AnyType): boolea
         );
         return true;
       default:
-        return !meets(site, found, own);
+        return found.kind !== 'any' && !meets(site, found, own);
     }
   });
 }
@@ -128,7 +125,7 @@ export function traitObjectsOf(checker: CheckerContext): TraitObjects {
       meetsEach(
         checker,
         { found: type, target },
-        (found, constraint) => metInstantiation(checker, found, constraint).kind !== 'none',
+        (found, constraint) => checker.fitting.metInstantiation(found, constraint).kind !== 'none',
       ),
   };
 }

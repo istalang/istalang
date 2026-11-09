@@ -23,7 +23,7 @@ otherwise.
 | M3 | A named function value infers alone | confirmed | `judgeNamed` (`constructs/expressions/postponed.ts`) calls `functionValueType` → `fittedValue` (`resolution/choosing/named-functions.ts`), which replaces the parts still open with the error type (`holesIn`) and instantiates outside the scope. `E` then settles to its default `Error` (rule 5 comes before the error-type fallback), and `whenSolved` re-checks the pre-instantiated `type`. So a function value is checked twice, by two models | medium |
 | M4 | `#atTop` and rule 2 | confirmed | `CallSystem.#atTop` (`types/inference/system.ts`) is one set, overwritten by each `expectResult` and dropped by `adopt`. `expectedChoice` (`types/inference/settle.ts`) takes only bounds with `origin === 'expected'`. An enclosing call's parameter bounds a nested call's result with `'argument'`, so rule 2 never fires for nested calls | medium |
 | M5 | `commonType` is asymmetric | confirmed, wider than reported | `holdsAll` (`types/unions/common-type.ts`) accepts only conversions of kind `none` or `base`, so a conversion inside a type never counts as holding. `agreement.ts` falls back to the first producer, and settling's rule 3 calls `commonType` | small–medium |
-| M6 | Trait objects aren't transitive | confirmed | `candidateBinding` (`resolution/conformance/met-instantiations.ts`) skips a candidate that is a requirement (`candidate.requirement === undefined`), so a type parameter's or an `any` type's own requirements propose nothing. The `found.kind === 'any'` guard in `reportUnmet` (`trait-objects.ts`) is the same gap seen from the other side. `metInstantiation` isn't memoized (5 callers) | small–medium |
+| M6 | Trait objects aren't transitive | confirmed | `candidateBinding` (`resolution/conformance/met-instantiations/index.ts`) skips a candidate that is a requirement (`candidate.requirement === undefined`), so a type parameter's or an `any` type's own requirements propose nothing. The `found.kind === 'any'` guard in `reportUnmet` (`trait-objects.ts`) is the same gap seen from the other side. `metInstantiation` isn't memoized (5 callers) | small–medium |
 | D1 | `twinOf` puns | confirmed | A variable is a shallow clone of a `TypeParameter` node (`types/inference/variables.ts`), told apart by a module-global `WeakMap` and read back through `standingFor` at 3 sites in `wiring/program/program-checker.ts`. A placeholder is a `parameter` type too, with a made-up `Placeholder` key. So `parameter` means a rigid parameter, a variable and a placeholder | medium–large (67 `declaration.kind` checks) |
 | D2 | Field lookups are O(F²) | confirmed, minor | `.find` by name in `lowering/functions/fits/parts.ts` (`shapePairs`, `rebuiltStruct`) and in `rules/computation/forms.ts` (`structForm`). It's one symptom of §2 R6 | small |
 | C1–C5 | Correctness cases | confirmed | = M2, M3, M4, M5, M6 | — |
@@ -95,7 +95,7 @@ otherwise.
 - **R6. A type meeting a trait is searched three ways, and part pairs are derived three times.**
   - The trait search:
     - what a type meets by what it is (`known-constraints.ts`);
-    - which instantiation it meets through its witnesses (`met-instantiations.ts`, which skips requirement candidates);
+    - which instantiation it meets through its witnesses (`met-instantiations/index.ts`, which skips requirement candidates);
     - in inference, `any` as the very same type (`relate.ts`).
 
     Each misses what the others know: M6, B41 and B46.
@@ -126,7 +126,7 @@ Order: C1 ∥ C2, then C3 once C1 lands.
 - **Files:**
   - C1: `contexts/`, `wiring/body/`, `types/inference/{system,settle,bounds}.ts`, `postponed.ts`,
     `named-functions.ts`, `field-passes.ts` and the construct handlers' boundary calls.
-  - C2: `met-instantiations.ts`, `trait-objects.ts`, `known-constraints.ts`, `relate.ts`,
+  - C2: `met-instantiations/index.ts`, `trait-objects.ts`, `known-constraints.ts`, `relate.ts`,
     `type-children.ts`, `recursive-types.ts`, `json-forms.ts`, lowering's `parts.ts` and
     `forms.ts`.
   - The two share only a memo entry in `program-checker.ts`.

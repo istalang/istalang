@@ -12,7 +12,9 @@
  *   which member a value of any other union is would need a tag of its own, and how codecs read an
  *   untagged member is left open until codecs move into the language (§14).
  * - What a struct, an enum or a tuple holds crosses through its own codecs, which are coherent
- *   witnesses (§3.10), so a derived codec is the same wherever its type is used.
+ *   witnesses (§3.10), so a derived codec is the same wherever its type is used; so do a host
+ *   value's type arguments, whose values its host's JSON holds, so a `Box<fn() -> Int>` crosses no
+ *   more than an `Array<fn() -> Int>` does. A host handle crosses as its id, whatever it holds.
  * - A codec declared for a type is a witness found as any is: beside the type, or in the json
  *   module, which declares them for primitives, `Json` and the prelude's containers. Declaring
  *   either leaves nothing derived, so no type is written one way and read another.
@@ -34,6 +36,7 @@ import {
 } from '../../../../foundation/language/well-known/codecs.ts';
 import type { EntryTable } from '../../../../foundation/structures/entries/index.ts';
 import { unreachable } from '../../../../foundation/structures/unreachable.ts';
+import { typeParametersOf } from '../../../syntax/declarations/index.ts';
 import type { CheckerContext, CheckerNote } from '../../contexts/context.ts';
 import { hostSite, searchSite, silent, type UseSite } from '../../contexts/use-site.ts';
 import { callWithTypes } from '../../resolution/applying/silent-choice.ts';
@@ -53,7 +56,7 @@ import {
 import type { FunctionCall, ResolvedCall } from '../../surface/resolved-call.ts';
 import { sameType } from '../../types/identity/identity.ts';
 import { unaliased } from '../../types/parts/type-parts.ts';
-import { isConfined } from '../../types/properties/handles.ts';
+import { isConfined, isHandleDeclaration } from '../../types/properties/handles.ts';
 import { TypeCycle } from '../../types/properties/type-cycle.ts';
 import { wellKnownConstraint } from '../../types/traits/constraints.ts';
 import { unfolded } from '../../types/type/computed-types.ts';
@@ -151,9 +154,6 @@ export class JsonForms implements JsonCodecs {
 
   /** The first part of `form` that doesn't meet the trait of `direction`, said as it lacks. */
   #partMissing(site: UseSite, form: DerivedForm, direction: JsonDirection): string | undefined {
-    if (form.kind === 'host') {
-      return undefined;
-    }
     const inner = silent(site);
     const constraint = wellKnownConstraint(this.#seams.checker, jsonTraits[direction]);
     const failing = partsOf(form).find(
@@ -336,8 +336,12 @@ function literalsForm(union: UnionType): DerivedForm | undefined {
   return { kind: 'literals', type: union, groups };
 }
 
-/** The parts a derived codec writes and reads through their own types' codecs. */
-function partsOf(form: Exclude<DerivedForm, { kind: 'host' }>): readonly Part[] {
+/**
+ * The parts a derived codec writes and reads through their own types' codecs. A host value's are
+ * its type arguments, whose values its host's JSON holds (§3.6); a host handle crosses as its id,
+ * holding none.
+ */
+function partsOf(form: DerivedForm): readonly Part[] {
   const crossing = (fields: readonly JsonField[]): readonly Part[] =>
     fields
       .filter((field) => field.skipped === undefined && field.codec === undefined)
@@ -351,6 +355,17 @@ function partsOf(form: Exclude<DerivedForm, { kind: 'host' }>): readonly Part[] 
       return form.type.elements.map((type, index) => ({ name: `element ${index}`, type }));
     case 'literals':
       return form.groups.map(({ base }) => ({ name: 'base', type: base }));
+    case 'host': {
+      const { declaration } = form.type.entity;
+      if (isHandleDeclaration(declaration)) {
+        return [];
+      }
+      const parameters = typeParametersOf(declaration.typeParameters);
+      return form.type.arguments.map((type, index) => ({
+        name: `type argument '${parameters[index]?.name.text ?? index}'`,
+        type,
+      }));
+    }
     default: {
       const unhandled: never = form;
       return unhandled;

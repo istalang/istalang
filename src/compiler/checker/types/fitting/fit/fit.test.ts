@@ -26,6 +26,8 @@ import { type Fit, fitOf } from './index.ts';
 const fitting = {
   ...noProgramRules,
   meetsAny: () => false,
+  metInstantiation: () => ({ kind: 'none' }) as const,
+  proposedInstantiations: () => [],
   shapeOf: () => undefined,
   memberUnionOf: () => undefined,
   varianceOf: () => [],

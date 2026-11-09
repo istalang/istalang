@@ -22,16 +22,16 @@ import type { ConversionRules, Fitting } from '../fitting/fit/index.ts';
 import { fitOf, matchConversion } from '../fitting/fit/index.ts';
 import { sameType } from '../identity/identity.ts';
 import { UnfoldingPairs } from '../identity/unfolding-pairs.ts';
-import { type Substitution, substitute } from '../parts/substitution.ts';
+import type { Substitution } from '../parts/substitution.ts';
 import { parametersIn } from '../parts/type-parts.ts';
-import type { AnyType, LiteralType, ParameterKey, Type } from '../type/index.ts';
+import type { LiteralType, ParameterKey, Type } from '../type/index.ts';
 import { errorType, isPrimitive } from '../type/primitives.ts';
 import type { Joining } from '../unions/common-type.ts';
 import { VariableBinding } from './binding.ts';
 import { type BoundRules, BoundStore, type VariableBounds } from './bounds.ts';
 import { equalTypes } from './equal.ts';
 import { MatchNotes } from './notes.ts';
-import { type Relating, relatedAsIs } from './relate.ts';
+import { convertsIntoAny, type Relating, relatedAsIs } from './relate.ts';
 import {
   expectedChoiceOf,
   type Settling,
@@ -135,7 +135,8 @@ export class CallSystem {
       exact: (expected, found) => this.#atomic(() => relatedAsIs(expected, found, relating)),
       same: (expected, found) => this.#atomic(() => this.#equal(expected, found)),
       attempt: (probe) => this.#atomic(probe),
-      meetsAny: (found, target) => this.#convertsInto(target, found),
+      trial: (probe) => this.#trial(probe),
+      meetsAny: (found, target) => this.#atomic(() => convertsIntoAny(target, found, relating)),
     };
     for (const other of joining) {
       this.adopt(other);
@@ -385,15 +386,6 @@ export class CallSystem {
       bind: (parameter, type) => this.#binding.equal(parameter, type),
       meetError: (inDeclared) => this.#meetError(inDeclared, errorType),
     });
-  }
-
-  /** Whether `given` converts into `declared`, an `any` type whose parameters are all known (§3.10). */
-  #convertsInto(declared: AnyType, given: Type): boolean {
-    const known = substitute(declared, this.#tentative, this.#fitting);
-    if (known.kind !== 'any' || this.mentionsVariable(known)) {
-      return false;
-    }
-    return this.#fitting.meetsAny(given, known);
   }
 
   /** Notes `Never` given as `type`, when it is a variable. */

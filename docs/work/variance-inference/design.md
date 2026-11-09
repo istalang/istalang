@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-11-08
-last_updated: 2026-11-08
+last_updated: 2026-11-09
 tags: [design, checker, inference, variance, conversions, lowering, f25]
 ---
 
@@ -50,9 +50,9 @@ Rules:
   name-based or kind-based check:
   - `isHandle` in `rules/testing.ts`, which names `Slot`;
   - sendability (`types/traits/sendable.ts`);
-  - host forms (`rules/boundary/json-forms.ts`): an extern value or `sendable` handle crosses as a
-    host form when its type arguments do; an `extern shared struct` does only as a resource (with
-    `dispose`);
+  - host forms (`rules/boundary/json-forms.ts`): an extern value crosses as a host form when its
+    type arguments do, a `sendable` handle as its id whatever they are; an `extern shared struct`
+    does only as a resource (with `dispose`);
   - disposal (`rules/disposal/disposal.ts`);
   - lowering's extern roles (`lowering/tables/type-table.ts`). A handle doesn't take the `'shared'`
     role, which means a shared struct's cell (`isCellType`, snapshot validation). Roles that pick a
@@ -210,6 +210,15 @@ contravariant positions.
   - A head against a union is decomposed against the one member it can be; if several could be,
     against the one whose bounds the arguments satisfy (the variant rule, generalised); otherwise
     it gives nothing.
+- **A conversion into an `any` type** relates through the one instantiation of each trait the
+  found type may meet, decomposed by the trait's variance (§2), as fitting meets `any Trait<B>`
+  through a `Trait<A>`: `LayoutView<S>` may meet `View<S>` through
+  `draw(self: LayoutView<S>, s: S)`, so `takes(direct(), Sc{a: 1})` bounds `takes`'s `S` by `Sc`,
+  and a `LayoutView{…}` under `Array<any View<Sc>>` bounds its own `S` by it. A type holding
+  variables is proposed what its declaration's own instance's witnesses' signatures make, their own
+  constraints unjudged, a witness declared for one instantiation (`Box<Scope>`) making the value
+  that one; one holding none, what it meets. Each is tried alone; several relating give nothing,
+  judged once the variables settle, and none is no conversion.
 - **Constraints of the declaration** (`is`, `in`) are checked once a variable is settled, as
   today.
 - **Bounds propagate between variables:** `T <: U` hands `U`'s upper bounds to `T` and `T`'s lower

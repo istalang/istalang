@@ -57,7 +57,11 @@ export function equalTypes(declared: Type, given: Type, equating: Equating): boo
     );
   }
   if (declared.kind === 'parameter' && equating.isUnknown(declared.declaration)) {
-    return equating.bind(declared.declaration, given);
+    // A variable is equal to itself, which bounds it by nothing.
+    return (
+      (given.kind === 'parameter' && given.declaration === declared.declaration) ||
+      equating.bind(declared.declaration, given)
+    );
   }
   if (given.kind === 'parameter' && equating.isUnknown(given.declaration)) {
     return equating.bind(given.declaration, declared);

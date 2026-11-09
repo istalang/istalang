@@ -22,17 +22,19 @@ import type { CheckerContext } from '../../contexts/context.ts';
 import type { UseSite } from '../../contexts/use-site.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import { sameType } from '../../types/identity/identity.ts';
-import { type Substitution, substituteConstraint } from '../../types/parts/substitution.ts';
 import {
   constraintOn,
+  type Substitution,
+  substituteConstraint,
+} from '../../types/parts/substitution.ts';
+import {
   constraintSubstitution,
   requiredAssociatedTypes,
   requiredFields,
   requiredFieldType,
 } from '../../types/traits/constraints.ts';
-import { structConstraintsOn } from '../../types/traits/known-constraints.ts';
+import { rulesImply, structConstraintsOn } from '../../types/traits/known-constraints.ts';
 import { fieldOf } from '../../types/traits/known-fields.ts';
-import { constraintsImply } from '../../types/traits/sendable.ts';
 import { isStructType } from '../../types/traits/struct-keys.ts';
 import { isOpaque, unfolded } from '../../types/type/computed-types.ts';
 import type { Constraint, Type } from '../../types/type/index.ts';
@@ -337,7 +339,7 @@ function ruleText(rule: EntryRule): string {
 /**
  * Whether every field meeting all of `given` meets `needed` too: an exact type among them decides
  * it, as that type meets `needed` or not; otherwise `needed` can't ask an exact type, each trait it
- * asks is one they imply (`constraintsImply`), and each struct constraint it asks is implied
+ * asks is one they imply (`rulesImply`), and each struct constraint it asks is implied
  * by theirs, all met at once.
  */
 function entailed(
@@ -353,11 +355,9 @@ function entailed(
   if (needed.kind === 'type') {
     return false;
   }
-  const sets = given.flatMap((rule) => (rule.kind === 'meets' ? [rule] : []));
-  const traits = sets.flatMap((set) => set.traits);
-  const structs = sets.flatMap((set) => set.structs);
+  const structs = given.flatMap((rule) => (rule.kind === 'meets' ? rule.structs : []));
   return (
-    needed.traits.every((trait) => constraintsImply(checker, traits, trait)) &&
+    needed.traits.every((trait) => rulesImply(checker, given, trait, meets)) &&
     needed.structs.every((struct) => structEntailed(checker, structs, struct, meets))
   );
 }

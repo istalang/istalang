@@ -44,8 +44,8 @@ import { unreachable } from '../../../foundation/structures/unreachable.ts';
 import type { Checker, Disposal } from '../../checker/check.ts';
 import type { CheckedAnnotation } from '../../checker/surface/checked-annotation.ts';
 import { isHostExtern } from '../../checker/surface/host-externs.ts';
+import { folded } from '../../checker/types/identity/folding.ts';
 import { sameType } from '../../checker/types/identity/identity.ts';
-import { folded } from '../../checker/types/identity/recursive-types.ts';
 import { type RecursiveType, unfoldRecursive } from '../../checker/types/type/computed-types.ts';
 import type {
   AnonymousStructType,

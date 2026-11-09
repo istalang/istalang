@@ -14,11 +14,11 @@
  *   literal, `none`) holds nothing, so its function gets that value; on the one type a union
  *   collapsed into, it calls that type's function.
  * - A member meeting another instantiation of the trait, which the trait's variance lets stand for
- *   the `any` type's (checker/resolution/conformance/met-instantiations.ts), is called through that
- *   instantiation's witnesses: what the call through `any` gives each converted into what the
- *   function takes, and what it gives into what the call through `any` gives, as the checker fits
- *   them; a field it holds is read converted alike. A `&` never converts, and the variance it
- *   makes is none, so it is passed on as it is.
+ *   the `any` type's (checker/resolution/conformance/met-instantiations/index.ts), is called
+ *   through that instantiation's witnesses: what the call through `any` gives each converted into
+ *   what the function takes, and what it gives into what the call through `any` gives, as the
+ *   checker fits them; a field it holds is read converted alike. A `&` never converts, and the
+ *   variance it makes is none, so it is passed on as it is.
  * - Every entry switching over an `any` type's variants is a closing entry (../tables/tables.ts):
  *   written once lowering reached every type converted so far, and again when it reaches another.
  */

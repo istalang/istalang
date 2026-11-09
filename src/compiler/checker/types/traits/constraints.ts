@@ -32,15 +32,9 @@ import type { CheckerContext } from '../../contexts/context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import type { RequirementOrigin } from '../../surface/resolved-call.ts';
 import { sameType } from '../identity/identity.ts';
-import {
-  type Substitution,
-  substitute,
-  substituteConstraint,
-  substitutionFor,
-} from '../parts/substitution.ts';
+import { type Substitution, substitute, substitutionFor } from '../parts/substitution.ts';
 import type { AnyType, Constraint, FunctionType, ParameterKey, Type } from '../type/index.ts';
 import { errorType } from '../type/primitives.ts';
-import type { TypeRules } from '../type/type-rules.ts';
 import { futureArgument } from '../type/well-known.ts';
 import { parameterType } from '../written/resolve-type.ts';
 import { typeArgumentsFor } from '../written/type-arguments.ts';
@@ -173,11 +167,6 @@ export function constraintSubstitution(constraint: Constraint, constrained: Type
     [constraint.trait, constrained],
     ...substitutionFor(constraint.trait.typeParameters, constraint.arguments),
   ]);
-}
-
-/** `constraint` of an `any` type as met by `type`: its trait's own `Self` replaced by `type`. */
-export function constraintOn(constraint: Constraint, type: Type, rules: TypeRules): Constraint {
-  return substituteConstraint(constraint, new Map([[constraint.trait, type]]), rules);
 }
 
 /** The type `trait` declares its required `field` to have, in its own parameters and `Self`. */

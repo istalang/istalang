@@ -34,6 +34,7 @@
  */
 
 import type { Diagnostic } from '../../../../../foundation/diagnostics/diagnostic.ts';
+import type { TraitDeclaration } from '../../../../syntax/declarations/index.ts';
 import type { AnchoredSpan } from '../../../../syntax/tree/positions.ts';
 import { checkerDiagnostics } from '../../../diagnostics/index.ts';
 import { isAssignable, sameConstraint } from '../../identity/identity.ts';
@@ -55,6 +56,7 @@ import { absorbingMember, baseOf } from '../../unions/union-members.ts';
 import { hasMember, literalsBase, membersOf } from '../../unions/unions.ts';
 import type { Variance } from '../../variance/lattice.ts';
 import type { VariedDeclaration } from '../../variance/variance.ts';
+import type { MetInstantiation, ProposedInstantiation } from '../met-instantiation.ts';
 import { argumentsFitAs, fitsByParts, type PartsRelation } from './parts.ts';
 
 /**
@@ -113,26 +115,43 @@ export interface Fitting extends TypeRules {
   readonly memberUnionOf: (parameter: TypeParameterType) => Type | undefined;
   /** How each of a declaration's type parameters relates its instantiations (§3.5). */
   readonly varianceOf: (declaration: VariedDeclaration) => readonly Variance[];
+  /**
+   * The instantiation of `constraint`'s trait `found` meets in its place, through the trait's
+   * variance (§3.10), the program's one answer per type and constraint.
+   */
+  readonly metInstantiation: (found: Type, constraint: Constraint) => MetInstantiation;
+  /**
+   * The instantiations of `trait` a value of `found` may meet, each of its parameters found, none
+   * sought (§3.10): what inference relates a value through where an `any` type is expected, those
+   * of a type holding variables judged once they are known.
+   */
+  readonly proposedInstantiations: (
+    found: Type,
+    trait: TraitDeclaration,
+  ) => readonly ProposedInstantiation[];
 }
 
 /**
  * How `matchConversion` compares leaf types: `exact` where a value fits as it is, `same` where a
  * part must be the very type (invariant, or behind `&`), `exact` unless given. A probe that may
  * fail inside a match runs through `attempt`, so rules that keep state (inference's bounds) can
- * leave none behind when it does.
+ * leave none behind when it does, and one of several tried to count those that hold through
+ * `trial`, which leaves none behind either way.
  */
 export interface ConversionRules extends Fitting {
   readonly exact: (expected: Type, found: Type) => boolean;
   readonly same?: ((expected: Type, found: Type) => boolean) | undefined;
   readonly attempt?: ((probe: () => boolean) => boolean) | undefined;
+  readonly trial?: ((probe: () => boolean) => boolean) | undefined;
 }
 
 /**
  * `ConversionRules` inside one match: the pairs of types whose parts are being related, and the
  * match itself, which parts are fitted by.
  */
-interface Matching extends Omit<ConversionRules, 'same' | 'attempt'>, PartsRelation {
+interface Matching extends Omit<ConversionRules, 'same' | 'attempt' | 'trial'>, PartsRelation {
   readonly attempt: (probe: () => boolean) => boolean;
+  readonly trial: (probe: () => boolean) => boolean;
 }
 
 /** How `found` fits `expected`; undefined when nothing makes it fit. */
@@ -165,6 +184,7 @@ function matchingWith(rules: ConversionRules): Matching {
     ...rules,
     same: rules.same ?? rules.exact,
     attempt: rules.attempt ?? ((probe) => probe()),
+    trial: rules.trial ?? ((probe) => probe()),
     relating: new UnfoldingPairs(),
     fits: (found, expected) => {
       const fit = matched(found, expected, matching);
@@ -207,10 +227,23 @@ function ownConversion(found: Type, expected: Type, rules: Matching): Fit | unde
       ? { conversion: { kind: 'none' }, into: { union: expected } }
       : (intoAnyMember(found, expected, rules) ?? membersConverted(found, expected, rules));
   }
-  const [only, ...others] = membersTaking(found, expected, rules);
-  return only === undefined || others.length > 0
+  return intoOneMember(found, expected, rules);
+}
+
+/**
+ * A value of `found`, no union, put into the one member of the union `expected` it goes into: its
+ * own type's (`ownMember`), else the one it converts into; undefined for none or several.
+ */
+function intoOneMember(found: Type, expected: UnionType, rules: Matching): Fit | undefined {
+  const own = ownMember(found, expected, rules);
+  if (own !== undefined) {
+    return { conversion: { kind: 'none' }, into: { union: expected, member: own } };
+  }
+  const [only, ...others] = membersConverting(found, expected, rules);
+  const conversion = only === undefined ? undefined : convertedInto(found, unfolded(only), rules);
+  return conversion === undefined || others.length > 0
     ? undefined
-    : { conversion: only.conversion, into: { union: expected, member: only.member } };
+    : { conversion, into: { union: expected, member: only } };
 }
 
 /**
@@ -297,9 +330,10 @@ function isLiteralOf(found: Type, base: Type): boolean {
  */
 function intoAnyMember(found: UnionType, expected: UnionType, rules: Matching): Fit | undefined {
   const [only, ...others] = expected.members.filter(
-    (member): member is AnyType => member.kind === 'any' && rules.meetsAny(found, member),
+    (member): member is AnyType =>
+      member.kind === 'any' && rules.trial(() => rules.meetsAny(found, member)),
   );
-  return only === undefined || others.length > 0
+  return only === undefined || others.length > 0 || !rules.meetsAny(found, only)
     ? undefined
     : { conversion: { kind: 'any', to: only }, into: { union: expected, member: only } };
 }
@@ -339,23 +373,15 @@ function ownMember(found: Type, expected: UnionType, rules: ConversionRules): Ty
 }
 
 /**
- * The members of the union `expected` that a value of `found`, no union, goes into, with how it
- * converts: its own type's member (`ownMember`); else each member it converts into.
+ * The members of the union `expected` that a value of `found`, no union and of none of its members'
+ * own types, converts into: each tried alone, leaving nothing behind, so what one binds never
+ * decides another, and the one it goes into converted again for good.
  */
-function membersTaking(
-  found: Type,
-  expected: UnionType,
-  rules: Matching,
-): readonly { readonly member: Type; readonly conversion: Conversion }[] {
-  const own = ownMember(found, expected, rules);
-  if (own !== undefined) {
-    return [{ member: own, conversion: { kind: 'none' } }];
-  }
-  return expected.members.flatMap((member) => {
+function membersConverting(found: Type, expected: UnionType, rules: Matching): readonly Type[] {
+  return expected.members.filter((member) =>
     // A recursive member stands for what it unfolds to (§3.17), which is what converts.
-    const conversion = convertedInto(found, unfolded(member), rules);
-    return conversion === undefined ? [] : [{ member, conversion }];
-  });
+    rules.trial(() => convertedInto(found, unfolded(member), rules) !== undefined),
+  );
 }
 
 /**
@@ -370,7 +396,10 @@ function intoSeveral(found: Type, expected: Type, fitting: Fitting): boolean {
     ...fitting,
     exact: (target, source) => isAssignable(source, target),
   });
-  return membersTaking(found, expected, rules).length > 1;
+  return (
+    ownMember(found, expected, rules) === undefined &&
+    membersConverting(found, expected, rules).length > 1
+  );
 }
 
 /**

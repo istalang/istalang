@@ -16,51 +16,13 @@
  * a `dispose` makes disposable has one, yet isn't sendable: its values have an identity.
  */
 
-import {
-  type WellKnownDeclaration,
-  wellKnown,
-} from '../../../../foundation/language/well-known/index.ts';
 import type { CheckerContext } from '../../contexts/context.ts';
-import { sameConstraint } from '../identity/identity.ts';
 import { isConfined } from '../properties/handles.ts';
 import { heldParts } from '../properties/held.ts';
 import { TypeCycle } from '../properties/type-cycle.ts';
-import type { Constraint, NominalType, Type } from '../type/index.ts';
-import { isWellKnownTrait } from '../type/well-known.ts';
+import type { NominalType, Type } from '../type/index.ts';
+import { impliesSendable } from './constraint-implication.ts';
 import { knownConstraints } from './known-constraints.ts';
-
-/**
- * The traits a type parameter may be constrained by to be sendable: Sendable, and those that
- * imply it, which require it of every type meeting them (resolution/conformance/derived-traits.ts).
- */
-const sendableTraits: readonly WellKnownDeclaration[] = [
-  wellKnown.sendable,
-  wellKnown.encodable,
-  wellKnown.decodable,
-];
-
-/**
- * Whether a type meeting every one of `given` meets `needed` too, whatever the type: `needed` is
- * one of them, or it is Sendable and one of them implies it. Traits declare no supertraits, so
- * this is all constraints imply of one another.
- */
-export function constraintsImply(
-  checker: CheckerContext,
-  given: readonly Constraint[],
-  needed: Constraint,
-): boolean {
-  return (
-    given.some((each) => sameConstraint(each, needed)) ||
-    (isWellKnownTrait(checker, needed.trait, wellKnown.sendable) && impliesSendable(checker, given))
-  );
-}
-
-/** Whether a type meeting `given` is sendable by them. */
-function impliesSendable(checker: CheckerContext, given: readonly Constraint[]): boolean {
-  return given.some(({ trait }) =>
-    sendableTraits.some((each) => isWellKnownTrait(checker, trait, each)),
-  );
-}
 
 /** Whether values of `type` may leave an instance for another. */
 export function isSendable(checker: CheckerContext, type: Type): boolean {

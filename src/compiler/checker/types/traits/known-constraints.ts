@@ -26,10 +26,16 @@ import type {
   TypeParameter,
 } from '../../../syntax/declarations/index.ts';
 import type { CheckerContext } from '../../contexts/context.ts';
+import { searchSite } from '../../contexts/use-site.ts';
 import type { RequirementOrigin } from '../../surface/resolved-call.ts';
 import { sameConstraint, sameType } from '../identity/identity.ts';
 import { typeKeys } from '../identity/type-keys.ts';
-import { substitute, substituteConstraint, substitutionFor } from '../parts/substitution.ts';
+import {
+  constraintOn,
+  substitute,
+  substituteConstraint,
+  substitutionFor,
+} from '../parts/substitution.ts';
 import { parametersIn } from '../parts/type-parts.ts';
 import { aliasedAs } from '../type/alias-uses.ts';
 import { type ComputedType, isMatchAlias, isOpaque } from '../type/computed-types.ts';
@@ -44,8 +50,8 @@ import {
 import { literalType, membersOf, unionOf } from '../unions/unions.ts';
 import { parameterType } from '../written/resolve-type.ts';
 import { aliasInstance } from '../written/type-match.ts';
+import { constraintsImply } from './constraint-implication.ts';
 import {
-  constraintOn,
   constraintSubstitution,
   type Requirement,
   requiredAssociatedTypes,
@@ -324,7 +330,7 @@ export function entryRules(checker: CheckerContext, type: Type): readonly EntryR
     if (members.length === 1 && only !== undefined) {
       return only === key ? [] : rulesOf(only);
     }
-    return commonRules(members.map(rulesOf));
+    return commonRules(checker, members.map(rulesOf));
   };
   return rulesOf(type.key);
 }
@@ -332,10 +338,13 @@ export function entryRules(checker: CheckerContext, type: Type): readonly EntryR
 /**
  * What each of several fields' rules asks, as one rule: the exact type every one of them gives,
  * when they all give the same one, so a key naming any of them reads and writes that type (§3.1 Key
- * types); else the traits each asks, as a field any of them gives an exact type, or asks a struct
- * constraint of, meets nothing known here beside them.
+ * types); else the traits any of them asks that every one of them meets (`rulesImply`), an exact
+ * type by its own witnesses, so a call through the key finds a witness for each field.
  */
-function commonRules(each: readonly (readonly EntryRule[])[]): readonly EntryRule[] {
+function commonRules(
+  checker: CheckerContext,
+  each: readonly (readonly EntryRule[])[],
+): readonly EntryRule[] {
   const exact = each.map((rules) => rules.find((rule) => rule.kind === 'type'));
   const [shared] = exact;
   if (
@@ -344,19 +353,37 @@ function commonRules(each: readonly (readonly EntryRule[])[]): readonly EntryRul
   ) {
     return [shared];
   }
-  const sets = each.map((rules) =>
-    rules.every((rule) => rule.kind === 'meets' && rule.structs.length === 0)
-      ? rules.flatMap((rule) => (rule.kind === 'meets' ? rule.traits : []))
-      : undefined,
+  const asked = each.flatMap((rules) =>
+    rules.flatMap((rule) => (rule.kind === 'meets' ? rule.traits : [])),
   );
-  const [first, ...others] = sets;
-  if (first === undefined || sets.some((set) => set === undefined)) {
-    return [];
-  }
-  const traits = first.filter((trait) =>
-    others.every((set) => set?.some((other) => sameConstraint(other, trait))),
+  const site = searchSite(checker);
+  const meets = (type: Type, constraint: Constraint) =>
+    checker.rootGoals.witnesses(site, { type, constraint, onValues: false }) !== undefined;
+  const traits = asked.filter(
+    (trait, index) =>
+      asked.findIndex((other) => sameConstraint(other, trait)) === index &&
+      each.every((rules) => rulesImply(checker, rules, trait, meets)),
   );
   return traits.length === 0 ? [] : [{ kind: 'meets', traits, structs: [] }];
+}
+
+/**
+ * Whether a field asked every one of `given`, the rules entries ask of it, meets `trait`: as its
+ * exact type meets it (`meets`), `Self` that type, since a call through the key runs its own
+ * witness; else as the traits asked imply it (`constraintsImply`).
+ */
+export function rulesImply(
+  checker: CheckerContext,
+  given: readonly EntryRule[],
+  trait: Constraint,
+  meets: (type: Type, constraint: Constraint) => boolean,
+): boolean {
+  const exact = given.find((rule) => rule.kind === 'type');
+  if (exact !== undefined) {
+    return meets(exact.type, constraintOn(trait, exact.type, checker.typeRules));
+  }
+  const traits = given.flatMap((rule) => (rule.kind === 'meets' ? rule.traits : []));
+  return constraintsImply(checker, traits, trait);
 }
 
 /**

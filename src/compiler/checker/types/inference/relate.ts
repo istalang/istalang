@@ -12,17 +12,26 @@
  *   into a union without goes to the one member that takes it (`intoOneMember`).
  * - A type built of others relates part by part as its variance says (fit/parts.ts), each part
  *   fitted as any value is, the error type and `Never` bounding nothing, `Never` noted where it is
- *   given as a variable. An `any` type, and a function type ending in a pack, which takes the
- *   parameters past its fixed ones as they are, relate only as the very same type (equal.ts).
+ *   given as a variable. A function type ending in a pack, which takes the parameters past its
+ *   fixed ones as they are, relates only as the very same type (equal.ts), and so does an `any`
+ *   type, as it is; into one expected, a value converts, as below.
+ * - A value converted into an `any` type holding variables, or a value holding them converted into
+ *   one, relates through the one instantiation of each trait its type may meet (`convertsIntoAny`),
+ *   each argument as the trait's variance says, as fitting meets it (§3.10): a `LayoutView<Sc>`
+ *   into `any View<S>` bounds `S` by `Sc` where `View` takes it, and a witness declared for one
+ *   instantiation (`Box<Scope>`) makes the value that one. Several relating give nothing, judged
+ *   once the variables settle; none is no conversion.
  * - A type standing for what its parameters make it tells nothing while one is to be found.
  */
 
 import type { Fitting } from '../fitting/fit/index.ts';
-import { fitsByParts, type PartsRelation } from '../fitting/fit/parts.ts';
+import { argumentsFitAs, fitsByParts, type PartsRelation } from '../fitting/fit/parts.ts';
+import type { ProposedInstantiation } from '../fitting/met-instantiation.ts';
 import { isAssignable, sameType } from '../identity/identity.ts';
 import type { UnfoldingPairs } from '../identity/unfolding-pairs.ts';
+import { constraintOn } from '../parts/substitution.ts';
 import { parametersIn } from '../parts/type-parts.ts';
-import type { ParameterKey, Type, UnionType } from '../type/index.ts';
+import type { AnyType, ParameterKey, Type, UnionType } from '../type/index.ts';
 import { isPrimitive } from '../type/primitives.ts';
 import { unionOfNormalized } from '../unions/unions.ts';
 import { givesNothing, isOpaque } from './equal.ts';
@@ -66,17 +75,16 @@ export function relatedAsIs(expected: Type, found: Type, relating: Relating): bo
   if (bound !== undefined) {
     return bound;
   }
-  const mentionsVariable = (type: Type) => parametersIn(type).some(relating.isUnknown);
-  if (!(mentionsVariable(expected) || mentionsVariable(found))) {
+  if (!(mentionsVariable(expected, relating) || mentionsVariable(found, relating))) {
     return isAssignable(found, expected);
   }
-  if (found.kind === 'union' && mentionsVariable(found)) {
+  if (found.kind === 'union' && mentionsVariable(found, relating)) {
     return expected.kind === 'union'
       ? fromUnionHolding(expected, found, relating)
       : found.members.every((member) => relating.constrain(member, expected));
   }
   if (expected.kind === 'union') {
-    return mentionsVariable(expected)
+    return mentionsVariable(expected, relating)
       ? intoUnionHolding(expected, found, relating)
       : intoOneMember(expected, found, relating);
   }
@@ -99,6 +107,11 @@ function boundVariables(expected: Type, found: Type, relating: Relating): boolea
   return foundVariable === undefined ? undefined : relating.bindUpper(foundVariable, expected);
 }
 
+/** Whether `type` mentions a variable of the call's. */
+function mentionsVariable(type: Type, relating: Relating): boolean {
+  return parametersIn(type).some(relating.isUnknown);
+}
+
 /** The variable `type` is, if it is one of the call's. */
 function variableOf(type: Type, relating: Relating): ParameterKey | undefined {
   return type.kind === 'parameter' && relating.isUnknown(type.declaration)
@@ -117,7 +130,7 @@ function intoUnionHolding(expected: UnionType, found: Type, relating: Relating):
   if (found.kind !== 'union') {
     return false;
   }
-  const holding = (member: Type) => parametersIn(member).some(relating.isUnknown);
+  const holding = (member: Type) => mentionsVariable(member, relating);
   const open = expected.members.filter(holding);
   const fixed = expected.members.filter((member) => !holding(member));
   const left = found.members.filter((member) => !fixed.some((each) => sameType(each, member)));
@@ -143,7 +156,7 @@ function intoUnionHolding(expected: UnionType, found: Type, relating: Relating):
  * and its members with variables go into what is left, so `T` is bounded by `Int`, never `Int?`.
  */
 function fromUnionHolding(expected: UnionType, found: UnionType, relating: Relating): boolean {
-  const holding = (member: Type) => parametersIn(member).some(relating.isUnknown);
+  const holding = (member: Type) => mentionsVariable(member, relating);
   const fixed = found.members.filter((member) => !holding(member));
   if (!fixed.every((member) => relating.constrain(member, expected))) {
     return false;
@@ -175,9 +188,13 @@ function relatedByParts(expected: Type, found: Type, relating: Relating): boolea
     return found.members.every((member) => relating.constrain(member, expected));
   }
   if (isOpaque(expected)) {
-    return parametersIn(expected).some(relating.isUnknown) || sameType(expected, found);
+    return mentionsVariable(expected, relating) || sameType(expected, found);
   }
-  if (expected.kind === 'any' || found.kind === 'any' || endsInPack(expected)) {
+  if (expected.kind === 'any') {
+    // Anything else converts, through what it may meet, by the traits' variance (`convertsIntoAny`).
+    return sameType(expected, found);
+  }
+  if (found.kind === 'any' || endsInPack(expected)) {
     return relating.equal(expected, found);
   }
   return fitsByParts(found, expected, partsRelation(relating));
@@ -209,4 +226,41 @@ function partsRelation(relating: Relating): PartsRelation {
 /** Whether `type` is a function type ending in a pack. */
 function endsInPack(type: Type): boolean {
   return type.kind === 'function' && type.pack !== undefined;
+}
+
+/**
+ * Whether a value of `found` converts into `declared`, an `any` type, as the banner says: as
+ * fitting meets it where neither holds a variable; else through what `found` may meet, bounding
+ * the variables, whatever earlier arguments have given them so far.
+ */
+export function convertsIntoAny(declared: AnyType, found: Type, relating: Relating): boolean {
+  return mentionsVariable(declared, relating) || mentionsVariable(found, relating)
+    ? relatedThroughProposed(declared, found, relating)
+    : relating.fitting.meetsAny(found, declared);
+}
+
+/**
+ * Whether a value of `found` converts into `target`, an `any` type, through the one instantiation
+ * of each of its traits `found` may meet that relates to the trait's own, as its variance says,
+ * `found` being the type that meets it so. Each is tried alone, leaving nothing behind; several
+ * relating give nothing, as an expected union naming several instantiations does (`intoOneMember`),
+ * and are judged once the variables settle; none is no conversion.
+ */
+function relatedThroughProposed(target: AnyType, found: Type, relating: Relating): boolean {
+  if (found.kind === 'union') {
+    return found.members.every((member) => relatedThroughProposed(target, member, relating));
+  }
+  const { fitting } = relating;
+  return target.constraints.every((constraint) => {
+    const variances = fitting.varianceOf(constraint.trait);
+    const sought = constraintOn(constraint, found, fitting).arguments;
+    const relates = ({ self, constraint: met }: ProposedInstantiation) =>
+      (sameType(self, found) || relating.equal(self, found)) &&
+      argumentsFitAs(variances, met.arguments, sought, partsRelation(relating));
+    const taking = fitting
+      .proposedInstantiations(found, constraint.trait)
+      .filter((each) => relating.trial(() => relates(each)));
+    const [only, ...others] = taking;
+    return only !== undefined && (others.length > 0 || relates(only));
+  });
 }
