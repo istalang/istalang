@@ -18,7 +18,7 @@ is keyed by name, so proposal 4's computed types serve both.
 
 ```python
 # Mixed-type futures: Future<(Int, String)> from a Future<Int> and a Future<String>
-async fn all<A is tuple>(...fs: ( [I in keyof A]: Future<A[I]> )) -> Future<A>:
+async fn all<A is tuple>(...fs: ( [I in keyof A]: Future<A[I]> )) -> A:
     (for _, f in ...fs: await f)
 
 # zip of any number of arrays, each with its own type
@@ -228,7 +228,7 @@ prepared, while the caller goes on with its value. That is **entering a bracket*
 type Bracket<E> = async fn(async fn(E) -> Unit) -> Unit
 struct Entered<E> { value: E, leave: async fn() -> Unit }
 
-async fn enter<E>(bracket: Bracket<E>) -> Future<Entered<E>>:
+async fn enter<E>(bracket: Bracket<E>) -> Entered<E>:
     const value = Slot.create<E>()
     const done = Slot.create<Unit>()
     const run = bracket(async fn(v):              # runs at once, up to its first await
