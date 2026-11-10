@@ -1,5 +1,5 @@
 ---
-description: scope, acceptance and spec edits of each async-kinds phase (proposal 8, and the slices of proposal 9 it needs, `delegate` and contexts) — the text fork briefs quote verbatim; read before forking or examining a phase
+description: scope, acceptance and spec edits of each async-kinds phase (proposal 8, with `delegate` and the minimal slice of proposal 9 that enters contexts) — the text fork briefs quote verbatim; read before forking or examining a phase
 owner: tech-lead
 status: active
 applies_to: istalang
@@ -215,8 +215,7 @@ design's own examples. Profile within noise.
   `delegate<R is Sendable>(job: sendable live async fn() -> R) -> Future<R, "ista">`. The job is
   queued in the instance's job inbox at the commit, run by the runtime's loop as a live run (R1b),
   and run again after a crash or restart until its result commits into the future through a
-  registered ista resolver (R2), under a key stable across its runs. `runtime.jobKey()`, a
-  `live fn`, gives the running job's key, `none` outside one (proposal 9, *Jobs*).
+  registered ista resolver (R2), under a key stable across its runs.
 - Host externs: a host's async externs are `live`; unmarked async and `ista` externs are the
   runtime's, which deploy checks. Host-filled ista futures go, with `HostCall.pending`,
   `Runtime.fill`'s token, `Futures.fromHost`, `resolveHost`, `createFilled` and the CLI's token
@@ -226,14 +225,13 @@ design's own examples. Profile within noise.
 
 **Accept.** `await delegate charge(c, n)` runs `charge` once after the commit, its result in the
 future; a segment crashed before its commit never runs it; crashed after the job starts and before
-its result commits, it runs again under the same key, which `runtime.jobKey()` gives on every run
-and nowhere outside the job. The behaviour table's `await http.get(u)` and
+its result commits, it runs again under the same key. The behaviour table's `await http.get(u)` and
 `charge(id)` rows in their `delegate` form. Deploy refuses a host's unmarked async or `ista`
 extern. No host token remains. Property: over generated programs crashed at every `await`, every
 job runs at least once per committed start and never for a discarded segment. The full suite passes
 after the rewrite; `wake.bench.ts` within 10%.
 
-**Spec.** §3.6 externs; §3.8 `delegate`, `runtime.jobKey()`; §5 jobs; §9 hosts.
+**Spec.** §3.6 externs; §3.8 `delegate`; §5 jobs; §9 hosts.
 
 ## AW Awaitables (behavioural)
 
@@ -256,45 +254,32 @@ Every `futures` test passes in both kinds. No `futures` native remains.
 
 **Spec.** §3.5 member-bound associated types; §3.8 prelude and `futures`; §3.10 `Awaitable`; §8.
 
-## CX Contexts, a slice of proposal 9 (behavioural)
+## CX Contexts, the minimal slice of proposal 9 (behavioural)
 
-**Scope.**
-- Runtimes: `Runtime.open(kv)`, a `live async fn`, loads a store's state, resumes its work and gives
-  a `Runtime`, a live disposable value; disposing it stops its work. The `Kv` trait with `live`
-  requirements, and `Bytes` in the prelude. `store/memory` and a file store, whose `Kv` functions
-  are host externs the runtime calls directly. The program opens its store, so the CLI's `--store`
-  and `--resume` go: running the program again on the same store resumes its work.
-- Contexts: a context is an instance named by its key; every persistent instance is one.
-  `rt.call(key) f(args)` in live code and `runtime.call(key) f(args)` (`ista`) in ista code run `f`
-  in it through the deferred form with arguments, creating it, written with the first invocation
-  that commits. Each gives a `Call<R, K>`, an awaitable of the caller's kind: awaiting gives
-  `Result<R>` (an `Err` on a panic or a deletion); `accepted()` resolves once the invocation is
-  persisted; `key()` gives the context's key. Releasing a `Call` cancels nothing. A live `Call` is
-  an in-memory listener, through the one cross-instance wait mock answers use too. Every call starts
-  a new invocation. `rt.delete(key)` and `runtime.delete(key)` end a context, disposing what it
-  holds.
-- `Call` replaces `Instance<T>`: `spawn f(args)` is `runtime.call` with a key from its caller's
-  context and spawn count; `runtime.isolate(f)` is `await spawn f()`; `testing` inspects a context
-  by key; the rewriter moves `inst.result()` uses to the `Call`'s `await`.
-- Context constants: a top-level `ista const`, one value per context made at its first read there,
-  named by its key; reading one is an `ista` call (K1's call rule).
+**Scope.** Only what running and testing ista code from live code needs; the rest of proposal 9 is
+a plan of its own.
+- `Runtime.open(runtime.hostStore())`, a `live async fn`, gives a `Runtime`, a live disposable value
+  over the host's store: the CLI's `--store`, memory without it, a test's own in the test runner.
+  Opening it resumes the work persisted there, so `--resume` goes: running the program again on the
+  same store resumes its contexts.
+- `rt.call(key) f(args)`, the deferred form with arguments, runs `f`, an `ista` function, in the
+  context named `key`, an instance, creating it. It gives a `Call<R>`, a live awaitable: awaiting
+  it gives `Result<R>`, an `Err` when `f` panics. Every call starts a new invocation, and releasing
+  a `Call` cancels nothing. The wait is the one cross-instance wait `Instance.result()` and mock
+  answers use.
 - A host starts only live code, through K1's entry rule, and what else it may start today
   (`starts`) follows. The interim ends: the rewriter moves each `ista async fn main`'s body into an
-  `ista async fn` that a `live async fn main` calls in a context of a runtime it opens. The test
-  runner, `World`, the test kits and `testing`'s crash-every-await (a runtime option) follow.
-- Left to proposal 9, filed: `Kv` stores written in the language, `store/sqlite`,
-  `futures.group()`, `functions.once`, an idle context's retention, several processes per store.
+  `ista async fn` that a `live async fn main` calls in a context. The test runner, `World` and the
+  test kits run ista code in contexts of their own; `testing`'s crash-every-await is a context
+  option.
+- Left to proposal 9's plan: `runtime.call` from ista code, `Call` replacing `Instance` (`spawn`
+  unchanged here), `accepted()`, `delete`, context constants, `Kv` stores, `runtime.jobKey()`.
 
-**Accept.** `live async fn main()` opening `store/memory` and awaiting
-`rt.call("o/1") purchase(order)` runs `purchase` persistently and gives `Ok` of its result; crashed
-at every `await` of the context, it resumes to the same result. On a file store, the program stopped
-mid-invocation and run again resumes the invocation, which finishes once; its `main` calling again
-starts a second invocation, and one guarded by an `ista const` flag doesn't. `accepted()` resolves
-after the first commit, while `main` waits in memory. Two handlers in one context share an
-`ista const` inbox; a `live` function reading one is a compile error. `spawn` gives a `Call`, and a
-panicking callee's `Call` gives an `Err`. `delete` ends a context and its waiting `Call`s give an
-`Err`. A host asked to start an `ista` function refuses. No `ista async fn main` and no `Instance`
-remain; the full suite passes.
+**Accept.** `live async fn main()` awaiting `rt.call("o/1") purchase(order)` runs `purchase`
+persistently and gives `Ok` of its result; crashed at every `await` of the context, it resumes to the
+same result; a panicking `purchase` gives an `Err`. The context commits while `main` waits in
+memory. On `--store`, a context stopped mid-invocation resumes when the program next opens the
+store. A host asked to start an `ista` function refuses. No `ista async fn main` remains; the full
+suite passes.
 
-**Spec.** §3.4 context constants; §3.8 prelude, `runtime`, stores; §9 contexts, runtimes, hosts;
-§10 testing persistent work.
+**Spec.** §9 runtimes, contexts and hosts; §10 testing persistent work.

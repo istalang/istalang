@@ -1,5 +1,5 @@
 ---
-description: plan for implementing proposal 8 (live and ista async), with the slices of proposal 9 that enter and leave persistent work (contexts, delegate) — process, eleven phases with order, shared surfaces and owners, diagnostic ranges and verification; read before forking or examining an async-kinds phase
+description: plan for implementing proposal 8 (live and ista async), with `delegate` and the minimal slice of proposal 9 that lets live code run and test ista code — process, eleven phases with order, shared surfaces and owners, diagnostic ranges and verification; read before forking or examining an async-kinds phase
 owner: tech-lead
 status: active
 applies_to: istalang
@@ -40,14 +40,14 @@ structural change the later phases build on lands first, on its own.
 | **K1** Kinds | `live` and `ista`; `Future<T, K>`; an unmarked function takes its caller's kind; the call rule; the rewrite | DC, R1b |
 | **R2** Resolvers | Registered one-shot resolvers of both kinds, `onCancel`, `select`'s losers cancelled | K1 |
 | **QV** Reach variables | Higher-order functions keep their arguments' `sendable` (F28), on K1's variables | K1 |
-| **DG** Delegate | Proposal 9's jobs: `await delegate f(args)`, `runtime.jobKey()`; host externs `live`; host-filled futures gone | R2 |
+| **DG** Delegate | Proposal 9's jobs: `await delegate f(args)`; host externs `live`; host-filled futures gone | R2 |
 | **AW** Awaitables | `Awaitable`, `Resolver`, one await path, `futures` over the kind | R2 |
-| **CX** Contexts | Proposal 9's runtimes the program opens, contexts as instances, `call(key)` giving a `Call` that replaces `Instance`, `ista const`; hosts start only live code | AW, DG |
+| **CX** Contexts | Proposal 9's minimal slice: a `Runtime` over the host's store and `rt.call(key) f(args)`, enough to run and test ista code; hosts start only live code | AW, DG |
 
 **Order:** {A0 ∥ R1a} → {T0 ∥ R1b} → DC → K1 → {R2 ∥ QV} → {DG ∥ AW} → CX → merge review. At most
 three run at once. *Why:* a phase starts only on landed code, and structure lands before what
 builds on it. K1 needs live runs and the rewriter. DG's result is a registered resolver, and its
-job is a `live` function. `Call<R, K>` is an awaitable. **Interims:** until CX, a host still starts an
+job is a `live` function. `Call<R>` is an awaitable. **Interims:** until CX, a host still starts an
 `ista async fn main`; until DG, a host extern still gives an `ista` future the host fills.
 
 ## Shared surfaces
@@ -85,6 +85,5 @@ A contract amendment goes to the tech-lead.
 | R1b, R2, DG | yes | yes | Store-write properties; `wake.bench.ts` |
 | Merge | — | yes | `main` since A0's base |
 
-**Out of scope, filed:** the rest of proposal 9 (`Kv` stores written in the language, `store/sqlite`,
-`futures.group()`, `functions.once`, an idle context's retention, several processes per store) and
-the native runtime.
+**Out of scope:** the rest of proposal 9, a plan of its own later (tracker), and the native runtime.
+The work ends with a working compiler and runtime.

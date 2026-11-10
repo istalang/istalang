@@ -27,6 +27,7 @@ tags: [tracker]
 | Proposal 5 (`docs/proposals/5-indented-values.md`; equi-recursive identity `docs/work/proposals/p5-equi-recursive-identity.md`) | done |
 | Identity, variance and inference (`docs/work/variance-inference/plan.md`; closed F25) | done |
 | Proposal 8, live and ista async (`docs/work/async-kinds/plan.md`) | in progress |
+| Proposal 9, native runtime (`docs/proposals/9-native-runtime.md`), beyond async-kinds CX's minimal slice | not planned: a plan of its own |
 | M8 Packages | planned |
 
 ## Filed
