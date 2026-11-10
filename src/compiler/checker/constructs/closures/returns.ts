@@ -1,7 +1,9 @@
 /**
  * What a body produces (§2, §4): its tail's value, or the value of a `return`.
  *
- * - With a declared result, the tail and every `return` must fit it.
+ * - With a declared result, the tail and every `return` must fit it, or, where a future of it may
+ *   be produced instead, as a plain lambda forwarding a call where a future is expected may (§3.14),
+ *   each fit that future.
  * - Without one, the body produces the type its tail and its `return`s agree on, as every set of
  *   producers of one value does (rules/agreement.ts); `Never` (a `return`, `break` or `continue`)
  *   agrees with anything. A lambda whose result a call is still inferring has its body guided by
@@ -57,14 +59,25 @@ export class ReturnScope implements Returns {
   readonly declared: Type | undefined;
   readonly #isFunction: boolean;
   readonly #guided: GuidedResult | undefined;
+  readonly #orFuture: Type | undefined;
   readonly #returned: Produced[] = [];
   readonly #propagated: Propagation[] = [];
 
-  /** A function's body returns; a value of its own, such as a constant's, doesn't. */
-  constructor(declared: Type | undefined, isFunction: boolean, guided?: GuidedResult) {
+  /**
+   * A function's body returns; a value of its own, such as a constant's, doesn't. One declared to
+   * produce a value may produce a future of it instead (`orFuture`), as a plain lambda forwarding a
+   * call may where a future is expected (§3.14).
+   */
+  constructor(
+    declared: Type | undefined,
+    isFunction: boolean,
+    guided?: GuidedResult,
+    orFuture?: Type,
+  ) {
     this.declared = declared;
     this.#isFunction = isFunction;
     this.#guided = guided;
+    this.#orFuture = orFuture;
   }
 
   check(context: BodyContext, node: Return): void {
@@ -78,18 +91,28 @@ export class ReturnScope implements Returns {
       return;
     }
     if (value === undefined) {
-      if (expected !== undefined) {
+      if (expected !== undefined && this.#orFuture === undefined) {
         context.fit(unitType, expected, node);
       }
       this.#returned.push({ type: unitType, span: node.span, site: node });
       return;
     }
+    this.#returned.push(producedBy(value, this.#checked(context, value)));
+  }
+
+  /**
+   * The type of `value`, returned: checked against what is declared, or as guided; where it may be
+   * a future of what is declared, fitted only once every producer is known (`#settled`).
+   */
+  #checked(context: BodyContext, value: Expression): Type {
     const guided = this.#guided;
-    const type =
-      guided === undefined || expected !== undefined
-        ? context.expect(value, expected)
-        : guided.inScope(() => context.part(value, guided.guide));
-    this.#returned.push(producedBy(value, type));
+    if (this.#orFuture !== undefined) {
+      return context.part(value, this.declared);
+    }
+    if (guided === undefined || this.declared !== undefined) {
+      return context.expect(value, this.declared);
+    }
+    return guided.inScope(() => context.part(value, guided.guide));
   }
 
   propagate(context: BodyContext, error: Type, span: AnchoredSpan): void {
@@ -105,8 +128,7 @@ export class ReturnScope implements Returns {
   /** What the body produces, given its `tail`, once every `return` in it has been checked. */
   result(context: BodyContext, tail: Produced): Type {
     if (this.declared !== undefined) {
-      fitProduced(context, tail, this.declared);
-      return this.declared;
+      return this.#settled(context, tail, this.declared);
     }
     const produced = [...this.#returned, tail];
     const mismatch = (span: AnchoredSpan, agreed: Type, found: Type) =>
@@ -139,6 +161,26 @@ export class ReturnScope implements Returns {
       checkPropagation(context, decided, propagation);
     }
     return decided;
+  }
+
+  /**
+   * What a body declared to produce `declared` produces, `tail` its last producer: `declared`, or
+   * the future of it it may produce instead where every producer gives that future and not every
+   * one a value (§3.14). Each producer is fitted to it, so one that fits neither is reported
+   * against `declared`.
+   */
+  #settled(context: BodyContext, tail: Produced, declared: Type): Type {
+    const produced = this.#orFuture === undefined ? [tail] : [...this.#returned, tail];
+    const fitsEach = (type: Type) =>
+      produced.every((each) => context.checker.fitOf(each.type, type) !== undefined);
+    const result =
+      this.#orFuture !== undefined && !fitsEach(declared) && fitsEach(this.#orFuture)
+        ? this.#orFuture
+        : declared;
+    for (const each of produced) {
+      fitProduced(context, each, result);
+    }
+    return result;
   }
 }
 

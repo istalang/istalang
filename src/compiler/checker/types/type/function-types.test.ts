@@ -62,10 +62,19 @@ describe('the two spellings of an async function type', () => {
     );
   });
 
-  it('checks a plain lambda body and its returns against the future value where async fn(A) -> R is expected (§3.14)', () => {
+  it('checks a plain lambda body and its returns against the future or its value where async fn(A) -> R is expected (§3.5, §3.14)', () => {
     expect(
       reported(`
-fn main():
+async fn later(x: Int) -> Future<Int>: x + 1
+async fn fetchUser(id: String) -> Future<String>: id
+async fn retryGeneric<R>(call: async fn(String) -> R) -> Future<R>: await call("u1")
+async fn retryConcrete(call: async fn(String) -> String) -> Future<String>: await call("u1")
+
+async fn main():
+  const forwarded: async fn(Int) -> Int = fn(x): later(x)
+  const retryInferred = await retryGeneric(fn(id): fetchUser(id))
+  const retryExplicit = await retryGeneric<String>(fn(id): fetchUser(id))
+  const retryConcreteResult = await retryConcrete(fn(id): fetchUser(id))
   const unionReturns: async fn(Int) -> Int | String = fn(x): {
     if x > 0:
       return "positive"
@@ -85,7 +94,17 @@ fn main():
     Err("no")
   }
   const recursiveNamed: async fn(Int) -> Int = fn fact(n): if n <= 1: 1 else: n * fact(n - 1)
-  _ = (unionReturns, literalReturns, singleLiteralReturn, bareVariantReturn, recursiveNamed)
+  _ = (
+    forwarded,
+    retryInferred,
+    retryExplicit,
+    retryConcreteResult,
+    unionReturns,
+    literalReturns,
+    singleLiteralReturn,
+    bareVariantReturn,
+    recursiveNamed,
+  )
 `),
     ).toEqual(reportedNothing);
   });

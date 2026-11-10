@@ -16,7 +16,7 @@
  * - An async function's written result is its `Future<T>`, as for a declared one (§3.3), and so is
  *   its function type's (§3.14): its body gives the `T` an `await` on a call yields. Where a future
  *   is expected of a lambda's call, its body gives the future's value, a plain one's made a future
- *   already resolved, unless it writes its result (`bodyResultGiven`).
+ *   already resolved, or a plain one's the future itself, every producer alike (`bodyResultGiven`).
  * - The function's own name, a local `fn`'s or a named lambda's, is declared before the body is
  *   checked when the result is known, so the body may call it; otherwise calling it is recursion
  *   needing a declared result (functions.ts).
@@ -204,25 +204,32 @@ interface ResultGiven {
   readonly type: Type;
 }
 
+/** What a lambda's body is said to give: as `ResultGiven`, or, declared, a future of it instead. */
+interface BodyResultGiven extends ResultGiven {
+  readonly orFuture?: Type | undefined;
+}
+
 /**
  * What a lambda's position says of what its body gives, where it says `result` of its call
- * (§3.14): the value of the future expected, which an async lambda's body gives and a plain one's
- * too, made a future already resolved; nothing where none is expected of an async one. A plain
- * lambda giving a future where one is expected writes its result.
+ * (§3.14): the value of the future expected, which an async lambda's body gives, and a plain
+ * one's too, made a future already resolved, or else that future itself, as a plain lambda
+ * forwarding a call gives it; nothing where no future is expected of an async one.
  */
 function bodyResultGiven(
   context: BodyContext,
   node: Lambda,
   result: ResultGiven | undefined,
-): ResultGiven | undefined {
+): BodyResultGiven | undefined {
   if (result === undefined) {
     return undefined;
   }
+  const isPlain = !awaits(node.qualifiers);
   const value = context.checker.fitting.futureValue(result.type);
   if (value === undefined) {
-    return awaits(node.qualifiers) ? undefined : result;
+    return isPlain ? result : undefined;
   }
-  return { ...result, type: value };
+  const orFuture = isPlain && result.kind === 'declared' ? result.type : undefined;
+  return { ...result, type: value, orFuture };
 }
 
 /** A lambda where its position gives `slots` for its parameters and says `result`, when it does. */
@@ -243,6 +250,7 @@ function checkLambdaAs(
     name: node.name,
     parameters: nestedParameters(context, node.parameters, slots),
     declaredResult,
+    orFuture: node.returnType === undefined ? ofBody?.orFuture : undefined,
     guided: hint === undefined ? undefined : { node, guide: hint, inScope: context.scopes.here() },
     reach: node.span,
     tail: (declared) => {
@@ -281,6 +289,8 @@ interface NestedHeader {
   readonly parameters: readonly SignatureParameter[];
   /** What its body is declared to give, its call giving a future of it where it is async. */
   readonly declaredResult: Type | undefined;
+  /** A future of `declaredResult`, which a plain lambda's body may give instead (§3.14). */
+  readonly orFuture?: Type | undefined;
   /** For a lambda whose result a call is still inferring, what guides its `return`s (returns.ts). */
   readonly guided?: GuidedResult | undefined;
   /** What the function's text covers, header and body. */
@@ -308,7 +318,7 @@ function checkNested(context: BodyContext, node: NestedFunction, header: NestedH
   const scope = new FunctionScope(
     node,
     awaits(node.qualifiers),
-    new ReturnScope(declaredResult, true, header.guided),
+    new ReturnScope(declaredResult, true, header.guided, header.orFuture),
     header.reach,
   );
   const result = context.functions.inside(scope, () => {
