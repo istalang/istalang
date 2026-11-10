@@ -23,17 +23,17 @@ struct _Link<M>:
 
 fn create<M>() -> Bus<M>: new Bus<M>{}
 
-fn send<M>(self: Bus<M>, message: M): drop _publish(self, message)
+ista fn send<M>(self: Bus<M>, message: M): drop _publish(self, message)
 
 # Sends `message`, retracted from every subscriber that hasn't read it when the holder is released.
-fn sendRevertible<M>(self: Bus<M>, message: M) -> Revertible<M>:
+ista fn sendRevertible<M>(self: Bus<M>, message: M) -> Revertible<M>:
   const retracted = _publish(self, message)
   fn retract(): retracted->value = true
   new Revertible<M>{retract}
 
 # Runs `handler` for each message sent from now on, in the order they were sent, one at a time,
 # until the future it returns is disposed, or the bus is and every message sent before is handled.
-fn subscribe<M>(self: Bus<M>, handler: ista async fn(M) -> Unit) -> Future<Unit, "ista">:
+ista fn subscribe<M>(self: Bus<M>, handler: ista async fn(M) -> Unit) -> Future<Unit, "ista">:
   _follow(self->_end, WeakRef(self), handler)
 
 # Disposing a bus (§7) lets go of the end of its chain. Declaring `dispose` is what makes a bus
@@ -41,7 +41,7 @@ fn subscribe<M>(self: Bus<M>, handler: ista async fn(M) -> Unit) -> Future<Unit,
 fn dispose<M>(self: Bus<M>): ()
 
 # Appends `message` to the stream: the flag that retracts it.
-fn _publish<M>(bus: Bus<M>, message: M) -> Shared<Bool>:
+ista fn _publish<M>(bus: Bus<M>, message: M) -> Shared<Bool>:
   const retracted = new Shared<Bool>{value: false}
   const next = Slot.create<_Link<M>>()
   drop bus->_end.put(_Link{message, retracted, next})

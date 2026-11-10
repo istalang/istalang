@@ -27,6 +27,7 @@ import {
   fitArguments,
   withSolvedTypes,
 } from '../../resolution/applying/argument-fit.ts';
+import { checkCallKind } from '../../resolution/applying/call-kinds.ts';
 import { checkReferencedPlaces } from '../../resolution/calls/places.ts';
 import { explain } from '../../resolution/calls/resolve/explanations.ts';
 import {
@@ -137,7 +138,14 @@ export function checkValueCall(
     return stopped;
   }
   context.valueCalls.record(call.node);
-  if (calleeType.kind !== 'function') {
+  if (calleeType.kind === 'function') {
+    checkCallKind(context, {
+      at: call.node.span,
+      frame: context.functions.current,
+      calleeKind: calleeType.persistence,
+      callee: valueNamed(callee),
+    });
+  } else {
     context.report(
       insideOptional(callee.span, calleeType, '(') ??
         checkerDiagnostics.notFunction(callee.span, typeText(calleeType)),
@@ -260,4 +268,9 @@ function completeValueCall(
   });
   context.valueCalls.bind(node, taken.binding);
   return call.type;
+}
+
+/** How a message names the function value a call calls. */
+function valueNamed(callee: Expression): string {
+  return callee.kind === 'Identifier' ? `'${callee.text}'` : 'a function value';
 }

@@ -27,9 +27,13 @@ import type { Witnesses } from '../../checker/surface/resolved-call.ts';
 import type { TypeKeys } from '../../checker/types/identity/type-keys.ts';
 import { type Substitution, substitutionFor } from '../../checker/types/parts/substitution.ts';
 import type { FunctionType, Type } from '../../checker/types/type/index.ts';
-import { literalType } from '../../checker/types/type/primitives.ts';
+import { literalType, persistenceType } from '../../checker/types/type/primitives.ts';
 import type { ModuleId } from '../../program/program.ts';
-import type { FunctionDeclaration } from '../../syntax/declarations/index.ts';
+import {
+  functionTypeParametersOf,
+  kindParameterOf,
+} from '../../syntax/declarations/function-kinds.ts';
+import { type FunctionDeclaration, typeParametersOf } from '../../syntax/declarations/index.ts';
 import type { Expression, FieldHeader, Lambda } from '../../syntax/expressions/index.ts';
 import type { VariableDeclaration } from '../../syntax/statements/index.ts';
 import type { AnchoredSpan } from '../../syntax/tree/positions.ts';
@@ -94,26 +98,36 @@ export function ownerSubstitution(owner: BodyOwner): Substitution {
   return new Map([...own, ...passBindings(owner.passes)]);
 }
 
-/** The instance `main` is: no type arguments. */
-export function rootInstance(declaration: FunctionDeclaration): FunctionInstance {
-  return { declaration, typeArguments: [], witnesses: new Map() };
+/**
+ * The instance of `declaration` that nothing calls in code of a kind, with its `written` type
+ * arguments: a start, which a host runs as live code (§9), or a conversion's own function, whose
+ * code is the same in either kind. An unmarked one's kind is `live`.
+ */
+export function rootInstance(
+  declaration: FunctionDeclaration,
+  written: readonly Type[] = [],
+): FunctionInstance {
+  const kind = kindParameterOf(declaration) === undefined ? [] : [persistenceType('live')];
+  return { declaration, typeArguments: [...written, ...kind], witnesses: new Map() };
 }
 
 /** How the instance maps its declaration's type parameters. */
 export function substitutionOf(
   instance: Pick<FunctionInstance, 'declaration' | 'typeArguments'>,
 ): Substitution {
-  return substitutionFor(instance.declaration.typeParameters, instance.typeArguments);
+  return substitutionFor(functionTypeParametersOf(instance.declaration), instance.typeArguments);
 }
 
 /**
  * A plain function value made async at `site`, in the body `owner` lowers, where an async function
- * is expected (§3.14): its entry calls the value of the plain function type `type`.
+ * is expected (§3.14): its entry calls the value of the plain function type `type`, giving what it
+ * gives as a future of `made`, the type it is made into, whose future's kind the entry runs in.
  */
 export interface AsyncFit {
   readonly owner: BodyOwner;
   readonly site: ValueSite;
   readonly type: FunctionType;
+  readonly made: FunctionType;
 }
 
 /**
@@ -256,9 +270,10 @@ export function instanceKey(keys: TypeKeys, instance: FunctionInstance): string 
  */
 export function instanceName(checker: Checker, instance: FunctionInstance): string {
   const { declaration, typeArguments } = instance;
+  // The kind an unmarked function is instantiated at is no argument written (§3.3): its entries'
+  // modes tell them apart, and its key keeps it.
+  const written = typeArguments.slice(0, typeParametersOf(declaration.typeParameters).length);
   const generic =
-    typeArguments.length === 0
-      ? ''
-      : `<${typeArguments.map((type) => spelledType(checker, type)).join(', ')}>`;
+    written.length === 0 ? '' : `<${written.map((type) => spelledType(checker, type)).join(', ')}>`;
   return `${qualifiedNameOf(checker, declaration)}${generic}`;
 }

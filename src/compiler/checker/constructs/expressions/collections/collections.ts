@@ -37,7 +37,7 @@ import type { Invalid } from '../../../../syntax/tree/node.ts';
 import type { AnchoredSpan } from '../../../../syntax/tree/positions.ts';
 import type { BodyContext, CollectionRecord } from '../../../contexts/body-context.ts';
 import type { Pass, Passes, PassTable } from '../../../contexts/passes.ts';
-import { useSite } from '../../../contexts/use-site.ts';
+import { bodySite } from '../../../contexts/use-site.ts';
 import { checkerDiagnostics } from '../../../diagnostics/index.ts';
 import { writeElement } from '../../../resolution/calls/collection-functions.ts';
 import { resolveDefault } from '../../../resolution/conformance/default-witness.ts';
@@ -90,12 +90,11 @@ export function checkDeclaredLiteral(
   node: ArrayLiteral | MapLiteral,
   type: NominalType,
 ): Type {
-  const { checker } = context;
   context.collections.record(node, 'declared');
   const failure = () => checkerDiagnostics.mapLiteralType(node.span, typeText(type));
   // With no default declared the literal says what it needs; one declared that doesn't meet
   // Default is reported by conformance, which says why.
-  const outcome = resolveDefault(useSite(checker, context.module, node.span), type);
+  const outcome = resolveDefault(bodySite(context, node.span), type);
   const [made] = outcome.kind === 'met' ? outcome.witnesses : [];
   if (made !== undefined) {
     context.implicit.record(node, 'default', made);

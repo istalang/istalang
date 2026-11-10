@@ -5,6 +5,6 @@
 fn note(text: String):
   _ = text
 
-fn bare():
+ista fn bare():
   defer note("now")
   note("later")

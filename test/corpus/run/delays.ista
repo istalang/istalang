@@ -8,7 +8,7 @@ ista async fn doubleLater(n: Int) -> Int:
   await time.delay(10ms)
   n * 2
 
-async fn main():
+ista async fn main():
   const start = time.now()
   const doubled = await doubleLater(21)
   if time.now().value - start.value >= 20: doubled else: 0

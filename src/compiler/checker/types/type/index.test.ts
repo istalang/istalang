@@ -10,6 +10,7 @@ import type { TypeParameter } from '../../../syntax/declarations/index.ts';
 import { handMadeSpan } from '../../../syntax/tree/tree.test-kit.ts';
 import { sameType } from '../identity/identity.ts';
 import { substitute } from '../parts/substitution.ts';
+import { unmarkedKind } from './function-kinds.ts';
 import { functionType, sameShape } from './function-types.ts';
 import type { FunctionType, Type } from './index.ts';
 import { boolType, intType, stringType, tupleType, unitType } from './primitives.ts';
@@ -34,6 +35,7 @@ const pack = { kind: 'parameter', declaration: packDeclaration } as const;
 function packed(fixed: readonly Type[]): FunctionType {
   return functionType({
     reach: 'plain',
+    persistence: unmarkedKind,
     parameters: fixed.map((type) => ({ type, reference: false })),
     pack,
     result: unitType,

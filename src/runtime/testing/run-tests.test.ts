@@ -104,7 +104,7 @@ ista async fn checkSum(a: Int, b: Int, expected: Int):
   assertEq(a + b, expected)
 
 @Suite{"deferred"}
-fn suite() -> Array<Test>: [
+ista fn suite() -> Array<Test>: [
   test("adds") checkSum(1, 2, 3),
 ]
 `);

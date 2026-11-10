@@ -14,7 +14,7 @@ ista async fn after(wait: time.Duration, value: Int) -> Int:
   await time.delay(wait)
   value
 
-async fn main() -> String:
+ista async fn main() -> String:
   const slow = after(6ms, 1)
   const fast = after(2ms, 2)
   const pending = Pending{label: "slow", done: slow}

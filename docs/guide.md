@@ -54,7 +54,7 @@ extern purchaseRequests: Queue<PurchaseRequest>          # provided by the host
 extern fn verdicts(id: String) -> Queue<Verdict>
 extern fn chargeCard(id: String, amount: Int) -> Result<String>
 
-async fn main():                                         # the one entry point
+ista async fn main():                                         # the one entry point
     while true:
         const req = await purchaseRequests.receive()     # saved; may wait for weeks
         spawn purchase(req)                              # each purchase is its own instance
@@ -330,7 +330,7 @@ import helper from './helper'                     # relative to this file
 
 ```python
 @Suite{"purchase"}
-fn suite() -> Array<Test>: [
+ista fn suite() -> Array<Test>: [
     test("expires after 5 days", withPurchaseEnv, async fn(env): {
         const t = spawn purchase(PurchaseRequest{id: "p1", amount: 900})
         await t.idle()                    # everything so far has committed

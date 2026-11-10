@@ -9,9 +9,11 @@
 
 import type { Diagnostic } from '../../../foundation/diagnostics/diagnostic.ts';
 import type { ModuleId } from '../../program/program.ts';
+import { functionTypeParametersOf } from '../../syntax/declarations/function-kinds.ts';
 import type { AnchoredSpan } from '../../syntax/tree/positions.ts';
 import { type Witnesses, witnessCallsOf } from '../surface/resolved-call.ts';
 import { type Substitution, substitutionFor } from '../types/parts/substitution.ts';
+import type { Type } from '../types/type/index.ts';
 import type { CheckerContext, Instantiable } from './context.ts';
 
 export interface UseSite {
@@ -35,6 +37,23 @@ export interface UseSite {
     typeArguments: Substitution,
     witnesses?: Witnesses,
   ) => void;
+  /**
+   * The kind of the code at the site, which a kind parameter nothing fixes settles to (proposal 8,
+   * Rule 3); none outside code, where only what fixes one does.
+   */
+  readonly codeKind?: Type | undefined;
+}
+
+/** The code a body site stands in: its module, and the kind of the function it is in. */
+interface BodyPlace {
+  readonly checker: CheckerContext;
+  readonly module: ModuleId;
+  readonly codeKind: Type;
+}
+
+/** The use site `at` in a body's code, reporting in its module, of its function's kind. */
+export function bodySite(place: BodyPlace, at: AnchoredSpan): UseSite {
+  return { ...useSite(place.checker, place.module, at), codeKind: place.codeKind };
 }
 
 /** A use site at `at` in `module`, reporting through the module's checker. */
@@ -50,7 +69,10 @@ export function useSite(checker: CheckerContext, module: ModuleId, at: AnchoredS
           kind: 'reduces',
           at,
           declaration: witness.function,
-          typeArguments: substitutionFor(witness.function.typeParameters, witness.typeArguments),
+          typeArguments: substitutionFor(
+            functionTypeParametersOf(witness.function),
+            witness.typeArguments,
+          ),
         });
       }
     },

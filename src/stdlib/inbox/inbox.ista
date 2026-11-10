@@ -33,32 +33,33 @@ shared struct Inbox<T>:
 # A revertible message's holder: disposing it calls `retract`, which the queue that made it
 # supplies, so every queue, the host's included (§3.6), hands out this one type.
 shared struct Revertible<T>:
-  retract: fn() -> Unit
+  retract: ista fn() -> Unit
 
 # A holder whose retraction lets go of `resource`, which disposes it: how a queue the host provides
-# hands out a revertible send, a disposable host type its host retracts (§3.6).
-fn Revertible.holding<T, R is Disposable>(resource: R) -> Revertible<T>:
+# hands out a revertible send, a disposable host type its host retracts (§3.6). It makes a
+# `Revertible`, whose release runs ista code, so it is ista.
+ista fn Revertible.holding<T, R is Disposable>(resource: R) -> Revertible<T>:
   const held = new Shared<R?>{value: resource}
   fn retract(): held->value = none
   new Revertible<T>{retract}
 
 fn Inbox.create<T>() -> Inbox<T>: new Inbox<T>{slot: Slot.create<T>()}
 
-fn send<T>(self: Inbox<T>, message: T): drop _queue(self, message)
+ista fn send<T>(self: Inbox<T>, message: T): drop _queue(self, message)
 
 # The holder retracts the message when its last holder lets go of it, unless it was received. It
 # reaches the inbox weakly, so holding it keeps no inbox alive.
-fn sendRevertible<T>(self: Inbox<T>, message: T) -> Revertible<T>:
+ista fn sendRevertible<T>(self: Inbox<T>, message: T) -> Revertible<T>:
   const number = _queue(self, message)
   const inbox = WeakRef(self)
   new Revertible<T>{retract: fn(): _retract(inbox, number)}
 
-fn receive<T>(self: Inbox<T>) -> Future<T, "ista">:
+ista fn receive<T>(self: Inbox<T>) -> Future<T, "ista">:
   _fill(self)
   self->slot.take()
 
 # The messages waiting, oldest first, without receiving them: the slot's, then the backlog's.
-fn pending<T>(self: Inbox<T>) -> Array<T>:
+ista fn pending<T>(self: Inbox<T>) -> Array<T>:
   const next: Array<T> = select:
     case self->slot.read() as message: [message]
     else: []
@@ -69,10 +70,10 @@ fn pending<T>(self: Inbox<T>) -> Array<T>:
 # `WeakRef` can watch.
 fn dispose<T>(self: Inbox<T>): ()
 
-fn dispose<T>(self: Revertible<T>): self->retract()
+ista fn dispose<T>(self: Revertible<T>): self->retract()
 
 # Queues `message` behind the others; its number.
-fn _queue<T>(self: Inbox<T>, message: T) -> Int:
+ista fn _queue<T>(self: Inbox<T>, message: T) -> Int:
   const number = self->queued
   self->backlog.push(Queued{number, message})
   self->queued += 1
@@ -80,7 +81,7 @@ fn _queue<T>(self: Inbox<T>, message: T) -> Int:
   number
 
 # Moves the first message of the backlog into the slot, if the slot is empty.
-fn _fill<T>(self: Inbox<T>):
+ista fn _fill<T>(self: Inbox<T>):
   if self->backlog.length() > 0 and not _settles(self->slot.read()):
     const next = self->backlog[0]
     drop self->slot.put(next.message)
@@ -88,7 +89,7 @@ fn _fill<T>(self: Inbox<T>):
     self->backlog = self->backlog[1..]
 
 # Removes message `number` from the inbox, if the inbox is still there and the message unread.
-fn _retract<T>(inbox: WeakRef<Inbox<T>>, number: Int):
+ista fn _retract<T>(inbox: WeakRef<Inbox<T>>, number: Int):
   if inbox.deref() is Inbox as box:
     box->backlog = [for queued in box->backlog if queued.number != number: queued]
     if box->slotted == number and _settles(box->slot.take()):
@@ -97,7 +98,7 @@ fn _retract<T>(inbox: WeakRef<Inbox<T>>, number: Int):
 
 # Whether `operation` settles at once. One that doesn't is let go with the parameter, and a slot
 # operation let go does nothing (§6), so a `take` that doesn't settle consumes nothing.
-fn _settles<T>(operation: Future<T, "ista">) -> Bool:
+ista fn _settles<T>(operation: Future<T, "ista">) -> Bool:
   select:
     case operation: true
     else: false

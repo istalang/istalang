@@ -3,7 +3,7 @@
 # async or a plain one giving a future, one type (§3.5, §3.14): a call through the `any` type
 # a wider argument stands for awaits the future and converts its value.
 trait Started<T>:
-  fn started(self: Self) -> Future<T, "ista">
+  ista fn started(self: Self) -> Future<T, "ista">
 
 trait Later<T>:
   ista async fn later(self: Self) -> T
@@ -12,10 +12,10 @@ struct Counter { n: Int }
 
 ista async fn bumped(n: Int) -> Int: n + 1
 
-fn started(self: Counter) -> Future<Int, "ista">: bumped(self.n)
+ista fn started(self: Counter) -> Future<Int, "ista">: bumped(self.n)
 ista async fn later(self: Counter) -> Int: self.n + 3
 
-async fn main() -> Array<Int?>:
+ista async fn main() -> Array<Int?>:
   const counter: any Started<Int?> = Counter{n: 1}
   const later: any Later<Int?> = Counter{n: 1}
   [await counter.started(), await later.later()]

@@ -17,7 +17,7 @@ ista async fn priority() -> String:
     case a.read() as fromA:
       "a" + String(fromA)
 
-fn tryTake(s: Slot<Int>) -> String:
+ista fn tryTake(s: Slot<Int>) -> String:
   select:
     case s.read() as value:
       String(value)
@@ -47,7 +47,7 @@ ista async fn leaving(s: Slot<String>) -> String:
       return "late"
   got ?? "none"
 
-async fn main() -> String:
+ista async fn main() -> String:
   const ready = Slot.create<Int>()
   const empty = Slot.create<Int>()
   await ready.put(1)

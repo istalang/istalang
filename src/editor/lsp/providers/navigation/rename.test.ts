@@ -180,7 +180,8 @@ describe('renaming across the corpus', () => {
     expect(keyed.length).toBeGreaterThan(0);
     const problems = await Promise.all(keyed.map(renamingProblems));
     expect(problems.flat()).toEqual([]);
-  }, 120_000);
+    // Every name of every computed program, not a sample: about 110s alone, more beside the suite.
+  }, 240_000);
 
   it('spells shorthands out, keeping what they mean', async () => {
     const shorthands = renamable.filter(hasShorthand);

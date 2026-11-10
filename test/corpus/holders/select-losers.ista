@@ -38,7 +38,7 @@ ista async fn survives() -> Bool:
     case time.delay(1h):
       false
 
-async fn main() -> String:
+ista async fn main() -> String:
   const box = Inbox.create<Int>()
   const ticks = Inbox.create<Unit>()
   _ = produce(box, ticks)

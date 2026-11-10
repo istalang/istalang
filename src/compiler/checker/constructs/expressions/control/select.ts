@@ -26,7 +26,7 @@ import { errorType } from '../../../types/type/primitives.ts';
 import { typeText } from '../../../types/type/type-text.ts';
 import { awaitedOf } from '../../../types/type/well-known.ts';
 import { ownCallerOf } from '../../closures/own-calls.ts';
-import { reportWait } from './await.ts';
+import { checkWaitKind, reportWait } from './await.ts';
 import { Branches } from './branches.ts';
 
 export function checkSelect(context: BodyContext, node: Select, expected: Type | undefined): Type {
@@ -77,9 +77,14 @@ function reportForm(context: BodyContext, node: Select): void {
 /** Checks a case's future, and binds or discards the value it gives. */
 function checkCaseFuture(context: BodyContext, selectCase: SelectCase): void {
   const future = context.settled(selectCase.future);
-  const value = awaitedOf(context.checker, future)?.value;
-  if (value === undefined && future.kind !== 'error') {
-    context.report(checkerDiagnostics.caseNeedsFuture(selectCase.future.span, typeText(future)));
+  const awaited = awaitedOf(context.checker, future);
+  const value = awaited?.value;
+  if (awaited === undefined) {
+    if (future.kind !== 'error') {
+      context.report(checkerDiagnostics.caseNeedsFuture(selectCase.future.span, typeText(future)));
+    }
+  } else {
+    checkWaitKind(context, selectCase.future.span, future, awaited.mode);
   }
   if (selectCase.binding !== undefined) {
     const type = value ?? errorType;

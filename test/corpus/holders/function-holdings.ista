@@ -40,7 +40,7 @@ ista async fn withHeader(log: Shared<Array<String>>):
   drop copy
   note(log, "copy dropped")
 
-async fn main() -> String:
+ista async fn main() -> String:
   const empty: Array<String> = []
   const log = new Shared{value: empty}
   await a(log)

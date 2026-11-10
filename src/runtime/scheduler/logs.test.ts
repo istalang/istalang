@@ -13,7 +13,7 @@ function loggingMain(fails: boolean): string {
   return [
     "import * as log from 'log'",
     "import * as runtime from 'runtime'",
-    'async fn main() -> Int:',
+    'ista async fn main() -> Int:',
     '  log.info("first", struct{n: 1})',
     '  await runtime.commit()',
     '  log.warn("second")',

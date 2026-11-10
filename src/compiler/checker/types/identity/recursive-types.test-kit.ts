@@ -19,6 +19,7 @@ import type {
   TypeAliasDeclaration,
   TypeParameter,
 } from '../../../syntax/declarations/index.ts';
+import { unmarkedKind } from '../type/function-kinds.ts';
 import { functionType } from '../type/function-types.ts';
 import type { Type } from '../type/index.ts';
 import { boolType, intType, neverType, stringType } from '../type/primitives.ts';
@@ -261,6 +262,7 @@ export function bodiesOf(
       case 'function':
         return functionType({
           reach: 'plain',
+          persistence: unmarkedKind,
           parameters: [{ type: slot(each.parameter), reference: false }],
           result: slot(each.result),
         });

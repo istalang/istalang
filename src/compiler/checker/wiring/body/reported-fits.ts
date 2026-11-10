@@ -7,14 +7,14 @@
 
 import type { AnchoredSpan } from '../../../syntax/tree/positions.ts';
 import type { BodyContext } from '../../contexts/body-context.ts';
-import { useSite } from '../../contexts/use-site.ts';
+import { bodySite } from '../../contexts/use-site.ts';
 import { reportUnmet } from '../../resolution/conformance/trait-objects.ts';
 import { exactFit, type Fit, misfitOf } from '../../types/fitting/fit/index.ts';
 import type { Type } from '../../types/type/index.ts';
 
 /** How `found` fits `expected`; as it is after reporting at `at` why not. */
 export function reportedFit(
-  context: Pick<BodyContext, 'checker' | 'module' | 'report'>,
+  context: Pick<BodyContext, 'checker' | 'module' | 'report' | 'codeKind'>,
   found: Type,
   expected: Type,
   at: AnchoredSpan,
@@ -24,7 +24,7 @@ export function reportedFit(
   if (fit !== undefined) {
     return fit;
   }
-  const site = useSite(checker, context.module, at);
+  const site = bodySite(context, at);
   if (expected.kind !== 'any' || !reportUnmet(site, found, expected)) {
     context.report(misfitOf(checker.fitting, at, found, expected));
   }

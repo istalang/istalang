@@ -20,7 +20,7 @@ ista async fn collect(box: Inbox<String>, count: Int) -> String:
     received.push(await box.receive())
   received.join(" ")
 
-async fn main() -> String:
+ista async fn main() -> String:
   const jobs = Inbox.create<Int>()
   const results = Inbox.create<String>()
   _ = worker("a", jobs, results)

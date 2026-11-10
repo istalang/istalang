@@ -12,14 +12,14 @@ ista async fn announce(boxes: Array<Inbox<String>>, text: String, visibleFor: ti
     hold _ = box.sendRevertible(text)
   await time.delay(visibleFor)
 
-fn next(box: Inbox<String>) -> String:
+ista fn next(box: Inbox<String>) -> String:
   select:
     case box.receive() as message:
       message
     else:
       "nothing"
 
-async fn main() -> String:
+ista async fn main() -> String:
   const a = Inbox.create<String>()
   const b = Inbox.create<String>()
   const alone = Inbox.create<String>()

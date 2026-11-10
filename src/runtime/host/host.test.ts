@@ -84,8 +84,8 @@ describe('the runtime', () => {
       compiledText(
         [
           'fn answer() -> Int: 42',
-          'fn handle() -> Instance<Int>: spawn answer()',
-          'async fn main():',
+          'ista fn handle() -> Instance<Int>: spawn answer()',
+          'ista async fn main():',
           '  spawn answer()',
           '  spawn handle()',
           '  0',
@@ -110,7 +110,7 @@ describe('the runtime', () => {
     const frames = state.kind === 'panicked' ? state.trace.split('\n') : [];
     expect(frames.map((frame) => frame.split(' ')[1])).toEqual([
       'main.main.deferred@2:13',
-      'prelude.dispose',
+      'prelude.dispose<"live">',
     ]);
   });
 

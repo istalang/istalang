@@ -906,6 +906,7 @@ fn maxSendable<T is Sendable & Comparable>(xs: Array<T>) -> T?:
 - **Associated types.** A trait may require an associated type, `type Key`, maybe with a bound: `type Key is Stringable & Encodable`. A type meets it with an associated type of that name (§3.1) meeting the bound. Meeting a function requirement, `Self.Name` is the type's own: `fn validate<T>(self: Field<T>, data: T)` meets `fn validate(self: Self, data: Self.Data)`, since `Field<T>.Data` is `T`. `T.Data` is one type: where several traits of `T` require `Data`, it meets each one's bound. A union or an `any` type has none (§3.1), so neither meets a trait requiring one where a type must, as a type argument does; a call through such a trait on a union's value still runs its member's function, each member meeting the trait with its own (Unions, above).
 - **Static functions.** A trait may require a static function, declared on `Self`, such as `fn Self.zero() -> Self`. Generic code calls it through the type parameter: `T.zero()` (§3.7).
 - **Generic requirements.** A required function may have type parameters of its own, such as `fn map<U>(self: Self, f: fn(T) -> U) -> Array<U>`. A function satisfies it when it is generic in the same way, up to the names of its type parameters.
+- **Requirement kinds.** A requirement carries a kind (§3.3), written on its head, or a kind parameter its signature names: `fn produce(self: Self) -> Future<Int, K>` in `trait Producer<K in Persistence>` is of kind `K`. A requirement of a kind is met by a function of that kind or an unmarked one, and an unmarked requirement only by an unmarked function, so generic code calls a requirement as its kind allows.
 - **Calls through a requirement.** A call through a constraint or an `any` value binds its arguments against the required function's own parameters (§3.3): names are its parameters', and its rest parameter reaches the function meeting it as one array. A required function has no defaults, since each type meeting the trait could give another; the function meeting it may have more parameters, each with a default, which it computes when called through the trait.
 
 **Trait objects.** `any A & B` is the type of a value of any type meeting each of its traits; `any T?` is `(any T)?`. It is how values of different types share a collection, a field or a parameter:
@@ -1672,7 +1673,7 @@ Every program has exactly one `async fn main()`. The runtime starts it when a ve
 - **Isolating a call.** `runtime.isolate(f)` spawns `f` and waits for its `result()`, so a panic in `f` becomes an `Err` instead of freezing the caller. Its panic also terminates that instance at once, disposing what it holds (§7), so it needs no operator.
 
 ```python
-async fn main():
+ista async fn main():
     while true:
         const req: PurchaseRequest = await purchaseRequests.receive()
         spawn purchase(req)
@@ -1687,7 +1688,7 @@ async fn main():
 - **Learn of spawned instances:** advancing an instance tells the host which instances it spawned, so the host runs them too.
 - **Receive logs:** advancing an instance also gives the log records its committed segments wrote, in order (§3.8). They aren't kept in the snapshot, so a host that crashes before taking them loses them.
 
-A host names what it starts, and each extern it implements, by its key: the module's name, the function's or constant's name and its parameter types, as in `purchase.chargeCard(String, Int)`, `purchase.dispose(purchase.Sent)` or `purchase.approvalDeadline`, a `T | None` spelled through its alias, `prelude.Optional<T>`. Overloads therefore have distinct keys, and every instantiation of a generic extern shares one. A host written in JavaScript works with JSON as `JSON.parse` gives it, except that every integer is a `bigint`, so an `Int` keeps every digit and reads apart from a `Float`; it may give back a `bigint` or a whole number for one. What it gives back is read as `JSON.stringify` would write it, so `undefined` is `null`, or a missing field inside an object: a function returning nothing gives `Unit` or `none`.
+A host names what it starts, and each extern it implements, by its key: the module's name, the function's or constant's name and its parameter types, as in `purchase.chargeCard(String, Int)`, `purchase.dispose(purchase.Sent)` or `purchase.approvalDeadline`, a `T | None` spelled through its alias, `prelude.Optional<T>`, and a function type with its kind, `ista fn() -> prelude.Future<R, "ista">`. Overloads therefore have distinct keys, and every instantiation of a generic extern shares one. A host written in JavaScript works with JSON as `JSON.parse` gives it, except that every integer is a `bigint`, so an `Int` keeps every digit and reads apart from a `Float`; it may give back a `bigint` or a whole number for one. What it gives back is read as `JSON.stringify` would write it, so `undefined` is `null`, or a missing field inside an object: a function returning nothing gives `Unit` or `none`.
 
 Communication across this boundary takes only three forms: the workflow calls an `extern fn`, the host fills something the workflow waits on (such as a queue it provides), or the host starts an instance. The host never calls workflow functions directly. Asynchronous host work hands the workflow something to wait on instead of taking a callback, for example `extern fn fetch(req: Request) -> Future<Response>`: the host names the new future with a token of its own choosing and fills it later. An extern's result, or a value an extern constant gives, that doesn't fit its declared type panics the instance; a future filled, or an instance started, with JSON that doesn't fit fails the host's call instead. Filling a future nothing waits on any more, because it was disposed (§7) or its instance ended, changes nothing; filling one of a panicked instance fails until the instance is retried.
 
@@ -1728,7 +1729,7 @@ Tests are ordinary code. The runtime adds a few primitives, in the `testing` mod
 
 ```python
 @Suite{"purchase approval"}
-fn approvalSuite() -> Array<Test>: [
+ista fn approvalSuite() -> Array<Test>: [
     test("expires after 5 days", withPurchaseEnv, async fn(env): {
         const t = spawn purchase(PurchaseRequest{id: "p1", item: "laptop", amount: 900})
         await t.idle()
@@ -1862,9 +1863,9 @@ extern shared struct Sent
 extern fn dispose(self: Sent)
 extern fn send<T is Encodable>(self: Queue<T>, msg: T)
 extern fn _sendRevertible<T is Encodable>(self: Queue<T>, msg: T) -> Sent
-extern fn receive<T is Decodable>(self: Queue<T>) -> Future<T, "ista">
+extern ista fn receive<T is Decodable>(self: Queue<T>) -> Future<T, "ista">
 
-fn sendRevertible<T is Encodable>(self: Queue<T>, msg: T) -> Revertible<T>:
+ista fn sendRevertible<T is Encodable>(self: Queue<T>, msg: T) -> Revertible<T>:
     Revertible.holding(_sendRevertible(self, msg))
 
 extern purchaseRequests: Queue<PurchaseRequest>
@@ -1879,7 +1880,7 @@ extern fn chargeCard(purchaseId: String, amount: Int) -> Result<String>
 **Entry point.** Each purchase is spawned as its own instance, so it finishes on the version it started with:
 
 ```python
-async fn main():
+ista async fn main():
     while true:
         const req: PurchaseRequest = await purchaseRequests.receive()
         spawn purchase(req)

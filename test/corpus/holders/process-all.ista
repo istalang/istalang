@@ -29,7 +29,7 @@ ista async fn processFirst(
     outcomes.push(await results.receive())
   outcomes
 
-async fn main() -> String:
+ista async fn main() -> String:
   const empty: Array<String> = []
   const log = new Shared{value: empty}
   const jobs = [Job{id: 1, wait: 1ms}, Job{id: 2, wait: 1h}, Job{id: 3, wait: 2ms}]

@@ -15,23 +15,23 @@ struct _Entry<V>:
 shared struct WeakMap<K is Disposable, V>:
   entries: Map<WeakRef<K>, _Entry<V>> = [:]
 
-fn WeakMap.create<K is Disposable, V>() -> WeakMap<K, V>: new WeakMap<K, V>{}
+ista fn WeakMap.create<K is Disposable, V>() -> WeakMap<K, V>: new WeakMap<K, V>{}
 
-fn get<K is Disposable, V>(self: WeakMap<K, V>, key: K) -> V?:
+ista fn get<K is Disposable, V>(self: WeakMap<K, V>, key: K) -> V?:
   self->entries.get(WeakRef(key))?.value
 
-fn has<K is Disposable, V>(self: WeakMap<K, V>, key: K) -> Bool: self->entries.has(WeakRef(key))
+ista fn has<K is Disposable, V>(self: WeakMap<K, V>, key: K) -> Bool: self->entries.has(WeakRef(key))
 
 # As `has`, for `in` (§3.9).
-fn includes<K is Disposable, V>(self: WeakMap<K, V>, key: K) -> Bool: self.has(key)
+ista fn includes<K is Disposable, V>(self: WeakMap<K, V>, key: K) -> Bool: self.has(key)
 
 # Setting a key the map holds keeps its watch.
-fn set<K is Disposable, V>(self: WeakMap<K, V>, key: K, value: V):
+ista fn set<K is Disposable, V>(self: WeakMap<K, V>, key: K, value: V):
   const reference = WeakRef(key)
   const watch = self->entries.get(reference)?.watch ?? _deleteOnDisposal(self, reference)
   self->entries[reference] = _Entry{value, watch}
 
-fn delete<K is Disposable, V>(self: WeakMap<K, V>, key: K) -> Bool:
+ista fn delete<K is Disposable, V>(self: WeakMap<K, V>, key: K) -> Bool:
   self->entries.delete(WeakRef(key))
 
 ista async fn _deleteOnDisposal<K is Disposable, V>(map: WeakMap<K, V>, key: WeakRef<K>) -> Unit:

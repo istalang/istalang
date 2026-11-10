@@ -24,7 +24,7 @@
 
 import type { Expression, Lambda } from '../../../syntax/expressions/index.ts';
 import type { BodyContext } from '../../contexts/body-context.ts';
-import { useSite } from '../../contexts/use-site.ts';
+import { bodySite } from '../../contexts/use-site.ts';
 import {
   type FunctionNaming,
   madeValue,
@@ -253,7 +253,7 @@ function judgeNamed(
   }
   const { application, type } = opened;
   const { inference, signature } = application;
-  const site = useSite(context.checker, context.module, node.span);
+  const site = bodySite(context, node.span);
   const complete = () => {
     context.expectAt(node, inference.solved(expected));
     return recordedValue(context, node, application, madeValue(context, application, site));

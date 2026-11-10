@@ -5,6 +5,7 @@
  */
 
 import { reportedIn } from '../../foundation/diagnostics/diagnostic.test-kit.ts';
+import type { Persistence } from '../../foundation/language/well-known/index.ts';
 import { stdProgramOf } from '../binder/bind.test-kit.ts';
 import { diagnosedAt } from '../compile.test-kit.ts';
 import type { Program } from '../program/program.ts';
@@ -19,9 +20,13 @@ export function reported(text: string, others: Readonly<Record<string, string>> 
   return reportedIn(source, diagnostics);
 }
 
-/** `body` as the body of a function taking `c: Bool`, `n: Int` and `s: String`, after `Point`. */
-export function inFunction(body: string): string {
-  return `struct Point { x: Int, y: Int }\n\nfn subject(c: Bool, n: Int, s: String):\n${body
+/**
+ * `body` as the body of a function taking `c: Bool`, `n: Int` and `s: String`, after `Point`: one of
+ * `kind` where given, else unmarked (§3.3).
+ */
+export function inFunction(body: string, kind?: Persistence): string {
+  const head = kind === undefined ? 'fn' : `${kind} fn`;
+  return `struct Point { x: Int, y: Int }\n\n${head} subject(c: Bool, n: Int, s: String):\n${body
     .split('\n')
     .map((line) => `  ${line}`)
     .join('\n')}\n`;

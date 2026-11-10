@@ -19,7 +19,7 @@ const waitingProgram = compiledText(
     'ista async fn inner() -> Int:',
     '  await time.delay(10ms)',
     '  1',
-    'async fn main():',
+    'ista async fn main():',
     '  await inner()',
   ].join('\n'),
 );

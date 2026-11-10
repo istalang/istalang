@@ -20,7 +20,7 @@ ista async fn child(parent: WeakRef<Inbox<Status>>, mine: Inbox<Command>) -> Str
         return "child saw the inbox go"
   "never"
 
-async fn main() -> String:
+ista async fn main() -> String:
   const commands = Inbox.create<Command>()
   let replies = ""
   const running = {

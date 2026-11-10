@@ -9,7 +9,7 @@ ista async fn watch(w: WeakRef<Inbox<Int>>, seen: Inbox<String>) -> Unit:
   await w.disposed()
   seen.send("signal")
 
-async fn main() -> String:
+ista async fn main() -> String:
   const seen = Inbox.create<String>()
   const holder = {
     const box = Inbox.create<Int>()

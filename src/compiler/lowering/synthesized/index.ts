@@ -18,7 +18,7 @@
 
 import type { Argument } from '../../../definition/instructions/places.ts';
 import type { FunctionId, Register } from '../../../definition/operands.ts';
-import type { CodeFunction } from '../../../definition/tables/functions.ts';
+import type { CodeFunction, CodeMode } from '../../../definition/tables/functions.ts';
 import type { Value } from '../../../definition/values/values.ts';
 import { resultVariants } from '../../../foundation/language/well-known/variants.ts';
 import { unreachable } from '../../../foundation/structures/unreachable.ts';
@@ -33,7 +33,6 @@ import { payloadOf, payloadOr } from '../constructs/expressions/structs/variants
 import type { CellRegister } from '../constructs/statements/variables.ts';
 import type { CodeContext } from '../context.ts';
 import { CodeWriter } from '../functions/code-writer.ts';
-import { codeModeOf } from '../functions/modes.ts';
 import { emitConstant } from '../tables/constants.ts';
 import type { DefinitionTables, EntryHeader } from '../tables/tables.ts';
 import { construct } from '../values/struct-values.ts';
@@ -158,12 +157,12 @@ export class SynthesizedCode implements CodeContext {
   /**
    * The finished entry, named and placed by `header`; `references` says which parameters are `&`.
    */
-  entry(header: EntryHeader, isAsync: boolean, references: readonly boolean[] = []): CodeFunction {
+  entry(header: EntryHeader, mode: CodeMode, references: readonly boolean[] = []): CodeFunction {
     const { registers, instructions } = this.code.finish(this.tables.treeAt(header.module));
     return {
       kind: 'code',
       ...header,
-      mode: codeModeOf(isAsync),
+      mode,
       parameters: this.parameters.map((_, index) => ({
         reference: references[index] === true,
         hasDefault: false,

@@ -10,7 +10,7 @@ fn slot() -> Slot<Int>: Slot.create<Int>()
 
 fn twice(n: Int) -> Int: n * 2
 
-async fn main():
+ista async fn main():
   const s = spawn slot()
   drop await s.result()
   const n: Int = spawn twice(1)

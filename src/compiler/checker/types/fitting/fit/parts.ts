@@ -7,6 +7,7 @@
 
 import { sameItems } from '../../../../../foundation/structures/equality.ts';
 import type { UnfoldingPairs } from '../../identity/unfolding-pairs.ts';
+import { kindAdmits } from '../../type/function-kinds.ts';
 import { functionFits, resultFitOf } from '../../type/function-types.ts';
 import type {
   AnonymousStructType,
@@ -113,7 +114,8 @@ function fieldsFit(
 /**
  * Whether a function of type `found` fits where `expected` is, part by part (`functionFits`):
  * taking what `expected` takes, a `&` exactly, and giving what it gives, into the value of a
- * future expected of it too (§3.14). A function ending in a pack fits only as it is.
+ * future expected of it too (§3.14), called in `expected`'s kind (`kindAdmits`). A function
+ * ending in a pack fits only as it is, but for its kind.
  */
 function functionFitsByParts(
   found: FunctionType,
@@ -121,15 +123,15 @@ function functionFitsByParts(
   relation: PartsRelation,
 ): boolean {
   const { fits, same, attempt } = relation;
-  return (
-    expected.pack === undefined &&
-    functionFits(
-      expected,
-      found,
-      (taken, given, byReference) => (byReference ? same(taken, given) : fits(taken, given)),
-      (gives, given) =>
-        resultFitOf(given, gives, (value, place) => attempt(() => fits(value, place)), relation) !==
-        undefined,
-    )
-  );
+  const kinds = (code: Type, callee: Type) => kindAdmits(code, callee, same);
+  if (expected.pack !== undefined) {
+    return functionFits(expected, found, { parts: same, kinds });
+  }
+  return functionFits(expected, found, {
+    parts: (taken, given, byReference) => (byReference ? same(taken, given) : fits(taken, given)),
+    results: (gives, given) =>
+      resultFitOf(given, gives, (value, place) => attempt(() => fits(value, place)), relation) !==
+      undefined,
+    kinds,
+  });
 }

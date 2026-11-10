@@ -31,12 +31,12 @@ const program = [
   '  amount: Int',
   '',
   'extern sendable struct Queue<T is Sendable>',
-  'extern fn receive<T is Decodable>(self: Queue<T>) -> Future<T, "ista">',
+  'extern ista fn receive<T is Decodable>(self: Queue<T>) -> Future<T, "ista">',
   'extern fn orders() -> Queue<Order>',
   'extern fn charge(id: String, amount: Int) -> Result<String>',
   'extern limit: Int',
   '',
-  'async fn main() -> String:',
+  'ista async fn main() -> String:',
   '  const order = await orders().receive()',
   '  if order.amount > limit:',
   '    return "too much"',
@@ -282,8 +282,8 @@ describe('ista run --host', () => {
   it('keeps waiting on the promises still pending after one of them fails', async () => {
     const root = project({
       'main.ista': [
-        'extern fn later(name: String) -> Future<String, "ista">',
-        'async fn main() -> String:',
+        'extern ista fn later(name: String) -> Future<String, "ista">',
+        'ista async fn main() -> String:',
         '  _ = later("fail")',
         '  await later("ok")',
         '',
@@ -321,7 +321,7 @@ describe('ista run --host', () => {
   it("runs spec §12.1's purchase in place, to the outcome its charge gives", async () => {
     const { run, ...logged } = await runSpec([
       ...specCode('12.1 Purchase approval', (code) => !code.includes('spawn purchase')),
-      'async fn main() -> String:',
+      'ista async fn main() -> String:',
       '    await purchase(PurchaseRequest{id: "p1", item: "laptop", amount: 900})',
     ]);
     expect(run).toEqual({ code: 0, out: '"paid: r-p1-900"\n', err: '' });
@@ -336,7 +336,7 @@ describe('ista run --host', () => {
       ...specCode('12.3 Broadcast with expiry').map((code) =>
         code.replace("import * as time from 'time'\n", ''),
       ),
-      'async fn main() -> String:',
+      'ista async fn main() -> String:',
       '    await announce("hello", ["ann", "bob"], 10ms)',
       '    "done"',
     ]);

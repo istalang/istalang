@@ -80,20 +80,18 @@ describe('endless instantiation', () => {
     );
   });
 
-  it("is reported where a spawn's outcome codec leads back to an expanding instance", () => {
+  it("never forms where a codec would spawn: an ista one meets no codec's requirement (§3.3)", () => {
     const main = [
       "import Json from 'json'",
       'struct Box<T> { value: T }',
       'fn leaf<T is Sendable>(x: T) -> Box<T>: Box{value: x}',
-      'fn toJson<T is Sendable>(self: Box<T>) -> Json:',
+      'ista fn toJson<T is Sendable>(self: Box<T>) -> Json:',
       '  drop spawn leaf(self)',
       '  none',
-      'async fn main(): { drop spawn leaf(1); 0 }',
+      'ista async fn main(): { drop spawn leaf(1); 0 }',
     ].join('\n');
     const { diagnostics } = diagnosedAt(stdProgramOf({ main }), 'main');
-    expect(diagnostics.map(({ code }) => code)).toEqual([
-      checkerDiagnostics.expandingInstantiation.code,
-    ]);
+    expect(diagnostics.map(({ code }) => code)).toEqual([]);
   });
 
   it("checks no body a module's own generic functions don't reach", () => {

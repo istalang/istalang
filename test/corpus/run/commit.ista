@@ -3,10 +3,10 @@
 import * as runtime from 'runtime'
 import * as time from 'time'
 
-fn soon() -> Future<Unit, "ista">:
+ista fn soon() -> Future<Unit, "ista">:
   time.delay(1ms)
 
-async fn main():
+ista async fn main():
   await runtime.commit()
   await soon()
   const pause = 5ms

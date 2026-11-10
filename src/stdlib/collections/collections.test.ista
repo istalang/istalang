@@ -13,7 +13,7 @@ struct Watched:
   value: WeakRef<Inbox<Int>>
 
 # Sets an entry of `map` for the key `holder` holds, to a value only the map holds.
-fn entryOf(map: Boxes, holder: Shared<Inbox<Int>?>) -> Watched:
+ista fn entryOf(map: Boxes, holder: Shared<Inbox<Int>?>) -> Watched:
   if holder->value is Inbox as key:
     const value = Inbox.create<Int>()
     map.set(key, value)

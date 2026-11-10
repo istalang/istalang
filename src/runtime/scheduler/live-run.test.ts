@@ -44,7 +44,7 @@ function programOf(steps: readonly Step[]): string {
       'ista async fn later(n: Int) -> Int:',
       '  await time.delay(3ms)',
       '  n + 1',
-      'async fn main():',
+      'ista async fn main():',
       '  let total = 0',
       ...steps.map((step) => lines[step.kind](step)),
       '  total',
@@ -103,7 +103,7 @@ describe('live runs', () => {
   const waitsOnHost = compiledText(
     [
       "import * as time from 'time'",
-      'extern fn fetch(name: String) -> Future<Int, "ista">',
+      'extern ista fn fetch(name: String) -> Future<Int, "ista">',
       'ista async fn fetched() -> Int:',
       '  1 + await fetch("a")',
       'ista async fn ticks():',
@@ -157,8 +157,8 @@ describe('live runs', () => {
     const text = compiledText(
       [
         "import * as time from 'time'",
-        'extern fn fetch(name: String) -> Future<Int, "ista">',
-        'async fn main():',
+        'extern ista fn fetch(name: String) -> Future<Int, "ista">',
+        'ista async fn main():',
         '  const s = Slot.create<Int>()',
         '  await select:',
         '    case fetch("a"):',
@@ -178,8 +178,8 @@ describe('live runs', () => {
     const text = compiledText(
       [
         "import * as time from 'time'",
-        'extern fn fetch(name: String) -> Future<Int, "ista">',
-        'async fn main() -> Int:',
+        'extern ista fn fetch(name: String) -> Future<Int, "ista">',
+        'ista async fn main() -> Int:',
         '  await select:',
         '    case fetch("a") as got:',
         '      got',
@@ -199,8 +199,8 @@ describe('live runs', () => {
     const text = compiledText(
       [
         "import * as time from 'time'",
-        'extern fn fetch(name: String) -> Future<Int, "ista">',
-        'async fn main() -> Int:',
+        'extern ista fn fetch(name: String) -> Future<Int, "ista">',
+        'ista async fn main() -> Int:',
         '  const first = await select:',
         '    case time.delay(1ms):',
         '      1',
@@ -223,7 +223,7 @@ describe('live runs', () => {
       [
         "import * as time from 'time'",
         "import * as runtime from 'runtime'",
-        'async fn main() -> Int:',
+        'ista async fn main() -> Int:',
         '  const due = time.delay(0ms)',
         '  await runtime.commit()',
         '  select:',
@@ -307,7 +307,7 @@ describe("a host's calls on one instance", () => {
       [
         "import * as runtime from 'runtime'",
         'extern fn ping() -> Int',
-        'async fn main():',
+        'ista async fn main():',
         '  await runtime.commit()',
         '  ping()',
       ].join('\n'),
@@ -334,8 +334,8 @@ describe("a host's calls on one instance", () => {
   it('run two concurrent fills on one instance one after the other', async () => {
     const text = compiledText(
       [
-        'extern fn ask(tag: String) -> Future<Int, "ista">',
-        'async fn main() -> Int:',
+        'extern ista fn ask(tag: String) -> Future<Int, "ista">',
+        'ista async fn main() -> Int:',
         '  const a = ask("a")',
         '  const b = ask("b")',
         '  (await a) + (await b)',

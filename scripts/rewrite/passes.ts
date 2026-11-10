@@ -4,11 +4,13 @@
 
 import type { Pass } from './pass.ts';
 import { deferredCalls } from './passes/deferred-calls/index.ts';
+import { kindMarks } from './passes/kind-marks/index.ts';
 import { kinds } from './passes/kinds/index.ts';
 
 export const passes = {
   'deferred-calls': deferredCalls,
   kinds,
+  'kind-marks': kindMarks,
 } satisfies Record<string, Pass>;
 
 export type PassName = keyof typeof passes;

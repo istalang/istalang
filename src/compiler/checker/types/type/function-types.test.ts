@@ -51,7 +51,7 @@ describe('the two spellings of an async function type', () => {
       fc.property(fc.constantFrom('live', 'ista'), written, written, (kind, taken, given) => {
         const { types, diagnostics } = resolved([
           `${kind} async fn(${taken}) -> ${given}`,
-          `fn(${taken}) -> Future<${given}, "${kind}">`,
+          `${kind} fn(${taken}) -> Future<${given}, "${kind}">`,
         ]);
         const [async, plain] = types;
         expect(diagnostics).toEqual([]);
@@ -70,7 +70,7 @@ ista async fn fetchUser(id: String) -> String: id
 ista async fn retryGeneric<R>(call: ista async fn(String) -> R) -> R: await call("u1")
 ista async fn retryConcrete(call: ista async fn(String) -> String) -> String: await call("u1")
 
-async fn main():
+ista async fn main():
   const forwarded: ista async fn(Int) -> Int = fn(x): later(x)
   const retryInferred = await retryGeneric(fn(id): fetchUser(id))
   const retryExplicit = await retryGeneric<String>(fn(id): fetchUser(id))
@@ -116,9 +116,9 @@ ista async fn later(x: &Int) -> Int:
   x += 1
   x
 
-fn starting(x: &Int) -> Future<Int, "ista">: later(&x)
+ista fn starting(x: &Int) -> Future<Int, "ista">: later(&x)
 
-async fn main():
+ista async fn main():
   let xs = [10]
   _ = await starting(&xs[0])
 `),
@@ -127,14 +127,14 @@ async fn main():
     expect(
       reported(`
 trait Mutator:
-  fn mutate(self: Self, x: &Int) -> Future<Int, "ista">
+  ista fn mutate(self: Self, x: &Int) -> Future<Int, "ista">
 
 struct M {}
 ista async fn mutate(self: M, x: &Int) -> Int:
   x += 1
   x
 
-async fn main():
+ista async fn main():
   let xs = [10]
   const m: any Mutator = M
   _ = await m.mutate(&xs[0])
@@ -153,11 +153,11 @@ fn index(self: Bag, key: String) -> Int:
 ista async fn laterSet() -> Unit:
   ()
 
-fn setIndex(self: &Bag, key: String, value: Int) -> Future<Unit, "ista">:
+ista fn setIndex(self: &Bag, key: String, value: Int) -> Future<Unit, "ista">:
   _ = (self, key, value)
   laterSet()
 
-async fn main():
+ista async fn main():
   let bag = Bag{values: [:]}
   bag["a"] = 1
 `),
@@ -197,7 +197,7 @@ fn main():
     ],
     [
       'Future<Never, "live"> into Future<Int, "ista">',
-      'fn takesIstaFuture(f: Future<Int, "ista">): ()\nfn main(g: Future<Never, "live">):\n  takesIstaFuture(g)',
+      'ista fn takesIstaFuture(f: Future<Int, "ista">): ()\nlive fn main(g: Future<Never, "live">):\n  takesIstaFuture(g)',
     ],
   ])('refuses fitting %s across kinds', (_, source) => {
     expect(reported(source)).toEqual(reportedOnce(checkerDiagnostics.typeMismatch.code, 'g'));
@@ -207,8 +207,8 @@ fn main():
     expect(
       reported(`
 fn inferKind<K in Persistence>(f: fn() -> Future<Int?, K>): ()
-fn watchLive(f: Future<Int, "live">) -> WeakRef<Future<Int, "live">>: WeakRef(f)
-fn main(g: ista async fn() -> Int):
+live fn watchLive(f: Future<Int, "live">) -> WeakRef<Future<Int, "live">>: WeakRef(f)
+ista fn main(g: ista async fn() -> Int):
   inferKind(g)
 `),
     ).toEqual(reportedNothing);

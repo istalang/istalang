@@ -47,4 +47,44 @@ export const concurrencyTemplates = {
     code: 5645,
     message: (callee: string, reason: string) => `${callee} can't be deferred: ${reason}.`,
   },
+  unmarkedCalls: {
+    code: 5606,
+    message: (caller: string, kind: string, callee: string) =>
+      `${caller} calls ${kind} ${callee}; declare it '${kind} fn' (§3.3).`,
+  },
+  kindsMeet: {
+    code: 5607,
+    message: (callerKind: string, calleeKind: string, callee: string) =>
+      `${callerKind} code calls nothing ${calleeKind}: ${callee} is ${calleeKind} (§3.3).`,
+  },
+  waitOfOtherKind: {
+    code: 5608,
+    message: (found: string, kind: string) =>
+      `An 'await' waits in its function's kind, ${kind}, so it can't wait on ${found} (§5).`,
+  },
+  unmarkedWaits: {
+    code: 5611,
+    message: (waiter: string, kind: string, found: string, head: string) =>
+      `${waiter} waits on ${found}, of kind ${kind}; declare it '${kind} ${head}' (§3.3).`,
+  },
+  unkindedFuture: {
+    code: 5612,
+    message: () =>
+      `An unmarked 'async fn' type here has no kind for its future to take; write 'live async fn' or 'ista async fn' (§3.3).`,
+  },
+  oneKindOfEither: {
+    code: 5613,
+    message: (holder: string) =>
+      `${holder} runs in one kind, which code that may run in either can't give it; declare the function calling it 'live' or 'ista' (§3.3).`,
+  },
+  unmarkedHolds: {
+    code: 5609,
+    message: (holder: string, kind: string, held: string) =>
+      `${holder} holds ${held}, of kind ${kind}; declare it '${kind} fn' (§3.3).`,
+  },
+  kindsHeld: {
+    code: 5610,
+    message: (holder: string, kind: string, held: string) =>
+      `${holder} is ${kind} code, so it can't hold ${held}, of the other kind (§3.3).`,
+  },
 } as const;

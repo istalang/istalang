@@ -11,9 +11,9 @@ ista async fn retry(times: Int, call: ista async fn(String) -> Order) -> Order:
 
 ista async fn later(x: Int) -> Int: x + 1
 
-fn starting(x: Int) -> Future<Int, "ista">: later(x)
+ista fn starting(x: Int) -> Future<Int, "ista">: later(x)
 
-async fn main() -> (String, Int, Array<Int>, Array<Int?>, Int, Int, Array<Int?>, Array<Result<Int, String>>):
+ista async fn main() -> (String, Int, Array<Int>, Array<Int?>, Int, Int, Array<Int?>, Array<Result<Int, String>>):
   const order = await retry(3, fn(id): Order{id})
   const viaFuture: ista async fn(Int) -> Int = starting
   const plains: Array<fn() -> Int> = [fn(): 3, fn(): 4]

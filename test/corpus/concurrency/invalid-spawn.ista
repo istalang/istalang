@@ -28,7 +28,7 @@ fn run(self: Job) -> Int:
 fn show(self: Id) -> Int:
   self.value
 
-async fn main():
+ista async fn main():
   let n = 1
   spawn n
   spawn time.now()
@@ -40,7 +40,7 @@ async fn main():
   spawn takesBox(Inbox.create<Int>())
   _ = spawn Job{box: Inbox.create<Int>()}.run()
 
-fn doubled<T is Addable & Sendable>(x: T):
+ista fn doubled<T is Addable & Sendable>(x: T):
   spawn add(x, x)
 
 fn takesBox(box: Inbox<Int>):

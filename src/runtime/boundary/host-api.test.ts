@@ -23,7 +23,7 @@ const program = compiledText(
     '  id: String',
     '  amount: Int',
     '',
-    'extern fn approval(id: String) -> Future<Bool, "ista">',
+    'extern ista fn approval(id: String) -> Future<Bool, "ista">',
     'extern seed: Int',
     '',
     'fn total(orders: Array<Order>, rate: Float) -> Float:',
@@ -145,7 +145,7 @@ describe('the host API', () => {
       [
         "import * as time from 'time'",
         'extern fn ready() -> Bool',
-        'async fn main() -> Int:',
+        'ista async fn main() -> Int:',
         '  if not ready():',
         '    panic("not ready")',
         '  time.now().value',
@@ -190,7 +190,7 @@ describe('the host API', () => {
       [
         'extern fn pick() -> Int',
         'fn child(n: Int) -> Int: n',
-        'async fn main() -> Int:',
+        'ista async fn main() -> Int:',
         '  spawn child(pick())',
         '  0',
       ].join('\n'),
@@ -247,8 +247,8 @@ describe('the host API', () => {
     const waiting = compiledText(
       [
         "import * as time from 'time'",
-        'extern fn approval() -> Future<Bool, "ista">',
-        'async fn main() -> Bool:',
+        'extern ista fn approval() -> Future<Bool, "ista">',
+        'ista async fn main() -> Bool:',
         '  const approved = await approval()',
         '  await time.at(time.now())',
         '  approved',
@@ -268,9 +268,9 @@ describe('the host API', () => {
   it('retries a panic in the segment a fill ran, filling the future again', async () => {
     const filled = compiledText(
       [
-        'extern fn approval() -> Future<Bool, "ista">',
+        'extern ista fn approval() -> Future<Bool, "ista">',
         'extern fn ready() -> Bool',
-        'async fn main() -> Bool:',
+        'ista async fn main() -> Bool:',
         '  const approved = await approval()',
         '  if not ready():',
         '    panic("not ready")',

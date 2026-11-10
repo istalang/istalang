@@ -205,7 +205,7 @@ describe('a deferred call', () => {
       '  }',
       'ista async fn firstItem(...items: Array<Int>) -> Int:',
       '  items[0]',
-      'async fn main() -> Int:',
+      'ista async fn main() -> Int:',
       '  const it = SharedIter{s: new Shared{value: 42}}',
       '  match await (spawn firstItem(...it)).result():',
       '    case Ok(value): value',
@@ -229,7 +229,7 @@ describe('a deferred call', () => {
       '  }',
       'ista async fn takeShares(...items: Array<Shared<Int>>) -> Int:',
       '  items[0]->value',
-      'async fn main() -> Int:',
+      'ista async fn main() -> Int:',
       '  _ = spawn takeShares(...BadIter{n: 42})',
       '  0',
     ].join('\n');

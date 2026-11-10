@@ -11,7 +11,7 @@ ista async fn relay(other: Instance<Int>) -> Int:
     case Ok(value): value
     case Err(error): 0
 
-async fn main() -> String:
+ista async fn main() -> String:
   const first = spawn half(42)
   const second = spawn half(42)
   const relayed = spawn relay(first)

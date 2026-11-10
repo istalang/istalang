@@ -20,11 +20,11 @@ ista async fn ship(order: Order) -> String:
 fn echo<T>(value: T) -> T:
   value
 
-fn startAll(order: Order):
+ista fn startAll(order: Order):
   spawn ship(order)
   spawn order.total()
 
-async fn main() -> Int:
+ista async fn main() -> Int:
   const order = Order{id: 7, items: ["a", "b"]}
   startAll(order)
   spawn echo<String>("hi")

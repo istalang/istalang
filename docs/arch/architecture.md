@@ -94,7 +94,8 @@ src/
         type/                                                    the types, their primitives, the aliases they were written through, types computed from others
                                                                  (computed-types.ts), a type's text, a struct constraint's model, and the rules building a type
                                                                  needs of the program (type-rules.ts), which the checker implements once and every type-building
-                                                                 path takes
+                                                                 path takes; the kinds of code (function-kinds.ts): a function's kind, which kinds fit, and
+                                                                 which meet a requirement (proposal 8)
         identity/                                                identity as key equality (a shape is its fields in name order), and
                                                                  recursive types as minimized graphs, equi-recursive, closed by one
                                                                  constructor (recursive-types.ts), and a type folded into the recursive
@@ -113,7 +114,8 @@ src/
                                                                  (named-types.ts) or a pattern (pattern-types.ts), key types, type
                                                                  arguments, and type `match`es resolved, given, placed and unfolded
                                                                  (type-match.ts, written-matches.ts)
-        properties/                                              what a type holds or reaches: finite values, held values, the cycle guard, handles read off declarations
+        properties/                                              what a type holds or reaches: finite values, held values, the cycle guard, handles read off declarations,
+                                                                 the kinds its values are of (value-kinds.ts)
         inference/                                               above the model: inference of type arguments, as bounds on variables
                                                                  (bounds.ts) settled by one policy (settle.ts), in one system for
                                                                  the calls and literals one expression joins (system.ts)
@@ -124,7 +126,8 @@ src/
       resolution/                                                what a call or a name may mean:
         choosing/                                                candidates and ADL, how arguments bind, choice among overloads, the calls a construct makes
                                                                  (calls-made.ts)
-        conformance/                                             witnesses and why there is none, the traits the compiler derives (derived-traits.ts: one
+        conformance/                                             how a call's kind parameters settle to its code's kind (kind-settling.ts, the one place),
+                                                                 witnesses and why there is none, the traits the compiler derives (derived-traits.ts: one
                                                                  table), unions meeting traits through their members, the instantiation a type meets in an
                                                                  `any` constraint's place through its trait's variance, and every one it may meet, which
                                                                  inference relates through (met-instantiations/index.ts)
@@ -133,13 +136,15 @@ src/
         applying/                                                a chosen call applied: every call chosen, instantiated and fitted in one place
                                                                  (applied-call.ts), completed once the constraint scope it joins settles
                                                                  (wiring/body/constraint-scope.ts), its arguments fitted (argument-fit.ts), the calls the language makes
-                                                                 (implicit.ts) and the toolchain makes on its own (silent-choice.ts)
+                                                                 (implicit.ts) and the toolchain makes on its own (silent-choice.ts); the call rule
+                                                                 (call-kinds.ts), the one seam every recorded call goes through, written or made for a construct
         calls/                                                   above the rest: a call in a body, its arguments checked against the chosen function,
                                                                  operators, the places a call or an assignment changes
       rules/                                                     semantic rules shared by constructs, one folder per feature: producers agreeing on a type,
                                                                  annotations, tests' rules (testing.ts) at its root; computation/ (compile-time computation),
                                                                  disposal/ (disposal, must-use, `drop`), boundary/ (what externs may take, derived JSON codecs),
-                                                                 expansion/ (generics needing endlessly many instantiations); beneath them flow/, the order a
+                                                                 expansion/ (generics needing endlessly many instantiations), kinds/ (the signature rule: what a
+                                                                 function's signature holds of a kind); beneath them flow/, the order a
                                                                  body's code runs in, which flow rules follow (forward data flow, one table of how each
                                                                  construct runs)
       constructs/                                                per-construct rules, layers in this order:
@@ -281,7 +286,7 @@ foundation/text · diagnostics           vocabularies every phase uses; the runt
 foundation/language · structures        beneath every layer; they import nothing
 ```
 
-- A phase or feature folder is used only through its entry module, which is named for what it does (`scanner/scan.ts`, `parser/parse.ts`). Nothing reaches into another folder's internals. The foundation folders (`foundation/text/`, `foundation/diagnostics/`, …) are small vocabularies, used module by module. The checker's surface is its entry and the models it names (`surface/`, `types/type/index.ts`, `types/type/primitives.ts`, `types/type/alias-uses.ts`, `types/type/computed-types.ts`, `types/type/function-types.ts`, `types/type/field-order.ts`, `types/identity/identity.ts`, `types/identity/unfolding-pairs.ts`, `types/written/named-types.ts`, `types/written/pattern-types.ts`, `types/parts/substitution.ts`, `types/type/type-rules.ts`, `types/fitting/fit/index.ts`, `types/fitting/expected.ts`, `types/unions/unions.ts`, `types/unions/union-members.ts`, `types/identity/recursive-types.ts`, `types/identity/type-keys.ts`, `types/type/type-text.ts`, `types/type/well-known.ts`), which lowering reads module by module.
+- A phase or feature folder is used only through its entry module, which is named for what it does (`scanner/scan.ts`, `parser/parse.ts`). Nothing reaches into another folder's internals. The foundation folders (`foundation/text/`, `foundation/diagnostics/`, …) are small vocabularies, used module by module. The checker's surface is its entry and the models it names (`surface/`, `types/type/index.ts`, `types/type/primitives.ts`, `types/type/alias-uses.ts`, `types/type/computed-types.ts`, `types/type/function-types.ts`, `types/type/function-kinds.ts`, `types/type/field-order.ts`, `types/identity/identity.ts`, `types/identity/unfolding-pairs.ts`, `types/written/named-types.ts`, `types/written/pattern-types.ts`, `types/parts/substitution.ts`, `types/type/type-rules.ts`, `types/fitting/fit/index.ts`, `types/fitting/expected.ts`, `types/unions/unions.ts`, `types/unions/union-members.ts`, `types/identity/recursive-types.ts`, `types/identity/type-keys.ts`, `types/type/type-text.ts`, `types/type/well-known.ts`), which lowering reads module by module.
 - Inside the checker, folders are layers too, from the type model up to the constructs: `diagnostics`, `types` (the model, then `types/inference`, then `types/traits`), `resolution` (then `resolution/calls`), `rules` (`rules/flow`, then the rest), `constructs` (`patterns`, `loops`, `declarations`, `closures`, `expressions`, `statements`), `lookup`. A folder holding several layers is a contiguous run of them, so it is a layer as a whole too. A layer imports only those beneath it, so engines never import constructs. Its contracts, its entry, `contexts/` and `surface/` (the models later phases read), may be imported by every folder; they import nothing above the type model, but the body's contract (`contexts/body-context.ts`, `contexts/scopes.ts`), which names inference too, whose system of variables a constraint scope is, and which the type model and inference never import. `wiring/` (the modules that wire a body and a program together) imports every layer, and nothing imports it.
 - `syntax/` and `definition/` are contracts with high fan-in. Change them deliberately, and update every caller in the same change.
 - Mechanisms:

@@ -195,6 +195,11 @@ export interface CheckerContext extends Omit<Checker, 'program'> {
    * it is declared (§3.5); undefined for any other parameter.
    */
   readonly memberUnionOf: (parameter: TypeParameter) => Type | undefined;
+  /**
+   * The distinct kinds what a value of `type` holds is of (§3.3; types/properties/value-kinds.ts),
+   * read once per type however many signatures hold it.
+   */
+  readonly valueKindsOf: (type: Type) => readonly Type[];
   /** The static functions declared on `owner` in `module` (§3.7). */
   readonly staticFunctionsIn: (
     module: ModuleId,

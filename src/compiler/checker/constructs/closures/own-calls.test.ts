@@ -118,7 +118,7 @@ ista async fn Box.main() -> Box:
 ista async fn main(n: Int) -> Int:
   _ = main.disposing()
   n
-async fn main() -> Int:
+ista async fn main() -> Int:
   _ = Box.main()
   await main(1)
 `),

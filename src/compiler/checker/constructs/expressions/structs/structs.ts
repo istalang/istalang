@@ -23,6 +23,7 @@ import { lastName } from '../../../../syntax/tree/node.ts';
 import type { NamedType } from '../../../../syntax/types/index.ts';
 import type { BodyContext } from '../../../contexts/body-context.ts';
 import { checkerDiagnostics } from '../../../diagnostics/index.ts';
+import { checkMadeKind } from '../../../resolution/applying/call-kinds.ts';
 import { placeholderOf } from '../../../rules/placeholders.ts';
 import type { FieldSource } from '../../../surface/checked-body.ts';
 import { builtFrom } from '../../../types/fitting/expected.ts';
@@ -77,6 +78,16 @@ function leadingSpread(node: FieldsLiteral): LiteralSpread | undefined {
  * which builds the type it stands for (§3.17).
  */
 export function checkNamedLiteral(
+  context: BodyContext,
+  node: NamedLiteral,
+  expected: Type | undefined,
+): Type {
+  const type = namedLiteralType(context, node, expected);
+  checkMadeKind(context, node.span, type);
+  return type;
+}
+
+function namedLiteralType(
   context: BodyContext,
   node: NamedLiteral,
   expected: Type | undefined,

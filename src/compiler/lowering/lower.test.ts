@@ -214,7 +214,7 @@ describe('lowering', () => {
     const program = stdProgramOf({
       main: [
         "import * as lib from 'lib'",
-        'async fn main() -> Int:',
+        'ista async fn main() -> Int:',
         '  match await (spawn lib.twice(1)).result():',
         '    case Ok(value): lib.twice(20) + value',
         '    case Err(error): 0',
@@ -288,7 +288,7 @@ describe('lowering', () => {
       main: [
         "import * as runtime from 'runtime'",
         'fn shared() -> Shared<Int>: new Shared{value: 1}',
-        'async fn main() -> Int:',
+        'ista async fn main() -> Int:',
         '  drop spawn shared()',
         '  drop runtime.isolate(fn(): "isolated")',
         '  0',

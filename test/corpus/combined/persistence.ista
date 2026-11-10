@@ -18,7 +18,7 @@ fn check(r: Result<Int>) -> Result<Int>:
   const v = r?
   Ok(v * 2)
 
-async fn main() -> String:
+ista async fn main() -> String:
   const next = makeCounter(10)
   let acc = Acc{items: [], seen: [:]}
   const adder = fn(n: Int): { acc.items.push(n); acc.seen[String(n)] = next(); acc.items.length() }

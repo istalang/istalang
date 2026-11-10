@@ -101,12 +101,12 @@ function equalParts(declared: Type, given: Type, equating: Equating): boolean {
     case 'function':
       return (
         given.kind === 'function' &&
-        functionFits(
-          declared,
-          given,
-          (part, other) => equalTypes(part, other, equating),
-          (part, other) => equalTypes(part, other, equating) || isPrimitive(other, 'Never'),
-        )
+        functionFits(declared, given, {
+          parts: (part, other) => equalTypes(part, other, equating),
+          results: (part, other) =>
+            equalTypes(part, other, equating) || isPrimitive(other, 'Never'),
+          kinds: (kind, other) => equalTypes(kind, other, equating),
+        })
       );
     case 'any':
       return given.kind === 'any' && equalConstraints(declared, given, all);

@@ -21,7 +21,7 @@ ista async fn worker(jobs: Inbox<Int>, results: Inbox<Int>):
   const job = await jobs.receive()
   results.send(job)
 
-async fn main() -> Int:
+ista async fn main() -> Int:
   const jobs = Inbox.create<Int>()
   const results = Inbox.create<Int>()
   let running: Array<Future<Unit, "ista">> = []

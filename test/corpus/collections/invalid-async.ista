@@ -13,6 +13,6 @@ fn index(self: Bag, key: String) -> Int:
 ista async fn setIndex(self: &Bag, key: String, value: Int):
   self.values[key] = value
 
-async fn main():
+ista async fn main():
   let bag = Bag{values: [:]}
   bag["a"] = 1

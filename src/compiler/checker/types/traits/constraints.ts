@@ -33,6 +33,7 @@ import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import type { RequirementOrigin } from '../../surface/resolved-call.ts';
 import { sameType } from '../identity/identity.ts';
 import { type Substitution, substitute, substitutionFor } from '../parts/substitution.ts';
+import { kindOfFunction } from '../type/function-kinds.ts';
 import { functionType } from '../type/function-types.ts';
 import type { AnyType, Constraint, FunctionType, ParameterKey, Type } from '../type/index.ts';
 import { parameterType } from '../written/resolve-type.ts';
@@ -183,11 +184,12 @@ export function declaredFieldType(
  * what its call gives, as a function named as a value has it (§3.14).
  */
 export function requirementType(
-  checker: Pick<CheckerContext, 'parametersOf' | 'resultOf'>,
+  checker: Pick<CheckerContext, 'parametersOf' | 'resultOf' | 'kindOf'>,
   required: FunctionDeclaration,
 ): FunctionType {
   return functionType({
     reach: 'plain',
+    persistence: kindOfFunction(checker, required),
     parameters: checker.parametersOf(required).map(({ type, reference }) => ({ type, reference })),
     result: checker.resultOf(required),
   });

@@ -19,7 +19,7 @@ const childAndMain = [
   'ista async fn child(n: Int) -> Int:',
   '  await time.delay(10ms)',
   '  n + 1',
-  'async fn main():',
+  'ista async fn main():',
   '  const x = await child(41)',
   '  x',
 ].join('\n');
@@ -35,7 +35,7 @@ const referenceAcrossAwaits = [
   '  total.count += n',
   '  await time.delay(5ms)',
   '  total.count += n',
-  'async fn main():',
+  'ista async fn main():',
   '  let tally = Tally{count: 1}',
   '  await addLater(&tally, 2)',
   '  tally.count',
@@ -49,7 +49,7 @@ const severalAwaits = [
   '  await time.delay(5ms)',
   '  await runtime.commit()',
   '  n + 1',
-  'async fn main():',
+  'ista async fn main():',
   '  const a = await step(1)',
   '  await time.delay(7ms)',
   '  const b = await step(a)',
@@ -111,7 +111,7 @@ describe('advancing an instance', () => {
 
   it('commits at await runtime.commit() and goes on without waiting', async () => {
     const text = compiledText(
-      "import * as runtime from 'runtime'\nasync fn main():\n  await runtime.commit()\n  7",
+      "import * as runtime from 'runtime'\nista async fn main():\n  await runtime.commit()\n  7",
     );
     const test = testRuntime();
     expect(await runToEnd(test, 'i', await test.runtime.deploy(text).start('i'))).toEqual({
@@ -226,7 +226,7 @@ describe('advancing an instance', () => {
     const text = compiledText(
       [
         "import * as time from 'time'",
-        'async fn main():',
+        'ista async fn main():',
         '  const early = time.delay(5ms)',
         '  await time.delay(10ms)',
         '  await early',
@@ -251,7 +251,7 @@ describe('advancing an instance', () => {
     const text = compiledText(
       [
         "import * as time from 'time'",
-        'async fn main():',
+        'ista async fn main():',
         '  await time.delay(1ms)',
         '  panic("late")',
       ].join('\n'),

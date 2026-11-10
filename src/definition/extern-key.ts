@@ -19,7 +19,7 @@
  */
 
 import type { PrimitiveName } from '../foundation/language/primitives.ts';
-import { qualifiedName } from '../foundation/language/well-known/index.ts';
+import { type Persistence, qualifiedName } from '../foundation/language/well-known/index.ts';
 
 /** A declared type, as a key spells it. */
 export type KeyType =
@@ -34,6 +34,8 @@ export type KeyType =
     }
   | {
       readonly kind: 'function';
+      /** Its kind where it has one of the two; an unmarked function type has none (§3.3). */
+      readonly persistence?: Persistence | undefined;
       readonly parameters: readonly KeyType[];
       readonly result: KeyType;
     }
@@ -75,11 +77,20 @@ export function namedKey(name: string, ...typeArguments: readonly WrittenType[])
 }
 
 /**
- * A function type, as a key spells it: `fn() -> prelude.Future<T>`, an async one's as the future
- * it gives; a key doesn't tell sendable apart.
+ * A function type, as a key spells it: `ista fn() -> prelude.Future<T, "ista">`, its kind where it
+ * has one, an async one's result as the future it gives; a key doesn't tell sendable apart.
  */
-export function functionKey(parameters: readonly WrittenType[], result: WrittenType): KeyType {
-  return { kind: 'function', parameters: parameters.map(typeOf), result: typeOf(result) };
+export function functionKey(
+  parameters: readonly WrittenType[],
+  result: WrittenType,
+  persistence?: Persistence,
+): KeyType {
+  return {
+    kind: 'function',
+    persistence,
+    parameters: parameters.map(typeOf),
+    result: typeOf(result),
+  };
 }
 
 /** A type parameter of the extern's own, as declared: the `T` of `prelude.Array<T>`. */
@@ -184,7 +195,7 @@ export function keyTypeText(type: KeyType): string {
     case 'anonymous':
       return `struct { ${type.fields.map((field) => `${field.name}: ${keyTypeText(field.type)}`).join(', ')} }`;
     case 'function':
-      return `fn(${type.parameters.map(keyTypeText).join(', ')}) -> ${keyTypeText(type.result)}`;
+      return `${type.persistence === undefined ? '' : `${type.persistence} `}fn(${type.parameters.map(keyTypeText).join(', ')}) -> ${keyTypeText(type.result)}`;
     case 'any':
       return `any ${type.traits.map(keyTypeText).sort().join(' & ')}`;
     case 'literal':

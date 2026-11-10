@@ -89,7 +89,7 @@ export function hostConstantEntry(
     path: header.name,
   });
   code.return(emitInbound(code, native, inbound, code.span));
-  return code.entry(header, false);
+  return code.entry(header, 'plain');
 }
 
 /**

@@ -24,7 +24,7 @@ function converting(sites: number, shown: string): string {
     'fn show<W is Shows>(self: Box<W>) -> String: self.value.show()',
     'fn show(self: Int) -> String: "i"',
     'fn take(x: any Shows): ()',
-    ...Array.from({ length: sites }, (_, site) => `fn f${site}(b: Box<${shown}>): take(b)`),
+    ...Array.from({ length: sites }, (_, site) => `ista fn f${site}(b: Box<${shown}>): take(b)`),
   ].join('\n');
 }
 

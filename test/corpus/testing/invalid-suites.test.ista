@@ -5,7 +5,7 @@
 # error: 5951 at 37:40
 # error: 5951 at 40:36
 # error: 5951 at 47:18
-# error: 5951 at 63:51
+# error: 5951 at 63:56
 #
 # A suite function only builds its list (§10): a plain fn taking nothing and returning
 # Array<Test>, whose own body calls no extern and makes no shared struct or slot. What the tests
@@ -60,7 +60,7 @@ ista async fn checkFetched():
   drop fetch()
 
 @Suite{"a deferred call computes what it passes now"}
-fn computesNow() -> Array<Test>: [test("t") check(fetch())]
+ista fn computesNow() -> Array<Test>: [test("t") check(fetch())]
 
 @Suite{"a deferred call makes its call later"}
-fn callsLater() -> Array<Test>: [test("t") checkFetched()]
+ista fn callsLater() -> Array<Test>: [test("t") checkFetched()]

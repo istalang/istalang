@@ -12,8 +12,8 @@ import { testRuntime } from '../../runtime.test-kit.ts';
 const program = compiledText(
   [
     'extern fn note(text: String)',
-    'extern fn approval() -> Future<Bool, "ista">',
-    'extern fn gate() -> Future<Int, "ista">',
+    'extern ista fn approval() -> Future<Bool, "ista">',
+    'extern ista fn gate() -> Future<Int, "ista">',
     '',
     'ista async fn child() -> Int:',
     '  await select:',
@@ -23,7 +23,7 @@ const program = compiledText(
     '    case gate():',
     '      1',
     '',
-    'async fn main() -> Int:',
+    'ista async fn main() -> Int:',
     '  const running = child()',
     '  if not await approval():',
     '    panic("refused")',

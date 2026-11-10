@@ -32,7 +32,7 @@ fn twice<X is Named>(x: X) -> String:
 fn widen(x: any Named & Sendable) -> any Named:
   x
 
-async fn main():
+ista async fn main():
   const items: Array<any Named> = [Email{to: "a"}, Sms{number: "1"}, wrap(Email{to: "w"})]
   await time.delay(10ms)
   const names = [for item in items: item.name()]

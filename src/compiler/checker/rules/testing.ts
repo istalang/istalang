@@ -23,6 +23,7 @@ import { languageModules, wellKnown } from '../../../foundation/language/well-kn
 import { testingFunctions } from '../../../foundation/language/well-known/testing.ts';
 import type { ModuleId } from '../../program/program.ts';
 import { constructedVariant } from '../../syntax/declarations/field-defaults.ts';
+import { functionTypeParametersOf } from '../../syntax/declarations/function-kinds.ts';
 import type { FunctionDeclaration } from '../../syntax/declarations/index.ts';
 import { argumentValue } from '../../syntax/expressions/arguments.ts';
 import type { Call } from '../../syntax/expressions/calls.ts';
@@ -92,7 +93,7 @@ function checkTarget(context: BodyContext, site: Call, mock: FunctionCall): Expr
     return undefined;
   }
   const [taken] = context.checker.parametersOf(mock.function);
-  const substitution = substitutionFor(mock.function.typeParameters, mock.typeArguments);
+  const substitution = substitutionFor(functionTypeParametersOf(mock.function), mock.typeArguments);
   const expected =
     taken === undefined
       ? undefined

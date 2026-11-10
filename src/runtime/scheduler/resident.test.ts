@@ -80,7 +80,7 @@ function programOf(chosen: readonly (readonly [number, number])[]): string {
     'ista async fn half(n: Int) -> Int:',
     '  await time.delay(2ms)',
     '  n // 2',
-    'async fn main() -> Int:',
+    'ista async fn main() -> Int:',
     '  let total = 1',
     ...body,
     '  total',

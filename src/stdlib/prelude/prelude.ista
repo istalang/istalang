@@ -19,27 +19,27 @@ extern shared struct Future<T, K in Persistence>
 # What `spawn` gives (§9): a handle to the new instance, compared by identity, which holds nothing.
 # `result()` resolves with its first end: `Ok` of its outcome, or `Err` of its panic.
 extern sendable struct Instance<T>
-extern fn result<T is Sendable>(self: Instance<T>) -> Future<Result<T>, "ista">
+extern ista fn result<T is Sendable>(self: Instance<T>) -> Future<Result<T>, "ista">
 
 # Starts `f` as a new, independent instance once the caller's segment commits, and goes on at once
 # (§9). The instance awaits the future `f` gives and ends with its value, so `spawn purchase(req)`,
 # a deferred call (§3.14), copies `req` into it now and calls `purchase` there, async or not.
-extern fn spawn<R>(f: sendable ista async fn() -> R) -> Instance<R>
+extern ista fn spawn<R>(f: sendable ista async fn() -> R) -> Instance<R>
 
 extern fn Slot.create<T>() -> Slot<T>
-extern fn put<T>(self: Slot<T>, value: T) -> Future<Unit, "ista">
-extern fn take<T>(self: Slot<T>) -> Future<T, "ista">
-extern fn read<T>(self: Slot<T>) -> Future<T, "ista">
+extern ista fn put<T>(self: Slot<T>, value: T) -> Future<Unit, "ista">
+extern ista fn take<T>(self: Slot<T>) -> Future<T, "ista">
+extern ista fn read<T>(self: Slot<T>) -> Future<T, "ista">
 
 # Weak references (§7): `WeakRef(x)` is the one weak reference to `x`, which holds nothing.
 extern fn WeakRef.from<T is Disposable>(value: T) -> WeakRef<T>
 extern fn deref<T is Disposable>(self: WeakRef<T>) -> T?
-extern fn disposed<T is Disposable>(self: WeakRef<T>) -> Future<Unit, "ista">
+extern ista fn disposed<T is Disposable>(self: WeakRef<T>) -> Future<Unit, "ista">
 
 # An async call's handle, a weak reference to the call, which the function's own name is before a
 # `.` (§7): `worker.disposing()` is the future that resolves when the call is disposed.
 extern shared struct _Call
-extern fn disposing(self: _Call) -> Future<Unit, "ista">
+extern fn disposing<K in Persistence>(self: _Call) -> Future<Unit, K>
 
 # A Shared value (§3.8) is a shared struct of any one value (§3.18): `new Shared{value: v}` makes
 # one, and `x->value` reads and writes it, for every copy.
@@ -56,13 +56,15 @@ extern fn dispose<T, K in Persistence>(self: Future<T, K>)
 extern fn dispose<T>(self: Slot<T>)
 
 # What `defer` gives (§7): a disposable whose release calls `run`, so `_ = defer log(x)` computes
-# `x` now and logs when the block ends, and `hold _ = defer log(x)` when the function does.
-shared struct Deferred:
+# `x` now and logs when the block ends, and `hold _ = defer log(x)` when the function does. Its
+# function is of the kind of the code deferring it (§3.3), which its release runs in, so ista code
+# defers an ista call.
+shared struct Deferred<K in Persistence>:
   run: fn() -> Unit
 
-fn defer(f: fn() -> Unit) -> Deferred: new Deferred{run: f}
+fn defer<K in Persistence>(f: fn() -> Unit) -> Deferred<K>: new Deferred<K>{run: f}
 
-fn dispose(self: Deferred): self->run()
+fn dispose<K in Persistence>(self: Deferred<K>): self->run()
 
 # `T?` is `T | None` (§2); this alias names it, so the statics declared on it are `T?`'s (§3.17).
 type Optional<T> = T?

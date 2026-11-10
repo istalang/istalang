@@ -41,7 +41,7 @@ struct Bad:
 struct Annotated:
   g: Int @Note{"kept for tools"}
 
-async fn main():
+ista async fn main():
   @Waypoint{"nowhere"}
   const x = 1
   @Waypoint{"immediate"}

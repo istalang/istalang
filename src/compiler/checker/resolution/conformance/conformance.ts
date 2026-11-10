@@ -62,6 +62,7 @@ import { type Application, type Choice, type Signature, signatureOf } from '../c
 import { admitting } from './admits.ts';
 import { chooseWitness, chooseWitnessAmong } from './declared-witness.ts';
 import { type Derivation, derivationOf } from './derived-traits.ts';
+import { kindsSettledAt } from './kind-settling.ts';
 import {
   associatedShortfall,
   fieldShortfall,
@@ -176,7 +177,11 @@ export function settlingAt(
 ): Settling {
   const { declaration, typeParameters } = signature;
   const admits = admitting(site.checker, silentMeets(site, search));
-  return settlingOf(site.checker, declaration, typeParameters, admits);
+  return kindsSettledAt(
+    site,
+    typeParameters,
+    settlingOf(site.checker, declaration, typeParameters, admits),
+  );
 }
 
 /** Whether `type` meets `constraint` at the use site, reporting there when it doesn't. */

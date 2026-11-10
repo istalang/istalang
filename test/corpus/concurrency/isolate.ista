@@ -14,5 +14,5 @@ ista async fn checked(item: String) -> String:
     case Ok(value): "Ok " + value
     case Err(error): "Err " + error.code + ": " + error.message
 
-async fn main() -> String:
+ista async fn main() -> String:
   await checked("") + "; " + await checked("pen")

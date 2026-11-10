@@ -146,11 +146,46 @@ export function functionTypeParts(type: FunctionType): {
   if (type.pack !== undefined) {
     parameters.push(`...${typeText(type.pack)}`);
   }
+  // A function giving a future of its own kind is written as its header is (§3.14).
+  const awaited = ownFutureValue(type);
   return {
-    head: `${modifiersText(modifiersOf(type))}fn`,
+    head: `${modifiersText(modifiersOf(type))}${awaited === undefined ? '' : 'async '}fn`,
     parameters,
-    tail: ` -> ${typeText(type.result)}`,
+    tail: ` -> ${typeText(awaited ?? type.result)}`,
   };
+}
+
+/**
+ * The value of the future `type`'s call gives where that future is of the function's own kind:
+ * the prelude's `Future`, whose name no module may reuse (§3.13); undefined for any other result.
+ */
+function ownFutureValue(type: FunctionType): Type | undefined {
+  const { result, persistence } = type;
+  if (
+    result.kind !== 'nominal' ||
+    result.entity.declaration.kind !== 'ExternStructDeclaration' ||
+    result.entity.declaration.name.text !== futureName
+  ) {
+    return undefined;
+  }
+  const [value, kind] = result.arguments;
+  return kind !== undefined && sameKind(kind, persistence) ? value : undefined;
+}
+
+const futureName = 'Future';
+
+/** Whether two kinds are one: the same of the two, the same kind variable, or both either. */
+function sameKind(first: Type, second: Type): boolean {
+  switch (first.kind) {
+    case 'literal':
+      return second.kind === 'literal' && first.value === second.value;
+    case 'parameter':
+      return second.kind === 'parameter' && first.declaration === second.declaration;
+    case 'union':
+      return second.kind === 'union';
+    default:
+      return false;
+  }
 }
 
 /** A parameter's type as written: `&T` for one passed by reference (§3.7). */

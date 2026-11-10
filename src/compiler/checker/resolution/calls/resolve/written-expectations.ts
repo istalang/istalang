@@ -14,7 +14,7 @@
  */
 
 import type { BodyContext } from '../../../contexts/body-context.ts';
-import { useSite } from '../../../contexts/use-site.ts';
+import { bodySite } from '../../../contexts/use-site.ts';
 import { Inference } from '../../../types/inference/infer.ts';
 import { mentionsAnyVariable } from '../../../types/inference/variables.ts';
 import type { CallApplication } from '../../applying/applied-call.ts';
@@ -50,7 +50,7 @@ export function expectWrittenArguments(context: BodyContext, request: CallApplic
     }
   }
   inference.expect(signature.result(), request.expected);
-  const settling = settlingAt(useSite(checker, context.module, request.span), signature);
+  const settling = settlingAt(bodySite(context, request.span), signature);
   for (const [index, { node, isDeferred }] of request.arguments.entries()) {
     const slot = slots.get(index);
     const expected = slot === undefined ? undefined : inference.guided(slot.type, settling);

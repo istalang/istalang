@@ -103,8 +103,10 @@ import type { TypeRules } from '../../types/type/type-rules.ts';
 import type { StaticOwner } from '../../types/written/named-types.ts';
 import { resolveTypeNode } from '../../types/written/resolve-type.ts';
 import type { TypeMatchQueries } from '../../types/written/type-match.ts';
-import { BodyChecker, type BodyKind } from '../body/body-checker.ts';
+import { BodyChecker } from '../body/body-checker.ts';
+import type { BodyKind } from '../body/body-kinds.ts';
 import { declaringInputs, programInputs, recordedBindings } from './program-inputs.ts';
+import { programKinds } from './program-kinds.ts';
 import { programTypeRules } from './program-type-rules.ts';
 
 /** What a checker is made with, beside its program. */
@@ -140,6 +142,8 @@ export class ProgramChecker implements CheckerContext {
   readonly #resolvedTypes: EntryTable<CheckerNote, TypeNode, Type, ModuleId>;
   /** Each type's disposal, by its key: finding a declared `dispose` chooses among candidates. */
   readonly #disposals: EntryTable<CheckerNote, string, Disposal, NominalType>;
+  readonly kindOf: CheckerContext['kindOf'];
+  readonly valueKindsOf: CheckerContext['valueKindsOf'];
   readonly #functions: FunctionChecks;
   readonly #constants: ConstantChecks;
   readonly #layouts: Layouts;
@@ -178,11 +182,12 @@ export class ProgramChecker implements CheckerContext {
       compute: (_key, type) => disposalOf(this, type),
       equal: sameDisposal,
     });
+    ({ kindOf: this.kindOf, valueKindsOf: this.valueKindsOf } = programKinds(this));
     this.#aliases = new Aliases(this, (alias) => this.#aliasModuleOf(alias));
     this.#layouts = new Layouts(this);
-    const rules = programTypeRules(this, { layouts: this.#layouts });
-    this.typeRules = rules.typeRules;
-    this.fitting = rules.fitting;
+    ({ typeRules: this.typeRules, fitting: this.fitting } = programTypeRules(this, {
+      layouts: this.#layouts,
+    }));
     this.#functions = new FunctionChecks({
       checker: this,
       checkBody: (module, declaration, declared) => this.#checkBody(module, declaration, declared),
@@ -230,14 +235,18 @@ export class ProgramChecker implements CheckerContext {
     return new BodyChecker(this, module, kind).checkFunction(body, this.parametersOf(declaration));
   }
 
-  /** A body checking a value of its own in `module`: a constant's, an annotation's. */
-  #valueBody(module: ModuleId, declaredResult: Type | undefined): BodyChecker {
-    return new BodyChecker(this, module, { kind: 'value', declaredResult });
+  /** A body checking a value of its own: a constant's, an annotation's, or `defaultsOf`'s defaults. */
+  #valueBody(
+    module: ModuleId,
+    declaredResult: Type | undefined,
+    defaultsOf?: FunctionDeclaration,
+  ): BodyChecker {
+    return new BodyChecker(this, module, { kind: 'value', declaredResult, defaultsOf });
   }
 
   /** The body a function's parameter defaults are checked in, each seeing those before it. */
   #defaultsBody(declaration: FunctionDeclaration): DefaultsBody {
-    const body = this.#valueBody(this.moduleOf(declaration), undefined);
+    const body = this.#valueBody(this.moduleOf(declaration), undefined, declaration);
     return {
       check: (value, declared) => body.expect(value, declared),
       declare: (node, type) =>

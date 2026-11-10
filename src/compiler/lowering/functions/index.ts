@@ -98,7 +98,6 @@ import {
   nestedFrame,
   passBody,
 } from './frames.ts';
-import { codeModeOf } from './modes.ts';
 
 /** Decodes a start entry's JSON argument into its parameter's value. */
 type StartParameterDecoder = (context: CodeContext, json: Register, span: AnchoredSpan) => Register;
@@ -363,13 +362,13 @@ class FunctionLowering implements EntryContext {
 
   /** The finished entry, taking `parameters`. */
   #entry(parameters: readonly EntryParameter[]): CodeFunction {
-    const { header, isAsync, captures } = this.frame;
+    const { header, mode, captures } = this.frame;
     const { tree } = programModule(this.checker.program, this.module);
     const { registers, instructions } = this.code.finish(tree);
     return {
       kind: 'code',
       ...header,
-      mode: codeModeOf(isAsync),
+      mode,
       parameters: parameters.map(({ reference, hasDefault }) => ({ reference, hasDefault })),
       captures: captures.length,
       registers,

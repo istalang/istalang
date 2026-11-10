@@ -158,6 +158,8 @@ export interface Checker {
   readonly typeRules: TypeRules;
   /** The type an alias stands for, its own type parameters left open (§3.17). */
   readonly aliasedType: (alias: AliasDeclaration) => Type;
+  /** The kind of a function's code (§3.3; types/type/function-kinds.ts). */
+  readonly kindOf: (declaration: FunctionDeclaration) => Type;
   /**
    * The arguments `alias` is given where it names `type`; undefined where it names no such type.
    */

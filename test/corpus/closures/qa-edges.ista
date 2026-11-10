@@ -56,7 +56,7 @@ fn whileFresh() -> String:
     i += 1
   String(fs[0]()) + String(fs[2]())
 
-async fn main():
+ista async fn main():
   const o = Op{run: fn(n): n * 2, tag: "t"}
   const none1: Op? = none
   String(param(1)()) + " " + String(early()) + " " + String(destructured()) + " " + rangeLoop() + " " + String(named()) + " " + String(opt(o) ?? -1) + String(opt(none1) ?? -1) + " " + String(await asyncLam()) + " " + String(shadow()) + " " + whileFresh()

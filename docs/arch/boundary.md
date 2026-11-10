@@ -72,7 +72,7 @@ its instance is numbered by, so its native sees only JSON:
 - The native entry keeps the declared key (`purchase.chargeCard(String, Int)`), so a host binds by
   the signature it was written against, and carries its `declaredType` (the result), which the
   runtime holds the host to across deploys (`runtime/boundary/extern-signatures.ts`).
-- An extern returning `Future<T>` hands back a future the host names with a token of its own. The
+- An extern returning an ista future, `Future<T, "ista">`, hands back a future the host names with a token of its own. The
   wrapper is async: it awaits the raw future and decodes, so it is an execution of its own, which
   `inspect` shows waiting at the extern's declaration. The host fills the future later
   (`Runtime.fill`), which runs the waiting wrapper in the same call, so JSON that doesn't decode
@@ -83,7 +83,7 @@ its instance is numbered by, so its native sees only JSON:
   value to the host's externs) has values with an identity of their own: `_decodeHandle` keeps
   the host's JSON in a `resource` object (`definition/tables/types.ts`, `isResourceType`), `_encodeHandle`
   gives that JSON back, and the type entry's disposal calls the `dispose` at release. It must be
-  an `extern shared struct` or `extern ephemeral struct`, neither a value nor `sendable` (5910),
+  an `extern shared struct` or `extern live struct`, neither a value nor `sendable` (5910),
   and, where values don't cross to the host, isn't `Encodable` or `Decodable`, which imply
   Sendable, so it crosses only to its own host; an extern constant, one value for every read,
   can't hold one (5911).
@@ -100,7 +100,7 @@ its instance is numbered by, so its native sees only JSON:
   functions instead (`cli/host-module.ts`), each taking the arguments spread, and turns a returned
   promise into a pending future it fills between wakes; a promise can't outlive its process, which
   only a development host may assume.
-- To a live run (proposal 8), which waits in memory and no fill reaches, an extern returning a
+- To a live run (spec §5), which waits in memory and no fill reaches, an extern returning a live
   future gives back a promise of its JSON instead, which resolves the future as it settles. One that
   rejects panics the run, with the trace of where the extern was called, and so does JSON it gives
   that doesn't fit: no host call came with it to refuse. A pending future given to a live run
@@ -115,7 +115,9 @@ validation read) gets a start entry, listed in
 the Definition's `starts` under its key. A start entry is the function's own body compiled once
 more with its arguments as JSON (`lowering/synthesized/boundary/starts.ts`, `instanceLowering` in `functions/index.ts`): it
 decodes each argument, a mismatch failing the host's start, so the instance is one execution of the
-function and its traces and waits are the function's own. `starts` lists it with its outcome's
+function and its traces and waits are the function's own. An unmarked function's implicit kind
+(spec §3.3) makes it no generic one: its start entry is compiled at `live`, the kind a host starts
+it in (`rootInstance`, Live runs below). `starts` lists it with its outcome's
 encoder, the entry of the codec writing the declared result (`synthesized/boundary/starts.ts`), which the
 instance keeps for life and its segment calls with the outcome on top of the root's last frame as
 it returns, so what that frame holds is disposed after (`scheduler/segment/root-outcome.ts`): a
@@ -159,14 +161,17 @@ host awaits the same way whatever an instance waits on. Calls that only read (`d
   (`runtime/host/instance-calls.ts`): each starts once the one before it settled, and sees what it
   committed. A host extern calling the runtime for its own instance therefore waits for the segment
   calling it to commit, instead of running halfway through it.
-- **Live runs.** Starting live code (proposal 8; until the checker knows kinds, an entry made live)
-  runs it outside any instance, in memory, to its end (`runtime/scheduler/live-run.ts`): `start`
-  settles with its outcome or panic, and nothing reaches the store, so a restart ends it. It runs
-  segment after segment as an instance does, with no commit between: what nothing holds is let go
-  of and due timers resolve after each, and its `now()` reads the clock. Its waits ride the host's
-  event loop: its timers on the runtime's `Clock`, and its host futures on the host's promises, a
-  settled one resuming it before a manual clock may jump to a timer. It takes no instance's options
-  and holds no instance's name, so no other call waits for it or reaches it.
+- **Live runs.** Starting live code, an entry whose mode is `live` (`startsLive`): an unmarked or
+  `live` async function (spec §3.3, §9), which lowering compiles as live code, runs it outside any
+  instance, in memory, to its end (`runtime/scheduler/live-run.ts`): `start` settles with its
+  outcome or panic, and nothing reaches the store, so a restart ends it. It runs segment after
+  segment as an instance does, with no commit between: what nothing holds is let go of and due
+  timers resolve after each, and its `now()` reads the clock. Its waits ride the host's event loop:
+  its timers on the runtime's `Clock`, and its host futures on the host's promises, a settled one
+  resuming it before a manual clock may jump to a timer. It takes no instance's options and holds
+  no instance's name, so no other call waits for it or reaches it. Any other start begins an
+  instance, a plain entry's and an `ista async fn main`'s included: for a `main` that waits on ista
+  futures, an interim until proposal 9's contexts.
 - **One driver loop.** A host drives a group of instances with `drive` (`runtime/host/drive.ts`):
   run what can run, wait for the earliest timer, wake what is due, until nothing can wake them. What
   differs between hosts is passed in: what can run now, how to wait (a `Clock`,

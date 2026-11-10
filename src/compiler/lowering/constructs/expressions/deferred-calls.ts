@@ -28,6 +28,7 @@ import type { AnchoredSpan } from '../../../syntax/tree/positions.ts';
 import { type CallTarget, emitTo } from '../../calls/emit-call.ts';
 import type { CodeContext, FunctionContext } from '../../context.ts';
 import { returnedAs } from '../../functions/fits/index.ts';
+import { builtKindOf, codeModeOf } from '../../functions/modes.ts';
 import { SynthesizedCode } from '../../synthesized/index.ts';
 import {
   type DeferredFunction,
@@ -135,10 +136,12 @@ export function deferredEntry(
   const { span } = plan.site;
   const code = new SynthesizedCode(lowering, span, 0, capturedBy(plan));
   const called = madeCall(code, deferred, code.captures);
-  const from = functionType({ reach: plan.givenAs.reach, parameters: [], result: plan.result });
+  const { reach, persistence } = plan.givenAs;
+  const from = functionType({ reach, persistence, parameters: [], result: plan.result });
   const module = checker.moduleOf(ownerDeclaration(owner));
   const isAsync = returnedAs(code, called, { from, to: plan.givenAs }, { module, span });
-  return code.entry(tables.deferredHeader(deferred), isAsync);
+  const mode = codeModeOf(isAsync, builtKindOf(checker, plan.givenAs));
+  return code.entry(tables.deferredHeader(deferred), mode);
 }
 
 /** How many values a function `plan` makes captures. */

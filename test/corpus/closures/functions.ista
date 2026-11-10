@@ -39,7 +39,7 @@ ista async fn later(n: Int) -> Int: n + 1
 
 fn viaChain(op: Op?) -> Int: op?.run(5) ?? 0
 
-async fn main():
+ista async fn main():
   const a = twice(fn x: x * 2, 2)
   const b = twice(inc, 4)
   const c = apply(6, fn n: n + 1)

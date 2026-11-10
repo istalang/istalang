@@ -26,7 +26,7 @@ fn put(self: OptionalSink, x: Int?) -> Int: (x ?? 100) + self.k
 
 fn fromBound<T is Source<Int>>(source: T) -> any Source<Int?>: source
 
-async fn main():
+ista async fn main():
   const narrow: any Source<Int> = Counter{n: 4, size: 0}
   const wide: any Source<Int?> = narrow
   const direct: any Source<Int?> = Counter{n: 5, size: 0}

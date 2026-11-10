@@ -33,7 +33,7 @@ ista async fn worker(v: Int | String) -> String:
     case Int as n: `spawned:${n}`
     case String as s: `spawned:${s}`
 
-async fn main() -> String:
+ista async fn main() -> String:
   const c1: Contact = Email{to: "cfo"}
   const c2: Contact = Sms{number: "555"}
   const x: Int | Email = 42

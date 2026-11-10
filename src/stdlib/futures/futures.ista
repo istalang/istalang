@@ -12,7 +12,7 @@
 
 import * as time from 'time'
 
-extern fn first<T>(futures: Array<Future<T, "ista">>) -> Future<(Int, T), "ista">
+extern ista fn first<T>(futures: Array<Future<T, "ista">>) -> Future<(Int, T), "ista">
 
 # Every `Ok` value in position order, or the first `Err` as soon as it arrives.
 ista async fn all<T, E>(futures: Array<Future<Result<T, E>, "ista">>) -> Result<Array<T>, E>:
@@ -89,10 +89,10 @@ shared struct _Race<T>:
   futures: Array<Future<T, "ista">>
   waiting: Array<Int> = [for position in 0..futures.length(): position]
 
-fn _race<T>(futures: Array<Future<T, "ista">>) -> _Race<T>: new _Race<T>{futures}
+ista fn _race<T>(futures: Array<Future<T, "ista">>) -> _Race<T>: new _Race<T>{futures}
 
 # Whether some future of `race` hasn't arrived yet.
-fn _racing<T>(race: _Race<T>) -> Bool: race->waiting.length() > 0
+ista fn _racing<T>(race: _Race<T>) -> Bool: race->waiting.length() > 0
 
 # The next future of `race` to arrive, taken out of it: its position and value.
 ista async fn _next<T>(race: _Race<T>) -> (Int, T):

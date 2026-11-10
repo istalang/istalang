@@ -44,6 +44,6 @@ fn reference(text: &String):
 fn top():
   drop limit
 
-fn unused():
+ista fn unused():
   Slot.create<Int>()
   _ = defer(fn(): 1)

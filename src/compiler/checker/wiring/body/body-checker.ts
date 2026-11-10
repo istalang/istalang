@@ -43,7 +43,7 @@ import type { Identifier, Invalid } from '../../../syntax/tree/node.ts';
 import type { AnchoredSpan } from '../../../syntax/tree/positions.ts';
 import type { TypeNode } from '../../../syntax/types/index.ts';
 import type { SignatureParameter } from '../../check.ts';
-import { FunctionScope } from '../../constructs/closures/function-scope.ts';
+import { rootScope } from '../../constructs/closures/function-scope.ts';
 import { FunctionScopes } from '../../constructs/closures/functions.ts';
 import { inferLambda } from '../../constructs/closures/lambdas.ts';
 import { declareOwnCall } from '../../constructs/closures/own-calls.ts';
@@ -87,23 +87,11 @@ import { unfolded } from '../../types/type/computed-types.ts';
 import type { FieldMember, FunctionType, Type } from '../../types/type/index.ts';
 import { errorType, unitType } from '../../types/type/primitives.ts';
 import { keysOwner } from '../../types/written/key-types.ts';
+import { type BodyKind, ownScopeOf } from './body-kinds.ts';
 import { bodyRecords } from './body-records.ts';
 import { BodyScopes, closed } from './body-scopes.ts';
 import { checkedAt } from './facts/index.ts';
 import { reportedFit } from './reported-fits.ts';
-
-/**
- * What a body is checked as, and what it must produce, if declared: a function's, async or not,
- * or a value of its own, such as a constant's or a parameter's default, which can't return.
- */
-export type BodyKind =
-  | {
-      readonly kind: 'function';
-      readonly declaration: FunctionDeclaration;
-      readonly isAsync: boolean;
-      readonly declaredResult: Type | undefined;
-    }
-  | { readonly kind: 'value'; readonly declaredResult: Type | undefined };
 
 export class BodyChecker implements BodyContext {
   readonly checker: CheckerContext;
@@ -138,13 +126,16 @@ export class BodyChecker implements BodyContext {
     );
     const isFunction = kind.kind === 'function';
     this.#result = new ReturnScope(kind.declaredResult, isFunction);
-    const declaration = isFunction ? kind.declaration : undefined;
-    const root = new FunctionScope(declaration, isFunction && kind.isAsync, this.#result);
+    const root = rootScope(this.checker, ownScopeOf(kind), this.#result);
     this.functions = new FunctionScopes(root, this.#passes);
   }
 
   get inAsync(): boolean {
     return this.functions.current.isAsync;
+  }
+
+  get codeKind(): Type {
+    return this.functions.current.codeKind;
   }
 
   get returns(): Returns {

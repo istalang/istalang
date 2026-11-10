@@ -32,9 +32,9 @@ import type { ImplicitRole, MadeCall, ResolvedCall } from '../../surface/resolve
 import type { Type } from '../../types/type/index.ts';
 import { typeText } from '../../types/type/type-text.ts';
 import type { CallArgument } from '../choosing/call-arguments.ts';
-import { callMade } from '../choosing/calls-made.ts';
 import { type Candidate, topLevelCandidates } from '../choosing/candidates.ts';
 import { applyCall } from './applied-call.ts';
+import { judgedCall } from './call-kinds.ts';
 
 /** The implicit calls of one body, by construct and role. */
 export class ImplicitCalls implements ImplicitRecord {
@@ -157,6 +157,9 @@ export function implicitCall(context: BodyContext, request: ImplicitRequest): Ty
     return undefined;
   }
   const { application, instantiation } = applied;
-  context.implicit.record(request.node, request.role, callMade(application, instantiation));
+  const at = request.span ?? request.node.span;
+  const frame = context.functions.current;
+  const call = judgedCall(context, { at, frame, application, instantiation });
+  context.implicit.record(request.node, request.role, call);
   return applied.result;
 }

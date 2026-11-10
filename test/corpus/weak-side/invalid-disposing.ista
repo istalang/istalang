@@ -18,7 +18,7 @@ ista async fn caller() -> Unit:
 fn plain():
   drop plain.disposing()
 
-async fn main() -> Int:
+ista async fn main() -> Int:
   const late = fn(): 1
   _ = main.disposing()
   const w = WeakRef(5)

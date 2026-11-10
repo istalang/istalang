@@ -23,7 +23,7 @@ ista async fn greet(x: any Named):
 ista async fn greetSendable(x: any Named & Sendable):
   ()
 
-async fn main():
+ista async fn main():
   const email: any Named = Email{to: "a"}
   spawn greet(email)
   spawn greetSendable(Email{to: "b"})

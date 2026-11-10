@@ -10,7 +10,7 @@ ista async fn twice(f: ista async fn(Int) -> Int, x: Int) -> Int:
 ista async fn generic<T>(f: ista async fn() -> T) -> T:
   await f()
 
-async fn main() -> Array<Int>:
+ista async fn main() -> Array<Int>:
   const plain = fn(x: Int) -> Int: x + 1
   const g: ista async fn(Int) -> Int = double
   const h: (ista async fn(Int) -> Int)? = plain

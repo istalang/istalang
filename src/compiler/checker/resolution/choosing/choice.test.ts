@@ -253,7 +253,7 @@ const cases: readonly ChoiceCase[] = [
       'fn f(g: fn() -> Int) -> Bool: true',
       'fn f(g: ista async fn() -> Int) -> String: "c"',
     ],
-    setup: 'const g = async fn() -> Int: 1',
+    setup: 'const g = ista async fn() -> Int: 1',
     call: 'f(g)',
     chosen: 'String',
   },

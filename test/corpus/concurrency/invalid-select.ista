@@ -25,7 +25,7 @@ ista async fn cases(s: Slot<Int>):
     else:
       2
 
-fn plain(s: Slot<Int>):
+ista fn plain(s: Slot<Int>):
   _ = await select:
     case s.read():
       1

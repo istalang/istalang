@@ -10,6 +10,7 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { reported } from '../../../check.test-kit.ts';
+import { unmarkedKind } from '../../type/function-kinds.ts';
 import { functionType, type Reach } from '../../type/function-types.ts';
 import type { Type } from '../../type/index.ts';
 import {
@@ -72,6 +73,7 @@ const types: fc.Arbitrary<Type> = fc.letrec<{ type: Type }>((tie) => ({
       ({ parameter, result, reference }): Type =>
         functionType({
           reach: 'plain',
+          persistence: unmarkedKind,
           parameters: [{ type: parameter, reference }],
           result,
         }),
@@ -137,6 +139,7 @@ function functionOf(
 ): Type {
   return functionType({
     reach,
+    persistence: unmarkedKind,
     parameters: [{ type: parameter, reference: false }],
     result: isAsync ? fittingApart.futureOf(result, persistenceType('ista')) : result,
   });

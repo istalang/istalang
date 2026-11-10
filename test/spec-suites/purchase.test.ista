@@ -17,7 +17,7 @@ struct PurchaseEnv:
   verdicts: FakeQueue<Queue<Verdict>, Verdict>
   cancels: FakeQueue<Queue<Cancel>, Cancel>
   notices: FakeQueue<Queue<Notice>, Notice>
-  charges: Mock<fn(String, Int) -> Result<String>>
+  charges: Mock<ista fn(String, Int) -> Result<String>>
 
 ista async fn withPurchaseEnv(test: ista async fn(PurchaseEnv)):
   await withClock(async fn(clock): {
@@ -44,12 +44,12 @@ ista async fn withPurchaseEnv(test: ista async fn(PurchaseEnv)):
 
 const laptop = PurchaseRequest{id: "p1", item: "laptop", amount: 900}
 
-fn approveAll(env: PurchaseEnv, roles: Array<String>):
+ista fn approveAll(env: PurchaseEnv, roles: Array<String>):
   for role in roles:
     env.verdicts.post("p1", Verdict{role, ok: true, comment: ""})
 
 @Suite{"purchase approval"}
-fn approvalSuite() -> Array<Test>: [
+ista fn approvalSuite() -> Array<Test>: [
   test("expires after 5 days", withPurchaseEnv, async fn(env): {
     const t = spawn app.purchase(laptop)
     await t.idle()

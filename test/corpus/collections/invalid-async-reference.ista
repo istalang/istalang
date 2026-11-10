@@ -13,7 +13,7 @@ ista async fn run(self: &Job):
 ista async fn bump(value: &Int):
   value += 1
 
-async fn main():
+ista async fn main():
   let counts = [1]
   let jobs = [Job{runs: 0}]
   const later: ista async fn(&Int) -> Unit = bump

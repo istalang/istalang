@@ -172,6 +172,8 @@ const checkerSurface = [
   'types/type/alias-uses.ts',
   'types/type/computed-types.ts',
   'types/type/function-types.ts',
+  // A function's kind (§3.3), which lowering's entries wait in.
+  'types/type/function-kinds.ts',
   'types/type/field-order.ts',
   'types/identity/identity.ts',
   // Relating recursive types as they unfold: lowering's conversions of parts derive with it too.

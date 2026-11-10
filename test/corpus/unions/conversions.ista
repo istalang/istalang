@@ -47,7 +47,7 @@ fn fromUnion<T>(x: T | String) -> T:
     case String: panic("unexpected string")
     case v: v
 
-async fn main() -> String:
+ista async fn main() -> String:
   const exactVsShape = which(Pixel{x: 3, y: 4}) + ":" + which(struct{x: 1, y: 2})
   const a: (any Stringable) | Bool = Email{to: "cfo"}
   const b: Point | String = Pixel{x: 2, y: 5}

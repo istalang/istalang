@@ -79,5 +79,5 @@ ista async fn awaited() -> String:
 fn show(a: Int, b: Int) -> String:
   String(a) + " " + String(b)
 
-async fn main() -> String:
+ista async fn main() -> String:
   [compound(), desugared(), referenced(), element(), nested(), await awaited()].join("|")

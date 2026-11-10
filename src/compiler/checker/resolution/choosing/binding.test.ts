@@ -8,6 +8,7 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import type { Binding } from '../../surface/resolved-call.ts';
+import { unmarkedKind } from '../../types/type/function-kinds.ts';
 import { functionType } from '../../types/type/function-types.ts';
 import type { Type } from '../../types/type/index.ts';
 import { intType } from '../../types/type/primitives.ts';
@@ -204,9 +205,15 @@ describe('binding a pack', () => {
 type SlotKind = 'call' | 'function' | 'value';
 
 const typeOfKind: Record<SlotKind, Type> = {
-  call: functionType({ reach: 'plain', parameters: [], result: intType }),
+  call: functionType({
+    reach: 'plain',
+    persistence: unmarkedKind,
+    parameters: [],
+    result: intType,
+  }),
   function: functionType({
     reach: 'plain',
+    persistence: unmarkedKind,
     parameters: [{ type: intType, reference: false }],
     result: intType,
   }),

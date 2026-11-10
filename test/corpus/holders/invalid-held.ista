@@ -22,7 +22,7 @@ fn keep<T is Disposable>(value: T) -> Int:
   value
   1
 
-async fn main():
+ista async fn main():
   Pending{job: work()}
   outcome()
   chain()

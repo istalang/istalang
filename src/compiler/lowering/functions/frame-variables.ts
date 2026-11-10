@@ -197,8 +197,9 @@ export function takeApart(
  * its body begins: a default reads no call, since it runs before the body starts.
  */
 export function declareOwnCall(context: EntryContext): void {
-  const { isAsync, function: owner } = context.frame;
-  const call = isAsync ? context.checker.bindings.ownCallOf(context.module, owner) : undefined;
+  const { mode, function: owner } = context.frame;
+  const call =
+    mode === 'plain' ? undefined : context.checker.bindings.ownCallOf(context.module, owner);
   if (call !== undefined) {
     declareFilled(context, call.name, (dst) => ({ kind: 'currentCall', span: owner.span, dst }));
   }

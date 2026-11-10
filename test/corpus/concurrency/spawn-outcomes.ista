@@ -18,7 +18,7 @@ fn valueOf(outcome: Result<Int>) -> Int:
     case Ok(value): value
     case Err(_): -1
 
-async fn main() -> String:
+ista async fn main() -> String:
   const awaited = spawn slowly(3)
   const plain = spawn quickly(4)
   const forwarding = spawn(fn(): slowly(5))

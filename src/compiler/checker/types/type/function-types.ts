@@ -11,7 +11,8 @@
  *   which a head's call gives (`headResult`), so the two spellings are one type, one key and one
  *   text, and a function returning a future is an async one wherever its type is all that's known.
  * - A function fits where another is expected when its reach fits, by their order (`reachFits`),
- *   and it takes and gives what that one does, a declared pack taking whatever parameters are left
+ *   its kind fits as a parameter does (an unmarked one where a live one is expected), and it takes
+ *   and gives what that one does, a declared pack taking whatever parameters are left
  *   (`functionFits`). Where a future is expected of it, the value it gives may go into that
  *   future's (`resultFitOf`): a plain function's call then gives a future already resolved.
  */
@@ -21,6 +22,7 @@ import {
   type FunctionQualifiers,
   type Modifiers,
 } from '../../../syntax/tokens/modifiers.ts';
+import { persistenceOf } from './function-kinds.ts';
 import type {
   FunctionType,
   ParameterSlot,
@@ -28,7 +30,7 @@ import type {
   TypeParameterType,
   WrittenThrough,
 } from './index.ts';
-import { errorType, persistenceType, tupleElements, tupleType } from './primitives.ts';
+import { errorType, tupleElements, tupleType } from './primitives.ts';
 
 /**
  * What a function's values may capture (§3.14): only sendable values, or any (`plain`), where its
@@ -41,9 +43,12 @@ export function reachOf(qualifiers: FunctionQualifiers): Reach {
   return qualifiers.reach ?? 'plain';
 }
 
-/** The modifiers a head of `type` writes, which its text and key print. */
-export function modifiersOf({ reach }: FunctionType): Modifiers {
-  return { reach: reach === 'plain' ? undefined : reach };
+/**
+ * The modifiers a head of `type` writes, which its text and key print: its reach, and its kind
+ * where it is one of the two; an unmarked function type's, or a kind variable's, writes none.
+ */
+export function modifiersOf({ reach, persistence }: FunctionType): Modifiers {
+  return { reach: reach === 'plain' ? undefined : reach, kind: persistenceOf(persistence) };
 }
 
 /** Whether a function of reach `given` fits where one of `expected` is: a sendable one anywhere. */
@@ -54,6 +59,7 @@ function reachFits(given: Reach, expected: Reach): boolean {
 /** What `functionType` builds a function type of; its pack may be any type bound to one. */
 export interface FunctionParts extends WrittenThrough {
   readonly reach: Reach;
+  readonly persistence: Type;
   readonly parameters: readonly ParameterSlot[];
   readonly pack?: Type | undefined;
   readonly result: Type;
@@ -129,7 +135,7 @@ export function sameShape(
   declared: FunctionType,
   given: FunctionType,
   parts: ParameterRelation,
-  results: (declared: Type, given: Type) => boolean = (declaredResult, givenResult) =>
+  results: ((declared: Type, given: Type) => boolean) | undefined = (declaredResult, givenResult) =>
     parts(declaredResult, givenResult, false),
 ): boolean {
   const fixed = declared.parameters.length;
@@ -173,18 +179,34 @@ function restOf(type: FunctionType, start: number): Type | undefined {
   return rest.some((slot) => slot.reference) ? undefined : tupleType(rest.map((slot) => slot.type));
 }
 
+/** How `functionFits` compares two function types' parts, results and kinds. */
+export interface FunctionRelation {
+  readonly parts: ParameterRelation;
+  /** How the results compare; as parameters by value do where it's left out. */
+  readonly results?: ((declared: Type, given: Type) => boolean) | undefined;
+  /**
+   * How the given kind relates to the declared one: as code of the declared kind calling the given
+   * one (`kindAdmits`), or exactly, where types are compared for identity.
+   */
+  readonly kinds: (declared: Type, given: Type) => boolean;
+}
+
 /**
  * Whether a function of type `given` fits where `declared` is expected: its reach fitting
- * (§3.14), and of the same shape (`sameShape`), its parts and results compared as the caller says.
+ * (§3.14), its kind related as the caller says, since its calls run in the declared one's kind
+ * (proposal 8, Rule 4), and of the same shape (`sameShape`), its parts and results compared as the
+ * caller says.
  */
 export function functionFits(
   declared: FunctionType,
   given: FunctionType,
-  parts: ParameterRelation,
-  results: (declared: Type, given: Type) => boolean = (declaredResult, givenResult) =>
-    parts(declaredResult, givenResult, false),
+  { parts, results, kinds }: FunctionRelation,
 ): boolean {
-  return reachFits(given.reach, declared.reach) && sameShape(declared, given, parts, results);
+  return (
+    reachFits(given.reach, declared.reach) &&
+    kinds(declared.persistence, given.persistence) &&
+    sameShape(declared, given, parts, results)
+  );
 }
 
 /** What awaiting a value gives (§6): the value it resumes with, and the kind of its wait. */
@@ -281,13 +303,14 @@ export function madeAsync(
 }
 
 /**
- * What calling a function of `head` gives, where its body gives `value`: an async head's call a
- * future of it of the head's kind (§3.14), a plain one's the value.
+ * What calling a function of `head` and kind `kind` gives, where its body gives `value`: an async
+ * head's call a future of it of that kind (§3.14), a plain one's the value.
  */
 export function headResult(
   { futureOf }: Pick<Futures, 'futureOf'>,
   head: FunctionQualifiers,
+  kind: Type,
   value: Type,
 ): Type {
-  return awaits(head) ? futureOf(value, persistenceType(head.kind ?? 'ista')) : value;
+  return awaits(head) ? futureOf(value, kind) : value;
 }

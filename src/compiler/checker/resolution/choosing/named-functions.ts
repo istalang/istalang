@@ -33,6 +33,7 @@ import {
   declaredFunctionName,
   fieldsFunctionOf,
 } from '../../../syntax/declarations/field-defaults.ts';
+import { isImplicitKind } from '../../../syntax/declarations/function-kinds.ts';
 import type { TypeParameter } from '../../../syntax/declarations/index.ts';
 import type { TypeApplication } from '../../../syntax/expressions/calls.ts';
 import type { MemberAccess } from '../../../syntax/expressions/index.ts';
@@ -59,6 +60,7 @@ import { typeArgumentsInapplicability, writtenFor } from './applicability.ts';
 import type { CallArgument, Passing, SignatureSlot } from './call-arguments.ts';
 import { type Candidate, callCandidates, staticCandidates, staticTargetOf } from './candidates.ts';
 import { type Application, type Choice, chooseAsValue, signatureOf } from './choice.ts';
+import { ownValueKind, valueKind } from './value-kinds.ts';
 
 /**
  * Functions an expression names as a value: where, by what name in messages, which, and any type
@@ -290,6 +292,7 @@ function valueTypeOf(
   const pack = signature.parameters.find((slot) => slot.rest?.kind === 'pack');
   return functionType({
     reach: 'sendable',
+    persistence: placed(signature.kind()),
     parameters: signature.parameters
       .filter((slot, index) => slot !== pack && binding[index]?.kind === 'argument')
       .map((slot) => ({ type: placed(slot.type), reference: slot.reference })),
@@ -365,7 +368,11 @@ function takesCount(context: BodyContext, named: NamedFunctions, shape: Function
     type: undefined,
     passing: passingOf(slot.reference),
   }));
-  const given = { written: named.written, site: named.site };
+  const given = {
+    written: named.written,
+    site: named.site,
+    decidedKind: valueKind(context, shape),
+  };
   return chooseAsValue(context.checker, candidates, arguments_, given).kind !== 'none';
 }
 
@@ -410,15 +417,18 @@ export function ownChoice(
     return { kind: 'none', reasons: [counted] };
   }
   const given = writtenFor(signature, written);
+  // Its own kind, nothing expected of it, settles to the code's, which names it (Rule 3).
   const isOpen = (parameter: TypeParameter) =>
-    given === undefined || (!given.has(parameter) && parameter.defaultType === undefined);
+    !isImplicitKind(parameter) &&
+    (given === undefined || (!given.has(parameter) && parameter.defaultType === undefined));
   if (signature.typeParameters.some(isOpen)) {
     return { kind: 'none', reasons: [] };
   }
   const arguments_ = signature.parameters.flatMap((slot) =>
     ownArguments(slot, given, checker.typeRules),
   );
-  return chooseAsValue(checker, [candidate], arguments_, { written });
+  const decidedKind = ownValueKind(context, signature);
+  return chooseAsValue(checker, [candidate], arguments_, { written, decidedKind });
 }
 
 /**
@@ -468,6 +478,7 @@ function chosenFor(
   const choice = chooseAsValue(context.checker, candidates, arguments_, {
     written: named.written,
     site: named.site,
+    decidedKind: valueKind(context, shape),
   });
   return choice.kind === 'chosen' ? choice.application : undefined;
 }

@@ -1123,8 +1123,8 @@ export function generate(doc: FormDocument, sourceName: string): string {
     const view = `any View<Scope<Group<${P}Model>.Seen, ${P}Ctx>>`;
     const sig =
       u === main
-        ? `fn ${c}View(m: ${P}Model) -> ${view}:`
-        : `fn ${c}View(m: ${P}Model, k: String) -> ${view}:`;
+        ? `ista fn ${c}View(m: ${P}Model) -> ${view}:`
+        : `ista fn ${c}View(m: ${P}Model, k: String) -> ${view}:`;
     out.push(`${sig}\n    ${indent(body, 4)}`, '');
   }
 

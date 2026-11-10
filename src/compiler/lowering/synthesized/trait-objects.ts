@@ -30,13 +30,17 @@ import type { FunctionDefinition } from '../../../definition/tables/functions.ts
 import { unreachable } from '../../../foundation/structures/unreachable.ts';
 import type { MemberConversion } from '../../checker/check.ts';
 import { type RequiredField, requiredFieldRead } from '../../checker/surface/checked-field.ts';
+import { substitute, substitutionFor } from '../../checker/types/parts/substitution.ts';
+import { kindOfFunction } from '../../checker/types/type/function-kinds.ts';
 import type { AnyType, FunctionType, Type } from '../../checker/types/type/index.ts';
 import { awaitedOf } from '../../checker/types/type/well-known.ts';
 import { hasOneValue } from '../../checker/types/unions/unions.ts';
+import { functionTypeParametersOf } from '../../syntax/declarations/function-kinds.ts';
 import { closeWitness, type Dispatch } from '../calls/closed-calls.ts';
 import type { CodeContext } from '../context.ts';
 import { fittedIn } from '../functions/fits/index.ts';
 import { resultFitBetween } from '../functions/fits/parts.ts';
+import { codeModeOf } from '../functions/modes.ts';
 import type { ConversionSite } from '../tables/instances.ts';
 import { spelledType } from '../tables/names.ts';
 import { convertedIntoAny } from '../values/into-any.ts';
@@ -62,7 +66,13 @@ export function dispatchEntry(lowering: Lowering, dispatch: Dispatch): FunctionD
   }
   const at = { module: checker.moduleOf(required), span: required.name.span };
   // What a member gives converts as what its future gives, so a future is awaited, whatever the head.
-  const givesFuture = awaitedOf(checker, checker.resultOf(required)) !== undefined;
+  const awaited = awaitedOf(checker, checker.resultOf(required));
+  const givesFuture = awaited !== undefined;
+  const kindOfDispatch = substitute(
+    awaited?.mode ?? kindOfFunction(checker, required),
+    substitutionFor(functionTypeParametersOf(required), dispatch.typeArguments),
+    checker.typeRules,
+  );
   switchOverMembers(code, on, receiver, (type) => {
     const witness = checker.traitObjects.memberWitnesses(through, constraint, type)[member];
     if (witness === undefined) {
@@ -88,7 +98,7 @@ export function dispatchEntry(lowering: Lowering, dispatch: Dispatch): FunctionD
   const generic = dispatch.typeArguments.map((type) => spelledType(checker, type));
   const name = `${spelledType(checker, on)}.${required.name.text}${generic.length === 0 ? '' : `<${generic.join(', ')}>`}`;
   const header = tables.headerAt(name, checker.moduleOf(required), required.name.span);
-  return code.entry(header, givesFuture, references);
+  return code.entry(header, codeModeOf(givesFuture, kindOfDispatch), references);
 }
 
 /**
@@ -130,7 +140,7 @@ export function anyConversionEntry(
     code.return(convertedIntoAny(code, { value: code.field(value, 0), from: type, to }, span));
   });
   const name = `${spelledType(checker, from)} as ${spelledType(checker, to)}`;
-  return code.entry(tables.headerAt(name, checker.moduleOf(first.trait), span), false);
+  return code.entry(tables.headerAt(name, checker.moduleOf(first.trait), span), 'plain');
 }
 
 /** The entry reading `required`'s field, which a trait of `on` requires, from a value of `on`. */
@@ -162,7 +172,7 @@ export function anyFieldEntry(
     );
   });
   const name = `${spelledType(checker, on)}.${field.name.text}`;
-  return code.entry(tables.headerAt(name, checker.moduleOf(trait), field.name.span), false);
+  return code.entry(tables.headerAt(name, checker.moduleOf(trait), field.name.span), 'plain');
 }
 
 /**

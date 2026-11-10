@@ -17,7 +17,7 @@ describe('labels', () => {
     ['a hold naming its function', 'for y in [2]:\n  hold(subject) _ = job()'],
     ['one label on two loops side by side', 'a: for x in [1]: break a\na: for y in [2]: break a'],
   ])('accept %s', (_, body) => {
-    expect(reported(started + inFunction(body))).toEqual(reportedNothing);
+    expect(reported(started + inFunction(body, 'ista'))).toEqual(reportedNothing);
   });
 
   it.each([
@@ -60,7 +60,9 @@ describe('labels', () => {
     ],
     ['a label nothing names', 'outer: for x in [1]: x', reports.unusedLabel, 'outer'],
   ])('report %s', (_, body, diagnostic, spanText) => {
-    expect(reported(started + inFunction(body))).toEqual(reportedOnce(diagnostic.code, spanText));
+    expect(reported(started + inFunction(body, 'ista'))).toEqual(
+      reportedOnce(diagnostic.code, spanText),
+    );
   });
 });
 

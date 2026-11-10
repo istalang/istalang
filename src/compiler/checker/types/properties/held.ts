@@ -13,29 +13,45 @@ import { unfolded } from '../type/computed-types.ts';
 import type { Type } from '../type/index.ts';
 import { TypeCycle } from './type-cycle.ts';
 
+type HeldReader = Pick<
+  CheckerContext,
+  'fieldsOf' | 'variantsOf' | 'sharedValueOf' | 'typeKeys' | 'typeRules'
+>;
+
 /** The first type `type` holds, itself first, that `picks` picks; undefined when none is. */
 export function heldType(
-  checker: Pick<
-    CheckerContext,
-    'fieldsOf' | 'variantsOf' | 'sharedValueOf' | 'typeKeys' | 'typeRules'
-  >,
+  checker: HeldReader,
   type: Type,
   picks: (type: Type) => boolean,
 ): Type | undefined {
+  let found: Type | undefined;
+  walkHeld(checker, type, (part) => {
+    found = picks(part) ? part : undefined;
+    return found !== undefined;
+  });
+  return found;
+}
+
+/** Every type `type` holds at any depth, itself first, once along each path. */
+export function heldTypes(checker: HeldReader, type: Type): readonly Type[] {
+  const held: Type[] = [];
+  walkHeld(checker, type, (part) => {
+    held.push(part);
+    return false;
+  });
+  return held;
+}
+
+/**
+ * Visits each type `type` holds, itself first, until `visit` says to stop, which it then returns;
+ * what a part holds is visited after the part.
+ */
+function walkHeld(checker: HeldReader, type: Type, visit: (part: Type) => boolean): boolean {
   const cycle = new TypeCycle(checker.typeKeys);
-  const held = (part: Type): Type | undefined =>
-    picks(part)
-      ? part
-      : cycle.enter(part, undefined, (): Type | undefined => {
-          for (const inner of heldParts(checker, part)) {
-            const found = held(inner);
-            if (found !== undefined) {
-              return found;
-            }
-          }
-          return undefined;
-        });
-  return held(type);
+  const walk = (part: Type): boolean =>
+    visit(part) ||
+    cycle.enter(part, false, () => heldParts(checker, part).some((inner) => walk(inner)));
+  return walk(type);
 }
 
 /**

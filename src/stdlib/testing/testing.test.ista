@@ -14,7 +14,7 @@ import * as json from 'json'
 extern sendable struct Queue<T is Sendable>
 extern shared struct Sent
 extern fn send<T is Encodable>(self: Queue<T>, msg: T)
-extern fn receive<T is Decodable>(self: Queue<T>) -> Future<T, "ista">
+extern ista fn receive<T is Decodable>(self: Queue<T>) -> Future<T, "ista">
 extern fn queueOf(name: String) -> Queue<Int>
 
 shared struct Log:
@@ -53,7 +53,7 @@ ista async fn waitsAday() -> Int:
   await time.delay(Duration{value: 86_400_000})
   time.now().value
 
-fn sendsToAnother():
+ista fn sendsToAnother():
   const fake = FakeQueue<Queue<Int>, Int>{make: handle}
   (fake.send)(handle<Queue<Int>>(), 1)
 

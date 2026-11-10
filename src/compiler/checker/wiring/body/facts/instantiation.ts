@@ -299,6 +299,8 @@ function substitutedConversion(
       return { kind: 'shape', to: substituteKept(conversion.to, substitution, rules) } as const;
     case 'parts':
       return { kind: 'parts', to: substitute(conversion.to, substitution, rules) } as const;
+    case 'async':
+      return { kind: 'async', to: substituteKept(conversion.to, substitution, rules) } as const;
     default:
       return conversion;
   }

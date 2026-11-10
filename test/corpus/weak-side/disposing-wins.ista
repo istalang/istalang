@@ -15,7 +15,7 @@ ista async fn worker(jobs: Inbox<Int>, log: Shared<Array<String>>) -> Unit:
     case worker.disposing():
       note(log, "cleaned up")
 
-async fn main() -> String:
+ista async fn main() -> String:
   const empty: Array<String> = []
   const log = new Shared{value: empty}
   const jobs = Inbox.create<Int>()

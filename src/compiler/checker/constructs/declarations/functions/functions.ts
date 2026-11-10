@@ -17,6 +17,7 @@ import type { CheckerContext, CheckerNote } from '../../../contexts/context.ts';
 import { checkerDiagnostics } from '../../../diagnostics/index.ts';
 import type { CheckedBody } from '../../../surface/checked-body.ts';
 import { sameTypeSpelled } from '../../../types/parts/type-parts.ts';
+import { kindOfFunction } from '../../../types/type/function-kinds.ts';
 import { headResult } from '../../../types/type/function-types.ts';
 import type { Type } from '../../../types/type/index.ts';
 import { errorType, unitType } from '../../../types/type/primitives.ts';
@@ -68,6 +69,7 @@ export class FunctionChecks {
         return headResult(
           checker.fitting,
           declaration.qualifiers,
+          kindOfFunction(checker, declaration),
           declared ?? inferred ?? unitType,
         );
       },

@@ -42,7 +42,7 @@ fn inner(log: Shared<String>, f: fn() -> Int) -> Int:
 ista async fn fetchUser(id: Int) -> User:
   User{id: id}
 
-fn retry<T>(f: ista async fn() -> T, times: Int = 3) -> Future<T, "ista">:
+ista fn retry<T>(f: ista async fn() -> T, times: Int = 3) -> Future<T, "ista">:
   f()
 
 fn submit(self: Pool, job: fn() -> Int) -> Int:
@@ -63,7 +63,7 @@ ista async fn eventually(f: ista async fn() -> Int) -> Int:
 fn apply(run: fn(fn() -> Int) -> Int) -> Int:
   run encode("abcd")
 
-async fn main() -> String:
+ista async fn main() -> String:
   const log = new Shared{value: ""}
   const a = later(log) load(log, 2).process()
   log->value += "| "

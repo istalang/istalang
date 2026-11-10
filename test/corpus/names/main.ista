@@ -8,7 +8,7 @@ const limit: Int = 50_000
 extern approvalLimit: Int
 extern fn chargeCard(id: String, amount: Int) -> Result<String>
 extern sendable struct Queue<T is Sendable>
-extern fn receive<T is Sendable>(self: Queue<T>) -> Future<T, "ista">
+extern ista fn receive<T is Sendable>(self: Queue<T>) -> Future<T, "ista">
 
 struct Note { text: String }
 

@@ -120,7 +120,7 @@ describe('ista run', () => {
 
 const waitingProgram = [
   "import * as time from 'time'",
-  'async fn main():',
+  'ista async fn main():',
   '  const start = time.now()',
   '  await time.delay(300ms)',
   '  time.now().value - start.value >= 300',

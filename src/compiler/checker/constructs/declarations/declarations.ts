@@ -40,6 +40,7 @@ import type { CheckerContext } from '../../contexts/context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import { checkHostBoundary, crossesToHost } from '../../rules/boundary/host-boundary.ts';
 import { checkDisposeDeclaration, isDisposeFunction } from '../../rules/disposal/disposal.ts';
+import { checkSignatureKind } from '../../rules/kinds/signature-kinds.ts';
 import { checkSuite } from '../../rules/testing.ts';
 import { namesMemberParameter } from '../../types/traits/struct-keys.ts';
 import { outcomeOf } from '../../types/type/well-known.ts';
@@ -99,6 +100,7 @@ function checkFunction(checker: CheckerContext, node: FunctionDeclaration): void
   checker.defaultsOf(node);
   checker.resultOf(node);
   checker.bodyOf(node);
+  checkSignatureKind(checker, module, node);
   if (node.isExtern) {
     checkHostBoundary(checker, module, node);
     refusePatterns(checker, module, node, 'an extern function');

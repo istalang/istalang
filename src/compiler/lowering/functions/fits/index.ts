@@ -42,6 +42,7 @@ import { spelledType } from '../../tables/names.ts';
 import { convertedIntoAny } from '../../values/into-any.ts';
 import { rebuiltAs } from '../../values/struct-values.ts';
 import { asBase, intoUnion } from '../../values/unions.ts';
+import { builtKindOf, codeModeOf } from '../modes.ts';
 import { changesLayout, type Rebuilding, rebuilt, resultFitBetween } from './parts.ts';
 
 /** A register and the type of the value it holds. */
@@ -77,7 +78,8 @@ export function fittedValue(
   return appliedFit(context, typed, fit, {
     span: site.span,
     at: { module, span: site.span },
-    madeAsync: (value, plain) => asyncFitClosure(context, { owner, site, type: plain }, value),
+    madeAsync: (value, plain, made) =>
+      asyncFitClosure(context, { owner, site, type: plain, made }, value),
   });
 }
 
@@ -259,7 +261,7 @@ export function convertingEntry(
       ? rebuilt(code, { register: value, type: from }, to, rebuildingIn(code, how))
       : appliedFit(code, { value, type: from }, fit, how);
   code.return(result);
-  return code.entry(tables.headerAt(conversionName(checker, entry), at.module, at.span), false);
+  return code.entry(tables.headerAt(conversionName(checker, entry), at.module, at.span), 'plain');
 }
 
 /**
@@ -295,9 +297,9 @@ export function wrappingEntry(
     callee: { kind: 'value', register: original },
     arguments: passed,
   });
-  const isAsync = returnedAs(code, called, entry, at);
+  const mode = codeModeOf(returnedAs(code, called, entry, at), builtKindOf(checker, entry.to));
   const header = tables.headerAt(conversionName(checker, entry), at.module, at.span);
-  return code.entry(header, isAsync, references);
+  return code.entry(header, mode, references);
 }
 
 /**
@@ -370,5 +372,6 @@ export function asyncFitEntry(
     arguments: code.parameters.map((_, index) => code.passedOn(index, references)),
   });
   code.return(result);
-  return code.entry(context.tables.asyncFitHeader(fit), true, references);
+  const mode = codeModeOf(true, builtKindOf(context.checker, fit.made));
+  return code.entry(context.tables.asyncFitHeader(fit), mode, references);
 }

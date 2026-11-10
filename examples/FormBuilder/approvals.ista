@@ -1,4 +1,4 @@
 # approvals.ista — external approval source for the order and supplier forms.
 
-extern fn ask(userId: String, totalQty: Int) -> Future<Bool, "ista">
-extern fn ask(ownerId: String, companyName: String) -> Future<Bool, "ista">
+extern ista fn ask(userId: String, totalQty: Int) -> Future<Bool, "ista">
+extern ista fn ask(ownerId: String, companyName: String) -> Future<Bool, "ista">

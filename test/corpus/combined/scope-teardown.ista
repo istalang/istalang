@@ -32,7 +32,7 @@ ista async fn scope(log: Inbox<String>) -> Int:
     log.send(if wk.deref() is none: "dead" else: "alive")
     3
 
-async fn main() -> Array<String>:
+ista async fn main() -> Array<String>:
     const log = Inbox.create<String>()
     const r = await scope(log)
     log.send("scope " + r.toString())

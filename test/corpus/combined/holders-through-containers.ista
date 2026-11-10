@@ -11,7 +11,7 @@ ista async fn watcher(log: Inbox<String>, name: String, w: WeakRef<Inbox<Int>>):
     await w.disposed()
     log.send(name + " gone")
 
-async fn main() -> Array<String>:
+ista async fn main() -> Array<String>:
     const log = Inbox.create<String>()
     let hs: Array<Holder> = []
     let w1: WeakRef<Inbox<Int>>? = none

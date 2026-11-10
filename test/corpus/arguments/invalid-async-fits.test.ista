@@ -18,7 +18,7 @@ ista async fn later() -> Int: 1
 fn sum(first: Int, ...more: Array<Int>) -> Int: first
 fn sum(...all: Array<Int>) -> Int: 0
 
-fn main():
+ista fn main():
   const wanted: fn() -> Int = later
   drop(testing.mock<(), Future<Int, "ista">>(plain, later))
   const twice: ista async fn() -> Future<Int, "ista"> = later

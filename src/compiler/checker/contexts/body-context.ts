@@ -193,6 +193,8 @@ export interface BodyContext extends CheckedModule {
   ) => CheckedPasses;
   /** Whether the innermost function is async, the only kind that may `await` (§5). */
   readonly inAsync: boolean;
+  /** The kind of the innermost function's code (proposal 8, Rule 2). */
+  readonly codeKind: Type;
   readonly variables: Variables;
   readonly literals: LiteralSources;
   /** The functions being checked, the body's own and nested ones (§3.14), innermost current. */
@@ -286,6 +288,15 @@ export interface FunctionFrame {
    */
   readonly reach: AnchoredSpan | undefined;
   readonly isAsync: boolean;
+  /** The kind of its code, which every function it calls must allow (proposal 8, Rule 2). */
+  readonly codeKind: Type;
+  /**
+   * Whether its code depended on its kind: called or waited on something of a kind, or fixed a
+   * function's kind by it. A plain lambda that didn't is of either kind (proposal 8, Rule 2).
+   */
+  readonly reliesOnKind: boolean;
+  /** Notes that its code depends on its kind. */
+  readonly relyOnKind: () => void;
   readonly returns: Returns;
   readonly enclosing: Enclosing;
   /** What the function captures, in the order first used. */
@@ -353,6 +364,10 @@ export interface ValueCallRecord {
  */
 export interface DeferralRecord {
   readonly record: (call: Expression, given: Type) => void;
+  /** Notes `call` as the call a deferred call makes later, which its code doesn't make (Rule 4). */
+  readonly defer: (call: object) => void;
+  /** Whether `call` is a call a deferred call makes later. */
+  readonly isDeferred: (call: object) => boolean;
 }
 
 /** How each iteration runs (constructs/loops/iteration.ts). */

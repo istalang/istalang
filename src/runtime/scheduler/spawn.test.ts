@@ -24,7 +24,7 @@ const spawningMain = [
   'ista async fn child(n: Int) -> Int:',
   '  await time.delay(10ms)',
   '  n * 2',
-  'async fn main() -> Int:',
+  'ista async fn main() -> Int:',
   '  spawn child(1)',
   '  await time.delay(1ms)',
   '  spawn child(2)',
@@ -99,7 +99,7 @@ describe('spawning an instance', () => {
   it("carries a sendable closure's captures into the child", async () => {
     const text = compiledText(
       [
-        'async fn main() -> Int:',
+        'ista async fn main() -> Int:',
         '  const base = 40',
         '  const add = fn(n: Int): base + n',
         '  spawn add(2)',
@@ -122,7 +122,7 @@ const awaitingMain = [
   '  await time.delay(10ms)',
   '  n * 2',
   'fn twice(n: Int) -> Int: n * 2',
-  'async fn main() -> Int:',
+  'ista async fn main() -> Int:',
   '  spawn child(1)',
   '  spawn twice(2)',
   '  0',
@@ -177,7 +177,7 @@ describe("a spawned instance's root", () => {
     const text = compiledText(
       [
         "import * as runtime from 'runtime'",
-        'async fn main() -> Int:',
+        'ista async fn main() -> Int:',
         '  drop runtime.isolate(fn(): "isolated")',
         '  0',
       ].join('\n'),
@@ -189,7 +189,7 @@ describe("a spawned instance's root", () => {
     const text = compiledText(
       [
         "import * as runtime from 'runtime'",
-        'async fn main() -> Int:',
+        'ista async fn main() -> Int:',
         '  drop await spawn(runtime.commit).result()',
         '  drop await runtime.isolate(runtime.commit)',
         '  0',
@@ -223,7 +223,7 @@ describe("a spawned instance's root", () => {
         'ista async fn makesLease() -> Lease:',
         '  await time.delay(5ms)',
         '  new Lease{name: "awaited"}',
-        'async fn main() -> Int:',
+        'ista async fn main() -> Int:',
         '  drop spawn worker()',
         '  drop spawn makesLease()',
         '  0',

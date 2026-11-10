@@ -11,8 +11,8 @@ import type { HostCall, HostExterns } from './host-natives.ts';
 
 const program = compiledText(
   [
-    'extern fn slow(name: String) -> Future<Int, "ista">',
-    'extern fn gate() -> Future<Int, "ista">',
+    'extern ista fn slow(name: String) -> Future<Int, "ista">',
+    'extern ista fn gate() -> Future<Int, "ista">',
     'extern limit: Int',
     '',
     'ista async fn dropped() -> Int:',

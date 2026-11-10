@@ -28,7 +28,7 @@ fn leaves(t: Tree<Int?>) -> Int:
       total
     case _: 1
 
-async fn main():
+ista async fn main():
   const ints: Array<Int> = [1, 2, 3]
   const optionals: Array<Int?> = ints
   const counts: Map<String, Int> = ["a": 1]

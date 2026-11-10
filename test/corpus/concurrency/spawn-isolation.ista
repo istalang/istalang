@@ -13,7 +13,7 @@ ista async fn grow(cart: Cart):
   mine.items.push(200)
   await time.delay(1ms)
 
-async fn main() -> String:
+ista async fn main() -> String:
   let cart = Cart{items: [1, 2]}
   spawn grow(cart)
   cart.items.push(3)

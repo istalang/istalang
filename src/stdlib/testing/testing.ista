@@ -104,12 +104,12 @@ enum InstanceState:
 
 # Spawns `f` as a new instance once the caller's segment commits (§9), with every segment run,
 # discarded and run again before it commits (§10).
-extern fn spawnCrashingEveryAwait<T>(f: sendable ista async fn() -> T) -> Instance<T>
+extern ista fn spawnCrashingEveryAwait<T>(f: sendable ista async fn() -> T) -> Instance<T>
 
 # Resolves once every execution of the instance is waiting, or it has finished.
-extern fn idle<R>(self: Instance<R>) -> Future<Unit, "ista">
+extern ista fn idle<R>(self: Instance<R>) -> Future<Unit, "ista">
 # Resolves once an execution of the instance is suspended at waypoint `label`.
-extern fn reaches<R>(self: Instance<R>, label: String) -> Future<Unit, "ista">
+extern ista fn reaches<R>(self: Instance<R>, label: String) -> Future<Unit, "ista">
 # The waypoint of every wait of the instance, or its source location where it has none.
 extern fn waitingAt<R>(self: Instance<R>) -> Array<String>
 extern fn state<R>(self: Instance<R>) -> InstanceState
@@ -175,8 +175,9 @@ fn setups<A, B, C, D, E, G>(
 ) -> Setup<(A, B, C, D, E, G)>:
   _joined(setups(a, b, c, d, e), g, fn(p: (A, B, C, D, E), z: G): (p.0, p.1, p.2, p.3, p.4, z))
 
-# `outer` around `inner`, the test receiving their environments as `join` makes one of them.
-fn _joined<O, I, J>(outer: Setup<O>, inner: Setup<I>, join: fn(O, I) -> J) -> Setup<J>:
+# `outer` around `inner`, the test receiving their environments as `join` makes one of them, called
+# in the setup's ista code.
+fn _joined<O, I, J>(outer: Setup<O>, inner: Setup<I>, join: ista fn(O, I) -> J) -> Setup<J>:
   async fn(body: ista async fn(J) -> Unit): await outer(
     async fn(o: O): await inner(async fn(i: I): await body(join(o, i)))
   )
@@ -207,7 +208,7 @@ struct FakeClock:
   start: Time
   _state: _Clock = new _Clock{now: start}
   now: fn() -> Time = fn(): _state->now
-  at: fn(Time) -> Future<Unit, "ista"> = fn(deadline: Time): _waitUntil(_state, deadline)
+  at: ista fn(Time) -> Future<Unit, "ista"> = fn(deadline: Time): _waitUntil(_state, deadline)
 
 # A fake clock's time, and the waits it fills as it passes their deadlines: ordered by deadline,
 # ties in the order they began, so it fills them in that order.
@@ -219,7 +220,7 @@ struct _Wait:
   deadline: Time
   slot: Slot<Unit>
 
-fn _waitUntil(clock: _Clock, deadline: Time) -> Future<Unit, "ista">:
+ista fn _waitUntil(clock: _Clock, deadline: Time) -> Future<Unit, "ista">:
   const slot = Slot.create<Unit>()
   const (due, later) = _splitDue(clock->waits, deadline)
   clock->waits = [...due, _Wait{deadline, slot}, ...later]
@@ -227,7 +228,7 @@ fn _waitUntil(clock: _Clock, deadline: Time) -> Future<Unit, "ista">:
   slot.take()
 
 # Moves the clock forward by `by`, filling every wait whose deadline it passes (§10).
-fn advance(self: FakeClock, by: Duration):
+ista fn advance(self: FakeClock, by: Duration):
   if by < Duration{value: 0}: panic("A fake clock only moves forward, not by " + by + ".")
   const clock = self._state
   clock->now = clock->now + by
@@ -241,7 +242,7 @@ ista async fn withClock(body: ista async fn(FakeClock) -> Unit):
   await body(clock)
 
 # Fills every wait whose deadline the clock has reached, in order, and lets go of them.
-fn _fillDue(clock: _Clock):
+ista fn _fillDue(clock: _Clock):
   const (due, later) = _splitDue(clock->waits, clock->now)
   clock->waits = later
   for each in due: drop each.slot.put(())
@@ -258,8 +259,8 @@ struct FakeQueue<Q, T, K = String>:
   make: fn() -> Q
   _queues: _Queues<Q, T, K> = new _Queues<Q, T, K>{}
   open: fn(K) -> Q = fn(key: K): _opened(_queues, make, key).queue
-  send: fn(Q, T) -> Unit = fn(queue: Q, message: T): _inboxOf(_queues, queue).send(message)
-  receive: fn(Q) -> Future<T, "ista"> = fn(queue: Q): _inboxOf(_queues, queue).receive()
+  send: ista fn(Q, T) -> Unit = fn(queue: Q, message: T): _inboxOf(_queues, queue).send(message)
+  receive: ista fn(Q) -> Future<T, "ista"> = fn(queue: Q): _inboxOf(_queues, queue).receive()
 
 shared struct _Queues<Q, T, K>:
   opened: Array<_Queue<Q, T, K>> = []
@@ -270,15 +271,15 @@ struct _Queue<Q, T, K>:
   inbox: Inbox<T>
 
 # The messages waiting in the queue of `key`, oldest first.
-fn pending<Q, T, K>(self: FakeQueue<Q, T, K>, key: K) -> Array<T>:
+ista fn pending<Q, T, K>(self: FakeQueue<Q, T, K>, key: K) -> Array<T>:
   _opened(self._queues, self.make, key).inbox.pending()
 
 # Sends `message` into the queue of `key`.
-fn post<Q, T, K>(self: FakeQueue<Q, T, K>, key: K, message: T):
+ista fn post<Q, T, K>(self: FakeQueue<Q, T, K>, key: K, message: T):
   _opened(self._queues, self.make, key).inbox.send(message)
 
 # Sends `message` into `queue` revertibly, for a program's own revertible send to answer with.
-fn sendRevertible<Q, T, K>(self: FakeQueue<Q, T, K>, queue: Q, message: T) -> Revertible<T>:
+ista fn sendRevertible<Q, T, K>(self: FakeQueue<Q, T, K>, queue: Q, message: T) -> Revertible<T>:
   _inboxOf(self._queues, queue).sendRevertible(message)
 
 # The queue of `key`, made the first time.
@@ -310,7 +311,7 @@ struct _Receipt<R>:
   retract: fn() -> Unit
 
 # A replacement for a host's revertible send into `queues`, returning a receipt `self.make` builds.
-fn revertibleSender<R, Q, T, K>(self: FakeReceipts<R>, queues: FakeQueue<Q, T, K>) -> fn(Q, T) -> R:
+ista fn revertibleSender<R, Q, T, K>(self: FakeReceipts<R>, queues: FakeQueue<Q, T, K>) -> fn(Q, T) -> R:
   fn sendInto(queue: Q, message: T) -> R:
     const receipt = (self.make)()
     const held = new Shared<Revertible<T>?>{value: queues.sendRevertible(queue, message)}

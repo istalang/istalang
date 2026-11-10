@@ -31,7 +31,10 @@
 import { type Handlers, handlerOf } from '../../../../foundation/structures/kind-table.ts';
 import type { Entity } from '../../../binder/entities.ts';
 import type { ModuleId } from '../../../program/program.ts';
+import { writtenKindParameterOf } from '../../../syntax/declarations/function-kinds.ts';
 import type { TypeAliasDeclaration } from '../../../syntax/declarations/index.ts';
+import { awaits } from '../../../syntax/tokens/modifiers.ts';
+import { parentOf } from '../../../syntax/tree/index.ts';
 import { type Identifier, isMissingName } from '../../../syntax/tree/node.ts';
 import {
   type FunctionType as FunctionTypeNode,
@@ -46,6 +49,7 @@ import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import { substitutionFor } from '../parts/substitution.ts';
 import { aliasedAs } from '../type/alias-uses.ts';
 import { ownAssociatedType } from '../type/computed-types.ts';
+import { kindOfFunction, unmarkedKind, writtenKindOf } from '../type/function-kinds.ts';
 import { functionType, headResult, isPack, reachOf } from '../type/function-types.ts';
 import {
   type NominalDeclaration,
@@ -158,15 +162,45 @@ function writtenFunctionType(resolution: Resolution, node: FunctionTypeNode): Ty
   }
   const rest = last?.kind === 'RestType' ? last : undefined;
   const written = node.returnType === undefined ? unitType : resolve(resolution, node.returnType);
+  const kind = writtenKindOf(node.qualifiers) ?? kindAround(resolution, node);
+  // Either kind may call an unmarked function, but its future must be of one (§3.3).
+  if (awaits(node.qualifiers) && kind.kind === 'union') {
+    resolution.checker.report(resolution.module, checkerDiagnostics.unkindedFuture(node.span));
+  }
   return functionType({
     reach: reachOf(node.qualifiers),
+    persistence: kind,
     parameters: fixed.map((parameter) => ({
       type: resolve(resolution, parameter),
       reference: unparenthesizedType(parameter).kind === 'ReferenceType',
     })),
     pack: rest === undefined ? undefined : packOf(resolution, rest),
-    result: headResult(resolution.checker.fitting, node.qualifiers, written),
+    result: headResult(resolution.checker.fitting, node.qualifiers, kind, written),
   });
+}
+
+/**
+ * The kind of an unmarked function type `node`: the kind of the function whose signature or body
+ * holds it, which it shares (§3.3), a lambda's written one, or else the code's the lambda stands in,
+ * or of the declaration whose kind parameter it is written under (`Box<K in Persistence>`), or
+ * either kind outside all of them.
+ */
+function kindAround({ checker, module }: Resolution, node: FunctionTypeNode): Type {
+  const tree = checker.inputs.treeOf(module);
+  for (let holder = parentOf(tree, node); holder !== undefined; holder = parentOf(tree, holder)) {
+    if (holder.kind === 'FunctionDeclaration') {
+      return kindOfFunction(checker, holder);
+    }
+    const written = holder.kind === 'Lambda' ? writtenKindOf(holder.qualifiers) : undefined;
+    if (written !== undefined) {
+      return written;
+    }
+    const kind = 'typeParameters' in holder ? writtenKindParameterOf(holder) : undefined;
+    if (kind !== undefined) {
+      return { kind: 'parameter', declaration: kind };
+    }
+  }
+  return unmarkedKind;
 }
 
 /** The pack a function type's rest names (§3.5); the error type, reported, for anything else. */

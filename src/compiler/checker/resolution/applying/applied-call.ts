@@ -23,7 +23,7 @@ import type { Expression } from '../../../syntax/expressions/index.ts';
 import type { AnchoredSpan } from '../../../syntax/tree/positions.ts';
 import type { BodyContext } from '../../contexts/body-context.ts';
 import type { CheckerContext } from '../../contexts/context.ts';
-import { useSite } from '../../contexts/use-site.ts';
+import { bodySite } from '../../contexts/use-site.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import type { Inference } from '../../types/inference/infer.ts';
 import { substitute } from '../../types/parts/substitution.ts';
@@ -95,6 +95,7 @@ export function chooseCall(
     written: request.typeArguments,
     site: request.site,
     scope: request.scope,
+    decidedKind: context.codeKind,
   });
   // An argument of the error type was reported already; it fits anything, so a call it leaves no
   // single function for reports nothing more, and one it leaves one still judges the others.
@@ -128,7 +129,7 @@ export function completeCall(
   application: Application,
 ): AppliedCall | undefined {
   const { checker } = context;
-  const site = useSite(checker, context.module, request.span);
+  const site = bodySite(context, request.span);
   const instantiation = instantiate(site, application);
   if (instantiation === undefined) {
     return undefined;

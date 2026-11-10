@@ -79,7 +79,7 @@ fn addressModel() -> Group<AddressModel>: Group{
   }
 }
 
-fn addressView(m: AddressModel, k: String) -> any View<Scope<Group<AddressModel>.Seen, AddressCtx>>:
+ista fn addressView(m: AddressModel, k: String) -> any View<Scope<Group<AddressModel>.Seen, AddressCtx>>:
   LayoutView{
     key: `${k}/n1`
     parent: none
@@ -143,7 +143,7 @@ fn categoryModel() -> Group<CategoryModel>: Group{
   }
 }
 
-fn categoryView(
+ista fn categoryView(
   m: CategoryModel
   k: String
 ) -> any View<Scope<Group<CategoryModel>.Seen, CategoryCtx>>: LayoutView{
@@ -335,7 +335,7 @@ fn supplierModel() -> Group<SupplierModel>: Group{
   }
 }
 
-fn supplierView(m: SupplierModel) -> any View<Scope<Group<SupplierModel>.Seen, SupplierCtx>>:
+ista fn supplierView(m: SupplierModel) -> any View<Scope<Group<SupplierModel>.Seen, SupplierCtx>>:
   LayoutView{
     key: "n1"
     parent: none

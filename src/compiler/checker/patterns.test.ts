@@ -140,7 +140,7 @@ describe("'?' on a Result", () => {
       'fn twice(text: String):',
       '  const n = parse(text)?',
       '  Result.Ok(n * 2)',
-      'async fn main() -> Result<Int>:',
+      'ista async fn main() -> Result<Int>:',
       '  const n = (await later())?',
       '  Ok(n)',
       'ista async fn later() -> Result<Int>: parse("1")',

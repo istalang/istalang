@@ -26,9 +26,9 @@ describe('ista run --host as a process', () => {
   it("exits 1 when the host's promise fails, although another promise never settles", () => {
     const run = runProcess(
       [
-        'extern fn never() -> Future<Int, "ista">',
-        'extern fn bad() -> Future<Int, "ista">',
-        'async fn main() -> Int:',
+        'extern ista fn never() -> Future<Int, "ista">',
+        'extern ista fn bad() -> Future<Int, "ista">',
+        'ista async fn main() -> Int:',
         '  const pending = never()',
         '  await bad()',
       ],
@@ -45,7 +45,11 @@ describe('ista run --host as a process', () => {
 
   it("exits 1, saying where main waits, when the host's only promise never settles", () => {
     const run = runProcess(
-      ['extern fn never() -> Future<Int, "ista">', 'async fn main() -> Int:', '  await never()'],
+      [
+        'extern ista fn never() -> Future<Int, "ista">',
+        'ista async fn main() -> Int:',
+        '  await never()',
+      ],
       ["  'main.never()': () => new Promise(() => {}),"],
     );
     expect(run.err).toMatch(mainStuck);

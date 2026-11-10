@@ -15,6 +15,7 @@
  *   (synthesized/boundary/starts.ts), which its frame's header says from the start.
  */
 
+import type { CodeMode } from '../../../definition/tables/functions.ts';
 import { unreachable } from '../../../foundation/structures/unreachable.ts';
 import type { Checker, SignatureParameter } from '../../checker/check.ts';
 import type {
@@ -23,6 +24,7 @@ import type {
   NestedFunction,
 } from '../../checker/surface/checked-body.ts';
 import { substitute } from '../../checker/types/parts/substitution.ts';
+import { kindOfFunction } from '../../checker/types/type/function-kinds.ts';
 import type { Type } from '../../checker/types/type/index.ts';
 import { awaits } from '../../syntax/tokens/modifiers.ts';
 import type { Identifier } from '../../syntax/tree/node.ts';
@@ -35,6 +37,7 @@ import {
   substitutionOf,
 } from '../tables/instances.ts';
 import type { DefinitionTables, EntryHeader } from '../tables/tables.ts';
+import { codeModeOf } from './modes.ts';
 
 /** What lowering an entry needs from the program: its checking and the Definition's tables. */
 export interface Lowering {
@@ -60,7 +63,8 @@ export interface BodyReading {
  */
 export interface Frame {
   readonly header: EntryHeader;
-  readonly isAsync: boolean;
+  /** How its code waits: in its function's kind, or never (modes.ts). */
+  readonly mode: CodeMode;
   readonly parameters: readonly SignatureParameter[];
   readonly captures: readonly CapturedVariable[];
   /** The function the entry runs: a top-level declaration, or a nested function. */
@@ -69,6 +73,15 @@ export interface Frame {
   readonly result: Type;
   /** The name a nested function calls itself by. */
   readonly self: Identifier | undefined;
+}
+
+/** The kind of `instance`'s code: its function's, as the instance's type arguments make it. */
+function instanceKind(checker: Checker, instance: FunctionInstance): Type {
+  return substitute(
+    kindOfFunction(checker, instance.declaration),
+    substitutionOf(instance),
+    checker.typeRules,
+  );
 }
 
 /** What `instance`'s entry is lowered from; undefined for an instance with no body, an extern. */
@@ -153,7 +166,7 @@ export function instanceFrame(
   const { declaration } = instance;
   return {
     header: startHeader ?? tables.entryHeader(instance),
-    isAsync: awaits(declaration.qualifiers),
+    mode: codeModeOf(awaits(declaration.qualifiers), instanceKind(checker, instance)),
     parameters: checker.parametersOf(declaration),
     captures: [],
     function: declaration,
@@ -173,7 +186,7 @@ export function builtFrame(lowering: Lowering, instance: FunctionInstance, await
   const result = awaited ?? checker.resultOf(declaration);
   return {
     header: tables.entryHeader(instance),
-    isAsync: awaited !== undefined,
+    mode: codeModeOf(awaited !== undefined, instanceKind(checker, instance)),
     parameters: checker.parametersOf(declaration),
     captures: [],
     function: declaration,
@@ -193,10 +206,10 @@ export function nestedFrame(
   if (checked === undefined) {
     unreachable(`The function at ${node.span.from} was never checked.`);
   }
-  const { result, parameters, captures } = checked;
+  const { result, parameters, captures, type } = checked;
   return {
     header: startHeader ?? lowered.tables.nestedHeader(nested),
-    isAsync: awaits(node.qualifiers),
+    mode: codeModeOf(awaits(node.qualifiers), type.persistence),
     parameters,
     captures,
     function: node,

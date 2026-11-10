@@ -37,6 +37,7 @@ export function typeChildren(type: Type): readonly Type[] {
         ...type.parameters.map((parameter) => parameter.type),
         ...(type.pack === undefined ? [] : [type.pack]),
         type.result,
+        type.persistence,
       ];
     case 'any':
       return type.constraints.flatMap((constraint) => constraint.arguments);
@@ -101,8 +102,9 @@ function withPartsTaken(type: Type, child: () => Type): Type {
       const parameters = type.parameters.map((parameter) => ({ ...parameter, type: child() }));
       const pack = type.pack === undefined ? undefined : child();
       const result = child();
+      const persistence = child();
       return pack === undefined || pack.kind === 'parameter' || pack.kind === 'error'
-        ? functionType({ ...type, parameters, pack, result })
+        ? functionType({ ...type, parameters, pack, result, persistence })
         : unreachable('A function type pack was rebuilt as no pack.');
     }
     case 'any':

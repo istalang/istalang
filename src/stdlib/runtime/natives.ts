@@ -16,7 +16,7 @@ export const runtimeNatives = (
   [keys.of('id')]: (_arguments, context) => context.instance,
   [keys.of('version')]: (_arguments, context) => context.version,
   [keys.of('commit')]: (_arguments, context) => context.futures.resolved(null),
-  [keys.of('_isolated', functionKey([], futureKey(parameterKey('T'), 'ista')))]: (
+  [keys.of('_isolated', functionKey([], futureKey(parameterKey('T'), 'ista'), 'ista'))]: (
     [entry],
     context,
   ) => context.instances.spawn(given(entry), declaredResult(context), { terminatesOnPanic: true }),

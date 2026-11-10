@@ -36,6 +36,7 @@ import { spanBetween } from '../../../syntax/tree/positions.ts';
 import type { BodyContext, DeferralRecord } from '../../contexts/body-context.ts';
 import type { Pass, Passes, PassTable } from '../../contexts/passes.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
+import { kindOfCall } from '../../resolution/applying/call-kinds.ts';
 import { unsendable } from '../../resolution/calls/deferred-arguments.ts';
 import type { WrittenArgument } from '../../resolution/calls/resolve/index.ts';
 import type { StoppingOperand } from '../../resolution/calls/stopped-operations.ts';
@@ -55,8 +56,18 @@ export class Deferrals implements DeferralRecord {
     this.#given = passes.table();
   }
 
+  readonly #later = new WeakSet<object>();
+
   record(call: Expression, given: Type): void {
     this.#given.set(call, given);
+  }
+
+  defer(call: object): void {
+    this.#later.add(call);
+  }
+
+  isDeferred(call: object): boolean {
+    return this.#later.has(call);
   }
 
   of(call: Expression, pass?: Pass): Type | undefined {
@@ -120,6 +131,7 @@ function deferredFunction(context: BodyContext, node: DeferredCall): WrittenArgu
     context.report(checkerDiagnostics.deferredNeedsCall(node.call.span));
     return given(errorType);
   }
+  context.deferrals.defer(deferred);
   const result = context.settled(node.call);
   if (result.kind === 'error') {
     return given(errorType);
@@ -132,7 +144,22 @@ function deferredFunction(context: BodyContext, node: DeferredCall): WrittenArgu
   }
   const computed = computedNow(context, deferred);
   const reach = unsendable(context, computed).length === 0 ? 'sendable' : 'plain';
-  return given(functionType({ reach, parameters: [], result }), computed);
+  const persistence = laterCallKind(context, deferred);
+  return given(functionType({ reach, persistence, parameters: [], result }), computed);
+}
+
+/**
+ * The kind of what `call` calls later: a resolved function's as the call instantiates it, or a
+ * function value's, which the function deferring it is of, as its desugared lambda calling only it
+ * is (§3.3): code of either kind may hold it, and only what calls it is judged (Rule 4).
+ */
+function laterCallKind(context: BodyContext, call: CallingNode): Type {
+  const resolved = context.callAt(call);
+  if (resolved !== undefined) {
+    return kindOfCall(context.checker, resolved);
+  }
+  const value = calledValueType(context, call);
+  return value.kind === 'function' ? value.persistence : context.codeKind;
 }
 
 /**

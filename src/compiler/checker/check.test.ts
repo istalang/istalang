@@ -153,7 +153,7 @@ describe('checking reports', () => {
     ],
     [
       'await outside an async function',
-      `${importTime}\nfn f(): await time.delay(1s)`,
+      `${importTime}\nista fn f(): await time.delay(1s)`,
       reports.awaitOutsideAsync,
       'await time.delay(1s)',
     ],
@@ -171,7 +171,7 @@ describe('checking reports', () => {
     ],
     [
       'a future discarded by a loop body',
-      `${importTime}\nfn f(c: Bool):\n  while c:\n    time.delay(1s)`,
+      `${importTime}\nista fn f(c: Bool):\n  while c:\n    time.delay(1s)`,
       reports.unusedValue,
       'time.delay(1s)',
     ],
@@ -210,11 +210,11 @@ describe('checking accepts', () => {
     ],
     [
       'a future returned to the caller',
-      `${importTime}\nfn f() -> Future<Unit, "ista">: time.delay(1s)`,
+      `${importTime}\nista fn f() -> Future<Unit, "ista">: time.delay(1s)`,
     ],
     [
       'a future returned through parentheses, a block, an if and a return',
-      `${importTime}\nfn f(c: Bool) -> Future<Unit, "ista">:\n  if c:\n    return (time.delay(1s))\n  { const d = 2s; if c: time.delay(d) else: time.delay(3s) }`,
+      `${importTime}\nista fn f(c: Bool) -> Future<Unit, "ista">:\n  if c:\n    return (time.delay(1s))\n  { const d = 2s; if c: time.delay(d) else: time.delay(3s) }`,
     ],
     ['a duration literal without importing time', 'fn f() -> Int:\n  const d = 5d\n  d.value'],
     [

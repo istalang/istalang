@@ -13,6 +13,7 @@
 
 import type { CheckerContext } from '../../contexts/context.ts';
 import { constraintSubstitution, requiredFunctions } from '../../types/traits/constraints.ts';
+import { kindOfFunction, meetsRequirementKind } from '../../types/type/function-kinds.ts';
 import type { Constraint, Type } from '../../types/type/index.ts';
 import { baseOf } from '../../types/unions/union-members.ts';
 import type { CallArgument } from '../choosing/call-arguments.ts';
@@ -49,12 +50,18 @@ export function chooseWitness(checker: CheckerContext, type: Type, required: Sig
   return chooseWitnessAmong(checker, candidates, required);
 }
 
-/** `chooseWitness` among `candidates`, as a witness is chosen wherever they come from. */
+/**
+ * `chooseWitness` among `candidates`, as a witness is chosen wherever they come from: only those
+ * whose kind may meet the requirement's (`meetsRequirementKind`).
+ */
 export function chooseWitnessAmong(
   checker: CheckerContext,
-  candidates: readonly Candidate[],
+  given: readonly Candidate[],
   required: Signature,
 ): Choice {
+  const candidates = given.filter(({ declaration }) =>
+    meetsRequirementKind(required.kind(), kindOfFunction(checker, declaration)),
+  );
   const callArguments = required.parameters.map(
     ({ type: each, reference }): CallArgument => ({
       type: !reference && each.kind === 'literal' ? baseOf(each) : each,

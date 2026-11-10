@@ -27,6 +27,7 @@ import { folded } from '../../checker/types/identity/folding.ts';
 import { substitute, substitutionFor } from '../../checker/types/parts/substitution.ts';
 import type { DeclaredAliasUse } from '../../checker/types/type/alias-uses.ts';
 import type { RecursiveType } from '../../checker/types/type/computed-types.ts';
+import { persistenceOf } from '../../checker/types/type/function-kinds.ts';
 import type {
   AnonymousStructType,
   FunctionType,
@@ -307,6 +308,7 @@ function structureKeyType(
     default:
       return {
         kind: 'function',
+        persistence: persistenceOf(type.persistence),
         parameters: type.parameters.map((parameter) => keyType(spelling, parameter.type)),
         result: keyType(spelling, type.result),
       };

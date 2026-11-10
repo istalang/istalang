@@ -135,7 +135,7 @@ describe('completion offers the words the grammar takes where it stands', () => 
 
   it("at a declared value a select opens, whose word and `:` read as an indented value's type", () => {
     const text = [
-      'fn tryTake(s: Slot<Int>) -> Int:',
+      'ista fn tryTake(s: Slot<Int>) -> Int:',
       '  const got: Int? = select:',
       '    case s.read() as value:',
       '      value',

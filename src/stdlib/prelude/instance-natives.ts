@@ -14,8 +14,10 @@ import { given } from '../values/arguments.ts';
 import { declaredResult, resultTypeArgument } from '../values/results.ts';
 
 export const instanceNatives = (keys: NativeKeys): Natives<NativeContext & WithInstances> => ({
-  [keys.of('spawn', functionKey([], futureKey(parameterKey('R'), 'ista')))]: ([entry], context) =>
-    context.instances.spawn(given(entry), declaredResult(context), {}),
+  [keys.of('spawn', functionKey([], futureKey(parameterKey('R'), 'ista'), 'ista'))]: (
+    [entry],
+    context,
+  ) => context.instances.spawn(given(entry), declaredResult(context), {}),
   [keys.of('result', knownTypeKey(wellKnown.instance, parameterKey('T')))]: ([handle], context) =>
     context.instances.ended(instanceNameOf(handle), resultTypeArgument(context, 0)),
 });

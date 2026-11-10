@@ -238,7 +238,10 @@ function shapeKeyOf(type: AnonymousStructType, key: (type: Type) => string): Sha
   return `{${type.fields.map((field) => `${field.name}:${key(field.type)}`).join(',')}}`;
 }
 
-/** The key of a function type: its parameters, by `&` or not, its pack, and its result. */
+/**
+ * The key of a function type: its kind, its parameters, by `&` or not, its pack, and its result.
+ * The kind is keyed whole, a variable or either kind as surely as `live`, which its text leaves out.
+ */
 function functionKeyOf(type: FunctionType, key: (type: Type) => string): string {
   const parameters = type.parameters.map(
     (parameter) => `${parameter.reference ? '&' : ''}${key(parameter.type)}`,
@@ -246,7 +249,9 @@ function functionKeyOf(type: FunctionType, key: (type: Type) => string): string 
   if (type.pack !== undefined) {
     parameters.push(`...${key(type.pack)}`);
   }
-  return `${modifiersText(modifiersOf(type))}fn(${parameters.join(',')})->${key(type.result)}`;
+  const { reach } = modifiersOf(type);
+  const head = `${modifiersText({ reach })}fn<${key(type.persistence)}>`;
+  return `${head}(${parameters.join(',')})->${key(type.result)}`;
 }
 
 /** The key of an unreduced use of a type `match` alias (§3.17). */

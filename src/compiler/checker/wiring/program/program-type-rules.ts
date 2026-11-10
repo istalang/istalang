@@ -232,6 +232,7 @@ function partsOf(
     | 'resultOf'
     | 'resolveType'
     | 'moduleOf'
+    | 'kindOf'
     | 'wellKnownType'
   >,
   declaration: DerivedDeclaration,

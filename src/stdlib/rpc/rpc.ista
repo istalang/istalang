@@ -23,10 +23,10 @@ struct _Call<P, R>:
 shared struct _Reply<R>:
   slot: Slot<Result<R>>?
 
-fn create<P, R>() -> Method<P, R>: new Method<P, R>{}
+ista fn create<P, R>() -> Method<P, R>: new Method<P, R>{}
 
 # Sends `message` to the method's servers: the reply, or an `Err` when the call is let go without one.
-fn call<P, R>(self: Method<P, R>, message: P) -> Future<Result<R>, "ista">:
+ista fn call<P, R>(self: Method<P, R>, message: P) -> Future<Result<R>, "ista">:
   const slot = Slot.create<Result<R>>()
   _replyTo(self->_calls.sendRevertible(_Call{message, reply: new _Reply<R>{slot}}), slot)
 
@@ -39,7 +39,7 @@ ista async fn onMessage<P, R>(self: Method<P, R>, handler: ista async fn(P) -> R
       drop slot.put(Ok(reply))
       call.reply->slot = none
 
-fn dispose<R>(self: _Reply<R>):
+ista fn dispose<R>(self: _Reply<R>):
   if self->slot is Slot as slot:
     drop slot.put(Err(Error{message: "The call was let go without a reply.", code: "unanswered"}))
 

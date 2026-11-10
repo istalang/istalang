@@ -59,6 +59,11 @@ export interface TestRuntime {
   readonly runtime: Runtime;
   readonly store: RecordingStore;
   readonly clock: ManualClock;
+  /**
+   * The program that started `instance`: the one deployed through `runtime` and started under
+   * that name, which a live run, kept by no runtime, needs to read its outcome; else the runtime's.
+   */
+  readonly programOf: (instance: string) => DeployedProgram;
 }
 
 /** A runtime on the std natives, a recording store and a manual clock, unless told otherwise. */
@@ -69,10 +74,23 @@ export function testRuntime({
   host = {},
   seed = () => testSeed,
 }: TestRuntimeOptions = {}): TestRuntime {
+  const inner = createRuntime({ natives, store, clock, seed, host });
+  const starters = new Map<string, DeployedProgram>();
+  const deploy: Runtime['deploy'] = (text) => {
+    const program = inner.deploy(text);
+    return {
+      ...program,
+      start: async (instance, options) => {
+        starters.set(instance, program);
+        return await program.start(instance, options);
+      },
+    };
+  };
   return {
-    runtime: createRuntime({ natives, store, clock, seed, host }),
+    runtime: { ...inner, deploy },
     store,
     clock,
+    programOf: (instance) => starters.get(instance) ?? inner.programOf(instance),
   };
 }
 
@@ -125,7 +143,7 @@ export async function runToEnd(
   try {
     return {
       kind: 'finished',
-      outcome: test.runtime.programOf(instance).outcomeText(settled),
+      outcome: test.programOf(instance).outcomeText(settled),
     };
   } catch (error) {
     if (error instanceof Refusal) {

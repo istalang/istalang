@@ -19,6 +19,7 @@
  */
 
 import { unreachable } from '../../../../foundation/structures/unreachable.ts';
+import { isImplicitKind } from '../../../syntax/declarations/function-kinds.ts';
 import type { CheckerContext } from '../../contexts/context.ts';
 import type { Binding } from '../../surface/resolved-call.ts';
 import { reshapes } from '../../types/fitting/fit/index.ts';
@@ -43,6 +44,14 @@ export interface Given {
   readonly site?: object | undefined;
   /** The constraint scope's inference each candidate's system starts as a copy of. */
   readonly scope?: Inference | undefined;
+  /**
+   * The kind a callee's implicit kind parameter is decided to before inferring (proposal 8, Rule
+   * 3): the kind a function value's expected type fixes, a kind or either; or, for a call, the
+   * kind of its code, the only one the call rule lets it take there. Where that code is generic
+   * over its kind, a callee's kind a future reads is left to inference and settling instead
+   * (kind-settling.ts), since an argument's future may fix it first (`retry(fetchLive)`).
+   */
+  readonly decidedKind?: Type | undefined;
 }
 
 /**
@@ -64,7 +73,7 @@ export interface Taken {
 export function takenBy(
   checker: CheckerContext,
   takes: Takes,
-  { callArguments, written, binder, site, scope }: Given,
+  { callArguments, written, binder, site, scope, decidedKind }: Given,
 ): Taken | Inapplicability {
   const counted = typeArgumentsInapplicability(takes, written);
   if (counted !== undefined) {
@@ -77,7 +86,7 @@ export function takenBy(
   const inference = new Inference(
     takes.typeParameters,
     checker.fitting,
-    writtenFor(takes, written),
+    decidedFor(takes, written, decidedKind),
     { site, copying: scope },
   );
   const slots = argumentSlotsOf(takes.parameters, binding);
@@ -120,12 +129,33 @@ export function writtenFor(
   if (written === undefined) {
     return undefined;
   }
+  const writable = typeParameters.filter((parameter) => !isImplicitKind(parameter));
   return new Map(
     written.flatMap((type, index) => {
-      const parameter = typeParameters[index];
+      const parameter = writable[index];
       return parameter === undefined ? [] : [[parameter, type] as const];
     }),
   );
+}
+
+/**
+ * What is decided of `takes`' type parameters before inferring: what is written, and the implicit
+ * kind a function value's expected type fixes.
+ */
+function decidedFor(
+  takes: Takes,
+  written: readonly Type[] | undefined,
+  decidedKind: Type | undefined,
+): Substitution | undefined {
+  const writtenArguments = writtenFor(takes, written);
+  const kinds = takes.typeParameters.filter(
+    (parameter) =>
+      isImplicitKind(parameter) &&
+      (decidedKind?.kind !== 'parameter' || parameter.memberOf === undefined),
+  );
+  return decidedKind === undefined || kinds.length === 0
+    ? writtenArguments
+    : new Map([...(writtenArguments ?? []), ...kinds.map((each) => [each, decidedKind] as const)]);
 }
 
 /**
@@ -139,15 +169,17 @@ export function typeArgumentsInapplicability(
   if (written === undefined) {
     return undefined;
   }
-  const minimum = typeParameters.filter((parameter) => parameter.defaultType === undefined).length;
-  const maximum = typeParameters.length;
+  // A function's kind parameter is never written (syntax/declarations/function-kinds.ts).
+  const writable = typeParameters.filter((parameter) => !isImplicitKind(parameter));
+  const minimum = writable.filter((parameter) => parameter.defaultType === undefined).length;
+  const maximum = writable.length;
   if (maximum === 0 || written.length < minimum || written.length > maximum) {
     return { kind: 'typeArgumentCount', minimum, maximum };
   }
-  const misfit = typeParameters.findIndex(
+  const misfit = writable.findIndex(
     (each, index) => each.isPack && !fillsPack(written[index] ?? errorType),
   );
-  const [pack, type] = [typeParameters[misfit], written[misfit]];
+  const [pack, type] = [writable[misfit], written[misfit]];
   return pack === undefined || type === undefined
     ? undefined
     : { kind: 'packTypeArgument', parameter: pack, type };

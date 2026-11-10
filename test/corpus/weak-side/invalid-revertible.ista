@@ -5,7 +5,7 @@
 
 import Inbox from 'inbox'
 
-async fn main() -> Unit:
+ista async fn main() -> Unit:
   const box = Inbox.create<Int>()
   box.sendRevertible(1)
   const weak = WeakRef(box)

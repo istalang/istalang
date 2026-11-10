@@ -212,7 +212,7 @@ enum Pending:
   Node # its own task: the node shows Loading
   Hidden # its own task: the node stays hidden
 
-fn awaited<Sc, T>(pending: Pending, eval: ista async fn(Sc) -> T) -> Prop<Sc, T>: Prop.Awaited(
+ista fn awaited<Sc, T>(pending: Pending, eval: ista async fn(Sc) -> T) -> Prop<Sc, T>: Prop.Awaited(
   pending: pending
   eval: eval
   task: new Task<Sc, T>{}
@@ -243,13 +243,13 @@ ista async fn get<Sc, T>(self: Prop<Sc, T>, sc: Sc, out: &Drawing) -> T?:
       task->value
     }
 
-fn evalNow<Sc, T>(self: Prop<Sc, T>, sc: Sc) -> T?:
+ista fn evalNow<Sc, T>(self: Prop<Sc, T>, sc: Sc) -> T?:
   match self:
     case Fixed(value): value
     case Computed(eval): eval(sc)
     case Awaited(_, _, task): task->value
 
-fn isHiddenPending<Sc, T>(self: Prop<Sc, T>) -> Bool:
+ista fn isHiddenPending<Sc, T>(self: Prop<Sc, T>) -> Bool:
   match self:
     case Awaited(Pending.Hidden, ...): true
     case _: false
@@ -268,11 +268,11 @@ struct Scope<D, C>:
 # ═════════════════════════ Checks ═════════════════════════
 
 enum Check<Sc, T>:
-  Now(test: fn(Sc, T?) -> String?) # an error message, or none; on every draw
-  Later(test: ista async fn(Sc) -> String?, pending: fn(Sc) -> String, task: Task<Sc, String?>)
+  Now(test: ista fn(Sc, T?) -> String?) # an error message, or none; on every draw
+  Later(test: ista async fn(Sc) -> String?, pending: ista fn(Sc) -> String, task: Task<Sc, String?>)
   # a rule with `pending` (an approval): its own task once the user submits; submit waits
 
-fn later<Sc, T>(test: ista async fn(Sc) -> String?, pending: fn(Sc) -> String) -> Check<Sc, T>:
+ista fn later<Sc, T>(test: ista async fn(Sc) -> String?, pending: fn(Sc) -> String) -> Check<Sc, T>:
   Check.Later(test: test, pending: pending, task: new Task<Sc, String?>{})
 
 enum Format:
@@ -282,13 +282,13 @@ enum Format:
 
 # One helper per constraint. The generator adds answered() to every stored field without a default
 # or computed value: everything must be answered. required() is the schema's `required`: non-empty.
-fn answered<Sc, T>() -> Check<Sc, T>: Check.Now(
+ista fn answered<Sc, T>() -> Check<Sc, T>: Check.Now(
   fn(sc, v): if v == none: "Required" else: none
 )
-fn required<Sc>(on: Prop<Sc, Bool>) -> Check<Sc, String>: Check.Now(
+ista fn required<Sc>(on: Prop<Sc, Bool>) -> Check<Sc, String>: Check.Now(
   fn(sc, v): if on.evalNow(sc) == true and (v == none or v == ""): "Required" else: none
 )
-fn someItems<Sc, T>(on: Prop<Sc, Bool>) -> Check<Sc, Array<T>>: Check.Now(
+ista fn someItems<Sc, T>(on: Prop<Sc, Bool>) -> Check<Sc, Array<T>>: Check.Now(
   fn(sc, v): {
     match v:
       case None:
@@ -299,21 +299,21 @@ fn someItems<Sc, T>(on: Prop<Sc, Bool>) -> Check<Sc, Array<T>>: Check.Now(
         else: none
   }
 )
-fn minLength<Sc>(n: Prop<Sc, Int>) -> Check<Sc, String>: Check.Now(
+ista fn minLength<Sc>(n: Prop<Sc, Int>) -> Check<Sc, String>: Check.Now(
   fn(sc, v): {
     match (v, n.evalNow(sc)):
       case (String as s, Int as bound) if s.length() < bound: `Minimum length is ${bound}`
       case _: none
   }
 )
-fn maxLength<Sc>(n: Prop<Sc, Int>) -> Check<Sc, String>: Check.Now(
+ista fn maxLength<Sc>(n: Prop<Sc, Int>) -> Check<Sc, String>: Check.Now(
   fn(sc, v): {
     match (v, n.evalNow(sc)):
       case (String as s, Int as bound) if s.length() > bound: `Maximum length is ${bound}`
       case _: none
   }
 )
-fn pattern<Sc>(p: Prop<Sc, String>) -> Check<Sc, String>: Check.Now(
+ista fn pattern<Sc>(p: Prop<Sc, String>) -> Check<Sc, String>: Check.Now(
   fn(sc, v): {
     match (v, p.evalNow(sc)):
       case (String as s, String as pat): {
@@ -326,7 +326,7 @@ fn pattern<Sc>(p: Prop<Sc, String>) -> Check<Sc, String>: Check.Now(
       case _: none
   }
 )
-fn format<Sc>(f: Format) -> Check<Sc, String>: Check.Now(
+ista fn format<Sc>(f: Format) -> Check<Sc, String>: Check.Now(
   fn(sc, v): {
     match v:
       case None: none
@@ -340,7 +340,7 @@ fn format<Sc>(f: Format) -> Check<Sc, String>: Check.Now(
       }
   }
 )
-fn min<Sc, T is Comparable>(n: Prop<Sc, T>) -> Check<Sc, T>: Check.Now(
+ista fn min<Sc, T is Comparable>(n: Prop<Sc, T>) -> Check<Sc, T>: Check.Now(
   fn(sc, v): {
     match v:
       case None: none
@@ -353,7 +353,7 @@ fn min<Sc, T is Comparable>(n: Prop<Sc, T>) -> Check<Sc, T>: Check.Now(
       }
   }
 )
-fn max<Sc, T is Comparable>(n: Prop<Sc, T>) -> Check<Sc, T>: Check.Now(
+ista fn max<Sc, T is Comparable>(n: Prop<Sc, T>) -> Check<Sc, T>: Check.Now(
   fn(sc, v): {
     match v:
       case None: none
@@ -366,7 +366,7 @@ fn max<Sc, T is Comparable>(n: Prop<Sc, T>) -> Check<Sc, T>: Check.Now(
       }
   }
 )
-fn multipleOf<Sc>(n: Prop<Sc, Float>) -> Check<Sc, Float>: Check.Now(
+ista fn multipleOf<Sc>(n: Prop<Sc, Float>) -> Check<Sc, Float>: Check.Now(
   fn(sc, v): {
     match (v, n.evalNow(sc)):
       case (Float as val, Float as step) if step != 0.0: {
@@ -377,9 +377,9 @@ fn multipleOf<Sc>(n: Prop<Sc, Float>) -> Check<Sc, Float>: Check.Now(
       case _: none
   }
 )
-fn accept<Sc>(types: Array<String>) -> Check<Sc, FileId>: Check.Now(fn(sc, v): none)
-fn maxBytes<Sc>(n: Int) -> Check<Sc, FileId>: Check.Now(fn(sc, v): none)
-fn minItems<Sc, T>(n: Prop<Sc, Int>) -> Check<Sc, Array<T>>: Check.Now(
+ista fn accept<Sc>(types: Array<String>) -> Check<Sc, FileId>: Check.Now(fn(sc, v): none)
+ista fn maxBytes<Sc>(n: Int) -> Check<Sc, FileId>: Check.Now(fn(sc, v): none)
+ista fn minItems<Sc, T>(n: Prop<Sc, Int>) -> Check<Sc, Array<T>>: Check.Now(
   fn(sc, v): {
     match v:
       case None: none
@@ -392,7 +392,7 @@ fn minItems<Sc, T>(n: Prop<Sc, Int>) -> Check<Sc, Array<T>>: Check.Now(
       }
   }
 )
-fn maxItems<Sc, T>(n: Prop<Sc, Int>) -> Check<Sc, Array<T>>: Check.Now(
+ista fn maxItems<Sc, T>(n: Prop<Sc, Int>) -> Check<Sc, Array<T>>: Check.Now(
   fn(sc, v): {
     match v:
       case None: none
@@ -405,7 +405,7 @@ fn maxItems<Sc, T>(n: Prop<Sc, Int>) -> Check<Sc, Array<T>>: Check.Now(
       }
   }
 )
-fn rule<Sc, T>(check: fn(Sc) -> Bool, message: fn(Sc) -> String) -> Check<Sc, T>: Check.Now(
+ista fn rule<Sc, T>(check: fn(Sc) -> Bool, message: fn(Sc) -> String) -> Check<Sc, T>: Check.Now(
   fn(sc, v): if check(sc): none else: message(sc)
 )
 
@@ -632,15 +632,15 @@ shared struct RepeatView<Sc, R is FormNode>:
   computedRows: Bool = false # rows always follow `rows`, read-only
   rowKey: (fn(R.Seen) -> String?)? = none
   recomputeUntil: Recompute = Recompute.AnyEdit
-  item: fn(R, String) -> any View<Sc> # a row's view, from its node and key
+  item: ista fn(R, String) -> any View<Sc> # a row's view, from its node and key
   views: Map<String, any View<Sc>> = [:] # built once per row, by row key
   seeded: Bool = false
 
-fn addRow<Sc, R is FormNode>(self: RepeatView<Sc, R>) -> Unit:
+ista fn addRow<Sc, R is FormNode>(self: RepeatView<Sc, R>) -> Unit:
   self->list->edited = true
   _ = self->list.add(none)
 
-fn removeRow<Sc, R is FormNode>(self: RepeatView<Sc, R>, key: String) -> Unit:
+ista fn removeRow<Sc, R is FormNode>(self: RepeatView<Sc, R>, key: String) -> Unit:
   self->list->edited = true
   self->list.remove(key)
 
@@ -1039,13 +1039,13 @@ fn setJson<C is struct { [_] is FormNode }>(self: Variant<C>, value: String):
   self.tag->parseError = "Invalid option"
 
 trait Searchable:
-  fn setSearch(self: Self, text: String)
+  ista fn setSearch(self: Self, text: String)
 
-fn setSearch<Sc, T>(self: FieldView<Sc, T>, text: String): self->search = text
+ista fn setSearch<Sc, T>(self: FieldView<Sc, T>, text: String): self->search = text
 
 trait Rows:
-  fn addRow(self: Self)
-  fn removeRow(self: Self, key: String)
+  ista fn addRow(self: Self)
+  ista fn removeRow(self: Self, key: String)
 
 struct User: # the person filling in the form; from the platform
   id: String

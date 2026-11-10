@@ -9,7 +9,7 @@ fn valueOf(outcome: Result<Int>) -> Int:
     case Ok(value): value
     case Err(...): -1
 
-async fn main() -> Array<Int>:
+ista async fn main() -> Array<Int>:
   const first = await (spawn scaled(offset: 2)).result()
   const second = await (spawn scaled(3)).result()
   [valueOf(first), valueOf(second)]

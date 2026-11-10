@@ -16,7 +16,7 @@ struct Model:
 
 fn model() -> Group<Model>: Group{fields: Model{phone: new Field<String>{}}}
 
-fn view(m: Model, k: String) -> any View<forms.Scope<Group<Model>.Seen, Ctx>>: LayoutView{
+ista fn view(m: Model, k: String) -> any View<forms.Scope<Group<Model>.Seen, Ctx>>: LayoutView{
   key: `${k}/n1`
   parent: none
   widget: Prop.Fixed(LayoutWidget.Section(title: none, description: none, collapsible: none, labels: none))

@@ -8,7 +8,7 @@ ista async fn waiter(s: Slot<Int>, log: Shared<Array<String>>):
   const value = await s.take()
   log->value = [...log->value, "took " + String(value)]
 
-async fn main() -> String:
+ista async fn main() -> String:
   const empty: Array<String> = []
   const log = new Shared{value: empty}
   const s = Slot.create<Int>()

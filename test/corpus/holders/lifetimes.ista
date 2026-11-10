@@ -45,7 +45,7 @@ ista async fn kept(log: Shared<Array<String>>):
   await time.delay(1ms)
   note(log, "kept until return")
 
-async fn main() -> String:
+ista async fn main() -> String:
   const empty: Array<String> = []
   const log = new Shared{value: empty}
   await passes(log)

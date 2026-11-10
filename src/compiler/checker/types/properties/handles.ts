@@ -48,6 +48,11 @@ export function isConfined(declaration: NominalDeclaration): boolean {
   return identity === 'instance' || identity === 'process';
 }
 
+/** Whether `declaration`'s values stay in the process that made them (`extern live struct`). */
+export function staysInProcess(declaration: NominalDeclaration): boolean {
+  return identityOf(declaration) === 'process';
+}
+
 /** Whether `declaration`'s values are handles, which every copy shares. */
 export function isHandleDeclaration(declaration: NominalDeclaration): boolean {
   return identityOf(declaration) !== 'value';

@@ -10,7 +10,7 @@ ista async fn reader(log: Inbox<String>, s: Slot<Int>, name: String, take: Bool)
         const v = await s.read()
         log.send(name + " read " + v.toString())
 
-async fn main() -> Array<String>:
+ista async fn main() -> Array<String>:
     const log = Inbox.create<String>()
     const s = Slot.create<Int>()
     hold _ = reader(log, s, "r1", false)

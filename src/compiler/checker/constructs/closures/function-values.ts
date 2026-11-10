@@ -19,7 +19,7 @@
 import type { TypeApplication } from '../../../syntax/expressions/calls.ts';
 import { qualifiedPath } from '../../../syntax/expressions/readings.ts';
 import type { BodyContext } from '../../contexts/body-context.ts';
-import { useSite } from '../../contexts/use-site.ts';
+import { bodySite } from '../../contexts/use-site.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import { explain } from '../../resolution/calls/resolve/explanations.ts';
 import { recordChosen } from '../../resolution/calls/resolve/index.ts';
@@ -55,7 +55,7 @@ export function checkFunctionValue(
     }
     return errorType;
   }
-  const at = useSite(context.checker, context.module, site.span);
+  const at = bodySite(context, site.span);
   return recordedValue(
     context,
     site,
@@ -77,7 +77,8 @@ export function recordedValue(
   if (made === undefined) {
     return errorType;
   }
-  recordChosen(context, { site, application, instantiation: made.instantiation });
+  const frame = context.functions.current;
+  recordChosen(context, { site, application, instantiation: made.instantiation, frame });
   return made.type;
 }
 

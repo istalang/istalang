@@ -11,6 +11,7 @@
  */
 
 import { sameItems } from '../../../../foundation/structures/equality.ts';
+import { kindAdmits } from '../type/function-kinds.ts';
 import { type Futures, functionFits } from '../type/function-types.ts';
 import type { Constraint, Type } from '../type/index.ts';
 import { isPrimitive } from '../type/primitives.ts';
@@ -44,9 +45,11 @@ export function isAssignable(
     neverFutureFits(source, target, futures) ||
     (source.kind === 'function' &&
       target.kind === 'function' &&
-      functionFits(target, source, sameType, (declared, given) =>
-        resultAssignable(given, declared, futures),
-      ))
+      functionFits(target, source, {
+        parts: sameType,
+        results: (declared, given) => resultAssignable(given, declared, futures),
+        kinds: (code, callee) => kindAdmits(code, callee, sameType),
+      }))
   );
 }
 

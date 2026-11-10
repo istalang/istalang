@@ -13,7 +13,7 @@ ista async fn sleeper(id: Int, log: Shared<Array<String>>):
   _ = defer(fn(): note(log, "stopped " + String(id)))
   await time.delay(1h)
 
-fn maybe(id: Int, log: Shared<Array<String>>) -> Future<Unit, "ista">?:
+ista fn maybe(id: Int, log: Shared<Array<String>>) -> Future<Unit, "ista">?:
   sleeper(id, log)
 
 ista async fn bindings(log: Shared<Array<String>>):
@@ -32,7 +32,7 @@ ista async fn bindings(log: Shared<Array<String>>):
     id += 1
   note(log, "after while")
 
-async fn main() -> String:
+ista async fn main() -> String:
   const empty: Array<String> = []
   const log = new Shared{value: empty}
   await bindings(log)
