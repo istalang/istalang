@@ -94,8 +94,10 @@ src/
         type/                                                    the types, their primitives, the aliases they were written through, types computed from others
                                                                  (computed-types.ts), a type's text, a struct constraint's model, and the rules building a type
                                                                  needs of the program (type-rules.ts), which the checker implements once and every type-building
-                                                                 path takes; the kinds of code (function-kinds.ts): a function's kind, which kinds fit, and
-                                                                 which meet a requirement (proposal 8)
+                                                                 path takes; the marks of code (function-kinds.ts): a function's mark, its head's alone, or for
+                                                                 a fields function what its fields' written types hold, which marks fit, and which parameters
+                                                                 stand for a mark (proposal 8); the two qualifier orders, `DataKind`'s and `Sendability`'s, that
+                                                                 fitting and inference compare marks and sendabilities by (mark-orders.ts)
         identity/                                                identity as key equality (a shape is its fields in name order), and
                                                                  recursive types as minimized graphs, equi-recursive, closed by one
                                                                  constructor (recursive-types.ts), and a type folded into the recursive
@@ -115,10 +117,12 @@ src/
                                                                  arguments, and type `match`es resolved, given, placed and unfolded
                                                                  (type-match.ts, written-matches.ts)
         properties/                                              what a type holds or reaches: finite values, held values, the cycle guard, handles read off declarations,
-                                                                 the kinds its values are of (value-kinds.ts)
+                                                                 a value's data kind, in one home (value-kinds.ts), what a type parameter qualifies functions by,
+                                                                 known by what its union holds (qualifiers.ts)
         inference/                                               above the model: inference of type arguments, as bounds on variables
                                                                  (bounds.ts) settled by one policy (settle.ts), in one system for
-                                                                 the calls and literals one expression joins (system.ts)
+                                                                 the calls and literals one expression joins (system.ts); a mark or
+                                                                 sendability variable's bounds agree and join by its order
         traits/                                                  above inference: constraints, the derived `Sendable`, `any` types, and the object safety they
                                                                  need (object-safety.ts); struct constraints (struct-constraints.ts), and what a type meets by
                                                                  what it is, computed types `T.Data` and `S["meta"]` among them, with their reductions
@@ -126,7 +130,8 @@ src/
       resolution/                                                what a call or a name may mean:
         choosing/                                                candidates and ADL, how arguments bind, choice among overloads, the calls a construct makes
                                                                  (calls-made.ts)
-        conformance/                                             how a call's kind parameters settle to its code's kind (kind-settling.ts, the one place),
+        conformance/                                             how a call's mark and sendability parameters settle where no bound does, to the least of their
+                                                                 order, the callee's own mark at most its caller's (kind-settling.ts, the one place),
                                                                  witnesses and why there is none, the traits the compiler derives (derived-traits.ts: one
                                                                  table), unions meeting traits through their members, the instantiation a type meets in an
                                                                  `any` constraint's place through its trait's variance, and every one it may meet, which
@@ -143,8 +148,9 @@ src/
       rules/                                                     semantic rules shared by constructs, one folder per feature: producers agreeing on a type,
                                                                  annotations, tests' rules (testing.ts) at its root; computation/ (compile-time computation),
                                                                  disposal/ (disposal, must-use, `drop`), boundary/ (what externs may take, derived JSON codecs),
-                                                                 expansion/ (generics needing endlessly many instantiations), kinds/ (the signature rule: what a
-                                                                 function's signature holds of a kind); beneath them flow/, the order a
+                                                                 expansion/ (generics needing endlessly many instantiations), kinds/ (the data rule: what a
+                                                                 function's signature holds of a kind, and every value its checked body
+                                                                 and defaults compute, run where declarations are checked); beneath them flow/, the order a
                                                                  body's code runs in, which flow rules follow (forward data flow, one table of how each
                                                                  construct runs)
       constructs/                                                per-construct rules, layers in this order:

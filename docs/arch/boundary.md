@@ -124,9 +124,9 @@ validation read) gets a start entry, listed in
 the Definition's `starts` under its key. A start entry is the function's own body compiled once
 more with its arguments as JSON (`lowering/synthesized/boundary/starts.ts`, `instanceLowering` in `functions/index.ts`): it
 decodes each argument, a mismatch failing the host's start, so the instance is one execution of the
-function and its traces and waits are the function's own. An unmarked function's implicit kind
-(spec §3.3) makes it no generic one: its start entry is compiled at `live`, the kind a host starts
-it in (`rootInstance`, Live runs below). `starts` lists it with its outcome's
+function and its traces and waits are the function's own. A mark parameter left unwritten
+(`M in DataKind`) is compiled at `"simple"` (`rootInstance`); a start's own mark is its head's
+(spec §3.3), `ista` for `main` until hosts start only live code. `starts` lists it with its outcome's
 encoder, the entry of the codec writing the declared result (`synthesized/boundary/starts.ts`), which the
 instance keeps for life and its segment calls with the outcome on top of the root's last frame as
 it returns, so what that frame holds is disposed after (`scheduler/segment/root-outcome.ts`): a

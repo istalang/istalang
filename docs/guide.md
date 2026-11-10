@@ -33,10 +33,11 @@ ista async fn remindLater(role: String):
 2. **Values are copied.** Structs, arrays, maps and tuples are copied on assignment, argument pass, return or send. Mutate caller data via `&x`, or share a *handle* (`Shared`, `shared struct`, `Slot`, `Inbox`).
 3. **Everything that branches is an expression.** `if`, `match`, `select` and `{ … }` blocks produce values; all branches must agree on one type. A function returns its last expression.
 4. **Errors are values; bugs panic.** Fallible functions return `Result<T, E = Error>`, and `?` propagates `Err`. Bugs (out-of-bounds index, division by zero) panic and freeze the instance for an operator.
-5. **`await` is the save point.** Code between two `await`s is one atomic *segment*: it commits at the next `await`, or rolls back on crash. Only an `async fn` may `await`.
-6. **Concurrency without threads.** Calling an `async fn` without `await` starts it alongside the caller. Coordinate with futures, `select`, slots and inboxes; `spawn` starts an independent instance.
-7. **Lifetimes follow blocks.** When a block ends, resources it alone holds are deterministically disposed: pending calls stop, timers cancel and unread revertible messages retract.
-8. **The host is the only I/O.** `extern` functions, constants and types cross the host boundary as JSON. Deploys freeze code: each instance finishes on the version it started with.
+5. **`await` is the save point.** In `ista` code, code between two `await`s is one atomic *segment*: it commits at the next `await`, or rolls back on crash. `live` code waits in memory and never commits. Only an `async fn` may `await`, and an `async fn` names its kind.
+6. **Code handles only the data its mark allows.** Data is simple, live (a live future, an `extern live struct`) or ista (an ista future, a slot, an inbox). An unmarked `fn` handles and calls only simple things; a `live fn` adds live ones, an `ista fn` ista ones; `M fn`/`K async fn` are generic over the mark. A missing mark is a compile error naming the value or call; generic code passes its type parameters' values through.
+7. **Concurrency without threads.** Calling an `async fn` without `await` starts it alongside the caller. Coordinate with futures, `select`, slots and inboxes; `spawn` starts an independent instance.
+8. **Lifetimes follow blocks.** When a block ends, resources it alone holds are deterministically disposed: pending calls stop, timers cancel and unread revertible messages retract.
+9. **The host is the only I/O.** `extern` functions, constants and types cross the host boundary as JSON. Deploys freeze code: each instance finishes on the version it started with.
 
 ---
 
@@ -90,9 +91,9 @@ const a, b = (1, "x")          # destructuring
 | `T?` | sugar for `T \| None` (like TS `T \| null`, **not** Rust's `Option` — there is no `Some`) |
 | `(A, B)`, `{ a: Int, b: String }` | tuples (`t.0`, `t.1`) and anonymous struct types (structural shapes) |
 | `Array<T>`, `Map<K, V>`, `Range` | value collections, copied like structs |
-| `fn(A) -> R`, `async fn(A) -> R`, `sendable fn(A) -> R` | function types; plain `fn(A) -> R` converts to `async fn(A) -> R`, and `sendable` to plain |
+| `fn(A) -> R`, `live fn(A) -> R`, `ista async fn(A) -> R`, `sendable fn(A) -> R` | function types, all `Fn<Args, Result, Kind, Send>`; plain `fn(A) -> R` converts to `ista async fn(A) -> R`, unmarked to `live`/`ista`, and `sendable` to plain |
 | `any Trait`, `any A & B` | existential trait object (`Array<any View<Sc>>`, `(any Showable)?`) |
-| `Future<T>` `Slot<T>` `Inbox<T>` `Shared<T>` `WeakRef<T>` `Instance<T>` | **handles**: copying copies the handle, and `==` compares identity |
+| `Future<T, K>` `Slot<T>` `Inbox<T>` `Shared<T>` `WeakRef<T>` `Instance<T>` | **handles**: copying copies the handle, and `==` compares identity |
 
 - **Literals:** `"a"` `'a'` `` `x=${x}` `` `42` `1_000` `0x1F` `0b1010` `3.14` `true` `none` `500ms` `30s` `15m` `2h` `5d` `[1, 2]` `["k": 1]` `[:]` `[...xs, 3]` `(1, "x")` `(x,)` `0..10` `0..=10` `0..10 by 2`.
 - **Names:** types, traits and variants are `PascalCase`; functions, variables and fields are `camelCase` (both compiler-enforced). Leading `_` on a top-level declaration makes it module-private.
@@ -170,7 +171,7 @@ ista async fn fetch(id: String) -> User: …     # may await; inside it, return 
   ```
 
 - **Lambdas & closures.** `fn(x): x * 2`, `fn x: x > 0`, `async fn(x): await f(x)`; multi-statement bodies use a block `fn(m): { log(m); save(m) }`. Captured `const`s are copied; captured `let`s share a mutable cell.
-- **Async declarations vs. async function types.** A declared `async fn` (or a lambda with an explicit `->`) writes `-> Future<R>` while its body returns `R`, but the **function type** is written `async fn(A) -> R` (not `fn(A) -> Future<R>`). Calling an `async fn(A) -> R` returns `Future<R>`, and a plain `fn(A) -> R` converts implicitly where `async fn(A) -> R` is expected.
+- **Async declarations vs. async function types.** A declared `ista async fn` writes `-> R`, the value its body returns; its call gives `Future<R, "ista">`, and its type is `ista async fn(A) -> R`, another spelling of `ista fn(A) -> Future<R, "ista">`. An unmarked `async fn` or `async fn` type is an error: a future names its kind. A plain `fn(A) -> R` converts where `ista async fn(A) -> R` is expected. A lambda infers its mark from its expected type or its body; a local `fn` writes its own.
 - **Conversions.** Infallible conversions use `T(x)` (`Float(3)`, `Int(3.7)`, `String(42)` for any `Stringable`), backed by `fn T.from(v)`. Fallible parsing uses `T.parse(s) -> Result<T>`.
 
 ### 2.5 Generics, traits, operators (§3.5, §3.9, §3.10)
@@ -304,7 +305,7 @@ ista async fn approve(req: Req, roles: Array<String>) -> String:
 ```
 
 - **Graceful stop:** Inside `async fn worker`, `case worker.disposing():` in `select` runs synchronous cleanup (cannot `await`) when `worker`'s future is disposed.
-- **Weak references:** `WeakRef(x)` watches a disposable without holding it (`w.deref() -> T?`, `w.disposed() -> Future<Unit>`).
+- **Weak references:** `WeakRef(x)` watches a disposable without holding it (`w.deref() -> T?`, `w.disposed() -> Future<Unit, "ista">`).
 
 ### 2.11 Modules, host, JSON, tools (§3.6, §3.13, §9, §11)
 
