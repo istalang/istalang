@@ -43,6 +43,7 @@ import type {
   TypeAliasDeclaration,
   TypeParameter,
 } from '../../../syntax/declarations/index.ts';
+import { writtenByReference } from '../../../syntax/expressions/parameters.ts';
 import type { VariableDeclaration } from '../../../syntax/statements/index.ts';
 import { awaits } from '../../../syntax/tokens/modifiers.ts';
 import type { Identifier, NodeOf } from '../../../syntax/tree/node.ts';
@@ -62,7 +63,6 @@ import {
   type DefaultsBody,
   Parameters,
 } from '../../constructs/declarations/functions/parameters.ts';
-import { writtenByReference } from '../../constructs/declarations/functions/signatures.ts';
 import { StaticFunctions } from '../../constructs/declarations/functions/statics.ts';
 import { Layouts } from '../../constructs/declarations/layout/index.ts';
 import { ModuleChecks } from '../../constructs/declarations/module-checks.ts';

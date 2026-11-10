@@ -286,6 +286,7 @@ function startsHead(tree: SyntaxTree, word: Token): boolean {
   return (
     startsItemOf('Module', tree, word) ||
     startsItemOf('Block', tree, word) ||
+    startsItemOf('TraitDeclaration', tree, word) ||
     readAsType(tree, word) ||
     (previous !== undefined &&
       isModifierWord(tree.source.text.slice(previous.span.start, previous.span.end)))
@@ -300,7 +301,11 @@ function readAsType(tree: SyntaxTree, word: Token): boolean {
  * Whether `word` starts an item of a `holder` node, as the parser read the text holding it: the
  * item's own first token, past the annotations it holds, an Invalid one's included.
  */
-function startsItemOf(holder: 'Module' | 'Block', tree: SyntaxTree, word: Token): boolean {
+function startsItemOf(
+  holder: 'Module' | 'Block' | 'TraitDeclaration',
+  tree: SyntaxTree,
+  word: Token,
+): boolean {
   const chain = nodesAt(tree, word.span.start);
   return chain.some((node, index) => {
     const item = chain[index + 1];

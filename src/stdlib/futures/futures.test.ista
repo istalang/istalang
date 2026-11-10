@@ -182,7 +182,7 @@ fn timeoutSuite() -> Array<Test>: [
 # attempt that succeeds the third time: the outcome, and when each attempt started.
 ista async fn succeedingThirdTime() -> (Outcome, Array<Int>):
   let startedAt: Array<Int> = []
-  const attempt = async fn() -> Future<Outcome, "ista">: {
+  const attempt = async fn() -> Outcome: {
     startedAt.push(time.now().value)
     if startedAt.length() < 3: Err("failed")
     else: Ok(startedAt.length())

@@ -28,15 +28,15 @@ import {
   typeParametersOf,
 } from '../../../../syntax/declarations/index.ts';
 import type { Expression, Parameter } from '../../../../syntax/expressions/index.ts';
-import { parameterSite, patternNamedType } from '../../../../syntax/expressions/parameters.ts';
+import {
+  parameterSite,
+  patternNamedType,
+  writtenByReference,
+} from '../../../../syntax/expressions/parameters.ts';
 import { awaits } from '../../../../syntax/tokens/modifiers.ts';
 import { lastName } from '../../../../syntax/tree/node.ts';
 import type { AnchoredSpan } from '../../../../syntax/tree/positions.ts';
-import {
-  type NamedType,
-  type TypeNode,
-  unparenthesizedType,
-} from '../../../../syntax/types/index.ts';
+import type { NamedType, TypeNode } from '../../../../syntax/types/index.ts';
 import type { SignatureParameter } from '../../../check.ts';
 import type { CheckerContext } from '../../../contexts/context.ts';
 import { checkerDiagnostics } from '../../../diagnostics/index.ts';
@@ -264,11 +264,6 @@ function checkRest(
     const at = node.type?.span ?? site.span;
     checker.report(module, checkerDiagnostics.restNotArray(at, name, typeText(declared)));
   }
-}
-
-/** Whether `node` is written as taking a reference, `&T` (§3.7), parentheses aside. */
-export function writtenByReference(node: Parameter): boolean {
-  return node.type !== undefined && unparenthesizedType(node.type).kind === 'ReferenceType';
 }
 
 /**

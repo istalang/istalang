@@ -98,8 +98,15 @@ export class UsageWalk {
       this.walk(type.pack, flipped(at));
     }
     // A function giving a future fits where one giving a future of a wider value is expected, its
-    // future awaited (§3.14), so it varies in what its future gives as in what it gives.
-    this.walk(this.#awaitedOf(type.result)?.value ?? type.result, at);
+    // future awaited (§3.14), so it varies in what its future gives as in what it gives, and never
+    // in the future's kind, which the kinds never leave (proposal 8, Rule 4).
+    const awaited = this.#awaitedOf(type.result);
+    if (awaited === undefined) {
+      this.walk(type.result, at);
+    } else {
+      this.walk(awaited.value, at);
+      this.walk(awaited.mode, 'invariant');
+    }
   }
 
   #recursive(type: RecursiveType, at: Variance): void {

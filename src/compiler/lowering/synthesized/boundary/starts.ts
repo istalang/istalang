@@ -19,15 +19,14 @@ import type { CodeFunction } from '../../../../definition/tables/functions.ts';
 import { isStartable, type StartShape } from '../../../../foundation/language/starts.ts';
 import { unreachable } from '../../../../foundation/structures/unreachable.ts';
 import type { Checker } from '../../../checker/check.ts';
-import { startShapeOf } from '../../../checker/surface/starts.ts';
 import type { FunctionType, Type } from '../../../checker/types/type/index.ts';
 import { outcomeOf } from '../../../checker/types/type/well-known.ts';
-import { programModule } from '../../../program/program.ts';
 import type {
   ConstantDeclaration,
   Declaration,
   FunctionDeclaration,
 } from '../../../syntax/declarations/index.ts';
+import { startShapeOf } from '../../../syntax/declarations/starts.ts';
 import { awaits } from '../../../syntax/tokens/modifiers.ts';
 import type { Invalid } from '../../../syntax/tree/node.ts';
 import { writtenBodyOf } from '../../functions/bodies.ts';
@@ -77,8 +76,7 @@ function functionStartable(
   checker: Checker,
   declaration: FunctionDeclaration,
 ): Startable | undefined {
-  const { tree } = programModule(checker.program, checker.moduleOf(declaration));
-  const shape = startShapeOf(checker, tree, declaration);
+  const shape = startShapeOf(declaration);
   const outcome = checker.bodyOf(declaration)?.result;
   const parameters = checker.parametersOf(declaration);
   return !isStartable(shape) || outcome === undefined
@@ -108,6 +106,7 @@ function lambdaStartable(
   const signature: FunctionType = type;
   const shape: StartShape = {
     hasBody: true,
+    isStatic: false,
     isGeneric: false,
     parameters: signature.parameters,
     awaits: awaits(constant.form.lambda.qualifiers),

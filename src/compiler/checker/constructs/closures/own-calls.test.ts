@@ -108,4 +108,34 @@ describe('the call disposing() watches', () => {
       bindings.ownCallOf(idOf('main.ista'), worker),
     );
   });
+
+  it("refuses main.disposing() only on the program's entry main(), not on other functions named main or static Box.main()", () => {
+    expect(
+      reported(`
+shared struct Box { n: Int }
+ista async fn Box.main() -> Box:
+  new Box{n: 1}
+ista async fn main(n: Int) -> Int:
+  _ = main.disposing()
+  n
+async fn main() -> Int:
+  _ = Box.main()
+  await main(1)
+`),
+    ).toEqual(reportedNothing);
+    expect(
+      reported(`
+fn main():
+  drop main.disposing()
+`),
+    ).toEqual(reportedOnce(4016, 'main'));
+    expect(
+      reported(`
+async fn main():
+  ()
+ista async fn other():
+  drop main.disposing()
+`),
+    ).toEqual(reportedOnce(4016, 'main'));
+  });
 });

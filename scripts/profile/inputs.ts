@@ -21,7 +21,8 @@ export const formBuilderDir = resolve(repoRoot, 'examples/FormBuilder');
 const stdDir = resolve(repoRoot, 'src/stdlib');
 const decimalTestsPath = resolve(stdDir, 'decimal/decimal.test.ista');
 
-const declaredName = /^(?:fn|struct|enum|type|const|trait) (?<name>[A-Za-z_]\w*)\b(?!\.)/gmu;
+const declaredName =
+  /^(?:(?:extern|shared|sendable|live|ista|async) )*(?:fn|struct|enum|type|const|trait) (?<name>[A-Za-z_]\w*)\b(?!\.)/gmu;
 
 /** `text`'s imports once, then its other lines `times` over, each copy's declarations suffixed. */
 export function repeated(text: string, times: number): string {
@@ -54,7 +55,7 @@ export function formBuilderEntry(): {
   const mainLines = [
     "import * as sup from './supplier.gen'",
     "import * as ord from './order.gen'",
-    'async fn main() -> Future<Int>:',
+    'async fn main() -> Int:',
     '  const _f1 = sup.supplierForm',
     '  const _f2 = ord.orderForm',
     '  0',

@@ -36,7 +36,10 @@ const sourceKinds = {
   },
   markdown: { filesIn: () => documentPaths, embed: embedMarkdown },
   typescript: {
-    filesIn: (root) => globSync('{src,test}/**/*.{test,test-kit}.ts', { cwd: root }),
+    filesIn: (root) =>
+      globSync(['{src,test}/**/*.{test,test-kit,bench}.ts', 'scripts/profile/inputs.ts'], {
+        cwd: root,
+      }),
     embed: embedTypeScript,
   },
 } satisfies Record<string, SourceKind>;

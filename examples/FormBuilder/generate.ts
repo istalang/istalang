@@ -8,7 +8,7 @@
 //   a params struct and a ctx struct;
 //   a model struct (one node per path) and its factory;
 //   a view function building the static view tree, with every expression as a lambda;
-//   for the form, an entry point: async fn <id>Form(params, user, events, views).
+//   for the form, an entry point: ista async fn <id>Form(params, user, events, views).
 //
 // The view function's signature names its scope; nothing inside it does. The checker infers each
 // view's scope and each lambda's parameters from it, and a nested scope (inside repeats, variants
@@ -1132,7 +1132,7 @@ export function generate(doc: FormDocument, sourceName: string): string {
     c = camel(doc.id);
   out.push('# ═══════════ The entry point a workflow awaits ═══════════', '');
   out.push(
-    `async fn ${c}Form(params: ${P}Params, user: User,\n        events: Inbox<FormEvent>, views: Inbox<Node>):\n    const m = ${c}Model()\n    await forms.run(m, ${c}View(m.fields), ${P}Ctx{params, user}, translations, events, views)`,
+    `ista async fn ${c}Form(params: ${P}Params, user: User,\n        events: Inbox<FormEvent>, views: Inbox<Node>):\n    const m = ${c}Model()\n    await forms.run(m, ${c}View(m.fields), ${P}Ctx{params, user}, translations, events, views)`,
     '',
   );
 

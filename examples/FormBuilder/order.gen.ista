@@ -263,6 +263,6 @@ fn orderView(m: OrderModel) -> any View<Scope<Group<OrderModel>.Seen, OrderCtx>>
 
 # ═══════════ The entry point a workflow awaits ═══════════
 
-async fn orderForm(params: OrderParams, user: User, events: Inbox<FormEvent>, views: Inbox<Node>):
+ista async fn orderForm(params: OrderParams, user: User, events: Inbox<FormEvent>, views: Inbox<Node>):
   const m = orderModel()
   await forms.run(m, orderView(m.fields), OrderCtx{params, user}, translations, events, views)

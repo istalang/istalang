@@ -13,28 +13,42 @@
  */
 
 import type { FunctionDeclaration } from '../../../../src/compiler/syntax/declarations/index.ts';
+import type { Lambda } from '../../../../src/compiler/syntax/expressions/index.ts';
 import {
   awaits,
   type FunctionQualifiers,
 } from '../../../../src/compiler/syntax/tokens/modifiers.ts';
-import { childrenOf, type SyntaxNode } from '../../../../src/compiler/syntax/tree/index.ts';
+import {
+  nodesUnder,
+  parentOf,
+  type SyntaxNode,
+} from '../../../../src/compiler/syntax/tree/index.ts';
 import { lastName } from '../../../../src/compiler/syntax/tree/node.ts';
 import { spanIn } from '../../../../src/compiler/syntax/tree/positions.ts';
-import type { FunctionType, NamedType } from '../../../../src/compiler/syntax/types/index.ts';
+import type {
+  FunctionType,
+  NamedType,
+  TypeNode,
+} from '../../../../src/compiler/syntax/types/index.ts';
 import { entryFunction } from '../../../../src/foundation/language/well-known/index.ts';
 import { type Edit, type IstaSource, insertion, type Pass, type Rewrite } from '../../pass.ts';
 
 const kindWord = 'ista';
 
 export const kinds: Pass = (source) => [
-  ...nodesOf(source).flatMap((node) => rewritesAt(source, node)),
+  ...nodesUnder(source.tree, source.tree.root).flatMap((node) => rewritesAt(source, node)),
   ...liveHandles(source),
 ];
+
+/** A head a result is written on: a function's or a lambda's. */
+type Head = FunctionDeclaration | Lambda;
 
 function rewritesAt(source: IstaSource, node: SyntaxNode): readonly Rewrite[] {
   switch (node.kind) {
     case 'FunctionDeclaration':
       return [...headKind(source, node), ...headResult(source, node)];
+    case 'Lambda':
+      return headResult(source, node);
     case 'FunctionType':
       return headKind(source, node);
     case 'NamedType':
@@ -63,10 +77,13 @@ function headKind(
     : [{ rule: 'kind', edits: [insertion(asyncWord.span.start, `${kindWord} `)] }];
 }
 
-/** An async head's `Future<T>` result written as `T`. */
-function headResult({ tree }: IstaSource, node: FunctionDeclaration): readonly Rewrite[] {
+/**
+ * An async head's `Future<T>` result written as `T`, the body's result (decision 15). A future of a
+ * future stays spelled as the future the call gives, since its body's result is itself a future.
+ */
+function headResult({ tree }: IstaSource, node: Head): readonly Rewrite[] {
   const future = untypedFuture(node.returnType);
-  if (!awaits(node.qualifiers) || future === undefined) {
+  if (!isUnwrapped(node, future)) {
     return [];
   }
   const { type, argument } = future;
@@ -87,10 +104,23 @@ function headResult({ tree }: IstaSource, node: FunctionDeclaration): readonly R
   ];
 }
 
-/** `, "ista"` after a `Future<T>`'s `T`, unless it is an async head's result. */
+/** Whether `future`, `node`'s written result, is unwrapped into the body's result. */
+function isUnwrapped(node: Head, future: UntypedFuture | undefined): future is UntypedFuture {
+  return (
+    awaits(node.qualifiers) && future !== undefined && untypedFuture(future.argument) === undefined
+  );
+}
+
+/** `, "ista"` after a `Future<T>`'s `T`, unless an async head's result unwraps it. */
 function futureKind(source: IstaSource, node: NamedType): readonly Rewrite[] {
   const future = untypedFuture(node);
-  if (future === undefined || isAsyncResult(source, node)) {
+  const holder = parentOf(source.tree, node);
+  const head =
+    (holder?.kind === 'FunctionDeclaration' || holder?.kind === 'Lambda') &&
+    holder.returnType === node
+      ? holder
+      : undefined;
+  if (future === undefined || (head !== undefined && isUnwrapped(head, future))) {
     return [];
   }
   return [
@@ -101,30 +131,13 @@ function futureKind(source: IstaSource, node: NamedType): readonly Rewrite[] {
   ];
 }
 
-const asyncResultsMemo = new WeakMap<IstaSource, ReadonlySet<SyntaxNode>>();
-
-/** Whether `node` is an async head's written result. */
-function isAsyncResult(source: IstaSource, node: NamedType): boolean {
-  let results = asyncResultsMemo.get(source);
-  if (results === undefined) {
-    results = new Set(
-      nodesOf(source).flatMap((each) =>
-        each.kind === 'FunctionDeclaration' &&
-        awaits(each.qualifiers) &&
-        each.returnType !== undefined
-          ? [each.returnType]
-          : [],
-      ),
-    );
-    asyncResultsMemo.set(source, results);
-  }
-  return results.has(node);
+/** `Future<T>` as written, with its one argument. */
+interface UntypedFuture {
+  readonly type: NamedType;
+  readonly argument: TypeNode;
 }
 
-/** `Future<T>` as written, with its one argument. */
-function untypedFuture(
-  node: SyntaxNode | undefined,
-): { readonly type: NamedType; readonly argument: SyntaxNode } | undefined {
+function untypedFuture(node: SyntaxNode | undefined): UntypedFuture | undefined {
   if (node?.kind !== 'NamedType' || lastName(node.path).text !== 'Future') {
     return undefined;
   }
@@ -160,24 +173,4 @@ function headsStruct(text: string, rest: IstaSource['tokens']): boolean {
     }
   }
   return false;
-}
-
-const nodesMemo = new WeakMap<IstaSource, readonly SyntaxNode[]>();
-
-/** Every node of `source`'s tree, in source order. */
-function nodesOf(source: IstaSource): readonly SyntaxNode[] {
-  const known = nodesMemo.get(source);
-  if (known !== undefined) {
-    return known;
-  }
-  const nodes: SyntaxNode[] = [];
-  const visit = (node: SyntaxNode): void => {
-    nodes.push(node);
-    for (const child of childrenOf(source.tree, node)) {
-      visit(child);
-    }
-  };
-  visit(source.tree.root);
-  nodesMemo.set(source, nodes);
-  return nodes;
 }

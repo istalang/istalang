@@ -34,28 +34,28 @@ const places: readonly Place[] = [
     form: headForms.functionType,
     category: 'type',
     required: [],
-    optional: ['reach', 'kind'],
+    optional: ['reach', 'kind', 'async'],
     rest: '(A) -> R',
   },
   {
     form: headForms.lambda,
     category: 'expression',
     required: [],
-    optional: ['kind'],
+    optional: ['kind', 'async'],
     rest: '(x): x',
   },
   {
     form: headForms.function,
     category: 'module',
     required: [],
-    optional: ['kind'],
+    optional: ['kind', 'async'],
     rest: ' f(): 1',
   },
   {
     form: headForms.function,
     category: 'module',
     required: ['extern'],
-    optional: ['kind'],
+    optional: ['kind', 'async'],
     rest: ' f() -> Int',
   },
   {
@@ -109,8 +109,8 @@ describe('modifiers in any order', () => {
   });
 
   it('keep each word under its meaning', () => {
-    expect(dumpClean('type', 'async sendable fn(A)')).toBe(
-      '(FunctionType sendable async [(NamedType [A] [])] _)',
+    expect(dumpClean('type', 'async ista sendable fn(A)')).toBe(
+      '(FunctionType sendable ista async [(NamedType [A] [])] _)',
     );
     expect(dumpClean('module', 'shared extern struct H')).toContain(
       '(ExternStructDeclaration shared H [])',
@@ -122,6 +122,7 @@ describe('a stray modifier', () => {
   it.each([
     ['type', 'async async fn(A)', repeatedModifier, 'async'],
     ['type', 'sendable sendable fn(A)', repeatedModifier, 'sendable'],
+    ['type', 'live ista fn(A)', conflictingModifiers, 'ista'],
     ['module', 'extern extern fn f()', repeatedModifier, 'extern'],
     ['module', 'extern shared sendable struct H', conflictingModifiers, 'sendable'],
     ['module', 'sendable extern live struct H', conflictingModifiers, 'live'],

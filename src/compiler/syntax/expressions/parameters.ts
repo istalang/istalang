@@ -11,7 +11,7 @@
 
 import { type Pattern, type StructPattern, targetNames } from '../patterns.ts';
 import type { Identifier } from '../tree/node.ts';
-import type { NamedType } from '../types/index.ts';
+import { type NamedType, unparenthesizedType } from '../types/index.ts';
 import type { Parameter } from './index.ts';
 
 /** What a diagnostic about `parameter` points at: its name, or else the pattern it is instead. */
@@ -47,4 +47,9 @@ export function typingPattern(parameter: Parameter): StructPattern | undefined {
     ({ pattern } = pattern);
   }
   return pattern?.kind === 'StructPattern' ? pattern : undefined;
+}
+
+/** Whether `node` is written as taking a reference, `&T` (§3.7), parentheses aside. */
+export function writtenByReference(node: Parameter): boolean {
+  return node.type !== undefined && unparenthesizedType(node.type).kind === 'ReferenceType';
 }

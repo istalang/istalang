@@ -312,7 +312,7 @@ class Linker {
   #refuseFunctionHead(id: ModuleId, links: ModuleLinks, head: Identifier): void {
     const entity = this.entityOf(id, head);
     if (entity?.kind === 'functions') {
-      links.diagnostics.push(noOwnCall(head, entity));
+      links.diagnostics.push(noOwnCall(head, undefined));
       links.refused.add(head);
     }
   }

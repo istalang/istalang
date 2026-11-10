@@ -94,14 +94,17 @@ export function groupIn(form: HeadForm, word: ModifierWord): ModifierGroup | und
 
 /**
  * What may follow `word` in a head of `form` written in print order: the form's keyword, or a
- * later group's modifier.
+ * later group's modifier; nothing where `form` doesn't take `word`.
  */
 export function followersIn(
   form: HeadForm,
   word: ModifierWord,
 ): readonly (Keyword | ContextualWord)[] {
   const group = groupIn(form, word);
-  const later = group === undefined ? [] : form.groups.slice(form.groups.indexOf(group) + 1);
+  if (group === undefined) {
+    return [];
+  }
+  const later = form.groups.slice(form.groups.indexOf(group) + 1);
   return [form.keyword, ...later.flatMap((each) => modifierGroups[each])];
 }
 

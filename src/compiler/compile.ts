@@ -20,11 +20,11 @@ import { entryFunction } from '../foundation/language/well-known/index.ts';
 import { memo } from '../foundation/structures/memo.ts';
 import type { SourceText } from '../foundation/text/source-text.ts';
 import { bindProgram } from './binder/bind.ts';
-import { type Checker, checkProgram } from './checker/check.ts';
-import { isMain } from './checker/surface/starts.ts';
+import { checkProgram } from './checker/check.ts';
 import { lower, lowerTests } from './lowering/lower.ts';
 import { type ModuleId, type Program, programModule } from './program/program.ts';
 import type { FunctionDeclaration } from './syntax/declarations/index.ts';
+import { isMain } from './syntax/declarations/starts.ts';
 
 export interface ModuleDiagnostics {
   readonly source: SourceText;
@@ -85,12 +85,11 @@ function compile(program: Program, entry: ModuleId): Compilation {
   if (hasErrors(program)) {
     return { kind: 'failed' };
   }
-  const checker = checkProgram(program);
-  const main = mainOf(program, checker, entry);
+  const main = mainOf(program, entry);
   if (main === undefined) {
     return { kind: 'noMain' };
   }
-  return { kind: 'compiled', definition: lower(checker, main) };
+  return { kind: 'compiled', definition: lower(checkProgram(program), main) };
 }
 
 /** A program's tests compiled for running (§10), or why they couldn't be. */
@@ -135,15 +134,7 @@ function hasErrors(program: Program): boolean {
 }
 
 /** The `async fn main()` that `entry` declares (§9). */
-function mainOf(
-  program: Program,
-  checker: Checker,
-  entry: ModuleId,
-): FunctionDeclaration | undefined {
+function mainOf(program: Program, entry: ModuleId): FunctionDeclaration | undefined {
   const entity = bindProgram(program).exportsOf(entry).get(entryFunction);
-  return entity?.kind === 'functions'
-    ? entity.overloads.find((overload) =>
-        isMain(checker, programModule(program, entry).tree, overload),
-      )
-    : undefined;
+  return entity?.kind === 'functions' ? entity.overloads.find(isMain) : undefined;
 }

@@ -5,8 +5,8 @@
  */
 
 import type { Diagnostic } from '../../../foundation/diagnostics/diagnostic.ts';
-import { entryFunction } from '../../../foundation/language/well-known/index.ts';
 import type { FunctionDeclaration } from '../../syntax/declarations/index.ts';
+import { isMain } from '../../syntax/declarations/starts.ts';
 import type { Lambda } from '../../syntax/expressions/index.ts';
 import type { Identifier } from '../../syntax/tree/node.ts';
 import type { AnchoredSpan } from '../../syntax/tree/positions.ts';
@@ -15,18 +15,17 @@ import { localFunctionOf } from '../entities.ts';
 import type { LocalEntity } from './scope.ts';
 
 /**
- * Why `name`, naming the functions `entity` before a `.`, denotes no call (§7): none of them that
- * encloses it is async, or it names `main`, whose call nothing holds.
+ * Why `name`, naming the functions `entity` before a `.`, denotes no call (§7): what it names
+ * encloses it as the program's `main`, whose call nothing holds, or doesn't enclose it as an async
+ * function at all.
  */
-export function noOwnCall(name: Identifier, entity: LocalEntity): Diagnostic<AnchoredSpan> {
-  return namesMain(name, entity)
+export function noOwnCall(
+  name: Identifier,
+  enclosing: FunctionDeclaration | Lambda | undefined,
+): Diagnostic<AnchoredSpan> {
+  return enclosing?.kind === 'FunctionDeclaration' && isMain(enclosing)
     ? binderDiagnostics.mainNeverDisposed(name.span)
     : binderDiagnostics.notOwnCall(name.span, name.text);
-}
-
-/** Whether `name` names `main`, whose call nothing holds (§7). */
-export function namesMain(name: Identifier, entity: LocalEntity): boolean {
-  return entity.kind === 'functions' && name.text === entryFunction;
 }
 
 /**

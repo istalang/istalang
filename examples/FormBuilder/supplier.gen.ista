@@ -1179,7 +1179,7 @@ fn supplierView(m: SupplierModel) -> any View<Scope<Group<SupplierModel>.Seen, S
 
 # ═══════════ The entry point a workflow awaits ═══════════
 
-async fn supplierForm(
+ista async fn supplierForm(
   params: SupplierParams
   user: User
   events: Inbox<FormEvent>

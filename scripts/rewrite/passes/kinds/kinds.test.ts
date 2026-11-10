@@ -23,8 +23,12 @@ describe('kinds', () => {
     ['@Test("t")\nasync fn f(): 1', '@Test("t")\nista async fn f(): 1'],
     ['fn f(g: async fn(Int) -> Int): g', 'fn f(g: ista async fn(Int) -> Int): g'],
     ['fn f(x: Future<Future<Int>>): x', 'fn f(x: Future<Future<Int, "ista">, "ista">): x'],
-    ['async fn f() -> Future<Future<Int>>: x', 'ista async fn f() -> Future<Int, "ista">: x'],
+    [
+      'async fn f() -> Future<Future<Int>>: x',
+      'ista async fn f() -> Future<Future<Int, "ista">, "ista">: x',
+    ],
     ['const g = async fn(x): await x', 'const g = async fn(x): await x'],
+    ['const g = async fn() -> Future<Int>: 1', 'const g = async fn() -> Int: 1'],
     ['extern ephemeral struct Socket', 'extern live struct Socket'],
     ['ephemeral extern struct Socket', 'live extern struct Socket'],
     ['const ephemeral = 1', 'const ephemeral = 1'],

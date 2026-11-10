@@ -262,7 +262,7 @@ ista async fn unmockedDispose():
 ista async fn mockedDispose():
   const queue = handle<Queue>()
   hold _ = mock(open, fn(): queue)
-  hold _ = mock(openAsync, async fn() -> Future<Queue, "ista">: {
+  hold _ = mock(openAsync, async fn() -> Queue: {
     await time.delay(1ms)
     queue
   })

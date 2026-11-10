@@ -231,11 +231,26 @@ export function resultFitOf(
   if (fits(given, expected)) {
     return { kind: 'value' };
   }
-  const into = futures.awaitedOf(expected)?.value;
-  const awaited = futures.awaitedOf(given)?.value;
-  return into !== undefined && awaited !== undefined && fits(awaited, into)
-    ? { kind: 'awaited', value: awaited, into }
+  const into = futures.awaitedOf(expected);
+  const awaited = futures.awaitedOf(given);
+  return into !== undefined &&
+    awaited !== undefined &&
+    sameMode(awaited.mode, into.mode, fits) &&
+    fits(awaited.value, into.value)
+    ? { kind: 'awaited', value: awaited.value, into: into.value }
     : undefined;
+}
+
+/**
+ * Whether futures of modes `given` and `expected` wait alike, as `fits` relates them both ways: the
+ * kinds never meet (proposal 8, Rule 4), and a kind variable takes the kind it is related to.
+ */
+function sameMode(
+  given: Type,
+  expected: Type,
+  fits: (given: Type, expected: Type) => boolean,
+): boolean {
+  return fits(given, expected) && fits(expected, given);
 }
 
 /**

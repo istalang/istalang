@@ -403,6 +403,7 @@ function valueProblem(tables: Tables, value: CompositeValue): string | undefined
 function startShapeOf(entry: CodeFunction): StartShape {
   return {
     hasBody: true,
+    isStatic: false,
     isGeneric: false,
     parameters: entry.parameters,
     awaits: entry.mode !== 'plain',

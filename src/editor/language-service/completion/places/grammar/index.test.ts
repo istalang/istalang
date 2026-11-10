@@ -273,7 +273,10 @@ describe('completion offers the words that go on after what is written', () => {
     ["a comprehension's target", ['fn f(xs: Array<Int>):', '  const e = [for x ‸]'], ['in']],
     ['`extern sendable`', ['extern sendable ‸'], ['struct']],
     ['`extern shared`', ['extern shared ‸'], ['struct']],
-    ['`extern live`', ['extern live ‸'], ['struct']],
+    ['`extern live`', ['extern live ‸'], ['fn', 'async', 'struct']],
+    ['`extern ista`', ['extern ista ‸'], ['fn', 'async']],
+    ['`live` in a type', ['type F = live ‸'], ['fn', 'async']],
+    ['`ista` in a trait', ['trait T:', '  ista ‸'], ['fn', 'async']],
     ['a range', ['fn f():', '  let r = 0..10 ‸', '  1'], ['or', 'and', 'in', 'not', 'is', 'by']],
     [
       'a range with its step',

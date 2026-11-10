@@ -24,6 +24,7 @@ import { type Convention, isUnnamed } from '../../../foundation/language/naming.
 import { memo, SequenceMemo } from '../../../foundation/structures/memo.ts';
 import { unreachable } from '../../../foundation/structures/unreachable.ts';
 import type { FunctionDeclaration, Module } from '../../syntax/declarations/index.ts';
+import { isMain } from '../../syntax/declarations/starts.ts';
 import type {
   Comprehension,
   Expression,
@@ -50,7 +51,7 @@ import {
   variableEntity,
 } from '../entities.ts';
 import { namingViolation } from '../naming.ts';
-import { functionsNamed, namesMain, noOwnCall } from './own-calls.ts';
+import { functionsNamed, noOwnCall } from './own-calls.ts';
 import type { LocalEntity, Miss, Scope, ScopeSnapshot } from './scope.ts';
 import { type Visibility, VisibilityNotes } from './visibility.ts';
 
@@ -253,10 +254,14 @@ export class LocalBinder {
       return;
     }
     const enclosing = scope.enclosingOf(functions);
-    if (enclosing !== undefined && awaits(enclosing.qualifiers) && !namesMain(name, entity)) {
+    if (
+      enclosing !== undefined &&
+      awaits(enclosing.qualifiers) &&
+      !(enclosing.kind === 'FunctionDeclaration' && isMain(enclosing))
+    ) {
       this.record(name, this.#ownCallOf(enclosing));
     } else {
-      this.report(noOwnCall(name, entity));
+      this.report(noOwnCall(name, enclosing));
     }
   }
 

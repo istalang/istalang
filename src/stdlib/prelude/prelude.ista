@@ -52,7 +52,7 @@ extern shared struct _Cell<T>
 
 # Disposal (§7): the runtime disposes a future and a slot once nothing holds them. Declaring their
 # `dispose` is what makes them Disposable (§3.10), and what tells the compiler the runtime does it.
-extern fn dispose<T>(self: Future<T, "ista">)
+extern fn dispose<T, K in Persistence>(self: Future<T, K>)
 extern fn dispose<T>(self: Slot<T>)
 
 # What `defer` gives (§7): a disposable whose release calls `run`, so `_ = defer log(x)` computes

@@ -79,6 +79,11 @@ describe('a declaration’s variance (§3.5)', () => {
     ['trait Cell<T> { fn get(self: Self) -> T; fn set(self: Self, x: T) }', 'Cell', ['invariant']],
     ['trait Sized<T> { size: T }', 'Sized', ['covariant']],
     ['trait Later<T> { ista async fn later(self: Self) -> T }', 'Later', ['covariant']],
+    [
+      'type ModeOf<T> = match T:\n  case Int: "live"\n  case _: "ista"\nstruct Task<T> { run: fn() -> Future<Int, ModeOf<T>> }',
+      'Task',
+      ['invariant'],
+    ],
     ['trait Swaps<T> { fn swap(self: &Self, x: &T) }', 'Swaps', ['invariant']],
     ['trait Each<T> { fn each(self: Self, f: fn(T) -> Unit) }', 'Each', ['covariant']],
     ['trait Tag<T> { fn tag(self: Self) -> Int }', 'Tag', ['covariant']],

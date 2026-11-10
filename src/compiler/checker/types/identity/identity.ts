@@ -28,8 +28,8 @@ export function sameConstraint(first: Constraint, second: Constraint): boolean {
 
 /**
  * Whether a value of type `source` fits where `target` is expected as it is: the same type, a
- * future of `Never` where a future is, or a function whose sendability is at least `target`'s and
- * whose result fits `target`'s (§2, §3.14).
+ * future of `Never` where a future of its kind is, or a function whose sendability is at least
+ * `target`'s and whose result fits `target`'s (§2, §3.14).
  */
 export function isAssignable(
   source: Type,
@@ -41,7 +41,7 @@ export function isAssignable(
     target.kind === 'error' ||
     isPrimitive(source, 'Never') ||
     sameType(source, target) ||
-    (isNeverFuture(source, futures) && futures.awaitedOf(target)?.value !== undefined) ||
+    neverFutureFits(source, target, futures) ||
     (source.kind === 'function' &&
       target.kind === 'function' &&
       functionFits(target, source, sameType, (declared, given) =>
@@ -50,10 +50,23 @@ export function isAssignable(
   );
 }
 
-/** Whether `type` is a future of `Never`, which never gives a value. */
-function isNeverFuture(type: Type, { awaitedOf }: Pick<Futures, 'awaitedOf'>): boolean {
-  const value = awaitedOf(type)?.value;
-  return value !== undefined && isPrimitive(value, 'Never');
+/**
+ * Whether `source` is a future of `Never`, which never gives a value, and `target` a future of its
+ * kind, which the kinds never leave (proposal 8, Rule 4).
+ */
+function neverFutureFits(
+  source: Type,
+  target: Type,
+  { awaitedOf }: Pick<Futures, 'awaitedOf'>,
+): boolean {
+  const never = awaitedOf(source);
+  const into = awaitedOf(target);
+  return (
+    never !== undefined &&
+    into !== undefined &&
+    isPrimitive(never.value, 'Never') &&
+    sameType(never.mode, into.mode)
+  );
 }
 
 /**

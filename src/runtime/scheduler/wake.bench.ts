@@ -17,14 +17,14 @@ const workers = 400;
 const text = compiledText(`
 import Inbox from 'inbox'
 
-async fn worker(jobs: Inbox<Int>, results: Inbox<Int>):
+ista async fn worker(jobs: Inbox<Int>, results: Inbox<Int>):
   const job = await jobs.receive()
   results.send(job)
 
-async fn main() -> Future<Int>:
+async fn main() -> Int:
   const jobs = Inbox.create<Int>()
   const results = Inbox.create<Int>()
-  let running: Array<Future<Unit>> = []
+  let running: Array<Future<Unit, "ista">> = []
   let started = 0
   while started < ${workers}:
     running.push(worker(jobs, results))

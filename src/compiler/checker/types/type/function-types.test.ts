@@ -46,12 +46,12 @@ function resolved(types: readonly string[]) {
 }
 
 describe('the two spellings of an async function type', () => {
-  it('are one type, with one key and one text', () => {
+  it('are one type, with one key and one text, in both kinds', () => {
     fc.assert(
-      fc.property(written, written, (taken, given) => {
+      fc.property(fc.constantFrom('live', 'ista'), written, written, (kind, taken, given) => {
         const { types, diagnostics } = resolved([
-          `ista async fn(${taken}) -> ${given}`,
-          `fn(${taken}) -> Future<${given}, "ista">`,
+          `${kind} async fn(${taken}) -> ${given}`,
+          `fn(${taken}) -> Future<${given}, "${kind}">`,
         ]);
         const [async, plain] = types;
         expect(diagnostics).toEqual([]);
@@ -167,7 +167,7 @@ async fn main():
   it('fits async fn(...A) -> Never where async fn(...A) -> R is expected on packs and constants (§2, §3.5, §3.14)', () => {
     expect(
       reported(`
-const diverged: sendable ista async fn(Int) -> Int = async fn(x: Int) -> Future<Never, "ista">: panic("no")
+const diverged: sendable ista async fn(Int) -> Int = async fn(x: Int) -> Never: panic("no")
 fn wrap<...A>(f: ista async fn(...A) -> Never) -> ista async fn(...A) -> Int: f
 fn main():
   _ = diverged
@@ -182,6 +182,34 @@ fn run(f: fn(Int) -> Int, y: Int?) -> String: "sync"
 fn run(f: ista async fn(Int) -> Int, y: Int) -> String: "async"
 fn main():
   _ = run(fn(x: Int): x + 1, 1)
+`),
+    ).toEqual(reportedNothing);
+  });
+
+  it.each([
+    [
+      'live async fn() -> Int into ista async fn() -> Int',
+      'fn takesIsta(f: ista async fn() -> Int): ()\nfn main(g: live async fn() -> Int):\n  takesIsta(g)',
+    ],
+    [
+      'live async fn() -> Int into ista async fn() -> Int?',
+      'fn takesIstaOpt(f: ista async fn() -> Int?): ()\nfn main(g: live async fn() -> Int):\n  takesIstaOpt(g)',
+    ],
+    [
+      'Future<Never, "live"> into Future<Int, "ista">',
+      'fn takesIstaFuture(f: Future<Int, "ista">): ()\nfn main(g: Future<Never, "live">):\n  takesIstaFuture(g)',
+    ],
+  ])('refuses fitting %s across kinds', (_, source) => {
+    expect(reported(source)).toEqual(reportedOnce(checkerDiagnostics.typeMismatch.code, 'g'));
+  });
+
+  it('infers K across a widened future result and disposes futures of both kinds', () => {
+    expect(
+      reported(`
+fn inferKind<K in Persistence>(f: fn() -> Future<Int?, K>): ()
+fn watchLive(f: Future<Int, "live">) -> WeakRef<Future<Int, "live">>: WeakRef(f)
+fn main(g: ista async fn() -> Int):
+  inferKind(g)
 `),
     ).toEqual(reportedNothing);
   });

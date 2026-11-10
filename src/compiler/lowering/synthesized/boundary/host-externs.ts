@@ -21,8 +21,9 @@ import type { CodeFunction, FunctionDefinition } from '../../../../definition/ta
 import { wellKnown } from '../../../../foundation/language/well-known/index.ts';
 import { unreachable } from '../../../../foundation/structures/unreachable.ts';
 import type { Checker } from '../../../checker/check.ts';
+import type { AwaitedType } from '../../../checker/types/type/function-types.ts';
 import type { Type } from '../../../checker/types/type/index.ts';
-import { awaitedOf } from '../../../checker/types/type/well-known.ts';
+import { awaitedOf, futureOf } from '../../../checker/types/type/well-known.ts';
 import { entityType } from '../../../checker/types/written/named-types.ts';
 import type {
   ExternConstantDeclaration,
@@ -108,7 +109,7 @@ export function hostNativeEntry(
     declaredType: spelledType(checker, result),
     constant: false,
     parameters: native.jsons(checker.parametersOf(declaration).length),
-    result: native.given(awaitedOf(checker, result)?.value),
+    result: native.given(awaitedOf(checker, result)),
   };
 }
 
@@ -139,7 +140,6 @@ function nativeParts(lowering: Lowering, declaration: HostExternDeclaration) {
     unreachable('A host extern was lowered in a program without the json module.');
   }
   const json = tables.types.reference(jsonType);
-  const future = checker.wellKnownType(wellKnown.future, [jsonType]);
   return {
     header: {
       kind: 'extern' as const,
@@ -149,9 +149,14 @@ function nativeParts(lowering: Lowering, declaration: HostExternDeclaration) {
     /** `count` parameters, each JSON. */
     jsons: (count: number) =>
       Array.from({ length: count }, () => ({ type: json, reference: false })),
-    /** What the native gives: JSON, or a future the host fills with JSON when it fills `filled`. */
-    given: (filled: Type | undefined) =>
-      filled === undefined || future === undefined ? json : tables.types.reference(future),
+    /**
+     * What the native gives: JSON, or, where the extern gives a future (`awaited`), a future of its
+     * kind the host fills with JSON.
+     */
+    given: (awaited: AwaitedType | undefined) =>
+      awaited === undefined
+        ? json
+        : tables.types.reference(futureOf(checker, jsonType, awaited.mode)),
   };
 }
 

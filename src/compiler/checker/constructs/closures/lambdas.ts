@@ -31,7 +31,7 @@ import {
   nestedFunctionSpan,
 } from '../../../syntax/declarations/index.ts';
 import type { Lambda, Parameter } from '../../../syntax/expressions/index.ts';
-import { parameterSite } from '../../../syntax/expressions/parameters.ts';
+import { parameterSite, writtenByReference } from '../../../syntax/expressions/parameters.ts';
 import { unparenthesized } from '../../../syntax/expressions/readings.ts';
 import { awaits } from '../../../syntax/tokens/modifiers.ts';
 import type { Identifier, Invalid } from '../../../syntax/tree/node.ts';
@@ -60,7 +60,6 @@ import {
   checkPatternParameter,
   declaredBodyResult,
   wholeWrittenTypeOf,
-  writtenByReference,
   writtenTypeOf,
 } from '../declarations/functions/signatures.ts';
 import { declareParameter } from '../patterns/targets.ts';

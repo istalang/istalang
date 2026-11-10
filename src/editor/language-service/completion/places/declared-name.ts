@@ -50,13 +50,16 @@ export function offerDeclaredName(
   const name = chain.at(-1);
   const declaring = chain.at(-2);
   const holder = declaring === undefined ? undefined : holderIn(chain, declaring);
+  const afterModifier = headWordsAfter(cursor);
   switch (declaring?.kind) {
     case 'FunctionDeclaration':
+      if (afterModifier !== undefined) {
+        return wordCandidates(afterModifier);
+      }
       return namesOwner(declaring, name) ? staticOwners(cursor, holder) : [];
     case 'ExternConstantDeclaration':
-      return wordCandidates(externWords);
     case 'ExternStructDeclaration':
-      return wordCandidates(externStructWordsAfter(cursor));
+      return wordCandidates(afterModifier ?? []);
     case 'DeclaredField':
     case 'Variant':
     case 'FieldDeclaration':
@@ -84,14 +87,19 @@ function namesOwner(declaration: FunctionDeclaration, name: SyntaxNode | undefin
 }
 
 /**
- * `extern shared ‸`: the parser takes the name for an extern struct's, whose head goes on after
- * the modifier before the cursor.
+ * What may follow the modifier before the cursor, `extern live ‸`, in a function's or an extern
+ * struct's head, whichever takes it, where the parser read the name begun for a declaration's;
+ * undefined where no modifier stands before it.
  */
-function externStructWordsAfter({ tree, before }: Cursor): readonly Word[] {
+function headWordsAfter({ tree, before }: Cursor): readonly Word[] | undefined {
   const word = before === undefined ? undefined : textOf(tree.source, before.span);
-  return word !== undefined && isModifierWord(word)
-    ? followersIn(headForms.externStruct, word)
-    : [];
+  return word === undefined || !isModifierWord(word)
+    ? undefined
+    : [
+        ...new Set(
+          [headForms.function, headForms.externStruct].flatMap((form) => followersIn(form, word)),
+        ),
+      ];
 }
 
 /**
@@ -118,13 +126,6 @@ function memberWords(
   }
   return holder?.kind === 'Variant' ? [] : ['type'];
 }
-
-/** What may follow `extern` in an extern function's or struct's head. */
-const externWords: readonly Word[] = [
-  ...new Set(
-    [headForms.function, headForms.externStruct].flatMap((form) => followersIn(form, 'extern')),
-  ),
-];
 
 /**
  * A method's receiver is the parameter named `self`, a name the language gives a role, like a word.

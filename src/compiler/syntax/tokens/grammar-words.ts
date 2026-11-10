@@ -155,10 +155,7 @@ export type PatternWord = (typeof patternWords)[number];
  * in a type; `hold let`; and `not in` (../expressions/operators.ts) after an operand.
  */
 export const followers = {
-  live: [
-    ...followersIn(headForms.function, 'live'),
-    ...followersIn(headForms.externStruct, 'live'),
-  ],
+  live: followersIn(headForms.function, 'live'),
   ista: followersIn(headForms.function, 'ista'),
   async: followersIn(headForms.function, 'async'),
   shared: followersIn(headForms.sharedStruct, 'shared'),
