@@ -14,7 +14,7 @@ import { checkProgram } from '../../../../../compiler/checker/check.ts';
 import { patternHead } from '../../../../../compiler/syntax/patterns.ts';
 import { extentIn, nodesUnder } from '../../../../../compiler/syntax/tree/index.ts';
 import { type Diagnostic, isError } from '../../../../../foundation/diagnostics/diagnostic.ts';
-import { mainProgram, programAt } from '../../../language-service.test-kit.ts';
+import { editedMainProgram, mainProgram, programAt } from '../../../language-service.test-kit.ts';
 import { checkedModule } from '../../../reading/checked-module.ts';
 import type { Candidate } from '../../candidate.ts';
 import { cursorAt } from '../../cursor.ts';
@@ -60,17 +60,17 @@ const fieldSites = tested.flatMap(({ text, tree, pattern }) =>
   }),
 );
 
-/** The errors `text` makes from `start` to `end` once checked. */
-function errorsIn(text: string, start: number, end: number): readonly Diagnostic[] {
-  const { program, module } = mainProgram(text);
+/** The errors `text`, an edit of the corpus program `corpus`, makes from `start` to `end`. */
+function errorsIn(corpus: string, text: string, start: number, end: number): readonly Diagnostic[] {
+  const { program, module } = editedMainProgram(text, corpus);
   return checkProgram(program)
     .diagnosticsOf(module)
     .filter((each) => isError(each) && start <= each.span.start && each.span.end <= end);
 }
 
-/** What the pattern provider offers at `offset` of `text`; nothing at a place of another kind. */
-function candidatesIn(text: string, offset: number): readonly Candidate[] {
-  const { program, module } = mainProgram(text);
+/** What a pattern place offers at `offset` of `text`, an edit of `corpus` if given; else none. */
+function candidatesIn(text: string, offset: number, corpus?: string): readonly Candidate[] {
+  const { program, module } = corpus ? editedMainProgram(text, corpus) : mainProgram(text);
   const checked = checkedModule(program, module);
   if (checked === undefined) {
     throw new Error('the program holds no main module');
@@ -87,14 +87,14 @@ function candidatesIn(text: string, offset: number): readonly Candidate[] {
  */
 function misfitsOf({ text, start, end }: Site): readonly string[] {
   const emptied = text.slice(0, start) + text.slice(end);
-  return candidatesIn(emptied, start).flatMap(({ name, subject }) => {
+  return candidatesIn(emptied, start, text).flatMap(({ name, subject }) => {
     if (subject.kind !== 'variant' && subject.kind !== 'keyword') {
       return [];
     }
     const written =
       subject.kind === 'variant' && subject.variant.fields.length > 0 ? `${name}(...)` : name;
     const probed = text.slice(0, start) + written + text.slice(end);
-    return errorsIn(probed, start, start + written.length).map(
+    return errorsIn(text, probed, start, start + written.length).map(
       ({ message }) => `${written}: ${message}`,
     );
   });
@@ -134,7 +134,7 @@ const fieldMistakes = new Set([5013, 5015]);
  */
 function fieldMisfitsOf({ text, start, end, open, named }: (typeof fieldSites)[number]) {
   const close = end - 1;
-  const emptied = mainProgram(text.slice(0, open) + text.slice(close));
+  const emptied = editedMainProgram(text.slice(0, open) + text.slice(close), text);
   const offered = completionsAt(emptied.program, emptied.module, open, { trigger: '{' }).map(
     ({ name }) => name,
   );
@@ -142,7 +142,7 @@ function fieldMisfitsOf({ text, start, end, open, named }: (typeof fieldSites)[n
   const probed = text.slice(0, open) + items + text.slice(close);
   return [
     ...named.filter((name) => !offered.includes(name)).map((name) => `${name} not offered`),
-    ...errorsIn(probed, start, open + items.length + 1)
+    ...errorsIn(text, probed, start, open + items.length + 1)
       .filter(({ code }) => fieldMistakes.has(code))
       .map(({ message }) => message),
   ];
@@ -160,10 +160,10 @@ describe('pattern completion offers what fits the matched value', () => {
 
   it('offering the word each corpus pattern starts with', () => {
     fc.assert(
-      fc.property(fc.constantFrom(...wordSites), ({ site, word }) => {
-        fc.pre(errorsIn(site.text, site.start, site.end).length === 0);
-        const emptied = site.text.slice(0, site.start) + site.text.slice(site.end);
-        expect(candidatesIn(emptied, site.start).map(({ name }) => name)).toContain(word);
+      fc.property(fc.constantFrom(...wordSites), ({ site: { text, start, end }, word }) => {
+        fc.pre(errorsIn(text, text, start, end).length === 0);
+        const emptied = text.slice(0, start) + text.slice(end);
+        expect(candidatesIn(emptied, start, text).map(({ name }) => name)).toContain(word);
       }),
       { numRuns: 30 },
     );

@@ -4,8 +4,10 @@ Compiler, runtime and tooling for Istalang (spec: `docs/spec.md`). One npm packa
 
 ## Commands
 
-- `npm run verify`: typecheck, lint, test, build. Tests build `dist` first, because the CLI's end-to-end test runs it. Run it before every commit.
-- `npm test`, `npm run lint`, `npm run fix` (format plus safe fixes).
+- `npm run verify`: typecheck, lint, every test, build. Tests build `dist` first, because the CLI's end-to-end test runs it. Run it before every commit.
+- `npm test`: the quick suite, for iterating; it skips `src/editor`'s tests and the sweeps outside `src/compiler` (`*.sweep.test.ts`: whole-corpus checks costing seconds).
+- `npm run test:full`: every test, as `verify` runs them.
+- `npm run lint`, `npm run fix` (format plus safe fixes).
 
 ## Where to look
 

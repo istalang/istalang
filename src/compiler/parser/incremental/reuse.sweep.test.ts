@@ -7,6 +7,7 @@
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
+import { memo } from '../../../foundation/structures/memo.ts';
 import { createSourceText } from '../../../foundation/text/source-text.ts';
 import { scan } from '../../scanner/scan.ts';
 import { bodyOf, extentIn, nodesUnder, type SyntaxTree } from '../../syntax/tree/index.ts';
@@ -25,6 +26,13 @@ import { parse } from '../parse.ts';
 function parsed(text: string, previous?: SyntaxTree): SyntaxTree {
   const source = createSourceText('main.ista', text);
   return parse(source, scan(source), previous);
+}
+
+const freshTrees = new Map<string, SyntaxTree>();
+
+/** `text` parsed afresh, once per file: a tree is immutable, so every run may edit from it. */
+function parsedOnce(text: string): SyntaxTree {
+  return memo(freshTrees, text, () => parsed(text));
 }
 
 /** Everything a tree tells of its text: nodes, their places, comments and diagnostics. */
@@ -50,7 +58,7 @@ describe('a tree parsed after an edit', () => {
   it.each(editedTexts)('matches a fresh parse of $name', ({ text }) => {
     fc.assert(
       fc.property(editSequences, (edits) => {
-        let tree = parsed(text);
+        let tree = parsedOnce(text);
         let edited = text;
         for (const edit of edits) {
           edited = applied(edited, edit);
@@ -68,7 +76,7 @@ describe('a tree parsed after an edit', () => {
   it.each(editedTexts)(
     'keeps every segment but the edited body of $name after an edit inside one body',
     ({ text }) => {
-      const before = parsed(text);
+      const before = parsedOnce(text);
       fc.assert(
         fc.property(bodyEditChoices, (choices) => {
           const edit = editInsideBody(before, choices);

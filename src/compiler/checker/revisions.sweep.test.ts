@@ -5,6 +5,10 @@
  * checker made afresh does; after an edit of a module nothing imports, it checks no body outside
  * that module, and never a std body again; and after an edit inside one body that changes no
  * declaration and no inferred result, it checks that body alone.
+ *
+ * Every run of a property starts from one first revision, checked once, and the tests asking every
+ * module of the same files share theirs: a checker made from an earlier one only reads that one's
+ * entries, so each finds it as it was made. The fresh checkers stay fresh.
  */
 
 import fc from 'fast-check';
@@ -12,6 +16,7 @@ import { describe, expect, it } from 'vitest';
 import namesLib from '../../../test/corpus/names/lib.ista';
 import namesMain from '../../../test/corpus/names/main.ista';
 import { addToGroup } from '../../foundation/structures/groups.ts';
+import { memo } from '../../foundation/structures/memo.ts';
 import { stdProgramOf } from '../binder/bind.test-kit.ts';
 import {
   applied,
@@ -26,10 +31,9 @@ import type { Files } from '../program/program.test-kit.ts';
 import { idOf, moduleAt } from '../program/program.test-kit.ts';
 import { isStdModule, type ModuleId, type Program } from '../program/program.ts';
 import type { FunctionDeclaration } from '../syntax/declarations/index.ts';
-import { nodesUnder } from '../syntax/tree/index.ts';
 import { checkedApart } from './check.test-kit.ts';
 import { type Checker, checkProgram } from './check.ts';
-import { answersAt } from './lookup/lookup.test-kit.ts';
+import { spelledAnswers } from './lookup/lookup.test-kit.ts';
 import type { CheckerOptions, ProgramChecker } from './wiring/program/program-checker.ts';
 
 /** The checker of the program `edited` builds after a revision's, made from `previous`. */
@@ -38,59 +42,6 @@ type Route = (
   previous: ProgramChecker,
   observe: NonNullable<CheckerOptions['observe']>,
 ) => ProgramChecker;
-
-/** Every node of `program`, numbered, so two checkers' answers name nodes alike. */
-function nodeNumbers(program: Program): ReadonlyMap<object, number> {
-  const numbers = new Map<object, number>();
-  for (const { tree } of program.modules.values()) {
-    for (const node of nodesUnder(tree, tree.root)) {
-      numbers.set(node, numbers.size);
-    }
-  }
-  return numbers;
-}
-
-/**
- * `value` spelled whole, every node of the program by its number and anything else part by part,
- * so two answers spell alike only when they are alike and name the same nodes: a node an earlier
- * snapshot made, such as a dead alias's declaration, spells as its parts, not as a number.
- */
-function spelled(
-  value: unknown,
-  numbers: ReadonlyMap<object, number>,
-  open = new Set<object>(),
-): string {
-  if (typeof value === 'function') {
-    return 'fn';
-  }
-  if (value === null || typeof value !== 'object') {
-    return String(value);
-  }
-  const number = numbers.get(value);
-  if (number !== undefined) {
-    return `#${number}`;
-  }
-  if (open.has(value)) {
-    return 'cycle';
-  }
-  open.add(value);
-  const entries =
-    value instanceof Map || value instanceof Set || Array.isArray(value)
-      ? [...(value as Iterable<unknown>)].map((each, index) => [String(index), each])
-      : Object.entries(value).toSorted(([one], [other]) => (one < other ? -1 : 1));
-  const parts = entries.map(([key, each]) => `${key}:${spelled(each, numbers, open)}`);
-  open.delete(value);
-  return `{${parts.join(',')}}`;
-}
-
-/** Every answer a tool may ask about `module`'s nodes (7A.1's sweep), spelled. */
-function answersOf(checker: Checker, module: ModuleId): readonly string[] {
-  const tree = checker.program.modules.get(module)?.tree;
-  const numbers = nodeNumbers(checker.program);
-  return (tree === undefined ? [] : nodesUnder(tree, tree.root)).map((node) =>
-    spelled(answersAt(checker, module, node), numbers),
-  );
-}
 
 /** The diagnostics of every module of `program` the test owns, as `checker` reports them. */
 function diagnosticsOf(checker: Checker, modules: readonly ModuleId[]) {
@@ -104,9 +55,9 @@ interface Edited {
   readonly edits: readonly Edit[];
 }
 
-/** The programs an edit sequence makes, each built from the last. */
-function revisionsOf({ files, edited, edits }: Edited): readonly Program[] {
-  const programs = [stdProgramOf(files)];
+/** The programs an edit sequence makes from `first`, its files' program, each built from the last. */
+function revisionsOf(first: Program, { files, edited, edits }: Edited): readonly Program[] {
+  const programs = [first];
   let text = files[edited] ?? '';
   for (const edit of edits) {
     text = applied(text, edit);
@@ -124,58 +75,98 @@ const everyModule: Asked = (program) => [...program.modules.keys()];
 const ownModules: Asked = (program) =>
   [...program.modules.keys()].filter((id) => !isStdModule(program, id));
 
-/**
- * Each revision of `files` after `edits` of `edited`, checked by a checker made from the last
- * one's, with the `asked` modules' diagnostics asked; `observe` hears each body checked.
- */
-function checkedRevisions(
-  sequence: Edited,
+/** Hears each body the `revision`-th revision checks. */
+type Observe = (revision: number, checked: FunctionDeclaration) => void;
+
+/** How a revision is checked: from the checker before it, if any, and heard by `observe`. */
+interface Revising {
+  readonly previous?: ProgramChecker | undefined;
+  readonly revision?: number;
+  readonly observe?: Observe | undefined;
+}
+
+/** A checker of `program`, the `revision`-th, with the `asked` modules' diagnostics asked. */
+function checkedRevision(
+  program: Program,
   asked: Asked,
-  observe: (revision: number, checked: FunctionDeclaration) => void = () => undefined,
-): readonly ProgramChecker[] {
-  const checkers: ProgramChecker[] = [];
-  for (const [revision, program] of revisionsOf(sequence).entries()) {
-    const checker = checkedApart(program, {
-      previous: checkers.at(-1),
-      observe: (table, key) => {
+  { previous, revision = 0, observe }: Revising = {},
+): ProgramChecker {
+  const checker = checkedApart(program, {
+    previous,
+    observe:
+      observe &&
+      ((table, key) => {
         if (table === 'bodies') {
           observe(revision, key as FunctionDeclaration);
         }
-      },
-    });
-    diagnosticsOf(checker, asked(program));
-    checkers.push(checker);
+      }),
+  });
+  diagnosticsOf(checker, asked(program));
+  return checker;
+}
+
+/**
+ * `first` and each revision of an edit sequence after it, checked by a checker made from the last
+ * one's, with the `asked` modules' diagnostics asked.
+ */
+function checkedRevisions(
+  first: ProgramChecker,
+  sequence: Edited,
+  asked: Asked,
+  observe?: Observe,
+): readonly ProgramChecker[] {
+  const checkers = [first];
+  for (const [revision, program] of revisionsOf(first.program, sequence).entries()) {
+    if (revision > 0) {
+      checkers.push(
+        checkedRevision(program, asked, { previous: checkers.at(-1), revision, observe }),
+      );
+    }
   }
   return checkers;
 }
 
-/**
- * What every revision after the first answers, every module's diagnostics and every query at
- * every node of the test's own modules, beside what a checker of its program made afresh answers.
- */
-function answeredBothWays(sequence: Edited) {
-  const revisions = checkedRevisions(sequence, ownModules).slice(1);
-  const answers = (checker: Checker) => {
-    const own = ownModules(checker.program);
-    return {
-      diagnostics: diagnosticsOf(checker, own),
-      answers: own.map((each) => answersOf(checker, each)),
-    };
-  };
+/** Of the modules of `checker`'s program the test owns, the diagnostics and every node's answers. */
+function answered(checker: Checker) {
+  const own = ownModules(checker.program);
   return {
-    incremental: revisions.map(answers),
-    fresh: revisions.map((revision) => answers(checkedApart(revision.program))),
+    diagnostics: diagnosticsOf(checker, own),
+    answers: own.map((each) => spelledAnswers(checker, each)),
   };
 }
 
-/** The bodies each revision checked, by revision. */
-function bodiesChecked(sequence: Edited) {
+/**
+ * What every revision of an edit sequence after `first` answers, beside what a checker of its
+ * program made afresh answers.
+ */
+function answeredBothWays(first: ProgramChecker, sequence: Edited) {
+  const revisions = checkedRevisions(first, sequence, ownModules).slice(1);
+  return {
+    incremental: revisions.map(answered),
+    fresh: revisions.map((revision) => answered(checkedApart(revision.program))),
+  };
+}
+
+/**
+ * The bodies each revision of an edit sequence checked, by revision, every module's diagnostics
+ * asked: after `first`, a property's first revision, else from a first revision checked here.
+ */
+function bodiesChecked(sequence: Edited, first?: ProgramChecker) {
   const checked = new Map<number, FunctionDeclaration[]>();
-  const checkers = checkedRevisions(sequence, everyModule, (revision, body) => {
-    addToGroup(checked, revision, body);
-  });
+  const observe: Observe = (revision, body) => addToGroup(checked, revision, body);
+  const checkers = checkedRevisions(
+    first ?? checkedRevision(stdProgramOf(sequence.files), everyModule, { observe }),
+    sequence,
+    everyModule,
+    observe,
+  );
   return { checkers, checked };
 }
+
+/** The first revision of `files`, every module's diagnostics asked, made once per files. */
+const everyModuleFirsts = new WeakMap<Files, ProgramChecker>();
+const checkedEveryModule = (files: Files) =>
+  memo(everyModuleFirsts, files, () => checkedRevision(stdProgramOf(files), everyModule));
 
 const names = { 'names/main': namesMain, 'names/lib': namesLib };
 
@@ -187,9 +178,10 @@ const sources = editedTexts.map(({ name, text }) => ({
 describe('a checker made after an earlier one', () => {
   describe.each(sources)('over $name', ({ files }) => {
     it('answers every revision as a checker made afresh', () => {
+      const first = checkedRevision(stdProgramOf(files), ownModules);
       fc.assert(
         fc.property(editSequences, (edits) => {
-          const { incremental, fresh } = answeredBothWays({
+          const { incremental, fresh } = answeredBothWays(first, {
             files,
             edited: 'main.test.ista',
             edits,
@@ -202,9 +194,10 @@ describe('a checker made after an earlier one', () => {
   });
 
   it('answers every revision afresh after edits of an imported module, in every module', () => {
+    const first = checkedRevision(stdProgramOf(names), ownModules);
     fc.assert(
       fc.property(editSequences, (edits) => {
-        const { incremental, fresh } = answeredBothWays({
+        const { incremental, fresh } = answeredBothWays(first, {
           files: names,
           edited: 'names/lib',
           edits,
@@ -227,9 +220,10 @@ describe('a checker made after an earlier one', () => {
   it.each(twoModules)(
     'checks no body but the edited module of $name, and no std body again',
     ({ files, edited }) => {
+      const first = checkedEveryModule(files);
       fc.assert(
         fc.property(editSequences, (edits) => {
-          const { checkers, checked } = bodiesChecked({ files, edited, edits });
+          const { checkers, checked } = bodiesChecked({ files, edited, edits }, first);
           const elsewhere = checkers
             .slice(1)
             .flatMap((checker, index) =>
@@ -271,9 +265,8 @@ describe('a checker made after an earlier one', () => {
   it.each(twoModules.flatMap((each) => routes.map((route) => ({ ...each, ...route }))))(
     'checks only the body edited in $name, $route, when the edit changes no declaration or inferred result',
     ({ files, edited, checker }) => {
-      const first = stdProgramOf(files);
-      const previous = checkedApart(first);
-      diagnosticsOf(previous, everyModule(first));
+      const previous = checkedEveryModule(files);
+      const first = previous.program;
       const declaresResult = (declaration: FunctionDeclaration) =>
         declaration.returnType !== undefined;
       fc.assert(
@@ -301,7 +294,7 @@ describe('a checker made after an earlier one', () => {
   );
 
   it('takes over, through checkProgram, the checker of the snapshot before, answering afresh', () => {
-    const [first, second] = revisionsOf({
+    const [first, second] = revisionsOf(stdProgramOf(names), {
       files: names,
       edited: 'names/main',
       edits: [{ kind: 'append', item: 0 }],
@@ -311,12 +304,7 @@ describe('a checker made after an earlier one', () => {
     }
     diagnosticsOf(checkProgram(first), everyModule(first));
     const after = checkProgram(second, { previous: first });
-    const fresh = checkedApart(second);
-    const own = ownModules(second);
-    expect(diagnosticsOf(after, own)).toEqual(diagnosticsOf(fresh, own));
-    expect(own.map((each) => answersOf(after, each))).toEqual(
-      own.map((each) => answersOf(fresh, each)),
-    );
+    expect(answered(after)).toEqual(answered(checkedApart(second)));
   });
 
   /**
@@ -327,20 +315,10 @@ describe('a checker made after an earlier one', () => {
     const files = { 'main.ista': main, lib: before, ...beside };
     const first = stdProgramOf(files);
     const second = stdProgramOf({ ...files, lib: after }, first);
-    const previous = checkedApart(first);
-    diagnosticsOf(previous, everyModule(first));
-    const revision = checkedApart(second, { previous });
-    const fresh = checkedApart(second);
-    const own = ownModules(second);
+    const previous = checkedRevision(first, everyModule);
     return {
-      incremental: {
-        diagnostics: diagnosticsOf(revision, own),
-        answers: own.map((each) => answersOf(revision, each)),
-      },
-      fresh: {
-        diagnostics: diagnosticsOf(fresh, own),
-        answers: own.map((each) => answersOf(fresh, each)),
-      },
+      incremental: answered(checkedApart(second, { previous })),
+      fresh: answered(checkedApart(second)),
     };
   };
 

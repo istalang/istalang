@@ -1,16 +1,14 @@
 /**
- * `ista run` end to end. Every runnable corpus program (test/corpus/programs.ts) runs through the CLI
- * in-process and must have the outcome it states, so the whole pipeline (checker, lowering,
- * runtime, boundary) is what's tested, on real time. With a store, a run killed while it waits is
- * continued by a later `--resume`, in a process of its own.
+ * `ista run` end to end, through the CLI in-process, on real time: what it prints, logs and
+ * reports (every corpus program's outcome is run.sweep.test.ts's). With a store, a run killed
+ * while it waits is continued by a later `--resume`, in a process of its own.
  */
 
-import { spawn } from 'node:child_process';
+import { type ChildProcessWithoutNullStreams, spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import process from 'node:process';
-import { describe, expect, it, vi } from 'vitest';
-import { corpusDirectory as corpus, runPrograms } from '../../../test/corpus/programs.ts';
+import { describe, expect, it } from 'vitest';
 import { subsetOutcome, subsetSource } from '../../../test/definitions/subset.ts';
 import { tempProject as project } from '../../project/project.test-kit.ts';
 import { builtCli, ista } from '../cli.test-kit.ts';
@@ -19,25 +17,6 @@ import { builtCli, ista } from '../cli.test-kit.ts';
 const isoTime = /^\d{4}-\d{2}-\d{2}T/u;
 
 describe('ista run', () => {
-  it.each(runPrograms.filter(({ expects }) => expects === 'outcome'))(
-    'prints the outcome of $name',
-    async ({ name, expected }) => {
-      expect(await ista(corpus, 'run', name)).toEqual({ code: 0, out: `${expected}\n`, err: '' });
-    },
-  );
-
-  it.each(runPrograms.filter(({ expects }) => expects === 'panic'))(
-    'reports the panic of $name with a trace of where each frame stood',
-    async ({ name, expected }) => {
-      const run = await ista(corpus, 'run', name);
-      expect(run.code).toBe(1);
-      expect(run.out).toBe('');
-      expect(run.err).toMatch(
-        new RegExp(`^panic: ${expected}\\n(at \\S+ \\(\\S+:\\d+:\\d+\\)\\n)+$`, 'u'),
-      );
-    },
-  );
-
   it('runs the program the hand-written subset Definition was written from', async () => {
     const run = await ista(project({ 'main.ista': subsetSource }), 'run', 'main.ista');
     expect(run).toEqual({ code: 0, out: `${subsetOutcome}\n`, err: '' });
@@ -118,37 +97,50 @@ describe('ista run', () => {
   });
 });
 
+/** A program that logs and then waits: its run writes the record once that segment committed. */
 const waitingProgram = [
+  "import * as log from 'log'",
   "import * as time from 'time'",
   'ista async fn main():',
   '  const start = time.now()',
+  '  log.info("waiting")',
   '  await time.delay(300ms)',
   '  time.now().value - start.value >= 300',
   '',
 ].join('\n');
 
 const instanceLine = /^ista: instance (?<name>\S+)$/mu;
+const committedLog = /^\{.*"message":"waiting".*\}$/mu;
+
+/**
+ * What `child` wrote to its error stream by the time it wrote a line matching `line`; rejects if
+ * it exits first. However long a loaded machine takes to start it, only the test's own time limit
+ * gives up on it.
+ */
+function errorStreamUntil(child: ChildProcessWithoutNullStreams, line: RegExp): Promise<string> {
+  return new Promise((written, failed) => {
+    let err = '';
+    child.stderr.on('data', (chunk: Buffer) => {
+      err += chunk.toString();
+      if (line.test(err)) {
+        written(err);
+      }
+    });
+    child.on('exit', () => failed(new Error(`ista exited before writing ${line}:\n${err}`)));
+  });
+}
 
 describe('ista run with a store', () => {
   it('continues an instance killed while it waits, from its last commit', async () => {
     const root = project({ 'main.ista': waitingProgram });
-    const main = builtCli;
-    const child = spawn(process.execPath, [main, 'run', '--store', 'store', 'main.ista'], {
+    const child = spawn(process.execPath, [builtCli, 'run', '--store', 'store', 'main.ista'], {
       cwd: root,
     });
-    let err = '';
-    child.stderr.on('data', (chunk: Buffer) => {
-      err += chunk.toString();
-    });
     const exited = new Promise((done) => child.on('exit', done));
-    const name = await vi.waitFor(() => {
-      const found = instanceLine.exec(err)?.groups?.name;
-      expect(found).toBeDefined();
-      return found ?? '';
-    });
-    await vi.waitFor(() => {
-      expect(existsSync(join(root, 'store', 'instances', `${name}.json`))).toBe(true);
-    });
+    // A run writes a log record once its segment committed, so the store holds the instance by then.
+    const err = await errorStreamUntil(child, committedLog);
+    const name = instanceLine.exec(err)?.groups?.name ?? '';
+    expect(existsSync(join(root, 'store', 'instances', `${name}.json`))).toBe(true);
     child.kill();
     await exited;
     const resumed = await ista(root, 'run', '--store', 'store', '--resume', name);

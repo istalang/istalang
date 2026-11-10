@@ -14,6 +14,7 @@ import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { sameType } from '../../src/compiler/checker/types/identity/identity.ts';
 import { typeKeys } from '../../src/compiler/checker/types/identity/type-keys.ts';
+import { memo } from '../../src/foundation/structures/memo.ts';
 import { compareWrittenTypes, resolveWrittenTypes, runMain } from './unions.test-kit.ts';
 
 const declarations = [
@@ -136,6 +137,18 @@ describe('commutation: instantiating a generic union then normalizing (test/AGEN
   });
 });
 
+const outcomes = new Map<string, Promise<unknown>>();
+
+/**
+ * What `runMain` gives, compiled and run once per program: a program runs alike every time (a
+ * manual clock and a fixed seed), and the properties below draw each of their ten arguments about
+ * three times.
+ */
+function ranMain(result: string, body: string, declared: readonly string[]): Promise<unknown> {
+  const key = JSON.stringify([result, body, declared]);
+  return memo(outcomes, key, () => runMain(result, body, declared));
+}
+
 /** A type argument as written, and values of it, as written. */
 interface Argument {
   readonly text: string;
@@ -236,7 +249,7 @@ describe('generic code on values of members an `any` member took whole (§2, §3
           `[${all.map(([call]) => call).join(', ')}]`,
         ];
         expect(
-          await runMain('Array<String>', body.join('\n  '), [...declarations, ...generic]),
+          await ranMain('Array<String>', body.join('\n  '), [...declarations, ...generic]),
         ).toEqual(all.map(([, expected]) => expected));
       }),
       { numRuns: 30 },
@@ -273,7 +286,7 @@ describe('commutation: generic code instantiated, or written for the type it is 
           ...values.map((value, index) => `const a${index}: ${type} = ${value}`),
           `[${[...all, ...written].join(', ')}]`,
         ];
-        const results = await runMain('Array<String>', body.join('\n  '), [
+        const results = await ranMain('Array<String>', body.join('\n  '), [
           ...declarations,
           ...generic,
           ...writtenFor(type),

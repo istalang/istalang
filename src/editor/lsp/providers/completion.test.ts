@@ -38,14 +38,14 @@ const checker = checkProgram(program);
 const ruledOut = ({ code }: { readonly code: number }) =>
   code === checkerDiagnostics.heldNoValue.code || code === checkerDiagnostics.decidedCondition.code;
 
-let client: TestClient;
-
-beforeAll(async () => {
-  client = await corpusClient();
-});
-
 // biome-ignore lint/suspicious/noSkippedTests: times out under load; disabled until it is made faster
 describe.skip('completion over the corpus', () => {
+  let client: TestClient;
+
+  beforeAll(async () => {
+    client = await corpusClient();
+  });
+
   it.each(documents)('$uri', async ({ uri, module, tree }) => {
     const notAnnotations = checker
       .diagnosticsOf(module)

@@ -2,11 +2,10 @@
  * Persistence through the runtime's host API, on programs the real compiler builds (spec §5):
  * where segments end and commit, eager async calls inside their caller's segment, a fresh runtime
  * continuing from a store, `crashEveryAwait` re-running segments, `now()` as the segment's start,
- * panics committing nothing, and every program of the run corpus.
+ * and panics committing nothing. Every program of the run corpus is wake.sweep.test.ts's.
  */
 
 import { describe, expect, it } from 'vitest';
-import { runPrograms } from '../../../test/corpus/programs.ts';
 import { compiledText } from '../../compiler/compile.test-kit.ts';
 import { elementsOf } from '../../definition/values/values.ts';
 import { stdNatives } from '../../stdlib/natives.ts';
@@ -271,20 +270,6 @@ describe('advancing an instance', () => {
     expect(panicked?.objects).toEqual(waiting?.objects);
     expect(panicked?.status).toMatchObject({ kind: 'panicked', segmentStartedAt: 1n });
   });
-
-  it.each(runPrograms)(
-    'runs $name to the outcome it states',
-    async ({ text, expects, expected }) => {
-      const test = testRuntime();
-      const program = test.runtime.deploy(compiledText(text));
-      const state = await runToEnd(test, 'corpus', await program.start('corpus'));
-      const ended =
-        state.kind === 'finished'
-          ? { expects: 'outcome', expected: state.outcome }
-          : { expects: 'panic', expected: state.kind === 'panicked' ? state.message : '' };
-      expect(ended).toEqual({ expects, expected });
-    },
-  );
 });
 
 /** A program whose `main` lets go of a pending `first` over a take, then panics or not. */

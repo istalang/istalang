@@ -42,19 +42,18 @@ interface CheckedModule {
 /** Where `node`, asked every query, is not answered as binding and checking chose. */
 function disagreementsAt(checked: CheckedModule, node: SyntaxNode): readonly string[] {
   const { checker, module } = checked;
-  answersAt(checker, module, node);
   const body = checker.lookup.bodyHolding(module, node);
+  answersAt(checker, module, node, body);
   if (node.kind !== 'Identifier') {
     return [];
   }
-  const outsideItsEnum = checker.lookup
-    .denotationsOf(module, node)
+  const denotations = checker.lookup.denotationsOf(module, node);
+  const outsideItsEnum = denotations
     .filter(({ declared, type }) => declared.kind === 'variant' && !isEnumOf(declared.entity, type))
     .map(() => `${node.text} at ${node.span.from} outside its enum`);
   if (body === undefined) {
     return outsideItsEnum;
   }
-  const denotations = checker.lookup.denotationsOf(module, node);
   const made = madeBy(checked, node, body);
   const variants = denotations.filter(({ declared }) => declared.kind === 'variant');
   const notAsMade = variants

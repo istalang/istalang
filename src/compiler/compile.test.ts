@@ -1,47 +1,23 @@
 /**
  * The coordinator's results: diagnostics from every phase so far, merged per module, keyed by the
- * module's id, and derived once per program; and a Definition that never shows the numbers types
- * are keyed by, which depend on what was numbered first in the process.
+ * module's id, and derived once per program. That a Definition never shows the numbers types are
+ * keyed by is compile.sweep.test.ts's.
  */
 
 import { describe, expect, it } from 'vitest';
-import { invalidPrograms, runPrograms } from '../../test/corpus/programs.ts';
-import { definitionFormat } from '../definition/definition.ts';
+import { invalidPrograms } from '../../test/corpus/programs.ts';
 import { reportedIn } from '../foundation/diagnostics/diagnostic.test-kit.ts';
 import { lineMapOf } from '../foundation/text/line-map.ts';
 import { stdlibLoader, stdRoles } from '../stdlib/stdlib-loader.ts';
 import { stdProgramOf } from './binder/bind.test-kit.ts';
-import { bindProgram } from './binder/bind.ts';
 import { binderDiagnostics } from './binder/diagnostics.ts';
 import { checkerDiagnostics } from './checker/diagnostics/index.ts';
-import { typeKeys } from './checker/types/identity/type-keys.ts';
-import { compiledDefinition, diagnosedAt } from './compile.test-kit.ts';
+import { diagnosedAt } from './compile.test-kit.ts';
 import { diagnose, diagnoseModule } from './compile.ts';
 import { programDiagnostics } from './program/diagnostics.ts';
 import { idOf, programOf } from './program/program.test-kit.ts';
 import type { Program } from './program/program.ts';
 import { scannerDiagnostics } from './scanner/diagnostics.ts';
-import { nodesUnder } from './syntax/tree/index.ts';
-
-describe('compiling', () => {
-  it.each(runPrograms.map(({ name, text }) => ({ name, text })))(
-    'writes $name alike however its identities were numbered',
-    ({ text }) => {
-      const written = (compiled: Program) =>
-        definitionFormat.write(compiledDefinition(compiled, 'main')).text;
-      const first = written(stdProgramOf({ main: text }));
-      const program = stdProgramOf({ main: text });
-      const main = idOf('main');
-      const tree = program.modules.get(main)?.tree;
-      const bindings = bindProgram(program);
-      for (const node of tree === undefined ? [] : nodesUnder(tree, tree.root).toReversed()) {
-        const entity = node.kind === 'Identifier' ? bindings.entityOf(main, node) : undefined;
-        typeKeys.identityOf(entity ?? node);
-      }
-      expect(written(program)).toBe(first);
-    },
-  );
-});
 
 describe('diagnose', () => {
   it('reports every module by id, clean ones included, in load order', () => {

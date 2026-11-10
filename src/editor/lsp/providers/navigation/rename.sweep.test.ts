@@ -11,6 +11,7 @@ import {
   type WorkspaceEdit,
 } from 'vscode-languageserver/node';
 import { corpusDirectory } from '../../../../../test/corpus/programs.ts';
+import { checkProgram } from '../../../../compiler/checker/check.ts';
 import { diagnoseModule } from '../../../../compiler/compile.ts';
 import {
   isStdModule,
@@ -90,6 +91,8 @@ function diagnosticsOf(program: Program, spell: (message: string) => string): re
   });
 }
 
+const diagnosticsBefore = diagnosticsOf(corpusProgram, (message) => message);
+
 /** Each edited module's new text, and where each name it renamed starts in it. */
 function applied(edit: WorkspaceEdit, newName: string) {
   const texts = new Map<ModuleId, string>();
@@ -144,14 +147,15 @@ async function renamingProblems(declaring: NamePlace): Promise<readonly string[]
   });
   const { texts, moved } = applied(edit ?? {}, newName);
   const renamed = projectProgramLoader(corpusDirectory)(texts, corpusProgram);
-  const before = diagnosticsOf(corpusProgram, (message) => message);
+  // Checked as the language server checks an edit: after the corpus, re-checking what it changed.
+  checkProgram(renamed, { previous: corpusProgram });
   const after = diagnosticsOf(renamed, (message) => message.replaceAll(newName, old));
   const declaringNow = moved.get(`${declaring.module} ${declaringAt.start}`);
   return [
     ...(writtenNames.has(newName) ? [`${newName} is written already`] : []),
     ...(JSON.stringify(prepared) === JSON.stringify(expected) ? [] : ['prepared another range']),
-    ...before.filter((each) => !after.includes(each)).map((each) => `lost: ${each}`),
-    ...after.filter((each) => !before.includes(each)).map((each) => `gained: ${each}`),
+    ...diagnosticsBefore.filter((each) => !after.includes(each)).map((each) => `lost: ${each}`),
+    ...after.filter((each) => !diagnosticsBefore.includes(each)).map((each) => `gained: ${each}`),
     ...[...moved].flatMap(([place, offset]) => {
       const module = place.slice(0, place.lastIndexOf(' ')) as ModuleId;
       const denoted = nameAt(renamed, module, offset)?.declarations ?? [];

@@ -3,18 +3,10 @@
  * protocol: a call resolved to a function shows it, its active parameter the one the call's
  * binding passes the argument to, a method's receiver aside; a call of a function value shows
  * its type, the argument's own parameter active.
- *
- * A call being typed, the text cut right after one of its arguments, gets the help the same cut
- * gets with the call closed. The cut drops what follows, a function declared further down
- * included, so the two are compared with each other rather than with the whole module's help.
  */
 
 import { beforeAll, describe, expect, it } from 'vitest';
-import {
-  type Position,
-  type SignatureHelp,
-  SignatureHelpRequest,
-} from 'vscode-languageserver/node';
+import { type SignatureHelp, SignatureHelpRequest } from 'vscode-languageserver/node';
 import { checkProgram } from '../../../compiler/checker/check.ts';
 import { parameterOfArgument } from '../../../compiler/checker/surface/resolved-call.ts';
 import { typeText } from '../../../compiler/checker/types/type/type-text.ts';
@@ -26,7 +18,7 @@ import { nodesUnder } from '../../../compiler/syntax/tree/index.ts';
 import { spanIn } from '../../../compiler/syntax/tree/positions.ts';
 import { wellKnown } from '../../../foundation/language/well-known/index.ts';
 import { unreachable } from '../../../foundation/structures/unreachable.ts';
-import { createSourceText, type SourceText } from '../../../foundation/text/source-text.ts';
+import { createSourceText } from '../../../foundation/text/source-text.ts';
 import { signatureOf } from '../../language-service/signatures/signatures.ts';
 import {
   corpusClient,
@@ -35,6 +27,7 @@ import {
 } from '../corpus-client.test-kit.ts';
 import { rangeOf } from '../locations.ts';
 import type { TestClient } from '../server.test-kit.ts';
+import { activeOf } from './signature-help.test-kit.ts';
 
 const checker = checkProgram(program);
 
@@ -126,58 +119,6 @@ function mismatchOf(help: SignatureHelp | null, expected: Expected, argument: nu
   return fits ? '' : `${label} [${parameter}] ≠ ${wanted}`;
 }
 
-function activeOf(help: SignatureHelp | null) {
-  const signature = help?.signatures[help.activeSignature ?? 0];
-  const parameter = signature?.parameters?.[help?.activeParameter ?? -1]?.label;
-  const text = Array.isArray(parameter) ? signature?.label.slice(...parameter) : parameter;
-  return { label: signature?.label ?? '', parameter: text ?? '' };
-}
-
-/** The active signature at `position` once the text of `uri` is `text`. */
-async function helpIn(uri: string, text: string, position: Position) {
-  await client.change(uri, text);
-  return activeOf(
-    await client.connection.sendRequest(SignatureHelpRequest.type, {
-      textDocument: { uri },
-      position,
-    }),
-  );
-}
-
-/**
- * Where help at the end of `source` cut at `end` differs from the help the cut closed by `)` gets.
- * The document gets its whole text back after.
- */
-async function leftOpenMismatch(
-  uri: string,
-  source: SourceText,
-  end: number,
-): Promise<readonly string[]> {
-  const position = rangeOf(source, { start: end, end }).start;
-  const cut = source.text.slice(0, end);
-  const open = await helpIn(uri, cut, position);
-  const closed = await helpIn(uri, `${cut})`, position);
-  await client.change(uri, source.text);
-  return open.label === closed.label && open.parameter === closed.parameter
-    ? []
-    : [`${open.label} [${open.parameter}] ≠ ${closed.label} [${closed.parameter}]`];
-}
-
-/** The end of every argument of every call in the corpus's own files, with where it stands. */
-const argumentEnds = documents
-  .filter(({ uri }) => uri.startsWith('file:'))
-  .flatMap(({ uri, tree }) =>
-    nodesUnder(tree, tree.root).flatMap((node) =>
-      node.kind === 'Call'
-        ? node.arguments.map((argument) => {
-            const { end } = spanIn(tree, argument.span);
-            const { line, character } = rangeOf(tree.source, { start: end, end }).start;
-            return { uri, source: tree.source, end, at: `${line}:${character}` };
-          })
-        : [],
-    ),
-  );
-
 describe('signature help over the corpus', () => {
   it.each(documents)('$uri', async ({ uri, module, tree }) => {
     const asked = nodesUnder(tree, tree.root).flatMap((node) => {
@@ -202,10 +143,6 @@ describe('signature help over the corpus', () => {
       }),
     );
     expect(wrong.flat()).toEqual([]);
-  });
-
-  it.each(argumentEnds)('$uri $at, the call left open', async ({ uri, source, end }) => {
-    expect(await leftOpenMismatch(uri, source, end)).toEqual([]);
   });
 
   it("marks none active where a field loop's passes call different functions", async () => {

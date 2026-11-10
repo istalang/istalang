@@ -275,10 +275,13 @@ describe('totality', () => {
     ...specExamples.filter(({ form }) => form === 'module').map(({ code }) => code),
   ];
 
+  /** The prelude and `names/lib`, parsed once: each run's program reuses them as an edit would. */
+  const unbroken = preludeProgramOf({ 'names/lib': namesLib });
+
   it('binds programs broken at random without throwing, every diagnostic within the source', () => {
     fc.assert(
       fc.property(brokenText(texts), (text) => {
-        const program = preludeProgramOf({ main: text, 'names/lib': namesLib });
+        const program = preludeProgramOf({ main: text, 'names/lib': namesLib }, unbroken);
         const diagnostics = bindProgram(program).diagnosticsOf(idOf('main'));
         const outside = diagnostics.filter(({ span }) => span.start < 0 || span.end > text.length);
         expect(outside).toEqual([]);
@@ -304,8 +307,11 @@ describe('incremental', () => {
 });
 
 describe('moduleOf', () => {
+  /** The corpus bound once: its programs are immutable, and each is bound once however asked. */
+  const corpusBound = boundCorpus();
+
   it('answers for every entity a name of the corpus denotes, but primitives and candidates', () => {
-    const undeclared = boundCorpus().flatMap(({ program, modules }) => {
+    const undeclared = corpusBound.flatMap(({ program, modules }) => {
       const bindings = bindProgram(program);
       return modules
         .flatMap((module) => resolvedNames(program, module))
@@ -318,7 +324,7 @@ describe('moduleOf', () => {
   });
 
   it('answers, for every entity a name of the corpus declares, the module declaring it', () => {
-    const misplaced = boundCorpus().flatMap(({ program, modules }) => {
+    const misplaced = corpusBound.flatMap(({ program, modules }) => {
       const bindings = bindProgram(program);
       return modules.flatMap((module) => {
         const { tree } = programModule(program, module);

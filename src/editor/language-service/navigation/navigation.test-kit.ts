@@ -1,9 +1,11 @@
 /**
  * Programs of in-memory modules beside the std modules, with their names found as written, so a
- * navigation test says where it asks, and what it expects, by the text it reads.
+ * navigation test says where it asks, and what it expects, by the text it reads. Navigating reads
+ * every module, so each program's checker takes over the std modules' results, checked once.
  */
 
 import { stdProgramOf } from '../../../compiler/binder/bind.test-kit.ts';
+import { checkedAfterStd } from '../../../compiler/compile.test-kit.ts';
 import { idOf } from '../../../compiler/program/program.test-kit.ts';
 import { type ModuleId, type Program, programModule } from '../../../compiler/program/program.ts';
 import { nodesUnder } from '../../../compiler/syntax/tree/index.ts';
@@ -13,10 +15,12 @@ import { spanOfUse } from './declarations.ts';
 import type { NameEdit } from './rename.ts';
 
 /**
- * A program of `files`, keyed by import path, and its names, the `nth` written as `text` in `key`.
+ * A program of `files`, keyed by import path, and its names, the `nth` written as `text` in `key`;
+ * its checker is made after the std modules' (`checkedAfterStd`).
  */
 export function navigable(files: Readonly<Record<string, string>>) {
   const program = stdProgramOf(files);
+  checkedAfterStd(program);
   const named = (key: string, text: string, nth = 0): NamePlace => {
     const module = idOf(key);
     const { tree } = programModule(program, module);

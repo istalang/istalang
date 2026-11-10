@@ -19,7 +19,7 @@ import { keywords } from '../../../../../compiler/syntax/tokens/index.ts';
 import { nodesUnder } from '../../../../../compiler/syntax/tree/index.ts';
 import { spanIn } from '../../../../../compiler/syntax/tree/positions.ts';
 import { createSourceText } from '../../../../../foundation/text/source-text.ts';
-import { mainProgram, programAt } from '../../../language-service.test-kit.ts';
+import { type MainProgram, mainProgram, programAt } from '../../../language-service.test-kit.ts';
 import { completionsAt } from '../../index.ts';
 import { ifClauseWords, wordNeeds } from './words.ts';
 
@@ -31,9 +31,11 @@ interface Site {
   readonly after: string;
 }
 
+/** A corpus program's text and tree. */
+type Parsed = Pick<MainProgram, 'tree'> & { readonly text: string };
+
 /** A line of its own before each statement standing first on its line, indented alike. */
-function statementSites(text: string): readonly Site[] {
-  const { tree } = mainProgram(text);
+function statementSites({ text, tree }: Parsed): readonly Site[] {
   return nodesUnder(tree, tree.root).flatMap((node) => {
     if (node.kind !== 'Block') {
       return [];
@@ -56,8 +58,7 @@ function statementSites(text: string): readonly Site[] {
 }
 
 /** The start of each declared value, the word written before the value already there. */
-function operandSites(text: string): readonly Site[] {
-  const { tree } = mainProgram(text);
+function operandSites({ text, tree }: Parsed): readonly Site[] {
   return nodesUnder(tree, tree.root).flatMap((node) =>
     node.kind === 'VariableDeclaration'
       ? [{ text, offset: spanIn(tree, node.initializer.span).start, after: ' ' }]
@@ -111,9 +112,9 @@ function misofferedWords(site: Site): readonly string[] {
 }
 
 describe('completion offers the words the grammar takes where it stands', () => {
-  const texts = runPrograms.map(({ text }) => text);
-  const statements = texts.flatMap(statementSites);
-  const operands = texts.flatMap(operandSites);
+  const programs = runPrograms.map(({ text }) => ({ text, tree: mainProgram(text).tree }));
+  const statements = programs.flatMap(statementSites);
+  const operands = programs.flatMap(operandSites);
 
   it('at the statements of the corpus', () => {
     fc.assert(

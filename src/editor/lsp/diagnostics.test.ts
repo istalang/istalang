@@ -1,57 +1,26 @@
+/**
+ * The diagnostics a language server publishes for an open document, as `ista check` would report
+ * them: after each change, after a change to an imported module, cleared on close, and none once
+ * the client shut the server down. Every corpus module's is diagnostics.sweep.test.ts's.
+ */
+
 import { join } from 'node:path';
 import { setTimeout } from 'node:timers/promises';
-import { pathToFileURL } from 'node:url';
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { PublishDiagnosticsNotification, ShutdownRequest } from 'vscode-languageserver/node';
 import { brokenText } from '../../../test/broken.ts';
-import { corpusDirectory, corpusFiles } from '../../../test/corpus/programs.ts';
-import { diagnoseModule } from '../../compiler/compile.ts';
-import type { Program } from '../../compiler/program/program.ts';
-import { lineMapOf } from '../../foundation/text/line-map.ts';
-import { moduleIdOfFile } from '../../project/file-loader.ts';
+import { corpusFiles } from '../../../test/corpus/programs.ts';
 import { tempProject } from '../../project/project.test-kit.ts';
-import { findProjectSources, loadProject } from '../../project/project.ts';
+import { checked, projectProgram, uriOf } from './diagnostics.test-kit.ts';
 import { connectedClient } from './server.test-kit.ts';
-
-/** What `ista check` reports in `file` of `program`, as a client receives it. */
-function checked(program: Program, file: string) {
-  const { source, diagnostics } = diagnoseModule(program, moduleIdOfFile(file));
-  const lines = lineMapOf(source);
-  const position = (offset: number) => {
-    const { line, column } = lines.positionAt(offset);
-    return { line, character: column };
-  };
-  return diagnostics.map(({ span, severity, code, message }) => ({
-    range: { start: position(span.start), end: position(span.end) },
-    severity: severity === 'error' ? 1 : 2,
-    code,
-    source: 'ista',
-    message,
-  }));
-}
 
 /** What `ista check` reports in a project's `main.ista`. */
 function checkedMain(root: string) {
-  const main = join(root, 'main.ista');
-  return checked(loadProject(root, findProjectSources(root)).program, main);
+  return checked(projectProgram(root), join(root, 'main.ista'));
 }
 
-const uriOf = (file: string) => pathToFileURL(file).href;
-
 describe('the diagnostics an open document gets', () => {
-  it('are what ista check reports for its module, for every corpus module', async () => {
-    const client = await connectedClient(corpusDirectory);
-    const files = corpusFiles.map(({ name, text }) => ({
-      file: join(corpusDirectory, name),
-      text,
-    }));
-    const published = Promise.all(files.map(({ file }) => client.nextDiagnostics(uriOf(file))));
-    await Promise.all(files.map(({ file, text }) => client.open(uriOf(file), text)));
-    const { program } = loadProject(corpusDirectory, findProjectSources(corpusDirectory));
-    expect(await published).toEqual(files.map(({ file }) => checked(program, file)));
-  });
-
   it("follow each change, as ista check would report the changed file's", async () => {
     const root = tempProject({ 'main.ista': '' });
     const uri = uriOf(join(root, 'main.ista'));

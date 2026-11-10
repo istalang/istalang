@@ -6,7 +6,6 @@
  * order gives. Reports are made only inside entries, and every checker keys a type alike.
  */
 
-import { globSync, readFileSync } from 'node:fs';
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import namesLib from '../../../test/corpus/names/lib.ista';
@@ -14,6 +13,7 @@ import namesMain from '../../../test/corpus/names/main.ista';
 import { invalidPrograms, runPrograms } from '../../../test/corpus/programs.ts';
 import { Unreachable } from '../../foundation/structures/unreachable.ts';
 import { stdProgramOf } from '../binder/bind.test-kit.ts';
+import { stdTests } from '../parser/edits.test-kit.ts';
 import { isStdModule, type ModuleId, type Program } from '../program/program.ts';
 import { declaredFunctions, type FunctionDeclaration } from '../syntax/declarations/index.ts';
 import { nodesUnder } from '../syntax/tree/index.ts';
@@ -23,13 +23,6 @@ import type { TypeNode } from '../syntax/types/index.ts';
 import { checkedApart } from './check.test-kit.ts';
 import type { Checker } from './check.ts';
 import { checkerDiagnostics } from './diagnostics/index.ts';
-
-const stdTests = globSync('*/*.test.ista', { cwd: new URL('../../stdlib/', import.meta.url) }).map(
-  (name) => ({
-    name: `std ${name}`,
-    text: readFileSync(new URL(`../../stdlib/${name}`, import.meta.url), 'utf8'),
-  }),
-);
 
 /** A program to ask questions of; `withStd` asks its std modules too, not only its own. */
 interface Source {
@@ -195,8 +188,9 @@ describe('a checker', () => {
     'keys every type of $name as any other checker of its program does',
     ({ text }) => {
       const program = stdProgramOf({ 'main.ista': text });
+      const { functions } = askable(program);
       const keysOf = (checker: Checker) =>
-        askable(program).functions.flatMap((declaration) => [
+        functions.flatMap((declaration) => [
           checker.typeKeys.typeKey(checker.resultOf(declaration)),
           ...checker
             .parametersOf(declaration)
