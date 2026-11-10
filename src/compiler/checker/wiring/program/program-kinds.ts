@@ -62,11 +62,14 @@ export function programKinds(
       if (holdsNoKind(type)) {
         return [];
       }
-      // A declaration's kinds are its type's when it takes no arguments: no key to find.
-      if (type.kind === 'nominal' && type.arguments.length === 0) {
-        return declarations.get(type.entity).marks;
-      }
-      return values.get(checker.typeKeys.typeKey(type), type);
+      // A nominal type whose arguments' kinds its declaration only passes through composes from
+      // theirs, each kept, so it needs no key of its own, which is as costly as composing.
+      const passesThrough =
+        type.kind === 'nominal' &&
+        declarations.get(type.entity).dependent.every((part) => part.kind === 'parameter');
+      return passesThrough
+        ? heldKindsOf(checker, type, kept)
+        : values.get(checker.typeKeys.typeKey(type), type);
     },
   };
 }

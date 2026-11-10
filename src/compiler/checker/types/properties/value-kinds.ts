@@ -23,11 +23,10 @@ import { typeParametersOf } from '../../../syntax/declarations/index.ts';
 import type { CheckerContext } from '../../contexts/context.ts';
 import { sameType } from '../identity/identity.ts';
 import { substitute, substitutionFor } from '../parts/substitution.ts';
-import { typeChildren } from '../parts/type-children.ts';
 import { parametersIn } from '../parts/type-parts.ts';
 import { isComputed, unfolded } from '../type/computed-types.ts';
 import { isSimpleMark, persistenceOf } from '../type/function-kinds.ts';
-import { type NominalEntity, nominalType, type Type } from '../type/index.ts';
+import { type NominalEntity, type NominalType, nominalType, type Type } from '../type/index.ts';
 import { markType } from '../type/primitives.ts';
 import { awaitedOf } from '../type/well-known.ts';
 import { isConfined, staysInProcess } from './handles.ts';
@@ -55,11 +54,16 @@ export function declaredKindsOf(checker: CheckerContext, entity: NominalEntity):
   const parts = writtenTypesOf(checker, own);
   const decided = (part: Type) =>
     parametersIn(part).some((parameter) => parameters.some((each) => each === parameter));
+  // Only a part that may add a kind once instantiated is read again per instantiation, once.
+  const adds = (part: Type) =>
+    part.kind === 'parameter' || isComputed(part) || mayOwnKind(checker, part);
   return {
     marks: distinctKinds(
       parts.flatMap((part) => (decided(part) ? [] : ownValueKindsOf(checker, part))),
     ),
-    dependent: parts.filter(decided),
+    dependent: parts
+      .filter((part) => decided(part) && adds(part))
+      .filter((part, index, all) => all.findIndex((each) => sameType(each, part)) === index),
   };
 }
 
@@ -73,10 +77,13 @@ export function heldKindsOf(checker: CheckerContext, type: Type, kept: KeptKinds
   if (holdsNoKind(type)) {
     return [];
   }
+  if (type.kind === 'recursive') {
+    return kept.walkedOf(type);
+  }
   if (type.kind !== 'nominal') {
-    return mentionsRecursion(type)
-      ? kept.walkedOf(type)
-      : distinctKinds(writtenPartsOf(checker, type).flatMap(checker.valueKindsOf));
+    return distinctKinds(
+      writtenPartsOf(checker, type).flatMap((part) => partKindsOf(checker, kept, part)),
+    );
   }
   const declared = kept.declaredOf(type.entity);
   const substitution = substitutionFor(
@@ -99,14 +106,20 @@ function instantiatedKindsOf(
   instantiated: Type,
 ): readonly Type[] {
   if (part.kind === 'parameter') {
-    return mentionsRecursion(instantiated)
-      ? kept.walkedOf(instantiated)
-      : checker.valueKindsOf(instantiated);
+    return partKindsOf(checker, kept, instantiated);
   }
   if (isComputed(part)) {
     return kept.walkedOf(instantiated);
   }
   return ownValueKindsOf(checker, instantiated);
+}
+
+/**
+ * The kinds of `part`, a part of a type whose kinds are composed: a recursive type's walked whole,
+ * since its unfolding, whose key is its own, holds it again; any other's composed in turn.
+ */
+function partKindsOf(checker: CheckerContext, kept: KeptKinds, part: Type): readonly Type[] {
+  return part.kind === 'recursive' ? kept.walkedOf(part) : checker.valueKindsOf(part);
 }
 
 /**
@@ -119,10 +132,10 @@ export interface KeptKinds {
 }
 
 /**
- * The kinds of `type` found by walking what it holds whole: for one that is or holds a recursive
- * type, whose key is that of its unfolding, which its parts hold again, and for a type a
- * declaration's arguments compute; it asks no kinds of the checker's entries, so none is asked
- * again while it computes. Where a type recurs it holds nothing more (held.ts).
+ * The kinds of `type` found by walking what it holds whole: for a recursive type, whose key is that
+ * of its unfolding, which its parts hold again, and for a type a declaration's arguments compute,
+ * which may be any type; it asks no kinds of the checker's entries, so none is asked again while it
+ * computes. Where a type recurs it holds nothing more (held.ts).
  */
 export function walkedKindsOf(checker: CheckerContext, type: Type): readonly Type[] {
   return distinctKinds(
@@ -147,6 +160,11 @@ function writtenTypesOf(checker: CheckerContext, type: Type): readonly Type[] {
   const nesting = new Map<object, number>();
   const walk = (part: Type): void => {
     held.push(part);
+    // Only a nominal or recursive type can stand inside itself, so only those are guarded, by key.
+    if (part.kind !== 'nominal' && part.kind !== 'recursive') {
+      writtenPartsOf(checker, part).forEach(walk);
+      return;
+    }
     const declaration = part.kind === 'nominal' ? part.entity.declaration : undefined;
     const depth = declaration === undefined ? 0 : (nesting.get(declaration) ?? 0);
     if (depth >= nestingBound) {
@@ -198,11 +216,6 @@ function writtenPartsOf(checker: CheckerContext, type: Type): readonly Type[] {
   );
 }
 
-/** Whether `type` is or holds a recursive type, at any depth of its written parts. */
-function mentionsRecursion(type: Type): boolean {
-  return type.kind === 'recursive' || typeChildren(type).some(mentionsRecursion);
-}
-
 /** `kinds` but simple ones, each once. */
 function distinctKinds(kinds: readonly Type[]): readonly Type[] {
   return kinds
@@ -210,9 +223,23 @@ function distinctKinds(kinds: readonly Type[]): readonly Type[] {
     .filter((kind, index, all) => all.findIndex((each) => sameType(each, kind)) === index);
 }
 
+/**
+ * Whether a value of `part` may be of a kind by what it is, whatever its arguments: a handle that
+ * stays in its process, a future, or a value with an identity of its own, which may be disposable.
+ */
+function mayOwnKind(checker: CheckerContext, part: Type): part is NominalType {
+  if (part.kind !== 'nominal') {
+    return false;
+  }
+  const { declaration } = part.entity;
+  return (
+    staysInProcess(declaration) || isConfined(declaration) || awaitedOf(checker, part) !== undefined
+  );
+}
+
 /** The kinds a value of `part` is of itself, by what it is, not what it holds. */
 function ownValueKindsOf(checker: CheckerContext, part: Type): readonly Type[] {
-  if (part.kind !== 'nominal') {
+  if (!mayOwnKind(checker, part)) {
     return [];
   }
   if (staysInProcess(part.entity.declaration)) {

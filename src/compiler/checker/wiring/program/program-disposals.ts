@@ -1,14 +1,15 @@
 /**
- * The checker's disposal queries over its entries (rules/disposal/disposal.ts). A type's disposal is
- * kept per type, since finding a declared `dispose` chooses among candidates; the kinds of the
- * `dispose` functions that may take a type are read from their heads, kept by the kinds tables that
- * ask them (program-kinds.ts).
+ * The checker's disposal queries over its entries (rules/disposal/disposal.ts), each kept per type:
+ * a type's disposal, since finding a declared `dispose` chooses among candidates, and the kinds of
+ * the `dispose` functions that may take it, read from their heads.
  */
 
+import type { EntryTable } from '../../../../foundation/structures/entries/index.ts';
+import { sameItems } from '../../../../foundation/structures/equality.ts';
 import type { Disposal } from '../../check.ts';
-import type { CheckerContext } from '../../contexts/context.ts';
+import type { CheckerContext, CheckerNote } from '../../contexts/context.ts';
 import { disposalOf, disposeKindsOf } from '../../rules/disposal/disposal.ts';
-import { unaliased } from '../../types/parts/type-parts.ts';
+import { sameTypeSpelled, unaliased } from '../../types/parts/type-parts.ts';
 import type { NominalType } from '../../types/type/index.ts';
 
 /** The checker's disposal queries over `checker`'s entries. */
@@ -20,13 +21,18 @@ export function programDisposals(
     compute: (_key: string, type: NominalType) => disposalOf(checker, type),
     equal: sameDisposal,
   });
-  return {
-    disposalOf: (type) => {
+  const disposeKinds = checker.entries.table({
+    name: 'dispose kinds',
+    compute: (_key: string, type: NominalType) => disposeKindsOf(checker, type),
+    equal: sameItems(sameTypeSpelled),
+  });
+  const keyed =
+    <Value>(table: EntryTable<CheckerNote, string, Value, NominalType>) =>
+    (type: NominalType): Value => {
       const unspelled = unaliased(type);
-      return disposals.get(checker.typeKeys.spelledKey(unspelled), unspelled);
-    },
-    disposeKindsOf: (type) => disposeKindsOf(checker, type),
-  };
+      return table.get(checker.typeKeys.spelledKey(unspelled), unspelled);
+    };
+  return { disposalOf: keyed(disposals), disposeKindsOf: keyed(disposeKinds) };
 }
 
 /** Whether two disposals are alike: a declared `dispose`'s by its call, the others by kind. */

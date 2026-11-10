@@ -182,20 +182,25 @@ function judgeNode(judging: Judging, node: SyntaxNode, handler: Handler): void {
   const { body } = judging;
   const found = body.typeOf(node as Expression);
   const expected = body.expectedOf(node as ValueSite);
-  const typeArguments = (judging.calls.get(node) ?? []).flatMap((call) =>
-    [call, ...witnessCallsOf(call)].flatMap((each) => each.typeArguments),
-  );
+  const calls = judging.calls.get(node);
   const declared = node.kind === 'Identifier' ? body.declaredTypeOf(node) : undefined;
   // A value fitted where it is used is a value of the type it fits, a union it is put into, a
-  // tuple's converted parts or what `Never` stands for (`none` for a `Socket?`).
+  // tuple's converted parts or what `Never` stands for (`none` for a `Socket?`); only one of a kind
+  // can be refused, so only then is the fit tried.
   const fitted =
     found !== undefined &&
     expected !== undefined &&
     expected !== found &&
+    judging.checker.valueKindsOf(expected).length > 0 &&
     judging.checker.fitOf(found, expected) !== undefined
       ? expected
       : undefined;
-  judgeValues(judging, handler, node.span, [found, fitted, declared, ...typeArguments]);
+  judgeValues(judging, handler, node.span, [found, fitted, declared]);
+  for (const call of calls ?? []) {
+    for (const each of [call, ...witnessCallsOf(call)]) {
+      judgeValues(judging, handler, node.span, each.typeArguments);
+    }
+  }
 }
 
 /** Reports the first of `types`, held at `at`, that `handler`'s mark refuses, unless one was. */
@@ -205,17 +210,21 @@ function judgeValues(
   at: AnchoredSpan,
   types: readonly (Type | undefined)[],
 ): void {
-  if (handler.reported) {
+  for (const type of types) {
+    if (!handler.reported && type !== undefined && !handler.judged.has(type)) {
+      handler.judged.add(type);
+      judgeValue(judging, handler, at, type);
+    }
+  }
+}
+
+/** Reports `type`, held at `at`, where `handler`'s mark refuses it. */
+function judgeValue(judging: Judging, handler: Handler, at: AnchoredSpan, type: Type): void {
+  // Most values are of no kind, which nothing refuses.
+  if (judging.checker.valueKindsOf(type).length === 0) {
     return;
   }
-  const held = types.flatMap((type) => {
-    if (type === undefined || handler.judged.has(type)) {
-      return [];
-    }
-    handler.judged.add(type);
-    return [{ at, type }];
-  });
-  const refusal = heldKindRefusal(judging.checker, { ...handler, held });
+  const refusal = heldKindRefusal(judging.checker, { ...handler, held: [{ at, type }] });
   if (refusal !== undefined) {
     judging.checker.report(judging.module, refusal);
     handler.reported = true;
@@ -266,15 +275,18 @@ function judgeNested(judging: Judging, node: NestedFunction, handler: Handler): 
   }
 }
 
+/** What no node but a deferred call makes later. */
+const noneLater: ReadonlySet<SyntaxNode> = new Set();
+
 /**
  * The nodes a deferred call `node` makes its call through later, its parentheses included, whose
  * values are the later function's; none for any other node.
  */
 function laterOf(node: SyntaxNode): ReadonlySet<SyntaxNode> {
-  const later = new Set<SyntaxNode>();
   if (node.kind !== 'DeferredCall') {
-    return later;
+    return noneLater;
   }
+  const later = new Set<SyntaxNode>();
   for (let call: Expression = node.call; ; call = call.expression) {
     later.add(call);
     if (call.kind !== 'Parenthesized') {

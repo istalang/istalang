@@ -30,8 +30,13 @@ import type { Application } from '../choosing/choice.ts';
 
 /** The kind of the function `call` calls, as the call instantiates it. */
 export function kindOfCall(checker: CheckerContext, call: ResolvedCall): Type {
+  const kind = kindOfFunction(checker, call.function);
+  // Most marks are written, `"simple"` most of all, naming no type parameter to instantiate.
+  if (kind.kind === 'literal') {
+    return kind;
+  }
   const own = substitutionFor(typeParametersOf(call.function.typeParameters), call.typeArguments);
-  return substitute(kindOfFunction(checker, call.function), own, checker.typeRules);
+  return substitute(kind, own, checker.typeRules);
 }
 
 /**
@@ -56,7 +61,8 @@ export function judgedCall(
       calleeKind: kindOfCall(context.checker, each),
       callee: `'${declaredFunctionName(each.function)}'`,
     });
-    if (each.typeArguments.some((type) => context.checker.valueKindsOf(type).length > 0)) {
+    const handlesKind = (type: Type) => context.checker.valueKindsOf(type).length > 0;
+    if (!made.frame.reliesOnKind && each.typeArguments.some(handlesKind)) {
       made.frame.relyOnKind();
     }
   }
@@ -118,6 +124,9 @@ export function markMaking(
 
 /** Every call `call` makes through its constraints' witnesses, theirs included, at any depth. */
 export function witnessCallsOf(call: Pick<ResolvedCall, 'witnesses'>): readonly ResolvedCall[] {
+  if (call.witnesses.size === 0) {
+    return [];
+  }
   return [...call.witnesses.values()]
     .flat(2)
     .flatMap((witness) => [witness, ...witnessCallsOf(witness)]);

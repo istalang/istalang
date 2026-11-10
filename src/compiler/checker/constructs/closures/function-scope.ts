@@ -96,7 +96,7 @@ export class FunctionScope implements FunctionFrame {
  * (rules/kinds/data-kinds.ts).
  */
 export function handledBy(checker: CheckerContext, frame: FunctionFrame, type: Type): Type {
-  if (frame.reach !== undefined && checker.valueKindsOf(type).length > 0) {
+  if (frame.reach !== undefined && !frame.reliesOnKind && checker.valueKindsOf(type).length > 0) {
     frame.relyOnKind();
   }
   return type;

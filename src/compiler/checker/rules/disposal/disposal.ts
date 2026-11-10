@@ -42,7 +42,7 @@ import { substitute } from '../../types/parts/substitution.ts';
 import { isConfined } from '../../types/properties/handles.ts';
 import { requiredFunctions } from '../../types/traits/constraints.ts';
 import { knownConstraints } from '../../types/traits/known-constraints.ts';
-import { kindOfFunction } from '../../types/type/function-kinds.ts';
+import { isSimpleMark, kindOfFunction } from '../../types/type/function-kinds.ts';
 import type { NominalType, Type } from '../../types/type/index.ts';
 import { unitType } from '../../types/type/primitives.ts';
 import { typeText } from '../../types/type/type-text.ts';
@@ -103,16 +103,12 @@ export function disposalOf(checker: CheckerContext, type: NominalType): Disposal
  */
 export function disposeKindsOf(checker: CheckerContext, type: NominalType): readonly Type[] {
   return (disposeCandidates(checker, type)?.candidates ?? []).flatMap((candidate) => {
-    const taken = selfInference(checker, candidate, type);
+    const kind = kindOfFunction(checker, candidate.declaration);
+    // An unmarked `dispose` adds no kind, whatever it takes.
+    const taken = isSimpleMark(kind) ? undefined : selfInference(checker, candidate, type);
     return taken === undefined
       ? []
-      : [
-          substitute(
-            kindOfFunction(checker, candidate.declaration),
-            taken.inference.substitution(),
-            checker.typeRules,
-          ),
-        ];
+      : [substitute(kind, taken.inference.substitution(), checker.typeRules)];
   });
 }
 

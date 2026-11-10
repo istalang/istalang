@@ -66,8 +66,11 @@ export function chooseWitnessAmong(
 ): Choice {
   const candidates = given.filter(({ declaration }) => {
     const kind = kindOfFunction(checker, declaration);
+    // Most witnesses are unmarked, which meets any requirement: its kind needn't be found.
     return (
-      isMarkVariable(checker, kind) || meetsRequirementKind(checker, required.kind(), kind, type)
+      isSimpleMark(kind) ||
+      isMarkVariable(checker, kind) ||
+      meetsRequirementKind(checker, required.kind(), kind, type)
     );
   });
   const callArguments = required.parameters.map(
