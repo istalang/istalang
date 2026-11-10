@@ -9,7 +9,6 @@
  * - A statement's end releases its temporaries: the registers it allocated that no variable lives
  *   in, each once. A header's, such as an `if` condition's, end before its body (scopes.ts).
  * - `drop x` releases `x`; `drop e` leaves `e`'s value to its statement's temporaries.
- * - `defer f` holds a guard in a variable of its block with no name, so the block's end runs `f`.
  */
 
 import type { Register } from '../../../../definition/operands.ts';
@@ -49,12 +48,6 @@ const statementHandlers: Handlers<FunctionContext, Statement | Invalid, [], void
   For: lowerFor,
   FieldLoop: lowerFieldLoop,
   LabelledBlock: lowerLabelledBlock,
-  Defer: (context, node) => {
-    const guard = context.code.allocate();
-    const callback = context.expression(node.action);
-    context.code.emit({ kind: 'defer', span: node.span, dst: guard, callback });
-    context.variables.declareUnnamed(guard);
-  },
   Drop: lowerDrop,
   Invalid: neverLowered,
 };

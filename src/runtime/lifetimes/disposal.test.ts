@@ -28,7 +28,6 @@ describe('disposability', () => {
       { kind: 'future', id: 0, state: { kind: 'host', token: 't' } },
       true,
     ],
-    ['a guard', { kind: 'guard', id: 0, callback: null }, true],
     ['a cell whose type declares dispose', { kind: 'cell', id: 0, type: 0, value: null }, true],
     [
       'a resolved future',

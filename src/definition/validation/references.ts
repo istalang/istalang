@@ -103,15 +103,17 @@ function checkStarts(context: Context): void {
     ) {
       context.report(path, 'A host starts code that takes every argument by value.');
     }
-    const encoder = context.tables.functions[start.encoder];
-    const problem = encoder === undefined ? undefined : encoderProblem(encoder);
-    if (
-      inRange(context, { functions: [start.encoder] }, [...path, 'encoder']) &&
-      problem !== undefined
-    ) {
-      context.report([...path, 'encoder'], `${problem}.`);
-    }
+    checkEncoder(context, start.encoder, [...path, 'encoder']);
   });
+}
+
+/** An entry encoding an instance's outcome for its host (§9): one that can. */
+function checkEncoder(context: Context, encoder: number, path: Path): void {
+  const entry = context.tables.functions[encoder];
+  const problem = entry === undefined ? undefined : encoderProblem(entry);
+  if (inRange(context, { functions: [encoder] }, path) && problem !== undefined) {
+    context.report(path, `${problem}.`);
+  }
 }
 
 /** A test Definition's suites and runner (§10): code entries, a suite's taking nothing. */
@@ -140,7 +142,13 @@ function checkTests(context: Context): void {
 function checkType(context: Context, type: TypeDefinition, path: Path): void {
   inRange(context, { types: type.arguments.flatMap(typesIn) }, [...path, 'arguments']);
   if (type.kind === 'extern') {
-    const { disposal } = type;
+    const { disposal, encoder } = type;
+    if (encoder !== undefined) {
+      checkEncoder(context, encoder, [...path, 'encoder']);
+      if (type.role !== 'instance') {
+        context.report([...path, 'encoder'], "Only an Instance's type entry encodes an outcome.");
+      }
+    }
     if (disposal.kind === 'function') {
       inRange(context, { functions: [disposal.function] }, [...path, 'disposal']);
       const { host } = disposal;

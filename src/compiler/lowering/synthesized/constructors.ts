@@ -1,6 +1,6 @@
 /**
  * A variant's constructor's own entry (§3.11), for what is handed an entry to call later, as a
- * spawned call is (§9): code taking the variant's fields as its parameters and giving the variant
+ * function value is (§3.14): code taking the variant's fields as its parameters and giving the variant
  * they make, built as a call of the constructor builds it in place (values/variant-values.ts).
  */
 

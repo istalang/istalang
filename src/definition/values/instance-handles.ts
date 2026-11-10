@@ -1,7 +1,7 @@
 /**
  * An `Instance<T>` (§9) is a value of its extern type entry whose payload is the name of the
- * instance it is a handle to. This is the one home of that shape: the interpreter's `spawn`, the
- * natives that spawn, and those that read a handle go through it.
+ * instance it is a handle to. This is the one home of that shape: the natives that spawn, and those
+ * that read a handle, go through it.
  */
 
 import { unreachable } from '../../foundation/structures/unreachable.ts';

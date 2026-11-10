@@ -17,6 +17,11 @@ extern shared struct Future<T>
 extern sendable struct Instance<T>
 extern fn result<T is Sendable>(self: Instance<T>) -> Future<Result<T>>
 
+# Starts `f` as a new, independent instance once the caller's segment commits, and goes on at once
+# (§9). The instance awaits the future `f` gives and ends with its value, so `spawn purchase(req)`,
+# a deferred call (§3.14), copies `req` into it now and calls `purchase` there, async or not.
+extern fn spawn<R>(f: sendable async fn() -> R) -> Instance<R>
+
 extern fn Slot.create<T>() -> Slot<T>
 extern fn put<T>(self: Slot<T>, value: T) -> Future<Unit>
 extern fn take<T>(self: Slot<T>) -> Future<T>
@@ -45,6 +50,15 @@ extern shared struct _Cell<T>
 # `dispose` is what makes them Disposable (§3.10), and what tells the compiler the runtime does it.
 extern fn dispose<T>(self: Future<T>)
 extern fn dispose<T>(self: Slot<T>)
+
+# What `defer` gives (§7): a disposable whose release calls `run`, so `_ = defer log(x)` computes
+# `x` now and logs when the block ends, and `hold _ = defer log(x)` when the function does.
+shared struct Deferred:
+  run: fn() -> Unit
+
+fn defer(f: fn() -> Unit) -> Deferred: new Deferred{run: f}
+
+fn dispose(self: Deferred): self->run()
 
 # `T?` is `T | None` (§2); this alias names it, so the statics declared on it are `T?`'s (§3.17).
 type Optional<T> = T?

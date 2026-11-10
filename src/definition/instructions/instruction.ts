@@ -76,11 +76,6 @@ const operandTable: Handlers<undefined, Instruction, [], Partial<Operands>> = {
       calleeOperands(i.callee),
       ...i.arguments.map(argumentOperands),
     ),
-  spawn: (_, i) =>
-    merge(
-      { registers: i.arguments, functions: i.encoder === undefined ? [] : [i.encoder] },
-      calleeOperands(i.callee),
-    ),
   currentCall: (_, i) => ({ registers: [i.dst] }),
   await: (_, i) => ({ registers: [i.dst, i.future] }),
   select: (_, i) => ({
@@ -93,7 +88,6 @@ const operandTable: Handlers<undefined, Instruction, [], Partial<Operands>> = {
   }),
   release: (_, i) => ({ registers: i.registers }),
   keep: (_, i) => ({ registers: [...i.registers, i.into] }),
-  defer: (_, i) => ({ registers: [i.dst, i.callback] }),
 };
 
 /** What an instruction refers to, by table. */
@@ -101,7 +95,7 @@ export function operandsOf(subject: Instruction): Operands {
   return merge(handlerOf(operandTable, subject)(undefined, subject));
 }
 
-/** What a `call` or `spawn` names as its callee: a function, or the register of a function value. */
+/** What a `call` names as its callee: a function, or the register of a function value. */
 function calleeOperands(callee: Callee): Partial<Operands> {
   return callee.kind === 'function'
     ? { functions: [callee.function] }

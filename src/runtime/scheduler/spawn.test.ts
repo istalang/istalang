@@ -2,7 +2,9 @@
  * `spawn` through the runtime's host API, on programs the real compiler builds (spec §9): a
  * spawned instance runs on its own snapshot, exists only once its parent's segment commits, is
  * written before that commit and never twice, takes its parent's options, and carries a sendable
- * closure's captures. Inspecting an instance shows where it waits.
+ * closure's captures. Its root ends with the value of the future its function gives, which a plain
+ * root waits on at its `return`, and every spawning native's instance has its outcome encoded for
+ * its host. Inspecting an instance shows where it waits.
  */
 
 import { describe, expect, it } from 'vitest';
@@ -110,6 +112,77 @@ describe('spawning an instance', () => {
       kind: 'finished',
       outcome: 42n,
     });
+  });
+});
+
+/** `main` spawning an async callee, which waits across commits, and a plain one. */
+const awaitingMain = [
+  "import * as time from 'time'",
+  'async fn child(n: Int) -> Future<Int>:',
+  '  await time.delay(10ms)',
+  '  n * 2',
+  'fn twice(n: Int) -> Int: n * 2',
+  'async fn main() -> Future<Int>:',
+  '  spawn child(1)',
+  '  spawn twice(2)',
+  '  0',
+].join('\n');
+
+/** How each instance `text`'s `main`, started as `p`, spawns ends: its outcome's JSON text. */
+async function spawnedOutcomes(
+  text: string,
+  options: { readonly crashEveryAwait?: boolean } = {},
+): Promise<ReadonlyMap<string, string>> {
+  const test = testRuntime();
+  const program = test.runtime.deploy(text);
+  const settled = await settleAll(test, 'p', await program.start('p', options));
+  return new Map(
+    [...settled].flatMap(([name, state]) =>
+      name === 'p' || state.kind !== 'finished' ? [] : [[name, program.outcomeText(state)]],
+    ),
+  );
+}
+
+describe("a spawned instance's root", () => {
+  it.each([false, true])(
+    'ends with the value of the future its function gives, an async or a plain callee, crashing every await: %s',
+    async (crashEveryAwait) => {
+      expect(await spawnedOutcomes(compiledText(awaitingMain), { crashEveryAwait })).toEqual(
+        new Map([
+          ['p/1', '2'],
+          ['p/2', '4'],
+        ]),
+      );
+    },
+  );
+
+  it('commits a plain root waiting at its return, at no point of the program, beside the call it awaits', async () => {
+    const test = testRuntime();
+    await test.runtime.deploy(compiledText(awaitingMain)).start('p');
+    await test.runtime.wake('p/1');
+    const child = readBack(test.store).findLast((snapshot) => snapshot.instance === 'p/1');
+    const executions = child?.objects.filter((object) => object.kind === 'execution') ?? [];
+    expect(
+      executions.map(({ resolves, frames }) => [resolves === undefined, frames.length]),
+    ).toEqual([
+      [true, 1],
+      [false, 1],
+    ]);
+    expect(test.runtime.inspect('p/1').waitingAt).toEqual([
+      { waypoint: undefined, location: 'memory:main:3:3' },
+    ]);
+  });
+
+  it("encodes the outcome of an instance runtime.isolate spawns, as spawn's", async () => {
+    const text = compiledText(
+      [
+        "import * as runtime from 'runtime'",
+        'async fn main() -> Future<Int>:',
+        '  drop runtime.isolate(fn(): "isolated")',
+        '  0',
+      ].join('\n'),
+    );
+    expect(await spawnedOutcomes(text)).toEqual(new Map([['p/1', '"isolated"']]));
   });
 });
 

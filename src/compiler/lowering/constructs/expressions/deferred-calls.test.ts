@@ -137,6 +137,22 @@ describe('a deferred call', () => {
     );
   });
 
+  it("captures what a variable holds now, a cell's value rather than the cell", async () => {
+    const text = [
+      'fn keep(f: fn() -> Int) -> fn() -> Int: f',
+      'fn bump(n: &Int):',
+      '  n += 1',
+      'fn same(n: Int) -> Int: n',
+      'async fn main() -> Future<Int>:',
+      '  let n = 1',
+      '  bump(&n)',
+      '  const f = keep same(n)',
+      '  bump(&n)',
+      '  f() * 10 + n',
+    ].join('\n');
+    expect(await outcomeOf(text)).toBe(23);
+  });
+
   it('leaves before any function is built where its call stops before it is made (§2)', async () => {
     const text = [
       'fn later(f: fn() -> Int) -> Int:',

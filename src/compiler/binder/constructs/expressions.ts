@@ -95,7 +95,6 @@ const expressionHandlers: Handlers<LocalBinder, Expression, [Scope], void> = {
   Reference: (binder, node, scope) => bindExpression(binder, node.expression, scope),
   Propagate: (binder, node, scope) => bindExpression(binder, node.operand, scope),
   Unwrap: (binder, node, scope) => bindExpression(binder, node.operand, scope),
-  Spawn: (binder, node, scope) => bindExpression(binder, node.call, scope),
   DeferredCall: (binder, node, scope) => {
     bindNamed(binder, node.taker, scope, 'callee');
     bindExpression(binder, node.call, scope);

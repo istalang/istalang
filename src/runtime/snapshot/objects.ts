@@ -13,8 +13,8 @@
  * - Timers are the futures whose state is a timer.
  *
  * Disposability follows from an object's kind and state, its type, and whether a weak reference
- * refers to it, never from a flag of its own (runtime/lifetimes/disposal.ts). Slots, futures,
- * guards and mocks are disposed by the runtime, and an execution is stopped when its call future
+ * refers to it, never from a flag of its own (runtime/lifetimes/disposal.ts). Slots, futures
+ * and mocks are disposed by the runtime, and an execution is stopped when its call future
  * is. A cell or resource is disposable as its type entry's `disposal` says
  * (definition/tables/types.ts), so a restore knows that a `Lease` handle's cell has a `dispose` to
  * call and a `Shared<Int>` cell doesn't.
@@ -137,8 +137,6 @@ export const heapObject = z.discriminatedUnion('kind', [
   defineObject('weakRef', {
     target: z.union([objectId, z.enum(['disposed', 'callEnded'])]),
   }),
-  /** A `defer` guard: disposing it calls `callback` (spec §7). */
-  defineObject('guard', { callback: value }),
   /** A host value of an extern type that declares a `dispose` (docs/arch/definition.md). */
   defineObject('resource', { type: typeId, payload: z.unknown() }),
   /**

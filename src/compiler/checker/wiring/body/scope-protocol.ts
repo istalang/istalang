@@ -105,7 +105,6 @@ const standings: Handlers<ScopeHolding, Expression, [Type | undefined], Standing
   Propagate: boundary,
   Unwrap: boundary,
   Await: boundary,
-  Spawn: boundary,
   Comprehension: boundary,
   FieldComprehension: boundary,
   Missing: boundary,

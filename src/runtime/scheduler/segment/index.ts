@@ -21,8 +21,9 @@
  * What a segment leaves is persisted when it commits, so it must nest no deeper than a snapshot
  * may (limits.ts).
  *
- * Before the root's last frame returns, the instance's encoder, if it has one, encodes its outcome
- * for the host (outcome-encoding.ts).
+ * The root's last frame returns the instance's outcome: a plain root giving a future waits on it
+ * there, and the instance's encoder, if it has one, encodes the outcome for the host before the
+ * frame returns (root-outcome.ts).
  *
  * After every instruction that let go of something, the segment collects (runtime/lifetimes/):
  * what lost its last holder is disposed right there (§7). A disposal that runs code runs on the
@@ -31,7 +32,6 @@
  * holder of its own call runs on until it suspends, and is stopped there.
  */
 
-import { awaitedRegisters } from '../../../definition/instructions/flow.ts';
 import type { Argument } from '../../../definition/instructions/places.ts';
 import type { FunctionId } from '../../../definition/operands.ts';
 import { depthOf, handleTo, type Value } from '../../../definition/values/values.ts';
@@ -45,11 +45,11 @@ import {
   resumeAfterCall,
 } from '../../interpreter/machine.ts';
 import { argumentContents, readRegister } from '../../interpreter/registers.ts';
+import { waitedRegisters } from '../../interpreter/suspension.ts';
 import { Collector } from '../../lifetimes/collector.ts';
 import type { Roots } from '../../lifetimes/holders.ts';
 import type { Panic } from '../../natives.ts';
 import type { HeapObject } from '../../snapshot/objects.ts';
-import type { InstanceCall } from '../../snapshot/snapshot.ts';
 import type { LiveExecution } from '../instance/heap.ts';
 import { type Instance, topFrame } from '../instance/index.ts';
 import { startAnswer } from '../testing/mocks.ts';
@@ -58,8 +58,8 @@ import { istaWaiting, type LiveResumes, resumedPanicOf, type Waiting } from '../
 import { type Caller, returnedValue, startCall } from './calls.ts';
 import { DisposalRuns } from './disposal-runs.ts';
 import { panicOf, requireDepth } from './limits.ts';
-import { NativeCalls, spawned } from './native-calls.ts';
-import { type Outcome, OutcomeEncoding } from './outcome-encoding.ts';
+import { NativeCalls } from './native-calls.ts';
+import { type Outcome, RootOutcome } from './root-outcome.ts';
 import { RunStack } from './run-stack.ts';
 
 /** What a segment begins with: an execution about to run from its start, or answering a call. */
@@ -150,7 +150,7 @@ class SegmentRunner implements Machine {
   readonly #runStack = new RunStack();
   readonly #collector: Collector;
   readonly #disposals: DisposalRuns;
-  readonly #encoding: OutcomeEncoding;
+  readonly #outcome: RootOutcome;
   #end: DriveEnd | undefined;
 
   constructor(instance: Instance, now: () => bigint, waiting: Waiting) {
@@ -161,7 +161,7 @@ class SegmentRunner implements Machine {
     });
     this.#caller = { instance, natives: this.#natives, now, waiting };
     const running = { instance, caller: this.#caller, runStack: this.#runStack };
-    this.#encoding = new OutcomeEncoding(running);
+    this.#outcome = new RootOutcome(running);
     this.#disposals = new DisposalRuns({
       ...running,
       returned: () => {
@@ -260,17 +260,23 @@ class SegmentRunner implements Machine {
     this.#runStack.pushFrame(newFrame(entry, target.contents, frame.heap, target.captures));
   }
 
-  return(frame: ActiveFrame, value: Value): void {
-    if (this.#encoding.before(frame, value)) {
+  return(frame: ActiveFrame, given: Value): void {
+    const returning = this.#outcome.returning(frame, given);
+    if (returning.kind === 'wait') {
+      this.wait(frame);
       return;
     }
+    if (returning.kind === 'encode') {
+      return;
+    }
+    const { value } = returning;
     const execution = this.#runStack.popFrame(frame);
     releaseFrame(frame);
     if (this.#disposals.returned(execution, frame)) {
       return;
     }
     const returned = returnedValue(this.#instance, frame, value);
-    const rootReturn = this.#encoding.returned(frame, returned);
+    const rootReturn = this.#outcome.returned(frame, returned);
     if (rootReturn !== undefined) {
       this.return(rootReturn.root, rootReturn.outcome);
       return;
@@ -285,7 +291,7 @@ class SegmentRunner implements Machine {
     }
     const future = execution.resolves;
     if (future === undefined) {
-      this.#end = { finished: this.#encoding.finished(returned) };
+      this.#end = { finished: this.#outcome.finished(returned) };
       return;
     }
     this.#instance.remove(execution);
@@ -299,7 +305,7 @@ class SegmentRunner implements Machine {
       return;
     }
     const instruction = frame.code.instructions[frame.pc];
-    const awaited = instruction === undefined ? [] : awaitedRegisters(instruction);
+    const awaited = instruction === undefined ? [] : waitedRegisters(instruction);
     if (awaited.some((register) => this.settled(readRegister(frame, register)) !== undefined)) {
       this.#instance.markReady(execution);
     }
@@ -319,15 +325,6 @@ class SegmentRunner implements Machine {
 
   readonly settled = (handle: Value): { readonly value: Value } | undefined =>
     this.#instance.futures.settled(handle);
-
-  spawn(call: InstanceCall, encoder: FunctionId | undefined): string {
-    return spawned(this.#instance, this.#caller.waiting, call, { encoder });
-  }
-
-  guard(callback: Value): Value {
-    const guard = this.#instance.heap.add((id) => ({ kind: 'guard', id, callback }));
-    return handleTo(guard.id);
-  }
 
   currentCall(): Value {
     return this.#instance.weak.reference(handleTo(this.#runStack.current().id));

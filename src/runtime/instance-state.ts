@@ -12,7 +12,6 @@
  * log records its committed segments wrote (§3.8 `log`), which no snapshot keeps.
  */
 
-import type { FunctionId } from '../definition/operands.ts';
 import type { Value } from '../definition/values/values.ts';
 
 export type InstanceState =
@@ -53,11 +52,6 @@ export interface StartOptions {
 export interface SpawnOptions extends StartOptions {
   /** A panic terminates the instance at once, as `runtime.isolate` starts it (§9). */
   readonly terminatesOnPanic?: boolean;
-  /**
-   * The entry encoding its outcome as JSON for its host (§9), when a codec writes the outcome's
-   * type: the codec's.
-   */
-  readonly encoder?: FunctionId | undefined;
 }
 
 /** Whether an instance in `state` has ended, so a wait on its end resolves (§9). */

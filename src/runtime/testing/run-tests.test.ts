@@ -175,7 +175,7 @@ async fn breaks() -> Future<Int>:
   panic("broken")
 
 async fn awaited():
-  const outcome = await spawn breaks().result()
+  const outcome = await (spawn breaks()).result()
   assert(outcome is Err(error) and error.message == "broken" and error.code == "panic")
 
 @Suite{"awaited"}
@@ -220,7 +220,7 @@ async fn handles():
   assert(queue != handle<Queue>())
   hold _ = mock(open, fn(): queue)
   hold _ = mock(name, fn(given: Queue): if given == queue: "same" else: "other")
-  assertEq(await spawn opens().result(), Ok("same"))
+  assertEq(await (spawn opens()).result(), Ok("same"))
 
 @Suite{"handles"}
 fn suite() -> Array<Test>: [test("handles", handles)]
@@ -244,7 +244,7 @@ async fn opensAndLets() -> Future<Unit>:
 async fn unmockedDispose():
   const queue = handle<Queue>()
   hold _ = mock(open, fn(): queue)
-  drop await spawn opensAndLets().result()
+  drop await (spawn opensAndLets()).result()
 
 async fn mockedDispose():
   const queue = handle<Queue>()
@@ -256,7 +256,7 @@ async fn mockedDispose():
   const disposed = mock(dispose, fn(given: Queue): ())
   drop open()
   drop await openAsync()
-  drop await spawn opensAndLets().result()
+  drop await (spawn opensAndLets()).result()
   assert(disposed.calls() == [queue, queue, queue])
 
 @Suite{"disposal"}
@@ -281,7 +281,7 @@ async fn posts() -> Future<Unit>:
 async fn handedOut():
   hold _ = mock(post, fn(n: Int): handle<Sent>())
   const disposed = mock(dispose, fn(given: Sent): ())
-  drop await spawn posts().result()
+  drop await (spawn posts()).result()
   assertEq(disposed.calls().length(), 2)
 
 @Suite{"ownership"}

@@ -274,7 +274,6 @@ export const expressionPrinters: Printers<ExpressionKind> = {
     angled(printer, node.typeArguments),
   ],
   NamedArgument: (printer, node) => [printer.print(node.name), ': ', printer.print(node.value)],
-  Spawn: (printer, node) => ['spawn ', printer.print(node.call)],
   // The call stays on its taker's line, where alone it is the taker's (§3.14).
   DeferredCall: (printer, node) => [printer.print(node.taker), ' ', printer.print(node.call)],
   Reference: (printer, node) => ['&', printer.print(node.expression)],

@@ -1,7 +1,7 @@
 /**
- * The checker's diagnostics of concurrency, codes 5600–5699 (§3.14, §6, §8, §9): `select`,
- * `spawn`, sendable function types, and deferred calls (5640–5649), which give a function making a
- * call later. A part of the checker's one catalog (index.ts).
+ * The checker's diagnostics of concurrency, codes 5600–5699 (§3.14, §6, §8): `select`, sendable
+ * function types, and deferred calls (5640–5649), which give a function making a call later, as
+ * `spawn` and `defer` take one (§7, §9). A part of the checker's one catalog (index.ts).
  */
 
 export const concurrencyTemplates = {
@@ -17,19 +17,6 @@ export const concurrencyTemplates = {
   awaitedSelectElse: {
     code: 5602,
     message: () => "An 'await select' waits for one of its cases, so it has no 'else'.",
-  },
-  spawnNeedsCall: {
-    code: 5603,
-    message: () => "'spawn' starts a call as a new instance: write 'spawn f(arguments)'.",
-  },
-  notSpawnable: {
-    code: 5604,
-    message: (callee: string, reason: string) => `${callee} can't be spawned: ${reason}.`,
-  },
-  unsendableArgument: {
-    code: 5605,
-    message: (found: string) =>
-      `A spawn argument is copied into the new instance, so it must be sendable, and ${found} isn't.`,
   },
   deferredNeedsCall: {
     code: 5640,

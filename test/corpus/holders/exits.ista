@@ -10,17 +10,17 @@ fn note(log: Shared<Array<String>>, text: String):
   log->value = [...log->value, text]
 
 async fn sleeper(id: Int, log: Shared<Array<String>>):
-  defer fn(): note(log, "stopped " + String(id))
+  _ = defer(fn(): note(log, "stopped " + String(id)))
   await time.delay(1h)
 
 fn early(log: Shared<Array<String>>, n: Int) -> Int:
-  defer fn(): note(log, "d-early")
+  _ = defer(fn(): note(log, "d-early"))
   for i in 0..5:
-    defer fn(): note(log, "iter " + String(i))
+    _ = defer(fn(): note(log, "iter " + String(i)))
     if i == n:
       break
   while true:
-    defer fn(): note(log, "while")
+    _ = defer(fn(): note(log, "while"))
     if n > 0:
       return 5
   0

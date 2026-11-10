@@ -32,6 +32,8 @@ tags: [reuse, runtime, snapshot, persistence, scheduler, lifetimes, host]
 - encode/decode 32-byte instance random seeds, and draw deterministic HMAC-SHA-256 random bytes from one for a segment → `seedBytes`, `seedTextOf`, `seedFrom`, `drawOf` (`src/runtime/snapshot/random.ts`)
 - build spawned instance names `<parent>/<n>` or list ancestors → `spawnedName`, `ancestorsOf`, `spawnedSeparator` (`src/runtime/scheduler/instance/instance-names.ts`)
 - inspect an instance's committed state and waiting points → `inspection` (`src/runtime/scheduler/inspect.ts`), `hasEnded` (`src/runtime/instance-state.ts`)
+- spawn an instance from a native, its outcome encoded by its `Instance<T>` type entry's encoder → `NativeInstances.spawn` (`src/runtime/natives.ts`), the one spawning seam; never a second spawn path
+- read where a stopped frame waits (an `await`, a blocking `select`, or a root's `return` of the future it gives), or move it past → `waitedRegisters`, `resume` (`src/runtime/interpreter/suspension.ts`); an instance's outcome, awaited and encoded → `RootOutcome` (`src/runtime/scheduler/segment/root-outcome.ts`)
 - advance, terminate or derive `InstanceState` from a `Snapshot` → `advance`, `terminate`, `unstarted`, `stateOf` (`src/runtime/scheduler/wake.ts`)
 - hold an instance between host calls, running on from its last commit → `Resident` (`src/runtime/scheduler/resident.ts`)
 - run live code to its end in memory, never committing → `runLive` (`src/runtime/scheduler/live-run.ts`); one segment of it → `startLiveSegment`, `runLiveSegment` (`src/runtime/scheduler/segment/index.ts`)

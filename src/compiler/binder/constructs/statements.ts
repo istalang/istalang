@@ -57,7 +57,6 @@ const statementHandlers: Handlers<LocalBinder, Statement, [Scope], void> = {
   While: (binder, node, scope) =>
     underCondition(binder, node, scope, (flow) => bindBlock(binder, node.body, flow)),
   LabelledBlock: (binder, node, scope) => bindBlock(binder, node.body, scope),
-  Defer: (binder, node, scope) => binder.walk.expression(binder, node.action, scope),
   Drop: (binder, node, scope) => binder.walk.expression(binder, node.value, scope),
 };
 
@@ -78,7 +77,6 @@ const declaredNames: Handlers<undefined, Statement, [], readonly Identifier[]> =
   FieldLoop: declaresNothing,
   While: declaresNothing,
   LabelledBlock: declaresNothing,
-  Defer: declaresNothing,
   Drop: declaresNothing,
 };
 // biome-ignore-end lint/style/useNamingConvention: the keys are the tree's node kinds.

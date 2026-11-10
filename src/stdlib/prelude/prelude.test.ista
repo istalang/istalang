@@ -233,10 +233,10 @@ fn breaks() -> Int: panic("broken")
 @Suite{"prelude › instances"}
 fn instances() -> Array<Test>: [
   test("result gives what a spawned instance's function returned", async fn(): {
-    assertEq(await spawn answers().result(), Ok(42))
+    assertEq(await (spawn answers()).result(), Ok(42))
   })
   test("result gives a spawned instance's panic as an Err", async fn(): {
-    const outcome = await spawn breaks().result()
+    const outcome = await (spawn breaks()).result()
     assert(outcome is Err(error) and error.message == "broken" and error.code == "panic")
   })
   test("an instance's handle compares by identity", fn(): {

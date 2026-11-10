@@ -194,7 +194,7 @@ fn assertEq<T is Encodable>(actual: T, expected: T):
 # Spawns `f` as an instance of its own, since a panic freezes the instance it happens in (§5), and
 # waits for its end: the message it panics with. Panics if `f` returns instead (§10).
 async fn expectPanic<R is Sendable>(f: sendable async fn() -> R) -> Future<String>:
-  await _panicOf(spawn f())
+  await _panicOf(spawn(f))
 
 async fn _panicOf<R is Sendable>(instance: Instance<R>) -> Future<String>:
   match await instance.result():

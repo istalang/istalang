@@ -58,7 +58,8 @@ import type {
 import { baseOf } from '../../checker/types/unions/union-members.ts';
 import { hasOneValue } from '../../checker/types/unions/unions.ts';
 import type { FunctionDeclaration } from '../../syntax/declarations/index.ts';
-import { closeFunctionCall } from '../calls/closed-calls.ts';
+import { type ClosedCall, closeFunctionCall } from '../calls/closed-calls.ts';
+import { foundCodecCall } from '../synthesized/boundary/codec-calls.ts';
 import type { FunctionInstance } from './instances.ts';
 import { qualifiedNameOf, recursiveName, spelledType, unionName } from './names.ts';
 
@@ -66,6 +67,8 @@ import { qualifiedNameOf, recursiveName, spelledType, unionName } from './names.
 export interface TypeTableSeams {
   /** The entry of a function instance, such as a declared `dispose` (§7). */
   readonly functionIndex: (instance: FunctionInstance) => FunctionId;
+  /** The entry a closed call runs, such as the codec writing an instance's outcome (§9). */
+  readonly callIndex: (call: ClosedCall) => FunctionId;
   /** The native a host implements a function by. */
   readonly hostNativeIndex: (declaration: FunctionDeclaration) => FunctionId;
   /** The persisted values of annotations the checker computed (§3.16). */
@@ -323,12 +326,14 @@ export class TypeTable {
       }
       case 'ExternStructDeclaration': {
         const role = this.#roleOf(externRoles, declaration);
+        const encoder = role === 'instance' ? this.#outcomeEncoder(type) : undefined;
         return {
           kind: 'extern',
           name,
           arguments: typeArguments,
           disposal: this.#disposal(this.#checker.disposalOf(type)),
           ...(role === undefined ? {} : { role }),
+          ...(encoder === undefined ? {} : { encoder }),
         };
       }
       default: {
@@ -374,6 +379,20 @@ export class TypeTable {
       const entity = this.#checker.wellKnownEntity(roles[role]);
       return entity !== undefined && 'declaration' in entity && entity.declaration === declaration;
     });
+  }
+
+  /**
+   * The entry encoding the outcome of an instance spawned as `instance`, an `Instance<T>`, for its
+   * host: the codec writing `T`, when one does (§9). Every spawning native reads it from the type
+   * entry its result names, so none needs the codec passed.
+   */
+  #outcomeEncoder(instance: NominalType): FunctionId | undefined {
+    const [outcome] = instance.arguments;
+    const codec =
+      outcome === undefined
+        ? undefined
+        : foundCodecCall(this.#checker, undefined, outcome, 'write');
+    return codec === undefined ? undefined : this.#seams.callIndex(codec);
   }
 
   /**

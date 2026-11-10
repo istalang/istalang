@@ -31,18 +31,32 @@ describe('deferred calls', () => {
     ['[a b(c)]', '(ArrayLiteral [(DeferredCall a (Call b [c]))])'],
     ['[a,\n b c(d)]', '(ArrayLiteral [a (DeferredCall b (Call c [d]))])'],
     ['a b', '(DeferredCall a b)'],
+    [
+      'spawn f<Int>(x)',
+      '(DeferredCall spawn (Call (TypeApplication f [(NamedType [Int] [])]) [x]))',
+    ],
+    [
+      'spawn Job{a}.run()',
+      '(DeferredCall spawn (Call (MemberAccess (StructLiteral (NamedType [Job] []) [(FieldInitializer a _)]) run) []))',
+    ],
+    [
+      'await (spawn f(x)).result()',
+      '(Await (Call (MemberAccess (Parenthesized (DeferredCall spawn (Call f [x]))) result) []))',
+    ],
   ])('parses %j', (text, tree) => {
     expect(dumpClean('expression', text)).toBe(tree);
   });
 
   it.each([
+    ['spawn purchase(req)', '(ExpressionStatement (DeferredCall spawn (Call purchase [req])))'],
+    ['_ = defer log(x)', '(Assignment [_] = (DeferredCall defer (Call log [x])))'],
+  ])('starts a statement: %j', (text, tree) => {
+    expect(dumpClean('statement', text)).toBe(tree);
+  });
+
+  it.each([
     ['0..n by step(2)', '(Range 0 n (Call step [2]))'],
     ['[a\n b(c)]', '(ArrayLiteral [a (Call b [c])])'],
-    ['spawn f(x)', '(Spawn (Call f [x]))'],
-    [
-      'spawn w.run(job).result()',
-      '(Call (MemberAccess (Spawn (Call (MemberAccess w run) [job])) result) [])',
-    ],
   ])('leaves %j to what it meant before', (text, tree) => {
     expect(dumpClean('expression', text)).toBe(tree);
   });

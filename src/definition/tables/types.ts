@@ -23,7 +23,8 @@
  *
  * Only extern entries can be disposable (spec §7), and each says how: not at all, by the runtime
  * itself (futures, slots), or by calling a declared `dispose`, as `fn dispose(self: Lease)` makes a
- * handle `Lease` disposable (§3.18), and the inbox module's every `Revertible<T>`.
+ * handle `Lease` disposable (§3.18), and the prelude's `Deferred` and the inbox module's every
+ * `Revertible<T>`.
  *
  * Where the runtime must know what an extern type's or an enum's values are beyond what its
  * natives do with them, the entry says so by its `role`, which lowering sets from the checker's
@@ -143,6 +144,12 @@ const external = z.strictObject({
   ...identity,
   disposal,
   role: externRole.optional(),
+  /**
+   * An `instance` type's, `Instance<T>`'s, when a codec writes `T`: that codec's entry, which
+   * encodes the outcome of every instance spawned as one for its host (§9), whichever native spawns
+   * it.
+   */
+  encoder: functionId.optional(),
 });
 
 export type ExternRole = z.output<typeof externRole>;
@@ -174,6 +181,18 @@ export type TypeDefinition = z.output<typeof typeDefinition>;
 export function isResourceType(types: readonly TypeDefinition[], type: number): boolean {
   const entry = types[type];
   return entry?.kind === 'extern' && entry.disposal.kind === 'function' && entry.role !== 'shared';
+}
+
+/**
+ * The entry encoding the outcome of an instance spawned as the `Instance<T>` type entry `type` of
+ * `types` (§9); undefined when no codec writes `T`.
+ */
+export function outcomeEncoderOf(
+  types: readonly TypeDefinition[],
+  type: number,
+): number | undefined {
+  const entry = types[type];
+  return entry?.kind === 'extern' ? entry.encoder : undefined;
 }
 
 /** Whether a cell may have the type entry `type` of `types`: a shared struct's or a variable's. */

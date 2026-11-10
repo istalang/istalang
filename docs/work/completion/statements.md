@@ -3,7 +3,7 @@ description: Completion scenarios — statements, expressions, scope, collection
 owner: tech-lead
 status: active
 applies_to: istalang
-last_verified: 2026-10-30
+last_verified: 2026-11-10
 last_updated: 2026-11-10
 tags: [plan, completion, lsp]
 ---
@@ -25,7 +25,7 @@ The start of a statement and the words that follow statement keywords (§3.4, §
   ‸
 ```
 - **Where / trigger:** in `fn t`; invoked, or typing on
-- **Offer:** Visible names (parameters, locals, the module's functions and types, namespaces), statement keywords `let const if for while match select return defer drop hold spawn`, expression keywords `true false none not fn new struct` (`struct{…}`, an anonymous struct, starts an expression).
+- **Offer:** Visible names (parameters, locals, the module's functions and types, namespaces), statement keywords `let const if for while match select return drop hold`, expression keywords `true false none not fn new struct` (`struct{…}`, an anonymous struct, starts an expression).
 - **Not:** Declaration keywords `enum trait import extern`; clause words `case in is and or as`; `elif`/`else` unless an `if` block just ended (ST-02); bare enum variants (`Red`: no enum type is expected, §3.11); `break`/`continue` outside a loop; `await` outside an `async fn`.
 - **Accept:** The word or name alone.
 - **Basis:** spec §4, §3.11; TS offers only keywords the grammar accepts at the position.
@@ -163,7 +163,7 @@ The start of a statement and the words that follow statement keywords (§3.4, §
 - **Not:** Names.
 - **Basis:** spec §4 (`by`).
 
-### ST-10 · Value of `for`, `while`, `if`, `match`, `return`, `drop`, `defer` · P1 · ✅ pass
+### ST-10 · Value of `for`, `while`, `if`, `match`, `return`, `drop` · P1 · ✅ pass
 
 ```
   for i in ‸
@@ -177,8 +177,6 @@ The start of a statement and the words that follow statement keywords (§3.4, §
   match ‸
 ---
   drop ‸
----
-  defer ‸
 ---
   return ‸
 ```
@@ -219,9 +217,9 @@ The start of a statement and the words that follow statement keywords (§3.4, §
   spawn ‸
 ```
 - **Where / trigger:** in `fn t`; invoked, or typing on
-- **Offer:** Functions (`work`, `fetch`, `plus`…), module functions first; the spawned call must be a function.
-- **Not:** Local non-function values, types, keywords.
-- **Basis:** spec §6 (`spawn f(args)`).
+- **Offer:** EX-02b: `spawn` is a prelude function, a deferred call's taker, so a name starts the call it is given (`work`, `fetch`), beside the infix words.
+- **Not:** Statement keywords, `if`.
+- **Basis:** spec §3.14, §9 (`spawn f(args)`).
 
 ### ST-15 · After `;` and inside `{ }` blocks · P2 · ✅ pass
 
@@ -289,8 +287,8 @@ Where an expression starts, continues or is complete (§4).
   return plus(‸
 ```
 - **Where / trigger:** in `fn t`; invoked, or typing on
-- **Offer:** Parameters, locals, functions, types (they begin a literal or a static call), namespaces, `true false none not fn async await spawn if match select new struct`.
-- **Not:** Statement keywords `let const for while return defer drop hold`; declaration keywords; clause words `case elif else in is and or as`; bare variants (`Red`); the names of declarations that are not values.
+- **Offer:** Parameters, locals, functions, types (they begin a literal or a static call), namespaces, `true false none not fn async await if match select new struct`.
+- **Not:** Statement keywords `let const for while return drop hold`; declaration keywords; clause words `case elif else in is and or as`; bare variants (`Red`); the names of declarations that are not values.
 - **Accept:** The name alone; a function adds no `(`unless it is a snippet, see OR-04.
 - **Basis:** spec §3.11, §4; TS/RA offer only what continues an expression.
 

@@ -1,0 +1,36 @@
+# outcome: "6 8 10 12 done"
+# A spawned instance ends with the value of the future its function gives (§9): an async callee's,
+# awaited across commits, a plain callee's value, a lambda forwarding a call's future, an isolated
+# one's, and a future no call gives, a timer's.
+
+import * as runtime from 'runtime'
+import * as time from 'time'
+
+async fn slowly(n: Int) -> Future<Int>:
+  await time.delay(5ms)
+  await time.delay(5ms)
+  n * 2
+
+fn quickly(n: Int) -> Int: n * 2
+
+fn valueOf(outcome: Result<Int>) -> Int:
+  match outcome:
+    case Ok(value): value
+    case Err(_): -1
+
+async fn main() -> Future<String>:
+  const awaited = spawn slowly(3)
+  const plain = spawn quickly(4)
+  const forwarding = spawn(fn(): slowly(5))
+  const isolated = runtime.isolate(fn(): slowly(6))
+  const timer = spawn time.delay(1ms)
+  const ended = match await timer.result():
+    case Ok(_): "done"
+    case Err(_): "failed"
+  const values = [
+    await awaited.result(),
+    await plain.result(),
+    await forwarding.result(),
+    await isolated,
+  ].map(valueOf)
+  [for value in values: String(value)].join(" ") + " " + ended

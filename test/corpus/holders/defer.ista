@@ -1,22 +1,26 @@
-# outcome: "7: body, inner, ran 0, iteration 0, iteration 1, ran 2, iteration 2, returning, last, outer"
-# `defer f` runs `f` when its block ends, however it ends (§7): its function's when the function
-# returns, a loop body's at the end of each iteration, `continue` included. Several run in
-# reverse, last first. What the function returns is computed before its defers run.
+# outcome: "7: body, inner, ran 0, iteration 0, iteration 1, ran 2, iteration 2, returning, last 5, held 3, outer"
+# `defer f(x)` gives a disposable calling `f(x)` when released, `x` computed now (§7): kept by `_`,
+# when its block ends, however it ends, a loop body's at the end of each iteration, `continue`
+# included; kept by `hold _`, when its function ends. Several released together run in reverse,
+# last first, and what the function returns is computed before they run.
 
 fn note(log: Shared<Array<String>>, text: String):
   log->value = [...log->value, text]
 
 fn blocks(log: Shared<Array<String>>) -> Int:
-  defer fn(): note(log, "outer")
+  _ = defer note(log, "outer")
+  let count = 3
   if true:
-    defer fn(): note(log, "inner")
+    hold _ = defer note(log, "held " + String(count))
+    _ = defer note(log, "inner")
     note(log, "body")
   for i in 0..3:
-    defer fn(): note(log, "iteration " + String(i))
+    _ = defer note(log, "iteration " + String(i))
     if i == 1:
       continue
     note(log, "ran " + String(i))
-  defer fn(): note(log, "last")
+  count = 5
+  _ = defer note(log, "last " + String(count))
   note(log, "returning")
   7
 

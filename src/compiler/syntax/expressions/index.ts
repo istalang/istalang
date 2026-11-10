@@ -23,14 +23,7 @@ import type { Block } from '../statements/index.ts';
 import type { FunctionQualifiers } from '../tokens/modifiers.ts';
 import type { Identifier, Invalid, Missing, NodeOf } from '../tree/node.ts';
 import type { NamedType, TypeNode } from '../types/index.ts';
-import type {
-  Call,
-  DeferredCall,
-  NamedArgument,
-  Reference,
-  Spawn,
-  TypeApplication,
-} from './calls.ts';
+import type { Call, DeferredCall, NamedArgument, Reference, TypeApplication } from './calls.ts';
 import type { Literal, StringLiteral } from './literals/literals.ts';
 import type { BinaryOperator, ChainingOperator, UnaryOperator } from './operators.ts';
 
@@ -377,7 +370,6 @@ export type Expression =
   | Lambda
   | Call
   | TypeApplication
-  | Spawn
   | DeferredCall
   | Reference
   | MemberAccess

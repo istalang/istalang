@@ -30,7 +30,7 @@ import type { Parser } from '../../parser.ts';
 import { headAhead } from '../parts/heads.ts';
 import { type StartParselets, type WordParselets, wordParseletAt } from '../word-parselets.ts';
 import { atLabel, parseFor, parseLabelled, parseWhile } from './loops.ts';
-import { parseBreak, parseContinue, parseDefer, parseDrop, parseReturn } from './simple.ts';
+import { parseBreak, parseContinue, parseDrop, parseReturn } from './simple.ts';
 import { atHold, parseHeldVariable, parseVariable } from './variables.ts';
 
 type StatementParselet = (parser: Parser) => Statement | Invalid;
@@ -45,7 +45,6 @@ const statementParselets: Partial<Record<CursorKind, StatementParselet>> = {
   continue: parseContinue,
   for: parseFor,
   while: parseWhile,
-  defer: parseDefer,
   drop: parseDrop,
   identifier: parseNamedStatement,
 } satisfies StartParselets<StatementWord, StatementParselet>;

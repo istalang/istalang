@@ -15,8 +15,7 @@ import type { Invalid } from '../../../syntax/tree/node.ts';
 import type { BodyContext } from '../../contexts/body-context.ts';
 import { checkDiscarded, checkDrop } from '../../rules/disposal/must-use.ts';
 import { statementPlace } from '../../surface/checked-annotation.ts';
-import { functionType } from '../../types/type/function-types.ts';
-import type { FunctionType, Type } from '../../types/type/index.ts';
+import type { Type } from '../../types/type/index.ts';
 import { neverType, unitType } from '../../types/type/primitives.ts';
 import { checkLocalFunction } from '../closures/lambdas.ts';
 import { checkAssignment } from './assignments.ts';
@@ -28,13 +27,6 @@ import {
   checkWhile,
 } from './loops.ts';
 import { checkVariableDeclaration } from './variables.ts';
-
-/** What `defer` runs when its block ends (§7): a plain function of nothing, so it can't wait. */
-const deferredFunction: FunctionType = functionType({
-  reach: 'plain',
-  parameters: [],
-  result: unitType,
-});
 
 // biome-ignore-start lint/style/useNamingConvention: the keys are the tree's node kinds.
 export const statementHandlers: Handlers<
@@ -63,10 +55,6 @@ export const statementHandlers: Handlers<
   For: checkFor,
   FieldLoop: checkFieldLoop,
   LabelledBlock: checkLabelledBlock,
-  Defer: (context, node) => {
-    context.expect(node.action, deferredFunction);
-    return unitType;
-  },
   Drop: checkDrop,
   Invalid: () => unitType,
 };

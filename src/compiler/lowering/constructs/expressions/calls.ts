@@ -25,7 +25,6 @@
  * (deferred-calls.ts, §3.14).
  */
 
-import type { Callee } from '../../../../definition/instructions/calls.ts';
 import type { Argument } from '../../../../definition/instructions/places.ts';
 import type { Register } from '../../../../definition/operands.ts';
 import { unreachable } from '../../../../foundation/structures/unreachable.ts';
@@ -33,12 +32,11 @@ import type { SignatureParameter } from '../../../checker/check.ts';
 import { parameterOfArgument } from '../../../checker/surface/resolved-call.ts';
 import type { RestSlot } from '../../../checker/types/type/function-types.ts';
 import { argumentValue } from '../../../syntax/expressions/arguments.ts';
-import type { Call, CallingNode, Spawn } from '../../../syntax/expressions/calls.ts';
+import type { Call, CallingNode } from '../../../syntax/expressions/calls.ts';
 import type { Expression } from '../../../syntax/expressions/index.ts';
 import {
   calledName,
   callsThroughOptional,
-  unparenthesized,
   writtenArgumentsOf,
 } from '../../../syntax/expressions/readings.ts';
 import { type ClosedCall, calledParameters } from '../../calls/closed-calls.ts';
@@ -61,48 +59,6 @@ export function lowerCall(context: FunctionContext, node: Call): Register {
   return dst;
 }
 
-/**
- * `spawn f(args)` (§9): what the call would run, the function the checker resolved, taking its
- * arguments as passed so the new instance computes any defaults, or the value of a sendable
- * function type; and its arguments, a method's receiver first, all by value; its value is the new
- * instance's `Instance<T>`. The codec the checker found writing `T`, if any, closed within this
- * instance, is the new instance's encoder, so its outcome reaches its host as JSON.
- */
-export function lowerSpawn(context: FunctionContext, node: Spawn): Register {
-  const spawned = unparenthesized(node.call);
-  if (spawned.kind !== 'Call') {
-    unreachable('A spawn of no call checked clean.');
-  }
-  const { target, arguments: given } = preparedCall(context, spawned, 'byValue');
-  const callee: Callee =
-    target.kind === 'function'
-      ? { kind: 'function', function: context.tables.callIndex(target.call) }
-      : target;
-  const instance = context.typeOf(node);
-  if (instance.kind !== 'nominal') {
-    unreachable('A spawn checked clean is an Instance<T>.');
-  }
-  const encoderCall = context.body.implicitCallOf(node, 'encodeOutcome');
-  const encoder =
-    encoderCall === undefined ? undefined : context.tables.callIndex(context.closed(encoderCall));
-  const dst = context.code.allocate();
-  context.code.emit({
-    kind: 'spawn',
-    span: node.span,
-    dst,
-    type: context.tables.types.index(instance),
-    callee,
-    arguments: given.map((argument) => {
-      if (argument.kind !== 'value') {
-        unreachable('A spawned call passes everything by value; the checker refuses references.');
-      }
-      return argument.register;
-    }),
-    ...(encoder !== undefined && { encoder }),
-  });
-  return dst;
-}
-
 /** A call ready to emit: what it calls, its arguments as passed, and how each is passed. */
 export interface PreparedCall {
   readonly target: CallTarget;
@@ -113,8 +69,7 @@ export interface PreparedCall {
 /**
  * What `node` calls and passes, evaluated in the order written: a function value's callee first,
  * then its arguments, each as written; a resolved function's receiver, then its arguments, by `&`
- * where their parameters take one, or all by value for a spawn (§9) or a deferred call's parts
- * (§3.14). A deferred call passes what its taker's parentheses write.
+ * where their parameters take one, or all by value for a deferred call's parts (§3.14). A deferred call passes what its taker's parentheses write.
  */
 export function preparedCall(
   context: FunctionContext,

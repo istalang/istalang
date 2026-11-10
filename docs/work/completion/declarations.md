@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-10-30
-last_updated: 2026-11-05
+last_updated: 2026-11-10
 tags: [plan, completion, lsp]
 ---
 
@@ -98,7 +98,7 @@ const limit = ‸
 ```
 - **Where / trigger:** top level; invoked, or typing on
 - **Offer:** Names a compile-time constant may use: top-level constants, functions (lambda values), types and their variants as constructors, literals keywords `true false none`.
-- **Not:** Statement keywords, clause words, `await`, `spawn`.
+- **Not:** Statement keywords, clause words, `await`.
 - **Basis:** spec §3 (compile-time computable const).
 
 ## DH: Declaration headers

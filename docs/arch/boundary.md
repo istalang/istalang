@@ -3,7 +3,7 @@ description: the host boundary (spec §3.6, §9) — JSON codecs as traits and d
 owner: tech-lead
 status: active
 applies_to: istalang
-last_verified: 2026-10-26
+last_verified: 2026-11-10
 last_updated: 2026-11-10
 tags: [boundary, json, externs, host, runtime, lowering]
 ---
@@ -116,10 +116,14 @@ decodes each argument, a mismatch failing the host's start, so the instance is o
 function and its traces and waits are the function's own. `starts` lists it with its outcome's
 encoder, the entry of the codec writing the declared result (`synthesized/boundary/starts.ts`), which the
 instance keeps for life and its segment calls with the outcome on top of the root's last frame as
-it returns, so what that frame holds is disposed after (`scheduler/segment/outcome-encoding.ts`): a
-finished instance keeps both, the outcome for `result()` and its JSON for the host. A `spawn` names
-the codec the checker recorded for what its call gives (`checker/constructs/expressions/control/spawn.ts`), found once
-in a generic body against its constraints, so its calls count in the body's expansion (§3.5). `main` is started through its own; what a host reads of an outcome is JSON by the declared result,
+it returns, so what that frame holds is disposed after (`scheduler/segment/root-outcome.ts`): a
+finished instance keeps both, the outcome for `result()` and its JSON for the host. A spawned
+instance's encoder is its `Instance<T>` type entry's, the codec writing `T`
+(`lowering/tables/type-table.ts`), which every spawning native reads from the type it gives
+(`runtime/natives.ts`, `NativeInstances.spawn`), `spawn`'s, `runtime.isolate`'s and
+`testing.spawnCrashingEveryAwait`'s alike; where the native is called, the checker records the
+codec as an implicit call, found once in a generic body against its constraints, so its calls count
+in the body's expansion (§3.5, `checker/rules/boundary/outcome-codecs.ts`). `main` is started through its own; what a host reads of an outcome is JSON by the declared result,
 as JavaScript values (`outcome`) like everything else it exchanges, or as text (`outcomeText`),
 which `ista run` prints (`runtime/boundary/outbound.ts`).
 
@@ -175,9 +179,3 @@ host awaits the same way whatever an instance waits on. Calls that only read (`d
 tsdown entry. Their declarations come from TypeScript itself (`tsconfig.declarations.json`):
 tsdown's declaration plugin needs TypeScript's JS API, which TypeScript 7 lacks, or isolated
 declarations, which the definition layer's schemas aren't.
-
-## Open with other slices
-
-- An instance `runtime.isolate` or `testing.spawnCrashingEveryAwait` spawns has no encoder: their
-  natives are given the function to spawn, not the codec of what it gives, so a host can't read
-  its outcome as JSON. A `spawn` names its encoder (`lowering/constructs/expressions/calls.ts`).

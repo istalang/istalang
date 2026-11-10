@@ -186,17 +186,8 @@ const scenarios: readonly Scenario[] = [
   {
     id: 'ST-10',
     place: 'grammar',
-    title: 'Value of for, while, if, match, return, drop, defer',
-    src: [
-      '  for i in ‸',
-      '  while ‸',
-      '  if ‸',
-      '  elif ‸',
-      '  match ‸',
-      '  drop ‸',
-      '  defer ‸',
-      '  return ‸',
-    ],
+    title: 'Value of for, while, if, match, return, drop',
+    src: ['  for i in ‸', '  while ‸', '  if ‸', '  elif ‸', '  match ‸', '  drop ‸', '  return ‸'],
     expect: {
       has: ['xs', 'p', 'plus', 'true'],
       lacks: [
@@ -237,9 +228,9 @@ const scenarios: readonly Scenario[] = [
   {
     id: 'ST-13',
     place: 'grammar',
-    title: 'spawn',
+    title: "spawn, a deferred call's taker",
     src: ['  spawn ‸'],
-    expect: { has: ['work', 'fetch'], lacks: ['xs', 'p', 'let', 'if'] },
+    expect: { has: ['work', 'fetch', 'is'], lacks: ['let', 'if'] },
   },
   {
     id: 'ST-15',

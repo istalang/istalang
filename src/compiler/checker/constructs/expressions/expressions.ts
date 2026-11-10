@@ -28,7 +28,6 @@ import { checkIf } from './control/control.ts';
 import { checkIs, checkMatch } from './control/match.ts';
 import { checkPropagate } from './control/propagate.ts';
 import { checkSelect } from './control/select.ts';
-import { checkSpawn } from './control/spawn.ts';
 import { checkDeferredCall } from './deferred-calls.ts';
 import { checkIndentedValue } from './literals/indented-values.ts';
 import { checkDurationLiteral } from './literals/literals.ts';
@@ -80,7 +79,6 @@ export const expressionHandlers: Handlers<BodyContext, Expression, [Type | undef
   Reference: misplacedReference,
   Index: checkIndex,
   Propagate: checkPropagate,
-  Spawn: checkSpawn,
   DeferredCall: checkDeferredCall,
   Unwrap: checkUnwrap,
   ChainedComparison: checkChainedComparison,

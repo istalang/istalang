@@ -177,28 +177,6 @@ const generators: { readonly [Kind in InstructionKind]: Generator<Kind> } = {
     });
     return direct === undefined ? throughValue : fc.oneof(direct, throughValue);
   },
-  spawn: (s) => {
-    const instance = pick(s.types, (type) => type.kind === 'extern' && type.role === 'instance');
-    const spawned = pick(
-      s.signatures,
-      (fn) =>
-        fn.kind === 'code' &&
-        fn.captures === 0 &&
-        fn.parameters.every((_, at) => !takesReference(fn, at)),
-    );
-    if (instance === undefined || spawned === undefined) {
-      return;
-    }
-    return fc.tuple(instance, spawned).chain(([type, fn]) => {
-      const arity = s.signatures[fn]?.parameters.length ?? 0;
-      return fc.record({
-        dst: index(s.registers),
-        type: fc.constant(type),
-        callee: fc.constant({ kind: 'function' as const, function: fn }),
-        arguments: fc.array(index(s.registers), { minLength: arity, maxLength: arity }),
-      });
-    });
-  },
   currentCall: (s) => (s.async ? fc.record({ dst: index(s.registers) }) : undefined),
   await: (s) =>
     s.async
@@ -241,7 +219,6 @@ const generators: { readonly [Kind in InstructionKind]: Generator<Kind> } = {
             into: fc.constant(into),
           }),
         ),
-  defer: (s) => fc.record({ dst: index(s.registers), callback: index(s.registers) }),
 };
 
 export function instruction(scope: Scope): fc.Arbitrary<Instruction> {

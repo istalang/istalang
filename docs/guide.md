@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-11-05
-last_updated: 2026-11-08
+last_updated: 2026-11-10
 tags: [language, guide]
 ---
 
@@ -96,7 +96,7 @@ const a, b = (1, "x")          # destructuring
 
 - **Literals:** `"a"` `'a'` `` `x=${x}` `` `42` `1_000` `0x1F` `0b1010` `3.14` `true` `none` `500ms` `30s` `15m` `2h` `5d` `[1, 2]` `["k": 1]` `[:]` `[...xs, 3]` `(1, "x")` `(x,)` `0..10` `0..=10` `0..10 by 2`.
 - **Names:** types, traits and variants are `PascalCase`; functions, variables and fields are `camelCase` (both compiler-enforced). Leading `_` on a top-level declaration makes it module-private.
-- **Keywords:** `fn`, `async`, `await`, `let`, `const`, `if`, `elif`, `else`, `for`, `in`, `while`, `match`, `case`, `select`, `return`, `break`, `continue`, `struct`, `enum`, `trait`, `import`, `extern`, `spawn`, `defer`, `drop`, `is`, `and`, `or`, `not`, `true`, `false`, `none`, `as` are reserved everywhere (never field or variable names). `type`, `shared`, `ephemeral`, `new`, `from`, `sendable`, `any`, `keyof`, `infer`, `hold` and `by` are contextual and may name fields or functions.
+- **Keywords:** `fn`, `async`, `await`, `let`, `const`, `if`, `elif`, `else`, `for`, `in`, `while`, `match`, `case`, `select`, `return`, `break`, `continue`, `struct`, `enum`, `trait`, `import`, `extern`, `drop`, `is`, `and`, `or`, `not`, `true`, `false`, `none`, `as` are reserved everywhere (never field or variable names). `type`, `shared`, `ephemeral`, `new`, `from`, `sendable`, `any`, `keyof`, `infer`, `hold` and `by` are contextual and may name fields or functions.
 
 ### 2.3 Data: structs, enums, optionals (§3.1, §3.11, §3.18)
 
@@ -280,7 +280,7 @@ const both = (await a, await b)
 
 - **Slots & Inboxes:** `Slot.create<T>()` offers `put(v)`, `take()` and `read()`. `Inbox.create<T>()` (from `'inbox'`) offers `send(m)`, `sendRevertible(m)` (retracted if unread when its `Revertible<T>` holder is disposed), `receive()` and `pending()`.
 - **Library concurrency:** `'futures'` (`first`, `all`, `allSettled`, `race`, `any`, `quorum`, `timeout`, `retry`), `'rpc'`, `'fanout'`.
-- **`spawn f(args)`** starts a new instance returning `Instance<R>` (`await inst.result()` waits for its `Result<R>`). `f` and `args` must be `Sendable`.
+- **`spawn f(args)`**, a deferred call of the prelude's `spawn` (§3.14), computes `args` now and starts a new instance making the call `f(args)`, async or plain, returning `Instance<R>` (`await inst.result()` waits for its `Result<R>`). What it computes now must be `Sendable`. `spawn(g)` starts a sendable function value `g` itself.
 
 ### 2.10 Lifetimes and disposal (§7)
 
@@ -291,7 +291,8 @@ _ = startJob()              # held until this block ends
 hold _ = startJob()         # held until the function ends, even when written in a loop
 hold(rows) _ = startJob()   # held until the loop or block labelled rows ends
 drop x                      # release now
-defer fn(): log("exited")   # runs when the block ends, however it ends
+_ = defer log("exited")     # runs when the block ends, however it ends
+hold _ = defer log("done")  # runs when the function ends
 ```
 
 ```python
@@ -370,4 +371,5 @@ Only `*.test.ista` files may import `'testing'` (`Suite`, `Test`, `test`, `group
 - **`const` is deeply immutable** (`const xs = [1]; xs.push(2)` is an error), stopping only at handles (`const u = new Lease{…}; u->renewals += 1` is valid). Shared struct fields use `->` (`u.renewals` is an error); `new` is used if and only if constructing a `shared struct`.
 - **Reference rules:** `&` stands only before a call argument (`&x`). Passing two element/shared-field references in one call (`f(&xs[i], &xs[j])`, `f(&u->a, &w->b)`) or passing `&xs[i]` / `&u->a` to an `async fn` is a compile error (copy into a local `let`, pass `&local`, and assign back).
 - **Loop lifetimes:** `_ = q.sendRevertible(m)` or `_ = asyncCall()` inside a loop disposes at the end of **each iteration**; use `hold _ = …` to keep it alive until the enclosing function returns.
-- **Boundaries:** Handles and plain `fn` values are not `Sendable` and cannot cross `spawn` or `extern`. `sendable fn` can be passed to `spawn` (when all captures are sendable) but has no JSON form and cannot cross `extern` or `json`.
+- **Boundaries:** Handles and plain `fn` values are not `Sendable` and cannot cross `spawn` or `extern`. A `sendable fn` (all captures sendable) is what `spawn` takes, but has no JSON form and cannot cross `extern` or `json`.
+- **`defer` is a function:** a bare `defer f(x)` is an error, since the `Deferred` it gives must be kept (`_ = defer f(x)`), and `x` is computed where it is written; pass a lambda, `_ = defer(fn(): …)`, to read variables when it runs.

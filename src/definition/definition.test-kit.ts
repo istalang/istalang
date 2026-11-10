@@ -98,6 +98,17 @@ function typeDefinition(sizes: Sizes): fc.Arbitrary<TypeDefinition> {
   );
 }
 
+/**
+ * `type` with the first of `encoders` as its outcome encoder when it is an `Instance`'s, which only
+ * bodies drawn after the types can say.
+ */
+function withEncoder(type: TypeDefinition, encoders: readonly number[]): TypeDefinition {
+  const [encoder] = encoders;
+  return type.kind === 'extern' && type.role === 'instance' && encoder !== undefined
+    ? { ...type, encoder }
+    : type;
+}
+
 /** A function-table entry with an empty body; bodies are drawn once every signature is known. */
 function signature(sizes: Sizes): fc.Arbitrary<FunctionDefinition> {
   const common = {
@@ -243,7 +254,7 @@ export const definitionArbitrary: fc.Arbitrary<Definition> = fc
             )
             .map(([main, starts]) => ({
               modules,
-              types,
+              types: types.map((type) => withEncoder(type, encoders)),
               functions,
               constants,
               starts: [...starts],

@@ -331,7 +331,6 @@ const constructs: Handlers<FlowWalk, Construct, [Opaque], Flow> = {
   Index: link,
   Propagate: children,
   Unwrap: children,
-  Spawn: (walk, node, state) => walk.node(node.call, state),
   // Its taker and what its call computes run now; the call itself runs later, changing nothing here.
   DeferredCall: children,
   TemplateLiteral: children,
@@ -386,7 +385,6 @@ const constructs: Handlers<FlowWalk, Construct, [Opaque], Flow> = {
       return { exit: tested, end: walk.sequence([node.body], tested) };
     }),
   LabelledBlock: (walk, node, state) => walk.node(node.body, state),
-  Defer: (walk, node, state) => walk.node(node.action, state),
   Drop: (walk, node, state) => walk.drop(node, walk.node(node.value, state)),
 };
 // biome-ignore-end lint/style/useNamingConvention: the keys are the tree's node kinds.

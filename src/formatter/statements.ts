@@ -133,7 +133,6 @@ export const statementPrinters: Printers<StatementKind> = {
     ),
   LabelledBlock: (printer, node) =>
     annotated(printer, node, [printer.print(node.label), ':', indentedBlock(printer, node.body)]),
-  Defer: (printer, node) => annotated(printer, node, ['defer ', printer.print(node.action)]),
   Drop: (printer, node) => annotated(printer, node, ['drop ', printer.print(node.value)]),
 };
 // biome-ignore-end lint/style/useNamingConvention: the keys are the tree's node kinds.

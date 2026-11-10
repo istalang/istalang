@@ -226,7 +226,8 @@ export type ImplicitRole =
   /** A template's texts and values joined into its string (§2). */
   | 'join'
   /**
-   * The codec writing what a `spawn`'s new instance gives, which encodes its outcome for the host
-   * (§9); recorded only when a codec writes it.
+   * The codec writing what a new instance gives, which encodes its outcome for the host (§9), at
+   * an extern starting one (rules/boundary/outcome-codecs.ts); recorded only when a codec writes
+   * it, so it counts in the body's expansion. Lowering reads it from the `Instance<R>` type entry.
    */
   | 'encodeOutcome';

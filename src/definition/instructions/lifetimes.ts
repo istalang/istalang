@@ -30,10 +30,4 @@ const release = defineInstruction('release', { registers });
  */
 const keep = defineInstruction('keep', { registers, into: register });
 
-/**
- * `defer f`: a disposable guard that calls `f` when it is disposed. Held in a register like any
- * other value, so it runs when its block releases it, including on disposal at an await (spec §7).
- */
-const defer = defineInstruction('defer', { dst: register, callback: register });
-
-export const lifetimeInstructions = [release, keep, defer] as const;
+export const lifetimeInstructions = [release, keep] as const;

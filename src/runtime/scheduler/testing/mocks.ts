@@ -6,8 +6,10 @@
  *   nearest instance it descends from that holds one (../instance/instance-names.ts), which only a
  *   test world has (test-world.ts). Releasing a mock therefore brings back the one before it. Every
  *   call path asks `mockedCall` (segment/calls.ts): a written call, a function value's, a
- *   disposal's. Starting an instance isn't a call, so an instance started or spawned with a mocked
- *   function runs it.
+ *   disposal's. A deferred call's call is a call, so `spawn f(x)` calls `f` in the new instance and
+ *   reaches a mock of `f` relayed from its holder; starting an instance with a function isn't a
+ *   call of it, so one started, or spawned with a function value (`spawn(f)`, `runtime.isolate(f)`),
+ *   runs it whatever mocks it.
  * - A call to another instance's mock is answered there, as a host answers an extern (§9): the
  *   arguments and the result are copied across, the caller's future is filled once the answer is
  *   given, and the holder records the call. A segment that runs again calls it again, as it calls

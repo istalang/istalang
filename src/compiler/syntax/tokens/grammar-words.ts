@@ -66,7 +66,6 @@ export const statementWords = [
   'continue',
   'for',
   'while',
-  'defer',
   'drop',
   'hold',
 ] as const satisfies readonly Word[];
@@ -80,8 +79,8 @@ const unaryWords = (Object.keys(unaryOperators) as UnaryOperator[]).filter(
 
 /**
  * What starts an operand (§4): the prefix operators spelled as words, the literals spelled as
- * words, lambdas, anonymous structs, branches, and what waits, starts an instance or builds a
- * shared struct (§3.18, §7, §8, §9).
+ * words, lambdas, anonymous structs, branches, and what waits or builds a shared struct (§3.18,
+ * §8).
  */
 export const operandWords = [
   ...unaryWords,
@@ -93,7 +92,6 @@ export const operandWords = [
   'if',
   'match',
   'select',
-  'spawn',
   'await',
   'new',
 ] as const satisfies readonly Word[];

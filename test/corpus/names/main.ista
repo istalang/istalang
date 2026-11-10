@@ -94,7 +94,7 @@ fn note(n: Int) -> Int:
 
 async fn watch(box: Queue<Int>, stop: Future<Unit>) -> Future<Int>:
   let seen = 0
-  defer fn(): note(seen)
+  _ = defer(fn(): note(seen))
   while seen < limit:
     const got = await select:
       case box.receive() as message:

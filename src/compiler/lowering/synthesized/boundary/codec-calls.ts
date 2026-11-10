@@ -1,7 +1,8 @@
 /**
  * The codec of a type that code lowering writes calls (§9; docs/arch/boundary.md): the one the
  * checker finds, Encodable's or Decodable's witness, so a derived codec, a host extern's wrapper
- * and a start's outcome encoder call what checking let through. A wrapper of a generic extern finds
+ * and an instance's outcome encoder, a start's or an `Instance<T>` type entry's, call what checking
+ * let through. A wrapper of a generic extern finds
  * its codecs for the declared types, and closes them within its instance, so a type parameter's
  * codec is the witness its caller gave.
  */
@@ -23,9 +24,19 @@ export function codecCall(
   type: Type,
   direction: JsonDirection,
 ): ClosedCall {
+  return (
+    foundCodecCall(checker, within, type, direction) ??
+    unreachable(`A type crossing has no codec to ${direction}; checking should have said so.`)
+  );
+}
+
+/** The codec writing or reading `type` as `codecCall` gives it; undefined when none does. */
+export function foundCodecCall(
+  checker: Checker,
+  within: FunctionInstance | undefined,
+  type: Type,
+  direction: JsonDirection,
+): ClosedCall | undefined {
   const codec = checker.json.codecOf(type, direction);
-  if (codec === undefined) {
-    unreachable(`A type crossing has no codec to ${direction}; checking should have said so.`);
-  }
-  return closeCall(codec, within, checker);
+  return codec === undefined ? undefined : closeCall(codec, within, checker);
 }

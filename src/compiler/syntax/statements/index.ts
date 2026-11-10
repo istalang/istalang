@@ -124,11 +124,6 @@ export type Loop = For | FieldLoop | While;
 /** A scope a label may name (§3.4, §4): a loop, or a block only `hold` names. */
 export type LabelledScope = Loop | LabelledBlock;
 
-/** `defer f`: runs `f` when the block ends (§7). */
-export interface Defer extends NodeOf<'Defer'>, Annotatable {
-  readonly action: Expression;
-}
-
 /** `drop expr`: discards a value, disposing it if nothing else holds it (§7). */
 export interface Drop extends NodeOf<'Drop'>, Annotatable {
   readonly value: Expression;
@@ -146,7 +141,6 @@ export type Statement =
   | FieldLoop
   | While
   | LabelledBlock
-  | Defer
   | Drop;
 
 /** Nodes that occur only as parts of a statement. */

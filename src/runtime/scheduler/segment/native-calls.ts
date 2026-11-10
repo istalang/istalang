@@ -18,6 +18,7 @@
 
 import type { FunctionId } from '../../../definition/operands.ts';
 import type { FunctionDefinition } from '../../../definition/tables/functions.ts';
+import { outcomeEncoderOf } from '../../../definition/tables/types.ts';
 import { namedTypeOf } from '../../../definition/values/declared-values.ts';
 import { instanceHandle } from '../../../definition/values/instance-handles.ts';
 import {
@@ -27,7 +28,6 @@ import {
   type Value,
 } from '../../../definition/values/values.ts';
 import { unreachable } from '../../../foundation/structures/unreachable.ts';
-import type { SpawnOptions } from '../../instance-state.ts';
 import { passedValues, writeReference } from '../../interpreter/registers.ts';
 import {
   type FullNativeContext,
@@ -43,7 +43,6 @@ import {
   Panic,
 } from '../../natives.ts';
 import { isReference, type Reference, type RegisterContents } from '../../snapshot/objects.ts';
-import type { InstanceCall } from '../../snapshot/snapshot.ts';
 import type { Futures } from '../instance/futures.ts';
 import { type Heap, handleObject } from '../instance/heap.ts';
 import type { Instance } from '../instance/index.ts';
@@ -231,30 +230,23 @@ function nativeLogsOf(instance: Instance, now: () => bigint): NativeLogs {
 }
 
 /**
- * Records `call` as spawned by `instance`'s segment, with `options`; the new instance's name. A run
- * that waits in memory spawns nothing (§9): it never commits, which is what spawns.
+ * The instances `instance` spawns and waits for, as natives reach them (§9). Every spawning native
+ * comes through `spawn`, so each new instance's outcome is encoded by the encoder its `Instance<T>`
+ * type entry names. A run that waits in memory spawns nothing: it never commits, which is what
+ * spawns.
  */
-export function spawned(
-  instance: Instance,
-  waiting: Waiting,
-  call: InstanceCall,
-  options?: SpawnOptions,
-): string {
-  if (waiting.kind === 'live') {
-    unreachable('A live run spawns an instance, which the call rule refuses.');
-  }
-  return instance.spawn(call, options);
-}
-
-/** The instances `instance` spawns and waits for, as natives reach them (§9). */
 function nativeInstancesOf(instance: Instance, waiting: Waiting): NativeInstances {
   return {
     spawn: (entry, type, options) => {
+      if (waiting.kind === 'live') {
+        unreachable('A live run spawns an instance, which the call rule refuses.');
+      }
       const closure =
         closureOf(entry) ??
         unreachable('An instance is spawned with no function; the checker forbids it.');
       const call = { function: closure.function, captures: closure.captures, arguments: [] };
-      return instanceHandle(type, spawned(instance, waiting, call, options));
+      const encoder = outcomeEncoderOf(instance.loaded.definition.types, type);
+      return instanceHandle(type, instance.spawn(call, options, encoder));
     },
     ended: (name, result) =>
       instance.futures.createHandle({

@@ -6,7 +6,8 @@
  * - every frame names a code entry, its pc lies inside that code and its registers inside its
  *   frame
  * - a caller frame stands at a `call`, and an execution's innermost frame at an `await` or a
- *   `select`, the only places an execution stops (docs/arch/definition.md, "Frames")
+ *   `select`, the only places an execution stops (docs/arch/definition.md, "Frames"), or a root's
+ *   only frame at the `return` of a future it waits on to end with (§9)
  * - an execution that waits does so on futures, and is ready exactly when one has resolved
  * - an async call's execution names a pending call future, and at most one execution, the root,
  *   names none
@@ -20,7 +21,7 @@
  */
 
 import type { Definition } from '../../definition/definition.ts';
-import { awaitedRegisters, waits } from '../../definition/instructions/flow.ts';
+import { waits } from '../../definition/instructions/flow.ts';
 import type { Instruction } from '../../definition/instructions/instruction.ts';
 import type { FunctionId } from '../../definition/operands.ts';
 import { encoderProblem, takesReference } from '../../definition/tables/functions.ts';
@@ -29,6 +30,7 @@ import { valueProblems } from '../../definition/validation/references.ts';
 import { isJsonValue, jsonTypeIn } from '../../definition/values/json-values.ts';
 import { handleTarget } from '../../definition/values/values.ts';
 import { type Handlers, handlerOf } from '../../foundation/structures/kind-table.ts';
+import { waitedRegisters } from '../interpreter/suspension.ts';
 import { Refusal } from '../refusal.ts';
 import { valuesIn } from './holdings.ts';
 import { type Frame, type HeapObject, isReference } from './objects.ts';
@@ -63,9 +65,11 @@ function objectProblems(definition: Definition, object: HeapObject): readonly st
 const kindProblems: Handlers<Definition, HeapObject, [], readonly string[]> = {
   execution: (definition, execution) =>
     execution.frames.flatMap((frame, index) =>
-      frameProblems(definition, frame, index === execution.frames.length - 1 ? waits : isCall).map(
-        (problem) => `execution ${execution.id}: ${problem}`,
-      ),
+      frameProblems(
+        definition,
+        frame,
+        index === execution.frames.length - 1 ? stopsIn(execution) : isCall,
+      ).map((problem) => `execution ${execution.id}: ${problem}`),
     ),
   cell: (definition, cell) =>
     isCellType(definition.types, cell.type) ? [] : [`cell ${cell.id} is not of a cell type`],
@@ -81,7 +85,6 @@ const kindProblems: Handlers<Definition, HeapObject, [], readonly string[]> = {
   slot: () => [],
   future: () => [],
   weakRef: () => [],
-  guard: () => [],
 };
 
 /**
@@ -109,7 +112,7 @@ function executionWaitProblems(
 ): readonly string[] {
   const top = execution.frames.at(-1);
   const instruction = top === undefined ? undefined : instructionAt(definition, top);
-  const awaited = instruction === undefined ? [] : awaitedRegisters(instruction);
+  const awaited = instruction === undefined ? [] : waitedRegisters(instruction);
   if (top === undefined || awaited.length === 0) {
     return isReady ? [`ready execution ${execution.id} is not waiting`] : [];
   }
@@ -224,6 +227,16 @@ function callProblems(definition: Definition, call: InstanceCall): readonly stri
 const isCall = (instruction: Instruction): boolean => instruction.kind === 'call';
 
 /** A frame's problems; `standsAt` says which instructions it may stand at. */
+/**
+ * Where `execution`'s innermost frame may stand: at a wait, or, as a root's only frame, at its
+ * `return`, waiting on the future it gives.
+ */
+function stopsIn(execution: Extract<HeapObject, { kind: 'execution' }>) {
+  const isRoot = execution.resolves === undefined && execution.frames.length === 1;
+  return (instruction: Instruction) =>
+    waits(instruction) || (isRoot && instruction.kind === 'return');
+}
+
 function frameProblems(
   definition: Definition,
   frame: Frame,

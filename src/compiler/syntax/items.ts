@@ -48,7 +48,6 @@ const statementWordPlaces = {
   continue: 'block',
   for: 'block',
   while: 'block',
-  defer: 'block',
   drop: 'block',
   hold: 'block',
 } as const satisfies Record<StatementWord, Exclude<Place, 'module'>>;
@@ -92,7 +91,6 @@ function placeOf(item: Item): Place {
     case 'FieldLoop':
     case 'While':
     case 'LabelledBlock':
-    case 'Defer':
     case 'Drop':
       return 'block';
     default: {

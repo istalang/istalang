@@ -296,7 +296,7 @@ describe('tuple elements (§3.15)', () => {
   });
 });
 
-describe('`!`, named arguments and `spawn`', () => {
+describe('`!` and named arguments', () => {
   it.each([
     ['x!', '(Unwrap x)'],
     ['a?.b!', '(Unwrap (MemberAccess a isOptional b))'],
@@ -305,16 +305,6 @@ describe('`!`, named arguments and `spawn`', () => {
       '(Call f [(NamedArgument times 5) (NamedArgument backoff 2000ms)])',
     ],
     ['f(1, target: &x)', '(Call f [1 (NamedArgument target (Reference x))])'],
-    [
-      'spawn w.run(job).result()',
-      '(Call (MemberAccess (Spawn (Call (MemberAccess w run) [job])) result) [])',
-    ],
-    ['spawn f<Int>(x)', '(Spawn (Call (TypeApplication f [(NamedType [Int] [])]) [x]))'],
-    ['await spawn f(x).result()', '(Await (Call (MemberAccess (Spawn (Call f [x])) result) []))'],
-    [
-      'spawn Job{a}.run()',
-      '(Spawn (Call (MemberAccess (StructLiteral (NamedType [Job] []) [(FieldInitializer a _)]) run) []))',
-    ],
   ])('parses %s', (text, tree) => {
     expect(dumpClean('expression', text)).toBe(tree);
   });

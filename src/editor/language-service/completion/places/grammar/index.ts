@@ -4,7 +4,6 @@
  *
  * - A block's item starts with a statement's word (places/grammar/words.ts), `elif` and `else`
  *   after an `if` chain still open, or whatever an operand starts with.
- * - `spawn` calls a function: a module's, a local one, or one a namespace qualifies (§9).
  * - After a deferred call's taker, a name starts the call it is given, beside the words going on
  *   after an operand (§3.14).
  * - `&` passes a place that may change: a `let` variable, or a reference parameter passing its
@@ -13,7 +12,7 @@
  * - `break`, `continue` and `hold(` name a scope around the cursor by its label (§3.4, §4).
  */
 
-import { type Entity, localFunctionOf } from '../../../../../compiler/binder/entities.ts';
+import type { Entity } from '../../../../../compiler/binder/entities.ts';
 import { unparenthesizedType } from '../../../../../compiler/syntax/types/index.ts';
 import { type Handlers, handlerOf } from '../../../../../foundation/structures/kind-table.ts';
 import type { Candidate } from '../../candidate.ts';
@@ -39,19 +38,10 @@ const byPosition: Handlers<Cursor, GrammarPosition, [place: GrammarPlace], reado
     ...wordCandidates([...statementWordsIn(surroundings), ...(continuesIf ? ifClauseWords : [])]),
   ],
   operand: (cursor, { surroundings }, place) => operandCandidates(cursor, place, surroundings),
-  spawned: (cursor) => visibleNames(cursor, isFunction),
   referenced: (cursor) => visibleNames(cursor, isChangeable),
   labels: (_cursor, { labels }) =>
     labels.map(({ text }): Candidate => ({ name: text, subject: { kind: 'label' } })),
 };
-
-function isFunction(entity: Entity): boolean {
-  return (
-    entity.kind === 'functions' ||
-    entity.kind === 'namespace' ||
-    (entity.kind === 'variable' && localFunctionOf(entity) !== undefined)
-  );
-}
 
 /** A `let` variable, or a reference parameter, which passes the caller's place on (§3.4, §3.7). */
 function isChangeable(entity: Entity): boolean {

@@ -1,14 +1,13 @@
 /**
  * Statements made of a keyword and at most one expression or label (§4, §7): `return`, `break`,
- * `continue`, `defer` and `drop`.
+ * `continue` and `drop`.
  *
  * `return` takes a value only when an expression follows on its line, or an indented value on the
  * lines below, deeper than its own (§2); so `if x: return` and a bare `return` at the end of a line
  * with no deeper line below both return unit. `break` and `continue` take a label on their line.
  */
 
-import type { Expression } from '../../../syntax/expressions/index.ts';
-import type { Break, Continue, Defer, Drop, Return } from '../../../syntax/statements/index.ts';
+import type { Break, Continue, Drop, Return } from '../../../syntax/statements/index.ts';
 import type { Identifier } from '../../../syntax/tree/node.ts';
 import type { Parser } from '../../parser.ts';
 
@@ -44,17 +43,8 @@ function parseExitLabel(parser: Parser): Identifier | undefined {
   return parser.cursor.at('identifier') ? parser.identifier('a label') : undefined;
 }
 
-export function parseDefer(parser: Parser): Defer {
-  const { start, operand } = parseKeywordAndOperand(parser);
-  return { kind: 'Defer', span: parser.spanFrom(start), action: operand };
-}
-
 export function parseDrop(parser: Parser): Drop {
-  const { start, operand } = parseKeywordAndOperand(parser);
-  return { kind: 'Drop', span: parser.spanFrom(start), value: operand };
-}
-
-function parseKeywordAndOperand(parser: Parser): { start: number; operand: Expression } {
   const { start } = parser.cursor.advance().span;
-  return { start, operand: parser.expression() };
+  const value = parser.expression();
+  return { kind: 'Drop', span: parser.spanFrom(start), value };
 }

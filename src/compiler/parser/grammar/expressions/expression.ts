@@ -87,7 +87,6 @@ const prefixParselets: Partial<Record<CursorKind, PrefixParselet>> = {
   ...unaryParselets(),
   '*': parseDereference,
   '**': parseDoubleDereference,
-  spawn: parseSpawn,
   await: parseAwait,
   '&': parseMisplacedReference,
   '..': parseOpenRange,
@@ -135,19 +134,14 @@ const binaryParselets = Object.fromEntries(
     .map((operator) => [operator, binaryParselet(operator)]),
 ) as Record<Exclude<BinaryOperator, 'not in'>, InfixParselet>;
 
-/** The postfix parselets a spawned callee is built of, before its call (§9). */
-const spawnCalleeSteps: Partial<Record<CursorKind, InfixParselet>> = {
+const infixParselets: Partial<Record<CursorKind, InfixParselet>> = {
+  ...binaryParselets,
   '[': indexParselet,
   '.': memberParselet,
   '?.': optionalParselet,
   '->': arrowParselet(false),
   '?->': arrowParselet(true),
   '{': structLiteralParselet,
-};
-
-const infixParselets: Partial<Record<CursorKind, InfixParselet>> = {
-  ...binaryParselets,
-  ...spawnCalleeSteps,
   identifier: deferredCallParselet,
   is: isParselet,
   not: notInParselet,
@@ -203,45 +197,6 @@ function extend(
     return undefined;
   }
   return parselet.parse(parser, left);
-}
-
-/**
- * `spawn f(args)` (§9), binding as JavaScript's `new` does: the callee, with its members, elements
- * and type arguments, then one argument list. What follows applies to what the spawn gives, so
- * `spawn w.run(job).result()` reads the result of the spawn. Anything but a call after `spawn` is
- * kept as written, for the checker to refuse.
- */
-function parseSpawn(parser: Parser): Expression {
-  const { start } = parser.cursor.advance().span;
-  const primary = prefixParselets[parser.cursor.kind];
-  let callee: Expression =
-    primary === undefined ? parser.missing('a call') : primary(parser, 'postfix');
-  for (
-    let step = calleeStep(parser, callee);
-    step !== undefined;
-    step = calleeStep(parser, callee)
-  ) {
-    callee = step;
-  }
-  const call =
-    callee.kind !== 'Call' && atPostfix(parser, '(')
-      ? (callParselet.parse(parser, callee) ?? callee)
-      : callee;
-  return { kind: 'Spawn', span: parser.spanFrom(start), call };
-}
-
-/**
- * One step of a spawned callee: a member, an element, a struct literal, or type arguments; the
- * first call, which a `?.(` may already have made, ends it.
- */
-function calleeStep(parser: Parser, callee: Expression): Expression | undefined {
-  const { kind } = parser.cursor;
-  if (callee.kind === 'Call' || breakSeparatesItems(parser)) {
-    return undefined;
-  }
-  return atPostfix(parser, '<')
-    ? parseTypeApplication(parser, callee)
-    : spawnCalleeSteps[kind]?.parse(parser, callee);
 }
 
 /**

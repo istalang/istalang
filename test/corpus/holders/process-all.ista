@@ -12,7 +12,7 @@ fn note(log: Shared<Array<String>>, text: String):
   log->value = [...log->value, text]
 
 async fn runJob(job: Job, results: Inbox<String>, log: Shared<Array<String>>):
-  defer fn(): note(log, "end " + String(job.id))
+  _ = defer(fn(): note(log, "end " + String(job.id)))
   await time.delay(job.wait)
   results.send("done " + String(job.id))
 

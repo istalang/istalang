@@ -15,7 +15,7 @@
  * - A name starting a block's item, first on its line or after `;`, `:` or `{`, starts a
  *   statement, whatever is written after it on the line.
  * - A name in a header or an operand is an operand, unless what holds it asks for a narrower
- *   kind of name: a label, a function to spawn, a place a call's argument passes by reference.
+ *   kind of name: a label, or a place a call's argument passes by reference.
  */
 
 import { moduleItemWords } from '../../../../../compiler/syntax/items.ts';
@@ -56,8 +56,6 @@ export type GrammarPosition =
       readonly continuesIf: boolean;
     }
   | { readonly kind: 'operand'; readonly surroundings: Surroundings }
-  /** The function a `spawn` calls (§9). */
-  | { readonly kind: 'spawned' }
   /** The place a `&` passes (§3.7). */
   | { readonly kind: 'referenced' }
   | { readonly kind: 'labels'; readonly labels: readonly Identifier[] };
@@ -149,8 +147,6 @@ function heldIn(
       return labels(surroundings.scopes.filter(({ kind }) => kind !== 'LabelledBlock'));
     case 'Call':
       return holds(parent, node) ? labels(surroundings.scopes) : operand;
-    case 'Spawn':
-      return { kind: 'spawned' };
     case 'Reference':
       return passesArgument(parsed, parent) ? { kind: 'referenced' } : operand;
     default:

@@ -12,7 +12,6 @@ import type { FunctionId, Register } from '../../definition/operands.ts';
 import type { Value } from '../../definition/values/values.ts';
 import { unreachable } from '../../foundation/structures/unreachable.ts';
 import { isReference, type RegisterContents } from '../snapshot/objects.ts';
-import type { InstanceCall } from '../snapshot/snapshot.ts';
 import type { ActiveFrame, FrameEntry, FrameHeap } from './frames.ts';
 import { capturedContents, clearRegister, writeRegister } from './registers.ts';
 
@@ -37,13 +36,6 @@ export interface Machine {
   readonly wait: (frame: ActiveFrame) => void;
   /** The value of the future `handle` names, once it has resolved. */
   readonly settled: (handle: Value) => { readonly value: Value } | undefined;
-  /**
-   * Starts `call` as a new instance once the running segment commits (§9), its outcome encoded
-   * for its host by `encoder` when it has one; its name.
-   */
-  readonly spawn: (call: InstanceCall, encoder: FunctionId | undefined) => string;
-  /** A handle to a new guard that calls the function value `callback` when disposed (§7). */
-  readonly guard: (callback: Value) => Value;
   /** A handle to the weak reference to the running async call, for `worker.disposing()` (§7). */
   readonly currentCall: () => Value;
 }

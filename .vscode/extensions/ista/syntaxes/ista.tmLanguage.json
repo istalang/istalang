@@ -168,7 +168,7 @@
       "patterns": [
         {
           "name": "keyword.control.ista",
-          "match": "\\b(if|elif|else|for|in|while|match|case|select|return|break|continue|await|spawn|defer|drop)\\b"
+          "match": "\\b(if|elif|else|for|in|while|match|case|select|return|break|continue|await|drop)\\b"
         },
         { "name": "keyword.control.import.ista", "match": "\\b(import)\\b" },
         { "name": "storage.type.ista", "match": "\\b(fn|let|const|struct|enum|trait)\\b" },

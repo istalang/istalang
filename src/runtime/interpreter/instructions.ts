@@ -11,7 +11,6 @@ import type { Callee } from '../../definition/instructions/calls.ts';
 import type { Instruction } from '../../definition/instructions/instruction.ts';
 import type { FunctionId } from '../../definition/operands.ts';
 import { mapOf, valuesEqual } from '../../definition/values/equality.ts';
-import { instanceHandle } from '../../definition/values/instance-handles.ts';
 import {
   childValues,
   closureOf,
@@ -168,16 +167,6 @@ const handlers: Handlers<Machine, Instruction, [ActiveFrame], void> = {
   currentClosure: (_machine, instruction, frame) => {
     next(frame, instruction.dst, currentClosure(frame));
   },
-  spawn: (machine, instruction, frame) => {
-    const { function: entry, captures } = calledFunction(frame, instruction.callee);
-    const call = {
-      function: entry,
-      captures: [...captures],
-      arguments: instruction.arguments.map((register) => readRegister(frame, register)),
-    };
-    const name = machine.spawn(call, instruction.encoder);
-    next(frame, instruction.dst, instanceHandle(instruction.type, name));
-  },
   currentCall: (machine, instruction, frame) => {
     next(frame, instruction.dst, machine.currentCall());
   },
@@ -206,12 +195,9 @@ const handlers: Handlers<Machine, Instruction, [ActiveFrame], void> = {
     writeRegister(frame, into, { kind: 'array', elements: [...earlier, ...kept] });
     frame.pc += 1;
   },
-  defer: (machine, instruction, frame) => {
-    next(frame, instruction.dst, machine.guard(readRegister(frame, instruction.callback)));
-  },
 };
 
-/** The function a `call` or `spawn` runs, with the captures of a closure called as a value. */
+/** The function a `call` runs, with the captures of a closure called as a value. */
 function calledFunction(
   frame: ActiveFrame,
   callee: Callee,

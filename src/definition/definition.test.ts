@@ -241,38 +241,6 @@ describe('definition format', () => {
       'functions[4].instructions[12]',
     ],
     [
-      'a spawn with the wrong number of arguments',
-      (json) => {
-        const { span } = instructionAt(json, 4, 12);
-        at(json, 'functions', 4, 'instructions')[12] = {
-          kind: 'spawn',
-          span,
-          dst: 0,
-          type: 0,
-          callee: { kind: 'function', function: 3 },
-          arguments: [],
-        };
-      },
-      'spawn: main.fib takes 1 arguments, not 0',
-      'functions[4].instructions[12]',
-    ],
-    [
-      'a spawn giving no Instance',
-      (json) => {
-        const { span } = instructionAt(json, 4, 12);
-        at(json, 'functions', 4, 'instructions')[12] = {
-          kind: 'spawn',
-          span,
-          dst: 0,
-          type: 0,
-          callee: { kind: 'function', function: 3 },
-          arguments: [0],
-        };
-      },
-      "spawn: type 0 is not an Instance's",
-      'functions[4].instructions[12]',
-    ],
-    [
       'code that runs off its end',
       (json) => {
         (at(json, 'functions', 3).instructions as unknown[]).pop();
@@ -320,6 +288,36 @@ describe('definition format', () => {
       'types[1].disposal',
     ],
     [
+      "an Instance's type entry whose encoder can't encode an outcome",
+      (json) => {
+        (at(json, 'types') as unknown as unknown[]).push({
+          kind: 'extern',
+          name: 'prelude.Instance',
+          arguments: [{ kind: 'primitive', name: 'Int' }],
+          disposal: { kind: 'none' },
+          role: 'instance',
+          encoder: 4,
+        });
+      },
+      "main.main can't encode an outcome",
+      'types[1].encoder',
+    ],
+    [
+      "an encoder on a type entry that isn't an Instance's",
+      (json) => {
+        (at(json, 'types') as unknown as unknown[]).push({
+          kind: 'extern',
+          name: 'prelude.Future',
+          arguments: [{ kind: 'primitive', name: 'Int' }],
+          disposal: { kind: 'runtime' },
+          role: 'future',
+          encoder: 3,
+        });
+      },
+      "Only an Instance's type entry encodes an outcome",
+      'types[1].encoder',
+    ],
+    [
       "a start whose encoder can't encode an outcome",
       (json) => {
         json.body.starts = [{ key: 'main.fib(Int)', function: 3, encoder: 4 }];
@@ -334,22 +332,6 @@ describe('definition format', () => {
       },
       'main.fib has captures, so it is called through its closure value',
       'functions[4].instructions[6]',
-    ],
-    [
-      'a spawn of an extern',
-      (json) => {
-        const { span } = instructionAt(json, 4, 12);
-        at(json, 'functions', 4, 'instructions')[12] = {
-          kind: 'spawn',
-          span,
-          dst: 0,
-          type: 0,
-          callee: { kind: 'function', function: 0 },
-          arguments: [0, 1],
-        };
-      },
-      "prelude.compare can't be spawned",
-      'functions[4].instructions[12]',
     ],
     [
       'a cell whose type is not a cell type',

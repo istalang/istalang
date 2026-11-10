@@ -33,6 +33,7 @@
  */
 
 import { encodeJson } from '../../definition/formats/codec.ts';
+import type { FunctionId } from '../../definition/operands.ts';
 import type { Value } from '../../definition/values/values.ts';
 import { unreachable } from '../../foundation/structures/unreachable.ts';
 import type { Advanced, InstanceState, LogRecord, SpawnOptions } from '../instance-state.ts';
@@ -59,9 +60,14 @@ export interface SchedulerSeams {
   readonly now: () => bigint;
 }
 
-/** How a new instance begins: the options it keeps for life, and its random source's seed. */
+/**
+ * How a new instance begins: the options it keeps for life, its random source's seed, and the entry
+ * encoding its outcome as JSON for its host (§9) when a codec writes the outcome's type, the one its
+ * start lists or its `Instance<T>` type entry names.
+ */
 export interface Beginning extends SpawnOptions {
   readonly seed: string;
+  readonly encoder?: FunctionId | undefined;
 }
 
 /** The snapshot of a new instance named `name` of `loaded`, about to run `call` (§9). */

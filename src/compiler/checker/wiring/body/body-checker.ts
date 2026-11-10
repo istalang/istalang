@@ -73,6 +73,7 @@ import type { FieldPassType } from '../../contexts/passes.ts';
 import { Passes } from '../../contexts/passes.ts';
 import { ImplicitCalls } from '../../resolution/applying/implicit.ts';
 import { blockTail } from '../../rules/agreement.ts';
+import { recordOutcomeCodecs } from '../../rules/boundary/outcome-codecs.ts';
 import { checkDisposeUses } from '../../rules/disposal/disposal.ts';
 import { checkDropped } from '../../rules/disposal/dropped.ts';
 import { freshLiteralOf } from '../../rules/placeholders.ts';
@@ -195,6 +196,7 @@ export class BodyChecker implements BodyContext {
     }
     const calls = this.#records.resolved.entries();
     checkDisposeUses(this, calls, checkTestingCalls(this, calls));
+    recordOutcomeCodecs(this, calls);
     return checkedAt({ records: this.#records, units: this, result }, this.#passes.root);
   }
 

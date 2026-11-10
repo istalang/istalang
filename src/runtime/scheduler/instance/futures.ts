@@ -3,7 +3,8 @@
  * and stays resolved.
  *
  * - Who waits on a future is read from the waiters' frames, never stored: an execution waits on
- *   the futures its top frame's `await` or `select` names (definition/instructions/flow.ts).
+ *   the futures its top frame's `await` or `select` names, or a root on the one its `return` gives
+ *   (interpreter/suspension.ts).
  *   Resolving a future readies its waiters in creation order, once each.
  * - `futures.first(fs)` is the one future that waits on others: it resolves with the position and
  *   value of the first of them to resolve, the lowest position among those resolved together.
@@ -16,10 +17,10 @@
  *   a waypoint (§10).
  */
 
-import { awaitedRegisters } from '../../../definition/instructions/flow.ts';
 import { handleTarget, handleTo, type Value } from '../../../definition/values/values.ts';
 import { unreachable } from '../../../foundation/structures/unreachable.ts';
 import { readRegister } from '../../interpreter/registers.ts';
+import { waitedRegisters } from '../../interpreter/suspension.ts';
 import { Panic } from '../../natives.ts';
 import type { FutureState, Watch } from '../../snapshot/objects.ts';
 import type { CallerFuture } from '../testing/test-world.ts';
@@ -309,7 +310,8 @@ function isFirst(future: LiveObjectOf<'future'>): future is FirstFuture {
 }
 
 /**
- * The futures `execution`'s top frame waits on, in the order its `await` or `select` names them.
+ * The futures `execution`'s top frame waits on, in the order its `await` or `select` names them, or
+ * the one a root waits on at its `return`.
  */
 export function waitedOn(execution: LiveExecution): readonly number[] {
   const frame = execution.frames.at(-1);
@@ -317,7 +319,7 @@ export function waitedOn(execution: LiveExecution): readonly number[] {
   if (frame === undefined || instruction === undefined) {
     return [];
   }
-  return awaitedRegisters(instruction).flatMap((register) => {
+  return waitedRegisters(instruction).flatMap((register) => {
     const target = handleTarget(readRegister(frame, register));
     return target === undefined ? [] : [target];
   });

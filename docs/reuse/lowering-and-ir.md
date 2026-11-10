@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-10-28
-last_updated: 2026-11-08
+last_updated: 2026-11-10
 tags: [reuse, lowering, definition, ir, instructions]
 ---
 
@@ -43,16 +43,17 @@ tags: [reuse, lowering, definition, ir, instructions]
 - where a value of one type sits in a value of another as an instantiation made both (its own variant, its literal's base's, or inside the `any` type that took it whole; a recursive type laid out as what it unfolds to, `laidOutAs`), and testing for it → `holdingOf`, `heldPositions`, `heldIn`, `branchOnHeld`, `jumpIfHeld`, `heldInAny`, `laidOutAs` (`src/compiler/lowering/values/holdings.ts`); never patch a layout an instantiation changed; a union's variants in order and the one holding a member → `TypeTable.unionMembers`, `unionVariant`; never build a union's variant by hand
 - convert a value, a union's member by member, into an `any` variant → `convertedIntoAny` (`src/compiler/lowering/values/into-any.ts`); dispatch a required function over an `any` value's or a union's members, converting through the instantiation a member meets → `dispatchEntry`, keyed by its `Dispatch` (`src/compiler/lowering/synthesized/trait-objects.ts`)
 - wrap a plain function value as an `async` closure → `madeAsync` (`src/compiler/lowering/functions/fits/index.ts`)
-- call the codec writing or reading a type, closed within an instance → `codecCall` (`src/compiler/lowering/synthesized/boundary/codec-calls.ts`)
+- call the codec writing or reading a type, closed within an instance → `codecCall`, or `foundCodecCall` where a type may have none (`src/compiler/lowering/synthesized/boundary/codec-calls.ts`)
 - read JSON crossing in from the host, a mismatch handled as its source says (a host's `result` panics the instance, an `input` fails the host's call) → `inboundOf`, `emitInbound` (`src/compiler/lowering/synthesized/boundary/inbound.ts`)
 - write a derived codec's body from its type's form, one writer per direction → `derivedCodecDirection`, `derivedCodecEntry` (`src/compiler/lowering/synthesized/boundary/codecs.ts`); a new form kind is a case in `Encoder.write` and `Decoder.read`
 - apply a checker-recorded `Fit` (conversion plus optional wraps) to a register → `fittedValue`; fit a value of one type to another inside a synthesized entry, as the checker fits them → `fittedIn`, and return what a function of one type gave as one of another gives it, the entry async where that gives a future → `returnedAs` (`src/compiler/lowering/functions/fits/index.ts`); a conversion of parts is rebuilt where the layout changes (`changesLayout`, `rebuilt`, `fits/parts.ts`) by one entry per pair of types (`ConversionEntry`, `src/compiler/lowering/tables/instances.ts`)
 - emit a constant or convert a `ConstantForm` / `CheckedAnnotation` → `emitConstant`, `constantValue`, `annotationValues` (`src/compiler/lowering/tables/constants.ts`)
 - release block variables or statement temporaries → `endScope`, `headerTemporaries`, `lowerGuarded`, `release` (`src/compiler/lowering/constructs/statements/scopes.ts`)
+- copy the value a register holds, a cell's rather than the cell, into a fresh one → `copied` (`src/compiler/lowering/constructs/statements/variables.ts`)
 - list an instruction's operands → `operandsOf` (`src/definition/instructions/instruction.ts`)
 - inspect instruction wait/termination flow → `awaitedRegisters`, `waits`, `terminates` (`src/definition/instructions/flow.ts`)
 - inspect `Definition` function parameters or captures → `takesReference`, `capturesOf` (`src/definition/tables/functions.ts`)
-- check an entry can encode an instance's outcome → `encoderProblem` (`src/definition/tables/functions.ts`)
+- check an entry can encode an instance's outcome → `encoderProblem` (`src/definition/tables/functions.ts`); the encoder an `Instance<T>` type entry names for what it spawns → `outcomeEncoderOf` (`src/definition/tables/types.ts`)
 - inspect `Definition` type references, roles, cell or resource types → `typesIn`, `isResourceType`, `isCellType`, `hasRole` (`src/definition/tables/types.ts`)
 - validate `Definition` table references or value shapes → `checkReferences`, `valueProblems` (`src/definition/validation/references.ts`)
 

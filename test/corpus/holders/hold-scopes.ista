@@ -10,7 +10,7 @@ fn note(log: Shared<Array<String>>, text: String):
   log->value = [...log->value, text]
 
 async fn sleeper(id: Int, log: Shared<Array<String>>):
-  defer fn(): note(log, "stopped " + String(id))
+  _ = defer(fn(): note(log, "stopped " + String(id)))
   await time.delay(1h)
 
 async fn rows(log: Shared<Array<String>>):

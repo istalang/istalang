@@ -37,7 +37,6 @@ const scenarios: readonly Scenario[] = [
         'const',
         'while',
         'for',
-        'defer',
         'drop',
         'enum',
         'trait',

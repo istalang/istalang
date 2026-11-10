@@ -1,8 +1,8 @@
 /**
  * The function a deferred call gives its taker (§3.14), as an argument of the taker's call. It is
  * built from what its call computes now, so it is sendable when each of those values is; where a
- * sendable function is expected and it isn't one, the misfit is explained at each value that isn't
- * sendable, as a spawn's arguments are, rather than as two function types.
+ * sendable function is expected and it isn't one, as `spawn` takes (§9), the misfit is explained at
+ * each value that isn't sendable, rather than as two function types.
  */
 
 import type { DeferredCall } from '../../../syntax/expressions/calls.ts';

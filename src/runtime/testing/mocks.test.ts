@@ -28,7 +28,7 @@ async fn everywhere():
   hold _ = mock(greet, fn(): "hi")
   hold _ = mock(time.now, fn(): Time{value: 42})
   assertEq(await report(), "hi charged 5 42")
-  assertEq(await spawn parent().result(), Ok("hi charged 5 42"))
+  assertEq(await (spawn parent()).result(), Ok("hi charged 5 42"))
   await time.delay(1s)
   assertEq(charged.calls(), [(5,), (5,), (7,)])
 
@@ -36,6 +36,27 @@ async fn everywhere():
 fn mocks() -> Array<Test>: [test("everywhere", everywhere)]
 `);
     expect(outcomesOf(await reportsOf(source))).toEqual(['mocks › everywhere: passed']);
+  });
+
+  it("reach a spawned deferred call's call, not the function an instance starts with", async () => {
+    const source = testModule(`
+import * as runtime from 'runtime'
+
+async fn greet(name: String) -> Future<String>: "hello " + name
+
+async fn hello() -> Future<String>: "hello"
+
+async fn spawned():
+  hold _ = mock(greet, async fn(name: String): "hi " + name)
+  hold _ = mock(hello, async fn(): "hi")
+  assertEq(await (spawn greet("ada")).result(), Ok("hi ada"))
+  assertEq(await spawn(hello).result(), Ok("hello"))
+  assertEq(await runtime.isolate(hello), Ok("hello"))
+
+@Suite{"mocks"}
+fn mocks() -> Array<Test>: [test("spawned", spawned)]
+`);
+    expect(outcomesOf(await reportsOf(source))).toEqual(['mocks › spawned: passed']);
   });
 
   it('replace a generic function named with its type arguments, at that instantiation', async () => {
@@ -95,11 +116,11 @@ async fn describes() -> Future<String>:
 
 async fn native():
   hold _ = mock(describe, toString)
-  assertEq(await spawn describes().result(), Ok("42"))
+  assertEq(await (spawn describes()).result(), Ok("42"))
 
 async fn breaking():
   hold _ = mock(describe, fn(n: Int) -> String: panic("the replacement broke"))
-  drop await spawn describes().result()
+  drop await (spawn describes()).result()
 
 @Suite{"replacements"}
 fn suite() -> Array<Test>: [test("native", native), test("breaking", breaking)]

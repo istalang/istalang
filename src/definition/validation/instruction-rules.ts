@@ -1,9 +1,8 @@
 /**
  * What load validation requires of single instructions beyond their indexes, so the interpreter
  * runs any accepted instruction without a guard of its own:
- * - a construction matches the type it names, a new cell names a cell's type, and a `spawn` an
- *   `Instance`'s
- * - a direct call or `spawn` passes the callee's parameters in number and kind (value or `&`), and
+ * - a construction matches the type it names, and a new cell names a cell's type
+ * - a direct call passes the callee's parameters in number and kind (value or `&`), and
  *   a function with captures is called only through its closure value, never directly
  * - a closure carries its function's captures
  * - only code that runs as an execution, live or ista, waits (`await`, a blocking `select`) or reads
@@ -25,7 +24,6 @@ import type { Argument } from '../instructions/places.ts';
 import {
   type CodeFunction,
   capturesOf,
-  encoderProblem,
   type FunctionDefinition,
   takesReference,
 } from '../tables/functions.ts';
@@ -93,28 +91,12 @@ const rules: Handlers<Tables, Instruction, [CodeFunction], string | undefined> =
     i.callee.kind === 'function'
       ? directCallProblem(tables.functions[i.callee.function], i.arguments)
       : undefined,
-  spawn: (tables, i) => {
-    const calleeProblem =
-      i.callee.kind === 'function'
-        ? spawnProblem(tables.functions[i.callee.function], i.arguments.length)
-        : undefined;
-    const encoder = i.encoder === undefined ? undefined : tables.functions[i.encoder];
-    const encoderIssue = encoder === undefined ? undefined : encoderProblem(encoder);
-    return (
-      calleeProblem ??
-      (encoderIssue === undefined ? undefined : `${encoderIssue}.`) ??
-      (hasRole(tables.types, i.type, 'instance')
-        ? undefined
-        : `type ${i.type} is not an Instance's.`)
-    );
-  },
   currentCall: executionOnly,
   await: waitsOnlyInExecutions,
   select: waitsOnlyInExecutions,
   release: none,
   keep: (_, i) =>
     i.registers.includes(i.into) ? `keeps register ${i.into} into itself.` : undefined,
-  defer: none,
 };
 
 /** What is wrong with one instruction in `owner`, beyond its indexes, if anything. */
@@ -166,20 +148,6 @@ function directCallProblem(
     return `${callee.name} has captures, so it is called through its closure value.`;
   }
   return argumentsProblem(callee, args);
-}
-
-function spawnProblem(target: FunctionDefinition | undefined, arity: number): string | undefined {
-  if (target === undefined) {
-    return undefined;
-  }
-  if (target.kind === 'extern' || target.captures > 0) {
-    return `${target.name} can't be spawned: an instance starts a function with code and no captures.`;
-  }
-  const args = Array.from({ length: arity }, (_, register) => ({
-    kind: 'value' as const,
-    register,
-  }));
-  return argumentsProblem(target, args);
 }
 
 /** Why `args` don't fit `callee`'s parameters, if they don't. */

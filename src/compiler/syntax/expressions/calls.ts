@@ -1,6 +1,6 @@
 /**
- * Call nodes (spec §3.3, §3.7, §3.14, §9): what calls a function, with its arguments as written,
- * and the forms that make a call elsewhere or later, `spawn` and the deferred call.
+ * Call nodes (spec §3.3, §3.7, §3.14): what calls a function, with its arguments as written, and
+ * the deferred call, which makes one later: how `spawn` and `defer` are called (§7, §9).
  *
  * A deferred call is read from the text alone, so parsing never depends on what a name means: its
  * taker is a path of names, maybe called with arguments of its own, and its call is whatever follows
@@ -38,15 +38,6 @@ export interface NamedArgument extends NodeOf<'NamedArgument'> {
 
 /** What a call's parentheses hold: values by position, spreads, and values by name. */
 export type CallArgument = Expression | Spread | NamedArgument;
-
-/**
- * `spawn f(args)`: starts the call as a new instance (§9). It binds as JavaScript's `new` does: the
- * callee, its members and type arguments, then one argument list, so what follows applies to what
- * the spawn gives. `call` is whatever followed `spawn`, which the checker requires to be a call.
- */
-export interface Spawn extends NodeOf<'Spawn'> {
-  readonly call: Expression;
-}
 
 /**
  * `g f(args)`: gives `g` a function making the call `f(args)` later, with everything written in it

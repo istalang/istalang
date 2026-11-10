@@ -78,7 +78,6 @@ export function heapArbitrary(size = 8): fc.Arbitrary<TestHeap> {
           state: { kind: 'disposed', weakRef },
         }),
       ),
-      contents.map((callback): LiveObject => ({ kind: 'guard', id: object, callback })),
       fc
         .oneof(id, fc.constantFrom('disposed' as const, 'callEnded' as const))
         .map((target): LiveObject => ({ kind: 'weakRef', id: object, target })),

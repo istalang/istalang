@@ -3,9 +3,9 @@
  *
  * An object nothing holds is an orphan. A disposable orphan is disposed only once no other
  * disposable orphan still holds it, possibly through orphans that aren't disposable, such as a
- * plain `Shared` cell: a holder's disposal sees what it holds intact (a `defer` callback reads its
- * captures, a `dispose` reads `*self`), and only then lets go of it. What a disposal lets go of
- * loses its last holder at that moment, so it is disposed in the round after.
+ * plain `Shared` cell: a holder's disposal sees what it holds intact (a `dispose` reads `*self`, as
+ * a `Deferred`'s reads the function it calls), and only then lets go of it. What a disposal lets go
+ * of loses its last holder at that moment, so it is disposed in the round after.
  *
  * Orphans holding each other in a cycle are one strongly connected component: none of them is
  * held from outside it, so all of them are disposed in the same round, as spec §7 has values that

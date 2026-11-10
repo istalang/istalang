@@ -9,14 +9,14 @@ import { brokenText } from '../../../test/broken.ts';
 import { runPrograms } from '../../../test/corpus/programs.ts';
 import { specExamples } from '../../../test/corpus/spec-examples.ts';
 import { subsetSource } from '../../../test/definitions/subset.ts';
-import { definitionFormat } from '../../definition/definition.ts';
-import { typesIn } from '../../definition/tables/types.ts';
+import { type Definition, definitionFormat } from '../../definition/definition.ts';
+import { type TypeReference, typesIn } from '../../definition/tables/types.ts';
 import { isError } from '../../foundation/diagnostics/diagnostic.ts';
 import { runToEnd, testRuntime } from '../../runtime/runtime.test-kit.ts';
 import { stdProgramOf } from '../binder/bind.test-kit.ts';
 import { checkProgram } from '../checker/check.ts';
 import { compiledDefinition } from '../compile.test-kit.ts';
-import { compileProgram, diagnose } from '../compile.ts';
+import { compileProgram, compileTests, diagnose } from '../compile.ts';
 import { idOf } from '../program/program.test-kit.ts';
 import type { Program } from '../program/program.ts';
 import { declaredFunctions } from '../syntax/declarations/index.ts';
@@ -33,6 +33,21 @@ function externKeys(program: Program, key: string): readonly string[] {
   const root = program.modules.get(idOf(key))?.tree.root;
   return (root === undefined ? [] : declaredFunctions(root)).flatMap((item) =>
     item.isExtern ? [keyOf(checker, item, checker.parametersOf(item))] : [],
+  );
+}
+
+/** Each `Instance<T>` type entry of a Definition: the name of `T`'s entry or primitive, and its encoder's. */
+function instanceEncoders({ types, functions }: Definition): readonly (string | undefined)[][] {
+  const nameOf = (reference: TypeReference | undefined): string | undefined => {
+    if (reference?.kind === 'primitive') {
+      return reference.name;
+    }
+    return reference?.kind === 'named' ? types[reference.type]?.name : undefined;
+  };
+  return types.flatMap((type) =>
+    type.kind === 'extern' && type.role === 'instance'
+      ? [[nameOf(type.arguments[0]), functions[type.encoder ?? -1]?.name]]
+      : [],
   );
 }
 
@@ -206,7 +221,7 @@ describe('lowering', () => {
       main: [
         "import * as lib from 'lib'",
         'async fn main() -> Future<Int>:',
-        '  match await spawn lib.twice(1).result():',
+        '  match await (spawn lib.twice(1)).result():',
         '    case Ok(value): lib.twice(20) + value',
         '    case Err(error): 0',
       ].join('\n'),
@@ -272,6 +287,38 @@ describe('lowering', () => {
     expect(roles).toContainEqual(['main.Counter', 'shared']);
     expect(roles).toContainEqual(['prelude._Cell', 'cell']);
     expect(roles.filter(([, role]) => role === 'shared')).toEqual([['main.Counter', 'shared']]);
+  });
+
+  it("names the codec writing T as each Instance<T>'s encoder, whichever native spawns it", () => {
+    const program = stdProgramOf({
+      main: [
+        "import * as runtime from 'runtime'",
+        'fn shared() -> Shared<Int>: new Shared{value: 1}',
+        'async fn main() -> Future<Int>:',
+        '  drop spawn shared()',
+        '  drop runtime.isolate(fn(): "isolated")',
+        '  0',
+      ].join('\n'),
+    });
+    expect(instanceEncoders(compiledDefinition(program, 'main'))).toEqual([
+      ['prelude.Shared', undefined],
+      ['String', 'json.toJson'],
+    ]);
+    const tests = stdProgramOf({
+      'main.test.ista': [
+        "import Suite, Test, test from 'testing'",
+        "import * as testing from 'testing'",
+        'async fn crashing():',
+        '  drop testing.spawnCrashingEveryAwait(fn(): 1)',
+        '@Suite{"crashing"}',
+        'fn suite() -> Array<Test>: [test("crashing", crashing)]',
+      ].join('\n'),
+    });
+    const compiled = compileTests(tests);
+    expect(compiled.kind === 'compiled' && instanceEncoders(compiled.definition)).toContainEqual([
+      'Int',
+      'json.toJson',
+    ]);
   });
 
   it("gives the json module's Json enum the json role, and no other enum one", () => {

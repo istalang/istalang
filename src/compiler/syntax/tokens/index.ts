@@ -50,8 +50,6 @@ export const keywords = [
   'trait',
   'import',
   'extern',
-  'spawn',
-  'defer',
   'drop',
   'is',
   'and',

@@ -1,14 +1,14 @@
-# error: 5603 at 33:9
-# error: 5604 at 34:9
-# error: 5604 at 35:9
-# error: 5604 at 37:9
-# error: 5604 at 39:9
-# error: 5605 at 40:18
-# error: 5605 at 41:13
-# error: 5604 at 44:9
-# spawn (§9) starts a call as a new instance: an extern, a function taking a reference, a value of
-# a plain function type, a call through `?.` and a function a constraint requires can't be spawned,
-# and every argument, a method's receiver included, must be sendable.
+# error: 5640 at 33:9
+# error: 5643 at 35:14
+# error: 5644 at 37:9
+# error: 5645 at 39:9
+# error: 5644 at 40:18
+# error: 5644 at 41:13
+# spawn (§9) takes a sendable function giving the new instance's outcome, which a deferred call
+# gives it (§3.14): `spawn` of no call gives nothing to run. What the call computes now is copied
+# into the new instance, so it can't pass a reference, can't capture anything unsendable, a value
+# of a plain function type or a receiver included, and can't be a call through `?.`. An extern and
+# a function a constraint requires are called in the new instance as anywhere.
 
 import Inbox from 'inbox'
 import * as time from 'time'
@@ -30,7 +30,7 @@ fn show(self: Id) -> Int:
 
 async fn main():
   let n = 1
-  spawn 3
+  spawn n
   spawn time.now()
   spawn bump(&n)
   const counting = fn(): n

@@ -157,8 +157,8 @@ select:                            # non-blocking
 
 const s = Slot.create<Int>()       # await s.put(1), s.take(), s.read()
 box.send(m)    _ = box.sendRevertible(m)    await box.receive()
-spawn purchase(req)                # a new, independent instance
-defer fn(): log("exited")          # runs when this block ends, however it ends
+spawn purchase(req)                # a new, independent instance; req computed now
+_ = defer log("exited")            # runs when this block ends, however it ends
 worker.disposing()                 # inside async fn worker: graceful-disposal signal
 await runtime.commit()             # commit without waiting
 panic("bug")                       # freeze the instance for an operator
@@ -209,7 +209,7 @@ Blocks are defined by indentation, as in Python. Comments start with `#` and run
   ```
 - **Trailing commas** are allowed in every comma-separated list; a list broken over lines needs none.
 - **Identifiers** are ASCII letters, digits and `_`, not starting with a digit. Strings and comments may hold any Unicode.
-- **Reserved words:** `fn`, `async`, `await`, `let`, `const`, `if`, `elif`, `else`, `for`, `in`, `while`, `match`, `case`, `select`, `return`, `break`, `continue`, `struct`, `enum`, `trait`, `import`, `extern`, `spawn`, `defer`, `drop`, `is`, `and`, `or`, `not`, `true`, `false`, `none` and `as`. Thirteen more words are keywords only where the grammar expects them and ordinary names elsewhere: `type` before an alias's name, or an associated type's in a struct, enum or trait body (§3.1, §3.10), `shared`, `sendable` and `ephemeral` among a head's modifiers (below), `gives` and `takes` before a type parameter's name or `...` (§3.5), `new` before a name (§3.18), `from` before an import's path, `any` before a trait's name in a type (§3.10), `keyof` before a type in a type (§3.1), `infer` before a type variable's name in a type `match` case's pattern (§3.17), `hold` before the variable declaration it holds (§3.4), and `by` after a range, before its step (§3.8). So `T.from` (§3.10), a field named `type` and a function named `hold` are valid. A head's **modifiers** stand before its `fn` or `struct` in any order, each once and one word of each group: `extern` (§3.6); a function type's `sendable` (§3.14), or an extern struct's handle, `shared`, `sendable` or `ephemeral` (§3.6), or a shared struct's `shared` (§3.18); and `async`. The formatter writes them in that order: `extern async fn`, `extern shared struct`, `sendable async fn(A) -> R`. The built-in types' names, `Int`, `Float`, `Bool`, `String`, `None`, `Unit`, `Never` and `Self` (§3.10), are no keywords, but no type, variant or type parameter is declared with them, since every module sees them.
+- **Reserved words:** `fn`, `async`, `await`, `let`, `const`, `if`, `elif`, `else`, `for`, `in`, `while`, `match`, `case`, `select`, `return`, `break`, `continue`, `struct`, `enum`, `trait`, `import`, `extern`, `drop`, `is`, `and`, `or`, `not`, `true`, `false`, `none` and `as`. Thirteen more words are keywords only where the grammar expects them and ordinary names elsewhere: `type` before an alias's name, or an associated type's in a struct, enum or trait body (§3.1, §3.10), `shared`, `sendable` and `ephemeral` among a head's modifiers (below), `gives` and `takes` before a type parameter's name or `...` (§3.5), `new` before a name (§3.18), `from` before an import's path, `any` before a trait's name in a type (§3.10), `keyof` before a type in a type (§3.1), `infer` before a type variable's name in a type `match` case's pattern (§3.17), `hold` before the variable declaration it holds (§3.4), and `by` after a range, before its step (§3.8). So `T.from` (§3.10), a field named `type` and a function named `hold` are valid. A head's **modifiers** stand before its `fn` or `struct` in any order, each once and one word of each group: `extern` (§3.6); a function type's `sendable` (§3.14), or an extern struct's handle, `shared`, `sendable` or `ephemeral` (§3.6), or a shared struct's `shared` (§3.18); and `async`. The formatter writes them in that order: `extern async fn`, `extern shared struct`, `sendable async fn(A) -> R`. The built-in types' names, `Int`, `Float`, `Bool`, `String`, `None`, `Unit`, `Never` and `Self` (§3.10), are no keywords, but no type, variant or type parameter is declared with them, since every module sees them.
 
 Every expression has a static type; a value whose type is known only when the program runs has a trait's, `any T` (§3.10). There are no implicit conversions, with six exceptions: a value is converted into an `any` type wherever one is expected (§3.10), a nominal struct's value is converted into its equal shape wherever that shape is expected (§3.1), a function fits where one of its parameters giving a future of its result is expected (§3.14), a one-element tuple and its element each fit where the other is expected (§3.15), a value of a literal type, or of a union of literals, fits where their base type is expected, and a value is converted into a union wherever one is expected (both below).
 
@@ -227,7 +227,7 @@ Every expression has a static type; a value whose type is known only when the pr
 | `Range` | A span of integers written `a..b`, half-open (§3.8). |
 | `Slot<T>` | Handle to a slot shared by the concurrent executions of one instance: empty or full (§6). |
 | `Future<T>` | Read-only view of a slot: something to wait on (§6). |
-| `Instance<T>` | Handle to an instance `spawn` started, whose function returns a `T` (§9). |
+| `Instance<T>` | Handle to an instance `spawn` started, whose outcome is a `T` (§9). |
 | `Inbox<T>` | Standard-library message queue built on slots (§6). |
 | `Shared<T>` | A shared struct of one value in the instance's own memory: every copy sees the same value, read and written as `x->value` (§3.8). |
 | `WeakRef<T>` | Handle referring to a disposable value without holding it (§3.8, §7). |
@@ -460,7 +460,7 @@ fn moved() -> Settings:
 
 **Value semantics.** Structs, arrays and maps are values. They are copied structurally, field by field, when assigned, passed to a function, returned or sent. A by-value parameter is immutable (§3.3). The only ways a function can change data its caller holds are an explicit reference (§3.7) and a handle, such as a `Shared` value (§3.8). A **handle** is a value of a type its declaration makes one, never its name: every shared struct (§3.18), such as `Shared<T>`, `Inbox<T>` and `Revertible<T>`, and every extern struct declared `shared`, `sendable` or `ephemeral` (§3.6), such as `Slot<T>`, `Future<T>`, `WeakRef<T>` and `Instance<T>`. Copying one copies the handle, not the state behind it, and `==` compares handles by identity.
 
-**Sendable types.** Only sendable values can leave an instance: as `spawn` arguments, or through extern declarations. Sendable types are the ones that satisfy the built-in `Sendable` trait (§3.10). A type is sendable when it is:
+**Sendable types.** Only sendable values can leave an instance: in the function `spawn` starts a new one with (§9), or through extern declarations. Sendable types are the ones that satisfy the built-in `Sendable` trait (§3.10). A type is sendable when it is:
 
 - a primitive or a literal type (§2);
 - an extern struct that is a value, or a `sendable` handle (§3.6), whose type arguments are all sendable;
@@ -468,7 +468,7 @@ fn moved() -> Settings:
 - a type parameter constrained `is Sendable`;
 - a sendable function type, `sendable fn(A) -> R` (§3.14). It refers to code, so it goes only to an instance of the same program, through `spawn`: an extern declaration, or `json`, whose types contain one is a compile error.
 
-Handles other than `sendable` ones, such as futures, slots, `Shared` values, inboxes and weak references, and values of plain function types are never sendable, and neither is any value that contains one. They therefore never leave the instance that created them: `spawn` arguments and extern declarations can't contain them, which is a compile error.
+Handles other than `sendable` ones, such as futures, slots, `Shared` values, inboxes and weak references, and values of plain function types are never sendable, and neither is any value that contains one. They therefore never leave the instance that created them: what a spawned function captures and extern declarations can't contain them, which is a compile error.
 
 ### 3.2 Slots and inboxes
 
@@ -744,7 +744,7 @@ extern fn disposed<T is Disposable>(self: WeakRef<T>) -> Future<Unit>
 extern fn result<T is Sendable>(self: Instance<T>) -> Future<Result<T>>   # its first end (§9)
 ```
 
-The prelude also contains `type Optional<T> = T?`, whose static functions are every optional's (§3.17), `Result`, `Step` (§3.10), `Error`, the built-in traits (§3.10, including `Disposable`, `Stringable` and `Parsable`, which `Int`, `Float`, `Bool` and `String` satisfy), the `Waypoint` annotation (§10) and `panic`.
+The prelude also contains `type Optional<T> = T?`, whose static functions are every optional's (§3.17), `Result`, `Step` (§3.10), `Error`, the built-in traits (§3.10, including `Disposable`, `Stringable` and `Parsable`, which `Int`, `Float`, `Bool` and `String` satisfy), the `Waypoint` annotation (§10), `panic`, `spawn<R>(f: sendable async fn() -> R) -> Instance<R>`, which starts a new instance running `f` (§9), and `defer(f: fn() -> Unit) -> Deferred`, a shared struct whose `dispose` calls `f` (§7).
 
 The **standard library** is a set of modules, imported explicitly, for example `import * as time from 'time'`. Pure modules are plain code in the language; runtime-backed ones declare externs the runtime implements. Nothing in it reaches a file system, shell, environment, network or reflection: a workflow affects the outside world only through externs its operator provides.
 
@@ -930,7 +930,7 @@ for notifier in notifiers:
 
 | Trait | Required | Used by |
 | --- | --- | --- |
-| `Sendable` | nothing: a marker, derived for user structs (§3.1) | `spawn` arguments; whatever crosses to the host, through `Encodable` and `Decodable` |
+| `Sendable` | nothing: a marker, derived for user structs (§3.1) | what a spawned function captures (§9); whatever crosses to the host, through `Encodable` and `Decodable` |
 | `Disposable` | `dispose`, synchronous; only shared structs (§3.18) and extern types (§7) | values the runtime disposes when their last holder ends (§7) |
 | `Iterable<T, C = Self>` | `iterate`, returning a cursor, `fn() -> Step<T>` | `for x in c`, comprehensions and spreads |
 | `Indexable<K, V, C = Self>` | `index(self, key) -> V` | `x[k]` |
@@ -1175,11 +1175,11 @@ The only difference is that a lambda can also be bound with `let` and reassigned
 - **Fields of function types.** `x.f(…)` calls a field `f` of a function type when `x`'s type has no method `f`. When it has both, the call is ambiguous, which is a compile error; `(x.f)(…)` calls the field.
 - **Equality.** Two function values are equal when they run the same function with equal captures. A captured `let` is a cell, so it compares by identity (§3.1).
 
-**Sendable function types.** A plain function value isn't sendable (§3.1): it may capture a cell, such as a captured `let`'s, or a shared struct. `sendable fn(A) -> R` and `sendable async fn(A) -> R` are the function types whose values capture only sendable values, so they can be spawned and sent to `spawn`:
+**Sendable function types.** A plain function value isn't sendable (§3.1): it may capture a cell, such as a captured `let`'s, or a shared struct. `sendable fn(A) -> R` and `sendable async fn(A) -> R` are the function types whose values capture only sendable values, so they can be spawned:
 
 - A function value has a sendable function type when every capture's type is sendable. A captured `let` is a cell, so a closure capturing one has a plain function type; a top-level or static function named as a value captures nothing, so its type is sendable.
 - A `sendable fn(A) -> R` fits wherever an `fn(A) -> R` is expected, never the reverse.
-- It satisfies `Sendable`, so it may be a `spawn` argument or part of sendable data. `spawn f(args)` accepts any expression of a sendable function type as `f`; its captures are copied into the new instance with the arguments (§9).
+- It satisfies `Sendable`, so it may be part of sendable data, and `spawn` starts a new instance with one, its captures copied into it (§9).
 - It refers to code, so it never leaves for the host: an extern declaration or `json` whose types contain one is a compile error. Code reaches only instances of the same program, which keeps it from crossing versions (§5).
 
 **Deferred calls.** `g f(args)` gives `g` a function that makes the call `f(args)` later, with everything written computed now:
@@ -1189,6 +1189,8 @@ retry fetchUser(id)                    # retry((fn(x): fn(): fetchUser(x))(id))
 retry(times: 5) fetchUser(id)          # g's own arguments in parentheses
 pool.submit encode(file)               # a method takes it, its receiver as self
 retry load(id).process()               # load(id) runs now, process() later
+spawn purchase(req)                    # req now, purchase(req) in a new instance (§9)
+_ = defer log(x)                       # x now, log(x) as the block ends (§7)
 ```
 
 - **Shape.** A name, or a path of names joined by `.`, maybe called with arguments of its own, then on its line a call. Parsing reads it from the text alone, so it never depends on what a name means; a range's `by` stays the range's.
@@ -1199,6 +1201,7 @@ retry load(id).process()               # load(id) runs now, process() later
 - **Nesting** reads from the right: `a b c(x)` is `a(fn(): b(fn(): c(x)))`, with `x` computed once, now.
 - **The bracket form passes a value:** `retry(makeAttempt(x))` calls `makeAttempt` now and passes the function it gives.
 - **A missing comma.** `[a b(c)]` reads as a deferred call. Where `a` is a value and no function, the error points at the comma likely missing after it.
+- **No call needs a keyword.** `spawn` and `defer` are functions called this way (§7, §9), as is any function taking a call to run later.
 
 ### 3.15 Tuples
 
@@ -1528,7 +1531,7 @@ In the common case nothing is stored anywhere else, so a disposable lives exactl
 
 - **Deterministic.** Disposal happens when the last holder's block ends, never at snapshot time, because `dispose` has visible effects.
 - **Synchronous.** `dispose` can't `await`. It can send signals, retract messages and mark work as aborted. Anything that must clean up gracefully does so in its own execution, after receiving the signal.
-- **Ordered.** Values that lose their last holder at the same block exit are disposed in reverse creation order. A value held by another one being disposed loses its last holder only once that disposal is done, so a holder is disposed before what it holds, and its `dispose` or `defer` never sees a disposed value.
+- **Ordered.** Values that lose their last holder at the same block exit are disposed in reverse creation order. A value held by another one being disposed loses its last holder only once that disposal is done, so a holder is disposed before what it holds, and its `dispose`, a `Deferred`'s function included, never sees a disposed value.
 - **Atomic.** The effects of disposal commit with the segment in which the block ends.
 - **Within one instance.** Holding never crosses instances: disposable handles aren't sendable (§3.1), and what the host provides is owned by the host.
 - **Cycles.** Disposables that hold each other in a cycle lose their last holder together, when the last one from outside the cycle releases them, and are disposed then, like any other values that lose their last holder at once.
@@ -1542,6 +1545,7 @@ In the common case nothing is stored anywhere else, so a disposable lives exactl
 | a future the host fills | drops the wait; a later fill by the host changes nothing |
 | `Slot` or `Inbox` | it dies, along with the values in it |
 | `Revertible<T>` holder | retracts the message if it hasn't been received |
+| `Deferred` (`defer`'s) | calls its function |
 
 In every case, each `disposed()` future watching the value resolves afterwards.
 
@@ -1574,18 +1578,18 @@ async fn worker(jobs: Inbox<Job>):
 - **The next `await` aborts.** After disposal, the first `await` the call reaches stops it, and its variables are released. A call that never watches `disposing()`, or isn't waiting on it at that moment, is stopped right where it is suspended.
 - **Cleanup can't wait.** Because the next `await` aborts the call, cleanup is synchronous by construction. Cleanup is decided by the future: whatever the call is suspended on, if it is the call's `disposing()` future, it resumes as cleanup. The compiler warns about an `await` inside a `select` case written as `worker.disposing()`; one held in a variable is the same future, but gets no warning.
 - **Lexical.** `worker.disposing()` always refers to the enclosing call of `worker`, also from a nested local function, so nested functions are never ambiguous. It is a compile error outside an `async fn` of that name, and for `main`, which nothing holds.
-- **Calls nothing can dispose.** An instance's root call, such as a spawned function, and a call that has already returned are never disposed, so their `disposing()` never resolves.
+- **Calls nothing can dispose.** An instance's root call, such as a started function, and a call that has already returned are never disposed, so their `disposing()` never resolves. The call a spawned instance awaits for its outcome (§9) is disposed only when the instance is terminated.
 
-**Defer.** `defer f` runs the function `f` when the current block ends, whether it finishes, is left through `return`, `break` or `continue`, or is disposed at an `await`. `f` is a lambda or a function reference of type `fn() -> Unit`, as in `defer fn(): log("exited")` or `defer cleanup`, so it can't await. Several deferred functions run in reverse order, last first, and a `defer` in a loop body runs at the end of each iteration, as in Swift. `defer` is sugar for holding a disposable guard in a hidden local, so it needs no new machinery. Unlike `disposing()`, it also runs on a normal exit; to act only on disposal, check a flag:
+**Defer.** `defer` is a prelude function, `fn defer(f: fn() -> Unit) -> Deferred`, whose `Deferred` is a disposable calling `f` when released, so it needs no machinery of its own. Called as a deferred call (§3.14), `_ = defer log(x)` computes `x` now and logs when the current block ends, whether it finishes, is left through `return`, `break` or `continue`, or is disposed at an `await`; `hold _ = defer log(x)` logs when the function ends, as Go's `defer` does. A `Deferred` is must-use, so a bare `defer log(x)` is a compile error. `f` is a plain function, so it can't await. Several run as any values released together are disposed, last first, and one kept by `_` in a loop body runs at the end of each iteration, as in Swift. The bracket form passes a function as it is, a lambda reading variables when it runs. Unlike `disposing()`, it also runs on a normal exit; to act only on disposal, check a flag:
 
 ```python
 async fn reserveAndShip(item: Item):
     const hold = reserve(item)
     let shipped = false
-    defer fn(): {
+    _ = defer(fn(): {
         if not shipped:
             release(hold)
-    }
+    })
     await ship(item)
     shipped = true
 ```
@@ -1658,9 +1662,9 @@ const cancelled: Bool = select:
 
 Every program has exactly one `async fn main()`. The runtime starts it when a version is deployed. When `main` returns, everything it holds is disposed (§7).
 
-**spawn.** `spawn f(args)` starts `f` as a new, independent workflow instance with its own snapshot, then continues immediately. It is an expression of type `Instance<T>`, `T` being what `f` returns, or the `T` of an async `f`'s `Future<T>`. Its value may be left unused, and holding it doesn't hold the new instance, which stays independent. It doesn't wait, so a plain `fn` may spawn too. The arguments are copied into the new instance, so they must be sendable (§3.1). The new instance runs until it finishes by itself, on the version it started with, and its return value is recorded as its outcome, which the host can see. Concurrency inside an instance needs no `spawn`: an async call that isn't awaited right away already runs alongside its caller.
+**spawn.** `spawn` is a prelude function, `fn spawn<R>(f: sendable async fn() -> R) -> Instance<R>`, that starts `f` as a new, independent workflow instance with its own snapshot, then continues immediately. Called as a deferred call (§3.14), `spawn purchase(req)` computes `req` now and copies it into the new instance, which makes the call `purchase(req)`; a plain function fits too (§3.14), so `purchase` may be async or not, and `spawn(f)` starts a function value `f` itself. The new instance awaits the future `f` gives and ends with its value, its outcome, `R`, which the host can see. Its `Instance<R>` may be left unused, and holding it doesn't hold the new instance, which stays independent. It doesn't wait, so a plain `fn` may spawn too. What `f` captures is copied into the new instance, so it must be sendable (§3.1): a deferred call's computed values each are (§3.14). The new instance runs until it finishes by itself, on the version it started with. Concurrency inside an instance needs no `spawn`: an async call that isn't awaited right away already runs alongside its caller.
 
-- **What can be spawned.** `f` is a top-level function, async or not, a method or static function, an instance of a generic one, or any value of a sendable function type (§3.14), whose captures are copied with the arguments. An extern can't be spawned, and neither can a function with a `&` parameter.
+- **What can be spawned.** Any call a deferred call can make with sendable values (§3.14): of a top-level function, async or not, a method or static function, an instance of a generic one, an extern, a function a constraint requires, or a value of a sendable function type, whose captures are copied with what the call passes. A `&` argument, a call through `?.` and a value that isn't sendable are compile errors.
 - **Effects commit with the segment.** The new instance exists once the segment that spawned it commits; a segment that is discarded spawned nothing. Each spawned instance is named after its parent and a count of the parent's spawns, `<parent>/<n>`, and is written before the parent's commit, so a segment that re-runs finds it already there and doesn't spawn it twice.
 - **Options are inherited.** An instance spawned by one that runs with `crashEveryAwait` (§10) runs with it too.
 - **Waiting for an instance.** `inst.result()` resolves with the instance's first end: `Ok` of its outcome when it finishes, or `Err(Error{message, code: "panic", trace})` with its panic when it panics, or was terminated after one. The outcome is copied out of the instance's last commit, so `T` must be sendable. A retry after the panic changes nothing for a wait already resolved. `Instance<T>` is sendable and compares by identity, so it may be passed to another instance; it isn't `Encodable`, so it never crosses to the host.
@@ -1755,7 +1759,7 @@ async fn withPurchaseEnv(test: async fn(PurchaseEnv)):
 
 `setups(a, b)` combines several environments into one, with overloads for up to six: `setups(withPurchaseEnv, withFakeHost)` is a `Setup<(PurchaseEnv, HostEnv)>`, whose test receives both as a tuple. The first setup is the outermost: it prepares first and tears down last.
 
-**Mocking.** `mock(target, replacement)` replaces any named function (an extern, a standard-library function or one of the program's own) while the `Mock<F>` it returns is held, `F` being the function's type, so a mock follows block lifetimes like every other resource. `mock` takes a pack (§3.5), one declaration for every function, an async one's result being the future it gives (§3.14): `mock<...A, R>(target: fn(...A) -> R, replacement: fn(...A) -> R) -> Mock<fn(...A) -> R>`, and explicit type arguments name the parameters as a tuple, then the result. It applies to everything the test runs, including instances it spawns. For an overloaded name, the expected type picks the overload; a lambda can't be a target, since it has no identity to replace, nor can a variant, which is built where it is called (§3.11). A host type's `dispose`, which the runtime calls (§7), may be a mock's target, the one place it may be named. Spawning an instance isn't a call, so an instance runs the function it was spawned with, whatever mocks it. `m.calls()` returns the arguments of every call as tuples, typed from `F`: `Array<(String, Int)>` for `chargeCard`, `Array<(String,)>` for a function of one parameter, and a `Unit`, the empty tuple, per call of one of none.
+**Mocking.** `mock(target, replacement)` replaces any named function (an extern, a standard-library function or one of the program's own) while the `Mock<F>` it returns is held, `F` being the function's type, so a mock follows block lifetimes like every other resource. `mock` takes a pack (§3.5), one declaration for every function, an async one's result being the future it gives (§3.14): `mock<...A, R>(target: fn(...A) -> R, replacement: fn(...A) -> R) -> Mock<fn(...A) -> R>`, and explicit type arguments name the parameters as a tuple, then the result. It applies to everything the test runs, including instances it spawns. For an overloaded name, the expected type picks the overload; a lambda can't be a target, since it has no identity to replace, nor can a variant, which is built where it is called (§3.11). A host type's `dispose`, which the runtime calls (§7), may be a mock's target, the one place it may be named. A deferred call's call is a call, so `spawn charge(order)` calls `charge` in the new instance, which reaches its mock. Starting an instance with a function value, `spawn(f)` or `runtime.isolate(f)`, isn't a call of it, so an async `f` runs whatever mocks it. `m.calls()` returns the arguments of every call as tuples, typed from `F`: `Array<(String, Int)>` for `chargeCard`, `Array<(String,)>` for a function of one parameter, and a `Unit`, the empty tuple, per call of one of none.
 
 - **Mocking twice.** Mocking a target that is already mocked replaces it while the new handle is held; releasing that handle brings back the mock before it.
 - **Across instances.** A mock applies to the instance holding it and to every instance spawned from it. Such an instance calls the replacement in the instance holding the mock, as a host's extern is called (§9): the arguments and the result are copied between the two, so they must be sendable, or the call panics. A future the replacement returns is followed across as well. The instance answering plays the host, so a host value it receives or hands back isn't its to dispose: only the instance that got it from the call owns it (§7).

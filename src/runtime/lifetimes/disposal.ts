@@ -8,9 +8,9 @@
  *   await; any other is stopped where it waits, its frames let go.
  * - A pending slot operation leaves its slot's queue without consuming anything, and a future the
  *   host fills frees its token, so a later fill changes nothing and the host may name a new one so.
- * - A `defer` guard calls its function, and a value whose type declares `dispose` as code calls
- *   that: both are calls the collector runs as code (collector.ts), and the object is gone once the
- *   call returns. A disposal never awaits, since neither can.
+ * - A value whose type declares `dispose` as code calls that: a call the collector runs as code
+ *   (collector.ts), and the object is gone once the call returns. A disposal never awaits, since a
+ *   `dispose` can't.
  * - Any object a weak reference refers to has its watches resolved once it is gone (weak-side.ts).
  *
  * An object is disposed when nothing holds it only when that can be seen: it does one of the
@@ -25,18 +25,16 @@
 
 import type { FunctionId } from '../../definition/operands.ts';
 import type { TypeDefinition } from '../../definition/tables/types.ts';
-import { closureOf, handleTo, type Value } from '../../definition/values/values.ts';
+import { handleTo, type Value } from '../../definition/values/values.ts';
 import { type Handlers, handlerOf } from '../../foundation/structures/kind-table.ts';
-import { unreachable } from '../../foundation/structures/unreachable.ts';
 import type { Heap, LiveExecution, LiveObject, LiveObjectOf } from '../scheduler/instance/heap.ts';
 import type { WeakSide } from '../scheduler/instance/weak-side.ts';
 import type { FutureState } from '../snapshot/objects.ts';
 
-/** A call a disposal makes: a function value, or a function with its arguments. */
+/** A call a disposal makes: a declared `dispose`, with the disposed value as its argument. */
 export interface DisposalCall {
   readonly kind: 'call';
   readonly function: FunctionId;
-  readonly captures: readonly Value[];
   readonly arguments: readonly Value[];
 }
 
@@ -99,7 +97,6 @@ function declared(object: LiveObjectOf<'cell' | 'resource'>): KindDisposal {
         ? {
             kind: 'call',
             function: disposal.function,
-            captures: [],
             arguments: [handleTo(object.id)],
           }
         : undefined;
@@ -117,10 +114,6 @@ const kinds: Handlers<undefined, LiveObject, [], KindDisposal> = {
     dispose: () => undefined,
   }),
   mock: () => ({ disposable: () => true, dispose: () => undefined }),
-  guard: (_context, guard) => ({
-    disposable: () => true,
-    dispose: () => callOf(guard.callback),
-  }),
   cell: (_context, cell) => declared(cell),
   resource: (_context, resource) => declared(resource),
   weakRef: () => inert,
@@ -170,13 +163,6 @@ function disposeCall(context: DisposalContext, execution: LiveExecution): Cleanu
   }
   context.stop(execution);
   return undefined;
-}
-
-/** The call a function value makes when called with no arguments. */
-function callOf(callback: Value): DisposalCall {
-  const closure =
-    closureOf(callback) ?? unreachable('A defer guard holds no function; the checker forbids it.');
-  return { kind: 'call', function: closure.function, captures: closure.captures, arguments: [] };
 }
 
 function disposalOf(types: readonly TypeDefinition[], type: number) {

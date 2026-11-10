@@ -51,13 +51,14 @@ import { Slots } from './slots.ts';
 import { WeakSide } from './weak-side.ts';
 
 /**
- * A call this segment spawned (§9): the new instance's name, what it calls, its own options, and
- * the seed of its random source, drawn from this instance's.
+ * A call this segment spawned (§9): the new instance's name, what it calls, its own options, the
+ * seed of its random source, drawn from this instance's, and its outcome's encoder.
  */
 export interface Spawn extends Required<SpawnOptions> {
   readonly name: string;
   readonly call: InstanceCall;
   readonly seed: string;
+  readonly encoder: FunctionId | undefined;
 }
 
 export type InstanceStatus = Snapshot['status'];
@@ -257,16 +258,17 @@ export class Instance {
 
   /**
    * Records `call` as spawned by this segment, with `options`, and with `crashEveryAwait` too when
-   * this instance runs with it (§9, §10); the name the new instance will have.
+   * this instance runs with it (§9, §10), its outcome encoded by `encoder`; the name the new
+   * instance will have.
    */
-  spawn(call: InstanceCall, options: SpawnOptions = {}): string {
+  spawn(call: InstanceCall, options: SpawnOptions, encoder: FunctionId | undefined): string {
     const name = spawnedName(this.name, this.spawnedBefore + this.#spawns.length + 1);
     this.#spawns.push({
       name,
       call,
       crashEveryAwait: this.crashEveryAwait || options.crashEveryAwait === true,
       terminatesOnPanic: options.terminatesOnPanic === true,
-      encoder: options.encoder,
+      encoder,
       seed: seedFrom(this.draw()),
     });
     return name;

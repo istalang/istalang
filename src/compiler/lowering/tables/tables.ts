@@ -124,6 +124,7 @@ export class DefinitionTables {
     this.#checker = checker;
     this.types = new TypeTable(checker, {
       functionIndex: (instance) => this.functionIndex(instance),
+      callIndex: (call) => this.callIndex(call),
       hostNativeIndex: (declaration) => this.hostNativeIndex(declaration),
       annotationValues: (annotations) => annotationValues(this, annotations),
     });

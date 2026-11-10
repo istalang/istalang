@@ -6,7 +6,8 @@
  * - What the call computes now is computed here, after the taker's parts, by value: its callee's
  *   value or its receiver, then its arguments; a deferred call within it computes its taker's parts
  *   and its own call's, so every value is computed once, now. The function is a closure of an entry
- *   of its own, capturing them in that order.
+ *   of its own, capturing copies of them in that order: a variable a closure or a `&` shares is a
+ *   cell, which a closure would share too, and a copy captures the value it holds now.
  * - The entry, one per call in a body's instance, makes the call from its captures, closed as that
  *   instance closed it, so a default the call leaves out is computed when it runs; a deferred call
  *   within builds the function it gives from its own captures first. What the call gives is
@@ -33,6 +34,7 @@ import {
   type DeferredPlan,
   ownerDeclaration,
 } from '../../tables/instances.ts';
+import { copied } from '../statements/variables.ts';
 import { leaveAll, preparedCall } from './calls.ts';
 
 export function lowerDeferredCall(context: FunctionContext, node: DeferredCall): Register {
@@ -52,7 +54,9 @@ function deferredFunction(context: FunctionContext, node: DeferredCall): Registe
     return context.expression(node.call);
   }
   const { plan, values } = givenFunction(context, node);
-  return closure(context, context.deferredIndex(plan), values, node.call.span);
+  const { span } = node.call;
+  const copies = values.map((value) => copied(context, value, span));
+  return closure(context, context.deferredIndex(plan), copies, span);
 }
 
 /**

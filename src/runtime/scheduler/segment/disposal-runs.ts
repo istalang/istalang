@@ -102,7 +102,7 @@ export class DisposalRuns {
 
   #call(call: DisposalCall): boolean {
     const { instance, caller, runStack } = this.#seams;
-    const target = startCall(caller, call.function, call.arguments, call.captures);
+    const target = startCall(caller, call.function, call.arguments, []);
     if (target.kind === 'answered') {
       return true;
     }

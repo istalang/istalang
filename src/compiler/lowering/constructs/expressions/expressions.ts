@@ -14,7 +14,7 @@ import { neverLowered } from '../never-lowered.ts';
 import { lowerDereference } from '../parts/places.ts';
 import { lowerName, lowerNamed } from './access/names.ts';
 import { lowerUnwrap } from './access/optionals.ts';
-import { lowerCall, lowerSpawn } from './calls.ts';
+import { lowerCall } from './calls.ts';
 import { lowerFunctionValue, lowerLambda } from './closures.ts';
 import {
   lowerArrayLiteral,
@@ -74,7 +74,6 @@ export const expressionHandlers: Handlers<FunctionContext, Expression, [], Regis
   Reference: neverLowered,
   Index: lowerIndex,
   Propagate: lowerPropagate,
-  Spawn: lowerSpawn,
   DeferredCall: lowerDeferredCall,
   Unwrap: lowerUnwrap,
   ChainedComparison: lowerChainedComparison,

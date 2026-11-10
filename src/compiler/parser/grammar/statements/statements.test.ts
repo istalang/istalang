@@ -131,9 +131,7 @@ describe('keyword statements', () => {
     ['return x + 1', '(Return (Binary x + 1))'],
     ['break', '(Break _)'],
     ['continue', '(Continue _)'],
-    ['defer fn(): log("exited")', '(Defer (Lambda _ [] _ (Call log ["exited"])))'],
     ['drop audit.record(event)', '(Drop (Call (MemberAccess audit record) [event]))'],
-    ['spawn purchase(req)', '(ExpressionStatement (Spawn (Call purchase [req])))'],
     [
       'for key, value in m: use(key)',
       `(For _ [(NamePattern [key] []) (NamePattern [value] [])] m ${bodyOf('(Call use [key])')})`,
@@ -183,7 +181,7 @@ describe('declarations only the top level allows', () => {
   });
 });
 
-describe('labels, `hold` and spawn as a value', () => {
+describe('labels, `hold` and compound assignments', () => {
   it.each([
     [
       'outer: for x in xs: break outer',
@@ -198,7 +196,6 @@ describe('labels, `hold` and spawn as a value', () => {
       '(LabelledBlock batch (Block [(VariableDeclaration (Hold batch) [(WildcardPattern)] _ x)]))',
     ],
     ['hold(x)', '(ExpressionStatement (Call hold [x]))'],
-    ['spawn f(x)', '(ExpressionStatement (Spawn (Call f [x])))'],
     ['x **= 2', '(Assignment [x] **= 2)'],
     ['x >>= 1', '(Assignment [x] >>= 1)'],
   ])('parses %s', (text, tree) => {

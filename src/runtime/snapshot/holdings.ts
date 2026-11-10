@@ -73,7 +73,6 @@ const kinds: Handlers<undefined, HeapObject, [], Holding> = {
     ...empty,
     watches: typeof weak.target === 'number' ? [weak.target] : [],
   }),
-  guard: (_context, guard) => ({ ...empty, values: [guard.callback] }),
   resource: () => empty,
   mock: (_context, mock) => ({ ...empty, values: [mock.replacement, ...mock.calls] }),
   answer: (_context, answer) => ({ ...empty, holds: [answer.future] }),

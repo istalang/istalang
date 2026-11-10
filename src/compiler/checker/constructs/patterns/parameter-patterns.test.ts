@@ -104,7 +104,7 @@ describe('parameter patterns in declared functions and lambdas (§5)', () => {
       'async fn sum(Point{x, y} as p, (a, b): (Int, Int)) -> Future<Int>:',
       '  x * 1000 + y * 100 + p.x * 10 + a + b',
     );
-    const body = 'await spawn sum(Point{x: 1, y: 2}, (3, 4)).result()';
+    const body = 'await (spawn sum(Point{x: 1, y: 2}, (3, 4))).result()';
     expect(await mainGives('Result<Int>', body, decls)).toEqual({ _type: 'Ok', value: 1217 });
   });
 

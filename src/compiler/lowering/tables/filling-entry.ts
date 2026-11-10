@@ -3,12 +3,12 @@
  * runs the function's own entry with every parameter, those the call leaves out computed by their
  * defaults' entries (../calls/emit-call.ts), the same as a call written in code fills them. It is
  * what an entry called later gets: a function named as a value of a shorter function type (§3.14),
- * a spawned call (§9), so the new instance computes the defaults, and a call the runtime makes.
+ * and a call the runtime makes.
  *
  * Its parameters are the arguments in the order passed, each taken as its parameter takes it; a
  * reference is passed on as the reference it was given (§3.7). For an async function it is async
- * too, and awaits the function's future, so a spawned instance it starts ends with the function's
- * value, as one the function starts itself does (§3.3).
+ * too, and awaits the function's future, so calling it gives a future of the function's value, as
+ * calling the function does (§3.3).
  */
 
 import type { CodeFunction } from '../../../definition/tables/functions.ts';

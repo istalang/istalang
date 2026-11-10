@@ -10,7 +10,7 @@
  */
 
 import { z } from 'zod';
-import { functionId, register, typeId } from '../operands.ts';
+import { functionId, register } from '../operands.ts';
 import { defineInstruction } from './define-instruction.ts';
 import { argument } from './places.ts';
 
@@ -29,24 +29,9 @@ const call = defineInstruction('call', {
 });
 
 /**
- * `spawn f(args)`: a new instance on this Definition, running a named function or a closure of a
- * sendable function type, whose captures go along; the arguments are sendable copies (spec §9).
- * `dst` gets its `Instance<T>`, of extern type entry `type`, whose payload is the instance's name.
- * `encoder`, when a codec writes `T`, is that codec's entry, which encodes the new instance's
- * outcome for its host as it returns.
- */
-const spawn = defineInstruction('spawn', {
-  dst: register,
-  type: typeId,
-  callee,
-  arguments: z.array(register),
-  encoder: functionId.optional(),
-});
-
-/**
  * A handle to the async call this frame belongs to, taken once at a function's entry so that
  * `worker.disposing()` reaches the enclosing call from any nested function (spec §7).
  */
 const currentCall = defineInstruction('currentCall', { dst: register });
 
-export const callInstructions = [call, spawn, currentCall] as const;
+export const callInstructions = [call, currentCall] as const;

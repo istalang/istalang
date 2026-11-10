@@ -125,7 +125,6 @@ function objectsArbitrary(ids: readonly number[]): fc.Arbitrary<HeapObject[]> {
       fc
         .oneof(id, fc.constantFrom('disposed' as const, 'callEnded' as const))
         .map((target) => ({ id: objectId, kind: 'weakRef' as const, target })),
-      value.map((callback) => ({ id: objectId, kind: 'guard' as const, callback })),
       fc
         .record({ type: fc.nat({ max: 9 }), payload: exactJson })
         .map((parts) => ({ id: objectId, kind: 'resource' as const, ...parts })),

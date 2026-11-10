@@ -11,7 +11,7 @@
  * whether they are all still held, a walk that stops once it has found them (holders.ts); only
  * when one isn't does a round start.
  *
- * A disposal that runs code (a `defer` callback, a declared `dispose`, a disposed call's cleanup)
+ * A disposal that runs code (a declared `dispose`, a disposed call's cleanup)
  * runs on the scheduler's run stack, as every call does (scheduler/segment/), and the round waits
  * for it to finish. Once a disposed object is gone, its weak reference lets go of it and its
  * `disposed()` watches resolve (scheduler/instance/weak-side.ts).

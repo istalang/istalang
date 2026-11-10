@@ -174,8 +174,8 @@ describe('completion asks what encloses a position', () => {
       [],
       ['await'],
     ],
-    ['a default', ['fn g(a = ‸'], ['true', 'not'], ['await', 'spawn', 'select', 'new', 'let']],
-    ["a function's body", ['fn f():', '  let x = ‸', '  1'], ['spawn', 'select', 'new'], ['await']],
+    ['a default', ['fn g(a = ‸'], ['true', 'not'], ['await', 'select', 'new', 'let']],
+    ["a function's body", ['fn f():', '  let x = ‸', '  1'], ['select', 'new'], ['await']],
     [
       'a statement an annotation above opens',
       ['async fn f():', '  @Waypoint{"step"}', '  ‸', '  1'],
