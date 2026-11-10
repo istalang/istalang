@@ -212,13 +212,15 @@ src/
     instance-state.ts   where an instance stands after the runtime advanced it
     refusal.ts          the runtime refusing what a host asked of it, as opposed to failing
     clock.ts            the Clock seam, and a manual clock
-    host/               public host API (index.ts): createRuntime(seams) → deploy, and start, wake as promises; the one
+    host/               public host API (index.ts): createRuntime(seams) → deploy, and start, wake as promises, each instance's
+                        calls one after another (instance-calls.ts); the one
                         loop driving an instance and every instance it spawns, each host waiting its own way (drive.ts) on
                         its Clock, over a group of instances driven together (instance-group.ts)
     interpreter/        the instruction table, and parts of values along paths (parts.ts)
     snapshot/           objects.ts (heap objects and frames as stored), holdings.ts (what each object kind holds and watches, and the one rule for a frame, live or stored), snapshot.ts (the persisted instance), check.ts (a snapshot against its Definition),
                         random.ts (an instance's random values: its secret seed, kept in its snapshot, and the draws made from it)
     scheduler/          segments and commits: wake.ts (advancing, commits, spawned children), resident.ts (an instance held between host calls), inspect.ts, loaded-definition.ts (a Definition bound to its natives once, named by its hash),
+                        live-run.ts (live code run in memory to its end, never committing, its waits on the host's promises and clock), waiting.ts (how a run waits, and a live wait's one-shot resume),
                         instance/ (an instance in memory, and the commit's snapshot from the one it was made from; live-objects.ts, heap objects as stored and as running;
                         heap.ts, objects by id, and indexes finding them by field, derived, never persisted; futures.ts, resolving, who waits, `first`; slots.ts, §6's queue;
                         weak-side.ts, weak references, `disposed()` and `disposing()`, told by disposal what it disposes;

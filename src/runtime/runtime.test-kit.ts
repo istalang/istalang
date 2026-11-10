@@ -3,6 +3,7 @@
  * commit it was asked to write, and running an instance to its end by moving time to each timer.
  */
 
+import { definitionFormat } from '../definition/definition.ts';
 import type { Value } from '../definition/values/values.ts';
 import { stdNatives } from '../stdlib/natives.ts';
 import type { HostExterns } from './boundary/host-natives.ts';
@@ -142,6 +143,22 @@ export async function startToEnd(
 ): Promise<Ended> {
   const program: DeployedProgram = test.runtime.deploy(text);
   return await runToEnd(test, instance, await program.start(instance, options));
+}
+
+/**
+ * The program `text` with its code that waits made live, as compiling it as live code will
+ * (proposal 8): the entries named in `entries`, or every one without them.
+ */
+export function asLive(text: string, entries?: readonly string[]): string {
+  const definition = definitionFormat.read(text);
+  const functions = definition.functions.map((entry) =>
+    entry.kind === 'code' &&
+    entry.mode === 'ista' &&
+    (entries === undefined || entries.includes(entry.name))
+      ? { ...entry, mode: 'live' as const }
+      : entry,
+  );
+  return definitionFormat.write({ ...definition, functions }).text;
 }
 
 /** A context for natives that never use theirs; touching it is a bug in the test. */

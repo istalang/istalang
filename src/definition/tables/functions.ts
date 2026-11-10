@@ -44,6 +44,9 @@ export const codeMode = z.enum(['plain', 'live', 'ista']);
 
 export type CodeMode = z.output<typeof codeMode>;
 
+/** How code that waits runs (proposal 8, `Persistence`): the kind of an entry that isn't plain. */
+export type Persistence = Exclude<CodeMode, 'plain'>;
+
 const code = z.strictObject({
   kind: z.literal('code'),
   ...common,

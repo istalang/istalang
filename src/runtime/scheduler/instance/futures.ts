@@ -218,9 +218,15 @@ export class Futures {
     return this.createHandle({ kind: 'host', token });
   }
 
+  /** Whether a future pending on the host has the name `token`. */
+  waitsOnHost(token: string): boolean {
+    return this.#hostFuture(token) !== undefined;
+  }
+
   /**
-   * A future another instance fills, as a host does, its token named by `tokenOf` from the
-   * future's own id: its id and the token.
+   * A future something outside the instance fills, as a host does: another instance's answer to a
+   * mock's call, or a host's promise in a live run. Its token is named by `tokenOf` from the
+   * future's own id; its id and the token.
    */
   createFilled(tokenOf: (id: number) => string): { readonly id: number; readonly token: string } {
     const future = this.#heap.add((id) => ({
@@ -234,6 +240,19 @@ export class Futures {
   #hostFuture(token: string): LiveObjectOf<'future'> | undefined {
     const [future] = this.#heap.find('hostFutures', token);
     return future;
+  }
+
+  /** When the earliest pending timer is due; undefined with none. */
+  nextTimer(): bigint | undefined {
+    return this.#heap
+      .find('pending', 'timer')
+      .reduce<bigint | undefined>(
+        (earliest, { state }) =>
+          state.kind === 'timer' && (earliest === undefined || state.at < earliest)
+            ? state.at
+            : earliest,
+        undefined,
+      );
   }
 
   /** Resolves every timer due at `now`, earliest first; whether any was. */

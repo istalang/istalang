@@ -24,6 +24,8 @@
  *   instance it descends from holds replaces it too, through the runtime running the test.
  * - The instance is its frames' heap (interpreter/machine.ts): a variable passed by `&` is a cell
  *   object here, a reference names one, and what a frame lets go of is noted on the heap.
+ * - A live run (proposal 8) runs on one too, made from an `unstarted` snapshot and never turned
+ *   back into one (../live-run.ts): what it spawns, logs and draws is never committed.
  */
 
 import type { FunctionId } from '../../../definition/operands.ts';

@@ -66,8 +66,13 @@ export interface NativeFutures {
   readonly first: (futures: readonly Value[]) => Value;
   /** A future that resolves at `at`, in milliseconds since the Unix epoch (`time.at`). */
   readonly timer: (at: bigint) => Value;
-  /** A future the host fills later, naming it by `token` (§9). */
+  /** A future the host fills later, naming it by `token` (§9): an instance's. */
   readonly fromHost: (token: string) => Value;
+  /**
+   * A future resolved with the value `settles` gives once it settles, or, when it gives a reason
+   * instead, a `Panic`, panicking its run: a live run's (proposal 8).
+   */
+  readonly promised: (settles: Promise<PromiseSettledResult<Value>>) => Value;
 }
 
 /** The running instance's slots (§6): `put`, `take` and `read` return a handle to its future. */

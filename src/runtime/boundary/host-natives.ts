@@ -7,11 +7,13 @@
  * - A host extern takes and gives JavaScript JSON values, what `JSON.parse` of the text gives but
  *   with every integer a `bigint` (definition/values/json-values.ts), so a host needs nothing of
  *   the runtime's value shapes.
- * - An extern returning a `Future` gives back what `call.pending(token)` gave it: the runtime
- *   creates the future, named by the host's token, and the host fills it later
- *   (`Runtime.fill`). Anything else it gives back is its result.
- * - A result JSON can't hold, or a pending future given where none is expected, is a bug in the
- *   host, so it panics the instance (§3.12), as a result of the wrong type does in the wrapper.
+ * - An extern returning a `Future` gives back, to an instance, what `call.pending(token)` gave it:
+ *   the runtime creates the future, named by the host's token, and the host fills it later
+ *   (`Runtime.fill`). To a live run, which waits in memory, it gives a promise of the JSON, which
+ *   resolves the future when it settles (proposal 8). Anything else it gives back is its result.
+ * - A result JSON can't hold, a pending future given where none is expected, or a promise that
+ *   rejects, is a bug in the host, so it panics the run (§3.12), as a result of the wrong type does
+ *   in the wrapper.
  * - This is the one shape the runtime takes. `ista run --host` loads plain functions taking the
  *   arguments spread and returning promises (cli/host-module.ts), and adapts them to it: a promise
  *   can't outlive its process, so only a development host may stand behind one, while a durable
@@ -80,9 +82,10 @@ function hostNative(extern: HostExtern): Native<NativeContext & WithFutures & Wi
       values.map((value) => plainOfJson(value, shape)),
       call,
     );
+    const read = (plain: unknown) => jsonOfPlain(plain, shape);
     return returnsFuture(context)
-      ? futureOf(given, pendings, context)
-      : resultOf(given, pendings, (plain) => jsonOfPlain(plain, shape));
+      ? futureOf(given, pendings, context, read)
+      : resultOf(given, pendings, read);
   };
 }
 
@@ -95,7 +98,20 @@ function futureOf(
   given: unknown,
   pendings: ReadonlySet<HostPending>,
   context: NativeContext & WithFutures,
+  read: (plain: unknown) => Value,
 ): Value {
+  if (given instanceof Promise) {
+    return context.futures.promised(
+      given.then(
+        (plain: unknown) => settledOf(() => fitting(plain, read)),
+        (reason: unknown): PromiseRejectedResult => {
+          const why = reason instanceof Error ? reason.message : String(reason);
+          const panic = new Panic(`The host's ${context.name} rejected: ${why}`, { cause: reason });
+          return { status: 'rejected', reason: panic };
+        },
+      ),
+    );
+  }
   if (!pendings.has(given as HostPending)) {
     throw new Panic(
       `The host's ${context.name} gave no pending future, though it returns a Future.`,
@@ -112,6 +128,23 @@ function resultOf(
   if (pendings.has(given as HostPending)) {
     throw new Panic('The host gave a pending future where its extern returns none.');
   }
+  return fitting(given, read);
+}
+
+/**
+ * What `read` gives, or what it threw, as a promise settles: a promise of it never rejects, so none
+ * is left rejected and unhandled when the run that would see it panics first.
+ */
+function settledOf(read: () => Value): PromiseSettledResult<Value> {
+  try {
+    return { status: 'fulfilled', value: read() };
+  } catch (error) {
+    return { status: 'rejected', reason: error };
+  }
+}
+
+/** What the host gave, `read` as a value; a panic when JSON can't hold it. */
+function fitting(given: unknown, read: (plain: unknown) => Value): Value {
   try {
     return read(given);
   } catch (error) {

@@ -5,7 +5,8 @@
  * ends the segment, and the scheduler commits. A driver that returns instead hands the segment to
  * the next ready execution, so the segment ends at the next await of whichever driver reaches one,
  * or when nothing is ready. Every await by a driver therefore commits, and code between two
- * commits is one atomic segment.
+ * commits is one atomic segment. A live run (proposal 8) runs the same way but never commits: its
+ * segment goes on past every driver's await until nothing is ready (`runLiveSegment`).
  *
  * An async call starts its callee at once, inside the caller's segment: the callee's execution
  * runs on top of the caller's until it awaits or returns, and only then does the caller receive
@@ -51,6 +52,7 @@ import type { LiveExecution } from '../instance/heap.ts';
 import { type Instance, topFrame } from '../instance/index.ts';
 import { startAnswer } from '../testing/mocks.ts';
 import type { MockCall } from '../testing/test-world.ts';
+import { istaWaiting, type LiveResumes, type Waiting } from '../waiting.ts';
 import { type Caller, returnedValue, startCall } from './calls.ts';
 import { DisposalRuns } from './disposal-runs.ts';
 import { panicOf, requireDepth } from './limits.ts';
@@ -82,7 +84,25 @@ export function runSegment(
   startedAt: bigint,
   first?: SegmentStart,
 ): SegmentEnd {
-  return new SegmentRunner(instance, startedAt).run(first);
+  return new SegmentRunner(instance, startedAt, istaWaiting).run(first);
+}
+
+/** How a live run's segment ended: nothing is ready, its root returned, or it panicked. */
+export type LiveSegmentEnd =
+  | { readonly kind: 'idle' }
+  | Extract<SegmentEnd, { kind: 'finished' | 'panicked' }>;
+
+/**
+ * Runs `instance` as a live run, resumed through `resumes`, from a time read at `startedAt`: from
+ * `first`, an execution about to run from its start, then every ready one, until none is.
+ */
+export function runLiveSegment(
+  instance: Instance,
+  startedAt: bigint,
+  resumes: LiveResumes,
+  first?: LiveExecution,
+): LiveSegmentEnd {
+  return new SegmentRunner(instance, startedAt, { kind: 'live', resumes }).runLive(first);
 }
 
 /**
@@ -91,14 +111,17 @@ export function runSegment(
  * panics counts as done, so the rest still run and tell their hosts.
  */
 export function endInstance(instance: Instance, startedAt: bigint): void {
-  new SegmentRunner(instance, startedAt).end();
+  new SegmentRunner(instance, startedAt, istaWaiting).end();
 }
 
 /** How driving one execution ended. */
 type DriveEnd = 'awaited' | 'returned' | { readonly finished: Outcome };
 
 /** How a segment ended before what it leaves is checked for persisting. */
-type RunEnd = { readonly kind: 'awaited' | 'idle' } | Extract<SegmentEnd, { kind: 'finished' }>;
+type RunEnd =
+  | { readonly kind: 'awaited' }
+  | { readonly kind: 'idle' }
+  | Extract<SegmentEnd, { kind: 'finished' }>;
 
 class SegmentRunner implements Machine {
   readonly #instance: Instance;
@@ -110,13 +133,13 @@ class SegmentRunner implements Machine {
   readonly #encoding: OutcomeEncoding;
   #end: DriveEnd | undefined;
 
-  constructor(instance: Instance, startedAt: bigint) {
+  constructor(instance: Instance, startedAt: bigint, waiting: Waiting) {
     this.#instance = instance;
-    this.#natives = new NativeCalls(instance, startedAt, {
+    this.#natives = new NativeCalls(instance, startedAt, waiting, {
       trace: () => this.#runStack.trace(this.definition),
       callerTrace: () => this.#runStack.callerTrace(this.definition),
     });
-    this.#caller = { instance, natives: this.#natives, startedAt };
+    this.#caller = { instance, natives: this.#natives, startedAt, waiting };
     const running = { instance, caller: this.#caller, runStack: this.#runStack };
     this.#encoding = new OutcomeEncoding(running);
     this.#disposals = new DisposalRuns({
@@ -142,12 +165,29 @@ class SegmentRunner implements Machine {
   }
 
   run(first: SegmentStart | undefined): SegmentEnd {
-    try {
+    return this.#panicking(() => {
       const driver =
         first?.kind === 'answer'
           ? startAnswer(this.#instance, this.#natives, first.call)
           : first?.execution;
       return this.#persistable(this.#runDrivers(driver));
+    });
+  }
+
+  runLive(first: LiveExecution | undefined): LiveSegmentEnd {
+    return this.#panicking(() => {
+      let end = this.#runDrivers(first);
+      while (end.kind === 'awaited') {
+        end = this.#runDrivers(undefined);
+      }
+      return end;
+    });
+  }
+
+  /** What `run` gives, or the panic it threw, where it threw it. */
+  #panicking<End>(run: () => End): End | Extract<SegmentEnd, { kind: 'panicked' }> {
+    try {
+      return run();
     } catch (error) {
       const panic = panicOf(error);
       if (panic !== undefined) {

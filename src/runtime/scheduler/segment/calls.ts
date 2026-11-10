@@ -6,24 +6,30 @@
  *   place, or another instance's mock answers at once. A replacement is never mocked itself, so it
  *   may call what it replaces.
  * - A native runs at once and answers the call; code gives the entry to push.
+ * - Code that waits runs only in a run of its own kind (proposal 8's call rule): live code in a live
+ *   run, ista code in an instance. The checker keeps every call so (K1), so a call across kinds is
+ *   a bug, and running it would commit live code or keep ista code waiting in memory.
  * - What a replacement gives back arrives as another instance's would (mocks.ts `arriving`): a
  *   native's answer at once, code's when its frame returns, which `arrives` marks.
  */
 
 import type { FunctionId } from '../../../definition/operands.ts';
 import type { Value } from '../../../definition/values/values.ts';
+import { unreachable } from '../../../foundation/structures/unreachable.ts';
 import type { ActiveFrame, FrameEntry } from '../../interpreter/frames.ts';
 import { passedValues } from '../../interpreter/registers.ts';
 import type { RegisterContents } from '../../snapshot/objects.ts';
 import type { Instance } from '../instance/index.ts';
 import { arriving, mockedCall } from '../testing/mocks.ts';
+import type { Waiting } from '../waiting.ts';
 import type { NativeCalls } from './native-calls.ts';
 
-/** Who makes calls: an instance, its segment's natives, and when the segment started. */
+/** Who makes calls: an instance, its segment's natives, when the segment started, how it waits. */
 export interface Caller {
   readonly instance: Instance;
   readonly natives: NativeCalls;
   readonly startedAt: bigint;
+  readonly waiting: Waiting;
 }
 
 /**
@@ -74,6 +80,10 @@ function runCall(caller: Caller, run: Run, passed: readonly RegisterContents[]):
   const callable = caller.instance.loaded.functions.callee(run.function);
   if (callable.kind === 'native') {
     return { kind: 'answered', value: caller.natives.call(run.function, callable.native, passed) };
+  }
+  const { mode } = callable.code;
+  if (mode !== 'plain' && mode !== caller.waiting.kind) {
+    unreachable(`A ${caller.waiting.kind} run calls ${mode} code, which the call rule refuses.`);
   }
   return { kind: 'code', entry: callable, contents: passed, captures: run.captures };
 }
