@@ -21,9 +21,9 @@
  * What a segment leaves is persisted when it commits, so it must nest no deeper than a snapshot
  * may (limits.ts).
  *
- * The root's last frame returns the instance's outcome: a plain root giving a future waits on it
- * there, and the instance's encoder, if it has one, encodes the outcome for the host before the
- * frame returns (root-outcome.ts).
+ * The root's answer is the instance's outcome, awaited when it is a future, and the instance's
+ * encoder, if it has one, encodes the outcome for the host (root-outcome.ts): before the root's
+ * last frame returns it, or as a root of its own once an outcome no frame returns arrives.
  *
  * After every instruction that let go of something, the segment collects (collection.ts): what
  * lost its last holder is disposed right there (§7). A disposal that runs code runs on the run
@@ -32,6 +32,7 @@
  * holder of its own call runs on until it suspends, and is stopped there.
  */
 
+import { awaitedRegisters } from '../../../definition/instructions/flow.ts';
 import type { Argument } from '../../../definition/instructions/places.ts';
 import type { FunctionId } from '../../../definition/operands.ts';
 import { depthOf, handleTo, type Value } from '../../../definition/values/values.ts';
@@ -45,9 +46,9 @@ import {
   resumeAfterCall,
 } from '../../interpreter/machine.ts';
 import { argumentContents, readRegister } from '../../interpreter/registers.ts';
-import { waitedRegisters } from '../../interpreter/suspension.ts';
 import type { Panic } from '../../natives.ts';
 import type { HeapObject } from '../../snapshot/objects.ts';
+import type { InstanceCall } from '../../snapshot/snapshot.ts';
 import type { LiveExecution } from '../instance/heap.ts';
 import { type Instance, topFrame } from '../instance/index.ts';
 import { startAnswer } from '../testing/mocks.ts';
@@ -64,13 +65,17 @@ import {
 import { SegmentCollection } from './collection.ts';
 import { panicOf, requireDepth } from './limits.ts';
 import { NativeCalls } from './native-calls.ts';
-import { type Outcome, RootOutcome } from './root-outcome.ts';
+import { type Arrival, type Outcome, RootOutcome } from './root-outcome.ts';
 import { RunStack } from './run-stack.ts';
 
-/** What a segment begins with: an execution about to run from its start, or answering a call. */
+/**
+ * What a segment begins with: an execution about to run from its start, answering a call, or the
+ * call of an extern a new instance starts with, which the segment makes (root-outcome.ts).
+ */
 export type SegmentStart =
   | { readonly kind: 'driver'; readonly execution: LiveExecution }
-  | { readonly kind: 'answer'; readonly call: MockCall };
+  | { readonly kind: 'answer'; readonly call: MockCall }
+  | { readonly kind: 'call'; readonly call: InstanceCall };
 
 export type SegmentEnd =
   /** A driver awaited: commit `objects`, then run the next segment. */
@@ -174,13 +179,18 @@ class SegmentRunner implements Machine {
   }
 
   run(first: SegmentStart | undefined): SegmentEnd {
-    return this.#panicking(() => {
-      const driver =
-        first?.kind === 'answer'
-          ? startAnswer(this.#instance, this.#natives, first.call)
-          : first?.execution;
-      return this.#persistable(this.#runDrivers(driver));
-    });
+    return this.#panicking(() => this.#persistable(this.#runDrivers(this.#started(first))));
+  }
+
+  /** The execution `first` begins the segment with: none once an extern's root call is made. */
+  #started(first: SegmentStart | undefined): LiveExecution | undefined {
+    if (first?.kind === 'call') {
+      this.#outcome.callExtern(first.call);
+      return undefined;
+    }
+    return first?.kind === 'answer'
+      ? startAnswer(this.#instance, this.#natives, first.call)
+      : first?.execution;
   }
 
   runLive(
@@ -237,14 +247,34 @@ class SegmentRunner implements Machine {
     this.#enter(frame, startCall(this.#caller, callee, contents, captures));
   }
 
+  /**
+   * Hands the call `frame` ran its prologue for over to the mock replacing its function (calls.ts):
+   * an answer is the frame's result; a replacement takes the frame's place as the call's frame,
+   * what disposal runs and the encoder track the frame by going over to it, while an async one
+   * starts as an execution of its own, as the call would have from the start.
+   */
   handOver(frame: ActiveFrame): void {
-    this.#enter(frame, handOver(this.#caller, frame));
+    const target = handOver(this.#caller, frame);
+    if (target.kind === 'answered') {
+      this.return(frame, target.value);
+      return;
+    }
+    const execution = this.#runStack.popFrame(frame);
+    releaseFrame(frame);
+    if (runsAsExecution(target.entry)) {
+      this.#enter(topFrame(execution), target);
+      return;
+    }
+    const replacement = newFrame(target.entry, target.contents, frame.heap, target.captures);
+    this.#collection.disposals.replaceFrame(frame, replacement);
+    this.#outcome.replaceFrame(frame, replacement);
+    this.#runStack.pushFrame(replacement);
   }
 
   /** Runs `target`, what `frame` calls: answered, `frame` resumes at once; code, on top of it. */
   #enter(frame: ActiveFrame, target: CallTarget): void {
     if (target.kind === 'answered') {
-      this.#resume(frame, target.value);
+      resumeAfterCall(frame, target.value);
       return;
     }
     const { entry } = target;
@@ -258,28 +288,12 @@ class SegmentRunner implements Machine {
     this.#runStack.pushFrame(newFrame(entry, target.contents, frame.heap, target.captures));
   }
 
-  /**
-   * Gives `frame` `value`, what the call it made gave: as its `call`'s result, or, standing where
-   * its body begins, having handed its own call over to a mock (calls.ts), as its own result.
-   */
-  #resume(frame: ActiveFrame, value: Value): void {
-    if (frame.code.instructions[frame.pc]?.kind === 'body') {
-      this.return(frame, value);
-      return;
-    }
-    resumeAfterCall(frame, value);
-  }
-
   return(frame: ActiveFrame, given: Value): void {
     const returning = this.#outcome.returning(frame, given);
-    if (returning.kind === 'wait') {
-      this.wait(frame);
-      return;
-    }
     if (returning.kind === 'encode') {
       return;
     }
-    const { value } = returning;
+    const value = returning.kind === 'return' ? returning.value : given;
     const execution = this.#runStack.popFrame(frame);
     releaseFrame(frame);
     if (this.#collection.disposals.returned(execution, frame)) {
@@ -287,19 +301,29 @@ class SegmentRunner implements Machine {
     }
     const returned = returnedValue(this.#instance, frame, value);
     const rootReturn = this.#outcome.returned(frame, returned);
-    if (rootReturn !== undefined) {
+    if (rootReturn?.root !== undefined) {
       this.return(rootReturn.root, rootReturn.outcome);
+      return;
+    }
+    if (rootReturn !== undefined) {
+      this.#end = { finished: this.#outcome.finished(rootReturn.outcome) };
       return;
     }
     const caller = execution.frames.at(-1);
     if (caller !== undefined) {
-      this.#resume(caller, returned);
+      resumeAfterCall(caller, returned);
       return;
     }
     if (this.#collection.disposals.suspended(execution)) {
       return;
     }
     const future = execution.resolves;
+    if (future === undefined && returning.kind === 'await') {
+      this.#instance.remove(execution);
+      this.#runStack.pop();
+      this.#end = 'awaited';
+      return;
+    }
     if (future === undefined) {
       this.#end = { finished: this.#outcome.finished(returned) };
       return;
@@ -315,7 +339,7 @@ class SegmentRunner implements Machine {
       return;
     }
     const instruction = frame.code.instructions[frame.pc];
-    const awaited = instruction === undefined ? [] : waitedRegisters(instruction);
+    const awaited = instruction === undefined ? [] : awaitedRegisters(instruction);
     if (awaited.some((register) => this.settled(readRegister(frame, register)) !== undefined)) {
       this.#instance.markReady(execution);
     }
@@ -340,16 +364,15 @@ class SegmentRunner implements Machine {
     return this.#instance.weak.reference(handleTo(this.#runStack.current().id));
   }
 
-  /** Runs drivers until one awaits, the root returns, or nothing is ready. */
+  /** Runs drivers until one awaits, the instance finishes, or nothing is ready. */
   #runDrivers(first: LiveExecution | undefined): RunEnd {
     // Answers withdrawn from their callers let go of what they wait on before any execution runs.
     this.#collection.collectFully(() => this.#step());
-    for (
-      let driver = first ?? this.#instance.resumeNext();
-      driver !== undefined;
-      driver = this.#instance.resumeNext()
-    ) {
-      const end = this.#drive(driver);
+    for (let next = first ?? this.#next(); next !== undefined; next = this.#next()) {
+      if (next.kind === 'finished') {
+        return { kind: 'finished', ...next.outcome };
+      }
+      const end = this.#drive(next);
       if (end === 'awaited') {
         return { kind: 'awaited' };
       }
@@ -358,6 +381,18 @@ class SegmentRunner implements Machine {
       }
     }
     return { kind: 'idle' };
+  }
+
+  /**
+   * What runs next: the encoder of an outcome no frame returns once it has arrived, or that
+   * outcome itself (root-outcome.ts); else the next execution ready.
+   */
+  #next(): LiveExecution | Extract<Arrival, { kind: 'finished' }> | undefined {
+    const arrival = this.#outcome.arrival();
+    if (arrival === undefined) {
+      return this.#instance.resumeNext();
+    }
+    return arrival.kind === 'encode' ? arrival.root : arrival;
   }
 
   /**
@@ -409,6 +444,6 @@ class SegmentRunner implements Machine {
       this.#end = end;
       return;
     }
-    this.#resume(topFrame(caller), handleTo(future));
+    resumeAfterCall(topFrame(caller), handleTo(future));
   }
 }

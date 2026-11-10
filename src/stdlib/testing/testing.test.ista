@@ -9,6 +9,7 @@ import * as testing from 'testing'
 import * as time from 'time'
 import Time, Duration from 'time'
 import Encodable, Decodable from 'json'
+import * as json from 'json'
 
 extern sendable struct Queue<T is Sendable>
 extern shared struct Sent
@@ -130,6 +131,9 @@ fn many(a: Int, b: Int, c: Int, d: Int, e: Int, f: Int, g: Int, h: String) -> St
 async fn later(a: Int) -> Future<Int>: a
 fn scaled(n: Int, by: Int = 10, offset: Int = n) -> Int: n * by + offset
 async fn scaledLater(n: Int, by: Int = 10) -> Future<Int>: n * by
+struct Cents { value: Int }
+fn toJson(self: Cents, scale: Int = 2) -> json.Json: json.encodeText(String(self.value * scale))
+fn cents() -> Cents: Cents{value: 5}
 
 @Suite{"testing › mock"}
 fn mocks() -> Array<Test>: [
@@ -167,6 +171,11 @@ fn mocks() -> Array<Test>: [
     const m = mock(scaled, fn(n: Int, by: Int, offset: Int): n - by - offset)
     assertEq(await (spawn scaled(7)).result(), Ok(-10))
     assertEq(m.calls(), [(7, 10, 7)])
+  })
+  test("fills the defaults of the encoder the runtime calls for an instance's outcome", async fn(): {
+    const m = mock(toJson, fn(self: Cents, scale: Int) -> json.Json: json.encodeText("mocked"))
+    assertEq(await (spawn cents()).result(), Ok(Cents{value: 5}))
+    assertEq(m.calls(), [(Cents{value: 5}, 2)])
   })
 ]
 

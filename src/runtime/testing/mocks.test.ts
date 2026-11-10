@@ -4,6 +4,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
+import { checkerDiagnostics } from '../../compiler/checker/diagnostics/index.ts';
 import { outcomesOf, reportsOf, testModule } from './testing.test-kit.ts';
 
 describe('mocks', () => {
@@ -180,5 +181,56 @@ fn isolated() -> Array<Test>: [test("fails", failsMocked), test("next", unmocked
       'isolated › fails: failed: failed',
       'isolated › next: passed',
     ]);
+  });
+
+  it('replace a function or extern with defaults after its prologue computes omitted arguments, without corrupting replacement parameters', async () => {
+    const mocked = (types: string, replacement: string) =>
+      testModule(`
+fn foo(a: Int, b: String = "hello") -> Int: a
+${replacement}
+
+async fn checkDefaultsMock():
+  hold _ = mock${types}(foo, rep)
+  assertEq(foo(10), 1000)
+
+@Suite{"defaults mock"}
+fn suite() -> Array<Test>: [test("defaults", checkDefaultsMock)]
+`);
+    // Named at a type leaving `b` out, the replacement would get an argument it doesn't take.
+    await expect(
+      reportsOf(mocked('<(Int,), Int>', 'fn rep(a: Int, c: Int = 100) -> Int: a * c')),
+    ).rejects.toThrow(`error ${checkerDiagnostics.mockLeavesDefaults.code}`);
+    const whole = mocked('', 'fn rep(a: Int, b: String) -> Int: a * 100');
+    expect(outcomesOf(await reportsOf(whole))).toEqual(['defaults mock › defaults: passed']);
+  });
+
+  it('leave no target frame in the trace when a call leaving defaults out hands over to a mock', async () => {
+    const source = testModule(`
+fn target(a: Int = 1) -> String: String(a)
+
+async fn handedOverTrace():
+  hold _ = mock(target, fn(a: Int) -> String: Error{message: "m", code: String(a)}.trace)
+  assert("target" not in target(1))
+  assert("target" not in target())
+
+@Suite{"default traces"}
+fn suite() -> Array<Test>: [test("handed over", handedOverTrace)]
+`);
+    expect(outcomesOf(await reportsOf(source))).toEqual(['default traces › handed over: passed']);
+  });
+
+  it('name an extern with defaults once in a trace when called with a default left out', async () => {
+    const source = testModule(`
+extern fn hostDefault(a: Int = 1) -> Int
+
+async fn unmockedExternWithDefault():
+  drop hostDefault()
+
+@Suite{"extern default trace"}
+fn suite() -> Array<Test>: [test("unmocked extern", unmockedExternWithDefault)]
+`);
+    const [report] = await reportsOf(source);
+    const panicTrace = report?.outcome.kind === 'failed' ? report.outcome.trace : '';
+    expect(panicTrace.split('\n').filter((line) => line.includes('hostDefault'))).toHaveLength(1);
   });
 });

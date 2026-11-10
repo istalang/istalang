@@ -29,13 +29,13 @@ export interface HoldingFrame {
 }
 
 /**
- * Whether `object` is a root, kept for its own sake rather than held by another: an execution or an
- * answer.
+ * Whether `object` is a root, kept for its own sake rather than held by another: an execution, an
+ * answer, or the outcome an instance awaits.
  */
 export function isRoot<Object extends { readonly kind: HeapObject['kind'] }>(
   object: Object,
-): object is Extract<Object, { readonly kind: 'execution' | 'answer' }> {
-  return object.kind === 'execution' || object.kind === 'answer';
+): object is Extract<Object, { readonly kind: 'execution' | 'answer' | 'outcome' }> {
+  return object.kind === 'execution' || object.kind === 'answer' || object.kind === 'outcome';
 }
 
 /** What one object holds and watches. */
@@ -76,6 +76,7 @@ const kinds: Handlers<undefined, HeapObject, [], Holding> = {
   resource: () => empty,
   mock: (_context, mock) => ({ ...empty, values: [mock.replacement, ...mock.calls] }),
   answer: (_context, answer) => ({ ...empty, holds: [answer.future] }),
+  outcome: (_context, outcome) => ({ ...empty, holds: [outcome.future] }),
   execution: (_context, { frames, resolves }) => ({
     values: frames.flatMap((frame) => frameValues(holdingFrame(frame))),
     holds: frames.flatMap((frame) => frameCells(holdingFrame(frame))),

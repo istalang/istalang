@@ -6,11 +6,10 @@
  * Writing (encoder.ts) and reading (decoder.ts) take a form apart the same way: a struct, an enum
  * and a tuple part by part, each through its own type's codec, and a host type through the json
  * module's helper. A recursive type's derived codecs call themselves. Which way an instance goes
- * is which function it is (`derivedCodecs`); what it takes and gives are that function's own.
+ * is which function it is (tables/own-entries.ts); what it takes and gives are that function's own.
  */
 
 import type { CodeFunction } from '../../../../definition/tables/functions.ts';
-import { derivedCodecs } from '../../../../foundation/language/well-known/codecs.ts';
 import { unreachable } from '../../../../foundation/structures/unreachable.ts';
 import type { Checker } from '../../../checker/check.ts';
 import type { DerivedForm, JsonDirection } from '../../../checker/surface/json-form.ts';
@@ -41,24 +40,6 @@ const bodyWriters = {
   JsonDirection,
   (code: SynthesizedCode, result: Type, form: DerivedForm) => void
 >;
-
-/**
- * Which way `instance` crosses as JSON when it is a derived codec, whose body the compiler
- * writes: `write` for `_toJson<T>`, `read` for `_fromJson<T>`; undefined for any other function.
- */
-export function derivedCodecDirection(
-  checker: Checker,
-  instance: FunctionInstance,
-): JsonDirection | undefined {
-  const { declaration } = instance;
-  const { json } = checker.program.roles;
-  if (json === undefined || checker.moduleOf(declaration) !== json) {
-    return undefined;
-  }
-  return (Object.keys(derivedCodecs) as JsonDirection[]).find(
-    (direction) => derivedCodecs[direction] === declaration.name.text,
-  );
-}
 
 /** The entry of a derived codec instance, which crosses `direction`. */
 export function derivedCodecEntry(lowering: CodecLowering, direction: JsonDirection): CodeFunction {

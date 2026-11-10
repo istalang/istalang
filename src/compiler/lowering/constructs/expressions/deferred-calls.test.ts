@@ -8,7 +8,10 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { decodeJson } from '../../../../definition/formats/codec.ts';
+import { reportedOnce } from '../../../../foundation/diagnostics/diagnostic.test-kit.ts';
 import { startToEnd, testRuntime } from '../../../../runtime/runtime.test-kit.ts';
+import { reported } from '../../../checker/check.test-kit.ts';
+import { checkerDiagnostics } from '../../../checker/diagnostics/index.ts';
 import { compiledText } from '../../../compile.test-kit.ts';
 
 /** An argument: the log itself, or a value logging its label when it is computed. */
@@ -185,5 +188,53 @@ describe('a deferred call', () => {
       '  later fail().size()',
     ].join('\n');
     expect(await outcomeOf(text)).toMatchObject({ kind: 'panicked', message: 'now' });
+  });
+
+  it('allows spreading a non-sendable iterable whose items are sendable, since the items are collected now (§3.3, §3.14)', async () => {
+    const text = [
+      'struct SharedIter:',
+      '  s: Shared<Int>',
+      'fn iterate(self: SharedIter) -> fn() -> Step<Int>:',
+      '  let done = false',
+      '  fn() -> Step<Int>: {',
+      '    if done:',
+      '      Step.Done',
+      '    else:',
+      '      done = true',
+      '      Step.Next(self.s->value)',
+      '  }',
+      'async fn firstItem(...items: Array<Int>) -> Future<Int>:',
+      '  items[0]',
+      'async fn main() -> Future<Int>:',
+      '  const it = SharedIter{s: new Shared{value: 42}}',
+      '  match await (spawn firstItem(...it)).result():',
+      '    case Ok(value): value',
+      '    case Err(_): -1',
+    ].join('\n');
+    expect(await outcomeOf(text)).toBe(42);
+  });
+
+  it("refuses spreading a sendable iterable whose items aren't sendable when a sendable function is taken (§3.3, §3.14)", () => {
+    const text = [
+      'struct BadIter:',
+      '  n: Int',
+      'fn iterate(self: BadIter) -> fn() -> Step<Shared<Int>>:',
+      '  let done = false',
+      '  fn() -> Step<Shared<Int>>: {',
+      '    if done:',
+      '      Step.Done',
+      '    else:',
+      '      done = true',
+      '      Step.Next(new Shared{value: self.n})',
+      '  }',
+      'async fn takeShares(...items: Array<Shared<Int>>) -> Future<Int>:',
+      '  items[0]->value',
+      'async fn main() -> Future<Int>:',
+      '  _ = spawn takeShares(...BadIter{n: 42})',
+      '  0',
+    ].join('\n');
+    expect(reported(text)).toEqual(
+      reportedOnce(checkerDiagnostics.unsendableCapture.code, 'BadIter{n: 42}'),
+    );
   });
 });

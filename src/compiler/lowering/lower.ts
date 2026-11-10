@@ -15,20 +15,23 @@ import { languageModules } from '../../foundation/language/well-known/index.ts';
 import { testingFunctions } from '../../foundation/language/well-known/testing.ts';
 import { unreachable } from '../../foundation/structures/unreachable.ts';
 import type { Checker } from '../checker/check.ts';
-import { isHostExtern } from '../checker/surface/host-externs.ts';
 import { substitute } from '../checker/types/parts/substitution.ts';
-import { constructedVariant, isFieldsFunction } from '../syntax/declarations/field-defaults.ts';
 import type { FunctionDeclaration } from '../syntax/declarations/index.ts';
 import { deferredEntry } from './constructs/expressions/deferred-calls.ts';
 import { writtenBodyOf } from './functions/bodies.ts';
-import { constructorEntry, externDefaultsEntry, structEntry } from './functions/built-entries.ts';
+import {
+  constructorEntry,
+  externDefaultsEntry,
+  hostExternEntry,
+  structEntry,
+} from './functions/built-entries.ts';
 import { asyncFitEntry, convertingEntry, wrappingEntry } from './functions/fits/index.ts';
+import type { Lowering } from './functions/frames.ts';
 import { instanceLowering, nestedLowering } from './functions/index.ts';
-import { derivedCodecDirection, derivedCodecEntry } from './synthesized/boundary/codecs.ts';
+import { derivedCodecEntry } from './synthesized/boundary/codecs.ts';
 import {
   constantNativeEntry,
   hostConstantEntry,
-  hostFunctionEntry,
   hostNativeEntry,
 } from './synthesized/boundary/host-externs.ts';
 import { listStart, startableOf, startables, startEntry } from './synthesized/boundary/starts.ts';
@@ -40,6 +43,7 @@ import {
   substitutionOf,
 } from './tables/instances.ts';
 import { keyOf } from './tables/names.ts';
+import { ownEntryOf } from './tables/own-entries.ts';
 import { type ClosingEntry, DefinitionTables, type PendingEntry } from './tables/tables.ts';
 
 /**
@@ -142,34 +146,51 @@ function pendingEntry(
   }
 }
 
-/**
- * The entry for `instance`: code for a function with a body, a variant's constructor or a struct's
- * fields, or an extern bound to its native.
- */
+/** The entry for `instance`, made of what its own entry is (tables/own-entries.ts). */
 function entryOf(
   checker: Checker,
   tables: DefinitionTables,
   instance: FunctionInstance,
 ): FunctionDefinition {
+  const lowering = { checker, tables };
+  const own = ownEntryOf(checker, instance);
+  switch (own.kind) {
+    case 'struct':
+      return structEntry(lowering, instance);
+    case 'constructor':
+      return constructorEntry(lowering, instance);
+    case 'derivedCodec':
+      return derivedCodecEntry({ ...lowering, instance }, own.direction);
+    case 'hostExtern':
+      return hostExternEntry(lowering, instance);
+    case 'body':
+      return bodyEntry(lowering, instance);
+    case 'native':
+      return nativeEntry(lowering, instance);
+    default: {
+      const unhandled: never = own;
+      return unhandled;
+    }
+  }
+}
+
+/** The code of `instance`'s function, its body. */
+function bodyEntry(lowering: Lowering, instance: FunctionInstance): FunctionDefinition {
+  const { checker } = lowering;
   const { declaration } = instance;
-  if (isFieldsFunction(declaration)) {
-    return constructedVariant(declaration) === undefined
-      ? structEntry({ checker, tables }, instance)
-      : constructorEntry({ checker, tables }, instance);
-  }
-  const codecDirection = derivedCodecDirection(checker, instance);
-  if (codecDirection !== undefined) {
-    return derivedCodecEntry({ checker, tables, instance }, codecDirection);
-  }
-  if (isHostExtern(checker, declaration)) {
-    return hostFunctionEntry({ checker, tables }, instance);
-  }
-  const parameters = checker.parametersOf(declaration);
-  const lowering = instanceLowering({ checker, tables }, instance);
+  const lowered = instanceLowering(lowering, instance);
   const body = writtenBodyOf(checker.program, checker.moduleOf(declaration), declaration);
-  if (lowering !== undefined && body !== undefined) {
-    return lowering.lower(body);
+  if (lowered === undefined || body === undefined) {
+    unreachable(`${declaration.name.text} has no body to lower.`);
   }
+  return lowered.lower(body);
+}
+
+/** The entry binding `instance`, an extern, to its native by key, with its instance's types. */
+function nativeEntry(lowering: Lowering, instance: FunctionInstance): FunctionDefinition {
+  const { checker, tables } = lowering;
+  const { declaration } = instance;
+  const parameters = checker.parametersOf(declaration);
   const substitution = substitutionOf(instance);
   return {
     kind: 'extern',

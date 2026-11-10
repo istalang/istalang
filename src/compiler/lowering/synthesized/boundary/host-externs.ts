@@ -6,7 +6,9 @@
  *   by its declared type's codec, closed within the wrapper's instance (codec-calls.ts). A
  *   result that doesn't fit is a bug in the host, so it panics the instance; a future the host
  *   fills is awaited first, and JSON that doesn't fit it fails the host's call that filled it, so
- *   the wrapper of an extern returning `Future<T>` is async and gives `T`.
+ *   the wrapper of an extern returning `Future<T>` is async and gives `T`. The wrapper is the
+ *   extern's one code entry, so it begins with the prologue computing the defaults a call leaves
+ *   out (functions/built-entries.ts `hostExternEntry`), and a trace names the extern once.
  * - The native entry is the extern as declared, bound by its declared key, with JSON for every
  *   parameter and result, so every instantiation of a generic extern shares one native.
  * - Reading an extern constant is a call to its own wrapper, which decodes the native's value the
@@ -26,12 +28,15 @@ import type {
   ExternConstantDeclaration,
   FunctionDeclaration,
 } from '../../../syntax/declarations/index.ts';
+import type { AnchoredSpan } from '../../../syntax/tree/positions.ts';
+import { emitCall, emitFunctionCall } from '../../calls/emit-call.ts';
+import type { CodeContext } from '../../context.ts';
 import type { FunctionInstance } from '../../tables/instances.ts';
 import { keyOf, qualifiedNameOf, spelledType } from '../../tables/names.ts';
-import type { DefinitionTables, EntryHeader, HostExternDeclaration } from '../../tables/tables.ts';
+import type { DefinitionTables, HostExternDeclaration } from '../../tables/tables.ts';
 import { SynthesizedCode } from '../index.ts';
 import { codecCall } from './codec-calls.ts';
-import { emitInbound, type Inbound, inboundOf } from './inbound.ts';
+import { emitInbound, inboundOf } from './inbound.ts';
 
 /** What writing an entry here reads. */
 interface Lowering {
@@ -43,7 +48,7 @@ interface Lowering {
  * A wrapper's call to a host native, and how it reads what the native gives: its types as
  * declared, whose codecs are closed `within` the extern's instance.
  */
-interface HostCall {
+export interface HostCall {
   readonly within: FunctionInstance | undefined;
   readonly native: FunctionId;
   readonly parameters: readonly Type[];
@@ -53,21 +58,19 @@ interface HostCall {
   readonly path: string;
 }
 
-/** The wrapper of an instance of a host extern function. */
-export function hostFunctionEntry(lowering: Lowering, instance: FunctionInstance): CodeFunction {
+/** The call the wrapper of an instance of a host extern function makes to its native. */
+export function hostCallOf(lowering: Lowering, instance: FunctionInstance): HostCall {
   const { checker, tables } = lowering;
   const { declaration } = instance;
-  const parameters = checker.parametersOf(declaration).map(({ type }) => type);
   const result = checker.resultOf(declaration);
-  const code = new SynthesizedCode(lowering, declaration.name.span, parameters.length);
-  return wrapped(code, tables.entryHeader(instance), {
+  return {
     within: instance,
     native: tables.hostNativeIndex(declaration),
-    parameters,
+    parameters: checker.parametersOf(declaration).map(({ type }) => type),
     result,
     filled: futureArgument(checker, result),
     path: qualifiedNameOf(checker, declaration),
-  });
+  };
 }
 
 /** The entry reading a host's extern constant of type `type`. */
@@ -84,7 +87,7 @@ export function hostConstantEntry(
     from: 'result',
     path: header.name,
   });
-  code.return(received(code, native, inbound));
+  code.return(emitInbound(code, native, inbound, code.span));
   return code.entry(header, false);
 }
 
@@ -152,43 +155,36 @@ function nativeParts(lowering: Lowering, declaration: HostExternDeclaration) {
   };
 }
 
-/** `code` finished as a wrapper making `call`: arguments encoded, what comes back decoded. */
-function wrapped(code: SynthesizedCode, header: EntryHeader, call: HostCall): CodeFunction {
-  const { checker } = code;
+/**
+ * Writes the wrapper's `call` at `span`: `parameters` encoded, the native called, and what comes
+ * back decoded, a future the host fills awaited first; the register of what the wrapper gives.
+ */
+export function writeHostCall(
+  context: CodeContext,
+  call: HostCall,
+  parameters: readonly Register[],
+  span: AnchoredSpan,
+): Register {
+  const { checker } = context;
   const { within, filled, path } = call;
-  const native = code.call(call.native, encoded(code, within, call.parameters));
-  code.return(
-    filled === undefined
-      ? received(code, native, inboundOf(checker, within, call.result, { from: 'result', path }))
-      : received(
-          code,
-          code.await(native),
-          inboundOf(checker, within, filled, { from: 'input', path }),
-        ),
+  const encoded = call.parameters.map((type, index) =>
+    emitFunctionCall(context, {
+      span,
+      call: codecCall(checker, within, type, 'write'),
+      arguments: [parameters[index] ?? unreachable(`No parameter ${index}.`)],
+    }),
   );
-  return code.entry(header, filled !== undefined);
-}
-
-/** `code`'s parameters, of `types`, each encoded as JSON by its codec, closed `within`. */
-function encoded(
-  code: SynthesizedCode,
-  within: FunctionInstance | undefined,
-  types: readonly Type[],
-): readonly Register[] {
-  return types.map((type, index) =>
-    code.call(codecCall(code.checker, within, type, 'write'), [registerAt(code.parameters, index)]),
-  );
-}
-
-/** What the JSON in `json` holds, read as `inbound` says. */
-function received(code: SynthesizedCode, json: Register, inbound: Inbound): Register {
-  return emitInbound(code, json, inbound, code.span);
-}
-
-function registerAt(registers: readonly Register[], index: number): Register {
-  const register = registers[index];
-  if (register === undefined) {
-    unreachable(`No parameter ${index}.`);
+  const native = emitCall(context, { span, callee: call.native, arguments: encoded });
+  if (filled === undefined) {
+    const inbound = inboundOf(checker, within, call.result, { from: 'result', path });
+    return emitInbound(context, native, inbound, span);
   }
-  return register;
+  const awaited = context.code.allocate();
+  context.code.await(awaited, native, span);
+  return emitInbound(
+    context,
+    awaited,
+    inboundOf(checker, within, filled, { from: 'input', path }),
+    span,
+  );
 }

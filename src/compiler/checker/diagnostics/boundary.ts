@@ -84,4 +84,9 @@ export const boundaryTemplates = {
     message: (type: string) =>
       `testing.handle makes a value of a host type, and ${type} isn't one.`,
   },
+  mockLeavesDefaults: {
+    code: 5954,
+    message: (name: string) =>
+      `A mock replaces '${name}' once its defaults are filled, so its replacement takes every parameter: name '${name}' at a type taking them all, not one leaving its defaults out.`,
+  },
 } as const;

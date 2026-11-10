@@ -3,8 +3,7 @@
  * executions waits, read from its last commit alone, so a host and the `testing` module see what a
  * restarted runtime would. In a committed snapshot every execution stands at an `await` or a
  * `select` (docs/arch/definition.md, "Frames"), which names its waypoint when the program gave it
- * one (`@Waypoint`); a location is always given, for waits without one. A root standing at its
- * `return`, waiting for the future it gives to resolve (§9), waits at no point of the program.
+ * one (`@Waypoint`); a location is always given, for waits without one.
  */
 
 import type { Definition } from '../../definition/definition.ts';
@@ -19,22 +18,15 @@ import { stateOf } from './wake.ts';
 export function inspection(definition: Definition, snapshot: Snapshot): Inspection {
   const waitingAt = snapshot.objects.flatMap((object) => {
     const frame = object.kind === 'execution' ? object.frames.at(-1) : undefined;
-    const waiting = frame === undefined ? undefined : waitingPointOf(definition, frame);
-    return waiting === undefined ? [] : [waiting];
+    return frame === undefined ? [] : [waitingPointOf(definition, frame)];
   });
   return { state: stateOf(snapshot), waitingAt };
 }
 
-/**
- * Where `frame`, an execution's innermost, waits; undefined for a root at its `return`. A snapshot
- * check makes it a wait.
- */
-function waitingPointOf(definition: Definition, frame: Frame): WaitingPoint | undefined {
+/** Where `frame`, an execution's innermost, waits; a snapshot check makes it a wait. */
+function waitingPointOf(definition: Definition, frame: Frame): WaitingPoint {
   const code = definition.functions[frame.function];
   const instruction = code?.kind === 'code' ? code.instructions[frame.pc] : undefined;
-  if (instruction?.kind === 'return') {
-    return undefined;
-  }
   if (code?.kind !== 'code' || (instruction?.kind !== 'await' && instruction?.kind !== 'select')) {
     unreachable(`Frame of function ${frame.function} doesn't stand at a wait.`);
   }

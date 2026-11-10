@@ -46,7 +46,7 @@ export interface Machine {
   readonly currentCall: () => Value;
   /**
    * Hands the call `frame` runs over to the mock replacing it, `frame` having run its prologue to
-   * compute what the call left out (frames.ts `FrameEntry`); its result is the frame's.
+   * compute what the call left out (frames.ts `FrameEntry`): the replacement takes its place.
    */
   readonly handOver: (frame: ActiveFrame) => void;
 }

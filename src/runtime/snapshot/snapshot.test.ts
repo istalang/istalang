@@ -135,6 +135,7 @@ function objectsArbitrary(ids: readonly number[]): fc.Arbitrary<HeapObject[]> {
           calls: fc.array(value, { maxLength: 2 }),
         })
         .map((parts) => ({ id: objectId, kind: 'mock' as const, ...parts })),
+      id.map((future) => ({ id: objectId, kind: 'outcome' as const, future })),
       fc
         .record(
           {

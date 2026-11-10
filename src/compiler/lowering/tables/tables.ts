@@ -54,11 +54,12 @@ import {
   ownerDeclaration,
 } from './instances.ts';
 import { qualifiedNameOf } from './names.ts';
+import { ownEntryOf } from './own-entries.ts';
 import { TypeTable } from './type-table.ts';
 
 /**
- * A function-table entry waiting to be lowered: a top-level function's instance, the entry of an
- * extern's instance computing the defaults a call leaves out before calling it (§3.3), a nested
+ * A function-table entry waiting to be lowered: a top-level function's instance, the entry of a
+ * native extern's instance computing the defaults a call leaves out before calling it (§3.3), a nested
  * instance, an extern a host implements as its native sees it (synthesized/boundary/host-externs.ts),
  * the read of an extern constant, the wrapper a host starts a function through
  * (synthesized/boundary/starts.ts), the async entry of a plain function made async, the
@@ -279,10 +280,11 @@ export class DefinitionTables {
 
   /**
    * The index a call leaving parameters of `instance` out calls (§3.3): its own entry, which
-   * computes them; for an extern, which computes nothing, its entry computing them, then calling it.
+   * computes them; for an extern bound to its native, which computes nothing, an entry computing
+   * them, then calling it (own-entries.ts).
    */
   leavingOutIndex(instance: FunctionInstance): FunctionId {
-    if (!instance.declaration.isExtern) {
+    if (ownEntryOf(this.#checker, instance).kind !== 'native') {
       return this.functionIndex(instance);
     }
     const key = `defaults:${instanceKey(this.#checker.typeKeys, instance)}`;

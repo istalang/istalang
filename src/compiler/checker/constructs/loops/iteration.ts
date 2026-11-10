@@ -45,9 +45,13 @@ export class Iterations implements IterationRecord {
     this.#forms.set(iteration, form);
   }
 
+  formOf(iteration: Iteration, pass?: Pass): IterationForm | undefined {
+    return this.#forms.get(iteration, pass);
+  }
+
   /** The form recorded for `iteration`; lowering asks only of a program checked clean. */
   of(iteration: Iteration, pass?: Pass): IterationForm {
-    const form = this.#forms.get(iteration, pass);
+    const form = this.formOf(iteration, pass);
     if (form === undefined) {
       unreachable(`An iteration at ${iteration.span.from} was never checked.`);
     }

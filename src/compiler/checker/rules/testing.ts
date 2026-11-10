@@ -11,7 +11,9 @@
  * - The testing module's calls whose arguments its signatures can't constrain: a mock's target must
  *   name a function, since a lambda or a variable has no identity to replace, nor a variant, built
  *   where it is called (§3.11), and is never made async to fit (§3.14), since the function made
- *   async would be another; and the type `handle`
+ *   async would be another. It is named at a type taking every parameter: a mock replaces the
+ *   function once its defaults are filled, so its replacement is given them all, and one written
+ *   for a type leaving defaults out would take arguments it doesn't expect. The type `handle`
  *   makes a value of must be a host type. Each is checked over the calls a body resolved. A mock's
  *   target is also the one place a `dispose` may be named (rules/disposal/disposal.ts), so the
  *   targets are what checking gives back.
@@ -36,6 +38,7 @@ import { isHostType } from '../surface/host-externs.ts';
 import {
   type FunctionCall,
   namesFunctionValue,
+  passesAll,
   type ResolvedCall,
   type ResolvedSite,
 } from '../surface/resolved-call.ts';
@@ -82,6 +85,10 @@ function checkTarget(context: BodyContext, site: Call, mock: FunctionCall): Expr
   const names = named?.kind === 'function' && constructedVariant(named.function) === undefined;
   if (target === undefined || !names) {
     context.report(checkerDiagnostics.mockTarget((argument ?? site).span));
+    return undefined;
+  }
+  if (!passesAll(named.binding)) {
+    context.report(checkerDiagnostics.mockLeavesDefaults(target.span, named.function.name.text));
     return undefined;
   }
   const [taken] = context.checker.parametersOf(mock.function);

@@ -77,9 +77,9 @@ export class SegmentCollection {
 
   /**
    * What holds things besides the collector's own rounds (lifetimes/holders.ts): every execution's
-   * frames, the carrier's, the call futures of the executions running on the run stack, and the
-   * answers still to give (§10). The frames running now come first, innermost first, as what code
-   * lets go of is mostly held there.
+   * frames, the carrier's, the call futures of the executions running on the run stack, and what
+   * the instance owes (`Instance.owed`). The frames running now come first, innermost first, as
+   * what code lets go of is mostly held there.
    */
   #roots(): Roots {
     const { instance, runStack } = this.#seams;
@@ -89,7 +89,7 @@ export class SegmentCollection {
       .filter((execution) => !running.includes(execution));
     return {
       frames: [...running, ...waiting].flatMap((execution) => execution.frames.toReversed()),
-      objects: [...runStack.callFutures(), ...instance.answers()],
+      objects: [...runStack.callFutures(), ...instance.owed()],
     };
   }
 }

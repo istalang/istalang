@@ -97,6 +97,19 @@ fn suite() -> Array<Test>: broken()
 `);
     expect(outcomesOf(await reportsOf(source))).toEqual(['broken: failed: no tests']);
   });
+
+  it('allows a suite to build a test with a deferred call, running the call only when the test runs (§3.14, §10)', async () => {
+    const source = testModule(`
+async fn checkSum(a: Int, b: Int, expected: Int):
+  assertEq(a + b, expected)
+
+@Suite{"deferred"}
+fn suite() -> Array<Test>: [
+  test("adds") checkSum(1, 2, 3),
+]
+`);
+    expect(outcomesOf(await reportsOf(source))).toEqual(['deferred › adds: passed']);
+  });
 });
 
 describe('spawned instances', () => {

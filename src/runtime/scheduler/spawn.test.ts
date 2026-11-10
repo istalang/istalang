@@ -156,18 +156,18 @@ describe("a spawned instance's root", () => {
     },
   );
 
-  it('commits a plain root waiting at its return, at no point of the program, beside the call it awaits', async () => {
+  it('commits the future a plain root gave as the outcome it awaits, no frame waiting for it', async () => {
     const test = testRuntime();
     await test.runtime.deploy(compiledText(awaitingMain)).start('p');
     await test.runtime.wake('p/1');
     const child = readBack(test.store).findLast((snapshot) => snapshot.instance === 'p/1');
-    const executions = child?.objects.filter((object) => object.kind === 'execution') ?? [];
-    expect(
-      executions.map(({ resolves, frames }) => [resolves === undefined, frames.length]),
-    ).toEqual([
-      [true, 1],
-      [false, 1],
-    ]);
+    const objects = child?.objects ?? [];
+    const awaited = objects.flatMap((object) => (object.kind === 'outcome' ? [object.future] : []));
+    const executions = objects.flatMap((object) =>
+      object.kind === 'execution' ? [object.resolves] : [],
+    );
+    expect(executions).toHaveLength(1);
+    expect(awaited).toEqual(executions);
     expect(test.runtime.inspect('p/1').waitingAt).toEqual([
       { waypoint: undefined, location: 'memory:main:3:3' },
     ]);
@@ -183,6 +183,24 @@ describe("a spawned instance's root", () => {
       ].join('\n'),
     );
     expect(await spawnedOutcomes(text)).toEqual(new Map([['p/1', '"isolated"']]));
+  });
+
+  it('starts an instance when given a future-returning extern as a function value', async () => {
+    const text = compiledText(
+      [
+        "import * as runtime from 'runtime'",
+        'async fn main() -> Future<Int>:',
+        '  drop await spawn(runtime.commit).result()',
+        '  drop await runtime.isolate(runtime.commit)',
+        '  0',
+      ].join('\n'),
+    );
+    expect(await spawnedOutcomes(text)).toEqual(
+      new Map([
+        ['p/1', 'null'],
+        ['p/2', 'null'],
+      ]),
+    );
   });
 });
 

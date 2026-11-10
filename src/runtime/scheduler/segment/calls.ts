@@ -8,8 +8,9 @@
  * - A mock replaces a function's body, not its defaults (§3.3): a call leaving parameters out to a
  *   mocked code entry runs the target's prologue first, as a plain frame on the caller's execution
  *   even for an async entry, since a prologue never waits. At its body's start the frame hands the
- *   call over (`handOver`) with every argument, as this call would have from the start, and the
- *   frame's result is the call's.
+ *   call over (`handOver`) with every argument, as this call would have from the start: an answer
+ *   is the frame's result, and a replacement takes the frame's place (index.ts), so no trace shows
+ *   the target.
  * - A native runs at once and answers the call; code gives the entry to push.
  * - Code that waits runs only in a run of its own kind (proposal 8's call rule): live code in a live
  *   run, ista code in an instance. The checker keeps every call so (K1), so a call across kinds is

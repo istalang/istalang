@@ -126,13 +126,17 @@ export function instanceLowering(
 
 /**
  * The lowering of an entry built from `instance`'s parameters, which has no body of its own
- * (built-entries.ts).
+ * (built-entries.ts); async when it awaits what it gives, `awaited`.
  */
-export function builtLowering(lowering: Lowering, instance: FunctionInstance): FunctionLowering {
+export function builtLowering(
+  lowering: Lowering,
+  instance: FunctionInstance,
+  awaited?: Type,
+): FunctionLowering {
   const owner = { kind: 'function', instance } as const;
   return new FunctionLowering(
     { ...lowering, owner, body: undefined },
-    builtFrame(lowering, instance),
+    builtFrame(lowering, instance, awaited),
   );
 }
 

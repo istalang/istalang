@@ -118,6 +118,7 @@ const kinds: Handlers<undefined, LiveObject, [], KindDisposal> = {
   resource: (_context, resource) => declared(resource),
   weakRef: () => inert,
   answer: () => inert,
+  outcome: () => inert,
   execution: () => inert,
 };
 

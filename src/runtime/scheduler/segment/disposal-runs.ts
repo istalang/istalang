@@ -56,6 +56,13 @@ export class DisposalRuns {
     return run.kind === 'call' ? this.#call(run) : this.#cleanup(run);
   }
 
+  /** `replacement` takes `frame`'s place as the call it runs, a disposal's call staying one. */
+  replaceFrame(frame: ActiveFrame, replacement: ActiveFrame): void {
+    if (this.#frames.has(frame)) {
+      this.#frames.add(replacement);
+    }
+  }
+
   /** `frame` just returned off `execution`: whether it ran a disposal's call, which is now done. */
   returned(execution: LiveExecution, frame: ActiveFrame): boolean {
     if (!this.#frames.has(frame)) {

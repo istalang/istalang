@@ -9,16 +9,19 @@
  * - A variant's constructor's entry builds the variant (§3.11), for a call leaving a field out and
  *   for what is handed an entry to call later, as a function value is (§3.14); a call giving every
  *   field builds it in place (values/variant-values.ts).
- * - An extern computes nothing, so a call leaving its defaults out, or a function value of a
- *   shorter type naming it, calls its defaults entry, which then calls the extern with every
- *   parameter, a reference passed on as it came (tables/tables.ts `leavingOutIndex`); a call giving
- *   every argument calls the extern itself.
+ * - A host extern's one code entry is its wrapper (synthesized/boundary/host-externs.ts), which
+ *   computes its defaults before calling the host's native.
+ * - An extern bound to a native computes nothing, so a call leaving its defaults out, or a function
+ *   value of a shorter type naming it, calls its defaults entry, which then calls the extern with
+ *   every parameter, a reference passed on as it came (tables/tables.ts `leavingOutIndex`); a call
+ *   giving every argument calls the extern itself.
  */
 
 import type { CodeFunction } from '../../../definition/tables/functions.ts';
 import { unreachable } from '../../../foundation/structures/unreachable.ts';
 import type { NominalType, Type } from '../../checker/types/type/index.ts';
 import { emitCall, referenceTo } from '../calls/emit-call.ts';
+import { hostCallOf, writeHostCall } from '../synthesized/boundary/host-externs.ts';
 import type { FunctionInstance } from '../tables/instances.ts';
 import { structValue } from '../values/struct-values.ts';
 import { buildConstructed } from '../values/variant-values.ts';
@@ -52,9 +55,23 @@ export function structEntry(lowering: Lowering, instance: FunctionInstance): Cod
   });
 }
 
+/** The entry of `instance`, a host extern: its wrapper, calling the host's native. */
+export function hostExternEntry(lowering: Lowering, instance: FunctionInstance): CodeFunction {
+  const { span } = instance.declaration.name;
+  const call = hostCallOf(lowering, instance);
+  return builtLowering(lowering, instance, call.filled).lowerBuilt((context, parameters) =>
+    writeHostCall(
+      context,
+      call,
+      parameters.map(({ register }) => register),
+      span,
+    ),
+  );
+}
+
 /**
- * The entry of `instance`, an extern, computing the defaults a call leaves out, then calling the
- * extern with every parameter.
+ * The entry of `instance`, an extern bound to a native, computing the defaults a call leaves out,
+ * then calling the extern with every parameter.
  */
 export function externDefaultsEntry(lowering: Lowering, instance: FunctionInstance): CodeFunction {
   const { tables } = lowering;

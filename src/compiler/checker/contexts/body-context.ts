@@ -358,6 +358,8 @@ export interface DeferralRecord {
 /** How each iteration runs (constructs/loops/iteration.ts). */
 export interface IterationRecord {
   readonly record: (iteration: Iteration, form: IterationForm) => void;
+  /** The form recorded for `iteration`; undefined for one not checked to run, its value having none. */
+  readonly formOf: (iteration: Iteration) => IterationForm | undefined;
 }
 
 /**

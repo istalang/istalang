@@ -118,8 +118,9 @@ export class Instance {
   }
 
   /**
-   * The instance an `unstarted` snapshot describes, its root execution about to run the snapshot's
-   * call from its start.
+   * The instance an `unstarted` snapshot describes: its root execution about to run the snapshot's
+   * call from its start, or, for a call of an extern, none, the first segment making the call
+   * (../segment/root-outcome.ts).
    */
   static start(loaded: LoadedDefinition, snapshot: Snapshot): Instance {
     if (snapshot.status.kind !== 'unstarted') {
@@ -127,7 +128,10 @@ export class Instance {
     }
     const { call } = snapshot.status;
     const instance = new Instance(loaded, snapshot);
-    instance.startExecution(instance.#frameEntry(call.function), call.arguments, call.captures);
+    const callee = loaded.functions.callee(call.function);
+    if (callee.kind === 'code') {
+      instance.startExecution(callee, call.arguments, call.captures);
+    }
     return instance;
   }
 
@@ -161,7 +165,7 @@ export class Instance {
     const executions = this.heap.objectsOf('execution');
     const held = heldFrom(this.heap, {
       frames: executions.flatMap((execution) => execution.frames),
-      objects: this.answers(),
+      objects: this.owed(),
     });
     const lost = this.heap
       .objects()
@@ -293,9 +297,14 @@ export class Instance {
     return this.#logs;
   }
 
-  /** The futures the answers still to give wait on, which each holds until it is given (§10). */
-  answers(): readonly number[] {
-    return this.heap.objectsOf('answer').flatMap(heldObjects);
+  /**
+   * The futures what the instance owes waits on, each held until it resolves: the answers still to
+   * give other instances' calls (§10), and its outcome, once its root gave a future (§9).
+   */
+  owed(): readonly number[] {
+    return [...this.heap.objectsOf('answer'), ...this.heap.objectsOf('outcome')].flatMap(
+      heldObjects,
+    );
   }
 
   /** The answers this segment gave other instances' calls, each filled once it commits (§10). */
@@ -327,14 +336,6 @@ export class Instance {
       frames: [frame],
       disposing: false,
     }));
-  }
-
-  #frameEntry(entry: FunctionId): FrameEntry {
-    const code = this.loaded.definition.functions[entry];
-    if (code?.kind !== 'code') {
-      unreachable(`Entry ${entry} is not code.`);
-    }
-    return { function: entry, code };
   }
 
   /** Whether no execution is ready to run. */

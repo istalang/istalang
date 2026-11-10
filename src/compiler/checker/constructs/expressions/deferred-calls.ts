@@ -8,7 +8,7 @@
  *   A deferred call within it computes its taker's parts now too, so `a b c(x)` computes `x` once,
  *   here; its own call it checks itself.
  * - The function takes nothing and gives what the call gives. It is sendable when every value it
- *   captures is, so where a sendable function is taken, each value that isn't is reported
+ *   captures is, a spread's collected items rather than its iterable, so where a sendable function is taken, each value that isn't is reported
  *   (resolution/calls/deferred-arguments.ts). It is built where it is given, so it is never fitted
  *   as a value is: the parameter it fills is recorded at the call (`Deferrals`), and lowering builds
  *   it as that type, giving what the call gives fitted to it.
@@ -45,6 +45,7 @@ import type { Type } from '../../types/type/index.ts';
 import { errorType, isPrimitive, neverType } from '../../types/type/primitives.ts';
 import { calledValueType } from '../closures/value-calls.ts';
 import { calledValue, checkCallMade } from './calls.ts';
+import { collectedBy } from './collections/collections.ts';
 
 /** What the function each deferred call in one body gives is given as, by the call it makes. */
 export class Deferrals implements DeferralRecord {
@@ -185,13 +186,15 @@ function referencedReceiver(context: BodyContext, call: CallingNode): Expression
 
 /**
  * What `call`, made later, computes now, in the order it runs, each with its type: its callee's
- * value or its receiver, then each argument its parentheses write; for a deferred call, then what
- * its own call computes now.
+ * value or its receiver, then each argument its parentheses write, a spread's as what it collects
+ * (`collectedBy`), not the iterable it runs over; for a deferred call, then what its own call
+ * computes now.
  */
 function computedNow(context: BodyContext, call: CallingNode): readonly StoppingOperand[] {
   const written = writtenArgumentsOf(call).map((argument) => {
     const node = argumentValue(argument);
-    return { node, type: context.typeOf(node) };
+    const type = argument.kind === 'Spread' ? collectedBy(context, argument) : context.typeOf(node);
+    return { node, type };
   });
   const own = [...calleeNow(context, call), ...written];
   const deferred = call.kind === 'DeferredCall' ? deferredOf(call) : undefined;

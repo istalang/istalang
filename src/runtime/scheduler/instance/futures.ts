@@ -3,24 +3,24 @@
  * and stays resolved.
  *
  * - Who waits on a future is read from the waiters' frames, never stored: an execution waits on
- *   the futures its top frame's `await` or `select` names, or a root on the one its `return` gives
- *   (interpreter/suspension.ts).
+ *   the futures its top frame's `await` or `select` names (definition/instructions/flow.ts).
  *   Resolving a future readies its waiters in creation order, once each.
  * - `futures.first(fs)` is the one future that waits on others: it resolves with the position and
  *   value of the first of them to resolve, the lowest position among those resolved together.
  *   Which `first`s wait on a future is read from their lists, the same way.
  * - An answer to another instance's call to a mock (§10) waits on a future too. When it resolves
  *   with a future, as the replacement of a function returning one does, the answer waits on that
- *   one instead; when it resolves with anything else, the answer is given (`Answered`).
+ *   one instead; when it resolves with anything else, the answer is given (`Answered`). An
+ *   instance's outcome follows a future the same way (`endOf`, §9): no future leaves its instance.
  * - A watch on another instance resolves once its condition holds, at the start of a segment, as a
  *   timer does when it is due: the instance has ended (§9), or under a test it is idle or waits at
  *   a waypoint (§10).
  */
 
+import { awaitedRegisters } from '../../../definition/instructions/flow.ts';
 import { handleTarget, handleTo, type Value } from '../../../definition/values/values.ts';
 import { unreachable } from '../../../foundation/structures/unreachable.ts';
 import { readRegister } from '../../interpreter/registers.ts';
-import { waitedRegisters } from '../../interpreter/suspension.ts';
 import { Panic } from '../../natives.ts';
 import type { FutureState, Watch } from '../../snapshot/objects.ts';
 import type { CallerFuture } from '../testing/test-world.ts';
@@ -115,8 +115,8 @@ export class Futures {
    */
   #answer(answer: LiveObjectOf<'answer'>): void {
     const value = this.#valueOf(answer.future);
-    const next = handleTarget(value);
-    if (next !== undefined && this.#heap.objectOf(next).kind === 'future') {
+    const next = this.#futureIn(value);
+    if (next !== undefined) {
       const following = { ...answer, future: next, followed: true };
       this.#heap.replace(following);
       if (this.settled(value) !== undefined) {
@@ -127,6 +127,24 @@ export class Futures {
     this.#heap.remove(answer.id);
     const { instance, token, followed } = answer;
     this.#events.answered({ instance, token, value, followed });
+  }
+
+  /**
+   * What `future` ends with, as a value leaving its instance does: its value once it has resolved,
+   * a future it resolved with followed in turn, as an answer follows it; undefined while pending.
+   */
+  endOf(future: number): Settled | undefined {
+    const settled = this.settled(handleTo(future));
+    const next = settled === undefined ? undefined : this.#futureIn(settled.value);
+    return next === undefined ? settled : this.endOf(next);
+  }
+
+  /** The future `value` is a handle to, which no value leaving its instance can be; else none. */
+  #futureIn(value: Value): number | undefined {
+    const target = handleTarget(value);
+    return target !== undefined && this.#heap.objectOf(target).kind === 'future'
+      ? target
+      : undefined;
   }
 
   /** An answer to the call another instance named `token`, given once `future` resolves (§10). */
@@ -310,8 +328,7 @@ function isFirst(future: LiveObjectOf<'future'>): future is FirstFuture {
 }
 
 /**
- * The futures `execution`'s top frame waits on, in the order its `await` or `select` names them, or
- * the one a root waits on at its `return`.
+ * The futures `execution`'s top frame waits on, in the order its `await` or `select` names them.
  */
 export function waitedOn(execution: LiveExecution): readonly number[] {
   const frame = execution.frames.at(-1);
@@ -319,7 +336,7 @@ export function waitedOn(execution: LiveExecution): readonly number[] {
   if (frame === undefined || instruction === undefined) {
     return [];
   }
-  return waitedRegisters(instruction).flatMap((register) => {
+  return awaitedRegisters(instruction).flatMap((register) => {
     const target = handleTarget(readRegister(frame, register));
     return target === undefined ? [] : [target];
   });

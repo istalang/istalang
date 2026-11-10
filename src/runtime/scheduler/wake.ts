@@ -50,7 +50,7 @@ import type { Instance } from './instance/index.ts';
 import { storedEnds } from './instance/instance-ends.ts';
 import type { LoadedDefinition } from './loaded-definition.ts';
 import type { Resident } from './resident.ts';
-import { endInstance, runSegment, type SegmentEnd } from './segment/index.ts';
+import { endInstance, runSegment, type SegmentEnd, type SegmentStart } from './segment/index.ts';
 import { arriving } from './testing/mocks.ts';
 import type { CallerFuture, MockCall } from './testing/test-world.ts';
 
@@ -218,9 +218,13 @@ function runFrom(
   step: FirstStep,
 ): SegmentRun | undefined {
   const instance = resident.take();
-  if (resident.committed.status.kind === 'unstarted') {
+  const { status } = resident.committed;
+  if (status.kind === 'unstarted') {
     const root = instance.root();
-    const first = root === undefined ? undefined : ({ kind: 'driver', execution: root } as const);
+    const first: SegmentStart =
+      root === undefined
+        ? { kind: 'call', call: status.call }
+        : { kind: 'driver', execution: root };
     return { instance, end: runSegment(instance, startedAt, first) };
   }
   if (

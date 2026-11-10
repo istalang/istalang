@@ -36,7 +36,7 @@ tags: [reuse, syntax, ast, scanner, parser, operators]
 - turn a phase's anchored diagnostic into one at text positions as it leaves → `diagnosticIn` (`src/compiler/syntax/tree/positions.ts`)
 - the text a lambda or local function covers, header and body → `nestedFunctionSpan` (`src/compiler/syntax/declarations/index.ts`); lowering's, from the tree → `nestedSpanOf` (`src/compiler/lowering/functions/bodies.ts`)
 - list a node and every node under it in source order, each before its children (explicit stack) → `nodesUnder` (`src/compiler/syntax/tree/index.ts`)
-- list direct children that run in the same function body (skipping nested functions) → `bodyChildrenOf`, `nestsFunction` (`src/compiler/syntax/tree/index.ts`)
+- list direct children that run in the same function body where they stand (skipping nested functions, and the call a deferred call makes later, though not what it computes now) → `bodyChildrenOf`, `nestsFunction` (`src/compiler/syntax/tree/index.ts`); the one home of "runs now", which every walk asking it reads
 - look up operator precedence, associativity and meaning → `binaryOperators`, `unaryOperators`, `operatorLevels` (`src/compiler/syntax/expressions/operators.ts`)
 - classify operators or unwrap a compound assignment's operator → `isAssignmentOperator`, `compoundOperator` (`src/compiler/syntax/expressions/operators.ts`)
 - test whether a token kind is a comparison or chaining operator, or one calling `compare`/`includes` → `isComparisonOperator`, `isChainingOperator`, `isImplicitOperator` (`src/compiler/syntax/expressions/operators.ts`)
