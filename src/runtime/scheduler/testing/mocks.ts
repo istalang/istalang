@@ -5,8 +5,10 @@
  * - A call reaches the newest mock held for its target: its instance's own, or else the one of the
  *   nearest instance it descends from that holds one (../instance/instance-names.ts), which only a
  *   test world has (test-world.ts). Releasing a mock therefore brings back the one before it. Every
- *   call path asks `mockedCall` (segment/calls.ts): a written call, a function value's, a
- *   disposal's. A deferred call's call is a call, so `spawn f(x)` calls `f` in the new instance and
+ *   call path asks `reachedMock` (segment/calls.ts): a written call, a function value's, a
+ *   disposal's. A mock replaces a function's body, never its defaults: a call leaving parameters
+ *   out reaches its mock once the target's prologue has computed them, so the mock records, and
+ *   its replacement takes, every argument (§3.3). A deferred call's call is a call, so `spawn f(x)` calls `f` in the new instance and
  *   reaches a mock of `f` relayed from its holder; starting an instance with a function isn't a
  *   call of it, so one started, or spawned with a function value (`spawn(f)`, `runtime.isolate(f)`),
  *   runs it whatever mocks it.
@@ -90,16 +92,32 @@ function replacementOf(mock: LiveObjectOf<'mock'>): Extract<CompositeValue, { ki
   );
 }
 
-/** How `call` is mocked; undefined when no mock replaces its target. */
-export function mockedCall(call: CallToMock): MockedCall | undefined {
-  const own = call.instance.mockOf(call.target);
+/**
+ * The mock a call to `target` from `instance` reaches: its own, or one an instance it descends from
+ * holds; undefined when none does. Finding it records nothing (`mockedCall` does).
+ */
+export function reachedMock(instance: Instance, target: FunctionId): ReachedMock | undefined {
+  const own = instance.mockOf(target);
   if (own !== undefined) {
-    const values = call.values().map((each) => asHostValue(call.instance, each));
-    recordCall(call.instance, own, values);
-    return { kind: 'replaced', replacement: replacementOf(own), values };
+    return { kind: 'own', mock: own };
   }
-  const relayed = relayedMockOf(call.instance, call.target);
-  return relayed === undefined ? undefined : { kind: 'answered', value: relayCall(call, relayed) };
+  const held = relayedMockOf(instance, target);
+  return held === undefined ? undefined : { kind: 'relayed', held };
+}
+
+/** A mock a call reaches: one its own instance holds, or one another instance holds. */
+export type ReachedMock =
+  | { readonly kind: 'own'; readonly mock: LiveObjectOf<'mock'> }
+  | { readonly kind: 'relayed'; readonly held: HeldMock };
+
+/** Makes `call` to `reached`, the mock replacing its target: recorded, replaced or answered. */
+export function mockedCall(call: CallToMock, reached: ReachedMock): MockedCall {
+  if (reached.kind === 'relayed') {
+    return { kind: 'answered', value: relayCall(call, reached.held) };
+  }
+  const values = call.values().map((each) => asHostValue(call.instance, each));
+  recordCall(call.instance, reached.mock, values);
+  return { kind: 'replaced', replacement: replacementOf(reached.mock), values };
 }
 
 /** A mock another instance holds, by its id there. */

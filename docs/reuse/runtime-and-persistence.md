@@ -3,7 +3,7 @@ description: canonical JSON codecs, versioned formats, snapshots, heap objects, 
 owner: tech-lead
 status: active
 applies_to: istalang
-last_verified: 2026-10-28
+last_verified: 2026-11-10
 last_updated: 2026-11-10
 tags: [reuse, runtime, snapshot, persistence, scheduler, lifetimes, host]
 ---
@@ -27,7 +27,8 @@ tags: [reuse, runtime, snapshot, persistence, scheduler, lifetimes, host]
 - convert between stored `HeapObject`s and live `Instance` objects/frames → `liveObject`, `storedObject` (`src/runtime/scheduler/instance/live-objects.ts`)
 - start, restore or persist a running instance in memory → `Instance` (`src/runtime/scheduler/instance/index.ts`)
 - manage indexed heap objects or unwrap a handle's object id → `Heap`, `handleObject` (`src/runtime/scheduler/instance/heap.ts`)
-- format stack traces or `module:line:column` locations from a `Definition`'s `lineStarts` → `traceOf`, `locationOf`; the trace a default asks for, its own frame left out → `callerTraceOf` (`src/runtime/interpreter/trace.ts`)
+- format stack traces or `module:line:column` locations from a `Definition`'s `lineStarts` → `traceOf`, `locationOf`; the trace a default asks for, the innermost frame left out while in its prologue → `callerTraceOf` (`src/runtime/interpreter/trace.ts`)
+- start a call on any call path (a written call, a function value's, a disposal's, an encoder's), a mock replacing its target asked first → `startCall` (`src/runtime/scheduler/segment/calls.ts`); a call leaving parameters out to a mocked code entry runs the target's prologue as a plain frame and hands over at its `body` marker → `handOver`, never a second mock path; which mock a call reaches without recording it, and the call made to it → `reachedMock`, `mockedCall` (`src/runtime/scheduler/testing/mocks.ts`)
 - convert V8 limit `RangeError`s to `Panic` or guard depth → `panicOf`, `requireDepth`, `requireFrameDepth` (`src/runtime/scheduler/segment/limits.ts`)
 - encode/decode 32-byte instance random seeds, and draw deterministic HMAC-SHA-256 random bytes from one for a segment → `seedBytes`, `seedTextOf`, `seedFrom`, `drawOf` (`src/runtime/snapshot/random.ts`)
 - build spawned instance names `<parent>/<n>` or list ancestors → `spawnedName`, `ancestorsOf`, `spawnedSeparator` (`src/runtime/scheduler/instance/instance-names.ts`)

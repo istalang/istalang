@@ -77,8 +77,8 @@ export interface CapturedVariable {
 
 /**
  * Where a struct literal's field, named `field`, gets its value (§3.1): an expression of the
- * literal, the field of that position in its leading spread's value, or its default: `call`'s
- * default for that field, of the function the fields read as, computed from the fields before it
+ * literal, the field of that position in its leading spread's value, or its default, which `call`,
+ * of the function the fields read as, computes from the fields before it as it starts
  * (syntax/declarations/field-defaults.ts). A literal's sources come in declaration order, the order
  * evaluation follows; its value takes its type's layout by the fields' names (`laidOut`). A struct
  * comprehension (§3.1) is the source of every field it gives, one per field of the struct each

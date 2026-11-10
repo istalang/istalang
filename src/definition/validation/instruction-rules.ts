@@ -2,8 +2,10 @@
  * What load validation requires of single instructions beyond their indexes, so the interpreter
  * runs any accepted instruction without a guard of its own:
  * - a construction matches the type it names, and a new cell names a cell's type
- * - a direct call passes the callee's parameters in number and kind (value or `&`), and
- *   a function with captures is called only through its closure value, never directly
+ * - a direct call passes the callee's parameters in number and kind (value or `&`), leaving out
+ *   only one the callee computes from its default (§3.3), and a function with captures is called
+ *   only through its closure value, never directly
+ * - `given` tests a parameter a call may leave out
  * - a closure carries its function's captures
  * - only code that runs as an execution, live or ista, waits (`await`, a blocking `select`) or reads
  *   its own call (proposal 8, Rule 2)
@@ -25,6 +27,7 @@ import {
   type CodeFunction,
   capturesOf,
   type FunctionDefinition,
+  mayLeaveOut,
   takesReference,
 } from '../tables/functions.ts';
 import type { Tables } from '../tables/index.ts';
@@ -92,6 +95,11 @@ const rules: Handlers<Tables, Instruction, [CodeFunction], string | undefined> =
       ? directCallProblem(tables.functions[i.callee.function], i.arguments)
       : undefined,
   currentCall: executionOnly,
+  given: (_tables, i, owner) =>
+    owner.parameters[i.parameter]?.hasDefault === true
+      ? undefined
+      : `register ${i.parameter} is no parameter a call may leave out.`,
+  body: none,
   await: waitsOnlyInExecutions,
   select: waitsOnlyInExecutions,
   release: none,
@@ -161,12 +169,19 @@ function argumentsProblem(
   if (args.length !== callee.parameters.length) {
     return `${callee.name} takes ${callee.parameters.length} arguments, not ${args.length}.`;
   }
-  const mismatch = args.findIndex(
-    (argument, index) => (argument.kind === 'reference') !== takesReference(callee, index),
-  );
+  const mismatch = args.findIndex((argument, index) => !fits(callee, index, argument));
   if (mismatch < 0) {
     return undefined;
   }
   const expected = takesReference(callee, mismatch) ? 'by &' : 'by value';
-  return `argument ${mismatch} of ${callee.name} must be passed ${expected}.`;
+  return mayLeaveOut(callee, mismatch)
+    ? `argument ${mismatch} of ${callee.name} must be passed ${expected} or left out.`
+    : `argument ${mismatch} of ${callee.name} must be passed ${expected}.`;
+}
+
+/** Whether `argument` fits parameter `index` of `callee`: passed as it takes it, or left out. */
+function fits(callee: FunctionDefinition, index: number, argument: Argument): boolean {
+  return argument.kind === 'omitted'
+    ? mayLeaveOut(callee, index)
+    : (argument.kind === 'reference') === takesReference(callee, index);
 }

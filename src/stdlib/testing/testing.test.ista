@@ -128,6 +128,8 @@ fn assertions() -> Array<Test>: [
 fn pair() -> Int: 0
 fn many(a: Int, b: Int, c: Int, d: Int, e: Int, f: Int, g: Int, h: String) -> String: h
 async fn later(a: Int) -> Future<Int>: a
+fn scaled(n: Int, by: Int = 10, offset: Int = n) -> Int: n * by + offset
+async fn scaledLater(n: Int, by: Int = 10) -> Future<Int>: n * by
 
 @Suite{"testing › mock"}
 fn mocks() -> Array<Test>: [
@@ -149,6 +151,22 @@ fn mocks() -> Array<Test>: [
     const m = mock(later, async fn(a: Int): a * 10)
     assertEq(await later(9), 90)
     assertEq(m.calls(), [(9,)])
+  })
+  test("replaces a body, the target's defaults filling what a call leaves out", async fn(): {
+    const m = mock(scaled, fn(n: Int, by: Int, offset: Int): n + by + offset)
+    const shorter: fn(Int) -> Int = scaled
+    assertEq([scaled(1), scaled(2, by: 3), scaled(1, 2, 3), shorter(5)], [12, 7, 6, 20])
+    assertEq(m.calls(), [(1, 10, 1), (2, 3, 2), (1, 2, 3), (5, 10, 5)])
+  })
+  test("fills an async target's defaults at once, before its replacement runs", async fn(): {
+    const m = mock(scaledLater, async fn(n: Int, by: Int): n + by)
+    assertEq([await scaledLater(4), await scaledLater(4, 1)], [14, 5])
+    assertEq(m.calls(), [(4, 10), (4, 1)])
+  })
+  test("fills the defaults of a call an instance the test started makes", async fn(): {
+    const m = mock(scaled, fn(n: Int, by: Int, offset: Int): n - by - offset)
+    assertEq(await (spawn scaled(7)).result(), Ok(-10))
+    assertEq(m.calls(), [(7, 10, 7)])
   })
 ]
 

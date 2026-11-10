@@ -34,11 +34,12 @@ import { unreachable } from '../../../foundation/structures/unreachable.ts';
 import type { LogRecord, SpawnOptions } from '../../instance-state.ts';
 import type { ActiveFrame, FrameEntry, FrameHeap } from '../../interpreter/frames.ts';
 import { newFrame, releaseFrame } from '../../interpreter/machine.ts';
+import type { Passed } from '../../interpreter/registers.ts';
 import { resume } from '../../interpreter/suspension.ts';
 import { isDisposable } from '../../lifetimes/disposal.ts';
 import { heldFrom } from '../../lifetimes/holders.ts';
 import { heldObjects, isRoot } from '../../snapshot/holdings.ts';
-import { type HeapObject, isReference, type RegisterContents } from '../../snapshot/objects.ts';
+import { type HeapObject, isReference } from '../../snapshot/objects.ts';
 import { drawOf, seedFrom } from '../../snapshot/random.ts';
 import type { InstanceCall, Snapshot } from '../../snapshot/snapshot.ts';
 import type { LoadedDefinition } from '../loaded-definition.ts';
@@ -308,12 +309,13 @@ export class Instance {
   }
 
   /**
-   * A new execution about to run function `entry` with `contents` in its parameters, and a
-   * closure's `captures` after them; an async call's execution `resolves` its future on return.
+   * A new execution about to run function `entry` with `contents` in its parameters, those a call
+   * left out empty, and a closure's `captures` after them; an async call's execution `resolves` its
+   * future on return.
    */
   startExecution(
     entry: FrameEntry,
-    contents: readonly RegisterContents[],
+    contents: readonly Passed[],
     captures: readonly Value[] = [],
     resolves?: number,
   ): LiveExecution {

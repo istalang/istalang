@@ -8,19 +8,18 @@
  *   witness, which the program gives (`Closer`).
  * - A requirement on an `any` value, or a call through a union's trait (§6), stays a dispatch on
  *   the value's own type (`Dispatch`), which ../trait-objects/ writes once the program is reached.
- * - A closed call runs its function's own entry with the call's binding; an entry handed out to be
- *   called later takes the arguments as passed (`takingPassed`), a filling entry when the call
- *   leaves parameters out or passes them out of order.
+ * - A closed call runs its function's entry with the call's binding, which computes the parameters
+ *   the call leaves out (§3.3). A function named as a value is bound as its type calls it, by
+ *   position, so its entry takes the arguments as passed, those after them absent (`leavesOut`).
  */
 
 import { unreachable } from '../../../foundation/structures/unreachable.ts';
 import type { Checker, SignatureParameter } from '../../checker/check.ts';
-import {
-  type Binding,
-  type FunctionCall,
-  passesAll,
-  type ResolvedCall,
-  type Witnesses,
+import type {
+  Binding,
+  FunctionCall,
+  ResolvedCall,
+  Witnesses,
 } from '../../checker/surface/resolved-call.ts';
 import {
   type Substitution,
@@ -35,7 +34,7 @@ import type { FunctionDeclaration } from '../../syntax/declarations/index.ts';
 import {
   type BodyOwner,
   type FunctionInstance,
-  ownEntry,
+  ownerInstance,
   ownerSubstitution,
   substitutionOf,
 } from '../tables/instances.ts';
@@ -46,7 +45,7 @@ export function closeCallWithin(
   within: BodyOwner,
   program: Closer,
 ): ClosedCall {
-  const instance = within.kind === 'function' ? within.instance : undefined;
+  const instance = ownerInstance(within);
   const closing = {
     substitution: ownerSubstitution(within),
     witnesses: instance?.witnesses ?? new Map(),
@@ -55,23 +54,22 @@ export function closeCallWithin(
 }
 
 /**
- * The instance taking a closed call's arguments as it passes them, for a caller that only gets
- * an entry to call later: the function's own, or a filling one when the call leaves parameters to
- * their defaults or passes them out of order.
+ * Whether a function value naming `call`'s function leaves parameters out (§3.14): its type passes
+ * fewer than the function takes, the rest left to their defaults and an array's rest empty, which
+ * its entry computes from nothing passed.
  */
-export function takingPassed(call: ClosedFunctionCall): FunctionInstance {
-  const { instance, binding } = call;
-  return passesAll(binding) ? instance : { ...instance, entry: { kind: 'filling', binding } };
-}
-
-/** The entry of a closed call's function giving parameter `parameter` its default. */
-export function defaultEntryOf(call: ClosedFunctionCall, parameter: number): FunctionInstance {
-  return { ...call.instance, entry: { kind: 'default', parameter } };
-}
-
-/** The call a filling entry makes: its function's own entry, filled as `binding` says. */
-export function callOfFilling(instance: FunctionInstance, binding: Binding): ClosedFunctionCall {
-  return { kind: 'function', instance: { ...instance, entry: ownEntry }, binding };
+export function leavesOut(
+  checker: Pick<Checker, 'parametersOf'>,
+  call: ClosedFunctionCall,
+): boolean {
+  const parameters = checker.parametersOf(call.instance.declaration);
+  return call.binding.some(
+    (source, index) =>
+      source.kind === 'default' ||
+      (source.kind === 'rest' &&
+        source.items.length === 0 &&
+        parameters[index]?.rest?.kind === 'array'),
+  );
 }
 
 /**
@@ -213,7 +211,7 @@ function closedFunctionCall(call: FunctionCall, within: Closing, program: Closer
 }
 
 function instanceOf({ function: declaration, typeArguments, witnesses }: FunctionCall) {
-  return { declaration, typeArguments, witnesses, entry: ownEntry };
+  return { declaration, typeArguments, witnesses };
 }
 
 /**

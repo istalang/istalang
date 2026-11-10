@@ -17,6 +17,28 @@ import type {
 import type { AnchoredSpan } from '../../syntax/tree/positions.ts';
 import type { CodeContext } from '../context.ts';
 
+/**
+ * Builds a value of the struct type `type` from its fields, each taken by its name from `named`:
+ * the struct; or, for a shared struct, a new cell holding the shape its fields make, whose handle
+ * is the shared struct's value (§3.18).
+ */
+export function structValue(
+  context: CodeContext,
+  type: NominalType | AnonymousStructType,
+  named: ReadonlyMap<string, Register>,
+  span: AnchoredSpan,
+): Register {
+  const shared = context.checker.sharedValueOf(type);
+  if (shared === undefined) {
+    return construct(context, type, named, span);
+  }
+  const value = construct(context, shared, named, span);
+  const dst = context.code.allocate();
+  const cellType = context.tables.types.index(type);
+  context.code.emit({ kind: 'newCell', span, dst, type: cellType, value });
+  return dst;
+}
+
 /** Builds a struct of `type`, each of its fields taken by its name from `named`. */
 export function construct(
   context: CodeContext,

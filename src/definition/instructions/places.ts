@@ -19,10 +19,14 @@ export const place = z.strictObject({ register, path: fieldPath });
 
 export type Place = z.output<typeof place>;
 
-/** A call argument: a value, copied into the callee, or a place passed by `&`. */
+/**
+ * A call argument: a value, copied into the callee; a place passed by `&`; or a parameter the call
+ * leaves out, which the callee computes from its default in its prologue (prologue.ts, spec §3.3).
+ */
 export const argument = z.discriminatedUnion('kind', [
   z.strictObject({ kind: z.literal('value'), register }),
   z.strictObject({ kind: z.literal('reference'), place }),
+  z.strictObject({ kind: z.literal('omitted') }),
 ]);
 
 export type Argument = z.output<typeof argument>;

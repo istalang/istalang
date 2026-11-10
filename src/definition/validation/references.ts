@@ -5,6 +5,8 @@
  * - every call to a known function passes its parameters' number and kind (value or `&`), and
  *   every closure carries its function's captures
  * - code never runs off its end, and only code running as an execution waits
+ * - an entry marks where its body begins exactly when a call may leave a parameter out, and its
+ *   prologue's tests stand before that mark (../instructions/prologue.ts)
  *
  * Instructions are walked through `operandsOf` for indexes; the rules about particular
  * instructions live in instruction-rules.ts. Each problem becomes a zod issue at the path of the
@@ -220,6 +222,7 @@ function checkCode(context: Context, entry: CodeFunction, path: Path): void {
       'Code must end in return, jump, branch, switch or select.',
     );
   }
+  checkPrologue(context, entry, path);
   entry.instructions.forEach((instruction, pc) => {
     const at = [...path, 'instructions', pc];
     const problems = outOfRange(context.tables, operandsOf(instruction), frame);
@@ -227,6 +230,32 @@ function checkCode(context: Context, entry: CodeFunction, path: Path): void {
       problems.length === 0 ? instructionProblem(context.tables, entry, instruction) : undefined;
     for (const problem of rule === undefined ? problems : [rule]) {
       context.report(at, `${instruction.kind}: ${problem}`);
+    }
+  });
+}
+
+/**
+ * `entry`'s prologue: one `body` marker when a call may leave a parameter out, so the runtime finds
+ * where a mock takes over (§10), none otherwise, and every `given` before it.
+ */
+function checkPrologue(context: Context, entry: CodeFunction, path: Path): void {
+  const marks = entry.instructions.flatMap((instruction, pc) =>
+    instruction.kind === 'body' ? [pc] : [],
+  );
+  const computes = entry.parameters.some((parameter) => parameter.hasDefault);
+  if (marks.length !== (computes ? 1 : 0)) {
+    context.report(
+      [...path, 'instructions'],
+      computes
+        ? `An entry computing defaults marks where its body begins once, not ${marks.length} times.`
+        : 'An entry computing no defaults has no prologue to mark the end of.',
+    );
+    return;
+  }
+  const [mark = 0] = marks;
+  entry.instructions.forEach((instruction, pc) => {
+    if (instruction.kind === 'given' && pc > mark) {
+      context.report([...path, 'instructions', pc], 'given: it stands past where the body begins.');
     }
   });
 }

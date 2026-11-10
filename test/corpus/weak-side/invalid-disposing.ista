@@ -6,7 +6,7 @@
 # error: 4016 at 31:8
 # `worker.disposing()` watches the call of an enclosing async fn named `worker` (§7): not another
 # function's, not a plain fn's, and never `main`'s, which nothing holds; not from a parameter's
-# default, which runs before the call starts; and not a prelude function's. A weak reference
+# default, which runs before the body starts; and not a prelude function's. A weak reference
 # refers only to a disposable.
 
 async fn other() -> Future<Int>:

@@ -26,11 +26,16 @@ export interface FrameHeap {
   readonly released: (contents: RegisterContents) => void;
 }
 
-/** A code entry a frame runs: its index, its code, and whether its result arrives from a mock. */
+/**
+ * A code entry a frame runs: its index, its code, whether its result arrives from a mock, and
+ * whether it runs only its prologue, computing what a call left out, to hand the call over to the
+ * mock replacing it where its body begins (§10, scheduler/segment/calls.ts).
+ */
 export interface FrameEntry {
   readonly function: FunctionId;
   readonly code: CodeFunction;
   readonly arrives?: true;
+  readonly handsOver?: true;
 }
 
 export interface ActiveFrame {
@@ -41,4 +46,6 @@ export interface ActiveFrame {
   readonly heap: FrameHeap;
   /** Set when the frame runs a mock's replacement in its own instance, so its result arrives. */
   readonly arrives?: true;
+  /** Set when the frame runs its prologue for a mock, which takes the call over at its body. */
+  readonly handsOver?: true;
 }

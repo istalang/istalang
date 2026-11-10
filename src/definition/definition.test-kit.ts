@@ -18,7 +18,13 @@ import {
   type Sizes,
   span,
 } from './instructions/instruction.test-kit.ts';
-import { codeMode, encoderProblem, type FunctionDefinition } from './tables/functions.ts';
+import type { Instruction } from './instructions/instruction.ts';
+import {
+  type CodeFunction,
+  codeMode,
+  encoderProblem,
+  type FunctionDefinition,
+} from './tables/functions.ts';
 import {
   type ExternRole,
   hasRole,
@@ -123,8 +129,9 @@ function signature(sizes: Sizes): fc.Arbitrary<FunctionDefinition> {
       .record({
         ...common,
         mode: fc.constantFrom(...codeMode.options),
-        givesDefault: fc.boolean(),
-        parameters: fc.array(fc.record({ reference: fc.boolean() }), { maxLength: 3 }),
+        parameters: fc.array(fc.record({ reference: fc.boolean(), hasDefault: fc.boolean() }), {
+          maxLength: 3,
+        }),
         captures: fc.nat({ max: 2 }),
         extra: fc.integer({ min: 1, max: 6 }),
       })
@@ -175,13 +182,15 @@ function body(
           }),
           { maxLength: 2 },
         );
-  return fc.integer({ min: 1, max: 8 }).chain((labels) => {
+  const prologue = prologueOf(entry);
+  return fc.integer({ min: 1, max: 8 }).chain((written) => {
+    const labels = prologue.length + written;
     const inScope = { ...scope, registers: entry.registers, labels, async: entry.mode !== 'plain' };
     return fc
       .record({
         instructions: fc.array(instruction(inScope), {
-          minLength: labels - 1,
-          maxLength: labels - 1,
+          minLength: written - 1,
+          maxLength: written - 1,
         }),
         last: fc.record({ span, value: index(entry.registers) }),
         cells: cellsOfFrame,
@@ -189,9 +198,32 @@ function body(
       .map(({ instructions, last, cells }) => ({
         ...entry,
         cells,
-        instructions: [...instructions, { kind: 'return' as const, ...last }],
+        instructions: [...prologue, ...instructions, { kind: 'return' as const, ...last }],
       }));
   });
+}
+
+/**
+ * A code entry's prologue: for an entry a call may leave a parameter of out, a `given` per such
+ * parameter skipping to its `body` marker; none otherwise.
+ */
+function prologueOf(entry: CodeFunction): readonly Instruction[] {
+  const left = entry.parameters.flatMap(({ hasDefault }, parameter) =>
+    hasDefault ? [parameter] : [],
+  );
+  if (left.length === 0) {
+    return [];
+  }
+  const nowhere = { start: 0, end: 0 };
+  return [
+    ...left.map((parameter) => ({
+      kind: 'given' as const,
+      span: nowhere,
+      parameter,
+      target: left.length,
+    })),
+    { kind: 'body' as const, span: nowhere },
+  ];
 }
 
 const lineStarts = fc

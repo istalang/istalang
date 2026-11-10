@@ -89,10 +89,22 @@ export function storeAt(frame: ActiveFrame, place: Place, value: Value): void {
   writeRegister(frame, place.register, withPart(whole, place.path, value));
 }
 
-/** What a call passes for `argument`: the value, or for `&`, a reference to the caller's place. */
-export function argumentContents(frame: ActiveFrame, argument: Argument): RegisterContents {
+/**
+ * What a call passes a parameter: the contents of its register, or nothing for one the call leaves
+ * out, which the callee's prologue computes (spec §3.3).
+ */
+export type Passed = RegisterContents | undefined;
+
+/**
+ * What a call passes for `argument`: the value, for `&` a reference to the caller's place, and
+ * nothing for a parameter left out.
+ */
+export function argumentContents(frame: ActiveFrame, argument: Argument): Passed {
   if (argument.kind === 'value') {
     return readRegister(frame, argument.register);
+  }
+  if (argument.kind === 'omitted') {
+    return undefined;
   }
   const { register, path } = argument.place;
   const contents = frame.registers[register];
@@ -103,6 +115,11 @@ export function argumentContents(frame: ActiveFrame, argument: Argument): Regist
     unreachable(`Register ${register} is passed by '&' but isn't a cell.`);
   }
   return { kind: 'reference', cell: cellOf(contents), path };
+}
+
+/** Whether `passed` gives every parameter, leaving none out. */
+export function givesEvery(passed: readonly Passed[]): passed is readonly RegisterContents[] {
+  return !passed.includes(undefined);
 }
 
 /** What `contents`, a call's arguments, pass: each value, read through any reference. */

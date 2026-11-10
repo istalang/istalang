@@ -48,7 +48,8 @@ export interface FunctionCall extends WrittenAs {
  * Where each parameter of a called function takes its value from, in parameter order (§3.3): an
  * argument the call passes, numbered as passed (a method's receiver first, then the others as
  * written); for a rest parameter, the arguments it collects, into an array or a pack's tuple, each
- * said to be a spread or not; or its default, computed from the parameters before it.
+ * said to be a spread or not; or its default, which the call leaves out and the function computes
+ * from the parameters before it as the call starts.
  */
 export type Binding = readonly ParameterSource[];
 

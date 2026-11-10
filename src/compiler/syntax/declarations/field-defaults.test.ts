@@ -1,7 +1,8 @@
 /**
  * Field-default functions (`fieldsFunctionOf`, §3.1): each says whose fields it reads, a struct's
- * or an enum variant's, and its default entries are named after them, the variant's with its enum,
- * so identically named variants in one module lower to distinct default entries.
+ * or an enum variant's, and its entry, computing the defaults a literal or a call leaves out, is
+ * named after them, the variant's with its enum, so identically named variants in one module lower
+ * to distinct entries.
  */
 
 import { describe, expect, it } from 'vitest';
@@ -23,11 +24,11 @@ describe('fieldsFunctionOf', () => {
     ].join('\n');
     const definition = compiledDefinition(stdProgramOf({ main }), 'main');
     const names = definition.functions.map((entry) => entry.name);
-    expect(names).toContain('main.Shape.Circle/r');
-    expect(names).toContain('main.Icon.Circle/r');
+    expect(names).toContain('main.Shape.Circle');
+    expect(names).toContain('main.Icon.Circle');
   });
 
-  it("names a struct's default entries after the struct and the field", () => {
+  it("names a struct's entry computing its defaults after the struct", () => {
     const main = [
       'struct Retry:',
       '  times: Int = 3',
@@ -37,7 +38,7 @@ describe('fieldsFunctionOf', () => {
     const names = compiledDefinition(stdProgramOf({ main }), 'main').functions.map(
       (entry) => entry.name,
     );
-    expect(names).toContain('main.Retry/times');
+    expect(names).toContain('main.Retry');
   });
 
   it('tells a fields function apart by whose fields it reads, never by a static owner', () => {

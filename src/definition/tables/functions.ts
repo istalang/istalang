@@ -11,9 +11,16 @@
  * locals and temporaries. A reference parameter's register is bound to the caller's place, and a
  * register listed in `cells` holds a shared cell (a variable passed by `&`, or a `let` captured
  * by a closure, spec §3.14). Reads and writes of both go through to what they refer to.
+ *
+ * Defaults are part of the function (§3.3): a code entry computes each parameter its call leaves
+ * out in its prologue (../instructions/prologue.ts), so its parameters say which a call may leave
+ * out, a direct call passing those as omitted and a function value's or the runtime's call passing
+ * fewer arguments. An extern computes nothing, so a call leaving its defaults out calls a code
+ * entry that computes them, then the extern.
  */
 
 import { z } from 'zod';
+import { memo } from '../../foundation/structures/memo.ts';
 import { instruction } from '../instructions/instruction.ts';
 import { count, moduleId, register, span, typeId } from '../operands.ts';
 import { value } from '../values/values.ts';
@@ -51,9 +58,11 @@ const code = z.strictObject({
   kind: z.literal('code'),
   ...common,
   mode: codeMode,
-  /** Whether the entry gives a parameter or a field its default (spec §3.1, §3.3). */
-  givesDefault: z.boolean(),
-  parameters: z.array(z.strictObject({ reference: z.boolean() })),
+  /**
+   * Each parameter: whether it takes a reference, and whether a call may leave it out, absent until
+   * the prologue computes it: one with a default, or a rest parameter, whose default is empty.
+   */
+  parameters: z.array(z.strictObject({ reference: z.boolean(), hasDefault: z.boolean() })),
   /** How many captured values a closure of this function carries. */
   captures: count,
   /** The frame size. */
@@ -97,6 +106,26 @@ export function takesReference(entry: FunctionDefinition, index: number): boolea
   return entry.parameters[index]?.reference === true;
 }
 
+/** Whether a call may leave parameter `index` of `entry` out: only a code entry computes one. */
+export function mayLeaveOut(entry: FunctionDefinition, index: number): boolean {
+  return entry.kind === 'code' && entry.parameters[index]?.hasDefault === true;
+}
+
+const bodyStarts = new WeakMap<CodeFunction, number>();
+
+/**
+ * Where `entry`'s body begins: at its `body` marker, past its prologue, or at its start without one
+ * (../instructions/prologue.ts). Memoized, the entry being immutable.
+ */
+export function bodyStart(entry: CodeFunction): number {
+  return memo(bodyStarts, entry, () =>
+    Math.max(
+      0,
+      entry.instructions.findIndex((each) => each.kind === 'body'),
+    ),
+  );
+}
+
 /** How many captured values a closure of `entry` carries; an extern captures nothing. */
 export function capturesOf(entry: FunctionDefinition): number {
   return entry.kind === 'code' ? entry.captures : 0;
@@ -107,7 +136,10 @@ export function capturesOf(entry: FunctionDefinition): number {
  * as the instance's root returns; undefined when it can.
  */
 export function encoderProblem(entry: FunctionDefinition): string | undefined {
-  const takesOneValue = entry.parameters.length === 1 && !takesReference(entry, 0);
+  const takesOneValue =
+    entry.parameters.length > 0 &&
+    !takesReference(entry, 0) &&
+    entry.parameters.every((_, index) => index === 0 || mayLeaveOut(entry, index));
   const waits = entry.kind === 'code' && entry.mode !== 'plain';
   return takesOneValue && !waits && capturesOf(entry) === 0
     ? undefined

@@ -19,9 +19,11 @@
  *   pattern's names as a declaration's targets take its value (constructs/statements/variables.ts).
  * - A lambda or local function (§3.14) answers to its own name through the closure it runs,
  *   taken once at its entry (`currentClosure`).
- * - A default's entry takes the parameters before its own, and gives its default (§3.1, §3.3);
- *   a struct's or variant's fields are parameters of a function of their own
- *   (syntax/declarations/field-defaults.ts), so a field's default is one too.
+ * - An entry begins with its prologue, computing each parameter its call left out from its default
+ *   (§3.1, §3.3, frame-variables.ts), read from the function's defaults (`inDefaults`); a struct's
+ *   or variant's fields are parameters of a function of their own
+ *   (syntax/declarations/field-defaults.ts), whose entry, with no body, builds the value from them
+ *   (`lowerBuilt`, built-entries.ts), as an extern's computing its defaults calls the extern.
  * - A start entry (synthesized/boundary/starts.ts) is a function's own body compiled once more with
  *   its arguments arriving as `Json`, each decoded into its parameter, so a host-started instance
  *   runs as one execution of the function.
@@ -59,7 +61,7 @@ import { HoldScopes } from '../constructs/statements/holds.ts';
 import { LoopStack } from '../constructs/statements/loops.ts';
 import { lowerBlock, lowerBody, lowerStatement } from '../constructs/statements/statements.ts';
 import { VariableRegisters } from '../constructs/statements/variables.ts';
-import type { CodeContext } from '../context.ts';
+import type { CodeContext, FunctionContext } from '../context.ts';
 import { emitConstant } from '../tables/constants.ts';
 import {
   type BodyOwner,
@@ -79,15 +81,17 @@ import {
   declareFrame,
   declareOwnCall,
   type EntryContext,
+  type EntryParameter,
   type FrameSlot,
   frameSlots,
   takeApart,
 } from './frame-variables.ts';
 import {
-  defaultValueOf,
+  type BodyReading,
+  builtFrame,
+  defaultsReading,
   type Frame,
   instanceFrame,
-  type LoweredFunction,
   type Lowering,
   loweredInstance,
   loweredNested,
@@ -120,6 +124,18 @@ export function instanceLowering(
     : new FunctionLowering(lowered, instanceFrame(lowered, instance, startHeader));
 }
 
+/**
+ * The lowering of an entry built from `instance`'s parameters, which has no body of its own
+ * (built-entries.ts).
+ */
+export function builtLowering(lowering: Lowering, instance: FunctionInstance): FunctionLowering {
+  const owner = { kind: 'function', instance } as const;
+  return new FunctionLowering(
+    { ...lowering, owner, body: undefined },
+    builtFrame(lowering, instance),
+  );
+}
+
 /** The lowering of a nested function's entry, read through its owner's body (§3.14). */
 export function nestedLowering(
   lowering: Lowering,
@@ -141,10 +157,13 @@ class FunctionLowering implements EntryContext {
   readonly loops = new LoopStack();
   readonly chains = new OptionalChains((node) => handlerOf(expressionHandlers, node)(this, node));
   #layout: readonly FrameSlot[] | undefined;
-  /** The body as the pass of the field loops being lowered reads it, and what owns it so. */
-  #reading: Pick<LoweredFunction, 'owner' | 'body'>;
+  /**
+   * The body as the prologue or the pass of the field loops being lowered reads it, and what owns
+   * it so.
+   */
+  #reading: BodyReading;
 
-  constructor(lowered: LoweredFunction, frame: Frame) {
+  constructor(lowered: Lowering & BodyReading, frame: Frame) {
     const { checker, tables, owner, body } = lowered;
     this.checker = checker;
     this.tables = tables;
@@ -154,7 +173,7 @@ class FunctionLowering implements EntryContext {
   }
 
   get body(): CheckedBody {
-    return this.#reading.body;
+    return this.#reading.body ?? unreachable(`${this.frame.header.name} has no body to read.`);
   }
 
   get owner(): BodyOwner {
@@ -162,12 +181,29 @@ class FunctionLowering implements EntryContext {
   }
 
   inFieldPass<Lowered>(header: FieldHeader, field: string, lower: () => Lowered): Lowered {
-    const outer = this.#reading;
+    const { owner } = this.#reading;
     const step = { header, field };
-    this.#reading = {
-      owner: { ...outer.owner, passes: [...(outer.owner.passes ?? []), step] },
-      body: passBody(this.checker, outer.body, step),
-    };
+    return this.#readingAs(
+      {
+        owner: { ...owner, passes: [...(owner.passes ?? []), step] },
+        body: passBody(this.checker, this.body, step),
+      },
+      lower,
+    );
+  }
+
+  inDefaults<Lowered>(lower: () => Lowered): Lowered {
+    const { owner } = this.#reading;
+    if (owner.kind !== 'function') {
+      unreachable('Only a function instance has defaults to compute.');
+    }
+    return this.#readingAs(defaultsReading(this.checker, owner.instance), lower);
+  }
+
+  /** Runs `lower` reading `reading`, then reads what it read before; what `lower` gives. */
+  #readingAs<Lowered>(reading: BodyReading, lower: () => Lowered): Lowered {
+    const outer = this.#reading;
+    this.#reading = reading;
     try {
       return lower();
     } finally {
@@ -177,14 +213,27 @@ class FunctionLowering implements EntryContext {
 
   /** The code entry for a function instance, whose body is `block`. */
   lower(block: Block): CodeFunction {
-    declareFrame(this, this.#slots());
+    const parameters = declareFrame(this, this.#slots());
     this.code.emit({ kind: 'return', span: block.span, value: lowerBody(this, block) });
-    return this.#entry();
+    return this.#entry(parameters);
+  }
+
+  /**
+   * The code entry for a function with no body of its own: its prologue, then what `build` makes
+   * of its parameters, which it returns.
+   */
+  lowerBuilt(
+    build: (context: FunctionContext, parameters: readonly EntryParameter[]) => Register,
+  ): CodeFunction {
+    const parameters = declareFrame(this, this.#slots());
+    const value = build(this, parameters);
+    this.code.emit({ kind: 'return', span: this.frame.function.span, value });
+    return this.#entry(parameters);
   }
 
   /** The code entry for a lambda or local function of the owner (§3.14). */
   lowerNested(node: Lambda | FunctionDeclaration): CodeFunction {
-    declareFrame(this, this.#slots());
+    const parameters = declareFrame(this, this.#slots());
     const body =
       node.kind === 'Lambda' ? node.body : writtenBodyOf(this.checker.program, this.module, node);
     if (body === undefined) {
@@ -192,13 +241,18 @@ class FunctionLowering implements EntryContext {
     }
     const value = body.kind === 'Block' ? lowerBody(this, body) : this.expression(body);
     this.code.emit({ kind: 'return', span: body.span, value });
-    return this.#entry();
+    return this.#entry(parameters);
   }
 
   /** The start entry of a function whose body is `body` (a block, or a lambda's), with `edges`. */
   lowerStart(edges: StartEdges, body: Block | Expression): CodeFunction {
     const { span } = body;
     const arguments_ = this.frame.parameters.map(() => this.code.allocate());
+    const parameters = arguments_.map((register) => ({
+      register,
+      reference: false,
+      hasDefault: false,
+    }));
     for (const [index, parameter] of this.frame.parameters.entries()) {
       const decode = edges.parameters[index];
       const json = arguments_[index];
@@ -218,20 +272,7 @@ class FunctionLowering implements EntryContext {
     declareOwnCall(this);
     const value = body.kind === 'Block' ? lowerBody(this, body) : this.expression(body);
     this.code.emit({ kind: 'return', span, value });
-    return this.#entry();
-  }
-
-  /** A default's entry: the parameters before its own, then that parameter's default. */
-  lowerDefault(instance: FunctionInstance): CodeFunction {
-    const given = declareFrame(this, this.#slots());
-    const parameter = this.checker.parametersOf(instance.declaration)[given.length];
-    if (parameter === undefined) {
-      unreachable(`No parameter ${given.length} of ${instance.declaration.name.text}.`);
-    }
-    const defaultValue = defaultValueOf(parameter);
-    const value = this.expression(defaultValue);
-    this.code.emit({ kind: 'return', span: defaultValue.span, value });
-    return this.#entry();
+    return this.#entry(parameters);
   }
 
   expression(node: Expression): Register {
@@ -316,20 +357,16 @@ class FunctionLowering implements EntryContext {
     return this.#layout;
   }
 
-  #entry(): CodeFunction {
-    const { header, isAsync, givesDefault, captures } = this.frame;
+  /** The finished entry, taking `parameters`. */
+  #entry(parameters: readonly EntryParameter[]): CodeFunction {
+    const { header, isAsync, captures } = this.frame;
     const { tree } = programModule(this.checker.program, this.module);
     const { registers, instructions } = this.code.finish(tree);
     return {
       kind: 'code',
       ...header,
       mode: codeModeOf(isAsync),
-      givesDefault,
-      parameters: this.#slots().flatMap(({ parameter, elements }) =>
-        elements === undefined
-          ? [{ reference: parameter.reference }]
-          : elements.map(() => ({ reference: false })),
-      ),
+      parameters: parameters.map(({ reference, hasDefault }) => ({ reference, hasDefault })),
       captures: captures.length,
       registers,
       cells: [...this.variables.cells],

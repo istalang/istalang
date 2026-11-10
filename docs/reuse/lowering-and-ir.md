@@ -3,7 +3,7 @@ description: lowering to Definition IR, interned tables, function instances, cal
 owner: tech-lead
 status: active
 applies_to: istalang
-last_verified: 2026-10-28
+last_verified: 2026-11-10
 last_updated: 2026-11-10
 tags: [reuse, lowering, definition, ir, instructions]
 ---
@@ -15,12 +15,13 @@ tags: [reuse, lowering, definition, ir, instructions]
 - lower a checked program or its `@Suite` tests into a `Definition` → `lower`, `lowerTests` (`src/compiler/lowering/lower.ts`)
 - intern modules, constants, function instances or closing `any` entries → `DefinitionTables` (`src/compiler/lowering/tables/tables.ts`)
 - intern concrete `Definition` type entries → `TypeTable` (`src/compiler/lowering/tables/type-table.ts`)
-- lower a function instance or nested function body → `instanceLowering`, `nestedLowering` (`src/compiler/lowering/functions/index.ts`)
-- build the `LoweredFunction` for an instance or nested entry → `loweredInstance`, `loweredNested` (`src/compiler/lowering/functions/frames.ts`)
-- lay out the `Frame` for an instance or nested entry → `instanceFrame`, `nestedFrame` (`src/compiler/lowering/functions/frames.ts`)
+- lower a function instance or nested function body → `instanceLowering`, `nestedLowering` (`src/compiler/lowering/functions/index.ts`); the entry of a function with no body of its own, built from its parameters once its prologue computed them (a struct's or variant's fields, an extern's defaults) → `builtLowering`, `FunctionLowering.lowerBuilt`, and its three entries `structEntry`, `constructorEntry`, `externDefaultsEntry` (`src/compiler/lowering/functions/built-entries.ts`)
+- build the `LoweredFunction` for an instance or nested entry → `loweredInstance`, `loweredNested`; an instance's defaults as its prologue reads them → `defaultsReading` (`src/compiler/lowering/functions/frames.ts`)
+- lay out the `Frame` for an instance, a built or a nested entry → `instanceFrame`, `builtFrame`, `nestedFrame` (`src/compiler/lowering/functions/frames.ts`)
+- declare a frame's parameters, running its prologue: each parameter a call leaves out computed from its default, read through `EntryContext.inDefaults`, then the `body` marker → `declareFrame` (`src/compiler/lowering/functions/frame-variables.ts`); never compute a default in a caller
 - close a `ResolvedCall` against an instantiation's substitution/witnesses → `closeCall`, `closeCallWithin` (`src/compiler/lowering/calls/closed-calls.ts`), given the checker as a `Closer` (its type rules, and the witnesses a requirement on a computed type takes once known)
 - close a `FunctionCall` or a trait witness call → `closeFunctionCall`, `closeWitness` (`src/compiler/lowering/calls/closed-calls.ts`)
-- build root, filling or default `FunctionInstance`s → `rootInstance`, `substitutionOf` (`src/compiler/lowering/tables/instances.ts`), `takingPassed`, `defaultEntryOf` (`src/compiler/lowering/calls/closed-calls.ts`)
+- build a root `FunctionInstance` → `rootInstance`, `substitutionOf` (`src/compiler/lowering/tables/instances.ts`); the entry a call leaving parameters out calls, its function's own or an extern's defaults entry → `DefinitionTables.leavingOutIndex`; whether a function value of a shorter type leaves any out → `leavesOut` (`src/compiler/lowering/calls/closed-calls.ts`)
 - allocate registers, place labels, and emit jumps, branches or instructions → `CodeWriter` (`src/compiler/lowering/functions/code-writer.ts`), via `context.code`
 - write code with no syntax behind it (codecs, host wrappers, `any` dispatch, async fits) → `SynthesizedCode` (`src/compiler/lowering/synthesized/index.ts`); pass its parameters on, those it takes by `&` by `&` (into a part too) → `SynthesizedCode.passedOn`; pass by `&` a value it has no place for → `SynthesizedCode.inCell`
 - build a struct from registers by its fields' names, a tuple, or `==`, with a body or without → `construct`, `tupleOf`, `equal` (`src/compiler/lowering/values/struct-values.ts`, `constructs/expressions/literals/tuples.ts`, `constructs/expressions/operators.ts`, all on `CodeContext`); a struct's value rebuilt as another struct type of some or all of its fields, by name (a nominal value as its shape, §3.1; a pattern's rest, §3.11) → `rebuiltAs` (`src/compiler/lowering/values/struct-values.ts`)
@@ -52,7 +53,7 @@ tags: [reuse, lowering, definition, ir, instructions]
 - copy the value a register holds, a cell's rather than the cell, into a fresh one → `copied` (`src/compiler/lowering/constructs/statements/variables.ts`)
 - list an instruction's operands → `operandsOf` (`src/definition/instructions/instruction.ts`)
 - inspect instruction wait/termination flow → `awaitedRegisters`, `waits`, `terminates` (`src/definition/instructions/flow.ts`)
-- inspect `Definition` function parameters or captures → `takesReference`, `capturesOf` (`src/definition/tables/functions.ts`)
+- inspect `Definition` function parameters or captures → `takesReference`, `mayLeaveOut`, `capturesOf`; where a code entry's body begins, past its prologue → `bodyStart` (`src/definition/tables/functions.ts`)
 - check an entry can encode an instance's outcome → `encoderProblem` (`src/definition/tables/functions.ts`); the encoder an `Instance<T>` type entry names for what it spawns → `outcomeEncoderOf` (`src/definition/tables/types.ts`)
 - inspect `Definition` type references, roles, cell or resource types → `typesIn`, `isResourceType`, `isCellType`, `hasRole` (`src/definition/tables/types.ts`)
 - validate `Definition` table references or value shapes → `checkReferences`, `valueProblems` (`src/definition/validation/references.ts`)
@@ -67,7 +68,7 @@ tags: [reuse, lowering, definition, ir, instructions]
 
 ### Add a Definition instruction kind
 
-1. Define the schema with `defineInstruction` in `src/definition/instructions/` (`data.ts`, `calls.ts`, `control.ts`, `suspension.ts`, or `lifetimes.ts`).
+1. Define the schema with `defineInstruction` in `src/definition/instructions/` (`data.ts`, `calls.ts`, `control.ts`, `prologue.ts`, `suspension.ts`, or `lifetimes.ts`).
 2. Add its handler to `operandsOf` (`instruction.ts`), `flow.ts`, and `instructionProblem` (`src/definition/validation/instruction-rules.ts`).
 3. Add its arbitrary to `src/definition/instructions/instruction.test-kit.ts`.
 4. Add its handler to `src/runtime/interpreter/instructions.ts` and snapshot holding/check rules if it waits or holds registers (`src/runtime/snapshot/`).

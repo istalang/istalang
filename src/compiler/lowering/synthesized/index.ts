@@ -1,8 +1,9 @@
 /**
  * Code lowering writes with no syntax behind it: a type's codecs, a host extern's wrapper and a
- * start wrapper (docs/arch/boundary.md), a dispatch on an `any` value's own type (§3.10), a filling
- * entry (tables/filling-entry.ts) and a plain function made async (functions/fits/index.ts). It
- * works through the same CodeContext as code with a body, so the helpers both share build its
+ * start wrapper (docs/arch/boundary.md), a dispatch on an `any` value's own type (§3.10) and a
+ * plain function made async (functions/fits/index.ts). It takes every parameter and computes no
+ * default, which is syntax: a host extern's are its defaults entry's (functions/built-entries.ts).
+ * It works through the same CodeContext as code with a body, so the helpers both share build its
  * variants and calls, and every instruction carries the span of the declaration it stands for,
  * which is where a trace through it points.
  *
@@ -162,8 +163,10 @@ export class SynthesizedCode implements CodeContext {
       kind: 'code',
       ...header,
       mode: codeModeOf(isAsync),
-      givesDefault: false,
-      parameters: this.parameters.map((_, index) => ({ reference: references[index] === true })),
+      parameters: this.parameters.map((_, index) => ({
+        reference: references[index] === true,
+        hasDefault: false,
+      })),
       captures: this.captures.length,
       registers,
       cells: [...this.#cells],

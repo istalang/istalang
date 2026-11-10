@@ -2,6 +2,9 @@
  * An `Error` built without `trace` gets the frames where it was built, innermost first, one line
  * per frame naming the function and where it stands (§3.12), as a panic's trace does. Line and
  * column count from 1, where the frame's instruction is: the literal, and each call on the way.
+ * `trace` is a default, computed in the prologue of `Error`'s entry, whose frame the trace leaves
+ * out; a default building an `Error` runs in the prologue of its own function's entry, a struct's
+ * as any, so that frame stands first, at the default.
  */
 
 import { describe, expect, it } from 'vitest';
@@ -37,9 +40,9 @@ const builtInDefaults = [
   '',
 ].join('\n');
 
-/** The default's frames, where each builds its `Error`: by a literal, and by a native. */
-const failureLine = /^at \S*Job\/failure \(\S+:2:20\)$/u;
-const numberLine = /^at \S*Job\/number \(\S+:3:25\)$/u;
+/** `Job`'s entry computing its defaults, where each builds its `Error`: by a literal, and by a native. */
+const failureLine = /^at \S*Job \(\S+:2:20\)$/u;
+const numberLine = /^at \S*Job \(\S+:3:25\)$/u;
 
 /** `made`'s frame, at the literal leaving the defaults out. */
 const madeLine = /^at \S*made \(\S+:5:3\)$/u;

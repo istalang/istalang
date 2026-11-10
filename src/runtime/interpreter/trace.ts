@@ -6,6 +6,7 @@
  */
 
 import type { Definition } from '../../definition/definition.ts';
+import { bodyStart } from '../../definition/tables/functions.ts';
 import { positionIn } from '../../foundation/text/line-map.ts';
 import type { ActiveFrame } from './frames.ts';
 
@@ -23,12 +24,14 @@ export function traceOf(definition: Definition, frames: readonly TracedFrame[]):
 }
 
 /**
- * The trace of the code a default gives its value to (§3.1, §3.12): `frames` without the
- * innermost when its entry gives a default, so a default inlined into its caller leaves none out.
+ * The trace of the code a default gives its value to (§3.1, §3.12): `frames` without the innermost
+ * while it computes a default in its prologue, before its body begins (§3.3), so the call or
+ * literal leaving the default out is the trace's first frame; any other innermost frame is kept.
  */
 export function callerTraceOf(definition: Definition, frames: readonly TracedFrame[]): string {
   const [innermost, ...callers] = frames;
-  return traceOf(definition, innermost?.code.givesDefault === true ? callers : frames);
+  const inPrologue = innermost !== undefined && innermost.pc < bodyStart(innermost.code);
+  return traceOf(definition, inPrologue ? callers : frames);
 }
 
 /** `module:line:column` of an offset in a module's source. */

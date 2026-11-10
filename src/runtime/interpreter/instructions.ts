@@ -170,6 +170,17 @@ const handlers: Handlers<Machine, Instruction, [ActiveFrame], void> = {
   currentCall: (machine, instruction, frame) => {
     next(frame, instruction.dst, machine.currentCall());
   },
+  given: (_machine, instruction, frame) => {
+    frame.pc =
+      frame.registers[instruction.parameter] === undefined ? frame.pc + 1 : instruction.target;
+  },
+  body: (machine, _instruction, frame) => {
+    if (frame.handsOver === true) {
+      machine.handOver(frame);
+      return;
+    }
+    frame.pc += 1;
+  },
   select: (machine, instruction, frame) => {
     if (instruction.otherwise === undefined) {
       machine.wait(frame);

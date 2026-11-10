@@ -140,6 +140,20 @@ export class CodeWriter {
     });
   }
 
+  /** Jumps to `target` when the call gave parameter `parameter`, skipping its default (§3.3). */
+  given(parameter: Register, target: Label, span: AnchoredSpan): void {
+    const instruction: Extract<WrittenInstruction, { kind: 'given' }> = {
+      kind: 'given',
+      span,
+      parameter,
+      target: 0,
+    };
+    this.emit(instruction);
+    this.#refer(target, (position) => {
+      instruction.target = position;
+    });
+  }
+
   /**
    * Jumps by the variant of the enum value in `value`: to `targets[i]` for variant i, and to
    * `otherwise` for every variant past them.

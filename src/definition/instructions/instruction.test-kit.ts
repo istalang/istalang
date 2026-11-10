@@ -3,13 +3,18 @@
  * (definition.test-kit.ts).
  *
  * Each instruction kind has a generator in a typed table, so a new kind fails compilation until it
- * has one. Each generator respects the rules load validation enforces: arity, reference arguments,
- * closure captures, waiting only in async code. A generator returns undefined when the tables give
+ * has one. Each generator respects the rules load validation enforces: arity, reference and left-out
+ * arguments, closure captures, waiting only in async code. A generator returns undefined when the tables give
  * it nothing to build, such as `struct` without a struct type.
  */
 
 import fc from 'fast-check';
-import { capturesOf, type FunctionDefinition, takesReference } from '../tables/functions.ts';
+import {
+  capturesOf,
+  type FunctionDefinition,
+  mayLeaveOut,
+  takesReference,
+} from '../tables/functions.ts';
 import type { TypeDefinition } from '../tables/types.ts';
 import type { Instruction, InstructionKind } from './instruction.ts';
 import type { Argument, Place } from './places.ts';
@@ -39,14 +44,17 @@ function place(scope: Scope, minLength: number): fc.Arbitrary<Place> {
   return fc.record({ register: index(scope.registers), path });
 }
 
-/** Arguments that fit `callee`'s parameters. */
+/** Arguments that fit `callee`'s parameters, one it computes from its default maybe left out. */
 function argumentsFor(scope: Scope, callee: FunctionDefinition): fc.Arbitrary<Argument[]> {
   return fc.tuple(
-    ...callee.parameters.map((_, position) =>
-      takesReference(callee, position)
+    ...callee.parameters.map((_, position): fc.Arbitrary<Argument> => {
+      const passed = takesReference(callee, position)
         ? place(scope, 0).map((target) => ({ kind: 'reference' as const, place: target }))
-        : index(scope.registers).map((register) => ({ kind: 'value' as const, register })),
-    ),
+        : index(scope.registers).map((register) => ({ kind: 'value' as const, register }));
+      return mayLeaveOut(callee, position)
+        ? fc.oneof(passed, fc.constant({ kind: 'omitted' as const }))
+        : passed;
+    }),
   );
 }
 
@@ -178,6 +186,9 @@ const generators: { readonly [Kind in InstructionKind]: Generator<Kind> } = {
     return direct === undefined ? throughValue : fc.oneof(direct, throughValue);
   },
   currentCall: (s) => (s.async ? fc.record({ dst: index(s.registers) }) : undefined),
+  // A prologue stands only at an entry's start, which the entry's own arbitrary writes.
+  given: () => undefined,
+  body: () => undefined,
   await: (s) =>
     s.async
       ? fc.record(

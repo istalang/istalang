@@ -3,9 +3,13 @@
  * entry is lowered from, and what it is called, takes, captures and produces, for a function
  * instance's entry and for a nested function's.
  *
- * - A default's entry reads its function's defaults' body (§3.1, §3.3), its own entry its own body,
- *   through the instance's substitution; a nested function reads its owner's, or a constant's.
- *   These are the only rules of which body an entry reads.
+ * - An instance's entry reads its own body through the instance's substitution, and its prologue
+ *   its defaults' body, checked apart (§3.1, §3.3); a nested function reads its owner's, or a
+ *   constant's, the defaults' when its owner is them. These are the only rules of which body an
+ *   entry reads.
+ * - A function with no body of its own, a struct's or a variant's fields or an extern called with
+ *   defaults left out, has an entry built from its parameters once its prologue has computed them
+ *   (built-entries.ts): plain, giving what its function gives.
  * - A start entry is one of these, entered by the host's name for it
  *   (synthesized/boundary/starts.ts), which its frame's header says from the start.
  */
@@ -17,8 +21,8 @@ import type {
   CheckedBody,
   NestedFunction,
 } from '../../checker/surface/checked-body.ts';
+import { substitute } from '../../checker/types/parts/substitution.ts';
 import type { Type } from '../../checker/types/type/index.ts';
-import type { Expression } from '../../syntax/expressions/index.ts';
 import { awaits } from '../../syntax/tokens/modifiers.ts';
 import type { Identifier } from '../../syntax/tree/node.ts';
 import {
@@ -43,6 +47,12 @@ export interface LoweredFunction extends Lowering {
   readonly body: CheckedBody;
 }
 
+/** A body as lowering reads it: what owns it, and the body, which an entry built has none of. */
+export interface BodyReading {
+  readonly owner: BodyOwner;
+  readonly body: CheckedBody | undefined;
+}
+
 /**
  * The frame an entry's code runs in: what it is called, what it takes, what it captures and what
  * it produces.
@@ -50,8 +60,6 @@ export interface LoweredFunction extends Lowering {
 export interface Frame {
   readonly header: EntryHeader;
   readonly isAsync: boolean;
-  /** Whether the entry gives a parameter of its function its default (§3.1, §3.3). */
-  readonly givesDefault: boolean;
   readonly parameters: readonly SignatureParameter[];
   readonly captures: readonly CapturedVariable[];
   /** The function the entry runs: a top-level declaration, or a nested function. */
@@ -72,16 +80,19 @@ export function loweredInstance(
   return body === undefined ? undefined : { ...lowering, owner, body };
 }
 
+/** What `instance`'s defaults are read as: by its prologue, through its substitution (§3.3). */
+export function defaultsReading(checker: Checker, instance: FunctionInstance): BodyReading {
+  const owner = { kind: 'defaults', instance } as const;
+  return { owner, body: defaultsBodyOf(checker, instance) };
+}
+
 /**
  * What a nested function of `owner` is lowered from: its owner's body, as the passes of the field
  * loops the owner is lowered in read it (§4).
  */
 export function loweredNested(lowering: Lowering, owner: BodyOwner): LoweredFunction {
   const { checker } = lowering;
-  const body =
-    owner.kind === 'constant'
-      ? checker.constantBodyOf(owner.declaration)
-      : ownBodyOf(checker, owner.instance);
+  const body = bodyOfOwner(checker, owner);
   if (body === undefined) {
     unreachable('A nested function has no checked body holding it.');
   }
@@ -105,51 +116,65 @@ export function passBody(checker: Checker, body: CheckedBody, step: FieldPassSte
   return others.body.instantiated(passBindings([step]), checker);
 }
 
-/**
- * The body an instance's code reads, through its substitution: its defaults' for a default's entry
- * (§3.1, §3.3), else its own; undefined for an extern, or a filling entry, which reads none.
- */
-function ownBodyOf(checker: Checker, instance: FunctionInstance): CheckedBody | undefined {
-  const body = bodyOfEntry(checker, instance);
-  return body?.instantiated(substitutionOf(instance), checker);
-}
-
-function bodyOfEntry(checker: Checker, instance: FunctionInstance): CheckedBody | undefined {
-  const { declaration, entry } = instance;
-  switch (entry.kind) {
-    case 'own':
-      return checker.bodyOf(declaration);
-    case 'default':
-      return checker.defaultsOf(declaration);
-    case 'filling':
-      return undefined;
+/** The body `owner` is, read through its substitution; undefined for a function with none. */
+function bodyOfOwner(checker: Checker, owner: BodyOwner): CheckedBody | undefined {
+  switch (owner.kind) {
+    case 'function':
+      return ownBodyOf(checker, owner.instance);
+    case 'defaults':
+      return defaultsBodyOf(checker, owner.instance);
+    case 'constant':
+      return checker.constantBodyOf(owner.declaration);
     default: {
-      const unhandled: never = entry;
+      const unhandled: never = owner;
       return unhandled;
     }
   }
 }
 
-/**
- * The frame of a top-level function's instance, whose body `lowered` reads: every parameter for
- * its own entry, those before its parameter for a default's.
- */
+/** The body an instance's code reads, through its substitution; undefined for one with none. */
+function ownBodyOf(checker: Checker, instance: FunctionInstance): CheckedBody | undefined {
+  return checker.bodyOf(instance.declaration)?.instantiated(substitutionOf(instance), checker);
+}
+
+/** The body an instance's defaults are checked in, through its substitution, if it has any. */
+function defaultsBodyOf(checker: Checker, instance: FunctionInstance): CheckedBody | undefined {
+  return checker.defaultsOf(instance.declaration)?.instantiated(substitutionOf(instance), checker);
+}
+
+/** The frame of a top-level function's instance, whose body `lowered` reads: every parameter. */
 export function instanceFrame(
   lowered: LoweredFunction,
   instance: FunctionInstance,
   startHeader?: EntryHeader,
 ): Frame {
   const { checker, tables, body } = lowered;
-  const { declaration, entry } = instance;
-  const parameters = checker.parametersOf(declaration);
+  const { declaration } = instance;
   return {
     header: startHeader ?? tables.entryHeader(instance),
-    isAsync: awaits(declaration.qualifiers) && entry.kind === 'own',
-    givesDefault: entry.kind === 'default',
-    parameters: entry.kind === 'default' ? parameters.slice(0, entry.parameter) : parameters,
+    isAsync: awaits(declaration.qualifiers),
+    parameters: checker.parametersOf(declaration),
     captures: [],
     function: declaration,
     result: body.result,
+    self: undefined,
+  };
+}
+
+/**
+ * The frame of an entry built from `instance`'s parameters, with no body of its own: plain, taking
+ * every parameter, and giving what the function gives.
+ */
+export function builtFrame(lowering: Lowering, instance: FunctionInstance): Frame {
+  const { checker, tables } = lowering;
+  const { declaration } = instance;
+  return {
+    header: tables.entryHeader(instance),
+    isAsync: false,
+    parameters: checker.parametersOf(declaration),
+    captures: [],
+    function: declaration,
+    result: substitute(checker.resultOf(declaration), substitutionOf(instance), checker.typeRules),
     self: undefined,
   };
 }
@@ -169,20 +194,10 @@ export function nestedFrame(
   return {
     header: startHeader ?? lowered.tables.nestedHeader(nested),
     isAsync: awaits(node.qualifiers),
-    givesDefault: false,
     parameters,
     captures,
     function: node,
     result,
     self: node.name,
   };
-}
-
-/** The default of `parameter`, which a parameter with a default's entry has. */
-export function defaultValueOf(parameter: SignatureParameter): Expression {
-  const { defaultValue } = parameter.node;
-  if (defaultValue === undefined) {
-    unreachable(`A parameter at ${parameter.node.span.from} has no default; the checker said so.`);
-  }
-  return defaultValue;
 }

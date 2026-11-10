@@ -2,18 +2,21 @@
  * Building structs and reading their fields (§3.1). A literal's values are evaluated in source
  * order, then each field taken from where the checker recorded it comes from (`sourcesOf`), in
  * declaration order: a field the literal doesn't give is read from its leading spread, evaluated
- * once, or else computed by the call to its default the checker recorded, given the fields before
- * it. A struct is then built by its fields' names into its type's layout, name order (§3.1 "Field
- * order", `laidOut`), so nothing that builds one depends on the order it has its values in. A
- * field read names the field by its index.
+ * once. A struct is then built by its fields' names into its type's layout, name order (§3.1
+ * "Field order", `laidOut`), so nothing that builds one depends on the order it has its values in.
+ * A literal leaving fields to their defaults instead calls its struct's entry with every field in
+ * declaration order, those left out omitted, which computes them before building it, each seeing
+ * the fields before it (functions/built-entries.ts). A field read names the field by its index.
  *
  * `new X{…}` builds the value behind a shared struct the same way, as the shape its fields make,
  * and puts it in a new cell, whose handle is the shared struct's value (§3.18).
  */
 
+import type { Argument } from '../../../../../definition/instructions/places.ts';
 import type { Register } from '../../../../../definition/operands.ts';
 import { unreachable } from '../../../../../foundation/structures/unreachable.ts';
 import type { FieldSource } from '../../../../checker/surface/checked-body.ts';
+import type { FunctionCall } from '../../../../checker/surface/resolved-call.ts';
 import type { AnonymousStructType, NominalType } from '../../../../checker/types/type/index.ts';
 import type {
   Expression,
@@ -24,35 +27,42 @@ import type {
   StructLiteral,
 } from '../../../../syntax/expressions/index.ts';
 import { itemValue } from '../../../../syntax/expressions/readings.ts';
-import { defaultEntryOf } from '../../../calls/closed-calls.ts';
 import { emitCall } from '../../../calls/emit-call.ts';
 import type { FunctionContext } from '../../../context.ts';
-import { construct } from '../../../values/struct-values.ts';
+import { construct, structValue } from '../../../values/struct-values.ts';
 import { fieldsVisited, valueInFieldScope } from '../../loops/field-passes.ts';
 
 export function lowerStructLiteral(context: FunctionContext, node: StructLiteral): Register {
-  const fields = namedFields(literalFields(context, node));
-  return construct(context, structTypeOf(context, node), fields, node.span);
+  return literalValue(context, node);
 }
 
 export function lowerNewStructLiteral(context: FunctionContext, node: NewStructLiteral): Register {
-  const type = structTypeOf(context, node);
-  const sharedValue = context.checker.sharedValueOf(type);
-  if (sharedValue === undefined) {
-    unreachable(
-      `'new' at ${node.span.from} builds no shared struct; the checker should have said so.`,
-    );
+  return literalValue(context, node);
+}
+
+/**
+ * The value `node` builds: its struct, a shared struct's in a new cell, built where it stands, or
+ * by its struct's entry when it leaves fields to their defaults.
+ */
+function literalValue(context: FunctionContext, node: FieldsLiteral): Register {
+  const { fields, defaults } = literalFields(context, node);
+  const named = new Map(fields.map(({ field, register }) => [field, register]));
+  if (defaults === undefined) {
+    return structValue(context, structTypeOf(context, node), named, node.span);
   }
-  const value = construct(
-    context,
-    sharedValue,
-    namedFields(literalFields(context, node)),
-    node.span,
-  );
-  const dst = context.code.allocate();
-  const cellType = context.tables.types.index(type);
-  context.code.emit({ kind: 'newCell', span: node.span, dst, type: cellType, value });
-  return dst;
+  const called = context.closed(defaults);
+  if (called.kind !== 'function') {
+    unreachable('A field default is computed by its fields function, never a dispatch.');
+  }
+  const { instance } = called;
+  const given = context.checker
+    .parametersOf(instance.declaration)
+    .map(({ node: field }): Register | Argument => {
+      const register = field.name === undefined ? undefined : named.get(field.name.text);
+      return register ?? { kind: 'omitted' };
+    });
+  const callee = context.tables.functionIndex(instance);
+  return emitCall(context, { span: node.span, callee, arguments: given });
 }
 
 /** A literal's field, by its name, and the register holding its value. */
@@ -64,9 +74,13 @@ interface LiteralField {
 /**
  * The registers of a struct literal's fields, in declaration order: its values evaluated in source
  * order, a struct comprehension last (§3.1), then each field taken from its value, read from the
- * spread, computed by its default, or given by the comprehension.
+ * spread, or given by the comprehension; and the call of its struct's fields function computing
+ * the fields it leaves to their defaults, if any.
  */
-function literalFields(context: FunctionContext, node: FieldsLiteral): LiteralField[] {
+function literalFields(
+  context: FunctionContext,
+  node: FieldsLiteral,
+): { readonly fields: readonly LiteralField[]; readonly defaults: FunctionCall | undefined } {
   const sources = context.body.sourcesOf(node);
   if (sources === undefined) {
     unreachable(
@@ -84,18 +98,17 @@ function literalFields(context: FunctionContext, node: FieldsLiteral): LiteralFi
     }
   }
   const fields: LiteralField[] = [];
+  let defaults: FunctionCall | undefined;
   for (const source of sources) {
     if (source.kind === 'comprehension') {
       fields.push(...comprehended);
+    } else if (source.kind === 'default') {
+      defaults = source.call;
     } else {
-      const earlier = fields.map(({ register }) => register);
-      fields.push({
-        field: source.field,
-        register: fieldOf(context, { node, values }, source, earlier),
-      });
+      fields.push({ field: source.field, register: fieldOf(context, { node, values }, source) });
     }
   }
-  return fields;
+  return { fields, defaults };
 }
 
 /**
@@ -113,44 +126,21 @@ function comprehendedFields(
   }));
 }
 
-function namedFields(fields: readonly LiteralField[]): ReadonlyMap<string, Register> {
-  return new Map(fields.map(({ field, register }) => [field, register]));
-}
-
 /** A literal with its items' values evaluated, which its fields are taken from. */
 interface EvaluatedLiteral {
   readonly node: FieldsLiteral;
   readonly values: ReadonlyMap<Expression, Register>;
 }
 
-/** The register of `literal`'s field from `source`, after the fields `earlier`. */
+/** The register of `literal`'s field from `source`: its value, or the spread's field. */
 function fieldOf(
   context: FunctionContext,
   { node, values }: EvaluatedLiteral,
-  source: Exclude<FieldSource, { readonly kind: 'comprehension' }>,
-  earlier: readonly Register[],
+  source: Extract<FieldSource, { readonly kind: 'value' | 'spread' }>,
 ): Register {
-  switch (source.kind) {
-    case 'value':
-      return registerOf(values, source.value);
-    case 'spread':
-      return context.code.field(registerOf(values, source.from), source.index, node.span);
-    case 'default': {
-      const fields = context.closed(source.call);
-      if (fields.kind !== 'function') {
-        unreachable('A field default is computed by its fields function, never a dispatch.');
-      }
-      return emitCall(context, {
-        span: node.span,
-        callee: context.tables.functionIndex(defaultEntryOf(fields, earlier.length)),
-        arguments: [...earlier],
-      });
-    }
-    default: {
-      const unhandled: never = source;
-      return unhandled;
-    }
-  }
+  return source.kind === 'value'
+    ? registerOf(values, source.value)
+    : context.code.field(registerOf(values, source.from), source.index, node.span);
 }
 
 /** A struct without fields, written bare (§3.1). */

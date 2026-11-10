@@ -51,11 +51,8 @@ function instanceEncoders({ types, functions }: Definition): readonly (string | 
   );
 }
 
-/** A name ending in `/` and a number, as entries named for how many arguments they took were. */
-const arityName = /\/\d+$/u;
-
 describe('function-table names', () => {
-  it("spell an instance's type arguments as keys do, and a default's entry by its parameter", () => {
+  it("spell an instance's type arguments as keys do, one entry per instance", () => {
     const program = stdProgramOf({
       main: [
         "import * as a from 'a'",
@@ -70,18 +67,17 @@ describe('function-table names', () => {
     const names = compiledDefinition(program, 'main').functions.map(({ name }) => name);
     expect(names).toEqual(
       expect.arrayContaining([
-        'main.show<a.Money>/times',
         'main.show<a.Money>',
         'main.show<b.Money>',
-        'main.show<prelude.Optional<Int>>/times',
+        'main.show<prelude.Optional<Int>>',
       ]),
     );
-    expect(names.filter((name) => arityName.test(name))).toEqual([]);
+    expect(names.filter((name) => name.includes('/'))).toEqual([]);
   });
 });
 
-describe('default entries', () => {
-  it("mark exactly the entries giving a parameter's or a field's default", () => {
+describe('defaults', () => {
+  it('are computed by the entry of the function or struct a call or literal leaves them to', () => {
     const program = stdProgramOf({
       main: [
         'struct Retry { tries: Int = 3, backoff: Int = tries * 2 }',
@@ -93,16 +89,14 @@ describe('default entries', () => {
     const code = compiledDefinition(program, 'main').functions.flatMap((entry) =>
       entry.kind === 'code' && entry.name.startsWith('main.') ? [entry] : [],
     );
-    const marked = code.filter((entry) => entry.givesDefault).map(({ name }) => name);
-    expect(marked.toSorted()).toEqual([
-      'main.Retry/backoff',
-      'main.Retry/tries',
-      'main.wait/retry',
-      'main.wait/times',
-    ]);
-    expect(code.map(({ name }) => name)).toEqual(
-      expect.arrayContaining(['main.main', 'main.wait']),
+    const leftOut = new Map(
+      code.map(({ name, parameters }) => [name, parameters.map(({ hasDefault }) => hasDefault)]),
     );
+    expect(Object.fromEntries(leftOut)).toEqual({
+      'main.Retry': [true, true],
+      'main.wait': [true, true],
+      'main.main': [],
+    });
   });
 });
 

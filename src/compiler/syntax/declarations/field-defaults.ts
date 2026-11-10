@@ -5,8 +5,8 @@
  * field without a written type takes its default's, a default reaching its own field is a cycle,
  * and a rest is last, an array, with no default. Its parameters are the fields in order, so a
  * layout's field `i` is its parameter `i`, and it gives the value its fields make. A literal
- * leaving field `i` out calls its default entry for parameter `i`, given the fields before it, as a
- * call leaving a parameter out does.
+ * leaving fields out calls its entry, which computes them before building the value, as a call
+ * leaving a parameter out does.
  *
  * A variant's is also its constructor, `fn E.V<P…>(fields) -> E<P…>`: calling the variant calls it,
  * binding arguments as any call's (§3.3), so it exists for every variant with fields, while a

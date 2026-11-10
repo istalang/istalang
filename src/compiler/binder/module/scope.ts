@@ -109,7 +109,7 @@ export class Scope {
 
   /**
    * A scope for a function's body, inside its parameters'. A parameter's default isn't in it: it
-   * runs before the call starts (§3.3).
+   * runs before the body starts (§3.3).
    */
   static ofBody(parent: Scope, node: ScopedFunction): Scope {
     return new Scope(parent, false, node);

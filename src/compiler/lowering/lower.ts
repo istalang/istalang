@@ -3,9 +3,10 @@
  *
  * Lowering starts from `main`, or from a test program's suites (§10), and compiles every function
  * instance it reaches, through a worklist (tables/tables.ts, tables/instances.ts): a function with
- * a body becomes code, an extern an entry bound to its native by key, and a call leaving parameters
- * to their defaults an entry computing them. Lowering runs only on a program the checker accepted,
- * so it reports nothing; anything it can't lower is a bug in an earlier phase and throws.
+ * a body becomes code computing the defaults its call leaves out before its body, a struct's or a
+ * variant's fields code building it, and an extern an entry bound to its native by key, beside code
+ * computing its defaults for a call leaving them out. Lowering runs only on a program the checker
+ * accepted, so it reports nothing; anything it can't lower is a bug in an earlier phase and throws.
  */
 
 import type { Definition } from '../../definition/definition.ts';
@@ -16,10 +17,11 @@ import { unreachable } from '../../foundation/structures/unreachable.ts';
 import type { Checker } from '../checker/check.ts';
 import { isHostExtern } from '../checker/surface/host-externs.ts';
 import { substitute } from '../checker/types/parts/substitution.ts';
-import { constructedVariant } from '../syntax/declarations/field-defaults.ts';
+import { constructedVariant, isFieldsFunction } from '../syntax/declarations/field-defaults.ts';
 import type { FunctionDeclaration } from '../syntax/declarations/index.ts';
 import { deferredEntry } from './constructs/expressions/deferred-calls.ts';
 import { writtenBodyOf } from './functions/bodies.ts';
+import { constructorEntry, externDefaultsEntry, structEntry } from './functions/built-entries.ts';
 import { asyncFitEntry, convertingEntry, wrappingEntry } from './functions/fits/index.ts';
 import { instanceLowering, nestedLowering } from './functions/index.ts';
 import { derivedCodecDirection, derivedCodecEntry } from './synthesized/boundary/codecs.ts';
@@ -30,9 +32,7 @@ import {
   hostNativeEntry,
 } from './synthesized/boundary/host-externs.ts';
 import { listStart, startableOf, startables, startEntry } from './synthesized/boundary/starts.ts';
-import { constructorEntry } from './synthesized/constructors.ts';
 import { anyConversionEntry, anyFieldEntry, dispatchEntry } from './synthesized/trait-objects.ts';
-import { fillingEntry } from './tables/filling-entry.ts';
 import {
   type FunctionInstance,
   type NestedInstance,
@@ -104,6 +104,8 @@ function pendingEntry(
   switch (pending.kind) {
     case 'instance':
       return entryOf(checker, tables, pending.instance);
+    case 'externDefaults':
+      return externDefaultsEntry(lowering, pending.instance);
     case 'nested':
       return nestedEntryOf(checker, tables, pending.nested);
     case 'hostNative':
@@ -141,24 +143,19 @@ function pendingEntry(
 }
 
 /**
- * The entry for `instance`: a filling entry, or one giving a parameter its default
- * (tables/instances.ts, §3.3); else its function's own: code for a function with a body or a
- * variant's constructor, or an extern bound to its native.
+ * The entry for `instance`: code for a function with a body, a variant's constructor or a struct's
+ * fields, or an extern bound to its native.
  */
 function entryOf(
   checker: Checker,
   tables: DefinitionTables,
   instance: FunctionInstance,
 ): FunctionDefinition {
-  const { declaration, entry } = instance;
-  if (entry.kind === 'filling') {
-    return fillingEntry({ checker, tables }, instance, entry.binding);
-  }
-  if (entry.kind === 'default') {
-    return defaultEntry(checker, tables, instance);
-  }
-  if (constructedVariant(declaration) !== undefined) {
-    return constructorEntry({ checker, tables }, instance);
+  const { declaration } = instance;
+  if (isFieldsFunction(declaration)) {
+    return constructedVariant(declaration) === undefined
+      ? structEntry({ checker, tables }, instance)
+      : constructorEntry({ checker, tables }, instance);
   }
   const codecDirection = derivedCodecDirection(checker, instance);
   if (codecDirection !== undefined) {
@@ -188,19 +185,6 @@ function entryOf(
     ),
     typeArguments: instance.typeArguments.map((type) => tables.types.reference(type)),
   };
-}
-
-/** The entry giving one parameter of `instance`'s function its default (§3.1, §3.3). */
-function defaultEntry(
-  checker: Checker,
-  tables: DefinitionTables,
-  instance: FunctionInstance,
-): FunctionDefinition {
-  const lowering = instanceLowering({ checker, tables }, instance);
-  if (lowering === undefined) {
-    unreachable(`${instance.declaration.name.text} has no defaults to compute.`);
-  }
-  return lowering.lowerDefault(instance);
 }
 
 /** The code entry of a lambda or local function, read through its owner's body (§3.14). */

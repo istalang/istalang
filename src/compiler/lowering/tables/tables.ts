@@ -31,7 +31,7 @@ import type {
 } from '../../syntax/declarations/index.ts';
 import type { SyntaxTree } from '../../syntax/tree/index.ts';
 import { type AnchoredSpan, spanIn } from '../../syntax/tree/positions.ts';
-import { type ClosedCall, type Dispatch, takingPassed } from '../calls/closed-calls.ts';
+import { type ClosedCall, type Dispatch, leavesOut } from '../calls/closed-calls.ts';
 import { nestedSpanOf } from '../functions/bodies.ts';
 import { laidOutAs } from '../values/holdings.ts';
 import { annotationValues } from './constants.ts';
@@ -57,15 +57,17 @@ import { qualifiedNameOf } from './names.ts';
 import { TypeTable } from './type-table.ts';
 
 /**
- * A function-table entry waiting to be lowered: a top-level function's instance, a nested one, an
- * extern a host implements as its native sees it (synthesized/boundary/host-externs.ts), the read
- * of an extern constant, the wrapper a host starts a function through
+ * A function-table entry waiting to be lowered: a top-level function's instance, the entry of an
+ * extern's instance computing the defaults a call leaves out before calling it (§3.3), a nested
+ * instance, an extern a host implements as its native sees it (synthesized/boundary/host-externs.ts),
+ * the read of an extern constant, the wrapper a host starts a function through
  * (synthesized/boundary/starts.ts), the async entry of a plain function made async, the
  * function a deferred call gives (constructs/expressions/deferred-calls.ts), or a conversion of
  * parts (functions/fits/).
  */
 export type PendingEntry =
   | { readonly kind: 'instance'; readonly instance: FunctionInstance }
+  | { readonly kind: 'externDefaults'; readonly instance: FunctionInstance }
   | { readonly kind: 'nested'; readonly nested: NestedInstance }
   | { readonly kind: 'hostNative'; readonly declaration: FunctionDeclaration }
   | {
@@ -229,12 +231,14 @@ export class DefinitionTables {
 
   /**
    * The index of the entry taking a closed call's arguments as it passes them, for a caller that
-   * gets an entry to call later: its function's own or a filling one (instances.ts), or its
-   * dispatch's (§3.10).
+   * gets an entry to call later, a function value's or the runtime's: its function's, which
+   * computes what the call leaves out (`leavingOutIndex`), or its dispatch's (§3.10).
    */
   callIndex(call: ClosedCall): FunctionId {
     if (call.kind === 'function') {
-      return this.functionIndex(takingPassed(call));
+      return leavesOut(this.#checker, call)
+        ? this.leavingOutIndex(call.instance)
+        : this.functionIndex(call.instance);
     }
     if (!passesAll(call.binding)) {
       unreachable(
@@ -271,6 +275,18 @@ export class DefinitionTables {
   functionIndex(instance: FunctionInstance): FunctionId {
     const key = instanceKey(this.#checker.typeKeys, instance);
     return this.#entryIndex(key, { kind: 'instance', instance });
+  }
+
+  /**
+   * The index a call leaving parameters of `instance` out calls (§3.3): its own entry, which
+   * computes them; for an extern, which computes nothing, its entry computing them, then calling it.
+   */
+  leavingOutIndex(instance: FunctionInstance): FunctionId {
+    if (!instance.declaration.isExtern) {
+      return this.functionIndex(instance);
+    }
+    const key = `defaults:${instanceKey(this.#checker.typeKeys, instance)}`;
+    return this.#entryIndex(key, { kind: 'externDefaults', instance });
   }
 
   /** The index of the async entry of a plain function made async (§3.14), lowered later too. */

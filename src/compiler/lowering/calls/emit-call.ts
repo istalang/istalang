@@ -2,14 +2,15 @@
  * The one place lowering writes a `call` instruction (docs/arch/definition.md, "Calls"): to a
  * function-table entry or a function value, with each argument a value or a place passed by `&`.
  *
- * A resolved call (`emitFunctionCall`) runs its function's own entry with every parameter: the ones
- * the call passes, and before them, in parameter order, each one it leaves out computed by its
- * default's entry from the parameters before it (§3.1, §3.3). So a default sees those parameters
- * however the call gave them, and every call fills its defaults one way, a filling entry's included
- * (tables/instances.ts). A dispatch on an `any` value's own type binds the required function's
- * parameters the same way, then runs its dispatch entry (§3.10). A variant's constructor runs no
- * entry: its parameters, bound the same way, are the fields of the variant it builds in place
- * (§3.11, values/variant-values.ts).
+ * A resolved call (`emitFunctionCall`) runs its function's entry with every parameter in order:
+ * the ones the call passes, and each one it leaves out passed as omitted, which the entry computes
+ * from its default in its prologue (§3.1, §3.3), so a default runs in the function however the call
+ * gave the parameters before it. An extern computes nothing, so a call leaving its defaults out runs
+ * the extern's entry computing them (tables/tables.ts `leavingOutIndex`). A dispatch on an `any`
+ * value's own type binds the required function's parameters the same way, then runs its dispatch
+ * entry (§3.10). A variant's constructor called with every field runs no entry: its parameters are
+ * the fields of the variant it builds in place (§3.11, values/variant-values.ts); one leaving a
+ * field out runs the constructor's entry, which computes it.
  *
  * What a call calls (`CallTarget`) is a closed call or a function value in a register, and `emitTo`
  * calls either, as a written call, a deferred call and the function a deferred call gives do.
@@ -31,12 +32,7 @@ import type { NodeOf } from '../../syntax/tree/node.ts';
 import type { AnchoredSpan } from '../../syntax/tree/positions.ts';
 import type { CodeContext, FunctionContext } from '../context.ts';
 import { buildConstructed } from '../values/variant-values.ts';
-import {
-  type ClosedCall,
-  calledParameters,
-  defaultEntryOf,
-  substitutionOfCall,
-} from './closed-calls.ts';
+import { type ClosedCall, calledParameters, substitutionOfCall } from './closed-calls.ts';
 import { packElementsOf } from './packs.ts';
 
 /** A call to write: where it is written, what it calls, and its arguments. */
@@ -76,7 +72,7 @@ export interface FunctionCallToEmit {
 }
 
 /**
- * Writes `toEmit`, its parameters filled as its binding says first; `dst` holds its result. A
+ * Writes `toEmit`, its parameters bound as its binding says first; `dst` holds its result. A
  * dispatch takes the required function's parameters, which have no defaults (§3.10).
  */
 export function emitFunctionCall(
@@ -86,21 +82,32 @@ export function emitFunctionCall(
 ): Register {
   const { span, call } = toEmit;
   const parameters = boundParameters(context, toEmit);
-  if (call.kind === 'function' && constructedVariant(call.instance.declaration) !== undefined) {
-    const fields = parameters.map(registerOf);
-    return buildConstructed(context, { instance: call.instance, fields }, span, dst);
+  if (call.kind === 'dispatch') {
+    const callee = context.tables.dispatchIndex(call.dispatch);
+    return emitCall(context, { span, callee, arguments: parameters }, dst);
   }
-  const callee =
-    call.kind === 'dispatch'
-      ? context.tables.dispatchIndex(call.dispatch)
-      : context.tables.functionIndex(call.instance);
+  const { instance } = call;
+  const leftOut = parameters.some(isOmitted);
+  if (!leftOut && constructedVariant(instance.declaration) !== undefined) {
+    const fields = parameters.map(registerOf);
+    return buildConstructed(context, { instance, fields }, span, dst);
+  }
+  const callee = leftOut
+    ? context.tables.leavingOutIndex(instance)
+    : context.tables.functionIndex(instance);
   return emitCall(context, { span, callee, arguments: parameters }, dst);
+}
+
+/** A parameter a call leaves out, which the callee computes from its default (§3.3). */
+const omitted: Argument = { kind: 'omitted' };
+
+function isOmitted(parameter: Register | Argument): boolean {
+  return typeof parameter !== 'number' && parameter.kind === 'omitted';
 }
 
 /**
  * The parameters `toEmit` passes its function, in their order, as its binding says: an argument,
- * a rest parameter's array or a pack's elements, or a default computed by its entry from the
- * parameters before it.
+ * a rest parameter's array or a pack's elements, or a default, left out.
  */
 function boundParameters(
   context: CodeContext,
@@ -128,14 +135,12 @@ function boundParameters(
         parameters.push(...restParameters(context, { call, span, declared }, items));
         break;
       }
-      case 'default': {
+      case 'default':
         if (call.kind === 'dispatch') {
           unreachable('A required function has no defaults; checking refuses them.');
         }
-        const callee = context.tables.functionIndex(defaultEntryOf(call, parameter));
-        parameters.push(emitCall(context, { span, callee, arguments: [...parameters] }));
+        parameters.push(omitted);
         break;
-      }
       default: {
         const unhandled: never = source;
         return unhandled;
@@ -182,7 +187,7 @@ function restParameters(
 
 /**
  * The register of a value passed, which a rest parameter collects and a variant's field holds:
- * never a place.
+ * never a place, nor a field left out, which only the constructor's entry computes.
  */
 function registerOf(argument: Register | Argument): Register {
   if (typeof argument === 'number') {

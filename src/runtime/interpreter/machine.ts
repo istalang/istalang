@@ -13,7 +13,13 @@ import type { Value } from '../../definition/values/values.ts';
 import { unreachable } from '../../foundation/structures/unreachable.ts';
 import { isReference, type RegisterContents } from '../snapshot/objects.ts';
 import type { ActiveFrame, FrameEntry, FrameHeap } from './frames.ts';
-import { capturedContents, clearRegister, writeRegister } from './registers.ts';
+import {
+  capturedContents,
+  clearRegister,
+  givesEvery,
+  type Passed,
+  writeRegister,
+} from './registers.ts';
 
 export interface Machine {
   readonly definition: Definition;
@@ -38,20 +44,27 @@ export interface Machine {
   readonly settled: (handle: Value) => { readonly value: Value } | undefined;
   /** A handle to the weak reference to the running async call, for `worker.disposing()` (§7). */
   readonly currentCall: () => Value;
+  /**
+   * Hands the call `frame` runs over to the mock replacing it, `frame` having run its prologue to
+   * compute what the call left out (frames.ts `FrameEntry`); its result is the frame's.
+   */
+  readonly handOver: (frame: ActiveFrame) => void;
 }
 
 /**
  * A frame about to run entry `function` from its start, its parameters holding `contents`: values,
- * and references for reference parameters. A closure's captures follow the parameters as the
- * closure carries them: a captured cell stays the closure's cell, shared with where it came from.
+ * and references for reference parameters. A parameter the call left out, or passed nothing for,
+ * as a function value's call of a shorter type doesn't, stays empty for the prologue to compute
+ * (§3.3). A closure's captures follow the parameters as the closure carries them: a captured cell
+ * stays the closure's cell, shared with where it came from.
  */
 export function newFrame(
   entry: FrameEntry,
-  contents: readonly RegisterContents[],
+  contents: readonly Passed[],
   heap: FrameHeap,
   captures: readonly Value[] = [],
 ): ActiveFrame {
-  const { code, arrives } = entry;
+  const { code, arrives, handsOver } = entry;
   const registers: (RegisterContents | undefined)[] = Array.from({ length: code.registers });
   const frame: ActiveFrame = {
     function: entry.function,
@@ -60,27 +73,44 @@ export function newFrame(
     registers,
     heap,
     ...(arrives ? { arrives } : {}),
+    ...(handsOver ? { handsOver } : {}),
   };
   contents.forEach((each, index) => {
-    if (isReference(each)) {
+    if (each === undefined || isReference(each)) {
       registers[index] = each;
     } else {
       writeRegister(frame, index, each);
     }
   });
+  const first = code.parameters.length;
   captures.forEach((each, index) => {
-    registers[contents.length + index] = each;
+    registers[first + index] = each;
   });
   return frame;
 }
 
+/** What `frame`'s parameters hold, every one given once its prologue has run. */
+export function parameterContents(frame: ActiveFrame): readonly RegisterContents[] {
+  const contents = frame.registers.slice(0, frame.code.parameters.length);
+  if (!givesEvery(contents)) {
+    unreachable(
+      `${frame.code.name} reached its body with a parameter its prologue never computed.`,
+    );
+  }
+  return contents;
+}
+
 /** The closure `frame` runs: its function, with its captures as the closure carried them. */
 export function currentClosure(frame: ActiveFrame): Value {
+  return { kind: 'closure', function: frame.function, captures: capturesOf(frame) };
+}
+
+/** The captures of the closure `frame` runs, after its parameters, as the closure carried them. */
+export function capturesOf(frame: ActiveFrame): Value[] {
   const first = frame.code.parameters.length;
-  const captures = Array.from({ length: frame.code.captures }, (_, index) =>
+  return Array.from({ length: frame.code.captures }, (_, index) =>
     capturedContents(frame, first + index),
   );
-  return { kind: 'closure', function: frame.function, captures };
 }
 
 /** Moves `frame` past the instruction it stood at, which gave `value` to `dst`, if it has one. */

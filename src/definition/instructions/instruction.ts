@@ -15,12 +15,14 @@ import { controlInstructions } from './control.ts';
 import { dataInstructions } from './data.ts';
 import { lifetimeInstructions } from './lifetimes.ts';
 import type { Argument, Place } from './places.ts';
+import { prologueInstructions } from './prologue.ts';
 import { suspensionInstructions } from './suspension.ts';
 
 export const instruction = z.discriminatedUnion('kind', [
   ...dataInstructions,
   ...controlInstructions,
   ...callInstructions,
+  ...prologueInstructions,
   ...suspensionInstructions,
   ...lifetimeInstructions,
 ]);
@@ -77,6 +79,8 @@ const operandTable: Handlers<undefined, Instruction, [], Partial<Operands>> = {
       ...i.arguments.map(argumentOperands),
     ),
   currentCall: (_, i) => ({ registers: [i.dst] }),
+  given: (_, i) => ({ registers: [i.parameter], labels: [i.target] }),
+  body: () => ({}),
   await: (_, i) => ({ registers: [i.dst, i.future] }),
   select: (_, i) => ({
     registers: i.cases.flatMap((c) => [
@@ -103,9 +107,18 @@ function calleeOperands(callee: Callee): Partial<Operands> {
 }
 
 function argumentOperands(argument: Argument): Partial<Operands> {
-  return argument.kind === 'value'
-    ? { registers: [argument.register] }
-    : placeOperands(argument.place);
+  switch (argument.kind) {
+    case 'value':
+      return { registers: [argument.register] };
+    case 'reference':
+      return placeOperands(argument.place);
+    case 'omitted':
+      return {};
+    default: {
+      const unhandled: never = argument;
+      return unhandled;
+    }
+  }
 }
 
 function placeOperands(place: Place): Partial<Operands> {

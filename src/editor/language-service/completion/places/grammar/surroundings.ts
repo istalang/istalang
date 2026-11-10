@@ -3,8 +3,8 @@
  * the scopes a label may name around it. Both stop at the innermost function, since a `break`,
  * an `await` or a `hold` can't reach past one.
  *
- * A function's header (its parameters' defaults) is no body: a default runs as code of its own,
- * with no instance's work to wait on (§3.3), as a top-level constant's value does (§3).
+ * A function's header (its parameters' defaults) is no body: a default runs before the body
+ * starts, where nothing waits (§3.3), as a top-level constant's value does (§3).
  */
 
 import type { LabelledScope } from '../../../../../compiler/syntax/statements/index.ts';
