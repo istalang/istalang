@@ -43,14 +43,14 @@ structural change the later phases build on lands first, on its own.
 | **R2** Resolvers ✓ | Registered one-shot resolvers of both kinds, `onCancel`, `select`'s losers cancelled | K1a |
 | **K1c** Data rule ✓ | The three-valued data kind in one home, over every value; calls as its consequence, with bounded mark inference; requirements' marks; the rewrite | F1 |
 | **K1d** Data-kind bounds | K1c's profile cost (B71); `DataKind` renamed `Mark`; a derived trait `DataKind<K in Mark>`; associated types' kinds from their bounds, type matches' from their cases (B72) | K1c |
-| **DG** Delegate | Proposal 9's jobs: `await delegate f(args)`; host externs `live`; host-filled futures gone; sendable crossing | R2, K1c |
+| **DG** Delegate | `delegate` in Istalang over CX's contexts, no native: ista sends the job, a live loop runs it and replies; host externs `live`; host-filled futures gone | CX |
 | **AW** Awaitables | `Awaitable`, `Resolver`, one await path, `futures` over the kind; `Self.Mode` as a requirement's mark | R2, K1d |
-| **CX** Contexts | Proposal 9's minimal slice: a `Runtime` over the host's store and `rt.call(key) f(args)`, enough to run and test ista code; sendable crossing; hosts start only `live async fn main` | AW, DG |
+| **CX** Contexts | Proposal 9's minimal slice: a `Runtime` over the host's store and `rt.call(key) f(args)`, enough to run and test ista code; sendable crossing; hosts start only `live async fn main` | AW |
 
-**Order:** {A0 ∥ R1a} → {T0 ∥ R1b} → DC → K1a → {K1b ∥ R2} → F1 → K1c → {K1d ∥ DG} → AW → CX → merge review.
+**Order:** {A0 ∥ R1a} → {T0 ∥ R1b} → DC → K1a → {K1b ∥ R2} → F1 → K1c → K1d → AW → CX → DG → merge review.
 At most three run at once. *Why:* a phase starts only on landed code, and structure lands before
-what builds on it. The `Fn` surface (F1) is structure the data rule (K1c) checks through; AW's associated-type bounds build on K1d's. DG's
-result is a registered resolver, and its job is a `live` function. `Call<R>` is an awaitable.
+what builds on it. The `Fn` surface (F1) is structure the data rule (K1c) checks through; AW's associated-type bounds build on K1d's. DG is
+built on existing constructs, CX's contexts, not a runtime job runner (human, 2026-11-11). `Call<R>` is an awaitable.
 **Interims:** until CX, a host still starts an `ista async fn main`; until DG, a host extern still
 gives an `ista` future the host fills; until K1c, an unmarked function takes an implicit kind where it needs one (K1b). QV is folded into F1.
 
@@ -69,7 +69,6 @@ gives an `ista` future the host fills; until K1c, an unmarked function takes an 
 | A value's data kind (one memoized home); the data rule; bounded mark inference | K1c | K1d, DG, AW, CX |
 | `Mark`; the `DataKind<K>` trait; associated types' and type matches' kinds | K1d | AW, CX |
 | Resolvers, registered, of both kinds | R2 | DG, AW, CX |
-| The job inbox and its runner | DG | CX |
 
 A contract amendment goes to the tech-lead.
 

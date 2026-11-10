@@ -99,29 +99,31 @@ full suite passes after the rewrite. Profile within noise of `698d8bdd`, before 
 
 **Spec.** Proposal 8 Rules 2–3; §3.5 associated types; §3.10 `DataKind`; §3.17 type matches.
 
-## DG Delegate, a slice of proposal 9 (runtime, then rewrite)
+## DG Delegate, on contexts (Istalang, then rewrite)
+
+After CX. Built on existing constructs, with no native, extern or runtime state (human,
+2026-11-11).
 
 **Scope.**
-- `delegate` (Rule 8): an `ista` runtime function in the deferred form,
-  `delegate<R is Sendable>(job: sendable live async fn() -> R) -> Future<R, "ista">`. The job is
-  queued in the instance's job inbox at the commit, run by the runtime's loop as a live run (R1b),
-  and run again after a crash or restart until its result commits into the future through a
-  registered ista resolver (R2), under a key stable across its runs. Its job and its result must
-  be sendable, the crossing check (Rule 2), refused where they aren't.
+- `delegate` (Rule 8) written in Istalang: ista code sends the job as a message; a live loop,
+  itself Istalang, takes jobs with `rt.call(key) nextJob()`, runs each as a live run and replies
+  with `rt.call(key) reply(r)`, which resolves the delegating code's future. The job's stable key
+  and its running at least once come from the context and the loop. Job and result are sendable,
+  CX's crossing check.
 - Host externs: a host's async externs are `live`; externs generic over their mark and `ista`
-  externs are the runtime's, which deploy checks. Host-filled ista futures go, with `HostCall.pending`,
-  `Runtime.fill`'s token, `Futures.fromHost`, `resolveHost`, `createFilled` and the CLI's token
-  wrapping; the extern wrapper execution goes (B6).
+  externs are the runtime's, which deploy checks. What only host fills use goes (`findings.md`,
+  DG); what live resolvers and the test world share stays. The extern wrapper execution goes (B6).
 - The rewriter makes every host extern giving a future `extern live async fn`, and ista code's
   `await` of one `await delegate …`.
 
 **Accept.** `await delegate charge(c, n)` runs `charge` once after the commit, its result in the
 future; a segment crashed before its commit never runs it; crashed after the job starts and before
 its result commits, it runs again under the same key. The behaviour table's `await http.get(u)` and
-`charge(id)` rows in their `delegate` form. A job or result that isn't sendable is refused. Deploy refuses a host's mark-generic or
-`ista` extern. No host token remains. Property: over generated programs crashed at every `await`, every
-job runs at least once per committed start and never for a discarded segment. The full suite passes
-after the rewrite; `wake.bench.ts` within 10%.
+`charge(id)` rows in their `delegate` form. A job or result that isn't sendable is refused. Deploy
+refuses a host's mark-generic or `ista` extern. No host token remains. No `delegate` native or job
+state exists. Property: over generated programs crashed at every `await`, every job runs at least
+once per committed start and never for a discarded segment. The full suite passes after the
+rewrite; `wake.bench.ts` within 10%.
 
 **Spec.** §3.6 externs; §3.8 `delegate`; §5 jobs; §9 hosts.
 

@@ -5,3 +5,4 @@
 - [Test iteration](feedback_test-iteration.md) — iterate on affected tests only; full vitest suite once at the end
 - [tsm](feedback_tsm.md) — use ts-refactor/tsm for TS queries and refactors; report tsm issues to solu via hcom
 - [Biome in worktrees](project_biome-worktrees.md) — symlinked node_modules makes biome false-clean; lint against a cloned node_modules
+- [Build on constructs](feedback_build-on-constructs.md) — features in Istalang over existing constructs, no new builtins; read docs/reuse; verify scouts

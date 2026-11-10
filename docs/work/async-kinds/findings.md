@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-11-09
-last_updated: 2026-11-09
+last_updated: 2026-11-11
 tags: [proposal-8, async, research]
 ---
 
@@ -79,6 +79,23 @@ Surveyed on `011d7712`. Paths are under `src/`, abbreviated.
   host. An extern's wrapper is an execution of its own (B6).
 - `await` and `select` instructions carry no mode; the Definition's `async` is on code entries,
   structural function types and extern keys.
+
+## DG's host fills (a stopped fork, 2026-11-11)
+
+- **Only host fills use:** `HostCall.pending`, `Runtime.fill`, `NativeFutures.fromHost` (→
+  `Futures.createHost`), `nativeFuturesOf.resolvable`'s ista guard text, the CLI's token wrapping
+  (`cli/host-module.ts`, `run.ts`'s arrivals and next wake).
+- **Shared, so they stay:** the persisted `host{token}` future state, `Futures.createFilled`,
+  `resolveHost`, `waitsOnHost`, `awaitsHost`, the heap's host-future index and the `arrival`
+  wake/replay variant. Live resolvers and the test world's mock answers use them.
+- `_hostInput` and `_refuse` serve start entries; the future-extern wrapper's input path also serves
+  live futures.
+- The Definition's extern entries carry no mark: a deploy-time check needs one, or the checker's
+  host-boundary check refuses it from the declaration.
+- Rewrite targets: 22 host externs giving ista futures in TS test strings (9 files), 11 in
+  `examples/FormBuilder`, 4 in `test/corpus`, and testing's `receive`.
+- `recordOutcomeCodecs` knows only `Instance<R>`; three spawn natives repeat one
+  `instances.spawn` line.
 
 ## Size
 
