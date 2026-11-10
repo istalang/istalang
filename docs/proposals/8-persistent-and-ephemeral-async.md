@@ -113,13 +113,13 @@ An unmarked `async fn` is an error: its future would be `Future<T, "simple">`.
 
   | A value of | fits where this is expected |
   | --- | --- |
-  | `fn(A) -> R` | `fn(A) -> Future<R, K>`, either kind; its call gives a resolved future |
+  | `fn(A) -> R` | `live async fn(A) -> R` or `ista async fn(A) -> R`; its call gives a resolved future |
   | `sendable fn …` | `fn …`, by `Sendability`'s order |
   | an unmarked `fn …` | `live fn …` or `ista fn …`, by `DataKind`'s order |
 
 - **Qualifier parameters.** A higher-order function keeps its arguments' mark and sendability through written `Fn` parameters: `map`'s `M` and `S` take `f`'s (Rule 3), and `logged(f)` is `sendable` when `f` is.
 - **Requirements carry a mark,** `live`, `ista`, a mark parameter or none. An implementation handles what its requirement allows, and the implementing type's own data too, `Self` being the trait's type parameter (Rule 3). So a requirement of a kind is met by a function of that kind or an unmarked one, an unmarked requirement by an unmarked function, and `Socket`'s `live fn dispose` meets `Disposable`'s unmarked `dispose`.
-- **Overloads** on the two kinds are two types, so they don't clash. A plain function passed to such a pair converts either way, so that call is ambiguous (§3.7).
+- **Overloads** on the two kinds are two types, so they don't clash. A sync function passed to such a pair converts either way, so that call is ambiguous (§3.7).
 - **Modifiers stack in any order.** The formatter sorts them: `extern`; then what a value is or captures (`shared`, `sendable`); then the mark, `live`, `ista` or a mark parameter (`M fn`); then `async`; then `fn` or `struct`. So `extern live async fn`, `extern live struct` and `sendable ista async fn(A) -> R`. `live` and `ista` are contextual words, as `sendable` is, so both stay free as names.
 
 ### 5. `await`, `Awaitable` and `Resolver`
@@ -132,7 +132,7 @@ trait Awaitable<T>:
 
 - **What `await x` does,** for `x` of an awaitable type:
   1. the runtime makes `done`, a resolver for this one wait;
-  2. it calls `x.onAwait(done)`, a plain function, so it can't itself await;
+  2. it calls `x.onAwait(done)`, a function without `async`, so it can't itself await;
   3. it commits, when `Mode` is `"ista"`;
   4. it suspends the caller, and `done.resolve(v)` resumes it with `v`.
 - **An `await` waits in its code's mark,** which an `async` head makes a kind. Its operand's `Mode` must be that kind, so live code never commits and ista code never waits in memory.
@@ -303,7 +303,7 @@ After the repository's rewrite (implementation note 9), every program that compi
   - Reserved words lose `defer` and `spawn`.
   - Grammar words gain `live` and `ista` and lose `ephemeral`, among a declaration's or a function type's modifiers, which stack in any order (Rule 4).
   - The types table gains `Future<T, K>`, `Resolver<T, K>` and `Fn<Args, Result, Kind, Send>`, the function-types row becoming `Fn`'s sugar.
-  - The conversions list: a plain function into either future kind, an unmarked function into either kind, and nothing between the kinds.
+  - The conversions list: a sync function into either future kind, an unmarked function into either kind, and nothing between the kinds.
 - **§3.1.** `extern live struct` values, neither persisted nor sendable.
 - **§3.3.** Data kinds, code marks and the one rule, calls as its consequence, code as data, code generic over the kind (Rules 2 and 3). **Defaults** are part of the function, as in JavaScript and Kotlin: computed at the start of each call that leaves them out, in the function's scope and before its body, never awaiting. A spawned call computing its defaults in the new instance then follows, no longer a rule of its own. §3.1's field defaults are likewise part of building the value.
 - **§3.5.** Generic code transparent to its type parameters' data; a mark parameter, `M in DataKind` or `K in Persistence`, inferred with a call's other type arguments under its caller's mark as an upper bound, the least mark allowed; a decided mark above it an error.
@@ -327,10 +327,10 @@ After the repository's rewrite (implementation note 9), every program that compi
    - **Modifiers** parse in any order, each at most once: the kind (`live`, `ista`) is a group of its own, and `async` another.
    - **Deferred calls:** a new expression node, a path and a call, parsed where a name or path is followed on its line by a call (`compiler/parser/grammar/`).
 2. **Checker.**
-   - **Function types** carry a mark, unmarked, `live`, `ista` or a variable, beside their reach, and what a value of them may capture (Rule 2), and `async` becomes the result's future (`checker/types/type/function-types.ts`, `index.ts`). Every spelling builds through the one constructor, so nothing downstream sees which was written.
+   - **Function types** carry a mark, unmarked, `live`, `ista` or a variable, beside their sendability, and what a value of them may capture (Rule 2), and `async` becomes the result's future (`checker/types/type/function-types.ts`, `index.ts`). Every spelling builds through the one constructor, so nothing downstream sees which was written.
    - **Data kinds:** one home derives a type's kind, simple, live or ista, from what it holds, per instantiation; a type parameter's values pass in unmarked code, and the caller checks their concrete types. A declaration may later give a binding its kind (proposal 9's `ista const`), through the same home.
    - **Futures:** `Future`'s kind is a required member parameter. A callee's mark is bounded above by its caller's, `"simple"` below `"live"` and `"ista"`: a mark parameter is solved with the call's other type arguments under that bound, the least the constraints allow, and a decided mark above it is an error naming the call. Nothing else defaults.
-   - **Fitting:** the two orders join the constraint system, composed through variance, encoded as the checker sees fit: a plain function into either future kind, `sendable fn` into `fn`, an unmarked function into either kind; nothing between kinds (`checker/types/fitting/`). `Fn`'s `Kind` and `Send` parameters carry a higher-order function's mark and sendability through.
+   - **Fitting:** the two orders join the constraint system, composed through variance, encoded as the checker sees fit: a sync function into either future kind, `sendable fn` into `fn`, an unmarked function into either kind; nothing between kinds (`checker/types/fitting/`). `Fn`'s `Kind` and `Send` parameters carry a higher-order function's mark and sendability through.
    - **The data rule** is checked on every value a body handles, its signature's included, against its mark, a missing mark an error naming the value. Calls are checked as its consequence, implicit ones included: the callee's mark, or its requirement's, is the caller's or none. No whole-program analysis.
    - **`await` and `select`** (`constructs/expressions/control/await.ts`, `select.ts`): find the `Awaitable` conformance, read `Mode`, and require the function's kind.
    - **Deferred calls** desugar to their closure in one place. `constructs/expressions/control/spawn.ts` goes: `spawn`'s rules come from its parameter's `sendable fn` type.
@@ -338,7 +338,7 @@ After the repository's rewrite (implementation note 9), every program that compi
 4. **Runtime.** Instances run only ista code and commit at every `await`, as today (`runtime/scheduler/segment/index.ts`). Live code runs on the host's event loop. New: resolvers, with their one-shot rule and `onCancel`; the job inbox and its runner.
 5. **Host** (`runtime/host/index.ts`, `cli/host-module.ts`). A live extern returning a future receives its resolver, and a returned promise still resolves it. Host-filled persistent futures and their tokens go.
 6. **Definition** (`definition/extern-key.ts`, `docs/arch/definition.md`). Function types carry their kind and lose the `async` flag. Every extern key is respelled, so hosts re-key as after proposal 1.
-7. **Standard library.** The prelude gains `DataKind`, `Persistence`, `Sendability`, `Fn`, `Awaitable` and `Resolver`, with `Future` taking the kind, and `defer` with `Deferred`, a shared struct whose `dispose` calls its function. Slot externs are `ista`. `futures` becomes awaitables over the kind (`stdlib/futures/futures.ista`), `time`'s timers run in both kinds, and `runtime` gains `delegate`. `log.write` stays unmarked: a re-run's repeated line is harmless. Higher-order functions take written `M in DataKind` and `S in Sendability` parameters, so phase QV's reach variables become `Send` parameters in the standard library.
+7. **Standard library.** The prelude gains `DataKind`, `Persistence`, `Sendability`, `Fn`, `Awaitable` and `Resolver`, with `Future` taking the kind, and `defer` with `Deferred`, a shared struct whose `dispose` calls its function. Slot externs are `ista`. `futures` becomes awaitables over the kind (`stdlib/futures/futures.ista`), `time`'s timers run in both kinds, and `runtime` gains `delegate`. `log.write` stays unmarked: a re-run's repeated line is harmless. Higher-order functions take written `M in DataKind` and `S in Sendability` parameters, keeping their arguments' mark and sendability (tracker F28).
 8. **Formatter and tools** (`formatter/types.ts`, `declarations.ts`). Types print `live async fn(A) -> R` and `ista async fn(A) -> R`, and headers the body's result, `ista async fn f() -> R`, since `async` carries the future; externs alike, `extern live async fn f() -> R`. Modifiers print in Rule 4's order. Hover and signature help print the spelling the formatter writes, and a deferred call's hover shows the call it defers.
 9. **The repository's sources: a scripted rewrite through the project's own parser.** No live code exists yet, so every program keeps its meaning:
    - every `async fn` but `main` becomes `ista async fn`: about 308 in `.ista` files and 40 in the spec, beside about 220 `main`s, which become `ista async fn main` until phase CX, then `live async fn main` running the rest through `rt.call`;

@@ -49,6 +49,30 @@ The source rewriter (`scripts/rewrite`); defaults in the callee (B16); `g f(args
 `awaitedOf`; the kinds spelled once; the `kinds` rewrite to `ista async fn` and `Future<T, "ista">`.
 Interim: an unmarked `async` head gives `Future<T, "ista">`, which K1b ends.
 
+## K1b Kind calls: the stopped branch, landed (interim)
+
+The `k1b2` branch (mebu), landed in a minimal working form before F1 builds on it. K1c replaces its
+interim. Keeps K1a's ranges (plan.md).
+
+**Scope.**
+- Calls between kinds, judged in one seam on the frame the call is made in: each kind calls its own
+  and unmarked functions.
+- Signatures checked over held parts (futures, `extern live struct`), memoized per type;
+  requirements' kinds filter witnesses.
+- Lowering per kind: an entry's mode from its instance's kind.
+- Extern keys spell function types' kinds.
+- The rewrite: the kind-marks pass; every `main` becomes `ista async fn main`.
+- **Interim:** an unmarked function takes an implicit kind where its signature needs one, settled
+  by its caller. It stays out of the spec; K1c replaces it with written mark parameters and the
+  data rule.
+
+**Accept.** The full suite passes after the rewrite. Every behaviour row the branch tests holds as
+proposal 8 states it, or is listed as an interim difference. No accepted program crashes on a kind
+(an unmarked `async` lambda in an unmarked function is refused). Round-1 review findings fixed, or
+filed for K1c. Profile within noise.
+
+**Spec.** Only rules proposal 8 keeps: §3.10 requirement kinds; extern keys.
+
 ## F1 Function types as `Fn` (structural; behaviour unchanged)
 
 **Scope.**
@@ -67,7 +91,7 @@ Interim: an unmarked `async` head gives `Future<T, "ista">`, which K1b ends.
   `defer<M>`, `M fn dispose`.
 - One spelling each: R1b's code-entry `plain` becomes `simple`, T0's `Reach` becomes
   `Sendability`.
-- Unmarked `async` heads and types keep K1a's interim; the data rule is K1b's.
+- Unmarked `async` heads and types keep K1b's implicit kind; the data rule is K1c's.
 
 **Accept.** Property: each sugar's `typeKey` equals its `Fn` spelling's, over generated arguments,
 kinds and sendabilities. `logged(f)` keeps `f`'s sendability, `sendable` in and out, plain in and
@@ -99,9 +123,10 @@ executions. The full suite unchanged.
 
 **Spec.** §3.6 an extern's resolver; §6 waits; §7 `onCancel` and dropped resolvers.
 
-## K1b The data rule (behavioural, then rewrite)
+## K1c The data rule (behavioural, then rewrite)
 
-Starts fresh, after F1; mebu's `k1b2` branch is reference only. Keeps K1a's ranges (plan.md).
+After F1. Replaces K1b's implicit kinds with written marks and the data rule, reusing what
+fits. Keeps K1a's ranges (plan.md).
 
 **Scope.**
 - A value's data kind, `simple`, `live` or `ista`, in one memoized home, derived per instantiation
