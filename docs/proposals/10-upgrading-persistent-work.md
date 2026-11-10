@@ -10,7 +10,7 @@ tags: [proposal, runtime, persistence, versions, upgrade, migration]
 
 # Proposal: upgrading persistent work
 
-A workflow may wait for weeks, and a fix may ship meanwhile. Today an instance finishes on the build that started it (§5 *Versioning*, proposal 9's *Versions*), so a fix never reaches it. This proposal lets running work move to a new release at points the code names, checked by the compiler, with migration code only where a developer wants control.
+A workflow may wait for weeks, and a fix may ship meanwhile. Today an instance finishes on the build that started it (§5 *Versioning*), so a fix never reaches it. This proposal lets running work move to a new release at points the code names, checked by the compiler, with migration code only where a developer wants control.
 
 **The model is Erlang's hot code loading, made static.**
 - A build holds every release, and each frame runs the code of its own release.
@@ -202,7 +202,7 @@ Release `r2` adds a tax id. Instances of `r1` wait inside `getLicense`, which ca
 - **Control where it's wanted.** A migration file gives the full power of code at the exact point. Most releases need none.
 
 **Considered and dropped.**
-- **Old builds beside the new one, and nothing moves** (proposal 9's *Versions*, Temporal's worker versioning): a fix never reaches running work. Here `keep` is one choice among others.
+- **Old builds beside the new one, and nothing moves** (an earlier draft of proposal 9, Temporal's worker versioning): a fix never reaches running work. Here `keep` is one choice among others.
 - **One live build** (an earlier draft of this proposal):
   - Changed functions restart, and their calls claim old calls by function and arguments.
   - Rejected: what restarts and what is claimed is hard to predict in a large program, and whether a claim happens depends on runtime values.
@@ -266,7 +266,6 @@ Release `r2` adds a tax id. Instances of `r1` wait inside `getLicense`, which ca
   - `ista release`, `ista upgrade check` and `ista migration new`.
 - **§10:** `testing.spawnOn` and `upgrade`, and the loop warning.
 - **Proposal 8:** the statement-level rule for a committing `await`. In Rule 4's modifier order, `inline` stands before `live` or `ista`, which stand before `async`: `inline ista async fn`.
-- **Proposal 9:** *Versions* is replaced by this proposal, and *Left for later* loses "Moving frames between builds".
 
 ## Implementation notes
 

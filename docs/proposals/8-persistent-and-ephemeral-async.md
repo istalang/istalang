@@ -309,7 +309,7 @@ After the repository's rewrite (implementation note 9), every program that compi
    - a host's future-returning extern becomes `extern live async fn`, and ista code's `await` of one `await delegate …`;
    - `extern ephemeral struct` becomes `extern live struct`;
    - the functions the call rule then needs marked are marked, from its own errors, until none is left;
-   - a `main` that makes an ista future moves its body into an `ista async fn`, which `main` runs in a context (proposal 9's `at` and `call`);
+   - a `main` that makes an ista future moves its body into an `ista async fn`, which `main` runs in a context of a runtime it opens (proposal 9's `Runtime.open` and `rt.call(key)`);
    - every `defer f` statement becomes `_ = defer(f)`: 17 in `.ista` files and 2 in the spec.
 
    The same rewrite reaches sources embedded in TypeScript tests (about 279 `async fn` and 154 `Future<`). Then `ista fmt` runs.
