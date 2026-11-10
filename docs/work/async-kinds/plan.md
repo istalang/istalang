@@ -41,8 +41,8 @@ structural change the later phases build on lands first, on its own.
 | **K1b** Kind calls ✓ | The stopped `k1b2` branch landed as an interim: calls between kinds in one seam, signatures over held parts, requirements' kinds, lowering per kind, kind-marked extern keys, the kind-marks rewrite | K1a |
 | **F1** `Fn` types ✓ | Kind and `Send` as type slots; `Fn<Args, Result, Kind, Send>` with every spelling its sugar; `DataKind`, `Sendability`; head mark parameters; std higher-order functions take `M` and `S` (F28); `Deferred<M>`. No behaviour change | K1b |
 | **R2** Resolvers ✓ | Registered one-shot resolvers of both kinds, `onCancel`, `select`'s losers cancelled | K1a |
-| **K1c** Data rule | The three-valued data kind in one home, over every value; calls as its consequence, with bounded mark inference; requirements' marks; the rewrite | F1 |
-| **K1d** Data-kind bounds | `DataKind` renamed `Mark`; a derived trait `DataKind<K in Mark>`; associated types' kinds from their bounds, type matches' from their cases (B72) | K1c |
+| **K1c** Data rule ✓ | The three-valued data kind in one home, over every value; calls as its consequence, with bounded mark inference; requirements' marks; the rewrite | F1 |
+| **K1d** Data-kind bounds | K1c's profile cost (B71); `DataKind` renamed `Mark`; a derived trait `DataKind<K in Mark>`; associated types' kinds from their bounds, type matches' from their cases (B72) | K1c |
 | **DG** Delegate | Proposal 9's jobs: `await delegate f(args)`; host externs `live`; host-filled futures gone; sendable crossing | R2, K1c |
 | **AW** Awaitables | `Awaitable`, `Resolver`, one await path, `futures` over the kind; `Self.Mode` as a requirement's mark | R2, K1d |
 | **CX** Contexts | Proposal 9's minimal slice: a `Runtime` over the host's store and `rt.call(key) f(args)`, enough to run and test ista code; sendable crossing; hosts start only `live async fn main` | AW, DG |

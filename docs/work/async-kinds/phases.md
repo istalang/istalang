@@ -68,52 +68,12 @@ One resolver per wait, registered on what it waits on; futures resolving togethe
 first case; a select's losers released as it is decided; live host externs take `call.resolver()`;
 disposal notices at once in live runs, after commit in instances. Host-visible ista notices: DG, AW.
 
-## K1c The data rule (behavioural, then rewrite)
+## K1c The data rule: done (`edc49ee5`..`410f49a2`)
 
-After F1. Replaces K1b's implicit kinds with written marks and the data rule, reusing what
-fits. Keeps K1a's ranges (plan.md).
-
-**Scope.**
-- A value's data kind, `simple`, `live` or `ista`, in one memoized home, derived per instantiation
-  from what a type holds: a future's or resolver's `K`, an `extern live struct` live, a slot ista,
-  a function value simple. Shaped so a declared kind (proposal 9's `ista const`) slots in later. A
-  type holding both kinds is an error.
-- The data rule (Rule 2) over every value a body handles, its signature's included: parameters,
-  result, locals, temporaries, each expression; an extern's signature alone (Rule 9). A missing
-  mark is an error naming the value; lambdas infer theirs.
-- Transparent generics (Rule 3): a type parameter's values, requirements and `dispose` pass
-  through unmarked code, checked at the caller.
-- Calls as the rule's consequence, implicit calls and releases included (B54): the callee's head
-  mark bounded by its caller's; bounded mark inference in the constraint system, the least mark
-  allowed, a caller's mark parameter `K` solving an undecided one to `K`, a decided mark above the
-  bound an error naming the call. Lowering compiles a mark-generic function once per mark, each
-  entry with its kind.
-- Requirements' marks (Rule 4): an implementation handles what its requirement allows and the
-  implementing type's data.
-- An unmarked `async fn` and `async fn` type are errors; K1a's interim goes. An `await`'s and a
-  `select`'s mode is its code's mark; an operand of the other kind is refused.
-- `time.delay` and `time.at` (`extern K fn`) and `worker.disposing()` in both kinds; extern keys
-  spell kinds, the Definition's validation following.
-- The rewrite, through DC's rewriter: a kind-marks pass marking what the rule needs, from its
-  errors, until none is left; every `async fn` type its kind; `async fn main` becomes
-  `ista async fn main`, an interim CX ends. A host's future-giving externs stay `ista`, filled as
-  today, an interim DG ends.
-
-**Accept.** The behaviour table's rows on `async fn two`, an `async fn` parameter type,
-`fn y()` calling a live `x`, `fn f(s: Socket)`, `extern fn getSocket`, `f1` returning a `live fn`,
-`id(f)` in both kinds, `fn x(): _ = time.delay(1s)`, `fn w(): _ = defer log(x)`, a
-`live async fn` calling an `ista async fn` or receiving from an inbox, `time.delay(5s)` in a
-`live async fn`, `retry` given either kind, `await select` over the other kind, `main` awaiting a
-host queue (as the interim) and the overload pair; `await http.get(u)` in an `ista async fn` is
-refused (its `delegate` form is DG's). `retry` given a live `f` in ista code is refused, naming the
-call; unmarked generic code releasing a `T` that is a `Socket` checks. `live async fn get` writes
-nothing to the store across its wait. A mark-generic function used at two marks gives two
-entries, each running as its mark. Property: in accepted generated programs no ista frame holds
-live data, no live frame ista data, and no instance calls live code. The full suite passes after
-the rewrite, but for respelled sources and extern keys. Profile within noise.
-
-**Spec.** Cheat sheet; §1; §2; §3.1; §3.3; §3.5; §3.6; §3.7; §3.8; §3.10 requirement marks;
-§3.14; §5 (two awaits, segments, commits, starts at commit, re-run state); §8; §9; §12.
+Marks from heads alone; the data rule over every value a body handles; mixed-kind types refused;
+lambdas infer their mark; Rule 4 witness marks; least-mark settling; the corpus marked through the
+rewriter. A kind hidden in an `any` value stays sound (spec §3.3). B72 goes to K1d; its profile
+cost (B71) is K1d's first fix.
 
 ## K1d Data-kind bounds (behavioural, then rewrite)
 
@@ -121,6 +81,8 @@ After K1c, by K1c's implementer. Closes B72: values a generic body computes from
 parameters, through an associated type or a type match, were judged at no caller.
 
 **Scope.**
+- First, B71: K1c's profile cost, mostly lambda mark inference reading kinds at every handled site,
+  brought back within noise of `698d8bdd`.
 - The prelude's `DataKind` alias becomes `Mark`, every use following. `DataKind<K in Mark>` is a
   derived trait, met by a type whose kind is in `K`; `Sendable` implies `DataKind<"simple">`, and
   `DataKind<K1>` implies `DataKind<K2>` when `K1` is within `K2`.
@@ -133,7 +95,7 @@ parameters, through an associated type or a type match, were judged at no caller
 **Accept.** B72's repros are refused; `createAndDrop<Box>()` with `Box.Data` live and a bound of
 `DataKind<"simple">` is an error naming that use, conformance being structural; a `live fn` holding `T.Data` bounded
 `DataKind<"live" | "simple">` checks, and ista code calling it is refused, naming the call. The
-full suite passes after the rewrite. Profile within noise.
+full suite passes after the rewrite. Profile within noise of `698d8bdd`, before K1c.
 
 **Spec.** Proposal 8 Rules 2–3; §3.5 associated types; §3.10 `DataKind`; §3.17 type matches.
 
