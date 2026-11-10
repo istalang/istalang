@@ -7,7 +7,7 @@
  * saved, so a new module can be imported while it is being written.
  */
 
-import { readFileSync, statSync } from 'node:fs';
+import { readFileSync, type Stats, statSync } from 'node:fs';
 import { isSystemError } from './errno.ts';
 
 /** The files of a project, by absolute path. */
@@ -17,20 +17,26 @@ export interface ProjectFiles {
   readonly read: (path: string) => string;
 }
 
-/** The files on disk. A path through something that isn't a directory names no file. */
+/** The files on disk. */
 export const diskFiles: ProjectFiles = {
-  isFile: (path) => {
-    try {
-      return statSync(path, { throwIfNoEntry: false })?.isFile() ?? false;
-    } catch (error) {
-      if (isSystemError(error) && error.code === 'ENOTDIR') {
-        return false;
-      }
-      throw error;
-    }
-  },
+  isFile: (path) => statOnDisk(path)?.isFile() ?? false,
   read: (path) => readFileSync(path, 'utf8'),
 };
+
+/**
+ * What is at `path` on disk, through links; `undefined` for nothing, which a path through something
+ * that isn't a directory names too. Any other error is the system refusing, and propagates.
+ */
+export function statOnDisk(path: string): Stats | undefined {
+  try {
+    return statSync(path, { throwIfNoEntry: false });
+  } catch (error) {
+    if (isSystemError(error) && error.code === 'ENOTDIR') {
+      return undefined;
+    }
+    throw error;
+  }
+}
 
 /** `files`, with the texts in `open`, by absolute path, in place of theirs or beside them. */
 export function overlaidFiles(

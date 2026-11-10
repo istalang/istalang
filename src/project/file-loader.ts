@@ -22,6 +22,7 @@ import {
 } from '../compiler/program/program.ts';
 import { importPathOf } from '../foundation/language/import-paths.ts';
 import { isTestModulePath } from '../foundation/language/well-known/testing.ts';
+import { memo } from '../foundation/structures/memo.ts';
 import { diskFiles, type ProjectFiles } from './project-files.ts';
 
 export const sourceExtension = '.ista';
@@ -49,13 +50,32 @@ export function locateFile(
   if (!files.isFile(file)) {
     return;
   }
-  return {
+  return { ...namesOf(file, places), read: () => files.read(file) };
+}
+
+/** What a located module is called, which its file and the places alone decide. */
+type ModuleNames = Omit<LocatedModule, 'read'>;
+
+/**
+ * Each file's names, by project root, then working directory, then file: an editor locates every
+ * root of its project at every keystroke, and making a URL and two relative paths per file was most
+ * of a build's time.
+ */
+const located = new Map<string, Map<string, Map<string, ModuleNames>>>();
+
+function namesOf(file: string, places: ProjectPlaces): ModuleNames {
+  const byCwd = memo(
+    located,
+    places.projectRoot,
+    () => new Map<string, Map<string, ModuleNames>>(),
+  );
+  const byFile = memo(byCwd, places.cwd, () => new Map<string, ModuleNames>());
+  return memo(byFile, file, () => ({
     id: moduleIdOfFile(file),
     name: withoutExtension(relative(places.projectRoot, file).split(sep).join('/')),
     label: relative(places.cwd, file),
     isTest: isTestModulePath(file),
-    read: () => files.read(file),
-  };
+  }));
 }
 
 /** The id of the module in `file`, an absolute path: its file's URL. */
