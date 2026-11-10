@@ -18,7 +18,7 @@ fixture and corpus diagnostic it is expected to move; nothing else moves.
 
 One modifier-set parser for every head, any order, each at most once (2044 repeated, 2045
 conflicting, 2046 misplaced); syntax qualifiers grouped (`reach`, `kind`); one order every printer
-reads. K1 regroups `kind` as below.
+reads. K1a regrouped `kind`.
 
 ## R1a Async host: done (`e4debfd6`, `b591f0fc`)
 
@@ -26,153 +26,58 @@ The host and test-world contract asynchronous, one driver (`host/drive.ts`), act
 resident (`scheduler/resident.ts`). Concurrent host calls on one instance aren't serialized yet:
 R1b's.
 
-## T0 One function type (structural, then behavioural)
+## T0 One function type: done (`ebd1a8d3`..`fd249976`)
+
+One `FunctionType` constructor carrying `reach`; one qualifier fit; `async fn(A) -> R` is
+`fn(A) -> Future<R>`; the Definition's function types and keys without `async`. F1 makes `reach`
+`Fn`'s `Send` slot.
+
+## R1b Live runs: done (`71f3a5f2`..`51cc0b0c`)
+
+Code-entry kinds (`plain`, F1's `simple`; `live`; `ista`); live runs in memory, never committing,
+their waits through the one-shot resume primitive; host calls on one instance serialized; `now()`
+the clock in a live run.
+
+## DC Defaults and deferred calls: done (`56e13911`..`8d28e871`)
+
+The source rewriter (`scripts/rewrite`); defaults in the callee (B16); `g f(args)`; `defer` and
+`spawn` prelude functions, `Instance<R>` carrying its encoder (B4).
+
+## K1a Kind words: done (`6a451ee8`..`01c0aaaf`)
+
+`live` and `ista` as contextual words; `Future<T, K in Persistence>`; the start rule's one home;
+`awaitedOf`; the kinds spelled once; the `kinds` rewrite to `ista async fn` and `Future<T, "ista">`.
+Interim: an unmarked `async` head gives `Future<T, "ista">`, which K1b ends.
+
+## F1 Function types as `Fn` (structural; behaviour unchanged)
 
 **Scope.**
-1. One `FunctionType` constructor in `types/type/`, which every builder and rebuilder goes through,
-   lowering's included. The type carries `reach` (`sendable` or plain) and a slot for the kind K1
-   adds (unmarked, `live`, `ista`), each shaped so a variable can stand in it (K1's kind variables,
-   QV's reach variables). One function-fit relation over the qualifiers, replacing every copy
-   listed in `findings.md` and `trait-objects.ts`'s `isAsync` branch, composing inside types
-   through variance.
-2. The one-type rule: `async` leaves the type, and `async fn(A) -> R` is built as
-   `fn(A) -> Future<R>`. The async fit is `fn(A) -> R` into `fn(A) -> Future<R>`. Every
-   "async means a `Future` result" mapping and `?? errorType` unwrap goes. `typeKey` and type text
-   derive from the canonical form, and so do the Definition's function types and extern keys,
-   which drop `async` (a key spells `fn(A) -> Future<T>`). A plain lambda where an async function
-   is expected gives a resolved future; an `async` lambda's body checks against the future's value.
-   Lowering reads a nested function's own header, not its type, for whether its body awaits; the
-   code entry's kind itself is R1b's. Syntax readers of A0's `qualifiers.kind` go through one
-   accessor, which K1 splits. `testing`'s `async` overloads of `mock` and `calls` go, since they
-   would clash.
+- One builtin `Fn<Args, Result, Kind = "simple", Send = "plain">` (Rule 4). T0's constructor
+  carries the kind and `Send` as type slots, its `reach` field becoming the `Send` slot. `Args` is a
+  tuple (`(A,)` for one parameter, a pack one too, `&T` items for by-reference parameters). Every
+  spelling, `fn(A) -> R`, `live fn`, `sendable fn`, `ista async fn`, is its sugar, built through the
+  one constructor; `typeKey` and type text derive from the canonical form.
+- The prelude's `DataKind = "simple" | "live" | "ista"`, `Persistence` its kinded subset, and
+  `Sendability = "sendable" | "plain"`. Their two orders (Rule 4) join the fit relation and the
+  constraint system, encoded as the checker sees fit, not as subtyping between their members.
+- Head mark parameters parse and check as type parameters: `M fn`, `K async fn`, and a
+  requirement's `Self.Mode fn` (AW gives it meaning).
+- The standard library's and `testing`'s higher-order functions take `M in DataKind` and
+  `S in Sendability` and keep their arguments' (F28, absorbing QV); `Deferred<M in DataKind>`,
+  `defer<M>`, `M fn dispose`.
+- One spelling each: R1b's code-entry `plain` becomes `simple`, T0's `Reach` becomes
+  `Sendability`.
+- Unmarked `async` heads and types keep K1a's interim; the data rule is K1b's.
 
-**Accept.** Property: `typeKey(async fn(A) -> R) == typeKey(fn(A) -> Future<R>)` over generated
-`A`, `R`. A plain `fn(A) -> Future<R>` fits where `async fn(A) -> R` is expected, and runs.
-`Array<fn() -> Int>` into `Array<async fn() -> Int>` converts and runs. Overloads on
-`fn() -> Future<Int>` and `async fn() -> Int` clash. `retry(3, fn(id): Order{id})` with
-`call: async fn(String) -> Order` fits; `fn(Int?) -> Int` into `async fn(Int) -> Int?` converts and
-runs. B33's repro checks. No function-type literal outside the constructor. Profile within noise.
+**Accept.** Property: each sugar's `typeKey` equals its `Fn` spelling's, over generated arguments,
+kinds and sendabilities. `logged(f)` keeps `f`'s sendability, `sendable` in and out, plain in and
+out; `map` keeps `f`'s mark. A one-parameter `Fn<(A,), R>` and an `&T` item check and run.
+`_ = defer log(x)` and `hold _ = defer log(x)` behave as before. No function-type literal outside
+the constructor, and no second spelling of `plain` or `Reach`. The full suite unchanged; profile
+within noise.
 
-**Spec.** §2 conversions, §3.14 async function types.
-
-## R1b Live runs (runtime; programs unchanged)
-
-**Scope.**
-- A code entry's kind (plain, `live`, `ista`) replaces its `async` flag; lowering emits `ista` for
-  every async entry until K1. An instance runs only `ista` entries and commits at every `await`,
-  as today.
-- A live run: an entry started outside any instance (by a host, later by a job) runs in memory,
-  never commits and never reaches the store; a restart ends it. Its waits suspend in memory and
-  resume through a one-shot resume primitive, which R2's resolvers extend. A live future is backed
-  by a JavaScript promise, and the waits ride the host's own event loop (Node's, a Worker's): the
-  runtime adds no loop of its own, so a later JS backend runs plain and live code as native
-  JavaScript (`docs/work/linker/js-codegen.md`, After proposal 8). A host promise awaited in a live
-  run resolves in memory; the manual clock fires live timers as it does ista ones.
-- Concurrent host calls on one instance are serialized.
-
-**Accept.** Over generated Definitions: a live run never writes the store, and an instance writes
-at every `await`. A live run waiting on a host promise resolves in memory while an instance
-commits. A manual-clock test fires a live timer. Two concurrent host calls on one instance run one
-after the other. The full suite and the `crashEveryAwait` tests unchanged; `wake.bench.ts` within
-10%.
-
-**Spec.** None (§5 is K1's). `boundary.md`.
-
-## DC Defaults and deferred calls (structural, then behavioural)
-
-**Scope.**
-1. Structural: one committed source rewriter in `scripts/`, through the project's scanner and
-   parser, reaching `.ista` files and sources embedded in TypeScript in all three forms (template
-   literals, quoted strings, line arrays); DC's, K1's, DG's and CX's rewrites use it.
-2. Defaults are part of the function (decision 18): computed at the start of a call that leaves
-   them out, in the callee, before its body; field defaults alike. An omitted argument is explicit
-   in the Definition, and a function's entry computes its absent defaults first; an extern, struct
-   or variant with defaults gets one synthesized entry for it. Traces omit that prologue, so
-   `Error.trace` is unchanged. Filling entries go (B16); `defaultsOf` folds into the body if
-   nothing else needs it apart.
-3. Deferred calls (Rule 10): a syntax node checked as a construct, whose record says what runs now
-   (callee, receiver, arguments) and what the closure calls; lowering builds the closure from that
-   record. A range step's `by` stays the range's. Hover shows the call deferred. `defer` and
-   `spawn` leave the reserved words, with their nodes, instructions and checker construct. `defer`
-   is a prelude function giving `Deferred`, a shared struct whose `dispose` calls it; `Revertible`
-   becomes a `Deferred` if its shape is the same. `spawn` is a prelude function over a
-   `sendable async fn() -> R` (a plain function fits) giving `Instance<R>`, its rules from that
-   type, its outcome encoder through one seam shared with `instances.spawn` and every other
-   spawning native (closing B4); the new instance's root awaits the future its closure gives, with
-   no wrapper frame in traces. A juxtaposition that doesn't check as a deferred call points at the
-   missing comma. The rewriter makes every `defer fn(): …` statement `_ = defer …` and every
-   `spawn f(x).result()` `(spawn f(x)).result()`.
-
-**Accept.** Property: a deferred call equals its desugared closure (`test/AGENTS.md`'s commute
-law). `retry load(id).process()` calls `load(id)` now; `a b c(x)` computes `x` once, now;
-`retry(times: 5) fetchUser(id)` and `pool.submit encode(file)` check. `_ = defer log(x)` logs at
-block end with `x` computed now, `hold _ = defer log(x)` at function end, last first; bare
-`defer log(x)` is the must-use error. A `&` argument, or a `g` taking no `fn() -> X`, is refused.
-A default leaving its call out is computed inside the callee, and a deferred call computes its
-defaults when it runs; `f(b: 2)` on `fn f(a: Int = 1, b: Int = 2)` computes `a` in `f`; traces
-show no filling frames. `spawn purchase(req)` behaves as today, for an async and a plain callee,
-its outcome encodable to the host, and so are `runtime.isolate`'s and testing's instances. `[a
-b(c)]` reports the missing comma where it doesn't check. The rewriter, run twice, changes nothing
-the second time. Moves: `concurrency/invalid-spawn.ista`, `weak-side/invalid-revertible.ista`,
-`values/invalid-shared-structs.ista`, `trait-objects/crossing.ista`, each named with its new
-diagnostics in the report.
-
-**Spec.** Cheat sheet; §2 reserved words; §3.1 field defaults; §3.3 defaults; §3.9 precedence;
-§3.14 deferred calls; §7 defer; §9 spawn.
-
-## K1 Kinds (structural, rewrite, then behavioural)
-
-**Scope.**
-1. Structural:
-   - The entry rule gets one home, read by `compile.ts`, the checker's declarations, the
-     Definition's validation, lowering and the binder.
-   - `awaitedOf(type) → {value, mode}` is the one reader of what an awaitable gives, replacing
-     every `futureArgument`/`futureOf` reader; AW swaps its implementation. The two kinds are
-     spelled once, in `well-known`.
-   - `kindOf(type)`: the kind a type's values belong to (a future or resolver of a kind, an
-     `extern live struct`, anything holding one), derived on the same walk over parts as
-     `Sendable`'s reach, which replaces `sendable.ts`'s switch.
-   - A0's head groups: the kind (`live`, `ista`) a group of its own, `async` another; `ephemeral`
-     becomes `live`.
-2. `live` and `ista` as kinds (Rules 1–4); `Persistence` in the prelude; `Future<T, K in
-   Persistence>`. DC's rewriter: every `async fn` but `main` becomes `ista async fn`; every
-   `Future<T>` becomes `Future<T, "ista">`, except an `async` header's result, which becomes `T`
-   (decision 15); `extern ephemeral struct` becomes `extern live struct`; then `ista fmt`.
-   Behaviour-neutral.
-3. The kinds (Rules 2–7, 9, 11):
-   - The function's kind in T0's slot, with the header rule; lambdas infer theirs; an unmarked
-     function fits either kind; the kinds never meet (`K` invariant).
-   - The call rule, checked at each call, implicit calls and trait requirements included; a
-     signature holding a value of a kind needs that kind; a missing mark is an error naming the
-     call. The rewriter marks what the rule then needs, from its errors, until none is left.
-   - Kind variables: an unmarked function's implicit `K`, settled to the caller's kind by one
-     settling handler fed by a call-site seam, which also settles every unfixed `K in Persistence`;
-     unmarked function types in its signature share it; a reference fixes it. Lowering compiles an
-     unmarked function once per kind it is used at, as an instantiation, each entry with its kind.
-   - An `await`'s and a `select`'s mode is its function's kind; an operand of the other kind is
-     refused.
-   - A host starts a live or unmarked `async fn` as a live run (R1b). A `main` the call rule makes
-     `ista` is rewritten to `ista async fn main`, which the host still starts as an instance: a
-     bounded interim, which CX ends. A host's future-giving externs stay `ista`, filled as today:
-     a bounded interim, which DG ends.
-   - `time.delay`, `time.at` and `worker.disposing()` run in both kinds; `futures` stays `ista`
-     until AW. The Definition keeps literal type arguments, so natives generic over `K` read it.
-   - Extern keys spell kinds, and the Definition's validation follows; hosts re-key once.
-     Signature help prints a header's body result; the formatter prints what is written.
-
-**Accept.** The behaviour table's rows on `async fn approve`, `async fn two`, `live async fn get`,
-`Future<Int>`, `fn y()` calling a live `x`, `fn f(s: Socket)`, a `live async fn` calling an
-`ista async fn` or receiving from an inbox, `time.delay(5s)` in a `live async fn`, `retry` given
-either kind, `await select` over the other kind, `main` awaiting a host queue (as the interim),
-`extern ephemeral struct`, `retry(3, fn(id): Order{id})` and the overload pair; `await http.get(u)`
-in an `ista async fn` is refused (its `delegate` form is DG's). `live async fn get` writes nothing
-to the store across its wait. An unmarked `async fn` used in both kinds gives two entries, each
-running as its kind. No `futureArgument` reader and no second entry rule remain. After step 2 the
-full suite passes with only respelled sources; after step 3 the same, but for respelled extern
-keys. Profile within noise.
-
-**Spec.** Cheat sheet; §1; §2; §3.1; §3.3; §3.5; §3.6; §3.7; §3.8; §3.10 requirement kinds;
-§3.14; §5 (two awaits, segments, commits, starts at commit, re-run state); §8; §9; §12.
+**Spec.** §2 types and conversions; §3.5 mark parameters and the two orders; §3.8 prelude;
+§3.14 function types.
 
 ## R2 Resolvers (runtime and host)
 
@@ -194,19 +99,51 @@ executions. The full suite unchanged.
 
 **Spec.** §3.6 an extern's resolver; §6 waits; §7 `onCancel` and dropped resolvers.
 
-## QV Reach variables (design, then behavioural)
+## K1b The data rule (behavioural, then rewrite)
+
+Starts fresh, after F1; mebu's `k1b2` branch is reference only. Keeps K1a's ranges (plan.md).
 
 **Scope.**
-1. Design first, approved by the human before code: how a signature carries reach variables with
-   no new syntax (`variance-inference/design.md` §7, F28), on the mechanism K1 built for kind
-   variables; how a result's reach follows its parameters', inferred from the body; how variables
-   settle in the constraint system. Written to `qualifier-variables.md`.
-2. The design, in T0's qualifier fields, the constraint system and K1's variables.
+- A value's data kind, `simple`, `live` or `ista`, in one memoized home, derived per instantiation
+  from what a type holds: a future's or resolver's `K`, an `extern live struct` live, a slot ista,
+  a function value simple. Shaped so a declared kind (proposal 9's `ista const`) slots in later. A
+  type holding both kinds is an error.
+- The data rule (Rule 2) over every value a body handles, its signature's included: parameters,
+  result, locals, temporaries, each expression; an extern's signature alone (Rule 9). A missing
+  mark is an error naming the value; lambdas infer theirs.
+- Transparent generics (Rule 3): a type parameter's values, requirements and `dispose` pass
+  through unmarked code, checked at the caller.
+- Calls as the rule's consequence, implicit calls and releases included (B54): the callee's head
+  mark bounded by its caller's; bounded mark inference in the constraint system, the least mark
+  allowed, a caller's mark parameter `K` solving an undecided one to `K`, a decided mark above the
+  bound an error naming the call. Lowering compiles a mark-generic function once per mark, each
+  entry with its kind.
+- Requirements' marks (Rule 4): an implementation handles what its requirement allows and the
+  implementing type's data.
+- An unmarked `async fn` and `async fn` type are errors; K1a's interim goes. An `await`'s and a
+  `select`'s mode is its code's mark; an operand of the other kind is refused.
+- `time.delay` and `time.at` (`extern K fn`) and `worker.disposing()` in both kinds; extern keys
+  spell kinds, the Definition's validation following.
+- The rewrite, through DC's rewriter: a kind-marks pass marking what the rule needs, from its
+  errors, until none is left; every `async fn` type its kind; `async fn main` becomes
+  `ista async fn main`, an interim CX ends. A host's future-giving externs stay `ista`, filled as
+  today, an interim DG ends.
 
-**Accept.** `logged(f)` keeps `f`'s reach: `sendable` in, `sendable` out; plain in, plain out. The
-design's own examples. Profile within noise.
+**Accept.** The behaviour table's rows on `async fn two`, an `async fn` parameter type,
+`fn y()` calling a live `x`, `fn f(s: Socket)`, `extern fn getSocket`, `f1` returning a `live fn`,
+`id(f)` in both kinds, `fn x(): _ = time.delay(1s)`, `fn w(): _ = defer log(x)`, a
+`live async fn` calling an `ista async fn` or receiving from an inbox, `time.delay(5s)` in a
+`live async fn`, `retry` given either kind, `await select` over the other kind, `main` awaiting a
+host queue (as the interim) and the overload pair; `await http.get(u)` in an `ista async fn` is
+refused (its `delegate` form is DG's). `retry` given a live `f` in ista code is refused, naming the
+call; unmarked generic code releasing a `T` that is a `Socket` checks. `live async fn get` writes
+nothing to the store across its wait. A mark-generic function used at two marks gives two
+entries, each running as its mark. Property: in accepted generated programs no ista frame holds
+live data, no live frame ista data, and no instance calls live code. The full suite passes after
+the rewrite, but for respelled sources and extern keys. Profile within noise.
 
-**Spec.** §3.14 function types; §3.5 where variables settle.
+**Spec.** Cheat sheet; §1; §2; §3.1; §3.3; §3.5; §3.6; §3.7; §3.8; §3.10 requirement marks;
+§3.14; §5 (two awaits, segments, commits, starts at commit, re-run state); §8; §9; §12.
 
 ## DG Delegate, a slice of proposal 9 (runtime, then rewrite)
 
@@ -215,9 +152,10 @@ design's own examples. Profile within noise.
   `delegate<R is Sendable>(job: sendable live async fn() -> R) -> Future<R, "ista">`. The job is
   queued in the instance's job inbox at the commit, run by the runtime's loop as a live run (R1b),
   and run again after a crash or restart until its result commits into the future through a
-  registered ista resolver (R2), under a key stable across its runs.
-- Host externs: a host's async externs are `live`; unmarked async and `ista` externs are the
-  runtime's, which deploy checks. Host-filled ista futures go, with `HostCall.pending`,
+  registered ista resolver (R2), under a key stable across its runs. Its job and its result must
+  be sendable, the crossing check (Rule 2), refused where they aren't.
+- Host externs: a host's async externs are `live`; externs generic over their mark and `ista`
+  externs are the runtime's, which deploy checks. Host-filled ista futures go, with `HostCall.pending`,
   `Runtime.fill`'s token, `Futures.fromHost`, `resolveHost`, `createFilled` and the CLI's token
   wrapping; the extern wrapper execution goes (B6).
 - The rewriter makes every host extern giving a future `extern live async fn`, and ista code's
@@ -226,8 +164,8 @@ design's own examples. Profile within noise.
 **Accept.** `await delegate charge(c, n)` runs `charge` once after the commit, its result in the
 future; a segment crashed before its commit never runs it; crashed after the job starts and before
 its result commits, it runs again under the same key. The behaviour table's `await http.get(u)` and
-`charge(id)` rows in their `delegate` form. Deploy refuses a host's unmarked async or `ista`
-extern. No host token remains. Property: over generated programs crashed at every `await`, every
+`charge(id)` rows in their `delegate` form. A job or result that isn't sendable is refused. Deploy refuses a host's mark-generic or
+`ista` extern. No host token remains. Property: over generated programs crashed at every `await`, every
 job runs at least once per committed start and never for a discarded segment. The full suite passes
 after the rewrite; `wake.bench.ts` within 10%.
 
@@ -236,14 +174,15 @@ after the rewrite; `wake.bench.ts` within 10%.
 ## AW Awaitables (behavioural)
 
 **Scope.**
-- `Awaitable<T>` with `type Mode in Persistence` (a member bound on an associated type) and
-  `onAwait`; `Resolver<T, K>` over R2, with `Resolver.of`. `Future<T, K>` is the runtime's
+- `Awaitable<T>` with `type Mode in Persistence`, member bounds on associated types being new, and
+  `Self.Mode fn onAwait`, an associated type bound to `Persistence` as a requirement's mark; `Resolver<T, K>` over R2, with `Resolver.of`. `Future<T, K>` is the runtime's
   awaitable, `K` its `Mode`, with a native `onAwait`.
 - One await path: `await` and `select` cases over any awaitable, the conformance found through
   `awaitedOf`, `Mode` read, lowering calling `onAwait` with the runtime's resolver; no second
   instruction for futures.
 - `Resolver.of`'s callback takes `K` as its kind; an ista one runs as a segment of its own.
-- `futures` rewritten once as awaitables over `Resolver.of`, generic over the kind (Rule 3);
+- `futures` rewritten once as awaitables over `Resolver.of`, generic over the kind through mark
+  parameters (`K fn first`, Rule 6);
   inference refuses a mix. `futures.timeout` starts its timer when called. The native `first`, its
   future state and `#pendingFirsts` go.
 
@@ -266,18 +205,19 @@ a plan of its own.
   context named `key`, an instance, creating it. It gives a `Call<R>`, a live awaitable: awaiting
   it gives `Result<R>`, an `Err` when `f` panics. Every call starts a new invocation, and releasing
   a `Call` cancels nothing. The wait is the one cross-instance wait `Instance.result()` and mock
-  answers use.
-- A host starts only live code, through K1's entry rule, and what else it may start today
+  answers use. Its arguments and result must be sendable, the crossing check (Rule 2).
+- A host starts only live code, through K1a's entry rule, and what else it may start today
   (`starts`) follows. The interim ends: the rewriter moves each `ista async fn main`'s body into an
-  `ista async fn` that a `live async fn main` calls in a context. The test runner, `World` and the
+  `ista async fn` that a `live async fn main` calls in a context through `rt.call`. The test runner, `World` and the
   test kits run ista code in contexts of their own; `testing`'s crash-every-await is a context
   option.
 - Left to proposal 9's plan: `runtime.call` from ista code, `Call` replacing `Instance` (`spawn`
-  unchanged here), `accepted()`, `delete`, context constants, `Kv` stores, `runtime.jobKey()`.
+  unchanged here), `accepted()`, `delete`, context constants (`ista const`), `Kv` stores,
+  `runtime.jobKey()`.
 
 **Accept.** `live async fn main()` awaiting `rt.call("o/1") purchase(order)` runs `purchase`
 persistently and gives `Ok` of its result; crashed at every `await` of the context, it resumes to the
-same result; a panicking `purchase` gives an `Err`. The context commits while `main` waits in
+same result; a panicking `purchase` gives an `Err`; a non-sendable argument is refused. The context commits while `main` waits in
 memory. On `--store`, a context stopped mid-invocation resumes when the program next opens the
 store. A host asked to start an `ista` function refuses. No `ista async fn main` remains; the full
 suite passes.
