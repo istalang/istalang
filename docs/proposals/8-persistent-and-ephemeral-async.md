@@ -32,7 +32,7 @@ ista async fn settle(order: Order) -> String:                    # every await c
 live async fn quote(currency: String) -> Decimal:                 # waits in memory, never commits
     await rates.fetch(currency)
 
-async fn second<T>(f: async fn() -> T) -> T:                      # unmarked: its caller's kind
+async fn twice<T>(f: async fn() -> T) -> T:                       # unmarked: its caller's kind
     await f()
     await f()
 ```
@@ -58,55 +58,41 @@ extern struct Future<T, K in Persistence>
 | `fn f(a: A) -> T` | `fn(A) -> T` | either world, as its caller's kind (Rule 3) | can't `await` |
 | `live fn f(a: A) -> T` | `live fn(A) -> T` | live code | can't `await` |
 | `ista fn f(a: A) -> T` | `ista fn(A) -> T` | ista code | can't `await` |
-| `async fn f(a: A) -> T` | `fn(A) -> Future<T, K>`, `K` its caller's kind | either world | awaits in its caller's kind |
+| `async fn f(a: A) -> T` | `fn(A) -> Future<T, K>`, `K` its caller's kind | either world, as its caller's kind | awaits in its caller's kind |
 | `live async fn f(a: A) -> T` | `live fn(A) -> Future<T, "live">` | live code | waits in memory |
 | `ista async fn f(a: A) -> T` | `ista fn(A) -> Future<T, "ista">` | ista code | every `await` commits |
 
 - **`live` and `ista` are the kind; `async` marks a body that may await,** as today. On an extern, which has no body, `async` marks only that its result is a future: `extern live async fn fetch(r: Request) -> Response` is `extern live fn fetch(r: Request) -> Future<Response, "live">`.
-- **Headers read as proposal 8 read them.** A result spelled `Future<…>` is what the call gives, and its kind must be the header's: `live async fn f() -> Future<T, "ista">` is an error. Any other result is what the body gives. Lambdas take every header: `async fn(x): …`, `ista async fn(x): …`.
+- **Headers.** A result spelled `Future<…>` is what the call gives, and its kind must be the header's: `live async fn f() -> Future<T, "ista">` is an error. Any other result is what the body gives. Lambdas take every header: `async fn(x): …`, `ista async fn(x): …`.
 - **The call rule.** In code of kind K, every function called is unmarked or of kind K. So ista code calls nothing live and live code nothing ista, directly or through anything it calls. Implicit calls count: an operator's function, and the `dispose` a release runs. A call through a trait counts as its requirement's kind (Rule 4).
 - **Kinds are written.** A function that calls a function of a kind, or whose signature holds a value of one (a future or resolver of that kind, an `extern live struct`, anything holding one), is of that kind, and its header says so. A missing mark is an error naming the call or the value: "`y` calls live `x`; declare it `live fn`". Only a lambda infers its kind, from its expected type or its body. A function that would need both kinds is an error at its declaration.
-- **The plain-function fit stays.** A `fn(A) -> R` fits where `fn(A) -> Future<R, K>` is expected, for either kind. Its call gives a future already resolved.
-- **A call starts its callee at once,** inside the caller (§3.3).
-- **A host starts only `async fn`s,** live or unmarked, by name, `main` when it names none, as live code, and a restart ends them. Persistence is configured inside the program: ista code runs in a context the program enters (proposal 9).
-- **`spawn` is no longer a keyword.** The runtime provides it as an `ista` function, called in the deferred form (Rule 10), so `spawn purchase(req)` keeps its spelling. What it does is proposal 9's.
-- **`worker.disposing()`** gives a future of its function's kind.
-- **`live` and `ista` are contextual words,** as `sendable` is, so both stay free as names.
 
 ### 3. An unmarked function takes its caller's kind
 
 - **An unmarked function is generic over its kind:** an implicit `K in Persistence`, settled at each call to the caller's kind, a default from context (§3.5). A function that never uses it runs the same in both worlds.
 - **An unmarked `async fn` waits in that kind.** Called from live code, it gives a live future and waits in memory; called from ista code, an ista future, and every `await` commits.
-- **Its body calls only unmarked functions,** which take the same kind, never a `live` or `ista` one.
 - **Unmarked function types in its signature share its kind,** so combinators exist once for both worlds: `async fn retry<T>(f: async fn() -> T, times: Int) -> T` takes a live `f` in live code and an ista `f` in ista code. Outside a function's signature, in a field or an alias, a function type without a kind is unmarked and calls in either world; an unmarked `async fn` type there is an error, since its future has no kind to take.
-- **A type parameter `K in Persistence` that nothing fixes** settles the same way, so `time.delay(5s)` is a live timer in live code and an ista one in ista code. A function naming `K` in its futures has it as its kind: `fn first<T, K in Persistence>(...fs: Array<Future<T, K>>) -> First<T, K>`. A written type always writes its kind.
+- **A type parameter `K in Persistence` that nothing fixes** settles the same way, so `time.delay(5s)` is a live timer in live code and an ista one in ista code. A function whose signature names a kind variable, in a future or a resolver, has that variable as its kind, as `first` (Rule 6) and `onAwait` (Rule 5) do.
 - **Used as a value,** an unmarked function's kind is fixed where it is used, from the expected type or else the enclosing kind, as a generic function's type arguments are. No function type is generic over a kind itself.
 - **Each kind gets its own code.** Lowering compiles an unmarked function once per kind it is used at, as an instantiation, so every compiled body has one fixed kind.
 
 ### 4. What fits where
 
-- **One type, two spellings,** as proposal 8 had:
-
-  | Spelling | Is |
-  | --- | --- |
-  | `live async fn(A) -> R` | `live fn(A) -> Future<R, "live">` |
-  | `ista async fn(A) -> R` | `ista fn(A) -> Future<R, "ista">` |
-  | `sendable ista async fn(A) -> R` | `sendable ista fn(A) -> Future<R, "ista">` |
-
+- **One type, two spellings.** A function type is spelled as its header is (Rule 2): `live async fn(A) -> R` is `live fn(A) -> Future<R, "live">`, and `sendable ista async fn(A) -> R` is `sendable ista fn(A) -> Future<R, "ista">`.
 - **The kinds never meet.** An ista future never fits where a live one is expected, nor the reverse, and so for functions and resolvers of the two kinds: `Future` is invariant in `K`.
 - **What converts** is subtyping, composed inside other types through their variance (§3.5), as every conversion is:
 
   | A value of | fits where this is expected |
   | --- | --- |
-  | `fn(A) -> R` | `fn(A) -> Future<R, K>`, either kind |
+  | `fn(A) -> R` | `fn(A) -> Future<R, K>`, either kind; its call gives a resolved future |
   | `sendable fn …` | `fn …` |
   | an unmarked `fn …` | `live fn …` or `ista fn …` |
 
 - **Holding isn't calling.** Code of either kind may hold and pass a function of the other kind, for example to `delegate` (Rule 8); only calling it is refused.
 - **Qualifier variables.** A higher-order function keeps its arguments' qualifiers, with no new syntax: their kind by Rule 3, and `logged(f)` is `sendable` when `f` is.
-- **Requirements carry a kind.** A trait requirement written `live fn` or `ista fn` is met by a function of that kind or an unmarked one, and an unmarked requirement only by an unmarked function, so generic code calls a requirement as its kind allows.
+- **Requirements carry a kind,** written, or a kind variable its signature names (Rule 3). A requirement of a kind is met by a function of that kind or an unmarked one, and an unmarked requirement only by an unmarked function, so generic code calls a requirement as its kind allows.
 - **Overloads** on the two kinds are two types, so they don't clash. A plain function passed to such a pair converts either way, so that call is ambiguous (§3.7).
-- **Modifiers stack in any order.** The formatter sorts them: `extern`; then what a value is or captures (`shared`, `sendable`); then `live` or `ista`; then `async`; then `fn` or `struct`. So `extern live async fn`, `extern live struct` and `sendable ista async fn(A) -> R`.
+- **Modifiers stack in any order.** The formatter sorts them: `extern`; then what a value is or captures (`shared`, `sendable`); then `live` or `ista`; then `async`; then `fn` or `struct`. So `extern live async fn`, `extern live struct` and `sendable ista async fn(A) -> R`. `live` and `ista` are contextual words, as `sendable` is, so both stay free as names.
 
 ### 5. `await`, `Awaitable` and `Resolver`
 
@@ -146,18 +132,18 @@ trait Awaitable<T>:
 
   Inference refuses a mix: one type parameter can't take two types (§3.5), and `K in Persistence` always stands for one member. Every function of `futures` takes this shape.
 - **Slots are ista,** with no kind parameter, and the checker treats them as nothing special: `put`, `take` and `read` are `extern ista` functions (§3.8). `Inbox`, written on slots in the language, and every other type built on them, are ista through those functions.
-- **Timers are the runtime's, in both kinds:** `time.delay` and `time.at` are unmarked externs the runtime implements for each.
+- **Timers are the runtime's, in both kinds:** `time.delay` and `time.at` are unmarked externs the runtime implements for each. `worker.disposing()` likewise gives a future of its function's kind.
 
 ### 7. Segments and commits
 
 - **A segment** is an instance's code from one commit to its next, as today. An instance runs only ista code, where every `await` commits and nothing waits in memory, so a segment runs uninterrupted and commits whole. No live value reaches ista code, and a crash discards everything a segment changed, so nothing has to check what lives across a commit or what a segment writes.
 - **What a segment starts is real only once it commits:** an ista call past its first `await`, a spawn, a job (Rule 8). A discarded segment started nothing.
-- **Live code runs outside instances.** A host-started `async fn`, or a job, runs in memory on the program's event loop, never commits and never reaches the store; a restart ends it.
+- **Live code runs outside instances,** in memory on the program's event loop, and never commits or reaches the store. A host starts only `async fn`s, live or unmarked, by name, `main` when it names none, as live code, and a restart ends them; a job is run again (Rule 8). Ista code runs in a context the program enters (proposal 9).
 - **Re-run state is kept per instance, as today:** `now()`, `random`'s draws and spawn numbering, so a segment run again reproduces them. `now()` is the segment's start time in ista code and the clock in live code.
 
 ### 8. Effects: `delegate`
 
-Ista code changes the world only through `delegate`, proposal 9's jobs:
+Ista code acts on the world through `delegate`, proposal 9's jobs:
 
 ```python
 ista async fn purchase(order: Order) -> Receipt:
@@ -168,14 +154,13 @@ ista async fn purchase(order: Order) -> Receipt:
 - **The job is queued at the commit,** in the instance's job inbox, the transactional outbox, so a discarded segment runs nothing.
 - **The runtime's loop runs it as live code,** and again after a crash or restart until its result commits into the future: it runs at least once, and only for committed history.
 - **A job has a stable key,** the same on every run, so the work it calls can deduplicate. How live code reads it is proposal 9's.
-- **Unmarked host functions stay callable from ista code;** a crash re-runs them with their segment, as today (Rule 9).
 
 ### 9. Externs
 
 - **A host's externs are unmarked, `live` or `live async`.** An unmarked one runs in both worlds, and again when a crash discards its segment, so pure functions stay unmarked. One that changes the world is `extern live fn`, which ista code reaches only through `delegate`. A forgotten `live` isn't caught: a crash then repeats the call, as today.
 - **Unmarked `extern async fn`s and `extern ista` functions are the runtime's:** timers, slots, `spawn`, `delegate`. Only the runtime fills an ista future, so a host's async externs are `live`, which deploy checks.
 - **`extern live struct`** declares a host type bound to the process, such as a socket: never persisted, never sent. A function whose signature holds one is `live` (Rule 2). A disposable host type stays as today (§3.6).
-- **A future-returning extern's implementation receives the resolver** of the live future its call gives, and resolves it when it can, from any thread; the runtime posts it to the program's event loop.
+- **A host's future-returning extern receives the resolver** of the live future its call gives, and resolves it when it can, from any thread; the runtime posts it to the program's event loop.
   - **`onCancel` is the disposal notice,** fired as the future is disposed.
   - **Dropping the resolver unresolved** panics the waiter, naming the extern. It is a host bug, as a result of the wrong type is (§3.12).
   - **A JavaScript host may return a promise instead,** as today, which resolves it when it settles.
@@ -193,7 +178,7 @@ retry((fn(x): fn(): fetchUser(x))(id))
 
 - **Shape.** A name, or a path of names joined by `.`, then on its line a call. The parser reads it from the text alone, so parsing still never depends on what a name means.
 - **What runs now:** the callee, with its receiver and any calls before the last one, and every argument written, left to right. Only the outermost call is deferred, so `retry load(id).process()` calls `load(id)` now. Defaults are part of the function (§3.3), so a default the call leaves out is computed when the deferred call runs, inside it.
-- **What `g` takes:** one parameter of a function type without parameters, `fn() -> X`, any others having defaults. A method counts, its receiver as `self`: `pool.submit encode(file)`. Anything else is an error: "`g` doesn't take a call to run later".
+- **What `g` takes:** one parameter of a function type without parameters, `fn() -> X`, any others having defaults or given in parentheses, `g(args) f(x)`: `retry(times: 5) fetchUser(id)`. A method counts, its receiver as `self`: `pool.submit encode(file)`. Anything else is an error: "`g` doesn't take a call to run later".
 - **What's captured:** the values computed, as copies. A `sendable fn` parameter makes them sendable. A deferred call can't take a `&` argument, since no reference can be captured (§3.14).
 - **Precedence** is prefix `await`'s: `await retry fetchUser(id)` is `await (retry fetchUser(id))`, and `(g f()).x` needs its parentheses.
 - **Nesting** reads from the right: `a b c(x)` is `a(fn(): b(fn(): c(x)))`, with `x` computed now.
@@ -201,7 +186,7 @@ retry((fn(x): fn(): fetchUser(x))(id))
 - **A missing comma.** `[a b(c)]` is an error today, and may now check as a deferred call. Where it doesn't, the error points at the likely missing comma.
 - **Callbacks with parameters** keep their lambda: `bus.subscribe(fn msg: …)`.
 - **No call needs a keyword of its own.** `spawn`, `delegate` and `defer` are functions called this way, as are the runtime's other functions taking a call to run later (proposal 9).
-- **`g(args) f(x)`** gives `g` its other arguments in parentheses: `retry(times: 5) fetchUser(id)`.
+- **`spawn` leaves the keywords:** the runtime provides it as an `ista` function, so `spawn purchase(req)` keeps its spelling. What it does is proposal 9's.
 - **`defer` becomes a prelude function,** no longer a keyword: `fn defer(f: fn() -> Unit) -> Deferred`, where `Deferred` is a disposable whose `dispose` calls `f`. `_ = defer log(x)` computes `x` now and logs when the block ends, and `hold _ = defer log(x)` when the function ends, as Go's `defer` does. Release order runs them last first (§7). A disposable is must-use, so a bare `defer log(x)` is an error.
 
 ### 11. The runtime contract
@@ -214,8 +199,6 @@ Every backend implements these, and the compiler guarantees the rest:
 4. **Starts at commit:** the ista calls, spawns and jobs a segment started become real at its commit.
 5. **Jobs:** run as live code until their result commits, under a stable key (Rule 8).
 6. **Re-run state per instance:** `now()`, `random` and spawn numbering.
-
-**Lowering.** Every `await`'s mode is its function's kind, and an unmarked function is compiled once per kind it is used at. The interpreter waits in memory in live code and snapshots before every `await` in ista code. A native backend makes a live function a coroutine with its frame on the heap (`llvm.coro.*`). No live value reaches ista code, so an ista function's frame holds only persistable values at its commit points, and the compiler emits its serializer.
 
 ## Why
 
@@ -234,8 +217,7 @@ Every backend implements these, and the compiler guarantees the rest:
 | `async fn two(x: Int) -> Int: x * 2` | error 5021 | an unmarked `async fn`, of its caller's kind |
 | `live async fn get(u: String) -> String: await http.get(u)` | (no live code) | waits in memory, never commits |
 | `Future<Int>` | the one future type | error: name its kind |
-| `await http.get(u)` in an `ista async fn` | (one kind) | error: ista code calls nothing live; written `await delegate http.get(u)` |
-| `charge(id)`, an `extern live fn`, in an `ista async fn` | (no kinds) | error: ista code calls nothing live; written `await delegate charge(id)` |
+| `await http.get(u)` or `charge(id)`, both `live`, in an `ista async fn` | (no kinds) | error: ista code calls nothing live; written `await delegate charge(id)` |
 | `fn y(): _ = x()`, `x` a `live async fn` | legal | error: "`y` calls live `x`; declare it `live fn`" |
 | `fn f(s: Socket)`, `Socket` an `extern live struct` | (no live types) | error: `f` holds a live `Socket`; declare it `live fn` |
 | a `live async fn` calling an `ista async fn`, or receiving from an inbox | (one kind) | error: live code calls nothing ista |
@@ -252,7 +234,7 @@ Every backend implements these, and the compiler guarantees the rest:
 | `retry(3, fn(id): Order{id})`, `call: ista async fn(String) -> Order` | error 5001 inside the body | fits: a resolved future |
 | overloads `f(g: live async fn() -> Int)` and `f(g: ista async fn() -> Int)` | (one kind) | two types, no clash; a plain argument is ambiguous |
 
-After the repository's rewrite (implementation note 9), every program that compiles today compiles and behaves the same, except that extern keys are respelled and persistent code's host calls run through `delegate`, after the commit.
+After the repository's rewrite (implementation note 9), every program that compiles today compiles and behaves the same, except that extern keys are respelled and persistent code's `live` host calls run through `delegate`, after the commit.
 
 ## What changes in power
 
@@ -272,7 +254,7 @@ After the repository's rewrite (implementation note 9), every program that compi
 - `async fn` meaning persistent, and `Future<T>` without its kind. The rewrite moves every program to `ista async fn`.
 - Persistent code calling a world-changing host function directly, and hosts filling persistent futures.
 - `defer` and `spawn` as keywords: both are functions, `defer` held as `_ = defer f()`.
-- Overloads told apart only by the spelling of a function type, as in proposal 8.
+- Overloads told apart only by how a function type is spelled: the two spellings are one type.
 
 ## Spec changes
 
@@ -309,17 +291,14 @@ After the repository's rewrite (implementation note 9), every program that compi
    - **Modifiers** parse in any order, each at most once: the kind (`live`, `ista`) is a group of its own, and `async` another.
    - **Deferred calls:** a new expression node, a path and a call, parsed where a name or path is followed on its line by a call (`compiler/parser/grammar/`).
 2. **Checker.**
-   - **Function types** carry a kind, unmarked, `live`, `ista` or a variable, beside their reach, and `async` becomes the result's future (`checker/types/type/function-types.ts`, `index.ts`). Every spelling builds through the one constructor, so nothing downstream sees which was written: proposal 8's normalization at construction.
+   - **Function types** carry a kind, unmarked, `live`, `ista` or a variable, beside their reach, and `async` becomes the result's future (`checker/types/type/function-types.ts`, `index.ts`). Every spelling builds through the one constructor, so nothing downstream sees which was written.
    - **Futures:** `Future`'s kind is a required member parameter. An unfixed `K in Persistence`, an unmarked function's own included, takes the caller's kind, as a settling rule.
    - **Fitting:** the qualifiers are subtyping in the constraint system, composed through variance: a plain function into either future kind, `sendable fn` into `fn`, an unmarked function into either kind; nothing between kinds (`checker/types/fitting/`). Qualifier variables carry a higher-order function's kind and `sendable` through.
    - **The call rule** is checked at each call, implicit ones included, against the callee's written kind or its requirement's; a signature holding a value of a kind needs that kind written. No whole-program analysis.
    - **`await` and `select`** (`constructs/expressions/control/await.ts`, `select.ts`): find the `Awaitable` conformance, read `Mode`, and require the function's kind.
    - **Deferred calls** desugar to their closure in one place. `constructs/expressions/control/spawn.ts` goes: `spawn`'s rules come from its parameter's `sendable fn` type.
-3. **Lowering.** An `await` lowers by its function's kind; an unmarked function is compiled once per kind it is used at, as an instantiation; a deferred call lowers as its closure. The spawn path in `lowering/constructs/expressions/calls.ts` goes.
-4. **Runtime.**
-   - **Instances** run only ista code and commit at every `await`, as today (`runtime/scheduler/segment/index.ts`).
-   - **Live code** (a host-started `async fn`, a job) runs in memory on the host's event loop and never reaches the store.
-   - **New machinery:** resolvers, with their one-shot rule and `onCancel`; the job inbox and its runner.
+3. **Lowering.** An `await` lowers by its function's kind; an unmarked function is compiled once per kind it is used at, as an instantiation; a deferred call lowers as its closure. The spawn path in `lowering/constructs/expressions/calls.ts` goes. A native backend makes a live function a coroutine with its frame on the heap (`llvm.coro.*`); an ista function's frame holds only persistable values at its commit points, so the compiler emits its serializer.
+4. **Runtime.** Instances run only ista code and commit at every `await`, as today (`runtime/scheduler/segment/index.ts`). Live code runs on the host's event loop. New: resolvers, with their one-shot rule and `onCancel`; the job inbox and its runner.
 5. **Host** (`runtime/host/index.ts`, `cli/host-module.ts`). A live extern returning a future receives its resolver, and a returned promise still resolves it. Host-filled persistent futures and their tokens go.
 6. **Definition** (`definition/extern-key.ts`, `docs/arch/definition.md`). Function types carry their kind and lose the `async` flag. Every extern key is respelled, so hosts re-key as after proposal 1.
 7. **Standard library.** The prelude gains `Persistence`, `Awaitable` and `Resolver`, with `Future` taking the kind, and `defer` with `Deferred`, a shared struct whose `dispose` calls its function. Slot externs are `ista`. `futures` becomes awaitables over the kind (`stdlib/futures/futures.ista`), `time`'s timers run in both kinds, and `runtime` gains `delegate`. `log.write` stays unmarked: a re-run's repeated line is harmless.
@@ -351,7 +330,7 @@ After the repository's rewrite (implementation note 9), every program that compi
 3. **The kinds never fit each other.**
 4. **`Awaitable` gives an expert a callback,** made a one-shot resolver so the runtime keeps the continuation. `Future` is one awaitable among others. Combinators are written once, and `first`'s type keeps kinds from mixing.
 5. **The host learns when a future is disposed,** so it can cancel its work.
-6. **Ista code calls nothing live, and live code nothing ista.** No in-memory wait happens inside persistent code, so a segment commits whole, and no check of what lives across a commit, of effects or of `readonly` is needed. This replaces the earlier checks 1 and 2.
+6. **Ista code calls nothing live, and live code nothing ista.** No in-memory wait happens inside persistent code, so a segment commits whole, and no check of what lives across a commit, or of effects, is needed.
 7. **Kinds are written** on headers, externs, function types and requirements; a missing mark is an error naming the call, and only a lambda infers its kind. A signature holding a value of a kind is of that kind.
 8. **An unmarked function takes its caller's kind:** an unmarked `async fn` waits in it, unmarked function types in its signature share it, and lowering compiles one copy per kind.
 9. **Persistent code acts on the world through `delegate`,** proposal 9's jobs: queued at the commit, run as live code, run again under a stable key until its result commits. Only the runtime fills an ista future.
@@ -360,11 +339,9 @@ After the repository's rewrite (implementation note 9), every program that compi
 12. **`now()` is its segment's start time in ista code,** as today, and the clock in live code.
 13. **Any function taking a call to run later takes the deferred-call form,** its arguments computed where they are written, and `g(args) f(x)` passes `g`'s other arguments.
 14. **`defer` is a prelude function like any other,** returning a disposable that calls its function when released, so `_ = defer f(x)` and `hold _ = defer f(x)` give block and function scope, the latter Go's.
-15. **The formatter writes `live async fn(A) -> R` and `ista async fn(A) -> R` in types, and the body's result in headers.** This reverses the earlier proposal 8's second decision.
+15. **The formatter writes `live async fn(A) -> R` and `ista async fn(A) -> R` in types, and the body's result in headers.**
 16. **Modifiers stack in any order,** and the formatter sorts them. `live` and `ista` are contextual words, not reserved.
 17. **`spawn` is no keyword,** but a runtime function in the deferred form, as `defer` is a prelude one.
 18. **Defaults are part of the function,** computed at the start of its call, as in JavaScript and Kotlin. They never affect the caller, and a deferred call computes them when it runs.
 19. **The language is separate from the runtime.** The compiler checks everything, the runtime contract is fixed, and a backend implements futures as it needs. Starting persistent work from live code, and every other runtime mechanism, is proposal 9's.
-20. **This replaces the earlier proposal 8,** and keeps its one-type rule.
-21. **Conversions are subtyping** composed through variance, and qualifier variables keep a higher-order function's kind and `sendable` (tracker F28, `docs/work/variance-inference/design.md` §7).
-22. **`live` names the ephemeral world,** four letters as `ista` is, on functions, structs and futures alike.
+20. **Conversions are subtyping** composed through variance, and qualifier variables keep a higher-order function's kind and `sendable` (tracker F28, `docs/work/variance-inference/design.md` §7).
