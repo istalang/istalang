@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: examples/FormBuilder
 last_verified: 2026-11-05
-last_updated: 2026-11-09
+last_updated: 2026-11-11
 tags: [form-builder, specification, istalang]
 ---
 
@@ -378,17 +378,18 @@ Every model node implements `FormNode`, with associated types `Data` and `Seen` 
 
 ### 6.2 The view
 
-Every view node implements `View<Sc>`, with `async fn draw(sc, &out) -> Array<Node>`. It returns zero nodes when hidden, a `Loading` node while waiting, and otherwise its node, and it records in `out`:
+Every view node implements `View<Sc>`, with `ista fn draw(sc, &out) -> Array<Node>`. Drawing never awaits, because each await of a live run ends a segment, which costs more than the drawing. It returns zero nodes when hidden, a `Loading` node while waiting, and otherwise its node, and it records in `out`:
 - inputs to route events to, by key;
 - lists to add rows to and remove rows from;
 - whether everything is valid;
-- which `Hidden`s were shown.
+- which `Hidden`s were shown;
+- the runs the form waits for.
 
 The view nodes are `FieldView`, `RepeatView`, `VariantView` (with `CaseView`s), `LayoutView`, `ScopedView` (which moves into another scope) and `DynamicView`.
 
 **Props.** `Prop<Sc, T>` is `Fixed`, `Computed` (a lambda) or `Awaited` (an async lambda with its pending behaviour and a `Task`).
-- **Pending `form`:** `get()` awaits the lambda inline.
-- **Pending `node` / `hidden`:** `get()` starts the lambda in its task when the scope it last ran with differs from the current one, and returns the task's value (`none` while running). The task sends `Resolved` to the events inbox when it finishes, which causes a redraw. Because the task re-runs only when its scope changes, a finished task never restarts on the redraw it caused. Sources cache, so re-running after a change is cheap.
+- **Pending `form`:** `peek()` returns the value its task kept for the current scope. For a new scope it queues the lambda's run in `out`, which the loop awaits before drawing again, so the whole form waits.
+- **Pending `node` / `hidden`:** `peek()` starts the lambda in its task when the scope it last ran with differs from the current one, and returns the task's value (`none` while running). The task sends `Resolved` to the events inbox when it finishes, which causes a redraw. Because the task re-runs only when its scope changes, a finished task never restarts on the redraw it caused. Sources cache, so re-running after a change is cheap.
 
 **Checks.**
 - `Check.Now` runs on every draw.
@@ -403,12 +404,12 @@ The view nodes are `FieldView`, `RepeatView`, `VariantView` (with `CaseView`s), 
 
 `forms.run(model, view, ctx, translations, events, views)`:
 
-1. **Draw.** Draw with scope `Scope{data: model.seen(), ctx}`. If drawing changed what `data` holds (a `Hidden` flipped, a computed value was written), draw again, up to five times. That lets a `when` depend on another node's visibility. Exceeding the limit means the form's conditions cycle.
+1. **Draw.** Draw with scope `Scope{data: model.seen(), ctx}`. Await what the drawing queued, then draw again; and if drawing changed what `data` holds (a `Hidden` flipped, a computed value was written), draw again too, up to eight passes in all. That lets a `when` depend on another node's visibility. Exceeding the limit means the form's conditions cycle.
 2. **Return.** If the form was submitted and the drawing is valid, return `model.read()`: the typed `Group<M>.Data`.
 3. **Send** the tree to the `views` inbox.
 4. **Wait** for the next event:
    - `Set(key, value)` routes to the input registered under `key`, which parses the JSON value into its type.
-   - `Search(key, text)` stores the typed text, and the field's options run again.
+   - `Search(key, text)` stores the typed text. The field's options run again, as a queued run, whenever the text or the scope changed.
    - `AddRow` and `RemoveRow` change a list.
    - `Submit` marks the form submitted.
    - `Resolved` just redraws.
@@ -553,7 +554,7 @@ The supplier form (`supplier.form.json`) is the full test. It compiles only if e
 
 - **Dynamic refs:** the host protocol for running a mounted form as its own instance and embedding its view tree needs specifying.
 - **Recursion bounds:** recursion through refs is assumed to end because repeats start empty; the generator does not yet reject unbounded recursion.
-- **Bounded redraws:** the loop's limit of five redraws (for `when` chains) is arbitrary.
+- **Bounded redraws:** the loop's limit of eight passes (for `when` chains and rounds of waits) is arbitrary.
 - **Re-running approvals:** an approval rule re-runs if the data changes after submit, because its task is keyed by the whole scope. That is intended (the approved data changed), but it means a fresh request.
 - **Snapshot comparison:** `Options.Search.same` compares snapshots by an `id` field. The generator assumes snapshot rows have one.
 

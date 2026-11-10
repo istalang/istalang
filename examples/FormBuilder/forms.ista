@@ -208,7 +208,7 @@ enum Prop<Sc, T>:
   Awaited(pending: Pending, eval: ista async fn(Sc) -> T, task: Task<Sc, T>)
 
 enum Pending:
-  Form # awaited inline: the whole form waits
+  Form # the whole form waits: drawn again once it has its value
   Node # its own task: the node shows Loading
   Hidden # its own task: the node stays hidden
 
@@ -218,20 +218,29 @@ ista fn awaited<Sc, T>(pending: Pending, eval: ista async fn(Sc) -> T) -> Prop<S
   task: new Task<Sc, T>{}
 )
 
-# An awaited expression's run. It starts again only when the scope it ran with changes, so a
-# finished task doesn't restart on the redraw it causes. Sources cache, so a rerun is cheap.
+# An awaited expression's run, and its value. It runs again only when the scope it ran with changes,
+# so a finished task doesn't restart on the redraw it causes. Sources cache, so a rerun is cheap.
 shared struct Task<Sc, T>:
   sc: Sc? = none
   value: T? = none
   done: Bool = false
   running: Future<Unit, "ista">? = none # replacing it releases, and so stops, the old run
 
-# The value now, or none while pending (with pending Form, awaited inline instead).
-ista async fn get<Sc, T>(self: Prop<Sc, T>, sc: Sc, out: &Drawing) -> T?:
+# The value now, or none while pending. A Form prop keeps its value for the scope it ran with; for
+# a new scope it queues its run, which the loop awaits before drawing again (the form waits).
+ista fn peek<Sc, T>(self: Prop<Sc, T>, sc: Sc, out: &Drawing) -> T?:
   match self:
     case Fixed(value): value
     case Computed(eval): eval(sc)
-    case Awaited(Pending.Form, eval, _): await eval(sc)
+    case Awaited(Pending.Form, eval, task): {
+      if task->sc != sc:
+        out.waits.push(async fn(): {
+          task->value = await eval(sc)
+          task->sc = sc
+          task->done = true
+        })
+      task->value
+    }
     case Awaited(_, eval, task): {
       if task->sc != sc: {
         task->sc = sc
@@ -428,9 +437,11 @@ fn t(
 # ═════════════════════════ The view: a static tree, built once ═════════════════════════
 
 # A view node in scope Sc. It draws zero nodes when hidden, a Loading node while waiting, and
-# records in `out` what the loop needs: errors, inputs to route events to, rows to add.
+# records in `out` what the loop needs: errors, inputs to route events to, rows to add, and what the
+# form waits for. Drawing never awaits: each await of a live run ends a segment, which costs more
+# than the drawing.
 trait View<Sc>:
-  ista async fn draw(self: Self, sc: Sc, out: &Drawing) -> Array<Node>
+  ista fn draw(self: Self, sc: Sc, out: &Drawing) -> Array<Node>
 
 struct Item<Sc, T>:
   value: T
@@ -469,8 +480,11 @@ shared struct FieldView<Sc, T>:
   checks: Array<Check<Sc, T>> = []
   options: Options<Sc, T>? = none
   search: String = "" # the text typed into a search widget
+  searchedSc: Sc? = none # the scope and text `found` was fetched for
+  searchedText: String = ""
+  found: Array<Choice<T>> = []
 
-ista async fn _check<Sc, T>(
+ista fn _check<Sc, T>(
   checks: Array<Check<Sc, T>>
   sc: Sc
   v: T?
@@ -504,7 +518,7 @@ ista async fn _check<Sc, T>(
   }
   (errors, waiting)
 
-ista async fn draw<Sc, T is Encodable & Decodable>(
+ista fn draw<Sc, T is Encodable & Decodable>(
   self: FieldView<Sc, T>
   sc: Sc
   out: &Drawing
@@ -513,7 +527,7 @@ ista async fn draw<Sc, T is Encodable & Decodable>(
   match self->when:
     case None: ()
     case w: {
-      match await w.get(sc, &out):
+      match w.peek(sc, &out):
         case None:
           return if w.isHiddenPending(): [] else: [Node.Loading(key: self->key, label: none)]
         case false: return []
@@ -527,7 +541,7 @@ ista async fn draw<Sc, T is Encodable & Decodable>(
   match self->value:
     case None: ()
     case p: {
-      const v = await p.get(sc, &out)
+      const v = p.peek(sc, &out)
       if v == none and p.isHiddenPending(): return []
       _ = self->field?.load(v)
     }
@@ -538,7 +552,7 @@ ista async fn draw<Sc, T is Encodable & Decodable>(
         case None: ()
         case f:
           if not f->edited: {
-            const v = await p.get(sc, &out)
+            const v = p.peek(sc, &out)
             if v == none and p.isHiddenPending(): return []
             f.load(v)
           }
@@ -552,46 +566,52 @@ ista async fn draw<Sc, T is Encodable & Decodable>(
       match opt:
         case Items(items): {
           for it in items: {
-            const lbl = await it.label.get(sc, &out) ?? ""
+            const lbl = it.label.peek(sc, &out) ?? ""
             opts.push(Option{value: json.stringify(it.value), label: lbl})
           }
         }
         case Options.Rows(from, resolve): {
-          match await from.get(sc, &out):
+          match from.peek(sc, &out):
             case None:
               return if from.isHiddenPending(): [] else: [Node.Loading(key: self->key, label: none)]
             case rows: {
               for ch in rows: opts.push(Option{value: json.stringify(ch.value), label: ch.label})
             }
           if self->field?->value != none: {
-            match await resolve.get(sc, &out):
+            match resolve.peek(sc, &out):
               case false: resolveFail = true
               case _: ()
           }
         }
         case Search(from: from, resolve: resolve, ...): {
           out.searches[self->key] = self
-          const rows = await from(sc, self->search)
-          for ch in rows: opts.push(Option{value: json.stringify(ch.value), label: ch.label})
+          const text = self->search
+          if self->searchedSc != sc or self->searchedText != text:
+            out.waits.push(async fn(): {
+              self->found = await from(sc, text)
+              self->searchedSc = sc
+              self->searchedText = text
+            })
+          for ch in self->found: opts.push(Option{value: json.stringify(ch.value), label: ch.label})
           if self->field?->value != none: {
-            match await resolve.get(sc, &out):
+            match resolve.peek(sc, &out):
               case false: resolveFail = true
               case _: ()
           }
         }
     }
-  const widget = await self->widget.get(sc, &out)
-  const label = await self->label.get(sc, &out)
+  const widget = self->widget.peek(sc, &out)
+  const label = self->label.peek(sc, &out)
   if widget == none or label == none: return [Node.Loading(key: self->key, label: none)]
   const parent: ParentUi? = match self->parent:
     case None: none
-    case p: await p.get(sc, &out)
+    case p: p.peek(sc, &out)
   const help: String? = match self->help:
     case None: none
-    case h: await h.get(sc, &out)
+    case h: h.peek(sc, &out)
   const current = self->field?->value
   const touched = self->field?->touched ?? false
-  const checked, _ = await _check(self->checks, sc, current, touched, &out)
+  const checked, _ = _check(self->checks, sc, current, touched, &out)
   let errors = checked
   if self->field?->parseError is String as pe: {
     out.valid = false
@@ -644,7 +664,7 @@ ista fn removeRow<Sc, R is FormNode>(self: RepeatView<Sc, R>, key: String) -> Un
   self->list->edited = true
   self->list.remove(key)
 
-ista async fn draw<Sc, R is FormNode>(
+ista fn draw<Sc, R is FormNode>(
   self: RepeatView<Sc, R>
   sc: Sc
   out: &Drawing
@@ -652,7 +672,7 @@ ista async fn draw<Sc, R is FormNode>(
   match self->when:
     case None: ()
     case w: {
-      match await w.get(sc, &out):
+      match w.peek(sc, &out):
         case None:
           return if w.isHiddenPending(): [] else: [Node.Loading(key: self->key, label: none)]
         case false: return []
@@ -668,7 +688,7 @@ ista async fn draw<Sc, R is FormNode>(
       const keepRunning = not isFixed and self->recomputeUntil == Recompute.RowsEdited
       const shouldLoad = self->computedRows or (not self->list->edited and (not self->seeded or keepRunning))
       if shouldLoad: {
-        match await rProp.get(sc, &out):
+        match rProp.peek(sc, &out):
           case None:
             return if rProp.isHiddenPending(): [] else: [Node.Loading(key: self->key, label: none)]
           case v: {
@@ -692,21 +712,21 @@ ista async fn draw<Sc, R is FormNode>(
         created
       }
       case existing: existing
-    const nodes = await v.draw(sc, &out)
+    const nodes = v.draw(sc, &out)
     if nodes.at(0) is Node as first: drawnRows.push(Row{key: row.key, node: first})
   }
-  const widget = await self->widget.get(sc, &out)
+  const widget = self->widget.peek(sc, &out)
   if widget == none: return [Node.Loading(key: self->key, label: none)]
   const parent: ParentUi? = match self->parent:
     case None: none
-    case p: await p.get(sc, &out)
+    case p: p.peek(sc, &out)
   const label: String? = match self->label:
     case None: none
-    case l: await l.get(sc, &out)
+    case l: l.peek(sc, &out)
   const dataVal: Array<R.Data>? = match self->list.read():
     case Ok(d): d
     case Err(...): none
-  const errors, _ = await _check(self->checks, sc, dataVal, self->list->edited, &out)
+  const errors, _ = _check(self->checks, sc, dataVal, self->list->edited, &out)
   if self->canAdd: out.lists[self->key] = self
   [
     Node.Repeat(
@@ -739,7 +759,7 @@ struct CaseView<Sc>:
   label: Prop<Sc, String>
   body: any View<Sc>
 
-ista async fn draw<Sc, C is struct { [_] is FormNode }>(
+ista fn draw<Sc, C is struct { [_] is FormNode }>(
   self: VariantView<Sc, C>
   sc: Sc
   out: &Drawing
@@ -747,7 +767,7 @@ ista async fn draw<Sc, C is struct { [_] is FormNode }>(
   match self.when:
     case None: ()
     case w: {
-      match await w.get(sc, &out):
+      match w.peek(sc, &out):
         case None:
           return if w.isHiddenPending(): [] else: [Node.Loading(key: self.key, label: none)]
         case false: return []
@@ -756,11 +776,11 @@ ista async fn draw<Sc, C is struct { [_] is FormNode }>(
   out.markShown(self.hide)
   match self.tagValue:
     case None: ()
-    case tv: self.variant.tag.load(await tv.get(sc, &out))
+    case tv: self.variant.tag.load(tv.peek(sc, &out))
   match self.default:
     case None: ()
     case d:
-      if not self.variant.tag->edited: self.variant.tag.load(await d.get(sc, &out))
+      if not self.variant.tag->edited: self.variant.tag.load(d.peek(sc, &out))
   const active = self.variant.tag.seen()
   const activeStr: String? = match active:
     case None: none
@@ -768,19 +788,19 @@ ista async fn draw<Sc, C is struct { [_] is FormNode }>(
   let caseOpts: Array<Option> = []
   let bodyNode: Node? = none
   for k, c in ...self.cases: {
-    const lbl = await c.label.get(sc, &out) ?? ""
+    const lbl = c.label.peek(sc, &out) ?? ""
     caseOpts.push(Option{value: k, label: lbl})
-    if activeStr == k: { const nodes = await c.body.draw(sc, &out); bodyNode = nodes.at(0) }
+    if activeStr == k: { const nodes = c.body.draw(sc, &out); bodyNode = nodes.at(0) }
   }
-  const widget = await self.widget.get(sc, &out)
+  const widget = self.widget.peek(sc, &out)
   if widget == none: return [Node.Loading(key: self.key, label: none)]
   const parent: ParentUi? = match self.parent:
     case None: none
-    case p: await p.get(sc, &out)
+    case p: p.peek(sc, &out)
   const label: String? = match self.label:
     case None: none
-    case l: await l.get(sc, &out)
-  const errors, _ = await _check(self.checks, sc, (), self.variant.tag->touched, &out)
+    case l: l.peek(sc, &out)
+  const errors, _ = _check(self.checks, sc, (), self.variant.tag->touched, &out)
   out.inputs[self.key] = self.variant
   [
     Node.Variant(
@@ -804,30 +824,30 @@ struct LayoutView<Sc>:
   checks: Array<Check<Sc, Unit>> = [] # rules; an `errors` layout shows only these
   children: Array<any View<Sc>> = []
 
-ista async fn draw<Sc>(self: LayoutView<Sc>, sc: Sc, out: &Drawing) -> Array<Node>:
+ista fn draw<Sc>(self: LayoutView<Sc>, sc: Sc, out: &Drawing) -> Array<Node>:
   match self.when:
     case None: ()
     case w: {
-      match await w.get(sc, &out):
+      match w.peek(sc, &out):
         case None:
           return if w.isHiddenPending(): [] else: [Node.Loading(key: self.key, label: none)]
         case false: return []
         case true: ()
     }
-  const widget = await self.widget.get(sc, &out)
+  const widget = self.widget.peek(sc, &out)
   if widget == none: return [Node.Loading(key: self.key, label: none)]
   const parent: ParentUi? = match self.parent:
     case None: none
-    case p: await p.get(sc, &out)
+    case p: p.peek(sc, &out)
   const label: String? = match self.label:
     case None: none
-    case l: await l.get(sc, &out)
+    case l: l.peek(sc, &out)
   let children: Array<Node> = []
   for ch in self.children: {
-    const nodes = await ch.draw(sc, &out)
+    const nodes = ch.draw(sc, &out)
     for n in nodes: children.push(n)
   }
-  const errors, waiting = await _check(self.checks, sc, (), out.submitted, &out)
+  const errors, waiting = _check(self.checks, sc, (), out.submitted, &out)
   [
     Node.Layout(
       key: self.key
@@ -848,22 +868,22 @@ struct ScopedView<Sc, Sc2>:
   when: Prop<Sc, Bool>? = none
   hide: (any Showable)? = none
   label: Prop<Sc, String>? = none
-  scope: ista async fn(Sc) -> Sc2
+  scope: ista fn(Sc) -> Sc2
   view: any View<Sc2>
 
-ista async fn draw<Sc, Sc2>(self: ScopedView<Sc, Sc2>, sc: Sc, out: &Drawing) -> Array<Node>:
+ista fn draw<Sc, Sc2>(self: ScopedView<Sc, Sc2>, sc: Sc, out: &Drawing) -> Array<Node>:
   match self.when:
     case None: ()
     case w: {
-      match await w.get(sc, &out):
+      match w.peek(sc, &out):
         case None:
           return if w.isHiddenPending(): [] else: [Node.Loading(key: self.key ?? "", label: none)]
         case false: return []
         case true: ()
     }
   out.markShown(self.hide)
-  const sc2 = await (self.scope)(sc)
-  await self.view.draw(sc2, &out)
+  const sc2 = (self.scope)(sc)
+  self.view.draw(sc2, &out)
 
 # A mounted form chosen at run time. The host loads its compiled module; its data stays opaque.
 shared struct DynamicView<Sc>:
@@ -875,11 +895,11 @@ shared struct DynamicView<Sc>:
   label: Prop<Sc, String>? = none
   schema: Prop<Sc, FormSnapshot?>
 
-ista async fn draw<Sc>(self: DynamicView<Sc>, sc: Sc, out: &Drawing) -> Array<Node>:
+ista fn draw<Sc>(self: DynamicView<Sc>, sc: Sc, out: &Drawing) -> Array<Node>:
   match self->when:
     case None: ()
     case w: {
-      match await w.get(sc, &out):
+      match w.peek(sc, &out):
         case None:
           return if w.isHiddenPending(): [] else: [Node.Loading(key: self->key, label: none)]
         case false: return []
@@ -888,11 +908,11 @@ ista async fn draw<Sc>(self: DynamicView<Sc>, sc: Sc, out: &Drawing) -> Array<No
   out.markShown(self->hide)
   const parent: ParentUi? = match self->parent:
     case None: none
-    case p: await p.get(sc, &out)
+    case p: p.peek(sc, &out)
   const label: String? = match self->label:
     case None: none
-    case l: await l.get(sc, &out)
-  const form = await self->schema.get(sc, &out)
+    case l: l.peek(sc, &out)
+  const form = self->schema.peek(sc, &out)
   match form:
     case None: []
     case snap: { self->value->form = snap; [Node.Mount(key: self->key, parent: parent, label: label, form: snap)] }
@@ -1063,6 +1083,7 @@ struct Drawing:
   lists: Map<String, any Rows> = [:]
   valid: Bool = true # no errors, nothing pending
   shown: Array<any Showable> = [] # Hiddens drawn this pass
+  waits: Array<ista async fn() -> Unit> = [] # runs the form waits for before drawing again
 
 ista fn markShown(self: &Drawing, h: (any Showable)?):
   match h:
@@ -1081,17 +1102,19 @@ ista async fn run<M is struct { [_] is FormNode }, C>(
   let submitted = false
   let shown: Array<any Showable> = []
   while true: {
-    # Draw until visibility settles: a `when` may depend on another node's visibility.
+    # Draw until visibility settles and nothing is waited for: a `when` may depend on another node's
+    # visibility, and what a drawing queued in `waits` is awaited before drawing again.
     let out = Drawing{events, submitted}
     let tree: Array<Node> = []
     let before = model.seen()
-    for _ in 0..5: {
+    for _ in 0..8: { # five redraws for `when` chains, and rounds of waits
       for h in shown: h.hide()
       out = Drawing{events, submitted}
-      tree = await view.draw(Scope{data: before, ctx}, &out)
+      tree = view.draw(Scope{data: before, ctx}, &out)
       shown = out.shown
+      for w in out.waits: await w()
       const after = model.seen()
-      if after == before: break
+      if out.waits.length() == 0 and after == before: break
       before = after
     }
     if submitted and out.valid:
