@@ -18,6 +18,7 @@ const variable = (name: string): ParameterKey =>
 function store(): BoundStore {
   return new BoundStore({
     fits: (found, expected) => sameType(found, expected),
+    orderOf: () => undefined,
     same: sameType,
     isOpen: () => false,
     takesShape: () => false,

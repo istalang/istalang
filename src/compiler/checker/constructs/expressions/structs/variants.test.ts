@@ -135,7 +135,7 @@ describe('a variant call', () => {
         async ({ variant, made }) => {
           const source = [
             declaration(variant),
-            'async fn main() -> Bool:',
+            'ista async fn main() -> Bool:',
             `  const called: E = ${call(made)}`,
             `  called == ${everyFieldNamed(variant, made)}`,
           ].join('\n');
@@ -156,7 +156,7 @@ describe('a variant named as a value', () => {
           const type = functionType(shape);
           const source = [
             declaration(variant),
-            'async fn main() -> Bool:',
+            'ista async fn main() -> Bool:',
             `  const made: ${type} = E.V`,
             `  const again: sendable ${type} = E.V`,
             `  made == again and made(${argumentsOf(shape, false)}) == E.V(${argumentsOf(shape, true)})`,
@@ -181,7 +181,7 @@ describe('a variant without fields called with `()`', () => {
     '',
   ].join('\n');
   const warnedOf = (body: string) =>
-    reported(`${declared}fn f() -> Array<Verdict>:\n  ${body}\nasync fn main(): 0\n`);
+    reported(`${declared}fn f() -> Array<Verdict>:\n  ${body}\nista async fn main(): 0\n`);
 
   it('is warned of, bare or qualified, its name alone saying as much (§3.11)', () => {
     expect(warnedOf('[Approved(), Verdict.Approved()]')).toEqual({
@@ -215,7 +215,7 @@ describe("a variant call's arguments", () => {
       'fn spread() -> Options<"s" | "m">: Options.Group("t", ...[Item{value: "s"}])',
       'fn fixed() -> Tagged<Int>: Tagged.Entry([Item{value: "s"}], 42)',
     ].join('\n');
-    expect(reported(`${declared}${functions}\nasync fn main(): 0\n`)).toEqual({
+    expect(reported(`${declared}${functions}\nista async fn main(): 0\n`)).toEqual({
       codes: [],
       spanTexts: [],
     });
@@ -228,7 +228,7 @@ describe("a variant call's arguments", () => {
       'fn f() -> Opt<Int> | Opt<String>: Opt.Val("b")',
       'fn g() -> Opt<Int> | Opt<String>: Val("b")',
       'fn k() -> Entry<"retries", Int> | Entry<"region", String>: Entry.Pair("region", "eu")',
-      'async fn main(): 0',
+      'ista async fn main(): 0',
     ].join('\n');
     expect(reported(text)).toEqual({ codes: [], spanTexts: [] });
   });
@@ -241,14 +241,14 @@ describe("a variant call's arguments", () => {
       'fn f() -> Pair<Int>: Pair.Make("bad", [1, "wrong"])',
       'fn g() -> Both<Int>: Both.Make("not an int", missing)',
       'fn h() -> Two: Two.Make(Options.Empty)',
-      'async fn main(): 0',
+      'ista async fn main(): 0',
     ].join('\n');
     expect(reported(`${declared}${text}`).codes).toEqual([5001, 5001, 5001, 4000, 5004]);
   });
 
   it('report an argument by position after a named one only as the parser did', () => {
     const items = 'enum Pick { Items(a: Array<String>, b: Int) }\n';
-    const text = `${items}fn f() -> Pick: Pick.Items(b: 1, [123])\nasync fn main(): 0\n`;
+    const text = `${items}fn f() -> Pick: Pick.Items(b: 1, [123])\nista async fn main(): 0\n`;
     expect(reported(text).codes).toEqual([2050]);
   });
 });

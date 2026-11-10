@@ -180,7 +180,7 @@ fn mocks() -> Array<Test>: [
 ]
 
 @Suite{"testing › FakeClock"}
-fn clocks() -> Array<Test>: [
+ista fn clocks() -> Array<Test>: [
   test("stands still at its start until advanced", fn(): {
     const clock = FakeClock{start: Time{value: 7}}
     hold _ = mock(time.now, clock.now)

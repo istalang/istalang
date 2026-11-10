@@ -7,8 +7,7 @@
 
 import { sameItems } from '../../../../../foundation/structures/equality.ts';
 import type { UnfoldingPairs } from '../../identity/unfolding-pairs.ts';
-import { kindAdmits } from '../../type/function-kinds.ts';
-import { functionFits, resultFitOf, sendFits } from '../../type/function-types.ts';
+import { functionFits, resultFitOf } from '../../type/function-types.ts';
 import type {
   AnonymousStructType,
   FieldMember,
@@ -16,6 +15,7 @@ import type {
   NominalType,
   Type,
 } from '../../type/index.ts';
+import { dataKindOrder, type QualifierOrder, sendabilityOrder } from '../../type/mark-orders.ts';
 import type { Variance } from '../../variance/lattice.ts';
 import type { Fitting } from './index.ts';
 
@@ -27,6 +27,11 @@ export interface PartsRelation extends Pick<Fitting, 'varianceOf' | 'shapeOf' | 
    * Whether `found` is `expected`, where a part must be the same type: invariant, or behind `&`.
    */
   readonly same: (expected: Type, found: Type) => boolean;
+  /**
+   * Whether `lower` is at or below `upper` by `order`, a function's mark or sendability: as they
+   * are, or bounding the variable either is, where inference finds it.
+   */
+  readonly ordered: (order: QualifierOrder, lower: Type, upper: Type) => boolean;
   /** Whether a value of `found` fits where `expected` is, as the match fits any value. */
   readonly fits: (found: Type, expected: Type) => boolean;
   /** Whether `probe` holds, leaving nothing behind when it doesn't. */
@@ -116,7 +121,7 @@ function fieldsFit(
 /**
  * Whether a function of type `found` fits where `expected` is, part by part (`functionFits`):
  * taking what `expected` takes, a `&` exactly, and giving what it gives, into the value of a
- * future expected of it too (§3.14), called in `expected`'s kind (`kindAdmits`). A function
+ * future expected of it too (§3.14), its mark and sendability at or below `expected`'s by their orders (`ordered`). A function
  * ending in a pack fits only as it is, but for its kind.
  */
 function functionFitsByParts(
@@ -125,8 +130,11 @@ function functionFitsByParts(
   relation: PartsRelation,
 ): boolean {
   const { fits, same, attempt } = relation;
-  const marks = (code: Type, callee: Type) => kindAdmits(code, callee, same);
-  const sends = (declared: Type, given: Type) => sendFits(given, declared, same);
+  // The error type fits either way: a mistake reported already.
+  const by = (order: QualifierOrder) => (declared: Type, given: Type) =>
+    given.kind === 'error' || declared.kind === 'error' || relation.ordered(order, given, declared);
+  const marks = by(dataKindOrder);
+  const sends = by(sendabilityOrder);
   if (expected.pack !== undefined) {
     return functionFits(expected, found, { parts: same, marks, sends });
   }

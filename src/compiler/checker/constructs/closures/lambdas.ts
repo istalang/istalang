@@ -73,7 +73,7 @@ import {
 } from '../declarations/functions/signatures.ts';
 import { declareParameter } from '../patterns/targets.ts';
 import { FunctionScope } from './function-scope.ts';
-import { givenKindOf, judgeHeldKinds, nestedTypeOf, nestedValueKind } from './nested-types.ts';
+import { givenKindOf, heldKindOf, nestedTypeOf, nestedValueKind } from './nested-types.ts';
 import { declareOwnCall } from './own-calls.ts';
 import { type GuidedResult, ReturnScope } from './returns.ts';
 
@@ -81,7 +81,8 @@ import { type GuidedResult, ReturnScope } from './returns.ts';
  * For a lambda whose result isn't written, or with a parameter to infer, which parameter types it
  * can take, as an argument the chosen function decides (§3.5): its body then has what the call
  * expects of its result as a guide, as Kotlin's lambdas do. Undefined for one written whole,
- * parameters and result, which has a type of its own. A written parameter takes what fits it, a
+ * parameters and result, which has a type of its own, but for an async one given no kind, whose
+ * future takes the kind expected of it (proposal 8, Rule 2). A written parameter takes what fits it, a
  * plain lambda a function type giving a future too, which it fits made async, and an async lambda
  * only one giving a future (§3.14).
  */
@@ -90,7 +91,8 @@ export function lambdaAccepts(context: BodyContext, node: Lambda): Admits | unde
   const parameters = node.parameters.filter((parameter) => parameter.kind === 'Parameter');
   const written = writtenParameterTypes(context, node);
   const writtenKind = writtenKindOf(node.qualifiers);
-  if (node.returnType !== undefined && written.every((type) => type !== undefined)) {
+  const writtenWhole = node.returnType !== undefined && written.every((type) => type !== undefined);
+  if (writtenWhole && (writtenKind !== undefined || !awaits(node.qualifiers))) {
     return undefined;
   }
   const fixed = parameters.filter((parameter) => !parameter.isRest).length;
@@ -264,14 +266,16 @@ function checkLambdaAs(
     node.returnType === undefined
       ? given
       : declaredBodyResult(context.checker, context.module, node);
+  const parameters = nestedParameters(context, node.parameters, slots);
   return checkNested(context, node, {
     name: node.name,
-    parameters: nestedParameters(context, node.parameters, slots),
+    parameters,
     declaredResult,
     orFuture: node.returnType === undefined ? ofBody?.orFuture : undefined,
     guided: hint === undefined ? undefined : { node, guide: hint, inScope: context.scopes.here() },
     reach: node.span,
-    givenKind: givenKindOf(node.qualifiers, slots?.mark, (mark) => context.scopes.holds(mark)),
+    givenKind:
+      givenKindOf(context, node.qualifiers, slots?.mark) ?? heldKindOf(context.checker, parameters),
     tail: (declared) => {
       // A literal it gives while its result is open stays fresh, as a block's value does.
       const type = context.part(node.body, declared ?? hint);
@@ -297,10 +301,8 @@ export function checkLocalFunction(context: BodyContext, node: FunctionDeclarati
       parameters: nestedParameters(context, node.parameters, undefined),
       declaredResult: declaredBodyResult(context.checker, context.module, node),
       reach: nestedFunctionSpan(node, body),
-      givenKind:
-        node.mark === undefined
-          ? givenKindOf(node.qualifiers)
-          : kindOfFunction(context.checker, node),
+      // A local `fn`'s mark is its head's, as a declared function's is (Rule 2).
+      givenKind: kindOfFunction(context.checker, node),
       tail: (declared) => blockTail(body, context.block(body, declared)),
     });
   }
@@ -332,7 +334,7 @@ function checkNested(context: BodyContext, node: NestedFunction, header: NestedH
   const typeWith = nestedTypeOf(context, node, parameters);
   const codeKind = header.givenKind ?? context.codeKind;
   // An async one waits in its kind, which its future needs one of (§3.3).
-  if (awaits(node.qualifiers) && !isOneKind(codeKind)) {
+  if (awaits(node.qualifiers) && !isOneKind(context.checker, codeKind)) {
     context.report(checkerDiagnostics.unkindedFuture(node.span));
   }
   if (name !== undefined && declaredResult !== undefined) {
@@ -373,11 +375,10 @@ function checkNested(context: BodyContext, node: NestedFunction, header: NestedH
     return recorded;
   };
   const type = finished(result);
-  // What its signature holds is judged once, as its scope settles it.
   if (context.scopes.isOpen) {
-    context.scopes.whenSolved((solved) => judgeHeldKinds(context, node, finished(solved(result))));
-  } else {
-    judgeHeldKinds(context, node, type);
+    context.scopes.whenSolved((solved) => {
+      finished(solved(result));
+    });
   }
   return type;
 }

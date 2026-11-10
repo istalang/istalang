@@ -15,30 +15,46 @@
 import { awaits, type FunctionQualifiers } from '../../../syntax/tokens/modifiers.ts';
 import type { SignatureParameter } from '../../check.ts';
 import type { BodyContext } from '../../contexts/body-context.ts';
-import { heldKindRefusal } from '../../rules/kinds/signature-kinds.ts';
+import type { CheckerContext } from '../../contexts/context.ts';
 import type { NestedFunction } from '../../surface/checked-body.ts';
+import { sameType } from '../../types/identity/identity.ts';
 import { isMarkVariable, simpleMark, writtenKindOf } from '../../types/type/function-kinds.ts';
 import { functionType, headResult } from '../../types/type/function-types.ts';
 import type { FunctionType, Type } from '../../types/type/index.ts';
 import type { FunctionScope } from './function-scope.ts';
 
 /**
- * The kind a nested function's head or position gives it: its head's, else `expected`, the kind of
- * the function type expected of it, where that is a literal mark or a mark parameter fixed around
- * it (`logged`'s `M` in its own body); never a call's variable still `open`, which its body infers.
- * Undefined where neither does.
+ * The kind a nested function's head or position gives it, checked in `context`: its head's, else
+ * `expected`, the kind of the function type expected of it, where that is a literal mark or a mark
+ * parameter fixed around it (`logged`'s `M` in its own body); never a call's variable its scopes
+ * still hold, which its body infers. Undefined where neither does.
  */
 export function givenKindOf(
+  context: Pick<BodyContext, 'checker' | 'scopes'>,
   qualifiers: FunctionQualifiers,
   expected?: Type,
-  open?: (type: Type) => boolean,
 ): Type | undefined {
   const known =
     expected !== undefined &&
-    (expected.kind === 'literal' || (isMarkVariable(expected) && open?.(expected) === false))
+    (expected.kind === 'literal' ||
+      (isMarkVariable(context.checker, expected) && !context.scopes.holds(expected)))
       ? expected
       : undefined;
   return writtenKindOf(qualifiers) ?? known;
+}
+
+/**
+ * The kind a lambda given none infers from its parameters (Rule 2): the one kind their types show,
+ * where they decide one; undefined where they show none, or both kinds, which the data rule refuses
+ * its signature for (rules/kinds/data-kinds.ts).
+ */
+export function heldKindOf(
+  checker: CheckerContext,
+  parameters: readonly SignatureParameter[],
+): Type | undefined {
+  const kinds = parameters.flatMap((parameter) => checker.valueKindsOf(parameter.type));
+  const [first] = kinds;
+  return first !== undefined && kinds.every((kind) => sameType(kind, first)) ? first : undefined;
 }
 
 /** How a nested function of `parameters` is typed, by what it gives, its sendability and mark. */
@@ -71,35 +87,4 @@ export function nestedValueKind(
     return given;
   }
   return awaits(node.qualifiers) || scope.reliesOnKind ? scope.codeKind : simpleMark;
-}
-
-/**
- * Reports what `type`, the type of the nested function `node`, holds of a kind its own refuses,
- * as a declared function's signature is judged (rules/kinds/signature-kinds.ts).
- */
-export function judgeHeldKinds(
-  context: BodyContext,
-  node: NestedFunction,
-  type: FunctionType,
-): void {
-  const at = node.span;
-  const { checker, module } = context;
-  // An async head's written `Future<…>` is what its call gives, read as written
-  // (signature-kinds.ts).
-  const written =
-    awaits(node.qualifiers) && node.returnType !== undefined
-      ? [{ at, type: checker.resolveType(module, node.returnType) }]
-      : [];
-  const refusal = heldKindRefusal(checker, {
-    own: type.mark,
-    holder: node.kind === 'Lambda' ? 'a lambda' : `'${node.name.text}'`,
-    held: [
-      ...type.parameters.map((slot) => ({ at, type: slot.type })),
-      { at, type: type.result },
-      ...written,
-    ],
-  });
-  if (refusal !== undefined) {
-    context.report(refusal);
-  }
 }

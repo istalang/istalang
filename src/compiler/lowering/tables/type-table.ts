@@ -401,7 +401,7 @@ export class TypeTable {
    */
   #disposal(disposal: Disposal): Extract<TypeDefinition, { kind: 'extern' }>['disposal'] {
     if (disposal.kind !== 'function') {
-      return disposal;
+      return { kind: disposal.kind };
     }
     const instance = closeFunctionCall(disposal.call, undefined, this.#checker);
     const entry = { kind: 'function', function: this.#seams.functionIndex(instance) } as const;

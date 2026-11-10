@@ -7,12 +7,11 @@
  * read the rule `isOneMember` states.
  */
 
-import { isKindParameter, standsForAnyMark } from '../../../syntax/declarations/function-kinds.ts';
 import type { TypeParameter } from '../../../syntax/declarations/index.ts';
 import type { UseSite } from '../../contexts/use-site.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import { type Substitution, substitute } from '../parts/substitution.ts';
-import { isMarkVariable, isOneKind, kindHolderName } from '../type/function-kinds.ts';
+import { isSimpleMark, kindHolderName, standsForOneKind } from '../type/function-kinds.ts';
 import type { Type } from '../type/index.ts';
 import { typeText } from '../type/type-text.ts';
 import { hasMember, membersOf } from '../unions/unions.ts';
@@ -36,6 +35,9 @@ export function isOneMember(
 /**
  * Whether `argument` may stand for `parameter`, its union read with the arguments `substitution`
  * gives the parameters before it; reports at `site` when it can't. Any other parameter takes it.
+ * A mark parameter is a member parameter as any (proposal 8, Rule 3): `K in "live"` takes no
+ * `"ista"`. The bottom given where one of the two kinds is needed is simple code calling what needs
+ * a kind, which a mark on that code mends, and is told so.
  */
 export function standsForMember(
   site: UseSite,
@@ -44,49 +46,23 @@ export function standsForMember(
   substitution: Substitution,
 ): boolean {
   const { checker } = site;
-  if (argument.kind === 'error') {
-    return true;
-  }
-  if (isKindParameter(parameter) && !standsForAnyMark(parameter)) {
-    return standsForKind(site, parameter, argument);
-  }
-  // A mark parameter infers as a kind parameter does, but its argument is judged as a member's.
-  const written =
-    standsForAnyMark(parameter) && parameter.memberOf !== undefined
-      ? checker.resolveType(checker.moduleOf(parameter), parameter.memberOf)
-      : checker.memberUnionOf(parameter);
-  if (written === undefined) {
+  const written = checker.memberUnionOf(parameter);
+  if (argument.kind === 'error' || written === undefined) {
     return true;
   }
   const union = substitute(written, substitution, checker.typeRules);
-  // A kind variable, the two kinds' or an implicit one, is a mark: an `M in DataKind` takes it.
-  const kindVariable = standsForAnyMark(parameter) && isMarkVariable(argument);
-  if (kindVariable || isOneMember(union, argument, checker.fitting.memberUnionOf)) {
+  if (isOneMember(union, argument, checker.fitting.memberUnionOf)) {
     return true;
   }
   site.report((at) =>
-    checkerDiagnostics.notMemberArgument(
-      at,
-      parameter.name.text,
-      typeText(union),
-      typeText(argument),
-    ),
-  );
-  return false;
-}
-
-/**
- * Whether `argument` may stand for the kind parameter `parameter` (§3.3): any kind, or one of the
- * two where `parameter` stands for one (`K in Persistence`, an implicit one a future reads);
- * reported at `site` when it can't, as code that may run in either calling what needs one, which
- * a mark on that code mends.
- */
-function standsForKind(site: UseSite, parameter: TypeParameter, argument: Type): boolean {
-  if (parameter.memberOf === undefined || isOneKind(argument)) {
-    return true;
-  }
-  site.report((at) =>
-    checkerDiagnostics.oneKindOfEither(at, kindHolderName(site.checker, parameter)),
+    standsForOneKind(checker, parameter) && isSimpleMark(argument)
+      ? checkerDiagnostics.oneKindOfEither(at, kindHolderName(checker, parameter))
+      : checkerDiagnostics.notMemberArgument(
+          at,
+          parameter.name.text,
+          typeText(union),
+          typeText(argument),
+        ),
   );
   return false;
 }

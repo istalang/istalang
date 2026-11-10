@@ -10,31 +10,27 @@
  *   the other kind is the two kinds meeting, which no mark mends.
  */
 
+import type { Diagnostic } from '../../../../foundation/diagnostics/diagnostic.ts';
 import { declaredFunctionName } from '../../../syntax/declarations/field-defaults.ts';
-import { functionTypeParametersOf } from '../../../syntax/declarations/function-kinds.ts';
-import type { FunctionDeclaration } from '../../../syntax/declarations/index.ts';
+import { type FunctionDeclaration, typeParametersOf } from '../../../syntax/declarations/index.ts';
 import type { AnchoredSpan } from '../../../syntax/tree/positions.ts';
 import type { BodyContext, FunctionFrame } from '../../contexts/body-context.ts';
 import type { CheckerContext } from '../../contexts/context.ts';
+import type { UseSite } from '../../contexts/use-site.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import type { FunctionCall, ResolvedCall } from '../../surface/resolved-call.ts';
 import { sameType } from '../../types/identity/identity.ts';
 import { substitute, substitutionFor } from '../../types/parts/substitution.ts';
-import { ownValueKindOf } from '../../types/properties/value-kinds.ts';
-import {
-  isSimpleMark,
-  kindAdmits,
-  kindOfFunction,
-  persistenceOf,
-} from '../../types/type/function-kinds.ts';
+import { isSimpleMark, kindAdmits, kindOfFunction } from '../../types/type/function-kinds.ts';
 import type { Type } from '../../types/type/index.ts';
+import { dataKindOrder } from '../../types/type/mark-orders.ts';
 import { typeText } from '../../types/type/type-text.ts';
 import { callMade } from '../choosing/calls-made.ts';
 import type { Application } from '../choosing/choice.ts';
 
 /** The kind of the function `call` calls, as the call instantiates it. */
 export function kindOfCall(checker: CheckerContext, call: ResolvedCall): Type {
-  const own = substitutionFor(functionTypeParametersOf(call.function), call.typeArguments);
+  const own = substitutionFor(typeParametersOf(call.function.typeParameters), call.typeArguments);
   return substitute(kindOfFunction(checker, call.function), own, checker.typeRules);
 }
 
@@ -53,13 +49,78 @@ export function judgedCall(
   },
 ): ResolvedCall {
   const call = callMade(made.application, made.instantiation);
-  checkCallKind(context, {
-    at: made.at,
-    frame: made.frame,
-    calleeKind: kindOfCall(context.checker, call),
-    callee: `'${declaredFunctionName(call.function)}'`,
-  });
+  for (const each of callsMadeWith(call)) {
+    checkCallKind(context, {
+      at: made.at,
+      frame: made.frame,
+      calleeKind: kindOfCall(context.checker, each),
+      callee: `'${declaredFunctionName(each.function)}'`,
+    });
+    if (each.typeArguments.some((type) => context.checker.valueKindsOf(type).length > 0)) {
+      made.frame.relyOnKind();
+    }
+  }
   return call;
+}
+
+/**
+ * Every call code making `call` makes (Rule 3): `call`, and the witnesses of its constraints at any
+ * depth, which a generic callee calls for its caller, whose data then holds the values of each
+ * one's type arguments (rules/kinds/data-kinds.ts).
+ */
+function callsMadeWith(call: ResolvedCall): readonly ResolvedCall[] {
+  return [call, ...witnessCallsOf(call)];
+}
+
+/**
+ * The least mark, from `start` up, of a function that makes `call` when called (proposal 8, Rules
+ * 2–3): one allowing every call it makes and the values their type arguments hand it. A part of
+ * the other kind is reported through `report`, `holder` naming the function, no mark allowing both.
+ */
+export function markMaking(
+  checker: CheckerContext,
+  made: {
+    readonly call: ResolvedCall;
+    readonly holder: string;
+    readonly report: UseSite['report'];
+  },
+  start: Type,
+): Type {
+  let least = start;
+  const allow = (
+    kind: Type,
+    refusal: (at: AnchoredSpan, mark: string) => Diagnostic<AnchoredSpan>,
+  ) => {
+    const joined = dataKindOrder.join([least, kind], sameType);
+    if (joined === undefined) {
+      const refused = kindText(least);
+      made.report((at) => refusal(at, refused));
+    } else {
+      least = joined;
+    }
+  };
+  for (const each of callsMadeWith(made.call)) {
+    const calleeKind = kindOfCall(checker, each);
+    const callee = `'${declaredFunctionName(each.function)}'`;
+    allow(calleeKind, (at, mark) =>
+      checkerDiagnostics.kindsMeet(at, mark, kindText(calleeKind), callee),
+    );
+    for (const type of each.typeArguments) {
+      for (const kind of checker.valueKindsOf(type)) {
+        allow(kind, (at, mark) =>
+          checkerDiagnostics.kindsHeld(at, made.holder, mark, typeText(type)),
+        );
+      }
+    }
+  }
+  return least;
+}
+
+/** Every call `call` makes through its constraints' witnesses, theirs included, at any depth. */
+export function witnessCallsOf(call: Pick<ResolvedCall, 'witnesses'>): readonly ResolvedCall[] {
+  return [...call.witnesses.values()]
+    .flat(2)
+    .flatMap((witness) => [witness, ...witnessCallsOf(witness)]);
 }
 
 /** A call to judge: where it is, the function whose code makes it, what it calls and its kind. */
@@ -85,33 +146,9 @@ export function checkCallKind(context: Pick<BodyContext, 'report'>, call: CallOf
     return;
   }
   context.report(
-    persistenceOf(caller) === undefined
+    isSimpleMark(caller)
       ? checkerDiagnostics.unmarkedCalls(at, callerName(frame), kindText(calleeKind), callee)
       : checkerDiagnostics.kindsMeet(at, kindText(caller), kindText(calleeKind), callee),
-  );
-}
-
-/**
- * Reports a value of `type` that code makes at `at` where the value is of a kind its code's kind
- * refuses: releasing a value whose `dispose` is of a kind calls that code (Rule 2), as a call
- * would. Only the value's own kind is judged, what its fields hold having been made already, so a
- * literal reads no layout of what it holds (a field's type taken from its default may hold it).
- */
-export function checkMadeKind(context: BodyContext, at: AnchoredSpan, type: Type): void {
-  const frame = context.functions.current;
-  const kind = ownValueKindOf(context.checker, type);
-  if (kind === undefined) {
-    return;
-  }
-  frame.relyOnKind();
-  if (sameType(kind, frame.codeKind)) {
-    return;
-  }
-  const { codeKind } = frame;
-  context.report(
-    persistenceOf(codeKind) === undefined
-      ? checkerDiagnostics.unmarkedHolds(at, callerName(frame), kindText(kind), typeText(type))
-      : checkerDiagnostics.kindsHeld(at, callerName(frame), kindText(codeKind), typeText(type)),
   );
 }
 

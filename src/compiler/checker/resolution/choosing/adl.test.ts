@@ -19,7 +19,7 @@ function codesOf(files: Readonly<Record<string, string>>): readonly number[] {
 const money = 'struct Money { cents: Int }';
 const addMoney = 'fn add(left: Money, right: Money) -> Money: left';
 const use = (imports: string, body: string) =>
-  `${imports}\nasync fn main():\n  const a = Money{cents: 1}\n  ${body}\n`;
+  `${imports}\nista async fn main():\n  const a = Money{cents: 1}\n  ${body}\n`;
 
 describe('operators on a type declared in another module', () => {
   it("find the function in the type's own module without an import", () => {
@@ -55,7 +55,7 @@ describe('operators on a type declared in another module', () => {
     const text = [
       "import Box from 'box'",
       "import Money from 'lib'",
-      'async fn main():',
+      'ista async fn main():',
       '  const a = Box{v: Money{cents: 1}}',
       '  const b = a + a',
     ].join('\n');

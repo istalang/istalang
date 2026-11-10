@@ -92,8 +92,10 @@ function askedMarks(source: IstaSource, path: string): Marks {
   for (const { span, message } of diagnostics) {
     const kind = asksForMark.exec(message)?.groups?.kind;
     const holder = kind === undefined ? undefined : innermostAt(source, functions, span.start);
-    // A function of a kind already holds the error elsewhere: in a lambda of a kind of its own.
-    const unmarked = holder?.qualifiers.kind === undefined ? holder : undefined;
+    // A function of a kind, written or named (`M fn`), holds the error elsewhere: in a lambda of a
+    // kind of its own, or where its named mark meets another.
+    const unmarked =
+      holder?.qualifiers.kind === undefined && holder?.mark === undefined ? holder : undefined;
     const at = unmarked === undefined ? undefined : headWordOf(source, unmarked);
     if (kind !== undefined && at !== undefined && !asked.has(at)) {
       asked.set(at, kind);

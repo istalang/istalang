@@ -36,6 +36,7 @@ import type {
   TypeParameterType,
   WrittenThrough,
 } from './index.ts';
+import { sendabilityOrder } from './mark-orders.ts';
 import { errorType, sendType, tupleElements, tupleType } from './primitives.ts';
 
 export const plainSend: Type = sendType('plain');
@@ -70,23 +71,14 @@ export function modifiersOf({ send, mark }: FunctionType): Modifiers {
 
 /**
  * Whether a function of sendability `given` fits where one of `expected` is, by `Sendability`'s
- * order (proposal 8, Rule 4), `"sendable"` below `"plain"`: a sendable one anywhere, anything
- * where `plain` is. The order has two members, so where a variable stands, the bottom bounds
- * nothing and the top, or the bottom as an upper bound, only itself, which `same` infers: an
- * `S` given a sendable and a plain function joins to `"plain"`, one given only sendable ones
- * settles to `"sendable"` (resolution/conformance/kind-settling.ts).
+ * order (mark-orders.ts), the two compared by `same`, which may infer them.
  */
 export function sendFits(
   given: Type,
   expected: Type,
   same: (expected: Type, given: Type) => boolean,
 ): boolean {
-  const into = sendabilityOf(expected);
-  const from = sendabilityOf(given);
-  if (into === 'plain' || from === 'sendable') {
-    return true;
-  }
-  return (from === undefined || into === undefined) && same(expected, given);
+  return sendabilityOrder.below(given, expected, same);
 }
 
 /** What `functionType` builds a function type of; its pack may be any type bound to one. */
@@ -363,8 +355,11 @@ export function madeAsync(
 export function headResult(
   { futureOf }: Pick<Futures, 'futureOf'>,
   head: FunctionQualifiers,
-  kind: Type,
+  kind: Type | (() => Type),
   value: Type,
 ): Type {
-  return awaits(head) ? futureOf(value, kind) : value;
+  if (!awaits(head)) {
+    return value;
+  }
+  return futureOf(value, typeof kind === 'function' ? kind() : kind);
 }

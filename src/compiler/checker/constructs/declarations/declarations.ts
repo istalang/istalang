@@ -40,6 +40,11 @@ import type { CheckerContext } from '../../contexts/context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import { checkHostBoundary, crossesToHost } from '../../rules/boundary/host-boundary.ts';
 import { checkDisposeDeclaration, isDisposeFunction } from '../../rules/disposal/disposal.ts';
+import {
+  checkConstantKinds,
+  checkDataKinds,
+  checkDeclaredKinds,
+} from '../../rules/kinds/data-kinds.ts';
 import { checkSignatureKind } from '../../rules/kinds/signature-kinds.ts';
 import { checkSuite } from '../../rules/testing.ts';
 import { namesMemberParameter } from '../../types/traits/struct-keys.ts';
@@ -101,6 +106,7 @@ function checkFunction(checker: CheckerContext, node: FunctionDeclaration): void
   checker.resultOf(node);
   checker.bodyOf(node);
   checkSignatureKind(checker, module, node);
+  checkDataKinds(checker, module, node);
   if (node.isExtern) {
     checkHostBoundary(checker, module, node);
     refusePatterns(checker, module, node, 'an extern function');
@@ -118,6 +124,7 @@ function checkFieldDefaults(
   if (fieldsFunction !== undefined) {
     checker.parametersOf(fieldsFunction);
     checker.defaultsOf(fieldsFunction);
+    checkDataKinds(checker, checker.moduleOf(fieldsFunction), fieldsFunction);
   }
 }
 
@@ -147,6 +154,7 @@ function checkStruct(checker: CheckerContext, node: DeclaredStruct, module: Modu
   checkAssociatedTypes(checker, node, module);
   checker.annotations.checkFields(checker.declaredFieldsOf(node));
   checkFieldDefaults(checker, fieldsFunctionOf(node));
+  checkDeclaredKinds(checker, module, node);
 }
 
 /**
@@ -227,6 +235,7 @@ const declarationHandlers: Handlers<CheckerContext, Declaration, [ModuleId], voi
     for (const variant of checker.declaredVariantsOf(node)) {
       checker.annotations.checkFields(variant.fields);
     }
+    checkDeclaredKinds(checker, module, node);
   },
   ExternConstantDeclaration: (checker, node, module) => {
     annotatedNowhere('an extern constant')(checker, node, module);
@@ -243,6 +252,7 @@ const declarationHandlers: Handlers<CheckerContext, Declaration, [ModuleId], voi
   VariableDeclaration: (checker, node, module) => {
     annotatedNowhere('a constant')(checker, node, module);
     checker.constantOf(node);
+    checkConstantKinds(checker, module, node);
   },
 };
 // biome-ignore-end lint/style/useNamingConvention: the keys are the tree's node kinds.

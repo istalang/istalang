@@ -6,7 +6,8 @@
  *   is `T?`: an item that is itself `none` would read as the end. Any type with an `iterate` is
  *   iterable; `iterate` is found like an operator's function, so a program's types join in
  *   (resolution/applying/implicit.ts). Lowering calls the cursor until it gives `Done`, so the loop
- *   makes no call of the language's own. Whatever its call reports, an ambiguity or an unmet
+ *   makes no call of the language's own, but the code iterating calls the cursor, so its mark is
+ *   judged as a call's (proposal 8, Rule 2). Whatever its call reports, an ambiguity or an unmet
  *   constraint among them, falls on the iterable, not the whole loop.
  * - How each iteration runs is recorded (`IterationForm`): through its cursor, of its items' type,
  *   or, for a spread of the collection its literal builds, copied whole
@@ -24,6 +25,7 @@ import type { Checker } from '../../check.ts';
 import type { BodyContext, IterationRecord } from '../../contexts/body-context.ts';
 import type { Pass, Passes, PassTable } from '../../contexts/passes.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
+import { checkCallKind } from '../../resolution/applying/call-kinds.ts';
 import { implicitCall } from '../../resolution/applying/implicit.ts';
 import { topLevelCandidates } from '../../resolution/choosing/candidates.ts';
 import type { Iteration, IterationForm } from '../../surface/checked-body.ts';
@@ -97,6 +99,15 @@ export function iteratedItem(
   const item = cursor === undefined ? undefined : cursorItem(context.checker, cursor);
   if (cursor !== undefined && item === undefined) {
     context.report(failure());
+  }
+  if (cursor?.kind === 'function' && item !== undefined) {
+    // The loop calls the cursor each step, in its code's kind (proposal 8, Rule 2).
+    checkCallKind(context, {
+      at: iterable.span,
+      frame: context.functions.current,
+      calleeKind: cursor.mark,
+      callee: 'the cursor it iterates with',
+    });
   }
   if (item !== undefined) {
     context.iterations.record(node, { kind: 'cursor', item });

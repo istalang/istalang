@@ -95,7 +95,6 @@ export function chooseCall(
     written: request.typeArguments,
     site: request.site,
     scope: request.scope,
-    decidedKind: context.codeKind,
   });
   // An argument of the error type was reported already; it fits anything, so a call it leaves no
   // single function for reports nothing more, and one it leaves one still judges the others.

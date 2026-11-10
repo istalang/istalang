@@ -328,7 +328,7 @@ function mappedWith(
     unreachable(`The prelude declares no '${name}'.`);
   const item = from.at(-1) ?? unreachable('A collection has an item type.');
   const target = to.at(-1) ?? unreachable('A collection has an item type.');
-  const instance = rootInstance(declaration, [...from, target]);
+  const instance = rootInstance(context.checker, declaration, [...from, target]);
   return emitCall(context, {
     span: how.span,
     callee: context.tables.functionIndex(instance),

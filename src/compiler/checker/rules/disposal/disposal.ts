@@ -29,13 +29,20 @@ import type { BodyContext } from '../../contexts/body-context.ts';
 import type { CheckerContext } from '../../contexts/context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import { silentCall } from '../../resolution/applying/silent-choice.ts';
-import { callCandidates, namedInModule } from '../../resolution/choosing/candidates.ts';
+import {
+  type Candidate,
+  callCandidates,
+  namedInModule,
+} from '../../resolution/choosing/candidates.ts';
+import { selfInference } from '../../resolution/choosing/receivers.ts';
 import { isHostExtern, isHostType } from '../../surface/host-externs.ts';
-import type { FunctionCall, ResolvedCall, ResolvedSite } from '../../surface/resolved-call.ts';
+import type { ResolvedCall, ResolvedSite } from '../../surface/resolved-call.ts';
 import { sameType } from '../../types/identity/identity.ts';
+import { substitute } from '../../types/parts/substitution.ts';
 import { isConfined } from '../../types/properties/handles.ts';
 import { requiredFunctions } from '../../types/traits/constraints.ts';
 import { knownConstraints } from '../../types/traits/known-constraints.ts';
+import { kindOfFunction } from '../../types/type/function-kinds.ts';
 import type { NominalType, Type } from '../../types/type/index.ts';
 import { unitType } from '../../types/type/primitives.ts';
 import { typeText } from '../../types/type/type-text.ts';
@@ -78,11 +85,35 @@ export function isDisposable(checker: CheckerContext, type: Type): boolean {
 }
 
 export function disposalOf(checker: CheckerContext, type: NominalType): Disposal {
-  if (isStdType(checker, type) && runtimeDisposes(checker, type)) {
-    return { kind: 'runtime' };
+  const found = disposeCandidates(checker, type);
+  const call =
+    found === undefined
+      ? undefined
+      : silentCall(checker, found.candidates, [{ type, passing: 'value' }]);
+  if (found === undefined || call === undefined) {
+    return none;
   }
-  const call = isOwnedHandle(checker, type) ? declaredDispose(checker, type) : undefined;
-  return call === undefined ? none : { kind: 'function', call };
+  return { kind: found.runtime ? 'runtime' : 'function', call };
+}
+
+/**
+ * The kinds of the `dispose` functions that may take `type` as `self`, each as that instantiates
+ * it, whatever its constraints (proposal 8, Rule 2): a type's kinds are read from declarations,
+ * never from what meets a trait, which asks them (Rule 4).
+ */
+export function disposeKindsOf(checker: CheckerContext, type: NominalType): readonly Type[] {
+  return (disposeCandidates(checker, type)?.candidates ?? []).flatMap((candidate) => {
+    const taken = selfInference(checker, candidate, type);
+    return taken === undefined
+      ? []
+      : [
+          substitute(
+            kindOfFunction(checker, candidate.declaration),
+            taken.inference.substitution(),
+            checker.typeRules,
+          ),
+        ];
+  });
 }
 
 /**
@@ -136,13 +167,25 @@ function runtimeDisposes(checker: CheckerContext, type: NominalType): boolean {
   });
 }
 
-/** The call of the `dispose` a program declares for `type`, found as an operator's function is. */
-function declaredDispose(checker: CheckerContext, type: NominalType): FunctionCall | undefined {
+/**
+ * The `dispose` functions declared for `type`, found as an operator's function is: the runtime's
+ * where a std module declares one beside it, else a program's for a handle a program may make
+ * disposable; undefined for any other type.
+ */
+function disposeCandidates(
+  checker: CheckerContext,
+  type: NominalType,
+): { readonly candidates: readonly Candidate[]; readonly runtime: boolean } | undefined {
+  const runtime = isStdType(checker, type) && runtimeDisposes(checker, type);
+  if (!(runtime || isOwnedHandle(checker, type))) {
+    return undefined;
+  }
   const candidates = callCandidates(checker, [], disposeFunction, [type]).filter(
-    (candidate) =>
-      candidate.requirement === undefined && isDisposeFunction(checker, candidate.declaration),
+    ({ requirement, declaration }) =>
+      requirement === undefined &&
+      (runtime ? isRuntimeDispose(checker, declaration) : isDisposeFunction(checker, declaration)),
   );
-  return silentCall(checker, candidates, [{ type, passing: 'value' }]);
+  return { candidates, runtime };
 }
 
 /**
@@ -162,7 +205,8 @@ export function checkDisposeDeclaration(
   const returnsUnit = sameType(checker.resultOf(declaration), unitType);
   if (
     parameters.length !== 1 ||
-    self?.reference === true ||
+    self === undefined ||
+    self.reference ||
     awaits(declaration.qualifiers) ||
     !returnsUnit
   ) {

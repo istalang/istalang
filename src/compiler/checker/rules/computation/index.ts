@@ -22,8 +22,7 @@
 
 import type { Diagnostic } from '../../../../foundation/diagnostics/diagnostic.ts';
 import type { VariableOwner } from '../../../binder/entities.ts';
-import { functionTypeParametersOf } from '../../../syntax/declarations/function-kinds.ts';
-import type { FunctionDeclaration } from '../../../syntax/declarations/index.ts';
+import { type FunctionDeclaration, typeParametersOf } from '../../../syntax/declarations/index.ts';
 import type {
   ArrayLiteral,
   Expression,
@@ -277,7 +276,10 @@ class Computation {
     const typeArguments = call.typeArguments.map((type) =>
       substitute(type, this.#substitution, checker.typeRules),
     );
-    const substitution = substitutionFor(functionTypeParametersOf(declaration), typeArguments);
+    const substitution = substitutionFor(
+      typeParametersOf(declaration.typeParameters),
+      typeArguments,
+    );
     const fields = new Map<VariableOwner, CheckedConstant>(
       parameters.slice(0, earlier.length).map((parameter, index) => [
         parameter.node,

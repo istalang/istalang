@@ -36,7 +36,7 @@ extern ista fn result<T is Sendable>(self: Instance<T>) -> Future<Result<T>, "is
 # a deferred call (§3.14), copies `req` into it now and calls `purchase` there, async or not.
 extern ista fn spawn<R>(f: sendable ista async fn() -> R) -> Instance<R>
 
-extern fn Slot.create<T>() -> Slot<T>
+extern ista fn Slot.create<T>() -> Slot<T>
 extern ista fn put<T>(self: Slot<T>, value: T) -> Future<Unit, "ista">
 extern ista fn take<T>(self: Slot<T>) -> Future<T, "ista">
 extern ista fn read<T>(self: Slot<T>) -> Future<T, "ista">
@@ -49,7 +49,7 @@ extern ista fn disposed<T is Disposable>(self: WeakRef<T>) -> Future<Unit, "ista
 # An async call's handle, a weak reference to the call, which the function's own name is before a
 # `.` (§7): `worker.disposing()` is the future that resolves when the call is disposed.
 extern shared struct _Call
-extern fn disposing<K in Persistence>(self: _Call) -> Future<Unit, K>
+extern K fn disposing<K in Persistence>(self: _Call) -> Future<Unit, K>
 
 # A Shared value (§3.8) is a shared struct of any one value (§3.18): `new Shared{value: v}` makes
 # one, and `x->value` reads and writes it, for every copy.
@@ -62,8 +62,9 @@ extern shared struct _Cell<T>
 
 # Disposal (§7): the runtime disposes a future and a slot once nothing holds them. Declaring their
 # `dispose` is what makes them Disposable (§3.10), and what tells the compiler the runtime does it.
-extern fn dispose<T, K in Persistence>(self: Future<T, K>)
-extern fn dispose<T>(self: Slot<T>)
+# A slot's is ista, so a slot is ista data, which only ista code handles (proposal 8, Rule 6).
+extern K fn dispose<T, K in Persistence>(self: Future<T, K>)
+extern ista fn dispose<T>(self: Slot<T>)
 
 # What `defer` gives (§7): a disposable whose release calls `run`, so `_ = defer log(x)` computes
 # `x` now and logs when the block ends, and `hold _ = defer log(x)` when the function does. Its
@@ -72,7 +73,7 @@ extern fn dispose<T>(self: Slot<T>)
 shared struct Deferred<M in DataKind>:
   run: Fn<(), Unit, M>
 
-fn defer<M in DataKind>(f: Fn<(), Unit, M>) -> Deferred<M>: new Deferred<M>{run: f}
+M fn defer<M in DataKind>(f: Fn<(), Unit, M>) -> Deferred<M>: new Deferred<M>{run: f}
 
 M fn dispose<M in DataKind>(self: Deferred<M>): self->run()
 

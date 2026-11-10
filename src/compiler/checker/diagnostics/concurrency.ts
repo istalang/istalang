@@ -70,17 +70,27 @@ export const concurrencyTemplates = {
   unkindedFuture: {
     code: 5612,
     message: () =>
-      `An unmarked 'async fn' type here has no kind for its future to take; write 'live async fn' or 'ista async fn' (§3.3).`,
+      `An unmarked 'async fn' has no kind for its future to take; write 'live async fn' or 'ista async fn', or 'K async fn' generic over it (§3.3).`,
   },
   oneKindOfEither: {
     code: 5613,
     message: (holder: string) =>
-      `${holder} runs in one kind, which code that may run in either can't give it; declare the function calling it 'live' or 'ista' (§3.3).`,
+      `${holder} runs in one of the two kinds, which simple code can't give it; declare the function calling it 'live' or 'ista' (§3.3).`,
   },
   unmarkedHolds: {
     code: 5609,
     message: (holder: string, kind: string, held: string) =>
       `${holder} holds ${held}, of kind ${kind}; declare it '${kind} fn' (§3.3).`,
+  },
+  holdsBothKinds: {
+    code: 5615,
+    message: (held: string) =>
+      `${held} holds both kinds of data, live and ista, which no code may handle (§3.3).`,
+  },
+  unmarkableHolds: {
+    code: 5616,
+    message: (holder: string, kind: string, held: string, remedy: string) =>
+      `${holder} is simple code, so it can't hold ${held}, of kind ${kind}${remedy} (§3.3).`,
   },
   kindsHeld: {
     code: 5610,

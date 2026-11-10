@@ -206,7 +206,7 @@ fn main():
   it('infers K across a widened future result and disposes futures of both kinds', () => {
     expect(
       reported(`
-fn inferKind<K in Persistence>(f: fn() -> Future<Int?, K>): ()
+fn inferKind<K in Persistence>(f: Fn<(), Future<Int?, K>, K>): ()
 live fn watchLive(f: Future<Int, "live">) -> WeakRef<Future<Int, "live">>: WeakRef(f)
 ista fn main(g: ista async fn() -> Int):
   inferKind(g)

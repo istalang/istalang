@@ -27,9 +27,24 @@ import { signatureOf } from './choice.ts';
  * meet their constraints.
  */
 export function takesAsSelf(checker: CheckerContext, candidate: Candidate, type: Type): boolean {
+  const taken = selfInference(checker, candidate, type);
+  return taken !== undefined && meetsWhereFound(checker, taken.typeParameters, taken.inference);
+}
+
+/**
+ * What `candidate`'s type parameters are where its `self` takes a value of `type` as a call's
+ * receiver, whatever their constraints; undefined when it takes none.
+ */
+export function selfInference(
+  checker: CheckerContext,
+  candidate: Candidate,
+  type: Type,
+):
+  | { readonly typeParameters: readonly TypeParameter[]; readonly inference: Inference }
+  | undefined {
   const { declaration, requirement } = candidate;
   if (!isMethod(declaration)) {
-    return false;
+    return undefined;
   }
   const { typeParameters, parameters } = signatureOf(
     checker,
@@ -45,7 +60,7 @@ export function takesAsSelf(checker: CheckerContext, candidate: Candidate, type:
       binder: bindArguments,
     },
   );
-  return 'inference' in taken && meetsWhereFound(checker, typeParameters, taken.inference);
+  return 'inference' in taken ? { typeParameters, inference: taken.inference } : undefined;
 }
 
 /**

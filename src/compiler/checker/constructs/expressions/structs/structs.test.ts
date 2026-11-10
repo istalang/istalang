@@ -12,7 +12,9 @@ const declarations = 'struct S { a: Int, b: Int = 2 }';
 
 describe('a struct{…} expected as a union', () => {
   it('builds the member its fields give', async () => {
-    const text = [declarations, 'fn f() -> S | Int: struct{a: 1}', 'async fn main(): 0'].join('\n');
+    const text = [declarations, 'fn f() -> S | Int: struct{a: 1}', 'ista async fn main(): 0'].join(
+      '\n',
+    );
     expect(reported(text)).toEqual(reportedNothing);
     expect(
       await mainGives(

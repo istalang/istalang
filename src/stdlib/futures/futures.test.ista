@@ -160,7 +160,7 @@ ista async fn timeoutInTime() -> Int?:
   await limited
 
 @Suite{"futures › timeout"}
-fn timeoutSuite() -> Array<Test>: [
+ista fn timeoutSuite() -> Array<Test>: [
   ...runAndReRun("gives the value when it arrives in time", timeoutInTime, 1)
   test("gives none once the limit passes first", withClock, async fn(clock): {
     const limited = futures.timeout(Slot.create<Int>().read(), 5s)
@@ -213,7 +213,7 @@ ista async fn failingTwice() -> Outcome:
 ista async fn succeedingFirstTime() -> Outcome: await futures.retry(fn() -> Outcome: Ok(1))
 
 @Suite{"futures › retry"}
-fn retrySuite() -> Array<Test>: [
+ista fn retrySuite() -> Array<Test>: [
   test(
     "waits backoff before the first retry and twice as long before the next"
     withClock

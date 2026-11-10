@@ -27,6 +27,7 @@ import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import type { CheckedFunction, NestedFunction } from '../../surface/checked-body.ts';
 import type { Type } from '../../types/type/index.ts';
 import { errorType } from '../../types/type/primitives.ts';
+import { handledBy } from './function-scope.ts';
 
 export class FunctionScopes implements Functions {
   #stack: FunctionFrame[];
@@ -82,8 +83,11 @@ export class FunctionScopes implements Functions {
       ({ reach, captures }) =>
         reach !== undefined && !encloses(reach, declared) && !captures.has(entity.name),
     );
+    // A nested function handles what it captures (proposal 8, Rule 2).
+    const type = context.variables.typeOf(entity);
     for (const scope of capturing) {
       scope.capture(entity);
+      handledBy(context.checker, scope, type);
     }
     if (capturing.length > 0) {
       capture(context, name, entity);

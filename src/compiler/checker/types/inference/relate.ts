@@ -33,6 +33,7 @@ import { constraintOn } from '../parts/substitution.ts';
 import { parametersIn } from '../parts/type-parts.ts';
 import { isComputed } from '../type/computed-types.ts';
 import type { AnyType, ParameterKey, Type, UnionType } from '../type/index.ts';
+import type { QualifierOrder } from '../type/mark-orders.ts';
 import { isPrimitive } from '../type/primitives.ts';
 import { unionOfNormalized } from '../unions/unions.ts';
 import { givesNothing } from './equal.ts';
@@ -106,6 +107,33 @@ function boundVariables(expected: Type, found: Type, relating: Relating): boolea
     return relating.bindLower(expectedVariable, found);
   }
   return foundVariable === undefined ? undefined : relating.bindUpper(foundVariable, expected);
+}
+
+/**
+ * Whether `lower` is at or below `upper` by `order` (types/type/mark-orders.ts), a function's mark
+ * or sendability, as `relatedAsIs` relates: the variable either is bounded by the other, directed
+ * as the order is, so `"simple"` given where `M` is expected bounds it below; its bounds agree by
+ * its order (bounds.ts). The bottom given where a variable stands that can't be it bounds nothing,
+ * being below whatever it stands for: a sync function where an async one of `K` is expected. Such a
+ * variable given where the bottom is expected fits nothing it may stand for.
+ */
+export function orderedAsIs(
+  order: QualifierOrder,
+  lower: Type,
+  upper: Type,
+  relating: Relating,
+): boolean {
+  const cannotBeBottom = (variable: ParameterKey | undefined) =>
+    variable !== undefined && relating.fitting.qualifierOf(variable)?.mayBeBottom === false;
+  if (sameType(lower, order.bottom) && cannotBeBottom(variableOf(upper, relating))) {
+    return true;
+  }
+  // Nothing such a variable stands for is at or below the bottom: a `K` value where only a simple
+  // one is taken is a misfit, not a `K` settled to the bottom.
+  if (sameType(upper, order.bottom) && cannotBeBottom(variableOf(lower, relating))) {
+    return false;
+  }
+  return boundVariables(upper, lower, relating) ?? order.below(lower, upper, sameType);
 }
 
 /** Whether `type` mentions a variable of the call's. */
@@ -211,6 +239,7 @@ function partsRelation(relating: Relating): PartsRelation {
     attempt: (probe) => probe(),
     relating: relating.unfolding,
     same: relating.equal,
+    ordered: (order, lower, upper) => orderedAsIs(order, lower, upper, relating),
     fits: (found, expected) => {
       if (found.kind === 'error') {
         relating.meetError(expected);

@@ -16,7 +16,6 @@ import type { EntryTable } from '../../../../foundation/structures/entries/index
 import { sameItems } from '../../../../foundation/structures/equality.ts';
 import { memo } from '../../../../foundation/structures/memo.ts';
 import type { ModuleId } from '../../../program/program.ts';
-import { isImplicitKind } from '../../../syntax/declarations/function-kinds.ts';
 import type {
   RequiredAssociatedType,
   TraitDeclaration,
@@ -81,8 +80,7 @@ export class TypeParameters {
     this.#constraints = checker.entries.table({
       name: 'constraints',
       compute: (parameter) => {
-        // A function's kind parameter is written nowhere, so nothing constrains it.
-        const module = isImplicitKind(parameter) ? undefined : moduleOf(parameter);
+        const module = moduleOf(parameter);
         return module === undefined
           ? []
           : [
@@ -95,7 +93,7 @@ export class TypeParameters {
     this.#structConstraints = checker.entries.table({
       name: 'struct constraints',
       compute: (parameter) => {
-        const module = isImplicitKind(parameter) ? undefined : moduleOf(parameter);
+        const module = moduleOf(parameter);
         return module === undefined
           ? []
           : [

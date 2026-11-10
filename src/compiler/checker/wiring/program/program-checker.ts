@@ -51,7 +51,6 @@ import type { AnchoredSpan } from '../../../syntax/tree/positions.ts';
 import type { TypeNode } from '../../../syntax/types/index.ts';
 import type {
   CheckedConstant,
-  Disposal,
   SignatureParameter,
   TraitObjects,
   VariantMember,
@@ -81,13 +80,12 @@ import { programRootGoals } from '../../resolution/conformance/root-goals.ts';
 import { traitObjectsOf } from '../../resolution/conformance/trait-objects.ts';
 import { Annotations } from '../../rules/annotations.ts';
 import { JsonForms } from '../../rules/boundary/json-forms.ts';
-import { disposalOf } from '../../rules/disposal/disposal.ts';
 import { Expansion } from '../../rules/expansion/functions.ts';
 import type { CheckedBody } from '../../surface/checked-body.ts';
 import { type Fit, type Fitting, fitOf } from '../../types/fitting/fit/index.ts';
 import { typeKeys } from '../../types/identity/type-keys.ts';
 import { standingFor } from '../../types/inference/variables.ts';
-import { sameTypeSpelled, unaliased } from '../../types/parts/type-parts.ts';
+import { sameTypeSpelled } from '../../types/parts/type-parts.ts';
 import { resolveAnyType } from '../../types/traits/any-types.ts';
 import { memberUnionOf } from '../../types/traits/struct-keys.ts';
 import {
@@ -105,6 +103,7 @@ import { resolveTypeNode } from '../../types/written/resolve-type.ts';
 import type { TypeMatchQueries } from '../../types/written/type-match.ts';
 import { BodyChecker } from '../body/body-checker.ts';
 import type { BodyKind } from '../body/body-kinds.ts';
+import { programDisposals } from './program-disposals.ts';
 import { declaringInputs, programInputs, recordedBindings } from './program-inputs.ts';
 import { programKinds } from './program-kinds.ts';
 import { programTypeRules } from './program-type-rules.ts';
@@ -140,8 +139,8 @@ export class ProgramChecker implements CheckerContext {
   /** The module whose item, or item's type parameter, `node` is; undefined for a local one. */
   readonly #itemModuleOf: (node: NodeOf<string>) => ModuleId | undefined;
   readonly #resolvedTypes: EntryTable<CheckerNote, TypeNode, Type, ModuleId>;
-  /** Each type's disposal, by its key: finding a declared `dispose` chooses among candidates. */
-  readonly #disposals: EntryTable<CheckerNote, string, Disposal, NominalType>;
+  readonly disposalOf: CheckerContext['disposalOf'];
+  readonly disposeKindsOf: CheckerContext['disposeKindsOf'];
   readonly kindOf: CheckerContext['kindOf'];
   readonly valueKindsOf: CheckerContext['valueKindsOf'];
   readonly #functions: FunctionChecks;
@@ -177,11 +176,7 @@ export class ProgramChecker implements CheckerContext {
       compute: (node, module) => resolveTypeNode(this, module, node),
       equal: sameTypeSpelled,
     });
-    this.#disposals = entries.table({
-      name: 'disposals',
-      compute: (_key, type) => disposalOf(this, type),
-      equal: sameDisposal,
-    });
+    ({ disposalOf: this.disposalOf, disposeKindsOf: this.disposeKindsOf } = programDisposals(this));
     ({ kindOf: this.kindOf, valueKindsOf: this.valueKindsOf } = programKinds(this));
     this.#aliases = new Aliases(this, (alias) => this.#aliasModuleOf(alias));
     this.#layouts = new Layouts(this);
@@ -377,11 +372,6 @@ export class ProgramChecker implements CheckerContext {
     return this.#layouts.sharedValueOf(type);
   }
 
-  disposalOf(type: NominalType): Disposal {
-    const unspelled = unaliased(type);
-    return this.#disposals.get(this.typeKeys.spelledKey(unspelled), unspelled);
-  }
-
   declaredFieldsOf(declaration: DeclaredStruct): readonly FieldMember[] {
     return this.#layouts.declaredFieldsOf(declaration);
   }
@@ -425,9 +415,4 @@ export class ProgramChecker implements CheckerContext {
     const id = this.inputs.role(module);
     return id === undefined ? undefined : this.bindings.topLevelNamed(id, name);
   }
-}
-
-/** Whether two disposals are alike: a declared `dispose`'s by its call, the others by kind. */
-function sameDisposal(first: Disposal, second: Disposal): boolean {
-  return first === second || (first.kind !== 'function' && first.kind === second.kind);
 }

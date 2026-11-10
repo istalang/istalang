@@ -33,7 +33,7 @@ import type { ConstantForm } from './surface/constant-form.ts';
 import type { LookupQueries } from './surface/denotation.ts';
 import type { JsonFormQueries } from './surface/json-form.ts';
 import type { FunctionCall, ResolvedCall } from './surface/resolved-call.ts';
-import type { Fit } from './types/fitting/fit/index.ts';
+import type { Fit, Fitting } from './types/fitting/fit/index.ts';
 import type { TypeKeys } from './types/identity/type-keys.ts';
 import type { RestSlot } from './types/type/function-types.ts';
 import type {
@@ -59,8 +59,7 @@ export interface VariantMember {
  */
 export type Disposal =
   | { readonly kind: 'none' }
-  | { readonly kind: 'runtime' }
-  | { readonly kind: 'function'; readonly call: FunctionCall };
+  | { readonly kind: 'runtime' | 'function'; readonly call: FunctionCall };
 
 /** A top-level constant as checked: its type, and its value, unless a diagnostic said why not. */
 export interface CheckedConstant {
@@ -117,6 +116,8 @@ export interface Checker {
   readonly sharedValueOf: (type: Type) => AnonymousStructType | undefined;
   /** Who disposes a value of `type` (rules/disposal/disposal.ts). */
   readonly disposalOf: (type: NominalType) => Disposal;
+  /** The kinds of the `dispose` functions that may take `type` (rules/disposal/disposal.ts). */
+  readonly disposeKindsOf: (type: NominalType) => readonly Type[];
   /** How values of `any` types are called, read and taken apart (§3.10). */
   readonly traitObjects: TraitObjects;
   /** `_Cell<T>` for `type`, what a variable passed by `&` or captured lives in (§3.7, §3.14). */
@@ -151,6 +152,8 @@ export interface Checker {
    * when it can't.
    */
   readonly fitOf: (found: Type, expected: Type) => Fit | undefined;
+  /** What fitting decides that lowering reads: what a type parameter qualifies functions by. */
+  readonly fitting: Pick<Fitting, 'qualifierOf'>;
   /**
    * The program's rules for building types (types/type/type-rules.ts), which every substitution and
    * union built after checking, as lowering's, takes, so its types are the checker's.

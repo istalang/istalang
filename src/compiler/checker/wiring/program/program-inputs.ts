@@ -30,7 +30,6 @@ import type { Bindings, VariantEntity } from '../../../binder/entities.ts';
 import type { ModuleId, Program } from '../../../program/program.ts';
 import { isStdModule, programModule } from '../../../program/program.ts';
 import { fieldsFunctionsOf } from '../../../syntax/declarations/field-defaults.ts';
-import { kindOwnerOf } from '../../../syntax/declarations/function-kinds.ts';
 import type { EnumDeclaration, FunctionDeclaration } from '../../../syntax/declarations/index.ts';
 import {
   type Declaration,
@@ -160,15 +159,9 @@ class DeclaringModules {
    * The module declaring `declaration`, an item or a local declaration, or the type parameter of
    * either, a mapped struct type's among them (§3.1).
    */
-  readonly moduleOf = (
-    declaration: Declaration | VariableDeclaration | TypeParameter,
-  ): ModuleId => {
-    const owner = declaration.kind === 'TypeParameter' ? kindOwnerOf(declaration) : undefined;
-    return owner === undefined
-      ? (this.itemModuleOf(declaration) ??
-          memo(this.#locals, declaration, () => this.#moduleHolding(declaration)))
-      : this.moduleOf(owner);
-  };
+  readonly moduleOf = (declaration: Declaration | VariableDeclaration | TypeParameter): ModuleId =>
+    this.itemModuleOf(declaration) ??
+    memo(this.#locals, declaration, () => this.#moduleHolding(declaration));
 
   #moduleHolding(node: Declaration | VariableDeclaration | TypeParameter): ModuleId {
     for (const [id, { tree }] of this.#program.modules) {

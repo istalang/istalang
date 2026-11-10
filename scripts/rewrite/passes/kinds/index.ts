@@ -2,8 +2,9 @@
  * The pass spelling every function's kind and every future's (proposal 8, implementation note 9)
  * while no live code exists, so every program keeps its meaning:
  *
- * - every async function's head but `main`'s, and every async function type, becomes `ista async`;
- *   a lambda takes its kind from where it stands, so it is left as written;
+ * - every async function's head, `main`'s included until a host starts only live code, and every
+ *   async function type, becomes `ista async`; a lambda takes its kind from where it stands, so it
+ *   is left as written;
  * - every `Future<T>` becomes `Future<T, "ista">`, except an async head's result, which becomes
  *   `T`: the head says it gives a future (decision 15);
  * - every `ephemeral` handle becomes `live`.
@@ -30,7 +31,6 @@ import type {
   NamedType,
   TypeNode,
 } from '../../../../src/compiler/syntax/types/index.ts';
-import { entryFunction } from '../../../../src/foundation/language/well-known/index.ts';
 import { type Edit, type IstaSource, insertion, type Pass, type Rewrite } from '../../pass.ts';
 
 const kindWord = 'ista';
@@ -58,15 +58,16 @@ function rewritesAt(source: IstaSource, node: SyntaxNode): readonly Rewrite[] {
   }
 }
 
-/** `ista` before an async head's `async`, where the head has no kind and isn't `main`'s. */
+/** `ista` before an async head's `async`, where the head has no kind. */
 function headKind(
   source: IstaSource,
   node: FunctionDeclaration | FunctionType,
 ): readonly Rewrite[] {
-  if (!unkindedAsync(node.qualifiers)) {
-    return [];
-  }
-  if (node.kind === 'FunctionDeclaration' && node.name.text === entryFunction) {
+  // A head naming its mark (`K async fn`) has its kind already.
+  if (
+    !unkindedAsync(node.qualifiers) ||
+    (node.kind === 'FunctionDeclaration' && node.mark !== undefined)
+  ) {
     return [];
   }
   const asyncWord = source.tokens.find(

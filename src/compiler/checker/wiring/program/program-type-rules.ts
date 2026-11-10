@@ -61,6 +61,7 @@ import {
   type VariedDeclaration,
   varianceOf,
 } from '../../types/variance/variance.ts';
+import { programQualifiers } from './program-kinds.ts';
 
 /** An associated type asked for: its owner and its name. */
 interface Associated {
@@ -154,6 +155,7 @@ export function programTypeRules(
     ...instantiationsIn(checker),
     shapeOf: (type) => layouts.nominalShapeOf(type),
     ...futures,
+    qualifierOf: programQualifiers(checker),
     memberUnionOf: ({ declaration, within }) =>
       within ??
       (declaration.kind === 'TypeParameter' ? checker.memberUnionOf(declaration) : undefined),

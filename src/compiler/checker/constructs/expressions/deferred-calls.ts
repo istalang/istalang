@@ -31,20 +31,26 @@ import {
   calledName,
   deferredOf,
   qualifiedPath,
+  unparenthesized,
   writtenArgumentsOf,
 } from '../../../syntax/expressions/readings.ts';
 import { spanBetween } from '../../../syntax/tree/positions.ts';
 import type { BodyContext, DeferralRecord } from '../../contexts/body-context.ts';
 import type { Pass, Passes, PassTable } from '../../contexts/passes.ts';
+import type { UseSite } from '../../contexts/use-site.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
-import { kindOfCall } from '../../resolution/applying/call-kinds.ts';
+import { kindText, markMaking } from '../../resolution/applying/call-kinds.ts';
 import type { WrittenArgument } from '../../resolution/calls/resolve/index.ts';
 import type { StoppingOperand } from '../../resolution/calls/stopped-operations.ts';
 import { calledVariant } from '../../surface/named-variants.ts';
+import { sameType } from '../../types/identity/identity.ts';
 import { capturedSend } from '../../types/traits/sendable.ts';
+import { simpleMark } from '../../types/type/function-kinds.ts';
 import { functionType } from '../../types/type/function-types.ts';
 import type { Type } from '../../types/type/index.ts';
+import { dataKindOrder } from '../../types/type/mark-orders.ts';
 import { errorType, isPrimitive, neverType } from '../../types/type/primitives.ts';
+import { typeText } from '../../types/type/type-text.ts';
 import { calledValueType } from '../closures/value-calls.ts';
 import { calledValue, checkCallMade } from './calls.ts';
 import { collectedBy } from './collections/collections.ts';
@@ -69,6 +75,14 @@ export class Deferrals implements DeferralRecord {
 
   isDeferred(call: object): boolean {
     return this.#later.has(call);
+  }
+
+  /**
+   * Whether `node`, its parentheses aside, is a call a deferred call makes later, whose value is the
+   * function's making it (§3.14), not the code writing it.
+   */
+  isMadeLater(node: Expression): boolean {
+    return this.isDeferred(unparenthesized(node));
   }
 
   of(call: Expression, pass?: Pass): Type | undefined {
@@ -148,19 +162,51 @@ function deferredFunction(context: BodyContext, node: DeferredCall): WrittenArgu
     context.checker,
     computed.flatMap(({ type }) => (type.kind === 'error' ? [] : [type])),
   );
-  const mark = laterCallKind(context, deferred);
+  const mark = laterMarkOf(context, laterCallKind(context, deferred), computed);
   return given(functionType({ send, mark, parameters: [], result }), computed);
 }
 
 /**
- * The kind of what `call` calls later: a resolved function's as the call instantiates it, or a
- * function value's, which the function deferring it is of, as its desugared lambda calling only it
- * is (§3.3): code of either kind may hold it, and only what calls it is judged (Rule 4).
+ * The mark of the function making a call of kind `callee` later with what was `computed` now: a
+ * closure's body handles what it captures (proposal 8, Rule 2), so its mark is the least that
+ * allows both. A capture
+ * of the other kind than the call is refused, no mark allowing it.
+ */
+function laterMarkOf(
+  context: BodyContext,
+  callee: Type,
+  computed: readonly StoppingOperand[],
+): Type {
+  let mark = callee;
+  for (const { node, type } of computed) {
+    const joined = dataKindOrder.join([mark, ...context.checker.valueKindsOf(type)], sameType);
+    if (joined === undefined) {
+      const held = typeText(type);
+      context.report(
+        checkerDiagnostics.kindsHeld(node.span, 'a deferred call', kindText(mark), held),
+      );
+      return mark;
+    }
+    mark = joined;
+  }
+  return mark;
+}
+
+/**
+ * The least mark of what makes `call` later: of a resolved function, as the call instantiates it,
+ * one allowing its constraints' witnesses and its type arguments' values too (Rule 3); of a
+ * function value, its own, which the function deferring it is of, as its desugared lambda calling
+ * only it is (§3.3): code of either kind may hold it, and only what calls it is judged (Rule 4).
  */
 function laterCallKind(context: BodyContext, call: CallingNode): Type {
   const resolved = context.callAt(call);
   if (resolved !== undefined) {
-    return kindOfCall(context.checker, resolved);
+    const report: UseSite['report'] = (diagnosticAt) => context.report(diagnosticAt(call.span));
+    return markMaking(
+      context.checker,
+      { call: resolved, holder: 'a deferred call', report },
+      simpleMark,
+    );
   }
   const value = calledValueType(context, call);
   return value.kind === 'function' ? value.mark : context.codeKind;

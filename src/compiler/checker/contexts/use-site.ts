@@ -9,7 +9,7 @@
 
 import type { Diagnostic } from '../../../foundation/diagnostics/diagnostic.ts';
 import type { ModuleId } from '../../program/program.ts';
-import { functionTypeParametersOf } from '../../syntax/declarations/function-kinds.ts';
+import { typeParametersOf } from '../../syntax/declarations/index.ts';
 import type { AnchoredSpan } from '../../syntax/tree/positions.ts';
 import { type Witnesses, witnessCallsOf } from '../surface/resolved-call.ts';
 import { type Substitution, substitutionFor } from '../types/parts/substitution.ts';
@@ -70,7 +70,7 @@ export function useSite(checker: CheckerContext, module: ModuleId, at: AnchoredS
           at,
           declaration: witness.function,
           typeArguments: substitutionFor(
-            functionTypeParametersOf(witness.function),
+            typeParametersOf(witness.function.typeParameters),
             witness.typeArguments,
           ),
         });

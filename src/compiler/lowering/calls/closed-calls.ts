@@ -30,8 +30,7 @@ import {
 import { isOpaque } from '../../checker/types/type/computed-types.ts';
 import type { AnyType, Type } from '../../checker/types/type/index.ts';
 import { typeText } from '../../checker/types/type/type-text.ts';
-import { functionTypeParametersOf } from '../../syntax/declarations/function-kinds.ts';
-import type { FunctionDeclaration } from '../../syntax/declarations/index.ts';
+import { type FunctionDeclaration, typeParametersOf } from '../../syntax/declarations/index.ts';
 import {
   type BodyOwner,
   type FunctionInstance,
@@ -98,7 +97,7 @@ export function substitutionOfCall(call: ClosedCall): Substitution {
     return substitutionOf(call.instance);
   }
   const { required, typeArguments } = call.dispatch;
-  return substitutionFor(functionTypeParametersOf(required), typeArguments);
+  return substitutionFor(typeParametersOf(required.typeParameters), typeArguments);
 }
 
 /** A closed call of a function: its own entry's instance, and the call's binding. */

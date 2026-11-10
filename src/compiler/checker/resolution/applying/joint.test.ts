@@ -39,12 +39,14 @@ function reportedAfter(...functions: readonly string[]) {
 
 /** What checking `functions` after `imports` and the declarations above reports. */
 function reportedImporting(imports: readonly string[], ...functions: readonly string[]) {
-  return reported([...imports, ...declarations, ...functions, 'async fn main(): 0'].join('\n'));
+  return reported(
+    [...imports, ...declarations, ...functions, 'ista async fn main(): 0'].join('\n'),
+  );
 }
 
 /** What `async fn main() -> Future<String>: body` gives after the declarations above. */
 async function outcome(body: string): Promise<unknown> {
-  const source = [...declarations, 'async fn main() -> String:', `  ${body}`].join('\n');
+  const source = [...declarations, 'ista async fn main() -> String:', `  ${body}`].join('\n');
   const state = await startToEnd(testRuntime(), compiledText(source));
   return state.kind === 'finished' ? decodeJson(String(state.outcome)) : state;
 }

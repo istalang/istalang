@@ -1,24 +1,14 @@
 /**
- * The kinds' rules as the checker judges them (proposal 8, Rules 2–4, as phase K1b keeps them):
- * calls of every form judged where they are made, what a signature, a nested function's included,
- * holds, values of a kind made, and an unmarked function's kind settled at its call.
+ * The kinds' rules as the checker judges them (proposal 8, Rules 2–4): calls of every form judged
+ * where they are made, what a signature, a nested function's included, holds, and a mark
+ * parameter's kind settled at its call. What a body handles is data-kinds.test.ts's.
  */
 
 import { describe, expect, it } from 'vitest';
-import { stdProgramOf } from '../../../binder/bind.test-kit.ts';
-import { diagnosedAt } from '../../../compile.test-kit.ts';
-import { lines } from '../../../parser/parse.test-kit.ts';
-import { reported } from '../../check.test-kit.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
+import { codesOf, reportedMessages, socket } from './kinds.test-kit.ts';
 
 const codes = checkerDiagnostics;
-
-/** The codes checking `source` reports. */
-function codesOf(...source: readonly string[]): readonly number[] {
-  return reported(lines(...source)).codes;
-}
-
-const socket = 'extern live struct Socket';
 
 describe('calls between kinds', () => {
   it('judges the calls a construct makes as written ones: an operator, `in`, a template, `for`', () => {
@@ -67,21 +57,21 @@ describe('calls between kinds', () => {
     expect(codesOf(...source)).toEqual([]);
   });
 
-  it("infers an unmarked callee's kind from its argument before settling it to its caller's", () => {
+  it("infers a callee's mark from its argument before bounding it by its caller's", () => {
     const source = [
-      'async fn retry<T>(f: async fn() -> T) -> T: await f()',
+      'K async fn retry<K in Persistence, T>(f: Fn<(), Future<T, K>, K>) -> T: await f()',
       'live async fn fetchLive() -> Int: 1',
-      'async fn caller() -> Int: await retry(fetchLive)',
+      'ista async fn caller() -> Int: await retry(fetchLive)',
     ];
-    expect(codesOf(...source)).toContain(codes.unmarkedCalls.code);
+    expect(codesOf(...source)).toContain(codes.kindsMeet.code);
   });
 
-  it('says what code of either kind needs to call what needs one kind, naming no inner name', () => {
+  it('says what simple code calling what is of a kind needs, naming the callee', () => {
     const { codes: found, messages } = reportedMessages(
-      'async fn bg() -> Int: 1',
+      'ista async fn bg() -> Int: 1',
       'fn startBg(): drop bg()',
     );
-    expect(found).toEqual([codes.oneKindOfEither.code]);
+    expect(found).toContain(codes.unmarkedCalls.code);
     expect(messages.join()).toContain("'bg'");
     // `defer` takes `M in DataKind`, so simple code defers (proposal 8, Rule 10).
     expect(codesOf('fn c(): ()', 'fn w(): _ = defer c()')).toEqual([]);
@@ -107,7 +97,7 @@ describe('what code holds and makes', () => {
       'live fn b(x: (Socket, Future<Int, "ista">)): ()',
       'ista fn c(x: Future<Socket, "ista">): ()',
     ];
-    expect(codesOf(...source)).toEqual(Array.from({ length: 3 }, () => codes.kindsHeld.code));
+    expect(codesOf(...source)).toEqual(Array.from({ length: 3 }, () => codes.holdsBothKinds.code));
   });
 
   it("judges a local function's and a lambda's signature as a declared one's", () => {
@@ -143,20 +133,46 @@ describe('what code holds and makes', () => {
     ).toEqual([codes.kindsHeld.code]);
   });
 
-  it('refuses an unmarked async lambda where its code has no one kind for its future', () => {
+  it('refuses an async lambda given no kind where its code has no one kind for its future', () => {
     const source = ['fn runBg():', '  const f = async fn() -> Int: 1', '  drop f()'];
     expect(codesOf(...source)).toEqual([codes.unkindedFuture.code]);
   });
 });
 
-describe('function values and kinds', () => {
-  it('gives an unmarked function passed as an argument the kind expected of it', () => {
+describe('requirements and overloads over kinds', () => {
+  it("lets a type's own kind meet an unmarked requirement: a revertible send is disposable", () => {
     const source = [
-      'async fn two() -> Int: 2',
+      "import Revertible from 'inbox'",
+      'ista fn weak(r: Revertible<Int>) -> WeakRef<Revertible<Int>>: WeakRef(r)',
+    ];
+    expect(codesOf(...source)).toEqual([]);
+  });
+
+  it('finds two unmarked overloads taking unmarked function types swapped covariantly clashing', () => {
+    const source = [
+      'fn f(a: fn() -> Int, b: fn() -> Int?): ()',
+      'fn f(a: fn() -> Int?, b: fn() -> Int): ()',
+    ];
+    expect(codesOf(...source)).toContain(checkerDiagnostics.overloadClash.code);
+  });
+});
+
+describe('function values and kinds', () => {
+  it('gives a function generic over its kind, passed as an argument, the kind expected of it', () => {
+    const source = [
+      'K async fn two<K in Persistence>() -> Int: 2',
       'fn takesLive(f: live async fn() -> Int): _ = f',
       'ista async fn main() -> Int:',
       '  takesLive(two)',
       '  0',
+    ];
+    expect(codesOf(...source)).toEqual([]);
+  });
+
+  it('gives an async lambda written whole the kind expected of it', () => {
+    const source = [
+      'fn takesLive(f: live async fn() -> Int): ()',
+      'ista fn main(): takesLive(async fn() -> Int: 1)',
     ];
     expect(codesOf(...source)).toEqual([]);
   });
@@ -180,18 +196,12 @@ describe('kind parameters and requirements', () => {
     expect(codesOf(...source)).toEqual([]);
   });
 
-  it("gives a requirement its trait's kind parameter its signature names", () => {
+  it("takes a requirement's mark as its head writes it, its trait's kind parameter included", () => {
+    expect(
+      codesOf('trait Producer<K in Persistence> { K fn produce(self: Self) -> Future<Int, K> }'),
+    ).toEqual([]);
     expect(
       codesOf('trait Producer<K in Persistence> { fn produce(self: Self) -> Future<Int, K> }'),
-    ).toEqual([]);
+    ).toEqual([codes.unmarkedHolds.code]);
   });
 });
-
-/** The codes and messages checking `source` reports. */
-function reportedMessages(...source: readonly string[]) {
-  const { diagnostics } = diagnosedAt(stdProgramOf({ 'main.ista': lines(...source) }), 'main.ista');
-  return {
-    codes: diagnostics.map((diagnostic) => diagnostic.code),
-    messages: diagnostics.map((diagnostic) => diagnostic.message),
-  };
-}

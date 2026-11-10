@@ -35,7 +35,7 @@ import { type BoundRules, BoundStore } from './bounds.ts';
 import { equalTypes } from './equal.ts';
 import { expectedMatch, type Matching, relatingMatch } from './matching.ts';
 import { MatchNotes } from './notes.ts';
-import { convertsIntoAny, type Relating, relatedAsIs } from './relate.ts';
+import { convertsIntoAny, orderedAsIs, type Relating, relatedAsIs } from './relate.ts';
 import {
   expectedChoiceOf,
   type Settling,
@@ -142,6 +142,8 @@ export class CallSystem {
       ...fitting,
       exact: (expected, found) => this.#atomic(() => relatedAsIs(expected, found, relating)),
       same: (expected, found) => this.#atomic(() => this.#equal(expected, found)),
+      ordered: (order, lower, upper) =>
+        this.#atomic(() => orderedAsIs(order, lower, upper, relating)),
       attempt: (probe) => this.#atomic(probe),
       trial: (probe) => this.#trial(probe),
       meetsAny: (found, target) => this.#atomic(() => convertsIntoAny(target, found, relating)),
@@ -332,6 +334,7 @@ export class CallSystem {
     const fitting = this.#fitting;
     return {
       fits: (found, expected) => fitOf(found, expected, fitting) !== undefined,
+      orderOf: (parameter) => fitting.qualifierOf(parameter)?.order,
       takesShape: (target, shape) => takesShape(target, shape, fitting),
       same: sameType,
       isOpen: (type) => this.mentionsVariable(type),

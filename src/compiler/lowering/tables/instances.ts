@@ -26,15 +26,14 @@ import type { ValueSite } from '../../checker/surface/checked-body.ts';
 import type { Witnesses } from '../../checker/surface/resolved-call.ts';
 import type { TypeKeys } from '../../checker/types/identity/type-keys.ts';
 import { type Substitution, substitutionFor } from '../../checker/types/parts/substitution.ts';
-import { simpleMark } from '../../checker/types/type/function-kinds.ts';
-import type { FunctionType, Type } from '../../checker/types/type/index.ts';
-import { literalType, markType } from '../../checker/types/type/primitives.ts';
-import type { ModuleId } from '../../program/program.ts';
 import {
-  functionTypeParametersOf,
-  isImplicitKind,
-  isKindParameter,
-} from '../../syntax/declarations/function-kinds.ts';
+  isMarkParameter,
+  type QualifierLookup,
+  simpleMark,
+} from '../../checker/types/type/function-kinds.ts';
+import type { FunctionType, Type } from '../../checker/types/type/index.ts';
+import { literalType } from '../../checker/types/type/primitives.ts';
+import type { ModuleId } from '../../program/program.ts';
 import { type FunctionDeclaration, typeParametersOf } from '../../syntax/declarations/index.ts';
 import type { Expression, FieldHeader, Lambda } from '../../syntax/expressions/index.ts';
 import type { VariableDeclaration } from '../../syntax/statements/index.ts';
@@ -102,18 +101,18 @@ export function ownerSubstitution(owner: BodyOwner): Substitution {
 
 /**
  * The instance of `declaration` that nothing calls in code of a kind, with its `written` type
- * arguments: a start, which a host runs as live code (§9), or a conversion's own function, whose
- * code is the same in either kind. An unmarked one's implicit kind is `live`, and a mark parameter
+ * arguments: a start, which a host runs (§9), or a conversion's own function. A mark parameter
  * left unwritten (`M in DataKind`) is `"simple"`: a conversion's converter is simple code.
  */
 export function rootInstance(
+  lookup: QualifierLookup,
   declaration: FunctionDeclaration,
   written: readonly Type[] = [],
 ): FunctionInstance {
-  const rest = functionTypeParametersOf(declaration)
+  const rest = typeParametersOf(declaration.typeParameters)
     .slice(written.length)
-    .filter(isKindParameter)
-    .map((parameter) => (isImplicitKind(parameter) ? markType('live') : simpleMark));
+    .filter((parameter) => isMarkParameter(lookup, parameter))
+    .map(() => simpleMark);
   return { declaration, typeArguments: [...written, ...rest], witnesses: new Map() };
 }
 
@@ -121,7 +120,10 @@ export function rootInstance(
 export function substitutionOf(
   instance: Pick<FunctionInstance, 'declaration' | 'typeArguments'>,
 ): Substitution {
-  return substitutionFor(functionTypeParametersOf(instance.declaration), instance.typeArguments);
+  return substitutionFor(
+    typeParametersOf(instance.declaration.typeParameters),
+    instance.typeArguments,
+  );
 }
 
 /**

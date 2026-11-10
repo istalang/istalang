@@ -60,7 +60,7 @@ import { typeText } from '../../types/type/type-text.ts';
 import { callMade } from '../choosing/calls-made.ts';
 import { type Application, type Choice, type Signature, signatureOf } from '../choosing/choice.ts';
 import { admitting } from './admits.ts';
-import { chooseWitness, chooseWitnessAmong } from './declared-witness.ts';
+import { chooseWitness, chooseWitnessAmong, instanceMeetsKind } from './declared-witness.ts';
 import { type Derivation, derivationOf } from './derived-traits.ts';
 import { kindsSettledAt } from './kind-settling.ts';
 import {
@@ -179,7 +179,7 @@ export function settlingAt(
   const admits = admitting(site.checker, silentMeets(site, search));
   return kindsSettledAt(
     site,
-    typeParameters,
+    signature,
     settlingOf(site.checker, declaration, typeParameters, admits),
   );
 }
@@ -351,8 +351,8 @@ function throughMembers(
   const index = requiredFunctions(constraint.trait).indexOf(declaration);
   const signature = signatureOf(checker, declaration, constraintSubstitution(constraint, type));
   const candidate = membersCall(checker.typeRules, union, through, { declaration, member: index });
-  const choice = chooseWitnessAmong(checker, [candidate], signature);
-  const witness = witnessChosen(site, choice, signature, search);
+  const choice = chooseWitnessAmong(checker, type, [candidate], signature);
+  const witness = witnessChosen(site, choice, { type, signature }, search);
   if (witness.kind === 'call') {
     return witness.call;
   }
@@ -418,13 +418,14 @@ function witnessOf(
   search: Search,
 ): WitnessOutcome {
   const signature = signatureOf(site.checker, required.declaration, required.substitution);
-  return witnessChosen(site, chooseWitness(site.checker, type, signature), signature, search);
+  const choice = chooseWitness(site.checker, type, signature);
+  return witnessChosen(site, choice, { type, signature }, search);
 }
 
 function witnessChosen(
   site: UseSite,
   choice: Choice,
-  signature: Signature,
+  { type, signature }: { readonly type: Type; readonly signature: Signature },
   search: Search,
 ): WitnessOutcome {
   if (choice.kind === 'none') {
@@ -451,5 +452,8 @@ function witnessChosen(
   if (!(mentionsError(required) || sameType(result, required))) {
     return { kind: 'wrongResult', required, given: result };
   }
-  return { kind: 'call', call: callMade(application, instantiation) };
+  const call = callMade(application, instantiation);
+  return instanceMeetsKind(site.checker, signature, call, type)
+    ? { kind: 'call', call }
+    : { kind: 'none' };
 }

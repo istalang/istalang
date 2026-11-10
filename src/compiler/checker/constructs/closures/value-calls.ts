@@ -139,12 +139,15 @@ export function checkValueCall(
   }
   context.valueCalls.record(call.node);
   if (calleeType.kind === 'function') {
-    checkCallKind(context, {
-      at: call.node.span,
-      frame: context.functions.current,
-      calleeKind: calleeType.mark,
-      callee: valueNamed(callee),
-    });
+    // A deferred call is made later, by the function its taker is given (deferred-calls.ts).
+    if (!context.deferrals.isDeferred(call.node)) {
+      checkCallKind(context, {
+        at: call.node.span,
+        frame: context.functions.current,
+        calleeKind: calleeType.mark,
+        callee: valueNamed(callee),
+      });
+    }
   } else {
     context.report(
       insideOptional(callee.span, calleeType, '(') ??

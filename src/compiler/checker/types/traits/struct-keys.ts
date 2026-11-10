@@ -21,7 +21,6 @@
  */
 
 import { compareOrdered } from '../../../../foundation/language/order.ts';
-import { isKindParameter } from '../../../syntax/declarations/function-kinds.ts';
 import type { TypeParameter } from '../../../syntax/declarations/index.ts';
 import type { Expression } from '../../../syntax/expressions/index.ts';
 import { unparenthesized } from '../../../syntax/expressions/readings.ts';
@@ -142,11 +141,6 @@ function mappedKeys(checker: CheckerContext, holding: StructType, union: Type): 
  */
 export function memberUnionOf(checker: CheckerContext, parameter: TypeParameter): Type | undefined {
   if (parameter.memberOf === undefined) {
-    return undefined;
-  }
-  // A kind parameter infers as any other; that it stands for one kind is judged where it is
-  // instantiated (types/fitting/member-arguments.ts), so code of either kind is told what it needs.
-  if (isKindParameter(parameter)) {
     return undefined;
   }
   if (namesMemberParameter(checker, parameter)) {

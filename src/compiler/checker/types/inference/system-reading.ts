@@ -6,6 +6,7 @@
 
 import type { Fitting } from '../fitting/fit/index.ts';
 import { fitOf } from '../fitting/fit/index.ts';
+import { sameType } from '../identity/identity.ts';
 import { type Substitution, substitute } from '../parts/substitution.ts';
 import { parametersIn } from '../parts/type-parts.ts';
 import { declaresDefault } from '../type/field-defaults.ts';
@@ -98,8 +99,11 @@ export function tentativeOf(variable: ParameterKey, reading: SystemReading): Typ
     const fixedLower = lower.map((bound) => ({ ...bound, type: fixedIn(bound.type, reading) }));
     return reading.join(variable, fixedLower, upper);
   }
+  const order = reading.fitting.qualifierOf(variable)?.order;
   const fits = (found: Type, expected: Type) =>
-    fitOf(found, expected, reading.fitting) !== undefined;
+    order === undefined
+      ? fitOf(found, expected, reading.fitting) !== undefined
+      : order.below(found, expected, sameType);
   return upper.find((bound) => upper.every((other) => fits(bound.type, other.type)))?.type;
 }
 
@@ -355,6 +359,7 @@ export function settlingViewOf(
     isAtTop: (parameter) => atTop.has(parameter),
     callOf: reading.callOf,
     fits: (found, expected) => fitOf(found, expected, fitting) !== undefined,
+    qualifierOf: fitting.qualifierOf,
     takesShape: (target, shape) => takesShape(target, shape, fitting),
     join: reading.join,
     fallbackOf: reading.fallbackOf,

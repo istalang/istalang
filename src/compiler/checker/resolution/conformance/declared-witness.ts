@@ -12,10 +12,13 @@
  */
 
 import type { CheckerContext } from '../../contexts/context.ts';
+import type { ResolvedCall } from '../../surface/resolved-call.ts';
+import { sameType } from '../../types/identity/identity.ts';
 import { constraintSubstitution, requiredFunctions } from '../../types/traits/constraints.ts';
-import { kindOfFunction, meetsRequirementKind } from '../../types/type/function-kinds.ts';
+import { isMarkVariable, isSimpleMark, kindOfFunction } from '../../types/type/function-kinds.ts';
 import type { Constraint, Type } from '../../types/type/index.ts';
 import { baseOf } from '../../types/unions/union-members.ts';
+import { kindOfCall } from '../applying/call-kinds.ts';
 import type { CallArgument } from '../choosing/call-arguments.ts';
 import { type Candidate, witnessCandidates } from '../choosing/candidates.ts';
 import { type Choice, chooseAsValue, type Signature, signatureOf } from '../choosing/choice.ts';
@@ -47,21 +50,26 @@ export function chooseWitness(checker: CheckerContext, type: Type, required: Sig
     required: required.declaration,
     parameterTypes,
   });
-  return chooseWitnessAmong(checker, candidates, required);
+  return chooseWitnessAmong(checker, type, candidates, required);
 }
 
 /**
  * `chooseWitness` among `candidates`, as a witness is chosen wherever they come from: only those
- * whose kind may meet the requirement's (`meetsRequirementKind`).
+ * whose kind may meet the requirement's (`meetsRequirementKind`); one generic over its mark is
+ * judged once its instantiation is chosen (conformance.ts).
  */
 export function chooseWitnessAmong(
   checker: CheckerContext,
+  type: Type,
   given: readonly Candidate[],
   required: Signature,
 ): Choice {
-  const candidates = given.filter(({ declaration }) =>
-    meetsRequirementKind(required.kind(), kindOfFunction(checker, declaration)),
-  );
+  const candidates = given.filter(({ declaration }) => {
+    const kind = kindOfFunction(checker, declaration);
+    return (
+      isMarkVariable(checker, kind) || meetsRequirementKind(checker, required.kind(), kind, type)
+    );
+  });
   const callArguments = required.parameters.map(
     ({ type: each, reference }): CallArgument => ({
       type: !reference && each.kind === 'literal' ? baseOf(each) : each,
@@ -70,4 +78,38 @@ export function chooseWitnessAmong(
     }),
   );
   return chooseAsValue(checker, candidates, callArguments);
+}
+
+/**
+ * Whether `call`, a witness chosen and instantiated to meet `required` for `self`, meets its kind
+ * as the instantiation makes its mark: what one generic over its mark is decided only here.
+ */
+export function instanceMeetsKind(
+  checker: CheckerContext,
+  required: Signature,
+  call: ResolvedCall,
+  self: Type,
+): boolean {
+  return meetsRequirementKind(checker, required.kind(), kindOfCall(checker, call), self);
+}
+
+/**
+ * Whether a witness of kind `given` meets a requirement of kind `required`, the requirement's as
+ * its conformance instantiates it, for `self`, the type meeting it (proposal 8, Rule 4): a simple
+ * witness meets any, one of the requirement's kind meets it, and an unmarked requirement is met by
+ * a witness of the kind `self`'s values are of, which handles that type's own data: `Socket`'s
+ * `live fn dispose` meets `Disposable`'s unmarked one. A requirement of a kind is met by nothing of
+ * the other, whatever `self` holds.
+ */
+function meetsRequirementKind(
+  checker: Pick<CheckerContext, 'valueKindsOf'>,
+  required: Type,
+  given: Type,
+  self: Type,
+): boolean {
+  return (
+    isSimpleMark(given) ||
+    sameType(given, required) ||
+    (isSimpleMark(required) && checker.valueKindsOf(self).some((kind) => sameType(kind, given)))
+  );
 }

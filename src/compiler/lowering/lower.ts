@@ -78,7 +78,7 @@ export interface Suite {
 export function lowerTests(checker: Checker, suites: readonly Suite[]): Definition {
   const tables = new DefinitionTables(checker);
   const indexOf = (declaration: FunctionDeclaration) =>
-    tables.functionIndex(rootInstance(declaration));
+    tables.functionIndex(rootInstance(checker, declaration));
   const runner = (name: string) =>
     checker.languageFunctions(languageModules.testing, name)[0] ??
     unreachable(`The testing module declares no '${name}'.`);

@@ -43,13 +43,14 @@ struct _Entry:
   listed: Listed
   body: ista async fn() -> Unit
 
-# Every test of `suite`, depth first, titled under `title`, the suite's.
-M fn _list<M in DataKind>(suite: Fn<(), Array<Test>, M>, title: String) -> Array<Listed>: [
+# Every test of `suite`, depth first, titled under `title`, the suite's. The listing runs in an
+# instance, so a suite may be ista code: one building tests over ista setups instantiates them.
+ista fn _list(suite: ista fn() -> Array<Test>, title: String) -> Array<Listed>: [
   for entry in _entries(title, suite(), false, false): entry.listed
 ]
 
 # Runs test `position` of `suite`, once sure its listing still puts `expected` there (§10).
-ista async fn _run(suite: fn() -> Array<Test>, title: String, position: Int, expected: String):
+ista async fn _run(suite: ista fn() -> Array<Test>, title: String, position: Int, expected: String):
   const entry = _entries(title, suite(), false, false).at(position)
   if entry is _Entry as found and found.listed.title == expected: await found.body()
   else:
@@ -87,12 +88,13 @@ extern fn dispose<F>(self: Mock<F>)
 extern fn _mock<F>(target: F, replacement: F) -> Mock<F>
 extern fn _calls<F, A>(self: Mock<F>) -> Array<A>
 
-fn mock<...A, R>(target: fn(...A) -> R, replacement: fn(...A) -> R) -> Mock<fn(...A) -> R>:
+# Holding them calls neither, so code of every mark mocks a function of any (proposal 8, Rule 3).
+fn mock<...A, R, M in DataKind = "simple">(target: Fn<A, R, M>, replacement: Fn<A, R, M>) -> Mock<Fn<A, R, M>>:
   _mock(target, replacement)
 
 # The arguments of every call so far, oldest first, a tuple per call: `(x,)` for a function of one
 # parameter, and `()`, the unit, for one of none.
-fn calls<...A, R>(self: Mock<fn(...A) -> R>) -> Array<A>: _calls(self)
+fn calls<...A, R, M in DataKind = "simple">(self: Mock<Fn<A, R, M>>) -> Array<A>: _calls(self)
 
 # Where an instance stands, as its last commit says (§10).
 enum InstanceState:
@@ -206,14 +208,16 @@ ista async fn _panicOf<R is Sendable>(instance: Instance<R>) -> String:
 # `time.now` and `time.at`.
 struct FakeClock:
   start: Time
-  _state: _Clock = new _Clock{now: start}
-  now: fn() -> Time = fn(): _state->now
+  _time: Shared<Time> = new Shared<Time>{value: start}
+  _state: _Clock = new _Clock{time: _time}
+  now: fn() -> Time = fn(): _time->value
   at: ista fn(Time) -> Future<Unit, "ista"> = fn(deadline: Time): _waitUntil(_state, deadline)
 
 # A fake clock's time, and the waits it fills as it passes their deadlines: ordered by deadline,
-# ties in the order they began, so it fills them in that order.
+# ties in the order they began, so it fills them in that order. Its time is simple data, apart from
+# its waits, so `now` fakes a simple extern (proposal 8, Rule 2).
 shared struct _Clock:
-  now: Time
+  time: Shared<Time>
   waits: Array<_Wait> = []
 
 struct _Wait:
@@ -230,9 +234,8 @@ ista fn _waitUntil(clock: _Clock, deadline: Time) -> Future<Unit, "ista">:
 # Moves the clock forward by `by`, filling every wait whose deadline it passes (§10).
 ista fn advance(self: FakeClock, by: Duration):
   if by < Duration{value: 0}: panic("A fake clock only moves forward, not by " + by + ".")
-  const clock = self._state
-  clock->now = clock->now + by
-  _fillDue(clock)
+  self._time->value = self._time->value + by
+  _fillDue(self._state)
 
 # A setup installing a `FakeClock` starting at 0 as `time.now` and `time.at` (§10).
 ista async fn withClock(body: ista async fn(FakeClock) -> Unit):
@@ -243,57 +246,66 @@ ista async fn withClock(body: ista async fn(FakeClock) -> Unit):
 
 # Fills every wait whose deadline the clock has reached, in order, and lets go of them.
 ista fn _fillDue(clock: _Clock):
-  const (due, later) = _splitDue(clock->waits, clock->now)
+  const (due, later) = _splitDue(clock->waits, clock->time->value)
   clock->waits = later
   for each in due: drop each.slot.put(())
 
 # `waits` split at `time`: those due by then, and the later ones, each in their order.
-fn _splitDue(waits: Array<_Wait>, time: Time) -> (Array<_Wait>, Array<_Wait>):
+ista fn _splitDue(waits: Array<_Wait>, time: Time) -> (Array<_Wait>, Array<_Wait>):
   const due = [for each in waits if each.deadline <= time: each]
   const later = [for each in waits if each.deadline > time: each]
   (due, later)
 
 # A host's queues of type `Q` carrying `T`, one per key, each faked with an inbox (§10). Its fields
-# replace the program's externs: `open` a queue factory, `send` and `receive` a queue's own.
+# replace the program's externs: `open` a queue factory, `send` and `receive` a queue's own. Which
+# queue a key opened is simple data, so `open` fakes a simple extern; a queue's inbox is ista data,
+# made the first time ista code reaches it (proposal 8, Rule 2).
 struct FakeQueue<Q, T, K = String>:
   make: fn() -> Q
-  _queues: _Queues<Q, T, K> = new _Queues<Q, T, K>{}
-  open: fn(K) -> Q = fn(key: K): _opened(_queues, make, key).queue
-  send: ista fn(Q, T) -> Unit = fn(queue: Q, message: T): _inboxOf(_queues, queue).send(message)
-  receive: ista fn(Q) -> Future<T, "ista"> = fn(queue: Q): _inboxOf(_queues, queue).receive()
+  _opened: _Opened<Q, K> = new _Opened<Q, K>{}
+  _inboxes: _Inboxes<Q, T> = new _Inboxes<Q, T>{}
+  open: fn(K) -> Q = fn(key: K): _queueOf(_opened, make, key)
+  send: ista fn(Q, T) -> Unit = fn(queue: Q, message: T): _inboxOf(_inboxes, _opened, queue).send(message)
+  receive: ista fn(Q) -> Future<T, "ista"> = fn(queue: Q): _inboxOf(_inboxes, _opened, queue).receive()
 
-shared struct _Queues<Q, T, K>:
-  opened: Array<_Queue<Q, T, K>> = []
+shared struct _Opened<Q, K>:
+  keys: Array<K> = []
+  queues: Array<Q> = []
 
-struct _Queue<Q, T, K>:
-  key: K
-  queue: Q
-  inbox: Inbox<T>
+shared struct _Inboxes<Q, T>:
+  queues: Array<Q> = []
+  inboxes: Array<Inbox<T>> = []
 
 # The messages waiting in the queue of `key`, oldest first.
 ista fn pending<Q, T, K>(self: FakeQueue<Q, T, K>, key: K) -> Array<T>:
-  _opened(self._queues, self.make, key).inbox.pending()
+  _inboxOf(self._inboxes, self._opened, _queueOf(self._opened, self.make, key)).pending()
 
 # Sends `message` into the queue of `key`.
 ista fn post<Q, T, K>(self: FakeQueue<Q, T, K>, key: K, message: T):
-  _opened(self._queues, self.make, key).inbox.send(message)
+  _inboxOf(self._inboxes, self._opened, _queueOf(self._opened, self.make, key)).send(message)
 
 # Sends `message` into `queue` revertibly, for a program's own revertible send to answer with.
 ista fn sendRevertible<Q, T, K>(self: FakeQueue<Q, T, K>, queue: Q, message: T) -> Revertible<T>:
-  _inboxOf(self._queues, queue).sendRevertible(message)
+  _inboxOf(self._inboxes, self._opened, queue).sendRevertible(message)
 
 # The queue of `key`, made the first time.
-M fn _opened<Q, T, K, M in DataKind>(queues: _Queues<Q, T, K>, make: Fn<(), Q, M>, key: K) -> _Queue<Q, T, K>:
-  for each in queues->opened:
-    if each.key == key: return each
-  const made = _Queue{key, queue: make(), inbox: Inbox.create<T>()}
-  queues->opened.push(made)
+fn _queueOf<Q, K>(opened: _Opened<Q, K>, make: fn() -> Q, key: K) -> Q:
+  for index in 0..opened->keys.length():
+    if opened->keys[index] == key: return opened->queues[index]
+  const made = make()
+  opened->keys.push(key)
+  opened->queues.push(made)
   made
 
-fn _inboxOf<Q, T, K>(queues: _Queues<Q, T, K>, queue: Q) -> Inbox<T>:
-  for each in queues->opened:
-    if each.queue == queue: return each.inbox
-  panic("This FakeQueue didn't open the queue it was given.")
+# The inbox of `queue`, one of those `opened` holds, made the first time.
+ista fn _inboxOf<Q, T, K>(inboxes: _Inboxes<Q, T>, opened: _Opened<Q, K>, queue: Q) -> Inbox<T>:
+  for index in 0..inboxes->queues.length():
+    if inboxes->queues[index] == queue: return inboxes->inboxes[index]
+  if not (queue in opened->queues): panic("This FakeQueue didn't open the queue it was given.")
+  const made = Inbox.create<T>()
+  inboxes->queues.push(queue)
+  inboxes->inboxes.push(made)
+  made
 
 # The receipts of a host's revertible sends, of extern type `R` (§3.6, §10): `revertibleSender(queues)`
 # replaces a revertible send into `queues`, and `dispose` replaces `R`'s `dispose`, retracting the
@@ -301,26 +313,28 @@ fn _inboxOf<Q, T, K>(queues: _Queues<Q, T, K>, queue: Q) -> Inbox<T>:
 struct FakeReceipts<R>:
   make: fn() -> R
   _entries: _Receipts<R> = new _Receipts<R>{}
-  dispose: fn(R) -> Unit = fn(receipt: R): _disposeReceipt(_entries, receipt)
+  dispose: ista fn(R) -> Unit = fn(receipt: R): _disposeReceipt(_entries, receipt)
 
 shared struct _Receipts<R>:
   held: Array<_Receipt<R>> = []
 
 struct _Receipt<R>:
   receipt: R
-  retract: fn() -> Unit
+  retract: ista fn() -> Unit
 
 # A replacement for a host's revertible send into `queues`, returning a receipt `self.make` builds.
-ista fn revertibleSender<R, Q, T, K>(self: FakeReceipts<R>, queues: FakeQueue<Q, T, K>) -> fn(Q, T) -> R:
-  fn sendInto(queue: Q, message: T) -> R:
+# Retracting a message writes its queue's inbox, so the replacement and the receipt's `dispose` are
+# ista code.
+ista fn revertibleSender<R, Q, T, K>(self: FakeReceipts<R>, queues: FakeQueue<Q, T, K>) -> ista fn(Q, T) -> R:
+  ista fn sendInto(queue: Q, message: T) -> R:
     const receipt = (self.make)()
     const held = new Shared<Revertible<T>?>{value: queues.sendRevertible(queue, message)}
-    fn retract(): held->value = none
+    ista fn retract(): held->value = none
     self._entries->held.push(_Receipt{receipt, retract})
     receipt
   sendInto
 
-fn _disposeReceipt<R>(entries: _Receipts<R>, receipt: R):
+ista fn _disposeReceipt<R>(entries: _Receipts<R>, receipt: R):
   let remaining: Array<_Receipt<R>> = []
   for each in entries->held:
     if each.receipt == receipt: (each.retract)()

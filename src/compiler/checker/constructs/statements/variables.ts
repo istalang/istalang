@@ -43,14 +43,19 @@ export class VariableScope implements Variables {
   readonly #targets: PassTable<TargetOwner, readonly TargetBinding[]>;
   readonly #assigned: PassTable<Assignment, readonly AssignedPart[]>;
 
-  constructor(passes: Passes) {
+  /** What is told of each type a name is declared at: what the function declaring it handles. */
+  readonly #handles: (type: Type) => void;
+
+  constructor(passes: Passes, handles: (type: Type) => void = () => undefined) {
     this.#types = passes.table();
     this.#targets = passes.table();
     this.#assigned = passes.table();
+    this.#handles = handles;
   }
 
   declare(name: Identifier, type: Type): void {
     this.#types.set(name, type);
+    this.#handles(type);
   }
 
   /** Declares a parameter's name, if it has one; its pattern's are declared as targets are. */

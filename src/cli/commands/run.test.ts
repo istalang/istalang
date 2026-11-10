@@ -23,13 +23,13 @@ describe('ista run', () => {
   });
 
   it('prints a struct outcome as an object keyed by field name', async () => {
-    const text = 'struct P { x: Int, y: String }\nasync fn main(): P{y: "b", x: 1}\n';
+    const text = 'struct P { x: Int, y: String }\nista async fn main(): P{y: "b", x: 1}\n';
     const run = await ista(project({ 'main.ista': text }), 'run', 'main.ista');
     expect(run).toEqual({ code: 0, out: '{"x":1,"y":"b"}\n', err: '' });
   });
 
   it('prints a float JSON cannot hold as null, as JavaScript does', async () => {
-    const text = 'async fn main(): 1e308 * 10.0\n';
+    const text = 'ista async fn main(): 1e308 * 10.0\n';
     const run = await ista(project({ 'main.ista': text }), 'run', 'main.ista');
     expect(run).toEqual({ code: 0, out: 'null\n', err: '' });
   });
@@ -37,7 +37,7 @@ describe('ista run', () => {
   it('writes each committed log record to the error stream as a line of JSON', async () => {
     const text = [
       "import * as log from 'log'",
-      'async fn main() -> Int:',
+      'ista async fn main() -> Int:',
       '  log.warn("careful", struct{n: 2})',
       '  1',
     ].join('\n');
@@ -54,7 +54,7 @@ describe('ista run', () => {
 
   it('reports warnings on the error stream and still runs', async () => {
     const run = await ista(
-      project({ 'main.ista': 'async fn main():\n  let x = 1\n  x\n' }),
+      project({ 'main.ista': 'ista async fn main():\n  let x = 1\n  x\n' }),
       'run',
       'main.ista',
     );
@@ -65,7 +65,7 @@ describe('ista run', () => {
 
   it('runs nothing when the program has errors, reporting them', async () => {
     const run = await ista(
-      project({ 'main.ista': 'async fn main():\n  1 - "a"\n' }),
+      project({ 'main.ista': 'ista async fn main():\n  1 - "a"\n' }),
       'run',
       'main.ista',
     );
@@ -76,9 +76,9 @@ describe('ista run', () => {
 
   it.each([
     ['no main at all', 'fn helper() -> Int: 1\n'],
-    ['a generic main', 'async fn main<T>(): 1\n'],
+    ['a generic main', 'ista async fn main<T>(): 1\n'],
     ['a main that is not async', 'fn main() -> Int: 1\n'],
-    ['a main that takes parameters', 'async fn main(n: Int): n\n'],
+    ['a main that takes parameters', 'ista async fn main(n: Int): n\n'],
   ])('refuses an entry with %s', async (_case, text) => {
     const run = await ista(project({ 'main.ista': text }), 'run', 'main.ista');
     expect(run).toEqual({

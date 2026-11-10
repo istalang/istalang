@@ -22,9 +22,11 @@
  * read with what is settled; those mentioning each other are settled in the order declared.
  */
 
+import { sameType } from '../identity/identity.ts';
 import { noSubstitution, type Substitution, substitute } from '../parts/substitution.ts';
 import { parametersIn } from '../parts/type-parts.ts';
 import type { ParameterKey, Type } from '../type/index.ts';
+import type { QualifierParameter } from '../type/mark-orders.ts';
 import { errorType } from '../type/primitives.ts';
 import type { TypeRules } from '../type/type-rules.ts';
 import {
@@ -62,6 +64,12 @@ export interface SettlingView {
   /** The call `parameter` is one of the variables of, which its bounds are read against. */
   readonly callOf: (parameter: ParameterKey) => CallVariables | undefined;
   readonly fits: (found: Type, expected: Type) => boolean;
+  /**
+   * What a variable standing for a mark or a sendability qualifies by: the order its bounds fit by
+   * instead (types/type/mark-orders.ts), which `join` joins them by too, and whether it may be the
+   * order's bottom.
+   */
+  readonly qualifierOf: (parameter: ParameterKey) => QualifierParameter | undefined;
   /** Whether `target`, a struct its fields give, takes a struct literal of shape `shape` (§3.1). */
   readonly takesShape: (target: Type, shape: Type) => boolean;
   readonly join: (
@@ -196,9 +204,10 @@ export function waitedOn(
 export function settleOne(
   parameter: ParameterKey,
   settled: Substitution,
-  view: SettlingView,
+  general: SettlingView,
   settling: Settling,
 ): Type | undefined {
+  const view = viewFor(parameter, general);
   const related = withRelatives(
     closedBounds(view.boundsOf(parameter), settled, view.rules),
     view.relatedOf(parameter),
@@ -210,12 +219,19 @@ export function settleOne(
   const bounds = isTaken
     ? { ...related, lower: related.lower.filter(({ isApart }) => isApart !== true) }
     : related;
-  // An equality the expected type advises is rule 2's to choose, as an upper bound.
+  const qualifier = view.qualifierOf(parameter);
+  const least = qualifier?.order.settlesLeast === true ? qualifier : undefined;
+  // An equality the expected type advises is rule 2's to choose, as an upper bound. A mark takes the
+  // least its bounds allow instead (proposal 8, Rule 3): what consumes it only bounds it.
   const decide = (of: VariableBounds) =>
     (of.equal === undefined || isAdvice(of.equal) ? undefined : of.equal.type) ??
-    (view.isAtTop(parameter) ? undefined : expectedChoice(parameter, of, view, settling)) ??
+    (view.isAtTop(parameter) || least !== undefined
+      ? undefined
+      : expectedChoice(parameter, of, view, settling)) ??
     lowerJoin(parameter, of, view) ??
-    upperChoice(of, view);
+    (least === undefined
+      ? upperChoice(of, view)
+      : leastAllowed(of, least, view, (type) => settling.admits(parameter, type)));
   return (
     decide(bounds) ??
     decide(requirementsOf(bounds)) ??
@@ -266,7 +282,35 @@ export function expectedChoiceOf(
     return undefined;
   }
   const bounds = closedBounds(view.boundsOf(parameter), settled, view.rules);
-  return expectedChoice(parameter, bounds, view, settling);
+  return expectedChoice(parameter, bounds, viewFor(parameter, view), settling);
+}
+
+/** `view` as `parameter`'s bounds are read: fitting by its order where it has one. */
+function viewFor(parameter: ParameterKey, view: SettlingView): SettlingView {
+  const order = view.qualifierOf(parameter)?.order;
+  return order === undefined
+    ? view
+    : { ...view, fits: (found, expected) => order.below(found, expected, sameType) };
+}
+
+/**
+ * The least member a mark variable with no lower bound may be below its upper bounds: its order's
+ * bottom where it may be that, else what the expected type equates it to, as a function named as a
+ * value has its mark fixed where it is used (proposal 8, Rule 3), else an upper bound the others
+ * take, as `"ista"` is the only `K in Persistence` at most `"ista"`; undefined where none is.
+ */
+function leastAllowed(
+  bounds: VariableBounds,
+  { order, mayBeBottom }: QualifierParameter,
+  view: SettlingView,
+  admits: (type: Type) => boolean,
+): Type | undefined {
+  const candidates = [
+    ...(mayBeBottom ? [order.bottom] : []),
+    ...(bounds.equal === undefined ? [] : [bounds.equal.type]),
+    ...bounds.upper.map(({ type }) => type).filter((type) => !sameType(type, order.bottom)),
+  ];
+  return candidates.find((candidate) => agreesWith(candidate, bounds, view) && admits(candidate));
 }
 
 /**

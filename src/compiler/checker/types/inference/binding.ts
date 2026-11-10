@@ -100,12 +100,22 @@ export class VariableBinding {
     );
   }
 
-  /** The type `lower` bounds of `variable` join to (fillings.ts). */
+  /**
+   * The type `lower` bounds of `variable` join to (fillings.ts), by its order where it stands for a
+   * mark or a sendability (types/type/mark-orders.ts).
+   */
   join(
     variable: ParameterKey,
     lower: readonly LowerBound[],
     upper: readonly Bound[],
   ): Type | undefined {
+    const order = this.#target.fitting.qualifierOf(variable)?.order;
+    if (order !== undefined) {
+      return order.join(
+        lower.map(({ type }) => type),
+        sameType,
+      );
+    }
     const isMember = this.#memberUnionOf(variable) !== undefined;
     return joinedLower(isMember, lower, upper, this.#target.joining);
   }

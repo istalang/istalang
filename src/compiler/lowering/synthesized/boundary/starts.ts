@@ -168,7 +168,7 @@ export function startEntry(
   };
   const header = tables.declarationHeader(target);
   if (target.kind === 'FunctionDeclaration') {
-    const entry = instanceLowering(lowering, rootInstance(target), header);
+    const entry = instanceLowering(lowering, rootInstance(checker, target), header);
     const body = writtenBodyOf(checker.program, checker.moduleOf(target), target);
     if (entry === undefined || body === undefined) {
       unreachable('A startable function has no body.');

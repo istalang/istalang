@@ -38,7 +38,7 @@ const program = compiledText(
     '  const approved = await approval(order.id)',
     '  if approved: order.id + " " + String(first) + "/" + String(seed) else: "no"',
     '',
-    'async fn main(): 0',
+    'ista async fn main(): 0',
   ].join('\n'),
 );
 
@@ -229,7 +229,7 @@ describe('the host API', () => {
   it('refuses a deploy that declares an extern its host already provides with another type', () => {
     const declaring = (type: string) =>
       compiledText(
-        `extern limit: ${type}\nextern fn check(n: Int) -> Bool\nasync fn main(): limit`,
+        `extern limit: ${type}\nextern fn check(n: Int) -> Bool\nista async fn main(): limit`,
       );
     const host = { 'main.limit': () => 1, 'main.check(Int)': () => true };
     const store = recordingStore();
@@ -310,7 +310,7 @@ describe('the host API', () => {
     const echoing = compiledText(
       [
         'extern fn echo(count: Int, rate: Float) -> Array<Int>',
-        'async fn main() -> Array<Int>: echo(12345678901234567890, 1.5)',
+        'ista async fn main() -> Array<Int>: echo(12345678901234567890, 1.5)',
       ].join('\n'),
     );
     const test = testRuntime({ host });

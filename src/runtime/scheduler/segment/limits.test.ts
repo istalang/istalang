@@ -46,7 +46,7 @@ describe('panicOf', () => {
 
 describe('requireFrameDepth', () => {
   it.each([
-    ['synchronous', 'fn loop(n: Int) -> Int: loop(n + 1)\nasync fn main(): loop(0)'],
+    ['synchronous', 'fn loop(n: Int) -> Int: loop(n + 1)\nista async fn main(): loop(0)'],
     [
       'eager async',
       'ista async fn loop(n: Int) -> Int: await loop(n + 1)\nista async fn main(): await loop(0)',

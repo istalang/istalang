@@ -3,7 +3,7 @@
  * may leave its instance (traits/sendable.ts), a future that must be awaited (§3.3), a `Result`
  * that must be used (§3.12). A type holds itself and what its parts hold: a tuple's elements, a
  * struct's fields, an enum's variants' fields, the value behind a shared struct, and an extern
- * type's type arguments (`heldParts`). A recursive type holds nothing more where it recurs
+ * type's type arguments (`heldPartsOf`). A recursive type holds nothing more where it recurs
  * (type-cycle.ts).
  */
 
@@ -50,7 +50,7 @@ function walkHeld(checker: HeldReader, type: Type, visit: (part: Type) => boolea
   const cycle = new TypeCycle(checker.typeKeys);
   const walk = (part: Type): boolean =>
     visit(part) ||
-    cycle.enter(part, false, () => heldParts(checker, part).some((inner) => walk(inner)));
+    cycle.enter(part, false, () => heldPartsOf(checker, part).some((inner) => walk(inner)));
   return walk(type);
 }
 
@@ -59,13 +59,13 @@ function walkHeld(checker: HeldReader, type: Type, visit: (part: Type) => boolea
  * each of an enum's variants, what a handle's cell holds, and an extern type's type arguments,
  * which stand for the values the runtime or the host keeps in it.
  */
-function heldParts(
+export function heldPartsOf(
   checker: Pick<CheckerContext, 'fieldsOf' | 'variantsOf' | 'sharedValueOf' | 'typeRules'>,
   type: Type,
 ): readonly Type[] {
   switch (type.kind) {
     case 'recursive':
-      return heldParts(checker, unfolded(type));
+      return heldPartsOf(checker, unfolded(type));
     case 'tuple':
     case 'anonymous':
     case 'union':

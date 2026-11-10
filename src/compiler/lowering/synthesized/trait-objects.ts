@@ -35,7 +35,7 @@ import { kindOfFunction } from '../../checker/types/type/function-kinds.ts';
 import type { AnyType, FunctionType, Type } from '../../checker/types/type/index.ts';
 import { awaitedOf } from '../../checker/types/type/well-known.ts';
 import { hasOneValue } from '../../checker/types/unions/unions.ts';
-import { functionTypeParametersOf } from '../../syntax/declarations/function-kinds.ts';
+import { typeParametersOf } from '../../syntax/declarations/index.ts';
 import { closeWitness, type Dispatch } from '../calls/closed-calls.ts';
 import type { CodeContext } from '../context.ts';
 import { fittedIn } from '../functions/fits/index.ts';
@@ -71,7 +71,7 @@ export function dispatchEntry(lowering: Lowering, dispatch: Dispatch): FunctionD
   const givesFuture = awaited !== undefined;
   const kindOfDispatch = substitute(
     awaited?.mode ?? kindOfFunction(checker, required),
-    substitutionFor(functionTypeParametersOf(required), dispatch.typeArguments),
+    substitutionFor(typeParametersOf(required.typeParameters), dispatch.typeArguments),
     checker.typeRules,
   );
   switchOverMembers(code, on, receiver, (type) => {

@@ -20,10 +20,10 @@
 
 import { memo } from '../../../../foundation/structures/memo.ts';
 import {
-  functionTypeParametersOf,
-  isImplicitKind,
-} from '../../../syntax/declarations/function-kinds.ts';
-import type { FunctionDeclaration, TypeParameter } from '../../../syntax/declarations/index.ts';
+  type FunctionDeclaration,
+  type TypeParameter,
+  typeParametersOf,
+} from '../../../syntax/declarations/index.ts';
 import { isMethod } from '../../../syntax/declarations/methods.ts';
 import type { SignatureParameter } from '../../check.ts';
 import type { CheckerContext } from '../../contexts/context.ts';
@@ -85,7 +85,7 @@ export function signatureOf(
   const receives = isMethod(declaration);
   return {
     declaration,
-    typeParameters: [...functionTypeParametersOf(declaration), ...inferred],
+    typeParameters: [...typeParametersOf(declaration.typeParameters), ...inferred],
     parameters:
       substitution.size === 0
         ? memo(ownSlots, parameters, () => slotsOf(parameters, receives, substitution, rules))
@@ -146,14 +146,11 @@ export function choose(
     written,
     site,
     scope,
-    decidedKind,
   }: {
     readonly written?: readonly Type[] | undefined;
     readonly site?: object | undefined;
     /** The constraint scope's inference each candidate's system starts as a copy of. */
     readonly scope?: Inference | undefined;
-    /** The kind a callee's implicit kind is decided to (`Given`). */
-    readonly decidedKind?: Type | undefined;
   } = {},
 ): Choice {
   return chosenAmong(checker, candidates, {
@@ -162,7 +159,6 @@ export function choose(
     binder: bindArguments,
     site,
     scope,
-    decidedKind,
   });
 }
 
@@ -177,12 +173,9 @@ export function chooseAsValue(
   {
     written,
     site,
-    decidedKind,
   }: {
     readonly written?: readonly Type[] | undefined;
     readonly site?: object;
-    /** The kind the value's expected type fixes its own kind to (`Given`). */
-    readonly decidedKind?: Type | undefined;
   } = {},
 ): Choice {
   return chosenAmong(checker, candidates, {
@@ -190,7 +183,6 @@ export function chooseAsValue(
     written,
     binder: bindValue,
     site,
-    decidedKind,
   });
 }
 
@@ -213,7 +205,7 @@ function chosenAmong(
   // further.
   const preferred = [
     ({ candidate }: Application) => membersRequirementOf(candidate) === undefined,
-    ({ signature }: Application) => signature.typeParameters.every(isImplicitKind),
+    ({ signature }: Application) => signature.typeParameters.length === 0,
     ({ signature }: Application) => !signature.parameters.some((slot) => slot.rest !== undefined),
     (application: Application) => !reshapesArguments(checker, application, given.callArguments),
   ].reduce((chosen, isPreferred) => {

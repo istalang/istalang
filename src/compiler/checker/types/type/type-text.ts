@@ -11,7 +11,6 @@
  */
 
 import { selfType } from '../../../../foundation/language/well-known/index.ts';
-import { isImplicitKind } from '../../../syntax/declarations/function-kinds.ts';
 import type { TypeAliasDeclaration, TypeParameter } from '../../../syntax/declarations/index.ts';
 import type { RestPattern } from '../../../syntax/patterns.ts';
 import { modifiersText } from '../../../syntax/tokens/modifiers.ts';
@@ -164,17 +163,10 @@ export function functionTypeParts(type: FunctionType): {
 
 /**
  * Whether `type` is written as `Fn<…>` (§3.14): its sendability or mark is a variable no head's
- * word spells, a function's own implicit kind aside, which an unmarked head stands for.
+ * word spells.
  */
 function spelledAsFn({ mark, send }: FunctionType): boolean {
-  const variable = (slot: Type) =>
-    slot.kind !== 'literal' &&
-    !(
-      slot.kind === 'parameter' &&
-      slot.declaration.kind === 'TypeParameter' &&
-      isImplicitKind(slot.declaration)
-    );
-  return variable(mark) || variable(send);
+  return mark.kind !== 'literal' || send.kind !== 'literal';
 }
 
 /**

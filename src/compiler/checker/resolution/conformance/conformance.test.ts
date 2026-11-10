@@ -203,7 +203,7 @@ describe('Sendable', () => {
     ['Array<fn() -> Int>', false],
     ['Slot<Int>', false],
   ])('holds for %s: %s', (type, isSendable) => {
-    const text = `${declarations}\nfn open(envelope: Envelope<${type}>) -> Int: 1`;
+    const text = `${declarations}\nista fn open(envelope: Envelope<${type}>) -> Int: 1`;
     expect(unmet(text)).toBe(!isSendable);
   });
 
@@ -234,7 +234,7 @@ describe('a derived trait', () => {
     ],
     [
       'Encodable, of a handle, as Sendable first',
-      'fn f(x: Slot<Int>) -> String: json.stringify(x)',
+      'ista fn f(x: Slot<Int>) -> String: json.stringify(x)',
       'every value inside it to be sendable',
     ],
     [
@@ -302,7 +302,7 @@ describe('coinductive struct-constraint and union-member conformance', () => {
   it('checks and runs recursive CategoryModel through List<Group<CategoryModel>> and struct { [_] is FormNode }', async () => {
     const source = [
       formBuilderBase,
-      'async fn main() -> String:',
+      'ista async fn main() -> String:',
       '  const root = categoryModel()',
       '  root.load(struct{name: "Hardware", children: [struct{name: "Bolts", children: []}]})',
       '  match root.read():',
@@ -323,7 +323,7 @@ describe('coinductive struct-constraint and union-member conformance', () => {
       '  `{${[for k, v in ...self.fields: `${k}=${v.pretty()}`].join(",")}}`',
       'struct Node { label: String, next: Group<Node> | None }',
       'fn showUnion(u: Group<Node> | None) -> String: u.pretty()',
-      'async fn main() -> String:',
+      'ista async fn main() -> String:',
       '  const leaf: Group<Node> | None = Group{fields: Node{label: "b", next: none}}',
       '  const root: Group<Node> | None = Group{fields: Node{label: "a", next: leaf}}',
       '  showUnion(root)',

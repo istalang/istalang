@@ -33,7 +33,6 @@ import {
   declaredFunctionName,
   fieldsFunctionOf,
 } from '../../../syntax/declarations/field-defaults.ts';
-import { isImplicitKind } from '../../../syntax/declarations/function-kinds.ts';
 import type { TypeParameter } from '../../../syntax/declarations/index.ts';
 import type { TypeApplication } from '../../../syntax/expressions/calls.ts';
 import type { MemberAccess } from '../../../syntax/expressions/index.ts';
@@ -55,12 +54,13 @@ import type { TypeRules } from '../../types/type/type-rules.ts';
 import { typeText } from '../../types/type/type-text.ts';
 import { namedType } from '../../types/written/named-types.ts';
 import { parameterType } from '../../types/written/resolve-type.ts';
+import { markMaking } from '../applying/call-kinds.ts';
 import { type Instantiation, instantiate } from '../conformance/conformance.ts';
 import { typeArgumentsInapplicability, writtenFor } from './applicability.ts';
 import type { CallArgument, Passing, SignatureSlot } from './call-arguments.ts';
+import { callMade } from './calls-made.ts';
 import { type Candidate, callCandidates, staticCandidates, staticTargetOf } from './candidates.ts';
 import { type Application, type Choice, chooseAsValue, signatureOf } from './choice.ts';
-import { ownValueKind, valueKind } from './value-kinds.ts';
 
 /**
  * Functions an expression names as a value: where, by what name in messages, which, and any type
@@ -216,9 +216,10 @@ export function openedValue(
   }
   const { inference, signature } = application;
   inference.expect(signature.result(), undefined);
+  const placed = (declared: Type) => inference.open(declared);
   return {
     application,
-    type: valueTypeOf(application, (declared) => inference.open(declared)),
+    type: valueTypeOf(application, placed, placed(signature.kind())),
   };
 }
 
@@ -261,7 +262,8 @@ export function instantiatedValue(
 
 /**
  * `application` instantiated at `site` as its inference settled, with its type as a value;
- * undefined when it can't be, which `site` reports.
+ * undefined when it can't be, which `site` reports. The value makes the call when called, so its
+ * mark allows what the call relies on (Rule 3), its constraints' witnesses among it.
  */
 export function madeValue(
   context: BodyContext,
@@ -273,26 +275,32 @@ export function madeValue(
   if (instantiation === undefined) {
     return undefined;
   }
-  const { substitution } = instantiation;
-  const type = valueTypeOf(application, (declared) =>
-    substitute(declared, substitution, checker.typeRules),
+  const placed = (declared: Type) =>
+    substitute(declared, instantiation.substitution, checker.typeRules);
+  const call = callMade(application, instantiation);
+  const holder = `'${declaredFunctionName(call.function)}'`;
+  const mark = markMaking(
+    checker,
+    { call, holder, report: site.report },
+    placed(application.signature.kind()),
   );
-  return { instantiation, type };
+  return { instantiation, type: valueTypeOf(application, placed, mark) };
 }
 
 /**
- * The type of `application`'s function as a value, each type it declares `placed` as the value
- * has it: instantiated, or open in its inference. Its parameters are those its arguments fill, a
- * pack's last, and its result what its call gives.
+ * The type of `application`'s function as a value of `mark`, each type it declares `placed` as the
+ * value has it: instantiated, or open in its inference. Its parameters are those its arguments
+ * fill, a pack's last, and its result what its call gives.
  */
 function valueTypeOf(
   { signature, binding }: Application,
   placed: (declared: Type) => Type,
+  mark: Type,
 ): FunctionType {
   const pack = signature.parameters.find((slot) => slot.rest?.kind === 'pack');
   return functionType({
     send: sendableSend,
-    mark: placed(signature.kind()),
+    mark,
     parameters: signature.parameters
       .filter((slot, index) => slot !== pack && binding[index]?.kind === 'argument')
       .map((slot) => ({ type: placed(slot.type), reference: slot.reference })),
@@ -371,7 +379,6 @@ function takesCount(context: BodyContext, named: NamedFunctions, shape: Function
   const given = {
     written: named.written,
     site: named.site,
-    decidedKind: valueKind(context, shape),
   };
   return chooseAsValue(context.checker, candidates, arguments_, given).kind !== 'none';
 }
@@ -417,18 +424,15 @@ export function ownChoice(
     return { kind: 'none', reasons: [counted] };
   }
   const given = writtenFor(signature, written);
-  // Its own kind, nothing expected of it, settles to the code's, which names it (Rule 3).
   const isOpen = (parameter: TypeParameter) =>
-    !isImplicitKind(parameter) &&
-    (given === undefined || (!given.has(parameter) && parameter.defaultType === undefined));
+    given === undefined || (!given.has(parameter) && parameter.defaultType === undefined);
   if (signature.typeParameters.some(isOpen)) {
     return { kind: 'none', reasons: [] };
   }
   const arguments_ = signature.parameters.flatMap((slot) =>
     ownArguments(slot, given, checker.typeRules),
   );
-  const decidedKind = ownValueKind(context, signature);
-  return chooseAsValue(checker, [candidate], arguments_, { written, decidedKind });
+  return chooseAsValue(checker, [candidate], arguments_, { written });
 }
 
 /**
@@ -478,7 +482,6 @@ function chosenFor(
   const choice = chooseAsValue(context.checker, candidates, arguments_, {
     written: named.written,
     site: named.site,
-    decidedKind: valueKind(context, shape),
   });
   return choice.kind === 'chosen' ? choice.application : undefined;
 }

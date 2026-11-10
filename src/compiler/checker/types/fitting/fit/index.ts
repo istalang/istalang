@@ -37,7 +37,12 @@ import type { Diagnostic } from '../../../../../foundation/diagnostics/diagnosti
 import type { TraitDeclaration } from '../../../../syntax/declarations/index.ts';
 import type { AnchoredSpan } from '../../../../syntax/tree/positions.ts';
 import { checkerDiagnostics } from '../../../diagnostics/index.ts';
-import { isAssignable, isAssignableInvariantly, sameConstraint } from '../../identity/identity.ts';
+import {
+  isAssignable,
+  isAssignableInvariantly,
+  sameConstraint,
+  sameType,
+} from '../../identity/identity.ts';
 import { UnfoldingPairs } from '../../identity/unfolding-pairs.ts';
 import { parametersIn } from '../../parts/type-parts.ts';
 import { unfolded } from '../../type/computed-types.ts';
@@ -47,10 +52,12 @@ import type {
   AnyType,
   Constraint,
   FunctionType,
+  ParameterKey,
   Type,
   TypeParameterType,
   UnionType,
 } from '../../type/index.ts';
+import type { QualifierParameter } from '../../type/mark-orders.ts';
 import { isPrimitive } from '../../type/primitives.ts';
 import type { TypeRules } from '../../type/type-rules.ts';
 import { typeText } from '../../type/type-text.ts';
@@ -116,6 +123,12 @@ export interface Fitting extends TypeRules, Futures {
    * one.
    */
   readonly memberUnionOf: (parameter: TypeParameterType) => Type | undefined;
+  /**
+   * What a variable standing for a mark or a sendability qualifies functions by
+   * (types/properties/qualifiers.ts): the order its bounds agree and join by; undefined for any
+   * other.
+   */
+  readonly qualifierOf: (parameter: ParameterKey) => QualifierParameter | undefined;
   /** How each of a declaration's type parameters relates its instantiations (§3.5). */
   readonly varianceOf: (declaration: VariedDeclaration) => readonly Variance[];
   /**
@@ -136,7 +149,8 @@ export interface Fitting extends TypeRules, Futures {
 
 /**
  * How `matchConversion` compares leaf types: `exact` where a value fits as it is, `same` where a
- * part must be the very type (invariant, or behind `&`), `exact` unless given. A probe that may
+ * part must be the very type (invariant, or behind `&`), `exact` unless given, and `ordered` where
+ * a function's mark or sendability must be at or below another's, by its order unless given. A probe that may
  * fail inside a match runs through `attempt`, so rules that keep state (inference's bounds) can
  * leave none behind when it does, and one of several tried to count those that hold through
  * `trial`, which leaves none behind either way.
@@ -144,6 +158,7 @@ export interface Fitting extends TypeRules, Futures {
 export interface ConversionRules extends Fitting {
   readonly exact: (expected: Type, found: Type) => boolean;
   readonly same?: ((expected: Type, found: Type) => boolean) | undefined;
+  readonly ordered?: PartsRelation['ordered'] | undefined;
   readonly attempt?: ((probe: () => boolean) => boolean) | undefined;
   readonly trial?: ((probe: () => boolean) => boolean) | undefined;
 }
@@ -152,7 +167,9 @@ export interface ConversionRules extends Fitting {
  * `ConversionRules` inside one match: the pairs of types whose parts are being related, and the
  * match itself, which parts are fitted by.
  */
-interface Matching extends Omit<ConversionRules, 'same' | 'attempt' | 'trial'>, PartsRelation {
+interface Matching
+  extends Omit<ConversionRules, 'same' | 'ordered' | 'attempt' | 'trial'>,
+    PartsRelation {
   readonly attempt: (probe: () => boolean) => boolean;
   readonly trial: (probe: () => boolean) => boolean;
 }
@@ -187,6 +204,7 @@ function matchingWith(rules: ConversionRules): Matching {
   const matching: Matching = {
     ...rules,
     same: rules.same ?? rules.exact,
+    ordered: rules.ordered ?? ((order, lower, upper) => order.below(lower, upper, sameType)),
     attempt: rules.attempt ?? ((probe) => probe()),
     trial: rules.trial ?? ((probe) => probe()),
     relating: new UnfoldingPairs(),

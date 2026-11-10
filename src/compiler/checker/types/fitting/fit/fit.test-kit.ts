@@ -19,5 +19,6 @@ export const fittingApart: Fitting = {
   proposedInstantiations: () => [],
   shapeOf: () => undefined,
   memberUnionOf: () => undefined,
+  qualifierOf: () => undefined,
   varianceOf: () => [],
 };

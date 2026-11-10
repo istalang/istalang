@@ -18,7 +18,8 @@ function rewritten(text: string): string {
 describe('kinds', () => {
   it.each([
     ['async fn f() -> Future<Int>: 1', 'ista async fn f() -> Int: 1'],
-    ['async fn main(): 1', 'async fn main(): 1'],
+    ['async fn main(): 1', 'ista async fn main(): 1'],
+    ['K async fn f<K in Persistence>(): 1', 'K async fn f<K in Persistence>(): 1'],
     ['sendable async fn f(): 1', 'sendable ista async fn f(): 1'],
     ['@Test("t")\nasync fn f(): 1', '@Test("t")\nista async fn f(): 1'],
     ['fn f(g: async fn(Int) -> Int): g', 'fn f(g: ista async fn(Int) -> Int): g'],

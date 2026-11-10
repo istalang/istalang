@@ -69,7 +69,9 @@ export class FunctionChecks {
         return headResult(
           checker.fitting,
           declaration.qualifiers,
-          kindOfFunction(checker, declaration),
+          // Read only for an async head, whose future takes it: a fields function's kind is what
+          // its result holds.
+          () => kindOfFunction(checker, declaration),
           declared ?? inferred ?? unitType,
         );
       },

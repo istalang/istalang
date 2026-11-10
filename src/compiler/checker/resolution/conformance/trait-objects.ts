@@ -18,7 +18,7 @@
  */
 
 import { unreachable } from '../../../../foundation/structures/unreachable.ts';
-import { functionTypeParametersOf } from '../../../syntax/declarations/function-kinds.ts';
+import { typeParametersOf } from '../../../syntax/declarations/index.ts';
 import type { MemberConversion, TraitObjects } from '../../check.ts';
 import type { CheckerContext } from '../../contexts/context.ts';
 import { searchSite, type UseSite } from '../../contexts/use-site.ts';
@@ -107,7 +107,7 @@ export function traitObjectsOf(checker: CheckerContext): TraitObjects {
     },
     memberSignatures: (type, constraint, member, { required, typeArguments }) => {
       const signature = requirementType(checker, required);
-      const own = substitutionFor(functionTypeParametersOf(required), typeArguments);
+      const own = substitutionFor(typeParametersOf(required.typeParameters), typeArguments);
       return converting(memberConstraints(checker, { type, constraint, member }), (each) =>
         functionTypeOf(
           substitute(

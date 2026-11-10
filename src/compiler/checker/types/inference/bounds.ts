@@ -20,6 +20,8 @@
  *   lower one's lower bounds are the upper one's, and the upper one's upper bounds the lower one's,
  *   an equality each way as both, now and as they are added (design.md §4), so a placeholder under
  *   an invariant parameter (`Item{value: Small}`) is told what the parameter is.
+ * - A variable standing for a mark or a sendability (`M in DataKind`, `S in Sendability`) has bounds
+ *   that agree by its order (types/type/mark-orders.ts), not by fitting: `"simple"` below `"live"`.
  * - A variable may refuse a bound it can't stand under (`admit`): a placeholder's expression can't
  *   be a value of every type (i2-scope.md §3), as a lambda of one parameter can't be a function of
  *   two.
@@ -30,6 +32,7 @@
 import type { Admits } from '../fitting/expected.ts';
 import { parametersIn } from '../parts/type-parts.ts';
 import type { ParameterKey, Type } from '../type/index.ts';
+import type { QualifierOrder } from '../type/mark-orders.ts';
 import {
   type Bound,
   type BoundRole,
@@ -45,6 +48,11 @@ import {
 export interface BoundRules {
   /** Whether a value of `found` fits where `expected` is. */
   readonly fits: (found: Type, expected: Type) => boolean;
+  /**
+   * The order a variable standing for a mark or a sendability is of, by which its bounds agree
+   * instead of by fitting (types/type/mark-orders.ts).
+   */
+  readonly orderOf: (parameter: ParameterKey) => QualifierOrder | undefined;
   /** Whether `target`, a struct its fields give, takes a struct literal of shape `shape` (§3.1). */
   readonly takesShape: (target: Type, shape: Type) => boolean;
   /** Whether `first` and `second` are the same type. */
@@ -306,8 +314,12 @@ export class BoundStore {
    * settling has substituted it, as is one met past `maximumDepth` bounds deep.
    */
   #agree(parameter: ParameterKey, below: Bound | LowerBound, above: Bound): boolean {
-    const { isOpen, fits, takesShape, constrain } = this.#rules;
+    const { isOpen, fits, takesShape, constrain, orderOf, same } = this.#rules;
     if (!(isOpen(below.type) || isOpen(above.type))) {
+      const order = orderOf(parameter);
+      if (order !== undefined) {
+        return order.below(below.type, above.type, same);
+      }
       return fits(below.type, above.type) || (isShape(below) && takesShape(above.type, below.type));
     }
     const relating = relatingOf(below, above);

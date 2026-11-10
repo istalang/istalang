@@ -30,14 +30,14 @@ import { sameType } from '../../types/identity/identity.ts';
 import {
   isMarkVariable,
   isOneKind,
+  isSimpleMark,
   kindOfFunction,
-  persistenceOf,
 } from '../../types/type/function-kinds.ts';
 import type { Type } from '../../types/type/index.ts';
 import { typeText } from '../../types/type/type-text.ts';
 
 /** A type a signature holds, and where it is written. */
-export interface HeldInSignature {
+interface HeldInSignature {
   readonly at: AnchoredSpan;
   readonly type: Type;
 }
@@ -62,6 +62,9 @@ export function checkSignatureKind(
     ...writtenResult,
   ];
   const own = kindOfFunction(checker, declaration);
+  if (awaits(declaration.qualifiers) && isSimpleMark(own)) {
+    checker.report(module, checkerDiagnostics.unkindedFuture(declaration.name.span));
+  }
   checkNamedMark(checker, module, declaration);
   const refusal = heldKindRefusal(checker, {
     own,
@@ -73,30 +76,50 @@ export function checkSignatureKind(
   }
 }
 
+/** Code whose values are judged: its mark, how messages name it, and what it holds. */
+export interface Holding {
+  readonly own: Type;
+  readonly holder: string;
+  readonly held: readonly HeldInSignature[];
+  /**
+   * For simple code no mark can be written on, a constant's or a struct's defaults, what mends a
+   * value of a kind instead; undefined for a function, whose mark is the remedy.
+   */
+  readonly remedy?: string | undefined;
+}
+
 /**
- * Why a function of kind `own`, named `holder`, can't hold what its signature `held` does: the
- * first value of a kind its kind refuses; undefined where none is.
+ * Why code of kind `own`, named `holder`, can't hold what `held` holds: the first value of a kind
+ * its kind refuses, or of both kinds, which no code may hold; undefined where none is.
  */
 export function heldKindRefusal(
   checker: CheckerContext,
-  {
-    own,
-    holder,
-    held,
-  }: { readonly own: Type; readonly holder: string; readonly held: readonly HeldInSignature[] },
+  { own, holder, held, remedy }: Holding,
 ): Diagnostic<AnchoredSpan> | undefined {
   for (const { at, type } of held) {
     const [first, other] = checker.valueKindsOf(type);
     if (other !== undefined) {
-      return checkerDiagnostics.kindsHeld(at, holder, kindText(first ?? other), typeText(type));
+      return checkerDiagnostics.holdsBothKinds(at, typeText(type));
     }
     if (first !== undefined && !sameType(first, own)) {
-      return persistenceOf(own) === undefined
-        ? checkerDiagnostics.unmarkedHolds(at, holder, kindText(first), typeText(type))
-        : checkerDiagnostics.kindsHeld(at, holder, kindText(own), typeText(type));
+      return refusalOf(at, { own, holder, remedy }, kindText(first), typeText(type));
     }
   }
   return undefined;
+}
+
+function refusalOf(
+  at: AnchoredSpan,
+  { own, holder, remedy }: Pick<Holding, 'own' | 'holder' | 'remedy'>,
+  kind: string,
+  held: string,
+): Diagnostic<AnchoredSpan> {
+  if (!isSimpleMark(own)) {
+    return checkerDiagnostics.kindsHeld(at, holder, kindText(own), held);
+  }
+  return remedy === undefined
+    ? checkerDiagnostics.unmarkedHolds(at, holder, kind, held)
+    : checkerDiagnostics.unmarkableHolds(at, holder, kind, held, remedy);
 }
 
 /**
@@ -118,9 +141,9 @@ export function checkNamedMark(
     return;
   }
   const text = namedTypeText(written);
-  if (!isMarkVariable(mark)) {
+  if (!isMarkVariable(checker, mark)) {
     checker.report(module, checkerDiagnostics.unknownMark(written.span, text));
-  } else if (awaits(declaration.qualifiers) && !isOneKind(mark)) {
+  } else if (awaits(declaration.qualifiers) && !isOneKind(checker, mark)) {
     checker.report(module, checkerDiagnostics.asyncMarkNotKind(written.span, text));
   }
 }

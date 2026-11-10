@@ -58,7 +58,7 @@ describe('function-table names', () => {
         "import * as a from 'a'",
         "import * as b from 'b'",
         'fn show<T>(value: T, times: Int = 1) -> Int: times',
-        'async fn main() -> Int:',
+        'ista async fn main() -> Int:',
         '  show(a.Money{cents: 1}) + show(b.Money{cents: 2}, 2) + show<Int?>(none)',
       ].join('\n'),
       a: 'struct Money { cents: Int }',
@@ -82,7 +82,7 @@ describe('defaults', () => {
       main: [
         'struct Retry { tries: Int = 3, backoff: Int = tries * 2 }',
         'fn wait(retry: Retry = Retry{}, times: Int = 1) -> Int: retry.backoff * times',
-        'async fn main() -> Int:',
+        'ista async fn main() -> Int:',
         '  wait()',
       ].join('\n'),
     });
@@ -127,7 +127,7 @@ describe('extern keys', () => {
 describe('lowering', () => {
   it("qualifies names with each module's canonical name", () => {
     const program = stdProgramOf({
-      'purchase/approve': "import twice from 'lib/math'\nasync fn main(): twice(2)",
+      'purchase/approve': "import twice from 'lib/math'\nista async fn main(): twice(2)",
       'lib/math': 'fn twice(n: Int) -> Int: n * 2',
     });
     const names = compiledDefinition(program, 'purchase/approve').functions.map(
@@ -146,7 +146,7 @@ describe('lowering', () => {
     const program = stdProgramOf({
       main: [
         'struct Box { size: Int?, items: Array<Int>, next: Slot<Int> }',
-        'async fn main(): { const b = Box{size: panic("x"), items: panic("y"), next: panic("z")}; 1 }',
+        'ista async fn main(): { const b = Box{size: panic("x"), items: panic("y"), next: panic("z")}; 1 }',
       ].join('\n'),
     });
     const { types } = compiledDefinition(program, 'main');
@@ -178,7 +178,7 @@ describe('lowering', () => {
         'extern shared struct Lease<T is Sendable>',
         'extern fn dispose<T is Encodable>(self: Lease<T>)',
         'extern fn lease() -> Lease<Int>',
-        'async fn main(): { const held = lease(); 1 }',
+        'ista async fn main(): { const held = lease(); 1 }',
       ].join('\n'),
     });
     const { types, functions } = compiledDefinition(program, 'main');
@@ -193,7 +193,7 @@ describe('lowering', () => {
 
   it('stores a constant once, computed in its own module even when another imports it', async () => {
     const program = stdProgramOf({
-      main: "import limits from 'lib'\nasync fn main(): limits.high + limits.high",
+      main: "import limits from 'lib'\nista async fn main(): limits.high + limits.high",
       lib: 'struct Limits { high: Int }\nconst base = 7\nconst limits = Limits{high: base}',
     });
     const definition = compiledDefinition(program, 'main');
@@ -244,7 +244,7 @@ describe('lowering', () => {
         '  let again = start',
         '  bump(&again)',
         '  kept + again',
-        'async fn main(): twice(1)',
+        'ista async fn main(): twice(1)',
       ].join('\n'),
     });
     const definition = compiledDefinition(program, 'main');
@@ -268,7 +268,7 @@ describe('lowering', () => {
         '  count: Int',
         'fn bump(n: &Int):',
         '  n += 1',
-        'async fn main() -> Int:',
+        'ista async fn main() -> Int:',
         '  let n = 0',
         '  bump(&n)',
         '  const counter = new Counter{count: n}',
@@ -320,7 +320,7 @@ describe('lowering', () => {
       main: [
         "import * as json from 'json'",
         'enum Shape { Dot }',
-        'async fn main() -> String: json.stringify<Array<Shape>>([Dot])',
+        'ista async fn main() -> String: json.stringify<Array<Shape>>([Dot])',
       ].join('\n'),
     });
     const enums = compiledDefinition(program, 'main').types.flatMap((type) =>
@@ -335,7 +335,7 @@ describe('lowering', () => {
   it('gives each shape one unnamed entry, shared by every place writing it (§3.1)', () => {
     const program = stdProgramOf({
       main: [
-        'async fn main():',
+        'ista async fn main():',
         '  const a = struct{x: 1}',
         '  const b = struct{x: 2}',
         '  const c = if a.x > 0: struct{y: 3, x: 0} else: struct{x: 4, y: 0}',
@@ -351,7 +351,7 @@ describe('lowering', () => {
 
   it('lowers a select with only an else to its else body', async () => {
     const program = stdProgramOf({
-      main: ['async fn main() -> Int:', '  select:', '    else: 42'].join('\n'),
+      main: ['ista async fn main() -> Int:', '  select:', '    else: 42'].join('\n'),
     });
     const definition = compiledDefinition(program, 'main');
     const test = testRuntime();

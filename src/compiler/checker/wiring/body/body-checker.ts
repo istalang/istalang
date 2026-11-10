@@ -43,7 +43,7 @@ import type { Identifier, Invalid } from '../../../syntax/tree/node.ts';
 import type { AnchoredSpan } from '../../../syntax/tree/positions.ts';
 import type { TypeNode } from '../../../syntax/types/index.ts';
 import type { SignatureParameter } from '../../check.ts';
-import { rootScope } from '../../constructs/closures/function-scope.ts';
+import { handledBy, rootScope } from '../../constructs/closures/function-scope.ts';
 import { FunctionScopes } from '../../constructs/closures/functions.ts';
 import { inferLambda } from '../../constructs/closures/lambdas.ts';
 import { declareOwnCall } from '../../constructs/closures/own-calls.ts';
@@ -69,7 +69,7 @@ import type {
   Returns,
 } from '../../contexts/body-context.ts';
 import type { CheckerContext } from '../../contexts/context.ts';
-import type { FieldPassType } from '../../contexts/passes.ts';
+import type { FieldPassType, PassTable } from '../../contexts/passes.ts';
 import { Passes } from '../../contexts/passes.ts';
 import { ImplicitCalls } from '../../resolution/applying/implicit.ts';
 import { blockTail } from '../../rules/agreement.ts';
@@ -98,7 +98,9 @@ export class BodyChecker implements BodyContext {
   readonly module: ModuleId;
   /** The passes field loops are checked in; every record of a node below is kept per pass. */
   readonly #passes = new Passes();
-  readonly variables = new VariableScope(this.#passes);
+  readonly variables = new VariableScope(this.#passes, (type) =>
+    handledBy(this.checker, this.functions.current, type),
+  );
   readonly functions: FunctionScopes;
   readonly literals = new StructLiterals(this.#passes);
   readonly implicit = new ImplicitCalls(this.#passes);
@@ -262,15 +264,22 @@ export class BodyChecker implements BodyContext {
 
   #record(node: Expression, value: Type): Type {
     const type = this.chains.linked(this, node, unfolded(value));
-    this.#records.types.set(node, type);
-    this.scopes.recorded(type, (solved) => this.#records.types.set(node, solved));
+    this.#keep(this.#records.types, node, type, !this.deferrals.isMadeLater(node));
     return type;
   }
 
   /** Records that `expected` is what `site` is expected to be, solved once its scope is. */
   #expected(site: ValueSite, expected: Type): void {
-    this.#records.expected.set(site, expected);
-    this.scopes.recorded(expected, (solved) => this.#records.expected.set(site, solved));
+    this.#keep(this.#records.expected, site, expected, true);
+  }
+
+  /** Keeps `type` for `key`, solved once its scope is, as the function handles it if `handled`. */
+  #keep<K>(table: Pick<PassTable<K, Type>, 'set'>, key: K, type: Type, handled: boolean): void {
+    const frame = this.functions.current;
+    const kept = (each: Type) =>
+      table.set(key, handled ? handledBy(this.checker, frame, each) : each);
+    kept(type);
+    this.scopes.recorded(type, kept);
   }
 
   typeOf(node: Expression): Type {
