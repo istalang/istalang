@@ -165,6 +165,8 @@ const checkerSurface = [
   'surface/named-variants.ts',
   'surface/denotation.ts',
   'surface/host-externs.ts',
+  // A checked function as the rule of what a host may start reads it.
+  'surface/starts.ts',
   // How arguments fill a function's parameters, the one rule tools judging a function value read.
   'resolution/choosing/binding.ts',
   'types/type/index.ts',

@@ -46,19 +46,33 @@ export function futureOf(checker: Pick<Checker, 'wellKnownType'>, value: Type): 
   return wellKnownOf(checker, wellKnown.future, [value]);
 }
 
-/** `T` when `type` is `Future<T>`; undefined for any other type. */
-export function futureArgument(
+/** What awaiting a value gives (§6): the value it resumes with. */
+export interface Awaited {
+  readonly value: Type;
+}
+
+/**
+ * What awaiting a value of `type` gives: a `Future<T>`'s `T`; undefined when `type` can't be
+ * awaited. The one reading of what an awaitable gives.
+ */
+export function awaitedOf(
   checker: Pick<Checker, 'wellKnownType'>,
   type: Type,
-): Type | undefined {
-  return wellKnownArguments(checker, wellKnown.future, type)?.[0];
+): Awaited | undefined {
+  const value = wellKnownArguments(checker, wellKnown.future, type)?.[0];
+  return value === undefined ? undefined : { value };
+}
+
+/** What a call giving `type` ends with: what awaiting it gives, or `type` itself. */
+export function outcomeOf(checker: Pick<Checker, 'wellKnownType'>, type: Type): Type {
+  return awaitedOf(checker, type)?.value ?? type;
 }
 
 /** The program's futures, as relating a function's result to one reads them. */
 export function futuresOf(checker: Pick<Checker, 'wellKnownType'>): Futures {
   return {
     futureOf: (value) => futureOf(checker, value),
-    futureValue: (type) => futureArgument(checker, type),
+    futureValue: (type) => awaitedOf(checker, type)?.value,
   };
 }
 

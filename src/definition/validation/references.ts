@@ -14,6 +14,7 @@
  */
 
 import type { z } from 'zod';
+import { isMainShaped, isStartable, type StartShape } from '../../foundation/language/starts.ts';
 import { terminates } from '../instructions/flow.ts';
 import { type Operands, operandsOf } from '../instructions/instruction.ts';
 import { type CodeFunction, encoderProblem, type FunctionDefinition } from '../tables/functions.ts';
@@ -81,7 +82,7 @@ function checkMain(context: Context): void {
     return;
   }
   const entry = context.tables.functions[main];
-  if (entry?.kind !== 'code' || entry.mode === 'plain' || entry.parameters.length > 0) {
+  if (entry?.kind !== 'code' || !isMainShaped(startShapeOf(entry))) {
     context.report(['main'], 'main must be code running as an execution, with no parameters.');
   }
 }
@@ -101,7 +102,7 @@ function checkStarts(context: Context): void {
     const entry = context.tables.functions[start.function];
     if (
       inRange(context, { functions: [start.function] }, [...path, 'function']) &&
-      (entry?.kind !== 'code' || entry.parameters.some((parameter) => parameter.reference))
+      (entry?.kind !== 'code' || !isStartable(startShapeOf(entry)))
     ) {
       context.report(path, 'A host starts code that takes every argument by value.');
     }
@@ -396,4 +397,14 @@ function valueProblem(tables: Tables, value: CompositeValue): string | undefined
     default:
       return undefined;
   }
+}
+
+/** What the rule of what a host may start reads of a code entry: concrete code with its body. */
+function startShapeOf(entry: CodeFunction): StartShape {
+  return {
+    hasBody: true,
+    isGeneric: false,
+    parameters: entry.parameters,
+    awaits: entry.mode !== 'plain',
+  };
 }

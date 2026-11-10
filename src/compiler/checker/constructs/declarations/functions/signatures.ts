@@ -44,7 +44,7 @@ import { isPack, packRestSlot, type RestSlot } from '../../../types/type/functio
 import { nominalType, type Type } from '../../../types/type/index.ts';
 import { errorType } from '../../../types/type/primitives.ts';
 import { typeText } from '../../../types/type/type-text.ts';
-import { arrayElement, futureArgument } from '../../../types/type/well-known.ts';
+import { arrayElement, awaitedOf } from '../../../types/type/well-known.ts';
 import { nominalEntityOf } from '../../../types/written/named-types.ts';
 import { patternTypeOf } from '../../../types/written/pattern-types.ts';
 import { parameterType } from '../../../types/written/resolve-type.ts';
@@ -306,13 +306,13 @@ export function declaredBodyResult(
   if (!awaits(declaration.qualifiers) || declared.kind === 'error') {
     return declared;
   }
-  const future = futureArgument(checker, declared);
-  if (future === undefined) {
+  const awaited = awaitedOf(checker, declared);
+  if (awaited === undefined) {
     checker.report(
       module,
       checkerDiagnostics.asyncResult(declaration.returnType.span, typeText(declared)),
     );
     return errorType;
   }
-  return future;
+  return awaited.value;
 }

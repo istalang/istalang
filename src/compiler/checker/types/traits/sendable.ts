@@ -7,9 +7,9 @@
  * arguments are, its identity being every instance's; any other handle never is, since its identity
  * stays in its instance or process (§3.18, properties/handles.ts); a function type is when it is
  * declared `sendable` (§3.14); a type parameter is when constrained `is Sendable`, or by a trait
- * that implies it (`Encodable`, `Decodable`). A recursive type is sendable unless something in its cycle isn't, so a type being
- * decided counts as sendable while its own fields are. Conformance meets Sendable by this rule
- * (resolution/conformance/derived-traits.ts).
+ * that implies it (`Encodable`, `Decodable`). The rule walks what a value holds
+ * (properties/held.ts), so a recursive type is sendable unless something in its cycle isn't.
+ * Conformance meets Sendable by this rule (resolution/conformance/derived-traits.ts).
  *
  * Code is sendable only to another instance of the same program; whether a value can go to the host
  * is whether it has a codec (rules/boundary/json-forms.ts), which no function type has. A host type
@@ -18,53 +18,34 @@
 
 import type { CheckerContext } from '../../contexts/context.ts';
 import { isConfined } from '../properties/handles.ts';
-import { heldParts } from '../properties/held.ts';
-import { TypeCycle } from '../properties/type-cycle.ts';
-import type { NominalType, Type } from '../type/index.ts';
+import { heldType } from '../properties/held.ts';
+import type { Type } from '../type/index.ts';
 import { impliesSendable } from './constraint-implication.ts';
 import { knownConstraints } from './known-constraints.ts';
 
 /** Whether values of `type` may leave an instance for another. */
 export function isSendable(checker: CheckerContext, type: Type): boolean {
-  return sendable(checker, type, new TypeCycle(checker.typeKeys));
+  return heldType(checker, type, (part) => keepsInInstance(checker, part)) === undefined;
 }
 
-function sendable(checker: CheckerContext, type: Type, deciding: TypeCycle): boolean {
-  switch (type.kind) {
-    case 'primitive':
-    case 'literal':
-    case 'error':
-      return true;
+/**
+ * Whether `part`, held in a value, keeps it in its instance whatever else it holds: a function
+ * not declared `sendable`, a handle whose identity stays in its instance or process, or a type
+ * parameter not known to be Sendable.
+ */
+function keepsInInstance(checker: CheckerContext, part: Type): boolean {
+  switch (part.kind) {
     case 'function':
-      return type.reach === 'sendable';
-    case 'tuple':
-    case 'anonymous':
-    case 'union':
-    case 'mapped':
-      return heldParts(checker, type).every((child) => sendable(checker, child, deciding));
-    case 'keys':
-      return true;
+      return part.reach !== 'sendable';
     case 'parameter':
     case 'associated':
     case 'field':
     case 'match':
     case 'any':
-      return impliesSendable(checker, knownConstraints(checker, type));
+      return !impliesSendable(checker, knownConstraints(checker, part));
     case 'nominal':
-      return nominalSendable(checker, type, deciding);
-    case 'recursive':
-      return deciding.enter(type, true, () =>
-        heldParts(checker, type).every((part) => sendable(checker, part, deciding)),
-      );
-    default: {
-      const unhandled: never = type;
-      return unhandled;
-    }
+      return isConfined(part.entity.declaration);
+    default:
+      return false;
   }
-}
-
-function nominalSendable(checker: CheckerContext, type: NominalType, deciding: TypeCycle): boolean {
-  const { declaration } = type.entity;
-  const parts = () => heldParts(checker, type).every((part) => sendable(checker, part, deciding));
-  return !isConfined(declaration) && deciding.enter(type, true, parts);
 }

@@ -105,6 +105,14 @@ export function qualifiedName({
   return `${module}.${name}`;
 }
 
+/**
+ * The two kinds of code (proposal 8, Rules 1–2), the members of the prelude's `Persistence`: `live`
+ * code waits in memory and never commits, `ista` code commits at every wait.
+ */
+export const persistences = ['live', 'ista'] as const;
+
+export type Persistence = (typeof persistences)[number];
+
 /** The function every program starts from (§9). */
 export const entryFunction = 'main';
 

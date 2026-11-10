@@ -109,7 +109,9 @@ its instance is numbered by, so its native sees only JSON:
 ## Starting instances
 
 A startable function (top-level, not generic or extern, or a constant holding a sendable lambda;
-by-value parameters that can be read, an outcome that can be written) gets a start entry, listed in
+by-value parameters that can be read, an outcome that can be written; the rule is
+`foundation/language/starts.ts`'s, which the compiler, the checker, lowering and the Definition's
+validation read) gets a start entry, listed in
 the Definition's `starts` under its key. A start entry is the function's own body compiled once
 more with its arguments as JSON (`lowering/synthesized/boundary/starts.ts`, `instanceLowering` in `functions/index.ts`): it
 decodes each argument, a mismatch failing the host's start, so the instance is one execution of the

@@ -1,9 +1,10 @@
 /**
- * What a value of a type holds at any depth, for rules about values held inside others: a future
- * that must be awaited (§3.3), a `Result` that must be used (§3.12). A type holds itself and what
- * its parts hold: a tuple's elements, a struct's fields, an enum's variants' fields, the value
- * behind a shared struct, and an extern type's type arguments (`heldParts`). A recursive type holds
- * nothing more where it recurs (type-cycle.ts).
+ * What a value of a type holds at any depth, for rules about values held inside others: whether it
+ * may leave its instance (traits/sendable.ts), a future that must be awaited (§3.3), a `Result`
+ * that must be used (§3.12). A type holds itself and what its parts hold: a tuple's elements, a
+ * struct's fields, an enum's variants' fields, the value behind a shared struct, and an extern
+ * type's type arguments (`heldParts`). A recursive type holds nothing more where it recurs
+ * (type-cycle.ts).
  */
 
 import type { CheckerContext } from '../../contexts/context.ts';
@@ -42,7 +43,7 @@ export function heldType(
  * each of an enum's variants, what a handle's cell holds, and an extern type's type arguments,
  * which stand for the values the runtime or the host keeps in it.
  */
-export function heldParts(
+function heldParts(
   checker: Pick<CheckerContext, 'fieldsOf' | 'variantsOf' | 'sharedValueOf' | 'typeRules'>,
   type: Type,
 ): readonly Type[] {

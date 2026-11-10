@@ -26,7 +26,7 @@ import { wellKnownConstraint } from '../../types/traits/constraints.ts';
 import { isSendable } from '../../types/traits/sendable.ts';
 import type { Type } from '../../types/type/index.ts';
 import { typeText } from '../../types/type/type-text.ts';
-import { futureArgument } from '../../types/type/well-known.ts';
+import { outcomeOf } from '../../types/type/well-known.ts';
 
 /** Reports each type of the extern `node` declares, in `module`, that can't cross as JSON. */
 export function checkHostBoundary(
@@ -55,7 +55,7 @@ export function checkHostBoundary(
     }
   }
   const result = checker.resultOf(node);
-  crossing(node.returnType ?? node.name, futureArgument(checker, result) ?? result, 'read');
+  crossing(node.returnType ?? node.name, outcomeOf(checker, result), 'read');
 }
 
 /**

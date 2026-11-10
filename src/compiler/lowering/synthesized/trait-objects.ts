@@ -31,7 +31,7 @@ import { unreachable } from '../../../foundation/structures/unreachable.ts';
 import type { MemberConversion } from '../../checker/check.ts';
 import { type RequiredField, requiredFieldRead } from '../../checker/surface/checked-field.ts';
 import type { AnyType, FunctionType, Type } from '../../checker/types/type/index.ts';
-import { futureArgument } from '../../checker/types/type/well-known.ts';
+import { awaitedOf } from '../../checker/types/type/well-known.ts';
 import { hasOneValue } from '../../checker/types/unions/unions.ts';
 import { closeWitness, type Dispatch } from '../calls/closed-calls.ts';
 import type { CodeContext } from '../context.ts';
@@ -62,7 +62,7 @@ export function dispatchEntry(lowering: Lowering, dispatch: Dispatch): FunctionD
   }
   const at = { module: checker.moduleOf(required), span: required.name.span };
   // What a member gives converts as what its future gives, so a future is awaited, whatever the head.
-  const givesFuture = futureArgument(checker, checker.resultOf(required)) !== undefined;
+  const givesFuture = awaitedOf(checker, checker.resultOf(required)) !== undefined;
   switchOverMembers(code, on, receiver, (type) => {
     const witness = checker.traitObjects.memberWitnesses(through, constraint, type)[member];
     if (witness === undefined) {

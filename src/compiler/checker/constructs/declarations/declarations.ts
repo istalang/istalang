@@ -20,7 +20,6 @@
  * - Imports declare nothing else to check.
  */
 
-import { entryFunction } from '../../../../foundation/language/well-known/index.ts';
 import { type Handlers, handlerOf } from '../../../../foundation/structures/kind-table.ts';
 import type { ModuleId } from '../../../program/program.ts';
 import { fieldsFunctionOf } from '../../../syntax/declarations/field-defaults.ts';
@@ -41,8 +40,9 @@ import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import { checkHostBoundary, crossesToHost } from '../../rules/boundary/host-boundary.ts';
 import { checkDisposeDeclaration, isDisposeFunction } from '../../rules/disposal/disposal.ts';
 import { checkSuite } from '../../rules/testing.ts';
+import { isMain } from '../../surface/starts.ts';
 import { namesMemberParameter } from '../../types/traits/struct-keys.ts';
-import { futureArgument } from '../../types/type/well-known.ts';
+import { outcomeOf } from '../../types/type/well-known.ts';
 import type { GenericDeclaration } from '../../types/written/type-arguments.ts';
 import { checkFiniteAlias, checkFiniteFields } from './layout/struct-rules.ts';
 import { checkVarianceMarkers } from './variance-markers.ts';
@@ -121,11 +121,10 @@ function checkFieldDefaults(
 
 /** `main` gives its host an outcome as JSON (§9), so what it gives must be `Encodable`. */
 function checkOutcome(checker: CheckerContext, node: FunctionDeclaration, module: ModuleId): void {
-  if (node.name.text !== entryFunction || checker.isStd(module)) {
+  if (checker.isStd(module) || !isMain(checker, checker.inputs.treeOf(module), node)) {
     return;
   }
-  const result = checker.resultOf(node);
-  const outcome = futureArgument(checker, result) ?? result;
+  const outcome = outcomeOf(checker, checker.resultOf(node));
   crossesToHost(checker, { module, at: node.returnType ?? node.name }, outcome, 'write');
 }
 

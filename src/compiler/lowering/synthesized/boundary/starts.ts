@@ -4,9 +4,10 @@
  * it by with the codec encoding its outcome; `main` is started through its own, so what a host
  * reads of any outcome is JSON by the function's declared result.
  *
- * - Startable: a top-level function that isn't generic or extern, or a top-level constant holding
- *   a sendable lambda (§3.14), whose parameters are all taken by value and can be read from JSON,
- *   and whose outcome can be written as JSON. Anything else simply isn't startable.
+ * - Startable: a top-level function the rule of what a host may start admits
+ *   (foundation/language/starts.ts), or a top-level constant holding a sendable lambda (§3.14),
+ *   whose parameters can be read from JSON and whose outcome written. Anything else simply isn't
+ *   startable.
  * - A start entry is the function's own body taking each argument as `Json` and decoding it, so
  *   JSON that doesn't fit fails the host's start and nothing runs. The instance is therefore one
  *   execution of the function, as any other is, and its traces and waits are the function's own.
@@ -15,10 +16,13 @@
 
 import type { FunctionId } from '../../../../definition/operands.ts';
 import type { CodeFunction } from '../../../../definition/tables/functions.ts';
+import { isStartable, type StartShape } from '../../../../foundation/language/starts.ts';
 import { unreachable } from '../../../../foundation/structures/unreachable.ts';
 import type { Checker } from '../../../checker/check.ts';
+import { startShapeOf } from '../../../checker/surface/starts.ts';
 import type { FunctionType, Type } from '../../../checker/types/type/index.ts';
-import { futureArgument } from '../../../checker/types/type/well-known.ts';
+import { outcomeOf } from '../../../checker/types/type/well-known.ts';
+import { programModule } from '../../../program/program.ts';
 import type {
   ConstantDeclaration,
   Declaration,
@@ -73,23 +77,17 @@ function functionStartable(
   checker: Checker,
   declaration: FunctionDeclaration,
 ): Startable | undefined {
-  const parameters = checker.parametersOf(declaration);
-  if (
-    declaration.isExtern ||
-    writtenBodyOf(checker.program, checker.moduleOf(declaration), declaration) === undefined ||
-    declaration.typeParameters.length > 0 ||
-    parameters.some((parameter) => parameter.reference)
-  ) {
-    return undefined;
-  }
+  const { tree } = programModule(checker.program, checker.moduleOf(declaration));
+  const shape = startShapeOf(checker, tree, declaration);
   const outcome = checker.bodyOf(declaration)?.result;
-  return outcome === undefined
+  const parameters = checker.parametersOf(declaration);
+  return !isStartable(shape) || outcome === undefined
     ? undefined
     : crossing(checker, {
         target: declaration,
         key: keyOf(checker, declaration, parameters),
         parameters: parameters.map(({ type }) => type),
-        isAsync: awaits(declaration.qualifiers),
+        isAsync: shape.awaits,
         outcome,
       });
 }
@@ -108,18 +106,21 @@ function lambdaStartable(
     return undefined;
   }
   const signature: FunctionType = type;
-  if (signature.parameters.some((parameter) => parameter.reference)) {
+  const shape: StartShape = {
+    hasBody: true,
+    isGeneric: false,
+    parameters: signature.parameters,
+    awaits: awaits(constant.form.lambda.qualifiers),
+  };
+  if (!isStartable(shape)) {
     return undefined;
   }
-  const parameters = signature.parameters.map(({ type: each }) => each);
-  const isAsync = awaits(constant.form.lambda.qualifiers);
-  const future = isAsync ? futureArgument(checker, signature.result) : undefined;
   return crossing(checker, {
     target: declaration,
     key: keyOf(checker, declaration, signature.parameters),
-    parameters,
-    isAsync,
-    outcome: future ?? signature.result,
+    parameters: signature.parameters.map(({ type: each }) => each),
+    isAsync: shape.awaits,
+    outcome: shape.awaits ? outcomeOf(checker, signature.result) : signature.result,
   });
 }
 

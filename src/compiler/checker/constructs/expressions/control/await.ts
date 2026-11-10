@@ -12,7 +12,7 @@ import { stoppedOperation } from '../../../resolution/calls/stopped-operations.t
 import type { Type } from '../../../types/type/index.ts';
 import { errorType } from '../../../types/type/primitives.ts';
 import { typeText } from '../../../types/type/type-text.ts';
-import { futureArgument, futureOf } from '../../../types/type/well-known.ts';
+import { awaitedOf, futureOf } from '../../../types/type/well-known.ts';
 
 export function checkAwait(context: BodyContext, node: Await, expected: Type | undefined): Type {
   reportWait(context, node.span);
@@ -22,12 +22,12 @@ export function checkAwait(context: BodyContext, node: Await, expected: Type | u
   if (stopped !== undefined) {
     return stopped;
   }
-  const value = futureArgument(context.checker, operand);
-  if (value === undefined) {
+  const awaited = awaitedOf(context.checker, operand);
+  if (awaited === undefined) {
     context.report(checkerDiagnostics.awaitNeedsFuture(node.operand.span, typeText(operand)));
     return errorType;
   }
-  return value;
+  return awaited.value;
 }
 
 /** Reports a wait at `at` outside an async function, or where it stops a call being disposed. */

@@ -53,7 +53,7 @@ import { functionType } from '../../types/type/function-types.ts';
 import type { AnonymousStructType, AnyType, Constraint, Type } from '../../types/type/index.ts';
 import { errorType } from '../../types/type/primitives.ts';
 import type { TypeRules } from '../../types/type/type-rules.ts';
-import { futureArgument, futuresOf } from '../../types/type/well-known.ts';
+import { futuresOf } from '../../types/type/well-known.ts';
 import type { Variance } from '../../types/variance/lattice.ts';
 import {
   type DerivedDeclaration,
@@ -136,13 +136,14 @@ export function programTypeRules(
       withEmptied(associating, () => reductions.reduce(declaration, typeArguments)),
     isKeyOf: (key, of) => isKeyWithin(checker, key, checker.typeRules.keysOf(of, [])),
   };
+  const futures = futuresOf(checker);
   const variances: EntryTable<CheckerNote, VariedDeclaration, readonly Variance[]> =
     checker.entries.table({
       name: 'variances',
       compute: (declaration) =>
         varianceOf(declaration, {
           partsOf: (held) => partsOf(checker, held),
-          futureValue: (type) => futureArgument(checker, type),
+          futureValue: futures.futureValue,
         }),
       equal: sameItems(),
     });
@@ -152,7 +153,7 @@ export function programTypeRules(
     meetsAny: (type, target) => meetsAny(checker, type, target),
     ...instantiationsIn(checker),
     shapeOf: (type) => layouts.nominalShapeOf(type),
-    ...futuresOf(checker),
+    ...futures,
     memberUnionOf: ({ declaration, within }) =>
       within ??
       (declaration.kind === 'TypeParameter' ? checker.memberUnionOf(declaration) : undefined),

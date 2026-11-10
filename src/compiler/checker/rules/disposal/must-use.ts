@@ -28,7 +28,7 @@ import { heldType } from '../../types/properties/held.ts';
 import type { Type } from '../../types/type/index.ts';
 import { unitType } from '../../types/type/primitives.ts';
 import { typeText } from '../../types/type/type-text.ts';
-import { futureArgument, wellKnownArguments } from '../../types/type/well-known.ts';
+import { awaitedOf, wellKnownArguments } from '../../types/type/well-known.ts';
 import { isDisposable } from './disposal.ts';
 
 /** How a must-use value is used, besides being kept or dropped. */
@@ -84,7 +84,7 @@ function undroppable(context: BodyContext, entity: VariableEntity): string | und
 /** How a value of `type` must be used; undefined when it may be lost. */
 function mustUseAs(context: BodyContext, type: Type): Use | undefined {
   const { checker } = context;
-  const isFuture = (part: Type) => futureArgument(checker, part) !== undefined;
+  const isFuture = (part: Type) => awaitedOf(checker, part) !== undefined;
   const isResult = (part: Type) =>
     wellKnownArguments(checker, wellKnown.result, part) !== undefined;
   const held = heldType(

@@ -22,7 +22,7 @@ import { wellKnown } from '../../../../foundation/language/well-known/index.ts';
 import { unreachable } from '../../../../foundation/structures/unreachable.ts';
 import type { Checker } from '../../../checker/check.ts';
 import type { Type } from '../../../checker/types/type/index.ts';
-import { futureArgument } from '../../../checker/types/type/well-known.ts';
+import { awaitedOf } from '../../../checker/types/type/well-known.ts';
 import { entityType } from '../../../checker/types/written/named-types.ts';
 import type {
   ExternConstantDeclaration,
@@ -68,7 +68,7 @@ export function hostCallOf(lowering: Lowering, instance: FunctionInstance): Host
     native: tables.hostNativeIndex(declaration),
     parameters: checker.parametersOf(declaration).map(({ type }) => type),
     result,
-    filled: futureArgument(checker, result),
+    filled: awaitedOf(checker, result)?.value,
     path: qualifiedNameOf(checker, declaration),
   };
 }
@@ -108,7 +108,7 @@ export function hostNativeEntry(
     declaredType: spelledType(checker, result),
     constant: false,
     parameters: native.jsons(checker.parametersOf(declaration).length),
-    result: native.given(futureArgument(checker, result)),
+    result: native.given(awaitedOf(checker, result)?.value),
   };
 }
 

@@ -14,7 +14,7 @@
  * - A resume called twice is a bug in the runtime: a promise settles once.
  */
 
-import type { Persistence } from '../../definition/tables/functions.ts';
+import type { Persistence } from '../../foundation/language/well-known/index.ts';
 import { unreachable } from '../../foundation/structures/unreachable.ts';
 import { Panic } from '../natives.ts';
 import { Refusal } from '../refusal.ts';
