@@ -74,9 +74,14 @@
     },
     {
       // `vscode` is the editor's own module, given to an extension at run time; no package
-      // provides it, and its types come from @types/vscode.
+      // provides it, and its types come from @types/vscode, which biome's resolver doesn't map
+      // from `vscode`.
       "includes": ["src/editor/vscode-client/extension.ts"],
-      "linter": { "rules": { "correctness": { "noUndeclaredDependencies": "off" } } }
+      "linter": {
+        "rules": {
+          "correctness": { "noUndeclaredDependencies": "off", "noUnresolvedImports": "off" }
+        }
+      }
     },
     {
       // Tool configuration files must default-export their config, and a text import (an `.ista`

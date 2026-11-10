@@ -145,10 +145,13 @@ function suffixWaitsAfter(doc: builders.Doc, waiting: boolean): boolean {
       return false;
     case 'line':
       return doc.hard === true ? false : waiting;
-    case 'group':
-      return doc.expandedStates === undefined || doc.expandedStates.length === 0
+    case 'group': {
+      // prettier types `expandedStates` as always present, but `group()` leaves it unset.
+      const states: builders.Doc[] | undefined = doc.expandedStates;
+      return states === undefined || states.length === 0
         ? suffixWaitsAfter(doc.contents, waiting)
         : waiting || holdsLineSuffix(doc);
+    }
     case 'fill':
       return suffixWaitsAfter(doc.parts, waiting);
     case 'align':
