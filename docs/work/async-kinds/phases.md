@@ -125,12 +125,13 @@ parameters, through an associated type or a type match, were judged at no caller
   derived trait, met by a type whose kind is in `K`; `Sendable` implies `DataKind<"simple">`, and
   `DataKind<K1>` implies `DataKind<K2>` when `K1` is within `K2`.
 - An associated type's kind is its bound's; an unbounded one's is unknown, refused in unmarked
-  generic code. A type match's kind comes from its cases where it is defined: their concrete kinds,
+  generic code, and in marked code too, which could otherwise hold data of the other kind. A type
+  match's kind comes from its cases where it is defined: their concrete kinds,
   while what they take from the subject stays transparent (Rule 3).
 - The rewrite adds `& DataKind<"simple">` where unmarked generic code holds an associated type.
 
 **Accept.** B72's repros are refused; `createAndDrop<Box>()` with `Box.Data` live and a bound of
-`DataKind<"simple">` is an error naming the use; a `live fn` holding `T.Data` bounded
+`DataKind<"simple">` is an error naming that use, conformance being structural; a `live fn` holding `T.Data` bounded
 `DataKind<"live" | "simple">` checks, and ista code calling it is refused, naming the call. The
 full suite passes after the rewrite. Profile within noise.
 
