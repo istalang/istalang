@@ -20,7 +20,7 @@ fn entryOf(map: Boxes, holder: Shared<Inbox<Int>?>) -> Watched:
     return Watched{key: WeakRef(key), value: WeakRef(value)}
   panic("The holder holds no key.")
 
-async fn evictedAcrossSnapshots() -> Future<String>:
+ista async fn evictedAcrossSnapshots() -> String:
   const map: Boxes = WeakMap.create()
   const holder = new Shared<Inbox<Int>?>{value: Inbox.create<Int>()}
   const watched = entryOf(map, holder)

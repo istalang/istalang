@@ -12,10 +12,10 @@
 
 import * as time from 'time'
 
-extern fn first<T>(futures: Array<Future<T>>) -> Future<(Int, T)>
+extern fn first<T>(futures: Array<Future<T, "ista">>) -> Future<(Int, T), "ista">
 
 # Every `Ok` value in position order, or the first `Err` as soon as it arrives.
-async fn all<T, E>(futures: Array<Future<Result<T, E>>>) -> Future<Result<Array<T>, E>>:
+ista async fn all<T, E>(futures: Array<Future<Result<T, E>, "ista">>) -> Result<Array<T>, E>:
   const race = _race(futures)
   let values: Map<Int, T> = [:]
   while _racing(race):
@@ -25,16 +25,16 @@ async fn all<T, E>(futures: Array<Future<Result<T, E>>>) -> Future<Result<Array<
   Ok(_inOrder(values, futures.length()))
 
 # Every value in position order, once all resolved.
-async fn allSettled<T>(futures: Array<Future<T>>) -> Future<Array<T>>:
+ista async fn allSettled<T>(futures: Array<Future<T, "ista">>) -> Array<T>:
   let values: Array<T> = []
   for future in futures: values.push(await future)
   values
 
 # The first value to arrive; panics on an empty list, as `first` does.
-async fn race<T>(futures: Array<Future<T>>) -> Future<T>: (await first(futures)).1
+ista async fn race<T>(futures: Array<Future<T, "ista">>) -> T: (await first(futures)).1
 
 # The first `Ok` to arrive, or every error in position order once all failed.
-async fn any<T, E>(futures: Array<Future<Result<T, E>>>) -> Future<Result<T, Array<E>>>:
+ista async fn any<T, E>(futures: Array<Future<Result<T, E>, "ista">>) -> Result<T, Array<E>>:
   const race = _race(futures)
   let errors: Map<Int, E> = [:]
   while _racing(race):
@@ -45,10 +45,10 @@ async fn any<T, E>(futures: Array<Future<Result<T, E>>>) -> Future<Result<T, Arr
 
 # The first `n` `Ok` values in the order they arrived, or the errors in position order once `n`
 # can't be reached.
-async fn quorum<T, E>(
+ista async fn quorum<T, E>(
   n: Int
-  futures: Array<Future<Result<T, E>>>
-) -> Future<Result<Array<T>, Array<E>>>:
+  futures: Array<Future<Result<T, E>, "ista">>
+) -> Result<Array<T>, Array<E>>:
   if n < 0 or n > futures.length():
     panic("A quorum of " + n + " can't be reached among " + futures.length() + " futures.")
   const race = _race(futures)
@@ -63,18 +63,18 @@ async fn quorum<T, E>(
   Ok(values)
 
 # The value of `future`, or `none` if `limit` passes first. When both are there, the value wins.
-async fn timeout<T>(future: Future<T>, limit: time.Duration) -> Future<T?>:
+ista async fn timeout<T>(future: Future<T, "ista">, limit: time.Duration) -> T?:
   await select:
     case future as value: value
     case time.delay(limit): none
 
 # Calls `attempt` until it gives an `Ok`, at most `times` times, waiting `backoff` before the first
 # retry and twice as long before each next one: the first `Ok`, or the last `Err`.
-async fn retry<T, E>(
-  attempt: async fn() -> Result<T, E>
+ista async fn retry<T, E>(
+  attempt: ista async fn() -> Result<T, E>
   times: Int = 3
   backoff: time.Duration = 1s
-) -> Future<Result<T, E>>:
+) -> Result<T, E>:
   if times < 1: panic("retry needs at least one attempt, not " + times + ".")
   let wait = backoff
   for _ in 1..times:
@@ -86,16 +86,16 @@ async fn retry<T, E>(
 
 # A list of futures raced until each has arrived: the positions of those that haven't.
 shared struct _Race<T>:
-  futures: Array<Future<T>>
+  futures: Array<Future<T, "ista">>
   waiting: Array<Int> = [for position in 0..futures.length(): position]
 
-fn _race<T>(futures: Array<Future<T>>) -> _Race<T>: new _Race<T>{futures}
+fn _race<T>(futures: Array<Future<T, "ista">>) -> _Race<T>: new _Race<T>{futures}
 
 # Whether some future of `race` hasn't arrived yet.
 fn _racing<T>(race: _Race<T>) -> Bool: race->waiting.length() > 0
 
 # The next future of `race` to arrive, taken out of it: its position and value.
-async fn _next<T>(race: _Race<T>) -> Future<(Int, T)>:
+ista async fn _next<T>(race: _Race<T>) -> (Int, T):
   const (index, value) = await first([for position in race->waiting: race->futures[position]])
   const position = race->waiting[index]
   race->waiting = [...race->waiting[..index], ...race->waiting[index + 1..]]

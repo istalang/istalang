@@ -14,24 +14,24 @@ import * as time from 'time'
 type Outcome = Result<Int, String>
 
 # Fills `slot` with `value` once a commit has passed, as another execution would.
-async fn later<T>(slot: Slot<T>, value: T) -> Future<Unit>:
+ista async fn later<T>(slot: Slot<T>, value: T) -> Unit:
   await runtime.commit()
   await slot.put(value)
 
-async fn allArrivingOutOfOrder() -> Future<Result<Array<Int>, String>>:
+ista async fn allArrivingOutOfOrder() -> Result<Array<Int>, String>:
   const (a, b) = (Slot.create<Outcome>(), Slot.create<Outcome>())
   const all = futures.all([a.read(), b.read()])
   await later(b, Ok(2))
   await later(a, Ok(1))
   await all
 
-async fn allWithOneFailing() -> Future<Result<Array<Int>, String>>:
+ista async fn allWithOneFailing() -> Result<Array<Int>, String>:
   const (a, b) = (Slot.create<Outcome>(), Slot.create<Outcome>())
   const all = futures.all([a.read(), b.read()])
   await later(b, Err("b"))
   await all
 
-async fn allOfNone() -> Future<Result<Array<Int>, String>>: await futures.all<Int, String>([])
+ista async fn allOfNone() -> Result<Array<Int>, String>: await futures.all<Int, String>([])
 
 @Suite{"futures › all"}
 fn allSuite() -> Array<Test>: [
@@ -48,7 +48,7 @@ fn allSuite() -> Array<Test>: [
   ...runAndReRun("of no futures is Ok and empty", allOfNone, Ok([]))
 ]
 
-async fn allSettledWithAFailure() -> Future<Array<Outcome>>:
+ista async fn allSettledWithAFailure() -> Array<Outcome>:
   const (a, b) = (Slot.create<Outcome>(), Slot.create<Outcome>())
   const settled = futures.allSettled([a.read(), b.read()])
   await later(b, Err("b"))
@@ -64,7 +64,7 @@ fn allSettledSuite() -> Array<Test>: [
   )
 ]
 
-async fn raceOfTwo() -> Future<Int>:
+ista async fn raceOfTwo() -> Int:
   const (a, b) = (Slot.create<Int>(), Slot.create<Int>())
   const first = futures.race([a.read(), b.read()])
   await later(b, 2)
@@ -81,21 +81,21 @@ fn raceSuite() -> Array<Test>: [
   })
 ]
 
-async fn anyAfterAnError() -> Future<Result<Int, Array<String>>>:
+ista async fn anyAfterAnError() -> Result<Int, Array<String>>:
   const (a, b) = (Slot.create<Outcome>(), Slot.create<Outcome>())
   const either = futures.any([a.read(), b.read()])
   await later(a, Err("a"))
   await later(b, Ok(2))
   await either
 
-async fn anyAllFailing() -> Future<Result<Int, Array<String>>>:
+ista async fn anyAllFailing() -> Result<Int, Array<String>>:
   const (a, b) = (Slot.create<Outcome>(), Slot.create<Outcome>())
   const either = futures.any([a.read(), b.read()])
   await later(b, Err("b"))
   await later(a, Err("a"))
   await either
 
-async fn anyOfNone() -> Future<Result<Int, Array<String>>>: await futures.any<Int, String>([])
+ista async fn anyOfNone() -> Result<Int, Array<String>>: await futures.any<Int, String>([])
 
 @Suite{"futures › any"}
 fn anySuite() -> Array<Test>: [
@@ -112,7 +112,7 @@ fn anySuite() -> Array<Test>: [
   ...runAndReRun("of no futures is an empty Err", anyOfNone, Err([]))
 ]
 
-async fn quorumReached() -> Future<Result<Array<Int>, Array<String>>>:
+ista async fn quorumReached() -> Result<Array<Int>, Array<String>>:
   const (a, b, c) = (Slot.create<Outcome>(), Slot.create<Outcome>(), Slot.create<Outcome>())
   const two = futures.quorum(2, [a.read(), b.read(), c.read()])
   await later(c, Ok(3))
@@ -120,14 +120,14 @@ async fn quorumReached() -> Future<Result<Array<Int>, Array<String>>>:
   await later(b, Ok(2))
   await two
 
-async fn quorumOutOfReach() -> Future<Result<Array<Int>, Array<String>>>:
+ista async fn quorumOutOfReach() -> Result<Array<Int>, Array<String>>:
   const (a, b, c) = (Slot.create<Outcome>(), Slot.create<Outcome>(), Slot.create<Outcome>())
   const two = futures.quorum(2, [a.read(), b.read(), c.read()])
   await later(c, Err("c"))
   await later(a, Err("a"))
   await two
 
-async fn quorumOfZero() -> Future<Result<Array<Int>, Array<String>>>:
+ista async fn quorumOfZero() -> Result<Array<Int>, Array<String>>:
   await futures.quorum(0, [Slot.create<Outcome>().read()])
 
 @Suite{"futures › quorum"}
@@ -153,7 +153,7 @@ fn quorumSuite() -> Array<Test>: [
   })
 ]
 
-async fn timeoutInTime() -> Future<Int?>:
+ista async fn timeoutInTime() -> Int?:
   const value = Slot.create<Int>()
   const limited = futures.timeout(value.read(), 5s)
   await later(value, 1)
@@ -180,9 +180,9 @@ fn timeoutSuite() -> Array<Test>: [
 
 # Retries, its default three times, a second apart as named past the default it leaves out, an
 # attempt that succeeds the third time: the outcome, and when each attempt started.
-async fn succeedingThirdTime() -> Future<(Outcome, Array<Int>)>:
+ista async fn succeedingThirdTime() -> (Outcome, Array<Int>):
   let startedAt: Array<Int> = []
-  const attempt = async fn() -> Future<Outcome>: {
+  const attempt = async fn() -> Future<Outcome, "ista">: {
     startedAt.push(time.now().value)
     if startedAt.length() < 3: Err("failed")
     else: Ok(startedAt.length())
@@ -190,7 +190,7 @@ async fn succeedingThirdTime() -> Future<(Outcome, Array<Int>)>:
   (await futures.retry(attempt, backoff: 1s), startedAt)
 
 # Moves `clock` through the backoffs of `retrying`, an instance running `succeedingThirdTime`.
-async fn backingOff(clock: FakeClock, retrying: Instance<(Outcome, Array<Int>)>):
+ista async fn backingOff(clock: FakeClock, retrying: Instance<(Outcome, Array<Int>)>):
   await retrying.idle()
   clock.advance(1s)
   await retrying.idle()
@@ -198,11 +198,11 @@ async fn backingOff(clock: FakeClock, retrying: Instance<(Outcome, Array<Int>)>)
   assertEq(await retrying.result(), Ok((Ok(3), [0, 1000, 3000])))
 
 # Retries, twice a second apart, a plain attempt that always fails.
-async fn failingTwice() -> Future<Outcome>:
+ista async fn failingTwice() -> Outcome:
   let attempts = 0
   await futures.retry(fn() -> Outcome: { attempts += 1; Err("attempt " + attempts) }, 2, 1s)
 
-async fn succeedingFirstTime() -> Future<Outcome>: await futures.retry(fn() -> Outcome: Ok(1))
+ista async fn succeedingFirstTime() -> Outcome: await futures.retry(fn() -> Outcome: Ok(1))
 
 @Suite{"futures › retry"}
 fn retrySuite() -> Array<Test>: [

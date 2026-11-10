@@ -104,7 +104,7 @@ fn inferred() -> String:
     case (Err(error), Ok(value)): `${error} ${value}`
     case _: ""
 
-async fn main() -> Future<String>:
+async fn main() -> String:
   const pair: Pair<Int> = Both(1, 2)
   const both = match pair:
     case Both(first, second): `${first} ${second}`

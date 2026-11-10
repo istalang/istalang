@@ -48,7 +48,7 @@ describe('contextual variance words `gives` and `takes` (§2, §3.5)', () => {
       codesOf(
         'extern shared struct H1<gives T>',
         'extern sendable struct H2<takes T>',
-        'extern ephemeral struct H3<gives T>',
+        'extern live struct H3<gives T>',
         'shared struct H4<takes T> { v: T }',
         'fn f<gives T>(x: T) -> T: x',
         'trait Tr<takes T> { fn step(self: Self, x: T) }',
@@ -207,7 +207,7 @@ describe('conversions composing inside types (§2, §3.1, §3.5, §3.14, §3.15)
       '  case Err(_): -1',
       '`${text}:${decoded}`',
     ].join('\n  ');
-    const source = [...decls, 'async fn main() -> Future<String>:', `  ${body}`].join('\n');
+    const source = [...decls, 'async fn main() -> String:', `  ${body}`].join('\n');
     const definition = definitionOf(source);
     const env = testRuntime();
     const ended = await startToEnd(env, compiledText(source));
@@ -229,8 +229,8 @@ describe('conversions composing inside types (§2, §3.1, §3.5, §3.14, §3.15)
         [
           'const sOpt: Sink<Int?> = Sink{take: handleOpt}',
           'const sInt: Sink<Int> = sOpt',
-          'const f: async fn(Int) -> Int? = handleOpt',
-          'const fs: Array<async fn(Int) -> Int?> = [handleOpt]',
+          'const f: ista async fn(Int) -> Int? = handleOpt',
+          'const fs: Array<ista async fn(Int) -> Int?> = [handleOpt]',
           '(sInt.take)(3) + ((await f(4)) ?? 0) + ((await fs[0](6)) ?? 0)',
         ].join('\n  '),
         decls,

@@ -8,7 +8,7 @@ struct Box<T> { value: T }
 fn coalesce<T>(x: T?, y: T?) -> T?: x ?? y
 fn get<T>(b: Box<T>?) -> T?: b?.value
 
-async fn main() -> Future<String>:
+async fn main() -> String:
   let xs: Array<None> = [none, none]
   const m: Map<String, None> = ["k": none]
   const p1 = `${coalesce<None>(none, none) == none}|${get<None>(Box{value: none}) == none}`

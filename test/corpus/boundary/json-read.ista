@@ -47,7 +47,7 @@ fn failure(text: String) -> String:
 fn order(tags: String, shape: String, pair: String, due: String, extra: String) -> String:
   "{\"id\":\"o1\",\"items\":[],\"tags\":" + tags + ",\"shape\":{\"_type\":\"" + shape + "\"},\"pair\":" + pair + ",\"due\":\"" + due + "\"" + extra + "}"
 
-async fn main() -> Future<Array<String>>:
+async fn main() -> Array<String>:
   const original = Order{id: "o1", items: [Item{sku: "a", qty: 2}], note: "n", tags: [10: 1], shape: Circle(1.5), pair: (3, true), due: 90m}
   const roundTrip = match json.parse<Order>(json.stringify(original)):
     case Ok(value): if value == original: "round trip" else: "changed"

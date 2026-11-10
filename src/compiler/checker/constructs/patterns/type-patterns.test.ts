@@ -39,7 +39,7 @@ describe('type patterns', () => {
       fc.asyncProperty(converted, async ({ type, literal }) => {
         const main = [
           emailDeclarations,
-          'async fn main() -> Future<Array<Bool>>:',
+          'async fn main() -> Array<Bool>:',
           `  const value: any Stringable = ${literal}`,
           `  [${testedTypes.map((tested) => `value is ${tested}`).join(', ')}]`,
         ].join('\n');

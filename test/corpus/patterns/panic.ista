@@ -10,5 +10,5 @@ fn decided(id: String, verdict: Verdict?) -> String:
     case Rejected: "rejected"
     case None: panic("no verdict for " + id)
 
-async fn main() -> Future<String>:
+async fn main() -> String:
   decided("p-1", none)

@@ -33,7 +33,7 @@ fn sendRevertible<M>(self: Bus<M>, message: M) -> Revertible<M>:
 
 # Runs `handler` for each message sent from now on, in the order they were sent, one at a time,
 # until the future it returns is disposed, or the bus is and every message sent before is handled.
-fn subscribe<M>(self: Bus<M>, handler: async fn(M) -> Unit) -> Future<Unit>:
+fn subscribe<M>(self: Bus<M>, handler: ista async fn(M) -> Unit) -> Future<Unit, "ista">:
   _follow(self->_end, WeakRef(self), handler)
 
 # Disposing a bus (§7) lets go of the end of its chain. Declaring `dispose` is what makes a bus
@@ -48,11 +48,11 @@ fn _publish<M>(bus: Bus<M>, message: M) -> Shared<Bool>:
   bus->_end = next
   retracted
 
-async fn _follow<M>(
+ista async fn _follow<M>(
   start: Slot<_Link<M>>
   bus: WeakRef<Bus<M>>
-  handler: async fn(M) -> Unit
-) -> Future<Unit>:
+  handler: ista async fn(M) -> Unit
+) -> Unit:
   let at = start
   while true:
     const link = await select:

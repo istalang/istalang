@@ -32,7 +32,7 @@ fn pick(n: Int) -> Int: n
 
 fn pick(s: String) -> String: s
 
-async fn subject(r: &Int, op: Op, n: Int):
+ista async fn subject(r: &Int, op: Op, n: Int):
   const d = fn(x: Int = 1): x
   fn g<T>(x: T) -> T: x
   fn h(...xs: Int): 0
@@ -51,7 +51,7 @@ async fn subject(r: &Int, op: Op, n: Int):
   const arity = (op.run)(1, 2)
   const typed = (op.run)("a")
 
-async fn later(n: Int) -> Future<Int>: n
+ista async fn later(n: Int) -> Int: n
 
 fn bumped(f: fn(&Int) -> Int) -> Int:
   let n = 1

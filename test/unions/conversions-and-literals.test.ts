@@ -40,7 +40,7 @@ describe('conversions into a union (§2)', () => {
         [
           'const a: (any Stringable) | Bool = Email{to: "cfo"}',
           'const b: Point | String = Pixel{x: 2, y: 5}',
-          'const c: (async fn(Int) -> Int) | String = fn(n: Int) -> Int: n + 1',
+          'const c: (ista async fn(Int) -> Int) | String = fn(n: Int) -> Int: n + 1',
           'const d: Int | String = (9,)',
           'const e: (Int,) | String = 4',
           'const f: "draft" = "draft"',

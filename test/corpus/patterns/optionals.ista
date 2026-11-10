@@ -26,7 +26,7 @@ fn roleOf(verdict: Verdict?) -> String:
 fn neverCalled() -> Int:
   panic("'??' evaluated its right side")
 
-async fn main() -> Future<String>:
+async fn main() -> String:
   const someone = Person{name: "a", address: Address{city: "x", zip: 42}}
   const nobody = Person{name: "b", address: none}
   const counted: Int? = someone.address?.length()

@@ -206,7 +206,7 @@ function partsRelation(relating: Relating): PartsRelation {
   return {
     varianceOf: relating.fitting.varianceOf,
     shapeOf: relating.fitting.shapeOf,
-    futureValue: relating.fitting.futureValue,
+    awaitedOf: relating.fitting.awaitedOf,
     // `constrain` undoes what a failure bound, so a probe of it leaves nothing behind.
     attempt: (probe) => probe(),
     relating: relating.unfolding,

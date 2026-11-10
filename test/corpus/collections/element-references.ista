@@ -20,7 +20,7 @@ fn setThenPeek(value: &Int, peek: fn() -> Int) -> Int:
 fn show(xs: Array<Int>) -> String:
   "[" + [for x in xs: String(x)].join(", ") + "]"
 
-async fn main() -> Future<String>:
+async fn main() -> String:
   let xs = [1, 2]
   let ys = [3]
   swap(&xs[0], &ys[0])

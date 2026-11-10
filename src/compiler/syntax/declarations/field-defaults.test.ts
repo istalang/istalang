@@ -19,7 +19,7 @@ describe('fieldsFunctionOf', () => {
       '  Circle(r: Int = 1)',
       'enum Icon:',
       '  Circle(r: Int = 2)',
-      'async fn main() -> Future<(Shape, Icon)>:',
+      'async fn main() -> (Shape, Icon):',
       '  (Shape.Circle(), Icon.Circle())',
     ].join('\n');
     const definition = compiledDefinition(stdProgramOf({ main }), 'main');
@@ -33,7 +33,7 @@ describe('fieldsFunctionOf', () => {
       'struct Retry:',
       '  times: Int = 3',
       '  label: String',
-      'async fn main() -> Future<Retry>: Retry{label: "a"}',
+      'async fn main() -> Retry: Retry{label: "a"}',
     ].join('\n');
     const names = compiledDefinition(stdProgramOf({ main }), 'main').functions.map(
       (entry) => entry.name,

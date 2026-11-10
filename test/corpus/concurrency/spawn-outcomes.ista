@@ -6,7 +6,7 @@
 import * as runtime from 'runtime'
 import * as time from 'time'
 
-async fn slowly(n: Int) -> Future<Int>:
+ista async fn slowly(n: Int) -> Int:
   await time.delay(5ms)
   await time.delay(5ms)
   n * 2
@@ -18,7 +18,7 @@ fn valueOf(outcome: Result<Int>) -> Int:
     case Ok(value): value
     case Err(_): -1
 
-async fn main() -> Future<String>:
+async fn main() -> String:
   const awaited = spawn slowly(3)
   const plain = spawn quickly(4)
   const forwarding = spawn(fn(): slowly(5))

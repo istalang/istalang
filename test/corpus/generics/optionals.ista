@@ -11,6 +11,6 @@ fn orZero(value: Int?) -> Bool:
 fn nested() -> Int??:
   5
 
-async fn main() -> Future<String>:
+async fn main() -> String:
   const maybe: Int? = 5
   String(maybe == 5) + " " + String(find(true) == 1) + " " + String(orZero(3)) + " " + String(orZero(none)) + " " + String(nested() == 5)

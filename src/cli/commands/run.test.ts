@@ -58,7 +58,7 @@ describe('ista run', () => {
   it('writes each committed log record to the error stream as a line of JSON', async () => {
     const text = [
       "import * as log from 'log'",
-      'async fn main() -> Future<Int>:',
+      'async fn main() -> Int:',
       '  log.warn("careful", struct{n: 2})',
       '  1',
     ].join('\n');

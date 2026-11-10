@@ -13,6 +13,7 @@ import {
   type RecursiveType,
   unfoldRecursive,
 } from '../type/computed-types.ts';
+import type { AwaitedType } from '../type/function-types.ts';
 import type { FunctionType, NominalDeclaration, Type, TypeParameterType } from '../type/index.ts';
 import type { Variance } from './lattice.ts';
 import { composed, flipped, joined, type Usage } from './lattice.ts';
@@ -22,18 +23,18 @@ export class UsageWalk {
   readonly usages: Usage[];
   readonly #parameters: readonly TypeParameter[];
   readonly #variancesOf: (declaration: NominalDeclaration | TraitDeclaration) => readonly Usage[];
-  readonly #futureValue: (type: Type) => Type | undefined;
+  readonly #awaitedOf: (type: Type) => AwaitedType | undefined;
   /** Each node of a recursive type is walked once per position it is met at. */
   readonly #walked = new Map<RecursiveGraph, Set<string>>();
 
   constructor(
     parameters: readonly TypeParameter[],
     variancesOf: (declaration: NominalDeclaration | TraitDeclaration) => readonly Usage[],
-    futureValue: (type: Type) => Type | undefined,
+    awaitedOf: (type: Type) => AwaitedType | undefined,
   ) {
     this.#parameters = parameters;
     this.#variancesOf = variancesOf;
-    this.#futureValue = futureValue;
+    this.#awaitedOf = awaitedOf;
     this.usages = parameters.map(() => 'unused');
   }
 
@@ -98,7 +99,7 @@ export class UsageWalk {
     }
     // A function giving a future fits where one giving a future of a wider value is expected, its
     // future awaited (§3.14), so it varies in what its future gives as in what it gives.
-    this.walk(this.#futureValue(type.result) ?? type.result, at);
+    this.walk(this.#awaitedOf(type.result)?.value ?? type.result, at);
   }
 
   #recursive(type: RecursiveType, at: Variance): void {

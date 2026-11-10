@@ -13,7 +13,7 @@ fn setIndex(self: &Tree, depth: Int, value: Int) -> Unit:
   else:
     self.children[0][depth - 1] = value
 
-async fn main() -> Future<Int>:
+async fn main() -> Int:
   let tree = Tree{children: [], value: 0}
   for _ in 0..3000:
     tree = Tree{children: [tree], value: 0}

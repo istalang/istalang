@@ -20,7 +20,7 @@ fn sent(yes: Bool, s: Status) -> Status:
   const d: "draft" = "draft"
   if yes: s else: d
 
-async fn main() -> Future<String>:
+async fn main() -> String:
   const yes = true
   const x = if yes: 2 else: none
   const y = if yes: none else: 2

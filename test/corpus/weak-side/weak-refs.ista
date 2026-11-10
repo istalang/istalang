@@ -7,15 +7,15 @@
 
 import * as time from 'time'
 
-fn resolved(signal: Future<Unit>) -> Bool:
+fn resolved(signal: Future<Unit, "ista">) -> Bool:
   select:
     case signal:
       true
     else:
       false
 
-async fn worker(n: Int) -> Future<Int>:
-  fn watch() -> Future<Unit>:
+ista async fn worker(n: Int) -> Int:
+  fn watch() -> Future<Unit, "ista">:
     worker.disposing()
   await select:
     case watch():
@@ -23,10 +23,10 @@ async fn worker(n: Int) -> Future<Int>:
     case time.delay(1ms):
       n + 1
 
-async fn watcher() -> Future<fn() -> Future<Unit>>:
-  fn() -> Future<Unit>: watcher.disposing()
+ista async fn watcher() -> fn() -> Future<Unit, "ista">:
+  fn() -> Future<Unit, "ista">: watcher.disposing()
 
-async fn main() -> Future<String>:
+async fn main() -> String:
   const slot = Slot.create<Int>()
   const other = Slot.create<Int>()
   const weak = WeakRef(slot)

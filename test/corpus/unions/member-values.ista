@@ -29,5 +29,5 @@ fn either<T in Int | String>(x: T) -> String:
     case Int as n: `${n}`
     case String as t: t
 
-async fn main() -> Future<String>:
+async fn main() -> String:
   `${wide("draft")}|${back("sent")}|${opt("failed")}|${either(1)}:${either("one")}`

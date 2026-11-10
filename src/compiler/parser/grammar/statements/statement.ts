@@ -52,6 +52,8 @@ const statementParselets: Partial<Record<CursorKind, StatementParselet>> = {
 /** Each contextual word's statement, or undefined, with nothing consumed, where it is a name. */
 const wordParselets = {
   hold: (parser) => (atHold(parser) ? parseHeldVariable(parser) : undefined),
+  live: parseLocalFunction,
+  ista: parseLocalFunction,
 } satisfies WordParselets<StatementWord, (parser: Parser) => Statement | undefined>;
 
 export function parseStatement(parser: Parser): Statement | Invalid {

@@ -6,21 +6,21 @@
 import Inbox from 'inbox'
 import * as time from 'time'
 
-async fn worker(name: String, jobs: Inbox<Int>, results: Inbox<String>):
+ista async fn worker(name: String, jobs: Inbox<Int>, results: Inbox<String>):
   const job = await jobs.receive()
   results.send(name + ":" + String(job))
 
-async fn sendLater(box: Inbox<String>, wait: time.Duration, message: String):
+ista async fn sendLater(box: Inbox<String>, wait: time.Duration, message: String):
   await time.delay(wait)
   box.send(message)
 
-async fn collect(box: Inbox<String>, count: Int) -> Future<String>:
+ista async fn collect(box: Inbox<String>, count: Int) -> String:
   let received: Array<String> = []
   while received.length() < count:
     received.push(await box.receive())
   received.join(" ")
 
-async fn main() -> Future<String>:
+async fn main() -> String:
   const jobs = Inbox.create<Int>()
   const results = Inbox.create<String>()
   _ = worker("a", jobs, results)

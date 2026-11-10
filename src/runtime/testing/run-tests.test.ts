@@ -9,10 +9,10 @@ import { outcomesOf, reportsOf, testModule } from './testing.test-kit.ts';
 describe('the runner', () => {
   it('reports each test under its full title, as passed, failed or skipped', async () => {
     const source = testModule(`
-async fn passes():
+ista async fn passes():
   ()
 
-async fn fails() -> Future<Unit>:
+ista async fn fails() -> Unit:
   panic("on purpose")
 
 @Suite{"first"}
@@ -35,7 +35,7 @@ fn second() -> Array<Test>: [skip(group("all", [test("inherits", fails)]))]
 
   it('runs only the focused tests when any is, and only those a filter names', async () => {
     const source = testModule(`
-async fn passes():
+ista async fn passes():
   ()
 
 @Suite{"one"}
@@ -55,7 +55,7 @@ fn two() -> Array<Test>: [only(group("g", [test("c", passes)])), test("d", passe
 
   it('skips a test skip marks, whatever only marks, and at whatever level', async () => {
     const source = testModule(`
-async fn passes():
+ista async fn passes():
   ()
 
 @Suite{"marks"}
@@ -75,7 +75,7 @@ fn marks() -> Array<Test>: [
 
   it('fails a test whose suite lists other tests in its instance than it listed before', async () => {
     const source = testModule(`
-async fn passes():
+ista async fn passes():
   ()
 
 fn title() -> String: "at " + time.now().value
@@ -100,7 +100,7 @@ fn suite() -> Array<Test>: broken()
 
   it('allows a suite to build a test with a deferred call, running the call only when the test runs (§3.14, §10)', async () => {
     const source = testModule(`
-async fn checkSum(a: Int, b: Int, expected: Int):
+ista async fn checkSum(a: Int, b: Int, expected: Int):
   assertEq(a + b, expected)
 
 @Suite{"deferred"}
@@ -115,12 +115,12 @@ fn suite() -> Array<Test>: [
 describe('spawned instances', () => {
   it('are watched through idle, reaches, waitingAt, state and result', async () => {
     const source = testModule(`
-async fn sleeper(days: Int) -> Future<String>:
+ista async fn sleeper(days: Int) -> String:
   @Waypoint{"sleeping"}
   await time.delay(Duration{value: days * 1000})
   "woke"
 
-async fn watched():
+ista async fn watched():
   const started = spawn sleeper(2)
   assert(started.state() is Running)
   await started.idle()
@@ -141,13 +141,13 @@ fn watches() -> Array<Test>: [test("watched", watched)]
 fn first() -> Int: 1
 fn second() -> Int: 2
 
-async fn wakesAndCalls():
+ista async fn wakesAndCalls():
   await time.delay(1s)
   drop first()
   drop second()
   await time.delay(1s)
 
-async fn idleAfterCalls():
+ista async fn idleAfterCalls():
   const clock = FakeClock{start: Time{value: 0}}
   hold _ = mock(time.now, clock.now)
   hold _ = mock(time.at, clock.at)
@@ -167,10 +167,10 @@ fn suite() -> Array<Test>: [test("after calls", idleAfterCalls)]
 
   it('fail the test at once when one panics, naming the instance', async () => {
     const source = testModule(`
-async fn breaks() -> Future<Unit>:
+ista async fn breaks() -> Unit:
   panic("broken")
 
-async fn starts():
+ista async fn starts():
   spawn breaks()
   await time.delay(1s)
 
@@ -184,10 +184,10 @@ fn panics() -> Array<Test>: [test("starts", starts)]
 
   it('fail no test with a panic some instance waits for, which reads it as an Err', async () => {
     const source = testModule(`
-async fn breaks() -> Future<Int>:
+ista async fn breaks() -> Int:
   panic("broken")
 
-async fn awaited():
+ista async fn awaited():
   const outcome = await (spawn breaks()).result()
   assert(outcome is Err(error) and error.message == "broken" and error.code == "panic")
 
@@ -201,12 +201,12 @@ fn awaitedPanics() -> Array<Test>: [test("awaited", awaited)]
     const source = testModule(`
 extern fn effect(n: Int) -> Int
 
-async fn twice() -> Future<Int>:
+ista async fn twice() -> Int:
   const n = effect(1)
   await time.delay(1s)
   n
 
-async fn crashing():
+ista async fn crashing():
   const effects = mock(effect, fn(n: Int): n)
   drop await testing.spawnCrashingEveryAwait(twice).result()
   assertEq(effects.calls().length(), 2)
@@ -225,10 +225,10 @@ extern sendable struct Queue
 extern fn open() -> Queue
 extern fn name(queue: Queue) -> String
 
-async fn opens() -> Future<String>:
+ista async fn opens() -> String:
   name(open())
 
-async fn handles():
+ista async fn handles():
   const queue = handle<Queue>()
   assert(queue != handle<Queue>())
   hold _ = mock(open, fn(): queue)
@@ -248,21 +248,21 @@ describe("a host type's dispose", () => {
 extern shared struct Queue
 extern fn dispose(self: Queue)
 extern fn open() -> Queue
-async fn openAsync() -> Future<Queue>:
+ista async fn openAsync() -> Queue:
   open()
 
-async fn opensAndLets() -> Future<Unit>:
+ista async fn opensAndLets() -> Unit:
   drop open()
 
-async fn unmockedDispose():
+ista async fn unmockedDispose():
   const queue = handle<Queue>()
   hold _ = mock(open, fn(): queue)
   drop await (spawn opensAndLets()).result()
 
-async fn mockedDispose():
+ista async fn mockedDispose():
   const queue = handle<Queue>()
   hold _ = mock(open, fn(): queue)
-  hold _ = mock(openAsync, async fn() -> Future<Queue>: {
+  hold _ = mock(openAsync, async fn() -> Future<Queue, "ista">: {
     await time.delay(1ms)
     queue
   })
@@ -287,11 +287,11 @@ extern shared struct Sent
 extern fn dispose(self: Sent)
 extern fn post(n: Int) -> Sent
 
-async fn posts() -> Future<Unit>:
+ista async fn posts() -> Unit:
   hold _ = post(1)
   hold _ = post(2)
 
-async fn handedOut():
+ista async fn handedOut():
   hold _ = mock(post, fn(n: Int): handle<Sent>())
   const disposed = mock(dispose, fn(given: Sent): ())
   drop await (spawn posts()).result()
@@ -309,13 +309,13 @@ describe('a failing test', () => {
     const source = testModule(`
 extern fn charge(amount: Int) -> String
 
-async fn unmocked():
+ista async fn unmocked():
   drop charge(1)
 
-async fn forever():
+ista async fn forever():
   drop await Slot.create<Int>().take()
 
-async fn tooLong():
+ista async fn tooLong():
   await time.delay(10s)
 
 @Suite{"failing"}

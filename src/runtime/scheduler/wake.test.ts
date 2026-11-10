@@ -16,7 +16,7 @@ import { type Snapshot, snapshotFormat } from '../snapshot/snapshot.ts';
 
 const childAndMain = [
   "import * as time from 'time'",
-  'async fn child(n: Int) -> Future<Int>:',
+  'ista async fn child(n: Int) -> Int:',
   '  await time.delay(10ms)',
   '  n + 1',
   'async fn main():',
@@ -31,7 +31,7 @@ const childAndMain = [
 const referenceAcrossAwaits = [
   "import * as time from 'time'",
   'struct Tally { count: Int }',
-  'async fn addLater(total: &Tally, n: Int):',
+  'ista async fn addLater(total: &Tally, n: Int):',
   '  total.count += n',
   '  await time.delay(5ms)',
   '  total.count += n',
@@ -45,7 +45,7 @@ const referenceAcrossAwaits = [
 const severalAwaits = [
   "import * as time from 'time'",
   "import * as runtime from 'runtime'",
-  'async fn step(n: Int) -> Future<Int>:',
+  'ista async fn step(n: Int) -> Int:',
   '  await time.delay(5ms)',
   '  await runtime.commit()',
   '  n + 1',

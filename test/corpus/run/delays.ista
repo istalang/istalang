@@ -3,7 +3,7 @@
 # forward between commits, so the elapsed time covers both delays.
 import * as time from 'time'
 
-async fn doubleLater(n: Int) -> Future<Int>:
+ista async fn doubleLater(n: Int) -> Int:
   await time.delay(10ms)
   await time.delay(10ms)
   n * 2

@@ -9,10 +9,10 @@ import { fittingApart } from '../fitting/fit/fit.test-kit.ts';
 import { fitOf } from '../fitting/fit/index.ts';
 import { sameType } from '../identity/identity.ts';
 import type { Type } from '../type/index.ts';
-import { intType, neverType, noneType, stringType } from '../type/primitives.ts';
+import { intType, literalType, neverType, noneType, stringType } from '../type/primitives.ts';
 import { noProgramRules } from '../type/type-rules.test-kit.ts';
 import { commonType, type Joining } from './common-type.ts';
-import { literalType, optionalOf, unionOf } from './unions.ts';
+import { optionalOf, unionOf } from './unions.ts';
 
 /** Joining in a program declaring nothing. */
 const joining: Joining = {

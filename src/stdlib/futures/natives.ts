@@ -8,9 +8,9 @@ import { parameterKey } from '../../definition/extern-key.ts';
 import { elementsOf } from '../../definition/values/values.ts';
 import { wellKnown } from '../../foundation/language/well-known/index.ts';
 import type { NativeContext, Natives, WithFutures } from '../../runtime/natives.ts';
-import { knownTypeKey, type NativeKeys } from '../std-module.ts';
+import { futureKey, knownTypeKey, type NativeKeys } from '../std-module.ts';
 
-const futures = knownTypeKey(wellKnown.array, knownTypeKey(wellKnown.future, parameterKey('T')));
+const futures = knownTypeKey(wellKnown.array, futureKey(parameterKey('T'), 'ista'));
 
 export const futuresNatives = (keys: NativeKeys): Natives<NativeContext & WithFutures> => ({
   [keys.of('first', futures)]: ([racing], context) => context.futures.first(elementsOf(racing)),

@@ -210,6 +210,8 @@ describe('the language service', () => {
     expect(completionNamesAt('trait T:', '  fn f(self: Self) -> Int', '  ‸')).toEqual([
       'type',
       'fn',
+      'live',
+      'ista',
       'async',
     ]);
   });

@@ -146,7 +146,7 @@ describe('match, select and type match cases stand one per line (§4)', () => {
     [
       'select cases on one line with ";"',
       lines(
-        'async fn f(a: Future<Int>, b: Future<Int>) -> Future<Int>:',
+        'ista async fn f(a: Future<Int, "ista">, b: Future<Int, "ista">) -> Int:',
         '  await select:',
         '    case a as x: x; case b as y: y',
       ),

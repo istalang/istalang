@@ -136,8 +136,8 @@ describe('completion', () => {
   });
 
   it("offers an async function's own call's members after its name, but none for main", () => {
-    expect(names('async fn worker() -> Future<Int>:', '  worker.‸', '  1')).toContain('disposing');
-    expect(names('async fn main() -> Future<Int>:', '  main.‸', '  1')).toEqual([]);
+    expect(names('ista async fn worker() -> Int:', '  worker.‸', '  1')).toContain('disposing');
+    expect(names('async fn main() -> Int:', '  main.‸', '  1')).toEqual([]);
   });
 
   it("offers the fields a struct literal doesn't give yet, where an item's name stands", () => {

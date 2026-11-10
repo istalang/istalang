@@ -120,7 +120,7 @@ export async function runMain(
   body: string,
   declarations: readonly string[] = [],
 ): Promise<unknown> {
-  const source = [...declarations, `async fn main() -> Future<${result}>:`, `  ${body}`].join('\n');
+  const source = [...declarations, `async fn main() -> ${result}:`, `  ${body}`].join('\n');
   const state = await startToEnd(testRuntime(), compiledText(source));
   return state.kind === 'finished' ? decodeJson(String(state.outcome)) : state;
 }

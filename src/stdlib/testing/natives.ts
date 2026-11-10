@@ -20,7 +20,7 @@ import {
   type WithInstances,
   type WithTesting,
 } from '../../runtime/natives.ts';
-import { knownTypeKey, type NativeKeys } from '../std-module.ts';
+import { futureKey, knownTypeKey, type NativeKeys } from '../std-module.ts';
 import { arrayOf, given, text } from '../values/arguments.ts';
 import { declaredResult, resultVariant } from '../values/results.ts';
 
@@ -43,11 +43,10 @@ export const testingNatives = (keys: NativeKeys): Natives<Context> => {
       context.testing.mock(namedFunction(target), given(replacement)),
     [keys.of('_calls', keys.type('Mock', parameterKey('F')))]: ([mock], context) =>
       arrayOf(context.testing.calls(given(mock))),
-    [keys.of(
-      'spawnCrashingEveryAwait',
-      functionKey([], knownTypeKey(wellKnown.future, parameterKey('T'))),
-    )]: ([entry], context) =>
-      context.instances.spawn(given(entry), declaredResult(context), { crashEveryAwait: true }),
+    [keys.of('spawnCrashingEveryAwait', functionKey([], futureKey(parameterKey('T'), 'ista')))]: (
+      [entry],
+      context,
+    ) => context.instances.spawn(given(entry), declaredResult(context), { crashEveryAwait: true }),
     [ofInstance('idle')]: ([handle], context) =>
       context.testing.watch(instanceNameOf(handle), { kind: 'idle' }),
     [ofInstance('reaches', 'String')]: ([handle, label], context) =>

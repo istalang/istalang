@@ -84,7 +84,7 @@ const scenarios: readonly Scenario[] = [
     src: ['extern ‸'],
     where: 'top',
     expect: {
-      has: ['fn', 'struct', 'shared', 'sendable', 'ephemeral'],
+      has: ['fn', 'struct', 'shared', 'sendable', 'live', 'ista'],
       lacks: ['plus', 'Pair', 'let', 'if'],
     },
   },
@@ -153,7 +153,7 @@ const scenarios: readonly Scenario[] = [
     id: 'DH-05',
     place: 'declaredName',
     title: 'Parameter name',
-    src: ['fn g(‸', 'fn g(a: Int, ‸', 'async fn g(‸'],
+    src: ['fn g(‸', 'fn g(a: Int, ‸', 'ista async fn g(‸'],
     where: 'top',
     expect: { lacks: ['plus', 'Pair', 'Int', 'let', 'xs'] },
   },

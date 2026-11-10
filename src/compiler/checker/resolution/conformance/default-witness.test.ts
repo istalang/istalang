@@ -46,12 +46,12 @@ describe("a type's default()", () => {
   });
 
   it('async, gives a future, so meets no Default, which a map literal says', () => {
-    const slow = 'async fn Bag.default() -> Future<Bag>: Bag{n: 0}';
+    const slow = 'ista async fn Bag.default() -> Bag: Bag{n: 0}';
     const [skipped, literal] = reportedWith(slow, '');
     expect([skipped?.code, literal?.code]).toEqual([
       checkerDiagnostics.skippedWithoutDefault.code,
       checkerDiagnostics.notConforming.code,
     ]);
-    expect(literal?.message).toContain('where the one declared gives Future<Bag>');
+    expect(literal?.message).toContain('where the one declared gives Future<Bag, "ista">');
   });
 });

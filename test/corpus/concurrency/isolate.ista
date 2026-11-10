@@ -9,10 +9,10 @@ fn stock(item: String) -> Int:
     panic("no stock")
   item.length()
 
-async fn checked(item: String) -> Future<String>:
+ista async fn checked(item: String) -> String:
   match await runtime.isolate(fn(): stock(item)):
     case Ok(value): "Ok " + value
     case Err(error): "Err " + error.code + ": " + error.message
 
-async fn main() -> Future<String>:
+async fn main() -> String:
   await checked("") + "; " + await checked("pen")

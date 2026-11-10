@@ -18,6 +18,6 @@ fn both<K in "a" | "b">(k: K) -> String:
 fn reversed<K in "a" | "b">(k: K) -> Bool:
   "b" == k
 
-async fn main() -> Future<String>:
+async fn main() -> String:
   const results = [describe("a"), describe("b"), `${equalsA("a")}`, `${equalsA("b")}`]
   `${results.join("|")}|${both("a")}|${both("b")}|${reversed("b")}`

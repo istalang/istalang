@@ -14,5 +14,5 @@ struct B<U>:
   x: Int
   a: Opt<A<U>>
 
-async fn main() -> Future<Int>:
+async fn main() -> Int:
   A<String>{}.b.x

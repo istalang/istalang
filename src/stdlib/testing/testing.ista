@@ -29,7 +29,7 @@ struct Suite:
 # A test, or a group of tests, as the library builds them (§10), marked by `skip` and `only`,
 # which a group's marks reach every test of.
 enum Test:
-  Case(title: String, body: async fn() -> Unit, skipped: Bool = false, only: Bool = false)
+  Case(title: String, body: ista async fn() -> Unit, skipped: Bool = false, only: Bool = false)
   Group(title: String, tests: Array<Test>, skipped: Bool = false, only: Bool = false)
 
 # A test as the runner lists it: its full title, and whether the run skips or focuses it.
@@ -41,7 +41,7 @@ struct Listed:
 # A listed test with its body.
 struct _Entry:
   listed: Listed
-  body: async fn() -> Unit
+  body: ista async fn() -> Unit
 
 # Every test of `suite`, depth first, titled under `title`, the suite's.
 fn _list(suite: fn() -> Array<Test>, title: String) -> Array<Listed>: [
@@ -49,7 +49,7 @@ fn _list(suite: fn() -> Array<Test>, title: String) -> Array<Listed>: [
 ]
 
 # Runs test `position` of `suite`, once sure its listing still puts `expected` there (§10).
-async fn _run(suite: fn() -> Array<Test>, title: String, position: Int, expected: String):
+ista async fn _run(suite: fn() -> Array<Test>, title: String, position: Int, expected: String):
   const entry = _entries(title, suite(), false, false).at(position)
   if entry is _Entry as found and found.listed.title == expected: await found.body()
   else:
@@ -104,12 +104,12 @@ enum InstanceState:
 
 # Spawns `f` as a new instance once the caller's segment commits (§9), with every segment run,
 # discarded and run again before it commits (§10).
-extern fn spawnCrashingEveryAwait<T>(f: sendable async fn() -> T) -> Instance<T>
+extern fn spawnCrashingEveryAwait<T>(f: sendable ista async fn() -> T) -> Instance<T>
 
 # Resolves once every execution of the instance is waiting, or it has finished.
-extern fn idle<R>(self: Instance<R>) -> Future<Unit>
+extern fn idle<R>(self: Instance<R>) -> Future<Unit, "ista">
 # Resolves once an execution of the instance is suspended at waypoint `label`.
-extern fn reaches<R>(self: Instance<R>, label: String) -> Future<Unit>
+extern fn reaches<R>(self: Instance<R>, label: String) -> Future<Unit, "ista">
 # The waypoint of every wait of the instance, or its source location where it has none.
 extern fn waitingAt<R>(self: Instance<R>) -> Array<String>
 extern fn state<R>(self: Instance<R>) -> InstanceState
@@ -118,10 +118,10 @@ extern fn state<R>(self: Instance<R>) -> InstanceState
 extern fn handle<T>() -> T
 
 # A test of `body`, run in an instance of its own (§10).
-fn test(title: String, body: async fn() -> Unit) -> Test: Case(title: title, body: body)
+fn test(title: String, body: ista async fn() -> Unit) -> Test: Case(title: title, body: body)
 
 # A test of `body`, run inside the environment `setup` prepares (§10).
-fn test<E>(title: String, setup: Setup<E>, body: async fn(E) -> Unit) -> Test:
+fn test<E>(title: String, setup: Setup<E>, body: ista async fn(E) -> Unit) -> Test:
   test(title, async fn(): await setup(body))
 
 fn group(title: String, tests: Array<Test>) -> Test: Group(title: title, tests: tests)
@@ -149,7 +149,7 @@ fn _marked(entry: Test, skipping: Bool, focusing: Bool) -> Test:
     )
 
 # An environment for tests (§10): prepares it, runs the test inside it, and tears it down after.
-type Setup<E> = async fn(async fn(E) -> Unit) -> Unit
+type Setup<E> = ista async fn(ista async fn(E) -> Unit) -> Unit
 
 # Several environments as one (§10): the first outermost, the test receiving them as a tuple.
 fn setups<A, B>(a: Setup<A>, b: Setup<B>) -> Setup<(A, B)>: _joined(a, b, fn(x: A, y: B): (x, y))
@@ -177,7 +177,7 @@ fn setups<A, B, C, D, E, G>(
 
 # `outer` around `inner`, the test receiving their environments as `join` makes one of them.
 fn _joined<O, I, J>(outer: Setup<O>, inner: Setup<I>, join: fn(O, I) -> J) -> Setup<J>:
-  async fn(body: async fn(J) -> Unit): await outer(
+  async fn(body: ista async fn(J) -> Unit): await outer(
     async fn(o: O): await inner(async fn(i: I): await body(join(o, i)))
   )
 
@@ -193,10 +193,10 @@ fn assertEq<T is Encodable>(actual: T, expected: T):
 
 # Spawns `f` as an instance of its own, since a panic freezes the instance it happens in (§5), and
 # waits for its end: the message it panics with. Panics if `f` returns instead (§10).
-async fn expectPanic<R is Sendable>(f: sendable async fn() -> R) -> Future<String>:
+ista async fn expectPanic<R is Sendable>(f: sendable ista async fn() -> R) -> String:
   await _panicOf(spawn(f))
 
-async fn _panicOf<R is Sendable>(instance: Instance<R>) -> Future<String>:
+ista async fn _panicOf<R is Sendable>(instance: Instance<R>) -> String:
   match await instance.result():
     case Err(error): error.message
     case _: panic("expectPanic expected a panic, but the function returned.")
@@ -207,7 +207,7 @@ struct FakeClock:
   start: Time
   _state: _Clock = new _Clock{now: start}
   now: fn() -> Time = fn(): _state->now
-  at: fn(Time) -> Future<Unit> = fn(deadline: Time): _waitUntil(_state, deadline)
+  at: fn(Time) -> Future<Unit, "ista"> = fn(deadline: Time): _waitUntil(_state, deadline)
 
 # A fake clock's time, and the waits it fills as it passes their deadlines: ordered by deadline,
 # ties in the order they began, so it fills them in that order.
@@ -219,7 +219,7 @@ struct _Wait:
   deadline: Time
   slot: Slot<Unit>
 
-fn _waitUntil(clock: _Clock, deadline: Time) -> Future<Unit>:
+fn _waitUntil(clock: _Clock, deadline: Time) -> Future<Unit, "ista">:
   const slot = Slot.create<Unit>()
   const (due, later) = _splitDue(clock->waits, deadline)
   clock->waits = [...due, _Wait{deadline, slot}, ...later]
@@ -234,7 +234,7 @@ fn advance(self: FakeClock, by: Duration):
   _fillDue(clock)
 
 # A setup installing a `FakeClock` starting at 0 as `time.now` and `time.at` (§10).
-async fn withClock(body: async fn(FakeClock) -> Unit):
+ista async fn withClock(body: ista async fn(FakeClock) -> Unit):
   const clock = FakeClock{start: Time{value: 0}}
   hold _ = mock(time.now, clock.now)
   hold _ = mock(time.at, clock.at)
@@ -259,7 +259,7 @@ struct FakeQueue<Q, T, K = String>:
   _queues: _Queues<Q, T, K> = new _Queues<Q, T, K>{}
   open: fn(K) -> Q = fn(key: K): _opened(_queues, make, key).queue
   send: fn(Q, T) -> Unit = fn(queue: Q, message: T): _inboxOf(_queues, queue).send(message)
-  receive: fn(Q) -> Future<T> = fn(queue: Q): _inboxOf(_queues, queue).receive()
+  receive: fn(Q) -> Future<T, "ista"> = fn(queue: Q): _inboxOf(_queues, queue).receive()
 
 shared struct _Queues<Q, T, K>:
   opened: Array<_Queue<Q, T, K>> = []

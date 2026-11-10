@@ -26,7 +26,7 @@ import {
   type LiteralValue,
   type Type,
 } from '../type/index.ts';
-import { isPrimitive, neverType, noneType } from '../type/primitives.ts';
+import { isPrimitive, literalType, neverType, noneType } from '../type/primitives.ts';
 import type { TypeRules } from '../type/type-rules.ts';
 import {
   absorbingMember,
@@ -35,11 +35,6 @@ import {
   type MemberReading,
   normalizedMembers,
 } from './union-members.ts';
-
-/** The literal type of `value`. */
-export function literalType(value: LiteralValue): LiteralType {
-  return { kind: 'literal', value };
-}
 
 /** Members read as the types they are. */
 const typeReading: MemberReading<Type> = {

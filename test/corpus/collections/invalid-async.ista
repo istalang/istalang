@@ -10,7 +10,7 @@ fn Bag.default() -> Bag:
 fn index(self: Bag, key: String) -> Int:
   self.values[key]
 
-async fn setIndex(self: &Bag, key: String, value: Int):
+ista async fn setIndex(self: &Bag, key: String, value: Int):
   self.values[key] = value
 
 async fn main():

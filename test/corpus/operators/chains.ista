@@ -6,7 +6,7 @@
 fn ordered<T is Comparable>(low: T, middle: T, high: T) -> Bool:
   low <= middle < high
 
-async fn main() -> Future<(Bool, Bool, Bool, Bool, Bool, Bool, Bool, Int)>:
+async fn main() -> (Bool, Bool, Bool, Bool, Bool, Bool, Bool, Int):
   let calls = 0
   fn counted(value: Int) -> Int:
     calls += 1

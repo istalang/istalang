@@ -42,7 +42,7 @@ async fn main():
   const pixels: Array<Pixel> = [Pixel{x: 2, y: 0}, Pixel{x: 3, y: 0}]
   const doubled: fn(Int?) -> Int = fn(n): (n ?? 0) * 2
   const plains: Array<fn() -> Int> = [fn(): 7]
-  const asyncs: Array<async fn() -> Int> = plains
+  const asyncs: Array<ista async fn() -> Int> = plains
   const nested: Array<Array<Int>> = [[1], [2, 3]]
   const tree: json.Json = nested
   const grown: Tree<Int> = [1, [2, [3]]]

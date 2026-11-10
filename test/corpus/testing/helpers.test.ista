@@ -1,7 +1,7 @@
 # error: 5952 at 25:17
 # error: 5952 at 26:17
 # error: 5953 at 27:18
-# error: 5953 at 30:31
+# error: 5953 at 30:39
 # error: 5110 at 32:39
 # error: 5952 at 33:17
 # error: 5954 at 42:30
@@ -20,14 +20,14 @@ fn greet(name: String) -> String: name
 
 enum Plain { One(by: String), Other }
 
-async fn targets():
+ista async fn targets():
   const named = greet
   hold _ = mock(named, fn(name: String): name)
   hold _ = mock(fn(name: String): name, fn(name: String): name)
   const n: Int = handle<Int>()
   hold _ = mock(greet, fn(name: String): name)
   const q: Queue = handle<Queue>()
-  const future: Future<Int> = handle<Future<Int>>()
+  const future: Future<Int, "ista"> = handle<Future<Int, "ista">>()
   hold _ = mock(dispose, fn(queue: Queue): ())
   const disposer: fn(Queue) -> Unit = dispose
   hold _ = mock(Plain.One, fn(by: String): Plain.One("mocked"))
@@ -38,5 +38,5 @@ async fn targets():
 
 fn hello(a: Int, b: String = "x") -> Int: a
 
-async fn shorter():
+ista async fn shorter():
   hold _ = mock<(Int,), Int>(hello, fn(a: Int): a)

@@ -124,7 +124,7 @@ describe('a stray modifier', () => {
     ['type', 'sendable sendable fn(A)', repeatedModifier, 'sendable'],
     ['module', 'extern extern fn f()', repeatedModifier, 'extern'],
     ['module', 'extern shared sendable struct H', conflictingModifiers, 'sendable'],
-    ['module', 'sendable extern ephemeral struct H', conflictingModifiers, 'ephemeral'],
+    ['module', 'sendable extern live struct H', conflictingModifiers, 'live'],
     ['module', 'trait T:\n  extern fn f()', misplacedModifier, 'extern'],
   ] as const)('in %s `%s` is reported once, by name', (category, text, diagnostic, word) => {
     expect(reported(category, text)).toEqual(reportedOnce(diagnostic.code, word));

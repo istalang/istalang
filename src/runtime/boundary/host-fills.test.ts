@@ -11,18 +11,18 @@ import type { HostCall, HostExterns } from './host-natives.ts';
 
 const program = compiledText(
   [
-    'extern fn slow(name: String) -> Future<Int>',
-    'extern fn gate() -> Future<Int>',
+    'extern fn slow(name: String) -> Future<Int, "ista">',
+    'extern fn gate() -> Future<Int, "ista">',
     'extern limit: Int',
     '',
-    'async fn dropped() -> Future<Int>:',
+    'ista async fn dropped() -> Int:',
     '  const abandoned = slow("a")',
     '  drop abandoned',
     '  await gate()',
     '',
-    'async fn readLimit() -> Future<Int>: limit',
+    'ista async fn readLimit() -> Int: limit',
     '',
-    'async fn twice() -> Future<Int>:',
+    'ista async fn twice() -> Int:',
     '  const first = slow("a")',
     '  await gate() + await first',
     '',

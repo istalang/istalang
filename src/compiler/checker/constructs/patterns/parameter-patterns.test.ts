@@ -101,7 +101,7 @@ describe('parameter patterns in declared functions and lambdas (§5)', () => {
   it("takes a spawned function's argument apart in the instance it starts, from its JSON", async () => {
     const decls = lines(
       'struct Point { x: Int, y: Int }',
-      'async fn sum(Point{x, y} as p, (a, b): (Int, Int)) -> Future<Int>:',
+      'ista async fn sum(Point{x, y} as p, (a, b): (Int, Int)) -> Int:',
       '  x * 1000 + y * 100 + p.x * 10 + a + b',
     );
     const body = 'await (spawn sum(Point{x: 1, y: 2}, (3, 4))).result()';

@@ -1,4 +1,4 @@
-# error: 5950 at 23:10
+# error: 5950 at 23:15
 # error: 5950 at 26:4
 # error: 5950 at 29:4
 # error: 5951 at 33:8
@@ -20,7 +20,7 @@ shared struct Box:
   n: Int
 
 @Suite{"async"}
-async fn asyncSuite() -> Future<Array<Test>>: []
+ista async fn asyncSuite() -> Array<Test>: []
 
 @Suite{"takes"}
 fn takes(n: Int) -> Array<Test>: []
@@ -53,10 +53,10 @@ fn fine() -> Array<Test>: [Case(title: "t", body: async fn(): { drop fetch(); ()
 fn _with(box: Box) -> Array<Test>: []
 fn _of(slot: Slot<Int>) -> Array<Test>: []
 
-async fn check(n: Int):
+ista async fn check(n: Int):
   drop n
 
-async fn checkFetched():
+ista async fn checkFetched():
   drop fetch()
 
 @Suite{"a deferred call computes what it passes now"}

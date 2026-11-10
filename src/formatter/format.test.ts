@@ -376,9 +376,9 @@ describe('the canonical style', () => {
 
 describe("a head's modifiers", () => {
   it.each([
-    ['async extern fn f()', 'extern async fn f()'],
+    ['ista async extern fn f()', 'extern ista async fn f()'],
     ['shared extern struct H', 'extern shared struct H'],
-    ['type F = async sendable fn(Int)', 'type F = sendable async fn(Int)'],
+    ['type F = ista async sendable fn(Int)', 'type F = sendable ista async fn(Int)'],
     ['const f = async fn(x): x', 'const f = async fn(x): x'],
   ])('print `%s` in their one order, once and for all', (text, ordered) => {
     expect(formatText(text)).toBe(`${ordered}\n`);

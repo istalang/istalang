@@ -28,7 +28,7 @@ import type {
   TypeParameterType,
   WrittenThrough,
 } from './index.ts';
-import { errorType, tupleElements, tupleType } from './primitives.ts';
+import { errorType, persistenceType, tupleElements, tupleType } from './primitives.ts';
 
 /**
  * What a function's values may capture (§3.14): only sendable values, or any (`plain`), where its
@@ -187,12 +187,19 @@ export function functionFits(
   return reachFits(given.reach, declared.reach) && sameShape(declared, given, parts, results);
 }
 
+/** What awaiting a value gives (§6): the value it resumes with, and the kind of its wait. */
+export interface AwaitedType {
+  readonly value: Type;
+  /** The kind of code it is awaited in (proposal 8, Rule 5): a `Persistence` member or variable. */
+  readonly mode: Type;
+}
+
 /** What relating a function's result to a future needs of the program: the futures it has. */
 export interface Futures {
-  /** `Future<T>` of `value`, what calling an async function gives (§3.14). */
-  readonly futureOf: (value: Type) => Type;
-  /** `T` when `type` is `Future<T>`; undefined for any other type. */
-  readonly futureValue: (type: Type) => Type | undefined;
+  /** `Future<T, K>` of `value`, what calling an async function of kind `mode` gives (§3.14). */
+  readonly futureOf: (value: Type, mode: Type) => Type;
+  /** What awaiting a value of `type` gives; undefined where it can't be awaited. */
+  readonly awaitedOf: (type: Type) => AwaitedType | undefined;
 }
 
 /**
@@ -215,7 +222,7 @@ export function resultFitOf(
   given: Type,
   expected: Type,
   fits: (given: Type, expected: Type) => boolean,
-  futures: Pick<Futures, 'futureValue'>,
+  futures: Pick<Futures, 'awaitedOf'>,
 ): ResultFit | undefined {
   const resolved = resolvedInto(given, expected, futures);
   if (resolved !== undefined && fits(given, resolved)) {
@@ -224,8 +231,8 @@ export function resultFitOf(
   if (fits(given, expected)) {
     return { kind: 'value' };
   }
-  const into = futures.futureValue(expected);
-  const awaited = futures.futureValue(given);
+  const into = futures.awaitedOf(expected)?.value;
+  const awaited = futures.awaitedOf(given)?.value;
   return into !== undefined && awaited !== undefined && fits(awaited, into)
     ? { kind: 'awaited', value: awaited, into }
     : undefined;
@@ -239,29 +246,33 @@ export function resultFitOf(
 export function resolvedInto(
   given: Type,
   expected: Type,
-  { futureValue }: Pick<Futures, 'futureValue'>,
+  { awaitedOf }: Pick<Futures, 'awaitedOf'>,
 ): Type | undefined {
-  return futureValue(given) === undefined ? futureValue(expected) : undefined;
+  return awaitedOf(given)?.value === undefined ? awaitedOf(expected)?.value : undefined;
 }
 
 /**
- * `type` made async: a function giving a future of what `type` gives, already resolved, where it
- * gives no future (`resolvedInto`); undefined where it gives one.
+ * `type` made async: a function giving a future of kind `mode` of what `type` gives, already
+ * resolved, where it gives no future (`resolvedInto`); undefined where it gives one.
  */
-export function madeAsync(type: FunctionType, futures: Futures): FunctionType | undefined {
-  return futures.futureValue(type.result) === undefined
-    ? functionType({ ...type, result: futures.futureOf(type.result) })
+export function madeAsync(
+  type: FunctionType,
+  futures: Futures,
+  mode: Type,
+): FunctionType | undefined {
+  return futures.awaitedOf(type.result) === undefined
+    ? functionType({ ...type, result: futures.futureOf(type.result, mode) })
     : undefined;
 }
 
 /**
  * What calling a function of `head` gives, where its body gives `value`: an async head's call a
- * future of it (§3.14), a plain one's the value.
+ * future of it of the head's kind (§3.14), a plain one's the value.
  */
 export function headResult(
   { futureOf }: Pick<Futures, 'futureOf'>,
   head: FunctionQualifiers,
   value: Type,
 ): Type {
-  return awaits(head) ? futureOf(value) : value;
+  return awaits(head) ? futureOf(value, persistenceType(head.kind ?? 'ista')) : value;
 }

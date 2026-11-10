@@ -42,6 +42,8 @@ const statementWordPlaces = {
   let: 'block',
   const: 'both',
   fn: 'both',
+  live: 'both',
+  ista: 'both',
   async: 'both',
   return: 'block',
   break: 'block',

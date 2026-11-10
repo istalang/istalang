@@ -41,7 +41,7 @@ function programOf(steps: readonly Step[]): string {
     [
       "import * as time from 'time'",
       "import * as runtime from 'runtime'",
-      'async fn later(n: Int) -> Future<Int>:',
+      'ista async fn later(n: Int) -> Int:',
       '  await time.delay(3ms)',
       '  n + 1',
       'async fn main():',
@@ -103,10 +103,10 @@ describe('live runs', () => {
   const waitsOnHost = compiledText(
     [
       "import * as time from 'time'",
-      'extern fn fetch(name: String) -> Future<Int>',
-      'async fn fetched() -> Future<Int>:',
+      'extern fn fetch(name: String) -> Future<Int, "ista">',
+      'ista async fn fetched() -> Int:',
       '  1 + await fetch("a")',
-      'async fn ticks():',
+      'ista async fn ticks():',
       '  await time.delay(5ms)',
       '  await time.delay(5ms)',
       '  7',
@@ -157,7 +157,7 @@ describe('live runs', () => {
     const text = compiledText(
       [
         "import * as time from 'time'",
-        'extern fn fetch(name: String) -> Future<Int>',
+        'extern fn fetch(name: String) -> Future<Int, "ista">',
         'async fn main():',
         '  const s = Slot.create<Int>()',
         '  await select:',
@@ -178,8 +178,8 @@ describe('live runs', () => {
     const text = compiledText(
       [
         "import * as time from 'time'",
-        'extern fn fetch(name: String) -> Future<Int>',
-        'async fn main() -> Future<Int>:',
+        'extern fn fetch(name: String) -> Future<Int, "ista">',
+        'async fn main() -> Int:',
         '  await select:',
         '    case fetch("a") as got:',
         '      got',
@@ -199,8 +199,8 @@ describe('live runs', () => {
     const text = compiledText(
       [
         "import * as time from 'time'",
-        'extern fn fetch(name: String) -> Future<Int>',
-        'async fn main() -> Future<Int>:',
+        'extern fn fetch(name: String) -> Future<Int, "ista">',
+        'async fn main() -> Int:',
         '  const first = await select:',
         '    case time.delay(1ms):',
         '      1',
@@ -223,7 +223,7 @@ describe('live runs', () => {
       [
         "import * as time from 'time'",
         "import * as runtime from 'runtime'",
-        'async fn main() -> Future<Int>:',
+        'async fn main() -> Int:',
         '  const due = time.delay(0ms)',
         '  await runtime.commit()',
         '  select:',
@@ -247,7 +247,7 @@ describe('live runs', () => {
       [
         "import * as time from 'time'",
         'extern fn tick() -> Unit',
-        'async fn main() -> Future<Int>:',
+        'async fn main() -> Int:',
         '  const before = time.now()',
         '  tick()',
         '  time.now().value - before.value',
@@ -334,8 +334,8 @@ describe("a host's calls on one instance", () => {
   it('run two concurrent fills on one instance one after the other', async () => {
     const text = compiledText(
       [
-        'extern fn ask(tag: String) -> Future<Int>',
-        'async fn main() -> Future<Int>:',
+        'extern fn ask(tag: String) -> Future<Int, "ista">',
+        'async fn main() -> Int:',
         '  const a = ask("a")',
         '  const b = ask("b")',
         '  (await a) + (await b)',

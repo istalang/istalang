@@ -338,7 +338,7 @@ describe('moduleOf', () => {
 
   it('answers for an unnamed parameter, a repeated declaration and an own call', () => {
     const program = preludeProgramOf({
-      main: 'const a = 1\nconst a = 2\nfn f(_: Int): 1\nasync fn g() -> Int:\n  g.disposing()\n  1\n',
+      main: 'const a = 1\nconst a = 2\nfn f(_: Int): 1\nista async fn g() -> Int:\n  g.disposing()\n  1\n',
     });
     const bindings = bindProgram(program);
     const entities = [

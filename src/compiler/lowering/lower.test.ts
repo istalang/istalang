@@ -58,7 +58,7 @@ describe('function-table names', () => {
         "import * as a from 'a'",
         "import * as b from 'b'",
         'fn show<T>(value: T, times: Int = 1) -> Int: times',
-        'async fn main() -> Future<Int>:',
+        'async fn main() -> Int:',
         '  show(a.Money{cents: 1}) + show(b.Money{cents: 2}, 2) + show<Int?>(none)',
       ].join('\n'),
       a: 'struct Money { cents: Int }',
@@ -82,7 +82,7 @@ describe('defaults', () => {
       main: [
         'struct Retry { tries: Int = 3, backoff: Int = tries * 2 }',
         'fn wait(retry: Retry = Retry{}, times: Int = 1) -> Int: retry.backoff * times',
-        'async fn main() -> Future<Int>:',
+        'async fn main() -> Int:',
         '  wait()',
       ].join('\n'),
     });
@@ -214,7 +214,7 @@ describe('lowering', () => {
     const program = stdProgramOf({
       main: [
         "import * as lib from 'lib'",
-        'async fn main() -> Future<Int>:',
+        'async fn main() -> Int:',
         '  match await (spawn lib.twice(1)).result():',
         '    case Ok(value): lib.twice(20) + value',
         '    case Err(error): 0',
@@ -268,7 +268,7 @@ describe('lowering', () => {
         '  count: Int',
         'fn bump(n: &Int):',
         '  n += 1',
-        'async fn main() -> Future<Int>:',
+        'async fn main() -> Int:',
         '  let n = 0',
         '  bump(&n)',
         '  const counter = new Counter{count: n}',
@@ -288,7 +288,7 @@ describe('lowering', () => {
       main: [
         "import * as runtime from 'runtime'",
         'fn shared() -> Shared<Int>: new Shared{value: 1}',
-        'async fn main() -> Future<Int>:',
+        'async fn main() -> Int:',
         '  drop spawn shared()',
         '  drop runtime.isolate(fn(): "isolated")',
         '  0',
@@ -302,7 +302,7 @@ describe('lowering', () => {
       'main.test.ista': [
         "import Suite, Test, test from 'testing'",
         "import * as testing from 'testing'",
-        'async fn crashing():',
+        'ista async fn crashing():',
         '  drop testing.spawnCrashingEveryAwait(fn(): 1)',
         '@Suite{"crashing"}',
         'fn suite() -> Array<Test>: [test("crashing", crashing)]',
@@ -320,7 +320,7 @@ describe('lowering', () => {
       main: [
         "import * as json from 'json'",
         'enum Shape { Dot }',
-        'async fn main() -> Future<String>: json.stringify<Array<Shape>>([Dot])',
+        'async fn main() -> String: json.stringify<Array<Shape>>([Dot])',
       ].join('\n'),
     });
     const enums = compiledDefinition(program, 'main').types.flatMap((type) =>
@@ -351,7 +351,7 @@ describe('lowering', () => {
 
   it('lowers a select with only an else to its else body', async () => {
     const program = stdProgramOf({
-      main: ['async fn main() -> Future<Int>:', '  select:', '    else: 42'].join('\n'),
+      main: ['async fn main() -> Int:', '  select:', '    else: 42'].join('\n'),
     });
     const definition = compiledDefinition(program, 'main');
     const test = testRuntime();

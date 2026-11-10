@@ -343,7 +343,7 @@ describe('renaming what is named together with another declaration', () => {
 
   it("judges an async function's own call as the function it names", () => {
     const { program, named } = navigable({
-      main: 'trait Runner:\n  async fn run(self: Self)\nstruct Worker:\n  n: Int\nasync fn run(self: Worker):\n  await run.disposing()\nasync fn work():\n  await work.disposing()\nfn main(): 0\n',
+      main: 'trait Runner:\n  ista async fn run(self: Self)\nstruct Worker:\n  n: Int\nista async fn run(self: Worker):\n  await run.disposing()\nista async fn work():\n  await work.disposing()\nfn main(): 0\n',
     });
     expect(refusalOf(program, named('main', 'run', 2))).toContain('trait');
     expect(renamed(program, named('main', 'work', 1), 'toJson')).toMatchObject({

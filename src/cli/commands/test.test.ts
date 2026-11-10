@@ -22,9 +22,9 @@ const testLine = /^[✓✗-] /u;
 function suiteModule(title: string): string {
   return [
     "import Suite, Test, test, skip from 'testing'",
-    'async fn passes():',
+    'ista async fn passes():',
     '  ()',
-    'async fn fails() -> Future<Unit>:',
+    'ista async fn fails() -> Unit:',
     '  panic("on purpose")',
     `@Suite{"${title}"}`,
     'fn suite() -> Array<Test>: [',
@@ -39,7 +39,7 @@ function suiteModule(title: string): string {
 function passingModule(title: string): string {
   return [
     "import Suite, Test, test from 'testing'",
-    'async fn passes():',
+    'ista async fn passes():',
     '  ()',
     `@Suite{"${title}"}`,
     'fn suite() -> Array<Test>: [test("passes", passes)]',
@@ -117,7 +117,7 @@ describe('ista test', () => {
       'a.test.ista': [
         "import Suite, Test, test from 'testing'",
         'fn inner() -> Unit: panic("trace me")',
-        'async fn fails() -> Future<Unit>:',
+        'ista async fn fails() -> Unit:',
         '  inner()',
         '@Suite{"s"}',
         'fn suite() -> Array<Test>: [test("t", fails)]',
@@ -137,7 +137,7 @@ describe('ista test', () => {
         "import Suite, Test, test from 'testing'",
         "import * as log from 'log'",
         "import * as runtime from 'runtime'",
-        'async fn fails() -> Future<Unit>:',
+        'ista async fn fails() -> Unit:',
         '  log.info("kept", struct{n: 1})',
         '  await runtime.commit()',
         '  log.info("lost")',

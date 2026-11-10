@@ -10,6 +10,6 @@ fn count(first: Int, ...more: Array<Int>) -> Int:
 fn applied(f: fn(Int, Array<Int>) -> Int) -> Int:
   f(0, [1, 2])
 
-async fn main() -> Future<Array<Int>>:
+async fn main() -> Array<Int>:
   const shorter: fn(Int) -> Int = window
   [shorter(1), shorter(2), applied(count)]

@@ -10,12 +10,12 @@ extern fn id() -> String
 # The content hash of the program the instance runs, fixed for its life (§5).
 extern fn version() -> String
 
-extern fn commit() -> Future<Unit>
+extern fn commit() -> Future<Unit, "ista">
 
 # Runs `f` as an instance of its own and waits for its end (§9): `f`'s result, or its panic as an
 # `Err`. The panic also terminates that instance at once, disposing what it holds, so no operator
 # has to.
-fn isolate<T is Sendable>(f: sendable async fn() -> T) -> Future<Result<T>>: _isolated(f).result()
+fn isolate<T is Sendable>(f: sendable ista async fn() -> T) -> Future<Result<T>, "ista">: _isolated(f).result()
 
 # Spawns `f` as an instance a panic terminates at once.
-extern fn _isolated<T>(f: sendable async fn() -> T) -> Instance<T>
+extern fn _isolated<T>(f: sendable ista async fn() -> T) -> Instance<T>

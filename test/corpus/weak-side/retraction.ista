@@ -7,7 +7,7 @@
 import Inbox from 'inbox'
 import * as time from 'time'
 
-async fn announce(boxes: Array<Inbox<String>>, text: String, visibleFor: time.Duration):
+ista async fn announce(boxes: Array<Inbox<String>>, text: String, visibleFor: time.Duration):
   for box in boxes:
     hold _ = box.sendRevertible(text)
   await time.delay(visibleFor)
@@ -19,7 +19,7 @@ fn next(box: Inbox<String>) -> String:
     else:
       "nothing"
 
-async fn main() -> Future<String>:
+async fn main() -> String:
   const a = Inbox.create<String>()
   const b = Inbox.create<String>()
   const alone = Inbox.create<String>()

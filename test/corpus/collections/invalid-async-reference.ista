@@ -7,16 +7,16 @@
 
 struct Job { runs: Int }
 
-async fn run(self: &Job):
+ista async fn run(self: &Job):
   self.runs += 1
 
-async fn bump(value: &Int):
+ista async fn bump(value: &Int):
   value += 1
 
 async fn main():
   let counts = [1]
   let jobs = [Job{runs: 0}]
-  const later: async fn(&Int) -> Unit = bump
+  const later: ista async fn(&Int) -> Unit = bump
   await bump(&counts[0])
   await jobs[0].run()
   await later(&counts[0])

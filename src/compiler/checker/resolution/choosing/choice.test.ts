@@ -46,7 +46,7 @@ const cases: readonly ChoiceCase[] = [
     rule: 'a generic function taking a plain function as it is beats one making it async when T is inferred contravariantly',
     overloads: [
       'fn f<T>(g: fn(T) -> Unit) -> String: "sync"',
-      'fn f<T>(g: async fn(T) -> Unit) -> Bool: true',
+      'fn f<T>(g: ista async fn(T) -> Unit) -> Bool: true',
     ],
     setup: 'const h: fn(Int) -> Unit = fn(_: Int): ()',
     call: 'f(h)',
@@ -239,15 +239,21 @@ const cases: readonly ChoiceCase[] = [
   },
   {
     rule: 'a plain function takes the plain parameter over the async one',
-    overloads: ['fn f(g: fn() -> Int) -> Bool: true', 'fn f(g: async fn() -> Int) -> String: "c"'],
+    overloads: [
+      'fn f(g: fn() -> Int) -> Bool: true',
+      'fn f(g: ista async fn() -> Int) -> String: "c"',
+    ],
     setup: 'const g = fn() -> Int: 1',
     call: 'f(g)',
     chosen: 'Bool',
   },
   {
     rule: 'an async function takes only the async parameter',
-    overloads: ['fn f(g: fn() -> Int) -> Bool: true', 'fn f(g: async fn() -> Int) -> String: "c"'],
-    setup: 'const g = async fn() -> Future<Int>: 1',
+    overloads: [
+      'fn f(g: fn() -> Int) -> Bool: true',
+      'fn f(g: ista async fn() -> Int) -> String: "c"',
+    ],
+    setup: 'const g = async fn() -> Future<Int, "ista">: 1',
     call: 'f(g)',
     chosen: 'String',
   },

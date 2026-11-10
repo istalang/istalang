@@ -1,7 +1,7 @@
 /**
  * Extern declarations (§3.6, §3.8): what the host implements. An extern's head holds `extern`
  * among its modifiers (../parts/heads.ts), before a function's `fn` or a struct's `struct`; a
- * struct's may say which handle it is: `shared`, `sendable` or `ephemeral`. A constant is
+ * struct's may say which handle it is: `shared`, `sendable` or `live`. A constant is
  * `extern name: Type`, with no value. An extern struct's docstring stands on the line below it.
  */
 

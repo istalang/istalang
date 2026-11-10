@@ -98,7 +98,7 @@ export function lambdaAccepts(context: BodyContext, node: Lambda): Admits | unde
       shape !== undefined &&
       (!awaits(node.qualifiers) ||
         isOpen(shape.result) ||
-        checker.fitting.futureValue(shape.result) !== undefined) &&
+        checker.fitting.awaitedOf(shape.result)?.value !== undefined) &&
       (fillsPack ||
         (shape.parameters.length === fixed && (shape.pack !== undefined) === hasRest)) &&
       parameters.every((parameter, index) => {
@@ -224,7 +224,7 @@ function bodyResultGiven(
     return undefined;
   }
   const isPlain = !awaits(node.qualifiers);
-  const value = context.checker.fitting.futureValue(result.type);
+  const value = context.checker.fitting.awaitedOf(result.type)?.value;
   if (value === undefined) {
     return isPlain ? result : undefined;
   }

@@ -18,7 +18,7 @@ fn ignoredText(value: String): ()
 
 fn zero(range: Range) -> Int: 0
 
-async fn drawsThenCommits():
+ista async fn drawsThenCommits():
   seen(random.integer(0..1_000_000_000_000))
   await runtime.commit()
 
@@ -28,7 +28,7 @@ fn finishedWith(outcome: Result<String>) -> String:
     case Ok(value): value
     case Err(error): panic(error.message)
 
-async fn spawnsThenDraws():
+ista async fn spawnsThenDraws():
   const first = spawn drawsUuid()
   const second = spawn drawsUuid()
   seenText(random.uuid())
@@ -36,7 +36,7 @@ async fn spawnsThenDraws():
   seenText(finishedWith(await first.result()) + " " + finishedWith(await second.result()))
   await runtime.commit()
 
-async fn drawsUuid() -> Future<String>: random.uuid()
+ista async fn drawsUuid() -> String: random.uuid()
 
 fn emptyRange() -> Int: random.integer(3..3)
 

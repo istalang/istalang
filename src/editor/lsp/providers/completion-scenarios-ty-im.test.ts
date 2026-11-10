@@ -36,7 +36,7 @@ const scenarios: readonly Scenario[] = [
     id: 'TY-02',
     place: 'type',
     title: 'Return type',
-    src: ['fn g() -> ‸', 'async fn g() -> ‸'],
+    src: ['fn g() -> ‸', 'ista async fn g() -> ‸'],
     where: 'top',
     expect: { has: ['Int', 'Pair', 'Future'], lacks: ['plus', 'let', 'Red'] },
   },

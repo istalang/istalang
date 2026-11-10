@@ -291,8 +291,9 @@ export function declaredResultOf(
 }
 
 /**
- * What the body of `declaration` must produce, when its result is declared: the result itself,
- * or `T` from an async function's `Future<T>`. Undefined when the result is to be inferred.
+ * What the body of `declaration` must produce, when its result is declared: the result itself, or,
+ * where an async head spells the future its call gives, `Future<T, K>`'s `T` (proposal 8, Rule 2).
+ * Undefined when the result is to be inferred.
  */
 export function declaredBodyResult(
   checker: CheckerContext,
@@ -303,16 +304,7 @@ export function declaredBodyResult(
     return undefined;
   }
   const declared = checker.resolveType(module, declaration.returnType);
-  if (!awaits(declaration.qualifiers) || declared.kind === 'error') {
-    return declared;
-  }
-  const awaited = awaitedOf(checker, declared);
-  if (awaited === undefined) {
-    checker.report(
-      module,
-      checkerDiagnostics.asyncResult(declaration.returnType.span, typeText(declared)),
-    );
-    return errorType;
-  }
-  return awaited.value;
+  return awaits(declaration.qualifiers)
+    ? (awaitedOf(checker, declared)?.value ?? declared)
+    : declared;
 }

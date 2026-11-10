@@ -22,9 +22,7 @@ import { unreachable } from '../../../../foundation/structures/unreachable.ts';
 import type { ValueSite } from '../../../checker/surface/checked-body.ts';
 import { type Fit, singleElement } from '../../../checker/types/fitting/fit/index.ts';
 import { unfolded } from '../../../checker/types/type/computed-types.ts';
-import { madeAsync } from '../../../checker/types/type/function-types.ts';
 import type { FunctionType, StructValueType, Type } from '../../../checker/types/type/index.ts';
-import { futuresOf } from '../../../checker/types/type/well-known.ts';
 import { baseOf } from '../../../checker/types/unions/union-members.ts';
 import { membersOf } from '../../../checker/types/unions/unions.ts';
 import type { AnchoredSpan } from '../../../syntax/tree/positions.ts';
@@ -65,7 +63,7 @@ interface FittingSite {
 interface Applying {
   readonly span: AnchoredSpan;
   readonly at: ConversionSite;
-  readonly madeAsync: (value: Register, plain: FunctionType) => Register;
+  readonly madeAsync: (value: Register, plain: FunctionType, to: FunctionType) => Register;
 }
 
 /** `typed`, as the checker fitted it at `where`: converted, then put into a union. */
@@ -112,8 +110,8 @@ function convertedValue(
       return { value, type: to };
     }
     case 'async': {
-      const plain = functionTypeOf(typed.type);
-      return { value: how.madeAsync(typed.value, plain), type: madeAsyncType(context, plain) };
+      const { to } = conversion;
+      return { value: how.madeAsync(typed.value, functionTypeOf(typed.type), to), type: to };
     }
     case 'shape': {
       const { to } = conversion;
@@ -191,8 +189,7 @@ function applyingIn(code: SynthesizedCode, at: ConversionSite): Applying {
   return {
     span: at.span,
     at,
-    madeAsync: (value, plain) => {
-      const to = madeAsyncType(code, plain);
+    madeAsync: (value, plain, to) => {
       const entry = code.tables.conversionIndex({ kind: 'wrapping', from: plain, to, at });
       return closureOf(code, entry, [value], at.span);
     },
@@ -323,14 +320,6 @@ export function returnedAs(
   const value = result.kind === 'awaited' ? code.await(called) : called;
   code.return(fittedIn(code, { value, type: result.value }, result.into, at));
   return true;
-}
-
-/** The type of a function of type `plain`, which the checker made async, made async (§3.14). */
-function madeAsyncType(context: Pick<CodeContext, 'checker'>, plain: FunctionType): FunctionType {
-  return (
-    madeAsync(plain, futuresOf(context.checker)) ??
-    unreachable('A function made async gives no future.')
-  );
 }
 
 /** `type`, whose value the checker converted into a shape, so a nominal struct. */

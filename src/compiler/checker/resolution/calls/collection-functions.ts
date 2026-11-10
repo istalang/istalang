@@ -66,7 +66,7 @@ export function runsAtOnce(
   const { checker } = context;
   if (
     call === undefined ||
-    checker.fitting.futureValue(checker.resultOf(call.function)) === undefined
+    checker.fitting.awaitedOf(checker.resultOf(call.function))?.value === undefined
   ) {
     return true;
   }

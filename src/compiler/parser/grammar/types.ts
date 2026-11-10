@@ -80,6 +80,8 @@ const typeParselets: Partial<Record<CursorKind, TypeParselet>> = {
  */
 const wordParselets = {
   sendable: parseModifiedFunctionType,
+  live: parseModifiedFunctionType,
+  ista: parseModifiedFunctionType,
   any: (parser) =>
     parser.cursor.kindAt(1) === 'identifier' || parser.cursor.kindAt(1) === 'struct'
       ? parseAnyType(parser)

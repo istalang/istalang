@@ -7,13 +7,13 @@ import * as time from 'time'
 struct Cart:
   items: Array<Int>
 
-async fn grow(cart: Cart):
+ista async fn grow(cart: Cart):
   let mine = cart
   mine.items.push(100)
   mine.items.push(200)
   await time.delay(1ms)
 
-async fn main() -> Future<String>:
+async fn main() -> String:
   let cart = Cart{items: [1, 2]}
   spawn grow(cart)
   cart.items.push(3)

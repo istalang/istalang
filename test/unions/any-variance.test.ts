@@ -154,8 +154,8 @@ describe('trait variance derivation and composition (§3.5, §3.10)', () => {
     const decls = [
       'trait GivesViaCallback<T> { fn subscribe(self: Self, cb: fn(T) -> Unit) }',
       'trait TakesViaCallback<T> { fn pull(self: Self, cb: fn() -> T) -> Int }',
-      'trait AsyncGives<T> { async fn fetch(self: Self) -> Future<T> }',
-      'trait SyncFutureHandle<T> { fn rawFuture(self: Self) -> Future<T> }',
+      'trait AsyncGives<T> { ista async fn fetch(self: Self) -> T }',
+      'trait SyncFutureHandle<T> { fn rawFuture(self: Self) -> Future<T, "ista"> }',
       'trait RefParam<T> { fn mutate(self: Self, target: &T) }',
       'trait PhantomTrait<T> { fn ping(self: Self) -> Int }',
       'struct WrapGives<gives T> { item: any GivesViaCallback<T> }',

@@ -77,10 +77,10 @@ describe('deferred calls', () => {
   });
 
   it('keeps an annotation’s value apart from the statement it annotates', () => {
-    expect(dumpClean('module', lines('async fn f():', '  @Waypoint log(x)'))).toContain(
+    expect(dumpClean('module', lines('ista async fn f():', '  @Waypoint log(x)'))).toContain(
       '(Call log [x])',
     );
-    expect(dumpClean('module', lines('async fn f():', '  @Waypoint log(x)'))).not.toContain(
+    expect(dumpClean('module', lines('ista async fn f():', '  @Waypoint log(x)'))).not.toContain(
       'DeferredCall',
     );
   });

@@ -19,7 +19,7 @@ struct PurchaseEnv:
   notices: FakeQueue<Queue<Notice>, Notice>
   charges: Mock<fn(String, Int) -> Result<String>>
 
-async fn withPurchaseEnv(test: async fn(PurchaseEnv)):
+ista async fn withPurchaseEnv(test: ista async fn(PurchaseEnv)):
   await withClock(async fn(clock): {
     const env = PurchaseEnv{
       clock,

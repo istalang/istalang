@@ -39,10 +39,10 @@ fn inner(log: Shared<String>, f: fn() -> Int) -> Int:
   log->value += "inner "
   f()
 
-async fn fetchUser(id: Int) -> Future<User>:
+ista async fn fetchUser(id: Int) -> User:
   User{id: id}
 
-fn retry<T>(f: async fn() -> T, times: Int = 3) -> Future<T>:
+fn retry<T>(f: ista async fn() -> T, times: Int = 3) -> Future<T, "ista">:
   f()
 
 fn submit(self: Pool, job: fn() -> Int) -> Int:
@@ -57,13 +57,13 @@ fn pick() -> Int:
 fn optional(f: fn() -> Int?) -> Int?:
   f()
 
-async fn eventually(f: async fn() -> Int) -> Future<Int>:
+ista async fn eventually(f: ista async fn() -> Int) -> Int:
   await f()
 
 fn apply(run: fn(fn() -> Int) -> Int) -> Int:
   run encode("abcd")
 
-async fn main() -> Future<String>:
+async fn main() -> String:
   const log = new Shared{value: ""}
   const a = later(log) load(log, 2).process()
   log->value += "| "

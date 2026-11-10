@@ -17,6 +17,7 @@ import {
   errorType,
   intType,
   neverType,
+  persistenceType,
   stringType,
   unitType,
 } from '../../type/primitives.ts';
@@ -37,6 +38,11 @@ function fitShape(fit: Fit | undefined) {
   return fit === undefined
     ? undefined
     : { conversion: fit.conversion, into: fit.into !== undefined };
+}
+
+/** The conversion of a function made async where `made`, which says what into; else none. */
+function madeAsyncIf(made: boolean) {
+  return made ? expect.objectContaining({ kind: 'async' }) : { kind: 'none' };
 }
 
 /**
@@ -132,7 +138,7 @@ function functionOf(
   return functionType({
     reach,
     parameters: [{ type: parameter, reference: false }],
-    result: isAsync ? fittingApart.futureOf(result) : result,
+    result: isAsync ? fittingApart.futureOf(result, persistenceType('ista')) : result,
   });
 }
 
@@ -161,7 +167,7 @@ describe('fitting a function where one giving a future is expected', () => {
         expect(fitShape(fitOf(found, expected, fittingApart))).toEqual(
           fits
             ? {
-                conversion: { kind: !given.isAsync && wanted.isAsync ? 'async' : 'none' },
+                conversion: madeAsyncIf(!given.isAsync && wanted.isAsync),
                 into: count > 0,
               }
             : undefined,
@@ -201,7 +207,7 @@ describe('fitting a function where one giving a future is expected', () => {
         expect(fitShape(fitOf(found, expected, fittingApart))).toEqual(
           fits
             ? {
-                conversion: { kind: !given.isAsync && wanted.isAsync ? 'async' : 'none' },
+                conversion: madeAsyncIf(!given.isAsync && wanted.isAsync),
                 into: count > 0,
               }
             : undefined,

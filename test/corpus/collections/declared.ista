@@ -29,7 +29,7 @@ fn iterate(self: Bag) -> fn() -> Step<(String, Int)>:
     Next((self.keys[position - 1], self.values[position - 1]))
   next
 
-async fn main() -> Future<String>:
+async fn main() -> String:
   let bag: Bag = ["a": 1, "b": 2]
   bag["a"] = 10
   bag["b"] += 5

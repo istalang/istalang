@@ -7,5 +7,5 @@ struct Entry:
   title: String
   schema: FormSnapshot
 
-extern fn list(region: String) -> Future<Array<Entry>>
-extern fn get(id: String) -> Future<Entry?>
+extern fn list(region: String) -> Future<Array<Entry>, "ista">
+extern fn get(id: String) -> Future<Entry?, "ista">

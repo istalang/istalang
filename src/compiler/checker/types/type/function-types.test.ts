@@ -1,6 +1,6 @@
 /**
- * One function type for both spellings of an async one (§3.14): `async fn(A) -> R` and
- * `fn(A) -> Future<R>` resolve to one type, one key and one text, whatever `A` and `R` are.
+ * One function type for both spellings of an async one (§3.14): `ista async fn(A) -> R` and
+ * `fn(A) -> Future<R, "ista">` resolve to one type, one key and one text, whatever `A` and `R` are.
  */
 
 import fc from 'fast-check';
@@ -24,12 +24,12 @@ const written: fc.Arbitrary<string> = fc.letrec<{ type: string }>((tie) => ({
     { depthSize: 'small', withCrossShrink: true },
     fc.constantFrom('Int', 'String', 'Unit', 'Int?', 'Bool'),
     tie('type').map((type) => `Array<${type}>`),
-    tie('type').map((type) => `Future<${type}>`),
+    tie('type').map((type) => `Future<${type}, "ista">`),
     fc.tuple(tie('type'), tie('type')).map(([first, second]) => `(${first}, ${second})`),
     fc.tuple(tie('type'), tie('type')).map(([taken, given]) => `(fn(${taken}) -> ${given})`),
     fc
       .tuple(tie('type'), tie('type'))
-      .map(([taken, given]) => `(sendable async fn(${taken}) -> ${given})`),
+      .map(([taken, given]) => `(sendable ista async fn(${taken}) -> ${given})`),
   ),
 })).type;
 
@@ -50,8 +50,8 @@ describe('the two spellings of an async function type', () => {
     fc.assert(
       fc.property(written, written, (taken, given) => {
         const { types, diagnostics } = resolved([
-          `async fn(${taken}) -> ${given}`,
-          `fn(${taken}) -> Future<${given}>`,
+          `ista async fn(${taken}) -> ${given}`,
+          `fn(${taken}) -> Future<${given}, "ista">`,
         ]);
         const [async, plain] = types;
         expect(diagnostics).toEqual([]);
@@ -65,35 +65,35 @@ describe('the two spellings of an async function type', () => {
   it('checks a plain lambda body and its returns against the future or its value where async fn(A) -> R is expected (§3.5, §3.14)', () => {
     expect(
       reported(`
-async fn later(x: Int) -> Future<Int>: x + 1
-async fn fetchUser(id: String) -> Future<String>: id
-async fn retryGeneric<R>(call: async fn(String) -> R) -> Future<R>: await call("u1")
-async fn retryConcrete(call: async fn(String) -> String) -> Future<String>: await call("u1")
+ista async fn later(x: Int) -> Int: x + 1
+ista async fn fetchUser(id: String) -> String: id
+ista async fn retryGeneric<R>(call: ista async fn(String) -> R) -> R: await call("u1")
+ista async fn retryConcrete(call: ista async fn(String) -> String) -> String: await call("u1")
 
 async fn main():
-  const forwarded: async fn(Int) -> Int = fn(x): later(x)
+  const forwarded: ista async fn(Int) -> Int = fn(x): later(x)
   const retryInferred = await retryGeneric(fn(id): fetchUser(id))
   const retryExplicit = await retryGeneric<String>(fn(id): fetchUser(id))
   const retryConcreteResult = await retryConcrete(fn(id): fetchUser(id))
-  const unionReturns: async fn(Int) -> Int | String = fn(x): {
+  const unionReturns: ista async fn(Int) -> Int | String = fn(x): {
     if x > 0:
       return "positive"
     1
   }
-  const literalReturns: async fn(Int) -> "a" | "b" = fn(x): {
+  const literalReturns: ista async fn(Int) -> "a" | "b" = fn(x): {
     if x > 0:
       return "a"
     "b"
   }
-  const singleLiteralReturn: async fn(Int) -> "a" = fn(x): {
+  const singleLiteralReturn: ista async fn(Int) -> "a" = fn(x): {
     return "a"
   }
-  const bareVariantReturn: async fn(Int) -> Result<Int, String> = fn(x): {
+  const bareVariantReturn: ista async fn(Int) -> Result<Int, String> = fn(x): {
     if x == 0:
       return Ok(0)
     Err("no")
   }
-  const recursiveNamed: async fn(Int) -> Int = fn fact(n): if n <= 1: 1 else: n * fact(n - 1)
+  const recursiveNamed: ista async fn(Int) -> Int = fn fact(n): if n <= 1: 1 else: n * fact(n - 1)
   _ = (
     forwarded,
     retryInferred,
@@ -112,11 +112,11 @@ async fn main():
   it('refuses passing an element or shared-struct accessor by & to any call returning a future (§3.7, §3.14)', () => {
     expect(
       reported(`
-async fn later(x: &Int) -> Future<Int>:
+ista async fn later(x: &Int) -> Int:
   x += 1
   x
 
-fn starting(x: &Int) -> Future<Int>: later(&x)
+fn starting(x: &Int) -> Future<Int, "ista">: later(&x)
 
 async fn main():
   let xs = [10]
@@ -127,10 +127,10 @@ async fn main():
     expect(
       reported(`
 trait Mutator:
-  fn mutate(self: Self, x: &Int) -> Future<Int>
+  fn mutate(self: Self, x: &Int) -> Future<Int, "ista">
 
 struct M {}
-async fn mutate(self: M, x: &Int) -> Future<Int>:
+ista async fn mutate(self: M, x: &Int) -> Int:
   x += 1
   x
 
@@ -150,10 +150,10 @@ struct Bag { values: Map<String, Int> }
 fn index(self: Bag, key: String) -> Int:
   self.values[key]
 
-async fn laterSet() -> Future<Unit>:
+ista async fn laterSet() -> Unit:
   ()
 
-fn setIndex(self: &Bag, key: String, value: Int) -> Future<Unit>:
+fn setIndex(self: &Bag, key: String, value: Int) -> Future<Unit, "ista">:
   _ = (self, key, value)
   laterSet()
 
@@ -167,8 +167,8 @@ async fn main():
   it('fits async fn(...A) -> Never where async fn(...A) -> R is expected on packs and constants (§2, §3.5, §3.14)', () => {
     expect(
       reported(`
-const diverged: sendable async fn(Int) -> Int = async fn(x: Int) -> Future<Never>: panic("no")
-fn wrap<...A>(f: async fn(...A) -> Never) -> async fn(...A) -> Int: f
+const diverged: sendable ista async fn(Int) -> Int = async fn(x: Int) -> Future<Never, "ista">: panic("no")
+fn wrap<...A>(f: ista async fn(...A) -> Never) -> ista async fn(...A) -> Int: f
 fn main():
   _ = diverged
 `),
@@ -179,7 +179,7 @@ fn main():
     expect(
       reported(`
 fn run(f: fn(Int) -> Int, y: Int?) -> String: "sync"
-fn run(f: async fn(Int) -> Int, y: Int) -> String: "async"
+fn run(f: ista async fn(Int) -> Int, y: Int) -> String: "async"
 fn main():
   _ = run(fn(x: Int): x + 1, 1)
 `),

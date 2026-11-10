@@ -2,9 +2,9 @@
 # An async fn's own call is its body's (§7): a parameter's default runs in the function's prologue,
 # before its body starts, so it reads no call, while the body still does.
 
-async fn worker(n: Int = 1) -> Future<Int>:
+ista async fn worker(n: Int = 1) -> Int:
   _ = worker.disposing()
   n
 
-async fn main() -> Future<Int>:
+async fn main() -> Int:
   await worker()

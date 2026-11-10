@@ -7,7 +7,7 @@
  * one: copying copies a reference to one object, and `==` compares that identity. Where the object
  * lives is the handle's kind: an `instance` handle stays in its instance (a shared struct, an
  * `extern shared struct`), a `global` one is the same in every instance (`extern sendable
- * struct`), and a `process` one stays in the process that made it (`extern ephemeral struct`).
+ * struct`), and a `process` one stays in the process that made it (`extern live struct`).
  */
 
 import type { ModifierWord } from '../../../syntax/tokens/modifiers.ts';
@@ -18,7 +18,7 @@ type Identity = 'value' | 'instance' | 'global' | 'process';
 const externIdentities = {
   shared: 'instance',
   sendable: 'global',
-  ephemeral: 'process',
+  live: 'process',
 } as const satisfies Record<ModifierWord<'handle'>, Identity>;
 
 /** What identity the values of `declaration`'s types have. */

@@ -11,7 +11,7 @@ struct Status:
 struct Command:
   n: Int
 
-async fn child(parent: WeakRef<Inbox<Status>>, mine: Inbox<Command>) -> Future<String>:
+ista async fn child(parent: WeakRef<Inbox<Status>>, mine: Inbox<Command>) -> String:
   while true:
     await select:
       case mine.receive() as command:
@@ -20,7 +20,7 @@ async fn child(parent: WeakRef<Inbox<Status>>, mine: Inbox<Command>) -> Future<S
         return "child saw the inbox go"
   "never"
 
-async fn main() -> Future<String>:
+async fn main() -> String:
   const commands = Inbox.create<Command>()
   let replies = ""
   const running = {

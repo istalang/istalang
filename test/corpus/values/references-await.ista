@@ -5,13 +5,13 @@ import * as runtime from 'runtime'
 
 struct Counter { count: Int }
 
-async fn addTwice(total: &Int, n: Int):
+ista async fn addTwice(total: &Int, n: Int):
   await runtime.commit()
   total += n
   await runtime.commit()
   total += n
 
-async fn tick(self: &Counter):
+ista async fn tick(self: &Counter):
   await runtime.commit()
   self.count += 1
 

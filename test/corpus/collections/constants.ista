@@ -10,7 +10,7 @@ const more = [...primes, 7]
 const lookup = [...names, "c": "third", "a": "again"]
 const empty: Map<String, Int> = []
 
-async fn main() -> Future<String>:
+async fn main() -> String:
   let copy = primes
   copy[0] = 9
   copy.push(7)

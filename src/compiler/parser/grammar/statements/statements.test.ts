@@ -149,8 +149,8 @@ describe('fn and async at the start of a statement', () => {
       `(FunctionDeclaration _ add [] [(Parameter a _ ${int} _) (Parameter b _ _ 1)] _ ${bodyOf('(Binary a + b)')})`,
     ],
     [
-      'async fn f() -> Future<Int>: await g()',
-      `(FunctionDeclaration async _ f [] [] (NamedType [Future] [${int}]) ${bodyOf('(Await (Call g []))')})`,
+      'ista async fn f() -> Int: await g()',
+      `(FunctionDeclaration ista async _ f [] [] ${int} ${bodyOf('(Await (Call g []))')})`,
     ],
     ['fn(x): x * 2', '(ExpressionStatement (Lambda _ [(Parameter x _ _ _)] _ (Binary x * 2)))'],
     [

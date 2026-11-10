@@ -27,6 +27,7 @@ import {
   type Word,
 } from '../../../../../compiler/syntax/tokens/grammar-words.ts';
 import { isKeyword, type Token } from '../../../../../compiler/syntax/tokens/index.ts';
+import { isModifierWord } from '../../../../../compiler/syntax/tokens/modifiers.ts';
 import {
   childrenOf,
   extentIn,
@@ -261,20 +262,39 @@ function isModifier(text: string): text is Modifier {
 }
 
 /**
- * Where each modifier is one: `async` anywhere; `shared` starting a module's item; `hold` starting
- * a block's item; `sendable` read as a type; `not` after an operand, only spaces and tabs between,
+ * Where each modifier is one: `async` anywhere; a kind, `live` or `ista`, starting an item, read
+ * as a type or after another modifier; `shared` starting a module's item; `hold` starting a
+ * block's item; `sendable` read as a type; `not` after an operand, only spaces and tabs between,
  * starting `not in`: a line break or a template's `${` between starts an operand instead.
  */
 const standsAsModifier: Readonly<Record<Modifier, (tree: SyntaxTree, word: Token) => boolean>> = {
+  live: (tree, word) => startsHead(tree, word),
+  ista: (tree, word) => startsHead(tree, word),
   async: () => true,
   shared: (tree, word) => startsItemOf('Module', tree, word),
   hold: (tree, word) => startsItemOf('Block', tree, word),
-  sendable: (tree, word) => nodesAt(tree, word.span.start).some(({ kind }) => kind === 'NamedType'),
+  sendable: (tree, word) => readAsType(tree, word),
   not: (tree, word) => {
     const operand = tokenBefore(tree, word);
     return endsOperand(operand) && adjoins(tree, operand, word.span.start);
   },
 };
+
+/** Whether `word` stands in a head: starting an item or a function type, or after a modifier. */
+function startsHead(tree: SyntaxTree, word: Token): boolean {
+  const previous = tokenBefore(tree, word);
+  return (
+    startsItemOf('Module', tree, word) ||
+    startsItemOf('Block', tree, word) ||
+    readAsType(tree, word) ||
+    (previous !== undefined &&
+      isModifierWord(tree.source.text.slice(previous.span.start, previous.span.end)))
+  );
+}
+
+function readAsType(tree: SyntaxTree, word: Token): boolean {
+  return nodesAt(tree, word.span.start).some(({ kind }) => kind === 'NamedType');
+}
 
 /**
  * Whether `word` starts an item of a `holder` node, as the parser read the text holding it: the

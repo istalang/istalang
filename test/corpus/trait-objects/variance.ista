@@ -14,14 +14,14 @@ trait Sized<T>:
   size: T
 
 trait Later<T>:
-  async fn later(self: Self) -> Future<T>
+  ista async fn later(self: Self) -> T
 
 struct Counter { n: Int, size: Int }
 struct OptionalSink { k: Int }
 struct Holder<T> { source: any Source<T> }
 
 fn next(self: Counter) -> Int: self.n
-async fn later(self: Counter) -> Future<Int>: self.n + 1
+ista async fn later(self: Counter) -> Int: self.n + 1
 fn put(self: OptionalSink, x: Int?) -> Int: (x ?? 100) + self.k
 
 fn fromBound<T is Source<Int>>(source: T) -> any Source<Int?>: source

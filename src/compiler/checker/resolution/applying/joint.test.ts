@@ -44,7 +44,7 @@ function reportedImporting(imports: readonly string[], ...functions: readonly st
 
 /** What `async fn main() -> Future<String>: body` gives after the declarations above. */
 async function outcome(body: string): Promise<unknown> {
-  const source = [...declarations, 'async fn main() -> Future<String>:', `  ${body}`].join('\n');
+  const source = [...declarations, 'async fn main() -> String:', `  ${body}`].join('\n');
   const state = await startToEnd(testRuntime(), compiledText(source));
   return state.kind === 'finished' ? decodeJson(String(state.outcome)) : state;
 }

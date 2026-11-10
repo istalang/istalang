@@ -10,13 +10,16 @@ import type { BodyContext } from '../../../contexts/body-context.ts';
 import { checkerDiagnostics } from '../../../diagnostics/index.ts';
 import { stoppedOperation } from '../../../resolution/calls/stopped-operations.ts';
 import type { Type } from '../../../types/type/index.ts';
-import { errorType } from '../../../types/type/primitives.ts';
+import { errorType, persistenceType } from '../../../types/type/primitives.ts';
 import { typeText } from '../../../types/type/type-text.ts';
 import { awaitedOf, futureOf } from '../../../types/type/well-known.ts';
 
 export function checkAwait(context: BodyContext, node: Await, expected: Type | undefined): Type {
   reportWait(context, node.span);
-  const expectedFuture = expected === undefined ? undefined : futureOf(context.checker, expected);
+  const expectedFuture =
+    expected === undefined
+      ? undefined
+      : futureOf(context.checker, expected, persistenceType('ista'));
   const operand = context.expression(node.operand, expectedFuture);
   const stopped = stoppedOperation(context, node, [{ node: node.operand, type: operand }]);
   if (stopped !== undefined) {

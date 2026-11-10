@@ -9,11 +9,11 @@ import * as time from 'time'
 fn note(log: Shared<Array<String>>, text: String):
   log->value = [...log->value, text]
 
-async fn sleeper(id: Int, log: Shared<Array<String>>):
+ista async fn sleeper(id: Int, log: Shared<Array<String>>):
   _ = defer(fn(): note(log, "stopped " + String(id)))
   await time.delay(1h)
 
-async fn rows(log: Shared<Array<String>>):
+ista async fn rows(log: Shared<Array<String>>):
   outer: for i in 0..2:
     for j in 0..2:
       hold(outer) _ = sleeper(10 * i + j, log)
@@ -21,7 +21,7 @@ async fn rows(log: Shared<Array<String>>):
     note(log, "row " + String(i))
   note(log, "rows done")
 
-async fn breaking(log: Shared<Array<String>>):
+ista async fn breaking(log: Shared<Array<String>>):
   outer: for i in 0..3:
     inner: for j in 0..3:
       if j == 2:
@@ -29,7 +29,7 @@ async fn breaking(log: Shared<Array<String>>):
       hold(inner) _ = sleeper(20 + j, log)
   note(log, "broke out")
 
-async fn counting(log: Shared<Array<String>>):
+ista async fn counting(log: Shared<Array<String>>):
   let k = 0
   passes: while k < 3:
     k += 1
@@ -39,19 +39,19 @@ async fn counting(log: Shared<Array<String>>):
     note(log, "last pass")
   note(log, "while done")
 
-async fn batched(log: Shared<Array<String>>):
+ista async fn batched(log: Shared<Array<String>>):
   batch:
     for i in 0..2:
       hold(batch) _ = sleeper(40 + i, log)
     note(log, "batch started")
   note(log, "after batch")
 
-async fn whole(log: Shared<Array<String>>):
+ista async fn whole(log: Shared<Array<String>>):
   for i in 0..1:
     hold(whole) _ = sleeper(50 + i, log)
   note(log, "function done")
 
-async fn main() -> Future<String>:
+async fn main() -> String:
   const empty: Array<String> = []
   const log = new Shared{value: empty}
   await rows(log)

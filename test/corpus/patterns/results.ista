@@ -27,7 +27,7 @@ fn copied() -> Error:
   const original = Error{message: "a", code: "b", trace: "given"}
   Error{...original, message: "kept"}
 
-async fn main() -> Future<String>:
+async fn main() -> String:
   drop parse("four")
   _ = parse("five")
   const error = copied()

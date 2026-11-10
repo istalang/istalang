@@ -3,6 +3,6 @@
 # imports it by name (§3.13): `+` on a Time and a Duration finds `time`'s `add`.
 import * as time from 'time'
 
-async fn main() -> Future<Int>:
+async fn main() -> Int:
   const start = time.now()
   (start + 1s).value - start.value

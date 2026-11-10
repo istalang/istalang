@@ -35,7 +35,7 @@ fn made(make: (fn(Int) -> Box<Int>) | Int) -> Int:
     case Int as n: n
     case _ as f: f(13).item
 
-async fn main() -> Future<String>:
+async fn main() -> String:
   const list = listed<Int>
   const boxes = [4, 5].map(Box.of<Int>)
   const results = [6].map(Result.Ok<Int, String>)

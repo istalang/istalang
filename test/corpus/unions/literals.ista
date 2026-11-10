@@ -14,7 +14,7 @@ fn pick<T in 1 | 2>(x: T) -> Int:
 fn either<T>(x: T) -> String:
   "called"
 
-async fn main() -> Future<String>:
+async fn main() -> String:
   const s: Status = "draft"
   const n: -1 | 42 = -1
   const b: true = true

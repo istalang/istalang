@@ -12,7 +12,7 @@ fn total<C is Iterable<Int>>(collection: C) -> Int:
 fn first<C is Indexable<Int, String>>(collection: C) -> String:
   collection[0]
 
-async fn main() -> Future<String>:
+async fn main() -> String:
   const forward = ["\u{e9}": 1, "e\u{301}": 1]
   const backward = ["e\u{301}": 1, "\u{e9}": 1]
   const nested = [forward: 7]

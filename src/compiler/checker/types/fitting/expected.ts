@@ -101,10 +101,10 @@ export function expectedFunction(expected: Type | undefined): FunctionType | und
  */
 export function plainResultExpected(
   expected: Type | undefined,
-  { futureValue }: Pick<Futures, 'futureValue'>,
+  { awaitedOf }: Pick<Futures, 'awaitedOf'>,
 ): Type | undefined {
   const result = expectedFunction(expected)?.result;
-  return result === undefined ? undefined : (futureValue(result) ?? result);
+  return result === undefined ? undefined : (awaitedOf(result)?.value ?? result);
 }
 
 /**

@@ -133,7 +133,6 @@ describe('checking reports', () => {
       reports.typeMismatch,
       '"a"',
     ],
-    ['an async result that is not a Future', 'async fn f() -> Int: 1', reports.asyncResult, 'Int'],
     [
       'a conversion spelled lowercase',
       'fn f() -> Int: int(1.5)',
@@ -160,13 +159,13 @@ describe('checking reports', () => {
     ],
     [
       'await on a value that is not a Future',
-      'async fn f(): await 1',
+      'ista async fn f(): await 1',
       reports.awaitNeedsFuture,
       '1',
     ],
     [
       'a future discarded',
-      `${importTime}\nasync fn f():\n  time.delay(1s)\n  1`,
+      `${importTime}\nista async fn f():\n  time.delay(1s)\n  1`,
       reports.unusedValue,
       'time.delay(1s)',
     ],
@@ -207,12 +206,15 @@ describe('checking accepts', () => {
     ['a prelude type with a default argument', 'fn f(r: Result<Int>) -> Result<Int, Error>: r'],
     [
       'awaiting an async call and a std extern',
-      `${importTime}\nasync fn g() -> Future<Int>: 1\nasync fn f() -> Future<Int>:\n  await time.at(time.now())\n  await g()`,
+      `${importTime}\nista async fn g() -> Int: 1\nista async fn f() -> Int:\n  await time.at(time.now())\n  await g()`,
     ],
-    ['a future returned to the caller', `${importTime}\nfn f() -> Future<Unit>: time.delay(1s)`],
+    [
+      'a future returned to the caller',
+      `${importTime}\nfn f() -> Future<Unit, "ista">: time.delay(1s)`,
+    ],
     [
       'a future returned through parentheses, a block, an if and a return',
-      `${importTime}\nfn f(c: Bool) -> Future<Unit>:\n  if c:\n    return (time.delay(1s))\n  { const d = 2s; if c: time.delay(d) else: time.delay(3s) }`,
+      `${importTime}\nfn f(c: Bool) -> Future<Unit, "ista">:\n  if c:\n    return (time.delay(1s))\n  { const d = 2s; if c: time.delay(d) else: time.delay(3s) }`,
     ],
     ['a duration literal without importing time', 'fn f() -> Int:\n  const d = 5d\n  d.value'],
     [

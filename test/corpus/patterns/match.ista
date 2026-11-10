@@ -78,7 +78,7 @@ fn tracking(order: Order) -> String:
     case Order{status == Shipped}: "shipped"
     case _: "other"
 
-async fn main() -> Future<String>:
+async fn main() -> String:
   (describe(Approved("legal")) + "|" + describe(Rejected(by: "legal", reason: "no contract"))
     + "|" + describe(Expired) + "|" + approver(Decision.Approved("cfo")) + "|" + size(3)
     + "|" + size(40) + "|" + size(0) + "|" + where(Point{x: 0, y: 0})

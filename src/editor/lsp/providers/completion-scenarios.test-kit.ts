@@ -75,8 +75,8 @@ fn plus(a: Int, b = 1): a + b
 fn paint(c: Color, n: Int) -> Int: n
 fn Pair.make() -> Pair: Pair{first: 1, second: 2}
 fn sum(self: Pair) -> Int: self.first + self.second
-async fn fetch(id: String) -> Future<String>: id
-async fn work(n: Int) -> Future<Int>: n
+ista async fn fetch(id: String) -> String: id
+ista async fn work(n: Int) -> Int: n
 fn logAll(level: String, ...parts: Array<String>): 1
 fn _hidden() -> Int: 1
 type Id = String
@@ -177,7 +177,7 @@ function opening(where: Scenario['where']): string {
   if (where === 'top') {
     return fixture;
   }
-  return fixture + (where === 'async' ? header.replace('fn t', 'async fn t') : header);
+  return fixture + (where === 'async' ? header.replace('fn t', 'ista async fn t') : header);
 }
 
 function documentOf(scenario: Scenario, src: string): string {

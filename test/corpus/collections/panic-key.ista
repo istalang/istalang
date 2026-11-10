@@ -1,6 +1,6 @@
 # panic: The map holds no such key.
 # Indexing a map with a key it doesn't hold panics (§3.8, §3.12); `get` returns an optional instead.
 
-async fn main() -> Future<Int>:
+async fn main() -> Int:
   const m = ["a": 1]
   m["b"]

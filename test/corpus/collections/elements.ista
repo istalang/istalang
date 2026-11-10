@@ -10,7 +10,7 @@ fn bump(value: &Int):
 fn show(xs: Array<Int>) -> String:
   "[" + [for x in xs: String(x)].join(", ") + "]"
 
-async fn main() -> Future<String>:
+async fn main() -> String:
   let xs = [1, 2]
   const before = xs
   xs[0] = 10

@@ -39,8 +39,8 @@ describe('completion in an annotation', () => {
   });
 
   it("offers `Waypoint` alone on a statement that waits, and a local function's structs", () => {
-    expect(names('async fn t():', '  @‸', '  await t()')).toEqual(['Waypoint']);
-    expect(names('async fn t():', '  await t() @‸')).toEqual(['Waypoint']);
+    expect(names('ista async fn t():', '  @‸', '  await t()')).toEqual(['Waypoint']);
+    expect(names('ista async fn t():', '  await t() @‸')).toEqual(['Waypoint']);
     expect(names('fn t():', '  @‸', '  fn local(): 1', '  0')).toContain('Pair');
     expect(names('fn t():', '  @‸', '  let x = 1', '  0')).toEqual([]);
   });
@@ -49,7 +49,7 @@ describe('completion in an annotation', () => {
     expect(names('fn t(n: Int) -> Int:', '  match n:', '    @‸', '    case 1: 2', '  0')).toEqual(
       [],
     );
-    expect(names('async fn t():', '  return @‸')).toEqual([]);
+    expect(names('ista async fn t():', '  return @‸')).toEqual([]);
   });
 
   it('offers nothing where the `@` stands for a value or a type still missing', () => {

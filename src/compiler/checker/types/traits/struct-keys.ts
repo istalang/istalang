@@ -40,8 +40,8 @@ import {
   shapeType,
   type Type,
 } from '../type/index.ts';
-import { errorType, isPrimitive, neverType } from '../type/primitives.ts';
-import { literalType, membersOf, unionOf } from '../unions/unions.ts';
+import { errorType, isPrimitive, literalType, neverType } from '../type/primitives.ts';
+import { membersOf, unionOf } from '../unions/unions.ts';
 import { keysOwner } from '../written/key-types.ts';
 import { entryRules, structConstraintsOn } from './known-constraints.ts';
 

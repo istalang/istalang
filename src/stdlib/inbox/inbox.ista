@@ -53,7 +53,7 @@ fn sendRevertible<T>(self: Inbox<T>, message: T) -> Revertible<T>:
   const inbox = WeakRef(self)
   new Revertible<T>{retract: fn(): _retract(inbox, number)}
 
-fn receive<T>(self: Inbox<T>) -> Future<T>:
+fn receive<T>(self: Inbox<T>) -> Future<T, "ista">:
   _fill(self)
   self->slot.take()
 
@@ -97,7 +97,7 @@ fn _retract<T>(inbox: WeakRef<Inbox<T>>, number: Int):
 
 # Whether `operation` settles at once. One that doesn't is let go with the parameter, and a slot
 # operation let go does nothing (§6), so a `take` that doesn't settle consumes nothing.
-fn _settles<T>(operation: Future<T>) -> Bool:
+fn _settles<T>(operation: Future<T, "ista">) -> Bool:
   select:
     case operation: true
     else: false

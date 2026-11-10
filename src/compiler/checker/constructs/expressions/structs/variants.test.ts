@@ -135,7 +135,7 @@ describe('a variant call', () => {
         async ({ variant, made }) => {
           const source = [
             declaration(variant),
-            'async fn main() -> Future<Bool>:',
+            'async fn main() -> Bool:',
             `  const called: E = ${call(made)}`,
             `  called == ${everyFieldNamed(variant, made)}`,
           ].join('\n');
@@ -156,7 +156,7 @@ describe('a variant named as a value', () => {
           const type = functionType(shape);
           const source = [
             declaration(variant),
-            'async fn main() -> Future<Bool>:',
+            'async fn main() -> Bool:',
             `  const made: ${type} = E.V`,
             `  const again: sendable ${type} = E.V`,
             `  made == again and made(${argumentsOf(shape, false)}) == E.V(${argumentsOf(shape, true)})`,

@@ -3,15 +3,15 @@
 # awaited value. A handle compares by identity, may be passed to another instance, and its
 # result() gives that instance's end, here in a third instance.
 
-async fn half(n: Int) -> Future<Int>:
+ista async fn half(n: Int) -> Int:
   n // 2
 
-async fn relay(other: Instance<Int>) -> Future<Int>:
+ista async fn relay(other: Instance<Int>) -> Int:
   match await other.result():
     case Ok(value): value
     case Err(error): 0
 
-async fn main() -> Future<String>:
+async fn main() -> String:
   const first = spawn half(42)
   const second = spawn half(42)
   const relayed = spawn relay(first)

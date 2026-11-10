@@ -41,13 +41,13 @@ import { aliasedAs } from '../type/alias-uses.ts';
 import { type ComputedType, isMatchAlias, isOpaque } from '../type/computed-types.ts';
 import { inFieldOrder } from '../type/field-order.ts';
 import type { AnyType, Constraint, Type } from '../type/index.ts';
-import { errorType, isPrimitive } from '../type/primitives.ts';
+import { errorType, isPrimitive, literalType } from '../type/primitives.ts';
 import {
   type EntryRule,
   type StructConstraintModel,
   substituteStructConstraint,
 } from '../type/struct-constraint.ts';
-import { literalType, membersOf, unionOf } from '../unions/unions.ts';
+import { membersOf, unionOf } from '../unions/unions.ts';
 import { parameterType } from '../written/resolve-type.ts';
 import { aliasInstance } from '../written/type-match.ts';
 import { constraintsImply } from './constraint-implication.ts';

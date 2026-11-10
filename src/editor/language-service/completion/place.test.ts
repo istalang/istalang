@@ -89,6 +89,6 @@ describe('the place a cursor is in', () => {
 
   it("reads the cursor's own line, not the line before a blank one", () => {
     expect(placeIn("import * as time from 'time'", '‸', 'fn f() -> Int: 1')).toBe('grammar');
-    expect(placeIn('async fn f():', '  @Waypoint{"step"}', '  ‸', '  1')).toBe('grammar');
+    expect(placeIn('ista async fn f():', '  @Waypoint{"step"}', '  ‸', '  1')).toBe('grammar');
   });
 });

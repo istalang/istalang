@@ -15,7 +15,7 @@ struct Time:
 
 extern fn now() -> Time
 
-extern fn at(time: Time) -> Future<Unit>
+extern fn at(time: Time) -> Future<Unit, "ista">
 
 fn add(left: Time, right: Duration) -> Time: Time{value: left.value + right.value}
 
@@ -23,7 +23,7 @@ fn add(left: Duration, right: Duration) -> Duration: Duration{value: left.value 
 
 fn multiply(left: Duration, right: Int) -> Duration: Duration{value: left.value * right} # Duration * int
 
-fn delay(duration: Duration) -> Future<Unit>: at(now() + duration)
+fn delay(duration: Duration) -> Future<Unit, "ista">: at(now() + duration)
 
 # Times and durations are ordered as the milliseconds they hold (§3.10 `Comparable`).
 fn compare(left: Time, right: Time) -> Int: compare(left.value, right.value)

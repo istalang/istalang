@@ -25,7 +25,7 @@ extern fn open() -> Lease
 
 extern lease: Lease
 
-extern fn keep(lease: Lease) -> Future<Lease>
+extern fn keep(lease: Lease) -> Future<Lease, "ista">
 
 async fn main():
   const kept = await keep(open())

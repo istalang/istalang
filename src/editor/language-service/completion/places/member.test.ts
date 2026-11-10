@@ -164,7 +164,7 @@ describe('member completion offers only what resolves there', () => {
     ['a function value', 'fn f(g: fn() -> Int) -> Int:', '  g.‸', '  1'],
     ['a function named as a value', 'fn g() -> Int: 1', 'fn f() -> Int:', '  g.‸', '  1'],
     ['the function being declared', 'fn main():', '  main.‸'],
-    ["an async function's own call", 'async fn worker() -> Future<Int>:', '  worker.‸', '  1'],
+    ["an async function's own call", 'ista async fn worker() -> Int:', '  worker.‸', '  1'],
     ['an error-typed value', 'fn f() -> Int:', '  nope.‸', '  1'],
     ['a primitive', 'fn f(x: Int) -> Int:', '  x.‸', '  1'],
     ['a string', 'fn f(x: String) -> Int:', '  x.‸', '  1'],

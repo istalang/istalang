@@ -32,8 +32,9 @@ import type { Inference } from '../../../types/inference/infer.ts';
 import { type Substitution, substitute } from '../../../types/parts/substitution.ts';
 import { parametersIn } from '../../../types/parts/type-parts.ts';
 import type { FieldMember, Type } from '../../../types/type/index.ts';
+import { literalType } from '../../../types/type/primitives.ts';
 import { typeText } from '../../../types/type/type-text.ts';
-import { literalType, unionOf } from '../../../types/unions/unions.ts';
+import { unionOf } from '../../../types/unions/unions.ts';
 import { checkedFieldPasses, inFieldPasses } from '../../loops/field-passes.ts';
 import type { LiteralGiven } from './literal-sources.ts';
 

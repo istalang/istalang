@@ -68,7 +68,7 @@ describe('the runtime', () => {
   it('gives an encoded outcome as JSON or its text, refusing one with no JSON', async () => {
     const test = testRuntime();
     const program = test.runtime.deploy(
-      compiledText('async fn main() -> Future<(Float, Int)>: (0.0 / 0.0, 12345678901234567890)'),
+      compiledText('async fn main() -> (Float, Int): (0.0 / 0.0, 12345678901234567890)'),
     );
     const state = finished((await program.start('i')).state);
     expect(program.outcome(state)).toEqual([null, 12345678901234567890n]);
@@ -103,7 +103,7 @@ describe('the runtime', () => {
 
   it("encodes the root's outcome before what its frame holds is disposed, so a defer's panic is traced from its Deferred", async () => {
     const program = testRuntime().runtime.deploy(
-      compiledText('async fn main() -> Future<Int>:\n  _ = defer panic("boom")\n  42'),
+      compiledText('async fn main() -> Int:\n  _ = defer panic("boom")\n  42'),
     );
     const { state } = await program.start('i');
     expect(state).toMatchObject({ kind: 'panicked', message: 'boom' });

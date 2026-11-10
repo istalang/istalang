@@ -6,7 +6,7 @@
 
 import * as time from 'time'
 
-async fn priority() -> Future<String>:
+ista async fn priority() -> String:
   const a = Slot.create<Int>()
   const b = Slot.create<Int>()
   await a.put(1)
@@ -24,7 +24,7 @@ fn tryTake(s: Slot<Int>) -> String:
     else:
       "none"
 
-async fn passesBefore(deadline: Future<Unit>, stop: Slot<Unit>) -> Future<Int>:
+ista async fn passesBefore(deadline: Future<Unit, "ista">, stop: Slot<Unit>) -> Int:
   let passes = 0
   while true:
     const done = await select:
@@ -39,7 +39,7 @@ async fn passesBefore(deadline: Future<Unit>, stop: Slot<Unit>) -> Future<Int>:
       await stop.put(())
   passes
 
-async fn leaving(s: Slot<String>) -> Future<String>:
+ista async fn leaving(s: Slot<String>) -> String:
   const got: String? = await select:
     case s.take() as message:
       message
@@ -47,7 +47,7 @@ async fn leaving(s: Slot<String>) -> Future<String>:
       return "late"
   got ?? "none"
 
-async fn main() -> Future<String>:
+async fn main() -> String:
   const ready = Slot.create<Int>()
   const empty = Slot.create<Int>()
   await ready.put(1)

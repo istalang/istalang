@@ -49,7 +49,7 @@ describe('requireFrameDepth', () => {
     ['synchronous', 'fn loop(n: Int) -> Int: loop(n + 1)\nasync fn main(): loop(0)'],
     [
       'eager async',
-      'async fn loop(n: Int) -> Future<Int>: await loop(n + 1)\nasync fn main(): await loop(0)',
+      'ista async fn loop(n: Int) -> Int: await loop(n + 1)\nasync fn main(): await loop(0)',
     ],
   ])('panics an instance whose %s recursion exceeds the frame limit', async (_, source) => {
     expect(await startToEnd(testRuntime(), compiledText(source))).toMatchObject({

@@ -5,7 +5,7 @@
 fn empty<T is Default>() -> T:
   T.default()
 
-async fn main() -> Future<Int>:
+async fn main() -> Int:
   const xs: Array<Int> = empty()
   const m = empty<Map<String, Int>>()
   xs.length() + m.size()

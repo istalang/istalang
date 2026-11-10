@@ -41,7 +41,7 @@ fn picked(n: Int) -> Int:
   present(match n:
     case _: (none, n))
 
-async fn main() -> Future<String>:
+async fn main() -> String:
   const flag = true
   const n = 3
   const maybe: Int? = n

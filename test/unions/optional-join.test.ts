@@ -76,7 +76,7 @@ describe('optional join across branching constructs and returns (§2, §4)', () 
       '  if not miss:',
       '    return 20',
       '  none',
-      'async fn asyncNoneFirst(miss: Bool):',
+      'ista async fn asyncNoneFirst(miss: Bool):',
       '  if miss:',
       '    return none',
       '  30',

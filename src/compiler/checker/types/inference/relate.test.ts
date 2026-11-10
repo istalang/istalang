@@ -32,12 +32,7 @@ const tree =
 
 /** What `main` gives after the declarations above and `functions`. */
 async function outcome(body: string, ...functions: readonly string[]): Promise<unknown> {
-  const source = [
-    ...declarations,
-    ...functions,
-    'async fn main() -> Future<Int>:',
-    `  ${body}`,
-  ].join('\n');
+  const source = [...declarations, ...functions, 'async fn main() -> Int:', `  ${body}`].join('\n');
   const state = await startToEnd(testRuntime(), compiledText(source));
   return state.kind === 'finished' ? decodeJson(String(state.outcome)) : state;
 }

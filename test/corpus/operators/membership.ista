@@ -11,7 +11,7 @@ fn includes(self: Evens, value: Int) -> Bool:
 fn holdsOne<C is Container<Int>>(container: C) -> Bool:
   1 in container
 
-async fn main() -> Future<(Bool, Bool, Bool, Bool, Bool, Bool, Bool, Bool)>:
+async fn main() -> (Bool, Bool, Bool, Bool, Bool, Bool, Bool, Bool):
   const ages = ["ada": 36]
   (2 in [1, 2, 3], 4 in [1, 2, 3], "bob" not in ages, "ada" in ages, "bc" in "abc", 3 in 0..3,
     4 in Evens{10}, holdsOne([1]))

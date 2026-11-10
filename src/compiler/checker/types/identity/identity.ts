@@ -34,14 +34,14 @@ export function sameConstraint(first: Constraint, second: Constraint): boolean {
 export function isAssignable(
   source: Type,
   target: Type,
-  futures: Pick<Futures, 'futureValue'>,
+  futures: Pick<Futures, 'awaitedOf'>,
 ): boolean {
   return (
     source.kind === 'error' ||
     target.kind === 'error' ||
     isPrimitive(source, 'Never') ||
     sameType(source, target) ||
-    (isNeverFuture(source, futures) && futures.futureValue(target) !== undefined) ||
+    (isNeverFuture(source, futures) && futures.awaitedOf(target)?.value !== undefined) ||
     (source.kind === 'function' &&
       target.kind === 'function' &&
       functionFits(target, source, sameType, (declared, given) =>
@@ -51,8 +51,8 @@ export function isAssignable(
 }
 
 /** Whether `type` is a future of `Never`, which never gives a value. */
-function isNeverFuture(type: Type, { futureValue }: Pick<Futures, 'futureValue'>): boolean {
-  const value = futureValue(type);
+function isNeverFuture(type: Type, { awaitedOf }: Pick<Futures, 'awaitedOf'>): boolean {
+  const value = awaitedOf(type)?.value;
   return value !== undefined && isPrimitive(value, 'Never');
 }
 
@@ -64,11 +64,11 @@ function isNeverFuture(type: Type, { futureValue }: Pick<Futures, 'futureValue'>
 function resultAssignable(
   given: Type,
   declared: Type,
-  futures: Pick<Futures, 'futureValue'>,
+  futures: Pick<Futures, 'awaitedOf'>,
 ): boolean {
   const madeAsync =
     given.kind !== 'error' &&
-    futures.futureValue(given) === undefined &&
-    futures.futureValue(declared) !== undefined;
+    futures.awaitedOf(given)?.value === undefined &&
+    futures.awaitedOf(declared)?.value !== undefined;
   return !madeAsync && isAssignable(given, declared, futures);
 }

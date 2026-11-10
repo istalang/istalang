@@ -17,10 +17,10 @@ fn name(self: Email) -> String:
 fn name(self: Callback) -> String:
   "callback"
 
-async fn greet(x: any Named):
+ista async fn greet(x: any Named):
   ()
 
-async fn greetSendable(x: any Named & Sendable):
+ista async fn greetSendable(x: any Named & Sendable):
   ()
 
 async fn main():

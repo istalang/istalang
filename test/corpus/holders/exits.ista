@@ -9,7 +9,7 @@ import * as time from 'time'
 fn note(log: Shared<Array<String>>, text: String):
   log->value = [...log->value, text]
 
-async fn sleeper(id: Int, log: Shared<Array<String>>):
+ista async fn sleeper(id: Int, log: Shared<Array<String>>):
   _ = defer(fn(): note(log, "stopped " + String(id)))
   await time.delay(1h)
 
@@ -25,13 +25,13 @@ fn early(log: Shared<Array<String>>, n: Int) -> Int:
       return 5
   0
 
-async fn viaReturn(log: Shared<Array<String>>) -> Future<Int>:
+ista async fn viaReturn(log: Shared<Array<String>>) -> Int:
   const s = sleeper(1, log)
   if true:
     return 3
   4
 
-async fn selecting(log: Shared<Array<String>>):
+ista async fn selecting(log: Shared<Array<String>>):
   await select:
     case time.delay(1ms):
       note(log, "timer")
@@ -39,7 +39,7 @@ async fn selecting(log: Shared<Array<String>>):
       note(log, "never")
   note(log, "after select")
 
-async fn main() -> Future<String>:
+async fn main() -> String:
   const empty: Array<String> = []
   const log = new Shared{value: empty}
   const r = early(log, 2)

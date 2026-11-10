@@ -6,7 +6,7 @@ fn twice(x: Int) -> Int: x * 2
 fn pick(x: Int) -> String: "int " + x
 fn pick(x: (Int,)) -> String: "tuple"
 
-async fn main() -> Future<(Int, (Int,), Int, String, Int?, Int?, String, String)>:
+async fn main() -> (Int, (Int,), Int, String, Int?, Int?, String, String):
   const one: (Int,) = 3
   const back: Int = one
   const wrapped: (Int,) = 4

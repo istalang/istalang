@@ -255,7 +255,7 @@ function completeValueCall(
   checkReferencedPlaces(context, given, {
     name,
     // A function value is async wherever its call gives a future: its type is all that is known.
-    isAsync: context.checker.fitting.futureValue(callee.result) !== undefined,
+    isAsync: context.checker.fitting.awaitedOf(callee.result)?.value !== undefined,
     slots: given.map((_, index) => taken.slots.get(index) ?? { reference: false }),
   });
   context.valueCalls.bind(node, taken.binding);

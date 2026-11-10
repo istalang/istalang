@@ -17,6 +17,7 @@ import {
   slotText,
   typeText,
 } from '../../../compiler/checker/types/type/type-text.ts';
+import { outcomeOf } from '../../../compiler/checker/types/type/well-known.ts';
 import { programModule } from '../../../compiler/program/program.ts';
 import { declaredFunctionName } from '../../../compiler/syntax/declarations/field-defaults.ts';
 import {
@@ -25,7 +26,7 @@ import {
 } from '../../../compiler/syntax/declarations/index.ts';
 import { patternNamedType } from '../../../compiler/syntax/expressions/parameters.ts';
 import type { Pattern } from '../../../compiler/syntax/patterns.ts';
-import { modifiersText } from '../../../compiler/syntax/tokens/modifiers.ts';
+import { awaits, modifiersText } from '../../../compiler/syntax/tokens/modifiers.ts';
 import type { SyntaxTree } from '../../../compiler/syntax/tree/index.ts';
 import { spanIn } from '../../../compiler/syntax/tree/positions.ts';
 import { textOf } from '../../../foundation/text/span.ts';
@@ -55,7 +56,10 @@ export function signatureOf(checker: Checker, declaration: FunctionDeclaration):
   const parameters = checker
     .parametersOf(declaration)
     .map((parameter) => parameterText(tree, parameter));
-  return joined(head, parameters, ` -> ${typeText(checker.resultOf(declaration))}`);
+  const result = checker.resultOf(declaration);
+  // An async head says its call gives a future, so it spells what its body gives (§3.14).
+  const written = awaits(qualifiers) ? outcomeOf(checker, result) : result;
+  return joined(head, parameters, ` -> ${typeText(written)}`);
 }
 
 /** The signature of a function value of `type`, whose parameters have types but no names. */

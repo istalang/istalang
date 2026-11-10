@@ -1,7 +1,7 @@
 # outcome: [12,30]
 # A spawned call names its arguments as any call does; the new instance computes the defaults it
 # leaves out (§3.3, §9).
-async fn scaled(base: Int = 1, by: Int = 10, offset: Int = 0) -> Future<Int>:
+ista async fn scaled(base: Int = 1, by: Int = 10, offset: Int = 0) -> Int:
   base * by + offset
 
 fn valueOf(outcome: Result<Int>) -> Int:
@@ -9,7 +9,7 @@ fn valueOf(outcome: Result<Int>) -> Int:
     case Ok(value): value
     case Err(...): -1
 
-async fn main() -> Future<Array<Int>>:
+async fn main() -> Array<Int>:
   const first = await (spawn scaled(offset: 2)).result()
   const second = await (spawn scaled(3)).result()
   [valueOf(first), valueOf(second)]

@@ -22,7 +22,7 @@ fn formatRest<S is struct { title: String, [_]: Int }>(s: S) -> String:
   const parts = [for k, v in ...rest: `${k}=${v}`]
   `${title}:${parts.join(",")}`
 
-async fn main() -> Future<String>:
+async fn main() -> String:
   const m = Misordered{z: 3, a: 1, m: 2}
   let visited: Array<String> = []
   for k, v in ...m:

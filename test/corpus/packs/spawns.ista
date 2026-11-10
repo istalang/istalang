@@ -8,6 +8,6 @@ fn total(...xs: Array<Int>) -> Int:
   t
 fn call<...A, R>(f: fn(...A) -> R, ...args: A) -> R: f(...args)
 fn add3(a: Int, b: Int, c: Int) -> Int: a + b + c
-async fn main() -> Future<(Result<Int>, Result<Int>, Result<Int>)>:
+async fn main() -> (Result<Int>, Result<Int>, Result<Int>):
   const xs = [2, 3]
   (await (spawn total(1, ...xs, 4)).result(), await (spawn call(add3, 1, 2, 3)).result(), await (spawn total(...0..3)).result())

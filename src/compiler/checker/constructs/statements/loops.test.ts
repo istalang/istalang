@@ -6,7 +6,7 @@ import {
 import { inFunction, reported } from '../../check.test-kit.ts';
 import { checkerDiagnostics as reports } from '../../diagnostics/index.ts';
 
-const started = 'async fn job() -> Future<Int>: 1\n\n';
+const started = 'ista async fn job() -> Int: 1\n\n';
 
 describe('labels', () => {
   it.each([

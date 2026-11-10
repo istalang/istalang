@@ -15,7 +15,7 @@ const unwrapFrame = /^at \S*main \(\S+:5:3\)$/u;
 
 /** How `main`, giving a `result` with `body`, ends. */
 async function ended(result: string, body: string) {
-  const program = [...shapes, `async fn main() -> Future<${result}>:`, `  ${body}`].join('\n');
+  const program = [...shapes, `async fn main() -> ${result}:`, `  ${body}`].join('\n');
   return await startToEnd(testRuntime(), compiledText(program));
 }
 

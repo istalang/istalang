@@ -21,7 +21,7 @@ fn kept<...A>(...args: A) -> Array<A>: [args]
 
 fn packed<...A>(...args: A) -> A: args
 
-async fn main() -> Future<(Int, Int, Int, String, Int, String, Array<(Int, String)>, String, ())>:
+async fn main() -> (Int, Int, Int, String, Int, String, Array<(Int, String)>, String, ()):
   const measure = logged(area)
   const named: fn(Int, Int) -> Int = logged<(Int, Int), Int>(area)
   const empty: () = packed()

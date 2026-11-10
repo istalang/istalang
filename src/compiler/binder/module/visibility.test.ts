@@ -188,7 +188,7 @@ const spots: readonly (readonly [string, string, readonly string[], readonly str
   ['a missing comprehension condition', 'fn f(xs: Array<Int>): [for x in xs if ‸: x]\n', ['x'], []],
   [
     "a blank line before a `select` case's body",
-    'async fn f(box: Mailbox<Int>) -> Int:\n  await select:\n    case box.receive() as message:\n      ‸\n      message\n',
+    'ista async fn f(box: Mailbox<Int>) -> Int:\n  await select:\n    case box.receive() as message:\n      ‸\n      message\n',
     ['box', 'message'],
     [],
   ],

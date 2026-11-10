@@ -19,7 +19,7 @@ import type { Variance } from '../../variance/lattice.ts';
 import type { Fitting } from './index.ts';
 
 /** What relating two types part by part reads: the match it belongs to. */
-export interface PartsRelation extends Pick<Fitting, 'varianceOf' | 'shapeOf' | 'futureValue'> {
+export interface PartsRelation extends Pick<Fitting, 'varianceOf' | 'shapeOf' | 'awaitedOf'> {
   /** The pairs being related, so a recursive type's parts are related once. */
   readonly relating: UnfoldingPairs;
   /** Whether `found` is `expected`, where a part must be the same type: invariant, or behind `&`. */

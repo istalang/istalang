@@ -41,9 +41,9 @@ import { checkerDiagnostics } from '../../../diagnostics/index.ts';
 import type { Admits } from '../../../types/fitting/expected.ts';
 import { builtFrom, collectionTarget } from '../../../types/fitting/expected.ts';
 import type { Type } from '../../../types/type/index.ts';
-import { errorType } from '../../../types/type/primitives.ts';
+import { errorType, literalType } from '../../../types/type/primitives.ts';
 import { typeText } from '../../../types/type/type-text.ts';
-import { literalType, membersOf } from '../../../types/unions/unions.ts';
+import { membersOf } from '../../../types/unions/unions.ts';
 import { aliasedShape } from '../structs/literal-types.ts';
 import { refuseVariantLiteral } from '../structs/variants.ts';
 

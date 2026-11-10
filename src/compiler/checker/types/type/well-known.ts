@@ -12,7 +12,7 @@ import {
 import type { TraitDeclaration } from '../../../syntax/declarations/index.ts';
 import type { Checker } from '../../check.ts';
 import type { CheckerContext } from '../../contexts/context.ts';
-import type { Futures } from './function-types.ts';
+import type { AwaitedType, Futures } from './function-types.ts';
 import type { Type } from './index.ts';
 import { errorType } from './primitives.ts';
 
@@ -41,26 +41,24 @@ export function wellKnownOf(
   return checker.wellKnownType(declaration, typeArguments) ?? errorType;
 }
 
-/** `Future<T>`, what an async call returns; the error type in a program without a prelude. */
-export function futureOf(checker: Pick<Checker, 'wellKnownType'>, value: Type): Type {
-  return wellKnownOf(checker, wellKnown.future, [value]);
-}
-
-/** What awaiting a value gives (§6): the value it resumes with. */
-export interface Awaited {
-  readonly value: Type;
+/**
+ * `Future<T, K>`, what an async call of kind `mode` gives; the error type in a program without a
+ * prelude.
+ */
+export function futureOf(checker: Pick<Checker, 'wellKnownType'>, value: Type, mode: Type): Type {
+  return wellKnownOf(checker, wellKnown.future, [value, mode]);
 }
 
 /**
- * What awaiting a value of `type` gives: a `Future<T>`'s `T`; undefined when `type` can't be
- * awaited. The one reading of what an awaitable gives.
+ * What awaiting a value of `type` gives: a `Future<T, K>`'s `T`, awaited in kind `K`; undefined
+ * when `type` can't be awaited. The one reading of what an awaitable gives.
  */
 export function awaitedOf(
   checker: Pick<Checker, 'wellKnownType'>,
   type: Type,
-): Awaited | undefined {
-  const value = wellKnownArguments(checker, wellKnown.future, type)?.[0];
-  return value === undefined ? undefined : { value };
+): AwaitedType | undefined {
+  const [value, mode] = wellKnownArguments(checker, wellKnown.future, type) ?? [];
+  return value === undefined || mode === undefined ? undefined : { value, mode };
 }
 
 /** What a call giving `type` ends with: what awaiting it gives, or `type` itself. */
@@ -71,8 +69,8 @@ export function outcomeOf(checker: Pick<Checker, 'wellKnownType'>, type: Type): 
 /** The program's futures, as relating a function's result to one reads them. */
 export function futuresOf(checker: Pick<Checker, 'wellKnownType'>): Futures {
   return {
-    futureOf: (value) => futureOf(checker, value),
-    futureValue: (type) => awaitedOf(checker, type)?.value,
+    futureOf: (value, mode) => futureOf(checker, value, mode),
+    awaitedOf: (type) => awaitedOf(checker, type),
   };
 }
 

@@ -17,6 +17,6 @@ fn captures(x: &Int) -> Array<Int>:
 
 fn parse() -> Result<Int>: Ok(1)
 
-async fn main() -> Future<Int>:
+async fn main() -> Int:
   parse()
   1

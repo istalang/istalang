@@ -19,7 +19,7 @@ fn showEntry(e: AnyEntry) -> String:
     case Entry<Int, "draft">{value}: `d:${value}`
     case Entry<String, "sent">{value}: `s:${value}`
 
-async fn main() -> Future<String>:
+async fn main() -> String:
   const d1 = describe("draft")
   const status: Status = "sent"
   const d2 = match status:

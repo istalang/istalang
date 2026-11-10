@@ -35,7 +35,7 @@ fn Op.scale(n: Int) -> Int: n * 10
 
 fn Op.scale(s: String) -> String: s
 
-async fn later(n: Int) -> Future<Int>: n + 1
+ista async fn later(n: Int) -> Int: n + 1
 
 fn viaChain(op: Op?) -> Int: op?.run(5) ?? 0
 

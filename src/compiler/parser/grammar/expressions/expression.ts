@@ -97,9 +97,14 @@ const prefixParselets: Partial<Record<CursorKind, PrefixParselet>> = {
   select: parseSelect,
 } satisfies StartParselets<OperandWord, PrefixParselet>;
 
-/** `new` before a name starts a shared struct's literal (§3.18); undefined where it is a name. */
+/**
+ * `new` before a name starts a shared struct's literal (§3.18), and a kind a lambda's head;
+ * undefined where the word is a name.
+ */
 const wordParselets = {
   new: (parser) => (parser.cursor.kindAt(1) === 'identifier' ? parseNew(parser) : undefined),
+  live: parseModifiedLambda,
+  ista: parseModifiedLambda,
 } satisfies WordParselets<OperandWord, (parser: Parser) => Expression | undefined>;
 
 /** A contextual word's operand, a lambda whose head starts with a modifier, or else a name. */

@@ -9,7 +9,7 @@ import * as time from 'time'
 fn note(log: Shared<Array<String>>, entry: String):
   log->value = [...log->value, entry]
 
-async fn worker(jobs: Inbox<Int>, acks: Inbox<Int>, log: Shared<Array<String>>) -> Future<Unit>:
+ista async fn worker(jobs: Inbox<Int>, acks: Inbox<Int>, log: Shared<Array<String>>) -> Unit:
   let handled = 0
   while true:
     await select:
@@ -22,11 +22,11 @@ async fn worker(jobs: Inbox<Int>, acks: Inbox<Int>, log: Shared<Array<String>>) 
     note(log, "pass")
   ()
 
-async fn idle(log: Shared<Array<String>>) -> Future<Unit>:
+ista async fn idle(log: Shared<Array<String>>) -> Unit:
   await time.delay(1d)
   note(log, "never: idle was stopped")
 
-async fn main() -> Future<String>:
+async fn main() -> String:
   const empty: Array<String> = []
   const log = new Shared{value: empty}
   const jobs = Inbox.create<Int>()

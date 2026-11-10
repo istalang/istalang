@@ -78,7 +78,7 @@ describe('a declaration’s variance (§3.5)', () => {
     ['trait Sink<T> { fn put(self: Self, x: T) -> Unit }', 'Sink', ['contravariant']],
     ['trait Cell<T> { fn get(self: Self) -> T; fn set(self: Self, x: T) }', 'Cell', ['invariant']],
     ['trait Sized<T> { size: T }', 'Sized', ['covariant']],
-    ['trait Later<T> { async fn later(self: Self) -> Future<T> }', 'Later', ['covariant']],
+    ['trait Later<T> { ista async fn later(self: Self) -> T }', 'Later', ['covariant']],
     ['trait Swaps<T> { fn swap(self: &Self, x: &T) }', 'Swaps', ['invariant']],
     ['trait Each<T> { fn each(self: Self, f: fn(T) -> Unit) }', 'Each', ['covariant']],
     ['trait Tag<T> { fn tag(self: Self) -> Int }', 'Tag', ['covariant']],

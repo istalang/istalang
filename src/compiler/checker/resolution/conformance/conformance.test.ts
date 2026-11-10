@@ -302,7 +302,7 @@ describe('coinductive struct-constraint and union-member conformance', () => {
   it('checks and runs recursive CategoryModel through List<Group<CategoryModel>> and struct { [_] is FormNode }', async () => {
     const source = [
       formBuilderBase,
-      'async fn main() -> Future<String>:',
+      'async fn main() -> String:',
       '  const root = categoryModel()',
       '  root.load(struct{name: "Hardware", children: [struct{name: "Bolts", children: []}]})',
       '  match root.read():',
@@ -323,7 +323,7 @@ describe('coinductive struct-constraint and union-member conformance', () => {
       '  `{${[for k, v in ...self.fields: `${k}=${v.pretty()}`].join(",")}}`',
       'struct Node { label: String, next: Group<Node> | None }',
       'fn showUnion(u: Group<Node> | None) -> String: u.pretty()',
-      'async fn main() -> Future<String>:',
+      'async fn main() -> String:',
       '  const leaf: Group<Node> | None = Group{fields: Node{label: "b", next: none}}',
       '  const root: Group<Node> | None = Group{fields: Node{label: "a", next: leaf}}',
       '  showUnion(root)',

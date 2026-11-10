@@ -8,14 +8,14 @@ import * as runtime from 'runtime'
 import Inbox from 'inbox'
 
 # The next `count` messages `seen` receives.
-async fn received(seen: Inbox<Int>, count: Int) -> Future<Array<Int>>:
+ista async fn received(seen: Inbox<Int>, count: Int) -> Array<Int>:
   let messages: Array<Int> = []
   for _ in 0..count: messages.push(await seen.receive())
   messages
 
 # Three messages to a quick subscriber and a gated one, the second sent revertibly and released
 # once the quick one read it: what the gated one and the quick one handled.
-async fn retractingTheSecond() -> Future<(Array<Int>, Array<Int>)>:
+ista async fn retractingTheSecond() -> (Array<Int>, Array<Int>):
   const bus = fanout.create<Int>()
   const gate = Slot.create<Unit>()
   const (slow, quick) = (Inbox.create<Int>(), Inbox.create<Int>())

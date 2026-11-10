@@ -11,7 +11,7 @@ fn unanswered<R>(reply: Result<R>) -> Bool: reply is Err(error) and error.code =
 
 # Two calls to a handler that waits at a gate opened once per call: the replies, and what the
 # handler logged.
-async fn servingTwoCalls() -> Future<(Array<Result<Int>>, Array<String>)>:
+ista async fn servingTwoCalls() -> (Array<Result<Int>>, Array<String>):
   const method = rpc.create<Int, Int>()
   const gate = Slot.create<Unit>()
   let log: Array<String> = []

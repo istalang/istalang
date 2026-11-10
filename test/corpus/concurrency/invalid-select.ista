@@ -9,10 +9,10 @@
 # `as` discards its value, so a value that must be used, such as a `Result`, is reported. The
 # case bodies agree on one type.
 
-async fn checked(s: Slot<Int>) -> Future<Result<Int>>:
+ista async fn checked(s: Slot<Int>) -> Result<Int>:
   Ok(1)
 
-async fn cases(s: Slot<Int>):
+ista async fn cases(s: Slot<Int>):
   _ = await select:
     case 3:
       1
@@ -30,12 +30,12 @@ fn plain(s: Slot<Int>):
     case s.read():
       1
 
-async fn discarded(s: Slot<Int>):
+ista async fn discarded(s: Slot<Int>):
   _ = await select:
     case checked(s):
       1
 
-async fn disagreeing(s: Slot<Int>) -> Future<Int>:
+ista async fn disagreeing(s: Slot<Int>) -> Int:
   const value = await select:
     case s.read() as n:
       n

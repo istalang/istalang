@@ -117,7 +117,7 @@ describe('what an identifier denotes', () => {
 
   it('answers a hold naming its own function with that function', () => {
     const held = checkedMain(
-      'async fn work(n: Int):\n  for i in 0..n:\n    hold(work) _ = 1\nfn main(): 0\n',
+      'ista async fn work(n: Int):\n  for i in 0..n:\n    hold(work) _ = 1\nfn main(): 0\n',
     );
     expect(held.checker.diagnosticsOf(held.module)).toEqual([]);
     const label = held.checker.lookup.denotationsOf(held.module, held.named('work', 1));

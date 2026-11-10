@@ -56,7 +56,7 @@ const wordParselets = {
   type: (parser) => (namedNext(parser) ? parseTypeAlias(parser) : undefined),
   shared: parseModified,
   sendable: parseModified,
-  ephemeral: parseModified,
+  live: parseModified,
 } satisfies WordParselets<DeclarationWord, DeclarationParselet>;
 
 /**
@@ -93,11 +93,13 @@ function parseExtern(
     : parseExternStruct(parser);
 }
 
-/** The keyword an extern's head misses: `struct` after a word no function takes, a handle. */
+/**
+ * The keyword an extern's head misses: `fn` after words only a function takes, `struct` after a
+ * handle, whether a function could take it too (`extern live`).
+ */
 function keywordWithout(modifiers: readonly ModifierWord[]): HeadForm['keyword'] {
-  return modifiers.every((word) => groupIn(headForms.function, word) !== undefined)
-    ? 'fn'
-    : 'struct';
+  const takes = (form: HeadForm) => modifiers.every((word) => groupIn(form, word) !== undefined);
+  return takes(headForms.function) && !takes(headForms.externStruct) ? 'fn' : 'struct';
 }
 
 /**

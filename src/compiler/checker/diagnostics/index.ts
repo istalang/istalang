@@ -113,10 +113,6 @@ export const checkerDiagnostics = defineDiagnostics('checker', {
     message: (name: string, expected: number, found: number) =>
       `'${name}' takes ${expected} type argument${expected === 1 ? '' : 's'}, found ${found}.`,
   },
-  asyncResult: {
-    code: 5021,
-    message: (found: string) => `An async function returns a Future, not ${found}.`,
-  },
   awaitOutsideAsync: {
     code: 5022,
     message: () => "'await' is allowed only inside an async function.",

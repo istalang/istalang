@@ -2,7 +2,7 @@
 # Strings count code points (§3.8): length, indexing, `at`, slicing and iteration never split the
 # emoji code point, and a string spreads its characters.
 
-async fn main() -> Future<String>:
+async fn main() -> String:
   const s = "hél🙂o"
   const missing: String? = s.at(9)
   const chars = [...s]

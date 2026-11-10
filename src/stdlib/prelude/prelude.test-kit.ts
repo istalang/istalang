@@ -11,7 +11,7 @@ import { startToEnd, testRuntime } from '../../runtime/runtime.test-kit.ts';
  */
 export async function mainGives(result: string, body: string, declarations = ''): Promise<unknown> {
   const lines = body.trimEnd().split('\n').join('\n  ');
-  const program = `${declarations}\nasync fn main() -> Future<${result}>:\n  ${lines}`;
+  const program = `${declarations}\nasync fn main() -> ${result}:\n  ${lines}`;
   const state = await startToEnd(testRuntime(), compiledText(program));
   return state.kind === 'finished' ? decodeJson(String(state.outcome)) : state;
 }

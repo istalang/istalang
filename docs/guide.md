@@ -20,7 +20,7 @@ The spec, `docs/spec.md`, is the source of truth; `§` numbers point into it.
 Istalang is a Python-shaped, statically typed language for **durable workflows**: programs that wait for days on a person, a timer or another system, and survive restarts while they wait. At every `await` the runtime saves the program's whole state, so it can resume from that line later, even on another machine. The program reaches the outside world only through host functions declared `extern`.
 
 ```python
-async fn remindLater(role: String):
+ista async fn remindLater(role: String):
     await time.delay(1d)              # saved here; resumes a day later, even after a restart
     notifications(role).send(Notice{text: "Reminder"})
 ```
@@ -59,7 +59,7 @@ async fn main():                                         # the one entry point
         const req = await purchaseRequests.receive()     # saved; may wait for weeks
         spawn purchase(req)                              # each purchase is its own instance
 
-async fn purchase(req: PurchaseRequest) -> Future<String>:
+ista async fn purchase(req: PurchaseRequest) -> String:
     const deadline = time.delay(5d)                      # a timer, running from now
     const verdict = await select:                        # whichever comes first
         case verdicts(req.id).receive() as v: v
@@ -96,7 +96,7 @@ const a, b = (1, "x")          # destructuring
 
 - **Literals:** `"a"` `'a'` `` `x=${x}` `` `42` `1_000` `0x1F` `0b1010` `3.14` `true` `none` `500ms` `30s` `15m` `2h` `5d` `[1, 2]` `["k": 1]` `[:]` `[...xs, 3]` `(1, "x")` `(x,)` `0..10` `0..=10` `0..10 by 2`.
 - **Names:** types, traits and variants are `PascalCase`; functions, variables and fields are `camelCase` (both compiler-enforced). Leading `_` on a top-level declaration makes it module-private.
-- **Keywords:** `fn`, `async`, `await`, `let`, `const`, `if`, `elif`, `else`, `for`, `in`, `while`, `match`, `case`, `select`, `return`, `break`, `continue`, `struct`, `enum`, `trait`, `import`, `extern`, `drop`, `is`, `and`, `or`, `not`, `true`, `false`, `none`, `as` are reserved everywhere (never field or variable names). `type`, `shared`, `ephemeral`, `new`, `from`, `sendable`, `any`, `keyof`, `infer`, `hold` and `by` are contextual and may name fields or functions.
+- **Keywords:** `fn`, `async`, `await`, `let`, `const`, `if`, `elif`, `else`, `for`, `in`, `while`, `match`, `case`, `select`, `return`, `break`, `continue`, `struct`, `enum`, `trait`, `import`, `extern`, `drop`, `is`, `and`, `or`, `not`, `true`, `false`, `none`, `as` are reserved everywhere (never field or variable names). `type`, `shared`, `live`, `ista`, `new`, `from`, `sendable`, `any`, `keyof`, `infer`, `hold` and `by` are contextual and may name fields or functions.
 
 ### 2.3 Data: structs, enums, optionals (§3.1, §3.11, §3.18)
 
@@ -156,7 +156,7 @@ fn log(level: String, ...parts: Array<String>): … # rest parameter
 fn area(self: Circle) -> Float: …                 # a method: first parameter is self
 fn push<T>(self: &Stack<T>, item: T): …           # &self lets the method change its receiver
 fn Duration.zero() -> Duration: …                 # static function, called Duration.zero()
-async fn fetch(id: String) -> Future<User>: …     # may await; inside it, return a User
+ista async fn fetch(id: String) -> User: …     # may await; inside it, return a User
 ```
 
 - **Parameter patterns.** A parameter may be a pattern that can't fail: `fn norm(Point{x, y}) -> Float`, `fn area(struct{w, h}: Rect)`, `fn sum((a, b): (Int, Int))`, `ps.map(fn({x, y}): x + y)` (`{…}` is short for `struct{…}` there). A pattern naming its type takes no annotation; a lambda's may take its type from the expected function type.
@@ -246,7 +246,7 @@ Patterns: a variant's fields as a call gives them, `case Rejected("legal", reaso
 ### 2.7 Errors (§3.12)
 
 ```python
-async fn pay(req: Req) -> Future<Result<String>>:
+ista async fn pay(req: Req) -> Result<String>:
     const receipt = chargeCard(req.id, req.amount)?   # on Err, return the Err from pay
     Ok(receipt)
 ```
@@ -296,7 +296,7 @@ hold _ = defer log("done")  # runs when the function ends
 ```
 
 ```python
-async fn approve(req: Req, roles: Array<String>) -> Future<String>:
+ista async fn approve(req: Req, roles: Array<String>) -> String:
     for role in roles:
         hold _ = reviewQueue(role).sendRevertible(req) # kept until approve returns
     …

@@ -43,7 +43,7 @@ fn count(x: Counter?) -> Int:
     case Counter as c: c.n
     case None: -1
 
-async fn main() -> Future<String>:
+async fn main() -> String:
   const nobody: Email? = none
   const somebody: Email? = Email{to: "p"}
   const number: Int | Sms = 3

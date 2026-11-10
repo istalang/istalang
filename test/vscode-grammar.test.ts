@@ -78,8 +78,9 @@ it("highlights a head's contextual modifiers in any order, and the same words el
   for (const word of new Set(heads.flatMap(({ modifiers }) => modifiers.filter(isContextual)))) {
     expect(highlighted(`${word} = ${word}.call(${word})`)).toEqual([]);
   }
-  expect(highlighted('fn f(g: sendable fn(Int)) -> sendable async fn()')).toEqual([
+  expect(highlighted('fn f(g: sendable fn(Int)) -> sendable ista async fn()')).toEqual([
     'sendable',
     'sendable',
+    'ista',
   ]);
 });

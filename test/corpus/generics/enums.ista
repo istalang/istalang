@@ -12,7 +12,7 @@ enum Shape:
 fn favorite() -> Color:
   Green
 
-async fn main() -> Future<String>:
+async fn main() -> String:
   const color: Color = Red
   const shape = Shape.Circle(2)
   const same: Shape = Circle(2)

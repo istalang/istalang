@@ -31,7 +31,7 @@ fn partly<T>(x: T | Int | String) -> String:
     case Int | String as v: `both:${v}`
     case _: "other"
 
-async fn main() -> Future<String>:
+async fn main() -> String:
   const p1 = `${collapsed<Int>(7)}|${boxed<Int>(Box{value: 7})}`
   const p2 = `${collapsed<String>("a")}|${boxed<String>(Box{value: "s"})}`
   const p3 = `${lit<String>("a")}:${lit<String>("b")}|${litPart<String>("a")}:${litPart<String>(3)}:${litPart<String>("z")}`

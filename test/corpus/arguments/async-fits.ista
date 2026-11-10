@@ -4,14 +4,14 @@
 # function, a lambda, one the call decides, and one wrapped into an optional all fit.
 fn double(x: Int) -> Int: x * 2
 
-async fn twice(f: async fn(Int) -> Int, x: Int) -> Future<Int>:
+ista async fn twice(f: ista async fn(Int) -> Int, x: Int) -> Int:
   await f(await f(x))
 
-async fn generic<T>(f: async fn() -> T) -> Future<T>:
+ista async fn generic<T>(f: ista async fn() -> T) -> T:
   await f()
 
-async fn main() -> Future<Array<Int>>:
+async fn main() -> Array<Int>:
   const plain = fn(x: Int) -> Int: x + 1
-  const g: async fn(Int) -> Int = double
-  const h: (async fn(Int) -> Int)? = plain
+  const g: ista async fn(Int) -> Int = double
+  const h: (ista async fn(Int) -> Int)? = plain
   [await twice(double, 3), await twice(plain, 3), await twice(fn x: x * 10, 1), await g(5), await generic(fn(): 7), await (h ?? g)(1)]

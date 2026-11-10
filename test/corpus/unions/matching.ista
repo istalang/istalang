@@ -100,7 +100,7 @@ fn collapsedBox<T is Stringable>(x: Box<T> | Box<Int>) -> String:
     case Box<T>{value}: `first:${value}`
     case Box<Int>{value}: `second:${value}`
 
-async fn main() -> Future<String>:
+async fn main() -> String:
   const p1 = `${describe(none)}|${describe(42)}|${describe("ok")}|${label("draft")}|${label("failed")}|${contactTo(Email{to: "cfo"})}`
   const p2 = `${checkIntOpt(5)}:${checkIntOpt(none)}:${checkLitOpt(1)}:${checkLitOpt(2)}`
   const p3 = `${splitLiterals("sent")}:${splitLiterals(7)}`

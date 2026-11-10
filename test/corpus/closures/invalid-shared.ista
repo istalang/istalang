@@ -15,10 +15,10 @@ struct Counter { n: Int }
 fn both(a: &Int, b: &Int):
   a += b
 
-async fn later(n: &Int):
+ista async fn later(n: &Int):
   n += 1
 
-async fn subject():
+ista async fn subject():
   const c = new Shared{value: Counter{n: 1}}
   const d = new Shared{value: Counter{n: 2}}
   c->value = Counter{n: 2}

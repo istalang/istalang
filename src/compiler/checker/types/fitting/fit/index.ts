@@ -46,6 +46,7 @@ import type {
   AnonymousStructType,
   AnyType,
   Constraint,
+  FunctionType,
   Type,
   TypeParameterType,
   UnionType,
@@ -62,7 +63,7 @@ import { argumentsFitAs, fitsByParts, type PartsRelation } from './parts.ts';
 
 /**
  * What converts a value itself, before it goes into a union: nothing, the conversion into an `any`
- * type or of a nominal struct's value into a shape, a plain function made async, a value made a
+ * type or of a nominal struct's value into a shape, a plain function made async (`to`), a value made a
  * one-element tuple (`tupled`), a one-element tuple's element taken out (`untupled`), a literal
  * type's value, or a union of literals', taken as their base (`base`), or the value's parts each
  * converted into `to`'s (`parts`). A conversion of parts says only what it converts into, never
@@ -73,7 +74,7 @@ type Conversion =
   | { readonly kind: 'none' }
   | { readonly kind: 'any'; readonly to: AnyType }
   | { readonly kind: 'shape'; readonly to: AnonymousStructType }
-  | { readonly kind: 'async' }
+  | { readonly kind: 'async'; readonly to: FunctionType }
   | { readonly kind: 'tupled' }
   | { readonly kind: 'untupled' }
   | { readonly kind: 'base' }
@@ -269,8 +270,9 @@ function memberParameterFit(found: Type, expected: Type, rules: Matching): Fit |
 
 /** How `found`, no union, converts into `expected`, no union either; undefined when it can't. */
 function convertedInto(found: Type, expected: Type, rules: Matching): Conversion | undefined {
-  if (fitsAsync(found, expected, rules)) {
-    return { kind: 'async' };
+  const made = asyncFitOf(found, expected, rules);
+  if (made !== undefined) {
+    return { kind: 'async', to: made };
   }
   const single = singleConversion(found, expected, rules.exact);
   if (single !== undefined) {
@@ -319,7 +321,7 @@ function membersConverted(found: UnionType, expected: Type, rules: Matching): Fi
  * Whether `found` is a literal type, or a union of literals, all of `base`'s base; the keys of a
  * struct not known yet are String literals too (§3.1).
  */
-function isLiteralOf(found: Type, base: Type, futures: Pick<Futures, 'futureValue'>): boolean {
+function isLiteralOf(found: Type, base: Type, futures: Pick<Futures, 'awaitedOf'>): boolean {
   return membersOf(found).every(
     (member) =>
       (member.kind === 'literal' || member.kind === 'keys') &&
@@ -445,17 +447,19 @@ const reshapingKinds: ReadonlySet<Fit['conversion']['kind']> = new Set([
 ]);
 
 /**
- * Whether a function of type `source`, giving no future, fits where `target`, a function of its
- * parameters giving a future of its result, is expected: calling it gives a future already
- * resolved (§3.14).
+ * `source`, a function giving no future, made async where `target`, a function of its parameters
+ * giving a future of its result, is expected: calling it gives a future already resolved (§3.14),
+ * of `target`'s kind. Undefined where it doesn't fit so.
  */
-function fitsAsync(
+function asyncFitOf(
   source: Type,
   target: Type,
-  rules: Pick<ConversionRules, 'exact' | 'futureOf' | 'futureValue'>,
-): boolean {
-  const made = source.kind === 'function' ? madeAsync(source, rules) : undefined;
-  return made !== undefined && target.kind === 'function' && rules.exact(target, made);
+  rules: Pick<ConversionRules, 'exact' | 'futureOf' | 'awaitedOf'>,
+): FunctionType | undefined {
+  const mode = target.kind === 'function' ? rules.awaitedOf(target.result)?.mode : undefined;
+  const made =
+    source.kind === 'function' && mode !== undefined ? madeAsync(source, rules, mode) : undefined;
+  return made !== undefined && rules.exact(target, made) ? made : undefined;
 }
 
 /**

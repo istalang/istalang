@@ -13,7 +13,7 @@ fn record(log: &Array<String>, step: String, v: Int) -> Int:
 fn doubled(m: Misordered) -> Misordered:
   Misordered{for k, v in ...m: [k]: v * 2}
 
-async fn main() -> Future<String>:
+async fn main() -> String:
   const m = Misordered{z: 3, a: 1, m: 2}
   const keys = [for k, _ in ...m: k]
 

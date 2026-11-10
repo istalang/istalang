@@ -16,7 +16,7 @@ extern shared struct Connection
 
 extern fn run(task: fn() -> Int)
 
-extern fn later() -> Future<fn() -> Int>
+extern fn later() -> Future<fn() -> Int, "ista">
 
 extern fn bump(count: &Int)
 
@@ -28,7 +28,7 @@ extern fn open() -> Connection
 
 extern fn send<T is Encodable>(value: T)
 
-extern fn receive<T is Decodable>() -> Future<T>
+extern fn receive<T is Decodable>() -> Future<T, "ista">
 
 async fn main():
   send(1)

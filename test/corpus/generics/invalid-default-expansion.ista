@@ -36,5 +36,5 @@ fn viaParameter<T>(x: T, k: Int) -> Int:
 fn defaulted<T>(x: T, k: Int, n: Int = viaParameter([x], k - 1)) -> Int:
   n
 
-async fn main() -> Future<Int>:
+async fn main() -> Int:
   String(Node<Int>{}.next.length()).length() + viaField(1, 2) + viaParameter(1, 2)

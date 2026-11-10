@@ -2,7 +2,7 @@
 # QA M3 (§6): one queue per slot, longest waiter first: a read before the first take sees the value, the take empties it, and a read queued behind that take waits for the next put.
 import Inbox from 'inbox'
 
-async fn reader(log: Inbox<String>, s: Slot<Int>, name: String, take: Bool):
+ista async fn reader(log: Inbox<String>, s: Slot<Int>, name: String, take: Bool):
     if take:
         const v = await s.take()
         log.send(name + " take " + v.toString())
@@ -10,7 +10,7 @@ async fn reader(log: Inbox<String>, s: Slot<Int>, name: String, take: Bool):
         const v = await s.read()
         log.send(name + " read " + v.toString())
 
-async fn main() -> Future<Array<String>>:
+async fn main() -> Array<String>:
     const log = Inbox.create<String>()
     const s = Slot.create<Int>()
     hold _ = reader(log, s, "r1", false)

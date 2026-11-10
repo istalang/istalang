@@ -3,7 +3,7 @@
 # `get`, `&self` methods, assignment through an index, iteration in the order keys were first
 # set, and `==` that ignores that order.
 
-async fn main() -> Future<String>:
+async fn main() -> String:
   let m = ["a": 1, "b": 2]
   const size = m.size()
   m["c"] = 3

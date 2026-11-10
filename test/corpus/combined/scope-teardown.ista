@@ -3,7 +3,7 @@
 import Inbox, Revertible from 'inbox'
 import * as time from 'time'
 
-async fn worker(log: Inbox<String>, jobs: Inbox<Int>, done: Inbox<Int>):
+ista async fn worker(log: Inbox<String>, jobs: Inbox<Int>, done: Inbox<Int>):
     while true:
         await select:
             case jobs.receive() as j:
@@ -13,11 +13,11 @@ async fn worker(log: Inbox<String>, jobs: Inbox<Int>, done: Inbox<Int>):
                 log.send("worker disposing")
                 return
 
-async fn watcher(log: Inbox<String>, w: WeakRef<Inbox<Int>>):
+ista async fn watcher(log: Inbox<String>, w: WeakRef<Inbox<Int>>):
     await w.disposed()
     log.send("inbox gone")
 
-async fn scope(log: Inbox<String>) -> Future<Int>:
+ista async fn scope(log: Inbox<String>) -> Int:
     const jobs = Inbox.create<Int>()
     const done = Inbox.create<Int>()
     const wk = WeakRef(jobs)
@@ -32,7 +32,7 @@ async fn scope(log: Inbox<String>) -> Future<Int>:
     log.send(if wk.deref() is none: "dead" else: "alive")
     3
 
-async fn main() -> Future<Array<String>>:
+async fn main() -> Array<String>:
     const log = Inbox.create<String>()
     const r = await scope(log)
     log.send("scope " + r.toString())

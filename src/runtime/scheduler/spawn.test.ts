@@ -21,10 +21,10 @@ import { type Snapshot, snapshotFormat } from '../snapshot/snapshot.ts';
 /** `main` spawning two children that each wait before giving their outcome. */
 const spawningMain = [
   "import * as time from 'time'",
-  'async fn child(n: Int) -> Future<Int>:',
+  'ista async fn child(n: Int) -> Int:',
   '  await time.delay(10ms)',
   '  n * 2',
-  'async fn main() -> Future<Int>:',
+  'async fn main() -> Int:',
   '  spawn child(1)',
   '  await time.delay(1ms)',
   '  spawn child(2)',
@@ -99,7 +99,7 @@ describe('spawning an instance', () => {
   it("carries a sendable closure's captures into the child", async () => {
     const text = compiledText(
       [
-        'async fn main() -> Future<Int>:',
+        'async fn main() -> Int:',
         '  const base = 40',
         '  const add = fn(n: Int): base + n',
         '  spawn add(2)',
@@ -118,11 +118,11 @@ describe('spawning an instance', () => {
 /** `main` spawning an async callee, which waits across commits, and a plain one. */
 const awaitingMain = [
   "import * as time from 'time'",
-  'async fn child(n: Int) -> Future<Int>:',
+  'ista async fn child(n: Int) -> Int:',
   '  await time.delay(10ms)',
   '  n * 2',
   'fn twice(n: Int) -> Int: n * 2',
-  'async fn main() -> Future<Int>:',
+  'async fn main() -> Int:',
   '  spawn child(1)',
   '  spawn twice(2)',
   '  0',
@@ -177,7 +177,7 @@ describe("a spawned instance's root", () => {
     const text = compiledText(
       [
         "import * as runtime from 'runtime'",
-        'async fn main() -> Future<Int>:',
+        'async fn main() -> Int:',
         '  drop runtime.isolate(fn(): "isolated")',
         '  0',
       ].join('\n'),
@@ -189,7 +189,7 @@ describe("a spawned instance's root", () => {
     const text = compiledText(
       [
         "import * as runtime from 'runtime'",
-        'async fn main() -> Future<Int>:',
+        'async fn main() -> Int:',
         '  drop await spawn(runtime.commit).result()',
         '  drop await runtime.isolate(runtime.commit)',
         '  0',
@@ -210,20 +210,20 @@ describe("a spawned instance's root", () => {
         "import * as log from 'log'",
         'shared struct Lease { name: String }',
         'fn dispose(self: Lease): log.info("disposed " + self->name)',
-        'async fn boomAfterDelay() -> Future<Unit>:',
+        'ista async fn boomAfterDelay() -> Unit:',
         '  await time.delay(5ms)',
         '  panic("boom")',
-        'async fn worker() -> Future<Int>:',
+        'ista async fn worker() -> Int:',
         '  hold _ = boomAfterDelay()',
         '  await select:',
         '    case time.delay(100s): 0',
         '    case worker.disposing():',
         '      log.info("worker graceful cleanup")',
         '      1',
-        'async fn makesLease() -> Future<Lease>:',
+        'ista async fn makesLease() -> Lease:',
         '  await time.delay(5ms)',
         '  new Lease{name: "awaited"}',
-        'async fn main() -> Future<Int>:',
+        'async fn main() -> Int:',
         '  drop spawn worker()',
         '  drop spawn makesLease()',
         '  0',

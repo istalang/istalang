@@ -5,7 +5,7 @@
 fn show(xs: Array<Int>) -> String:
   "[" + [for x in xs: String(x)].join(", ") + "]"
 
-async fn main() -> Future<String>:
+async fn main() -> String:
   let a = [0, 1, 2, 3, 4, 5, 6]
   const before = a
   a[3..5] = [9, 9, 9, 9]

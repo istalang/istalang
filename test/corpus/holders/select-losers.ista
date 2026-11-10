@@ -8,12 +8,12 @@
 import Inbox from 'inbox'
 import * as time from 'time'
 
-async fn produce(box: Inbox<Int>, ticks: Inbox<Unit>):
+ista async fn produce(box: Inbox<Int>, ticks: Inbox<Unit>):
   for i in 0..5:
     await ticks.receive()
     box.send(i)
 
-async fn consume(box: Inbox<Int>, ticks: Inbox<Unit>, count: Int) -> Future<String>:
+ista async fn consume(box: Inbox<Int>, ticks: Inbox<Unit>, count: Int) -> String:
   let received: Array<String> = []
   let timeouts = 0
   while received.length() < count:
@@ -25,7 +25,7 @@ async fn consume(box: Inbox<Int>, ticks: Inbox<Unit>, count: Int) -> Future<Stri
         ticks.send(())
   received.join(" ") + " | " + String(timeouts >= count)
 
-async fn survives() -> Future<Bool>:
+ista async fn survives() -> Bool:
   const later = time.delay(5ms)
   await select:
     case later:
@@ -38,7 +38,7 @@ async fn survives() -> Future<Bool>:
     case time.delay(1h):
       false
 
-async fn main() -> Future<String>:
+async fn main() -> String:
   const box = Inbox.create<Int>()
   const ticks = Inbox.create<Unit>()
   _ = produce(box, ticks)

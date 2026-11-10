@@ -11,18 +11,18 @@ import * as time from 'time'
 fn note(log: Shared<Array<String>>, text: String):
   log->value = [...log->value, text]
 
-async fn sleeper(id: Int, log: Shared<Array<String>>):
+ista async fn sleeper(id: Int, log: Shared<Array<String>>):
   _ = defer(fn(): note(log, "stopped " + String(id)))
   await time.delay(1h)
   note(log, "woke " + String(id))
 
-async fn passes(log: Shared<Array<String>>):
+ista async fn passes(log: Shared<Array<String>>):
   for i in 0..2:
     _ = sleeper(i, log)
     note(log, "started " + String(i))
   note(log, "loop done")
 
-async fn released(log: Shared<Array<String>>):
+ista async fn released(log: Shared<Array<String>>):
   let held = sleeper(10, log)
   held = sleeper(11, log)
   note(log, "overwritten")
@@ -33,19 +33,19 @@ async fn released(log: Shared<Array<String>>):
   note(log, "temporary")
   drop held
 
-async fn shared(log: Shared<Array<String>>):
-  const sub = new Shared<Future<Unit>?>{value: sleeper(60, log)}
+ista async fn shared(log: Shared<Array<String>>):
+  const sub = new Shared<Future<Unit, "ista">?>{value: sleeper(60, log)}
   note(log, "subscribed")
   sub->value = none
   note(log, "unsubscribed")
 
-async fn kept(log: Shared<Array<String>>):
+ista async fn kept(log: Shared<Array<String>>):
   for i in 0..2:
     hold _ = sleeper(40 + i, log)
   await time.delay(1ms)
   note(log, "kept until return")
 
-async fn main() -> Future<String>:
+async fn main() -> String:
   const empty: Array<String> = []
   const log = new Shared{value: empty}
   await passes(log)

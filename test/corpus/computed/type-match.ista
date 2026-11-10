@@ -24,7 +24,7 @@ type Unwrapped<T> = match T:
 fn unwrap<T>(box: Box<T>) -> Unwrapped<Box<T>>:
   box.value
 
-async fn main() -> Future<String>:
+async fn main() -> String:
   const d1: Describe<Pair<Int, Int>> = 10
   const d2: Describe<Box<Int> | { tag: String, extra: Bool }> = "str"
   const d3: WholeTuple<Int | String> = "union"

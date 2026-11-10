@@ -7,15 +7,15 @@ struct Holder:
     box: Inbox<Int>
     me: Int
 
-async fn watcher(log: Inbox<String>, name: String, w: WeakRef<Inbox<Int>>):
+ista async fn watcher(log: Inbox<String>, name: String, w: WeakRef<Inbox<Int>>):
     await w.disposed()
     log.send(name + " gone")
 
-async fn main() -> Future<Array<String>>:
+async fn main() -> Array<String>:
     const log = Inbox.create<String>()
     let hs: Array<Holder> = []
     let w1: WeakRef<Inbox<Int>>? = none
-    let wd: Future<Unit>? = none
+    let wd: Future<Unit, "ista">? = none
     if true:
         const a = Inbox.create<Int>()
         hs.push(Holder{box: a, me: 1})

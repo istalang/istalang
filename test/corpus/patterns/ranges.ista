@@ -10,5 +10,5 @@ fn grade(score: Int) -> String:
     case 90..: "great"
     case _: "unreachable"
 
-async fn main() -> Future<(String, String, String, String, String)>:
+async fn main() -> (String, String, String, String, String):
   (grade(-3), grade(59), grade(60), grade(89), grade(90))

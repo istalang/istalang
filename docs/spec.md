@@ -79,7 +79,7 @@ add(1, b: 2)                                           # named argument
 fn call<...A, R>(f: fn(...A) -> R, ...args: A) -> R: ... # a pack: any parameters
 fn push<T>(self: &Stack<T>, item: T): ...             # method, reference receiver
 fn Duration.zero() -> Duration: ...                    # static function
-async fn approve(req: Req) -> Future<String>: ...
+ista async fn approve(req: Req) -> String: ...
 
 fn(x): x * 2    fn x: x > 0    fn(msg): { log(msg); save(msg) }   # lambdas
 const fact = fn f(n: Int) -> Int: { ... }             # named lambda: f calls itself
@@ -209,7 +209,7 @@ Blocks are defined by indentation, as in Python. Comments start with `#` and run
   ```
 - **Trailing commas** are allowed in every comma-separated list; a list broken over lines needs none.
 - **Identifiers** are ASCII letters, digits and `_`, not starting with a digit. Strings and comments may hold any Unicode.
-- **Reserved words:** `fn`, `async`, `await`, `let`, `const`, `if`, `elif`, `else`, `for`, `in`, `while`, `match`, `case`, `select`, `return`, `break`, `continue`, `struct`, `enum`, `trait`, `import`, `extern`, `drop`, `is`, `and`, `or`, `not`, `true`, `false`, `none` and `as`. Thirteen more words are keywords only where the grammar expects them and ordinary names elsewhere: `type` before an alias's name, or an associated type's in a struct, enum or trait body (§3.1, §3.10), `shared`, `sendable` and `ephemeral` among a head's modifiers (below), `gives` and `takes` before a type parameter's name or `...` (§3.5), `new` before a name (§3.18), `from` before an import's path, `any` before a trait's name in a type (§3.10), `keyof` before a type in a type (§3.1), `infer` before a type variable's name in a type `match` case's pattern (§3.17), `hold` before the variable declaration it holds (§3.4), and `by` after a range, before its step (§3.8). So `T.from` (§3.10), a field named `type` and a function named `hold` are valid. A head's **modifiers** stand before its `fn` or `struct` in any order, each once and one word of each group: `extern` (§3.6); a function type's `sendable` (§3.14), or an extern struct's handle, `shared`, `sendable` or `ephemeral` (§3.6), or a shared struct's `shared` (§3.18); and `async`. The formatter writes them in that order: `extern async fn`, `extern shared struct`, `sendable async fn(A) -> R`. The built-in types' names, `Int`, `Float`, `Bool`, `String`, `None`, `Unit`, `Never` and `Self` (§3.10), are no keywords, but no type, variant or type parameter is declared with them, since every module sees them.
+- **Reserved words:** `fn`, `async`, `await`, `let`, `const`, `if`, `elif`, `else`, `for`, `in`, `while`, `match`, `case`, `select`, `return`, `break`, `continue`, `struct`, `enum`, `trait`, `import`, `extern`, `drop`, `is`, `and`, `or`, `not`, `true`, `false`, `none` and `as`. Thirteen more words are keywords only where the grammar expects them and ordinary names elsewhere: `type` before an alias's name, or an associated type's in a struct, enum or trait body (§3.1, §3.10), `shared`, `sendable`, `live` and `ista` among a head's modifiers (below), `gives` and `takes` before a type parameter's name or `...` (§3.5), `new` before a name (§3.18), `from` before an import's path, `any` before a trait's name in a type (§3.10), `keyof` before a type in a type (§3.1), `infer` before a type variable's name in a type `match` case's pattern (§3.17), `hold` before the variable declaration it holds (§3.4), and `by` after a range, before its step (§3.8). So `T.from` (§3.10), a field named `type` and a function named `hold` are valid. A head's **modifiers** stand before its `fn` or `struct` in any order, each once and one word of each group: `extern` (§3.6); a function type's `sendable` (§3.14), or an extern struct's handle, `shared`, `sendable` or `live` (§3.6), or a shared struct's `shared` (§3.18); and `async`. The formatter writes them in that order: `extern async fn`, `extern shared struct`, `sendable async fn(A) -> R`. The built-in types' names, `Int`, `Float`, `Bool`, `String`, `None`, `Unit`, `Never` and `Self` (§3.10), are no keywords, but no type, variant or type parameter is declared with them, since every module sees them.
 
 Every expression has a static type; a value whose type is known only when the program runs has a trait's, `any T` (§3.10). There are no implicit conversions, with six exceptions: a value is converted into an `any` type wherever one is expected (§3.10), a nominal struct's value is converted into its equal shape wherever that shape is expected (§3.1), a function fits where one of its parameters giving a future of its result is expected (§3.14), a one-element tuple and its element each fit where the other is expected (§3.15), a value of a literal type, or of a union of literals, fits where their base type is expected, and a value is converted into a union wherever one is expected (both below).
 
@@ -458,7 +458,7 @@ fn moved() -> Settings:
 
 **No getters or setters.** Reading or assigning a field never runs code; a value computed from fields is a method, such as `order.total()`. This keeps structs plain data under value semantics.
 
-**Value semantics.** Structs, arrays and maps are values. They are copied structurally, field by field, when assigned, passed to a function, returned or sent. A by-value parameter is immutable (§3.3). The only ways a function can change data its caller holds are an explicit reference (§3.7) and a handle, such as a `Shared` value (§3.8). A **handle** is a value of a type its declaration makes one, never its name: every shared struct (§3.18), such as `Shared<T>`, `Inbox<T>` and `Revertible<T>`, and every extern struct declared `shared`, `sendable` or `ephemeral` (§3.6), such as `Slot<T>`, `Future<T>`, `WeakRef<T>` and `Instance<T>`. Copying one copies the handle, not the state behind it, and `==` compares handles by identity.
+**Value semantics.** Structs, arrays and maps are values. They are copied structurally, field by field, when assigned, passed to a function, returned or sent. A by-value parameter is immutable (§3.3). The only ways a function can change data its caller holds are an explicit reference (§3.7) and a handle, such as a `Shared` value (§3.8). A **handle** is a value of a type its declaration makes one, never its name: every shared struct (§3.18), such as `Shared<T>`, `Inbox<T>` and `Revertible<T>`, and every extern struct declared `shared`, `sendable` or `live` (§3.6), such as `Slot<T>`, `Future<T>`, `WeakRef<T>` and `Instance<T>`. Copying one copies the handle, not the state behind it, and `==` compares handles by identity.
 
 **Sendable types.** Only sendable values can leave an instance: in the function `spawn` starts a new one with (§9), or through extern declarations. Sendable types are the ones that satisfy the built-in `Sendable` trait (§3.10). A type is sendable when it is:
 
@@ -480,7 +480,7 @@ Handles other than `sendable` ones, such as futures, slots, `Shared` values, inb
 fn total(items: Array<Int>) -> Int:                        # may not await
     ...
 
-async fn approve(req: PurchaseRequest) -> Future<String>:  # may await
+ista async fn approve(req: PurchaseRequest) -> String:  # may await
     ...
 
 extern fn chargeCard(id: String, amount: Int) -> Result<String>  # implemented by the host
@@ -641,8 +641,8 @@ extern purchaseRequests: Queue<PurchaseRequest>     # a queue the host provides
 - **Constant binding.** An extern can't be reassigned. Its internal state can still change through its methods, for example when a message is sent into a queue the host provides.
 - **Checked at deploy.** The runtime refuses a program whose extern declaration has a different type from the one it already holds under that name, so one name always means one type.
 - **Deterministic reads.** An instance reads an extern constant once, at its first read, and keeps that value in its snapshot for its whole life, so every segment, resumed or not, sees the same value.
-- **Values and handles.** An extern struct is a value unless a word between `extern` and `struct` makes it a handle (§3.1): `extern shared struct` has an identity in its instance, as a shared struct does (§3.18); `extern sendable struct` one every instance shares, such as a queue the host provides; `extern ephemeral struct` one in the process that made it. An extern value crosses as JSON, so it is sendable when its type arguments are, and so is a `sendable` handle; any other handle never is. An extern value's type parameters are invariant unless `gives` or `takes` says otherwise (§3.5); a handle's always are.
-- **Disposable host types.** A host type is disposable when a `dispose` is declared beside it (§7): an extern one its host implements, or code that passes the value to the host's externs. Each value of it then has an identity of its own: it arrives as the JSON the host gave, which the instance keeps while it holds the value, and leaves to the host as that same JSON. So such a type is declared `extern shared struct` (or `extern ephemeral struct`), neither a value nor `sendable`, it isn't `Encodable` or `Decodable`, and no extern constant, which every read shares, can hold one.
+- **Values and handles.** An extern struct is a value unless a word between `extern` and `struct` makes it a handle (§3.1): `extern shared struct` has an identity in its instance, as a shared struct does (§3.18); `extern sendable struct` one every instance shares, such as a queue the host provides; `extern live struct` one in the process that made it. An extern value crosses as JSON, so it is sendable when its type arguments are, and so is a `sendable` handle; any other handle never is. An extern value's type parameters are invariant unless `gives` or `takes` says otherwise (§3.5); a handle's always are.
+- **Disposable host types.** A host type is disposable when a `dispose` is declared beside it (§7): an extern one its host implements, or code that passes the value to the host's externs. Each value of it then has an identity of its own: it arrives as the JSON the host gave, which the instance keeps while it holds the value, and leaves to the host as that same JSON. So such a type is declared `extern shared struct` (or `extern live struct`), neither a value nor `sendable`, it isn't `Encodable` or `Decodable`, and no extern constant, which every read shares, can hold one.
 
 ### 3.7 Methods and references
 
@@ -664,11 +664,11 @@ fn top<T>(self: Stack<T>) -> T?:          # takes a copy
 **References.** A parameter of type `&T` refers to the caller's variable instead of a copy. Changes made through it are visible to the caller, including to other concurrent executions of the same instance:
 
 ```python
-async fn collectSignature(sigs: &Array<Signature>, signer: String):
+ista async fn collectSignature(sigs: &Array<Signature>, signer: String):
     _ = signQueue(signer).sendRevertible(SignRequest{signer: signer})
     sigs.push(await signatures(signer).receive())
 
-async fn signContract(contract: Contract) -> Future<Array<Signature>>:
+ista async fn signContract(contract: Contract) -> Array<Signature>:
     let sigs: Array<Signature> = []
     const a = collectSignature(&sigs, "alice")
     const b = collectSignature(&sigs, "bob")
@@ -730,18 +730,19 @@ extern struct Array<gives T>                # an Array<Int> is an Array<Int?> (�
 extern struct Map<K, gives V>               # keys invariant: widening them would rehash
 extern shared struct Slot<T>                # a handle, not sendable
 extern shared struct WeakRef<T is Disposable>
-extern shared struct Future<T>
+type Persistence = "live" | "ista"            # the two kinds of code (§5)
+extern shared struct Future<T, K in Persistence>
 extern sendable struct Instance<T>          # compared by identity, never Encodable (§9)
 shared struct Shared<T> { value: T }        # not sendable (§3.18)
 
 extern fn Slot.create<T>() -> Slot<T>                       # starts empty
-extern fn put<T>(self: Slot<T>, value: T) -> Future<Unit>   # waits until empty, then fills
-extern fn take<T>(self: Slot<T>) -> Future<T>               # waits until full, then empties
-extern fn read<T>(self: Slot<T>) -> Future<T>               # waits until full, keeps the value
+extern fn put<T>(self: Slot<T>, value: T) -> Future<Unit, "ista">   # waits until empty, then fills
+extern fn take<T>(self: Slot<T>) -> Future<T, "ista">               # waits until full, then empties
+extern fn read<T>(self: Slot<T>) -> Future<T, "ista">               # waits until full, keeps the value
 extern fn WeakRef.from<T is Disposable>(value: T) -> WeakRef<T>   # WeakRef(x): the one weak handle to x
 extern fn deref<T is Disposable>(self: WeakRef<T>) -> T?
-extern fn disposed<T is Disposable>(self: WeakRef<T>) -> Future<Unit>
-extern fn result<T is Sendable>(self: Instance<T>) -> Future<Result<T>>   # its first end (§9)
+extern fn disposed<T is Disposable>(self: WeakRef<T>) -> Future<Unit, "ista">
+extern fn result<T is Sendable>(self: Instance<T>) -> Future<Result<T>, "ista">   # its first end (§9)
 ```
 
 The prelude also contains `type Optional<T> = T?`, whose static functions are every optional's (§3.17), `Result`, `Step` (§3.10), `Error`, the built-in traits (§3.10, including `Disposable`, `Stringable` and `Parsable`, which `Int`, `Float`, `Bool` and `String` satisfy), the `Waypoint` annotation (§10), `panic`, `spawn<R>(f: sendable async fn() -> R) -> Instance<R>`, which starts a new instance running `f` (§9), and `defer(f: fn() -> Unit) -> Deferred`, a shared struct whose `dispose` calls `f` (§7).
@@ -784,7 +785,7 @@ fn add(left: Time, right: Duration) -> Time:     # Time + Duration
 - **`Map<K, V>`** maps keys to values and compares keys with the built-in `==`, so a key holding a NaN can be stored but is never found again. `m[k]` panics on a missing key; `m.get(k)` returns `V?`. Its methods are `size()`, `get(k)`, `has(k)` and `includes(k)`, the same test, which `in` calls (§3.9), `delete(k)` (whether it held `k`), `keys()`, `values()` and `entries()`, and `Map.groupBy(items, key: fn(T) -> K) -> Map<K, Array<T>>` groups an array's items by key, keeping their order. The order in which a map stores and iterates its entries is unspecified, so implementations are free to use hashing or sorting, and two maps are `==` when they hold equal values for equal keys, whatever their order.
 - **`Range`** is a plain, sendable struct with an optional `start` and `end` and a `step` (1 unless `by` gives one), built by `..` (and by `..=`, which stores the end one past the written one in the step's direction, so a range is always half-open). It reaches its start and every step from it before its end, the step's sign giving the direction, as Python's `range` does: a range whose end lies the other way reaches nothing, so iterating `5..2` gives nothing and `10..=0 by -2` gives 10, 8, 6, 4, 2 and 0. A step of 0 would reach its start forever, so using such a range panics. It is `Iterable<Int>` when both ends are given, and iterating a range without an end panics, since whether it has one is known only when it runs. `x in r` is whether `r` reaches `x`, an open end reaching without bound; with an open start, only a step of 1 or -1 has a meaning, and any other panics.
 - **`Array<T>`**, **`Map<K, V>`** and **`T?`** satisfy `Default`: `Array.default()` and `Map.default()` are empty, and `Optional.default()` is `none`.
-- An `extern struct` is a value, sendable when its type arguments are; one declared `shared` or `ephemeral` is a handle that never is (§3.6).
+- An `extern struct` is a value, sendable when its type arguments are; one declared `shared` or `live` is a handle that never is (§3.6).
 - A sendable generic struct is sendable only when its type arguments are sendable: `Array<Int>` is sendable, `Array<Future<Int>>` is not.
 - Primitives are always sendable. `Time` and `Duration` are plain structs of `Int`, so they are sendable by derivation.
 - Methods on primitives are ordinary functions whose `self` is a primitive, such as `"abc".indexOf("b")` or `2.toString()`.
@@ -1059,7 +1060,7 @@ struct Error:
 ```
 
 ```python statements
-async fn pay(req: PurchaseRequest) -> Future<Result<String>>:
+ista async fn pay(req: PurchaseRequest) -> Result<String>:
     const receipt = chargeCard(req.id, req.amount)?    # returns early on Err
     Ok(receipt)
 
@@ -1427,7 +1428,7 @@ const role: String? = verdict?.role
 - **Extern effects aren't transactional.** The runtime doesn't make `extern fn` calls atomic with the segment. If a segment is discarded, the effects of extern calls it made remain, and a re-run calls them again. Idempotency is the developer's responsibility; an extern can, for example, return its own commit and abort handles for the workflow to call once it decides. Slot operations are exactly-once; anything the host provides is the host's responsibility.
 
 ```python
-async fn remindLater(role: String):
+ista async fn remindLater(role: String):
     await time.delay(1d)              # persisted; resumes after a day
     notifications(role).send(Notice{text: "Reminder"})
 ```
@@ -1482,7 +1483,7 @@ const next: Verdict = await box.receive()
 **Death signal.** Any code holding an inbox may send to it and receive from it, and every such handle keeps the inbox alive (§7). To notice that the other side of a conversation is gone *without* keeping it alive, hold a `WeakRef` to its inbox and watch `disposed()`:
 
 ```python
-async fn child(parent: WeakRef<Inbox<Status>>, mine: Inbox<Command>):
+ista async fn child(parent: WeakRef<Inbox<Status>>, mine: Inbox<Command>):
     while true:
         await select:
             case mine.receive() as cmd:
@@ -1554,7 +1555,7 @@ In every case, each `disposed()` future watching the value resolves afterwards.
 **Disposing early.** To dispose something you hold before its block ends, `drop` it. A value is disposed only when its last holder releases it, so a disposed value is never observable. To stop something that other code may also need to reach, keep the only holder in a `Shared` and share that. Setting its value to `none` releases the holder, and everyone else then sees `none` rather than a disposed value:
 
 ```python statements
-const sub = new Shared<Future<Unit>?>{value: bus.subscribe(fn msg: show(msg))}
+const sub = new Shared<Future<Unit, "ista">?>{value: bus.subscribe(fn msg: show(msg))}
 ...
 sub->value = none         # the subscription is disposed here
 ```
@@ -1564,7 +1565,7 @@ Code that copies the future out (`const f = sub->value`) becomes a holder itself
 **Graceful disposal.** Inside an `async fn`, the function's own name gives the current call's context. `worker.disposing()` returns a `Future<Unit>` that resolves when the call is disposed, which gives the call a chance to clean up:
 
 ```python
-async fn worker(jobs: Inbox<Job>):
+ista async fn worker(jobs: Inbox<Job>):
     while true:
         await select:
             case jobs.receive() as job:
@@ -1583,7 +1584,7 @@ async fn worker(jobs: Inbox<Job>):
 **Defer.** `defer` is a prelude function, `fn defer(f: fn() -> Unit) -> Deferred`, whose `Deferred` is a disposable calling `f` when released, so it needs no machinery of its own. Called as a deferred call (§3.14), `_ = defer log(x)` computes `x` now and logs when the current block ends, whether it finishes, is left through `return`, `break` or `continue`, or is disposed at an `await`; `hold _ = defer log(x)` logs when the function ends, as Go's `defer` does. A `Deferred` is must-use, so a bare `defer log(x)` is a compile error. `f` is a plain function, so it can't await. Several run as any values released together are disposed, last first, and one kept by `_` in a loop body runs at the end of each iteration, as in Swift. The bracket form passes a function as it is, a lambda reading variables when it runs. Unlike `disposing()`, it also runs on a normal exit; to act only on disposal, check a flag:
 
 ```python
-async fn reserveAndShip(item: Item):
+ista async fn reserveAndShip(item: Item):
     const hold = reserve(item)
     let shipped = false
     _ = defer(fn(): {
@@ -1597,7 +1598,7 @@ async fn reserveAndShip(item: Item):
 **Example.** `processAll` keeps every job it starts with `hold _`, and disposes its inbox, and any job still running, as soon as it returns:
 
 ```python
-async fn processAll(jobs: Array<Job>) -> Future<Array<Outcome>>:
+ista async fn processAll(jobs: Array<Job>) -> Array<Outcome>:
     const results = Inbox.create<Outcome>()
     for job in jobs:
         hold _ = runJob(job, results)       # runs concurrently until processAll returns
@@ -1639,7 +1640,7 @@ The rules:
 **Future reuse.** A future resolves once and stays resolved. Create a deadline once, outside a loop, and every iteration races against the same deadline:
 
 ```python statements
-const deadline: Future<Unit> = time.delay(5d)    # created once
+const deadline: Future<Unit, "ista"> = time.delay(5d)    # created once
 while not done:
     await select:
         case work.receive() as w:
@@ -1750,7 +1751,7 @@ fn approvalSuite() -> Array<Test>: [
 **Environments.** A setup is an "around" function of type `Setup<E> = async fn(async fn(E))`: it prepares an environment, runs the test inside it, and tears it down afterwards. Teardown is ordinary code, so it may `await`, and holdings such as mocks are released when the function ends, even if the test fails:
 
 ```python
-async fn withPurchaseEnv(test: async fn(PurchaseEnv)):
+ista async fn withPurchaseEnv(test: ista async fn(PurchaseEnv)):
     const clock = FakeClock{start: Time{value: 0}}
     hold _ = mock(time.now, clock.now)
     hold _ = mock(time.at, clock.at)
@@ -1861,7 +1862,7 @@ extern shared struct Sent
 extern fn dispose(self: Sent)
 extern fn send<T is Encodable>(self: Queue<T>, msg: T)
 extern fn _sendRevertible<T is Encodable>(self: Queue<T>, msg: T) -> Sent
-extern fn receive<T is Decodable>(self: Queue<T>) -> Future<T>
+extern fn receive<T is Decodable>(self: Queue<T>) -> Future<T, "ista">
 
 fn sendRevertible<T is Encodable>(self: Queue<T>, msg: T) -> Revertible<T>:
     Revertible.holding(_sendRevertible(self, msg))
@@ -1887,7 +1888,7 @@ async fn main():
 **One purchase instance.** This shows a non-blocking `select` before the irreversible step:
 
 ```python
-async fn purchase(req: PurchaseRequest) -> Future<String>:
+ista async fn purchase(req: PurchaseRequest) -> String:
     let roles: Array<String> = ["legal", "finance"]
     if req.amount > 50_000:
         roles.push("cfo")
@@ -1921,13 +1922,13 @@ fn charge(req: PurchaseRequest) -> ChargeResult:
 **Parallel approval.** Fan-out uses revertible sends into the reviewers' queues, kept with `hold _` so they stay revertible until `approve` returns, although they are sent inside loops. Verdicts come back through the host-provided `verdicts` queue, because the reviewers' side runs in separate instances (§6). The join is a `select` loop that reuses the deadline and reminder futures.
 
 ```python
-async fn approve(req: PurchaseRequest, roles: Array<String>) -> Future<String>:
+ista async fn approve(req: PurchaseRequest, roles: Array<String>) -> String:
     for role in roles:
         hold _ = reviewQueue(role).sendRevertible(
                 ReviewRequest{purchaseId: req.id, item: req.item, amount: req.amount})
 
-    const deadline: Future<Unit> = time.delay(5d)
-    let reminder: Future<Unit> = time.delay(1d)
+    const deadline: Future<Unit, "ista"> = time.delay(5d)
+    let reminder: Future<Unit, "ista"> = time.delay(1d)
     let answered: Map<String, Verdict> = [:]
 
     while answered.size() < roles.length():
@@ -1972,7 +1973,7 @@ struct Announcement:
 
 extern fn announcements(user: String) -> Queue<Announcement>   # Queue as declared in §12.1
 
-async fn announce(text: String, users: Array<String>, visibleFor: time.Duration):
+ista async fn announce(text: String, users: Array<String>, visibleFor: time.Duration):
     for user in users:
         hold _ = announcements(user).sendRevertible(Announcement{text: text})
     await time.delay(visibleFor)

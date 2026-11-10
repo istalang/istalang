@@ -31,5 +31,5 @@ fn uses():
   _ = json.stringify(Label{text: "ok"})
   drop json.parse<Label>("\"ok\"")
 
-async fn main() -> Future<fn() -> Int>:
+async fn main() -> fn() -> Int:
   fn(): 1

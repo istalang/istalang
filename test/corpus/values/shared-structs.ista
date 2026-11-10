@@ -22,7 +22,7 @@ shared struct Box<T>:
 fn bump(self: Counter):
   self->count = self->count + 1
 
-async fn main() -> Future<String>:
+async fn main() -> String:
   const a = new Counter{count: 1}
   const b = a
   a.bump()

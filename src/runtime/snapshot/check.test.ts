@@ -16,7 +16,7 @@ import { type Snapshot, snapshotFormat } from './snapshot.ts';
 const waitingProgram = compiledText(
   [
     "import * as time from 'time'",
-    'async fn inner() -> Future<Int>:',
+    'ista async fn inner() -> Int:',
     '  await time.delay(10ms)',
     '  1',
     'async fn main():',

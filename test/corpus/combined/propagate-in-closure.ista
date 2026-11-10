@@ -19,8 +19,8 @@ fn localCase() -> String:
     case Ok(value): "ok"
     case Err(error): "localErr"
 
-async fn asyncCase() -> Future<String>:
-  const f = async fn(n: Int) -> Future<Result<Int>>: { const v = p(n)?; Ok(v) }
+ista async fn asyncCase() -> String:
+  const f = async fn(n: Int) -> Future<Result<Int>, "ista">: { const v = p(n)?; Ok(v) }
   match await f(0):
     case Ok(value): "ok"
     case Err(error): "asyncErr"
@@ -31,7 +31,7 @@ fn genericCase<T>(x: T, n: Int) -> String:
     case Ok(value): "ok"
     case Err(error): "genericErr"
 
-async fn main() -> Future<String>:
+async fn main() -> String:
   const f = fn(n: Int) -> Result<Int>: { const v = p(n)?; Ok(v + 100) }
   const ok = match f(1):
     case Ok(value): "ok" + String(value)

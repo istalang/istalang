@@ -10,32 +10,36 @@ extern struct Array<gives T>
 extern struct Map<K, gives V>
 extern shared struct Slot<T>
 extern shared struct WeakRef<T is Disposable>
-extern shared struct Future<T>
+
+# The two kinds of code (proposal 8): `live` code waits in memory and never commits, `ista` code
+# commits at every wait. A future is of the kind of the code that waits on it.
+type Persistence = "live" | "ista"
+extern shared struct Future<T, K in Persistence>
 
 # What `spawn` gives (§9): a handle to the new instance, compared by identity, which holds nothing.
 # `result()` resolves with its first end: `Ok` of its outcome, or `Err` of its panic.
 extern sendable struct Instance<T>
-extern fn result<T is Sendable>(self: Instance<T>) -> Future<Result<T>>
+extern fn result<T is Sendable>(self: Instance<T>) -> Future<Result<T>, "ista">
 
 # Starts `f` as a new, independent instance once the caller's segment commits, and goes on at once
 # (§9). The instance awaits the future `f` gives and ends with its value, so `spawn purchase(req)`,
 # a deferred call (§3.14), copies `req` into it now and calls `purchase` there, async or not.
-extern fn spawn<R>(f: sendable async fn() -> R) -> Instance<R>
+extern fn spawn<R>(f: sendable ista async fn() -> R) -> Instance<R>
 
 extern fn Slot.create<T>() -> Slot<T>
-extern fn put<T>(self: Slot<T>, value: T) -> Future<Unit>
-extern fn take<T>(self: Slot<T>) -> Future<T>
-extern fn read<T>(self: Slot<T>) -> Future<T>
+extern fn put<T>(self: Slot<T>, value: T) -> Future<Unit, "ista">
+extern fn take<T>(self: Slot<T>) -> Future<T, "ista">
+extern fn read<T>(self: Slot<T>) -> Future<T, "ista">
 
 # Weak references (§7): `WeakRef(x)` is the one weak reference to `x`, which holds nothing.
 extern fn WeakRef.from<T is Disposable>(value: T) -> WeakRef<T>
 extern fn deref<T is Disposable>(self: WeakRef<T>) -> T?
-extern fn disposed<T is Disposable>(self: WeakRef<T>) -> Future<Unit>
+extern fn disposed<T is Disposable>(self: WeakRef<T>) -> Future<Unit, "ista">
 
 # An async call's handle, a weak reference to the call, which the function's own name is before a
 # `.` (§7): `worker.disposing()` is the future that resolves when the call is disposed.
 extern shared struct _Call
-extern fn disposing(self: _Call) -> Future<Unit>
+extern fn disposing(self: _Call) -> Future<Unit, "ista">
 
 # A Shared value (§3.8) is a shared struct of any one value (§3.18): `new Shared{value: v}` makes
 # one, and `x->value` reads and writes it, for every copy.
@@ -48,7 +52,7 @@ extern shared struct _Cell<T>
 
 # Disposal (§7): the runtime disposes a future and a slot once nothing holds them. Declaring their
 # `dispose` is what makes them Disposable (§3.10), and what tells the compiler the runtime does it.
-extern fn dispose<T>(self: Future<T>)
+extern fn dispose<T>(self: Future<T, "ista">)
 extern fn dispose<T>(self: Slot<T>)
 
 # What `defer` gives (§7): a disposable whose release calls `run`, so `_ = defer log(x)` computes

@@ -6,31 +6,29 @@
 # the future itself.
 struct Order { id: String }
 
-async fn retry(times: Int, call: async fn(String) -> Order) -> Future<Order>:
+ista async fn retry(times: Int, call: ista async fn(String) -> Order) -> Order:
   await call(`o-${times}`)
 
-async fn later(x: Int) -> Future<Int>: x + 1
+ista async fn later(x: Int) -> Int: x + 1
 
-fn starting(x: Int) -> Future<Int>: later(x)
+fn starting(x: Int) -> Future<Int, "ista">: later(x)
 
-async fn main() -> Future<
-  (String, Int, Array<Int>, Array<Int?>, Int, Int, Array<Int?>, Array<Result<Int, String>>)
->:
+async fn main() -> (String, Int, Array<Int>, Array<Int?>, Int, Int, Array<Int?>, Array<Result<Int, String>>):
   const order = await retry(3, fn(id): Order{id})
-  const viaFuture: async fn(Int) -> Int = starting
+  const viaFuture: ista async fn(Int) -> Int = starting
   const plains: Array<fn() -> Int> = [fn(): 3, fn(): 4]
-  const asyncs: Array<async fn() -> Int> = plains
-  const widened: async fn(Int) -> Int? = fn(x: Int?) -> Int: (x ?? 0) * 2
-  const absent: async fn(Int) -> Int? = fn(x: Int?) -> Int?: none
-  const asyncLambda: fn(Int) -> Future<Int> = async fn(x): await later(x)
-  const forwarded: async fn(Int) -> Int = fn(x): later(x)
-  const returning: async fn(Int) -> Int? = fn(x): {
+  const asyncs: Array<ista async fn() -> Int> = plains
+  const widened: ista async fn(Int) -> Int? = fn(x: Int?) -> Int: (x ?? 0) * 2
+  const absent: ista async fn(Int) -> Int? = fn(x: Int?) -> Int?: none
+  const asyncLambda: fn(Int) -> Future<Int, "ista"> = async fn(x): await later(x)
+  const forwarded: ista async fn(Int) -> Int = fn(x): later(x)
+  const returning: ista async fn(Int) -> Int? = fn(x): {
     if x > 0:
       return 1
     none
   }
-  const qualified: async fn(Int) -> Result<Int, String> = Result.Ok
-  const bare: async fn(Int) -> Result<Int, String> = Ok
+  const qualified: ista async fn(Int) -> Result<Int, String> = Result.Ok
+  const bare: ista async fn(Int) -> Result<Int, String> = Ok
   (
     order.id,
     await viaFuture(5),

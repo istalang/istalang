@@ -14,17 +14,17 @@ extern fn charge(amount: Int) -> String
 
 fn greet() -> String: "hello"
 
-async fn report() -> Future<String>:
+ista async fn report() -> String:
   greet() + " " + charge(5) + " " + time.now().value
 
-async fn child():
+ista async fn child():
   drop charge(7)
 
-async fn parent() -> Future<String>:
+ista async fn parent() -> String:
   spawn child()
   await report()
 
-async fn everywhere():
+ista async fn everywhere():
   const charged = mock(charge, fn(amount: Int): "charged " + amount)
   hold _ = mock(greet, fn(): "hi")
   hold _ = mock(time.now, fn(): Time{value: 42})
@@ -43,11 +43,11 @@ fn mocks() -> Array<Test>: [test("everywhere", everywhere)]
     const source = testModule(`
 import * as runtime from 'runtime'
 
-async fn greet(name: String) -> Future<String>: "hello " + name
+ista async fn greet(name: String) -> String: "hello " + name
 
-async fn hello() -> Future<String>: "hello"
+ista async fn hello() -> String: "hello"
 
-async fn spawned():
+ista async fn spawned():
   hold _ = mock(greet, async fn(name: String): "hi " + name)
   hold _ = mock(hello, async fn(): "hi")
   assertEq(await (spawn greet("ada")).result(), Ok("hi ada"))
@@ -64,7 +64,7 @@ fn mocks() -> Array<Test>: [test("spawned", spawned)]
     const source = testModule(`
 fn listed<T>(value: T) -> Array<T>: [value]
 
-async fn typed():
+ista async fn typed():
   hold _ = mock(listed<Int>, fn(value: Int): [value + 1])
   assertEq(listed(1), [2])
   assertEq(listed("a"), ["a"])
@@ -81,14 +81,14 @@ fn greet() -> String: "hello"
 fn one(a: Int) -> Int: a
 fn two(a: Int, b: String) -> Int: a
 
-async fn released():
+ista async fn released():
   hold _ = mock(greet, fn(): "outer")
   const inner = mock(greet, fn(): "inner")
   assertEq(greet(), "inner")
   drop inner
   assertEq(greet(), "outer")
 
-async fn recorded():
+ista async fn recorded():
   const nothing = mock(greet, fn(): "x")
   const single = mock(one, fn(a: Int): a)
   const pair = mock(two, fn(a: Int, b: String): a)
@@ -112,14 +112,14 @@ fn holders() -> Array<Test>: [test("released", released), test("recorded", recor
     const source = testModule(`
 fn describe(n: Int) -> String: "number"
 
-async fn describes() -> Future<String>:
+ista async fn describes() -> String:
   describe(42)
 
-async fn native():
+ista async fn native():
   hold _ = mock(describe, toString)
   assertEq(await (spawn describes()).result(), Ok("42"))
 
-async fn breaking():
+ista async fn breaking():
   hold _ = mock(describe, fn(n: Int) -> String: panic("the replacement broke"))
   drop await (spawn describes()).result()
 
@@ -135,10 +135,10 @@ fn suite() -> Array<Test>: [test("native", native), test("breaking", breaking)]
   it('drop an answer whose caller let go of its future, so a receive losing a select takes nothing', async () => {
     const source = testModule(`
 extern sendable struct Queue<T is Sendable>
-extern fn receive<T is Decodable>(self: Queue<T>) -> Future<T>
+extern fn receive<T is Decodable>(self: Queue<T>) -> Future<T, "ista">
 extern fn queueOf(name: String) -> Queue<Int>
 
-async fn pollsThenWaits() -> Future<Int>:
+ista async fn pollsThenWaits() -> Int:
   const polled: Int = select:
     case queueOf("q").receive() as n:
       n
@@ -146,7 +146,7 @@ async fn pollsThenWaits() -> Future<Int>:
       0
   polled + await queueOf("q").receive()
 
-async fn posted():
+ista async fn posted():
   const fake = FakeQueue<Queue<Int>, Int>{make: handle}
   hold _ = mock(queueOf, fake.open)
   hold _ = mock(receive, fake.receive)
@@ -167,11 +167,11 @@ fn suite() -> Array<Test>: [test("posted after a lost select", posted)]
     const source = testModule(`
 fn greet() -> String: "hello"
 
-async fn failsMocked() -> Future<Unit>:
+ista async fn failsMocked() -> Unit:
   hold _ = mock(greet, fn(): "mocked")
   panic("failed")
 
-async fn unmocked():
+ista async fn unmocked():
   assertEq(greet(), "hello")
 
 @Suite{"isolated"}
@@ -189,7 +189,7 @@ fn isolated() -> Array<Test>: [test("fails", failsMocked), test("next", unmocked
 fn foo(a: Int, b: String = "hello") -> Int: a
 ${replacement}
 
-async fn checkDefaultsMock():
+ista async fn checkDefaultsMock():
   hold _ = mock${types}(foo, rep)
   assertEq(foo(10), 1000)
 
@@ -208,7 +208,7 @@ fn suite() -> Array<Test>: [test("defaults", checkDefaultsMock)]
     const source = testModule(`
 fn target(a: Int = 1) -> String: String(a)
 
-async fn handedOverTrace():
+ista async fn handedOverTrace():
   hold _ = mock(target, fn(a: Int) -> String: Error{message: "m", code: String(a)}.trace)
   assert("target" not in target(1))
   assert("target" not in target())
@@ -223,7 +223,7 @@ fn suite() -> Array<Test>: [test("handed over", handedOverTrace)]
     const source = testModule(`
 extern fn hostDefault(a: Int = 1) -> Int
 
-async fn unmockedExternWithDefault():
+ista async fn unmockedExternWithDefault():
   drop hostDefault()
 
 @Suite{"extern default trace"}

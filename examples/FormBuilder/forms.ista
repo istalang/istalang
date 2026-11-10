@@ -205,14 +205,14 @@ fn hide<N is FormNode>(self: Hidden<N>): self->shown = false
 enum Prop<Sc, T>:
   Fixed(value: T)
   Computed(eval: fn(Sc) -> T)
-  Awaited(pending: Pending, eval: async fn(Sc) -> T, task: Task<Sc, T>)
+  Awaited(pending: Pending, eval: ista async fn(Sc) -> T, task: Task<Sc, T>)
 
 enum Pending:
   Form # awaited inline: the whole form waits
   Node # its own task: the node shows Loading
   Hidden # its own task: the node stays hidden
 
-fn awaited<Sc, T>(pending: Pending, eval: async fn(Sc) -> T) -> Prop<Sc, T>: Prop.Awaited(
+fn awaited<Sc, T>(pending: Pending, eval: ista async fn(Sc) -> T) -> Prop<Sc, T>: Prop.Awaited(
   pending: pending
   eval: eval
   task: new Task<Sc, T>{}
@@ -224,10 +224,10 @@ shared struct Task<Sc, T>:
   sc: Sc? = none
   value: T? = none
   done: Bool = false
-  running: Future<Unit>? = none # replacing it releases, and so stops, the old run
+  running: Future<Unit, "ista">? = none # replacing it releases, and so stops, the old run
 
 # The value now, or none while pending (with pending Form, awaited inline instead).
-async fn get<Sc, T>(self: Prop<Sc, T>, sc: Sc, out: &Drawing) -> Future<T?>:
+ista async fn get<Sc, T>(self: Prop<Sc, T>, sc: Sc, out: &Drawing) -> T?:
   match self:
     case Fixed(value): value
     case Computed(eval): eval(sc)
@@ -254,7 +254,7 @@ fn isHiddenPending<Sc, T>(self: Prop<Sc, T>) -> Bool:
     case Awaited(Pending.Hidden, ...): true
     case _: false
 
-async fn _run<Sc, T>(task: Task<Sc, T>, call: Future<T>, events: Inbox<FormEvent>) -> Future<Unit>:
+ista async fn _run<Sc, T>(task: Task<Sc, T>, call: Future<T, "ista">, events: Inbox<FormEvent>) -> Unit:
   task->value = await call
   task->done = true
   events.send(FormEvent.Resolved)
@@ -269,10 +269,10 @@ struct Scope<D, C>:
 
 enum Check<Sc, T>:
   Now(test: fn(Sc, T?) -> String?) # an error message, or none; on every draw
-  Later(test: async fn(Sc) -> String?, pending: fn(Sc) -> String, task: Task<Sc, String?>)
+  Later(test: ista async fn(Sc) -> String?, pending: fn(Sc) -> String, task: Task<Sc, String?>)
   # a rule with `pending` (an approval): its own task once the user submits; submit waits
 
-fn later<Sc, T>(test: async fn(Sc) -> String?, pending: fn(Sc) -> String) -> Check<Sc, T>:
+fn later<Sc, T>(test: ista async fn(Sc) -> String?, pending: fn(Sc) -> String) -> Check<Sc, T>:
   Check.Later(test: test, pending: pending, task: new Task<Sc, String?>{})
 
 enum Format:
@@ -430,7 +430,7 @@ fn t(
 # A view node in scope Sc. It draws zero nodes when hidden, a Loading node while waiting, and
 # records in `out` what the loop needs: errors, inputs to route events to, rows to add.
 trait View<Sc>:
-  async fn draw(self: Self, sc: Sc, out: &Drawing) -> Future<Array<Node>>
+  ista async fn draw(self: Self, sc: Sc, out: &Drawing) -> Array<Node>
 
 struct Item<Sc, T>:
   value: T
@@ -445,7 +445,7 @@ enum Options<Sc, T>:
   # The widget provides ctx.search: `from` takes the typed text. `same` tells whether two values
   # are the same choice (a snapshot is a whole row, compared by id).
   Search(
-    from: async fn(Sc, String) -> Array<Choice<T>>
+    from: ista async fn(Sc, String) -> Array<Choice<T>>
     resolve: Prop<Sc, Bool>
     same: fn(T, T) -> Bool
   )
@@ -470,13 +470,13 @@ shared struct FieldView<Sc, T>:
   options: Options<Sc, T>? = none
   search: String = "" # the text typed into a search widget
 
-async fn _check<Sc, T>(
+ista async fn _check<Sc, T>(
   checks: Array<Check<Sc, T>>
   sc: Sc
   v: T?
   touched: Bool
   out: &Drawing
-) -> Future<(Array<String>, Array<String>)>:
+) -> (Array<String>, Array<String>):
   let errors: Array<String> = []
   let waiting: Array<String> = []
   for c in checks: {
@@ -504,11 +504,11 @@ async fn _check<Sc, T>(
   }
   (errors, waiting)
 
-async fn draw<Sc, T is Encodable & Decodable>(
+ista async fn draw<Sc, T is Encodable & Decodable>(
   self: FieldView<Sc, T>
   sc: Sc
   out: &Drawing
-) -> Future<Array<Node>>:
+) -> Array<Node>:
   # 1. Visibility. A hidden field draws nothing, and its Hidden stays unshown.
   match self->when:
     case None: ()
@@ -644,11 +644,11 @@ fn removeRow<Sc, R is FormNode>(self: RepeatView<Sc, R>, key: String) -> Unit:
   self->list->edited = true
   self->list.remove(key)
 
-async fn draw<Sc, R is FormNode>(
+ista async fn draw<Sc, R is FormNode>(
   self: RepeatView<Sc, R>
   sc: Sc
   out: &Drawing
-) -> Future<Array<Node>>:
+) -> Array<Node>:
   match self->when:
     case None: ()
     case w: {
@@ -739,11 +739,11 @@ struct CaseView<Sc>:
   label: Prop<Sc, String>
   body: any View<Sc>
 
-async fn draw<Sc, C is struct { [_] is FormNode }>(
+ista async fn draw<Sc, C is struct { [_] is FormNode }>(
   self: VariantView<Sc, C>
   sc: Sc
   out: &Drawing
-) -> Future<Array<Node>>:
+) -> Array<Node>:
   match self.when:
     case None: ()
     case w: {
@@ -804,7 +804,7 @@ struct LayoutView<Sc>:
   checks: Array<Check<Sc, Unit>> = [] # rules; an `errors` layout shows only these
   children: Array<any View<Sc>> = []
 
-async fn draw<Sc>(self: LayoutView<Sc>, sc: Sc, out: &Drawing) -> Future<Array<Node>>:
+ista async fn draw<Sc>(self: LayoutView<Sc>, sc: Sc, out: &Drawing) -> Array<Node>:
   match self.when:
     case None: ()
     case w: {
@@ -848,10 +848,10 @@ struct ScopedView<Sc, Sc2>:
   when: Prop<Sc, Bool>? = none
   hide: (any Showable)? = none
   label: Prop<Sc, String>? = none
-  scope: async fn(Sc) -> Sc2
+  scope: ista async fn(Sc) -> Sc2
   view: any View<Sc2>
 
-async fn draw<Sc, Sc2>(self: ScopedView<Sc, Sc2>, sc: Sc, out: &Drawing) -> Future<Array<Node>>:
+ista async fn draw<Sc, Sc2>(self: ScopedView<Sc, Sc2>, sc: Sc, out: &Drawing) -> Array<Node>:
   match self.when:
     case None: ()
     case w: {
@@ -875,7 +875,7 @@ shared struct DynamicView<Sc>:
   label: Prop<Sc, String>? = none
   schema: Prop<Sc, FormSnapshot?>
 
-async fn draw<Sc>(self: DynamicView<Sc>, sc: Sc, out: &Drawing) -> Future<Array<Node>>:
+ista async fn draw<Sc>(self: DynamicView<Sc>, sc: Sc, out: &Drawing) -> Array<Node>:
   match self->when:
     case None: ()
     case w: {
@@ -1070,14 +1070,14 @@ fn markShown(self: &Drawing, h: (any Showable)?):
     case s: { s.show(); self.shown.push(s) }
 
 # Runs a form until a valid submit, and returns its data, typed Group<M>.Data.
-async fn run<M is struct { [_] is FormNode }, C>(
+ista async fn run<M is struct { [_] is FormNode }, C>(
   model: Group<M>
   view: any View<Scope<Group<M>.Seen, C>>
   ctx: C
   translations: Map<String, Map<String, String>>
   events: Inbox<FormEvent>
   views: Inbox<Node>
-) -> Future<Group<M>.Data>:
+) -> Group<M>.Data:
   let submitted = false
   let shown: Array<any Showable> = []
   while true: {

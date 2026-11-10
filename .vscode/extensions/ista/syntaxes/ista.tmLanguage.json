@@ -99,7 +99,7 @@
     },
     "modifier": {
       "comment": "A head's contextual modifiers, before its other modifiers and its `fn` or `struct`, in any order (spec §2); test/vscode-grammar.test.ts holds them to the parser's.",
-      "match": "\\b(shared|sendable|ephemeral)\\b(?=(?:\\s+(?:extern|async|shared|sendable|ephemeral))*\\s+(?:fn|struct)\\b)",
+      "match": "\\b(shared|sendable|live|ista)\\b(?=(?:\\s+(?:extern|async|shared|sendable|live|ista))*\\s+(?:fn|struct)\\b)",
       "captures": { "1": { "name": "storage.modifier.ista" } }
     },
     "contextual": {

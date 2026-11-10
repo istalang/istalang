@@ -41,7 +41,7 @@ struct Order:
   raw: Json
   cache: Map<String, Int> @JsonSkip
 
-async fn main() -> Future<Order>:
+async fn main() -> Order:
   Order{
     id: "o1",
     items: [Item{sku: "a", qty: 2}],

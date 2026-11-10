@@ -78,7 +78,7 @@ fn swapped(p: Pair) -> String:
   match p:
     case Both(a, b): `${b} ${a}`
 
-async fn main() -> Future<String>:
+async fn main() -> String:
   const g = Node.Group("t", true, Node.Text("a"), Node.Empty, Node.Text("b"))
   const flat = Node.Group(title: "t", children: [Node.Text("x"), Node.Empty, Node.Empty])
   const word: Opt<Int> | Opt<String> = Opt.Some<String>("abc")

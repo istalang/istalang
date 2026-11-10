@@ -2,29 +2,29 @@
 # error: 4016 at 19:8
 # error: 4017 at 23:7
 # error: 5101 at 24:13
-# error: 4016 at 27:40
+# error: 4016 at 27:53
 # error: 4016 at 31:8
 # `worker.disposing()` watches the call of an enclosing async fn named `worker` (§7): not another
 # function's, not a plain fn's, and never `main`'s, which nothing holds; not from a parameter's
 # default, which runs before the body starts; and not a prelude function's. A weak reference
 # refers only to a disposable.
 
-async fn other() -> Future<Int>:
+ista async fn other() -> Int:
   1
 
-async fn caller() -> Future<Unit>:
+ista async fn caller() -> Unit:
   _ = other.disposing()
 
 fn plain():
   drop plain.disposing()
 
-async fn main() -> Future<Int>:
+async fn main() -> Int:
   const late = fn(): 1
   _ = main.disposing()
   const w = WeakRef(5)
   await other() + late()
 
-async fn early(started: Future<Unit> = early.disposing()) -> Future<Unit>:
+ista async fn early(started: Future<Unit, "ista"> = early.disposing()) -> Unit:
   await started
 
 fn named():

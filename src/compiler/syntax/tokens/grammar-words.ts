@@ -32,10 +32,14 @@ import { followersIn, headForms, modifierGroups, startsOf } from './modifiers.ts
 export type Word = Keyword | ContextualWord;
 
 /**
- * What starts a function's head (./modifiers.ts) in a statement and an operand: its keyword, or its
- * async kind. A type's may start with its reach too, a module's with `extern` or a handle.
+ * What starts a function's head (./modifiers.ts) in a statement and an operand: its keyword, its
+ * kind or `async`. A type's may start with its reach too, a module's with `extern` or a handle.
  */
-const functionStarts = ['fn', ...modifierGroups.kind] as const satisfies readonly Word[];
+const functionStarts = [
+  'fn',
+  ...modifierGroups.kind,
+  ...modifierGroups.async,
+] as const satisfies readonly Word[];
 
 /**
  * What starts a declaration only a module holds (§3); a function and `const` start statements too.
@@ -151,6 +155,11 @@ export type PatternWord = (typeof patternWords)[number];
  * in a type; `hold let`; and `not in` (../expressions/operators.ts) after an operand.
  */
 export const followers = {
+  live: [
+    ...followersIn(headForms.function, 'live'),
+    ...followersIn(headForms.externStruct, 'live'),
+  ],
+  ista: followersIn(headForms.function, 'ista'),
   async: followersIn(headForms.function, 'async'),
   shared: followersIn(headForms.sharedStruct, 'shared'),
   sendable: followersIn(headForms.functionType, 'sendable'),

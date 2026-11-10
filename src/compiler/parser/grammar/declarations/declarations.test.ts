@@ -197,7 +197,7 @@ describe('externs and functions', () => {
       'extern shared struct Slot<T>',
       `(ExternStructDeclaration shared Slot [${typeParameter('T')}])`,
     ],
-    ['extern ephemeral struct Socket', '(ExternStructDeclaration ephemeral Socket [])'],
+    ['extern live struct Socket', '(ExternStructDeclaration live Socket [])'],
     ['extern struct Zone', '(ExternStructDeclaration _ Zone [])'],
     [
       'fn Duration.zero() -> Duration: Duration{value: 0}',

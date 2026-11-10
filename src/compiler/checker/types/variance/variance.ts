@@ -41,6 +41,7 @@ import { typeChildren } from '../parts/type-children.ts';
 import { parametersIn } from '../parts/type-parts.ts';
 import { isHandleDeclaration } from '../properties/handles.ts';
 import type { RecursiveGraph } from '../type/computed-types.ts';
+import type { AwaitedType } from '../type/function-types.ts';
 import type { NominalDeclaration, Type } from '../type/index.ts';
 import { joined, type Usage, type Variance } from './lattice.ts';
 import { UsageWalk } from './usage-walk.ts';
@@ -54,7 +55,7 @@ export interface VarianceReading {
    */
   readonly partsOf: (declaration: DerivedDeclaration) => readonly HeldPart[];
   /** `T` when `type` is `Future<T>`, which a function giving it varies in as in `T` (usage-walk.ts). */
-  readonly futureValue: (type: Type) => Type | undefined;
+  readonly awaitedOf: (type: Type) => AwaitedType | undefined;
 }
 
 /**
@@ -177,7 +178,7 @@ function solvedVariances(root: DerivedDeclaration, reading: VarianceReading): re
 function settleGroup(
   solving: Solving,
   group: readonly Solved[],
-  reading: Pick<VarianceReading, 'futureValue'>,
+  reading: Pick<VarianceReading, 'awaitedOf'>,
 ): void {
   converge(solving, group, reading);
   for (let unused = unusedIn(group); unused.length > 0; unused = unusedIn(group)) {
@@ -193,7 +194,7 @@ function settleGroup(
 function converge(
   solving: Solving,
   group: readonly Solved[],
-  reading: Pick<VarianceReading, 'futureValue'>,
+  reading: Pick<VarianceReading, 'awaitedOf'>,
 ): void {
   let changed = true;
   while (changed) {
@@ -276,9 +277,9 @@ function derivedHeld(type: Type): readonly DerivedDeclaration[] {
 function usagesIn(
   solving: Solving,
   { parameters, parts }: Solved,
-  { futureValue }: Pick<VarianceReading, 'futureValue'>,
+  { awaitedOf }: Pick<VarianceReading, 'awaitedOf'>,
 ): Usage[] {
-  const walk = new UsageWalk(parameters, (reached) => usagesSoFar(solving, reached), futureValue);
+  const walk = new UsageWalk(parameters, (reached) => usagesSoFar(solving, reached), awaitedOf);
   for (const { type, at } of parts) {
     walk.walk(type, at);
   }

@@ -14,8 +14,10 @@ import {
 } from '../definition/extern-key.ts';
 import { staticName } from '../foundation/language/static-names.ts';
 import {
+  type Persistence,
   qualifiedName,
   type WellKnownDeclaration,
+  wellKnown,
 } from '../foundation/language/well-known/index.ts';
 import type { Natives } from '../runtime/natives.ts';
 
@@ -64,4 +66,9 @@ export function knownTypeKey(
   ...typeArguments: readonly WrittenType[]
 ): KeyType {
   return namedKey(qualifiedName(declaration), ...typeArguments);
+}
+
+/** `Future<T, K>` as a key spells it: what a call of kind `kind` giving `value` gives. */
+export function futureKey(value: WrittenType, kind: Persistence): KeyType {
+  return knownTypeKey(wellKnown.future, value, { kind: 'literal', text: JSON.stringify(kind) });
 }

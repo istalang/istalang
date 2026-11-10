@@ -143,7 +143,7 @@ export function programTypeRules(
       compute: (declaration) =>
         varianceOf(declaration, {
           partsOf: (held) => partsOf(checker, held),
-          futureValue: futures.futureValue,
+          awaitedOf: futures.awaitedOf,
         }),
       equal: sameItems(),
     });

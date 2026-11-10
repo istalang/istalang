@@ -4,7 +4,7 @@
 
 type Status = "draft" | "sent"
 struct Email { to: String }
-async fn main() -> Future<String>:
+async fn main() -> String:
   const s: Status = "sent"
   const name = "sent"
   const a: Int | String = 1

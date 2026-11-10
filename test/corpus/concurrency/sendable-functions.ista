@@ -17,7 +17,7 @@ fn reassigned() -> Int:
   counter = 1
   current(2)
 
-async fn main() -> Future<String>:
+async fn main() -> String:
   const base = 10
   const add = fn(n: Int): n + base
   let seen = 20

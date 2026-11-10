@@ -52,5 +52,5 @@ async fn main():
   const y = await runtime()
   x + polled + y
 
-async fn runtime() -> Future<Int>:
+ista async fn runtime() -> Int:
   2

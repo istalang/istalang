@@ -34,7 +34,7 @@ fn radius(shape: Shape) -> Float:
     case Circle(r): r
     case Square(side): Float(side) / 2.0
 
-async fn main() -> Future<String>:
+async fn main() -> String:
   const plain = Retry{}
   const spread = Retry{...plain, times: 10}
   const box = Box<Array<Int>>{size: 4}

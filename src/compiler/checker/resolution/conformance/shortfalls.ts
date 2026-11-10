@@ -38,6 +38,7 @@ import { fieldOf } from '../../types/traits/known-fields.ts';
 import { isStructType } from '../../types/traits/struct-keys.ts';
 import { isOpaque, unfolded } from '../../types/type/computed-types.ts';
 import type { Constraint, Type } from '../../types/type/index.ts';
+import { literalType } from '../../types/type/primitives.ts';
 import {
   constraintSetText,
   type EntryRule,
@@ -46,7 +47,6 @@ import {
   substituteStructConstraint,
 } from '../../types/type/struct-constraint.ts';
 import { typeText } from '../../types/type/type-text.ts';
-import { literalType } from '../../types/unions/unions.ts';
 
 /**
  * Whether `type` meets the trait `constraint` names, as the caller judges it (`conformance.ts`),

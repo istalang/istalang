@@ -28,7 +28,7 @@ fn rename(self: &Address, city: String):
 fn plain(n: Int) -> Int:
   n
 
-async fn worker() -> Future<Int>:
+ista async fn worker() -> Int:
   worker?.(1) ?? 0
 
 async fn main():

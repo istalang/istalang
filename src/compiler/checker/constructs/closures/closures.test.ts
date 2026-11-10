@@ -119,7 +119,7 @@ describe('closures accept', () => {
     ],
     [
       'an async lambda awaited through its value',
-      'async fn f() -> Future<Int>:\n  const later = async fn(n: Int): n + 1\n  await later(1)',
+      'ista async fn f() -> Int:\n  const later = async fn(n: Int): n + 1\n  await later(1)',
     ],
     [
       'a lambda parameter taking a reference from its expected type, changed through it',

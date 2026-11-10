@@ -20,7 +20,7 @@ fn sumTree(t: TreeData<Tree>) -> Int:
     sum += sumTree(child)
   sum
 
-async fn main() -> Future<String>:
+async fn main() -> String:
   const tree: TreeData<Tree> = struct{
     value: 1,
     children: [struct{value: 1, children: []}, struct{value: 1, children: []}],

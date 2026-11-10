@@ -82,7 +82,8 @@ const cases: Readonly<Record<string, Case>> = {
     declaredAt: 0,
   },
   'a select case binds its value': {
-    source: 'async fn f(g: Future<Int>) -> Future<Int>:\n  await select:\n    case g as got: got',
+    source:
+      'ista async fn f(g: Future<Int, "ista">) -> Int:\n  await select:\n    case g as got: got',
     name: 'got',
     use: 1,
     declaredAt: 0,
@@ -296,13 +297,13 @@ describe('what a name denotes', () => {
 
 describe("a function's name before a '.'", () => {
   const worker = [
-    'async fn worker() -> Future<Unit>:',
+    'ista async fn worker() -> Unit:',
     '  await worker.disposing()',
     '  const later = fn(): worker.disposing()',
   ].join('\n');
 
   it('denotes the call of the enclosing async fn, from a function nested in it too', () => {
-    const program = preludeProgramOf({ main: `${worker}\nasync fn idle(): 1` });
+    const program = preludeProgramOf({ main: `${worker}\nista async fn idle(): 1` });
     const [declaration, idle] = functionsOf(program);
     const bindings = bindProgram(program);
     const own =
@@ -315,12 +316,14 @@ describe("a function's name before a '.'", () => {
   });
 
   it('leaves nothing to link where it denotes no call', () => {
-    const program = preludeProgramOf({ main: 'fn helper(): 1\nasync fn f():\n  drop helper.bits' });
+    const program = preludeProgramOf({
+      main: 'fn helper(): 1\nista async fn f():\n  drop helper.bits',
+    });
     expect(bindModule(moduleAt(program, 'main').tree).paths).toEqual([]);
   });
 
   it('denotes a variable that shadows the function', () => {
-    const source = 'async fn worker():\n  const worker = 1\n  drop worker.bits';
+    const source = 'ista async fn worker():\n  const worker = 1\n  drop worker.bits';
     const program = preludeProgramOf({ main: source });
     expect(declaringName(entityOfName(program, 'main', 'worker', 2))).toBe(
       namesIn(program, 'main', 'worker')[1],
@@ -338,7 +341,7 @@ function functionsOf(program: Program): readonly FunctionDeclaration[] {
 describe("an imported function's name before a '.'", () => {
   it('denotes no call, since only a function of the module can enclose one', () => {
     const files = {
-      main: "import helper from 'lib'\nasync fn f():\n  drop helper.disposing()",
+      main: "import helper from 'lib'\nista async fn f():\n  drop helper.disposing()",
       lib,
     };
     expect(boundReport(files)).toEqual(reportedOnce(4016, 'helper'));

@@ -23,8 +23,8 @@ import type { NestedFunction } from '../../surface/checked-body.ts';
 /** `worker`, whose `select` waits on its own `disposing()` and then runs `cleanup`. */
 function cleaningUp(cleanup: string): string {
   return [
-    'async fn tick() -> Future<Int>: 1',
-    'async fn worker() -> Future<Int>:',
+    'ista async fn tick() -> Int: 1',
+    'ista async fn worker() -> Int:',
     '  await select:',
     '    case worker.disposing():',
     `      ${cleanup}`,
@@ -40,9 +40,9 @@ describe('a disposing() case', () => {
 
   it('is only the case on disposing() itself, not on another method of the call', () => {
     const other = [
-      'async fn tick() -> Future<Int>: 1',
-      'async fn other<T>(self: T) -> Future<Int>: 1',
-      'async fn worker() -> Future<Int>:',
+      'ista async fn tick() -> Int: 1',
+      'ista async fn other<T>(self: T) -> Int: 1',
+      'ista async fn worker() -> Int:',
       '  await select:',
       '    case worker.other() as m:',
       '      await tick()',
@@ -62,8 +62,8 @@ describe('the call disposing() watches', () => {
   it("is the enclosing function's, captured by every function nested between", () => {
     const program = stdProgramOf({
       'main.ista': [
-        'async fn worker() -> Future<Unit>:',
-        '  fn helper() -> Future<Unit>:',
+        'ista async fn worker() -> Unit:',
+        '  fn helper() -> Future<Unit, "ista">:',
         '    const watch = fn(): worker.disposing()',
         '    watch()',
         '  await helper()',
@@ -89,7 +89,7 @@ describe('the call disposing() watches', () => {
 
   it("is what the function's own name reads before a '.', with disposing() a method on it", () => {
     const program = stdProgramOf({
-      'main.ista': ['async fn worker() -> Future<Unit>:', '  await worker.disposing()'].join('\n'),
+      'main.ista': ['ista async fn worker() -> Unit:', '  await worker.disposing()'].join('\n'),
     });
     const checker = checkProgram(program);
     const worker = program.modules.get(idOf('main.ista'))?.tree.root

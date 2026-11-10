@@ -37,7 +37,7 @@ fn countdown() -> Int:
     i = if k > 1: k - 1 else: none
   total
 
-async fn main() -> Future<String>:
+async fn main() -> String:
   const full = Outer{inner: Inner{v: 4, name: "z"}, n: 1}
   const part = Outer{inner: Inner{v: 4, name: none}, n: 1}
   const empty = Outer{inner: none, n: 1}

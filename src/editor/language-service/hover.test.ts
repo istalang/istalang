@@ -104,8 +104,8 @@ describe('hover', () => {
   });
 
   it('shows an async function as declared', () => {
-    expect(hover('async fn lat‸er() -> Future<Int>: 1')?.code).toEqual([
-      'async fn later() -> Future<Int>',
+    expect(hover('ista async fn lat‸er() -> Int: 1')?.code).toEqual([
+      'ista async fn later() -> Int',
     ]);
   });
 

@@ -8,7 +8,7 @@ trait Named:
   fn name(self: Self) -> String
 
 trait Fetcher:
-  async fn fetch(self: Self) -> Future<Int>
+  ista async fn fetch(self: Self) -> Int
 
 struct Email { to: String }
 struct Sms { number: String }
@@ -19,7 +19,7 @@ fn name(self: Email) -> String:
 fn name(self: Sms) -> String:
   "sms " + self.number
 
-async fn fetch(self: Sms) -> Future<Int>:
+ista async fn fetch(self: Sms) -> Int:
   await time.delay(10ms)
   7
 

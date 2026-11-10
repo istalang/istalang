@@ -42,7 +42,7 @@ async function outcome(
   const source = [
     ...declarations,
     ...extra,
-    `async fn main() -> Future<${result}>:`,
+    `async fn main() -> ${result}:`,
     ...body.map((line) => `  ${line}`),
   ].join('\n');
   const state = await startToEnd(testRuntime(), compiledText(source));

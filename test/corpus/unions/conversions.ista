@@ -47,11 +47,11 @@ fn fromUnion<T>(x: T | String) -> T:
     case String: panic("unexpected string")
     case v: v
 
-async fn main() -> Future<String>:
+async fn main() -> String:
   const exactVsShape = which(Pixel{x: 3, y: 4}) + ":" + which(struct{x: 1, y: 2})
   const a: (any Stringable) | Bool = Email{to: "cfo"}
   const b: Point | String = Pixel{x: 2, y: 5}
-  const c: (async fn(Int) -> Int) | String = fn(n: Int) -> Int: n + 1
+  const c: (ista async fn(Int) -> Int) | String = fn(n: Int) -> Int: n + 1
   const d: Int | String = (9,)
   const e: (Int,) | String = 4
   const f: "draft" = "draft"

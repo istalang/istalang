@@ -16,11 +16,11 @@ const waitingMain = compiledText(
   [
     "import * as runtime from 'runtime'",
     "import * as time from 'time'",
-    'async fn child(n: Int) -> Future<Int>:',
+    'ista async fn child(n: Int) -> Int:',
     '  await time.delay(10ms)',
     '  n * 2',
     'fn broken() -> Int: panic("broken")',
-    'async fn main() -> Future<String>:',
+    'async fn main() -> String:',
     '  const doubled = await (spawn child(21)).result()',
     '  const isolated = await runtime.isolate(fn(): broken())',
     '  match (doubled, isolated):',
@@ -65,7 +65,7 @@ describe("waiting for an instance's end", () => {
       [
         "import * as time from 'time'",
         'fn quick() -> Int: 7',
-        'async fn main() -> Future<String>:',
+        'async fn main() -> String:',
         '  const child = spawn quick()',
         '  await time.delay(5ms)',
         '  match await child.result():',
@@ -83,7 +83,7 @@ describe("waiting for an instance's end", () => {
       [
         "import * as time from 'time'",
         'fn quick() -> Int: 7',
-        'async fn main() -> Future<Int>:',
+        'async fn main() -> Int:',
         '  const ending = (spawn quick()).result()',
         '  await time.delay(5ms)',
         '  match await ending:',

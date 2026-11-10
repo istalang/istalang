@@ -10,7 +10,7 @@
 
 struct _Entry<V>:
   value: V
-  watch: Future<Unit>
+  watch: Future<Unit, "ista">
 
 shared struct WeakMap<K is Disposable, V>:
   entries: Map<WeakRef<K>, _Entry<V>> = [:]
@@ -34,6 +34,6 @@ fn set<K is Disposable, V>(self: WeakMap<K, V>, key: K, value: V):
 fn delete<K is Disposable, V>(self: WeakMap<K, V>, key: K) -> Bool:
   self->entries.delete(WeakRef(key))
 
-async fn _deleteOnDisposal<K is Disposable, V>(map: WeakMap<K, V>, key: WeakRef<K>) -> Future<Unit>:
+ista async fn _deleteOnDisposal<K is Disposable, V>(map: WeakMap<K, V>, key: WeakRef<K>) -> Unit:
   await key.disposed()
   drop map->entries.delete(key)

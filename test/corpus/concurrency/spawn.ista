@@ -13,7 +13,7 @@ struct Order:
 fn total(self: Order) -> Int:
   self.items.length()
 
-async fn ship(order: Order) -> Future<String>:
+ista async fn ship(order: Order) -> String:
   await time.delay(1ms)
   String(order.id) + ":" + order.items.join(",")
 
@@ -24,7 +24,7 @@ fn startAll(order: Order):
   spawn ship(order)
   spawn order.total()
 
-async fn main() -> Future<Int>:
+async fn main() -> Int:
   const order = Order{id: 7, items: ["a", "b"]}
   startAll(order)
   spawn echo<String>("hi")

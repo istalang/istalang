@@ -50,7 +50,7 @@ export const boundaryTemplates = {
   unconfinedDisposable: {
     code: 5910,
     message: (type: string) =>
-      `A 'dispose' can't make ${type} disposable: a disposable value has an identity of its own, which never leaves its instance, so declare it 'extern shared struct' or 'extern ephemeral struct' (§3.6, §7).`,
+      `A 'dispose' can't make ${type} disposable: a disposable value has an identity of its own, which never leaves its instance, so declare it 'extern shared struct' or 'extern live struct' (§3.6, §7).`,
   },
   resourceConstant: {
     code: 5911,
