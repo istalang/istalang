@@ -26,7 +26,7 @@ fn add(self: &Bag, item: Int, times: Int = 1):
 fn Bag.of(first: Int, second: Int = 20) -> Bag:
   Bag{items: [first]}
 
-async fn main() -> Array<String>:
+ista async fn main() -> Array<String>:
   let log: Array<String> = []
   ordered(&log, second: trace(&log, "b"), first: trace(&log, "a"))
   let bag = Bag.of(second: 20, first: 10)

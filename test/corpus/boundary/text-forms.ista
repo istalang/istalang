@@ -10,7 +10,7 @@ fn read(parsed: Result<Int>) -> String:
     case Ok(value): String(value)
     case Err(error): error.message
 
-async fn main() -> Array<String>:
+ista async fn main() -> Array<String>:
   const due = match time.Duration.parse("PT1M30S"):
     case Ok(value): String(value.value)
     case Err(error): error.message

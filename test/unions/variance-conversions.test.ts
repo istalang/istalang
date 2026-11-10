@@ -121,7 +121,7 @@ describe('variance derivation across positions and recursive declarations (§3.5
         'struct ByMapped<S is struct { [_]: Int }> { m: { [F in keyof S]: S[F] } }',
         'struct ByMatch<T> { m: Match<T> }',
         'struct ByMember<S in Status> { s: S }',
-        'fn test(',
+        'ista fn test(',
         '  r: ByRef<Int>, sl: BySlot<Int>, sh: ByShared<Int>, ib: ByInbox<Int>,',
         '  mk: ByMapKey<"a">, an: ByAny<Int>, md: ByMatch<Int>, mb: ByMember<"a">',
         '):',

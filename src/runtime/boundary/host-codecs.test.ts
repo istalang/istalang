@@ -21,7 +21,7 @@ describe('a value crossing to its host', () => {
         'fn Name.fromJson(json: Json, path: String) -> Result<Name>:',
         '  Ok(Name{text: String.fromJson(json, path)?})',
         'extern fn greet(name: Name) -> Name',
-        'async fn main() -> String:',
+        'ista async fn main() -> String:',
         '  greet(Name{text: "ada"}).text',
       ].join('\n'),
     );
@@ -42,7 +42,7 @@ describe('a value crossing to its host', () => {
         "import * as queue from 'queue'",
         'fn toJson(self: Point) -> Json:',
         '  "not this one"',
-        'async fn main():',
+        'ista async fn main():',
         '  queue.send(Point{x: 1})',
       ].join('\n'),
       {
@@ -77,7 +77,7 @@ describe('a value crossing to its host', () => {
         'extern fn release(lease: Lease)',
         'fn dispose(self: Lease):',
         '  release(self)',
-        'async fn main() -> String:',
+        'ista async fn main() -> String:',
         '  describeAll(openAll(), find())',
       ].join('\n'),
     );

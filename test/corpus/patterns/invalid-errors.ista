@@ -17,6 +17,6 @@ fn note() -> Note:
 fn uncoded() -> Error:
   Error{message: "m"}
 
-async fn main():
+ista async fn main():
   const kept = note()
   drop kept

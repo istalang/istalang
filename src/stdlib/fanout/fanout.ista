@@ -21,7 +21,7 @@ struct _Link<M>:
   retracted: Shared<Bool>
   next: Slot<_Link<M>>
 
-fn create<M>() -> Bus<M>: new Bus<M>{}
+ista fn create<M>() -> Bus<M>: new Bus<M>{}
 
 ista fn send<M>(self: Bus<M>, message: M): drop _publish(self, message)
 
@@ -38,7 +38,7 @@ ista fn subscribe<M>(self: Bus<M>, handler: ista async fn(M) -> Unit) -> Future<
 
 # Disposing a bus (§7) lets go of the end of its chain. Declaring `dispose` is what makes a bus
 # disposable, and so something its subscriptions can watch.
-fn dispose<M>(self: Bus<M>): ()
+ista fn dispose<M>(self: Bus<M>): ()
 
 # Appends `message` to the stream: the flag that retracts it.
 ista fn _publish<M>(bus: Bus<M>, message: M) -> Shared<Bool>:

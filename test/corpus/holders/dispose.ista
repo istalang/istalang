@@ -35,7 +35,7 @@ fn nesting(log: Shared<Array<String>>):
   drop outer
   note(log, "after nesting")
 
-async fn main() -> String:
+ista async fn main() -> String:
   const empty: Array<String> = []
   const log = new Shared{value: empty}
   cycle(log)

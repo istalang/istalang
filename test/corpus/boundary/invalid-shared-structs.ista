@@ -10,4 +10,4 @@ extern fn counter() -> Counter
 extern fn shared() -> Shared<Int>
 extern fn bump(c: Counter)
 
-async fn main(): 0
+ista async fn main(): 0

@@ -113,10 +113,10 @@ describe('conversions into a union (§2)', () => {
       codesOf(
         'fn takeArray(xs: Array<Int | String>) -> Int: xs.length()',
         'fn takeField(s: { v: Int | String }) -> Int: 0',
-        'fn takeSlot(s: Slot<Int | String>) -> Int: 0',
+        'ista fn takeSlot(s: Slot<Int | String>) -> Int: 0',
         'fn takeRef(r: &(Int | String)): ()',
         'fn takeOptRef(r: &Int?): ()',
-        'fn bad(xs: Array<Int>, s: { v: Int }, slot: Slot<Int>):',
+        'ista fn bad(xs: Array<Int>, s: { v: Int }, slot: Slot<Int>):',
         '  let n = 1',
         '  _ = takeArray(xs)',
         '  _ = takeField(s)',

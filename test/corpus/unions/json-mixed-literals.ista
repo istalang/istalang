@@ -11,6 +11,6 @@ fn read(text: String) -> String:
     case Ok(value): `${value}`
     case Err(error): error.message
 
-async fn main() -> String:
+ista async fn main() -> String:
   const written: Array<Mixed> = ["a", 1, true]
   `${json.stringify(written)}|${read("1")}|${read("\"a\"")}|${read("true")}|${read("2")}`

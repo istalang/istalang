@@ -24,7 +24,7 @@ fn measureLater<T is Shape>(shape: T) -> Int:
 fn counted<T is Shape>(shape: T) -> Int:
   shape.count(1, ...[2, 3])
 
-async fn main() -> Array<Int>:
+ista async fn main() -> Array<Int>:
   const square = Square{side: 2}
   const any: any Shape = square
   [measure(square), any.area(offset: 1, scale: 10), measureLater(square), counted(square), any.count(...[7])]

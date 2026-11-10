@@ -7,7 +7,7 @@ trait Sized:
 
 struct Box { size: Int }
 
-async fn main():
+ista async fn main():
   let item: any Sized = Box{size: 1}
   item.size = 2
   item.size += 1

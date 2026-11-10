@@ -18,7 +18,7 @@ fn identity<T>(value: T) -> T:
 fn same<T>(first: T, second: T) -> T:
   first
 
-async fn main():
+ista async fn main():
   const a = identity<Int, String>(1)
   const b = add<Int>(Money{cents: 1}, Money{cents: 2})
   const c = same(1, "x")

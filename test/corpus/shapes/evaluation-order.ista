@@ -12,7 +12,7 @@ fn next(counter: &Int) -> Int:
 fn keys(p: { a: Int, z: Int }) -> String:
   "" + p.a + " " + p.z
 
-async fn main():
+ista async fn main():
   let count = 0
   const shape = struct{z: next(&count), a: next(&count)}
   const late = Late{a: next(&count), z: next(&count)}

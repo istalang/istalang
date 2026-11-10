@@ -289,7 +289,7 @@ describe('what takes a call’s value, choosing inside its result', () => {
       consumers,
       'fn uses(c: Bool) -> Int:',
       ...lines.map((line) => `  ${line}`),
-      'async fn main(): uses(true)',
+      'ista async fn main(): uses(true)',
     ].join('\n');
 
   it('is the parameter of a call it is passed to, as much as an expected type', () => {
@@ -329,9 +329,9 @@ describe('what takes a call’s value, choosing inside its result', () => {
       'fn needInts(xs: Array<Int>): ()',
       'fn withConsumer<U>(b: Box<U>, f: fn(U) -> Unit) -> Int: 0',
       'fn withConsumer3<U>(b: Box<U>, f: fn(U) -> Unit, g: fn(U) -> Unit) -> Int: 0',
-      'fn withSlot<U>(b: Box<U>, s: Slot<U>) -> Int: 0',
-      'fn withSlotReversed<U>(s: Slot<U>, b: Box<U>) -> Int: 0',
-      'fn uses(acceptOpt: fn(Int?) -> Unit, s: Slot<Int?>):',
+      'ista fn withSlot<U>(b: Box<U>, s: Slot<U>) -> Int: 0',
+      'ista fn withSlotReversed<U>(s: Slot<U>, b: Box<U>) -> Int: 0',
+      'ista fn uses(acceptOpt: fn(Int?) -> Unit, s: Slot<Int?>):',
       '  needInts(collect(1, id(acceptOpt)))',
       '  needInts(collect(1, fn(x: Int?): ()))',
       '  drop withConsumer(makeBox(1), acceptOpt)',
@@ -371,7 +371,7 @@ describe('what takes a call’s value, choosing inside its result', () => {
           `fn take(xs: Array<${type}?>) -> Int: 0`,
           `fn passed() -> Int: take(pair(${a}, ${b}))`,
           `fn expected() -> Array<${type}?>: pair(${a}, ${b})`,
-          'async fn main(): drop (passed(), expected())',
+          'ista async fn main(): drop (passed(), expected())',
         ].join('\n');
         expect(instantiationsOf('pair', main)).toHaveLength(1);
       }),

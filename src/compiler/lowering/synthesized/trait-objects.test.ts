@@ -47,7 +47,7 @@ describe('lowering trait objects', () => {
   it('gives an any type a variant per type converted into it, and dispatches over every one', () => {
     const definition = compiled([
       'fn late() -> any Named & Sendable: Sms{number: "1"}',
-      'async fn main():',
+      'ista async fn main():',
       '  const email: any Named = Email{to: "a"}',
       '  const sms: any Named = late()',
       '  (email.name(), sms.name())',
@@ -58,7 +58,7 @@ describe('lowering trait objects', () => {
 
   it("dispatches a call on a union over the union's members, and converts it member by member", () => {
     const definition = compiled([
-      'async fn main():',
+      'ista async fn main():',
       '  const contact: Email | Sms = Sms{number: "1"}',
       '  const named: any Named = contact',
       '  (contact.name(), named.name())',
@@ -91,7 +91,7 @@ describe('lowering a call through an instantiation standing for another (§3.10)
         '  fn next(self: Self) -> T',
         'struct Counter { n: Int }',
         'fn next(self: Counter) -> Int: self.n',
-        'async fn main():',
+        'ista async fn main():',
         '  const narrow: any Source<Int> = Counter{n: 3}',
         '  const wide: any Source<Int?> = narrow',
         '  match wide.next():',
@@ -114,7 +114,7 @@ describe('lowering a call through an instantiation standing for another (§3.10)
         '    case none: 10',
         '    case Int as n: n',
         '    case String: 20',
-        'async fn main():',
+        'ista async fn main():',
         '  const each: any Each<Int? | String> = Both{k: 0}',
         '  each.each(picked)',
       ]),

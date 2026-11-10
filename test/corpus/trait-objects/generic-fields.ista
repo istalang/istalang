@@ -11,6 +11,6 @@ struct Pair { size: Int, first: String }
 fn sizeOf<T is Sized>(value: T) -> Int:
   value.size
 
-async fn main():
+ista async fn main():
   const sized: any Sized = Pair{size: 2, first: "b"}
   (sizeOf(Box{label: "a", size: 1}), sizeOf(sized), sizeOf(Pair{size: 5, first: "c"}))

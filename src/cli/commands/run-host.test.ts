@@ -236,7 +236,7 @@ describe('ista run --host', () => {
       ].join('\n'),
       'main.ista': [
         "import * as limits from 'limits'",
-        'async fn main() -> Int:',
+        'ista async fn main() -> Int:',
         '  const band = limits.band',
         '  limits.floor + limits.ceiling + band.low + limits.band.low',
         '',
@@ -258,7 +258,7 @@ describe('ista run --host', () => {
         'extern fn note(text: String)',
         'extern fn lookup() -> Int?',
         'extern fn found() -> Found',
-        'async fn main() -> Bool:',
+        'ista async fn main() -> Bool:',
         '  note("a")',
         '  lookup() == none and found().name == none',
         '',

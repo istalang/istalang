@@ -48,7 +48,7 @@ fn priceOf<T is Priced>(item: T) -> Int:
 fn tagged<T is Pairable>(item: T) -> Pair<T, String>:
   pairWith(item, "cents")
 
-async fn main() -> String:
+ista async fn main() -> String:
   const money = sum3(Money{cents: 5}, Money{cents: 10}, Money{cents: 15})
   const sealed: Envelope<Pair<Money, Int>> = Envelope{value: Pair{first: money, second: 1}}
   String(sum3(1, 2, 3)) + " " + String(money.cents) + " " + String(priceOf(Money{cents: 7})) + " " + tagged(money).second + " " + String(sealed.value.first.cents)

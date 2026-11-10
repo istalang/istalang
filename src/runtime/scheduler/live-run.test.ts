@@ -110,7 +110,7 @@ describe('live runs', () => {
       '  await time.delay(5ms)',
       '  await time.delay(5ms)',
       '  7',
-      'async fn main(): 0',
+      'ista async fn main(): 0',
     ].join('\n'),
   );
   const fetchKey = 'main.fetch(String)';
@@ -247,7 +247,7 @@ describe('live runs', () => {
       [
         "import * as time from 'time'",
         'extern fn tick() -> Unit',
-        'async fn main() -> Int:',
+        'ista async fn main() -> Int:',
         '  const before = time.now()',
         '  tick()',
         '  time.now().value - before.value',
@@ -285,7 +285,7 @@ describe('live runs', () => {
     const text = compiledText(
       [
         "import * as time from 'time'",
-        'async fn main():',
+        'ista async fn main():',
         '  const before = time.now()',
         '  await time.delay(500ms)',
         '  time.now().value - before.value',

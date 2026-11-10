@@ -51,7 +51,7 @@ type DataOf<D> = match D:
 
 type MatchedOrder = DataOf<OrderForm>
 
-async fn main() -> String:
+ista async fn main() -> String:
   const schema = Group{
     fields: OrderForm{
       country: Field{value: "DE"},

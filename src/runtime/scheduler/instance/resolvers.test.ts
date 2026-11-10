@@ -124,7 +124,7 @@ describe('resolvers', () => {
       'timers',
       [
         "import * as time from 'time'",
-        'async fn main() -> Int:',
+        'ista async fn main() -> Int:',
         '  const t2 = time.delay(5ms)',
         '  const t1 = time.delay(5ms)',
         '  await select:',

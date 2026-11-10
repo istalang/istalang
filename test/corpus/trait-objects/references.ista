@@ -23,7 +23,7 @@ fn count(self: Tens) -> Int:
 fn bumped(counter: &any Counter):
   counter.bump()
 
-async fn main():
+ista async fn main():
   let counters: Array<any Counter> = [Ones{n: 1}, Tens{n: 1}]
   for i in 0..2:
     bumped(&counters[i])

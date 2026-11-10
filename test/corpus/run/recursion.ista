@@ -6,5 +6,5 @@ fn sum(n: Int) -> Int:
     return 0
   n + sum(n - 1)
 
-async fn main():
+ista async fn main():
   sum(100_000)

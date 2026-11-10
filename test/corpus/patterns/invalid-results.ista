@@ -29,6 +29,6 @@ fn inferredNotResult(text: String):
   const value = parse(text)?
   value
 
-async fn main():
+ista async fn main():
   parse("ignored")
   _ = inferred("x")

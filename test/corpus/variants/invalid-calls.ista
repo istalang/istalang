@@ -88,4 +88,4 @@ fn unexpected(v: Int, t: String) -> Node:
   drop b
   Node.Group{t}
 
-async fn main(): 0
+ista async fn main(): 0

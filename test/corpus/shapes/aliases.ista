@@ -42,7 +42,7 @@ fn name(c: Hue) -> String:
     case Hue.Red: "red"
     case Tint.Green: "green"
 
-async fn main():
+ista async fn main():
   const a = Point{x: 1, y: 2}
   const b = Point.of(3, 4)
   const p = Pair.of(10, 20)

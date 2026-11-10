@@ -1064,7 +1064,7 @@ struct Drawing:
   valid: Bool = true # no errors, nothing pending
   shown: Array<any Showable> = [] # Hiddens drawn this pass
 
-fn markShown(self: &Drawing, h: (any Showable)?):
+ista fn markShown(self: &Drawing, h: (any Showable)?):
   match h:
     case None: ()
     case s: { s.show(); self.shown.push(s) }

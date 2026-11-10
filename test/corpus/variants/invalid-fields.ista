@@ -14,4 +14,4 @@ enum Bad:
   Filled(...xs: Array<Int> = [])
   Twice(...xs: Array<Int>, ...ys: Array<Int>)
 
-async fn main(): 0
+ista async fn main(): 0

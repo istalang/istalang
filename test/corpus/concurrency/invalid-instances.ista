@@ -6,7 +6,7 @@
 
 extern fn report(instance: Instance<Int>)
 
-fn slot() -> Slot<Int>: Slot.create<Int>()
+ista fn slot() -> Slot<Int>: Slot.create<Int>()
 
 fn twice(n: Int) -> Int: n * 2
 

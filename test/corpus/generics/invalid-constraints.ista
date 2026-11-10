@@ -1,4 +1,4 @@
-# error: 5101 at 16:19
+# error: 5101 at 16:24
 # error: 5101 at 20:17
 # A type argument must meet its parameter's constraints (§3.5, §3.10): a call's, here a string
 # with no `zero`, and a type's, here a slot, which isn't Sendable (§3.1).
@@ -13,8 +13,8 @@ struct Envelope<T is Sendable>:
 fn sum2<T is Monoid>(a: T, b: T) -> T:
   T.zero() + a + b
 
-fn open(envelope: Envelope<Slot<Int>>) -> Int:
+ista fn open(envelope: Envelope<Slot<Int>>) -> Int:
   1
 
-async fn main():
+ista async fn main():
   const total = sum2("a", "b")

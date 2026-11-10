@@ -10,7 +10,7 @@ struct Bag<T> { items: Array<T> }
 fn kind(t: Tag<Int>) -> String:
   "Int"
 
-async fn main() -> String:
+ista async fn main() -> String:
   const expected: Tag<Int>? = Tag
   const defaulted = Tag
   const empty: Bag<Int>? = Bag{items: []}

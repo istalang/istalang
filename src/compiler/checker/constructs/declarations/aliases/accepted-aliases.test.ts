@@ -61,7 +61,7 @@ function programText(a: string, b: string, data: string): string {
     `type A = ${a}`,
     `type B = ${b}`,
     'fn f(a: A, b: B, d: S.Data) -> Int: 0',
-    'async fn main() -> Int:',
+    'ista async fn main() -> Int:',
     '  0',
   ].join('\n');
 }

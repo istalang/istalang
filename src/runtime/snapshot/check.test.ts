@@ -231,7 +231,7 @@ describe('reading an instance back', () => {
 
   it("refuses a snapshot whose stored Definition doesn't hash to the one it names", async () => {
     const test = await waitingInstance();
-    test.store.writeDefinition(test.program.hash, compiledText('async fn main(): 2'));
+    test.store.writeDefinition(test.program.hash, compiledText('ista async fn main(): 2'));
     const fresh = testRuntime({ store: test.store, clock: test.clock });
     await expect(fresh.runtime.wake('i')).rejects.toThrow(mismatch);
   });

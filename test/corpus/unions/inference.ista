@@ -5,7 +5,7 @@
 fn keep<T>(x: T | Int | String) -> T | Int | String: x
 fn first<T>(x: T | Int) -> T | Int: x
 
-async fn main() -> String:
+ista async fn main() -> String:
   const v: Int | Bool = true
   const w: Bool | Int = 3
   const a = keep(v)

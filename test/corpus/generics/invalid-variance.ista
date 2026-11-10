@@ -33,7 +33,7 @@ struct Tagged<gives S in Status>:
 struct Reader<T>:
   read: fn(T) -> Unit
 
-fn bad(
+ista fn bad(
   slot: Slot<Int>
   keys: Map<String, Int>
   singles: Array<(Int,)>

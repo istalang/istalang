@@ -25,7 +25,7 @@ fn kept<T>(value: T) -> T?:
   held, count = (value, count + 1)
   held
 
-async fn main():
+ista async fn main():
   let a: Int? = none
   let b = 0
   a, b = (1, 2)

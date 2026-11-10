@@ -23,7 +23,7 @@ fn pick<T>(x: A<T> | B) -> Int:
     case A{inner is Box<Int>{value as n}} | B{pair is (n, _)}: n + 1
     case _: 0
 
-async fn main() -> String:
+ista async fn main() -> String:
   const p1 = `${beside<String>("draft")}|${beside<String>("x")}|${beside<String>(3)}`
   const p2 = `${alone<String>("sent")}|${alone<String>("y")}`
   const p3 = `${pick<Int>(B{pair: (41, 99)})}|${pick<Int>(A<Int>{inner: Box<Int>{value: 6}})}`

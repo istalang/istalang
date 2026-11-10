@@ -5,7 +5,7 @@
 fn size(n: Int) -> String:
   if n < 10: "small" elif n < 100: "medium" else: "large"
 
-async fn main():
+ista async fn main():
   let total = 0
   let i = 0
   while true:

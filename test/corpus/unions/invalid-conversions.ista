@@ -16,12 +16,12 @@ struct NotFound { id: String }
 struct Timeout { ms: Int }
 struct Denied { role: String }
 
-fn takeSlots(xs: Slot<Int | String>) -> Int: 0
+ista fn takeSlots(xs: Slot<Int | String>) -> Int: 0
 fn takeRef(r: &(Int | String)): ()
 fn takeAmbiguous(x: (Int,) | (any Stringable)) -> Int: 0
 fn onlyOpt<T>(x: T?) -> T: x!
 
-fn bad(xs: Slot<Int>, name: String, c: Bool):
+ista fn bad(xs: Slot<Int>, name: String, c: Bool):
   let n = 1
   const u: Int | String = true
   _ = takeSlots(xs)

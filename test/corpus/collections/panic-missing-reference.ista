@@ -5,7 +5,7 @@
 fn reset(value: &Int):
   value = 0
 
-async fn main() -> Int:
+ista async fn main() -> Int:
   let m = ["a": 1]
   reset(&m["b"])
   m["b"]

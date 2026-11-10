@@ -43,7 +43,7 @@ ista fn Revertible.holding<T, R is Disposable>(resource: R) -> Revertible<T>:
   fn retract(): held->value = none
   new Revertible<T>{retract}
 
-fn Inbox.create<T>() -> Inbox<T>: new Inbox<T>{slot: Slot.create<T>()}
+ista fn Inbox.create<T>() -> Inbox<T>: new Inbox<T>{slot: Slot.create<T>()}
 
 ista fn send<T>(self: Inbox<T>, message: T): drop _queue(self, message)
 
@@ -68,7 +68,7 @@ ista fn pending<T>(self: Inbox<T>) -> Array<T>:
 # Disposing an inbox (§6, §7) lets go of its fields, so the slot dies with the message in it, and
 # the backlog with it. Declaring `dispose` is what makes an inbox disposable, and so something a
 # `WeakRef` can watch.
-fn dispose<T>(self: Inbox<T>): ()
+ista fn dispose<T>(self: Inbox<T>): ()
 
 ista fn dispose<T>(self: Revertible<T>): self->retract()
 

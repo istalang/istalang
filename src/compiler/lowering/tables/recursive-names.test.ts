@@ -21,7 +21,7 @@ function entryNames(first: string, second: string): readonly (string | undefined
     "import CrmTree from 'b.ista'",
     'fn fromForm(t: FormTree<Int>) -> Int: 1',
     'fn fromCrm(t: CrmTree<Int>) -> Int: 2',
-    'async fn main() -> Int:',
+    'ista async fn main() -> Int:',
     `  return ${first}([1, [2]]) + ${second}([3])`,
   ].join('\n');
   return compiledDefinition(stdProgramOf({ 'main.ista': main, ...modules }), 'main.ista')

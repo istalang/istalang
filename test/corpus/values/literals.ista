@@ -20,7 +20,7 @@ fn pointText(p: Point) -> String:
 fn markerText(m: Marker) -> String:
   "marked"
 
-async fn main():
+ista async fn main():
   const x = 3
   const y = 4
   const p = Point{x, y}

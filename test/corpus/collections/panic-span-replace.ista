@@ -1,7 +1,7 @@
 # panic: The range 1..5 is out of range for an array of length 3.
 # Replacing a span outside the bounds panics (§3.9), as reading one does.
 
-async fn main() -> Int:
+ista async fn main() -> Int:
   let xs = [1, 2, 3]
   xs[1..5] = [1]
   xs.length()

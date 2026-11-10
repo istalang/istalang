@@ -31,7 +31,7 @@ fn needSendable<T is Sendable>(x: T): ()
 fn makeMustUse(x: Result<Int> | Int) -> Result<Int> | Int: x
 fn describeStatus<S in Status>(s: S) -> String: s
 
-fn badUses(c: Contact, u: Int | String, s: Status, nonSend: Int | Slot<Int>, must: Result<Int> | Int):
+ista fn badUses(c: Contact, u: Int | String, s: Status, nonSend: Int | Slot<Int>, must: Result<Int> | Int):
   _ = c.to
   _ = u + 1
   _ = over(u)

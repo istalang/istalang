@@ -44,7 +44,7 @@ fn bare() -> Chain<Int>:
 fn qualified() -> Chain<Int>:
   Chain.Deeper(head: 1, tail: Chain.End)
 
-async fn main() -> Int:
+ista async fn main() -> Int:
   made()
   Tree<Int>{value: 1, children: [], pairs: []}.value
 

@@ -25,7 +25,7 @@ describe('parentheses', () => {
       'fn value() -> Result<Int, String>: apply(1, (Result.Ok))',
       'fn empty() -> Int: take(id(([])))',
     ];
-    expect(reported([declarations, ...uses, 'async fn main(): 0'].join('\n'))).toEqual(
+    expect(reported([declarations, ...uses, 'ista async fn main(): 0'].join('\n'))).toEqual(
       reportedNothing,
     );
   });
@@ -42,7 +42,7 @@ describe("a field loop's passes", () => {
       '  for k, v in ...s:',
       '    drop id(v)',
     ];
-    expect(reported([declarations, ...uses, 'async fn main(): 0'].join('\n'))).toEqual(
+    expect(reported([declarations, ...uses, 'ista async fn main(): 0'].join('\n'))).toEqual(
       reportedNothing,
     );
   });

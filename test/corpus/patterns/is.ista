@@ -26,6 +26,6 @@ fn countdown(start: Int) -> Int:
     current = if value > 1: value - 1 else: none
   steps
 
-async fn main() -> String:
+ista async fn main() -> String:
   (radius(Circle(7)) + "|" + radius(Square(2)) + "|" + classify(Ok(12))
     + "|" + classify(Err(Error{message: "x", code: "y"})) + "|" + String(countdown(3)))

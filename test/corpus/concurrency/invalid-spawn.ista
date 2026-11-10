@@ -22,7 +22,7 @@ struct Id:
 fn bump(n: &Int):
   n += 1
 
-fn run(self: Job) -> Int:
+ista fn run(self: Job) -> Int:
   1
 
 fn show(self: Id) -> Int:
@@ -43,5 +43,5 @@ ista async fn main():
 ista fn doubled<T is Addable & Sendable>(x: T):
   spawn add(x, x)
 
-fn takesBox(box: Inbox<Int>):
+ista fn takesBox(box: Inbox<Int>):
   _ = box

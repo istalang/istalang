@@ -18,7 +18,7 @@ enum Shape:
   Circle(radius: Int)
   Square(side: Int)
 
-async fn main():
+ista async fn main():
   const pair: Pair<Int, String> = Pair{first: 1, second: 2}
   const twice = Money{cents: 1} * 2
   const parsed = Int("12")

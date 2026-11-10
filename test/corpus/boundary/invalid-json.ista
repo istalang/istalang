@@ -2,7 +2,7 @@
 # error: 5101 at 28:7
 # error: 5101 at 30:7
 # error: 5101 at 32:8
-# error: 5101 at 34:20
+# error: 5101 at 34:25
 # json writes and reads only what is Encodable, or Decodable (§9): not a function, not a map whose
 # keys aren't Stringable, not an enum with a variant field keyed _type, which the tag uses; and a
 # type declaring a toJson but no fromJson is written but not read, since nothing is derived for it.
@@ -31,5 +31,5 @@ fn uses():
   _ = json.stringify(Label{text: "ok"})
   drop json.parse<Label>("\"ok\"")
 
-async fn main() -> fn() -> Int:
+ista async fn main() -> fn() -> Int:
   fn(): 1

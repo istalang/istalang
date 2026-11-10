@@ -48,7 +48,7 @@ fn keep(f: fn() -> State) -> State:
 fn pair(f: fn() -> Int, g: fn() -> Int) -> Int:
   f() + g()
 
-async fn main():
+ista async fn main():
   let counter = Counter{n: 0}
   let n = 1
   run grow(&n)

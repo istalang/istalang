@@ -4,5 +4,5 @@
 fn ratio(a: Int, b: Int) -> Int:
   a // b
 
-async fn main():
+ista async fn main():
   ratio(1, 0)

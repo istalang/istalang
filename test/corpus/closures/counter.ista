@@ -17,7 +17,7 @@ fn shared() -> String:
   total += 10
   String(first) + " " + String(add(2))
 
-async fn main():
+ista async fn main():
   const next = makeCounter(0)
   const alias = next
   const a = next()

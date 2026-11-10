@@ -67,4 +67,4 @@ fn plainBox() -> Int:
 fn referencing() -> Int:
   Referencing{}.y
 
-async fn main(): 0
+ista async fn main(): 0

@@ -22,7 +22,7 @@ fn show<T is Area>(v: T) -> Int: v.area()
 
 fn second(p: Pair<Int, String>) -> String: p.second
 
-async fn main():
+ista async fn main():
   const shape: Spot = Pixel{x: 2, y: 3}
   const back = json.parse<Point>("{\"y\": 4, \"x\": 5}")
   const text = json.stringify(struct{b: 1, a: [struct{x: 2, y: 1}]})

@@ -30,7 +30,7 @@ const counter = [
   '    count += 1',
   '    count',
   '  next',
-  'async fn main(): makeCounter(0)()',
+  'ista async fn main(): makeCounter(0)()',
 ];
 
 describe('lowering closures', () => {
@@ -53,7 +53,7 @@ describe('lowering closures', () => {
       'fn down() -> Int:',
       '  fn count(n: Int) -> Int: if n == 0: 0 else: count(n - 1)',
       '  count(3) + twice(inc, 1)',
-      'async fn main(): down()',
+      'ista async fn main(): down()',
     ]);
     const count = entryNamed(definition, 'main.down.count');
     expect(count.instructions.some((instruction) => instruction.kind === 'currentClosure')).toBe(
@@ -75,7 +75,7 @@ describe('lowering closures', () => {
       '      break',
       '    total += step',
       '  total',
-      'async fn main(): loop()',
+      'ista async fn main(): loop()',
     ]);
     const { instructions } = entryNamed(definition, 'main.loop');
     const [total, step] = instructions.flatMap((each) => (each.kind === 'move' ? [each.dst] : []));

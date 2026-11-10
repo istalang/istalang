@@ -19,5 +19,5 @@ fn named(x: Status | Int) -> String:
     case Status: "status"
     case _: "other"
 
-async fn main() -> String:
+ista async fn main() -> String:
   `${wide("sent")}|${wide(3)}|${rest("draft")}|${rest("sent")}|${named(4)}`

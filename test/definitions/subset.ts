@@ -24,7 +24,7 @@ fn fib(n: Int) -> Int:
     return n
   fib(n - 1) + fib(n - 2)
 
-async fn main():
+ista async fn main():
   let total = 0
   let i = 0
   while i < 10:
@@ -143,7 +143,7 @@ export const subsetDefinition: Definition = {
       kind: 'code',
       name: 'main.main',
       module: 0,
-      span: at('async fn main()'),
+      span: at('ista async fn main()'),
       mode: 'ista',
       parameters: [],
       captures: 0,

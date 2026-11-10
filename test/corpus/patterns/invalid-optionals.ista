@@ -31,7 +31,7 @@ fn plain(n: Int) -> Int:
 ista async fn worker() -> Int:
   worker?.(1) ?? 0
 
-async fn main():
+ista async fn main():
   const count = 5
   const city = count?.city
   const fallback = count ?? 1

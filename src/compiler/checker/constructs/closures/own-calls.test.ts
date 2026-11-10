@@ -63,7 +63,7 @@ describe('the call disposing() watches', () => {
     const program = stdProgramOf({
       'main.ista': [
         'ista async fn worker() -> Unit:',
-        '  fn helper() -> Future<Unit, "ista">:',
+        '  ista fn helper() -> Future<Unit, "ista">:',
         '    const watch = fn(): worker.disposing()',
         '    watch()',
         '  await helper()',
@@ -131,7 +131,7 @@ fn main():
     ).toEqual(reportedOnce(4016, 'main'));
     expect(
       reported(`
-async fn main():
+ista async fn main():
   ()
 ista async fn other():
   drop main.disposing()

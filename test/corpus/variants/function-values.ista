@@ -68,7 +68,7 @@ fn chosen(action: Action) -> String: "value"
 
 fn chosen(make: fn(Int) -> Action) -> String: "function"
 
-async fn main() -> String:
+ista async fn main() -> String:
   const results = [1, 2, 3].map(Result.Ok)
   const wrap: fn(Int) -> Result<Int> = Ok
   const reject = Verdict.Rejected

@@ -28,7 +28,7 @@ const text = compiledText(
     '      n',
     '    case time.delay(5ms):',
     '      0',
-    'async fn main(): 0',
+    'ista async fn main(): 0',
   ].join('\n'),
 );
 const fetchKey = 'main.fetch(String)';

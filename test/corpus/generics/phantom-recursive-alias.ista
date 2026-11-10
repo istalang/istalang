@@ -9,5 +9,5 @@ fn f(x: Phantom<String>) -> Int:
     case Int as n: n
     case Array<Phantom<String>> as xs: xs.length()
 
-async fn main() -> Int:
+ista async fn main() -> Int:
   return f([1, [2]])

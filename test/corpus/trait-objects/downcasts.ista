@@ -31,7 +31,7 @@ fn describe(x: any Named) -> String:
     case _:
       "other"
 
-async fn main():
+ista async fn main():
   const items: Array<any Named> = [Email{to: "a"}, Sms{number: "1"}, Decision.Approved("legal"), Decision.Expired, Marker]
   const email: any Named = Email{to: "a"}
   const found = if email is Email{to}: to else: "none"

@@ -15,7 +15,7 @@ ista fn resolved(signal: Future<Unit, "ista">) -> Bool:
       false
 
 ista async fn worker(n: Int) -> Int:
-  fn watch() -> Future<Unit, "ista">:
+  ista fn watch() -> Future<Unit, "ista">:
     worker.disposing()
   await select:
     case watch():
@@ -23,7 +23,7 @@ ista async fn worker(n: Int) -> Int:
     case time.delay(1ms):
       n + 1
 
-ista async fn watcher() -> fn() -> Future<Unit, "ista">:
+ista async fn watcher() -> ista fn() -> Future<Unit, "ista">:
   fn() -> Future<Unit, "ista">: watcher.disposing()
 
 ista async fn main() -> String:

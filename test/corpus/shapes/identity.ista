@@ -21,7 +21,7 @@ shared struct Lease:
 fn named(value: { renewals: Int, name: String }) -> String:
   value.name
 
-async fn main():
+ista async fn main():
   const a: Point = struct{x: 2, y: 3}
   const b = struct{y: 4, x: 3}
   const c: Array<Point> = [b]

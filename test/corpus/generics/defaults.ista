@@ -9,5 +9,5 @@ fn window(start: Int, end: Int = start + 10) -> Int:
 fn retry(times = 3, backoff: Duration = 1s) -> String:
   "retry " + times + " " + backoff.value
 
-async fn main() -> String:
+ista async fn main() -> String:
   String(window(3)) + " " + String(window(5, 15)) + " " + retry() + " " + retry(5) + " " + retry(5, 2s)

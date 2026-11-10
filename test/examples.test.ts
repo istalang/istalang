@@ -59,7 +59,7 @@ describe('the examples', () => {
     const mainText = [
       "import * as sup from './supplier.gen'",
       "import * as ord from './order.gen'",
-      'async fn main() -> Int:',
+      'ista async fn main() -> Int:',
       '  const _f1 = sup.supplierForm',
       '  const _f2 = ord.orderForm',
       '  0',

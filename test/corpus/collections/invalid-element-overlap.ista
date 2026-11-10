@@ -20,7 +20,7 @@ fn keep(points: &Array<Point>, x: &Int):
 fn copyFrom(self: &Point, other: &Int):
   self.x = other
 
-async fn main():
+ista async fn main():
   let xs = [1, 2]
   let ys = [3]
   let points = [Point{x: 1, y: 2}]

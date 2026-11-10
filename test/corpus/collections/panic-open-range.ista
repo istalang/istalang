@@ -1,7 +1,7 @@
 # panic: Iterating needs a range with both ends, not 3...
 # Only a range with both ends is iterable (§3.8); whether it has them is known when it runs.
 
-async fn main() -> Int:
+ista async fn main() -> Int:
   let total = 0
   for i in 3..:
     total += i

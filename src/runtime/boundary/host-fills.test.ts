@@ -26,7 +26,7 @@ const program = compiledText(
     '  const first = slow("a")',
     '  await gate() + await first',
     '',
-    'async fn main(): 0',
+    'ista async fn main(): 0',
   ].join('\n'),
 );
 

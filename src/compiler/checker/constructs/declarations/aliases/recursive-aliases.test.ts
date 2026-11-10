@@ -384,7 +384,7 @@ describe('a recursive type in a compiled program (docs/arch/definition.md)', () 
     '  match f:',
     '    case Int as n: return n',
     '    case _: return 2',
-    'async fn main() -> Int:',
+    'ista async fn main() -> Int:',
     '  const f: Forest = [1, [2]]',
     '  return size(f)',
   );

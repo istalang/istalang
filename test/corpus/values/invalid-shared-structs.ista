@@ -25,7 +25,7 @@ const holder = Holder{}
 fn keep(counter: Counter):
   ()
 
-async fn main():
+ista async fn main():
   const bare = Counter{count: 1}
   const plain = new Tally{count: 1}
   spawn keep(new Counter{count: 1})

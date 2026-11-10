@@ -8,6 +8,6 @@ struct Split:
   total: Decimal
   each: Decimal
 
-async fn main() -> Split:
+ista async fn main() -> Split:
   const total = Decimal(1990) / 100
   Split{total, each: decimal.divide(total, 3, 2)}

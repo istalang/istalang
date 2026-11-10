@@ -42,7 +42,7 @@ describe('labels', () => {
     ],
     [
       'a hold naming a loop outside its local function',
-      'outer: for x in [1]:\n  async fn later():\n    hold(outer) _ = job()\n  break outer',
+      'outer: for x in [1]:\n  ista async fn later():\n    hold(outer) _ = job()\n  break outer',
       reports.unknownHoldScope,
       'outer',
     ],

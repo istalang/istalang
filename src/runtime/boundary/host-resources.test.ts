@@ -117,7 +117,7 @@ describe('a disposable host type', () => {
         'extern shared struct Lease',
         'extern fn open(name: String) -> Lease',
         'extern fn dispose(self: Lease)',
-        'async fn main(): { const lease = open("b"); 1 }',
+        'ista async fn main(): { const lease = open("b"); 1 }',
       ].join('\n'),
     );
     const test = testRuntime({ host });

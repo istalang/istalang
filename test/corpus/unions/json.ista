@@ -12,7 +12,7 @@ struct Config:
   tag: Status?
   flag: true
 
-async fn main() -> String:
+ista async fn main() -> String:
   const s1: Status = "sent"
   const j1 = json.stringify(s1)
   const p1 = match json.parse<Status>("\"draft\""):

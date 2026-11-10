@@ -20,7 +20,7 @@ ista async fn main() -> (String, Int, Array<Int>, Array<Int?>, Int, Int, Array<I
   const asyncs: Array<ista async fn() -> Int> = plains
   const widened: ista async fn(Int) -> Int? = fn(x: Int?) -> Int: (x ?? 0) * 2
   const absent: ista async fn(Int) -> Int? = fn(x: Int?) -> Int?: none
-  const asyncLambda: fn(Int) -> Future<Int, "ista"> = async fn(x): await later(x)
+  const asyncLambda: ista fn(Int) -> Future<Int, "ista"> = async fn(x): await later(x)
   const forwarded: ista async fn(Int) -> Int = fn(x): later(x)
   const returning: ista async fn(Int) -> Int? = fn(x): {
     if x > 0:

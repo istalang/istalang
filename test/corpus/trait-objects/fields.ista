@@ -7,7 +7,7 @@ trait Sized:
 struct Box { size: Int, label: String }
 struct Pair { first: String, size: Int }
 
-async fn main():
+ista async fn main():
   const items: Array<any Sized> = [Box{size: 1, label: "a"}, Pair{first: "b", size: 2}]
   const pair = Pair{first: "b", size: 2}
   (items[0].size + items[1].size, pair.first)

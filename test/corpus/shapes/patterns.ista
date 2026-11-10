@@ -16,7 +16,7 @@ fn which(v: any Sendable) -> String:
     case Pixel{x}: "pixel " + x
     case _: "other"
 
-async fn main():
+ista async fn main():
   const shape: any Sendable = struct{x: 1, y: 2}
   const pixel: any Sendable = Pixel{x: 3, y: 4}
   "" + sum(struct{y: 2, x: 5}) + " " + which(shape) + " " + which(pixel)

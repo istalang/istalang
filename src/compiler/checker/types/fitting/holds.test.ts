@@ -28,7 +28,7 @@ const declarations = [
 
 /** What checking `functions` after the declarations above reports. */
 function reportedAfter(...functions: readonly string[]) {
-  return reported([...declarations, ...functions, 'async fn main(): 0'].join('\n'));
+  return reported([...declarations, ...functions, 'ista async fn main(): 0'].join('\n'));
 }
 
 /**
@@ -42,7 +42,7 @@ async function outcome(
   const source = [
     ...declarations,
     ...extra,
-    `async fn main() -> ${result}:`,
+    `ista async fn main() -> ${result}:`,
     ...body.map((line) => `  ${line}`),
   ].join('\n');
   const state = await startToEnd(testRuntime(), compiledText(source));

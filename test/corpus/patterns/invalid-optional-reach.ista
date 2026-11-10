@@ -49,4 +49,4 @@ fn through(c: Counter?) -> Int?:
 fn unknown(b: Box) -> Int:
   b.p.zzz
 
-async fn main(): 0
+ista async fn main(): 0

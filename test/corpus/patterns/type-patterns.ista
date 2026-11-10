@@ -52,5 +52,5 @@ fn text(x: Text) -> String:
   match x:
     case Text as t: "any " + String(t)
 
-async fn main() -> Array<String>:
+ista async fn main() -> Array<String>:
   [describe(3), describe(Email{to: "a"}), describe(2.5), describe(true), shout("hi"), shout(4), whole(7), cents(5), cents("x"), cents(Marker), mailInside(Email{to: "b"}), mail(Email{to: "c"}), mailTarget(Email{to: "d"}), text(6)]

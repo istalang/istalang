@@ -201,7 +201,7 @@ describe('advancing an instance', () => {
     const text = compiledText(
       [
         "import * as time from 'time'",
-        'async fn main():',
+        'ista async fn main():',
         '  const before = time.now()',
         '  await time.delay(500ms)',
         '  time.now().value - before.value',

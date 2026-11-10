@@ -18,7 +18,7 @@ fn first(x: any Named?) -> String:
 fn flip(x: any Tagged & Named) -> any Named & Tagged:
   x
 
-async fn main():
+ista async fn main():
   const some: any Named? = Email{to: "a"}
   const nothing: any Named? = none
   const both: any Named & Tagged = Email{to: "a"}

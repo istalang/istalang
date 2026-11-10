@@ -20,6 +20,6 @@ struct Box<T>:
 fn nest<T>(value: T) -> Int:
   nest(Box{value: value})
 
-async fn main():
+ista async fn main():
   const n = nowhere(1)
   dispose(Slot.create<Int>())

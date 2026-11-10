@@ -21,7 +21,7 @@ fn count<T>(...items: Array<T>) -> Int:
 fn apply(f: fn(String, Array<String>) -> Int, xs: Array<String>) -> Int:
   f("", xs)
 
-async fn main() -> Array<Int>:
+ista async fn main() -> Array<Int>:
   const more = ["c", "d"]
   [
     sum(), sum(1), sum(1, 2), sum(...[1, 2], 3),

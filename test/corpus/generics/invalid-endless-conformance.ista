@@ -12,5 +12,5 @@ struct Badge:
 fn show<T is Show>(value: T) -> String:
   "?"
 
-async fn main():
+ista async fn main():
   const text = show(Badge{label: "a"})

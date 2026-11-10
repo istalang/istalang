@@ -31,5 +31,5 @@ fn reassigned() -> Int:
   f = fn(): 7
   g()
 
-async fn main():
+ista async fn main():
   String(nested()) + " | " + eq() + " | " + String(mut()) + " | " + String(reassigned())

@@ -17,7 +17,7 @@ struct Db:
 fn query(self: Db, parts: Array<String>, ...values: Array<Int>) -> String:
   self.prefix + parts.join("$")
 
-async fn main():
+ista async fn main():
   const id = 7
   const q = sql`select ${id} from ${"t"}`
   const db = Db{prefix: ">"}

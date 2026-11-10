@@ -57,5 +57,5 @@ fn forBody() -> String:
     total += 1
   String(first()) + " " + String(second())
 
-async fn main():
+ista async fn main():
   fresh() + " | " + sharedOutside() + " | " + String(leaving()) + " | " + forEach() + " | " + forBody()

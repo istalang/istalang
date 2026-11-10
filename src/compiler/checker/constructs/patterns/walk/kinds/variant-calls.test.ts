@@ -211,7 +211,7 @@ describe('a call pattern', () => {
             declaration(variant),
             matcher('byCall', callPattern(pattern), bound),
             matcher('byName', namedPattern(pattern), bound),
-            'async fn main() -> Array<String>:',
+            'ista async fn main() -> Array<String>:',
             `  const values: Array<E> = [${values.map((value) => literal(variant, value)).join(', ')}, E.Other]`,
             '  [values.map(byCall).join(";"), values.map(byName).join(";")]',
           ].join('\n');

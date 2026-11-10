@@ -8,7 +8,7 @@ fn clear(self: &"draft"):
 fn clear(self: &Int):
   self = 0
 
-async fn main() -> String:
+ista async fn main() -> String:
   let x: "draft" | Int = "draft"
   x.clear()
   let y: "draft" | Int = 5

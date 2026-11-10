@@ -51,7 +51,7 @@ describe('ista test', () => {
     const root = project({
       'a.test.ista': suiteModule('a'),
       'nested/b.test.ista': passingModule('b'),
-      'main.ista': 'async fn main():\n  ()',
+      'main.ista': 'ista async fn main():\n  ()',
     });
     const run = await ista(root, 'test');
     expect(run.code).toBe(1);

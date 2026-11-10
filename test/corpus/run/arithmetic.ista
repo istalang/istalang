@@ -5,6 +5,6 @@
 fn describe(a: Int, b: Int) -> String:
   "" + (a + b) + " " + a // b + " " + a % b + " " + -a % b
 
-async fn main():
+ista async fn main():
   const big = 10_000_000_000 * 10_000_000_000
   describe(3, 4) + " " + 7 / 2 + " " + (1.5 + 0.5) + " " + 2 / 4 + " " + -7 // 3 + " " + -7 % 5 + " big " + big + " " + 1 / 0 + " " + -1.5 / 0 + " " + 0.0 / 0.0

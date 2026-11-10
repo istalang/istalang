@@ -4,5 +4,5 @@
 fn rest(a: Int, b: Int) -> Int:
   a % b
 
-async fn main():
+ista async fn main():
   rest(1, 0)

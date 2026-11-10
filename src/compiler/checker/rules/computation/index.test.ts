@@ -104,7 +104,7 @@ describe('computed constants', () => {
         const main = [
           `const computed: ${type} = ${value}`,
           '',
-          'async fn main() -> Bool:',
+          'ista async fn main() -> Bool:',
           `  const local: ${type} = ${value}`,
           '  computed == local',
         ].join('\n');
@@ -123,7 +123,7 @@ describe('computed constants', () => {
       'const untupled: Int = (4,)',
       'const nested: Array<(Int,)> = [5, (6,)]',
       '',
-      'async fn main() -> Bool:',
+      'ista async fn main() -> Bool:',
       '  const localTupled: (Int,) = 3',
       '  const localUntupled: Int = (4,)',
       '  const localNested: Array<(Int,)> = [5, (6,)]',
@@ -141,7 +141,7 @@ describe('computed constants', () => {
       'const missing: Int? = none',
       'const mixed: Array<Int | String> = [1, "a"]',
       '',
-      'async fn main() -> Bool:',
+      'ista async fn main() -> Bool:',
       '  const localWrapped: Int? = 1',
       '  const localMissing: Int? = none',
       '  const localMixed: Array<Int | String> = [1, "a"]',

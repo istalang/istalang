@@ -5,7 +5,7 @@
 fn show(xs: Array<Int>) -> String:
   "[" + [for x in xs: String(x)].join(", ") + "]"
 
-async fn main() -> String:
+ista async fn main() -> String:
   let total = 0
   for i in 0..5:
     total += i

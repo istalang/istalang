@@ -15,7 +15,7 @@
 
 struct Point { x: Int }
 
-async fn main():
+ista async fn main():
   const empty = []
   const pairs = [:]
   const mixed = [1, "a"]

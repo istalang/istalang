@@ -10,7 +10,7 @@ fn text(x: any Stringable) -> String:
     case String as s: s
     case _: "?"
 
-async fn main() -> String:
+ista async fn main() -> String:
   const s: Status = "draft"
   const l: "sent" = "sent"
   `${isString(s)}|${isString(l)}|${isString("x")}|${text(s)}:${text(l)}`

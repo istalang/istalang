@@ -12,7 +12,7 @@ struct Pair { first: Int, second: Int }
 fn rename(user: Shared<User>, name: String):
   user->value.name = name
 
-async fn main():
+ista async fn main():
   const u = new Shared{value: User{name: "Ares", email: "a@x"}}
   const alias = u
   rename(alias, "Ares K")

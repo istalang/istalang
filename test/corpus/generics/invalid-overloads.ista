@@ -17,5 +17,5 @@ fn h(self: &Point) -> Int: 2
 fn either<T>(value: T, other: Int) -> Int: other
 fn either<T>(value: Int, other: T) -> Int: value
 
-async fn main():
+ista async fn main():
   const chosen = either(1, 2)

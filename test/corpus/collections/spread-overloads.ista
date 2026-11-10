@@ -8,6 +8,6 @@ fn take(ys: Array<Int?>) -> Int:
 fn take(ys: Array<String?>) -> Int:
   0 - ys.length()
 
-async fn main():
+ista async fn main():
   const xs = [1, 2]
   (take([...xs, none]), take([none, ...xs]))

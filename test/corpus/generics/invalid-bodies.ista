@@ -22,7 +22,7 @@ fn use<T is Mapper>(t: T) -> Int: 1
 fn conv(self: Money, x: Int) -> Int: x
 fn conv<V>(self: Cheap, x: V) -> V: x
 
-async fn main():
+ista async fn main():
   const a = price(Cheap{price: 1.0})
   const b = use(Money{cents: 1})
   const c = use(Cheap{price: 1.0})

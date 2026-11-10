@@ -33,7 +33,7 @@ fn unwrap(b: { value: Int }) -> Int:
 fn maybe(p: Point?) -> Int:
   p?.x ?? 0
 
-async fn main():
+ista async fn main():
   const pixel = Pixel{x: 3, y: 4}
   const point: Point = pixel
   const pair = twice(pixel)

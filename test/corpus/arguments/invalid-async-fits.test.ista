@@ -30,5 +30,5 @@ ista fn main():
     1
   }
 
-fn take(f: fn() -> Future<Int, "ista">) -> Int: 0
+fn take(f: ista fn() -> Future<Int, "ista">) -> Int: 0
 fn take(f: ista async fn() -> Int) -> Int: 1

@@ -6,7 +6,7 @@
 # Ranges hold ints (§3.8); a comprehension's condition is a bool and it runs over an iterable
 # (§4); a slice of a string can't be assigned, and a key no `index` takes can't slice (§3.9).
 
-async fn main():
+ista async fn main():
   const letters = "a"..3
   const kept = [for x in [1, 2] if x: x]
   const wrong = [for x in 5: x]

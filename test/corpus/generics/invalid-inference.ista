@@ -9,7 +9,7 @@ enum Color { Red, Green }
 fn empty<T>() -> T?:
   none
 
-async fn main():
+ista async fn main():
   const a = empty()
   const c = Red
   const d = Optional.None

@@ -22,6 +22,6 @@ fn read(counter: Counter) -> Int:
 fn read(counter: &Counter) -> Int:
   counter.count
 
-async fn main() -> String:
+ista async fn main() -> String:
   const counter = Counter{count: 1}
   show(5) + " " + show<Int>(5) + " " + show("x") + " " + scale(1, 5) + " " + scale(1.0, 5) + " " + read(counter)

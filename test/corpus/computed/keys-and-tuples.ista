@@ -9,7 +9,7 @@ fn bump<T is struct { [_]: Int }, K in keyof T>(t: &T, k: K) -> Int:
   t[k] += 1
   t[k]
 
-async fn main() -> String:
+ista async fn main() -> String:
   let p = P{b: 2, a: 6}
   const pairs = [for k, v in ...p: (k, v)]
   const literal = [("a", 1), ("b", 2)]

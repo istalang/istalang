@@ -13,6 +13,6 @@ fn show<U is Stringable>(self: Box, u: U) -> String:
 fn viaParameter<T is Shower>(x: T) -> String:
   x.show(5)
 
-async fn main():
+ista async fn main():
   const shower: any Shower = Box{label: "a"}
   (viaParameter(Box{label: "p"}), shower.show(true), shower.show("s"))

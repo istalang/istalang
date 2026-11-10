@@ -13,7 +13,7 @@ struct Px { y: Int, x: Int }
 
 fn norm(p: Pt) -> Int: p.x * 10 + p.y
 
-async fn main():
+ista async fn main():
   const plain = Plain{name: "p", renewals: 3}
   const lease = new Lease{...plain}
   const other = new Lease{name: "o"}

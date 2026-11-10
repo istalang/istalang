@@ -31,7 +31,7 @@ fn setFrom(a: &P, b: P):
 
 fn get(self: W) -> P: self.p
 
-async fn main():
+ista async fn main():
   let p = P{x: 1, y: 2}
   reset(&p)
   let w = W{p: p, n: (1, 1)}

@@ -4,5 +4,5 @@
 
 import mock from 'testing'
 
-async fn main():
+ista async fn main():
   ()
