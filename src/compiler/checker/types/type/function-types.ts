@@ -5,8 +5,8 @@
  * - `functionType` is the only way a function type is built, written, inferred or substituted
  *   alike, so its pack is flattened wherever a tuple fills it: into parameters by value, `Unit`
  *   into none.
- * - A function type keeps its head's reach as the head writes it (syntax/tokens/modifiers.ts), so
- *   type text and keys print it in the head's one order, with nothing converting between the two.
+ * - A function type keeps its head's reach (syntax/tokens/modifiers.ts), `plain` where the head
+ *   writes none (`reachOf`), and its text and key print it as the head does (`modifiersOf`).
  * - An async head is no part of the type (§3.14): `async fn(A) -> R` is `fn(A) -> Future<R>`,
  *   which a head's call gives (`headResult`), so the two spellings are one type, one key and one
  *   text, and a function returning a future is an async one wherever its type is all that's known.
@@ -16,7 +16,11 @@
  *   future's (`resultFitOf`): a plain function's call then gives a future already resolved.
  */
 
-import type { FunctionQualifiers } from '../../../syntax/tokens/modifiers.ts';
+import {
+  awaits,
+  type FunctionQualifiers,
+  type Modifiers,
+} from '../../../syntax/tokens/modifiers.ts';
 import type {
   FunctionType,
   ParameterSlot,
@@ -26,12 +30,25 @@ import type {
 } from './index.ts';
 import { errorType, tupleElements, tupleType } from './primitives.ts';
 
-/** What a function's values may capture (§3.14): only sendable values, or, undefined, any. */
-export type Reach = FunctionQualifiers['reach'];
+/**
+ * What a function's values may capture (§3.14): only sendable values, or any (`plain`), where its
+ * head writes no reach.
+ */
+export type Reach = NonNullable<FunctionQualifiers['reach']> | 'plain';
+
+/** The reach a head's `qualifiers` write. */
+export function reachOf(qualifiers: FunctionQualifiers): Reach {
+  return qualifiers.reach ?? 'plain';
+}
+
+/** The modifiers a head of `type` writes, which its text and key print. */
+export function modifiersOf({ reach }: FunctionType): Modifiers {
+  return { reach: reach === 'plain' ? undefined : reach };
+}
 
 /** Whether a function of reach `given` fits where one of `expected` is: a sendable one anywhere. */
 function reachFits(given: Reach, expected: Reach): boolean {
-  return given === expected || expected === undefined;
+  return given === expected || expected === 'plain';
 }
 
 /** What `functionType` builds a function type of; its pack may be any type bound to one. */
@@ -238,5 +255,5 @@ export function headResult(
   head: FunctionQualifiers,
   value: Type,
 ): Type {
-  return head.kind === undefined ? value : futureOf(value);
+  return awaits(head) ? futureOf(value) : value;
 }

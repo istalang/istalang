@@ -187,7 +187,7 @@ export function requirementType(
   required: FunctionDeclaration,
 ): FunctionType {
   return functionType({
-    reach: undefined,
+    reach: 'plain',
     parameters: checker.parametersOf(required).map(({ type, reference }) => ({ type, reference })),
     result: checker.resultOf(required),
   });

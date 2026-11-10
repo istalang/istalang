@@ -44,6 +44,7 @@ import type {
   TypeParameter,
 } from '../../../syntax/declarations/index.ts';
 import type { VariableDeclaration } from '../../../syntax/statements/index.ts';
+import { awaits } from '../../../syntax/tokens/modifiers.ts';
 import type { Identifier, NodeOf } from '../../../syntax/tree/node.ts';
 import type { AnchoredSpan } from '../../../syntax/tree/positions.ts';
 import type { TypeNode } from '../../../syntax/types/index.ts';
@@ -220,7 +221,7 @@ export class ProgramChecker implements CheckerContext {
     declaration: FunctionDeclaration,
     declaredResult: Type | undefined,
   ): CheckedBody {
-    const isAsync = declaration.qualifiers.kind !== undefined;
+    const isAsync = awaits(declaration.qualifiers);
     const body = this.inputs.bodyOf(module, declaration);
     if (body === undefined) {
       return unreachable('A function with no body had its body checked.');

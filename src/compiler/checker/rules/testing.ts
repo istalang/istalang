@@ -25,6 +25,7 @@ import type { FunctionDeclaration } from '../../syntax/declarations/index.ts';
 import { argumentValue } from '../../syntax/expressions/arguments.ts';
 import type { Call, Expression } from '../../syntax/expressions/index.ts';
 import { unparenthesized } from '../../syntax/expressions/readings.ts';
+import { awaits } from '../../syntax/tokens/modifiers.ts';
 import { bodyChildrenOf, type SyntaxNode } from '../../syntax/tree/index.ts';
 import type { NodeOf } from '../../syntax/tree/node.ts';
 import type { BodyContext } from '../contexts/body-context.ts';
@@ -119,7 +120,7 @@ export function checkSuite(
   const isSuiteResult =
     element?.kind === 'nominal' && element.entity === checker.wellKnownEntity(wellKnown.test);
   const plain =
-    !(declaration.qualifiers.kind !== undefined || declaration.isExtern) &&
+    !(awaits(declaration.qualifiers) || declaration.isExtern) &&
     declaration.typeParameters.length === 0 &&
     declaration.parameters.length === 0 &&
     isSuiteResult;

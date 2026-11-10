@@ -43,7 +43,7 @@ export function checkIf(context: BodyContext, node: If, expected: Type | undefin
     return branches.agreedType();
   }
   for (const { type, span } of branches.produced) {
-    if (!isAssignable(type, unitType)) {
+    if (!isAssignable(type, unitType, context.checker.fitting)) {
       context.report(checkerDiagnostics.ifWithoutElse(span, typeText(type)));
     }
   }

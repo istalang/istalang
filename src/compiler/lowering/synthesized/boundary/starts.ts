@@ -24,6 +24,7 @@ import type {
   Declaration,
   FunctionDeclaration,
 } from '../../../syntax/declarations/index.ts';
+import { awaits } from '../../../syntax/tokens/modifiers.ts';
 import type { Invalid } from '../../../syntax/tree/node.ts';
 import { writtenBodyOf } from '../../functions/bodies.ts';
 import { instanceLowering, nestedLowering, type StartEdges } from '../../functions/index.ts';
@@ -88,7 +89,7 @@ function functionStartable(
         target: declaration,
         key: keyOf(checker, declaration, parameters),
         parameters: parameters.map(({ type }) => type),
-        isAsync: declaration.qualifiers.kind !== undefined,
+        isAsync: awaits(declaration.qualifiers),
         outcome,
       });
 }
@@ -111,7 +112,7 @@ function lambdaStartable(
     return undefined;
   }
   const parameters = signature.parameters.map(({ type: each }) => each);
-  const isAsync = constant.form.lambda.qualifiers.kind !== undefined;
+  const isAsync = awaits(constant.form.lambda.qualifiers);
   const future = isAsync ? futureArgument(checker, signature.result) : undefined;
   return crossing(checker, {
     target: declaration,

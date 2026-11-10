@@ -42,6 +42,14 @@ export interface FunctionQualifiers {
 
 export const plainQualifiers: FunctionQualifiers = { reach: undefined, kind: undefined };
 
+/**
+ * Whether a function of `qualifiers` is async: its body may await, and its call gives a future
+ * (§3.14). The one reading of its async kind outside the parser and the printers.
+ */
+export function awaits({ kind }: FunctionQualifiers): boolean {
+  return kind !== undefined;
+}
+
 const groupOrder = Object.keys(modifierGroups) as readonly ModifierGroup[];
 
 const modifierWordSet: ReadonlySet<string> = new Set(Object.values(modifierGroups).flat());

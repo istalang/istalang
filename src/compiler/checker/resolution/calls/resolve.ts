@@ -229,7 +229,8 @@ function completeResolved(
   const written = request.arguments;
   checkReferencedPlaces(context, written, {
     name: request.name,
-    isAsync: signature.declaration.qualifiers.kind !== undefined,
+    // A function giving a future may run on past its call: it is async (§3.14).
+    isAsync: context.checker.fitting.futureValue(signature.result()) !== undefined,
     slots: written.map((_, index) => slots.get(index) ?? { reference: false }),
   });
   return applied.result;

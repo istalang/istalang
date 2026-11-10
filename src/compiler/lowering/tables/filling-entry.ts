@@ -14,6 +14,7 @@
 import type { CodeFunction } from '../../../definition/tables/functions.ts';
 import { unreachable } from '../../../foundation/structures/unreachable.ts';
 import { type Binding, parameterOfArgument } from '../../checker/surface/resolved-call.ts';
+import { awaits } from '../../syntax/tokens/modifiers.ts';
 import { callOfFilling } from '../calls/closed-calls.ts';
 import type { CodeContext } from '../context.ts';
 import { SynthesizedCode } from '../synthesized/index.ts';
@@ -41,7 +42,7 @@ export function fillingEntry(
     callOfFilling(instance, binding),
     code.parameters.map((_, index) => code.passedOn(index, passed)),
   );
-  const isAsync = declaration.qualifiers.kind !== undefined;
+  const isAsync = awaits(declaration.qualifiers);
   code.return(isAsync ? code.await(result) : result);
   return code.entry(context.tables.entryHeader(instance), isAsync, passed);
 }

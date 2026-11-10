@@ -54,13 +54,20 @@ export function writeElement(context: BodyContext, write: ElementWrite): boolean
   return made !== undefined && runsAtOnce(context, context.implicit.of(node, role), node.span);
 }
 
-/** Whether `call` runs at once; false after reporting at `at` that it is async. */
+/**
+ * Whether `call` runs at once; false after reporting at `at` that it is async, giving a future,
+ * whatever its head (§3.14).
+ */
 export function runsAtOnce(
   context: BodyContext,
   call: ResolvedCall | undefined,
   at: AnchoredSpan,
 ): boolean {
-  if (call?.function.qualifiers.kind === undefined) {
+  const { checker } = context;
+  if (
+    call === undefined ||
+    checker.fitting.futureValue(checker.resultOf(call.function)) === undefined
+  ) {
     return true;
   }
   context.report(checkerDiagnostics.asyncCollectionFunction(at, call.function.name.text));

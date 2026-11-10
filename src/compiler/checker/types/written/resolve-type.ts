@@ -46,7 +46,7 @@ import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import { substitutionFor } from '../parts/substitution.ts';
 import { aliasedAs } from '../type/alias-uses.ts';
 import { ownAssociatedType } from '../type/computed-types.ts';
-import { functionType, headResult, isPack } from '../type/function-types.ts';
+import { functionType, headResult, isPack, reachOf } from '../type/function-types.ts';
 import {
   type NominalDeclaration,
   nominalType,
@@ -159,7 +159,7 @@ function writtenFunctionType(resolution: Resolution, node: FunctionTypeNode): Ty
   const rest = last?.kind === 'RestType' ? last : undefined;
   const written = node.returnType === undefined ? unitType : resolve(resolution, node.returnType);
   return functionType({
-    reach: node.qualifiers.reach,
+    reach: reachOf(node.qualifiers),
     parameters: fixed.map((parameter) => ({
       type: resolve(resolution, parameter),
       reference: unparenthesizedType(parameter).kind === 'ReferenceType',

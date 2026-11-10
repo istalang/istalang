@@ -30,7 +30,7 @@ const types: fc.Arbitrary<Type> = fc.letrec<{ type: Type }>((tie) => ({
     fc.record({ parameters: fc.array(tie('type'), { maxLength: 2 }), result: tie('type') }).map(
       ({ parameters, result }): Type =>
         functionType({
-          reach: undefined,
+          reach: 'plain',
           parameters: parameters.map((type) => ({ type, reference: false })),
           result,
         }),

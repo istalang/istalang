@@ -260,7 +260,7 @@ export function bodiesOf(
         return { kind: 'tuple', elements: each.elements.map(slot) };
       case 'function':
         return functionType({
-          reach: undefined,
+          reach: 'plain',
           parameters: [{ type: slot(each.parameter), reference: false }],
           result: slot(each.result),
         });

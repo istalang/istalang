@@ -29,6 +29,7 @@ import {
 } from '../../../../syntax/declarations/index.ts';
 import type { Expression, Parameter } from '../../../../syntax/expressions/index.ts';
 import { parameterSite, patternNamedType } from '../../../../syntax/expressions/parameters.ts';
+import { awaits } from '../../../../syntax/tokens/modifiers.ts';
 import { lastName } from '../../../../syntax/tree/node.ts';
 import type { AnchoredSpan } from '../../../../syntax/tree/positions.ts';
 import {
@@ -302,7 +303,7 @@ export function declaredBodyResult(
     return undefined;
   }
   const declared = checker.resolveType(module, declaration.returnType);
-  if (declaration.qualifiers.kind === undefined || declared.kind === 'error') {
+  if (!awaits(declaration.qualifiers) || declared.kind === 'error') {
     return declared;
   }
   const future = futureArgument(checker, declared);

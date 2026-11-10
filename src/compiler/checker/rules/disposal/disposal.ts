@@ -21,6 +21,7 @@ import { disposeFunction } from '../../../../foundation/language/well-known/impl
 import type { FunctionDeclaration } from '../../../syntax/declarations/index.ts';
 import type { Parameter } from '../../../syntax/expressions/index.ts';
 import { callOfCallee } from '../../../syntax/expressions/readings.ts';
+import { awaits } from '../../../syntax/tokens/modifiers.ts';
 import { fieldChildrenOf, nestsFunction, type SyntaxNode } from '../../../syntax/tree/index.ts';
 import type { NodeOf } from '../../../syntax/tree/node.ts';
 import type { Disposal } from '../../check.ts';
@@ -162,7 +163,7 @@ export function checkDisposeDeclaration(
   if (
     parameters.length !== 1 ||
     self?.reference === true ||
-    declaration.qualifiers.kind !== undefined ||
+    awaits(declaration.qualifiers) ||
     !returnsUnit
   ) {
     checker.report(module, checkerDiagnostics.disposeSignature(at));

@@ -24,6 +24,7 @@ import { checkProgram } from './checker/check.ts';
 import { lower, lowerTests } from './lowering/lower.ts';
 import { type ModuleId, type Program, programModule } from './program/program.ts';
 import type { FunctionDeclaration } from './syntax/declarations/index.ts';
+import { awaits } from './syntax/tokens/modifiers.ts';
 
 export interface ModuleDiagnostics {
   readonly source: SourceText;
@@ -141,7 +142,7 @@ function mainOf(program: Program, entry: ModuleId): FunctionDeclaration | undefi
   }
   return entity.overloads.find(
     (overload) =>
-      overload.qualifiers.kind !== undefined &&
+      awaits(overload.qualifiers) &&
       overload.typeParameters.length === 0 &&
       overload.parameters.length === 0 &&
       !overload.isExtern,

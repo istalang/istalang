@@ -207,7 +207,7 @@ struct FakeClock:
   start: Time
   _state: _Clock = new _Clock{now: start}
   now: fn() -> Time = fn(): _state->now
-  at: fn(Time) -> Future<Unit> = fn(deadline: Time): _waitUntil(_state, deadline)
+  at: fn(Time) -> Future<Unit> = fn(deadline: Time) -> Future<Unit>: _waitUntil(_state, deadline)
 
 # A fake clock's time, and the waits it fills as it passes their deadlines: ordered by deadline,
 # ties in the order they began, so it fills them in that order.
@@ -259,7 +259,7 @@ struct FakeQueue<Q, T, K = String>:
   _queues: _Queues<Q, T, K> = new _Queues<Q, T, K>{}
   open: fn(K) -> Q = fn(key: K): _opened(_queues, make, key).queue
   send: fn(Q, T) -> Unit = fn(queue: Q, message: T): _inboxOf(_queues, queue).send(message)
-  receive: fn(Q) -> Future<T> = fn(queue: Q): _inboxOf(_queues, queue).receive()
+  receive: fn(Q) -> Future<T> = fn(queue: Q) -> Future<T>: _inboxOf(_queues, queue).receive()
 
 shared struct _Queues<Q, T, K>:
   opened: Array<_Queue<Q, T, K>> = []

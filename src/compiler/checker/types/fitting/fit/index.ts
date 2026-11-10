@@ -160,7 +160,7 @@ interface Matching extends Omit<ConversionRules, 'same' | 'attempt' | 'trial'>, 
 export function fitOf(found: Type, expected: Type, fitting: Fitting): Fit | undefined {
   return matchConversion(found, expected, {
     ...fitting,
-    exact: (target, source) => isAssignable(source, target),
+    exact: (target, source) => isAssignable(source, target, fitting),
   });
 }
 
@@ -285,7 +285,7 @@ function convertedInto(found: Type, expected: Type, rules: Matching): Conversion
       return { kind: 'shape', to: expected };
     }
   }
-  if (isLiteralOf(found, expected)) {
+  if (isLiteralOf(found, expected, rules)) {
     return { kind: 'base' };
   }
   return rules.attempt(() => fitsByParts(found, expected, rules))
@@ -319,10 +319,11 @@ function membersConverted(found: UnionType, expected: Type, rules: Matching): Fi
  * Whether `found` is a literal type, or a union of literals, all of `base`'s base; the keys of a
  * struct not known yet are String literals too (§3.1).
  */
-function isLiteralOf(found: Type, base: Type): boolean {
+function isLiteralOf(found: Type, base: Type, futures: Pick<Futures, 'futureValue'>): boolean {
   return membersOf(found).every(
     (member) =>
-      (member.kind === 'literal' || member.kind === 'keys') && isAssignable(baseOf(member), base),
+      (member.kind === 'literal' || member.kind === 'keys') &&
+      isAssignable(baseOf(member), base, futures),
   );
 }
 
@@ -396,7 +397,7 @@ function intoSeveral(found: Type, expected: Type, fitting: Fitting): boolean {
   }
   const rules = matchingWith({
     ...fitting,
-    exact: (target, source) => isAssignable(source, target),
+    exact: (target, source) => isAssignable(source, target, fitting),
   });
   return (
     ownMember(found, expected, rules) === undefined &&
@@ -464,7 +465,7 @@ function fitsAsync(
 export function constraintFits(found: Constraint, expected: Constraint, fitting: Fitting): boolean {
   const rules = matchingWith({
     ...fitting,
-    exact: (target, source) => isAssignable(source, target),
+    exact: (target, source) => isAssignable(source, target, fitting),
   });
   return (
     sameConstraint(found, expected) ||

@@ -20,6 +20,7 @@ import { wellKnown } from '../../../../../foundation/language/well-known/index.t
 import { argumentValue } from '../../../../syntax/expressions/arguments.ts';
 import type { Call, Expression, Spawn } from '../../../../syntax/expressions/index.ts';
 import { calledName, unparenthesized } from '../../../../syntax/expressions/readings.ts';
+import { awaits } from '../../../../syntax/tokens/modifiers.ts';
 import type { BodyContext } from '../../../contexts/body-context.ts';
 import { checkerDiagnostics } from '../../../diagnostics/index.ts';
 import { calledVariant } from '../../../surface/named-variants.ts';
@@ -64,7 +65,7 @@ function outcomeOf(context: BodyContext, call: Call): Type {
   const returned = context.typeOf(call);
   const resolved = context.callAt(call);
   const awaited = context.checker.fitting.futureValue(returned);
-  const isAsync = resolved === undefined || resolved.function.qualifiers.kind !== undefined;
+  const isAsync = resolved === undefined || awaits(resolved.function.qualifiers);
   return isAsync && awaited !== undefined ? awaited : returned;
 }
 

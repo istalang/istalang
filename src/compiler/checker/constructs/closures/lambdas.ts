@@ -15,8 +15,8 @@
  *   instantiation flattens into single parameters, so its type ends in that pack.
  * - An async function's written result is its `Future<T>`, as for a declared one (§3.3), and so is
  *   its function type's (§3.14): its body gives the `T` an `await` on a call yields. Where a future
- *   is expected of a lambda's call, an async body gives the future's value, while a plain one may
- *   give the future or its value, made a future already resolved (`bodyResultGiven`).
+ *   is expected of a lambda's call, its body gives the future's value, a plain one's made a future
+ *   already resolved, unless it writes its result (`bodyResultGiven`).
  * - The function's own name, a local `fn`'s or a named lambda's, is declared before the body is
  *   checked when the result is known, so the body may call it; otherwise calling it is recursion
  *   needing a declared result (functions.ts).
@@ -33,6 +33,7 @@ import {
 import type { Lambda, Parameter } from '../../../syntax/expressions/index.ts';
 import { parameterSite } from '../../../syntax/expressions/parameters.ts';
 import { unparenthesized } from '../../../syntax/expressions/readings.ts';
+import { awaits } from '../../../syntax/tokens/modifiers.ts';
 import type { Identifier, Invalid } from '../../../syntax/tree/node.ts';
 import type { AnchoredSpan } from '../../../syntax/tree/positions.ts';
 import type { TypeNode } from '../../../syntax/types/index.ts';
@@ -95,7 +96,7 @@ export function lambdaAccepts(context: BodyContext, node: Lambda): Admits | unde
       shape.parameters.length <= fixed;
     return (
       shape !== undefined &&
-      (node.qualifiers.kind === undefined ||
+      (!awaits(node.qualifiers) ||
         isOpen(shape.result) ||
         checker.fitting.futureValue(shape.result) !== undefined) &&
       (fillsPack ||
@@ -195,21 +196,19 @@ export function inferLambda(
 type ParameterSlots = Pick<FunctionType, 'parameters' | 'pack'>;
 
 /**
- * What a lambda's position says of its result: the type it is declared to give, or one its body
- * only leans on, the result being what the body gives: open in the constraint scope of the call it
- * is passed to, which guides its `return`s too (`guided`), or a type its body's value is checked
- * against, its `return`s agreeing among themselves (`hinted`).
+ * What a lambda's position says of its result: the type it is declared to give, or how it guides
+ * its body only, the result being what the body gives.
  */
 interface ResultGiven {
-  readonly kind: 'declared' | 'guided' | 'hinted';
+  readonly kind: 'declared' | 'guided';
   readonly type: Type;
 }
 
 /**
  * What a lambda's position says of what its body gives, where it says `result` of its call
- * (§3.14): an async lambda's body gives the value of the future expected, and nothing is said
- * where none is; a plain one's body may give a future expected or its value, made a future already
- * resolved, so a declared future's value only hints at what it gives.
+ * (§3.14): the value of the future expected, which an async lambda's body gives and a plain one's
+ * too, made a future already resolved; nothing where none is expected of an async one. A plain
+ * lambda giving a future where one is expected writes its result.
  */
 function bodyResultGiven(
   context: BodyContext,
@@ -219,12 +218,11 @@ function bodyResultGiven(
   if (result === undefined) {
     return undefined;
   }
-  const isPlain = node.qualifiers.kind === undefined;
   const value = context.checker.fitting.futureValue(result.type);
   if (value === undefined) {
-    return isPlain ? result : undefined;
+    return awaits(node.qualifiers) ? undefined : result;
   }
-  return { kind: isPlain && result.kind === 'declared' ? 'hinted' : result.kind, type: value };
+  return { ...result, type: value };
 }
 
 /** A lambda where its position gives `slots` for its parameters and says `result`, when it does. */
@@ -236,8 +234,7 @@ function checkLambdaAs(
 ): Type {
   const ofBody = bodyResultGiven(context, node, result);
   const given = ofBody?.kind === 'declared' ? ofBody.type : undefined;
-  const hint = ofBody?.kind === 'declared' ? undefined : ofBody?.type;
-  const guide = ofBody?.kind === 'guided' ? ofBody.type : undefined;
+  const hint = ofBody?.kind === 'guided' ? ofBody.type : undefined;
   const declaredResult =
     node.returnType === undefined
       ? given
@@ -246,7 +243,7 @@ function checkLambdaAs(
     name: node.name,
     parameters: nestedParameters(context, node.parameters, slots),
     declaredResult,
-    guided: guide === undefined ? undefined : { node, guide, inScope: context.scopes.here() },
+    guided: hint === undefined ? undefined : { node, guide: hint, inScope: context.scopes.here() },
     reach: node.span,
     tail: (declared) => {
       // A literal it gives while its result is open stays fresh, as a block's value does.
@@ -298,7 +295,7 @@ function checkNested(context: BodyContext, node: NestedFunction, header: NestedH
   const slots = parameters
     .filter((parameter) => parameter !== rest)
     .map((parameter) => ({ type: parameter.type, reference: parameter.reference }));
-  const typeWith = (produces: Type, reach?: Reach): FunctionType =>
+  const typeWith = (produces: Type, reach: Reach = 'plain'): FunctionType =>
     functionType({
       reach,
       parameters: slots,
@@ -310,7 +307,7 @@ function checkNested(context: BodyContext, node: NestedFunction, header: NestedH
   }
   const scope = new FunctionScope(
     node,
-    node.qualifiers.kind !== undefined,
+    awaits(node.qualifiers),
     new ReturnScope(declaredResult, true, header.guided),
     header.reach,
   );
@@ -333,7 +330,7 @@ function checkNested(context: BodyContext, node: NestedFunction, header: NestedH
         !context.variables.isChangeable(capture.entity) &&
         isSendable(context.checker, capture.type),
     );
-    const recorded = typeWith(produces, sendable ? 'sendable' : undefined);
+    const recorded = typeWith(produces, sendable ? 'sendable' : 'plain');
     if (name !== undefined) {
       context.variables.declare(name, recorded);
     }

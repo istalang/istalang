@@ -37,6 +37,6 @@ export function widened(type: Type, rules: TypeRules): Type {
 export function sendableWidened(type: Type, rules: TypeRules): Type {
   const children = mapChildren(type, (child) => sendableWidened(child, rules), rules);
   const wider =
-    children.kind === 'function' ? functionType({ ...children, reach: undefined }) : children;
+    children.kind === 'function' ? functionType({ ...children, reach: 'plain' }) : children;
   return sameType(wider, type) ? type : { ...wider, alias: undefined };
 }

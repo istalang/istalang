@@ -1,16 +1,15 @@
-# error: 5105 at 20:4
-# error: 5001 at 23:31
-# error: 5123 at 24:8
-# error: 5001 at 25:44
-# error: 5001 at 27:59
-# error: 5001 at 28:45
-# error: 5001 at 31:5
-# error: 5105 at 35:4
+# error: 5105 at 19:4
+# error: 5001 at 22:31
+# error: 5123 at 23:8
+# error: 5001 at 24:44
+# error: 5001 at 26:59
+# error: 5001 at 29:14
+# error: 5105 at 34:4
 # An async function never fits a plain function type, and a plain one fits an async type (§3.14),
 # inside a value type too (§3.5), but an async one never fits made async again; a mock never makes
-# its target async (§10). A plain lambda's `return`s agree, as its body's value does. A rest
-# overload clashes with another one when a call fits both alike (§3.7), and so do overloads on the
-# two spellings of one function type.
+# its target async (§10). A plain lambda's `return`s give the future's value, as its body does.
+# A rest overload clashes with another one when a call fits both alike (§3.7), and so do overloads
+# on the two spellings of one function type.
 import * as testing from 'testing'
 
 fn plain() -> Int: 1

@@ -77,7 +77,7 @@ export function relatedAsIs(expected: Type, found: Type, relating: Relating): bo
     return bound;
   }
   if (!(mentionsVariable(expected, relating) || mentionsVariable(found, relating))) {
-    return isAssignable(found, expected);
+    return isAssignable(found, expected, relating.fitting);
   }
   if (found.kind === 'union' && mentionsVariable(found, relating)) {
     return expected.kind === 'union'

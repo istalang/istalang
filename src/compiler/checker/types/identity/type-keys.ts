@@ -51,6 +51,7 @@ import { modifiersText } from '../../../syntax/tokens/modifiers.ts';
 import { holdsRecursion } from '../parts/type-children.ts';
 import type { AliasUse } from '../type/alias-uses.ts';
 import type { MappedParts, RecursiveGraph } from '../type/computed-types.ts';
+import { modifiersOf } from '../type/function-types.ts';
 import type {
   AnonymousStructType,
   FieldMember,
@@ -245,7 +246,7 @@ function functionKeyOf(type: FunctionType, key: (type: Type) => string): string 
   if (type.pack !== undefined) {
     parameters.push(`...${key(type.pack)}`);
   }
-  return `${modifiersText({ reach: type.reach })}fn(${parameters.join(',')})->${key(type.result)}`;
+  return `${modifiersText(modifiersOf(type))}fn(${parameters.join(',')})->${key(type.result)}`;
 }
 
 /** The key of an unreduced use of a type `match` alias (§3.17). */

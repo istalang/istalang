@@ -4,12 +4,14 @@
  * map keyed by type uses. A shape is the same type wherever and in whatever order it is written,
  * and an alias is the type it names, because the key says so.
  *
- * The exact relations built on it live here too: assignability, which only `Never`, the error type
- * and a function's looser header (`functionFits`) widen, and constraints compared one by one.
+ * The exact relations built on it live here too: assignability, which only `Never`, a future of
+ * it, the error type and a function's looser header (`functionFits`) widen, and constraints
+ * compared one by one. A future of `Never` never gives a value, so it is a future of any type
+ * (§3.14), as `Never` is a value of any type (§2).
  */
 
 import { sameItems } from '../../../../foundation/structures/equality.ts';
-import { functionFits } from '../type/function-types.ts';
+import { type Futures, functionFits } from '../type/function-types.ts';
 import type { Constraint, Type } from '../type/index.ts';
 import { isPrimitive } from '../type/primitives.ts';
 import { typeKeys } from './type-keys.ts';
@@ -25,17 +27,48 @@ export function sameConstraint(first: Constraint, second: Constraint): boolean {
 }
 
 /**
- * Whether a value of type `source` fits where `target` is expected: the same type, or a function
- * whose sendability is at least `target`'s and whose result fits `target`'s (§2, §3.14).
+ * Whether a value of type `source` fits where `target` is expected as it is: the same type, a
+ * future of `Never` where a future is, or a function whose sendability is at least `target`'s and
+ * whose result fits `target`'s (§2, §3.14).
  */
-export function isAssignable(source: Type, target: Type): boolean {
+export function isAssignable(
+  source: Type,
+  target: Type,
+  futures: Pick<Futures, 'futureValue'>,
+): boolean {
   return (
     source.kind === 'error' ||
     target.kind === 'error' ||
     isPrimitive(source, 'Never') ||
     sameType(source, target) ||
+    (isNeverFuture(source, futures) && futures.futureValue(target) !== undefined) ||
     (source.kind === 'function' &&
       target.kind === 'function' &&
-      functionFits(target, source, sameType, (declared, given) => isAssignable(given, declared)))
+      functionFits(target, source, sameType, (declared, given) =>
+        resultAssignable(given, declared, futures),
+      ))
   );
+}
+
+/** Whether `type` is a future of `Never`, which never gives a value. */
+function isNeverFuture(type: Type, { futureValue }: Pick<Futures, 'futureValue'>): boolean {
+  const value = futureValue(type);
+  return value !== undefined && isPrimitive(value, 'Never');
+}
+
+/**
+ * Whether a function's result `given` fits as it is where `declared` is: as a value does, but for
+ * one that is no future where a future is, which a function giving it goes into only made async
+ * (fitting/fit/index.ts), `Never` too: its call never gives the future expected.
+ */
+function resultAssignable(
+  given: Type,
+  declared: Type,
+  futures: Pick<Futures, 'futureValue'>,
+): boolean {
+  const madeAsync =
+    given.kind !== 'error' &&
+    futures.futureValue(given) === undefined &&
+    futures.futureValue(declared) !== undefined;
+  return !madeAsync && isAssignable(given, declared, futures);
 }

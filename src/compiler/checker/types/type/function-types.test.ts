@@ -5,10 +5,16 @@
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
+import {
+  reportedNothing,
+  reportedOnce,
+} from '../../../../foundation/diagnostics/diagnostic.test-kit.ts';
 import { stdProgramOf } from '../../../binder/bind.test-kit.ts';
 import { idOf } from '../../../program/program.test-kit.ts';
 import type { FunctionDeclaration } from '../../../syntax/declarations/index.ts';
+import { reported } from '../../check.test-kit.ts';
 import { checkProgram } from '../../check.ts';
+import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import { typeKeys } from '../identity/type-keys.ts';
 import { typeText } from './type-text.ts';
 
@@ -54,5 +60,110 @@ describe('the two spellings of an async function type', () => {
       }),
       { numRuns: 30 },
     );
+  });
+
+  it('checks a plain lambda body and its returns against the future value where async fn(A) -> R is expected (§3.14)', () => {
+    expect(
+      reported(`
+fn main():
+  const unionReturns: async fn(Int) -> Int | String = fn(x): {
+    if x > 0:
+      return "positive"
+    1
+  }
+  const literalReturns: async fn(Int) -> "a" | "b" = fn(x): {
+    if x > 0:
+      return "a"
+    "b"
+  }
+  const singleLiteralReturn: async fn(Int) -> "a" = fn(x): {
+    return "a"
+  }
+  const bareVariantReturn: async fn(Int) -> Result<Int, String> = fn(x): {
+    if x == 0:
+      return Ok(0)
+    Err("no")
+  }
+  const recursiveNamed: async fn(Int) -> Int = fn fact(n): if n <= 1: 1 else: n * fact(n - 1)
+  _ = (unionReturns, literalReturns, singleLiteralReturn, bareVariantReturn, recursiveNamed)
+`),
+    ).toEqual(reportedNothing);
+  });
+
+  it('refuses passing an element or shared-struct accessor by & to any call returning a future (§3.7, §3.14)', () => {
+    expect(
+      reported(`
+async fn later(x: &Int) -> Future<Int>:
+  x += 1
+  x
+
+fn starting(x: &Int) -> Future<Int>: later(&x)
+
+async fn main():
+  let xs = [10]
+  _ = await starting(&xs[0])
+`),
+    ).toEqual(reportedOnce(checkerDiagnostics.accessorToAsync.code, 'xs[0]'));
+
+    expect(
+      reported(`
+trait Mutator:
+  fn mutate(self: Self, x: &Int) -> Future<Int>
+
+struct M {}
+async fn mutate(self: M, x: &Int) -> Future<Int>:
+  x += 1
+  x
+
+async fn main():
+  let xs = [10]
+  const m: any Mutator = M
+  _ = await m.mutate(&xs[0])
+`),
+    ).toEqual(reportedOnce(checkerDiagnostics.accessorToAsync.code, 'xs[0]'));
+  });
+
+  it('refuses a collection setIndex returning Future<Unit> even when declared with plain fn (§3.9, §3.14)', () => {
+    expect(
+      reported(`
+struct Bag { values: Map<String, Int> }
+
+fn index(self: Bag, key: String) -> Int:
+  self.values[key]
+
+async fn laterSet() -> Future<Unit>:
+  ()
+
+fn setIndex(self: &Bag, key: String, value: Int) -> Future<Unit>:
+  _ = (self, key, value)
+  laterSet()
+
+async fn main():
+  let bag = Bag{values: [:]}
+  bag["a"] = 1
+`),
+    ).toEqual(reportedOnce(checkerDiagnostics.asyncCollectionFunction.code, 'bag["a"]'));
+  });
+
+  it('fits async fn(...A) -> Never where async fn(...A) -> R is expected on packs and constants (§2, §3.5, §3.14)', () => {
+    expect(
+      reported(`
+const diverged: sendable async fn(Int) -> Int = async fn(x: Int) -> Future<Never>: panic("no")
+fn wrap<...A>(f: async fn(...A) -> Never) -> async fn(...A) -> Int: f
+fn main():
+  _ = diverged
+`),
+    ).toEqual(reportedNothing);
+  });
+
+  it('prefers an overload taking a plain function as-is over one making it async for a plain lambda with written parameter types (§3.7, §3.14)', () => {
+    expect(
+      reported(`
+fn run(f: fn(Int) -> Int, y: Int?) -> String: "sync"
+fn run(f: async fn(Int) -> Int, y: Int) -> String: "async"
+fn main():
+  _ = run(fn(x: Int): x + 1, 1)
+`),
+    ).toEqual(reportedNothing);
   });
 });

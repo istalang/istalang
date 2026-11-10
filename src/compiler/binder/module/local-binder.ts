@@ -34,6 +34,7 @@ import type {
 import type { Annotatable } from '../../syntax/items.ts';
 import type { Pattern } from '../../syntax/patterns.ts';
 import type { Block, For, VariableDeclaration } from '../../syntax/statements/index.ts';
+import { awaits } from '../../syntax/tokens/modifiers.ts';
 import type { SyntaxNode, SyntaxTree } from '../../syntax/tree/index.ts';
 import { type Identifier, isMissingName, type QualifiedName } from '../../syntax/tree/node.ts';
 import type { AnchoredSpan } from '../../syntax/tree/positions.ts';
@@ -252,7 +253,7 @@ export class LocalBinder {
       return;
     }
     const enclosing = scope.enclosingOf(functions);
-    if (enclosing?.qualifiers.kind !== undefined && !namesMain(name, entity)) {
+    if (enclosing !== undefined && awaits(enclosing.qualifiers) && !namesMain(name, entity)) {
       this.record(name, this.#ownCallOf(enclosing));
     } else {
       this.report(noOwnCall(name, entity));

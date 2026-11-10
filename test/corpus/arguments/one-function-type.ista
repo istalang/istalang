@@ -2,8 +2,8 @@
 # `async fn(A) -> R` is `fn(A) -> Future<R>`, one type (§3.14): a plain function giving a future
 # fits where an async one is expected as it is, and one giving a value fits made async, inside an
 # array too (§3.5), converting what it takes and gives; a generic one, or a variant's, gives the
-# future's value. A plain lambda's body gives the future or its value, its `return`s agreeing as
-# its value does; an async one's gives the value.
+# future's value. A lambda's body gives the future's value, a plain one's made a future, unless
+# it writes its result.
 struct Order { id: String }
 
 async fn retry(times: Int, call: async fn(String) -> Order) -> Future<Order>:
@@ -23,7 +23,7 @@ async fn main() -> Future<
   const widened: async fn(Int) -> Int? = fn(x: Int?) -> Int: (x ?? 0) * 2
   const absent: async fn(Int) -> Int? = fn(x: Int?) -> Int?: none
   const asyncLambda: fn(Int) -> Future<Int> = async fn(x): await later(x)
-  const forwarded: async fn(Int) -> Int = fn(x): later(x)
+  const forwarded: async fn(Int) -> Int = fn(x) -> Future<Int>: later(x)
   const returning: async fn(Int) -> Int? = fn(x): {
     if x > 0:
       return 1

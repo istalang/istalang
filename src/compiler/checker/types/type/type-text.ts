@@ -16,6 +16,7 @@ import { folded } from '../identity/folding.ts';
 import { holdsRecursion } from '../parts/type-children.ts';
 import type { AliasUse } from './alias-uses.ts';
 import { type MappedParts, type RecursiveType, unfoldRecursive } from './computed-types.ts';
+import { modifiersOf } from './function-types.ts';
 import {
   type AnonymousStructType,
   type Constraint,
@@ -146,7 +147,7 @@ export function functionTypeParts(type: FunctionType): {
     parameters.push(`...${typeText(type.pack)}`);
   }
   return {
-    head: `${modifiersText({ reach: type.reach })}fn`,
+    head: `${modifiersText(modifiersOf(type))}fn`,
     parameters,
     tail: ` -> ${typeText(type.result)}`,
   };

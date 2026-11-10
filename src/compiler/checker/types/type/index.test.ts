@@ -33,7 +33,7 @@ const pack = { kind: 'parameter', declaration: packDeclaration } as const;
 /** `fn(...fixed, ...A) -> Unit`. */
 function packed(fixed: readonly Type[]): FunctionType {
   return functionType({
-    reach: undefined,
+    reach: 'plain',
     parameters: fixed.map((type) => ({ type, reference: false })),
     pack,
     result: unitType,

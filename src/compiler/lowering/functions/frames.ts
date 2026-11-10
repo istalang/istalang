@@ -19,6 +19,7 @@ import type {
 } from '../../checker/surface/checked-body.ts';
 import type { Type } from '../../checker/types/type/index.ts';
 import type { Expression } from '../../syntax/expressions/index.ts';
+import { awaits } from '../../syntax/tokens/modifiers.ts';
 import type { Identifier } from '../../syntax/tree/node.ts';
 import {
   type BodyOwner,
@@ -143,7 +144,7 @@ export function instanceFrame(
   const parameters = checker.parametersOf(declaration);
   return {
     header: startHeader ?? tables.entryHeader(instance),
-    isAsync: declaration.qualifiers.kind !== undefined && entry.kind === 'own',
+    isAsync: awaits(declaration.qualifiers) && entry.kind === 'own',
     givesDefault: entry.kind === 'default',
     parameters: entry.kind === 'default' ? parameters.slice(0, entry.parameter) : parameters,
     captures: [],
@@ -167,7 +168,7 @@ export function nestedFrame(
   const { result, parameters, captures } = checked;
   return {
     header: startHeader ?? lowered.tables.nestedHeader(nested),
-    isAsync: node.qualifiers.kind !== undefined,
+    isAsync: awaits(node.qualifiers),
     givesDefault: false,
     parameters,
     captures,

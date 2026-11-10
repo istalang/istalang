@@ -65,7 +65,7 @@ const types: fc.Arbitrary<Type> = fc.letrec<{ type: Type }>((tie) => ({
     fc.record({ parameter: tie('type'), result: tie('type'), reference: fc.boolean() }).map(
       ({ parameter, result, reference }): Type =>
         functionType({
-          reach: undefined,
+          reach: 'plain',
           parameters: [{ type: parameter, reference }],
           result,
         }),
@@ -138,7 +138,7 @@ function functionOf(
 
 const kinds = fc.record({
   isAsync: fc.boolean(),
-  reach: fc.constantFrom<Reach>('sendable', undefined),
+  reach: fc.constantFrom<Reach>('sendable', 'plain'),
 });
 
 /** Two function types of one shape: the one given, the one expected, wrapped `count` times. */
@@ -156,7 +156,7 @@ describe('fitting a function where one giving a future is expected', () => {
       fc.property(pairs, ({ parameter, result, given, wanted, count }) => {
         const found = functionOf(parameter, result, given);
         const expected = wrapped(functionOf(parameter, result, wanted), count);
-        const sendableFits = given.reach === 'sendable' || wanted.reach === undefined;
+        const sendableFits = given.reach === 'sendable' || wanted.reach === 'plain';
         const fits = sendableFits && (given.isAsync === wanted.isAsync || wanted.isAsync);
         expect(fitShape(fitOf(found, expected, fittingApart))).toEqual(
           fits
@@ -171,8 +171,8 @@ describe('fitting a function where one giving a future is expected', () => {
   });
 
   it('makes a function inside another type async as a part of it (§3.5)', () => {
-    const plain = functionOf(intType, intType, { isAsync: false, reach: undefined });
-    const async = functionOf(intType, intType, { isAsync: true, reach: undefined });
+    const plain = functionOf(intType, intType, { isAsync: false, reach: 'plain' });
+    const async = functionOf(intType, intType, { isAsync: true, reach: 'plain' });
     const tuple = (element: Type): Type => ({ kind: 'tuple', elements: [element, intType] });
     expect(fitShape(fitOf(tuple(plain), tuple(async), fittingApart))).toEqual({
       conversion: { kind: 'parts', to: tuple(async) },
@@ -181,8 +181,8 @@ describe('fitting a function where one giving a future is expected', () => {
   });
 
   it('awaits an async function where one giving a future of a wider value is expected', () => {
-    const async = functionOf(intType, intType, { isAsync: true, reach: undefined });
-    const wider = functionOf(intType, wrapped(intType, 1), { isAsync: true, reach: undefined });
+    const async = functionOf(intType, intType, { isAsync: true, reach: 'plain' });
+    const wider = functionOf(intType, wrapped(intType, 1), { isAsync: true, reach: 'plain' });
     expect(fitShape(fitOf(async, wider, fittingApart))).toEqual({
       conversion: { kind: 'parts', to: wider },
       into: false,
@@ -195,12 +195,16 @@ describe('fitting a function where one giving a future is expected', () => {
       fc.property(pairs, ({ parameter, result, given, wanted, count }) => {
         const found = functionOf(parameter, neverType, given);
         const expected = wrapped(functionOf(parameter, result, wanted), count);
-        const sendableFits = given.reach === 'sendable' || wanted.reach === undefined;
-        // `Never` fits a future as it is; a future of it is awaited into what is expected.
-        const fits = sendableFits && (!given.isAsync || wanted.isAsync);
-        const fit = fitOf(found, expected, fittingApart);
-        expect(fit && { kind: fit.conversion.kind, into: fit.into !== undefined }).toEqual(
-          fits ? { kind: given.isAsync ? 'parts' : 'none', into: count > 0 } : undefined,
+        const sendableFits = given.reach === 'sendable' || wanted.reach === 'plain';
+        // A future of `Never` is one of any value; `Never` itself goes into one only made async.
+        const fits = sendableFits && (given.isAsync === wanted.isAsync || wanted.isAsync);
+        expect(fitShape(fitOf(found, expected, fittingApart))).toEqual(
+          fits
+            ? {
+                conversion: { kind: !given.isAsync && wanted.isAsync ? 'async' : 'none' },
+                into: count > 0,
+              }
+            : undefined,
         );
       }),
     );

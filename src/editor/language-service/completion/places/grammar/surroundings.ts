@@ -8,6 +8,7 @@
  */
 
 import type { LabelledScope } from '../../../../../compiler/syntax/statements/index.ts';
+import { awaits } from '../../../../../compiler/syntax/tokens/modifiers.ts';
 import {
   bodyOf,
   type SyntaxNode,
@@ -30,12 +31,12 @@ export function surroundingsOf(tree: SyntaxTree, chain: readonly SyntaxNode[]): 
     switch (node?.kind) {
       case 'FunctionDeclaration':
         return {
-          body: bodyKind(bodyOf(tree, node) === child, node.qualifiers.kind !== undefined),
+          body: bodyKind(bodyOf(tree, node) === child, awaits(node.qualifiers)),
           scopes,
         };
       case 'Lambda':
         return {
-          body: bodyKind(node.body === child, node.qualifiers.kind !== undefined),
+          body: bodyKind(node.body === child, awaits(node.qualifiers)),
           scopes,
         };
       case 'For':
