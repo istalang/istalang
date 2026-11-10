@@ -54,7 +54,12 @@ import type {
 } from '../surface/checked-body.ts';
 import type { FieldRead, FieldReading } from '../surface/checked-field.ts';
 import type { CheckedPattern, TargetBinding, TargetOwner } from '../surface/checked-pattern.ts';
-import type { ImplicitRole, ResolvedCall, ResolvedSite } from '../surface/resolved-call.ts';
+import type {
+  Binding,
+  ImplicitRole,
+  ResolvedCall,
+  ResolvedSite,
+} from '../surface/resolved-call.ts';
 import type { Admits } from '../types/fitting/expected.ts';
 import type { Fit } from '../types/fitting/fit/index.ts';
 import type { FieldMember, FunctionType, Type } from '../types/type/index.ts';
@@ -335,8 +340,10 @@ export interface CollectionRecord {
 
 /** The calls of function values (constructs/closures/value-calls.ts, §3.14). */
 export interface ValueCallRecord {
-  /** Records that `node` calls a function value. */
+  /** Records that `node` calls a function value, its arguments not judged yet. */
   readonly record: (node: CallingNode) => void;
+  /** Records how `node`'s arguments fill the value's parameters, as judging them bound them. */
+  readonly bind: (node: CallingNode, binding: Binding) => void;
   readonly has: (node: CallingNode) => boolean;
 }
 

@@ -29,7 +29,7 @@ import type { Argument } from '../../../../definition/instructions/places.ts';
 import type { Register } from '../../../../definition/operands.ts';
 import { unreachable } from '../../../../foundation/structures/unreachable.ts';
 import type { SignatureParameter } from '../../../checker/check.ts';
-import { parameterOfArgument } from '../../../checker/surface/resolved-call.ts';
+import { argumentsInOrder, parameterOfArgument } from '../../../checker/surface/resolved-call.ts';
 import type { RestSlot } from '../../../checker/types/type/function-types.ts';
 import { argumentValue } from '../../../syntax/expressions/arguments.ts';
 import type { Call, CallingNode } from '../../../syntax/expressions/calls.ts';
@@ -59,11 +59,17 @@ export function lowerCall(context: FunctionContext, node: Call): Register {
   return dst;
 }
 
-/** A call ready to emit: what it calls, its arguments as passed, and how each is passed. */
+/**
+ * A call ready to emit: what it calls, its arguments as passed, and how each is passed; for a
+ * deferred call, where among those arguments the function it gives goes (§3.14), which is made
+ * after them: past them for a resolved function, whose binding numbers it last, and at the
+ * parameter it fills for a function value, which takes its arguments in its parameters' order.
+ */
 export interface PreparedCall {
   readonly target: CallTarget;
   readonly passed: readonly PassedArgument[];
   readonly arguments: readonly Argument[];
+  readonly givenAt: number | undefined;
 }
 
 /**
@@ -82,7 +88,7 @@ export function preparedCall(
     return {
       target: { kind: 'value', register },
       passed,
-      arguments: valueArguments(context, node, passed),
+      ...valueArguments(context, node, passed),
     };
   }
   const call = context.callAt(node);
@@ -99,6 +105,7 @@ export function preparedCall(
     target: { kind: 'function', call },
     passed,
     arguments: passed.map(({ argument }) => argument),
+    givenAt: node.kind === 'DeferredCall' ? passed.length : undefined,
   };
 }
 
@@ -209,25 +216,40 @@ function passedArguments(
 }
 
 /**
- * The arguments a function value takes of what its call passes: each as passed, a pack's spread
- * as the elements of its tuple, since the value's type flattens the pack (§3.5).
+ * The arguments a function value takes of what its call passes, in its parameters' order as the
+ * checker bound them: each as passed, a pack's spread as the elements of its tuple, since the
+ * value's type flattens the pack (§3.5); and where the function a deferred call gives goes among
+ * them, the argument after those written (§3.14).
  */
 function valueArguments(
   context: FunctionContext,
   node: CallingNode,
   passed: readonly PassedArgument[],
-): readonly Argument[] {
-  return writtenArgumentsOf(node).flatMap((argument, index) => {
-    const { argument: given } = passed[index] ?? unreachable(`Argument ${index} isn't passed.`);
-    if (argument.kind !== 'Spread' || given.kind !== 'value') {
-      return [given];
+): Pick<PreparedCall, 'arguments' | 'givenAt'> {
+  const { binding } = context.body.valueCalls.get(node) ?? {};
+  const written = writtenArgumentsOf(node);
+  const taken: Argument[] = [];
+  let givenAt: number | undefined;
+  for (const { index, isSpread } of argumentsInOrder(
+    binding ?? unreachable('A function value called clean binds its arguments.'),
+  )) {
+    const argument = written[index];
+    const given = passed[index]?.argument;
+    if (node.kind === 'DeferredCall' && index === written.length) {
+      givenAt = taken.length;
+    } else if (argument === undefined || given === undefined) {
+      unreachable(`Argument ${index} isn't passed.`);
+    } else if (isSpread && argument.kind === 'Spread' && given.kind === 'value') {
+      const elements = packElementsOf(context, given.register, {
+        type: context.typeOf(argument.expression),
+        span: argument.span,
+      });
+      taken.push(...elements.map((register) => ({ kind: 'value', register }) as const));
+    } else {
+      taken.push(given);
     }
-    const elements = packElementsOf(context, given.register, {
-      type: context.typeOf(argument.expression),
-      span: argument.span,
-    });
-    return elements.map((register) => ({ kind: 'value', register }) as const);
-  });
+  }
+  return { arguments: taken, givenAt };
 }
 
 /**

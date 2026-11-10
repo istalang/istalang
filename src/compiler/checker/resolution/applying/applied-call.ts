@@ -149,7 +149,7 @@ export function completeCall(
   fitArguments(
     context,
     settled,
-    filledTypes(checker.typeRules, application, instantiation, settled.length),
+    filledTypes(checker.typeRules, application, instantiation.substitution, settled.length),
   );
   recordArgumentKeys(context, settled, { application, instantiation });
   return {

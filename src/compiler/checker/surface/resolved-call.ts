@@ -59,9 +59,35 @@ type ParameterSource =
   | { readonly kind: 'default' };
 
 /** An argument a rest parameter collects: its number, and whether it spreads its items (§3.3). */
-interface RestItem {
+export interface RestItem {
   readonly index: number;
   readonly isSpread: boolean;
+}
+
+/**
+ * A call of a function value as checked (§3.14): which of the value's parameters each argument
+ * fills, its pack one rest parameter (§3.5), once its arguments are judged to fill them; none
+ * where they don't, which was reported.
+ */
+export interface ValueCallMade {
+  readonly binding: Binding | undefined;
+}
+
+/**
+ * The arguments `binding` passes, in parameter order, each as a rest parameter's item is: a
+ * parameter's own argument spreads nothing; a default passes none.
+ */
+export function argumentsInOrder(binding: Binding): readonly RestItem[] {
+  return binding.flatMap((source) => {
+    switch (source.kind) {
+      case 'argument':
+        return [{ index: source.index, isSpread: false }];
+      case 'rest':
+        return source.items;
+      default:
+        return [];
+    }
+  });
 }
 
 /** By argument number, the parameter `binding` passes it to, a rest parameter's items included. */

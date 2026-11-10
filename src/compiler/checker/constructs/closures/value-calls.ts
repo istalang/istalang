@@ -22,7 +22,11 @@ import { calledName } from '../../../syntax/expressions/readings.ts';
 import type { BodyContext, ValueCallRecord } from '../../contexts/body-context.ts';
 import type { Pass, Passes, PassRecords, PassTable } from '../../contexts/passes.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
-import { fitArguments, withSolvedTypes } from '../../resolution/applying/argument-fit.ts';
+import {
+  filledTypes,
+  fitArguments,
+  withSolvedTypes,
+} from '../../resolution/applying/argument-fit.ts';
 import { checkReferencedPlaces } from '../../resolution/calls/places.ts';
 import { explain } from '../../resolution/calls/resolve/explanations.ts';
 import {
@@ -34,7 +38,9 @@ import { stoppedOperation } from '../../resolution/calls/stopped-operations.ts';
 import { type Taken, takenBy } from '../../resolution/choosing/applicability.ts';
 import { bindArguments } from '../../resolution/choosing/binding.ts';
 import type { Inapplicability, Takes } from '../../resolution/choosing/call-arguments.ts';
+import type { Binding, ValueCallMade } from '../../surface/resolved-call.ts';
 import type { Inference } from '../../types/inference/infer.ts';
+import { noSubstitution } from '../../types/parts/substitution.ts';
 import { fieldOf } from '../../types/traits/known-fields.ts';
 import { packRestSlot } from '../../types/type/function-types.ts';
 import type { FunctionType, Type } from '../../types/type/index.ts';
@@ -88,14 +94,18 @@ export function calledValueType(context: BodyContext, node: CallingNode): Type {
 
 /** The calls of function values in one body, recorded as each is checked. */
 export class ValueCalls implements ValueCallRecord {
-  readonly #calls: PassTable<CallingNode, true>;
+  readonly #calls: PassTable<CallingNode, ValueCallMade>;
 
   constructor(passes: Passes) {
     this.#calls = passes.table();
   }
 
   record(node: CallingNode): void {
-    this.#calls.set(node, true);
+    this.#calls.set(node, { binding: undefined });
+  }
+
+  bind(node: CallingNode, binding: Binding): void {
+    this.#calls.set(node, { binding });
   }
 
   has(node: CallingNode): boolean {
@@ -103,7 +113,7 @@ export class ValueCalls implements ValueCallRecord {
   }
 
   /** The calls as `pass` sees them. */
-  at(pass: Pass): PassRecords<CallingNode, true> {
+  at(pass: Pass): PassRecords<CallingNode, ValueCallMade> {
     return this.#calls.at(pass);
   }
 }
@@ -236,16 +246,18 @@ function completeValueCall(
     explain(context, { site: node, name, arguments: given, typeArguments }, taken);
     return undefined;
   }
+  const { typeRules } = context.checker;
   fitArguments(
     context,
     given.map(appliedArgumentOf),
-    callee.parameters.map(({ type }) => type),
+    filledTypes(typeRules, taken, noSubstitution, given.length),
   );
   checkReferencedPlaces(context, given, {
     name,
     // A function value is async wherever its call gives a future: its type is all that is known.
     isAsync: context.checker.fitting.futureValue(callee.result) !== undefined,
-    slots: callee.parameters,
+    slots: given.map((_, index) => taken.slots.get(index) ?? { reference: false }),
   });
+  context.valueCalls.bind(node, taken.binding);
   return call.type;
 }

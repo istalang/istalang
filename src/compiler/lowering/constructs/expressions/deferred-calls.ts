@@ -38,14 +38,16 @@ import { copied } from '../statements/variables.ts';
 import { leaveAll, preparedCall } from './calls.ts';
 
 export function lowerDeferredCall(context: FunctionContext, node: DeferredCall): Register {
-  const { target, passed, arguments: given } = preparedCall(context, node, 'asWritten');
-  const function_ = deferredFunction(context, node);
-  const dst = emitTo(context, node.span, target, [
-    ...given,
-    { kind: 'value', register: function_ },
-  ]);
+  const { target, passed, arguments: given, givenAt } = preparedCall(context, node, 'asWritten');
+  const function_ = { kind: 'value', register: deferredFunction(context, node) } as const;
+  const dst = emitTo(context, node.span, target, given.toSpliced(givenAtOf(givenAt), 0, function_));
   leaveAll(passed);
   return dst;
+}
+
+/** Where among a deferred call's arguments its function goes, which its preparing says. */
+function givenAtOf(givenAt: number | undefined): number {
+  return givenAt ?? unreachable('A deferred call is prepared with a place for its function.');
 }
 
 /** The function `node` gives its taker: a closure of its entry over what its call computes now. */
@@ -79,7 +81,7 @@ function computedNow(
   call: CallingNode,
   site: Expression,
 ): { readonly plan: DeferredPlan; readonly values: readonly Register[] } {
-  const { target, arguments: given } = preparedCall(context, call, 'byValue');
+  const { target, arguments: given, givenAt } = preparedCall(context, call, 'byValue');
   const passes = given.map((argument) =>
     argument.kind === 'value'
       ? argument.register
@@ -91,7 +93,7 @@ function computedNow(
     site,
     target: target.kind === 'value' ? { kind: 'captured' } : target,
     passes: passes.length,
-    gives: gives?.plan,
+    gives: gives && { plan: gives.plan, at: givenAtOf(givenAt) },
     result: context.typeOf(site),
     givenAs:
       givenAs !== undefined && takesNothing(givenAs)
@@ -142,12 +144,13 @@ export function deferredEntry(
 /** How many values a function `plan` makes captures. */
 function capturedBy(plan: DeferredPlan): number {
   const callee = plan.target.kind === 'captured' ? 1 : 0;
-  return callee + plan.passes + (plan.gives === undefined ? 0 : capturedBy(plan.gives));
+  return callee + plan.passes + (plan.gives === undefined ? 0 : capturedBy(plan.gives.plan));
 }
 
 /**
  * `plan`'s call made from `values`, what its function captured: a function value's callee, then
- * what the call passes, then, for a deferred call, the function it gives, made from the rest.
+ * what the call passes, and, for a deferred call, the function it gives, made from the rest and
+ * passed where its plan places it.
  */
 function madeCall(
   code: SynthesizedCode,
@@ -162,19 +165,19 @@ function madeCall(
       : { kind: 'value', register: callee ?? unreachable('A function value is captured first.') };
   const passed = values.slice(callees, callees + plan.passes);
   const { gives } = plan;
-  const given =
+  const registers =
     gives === undefined
-      ? []
-      : [
+      ? passed
+      : passed.toSpliced(
+          gives.at,
+          0,
           closure(
             code,
-            code.tables.deferredIndex({ owner, plan: gives }),
+            code.tables.deferredIndex({ owner, plan: gives.plan }),
             values.slice(callees + plan.passes),
-            gives.site.span,
+            gives.plan.site.span,
           ),
-        ];
-  const arguments_ = [...passed, ...given].map(
-    (register) => ({ kind: 'value', register }) as const,
-  );
+        );
+  const arguments_ = registers.map((register) => ({ kind: 'value', register }) as const);
   return emitTo(code, plan.site.span, target, arguments_);
 }

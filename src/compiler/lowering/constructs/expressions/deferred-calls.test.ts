@@ -153,6 +153,28 @@ describe('a deferred call', () => {
     expect(await outcomeOf(text)).toBe(23);
   });
 
+  it.each([
+    ['a function value taking a pack', 'run(...args) pick()'],
+    ['a function value taking a pack, a deferred call nested', 'run(...args) keep pick()'],
+  ])(
+    "gives %s its function at the parameter it fills, before the pack's items",
+    async (_title, call) => {
+      const text = [
+        'fn pick() -> Int:',
+        '  3',
+        'fn keep(f: fn() -> Int) -> Int:',
+        '  f()',
+        'fn digits(f: fn() -> Int, a: Int, b: Int) -> Int:',
+        '  f() * 100 + a * 10 + b',
+        'fn call<...A>(run: fn(fn() -> Int, ...A) -> Int, ...args: A) -> Int:',
+        `  ${call}`,
+        'async fn main() -> Future<Int>:',
+        '  call(digits, 1, 2)',
+      ].join('\n');
+      expect(await outcomeOf(text)).toBe(312);
+    },
+  );
+
   it('leaves before any function is built where its call stops before it is made (§2)', async () => {
     const text = [
       'fn later(f: fn() -> Int) -> Int:',

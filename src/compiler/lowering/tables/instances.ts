@@ -140,10 +140,16 @@ export interface DeferredPlan {
   readonly target:
     | Extract<CallTarget, { readonly kind: 'function' }>
     | { readonly kind: 'captured' };
-  /** How many values the call passes as written: a method's receiver and its arguments. */
+  /**
+   * How many values the call passes as written: a method's receiver and its arguments, a function
+   * value's in its parameters' order, a pack's spread as its elements.
+   */
   readonly passes: number;
-  /** For a deferred call, the function it gives its taker, passed after those. */
-  readonly gives: DeferredPlan | undefined;
+  /**
+   * For a deferred call, the function it gives its taker and where among those values it goes:
+   * past them for a resolved function, at the parameter it fills for a function value.
+   */
+  readonly gives: { readonly plan: DeferredPlan; readonly at: number } | undefined;
   /** What the call gives. */
   readonly result: Type;
   /** The type the function is given as: the parameter of the taker it fills. */

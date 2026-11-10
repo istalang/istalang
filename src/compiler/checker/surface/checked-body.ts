@@ -51,6 +51,7 @@ import type {
   MadeCall,
   ResolvedCall,
   ResolvedSite,
+  ValueCallMade,
 } from './resolved-call.ts';
 
 /**
@@ -179,8 +180,11 @@ export interface BodyFacts {
   readonly expectedOf: (site: ValueSite) => Type | undefined;
   /** The function each call site of this body calls, or each function value names. */
   readonly resolved: PassRecords<ResolvedSite, ResolvedCall>;
-  /** The calls of function values, which call whatever their callee gives (§3.14). */
-  readonly valueCalls: PassRecords<CallingNode, true>;
+  /**
+   * The calls of function values, which call whatever their callee gives (§3.14), each with how
+   * its arguments fill the value's parameters.
+   */
+  readonly valueCalls: PassRecords<CallingNode, ValueCallMade>;
   /**
    * The type the function a deferred call gives its taker is given as, the parameter it fills,
    * at the call it makes later (§3.14); undefined for any other expression.

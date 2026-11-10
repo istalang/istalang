@@ -13,11 +13,12 @@
 
 import type { Expression } from '../../../syntax/expressions/index.ts';
 import type { BodyContext } from '../../contexts/body-context.ts';
-import { substitute } from '../../types/parts/substitution.ts';
+import { type Substitution, substitute } from '../../types/parts/substitution.ts';
 import type { LiteralType, Type } from '../../types/type/index.ts';
 import type { TypeRules } from '../../types/type/type-rules.ts';
 import { typeText } from '../../types/type/type-text.ts';
 import { givenKeysOwner } from '../../types/written/key-types.ts';
+import type { Taken } from '../choosing/applicability.ts';
 import type { CallArgument } from '../choosing/call-arguments.ts';
 import type { Application } from '../choosing/choice.ts';
 import type { Instantiation } from '../conformance/conformance.ts';
@@ -32,20 +33,18 @@ export interface FittedArgument {
 }
 
 /**
- * The type each of `count` arguments fills in the chosen call, instantiated; undefined for none.
+ * The type each of `count` arguments fills in the call `taken` binds (its `slots`, by argument
+ * number), as `substitution` instantiates it; undefined for none.
  */
 export function filledTypes(
   rules: TypeRules,
-  application: Application,
-  instantiation: Instantiation,
+  { slots }: Pick<Taken, 'slots'>,
+  substitution: Substitution,
   count: number,
 ): readonly (Type | undefined)[] {
-  const { slots } = application;
   return Array.from({ length: count }, (_, index) => {
     const slot = slots.get(index);
-    return slot === undefined
-      ? undefined
-      : substitute(slot.type, instantiation.substitution, rules);
+    return slot === undefined ? undefined : substitute(slot.type, substitution, rules);
   });
 }
 
