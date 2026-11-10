@@ -10,11 +10,12 @@
 
 import { globSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { documentPaths } from '../../test/corpus/spec-examples.ts';
 import type { Embed } from './embedding.ts';
 import { type FileRewrite, rewriteFile } from './engine.ts';
 import type { Pass } from './pass.ts';
 import { embedIsta } from './sources/ista-file.ts';
-import { embedMarkdown, exampleDocuments } from './sources/markdown.ts';
+import { embedMarkdown } from './sources/markdown.ts';
 import { embedTypeScript } from './sources/typescript/index.ts';
 
 interface SourceKind {
@@ -33,7 +34,7 @@ const sourceKinds = {
       ),
     embed: embedIsta,
   },
-  markdown: { filesIn: () => exampleDocuments, embed: embedMarkdown },
+  markdown: { filesIn: () => documentPaths, embed: embedMarkdown },
   typescript: {
     filesIn: (root) => globSync('{src,test}/**/*.{test,test-kit}.ts', { cwd: root }),
     embed: embedTypeScript,

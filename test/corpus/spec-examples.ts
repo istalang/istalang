@@ -5,6 +5,10 @@
  * of keeping copies, which would drift with the next doc edit. Each example records the heading it
  * sits under and the line where its code starts, so a failure points into its document.
  *
+ * Each also records where each of its code lines starts in its document and the indentation its
+ * fence strips, so a tool editing examples in place (scripts/rewrite) maps its edits back into the
+ * document. `extractExamples` reads a document's text as given, for such a tool's text in hand.
+ *
  * Some examples use `…` to mark omitted code, so they aren't valid source as written. `elided` is
  * derived from the text, never kept in a hand-maintained list, so a new elided example needs no
  * test change. Others use `...` the same way, which only parsing tells apart from a spread;
@@ -21,7 +25,8 @@ import { readFileSync } from 'node:fs';
 /** A whole module, statements shown outside any function, or a sample that is neither. */
 type ExampleForm = 'module' | 'statements' | 'fragment';
 
-const documentPaths = ['docs/spec.md', 'docs/guide.md'] as const;
+/** The documents holding examples, relative to the repository's root. */
+export const documentPaths = ['docs/spec.md', 'docs/guide.md'] as const;
 
 type DocumentPath = (typeof documentPaths)[number];
 
@@ -32,6 +37,10 @@ export interface SpecExample {
   /** One-based line of the example's first code line in `document`. */
   readonly line: number;
   readonly code: string;
+  /** The UTF-16 offset in `document` where each line of `code` starts, past its indentation. */
+  readonly codeStarts: readonly number[];
+  /** The indentation of the example's fence, which each of its lines in `document` drops. */
+  readonly indentation: string;
   readonly elided: boolean;
   readonly form: ExampleForm;
 }
@@ -65,16 +74,27 @@ export function isPlaceholder(text: string): boolean {
   return rest !== text && rest.replaceAll(/[{}\s]/gu, '') === '';
 }
 
-function extractExamples(path: DocumentPath, markdown: string): SpecExample[] {
+interface OpenExample {
+  readonly line: number;
+  readonly indentation: string;
+  readonly form: ExampleForm;
+  readonly lines: string[];
+  readonly codeStarts: number[];
+}
+
+/** The examples of `markdown`, the text of the document at `path`. */
+export function extractExamples(path: DocumentPath, markdown: string): SpecExample[] {
   const examples: SpecExample[] = [];
   let section = '';
-  let open: { line: number; indent: number; form: ExampleForm; lines: string[] } | undefined;
+  let open: OpenExample | undefined;
+  let lineStart = 0;
   for (const [index, line] of markdown.split('\n').entries()) {
     const trimmed = line.trimStart();
     if (trimmed.startsWith(fence)) {
       if (open === undefined) {
-        const indent = line.length - trimmed.length;
-        open = { line: index + 2, indent, form: formOf(path, trimmed, index + 1), lines: [] };
+        const indentation = line.slice(0, line.length - trimmed.length);
+        const form = formOf(path, trimmed, index + 1);
+        open = { line: index + 2, indentation, form, lines: [], codeStarts: [] };
       } else {
         const code = open.lines.join('\n');
         examples.push({
@@ -82,6 +102,8 @@ function extractExamples(path: DocumentPath, markdown: string): SpecExample[] {
           section,
           line: open.line,
           code,
+          codeStarts: open.codeStarts,
+          indentation: open.indentation,
           elided: code.includes(elisionMark),
           form: open.form,
         });
@@ -90,8 +112,11 @@ function extractExamples(path: DocumentPath, markdown: string): SpecExample[] {
     } else if (open === undefined) {
       section = headingPattern.exec(line)?.groups?.title ?? section;
     } else {
-      open.lines.push(line.slice(Math.min(open.indent, line.length)));
+      const stripped = Math.min(open.indentation.length, line.length);
+      open.lines.push(line.slice(stripped));
+      open.codeStarts.push(lineStart + stripped);
     }
+    lineStart += line.length + 1;
   }
   return examples;
 }

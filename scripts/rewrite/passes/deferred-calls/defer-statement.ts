@@ -4,14 +4,17 @@
  * Its operand is the rest of the statement: up to a line starting no deeper than the `defer`, a `;`,
  * or a bracket closing around it, a bracket group whole whatever its lines, so a block lambda
  * (`defer fn(): {` … `}`) or an indented body goes with it. A `defer` already called, followed by
- * `(`, is left alone, which makes the rule its own fixed point. So is a `defer` with nothing to
- * defer: nothing, or only characters that start no token (an editor test's cursor mark), or an
- * operand whose brackets don't pair, which wrapping would pair differently.
+ * `(`, is left alone, which makes the rule its own fixed point, and so is one taking a call
+ * (call-chain.ts), the deferred form `defer f(x)` the change brings, which reads its operand
+ * differently. So is a `defer` with nothing to defer: nothing, or only characters that start no
+ * token (an editor test's cursor mark), or an operand whose brackets don't pair, which wrapping
+ * would pair differently.
  */
 
 import type { Token } from '../../../../src/compiler/syntax/tokens/index.ts';
 import { insertion, type Rewrite } from '../../pass.ts';
 import { closesBracket, columnAt, pastToken, type TokenRun, wordAt } from '../../token-runs.ts';
+import { callEndAfter } from './call-chain.ts';
 
 const rule = 'defer-statement';
 
@@ -45,7 +48,7 @@ interface Operand {
 
 /** The operand of the `defer` at `index`, if it has one to wrap. */
 function operandAfter(run: TokenRun, index: number): Operand | undefined {
-  if (run.tokens[index + 1]?.kind === '(') {
+  if (run.tokens[index + 1]?.kind === '(' || callEndAfter(run, index + 1) !== undefined) {
     return undefined;
   }
   const column = columnAt(run, index);

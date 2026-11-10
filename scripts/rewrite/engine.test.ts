@@ -16,7 +16,7 @@ describe('rewriteFile', () => {
   it('makes rewrites in a test file wherever its literals spell them', () => {
     const contents = [
       "compiledText(['fn f():', '  defer fn():', '    g()', '  h()'].join('\\n'));",
-      "run('fn main():\\n  defer log(\\'done\\')');",
+      "run('fn main():\\n  defer fn(): log(\\'done\\')');",
       'run(`await spawn ${name}().result()`);',
     ].join('\n');
     const { after, applied, refused } = rewriteFile(
@@ -28,7 +28,7 @@ describe('rewriteFile', () => {
     expect(after).toBe(
       [
         "compiledText(['fn f():', '  _ = defer(fn():', '    g())', '  h()'].join('\\n'));",
-        "run('fn main():\\n  _ = defer(log(\\'done\\'))');",
+        "run('fn main():\\n  _ = defer(fn(): log(\\'done\\'))');",
         'run(`await (spawn ${name}()).result()`);',
       ].join('\n'),
     );

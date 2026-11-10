@@ -54,7 +54,7 @@ tags: [reuse, testing, test-kit, arbitraries, fast-check, corpus]
 - generate random load-valid `Definition`s or edit the subset fixture → `definitionArbitrary`, `editedSubset` (`src/definition/definition.test-kit.ts`)
 - mutate persisted format JSON or assert format refusal messages → `editedText`, `refusalOf` (`src/definition/formats/format.test-kit.ts`)
 - generate random `Heap` graphs and check naive reachability → `heapArbitrary`, `reachedFrom`, `testTypes` (`src/runtime/lifetimes/lifetimes.test-kit.ts`)
-- read fenced code examples from `docs/spec.md` and `docs/guide.md` → `specExamples`, `specCode`, `isPlaceholder` (`test/corpus/spec-examples.ts`)
+- read fenced code examples from `docs/spec.md` and `docs/guide.md`, or from a document's text in hand with where each code line stands → `specExamples`, `specCode`, `isPlaceholder`, `extractExamples`, `documentPaths` (`test/corpus/spec-examples.ts`)
 - load `test/corpus/` valid/invalid programs → `runPrograms`, `invalidPrograms`, `corpusDirectory` (`test/corpus/programs.ts`)
 - build hand-written `Definition` fixtures → `spanOf`, `noSpan`, `sourceModule`, `externFunction`, `named` (`test/definitions/fixture-kit.ts`)
 - use pre-built `Definition` fixtures → `subsetDefinition` (`test/definitions/subset.ts`), `broadcastDefinition` (`test/definitions/broadcast.ts`)

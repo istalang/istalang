@@ -43,6 +43,9 @@ describe('defer-statement', () => {
   it.each([
     ['already a call', '_ = defer(fn(): x)'],
     ['called, unassigned', 'defer(fn(): x)'],
+    ['taking a call, in the deferred form', 'defer note("now")\nnote("later")'],
+    ['taking a method call', 'hold _ = x\ndefer box.close<Int>(1)'],
+    ['taking a call with postfix after it', 'defer f(x).g()'],
     ['nothing to defer', 'defer\ndrop x'],
     ["only an editor test's cursor mark", 'fn f():\n  defer ‸'],
     ['not starting its line', 'x defer f'],

@@ -1,21 +1,53 @@
 /**
  * The documents' examples as sources: each is the code the spec-example tests read, every boundary
- * of it maps to where that code stands in its document, and a line an edit adds stays in its fence.
+ * of it maps to where that code stands in the text given, and a line an edit adds stays in its fence.
  */
 
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { specExamples } from '../../../test/corpus/spec-examples.ts';
+import { documentPaths, specExamples } from '../../../test/corpus/spec-examples.ts';
 import { applyEdits } from '../edits.ts';
-import { fileEditOf } from '../embedding.ts';
-import { embedMarkdown, exampleDocuments } from './markdown.ts';
+import { type Embedding, fileEditOf } from '../embedding.ts';
+import { embedMarkdown } from './markdown.ts';
 
 const root = new URL('../../../', import.meta.url);
 
-const documents = exampleDocuments.map((path) => {
+const documents = documentPaths.map((path) => {
   const contents = readFileSync(new URL(path, root), 'utf8');
   return { path, contents, embeddings: embedMarkdown(path, contents).embeddings };
 });
+
+/** A guide whose one example sits in a fence indented by a list item. */
+const listed = [
+  '# Steps',
+  '',
+  '1. Defer it:',
+  '',
+  '   ```python statements',
+  '   defer fn(): log("exited")',
+  '',
+  '   x = 1',
+  '   ```',
+  '',
+].join('\n');
+
+/** The one example `contents` holds, as the guide; throws unless it holds one. */
+function soleExampleOf(contents: string): Embedding {
+  const [embedding, ...others] = embedMarkdown('docs/guide.md', contents).embeddings;
+  if (embedding === undefined || others.length > 0) {
+    throw new Error('The text holds no one example.');
+  }
+  return embedding;
+}
+
+/** `contents` with `edit` of its sole example made in it. */
+function edited(contents: string, edit: Parameters<typeof fileEditOf>[1]): string {
+  const made = fileEditOf(soleExampleOf(contents), edit);
+  if ('refusal' in made) {
+    throw new Error(made.refusal);
+  }
+  return applyEdits(contents, [made]);
+}
 
 describe('embedMarkdown', () => {
   it('reads each example as the code the spec-example tests check', () => {
@@ -36,23 +68,22 @@ describe('embedMarkdown', () => {
     }
   });
 
+  it('reads the text it is given, whatever the document on disk holds', () => {
+    expect(soleExampleOf(listed).text).toBe('defer fn(): log("exited")\n\nx = 1');
+    expect(embedMarkdown('README.md', listed).embeddings).toEqual([]);
+  });
+
   it("indents a line an edit adds as its example's fence", () => {
-    const [indented] = documents.flatMap((document) =>
-      document.embeddings
-        .filter(({ at }) => document.contents[at - 1] === ' ')
-        .map((example) => ({ contents: document.contents, embedding: example })),
+    const start = 'defer fn(): log("exited")\n\n'.length;
+    expect(edited(listed, { span: { start, end: start }, text: 'y = 2\n' })).toBe(
+      listed.replace('   x = 1', '   y = 2\n   x = 1'),
     );
-    if (indented === undefined) {
-      throw new Error('No example is indented.');
-    }
-    const { contents, embedding } = indented;
-    const edit = fileEditOf(embedding, { span: { start: 0, end: 0 }, text: 'added\n' });
-    const edited = 'refusal' in edit ? contents : applyEdits(contents, [edit]);
-    const lineStart = contents.lastIndexOf('\n', embedding.at) + 1;
-    const fence = contents.slice(lineStart, embedding.at);
-    const [firstLine] = embedding.text.split('\n');
-    const expected = `${fence}added\n${fence}${firstLine}`;
-    expect(fence).not.toBe('');
-    expect(edited.slice(lineStart, lineStart + expected.length)).toBe(expected);
+  });
+
+  it('maps an edit past a blank line shorter than the fence', () => {
+    const start = 'defer fn(): log("exited")\n\nx'.length;
+    expect(edited(listed, { span: { start, end: start + ' = 1'.length }, text: '' })).toBe(
+      listed.replace('   x = 1', '   x'),
+    );
   });
 });
