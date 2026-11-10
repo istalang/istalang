@@ -71,11 +71,36 @@ export interface NativeFutures {
   readonly timer: (at: bigint) => Value;
   /** A future the host fills later, naming it by `token` (§9): an instance's. */
   readonly fromHost: (token: string) => Value;
+  /** A live future something outside the run resolves, and its resolver: a live run's (proposal 8). */
+  readonly resolvable: () => Resolvable;
   /**
-   * A future resolved with the value `settles` gives once it settles, or, when it gives a reason
-   * instead, a `Panic`, panicking its run: a live run's (proposal 8).
+   * Has `notice` called once if the pending future `future` is disposed before it resolves: at
+   * once in a live run, once the disposing segment commits in an instance, so a segment a crash
+   * discards tells nothing (§7). It lasts as long as the instance stays in memory.
    */
-  readonly promised: (settles: Promise<PromiseSettledResult<Value>>) => Value;
+  readonly onDisposed: (future: Value, notice: () => void) => void;
+}
+
+/** Whether a resolver waits for its value, took one or failed, or lost its future first. */
+export type ResolverState = 'pending' | 'resolved' | 'cancelled';
+
+/** A live future's one-shot resolver, as a native resolves it (proposal 8, Rules 5 and 9). */
+export interface NativeResolver {
+  readonly state: ResolverState;
+  /** Resolves its future with `value` unless it is no longer pending; whether it took `value`. */
+  readonly tryResolve: (value: Value) => boolean;
+  /** Fails its wait unless it is no longer pending: its run panics with `panic`. */
+  readonly fail: (panic: Panic) => void;
+  /** Panics its run with `panic`, however it stands: whoever resolves it misused it. */
+  readonly panic: (panic: Panic) => void;
+  /** Has `callback` called once its future is disposed unresolved. */
+  readonly onCancel: (callback: () => void) => void;
+}
+
+/** A live future, and the resolver that resolves it. */
+export interface Resolvable {
+  readonly future: Value;
+  readonly resolver: NativeResolver;
 }
 
 /** The running instance's slots (§6): `put`, `take` and `read` return a handle to its future. */

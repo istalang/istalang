@@ -10,8 +10,9 @@
  * resources through the instance's heap (§7).
  *
  * What waits depends on how the run waits (../waiting.ts). An instance waits on futures that
- * survive a crash, so a host fills one by a token; a live run, in memory, on a host's promise. A
- * host giving the other is a bug in the host, which panics the run (§3.12). A live run spawns
+ * survive a crash, so a host fills one by a token; a live run, in memory, on a future its resolver
+ * resolves (../live-resolvers.ts). A host giving the other is a bug in the host, which panics the
+ * run (§3.12). A live run spawns
  * nothing: an instance is spawned by a commit, which it never makes, so `spawn` is ista and the
  * call rule keeps live code from it.
  */
@@ -47,7 +48,8 @@ import type { Futures } from '../instance/futures.ts';
 import { type Heap, handleObject } from '../instance/heap.ts';
 import type { Instance } from '../instance/index.ts';
 import type { Slots } from '../instance/slots.ts';
-import type { LiveResumes, Waiting } from '../waiting.ts';
+import { liveResolvable } from '../live-resolvers.ts';
+import type { Waiting } from '../waiting.ts';
 
 export class NativeCalls {
   readonly #instance: Instance;
@@ -145,47 +147,24 @@ function nativeFuturesOf(futures: Futures, { waiting, trace }: SegmentSide): Nat
     timer: (at) => futures.createHandle({ kind: 'timer', at }),
     fromHost: (token) => {
       if (waiting.kind === 'live') {
-        throw new Panic('A live run waits on no future its host fills by a token: give a promise.');
+        throw new Panic(
+          'A live run waits on no future its host fills by a token: give a promise or resolve it.',
+        );
       }
       return futures.createHost(token);
     },
-    promised: (settles) => {
+    resolvable: () => {
       if (waiting.kind === 'ista') {
-        throw new Panic("An instance can't wait on a promise, which dies with its process.");
+        throw new Panic(
+          'An instance waits on no future a live resolver resolves, which dies with its process: give call.pending(token).',
+        );
       }
-      return promisedFuture(futures, waiting.resumes, settles, trace());
+      return liveResolvable(futures, waiting.resumes, trace());
+    },
+    onDisposed: (future, notice) => {
+      futures.onDisposed(handleObject(future), notice);
     },
   };
-}
-
-/**
- * A future resolved as `settles` says, in a live run resumed through `resumes`: with its value, or
- * failing the wait with its reason, a panic where the future was made (`trace`), unless the future
- * is gone by then, as its disposal leaves its settling unseen (§7).
- */
-function promisedFuture(
-  futures: Futures,
-  resumes: LiveResumes,
-  settles: Promise<PromiseSettledResult<Value>>,
-  trace: string,
-): Value {
-  const { id, token } = futures.createFilled(String);
-  settles.then(
-    resumes.once((settled: PromiseSettledResult<Value>) => {
-      if (settled.status === 'fulfilled') {
-        futures.resolveHost(token, settled.value);
-        return;
-      }
-      if (!futures.waitsOnHost(token)) {
-        return;
-      }
-      if (!(settled.reason instanceof Panic)) {
-        throw settled.reason;
-      }
-      return { message: settled.reason.message, trace };
-    }),
-  );
-  return handleTo(id);
 }
 
 /** The instance's slots as natives reach them (§6). */

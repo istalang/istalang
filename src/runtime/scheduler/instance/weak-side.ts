@@ -18,8 +18,9 @@
  */
 
 import { handleTo, type Value } from '../../../definition/values/values.ts';
+import { waitingOn } from '../../interpreter/suspension.ts';
 import type { NativeWeakSide } from '../../natives.ts';
-import { type Futures, waitedOn } from './futures.ts';
+import type { Futures } from './futures.ts';
 import { type Heap, handleObject, type LiveExecution, type LiveObjectOf } from './heap.ts';
 
 export class WeakSide implements NativeWeakSide {
@@ -70,7 +71,16 @@ export class WeakSide implements NativeWeakSide {
    */
   disposing(execution: LiveExecution): number | undefined {
     const watches = this.#resolveWatches(execution.id, 'callEnded');
-    return waitedOn(execution).find((future) => watches.includes(future));
+    const top = execution.frames.at(-1);
+    return top && waitingOn(top).find((future) => future !== undefined && watches.includes(future));
+  }
+
+  /** Whether `future` is a pending `disposing()` watch on the call `execution` runs (§7). */
+  watchesCall(execution: LiveExecution, future: number): boolean {
+    const weak = this.#referenceTo(execution.id);
+    return (
+      weak !== undefined && this.#heap.find('watches', weak.id).some(({ id }) => id === future)
+    );
   }
 
   /** The call `execution` returned, so it can no longer be disposed. */
@@ -78,12 +88,13 @@ export class WeakSide implements NativeWeakSide {
     this.#letGo(execution, 'callEnded');
   }
 
-  /** Lets go of `target` and resolves the watches pending on its weak reference; those watches. */
+  /**
+   * Lets go of `target` and resolves the watches pending on its weak reference, together; those
+   * watches.
+   */
   #resolveWatches(target: number, gone: 'disposed' | 'callEnded'): readonly number[] {
     const watches = this.#letGo(target, gone);
-    for (const watch of watches) {
-      this.#futures.resolve(watch, null);
-    }
+    this.#futures.resolveTogether(watches.map((id) => ({ id, value: null })));
     return watches;
   }
 

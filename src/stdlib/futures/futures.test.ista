@@ -168,13 +168,21 @@ fn timeoutSuite() -> Array<Test>: [
     clock.advance(5s)
     assertEq(await limited, none)
   })
-  test("gives the value when it is there as the limit passes", withClock, async fn(clock): {
+  test("gives the value when it arrives just before the limit passes", withClock, async fn(clock): {
+    const value = Slot.create<Int>()
+    const limited = futures.timeout(value.read(), 5s)
+    await runtime.commit()
+    drop value.put(1)
+    clock.advance(5s)
+    assertEq(await limited, 1)
+  })
+  test("gives none when the value arrives just after the limit passes", withClock, async fn(clock): {
     const value = Slot.create<Int>()
     const limited = futures.timeout(value.read(), 5s)
     await runtime.commit()
     clock.advance(5s)
     drop value.put(1)
-    assertEq(await limited, 1)
+    assertEq(await limited, none)
   })
 ]
 

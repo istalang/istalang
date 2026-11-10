@@ -8,10 +8,12 @@
  *   are resolved. Its code reads the clock for `now()`.
  * - Its waits ride the host's own event loop, as JavaScript's do: the run adds no loop of its own.
  *   With nothing ready, it awaits whichever comes first, its earliest timer on the host's clock or
- *   a resume, called when a host's promise it waits on settles (waiting.ts), and applies what
- *   resumed it. A promise that has settled already resumes before the clock is waited on, so a
- *   manual clock, which jumps to whatever it is waited until, never jumps past it; with none, a
- *   test's manual clock fires a live timer at once, as it does an instance's.
+ *   a resume, called when a host resolves a future it waits on (waiting.ts). Each segment begins
+ *   with one resume applied, as an instance's begins with one arrival, and collects what deciding
+ *   its waits let go of before anything runs. A promise that has settled already resumes before
+ *   the clock is waited on, so a manual clock, which jumps to whatever it is waited until, never
+ *   jumps past it; with none, a test's manual clock fires a live timer at once, as it does an
+ *   instance's.
  * - It ends when its root returns, with its outcome, encoded as an instance's is (§9), or when it
  *   panics, a promise it waits on rejecting included, with the trace of where that wait began: as a
  *   restart would end it, nothing is disposed or retried. With nothing ready, no timer and no host
@@ -44,6 +46,10 @@ export async function runLive(
     if (stopped !== undefined) {
       return ended(stopped);
     }
+    const failed = resumes.applyNext()?.failed;
+    if (failed !== undefined) {
+      return ended({ kind: 'panicked', ...failed });
+    }
     instance.futures.resolveDueTimers(clock.now());
     end = runLiveSegment(instance, clock.now, resumes);
   }
@@ -51,8 +57,8 @@ export async function runLive(
 }
 
 /**
- * With nothing ready in `instance`, waits for what can wake it and applies the resumes called; how
- * the run ends instead: waiting on nothing that can wake it, or a wait that failed.
+ * With nothing ready in `instance`, waits for what can wake it, which its next segment applies;
+ * how the run ends instead, when nothing can wake it.
  */
 async function idled(
   clock: Clock,
@@ -65,8 +71,7 @@ async function idled(
     return { kind: 'waiting', until: undefined, watching: [] };
   }
   await woken(clock, due, awaitsHost ? resumes : undefined);
-  const failed = resumes.apply();
-  return failed === undefined ? undefined : { kind: 'panicked', ...failed };
+  return undefined;
 }
 
 /**

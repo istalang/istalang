@@ -9,8 +9,7 @@ import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import type { Value } from '../../../definition/values/values.ts';
 import { handleTo } from '../../../definition/values/values.ts';
-import { ignoredEvents } from './futures.test-kit.ts';
-import { Futures } from './futures.ts';
+import { futuresOn } from './futures.test-kit.ts';
 import { Heap, type LiveExecution } from './heap.ts';
 import { WeakSide } from './weak-side.ts';
 
@@ -32,7 +31,7 @@ const event: fc.Arbitrary<Event> = fc.record({
  */
 class Scene {
   readonly heap = new Heap([]);
-  readonly futures = new Futures(this.heap, ignoredEvents);
+  readonly futures = futuresOn(this.heap);
   readonly weak = new WeakSide(this.heap, this.futures);
   readonly call = this.heap.add(
     (id): LiveExecution => ({
@@ -96,7 +95,7 @@ function play(events: readonly Event[]): Scene {
 describe('the weak side', () => {
   it('gives each referent one weak reference', () => {
     const heap = new Heap([]);
-    const weak = new WeakSide(heap, new Futures(heap, ignoredEvents));
+    const weak = new WeakSide(heap, futuresOn(heap));
     const [first, second] = [0, 1].map(
       () => heap.add((id) => ({ kind: 'slot', id, waiting: [] })).id,
     );

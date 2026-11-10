@@ -3,15 +3,16 @@
  * wait commits; or in a live run, in memory, where a wait suspends until something settles on the
  * host's own event loop and resumes it.
  *
- * - A live run's wait on such a thing, a host's promise, gets a one-shot resume, the primitive R2's
- *   resolvers extend. Calling it only queues what it resolves and wakes the run's driver
- *   (live-run.ts), which applies the queue between its segments: code never runs inside a host's
- *   callback, and what a resume resolves is seen by the run's next segment, as an arrival is by an
- *   instance's. A resume may instead fail its wait, which panics the run. So does JSON a promise
- *   gave that doesn't fit: it came with no host call that could be refused for it (§3.12).
+ * - A live run's wait on such a thing, a host's resolver or promise, gets a one-shot resume, the
+ *   primitive a live resolver extends (live-resolvers.ts). Calling it only queues what it resolves
+ *   and wakes the run's driver (live-run.ts), which applies one resume before each segment, as an
+ *   instance takes one arrival, so code never runs inside a host's callback, and what a resume
+ *   resolves is seen by that segment. A resume may instead fail its wait, which panics the run. So does
+ *   JSON a host gave that doesn't fit: it came with no host call that could be refused for it
+ *   (§3.12), and so does a host's misuse of a resolver (`fail`).
  * - Whether a resume may still come is the run's futures' to say, not a count kept here: a future
- *   disposed before its promise settles waits for nothing any more (§7).
- * - A resume called twice is a bug in the runtime: a promise settles once.
+ *   disposed before it resolved waits for nothing any more (§7).
+ * - A resume called twice is a bug in the runtime: its resolver takes one value.
  */
 
 import type { Persistence } from '../../foundation/language/well-known/index.ts';
@@ -61,9 +62,17 @@ export class LiveResumes {
         unreachable('A live wait was resumed twice.');
       }
       called = true;
-      this.#queued.push(() => resolve(value));
-      this.#wake?.();
+      this.#queue(() => resolve(value));
     };
+  }
+
+  /**
+   * Panics the run from outside it, as `failed` says, at its next segment: before any resume still
+   * queued, since a host's misuse ends the run whatever it was given.
+   */
+  fail(failed: FailedWait): void {
+    this.#queued.unshift(() => failed);
+    this.#wake?.();
   }
 
   /** Whether a resume was called and not yet applied. */
@@ -85,16 +94,16 @@ export class LiveResumes {
   }
 
   /**
-   * Applies every resume called since the last time, in the order they were called; the first wait
-   * that failed, after which the run applies nothing more.
+   * Applies the earliest resume called and not yet applied: undefined when there is none, else
+   * whether it failed its wait, after which the run applies nothing more.
    */
-  apply(): FailedWait | undefined {
-    for (const resolve of this.#queued.splice(0)) {
-      const failed = resolve();
-      if (failed !== undefined) {
-        return failed;
-      }
-    }
-    return undefined;
+  applyNext(): { readonly failed: FailedWait | undefined } | undefined {
+    const resolve = this.#queued.shift();
+    return resolve === undefined ? undefined : { failed: resolve() };
+  }
+
+  #queue(apply: () => FailedWait | undefined): void {
+    this.#queued.push(apply);
+    this.#wake?.();
   }
 }

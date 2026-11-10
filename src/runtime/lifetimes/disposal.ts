@@ -8,6 +8,7 @@
  *   await; any other is stopped where it waits, its frames let go.
  * - A pending slot operation leaves its slot's queue without consuming anything, and a future the
  *   host fills frees its token, so a later fill changes nothing and the host may name a new one so.
+ *   A disposed future tells what observes it, such as a live resolver of it (proposal 8, Rule 9).
  * - A value whose type declares `dispose` as code calls that: a call the collector runs as code
  *   (collector.ts), and the object is gone once the call returns. A disposal never awaits, since a
  *   `dispose` can't.
@@ -59,6 +60,8 @@ export interface DisposalContext extends Disposability {
   /** Stops a suspended execution where it waits, letting go of everything its frames hold. */
   readonly stop: (execution: LiveExecution) => void;
   readonly weak: WeakSide;
+  /** Tells what observes the pending future `id` that it was disposed (§7). */
+  readonly disposedFuture: (id: number) => void;
 }
 
 /** How one object is disposed. */
@@ -119,6 +122,7 @@ const kinds: Handlers<undefined, LiveObject, [], KindDisposal> = {
   weakRef: () => inert,
   answer: () => inert,
   outcome: () => inert,
+  resolver: () => inert,
   execution: () => inert,
 };
 
@@ -139,12 +143,16 @@ export function dispose(context: DisposalContext, object: LiveObject): DisposalR
   return disposalFor(object).dispose(context);
 }
 
-/** A call's future disposes its call; a pending slot operation leaves its slot's queue. */
+/**
+ * Tells what observes the future it is disposed; then a call's future disposes its call, and a
+ * pending slot operation leaves its slot's queue.
+ */
 function disposeFuture(
   context: DisposalContext,
   future: LiveObjectOf<'future'>,
 ): Cleanup | undefined {
   const { state } = future;
+  context.disposedFuture(future.id);
   if (state.kind === 'call') {
     const [execution] = context.heap.find('executions', future.id);
     return execution === undefined ? undefined : disposeCall(context, execution);

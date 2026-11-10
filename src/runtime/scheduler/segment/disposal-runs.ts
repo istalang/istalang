@@ -12,10 +12,9 @@
  * - A disposal's call is a call like any other to a mock that replaces it (§10).
  */
 
-import { handleTarget } from '../../../definition/values/values.ts';
 import type { ActiveFrame } from '../../interpreter/frames.ts';
 import { newFrame, releaseFrame } from '../../interpreter/machine.ts';
-import { resume } from '../../interpreter/suspension.ts';
+import { waitingOn } from '../../interpreter/suspension.ts';
 import type { Cleanup, DisposalCall, DisposalRun } from '../../lifetimes/disposal.ts';
 import type { LiveExecution } from '../instance/heap.ts';
 import { type Instance, topFrame } from '../instance/index.ts';
@@ -131,10 +130,8 @@ export class DisposalRuns {
   }
 
   #cleanup({ execution, watcher }: Cleanup): false {
-    this.#seams.instance.unready(execution);
-    resume(topFrame(execution), (handle) =>
-      handleTarget(handle) === watcher ? { value: null } : undefined,
-    );
+    const position = waitingOn(topFrame(execution)).indexOf(watcher);
+    this.#seams.instance.resumeOn(execution, { position, value: null });
     this.#cleanups.add(execution);
     this.#seams.runStack.push(execution);
     return false;

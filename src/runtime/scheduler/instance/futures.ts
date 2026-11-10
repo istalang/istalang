@@ -2,12 +2,11 @@
  * The futures of a running instance (spec §6): every wait is on one, and a future resolves once
  * and stays resolved.
  *
- * - Who waits on a future is read from the waiters' frames, never stored: an execution waits on
- *   the futures its top frame's `await` or `select` names (definition/instructions/flow.ts).
- *   Resolving a future readies its waiters in creation order, once each.
+ * - Who waits on a future is the resolvers registered on it (resolvers.ts), one per wait:
+ *   resolving it decides them.
  * - `futures.first(fs)` is the one future that waits on others: it resolves with the position and
  *   value of the first of them to resolve, the lowest position among those resolved together.
- *   Which `first`s wait on a future is read from their lists, the same way.
+ *   Which `first`s wait on a future is read from their lists.
  * - An answer to another instance's call to a mock (§10) waits on a future too. When it resolves
  *   with a future, as the replacement of a function returning one does, the answer waits on that
  *   one instead; when it resolves with anything else, the answer is given (`Answered`). An
@@ -17,14 +16,13 @@
  *   a waypoint (§10).
  */
 
-import { awaitedRegisters } from '../../../definition/instructions/flow.ts';
 import { handleTarget, handleTo, type Value } from '../../../definition/values/values.ts';
 import { unreachable } from '../../../foundation/structures/unreachable.ts';
-import { readRegister } from '../../interpreter/registers.ts';
 import { Panic } from '../../natives.ts';
 import type { FutureState, Watch } from '../../snapshot/objects.ts';
 import type { CallerFuture } from '../testing/test-world.ts';
-import { type Heap, handleObject, type LiveExecution, type LiveObjectOf } from './heap.ts';
+import { type Heap, handleObject, type LiveObjectOf } from './heap.ts';
+import type { Resolvers } from './resolvers.ts';
 
 /** A pending `futures.first`. */
 type FirstFuture = LiveObjectOf<'future'> & {
@@ -47,22 +45,54 @@ export interface Answered {
   readonly followed: boolean;
 }
 
-/** What futures tell the instance they belong to. */
-export interface FutureEvents {
-  /** `execution` waits on a future that resolved. */
-  readonly ready: (execution: LiveExecution) => void;
-  /** An answer to another instance's call was given. */
-  readonly answered: (answered: Answered) => void;
+/** An answer to another instance's call was given. */
+export type AnswerGiven = (answered: Answered) => void;
+
+/** A pending future to resolve, and its value. */
+export interface Resolution {
+  readonly id: number;
+  readonly value: Value;
 }
 
 export class Futures {
   readonly #heap: Heap;
-  readonly #events: FutureEvents;
+  readonly #resolvers: Resolvers;
+  readonly #answered: AnswerGiven;
+  /**
+   * What observes each pending future's disposal, by future: kept in memory, as an observer outside
+   * the language is (§7, proposal 8, Rule 9).
+   */
+  readonly #disposalNotices = new Map<number, (() => void)[]>();
 
-  /** Futures on `heap`, telling `events` what their resolving readies and answers. */
-  constructor(heap: Heap, events: FutureEvents) {
+  /** Futures on `heap`, deciding `resolvers` as they resolve, and telling `answered` each answer. */
+  constructor(heap: Heap, resolvers: Resolvers, answered: AnswerGiven) {
     this.#heap = heap;
-    this.#events = events;
+    this.#resolvers = resolvers;
+    this.#answered = answered;
+  }
+
+  /** Has `notice` told if the pending future `id` is disposed before it resolves. */
+  onDisposed(id: number, notice: () => void): void {
+    this.#disposalNotices.set(id, [...(this.#disposalNotices.get(id) ?? []), notice]);
+  }
+
+  /** What observes the disposal of the future `id`, which no longer needs observing. */
+  takeNotices(id: number): readonly (() => void)[] {
+    const notices = this.#disposalNotices.get(id) ?? [];
+    this.#disposalNotices.delete(id);
+    return notices;
+  }
+
+  /**
+   * Forgets the observers of futures no longer on the heap, left out unseen as a commit leaves out
+   * what nothing holds, so a later future reusing an id isn't observed.
+   */
+  forgetGone(): void {
+    for (const id of this.#disposalNotices.keys()) {
+      if (!this.#heap.has(id)) {
+        this.#disposalNotices.delete(id);
+      }
+    }
   }
 
   /** A new future in `state`; its id. */
@@ -81,15 +111,24 @@ export class Futures {
     return state.kind === 'resolved' ? { value: state.value } : undefined;
   }
 
-  /**
-   * Resolves the pending future `id` with `value`, and with it every `first` it makes resolve,
-   * then readies everything waiting on any of them. A `first` is created after the futures it
-   * races, so taking the pending ones in creation order finds them all in one pass, and each one's
-   * members are settled before it: it resolves at the lowest position that resolved together.
-   */
+  /** Resolves the pending future `id` with `value`, as `resolveTogether` does. */
   resolve(id: number, value: Value): void {
-    this.#settle(id, value);
-    const together = new Set([id]);
+    this.resolveTogether([{ id, value }]);
+  }
+
+  /**
+   * Resolves the pending futures `resolutions` names together, one event resolving them at once,
+   * and with them every `first` they make resolve, then decides every wait on any of them at its
+   * first case among them. A `first` is created after the futures it races, so taking the pending
+   * ones in creation order finds them all in one pass, and each one's members are settled before
+   * it: it resolves at the lowest position that resolved together.
+   */
+  resolveTogether(resolutions: readonly Resolution[]): void {
+    const together = new Set<number>();
+    for (const { id, value } of resolutions) {
+      this.#settle(id, value);
+      together.add(id);
+    }
     for (const first of this.#pendingFirsts()) {
       const position = first.state.futures.findIndex((member) => together.has(member));
       const winner = first.state.futures[position];
@@ -98,11 +137,7 @@ export class Futures {
         together.add(first.id);
       }
     }
-    for (const execution of this.#heap.objectsOf('execution')) {
-      if (waitedOn(execution).some((future) => together.has(future))) {
-        this.#events.ready(execution);
-      }
-    }
+    this.#resolvers.settle(together, (future) => ({ value: this.#valueOf(future) }));
     for (const future of together) {
       for (const answer of this.#heap.find('answers', future)) {
         this.#answer(answer);
@@ -126,7 +161,7 @@ export class Futures {
     }
     this.#heap.remove(answer.id);
     const { instance, token, followed } = answer;
-    this.#events.answered({ instance, token, value, followed });
+    this.#answered({ instance, token, value, followed });
   }
 
   /**
@@ -181,19 +216,16 @@ export class Futures {
   }
 
   /**
-   * Resolves every pending watch whose condition `holds` says holds, with what it gives; whether
-   * any did.
+   * Resolves together every pending watch whose condition `holds` says holds, with what it gives;
+   * whether any did.
    */
   resolveWatches(holds: (watch: Watch) => Value | undefined): boolean {
-    let resolved = false;
-    for (const { id, state } of this.#heap.find('pending', 'watch')) {
+    const resolutions = this.#heap.find('pending', 'watch').flatMap(({ id, state }) => {
       const value = state.kind === 'watch' ? holds(state) : undefined;
-      if (value !== undefined) {
-        this.resolve(id, value);
-        resolved = true;
-      }
-    }
-    return resolved;
+      return value === undefined ? [] : [{ id, value }];
+    });
+    this.resolveTogether(resolutions);
+    return resolutions.length > 0;
   }
 
   /** The value of the resolved future `id`. */
@@ -212,6 +244,7 @@ export class Futures {
       unreachable(`Future ${id} has resolved already.`);
     }
     this.#heap.replace({ ...future, state: { kind: 'resolved', value } });
+    this.#disposalNotices.delete(id);
   }
 
   /**
@@ -279,18 +312,19 @@ export class Futures {
       );
   }
 
-  /** Resolves every timer due at `now`, earliest first; whether any was. */
+  /**
+   * Resolves every timer due at `now`, earliest first, those due at one instant together; whether
+   * any was.
+   */
   resolveDueTimers(now: bigint): boolean {
     const due = this.#heap
       .find('pending', 'timer')
       .flatMap(({ id, state }) =>
         state.kind === 'timer' && state.at <= now ? [{ id, ...state }] : [],
-      )
-      .sort((first, second) =>
-        first.at === second.at ? first.id - second.id : Number(first.at - second.at),
       );
-    for (const { id } of due) {
-      this.resolve(id, null);
+    const instants = Map.groupBy(due, ({ at }) => at);
+    for (const at of [...instants.keys()].toSorted((first, second) => Number(first - second))) {
+      this.resolveTogether((instants.get(at) ?? []).map(({ id }) => ({ id, value: null })));
     }
     return due.length > 0;
   }
@@ -325,19 +359,4 @@ function positioned(position: number, value: Value): Value {
 
 function isFirst(future: LiveObjectOf<'future'>): future is FirstFuture {
   return future.state.kind === 'first';
-}
-
-/**
- * The futures `execution`'s top frame waits on, in the order its `await` or `select` names them.
- */
-export function waitedOn(execution: LiveExecution): readonly number[] {
-  const frame = execution.frames.at(-1);
-  const instruction = frame?.code.instructions[frame.pc];
-  if (frame === undefined || instruction === undefined) {
-    return [];
-  }
-  return awaitedRegisters(instruction).flatMap((register) => {
-    const target = handleTarget(readRegister(frame, register));
-    return target === undefined ? [] : [target];
-  });
 }

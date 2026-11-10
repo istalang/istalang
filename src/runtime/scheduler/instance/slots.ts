@@ -6,25 +6,39 @@
  *   completes when it is called, and its future is already resolved. Anything else joins the
  *   slot's queue.
  * - **One queue,** longest waiter first, for every kind of operation. Whenever the slot changes,
- *   the queue is served from its head: while the slot is full, waiting reads yield its value and
- *   the first waiting take empties it; while it is empty, the first waiting put fills it. Serving
- *   stops at the first waiter the slot can't serve.
- * - A full slot therefore never has a take or read waiting, and an empty one never a put, so an
- *   operation that completes at once never jumps a waiter of its own kind.
+ *   the queue is served from its head, one event at a time: while the slot is full, the reads
+ *   waiting at the head yield its value together, and then the first waiting take empties it;
+ *   while it is empty, the first waiting put fills it. Serving stops at the first waiter the slot
+ *   can't serve.
+ * - **Serving pauses for a decided `select`'s losers.** An event may decide a `select`, whose losing
+ *   cases are let go of then (spec §8): one still queued here must leave the queue unserved, which
+ *   only collecting can tell. So serving stops before its next event while such losers await
+ *   collecting, and the slot is owed serving, which goes on once collecting is done
+ *   (`serveOwed`). Meanwhile every operation on it joins its queue.
+ * - A full slot therefore never has a take or read waiting, and an empty one never a put, unless
+ *   it is owed serving, so an operation that completes at once never jumps a waiter.
  */
 
 import { handleTo, type Value } from '../../../definition/values/values.ts';
 import type { FutureState } from '../../snapshot/objects.ts';
-import type { Futures } from './futures.ts';
+import type { Futures, Resolution } from './futures.ts';
 import { type Heap, handleObject, type LiveObjectOf } from './heap.ts';
 
 export type SlotOperation = Extract<FutureState, { kind: 'slot' }>['operation'];
 
 type SlotObject = LiveObjectOf<'slot'>;
 
+/** One event of serving a queue: the waiters it resolves together, and what the slot then holds. */
+interface Served {
+  readonly resolutions: readonly Resolution[];
+  readonly contents: Value | undefined;
+}
+
 export class Slots {
   readonly #heap: Heap;
   readonly #futures: Futures;
+  /** The slots whose serving paused while collecting was due, by id. */
+  readonly #owed = new Set<number>();
 
   constructor(heap: Heap, futures: Futures) {
     this.#heap = heap;
@@ -41,7 +55,7 @@ export class Slots {
   operate(handle: Value, operation: SlotOperation, value: Value = null): Value {
     const slot = this.#heap.of(handleObject(handle), 'slot');
     const full = slot.value !== undefined;
-    if ((operation === 'put') === full) {
+    if (this.#owed.has(slot.id) || (operation === 'put') === full) {
       const future = this.#futures.create({
         kind: 'slot',
         slot: slot.id,
@@ -52,30 +66,76 @@ export class Slots {
       return handleTo(future);
     }
     const { yielded, contents } = completed(slot.value, operation, value);
-    this.#serve(slot, contents);
+    store(this.#heap, slot, slot.waiting, contents);
+    this.#serve(slot.id);
     return this.#futures.createHandle({ kind: 'resolved', value: yielded });
   }
 
-  /**
-   * Serves `slot`'s queue from its head as far as it can, the slot holding `contents`, and stores
-   * the slot as it leaves it.
-   */
-  #serve(slot: SlotObject, held: Value | undefined): void {
-    let contents = held;
-    let served = 0;
-    for (const head of slot.waiting) {
-      const { state } = this.#heap.of(head, 'future');
-      if (state.kind !== 'slot' || (state.operation === 'put') === (contents !== undefined)) {
-        break;
+  /** Serves the queues whose serving paused, now that collecting is done; whether there were any. */
+  serveOwed(): boolean {
+    const owed = [...this.#owed];
+    this.#owed.clear();
+    for (const id of owed) {
+      if (this.#heap.has(id)) {
+        this.#serve(id);
       }
-      const { yielded, contents: left } = completed(contents, state.operation, state.value ?? null);
-      contents = left;
-      served += 1;
-      this.#futures.resolve(head, yielded);
     }
-    const waiting = slot.waiting.slice(served);
-    this.#heap.replace({ kind: 'slot', id: slot.id, waiting, ...valueField(contents) });
+    return owed.length > 0;
   }
+
+  /** Serves the queue of the slot `id` from its head, event after event, as far as it can. */
+  #serve(id: number): void {
+    for (;;) {
+      const slot = this.#heap.of(id, 'slot');
+      const served = nextServed(slot, (future) => this.#heap.of(future, 'future').state);
+      if (served === undefined) {
+        return;
+      }
+      if (this.#heap.losersUncollected) {
+        this.#owed.add(id);
+        return;
+      }
+      store(this.#heap, slot, slot.waiting.slice(served.resolutions.length), served.contents);
+      this.#futures.resolveTogether(served.resolutions);
+    }
+  }
+}
+
+/**
+ * The next event of serving `slot`'s queue: while it is full, the reads at its head, or else the
+ * take there; while it is empty, the put there. None when its head can't be served.
+ */
+function nextServed(
+  slot: SlotObject,
+  stateOf: (future: number) => FutureState,
+): Served | undefined {
+  const resolutions: Resolution[] = [];
+  let contents = slot.value;
+  for (const head of slot.waiting) {
+    const state = stateOf(head);
+    const servable =
+      state.kind === 'slot' && (state.operation === 'put') !== (contents !== undefined);
+    if (!servable || (state.operation !== 'read' && resolutions.length > 0)) {
+      break;
+    }
+    const { yielded, contents: left } = completed(contents, state.operation, state.value ?? null);
+    resolutions.push({ id: head, value: yielded });
+    contents = left;
+    if (state.operation !== 'read') {
+      break;
+    }
+  }
+  return resolutions.length === 0 ? undefined : { resolutions, contents };
+}
+
+/** Stores `slot` with `waiting` as its queue, holding `contents`. */
+function store(
+  heap: Heap,
+  slot: SlotObject,
+  waiting: readonly number[],
+  contents: Value | undefined,
+): void {
+  heap.replace({ kind: 'slot', id: slot.id, waiting: [...waiting], ...valueField(contents) });
 }
 
 /** A slot's contents after `operation` completes on `contents`, and what the operation yields. */

@@ -81,6 +81,14 @@ export function heapArbitrary(size = 8): fc.Arbitrary<TestHeap> {
       fc
         .oneof(id, fc.constantFrom('disposed' as const, 'callEnded' as const))
         .map((target): LiveObject => ({ kind: 'weakRef', id: object, target })),
+      fc.record({ waiter: id, value: contents }).map(
+        ({ waiter, value }): LiveObject => ({
+          kind: 'resolver',
+          id: object,
+          waiter,
+          state: { kind: 'resolved', position: 0, value },
+        }),
+      ),
     );
   const frame = fc
     .array(fc.option(contents, { nil: undefined }), { maxLength: 4 })

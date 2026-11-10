@@ -8,10 +8,17 @@
 import { describe, expect, it } from 'vitest';
 import { runPrograms } from '../../../test/corpus/programs.ts';
 import { compiledText } from '../../compiler/compile.test-kit.ts';
+import { elementsOf } from '../../definition/values/values.ts';
 import { stdNatives } from '../../stdlib/natives.ts';
 import { ManualClock } from '../clock.ts';
 import type { Native, Natives } from '../natives.ts';
-import { recordingStore, runToEnd, startToEnd, testRuntime } from '../runtime.test-kit.ts';
+import {
+  type RecordingStore,
+  recordingStore,
+  runToEnd,
+  startToEnd,
+  testRuntime,
+} from '../runtime.test-kit.ts';
 import { type Snapshot, snapshotFormat } from '../snapshot/snapshot.ts';
 
 const childAndMain = [
@@ -90,7 +97,7 @@ describe('advancing an instance', () => {
     const [waiting, finished, ...more] = committed(test.store.commits);
     expect(more).toEqual([]);
     const kinds = waiting?.objects.map((object) => object.kind).sort();
-    expect(kinds).toEqual(['execution', 'execution', 'future', 'future']);
+    expect(kinds).toEqual(['execution', 'execution', 'future', 'future', 'resolver', 'resolver']);
     const status = finished?.status;
     expect(status?.kind === 'finished' && test.runtime.programOf('test').outcomeText(status)).toBe(
       '42',
@@ -278,4 +285,61 @@ describe('advancing an instance', () => {
       expect(ended).toEqual({ expects, expected });
     },
   );
+});
+
+/** A program whose `main` lets go of a pending `first` over a take, then panics or not. */
+function lettingGo(panics: boolean): string {
+  return compiledText(
+    [
+      "import * as futures from 'futures'",
+      "import * as runtime from 'runtime'",
+      'ista async fn main() -> Int:',
+      '  const s = Slot.create<Int>()',
+      '  if true:',
+      '    const raced = futures.first([s.take()])',
+      '    await runtime.commit()',
+      ...(panics ? ['  panic("boom")'] : []),
+      '  await runtime.commit()',
+      '  1',
+    ].join('\n'),
+  );
+}
+
+/**
+ * The std natives, with `futures.first` observing the disposal of each future it races, telling
+ * `told` how many commits `store` holds as it is told.
+ */
+function observingFirst(told: number[], store: RecordingStore): Natives {
+  const key = Object.keys(stdNatives).find((name) => name.startsWith('futures.first('));
+  const first: Native | undefined = key === undefined ? undefined : stdNatives[key];
+  if (key === undefined || first === undefined) {
+    throw new Error('No native futures.first.');
+  }
+  return {
+    ...stdNatives,
+    [key]: (values, context) => {
+      for (const raced of elementsOf(values[0] ?? null)) {
+        context.futures.onDisposed(raced, () => told.push(store.commits.length));
+      }
+      return first(values, context);
+    },
+  };
+}
+
+describe("an instance's disposal notices", () => {
+  it('tell what observes a future its segment disposed once that segment commits', async () => {
+    const told: number[] = [];
+    const store = recordingStore();
+    const test = testRuntime({ store, natives: observingFirst(told, store) });
+    expect(await startToEnd(test, lettingGo(false))).toMatchObject({ kind: 'finished' });
+    expect(told).toEqual([2]);
+  });
+
+  it('tell nothing for a segment a panic discards', async () => {
+    const told: number[] = [];
+    const store = recordingStore();
+    const test = testRuntime({ store, natives: observingFirst(told, store) });
+    expect(await startToEnd(test, lettingGo(true))).toMatchObject({ kind: 'panicked' });
+    expect(told).toEqual([]);
+  });
 });

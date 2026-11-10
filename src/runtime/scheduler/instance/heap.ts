@@ -81,6 +81,10 @@ const indexes = {
   mocks: index('mock', (mock) => [mock.target]),
   /** Each answer to another instance's call, by the future it waits on. */
   answers: index('answer', (answer) => [answer.future]),
+  /** Each pending resolver, by the futures it is registered on. */
+  resolvers: index('resolver', ({ state }) => (state.kind === 'pending' ? state.futures : [])),
+  /** Each resolver, by the execution it resumes. */
+  waits: index('resolver', (resolver) => [resolver.waiter]),
 };
 
 type Indexes = typeof indexes;
@@ -95,6 +99,7 @@ export class Heap {
   readonly #objects: Map<number, LiveObject>;
   #next: number;
   readonly #released: number[] = [];
+  #losersReleased = false;
   /** Each kind's objects, in creation order: a kind never changes, and ids only grow. */
   readonly #kinds = new Map<LiveKind, Set<number>>();
   readonly #indexes = new Map<IndexName, Map<unknown, Set<number>>>(
@@ -163,6 +168,7 @@ export class Heap {
     }
     this.#next = nextId(this.#objects.keys());
     this.#released.length = 0;
+    this.#losersReleased = false;
   }
 
   /** Takes `object` off the heap and out of every index. */
@@ -187,9 +193,23 @@ export class Heap {
     pushAll(this.#released, ids);
   }
 
-  /** The objects that may have lost their last holder since the last call. */
+  /** The objects that may have lost their last holder since the last call, for collecting. */
   takeReleased(): readonly number[] {
+    this.#losersReleased = false;
     return this.#released.splice(0);
+  }
+
+  /** Notes that a decided `select` let go of what its losing cases held (spec §8). */
+  noteLosersReleased(): void {
+    this.#losersReleased = true;
+  }
+
+  /**
+   * Whether a decided `select` let go of what its losing cases held since the released were last
+   * taken for collecting: until then, one of them may still wait in a queue.
+   */
+  get losersUncollected(): boolean {
+    return this.#losersReleased;
   }
 
   /** Whether the object with `id` exists. */

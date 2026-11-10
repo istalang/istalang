@@ -8,7 +8,8 @@
  * - A segment starts by resolving the timers due at its start time, which is also what `now()`
  *   returns inside it.
  * - A commit writes the snapshot through the store and only then goes on (§5). With nothing ready
- *   and no timer due, nothing changed since the last commit, so nothing is written.
+ *   and no timer due, nothing changed since the last commit, so nothing is written. What observes a
+ *   future the segment disposed is told once it is written, so a discarded segment tells nothing.
  * - What a segment spawned becomes instances at its commit: each is written as `unstarted`, named
  *   `<parent>/<n>`, before the parent's snapshot. A segment that re-runs after a crash between the
  *   two finds the child there already and doesn't write it again (§9).
@@ -161,6 +162,7 @@ export function advance(
     }
     spawned.push(...commitChildren(seams.store, instance));
     const next = commit(seams.store, instance.snapshot(statusOf(end), objectsOf(end)));
+    instance.tellCancelled();
     logs.push(...instance.logs());
     const given = instance.answered();
     answered.push(...given);
@@ -186,6 +188,7 @@ export function terminate(seams: SchedulerSeams, resident: Resident): Advanced {
   const spawned = commitChildren(seams.store, instance);
   const { message, trace } = status;
   const ended = commit(seams.store, instance.snapshot({ kind: 'terminated', message, trace }, []));
+  instance.tellCancelled();
   resident.frozenAt(ended);
   return { state: stateOf(ended), spawned, logs: instance.logs() };
 }

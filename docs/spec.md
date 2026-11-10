@@ -643,6 +643,7 @@ extern purchaseRequests: Queue<PurchaseRequest>     # a queue the host provides
 - **Deterministic reads.** An instance reads an extern constant once, at its first read, and keeps that value in its snapshot for its whole life, so every segment, resumed or not, sees the same value.
 - **Values and handles.** An extern struct is a value unless a word between `extern` and `struct` makes it a handle (§3.1): `extern shared struct` has an identity in its instance, as a shared struct does (§3.18); `extern sendable struct` one every instance shares, such as a queue the host provides; `extern live struct` one in the process that made it. An extern value crosses as JSON, so it is sendable when its type arguments are, and so is a `sendable` handle; any other handle never is. An extern value's type parameters are invariant unless `gives` or `takes` says otherwise (§3.5); a handle's always are.
 - **Disposable host types.** A host type is disposable when a `dispose` is declared beside it (§7): an extern one its host implements, or code that passes the value to the host's externs. Each value of it then has an identity of its own: it arrives as the JSON the host gave, which the instance keeps while it holds the value, and leaves to the host as that same JSON. So such a type is declared `extern shared struct` (or `extern live struct`), neither a value nor `sendable`, it isn't `Encodable` or `Decodable`, and no extern constant, which every read shares, can hold one.
+- **Futures from the host.** An extern returning a future gives an instance one its host fills later, by a token the host names (§9). To live code it gives a live future, and the host's extern receives that future's resolver (§7): it resolves it when it can, from anywhere, the runtime taking the value between the code's steps, and learns through `onCancel` when the future is disposed first. A host that drops the resolver unresolved panics the waiting code, naming the extern. A JavaScript host may give back a promise instead, which resolves it as it settles.
 
 ### 3.7 Methods and references
 
@@ -1461,6 +1462,8 @@ When the runtime or the host fills a slot, it wakes the waiters even if the whol
 
 `await` and `select` work only on futures. A future resolves once and stays resolved.
 
+**Resolvers.** Each wait has a resolver of its own, which the runtime registers on the futures it waits on: the one an `await` names, or each case of a `select`. The first of them to resolve decides it, once: the waiting execution becomes ready and resumes with that future's value. Several resolving together, or resolved before the wait began, decide it at the first in order. Futures resolve together when one event resolves them at once: the reads one value serves, the timers due at one instant, the watches one disposal resolves, or a `futures.first` with what it races; each take or put a slot serves is an event of its own, in queue order. Executions that become ready together run in the order they were created. In a persistent instance the resolver is part of its state, committed with the waiting frame, so a segment that is discarded decided nothing; in live code it lives in memory. Resolving a future costs what waits on that future, however many executions wait on others.
+
 **Inboxes.** The standard library's `Inbox<T>` is a FIFO message queue built on slots, the way Haskell builds its channels on `MVar`s, and written in the language. It is a shared struct (§3.18), which the `inbox` module makes disposable by declaring its `dispose` (§7), so an inbox is a handle that a `WeakRef` can watch. It is created with `Inbox.create<T>()`, and `box.pending()` gives the messages waiting in it, oldest first, without receiving them:
 
 ```python statements
@@ -1545,11 +1548,14 @@ In the common case nothing is stored anywhere else, so a disposable lives exactl
 | `Future` of an async call | resolves the call's `disposing()`, then stops the call at its next `await` |
 | a pending `take`, `read` or timer | drops the wait without consuming / cancels the timer |
 | a future the host fills | drops the wait; a later fill by the host changes nothing |
+| a live future a host's resolver resolves (§3.6) | cancels the resolver: its `onCancel` callbacks run once, and a later `resolve` does nothing |
 | `Slot` or `Inbox` | it dies, along with the values in it |
 | `Revertible<T>` holder | retracts the message if it hasn't been received |
 | `Deferred` (`defer`'s) | calls its function |
 
 In every case, each `disposed()` future watching the value resolves afterwards.
+
+**Resolvers.** A resolver is one-shot: a second `resolve` panics, and `tryResolve` gives whether it took the value, for races. One its holder lets go of unresolved panics the wait it was to resume, naming who dropped it. One whose future is disposed first is cancelled: its `onCancel` callbacks run once, at once in live code and when the disposing segment commits in a persistent instance, so a disposal a crash discards cancels nothing.
 
 **Weak references.** `WeakRef<T is Disposable>` refers to a value without holding it. Its `deref()` returns `T?`, which is `none` once the last holder has released the value. Its `disposed()` returns a `Future<Unit>` that resolves at that moment, already resolved if it has passed, and waiting on it holds nothing. `WeakRef(x)` gives the one weak reference to `x`, so two weak references are `==` exactly when they refer to the same value, also after it is disposed. Weak references aren't sendable.
 
@@ -1631,9 +1637,9 @@ The rules:
 
 - **Cases are expressions.** Each case expression must be a `Future`: a receive, an async call, a `delay`, or a future variable. `as name` binds the resolved value inside that case.
 - **Sequential evaluation.** Case expressions are evaluated top to bottom. If one contains an `await`, evaluation suspends there and the later cases are evaluated after it resumes. Selection happens only after all cases are evaluated.
-- **Left-to-right priority.** If several futures have resolved, the first case in order wins.
+- **The first to resolve wins.** The case whose future resolves first wins, as the `select`'s resolver decides (§6). If several have resolved together, or before the `select` waits, the first case in order wins.
 - **Each case holds what its expression creates.** Futures, slots and revertible holders created while evaluating a case expression are held by that case.
-- **Losers are released.** Once the winner is determined, every other case's holdings are released and, if nothing else holds them, disposed: async calls are aborted, pending takes are dropped without consuming, and revertible sends are retracted. A future taken from a variable declared outside the `select` is held by that variable, so it survives and can be used again.
+- **Losers are released.** Once the winner is determined, every other case's holdings are released and, if nothing else holds them, disposed: async calls are aborted, pending takes are dropped without consuming, and revertible sends are retracted. This happens as the winner is decided, before anything else runs, so a value reaching a losing take's slot right after the winner's stays there. A future taken from a variable declared outside the `select` is held by that variable, so it survives and can be used again. A case on the call's own `disposing()` is kept until the call resumes, since a disposal before then still resumes it there (§7).
 - **The winner's holdings move to the block enclosing the `select`,** so they live until it ends.
 - **Same type.** Case bodies agree on one type as the branches of `if` and `match` do (§4), and that type is the type of the `select`.
 - **A case without `as` discards its value,** so a future whose value must be used (§7), such as a `Result`, needs `as` to bind it.

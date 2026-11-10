@@ -4,7 +4,8 @@
  * has. A disposal that runs code runs on the segment's run stack as any call does
  * (disposal-runs.ts), each of its steps the segment's own, so collecting is handed the step to
  * take. What holds things is every execution's frames, the running ones first, and what the run
- * stack and the test world hold.
+ * stack and the test world hold. A slot's queue whose serving paused for collecting (slots.ts) is
+ * served once it is done, before anything else runs.
  */
 
 import { Collector } from '../../lifetimes/collector.ts';
@@ -38,17 +39,31 @@ export class SegmentCollection {
         instance.stop(execution);
       },
       weak: instance.weak,
+      disposedFuture: (id) => {
+        instance.disposedFuture(id, seams.caller.waiting.kind);
+      },
       run: (run) => this.disposals.start(run),
     });
   }
 
-  /** Collects what lost a holder since the last step; whether no disposal's call is left to run. */
+  /**
+   * Collects what lost a holder since the last step, then serves the slots' queues whose serving
+   * waited for it, as long as that lets go of more; whether no disposal's call is left to run.
+   */
   collected(): boolean {
-    const released = this.#seams.instance.heap.takeReleased();
-    if (released.length > 0) {
-      this.#collector.collect(released);
+    const { heap, slots } = this.#seams.instance;
+    for (;;) {
+      const released = heap.takeReleased();
+      if (released.length > 0) {
+        this.#collector.collect(released);
+      }
+      if (this.#collector.busy) {
+        return false;
+      }
+      if (!slots.serveOwed()) {
+        return true;
+      }
     }
-    return !this.#collector.busy;
   }
 
   /** Collects until no disposal's call is left to run, running each step of one with `step`. */

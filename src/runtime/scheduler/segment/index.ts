@@ -32,7 +32,6 @@
  * holder of its own call runs on until it suspends, and is stopped there.
  */
 
-import { awaitedRegisters } from '../../../definition/instructions/flow.ts';
 import type { Argument } from '../../../definition/instructions/places.ts';
 import type { FunctionId } from '../../../definition/operands.ts';
 import { depthOf, handleTo, type Value } from '../../../definition/values/values.ts';
@@ -45,7 +44,8 @@ import {
   releaseFrame,
   resumeAfterCall,
 } from '../../interpreter/machine.ts';
-import { argumentContents, readRegister } from '../../interpreter/registers.ts';
+import { argumentContents } from '../../interpreter/registers.ts';
+import { waitingOn } from '../../interpreter/suspension.ts';
 import type { Panic } from '../../natives.ts';
 import type { HeapObject } from '../../snapshot/objects.ts';
 import type { InstanceCall } from '../../snapshot/snapshot.ts';
@@ -336,11 +336,10 @@ class SegmentRunner implements Machine {
     if (this.#collection.disposals.suspended(execution)) {
       return;
     }
-    const instruction = frame.code.instructions[frame.pc];
-    const awaited = instruction === undefined ? [] : awaitedRegisters(instruction);
-    if (awaited.some((register) => this.settled(readRegister(frame, register)) !== undefined)) {
-      this.#instance.markReady(execution);
-    }
+    const futures = waitingOn(frame).map(
+      (future) => future ?? unreachable(`Execution ${execution.id} waits on what is no future.`),
+    );
+    this.#instance.resolvers.wait(execution, futures, (future) => this.settled(handleTo(future)));
     if (this.#runStack.driverOnly) {
       this.#runStack.pop();
       this.#instance.heap.noteReleased(

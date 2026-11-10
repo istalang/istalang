@@ -8,8 +8,8 @@
  * - Nothing about holders is stored. Whether an object is held is decided by reachability from
  *   the executions' frames (runtime/lifetimes/), so nothing can disagree with the values that hold
  *   it.
- * - What an execution waits on is not stored either: its frame stops at an `await` or `select`
- *   (instructions/suspension.ts), whose registers name the futures.
+ * - What an execution waits on is its resolver's (proposal 8, Rule 5): one per wait, registered on
+ *   the futures its `await` or `select` names, until the first of them to resolve decides it.
  * - Timers are the futures whose state is a timer.
  *
  * Disposability follows from an object's kind and state, its type, and whether a weak reference
@@ -25,7 +25,7 @@
 
 import { z } from 'zod';
 import { fieldPath } from '../../definition/instructions/places.ts';
-import { functionId, label, objectId, register, typeId } from '../../definition/operands.ts';
+import { count, functionId, label, objectId, register, typeId } from '../../definition/operands.ts';
 import { integer, type Value, value } from '../../definition/values/values.ts';
 
 /**
@@ -110,6 +110,16 @@ export type FutureState = z.output<typeof futureState>;
 /** A pending watch's condition (§9, §10). */
 export type Watch = Extract<FutureState, { kind: 'watch' }>;
 
+/**
+ * A wait's resolver (proposal 8, Rule 5): pending, registered on the futures its `await` or
+ * `select` names, in its cases' order; or decided, its waiter to resume at case `position` with
+ * `value`. It decides once.
+ */
+const resolverState = z.discriminatedUnion('kind', [
+  z.strictObject({ kind: z.literal('pending'), futures: z.array(objectId).min(1) }),
+  z.strictObject({ kind: z.literal('resolved'), position: count, value }),
+]);
+
 /** A condition only the runtime running a test can tell (§10). */
 export type TestWatch = Exclude<Watch['until'], { kind: 'ended' }>;
 
@@ -162,6 +172,11 @@ export const heapObject = z.discriminatedUnion('kind', [
    * returned, so nothing else waits on it: it is a root, held until the instance ends.
    */
   defineObject('outcome', { future: objectId }),
+  /**
+   * A wait's resolver: it resumes `waiter`, an execution suspended at an `await` or a blocking
+   * `select`, as `state` decides. It is a root, kept until its waiter resumes or stops.
+   */
+  defineObject('resolver', { waiter: objectId, state: resolverState }),
   /**
    * An execution: a call stack, innermost frame last. An async call's execution names the future
    * its return resolves (spec §3.3); the root, the instance's own, names none.

@@ -1,5 +1,10 @@
-/** Futures events a test ignores: what resolving readies or answers goes nowhere. */
+/** Futures a test makes alone: what their resolving decides or answers goes nowhere. */
 
-import type { FutureEvents } from './futures.ts';
+import { Futures } from './futures.ts';
+import type { Heap } from './heap.ts';
+import { Resolvers } from './resolvers.ts';
 
-export const ignoredEvents: FutureEvents = { ready: () => undefined, answered: () => undefined };
+/** Futures on `heap`, their decisions and answers ignored. */
+export function futuresOn(heap: Heap): Futures {
+  return new Futures(heap, new Resolvers(heap, () => undefined), () => undefined);
+}

@@ -73,6 +73,7 @@ const broadcastWaiting: Snapshot = {
     { id: 1, kind: 'resource', type: revertible, payload: { queue: 'ann', message: 'm-1' } },
     { id: 2, kind: 'resource', type: revertible, payload: { queue: 'bob', message: 'm-2' } },
     { id: 3, kind: 'future', state: { kind: 'timer', at: 1_700_000_060_000n } },
+    { id: 4, kind: 'resolver', waiter: 0, state: { kind: 'pending', futures: [3] } },
   ],
 };
 
@@ -136,6 +137,22 @@ function objectsArbitrary(ids: readonly number[]): fc.Arbitrary<HeapObject[]> {
         })
         .map((parts) => ({ id: objectId, kind: 'mock' as const, ...parts })),
       id.map((future) => ({ id: objectId, kind: 'outcome' as const, future })),
+      fc
+        .record({
+          waiter: id,
+          state: fc.oneof(
+            fc.record({
+              kind: fc.constant('pending' as const),
+              futures: fc.array(id, { minLength: 1, maxLength: 3 }),
+            }),
+            fc.record({
+              kind: fc.constant('resolved' as const),
+              position: fc.nat({ max: 3 }),
+              value,
+            }),
+          ),
+        })
+        .map((parts) => ({ id: objectId, kind: 'resolver' as const, ...parts })),
       fc
         .record(
           {
@@ -233,7 +250,7 @@ describe('snapshot format', () => {
         });
       },
       'No object 42',
-      'objects[4]',
+      'objects[5]',
     ],
     [
       'ids that do not ascend',

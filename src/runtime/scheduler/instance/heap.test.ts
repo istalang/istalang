@@ -7,7 +7,9 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import type { FutureState } from '../../snapshot/objects.ts';
-import { Heap, type LiveObject } from './heap.ts';
+import { Heap, type LiveObject, type LiveObjectOf } from './heap.ts';
+
+type ResolverState = LiveObjectOf<'resolver'>['state'];
 
 const ids = [0, 1, 2, 3, 4, 5];
 const tokens = ['a', 'b'];
@@ -40,6 +42,26 @@ const madeArbitrary: fc.Arbitrary<Made> = fc.oneof(
     (resolves): Made =>
       (object) => ({ kind: 'execution', id: object, resolves, frames: [], disposing: false }),
   ),
+  fc
+    .record({
+      waiter: id,
+      state: fc.oneof(
+        fc
+          .array(id, { minLength: 1, maxLength: 2 })
+          .map((futures): ResolverState => ({ kind: 'pending', futures })),
+        fc.nat({ max: 1 }).map(
+          (position): ResolverState => ({
+            kind: 'resolved',
+            position,
+            value: null,
+          }),
+        ),
+      ),
+    })
+    .map(
+      ({ waiter, state }): Made =>
+        (object) => ({ kind: 'resolver', id: object, waiter, state }),
+    ),
 );
 
 type Change =
@@ -111,6 +133,17 @@ describe('heap indexes', () => {
               idsOf(
                 futures.filter(({ state }) => state.kind === 'disposed' && state.weakRef === key),
               ),
+            );
+            const resolvers = heap.objectsOf('resolver');
+            expect(idsOf(heap.find('resolvers', key))).toEqual(
+              idsOf(
+                resolvers.filter(
+                  ({ state }) => state.kind === 'pending' && state.futures.includes(key),
+                ),
+              ),
+            );
+            expect(idsOf(heap.find('waits', key))).toEqual(
+              idsOf(resolvers.filter((resolver) => resolver.waiter === key)),
             );
           }
           for (const key of tokens) {

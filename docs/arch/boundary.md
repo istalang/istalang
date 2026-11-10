@@ -101,10 +101,19 @@ its instance is numbered by, so its native sees only JSON:
   promise into a pending future it fills between wakes; a promise can't outlive its process, which
   only a development host may assume.
 - To a live run (spec §5), which waits in memory and no fill reaches, an extern returning a live
-  future gives back a promise of its JSON instead, which resolves the future as it settles. One that
-  rejects panics the run, with the trace of where the extern was called, and so does JSON it gives
-  that doesn't fit: no host call came with it to refuse. A pending future given to a live run
-  panics it, as a promise given to an instance does.
+  future takes the resolver of the live future its call gives, `call.resolver()`, while it runs,
+  and resolves it with JSON when it can, from anywhere: the value reaches the run between its
+  segments. Or, taking none, it gives back a promise of its JSON, which resolves the future as it
+  settles; a resolver taken is the one producer, so a promise an `async` extern gives back as well
+  resolves nothing, though its rejection panics. The resolver is one-shot: a second `resolve`
+  panics the run, `tryResolve` says whether it took the value, and `onCancel` callbacks run once,
+  at once, if the future is disposed first, after which it takes nothing. A promise that rejects
+  panics the run, with the trace of where the extern was called, and so does JSON that doesn't
+  fit: no host call came with it to refuse. So does a resolver the host lets go of unresolved,
+  naming the extern, once JavaScript collects it and every function of it (`FinalizationRegistry`),
+  and an extern that gives back no promise and takes no resolver, at once. A pending future given
+  to a live run panics it, and so does a resolver taken in an instance, whose futures are filled by
+  token.
 
 ## Starting instances
 

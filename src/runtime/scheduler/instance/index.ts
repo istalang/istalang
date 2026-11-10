@@ -4,9 +4,9 @@
  * turned back into a snapshot at every commit, and runs on from it (`continueFrom`, ../resident.ts);
  * the scheduler runs it in between (../segment/, wake.ts).
  *
- * - An execution waits at its top frame's `await` or `select`: what it waits on is read from that
- *   instruction's registers, never stored (futures.ts). A ready execution always stands at a wait
- *   whose future has resolved, and executions run in the order they became ready (§6).
+ * - An execution waits at its top frame's `await` or `select`, with a resolver registered on what
+ *   that names (resolvers.ts). It is ready once its resolver decided, and executions run in the
+ *   order they became ready (§6).
  * - The root execution, the one the instance started with, is the one that resolves no call
  *   future.
  * - A commit keeps the executions and what they hold (§5, runtime/lifetimes/holders.ts). Whatever
@@ -35,7 +35,7 @@ import type { LogRecord, SpawnOptions } from '../../instance-state.ts';
 import type { ActiveFrame, FrameEntry, FrameHeap } from '../../interpreter/frames.ts';
 import { newFrame, releaseFrame } from '../../interpreter/machine.ts';
 import type { Passed } from '../../interpreter/registers.ts';
-import { resume } from '../../interpreter/suspension.ts';
+import { type Decision, releaseLosers, resume } from '../../interpreter/suspension.ts';
 import { isDisposable } from '../../lifetimes/disposal.ts';
 import { heldFrom } from '../../lifetimes/holders.ts';
 import { heldObjects, isRoot } from '../../snapshot/holdings.ts';
@@ -44,10 +44,12 @@ import { drawOf, seedFrom } from '../../snapshot/random.ts';
 import type { InstanceCall, Snapshot } from '../../snapshot/snapshot.ts';
 import type { LoadedDefinition } from '../loaded-definition.ts';
 import { leaving, reachingMock } from '../testing/mocks.ts';
+import type { Waiting } from '../waiting.ts';
 import { type Answered, Futures } from './futures.ts';
 import { Heap, type LiveExecution, type LiveObject, type LiveObjectOf } from './heap.ts';
 import { spawnedName } from './instance-names.ts';
 import { liveObject, storedObject } from './live-objects.ts';
+import { Resolvers } from './resolvers.ts';
 import { Slots } from './slots.ts';
 import { WeakSide } from './weak-side.ts';
 
@@ -67,6 +69,7 @@ export type InstanceStatus = Snapshot['status'];
 export class Instance {
   readonly loaded: LoadedDefinition;
   readonly heap: Heap;
+  readonly resolvers: Resolvers;
   readonly futures: Futures;
   readonly slots: Slots;
   readonly weak: WeakSide;
@@ -91,6 +94,8 @@ export class Instance {
   #spawns: Spawn[] = [];
   #answered: Answered[] = [];
   #logs: LogRecord[] = [];
+  /** What observes the futures this segment disposed, told once it commits (§7). */
+  #cancelled: (() => void)[] = [];
   /** How many random draws this segment made. */
   #draws = 0;
   readonly #ready: number[];
@@ -105,13 +110,15 @@ export class Instance {
     this.heap = new Heap(
       snapshot.objects.map((object) => liveObject(loaded.definition, object, this.frameHeap)),
     );
-    this.futures = new Futures(this.heap, {
-      ready: (execution) => {
-        this.markReady(execution);
-      },
-      answered: (answered) => {
-        this.#answered.push({ ...answered, value: leaving(this, answered.value) });
-      },
+    this.resolvers = new Resolvers(this.heap, (waiter, { position }) => {
+      const kept = (future: number) => this.weak.watchesCall(waiter, future);
+      if (releaseLosers(topFrame(waiter), position, kept)) {
+        this.heap.noteLosersReleased();
+      }
+      this.#markReady(waiter);
+    });
+    this.futures = new Futures(this.heap, this.resolvers, (answered) => {
+      this.#answered.push({ ...answered, value: leaving(this, answered.value) });
     });
     this.slots = new Slots(this.heap, this.futures);
     this.weak = new WeakSide(this.heap, this.futures);
@@ -155,6 +162,7 @@ export class Instance {
    */
   dropUnheld(): void {
     this.heap.keepOnly(new Set(this.#kept().kept.map(({ id }) => id)));
+    this.futures.forgetGone();
   }
 
   /**
@@ -210,11 +218,35 @@ export class Instance {
    */
   continueFrom(committed: Snapshot): void {
     this.heap.keepOnly(new Set(committed.objects.map(({ id }) => id)));
+    this.futures.forgetGone();
     this.#from = committed;
     this.#spawns = [];
     this.#answered = [];
     this.#logs = [];
+    this.#cancelled = [];
     this.#draws = 0;
+  }
+
+  /**
+   * The pending future `id` was disposed: what observes it is told so, at once in a live run, and
+   * once the segment commits in an instance, so a segment a crash discards tells nothing (§7).
+   */
+  disposedFuture(id: number, waiting: Waiting['kind']): void {
+    const notices = this.futures.takeNotices(id);
+    if (waiting === 'live') {
+      for (const notice of notices) {
+        notice();
+      }
+      return;
+    }
+    this.#cancelled.push(...notices);
+  }
+
+  /** Tells what observed the futures this segment disposed, as the segment committed. */
+  tellCancelled(): void {
+    for (const notice of this.#cancelled.splice(0)) {
+      notice();
+    }
   }
 
   /** The instance's name, as its host gave it or as its parent's spawn made it (§9). */
@@ -298,13 +330,16 @@ export class Instance {
   }
 
   /**
-   * The futures what the instance owes waits on, each held until it resolves: the answers still to
-   * give other instances' calls (§10), and its outcome, once its root gave a future (§9).
+   * What the instance's roots other than executions hold: the futures the answers still to give
+   * other instances' calls wait on (§10), its outcome, once its root gave a future (§9), and what a
+   * decided resolver resumes its waiter with.
    */
   owed(): readonly number[] {
-    return [...this.heap.objectsOf('answer'), ...this.heap.objectsOf('outcome')].flatMap(
-      heldObjects,
-    );
+    return [
+      ...this.heap.objectsOf('answer'),
+      ...this.heap.objectsOf('outcome'),
+      ...this.heap.objectsOf('resolver'),
+    ].flatMap(heldObjects);
   }
 
   /** The answers this segment gave other instances' calls, each filled once it commits (§10). */
@@ -344,23 +379,21 @@ export class Instance {
   }
 
   /**
-   * Queues `execution` to run after the executions already ready, unless it is ready already: a
-   * `select` racing futures that resolve together becomes ready once.
+   * Queues `execution` to run after the executions already ready: its resolver decided, which it
+   * does once.
    */
-  markReady(execution: LiveExecution): void {
-    if (!this.#ready.includes(execution.id)) {
-      this.#ready.push(execution.id);
-    }
+  #markReady(execution: LiveExecution): void {
+    this.#ready.push(execution.id);
   }
 
-  /** The next ready execution, moved past its wait with the value of what it waited for. */
+  /** The next ready execution, moved past its wait as its resolver decided. */
   resumeNext(): LiveExecution | undefined {
     const id = this.#ready.shift();
     if (id === undefined) {
       return undefined;
     }
     const execution = this.heap.of(id, 'execution');
-    resume(topFrame(execution), (handle) => this.futures.settled(handle));
+    resume(topFrame(execution), this.resolvers.take(execution));
     return execution;
   }
 
@@ -411,12 +444,22 @@ export class Instance {
     for (const frame of execution.frames.toReversed()) {
       releaseFrame(frame);
     }
+    this.#endWait(execution);
     this.heap.remove(execution.id);
-    this.unready(execution);
   }
 
-  /** Takes `execution` off the executions ready to run, if it is on it. */
-  unready(execution: LiveExecution): void {
+  /**
+   * Resumes `execution` as `decision` says, whatever its resolver decided: a disposed call resuming
+   * on its `disposing()` watch, the case that wins over any other (§7).
+   */
+  resumeOn(execution: LiveExecution, decision: Decision): void {
+    this.#endWait(execution);
+    resume(topFrame(execution), decision);
+  }
+
+  /** Ends `execution`'s wait, if it waits: its resolver goes, and it is no longer ready. */
+  #endWait(execution: LiveExecution): void {
+    this.resolvers.drop(execution);
     const position = this.#ready.indexOf(execution.id);
     if (position >= 0) {
       this.#ready.splice(position, 1);
