@@ -1,0 +1,5 @@
+*.ista linguist-language=python
+*.ista diff=python
+.claude/** linguist-generated
+.vscode/** linguist-generated
+docs/** linguist-documentation
