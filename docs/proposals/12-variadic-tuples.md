@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-11-09
-last_updated: 2026-11-09
+last_updated: 2026-11-10
 tags: [proposal, language, types, generics, tuples, packs, rests, f3, f26]
 ---
 
@@ -268,8 +268,8 @@ fn setups<A is tuple>(...each: ( [I in keyof A]: Setup<A[I]> )) -> Setup<A>:
   run, which is stopped at its `await` (§7): holdings are released, and code after the callback
   doesn't run.
 - **Commits:** each `enter` and `leave` awaits, so it commits where today's nested `_joined`
-  doesn't. Under proposal 8, `enter` waits through ephemeral one-shot resolvers rather than
-  slots, which don't commit.
+  doesn't. Under proposal 8 it is an unmarked function, taking its caller's kind: in `live`
+  code its waits don't commit, and in `ista` code each still does.
 - **A named rest** (`setups(db: withDb, host: withHost)`) types the same way, but named
   arguments carry no order, so the nesting would follow name order instead of the call's.
   Positional stays.

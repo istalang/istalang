@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-11-09
-last_updated: 2026-11-09
+last_updated: 2026-11-10
 tags: [runtime, executors, codegen, javascript, workers, performance]
 ---
 
@@ -60,18 +60,16 @@ Generate from the final Definition. Lowering straight to JavaScript would skip t
 
 ## After proposal 8
 
-Proposal 8 narrows what must be frames as data. Only an `ista fn`'s frame is ever persisted: a
-plain function can't wait, ephemeral code never commits, and a commit saves each execution as of
-its own last commit, never mid-call. Ephemeral code calls no persistent code, so the boundary runs
-one way.
+Proposal 8 narrows what must be frames as data. Only `ista` code is ever persisted: a plain
+function can't wait, live code never commits, and the two never call each other, so an `ista`
+frame never waits in memory and a commit never lands mid-call.
 
-- **Plain and `async` code can be native JavaScript:** real locals, `async`/`await`, an ephemeral
-  future a promise, an ephemeral resolver its `resolve`, `onCancel` an `AbortSignal`. The
-  frame-as-data form above is needed only for `ista fn` bodies, or they stay interpreted.
-- **An `ista fn` awaiting ephemeral work** is an interpreted execution waiting in memory on that
-  promise; the host's event loop drives it.
+- **Plain and `live` code can be native JavaScript:** real locals, `async`/`await`, a live future a
+  promise, a live resolver its `resolve`, `onCancel` an `AbortSignal`. An unmarked function is
+  compiled once per kind, so its live copy is native too. The frame-as-data form above is needed
+  only for `ista` bodies, or they stay interpreted.
 - **What stays shared:** the value and heap representation, releases (lowering's explicit release
   instructions become calls), mocks (a mocked function is called through the table) and spans for
   traces.
-- **Proposal 8's runtime keeps this open:** its ephemeral futures are promise-backed and ride the
-  host's event loop (`docs/work/async-kinds/phases.md`, R1).
+- **Proposal 8's runtime keeps this open:** its live futures are promise-backed and ride the
+  host's event loop (`docs/work/async-kinds/phases.md`, R1b).
