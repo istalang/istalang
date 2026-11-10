@@ -34,7 +34,7 @@ import type { RequirementOrigin } from '../../surface/resolved-call.ts';
 import { sameType } from '../identity/identity.ts';
 import { type Substitution, substitute, substitutionFor } from '../parts/substitution.ts';
 import { kindOfFunction } from '../type/function-kinds.ts';
-import { functionType } from '../type/function-types.ts';
+import { functionType, plainSend } from '../type/function-types.ts';
 import type { AnyType, Constraint, FunctionType, ParameterKey, Type } from '../type/index.ts';
 import { parameterType } from '../written/resolve-type.ts';
 import { typeArgumentsFor } from '../written/type-arguments.ts';
@@ -188,8 +188,8 @@ export function requirementType(
   required: FunctionDeclaration,
 ): FunctionType {
   return functionType({
-    reach: 'plain',
-    persistence: kindOfFunction(checker, required),
+    send: plainSend,
+    mark: kindOfFunction(checker, required),
     parameters: checker.parametersOf(required).map(({ type, reference }) => ({ type, reference })),
     result: checker.resultOf(required),
   });

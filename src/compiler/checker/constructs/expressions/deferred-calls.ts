@@ -8,10 +8,11 @@
  *   A deferred call within it computes its taker's parts now too, so `a b c(x)` computes `x` once,
  *   here; its own call it checks itself.
  * - The function takes nothing and gives what the call gives. It is sendable when every value it
- *   captures is, a spread's collected items rather than its iterable, so where a sendable function is taken, each value that isn't is reported
- *   (resolution/calls/deferred-arguments.ts). It is built where it is given, so it is never fitted
- *   as a value is: the parameter it fills is recorded at the call (`Deferrals`), and lowering builds
- *   it as that type, giving what the call gives fitted to it.
+ *   captures is, a spread's collected items rather than its iterable, so where a sendable function
+ *   is taken, each value that isn't is reported (resolution/calls/deferred-arguments.ts). It is
+ *   built where it is given, so it is never fitted as a value is: the parameter it fills is
+ *   recorded at the call (`Deferrals`), and lowering builds it as that type, giving what the call
+ *   gives fitted to it.
  * - Nothing captured can be a reference, so a `&` argument, or a receiver its method takes by
  *   `&self`, is refused. A call in an optional chain may not happen at all, and a variant without
  *   fields is a value, so neither can be deferred.
@@ -37,10 +38,10 @@ import type { BodyContext, DeferralRecord } from '../../contexts/body-context.ts
 import type { Pass, Passes, PassTable } from '../../contexts/passes.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import { kindOfCall } from '../../resolution/applying/call-kinds.ts';
-import { unsendable } from '../../resolution/calls/deferred-arguments.ts';
 import type { WrittenArgument } from '../../resolution/calls/resolve/index.ts';
 import type { StoppingOperand } from '../../resolution/calls/stopped-operations.ts';
 import { calledVariant } from '../../surface/named-variants.ts';
+import { capturedSend } from '../../types/traits/sendable.ts';
 import { functionType } from '../../types/type/function-types.ts';
 import type { Type } from '../../types/type/index.ts';
 import { errorType, isPrimitive, neverType } from '../../types/type/primitives.ts';
@@ -143,9 +144,12 @@ function deferredFunction(context: BodyContext, node: DeferredCall): WrittenArgu
     return given(errorType);
   }
   const computed = computedNow(context, deferred);
-  const reach = unsendable(context, computed).length === 0 ? 'sendable' : 'plain';
-  const persistence = laterCallKind(context, deferred);
-  return given(functionType({ reach, persistence, parameters: [], result }), computed);
+  const send = capturedSend(
+    context.checker,
+    computed.flatMap(({ type }) => (type.kind === 'error' ? [] : [type])),
+  );
+  const mark = laterCallKind(context, deferred);
+  return given(functionType({ send, mark, parameters: [], result }), computed);
 }
 
 /**
@@ -159,7 +163,7 @@ function laterCallKind(context: BodyContext, call: CallingNode): Type {
     return kindOfCall(context.checker, resolved);
   }
   const value = calledValueType(context, call);
-  return value.kind === 'function' ? value.persistence : context.codeKind;
+  return value.kind === 'function' ? value.mark : context.codeKind;
 }
 
 /**
@@ -179,8 +183,8 @@ function unmade(context: BodyContext, call: CallingNode): Type {
 
 /**
  * Whether what `call` computes itself, deferred, can't be captured, reporting each: a reference,
- * passed by `&` or as a `&self` receiver, or a link of an optional chain. A deferred call's own call
- * is its own check's to refuse.
+ * passed by `&` or as a `&self` receiver, or a link of an optional chain. A deferred call's own
+ * call is its own check's to refuse.
  */
 function refused(context: BodyContext, call: CallingNode): boolean {
   const references = writtenArgumentsOf(call)

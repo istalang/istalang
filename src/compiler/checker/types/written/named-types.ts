@@ -49,7 +49,7 @@ import { expectsError } from '../type/primitives.ts';
 import { optionalInner } from '../unions/unions.ts';
 import { typeOfEntity } from './resolve-type.ts';
 
-export type Aliases = Pick<Checker, 'aliasedType' | 'typeRules'>;
+export type Aliases = Pick<Checker, 'aliasedType' | 'typeRules' | 'wellKnownEntity'>;
 
 /** The entity a nominal type's declaration declares, which its types are made of. */
 export function nominalEntityOf(
@@ -106,7 +106,7 @@ export function staticOwnerOf(type: Type | undefined): StaticOwner | undefined {
  * alias the type it stands for; undefined for any other function, or an owner with none.
  */
 export function declaredOwnerOf(
-  checker: Pick<Checker, 'aliasedType' | 'typeRules' | 'bindings'>,
+  checker: Pick<Checker, 'aliasedType' | 'typeRules' | 'bindings' | 'wellKnownEntity'>,
   module: ModuleId,
   declaration: FunctionDeclaration,
 ): StaticOwner | undefined {

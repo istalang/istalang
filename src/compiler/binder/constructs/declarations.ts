@@ -61,6 +61,9 @@ export function bindFunction(
     binder.declareVariable(inner, node.name, node);
   }
   binder.enter(node, inner);
+  if (node.kind === 'FunctionDeclaration' && node.mark !== undefined) {
+    binder.walk.type(binder, node.mark, inner);
+  }
   bindParameters(binder, node, inner);
   if (node.returnType !== undefined) {
     binder.walk.type(binder, node.returnType, inner);

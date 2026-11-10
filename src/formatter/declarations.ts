@@ -19,9 +19,10 @@ import {
   type TypeParameters,
 } from '../compiler/syntax/declarations/index.ts';
 import type { Annotation } from '../compiler/syntax/items.ts';
-import { modifiersText } from '../compiler/syntax/tokens/modifiers.ts';
+import { modifiersAroundMark, modifiersText } from '../compiler/syntax/tokens/modifiers.ts';
 import { bodyOf, type SyntaxNode } from '../compiler/syntax/tree/index.ts';
 import type { Identifier } from '../compiler/syntax/tree/node.ts';
+import { namedTypeText } from '../compiler/syntax/types/index.ts';
 import { opened } from './expressions/indented-values.ts';
 import { annotated, docBelow, functionBody, indentedBody } from './layout/bodies.ts';
 import { angled, bracketed, bracketedWhenBroken, itemLines } from './layout/lists.ts';
@@ -41,8 +42,15 @@ function named(printer: Printer, name: Identifier, parameters: TypeParameters): 
 }
 
 function functionDoc(printer: Printer, node: FunctionDeclaration): builders.Doc {
+  const modifiers = { extern: node.isExtern ? 'extern' : undefined, ...node.qualifiers } as const;
+  const [beforeMark, afterMark] = modifiersAroundMark(modifiers);
+  // A named mark is a node whose comments, written before the head, print before all its words,
+  // ahead of the group a body may break.
+  const marked =
+    node.mark === undefined
+      ? modifiersText(modifiers)
+      : printer.withComments(node.mark, [beforeMark, namedTypeText(node.mark), ' ', afterMark]);
   const header = [
-    modifiersText({ extern: node.isExtern ? 'extern' : undefined, ...node.qualifiers }),
     'fn ',
     node.owner === undefined ? '' : [printer.print(node.owner), '.'],
     named(printer, node.name, node.typeParameters),
@@ -51,8 +59,8 @@ function functionDoc(printer: Printer, node: FunctionDeclaration): builders.Doc 
   ];
   const body = bodyOf(printer.tree, node);
   return body === undefined
-    ? [header, docBelow(printer, node.doc)]
-    : group([header, ':', functionBody(printer, node.doc, body)]);
+    ? [marked, header, docBelow(printer, node.doc)]
+    : [marked, group([header, ':', functionBody(printer, node.doc, body)])];
 }
 
 /** `members` indented under the header's `:`, or the docstring alone below a header without. */

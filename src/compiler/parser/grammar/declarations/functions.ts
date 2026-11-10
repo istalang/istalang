@@ -22,7 +22,7 @@ import { documentedBy, type WithDocstring } from '../../layout/docstrings.ts';
 import type { Parser } from '../../parser.ts';
 import { parseDocumentedStatementBody } from '../parts/blocks.ts';
 import { parseParameters } from '../parts/functions.ts';
-import { parseHead } from '../parts/heads.ts';
+import { parseFunctionHead } from '../parts/heads.ts';
 import { parseTypeParameters } from './type-parameters.ts';
 
 /** Where a function is declared: a module's or a block's item, or a trait's requirement. */
@@ -35,7 +35,10 @@ type FunctionForm = 'defined' | 'requirement' | 'extern';
 export function parseFunction(parser: Parser, place: FunctionPlace): FunctionDeclaration {
   const { cursor } = parser;
   const { start } = cursor.token.span;
-  const modifiers = parseHead(parser, headForms[place === 'item' ? 'function' : 'requirement']);
+  const { modifiers, mark } = parseFunctionHead(
+    parser,
+    headForms[place === 'item' ? 'function' : 'requirement'],
+  );
   const isExtern = modifiers.extern !== undefined;
   const form = formOf(place, isExtern);
   const { owner, name } = parseFunctionName(parser);
@@ -56,6 +59,7 @@ export function parseFunction(parser: Parser, place: FunctionPlace): FunctionDec
     span: parser.anchor({ start, end: Math.max(start, headerEnd) }),
     isExtern,
     qualifiers: qualifiersOf(modifiers),
+    mark,
     owner,
     name,
     typeParameters,

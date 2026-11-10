@@ -11,7 +11,7 @@ import type { Identifier } from '../../../syntax/tree/node.ts';
 import type { AnchoredSpan } from '../../../syntax/tree/positions.ts';
 import type { FunctionFrame } from '../../contexts/body-context.ts';
 import type { NestedFunction } from '../../surface/checked-body.ts';
-import { type KindLookup, kindOfFunction, unmarkedKind } from '../../types/type/function-kinds.ts';
+import { type KindLookup, kindOfFunction, simpleMark } from '../../types/type/function-kinds.ts';
 import type { Type } from '../../types/type/index.ts';
 import { EnclosingScopes } from './enclosing-scopes.ts';
 import type { ReturnScope } from './returns.ts';
@@ -34,7 +34,7 @@ export function rootScope(
   own: { readonly declaration: FunctionDeclaration; readonly isAsync: boolean } | undefined,
   returns: ReturnScope,
 ): FunctionScope {
-  const codeKind = own === undefined ? unmarkedKind : kindOfFunction(lookup, own.declaration);
+  const codeKind = own === undefined ? simpleMark : kindOfFunction(lookup, own.declaration);
   return new FunctionScope(own?.declaration, { isAsync: own?.isAsync ?? false, codeKind, returns });
 }
 

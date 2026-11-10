@@ -12,9 +12,11 @@
  * names, so `any A & B | C` is `(any A & B) | C`. A literal type is a string, an integer, maybe
  * negative, or a bool (§2), so another literal is no type.
  *
- * Only a parameter's type may be a reference (§3.7), and `parseParameterType` is the one entry
- * that allows it. A `&` met anywhere else is still parsed, so the tree shows what was written, but
- * it is reported. Expressions follow the same rule for `&x` in call arguments.
+ * Only a parameter's type may be a reference (§3.7), and `parseParameterType` is the one entry that
+ * allows it: a function type's parameters, and a tuple type's items, which `Fn<(&T,), R>` writes a
+ * function type's parameters as (§3.14); the checker reports a tuple's anywhere else, since only
+ * what the tuple is given to tells. A `&` met anywhere else is still parsed, so the tree shows what
+ * was written, but it is reported. Expressions follow the same rule for `&x` in call arguments.
  *
  * `T??` arrives as one `??` token and means `T?` twice. Fields of an anonymous struct, as the items
  * of every list in a type, are separated by `,` or line breaks (§2). A function type without `->`
@@ -218,11 +220,16 @@ function parseNamedType(parser: Parser): TypeNode {
   return namedTypeFrom(parser, path, typeArguments);
 }
 
-/** `()`, `(A,)` and `(A, B)` are tuples; `(A)` groups. */
+/** `()`, `(A,)` and `(A, B)` are tuples, whose items may be `&T` (the banner); `(A)` groups. */
 function parseTupleType(parser: Parser): TypeNode {
-  return parseGroup<TypeNode, TypeNode>(parser, () => parser.type(), {
+  return parseGroup<TypeNode, TypeNode>(parser, () => parseParameterType(parser), {
     tuple: (span, elements) => ({ kind: 'TupleType', span, elements }),
-    grouped: (span, inner) => ({ kind: 'ParenthesizedType', span, inner }),
+    grouped: (span, inner) => {
+      if (inner.kind === 'ReferenceType') {
+        parser.report(parserDiagnostics.misplacedReference(parser.textSpanOf(inner.span)));
+      }
+      return { kind: 'ParenthesizedType', span, inner };
+    },
   });
 }
 

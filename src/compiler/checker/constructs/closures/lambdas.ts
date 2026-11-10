@@ -42,22 +42,26 @@ import type { BodyContext } from '../../contexts/body-context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import type { Produced } from '../../rules/agreement.ts';
 import { blockTail, producedBy } from '../../rules/agreement.ts';
+import { checkNamedMark } from '../../rules/kinds/signature-kinds.ts';
 import type { NestedFunction } from '../../surface/checked-body.ts';
 import type { Admits } from '../../types/fitting/expected.ts';
 import { expectedFunction } from '../../types/fitting/expected.ts';
 import { sameType } from '../../types/identity/identity.ts';
-import { isSendable } from '../../types/traits/sendable.ts';
+import { capturedSend } from '../../types/traits/sendable.ts';
 import {
   isOneKind,
   kindAdmits,
-  unmarkedKind,
+  kindOfFunction,
+  simpleMark,
   writtenKindOf,
 } from '../../types/type/function-kinds.ts';
 import {
   functionType,
   isPack,
   packRestSlot,
+  plainSend,
   type RestSlot,
+  sendableSend,
 } from '../../types/type/function-types.ts';
 import type { FunctionType, Type } from '../../types/type/index.ts';
 import { errorType, expectsError, neverType, unitType } from '../../types/type/primitives.ts';
@@ -103,8 +107,8 @@ export function lambdaAccepts(context: BodyContext, node: Lambda): Admits | unde
     return (
       shape !== undefined &&
       (writtenKind === undefined ||
-        isOpen(shape.persistence) ||
-        kindAdmits(shape.persistence, writtenKind, sameType)) &&
+        isOpen(shape.mark) ||
+        kindAdmits(shape.mark, writtenKind, sameType)) &&
       (!awaits(node.qualifiers) ||
         isOpen(shape.result) ||
         checker.fitting.awaitedOf(shape.result)?.value !== undefined) &&
@@ -141,8 +145,8 @@ export function writtenInputs(context: BodyContext, node: Lambda): Type | undefi
     return undefined;
   }
   return functionType({
-    reach: 'sendable',
-    persistence: writtenKindOf(node.qualifiers) ?? unmarkedKind,
+    send: sendableSend,
+    mark: writtenKindOf(node.qualifiers) ?? simpleMark,
     parameters: types.map((type) => ({ type, reference: false })),
     result: neverType,
   });
@@ -207,7 +211,7 @@ export function inferLambda(
  * calls run in, where it says.
  */
 type ParameterSlots = Pick<FunctionType, 'parameters' | 'pack'> &
-  Partial<Pick<FunctionType, 'persistence'>>;
+  Partial<Pick<FunctionType, 'mark'>>;
 
 /**
  * What a lambda's position says of its result: the type it is declared to give, or how it guides
@@ -267,7 +271,7 @@ function checkLambdaAs(
     orFuture: node.returnType === undefined ? ofBody?.orFuture : undefined,
     guided: hint === undefined ? undefined : { node, guide: hint, inScope: context.scopes.here() },
     reach: node.span,
-    givenKind: givenKindOf(node.qualifiers, slots?.persistence),
+    givenKind: givenKindOf(node.qualifiers, slots?.mark, (mark) => context.scopes.holds(mark)),
     tail: (declared) => {
       // A literal it gives while its result is open stays fresh, as a block's value does.
       const type = context.part(node.body, declared ?? hint);
@@ -286,13 +290,17 @@ export function checkLocalFunction(context: BodyContext, node: FunctionDeclarati
   if (node.typeParameters.length > 0) {
     context.report(checkerDiagnostics.nestedFunctionForm(node.name.span, 'type parameters'));
   }
+  checkNamedMark(context.checker, context.module, node);
   if (body !== undefined) {
     checkNested(context, node, {
       name: node.name,
       parameters: nestedParameters(context, node.parameters, undefined),
       declaredResult: declaredBodyResult(context.checker, context.module, node),
       reach: nestedFunctionSpan(node, body),
-      givenKind: givenKindOf(node.qualifiers),
+      givenKind:
+        node.mark === undefined
+          ? givenKindOf(node.qualifiers)
+          : kindOfFunction(context.checker, node),
       tail: (declared) => blockTail(body, context.block(body, declared)),
     });
   }
@@ -307,7 +315,9 @@ interface NestedHeader {
   readonly declaredResult: Type | undefined;
   /** A future of `declaredResult`, which a plain lambda's body may give instead (§3.14). */
   readonly orFuture?: Type | undefined;
-  /** For a lambda whose result a call is still inferring, what guides its `return`s (returns.ts). */
+  /**
+   * For a lambda whose result a call is still inferring, what guides its `return`s (returns.ts).
+   */
   readonly guided?: GuidedResult | undefined;
   /** What the function's text covers, header and body. */
   readonly reach: AnchoredSpan;
@@ -326,7 +336,7 @@ function checkNested(context: BodyContext, node: NestedFunction, header: NestedH
     context.report(checkerDiagnostics.unkindedFuture(node.span));
   }
   if (name !== undefined && declaredResult !== undefined) {
-    context.variables.declare(name, typeWith(declaredResult, 'plain', codeKind));
+    context.variables.declare(name, typeWith(declaredResult, plainSend, codeKind));
   }
   const scope = new FunctionScope(node, {
     isAsync: awaits(node.qualifiers),
@@ -348,13 +358,14 @@ function checkNested(context: BodyContext, node: NestedFunction, header: NestedH
       entity,
       type: context.variables.typeOf(entity),
     }));
-    const sendable = captures.every(
-      (capture) =>
-        !context.variables.isChangeable(capture.entity) &&
-        isSendable(context.checker, capture.type),
-    );
+    const send = captures.some((capture) => context.variables.isChangeable(capture.entity))
+      ? plainSend
+      : capturedSend(
+          context.checker,
+          captures.map((capture) => capture.type),
+        );
     const kind = nestedValueKind(node, header.givenKind, scope);
-    const recorded = typeWith(produces, sendable ? 'sendable' : 'plain', kind);
+    const recorded = typeWith(produces, send, kind);
     if (name !== undefined) {
       context.variables.declare(name, recorded);
     }

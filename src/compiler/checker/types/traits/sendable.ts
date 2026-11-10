@@ -11,14 +11,19 @@
  * (properties/held.ts), so a recursive type is sendable unless something in its cycle isn't.
  * Conformance meets Sendable by this rule (resolution/conformance/derived-traits.ts).
  *
+ * A closure's `Send` follows what it captures (`capturedSend`): a sendability variable passes
+ * through a captured function of it, so a wrapper keeps the sendability of what it wraps.
+ *
  * Code is sendable only to another instance of the same program; whether a value can go to the host
  * is whether it has a codec (rules/boundary/json-forms.ts), which no function type has. A host type
  * a `dispose` makes disposable has one, yet isn't sendable: its values have an identity.
  */
 
 import type { CheckerContext } from '../../contexts/context.ts';
+import { sameType } from '../identity/identity.ts';
 import { isConfined } from '../properties/handles.ts';
-import { heldType } from '../properties/held.ts';
+import { heldType, heldTypes } from '../properties/held.ts';
+import { isSendableFunction, plainSend, sendableSend } from '../type/function-types.ts';
 import type { Type } from '../type/index.ts';
 import { impliesSendable } from './constraint-implication.ts';
 import { knownConstraints } from './known-constraints.ts';
@@ -29,6 +34,26 @@ export function isSendable(checker: CheckerContext, type: Type): boolean {
 }
 
 /**
+ * The `Send` of a function whose values capture values of `types` (§3.14, proposal 8, Rule 4):
+ * `sendable` where each may leave its instance; a sendability variable where all that keeps one
+ * in it is function values of that `S`, so `logged(f)`'s closure is sendable exactly when `f` is;
+ * else `plain`.
+ */
+export function capturedSend(checker: CheckerContext, types: readonly Type[]): Type {
+  const keeping = types.flatMap((type) =>
+    heldTypes(checker, type).filter((part) => keepsInInstance(checker, part)),
+  );
+  const [first] = keeping;
+  if (first === undefined) {
+    return sendableSend;
+  }
+  const variable = first.kind === 'function' ? first.send : undefined;
+  const sharesVariable = (part: Type) =>
+    part.kind === 'function' && variable !== undefined && sameType(part.send, variable);
+  return variable?.kind === 'parameter' && keeping.every(sharesVariable) ? variable : plainSend;
+}
+
+/**
  * Whether `part`, held in a value, keeps it in its instance whatever else it holds: a function
  * not declared `sendable`, a handle whose identity stays in its instance or process, or a type
  * parameter not known to be Sendable.
@@ -36,7 +61,7 @@ export function isSendable(checker: CheckerContext, type: Type): boolean {
 function keepsInInstance(checker: CheckerContext, part: Type): boolean {
   switch (part.kind) {
     case 'function':
-      return part.reach !== 'sendable';
+      return !isSendableFunction(part);
     case 'parameter':
     case 'associated':
     case 'field':

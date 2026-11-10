@@ -255,3 +255,8 @@ const writtenTypeKinds = {
 export function isWrittenType(node: { readonly kind: string }): node is WrittenType {
   return Object.hasOwn(writtenTypeKinds, node.kind);
 }
+
+/** A named type's path as written, its names joined by `.`: `Self.Mode`. */
+export function namedTypeText({ path }: Pick<NamedType, 'path'>): string {
+  return path.map((name) => name.text).join('.');
+}

@@ -14,8 +14,11 @@
  *   through the alias so it reads as written (§3.17).
  * - `T?` is the prelude's `Optional<T>` (§2), and `Self` inside a trait is the trait's implicit
  *   parameter (types/type/index.ts).
- * - `&T` is only ever a parameter's type (the parser enforces it); here it denotes `T`, and the
- *   signature records the reference.
+ * - `&T` is a parameter's type, or an item of the tuple of an `Fn`'s parameters; here it denotes
+ *   `T`, and the signature, or `fnType`, records the reference. The parser lets a tuple's item be
+ *   one, which this reports unless the tuple is an `Fn`'s.
+ * - The prelude's `Fn<Args, Result, Kind, Send>` names the function type it is, built through the
+ *   one constructor (`fnType`), its `Args` a tuple or a pack, reported otherwise.
  * - Fields, of a struct, an enum's variant or an anonymous struct type, resolve in the module
  *   writing them (declared-fields.ts).
  * - A path past the type it names reaches its associated types, `T.Data`, and so does `.Name` after
@@ -28,6 +31,7 @@
  *   nothing its own resolution doesn't again; any other node resolves as the checker resolves it.
  */
 
+import { wellKnown } from '../../../../foundation/language/well-known/index.ts';
 import { type Handlers, handlerOf } from '../../../../foundation/structures/kind-table.ts';
 import type { Entity } from '../../../binder/entities.ts';
 import type { ModuleId } from '../../../program/program.ts';
@@ -39,6 +43,7 @@ import { type Identifier, isMissingName } from '../../../syntax/tree/node.ts';
 import {
   type FunctionType as FunctionTypeNode,
   type NamedType,
+  type ReferenceType,
   type RestType,
   type TypeNode,
   type UnionType,
@@ -49,8 +54,8 @@ import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import { substitutionFor } from '../parts/substitution.ts';
 import { aliasedAs } from '../type/alias-uses.ts';
 import { ownAssociatedType } from '../type/computed-types.ts';
-import { kindOfFunction, unmarkedKind, writtenKindOf } from '../type/function-kinds.ts';
-import { functionType, headResult, isPack, reachOf } from '../type/function-types.ts';
+import { isSimpleMark, kindOfFunction, simpleMark, writtenKindOf } from '../type/function-kinds.ts';
+import { fnType, functionType, headResult, isPack, sendOf } from '../type/function-types.ts';
 import {
   type NominalDeclaration,
   nominalType,
@@ -96,7 +101,7 @@ const typeHandlers: Handlers<Resolution, TypeNode, [], Type> = {
   OptionalType: (resolution, node) =>
     optionalOf(resolve(resolution, node.inner), resolution.checker.typeRules),
   ParenthesizedType: (resolution, node) => resolve(resolution, node.inner),
-  ReferenceType: (resolution, node) => resolve(resolution, node.referent),
+  ReferenceType: (resolution, node) => referent(resolution, node),
   TupleType: (resolution, node) =>
     tupleType(node.elements.map((element) => resolve(resolution, element))),
   FunctionType: (resolution, node) => writtenFunctionType(resolution, node),
@@ -164,12 +169,12 @@ function writtenFunctionType(resolution: Resolution, node: FunctionTypeNode): Ty
   const written = node.returnType === undefined ? unitType : resolve(resolution, node.returnType);
   const kind = writtenKindOf(node.qualifiers) ?? kindAround(resolution, node);
   // Either kind may call an unmarked function, but its future must be of one (§3.3).
-  if (awaits(node.qualifiers) && kind.kind === 'union') {
+  if (awaits(node.qualifiers) && isSimpleMark(kind)) {
     resolution.checker.report(resolution.module, checkerDiagnostics.unkindedFuture(node.span));
   }
   return functionType({
-    reach: reachOf(node.qualifiers),
-    persistence: kind,
+    send: sendOf(node.qualifiers),
+    mark: kind,
     parameters: fixed.map((parameter) => ({
       type: resolve(resolution, parameter),
       reference: unparenthesizedType(parameter).kind === 'ReferenceType',
@@ -181,8 +186,8 @@ function writtenFunctionType(resolution: Resolution, node: FunctionTypeNode): Ty
 
 /**
  * The kind of an unmarked function type `node`: the kind of the function whose signature or body
- * holds it, which it shares (§3.3), a lambda's written one, or else the code's the lambda stands in,
- * or of the declaration whose kind parameter it is written under (`Box<K in Persistence>`), or
+ * holds it, which it shares (§3.3), a lambda's written one, or else the code's the lambda stands
+ * in, or of the declaration whose kind parameter it is written under (`Box<K in Persistence>`), or
  * either kind outside all of them.
  */
 function kindAround({ checker, module }: Resolution, node: FunctionTypeNode): Type {
@@ -200,7 +205,7 @@ function kindAround({ checker, module }: Resolution, node: FunctionTypeNode): Ty
       return { kind: 'parameter', declaration: kind };
     }
   }
-  return unmarkedKind;
+  return simpleMark;
 }
 
 /** The pack a function type's rest names (§3.5); the error type, reported, for anything else. */
@@ -244,10 +249,18 @@ function namedType(resolution: Resolution, node: NamedType): Type {
   if (unreduced !== undefined) {
     return unreduced;
   }
-  const type = asWrittenInMatch(resolution, node, typeOfEntity(checker, entity, argumentsFor));
+  const byReference = referenceItems(node);
+  const type = asWrittenInMatch(
+    resolution,
+    node,
+    typeOfEntity(checker, entity, argumentsFor, byReference),
+  );
   if (type === undefined) {
     checker.report(module, checkerDiagnostics.notType(node.span, name.text));
     return errorType;
+  }
+  if (isFnType(checker, entity)) {
+    checkFnArguments(resolution, node, type);
   }
   const last = members.at(-1) ?? name;
   if (
@@ -285,17 +298,19 @@ function associatedAt(resolution: Resolution, owner: Type, name: Identifier): Ty
 
 /**
  * The type `entity` names, given the arguments `typeArgumentsOf` finds for a generic declaration: a
- * primitive, `Self` or a type parameter, a nominal type, or an alias as the type it stands for,
- * written through it (§3.17); the error type when `typeArgumentsOf` finds none, and undefined for
- * what names no type, a trait among them. The one dispatch from a name to its type, whether written
- * in a type (`namedType`) or in a value's place (named-types.ts).
+ * primitive, `Self` or a type parameter, a nominal type, the prelude's `Fn` as the function type it
+ * is (`fnType`), its parameters taken by `&` as `byReference` says, or an alias as the type it
+ * stands for, written through it (§3.17); the error type when `typeArgumentsOf` finds none, and
+ * undefined for what names no type, a trait among them. The one dispatch from a name to its type,
+ * whether written in a type (`namedType`) or in a value's place (named-types.ts).
  */
 export function typeOfEntity(
-  checker: Pick<CheckerContext, 'aliasedType' | 'typeRules'>,
+  checker: Pick<CheckerContext, 'aliasedType' | 'typeRules' | 'wellKnownEntity'>,
   entity: Entity,
   typeArgumentsOf: (
     declaration: NominalDeclaration | TypeAliasDeclaration,
   ) => readonly Type[] | undefined,
+  byReference: readonly boolean[] = [],
 ): Type | undefined {
   switch (entity.kind) {
     case 'primitive':
@@ -335,7 +350,12 @@ export function typeOfEntity(
           );
         default: {
           const typeArguments = typeArgumentsOf(declaration);
-          return typeArguments === undefined ? errorType : nominalType(entity, typeArguments);
+          if (typeArguments === undefined) {
+            return errorType;
+          }
+          return isFnType(checker, entity)
+            ? fnType(typeArguments, byReference)
+            : nominalType(entity, typeArguments);
         }
       }
     }
@@ -378,4 +398,63 @@ function argumentsOf(
 function unionTypeOf(resolution: Resolution, node: UnionType): Type {
   const members = node.members.map((member) => resolve(resolution, member));
   return unionOf(members, resolution.checker.typeRules);
+}
+
+/** Reports the `Args` the `Fn` written `node` names its `type` by where it is no tuple or pack. */
+function checkFnArguments(resolution: Resolution, node: NamedType, type: Type): void {
+  const [args] = node.typeArguments;
+  if (args === undefined || type.kind !== 'function' || type.pack?.kind !== 'error') {
+    return;
+  }
+  const given = resolve(resolution, args);
+  if (given.kind !== 'error') {
+    resolution.checker.report(
+      resolution.module,
+      checkerDiagnostics.fnArgumentsNotTuple(args.span, typeText(given)),
+    );
+  }
+}
+
+/** Whether `entity` is the prelude's `Fn`, the one function type (§3.14). */
+function isFnType(
+  checker: Pick<CheckerContext, 'wellKnownEntity'>,
+  entity: Entity | undefined,
+): boolean {
+  return entity === checker.wellKnownEntity(wellKnown.fn);
+}
+
+/** Which items of the tuple `node` writes as its first type argument are `&T`, as `Fn`'s are. */
+function referenceItems(node: NamedType): readonly boolean[] {
+  const [args] = node.typeArguments;
+  const tuple = args === undefined ? undefined : unparenthesizedType(args);
+  return tuple?.kind === 'TupleType'
+    ? tuple.elements.map((item) => unparenthesizedType(item).kind === 'ReferenceType')
+    : [];
+}
+
+/**
+ * The type `&T` denotes: `T`, the reference recorded by what takes it. The parser lets one stand on
+ * a parameter's type and on a tuple's item (§3.7); a tuple's is reported here unless the tuple is
+ * an `Fn`'s parameters (`fnType`).
+ */
+function referent(resolution: Resolution, node: ReferenceType): Type {
+  const { checker, module } = resolution;
+  const tree = checker.inputs.treeOf(module);
+  const holder = parentOf(tree, node);
+  if (holder?.kind === 'TupleType') {
+    let named = parentOf(tree, holder);
+    while (named?.kind === 'ParenthesizedType') {
+      named = parentOf(tree, named);
+    }
+    const [args] = named?.kind === 'NamedType' ? named.typeArguments : [];
+    const isFnItem =
+      named?.kind === 'NamedType' &&
+      args !== undefined &&
+      unparenthesizedType(args) === holder &&
+      isFnType(checker, namedPathOf(checker.bindings, module, named).entity);
+    if (!isFnItem) {
+      checker.report(module, checkerDiagnostics.misplacedReferenceItem(node.span));
+    }
+  }
+  return resolve(resolution, node.referent);
 }

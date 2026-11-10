@@ -308,7 +308,7 @@ function structureKeyType(
     default:
       return {
         kind: 'function',
-        persistence: persistenceOf(type.persistence),
+        persistence: persistenceOf(type.mark),
         parameters: type.parameters.map((parameter) => keyType(spelling, parameter.type)),
         result: keyType(spelling, type.result),
       };

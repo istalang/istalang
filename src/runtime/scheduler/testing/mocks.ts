@@ -7,11 +7,11 @@
  *   test world has (test-world.ts). Releasing a mock therefore brings back the one before it. Every
  *   call path asks `reachedMock` (segment/calls.ts): a written call, a function value's, a
  *   disposal's. A mock replaces a function's body, never its defaults: a call leaving parameters
- *   out reaches its mock once the target's prologue has computed them, so the mock records, and
- *   its replacement takes, every argument (§3.3). A deferred call's call is a call, so `spawn f(x)` calls `f` in the new instance and
- *   reaches a mock of `f` relayed from its holder; starting an instance with a function isn't a
- *   call of it, so one started, or spawned with a function value (`spawn(f)`, `runtime.isolate(f)`),
- *   runs it whatever mocks it.
+ *   out reaches its mock once the target's prologue has computed them, so the mock records, and its
+ *   replacement takes, every argument (§3.3). A deferred call's call is a call, so `spawn f(x)`
+ *   calls `f` in the new instance and reaches a mock of `f` relayed from its holder; starting an
+ *   instance with a function isn't a call of it, so one started, or spawned with a function value
+ *   (`spawn(f)`, `runtime.isolate(f)`), runs it whatever mocks it.
  * - A call to another instance's mock is answered there, as a host answers an extern (§9): the
  *   arguments and the result are copied across, the caller's future is filled once the answer is
  *   given, and the holder records the call. A segment that runs again calls it again, as it calls
@@ -158,7 +158,7 @@ function relayCall(call: CallToMock, held: HeldMock): Value {
   }
   const value = arriving(instance, given.value);
   const entry = instance.loaded.definition.functions[target];
-  if (given.followed || (entry?.kind === 'code' && entry.mode !== 'plain')) {
+  if (given.followed || (entry?.kind === 'code' && entry.mode !== 'simple')) {
     instance.futures.resolve(future.id, value);
     return handle;
   }

@@ -173,7 +173,6 @@ function matchParts(matching: Matching, pattern: Type, type: Type): Outcome {
         : 'fail';
     case 'function':
       return type.kind === 'function' &&
-        pattern.reach === type.reach &&
         pattern.parameters.map((each) => each.reference).join() ===
           type.parameters.map((each) => each.reference).join() &&
         (pattern.pack === undefined) === (type.pack === undefined)

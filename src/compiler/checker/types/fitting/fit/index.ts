@@ -37,7 +37,7 @@ import type { Diagnostic } from '../../../../../foundation/diagnostics/diagnosti
 import type { TraitDeclaration } from '../../../../syntax/declarations/index.ts';
 import type { AnchoredSpan } from '../../../../syntax/tree/positions.ts';
 import { checkerDiagnostics } from '../../../diagnostics/index.ts';
-import { isAssignable, sameConstraint } from '../../identity/identity.ts';
+import { isAssignable, isAssignableInvariantly, sameConstraint } from '../../identity/identity.ts';
 import { UnfoldingPairs } from '../../identity/unfolding-pairs.ts';
 import { parametersIn } from '../../parts/type-parts.ts';
 import { unfolded } from '../../type/computed-types.ts';
@@ -162,6 +162,7 @@ export function fitOf(found: Type, expected: Type, fitting: Fitting): Fit | unde
   return matchConversion(found, expected, {
     ...fitting,
     exact: (target, source) => isAssignable(source, target, fitting),
+    same: (target, source) => isAssignableInvariantly(source, target, fitting),
   });
 }
 
@@ -400,6 +401,7 @@ function intoSeveral(found: Type, expected: Type, fitting: Fitting): boolean {
   const rules = matchingWith({
     ...fitting,
     exact: (target, source) => isAssignable(source, target, fitting),
+    same: (target, source) => isAssignableInvariantly(source, target, fitting),
   });
   return (
     ownMember(found, expected, rules) === undefined &&
@@ -470,6 +472,7 @@ export function constraintFits(found: Constraint, expected: Constraint, fitting:
   const rules = matchingWith({
     ...fitting,
     exact: (target, source) => isAssignable(source, target, fitting),
+    same: (target, source) => isAssignableInvariantly(source, target, fitting),
   });
   return (
     sameConstraint(found, expected) ||

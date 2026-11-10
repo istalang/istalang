@@ -261,7 +261,7 @@ export function convertingEntry(
       ? rebuilt(code, { register: value, type: from }, to, rebuildingIn(code, how))
       : appliedFit(code, { value, type: from }, fit, how);
   code.return(result);
-  return code.entry(tables.headerAt(conversionName(checker, entry), at.module, at.span), 'plain');
+  return code.entry(tables.headerAt(conversionName(checker, entry), at.module, at.span), 'simple');
 }
 
 /**
@@ -303,10 +303,10 @@ export function wrappingEntry(
 }
 
 /**
- * Returns `called`, what a function of type `from` gave, as a function of type `to` gives it: fitted
- * to its result; where `to` gives a future of it, from an async entry, awaiting the future `from`
- * gave, if any, so the entry gives a future already resolved when `from` gives none. Whether the
- * entry is async.
+ * Returns `called`, what a function of type `from` gave, as a function of type `to` gives it:
+ * fitted to its result; where `to` gives a future of it, from an async entry, awaiting the future
+ * `from` gave, if any, so the entry gives a future already resolved when `from` gives none. Whether
+ * the entry is async.
  */
 export function returnedAs(
   code: SynthesizedCode,

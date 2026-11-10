@@ -9,16 +9,21 @@
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
+import {
+  type Sendability,
+  sendabilities,
+} from '../../../../../foundation/language/well-known/index.ts';
 import { reported } from '../../../check.test-kit.ts';
-import { unmarkedKind } from '../../type/function-kinds.ts';
-import { functionType, type Reach } from '../../type/function-types.ts';
+import { simpleMark } from '../../type/function-kinds.ts';
+import { functionType, plainSend } from '../../type/function-types.ts';
 import type { Type } from '../../type/index.ts';
 import {
   boolType,
   errorType,
   intType,
+  markType,
   neverType,
-  persistenceType,
+  sendType,
   stringType,
   unitType,
 } from '../../type/primitives.ts';
@@ -72,8 +77,8 @@ const types: fc.Arbitrary<Type> = fc.letrec<{ type: Type }>((tie) => ({
     fc.record({ parameter: tie('type'), result: tie('type'), reference: fc.boolean() }).map(
       ({ parameter, result, reference }): Type =>
         functionType({
-          reach: 'plain',
-          persistence: unmarkedKind,
+          send: plainSend,
+          mark: simpleMark,
           parameters: [{ type: parameter, reference }],
           result,
         }),
@@ -135,19 +140,19 @@ describe('fitting into an optional, a union holding None', () => {
 function functionOf(
   parameter: Type,
   result: Type,
-  { isAsync, reach }: { readonly isAsync: boolean; readonly reach: Reach },
+  { isAsync, send }: { readonly isAsync: boolean; readonly send: Sendability },
 ): Type {
   return functionType({
-    reach,
-    persistence: unmarkedKind,
+    send: sendType(send),
+    mark: simpleMark,
     parameters: [{ type: parameter, reference: false }],
-    result: isAsync ? fittingApart.futureOf(result, persistenceType('ista')) : result,
+    result: isAsync ? fittingApart.futureOf(result, markType('ista')) : result,
   });
 }
 
 const kinds = fc.record({
   isAsync: fc.boolean(),
-  reach: fc.constantFrom<Reach>('sendable', 'plain'),
+  send: fc.constantFrom<Sendability>(...sendabilities),
 });
 
 /** Two function types of one shape: the one given, the one expected, wrapped `count` times. */
@@ -165,7 +170,7 @@ describe('fitting a function where one giving a future is expected', () => {
       fc.property(pairs, ({ parameter, result, given, wanted, count }) => {
         const found = functionOf(parameter, result, given);
         const expected = wrapped(functionOf(parameter, result, wanted), count);
-        const sendableFits = given.reach === 'sendable' || wanted.reach === 'plain';
+        const sendableFits = given.send === 'sendable' || wanted.send === 'plain';
         const fits = sendableFits && (given.isAsync === wanted.isAsync || wanted.isAsync);
         expect(fitShape(fitOf(found, expected, fittingApart))).toEqual(
           fits
@@ -180,8 +185,8 @@ describe('fitting a function where one giving a future is expected', () => {
   });
 
   it('makes a function inside another type async as a part of it (§3.5)', () => {
-    const plain = functionOf(intType, intType, { isAsync: false, reach: 'plain' });
-    const async = functionOf(intType, intType, { isAsync: true, reach: 'plain' });
+    const plain = functionOf(intType, intType, { isAsync: false, send: 'plain' });
+    const async = functionOf(intType, intType, { isAsync: true, send: 'plain' });
     const tuple = (element: Type): Type => ({ kind: 'tuple', elements: [element, intType] });
     expect(fitShape(fitOf(tuple(plain), tuple(async), fittingApart))).toEqual({
       conversion: { kind: 'parts', to: tuple(async) },
@@ -190,8 +195,8 @@ describe('fitting a function where one giving a future is expected', () => {
   });
 
   it('awaits an async function where one giving a future of a wider value is expected', () => {
-    const async = functionOf(intType, intType, { isAsync: true, reach: 'plain' });
-    const wider = functionOf(intType, wrapped(intType, 1), { isAsync: true, reach: 'plain' });
+    const async = functionOf(intType, intType, { isAsync: true, send: 'plain' });
+    const wider = functionOf(intType, wrapped(intType, 1), { isAsync: true, send: 'plain' });
     expect(fitShape(fitOf(async, wider, fittingApart))).toEqual({
       conversion: { kind: 'parts', to: wider },
       into: false,
@@ -204,7 +209,7 @@ describe('fitting a function where one giving a future is expected', () => {
       fc.property(pairs, ({ parameter, result, given, wanted, count }) => {
         const found = functionOf(parameter, neverType, given);
         const expected = wrapped(functionOf(parameter, result, wanted), count);
-        const sendableFits = given.reach === 'sendable' || wanted.reach === 'plain';
+        const sendableFits = given.send === 'sendable' || wanted.send === 'plain';
         // A future of `Never` is one of any value; `Never` itself goes into one only made async.
         const fits = sendableFits && (given.isAsync === wanted.isAsync || wanted.isAsync);
         expect(fitShape(fitOf(found, expected, fittingApart))).toEqual(

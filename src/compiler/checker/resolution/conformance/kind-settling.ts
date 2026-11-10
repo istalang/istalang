@@ -6,30 +6,44 @@
  * a callee's kind takes its caller's: nothing binds it before the call's arguments are inferred,
  * so an argument of a kind fixes it first (`retry(fetchLive, 3)`).
  *
- * Outside code, a kind that only function types in the signature read takes either kind, which
- * their code is the same for; one a future reads takes none, which leaves it to what fixes it.
+ * Outside code, a mark that may be simple (a carried kind, `M in DataKind`) takes `"simple"`, which
+ * code of every mark may call; one of the two kinds (`K in Persistence`) takes none, which leaves
+ * it to what fixes it.
+ *
+ * A sendability parameter (`S in Sendability`) nothing fixes was given only sendable functions,
+ * which bind nothing (`sendFits`), so it takes the least, `"sendable"`.
  */
 
-import { isKindParameter } from '../../../syntax/declarations/function-kinds.ts';
+import {
+  isKindParameter,
+  isSendabilityParameter,
+  standsForOneKind,
+} from '../../../syntax/declarations/function-kinds.ts';
 import type { TypeParameter } from '../../../syntax/declarations/index.ts';
 import type { UseSite } from '../../contexts/use-site.ts';
 import type { Settling } from '../../types/inference/settle.ts';
-import { unmarkedKind } from '../../types/type/function-kinds.ts';
+import { simpleMark } from '../../types/type/function-kinds.ts';
+import { sendableSend } from '../../types/type/function-types.ts';
 import type { ParameterKey, Type } from '../../types/type/index.ts';
 
-/** `settling`, each kind parameter of `parameters` nothing fixes, nor a default, settled at `site`. */
+/**
+ * `settling`, each kind or sendability parameter of `parameters` nothing fixes, nor a default,
+ * settled at `site`.
+ */
 export function kindsSettledAt(
   site: UseSite,
   parameters: readonly TypeParameter[],
   settling: Settling,
 ): Settling {
   const kinds = new Map<ParameterKey, Type | undefined>(
-    parameters
-      .filter(isKindParameter)
-      .map((parameter) => [
-        parameter,
-        site.codeKind ?? (parameter.memberOf === undefined ? unmarkedKind : undefined),
-      ]),
+    parameters.flatMap((parameter): [ParameterKey, Type | undefined][] => {
+      if (isSendabilityParameter(parameter)) {
+        return [[parameter, sendableSend]];
+      }
+      return isKindParameter(parameter)
+        ? [[parameter, site.codeKind ?? (standsForOneKind(parameter) ? undefined : simpleMark)]]
+        : [];
+    }),
   );
   return kinds.size === 0
     ? settling

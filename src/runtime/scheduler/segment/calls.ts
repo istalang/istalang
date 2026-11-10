@@ -12,9 +12,9 @@
  *   is the frame's result, and a replacement takes the frame's place (index.ts), so no trace shows
  *   the target.
  * - A native runs at once and answers the call; code gives the entry to push.
- * - Code that waits runs only in a run of its own kind (proposal 8's call rule): live code in a live
- *   run, ista code in an instance. The checker keeps every call so (K1), so a call across kinds is
- *   a bug, and running it would commit live code or keep ista code waiting in memory.
+ * - Code that waits runs only in a run of its own kind (proposal 8's call rule): live code in a
+ *   live run, ista code in an instance. The checker keeps every call so (K1), so a call across
+ *   kinds is a bug, and running it would commit live code or keep ista code waiting in memory.
  * - What a replacement gives back arrives as another instance's would (mocks.ts `arriving`): a
  *   native's answer at once, code's when its frame returns, which `arrives` marks.
  */
@@ -90,7 +90,7 @@ export function handOver(caller: Caller, frame: ActiveFrame): CallTarget {
 
 /** Whether `entry` runs as an execution of its own: code that may wait, unless it hands over. */
 export function runsAsExecution(entry: FrameEntry): boolean {
-  return entry.code.mode !== 'plain' && entry.handsOver !== true;
+  return entry.code.mode !== 'simple' && entry.handsOver !== true;
 }
 
 /** What `frame` returning `value` in `instance` hands back: arrived when it ran a mock. */
@@ -125,7 +125,7 @@ function runCall(caller: Caller, run: Run, passed: readonly Passed[]): CallTarge
     };
   }
   const { mode } = callable.code;
-  if (mode !== 'plain' && mode !== caller.waiting.kind) {
+  if (mode !== 'simple' && mode !== caller.waiting.kind) {
     unreachable(`A ${caller.waiting.kind} run calls ${mode} code, which the call rule refuses.`);
   }
   return { kind: 'code', entry: callable, contents: passed, captures: run.captures };

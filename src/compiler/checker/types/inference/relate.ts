@@ -12,9 +12,9 @@
  *   into a union without goes to the one member that takes it (`intoOneMember`).
  * - A type built of others relates part by part as its variance says (fit/parts.ts), each part
  *   fitted as any value is, the error type and `Never` bounding nothing, `Never` noted where it is
- *   given as a variable. A function type ending in a pack, which takes the parameters past its
- *   fixed ones as they are, relates only as the very same type (equal.ts), and so does an `any`
- *   type, as it is; into one expected, a value converts, as below.
+ *   given as a variable. A function type ending in a pack takes the parameters past its fixed ones
+ *   as they are, its mark and sendability by their orders (fit/parts.ts). An `any` type relates
+ *   only as the very same type (equal.ts), as it is; into one expected, a value converts, as below.
  * - A value converted into an `any` type holding variables, or a value holding them converted into
  *   one, relates through the one instantiation of each trait its type may meet (`convertsIntoAny`),
  *   each argument as the trait's variance says, as fitting meets it (§3.10): a `LayoutView<Sc>`
@@ -195,7 +195,7 @@ function relatedByParts(expected: Type, found: Type, relating: Relating): boolea
     // Anything else converts, through what it may meet, by the traits' variance (`convertsIntoAny`).
     return sameType(expected, found);
   }
-  if (found.kind === 'any' || endsInPack(expected)) {
+  if (found.kind === 'any') {
     return relating.equal(expected, found);
   }
   return fitsByParts(found, expected, partsRelation(relating));
@@ -225,11 +225,6 @@ function partsRelation(relating: Relating): PartsRelation {
       return relating.constrain(found, expected);
     },
   };
-}
-
-/** Whether `type` is a function type ending in a pack. */
-function endsInPack(type: Type): boolean {
-  return type.kind === 'function' && type.pack !== undefined;
 }
 
 /**

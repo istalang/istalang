@@ -1,12 +1,13 @@
 /**
- * The kinds of code as types (proposal 8, Rules 1–4): what a function type's kind slot and a
- * future's `K` hold. A kind is `"live"` or `"ista"`, a literal of the prelude's `Persistence`;
- * an unmarked function type's is the whole union, which either kind may call; a generic one's a
- * kind variable, a function's own implicit one (syntax/declarations/function-kinds.ts) or a kind
- * parameter its signature names.
+ * The marks of code as types (proposal 8, Rules 1–4): what a function type's mark slot and a
+ * future's `K` hold. A mark is a literal of the prelude's `DataKind`: `"live"` or `"ista"`, the
+ * two kinds, `Persistence`'s members, or `"simple"`, an unmarked function's, which either kind may
+ * call; a generic one's a kind variable, a function's own implicit one
+ * (syntax/declarations/function-kinds.ts) or a kind parameter its signature names.
  *
- * A function's kind is its head's; else its implicit kind parameter; else a kind parameter its
- * signature passes as a kind, a future's or a `Deferred`'s (`time.delay`, `defer`); else either. A
+ * A function's kind is its head's, a word or the mark parameter it names (`M fn`, `Self.Mode fn`);
+ * else its implicit kind parameter; else a kind parameter its
+ * signature passes as a kind, a future's or a `Deferred`'s (`time.delay`, `defer`); else simple. A
  * kind parameter its signature only takes a value of (`describe<K>(k: K)`) is no kind of its own.
  * It is found by the names the signature writes, so resolving a type its signature holds may ask
  * it, and the checker keeps each answer as an entry (`Checker.kindOf`). An interim until phase
@@ -16,6 +17,7 @@
 import {
   type Persistence,
   persistences,
+  wellKnown,
 } from '../../../../foundation/language/well-known/index.ts';
 import type { TypeEntity } from '../../../binder/entities.ts';
 import { declaredFunctionName } from '../../../syntax/declarations/field-defaults.ts';
@@ -23,6 +25,7 @@ import {
   isKindParameter,
   kindOwnerOf,
   kindParameterOf,
+  standsForOneKind,
   writtenKindParameterOf,
 } from '../../../syntax/declarations/function-kinds.ts';
 import {
@@ -38,16 +41,26 @@ import type { Checker } from '../../check.ts';
 import type { CheckerContext } from '../../contexts/context.ts';
 import { namedPathOf } from '../written/named-paths.ts';
 import type { Type } from './index.ts';
-import { persistenceType } from './primitives.ts';
+import { markType } from './primitives.ts';
 
-/** The kind of an unmarked function type outside any signature: either, `Persistence` itself. */
-export const unmarkedKind: Type = { kind: 'union', members: persistences.map(persistenceType) };
+/** The mark of unmarked code and function types (proposal 8, Rule 2): `"simple"`. */
+export const simpleMark: Type = markType('simple');
+
+/** Whether `mark` is `"simple"`, which code of every mark may call. */
+export function isSimpleMark(mark: Type): boolean {
+  return mark.kind === 'literal' && mark.value === 'simple';
+}
 
 /** What reading a kind asks of the checker, which keeps each answer as an entry of its own. */
 export type KindLookup = Pick<Checker, 'kindOf'>;
 
-/** What finding a function's kind looks up: the names its signature writes. */
-export type KindNames = Pick<CheckerContext, 'bindings' | 'moduleOf'>;
+/**
+ * What finding a function's kind looks up: the names its signature writes, and the mark it names.
+ */
+export type KindNames = Pick<
+  CheckerContext,
+  'bindings' | 'moduleOf' | 'resolveType' | 'wellKnownEntity'
+>;
 
 /**
  * Whether a function of kind `callee` may be called, or fit, where code of kind `code` calls it
@@ -59,7 +72,7 @@ export function kindAdmits(
   callee: Type,
   same: (expected: Type, found: Type) => boolean,
 ): boolean {
-  return callee.kind === 'union' || same(code, callee);
+  return isSimpleMark(callee) || same(code, callee);
 }
 
 /**
@@ -80,7 +93,7 @@ export function persistenceOf(kind: Type): Persistence | undefined {
 
 /** The kind a head writes; undefined where it writes none. */
 export function writtenKindOf(qualifiers: FunctionQualifiers): Type | undefined {
-  return qualifiers.kind === undefined ? undefined : persistenceType(qualifiers.kind);
+  return qualifiers.kind === undefined ? undefined : markType(qualifiers.kind);
 }
 
 /** The kind of `declaration`'s code (the banner), as the checker keeps it. */
@@ -97,8 +110,14 @@ export function functionKindOf(names: KindNames, declaration: FunctionDeclaratio
   if (own !== undefined) {
     return own;
   }
+  if (declaration.mark !== undefined) {
+    // A name that is no mark is reported where the signature is (rules/kinds/signature-kinds.ts);
+    // its function is then simple, so its calls report nothing more.
+    const named = names.resolveType(names.moduleOf(declaration), declaration.mark);
+    return isMarkVariable(named) || named.kind === 'associated' ? named : simpleMark;
+  }
   const variable = kindVariableOf(names, declaration);
-  return variable === undefined ? unmarkedKind : { kind: 'parameter', declaration: variable };
+  return variable === undefined ? simpleMark : { kind: 'parameter', declaration: variable };
 }
 
 /** The kind `declaration`'s syntax alone says: its head's, else its implicit kind parameter. */
@@ -141,7 +160,10 @@ function namedTypesIn(node: SyntaxNode): readonly SyntaxNode[] {
   return node.kind === 'NamedType' ? [node, ...inner] : inner;
 }
 
-/** The kind parameters `node`, a named type, writes as arguments to its own kind parameters. */
+/**
+ * The kind parameters `node`, a named type, writes as arguments to its own kind parameters; none
+ * for an `Fn`, whose mark is its code's, while its value is simple data (proposal 8, Rule 2).
+ */
 function kindsPassedBy(
   lookup: KindNames,
   module: ReturnType<KindNames['moduleOf']>,
@@ -151,6 +173,10 @@ function kindsPassedBy(
     return [];
   }
   const generic = declaredTypeOf(lookup, module, node);
+  const fn = lookup.wellKnownEntity(wellKnown.fn);
+  if (fn?.kind === 'type' && fn.declaration === generic) {
+    return [];
+  }
   const parameters =
     generic !== undefined && 'typeParameters' in generic
       ? typeParametersOf(generic.typeParameters)
@@ -200,8 +226,19 @@ export function isOneKind(kind: Type): boolean {
     persistenceOf(kind) !== undefined ||
     (kind.kind === 'parameter' &&
       kind.declaration.kind === 'TypeParameter' &&
-      isKindParameter(kind.declaration) &&
-      kind.declaration.memberOf !== undefined)
+      standsForOneKind(kind.declaration))
+  );
+}
+
+/**
+ * Whether `type` is a mark parameter: a function's implicit kind, `K in Persistence` or `M in
+ * DataKind`.
+ */
+export function isMarkVariable(type: Type): boolean {
+  return (
+    type.kind === 'parameter' &&
+    type.declaration.kind === 'TypeParameter' &&
+    isKindParameter(type.declaration)
   );
 }
 

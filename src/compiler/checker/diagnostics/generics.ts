@@ -340,6 +340,26 @@ export const genericTemplates = {
     message: () =>
       "'infer' binds a type variable only in a type match case's pattern, to the part of the subject standing there (§3.17).",
   },
+  fnArgumentsNotTuple: {
+    code: 5690,
+    message: (written: string) =>
+      `'Fn' takes its parameters as a tuple, '(A,)' for one, or a pack, not '${written}' (§3.14).`,
+  },
+  unknownMark: {
+    code: 5692,
+    message: (written: string) =>
+      `'${written}' is no mark: a head names a type parameter 'M in DataKind' or 'K in Persistence' as its mark (§3.5).`,
+  },
+  asyncMarkNotKind: {
+    code: 5693,
+    message: (written: string) =>
+      `An async head's mark is one of the two kinds, which its future takes: declare '${written}' 'in Persistence' (§3.5).`,
+  },
+  misplacedReferenceItem: {
+    code: 5691,
+    message: () =>
+      "'&' stands only on a parameter's type, or on an item of the tuple of an 'Fn''s parameters (§3.14).",
+  },
 } as const;
 
 /**

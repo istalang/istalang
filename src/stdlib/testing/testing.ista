@@ -44,7 +44,7 @@ struct _Entry:
   body: ista async fn() -> Unit
 
 # Every test of `suite`, depth first, titled under `title`, the suite's.
-fn _list(suite: fn() -> Array<Test>, title: String) -> Array<Listed>: [
+M fn _list<M in DataKind>(suite: Fn<(), Array<Test>, M>, title: String) -> Array<Listed>: [
   for entry in _entries(title, suite(), false, false): entry.listed
 ]
 
@@ -283,7 +283,7 @@ ista fn sendRevertible<Q, T, K>(self: FakeQueue<Q, T, K>, queue: Q, message: T) 
   _inboxOf(self._queues, queue).sendRevertible(message)
 
 # The queue of `key`, made the first time.
-fn _opened<Q, T, K>(queues: _Queues<Q, T, K>, make: fn() -> Q, key: K) -> _Queue<Q, T, K>:
+M fn _opened<Q, T, K, M in DataKind>(queues: _Queues<Q, T, K>, make: Fn<(), Q, M>, key: K) -> _Queue<Q, T, K>:
   for each in queues->opened:
     if each.key == key: return each
   const made = _Queue{key, queue: make(), inbox: Inbox.create<T>()}

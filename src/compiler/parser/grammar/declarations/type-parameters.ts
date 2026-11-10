@@ -8,7 +8,8 @@
  * named `gives`. Where one may stand is the checker's to judge; two are reported here, as they
  * contradict each other whatever the declaration.
  *
- * A member parameter takes no constraint or default beside its union (§3.5). One written is still
+ * A member parameter takes no constraint beside its union (§3.5); its default, one of the union's
+ * members (`Kind in DataKind = "simple"`), is the checker's to judge. A constraint written is still
  * read, so the tree shows it, and reported once, over all of it.
  */
 
@@ -42,10 +43,10 @@ function parseTypeParameter(parser: Parser): TypeParameter {
   const besides = cursor.token.span.start;
   const constraints: readonly ConstraintNode[] =
     cursor.eat('is') === undefined ? [] : parseConstraints(parser);
-  const defaultType = cursor.eat('=') === undefined ? undefined : parser.type();
-  if (memberOf !== undefined && (constraints.length > 0 || defaultType !== undefined)) {
+  if (memberOf !== undefined && constraints.length > 0) {
     parser.report(parserDiagnostics.memberParameterAlone(parser.textSpanFrom(besides)));
   }
+  const defaultType = cursor.eat('=') === undefined ? undefined : parser.type();
   return {
     kind: 'TypeParameter',
     span: parser.spanFrom(start),
@@ -58,7 +59,9 @@ function parseTypeParameter(parser: Parser): TypeParameter {
   };
 }
 
-/** `gives` or `takes` before a parameter's name or `...`, eaten; undefined when none stands there. */
+/**
+ * `gives` or `takes` before a parameter's name or `...`, eaten; undefined when none stands there.
+ */
 function eatVariance(parser: Parser): VarianceMarker | undefined {
   const { cursor } = parser;
   const before = cursor.kindAt(1);

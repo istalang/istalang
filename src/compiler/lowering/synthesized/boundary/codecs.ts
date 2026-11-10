@@ -57,5 +57,5 @@ export function derivedCodecEntry(lowering: CodecLowering, direction: JsonDirect
     checker.typeRules,
   );
   bodyWriters[direction](code, result, checker.json.formOf(type));
-  return code.entry(tables.entryHeader(instance), 'plain');
+  return code.entry(tables.entryHeader(instance), 'simple');
 }

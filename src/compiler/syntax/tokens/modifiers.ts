@@ -1,20 +1,20 @@
 /**
  * The modifiers a head stacks before its keyword, `fn` or `struct` (§2): a function's, a function
  * type's, a lambda's, an extern's or a struct's. They stack in any order, each at most once
- * and one word of each group, and print in one order, the groups': `extern`; what a value reaches
- * or which handle it is; the function's kind; whether it awaits. Parsing, completion and every printer read
- * these tables, so a modifier is added here alone.
+ * and one word of each group, and print in one order, the groups': `extern`; what a value may
+ * capture or which handle it is; the function's mark; whether it awaits. Parsing, completion and
+ * every printer read these tables, so a modifier is added here alone.
  *
  * - A group's words exclude each other: a head is `sendable` or not, `live`, `ista` or neither,
  *   `async` or not, one handle.
- * - `sendable` before `fn` is the function's reach and before `struct` an extern struct's handle,
- *   `live` a function's kind or an extern struct's handle, and `shared` a handle or a shared
- *   struct's own word. The form tells them apart, so a word may stand in two groups no form holds
- *   together.
- * - A form is a head where it stands, with the groups it takes: a function type takes its reach,
- *   while a lambda's follows from its captures (§3.14).
- * - A function's qualifiers, its reach, kind and `async`, are what its type keeps of its head; a
- *   declaration's `extern` and an extern struct's handle stay on the declaration.
+ * - `sendable` before `fn` is the function's sendability and before `struct` an extern struct's
+ *   handle, `live` a function's mark or an extern struct's handle, and `shared` a handle or a
+ *   shared struct's own word. The form tells them apart, so a word may stand in two groups no form
+ *   holds together.
+ * - A form is a head where it stands, with the groups it takes: a function type takes its
+ *   sendability, while a lambda's follows from its captures (§3.14).
+ * - A function's qualifiers, its sendability, mark and `async`, are what its type keeps of its
+ *   head; a declaration's `extern` and an extern struct's handle stay on the declaration.
  */
 
 import type { ContextualWord, Keyword } from './index.ts';
@@ -24,7 +24,7 @@ export const modifierGroups = {
   extern: ['extern'],
   handle: ['shared', 'sendable', 'live'],
   shared: ['shared'],
-  reach: ['sendable'],
+  send: ['sendable'],
   kind: ['live', 'ista'],
   async: ['async'],
 } as const satisfies Record<string, readonly (Keyword | ContextualWord)[]>;
@@ -38,17 +38,17 @@ export type ModifierWord<Group extends ModifierGroup = ModifierGroup> =
 export type Modifiers = { readonly [Group in ModifierGroup]?: ModifierWord<Group> | undefined };
 
 /**
- * What a function's head says of it: what its value may reach, the kind of code it is (proposal 8,
- * Rule 2), and whether its body may await.
+ * What a function's head says of it: what its value may capture, its mark (proposal 8, Rule 2),
+ * and whether its body may await.
  */
 export interface FunctionQualifiers {
-  readonly reach: ModifierWord<'reach'> | undefined;
+  readonly send: ModifierWord<'send'> | undefined;
   readonly kind: ModifierWord<'kind'> | undefined;
   readonly async: ModifierWord<'async'> | undefined;
 }
 
-export const plainQualifiers: FunctionQualifiers = {
-  reach: undefined,
+export const unqualified: FunctionQualifiers = {
+  send: undefined,
   kind: undefined,
   async: undefined,
 };
@@ -81,7 +81,7 @@ export const headForms = {
   function: { keyword: 'fn', groups: ['extern', 'kind', 'async'], name: 'a function declaration' },
   requirement: { keyword: 'fn', groups: ['kind', 'async'], name: "a trait's function" },
   lambda: { keyword: 'fn', groups: ['kind', 'async'], name: 'a lambda' },
-  functionType: { keyword: 'fn', groups: ['reach', 'kind', 'async'], name: 'a function type' },
+  functionType: { keyword: 'fn', groups: ['send', 'kind', 'async'], name: 'a function type' },
   externStruct: { keyword: 'struct', groups: ['extern', 'handle'], name: 'an extern struct' },
   sharedStruct: { keyword: 'struct', groups: ['shared'], name: 'a shared struct' },
   struct: { keyword: 'struct', groups: [], name: 'a struct' },
@@ -116,13 +116,27 @@ export function startsOf<Form extends HeadForm>(
 }
 
 /** A function's qualifiers among a head's modifiers. */
-export function qualifiersOf({ reach, kind, async }: Modifiers): FunctionQualifiers {
-  return { reach, kind, async };
+export function qualifiersOf({ send, kind, async }: Modifiers): FunctionQualifiers {
+  return { send, kind, async };
 }
 
-/** `modifiers` as a head prints them, in their groups' order, each followed by a space. */
-export function modifiersText(modifiers: Modifiers): string {
-  return groupOrder
-    .map((group) => (modifiers[group] === undefined ? '' : `${modifiers[group]} `))
-    .join('');
+/**
+ * `modifiers` as a head prints them, in their groups' order, each followed by a space; `mark`, the
+ * text of a mark the head names (`M`, `Self.Mode`), stands where a kind's word would.
+ */
+export function modifiersText(modifiers: Modifiers, mark?: string): string {
+  const [before, after] = modifiersAroundMark(modifiers);
+  const kind = modifiers.kind ?? mark;
+  return `${before}${kind === undefined ? '' : `${kind} `}${after}`;
+}
+
+/**
+ * The text of `modifiers` a head prints before its mark and after it, each word followed by a
+ * space, so a printer can print a named mark (`M`) between them as a node of its own.
+ */
+export function modifiersAroundMark(modifiers: Modifiers): readonly [string, string] {
+  const at = groupOrder.indexOf('kind');
+  const text = (groups: readonly ModifierGroup[]) =>
+    groups.map((group) => (modifiers[group] === undefined ? '' : `${modifiers[group]} `)).join('');
+  return [text(groupOrder.slice(0, at)), text(groupOrder.slice(at + 1))];
 }

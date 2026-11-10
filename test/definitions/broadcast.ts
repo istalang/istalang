@@ -190,7 +190,7 @@ export const broadcastDefinition: Definition = {
       name: 'time.delay',
       module: time,
       span: noSpan,
-      mode: 'plain',
+      mode: 'simple',
       parameters: [{ reference: false, hasDefault: false }],
       captures: 0,
       annotations: [],

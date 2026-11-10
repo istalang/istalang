@@ -9,10 +9,10 @@
  *   include the target's, it calls an entry converting variant by variant; from the same `any`
  *   type, it is the value itself. From a union, each member's value converts as a value of that
  *   member, so a value of `A | B` inside an `any` type is an `A` or a `B`.
- * - A dispatch entry takes what the required function takes, its receiver first, and is async
- *   when the function gives a future, async or not (§3.14), awaiting the call it makes, so what a
- *   member gives converts as the value of the future the call gives. On a union, a member with one value (a
- *   literal, `none`) holds nothing, so its function gets that value; on the one type a union
+ * - A dispatch entry takes what the required function takes, its receiver first, and is async when
+ *   the function gives a future, async or not (§3.14), awaiting the call it makes, so what a member
+ *   gives converts as the value of the future the call gives. On a union, a member with one value
+ *   (a literal, `none`) holds nothing, so its function gets that value; on the one type a union
  *   collapsed into, it calls that type's function.
  * - A member meeting another instantiation of the trait, which the trait's variance lets stand for
  *   the `any` type's (checker/resolution/conformance/met-instantiations/index.ts), is called
@@ -65,7 +65,8 @@ export function dispatchEntry(lowering: Lowering, dispatch: Dispatch): FunctionD
     unreachable(`'${required.name.text}' is called through any without its receiver.`);
   }
   const at = { module: checker.moduleOf(required), span: required.name.span };
-  // What a member gives converts as what its future gives, so a future is awaited, whatever the head.
+  // What a member gives converts as what its future gives, so a future is awaited, whatever the
+  // head.
   const awaited = awaitedOf(checker, checker.resultOf(required));
   const givesFuture = awaited !== undefined;
   const kindOfDispatch = substitute(
@@ -140,7 +141,7 @@ export function anyConversionEntry(
     code.return(convertedIntoAny(code, { value: code.field(value, 0), from: type, to }, span));
   });
   const name = `${spelledType(checker, from)} as ${spelledType(checker, to)}`;
-  return code.entry(tables.headerAt(name, checker.moduleOf(first.trait), span), 'plain');
+  return code.entry(tables.headerAt(name, checker.moduleOf(first.trait), span), 'simple');
 }
 
 /** The entry reading `required`'s field, which a trait of `on` requires, from a value of `on`. */
@@ -172,7 +173,7 @@ export function anyFieldEntry(
     );
   });
   const name = `${spelledType(checker, on)}.${field.name.text}`;
-  return code.entry(tables.headerAt(name, checker.moduleOf(trait), field.name.span), 'plain');
+  return code.entry(tables.headerAt(name, checker.moduleOf(trait), field.name.span), 'simple');
 }
 
 /**

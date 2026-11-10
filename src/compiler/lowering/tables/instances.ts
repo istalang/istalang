@@ -3,8 +3,8 @@
  *
  * - An instance is a declaration with concrete type arguments and the concrete witnesses of its
  *   constraints (§3.10). Its entry takes every parameter, computing those a call leaves out from
- *   their defaults in its prologue (§3.1, §3.3), so a function named as a value of a shorter type is
- *   that entry too; only an extern, which computes nothing, has a second entry computing them
+ *   their defaults in its prologue (§3.1, §3.3), so a function named as a value of a shorter type
+ *   is that entry too; only an extern, which computes nothing, has a second entry computing them
  *   (tables.ts).
  * - A body is checked once, generically (checker), so lowering one instance reads the body through
  *   its substitution (checker/wiring/body/facts/instantiation.ts), and closes every call it makes
@@ -26,12 +26,14 @@ import type { ValueSite } from '../../checker/surface/checked-body.ts';
 import type { Witnesses } from '../../checker/surface/resolved-call.ts';
 import type { TypeKeys } from '../../checker/types/identity/type-keys.ts';
 import { type Substitution, substitutionFor } from '../../checker/types/parts/substitution.ts';
+import { simpleMark } from '../../checker/types/type/function-kinds.ts';
 import type { FunctionType, Type } from '../../checker/types/type/index.ts';
-import { literalType, persistenceType } from '../../checker/types/type/primitives.ts';
+import { literalType, markType } from '../../checker/types/type/primitives.ts';
 import type { ModuleId } from '../../program/program.ts';
 import {
   functionTypeParametersOf,
-  kindParameterOf,
+  isImplicitKind,
+  isKindParameter,
 } from '../../syntax/declarations/function-kinds.ts';
 import { type FunctionDeclaration, typeParametersOf } from '../../syntax/declarations/index.ts';
 import type { Expression, FieldHeader, Lambda } from '../../syntax/expressions/index.ts';
@@ -101,14 +103,18 @@ export function ownerSubstitution(owner: BodyOwner): Substitution {
 /**
  * The instance of `declaration` that nothing calls in code of a kind, with its `written` type
  * arguments: a start, which a host runs as live code (§9), or a conversion's own function, whose
- * code is the same in either kind. An unmarked one's kind is `live`.
+ * code is the same in either kind. An unmarked one's implicit kind is `live`, and a mark parameter
+ * left unwritten (`M in DataKind`) is `"simple"`: a conversion's converter is simple code.
  */
 export function rootInstance(
   declaration: FunctionDeclaration,
   written: readonly Type[] = [],
 ): FunctionInstance {
-  const kind = kindParameterOf(declaration) === undefined ? [] : [persistenceType('live')];
-  return { declaration, typeArguments: [...written, ...kind], witnesses: new Map() };
+  const rest = functionTypeParametersOf(declaration)
+    .slice(written.length)
+    .filter(isKindParameter)
+    .map((parameter) => (isImplicitKind(parameter) ? markType('live') : simpleMark));
+  return { declaration, typeArguments: [...written, ...rest], witnesses: new Map() };
 }
 
 /** How the instance maps its declaration's type parameters. */

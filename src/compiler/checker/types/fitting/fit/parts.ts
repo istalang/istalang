@@ -8,7 +8,7 @@
 import { sameItems } from '../../../../../foundation/structures/equality.ts';
 import type { UnfoldingPairs } from '../../identity/unfolding-pairs.ts';
 import { kindAdmits } from '../../type/function-kinds.ts';
-import { functionFits, resultFitOf } from '../../type/function-types.ts';
+import { functionFits, resultFitOf, sendFits } from '../../type/function-types.ts';
 import type {
   AnonymousStructType,
   FieldMember,
@@ -23,7 +23,9 @@ import type { Fitting } from './index.ts';
 export interface PartsRelation extends Pick<Fitting, 'varianceOf' | 'shapeOf' | 'awaitedOf'> {
   /** The pairs being related, so a recursive type's parts are related once. */
   readonly relating: UnfoldingPairs;
-  /** Whether `found` is `expected`, where a part must be the same type: invariant, or behind `&`. */
+  /**
+   * Whether `found` is `expected`, where a part must be the same type: invariant, or behind `&`.
+   */
   readonly same: (expected: Type, found: Type) => boolean;
   /** Whether a value of `found` fits where `expected` is, as the match fits any value. */
   readonly fits: (found: Type, expected: Type) => boolean;
@@ -123,15 +125,17 @@ function functionFitsByParts(
   relation: PartsRelation,
 ): boolean {
   const { fits, same, attempt } = relation;
-  const kinds = (code: Type, callee: Type) => kindAdmits(code, callee, same);
+  const marks = (code: Type, callee: Type) => kindAdmits(code, callee, same);
+  const sends = (declared: Type, given: Type) => sendFits(given, declared, same);
   if (expected.pack !== undefined) {
-    return functionFits(expected, found, { parts: same, kinds });
+    return functionFits(expected, found, { parts: same, marks, sends });
   }
   return functionFits(expected, found, {
     parts: (taken, given, byReference) => (byReference ? same(taken, given) : fits(taken, given)),
     results: (gives, given) =>
       resultFitOf(given, gives, (value, place) => attempt(() => fits(value, place)), relation) !==
       undefined,
-    kinds,
+    marks,
+    sends,
   });
 }

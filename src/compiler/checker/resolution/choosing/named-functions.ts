@@ -48,7 +48,7 @@ import {
 } from '../../types/fitting/expected.ts';
 import { type Substitution, substitute } from '../../types/parts/substitution.ts';
 import { parametersIn } from '../../types/parts/type-parts.ts';
-import { functionType, resolvedInto } from '../../types/type/function-types.ts';
+import { functionType, resolvedInto, sendableSend } from '../../types/type/function-types.ts';
 import type { FunctionType, Type } from '../../types/type/index.ts';
 import { tupleElements } from '../../types/type/primitives.ts';
 import type { TypeRules } from '../../types/type/type-rules.ts';
@@ -291,8 +291,8 @@ function valueTypeOf(
 ): FunctionType {
   const pack = signature.parameters.find((slot) => slot.rest?.kind === 'pack');
   return functionType({
-    reach: 'sendable',
-    persistence: placed(signature.kind()),
+    send: sendableSend,
+    mark: placed(signature.kind()),
     parameters: signature.parameters
       .filter((slot, index) => slot !== pack && binding[index]?.kind === 'argument')
       .map((slot) => ({ type: placed(slot.type), reference: slot.reference })),

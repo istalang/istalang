@@ -9,6 +9,7 @@ import type { DeferredCall } from '../../../syntax/expressions/calls.ts';
 import type { BodyContext } from '../../contexts/body-context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import { isSendable } from '../../types/traits/sendable.ts';
+import { isSendableFunction } from '../../types/type/function-types.ts';
 import type { Type } from '../../types/type/index.ts';
 import { typeText } from '../../types/type/type-text.ts';
 import type { StoppingOperand } from './stopped-operations.ts';
@@ -21,7 +22,7 @@ export interface DeferredArgument {
 }
 
 /** What of `computed` isn't sendable, so a function capturing it can't be. */
-export function unsendable(
+function unsendable(
   context: Pick<BodyContext, 'checker'>,
   computed: readonly StoppingOperand[],
 ): readonly StoppingOperand[] {
@@ -37,7 +38,7 @@ export function explainedCaptures(
   deferred: DeferredArgument,
   expected: Type,
 ): boolean {
-  if (expected.kind !== 'function' || expected.reach !== 'sendable') {
+  if (expected.kind !== 'function' || !isSendableFunction(expected)) {
     return false;
   }
   const captured = unsendable(context, deferred.computed);

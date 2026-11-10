@@ -66,7 +66,7 @@ export function parseStatement(parser: Parser): Statement | Invalid {
  * otherwise. The head may start with any modifier, one no table holds included (`sendable fn f`).
  */
 function parseLocalFunction(parser: Parser): Statement | undefined {
-  const head = headAhead(parser);
+  const head = headAhead(parser, true);
   return head?.keyword === 'fn' && namesFunctionAt(parser, head.length)
     ? parser.functionDeclaration()
     : undefined;

@@ -32,6 +32,7 @@ export interface PatternScope {
   readonly fieldsOf: Checker['fieldsOf'];
   readonly aliasedType: Checker['aliasedType'];
   readonly typeRules: Checker['typeRules'];
+  readonly wellKnownEntity: Checker['wellKnownEntity'];
   readonly variantsOf: Checker['variantsOf'];
   readonly entityOf: (name: Identifier) => Entity | undefined;
   /** The type a type argument written in a pattern names (§3.11). */
@@ -49,7 +50,13 @@ export function bodyScope(
   context: Pick<PatternScope, 'entityOf' | 'resolveType' | 'report' | 'recordField'> & {
     readonly checker: Pick<
       Checker,
-      'fieldsOf' | 'aliasedType' | 'typeRules' | 'variantsOf' | 'wellKnownType' | 'constantNamed'
+      | 'fieldsOf'
+      | 'aliasedType'
+      | 'typeRules'
+      | 'variantsOf'
+      | 'wellKnownType'
+      | 'wellKnownEntity'
+      | 'constantNamed'
     >;
     readonly module: ModuleId;
   },
@@ -59,6 +66,7 @@ export function bodyScope(
     fieldsOf: (type) => checker.fieldsOf(type),
     aliasedType: (alias) => checker.aliasedType(alias),
     typeRules: checker.typeRules,
+    wellKnownEntity: (declaration) => checker.wellKnownEntity(declaration),
     variantsOf: (type) => checker.variantsOf(type),
     wellKnownType: (declaration, typeArguments) =>
       checker.wellKnownType(declaration, typeArguments),
@@ -146,7 +154,7 @@ export function structParts(
  * generic alias names no one type, and anything else names another type than the value's.
  */
 export function otherTypeNamed(
-  scope: Pick<PatternScope, 'aliasedType' | 'typeRules'>,
+  scope: Pick<PatternScope, 'aliasedType' | 'typeRules' | 'wellKnownEntity'>,
   entity: Entity,
   { span, name }: { readonly span: AnchoredSpan; readonly name: Identifier },
   type: Type,

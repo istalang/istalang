@@ -406,6 +406,6 @@ function startShapeOf(entry: CodeFunction): StartShape {
     isStatic: false,
     isGeneric: false,
     parameters: entry.parameters,
-    awaits: entry.mode !== 'plain',
+    awaits: entry.mode !== 'simple',
   };
 }

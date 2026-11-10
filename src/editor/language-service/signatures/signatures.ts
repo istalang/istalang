@@ -29,6 +29,7 @@ import type { Pattern } from '../../../compiler/syntax/patterns.ts';
 import { awaits, modifiersText } from '../../../compiler/syntax/tokens/modifiers.ts';
 import type { SyntaxTree } from '../../../compiler/syntax/tree/index.ts';
 import { spanIn } from '../../../compiler/syntax/tree/positions.ts';
+import { namedTypeText } from '../../../compiler/syntax/types/index.ts';
 import { textOf } from '../../../foundation/text/span.ts';
 
 /** A signature's text, and where each parameter's text stands in it. */
@@ -47,7 +48,10 @@ export function signatureOf(checker: Checker, declaration: FunctionDeclaration):
     (parameter) => `${parameter.isPack ? '...' : ''}${parameter.name.text}`,
   );
   const head = [
-    modifiersText(qualifiers),
+    modifiersText(
+      qualifiers,
+      declaration.mark === undefined ? undefined : namedTypeText(declaration.mark),
+    ),
     'fn ',
     declaredFunctionName(declaration),
     generics.length === 0 ? '' : `<${generics.join(', ')}>`,
@@ -59,7 +63,7 @@ export function signatureOf(checker: Checker, declaration: FunctionDeclaration):
   const result = checker.resultOf(declaration);
   // An async head says its call gives a future, so it spells what its body gives (§3.14).
   const written = awaits(qualifiers) ? outcomeOf(checker, result) : result;
-  return joined(head, parameters, ` -> ${typeText(written)}`);
+  return joined(`${head}(`, parameters, `) -> ${typeText(written)}`);
 }
 
 /** The signature of a function value of `type`, whose parameters have types but no names. */
@@ -85,13 +89,14 @@ function patternText(tree: SyntaxTree, pattern: Pattern): string {
   return textOf(tree.source, spanIn(tree, pattern.span)).replace(/\s*\n\s*/gu, ' ');
 }
 
+/** A signature whose label is `head`, its `parameters` joined by `, `, then `tail`. */
 function joined(head: string, parameters: readonly string[], tail: string): Signature {
   const labels: ParameterLabel[] = [];
-  let label = `${head}(`;
+  let label = head;
   for (const [index, parameter] of parameters.entries()) {
     label += index === 0 ? '' : ', ';
     labels.push([label.length, label.length + parameter.length]);
     label += parameter;
   }
-  return { label: `${label})${tail}`, parameters: labels };
+  return { label: `${label}${tail}`, parameters: labels };
 }

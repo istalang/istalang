@@ -257,7 +257,8 @@ function partsMapped(
         })),
         pack: type.pack === undefined ? undefined : map(type.pack),
         result: map(type.result),
-        persistence: map(type.persistence),
+        mark: map(type.mark),
+        send: map(type.send),
       });
     case 'any':
       return {

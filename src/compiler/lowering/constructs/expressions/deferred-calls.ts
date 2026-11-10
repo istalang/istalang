@@ -136,8 +136,8 @@ export function deferredEntry(
   const { span } = plan.site;
   const code = new SynthesizedCode(lowering, span, 0, capturedBy(plan));
   const called = madeCall(code, deferred, code.captures);
-  const { reach, persistence } = plan.givenAs;
-  const from = functionType({ reach, persistence, parameters: [], result: plan.result });
+  const { send, mark } = plan.givenAs;
+  const from = functionType({ send, mark, parameters: [], result: plan.result });
   const module = checker.moduleOf(ownerDeclaration(owner));
   const isAsync = returnedAs(code, called, { from, to: plan.givenAs }, { module, span });
   const mode = codeModeOf(isAsync, builtKindOf(checker, plan.givenAs));

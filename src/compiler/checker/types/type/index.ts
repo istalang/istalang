@@ -67,7 +67,6 @@ import type {
   RecursiveType,
 } from './computed-types.ts';
 import { inFieldOrder } from './field-order.ts';
-import type { Reach } from './function-types.ts';
 import type { StructConstraintModel } from './struct-constraint.ts';
 
 /** What every type carries beside its kind: the alias it was written through, if any. */
@@ -179,21 +178,21 @@ export interface ParameterSlot {
 declare const builtFunctionType: unique symbol;
 
 /**
- * A function type; a sendable one's values capture only sendable values (§3.14). Its parameters
- * may end in a pack (`fn(Int, ...A) -> R`, §3.5), which stands for the parameters a tuple
- * substituted for it flattens into, so a type with a pack is always generic. An async function's type
- * is one giving a future (`ista async fn(A) -> R` is `ista fn(A) -> Future<R, "ista">`). Only
+ * A function type; a sendable one's values capture only sendable values (§3.14). Its parameters may
+ * end in a pack (`fn(Int, ...A) -> R`, §3.5), which stands for the parameters a tuple substituted
+ * for it flattens into, so a type with a pack is always generic. An async function's type is one
+ * giving a future (`ista async fn(A) -> R` is `ista fn(A) -> Future<R, "ista">`). Only
  * `functionType` builds one, so that holds of every function type, however it was reached.
  */
 export interface FunctionType extends WrittenThrough {
   readonly kind: 'function';
-  readonly reach: Reach;
   /**
-   * The kind of code its calls run in (proposal 8, Rules 2–4): `"live"`, `"ista"`, the
-   * `Persistence` union for an unmarked function, which either kind may call, or a kind variable.
-   * It fits contravariantly, as a parameter does: an unmarked function where a live one is expected.
+   * `Fn`'s `Kind` (proposal 8, Rules 2–4): the mark of the code its calls run, `"simple"`, `"live"`
+   * or `"ista"`, or a variable. A simple one fits where either kind is expected (`kindAdmits`).
    */
-  readonly persistence: Type;
+  readonly mark: Type;
+  /** `Fn`'s `Send` (§3.14): `"sendable"` or `"plain"`, or a variable, ordered by `sendFits`. */
+  readonly send: Type;
   readonly parameters: readonly ParameterSlot[];
   readonly pack?: PackType | undefined;
   readonly result: Type;

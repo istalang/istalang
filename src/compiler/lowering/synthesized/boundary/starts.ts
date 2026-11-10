@@ -19,6 +19,7 @@ import type { CodeFunction } from '../../../../definition/tables/functions.ts';
 import { isStartable, type StartShape } from '../../../../foundation/language/starts.ts';
 import { unreachable } from '../../../../foundation/structures/unreachable.ts';
 import type { Checker } from '../../../checker/check.ts';
+import { isSendableFunction } from '../../../checker/types/type/function-types.ts';
 import type { FunctionType, Type } from '../../../checker/types/type/index.ts';
 import { outcomeOf } from '../../../checker/types/type/well-known.ts';
 import type {
@@ -99,7 +100,7 @@ function lambdaStartable(
   if (
     constant?.form?.kind !== 'function' ||
     type?.kind !== 'function' ||
-    type.reach !== 'sendable'
+    !isSendableFunction(type)
   ) {
     return undefined;
   }

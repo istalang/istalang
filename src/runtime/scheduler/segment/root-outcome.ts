@@ -5,10 +5,10 @@
  *
  * - The root call is code, run as the root execution, or an extern, whose native the instance's
  *   first segment calls (`callExtern`); starting an instance isn't a call, so no mock answers it
- *   (§10). Its answer is the outcome: an async entry's return value, a plain entry's or an extern's
- *   answer as it is, except a future, which can't outlive its instance. A spawned instance runs a
- *   function giving one, `sendable async fn() -> R`, which a plain entry, such as a deferred call's
- *   function giving its callee's future, or an extern gives as it is.
+ *   (§10). Its answer is the outcome: an async entry's return value, a simple entry's or an
+ *   extern's answer as it is, except a future, which can't outlive its instance. A spawned instance
+ *   runs a function giving one, `sendable async fn() -> R`, which a simple entry, such as a
+ *   deferred call's function giving its callee's future, or an extern gives as it is.
  * - A future that has resolved gives its value at once. One still pending is awaited: the root
  *   ends, its segment committing as at any driver's `await`, and an `outcome` object holds the
  *   future (snapshot/objects.ts) until it resolves, a future it resolves with followed in turn
@@ -103,7 +103,7 @@ export class RootOutcome {
     if (!isRootReturn) {
       return { kind: 'return', value };
     }
-    this.#outcome ??= frame.code.mode === 'plain' ? this.#awaited(value) : { value };
+    this.#outcome ??= frame.code.mode === 'simple' ? this.#awaited(value) : { value };
     if (this.#outcome === undefined) {
       return { kind: 'await' };
     }
@@ -154,8 +154,8 @@ export class RootOutcome {
   }
 
   /**
-   * The outcome a root gives with `value`, a plain entry's or an extern's: a future's value once it
-   * has resolved, a pending one held by an `outcome` object meanwhile; any other `value` itself.
+   * The outcome a root gives with `value`, a simple entry's or an extern's: a future's value once
+   * it has resolved, a pending one held by an `outcome` object meanwhile; any other `value` itself.
    */
   #awaited(value: Value): Known | undefined {
     const { heap, futures } = this.#seams.instance;

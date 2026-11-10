@@ -185,7 +185,12 @@ function body(
   const prologue = prologueOf(entry);
   return fc.integer({ min: 1, max: 8 }).chain((written) => {
     const labels = prologue.length + written;
-    const inScope = { ...scope, registers: entry.registers, labels, async: entry.mode !== 'plain' };
+    const inScope = {
+      ...scope,
+      registers: entry.registers,
+      labels,
+      async: entry.mode !== 'simple',
+    };
     return fc
       .record({
         instructions: fc.array(instruction(inScope), {
@@ -259,7 +264,7 @@ export const definitionArbitrary: fc.Arbitrary<Definition> = fc
         const scope = { sizes, types, signatures, registers: 1, async: false };
         return fc.tuple(...signatures.map((entry) => body(scope, entry))).chain((functions) => {
           const mains = functions.flatMap((entry, id) =>
-            entry.kind === 'code' && entry.mode !== 'plain' && entry.parameters.length === 0
+            entry.kind === 'code' && entry.mode !== 'simple' && entry.parameters.length === 0
               ? [id]
               : [],
           );

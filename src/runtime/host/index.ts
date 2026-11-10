@@ -27,10 +27,10 @@
  *   store continues where an earlier one committed (§5). While a runtime runs, it is its store's
  *   only driver.
  * - Values cross as JSON (§9), so a host never reads the runtime's value shapes: the externs it
- *   implements take and give JSON (../boundary/host-natives.ts), it starts a function by its key with
- *   JSON arguments and reads the outcome as JSON (`outcome`) or its text (`outcomeText`), and it
- *   fills a future it named with JSON.
- *   JSON that doesn't fit what it was given for refuses the host's call, and nothing commits.
+ *   implements take and give JSON (../boundary/host-natives.ts), it starts a function by its key
+ *   with JSON arguments and reads the outcome as JSON (`outcome`) or its text (`outcomeText`), and
+ *   it fills a future it named with JSON. JSON that doesn't fit what it was given for refuses the
+ *   host's call, and nothing commits.
  */
 
 import { type Definition, definitionFormat } from '../../definition/definition.ts';
@@ -67,7 +67,9 @@ import { storedInstance } from './stored-instances.ts';
 export interface RuntimeSeams {
   readonly natives: Natives;
   readonly store: InstanceStore;
-  /** The host's time: when each segment starts (§5), and what a live run waits on for its timers. */
+  /**
+   * The host's time: when each segment starts (§5), and what a live run waits on for its timers.
+   */
   readonly clock: Clock;
   /**
    * A new secret seed, `seedBytes` random bytes (../snapshot/random.ts), for each instance a host
@@ -134,8 +136,8 @@ export interface Runtime {
    */
   readonly retry: (instance: string) => Promise<Advanced>;
   /**
-   * Ends a panicked instance as terminated (§3.12), disposing everything it holds (§7) from its last
-   * commit; a Refusal for one that hasn't panicked.
+   * Ends a panicked instance as terminated (§3.12), disposing everything it holds (§7) from its
+   * last commit; a Refusal for one that hasn't panicked.
    */
   readonly terminate: (instance: string) => Promise<Advanced>;
 }
@@ -387,7 +389,8 @@ function listedStart(
 
 /**
  * Whether what `key` names starts as a live run (proposal 8): its entry is live code, which runs
- * outside any instance. Anything else starts an instance, a plain entry included, as it always has.
+ * outside any instance. Anything else starts an instance, a simple entry included, as it always
+ * has.
  */
 function startsLive(definition: Definition, key: string | undefined): boolean {
   const { entry } = listedStart(definition, key);

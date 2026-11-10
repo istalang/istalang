@@ -1,5 +1,6 @@
 import { encloses } from '../../../foundation/text/span.ts';
 import type { FunctionQualifiers } from '../tokens/modifiers.ts';
+import { type NamedType, namedTypeText } from '../types/index.ts';
 import {
   bodyOf,
   childrenOf,
@@ -25,6 +26,10 @@ export function handMadeSpan(from: number, to = from): AnchoredSpan {
 }
 
 function dumpField(tree: TreeBodies, name: string, value: unknown): string | undefined {
+  // A head's mark is among its words, as its qualifiers are: none written shows nothing.
+  if (name === 'mark') {
+    return value === undefined ? undefined : namedTypeText(value as NamedType);
+  }
   if (value === undefined) {
     return '_';
   }

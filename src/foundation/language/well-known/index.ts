@@ -38,6 +38,8 @@ export interface WellKnownDeclaration {
 export const wellKnown = {
   /** What an async call returns and `await` waits on (§3.3, §6). */
   future: { module: 'prelude', name: 'Future' },
+  /** The one function type, every function type's spelling its sugar (§3.14). */
+  fn: { module: 'prelude', name: 'Fn' },
   /** What `spawn` gives: a handle to the new instance, whose end `result()` waits for (§9). */
   instance: { module: 'prelude', name: 'Instance' },
   /** What `T?` stands for (§3.11). */
@@ -112,6 +114,20 @@ export function qualifiedName({
 export const persistences = ['live', 'ista'] as const;
 
 export type Persistence = (typeof persistences)[number];
+
+/**
+ * What data is and what code may handle (proposal 8, Rule 2), the members of the prelude's
+ * `DataKind`: `simple`, below both kinds, and the two kinds, `Persistence`'s members.
+ */
+export type DataKind = 'simple' | Persistence;
+
+/**
+ * What a function's values may capture (§3.14), the members of the prelude's `Sendability`: only
+ * sendable values, or any (`plain`).
+ */
+export const sendabilities = ['sendable', 'plain'] as const;
+
+export type Sendability = (typeof sendabilities)[number];
 
 /** The function every program starts from (§9). */
 export const entryFunction = 'main';

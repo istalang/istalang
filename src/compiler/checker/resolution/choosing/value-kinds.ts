@@ -17,8 +17,8 @@ import type { Signature } from './choice.ts';
 
 /** The kind a function named as a value takes where `expected` is expected of it. */
 export function valueKind(context: Pick<BodyContext, 'codeKind'>, expected: FunctionType): Type {
-  const kind = expected.persistence;
-  return kind.kind === 'literal' || kind.kind === 'union' ? kind : context.codeKind;
+  const kind = expected.mark;
+  return kind.kind === 'literal' ? kind : context.codeKind;
 }
 
 /** The kind a function of `signature` named as a value takes with nothing expected of it. */

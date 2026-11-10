@@ -5,18 +5,24 @@
  * - `functionType` is the only way a function type is built, written, inferred or substituted
  *   alike, so its pack is flattened wherever a tuple fills it: into parameters by value, `Unit`
  *   into none.
- * - A function type keeps its head's reach (syntax/tokens/modifiers.ts), `plain` where the head
- *   writes none (`reachOf`), and its text and key print it as the head does (`modifiersOf`).
+ * - A function type is `Fn<Args, Result, Kind, Send>` (proposal 8, Rule 4), whatever spelling wrote
+ *   it: its mark and sendability are type slots, each a `DataKind` or `Sendability` member or a
+ *   variable, `"simple"` and `"plain"` where its head writes none (`sendOf`), and its text and key
+ *   print the head's words for them (`modifiersOf`).
  * - An async head is no part of the type (§3.14): `async fn(A) -> R` is `fn(A) -> Future<R>`,
  *   which a head's call gives (`headResult`), so the two spellings are one type, one key and one
  *   text, and a function returning a future is an async one wherever its type is all that's known.
- * - A function fits where another is expected when its reach fits, by their order (`reachFits`),
- *   its kind fits as a parameter does (an unmarked one where a live one is expected), and it takes
+ * - A function fits where another is expected when its sendability fits, by `Sendability`'s order
+ *   (`sendFits`), its mark fits as the caller says (`marks`), and it takes
  *   and gives what that one does, a declared pack taking whatever parameters are left
  *   (`functionFits`). Where a future is expected of it, the value it gives may go into that
  *   future's (`resultFitOf`): a plain function's call then gives a future already resolved.
  */
 
+import {
+  type Sendability,
+  sendabilities,
+} from '../../../../foundation/language/well-known/index.ts';
 import {
   awaits,
   type FunctionQualifiers,
@@ -30,36 +36,63 @@ import type {
   TypeParameterType,
   WrittenThrough,
 } from './index.ts';
-import { errorType, tupleElements, tupleType } from './primitives.ts';
+import { errorType, sendType, tupleElements, tupleType } from './primitives.ts';
 
-/**
- * What a function's values may capture (§3.14): only sendable values, or any (`plain`), where its
- * head writes no reach.
- */
-export type Reach = NonNullable<FunctionQualifiers['reach']> | 'plain';
+export const plainSend: Type = sendType('plain');
 
-/** The reach a head's `qualifiers` write. */
-export function reachOf(qualifiers: FunctionQualifiers): Reach {
-  return qualifiers.reach ?? 'plain';
+export const sendableSend: Type = sendType('sendable');
+
+/** The `Send` slot a head's `qualifiers` write: `sendable`, or `plain` where they write none. */
+export function sendOf(qualifiers: FunctionQualifiers): Type {
+  return qualifiers.send === undefined ? plainSend : sendableSend;
+}
+
+/** Which sendability the `Send` slot `send` holds; undefined for a variable. */
+function sendabilityOf(send: Type): Sendability | undefined {
+  return sendabilities.find((each) => send.kind === 'literal' && send.value === each);
+}
+
+/** Whether values of the function type `type` capture only sendable values (§3.14). */
+export function isSendableFunction(type: FunctionType): boolean {
+  return sendabilityOf(type.send) === 'sendable';
 }
 
 /**
- * The modifiers a head of `type` writes, which its text and key print: its reach, and its kind
- * where it is one of the two; an unmarked function type's, or a kind variable's, writes none.
+ * The modifiers a head of `type` writes, which its text and key print: `sendable`, and its mark
+ * where it is one of the two kinds; a simple or variable mark, or a variable `Send`, writes none.
  */
-export function modifiersOf({ reach, persistence }: FunctionType): Modifiers {
-  return { reach: reach === 'plain' ? undefined : reach, kind: persistenceOf(persistence) };
+export function modifiersOf({ send, mark }: FunctionType): Modifiers {
+  return {
+    send: sendabilityOf(send) === 'sendable' ? 'sendable' : undefined,
+    kind: persistenceOf(mark),
+  };
 }
 
-/** Whether a function of reach `given` fits where one of `expected` is: a sendable one anywhere. */
-function reachFits(given: Reach, expected: Reach): boolean {
-  return given === expected || expected === 'plain';
+/**
+ * Whether a function of sendability `given` fits where one of `expected` is, by `Sendability`'s
+ * order (proposal 8, Rule 4), `"sendable"` below `"plain"`: a sendable one anywhere, anything
+ * where `plain` is. The order has two members, so where a variable stands, the bottom bounds
+ * nothing and the top, or the bottom as an upper bound, only itself, which `same` infers: an
+ * `S` given a sendable and a plain function joins to `"plain"`, one given only sendable ones
+ * settles to `"sendable"` (resolution/conformance/kind-settling.ts).
+ */
+export function sendFits(
+  given: Type,
+  expected: Type,
+  same: (expected: Type, given: Type) => boolean,
+): boolean {
+  const into = sendabilityOf(expected);
+  const from = sendabilityOf(given);
+  if (into === 'plain' || from === 'sendable') {
+    return true;
+  }
+  return (from === undefined || into === undefined) && same(expected, given);
 }
 
 /** What `functionType` builds a function type of; its pack may be any type bound to one. */
 export interface FunctionParts extends WrittenThrough {
-  readonly reach: Reach;
-  readonly persistence: Type;
+  readonly send: Type;
+  readonly mark: Type;
   readonly parameters: readonly ParameterSlot[];
   readonly pack?: Type | undefined;
   readonly result: Type;
@@ -88,6 +121,26 @@ function packed(
   }
   const flattened = elements.map((element) => ({ type: element, reference: false }));
   return { parameters: [...parameters, ...flattened], pack: undefined };
+}
+
+/**
+ * The function type `Fn<Args, Result, Kind, Send>` names (§3.14), given its arguments in that
+ * order: `Args`, a tuple, gives its parameters, each by value unless `byReference` says its written
+ * item is a `&T`; a pack, or anything else, ends it as `functionType` takes a pack.
+ */
+export function fnType(
+  [args = errorType, result = errorType, mark = errorType, send = errorType]: readonly Type[],
+  byReference: readonly boolean[],
+): FunctionType {
+  const items = tupleElements(args);
+  return items === undefined
+    ? functionType({ mark, send, parameters: [], pack: args, result })
+    : functionType({
+        mark,
+        send,
+        parameters: items.map((type, index) => ({ type, reference: byReference[index] === true })),
+        result,
+      });
 }
 
 /** A rest parameter: an array's (§3.3), whose arguments are its `item`s, or a pack's (§3.5). */
@@ -179,32 +232,33 @@ function restOf(type: FunctionType, start: number): Type | undefined {
   return rest.some((slot) => slot.reference) ? undefined : tupleType(rest.map((slot) => slot.type));
 }
 
-/** How `functionFits` compares two function types' parts, results and kinds. */
+/** How `functionFits` compares two function types' parts, results, marks and sendabilities. */
 export interface FunctionRelation {
   readonly parts: ParameterRelation;
   /** How the results compare; as parameters by value do where it's left out. */
   readonly results?: ((declared: Type, given: Type) => boolean) | undefined;
   /**
-   * How the given kind relates to the declared one: as code of the declared kind calling the given
+   * How the given mark relates to the declared one: as code of the declared mark calling the given
    * one (`kindAdmits`), or exactly, where types are compared for identity.
    */
-  readonly kinds: (declared: Type, given: Type) => boolean;
+  readonly marks: (declared: Type, given: Type) => boolean;
+  /** How the given `Send` relates to the declared one: by its order (`sendFits`), or exactly. */
+  readonly sends: (declared: Type, given: Type) => boolean;
 }
 
 /**
- * Whether a function of type `given` fits where `declared` is expected: its reach fitting
- * (§3.14), its kind related as the caller says, since its calls run in the declared one's kind
- * (proposal 8, Rule 4), and of the same shape (`sameShape`), its parts and results compared as the
- * caller says.
+ * Whether a function of type `given` fits where `declared` is expected: its sendability and mark
+ * related as the caller says, since its calls run in the declared one's mark (proposal 8, Rule 4),
+ * and of the same shape (`sameShape`), its parts and results compared as the caller says.
  */
 export function functionFits(
   declared: FunctionType,
   given: FunctionType,
-  { parts, results, kinds }: FunctionRelation,
+  { parts, results, marks, sends }: FunctionRelation,
 ): boolean {
   return (
-    reachFits(given.reach, declared.reach) &&
-    kinds(declared.persistence, given.persistence) &&
+    sends(declared.send, given.send) &&
+    marks(declared.mark, given.mark) &&
     sameShape(declared, given, parts, results)
   );
 }

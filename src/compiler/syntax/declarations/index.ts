@@ -26,7 +26,13 @@ import type { VarianceMarker } from '../tokens/grammar-words.ts';
 import type { FunctionQualifiers, ModifierWord } from '../tokens/modifiers.ts';
 import type { Identifier, Invalid, Missing, NodeOf } from '../tree/node.ts';
 import { type AnchoredSpan, spanAcross } from '../tree/positions.ts';
-import type { ConstraintNode, FieldDeclaration, TypeMatch, TypeNode } from '../types/index.ts';
+import type {
+  ConstraintNode,
+  FieldDeclaration,
+  NamedType,
+  TypeMatch,
+  TypeNode,
+} from '../types/index.ts';
 
 /** `"""…"""`: what a declaration or module is for, in its own words (§2); tools read it. */
 export interface Docstring extends NodeOf<'Docstring'> {
@@ -70,6 +76,11 @@ export interface FunctionDeclaration
     Documented {
   readonly isExtern: boolean;
   readonly qualifiers: FunctionQualifiers;
+  /**
+   * The mark its head names instead of writing `live` or `ista` (proposal 8, Rule 3): a mark
+   * parameter, `M fn`, or a path to one, `Self.Mode fn`.
+   */
+  readonly mark: NamedType | undefined;
   readonly owner: Identifier | undefined;
   readonly name: Identifier;
   readonly typeParameters: TypeParameters;

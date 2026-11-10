@@ -12,7 +12,12 @@
 
 import { sameItems } from '../../../../foundation/structures/equality.ts';
 import { kindAdmits } from '../type/function-kinds.ts';
-import { type Futures, functionFits } from '../type/function-types.ts';
+import {
+  type FunctionRelation,
+  type Futures,
+  functionFits,
+  sendFits,
+} from '../type/function-types.ts';
 import type { Constraint, Type } from '../type/index.ts';
 import { isPrimitive } from '../type/primitives.ts';
 import { typeKeys } from './type-keys.ts';
@@ -37,6 +42,31 @@ export function isAssignable(
   target: Type,
   futures: Pick<Futures, 'awaitedOf'>,
 ): boolean {
+  return assignableWith(source, target, futures, {
+    marks: (code, callee) => kindAdmits(code, callee, sameType),
+    sends: (declared, given) => sendFits(given, declared, sameType),
+  });
+}
+
+/**
+ * Whether a value of type `source` stands where `target` is expected invariantly (§3.5), as
+ * `isAssignable` says, but a function's mark and sendability its own: a `Shared<sendable fn()>`
+ * is no `Shared<fn()>`, whose holders could put a plain function in it.
+ */
+export function isAssignableInvariantly(
+  source: Type,
+  target: Type,
+  futures: Pick<Futures, 'awaitedOf'>,
+): boolean {
+  return assignableWith(source, target, futures, { marks: sameType, sends: sameType });
+}
+
+function assignableWith(
+  source: Type,
+  target: Type,
+  futures: Pick<Futures, 'awaitedOf'>,
+  slots: Pick<FunctionRelation, 'marks' | 'sends'>,
+): boolean {
   return (
     source.kind === 'error' ||
     target.kind === 'error' ||
@@ -48,7 +78,7 @@ export function isAssignable(
       functionFits(target, source, {
         parts: sameType,
         results: (declared, given) => resultAssignable(given, declared, futures),
-        kinds: (code, callee) => kindAdmits(code, callee, sameType),
+        ...slots,
       }))
   );
 }

@@ -8,8 +8,8 @@ import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { handMadeSpan } from '../../../syntax/tree/tree.test-kit.ts';
 import type { StructType } from '../../../syntax/types/index.ts';
-import { unmarkedKind } from '../type/function-kinds.ts';
-import { functionType } from '../type/function-types.ts';
+import { simpleMark } from '../type/function-kinds.ts';
+import { functionType, plainSend } from '../type/function-types.ts';
 import { type FieldMember, shapeType, type Type } from '../type/index.ts';
 import { boolType, intType, stringType, tupleType, unitType } from '../type/primitives.ts';
 import { sameType } from './identity.ts';
@@ -31,8 +31,8 @@ const types: fc.Arbitrary<Type> = fc.letrec<{ type: Type }>((tie) => ({
     fc.record({ parameters: fc.array(tie('type'), { maxLength: 2 }), result: tie('type') }).map(
       ({ parameters, result }): Type =>
         functionType({
-          reach: 'plain',
-          persistence: unmarkedKind,
+          send: plainSend,
+          mark: simpleMark,
           parameters: parameters.map((type) => ({ type, reference: false })),
           result,
         }),

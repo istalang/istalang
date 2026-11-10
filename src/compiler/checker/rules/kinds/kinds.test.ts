@@ -83,8 +83,8 @@ describe('calls between kinds', () => {
     );
     expect(found).toEqual([codes.oneKindOfEither.code]);
     expect(messages.join()).toContain("'bg'");
-    // Interim (B58): proposal 8 gives every unmarked function a kind of one of the two.
-    expect(codesOf('fn c(): ()', 'fn w(): _ = defer c()')).toEqual([codes.oneKindOfEither.code]);
+    // `defer` takes `M in DataKind`, so simple code defers (proposal 8, Rule 10).
+    expect(codesOf('fn c(): ()', 'fn w(): _ = defer c()')).toEqual([]);
   });
 
   it('judges a non-blocking `select` in a plain function by its kind', () => {

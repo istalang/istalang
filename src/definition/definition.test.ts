@@ -249,7 +249,7 @@ describe('definition format', () => {
       'functions[3].instructions',
     ],
     [
-      'an await in plain code',
+      'an await in simple code',
       (json) => {
         const { span } = instructionAt(json, 3, 4);
         at(json, 'functions', 3, 'instructions')[4] = { kind: 'await', span, dst: 0, future: 0 };

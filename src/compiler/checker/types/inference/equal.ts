@@ -105,7 +105,8 @@ function equalParts(declared: Type, given: Type, equating: Equating): boolean {
           parts: (part, other) => equalTypes(part, other, equating),
           results: (part, other) =>
             equalTypes(part, other, equating) || isPrimitive(other, 'Never'),
-          kinds: (kind, other) => equalTypes(kind, other, equating),
+          marks: (mark, other) => equalTypes(mark, other, equating),
+          sends: (send, other) => equalTypes(send, other, equating),
         })
       );
     case 'any':

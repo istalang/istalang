@@ -19,8 +19,8 @@ import type {
   TypeAliasDeclaration,
   TypeParameter,
 } from '../../../syntax/declarations/index.ts';
-import { unmarkedKind } from '../type/function-kinds.ts';
-import { functionType } from '../type/function-types.ts';
+import { simpleMark } from '../type/function-kinds.ts';
+import { functionType, plainSend } from '../type/function-types.ts';
 import type { Type } from '../type/index.ts';
 import { boolType, intType, neverType, stringType } from '../type/primitives.ts';
 import { noProgramRules } from '../type/type-rules.test-kit.ts';
@@ -261,8 +261,8 @@ export function bodiesOf(
         return { kind: 'tuple', elements: each.elements.map(slot) };
       case 'function':
         return functionType({
-          reach: 'plain',
-          persistence: unmarkedKind,
+          send: plainSend,
+          mark: simpleMark,
           parameters: [{ type: slot(each.parameter), reference: false }],
           result: slot(each.result),
         });

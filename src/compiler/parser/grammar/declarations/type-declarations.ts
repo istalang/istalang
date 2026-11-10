@@ -241,7 +241,7 @@ const variantRules: ItemRules<Variant> = {
 
 /** A required function, whose body may be omitted, a required field or associated type. */
 function parseTraitMember(parser: Parser): TraitMember | Invalid {
-  const head = headAhead(parser);
+  const head = headAhead(parser, true);
   if (head !== undefined && head.keyword !== 'struct') {
     return parseFunction(parser, 'trait');
   }

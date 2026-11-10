@@ -21,7 +21,12 @@ import type { FunctionCall, ResolvedCall } from '../../surface/resolved-call.ts'
 import { sameType } from '../../types/identity/identity.ts';
 import { substitute, substitutionFor } from '../../types/parts/substitution.ts';
 import { ownValueKindOf } from '../../types/properties/value-kinds.ts';
-import { kindAdmits, kindOfFunction } from '../../types/type/function-kinds.ts';
+import {
+  isSimpleMark,
+  kindAdmits,
+  kindOfFunction,
+  persistenceOf,
+} from '../../types/type/function-kinds.ts';
 import type { Type } from '../../types/type/index.ts';
 import { typeText } from '../../types/type/type-text.ts';
 import { callMade } from '../choosing/calls-made.ts';
@@ -73,16 +78,16 @@ export interface CallOfKind {
 export function checkCallKind(context: Pick<BodyContext, 'report'>, call: CallOfKind): void {
   const { at, frame, calleeKind, callee } = call;
   const caller = frame.codeKind;
-  if (calleeKind.kind !== 'union') {
+  if (!isSimpleMark(calleeKind)) {
     frame.relyOnKind();
   }
   if (kindAdmits(caller, calleeKind, sameType)) {
     return;
   }
   context.report(
-    caller.kind === 'literal'
-      ? checkerDiagnostics.kindsMeet(at, kindText(caller), kindText(calleeKind), callee)
-      : checkerDiagnostics.unmarkedCalls(at, callerName(frame), kindText(calleeKind), callee),
+    persistenceOf(caller) === undefined
+      ? checkerDiagnostics.unmarkedCalls(at, callerName(frame), kindText(calleeKind), callee)
+      : checkerDiagnostics.kindsMeet(at, kindText(caller), kindText(calleeKind), callee),
   );
 }
 
@@ -104,9 +109,9 @@ export function checkMadeKind(context: BodyContext, at: AnchoredSpan, type: Type
   }
   const { codeKind } = frame;
   context.report(
-    codeKind.kind === 'literal'
-      ? checkerDiagnostics.kindsHeld(at, callerName(frame), kindText(codeKind), typeText(type))
-      : checkerDiagnostics.unmarkedHolds(at, callerName(frame), kindText(kind), typeText(type)),
+    persistenceOf(codeKind) === undefined
+      ? checkerDiagnostics.unmarkedHolds(at, callerName(frame), kindText(kind), typeText(type))
+      : checkerDiagnostics.kindsHeld(at, callerName(frame), kindText(codeKind), typeText(type)),
   );
 }
 

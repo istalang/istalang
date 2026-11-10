@@ -227,7 +227,7 @@ export const parserDiagnostics = defineDiagnostics('parser', {
   memberParameterAlone: {
     code: 2027,
     message: () =>
-      "A member parameter ('S in Status') stands for one member of its union, so it takes no constraint or default (§3.5).",
+      "A member parameter ('S in Status') stands for one member of its union, so it takes no constraint (§3.5).",
   },
   positionalAfterNamed: {
     code: 2050,

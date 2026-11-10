@@ -13,8 +13,8 @@
  *   kind: the function's code is the same whatever it stands for.
  * - A function whose signature holds no unmarked function type and that isn't async has none: it
  *   runs the same in both worlds, of either kind, so nothing settles for it at a call.
- * - A function whose signature names a kind variable of its own (`K in Persistence`) has that as
- *   its kind (Rule 3), and no implicit one.
+ * - A function whose head names its mark (`M fn`) or whose signature names a kind variable of its
+ *   own (`K in Persistence`, `M in DataKind`) has that as its kind (Rule 3), and no implicit one.
  */
 
 import { memo } from '../../../foundation/structures/memo.ts';
@@ -25,6 +25,12 @@ import { type FunctionDeclaration, type TypeParameter, typeParametersOf } from '
 
 /** The prelude's union of the two kinds, which a kind parameter stands for a member of. */
 const persistenceName = 'Persistence';
+
+/** The prelude's union of every mark, simple and the two kinds, which a mark parameter takes. */
+const dataKindName = 'DataKind';
+
+/** The prelude's union of what a function's values may capture. */
+const sendabilityName = 'Sendability';
 
 /** What the implicit kind parameter of `declaration` is called where a message names it. */
 const kindParameterName = 'kind';
@@ -43,6 +49,7 @@ export function kindParameterOf(declaration: FunctionDeclaration): TypeParameter
   return memo(implicitKinds, declaration, () => {
     if (
       declaration.qualifiers.kind !== undefined ||
+      declaration.mark !== undefined ||
       writtenKindParameterOf(declaration) !== undefined
     ) {
       return;
@@ -78,13 +85,38 @@ export function functionTypeParametersOf(
   return kind === undefined ? written : [...written, kind];
 }
 
-/** Whether `parameter` stands for a kind: a function's implicit one, or one `in Persistence`. */
+/**
+ * Whether `parameter` stands for a mark: a function's implicit kind, one of the two kinds
+ * (`K in Persistence`), or any mark, simple included (`M in DataKind`).
+ */
 export function isKindParameter(parameter: TypeParameter): boolean {
   return (
     isImplicitKind(parameter) ||
-    (parameter.memberOf?.kind === 'NamedType' &&
-      parameter.memberOf.path.length === 1 &&
-      parameter.memberOf.path[0].text === persistenceName)
+    isMemberOfNamed(parameter, persistenceName) ||
+    isMemberOfNamed(parameter, dataKindName)
+  );
+}
+
+/** Whether `parameter` stands for a function's sendability, `S in Sendability` (§3.14). */
+export function isSendabilityParameter(parameter: TypeParameter): boolean {
+  return isMemberOfNamed(parameter, sendabilityName);
+}
+
+/** Whether `parameter` stands for any mark, simple included: `M in DataKind`. */
+export function standsForAnyMark(parameter: TypeParameter): boolean {
+  return isMemberOfNamed(parameter, dataKindName);
+}
+
+/** Whether `parameter` stands for one of the two kinds: `K in Persistence`, written or implicit. */
+export function standsForOneKind(parameter: TypeParameter): boolean {
+  return isMemberOfNamed(parameter, persistenceName);
+}
+
+function isMemberOfNamed(parameter: TypeParameter, union: string): boolean {
+  return (
+    parameter.memberOf?.kind === 'NamedType' &&
+    parameter.memberOf.path.length === 1 &&
+    parameter.memberOf.path[0].text === union
   );
 }
 

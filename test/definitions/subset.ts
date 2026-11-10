@@ -82,7 +82,7 @@ export const subsetDefinition: Definition = {
       name: 'main.fib',
       module: 0,
       span: at('fn fib(n: Int) -> Int'),
-      mode: 'plain',
+      mode: 'simple',
       parameters: [{ reference: false, hasDefault: false }],
       captures: 0,
       annotations: [],

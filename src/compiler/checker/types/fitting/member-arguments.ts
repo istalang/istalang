@@ -7,12 +7,12 @@
  * read the rule `isOneMember` states.
  */
 
-import { isKindParameter } from '../../../syntax/declarations/function-kinds.ts';
+import { isKindParameter, standsForAnyMark } from '../../../syntax/declarations/function-kinds.ts';
 import type { TypeParameter } from '../../../syntax/declarations/index.ts';
 import type { UseSite } from '../../contexts/use-site.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import { type Substitution, substitute } from '../parts/substitution.ts';
-import { isOneKind, kindHolderName } from '../type/function-kinds.ts';
+import { isMarkVariable, isOneKind, kindHolderName } from '../type/function-kinds.ts';
 import type { Type } from '../type/index.ts';
 import { typeText } from '../type/type-text.ts';
 import { hasMember, membersOf } from '../unions/unions.ts';
@@ -44,18 +44,24 @@ export function standsForMember(
   substitution: Substitution,
 ): boolean {
   const { checker } = site;
-  const written = checker.memberUnionOf(parameter);
   if (argument.kind === 'error') {
     return true;
   }
-  if (isKindParameter(parameter)) {
+  if (isKindParameter(parameter) && !standsForAnyMark(parameter)) {
     return standsForKind(site, parameter, argument);
   }
+  // A mark parameter infers as a kind parameter does, but its argument is judged as a member's.
+  const written =
+    standsForAnyMark(parameter) && parameter.memberOf !== undefined
+      ? checker.resolveType(checker.moduleOf(parameter), parameter.memberOf)
+      : checker.memberUnionOf(parameter);
   if (written === undefined) {
     return true;
   }
   const union = substitute(written, substitution, checker.typeRules);
-  if (isOneMember(union, argument, checker.fitting.memberUnionOf)) {
+  // A kind variable, the two kinds' or an implicit one, is a mark: an `M in DataKind` takes it.
+  const kindVariable = standsForAnyMark(parameter) && isMarkVariable(argument);
+  if (kindVariable || isOneMember(union, argument, checker.fitting.memberUnionOf)) {
     return true;
   }
   site.report((at) =>

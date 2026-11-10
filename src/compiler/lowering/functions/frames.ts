@@ -7,9 +7,9 @@
  *   its defaults' body, checked apart (§3.1, §3.3); a nested function reads its owner's, or a
  *   constant's, the defaults' when its owner is them. These are the only rules of which body an
  *   entry reads.
- * - A function with no body of its own, a struct's or a variant's fields, a host extern or an extern
- *   called with defaults left out, has an entry built from its parameters once its prologue has
- *   computed them (built-entries.ts): giving what its function gives, a host extern's wrapper
+ * - A function with no body of its own, a struct's or a variant's fields, a host extern or an
+ *   extern called with defaults left out, has an entry built from its parameters once its prologue
+ *   has computed them (built-entries.ts): giving what its function gives, a host extern's wrapper
  *   awaiting it first when its host fills a future.
  * - A start entry is one of these, entered by the host's name for it
  *   (synthesized/boundary/starts.ts), which its frame's header says from the start.
@@ -209,7 +209,7 @@ export function nestedFrame(
   const { result, parameters, captures, type } = checked;
   return {
     header: startHeader ?? lowered.tables.nestedHeader(nested),
-    mode: codeModeOf(awaits(node.qualifiers), type.persistence),
+    mode: codeModeOf(awaits(node.qualifiers), type.mark),
     parameters,
     captures,
     function: node,

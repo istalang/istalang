@@ -5,10 +5,13 @@
  * Nominal types print their declared name without a module: inside a message the source location
  * already says where. A type written through an alias reads as the alias, with its arguments
  * (§3.17), as the programmer wrote it; any other shape reads as its fields, never as a key. A
- * recursive type reads as the alias it was written through, else as its node's label.
+ * recursive type reads as the alias it was written through, else as its node's label. A function
+ * type reads as its head would write it, `sendable live fn(Int) -> Bool`, or as `Fn<(T,), U, M>`
+ * where its mark or sendability is a variable no head's word spells.
  */
 
 import { selfType } from '../../../../foundation/language/well-known/index.ts';
+import { isImplicitKind } from '../../../syntax/declarations/function-kinds.ts';
 import type { TypeAliasDeclaration, TypeParameter } from '../../../syntax/declarations/index.ts';
 import type { RestPattern } from '../../../syntax/patterns.ts';
 import { modifiersText } from '../../../syntax/tokens/modifiers.ts';
@@ -102,7 +105,7 @@ export function typeText(given: Type): string {
       return `(${type.elements.map(typeText).join(', ')}${type.elements.length === 1 ? ',' : ''})`;
     case 'function': {
       const { head, parameters, tail } = functionTypeParts(type);
-      return `${head}(${parameters.join(', ')})${tail}`;
+      return `${head}${parameters.join(', ')}${tail}`;
     }
     case 'parameter':
       return parameterText(type);
@@ -134,14 +137,18 @@ export function typeText(given: Type): string {
 }
 
 /**
- * A function type's spelling in parts: what stands before its parameters, each parameter, and what
- * follows them, for tools that mark one parameter (signature help).
+ * A function type's text in parts, joined `head + parameters.join(', ') + tail`, so signature help
+ * can mark each parameter: as its head would write it, `sendable live fn(Int) -> Bool`, or as `Fn`
+ * where a slot is a variable (`fnParts`).
  */
 export function functionTypeParts(type: FunctionType): {
   readonly head: string;
   readonly parameters: readonly string[];
   readonly tail: string;
 } {
+  if (spelledAsFn(type)) {
+    return fnParts(type);
+  }
   const parameters = type.parameters.map(slotText);
   if (type.pack !== undefined) {
     parameters.push(`...${typeText(type.pack)}`);
@@ -149,10 +156,50 @@ export function functionTypeParts(type: FunctionType): {
   // A function giving a future of its own kind is written as its header is (§3.14).
   const awaited = ownFutureValue(type);
   return {
-    head: `${modifiersText(modifiersOf(type))}${awaited === undefined ? '' : 'async '}fn`,
+    head: `${modifiersText(modifiersOf(type))}${awaited === undefined ? '' : 'async '}fn(`,
     parameters,
-    tail: ` -> ${typeText(awaited ?? type.result)}`,
+    tail: `) -> ${typeText(awaited ?? type.result)}`,
   };
+}
+
+/**
+ * Whether `type` is written as `Fn<…>` (§3.14): its sendability or mark is a variable no head's
+ * word spells, a function's own implicit kind aside, which an unmarked head stands for.
+ */
+function spelledAsFn({ mark, send }: FunctionType): boolean {
+  const variable = (slot: Type) =>
+    slot.kind !== 'literal' &&
+    !(
+      slot.kind === 'parameter' &&
+      slot.declaration.kind === 'TypeParameter' &&
+      isImplicitKind(slot.declaration)
+    );
+  return variable(mark) || variable(send);
+}
+
+/**
+ * `Fn<(A, B), R, Kind, Send>` in parts: the tuple of its parameters, `(A,)` for one, a pack bare,
+ * then its result and the slots its defaults don't already give, `"simple"` and `"plain"`.
+ */
+function fnParts(type: FunctionType): ReturnType<typeof functionTypeParts> {
+  const slots = [type.mark, type.send];
+  while (slots.length > 0 && isDefaultSlot(slots.at(-1), slots.length === 1 ? 'simple' : 'plain')) {
+    slots.pop();
+  }
+  const rest = [type.result, ...slots].map(typeText).join(', ');
+  if (type.pack !== undefined && type.parameters.length === 0) {
+    return { head: 'Fn<', parameters: [typeText(type.pack)], tail: `, ${rest}>` };
+  }
+  const parameters = type.parameters.map(slotText);
+  if (type.pack !== undefined) {
+    parameters.push(`...${typeText(type.pack)}`);
+  }
+  const single = parameters.length === 1 && type.pack === undefined ? ',' : '';
+  return { head: 'Fn<(', parameters, tail: `${single}), ${rest}>` };
+}
+
+function isDefaultSlot(slot: Type | undefined, value: string): boolean {
+  return slot?.kind === 'literal' && slot.value === value;
 }
 
 /**
@@ -160,7 +207,7 @@ export function functionTypeParts(type: FunctionType): {
  * the prelude's `Future`, whose name no module may reuse (§3.13); undefined for any other result.
  */
 function ownFutureValue(type: FunctionType): Type | undefined {
-  const { result, persistence } = type;
+  const { result, mark } = type;
   if (
     result.kind !== 'nominal' ||
     result.entity.declaration.kind !== 'ExternStructDeclaration' ||
@@ -169,20 +216,18 @@ function ownFutureValue(type: FunctionType): Type | undefined {
     return undefined;
   }
   const [value, kind] = result.arguments;
-  return kind !== undefined && sameKind(kind, persistence) ? value : undefined;
+  return kind !== undefined && sameKind(kind, mark) ? value : undefined;
 }
 
 const futureName = 'Future';
 
-/** Whether two kinds are one: the same of the two, the same kind variable, or both either. */
+/** Whether two kinds are one: the same literal, or the same kind variable. */
 function sameKind(first: Type, second: Type): boolean {
   switch (first.kind) {
     case 'literal':
       return second.kind === 'literal' && first.value === second.value;
     case 'parameter':
       return second.kind === 'parameter' && first.declaration === second.declaration;
-    case 'union':
-      return second.kind === 'union';
     default:
       return false;
   }

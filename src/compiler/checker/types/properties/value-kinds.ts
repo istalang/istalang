@@ -14,9 +14,9 @@ import { functionTypeParametersOf } from '../../../syntax/declarations/function-
 import type { CheckerContext } from '../../contexts/context.ts';
 import { sameType } from '../identity/identity.ts';
 import { substitute, substitutionFor } from '../parts/substitution.ts';
-import { kindOfFunction } from '../type/function-kinds.ts';
+import { isSimpleMark, kindOfFunction } from '../type/function-kinds.ts';
 import type { Type } from '../type/index.ts';
-import { persistenceType } from '../type/primitives.ts';
+import { markType } from '../type/primitives.ts';
 import { awaitedOf } from '../type/well-known.ts';
 import { isConfined, staysInProcess } from './handles.ts';
 import { heldTypes } from './held.ts';
@@ -31,13 +31,15 @@ export function heldKindsOf(checker: CheckerContext, type: Type): readonly Type[
     .filter((kind, index, all) => all.findIndex((each) => sameType(each, kind)) === index);
 }
 
-/** The kind a value of `part` is of itself, by what it is, not what it holds; undefined for none. */
+/**
+ * The kind a value of `part` is of itself, by what it is, not what it holds; undefined for none.
+ */
 export function ownValueKindOf(checker: CheckerContext, part: Type): Type | undefined {
   if (part.kind !== 'nominal') {
     return undefined;
   }
   if (staysInProcess(part.entity.declaration)) {
-    return persistenceType('live');
+    return markType('live');
   }
   const awaited = awaitedOf(checker, part)?.mode;
   if (awaited !== undefined) {
@@ -57,5 +59,5 @@ export function ownValueKindOf(checker: CheckerContext, part: Type): Type | unde
     substitutionFor(functionTypeParametersOf(dispose), typeArguments),
     checker.typeRules,
   );
-  return kind.kind === 'union' ? undefined : kind;
+  return isSimpleMark(kind) ? undefined : kind;
 }

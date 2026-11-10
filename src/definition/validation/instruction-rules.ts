@@ -7,8 +7,8 @@
  *   only through its closure value, never directly
  * - `given` tests a parameter a call may leave out
  * - a closure carries its function's captures
- * - only code that runs as an execution, live or ista, waits (`await`, a blocking `select`) or reads
- *   its own call (proposal 8, Rule 2)
+ * - only code that runs as an execution, live or ista, waits (`await`, a blocking `select`) or
+ *   reads its own call (proposal 8, Rule 2)
  * - `keep` adds to a register other than those it keeps
  *
  * The rules are a typed table with one entry per instruction kind, like `operandsOf`
@@ -46,10 +46,10 @@ const none = (): undefined => undefined;
 
 /** `currentCall` names the execution it runs in, so only code running as one has it. */
 const executionOnly = (_tables: Tables, _instruction: Instruction, owner: CodeFunction) =>
-  owner.mode === 'plain' ? 'only code running as an execution can use it.' : undefined;
+  owner.mode === 'simple' ? 'only code running as an execution can use it.' : undefined;
 
 const waitsOnlyInExecutions = (_tables: Tables, instruction: Instruction, owner: CodeFunction) =>
-  owner.mode === 'plain' && waits(instruction)
+  owner.mode === 'simple' && waits(instruction)
     ? 'only code running as an execution can wait.'
     : undefined;
 

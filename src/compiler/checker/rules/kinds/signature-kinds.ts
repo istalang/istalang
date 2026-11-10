@@ -11,6 +11,8 @@
  *   future of the `K in Persistence` its signature names.
  * - An async head's written result is read as written too: its call gives a future of the head's
  *   kind, so a written `Future<…>` of the other kind would otherwise go unread.
+ * - A head naming its mark (`M fn`) names a mark parameter, or a requirement's associated type
+ *   (`Self.Mode fn`); an async head's is one of the two kinds, which its future takes.
  */
 
 import type { Diagnostic } from '../../../../foundation/diagnostics/diagnostic.ts';
@@ -18,12 +20,19 @@ import type { ModuleId } from '../../../program/program.ts';
 import { declaredFunctionName } from '../../../syntax/declarations/field-defaults.ts';
 import type { FunctionDeclaration } from '../../../syntax/declarations/index.ts';
 import { awaits } from '../../../syntax/tokens/modifiers.ts';
+import { parentOf } from '../../../syntax/tree/index.ts';
 import type { AnchoredSpan } from '../../../syntax/tree/positions.ts';
+import { namedTypeText } from '../../../syntax/types/index.ts';
 import type { CheckerContext } from '../../contexts/context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import { kindText } from '../../resolution/applying/call-kinds.ts';
 import { sameType } from '../../types/identity/identity.ts';
-import { kindOfFunction } from '../../types/type/function-kinds.ts';
+import {
+  isMarkVariable,
+  isOneKind,
+  kindOfFunction,
+  persistenceOf,
+} from '../../types/type/function-kinds.ts';
 import type { Type } from '../../types/type/index.ts';
 import { typeText } from '../../types/type/type-text.ts';
 
@@ -52,8 +61,10 @@ export function checkSignatureKind(
     { at: returnType?.span ?? declaration.name.span, type: checker.resultOf(declaration) },
     ...writtenResult,
   ];
+  const own = kindOfFunction(checker, declaration);
+  checkNamedMark(checker, module, declaration);
   const refusal = heldKindRefusal(checker, {
-    own: kindOfFunction(checker, declaration),
+    own,
     holder: `'${declaredFunctionName(declaration)}'`,
     held,
   });
@@ -80,10 +91,52 @@ export function heldKindRefusal(
       return checkerDiagnostics.kindsHeld(at, holder, kindText(first ?? other), typeText(type));
     }
     if (first !== undefined && !sameType(first, own)) {
-      return own.kind === 'literal'
-        ? checkerDiagnostics.kindsHeld(at, holder, kindText(own), typeText(type))
-        : checkerDiagnostics.unmarkedHolds(at, holder, kindText(first), typeText(type));
+      return persistenceOf(own) === undefined
+        ? checkerDiagnostics.unmarkedHolds(at, holder, kindText(first), typeText(type))
+        : checkerDiagnostics.kindsHeld(at, holder, kindText(own), typeText(type));
     }
   }
   return undefined;
+}
+
+/**
+ * Reports the mark `declaration`'s head names (`M fn`), a defined, local or required function's,
+ * where it is none: a mark parameter, or on a trait's requirement an associated type of its `Self`
+ * (`Self.Mode fn`); one of the two kinds on an async head, whose future takes it.
+ */
+export function checkNamedMark(
+  checker: CheckerContext,
+  module: ModuleId,
+  declaration: FunctionDeclaration,
+): void {
+  const { mark: written } = declaration;
+  if (written === undefined) {
+    return;
+  }
+  const mark = checker.resolveType(module, written);
+  if (mark.kind === 'error' || isOwnSelfType(checker, module, declaration, mark)) {
+    return;
+  }
+  const text = namedTypeText(written);
+  if (!isMarkVariable(mark)) {
+    checker.report(module, checkerDiagnostics.unknownMark(written.span, text));
+  } else if (awaits(declaration.qualifiers) && !isOneKind(mark)) {
+    checker.report(module, checkerDiagnostics.asyncMarkNotKind(written.span, text));
+  }
+}
+
+/** Whether `mark` is an associated type of the `Self` of the trait requiring `declaration`. */
+function isOwnSelfType(
+  checker: CheckerContext,
+  module: ModuleId,
+  declaration: FunctionDeclaration,
+  mark: Type,
+): boolean {
+  const trait = parentOf(checker.inputs.treeOf(module), declaration);
+  return (
+    trait?.kind === 'TraitDeclaration' &&
+    mark.kind === 'associated' &&
+    mark.of.kind === 'parameter' &&
+    mark.of.declaration === trait
+  );
 }

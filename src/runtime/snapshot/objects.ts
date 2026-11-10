@@ -167,7 +167,7 @@ export const heapObject = z.discriminatedUnion('kind', [
     followed: z.boolean(),
   }),
   /**
-   * The future an instance ends with (spec §9): what its root call gave, a plain entry's return or
+   * The future an instance ends with (spec §9): what its root call gave, a simple entry's return or
    * an extern's answer, once it resolves, a future it resolves with followed in turn. Its root has
    * returned, so nothing else waits on it: it is a root, held until the instance ends.
    */

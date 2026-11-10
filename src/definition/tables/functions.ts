@@ -44,11 +44,11 @@ const common = {
 const cell = z.strictObject({ register, type: typeId });
 
 /**
- * A code entry's kind (proposal 8, Rule 2): a plain one runs as a frame on its caller's execution,
+ * A code entry's kind (proposal 8, Rule 2): a simple one runs as a frame on its caller's execution,
  * never waiting; a `live` or `ista` one runs as an execution of its own, given a future. Live code
  * waits in memory and never commits; ista code runs in an instance, every wait committing.
  */
-export const codeMode = z.enum(['plain', ...persistences]);
+export const codeMode = z.enum(['simple', ...persistences]);
 
 export type CodeMode = z.output<typeof codeMode>;
 
@@ -138,7 +138,7 @@ export function encoderProblem(entry: FunctionDefinition): string | undefined {
     entry.parameters.length > 0 &&
     !takesReference(entry, 0) &&
     entry.parameters.every((_, index) => index === 0 || mayLeaveOut(entry, index));
-  const waits = entry.kind === 'code' && entry.mode !== 'plain';
+  const waits = entry.kind === 'code' && entry.mode !== 'simple';
   return takesOneValue && !waits && capturesOf(entry) === 0
     ? undefined
     : `${entry.name} can't encode an outcome: an encoder takes one value and gives its JSON at once`;

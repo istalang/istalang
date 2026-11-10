@@ -1,7 +1,7 @@
 /**
  * The kind lowering gives the entries it writes (docs/arch/definition.md, "Frames"): an entry whose
  * body may wait runs in its function's kind (§3.3), concrete in every instance, since lowering
- * compiles an unmarked function once per kind it is used at; one whose body never waits is plain,
+ * compiles an unmarked function once per kind it is used at; one whose body never waits is simple,
  * callable from either kind.
  *
  * An async lambda given no kind in code of either kind has no kind of its own to wait in; it waits
@@ -17,7 +17,7 @@ import { awaitedOf } from '../../checker/types/type/well-known.ts';
 /** The mode of an entry whose body may wait when `isAsync`, of a function of kind `kind`. */
 export function codeModeOf(isAsync: boolean, kind: Type): CodeMode {
   if (!isAsync) {
-    return 'plain';
+    return 'simple';
   }
   return persistenceOf(kind) ?? 'live';
 }
@@ -27,5 +27,5 @@ export function codeModeOf(isAsync: boolean, kind: Type): CodeMode {
  * unmarked function type's own kind, either, doesn't say; its kind where it gives none.
  */
 export function builtKindOf(checker: Checker, type: FunctionType): Type {
-  return awaitedOf(checker, type.result)?.mode ?? type.persistence;
+  return awaitedOf(checker, type.result)?.mode ?? type.mark;
 }

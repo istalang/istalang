@@ -234,9 +234,8 @@ describe('member type parameters (§3.5)', () => {
 
   it.each([
     ['fn f<S in Status is Stringable>(): 1', 'is Stringable'],
-    ['fn f<S in Status = "draft">(): 1', '= "draft"'],
-    ['fn f<S in Status is A & B = C>(): 1', 'is A & B = C'],
-  ])('reports a constraint or default beside the membership in %j once', (text, spanText) => {
+    ['fn f<S in Status is A & B = C>(): 1', 'is A & B'],
+  ])('reports a constraint beside the membership in %j once', (text, spanText) => {
     expect(reported('module', text)).toEqual(
       reportedOnce(parserDiagnostics.memberParameterAlone.code, spanText),
     );

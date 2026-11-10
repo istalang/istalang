@@ -23,7 +23,7 @@
 import { staticName } from '../../../foundation/language/static-names.ts';
 import { memo } from '../../../foundation/structures/memo.ts';
 import type { Parameter } from '../expressions/index.ts';
-import { plainQualifiers } from '../tokens/modifiers.ts';
+import { unqualified } from '../tokens/modifiers.ts';
 import { type Invalid, isMissingName } from '../tree/node.ts';
 import { type TypeNode, unparenthesizedType } from '../types/index.ts';
 import {
@@ -126,7 +126,8 @@ export function fieldsFunctionOf(
           span: owner.span,
           annotations: [],
           isExtern: false,
-          qualifiers: plainQualifiers,
+          qualifiers: unqualified,
+          mark: undefined,
           owner: undefined,
           name: owner.name,
           typeParameters: declaration.typeParameters,

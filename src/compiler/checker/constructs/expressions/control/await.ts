@@ -11,6 +11,7 @@ import { checkerDiagnostics } from '../../../diagnostics/index.ts';
 import { callerName, kindText } from '../../../resolution/applying/call-kinds.ts';
 import { stoppedOperation } from '../../../resolution/calls/stopped-operations.ts';
 import { sameType } from '../../../types/identity/identity.ts';
+import { persistenceOf } from '../../../types/type/function-kinds.ts';
 import type { Type } from '../../../types/type/index.ts';
 import { errorType } from '../../../types/type/primitives.ts';
 import { typeText } from '../../../types/type/type-text.ts';
@@ -53,7 +54,7 @@ export function checkWaitKind(
     return;
   }
   context.report(
-    codeKind.kind !== 'literal' && mode.kind === 'literal'
+    persistenceOf(codeKind) === undefined && mode.kind === 'literal'
       ? checkerDiagnostics.unmarkedWaits(
           at,
           callerName(context.functions.current),

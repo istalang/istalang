@@ -179,7 +179,7 @@ host awaits the same way whatever an instance waits on. Calls that only read (`d
   its timers on the runtime's `Clock`, and its host futures on the host's promises, a settled one
   resuming it before a manual clock may jump to a timer. It takes no instance's options and holds
   no instance's name, so no other call waits for it or reaches it. Any other start begins an
-  instance, a plain entry's and an `ista async fn main`'s included: for a `main` that waits on ista
+  instance, a simple entry's and an `ista async fn main`'s included: for a `main` that waits on ista
   futures, an interim until proposal 9's contexts.
 - **One driver loop.** A host drives a group of instances with `drive` (`runtime/host/drive.ts`):
   run what can run, wait for the earliest timer, wake what is due, until nothing can wake them. What

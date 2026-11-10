@@ -8,7 +8,8 @@
  *   on nothing of a kind) is of either kind, as a lambda infers its kind from its body: it fits an
  *   unmarked field however it was written. An async one keeps the kind around it, which its future
  *   needs.
- * - What its signature holds is judged as a declared function's is (rules/kinds/signature-kinds.ts).
+ * - What its signature holds is judged as a declared function's is
+ *   (rules/kinds/signature-kinds.ts).
  */
 
 import { awaits, type FunctionQualifiers } from '../../../syntax/tokens/modifiers.ts';
@@ -16,37 +17,47 @@ import type { SignatureParameter } from '../../check.ts';
 import type { BodyContext } from '../../contexts/body-context.ts';
 import { heldKindRefusal } from '../../rules/kinds/signature-kinds.ts';
 import type { NestedFunction } from '../../surface/checked-body.ts';
-import { unmarkedKind, writtenKindOf } from '../../types/type/function-kinds.ts';
-import { functionType, headResult, type Reach } from '../../types/type/function-types.ts';
+import { isMarkVariable, simpleMark, writtenKindOf } from '../../types/type/function-kinds.ts';
+import { functionType, headResult } from '../../types/type/function-types.ts';
 import type { FunctionType, Type } from '../../types/type/index.ts';
 import type { FunctionScope } from './function-scope.ts';
 
 /**
  * The kind a nested function's head or position gives it: its head's, else `expected`, the kind of
- * the function type expected of it, where that is a kind or either; undefined where neither does.
+ * the function type expected of it, where that is a literal mark or a mark parameter fixed around
+ * it (`logged`'s `M` in its own body); never a call's variable still `open`, which its body infers.
+ * Undefined where neither does.
  */
-export function givenKindOf(qualifiers: FunctionQualifiers, expected?: Type): Type | undefined {
-  const known = expected?.kind === 'literal' || expected?.kind === 'union' ? expected : undefined;
+export function givenKindOf(
+  qualifiers: FunctionQualifiers,
+  expected?: Type,
+  open?: (type: Type) => boolean,
+): Type | undefined {
+  const known =
+    expected !== undefined &&
+    (expected.kind === 'literal' || (isMarkVariable(expected) && open?.(expected) === false))
+      ? expected
+      : undefined;
   return writtenKindOf(qualifiers) ?? known;
 }
 
-/** How a nested function of `parameters` is typed, by what it gives, its reach and its kind. */
+/** How a nested function of `parameters` is typed, by what it gives, its sendability and mark. */
 export function nestedTypeOf(
   context: BodyContext,
   node: NestedFunction,
   parameters: readonly SignatureParameter[],
-): (produces: Type, reach: Reach, persistence: Type) => FunctionType {
+): (produces: Type, send: Type, mark: Type) => FunctionType {
   const rest = parameters.find((parameter) => parameter.rest !== undefined);
   const slots = parameters
     .filter((parameter) => parameter !== rest)
     .map((parameter) => ({ type: parameter.type, reference: parameter.reference }));
-  return (produces, reach, persistence) =>
+  return (produces, send, mark) =>
     functionType({
-      reach,
-      persistence,
+      send,
+      mark,
       parameters: slots,
       pack: rest?.type,
-      result: headResult(context.checker.fitting, node.qualifiers, persistence, produces),
+      result: headResult(context.checker.fitting, node.qualifiers, mark, produces),
     });
 }
 
@@ -59,7 +70,7 @@ export function nestedValueKind(
   if (given !== undefined) {
     return given;
   }
-  return awaits(node.qualifiers) || scope.reliesOnKind ? scope.codeKind : unmarkedKind;
+  return awaits(node.qualifiers) || scope.reliesOnKind ? scope.codeKind : simpleMark;
 }
 
 /**
@@ -73,13 +84,14 @@ export function judgeHeldKinds(
 ): void {
   const at = node.span;
   const { checker, module } = context;
-  // An async head's written `Future<…>` is what its call gives, read as written (signature-kinds.ts).
+  // An async head's written `Future<…>` is what its call gives, read as written
+  // (signature-kinds.ts).
   const written =
     awaits(node.qualifiers) && node.returnType !== undefined
       ? [{ at, type: checker.resolveType(module, node.returnType) }]
       : [];
   const refusal = heldKindRefusal(checker, {
-    own: type.persistence,
+    own: type.mark,
     holder: node.kind === 'Lambda' ? 'a lambda' : `'${node.name.text}'`,
     held: [
       ...type.parameters.map((slot) => ({ at, type: slot.type })),

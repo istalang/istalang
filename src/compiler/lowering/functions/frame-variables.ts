@@ -36,7 +36,9 @@ import type { Frame } from './frames.ts';
 export interface EntryContext extends FunctionContext {
   readonly frame: Frame;
   readonly owner: BodyOwner;
-  /** Runs `lower` reading the function's defaults, as checked apart from its body; what it gives. */
+  /**
+   * Runs `lower` reading the function's defaults, as checked apart from its body; what it gives.
+   */
   readonly inDefaults: <Lowered>(lower: () => Lowered) => Lowered;
 }
 
@@ -199,7 +201,7 @@ export function takeApart(
 export function declareOwnCall(context: EntryContext): void {
   const { mode, function: owner } = context.frame;
   const call =
-    mode === 'plain' ? undefined : context.checker.bindings.ownCallOf(context.module, owner);
+    mode === 'simple' ? undefined : context.checker.bindings.ownCallOf(context.module, owner);
   if (call !== undefined) {
     declareFilled(context, call.name, (dst) => ({ kind: 'currentCall', span: owner.span, dst }));
   }

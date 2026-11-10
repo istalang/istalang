@@ -47,11 +47,9 @@
 
 import { memo } from '../../../../foundation/structures/memo.ts';
 import { unreachable } from '../../../../foundation/structures/unreachable.ts';
-import { modifiersText } from '../../../syntax/tokens/modifiers.ts';
 import { holdsRecursion } from '../parts/type-children.ts';
 import type { AliasUse } from '../type/alias-uses.ts';
 import type { MappedParts, RecursiveGraph } from '../type/computed-types.ts';
-import { modifiersOf } from '../type/function-types.ts';
 import type {
   AnonymousStructType,
   FieldMember,
@@ -240,7 +238,8 @@ function shapeKeyOf(type: AnonymousStructType, key: (type: Type) => string): Sha
 
 /**
  * The key of a function type: its kind, its parameters, by `&` or not, its pack, and its result.
- * The kind is keyed whole, a variable or either kind as surely as `live`, which its text leaves out.
+ * The kind is keyed whole, a variable or either kind as surely as `live`, which its text leaves
+ * out.
  */
 function functionKeyOf(type: FunctionType, key: (type: Type) => string): string {
   const parameters = type.parameters.map(
@@ -249,8 +248,7 @@ function functionKeyOf(type: FunctionType, key: (type: Type) => string): string 
   if (type.pack !== undefined) {
     parameters.push(`...${key(type.pack)}`);
   }
-  const { reach } = modifiersOf(type);
-  const head = `${modifiersText({ reach })}fn<${key(type.persistence)}>`;
+  const head = `fn<${key(type.mark)},${key(type.send)}>`;
   return `${head}(${parameters.join(',')})->${key(type.result)}`;
 }
 

@@ -34,7 +34,7 @@ const places: readonly Place[] = [
     form: headForms.functionType,
     category: 'type',
     required: [],
-    optional: ['reach', 'kind', 'async'],
+    optional: ['send', 'kind', 'async'],
     rest: '(A) -> R',
   },
   {

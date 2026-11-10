@@ -77,12 +77,12 @@ export function patternTypeOf(checker: Aliases, entity: Entity): PatternType {
 export type DowncastTarget = PatternType | { readonly kind: 'unheld'; readonly type: Type };
 
 /**
- * What a pattern naming `entity` tests a value of the `any` type `from` for (§3.10): a type that may
- * be inside it. The value inside has its own type, never an `any` one, so an alias of an `any` type
- * names none.
+ * What a pattern naming `entity` tests a value of the `any` type `from` for (§3.10): a type that
+ * may be inside it. The value inside has its own type, never an `any` one, so an alias of an `any`
+ * type names none.
  */
 export function downcastTargetOf(
-  checker: Pick<Checker, 'aliasedType' | 'typeRules' | 'traitObjects'>,
+  checker: Pick<Checker, 'aliasedType' | 'typeRules' | 'traitObjects' | 'wellKnownEntity'>,
   entity: Entity,
   from: AnyType,
 ): DowncastTarget {
@@ -124,7 +124,7 @@ export function namesOwnType(checker: Aliases, entity: Entity, type: Type): bool
 }
 
 /** What a pattern naming a type selects of a union's members reads of the program. */
-type MemberNaming = Pick<Checker, 'aliasedType' | 'typeRules' | 'variantsOf'>;
+type MemberNaming = Pick<Checker, 'aliasedType' | 'typeRules' | 'variantsOf' | 'wellKnownEntity'>;
 
 /**
  * The members of a union a pattern naming `entity` selects (§3.11): the enums declaring a variant

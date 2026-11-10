@@ -65,11 +65,14 @@ const wordParselets = {
  * (`shared = 1`) or it is a statement's, a local function's or a lambda's.
  */
 function parseModified(parser: Parser): Declaration | undefined {
-  const head = headAhead(parser);
-  if (head === undefined || head.modifiers.length === 0) {
+  const head = headAhead(parser, true);
+  if (head === undefined || (head.modifiers.length === 0 && !head.named)) {
     return undefined;
   }
   const { modifiers, keyword } = head;
+  if (head.named) {
+    return parseFunction(parser, 'item');
+  }
   if (modifiers.includes('extern')) {
     return parseExtern(parser, modifiers, keyword);
   }
