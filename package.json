@@ -41,7 +41,8 @@
     "profile:allocations": "node scripts/profile/allocations.ts",
     "verify": "npm run typecheck && npm run lint && npm run knip && npm test && npm run build && npm run test:std",
     "bench": "vitest bench --run --reporter=verbose",
-    "knip": "knip"
+    "knip": "knip",
+    "rewrite": "node scripts/rewrite/main.ts"
   },
   "devDependencies": {
     "@biomejs/biome": "2.6.2",
