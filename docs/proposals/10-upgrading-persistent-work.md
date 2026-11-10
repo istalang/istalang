@@ -1,10 +1,10 @@
 ---
-description: proposal 10 of docs/proposals, for moving running persistent work to new releases — a build holds every release and each frame runs its own release's code; frames move to a newer release at named `checkpoint`s and at a boundary `ista fn`'s entry, their state moved by name and checked at compile time; `inline ista fn` runs at its caller's release; `x is unassigned` for state an older release lacks, decided per compiled entry; migration files, diffs kept like SQL migrations from any release to a later one, that add checkpoints to old code, fill state, `restart` or `keep` a function; a committing `await` stands at statement level; replaces proposal 9's Versions and §5's Versioning; read before designing releases, deploys, frames, checkpoints, migration files or their tooling
+description: proposal 10 of docs/proposals, for moving running persistent work to new releases — a build holds every release and each frame runs its own release's code; frames move to a newer release at named `checkpoint`s and at a boundary `ista async fn`'s entry, their state moved by name and checked at compile time; `inline ista async fn`, a plain `ista fn` and an unmarked `async fn` run at their caller's release; `x is unassigned` for state an older release lacks, decided per compiled entry; migration files, diffs kept like SQL migrations from any release to a later one, that add checkpoints to old code, fill state, `restart` or `keep` a function; a committing `await` stands at statement level; replaces proposal 9's Versions and §5's Versioning; read before designing releases, deploys, frames, checkpoints, migration files or their tooling
 owner: tech-lead
 status: active
 applies_to: istalang
-last_verified: 2026-11-09
-last_updated: 2026-11-09
+last_verified: 2026-11-10
+last_updated: 2026-11-10
 tags: [proposal, runtime, persistence, versions, upgrade, migration]
 ---
 
@@ -25,7 +25,7 @@ It builds on proposals 8 and 9. The human chose the design and the decisions at 
 Release `r1`:
 
 ```python
-ista fn openBusiness(app: Application) -> Business:
+ista async fn openBusiness(app: Application) -> Business:
     const name = await reserveName(app)
     const license = await getLicense(app, name)
     await register(app, name, license)
@@ -34,7 +34,7 @@ ista fn openBusiness(app: Application) -> Business:
 Release `r2` adds a tax id. Instances of `r1` wait inside `getLicense`, which can take weeks, and must get a tax id without applying for a license again. `migrations/r1..r2.ista-migration`:
 
 ```python
-  ista fn openBusiness(app: Application) -> Business:
+  ista async fn openBusiness(app: Application) -> Business:
       const name = await reserveName(app)
 +     const taxId = await getTaxId(app)
       const license = await getLicense(app, name)
@@ -58,7 +58,7 @@ Release `r2` adds a tax id. Instances of `r1` wait inside `getLicense`, which ca
 
 - **`ista release <name>` records the program as a release:** its definition and its frame schema, under `releases/<name>/`, committed with the code.
 - **A build holds every release not retired.** The program being built is the newest.
-- **A frame records its release.** New work runs on the newest: an instance the host starts, a spawn, a call to a boundary function (rule 2).
+- **A frame records its release.** New work runs on the newest: an invocation a context starts (proposal 9), a spawn, a call to a boundary function (rule 2).
 - **A function is the same across releases** when its key is: its module and name, with its parameter types only for an overloaded name. A type is the same when its key and definition are.
 - **A function's version** is a hash of:
   - its body, and the bodies of the inline code it reaches, transitively (rule 2);
@@ -70,10 +70,10 @@ Release `r2` adds a tax id. Instances of `r1` wait inside `getLicense`, which ca
 
 ### 2. Boundaries and inline code
 
-- **A boundary is an `ista fn` not declared `inline`.** Everything else is inline: a plain `fn`, an `async fn`, an `inline ista fn`, a lambda, a local function.
+- **A boundary is an `ista async fn` not declared `inline`.** Everything else is inline: a plain function, `ista fn` included, an unmarked `async fn` at either kind, an `inline ista async fn`, a lambda, a local function.
 - **A call to a boundary function runs at the caller's target release** (rule 7): the newest, unless a migration file says otherwise.
 - **Inline code runs at its caller's release.** A lambda runs at the release of the frame that made it. A boundary function named as a value runs at the target release when called.
-- **An `inline ista fn` has no checkpoints**, and its entry isn't one. Its frames run their release's code until they return.
+- **An `inline ista async fn` has no checkpoints**, and its entry isn't one. Its frames run their release's code until they return.
 - **Disposal is inline.** A `dispose` or a `defer` runs at the release of the frame that releases its value.
 
 ### 3. Checkpoints
@@ -92,8 +92,8 @@ Release `r2` adds a tax id. Instances of `r1` wait inside `getLicense`, which ca
 
 ### 4. A committing `await` stands at statement level
 
-- **In an `ista fn`, a committing `await` is a whole statement or a whole right side:** `await e`, `const x = await e`, `let x = await e`, `x = await e` or `return await e`.
-  - `f(await a(), await b())` or `if (await x).ok:` is a compile error there. An in-memory `await` is free.
+- **In an `ista async fn` or an unmarked `async fn`, whose `await`s commit in ista code, an `await` is a whole statement or a whole right side:** `await e`, `const x = await e`, `let x = await e`, `x = await e` or `return await e`.
+  - `f(await a(), await b())` or `if (await x).ok:` is a compile error there. A `live async fn`'s `await`s are free.
 - **A frame is therefore:**
   - its release, its function, and the entry it came through (rule 6);
   - its suspension point;
@@ -167,8 +167,8 @@ Release `r2` adds a tax id. Instances of `r1` wait inside `getLicense`, which ca
 
 ```python
 > restart
-- ista fn review(req: Request) -> Verdict:
-+ ista fn review(req: Request, level: Int = 1) -> Verdict:
+- ista async fn review(req: Request) -> Verdict:
++ ista async fn review(req: Request, level: Int = 1) -> Verdict:
 ```
 
 ### 9. Tools and tests
@@ -227,7 +227,7 @@ Release `r2` adds a tax id. Instances of `r1` wait inside `getLicense`, which ca
 | a step inserted before a long wait (the example) | (no upgrade) | the frame waits as it was, moves at the added checkpoint, and the guard runs the step |
 | `> restart` on a function | (no upgrade) | its frames are disposed and called again with the same arguments |
 | an `Inbox<T>` live at a checkpoint, `T` changed | (no upgrade) | a compile error: a handle moves only unchanged |
-| `f(await a(), await b())` in an `ista fn` | legal | error: a committing `await` stands alone |
+| `f(await a(), await b())` in an `ista async fn` | legal | error: a committing `await` stands alone |
 | `runtime.version()` | the program's hash, fixed for the instance | the calling frame's release |
 
 ## What changes in power
@@ -250,9 +250,9 @@ Release `r2` adds a tax id. Instances of `r1` wait inside `getLicense`, which ca
 - **Guide, principle 8:** "Deploys freeze code" becomes "Deploys move running work at checkpoints".
 - **§2:** grammar words:
   - `checkpoint`, at a statement's start;
-  - `inline`, before `ista`;
+  - `inline`, in an `ista async fn`'s head;
   - `unassigned`, as the whole pattern of `is`.
-- **§3.3:** boundary and inline `ista` functions. An `inline ista fn` takes no checkpoint.
+- **§3.3:** boundary and inline `ista async fn`s. An `inline ista async fn` takes no checkpoint.
 - **§3.8:** `runtime.version()` gives the calling frame's release.
 - **§3.14:** a function value runs at the release that made it, or, naming a boundary function, at the target. This replaces "keeps it from crossing versions".
 - **§4:** the `checkpoint` statement. `x is unassigned` among the conditions decided by types, and a `const` assigned once in its branch.
@@ -261,11 +261,11 @@ Release `r2` adds a tax id. Instances of `r1` wait inside `getLicense`, which ca
   - A committing `await` stands at statement level.
   - Frames are persisted by meaning.
 - **§9:**
-  - The host starts work on the newest release.
+  - Work a context starts runs on the newest release.
   - The operator's view shows each frame's release.
   - `ista release`, `ista upgrade check` and `ista migration new`.
 - **§10:** `testing.spawnOn` and `upgrade`, and the loop warning.
-- **Proposal 8:** the statement-level rule for a committing `await`. In Rule 4's modifier order, `inline` stands before `async` or `ista`.
+- **Proposal 8:** the statement-level rule for a committing `await`. In Rule 4's modifier order, `inline` stands before `live` or `ista`, which stand before `async`: `inline ista async fn`.
 - **Proposal 9:** *Versions* is replaced by this proposal, and *Left for later* loses "Moving frames between builds".
 
 ## Implementation notes
@@ -324,7 +324,7 @@ Release `r2` adds a tax id. Instances of `r1` wait inside `getLicense`, which ca
 5. **A restart always disposes the old frame,** then calls the function again from its start.
 6. **A migration file adds checkpoints after old `await`s and fills their state with `>` lines.** Migration code may `await`, and a frame continues in the newer code.
 7. **`x is unassigned`** handles state an older release lacks, in the newer code. Tools find the guards that no release still needs.
-8. **`inline ista fn` isn't a boundary.** A boundary call runs the newest release, and inline code the caller's.
+8. **Only an `ista async fn` not declared `inline` is a boundary;** a plain `ista fn` and an unmarked `async fn`, at either kind, are inline. A boundary call runs the newest release, and inline code the caller's.
 9. **A checkpoint that fails the check is a compile error.**
 10. **The compiler checks a move by splicing:** the older release's state at the point, then the migration's lines, then the newer release's code from there.
 11. **Releases no frame runs on are retired** from the build.
