@@ -27,7 +27,7 @@ const timeType = knownTypeKey(wellKnown.time);
 const durationType = knownTypeKey(wellKnown.duration);
 
 export const timeNatives = (keys: NativeKeys): Natives<NativeContext & WithFutures> => ({
-  [keys.of('now')]: (_arguments, context) => resultMilliseconds(context, context.segmentStartedAt),
+  [keys.of('now')]: (_arguments, context) => resultMilliseconds(context, context.now()),
   [keys.of('at', timeType)]: ([time], context) =>
     context.futures.timer(millisecondsOf(context, time)),
   [keys.of('toString', timeType)]: ([time], context) => {

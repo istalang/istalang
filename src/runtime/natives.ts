@@ -11,7 +11,7 @@
  *
  * Natives the runtime backs need the running instance, so each call also receives a context: the
  * extern being called, its declared result and type arguments, and the Definition's types (for
- * building typed values), the time the segment started, which is what `now()` means (§5), and
+ * building typed values), what `now()` reads (§5), and
  * capabilities, one per part of the instance a native reaches: the futures the runtime creates
  * for an extern that returns one (§3.6), its slots (§6), its weak references and its resources
  * (§7), its random source and its log (§3.8), and what a test reaches (§10). Every capability has
@@ -42,8 +42,11 @@ export interface NativeContext {
   readonly instance: string;
   /** The content hash of the Definition the instance runs, fixed for its life (§5). */
   readonly version: string;
-  /** Milliseconds since the Unix epoch at which the current segment started. */
-  readonly segmentStartedAt: bigint;
+  /**
+   * Milliseconds since the Unix epoch, as `now()` reads them (§5): when the segment started, in an
+   * instance, so a segment run again reads the same; the clock, in a live run (proposal 8).
+   */
+  readonly now: () => bigint;
   /**
    * Replaces the value of argument `position`, which the extern takes by `&` (§3.7): the native
    * receives such an argument's value, and writes the changed one back here.

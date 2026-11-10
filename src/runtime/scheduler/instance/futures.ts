@@ -223,6 +223,11 @@ export class Futures {
     return this.#hostFuture(token) !== undefined;
   }
 
+  /** Whether any future is pending on the host. */
+  awaitsHost(): boolean {
+    return this.#heap.find('pending', 'host').length > 0;
+  }
+
   /**
    * A future something outside the instance fills, as a host does: another instance's answer to a
    * mock's call, or a host's promise in a live run. Its token is named by `tokenOf` from the

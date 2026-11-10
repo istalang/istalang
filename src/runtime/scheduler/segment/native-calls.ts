@@ -27,6 +27,7 @@ import {
   type Value,
 } from '../../../definition/values/values.ts';
 import { unreachable } from '../../../foundation/structures/unreachable.ts';
+import type { SpawnOptions } from '../../instance-state.ts';
 import { passedValues, writeReference } from '../../interpreter/registers.ts';
 import {
   type FullNativeContext,
@@ -42,6 +43,7 @@ import {
   Panic,
 } from '../../natives.ts';
 import { isReference, type Reference, type RegisterContents } from '../../snapshot/objects.ts';
+import type { InstanceCall } from '../../snapshot/snapshot.ts';
 import type { Futures } from '../instance/futures.ts';
 import { type Heap, handleObject } from '../instance/heap.ts';
 import type { Instance } from '../instance/index.ts';
@@ -53,12 +55,12 @@ export class NativeCalls {
   readonly #segment: Omit<FullNativeContext, 'name' | 'resultType' | 'typeArguments' | 'write'>;
 
   /**
-   * Calls within a segment of `instance` started at `startedAt`, waiting as `waiting` says; `traces`
-   * say where it runs.
+   * Calls within a segment of `instance`, where `now()` reads `now`, waiting as `waiting` says;
+   * `traces` say where it runs.
    */
   constructor(
     instance: Instance,
-    startedAt: bigint,
+    now: () => bigint,
     waiting: Waiting,
     traces: Pick<FullNativeContext, 'trace' | 'callerTrace'>,
   ) {
@@ -67,9 +69,9 @@ export class NativeCalls {
       types: instance.loaded.definition.types,
       instance: instance.name,
       version: instance.loaded.hash,
-      segmentStartedAt: startedAt,
+      now,
       ...traces,
-      ...capabilitiesOf(instance, startedAt, waiting),
+      ...capabilitiesOf(instance, { now, waiting, trace: traces.trace }),
     };
   }
 
@@ -114,29 +116,30 @@ function referenceAt(contents: readonly RegisterContents[], position: number): R
   return argument;
 }
 
-/**
- * Every capability of `instance`, in a segment started at `startedAt` that waits as `waiting` says,
- * as natives reach it.
- */
-function capabilitiesOf(
-  instance: Instance,
-  startedAt: bigint,
-  waiting: Waiting,
-): NativeCapabilities {
+/** What a segment's capabilities read of it: the time, how it waits, and where it runs. */
+interface SegmentSide {
+  readonly now: () => bigint;
+  readonly waiting: Waiting;
+  readonly trace: () => string;
+}
+
+/** Every capability of `instance`, in a segment `side` describes, as natives reach it. */
+function capabilitiesOf(instance: Instance, side: SegmentSide): NativeCapabilities {
+  const { now, waiting } = side;
   return {
-    futures: nativeFuturesOf(instance.futures, waiting),
+    futures: nativeFuturesOf(instance.futures, side),
     slots: nativeSlotsOf(instance.slots),
     weak: instance.weak,
     resources: nativeResourcesOf(instance.heap),
     random: nativeRandomOf(instance),
-    logs: nativeLogsOf(instance, startedAt),
+    logs: nativeLogsOf(instance, now),
     instances: nativeInstancesOf(instance, waiting),
     testing: nativeTestingOf(instance),
   };
 }
 
-/** The instance's futures as natives make them (§3.6), in a run that waits as `waiting` says. */
-function nativeFuturesOf(futures: Futures, waiting: Waiting): NativeFutures {
+/** The instance's futures as natives make them (§3.6), in a segment `side` describes. */
+function nativeFuturesOf(futures: Futures, { waiting, trace }: SegmentSide): NativeFutures {
   return {
     resolved: (value) => futures.createHandle({ kind: 'resolved', value }),
     first: (handles) => futures.first(handles),
@@ -151,29 +154,36 @@ function nativeFuturesOf(futures: Futures, waiting: Waiting): NativeFutures {
       if (waiting.kind === 'ista') {
         throw new Panic("An instance can't wait on a promise, which dies with its process.");
       }
-      return promisedFuture(futures, waiting.resumes, settles);
+      return promisedFuture(futures, waiting.resumes, settles, trace());
     },
   };
 }
 
 /**
  * A future resolved as `settles` says, in a live run resumed through `resumes`: with its value, or
- * panicking the run with its reason, unless the future is gone by then, as its disposal leaves its
- * settling unseen (§7).
+ * failing the wait with its reason, a panic where the future was made (`trace`), unless the future
+ * is gone by then, as its disposal leaves its settling unseen (§7).
  */
 function promisedFuture(
   futures: Futures,
   resumes: LiveResumes,
   settles: Promise<PromiseSettledResult<Value>>,
+  trace: string,
 ): Value {
   const { id, token } = futures.createFilled(String);
   settles.then(
     resumes.once((settled: PromiseSettledResult<Value>) => {
       if (settled.status === 'fulfilled') {
         futures.resolveHost(token, settled.value);
-      } else if (futures.waitsOnHost(token)) {
+        return;
+      }
+      if (!futures.waitsOnHost(token)) {
+        return;
+      }
+      if (!(settled.reason instanceof Panic)) {
         throw settled.reason;
       }
+      return { message: settled.reason.message, trace };
     }),
   );
   return handleTo(id);
@@ -212,29 +222,39 @@ function nativeRandomOf(instance: Instance): NativeRandom {
 }
 
 /** The instance's log as natives write to it, each record stamped with its segment (§3.8 `log`). */
-function nativeLogsOf(instance: Instance, startedAt: bigint): NativeLogs {
+function nativeLogsOf(instance: Instance, now: () => bigint): NativeLogs {
   return {
     write: (entry) => {
-      instance.log({ instance: instance.name, time: startedAt, ...entry });
+      instance.log({ instance: instance.name, time: now(), ...entry });
     },
   };
+}
+
+/**
+ * Records `call` as spawned by `instance`'s segment, with `options`; the new instance's name. A run
+ * that waits in memory spawns nothing (§9): it never commits, which is what spawns.
+ */
+export function spawned(
+  instance: Instance,
+  waiting: Waiting,
+  call: InstanceCall,
+  options?: SpawnOptions,
+): string {
+  if (waiting.kind === 'live') {
+    unreachable('A live run spawns an instance, which the call rule refuses.');
+  }
+  return instance.spawn(call, options);
 }
 
 /** The instances `instance` spawns and waits for, as natives reach them (§9). */
 function nativeInstancesOf(instance: Instance, waiting: Waiting): NativeInstances {
   return {
     spawn: (entry, type, options) => {
-      if (waiting.kind === 'live') {
-        unreachable('A live run spawns an instance, which the call rule refuses.');
-      }
       const closure =
         closureOf(entry) ??
         unreachable('An instance is spawned with no function; the checker forbids it.');
-      const name = instance.spawn(
-        { function: closure.function, captures: closure.captures, arguments: [] },
-        options,
-      );
-      return instanceHandle(type, name);
+      const call = { function: closure.function, captures: closure.captures, arguments: [] };
+      return instanceHandle(type, spawned(instance, waiting, call, options));
     },
     ended: (name, result) =>
       instance.futures.createHandle({

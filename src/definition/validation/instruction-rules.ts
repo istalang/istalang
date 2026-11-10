@@ -6,8 +6,8 @@
  * - a direct call or `spawn` passes the callee's parameters in number and kind (value or `&`), and
  *   a function with captures is called only through its closure value, never directly
  * - a closure carries its function's captures
- * - only code that runs as an execution waits, in a mode (`await`, a blocking `select`, and only
- *   those), and ephemeral code only in memory (proposal 8, Rules 2 and 3)
+ * - only code that runs as an execution, live or ista, waits (`await`, a blocking `select`) or reads
+ *   its own call (proposal 8, Rule 2)
  * - `keep` adds to a register other than those it keeps
  *
  * The rules are a typed table with one entry per instruction kind, like `operandsOf`

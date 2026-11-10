@@ -24,11 +24,11 @@ import { arriving, mockedCall } from '../testing/mocks.ts';
 import type { Waiting } from '../waiting.ts';
 import type { NativeCalls } from './native-calls.ts';
 
-/** Who makes calls: an instance, its segment's natives, when the segment started, how it waits. */
+/** Who makes calls: an instance, its segment's natives, what `now()` reads there, how it waits. */
 export interface Caller {
   readonly instance: Instance;
   readonly natives: NativeCalls;
-  readonly startedAt: bigint;
+  readonly now: () => bigint;
   readonly waiting: Waiting;
 }
 
@@ -58,9 +58,9 @@ export function startCall(
   contents: readonly RegisterContents[],
   captures: readonly Value[],
 ): CallTarget {
-  const { instance, startedAt } = caller;
+  const { instance } = caller;
   const values = () => passedValues(instance.frameHeap, contents);
-  const mocked = mockedCall({ instance, startedAt, target, values });
+  const mocked = mockedCall({ instance, startedAt: caller.now(), target, values });
   if (mocked === undefined) {
     return runCall(caller, { function: target, captures }, contents);
   }

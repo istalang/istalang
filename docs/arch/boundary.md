@@ -101,9 +101,10 @@ its instance is numbered by, so its native sees only JSON:
   promise into a pending future it fills between wakes; a promise can't outlive its process, which
   only a development host may assume.
 - To a live run (proposal 8), which waits in memory and no fill reaches, an extern returning a
-  future gives back a promise of its JSON instead, which resolves the future as it settles; one that
-  rejects panics the run. A pending future given to a live run panics it, as a promise given to an
-  instance does.
+  future gives back a promise of its JSON instead, which resolves the future as it settles. One that
+  rejects panics the run, with the trace of where the extern was called, and so does JSON it gives
+  that doesn't fit: no host call came with it to refuse. A pending future given to a live run
+  panics it, as a promise given to an instance does.
 
 ## Starting instances
 
@@ -154,10 +155,12 @@ host awaits the same way whatever an instance waits on. Calls that only read (`d
   calling it to commit, instead of running halfway through it.
 - **Live runs.** Starting live code (proposal 8; until the checker knows kinds, an entry made live)
   runs it outside any instance, in memory, to its end (`runtime/scheduler/live-run.ts`): `start`
-  settles with its outcome or panic, and nothing reaches the store, so a restart ends it. Its waits
-  ride the host's event loop: its timers on the runtime's `Clock`, so a manual clock fires them as an
-  instance's, and its host futures on the host's promises. It takes no instance's options and holds
-  no instance's name, so no other call waits for it or reaches it.
+  settles with its outcome or panic, and nothing reaches the store, so a restart ends it. It runs
+  segment after segment as an instance does, with no commit between: what nothing holds is let go
+  of and due timers resolve after each, and its `now()` reads the clock. Its waits ride the host's
+  event loop: its timers on the runtime's `Clock`, and its host futures on the host's promises, a
+  settled one resuming it before a manual clock may jump to a timer. It takes no instance's options
+  and holds no instance's name, so no other call waits for it or reaches it.
 - **One driver loop.** A host drives a group of instances with `drive` (`runtime/host/drive.ts`):
   run what can run, wait for the earliest timer, wake what is due, until nothing can wake them. What
   differs between hosts is passed in: what can run now, how to wait (a `Clock`,

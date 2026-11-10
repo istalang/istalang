@@ -44,7 +44,7 @@ import type { InstanceCall, Snapshot } from '../../snapshot/snapshot.ts';
 import type { LoadedDefinition } from '../loaded-definition.ts';
 import { leaving, reachingMock } from '../testing/mocks.ts';
 import { type Answered, Futures } from './futures.ts';
-import { Heap, type LiveExecution, type LiveObjectOf } from './heap.ts';
+import { Heap, type LiveExecution, type LiveObject, type LiveObjectOf } from './heap.ts';
 import { spawnedName } from './instance-names.ts';
 import { liveObject, storedObject } from './live-objects.ts';
 import { Slots } from './slots.ts';
@@ -139,14 +139,28 @@ export class Instance {
    * how deep the deepest value among them nests (§5).
    */
   persisted(): Persisted {
+    const { kept, depth } = this.#kept();
+    return { objects: kept.map(storedObject), depth };
+  }
+
+  /**
+   * Lets go of what nothing holds any more, as a commit leaves it out (§5): a live run's, which
+   * never commits, so a timer no one waits on no longer wakes it.
+   */
+  dropUnheld(): void {
+    this.heap.keepOnly(new Set(this.#kept().kept.map(({ id }) => id)));
+  }
+
+  /**
+   * What a commit keeps, in id order: the executions and what they hold, and how deep the deepest
+   * value among them nests. Whatever was disposable was disposed where it lost its last holder.
+   */
+  #kept(): { readonly kept: readonly LiveObject[]; readonly depth: number } {
     const executions = this.heap.objectsOf('execution');
     const held = heldFrom(this.heap, {
       frames: executions.flatMap((execution) => execution.frames),
       objects: this.answers(),
     });
-    const persisted = this.heap
-      .objects()
-      .filter((object) => isRoot(object) || held.objects.has(object.id));
     const lost = this.heap
       .objects()
       .find(
@@ -157,7 +171,10 @@ export class Instance {
     if (lost !== undefined) {
       unreachable(`Object ${lost.id} lost its last holder without being disposed.`);
     }
-    return { objects: persisted.map(storedObject), depth: held.depth };
+    const kept = this.heap
+      .objects()
+      .filter((object) => isRoot(object) || held.objects.has(object.id));
+    return { kept, depth: held.depth };
   }
 
   /**

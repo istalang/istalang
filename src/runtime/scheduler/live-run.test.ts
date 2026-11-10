@@ -133,13 +133,139 @@ describe('live runs', () => {
     expect(commitsOf(test, 'live')).toEqual([]);
   });
 
-  it('panics when the promise it waits on rejects', async () => {
+  it('panics when the promise it waits on rejects, with a stack trace', async () => {
     const test = testRuntime({ host: { [fetchKey]: () => Promise.reject(new Error('offline')) } });
     const program = test.runtime.deploy(asLive(waitsOnHost));
-    expect((await program.start('live', { function: 'main.fetched()' })).state).toMatchObject({
+    const { state } = await program.start('live', { function: 'main.fetched()' });
+    expect(state).toMatchObject({
       kind: 'panicked',
       message: "The host's main.fetch rejected: offline",
     });
+    expect(state.kind === 'panicked' ? state.trace : '').toContain('main.fetched');
+  });
+
+  it("panics when a host's promise resolves with a value that doesn't fit its declared type", async () => {
+    const test = testRuntime({ host: { [fetchKey]: () => Promise.resolve('not-an-int') } });
+    const program = test.runtime.deploy(asLive(waitsOnHost));
+    expect((await program.start('live', { function: 'main.fetched()' })).state).toMatchObject({
+      kind: 'panicked',
+      message: expect.stringContaining('expected an integer'),
+    });
+  });
+
+  it('ends waiting when its only pending host promise belonged to a disposed future', async () => {
+    const text = compiledText(
+      [
+        "import * as time from 'time'",
+        'extern fn fetch(name: String) -> Future<Int>',
+        'async fn main():',
+        '  const s = Slot.create<Int>()',
+        '  await select:',
+        '    case fetch("a"):',
+        '      1',
+        '    case time.delay(5ms):',
+        '      await s.take()',
+      ].join('\n'),
+    );
+    const neverSettles = new Promise<unknown>(() => undefined);
+    const test = testRuntime({ host: { [fetchKey]: () => neverSettles } });
+    const live = asLive(text);
+    const run = await test.runtime.deploy(live).start('live');
+    expect(run.state).toEqual({ kind: 'waiting', until: undefined, watching: [] });
+  });
+
+  it('resolves a settled host promise before a later timer on a manual clock', async () => {
+    const text = compiledText(
+      [
+        "import * as time from 'time'",
+        'extern fn fetch(name: String) -> Future<Int>',
+        'async fn main() -> Future<Int>:',
+        '  await select:',
+        '    case fetch("a") as got:',
+        '      got',
+        '    case time.delay(5d):',
+        '      -1',
+      ].join('\n'),
+    );
+    const clock = new ManualClock(1000n);
+    const test = testRuntime({ clock, host: { [fetchKey]: () => Promise.resolve(42n) } });
+    const live = asLive(text);
+    const run = await test.runtime.deploy(live).start('live');
+    expect(outcomeText(test, live, run.state)).toBe('42');
+    expect(clock.now()).toBe(1000n);
+  });
+
+  it('lets go of a timer nothing waits on any more, so its clock never moves to it', async () => {
+    const text = compiledText(
+      [
+        "import * as time from 'time'",
+        'extern fn fetch(name: String) -> Future<Int>',
+        'async fn main() -> Future<Int>:',
+        '  const first = await select:',
+        '    case time.delay(1ms):',
+        '      1',
+        '    case time.delay(5d):',
+        '      2',
+        '  first + await fetch("a")',
+      ].join('\n'),
+    );
+    const clock = new ManualClock(1000n);
+    const later = () => new Promise((resolve) => setTimeout(() => resolve(41n), 5));
+    const test = testRuntime({ clock, host: { [fetchKey]: later } });
+    const live = asLive(text);
+    const run = await test.runtime.deploy(live).start('live');
+    expect(outcomeText(test, live, run.state)).toBe('42');
+    expect(clock.now()).toBe(1001n);
+  });
+
+  it('resolves due timers across an await while other work is ready, as an instance does', async () => {
+    const text = compiledText(
+      [
+        "import * as time from 'time'",
+        "import * as runtime from 'runtime'",
+        'async fn main() -> Future<Int>:',
+        '  const due = time.delay(0ms)',
+        '  await runtime.commit()',
+        '  select:',
+        '    case due:',
+        '      1',
+        '    else:',
+        '      0',
+      ].join('\n'),
+    );
+    const test = testRuntime();
+    const ista = await test.runtime.deploy(text).start('ista');
+    expect(await runToEnd(test, 'ista', ista)).toEqual({ kind: 'finished', outcome: '1' });
+
+    const live = asLive(text);
+    const run = await test.runtime.deploy(live).start('live');
+    expect(outcomeText(test, live, run.state)).toBe('1');
+  });
+
+  it('reads the live clock on every time.now() call, not a frozen segment start time', async () => {
+    const text = compiledText(
+      [
+        "import * as time from 'time'",
+        'extern fn tick() -> Unit',
+        'async fn main() -> Future<Int>:',
+        '  const before = time.now()',
+        '  tick()',
+        '  time.now().value - before.value',
+      ].join('\n'),
+    );
+    const clock = new ManualClock(1000n);
+    const test = testRuntime({
+      clock,
+      host: {
+        'main.tick()': () => {
+          clock.set(1250n);
+          return null;
+        },
+      },
+    });
+    const live = asLive(text);
+    const run = await test.runtime.deploy(live).start('live');
+    expect(outcomeText(test, live, run.state)).toBe('250');
   });
 
   it('panics on a future its host fills by a token, which no fill reaches, and an instance on a promise', async () => {
@@ -203,5 +329,28 @@ describe("a host's calls on one instance", () => {
     await inner;
     expect(events).toEqual(['ping', 'outer finished', 'inner finished']);
     expect(commitsOf(test, 'x')).toHaveLength(2);
+  });
+
+  it('run two concurrent fills on one instance one after the other', async () => {
+    const text = compiledText(
+      [
+        'extern fn ask(tag: String) -> Future<Int>',
+        'async fn main() -> Future<Int>:',
+        '  const a = ask("a")',
+        '  const b = ask("b")',
+        '  (await a) + (await b)',
+      ].join('\n'),
+    );
+    const test = testRuntime({
+      host: { 'main.ask(String)': ([tag], call: HostCall) => call.pending(String(tag)) },
+    });
+    await test.runtime.deploy(text).start('x');
+    const [first, second] = await Promise.all([
+      test.runtime.fill('x', 'a', 10n),
+      test.runtime.fill('x', 'b', 32n),
+    ]);
+    expect(first.state.kind).toBe('waiting');
+    expect(outcomeText(test, text, second.state)).toBe('42');
+    expect(commitsOf(test, 'x')).toHaveLength(3);
   });
 });
