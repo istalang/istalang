@@ -37,6 +37,30 @@ describe('signature help', () => {
     expect(help(declared, 'fn f() -> Int: g(1, 2, 3, ‸4)')?.parameter).toBe('...rest: Array<Int>');
   });
 
+  it("helps inside a deferred call's taker, with what the deferred call calls (§3.14)", () => {
+    const declared = [
+      'fn retry(f: fn() -> Int, times: Int = 3) -> Int: f()',
+      'fn count(n: Int) -> Int: n',
+      'struct Pool:',
+      '  size: Int',
+      'fn submit(self: Pool, job: fn() -> Int, weight: Int) -> Int: job()',
+    ];
+    expect(help(...declared, 'fn f() -> Int: retry(times: ‸5) count(1)')).toEqual({
+      label: 'fn retry(f: fn() -> Int, times: Int = …) -> Int',
+      parameter: 'times: Int = …',
+    });
+    expect(help(...declared, 'fn f(p: Pool) -> Int: p.submit(weight: ‸2) count(1)')).toEqual({
+      label: 'fn submit(self: Pool, job: fn() -> Int, weight: Int) -> Int',
+      parameter: 'weight: Int',
+    });
+    expect(
+      help(...declared, 'fn f(r: fn(Int, fn() -> Int) -> Int) -> Int: r(‸2) count(1)'),
+    ).toEqual({
+      label: 'fn(Int, fn() -> Int) -> Int',
+      parameter: 'Int',
+    });
+  });
+
   it('marks the argument a line starts, where line breaks separate the arguments (§2)', () => {
     const mix = 'fn mix(a: Int, b: Int, c: Int) -> Int: a + b + c';
     expect(help(mix, 'fn f() -> Int: mix(', '  1', '  ‸2', '  3', ')')?.parameter).toBe('b: Int');

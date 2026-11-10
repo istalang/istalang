@@ -119,7 +119,7 @@ const scenarios: readonly Scenario[] = [
     title: 'After the awaited future',
     src: ['  select:\n    case work(1) ‸'],
     where: 'async',
-    expect: { has: ['as'], lacks: ['xs', 'plus'] },
+    expect: { has: ['as', 'plus'], lacks: ['let', 'true'] },
   },
   {
     id: 'CF-05',

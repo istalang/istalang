@@ -9,8 +9,8 @@
 
 import { type Handlers, handlerOf } from '../../../foundation/structures/kind-table.ts';
 import { argumentValue } from '../../syntax/expressions/arguments.ts';
+import type { CallArgument } from '../../syntax/expressions/calls.ts';
 import type {
-  CallArgument,
   Expression,
   FieldsLiteral,
   IndentedValue,
@@ -96,6 +96,10 @@ const expressionHandlers: Handlers<LocalBinder, Expression, [Scope], void> = {
   Propagate: (binder, node, scope) => bindExpression(binder, node.operand, scope),
   Unwrap: (binder, node, scope) => bindExpression(binder, node.operand, scope),
   Spawn: (binder, node, scope) => bindExpression(binder, node.call, scope),
+  DeferredCall: (binder, node, scope) => {
+    bindNamed(binder, node.taker, scope, 'callee');
+    bindExpression(binder, node.call, scope);
+  },
   ChainedComparison: (binder, node, scope) => bindAll(binder, node.operands, scope),
   TemplateLiteral: (binder, node, scope) => bindAll(binder, [node.tag, ...node.values], scope),
   Dereference: (binder, node, scope) => bindExpression(binder, node.operand, scope),

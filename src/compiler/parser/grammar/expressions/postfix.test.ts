@@ -203,8 +203,8 @@ describe('type arguments (§3.5)', () => {
   });
 
   it('parses the call after type arguments for real, so its errors are reported', () => {
-    expect(reported('expression', 'f<Int>(a b)')).toEqual(
-      reportedOnce(parserDiagnostics.expected.code, 'b'),
+    expect(reported('expression', 'f<Int>(a 1)')).toEqual(
+      reportedOnce(parserDiagnostics.expected.code, '1'),
     );
   });
 });

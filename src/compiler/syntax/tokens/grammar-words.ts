@@ -16,7 +16,8 @@
  * - The operator words come from the operator table (../expressions/operators.ts), where each
  *   operator is spelled once.
  * - Clause words a single construct expects at a fixed point (`elif`, `case`, `by`, `from`) are
- *   that construct's own, not a position's.
+ *   that construct's own, not a position's; the contextual ones read after an operand are listed,
+ *   since a name there may start a deferred call's call.
  */
 
 import {
@@ -117,6 +118,13 @@ function firstWordOf<Spelling extends string>(spelling: Spelling): FirstWord<Spe
 export const infixWords = [...binaryWords, 'is'] as const satisfies readonly Word[];
 
 export type InfixWord = (typeof infixWords)[number];
+
+/**
+ * The contextual words a construct reads after an operand on its line, each a clause of that
+ * construct's: a range's `by` (§4). A name there would otherwise start a deferred call's call
+ * (§3.14), so the parser leaves the word to its construct.
+ */
+export const clauseWordsAfterOperand = ['by'] as const satisfies readonly ContextualWord[];
 
 /**
  * What starts a type (§2, §3.1, §3.10, §3.14): function types, anonymous structs, `any`'s values,

@@ -8,10 +8,11 @@
  * - A call that didn't resolve, as one being written often doesn't, shows the functions it chose
  *   among, its arguments read by position and name.
  * - A call of a function value shows its type's parameters, which have no names (§3.14).
+ * - A deferred call's taker written as a call shows what the deferred call calls, its arguments
+ *   those its parentheses write (§3.14).
  */
 
 import type { Checker } from '../../../compiler/checker/check.ts';
-import type { JoinedBody } from '../../../compiler/checker/surface/denotation.ts';
 import {
   parameterOfArgument,
   type ResolvedCall,
@@ -19,10 +20,9 @@ import {
 import type { FunctionType } from '../../../compiler/checker/types/type/index.ts';
 import { presentType } from '../../../compiler/checker/types/unions/unions.ts';
 import type { ModuleId, Program } from '../../../compiler/program/program.ts';
-import type { Call } from '../../../compiler/syntax/expressions/index.ts';
 import { calledName } from '../../../compiler/syntax/expressions/readings.ts';
 import { checkedModule } from '../reading/checked-module.ts';
-import { callAt, calleesOf, writtenParameter } from './call-at.ts';
+import { type CallAt, callAt, calleesOf, writtenParameter } from './call-at.ts';
 import { functionTypeSignature, type Signature, signatureOf } from './signatures.ts';
 
 export interface SignatureHelp {
@@ -50,17 +50,14 @@ export function signatureHelpAt(
   if (checked === undefined || at === undefined) {
     return undefined;
   }
-  const { call, body, argument } = at;
-  return body.valueCalls.has(call)
-    ? valueCallHelp(checked.checker, body, call, argument)
-    : functionCallHelp(checked.checker, body, call, argument);
+  return at.body.valueCalls.has(at.maker)
+    ? valueCallHelp(checked.checker, at)
+    : functionCallHelp(checked.checker, at);
 }
 
 function valueCallHelp(
   checker: Checker,
-  body: JoinedBody,
-  call: Call,
-  argument: number,
+  { call, body, argument }: CallAt,
 ): SignatureHelp | undefined {
   const callee = body.typeOf(calledName(call));
   const type = call.isOptional && callee ? presentType(callee, checker.typeRules) : callee;
@@ -81,12 +78,10 @@ function slotOf({ parameters, pack }: FunctionType, argument: number): number | 
 
 function functionCallHelp(
   checker: Checker,
-  body: JoinedBody,
-  call: Call,
-  argument: number,
+  { call, maker, body, argument }: CallAt,
 ): SignatureHelp | undefined {
-  const calls = body.callsAt(call);
-  const functions = calleesOf(body, call);
+  const calls = body.callsAt(maker);
+  const functions = calleesOf(body, maker);
   if (functions.length === 0) {
     return undefined;
   }

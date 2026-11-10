@@ -13,7 +13,7 @@
 
 import type { ModuleId } from '../../program/program.ts';
 import { type TypeParameters, typeParametersOf } from '../../syntax/declarations/index.ts';
-import type { Call } from '../../syntax/expressions/index.ts';
+import type { Call } from '../../syntax/expressions/calls.ts';
 import { literalNaming } from '../../syntax/expressions/literals/built-types.ts';
 import type { StringLiteral } from '../../syntax/expressions/literals/literals.ts';
 import { parentOf, type SyntaxNode, type SyntaxTree } from '../../syntax/tree/index.ts';

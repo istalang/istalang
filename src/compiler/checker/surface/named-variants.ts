@@ -5,7 +5,7 @@
  */
 
 import type { Entity, VariantEntity } from '../../binder/entities.ts';
-import type { Call } from '../../syntax/expressions/index.ts';
+import type { Call } from '../../syntax/expressions/calls.ts';
 import { calledName } from '../../syntax/expressions/readings.ts';
 import type { Identifier } from '../../syntax/tree/node.ts';
 

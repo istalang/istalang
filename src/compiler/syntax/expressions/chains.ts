@@ -4,7 +4,8 @@
  * (a call through a namespace has a link's shape and never is), so this module only reads shapes.
  */
 
-import type { Call, Expression } from './index.ts';
+import type { CallingNode } from './calls.ts';
+import type { Expression } from './index.ts';
 import { calledName } from './readings.ts';
 
 /**
@@ -59,6 +60,7 @@ export function chainStepOf(node: Expression): ChainStep | undefined {
     case 'Index':
       return { target: node.target, operator: linkOperator('[', node.isOptional) };
     case 'Call':
+    case 'DeferredCall':
       return callStepOf(node);
     case 'Dereference':
       return node.operator === '*'
@@ -69,9 +71,12 @@ export function chainStepOf(node: Expression): ChainStep | undefined {
   }
 }
 
-/** A call's step: through the optional function it calls, or a method's to its receiver. */
-function callStepOf(node: Call): ChainStep | undefined {
-  if (node.isOptional) {
+/**
+ * A call's step: through the optional function it calls, or a method's to its receiver, a
+ * deferred call's taker's among them, which a path of names never reads through an optional.
+ */
+function callStepOf(node: CallingNode): ChainStep | undefined {
+  if (node.kind === 'Call' && node.isOptional) {
     return { target: node.callee, operator: optionalOperatorOf('(') };
   }
   const callee = calledName(node);

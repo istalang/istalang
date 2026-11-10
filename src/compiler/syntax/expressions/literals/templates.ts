@@ -11,7 +11,8 @@
 
 import { memo } from '../../../../foundation/structures/memo.ts';
 import { endOf, spanAcross } from '../../tree/positions.ts';
-import type { ArrayLiteral, Call, Expression, TemplateLiteral } from '../index.ts';
+import type { Call } from '../calls.ts';
+import type { ArrayLiteral, Expression, TemplateLiteral } from '../index.ts';
 
 /** A template with a tag. */
 export type TaggedTemplate = TemplateLiteral & { readonly tag: Expression };

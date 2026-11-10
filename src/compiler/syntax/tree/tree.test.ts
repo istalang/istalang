@@ -13,7 +13,7 @@ import { createSourceText } from '../../../foundation/text/source-text.ts';
 import { textOf } from '../../../foundation/text/span.ts';
 import { parse } from '../../parser/parse.ts';
 import { scan } from '../../scanner/scan.ts';
-import type { Call } from '../expressions/index.ts';
+import type { Call } from '../expressions/calls.ts';
 import {
   bodyOf,
   childrenOf,

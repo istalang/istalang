@@ -17,11 +17,12 @@ import { type Handlers, handlerOf } from '../../../../foundation/structures/kind
 import { typeEntity } from '../../../binder/entities.ts';
 import type { ModuleId } from '../../../program/program.ts';
 import { constructedVariant } from '../../../syntax/declarations/field-defaults.ts';
-import type { Call, FieldInitializer, MemberAccess } from '../../../syntax/expressions/index.ts';
+import type { CallingNode } from '../../../syntax/expressions/calls.ts';
+import type { FieldInitializer, MemberAccess } from '../../../syntax/expressions/index.ts';
 import { literalNaming } from '../../../syntax/expressions/literals/built-types.ts';
 import { bareKeyOf } from '../../../syntax/expressions/literals/indented-values.ts';
 import { isTagged, taggedCall } from '../../../syntax/expressions/literals/templates.ts';
-import { callOfCallee } from '../../../syntax/expressions/readings.ts';
+import { callOfCallee, makerOf } from '../../../syntax/expressions/readings.ts';
 import type { Hold } from '../../../syntax/statements/index.ts';
 import { ancestorsOf, nestsFunction, type SyntaxNode } from '../../../syntax/tree/index.ts';
 import { type Identifier, lastName } from '../../../syntax/tree/node.ts';
@@ -65,6 +66,7 @@ type NameHolder = Extract<
       | 'NamedPatternArgument'
       | 'NamedArgument'
       | 'Call'
+      | 'DeferredCall'
       | 'TypeApplication'
       | 'TemplateLiteral'
       | 'DeclaredField'
@@ -91,8 +93,13 @@ const chosenIn: Handlers<NameSite, NameHolder, [], readonly Denotation[] | undef
   NestedFieldPattern: (site, node) => (site.name === node.field ? fieldNamed(site) : undefined),
   NamedPatternArgument: (site, node) => (site.name === node.name ? fieldNamed(site) : undefined),
   NamedArgument: (site, node) =>
-    site.name === node.name ? parameterNamed(site, site.holders[1]) : undefined,
-  Call: (site, node) => (site.name === node.callee ? calleeDenotations(site, node) : undefined),
+    site.name === node.name ? parameterNamed(site, site.holders.slice(1)) : undefined,
+  Call: (site, node) =>
+    site.name === node.callee
+      ? calleeDenotations(site, makerOf(node, site.holders.slice(1)))
+      : undefined,
+  DeferredCall: (site, node) =>
+    site.name === node.taker ? calleeDenotations(site, node) : undefined,
   TypeApplication: (site, node) => {
     if (site.name !== node.target) {
       return;
@@ -209,7 +216,7 @@ function associatedNamed(checker: CheckerContext, type: Type | undefined): reado
  * conversion, `T(x)`, so it denotes the type too, beside the function converting. A variant called,
  * with or without fields, is of each enum type the call made (§3.11).
  */
-function calleeDenotations(site: NameSite, call: Call): readonly Denotation[] {
+function calleeDenotations(site: NameSite, call: CallingNode): readonly Denotation[] {
   const entity = site.checker.bindings.entityOf(site.module, site.name);
   if (entity?.kind === 'variant' || entity?.kind === 'variants') {
     return (
@@ -241,18 +248,21 @@ function heldFunction(site: NameSite, hold: Hold): readonly Denotation[] {
  * The types `call`, of a variant without fields, which calls no function, made: one per pass of
  * the field loops around it that made a different one; a call never checked made none known.
  */
-function madeTypes({ body }: NameSite, call: Call): readonly (Type | undefined)[] {
+function madeTypes({ body }: NameSite, call: CallingNode): readonly (Type | undefined)[] {
   const made = body?.typeOf(call);
   return made === undefined ? [undefined] : membersOf(made);
 }
 
 /**
  * The parameter a named argument names, of each function its call resolved to; of a variant's
- * constructor, the field it gives, of each enum type the call made (§3.11).
+ * constructor, the field it gives, of each enum type the call made (§3.11). `holders` hold the
+ * argument, its call first, which a deferred call makes where it is its taker (§3.14).
  */
-function parameterNamed(site: NameSite, call: SyntaxNode | undefined): readonly Denotation[] {
+function parameterNamed(site: NameSite, holders: readonly SyntaxNode[]): readonly Denotation[] {
   const { checker, name } = site;
-  const calls = call?.kind === 'Call' ? (site.body?.callsAt(call) ?? []) : [];
+  const [call, ...around] = holders;
+  const maker = call?.kind === 'Call' ? makerOf(call, around) : undefined;
+  const calls = maker === undefined ? [] : (site.body?.callsAt(maker) ?? []);
   return calls.flatMap((each): readonly Denotation[] => {
     const called = each.function;
     const built = constructedVariant(called);

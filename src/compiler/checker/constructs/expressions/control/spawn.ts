@@ -18,7 +18,8 @@
 
 import { wellKnown } from '../../../../../foundation/language/well-known/index.ts';
 import { argumentValue } from '../../../../syntax/expressions/arguments.ts';
-import type { Call, Expression, Spawn } from '../../../../syntax/expressions/index.ts';
+import type { Call, Spawn } from '../../../../syntax/expressions/calls.ts';
+import type { Expression } from '../../../../syntax/expressions/index.ts';
 import { calledName, unparenthesized } from '../../../../syntax/expressions/readings.ts';
 import { awaits } from '../../../../syntax/tokens/modifiers.ts';
 import type { BodyContext } from '../../../contexts/body-context.ts';
@@ -29,6 +30,7 @@ import type { Type } from '../../../types/type/index.ts';
 import { errorType } from '../../../types/type/primitives.ts';
 import { typeText } from '../../../types/type/type-text.ts';
 import { wellKnownOf } from '../../../types/type/well-known.ts';
+import { calledValueType } from '../../closures/value-calls.ts';
 
 export function checkSpawn(context: BodyContext, node: Spawn): Type {
   const call = unparenthesized(node.call);
@@ -89,7 +91,7 @@ function refusalOf(
     };
   }
   if (resolved === undefined) {
-    const type = context.typeOf(calledName(call));
+    const type = calledValueType(context, call);
     return type.kind !== 'function' || type.reach === 'sendable'
       ? undefined
       : {

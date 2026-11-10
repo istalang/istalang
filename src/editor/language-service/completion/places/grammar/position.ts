@@ -7,7 +7,9 @@
  *   `in`; after an operand, what goes on after one, once a space parts them, and nothing right
  *   against it (`plus(1)‸`), where a word would be glued to the operand. The parser cut off
  *   whatever it could not finish there (a header before its `:`, a guard, a template's `${…}`, a
- *   call's argument), so its tree can't.
+ *   call's argument), so its tree can't. After an operand shaped as a deferred call's taker, which
+ *   the placeholder's parse gives the name as the call it defers (§3.14), a name starting that call
+ *   may come too.
  * - A name the parser can't place (an `Invalid` node) stands in a `match` or `select` body, which
  *   holds only cases, or in a line of a module or a block.
  * - A name starting a block's item, first on its line or after `;`, `:` or `{`, starts a
@@ -42,6 +44,11 @@ import { type Surroundings, surroundingsOf } from './surroundings.ts';
 export type GrammarPosition =
   /** Only these words may be written. */
   | { readonly kind: 'words'; readonly words: readonly Word[] }
+  /**
+   * After a deferred call's taker (§3.14): a name starting the call it is given, or one of the
+   * words going on after the taker as an operand.
+   */
+  | { readonly kind: 'deferredCall'; readonly words: readonly Word[] }
   /** A block's item starts; `continuesIf` when it follows an `if` chain with no `else` yet. */
   | {
       readonly kind: 'statement';
@@ -69,9 +76,9 @@ export function grammarPositionAt(cursor: Cursor, { parsed }: GrammarPlace): Gra
   const after =
     startsLine || adjoinsBefore(cursor) === undefined
       ? undefined
-      : wordsAfter(cursor, parsed, parent, node);
+      : positionAfter(cursor, parsed, parent, node);
   if (after !== undefined) {
-    return words(after);
+    return after;
   }
   const surroundings = surroundingsOf(tree, chain);
   if (node.kind === 'Invalid') {
@@ -84,24 +91,43 @@ export function grammarPositionAt(cursor: Cursor, { parsed }: GrammarPlace): Gra
   return heldIn(parsed, parent, node, surroundings);
 }
 
-/** The words that alone may follow the tokens before the cursor, where those decide them. */
-function wordsAfter(
+/**
+ * What alone may follow the tokens before the cursor, where those decide it: the words after a
+ * modifier or a loop's target; after an operand, the words going on after it, and where the
+ * operand is a deferred call's taker, a name starting its call (§3.14).
+ */
+function positionAfter(
   cursor: Cursor,
   parsed: Parse,
   parent: SyntaxNode,
   node: SyntaxNode,
-): readonly Word[] | undefined {
+): GrammarPosition | undefined {
   const modifier = modifierBefore(cursor, parsed);
   if (modifier !== undefined) {
-    return followers[modifier];
+    return words(followers[modifier]);
   }
   if (iteratesOver(parent, node) && !writesIn(parsed, parent)) {
-    return ['in'];
+    return words(['in']);
   }
   if (!endsOperand(cursor.before)) {
     return undefined;
   }
-  return touchingBefore(cursor) === undefined ? goingOn(cursor) : [];
+  if (touchingBefore(cursor) !== undefined) {
+    return words([]);
+  }
+  const going = goingOn(cursor);
+  return startsDeferredCall(parsed, node) ? { kind: 'deferredCall', words: going } : words(going);
+}
+
+/**
+ * Whether the name `name` starts the call a deferred call gives its taker (§3.14), as the
+ * placeholder's parse reads it: some node holding it is a deferred call whose call starts there.
+ */
+function startsDeferredCall({ tree, chain }: Parse, name: SyntaxNode): boolean {
+  const { start } = extentIn(tree, name);
+  return chain.some(
+    (node) => node.kind === 'DeferredCall' && extentIn(tree, node.call).start === start,
+  );
 }
 
 /** Whether `node` is the iterable of `parent`, a `for` loop or a comprehension. */

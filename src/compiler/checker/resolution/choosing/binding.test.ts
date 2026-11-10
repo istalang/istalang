@@ -1,12 +1,16 @@
 /**
  * The binding rule (§3.3) over generated parameter lists: arguments by position fill parameters in
  * order, named ones the parameter of their name in any order, a rest parameter collects what is
- * left, and every parameter left out takes its default; anything else fails with its reason.
+ * left, a deferred call's function the first parameter taking nothing left unfilled, and every
+ * parameter left out takes its default; anything else fails with its reason.
  */
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import type { Binding } from '../../surface/resolved-call.ts';
+import { functionType } from '../../types/type/function-types.ts';
+import type { Type } from '../../types/type/index.ts';
+import { intType } from '../../types/type/primitives.ts';
 import { type BoundArgument, type BoundSlot, bindArguments, bindValue } from './binding.ts';
 
 /**
@@ -193,5 +197,66 @@ describe('binding a pack', () => {
       kind: 'packNamed',
       name: 'rest',
     });
+  });
+});
+
+/** A parameter of a function type taking nothing, a call to run later's (§3.14), or of another. */
+type SlotKind = 'call' | 'function' | 'value';
+
+const typeOfKind: Record<SlotKind, Type> = {
+  call: functionType({ reach: 'plain', parameters: [], result: intType }),
+  function: functionType({
+    reach: 'plain',
+    parameters: [{ type: intType, reference: false }],
+    result: intType,
+  }),
+  value: intType,
+};
+
+/** Parameters `p0`… of `kinds`, each with a default, so only the one taking a call may be missed. */
+function typedSlots(kinds: readonly SlotKind[]): BoundSlot[] {
+  return kinds.map((kind, index) => ({
+    name: `p${index}`,
+    hasDefault: true,
+    type: typeOfKind[kind],
+  }));
+}
+
+describe('binding the function a deferred call gives (§3.14)', () => {
+  it('fills the first parameter taking nothing the positional arguments leave unfilled', () => {
+    fc.assert(
+      fc.property(
+        fc.array(fc.constantFrom<SlotKind>('call', 'function', 'value'), { maxLength: 5 }),
+        fc.nat(5),
+        (kinds, count) => {
+          const given = Math.min(count, kinds.length);
+          const arguments_ = [...Array.from({ length: given }, () => ({})), { isDeferred: true }];
+          const taking = kinds.findIndex((kind, index) => index >= given && kind === 'call');
+          const filled = kinds.map((_, index) => {
+            if (index < given) {
+              return { kind: 'argument', index };
+            }
+            return index === taking ? { kind: 'argument', index: given } : { kind: 'default' };
+          });
+          expect(bindArguments(typedSlots(kinds), arguments_)).toEqual(
+            taking === -1 ? { kind: 'takesNoCall' } : filled,
+          );
+        },
+      ),
+    );
+  });
+
+  it('skips a parameter a name fills, wherever the name stands', () => {
+    const slots = typedSlots(['call', 'value', 'call']);
+    expect(bindArguments(slots, [{ name: 'p0' }, { isDeferred: true }])).toEqual([
+      { kind: 'argument', index: 0 },
+      { kind: 'default' },
+      { kind: 'argument', index: 1 },
+    ]);
+  });
+
+  it('names a required parameter left unfilled, since no count of arguments says it', () => {
+    const slots = typedSlots(['call', 'value']).map((slot) => ({ ...slot, hasDefault: false }));
+    expect(bindArguments(slots, [{ isDeferred: true }])).toEqual({ kind: 'missing', name: 'p1' });
   });
 });

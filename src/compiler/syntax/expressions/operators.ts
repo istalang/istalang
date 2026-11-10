@@ -159,10 +159,11 @@ export type CallingUnaryOperator = {
 
 /**
  * Where the operators without an entry above sit. `is` shares the comparison level, `..` the range
- * level.
+ * level, and a deferred call, `g f(x)`, prefix `await`'s (§3.14).
  */
 export const operatorLevels = {
   await: 'prefix',
+  deferredCall: 'prefix',
   dereference: 'prefix',
   reference: 'prefix',
   is: 'comparison',

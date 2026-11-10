@@ -10,7 +10,7 @@ import { describe, expect, it } from 'vitest';
 import { reportedNothing } from '../../../../foundation/diagnostics/diagnostic.test-kit.ts';
 import { mainGives } from '../../../../stdlib/prelude/prelude.test-kit.ts';
 import { lines } from '../../../parser/parse.test-kit.ts';
-import type { TypeApplication } from '../../../syntax/expressions/index.ts';
+import type { TypeApplication } from '../../../syntax/expressions/calls.ts';
 import { reported } from '../../check.test-kit.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import { checkedMain } from '../../lookup/lookup.test-kit.ts';

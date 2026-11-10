@@ -7,6 +7,8 @@
  *   operator refuses without parentheses, `**`'s right-associativity and its refusal of a prefix
  *   before it (§3.9), comparisons in a row chaining so a comparison under another is wrapped, and
  *   `name < name > (…)` reading as a generic call (§3.5) so its comparison is wrapped.
+ * A deferred call, `g f(…)` (§3.14), is an operator at the prefix level whose operand is a call, or
+ * another deferred call, read from the right; the operator tree stands in the call's argument.
  * `shapeOf` turns a parsed expression back into a tree, ignoring parentheses, so the printed text
  * can be compared with the tree it came from.
  */
@@ -39,7 +41,8 @@ export type OperatorTree =
   | { readonly binary: BinaryOperator; readonly left: OperatorTree; readonly right: OperatorTree }
   | { readonly prefix: Prefix; readonly operand: OperatorTree }
   | { readonly range: boolean; readonly start: OperatorTree; readonly end: OperatorTree }
-  | { readonly isSubject: OperatorTree };
+  | { readonly isSubject: OperatorTree }
+  | { readonly deferring: OperatorTree };
 
 const binaryOperatorList = Object.keys(binaryOperators) as BinaryOperator[];
 
@@ -59,6 +62,7 @@ export const operatorTree: fc.Arbitrary<OperatorTree> = fc.letrec<{ tree: Operat
       }),
       fc.record({ range: fc.boolean(), start: tie('tree'), end: tie('tree') }),
       fc.record({ isSubject: tie('tree') }),
+      fc.record({ deferring: tie('tree') }),
     ),
   }),
 ).tree;
@@ -72,6 +76,9 @@ function levelOf(tree: OperatorTree): PrecedenceLevel {
   }
   if ('range' in tree) {
     return operatorLevels.range;
+  }
+  if ('deferring' in tree) {
+    return operatorLevels.deferredCall;
   }
   return 'isSubject' in tree ? operatorLevels.is : 'postfix';
 }
@@ -111,7 +118,21 @@ export function printFull(tree: OperatorTree): string {
   if ('range' in tree) {
     return `(${printFull(tree.start)}${rangeText(tree.range)}${printFull(tree.end)})`;
   }
+  if ('deferring' in tree) {
+    return `(${deferredText(tree.deferring, printFull)})`;
+  }
   return `(${printFull(tree.isSubject)} is P)`;
+}
+
+/**
+ * `g` given the call `deferring` stands for: another deferred call as it is, without the
+ * parentheses that would make it `g`'s argument, or `f` called with the tree.
+ */
+function deferredText(deferring: OperatorTree, print: (tree: OperatorTree) => string): string {
+  if ('deferring' in deferring) {
+    return `g ${deferredText(deferring.deferring, print)}`;
+  }
+  return `g f(${print(deferring)})`;
 }
 
 /**
@@ -172,6 +193,9 @@ export function printMinimal(tree: OperatorTree): string {
     const start = operand(tree.start, operatorLevels.range);
     return start + rangeText(tree.range) + operand(tree.end, tighterLevel(operatorLevels.range));
   }
+  if ('deferring' in tree) {
+    return deferredText(tree.deferring, printMinimal);
+  }
   return `${operand(tree.isSubject, operatorLevels.is)} is P`;
 }
 
@@ -206,7 +230,20 @@ export function shapeOf(expression: Expression): OperatorTree | { readonly unexp
           };
     case 'Is':
       return { isSubject: shapeOf(expression.subject) as OperatorTree };
+    case 'DeferredCall':
+      return { deferring: deferredShape(expression.call) as OperatorTree };
     default:
       return { unexpected: expression.kind };
   }
+}
+
+/** What a deferred call's `call` stands for: another deferred call's shape, or `f`'s argument's. */
+function deferredShape(call: Expression): OperatorTree | { readonly unexpected: string } {
+  if (call.kind === 'DeferredCall') {
+    return shapeOf(call);
+  }
+  const [argument] = call.kind === 'Call' ? call.arguments : [];
+  return argument === undefined || argument.kind === 'Spread' || argument.kind === 'NamedArgument'
+    ? { unexpected: call.kind }
+    : shapeOf(argument);
 }

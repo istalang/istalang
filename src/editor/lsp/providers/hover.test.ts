@@ -3,8 +3,9 @@
  * answers, every key the key query does, every node checking typed and every written type is shown
  * somewhere: where it is the innermost node holding the offset that has a name or a type, or, for a
  * written type, at its last name. There, a name shows each of its types, and any other node its
- * own. A node holding no offset (a `Missing` one) has nothing to hover over, and the `x->` of
- * `x->f` is the member read's link, as `.` is.
+ * own, or those of the node it shows as (hover.ts `shownAs`): the `x->` of `x->f` none, being the
+ * member read's link, as `.` is, and a deferred call the call it defers. A node holding no offset
+ * (a `Missing` one) has nothing to hover over.
  */
 
 import { beforeAll, describe, expect, it } from 'vitest';
@@ -22,6 +23,7 @@ import {
 import { lastName } from '../../../compiler/syntax/tree/node.ts';
 import { spanIn } from '../../../compiler/syntax/tree/positions.ts';
 import type { TypeNode } from '../../../compiler/syntax/types/index.ts';
+import { shownAs } from '../../language-service/hover.ts';
 import {
   corpusClient,
   programDocuments as documents,
@@ -46,11 +48,17 @@ function denotationsAt(module: ModuleId, node: SyntaxNode) {
   return node.kind === 'StringLiteral' ? checker.lookup.keyDenotationsOf(module, node) : [];
 }
 
-/** The types a hover over `node` must show; undefined for a node with neither a name nor a type. */
+/**
+ * The types a hover over `node` must show: those of the node it shows as; undefined for a node with
+ * neither a name nor a type, or that shows as none.
+ */
 function shownTypes(module: ModuleId, node: SyntaxNode): readonly string[] | undefined {
-  const isLink = node.kind === 'Dereference' && node.operator === '->';
-  if (isLink || node.span.from === node.span.to) {
+  const shown = shownAs(node);
+  if (shown === undefined || node.span.from === node.span.to) {
     return undefined;
+  }
+  if (shown !== node) {
+    return shownTypes(module, shown);
   }
   const denotations = denotationsAt(module, node);
   if (denotations.length > 0) {

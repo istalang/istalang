@@ -6,7 +6,8 @@
  */
 
 import type { Handlers } from '../../../../foundation/structures/kind-table.ts';
-import type { Expression, Reference } from '../../../syntax/expressions/index.ts';
+import type { Reference } from '../../../syntax/expressions/calls.ts';
+import type { Expression } from '../../../syntax/expressions/index.ts';
 import type { BodyContext } from '../../contexts/body-context.ts';
 import type { Type } from '../../types/type/index.ts';
 import { errorType, floatType } from '../../types/type/primitives.ts';
@@ -28,6 +29,7 @@ import { checkIs, checkMatch } from './control/match.ts';
 import { checkPropagate } from './control/propagate.ts';
 import { checkSelect } from './control/select.ts';
 import { checkSpawn } from './control/spawn.ts';
+import { checkDeferredCall } from './deferred-calls.ts';
 import { checkIndentedValue } from './literals/indented-values.ts';
 import { checkDurationLiteral } from './literals/literals.ts';
 import { checkTemplate } from './literals/templates.ts';
@@ -79,6 +81,7 @@ export const expressionHandlers: Handlers<BodyContext, Expression, [Type | undef
   Index: checkIndex,
   Propagate: checkPropagate,
   Spawn: checkSpawn,
+  DeferredCall: checkDeferredCall,
   Unwrap: checkUnwrap,
   ChainedComparison: checkChainedComparison,
   TemplateLiteral: checkTemplate,

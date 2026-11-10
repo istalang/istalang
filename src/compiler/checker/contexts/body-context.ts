@@ -13,9 +13,9 @@
 
 import type { Entity, VariableEntity, VariantEntity } from '../../binder/entities.ts';
 import type { FunctionDeclaration } from '../../syntax/declarations/index.ts';
+import type { CallingNode } from '../../syntax/expressions/calls.ts';
 import type {
   ArrayLiteral,
-  Call,
   Expression,
   FieldHeader,
   FieldsLiteral,
@@ -136,7 +136,7 @@ export interface BodyContext extends CheckedModule {
    */
   readonly useEntity: (name: Identifier) => Entity | undefined;
   readonly recordCall: (site: ResolvedSite, call: ResolvedCall) => void;
-  /** Records the functions the call at `site` chooses among (resolution/calls/resolve.ts). */
+  /** Records the functions the call at `site` chooses among (resolution/calls/resolve/index.ts). */
   readonly recordCandidates: (
     site: ResolvedSite,
     candidates: readonly FunctionDeclaration[],
@@ -160,8 +160,6 @@ export interface BodyContext extends CheckedModule {
   readonly recordVariant: (name: Identifier, variant: VariantEntity) => void;
   /** The variant the bare name `name` chose; undefined for one not checked yet or naming none. */
   readonly chosenVariantOf: (name: Identifier) => VariantEntity | undefined;
-  /** Records that `node` calls a function value (§3.14). */
-  readonly recordValueCall: (node: Call) => void;
   /**
    * Records that `body`, a branch or a case, never runs: a condition decided by types rules it out
    * (constructs/expressions/operators/decided-conditions.ts), so it is neither checked nor lowered.
@@ -200,6 +198,8 @@ export interface BodyContext extends CheckedModule {
   readonly enclosing: Enclosing;
   readonly implicit: ImplicitRecord;
   readonly collections: CollectionRecord;
+  readonly valueCalls: ValueCallRecord;
+  readonly deferrals: DeferralRecord;
   readonly iterations: IterationRecord;
   readonly patterns: PatternRecord;
   readonly chains: Chains;
@@ -331,6 +331,21 @@ export interface ImplicitRecord {
 /** What each collection literal builds (constructs/expressions/collections/collections.ts). */
 export interface CollectionRecord {
   readonly record: (literal: ArrayLiteral | MapLiteral, form: CollectionForm) => void;
+}
+
+/** The calls of function values (constructs/closures/value-calls.ts, §3.14). */
+export interface ValueCallRecord {
+  /** Records that `node` calls a function value. */
+  readonly record: (node: CallingNode) => void;
+  readonly has: (node: CallingNode) => boolean;
+}
+
+/**
+ * What the function each deferred call gives is given as, the parameter it fills, at the call it
+ * makes later (constructs/expressions/deferred-calls.ts, §3.14).
+ */
+export interface DeferralRecord {
+  readonly record: (call: Expression, given: Type) => void;
 }
 
 /** How each iteration runs (constructs/loops/iteration.ts). */

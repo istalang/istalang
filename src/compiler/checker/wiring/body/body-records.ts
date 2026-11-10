@@ -7,12 +7,7 @@
 
 import type { VariantEntity } from '../../../binder/entities.ts';
 import type { FunctionDeclaration } from '../../../syntax/declarations/index.ts';
-import type {
-  Call,
-  Expression,
-  FieldHeader,
-  IndentedValue,
-} from '../../../syntax/expressions/index.ts';
+import type { Expression, FieldHeader, IndentedValue } from '../../../syntax/expressions/index.ts';
 import type { BuiltLiteral } from '../../../syntax/expressions/literals/indented-values.ts';
 import type { StringLiteral } from '../../../syntax/expressions/literals/literals.ts';
 import type { Assignment, Block } from '../../../syntax/statements/index.ts';
@@ -34,7 +29,6 @@ export function bodyRecords(passes: Passes) {
     types: passes.table<Expression, Type>(),
     expected: passes.table<ValueSite, Type>(),
     resolved: passes.table<ResolvedSite, ResolvedCall>(),
-    valueCalls: passes.table<Call, true>(),
     candidates: passes.table<ResolvedSite, readonly FunctionDeclaration[]>(),
     givenFields: passes.table<FieldGiver, FieldMember>(),
     keyOwners: passes.table<StringLiteral, Type>(),

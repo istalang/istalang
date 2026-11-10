@@ -8,7 +8,8 @@ import { unreachable } from '../../../../../foundation/structures/unreachable.ts
 import type { Checker } from '../../../../checker/check.ts';
 import { calledVariant } from '../../../../checker/surface/named-variants.ts';
 import type { NominalType, Type } from '../../../../checker/types/type/index.ts';
-import type { Call, Expression } from '../../../../syntax/expressions/index.ts';
+import type { Call } from '../../../../syntax/expressions/calls.ts';
+import type { Expression } from '../../../../syntax/expressions/index.ts';
 import type { Identifier } from '../../../../syntax/tree/node.ts';
 import type { AnchoredSpan } from '../../../../syntax/tree/positions.ts';
 import type { CodeContext, FunctionContext } from '../../../context.ts';

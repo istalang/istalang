@@ -180,7 +180,7 @@ const scenarios: readonly Scenario[] = [
     id: 'ST-09',
     place: 'grammar',
     title: 'After the iterable and a range',
-    src: ['  for i in 0..10 ‸', '  for i in xs ‸'],
+    src: ['  for i in 0..10 ‸', '  for i in xs[0] ‸'],
     expect: { lacks: ['xs', 'let', 'plus'] },
   },
   {

@@ -10,12 +10,8 @@
  * `a..`; `..=` always needs one.
  */
 
-import type {
-  ChainedComparison,
-  Expression,
-  Range,
-  Reference,
-} from '../../../syntax/expressions/index.ts';
+import type { Reference } from '../../../syntax/expressions/calls.ts';
+import type { ChainedComparison, Expression, Range } from '../../../syntax/expressions/index.ts';
 import {
   type BinaryOperator,
   type BinaryOperatorEntry,

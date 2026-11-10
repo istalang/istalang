@@ -14,7 +14,8 @@
 import type { Register } from '../../../../definition/operands.ts';
 import { unreachable } from '../../../../foundation/structures/unreachable.ts';
 import type { FunctionDeclaration } from '../../../syntax/declarations/index.ts';
-import type { Lambda, MemberAccess, TypeApplication } from '../../../syntax/expressions/index.ts';
+import type { TypeApplication } from '../../../syntax/expressions/calls.ts';
+import type { Lambda, MemberAccess } from '../../../syntax/expressions/index.ts';
 import type { Identifier } from '../../../syntax/tree/node.ts';
 import type { FunctionContext } from '../../context.ts';
 import { nestedSpanOf } from '../../functions/bodies.ts';

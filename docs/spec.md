@@ -854,7 +854,7 @@ fn multiply(left: Duration, factor: Int) -> Duration:
 | --- | --- |
 | 1 | postfix: calls, indexing, `.`, `?.`, `->`, `?->`, the error-propagating `?`, the unwrapping `!` |
 | 2 | `**`, grouping to the right |
-| 3 | prefix: `await`, unary `-`, `~`, `*`, `&` |
+| 3 | prefix: `await`, unary `-`, `~`, `*`, `&`, and a deferred call, `g f(…)` (§3.14) |
 | 4 | `*`, `/`, `//`, `%` |
 | 5 | `+`, `-` |
 | 6 | `<<`, `>>` |
@@ -1181,6 +1181,24 @@ The only difference is that a lambda can also be bound with `let` and reassigned
 - A `sendable fn(A) -> R` fits wherever an `fn(A) -> R` is expected, never the reverse.
 - It satisfies `Sendable`, so it may be a `spawn` argument or part of sendable data. `spawn f(args)` accepts any expression of a sendable function type as `f`; its captures are copied into the new instance with the arguments (§9).
 - It refers to code, so it never leaves for the host: an extern declaration or `json` whose types contain one is a compile error. Code reaches only instances of the same program, which keeps it from crossing versions (§5).
+
+**Deferred calls.** `g f(args)` gives `g` a function that makes the call `f(args)` later, with everything written computed now:
+
+```python statements
+retry fetchUser(id)                    # retry((fn(x): fn(): fetchUser(x))(id))
+retry(times: 5) fetchUser(id)          # g's own arguments in parentheses
+pool.submit encode(file)               # a method takes it, its receiver as self
+retry load(id).process()               # load(id) runs now, process() later
+```
+
+- **Shape.** A name, or a path of names joined by `.`, maybe called with arguments of its own, then on its line a call. Parsing reads it from the text alone, so it never depends on what a name means; a range's `by` stays the range's.
+- **What runs now:** the callee, with its receiver and any calls before the last one, and every argument written, left to right. Only the outermost call is deferred. A default the call leaves out is computed when the call is made, later (§3.3).
+- **What `g` takes:** a parameter of a function type taking nothing, `fn() -> X`: the first such parameter its other arguments, by position or by name, leave unfilled, so `retry(times: 5) fetchUser(id)` gives `retry` its `f`. A method counts, its receiver as `self`. Any other `g` is a compile error: it doesn't take a call to run later. The function gives what the call gives, and fits as any function value does: an async callee's future goes as it is where `async fn() -> X` is taken, and a value where a future is taken goes into one already resolved.
+- **What's captured:** the values computed now, as copies. The function is sendable when they all are, so a `sendable fn` parameter needs each of them sendable. No reference can be captured, so a `&` argument, or a receiver its method takes by `&self`, is a compile error; so is a call through `?.`, which may not happen at all.
+- **Precedence** is prefix `await`'s (§3.9): `await retry fetchUser(id)` is `await (retry fetchUser(id))`, the call takes its postfix operators along, and `(g f()).x` needs its parentheses.
+- **Nesting** reads from the right: `a b c(x)` is `a(fn(): b(fn(): c(x)))`, with `x` computed once, now.
+- **The bracket form passes a value:** `retry(makeAttempt(x))` calls `makeAttempt` now and passes the function it gives.
+- **A missing comma.** `[a b(c)]` reads as a deferred call. Where `a` is a value and no function, the error points at the comma likely missing after it.
 
 ### 3.15 Tuples
 

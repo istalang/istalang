@@ -58,6 +58,15 @@ describe('highlighting', () => {
     ]);
   });
 
+  it("shows a deferred call's taker as the function or method it calls (§3.14)", () => {
+    const shown = highlighted('const n = retry(times: 5) pool.submit fetch(id)');
+    expect(shown.filter(([, type]) => type === 'function' || type === 'method')).toEqual([
+      ['retry', 'function'],
+      ['submit', 'method'],
+      ['fetch', 'function'],
+    ]);
+  });
+
   it("shows a template's tag as what it calls", () => {
     expect(highlighted('const s = m.sql`a` + sql`b`')).toEqual([
       ['const', 'keyword'],

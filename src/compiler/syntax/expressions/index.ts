@@ -23,6 +23,14 @@ import type { Block } from '../statements/index.ts';
 import type { FunctionQualifiers } from '../tokens/modifiers.ts';
 import type { Identifier, Invalid, Missing, NodeOf } from '../tree/node.ts';
 import type { NamedType, TypeNode } from '../types/index.ts';
+import type {
+  Call,
+  DeferredCall,
+  NamedArgument,
+  Reference,
+  Spawn,
+  TypeApplication,
+} from './calls.ts';
 import type { Literal, StringLiteral } from './literals/literals.ts';
 import type { BinaryOperator, ChainingOperator, UnaryOperator } from './operators.ts';
 
@@ -205,48 +213,6 @@ export interface Lambda extends NodeOf<'Lambda'> {
 }
 
 /**
- * `f(…)`, or `f?.(…)` when `isOptional`, calling the function inside an optional (§4). Type
- * arguments written after the callee's name make it a `TypeApplication`: `f<Int>(x)`.
- */
-export interface Call extends NodeOf<'Call'> {
-  readonly callee: Expression;
-  readonly isOptional: boolean;
-  readonly arguments: readonly CallArgument[];
-}
-
-/**
- * `f<Int>`, `Result.Ok<Int, String>`: type arguments written after a name or a qualified name
- * (§3.5), the one place an expression takes them, called or named as a value (§3.14).
- */
-export interface TypeApplication extends NodeOf<'TypeApplication'> {
-  readonly target: Identifier | MemberAccess;
-  readonly typeArguments: readonly TypeNode[];
-}
-
-/** `name: value` among a call's arguments, naming the parameter it gives (§3.3). */
-interface NamedArgument extends NodeOf<'NamedArgument'> {
-  readonly name: Identifier;
-  readonly value: Expression;
-}
-
-/** What a call's parentheses hold: values by position, spreads, and values by name. */
-export type CallArgument = Expression | Spread | NamedArgument;
-
-/**
- * `spawn f(args)`: starts the call as a new instance (§9). It binds as JavaScript's `new` does: the
- * callee, its members and type arguments, then one argument list, so what follows applies to what
- * the spawn gives. `call` is whatever followed `spawn`, which the checker requires to be a call.
- */
-export interface Spawn extends NodeOf<'Spawn'> {
-  readonly call: Expression;
-}
-
-/** `&x`: a call argument passed by reference. */
-export interface Reference extends NodeOf<'Reference'> {
-  readonly expression: Expression;
-}
-
-/**
  * `t.0`: an element of a tuple, by its position (§3.15). `t.0.1` is two of them, though the
  * scanner reads `0.1` as one float.
  */
@@ -412,6 +378,7 @@ export type Expression =
   | Call
   | TypeApplication
   | Spawn
+  | DeferredCall
   | Reference
   | MemberAccess
   | TupleElement

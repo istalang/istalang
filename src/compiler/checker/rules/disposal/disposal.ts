@@ -20,7 +20,7 @@
 import { disposeFunction } from '../../../../foundation/language/well-known/implicit-calls.ts';
 import type { FunctionDeclaration } from '../../../syntax/declarations/index.ts';
 import type { Parameter } from '../../../syntax/expressions/index.ts';
-import { callOfCallee } from '../../../syntax/expressions/readings.ts';
+import { callOfCallee, makerOf } from '../../../syntax/expressions/readings.ts';
 import { awaits } from '../../../syntax/tokens/modifiers.ts';
 import { fieldChildrenOf, nestsFunction, type SyntaxNode } from '../../../syntax/tree/index.ts';
 import type { NodeOf } from '../../../syntax/tree/node.ts';
@@ -186,7 +186,11 @@ export function checkDisposeDeclaration(
   checkSelfStays(checker, declaration, self.node);
 }
 
-/** Reports each use of `dispose`'s `self` other than `*self` or an argument of an extern call. */
+/**
+ * Reports each use of `dispose`'s `self` other than `*self` or an argument of an extern call. What a
+ * deferred call's call is given is captured to be passed later, as a nested function's uses are
+ * (§3.14), so `self` escapes there however it is used.
+ */
 function checkSelfStays(
   checker: CheckerContext,
   declaration: FunctionDeclaration,
@@ -195,30 +199,39 @@ function checkSelfStays(
   const module = checker.moduleOf(declaration);
   const body = checker.bodyOf(declaration);
   const isExternCall = (node: SyntaxNode | undefined): boolean =>
-    node?.kind === 'Call' && body?.resolved.get(node)?.function.isExtern === true;
+    (node?.kind === 'Call' || node?.kind === 'DeferredCall') &&
+    body?.resolved.get(node)?.function.isExtern === true;
   // A local function's body is read as checking reads bodies, not through the tree.
   const bodyHeldApart = (node: SyntaxNode): readonly SyntaxNode[] => {
     const held =
       node.kind === 'FunctionDeclaration' ? checker.inputs.bodyOf(module, node) : undefined;
     return held === undefined ? [] : [held];
   };
+  /** Whether `self`, at `node` under `outer`, stays: dereferenced, or given to an extern call. */
+  const stays = (node: SyntaxNode, outer: readonly SyntaxNode[]): boolean => {
+    const [parent, ...around] = outer.filter((each) => each.kind !== 'Parenthesized');
+    return (
+      parent?.kind === 'Dereference' ||
+      (parent?.kind === 'Call' &&
+        parent.callee !== node &&
+        isExternCall(makerOf(parent, around))) ||
+      (parent?.kind === 'MemberAccess' && isExternCall(callOfCallee(parent, around)))
+    );
+  };
   const visit = (node: SyntaxNode, outer: readonly SyntaxNode[], nested: boolean): void => {
     const entity = node.kind === 'Identifier' ? checker.bindings.entityOf(module, node) : undefined;
     // A parameter owns its pattern's names too (§3.3); only its own name is the disposed value.
-    if (entity?.kind === 'variable' && entity.name === self.name) {
-      const holders = outer.filter((each) => each.kind !== 'Parenthesized');
-      const [parent] = holders;
-      const stays =
-        parent?.kind === 'Dereference' ||
-        (parent?.kind === 'Call' && parent.callee !== node && isExternCall(parent)) ||
-        (parent?.kind === 'MemberAccess' && isExternCall(callOfCallee(parent, holders.slice(1))));
-      if (nested || !stays) {
-        checker.report(module, checkerDiagnostics.disposeSelfEscapes(node.span, entity.name.text));
-      }
+    if (
+      entity?.kind === 'variable' &&
+      entity.name === self.name &&
+      (nested || !stays(node, outer))
+    ) {
+      checker.report(module, checkerDiagnostics.disposeSelfEscapes(node.span, entity.name.text));
     }
     const inner = nested || nestsFunction(node);
     for (const child of [...fieldChildrenOf(node), ...bodyHeldApart(node)]) {
-      visit(child, [node, ...outer], inner);
+      const captured = node.kind === 'DeferredCall' && child === node.call;
+      visit(child, [node, ...outer], inner || captured);
     }
   };
   const root = checker.inputs.bodyOf(module, declaration);

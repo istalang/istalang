@@ -4,7 +4,8 @@
  * lowering agree on what an argument is.
  */
 
-import type { CallArgument, Expression } from './index.ts';
+import type { CallArgument } from './calls.ts';
+import type { Expression } from './index.ts';
 
 /**
  * The first argument a call gives by position, or spreads, after a named one: out of the order

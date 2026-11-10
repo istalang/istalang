@@ -37,7 +37,7 @@ export function offerCallArgument(
     return expressionCandidates(cursor, place);
   }
   const { checker } = cursor;
-  const callees = at.body.valueCalls.has(at.call) ? [] : calleesOf(at.body, at.call);
+  const callees = at.body.valueCalls.has(at.maker) ? [] : calleesOf(at.body, at.maker);
   const names = argumentNames(checker, at, callees);
   if (isNamedOnward(at)) {
     return names;

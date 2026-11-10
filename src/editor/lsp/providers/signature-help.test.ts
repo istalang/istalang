@@ -20,7 +20,7 @@ import { parameterOfArgument } from '../../../compiler/checker/surface/resolved-
 import { typeText } from '../../../compiler/checker/types/type/type-text.ts';
 import { wellKnownArguments } from '../../../compiler/checker/types/type/well-known.ts';
 import type { ModuleId } from '../../../compiler/program/program.ts';
-import type { Call } from '../../../compiler/syntax/expressions/index.ts';
+import type { Call } from '../../../compiler/syntax/expressions/calls.ts';
 import { calledName } from '../../../compiler/syntax/expressions/readings.ts';
 import { nodesUnder } from '../../../compiler/syntax/tree/index.ts';
 import { spanIn } from '../../../compiler/syntax/tree/positions.ts';

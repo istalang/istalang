@@ -210,23 +210,49 @@ const pair = ['struct Pair:', '  first: Int', ''];
 
 describe('completion offers the words that go on after what is written', () => {
   it.each([
-    ['a header before its `:`', ['fn f(n: Bool):', '  if n ‸:', '    1']],
-    ['a loop header before its `:`', ['fn f(n: Bool):', '  while n ‸:', '    1']],
-    ["a match's subject before its `:`", ['fn f(n: Int):', '  match n ‸:', '    case _: 1']],
-    ['a guard', ['fn f(n: Int, a: Bool):', '  match n:', '    case x if a ‸: 1']],
+    ['a header before its `:`', ['fn f(n: Bool):', '  if 1 ‸:', '    1']],
+    ['a loop header before its `:`', ['fn f(n: Bool):', '  while 1 ‸:', '    1']],
+    ["a match's subject before its `:`", ['fn f(n: Int):', '  match 1 ‸:', '    case _: 1']],
+    ['a guard', ['fn f(n: Int, a: Bool):', '  match n:', '    case x if 1 ‸: 1']],
     [
       "a comprehension's condition",
-      ['fn f(xs: Array<Int>):', '  const e = [for x in xs if x ‸: x]'],
+      ['fn f(xs: Array<Int>):', '  const e = [for x in xs if 1 ‸: x]'],
     ],
-    ["a comprehension's value", ['fn f(xs: Array<Int>):', '  const e = [for x in xs: x ‸]']],
-    ["a template's value", ['fn f(n: Int):', '  const s = `id ${n ‸}`']],
-    ["a call's argument", ['fn plus(a: Int) -> Int: a', 'fn f(n: Int):', '  plus(n ‸)']],
-    ["a call's named argument", ['fn plus(a: Int) -> Int: a', 'fn f(n: Int):', '  plus(a: n ‸)']],
-    ['a name that is no modifier', ['fn f(sendable: Int):', '  let x = sendable ‸', '  1']],
-    ['a block, a name spelled `shared`', ['fn f(shared: Int) -> Int:', '  shared ‸', '  0']],
+    ["a comprehension's value", ['fn f(xs: Array<Int>):', '  const e = [for x in xs: 1 ‸]']],
+    ["a template's value", ['fn f(n: Int):', '  const s = `id ${1 ‸}`']],
+    ["a call's argument", ['fn plus(a: Int) -> Int: a', 'fn f(n: Int):', '  plus(1 ‸)']],
+    ["a call's named argument", ['fn plus(a: Int) -> Int: a', 'fn f(n: Int):', '  plus(a: 1 ‸)']],
     ["a broken item's later word spelled `shared`", ['x( shared ‸']],
   ])('after an operand in %s', (_title, lines) => {
     expect(names(...lines)).toEqual(infix);
+  });
+
+  it.each([
+    ['a header before its `:`', ['fn f(n: Bool):', '  if n ‸:', '    1']],
+    ['a guard', ['fn f(n: Int, a: Bool):', '  match n:', '    case x if a ‸: 1']],
+    ["a template's value", ['fn f(n: Int):', '  const s = `id ${n ‸}`']],
+    ["a call's argument", ['fn f(n: Int):', '  plus(n ‸)']],
+    ['a name that is no modifier', ['fn f(sendable: Int):', '  let x = sendable ‸', '  1']],
+    ['a block, a name spelled `shared`', ['fn f(shared: Int) -> Int:', '  shared ‸', '  0']],
+    ['a taker written with arguments', ['fn f(n: Int):', '  _ = retry(times: 5) ‸']],
+    ["a method's taker", ['fn f(n: Int):', '  _ = n.submit ‸']],
+  ])(
+    "after a deferred call's taker in %s, the names starting its call too (§3.14)",
+    (_title, lines) => {
+      const declared = [
+        'fn plus(a: Int) -> Int: a',
+        'fn retry(f: fn() -> Int, times: Int) -> Int: f()',
+      ];
+      const offered = names(...declared, ...lines);
+      expect(offered).toEqual(expect.arrayContaining([...infix, 'plus', 'retry']));
+      expect(offered.filter((name) => (keywords as readonly string[]).includes(name))).toEqual(
+        infix,
+      );
+    },
+  );
+
+  it("offers nothing right against a deferred call's taker, which a name would join", () => {
+    expect(names('fn plus(a: Int) -> Int: a', 'fn f():', '  _ = plus(1)‸')).toEqual([]);
   });
 
   it.each([

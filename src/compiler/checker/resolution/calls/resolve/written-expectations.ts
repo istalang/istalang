@@ -5,22 +5,23 @@
  *
  * - Only a call with one candidate expects anything: with several, which one is meant waits for
  *   the arguments.
- * - Arguments bind as a call binds them (../choosing/binding.ts), but a parameter no argument
+ * - Arguments bind as a call binds them (../../choosing/binding.ts), but a parameter no argument
  *   gives yet is left out, as while the call is written. Inference runs as for the whole call: the
  *   arguments with types of their own are matched, and the type the call is expected to give
  *   advises, so `Rejected(‸` as a `Verdict<Color>` expects a `Color`. An argument whose
- *   parameter's type is still open expects nothing.
+ *   parameter's type is still open expects nothing, and so does the function a deferred call
+ *   gives, which is no expression written (§3.14).
  */
 
-import type { BodyContext } from '../../contexts/body-context.ts';
-import { useSite } from '../../contexts/use-site.ts';
-import { Inference } from '../../types/inference/infer.ts';
-import { mentionsAnyVariable } from '../../types/inference/variables.ts';
-import type { CallApplication } from '../applying/applied-call.ts';
-import { writtenFor } from '../choosing/applicability.ts';
-import { argumentSlotsOf, bindArguments, isBinding } from '../choosing/binding.ts';
-import { candidateSignature } from '../choosing/choice.ts';
-import { settlingAt } from '../conformance/conformance.ts';
+import type { BodyContext } from '../../../contexts/body-context.ts';
+import { useSite } from '../../../contexts/use-site.ts';
+import { Inference } from '../../../types/inference/infer.ts';
+import { mentionsAnyVariable } from '../../../types/inference/variables.ts';
+import type { CallApplication } from '../../applying/applied-call.ts';
+import { writtenFor } from '../../choosing/applicability.ts';
+import { argumentSlotsOf, bindArguments, isBinding } from '../../choosing/binding.ts';
+import { candidateSignature } from '../../choosing/choice.ts';
+import { settlingAt } from '../../conformance/conformance.ts';
 
 /** Records, for each argument of `request` written so far, the type its parameter will be. */
 export function expectWrittenArguments(context: BodyContext, request: CallApplication): void {
@@ -50,10 +51,11 @@ export function expectWrittenArguments(context: BodyContext, request: CallApplic
   }
   inference.expect(signature.result(), request.expected);
   const settling = settlingAt(useSite(checker, context.module, request.span), signature);
-  for (const [index, { node }] of request.arguments.entries()) {
+  for (const [index, { node, isDeferred }] of request.arguments.entries()) {
     const slot = slots.get(index);
     const expected = slot === undefined ? undefined : inference.guided(slot.type, settling);
-    if (node !== undefined && expected !== undefined && !mentionsAnyVariable(expected)) {
+    const expects = isDeferred !== true && expected !== undefined;
+    if (node !== undefined && expects && !mentionsAnyVariable(expected)) {
       context.expectAt(node, expected);
     }
   }

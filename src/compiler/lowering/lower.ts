@@ -18,6 +18,7 @@ import { isHostExtern } from '../checker/surface/host-externs.ts';
 import { substitute } from '../checker/types/parts/substitution.ts';
 import { constructedVariant } from '../syntax/declarations/field-defaults.ts';
 import type { FunctionDeclaration } from '../syntax/declarations/index.ts';
+import { deferredEntry } from './constructs/expressions/deferred-calls.ts';
 import { writtenBodyOf } from './functions/bodies.ts';
 import { asyncFitEntry, convertingEntry, wrappingEntry } from './functions/fits/index.ts';
 import { instanceLowering, nestedLowering } from './functions/index.ts';
@@ -126,6 +127,8 @@ function pendingEntry(
       return anyFieldEntry(lowering, pending.on, pending.required);
     case 'asyncFit':
       return asyncFitEntry(lowering, pending.fit);
+    case 'deferred':
+      return deferredEntry(lowering, pending.deferred);
     case 'converting':
       return convertingEntry(lowering, pending);
     case 'wrapping':

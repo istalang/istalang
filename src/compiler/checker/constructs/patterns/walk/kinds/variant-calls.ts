@@ -389,6 +389,8 @@ function failureReport(
     }
     case 'packNamed':
       return unreachable('A variant has no pack to name.');
+    case 'takesNoCall':
+      return unreachable('A call pattern gives no deferred call.');
     default: {
       const unhandled: never = failure;
       return unhandled;

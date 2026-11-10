@@ -53,6 +53,8 @@ export interface CallArgument {
   readonly exact?: boolean;
   readonly name?: string | undefined;
   readonly isSpread?: boolean | undefined;
+  /** Whether it is the function a deferred call gives its taker (§3.14, binding.ts). */
+  readonly isDeferred?: boolean | undefined;
 }
 
 /** An argument that doesn't fit, by position, with its parameter's type as found so far. */

@@ -81,9 +81,17 @@ const bodyFacts: { readonly [Name in FactName]: BodyFact<BodyFacts[Name], Across
       ),
   },
   valueCalls: {
-    at: ({ records }, pass) => records.valueCalls.at(pass),
+    at: ({ units }, pass) => units.valueCalls.at(pass),
     instantiated: asChecked,
     joined: firstRecorded,
+  },
+  deferredFunctionOf: {
+    at:
+      ({ units }, pass) =>
+      (call) =>
+        units.deferrals.of(call, pass),
+    instantiated: (deferredFunctionOf, by) => readThrough(deferredFunctionOf, by.concrete),
+    joined: typesJoined,
   },
   madeCalls: {
     at:

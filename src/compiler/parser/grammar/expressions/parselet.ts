@@ -17,4 +17,9 @@ export type PrefixParselet = (parser: Parser, minLevel: PrecedenceLevel) => Expr
 export interface InfixParselet {
   readonly level: PrecedenceLevel;
   readonly parse: (parser: Parser, left: Expression) => Expression | undefined;
+  /**
+   * Whether it applies only on the line its left operand ends on, though its level isn't postfix:
+   * a deferred call's call (§3.14). A postfix one applies only there inside a list.
+   */
+  readonly onOperandLine?: true;
 }

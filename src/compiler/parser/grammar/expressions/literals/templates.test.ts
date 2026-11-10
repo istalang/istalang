@@ -56,9 +56,9 @@ describe('templates', () => {
   });
 
   it('reports what follows a value inside its braces, and nothing outside', () => {
-    const text = '`${a b c}` + 1';
+    const text = '`${a 1 c}` + 1';
     expect(reported('expression', text)).toEqual(
-      reportedOnce(parserDiagnostics.expected.code, 'b'),
+      reportedOnce(parserDiagnostics.expected.code, '1'),
     );
     expect(parseAs('expression', text).diagnostics[0]?.message).toContain("Expected '}'");
     expect(parseAs('expression', text).rest).toBe(0);

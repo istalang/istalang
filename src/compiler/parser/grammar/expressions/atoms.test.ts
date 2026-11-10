@@ -92,7 +92,7 @@ describe('comprehensions', () => {
 
   it.each([
     ['[for x xs: x]', 'xs'],
-    ['[for x in xs x]', 'x'],
+    ['[for x in xs 1]', '1'],
   ])('reports the missing keyword or colon in %j once', (text, spanText) => {
     expect(reported('expression', text)).toEqual(
       reportedOnce(parserDiagnostics.expected.code, spanText),

@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-10-30
-last_updated: 2026-11-08
+last_updated: 2026-11-10
 tags: [plan, completion, lsp]
 ---
 
@@ -882,8 +882,8 @@ fn g<T is Zero>(x: T) -> int:
   plus(1) ‸
 ```
 - **Where / trigger:** in `fn t`; invoked, or typing on
-- **Offer:** EX-02's infix words (`and or is in`).
-- **Not:** Names. (The unspaced case is NO-07.)
+- **Offer:** EX-02b: the infix words (`and or is in`) and the names that start a deferred call's call, `plus(1)` being shaped as its taker (§3.14).
+- **Not:** Keywords that start no call. (The unspaced case is NO-07.)
 - **Basis:** spec §4.
 
 ### CA-12 · Unresolved callee · P2 · ✅ pass

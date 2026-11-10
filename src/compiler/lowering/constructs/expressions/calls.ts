@@ -20,6 +20,9 @@
  *
  * A call of a variant's constructor builds the variant where it stands (emit-call.ts), and
  * `Expired()`, naming a variant without fields, is that variant's value (§3.11).
+ *
+ * A deferred call's taker is prepared as a call is, its taker's parts computed where it stands
+ * (deferred-calls.ts, §3.14).
  */
 
 import type { Callee } from '../../../../definition/instructions/calls.ts';
@@ -30,10 +33,16 @@ import type { SignatureParameter } from '../../../checker/check.ts';
 import { parameterOfArgument } from '../../../checker/surface/resolved-call.ts';
 import type { RestSlot } from '../../../checker/types/type/function-types.ts';
 import { argumentValue } from '../../../syntax/expressions/arguments.ts';
-import type { Call, Expression, Spawn } from '../../../syntax/expressions/index.ts';
-import { calledName, unparenthesized } from '../../../syntax/expressions/readings.ts';
+import type { Call, CallingNode, Spawn } from '../../../syntax/expressions/calls.ts';
+import type { Expression } from '../../../syntax/expressions/index.ts';
+import {
+  calledName,
+  callsThroughOptional,
+  unparenthesized,
+  writtenArgumentsOf,
+} from '../../../syntax/expressions/readings.ts';
 import { type ClosedCall, calledParameters } from '../../calls/closed-calls.ts';
-import { emitCall, emitFunctionCall } from '../../calls/emit-call.ts';
+import { type CallTarget, emitTo } from '../../calls/emit-call.ts';
 import { packElementsOf } from '../../calls/packs.ts';
 import type { FunctionContext } from '../../context.ts';
 import { enterReferenced } from '../parts/places.ts';
@@ -47,11 +56,7 @@ export function lowerCall(context: FunctionContext, node: Call): Register {
     return lowerFieldlessVariant(context, node, fieldless);
   }
   const { target, passed, arguments: given } = preparedCall(context, node, 'asWritten');
-  const { span } = node;
-  const dst =
-    target.kind === 'function'
-      ? emitFunctionCall(context, { span, call: target.call, arguments: given })
-      : emitCall(context, { span, callee: target, arguments: given });
+  const dst = emitTo(context, node.span, target, given);
   leaveAll(passed);
   return dst;
 }
@@ -98,13 +103,8 @@ export function lowerSpawn(context: FunctionContext, node: Spawn): Register {
   return dst;
 }
 
-/** What a call calls: the function the checker resolved, or the value of its callee (§3.14). */
-type CallTarget =
-  | { readonly kind: 'function'; readonly call: ClosedCall }
-  | { readonly kind: 'value'; readonly register: Register };
-
 /** A call ready to emit: what it calls, its arguments as passed, and how each is passed. */
-interface PreparedCall {
+export interface PreparedCall {
   readonly target: CallTarget;
   readonly passed: readonly PassedArgument[];
   readonly arguments: readonly Argument[];
@@ -113,11 +113,12 @@ interface PreparedCall {
 /**
  * What `node` calls and passes, evaluated in the order written: a function value's callee first,
  * then its arguments, each as written; a resolved function's receiver, then its arguments, by `&`
- * where their parameters take one, or all by value for a spawn (§9).
+ * where their parameters take one, or all by value for a spawn (§9) or a deferred call's parts
+ * (§3.14). A deferred call passes what its taker's parentheses write.
  */
-function preparedCall(
+export function preparedCall(
   context: FunctionContext,
-  node: Call,
+  node: CallingNode,
   references: 'asWritten' | 'byValue',
 ): PreparedCall {
   if (context.body.valueCalls.has(node)) {
@@ -147,7 +148,7 @@ function preparedCall(
 }
 
 /** The receiver the method call `node` was written on (§3.7); undefined for any other call. */
-function receiverAt(context: FunctionContext, node: Call): Expression | undefined {
+function receiverAt(context: FunctionContext, node: CallingNode): Expression | undefined {
   return context.body.resolved.get(node)?.receiver;
 }
 
@@ -157,7 +158,7 @@ function receiverAt(context: FunctionContext, node: Call): Expression | undefine
  */
 function receiverOf(
   context: FunctionContext,
-  node: Call,
+  node: CallingNode,
   receiver: Expression | undefined,
   byReference: boolean,
 ): PassedArgument | undefined {
@@ -174,8 +175,8 @@ function receiverOf(
  * The function value a value call calls; `f?.()` calls the one inside `f`, and `x.f(…)` the field
  * read from `x` (a namespace's constant `ns.f(…)` is read as a name).
  */
-function valueCallee(context: FunctionContext, node: Call): Register {
-  if (node.isOptional) {
+function valueCallee(context: FunctionContext, node: CallingNode): Register {
+  if (callsThroughOptional(node)) {
     return context.chains.target(context, node);
   }
   const callee = calledName(node);
@@ -185,7 +186,7 @@ function valueCallee(context: FunctionContext, node: Call): Register {
 }
 
 /** An argument as the call passes it, and for a place copied in, how it is written back. */
-interface PassedArgument {
+export interface PassedArgument {
   readonly argument: Argument;
   readonly leave?: (() => void) | undefined;
 }
@@ -233,12 +234,12 @@ const packsOnly: Passing = { byReference: () => false, spreadFills: () => 'pack'
  */
 function passedArguments(
   context: FunctionContext,
-  node: Call,
+  node: CallingNode,
   { receiver, byReference, spreadFills }: Passing,
 ): readonly PassedArgument[] {
   const offset = receiver === undefined ? 0 : 1;
   const passed: PassedArgument[] = receiver === undefined ? [] : [receiver];
-  for (const [position, argument] of node.arguments.entries()) {
+  for (const [position, argument] of writtenArgumentsOf(node).entries()) {
     const index = position + offset;
     if (argument.kind === 'Spread') {
       const fills = spreadFills(index);
@@ -258,10 +259,10 @@ function passedArguments(
  */
 function valueArguments(
   context: FunctionContext,
-  node: Call,
+  node: CallingNode,
   passed: readonly PassedArgument[],
 ): readonly Argument[] {
-  return node.arguments.flatMap((argument, index) => {
+  return writtenArgumentsOf(node).flatMap((argument, index) => {
     const { argument: given } = passed[index] ?? unreachable(`Argument ${index} isn't passed.`);
     if (argument.kind !== 'Spread' || given.kind !== 'value') {
       return [given];
@@ -299,7 +300,7 @@ function referencedPlace(argument: Expression, byReference: boolean): Expression
 }
 
 /** Writes back what the call's arguments copied in, the last first. */
-function leaveAll(argumentList: readonly PassedArgument[]): void {
+export function leaveAll(argumentList: readonly PassedArgument[]): void {
   for (const { leave } of argumentList.toReversed()) {
     leave?.();
   }

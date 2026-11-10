@@ -31,6 +31,7 @@ import type { HoldScopes } from './constructs/statements/holds.ts';
 import type { LoopStack } from './constructs/statements/loops.ts';
 import type { VariableRegisters } from './constructs/statements/variables.ts';
 import type { CodeWriter } from './functions/code-writer.ts';
+import type { DeferredPlan } from './tables/instances.ts';
 import type { DefinitionTables } from './tables/tables.ts';
 import type { OptionalChains } from './values/optionals.ts';
 
@@ -87,6 +88,8 @@ export interface FunctionContext {
   readonly implicitCallAt: (node: NodeOf<string>, role: ImplicitRole) => ClosedCall;
   /** The function-table entry of a lambda or local function in this body (§3.14). */
   readonly nestedIndex: (node: Lambda | FunctionDeclaration) => FunctionId;
+  /** The function-table entry of the function a deferred call in this body gives (§3.14). */
+  readonly deferredIndex: (plan: DeferredPlan) => FunctionId;
   /** A fresh register holding the constant `value`. */
   readonly constant: (value: Value, span: AnchoredSpan) => Register;
   /** The function's code: registers, instructions and labels. */

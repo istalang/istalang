@@ -1,15 +1,19 @@
 /**
  * Reading expression nodes as the language means them: what a struct literal's item gives, a
  * qualified name written as member accesses, an expression without its parentheses, what a call
- * calls by name and the type arguments it gives it, and the cases a `match` or a `select` holds
- * without the ones the parser refused. The nodes themselves are in
- * index.ts, which these reads build on.
+ * calls by name and the type arguments and arguments it gives it, and the cases a `match` or a
+ * `select` holds without the ones the parser refused. The nodes themselves are in index.ts and
+ * calls.ts, which these reads build on.
+ *
+ * A deferred call calls its taker as a call calls its callee (§3.14), so every read of what a call
+ * calls takes either, and a taker written as a call is read as the deferred call's parts.
  */
 
 import type { SyntaxNode } from '../tree/index.ts';
 import type { Identifier, QualifiedName } from '../tree/node.ts';
 import type { TypeNode } from '../types/index.ts';
-import type { Call, Expression, FieldItem, Match, MatchCase, Select, SelectCase } from './index.ts';
+import type { Call, CallArgument, CallingNode, DeferredCall } from './calls.ts';
+import type { Expression, FieldItem, Match, MatchCase, Select, SelectCase } from './index.ts';
 
 /** The expression an item gives its field: its value, or for the shorthand, its own name. */
 export function itemValue(item: FieldItem): Expression {
@@ -37,31 +41,94 @@ export function qualifiedPath(expression: Expression): QualifiedName | undefined
 }
 
 /**
- * What `call` calls by name, without the type arguments written after it, which are the call's
- * (§3.5): `f` of `f<Int>(x)`. An optional call's callee is a value, type arguments and all (§4).
+ * Whether `expression` has a deferred call's taker's shape (§3.14): a path of names, or a call of
+ * one with its arguments in parentheses, `retry(times: 5)`.
  */
-export function calledName(call: Call): Expression {
-  const { callee } = call;
-  return callee.kind === 'TypeApplication' && !call.isOptional ? callee.target : callee;
+export function isTakerShaped(expression: Expression): boolean {
+  const named =
+    expression.kind === 'Call' && !expression.isOptional ? expression.callee : expression;
+  return qualifiedPath(named) !== undefined;
 }
 
-/** The type arguments `call` gives the function it calls (`calledName`), if any. */
-export function callTypeArguments(call: Call): readonly TypeNode[] | undefined {
-  const { callee } = call;
-  return callee.kind === 'TypeApplication' && !call.isOptional ? callee.typeArguments : undefined;
+/** A deferred call's taker where it is written as a call, `g(opts)` of `g(opts) f(x)`. */
+function takerCallOf(node: DeferredCall): Call | undefined {
+  return node.taker.kind === 'Call' ? node.taker : undefined;
 }
 
 /**
- * The call `node` is the callee of, among `holders`, the nodes holding it innermost first: as
- * written, or by name before type arguments that are the call's (`calledName`); undefined when it
+ * What `node` calls by name, without the type arguments written after it, which are the call's
+ * (§3.5): `f` of `f<Int>(x)`; a deferred call's taker's. An optional call's callee is a value,
+ * type arguments and all (§4).
+ */
+export function calledName(node: CallingNode): Expression {
+  if (node.kind === 'DeferredCall') {
+    const taker = takerCallOf(node);
+    return taker === undefined ? node.taker : calledName(taker);
+  }
+  const { callee } = node;
+  return callee.kind === 'TypeApplication' && !node.isOptional ? callee.target : callee;
+}
+
+/** The type arguments `node` gives the function it calls (`calledName`), if any. */
+export function callTypeArguments(node: CallingNode): readonly TypeNode[] | undefined {
+  if (node.kind === 'DeferredCall') {
+    const taker = takerCallOf(node);
+    return taker === undefined ? undefined : callTypeArguments(taker);
+  }
+  const { callee } = node;
+  return callee.kind === 'TypeApplication' && !node.isOptional ? callee.typeArguments : undefined;
+}
+
+/**
+ * The arguments `node` writes in parentheses: a deferred call's taker's, none where the taker is a
+ * path alone; the function making its call is passed besides them.
+ */
+export function writtenArgumentsOf(node: CallingNode): readonly CallArgument[] {
+  return node.kind === 'Call' ? node.arguments : (takerCallOf(node)?.arguments ?? []);
+}
+
+/** Whether `node` calls the function inside an optional, `f?.(…)` (§4); a taker never does. */
+export function callsThroughOptional(node: CallingNode): boolean {
+  return node.kind === 'Call' && node.isOptional;
+}
+
+/**
+ * The node making the call `node` is the callee of, among `holders`, the nodes holding it
+ * innermost first: as written, or by name before type arguments that are the call's
+ * (`calledName`); a deferred call where it is its taker or its taker's callee; undefined when it
  * is no callee.
  */
-export function callOfCallee(node: SyntaxNode, holders: readonly SyntaxNode[]): Call | undefined {
-  const [holder, outer] = holders;
+export function callOfCallee(
+  node: SyntaxNode,
+  holders: readonly SyntaxNode[],
+): CallingNode | undefined {
+  const [holder, ...outer] = holders;
   if (holder?.kind === 'TypeApplication' && holder.target === node) {
-    return outer?.kind === 'Call' && calledName(outer) === node ? outer : undefined;
+    const [call, ...around] = outer;
+    return call?.kind === 'Call' && calledName(call) === node ? makerOf(call, around) : undefined;
   }
-  return holder?.kind === 'Call' && holder.callee === node ? holder : undefined;
+  if (holder?.kind === 'DeferredCall') {
+    return holder.taker === node ? holder : undefined;
+  }
+  return holder?.kind === 'Call' && holder.callee === node ? makerOf(holder, outer) : undefined;
+}
+
+/**
+ * The node making the call `call` writes: the deferred call whose taker it is, among `holders`,
+ * the nodes holding it innermost first, else itself.
+ */
+export function makerOf(call: Call, holders: readonly SyntaxNode[]): CallingNode {
+  const [holder] = holders;
+  return holder?.kind === 'DeferredCall' && holder.taker === call ? holder : call;
+}
+
+/**
+ * The call a deferred call makes later, without parentheses, a call or another deferred call;
+ * undefined where it is neither, which the checker refuses (§3.14).
+ */
+export function deferredOf(node: DeferredCall): CallingNode | undefined {
+  const call = unparenthesized(node.call);
+  return call.kind === 'Call' || call.kind === 'DeferredCall' ? call : undefined;
 }
 
 /** `node` without the parentheses written around it, which change nothing about it. */

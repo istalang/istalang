@@ -67,6 +67,11 @@ export function spanCovering(first: AnchoredSpan, ...rest: readonly AnchoredSpan
   );
 }
 
+/** From the end of `first` to the start of `last`, two spans of one segment: what parts them. */
+export function spanBetween(first: AnchoredSpan, last: AnchoredSpan): AnchoredSpan {
+  return { segment: segmentOf(first, last), from: first.to, to: last.from };
+}
+
 /** The empty span where `span` ends. */
 export function endOf(span: AnchoredSpan): AnchoredSpan {
   return { segment: span.segment, from: span.to, to: span.to };

@@ -1,13 +1,13 @@
 /**
  * A call applied: chosen among its candidates, instantiated with its constraints met, and its
- * arguments fitted to what they fill (§3.5, §3.7). Written calls (resolution/calls/resolve.ts) and
- * the calls the language makes (implicit.ts) apply through here, each saying how a call nothing
- * takes is reported and recording what it made; so choosing, ranking the implicit conversions
- * (choosing/choice.ts) and fitting an argument, its conversion and wraps included
- * (argument-fit.ts), each happen in one place for every call. Choosing (`chooseCall`) and
- * completing (`completeCall`) are apart, so a written call completes once the constraint scope it
- * stands in settles (wiring/body/constraint-scope.ts); a call the language makes applies at once
- * (`applyCall`).
+ * arguments fitted to what they fill (§3.5, §3.7). Written calls
+ * (resolution/calls/resolve/index.ts) and the calls the language makes (implicit.ts) apply through
+ * here, each saying how a call nothing takes is reported and recording what it made; so choosing,
+ * ranking the implicit conversions (choosing/choice.ts) and fitting an argument, its conversion and
+ * wraps included (argument-fit.ts), each happen in one place for every call. Choosing
+ * (`chooseCall`) and completing (`completeCall`) are apart, so a written call completes once the
+ * constraint scope it stands in settles (wiring/body/constraint-scope.ts); a call the language
+ * makes applies at once (`applyCall`).
  *
  * - An argument of the error type was reported already, so a call nothing chosen for reports
  *   nothing more, while one chosen all the same judges its other arguments.

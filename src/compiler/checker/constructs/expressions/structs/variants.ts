@@ -23,13 +23,14 @@ import {
   fieldsFunctionOf,
 } from '../../../../syntax/declarations/field-defaults.ts';
 import { typeParametersOf } from '../../../../syntax/declarations/index.ts';
-import type { Call, MemberAccess } from '../../../../syntax/expressions/index.ts';
+import type { Call, CallingNode } from '../../../../syntax/expressions/calls.ts';
+import type { MemberAccess } from '../../../../syntax/expressions/index.ts';
 import { calledName } from '../../../../syntax/expressions/readings.ts';
 import type { Identifier } from '../../../../syntax/tree/node.ts';
 import type { AnchoredSpan } from '../../../../syntax/tree/positions.ts';
 import type { BodyContext } from '../../../contexts/body-context.ts';
 import { checkerDiagnostics } from '../../../diagnostics/index.ts';
-import { resolveCall, type WrittenArgument } from '../../../resolution/calls/resolve.ts';
+import { resolveCall, type WrittenArgument } from '../../../resolution/calls/resolve/index.ts';
 import { functionsAccepted, namedFunctions } from '../../../resolution/choosing/named-functions.ts';
 import type { Admits } from '../../../types/fitting/expected.ts';
 import { enumsExpected, expectedNominal, writtenNominal } from '../../../types/fitting/expected.ts';
@@ -156,7 +157,7 @@ function checkVariantName(
 
 /** A call naming a variant, as written: its arguments, any type arguments, what is expected. */
 export interface VariantCall {
-  readonly node: Call;
+  readonly node: CallingNode;
   readonly expected: Type | undefined;
   readonly typeArguments: readonly Type[] | undefined;
   readonly written: readonly WrittenArgument[];

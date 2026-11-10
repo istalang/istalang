@@ -16,12 +16,13 @@
  *   of the type or enum.
  */
 
-import type { TypeApplication } from '../../../syntax/expressions/index.ts';
+import type { TypeApplication } from '../../../syntax/expressions/calls.ts';
 import { qualifiedPath } from '../../../syntax/expressions/readings.ts';
 import type { BodyContext } from '../../contexts/body-context.ts';
 import { useSite } from '../../contexts/use-site.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
-import { explain, recordChosen } from '../../resolution/calls/resolve.ts';
+import { explain } from '../../resolution/calls/resolve/explanations.ts';
+import { recordChosen } from '../../resolution/calls/resolve/index.ts';
 import type { Application } from '../../resolution/choosing/choice.ts';
 import {
   chosenValue,

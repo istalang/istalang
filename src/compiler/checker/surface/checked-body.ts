@@ -9,9 +9,9 @@
 
 import type { VariableEntity, VariantEntity } from '../../binder/entities.ts';
 import type { FunctionDeclaration } from '../../syntax/declarations/index.ts';
+import type { CallingNode } from '../../syntax/expressions/calls.ts';
 import type {
   ArrayLiteral,
-  Call,
   Comprehension,
   Expression,
   FieldHeader,
@@ -180,7 +180,12 @@ export interface BodyFacts {
   /** The function each call site of this body calls, or each function value names. */
   readonly resolved: PassRecords<ResolvedSite, ResolvedCall>;
   /** The calls of function values, which call whatever their callee gives (§3.14). */
-  readonly valueCalls: PassRecords<Call, true>;
+  readonly valueCalls: PassRecords<CallingNode, true>;
+  /**
+   * The type the function a deferred call gives its taker is given as, the parameter it fills,
+   * at the call it makes later (§3.14); undefined for any other expression.
+   */
+  readonly deferredFunctionOf: (call: Expression) => Type | undefined;
   /**
    * Every call the body makes, where it makes it: its call sites', the language's for constructs
    * with no call written (`implicitCallOf`), and the defaults its struct literals leave fields to;

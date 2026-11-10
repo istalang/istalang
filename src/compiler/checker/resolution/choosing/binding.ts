@@ -9,8 +9,13 @@
  *   parameter to collect it, or a positional argument past the last parameter, doesn't fit.
  * - A named argument fills the parameter of its name, the rest parameter taking a whole array. A
  *   method's `self` has no name to give (§3.7), and a parameter can be given only once.
+ * - The function a deferred call gives its taker (§3.14) is given neither by position nor by name:
+ *   it fills the first parameter the others leave unfilled whose type is a function type taking
+ *   nothing, so `retry(times: 5) fetchUser(id)` gives `retry` its `f`; a function with no such
+ *   parameter left doesn't take the call.
  * - Every parameter left out takes its default; one without a default makes the call not fit, named
- *   where a name or a spread is given, else counted, and a rest parameter nothing fills is empty.
+ *   where a name, a spread or a deferred call's function is given, else counted, and a rest
+ *   parameter nothing fills is empty.
  * - A function named as a value is bound as its type calls it (`bindValue`): by position, its rest
  *   parameter one array, its trailing parameters left to their defaults (§3.14).
  * - A pack's rest parameter (§3.5) collects as an array's does, by position only, since its
@@ -19,20 +24,28 @@
  */
 
 import { type Binding, parameterOfArgument } from '../../surface/resolved-call.ts';
-import type { RestSlot } from '../../types/type/function-types.ts';
-import type { ParameterSlot } from '../../types/type/index.ts';
+import { type RestSlot, takesNothing } from '../../types/type/function-types.ts';
+import type { ParameterSlot, Type } from '../../types/type/index.ts';
 
-/** What binding needs to know of a parameter: its name, if it can be named, and its kind. */
+/**
+ * What binding needs to know of a parameter: its name, if it can be named, its kind, and its type,
+ * where it may take the function a deferred call gives.
+ */
 export interface BoundSlot {
   readonly name?: string | undefined;
   readonly hasDefault: boolean;
   readonly rest?: Pick<RestSlot, 'kind'> | undefined;
+  readonly type?: Type | undefined;
 }
 
-/** What binding needs to know of an argument: its name, when named, and whether it spreads. */
+/**
+ * What binding needs to know of an argument: its name, when named, whether it spreads, and whether
+ * it is the function a deferred call gives its taker (§3.14).
+ */
 export interface BoundArgument {
   readonly name?: string | undefined;
   readonly isSpread?: boolean | undefined;
+  readonly isDeferred?: boolean | undefined;
 }
 
 /** Why arguments can't fill a function's parameters. */
@@ -48,7 +61,9 @@ export type BindingFailure =
   /** A parameter without a default is given no argument. */
   | { readonly kind: 'missing'; readonly name: string }
   /** A spread with no rest parameter to collect it. */
-  | { readonly kind: 'spread' };
+  | { readonly kind: 'spread' }
+  /** No parameter of a function type taking nothing is left for a deferred call's function. */
+  | { readonly kind: 'takesNoCall' };
 
 /** How arguments are bound: as a call passes them, or as a function value's type does. */
 export type Binder = (
@@ -74,7 +89,10 @@ export function positionalCounts(slots: readonly BoundSlot[]): {
 /** The binding of `callArguments` to `slots` as a call passes them, or why they don't fit. */
 export const bindArguments: Binder = (slots, callArguments) => {
   const numbered = callArguments.map((argument, index) => ({ argument, index }));
-  const positional = numbered.filter(({ argument }) => argument.name === undefined);
+  const deferred = numbered.filter(({ argument }) => argument.isDeferred === true);
+  const positional = numbered.filter(
+    ({ argument }) => argument.name === undefined && argument.isDeferred !== true,
+  );
   const named = numbered.flatMap(({ argument, index }) =>
     argument.name === undefined ? [] : [{ name: argument.name, index }],
   );
@@ -83,9 +101,12 @@ export const bindArguments: Binder = (slots, callArguments) => {
     return byPosition;
   }
   const byName = bindByName(slots, byPosition, named);
-  // Past a spread or a name, a count of positional arguments says nothing of what is missing.
+  const byCall = isBinding(byName) ? bindDeferred(slots, byName, deferred) : byName;
+  // Past a spread, a name or a deferred call's function, a count of positional arguments says
+  // nothing of what is missing.
   const spreads = positional.some(({ argument }) => argument.isSpread === true);
-  return isBinding(byName) ? filled(slots, byName, named.length > 0 || spreads) : byName;
+  const unpositioned = named.length > 0 || spreads || deferred.length > 0;
+  return isBinding(byCall) ? filled(slots, byCall, unpositioned) : byCall;
 };
 
 /**
@@ -166,6 +187,31 @@ function bindByName(
     bound[parameter] = { kind: 'argument', index };
   }
   return bound;
+}
+
+/**
+ * `sources` with each of `deferred`, the function a deferred call gives (§3.14), filling the first
+ * parameter still unfilled of a function type taking nothing.
+ */
+function bindDeferred(
+  slots: readonly BoundSlot[],
+  sources: Sources,
+  deferred: readonly { readonly index: number }[],
+): Sources | BindingFailure {
+  const bound = [...sources];
+  for (const { index } of deferred) {
+    const parameter = slots.findIndex((slot, at) => bound[at] === undefined && takesCall(slot));
+    if (parameter === -1) {
+      return { kind: 'takesNoCall' };
+    }
+    bound[parameter] = { kind: 'argument', index };
+  }
+  return bound;
+}
+
+/** Whether `slot` may take the function a deferred call gives: of a type taking nothing. */
+function takesCall(slot: BoundSlot): boolean {
+  return slot.rest === undefined && slot.type !== undefined && takesNothing(slot.type);
 }
 
 /**

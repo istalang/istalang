@@ -80,6 +80,24 @@ describe('hover', () => {
     expect(hover(...counter, 'fn f(c: Counter?) -> Int?: c?‸->count')?.code).toEqual(['Int?']);
   });
 
+  it('shows the function a deferred call gives its taker to, and the call it defers (§3.14)', () => {
+    const declared = [
+      'fn shown(f: fn() -> Int, times: Int = 3) -> String: String(f())',
+      'fn shown(f: fn() -> String) -> String: f()',
+      'fn count(n: Int) -> Int: n',
+      '',
+    ];
+    expect(hover(...declared, 'fn f() -> String: sh‸own count(1)')?.code).toEqual([
+      'fn shown(f: fn() -> Int, times: Int = …) -> String',
+    ]);
+    expect(hover(...declared, 'fn f() -> String: shown(times: 2)‸ count(1)')?.code).toEqual([
+      'Int',
+    ]);
+    expect(hover(...declared, 'fn f() -> String: shown(ti‸mes: 2) count(1)')?.code).toEqual([
+      '(variable) times: Int',
+    ]);
+  });
+
   it("shows a local function's docstring", () => {
     const local = ['fn f() -> Int:', '  fn next() -> Int:', '    """One more."""', '    1'];
     expect(hover(...local, '  nex‸t()')?.doc).toBe('One more.');

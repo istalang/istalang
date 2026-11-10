@@ -26,13 +26,8 @@
 
 import { casedAsType } from '../../../../foundation/language/naming.ts';
 import { misplacedArgument } from '../../../syntax/expressions/arguments.ts';
-import type {
-  Call,
-  CallArgument,
-  Dereference,
-  Expression,
-  Index,
-} from '../../../syntax/expressions/index.ts';
+import type { Call, CallArgument } from '../../../syntax/expressions/calls.ts';
+import type { Dereference, Expression, Index } from '../../../syntax/expressions/index.ts';
 import { isPlace } from '../../../syntax/expressions/places.ts';
 import { qualifiedPath } from '../../../syntax/expressions/readings.ts';
 import { fieldChildrenOf, type SyntaxNode } from '../../../syntax/tree/index.ts';

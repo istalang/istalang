@@ -4,8 +4,8 @@
  * rules every call obeys live here, so no path that makes calls can skip them.
  *
  * Refusing to call `dispose` (§7) is a rule about calls written in code
- * (resolution/calls/resolve.ts): a witness of `Disposable` is `dispose` itself, and is only ever
- * called by such a call.
+ * (resolution/calls/resolve/index.ts): a witness of `Disposable` is `dispose` itself, and is only
+ * ever called by such a call.
  */
 
 import type { FunctionCall, ResolvedCall } from '../../surface/resolved-call.ts';

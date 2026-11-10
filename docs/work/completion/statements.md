@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-10-30
-last_updated: 2026-11-08
+last_updated: 2026-11-10
 tags: [plan, completion, lsp]
 ---
 
@@ -156,10 +156,10 @@ The start of a statement and the words that follow statement keywords (§3.4, §
 ```
   for i in 0..10 ‸
 ---
-  for i in xs ‸
+  for i in xs[0] ‸
 ```
 - **Where / trigger:** in `fn t`; invoked, or typing on
-- **Offer:** `by` after a range; nothing after an array.
+- **Offer:** `by` after a range; nothing after an element (after a name, EX-02b).
 - **Not:** Names.
 - **Basis:** spec §4 (`by`).
 
@@ -297,21 +297,34 @@ Where an expression starts, continues or is complete (§4).
 ### EX-02 · After a complete operand · P1 · ✅ pass
 
 ```
-  let x = n ‸
----
-  let x = plus(1) ‸
----
   let x = xs[0] ‸
 ---
   let x = "a" ‸
 ---
-  if n ‸
+  if n + 1 ‸
 ```
 - **Where / trigger:** in `fn t`; invoked, or typing on
 - **Offer:** The words that continue an expression: `and`, `or`, `is`, `in` (operator characters are typed, not completed).
 - **Not:** Every name; keywords that cannot follow an operand (`let`, `return`, `else` …).
 - **Accept:** The word.
-- **Basis:** spec §4 operators; names after an operand are never valid.
+- **Basis:** spec §4 operators; a name follows only an operand shaped as a deferred call's taker (EX-02b).
+
+### EX-02b · After a deferred call's taker · P1 · ✅ pass
+
+```
+  let x = n ‸
+---
+  let x = plus(1) ‸
+---
+  if n ‸
+---
+  let x = p.first ‸
+```
+- **Where / trigger:** in `fn t`; invoked, or typing on
+- **Offer:** EX-02's words, and the visible names that start the call a deferred call gives the operand (`g f(x)`): EX-01's names.
+- **Not:** Keywords that start no call (`let`, `return`, `true`, `if`, `fn` …); nothing right against the operand (NO-07).
+- **Accept:** The word or name alone.
+- **Basis:** spec §3.14 deferred calls: a name, or a path of names maybe called, then on its line a call.
 
 ### EX-03 · After `and`, `or`, `is`, `in`, `??`, `..` · P1 · ✅ pass
 
@@ -918,8 +931,8 @@ fn g():
     case work(1) ‸
 ```
 - **Where / trigger:** in `async fn t`; invoked, or typing on
-- **Offer:** `as`.
-- **Not:** Names.
+- **Offer:** `as`, and EX-02b's names, `work(1)` being shaped as a deferred call's taker.
+- **Not:** Keywords that start no call.
 - **Basis:** spec §6.
 
 ### CF-05 · Binding after `as` · P1 · ✅ pass

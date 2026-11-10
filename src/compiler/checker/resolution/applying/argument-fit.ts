@@ -1,12 +1,14 @@
 /**
  * A chosen call's arguments fitted to the parameters they fill, and the argument list as reports
- * spell it: one rule for a written call (resolution/calls/resolve.ts,
+ * spell it: one rule for a written call (resolution/calls/resolve/index.ts,
  * constructs/closures/value-calls.ts) and an implicit one (implicit.ts), so every argument's
  * implicit wraps are recorded where it is given.
  *
  * - An argument with no node stands for no expression of its own (an implicit call's operand
  *   that isn't wrappable), so there is nothing to wrap and it isn't fitted.
  * - A spread's items are copied or iterated as they are (§3.3), so a spread isn't fitted either.
+ * - The function a deferred call gives (§3.14) is built where it is given, so it isn't fitted as a
+ *   value is: what it is given as is recorded at the call it makes, for lowering to build it as.
  */
 
 import type { Expression } from '../../../syntax/expressions/index.ts';
@@ -26,6 +28,7 @@ export interface FittedArgument {
   readonly type: Type | undefined;
   readonly literal?: LiteralType | undefined;
   readonly isSpread?: boolean | undefined;
+  readonly isDeferred?: boolean | undefined;
 }
 
 /**
@@ -76,9 +79,14 @@ export function fitArguments(
   expected: readonly (Type | undefined)[],
 ): void {
   argumentList.forEach((argument, index) => {
-    const { node, type, isSpread } = argument;
+    const { node, type, isSpread, isDeferred } = argument;
     const parameter = expected[index];
-    if (node !== undefined && parameter !== undefined && isSpread !== true) {
+    if (node === undefined || parameter === undefined) {
+      return;
+    }
+    if (isDeferred === true) {
+      context.deferrals.record(node, parameter);
+    } else if (isSpread !== true) {
       // A decided argument judged already, a lambda or a `struct{…}`, keeps what it was checked to be.
       const own = type ?? context.checkedTypeOf(node);
       const checked = own === undefined || argument.literal !== undefined;

@@ -332,6 +332,8 @@ const constructs: Handlers<FlowWalk, Construct, [Opaque], Flow> = {
   Propagate: children,
   Unwrap: children,
   Spawn: (walk, node, state) => walk.node(node.call, state),
+  // Its taker and what its call computes run now; the call itself runs later, changing nothing here.
+  DeferredCall: children,
   TemplateLiteral: children,
   ChainedComparison: (walk, node, state) => {
     // Each comparison after the first runs only when the ones before it held.

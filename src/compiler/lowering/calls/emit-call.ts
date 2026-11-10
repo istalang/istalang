@@ -11,6 +11,9 @@
  * entry: its parameters, bound the same way, are the fields of the variant it builds in place
  * (§3.11, values/variant-values.ts).
  *
+ * What a call calls (`CallTarget`) is a closed call or a function value in a register, and `emitTo`
+ * calls either, as a written call, a deferred call and the function a deferred call gives do.
+ *
  * This is the one place a rest parameter is made of what a call passes: an array of its items, a
  * spread's spliced in, or, for a pack, its items as single parameters and a spread's tuple as its
  * elements, as the instantiation flattens the pack (packs.ts).
@@ -223,4 +226,21 @@ export function emitImplicitCall(
 ): Register {
   const made = context.implicitCallAt(node, role);
   return emitFunctionCall(context, { span: node.span, call: made, arguments: argumentList });
+}
+
+/** What a call calls: the function the checker resolved, or the value of its callee (§3.14). */
+export type CallTarget =
+  | { readonly kind: 'function'; readonly call: ClosedCall }
+  | { readonly kind: 'value'; readonly register: Register };
+
+/** Calls `target` at `span`, passing `given` as a prepared call passes them. */
+export function emitTo(
+  context: CodeContext,
+  span: AnchoredSpan,
+  target: CallTarget,
+  given: readonly Argument[],
+): Register {
+  return target.kind === 'function'
+    ? emitFunctionCall(context, { span, call: target.call, arguments: given })
+    : emitCall(context, { span, callee: target, arguments: given });
 }

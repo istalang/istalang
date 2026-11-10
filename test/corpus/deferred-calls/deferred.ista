@@ -1,0 +1,82 @@
+# outcome: "load later | x inner | later | 40 5 12 | 9 | 14 3 3 8"
+# A deferred call, `g f(args)` (§3.14), gives `g` a function making the call later, everything
+# written in it computed now: `load(id)` before `.process()` is deferred, `x` of `a b c(x)` once,
+# and a default the call leaves out when it runs. Its taker may write arguments of its own, by
+# position or by name, be a method on a receiver or a function value; the function fits as any
+# does, an async callee's future forwarded as is and a value made a future where one is taken.
+
+struct User:
+  id: Int
+
+struct Box:
+  n: Int
+
+struct Pool:
+  size: Int
+
+fn note(log: Shared<String>, s: String, n: Int) -> Int:
+  log->value += s
+  n
+
+fn load(log: Shared<String>, n: Int) -> Box:
+  log->value += "load "
+  Box{n: n}
+
+fn process(self: Box) -> Int:
+  self.n * 10
+
+fn later(log: Shared<String>, f: fn() -> Int) -> Int:
+  log->value += "later "
+  f() + f()
+
+fn bump(n: Int, by: Int = 1) -> Int:
+  n + by
+
+fn outer(f: fn() -> Int) -> Int:
+  f()
+
+fn inner(log: Shared<String>, f: fn() -> Int) -> Int:
+  log->value += "inner "
+  f()
+
+async fn fetchUser(id: Int) -> Future<User>:
+  User{id: id}
+
+fn retry<T>(f: async fn() -> T, times: Int = 3) -> Future<T>:
+  f()
+
+fn submit(self: Pool, job: fn() -> Int) -> Int:
+  job() + self.size
+
+fn encode(file: String) -> Int:
+  file.length()
+
+fn pick() -> Int:
+  3
+
+fn optional(f: fn() -> Int?) -> Int?:
+  f()
+
+async fn eventually(f: async fn() -> Int) -> Future<Int>:
+  await f()
+
+fn apply(run: fn(fn() -> Int) -> Int) -> Int:
+  run encode("abcd")
+
+async fn main() -> Future<String>:
+  const log = new Shared{value: ""}
+  const a = later(log) load(log, 2).process()
+  log->value += "| "
+  const b = outer inner(log) bump(note(log, "x ", 4))
+  log->value += "| "
+  const c = later(log) bump(1, by: 5)
+  const first = await retry fetchUser(4)
+  const second = await retry(times: 5) fetchUser(5)
+  const pool = Pool{size: 10}
+  const submitted = pool.submit encode("file")
+  const wrapped = optional pick() ?? 0
+  const awaited = await eventually pick()
+  const applied = apply(fn(f: fn() -> Int): f() * 2)
+  const users = String(first.id + second.id)
+  const fits = [submitted, wrapped, awaited, applied].map(fn(n: Int): String(n)).join(" ")
+  log->value + "| " + String(a) + " " + String(b) + " " + String(c) + " | " + users + " | " + fits

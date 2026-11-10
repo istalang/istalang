@@ -34,6 +34,7 @@ import { spreadOpener } from '../parts/spreads.ts';
 import { type StartParselets, type WordParselets, wordParseletAt } from '../word-parselets.ts';
 import { parseParenthesized } from './atoms.ts';
 import { parseBlockExpression, parseIf, parseMatch, parseSelect } from './branches.ts';
+import { deferredCallParselet } from './deferred-calls.ts';
 import { parseLambda } from './lambdas.ts';
 import { parseCollection } from './literals/collections.ts';
 import {
@@ -147,6 +148,7 @@ const spawnCalleeSteps: Partial<Record<CursorKind, InfixParselet>> = {
 const infixParselets: Partial<Record<CursorKind, InfixParselet>> = {
   ...binaryParselets,
   ...spawnCalleeSteps,
+  identifier: deferredCallParselet,
   is: isParselet,
   not: notInParselet,
   '..': rangeParselet(false),
@@ -266,10 +268,10 @@ const listItemOpeners: ReadonlySet<CursorKind> = new Set([spreadOpener, structCo
  * Whether a token of `kind`, first on its line inside a list, starts an item rather than
  * continuing the one before (§2), as the item parsers and the tables say: what opens an item only
  * a list holds starts one, and so does a token only the prefix table has. One both tables have
- * starts one where it applies to an operand only on the operand's line (a postfix bracket or a
- * template); where it is a word, unless it spells a binary operator with the `next` token
- * (`not in`); and where it is a symbol no space parts from the rest of its line (`spaced`), as
- * `-1` and a lone `..` aren't, and `- 1` is.
+ * starts one where it applies to an operand only on the operand's line (a postfix bracket, a
+ * template, or a name starting a deferred call's call); where it is a word, unless it spells a
+ * binary operator with the `next` token (`not in`); and where it is a symbol no space parts from
+ * the rest of its line (`spaced`), as `-1` and a lone `..` aren't, and `- 1` is.
  */
 export function startsItemOnNewLine(kind: CursorKind, next: CursorKind, spaced: boolean): boolean {
   if (listItemOpeners.has(kind)) {
@@ -279,7 +281,7 @@ export function startsItemOnNewLine(kind: CursorKind, next: CursorKind, spaced: 
     return false;
   }
   const infix = infixParselets[kind];
-  if (infix === undefined || infix.level === 'postfix') {
+  if (infix === undefined || infix.level === 'postfix' || infix.onOperandLine === true) {
     return true;
   }
   return isKeyword(kind) ? !spellsBinary(kind, next) : !spaced;

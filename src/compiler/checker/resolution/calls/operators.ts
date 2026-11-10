@@ -22,7 +22,7 @@ import type { BodyContext } from '../../contexts/body-context.ts';
 import type { ResolvedSite } from '../../surface/resolved-call.ts';
 import type { Type } from '../../types/type/index.ts';
 import { topLevelCandidates } from '../choosing/candidates.ts';
-import { resolveCall } from './resolve.ts';
+import { resolveCall } from './resolve/index.ts';
 
 /** An operator a call site applies: as it is written, and the function it calls (§3.9). */
 export interface AppliedOperator {

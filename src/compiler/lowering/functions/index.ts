@@ -63,6 +63,7 @@ import type { CodeContext } from '../context.ts';
 import { emitConstant } from '../tables/constants.ts';
 import {
   type BodyOwner,
+  type DeferredPlan,
   type FunctionInstance,
   type NestedInstance,
   ownerDeclaration,
@@ -258,6 +259,10 @@ class FunctionLowering implements EntryContext {
 
   nestedIndex(node: Lambda | FunctionDeclaration): FunctionId {
     return this.tables.nestedIndex({ owner: this.owner, node });
+  }
+
+  deferredIndex(plan: DeferredPlan): FunctionId {
+    return this.tables.deferredIndex({ owner: this.owner, plan });
   }
 
   callAt(site: ResolvedSite): ClosedCall {

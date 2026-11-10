@@ -60,16 +60,20 @@ const scenarios: readonly Scenario[] = [
     id: 'EX-02',
     place: 'grammar',
     title: 'After a complete operand',
-    src: [
-      '  let x = n ‸',
-      '  let x = plus(1) ‸',
-      '  let x = xs[0] ‸',
-      '  let x = "a" ‸',
-      '  if n ‸',
-    ],
+    src: ['  let x = xs[0] ‸', '  let x = "a" ‸', '  if n + 1 ‸'],
     expect: {
       has: ['and', 'or', 'is', 'in'],
       lacks: ['xs', 'p', 'plus', 'Pair', 'let', 'return', 'true', 'else', 'case'],
+    },
+  },
+  {
+    id: 'EX-02b',
+    place: 'grammar',
+    title: "After a deferred call's taker",
+    src: ['  let x = n ‸', '  let x = plus(1) ‸', '  if n ‸', '  let x = p.first ‸'],
+    expect: {
+      has: ['and', 'or', 'is', 'in', 'xs', 'p', 'plus', 'Pair'],
+      lacks: ['let', 'return', 'true', 'else', 'case', 'if', 'fn'],
     },
   },
   {

@@ -105,6 +105,14 @@ export function fillsPack(type: Type): boolean {
 }
 
 /**
+ * Whether `type` is a function type taking nothing, `fn() -> X`, as the function a deferred call
+ * gives is (§3.14); one ending in a pack may take something.
+ */
+export function takesNothing(type: Type): type is FunctionType {
+  return type.kind === 'function' && type.parameters.length === 0 && type.pack === undefined;
+}
+
+/**
  * How two function types' parameters are compared: the declared one's type and the given one's at
  * a position, and whether both take it by `&`, which they do alike or don't compare.
  */

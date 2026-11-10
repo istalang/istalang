@@ -14,45 +14,45 @@
  * - A method call records its receiver with the call, as lowering passes it first (§3.7). A
  *   receiver the chosen function's `self` takes by reference must be a place that may change.
  * - An argument of the error type was already reported, so the call reports nothing more.
- * - A failure is explained as precisely as the candidates allow: with one candidate, what exactly
- *   doesn't fit it, as choosing decided it, so an explanation never disagrees with the choice.
+ * - A failure is explained as precisely as the candidates allow (explanations.ts); a call still
+ *   being written records what each argument written so far is expected to be, for tools
+ *   (written-expectations.ts).
  * - Calling `dispose` directly is refused, since the runtime calls it once nothing holds a value
  *   (§7). The rules every call obeys, witnesses of constraints included, apply where the call is
  *   made (resolution/choosing/calls-made.ts).
  */
 
-import type { Diagnostic } from '../../../../foundation/diagnostics/diagnostic.ts';
-import { primitiveOnceSpelled } from '../../../../foundation/language/primitives.ts';
-import { unreachable } from '../../../../foundation/structures/unreachable.ts';
-import type { Expression } from '../../../syntax/expressions/index.ts';
-import type { Identifier } from '../../../syntax/tree/node.ts';
-import type { AnchoredSpan } from '../../../syntax/tree/positions.ts';
-import type { BodyContext } from '../../contexts/body-context.ts';
-import { useSite } from '../../contexts/use-site.ts';
-import { checkerDiagnostics } from '../../diagnostics/index.ts';
-import type { ResolvedSite } from '../../surface/resolved-call.ts';
-import { misfitOf } from '../../types/fitting/fit/index.ts';
-import type { Inference } from '../../types/inference/infer.ts';
-import { isPlaceholder, mentionsOnlyPlaceholders } from '../../types/inference/variables.ts';
-import type { LiteralType, Type } from '../../types/type/index.ts';
-import { errorType } from '../../types/type/primitives.ts';
-import { typeText } from '../../types/type/type-text.ts';
-import { type CallApplication, chooseCall, completeCall } from '../applying/applied-call.ts';
-import { argumentListText, withSolvedTypes } from '../applying/argument-fit.ts';
-import type { BindingFailure } from '../choosing/binding.ts';
-import type { CallArgument, Inapplicability, Misfit, Passing } from '../choosing/call-arguments.ts';
-import { callMade } from '../choosing/calls-made.ts';
-import type { Candidate } from '../choosing/candidates.ts';
-import type { Application } from '../choosing/choice.ts';
-import { type Instantiation, settlingAt } from '../conformance/conformance.ts';
-import { changeReceiver, checkReferencedPlaces } from './places.ts';
+import type { Diagnostic } from '../../../../../foundation/diagnostics/diagnostic.ts';
+import type { Expression } from '../../../../syntax/expressions/index.ts';
+import type { Identifier } from '../../../../syntax/tree/node.ts';
+import type { AnchoredSpan } from '../../../../syntax/tree/positions.ts';
+import type { BodyContext } from '../../../contexts/body-context.ts';
+import { useSite } from '../../../contexts/use-site.ts';
+import { checkerDiagnostics } from '../../../diagnostics/index.ts';
+import type { ResolvedSite } from '../../../surface/resolved-call.ts';
+import type { Inference } from '../../../types/inference/infer.ts';
+import { mentionsOnlyPlaceholders } from '../../../types/inference/variables.ts';
+import type { LiteralType, Type } from '../../../types/type/index.ts';
+import { errorType } from '../../../types/type/primitives.ts';
+import { type CallApplication, chooseCall, completeCall } from '../../applying/applied-call.ts';
+import { withSolvedTypes } from '../../applying/argument-fit.ts';
+import type { CallArgument, Passing } from '../../choosing/call-arguments.ts';
+import { callMade } from '../../choosing/calls-made.ts';
+import type { Candidate } from '../../choosing/candidates.ts';
+import type { Application } from '../../choosing/choice.ts';
+import { type Instantiation, settlingAt } from '../../conformance/conformance.ts';
+import type { DeferredArgument } from '../deferred-arguments.ts';
+import { changeReceiver, checkReferencedPlaces } from '../places.ts';
+import { explainNone } from './explanations.ts';
 import { expectWrittenArguments } from './written-expectations.ts';
 
 /**
  * An argument as written: its node, how it is passed, and its type, a placeholder of the call's
  * constraint scope where the scope checks it once it knows what the call expects of it
- * (wiring/body/constraint-scope.ts); its name when named. A spread's node is what it spreads, its type that of its items, which fit the rest
- * parameter's element exactly: the items are copied or iterated as they are (§3.3).
+ * (wiring/body/constraint-scope.ts); its name when named. A spread's node is what it spreads, its
+ * type that of its items, which fit the rest parameter's element exactly: the items are copied or
+ * iterated as they are (§3.3). The function a deferred call gives its taker (§3.14) stands at the
+ * call it makes, and is made to fit where it is built, so it is never fitted as an argument.
  */
 export interface WrittenArgument {
   readonly node: Expression;
@@ -61,6 +61,7 @@ export interface WrittenArgument {
   readonly literal?: LiteralType | undefined;
   readonly name?: Identifier | undefined;
   readonly isSpread?: boolean | undefined;
+  readonly deferred?: DeferredArgument | undefined;
 }
 
 /** A call to resolve, as written. */
@@ -169,7 +170,7 @@ function applicationOf(
     site,
     name: request.name,
     candidates: request.candidates,
-    arguments: written.map((argument) => ({ ...callArgumentOf(argument), node: argument.node })),
+    arguments: written.map(appliedArgumentOf),
     typeArguments: request.typeArguments,
     expected: request.expected,
     scope,
@@ -238,8 +239,24 @@ function completeResolved(
 
 /** A written argument as choosing sees it. */
 export function callArgumentOf(argument: WrittenArgument): CallArgument {
-  const { type, literal, passing, name, isSpread } = argument;
-  return { type, literal, passing, name: name?.text, isSpread, exact: isSpread === true };
+  const { type, literal, passing, name, isSpread, deferred } = argument;
+  const isDeferred = deferred !== undefined;
+  return {
+    type,
+    literal,
+    passing,
+    name: name?.text,
+    isSpread,
+    isDeferred,
+    exact: isSpread === true,
+  };
+}
+
+/** A written argument as applying sees it: as choosing does, at its node. */
+export function appliedArgumentOf(
+  argument: WrittenArgument,
+): CallArgument & { readonly node: Expression } {
+  return { ...callArgumentOf(argument), node: argument.node };
 }
 
 /** A chosen function, instantiated, at the site calling it or naming it as a value. */
@@ -258,184 +275,4 @@ export function recordChosen(context: BodyContext, chosen: Chosen): void {
   const { site, application, instantiation, receiver } = chosen;
   const call = callMade(application, instantiation);
   context.recordCall(site, receiver === undefined ? call : { ...call, receiver });
-}
-
-/** The report saying why a call's arguments can't fill its one function's parameters (§3.3). */
-function bindingReport(request: ExplainedCall, reason: BindingFailure): Diagnostic<AnchoredSpan> {
-  const { site, name } = request;
-  switch (reason.kind) {
-    case 'arity': {
-      const count = request.arguments.length;
-      const expected = count > reason.maximum ? reason.maximum : reason.minimum;
-      const atLeast = reason.maximum === Number.POSITIVE_INFINITY;
-      return checkerDiagnostics.argumentCount(site.span, name, expected, count, atLeast);
-    }
-    case 'unnamed':
-      return checkerDiagnostics.noParameterNamed(namedAt(request, reason.name), name, reason.name);
-    case 'twice':
-      return checkerDiagnostics.givenTwice(namedAt(request, reason.name), reason.name);
-    case 'missing':
-      return checkerDiagnostics.missingArgument(site.span, name, reason.name);
-    case 'spread': {
-      const spread = request.arguments.find((argument) => argument.isSpread === true);
-      return checkerDiagnostics.spreadWithoutRest(spread?.node.span ?? site.span, name);
-    }
-    case 'packNamed':
-      return checkerDiagnostics.packNamed(namedAt(request, reason.name), reason.name);
-    default: {
-      const unhandled: never = reason;
-      return unhandled;
-    }
-  }
-}
-
-/** The report saying why a pack's arguments, or a written pack, don't fill it (§3.5). */
-function packReport(
-  request: ExplainedCall,
-  reason: Extract<Inapplicability, { kind: 'pack' | 'packTypeArgument' }>,
-): Diagnostic<AnchoredSpan> {
-  const { site } = request;
-  if (reason.kind === 'packTypeArgument') {
-    const { parameter, type } = reason;
-    return checkerDiagnostics.packTypeArgument(site.span, parameter.name.text, typeText(type));
-  }
-  const at = request.arguments[reason.index]?.node.span ?? site.span;
-  const { expected, found } = reason;
-  return found === undefined
-    ? checkerDiagnostics.packArguments(at, typeText(expected))
-    : checkerDiagnostics.packMismatch(at, typeText(expected), typeText(found));
-}
-
-/** Where the argument named `name` is written; the call, if none is. */
-function namedAt(request: ExplainedCall, name: string): AnchoredSpan {
-  const named = request.arguments.findLast((argument) => argument.name?.text === name);
-  return named?.name?.span ?? request.site.span;
-}
-
-function explainNone(
-  context: BodyContext,
-  request: CallRequest,
-  reasons: readonly Inapplicability[],
-): void {
-  const { site, name, candidates } = request;
-  const [reason] = reasons;
-  if (candidates.length === 1 && reasons.length === 1 && reason !== undefined) {
-    explain(context, request, reason);
-  } else if (candidates.length === 0 && request.form === 'call') {
-    const primitive = primitiveOnceSpelled(name);
-    context.report(
-      primitive === undefined
-        ? checkerDiagnostics.noFunctionNamed(site.span, name)
-        : checkerDiagnostics.lowercaseConversion(site.span, name, primitive),
-    );
-  } else if (request.form === 'operator') {
-    context.report(
-      checkerDiagnostics.operatorTypes(
-        site.span,
-        name,
-        request.arguments.map(({ type }) => (type === undefined ? '_' : typeText(type))),
-      ),
-    );
-  } else {
-    const list = argumentListText(request.arguments);
-    const [first] = request.arguments;
-    const onUnion = first?.type?.kind === 'union';
-    context.report(checkerDiagnostics.noMatchingOverload(site.span, name, list, onUnion));
-  }
-}
-
-/**
- * Each argument that doesn't fit its parameter, reported as a mismatch; one its scope would have
- * checked once it knew what the call expects of it, a placeholder (wiring/body/constraint-scope.ts),
- * is checked against the type it didn't take, which says why. With
- * nothing reported that way, no function of the name takes the arguments.
- */
-function explainMisfits(
-  context: BodyContext,
-  request: ExplainedCall,
-  misfits: readonly Misfit[],
-): void {
-  const before = context.checker.reportCount();
-  for (const { index, expected } of misfits) {
-    const argument = request.arguments[index];
-    if (argument?.type !== undefined && !isPlaceholder(argument.type)) {
-      const { node, type } = argument;
-      context.report(misfitOf(context.checker.fitting, node.span, type, expected));
-    } else if (argument !== undefined) {
-      // Checked on its own, as nothing the scope holds tells it what to be.
-      context.expectSettled(argument.node, expected);
-    }
-  }
-  if (context.checker.reportCount() === before) {
-    const list = argumentListText(request.arguments);
-    context.report(checkerDiagnostics.noMatchingOverload(request.site.span, request.name, list));
-  }
-}
-
-/** The report that an argument gave a member parameter several members of its union (§3.5). */
-function severalMembersReport(
-  context: BodyContext,
-  request: ExplainedCall,
-  { index, parameter, found }: Extract<Inapplicability, { kind: 'severalMembers' }>,
-): Diagnostic<AnchoredSpan> {
-  const at = request.arguments[index]?.node.span ?? request.site.span;
-  const union = context.checker.memberUnionOf(parameter);
-  return checkerDiagnostics.severalMembersArgument(
-    at,
-    parameter.name.text,
-    union === undefined ? '_' : typeText(union),
-    typeText(found),
-  );
-}
-
-/** A call as a report about it reads it: where, of what name, with what written. */
-export type ExplainedCall = Pick<CallRequest, 'site' | 'name' | 'arguments' | 'typeArguments'>;
-
-/**
- * With one function, the report says what exactly doesn't fit: the `reason` it was refused for.
- */
-export function explain(
-  context: BodyContext,
-  request: ExplainedCall,
-  reason: Inapplicability,
-): void {
-  const { site, name } = request;
-  switch (reason.kind) {
-    case 'arity':
-    case 'unnamed':
-    case 'twice':
-    case 'missing':
-    case 'spread':
-    case 'packNamed':
-      context.report(bindingReport(request, reason));
-      return;
-    case 'pack':
-    case 'packTypeArgument':
-      context.report(packReport(request, reason));
-      return;
-    case 'typeArgumentCount': {
-      const count = request.typeArguments?.length ?? 0;
-      const expected = count > reason.maximum ? reason.maximum : reason.minimum;
-      context.report(checkerDiagnostics.typeArgumentCount(site.span, name, expected, count));
-      return;
-    }
-    case 'reference': {
-      const at = request.arguments[reason.index]?.node.span ?? site.span;
-      context.report(checkerDiagnostics.passing(at, name, reason.index + 1, reason.reference));
-      return;
-    }
-    case 'conflict':
-      context.report(checkerDiagnostics.cannotInfer(site.span, name, reason.parameter.name.text));
-      return;
-    case 'severalMembers':
-      context.report(severalMembersReport(context, request, reason));
-      return;
-    case 'arguments':
-      explainMisfits(context, request, reason.misfits);
-      return;
-    default: {
-      const unexplained: never = reason;
-      unreachable(`No explanation for ${JSON.stringify(unexplained)}.`);
-    }
-  }
 }

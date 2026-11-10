@@ -7,11 +7,10 @@
  */
 
 import { builders, utils } from 'prettier/doc';
+import type { Call, CallArgument } from '../../compiler/syntax/expressions/calls.ts';
 import { linkOperator, optionalOperatorOf } from '../../compiler/syntax/expressions/chains.ts';
 import type {
   Binary,
-  Call,
-  CallArgument,
   Expression,
   ExpressionPart,
 } from '../../compiler/syntax/expressions/index.ts';
@@ -276,6 +275,8 @@ export const expressionPrinters: Printers<ExpressionKind> = {
   ],
   NamedArgument: (printer, node) => [printer.print(node.name), ': ', printer.print(node.value)],
   Spawn: (printer, node) => ['spawn ', printer.print(node.call)],
+  // The call stays on its taker's line, where alone it is the taker's (§3.14).
+  DeferredCall: (printer, node) => [printer.print(node.taker), ' ', printer.print(node.call)],
   Reference: (printer, node) => ['&', printer.print(node.expression)],
   MemberAccess: (printer, node) => [
     printer.print(node.target),

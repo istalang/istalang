@@ -18,6 +18,8 @@
  *   postponed.
  * - An `if` with no `else` gives nothing: its branches' values are dropped, so they settle on their
  *   own, as a statement's do.
+ * - A deferred call opens as its taker's call does; the call it defers is read settled, as a callee
+ *   is, since the function it gives is built from what that call gives.
  */
 
 import { type Handlers, handlerOf } from '../../../../foundation/structures/kind-table.ts';
@@ -67,6 +69,7 @@ function collectionStanding(
 // biome-ignore-start lint/style/useNamingConvention: the keys are the tree's node kinds.
 const standings: Handlers<ScopeHolding, Expression, [Type | undefined], Standing> = {
   Call: opens,
+  DeferredCall: opens,
   StructLiteral: opens,
   NewStructLiteral: opens,
   Tuple: opens,

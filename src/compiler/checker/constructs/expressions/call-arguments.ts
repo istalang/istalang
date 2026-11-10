@@ -4,11 +4,12 @@
  * call expects of it to its placeholder.
  */
 
-import type { CallArgument, Expression, Spread } from '../../../syntax/expressions/index.ts';
+import type { CallArgument } from '../../../syntax/expressions/calls.ts';
+import type { Expression, Spread } from '../../../syntax/expressions/index.ts';
 import { unparenthesized } from '../../../syntax/expressions/readings.ts';
 import type { BodyContext } from '../../contexts/body-context.ts';
 import { checkChangedPlace } from '../../resolution/calls/places.ts';
-import type { WrittenArgument } from '../../resolution/calls/resolve.ts';
+import type { WrittenArgument } from '../../resolution/calls/resolve/index.ts';
 import type { Type } from '../../types/type/index.ts';
 import { errorType } from '../../types/type/primitives.ts';
 import { arrayElement } from '../../types/type/well-known.ts';

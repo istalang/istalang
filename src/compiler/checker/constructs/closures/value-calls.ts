@@ -1,8 +1,8 @@
 /**
  * Calling a function value (§3.14): a variable, a field or any expression of a function type. Its
  * type says everything: there is one function to call, so nothing is chosen, but its arguments are
- * judged, reported and fitted as a chosen function's are (resolution/calls/resolve.ts), as one
- * signature with no type parameters, so every argument rule has one home.
+ * judged, reported and fitted as a chosen function's are (resolution/calls/resolve/index.ts), as
+ * one signature with no type parameters, so every argument rule has one home.
  *
  * - Calling an async function value starts it and yields its future, `Future<R>` for an
  *   `async fn(…) -> R`, as calling a declared async function does (§3.3).
@@ -16,17 +16,26 @@
  *   and is fitted, or reported, once it settles, with every type as it settled.
  */
 
-import type { Call, CallArgument, Expression } from '../../../syntax/expressions/index.ts';
-import type { BodyContext } from '../../contexts/body-context.ts';
+import type { CallArgument, CallingNode } from '../../../syntax/expressions/calls.ts';
+import type { Expression } from '../../../syntax/expressions/index.ts';
+import { calledName } from '../../../syntax/expressions/readings.ts';
+import type { BodyContext, ValueCallRecord } from '../../contexts/body-context.ts';
+import type { Pass, Passes, PassRecords, PassTable } from '../../contexts/passes.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import { fitArguments, withSolvedTypes } from '../../resolution/applying/argument-fit.ts';
 import { checkReferencedPlaces } from '../../resolution/calls/places.ts';
-import { callArgumentOf, explain, type WrittenArgument } from '../../resolution/calls/resolve.ts';
+import { explain } from '../../resolution/calls/resolve/explanations.ts';
+import {
+  appliedArgumentOf,
+  callArgumentOf,
+  type WrittenArgument,
+} from '../../resolution/calls/resolve/index.ts';
 import { stoppedOperation } from '../../resolution/calls/stopped-operations.ts';
 import { type Taken, takenBy } from '../../resolution/choosing/applicability.ts';
 import { bindArguments } from '../../resolution/choosing/binding.ts';
 import type { Inapplicability, Takes } from '../../resolution/choosing/call-arguments.ts';
 import type { Inference } from '../../types/inference/infer.ts';
+import { fieldOf } from '../../types/traits/known-fields.ts';
 import { packRestSlot } from '../../types/type/function-types.ts';
 import type { FunctionType, Type } from '../../types/type/index.ts';
 import { errorType } from '../../types/type/primitives.ts';
@@ -62,9 +71,46 @@ export function valueParameterTypes(
   return matches ? parameters.map((parameter) => parameter.type) : [];
 }
 
+/**
+ * The type of the function value the value call `node` calls, as its call read it: its callee's,
+ * or for `x.f(…)`, which reads it from a field of its receiver and checks no expression for it,
+ * that field's.
+ */
+export function calledValueType(context: BodyContext, node: CallingNode): Type {
+  const callee = calledName(node);
+  const checked = context.checkedTypeOf(callee);
+  if (checked !== undefined || callee.kind !== 'MemberAccess') {
+    return checked ?? errorType;
+  }
+  const receiver = context.typeOf(callee.target);
+  return fieldOf(context.checker, receiver, callee.member.text)?.member.type ?? errorType;
+}
+
+/** The calls of function values in one body, recorded as each is checked. */
+export class ValueCalls implements ValueCallRecord {
+  readonly #calls: PassTable<CallingNode, true>;
+
+  constructor(passes: Passes) {
+    this.#calls = passes.table();
+  }
+
+  record(node: CallingNode): void {
+    this.#calls.set(node, true);
+  }
+
+  has(node: CallingNode): boolean {
+    return this.#calls.has(node);
+  }
+
+  /** The calls as `pass` sees them. */
+  at(pass: Pass): PassRecords<CallingNode, true> {
+    return this.#calls.at(pass);
+  }
+}
+
 /** A call as written: where it stands, with its arguments and any type arguments. */
 export interface ValueCall {
-  readonly node: Call;
+  readonly node: CallingNode;
   readonly typeArguments: readonly Type[] | undefined;
   readonly written: readonly WrittenArgument[];
 }
@@ -80,7 +126,7 @@ export function checkValueCall(
   if (stopped !== undefined) {
     return stopped;
   }
-  context.recordValueCall(call.node);
+  context.valueCalls.record(call.node);
   if (calleeType.kind !== 'function') {
     context.report(
       insideOptional(callee.span, calleeType, '(') ??
@@ -119,7 +165,7 @@ export function checkValueCall(
 
 /** A function value's call whose arguments can be judged: what judging and completing it read. */
 interface MadeValueCall {
-  readonly node: Call;
+  readonly node: CallingNode;
   /** The callee's name, or its type, as reports name the call. */
   readonly name: string;
   readonly written: readonly WrittenArgument[];
@@ -192,7 +238,7 @@ function completeValueCall(
   }
   fitArguments(
     context,
-    given,
+    given.map(appliedArgumentOf),
     callee.parameters.map(({ type }) => type),
   );
   checkReferencedPlaces(context, given, {

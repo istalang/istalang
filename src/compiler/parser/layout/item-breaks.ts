@@ -23,7 +23,9 @@
  * before it separates nothing (`continues`), so a new item on the next line is never read as it.
  *
  * A postfix bracket, `(`, `[`, `{` or type arguments' `<`, attaches only to an operand on its own
- * line (`atPostfix`): on the next line it starts an item, or for `<`, continues as the operator.
+ * line (`atPostfix`): on the next line it starts an item, or for `<`, continues as the operator. A
+ * deferred call's call follows its taker only on the taker's line, in any region (`onOperandLine`),
+ * so a name on the next line of a list starts an item.
  * Outside lists none of this applies: blocks decide line breaks by their columns (index.ts), and
  * `${…}` and other brackets read past them.
  */
@@ -66,4 +68,14 @@ export function eatContinuing(parser: Parser, kind: TokenKind): Token | undefine
 /** Whether `kind` comes next as a postfix bracket of the operand before it: on that line. */
 export function atPostfix(parser: Parser, kind: CursorKind): boolean {
   return parser.cursor.at(kind) && !parser.cursor.startsLineInList();
+}
+
+/**
+ * Whether `kind` comes next on the line the operand before it ends on, in any region: brackets read
+ * past a line break, and so does a list, which `atPostfix` alone decides by. A deferred call's call
+ * follows its taker only there (§3.14).
+ */
+export function onOperandLine(parser: Parser, kind: CursorKind): boolean {
+  const { token } = parser.cursor;
+  return token.kind !== 'lineBreak' && token.kind === kind && !token.firstOnLine;
 }

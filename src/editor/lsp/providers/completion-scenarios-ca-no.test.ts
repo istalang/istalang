@@ -93,7 +93,7 @@ const scenarios: readonly Scenario[] = [
     place: 'grammar',
     title: 'Call result is complete, a space after',
     src: ['  plus(1) ‸'],
-    expect: { has: ['and', 'or', 'is', 'in'], lacks: ['xs', 'plus', 'let'] },
+    expect: { has: ['and', 'or', 'is', 'in', 'xs', 'plus'], lacks: ['let', 'true'] },
   },
   {
     id: 'CA-12',

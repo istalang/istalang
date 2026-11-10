@@ -298,15 +298,31 @@ export function wrappingEntry(
     callee: { kind: 'value', register: original },
     arguments: passed,
   });
-  const result = resultFitBetween(checker, from, to);
+  const isAsync = returnedAs(code, called, entry, at);
   const header = tables.headerAt(conversionName(checker, entry), at.module, at.span);
+  return code.entry(header, isAsync, references);
+}
+
+/**
+ * Returns `called`, what a function of type `from` gave, as a function of type `to` gives it: fitted
+ * to its result; where `to` gives a future of it, from an async entry, awaiting the future `from`
+ * gave, if any, so the entry gives a future already resolved when `from` gives none. Whether the
+ * entry is async.
+ */
+export function returnedAs(
+  code: SynthesizedCode,
+  called: Register,
+  { from, to }: { readonly from: FunctionType; readonly to: FunctionType },
+  at: ConversionSite,
+): boolean {
+  const result = resultFitBetween(code.checker, from, to);
   if (result.kind === 'value') {
     code.return(fittedIn(code, { value: called, type: from.result }, to.result, at));
-    return code.entry(header, false, references);
+    return false;
   }
   const value = result.kind === 'awaited' ? code.await(called) : called;
   code.return(fittedIn(code, { value, type: result.value }, result.into, at));
-  return code.entry(header, true, references);
+  return true;
 }
 
 /** The type of a function of type `plain`, which the checker made async, made async (§3.14). */

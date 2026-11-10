@@ -29,12 +29,7 @@ import { unreachable } from '../../../../foundation/structures/unreachable.ts';
 import type { Entity, VariantEntity } from '../../../binder/entities.ts';
 import type { ModuleId } from '../../../program/program.ts';
 import type { FunctionDeclaration } from '../../../syntax/declarations/index.ts';
-import type {
-  Call,
-  Expression,
-  FieldHeader,
-  IndentedValue,
-} from '../../../syntax/expressions/index.ts';
+import type { Expression, FieldHeader, IndentedValue } from '../../../syntax/expressions/index.ts';
 import type { BuiltLiteral } from '../../../syntax/expressions/literals/indented-values.ts';
 import { unparenthesized } from '../../../syntax/expressions/readings.ts';
 import type {
@@ -53,9 +48,11 @@ import { FunctionScopes } from '../../constructs/closures/functions.ts';
 import { inferLambda } from '../../constructs/closures/lambdas.ts';
 import { declareOwnCall } from '../../constructs/closures/own-calls.ts';
 import { ReturnScope } from '../../constructs/closures/returns.ts';
+import { ValueCalls } from '../../constructs/closures/value-calls.ts';
 import { FieldReads } from '../../constructs/expressions/access/member-access.ts';
 import { OptionalChains } from '../../constructs/expressions/access/optionals.ts';
 import { CollectionForms } from '../../constructs/expressions/collections/collections.ts';
+import { Deferrals } from '../../constructs/expressions/deferred-calls.ts';
 import { expressionHandlers } from '../../constructs/expressions/expressions.ts';
 import { memberBuilt, postponed, postponedAdmits } from '../../constructs/expressions/postponed.ts';
 import { StructLiterals } from '../../constructs/expressions/structs/literal-sources.ts';
@@ -117,6 +114,8 @@ export class BodyChecker implements BodyContext {
   readonly literals = new StructLiterals(this.#passes);
   readonly implicit = new ImplicitCalls(this.#passes);
   readonly collections = new CollectionForms(this.#passes);
+  readonly valueCalls = new ValueCalls(this.#passes);
+  readonly deferrals = new Deferrals(this.#passes);
   readonly iterations = new Iterations(this.#passes);
   readonly patterns = new CheckedPatterns(this.#passes);
   readonly chains = new OptionalChains(this.#passes);
@@ -362,10 +361,6 @@ export class BodyChecker implements BodyContext {
 
   recordCall(site: ResolvedSite, call: ResolvedCall): void {
     this.#records.resolved.set(site, call);
-  }
-
-  recordValueCall(node: Call): void {
-    this.#records.valueCalls.set(node, true);
   }
 
   fieldPasses(

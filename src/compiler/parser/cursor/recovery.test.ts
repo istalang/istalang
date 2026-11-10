@@ -133,9 +133,9 @@ describe('recovery stays inside its brackets', () => {
   });
 
   it('skips junk to the next comma and keeps it as an Invalid item', () => {
-    expect(dumpOf(parseAs('expression', 'f(a b c, d)'))).toBe('(Call f [a ! d])');
-    expect(reported('expression', 'f(a b c, d)')).toEqual(
-      reportedOnce(parserDiagnostics.expected.code, 'b'),
+    expect(dumpOf(parseAs('expression', 'f(a 1 c, d)'))).toBe('(Call f [a ! d])');
+    expect(reported('expression', 'f(a 1 c, d)')).toEqual(
+      reportedOnce(parserDiagnostics.expected.code, '1'),
     );
   });
 

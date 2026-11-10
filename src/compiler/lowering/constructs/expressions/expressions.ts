@@ -28,6 +28,7 @@ import { lowerIf } from './control/control.ts';
 import { lowerIs, lowerMatch } from './control/matching.ts';
 import { lowerPropagate } from './control/propagate.ts';
 import { lowerSelect } from './control/select.ts';
+import { lowerDeferredCall } from './deferred-calls.ts';
 import { lowerDurationLiteral } from './literals/literals.ts';
 import { lowerTemplate } from './literals/templates.ts';
 import { lowerTuple, lowerTupleElement } from './literals/tuples.ts';
@@ -74,6 +75,7 @@ export const expressionHandlers: Handlers<FunctionContext, Expression, [], Regis
   Index: lowerIndex,
   Propagate: lowerPropagate,
   Spawn: lowerSpawn,
+  DeferredCall: lowerDeferredCall,
   Unwrap: lowerUnwrap,
   ChainedComparison: lowerChainedComparison,
   TemplateLiteral: lowerTemplate,

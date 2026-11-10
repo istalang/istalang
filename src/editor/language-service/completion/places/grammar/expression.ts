@@ -32,11 +32,19 @@ export function operandCandidates(
   surroundings: Surroundings,
 ): readonly Candidate[] {
   return [
-    ...visibleNames(cursor, namesValue).filter((candidate) => !isBareVariant(candidate)),
+    ...operandNames(cursor),
     ...expectedVariants(cursor, place),
     ...expectedLiterals(cursor, place),
     ...wordCandidates(operandWordsIn(surroundings)),
   ];
+}
+
+/**
+ * The visible names an operand may start with, whatever is expected of it: what a deferred call's
+ * call starts with too (§3.14).
+ */
+export function operandNames(cursor: Cursor): readonly Candidate[] {
+  return visibleNames(cursor, namesValue).filter((candidate) => !isBareVariant(candidate));
 }
 
 function namesValue(entity: Entity): boolean {

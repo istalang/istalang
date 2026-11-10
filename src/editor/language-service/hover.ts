@@ -53,8 +53,10 @@ export interface Hover {
  * template's text) show the construct's type; else the name ending there, as under a cursor right
  * after it. Undefined where nothing there has a type.
  *
- * `x->f` is written as a field of the dereference `x->` (syntax: `Dereference`), but `->` reads a
- * member as `.` does, so it shows the member read, never the value behind the shared struct.
+ * Some nodes show as another (`showsAs`): `x->f` is written as a field of the dereference `x->`
+ * (syntax: `Dereference`), but `->` reads a member as `.` does, so it shows the member read, never
+ * the value behind the shared struct; a deferred call shows the call it defers (§3.14), its taker's
+ * name the function it calls.
  */
 export function hoverAt(program: Program, module: ModuleId, offset: number): Hover | undefined {
   const checked = checkedModule(program, module);
@@ -160,9 +162,31 @@ function shownText(checker: Checker, type: Type): string {
   return bounds.length === 0 ? text : `${text} is ${bounds.map(constraintText).join(' & ')}`;
 }
 
+/**
+ * Per kind, what a node shows as, where not as itself: another node, or, undefined, nothing of its
+ * own, so the node holding it shows.
+ */
+const showsAs: {
+  readonly [Kind in SyntaxNode['kind']]?: (
+    node: Extract<SyntaxNode, { readonly kind: Kind }>,
+  ) => SyntaxNode | undefined;
+} = {
+  // biome-ignore-start lint/style/useNamingConvention: the keys are the tree's node kinds.
+  Dereference: (node) => (node.operator === '->' ? undefined : node),
+  DeferredCall: (node) => node.call,
+  // biome-ignore-end lint/style/useNamingConvention: the keys are the tree's node kinds.
+};
+
+/** The node `node` shows as (`showsAs`): itself, another, or none, so the node holding it shows. */
+export function shownAs(node: SyntaxNode): SyntaxNode | undefined {
+  const showing = showsAs[node.kind] as ((node: SyntaxNode) => SyntaxNode | undefined) | undefined;
+  return showing === undefined ? node : showing(node);
+}
+
 function nodeHover(checked: CheckedModule, node: SyntaxNode): Hover | undefined {
-  if (node.kind === 'Dereference' && node.operator === '->') {
-    return undefined;
+  const shown = shownAs(node);
+  if (shown !== node) {
+    return shown === undefined ? undefined : nodeHover(checked, shown);
   }
   const named = isName(node) ? nameHover(checked, node) : undefined;
   const type = named === undefined ? typeAt(checked, node) : undefined;

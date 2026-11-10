@@ -1,0 +1,65 @@
+# error: 5643 at 54:12
+# error: 5643 at 55:7
+# error: 5644 at 57:17
+# error: 5641 at 58:7
+# error: 5120 at 59:7
+# error: 5645 at 61:12
+# error: 5645 at 62:12
+# error: 5640 at 63:12
+# error: 5642 at 65:9
+# A deferred call (§3.14) computes what its call passes now and captures it, so no reference can be
+# passed by `&` or as a `&self` receiver; a sendable function taken needs each captured value
+# sendable. Its taker must take a function of nothing, the first one left unfilled, its other
+# parameters given as for any call; what follows it must be a call, not one through `?.` nor a
+# variant without fields. A taker that is a value and no function is an item before a likely
+# missing comma.
+
+struct Counter:
+  n: Int
+
+enum State:
+  Idle
+  Busy(n: Int)
+
+fn bump(self: &Counter):
+  self.n += 1
+
+fn grow(n: &Int):
+  n += 1
+
+fn size(self: Counter) -> Int:
+  self.n
+
+fn run(f: fn() -> Unit):
+  f()
+
+fn send(f: sendable fn() -> Int) -> Int:
+  f()
+
+fn read(log: Shared<String>) -> Int:
+  log->value.length()
+
+fn twice(n: Int) -> Int:
+  n * 2
+
+fn keep(f: fn() -> State) -> State:
+  f()
+
+fn pair(f: fn() -> Int, g: fn() -> Int) -> Int:
+  f() + g()
+
+async fn main():
+  let counter = Counter{n: 0}
+  let n = 1
+  run grow(&n)
+  run counter.bump()
+  const log = new Shared{value: ""}
+  _ = send read(log)
+  _ = twice read(log)
+  _ = pair twice(1)
+  const maybe: Counter? = none
+  _ = send maybe?.size()
+  _ = keep State.Idle()
+  _ = send twice
+  const a = 1
+  _ = [a twice(1)]

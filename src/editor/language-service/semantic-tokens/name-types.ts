@@ -91,6 +91,8 @@ const rolesOf: RolesOf = {
   NamedPatternArgument: (node) => [[node.name, 'property']],
   MemberAccess: (node) => [[node.member, 'property']],
   Call: (node) => calleeRoles(calledName(node)),
+  // A deferred call calls its taker, maybe after the arguments its parentheses write (§3.14).
+  DeferredCall: (node) => calleeRoles(calledName(node)),
   // Only a function's name takes type arguments as a value (§3.14).
   TypeApplication: (node) => calleeRoles(node.target),
   TemplateLiteral: (node) => (node.tag === undefined ? [] : calleeRoles(node.tag)),

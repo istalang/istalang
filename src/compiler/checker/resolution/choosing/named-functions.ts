@@ -34,7 +34,8 @@ import {
   fieldsFunctionOf,
 } from '../../../syntax/declarations/field-defaults.ts';
 import type { TypeParameter } from '../../../syntax/declarations/index.ts';
-import type { MemberAccess, TypeApplication } from '../../../syntax/expressions/index.ts';
+import type { TypeApplication } from '../../../syntax/expressions/calls.ts';
+import type { MemberAccess } from '../../../syntax/expressions/index.ts';
 import type { Identifier } from '../../../syntax/tree/node.ts';
 import type { BodyContext } from '../../contexts/body-context.ts';
 import { searchSite, type UseSite } from '../../contexts/use-site.ts';
