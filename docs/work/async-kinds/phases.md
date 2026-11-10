@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-11-10
-last_updated: 2026-11-10
+last_updated: 2026-11-11
 tags: [plan, proposal-8, async]
 ---
 
@@ -114,6 +114,27 @@ the rewrite, but for respelled sources and extern keys. Profile within noise.
 
 **Spec.** Cheat sheet; §1; §2; §3.1; §3.3; §3.5; §3.6; §3.7; §3.8; §3.10 requirement marks;
 §3.14; §5 (two awaits, segments, commits, starts at commit, re-run state); §8; §9; §12.
+
+## K1d Data-kind bounds (behavioural, then rewrite)
+
+After K1c, by K1c's implementer. Closes B72: values a generic body computes from its type
+parameters, through an associated type or a type match, were judged at no caller.
+
+**Scope.**
+- The prelude's `DataKind` alias becomes `Mark`, every use following. `DataKind<K in Mark>` is a
+  derived trait, met by a type whose kind is in `K`; `Sendable` implies `DataKind<"simple">`, and
+  `DataKind<K1>` implies `DataKind<K2>` when `K1` is within `K2`.
+- An associated type's kind is its bound's; an unbounded one's is unknown, refused in unmarked
+  generic code. A type match's kind comes from its cases where it is defined: their concrete kinds,
+  while what they take from the subject stays transparent (Rule 3).
+- The rewrite adds `& DataKind<"simple">` where unmarked generic code holds an associated type.
+
+**Accept.** B72's repros are refused; `createAndDrop<Box>()` with `Box.Data` live and a bound of
+`DataKind<"simple">` is an error naming the use; a `live fn` holding `T.Data` bounded
+`DataKind<"live" | "simple">` checks, and ista code calling it is refused, naming the call. The
+full suite passes after the rewrite. Profile within noise.
+
+**Spec.** Proposal 8 Rules 2–3; §3.5 associated types; §3.10 `DataKind`; §3.17 type matches.
 
 ## DG Delegate, a slice of proposal 9 (runtime, then rewrite)
 
