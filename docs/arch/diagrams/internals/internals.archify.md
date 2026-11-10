@@ -67,7 +67,7 @@ A `VariableOwner` is one of 14 node kinds: `VariableDeclaration`, `Parameter`, `
 | `VariableScope.#targets` | `TargetOwner` node, per pass | `TargetBinding[]` with `path` | `declareTargets` | lowering `bindTargets` |
 | `BodyChecker.#types` | every `Expression`, per pass | `Type` | `#record` after each handler | lowering `typeOf`, hover |
 | `BodyChecker.#fits` | `ValueSite`, per pass | `Fit` (conversion, union member) | `fit` | lowering `fitted` |
-| `BodyChecker.#resolved` | `ResolvedSite`, per pass | `ResolvedCall` | `recordCall` | lowering `closeCall`, signature help |
+| `CallRecords` (`BodyContext.calls`) | `ResolvedSite`, per pass | `ResolvedCall` | `calls.record` | lowering `closeCall`, signature help |
 | `FunctionScope.#captures` | declaring `Identifier` | `VariableEntity` | `noteUse` | `CheckedFunction.captures` |
 | lowering `Variables.#registers` | declaring `Identifier` | `Register` | `declareVariable` | `lowerName` via `registerOf(entity.name)` |
 

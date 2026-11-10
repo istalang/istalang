@@ -79,7 +79,7 @@ The checker's folders are layers too. Each layer imports only the layers listed 
 | res | ent | get callee result, constraints |
 | ent | res | answer or stand-in | return |
 | res | table | chosen call, result type | return |
-| table | body | type, recordCall, fit | return |
+| table | body | type, calls.record, fit | return |
 | body | ent | report: note on entry |
 | body | pc | CheckedBody | return |
 | phase | Collect |

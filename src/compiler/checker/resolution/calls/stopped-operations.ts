@@ -45,7 +45,7 @@ export function stoppedOperation(
   if (stopping.type.kind === 'error') {
     return errorType;
   }
-  context.stopAt(
+  context.decisions.stopAt(
     operation,
     operands.slice(0, index + 1).map(({ node }) => node),
   );

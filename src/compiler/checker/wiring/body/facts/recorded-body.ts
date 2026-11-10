@@ -16,6 +16,8 @@ import type { CheckedPatterns } from '../../../constructs/patterns/matching.ts';
 import type { LabelTargets } from '../../../constructs/statements/loops.ts';
 import type { VariableScope } from '../../../constructs/statements/variables.ts';
 import type { ImplicitCalls } from '../../../resolution/applying/implicit.ts';
+import type { CallRecords } from '../../../resolution/calls/call-records.ts';
+import type { FlowDecisions } from '../../../rules/flow/flow-decisions.ts';
 import type { Type } from '../../../types/type/index.ts';
 import type { bodyRecords } from '../body-records.ts';
 
@@ -27,6 +29,8 @@ interface BodyUnits {
   readonly functions: FunctionScopes;
   readonly literals: StructLiterals;
   readonly implicit: ImplicitCalls;
+  readonly calls: CallRecords;
+  readonly decisions: FlowDecisions;
   readonly collections: CollectionForms;
   readonly valueCalls: ValueCalls;
   readonly deferrals: Deferrals;

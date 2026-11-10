@@ -52,7 +52,7 @@ function watchesOwnDisposal(context: BodyContext, future: Expression): boolean {
   if (bare.kind !== 'Call' || bare.callee.kind !== 'MemberAccess') {
     return false;
   }
-  const call = context.callAt(bare);
+  const call = context.calls.of(bare);
   const { module, name } = wellKnown.disposing;
   return (
     call?.kind === 'function' &&

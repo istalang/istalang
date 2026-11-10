@@ -372,7 +372,7 @@ function writesElement(context: BodyContext, node: Index): boolean {
       element: context.typeOf(node),
       failure: () =>
         checkerDiagnostics.notIndexAssignable(node.span, typeText(container), typeText(key)),
-    }) && runsAtOnce(context, context.callAt(node), node.span)
+    }) && runsAtOnce(context, context.calls.of(node), node.span)
   );
 }
 

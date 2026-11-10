@@ -48,7 +48,7 @@ export function checkMatch(context: BodyContext, node: Match, expected: Type | u
     if (ruledOut) {
       // A case its subject's type rules out matches no value, so it covers none.
       context.report(checkerDiagnostics.heldNoValue(matchCase.pattern.span));
-      context.ruleOut(matchCase.body);
+      context.decisions.ruleOut(matchCase.body);
     } else {
       cases.push({
         shape: shape ?? anyShape,

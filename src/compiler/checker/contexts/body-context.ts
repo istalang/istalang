@@ -102,8 +102,6 @@ export interface BodyContext extends CheckedModule {
   readonly typeOf: (node: Expression) => Type;
   /** The type `node` was checked to have; undefined for a node not checked yet. */
   readonly checkedTypeOf: (node: Expression) => Type | undefined;
-  /** The call recorded at `site`; undefined for one not checked yet or that couldn't be made. */
-  readonly callAt: (site: ResolvedSite) => ResolvedCall | undefined;
   /** Records that `expected` is what `site` will be expected to be, as a call being written says. */
   readonly expectAt: (site: Expression, expected: Type) => void;
   /** Checks `node` and, when a type is expected, reports when its type doesn't fit it. */
@@ -140,12 +138,8 @@ export interface BodyContext extends CheckedModule {
    * is captured there (§3.14).
    */
   readonly useEntity: (name: Identifier) => Entity | undefined;
-  readonly recordCall: (site: ResolvedSite, call: ResolvedCall) => void;
-  /** Records the functions the call at `site` chooses among (resolution/calls/resolve/index.ts). */
-  readonly recordCandidates: (
-    site: ResolvedSite,
-    candidates: readonly FunctionDeclaration[],
-  ) => void;
+  /** The calls the body makes (resolution/calls/call-records.ts). */
+  readonly calls: CallRecord;
   /**
    * Records the field `giver` gives: a name in a struct literal, a pattern or an assignment's
    * target, or a call pattern's argument by position (`FieldGiver`).
@@ -165,22 +159,8 @@ export interface BodyContext extends CheckedModule {
   readonly recordVariant: (name: Identifier, variant: VariantEntity) => void;
   /** The variant the bare name `name` chose; undefined for one not checked yet or naming none. */
   readonly chosenVariantOf: (name: Identifier) => VariantEntity | undefined;
-  /**
-   * Records that `body`, a branch or a case, never runs: a condition decided by types rules it out
-   * (constructs/expressions/operators/decided-conditions.ts), so it is neither checked nor lowered.
-   */
-  readonly ruleOut: (body: Block) => void;
-  /** Records that `operation` never runs past `operands`, the last of which has no value (§2). */
-  readonly stopAt: (operation: Expression | Assignment, operands: readonly Expression[]) => void;
-  /**
-   * Records the value `condition` always has, by its operands' types
-   * (constructs/expressions/operators/decided-conditions.ts).
-   */
-  readonly decide: (condition: Expression, value: boolean) => void;
-  /**
-   * The value `node`, a comparison, `is` or condition, was decided to always have; else undefined.
-   */
-  readonly decidedAt: (node: Expression) => boolean | undefined;
+  /** What the body's checking decided of which of its code runs (rules/flow/flow-decisions.ts). */
+  readonly decisions: DecisionRecord;
   /**
    * Runs `check` once per pass of the field loop `header` heads (§4), each pass's records of nodes
    * kept apart (passes.ts), so the body reads as each pass checked it; what is decided of every
@@ -333,6 +313,38 @@ export interface Enclosing {
   readonly labelled: (name: Identifier) => LabelledScope | undefined;
   /** Whether `name` is the function's own, which `hold(name)` also names. */
   readonly isOwnName: (name: Identifier) => boolean;
+}
+
+/** The calls a body makes (resolution/calls/call-records.ts). */
+export interface CallRecord {
+  readonly record: (site: ResolvedSite, call: ResolvedCall) => void;
+  /** The call recorded at `site`; undefined for one not checked yet or that couldn't be made. */
+  readonly of: (site: ResolvedSite) => ResolvedCall | undefined;
+  /** Records the functions the call at `site` chooses among (resolution/calls/resolve/index.ts). */
+  readonly recordCandidates: (
+    site: ResolvedSite,
+    candidates: readonly FunctionDeclaration[],
+  ) => void;
+}
+
+/** What checking decides of which code of a body runs (rules/flow/flow-decisions.ts). */
+export interface DecisionRecord {
+  /**
+   * Records that `body`, a branch or a case, never runs: a condition decided by types rules it out
+   * (constructs/expressions/operators/decided-conditions.ts), so it is neither checked nor lowered.
+   */
+  readonly ruleOut: (body: Block) => void;
+  /** Records that `operation` never runs past `operands`, the last of which has no value (§2). */
+  readonly stopAt: (operation: Expression | Assignment, operands: readonly Expression[]) => void;
+  /**
+   * Records the value `condition` always has, by its operands' types
+   * (constructs/expressions/operators/decided-conditions.ts).
+   */
+  readonly decide: (condition: Expression, value: boolean) => void;
+  /**
+   * The value `node`, a comparison, `is` or condition, was decided to always have; else undefined.
+   */
+  readonly decidedAt: (node: Expression) => boolean | undefined;
 }
 
 /**

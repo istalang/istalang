@@ -81,7 +81,7 @@ function checkTarget(context: BodyContext, site: Call, mock: FunctionCall): Expr
   const argument = source?.kind === 'argument' ? site.arguments[source.index] : undefined;
   const target = argument === undefined ? undefined : unparenthesized(argumentValue(argument));
   const named =
-    target !== undefined && namesFunctionValue(target) ? context.callAt(target) : undefined;
+    target !== undefined && namesFunctionValue(target) ? context.calls.of(target) : undefined;
   const names = named?.kind === 'function' && constructedVariant(named.function) === undefined;
   if (target === undefined || !names) {
     context.report(checkerDiagnostics.mockTarget((argument ?? site).span));

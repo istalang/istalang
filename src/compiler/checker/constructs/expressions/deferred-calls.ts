@@ -151,7 +151,7 @@ function deferredFunction(context: BodyContext, node: DeferredCall): WrittenArgu
   if (result.kind === 'error') {
     return given(errorType);
   }
-  if (context.callAt(deferred) === undefined && !context.valueCalls.has(deferred)) {
+  if (context.calls.of(deferred) === undefined && !context.valueCalls.has(deferred)) {
     return given(unmade(context, deferred));
   }
   if (refused(context, deferred)) {
@@ -199,7 +199,7 @@ function laterMarkOf(
  * only it is (§3.3): code of either kind may hold it, and only what calls it is judged (Rule 4).
  */
 function laterCallKind(context: BodyContext, call: CallingNode): Type {
-  const resolved = context.callAt(call);
+  const resolved = context.calls.of(call);
   if (resolved !== undefined) {
     const report: UseSite['report'] = (diagnosticAt) => context.report(diagnosticAt(call.span));
     return markMaking(
@@ -251,7 +251,7 @@ function refused(context: BodyContext, call: CallingNode): boolean {
 
 /** The receiver `call` passes to a method taking `&self`, which it would capture (§3.7). */
 function referencedReceiver(context: BodyContext, call: CallingNode): Expression | undefined {
-  const resolved = context.callAt(call);
+  const resolved = context.calls.of(call);
   const receiver = resolved?.receiver;
   if (resolved === undefined || receiver === undefined) {
     return undefined;
@@ -283,6 +283,6 @@ function calleeNow(context: BodyContext, call: CallingNode): readonly StoppingOp
   if (context.valueCalls.has(call)) {
     return [{ node: calledName(call), type: calledValueType(context, call) }];
   }
-  const receiver = context.callAt(call)?.receiver;
+  const receiver = context.calls.of(call)?.receiver;
   return receiver === undefined ? [] : [{ node: receiver, type: context.typeOf(receiver) }];
 }

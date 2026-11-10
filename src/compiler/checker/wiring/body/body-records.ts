@@ -6,15 +6,12 @@
  */
 
 import type { VariantEntity } from '../../../binder/entities.ts';
-import type { FunctionDeclaration } from '../../../syntax/declarations/index.ts';
 import type { Expression, FieldHeader, IndentedValue } from '../../../syntax/expressions/index.ts';
 import type { BuiltLiteral } from '../../../syntax/expressions/literals/indented-values.ts';
 import type { StringLiteral } from '../../../syntax/expressions/literals/literals.ts';
-import type { Assignment, Block } from '../../../syntax/statements/index.ts';
 import type { Identifier } from '../../../syntax/tree/node.ts';
 import type { FieldPassType, Pass, Passes } from '../../contexts/passes.ts';
 import type { FieldGiver, ValueSite } from '../../surface/checked-body.ts';
-import type { ResolvedCall, ResolvedSite } from '../../surface/resolved-call.ts';
 import type { Fit } from '../../types/fitting/fit/index.ts';
 import type { FieldMember, Type } from '../../types/type/index.ts';
 
@@ -28,15 +25,10 @@ export function bodyRecords(passes: Passes) {
   return {
     types: passes.table<Expression, Type>(),
     expected: passes.table<ValueSite, Type>(),
-    resolved: passes.table<ResolvedSite, ResolvedCall>(),
-    candidates: passes.table<ResolvedSite, readonly FunctionDeclaration[]>(),
     givenFields: passes.table<FieldGiver, FieldMember>(),
     keyOwners: passes.table<StringLiteral, Type>(),
     builtLiterals: passes.table<IndentedValue, BuiltLiteral>(),
     chosenVariants: passes.table<Identifier, VariantEntity>(),
-    ruledOut: passes.table<Block, true>(),
-    stops: passes.table<Expression | Assignment, readonly Expression[]>(),
-    decided: passes.table<Expression, boolean>(),
     fits: passes.table<ValueSite, Fit>(),
     fieldPasses: passes.table<FieldHeader, readonly CheckedPass[]>(),
   };

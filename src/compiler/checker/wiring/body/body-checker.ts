@@ -28,16 +28,10 @@ import { handlerOf } from '../../../../foundation/structures/kind-table.ts';
 import { unreachable } from '../../../../foundation/structures/unreachable.ts';
 import type { Entity, VariantEntity } from '../../../binder/entities.ts';
 import type { ModuleId } from '../../../program/program.ts';
-import type { FunctionDeclaration } from '../../../syntax/declarations/index.ts';
 import type { Expression, FieldHeader, IndentedValue } from '../../../syntax/expressions/index.ts';
 import type { BuiltLiteral } from '../../../syntax/expressions/literals/indented-values.ts';
 import { unparenthesized } from '../../../syntax/expressions/readings.ts';
-import type {
-  Assignment,
-  Block,
-  Statement,
-  VariableDeclaration,
-} from '../../../syntax/statements/index.ts';
+import type { Block, Statement, VariableDeclaration } from '../../../syntax/statements/index.ts';
 import type { SyntaxNode } from '../../../syntax/tree/index.ts';
 import type { Identifier, Invalid } from '../../../syntax/tree/node.ts';
 import type { AnchoredSpan } from '../../../syntax/tree/positions.ts';
@@ -72,15 +66,16 @@ import type { CheckerContext } from '../../contexts/context.ts';
 import type { FieldPassType, PassTable } from '../../contexts/passes.ts';
 import { Passes } from '../../contexts/passes.ts';
 import { ImplicitCalls } from '../../resolution/applying/implicit.ts';
+import { CallRecords } from '../../resolution/calls/call-records.ts';
 import { blockTail } from '../../rules/agreement.ts';
 import { recordOutcomeCodecs } from '../../rules/boundary/outcome-codecs.ts';
 import { checkDisposeUses } from '../../rules/disposal/disposal.ts';
 import { checkDropped } from '../../rules/disposal/dropped.ts';
+import { FlowDecisions } from '../../rules/flow/flow-decisions.ts';
 import { freshLiteralOf } from '../../rules/placeholders.ts';
 import { checkTestingCalls } from '../../rules/testing.ts';
 import { statementPlace } from '../../surface/checked-annotation.ts';
 import type { CheckedBody, FieldGiver, ValueSite } from '../../surface/checked-body.ts';
-import type { ResolvedCall, ResolvedSite } from '../../surface/resolved-call.ts';
 import { type Admits, collectionTarget } from '../../types/fitting/expected.ts';
 import { type Fit, isExact } from '../../types/fitting/fit/index.ts';
 import { unfolded } from '../../types/type/computed-types.ts';
@@ -104,6 +99,8 @@ export class BodyChecker implements BodyContext {
   readonly functions: FunctionScopes;
   readonly literals = new StructLiterals(this.#passes);
   readonly implicit = new ImplicitCalls(this.#passes);
+  readonly calls = new CallRecords(this.#passes);
+  readonly decisions = new FlowDecisions(this.#passes);
   readonly collections = new CollectionForms(this.#passes);
   readonly valueCalls = new ValueCalls(this.#passes);
   readonly deferrals = new Deferrals(this.#passes);
@@ -187,7 +184,7 @@ export class BodyChecker implements BodyContext {
     for (const root of roots) {
       checkDropped(this, root);
     }
-    const calls = this.#records.resolved.entries();
+    const calls = this.calls.entries();
     checkDisposeUses(this, calls, checkTestingCalls(this, calls));
     recordOutcomeCodecs(this, calls);
     return checkedAt({ records: this.#records, units: this, result }, this.#passes.root);
@@ -290,10 +287,6 @@ export class BodyChecker implements BodyContext {
     return this.#records.types.get(node);
   }
 
-  callAt(site: ResolvedSite): ResolvedCall | undefined {
-    return this.#records.resolved.get(site);
-  }
-
   expectAt(site: Expression, expected: Type): void {
     this.#expected(site, expected);
   }
@@ -361,10 +354,6 @@ export class BodyChecker implements BodyContext {
     return entity;
   }
 
-  recordCall(site: ResolvedSite, call: ResolvedCall): void {
-    this.#records.resolved.set(site, call);
-  }
-
   fieldPasses(
     header: FieldHeader,
     passes: readonly FieldPassType[],
@@ -381,10 +370,6 @@ export class BodyChecker implements BodyContext {
     return {
       inEach: (run) => inEach((pass, index) => this.scopes.suspended(() => run(pass, index))),
     };
-  }
-
-  recordCandidates(site: ResolvedSite, candidates: readonly FunctionDeclaration[]): void {
-    this.#records.candidates.set(site, candidates);
   }
 
   recordField(giver: FieldGiver, field: FieldMember): void {
@@ -408,21 +393,5 @@ export class BodyChecker implements BodyContext {
 
   chosenVariantOf(name: Identifier): VariantEntity | undefined {
     return this.#records.chosenVariants.get(name);
-  }
-
-  ruleOut(body: Block): void {
-    this.#records.ruledOut.set(body, true);
-  }
-
-  stopAt(operation: Expression | Assignment, operands: readonly Expression[]): void {
-    this.#records.stops.set(operation, operands);
-  }
-
-  decide(condition: Expression, value: boolean): void {
-    this.#records.decided.set(condition, value);
-  }
-
-  decidedAt(node: Expression): boolean | undefined {
-    return this.#records.decided.get(node);
   }
 }

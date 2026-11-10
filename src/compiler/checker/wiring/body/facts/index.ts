@@ -72,7 +72,7 @@ const bodyFacts: { readonly [Name in FactName]: BodyFact<BodyFacts[Name], Across
     joined: typesJoined,
   },
   resolved: {
-    at: ({ records }, pass) => records.resolved.at(pass),
+    at: ({ units }, pass) => units.calls.at(pass),
     instantiated: asChecked,
     joined: (answers) =>
       everyDistinct(
@@ -95,9 +95,9 @@ const bodyFacts: { readonly [Name in FactName]: BodyFact<BodyFacts[Name], Across
   },
   madeCalls: {
     at:
-      ({ records, units }) =>
+      ({ units }) =>
       () => [
-        ...records.resolved.entries().map(([site, call]) => ({ site, call })),
+        ...units.calls.entries().map(([site, call]) => ({ site, call })),
         ...units.implicit.made(),
         ...units.literals.made(),
       ],
@@ -250,9 +250,9 @@ const bodyFacts: { readonly [Name in FactName]: BodyFact<BodyFacts[Name], Across
   },
   candidatesAt: {
     at:
-      ({ records }, pass) =>
+      ({ units }, pass) =>
       (site) =>
-        records.candidates.get(site, pass) ?? [],
+        units.calls.candidatesAt(site, pass),
     instantiated: asChecked,
     joined: everyListed,
   },
@@ -274,25 +274,25 @@ const bodyFacts: { readonly [Name in FactName]: BodyFact<BodyFacts[Name], Across
   },
   isRuledOut: {
     at:
-      ({ records }, pass) =>
+      ({ units }, pass) =>
       (block) =>
-        records.ruledOut.has(block, pass),
+        units.decisions.isRuledOut(block, pass),
     instantiated: asChecked,
     joined: inEveryPass,
   },
   stopsAt: {
     at:
-      ({ records }, pass) =>
+      ({ units }, pass) =>
       (operation) =>
-        records.stops.get(operation, pass),
+        units.decisions.stopsAt(operation, pass),
     instantiated: asChecked,
     joined: firstFound,
   },
   decidedOf: {
     at:
-      ({ records }, pass) =>
+      ({ units }, pass) =>
       (condition) =>
-        records.decided.get(condition, pass),
+        units.decisions.decidedAt(condition, pass),
     instantiated: asChecked,
     joined: firstFound,
   },

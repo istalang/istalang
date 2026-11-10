@@ -95,7 +95,7 @@ export interface CallRequest {
  */
 export function resolveCall(context: BodyContext, request: CallRequest): Type {
   const { site } = request;
-  context.recordCandidates(
+  context.calls.recordCandidates(
     site,
     request.candidates.map(({ declaration }) => declaration),
   );
@@ -288,5 +288,5 @@ export function recordChosen(context: BodyContext, chosen: Chosen): void {
     namesFunctionValue(site) || context.deferrals.isDeferred(site)
       ? callMade(application, instantiation)
       : judgedCall(context, { at: site.span, frame, application, instantiation });
-  context.recordCall(site, receiver === undefined ? call : { ...call, receiver });
+  context.calls.record(site, receiver === undefined ? call : { ...call, receiver });
 }

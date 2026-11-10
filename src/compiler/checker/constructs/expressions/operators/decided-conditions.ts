@@ -39,9 +39,9 @@ export function decidedValue(context: BodyContext, condition: Expression): boole
     case 'Binary':
       return condition.operator === 'and' || condition.operator === 'or'
         ? decidedLogic(context, condition)
-        : context.decidedAt(condition);
+        : context.decisions.decidedAt(condition);
     case 'Is':
-      return context.decidedAt(condition);
+      return context.decisions.decidedAt(condition);
     default:
       return undefined;
   }
@@ -89,7 +89,7 @@ export function checkEquality(
 
 /** Records that `node`, a comparison or `is`, always has `value`, and warns of it there. */
 export function decideComparison(context: BodyContext, node: Expression, value: boolean): void {
-  context.decide(node, value);
+  context.decisions.decide(node, value);
   context.report(checkerDiagnostics.decidedCondition(node.span, value));
 }
 

@@ -27,7 +27,7 @@ export function checkIf(context: BodyContext, node: If, expected: Type | undefin
       ? false
       : checkCondition(context, branch.condition);
     if (decided === false) {
-      context.ruleOut(branch.body);
+      context.decisions.ruleOut(branch.body);
     } else {
       branches.add(branch.body);
     }
@@ -35,7 +35,7 @@ export function checkIf(context: BodyContext, node: If, expected: Type | undefin
   }
   const elseBody = node.elseClause?.body;
   if (elseBody !== undefined && decidedTrue) {
-    context.ruleOut(elseBody);
+    context.decisions.ruleOut(elseBody);
   } else if (elseBody !== undefined) {
     branches.add(elseBody);
   }
@@ -59,7 +59,7 @@ function checkCondition(context: BodyContext, condition: Expression): boolean | 
   context.expectSettled(condition, boolType);
   const decided = decidedValue(context, condition);
   if (decided !== undefined) {
-    context.decide(condition, decided);
+    context.decisions.decide(condition, decided);
   }
   return decided;
 }
