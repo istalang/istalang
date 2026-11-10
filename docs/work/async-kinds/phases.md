@@ -56,35 +56,11 @@ requirements' kinds; lowering per kind; kind-marked extern keys; the kind-marks 
 Interim: an unmarked function takes an implicit kind where its signature needs one, which K1c ends;
 its debt is B54, B56–B58, B60, B61.
 
-## F1 Function types as `Fn` (structural; behaviour unchanged)
+## F1 `Fn` types: done (`b8997ecd`)
 
-**Scope.**
-- One builtin `Fn<Args, Result, Kind = "simple", Send = "plain">` (Rule 4). T0's constructor
-  carries the kind and `Send` as type slots, its `reach` field becoming the `Send` slot. `Args` is a
-  tuple (`(A,)` for one parameter, a pack one too, `&T` items for by-reference parameters). Every
-  spelling, `fn(A) -> R`, `live fn`, `sendable fn`, `ista async fn`, is its sugar, built through the
-  one constructor; `typeKey` and type text derive from the canonical form.
-- The prelude's `DataKind = "simple" | "live" | "ista"`, `Persistence` its kinded subset, and
-  `Sendability = "sendable" | "plain"`. Their two orders (Rule 4) join the fit relation and the
-  constraint system, encoded as the checker sees fit, not as subtyping between their members.
-- Head mark parameters parse and check as type parameters: `M fn`, `K async fn`, and a
-  requirement's `Self.Mode fn` (AW gives it meaning).
-- The standard library's and `testing`'s higher-order functions take `M in DataKind` and
-  `S in Sendability` and keep their arguments' (F28, absorbing QV); `Deferred<M in DataKind>`,
-  `defer<M>`, `M fn dispose`.
-- One spelling each: R1b's code-entry `plain` becomes `simple`, T0's `Reach` becomes
-  `Sendability`.
-- Unmarked `async` heads and types keep K1b's implicit kind; the data rule is K1c's.
-
-**Accept.** Property: each sugar's `typeKey` equals its `Fn` spelling's, over generated arguments,
-kinds and sendabilities. `logged(f)` keeps `f`'s sendability, `sendable` in and out, plain in and
-out; `map` keeps `f`'s mark. A one-parameter `Fn<(A,), R>` and an `&T` item check and run.
-`_ = defer log(x)` and `hold _ = defer log(x)` behave as before. No function-type literal outside
-the constructor, and no second spelling of `plain` or `Reach`. The full suite unchanged; profile
-within noise.
-
-**Spec.** §2 types and conversions; §3.5 mark parameters and the two orders; §3.8 prelude;
-§3.14 function types.
+`Fn<Args, Result, Kind, Send>` with every spelling its sugar; `DataKind`, `Sendability`; mark and send as
+type slots; head mark parameters; std higher-order functions over `M`; `Deferred<M>`. Order bounds and
+least-mark settling (B62), mark parameters by entity (B63): K1c.
 
 ## R2 Resolvers: done (`c2f00558`)
 
