@@ -86,25 +86,11 @@ within noise.
 **Spec.** §2 types and conversions; §3.5 mark parameters and the two orders; §3.8 prelude;
 §3.14 function types.
 
-## R2 Resolvers (runtime and host)
+## R2 Resolvers: done (`c2f00558`)
 
-**Scope.**
-- One resolver per wait (Rule 5), extending R1b's resume primitive: live, a reference to the
-  suspended code; ista, a heap object naming the waiter, registered where it will be resolved from
-  (slots' waiter queues, timers, results) and committed with the frame. `Futures.resolve` stops
-  scanning executions.
-- One-shot `resolve` and `tryResolve`; released unresolved, it panics its waiter; `onCancel` once
-  its waiter is gone (live at once, ista once the disposing segment commits). A `select`'s losing
-  cases are cancelled, so a losing `take` consumes nothing; a non-blocking `select`'s `else`
-  cancels every case.
-- A live future-returning extern receives its resolver; a returned promise still resolves it.
-
-**Accept.** A second `resolve` panics; a dropped resolver panics its waiter, naming the extern;
-disposal fires `onCancel` once; an ista disposal a crash rolls back fires nothing. A `select` won
-by one slot leaves the other slots' values. In `wake.bench.ts` resolving no longer grows with
-executions. The full suite unchanged.
-
-**Spec.** §3.6 an extern's resolver; §6 waits; §7 `onCancel` and dropped resolvers.
+One resolver per wait, registered on what it waits on; futures resolving together decide at the
+first case; a select's losers released as it is decided; live host externs take `call.resolver()`;
+disposal notices at once in live runs, after commit in instances. Host-visible ista notices: DG, AW.
 
 ## K1c The data rule (behavioural, then rewrite)
 
