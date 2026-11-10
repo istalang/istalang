@@ -12,7 +12,10 @@
  * - A future that has resolved gives its value at once. One still pending is awaited: the root
  *   ends, its segment committing as at any driver's `await`, and an `outcome` object holds the
  *   future (snapshot/objects.ts) until it resolves, a future it resolves with followed in turn
- *   (`Futures.endOf`). No frame waits for it, so traces show only the code the instance runs.
+ *   (`Futures.endOf`). No frame waits for it, so traces show only the code the instance runs. It
+ *   is let go of as any root is (`Instance.releaseRoot`): once it resolves, what it held is
+ *   collected before the instance finishes, a disposable outcome disposed as a returned one is;
+ *   and a termination disposes the call it awaits, its cleanup running (§7).
  * - The encoder is called before the root's last frame returns the outcome, on top of it, as if
  *   its own `return` called it, so what that frame holds lives until the outcome is encoded and is
  *   disposed after, as at any return; a native encoder answers at once. An outcome no frame
@@ -162,18 +165,18 @@ export class RootOutcome {
     }
     const resolved = futures.endOf(future);
     if (resolved === undefined) {
-      heap.add((id) => ({ kind: 'outcome', id, future }));
+      this.#seams.instance.awaitOutcome(future);
     }
     return resolved;
   }
 
   /** What the future the instance awaits ended with, letting go of it; undefined while pending. */
   #resolved(): Known | undefined {
-    const { heap, futures } = this.#seams.instance;
-    const [awaited] = heap.objectsOf('outcome');
-    const resolved = awaited === undefined ? undefined : futures.endOf(awaited.future);
-    if (awaited !== undefined && resolved !== undefined) {
-      heap.remove(awaited.id);
+    const { instance } = this.#seams;
+    const awaited = instance.awaitedOutcome();
+    const resolved = awaited === undefined ? undefined : instance.futures.endOf(awaited);
+    if (resolved !== undefined) {
+      instance.releaseRoot();
     }
     return resolved;
   }

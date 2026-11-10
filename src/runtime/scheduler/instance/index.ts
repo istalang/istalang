@@ -370,6 +370,33 @@ export class Instance {
     return root;
   }
 
+  /** The future the instance awaits as its outcome, once its root returned it pending (§9). */
+  awaitedOutcome(): number | undefined {
+    const [awaited] = this.heap.objectsOf('outcome');
+    return awaited?.future;
+  }
+
+  /** Makes `future`, which its root returned pending, the outcome the instance awaits (§9). */
+  awaitOutcome(future: number): void {
+    this.heap.add((id) => ({ kind: 'outcome', id, future }));
+  }
+
+  /**
+   * Lets go of the instance's root, as it finishes or ends (§9, §3.12): stops its root execution,
+   * or lets go of the outcome it awaits. Every root is let go of here, so what it held is noted
+   * released and collected as any release is: the call an awaited outcome holds is disposed, its
+   * cleanup running, unless it returned (§7).
+   */
+  releaseRoot(): void {
+    const root = this.root();
+    if (root !== undefined) {
+      this.stop(root);
+    }
+    for (const awaited of this.heap.objectsOf('outcome')) {
+      this.heap.remove(awaited.id);
+    }
+  }
+
   /** Removes an execution whose call returned. */
   remove(execution: LiveExecution): void {
     this.heap.remove(execution.id);

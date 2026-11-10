@@ -202,6 +202,45 @@ describe("a spawned instance's root", () => {
       ]),
     );
   });
+
+  it('disposes the awaited outcome call on terminate (running its disposing() cleanup), and disposes a disposable outcome when it finishes (§7, §9)', async () => {
+    const text = compiledText(
+      [
+        "import * as time from 'time'",
+        "import * as log from 'log'",
+        'shared struct Lease { name: String }',
+        'fn dispose(self: Lease): log.info("disposed " + self->name)',
+        'async fn boomAfterDelay() -> Future<Unit>:',
+        '  await time.delay(5ms)',
+        '  panic("boom")',
+        'async fn worker() -> Future<Int>:',
+        '  hold _ = boomAfterDelay()',
+        '  await select:',
+        '    case time.delay(100s): 0',
+        '    case worker.disposing():',
+        '      log.info("worker graceful cleanup")',
+        '      1',
+        'async fn makesLease() -> Future<Lease>:',
+        '  await time.delay(5ms)',
+        '  new Lease{name: "awaited"}',
+        'async fn main() -> Future<Int>:',
+        '  drop spawn worker()',
+        '  drop spawn makesLease()',
+        '  0',
+      ].join('\n'),
+    );
+    const test = testRuntime();
+    const program = test.runtime.deploy(text);
+    await program.start('p');
+    await test.runtime.wake('p/1');
+    await test.runtime.wake('p/2');
+    test.clock.set(test.clock.now() + 5n);
+    await test.runtime.wake('p/1');
+    const terminated = await test.runtime.terminate('p/1');
+    expect(terminated.logs.map(({ message }) => message)).toEqual(['worker graceful cleanup']);
+    const finished = await test.runtime.wake('p/2');
+    expect(finished.logs.map(({ message }) => message)).toEqual(['disposed awaited']);
+  });
 });
 
 describe('inspecting an instance', () => {

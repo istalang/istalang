@@ -136,8 +136,9 @@ export function runLiveSegment(
 }
 
 /**
- * Ends `instance` (§3.12): its root stops, so what it held is disposed (§7), a disposed call's
- * cleanup included, then any execution that only other executions hold stops too. A disposal that
+ * Ends `instance` (§3.12): its root is let go of, its execution stopped or the outcome it awaits
+ * dropped, so what it held is disposed (§7), a disposed call's cleanup included, then any
+ * execution that only other executions hold stops too. A disposal that
  * panics counts as done, so the rest still run and tell their hosts.
  */
 export function endInstance(instance: Instance, startedAt: bigint): void {
@@ -221,12 +222,9 @@ class SegmentRunner implements Machine {
   }
 
   end(): void {
-    const root = this.#instance.root();
     const step = () => this.#step();
-    if (root !== undefined) {
-      this.#instance.stop(root);
-      this.#collection.collectEnding(step);
-    }
+    this.#instance.releaseRoot();
+    this.#collection.collectEnding(step);
     for (const execution of this.#instance.heap.objectsOf('execution')) {
       this.#instance.stop(execution);
     }
@@ -370,6 +368,8 @@ class SegmentRunner implements Machine {
     this.#collection.collectFully(() => this.#step());
     for (let next = first ?? this.#next(); next !== undefined; next = this.#next()) {
       if (next.kind === 'finished') {
+        // Letting go of the outcome awaited let go of what it held, as a root's last return does.
+        this.#collection.collectFully(() => this.#step());
         return { kind: 'finished', ...next.outcome };
       }
       const end = this.#drive(next);
