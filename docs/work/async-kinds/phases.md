@@ -49,29 +49,12 @@ The source rewriter (`scripts/rewrite`); defaults in the callee (B16); `g f(args
 `awaitedOf`; the kinds spelled once; the `kinds` rewrite to `ista async fn` and `Future<T, "ista">`.
 Interim: an unmarked `async` head gives `Future<T, "ista">`, which K1b ends.
 
-## K1b Kind calls: the stopped branch, landed (interim)
+## K1b Kind calls (interim): done (`c5a76717`)
 
-The `k1b2` branch (mebu), landed in a minimal working form before F1 builds on it. K1c replaces its
-interim. Keeps K1a's ranges (plan.md).
-
-**Scope.**
-- Calls between kinds, judged in one seam on the frame the call is made in: each kind calls its own
-  and unmarked functions.
-- Signatures checked over held parts (futures, `extern live struct`), memoized per type;
-  requirements' kinds filter witnesses.
-- Lowering per kind: an entry's mode from its instance's kind.
-- Extern keys spell function types' kinds.
-- The rewrite: the kind-marks pass; every `main` becomes `ista async fn main`.
-- **Interim:** an unmarked function takes an implicit kind where its signature needs one, settled
-  by its caller. It stays out of the spec; K1c replaces it with written mark parameters and the
-  data rule.
-
-**Accept.** The full suite passes after the rewrite. Every behaviour row the branch tests holds as
-proposal 8 states it, or is listed as an interim difference. No accepted program crashes on a kind
-(an unmarked `async` lambda in an unmarked function is refused). Round-1 review findings fixed, or
-filed for K1c. Profile within noise.
-
-**Spec.** Only rules proposal 8 keeps: §3.10 requirement kinds; extern keys.
+One seam judging calls between kinds, written and implicit; signatures over every kind they hold;
+requirements' kinds; lowering per kind; kind-marked extern keys; the kind-marks pass.
+Interim: an unmarked function takes an implicit kind where its signature needs one, which K1c ends;
+its debt is B54, B56–B58, B60, B61.
 
 ## F1 Function types as `Fn` (structural; behaviour unchanged)
 
