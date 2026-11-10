@@ -29,7 +29,7 @@ import { formatSource } from '../../src/formatter/format.ts';
 import { createSourceText } from '../../src/foundation/text/source-text.ts';
 import { findProjectSources, findSources, loadProject } from '../../src/project/project.ts';
 import { diskFiles } from '../../src/project/project-files.ts';
-import { ManualClock } from '../../src/runtime/host/clock.ts';
+import { ManualClock } from '../../src/runtime/clock.ts';
 import { runTests } from '../../src/runtime/testing/run-tests.ts';
 import { stdNatives } from '../../src/stdlib/natives.ts';
 import { round, withCpuProfile } from './cpu-profile.ts';

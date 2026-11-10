@@ -9,7 +9,7 @@ import { describe, expect, it } from 'vitest';
 import { runPrograms } from '../../../test/corpus/programs.ts';
 import { compiledText } from '../../compiler/compile.test-kit.ts';
 import { stdNatives } from '../../stdlib/natives.ts';
-import { ManualClock } from '../host/clock.ts';
+import { ManualClock } from '../clock.ts';
 import type { Native, Natives } from '../natives.ts';
 import { recordingStore, runToEnd, startToEnd, testRuntime } from '../runtime.test-kit.ts';
 import { type Snapshot, snapshotFormat } from '../snapshot/snapshot.ts';

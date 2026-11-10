@@ -21,7 +21,6 @@
 
 import { randomBytes, randomUUID } from 'node:crypto';
 import { resolve } from 'node:path';
-import { setTimeout as sleep } from 'node:timers/promises';
 import { compileProgram, diagnose } from '../../compiler/compile.ts';
 import { definitionFormat } from '../../definition/definition.ts';
 import { FormatError } from '../../definition/formats/format.ts';
@@ -92,7 +91,7 @@ async function run(
       options.store === undefined
         ? memoryStore()
         : directoryStore(resolve(environment.cwd, options.store)),
-    now: clock.now,
+    clock,
     seed: () => randomBytes(seedBytes),
     ...(host === undefined ? {} : { host: host.externs }),
   });
@@ -230,8 +229,7 @@ async function nextWake(due: bigint | undefined, { host, environment }: Session)
   const sleeping = new AbortController();
   const waits: Promise<Wake>[] = [];
   if (due !== undefined) {
-    const delay = Math.max(0, Number(due - clock.now()));
-    waits.push(sleep(delay, 'woke', { signal: sleeping.signal }));
+    waits.push(clock.until(due, sleeping.signal).then(() => 'woke' as const));
   }
   if (host?.waiting() === true) {
     waits.push(

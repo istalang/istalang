@@ -6,7 +6,7 @@
 import type { Value } from '../definition/values/values.ts';
 import { stdNatives } from '../stdlib/natives.ts';
 import type { HostExterns } from './boundary/host-natives.ts';
-import { ManualClock } from './host/clock.ts';
+import { ManualClock } from './clock.ts';
 import { type Settled, settle } from './host/drive.ts';
 import { createRuntime, type DeployedProgram, type Runtime } from './host/index.ts';
 import type { Advanced, StartOptions } from './instance-state.ts';
@@ -69,7 +69,7 @@ export function testRuntime({
   seed = () => testSeed,
 }: TestRuntimeOptions = {}): TestRuntime {
   return {
-    runtime: createRuntime({ natives, store, now: clock.now, seed, host }),
+    runtime: createRuntime({ natives, store, clock, seed, host }),
     store,
     clock,
   };

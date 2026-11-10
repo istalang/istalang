@@ -27,7 +27,7 @@ import type { FunctionId } from '../../../definition/operands.ts';
 import type { Value } from '../../../definition/values/values.ts';
 import { memo } from '../../../foundation/structures/memo.ts';
 import { unreachable } from '../../../foundation/structures/unreachable.ts';
-import type { Clock } from '../../host/clock.ts';
+import type { Clock } from '../../clock.ts';
 import { drive } from '../../host/drive.ts';
 import { InstanceGroup } from '../../host/instance-group.ts';
 import type { Inspection, LogRecord } from '../../instance-state.ts';

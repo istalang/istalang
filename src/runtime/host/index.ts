@@ -36,6 +36,7 @@ import { memo } from '../../foundation/structures/memo.ts';
 import { recordExternSignatures } from '../boundary/extern-signatures.ts';
 import { type HostExterns, hostNatives } from '../boundary/host-natives.ts';
 import { outcomeJson, outcomeText } from '../boundary/outbound.ts';
+import type { Clock } from '../clock.ts';
 import type { Advanced, Finished, Inspection, StartOptions } from '../instance-state.ts';
 import type { Natives } from '../natives.ts';
 import { Refusal } from '../refusal.ts';
@@ -59,8 +60,8 @@ import { storedInstance } from './stored-instances.ts';
 export interface RuntimeSeams {
   readonly natives: Natives;
   readonly store: InstanceStore;
-  /** Milliseconds since the Unix epoch: when each segment starts (§5). */
-  readonly now: () => bigint;
+  /** The host's time: when each segment starts (§5), and what a live run waits on for its timers. */
+  readonly clock: Clock;
   /**
    * A new secret seed, `seedBytes` random bytes (../snapshot/random.ts), for each instance a host
    * starts: the source of its random values (§3.8 `random`). An instance it spawns is seeded from
@@ -139,7 +140,8 @@ export function createRuntime(seams: RuntimeSeams): Runtime {
       `The runtime implements ${shadowed.join(', ')} itself, so a host can't.`,
     );
   }
-  const held = heldInstances(seams);
+  const scheduling: SchedulerSeams = { store: seams.store, now: seams.clock.now };
+  const held = heldInstances(scheduling);
   const bind = programBinder({ ...seams, advance: held.advance });
   const residentOf = (instance: string) =>
     held.of(instance) ?? storedInstance(seams.store, (text) => bind(text).program, instance);
@@ -184,7 +186,7 @@ export function createRuntime(seams: RuntimeSeams): Runtime {
       promised(() => {
         const resident = residentOf(instance);
         panicked(resident.committed);
-        return terminate(seams, resident);
+        return terminate(scheduling, resident);
       }),
   };
 }

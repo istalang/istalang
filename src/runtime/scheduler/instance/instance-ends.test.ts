@@ -8,7 +8,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { compiledText } from '../../../compiler/compile.test-kit.ts';
-import { ManualClock } from '../../host/clock.ts';
+import { ManualClock } from '../../clock.ts';
 import { recordingStore, runToEnd, settleAll, testRuntime } from '../../runtime.test-kit.ts';
 
 /** `main` waiting for a child that waits first, then isolating a function that panics. */
