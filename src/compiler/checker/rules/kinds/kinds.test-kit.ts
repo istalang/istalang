@@ -1,6 +1,6 @@
 /**
- * What the kinds' rule tests share: checking a source given as lines, and the host type a live
- * value comes from.
+ * What the kinds' rule tests share: checking a source given as lines, and the types live values
+ * come from.
  */
 
 import { stdProgramOf } from '../../../binder/bind.test-kit.ts';
@@ -10,6 +10,13 @@ import { reported } from '../../check.test-kit.ts';
 
 /** A host type whose values stay in their process: live data. */
 export const socket = 'extern live struct Socket';
+
+/** A live type with a `default`, made only by live code. */
+export const liveResource = [
+  'shared struct LiveResource { n: Int }',
+  'live fn dispose(self: LiveResource): ()',
+  'live fn LiveResource.default() -> LiveResource: new LiveResource{n: 42}',
+];
 
 /** The codes checking `source` reports. */
 export function codesOf(...source: readonly string[]): readonly number[] {

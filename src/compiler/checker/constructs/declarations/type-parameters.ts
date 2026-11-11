@@ -42,6 +42,7 @@ import { typeKeys } from '../../types/identity/type-keys.ts';
 import { substituteConstraint } from '../../types/parts/substitution.ts';
 import { sameConstraintSpelled } from '../../types/parts/type-parts.ts';
 import { resolveConstraint } from '../../types/traits/constraints.ts';
+import { withKindBound } from '../../types/traits/data-kind.ts';
 import {
   resolveConstraintSet,
   resolveStructConstraint,
@@ -117,7 +118,8 @@ export class TypeParameters {
           of: parameterType(trait),
           name: requirement.name.text,
         };
-        return resolveConstraintSet(checker, module, requirement.constraints, () => self);
+        const bounds = resolveConstraintSet(checker, module, requirement.constraints, () => self);
+        return { ...bounds, traits: withKindBound(checker, bounds.traits) };
       },
       equal: (first, second) =>
         sameItems(sameConstraintSpelled)(first.traits, second.traits) &&

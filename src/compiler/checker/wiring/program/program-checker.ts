@@ -87,6 +87,7 @@ import { typeKeys } from '../../types/identity/type-keys.ts';
 import { standingFor } from '../../types/inference/variables.ts';
 import { sameTypeSpelled } from '../../types/parts/type-parts.ts';
 import { resolveAnyType } from '../../types/traits/any-types.ts';
+import { boundKindsOf } from '../../types/traits/data-kind.ts';
 import { memberUnionOf } from '../../types/traits/struct-keys.ts';
 import {
   type AnonymousStructType,
@@ -143,6 +144,7 @@ export class ProgramChecker implements CheckerContext {
   readonly disposeKindsOf: CheckerContext['disposeKindsOf'];
   readonly kindOf: CheckerContext['kindOf'];
   readonly valueKindsOf: CheckerContext['valueKindsOf'];
+  readonly boundKindsOf: CheckerContext['boundKindsOf'] = (type) => boundKindsOf(this, type);
   readonly #functions: FunctionChecks;
   readonly #constants: ConstantChecks;
   readonly #layouts: Layouts;

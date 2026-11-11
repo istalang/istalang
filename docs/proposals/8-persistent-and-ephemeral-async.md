@@ -45,6 +45,7 @@ K async fn twice<K in Persistence, T>(f: Fn<(), Future<T, K>, K>) -> T:   # gene
 type Mark = "simple" | "live" | "ista"          # prelude: data kinds and code marks
 type Persistence = "live" | "ista"                  # Mark's kinded members
 type Sendability = "sendable" | "plain"
+trait DataKind<K in Mark>                           # derived: a type whose kind is among K's marks
 extern shared struct Future<T, K in Persistence>
 ```
 
@@ -88,6 +89,8 @@ An unmarked `async fn` is an error: its future would be `Future<T, "simple">`.
 ### 3. Code generic over the kind
 
 - **Generics are transparent.** Unmarked code also handles its type parameters' values, whatever they stand for: the caller handles the concrete types, and the rule checks them there. So `Array<Socket>`'s functions work in live code, and `id(f)`, `f` a live future, is an error in ista code, which would hold it, and valid in live code. A type parameter's requirements and its `dispose` pass through the same way: unmarked generic code releasing a `T` that is a `Socket` is no error, its caller handling the `Socket`.
+- **What a type parameter computes has its bounds' kind.** No caller names `T.Data`, an associated type of a type parameter, so no caller can check it: its kind is what the bounds its trait declares allow, and `DataKind<"simple">` where none is written, as simple is never written. `type Data is DataKind<"live" | "simple">` may be live, so only live code holds it. A type `match` over a type parameter is of its cases' kinds, as its arguments instantiate them, what a case takes from its subject passing through as the parameter does.
+- **`DataKind<K>` is derived,** never declared: a type meets it when its kind is among `K`'s marks, `"simple"` where its values hold no kind. Sendable implies `DataKind<"simple">`, and `DataKind<K1>` implies `DataKind<K2>` when `K1`'s marks are `K2`'s; a type parameter meets it by its bounds. A type argument meets its trait's associated type bounds where it is used, so `createAndDrop<Box>()`, `Box.Data` live and the trait's `type Data` bounded by nothing, is an error naming that call and the bound to widen.
 - **A mark may be a type parameter,** `M in Mark`, or `K in Persistence` on an `async` head, whose future takes it. The body handles that kind's data and calls functions of it:
 
   ```python

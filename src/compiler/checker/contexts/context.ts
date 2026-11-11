@@ -200,6 +200,11 @@ export interface CheckerContext extends Omit<Checker, 'program'> {
    * read once per type however many signatures hold it.
    */
   readonly valueKindsOf: (type: Type) => readonly Type[];
+  /**
+   * The kinds the values of `type`, a type known by its constraints, may hold: those its bounds
+   * allow (types/traits/data-kind.ts).
+   */
+  readonly boundKindsOf: (type: Type) => readonly Type[];
   /** The static functions declared on `owner` in `module` (§3.7). */
   readonly staticFunctionsIn: (
     module: ModuleId,

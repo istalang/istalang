@@ -13,6 +13,7 @@ import type { Identifier } from '../../syntax/tree/node.ts';
 import type { TypeNode } from '../../syntax/types/index.ts';
 import type { CheckerContext } from '../contexts/context.ts';
 import type { Denotation, JoinedBody, LookupQueries, TypeMembers } from '../surface/denotation.ts';
+import { isSimpleKindBound } from '../types/traits/data-kind.ts';
 import { knownConstraints } from '../types/traits/known-constraints.ts';
 import type { Constraint, Type } from '../types/type/index.ts';
 import { denotationsOf } from './denotations/index.ts';
@@ -48,7 +49,10 @@ export class Lookup implements LookupQueries {
   }
 
   constraintsOf(type: Type): readonly Constraint[] {
-    return knownConstraints(this.#checker, type);
+    // Simple is never written (proposal 8, Rule 2), so neither is it shown.
+    return knownConstraints(this.#checker, type).filter(
+      (each) => !isSimpleKindBound(this.#checker, each),
+    );
   }
 
   /** The checker, with the item of `module` holding `node` checked whole. */

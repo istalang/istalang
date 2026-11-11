@@ -6,7 +6,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
-import { codesOf, reportedMessages, socket } from './kinds.test-kit.ts';
+import { codesOf, liveResource, reportedMessages, socket } from './kinds.test-kit.ts';
 
 const codes = checkerDiagnostics;
 
@@ -223,12 +223,6 @@ describe('the data rule beside layouts, passes and instantiations', () => {
     ).toEqual([codes.kindsHeld.code]);
   });
 
-  const liveResource = [
-    'shared struct LiveResource { n: Int }',
-    'live fn dispose(self: LiveResource): ()',
-    'live fn LiveResource.default() -> LiveResource: new LiveResource{n: 42}',
-  ];
-
   it("refuses a generic call whose constraints' witnesses handle the other kind", () => {
     expect(
       codesOf(
@@ -239,37 +233,6 @@ describe('the data rule beside layouts, passes and instantiations', () => {
         '  Phantom<T>{tag: 0}',
         'fn createAndDrop<P is Default>() -> P: P.default()',
         'ista async fn main() -> Int: createAndDrop<Phantom<LiveResource>>().tag',
-      ),
-    ).not.toEqual([]);
-  });
-
-  // Tracker B72: a generic body's values its parameters compute, through an associated type or a
-  // type match, are judged at no caller.
-  it.fails('refuses a generic call whose associated type is of the other kind', () => {
-    expect(
-      codesOf(
-        ...liveResource,
-        'trait HasData { type Data is Default }',
-        'struct Box { type Data = LiveResource }',
-        'fn createAndDrop<T is HasData>() -> Int:',
-        '  const x = T.Data.default()',
-        '  0',
-        'ista async fn main() -> Int: createAndDrop<Box>()',
-      ),
-    ).not.toEqual([]);
-  });
-
-  it.fails('refuses a generic call whose type match is of the other kind', () => {
-    expect(
-      codesOf(
-        ...liveResource,
-        'type PickResource<T> = match T:',
-        '  case Int: LiveResource',
-        '  case _: Int',
-        'fn holdPicked<T>() -> Int:',
-        '  const x: PickResource<T>? = none',
-        '  0',
-        'ista async fn main() -> Int: holdPicked<Int>()',
       ),
     ).not.toEqual([]);
   });

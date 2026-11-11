@@ -117,13 +117,13 @@ src/
                                                                  arguments, and type `match`es resolved, given, placed and unfolded
                                                                  (type-match.ts, written-matches.ts)
         properties/                                              what a type holds or reaches: finite values, held values, the cycle guard, handles read off declarations,
-                                                                 a value's data kind, in one home (value-kinds.ts), what a type parameter qualifies functions by,
+                                                                 a value's data kind, in one home (value-kinds.ts), an associated type's read through the checker from its bounds (traits/data-kind.ts), what a type parameter qualifies functions by,
                                                                  known by what its union holds (qualifiers.ts)
         inference/                                               above the model: inference of type arguments, as bounds on variables
                                                                  (bounds.ts) settled by one policy (settle.ts), in one system for
                                                                  the calls and literals one expression joins (system.ts); a mark or
                                                                  sendability variable's bounds agree and join by its order
-        traits/                                                  above inference: constraints, the derived `Sendable`, `any` types, and the object safety they
+        traits/                                                  above inference: constraints, the derived `Sendable` and `DataKind`, `any` types, and the object safety they
                                                                  need (object-safety.ts); struct constraints (struct-constraints.ts), and what a type meets by
                                                                  what it is, computed types `T.Data` and `S["meta"]` among them, with their reductions
                                                                  (known-constraints.ts)

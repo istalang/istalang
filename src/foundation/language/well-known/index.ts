@@ -58,6 +58,8 @@ export const wellKnown = {
   time: { module: 'time', name: 'Time' },
   /** The marker trait of values that may leave an instance, derived rather than declared (§3.1). */
   sendable: { module: 'prelude', name: 'Sendable' },
+  /** The derived trait of types whose kind is one of its argument's marks (proposal 8, Rule 3). */
+  dataKind: { module: 'prelude', name: 'DataKind' },
   /** What an array literal or a comprehension builds (§2, §3.10). */
   array: { module: 'prelude', name: 'Array' },
   /** What a map literal builds when no other type is expected (§2). */

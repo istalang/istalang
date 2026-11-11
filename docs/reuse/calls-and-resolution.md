@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-11-08
-last_updated: 2026-11-09
+last_updated: 2026-11-11
 tags: [reuse, checker, calls, resolution, overloads, traits, witnesses]
 ---
 
@@ -35,7 +35,7 @@ tags: [reuse, checker, calls, resolution, overloads, traits, witnesses]
 - instantiate a chosen candidate and resolve its witnesses → `instantiate` (`src/compiler/checker/resolution/conformance/conformance.ts`)
 - check trait conformance or find constraint witnesses → `meets`, `witnessesFor`, `conformWitnesses`, `silentMeets`; the witnesses a call through a trait on a union's value runs, which need no associated type of the union → `callWitnessesFor` (`src/compiler/checker/resolution/conformance/conformance.ts`); a goal asked at the root, a trait's or a struct constraint's, is an entry searched once per program and reported at each asking site → `checker.rootGoals` (`RootGoals` in `context.ts`, kept by `resolution/conformance/root-goals.ts`), which `witnessesFor`, `meets`, `callWitnessesFor` and noted constraint checks go through: a root check never starts a search of its own; what a search finds and the active coinductive goals it threads → `WitnessOutcome`, `Failure`, `Search`, `meetsWith` (`witness-outcomes.ts`)
 - check for or choose a declared witness for a trait requirement → `declaresWitness`, `chooseWitness`, `chooseWitnessAmong` for given candidates (`src/compiler/checker/resolution/conformance/declared-witness.ts`)
-- derive a trait by a rule over a type's form where no witness is declared (`Sendable`, `Encodable`, `Decodable`) → one `Derivation` in the table `derivationOf` reads (`src/compiler/checker/resolution/conformance/derived-traits.ts`), never a branch in `conform`; a new kind of type is a case in each derivation's rule
+- derive a trait by a rule over a type's form where no witness is declared (`Sendable`, `DataKind`, `Encodable`, `Decodable`) → one `Derivation` in the table `derivationOf` reads (`src/compiler/checker/resolution/conformance/derived-traits.ts`), never a branch in `conform`; a new kind of type is a case in each derivation's rule
 - resolve a type's `Default` witness (`default()`) → `defaultWitness`, `resolveDefault` (`src/compiler/checker/resolution/conformance/default-witness.ts`); what an `@JsonSkip` field reads back as, for its form and for where the annotation may stand alike → `CheckerContext.json.skippedDefaultOf` (`src/compiler/checker/surface/json-form.ts`, decided in `rules/boundary/json-forms.ts`)
 - build a `ResolvedCall` (`function` or `requirement`) from an `Application` and `Instantiation` → `callMade` (`src/compiler/checker/resolution/choosing/calls-made.ts`)
 - make a call the toolchain makes on its own to a plain function (no written call site), by its arguments or by explicit `typeArguments` → `silentCall`, `callWithTypes` (`src/compiler/checker/resolution/applying/silent-choice.ts`)

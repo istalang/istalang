@@ -12,7 +12,10 @@
  *   holds, a future's value among it, so one type may hold both kinds, which no code may handle.
  * - A function is simple data, whatever its mark: holding one isn't calling it (Rule 2).
  * - A type parameter's values are simple where they are handled: generic code passes them through,
- *   and the code that names their type handles them (Rule 3).
+ *   and the code that names their type handles them (Rule 3). An associated type of one is named by
+ *   no caller, so its kinds are those its bounds allow (traits/data-kind.ts).
+ * - An unreduced type `match` may be any of its cases' types, as its arguments instantiate them
+ *   (§3.17), what a case takes from a type not known yet passing through as a parameter does.
  * - A type holds what its written types do: a struct's fields', an enum's variants', an extern
  *   type's arguments. A field whose type its default gives adds no kind (§3.3: its default is
  *   judged as code of the kind its written fields give), so no default is checked to find a kind,
@@ -25,7 +28,7 @@ import type { CheckerContext } from '../../contexts/context.ts';
 import { sameType } from '../identity/identity.ts';
 import { substitute, substitutionFor } from '../parts/substitution.ts';
 import { parametersIn } from '../parts/type-parts.ts';
-import { isComputed, unfolded } from '../type/computed-types.ts';
+import { isComputed, type MatchType, unfolded } from '../type/computed-types.ts';
 import { persistenceOf } from '../type/function-kinds.ts';
 import { type NominalEntity, type NominalType, nominalType, type Type } from '../type/index.ts';
 import { aboveBottom, markOrder } from '../type/mark-orders.ts';
@@ -105,7 +108,7 @@ function passesArgumentsThrough(declared: DeclaredKinds): boolean {
  * The kinds of `type`, composed of its parts': a nominal type's its declaration's (`declaredOf`),
  * with those of each part its arguments decide, instantiated: an argument's own, a type its
  * arguments compute walked whole, any other part's own kind, its own parts being parts of the
- * declaration's too.
+ * declaration's too; any other type's its own and its parts'.
  */
 export function composedKindsOf(
   checker: CheckerContext,
@@ -113,9 +116,10 @@ export function composedKindsOf(
   kept: KeptKinds,
 ): readonly Type[] {
   if (type.kind !== 'nominal') {
-    return distinctKinds(
-      writtenPartsOf(checker, type).flatMap((part) => checker.valueKindsOf(part)),
-    );
+    return distinctKinds([
+      ...ownValueKindsOf(checker, type),
+      ...writtenPartsOf(checker, type).flatMap((part) => checker.valueKindsOf(part)),
+    ]);
   }
   const declared = kept.declaredOf(type.entity);
   const substitution = substitutionFor(
@@ -186,12 +190,13 @@ function writtenTypesOf(checker: CheckerContext, type: Type): readonly Type[] {
   const nesting = new Map<object, number>();
   const walk = (part: Type): void => {
     held.push(part);
-    // Only a nominal or recursive type can stand inside itself, so only those are guarded, by key.
-    if (part.kind !== 'nominal' && part.kind !== 'recursive') {
+    // Only a nominal, recursive or type `match` type can stand inside itself, so only those are
+    // guarded, by key.
+    if (part.kind !== 'nominal' && part.kind !== 'recursive' && part.kind !== 'match') {
       writtenPartsOf(checker, part).forEach(walk);
       return;
     }
-    const declaration = part.kind === 'nominal' ? part.entity.declaration : undefined;
+    const declaration = part.kind === 'recursive' ? undefined : declarationOf(part);
     const depth = declaration === undefined ? 0 : (nesting.get(declaration) ?? 0);
     if (depth >= nestingBound) {
       return;
@@ -208,14 +213,23 @@ function writtenTypesOf(checker: CheckerContext, type: Type): readonly Type[] {
   return held;
 }
 
+/** The declaration whose type `type` is: a nominal type's, or a type `match`'s alias. */
+function declarationOf(type: NominalType | MatchType): object {
+  return type.kind === 'nominal' ? type.entity.declaration : type.declaration;
+}
+
 /**
  * What a value of `type` holds one level down by the types written for it: a struct's fields' and
  * an enum's variants' written types, as the type's arguments instantiate them, an extern type's
- * arguments, and a tuple's, a union's or a shape's parts (held.ts).
+ * arguments, a tuple's, a union's or a shape's parts (held.ts), and an unreduced type `match`'s
+ * cases' types, any of which it may be.
  */
 function writtenPartsOf(checker: CheckerContext, type: Type): readonly Type[] {
   if (type.kind === 'recursive') {
     return writtenPartsOf(checker, unfolded(type));
+  }
+  if (type.kind === 'match') {
+    return caseTypesOf(checker, type);
   }
   if (type.kind !== 'nominal') {
     return heldPartsOf(checker, type);
@@ -242,6 +256,22 @@ function writtenPartsOf(checker: CheckerContext, type: Type): readonly Type[] {
   );
 }
 
+/** The types each case of `type`'s `match` gives, as its arguments instantiate them (§3.17). */
+function caseTypesOf(checker: CheckerContext, type: MatchType): readonly Type[] {
+  const form = checker.typeMatches.typeMatchOf(type.declaration);
+  if (form === undefined) {
+    return [];
+  }
+  const substitution = substitutionFor(typeParametersOf(form.parameters), type.arguments);
+  return form.cases.map(({ node }) =>
+    substitute(
+      checker.typeMatches.caseTypeOf(type.declaration, node),
+      substitution,
+      checker.typeRules,
+    ),
+  );
+}
+
 /** `kinds` but simple ones, each once. */
 function distinctKinds(kinds: readonly Type[]): readonly Type[] {
   return aboveBottom(kinds, markOrder.bottom, sameType);
@@ -261,8 +291,14 @@ function mayOwnKind(checker: CheckerContext, part: Type): part is NominalType {
   );
 }
 
-/** The kinds a value of `part` is of itself, by what it is, not what it holds. */
+/**
+ * The kinds a value of `part` is of itself, by what it is, not what it holds: an associated type of
+ * a type not known yet those its bounds allow.
+ */
 function ownValueKindsOf(checker: CheckerContext, part: Type): readonly Type[] {
+  if (part.kind === 'associated') {
+    return checker.boundKindsOf(part);
+  }
   if (!mayOwnKind(checker, part)) {
     return [];
   }

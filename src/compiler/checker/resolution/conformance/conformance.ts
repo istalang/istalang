@@ -257,7 +257,7 @@ function conform(
   const { checker } = site;
   const derivation = derivationOf(checker, constraint.trait);
   const missing =
-    derivation?.lacking(site, type) ??
+    derivation?.lacking(site, type, constraint) ??
     fieldShortfall(checker, type, constraint) ??
     (meeting.onValues === true
       ? undefined

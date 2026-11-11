@@ -5,7 +5,8 @@
  * given (types/traits/sendable.ts, rules/boundary/json-forms.ts), so a new kind of type is one case
  * in each rule and nothing here or in conformance.
  *
- * - `Sendable` requires no function, so its rule is all there is to meeting it.
+ * - `Sendable` requires no function, so its rule is all there is to meeting it; so does
+ *   `DataKind<K>`, whose rule reads `K` from the constraint.
  * - `Encodable` and `Decodable` each imply Sendable, since JSON written and read back is a copy
  *   sent, except where values cross to the host, which a disposable host type does unsendable
  *   (use-site.ts). A type declaring no codec of its own is met by the one the compiler derives
@@ -20,17 +21,19 @@ import type { TraitDeclaration } from '../../../syntax/declarations/index.ts';
 import type { CheckerContext } from '../../contexts/context.ts';
 import type { UseSite } from '../../contexts/use-site.ts';
 import { type DerivedCodec, type JsonDirection, jsonTraits } from '../../surface/json-form.ts';
+import { lackedKind } from '../../types/traits/data-kind.ts';
 import { isSendable } from '../../types/traits/sendable.ts';
-import type { Type } from '../../types/type/index.ts';
+import type { Constraint, Type } from '../../types/type/index.ts';
 import { isWellKnownTrait } from '../../types/type/well-known.ts';
 
 /** How a derived trait is met: what it asks of every type, and what it derives for one. */
 export interface Derivation {
   /**
-   * What `type` lacks to meet the trait at `site`, whatever functions are declared for it, in
-   * words a diagnostic finishes ("it needs …"); undefined when nothing.
+   * What `type` lacks to meet `constraint`, a constraint of the trait, at `site`, whatever
+   * functions are declared for it, in words a diagnostic finishes ("it needs …"); undefined when
+   * nothing.
    */
-  readonly lacking: (site: UseSite, type: Type) => string | undefined;
+  readonly lacking: (site: UseSite, type: Type, constraint: Constraint) => string | undefined;
   /**
    * The witness of the trait's function derived for `type`, which declares none, or what `type`
    * lacks to have one; absent for a trait requiring no function.
@@ -57,6 +60,10 @@ const derivations: ReadonlyMap<WellKnownDeclaration, Derivation> = new Map<
   Derivation
 >([
   [wellKnown.sendable, { lacking: unsendable }],
+  [
+    wellKnown.dataKind,
+    { lacking: (site, type, constraint) => lackedKind(site.checker, type, constraint) },
+  ],
   [jsonTraits.write, codecDerivation('write')],
   [jsonTraits.read, codecDerivation('read')],
 ]);

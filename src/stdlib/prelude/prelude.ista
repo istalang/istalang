@@ -352,6 +352,8 @@ fn String.parse(text: String) -> Result<String>: Ok(text)
 
 trait Sendable
 
+trait DataKind<K in Mark>
+
 trait Disposable:
   fn dispose(self: Self)
 
