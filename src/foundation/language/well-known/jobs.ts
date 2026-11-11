@@ -6,7 +6,6 @@
  */
 
 export const jobFunctions = {
-  module: 'runtime',
   delegate: 'delegate',
   server: '_serve',
 } as const;

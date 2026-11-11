@@ -5,7 +5,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { codesOf, runMain } from './computed.test-kit.ts';
+import { codesOf, runMain } from '../written-types.test-kit.ts';
 
 const declarations = [
   'trait Shown:',

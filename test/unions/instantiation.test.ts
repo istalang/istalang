@@ -9,7 +9,7 @@
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { runMain } from './unions.test-kit.ts';
+import { runMain } from '../written-types.test-kit.ts';
 
 /** A type argument as written, and values of it, as written. */
 interface TypeArgument {

@@ -10,12 +10,8 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { checkerDiagnostics } from '../../src/compiler/checker/diagnostics/index.ts';
-import {
-  codesOf,
-  type GeneratedField,
-  generatedFieldsArbitrary,
-  runMain,
-} from './computed.test-kit.ts';
+import { codesOf, runMain } from '../written-types.test-kit.ts';
+import { type GeneratedField, generatedFieldsArbitrary } from './computed.test-kit.ts';
 
 const { heldNoValue, decidedCondition, unreachableCase } = checkerDiagnostics;
 

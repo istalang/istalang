@@ -77,6 +77,7 @@ import type {
   RootGoals,
 } from '../../contexts/context.ts';
 import { Lookup } from '../../lookup/lookup.ts';
+import { namedInModule } from '../../resolution/choosing/candidates.ts';
 import { rootSearches } from '../../resolution/conformance/conformance.ts';
 import { programRootGoals } from '../../resolution/conformance/root-goals.ts';
 import { traitObjectsOf } from '../../resolution/conformance/trait-objects.ts';
@@ -395,8 +396,12 @@ export class ProgramChecker implements CheckerContext {
   }
 
   languageFunctions(module: LanguageModule, name: string): readonly FunctionDeclaration[] {
-    const entity = this.#languageDeclaration(module, name);
-    return entity?.kind === 'functions' ? this.bindings.overloadsOf(entity) : [];
+    const id = this.inputs.role(module);
+    return id === undefined ? [] : this.topLevelFunctions(id, name);
+  }
+
+  topLevelFunctions(module: ModuleId, name: string): readonly FunctionDeclaration[] {
+    return namedInModule(this, module, name);
   }
 
   diagnosticsOf(module: ModuleId): readonly Diagnostic[] {
@@ -407,8 +412,13 @@ export class ProgramChecker implements CheckerContext {
     this.#moduleChecks.checkItem(module, item);
   }
 
+  /**
+   * What language module `module` declares as `name`, when the program has that module: what it
+   * exports, or a private name the toolchain itself uses, such as a json helper a codec calls.
+   */
   wellKnownEntity({ module, name }: WellKnownDeclaration): Entity | undefined {
-    return this.#languageDeclaration(module, name);
+    const id = this.inputs.role(module);
+    return id === undefined ? undefined : this.bindings.topLevelNamed(id, name);
   }
 
   wellKnownType(
@@ -419,14 +429,5 @@ export class ProgramChecker implements CheckerContext {
     return entity?.kind === 'type' && isNominalEntity(entity)
       ? { kind: 'nominal', entity, arguments: typeArguments }
       : undefined;
-  }
-
-  /**
-   * What language module `module` declares as `name`, when the program has that module: what it
-   * exports, or a private name the toolchain itself uses, such as a json helper a codec calls.
-   */
-  #languageDeclaration(module: LanguageModule, name: string) {
-    const id = this.inputs.role(module);
-    return id === undefined ? undefined : this.bindings.topLevelNamed(id, name);
   }
 }

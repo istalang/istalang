@@ -1,36 +1,37 @@
 /**
- * Shared helpers for black-box tests of union and literal types (docs/proposals/3-union-types.md):
- * resolving written types through the checker, comparing normalized type identity and keys,
- * compiling and running snippets in memory, and querying hover and completion on union programs.
+ * Black-box probes of written types, shared by the union (docs/proposals/3-union-types.md) and
+ * computed-type (docs/proposals/4-computed-types.md) tests: resolving written types through the
+ * checker, comparing their identity, keys and assignability, compiling and running snippets in
+ * memory, and querying hover and completion.
  */
 
-import { stdProgramOf } from '../../src/compiler/binder/bind.test-kit.ts';
-import { reported } from '../../src/compiler/checker/check.test-kit.ts';
-import { type Checker, checkProgram } from '../../src/compiler/checker/check.ts';
-import { sameType } from '../../src/compiler/checker/types/identity/identity.ts';
-import { typeKeys } from '../../src/compiler/checker/types/identity/type-keys.ts';
-import type { Type } from '../../src/compiler/checker/types/type/index.ts';
-import { typeText } from '../../src/compiler/checker/types/type/type-text.ts';
-import { compiledDefinition, compiledText } from '../../src/compiler/compile.test-kit.ts';
-import { idOf } from '../../src/compiler/program/program.test-kit.ts';
-import type { FunctionDeclaration } from '../../src/compiler/syntax/declarations/index.ts';
-import type { Definition } from '../../src/definition/definition.ts';
-import { decodeJson } from '../../src/definition/formats/codec.ts';
-import { completionsAt } from '../../src/editor/language-service/completion/index.ts';
-import { hoverAt } from '../../src/editor/language-service/hover.ts';
-import { programAt } from '../../src/editor/language-service/language-service.test-kit.ts';
-import { startToEnd, testRuntime } from '../../src/runtime/runtime.test-kit.ts';
+import { stdProgramOf } from '../src/compiler/binder/bind.test-kit.ts';
+import { reported } from '../src/compiler/checker/check.test-kit.ts';
+import { type Checker, checkProgram } from '../src/compiler/checker/check.ts';
+import { sameType } from '../src/compiler/checker/types/identity/identity.ts';
+import { typeKeys } from '../src/compiler/checker/types/identity/type-keys.ts';
+import type { Type } from '../src/compiler/checker/types/type/index.ts';
+import { typeText } from '../src/compiler/checker/types/type/type-text.ts';
+import { compiledDefinition } from '../src/compiler/compile.test-kit.ts';
+import { idOf } from '../src/compiler/program/program.test-kit.ts';
+import type { FunctionDeclaration } from '../src/compiler/syntax/declarations/index.ts';
+import type { Definition } from '../src/definition/definition.ts';
+import { completionsAt } from '../src/editor/language-service/completion/index.ts';
+import { hoverAt } from '../src/editor/language-service/hover.ts';
+import { programAt } from '../src/editor/language-service/language-service.test-kit.ts';
+import { mainOutcome } from '../src/stdlib/prelude/prelude.test-kit.ts';
 
 /** A checked program with `declarations` and a probe function `fn _probe(...parameters)`. */
 export interface ProbedTypes {
   readonly checker: Checker;
   readonly types: readonly Type[];
   readonly syntaxErrors: readonly number[];
+  readonly diagnosticCodes: readonly number[];
 }
 
 /**
  * Parses and checks `fn _probe(p0: T0, p1: T1, ...): ()` after `declarations`, returning the
- * checker, each parameter's resolved `Type`, and any syntax diagnostic codes.
+ * checker, each parameter's resolved `Type`, syntax diagnostic codes, and all diagnostic codes.
  */
 export function resolveWrittenTypes(
   writtenTypes: readonly string[],
@@ -48,7 +49,8 @@ export function resolveWrittenTypes(
       ? checker.parametersOf(probe as FunctionDeclaration).map((param) => param.type)
       : [];
   const syntaxErrors = (mod?.tree.diagnostics ?? []).map((d) => d.code);
-  return { checker, types, syntaxErrors };
+  const diagnosticCodes = reported(source).codes;
+  return { checker, types, syntaxErrors, diagnosticCodes };
 }
 
 /** Observation comparing two written types `first` and `second` after `declarations`. */
@@ -95,33 +97,16 @@ export function codesOf(...lines: readonly string[]): readonly number[] {
   return reported(lines.join('\n')).codes;
 }
 
-/**
- * Compiles and runs `ista async fn _main() -> result: body` after `declarations`, in a context a
- * live `main` calls (§9), returning the decoded JSON outcome when it finishes, or the ended state
- * otherwise.
- */
+/** `mainOutcome` of `_main`'s `body` as written under its head, after the lines `declarations`. */
 export async function runMain(
   result: string,
   body: string,
   declarations: readonly string[] = [],
 ): Promise<unknown> {
-  const source = [
-    ...declarations,
-    `import * as runtime from 'runtime'
-live async fn main() -> ${result}: await runtime.run(runtime.id()) _main()
-ista async fn _main() -> ${result}:`,
-    `  ${body}`,
-  ].join('\n');
-  const state = await startToEnd(testRuntime(), compiledText(source));
-  return state.kind === 'finished' ? decodeJson(String(state.outcome)) : state;
+  return await mainOutcome(result, body, declarations.join('\n'));
 }
 
-/** Compiles `lines` as `main` beside the std modules and returns its `Definition`. */
-export function definitionOf(...lines: readonly string[]): Definition {
-  return compiledDefinition(stdProgramOf({ main: lines.join('\n') }), 'main');
-}
-
-/** Hover code lines at the `‸` cursor in `lines`. */
+/** The hover's code lines at the `‸` cursor in `lines`, as `main.ista` beside the std modules. */
 export function hoverCodeAt(...lines: readonly string[]): readonly string[] | undefined {
   const { program, module, offset } = programAt(...lines);
   return hoverAt(program, module, offset)?.code;
@@ -131,4 +116,9 @@ export function hoverCodeAt(...lines: readonly string[]): readonly string[] | un
 export function completionNamesAt(...lines: readonly string[]): readonly string[] {
   const { program, module, offset } = programAt(...lines);
   return completionsAt(program, module, offset).map(({ name }) => name);
+}
+
+/** Compiles `lines` as `main` beside the std modules and returns its `Definition`. */
+export function definitionOf(...lines: readonly string[]): Definition {
+  return compiledDefinition(stdProgramOf({ main: lines.join('\n') }), 'main');
 }

@@ -144,6 +144,8 @@ export interface Checker {
     module: LanguageModule,
     name: string,
   ) => readonly FunctionDeclaration[];
+  /** The functions of `name` `module` declares at its top level, private ones included (§3.13). */
+  readonly topLevelFunctions: (module: ModuleId, name: string) => readonly FunctionDeclaration[];
   /**
    * A well-known type, such as `Future`, with its type arguments; undefined when the program
    * lacks its module.

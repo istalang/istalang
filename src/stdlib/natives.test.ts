@@ -8,7 +8,7 @@ import { keyOf } from '../compiler/lowering/tables/names.ts';
 import { declaredFunctions } from '../compiler/syntax/declarations/index.ts';
 import { derivedCodecs } from '../foundation/language/well-known/codecs.ts';
 import { disposeFunction } from '../foundation/language/well-known/implicit-calls.ts';
-import { languageModules } from '../foundation/language/well-known/index.ts';
+import { languageModules, runtimeModule } from '../foundation/language/well-known/index.ts';
 import { stdNatives } from './natives.ts';
 import { everyStdModule } from './std-modules.test-kit.ts';
 
@@ -20,7 +20,7 @@ import { everyStdModule } from './std-modules.test-kit.ts';
 const withoutNative = new Set([
   `${languageModules.prelude}.${disposeFunction}`,
   `${languageModules.testing}.${disposeFunction}`,
-  `runtime.${disposeFunction}`,
+  `${runtimeModule}.${disposeFunction}`,
   ...Object.values(derivedCodecs).map((name) => `${languageModules.json}.${name}`),
 ]);
 

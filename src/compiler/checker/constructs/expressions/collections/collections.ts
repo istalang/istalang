@@ -22,7 +22,8 @@
  *   types.
  * - An expected `T?` guides a literal like an expected `T`; fitting it then wraps the value (§2).
  * - Passed to a call, a literal whose own items don't decide its type, or an empty one, has the
- *   type the call decides (§3.5), so it takes what each item can take (collection-accepts.ts).
+ *   type the call decides (§3.5), a generic one of the constraint scope it joins
+ *   (joining-literals.ts, empty-collections.ts).
  */
 
 import type { Diagnostic } from '../../../../../foundation/diagnostics/diagnostic.ts';

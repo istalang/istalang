@@ -10,12 +10,8 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { compareOrdered } from '../../src/foundation/language/order.ts';
-import {
-  compareWrittenTypes,
-  generatedFieldsArbitrary,
-  runMain,
-  sameComputedType,
-} from './computed.test-kit.ts';
+import { compareWrittenTypes, runMain } from '../written-types.test-kit.ts';
+import { generatedFieldsArbitrary, sameComputedType } from './computed.test-kit.ts';
 
 describe('a rest through a union member an instantiation collapses', () => {
   it('reads the member’s value whether the union collapsed or not', async () => {

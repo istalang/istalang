@@ -24,6 +24,12 @@ export const languageModules = {
 export type LanguageModule = keyof typeof languageModules;
 
 /**
+ * The std module of runtimes, contexts and jobs (§5, §9), which the toolchain knows by name but a
+ * program has only where it imports it, so it plays no role.
+ */
+export const runtimeModule = 'runtime';
+
+/**
  * The scheme of a std module's id, `std:<name>`. No file can have it, so a std module is never
  * confused with a project file; an editor shows one by asking the language server for its text.
  */

@@ -11,7 +11,7 @@ import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { reported } from '../../src/compiler/checker/check.test-kit.ts';
 import { checkerDiagnostics } from '../../src/compiler/checker/diagnostics/index.ts';
-import { codesOf, hoverCodeAt, runMain } from './unions.test-kit.ts';
+import { codesOf, hoverCodeAt, runMain } from '../written-types.test-kit.ts';
 
 const matchDecls = [
   'type Status = "draft" | "sent" | "failed"',

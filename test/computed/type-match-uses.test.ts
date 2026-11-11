@@ -14,7 +14,7 @@ import { substitute, substituteKept } from '../../src/compiler/checker/types/par
 import { unfoldRecursive } from '../../src/compiler/checker/types/type/computed-types.ts';
 import { intType } from '../../src/compiler/checker/types/type/primitives.ts';
 import type { FunctionDeclaration } from '../../src/compiler/syntax/declarations/index.ts';
-import { codesOf, resolveWrittenTypes, runMain, spelledTypeOf } from './computed.test-kit.ts';
+import { codesOf, resolveWrittenTypes, runMain, spelledTypeOf } from '../written-types.test-kit.ts';
 
 /** `Data<D>` is recursive for a `Node`, which holds nodes, and plain for a `Leaf`. */
 const dataDecls = [

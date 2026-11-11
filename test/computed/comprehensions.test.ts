@@ -10,7 +10,8 @@
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { codesOf, generatedFieldsArbitrary, runMain } from './computed.test-kit.ts';
+import { codesOf, runMain } from '../written-types.test-kit.ts';
+import { generatedFieldsArbitrary } from './computed.test-kit.ts';
 
 const formDeclarations = [
   'trait FormNode:',

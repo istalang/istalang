@@ -7,7 +7,7 @@
 import { describe, expect, it } from 'vitest';
 import { stdProgramOf } from '../../src/compiler/binder/bind.test-kit.ts';
 import { diagnosedAt } from '../../src/compiler/compile.test-kit.ts';
-import { hoverCodeAt } from './computed.test-kit.ts';
+import { hoverCodeAt } from '../written-types.test-kit.ts';
 
 const declarations = [
   'struct Bad<T>:',

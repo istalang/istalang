@@ -12,7 +12,7 @@ import { parserDiagnostics } from '../../src/compiler/parser/diagnostics.ts';
 import { startToEnd, testRuntime } from '../../src/runtime/runtime.test-kit.ts';
 import { checkSnapshot } from '../../src/runtime/snapshot/check/index.ts';
 import { snapshotFormat } from '../../src/runtime/snapshot/snapshot.ts';
-import { codesOf, definitionOf, runMain } from './unions.test-kit.ts';
+import { codesOf, definitionOf, runMain } from '../written-types.test-kit.ts';
 
 describe('contextual variance words `gives` and `takes` (§2, §3.5)', () => {
   it('allows `gives` and `takes` as ordinary identifiers outside type parameter prefixes', async () => {

@@ -8,7 +8,8 @@
 
 import { describe, expect, it } from 'vitest';
 import { checkerDiagnostics } from '../../src/compiler/checker/diagnostics/index.ts';
-import { codesOf, compareWrittenTypes, runMain, sameComputedType } from './computed.test-kit.ts';
+import { codesOf, compareWrittenTypes, runMain } from '../written-types.test-kit.ts';
+import { sameComputedType } from './computed.test-kit.ts';
 
 const schemaDecls = [
   'trait FormNode:',

@@ -8,7 +8,7 @@
  * - A local `fn` is a `const` bound to its closure (§3.14).
  * - A top-level or static function named as a value is a closure without captures, of the
  *   instance the checker resolved for the name, as is a variant's constructor (§3.11), whose entry
- *   builds the variant (synthesized/constructors.ts).
+ *   builds the variant (../../functions/built-entries.ts).
  */
 
 import type { Register } from '../../../../definition/operands.ts';
@@ -35,8 +35,8 @@ export function lowerLocalFunction(context: FunctionContext, node: FunctionDecla
 
 /**
  * A function the checker resolved for the name at `site`, maybe given type arguments, as a closure
- * without captures, of the entry taking the value's parameters: a filling one when its type leaves
- * defaults out (§3.14).
+ * without captures of its own entry, which computes the defaults a call through the value leaves
+ * out (§3.3, §3.14).
  */
 export function lowerFunctionValue(
   context: FunctionContext,

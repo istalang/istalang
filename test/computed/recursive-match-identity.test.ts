@@ -5,13 +5,8 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import {
-  codesOf,
-  compareWrittenTypes,
-  hoverCodeAt,
-  runMain,
-  sameComputedType,
-} from './computed.test-kit.ts';
+import { codesOf, compareWrittenTypes, hoverCodeAt, runMain } from '../written-types.test-kit.ts';
+import { sameComputedType } from './computed.test-kit.ts';
 
 const dataDecls = [
   'struct Node<T> { value: T, next: Array<Node<T>> }',

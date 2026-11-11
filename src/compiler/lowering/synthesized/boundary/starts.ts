@@ -6,8 +6,8 @@
  *
  * - Startable: a top-level function the rule of what a host may start admits
  *   (foundation/language/starts.ts), or a top-level constant holding a sendable lambda (§3.14),
- *   whose parameters can be read from JSON and whose outcome written. Its kind is the checker's,
- *   inferred where the head writes none, so ista code, which a host never starts, gets no entry.
+ *   whose parameters can be read from JSON and whose outcome written. Its kind is its head's, a
+ *   lambda's the checker's, so ista code, which a host never starts, gets no entry.
  *   Anything else simply isn't startable.
  * - A start entry is the function's own body taking each argument as `Json` and decoding it, so
  *   JSON that doesn't fit fails the host's start and nothing runs. The run is therefore one
@@ -20,7 +20,7 @@ import type { CodeFunction } from '../../../../definition/tables/functions.ts';
 import { isStartable, type StartShape } from '../../../../foundation/language/starts.ts';
 import { unreachable } from '../../../../foundation/structures/unreachable.ts';
 import type { Checker } from '../../../checker/check.ts';
-import { kindOfFunction, persistenceOf } from '../../../checker/types/type/function-kinds.ts';
+import { persistenceOf } from '../../../checker/types/type/function-kinds.ts';
 import { isSendableFunction } from '../../../checker/types/type/function-types.ts';
 import type { FunctionType, Type } from '../../../checker/types/type/index.ts';
 import { outcomeOf } from '../../../checker/types/type/well-known.ts';
@@ -79,8 +79,7 @@ function functionStartable(
   checker: Checker,
   declaration: FunctionDeclaration,
 ): Startable | undefined {
-  const kind = kindOfFunction(checker, declaration);
-  const shape = { ...startShapeOf(declaration), isIsta: persistenceOf(kind) === 'ista' };
+  const shape = startShapeOf(declaration);
   const outcome = checker.bodyOf(declaration)?.result;
   const parameters = checker.parametersOf(declaration);
   return !isStartable(shape) || outcome === undefined

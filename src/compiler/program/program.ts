@@ -26,7 +26,7 @@
  */
 
 import type { Diagnostic } from '../../foundation/diagnostics/diagnostic.ts';
-import type { LanguageModule } from '../../foundation/language/well-known/index.ts';
+import { type LanguageModule, stdScheme } from '../../foundation/language/well-known/index.ts';
 import { unreachable } from '../../foundation/structures/unreachable.ts';
 import { createSourceText, type SourceText } from '../../foundation/text/source-text.ts';
 import { parse } from '../parser/parse.ts';
@@ -45,6 +45,11 @@ export type ModuleId = string & { readonly [isModuleUrl]: true };
 /** The id of the module whose source is at `url`. */
 export function moduleIdOf(url: URL): ModuleId {
   return url.href as ModuleId;
+}
+
+/** The id of the std module `name` (§3.8), `std:<name>`. */
+export function stdModuleIdOf(name: string): ModuleId {
+  return moduleIdOf(new URL(`${stdScheme}:${name}`));
 }
 
 /** A module a loader found, not yet read. */

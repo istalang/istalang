@@ -10,7 +10,7 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { computedTypesIn, errorIn } from '../../src/compiler/checker/types/parts/type-parts.ts';
-import { codesOf, resolveWrittenTypes, runMain } from './computed.test-kit.ts';
+import { codesOf, resolveWrittenTypes, runMain } from '../written-types.test-kit.ts';
 
 const declarations = [
   'type List<T> = { head: T, tail: List<T>? }',

@@ -57,13 +57,12 @@ function takerCallOf(node: DeferredCall): Call | undefined {
 
 /**
  * What `node` calls by name, without the type arguments written after it, which are the call's
- * (§3.5): `f` of `f<Int>(x)`; a deferred call's taker's. An optional call's callee is a value,
- * type arguments and all (§4).
+ * (§3.5): `f` of `f<Int>(x)`; a deferred call's taker's path, which writes none (`isTakerShaped`).
+ * An optional call's callee is a value, type arguments and all (§4).
  */
 export function calledName(node: CallingNode): Expression {
   if (node.kind === 'DeferredCall') {
-    const taker = takerCallOf(node);
-    return taker === undefined ? node.taker : calledName(taker);
+    return takerCallOf(node)?.callee ?? node.taker;
   }
   const { callee } = node;
   return callee.kind === 'TypeApplication' && !node.isOptional ? callee.target : callee;
@@ -72,8 +71,7 @@ export function calledName(node: CallingNode): Expression {
 /** The type arguments `node` gives the function it calls (`calledName`), if any. */
 export function callTypeArguments(node: CallingNode): readonly TypeNode[] | undefined {
   if (node.kind === 'DeferredCall') {
-    const taker = takerCallOf(node);
-    return taker === undefined ? undefined : callTypeArguments(taker);
+    return undefined;
   }
   const { callee } = node;
   return callee.kind === 'TypeApplication' && !node.isOptional ? callee.typeArguments : undefined;
@@ -95,8 +93,8 @@ export function callsThroughOptional(node: CallingNode): boolean {
 /**
  * The node making the call `node` is the callee of, among `holders`, the nodes holding it
  * innermost first: as written, or by name before type arguments that are the call's
- * (`calledName`); a deferred call where it is its taker or its taker's callee; undefined when it
- * is no callee.
+ * (`calledName`), which no taker writes; a deferred call where it is its taker or its taker's
+ * callee; undefined when it is no callee.
  */
 export function callOfCallee(
   node: SyntaxNode,
@@ -104,8 +102,8 @@ export function callOfCallee(
 ): CallingNode | undefined {
   const [holder, ...outer] = holders;
   if (holder?.kind === 'TypeApplication' && holder.target === node) {
-    const [call, ...around] = outer;
-    return call?.kind === 'Call' && calledName(call) === node ? makerOf(call, around) : undefined;
+    const [call] = outer;
+    return call?.kind === 'Call' && calledName(call) === node ? call : undefined;
   }
   if (holder?.kind === 'DeferredCall') {
     return holder.taker === node ? holder : undefined;

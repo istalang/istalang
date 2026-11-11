@@ -16,7 +16,7 @@ import {
   definitionOf,
   hoverCodeAt,
   runMain,
-} from './unions.test-kit.ts';
+} from '../written-types.test-kit.ts';
 
 const commonDecls = [
   'type Status = "draft" | "sent" | "failed"',

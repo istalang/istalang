@@ -5,7 +5,8 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { codesOf, compareWrittenTypes, runMain, sameComputedType } from './computed.test-kit.ts';
+import { codesOf, compareWrittenTypes, runMain } from '../written-types.test-kit.ts';
+import { sameComputedType } from './computed.test-kit.ts';
 
 const tree = 'type Tree = Int | Array<Tree>';
 

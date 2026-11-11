@@ -7,7 +7,8 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { codesOf, compareWrittenTypes, runMain, sameComputedType } from './computed.test-kit.ts';
+import { codesOf, compareWrittenTypes, runMain } from '../written-types.test-kit.ts';
+import { sameComputedType } from './computed.test-kit.ts';
 
 describe('key types: `keyof S`, `S[K]`, `s[k]`, and `Entry` / `AnyEntry` (§8)', () => {
   const keyDecls = [

@@ -9,7 +9,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { checkerDiagnostics } from '../../src/compiler/checker/diagnostics/index.ts';
-import { codesOf, hoverCodeAt, runMain } from './unions.test-kit.ts';
+import { codesOf, hoverCodeAt, runMain } from '../written-types.test-kit.ts';
 
 const baseDecls = [
   'type Status = "draft" | "sent" | "failed"',

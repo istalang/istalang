@@ -17,7 +17,7 @@ import {
   resolveWrittenTypes,
   runMain,
   spelledTypeOf,
-} from './unions.test-kit.ts';
+} from '../written-types.test-kit.ts';
 
 const sharedDecls = [
   'type Point = { x: Int, y: Int }',

@@ -70,7 +70,7 @@ export type Compilation =
   | { readonly kind: 'compiled'; readonly definition: Definition }
   /** Some module has errors; `diagnose` lists them. */
   | { readonly kind: 'failed' }
-  /** The entry module declares no `async fn main()` (§9). */
+  /** The entry module declares no `live async fn main()` (§9). */
   | { readonly kind: 'noMain' };
 
 const compiled = new WeakMap<Program, Map<ModuleId, Compilation>>();
@@ -133,7 +133,7 @@ function hasErrors(program: Program): boolean {
   return [...diagnose(program).values()].some(({ diagnostics }) => diagnostics.some(isError));
 }
 
-/** The `async fn main()` that `entry` declares (§9). */
+/** The `live async fn main()` that `entry` declares (§9). */
 function mainOf(program: Program, entry: ModuleId): FunctionDeclaration | undefined {
   const entity = bindProgram(program).exportsOf(entry).get(entryFunction);
   return entity?.kind === 'functions' ? entity.overloads.find(isMain) : undefined;

@@ -14,13 +14,8 @@ import { formatText, formatTree } from '../../src/formatter/format.ts';
 import { createSourceText } from '../../src/foundation/text/source-text.ts';
 import { brokenText } from '../broken.ts';
 import { soupOf } from '../soup.ts';
-import {
-  codesOf,
-  completionNamesAt,
-  declaredPlacesAt,
-  formatRoundTrip,
-  hoverCodeAt,
-} from './computed.test-kit.ts';
+import { codesOf, completionNamesAt, hoverCodeAt } from '../written-types.test-kit.ts';
+import { declaredPlacesAt, formatRoundTrip } from './computed.test-kit.ts';
 
 const computedSource = [
   'trait FormNode:',

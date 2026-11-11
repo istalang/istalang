@@ -7,7 +7,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { checkerDiagnostics } from '../../src/compiler/checker/diagnostics/index.ts';
-import { codesOf, runMain, spelledTypeOf } from './unions.test-kit.ts';
+import { codesOf, runMain, spelledTypeOf } from '../written-types.test-kit.ts';
 
 const baseTraits = [
   'trait Source<T>:',

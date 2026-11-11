@@ -12,7 +12,7 @@ import { stdProgramOf } from '../../src/compiler/binder/bind.test-kit.ts';
 import { reported } from '../../src/compiler/checker/check.test-kit.ts';
 import { checkerDiagnostics } from '../../src/compiler/checker/diagnostics/index.ts';
 import { diagnosedAt } from '../../src/compiler/compile.test-kit.ts';
-import { codesOf } from './computed.test-kit.ts';
+import { codesOf } from '../written-types.test-kit.ts';
 
 const associatedItself = checkerDiagnostics.associatedItself('' as never, '').code;
 

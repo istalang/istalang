@@ -15,7 +15,7 @@ import { typeKeys } from '../../src/compiler/checker/types/identity/type-keys.ts
 import { sameTypeSpelled, unaliased } from '../../src/compiler/checker/types/parts/type-parts.ts';
 import { idOf } from '../../src/compiler/program/program.test-kit.ts';
 import type { FunctionDeclaration } from '../../src/compiler/syntax/declarations/index.ts';
-import { resolveWrittenTypes } from './computed.test-kit.ts';
+import { resolveWrittenTypes } from '../written-types.test-kit.ts';
 
 /** One type written two ways after `declarations`. */
 interface Spelling {

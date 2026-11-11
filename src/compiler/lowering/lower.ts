@@ -13,13 +13,13 @@
 import type { Definition } from '../../definition/definition.ts';
 import type { FunctionId } from '../../definition/operands.ts';
 import type { FunctionDefinition } from '../../definition/tables/functions.ts';
-import { languageModules, stdScheme } from '../../foundation/language/well-known/index.ts';
+import { languageModules, runtimeModule } from '../../foundation/language/well-known/index.ts';
 import { jobFunctions } from '../../foundation/language/well-known/jobs.ts';
 import { testingFunctions } from '../../foundation/language/well-known/testing.ts';
 import { unreachable } from '../../foundation/structures/unreachable.ts';
 import type { Checker } from '../checker/check.ts';
 import { substitute } from '../checker/types/parts/substitution.ts';
-import { moduleIdOf } from '../program/program.ts';
+import { stdModuleIdOf } from '../program/program.ts';
 import type { FunctionDeclaration } from '../syntax/declarations/index.ts';
 import { deferredEntry } from './constructs/expressions/deferred-calls.ts';
 import { writtenBodyOf } from './functions/bodies.ts';
@@ -114,17 +114,13 @@ function lowerReached(checker: Checker, tables: DefinitionTables): FunctionId | 
 function jobDeclarationsOf(
   checker: Checker,
 ): { readonly delegate: FunctionDeclaration; readonly server: FunctionDeclaration } | undefined {
-  const runtime = moduleIdOf(new URL(`${stdScheme}:${jobFunctions.module}`));
+  const runtime = stdModuleIdOf(runtimeModule);
   if (!checker.program.modules.has(runtime)) {
     return undefined;
   }
-  const declared = (name: string): FunctionDeclaration => {
-    const entity = checker.bindings.topLevelNamed(runtime, name);
-    return (
-      (entity?.kind === 'functions' ? checker.bindings.overloadsOf(entity)[0] : undefined) ??
-      unreachable(`The runtime module declares no '${name}'.`)
-    );
-  };
+  const declared = (name: string): FunctionDeclaration =>
+    checker.topLevelFunctions(runtime, name)[0] ??
+    unreachable(`The runtime module declares no '${name}'.`);
   return { delegate: declared(jobFunctions.delegate), server: declared(jobFunctions.server) };
 }
 

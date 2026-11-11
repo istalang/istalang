@@ -8,12 +8,10 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { checkerDiagnostics } from '../../src/compiler/checker/diagnostics/index.ts';
+import { codesOf, compareWrittenTypes, runMain } from '../written-types.test-kit.ts';
 import {
-  codesOf,
-  compareWrittenTypes,
   type GeneratedField,
   generatedFieldsArbitrary,
-  runMain,
   sameComputedType,
 } from './computed.test-kit.ts';
 

@@ -15,7 +15,7 @@ import { describe, expect, it } from 'vitest';
 import { sameType } from '../../src/compiler/checker/types/identity/identity.ts';
 import { typeKeys } from '../../src/compiler/checker/types/identity/type-keys.ts';
 import { memo } from '../../src/foundation/structures/memo.ts';
-import { compareWrittenTypes, resolveWrittenTypes, runMain } from './unions.test-kit.ts';
+import { compareWrittenTypes, resolveWrittenTypes, runMain } from '../written-types.test-kit.ts';
 
 const declarations = [
   'struct Email { to: String }',

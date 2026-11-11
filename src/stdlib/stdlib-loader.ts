@@ -19,7 +19,7 @@
  */
 
 import type { LocatedModule, ModuleId, ModuleLoader } from '../compiler/program/program.ts';
-import { moduleIdOf } from '../compiler/program/program.ts';
+import { stdModuleIdOf } from '../compiler/program/program.ts';
 import {
   type LanguageModule,
   languageModules,
@@ -82,6 +82,6 @@ export function stdSourceOf(id: ModuleId): string | undefined {
 const shippedSources: ReadonlyMap<string, string> = new Map(Object.entries(stdModuleSources));
 
 function located(name: string, text: string): LocatedModule {
-  const id = moduleIdOf(new URL(`${stdScheme}:${name}`));
+  const id = stdModuleIdOf(name);
   return { id, name, label: id, read: () => text, isStd: true };
 }

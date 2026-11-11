@@ -288,10 +288,9 @@ export function instanceKey(keys: TypeKeys, instance: FunctionInstance): string 
  */
 export function instanceName(checker: Checker, instance: FunctionInstance): string {
   const { declaration, typeArguments } = instance;
-  // The kind an unmarked function is instantiated at is no argument written (§3.3): its entries'
-  // modes tell them apart, and its key keeps it.
-  const written = typeArguments.slice(0, typeParametersOf(declaration.typeParameters).length);
   const generic =
-    written.length === 0 ? '' : `<${written.map((type) => spelledType(checker, type)).join(', ')}>`;
+    typeArguments.length === 0
+      ? ''
+      : `<${typeArguments.map((type) => spelledType(checker, type)).join(', ')}>`;
   return `${qualifiedNameOf(checker, declaration)}${generic}`;
 }

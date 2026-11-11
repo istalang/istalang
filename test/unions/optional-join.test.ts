@@ -9,7 +9,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { checkerDiagnostics } from '../../src/compiler/checker/diagnostics/index.ts';
-import { codesOf, hoverCodeAt, runMain, spelledTypeOf } from './unions.test-kit.ts';
+import { codesOf, hoverCodeAt, runMain, spelledTypeOf } from '../written-types.test-kit.ts';
 
 describe('optional join across branching constructs and returns (§2, §4)', () => {
   it('joins `T` and `none` into `T?` in `if`, `match`, and `select` in any order, wrapping values at runtime', async () => {

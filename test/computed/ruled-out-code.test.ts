@@ -7,12 +7,8 @@
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import {
-  codesOf,
-  type GeneratedField,
-  generatedFieldsArbitrary,
-  runMain,
-} from './computed.test-kit.ts';
+import { codesOf, runMain } from '../written-types.test-kit.ts';
+import { type GeneratedField, generatedFieldsArbitrary } from './computed.test-kit.ts';
 
 describe('a loop over a struct with no fields', () => {
   it('checks its body once, so a mistake independent of the field is reported', () => {

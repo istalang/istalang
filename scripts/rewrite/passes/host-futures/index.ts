@@ -18,13 +18,13 @@
 import type {
   Declaration,
   FunctionDeclaration,
-  NamespaceImport,
 } from '../../../../src/compiler/syntax/declarations/index.ts';
 import { awaits } from '../../../../src/compiler/syntax/tokens/modifiers.ts';
 import { nodesUnder } from '../../../../src/compiler/syntax/tree/index.ts';
 import { spanIn } from '../../../../src/compiler/syntax/tree/positions.ts';
 import type { Span } from '../../../../src/foundation/text/span.ts';
 import { type Edit, type IstaSource, insertion, type Pass } from '../../pass.ts';
+import { importingRuntime, runtimeImport } from '../runtime-import.ts';
 
 /** Where the std modules' sources sit, whose externs are the runtime's. */
 const stdSources = 'src/stdlib/';
@@ -47,11 +47,14 @@ export const hostFutures: Pass = (ista) => {
     return [];
   }
   const runtime = imported?.alias.text ?? 'runtime';
+  const [first] = items;
   const delegated = delegatedCalls(ista, new Set(externs.map((extern) => extern.name.text)));
   const edits = [
     ...externs.flatMap((extern) => liveExtern(ista, extern)),
     ...delegated.map((at) => insertion(at, `${runtime}.delegate `)),
-    ...(imported === undefined && delegated.length > 0 ? importing(ista, items) : []),
+    ...(imported === undefined && delegated.length > 0 && first !== undefined
+      ? [importingRuntime(tree, items, spanIn(tree, first.span).start)]
+      : []),
   ];
   return [{ rule: 'host futures are live', edits }];
 };
@@ -118,30 +121,6 @@ function delegatedCalls({ tree }: IstaSource, externs: ReadonlySet<string>): num
         ? [spanIn(tree, node.span).start]
         : [],
     ),
-  );
-}
-
-/** The insertion importing `runtime`: after the source's last import, or before its first item. */
-function importing({ tree }: IstaSource, items: readonly Declaration[]): Edit[] {
-  const imports = items.filter(
-    (item) => item.kind === 'NamespaceImport' || item.kind === 'NamedImport',
-  );
-  const lastImport = imports.at(-1);
-  const line = "import * as runtime from 'runtime'";
-  if (lastImport !== undefined) {
-    return [insertion(spanIn(tree, lastImport.span).end, `\n${line}`)];
-  }
-  const [first] = items;
-  return first === undefined ? [] : [insertion(spanIn(tree, first.span).start, `${line}\n`)];
-}
-
-/** The source's namespace import of the `runtime` module, if it has one. */
-function runtimeImport(items: readonly Declaration[]): NamespaceImport | undefined {
-  return items.find(
-    (item): item is NamespaceImport =>
-      item.kind === 'NamespaceImport' &&
-      item.path.kind === 'StringLiteral' &&
-      item.path.value === 'runtime',
   );
 }
 

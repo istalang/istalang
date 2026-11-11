@@ -11,7 +11,7 @@ import { describe, expect, it } from 'vitest';
 import { stdProgramOf } from '../../src/compiler/binder/bind.test-kit.ts';
 import { checkerDiagnostics } from '../../src/compiler/checker/diagnostics/index.ts';
 import { diagnosedAt } from '../../src/compiler/compile.test-kit.ts';
-import { codesOf } from './computed.test-kit.ts';
+import { codesOf } from '../written-types.test-kit.ts';
 
 const traits = [
   'trait Show:',

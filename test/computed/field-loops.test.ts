@@ -9,8 +9,8 @@
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { hoverCodeAt } from '../unions/unions.test-kit.ts';
-import { codesOf, generatedFieldsArbitrary, runMain } from './computed.test-kit.ts';
+import { codesOf, hoverCodeAt, runMain } from '../written-types.test-kit.ts';
+import { generatedFieldsArbitrary } from './computed.test-kit.ts';
 
 const formDeclarations = [
   'trait FormNode:',

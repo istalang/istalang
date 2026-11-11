@@ -10,7 +10,7 @@ import { describe, expect, it } from 'vitest';
 import { stdProgramOf } from '../../src/compiler/binder/bind.test-kit.ts';
 import { checkerDiagnostics } from '../../src/compiler/checker/diagnostics/index.ts';
 import { diagnosedAt } from '../../src/compiler/compile.test-kit.ts';
-import { codesOf, runMain } from './computed.test-kit.ts';
+import { codesOf, runMain } from '../written-types.test-kit.ts';
 
 const itself = checkerDiagnostics.aliasCycle('' as never, '').code;
 const holdsItself = checkerDiagnostics.recursiveField('' as never, '', '').code;

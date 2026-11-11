@@ -8,7 +8,7 @@
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { codesOf, runMain } from './computed.test-kit.ts';
+import { codesOf, runMain } from '../written-types.test-kit.ts';
 
 describe('a write through a key of several names', () => {
   it('converts into the one field an instantiation leaves the key naming', async () => {

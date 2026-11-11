@@ -15,12 +15,12 @@
 import type {
   Declaration,
   FunctionDeclaration,
-  NamespaceImport,
 } from '../../../../src/compiler/syntax/declarations/index.ts';
 import { awaits } from '../../../../src/compiler/syntax/tokens/modifiers.ts';
 import { nodesUnder } from '../../../../src/compiler/syntax/tree/index.ts';
 import { spanIn } from '../../../../src/compiler/syntax/tree/positions.ts';
 import { insertion, type Pass, type Rewrite } from '../../pass.ts';
+import { importingRuntime, runtimeImport } from '../runtime-import.ts';
 
 /** What `_main` is named, and what the live `main` calls. */
 const moved = '_main';
@@ -45,22 +45,12 @@ export const contexts: Pass = (ista) => {
   const result =
     returned === undefined ? '' : ` -> ${source.text.slice(returned.start, returned.end)}`;
   const head = spanIn(tree, main.span).start;
-  const imports = items.filter(
-    (item) => item.kind === 'NamespaceImport' || item.kind === 'NamedImport',
-  );
-  const lastImport = imports.at(-1);
-  const importing = imported === undefined ? `import * as runtime from 'runtime'` : undefined;
   const live = `live async fn main()${result}: await ${runtime}.run(${runtime}.id()) ${moved}()\n`;
   const rewrite: Rewrite = {
     rule: 'main in a context',
     edits: [
-      ...(importing !== undefined && lastImport !== undefined
-        ? [insertion(spanIn(tree, lastImport.span).end, `\n${importing}`)]
-        : []),
-      insertion(
-        head,
-        importing !== undefined && lastImport === undefined ? `${importing}\n${live}` : live,
-      ),
+      ...(imported === undefined ? [importingRuntime(tree, items, head)] : []),
+      insertion(head, live),
       { span: spanIn(tree, main.name.span), text: moved },
     ],
   };
@@ -77,15 +67,5 @@ function isIstaMain(item: Declaration): item is FunctionDeclaration {
     item.qualifiers.kind === 'ista' &&
     awaits(item.qualifiers) &&
     item.parameters.length === 0
-  );
-}
-
-/** The source's namespace import of the `runtime` module, if it has one. */
-function runtimeImport(items: readonly Declaration[]): NamespaceImport | undefined {
-  return items.find(
-    (item): item is NamespaceImport =>
-      item.kind === 'NamespaceImport' &&
-      item.path.kind === 'StringLiteral' &&
-      item.path.value === 'runtime',
   );
 }

@@ -15,9 +15,9 @@ import {
   compareWrittenTypes,
   resolveWrittenTypes,
   runMain,
-  sameComputedType,
   spelledTypeOf,
-} from './computed.test-kit.ts';
+} from '../written-types.test-kit.ts';
+import { sameComputedType } from './computed.test-kit.ts';
 
 const assocDecls = [
   "import Encodable from 'json'",
