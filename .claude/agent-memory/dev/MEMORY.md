@@ -7,3 +7,4 @@
 - [Biome in worktrees](project_biome-worktrees.md) — symlinked node_modules makes biome false-clean; lint against a cloned node_modules
 - [Build on constructs](feedback_build-on-constructs.md) — features in Istalang over existing constructs, no new builtins; read docs/reuse; verify scouts
 - [Examine when finished](feedback_examine-when-finished.md) — fork bumi/teri examiners once the whole unfinished phase is done, not per commit
+- [Worktree base](project_worktree-base.md) — `-w` worktrees start at old b390cfe8; reset forks to main first
