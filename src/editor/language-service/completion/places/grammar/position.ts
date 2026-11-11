@@ -24,6 +24,7 @@ import {
   followers,
   infixWords,
   type Modifier,
+  topLevelFollowers,
   type Word,
 } from '../../../../../compiler/syntax/tokens/grammar-words.ts';
 import { isKeyword, type Token } from '../../../../../compiler/syntax/tokens/index.ts';
@@ -103,7 +104,10 @@ function positionAfter(
 ): GrammarPosition | undefined {
   const modifier = modifierBefore(cursor, parsed);
   if (modifier !== undefined) {
-    return words(followers[modifier]);
+    const topLevel = headsTopLevel(cursor, parsed, parent)
+      ? (topLevelFollowers[modifier] ?? [])
+      : [];
+    return words([...followers[modifier], ...topLevel]);
   }
   if (iteratesOver(parent, node) && !writesIn(parsed, parent)) {
     return words(['in']);
@@ -338,6 +342,14 @@ function heldLabelOf(tree: SyntaxTree, closing: Token): Token | undefined {
   }
   const { start } = extentIn(tree, call.callee);
   return codeTokensOf(tree).find(({ span }) => span.start === start);
+}
+
+/** Whether the modifier before the cursor is the first word of a top-level item's head. */
+function headsTopLevel({ before }: Cursor, { tree }: Parse, parent: SyntaxNode): boolean {
+  const previous = before === undefined ? undefined : tokenBefore(tree, before);
+  const previousText =
+    previous === undefined ? '' : tree.source.text.slice(previous.span.start, previous.span.end);
+  return parent.kind === 'Module' && !isModifierWord(previousText);
 }
 
 function tokenBefore(tree: SyntaxTree, token: Token): Token | undefined {

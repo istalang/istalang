@@ -19,7 +19,13 @@ import { passesAround } from './pass-views.ts';
 /** What finding a holding body reads of the checker. */
 export type Holders = Pick<
   CheckerContext,
-  'inputs' | 'bodyOf' | 'defaultsOf' | 'constantBodyOf' | 'annotations' | 'typeRules'
+  | 'inputs'
+  | 'bodyOf'
+  | 'defaultsOf'
+  | 'constantBodyOf'
+  | 'contextConstants'
+  | 'annotations'
+  | 'typeRules'
 >;
 
 /** The top-level item of `tree` holding `node`, or `node` itself; undefined for the root. */
@@ -68,6 +74,8 @@ function bodyInItem(
         : undefined;
     case 'VariableDeclaration':
       return part !== undefined && part !== item.type ? checker.constantBodyOf(item) : undefined;
+    case 'ContextConstantDeclaration':
+      return part === item.initializer ? checker.contextConstants.bodyOf(item) : undefined;
     case 'StructDeclaration':
     case 'SharedStructDeclaration':
       return isDefault(part, inner) ? fieldDefaultsOf(checker, fieldsFunctionOf(item)) : undefined;

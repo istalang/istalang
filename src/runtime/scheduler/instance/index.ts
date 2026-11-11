@@ -38,12 +38,13 @@ import type { Passed } from '../../interpreter/registers.ts';
 import { type Decision, releaseLosers, resume } from '../../interpreter/suspension.ts';
 import { isDisposable } from '../../lifetimes/disposal.ts';
 import { heldFrom } from '../../lifetimes/holders.ts';
-import { type HoldingFrame, heldObjects, isRoot, runFrame } from '../../snapshot/holdings.ts';
+import { type HoldingFrame, heldObjects, isRoot, keptFrame } from '../../snapshot/holdings.ts';
 import { type HeapObject, isReference } from '../../snapshot/objects.ts';
 import { drawOf, seedFrom } from '../../snapshot/random.ts';
 import type { InstanceCall, Snapshot } from '../../snapshot/snapshot.ts';
 import type { LoadedDefinition } from '../loaded-definition.ts';
 import { reachingMock } from '../testing/mocks.ts';
+import { ContextConstants } from './context-constants.ts';
 import { leaving } from './crossing.ts';
 import { DisposalNotices } from './disposal-notices.ts';
 import { type Answered, Futures } from './futures.ts';
@@ -83,6 +84,10 @@ export class Instance {
       this.heap.replace({ ...this.heap.of(cell, 'cell'), value });
     },
     create: (type, value) => this.heap.add((id) => ({ kind: 'cell', id, type, value })).id,
+    contextConstant: (name) => this.#constants.read(name),
+    makeContextConstant: (name, value) => {
+      this.#constants.make(name, value);
+    },
     released: (contents) => {
       if (!isReference(contents)) {
         this.heap.noteReleased(handlesIn(contents));
@@ -99,6 +104,7 @@ export class Instance {
   #logs: LogRecord[] = [];
   /** How many random draws this segment made. */
   #draws = 0;
+  readonly #constants: ContextConstants;
   readonly #ready: ReadyQueue;
   /** The extern constants read before this segment, and those it read itself (§3.6). */
   readonly #pinned: Map<string, Value>;
@@ -110,6 +116,7 @@ export class Instance {
     this.heap = new Heap(
       snapshot.objects.map((object) => liveObject(loaded.definition, object, this.frameHeap)),
     );
+    this.#constants = new ContextConstants(this.heap);
     this.notices = new DisposalNotices(this.heap);
     this.#ready = new ReadyQueue(this.heap, snapshot.ready);
     this.waits = new Waits(this.heap, {
@@ -179,7 +186,7 @@ export class Instance {
   #kept(): { readonly kept: readonly LiveObject[]; readonly depth: number } {
     const executions = this.heap.objectsOf('execution');
     const held = heldFrom(this.heap, {
-      frames: [...executions.flatMap((execution) => execution.frames), ...this.runFrames()],
+      frames: [...executions.flatMap((execution) => execution.frames), ...this.keptFrames()],
       objects: this.owed(),
     });
     const lost = this.heap
@@ -323,9 +330,14 @@ export class Instance {
     );
   }
 
-  /** The runs ready to start, as the frames they will be: roots, holding what they call with. */
-  runFrames(): readonly HoldingFrame[] {
-    return this.heap.objectsOf('run').map(runFrame);
+  /**
+   * The roots keeping values for later, as frames: the runs ready to start, holding what they call
+   * with, and the context constants made, holding their values.
+   */
+  keptFrames(): readonly HoldingFrame[] {
+    return [...this.heap.objectsOf('run'), ...this.heap.objectsOf('contextConstant')].map(
+      keptFrame,
+    );
   }
 
   /** The answers this segment gave other instances' calls, each filled once it commits (§10). */
@@ -419,6 +431,14 @@ export class Instance {
    */
   dropRuns(): void {
     this.#ready.close();
+  }
+
+  /**
+   * Lets go of the instance's context constants as it finishes or ends, last of all (§3.4), with
+   * `collect` disposing what each held (context-constants.ts).
+   */
+  releaseConstants(collect: () => void): void {
+    this.#constants.release(collect);
   }
 
   /** Removes an execution whose call returned. */

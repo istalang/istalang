@@ -197,6 +197,7 @@ const declarationHandlers: Handlers<LocalBinder, Declaration, [Scope], void> = {
     bindTargets(binder, node, scope, undefined);
   },
   ExternConstantDeclaration: (binder, node, scope) => binder.walk.type(binder, node.type, scope),
+  ContextConstantDeclaration: bindVariableValue,
   StructDeclaration: bindStruct,
   SharedStructDeclaration: bindStruct,
   ExternStructDeclaration: (binder, node, scope) => {

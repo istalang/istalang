@@ -34,7 +34,11 @@ import {
 import type { FunctionType, Type } from '../../checker/types/type/index.ts';
 import { literalType } from '../../checker/types/type/primitives.ts';
 import type { ModuleId } from '../../program/program.ts';
-import { type FunctionDeclaration, typeParametersOf } from '../../syntax/declarations/index.ts';
+import {
+  type ContextConstantDeclaration,
+  type FunctionDeclaration,
+  typeParametersOf,
+} from '../../syntax/declarations/index.ts';
 import type { Expression, FieldHeader, Lambda } from '../../syntax/expressions/index.ts';
 import type { VariableDeclaration } from '../../syntax/statements/index.ts';
 import type { AnchoredSpan } from '../../syntax/tree/positions.ts';
@@ -56,18 +60,20 @@ export interface NestedInstance {
 
 /**
  * What a lowered body belongs to: an instance of a function, the defaults of one, which its
- * prologue computes (§3.3), or a top-level constant's value; and the passes of the field loops it
- * is lowered inside (§4), outermost first, each read as checked.
+ * prologue computes (§3.3), a top-level constant's value, or a context constant's initializer, its
+ * accessor's (§3.4); and the passes of the field loops it is lowered inside (§4), outermost first,
+ * each read as checked.
  */
 export type BodyOwner = (
   | { readonly kind: 'function'; readonly instance: FunctionInstance }
   | { readonly kind: 'defaults'; readonly instance: FunctionInstance }
   | { readonly kind: 'constant'; readonly declaration: VariableDeclaration }
+  | { readonly kind: 'contextConstant'; readonly declaration: ContextConstantDeclaration }
 ) & { readonly passes?: readonly FieldPassStep[] };
 
-/** The function instance `owner` belongs to: its body's or its defaults'; none for a constant. */
+/** The function instance `owner` belongs to: its body's or its defaults'; none for a constant's. */
 export function ownerInstance(owner: BodyOwner): FunctionInstance | undefined {
-  return owner.kind === 'constant' ? undefined : owner.instance;
+  return owner.kind === 'constant' || owner.kind === 'contextConstant' ? undefined : owner.instance;
 }
 
 /** A pass of a field loop a body is lowered in (§4): the loop's header, and the field it visits. */
@@ -85,8 +91,12 @@ export function passBindings(passes: readonly FieldPassStep[] = []): Substitutio
 }
 
 /** The declaration `owner` is: its function's, or the constant's. */
-export function ownerDeclaration(owner: BodyOwner): FunctionDeclaration | VariableDeclaration {
-  return owner.kind === 'constant' ? owner.declaration : owner.instance.declaration;
+export function ownerDeclaration(
+  owner: BodyOwner,
+): FunctionDeclaration | VariableDeclaration | ContextConstantDeclaration {
+  return owner.kind === 'constant' || owner.kind === 'contextConstant'
+    ? owner.declaration
+    : owner.instance.declaration;
 }
 
 /**
@@ -231,8 +241,8 @@ export function asyncFitKey(keys: TypeKeys, fit: AsyncFit): string {
 
 function ownerKey(keys: TypeKeys, owner: BodyOwner): string {
   const own =
-    owner.kind === 'constant'
-      ? `const ${keys.identityOf(owner.declaration)}`
+    owner.kind === 'constant' || owner.kind === 'contextConstant'
+      ? `${owner.kind} ${keys.identityOf(owner.declaration)}`
       : `${instanceKey(keys, owner.instance)}${owner.kind === 'defaults' ? '=' : ''}`;
   const passes = (owner.passes ?? []).map(
     ({ header, field }) => `[${keys.identityOf(header)}.${field}]`,
@@ -259,7 +269,7 @@ export function asyncFitName(checker: Checker, fit: AsyncFit, where: string): st
 
 function ownerName(checker: Checker, owner: BodyOwner): string {
   const own =
-    owner.kind === 'constant'
+    owner.kind === 'constant' || owner.kind === 'contextConstant'
       ? qualifiedNameOf(checker, owner.declaration)
       : instanceName(checker, owner.instance);
   const passes = (owner.passes ?? []).map(({ field }) => `[${field}]`);

@@ -18,6 +18,12 @@ describe('inlay hints', () => {
     ).toEqual(['  let (a: Int', '  let (a, b: String']);
   });
 
+  it('type an untyped context constant (§3.4)', () => {
+    expect(hints('ista const count = new Shared{value: 0}', 'ista const typed: Int = 1')).toEqual([
+      'ista const count: Shared<Int>',
+    ]);
+  });
+
   it("type a for's targets and a lambda's untyped parameters", () => {
     expect(
       hints(

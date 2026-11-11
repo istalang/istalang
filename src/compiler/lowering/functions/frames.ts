@@ -26,6 +26,8 @@ import type {
 import { substitute } from '../../checker/types/parts/substitution.ts';
 import { kindOfFunction } from '../../checker/types/type/function-kinds.ts';
 import type { Type } from '../../checker/types/type/index.ts';
+import { markType } from '../../checker/types/type/primitives.ts';
+import type { ContextConstantDeclaration } from '../../syntax/declarations/index.ts';
 import { awaits } from '../../syntax/tokens/modifiers.ts';
 import type { Identifier } from '../../syntax/tree/node.ts';
 import {
@@ -67,8 +69,11 @@ export interface Frame {
   readonly mode: CodeMode;
   readonly parameters: readonly SignatureParameter[];
   readonly captures: readonly CapturedVariable[];
-  /** The function the entry runs: a top-level declaration, or a nested function. */
-  readonly function: NestedFunction;
+  /**
+   * What the entry runs: a top-level declaration, a nested function, or a context constant's
+   * initializer (§3.4).
+   */
+  readonly function: NestedFunction | ContextConstantDeclaration;
   /** `T` for an async entry returning `Future<T>`. */
   readonly result: Type;
   /** The name a nested function calls itself by. */
@@ -139,6 +144,8 @@ function bodyOfOwner(checker: Checker, owner: BodyOwner): CheckedBody | undefine
       return defaultsBodyOf(checker, owner.instance);
     case 'constant':
       return checker.constantBodyOf(owner.declaration);
+    case 'contextConstant':
+      return checker.contextConstants.bodyOf(owner.declaration);
     default: {
       const unhandled: never = owner;
       return unhandled;
@@ -191,6 +198,26 @@ export function builtFrame(lowering: Lowering, instance: FunctionInstance, await
     captures: [],
     function: declaration,
     result: substitute(result, substitutionOf(instance), checker.typeRules),
+    self: undefined,
+  };
+}
+
+/**
+ * The frame of a context constant's entry (§3.4): no parameters, giving the constant's value, ista
+ * code that never waits (modes.ts).
+ */
+export function accessorFrame(
+  lowering: Lowering,
+  declaration: ContextConstantDeclaration,
+  result: Type,
+): Frame {
+  return {
+    header: lowering.tables.declarationHeader(declaration),
+    mode: codeModeOf(false, markType('ista')),
+    parameters: [],
+    captures: [],
+    function: declaration,
+    result,
     self: undefined,
   };
 }

@@ -26,6 +26,7 @@ import type { AnyType, Type } from '../../checker/types/type/index.ts';
 import { type ModuleId, programModule } from '../../program/program.ts';
 import type {
   ConstantDeclaration,
+  ContextConstantDeclaration,
   ExternConstantDeclaration,
   FunctionDeclaration,
 } from '../../syntax/declarations/index.ts';
@@ -62,7 +63,8 @@ import { TypeTable } from './type-table.ts';
  * native extern's instance computing the defaults a call leaves out before calling it (§3.3), a nested
  * instance, an extern a host implements as its native sees it (synthesized/boundary/host-externs.ts),
  * the read of an extern constant, the wrapper a host starts a function through
- * (synthesized/boundary/starts.ts), the async entry of a plain function made async, the
+ * (synthesized/boundary/starts.ts), a context constant's accessor (§3.4), the async entry of a
+ * plain function made async, the
  * function a deferred call gives (constructs/expressions/deferred-calls.ts), or a conversion of
  * parts (functions/fits/).
  */
@@ -83,6 +85,7 @@ export type PendingEntry =
       readonly type: Type;
     }
   | { readonly kind: 'start'; readonly target: StartTarget }
+  | { readonly kind: 'contextConstant'; readonly declaration: ContextConstantDeclaration }
   | { readonly kind: 'asyncFit'; readonly fit: AsyncFit }
   | { readonly kind: 'deferred'; readonly deferred: DeferredFunction }
   | ConversionEntry;
@@ -216,7 +219,9 @@ export class DefinitionTables {
   /**
    * The header of an entry standing for `declaration` as a whole: its qualified name, its place.
    */
-  declarationHeader(declaration: HostExternDeclaration | StartTarget): EntryHeader {
+  declarationHeader(
+    declaration: HostExternDeclaration | StartTarget | ContextConstantDeclaration,
+  ): EntryHeader {
     const module = this.#checker.moduleOf(declaration);
     const name = qualifiedNameOf(this.#checker, declaration);
     const at =
@@ -325,6 +330,12 @@ export class DefinitionTables {
   constantNativeIndex(declaration: ExternConstantDeclaration, type: Type): FunctionId {
     const key = `native:${this.#checker.typeKeys.identityOf(declaration)}`;
     return this.#entryIndex(key, { kind: 'constantNative', declaration, type });
+  }
+
+  /** The index of the accessor of the context constant `declaration` (§3.4). */
+  contextConstantIndex(declaration: ContextConstantDeclaration): FunctionId {
+    const key = `contextConstant:${this.#checker.typeKeys.identityOf(declaration)}`;
+    return this.#entryIndex(key, { kind: 'contextConstant', declaration });
   }
 
   /** The index of the entry reading the extern constant `declaration`, of type `type` (§3.6). */

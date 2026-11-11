@@ -74,6 +74,19 @@ const handlers: Handlers<Machine, Instruction, [ActiveFrame], void> = {
     writeCell(frame, instruction.cell, readRegister(frame, instruction.value));
     frame.pc += 1;
   },
+  contextConstant: (_machine, instruction, frame) => {
+    const value = frame.heap.contextConstant(instruction.name);
+    if (value === undefined) {
+      frame.pc += 1;
+    } else {
+      writeRegister(frame, instruction.dst, value);
+      frame.pc = instruction.target;
+    }
+  },
+  makeContextConstant: (_machine, instruction, frame) => {
+    frame.heap.makeContextConstant(instruction.name, readRegister(frame, instruction.value));
+    frame.pc += 1;
+  },
   struct: (_machine, instruction, frame) => {
     next(frame, instruction.dst, {
       kind: 'struct',

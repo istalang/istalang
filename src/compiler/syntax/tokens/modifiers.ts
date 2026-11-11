@@ -71,7 +71,7 @@ export function isModifierWord(word: string): word is ModifierWord {
 
 /** A head where it stands: its keyword, the groups it takes in their order, and its name. */
 export interface HeadForm {
-  readonly keyword: 'fn' | 'struct';
+  readonly keyword: 'fn' | 'struct' | 'const';
   readonly groups: readonly ModifierGroup[];
   readonly name: string;
 }
@@ -85,6 +85,8 @@ export const headForms = {
   externStruct: { keyword: 'struct', groups: ['extern', 'handle'], name: 'an extern struct' },
   sharedStruct: { keyword: 'struct', groups: ['shared'], name: 'a shared struct' },
   struct: { keyword: 'struct', groups: [], name: 'a struct' },
+  /** A top-level `ista const` (§3.4), whose one word is its kind, `ista` alone. */
+  contextConstant: { keyword: 'const', groups: ['kind'], name: 'a context constant' },
 } as const satisfies Record<string, HeadForm>;
 
 /** The group of `form` holding `word`, if `form` takes it. */

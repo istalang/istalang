@@ -27,7 +27,7 @@ import {
 } from './functions/built-entries.ts';
 import { asyncFitEntry, convertingEntry, wrappingEntry } from './functions/fits/index.ts';
 import type { Lowering } from './functions/frames.ts';
-import { instanceLowering, nestedLowering } from './functions/index.ts';
+import { accessorLowering, instanceLowering, nestedLowering } from './functions/index.ts';
 import { derivedCodecEntry } from './synthesized/boundary/codecs.ts';
 import {
   constantNativeEntry,
@@ -42,7 +42,7 @@ import {
   rootInstance,
   substitutionOf,
 } from './tables/instances.ts';
-import { keyOf } from './tables/names.ts';
+import { keyOf, qualifiedNameOf } from './tables/names.ts';
 import { ownEntryOf } from './tables/own-entries.ts';
 import { type ClosingEntry, DefinitionTables, type PendingEntry } from './tables/tables.ts';
 
@@ -118,6 +118,11 @@ function pendingEntry(
       return constantNativeEntry(lowering, pending.declaration, pending.type);
     case 'externConstant':
       return hostConstantEntry(lowering, pending.declaration, pending.type);
+    case 'contextConstant':
+      return accessorLowering(lowering, pending.declaration).lowerAccessor(
+        pending.declaration,
+        qualifiedNameOf(checker, pending.declaration),
+      );
     case 'start': {
       const startable = startableOf(checker, pending.target);
       if (startable === undefined) {

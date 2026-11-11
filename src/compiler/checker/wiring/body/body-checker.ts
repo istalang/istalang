@@ -126,7 +126,7 @@ export class BodyChecker implements BodyContext {
     );
     const isFunction = kind.kind === 'function';
     this.#result = new ReturnScope(kind.declaredResult, isFunction);
-    const root = rootScope(this.checker, ownScopeOf(kind), this.#result);
+    const root = rootScope(ownScopeOf(this.checker, kind), this.#result);
     this.functions = new FunctionScopes(root, this.#passes);
   }
 

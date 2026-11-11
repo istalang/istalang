@@ -108,6 +108,9 @@ const generators: { readonly [Kind in InstructionKind]: Generator<Kind> } = {
       fc.record({ dst: index(s.registers), type: fc.constant(type), value: index(s.registers) }),
     ),
   readCell: (s) => fc.record({ dst: index(s.registers), cell: index(s.registers) }),
+  contextConstant: (s) =>
+    fc.record({ dst: index(s.registers), name: fc.string(), target: index(s.labels) }),
+  makeContextConstant: (s) => fc.record({ name: fc.string(), value: index(s.registers) }),
   writeCell: (s) => fc.record({ cell: index(s.registers), value: index(s.registers) }),
   array: (s) =>
     fc.record({

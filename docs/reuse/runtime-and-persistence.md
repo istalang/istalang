@@ -27,6 +27,7 @@ tags: [reuse, runtime, snapshot, persistence, scheduler, lifetimes, host]
 - convert between stored `HeapObject`s and live `Instance` objects/frames → `liveObject`, `storedObject` (`src/runtime/scheduler/instance/live-objects.ts`)
 - start, restore or persist a running instance in memory → `Instance` (`src/runtime/scheduler/instance/index.ts`)
 - manage indexed heap objects or unwrap a handle's object id → `Heap`, `handleObject` (`src/runtime/scheduler/instance/heap.ts`)
+- read, make or let go of an instance's context constants (spec §3.4) → `ContextConstants` (`src/runtime/scheduler/instance/context-constants.ts`)
 - format stack traces or `module:line:column` locations from a `Definition`'s `lineStarts` → `traceOf`, `locationOf`; the trace a default asks for, the innermost frame left out while in its prologue → `callerTraceOf` (`src/runtime/interpreter/trace.ts`)
 - start a call on any call path (a written call, a function value's, a disposal's, an encoder's, a resolver's callback), a mock replacing its target asked first → `startCall` (`src/runtime/scheduler/segment/calls.ts`); a callback's run as a driver of its own, on an off-heap carrier → `RunCalls` (`src/runtime/scheduler/segment/run-calls.ts`); a call leaving parameters out to a mocked code entry runs the target's prologue as a plain frame and hands over at its `body` marker, the replacement taking that frame's place → `handOver` (`calls.ts`, `SegmentRunner.handOver`), never a second mock path; which mock a call reaches without recording it, and the call made to it → `reachedMock`, `mockedCall` (`src/runtime/scheduler/testing/mocks.ts`)
 - convert V8 limit `RangeError`s to `Panic` or guard depth → `panicOf`, `requireDepth`, `requireFrameDepth` (`src/runtime/scheduler/segment/limits.ts`)
@@ -75,3 +76,4 @@ tags: [reuse, runtime, snapshot, persistence, scheduler, lifetimes, host]
 2. Add its holding and watching rules to `kinds` or `futureStates` in `src/runtime/snapshot/holdings.ts`.
 3. Add its load-time check to `kindProblems` in `src/runtime/snapshot/check.ts` and its disposal rule to `src/runtime/lifetimes/disposal.ts`.
 4. If it is indexed in memory, add the derived index to `Heap` (`src/runtime/scheduler/instance/heap.ts`).
+5. If it is a root keeping values, hold them as a frame through `keptFrame` (`src/runtime/snapshot/holdings.ts`), which `Instance.keptFrames` gives both the collector and the commit.

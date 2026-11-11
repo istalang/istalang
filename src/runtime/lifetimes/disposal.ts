@@ -156,6 +156,7 @@ const kinds: Handlers<undefined, LiveObject, [], KindDisposal> = {
     },
   }),
   run: () => inert,
+  contextConstant: () => inert,
   execution: () => inert,
 };
 

@@ -78,6 +78,8 @@ const rules: Handlers<Tables, Instruction, [CodeFunction], string | undefined> =
       ? undefined
       : `type ${i.type} is not a shared struct's.`,
   readCell: none,
+  contextConstant: none,
+  makeContextConstant: none,
   writeCell: none,
   array: none,
   map: none,

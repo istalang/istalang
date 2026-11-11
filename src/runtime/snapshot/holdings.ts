@@ -10,7 +10,8 @@
  * - A pending resolver holds the futures it is registered on, its callbacks, and the resolver a
  *   `Resolver.at` one decides. A registration holds the resolver too, and a wait and a resolver
  *   hold what is registered to decide them, edges read off the heap's indexes (`Heap.holds`).
- * - A run, a call a resolver readied, holds what it calls with as a frame does (`runFrame`).
+ * - A run, a call a resolver readied, holds what it calls with as a frame does, and a context
+ *   constant its value (`keptFrame`).
  * - It watches what it names without holding: a slot's queue of waiting operations, what a weak
  *   reference refers to, an execution's own call future, which its caller holds, a wait's waiter,
  *   and a pending case resolver's wait, which the waiter's frame holds.
@@ -35,16 +36,20 @@ export interface HoldingFrame {
 
 /**
  * Whether `object` is a root, kept for its own sake rather than held by another: an execution, a
- * run, an answer, or the outcome an instance awaits.
+ * run, an answer, the outcome an instance awaits, or a context constant's value.
  */
 export function isRoot<Object extends { readonly kind: HeapObject['kind'] }>(
   object: Object,
-): object is Extract<Object, { readonly kind: 'execution' | 'run' | 'answer' | 'outcome' }> {
+): object is Extract<
+  Object,
+  { readonly kind: 'execution' | 'run' | 'answer' | 'outcome' | 'contextConstant' }
+> {
   return (
     object.kind === 'execution' ||
     object.kind === 'run' ||
     object.kind === 'answer' ||
-    object.kind === 'outcome'
+    object.kind === 'outcome' ||
+    object.kind === 'contextConstant'
   );
 }
 
@@ -103,6 +108,7 @@ const kinds: Handlers<undefined, HeapObject, [], Holding> = {
         }
       : empty,
   run: (_context, run) => ({ ...empty, values: [...run.captures, ...run.arguments] }),
+  contextConstant: (_context, constant) => ({ ...empty, values: [constant.value] }),
   execution: (_context, { frames, resolves }) => ({
     values: frames.flatMap((frame) => frameValues(holdingFrame(frame))),
     holds: frames.flatMap((frame) => frameCells(holdingFrame(frame))),
@@ -130,9 +136,16 @@ export function referencedObjects(object: HeapObject): readonly number[] {
   return [...holding.holds, ...holding.values.flatMap(handlesIn), ...holding.watches];
 }
 
-/** A run as holding reads it: a frame not yet made, holding the captures and arguments it gets. */
-export function runFrame(run: Extract<HeapObject, { kind: 'run' }>): HoldingFrame {
-  return { registers: [...run.captures, ...run.arguments] };
+/**
+ * A root keeping values for later as holding reads it, a frame: a run, one not yet made, holding the
+ * captures and arguments it gets, or a context constant, holding its value.
+ */
+export function keptFrame(
+  kept: Extract<HeapObject, { kind: 'run' | 'contextConstant' }>,
+): HoldingFrame {
+  return {
+    registers: kept.kind === 'run' ? [...kept.captures, ...kept.arguments] : [kept.value],
+  };
 }
 
 /** The values `frame` holds in its registers, references aside. */

@@ -206,6 +206,7 @@ class SegmentRunner implements Machine {
       this.#instance.stop(execution);
     }
     this.#collection.collectEnding(step);
+    this.#instance.releaseConstants(() => this.#collection.collectEnding(step));
   }
 
   /**
@@ -350,6 +351,15 @@ class SegmentRunner implements Machine {
     return this.#instance.weak.reference(handleTo(this.#runStack.current().id));
   }
 
+  /**
+   * The instance finished with `outcome`, everything else it held disposed: it lets go of its
+   * context constants last (§3.4).
+   */
+  #finished(outcome: Outcome): RunEnd {
+    this.#instance.releaseConstants(() => this.#collection.collectFully(() => this.#step()));
+    return { kind: 'finished', ...outcome };
+  }
+
   /** Runs drivers until one awaits, the instance finishes, or nothing is ready. */
   #runDrivers(first: LiveExecution | undefined): RunEnd {
     // Answers withdrawn from their callers let go of what they wait on before any execution runs.
@@ -358,14 +368,14 @@ class SegmentRunner implements Machine {
       if (next.kind === 'finished') {
         // Letting go of the outcome awaited let go of what it held, as a root's last return does.
         this.#collection.collectFully(() => this.#step());
-        return { kind: 'finished', ...next.outcome };
+        return this.#finished(next.outcome);
       }
       const end = next.kind === 'run' ? this.#run(next) : this.#drive(next);
       if (end === 'awaited') {
         return { kind: 'awaited' };
       }
       if (end !== 'returned') {
-        return { kind: 'finished', ...end.finished };
+        return this.#finished(end.finished);
       }
     }
     // A run answered at once let go of its arguments outside any drive, which collects first.

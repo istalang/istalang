@@ -96,7 +96,8 @@ export class SegmentCollection {
 
   /**
    * What holds things besides the collector's own rounds (lifetimes/holders.ts): every execution's
-   * frames, the carriers', the runs' (`Instance.runFrames`), the call futures of the executions
+   * frames, the carriers', the runs' and context constants' (`Instance.keptFrames`), the call
+   * futures of the executions
    * running on the run stack, and what the instance owes (`Instance.owed`). The frames running now
    * come first, innermost first, as what code lets go of is mostly held there.
    */
@@ -109,7 +110,7 @@ export class SegmentCollection {
     return {
       frames: [
         ...[...running, ...waiting].flatMap((execution) => execution.frames.toReversed()),
-        ...instance.runFrames(),
+        ...instance.keptFrames(),
       ],
       objects: [...runStack.callFutures(), ...instance.owed()],
     };

@@ -7,16 +7,18 @@
  */
 
 import { type Entity, localFunctionOf, type VariableEntity } from '../../../../binder/entities.ts';
+import type { ContextConstantDeclaration } from '../../../../syntax/declarations/index.ts';
 import type { MemberAccess } from '../../../../syntax/expressions/index.ts';
 import type { Identifier } from '../../../../syntax/tree/node.ts';
 import type { BodyContext } from '../../../contexts/body-context.ts';
 import type { CheckerContext } from '../../../contexts/context.ts';
 import { checkerDiagnostics } from '../../../diagnostics/index.ts';
+import { checkCallKind } from '../../../resolution/applying/call-kinds.ts';
 import { namedFunctions } from '../../../resolution/choosing/named-functions.ts';
 import type { Admits } from '../../../types/fitting/expected.ts';
 import { expectedNominal } from '../../../types/fitting/expected.ts';
 import { isNominalEntity, type Type } from '../../../types/type/index.ts';
-import { errorType } from '../../../types/type/primitives.ts';
+import { errorType, markType } from '../../../types/type/primitives.ts';
 import { fieldlessStructOf } from '../../../types/written/named-types.ts';
 import { checkFunctionValue, namedFunctionsAccepted } from '../../closures/function-values.ts';
 import {
@@ -66,6 +68,9 @@ export function entityValueType(
     case undefined:
       return errorType;
     case 'variable':
+      if (entity.owner.kind === 'ContextConstantDeclaration') {
+        return contextConstantRead(context, node, entity.owner);
+      }
       return localFunctionOf(entity) === undefined
         ? variableType(context, entity)
         : context.functions.typeOfFunction(context, node, entity);
@@ -87,6 +92,28 @@ export function entityValueType(
   }
 }
 
+/**
+ * The type of the context constant `declaration` where `node` reads it: in a function, an ista call
+ * of its accessor (§3.4), which the call rule judges as any call. A value of its own, a constant's
+ * or an annotation's, is computed while compiling, which refuses it then.
+ */
+function contextConstantRead(
+  context: BodyContext,
+  node: Identifier,
+  declaration: ContextConstantDeclaration,
+): Type {
+  const frame = context.functions.current;
+  if (frame.function !== undefined) {
+    checkCallKind(context, {
+      at: node.span,
+      frame,
+      calleeKind: markType('ista'),
+      callee: `'${node.text}'`,
+    });
+  }
+  return context.checker.contextConstants.typeOf(declaration);
+}
+
 /** The type of `variable`, which isn't a local function, where a body reads it. */
 function variableType(context: BodyContext, variable: VariableEntity): Type {
   return declaredOutsideBodies(context.checker, variable) ?? context.variables.typeOf(variable);
@@ -105,6 +132,9 @@ export function declaredOutsideBodies(
   const { owner } = variable;
   if (owner.kind === 'ExternConstantDeclaration') {
     return checker.resolveType(checker.moduleOf(owner), owner.type);
+  }
+  if (owner.kind === 'ContextConstantDeclaration') {
+    return checker.contextConstants.typeOf(owner);
   }
   const module = checker.bindings.moduleOf(variable);
   return owner.kind === 'VariableDeclaration' && module !== undefined

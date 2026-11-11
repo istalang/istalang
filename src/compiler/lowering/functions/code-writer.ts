@@ -154,6 +154,24 @@ export class CodeWriter {
   }
 
   /**
+   * Reads the instance's value of the context constant `name` into `dst` and jumps to `target` once
+   * it has made one; while it hasn't, goes on to make it (§3.4).
+   */
+  contextConstant(dst: Register, name: string, target: Label, span: AnchoredSpan): void {
+    const instruction: Extract<WrittenInstruction, { kind: 'contextConstant' }> = {
+      kind: 'contextConstant',
+      span,
+      dst,
+      name,
+      target: 0,
+    };
+    this.emit(instruction);
+    this.#refer(target, (position) => {
+      instruction.target = position;
+    });
+  }
+
+  /**
    * Jumps by the variant of the enum value in `value`: to `targets[i]` for variant i, and to
    * `otherwise` for every variant past them.
    */

@@ -52,7 +52,7 @@ export interface HeadAhead {
 export function headAhead(parser: Parser, withMark = false): HeadAhead | undefined {
   const { modifiers, named, length } = wordsAhead(parser, withMark);
   const next = parser.cursor.kindAt(length);
-  if (next === 'fn' || (next === 'struct' && !named)) {
+  if (next === 'fn' || ((next === 'struct' || next === 'const') && !named)) {
     return { modifiers, named, keyword: next, length: length + 1 };
   }
   return modifiers.some(isKeyword) && !named

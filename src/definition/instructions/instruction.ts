@@ -51,6 +51,8 @@ const operandTable: Handlers<undefined, Instruction, [], Partial<Operands>> = {
   newCell: (_, i) => ({ registers: [i.dst, i.value], types: [i.type] }),
   readCell: (_, i) => ({ registers: [i.dst, i.cell] }),
   writeCell: (_, i) => ({ registers: [i.cell, i.value] }),
+  contextConstant: (_, i) => ({ registers: [i.dst], labels: [i.target] }),
+  makeContextConstant: (_, i) => ({ registers: [i.value] }),
   array: (_, i) => ({ registers: [i.dst, ...i.elements.map((element) => element.value)] }),
   map: (_, i) => ({
     registers: [

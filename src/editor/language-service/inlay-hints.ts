@@ -60,6 +60,8 @@ function ownUntypedNames(node: SyntaxNode): readonly Identifier[] {
   switch (node.kind) {
     case 'VariableDeclaration':
       return node.type === undefined ? node.targets.flatMap(targetNames) : [];
+    case 'ContextConstantDeclaration':
+      return node.type === undefined ? [node.name] : [];
     case 'For':
       return node.targets.flatMap(targetNames);
     case 'FieldHeader':

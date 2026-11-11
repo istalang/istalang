@@ -64,6 +64,7 @@ const declarationKinds = new Set([
   'SharedStructDeclaration',
   'ExternStructDeclaration',
   'ExternConstantDeclaration',
+  'ContextConstantDeclaration',
   'EnumDeclaration',
   'TraitDeclaration',
   'TypeAliasDeclaration',

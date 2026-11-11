@@ -6,7 +6,8 @@
  * cycle are found like any other: they stop being reachable together.
  *
  * - The roots are every live execution's frames (registers, and the cells references name), and
- *   every run's, the call a resolver readied (snapshot/holdings.ts `runFrame`), plus the objects the
+ *   every run's, the call a resolver readied, and every context constant's (snapshot/holdings.ts
+ *   `keptFrame`), plus the objects the
  *   scheduler names: the call futures of executions running on its
  *   run stack, which keep themselves alive until they suspend, and objects waiting in a collection
  *   round (collector.ts).

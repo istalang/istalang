@@ -63,7 +63,7 @@ tags: [reuse, lowering, definition, ir, instructions]
 ## One-way rules
 
 - Emit every `call` through `emitCall` / `emitFunctionCall`, every loop through `emitLoop`, and every value conversion through `FunctionContext.fitted`.
-- Lower every checked body through `instanceLowering` or `nestedLowering` (`functions/index.ts`), and syntaxless code through `SynthesizedCode`.
+- Lower every checked body through `instanceLowering`, `nestedLowering` or, for a context constant's initializer, `accessorLowering` (`functions/index.ts`), and syntaxless code through `SynthesizedCode`.
 - Never recognize a `Definition` type by name string at runtime; use `TypeDefinition.role` (`hasRole`, `isResourceType` in `src/definition/tables/types.ts`).
 
 ## Recipes

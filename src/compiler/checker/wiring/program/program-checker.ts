@@ -35,6 +35,7 @@ import type { Bindings, Entity } from '../../../binder/entities.ts';
 import { type ModuleId, type Program, programModule } from '../../../program/program.ts';
 import type {
   AliasDeclaration,
+  ContextConstantDeclaration,
   Declaration,
   DeclaredStruct,
   EnumDeclaration,
@@ -57,6 +58,7 @@ import type {
 } from '../../check.ts';
 import { Aliases } from '../../constructs/declarations/aliases/index.ts';
 import { ConstantChecks } from '../../constructs/declarations/constants.ts';
+import { ContextConstantChecks } from '../../constructs/declarations/context-constants.ts';
 import { FunctionChecks } from '../../constructs/declarations/functions/functions.ts';
 import {
   type DefaultsBody,
@@ -150,6 +152,7 @@ export class ProgramChecker implements CheckerContext {
   readonly boundKindsOf: CheckerContext['boundKindsOf'] = (type) => boundKindsOf(this, type);
   readonly #functions: FunctionChecks;
   readonly #constants: ConstantChecks;
+  readonly contextConstants: ContextConstantChecks;
   readonly #layouts: Layouts;
   readonly #parameters: Parameters;
   readonly #aliases: Aliases;
@@ -198,6 +201,9 @@ export class ProgramChecker implements CheckerContext {
       checkConstant: (module, declaration, declared) =>
         this.#valueBody(module, declared).checkConstant(declaration),
     });
+    this.contextConstants = new ContextConstantChecks(this, (module, declared, within) =>
+      this.#valueBody(module, declared, within),
+    );
     this.#parameters = new Parameters({
       checker: this,
       defaultsBody: (declaration) => this.#defaultsBody(declaration),
@@ -235,13 +241,16 @@ export class ProgramChecker implements CheckerContext {
     return new BodyChecker(this, module, kind).checkFunction(body, this.parametersOf(declaration));
   }
 
-  /** A body checking a value of its own: a constant's, an annotation's, or `defaultsOf`'s defaults. */
+  /**
+   * A body checking a value of its own: a constant's, an annotation's, or one checked `within` a
+   * function, its defaults or a context constant's initializer.
+   */
   #valueBody(
     module: ModuleId,
     declaredResult: Type | undefined,
-    defaultsOf?: FunctionDeclaration,
+    within?: FunctionDeclaration | ContextConstantDeclaration,
   ): BodyChecker {
-    return new BodyChecker(this, module, { kind: 'value', declaredResult, defaultsOf });
+    return new BodyChecker(this, module, { kind: 'value', declaredResult, within });
   }
 
   /** The body a function's parameter defaults are checked in, each seeing those before it. */

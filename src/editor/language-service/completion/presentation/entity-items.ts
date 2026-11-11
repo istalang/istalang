@@ -159,6 +159,7 @@ function variableKind(checker: Checker, entity: VariableEntity): CompletionKind 
   }
   const isConstant =
     owner.kind === 'ExternConstantDeclaration' ||
+    owner.kind === 'ContextConstantDeclaration' ||
     (owner.kind === 'VariableDeclaration' &&
       !owner.isMutable &&
       checker.bindings.isTopLevel(entity));

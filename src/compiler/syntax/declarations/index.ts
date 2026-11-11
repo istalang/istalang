@@ -7,6 +7,8 @@
  *   of a flag on StructDeclaration. A shared struct has its own kind too: its type is a handle, not
  *   its fields.
  * - An extern constant has a type and no value, unlike a `const`.
+ * - A context constant, `ista const`, has a value computed in each context it is read in, not
+ *   while compiling, so it is no `const` either, and names one value.
  * - The two import forms bind different things.
  *
  * A function stays one kind, extern or not, because its signature is the same either way. Only its
@@ -207,6 +209,18 @@ export interface ExternConstantDeclaration
   readonly type: TypeNode;
 }
 
+/**
+ * `ista const verdicts = Inbox.create<Verdict>()` (proposal 9): one value per context, made the
+ * first time code in that context reads it and kept in its memory.
+ */
+export interface ContextConstantDeclaration
+  extends NodeOf<'ContextConstantDeclaration'>,
+    Annotatable {
+  readonly name: Identifier;
+  readonly type: TypeNode | undefined;
+  readonly initializer: Expression;
+}
+
 export interface EnumDeclaration extends NodeOf<'EnumDeclaration'>, Annotatable, Documented {
   readonly name: Identifier;
   readonly typeParameters: TypeParameters;
@@ -321,7 +335,8 @@ export type Declaration =
   | TraitDeclaration
   | TypeAliasDeclaration
   | FunctionDeclaration
-  | ConstantDeclaration;
+  | ConstantDeclaration
+  | ContextConstantDeclaration;
 
 /** One source file. Its span is the whole text. */
 export interface Module extends NodeOf<'Module'>, Documented {

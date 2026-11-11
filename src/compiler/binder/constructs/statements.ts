@@ -106,10 +106,10 @@ export function spanThrough(binder: LocalBinder, item: SyntaxNode): AnchoredSpan
   return body?.span ?? item.span;
 }
 
-/** A variable declaration's type and initializer, bound before its names exist. */
+/** A variable's or a context constant's type and initializer, bound before its names exist. */
 export function bindVariableValue(
   binder: LocalBinder,
-  node: VariableDeclaration,
+  node: Pick<VariableDeclaration, 'type' | 'initializer'>,
   scope: Scope,
 ): void {
   if (node.type !== undefined) {

@@ -166,6 +166,11 @@ export const followers = {
 
 export type Modifier = keyof typeof followers;
 
+/** What may follow a modifier besides `followers`' only where a top-level item starts: `ista const` (§3.4). */
+export const topLevelFollowers: Readonly<Partial<Record<Modifier, readonly Keyword[]>>> = {
+  ista: followersIn(headForms.contextConstant, 'ista').filter(isKeyword),
+};
+
 /** The modifiers only keywords follow, which the parser reads by their token kinds. */
 export type KeywordModifier = {
   [Each in Modifier]: (typeof followers)[Each][number] extends Keyword ? Each : never;

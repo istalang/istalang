@@ -31,6 +31,7 @@ import {
   isFieldsFunction,
 } from '../../../syntax/declarations/field-defaults.ts';
 import {
+  type ContextConstantDeclaration,
   type DeclaredStruct,
   type EnumDeclaration,
   type FunctionDeclaration,
@@ -47,6 +48,7 @@ import type { CheckedBody, NestedFunction, ValueSite } from '../../surface/check
 import { type ResolvedCall, witnessCallsOf } from '../../surface/resolved-call.ts';
 import { kindOfFunction, simpleMark } from '../../types/type/function-kinds.ts';
 import { isNominalEntity, nominalType, type Type } from '../../types/type/index.ts';
+import { markType } from '../../types/type/primitives.ts';
 import { typeText } from '../../types/type/type-text.ts';
 import { type Holding, heldKindRefusal } from './signature-kinds.ts';
 
@@ -102,21 +104,37 @@ export function checkDataKinds(
   }
 }
 
-/** Reports the first value of a kind a top-level constant's initializer handles: simple code. */
+/**
+ * Reports the first value of a kind a top-level constant's initializer handles: a `const`'s is
+ * simple code, a context constant's ista code (§3.4).
+ */
 export function checkConstantKinds(
   checker: CheckerContext,
   module: ModuleId,
-  declaration: VariableDeclaration,
+  declaration: VariableDeclaration | ContextConstantDeclaration,
 ): void {
-  const body = checker.constantBodyOf(declaration);
+  const isContext = declaration.kind === 'ContextConstantDeclaration';
+  const body = isContext
+    ? checker.contextConstants.bodyOf(declaration)
+    : checker.constantBodyOf(declaration);
+  const own = isContext ? markType('ista') : simpleMark;
+  const holder = isContext ? `'${declaration.name.text}'` : 'a constant';
   if (body !== undefined) {
     judge(judgingOf(checker, module, body), declaration.initializer, {
-      own: simpleMark,
-      holder: 'a constant',
+      own,
+      holder,
       remedy: '',
       reported: false,
       judged: new Set(),
     });
+  }
+  if (isContext && declaration.type !== undefined) {
+    const type = checker.contextConstants.typeOf(declaration);
+    const held = [{ at: declaration.type.span, type }];
+    const refusal = heldKindRefusal(checker, { own, holder, held });
+    if (refusal !== undefined) {
+      checker.report(module, refusal);
+    }
   }
 }
 

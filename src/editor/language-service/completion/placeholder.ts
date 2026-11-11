@@ -393,6 +393,7 @@ const declaringKinds: ReadonlySet<string> = new Set([
   'SharedStructDeclaration',
   'ExternStructDeclaration',
   'ExternConstantDeclaration',
+  'ContextConstantDeclaration',
   'EnumDeclaration',
   'Variant',
   'TraitDeclaration',

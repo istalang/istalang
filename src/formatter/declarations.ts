@@ -107,6 +107,14 @@ export const declarationPrinters: Printers<DeclarationKind> = {
     ]),
   ExternConstantDeclaration: (printer, node) =>
     annotated(printer, node, ['extern ', printer.print(node.name), ': ', printer.print(node.type)]),
+  ContextConstantDeclaration: (printer, node) =>
+    annotated(printer, node, [
+      'ista const ',
+      printer.print(node.name),
+      node.type === undefined ? '' : [': ', printer.print(node.type)],
+      ' ',
+      opened(printer, '=', node.initializer),
+    ]),
   EnumDeclaration: (printer, node) =>
     annotated(printer, node, [
       'enum ',

@@ -49,7 +49,10 @@ import type {
 import type { Fit } from '../../checker/types/fitting/fit/index.ts';
 import type { Type } from '../../checker/types/type/index.ts';
 import { type ModuleId, programModule } from '../../program/program.ts';
-import type { FunctionDeclaration } from '../../syntax/declarations/index.ts';
+import type {
+  ContextConstantDeclaration,
+  FunctionDeclaration,
+} from '../../syntax/declarations/index.ts';
 import type { Expression, FieldHeader, Lambda } from '../../syntax/expressions/index.ts';
 import type { Pattern } from '../../syntax/patterns.ts';
 import type { Block, Statement } from '../../syntax/statements/index.ts';
@@ -87,6 +90,7 @@ import {
   takeApart,
 } from './frame-variables.ts';
 import {
+  accessorFrame,
   type BodyReading,
   builtFrame,
   defaultsReading,
@@ -136,6 +140,19 @@ export function builtLowering(
   return new FunctionLowering(
     { ...lowering, owner, body: undefined },
     builtFrame(lowering, instance, awaited),
+  );
+}
+
+/** The lowering of the accessor of the context constant `declaration`, from its initializer (§3.4). */
+export function accessorLowering(
+  lowering: Lowering,
+  declaration: ContextConstantDeclaration,
+): FunctionLowering {
+  const owner = { kind: 'contextConstant', declaration } as const;
+  const body = lowering.checker.contextConstants.bodyOf(declaration);
+  return new FunctionLowering(
+    { ...lowering, owner, body },
+    accessorFrame(lowering, declaration, body.result),
   );
 }
 
@@ -231,6 +248,29 @@ class FunctionLowering implements EntryContext {
     const parameters = declareFrame(this, this.#slots());
     const value = build(this, parameters);
     this.code.emit({ kind: 'return', span: this.frame.function.span, value });
+    return this.#entry(parameters);
+  }
+
+  /**
+   * The code entry each read of a context constant calls (§3.4): the instance's value once made;
+   * while it isn't, the initializer's, made the instance's value then, its temporaries let go of as
+   * the entry returns. `name` keys it, as qualified.
+   */
+  lowerAccessor(declaration: ContextConstantDeclaration, name: string): CodeFunction {
+    const parameters = declareFrame(this, this.#slots());
+    const { span } = declaration;
+    const value = this.code.allocate();
+    const made = this.code.newLabel();
+    this.code.contextConstant(value, name, made, span);
+    this.code.emit({
+      kind: 'move',
+      span,
+      dst: value,
+      src: this.expression(declaration.initializer),
+    });
+    this.code.emit({ kind: 'makeContextConstant', span, name, value });
+    this.code.place(made);
+    this.code.emit({ kind: 'return', span, value });
     return this.#entry(parameters);
   }
 

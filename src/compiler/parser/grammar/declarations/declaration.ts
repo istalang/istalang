@@ -11,10 +11,15 @@
  * struct literal, and `type` is a keyword only before a declared name (§2). An extern's and a
  * shared struct's head start with any of their modifiers, so `shared` and a handle are keywords
  * only before a head's `struct` or `fn` (../parts/heads.ts), and the keyword ending the head, past
- * them, chooses the declaration.
+ * them, chooses the declaration. A modifier before `const` starts a context constant,
+ * `ista const`, whichever word it is, so a wrong one costs one diagnostic.
  */
 
-import type { Declaration, Module } from '../../../syntax/declarations/index.ts';
+import type {
+  ContextConstantDeclaration,
+  Declaration,
+  Module,
+} from '../../../syntax/declarations/index.ts';
 import type { DeclarationWord } from '../../../syntax/tokens/grammar-words.ts';
 import {
   groupIn,
@@ -23,12 +28,13 @@ import {
   type ModifierWord,
 } from '../../../syntax/tokens/modifiers.ts';
 import type { CursorKind } from '../../cursor/index.ts';
+import { parserDiagnostics } from '../../diagnostics.ts';
 import { attachAnnotations } from '../../layout/annotations.ts';
 import { documentedBy } from '../../layout/docstrings.ts';
 import { type ItemRules, parseModuleLines } from '../../layout/index.ts';
 import type { Parser } from '../../parser.ts';
 import { parseModuleItem } from '../parts/blocks.ts';
-import { headAhead } from '../parts/heads.ts';
+import { headAhead, parseHead } from '../parts/heads.ts';
 import { type StartParselets, type WordParselets, wordParseletAt } from '../word-parselets.ts';
 import { parseExternConstant, parseExternStruct } from './externs.ts';
 import { parseFunction } from './functions.ts';
@@ -70,6 +76,9 @@ function parseModified(parser: Parser): Declaration | undefined {
     return undefined;
   }
   const { modifiers, keyword } = head;
+  if (keyword === 'const') {
+    return parseContextConstant(parser);
+  }
   if (head.named) {
     return parseFunction(parser, 'item');
   }
@@ -80,6 +89,28 @@ function parseModified(parser: Parser): Declaration | undefined {
     return undefined;
   }
   return modifiers.includes('shared') ? parseSharedStruct(parser) : parseStruct(parser);
+}
+
+/** `ista const name: T = value` (§3.4), at its head, whose kind is `ista` unless reported. */
+function parseContextConstant(parser: Parser): ContextConstantDeclaration {
+  const { cursor } = parser;
+  const { start } = cursor.token.span;
+  const { kind } = parseHead(parser, headForms.contextConstant);
+  if (kind === 'live') {
+    parser.report(
+      parserDiagnostics.contextConstantWord(parser.textSpanOf(parser.spanFrom(start)), kind),
+    );
+  }
+  const name = parser.identifier('a name');
+  const type = cursor.eat(':') === undefined ? undefined : parser.type();
+  const initializer = parser.expect('=') === undefined ? parser.placeholder() : parser.value(start);
+  return {
+    kind: 'ContextConstantDeclaration',
+    span: parser.spanFrom(start),
+    name,
+    type,
+    initializer,
+  };
 }
 
 /** An extern, at the first of `modifiers`, which `keyword` may end. */

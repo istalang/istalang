@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-11-05
-last_updated: 2026-11-10
+last_updated: 2026-11-11
 tags: [reuse, syntax, ast, scanner, parser, operators]
 ---
 

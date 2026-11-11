@@ -116,6 +116,7 @@ const symbolsOfDeclaration: SymbolsOf = {
   SharedStructDeclaration: struct,
   ExternStructDeclaration: struct,
   ExternConstantDeclaration: (declaration) => symbol(declaration.name, 'constant', declaration),
+  ContextConstantDeclaration: (declaration) => symbol(declaration.name, 'constant', declaration),
   EnumDeclaration: (declaration) =>
     symbol(declaration.name, 'enum', declaration, variantSymbols(declaration.variants)),
   TraitDeclaration: (declaration) =>

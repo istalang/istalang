@@ -276,6 +276,7 @@ describe('completion offers the words that go on after what is written', () => {
     ['`extern shared`', ['extern shared ‸'], ['struct']],
     ['`extern live`', ['extern live ‸'], ['fn', 'async', 'struct']],
     ['`extern ista`', ['extern ista ‸'], ['fn', 'async']],
+    ['`ista` starting a top-level item', ['ista ‸'], ['fn', 'async', 'const']],
     ['`live` in a type', ['type F = live ‸'], ['fn', 'async']],
     ['`ista` in a trait', ['trait T:', '  ista ‸'], ['fn', 'async']],
     ['a range', ['fn f():', '  let r = 0..10 ‸', '  1'], ['or', 'and', 'in', 'not', 'is', 'by']],

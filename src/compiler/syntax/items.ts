@@ -76,6 +76,7 @@ function placeOf(item: Item): Place {
     case 'SharedStructDeclaration':
     case 'ExternStructDeclaration':
     case 'ExternConstantDeclaration':
+    case 'ContextConstantDeclaration':
     case 'EnumDeclaration':
     case 'TraitDeclaration':
     case 'TypeAliasDeclaration':

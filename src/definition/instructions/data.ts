@@ -17,7 +17,15 @@
  */
 
 import { z } from 'zod';
-import { constantId, fieldIndex, functionId, register, typeId, variantIndex } from '../operands.ts';
+import {
+  constantId,
+  fieldIndex,
+  functionId,
+  label,
+  register,
+  typeId,
+  variantIndex,
+} from '../operands.ts';
 import { defineInstruction } from './define-instruction.ts';
 import { place } from './places.ts';
 
@@ -105,8 +113,27 @@ const order = defineInstruction('order', {
   relation: z.enum(['less', 'lessOrEqual', 'greater', 'greaterOrEqual']),
 });
 
+/**
+ * dst = the instance's value of the context constant `name`, its qualified name (spec §3.4), and a
+ * jump to `target`, once the instance has made one; while it hasn't, on to make it, as `given` goes
+ * on to compute a default.
+ */
+const contextConstant = defineInstruction('contextConstant', {
+  dst: register,
+  name: z.string(),
+  target: label,
+});
+
+/** Makes `value` the instance's value of the context constant `name`, kept from now on. */
+const makeContextConstant = defineInstruction('makeContextConstant', {
+  name: z.string(),
+  value: register,
+});
+
 export const dataInstructions = [
   constant,
+  contextConstant,
+  makeContextConstant,
   move,
   tuple,
   struct,

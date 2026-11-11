@@ -112,7 +112,8 @@ class TopLevelDefiner {
       case 'FunctionDeclaration':
         this.#defineFunction(item);
         return;
-      case 'ExternConstantDeclaration': {
+      case 'ExternConstantDeclaration':
+      case 'ContextConstantDeclaration': {
         const { name } = item;
         this.#define(name, variableEntity(name, item), 'declaration', 'value');
         return;

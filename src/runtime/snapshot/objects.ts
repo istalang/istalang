@@ -221,6 +221,11 @@ export const heapObject = z.discriminatedUnion('kind', [
     arguments: z.array(value),
   }),
   /**
+   * A context constant's value (spec §3.4), by the constant's qualified name: made the first time
+   * code in the instance reads it, and a root from then on, kept in its memory.
+   */
+  defineObject('contextConstant', { key: z.string(), value }),
+  /**
    * An execution: a call stack, innermost frame last. An async call's execution names the future
    * its return resolves (spec §3.3); the root, the instance's own, names none.
    */

@@ -234,6 +234,11 @@ export const parserDiagnostics = defineDiagnostics('parser', {
     message: () =>
       "An extern struct declares only associated types ('type Mode = K'): its fields are the host's (§3.6).",
   },
+  contextConstantWord: {
+    code: 2080,
+    message: (word: string) =>
+      `Only 'ista' comes before a top-level 'const', not '${word}': 'ista const' holds one value per context (proposal 9).`,
+  },
   positionalAfterNamed: {
     code: 2050,
     message: () => 'Named arguments come after the positional ones and spreads (§3.3).',

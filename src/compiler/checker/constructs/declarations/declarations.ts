@@ -268,6 +268,10 @@ const declarationHandlers: Handlers<CheckerContext, Declaration, [ModuleId], voi
       checkDisposeDeclaration(checker, node);
     }
   },
+  ContextConstantDeclaration: (checker, node, module) => {
+    annotatedNowhere('a context constant')(checker, node, module);
+    checkConstantKinds(checker, module, node);
+  },
   VariableDeclaration: (checker, node, module) => {
     annotatedNowhere('a constant')(checker, node, module);
     checker.constantOf(node);

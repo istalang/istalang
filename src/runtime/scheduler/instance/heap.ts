@@ -82,6 +82,8 @@ const indexes = {
   cases: index('resolver', ({ state }) =>
     state.kind === 'pending' && state.target.kind === 'case' ? [state.target.wait] : [],
   ),
+  /** Each context constant's value, by the constant's qualified name (spec §3.4). */
+  contextConstants: index('contextConstant', (constant) => [constant.key]),
   /** Each pending `Resolver.at` resolver, by the resolver it decides. */
   positions: index('resolver', ({ state }) =>
     state.kind === 'pending' && state.target.kind === 'at' ? [state.target.done] : [],

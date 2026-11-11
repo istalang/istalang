@@ -18,6 +18,7 @@ import type { Bindings, Entity } from '../binder/entities.ts';
 import type { ModuleId, Program } from '../program/program.ts';
 import type {
   AliasDeclaration,
+  ContextConstantDeclaration,
   Declaration,
   FunctionDeclaration,
   TypeAliasDeclaration,
@@ -68,6 +69,14 @@ export interface CheckedConstant {
   readonly form: ConstantForm | undefined;
 }
 
+/** What checking context constants gives (§3.4). */
+export interface ContextConstantQueries {
+  /** The type of `declaration`: its written one, or its initializer's. */
+  readonly typeOf: (declaration: ContextConstantDeclaration) => Type;
+  /** The checking of its initializer, a value within it, which lowers into its own entry. */
+  readonly bodyOf: (declaration: ContextConstantDeclaration) => CheckedBody;
+}
+
 /** A program's types, as its later phases read them. */
 export interface Checker {
   readonly program: Program;
@@ -96,6 +105,8 @@ export interface Checker {
   readonly constantOf: (declaration: VariableDeclaration) => CheckedConstant | undefined;
   /** The checking of a top-level constant's initializer, which lowers its lambdas (§3.14). */
   readonly constantBodyOf: (declaration: VariableDeclaration) => CheckedBody | undefined;
+  /** The context constants' types and initializers, checked (§3.4). */
+  readonly contextConstants: ContextConstantQueries;
   /**
    * The checked top-level constant `name` denotes in `module`; undefined when it denotes anything
    * else.

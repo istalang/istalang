@@ -19,6 +19,10 @@ export interface FrameHeap {
    * A new cell of type entry `type` (a shared struct's or a `_Cell<T>`) holding `value`; its id.
    */
   readonly create: (type: TypeId, value: Value) => number;
+  /** The instance's value of the context constant `name`, once made (spec §3.4). */
+  readonly contextConstant: (name: string) => Value | undefined;
+  /** Makes `value` the instance's value of the context constant `name`, kept from now on. */
+  readonly makeContextConstant: (name: string, value: Value) => void;
   /**
    * Notes that a frame no longer holds `contents`, which may have held something's last handle. A
    * reference never does: it borrows a cell its caller holds for the whole call.

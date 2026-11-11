@@ -293,3 +293,33 @@ describe('type parameter packs', () => {
     );
   });
 });
+
+describe('context constants (proposal 9)', () => {
+  it.each([
+    ['ista const verdicts = Inbox.create()', '(ContextConstantDeclaration verdicts _ '],
+    ['ista const count: Int = 0', `(ContextConstantDeclaration count ${int} 0)`],
+  ])('parses %s', (text, tree) => {
+    expect(dumpClean('module', text)).toContain(tree);
+  });
+
+  it('reports a head of a top-level const whose kind is live, once', () => {
+    expect(reported('module', 'live const count = 0')).toEqual(
+      reportedOnce(parserDiagnostics.contextConstantWord.code, 'live const'),
+    );
+  });
+
+  it('reports a modifier a context constant takes none of as any head does', () => {
+    expect(reported('module', 'extern ista const count = 0')).toEqual(
+      reportedOnce(parserDiagnostics.misplacedModifier.code, 'extern'),
+    );
+    expect(reported('module', 'ista ista const count = 0')).toEqual(
+      reportedOnce(parserDiagnostics.repeatedModifier.code, 'ista'),
+    );
+  });
+
+  it('allows one only at the top level', () => {
+    expect(reported('module', 'fn f():\n  ista const count = 0')).toEqual(
+      reportedOnce(parserDiagnostics.declarationInBlock.code, 'ista const count = 0'),
+    );
+  });
+});

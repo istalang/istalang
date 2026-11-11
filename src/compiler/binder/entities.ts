@@ -24,6 +24,7 @@ import { memo, SequenceMemo } from '../../foundation/structures/memo.ts';
 import type { ModuleId } from '../program/program.ts';
 import type {
   AssociatedType,
+  ContextConstantDeclaration,
   EnumDeclaration,
   ExternConstantDeclaration,
   ExternStructDeclaration,
@@ -65,6 +66,7 @@ export type VariableOwner =
   | OwnCall
   | VariableDeclaration
   | ExternConstantDeclaration
+  | ContextConstantDeclaration
   | Parameter
   | For
   | FieldHeader

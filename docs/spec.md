@@ -374,7 +374,7 @@ Type annotations are required on the parameters of declared functions and on str
 
 ## 3. Declarations
 
-A program consists only of top-level declarations: imports, structs, enums, traits, type aliases, functions, `extern` declarations, and `const` values computable at compile time (literals, `none`, lambdas, and tuples, structs, arrays and maps built from them, in any literal form, each put into a union where one is expected, indented values (§2) among them, a field left to its default (§3.1) computed as its default is; a spread there spreads another array or map so built; never a shared struct, whose cell lives in an instance (§3.18)). A lambda there reads other constants but captures nothing, so it is a function value made once (§3.14). A top-level `const` may destructure its value as a local one does (§3.15), each name a constant of its own. There are no top-level variables or statements.
+A program consists only of top-level declarations: imports, structs, enums, traits, type aliases, functions, `extern` declarations, and `const` values computable at compile time (literals, `none`, lambdas, and tuples, structs, arrays and maps built from them, in any literal form, each put into a union where one is expected, indented values (§2) among them, a field left to its default (§3.1) computed as its default is; a spread there spreads another array or map so built; never a shared struct, whose cell lives in an instance (§3.18)). A lambda there reads other constants but captures nothing, so it is a function value made once (§3.14). A top-level `const` may destructure its value as a local one does (§3.15), each name a constant of its own. A context constant, `ista const`, holds one value per context instead (§3.4). There are no top-level variables or statements.
 
 ### 3.1 Structs
 
@@ -579,6 +579,15 @@ batch:
     for job in jobs:
         hold(batch) _ = start(job)                      # runs until the batch ends
     await allDone()
+```
+
+**Context constants.** A top-level `ista const` holds one value per context (§9), of any type: a slot, an inbox, a `Shared<T>`. Its value is made the first time code in that context reads it, inside the reading segment, so a segment that is discarded made none, and is kept in the context's memory from then on. It is named as every declaration is, by its module and name, with one type, its written one or its initializer's. It is immutable as every `const` is, up to its handles. Its initializer runs as `ista` code that can't await, and reading one is an `ista` call (proposal 8, Rule 2): a function that reads one is `ista`, so no live code reaches one. An instance that finishes or ends lets go of its context constants last, once everything else it held is disposed, the last made first (§7), so a disposal still reads them, but not one let go of before it.
+
+```python
+import Inbox from 'inbox'
+struct Verdict { role: String, ok: Bool }
+ista const verdicts = Inbox.create<Verdict>()
+ista fn approve(v: Verdict): verdicts.send(v)          # every call in one context sends to one inbox
 ```
 
 ### 3.5 Generics

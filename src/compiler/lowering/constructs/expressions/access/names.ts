@@ -55,5 +55,9 @@ export function lowerNamed(
     const reader = context.tables.externConstantIndex(entity.owner, context.typeOf(read));
     return emitCall(context, { span: read.span, callee: reader, arguments: [] });
   }
+  if (entity.owner.kind === 'ContextConstantDeclaration') {
+    const accessor = context.tables.contextConstantIndex(entity.owner);
+    return emitCall(context, { span: read.span, callee: accessor, arguments: [] });
+  }
   return context.variables.registerOf(entity.name);
 }

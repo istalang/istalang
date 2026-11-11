@@ -11,7 +11,6 @@ import type { Identifier } from '../../../syntax/tree/node.ts';
 import type { AnchoredSpan } from '../../../syntax/tree/positions.ts';
 import type { FunctionFrame } from '../../contexts/body-context.ts';
 import type { NestedFunction } from '../../surface/checked-body.ts';
-import { type KindLookup, kindOfFunction, simpleMark } from '../../types/type/function-kinds.ts';
 import type { Type } from '../../types/type/index.ts';
 import { EnclosingScopes } from './enclosing-scopes.ts';
 import type { ReturnScope } from './returns.ts';
@@ -25,17 +24,17 @@ interface FunctionOwn {
   readonly reach?: AnchoredSpan | undefined;
 }
 
-/**
- * The scope of a body's own function, of the function's kind (§3.3); with none, of a value's body,
- * outside any function, whose code is of either kind.
- */
-export function rootScope(
-  lookup: KindLookup,
-  own: { readonly declaration: FunctionDeclaration; readonly isAsync: boolean } | undefined,
-  returns: ReturnScope,
-): FunctionScope {
-  const codeKind = own === undefined ? simpleMark : kindOfFunction(lookup, own.declaration);
-  return new FunctionScope(own?.declaration, { isAsync: own?.isAsync ?? false, codeKind, returns });
+/** What a body's own code is checked as: the function it is, if any, whether it may wait, its kind. */
+export interface OwnScope {
+  readonly function: FunctionDeclaration | undefined;
+  readonly isAsync: boolean;
+  readonly codeKind: Type;
+}
+
+/** The scope of a body's own code, as `own` says it is checked (wiring/body/body-kinds.ts). */
+export function rootScope(own: OwnScope, returns: ReturnScope): FunctionScope {
+  const { isAsync, codeKind } = own;
+  return new FunctionScope(own.function, { isAsync, codeKind, returns });
 }
 
 /** One function being checked: the body's own, or a nested one. */

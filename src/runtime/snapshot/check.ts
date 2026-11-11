@@ -42,6 +42,7 @@ export function checkSnapshot(definition: Definition, snapshot: Snapshot): void 
     ...snapshot.objects.flatMap((object) => objectProblems(definition, object)),
     ...waitProblems(definition, snapshot),
     ...callFutureProblems(snapshot),
+    ...contextConstantProblems(snapshot),
     ...startingCallProblems(definition, snapshot.status),
     ...encoderProblems(definition, snapshot.encoder),
     ...outcomeProblems(definition, snapshot.status),
@@ -80,6 +81,7 @@ const kindProblems: Handlers<Definition, HeapObject, [], readonly string[]> = {
       ? []
       : [`mock ${mock.id} replaces function ${mock.target}, which doesn't exist`],
   run: (definition, run) => callProblems(definition, run, `run ${run.id}`),
+  contextConstant: () => [],
   answer: () => [],
   outcome: () => [],
   wait: () => [],
@@ -88,6 +90,14 @@ const kindProblems: Handlers<Definition, HeapObject, [], readonly string[]> = {
   future: () => [],
   weakRef: () => [],
 };
+
+/** Each context constant has one value in an instance at most (spec §3.4). */
+function contextConstantProblems(snapshot: Snapshot): readonly string[] {
+  const keys = snapshot.objects.flatMap((object) =>
+    object.kind === 'contextConstant' ? [object.key] : [],
+  );
+  return new Set(keys).size === keys.length ? [] : ['a context constant has two values'];
+}
 
 /**
  * An execution waits exactly when its top frame stands at an instruction that waits, its register

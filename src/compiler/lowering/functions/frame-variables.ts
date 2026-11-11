@@ -200,8 +200,11 @@ export function takeApart(
  */
 export function declareOwnCall(context: EntryContext): void {
   const { mode, function: owner } = context.frame;
+  // A context constant's initializer never waits, so it is simple code, which reads no call.
   const call =
-    mode === 'simple' ? undefined : context.checker.bindings.ownCallOf(context.module, owner);
+    mode === 'simple' || owner.kind === 'ContextConstantDeclaration'
+      ? undefined
+      : context.checker.bindings.ownCallOf(context.module, owner);
   if (call !== undefined) {
     declareFilled(context, call.name, (dst) => ({ kind: 'currentCall', span: owner.span, dst }));
   }

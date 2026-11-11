@@ -42,6 +42,7 @@ import { optionalInner } from '../../checker/types/unions/unions.ts';
 import { isStdModule, type ModuleId, programModule } from '../../program/program.ts';
 import { declaredFunctionName } from '../../syntax/declarations/field-defaults.ts';
 import type {
+  ContextConstantDeclaration,
   ExternConstantDeclaration,
   FunctionDeclaration,
   TraitDeclaration,
@@ -56,14 +57,18 @@ function moduleName(checker: Checker, module: ModuleId): string {
   return programModule(checker.program, module).name;
 }
 
-/** A declaration lowering names: a function, a type, a top-level constant or an extern one. */
+/**
+ * A declaration lowering names: a function, a type, a top-level constant, an extern one or a
+ * context one.
+ */
 type NamedDeclaration =
   | FunctionDeclaration
   | NominalDeclaration
   | TraitDeclaration
   | TypeAliasDeclaration
   | VariableDeclaration
-  | ExternConstantDeclaration;
+  | ExternConstantDeclaration
+  | ContextConstantDeclaration;
 
 /**
  * A declaration's name, qualified by its module's canonical name: `time.delay`, `prelude.Optional`;

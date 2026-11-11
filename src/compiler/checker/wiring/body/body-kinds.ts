@@ -1,12 +1,19 @@
 /**
  * What a body is checked as, and what it must produce, if declared: a function's, async or not, or
  * a value of its own, such as a constant's or a function's parameter defaults, which can't return.
- * Defaults are part of their function (§3.3), so they are checked in its scope, of its kind, but
- * never wait.
+ * A value may be checked within a function, in its scope, of its kind, but never waiting, as
+ * defaults are part of their function (§3.3); or within a context constant, as its initializer,
+ * ista code outside any function (§3.4).
  */
 
-import type { FunctionDeclaration } from '../../../syntax/declarations/index.ts';
+import type {
+  ContextConstantDeclaration,
+  FunctionDeclaration,
+} from '../../../syntax/declarations/index.ts';
+import type { OwnScope } from '../../constructs/closures/function-scope.ts';
+import { type KindLookup, kindOfFunction, simpleMark } from '../../types/type/function-kinds.ts';
 import type { Type } from '../../types/type/index.ts';
+import { markType } from '../../types/type/primitives.ts';
 
 export type BodyKind =
   | {
@@ -18,18 +25,23 @@ export type BodyKind =
   | {
       readonly kind: 'value';
       readonly declaredResult: Type | undefined;
-      /** The function whose parameter defaults it computes. */
-      readonly defaultsOf?: FunctionDeclaration | undefined;
+      /** The function whose defaults it computes, or the context constant it initializes. */
+      readonly within?: FunctionDeclaration | ContextConstantDeclaration | undefined;
     };
 
-/** The function whose scope a body of `kind` is checked in, and whether it may wait; none for a value. */
-export function ownScopeOf(
-  kind: BodyKind,
-): { readonly declaration: FunctionDeclaration; readonly isAsync: boolean } | undefined {
+/**
+ * The scope a body of `kind` is checked in: its function's, or a value's, outside any function,
+ * of the kind of what it is within, simple where it is within nothing.
+ */
+export function ownScopeOf(lookup: KindLookup, kind: BodyKind): OwnScope {
   if (kind.kind === 'function') {
-    return kind;
+    const { declaration, isAsync } = kind;
+    return { function: declaration, isAsync, codeKind: kindOfFunction(lookup, declaration) };
   }
-  return kind.defaultsOf === undefined
-    ? undefined
-    : { declaration: kind.defaultsOf, isAsync: false };
+  const { within } = kind;
+  if (within?.kind === 'FunctionDeclaration') {
+    return { function: within, isAsync: false, codeKind: kindOfFunction(lookup, within) };
+  }
+  const codeKind = within === undefined ? simpleMark : markType('ista');
+  return { function: undefined, isAsync: false, codeKind };
 }
