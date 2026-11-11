@@ -99,7 +99,7 @@ fills gone, the rewrite.
   and its running at least once come from the context and the loop. Job and result are sendable,
   CX's crossing check.
 - Host externs: a host's async externs are `live`; externs generic over their mark and `ista`
-  externs are the runtime's, which deploy checks. What only host fills use goes (`findings.md`,
+  externs are the runtime's; the checker refuses them outside the std modules. What only host fills use goes (`findings.md`,
   DG); what live resolvers and the test world share stays. The extern wrapper execution goes (B6).
 - The rewriter makes every host extern giving a future `extern live async fn`, and ista code's
   `await` of one `await delegate …`.
@@ -107,8 +107,8 @@ fills gone, the rewrite.
 **Accept.** `await delegate charge(c, n)` runs `charge` once after the commit, its result in the
 future; a segment crashed before its commit never runs it; crashed after the job starts and before
 its result commits, it runs again under the same key. The behaviour table's `await http.get(u)` and
-`charge(id)` rows in their `delegate` form. A job or result that isn't sendable is refused. Deploy
-refuses a host's mark-generic or `ista` extern. No host token remains. No `delegate` native or job
+`charge(id)` rows in their `delegate` form. A job or result that isn't sendable is refused. The checker
+refuses a host's mark-generic or `ista` extern, so no Definition holds one. No host token remains. No `delegate` native or job
 state exists. Property: over generated programs crashed at every `await`, every job runs at least
 once per committed start and never for a discarded segment. The full suite passes after the
 rewrite; `wake.bench.ts` within 10%.
