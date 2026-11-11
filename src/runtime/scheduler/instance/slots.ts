@@ -11,12 +11,18 @@
  *   while it is empty, the first waiting put fills it. Serving stops at the first waiter the slot
  *   can't serve.
  * - **Serving pauses for a decided `select`'s losers.** An event may decide a `select`, whose losing
- *   cases are let go of then (spec §8): one still queued here must leave the queue unserved, which
- *   only collecting can tell. So serving stops before its next event while such losers await
- *   collecting, and the slot is owed serving, which goes on once collecting is done
- *   (`serveOwed`). Meanwhile every operation on it joins its queue.
- * - A full slot therefore never has a take or read waiting, and an empty one never a put, unless
- *   it is owed serving, so an operation that completes at once never jumps a waiter.
+ *   cases are let go of then (spec §8): what one held, such as a losing async call's own pending
+ *   take, must leave the queue unserved, which only collecting can tell. So serving stops before
+ *   its next event while such losers await collecting, and the slot is owed serving, which goes on
+ *   once collecting is done (`serveOwed`). Meanwhile every operation on it joins its queue.
+ * - **Given up on, passed over.** Serving passes over an operation a resolver was given to wait on
+ *   (`awaited`) while no resolver registered on it is pending: what awaited it was decided
+ *   otherwise, as a losing `select` case or `futures.first` entry is (spec §8), so it consumes
+ *   nothing, though something still holds it. One never awaited is served as it waits, and one
+ *   awaited again is served where it stands.
+ * - A full slot therefore never has a take or read waiting that it would serve, and an empty one
+ *   never such a put, unless it is owed serving, so an operation that completes at once never jumps
+ *   a waiter.
  */
 
 import { handleTo, type Value } from '../../../definition/values/values.ts';
@@ -61,6 +67,7 @@ export class Slots {
         slot: slot.id,
         operation,
         ...(operation === 'put' ? { value } : {}),
+        awaited: false,
       });
       this.#heap.replace({ ...slot, waiting: [...slot.waiting, future] });
       return handleTo(future);
@@ -69,6 +76,22 @@ export class Slots {
     store(this.#heap, slot, slot.waiting, contents);
     this.#serve(slot.id);
     return this.#futures.createHandle({ kind: 'resolved', value: yielded });
+  }
+
+  /**
+   * A resolver was given the future `id` to wait on: a slot operation pending is awaited from now
+   * on, and served now if it can be, as one passed over is once awaited again.
+   */
+  awaited(id: number): void {
+    const future = this.#heap.of(id, 'future');
+    const { state } = future;
+    if (state.kind !== 'slot') {
+      return;
+    }
+    if (!state.awaited) {
+      this.#heap.replace({ ...future, state: { ...state, awaited: true } });
+    }
+    this.#serve(state.slot);
   }
 
   /** Serves the queues whose serving paused, now that collecting is done; whether there were any. */
@@ -87,7 +110,7 @@ export class Slots {
   #serve(id: number): void {
     for (;;) {
       const slot = this.#heap.of(id, 'slot');
-      const served = nextServed(slot, (future) => this.#heap.of(future, 'future').state);
+      const served = nextServed(slot, (future) => this.#awaitedState(future));
       if (served === undefined) {
         return;
       }
@@ -95,24 +118,38 @@ export class Slots {
         this.#owed.add(id);
         return;
       }
-      store(this.#heap, slot, slot.waiting.slice(served.resolutions.length), served.contents);
+      const resolved = new Set(served.resolutions.map((resolution) => resolution.id));
+      const waiting = slot.waiting.filter((future) => !resolved.has(future));
+      store(this.#heap, slot, waiting, served.contents);
       this.#futures.resolveTogether(served.resolutions);
     }
+  }
+
+  /** The state of the pending operation `id`; none while serving passes it over, given up on. */
+  #awaitedState(id: number): FutureState | undefined {
+    const { state } = this.#heap.of(id, 'future');
+    const givenUp =
+      state.kind === 'slot' && state.awaited && this.#heap.find('resolvers', id).length === 0;
+    return givenUp ? undefined : state;
   }
 }
 
 /**
  * The next event of serving `slot`'s queue: while it is full, the reads at its head, or else the
- * take there; while it is empty, the put there. None when its head can't be served.
+ * take there; while it is empty, the put there, the head being the longest waiter not passed over
+ * (`stateOf` gives none). None when its head can't be served.
  */
 function nextServed(
   slot: SlotObject,
-  stateOf: (future: number) => FutureState,
+  stateOf: (future: number) => FutureState | undefined,
 ): Served | undefined {
   const resolutions: Resolution[] = [];
   let contents = slot.value;
-  for (const head of slot.waiting) {
-    const state = stateOf(head);
+  const waiting = slot.waiting.flatMap((id) => {
+    const state = stateOf(id);
+    return state === undefined ? [] : [{ head: id, state }];
+  });
+  for (const { head, state } of waiting) {
     const servable =
       state.kind === 'slot' && (state.operation === 'put') !== (contents !== undefined);
     if (!servable || (state.operation !== 'read' && resolutions.length > 0)) {

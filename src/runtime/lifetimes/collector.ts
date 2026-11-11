@@ -18,11 +18,24 @@
  * Code a callback runs may let go of something in turn; that starts a round of its own, on top,
  * finished before the callback goes on. Whatever a waiting round has yet to dispose counts as held,
  * so no later round takes it out of order.
+ *
+ * A disposal may ready calls as runs, roots of their own: a pending resolver's `onCancel`
+ * callbacks (disposal.ts `readiedBy`). What those calls are made with is marked before the round
+ * disposes anything, and nothing of the round it reaches is removed: a resolver among it is
+ * cancelled and stays, anything else is left as it is, counting as held while the round waits, as
+ * the runs hold it once they are readied, and looked at again once the round is over.
  */
 
+import { handlesIn } from '../../definition/values/values.ts';
 import { unreachable } from '../../foundation/structures/unreachable.ts';
 import type { LiveObject } from '../scheduler/instance/heap.ts';
-import { type DisposalContext, type DisposalRun, dispose, isDisposable } from './disposal.ts';
+import {
+  type DisposalContext,
+  type DisposalRun,
+  dispose,
+  isDisposable,
+  readiedBy,
+} from './disposal.ts';
 import { heldUnlessAll, type Roots, walkHolds } from './holders.ts';
 import { readyOrphans } from './orphans.ts';
 
@@ -33,9 +46,13 @@ export interface CollectorSeams extends DisposalContext {
   readonly run: (run: DisposalRun) => boolean;
 }
 
-/** One round: what it has yet to dispose, newest first, and the object whose call it waits on. */
+/**
+ * One round: what it has yet to dispose, newest first, what of it the runs its disposals ready
+ * keep, and the object whose call it waits on.
+ */
 interface Round {
   readonly queue: number[];
+  readonly kept: ReadonlySet<number>;
   disposing: number | undefined;
 }
 
@@ -80,6 +97,7 @@ export class Collector {
       const id = round.queue.shift();
       if (id === undefined) {
         this.#rounds.pop();
+        this.#seams.heap.noteReleased(round.kept);
         this.#startRound(this.#seams.heap.takeReleased());
       } else {
         this.#dispose(round, id);
@@ -92,9 +110,16 @@ export class Collector {
     if (!heap.has(id)) {
       return;
     }
-    const run = dispose(this.#seams, heap.objectOf(id));
+    const object = heap.objectOf(id);
+    const kept = round.kept.has(id);
+    if (kept && readiedBy(object).length === 0) {
+      return;
+    }
+    const run = dispose(this.#seams, object);
     if (run === undefined) {
-      this.#gone(id);
+      if (!kept) {
+        this.#gone(id);
+      }
       return;
     }
     round.disposing = id;
@@ -121,15 +146,44 @@ export class Collector {
     const isDisposableObject = (object: LiveObject) => isDisposable(this.#seams, object);
     const ready = readyOrphans(heap, { held, from: released, isDisposable: isDisposableObject });
     if (ready.length > 0) {
-      this.#rounds.push({ queue: [...ready], disposing: undefined });
+      const kept = this.#keptBy(ready, held);
+      this.#rounds.push({ queue: [...ready], kept, disposing: undefined });
     }
   }
 
-  /** The scheduler's roots, and what waiting rounds have yet to dispose, which counts as held. */
+  /**
+   * Those of `ready` that what their disposals ready calls with reaches, through what isn't `held`
+   * otherwise, and isn't readying calls itself: a resolver cancelled holds nothing after.
+   */
+  #keptBy(ready: readonly number[], held: ReadonlySet<number>): ReadonlySet<number> {
+    const { heap } = this.#seams;
+    const kept = new Set<number>();
+    const seeds = ready.flatMap((id) => readiedBy(heap.objectOf(id)).flatMap(handlesIn));
+    if (seeds.length === 0) {
+      return kept;
+    }
+    const queued = new Set(ready);
+    walkHolds(heap, seeds, (object) => {
+      if (held.has(object.id)) {
+        return 'past';
+      }
+      if (!queued.has(object.id)) {
+        return 'through';
+      }
+      kept.add(object.id);
+      return readiedBy(object).length > 0 ? 'past' : 'through';
+    });
+    return kept;
+  }
+
+  /**
+   * The scheduler's roots, and what waiting rounds have yet to dispose or keep, which counts as
+   * held.
+   */
   #roots(): Roots {
     const roots = this.#seams.roots();
-    const waiting = this.#rounds.flatMap(({ queue, disposing }) =>
-      disposing === undefined ? queue : [...queue, disposing],
+    const waiting = this.#rounds.flatMap(({ queue, kept, disposing }) =>
+      disposing === undefined ? [...queue, ...kept] : [...queue, ...kept, disposing],
     );
     return { frames: roots.frames, objects: [...roots.objects, ...waiting] };
   }

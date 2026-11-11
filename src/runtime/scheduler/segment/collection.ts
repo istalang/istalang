@@ -43,6 +43,9 @@ export class SegmentCollection {
       disposedFuture: (id) => {
         instance.disposedFuture(id, seams.caller.waiting.kind);
       },
+      cancel: (resolver) => {
+        instance.waits.cancel(resolver);
+      },
       run: (run) => this.disposals.start(run),
     });
   }
@@ -93,9 +96,9 @@ export class SegmentCollection {
 
   /**
    * What holds things besides the collector's own rounds (lifetimes/holders.ts): every execution's
-   * frames, the carrier's, the call futures of the executions running on the run stack, and what
-   * the instance owes (`Instance.owed`). The frames running now come first, innermost first, as
-   * what code lets go of is mostly held there.
+   * frames, the carriers', the runs' (`Instance.runFrames`), the call futures of the executions
+   * running on the run stack, and what the instance owes (`Instance.owed`). The frames running now
+   * come first, innermost first, as what code lets go of is mostly held there.
    */
   #roots(): Roots {
     const { instance, runStack } = this.#seams;
@@ -104,7 +107,10 @@ export class SegmentCollection {
       .objectsOf('execution')
       .filter((execution) => !running.includes(execution));
     return {
-      frames: [...running, ...waiting].flatMap((execution) => execution.frames.toReversed()),
+      frames: [
+        ...[...running, ...waiting].flatMap((execution) => execution.frames.toReversed()),
+        ...instance.runFrames(),
+      ],
       objects: [...runStack.callFutures(), ...instance.owed()],
     };
   }

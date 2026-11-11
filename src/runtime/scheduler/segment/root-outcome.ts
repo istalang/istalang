@@ -225,8 +225,12 @@ export class RootOutcome {
     return encoding;
   }
 
-  /** `outcome`, the root's, with what the encoder gave for it. */
+  /**
+   * `outcome`, the root's, with what the encoder gave for it, the instance finishing with it: the
+   * runs still ready never run, so they are dropped (`Instance.dropRuns`).
+   */
   finished(outcome: Value): Outcome {
+    this.#seams.instance.dropRuns();
     const encoded = this.#encoded;
     return encoded === undefined ? { outcome } : { outcome, encoded };
   }

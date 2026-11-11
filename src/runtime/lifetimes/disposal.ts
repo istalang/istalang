@@ -12,14 +12,15 @@
  * - A value whose type declares `dispose` as code calls that: a call the collector runs as code
  *   (collector.ts), and the object is gone once the call returns. A disposal never awaits, since a
  *   `dispose` can't.
- * - A resolver let go of while pending panics (proposal 8, Rule 5): it was never resolved, so an
- *   awaitable misused it. One registered on a future is held by its wait (holders.ts), and ending a
- *   wait cancels its resolvers, so only an `onAwait`, or code it gave one to, dropping one lets it
- *   go.
+ * - A wait's resolver let go of while pending, never registered, panics its waiter (proposal 8,
+ *   Rule 5): an awaitable dropped it, so nothing can decide the wait through it. Any other pending
+ *   resolver let go of is cancelled, its `onCancel` callbacks readied: one registered goes only with
+ *   its futures, which nothing can resolve any more (`Heap.holds`), and a `Resolver.of` or
+ *   `Resolver.at` one decides no wait of its own.
  * - Any object a weak reference refers to has its watches resolved once it is gone (weak-side.ts).
  *
  * An object is disposed when nothing holds it only when that can be seen: it does one of the
- * above. Any other, such as a resolved future, a timer, a `first` or a slot that no weak reference
+ * above. Any other, such as a resolved future, a timer, a run or a slot that no weak reference
  * refers to, is simply left out of the next commit, as a plain value is. What it holds is let go of
  * all the same, since holding is reachability (holders.ts), so a disposable among it is disposed
  * when it would have been; only nothing has to prove the object itself unheld, which costs a walk
@@ -75,6 +76,8 @@ export interface DisposalContext extends Disposability {
   readonly weak: WeakSide;
   /** Tells what observes the pending future `id` that it was disposed (§7). */
   readonly disposedFuture: (id: number) => void;
+  /** Cancels a pending resolver, readying its `onCancel` callbacks (proposal 8, Rule 5). */
+  readonly cancel: (resolver: LiveObjectOf<'resolver'>) => void;
 }
 
 /** How one object is disposed. */
@@ -98,7 +101,6 @@ const futureStates: { readonly [Kind in FutureState['kind']]: boolean } = {
   host: true,
   resolved: false,
   timer: false,
-  first: false,
   disposed: false,
   watch: false,
 };
@@ -138,14 +140,21 @@ const kinds: Handlers<undefined, LiveObject, [], KindDisposal> = {
   wait: () => inert,
   resolver: (_context, resolver) => ({
     disposable: (context) => resolver.state.kind === 'pending' || watched(context, resolver),
-    dispose: () => {
-      if (resolver.state.kind === 'pending') {
+    dispose: (context) => {
+      if (resolver.state.kind !== 'pending') {
+        return;
+      }
+      if (isDropped(resolver)) {
         throw new Panic(
-          'A resolver was let go of unresolved, so the wait it was to decide never can.',
+          'A resolver was let go of unresolved, so the wait it was to decide never can. An ' +
+            'awaitable keeps the work it starts alive by registering its resolver, or a ' +
+            'Resolver.at of it, on that work; to map a value, await it in an async fn.',
         );
       }
+      context.cancel(resolver);
     },
   }),
+  run: () => inert,
   execution: () => inert,
 };
 
@@ -156,6 +165,22 @@ function disposalFor(object: LiveObject): KindDisposal {
 /** Whether `object` is disposed when nothing holds it any more, rather than simply left out of the next commit. */
 export function isDisposable(context: Disposability, object: LiveObject): boolean {
   return disposalFor(object).disposable(context);
+}
+
+/**
+ * The values the calls disposing `object` readies as runs are made with: a pending resolver's
+ * `onCancel` callbacks, unless its disposal panics.
+ */
+export function readiedBy(object: LiveObject): readonly Value[] {
+  return object.kind === 'resolver' && object.state.kind === 'pending' && !isDropped(object)
+    ? object.state.onCancel
+    : [];
+}
+
+/** Whether `resolver`, let go of while pending, is a wait's an awaitable dropped, which panics. */
+function isDropped(resolver: LiveObjectOf<'resolver'>): boolean {
+  const { state } = resolver;
+  return state.kind === 'pending' && state.target.kind === 'case' && state.on.length === 0;
 }
 
 /**

@@ -5,15 +5,15 @@
  * object of its snapshot (snapshot.ts).
  *
  * - An object holds the handles in the values it holds, and some ids directly: a pending slot
- *   operation its slot, a `first` its futures, a `disposed()` watch its weak reference, and a
- *   frame's reference the cell it names.
- * - A pending resolver holds the future it is registered on, and its wait holds it while it is
- *   registered (proposal 8, Rule 5): the registration persists with the waiting frame, so what a
- *   cold awaitable started in its `onAwait` lives as long as the wait. The wait's edge is read off
- *   the heap's index in the walk from the roots (runtime/lifetimes/holders.ts).
+ *   operation its slot, a `disposed()` watch its weak reference, and a frame's reference the cell
+ *   it names.
+ * - A pending resolver holds the futures it is registered on, its callbacks, and the resolver a
+ *   `Resolver.at` one decides. A registration holds the resolver too, and a wait and a resolver
+ *   hold what is registered to decide them, edges read off the heap's indexes (`Heap.holds`).
+ * - A run, a call a resolver readied, holds what it calls with as a frame does (`runFrame`).
  * - It watches what it names without holding: a slot's queue of waiting operations, what a weak
  *   reference refers to, an execution's own call future, which its caller holds, a wait's waiter,
- *   and a pending resolver's wait, which the waiter's frame holds.
+ *   and a pending case resolver's wait, which the waiter's frame holds.
  * - A frame holds the same whether it is live (interpreter/frames.ts) or stored (objects.ts), so
  *   one rule reads both, over what their registers hold.
  */
@@ -34,13 +34,18 @@ export interface HoldingFrame {
 }
 
 /**
- * Whether `object` is a root, kept for its own sake rather than held by another: an execution, an
- * answer, or the outcome an instance awaits.
+ * Whether `object` is a root, kept for its own sake rather than held by another: an execution, a
+ * run, an answer, or the outcome an instance awaits.
  */
 export function isRoot<Object extends { readonly kind: HeapObject['kind'] }>(
   object: Object,
-): object is Extract<Object, { readonly kind: 'execution' | 'answer' | 'outcome' }> {
-  return object.kind === 'execution' || object.kind === 'answer' || object.kind === 'outcome';
+): object is Extract<Object, { readonly kind: 'execution' | 'run' | 'answer' | 'outcome' }> {
+  return (
+    object.kind === 'execution' ||
+    object.kind === 'run' ||
+    object.kind === 'answer' ||
+    object.kind === 'outcome'
+  );
 }
 
 /** What one object holds and watches. */
@@ -62,7 +67,6 @@ const futureStates: Handlers<undefined, FutureState, [], Omit<Holding, 'watches'
   slot: (_context, state) => ({ values: present(state.value), holds: [state.slot] }),
   timer: () => empty,
   host: () => empty,
-  first: (_context, state) => ({ values: [], holds: state.futures }),
   disposed: (_context, state) => ({ values: [], holds: [state.weakRef] }),
   watch: () => empty,
 };
@@ -89,8 +93,16 @@ const kinds: Handlers<undefined, HeapObject, [], Holding> = {
   }),
   resolver: (_context, { state }) =>
     state.kind === 'pending'
-      ? { values: [], holds: present(state.on), watches: [state.wait] }
+      ? {
+          values: [
+            ...(state.target.kind === 'callback' ? [state.target.callback] : []),
+            ...state.onCancel,
+          ],
+          holds: [...state.on, ...(state.target.kind === 'at' ? [state.target.done] : [])],
+          watches: state.target.kind === 'case' ? [state.target.wait] : [],
+        }
       : empty,
+  run: (_context, run) => ({ ...empty, values: [...run.captures, ...run.arguments] }),
   execution: (_context, { frames, resolves }) => ({
     values: frames.flatMap((frame) => frameValues(holdingFrame(frame))),
     holds: frames.flatMap((frame) => frameCells(holdingFrame(frame))),
@@ -116,6 +128,11 @@ export function valuesIn(object: HeapObject): readonly Value[] {
 export function referencedObjects(object: HeapObject): readonly number[] {
   const holding = holdingOf(object);
   return [...holding.holds, ...holding.values.flatMap(handlesIn), ...holding.watches];
+}
+
+/** A run as holding reads it: a frame not yet made, holding the captures and arguments it gets. */
+export function runFrame(run: Extract<HeapObject, { kind: 'run' }>): HoldingFrame {
+  return { registers: [...run.captures, ...run.arguments] };
 }
 
 /** The values `frame` holds in its registers, references aside. */

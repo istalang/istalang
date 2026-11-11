@@ -6,7 +6,7 @@
  *
  * - An execution waits at its top frame's `await` or `select`, on the wait its register holds
  *   (waits.ts). It is ready once that is decided, and executions run in the order they became
- *   ready (§6).
+ *   ready (§6), among the callbacks resolvers readied (ready.ts).
  * - The root execution, the one the instance started with, is the one that resolves no call
  *   future.
  * - A commit keeps the executions and what they hold (§5, runtime/lifetimes/holders.ts). Whatever
@@ -38,7 +38,7 @@ import type { Passed } from '../../interpreter/registers.ts';
 import { type Decision, releaseLosers, resume } from '../../interpreter/suspension.ts';
 import { isDisposable } from '../../lifetimes/disposal.ts';
 import { heldFrom } from '../../lifetimes/holders.ts';
-import { heldObjects, isRoot } from '../../snapshot/holdings.ts';
+import { type HoldingFrame, heldObjects, isRoot, runFrame } from '../../snapshot/holdings.ts';
 import { type HeapObject, isReference } from '../../snapshot/objects.ts';
 import { drawOf, seedFrom } from '../../snapshot/random.ts';
 import type { InstanceCall, Snapshot } from '../../snapshot/snapshot.ts';
@@ -49,6 +49,7 @@ import { type Answered, Futures } from './futures.ts';
 import { Heap, type LiveExecution, type LiveObject, type LiveObjectOf } from './heap.ts';
 import { spawnedName } from './instance-names.ts';
 import { liveObject, storedObject } from './live-objects.ts';
+import { ReadyQueue, type ReadyToRun } from './ready.ts';
 import { Slots } from './slots.ts';
 import { Waits } from './waits.ts';
 import { WeakSide } from './weak-side.ts';
@@ -98,26 +99,29 @@ export class Instance {
   #cancelled: (() => void)[] = [];
   /** How many random draws this segment made. */
   #draws = 0;
-  readonly #ready: number[];
+  readonly #ready: ReadyQueue;
   /** The extern constants read before this segment, and those it read itself (§3.6). */
   readonly #pinned: Map<string, Value>;
 
   private constructor(loaded: LoadedDefinition, snapshot: Snapshot) {
     this.loaded = loaded;
     this.#from = snapshot;
-    this.#ready = [...snapshot.ready];
     this.#pinned = new Map(snapshot.pinned.map(({ key, value }) => [key, value]));
     this.heap = new Heap(
       snapshot.objects.map((object) => liveObject(loaded.definition, object, this.frameHeap)),
     );
+    this.#ready = new ReadyQueue(this.heap, snapshot.ready);
     this.waits = new Waits(this.heap, {
       decided: (waiter, { position }) => {
         if (releaseLosers(topFrame(waiter), position)) {
           this.heap.noteLosersReleased();
         }
-        this.#markReady(waiter);
+        this.#ready.waiter(waiter);
       },
       watchesCall: (waiter, future) => this.weak.watchesCall(waiter, future),
+      called: (callback, argumentValues) => {
+        this.#ready.run(callback, argumentValues);
+      },
     });
     this.futures = new Futures(this.heap, this.waits, (answered) => {
       this.#answered.push({ ...answered, value: leaving(this, answered.value) });
@@ -174,7 +178,7 @@ export class Instance {
   #kept(): { readonly kept: readonly LiveObject[]; readonly depth: number } {
     const executions = this.heap.objectsOf('execution');
     const held = heldFrom(this.heap, {
-      frames: executions.flatMap((execution) => execution.frames),
+      frames: [...executions.flatMap((execution) => execution.frames), ...this.runFrames()],
       objects: this.owed(),
     });
     const lost = this.heap
@@ -209,7 +213,7 @@ export class Instance {
       random: { ...this.#from.random, draws: this.#from.random.draws + this.#draws },
       pinned: [...this.#pinned].map(([key, value]) => ({ key, value })),
       objects: active ? [...objects] : [],
-      ready: active ? [...this.#ready] : [],
+      ready: active ? [...this.#ready.ids] : [],
     };
   }
 
@@ -332,13 +336,18 @@ export class Instance {
   }
 
   /**
-   * What the instance's roots other than executions hold: the futures the answers still to give
-   * other instances' calls wait on (§10), and its outcome, once its root gave a future (§9).
+   * What the instance's roots other than executions and runs hold: the futures the answers still to
+   * give other instances' calls wait on (§10), and its outcome, once its root gave a future (§9).
    */
   owed(): readonly number[] {
     return [...this.heap.objectsOf('answer'), ...this.heap.objectsOf('outcome')].flatMap(
       heldObjects,
     );
+  }
+
+  /** The runs ready to start, as the frames they will be: roots, holding what they call with. */
+  runFrames(): readonly HoldingFrame[] {
+    return this.heap.objectsOf('run').map(runFrame);
   }
 
   /** The answers this segment gave other instances' calls, each filled once it commits (§10). */
@@ -372,28 +381,14 @@ export class Instance {
     }));
   }
 
-  /** Whether no execution is ready to run. */
+  /** Whether nothing is ready to run. */
   get idle(): boolean {
-    return this.#ready.length === 0;
+    return this.#ready.idle;
   }
 
-  /**
-   * Queues `execution` to run after the executions already ready: its resolver decided, which it
-   * does once.
-   */
-  #markReady(execution: LiveExecution): void {
-    this.#ready.push(execution.id);
-  }
-
-  /** The next ready execution, moved past its wait as its resolver decided. */
-  resumeNext(): LiveExecution | undefined {
-    const id = this.#ready.shift();
-    if (id === undefined) {
-      return undefined;
-    }
-    const execution = this.heap.of(id, 'execution');
-    resume(topFrame(execution), this.waits.take(execution));
-    return execution;
+  /** What runs next (ready.ts): a waiter moved past its wait, or a run whose call to make. */
+  resumeNext(): ReadyToRun | undefined {
+    return this.#ready.next(this.waits);
   }
 
   /** The root execution, which resolves no call future; undefined once it has returned. */
@@ -420,6 +415,7 @@ export class Instance {
    * cleanup running, unless it returned (§7).
    */
   releaseRoot(): void {
+    this.dropRuns();
     const root = this.root();
     if (root !== undefined) {
       this.stop(root);
@@ -427,6 +423,14 @@ export class Instance {
     for (const awaited of this.heap.objectsOf('outcome')) {
       this.heap.remove(awaited.id);
     }
+  }
+
+  /**
+   * Drops the runs ready and readies none from now on, as the instance finishes or ends (§9,
+   * §3.12): nothing runs after, so what they would have called with is let go of (ready.ts).
+   */
+  dropRuns(): void {
+    this.#ready.close();
   }
 
   /** Removes an execution whose call returned. */
@@ -459,10 +463,7 @@ export class Instance {
   /** Ends `execution`'s wait, if it waits: the wait goes, and it is no longer ready. */
   #endWait(execution: LiveExecution): void {
     this.waits.end(execution);
-    const position = this.#ready.indexOf(execution.id);
-    if (position >= 0) {
-      this.#ready.splice(position, 1);
-    }
+    this.#ready.withdraw(execution);
   }
 }
 

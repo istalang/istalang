@@ -8,7 +8,8 @@
  * - a caller frame stands at a `call`, and an execution's innermost frame at an `await` or a
  *   `select`, the only places an execution stops (docs/arch/definition.md, "Frames")
  * - an execution that waits does so on a wait of its own, which is decided exactly when it is
- *   ready, and every wait is one an execution stands at
+ *   ready, and every wait is one an execution stands at; a run is always ready, and its call fits
+ *   the function it calls, as a new instance's does
  * - an async call's execution names a pending call future, and the instance has at most one root:
  *   the execution that names none, or the `outcome` it awaits once that returned (§9)
  * - a new instance's call starts a function, code or an extern, given its captures and its
@@ -32,7 +33,7 @@ import { handleTarget } from '../../definition/values/values.ts';
 import { type Handlers, handlerOf } from '../../foundation/structures/kind-table.ts';
 import { Refusal } from '../refusal.ts';
 import { valuesIn } from './holdings.ts';
-import { type Frame, type HeapObject, isReference } from './objects.ts';
+import { type Frame, type HeapObject, isReference, type ResolverTarget } from './objects.ts';
 import type { InstanceCall, Snapshot } from './snapshot.ts';
 
 /** Throws a Refusal listing every way `snapshot` doesn't fit `definition`. */
@@ -78,6 +79,7 @@ const kindProblems: Handlers<Definition, HeapObject, [], readonly string[]> = {
     mock.target < definition.functions.length
       ? []
       : [`mock ${mock.id} replaces function ${mock.target}, which doesn't exist`],
+  run: (definition, run) => callProblems(definition, run, `run ${run.id}`),
   answer: () => [],
   outcome: () => [],
   wait: () => [],
@@ -91,13 +93,13 @@ const kindProblems: Handlers<Definition, HeapObject, [], readonly string[]> = {
  * An execution waits exactly when its top frame stands at an instruction that waits, its register
  * holding a wait of that execution's, and every wait is one so stood at: pending, with a pending
  * resolver left to decide it, or decided at one of its cases, which is exactly when the execution
- * is ready. Nothing is ready twice. A pending resolver is of a case of its wait, and registered, if
- * at all, on a future that hasn't resolved.
+ * is ready. Nothing is ready twice, and every run is ready. A pending resolver is of a case of its
+ * wait or calls back, and is registered, if at all, on a future that hasn't resolved.
  */
 function waitProblems(definition: Definition, snapshot: Snapshot): readonly string[] {
   const objects = new Map(snapshot.objects.map((object) => [object.id, object]));
   const ready = new Set(snapshot.ready);
-  const problems = ready.size === snapshot.ready.length ? [] : ['an execution is ready twice'];
+  const problems = ready.size === snapshot.ready.length ? [] : ['something is ready twice'];
   const stoodAt = new Map<number, number>();
   for (const object of snapshot.objects) {
     if (object.kind === 'execution') {
@@ -107,17 +109,20 @@ function waitProblems(definition: Definition, snapshot: Snapshot): readonly stri
         stoodAt.set(stop.wait.id, stop.cases);
       }
     }
+    if (object.kind === 'run' && !ready.has(object.id)) {
+      problems.push(`run ${object.id} is not ready`);
+    }
   }
   const pending = Map.groupBy(
-    snapshot.objects.filter(isPendingResolver),
-    ({ state }) => state.wait,
+    snapshot.objects.filter(isPendingCase),
+    ({ state }) => state.target.wait,
   );
   for (const object of snapshot.objects) {
     if (object.kind === 'wait') {
       problems.push(...waitObjectProblems(object, stoodAt.get(object.id), pending.get(object.id)));
     }
     if (isPendingResolver(object)) {
-      problems.push(...resolverProblems(objects, object, stoodAt.get(object.state.wait)));
+      problems.push(...resolverProblems(objects, object, stoodAt));
     }
   }
   return problems;
@@ -129,8 +134,16 @@ type PendingResolverObject = Extract<HeapObject, { kind: 'resolver' }> & {
   readonly state: { readonly kind: 'pending' };
 };
 
+type PendingCaseObject = PendingResolverObject & {
+  readonly state: { readonly target: { readonly kind: 'case' } };
+};
+
 function isPendingResolver(object: HeapObject): object is PendingResolverObject {
   return object.kind === 'resolver' && object.state.kind === 'pending';
+}
+
+function isPendingCase(object: HeapObject): object is PendingCaseObject {
+  return isPendingResolver(object) && object.state.target.kind === 'case';
 }
 
 /** Where an execution stops: how many cases its wait has, and the wait its register holds. */
@@ -184,7 +197,7 @@ function stopProblems(
 function waitObjectProblems(
   wait: WaitObject,
   cases: number | undefined,
-  pending: readonly PendingResolverObject[] | undefined,
+  pending: readonly PendingCaseObject[] | undefined,
 ): readonly string[] {
   if (cases === undefined) {
     return [`wait ${wait.id} is stood at by no execution`];
@@ -196,24 +209,57 @@ function waitObjectProblems(
 }
 
 /**
- * What is wrong with the pending `resolver`, whose wait has `cases` cases where it is stood at.
+ * What is wrong with the pending `resolver`: what it decides (`targetProblems`), and a
+ * registration on anything but a pending future.
  */
 function resolverProblems(
   objects: ReadonlyMap<number, HeapObject>,
   resolver: PendingResolverObject,
-  cases: number | undefined,
+  stoodAt: ReadonlyMap<number, number>,
 ): readonly string[] {
-  const { wait, position, on } = resolver.state;
-  const future = on === undefined ? undefined : objects.get(on);
-  if (objects.get(wait)?.kind !== 'wait') {
-    return [`resolver ${resolver.id} decides no wait`];
-  }
+  const { target, on } = resolver.state;
+  const registered = on.every((id) => {
+    const future = objects.get(id);
+    return future?.kind === 'future' && future.state.kind !== 'resolved';
+  });
   return [
-    ...(cases === undefined || position < cases ? [] : [`resolver ${resolver.id} is of no case`]),
-    ...(on === undefined || (future?.kind === 'future' && future.state.kind !== 'resolved')
-      ? []
-      : [`resolver ${resolver.id} is registered on what is no pending future`]),
+    ...targetProblems(objects, resolver.id, target, stoodAt),
+    ...(registered ? [] : [`resolver ${resolver.id} is registered on what is no pending future`]),
   ];
+}
+
+/**
+ * What is wrong with what the pending resolver `id` decides: a case of a wait with as many cases
+ * as `stoodAt` says where it is stood at, a callback, or a pending resolver made before it, so no
+ * `Resolver.at` ones decide each other round.
+ */
+function targetProblems(
+  objects: ReadonlyMap<number, HeapObject>,
+  id: number,
+  target: ResolverTarget,
+  stoodAt: ReadonlyMap<number, number>,
+): readonly string[] {
+  switch (target.kind) {
+    case 'callback':
+      return [];
+    case 'at': {
+      const done = objects.get(target.done);
+      return done?.kind === 'resolver' && done.state.kind === 'pending' && done.id < id
+        ? []
+        : [`resolver ${id} decides no pending resolver made before it`];
+    }
+    case 'case': {
+      if (objects.get(target.wait)?.kind !== 'wait') {
+        return [`resolver ${id} decides no wait`];
+      }
+      const cases = stoodAt.get(target.wait);
+      return cases === undefined || target.position < cases ? [] : [`resolver ${id} is of no case`];
+    }
+    default: {
+      const unhandled: never = target;
+      return unhandled;
+    }
+  }
 }
 
 /**
@@ -252,12 +298,24 @@ function startingCallProblems(
   definition: Definition,
   status: Snapshot['status'],
 ): readonly string[] {
+  const call = startingCallOf(status);
+  if (call === undefined) {
+    return [];
+  }
+  const values = [...call.captures, ...call.arguments].flatMap((value) =>
+    valueProblems(definition, value).map(({ message }) => `the instance's call: ${message}`),
+  );
+  return [...values, ...callProblems(definition, call, "the instance's call")];
+}
+
+/** The call an instance starts with, or a retry starts it with again; none once it started. */
+function startingCallOf(status: Snapshot['status']): InstanceCall | undefined {
   if (status.kind === 'unstarted') {
-    return callProblems(definition, status.call);
+    return status.call;
   }
   return status.kind === 'panicked' && status.replay?.kind === 'call'
-    ? callProblems(definition, status.replay.call)
-    : [];
+    ? status.replay.call
+    : undefined;
 }
 
 /** What is wrong with the entry encoding the instance's outcome, if it has one. */
@@ -290,28 +348,33 @@ function outcomeProblems(definition: Definition, status: Snapshot['status']): re
   return problems;
 }
 
-/** What is wrong with the call a new instance starts with, if anything. */
-function callProblems(definition: Definition, call: InstanceCall): readonly string[] {
+/**
+ * What is wrong with `call` against the function it calls, values aside: a call made from outside
+ * any frame, an instance's or a run's, which `described` names.
+ */
+function callProblems(
+  definition: Definition,
+  call: InstanceCall,
+  described: string,
+): readonly string[] {
   const entry = definition.functions[call.function];
   if (entry === undefined) {
-    return [`the instance starts function ${call.function}, which doesn't exist`];
+    return [`${described} calls function ${call.function}, which doesn't exist`];
   }
-  const values = [...call.captures, ...call.arguments].flatMap((value) =>
-    valueProblems(definition, value).map(({ message }) => `the instance's call: ${message}`),
-  );
+  const problems: string[] = [];
   const captures = capturesOf(entry);
   if (call.captures.length !== captures) {
-    values.push(`${entry.name} carries ${captures} captures, not ${call.captures.length}`);
+    problems.push(`${entry.name} carries ${captures} captures, not ${call.captures.length}`);
   }
   if (call.arguments.length !== entry.parameters.length) {
-    values.push(
+    problems.push(
       `${entry.name} takes ${entry.parameters.length} arguments, not ${call.arguments.length}`,
     );
   }
   if (entry.parameters.some((_, index) => takesReference(entry, index))) {
-    values.push(`${entry.name} takes a reference, which an instance's call can't pass`);
+    problems.push(`${entry.name} takes a reference, which ${described} can't pass`);
   }
-  return values;
+  return problems;
 }
 
 const isCall = (instruction: Instruction): boolean => instruction.kind === 'call';

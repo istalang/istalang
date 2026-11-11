@@ -149,7 +149,8 @@ trait Awaitable<T>:
   - panics its waiter when its last holder releases it unresolved, which deterministic disposal always detects (§7);
   - fires `onCancel` when its waiter is gone, its future disposed, after which `resolve` does nothing;
   - is part of its instance when ista, so it may be stored across commits, and lives in memory when live.
-- **`Resolver.of<T, K>(callback)`** makes a resolver that calls `callback` with the value. Expert code passes one to another awaitable's `onAwait` to wait on it without `await`. An ista one's callback runs as a segment of its own when the value arrives.
+- **`Resolver.of<T, K>(callback)`** makes a resolver that calls `callback` with the value. Expert code passes one to another awaitable's `onAwait` to wait on it without `await`. An ista one's callback runs as a segment of its own when the value arrives, so what it decides is decided only then: an awaitable composed through callbacks decides later than its value arrived, and isn't safe to lose a `select`, as Rust documents cancel safety.
+- **`Resolver.at<T, K>(done, position)`** makes a resolver that resolves `done` with `(position, value)` in the same step, running no code, pending while `done` is. An awaitable racing several futures through one each, as `futures.first` does, decides as a `select`'s cases do, and its losers take nothing.
 - **`await runtime.commit()`** stays: an ista future already resolved.
 
 ### 6. `select`, combinators, slots and timers

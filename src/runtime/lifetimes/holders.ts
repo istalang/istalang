@@ -5,12 +5,13 @@
  * values it counts, a restore has nothing to rebuild, and disposables holding each other in a
  * cycle are found like any other: they stop being reachable together.
  *
- * - The roots are every live execution's frames (registers, and the cells references name),
- *   plus the objects the scheduler names: the call futures of executions running on its
+ * - The roots are every live execution's frames (registers, and the cells references name), and
+ *   every run's, the call a resolver readied (snapshot/holdings.ts `runFrame`), plus the objects the
+ *   scheduler names: the call futures of executions running on its
  *   run stack, which keep themselves alive until they suspend, and objects waiting in a collection
  *   round (collector.ts).
- * - An object holds what its kind's entry says (snapshot/holdings.ts), and a frame what the one
- *   frame rule there says, and a wait its resolvers registered on futures; a slot's queue and a
+ * - An object holds what its kind's entry says (snapshot/holdings.ts) and what the heap's indexes
+ *   add (`Heap.holds`), and a frame what the one frame rule there says; a slot's queue and a
  *   weak reference hold nothing, so neither does a `disposed()` watch, which holds only its weak
  *   reference.
  * - The one walk also finds how deep the deepest held value nests, which is what a commit checks
@@ -27,7 +28,6 @@ import {
   frameCells,
   frameValues,
   type HoldingFrame,
-  heldObjects,
   isRoot,
   valuesIn,
 } from '../snapshot/holdings.ts';
@@ -102,23 +102,9 @@ export function walkHolds(
   }
 }
 
-/**
- * What `object` holds; a root is never held through. A wait holds its resolvers registered on
- * futures besides (proposal 8, Rule 5): the registration is on the resolver, so the heap's index of
- * a wait's cases is read.
- */
+/** What `object` holds (`Heap.holds`); a root is never held through. */
 export function holdsOf(heap: Heap, object: LiveObject): readonly number[] {
-  if (isRoot(object)) {
-    return [];
-  }
-  const held = heldObjects(object);
-  if (object.kind !== 'wait') {
-    return held;
-  }
-  const registered = heap
-    .find('cases', object.id)
-    .filter(({ state }) => state.kind === 'pending' && state.on !== undefined);
-  return [...held, ...registered.map(({ id }) => id)];
+  return isRoot(object) ? [] : heap.holds(object);
 }
 
 /** The objects reached from `frames` and `objects`, until `stop` says to, asked of each. */

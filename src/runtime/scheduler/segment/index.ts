@@ -49,8 +49,9 @@ import type { Decision } from '../../interpreter/suspension.ts';
 import type { Panic } from '../../natives.ts';
 import type { HeapObject } from '../../snapshot/objects.ts';
 import type { InstanceCall } from '../../snapshot/snapshot.ts';
-import type { LiveExecution } from '../instance/heap.ts';
+import type { LiveExecution, LiveObjectOf } from '../instance/heap.ts';
 import { type Instance, topFrame } from '../instance/index.ts';
+import type { ReadyToRun } from '../instance/ready.ts';
 import { startAnswer } from '../testing/mocks.ts';
 import type { MockCall } from '../testing/test-world.ts';
 import { istaWaiting, type LiveResumes, resumedPanicOf, type Waiting } from '../waiting.ts';
@@ -66,6 +67,7 @@ import { SegmentCollection } from './collection.ts';
 import { panicOf, requireDepth } from './limits.ts';
 import { NativeCalls } from './native-calls.ts';
 import { type Arrival, type Outcome, RootOutcome } from './root-outcome.ts';
+import { RunCalls } from './run-calls.ts';
 import { RunStack } from './run-stack.ts';
 
 /**
@@ -161,6 +163,7 @@ class SegmentRunner implements Machine {
   readonly #runStack = new RunStack();
   readonly #collection: SegmentCollection;
   readonly #outcome: RootOutcome;
+  readonly #runCalls = new RunCalls(this.#runStack);
   #end: DriveEnd | undefined;
 
   constructor(instance: Instance, now: () => bigint, waiting: Waiting) {
@@ -315,6 +318,10 @@ class SegmentRunner implements Machine {
     if (this.#collection.disposals.suspended(execution)) {
       return;
     }
+    if (this.#runCalls.returned(execution)) {
+      this.#end = 'returned';
+      return;
+    }
     const future = execution.resolves;
     if (future === undefined && returning.kind === 'await') {
       this.#instance.remove(execution);
@@ -377,7 +384,7 @@ class SegmentRunner implements Machine {
         this.#collection.collectFully(() => this.#step());
         return { kind: 'finished', ...next.outcome };
       }
-      const end = this.#drive(next);
+      const end = next.kind === 'run' ? this.#run(next) : this.#drive(next);
       if (end === 'awaited') {
         return { kind: 'awaited' };
       }
@@ -385,14 +392,19 @@ class SegmentRunner implements Machine {
         return { kind: 'finished', ...end.finished };
       }
     }
+    // A run answered at once let go of its arguments outside any drive, which collects first.
+    this.#collection.collectFully(() => this.#step());
     return { kind: 'idle' };
   }
 
-  /**
-   * What runs next: the encoder of an outcome no frame returns once it has arrived, or that
-   * outcome itself (root-outcome.ts); else the next execution ready.
-   */
-  #next(): LiveExecution | Extract<Arrival, { kind: 'finished' }> | undefined {
+  /** Makes the call `run` readied and drives it as any driver: at once returned when answered. */
+  #run(run: LiveObjectOf<'run'>): DriveEnd {
+    const driver = this.#runCalls.start(this.#caller, run);
+    return driver === undefined ? 'returned' : this.#drive(driver);
+  }
+
+  /** What runs next: an arrived outcome's encoder or itself (root-outcome.ts), else what is ready. */
+  #next(): ReadyToRun | Extract<Arrival, { kind: 'finished' }> | undefined {
     const arrival = this.#outcome.arrival();
     if (arrival === undefined) {
       return this.#instance.resumeNext();

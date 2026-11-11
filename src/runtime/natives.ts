@@ -65,8 +65,6 @@ export interface NativeContext {
 export interface NativeFutures {
   /** A future already resolved with `value`. */
   readonly resolved: (value: Value) => Value;
-  /** A future of the first of `futures` to resolve, with its position (`futures.first`, §3.8). */
-  readonly first: (futures: readonly Value[]) => Value;
   /** A future that resolves at `at`, in milliseconds since the Unix epoch (`time.at`). */
   readonly timer: (at: bigint) => Value;
   /** A future the host fills later, naming it by `token` (§9): an instance's. */
@@ -92,6 +90,12 @@ export interface NativeWaits {
   readonly resolve: (done: Value, value: Value) => void;
   /** Resolves `done` with `value` if it is pending; whether it took `value`. */
   readonly tryResolve: (done: Value, value: Value) => boolean;
+  /** A new resolver calling the function value `callback` with its value (`Resolver.of`). */
+  readonly callback: (callback: Value) => Value;
+  /** A new resolver deciding `done` with `(position, value)` (`Resolver.at`). */
+  readonly at: (done: Value, position: bigint) => Value;
+  /** Has the function value `callback` called once `done` is cancelled. */
+  readonly onCancel: (done: Value, callback: Value) => void;
 }
 
 /** Whether a resolver waits for its value, took one or failed, or lost its future first. */

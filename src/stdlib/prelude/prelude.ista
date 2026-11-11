@@ -39,6 +39,23 @@ extern shared struct Resolver<T, K in Persistence>
 extern K fn resolve<T, K in Persistence>(self: Resolver<T, K>, value: T)
 extern K fn tryResolve<T, K in Persistence>(self: Resolver<T, K>, value: T) -> Bool
 
+# A resolver deciding no wait, calling `callback` with its value instead: code hands one to an
+# awaitable's `onAwait` to wait on it without `await`. The callback runs as a call of its own once
+# the value arrives, so in ista code in a segment of its own, and whatever it decides is decided only
+# then: a `select` case resolving through one decides later than the value arrived, and a value it
+# took, such as a slot's, is lost when another case wins first.
+extern K fn Resolver.of<T, K in Persistence>(callback: Fn<(T,), Unit, K>) -> Resolver<T, K>
+
+# A resolver deciding `done` with `(position, value)` as it is resolved, in the same step: pending
+# while `done` is, so an awaitable racing several through one each, as `futures.first` does,
+# decides as a `select` case does and takes nothing once `done` is decided.
+extern K fn Resolver.at<T, K in Persistence>(done: Resolver<(Int, T), K>, position: Int) -> Resolver<T, K>
+
+# Has `callback` called once `self` is cancelled: another case decided its wait, its waiter moved on
+# without it, or the future it is registered on was disposed first. It runs as a `Resolver.of`
+# callback does, and at once when `self` was cancelled already; never once `self` resolved.
+extern K fn onCancel<T, K in Persistence>(self: Resolver<T, K>, callback: Fn<(), Unit, K>)
+
 # What a function's values may capture (§3.14): only sendable values, or any.
 type Sendability = "sendable" | "plain"
 

@@ -18,7 +18,7 @@ tags: [reuse, language, modules, program, binder, names]
 - spell a module-qualified declaration name `module.name` (`prelude.Future`) → `qualifiedName` (`src/foundation/language/well-known/index.ts`)
 - spell a checked declaration's module-qualified name or extern/startable key → `qualifiedNameOf`, `keyOf`, `spelledType` (`src/compiler/lowering/tables/names.ts`)
 - build an extern key (`prelude.add(Int, Float)`) from a signature or native table → `externKey`, `nativeKey`, `keyTypeText` (`src/definition/extern-key.ts`)
-- build type descriptors for `nativeKey` → `namedKey`, `primitiveKey`, `functionKey`, `parameterKey` (`src/definition/extern-key.ts`)
+- build type descriptors for `nativeKey` → `namedKey`, `primitiveKey`, `functionKey`, `tupleKey`, `parameterKey` (`src/definition/extern-key.ts`)
 - mark a `nativeKey` parameter as `&` reference or `...` rest → `referenceKey`, `restKey` (`src/definition/extern-key.ts`)
 - look up a language-role module (`prelude`, `time`, `json`, `testing`), the `std:` scheme, or a well-known declaration → `languageModules`, `stdScheme`, `wellKnown` (`src/foundation/language/well-known/index.ts`)
 - look up well-known variant and field names (a union's layout, `Result`, a cursor's `Step`) → `unionLayout`, `resultVariants`, `resultFields`, `stepVariants` (`src/foundation/language/well-known/variants.ts`); `Json` is a union, whose members json-values.ts finds by what each variant holds

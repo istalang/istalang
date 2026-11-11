@@ -2,11 +2,9 @@
  * The futures of a running instance (spec §6): every wait is on one, and a future resolves once
  * and stays resolved.
  *
- * - Who waits on a future is the resolvers registered on it (waits.ts), one per wait's case:
- *   resolving it decides them.
- * - `futures.first(fs)` is the one future that waits on others: it resolves with the position and
- *   value of the first of them to resolve, the lowest position among those resolved together.
- *   Which `first`s wait on a future is read from their lists.
+ * - Who waits on a future is the resolvers registered on it (waits.ts): resolving it decides them.
+ *   No future waits on another; code that waits on several registers a resolver on each, as
+ *   `futures.first` registers a `Resolver.at` of its own.
  * - An answer to another instance's call to a mock (§10) waits on a future too. When it resolves
  *   with a future, as the replacement of a function returning one does, the answer waits on that
  *   one instead; when it resolves with anything else, the answer is given (`Answered`). An
@@ -23,11 +21,6 @@ import type { FutureState, Watch } from '../../snapshot/objects.ts';
 import type { CallerFuture } from '../testing/test-world.ts';
 import { type Heap, handleObject, type LiveObjectOf } from './heap.ts';
 import type { Waits } from './waits.ts';
-
-/** A pending `futures.first`. */
-type FirstFuture = LiveObjectOf<'future'> & {
-  readonly state: Extract<FutureState, { kind: 'first' }>;
-};
 
 /** A future that has resolved, with its value. */
 export interface Settled {
@@ -118,24 +111,13 @@ export class Futures {
 
   /**
    * Resolves the pending futures `resolutions` names together, one event resolving them at once,
-   * and with them every `first` they make resolve, then decides every wait on any of them at its
-   * first case among them. A `first` is created after the futures it races, so taking the pending
-   * ones in creation order finds them all in one pass, and each one's members are settled before
-   * it: it resolves at the lowest position that resolved together.
+   * then decides every wait on any of them at its first case among them.
    */
   resolveTogether(resolutions: readonly Resolution[]): void {
     const together = new Set<number>();
     for (const { id, value } of resolutions) {
       this.#settle(id, value);
       together.add(id);
-    }
-    for (const first of this.#pendingFirsts()) {
-      const position = first.state.futures.findIndex((member) => together.has(member));
-      const winner = first.state.futures[position];
-      if (winner !== undefined) {
-        this.#settle(first.id, positioned(position, this.#valueOf(winner)));
-        together.add(first.id);
-      }
     }
     this.#waits.settle(together, (future) => ({ value: this.#valueOf(future) }));
     for (const future of together) {
@@ -329,34 +311,7 @@ export class Futures {
     return due.length > 0;
   }
 
-  /** A handle to a future of the first of `handles` to resolve (spec §3.8, `futures.first`). */
-  first(handles: readonly Value[]): Value {
-    if (handles.length === 0) {
-      throw new Panic('futures.first was given no futures.');
-    }
-    for (const [position, handle] of handles.entries()) {
-      const settled = this.settled(handle);
-      if (settled !== undefined) {
-        return this.createHandle({ kind: 'resolved', value: positioned(position, settled.value) });
-      }
-    }
-    return this.createHandle({ kind: 'first', futures: handles.map(handleObject) });
-  }
-
   #future(handle: Value): LiveObjectOf<'future'> {
     return this.#heap.of(handleObject(handle), 'future');
   }
-
-  #pendingFirsts(): readonly FirstFuture[] {
-    return this.#heap.find('pending', 'first').filter(isFirst);
-  }
-}
-
-/** What a `first` resolves with: the winner's position and value, as an `(Int, T)`. */
-function positioned(position: number, value: Value): Value {
-  return { kind: 'tuple', elements: [BigInt(position), value] };
-}
-
-function isFirst(future: LiveObjectOf<'future'>): future is FirstFuture {
-  return future.state.kind === 'first';
 }

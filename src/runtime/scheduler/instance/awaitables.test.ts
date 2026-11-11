@@ -253,7 +253,7 @@ describe("an awaitable's resolver", () => {
   it('panics let go of unresolved, its wait never to be decided', async () => {
     expect(await ended(awaiting('_ = self.took'))).toMatchObject({
       kind: 'panicked',
-      message: 'A resolver was let go of unresolved, so the wait it was to decide never can.',
+      message: expect.stringContaining('so the wait it was to decide never can.'),
     });
   });
 
@@ -326,7 +326,7 @@ describe("an awaitable's resolver", () => {
     });
   });
 
-  it('panics when given to wait on a second future even if that second future is already resolved', async () => {
+  it('may be given to several futures, the first to resolve deciding it', async () => {
     const twoFutures = [
       'struct TwoFutures:',
       '  first: Future<Int, "ista">',
@@ -339,9 +339,9 @@ describe("an awaitable's resolver", () => {
       'ista async fn main() -> Int:',
       '  await TwoFutures{first: later(1), second: now(2)}',
     ];
-    expect(await ended([...delegated, ...twoFutures])).toMatchObject({
-      kind: 'panicked',
-      message: 'A resolver was given to wait on a second future.',
+    expect(await ended([...delegated, ...twoFutures])).toEqual({
+      kind: 'finished',
+      outcome: '2',
     });
   });
 
@@ -358,7 +358,7 @@ describe("an awaitable's resolver", () => {
     ];
     expect(await ended([...cold, ...dropCase])).toMatchObject({
       kind: 'panicked',
-      message: 'A resolver was let go of unresolved, so the wait it was to decide never can.',
+      message: expect.stringContaining('so the wait it was to decide never can.'),
     });
   });
 

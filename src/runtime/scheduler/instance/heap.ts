@@ -68,25 +68,24 @@ const indexes = {
   watches: index('future', ({ state }) => (state.kind === 'disposed' ? [state.weakRef] : [])),
   /** Each pending future its host fills, by its token. */
   hostFutures: index('future', ({ state }) => (state.kind === 'host' ? [state.token] : [])),
-  /** Each pending timer, `first`, watch and future its host fills, by its state's kind. */
+  /** Each pending timer, watch and future its host fills, by its state's kind. */
   pending: index('future', ({ state }) =>
-    state.kind === 'timer' ||
-    state.kind === 'first' ||
-    state.kind === 'watch' ||
-    state.kind === 'host'
-      ? [state.kind]
-      : [],
+    state.kind === 'timer' || state.kind === 'watch' || state.kind === 'host' ? [state.kind] : [],
   ),
   /** Each held mock, by the function it replaces. */
   mocks: index('mock', (mock) => [mock.target]),
   /** Each answer to another instance's call, by the future it waits on. */
   answers: index('answer', (answer) => [answer.future]),
-  /** Each pending resolver registered on a future, by that future. */
-  resolvers: index('resolver', ({ state }) =>
-    state.kind === 'pending' && state.on !== undefined ? [state.on] : [],
+  /** Each pending resolver registered on a future, by every future it is registered on. */
+  resolvers: index('resolver', ({ state }) => (state.kind === 'pending' ? state.on : [])),
+  /** Each pending resolver of a wait's case, by that wait. */
+  cases: index('resolver', ({ state }) =>
+    state.kind === 'pending' && state.target.kind === 'case' ? [state.target.wait] : [],
   ),
-  /** Each pending resolver, by the wait it decides. */
-  cases: index('resolver', ({ state }) => (state.kind === 'pending' ? [state.wait] : [])),
+  /** Each pending `Resolver.at` resolver, by the resolver it decides. */
+  positions: index('resolver', ({ state }) =>
+    state.kind === 'pending' && state.target.kind === 'at' ? [state.target.done] : [],
+  ),
 };
 
 type Indexes = typeof indexes;
@@ -266,9 +265,47 @@ export class Heap {
       return;
     }
     const kept = new Set(
-      replacement === undefined || notesOwnReleases(replacement) ? [] : heldObjects(replacement),
+      replacement === undefined || notesOwnReleases(replacement) ? [] : this.holds(replacement),
     );
-    this.noteReleased(heldObjects(old).filter((id) => !kept.has(id)));
+    this.noteReleased(this.holds(old).filter((id) => !kept.has(id)));
+  }
+
+  /**
+   * The ids of the objects `object` holds (spec §7, proposal 8, Rule 5): what its fields and values
+   * hold (snapshot/holdings.ts), and what it holds through the indexes. A registration holds both
+   * ends: a future the pending resolvers registered on it, as a resolver its futures. A wait holds
+   * its case resolvers, and a pending resolver its `Resolver.at` ones, that are awaited: registered,
+   * or decided by `Resolver.at` ones of their own. So what an awaitable started for a wait lives as
+   * long as the wait, a callback as long as its future, and what lost is let go of as it loses,
+   * while a resolver nothing awaits is let go of when its holder drops it.
+   */
+  holds(object: Exclude<LiveObject, LiveExecution>): readonly number[] {
+    const held = heldObjects(object);
+    const indexed = this.#indexedHolds(object);
+    return indexed.length === 0 ? held : [...held, ...indexed];
+  }
+
+  /** What `object` holds through the indexes (`holds`). */
+  #indexedHolds(object: Exclude<LiveObject, LiveExecution>): readonly number[] {
+    if (object.kind === 'future') {
+      return this.find('resolvers', object.id).map(({ id }) => id);
+    }
+    if (object.kind === 'wait') {
+      return this.#awaited(this.find('cases', object.id));
+    }
+    return object.kind === 'resolver' && object.state.kind === 'pending'
+      ? this.#awaited(this.find('positions', object.id))
+      : [];
+  }
+
+  /** The ids of those of `resolvers` that are awaited (`holds`). */
+  #awaited(resolvers: readonly LiveObjectOf<'resolver'>[]): readonly number[] {
+    return resolvers.flatMap(({ id, state }) =>
+      state.kind === 'pending' &&
+      (state.on.length > 0 || this.#awaited(this.find('positions', id)).length > 0)
+        ? [id]
+        : [],
+    );
   }
 }
 

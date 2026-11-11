@@ -61,14 +61,23 @@ export function heapArbitrary(size = 8): fc.Arbitrary<TestHeap> {
         ({ slot, value }): LiveObject => ({
           kind: 'future',
           id: object,
-          state: { kind: 'slot', slot, operation: 'put', value },
+          state: { kind: 'slot', slot, operation: 'put', value, awaited: false },
         }),
       ),
-      fc.array(id, { minLength: 1, maxLength: 3 }).map(
-        (futures): LiveObject => ({
-          kind: 'future',
+      fc.record({ callback: contents, on: fc.uniqueArray(id, { maxLength: 2 }) }).map(
+        ({ callback, on }): LiveObject => ({
+          kind: 'resolver',
           id: object,
-          state: { kind: 'first', futures },
+          state: { kind: 'pending', target: { kind: 'callback', callback }, on, onCancel: [] },
+        }),
+      ),
+      contents.map(
+        (value): LiveObject => ({
+          kind: 'run',
+          id: object,
+          function: 0,
+          captures: [],
+          arguments: [value],
         }),
       ),
       id.map(
@@ -89,14 +98,35 @@ export function heapArbitrary(size = 8): fc.Arbitrary<TestHeap> {
           state: { kind: 'decided', position: 0, value },
         }),
       ),
-      fc.record({ wait: id, on: fc.option(id, { nil: undefined }) }).map(
+      fc.record({ wait: id, on: fc.uniqueArray(id, { maxLength: 2 }) }).map(
         ({ wait, on }): LiveObject => ({
           kind: 'resolver',
           id: object,
-          state: { kind: 'pending', wait, position: 0, ...(on === undefined ? {} : { on }) },
+          state: { kind: 'pending', target: { kind: 'case', wait, position: 0 }, on, onCancel: [] },
         }),
       ),
+      ...positionsAt(object),
     );
+  /** A `Resolver.at` resolver `object`, deciding one made before it, as every one does. */
+  const positionsAt = (object: number): fc.Arbitrary<LiveObject>[] =>
+    object === 0
+      ? []
+      : [
+          fc
+            .record({ done: fc.nat({ max: object - 1 }), on: fc.uniqueArray(id, { maxLength: 2 }) })
+            .map(
+              ({ done, on }): LiveObject => ({
+                kind: 'resolver',
+                id: object,
+                state: {
+                  kind: 'pending',
+                  target: { kind: 'at', done, position: 0n },
+                  on,
+                  onCancel: [],
+                },
+              }),
+            ),
+        ];
   const frame = fc
     .array(fc.option(contents, { nil: undefined }), { maxLength: 4 })
     .map((registers): HoldingFrame => ({ registers }));

@@ -10,6 +10,7 @@ import { FormatError } from '../../definition/formats/format.ts';
 import type { Value } from '../../definition/values/values.ts';
 import { Refusal } from '../refusal.ts';
 import { recordingStore, runToEnd, testRuntime } from '../runtime.test-kit.ts';
+import type { ResolverTarget } from './objects.ts';
 import { type Snapshot, snapshotFormat } from './snapshot.ts';
 
 /** A program committed while it waits two executions deep. */
@@ -70,6 +71,33 @@ const frameEntry = (snapshot: Snapshot) =>
   snapshot.objects.flatMap((object) =>
     object.kind === 'execution' ? object.frames.map((frame) => frame.function) : [],
   )[0] ?? 0;
+
+/** `snapshot` with a ready run calling the entry of a frame it holds, with `call`'s parts. */
+const withRun = (snapshot: Snapshot, call: { readonly arguments?: readonly Value[] }): Snapshot => {
+  const id = 10_000;
+  const run = {
+    kind: 'run' as const,
+    id,
+    function: frameEntry(snapshot),
+    captures: [],
+    arguments: [...(call.arguments ?? [])],
+  };
+  return { ...snapshot, objects: [...snapshot.objects, run], ready: [...snapshot.ready, id] };
+};
+
+/** `snapshot` with a pending `Resolver.of` resolver `done`, and a `Resolver.at` one `at` of it. */
+const withPosition = (snapshot: Snapshot, done: number, at: number): Snapshot => {
+  const pending = (id: number, target: ResolverTarget) => ({
+    kind: 'resolver' as const,
+    id,
+    state: { kind: 'pending' as const, target, on: [], onCancel: [] },
+  });
+  const resolvers = [
+    pending(done, { kind: 'callback', callback: null }),
+    pending(at, { kind: 'at', done, position: 0n }),
+  ].toSorted((first, second) => first.id - second.id);
+  return { ...snapshot, objects: [...snapshot.objects, ...resolvers] };
+};
 
 const withVersion = (text: string, version: number) =>
   text.replace(versionAtEnd, `"version":${version}}`);
@@ -210,6 +238,15 @@ describe('reading an instance back', () => {
         ),
       }),
     ],
+    [
+      'a run its function takes fewer arguments than',
+      (snapshot) => withRun(snapshot, { arguments: [1n, 2n, 3n, 4n, 5n, 6n, 7n, 8n, 9n] }),
+    ],
+    ['a run that is not ready', (snapshot) => ({ ...withRun(snapshot, {}), ready: [] })],
+    [
+      'a Resolver.at resolver deciding one made after it',
+      (snapshot) => withPosition(snapshot, 10_001, 10_000),
+    ],
     ['an outcome encoder that is no function', (snapshot) => ({ ...snapshot, encoder: 10_000 })],
     [
       'an outcome of a type the Definition lacks',
@@ -227,6 +264,12 @@ describe('reading an instance back', () => {
     const test = await waitingInstance();
     storeChanged(test, change);
     await expect(test.runtime.wake('i')).rejects.toThrow(mismatch);
+  });
+
+  it('accepts a Resolver.at resolver deciding one made before it', async () => {
+    const test = await waitingInstance();
+    storeChanged(test, (snapshot) => withPosition(snapshot, 10_000, 10_001));
+    await expect(test.runtime.wake('i')).resolves.toBeDefined();
   });
 
   it("refuses a snapshot whose stored Definition doesn't hash to the one it names", async () => {

@@ -3,7 +3,18 @@
 # twice: in the test's own instance, and in one that discards and re-runs every segment before
 # committing it (§10).
 
-import Suite, Test, test, assertEq, expectPanic, FakeClock, withClock, mock, spawnCrashingEveryAwait, idle from 'testing'
+import (
+  Suite
+  Test
+  test
+  assertEq
+  expectPanic
+  FakeClock
+  withClock
+  mock
+  spawnCrashingEveryAwait
+  idle
+) from 'testing'
 import * as testing from 'testing'
 import runAndReRun from '../testing/re-runs.test'
 import * as futures from 'futures'
@@ -18,6 +29,80 @@ ista async fn later<T>(slot: Slot<T>, value: T) -> Unit:
   await runtime.commit()
   await slot.put(value)
 
+ista async fn firstOfTwo() -> (Int, Int):
+  const (a, b) = (Slot.create<Int>(), Slot.create<Int>())
+  const raced = futures.first([a.read(), b.read()])
+  await later(b, 2)
+  await raced
+
+ista async fn firstArrivedBeforeItsAwait() -> (Int, Int):
+  const (a, b) = (Slot.create<Int>(), Slot.create<Int>())
+  const (fromA, fromB) = (a.read(), b.read())
+  await later(b, 2)
+  await later(a, 1)
+  await futures.first([fromA, fromB])
+
+ista async fn firstPolledWhenOneArrived() -> (Int, Int):
+  const (a, b) = (Slot.create<Int>(), Slot.create<Int>())
+  const (fromA, fromB) = (a.read(), b.read())
+  await later(b, 2)
+  let got = (-1, -1)
+  select:
+    case futures.first([fromA, fromB]) as arrived: got = arrived
+    else: got = (-2, -2)
+  got
+
+@Suite{"futures › first"}
+fn firstSuite() -> Array<Test>: [
+  ...runAndReRun(
+    "is decided at once in a select that doesn't wait, when one has arrived"
+    firstPolledWhenOneArrived
+    (1, 2)
+  )
+  ...runAndReRun("gives the position and value of the first to arrive", firstOfTwo, (1, 2))
+  ...runAndReRun(
+    "gives the lowest position among those arrived before it was awaited"
+    firstArrivedBeforeItsAwait
+    (0, 1)
+  )
+  test("wins in a select when its future resolves with or before a later case's", async fn(): {
+    const s = Slot.create<Int>()
+    const r0 = s.read()
+    const r1 = s.read()
+    _ = later(s, 7)
+    const got = await select:
+      case futures.first([r0]) as pair: pair.1
+      case r1: -1
+    assertEq(got, 7)
+  })
+  test("loses cleanly in a select after an earlier case already resolved", async fn(): {
+    const s = Slot.create<Int>()
+    const passedOver = s.take()
+    _ = select:
+      case passedOver: 0
+      else: -1
+    _ = s.put(42)
+    const blocking = await select:
+      case runtime.commit(): 1
+      case futures.first([runtime.commit()]): 2
+      case futures.first([passedOver]): 3
+    const nonBlocking = select:
+      case runtime.commit(): 10
+      case futures.first([runtime.commit()]): 20
+      else: 30
+    const leftInS = select:
+      case s.take() as v: v
+      else: -1
+    assertEq((blocking, nonBlocking, leftInS), (1, 10, 42))
+  })
+  test("panics awaited with no futures", async fn(): {
+    assertEq(
+      await expectPanic(async fn(): await futures.first<Int, "ista">([]))
+      "futures.first was given no futures."
+    )
+  })
+]
+
 ista async fn allArrivingOutOfOrder() -> Result<Array<Int>, String>:
   const (a, b) = (Slot.create<Outcome>(), Slot.create<Outcome>())
   const all = futures.all([a.read(), b.read()])
@@ -31,7 +116,7 @@ ista async fn allWithOneFailing() -> Result<Array<Int>, String>:
   await later(b, Err("b"))
   await all
 
-ista async fn allOfNone() -> Result<Array<Int>, String>: await futures.all<Int, String>([])
+ista async fn allOfNone() -> Result<Array<Int>, String>: await futures.all<Int, String, "ista">([])
 
 @Suite{"futures › all"}
 fn allSuite() -> Array<Test>: [
@@ -75,7 +160,7 @@ fn raceSuite() -> Array<Test>: [
   ...runAndReRun("gives the first value to arrive", raceOfTwo, 2)
   test("panics on no futures", async fn(): {
     assertEq(
-      await expectPanic(async fn(): await futures.race<Int>([]))
+      await expectPanic(async fn(): await futures.race<Int, "ista">([]))
       "futures.first was given no futures."
     )
   })
@@ -95,15 +180,11 @@ ista async fn anyAllFailing() -> Result<Int, Array<String>>:
   await later(a, Err("a"))
   await either
 
-ista async fn anyOfNone() -> Result<Int, Array<String>>: await futures.any<Int, String>([])
+ista async fn anyOfNone() -> Result<Int, Array<String>>: await futures.any<Int, String, "ista">([])
 
 @Suite{"futures › any"}
 fn anySuite() -> Array<Test>: [
-  ...runAndReRun(
-    "gives the first Ok to arrive, past the errors before it"
-    anyAfterAnError
-    Ok(2)
-  )
+  ...runAndReRun("gives the first Ok to arrive, past the errors before it", anyAfterAnError, Ok(2))
   ...runAndReRun(
     "gives every error in position order once all failed"
     anyAllFailing
@@ -132,11 +213,7 @@ ista async fn quorumOfZero() -> Result<Array<Int>, Array<String>>:
 
 @Suite{"futures › quorum"}
 fn quorumSuite() -> Array<Test>: [
-  ...runAndReRun(
-    "gives the first n Ok values in the order they arrived"
-    quorumReached
-    Ok([3, 2])
-  )
+  ...runAndReRun("gives the first n Ok values in the order they arrived", quorumReached, Ok([3, 2]))
   ...runAndReRun(
     "fails once n can't be reached, with the errors in position order"
     quorumOutOfReach
@@ -144,11 +221,11 @@ fn quorumSuite() -> Array<Test>: [
   )
   ...runAndReRun("of zero is Ok and empty", quorumOfZero, Ok([]))
   test("panics when n is more than the futures", async fn(): {
-    const message = await expectPanic(async fn(): await futures.quorum<Int, String>(1, []))
+    const message = await expectPanic(async fn(): await futures.quorum<Int, String, "ista">(1, []))
     assertEq(message, "A quorum of 1 can't be reached among 0 futures.")
   })
   test("panics when n is negative", async fn(): {
-    const message = await expectPanic(async fn(): await futures.quorum<Int, String>(-1, []))
+    const message = await expectPanic(async fn(): await futures.quorum<Int, String, "ista">(-1, []))
     assertEq(message, "A quorum of -1 can't be reached among 0 futures.")
   })
 ]
@@ -176,7 +253,9 @@ ista fn timeoutSuite() -> Array<Test>: [
     clock.advance(5s)
     assertEq(await limited, 1)
   })
-  test("gives none when the value arrives just after the limit passes", withClock, async fn(clock): {
+  test("gives none when the value arrives just after the limit passes", withClock, async fn(
+    clock
+  ): {
     const value = Slot.create<Int>()
     const limited = futures.timeout(value.read(), 5s)
     await runtime.commit()

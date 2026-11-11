@@ -145,7 +145,6 @@ function capabilitiesOf(instance: Instance, side: SegmentSide): NativeCapabiliti
 function nativeFuturesOf(futures: Futures, { waiting, trace }: SegmentSide): NativeFutures {
   return {
     resolved: (value) => futures.createHandle({ kind: 'resolved', value }),
-    first: (handles) => futures.first(handles),
     timer: (at) => futures.createHandle({ kind: 'timer', at }),
     fromHost: (token) => {
       if (waiting.kind === 'live') {
@@ -170,15 +169,22 @@ function nativeFuturesOf(futures: Futures, { waiting, trace }: SegmentSide): Nat
 }
 
 /** The instance's waits as natives reach them (proposal 8, Rule 5). */
-function nativeWaitsOf({ waits, futures }: Instance): NativeWaits {
+function nativeWaitsOf({ waits, futures, slots }: Instance): NativeWaits {
   return {
     onAwait: (future, done) => {
-      waits.register(done, handleObject(future), futures.settled(future));
+      const id = handleObject(future);
+      waits.register(done, id, futures.settled(future));
+      slots.awaited(id);
     },
     resolve: (done, value) => {
       waits.resolve(done, value);
     },
     tryResolve: (done, value) => waits.tryResolve(done, value),
+    callback: (callback) => waits.callback(callback),
+    at: (done, position) => waits.at(done, position),
+    onCancel: (done, callback) => {
+      waits.onCancel(done, callback);
+    },
   };
 }
 

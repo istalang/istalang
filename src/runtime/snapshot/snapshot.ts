@@ -3,7 +3,7 @@
  *
  * It names its Definition by content hash; frames hold function indexes and pcs into that
  * Definition, so a snapshot is meaningless without it. Besides the heap it keeps:
- * - the order in which executions became ready
+ * - the order in which executions and runs became ready
  * - how many instances it has spawned, which names the next one (`<instance>/<n>`, §9)
  * - its random source, a seed and how many draws were made from it, so a segment that runs again
  *   draws the same values (§3.8 `random`, random.ts, random.ts)
@@ -99,7 +99,10 @@ const snapshotContents = z.strictObject({
   pinned: z.array(z.strictObject({ key: z.string(), value })),
   /** In ascending id order. */
   objects: z.array(heapObject),
-  /** Executions ready to run, in the order they became ready. */
+  /**
+   * What is ready to run, in the order it became ready: executions to resume past their waits, and
+   * runs to start (objects.ts).
+   */
   ready: z.array(objectId),
 });
 
@@ -136,11 +139,12 @@ function checkObjectReferences(contents: Contents, context: z.RefinementCtx): vo
     }
   });
   contents.ready.forEach((id, index) => {
-    if (kinds.get(id) !== 'execution') {
+    const kind = kinds.get(id);
+    if (kind !== 'execution' && kind !== 'run') {
       context.addIssue({
         code: 'custom',
         path: ['ready', index],
-        message: `${id} is not an execution.`,
+        message: `${id} is neither an execution nor a run.`,
       });
     }
   });

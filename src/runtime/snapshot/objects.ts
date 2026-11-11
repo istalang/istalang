@@ -10,7 +10,9 @@
  *   it.
  * - An execution waits on a wait its frame holds in a register (proposal 8, Rule 5), decided by the
  *   first of its cases' resolvers to resolve. A future's `onAwait` registers a resolver on it, and
- *   the registration is what holds a pending resolver, so one nothing would resolve is let go of.
+ *   the registration holds both (runtime/scheduler/instance/heap.ts `Heap.holds`).
+ *   Resolving a `Resolver.of` resolver, or cancelling one with `onCancel` callbacks, readies a
+ *   `run` of each callback, which the ready queue holds beside waiters.
  * - Timers are the futures whose state is a timer.
  *
  * Disposability follows from an object's kind and state, its type, and whether a weak reference
@@ -67,22 +69,21 @@ const futureState = z.discriminatedUnion('kind', [
   z.strictObject({ kind: z.literal('resolved'), value }),
   /** The result of an async call, resolved when the execution that names it returns. */
   z.strictObject({ kind: z.literal('call') }),
-  /** A pending `put`, `take` or `read`, queued on the slot in `waiting` order. */
+  /**
+   * A pending `put`, `take` or `read`, queued on the slot in `waiting` order; `awaited` once a
+   * resolver was given it to wait on (runtime/scheduler/instance/slots.ts).
+   */
   z.strictObject({
     kind: z.literal('slot'),
     slot: objectId,
     operation: z.enum(['put', 'take', 'read']),
     value: value.optional(),
+    awaited: z.boolean(),
   }),
   /** `time.at(t)`: due at `at`, in milliseconds since the Unix epoch. */
   z.strictObject({ kind: z.literal('timer'), at: integer }),
   /** A future the host fills; `token` is how the host names it. */
   z.strictObject({ kind: z.literal('host'), token: z.string() }),
-  /**
-   * `futures.first(fs)`: resolves with the position and value of the first of `futures` to
-   * resolve, the lowest position among futures that resolved together (spec §3.8).
-   */
-  z.strictObject({ kind: z.literal('first'), futures: z.array(objectId).min(1) }),
   /**
    * `w.disposed()` and `worker.disposing()` (spec §6, §7): resolves when the referent of the weak
    * reference `weakRef` is disposed; with no referent left, never.
@@ -121,16 +122,29 @@ const waitState = z.discriminatedUnion('kind', [
 ]);
 
 /**
- * A resolver (proposal 8, Rule 5): pending for case `position` of `wait`, registered on the future
- * `on` once a future's `onAwait` was given it; resolved; or cancelled, its wait decided by another
- * case or ended, after which resolving it does nothing.
+ * What a resolver decides once resolved: case `position` of `wait`; a `Resolver.of` call of
+ * `callback` with its value; or, `Resolver.at`, the resolver `done` with `(position, value)`.
+ */
+const resolverTarget = z.discriminatedUnion('kind', [
+  z.strictObject({ kind: z.literal('case'), wait: objectId, position: count }),
+  z.strictObject({ kind: z.literal('callback'), callback: value }),
+  z.strictObject({ kind: z.literal('at'), done: objectId, position: integer }),
+]);
+
+export type ResolverTarget = z.output<typeof resolverTarget>;
+
+/**
+ * A resolver (proposal 8, Rule 5): pending for its `target`, registered `on` the futures whose
+ * `onAwait` was given it, in that order, with the `onCancel` callbacks to call if it is cancelled;
+ * resolved; or cancelled, what it decides decided otherwise or ended, or its future disposed, after
+ * which resolving it does nothing.
  */
 const resolverState = z.discriminatedUnion('kind', [
   z.strictObject({
     kind: z.literal('pending'),
-    wait: objectId,
-    position: count,
-    on: objectId.optional(),
+    target: resolverTarget,
+    on: z.array(objectId),
+    onCancel: z.array(value),
   }),
   z.strictObject({ kind: z.literal('resolved') }),
   z.strictObject({ kind: z.literal('cancelled') }),
@@ -193,11 +207,18 @@ export const heapObject = z.discriminatedUnion('kind', [
    * at (proposal 8, Rule 5). It goes once its waiter moves past it, or stops.
    */
   defineObject('wait', { waiter: objectId, state: waitState }),
-  /**
-   * A language `Resolver`, doing what its state says when resolved. While pending and registered on
-   * a future, that registration holds it (runtime/lifetimes/holders.ts).
-   */
+  /** A language `Resolver`, doing what its state says when resolved. */
   defineObject('resolver', { state: resolverState }),
+  /**
+   * A call readied to run as a driver of its own (proposal 8, Rule 5): a `Resolver.of` callback
+   * with the value it was resolved with, or an `onCancel` callback. It is a root, held until a
+   * segment reaches it among the ready and makes the call.
+   */
+  defineObject('run', {
+    function: functionId,
+    captures: z.array(value),
+    arguments: z.array(value),
+  }),
   /**
    * An execution: a call stack, innermost frame last. An async call's execution names the future
    * its return resolves (spec §3.3); the root, the instance's own, names none.

@@ -20,9 +20,6 @@ const stateArbitrary = fc.oneof(
   fc.constant<FutureState>({ kind: 'call' }),
   fc.constantFrom(...tokens).map((token): FutureState => ({ kind: 'host', token })),
   fc.bigInt({ min: 0n, max: 9n }).map((at): FutureState => ({ kind: 'timer', at })),
-  fc
-    .array(id, { minLength: 1, maxLength: 2 })
-    .map((futures): FutureState => ({ kind: 'first', futures })),
   id.map((weakRef): FutureState => ({ kind: 'disposed', weakRef })),
 );
 
@@ -48,21 +45,31 @@ const madeArbitrary: fc.Arbitrary<Made> = fc.oneof(
   ),
   fc
     .oneof(
-      fc.record({ wait: id, on: fc.option(id, { nil: undefined }) }).map(
-        ({ wait, on }): ResolverState => ({
-          kind: 'pending',
-          wait,
-          position: 0,
-          ...(on === undefined ? {} : { on }),
-        }),
-      ),
+      fc
+        .record({
+          target: fc.oneof(
+            fc.constant({ kind: 'callback' as const, callback: null }),
+            id.map((wait) => ({ kind: 'case' as const, wait, position: 0 })),
+            id.map((done) => ({ kind: 'at' as const, done, position: 0n })),
+          ),
+          on: fc.uniqueArray(id, { maxLength: 2 }),
+        })
+        .map(({ target, on }): ResolverState => ({ kind: 'pending', target, on, onCancel: [] })),
       fc.constantFrom<ResolverState>({ kind: 'resolved' }, { kind: 'cancelled' }),
     )
     .map(
       (state): Made =>
-        (object) => ({ kind: 'resolver', id: object, state }),
+        (object) => ({ kind: 'resolver', id: object, state: deciding(state, object) }),
     ),
 );
+
+/** `state` as resolver `resolver`'s: a `Resolver.at` one decides a resolver made before it. */
+function deciding(state: ResolverState, resolver: number): ResolverState {
+  if (state.kind !== 'pending' || state.target.kind !== 'at') {
+    return state;
+  }
+  return { ...state, target: { ...state.target, done: Math.min(state.target.done, resolver - 1) } };
+}
 
 type Change =
   | { readonly kind: 'add'; readonly make: Made }
@@ -136,11 +143,28 @@ describe('heap indexes', () => {
             );
             const resolvers = heap.objectsOf('resolver');
             expect(idsOf(heap.find('resolvers', key))).toEqual(
-              idsOf(resolvers.filter(({ state }) => state.kind === 'pending' && state.on === key)),
+              idsOf(
+                resolvers.filter(({ state }) => state.kind === 'pending' && state.on.includes(key)),
+              ),
             );
             expect(idsOf(heap.find('cases', key))).toEqual(
               idsOf(
-                resolvers.filter(({ state }) => state.kind === 'pending' && state.wait === key),
+                resolvers.filter(
+                  ({ state }) =>
+                    state.kind === 'pending' &&
+                    state.target.kind === 'case' &&
+                    state.target.wait === key,
+                ),
+              ),
+            );
+            expect(idsOf(heap.find('positions', key))).toEqual(
+              idsOf(
+                resolvers.filter(
+                  ({ state }) =>
+                    state.kind === 'pending' &&
+                    state.target.kind === 'at' &&
+                    state.target.done === key,
+                ),
               ),
             );
           }
@@ -149,7 +173,7 @@ describe('heap indexes', () => {
               idsOf(futures.filter(({ state }) => state.kind === 'host' && state.token === key)),
             );
           }
-          for (const key of ['timer', 'first'] as const) {
+          for (const key of ['timer', 'host'] as const) {
             expect(idsOf(heap.find('pending', key))).toEqual(
               idsOf(futures.filter(({ state }) => state.kind === key)),
             );

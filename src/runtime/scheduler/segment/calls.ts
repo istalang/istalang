@@ -1,6 +1,6 @@
 /**
  * How a segment starts a call (§5, §10): every call path's one entry, a written call, a function
- * value's and a disposal's alike.
+ * value's, a disposal's and a resolver's callback's (run-calls.ts) alike.
  *
  * - A mock replacing the target is asked first (mocks.ts): its replacement runs in the target's
  *   place, or another instance's mock answers at once. A replacement is never mocked itself, so it

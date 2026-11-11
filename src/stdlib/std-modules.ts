@@ -9,7 +9,6 @@ import { languageModules } from '../foundation/language/well-known/index.ts';
 import type { Natives } from '../runtime/natives.ts';
 import { cryptoNatives } from './crypto/natives.ts';
 import { decimalNatives } from './decimal/natives.ts';
-import { futuresNatives } from './futures/natives.ts';
 import { jsonNatives } from './json/natives.ts';
 import { logNatives } from './log/natives.ts';
 import { mathNatives } from './math/natives.ts';
@@ -28,7 +27,6 @@ const nativesOf: Partial<Record<StdModuleName, (keys: NativeKeys) => Natives>> =
   [languageModules.prelude]: preludeNatives,
   [languageModules.time]: timeNatives,
   [languageModules.json]: jsonNatives,
-  futures: futuresNatives,
   runtime: runtimeNatives,
   strings: stringsNatives,
   regex: regexNatives,

@@ -75,7 +75,16 @@ const broadcastWaiting: Snapshot = {
     { id: 2, kind: 'resource', type: revertible, payload: { queue: 'bob', message: 'm-2' } },
     { id: 3, kind: 'future', state: { kind: 'timer', at: 1_700_000_060_000n } },
     { id: 4, kind: 'wait', waiter: 0, state: { kind: 'pending' } },
-    { id: 5, kind: 'resolver', state: { kind: 'pending', wait: 4, position: 0, on: 3 } },
+    {
+      id: 5,
+      kind: 'resolver',
+      state: {
+        kind: 'pending',
+        target: { kind: 'case', wait: 4, position: 0 },
+        on: [3],
+        onCancel: [],
+      },
+    },
   ],
 };
 
@@ -103,14 +112,11 @@ function objectsArbitrary(ids: readonly number[]): fc.Arbitrary<HeapObject[]> {
     fc.record({ kind: fc.constant('resolved' as const), value }),
     fc.constant({ kind: 'call' as const }),
     fc.record({
-      kind: fc.constant('first' as const),
-      futures: fc.array(id, { minLength: 1, maxLength: 3 }),
-    }),
-    fc.record({
       kind: fc.constant('slot' as const),
       slot: id,
       operation: fc.constantFrom('put' as const, 'take' as const, 'read' as const),
       value,
+      awaited: fc.boolean(),
     }),
     fc.record({ kind: fc.constant('timer' as const), at: fc.bigInt({ min: 0n, max: 2n ** 60n }) }),
     fc.record({ kind: fc.constant('host' as const), token: fc.string() }),
@@ -154,18 +160,34 @@ function objectsArbitrary(ids: readonly number[]): fc.Arbitrary<HeapObject[]> {
         .map((parts) => ({ id: objectId, kind: 'wait' as const, ...parts })),
       fc
         .oneof(
-          fc.record(
-            {
-              kind: fc.constant('pending' as const),
-              wait: id,
-              position: fc.nat({ max: 3 }),
-              on: id,
-            },
-            { requiredKeys: ['kind', 'wait', 'position'] },
-          ),
+          fc.record({
+            kind: fc.constant('pending' as const),
+            target: fc.oneof(
+              fc.record({
+                kind: fc.constant('case' as const),
+                wait: id,
+                position: fc.nat({ max: 3 }),
+              }),
+              fc.record({ kind: fc.constant('callback' as const), callback: value }),
+              fc.record({
+                kind: fc.constant('at' as const),
+                done: id,
+                position: fc.bigInt({ min: -9n, max: 9n }),
+              }),
+            ),
+            on: fc.array(id, { maxLength: 2 }),
+            onCancel: fc.array(value, { maxLength: 2 }),
+          }),
           fc.constantFrom({ kind: 'resolved' as const }, { kind: 'cancelled' as const }),
         )
         .map((state) => ({ id: objectId, kind: 'resolver' as const, state })),
+      fc
+        .record({
+          function: fc.nat({ max: 9 }),
+          captures: fc.array(value, { maxLength: 2 }),
+          arguments: fc.array(value, { maxLength: 2 }),
+        })
+        .map((parts) => ({ id: objectId, kind: 'run' as const, ...parts })),
       fc
         .record(
           {
@@ -275,11 +297,11 @@ describe('snapshot format', () => {
       'objects[1]',
     ],
     [
-      'a ready entry that is not an execution',
+      'a ready entry that is neither an execution nor a run',
       (json) => {
         json.body.ready = [3];
       },
-      '3 is not an execution',
+      '3 is neither an execution nor a run',
       'ready[0]',
     ],
     [

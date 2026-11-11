@@ -20,7 +20,11 @@ describe('disposability', () => {
     ['a call future', { kind: 'future', id: 0, state: { kind: 'call' } }, true],
     [
       'a pending take',
-      { kind: 'future', id: 0, state: { kind: 'slot', slot: 2, operation: 'take' } },
+      {
+        kind: 'future',
+        id: 0,
+        state: { kind: 'slot', slot: 2, operation: 'take', awaited: false },
+      },
       true,
     ],
     [
@@ -35,7 +39,7 @@ describe('disposability', () => {
       false,
     ],
     ['a timer', { kind: 'future', id: 0, state: { kind: 'timer', at: 0n } }, false],
-    ['a first', { kind: 'future', id: 0, state: { kind: 'first', futures: [2] } }, false],
+    ['a run', { kind: 'run', id: 0, function: 0, captures: [], arguments: [] }, false],
     ['a slot', { kind: 'slot', id: 0, waiting: [] }, false],
     ['a plain cell', { kind: 'cell', id: 0, type: 1, value: null }, false],
   ])('disposes %s unwatched: %s', (_case, object, expected) => {

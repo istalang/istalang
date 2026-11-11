@@ -251,4 +251,69 @@ describe('resolvers', () => {
       outcome: '[]',
     });
   });
+
+  it('cancels a losing case resolver when its Resolver.at is resolved or tried after an earlier case decided the wait in onAwait', async () => {
+    const losingAt = compiledText(
+      [
+        "import * as runtime from 'runtime'",
+        'shared struct Seen { cancelled: Int, took: Bool }',
+        'struct ResolveAt:',
+        '  seen: Seen',
+        '  type Mode = "ista"',
+        'ista fn onAwait(self: ResolveAt, done: Resolver<(Int, Int), "ista">):',
+        '  done.onCancel(fn(): { self.seen->cancelled += 1; () })',
+        '  Resolver.at(done, 0).resolve(9)',
+        'struct TryAt:',
+        '  seen: Seen',
+        '  type Mode = "ista"',
+        'ista fn onAwait(self: TryAt, done: Resolver<(Int, Int), "ista">):',
+        '  done.onCancel(fn(): { self.seen->cancelled += 10; () })',
+        '  self.seen->took = Resolver.at(done, 0).tryResolve(9)',
+        'ista async fn main() -> (Int, Int, Bool):',
+        '  const seen = new Seen{cancelled: 0, took: true}',
+        '  const got = await select:',
+        '    case runtime.commit(): 1',
+        '    case ResolveAt{seen} as pair: pair.1',
+        '    case TryAt{seen} as pair: pair.1',
+        '  await runtime.commit()',
+        '  (got, seen->cancelled, seen->took)',
+      ].join('\n'),
+    );
+    expect(await startToEnd(testRuntime(), losingAt)).toEqual({
+      kind: 'finished',
+      outcome: '[1,11,false]',
+    });
+  });
+
+  it('breaks ties by earliest registration when one resolver is registered on several futures that resolve together', async () => {
+    const multiRegistered = compiledText(
+      [
+        "import * as runtime from 'runtime'",
+        'struct RaceReads:',
+        '  first: Future<Int, "ista">',
+        '  second: Future<Int, "ista">',
+        '  type Mode = "ista"',
+        'ista fn onAwait(self: RaceReads, done: Resolver<Int, "ista">):',
+        '  self.first.onAwait(done)',
+        '  self.second.onAwait(done)',
+        'ista async fn fill(s: Slot<Int>):',
+        '  await runtime.commit()',
+        '  _ = s.put(7)',
+        'ista async fn main() -> (Int, Int):',
+        '  const s = Slot.create<Int>()',
+        '  const t = Slot.create<Int>()',
+        '  const r1 = s.read()',
+        '  const r2 = t.read()',
+        '  _ = fill(s)',
+        '  _ = fill(t)',
+        '  const firstWon = await RaceReads{first: r1, second: r2}',
+        '  const secondWon = await RaceReads{first: r2, second: r1}',
+        '  (firstWon, secondWon)',
+      ].join('\n'),
+    );
+    expect(await startToEnd(testRuntime(), multiRegistered)).toEqual({
+      kind: 'finished',
+      outcome: '[7,7]',
+    });
+  });
 });

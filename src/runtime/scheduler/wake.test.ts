@@ -7,7 +7,6 @@
 
 import { describe, expect, it } from 'vitest';
 import { compiledText } from '../../compiler/compile.test-kit.ts';
-import { elementsOf } from '../../definition/values/values.ts';
 import { stdNatives } from '../../stdlib/natives.ts';
 import { ManualClock } from '../clock.ts';
 import type { Native, Natives } from '../natives.ts';
@@ -281,16 +280,15 @@ describe('advancing an instance', () => {
   });
 });
 
-/** A program whose `main` lets go of a pending `first` over a take, then panics or not. */
+/** A program whose `main` lets go of a pending take, then panics or not. */
 function lettingGo(panics: boolean): string {
   return compiledText(
     [
-      "import * as futures from 'futures'",
       "import * as runtime from 'runtime'",
       'ista async fn main() -> Int:',
       '  const s = Slot.create<Int>()',
       '  if true:',
-      '    const raced = futures.first([s.take()])',
+      '    const taken = s.take()',
       '    await runtime.commit()',
       ...(panics ? ['  panic("boom")'] : []),
       '  await runtime.commit()',
@@ -300,22 +298,21 @@ function lettingGo(panics: boolean): string {
 }
 
 /**
- * The std natives, with `futures.first` observing the disposal of each future it races, telling
+ * The std natives, with a slot's `take` observing the disposal of the future it gives, telling
  * `told` how many commits `store` holds as it is told.
  */
-function observingFirst(told: number[], store: RecordingStore): Natives {
-  const key = Object.keys(stdNatives).find((name) => name.startsWith('futures.first('));
-  const first: Native | undefined = key === undefined ? undefined : stdNatives[key];
-  if (key === undefined || first === undefined) {
-    throw new Error('No native futures.first.');
+function observingTakes(told: number[], store: RecordingStore): Natives {
+  const key = Object.keys(stdNatives).find((name) => name.startsWith('prelude.take('));
+  const take: Native | undefined = key === undefined ? undefined : stdNatives[key];
+  if (key === undefined || take === undefined) {
+    throw new Error("No native for a slot's take.");
   }
   return {
     ...stdNatives,
     [key]: (values, context) => {
-      for (const raced of elementsOf(values[0] ?? null)) {
-        context.futures.onDisposed(raced, () => told.push(store.commits.length));
-      }
-      return first(values, context);
+      const taken = take(values, context);
+      context.futures.onDisposed(taken, () => told.push(store.commits.length));
+      return taken;
     },
   };
 }
@@ -324,7 +321,7 @@ describe("an instance's disposal notices", () => {
   it('tell what observes a future its segment disposed once that segment commits', async () => {
     const told: number[] = [];
     const store = recordingStore();
-    const test = testRuntime({ store, natives: observingFirst(told, store) });
+    const test = testRuntime({ store, natives: observingTakes(told, store) });
     expect(await startToEnd(test, lettingGo(false))).toMatchObject({ kind: 'finished' });
     expect(told).toEqual([2]);
   });
@@ -332,7 +329,7 @@ describe("an instance's disposal notices", () => {
   it('tell nothing for a segment a panic discards', async () => {
     const told: number[] = [];
     const store = recordingStore();
-    const test = testRuntime({ store, natives: observingFirst(told, store) });
+    const test = testRuntime({ store, natives: observingTakes(told, store) });
     expect(await startToEnd(test, lettingGo(true))).toMatchObject({ kind: 'panicked' });
     expect(told).toEqual([]);
   });

@@ -93,6 +93,11 @@ export function functionKey(
   };
 }
 
+/** A tuple type, as a key spells it: `(Int, T)`. */
+export function tupleKey(...elements: readonly WrittenType[]): KeyType {
+  return { kind: 'tuple', elements: elements.map(typeOf) };
+}
+
 /** A type parameter of the extern's own, as declared: the `T` of `prelude.Array<T>`. */
 export function parameterKey(name: string): KeyType {
   return { kind: 'parameter', name };
