@@ -1,6 +1,8 @@
 /**
  * The checks a Definition's shape can't express, so the interpreter can trust what it reads:
- * - every index lands inside its table
+ * - every index lands inside its table (ranges.ts)
+ * - every entry its body names is code its caller, a host or the runtime, may call, taking what
+ *   it is given (entries.ts)
  * - every construction agrees with the type it names
  * - every call to a known function passes its parameters' number and kind (value or `&`), and
  *   every closure carries its function's captures
@@ -14,12 +16,10 @@
  */
 
 import type { z } from 'zod';
-import { isMainShaped, isStartable, type StartShape } from '../../foundation/language/starts.ts';
 import { terminates } from '../instructions/flow.ts';
 import { type Operands, operandsOf } from '../instructions/instruction.ts';
-import { type CodeFunction, encoderProblem, type FunctionDefinition } from '../tables/functions.ts';
+import type { CodeFunction, FunctionDefinition } from '../tables/functions.ts';
 import type { Tables } from '../tables/index.ts';
-import { runnerArity } from '../tables/test-runner.ts';
 import { hasRole, type TypeDefinition, typesIn } from '../tables/types.ts';
 import {
   type CompositeValue,
@@ -28,15 +28,9 @@ import {
   isComposite,
   type Value,
 } from '../values/values.ts';
+import { checkEncoder, checkEntries } from './entries.ts';
 import { closureProblem, constructionProblem, instructionProblem } from './instruction-rules.ts';
-
-type Path = readonly (string | number)[];
-
-/** The tables being checked, and where problems go. */
-interface Context {
-  readonly tables: Tables;
-  readonly report: (path: Path, message: string) => void;
-}
+import { type Context, inRange, outOfRange, type Path } from './ranges.ts';
 
 /** A zod refinement over a Definition's tables. */
 export function checkReferences(tables: Tables, refinement: z.RefinementCtx): void {
@@ -46,10 +40,7 @@ export function checkReferences(tables: Tables, refinement: z.RefinementCtx): vo
       refinement.addIssue({ code: 'custom', path: [...path], message });
     },
   };
-  checkMain(context);
-  checkJobServer(context);
-  checkStarts(context);
-  checkTests(context);
+  checkEntries(context);
   tables.modules.forEach((module, index) => {
     const ascending = module.lineStarts.every((start, line) =>
       line === 0 ? start === 0 : start > (module.lineStarts[line - 1] ?? 0),
@@ -70,87 +61,6 @@ export function checkReferences(tables: Tables, refinement: z.RefinementCtx): vo
       context.report(path, 'A constant never contains a handle.');
     }
     checkValue(context, constant, path);
-  });
-}
-
-/**
- * The Definition's `main` field (the paths below name it), which must point at code running as an
- * execution.
- */
-function checkMain(context: Context): void {
-  const { main } = context.tables;
-  if (main === undefined || !inRange(context, { functions: [main] }, ['main'])) {
-    return;
-  }
-  const entry = context.tables.functions[main];
-  if (entry?.kind !== 'code' || !isMainShaped(startShapeOf(entry))) {
-    context.report(['main'], 'main must be live code running as an execution, with no parameters.');
-  }
-}
-
-/** The Definition's `jobServer`, which must point at code: `Runtime.open` calls it with a runtime. */
-function checkJobServer(context: Context): void {
-  const { jobServer } = context.tables;
-  if (jobServer === undefined || !inRange(context, { functions: [jobServer] }, ['jobServer'])) {
-    return;
-  }
-  if (context.tables.functions[jobServer]?.kind !== 'code') {
-    context.report(['jobServer'], 'The job server must be code.');
-  }
-}
-
-/**
- * The entries a host may start: code taking every argument by value, each key named once, each with
- * an entry that can encode its outcome.
- */
-function checkStarts(context: Context): void {
-  const keys = new Set<string>();
-  context.tables.starts.forEach((start, index) => {
-    const path = ['starts', index];
-    if (keys.has(start.key)) {
-      context.report(path, `The key '${start.key}' names two entries a host may start.`);
-    }
-    keys.add(start.key);
-    const entry = context.tables.functions[start.function];
-    if (
-      inRange(context, { functions: [start.function] }, [...path, 'function']) &&
-      (entry?.kind !== 'code' || !isStartable(startShapeOf(entry)))
-    ) {
-      context.report(path, 'A host starts live or simple code that takes every argument by value.');
-    }
-    checkEncoder(context, start.encoder, [...path, 'encoder']);
-  });
-}
-
-/** An entry encoding an instance's outcome for its host (§9): one that can. */
-function checkEncoder(context: Context, encoder: number, path: Path): void {
-  const entry = context.tables.functions[encoder];
-  const problem = entry === undefined ? undefined : encoderProblem(entry);
-  if (inRange(context, { functions: [encoder] }, path) && problem !== undefined) {
-    context.report(path, `${problem}.`);
-  }
-}
-
-/** A test Definition's suites and runner (§10): code entries, a suite's taking nothing. */
-function checkTests(context: Context): void {
-  const { tests } = context.tables;
-  if (tests === undefined) {
-    return;
-  }
-  const { list, run, suites } = tests;
-  const named = (path: Path, function_: number, parameters: number) => {
-    if (!inRange(context, { functions: [function_] }, path)) {
-      return;
-    }
-    const entry = context.tables.functions[function_];
-    if (entry?.kind !== 'code' || entry.parameters.length !== parameters) {
-      context.report(path, `This names no code taking ${parameters} arguments.`);
-    }
-  };
-  named(['tests', 'list'], list, runnerArity.list);
-  named(['tests', 'run'], run, runnerArity.run);
-  suites.forEach((suite, index) => {
-    named(['tests', 'suites', index, 'function'], suite.function, 0);
   });
 }
 
@@ -273,45 +183,6 @@ function checkPrologue(context: Context, entry: CodeFunction, path: Path): void 
   });
 }
 
-/** Indexes something refers to, by table; a table left out is not referred to. */
-type Indexes = Partial<Operands> & { readonly modules?: readonly number[] };
-
-interface Frame {
-  readonly registers: number;
-  readonly labels: number;
-}
-
-/**
- * The one range check for every index, in code, values, types and entries: each id against its
- * table's size, or for registers and labels against the frame's.
- */
-function outOfRange(
-  tables: Tables,
-  indexes: Indexes,
-  frame: Frame = { registers: 0, labels: 0 },
-): readonly string[] {
-  const limits = [
-    ['register', indexes.registers, frame.registers],
-    ['label', indexes.labels, frame.labels],
-    ['module', indexes.modules, tables.modules.length],
-    ['function', indexes.functions, tables.functions.length],
-    ['type', indexes.types, tables.types.length],
-    ['constant', indexes.constants, tables.constants.length],
-  ] as const;
-  return limits.flatMap(([what, ids = [], count]) =>
-    ids.filter((id) => id >= count).map((id) => `${what} ${id} is out of range (${count}).`),
-  );
-}
-
-/** Reports every out-of-range index at `path`; true when all are in range. */
-function inRange(context: Context, indexes: Indexes, path: Path, frame?: Frame): boolean {
-  const problems = outOfRange(context.tables, indexes, frame);
-  for (const problem of problems) {
-    context.report(path, problem);
-  }
-  return problems.length === 0;
-}
-
 function checkValue(context: Context, value: Value, path: Path): void {
   for (const problem of valueProblems(context.tables, value)) {
     context.report([...path, ...problem.path], problem.message);
@@ -409,16 +280,4 @@ function valueProblem(tables: Tables, value: CompositeValue): string | undefined
     default:
       return undefined;
   }
-}
-
-/** What the rule of what a host may start reads of a code entry: concrete code with its body. */
-function startShapeOf(entry: CodeFunction): StartShape {
-  return {
-    hasBody: true,
-    isStatic: false,
-    isGeneric: false,
-    parameters: entry.parameters,
-    awaits: entry.mode !== 'simple',
-    isIsta: entry.mode === 'ista',
-  };
 }

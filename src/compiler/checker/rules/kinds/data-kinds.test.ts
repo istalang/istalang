@@ -1,12 +1,12 @@
 /**
  * The data rule over a body (proposal 8, Rule 2, data-kinds.ts): every value a function handles,
  * its locals, captures, bindings, the type arguments of its calls and each field loop's passes, held
- * to its mark, and the types declared holding both kinds.
+ * to its mark; what a type's declaration says it holds is declared-kinds.test.ts'.
  */
 
 import { describe, expect, it } from 'vitest';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
-import { codesOf, liveResource, reportedMessages, socket } from './kinds.test-kit.ts';
+import { codesOf, liveResource, socket } from './kinds.test-kit.ts';
 
 const codes = checkerDiagnostics;
 
@@ -60,28 +60,19 @@ describe('the data rule over a body', () => {
 });
 
 describe('what a body handles', () => {
-  it('refuses a type declaration that holds both kinds (Rule 2)', () => {
-    expect(codesOf(socket, 'struct Both { s: Socket, slot: Slot<Int> }')).not.toEqual([]);
-  });
-
-  it('says a tuple of both kinds holds both, which no code may handle', () => {
-    const { messages } = reportedMessages(socket, 'ista fn g(x: (Socket, Slot<Int>)): ()');
-    expect(messages.join()).toContain('(Socket, Slot<Int>) holds both kinds of data');
-  });
-
-  it("asks for a field's type where its default makes data of a kind, which gives a struct its kind", () => {
-    const { codes: found, messages } = reportedMessages(
-      'struct Box { slot = Slot.create<Int>() }',
-      'ista fn make() -> Box: Box{}',
+  it("judges the types a requirement's call is read through, its `Self` among them (Rule 3)", () => {
+    const source = [
+      ...liveResource,
+      'trait Action { fn Self.act() -> Int }',
+      'live fn LiveResource.act() -> Int: 1',
+      'trait HasActor { type Actor is Action & DataKind<"live" | "simple"> }',
+    ];
+    expect(codesOf(...source, 'fn trigger<X is HasActor>() -> Int: X.Actor.act()')).toEqual([
+      codes.unmarkedHolds.code,
+    ]);
+    expect(codesOf(...source, 'live fn trigger<X is HasActor>() -> Int: X.Actor.act()')).toEqual(
+      [],
     );
-    expect(found).toContain(codes.unmarkableHolds.code);
-    expect(messages.join()).toContain('write the type of the field whose default makes it');
-    expect(
-      codesOf(
-        'struct Box { slot: Slot<Int> = Slot.create<Int>() }',
-        'ista fn make() -> Box: Box{}',
-      ),
-    ).toEqual([]);
   });
 
   it("judges a local function's body and a top-level constant's lambda by the data rule", () => {
@@ -240,20 +231,6 @@ describe('the data rule beside layouts, passes and instantiations', () => {
         "import * as runtime from 'runtime'\nlive async fn main() -> Int: await runtime.run(runtime.id()) _main()\nista async fn _main() -> Int: createAndDrop<Phantom<LiveResource>>().tag",
       ),
     ).not.toEqual([]);
-  });
-
-  it("reads a type's kinds from its written fields, checking no default to find them", () => {
-    expect(
-      codesOf(
-        socket,
-        'trait Tag { fn tag(self: Self) -> Int }',
-        'live fn tag(self: A) -> Int: 1',
-        'fn takeTag<T is Tag>() -> Int: 0',
-        'struct A:',
-        '  s: Socket',
-        '  x = takeTag<A>()',
-      ),
-    ).not.toContain(codes.defaultCycle.code);
   });
 
   it("infers a lambda's mark from every value its body handles, a struct holding a kind among them", () => {

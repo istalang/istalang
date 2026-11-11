@@ -93,6 +93,11 @@ export const concurrencyTemplates = {
     message: (holder: string, kind: string, held: string, remedy: string) =>
       `${holder} is simple code, so it can't hold ${held}, of kind ${kind}${remedy} (§3.3).`,
   },
+  defaultTypedFieldKind: {
+    code: 5617,
+    message: (field: string, held: string) =>
+      `The field '${field}' takes its type from its default, which holds values of ${held}, whose kind the type arguments decide; write the field's type, which gives the type its kind (§3.3).`,
+  },
   kindsHeld: {
     code: 5610,
     message: (holder: string, kind: string, held: string) =>

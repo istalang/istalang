@@ -8,8 +8,10 @@
  *   kind may take is of it, since releasing it calls that code (Rule 2's implicit calls), whatever
  *   that dispose's constraints: meeting a trait asks a type's kinds (Rule 4), so they never ask it.
  *   So a slot, whose runtime `dispose` is `ista`, is ista, and a future and a resolver are of their
- *   kind, `live`, `ista` or a variable, as their `K fn dispose` is. Anything holding one at any depth is of its kind, whatever else it
- *   holds, a future's value among it, so one type may hold both kinds, which no code may handle.
+ *   kind, `live`, `ista` or a variable, as their `K fn dispose` is, and a `Deferred<M>` of its mark
+ *   variable, which `M fn dispose` makes a kind once given. Anything holding one at any depth is
+ *   of its kind, whatever else it holds, a future's value among it, so one type may hold both
+ *   kinds, which no code may handle.
  * - A function is simple data, whatever its mark: holding one isn't calling it (Rule 2).
  * - A type parameter's values are simple where they are handled: generic code passes them through,
  *   and the code that names their type handles them (Rule 3). An associated type of one is named by
@@ -18,18 +20,19 @@
  *   (§3.17), what a case takes from a type not known yet passing through as a parameter does.
  * - A type holds what its written types do: a struct's fields', an enum's variants', an extern
  *   type's arguments. A field whose type its default gives adds no kind (§3.3: its default is
- *   judged as code of the kind its written fields give), so no default is checked to find a kind,
- *   which a body still being checked may ask (a lambda inferring its mark).
+ *   judged as code of the kind its written fields give, and one holding a part whose kind the type
+ *   arguments decide, `partsDecidedBy`, is refused, rules/kinds/data-kinds.ts), so no default is
+ *   checked to find a kind, which a body still being checked may ask (a lambda inferring its mark).
  */
 
 import { distinctItems } from '../../../../foundation/structures/equality.ts';
-import { typeParametersOf } from '../../../syntax/declarations/index.ts';
+import { type TypeParameter, typeParametersOf } from '../../../syntax/declarations/index.ts';
 import type { CheckerContext } from '../../contexts/context.ts';
 import { sameType } from '../identity/identity.ts';
 import { substitute, substitutionFor } from '../parts/substitution.ts';
 import { parametersIn } from '../parts/type-parts.ts';
 import { isComputed, type MatchType, unfolded } from '../type/computed-types.ts';
-import { isOneKind } from '../type/function-kinds.ts';
+import { isMarkVariable, isOneKind } from '../type/function-kinds.ts';
 import { type NominalEntity, type NominalType, nominalType, type Type } from '../type/index.ts';
 import { aboveBottom, markOrder } from '../type/mark-orders.ts';
 import { markType } from '../type/primitives.ts';
@@ -57,20 +60,45 @@ export function declaredKindsOf(checker: CheckerContext, entity: NominalEntity):
     parameters.map((declaration): Type => ({ kind: 'parameter', declaration })),
   );
   const parts = writtenTypesOf(checker, own);
-  const decided = (part: Type) =>
-    parametersIn(part).some((parameter) => parameters.some((each) => each === parameter));
-  // The walk lists every part at any depth, so a part holding others, `List<T>`, adds only its
-  // own kind, and the parts it holds, `T`, are read again themselves.
-  const adds = (part: Type) => part.kind === 'parameter' || isComputed(part) || mayOwnKind(part);
+  const decided = decidedBy(parameters);
   return {
     marks: distinctKinds(
       parts.flatMap((part) => (decided(part) ? [] : ownValueKindsOf(checker, part))),
     ),
-    dependent: distinctItems(
-      parts.filter((part) => decided(part) && adds(part)),
-      sameType,
-    ),
+    dependent: dependentAmong(parts, decided),
   };
+}
+
+/**
+ * The parts a value of `type` holds that `parameters` decide and that may add a kind once they
+ * are instantiated, as a declaration's are found (`DeclaredKinds.dependent`).
+ */
+export function partsDecidedBy(
+  checker: CheckerContext,
+  type: Type,
+  parameters: readonly TypeParameter[],
+): readonly Type[] {
+  return dependentAmong(writtenTypesOf(checker, type), decidedBy(parameters));
+}
+
+/** Whether a type names one of `parameters`, so their arguments decide it. */
+function decidedBy(parameters: readonly TypeParameter[]): (part: Type) => boolean {
+  return (part) =>
+    parametersIn(part).some((parameter) => parameters.some((each) => each === parameter));
+}
+
+/**
+ * The parts of `parts`, a walk's, that `decided` picks and that may add a kind: a parameter, a type
+ * its arguments compute, or one of a kind of its own. The walk lists every part at any depth, so
+ * a part holding others, `List<T>`, adds only its own kind, and the parts it holds, `T`, are
+ * read again themselves.
+ */
+function dependentAmong(parts: readonly Type[], decided: (part: Type) => boolean): readonly Type[] {
+  const adds = (part: Type) => part.kind === 'parameter' || isComputed(part) || mayOwnKind(part);
+  return distinctItems(
+    parts.filter((part) => decided(part) && adds(part)),
+    sameType,
+  );
 }
 
 /**
@@ -303,8 +331,11 @@ function ownValueKindsOf(checker: CheckerContext, part: Type): readonly Type[] {
     return [markType('live')];
   }
   // Only a value with an identity of its own is disposable (rules/disposal/disposal.ts). One of no
-  // mark, `Future<Int, Int>`, is refused where it is written; it holds no kind.
-  return checker.disposeKindsOf(part).filter((kind) => isOneKind(checker, kind));
+  // mark, `Future<Int, Int>`, is refused where it is written; it holds no kind. A mark variable
+  // that may be simple, `Deferred<M>`'s `M`, is a kind its code takes too: it is one once given.
+  return checker
+    .disposeKindsOf(part)
+    .filter((kind) => isOneKind(checker, kind) || isMarkVariable(checker, kind));
 }
 
 /**

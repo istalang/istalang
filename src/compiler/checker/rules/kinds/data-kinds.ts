@@ -9,9 +9,9 @@
  *   call or crossing takes it to the other's (§3.10);
  * - the type a value is fitted to where it is used, a union it is put into among them, and the
  *   type of each name a declaration, a pattern or a loop binds;
- * - the type arguments of each call it makes, written or implicit, its witnesses' included: a
- *   generic callee handles its type parameters' values as simple data (Rule 3), so the code
- *   instantiating it handles them;
+ * - the types each call it makes instantiates, written or implicit, its witnesses' included: its
+ *   type arguments, and a requirement's `Self` and trait arguments; a generic callee handles its
+ *   type parameters' values as simple data (Rule 3), so the code instantiating it handles them;
  * - for a lambda or a local `fn`, its signature and what it captures, judged by its own mark, and
  *   its body, a local `fn`'s held apart from the tree's nodes;
  * - for a field loop, each pass its body was checked in (§4).
@@ -23,6 +23,9 @@
  * kind (deferred-calls.ts), so what it gives is that function's, never the code writing it; what it
  * computes now is. One value per function is reported, the first its text holds: the mark it asks
  * for mends them all, or none does.
+ *
+ * A type's kinds are read off its fields' written types (properties/value-kinds.ts), so a field
+ * whose type its default gives holds no part whose kind the type arguments decide (§3.3).
  */
 
 import type { ModuleId } from '../../../program/program.ts';
@@ -45,7 +48,14 @@ import type { AnchoredSpan } from '../../../syntax/tree/positions.ts';
 import type { CheckerContext } from '../../contexts/context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import type { CheckedBody, NestedFunction, ValueSite } from '../../surface/checked-body.ts';
-import { type ResolvedCall, witnessCallsOf } from '../../surface/resolved-call.ts';
+import {
+  callsMadeWith,
+  instantiatingTypesOf,
+  type ResolvedCall,
+} from '../../surface/resolved-call.ts';
+import { partsDecidedBy } from '../../types/properties/value-kinds.ts';
+import { mayBeOfKind } from '../../types/traits/data-kind.ts';
+import { isComputed } from '../../types/type/computed-types.ts';
 import { kindOfFunction, simpleMark } from '../../types/type/function-kinds.ts';
 import { isNominalEntity, nominalType, type Type } from '../../types/type/index.ts';
 import { markType } from '../../types/type/primitives.ts';
@@ -100,6 +110,42 @@ export function checkDataKinds(
       if (parameter.kind === 'Parameter' && parameter.defaultValue !== undefined) {
         judge(judging, parameter.defaultValue, handler);
       }
+    }
+  }
+  if (isFieldsFunction(declaration)) {
+    checkDefaultTypedFields(checker, module, declaration);
+  }
+}
+
+/**
+ * Reports each field `fields`, a fields function, reads whose type its default gives and holds a
+ * part whose kind the type arguments decide: a type parameter that may be of a kind, or a type
+ * they compute. A type's kinds are read off its written fields' types alone
+ * (properties/value-kinds.ts), so such a field writes its type (§3.3).
+ */
+function checkDefaultTypedFields(
+  checker: CheckerContext,
+  module: ModuleId,
+  fields: FunctionDeclaration,
+): void {
+  const parameters = typeParametersOf(fields.typeParameters);
+  // A type of a kind of its own is judged where its default makes it; only one whose arguments
+  // give it its kind, `Hook<T>` disposed of by live code at `Hook<Int>`, is of none yet.
+  const decidesKind = (part: Type) => {
+    if (part.kind === 'parameter') {
+      return mayBeOfKind(checker, part);
+    }
+    return isComputed(part) || checker.valueKindsOf(part).length === 0;
+  };
+  for (const { node, type } of checker.parametersOf(fields)) {
+    const { name } = node;
+    const decided =
+      node.type === undefined && name !== undefined
+        ? partsDecidedBy(checker, type, parameters).find(decidesKind)
+        : undefined;
+    if (name !== undefined && decided !== undefined) {
+      const diagnostic = checkerDiagnostics.defaultTypedFieldKind;
+      checker.report(module, diagnostic(name.span, name.text, typeText(decided)));
     }
   }
 }
@@ -214,8 +260,8 @@ function judgeNode(judging: Judging, node: SyntaxNode, handler: Handler): void {
       : undefined;
   judgeValues(judging, handler, node.span, [found, fitted, declared]);
   for (const call of calls ?? []) {
-    for (const each of [call, ...witnessCallsOf(call.witnesses)]) {
-      judgeValues(judging, handler, node.span, each.typeArguments);
+    for (const each of callsMadeWith(call)) {
+      judgeValues(judging, handler, node.span, instantiatingTypesOf(each));
     }
   }
 }

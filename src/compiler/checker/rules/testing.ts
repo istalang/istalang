@@ -3,7 +3,8 @@
  *
  * - Suite functions: what `@Suite` asks of the function it marks. The runner calls a suite function
  *   again in every test's instance and finds the test by its position, so the function must build
- *   the same list each time: a plain `fn` taking nothing and returning `Array<Test>`, whose own
+ *   the same list each time: an `fn` or `ista fn`, which the runner, ista code, may call, not
+ *   async, taking nothing and returning `Array<Test>`, whose own
  *   body calls no extern and touches no handle (types/properties/handles.ts). A value of those can
  *   only come from a call or a `new`, since a constant can't hold one, so those are what is
  *   checked. The functions it calls and the tests it builds run elsewhere or later, so only its own
@@ -44,7 +45,10 @@ import {
 } from '../surface/resolved-call.ts';
 import { substitute, substitutionFor } from '../types/parts/substitution.ts';
 import { isHandleType } from '../types/properties/handles.ts';
+import { kindAdmits, kindOfFunction } from '../types/type/function-kinds.ts';
 import type { Type } from '../types/type/index.ts';
+import { sameMark } from '../types/type/mark-orders.ts';
+import { markType } from '../types/type/primitives.ts';
 import { typeText } from '../types/type/type-text.ts';
 import { arrayElement } from '../types/type/well-known.ts';
 
@@ -121,6 +125,9 @@ function isWrittenCall(site: ResolvedSite): site is Call {
   return site.kind === 'Call';
 }
 
+/** The mark of the runner calling a suite in each test's instance (testing.ista `_list`). */
+const istaMark = markType('ista');
+
 /** Checks the suite function `declaration` of `module`. */
 export function checkSuite(
   checker: CheckerContext,
@@ -132,6 +139,7 @@ export function checkSuite(
     element?.kind === 'nominal' && element.entity === checker.wellKnownEntity(wellKnown.test);
   const plain =
     !(awaits(declaration.qualifiers) || declaration.isExtern) &&
+    kindAdmits(istaMark, kindOfFunction(checker, declaration), sameMark) &&
     declaration.typeParameters.length === 0 &&
     declaration.parameters.length === 0 &&
     isSuiteResult;

@@ -72,7 +72,8 @@ export const boundaryTemplates = {
   // its signatures can't constrain.
   suiteSignature: {
     code: 5950,
-    message: () => "A suite is a plain 'fn' taking nothing and returning Array<Test>.",
+    message: () =>
+      "A suite is an 'fn' or 'ista fn', not async, taking nothing and returning Array<Test>.",
   },
   suiteEffect: {
     code: 5951,

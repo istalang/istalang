@@ -39,6 +39,20 @@ export function boundKindsOf(checker: CheckerContext, type: Type): readonly Type
   return marks.filter((mark) => !isSimpleMark(mark));
 }
 
+/**
+ * Whether the values of `type`, a type known by its constraints, may be of a kind once it is
+ * instantiated: unless its members, or its bounds, allow simple data alone. An unbounded type
+ * parameter's may be of whatever kind its argument is.
+ */
+export function mayBeOfKind(checker: CheckerContext, type: Type): boolean {
+  const members = checker.fitting.memberUnionOf(type);
+  if (members !== undefined) {
+    return checker.valueKindsOf(members).length > 0;
+  }
+  const marks = marksAllowedBy(checker, knownConstraints(checker, type));
+  return marks === undefined || marks.some((mark) => !isSimpleMark(mark));
+}
+
 /** An associated type's written bounds, `DataKind<"simple">` among them where none is written. */
 export function withKindBound(
   checker: CheckerContext,

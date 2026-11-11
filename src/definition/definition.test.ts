@@ -184,6 +184,22 @@ describe('definition format', () => {
       'at main',
     ],
     [
+      'a job server that is no live code taking its runtime',
+      (json) => {
+        json.body.jobServer = 3;
+      },
+      'This names no live code capturing nothing and taking 1 argument by value',
+      'at jobServer',
+    ],
+    [
+      'a suite of live code, which a test instance never runs',
+      (json) => {
+        json.body.tests = { list: 3, run: 3, suites: [{ title: 's', function: 4 }] };
+      },
+      'This names no simple or ista code capturing nothing and taking 0 arguments by value',
+      'tests.suites[0].function',
+    ],
+    [
       'a function in a missing module',
       (json) => {
         at(json, 'functions', 3).module = 7;

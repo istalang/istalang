@@ -21,13 +21,19 @@ import type { CheckerContext } from '../../contexts/context.ts';
 import type { UseSite } from '../../contexts/use-site.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import {
+  callsMadeWith,
   type FunctionCall,
+  instantiatingTypesOf,
   type ResolvedCall,
-  witnessCallsOf,
 } from '../../surface/resolved-call.ts';
 import { sameType } from '../../types/identity/identity.ts';
 import { type Substitution, substitute, substitutionFor } from '../../types/parts/substitution.ts';
-import { isSimpleMark, kindAdmits, kindOfFunction } from '../../types/type/function-kinds.ts';
+import {
+  isSimpleMark,
+  kindAdmits,
+  kindOfFunction,
+  simpleMark,
+} from '../../types/type/function-kinds.ts';
 import type { Type } from '../../types/type/index.ts';
 import { markOrder } from '../../types/type/mark-orders.ts';
 import { typeText } from '../../types/type/type-text.ts';
@@ -72,20 +78,11 @@ export function judgedCall(
       calleeKind: kindOfCall(context.checker, each),
       callee: `'${declaredFunctionName(each.function)}'`,
     });
-    for (const type of each.typeArguments) {
+    for (const type of instantiatingTypesOf(each)) {
       handledBy(context.checker, made.frame, type);
     }
   }
   return call;
-}
-
-/**
- * Every call code making `call` makes (Rule 3): `call`, and the witnesses of its constraints at any
- * depth, which a generic callee calls for its caller, whose data then holds the values of each
- * one's type arguments (rules/kinds/data-kinds.ts).
- */
-function callsMadeWith(call: ResolvedCall): readonly ResolvedCall[] {
-  return [call, ...witnessCallsOf(call.witnesses)];
 }
 
 /**
@@ -121,7 +118,7 @@ export function markMaking(
     allow(calleeKind, (at, mark) =>
       checkerDiagnostics.kindsMeet(at, mark, kindText(calleeKind), callee),
     );
-    for (const type of each.typeArguments) {
+    for (const type of instantiatingTypesOf(each)) {
       for (const kind of checker.valueKindsOf(type)) {
         allow(kind, (at, mark) =>
           checkerDiagnostics.kindsHeld(at, made.holder, mark, typeText(type)),
@@ -130,6 +127,19 @@ export function markMaking(
     }
   }
   return least;
+}
+
+/**
+ * The least mark of code making `call` (`markMaking`), from simple up; undefined where none allows
+ * every call it makes and every value they hand it, both kinds meeting in them.
+ */
+export function leastMarkMaking(checker: CheckerContext, call: ResolvedCall): Type | undefined {
+  let allowed = true;
+  const refused = () => {
+    allowed = false;
+  };
+  const least = markMaking(checker, { call, holder: '', report: refused }, simpleMark);
+  return allowed ? least : undefined;
 }
 
 /**

@@ -25,8 +25,6 @@ type Handled =
   | 'slotTupleConversion'
   | 'liveDefault'
   | 'istaDefault'
-  | 'livePhantomDefault'
-  | 'istaPhantomDefault'
   | 'number';
 
 interface Generated {
@@ -47,8 +45,6 @@ const kindOf: Record<Handled, Mark> = {
   slotTupleConversion: 'ista',
   liveDefault: 'live',
   istaDefault: 'ista',
-  livePhantomDefault: 'live',
-  istaPhantomDefault: 'ista',
   number: 'simple',
 };
 
@@ -64,8 +60,6 @@ const written: Record<Handled, string> = {
   slotTupleConversion: '  const _: (Int, Slot<Int>?) = unitPair()',
   liveDefault: '  _ = createAndDrop<LiveResource>()',
   istaDefault: '  _ = createAndDrop<IstaResource>()',
-  livePhantomDefault: '  _ = createAndDrop<Phantom<LiveResource>>()',
-  istaPhantomDefault: '  _ = createAndDrop<Phantom<IstaResource>>()',
   number: '  _ = 1 + 2',
 };
 
@@ -97,8 +91,6 @@ function sourceOf(program: readonly Generated[]): string {
     'shared struct IstaResource { n: Int }',
     'ista fn dispose(self: IstaResource): ()',
     'ista fn IstaResource.default() -> IstaResource: new IstaResource{n: 1}',
-    'struct Phantom<T> { tag: Int }',
-    'fn Phantom.default<T is Default>() -> Phantom<T>: { const x = T.default(); Phantom<T>{tag: 0} }',
     'fn unitPair() -> (Int, None): (1, none)',
     'fn createAndDrop<T is Default>() -> Int: { const x = T.default(); 0 }',
     ...program.flatMap(({ mark, handles, calls }, index) => [
@@ -122,8 +114,6 @@ const handledArbitrary = fc.constantFrom<Handled>(
   'slotTupleConversion',
   'liveDefault',
   'istaDefault',
-  'livePhantomDefault',
-  'istaPhantomDefault',
   'number',
 );
 

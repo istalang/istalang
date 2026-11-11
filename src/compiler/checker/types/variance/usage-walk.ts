@@ -1,7 +1,7 @@
 /**
  * One walk over a declaration's parts (§3.5), noting where each of its type parameters is met: at
- * the variance of each position, a function type's parameter flipping it and the future it gives
- * standing for its value, a declaration's or an
+ * the variance of each position, a function type's parameter flipping it, the future it gives
+ * standing for its value and its mark and sendability making it invariant, a declaration's or an
  * `any` type's trait's type arguments composing it with that declaration's, and a computed type
  * making it invariant. variance.ts runs it to a fixpoint.
  */
@@ -91,6 +91,10 @@ export class UsageWalk {
   }
 
   #function(type: FunctionType, at: Variance): void {
+    // A mark and a sendability are compared by their own orders, never fitted as values are
+    // (mark-orders.ts), so a type parameter met in either slot varies in neither.
+    this.walk(type.mark, 'invariant');
+    this.walk(type.send, 'invariant');
     for (const parameter of type.parameters) {
       this.walk(parameter.type, parameter.reference ? 'invariant' : flipped(at));
     }

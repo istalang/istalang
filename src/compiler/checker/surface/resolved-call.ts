@@ -194,6 +194,25 @@ export function witnessCallsOf(witnesses: Witnesses): readonly FunctionCall[] {
 }
 
 /**
+ * `call` and every call its witnesses make, at any depth: what code making `call` makes, since a
+ * generic callee calls its constraints' witnesses for its caller (proposal 8, Rule 3).
+ */
+export function callsMadeWith(call: ResolvedCall): readonly ResolvedCall[] {
+  return [call, ...witnessCallsOf(call.witnesses)];
+}
+
+/**
+ * The types `call` instantiates its function at, whose values the code making it handles (proposal
+ * 8, Rule 3): its type arguments, and a requirement's `Self` and its trait's type parameters, which
+ * its signature is read through.
+ */
+export function instantiatingTypesOf(call: ResolvedCall): readonly Type[] {
+  return call.kind === 'requirement'
+    ? [...call.substitution.values(), ...call.typeArguments]
+    : call.typeArguments;
+}
+
+/**
  * Nodes the checker resolves to a function: the nodes a call can be written as, a call, a deferred
  * call, which calls its taker with the function making its call (§3.14), an operator that calls a
  * function (§3.9), indexing, which calls `index`, an assignment, whose compound operator calls a

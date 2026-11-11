@@ -18,7 +18,7 @@ import { constraintSubstitution, requiredFunctions } from '../../types/traits/co
 import { isMarkVariable, isSimpleMark } from '../../types/type/function-kinds.ts';
 import type { Constraint, Type } from '../../types/type/index.ts';
 import { baseOf } from '../../types/unions/union-members.ts';
-import { kindOfCall } from '../applying/call-kinds.ts';
+import { leastMarkMaking } from '../applying/call-kinds.ts';
 import type { CallArgument } from '../choosing/call-arguments.ts';
 import { type Candidate, witnessCandidates } from '../choosing/candidates.ts';
 import {
@@ -86,7 +86,9 @@ export function chooseWitnessAmong(
 
 /**
  * Whether `call`, a witness chosen and instantiated to meet `required` for `self`, meets its kind
- * as the instantiation makes its mark: what one generic over its mark is decided only here.
+ * as the instantiation makes it: by the least mark of code making it, which one generic over its
+ * mark is decided only here, and which its own witnesses and type arguments raise, since a call
+ * through the requirement makes those too (Rule 3).
  */
 export function instanceMeetsKind(
   checker: CheckerContext,
@@ -94,7 +96,8 @@ export function instanceMeetsKind(
   call: ResolvedCall,
   self: Type,
 ): boolean {
-  return meetsRequirementKind(checker, required, kindOfCall(checker, call), self);
+  const mark = leastMarkMaking(checker, call);
+  return mark !== undefined && meetsRequirementKind(checker, required, mark, self);
 }
 
 /**

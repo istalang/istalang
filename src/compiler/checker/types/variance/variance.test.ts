@@ -84,6 +84,21 @@ describe('a declaration’s variance (§3.5)', () => {
       'Task',
       ['invariant'],
     ],
+    [
+      'type ModeOf<T> = match T:\n  case Int: "live"\n  case _: "ista"\nstruct Task<T> { run: Fn<(), Int, ModeOf<T>> }',
+      'Task',
+      ['invariant'],
+    ],
+    [
+      'type SendOf<T> = match T:\n  case Int: "sendable"\n  case _: "plain"\nstruct Sent<T> { run: Fn<(), Int, "simple", SendOf<T>> }',
+      'Sent',
+      ['invariant'],
+    ],
+    [
+      'trait HasMode { type Mode in Persistence }\nstruct Ran<W is HasMode> { run: Fn<(), Int, W.Mode> }',
+      'Ran',
+      ['invariant'],
+    ],
     ['trait Swaps<T> { fn swap(self: &Self, x: &T) }', 'Swaps', ['invariant']],
     ['trait Each<T> { fn each(self: Self, f: fn(T) -> Unit) }', 'Each', ['covariant']],
     ['trait Tag<T> { fn tag(self: Self) -> Int }', 'Tag', ['covariant']],

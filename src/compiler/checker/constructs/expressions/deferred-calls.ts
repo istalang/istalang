@@ -8,7 +8,10 @@
  *   A deferred call within it computes its taker's parts now too, so `a b c(x)` computes `x` once,
  *   here; its own call it checks itself.
  * - The function takes nothing and gives what the call gives. It is sendable when every value it
- *   captures is, a spread's collected items rather than its iterable, so where a sendable function
+ *   captures is, as computed, before it is fitted to its parameter: fitting adds nothing that keeps
+ *   a value in its instance (an `Int` put into an `any Stringable` holds an `Int`, a named function
+ *   taken as a plain `fn` captures nothing), so `spawn call(add3, 1, 2, 3)` sends. A spread's
+ *   collected items are captured rather than its iterable, so where a sendable function
  *   is taken, each value that isn't is reported (resolution/calls/deferred-arguments.ts). It is
  *   built where it is given, so it is never fitted as a value is: the parameter it fills is
  *   recorded at the call (`Deferrals`), and lowering builds it as that type, giving what the call

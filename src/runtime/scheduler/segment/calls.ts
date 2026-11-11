@@ -21,6 +21,7 @@
 
 import type { FunctionId } from '../../../definition/operands.ts';
 import type { Value } from '../../../definition/values/values.ts';
+import { mayCall } from '../../../foundation/language/call-rule.ts';
 import { unreachable } from '../../../foundation/structures/unreachable.ts';
 import type { ActiveFrame, FrameEntry } from '../../interpreter/frames.ts';
 import { capturesOf, parameterContents } from '../../interpreter/machine.ts';
@@ -126,7 +127,7 @@ function runCall(caller: Caller, run: Run, passed: readonly Passed[]): CallTarge
     };
   }
   const { mode } = callable.code;
-  if (mode !== 'simple' && mode !== caller.waiting.kind) {
+  if (!mayCall(caller.waiting.kind, mode)) {
     unreachable(`A ${caller.waiting.kind} run calls ${mode} code, which the call rule refuses.`);
   }
   return { kind: 'code', entry: callable, contents: passed, captures: run.captures };
