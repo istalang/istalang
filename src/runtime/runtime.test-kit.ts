@@ -148,12 +148,35 @@ export type Settled =
  * spawned.
  */
 export async function settleAll(
-  { runtime, clock }: TestRuntime,
+  test: TestRuntime,
   instance: string,
   initial: Advanced,
 ): Promise<ReadonlyMap<string, Settled>> {
+  return await settleGroup(test, [[instance, initial]]);
+}
+
+/**
+ * Runs every instance the store keeps on from its last commit, by name, as `settleAll` does: what a
+ * program's run left unfinished, a context's or a spawn its live `main` didn't wait for, as a later
+ * run on the store resumes it; how each settled.
+ */
+export async function settleStored(test: TestRuntime): Promise<ReadonlyMap<string, Settled>> {
+  const names = test.store.instances().toSorted((first, second) => first.localeCompare(second));
+  return await settleGroup(
+    test,
+    names.map((name) => [name, { state: test.runtime.inspect(name).state, spawned: [], logs: [] }]),
+  );
+}
+
+/** Drives the instances `started` gives, each from its advance, until none waits any more. */
+async function settleGroup(
+  { runtime, clock }: TestRuntime,
+  started: readonly (readonly [string, Advanced])[],
+): Promise<ReadonlyMap<string, Settled>> {
   const group = new InstanceGroup();
-  group.record(instance, initial);
+  for (const [instance, advanced] of started) {
+    group.record(instance, advanced);
+  }
   const wake = async (name: string) => {
     group.record(name, await runtime.wake(name));
   };

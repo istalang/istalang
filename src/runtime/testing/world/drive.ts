@@ -4,7 +4,7 @@
  * instance an advance spawned joins the group, so a program's spawned instances, and theirs, run
  * with it.
  *
- * A test's world (../../host/index.ts) drives its test this way, also delivering answers, resolving
+ * A test's world (index.ts) drives its test this way, also delivering answers, resolving
  * its waits and ending at its test's end or deadline, and a test of the instance engine drives the
  * instances it started directly (runtime.test-kit.ts): so the loop is `drive`, and what differs is
  * what each gives it. What every loop asks of the group is ../../host/instance-group.ts's. A live

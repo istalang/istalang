@@ -29,5 +29,5 @@ function waitsAndFutures(
   called: (callback: Value, argumentValues: readonly Value[]) => void,
 ): { readonly waits: Waits; readonly futures: Futures } {
   const waits = new Waits(heap, { decided: () => undefined, watchesCall: () => false, called });
-  return { waits, futures: new Futures(heap, waits, new DisposalNotices(heap), () => undefined) };
+  return { waits, futures: new Futures(heap, waits, new DisposalNotices(), () => undefined) };
 }

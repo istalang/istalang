@@ -24,7 +24,7 @@ import { formattableInputs } from '../src/formatter/format.test-kit.ts';
 import { formatText } from '../src/formatter/format.ts';
 import { tempProject } from '../src/project/project.test-kit.ts';
 import { findProjectSources, loadProject } from '../src/project/project.ts';
-import { testRuntime } from '../src/runtime/runtime.test-kit.ts';
+import { settleStored, testRuntime } from '../src/runtime/runtime.test-kit.ts';
 import { corpusDirectory, runPrograms } from './corpus/programs.ts';
 
 /** A copy of the corpus on disk, its `.ista` files only. */
@@ -55,24 +55,22 @@ function diagnosticsOf(program: Program) {
 }
 
 /**
- * Where a run of the program `text` left `main` and each instance it committed, its contexts and
- * what they spawned, by name: `main`'s outcome as the JSON `ista run` prints, and each panic's
- * message without its trace, which names the lines frames stood at.
+ * How a run of the program `text` ended, by instance: `main`, then each instance it left in the
+ * store, its contexts and what they spawned, run on to the end as a later run would resume them.
+ * `main`'s outcome is the JSON `ista run` prints, another's the value its function gave, and each
+ * panic's message is given without its trace, which names the lines frames stood at.
  */
 async function endingsOf(text: string) {
   const test = testRuntime();
   const program = test.runtime.deploy(compiledText(text));
   const main = await program.start('main');
-  const stored = test.store
-    .instances()
-    .toSorted((a, b) => a.localeCompare(b))
-    .map((instance) => [instance, test.runtime.inspect(instance).state] as const);
+  const stored = await settleStored(test);
   return [['main', main.state] as const, ...stored].map(([instance, ending]) => {
     switch (ending.kind) {
       case 'finished':
         return instance === 'main'
           ? { instance, kind: ending.kind, outcome: program.outcomeText(ending) }
-          : { instance, kind: ending.kind };
+          : { instance, kind: ending.kind, outcome: ending.outcome };
       case 'panicked':
       case 'terminated':
         return { instance, kind: ending.kind, message: ending.message };

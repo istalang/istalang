@@ -1,6 +1,6 @@
 /**
- * Values crossing between instances (§9, §10): an argument or result of a call one instance makes
- * into another, a mock's or a context's, or what a host fills. Only values without handles cross,
+ * Values crossing between instances (§9, §10): an argument or result of a call one instance, or a
+ * live run, makes into another, a mock's or a context's. Only values without handles cross,
  * except a host value a `dispose` made a resource, which crosses as its host's JSON: it leaves as
  * that JSON and arrives as the resource for it, the one the instance has already if any, so a handle
  * that crosses and comes back stays the same (§3.6).
@@ -46,7 +46,6 @@ export function leaving(instance: Instance, value: Value): Value {
 
 /**
  * `value`, arriving in `instance` from another: a host value of a resource type made its resource.
- * A host's JSON holds no host value, so what a host fills arrives unchanged.
  */
 export function arriving(instance: Instance, value: Value): Value {
   if (!isComposite(value)) {

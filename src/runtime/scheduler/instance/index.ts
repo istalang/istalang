@@ -94,7 +94,7 @@ export class Instance {
       snapshot.objects.map((object) => liveObject(loaded.definition, object, this.frameHeap)),
     );
     this.#constants = new ContextConstants(this.heap);
-    this.notices = new DisposalNotices(this.heap);
+    this.notices = new DisposalNotices();
     this.#ready = new ReadyQueue(this.heap, snapshot.ready);
     this.waits = new Waits(this.heap, {
       decided: (waiter, { position }) => {
@@ -153,7 +153,6 @@ export class Instance {
    */
   dropUnheld(): void {
     this.heap.keepOnly(new Set(this.#kept().kept.map(({ id }) => id)));
-    this.notices.forgetGone();
   }
 
   /**
