@@ -5,6 +5,7 @@
 
 import Inbox from 'inbox'
 import * as time from 'time'
+import * as runtime from 'runtime'
 
 fn note(log: Shared<Array<String>>, entry: String):
   log->value = [...log->value, entry]
@@ -26,7 +27,8 @@ ista async fn idle(log: Shared<Array<String>>) -> Unit:
   await time.delay(1d)
   note(log, "never: idle was stopped")
 
-ista async fn main() -> String:
+live async fn main() -> String: await runtime.run(runtime.id()) _main()
+ista async fn _main() -> String:
   const empty: Array<String> = []
   const log = new Shared{value: empty}
   const jobs = Inbox.create<Int>()

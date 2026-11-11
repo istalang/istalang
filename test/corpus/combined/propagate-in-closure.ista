@@ -31,7 +31,9 @@ fn genericCase<T>(x: T, n: Int) -> String:
     case Ok(value): "ok"
     case Err(error): "genericErr"
 
-ista async fn main() -> String:
+import * as runtime from 'runtime'
+live async fn main() -> String: await runtime.run(runtime.id()) _main()
+ista async fn _main() -> String:
   const f = fn(n: Int) -> Result<Int>: { const v = p(n)?; Ok(v + 100) }
   const ok = match f(1):
     case Ok(value): "ok" + String(value)

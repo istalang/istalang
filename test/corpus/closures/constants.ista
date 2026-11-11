@@ -11,7 +11,9 @@ const ops = [fn(x: Int): x + 1, fn(x: Int): x * 2]
 
 const fact: fn(Int) -> Int = fn me(n): if n < 2: 1 else: n * me(n - 1)
 
-ista async fn main():
+import * as runtime from 'runtime'
+live async fn main(): await runtime.run(runtime.id()) _main()
+ista async fn _main():
   const same = isLarge == isLarge
   const other = ops[0] == ops[1]
   String(isLarge(11)) + " " + String(isLarge(3)) + " " + String(ops[1](4)) + " " + String(fact(5)) + " " + String(same) + " " + String(other)

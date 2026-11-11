@@ -35,7 +35,9 @@ fn made(make: (fn(Int) -> Box<Int>) | Int) -> Int:
     case Int as n: n
     case _ as f: f(13).item
 
-ista async fn main() -> String:
+import * as runtime from 'runtime'
+live async fn main() -> String: await runtime.run(runtime.id()) _main()
+ista async fn _main() -> String:
   const list = listed<Int>
   const boxes = [4, 5].map(Box.of<Int>)
   const results = [6].map(Result.Ok<Int, String>)

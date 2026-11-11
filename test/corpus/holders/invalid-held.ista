@@ -1,6 +1,6 @@
 # error: 5025 at 22:3
-# error: 5025 at 26:3
-# error: 5025 at 27:3
+# error: 5025 at 28:3
+# error: 5025 at 29:3
 # A value holding a future, a Result or a disposable must be used, at any depth (§7): a declared
 # struct holds its fields and an enum its variants' fields, as a tuple holds its elements, and a
 # value of a type parameter constrained to be Disposable is disposable. A recursive type holding
@@ -22,7 +22,9 @@ fn keep<T is Disposable>(value: T) -> Int:
   value
   1
 
-ista async fn main():
+import * as runtime from 'runtime'
+live async fn main(): await runtime.run(runtime.id()) _main()
+ista async fn _main():
   Pending{job: work()}
   outcome()
   chain()

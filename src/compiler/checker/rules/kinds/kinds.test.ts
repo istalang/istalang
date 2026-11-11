@@ -162,7 +162,7 @@ describe('function values and kinds', () => {
     const source = [
       'K async fn two<K in Persistence>() -> Int: 2',
       'fn takesLive(f: live async fn() -> Int): _ = f',
-      'ista async fn main() -> Int:',
+      "import * as runtime from 'runtime'\nlive async fn main() -> Int: await runtime.run(runtime.id()) _main()\nista async fn _main() -> Int:",
       '  takesLive(two)',
       '  0',
     ];

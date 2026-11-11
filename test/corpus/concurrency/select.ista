@@ -5,6 +5,7 @@
 # agree on one type, which an expected type decides.
 
 import * as time from 'time'
+import * as runtime from 'runtime'
 
 ista async fn priority() -> String:
   const a = Slot.create<Int>()
@@ -47,7 +48,8 @@ ista async fn leaving(s: Slot<String>) -> String:
       return "late"
   got ?? "none"
 
-ista async fn main() -> String:
+live async fn main() -> String: await runtime.run(runtime.id()) _main()
+ista async fn _main() -> String:
   const ready = Slot.create<Int>()
   const empty = Slot.create<Int>()
   await ready.put(1)

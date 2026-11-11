@@ -12,7 +12,9 @@ fn total<C is Iterable<Int>>(collection: C) -> Int:
 fn first<C is Indexable<Int, String>>(collection: C) -> String:
   collection[0]
 
-ista async fn main() -> String:
+import * as runtime from 'runtime'
+live async fn main() -> String: await runtime.run(runtime.id()) _main()
+ista async fn _main() -> String:
   const forward = ["\u{e9}": 1, "e\u{301}": 1]
   const backward = ["e\u{301}": 1, "\u{e9}": 1]
   const nested = [forward: 7]

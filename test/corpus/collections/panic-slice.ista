@@ -1,6 +1,8 @@
 # panic: The range 2..5 is out of range for an array of length 3.
 # A slice outside the bounds panics (§3.9); `slice` clamps instead.
 
-ista async fn main() -> Int:
+import * as runtime from 'runtime'
+live async fn main() -> Int: await runtime.run(runtime.id()) _main()
+ista async fn _main() -> Int:
   const xs = [1, 2, 3]
   xs[2..5].length()

@@ -3,7 +3,9 @@
 # wrapped into `T?` as an element would be (§2): an array's items, which are otherwise copied
 # whole, a string's characters and a range's ints alike, as often as the optionals nest.
 
-ista async fn main() -> String:
+import * as runtime from 'runtime'
+live async fn main() -> String: await runtime.run(runtime.id()) _main()
+ista async fn _main() -> String:
   const xs = [1, 2]
   const ys: Array<Int?> = [0, ...xs, none]
   const letters: Array<String?> = [..."ab"]

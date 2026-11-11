@@ -14,6 +14,8 @@ const label = "total"
 const ratio = 0.5
 const shift = -(0.25)
 
-ista async fn main():
+import * as runtime from 'runtime'
+live async fn main(): await runtime.run(runtime.id()) _main()
+ista async fn _main():
   const span = sameLimits.high + sameLimits.low
   label + ": " + span + " " + timeout.value + " " + ratio + " " + shift

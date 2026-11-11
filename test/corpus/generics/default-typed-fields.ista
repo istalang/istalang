@@ -14,5 +14,7 @@ struct B<U>:
   x: Int
   a: Opt<A<U>>
 
-ista async fn main() -> Int:
+import * as runtime from 'runtime'
+live async fn main() -> Int: await runtime.run(runtime.id()) _main()
+ista async fn _main() -> Int:
   A<String>{}.b.x

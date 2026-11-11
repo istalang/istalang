@@ -113,12 +113,12 @@ describe('the call disposing() watches', () => {
     expect(
       reported(`
 shared struct Box { n: Int }
-ista async fn Box.main() -> Box:
+live async fn Box.main() -> Box:
   new Box{n: 1}
-ista async fn main(n: Int) -> Int:
+live async fn main(n: Int) -> Int:
   _ = main.disposing()
   n
-ista async fn main() -> Int:
+live async fn main() -> Int:
   _ = Box.main()
   await main(1)
 `),
@@ -131,7 +131,7 @@ fn main():
     ).toEqual(reportedOnce(4016, 'main'));
     expect(
       reported(`
-ista async fn main():
+live async fn main():
   ()
 ista async fn other():
   drop main.disposing()

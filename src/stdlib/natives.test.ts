@@ -13,13 +13,14 @@ import { stdNatives } from './natives.ts';
 import { everyStdModule } from './std-modules.test-kit.ts';
 
 /**
- * Externs without a native, by module and name: the runtime disposes futures, slots and mocks
- * itself, so their `dispose` never has one, and the compiler writes the derived json codecs per
- * type (docs/arch/boundary.md).
+ * Externs without a native, by module and name: the runtime disposes futures, slots, mocks and
+ * runtimes itself, so their `dispose` never has one, and the compiler writes the derived json
+ * codecs per type (docs/arch/boundary.md).
  */
 const withoutNative = new Set([
   `${languageModules.prelude}.${disposeFunction}`,
   `${languageModules.testing}.${disposeFunction}`,
+  `runtime.${disposeFunction}`,
   ...Object.values(derivedCodecs).map((name) => `${languageModules.json}.${name}`),
 ]);
 

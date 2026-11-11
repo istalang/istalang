@@ -12,7 +12,9 @@ import { startToEnd, testRuntime } from '../../runtime/runtime.test-kit.ts';
  */
 export async function mainGives(result: string, body: string, declarations = ''): Promise<unknown> {
   const lines = body.trimEnd().split('\n').join('\n  ');
-  const program = `${declarations}\nista async fn main() -> ${result}:\n  ${lines}`;
+  const program = `${declarations}\nimport * as runtime from 'runtime'
+live async fn main() -> ${result}: await runtime.run(runtime.id()) _main()
+ista async fn _main() -> ${result}:\n  ${lines}`;
   const state = await startToEnd(testRuntime(), compiledText(program));
   return state.kind === 'finished' ? decodeJson(String(state.outcome)) : state;
 }

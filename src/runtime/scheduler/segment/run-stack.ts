@@ -58,6 +58,14 @@ export class RunStack {
     return dropped.toReversed();
   }
 
+  /**
+   * Has a segment's trace, once nothing runs, show `execution`, stopped at its await, where the
+   * driver handed its wait to; the driver's own without one.
+   */
+  stoppedIn(execution: LiveExecution | undefined): void {
+    this.#driver = execution ?? this.#driver;
+  }
+
   /** Takes the top execution off; what runs next is the one under it, if any. */
   pop(): LiveExecution | undefined {
     const popped = this.#executions.pop();

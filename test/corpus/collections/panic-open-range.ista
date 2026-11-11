@@ -1,7 +1,9 @@
 # panic: Iterating needs a range with both ends, not 3...
 # Only a range with both ends is iterable (§3.8); whether it has them is known when it runs.
 
-ista async fn main() -> Int:
+import * as runtime from 'runtime'
+live async fn main() -> Int: await runtime.run(runtime.id()) _main()
+ista async fn _main() -> Int:
   let total = 0
   for i in 3..:
     total += i

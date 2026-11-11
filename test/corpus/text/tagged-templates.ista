@@ -17,7 +17,9 @@ struct Db:
 fn query(self: Db, parts: Array<String>, ...values: Array<Int>) -> String:
   self.prefix + parts.join("$")
 
-ista async fn main():
+import * as runtime from 'runtime'
+live async fn main(): await runtime.run(runtime.id()) _main()
+ista async fn _main():
   const id = 7
   const q = sql`select ${id} from ${"t"}`
   const db = Db{prefix: ">"}

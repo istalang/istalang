@@ -31,7 +31,9 @@ fn grow(self: &Point, by: Int):
 fn total(self: Point) -> Int:
   self.x + self.y
 
-ista async fn main():
+import * as runtime from 'runtime'
+live async fn main(): await runtime.run(runtime.id()) _main()
+ista async fn _main():
   const a = Point{x: 1, y: 2}
   let b = a
   b.x = 9

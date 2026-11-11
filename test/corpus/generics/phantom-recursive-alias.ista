@@ -9,5 +9,7 @@ fn f(x: Phantom<String>) -> Int:
     case Int as n: n
     case Array<Phantom<String>> as xs: xs.length()
 
-ista async fn main() -> Int:
+import * as runtime from 'runtime'
+live async fn main() -> Int: await runtime.run(runtime.id()) _main()
+ista async fn _main() -> Int:
   return f([1, [2]])

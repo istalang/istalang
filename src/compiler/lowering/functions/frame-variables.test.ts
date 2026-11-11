@@ -18,15 +18,18 @@ const noting = [
   '  n',
 ].join('\n');
 
+/** The live `main` calling `_main` in its context, the last frame of an ista body's trace. */
+const liveMain = /^at main\.main\.deferred@\S+ \(\S+\)$/u;
+
 /**
  * Each trace expected, one line per frame, innermost first: `at`, the function, and
  * `module:line:column` where it stands.
  */
 const traces = {
-  inFunction: [/^at main\.where \(\S+:1:23\)$/u, /^at main\.main \(\S+:3:3\)$/u],
-  shorter: [/^at main\.failing \(\S+:2:3\)$/u, /^at main\.main \(\S+:5:3\)$/u],
-  encoder: [/^at main\.toJson \(\S+:3:37\)$/u, /^at main\.main \(\S+:6:3\)$/u],
-  spawned: [/^at main\.failing \(\S+:2:3\)$/u, /^at main\.main\.deferred@\S+ \(\S+\)$/u],
+  inFunction: [/^at main\.where \(\S+:1:23\)$/u, /^at main\._main \(\S+:5:3\)$/u, liveMain],
+  shorter: [/^at main\.failing \(\S+:2:3\)$/u, /^at main\._main \(\S+:7:3\)$/u, liveMain],
+  encoder: [/^at main\.toJson \(\S+:3:37\)$/u, /^at main\.main \(\S+:6:32\)$/u],
+  spawned: [/^at main\.failing \(\S+:2:3\)$/u, /^at main\._main\.deferred@\S+ \(\S+\)$/u],
 };
 
 /** The lines of the trace `outcome` holds, innermost frame first. */

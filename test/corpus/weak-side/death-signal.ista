@@ -4,6 +4,7 @@
 # once the owner releases the inbox, at the end of the block that holds it.
 
 import Inbox from 'inbox'
+import * as runtime from 'runtime'
 
 struct Status:
   text: String
@@ -20,7 +21,8 @@ ista async fn child(parent: WeakRef<Inbox<Status>>, mine: Inbox<Command>) -> Str
         return "child saw the inbox go"
   "never"
 
-ista async fn main() -> String:
+live async fn main() -> String: await runtime.run(runtime.id()) _main()
+ista async fn _main() -> String:
   const commands = Inbox.create<Command>()
   let replies = ""
   const running = {

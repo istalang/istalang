@@ -8,7 +8,9 @@ fn show(xs: Array<Int>) -> String:
     text = if text == "[": text + x else: text + ", " + x
   text + "]"
 
-ista async fn main() -> String:
+import * as runtime from 'runtime'
+live async fn main() -> String: await runtime.run(runtime.id()) _main()
+ista async fn _main() -> String:
   const base = [1, 2, 3]
   let xs = [9, ...base, 4]
   const sum = base[0] + base[1] + base[2]

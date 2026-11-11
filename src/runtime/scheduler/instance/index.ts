@@ -43,8 +43,9 @@ import { type HeapObject, isReference } from '../../snapshot/objects.ts';
 import { drawOf, seedFrom } from '../../snapshot/random.ts';
 import type { InstanceCall, Snapshot } from '../../snapshot/snapshot.ts';
 import type { LoadedDefinition } from '../loaded-definition.ts';
-import { leaving, reachingMock } from '../testing/mocks.ts';
-import type { Waiting } from '../waiting.ts';
+import { reachingMock } from '../testing/mocks.ts';
+import { leaving } from './crossing.ts';
+import { DisposalNotices } from './disposal-notices.ts';
 import { type Answered, Futures } from './futures.ts';
 import { Heap, type LiveExecution, type LiveObject, type LiveObjectOf } from './heap.ts';
 import { spawnedName } from './instance-names.ts';
@@ -74,6 +75,7 @@ export class Instance {
   readonly futures: Futures;
   readonly slots: Slots;
   readonly weak: WeakSide;
+  readonly notices: DisposalNotices;
   /** The heap as its frames reach it (interpreter/machine.ts). */
   readonly frameHeap: FrameHeap = {
     read: (cell) => this.heap.of(cell, 'cell').value,
@@ -95,8 +97,6 @@ export class Instance {
   #spawns: Spawn[] = [];
   #answered: Answered[] = [];
   #logs: LogRecord[] = [];
-  /** What observes the futures this segment disposed, told once it commits (§7). */
-  #cancelled: (() => void)[] = [];
   /** How many random draws this segment made. */
   #draws = 0;
   readonly #ready: ReadyQueue;
@@ -110,6 +110,7 @@ export class Instance {
     this.heap = new Heap(
       snapshot.objects.map((object) => liveObject(loaded.definition, object, this.frameHeap)),
     );
+    this.notices = new DisposalNotices(this.heap);
     this.#ready = new ReadyQueue(this.heap, snapshot.ready);
     this.waits = new Waits(this.heap, {
       decided: (waiter, { position }) => {
@@ -123,7 +124,7 @@ export class Instance {
         this.#ready.run(callback, argumentValues);
       },
     });
-    this.futures = new Futures(this.heap, this.waits, (answered) => {
+    this.futures = new Futures(this.heap, this.waits, this.notices, (answered) => {
       this.#answered.push({ ...answered, value: leaving(this, answered.value) });
     });
     this.slots = new Slots(this.heap, this.futures);
@@ -168,7 +169,7 @@ export class Instance {
    */
   dropUnheld(): void {
     this.heap.keepOnly(new Set(this.#kept().kept.map(({ id }) => id)));
-    this.futures.forgetGone();
+    this.notices.forgetGone();
   }
 
   /**
@@ -224,35 +225,12 @@ export class Instance {
    */
   continueFrom(committed: Snapshot): void {
     this.heap.keepOnly(new Set(committed.objects.map(({ id }) => id)));
-    this.futures.forgetGone();
+    this.notices.forgetGone();
     this.#from = committed;
     this.#spawns = [];
     this.#answered = [];
     this.#logs = [];
-    this.#cancelled = [];
     this.#draws = 0;
-  }
-
-  /**
-   * The pending future `id` was disposed: what observes it is told so, at once in a live run, and
-   * once the segment commits in an instance, so a segment a crash discards tells nothing (§7).
-   */
-  disposedFuture(id: number, waiting: Waiting['kind']): void {
-    const notices = this.futures.takeNotices(id);
-    if (waiting === 'live') {
-      for (const notice of notices) {
-        notice();
-      }
-      return;
-    }
-    this.#cancelled.push(...notices);
-  }
-
-  /** Tells what observed the futures this segment disposed, as the segment committed. */
-  tellCancelled(): void {
-    for (const notice of this.#cancelled.splice(0)) {
-      notice();
-    }
   }
 
   /** The instance's name, as its host gave it or as its parent's spawn made it (§9). */
@@ -422,6 +400,16 @@ export class Instance {
     }
     for (const awaited of this.heap.objectsOf('outcome')) {
       this.heap.remove(awaited.id);
+    }
+  }
+
+  /**
+   * Lets go of the answers the instance owes calls made into it from outside, as it ends (§3.12):
+   * their callers heard of its panic, so the calls answering them are disposed, as any let go of.
+   */
+  releaseAnswers(): void {
+    for (const answer of this.heap.objectsOf('answer')) {
+      this.heap.remove(answer.id);
     }
   }
 

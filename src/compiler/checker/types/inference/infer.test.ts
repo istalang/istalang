@@ -18,7 +18,7 @@ function reportedCodes(argumentsText: readonly string[]): readonly number[] {
   return reportedErrors(
     [
       'fn same<T>(a: T, b: T, c: T) -> T: a',
-      'ista async fn main():',
+      "import * as runtime from 'runtime'\nlive async fn main(): await runtime.run(runtime.id()) _main()\nista async fn _main():",
       '  const maybe: Int? = 3',
       `  const result = same(${argumentsText.join(', ')})`,
     ].join('\n'),
@@ -63,7 +63,7 @@ describe('a type found where a value must have it exactly', () => {
   ])('never widens to an optional, for %s', (_case, call) => {
     const main = [
       ...declarations,
-      'ista async fn main():',
+      "import * as runtime from 'runtime'\nlive async fn main(): await runtime.run(runtime.id()) _main()\nista async fn _main():",
       '  const maybe: Int? = 3',
       '  const ns = [1, 2]',
       '  let n = 1',
@@ -91,7 +91,7 @@ describe('never where a value must have its type exactly', () => {
       'fn runLast<T>(fallback: T, f: fn() -> T) -> T: fallback',
       'fn runAlone<T>(f: fn() -> T) -> Int: 0',
       'fn fail() -> Never: panic("x")',
-      'ista async fn main():',
+      "import * as runtime from 'runtime'\nlive async fn main(): await runtime.run(runtime.id()) _main()\nista async fn _main():",
       '  const empty: Array<Never> = []',
       '  const failing = fail',
       `  drop ${call}`,
@@ -123,7 +123,7 @@ describe('a parameter only never gives', () => {
       'fn wrapped<T>(f: fn() -> T) -> Array<T>: [f()]',
       'fn shown<T is Stringable>(f: fn() -> T) -> T: f()',
       'fn fail() -> Never: panic("x")',
-      'ista async fn main():',
+      "import * as runtime from 'runtime'\nlive async fn main(): await runtime.run(runtime.id()) _main()\nista async fn _main():",
       '  const failing = fail',
       `  ${statement}`,
     ].join('\n');
@@ -174,7 +174,7 @@ describe('a parameter the error type met', () => {
       'fn rows() -> Array<Missing>: []',
       'fn first<T>(xs: Array<T>) -> T: xs[0]',
       'fn same<T>(a: T, b: T) -> T: a',
-      'ista async fn main():',
+      "import * as runtime from 'runtime'\nlive async fn main(): await runtime.run(runtime.id()) _main()\nista async fn _main():",
       `  drop ${call}`,
     ].join('\n');
     expect(reportedErrors(main)).toEqual(
@@ -192,7 +192,7 @@ describe('a recursive type inside what is given', () => {
     const main = [
       'type List<T> = { head: T, tail: List<T>? }',
       declaration,
-      'ista async fn main():',
+      "import * as runtime from 'runtime'\nlive async fn main(): await runtime.run(runtime.id()) _main()\nista async fn _main():",
       '  const l: List<Int> = struct{head: 1, tail: none}',
       '  const maybe: List<Int>? = l',
       '  const xs: Array<List<Int>> = [l]',
@@ -224,6 +224,10 @@ describe("a generic function's own call inside its body", () => {
       'fn process(x: Int, y: Int, stop: Bool) -> Int: 1\nfn process<T>(x: T, y: T, stop: Bool) -> Int:\n  if stop: 0 else: process(y, y, true)',
     ],
   ])('gives its type parameters what the call passes, %s', (_case, declaration) => {
-    expect(reportedErrors(`${declaration}\nista async fn main():\n  drop 1`)).toEqual([]);
+    expect(
+      reportedErrors(`${declaration}\nimport * as runtime from 'runtime'
+live async fn main(): await runtime.run(runtime.id()) _main()
+ista async fn _main():\n  drop 1`),
+    ).toEqual([]);
   });
 });

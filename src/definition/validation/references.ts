@@ -83,7 +83,7 @@ function checkMain(context: Context): void {
   }
   const entry = context.tables.functions[main];
   if (entry?.kind !== 'code' || !isMainShaped(startShapeOf(entry))) {
-    context.report(['main'], 'main must be code running as an execution, with no parameters.');
+    context.report(['main'], 'main must be live code running as an execution, with no parameters.');
   }
 }
 
@@ -104,7 +104,7 @@ function checkStarts(context: Context): void {
       inRange(context, { functions: [start.function] }, [...path, 'function']) &&
       (entry?.kind !== 'code' || !isStartable(startShapeOf(entry)))
     ) {
-      context.report(path, 'A host starts code that takes every argument by value.');
+      context.report(path, 'A host starts live or simple code that takes every argument by value.');
     }
     checkEncoder(context, start.encoder, [...path, 'encoder']);
   });
@@ -407,5 +407,6 @@ function startShapeOf(entry: CodeFunction): StartShape {
     isGeneric: false,
     parameters: entry.parameters,
     awaits: entry.mode !== 'simple',
+    isIsta: entry.mode === 'ista',
   };
 }

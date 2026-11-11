@@ -20,7 +20,7 @@ import { type Snapshot, snapshotFormat } from '../../snapshot/snapshot.ts';
 import type { InstanceStore } from '../../store.ts';
 
 /** The `code` of the `Error` a wait on an instance gets for its panic (§9). */
-const panicCode = 'panic';
+export const panicCode = 'panic';
 
 const decodedByStore = new WeakMap<
   InstanceStore,

@@ -180,7 +180,7 @@ describe('definition format', () => {
       (json) => {
         json.body.main = 3;
       },
-      'main must be code running as an execution, with no parameters',
+      'main must be live code running as an execution, with no parameters',
       'at main',
     ],
     [
@@ -365,7 +365,7 @@ describe('definition format', () => {
 
   it('refuses to write an invalid Definition, with the same readable error as reading', () => {
     expect(() => definitionFormat.write({ ...subsetDefinition, main: 3 })).toThrow(
-      'main must be code running as an execution, with no parameters',
+      'main must be live code running as an execution, with no parameters',
     );
   });
 });

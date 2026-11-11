@@ -289,7 +289,7 @@ describe('what takes a call’s value, choosing inside its result', () => {
       consumers,
       'fn uses(c: Bool) -> Int:',
       ...lines.map((line) => `  ${line}`),
-      'ista async fn main(): uses(true)',
+      "import * as runtime from 'runtime'\nlive async fn main(): await runtime.run(runtime.id()) _main()\nista async fn _main(): uses(true)",
     ].join('\n');
 
   it('is the parameter of a call it is passed to, as much as an expected type', () => {
@@ -371,7 +371,7 @@ describe('what takes a call’s value, choosing inside its result', () => {
           `fn take(xs: Array<${type}?>) -> Int: 0`,
           `fn passed() -> Int: take(pair(${a}, ${b}))`,
           `fn expected() -> Array<${type}?>: pair(${a}, ${b})`,
-          'ista async fn main(): drop (passed(), expected())',
+          "import * as runtime from 'runtime'\nlive async fn main(): await runtime.run(runtime.id()) _main()\nista async fn _main(): drop (passed(), expected())",
         ].join('\n');
         expect(instantiationsOf('pair', main)).toHaveLength(1);
       }),

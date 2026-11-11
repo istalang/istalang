@@ -6,12 +6,13 @@
  *
  * - Startable: a top-level function the rule of what a host may start admits
  *   (foundation/language/starts.ts), or a top-level constant holding a sendable lambda (§3.14),
- *   whose parameters can be read from JSON and whose outcome written. Anything else simply isn't
- *   startable.
+ *   whose parameters can be read from JSON and whose outcome written. Its kind is the checker's,
+ *   inferred where the head writes none, so ista code, which a host never starts, gets no entry.
+ *   Anything else simply isn't startable.
  * - A start entry is the function's own body taking each argument as `Json` and decoding it, so
- *   JSON that doesn't fit fails the host's start and nothing runs. The instance is therefore one
+ *   JSON that doesn't fit fails the host's start and nothing runs. The run is therefore one
  *   execution of the function, as any other is, and its traces and waits are the function's own.
- *   What it returns is encoded as every instance's outcome is, by the runtime as it returns.
+ *   What it returns is encoded as every outcome is, by the runtime as it returns.
  */
 
 import type { FunctionId } from '../../../../definition/operands.ts';
@@ -19,6 +20,7 @@ import type { CodeFunction } from '../../../../definition/tables/functions.ts';
 import { isStartable, type StartShape } from '../../../../foundation/language/starts.ts';
 import { unreachable } from '../../../../foundation/structures/unreachable.ts';
 import type { Checker } from '../../../checker/check.ts';
+import { kindOfFunction, persistenceOf } from '../../../checker/types/type/function-kinds.ts';
 import { isSendableFunction } from '../../../checker/types/type/function-types.ts';
 import type { FunctionType, Type } from '../../../checker/types/type/index.ts';
 import { outcomeOf } from '../../../checker/types/type/well-known.ts';
@@ -77,7 +79,8 @@ function functionStartable(
   checker: Checker,
   declaration: FunctionDeclaration,
 ): Startable | undefined {
-  const shape = startShapeOf(declaration);
+  const kind = kindOfFunction(checker, declaration);
+  const shape = { ...startShapeOf(declaration), isIsta: persistenceOf(kind) === 'ista' };
   const outcome = checker.bodyOf(declaration)?.result;
   const parameters = checker.parametersOf(declaration);
   return !isStartable(shape) || outcome === undefined
@@ -111,6 +114,7 @@ function lambdaStartable(
     isGeneric: false,
     parameters: signature.parameters,
     awaits: awaits(constant.form.lambda.qualifiers),
+    isIsta: persistenceOf(signature.mark) === 'ista',
   };
   if (!isStartable(shape)) {
     return undefined;

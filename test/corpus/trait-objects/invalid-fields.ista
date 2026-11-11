@@ -1,5 +1,5 @@
-# error: 5152 at 12:8
-# error: 5152 at 13:8
+# error: 5152 at 14:8
+# error: 5152 at 15:8
 # A field read through an `any` value can't change: only the value's own type has it (§3.10).
 
 trait Sized:
@@ -7,7 +7,9 @@ trait Sized:
 
 struct Box { size: Int }
 
-ista async fn main():
+import * as runtime from 'runtime'
+live async fn main(): await runtime.run(runtime.id()) _main()
+ista async fn _main():
   let item: any Sized = Box{size: 1}
   item.size = 2
   item.size += 1

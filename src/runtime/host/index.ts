@@ -33,81 +33,30 @@
  *   host's call, and nothing commits.
  */
 
-import { type Definition, definitionFormat } from '../../definition/definition.ts';
-import type { FunctionId } from '../../definition/operands.ts';
-import { JsonError, jsonOfPlain, jsonTypeOf } from '../../definition/values/json-values.ts';
-import type { Value } from '../../definition/values/values.ts';
-import { memo } from '../../foundation/structures/memo.ts';
 import { recordExternSignatures } from '../boundary/extern-signatures.ts';
-import { type HostExterns, hostNatives } from '../boundary/host-natives.ts';
-import { outcomeJson, outcomeText } from '../boundary/outbound.ts';
-import type { Clock } from '../clock.ts';
-import type { Advanced, Finished, Inspection, StartOptions } from '../instance-state.ts';
-import type { Natives } from '../natives.ts';
+import type { Advanced, Inspection } from '../instance-state.ts';
 import { Refusal } from '../refusal.ts';
 import { inspection } from '../scheduler/inspect.ts';
-import { spawnedSeparator } from '../scheduler/instance/instance-names.ts';
-import { runLive } from '../scheduler/live-run.ts';
-import { type LoadedDefinition, loadDefinition } from '../scheduler/loaded-definition.ts';
 import { Resident } from '../scheduler/resident.ts';
 import {
+  type Advance,
   type AdvanceFirst,
   advance,
   type SchedulerSeams,
   stateOf,
   terminate,
-  unstarted,
 } from '../scheduler/wake.ts';
-import { seedTextOf } from '../snapshot/random.ts';
 import type { PanickedSnapshot, Snapshot } from '../snapshot/snapshot.ts';
-import type { InstanceStore } from '../store.ts';
+import type { InstanceObserver } from './contexts.ts';
 import { InstanceCalls } from './instance-calls.ts';
+import {
+  type BoundProgram,
+  type DeployedProgram,
+  jsonIn,
+  programBinder,
+  type RuntimeSeams,
+} from './programs.ts';
 import { storedInstance } from './stored-instances.ts';
-
-export interface RuntimeSeams {
-  readonly natives: Natives;
-  readonly store: InstanceStore;
-  /**
-   * The host's time: when each segment starts (§5), and what a live run waits on for its timers.
-   */
-  readonly clock: Clock;
-  /**
-   * A new secret seed, `seedBytes` random bytes (../snapshot/random.ts), for each instance a host
-   * starts: the source of its random values (§3.8 `random`). An instance it spawns is seeded from
-   * it in turn. A seed of another length refuses the start.
-   */
-  readonly seed: () => Uint8Array;
-  /**
-   * The externs the host implements, against JSON, by key (§9); a Refusal for a key `natives`
-   * has, such as `time.now()`, which would replace the runtime's own.
-   */
-  readonly host?: HostExterns;
-}
-
-/** What a host starts: `main`, or the function it names by key, with its arguments as JSON (§9). */
-export interface StartRequest extends StartOptions {
-  readonly function?: string;
-  readonly arguments?: readonly unknown[];
-}
-
-export interface DeployedProgram {
-  readonly hash: string;
-  /** The keys of the functions a host may start (§9). */
-  readonly starts: readonly string[];
-  /**
-   * A finished instance's outcome as JSON a host works with; a Refusal when no codec writes its
-   * type, so it has none (§9).
-   */
-  readonly outcome: (finished: Finished) => unknown;
-  /** The same outcome as its JSON text (§9). */
-  readonly outcomeText: (finished: Finished) => string;
-  /**
-   * Starts what `request` names as a new instance named `instance`, or live code as a live run by
-   * that name, which settles at its end: a Refusal if the store already has an instance by the
-   * name, if no function has the key, or if the arguments don't fit it.
-   */
-  readonly start: (instance: string, request?: StartRequest) => Promise<Advanced>;
-}
 
 export interface Runtime {
   /**
@@ -153,9 +102,7 @@ export function createRuntime(seams: RuntimeSeams): Runtime {
   const scheduling: SchedulerSeams = { store: seams.store, now: seams.clock.now };
   const held = heldInstances(scheduling);
   const calls = new InstanceCalls();
-  const bind = programBinder({ ...seams, advance: held.advance, calls });
-  const residentOf = (instance: string) =>
-    held.of(instance) ?? storedInstance(seams.store, (text) => bind(text).program, instance);
+  const { bind, residentOf } = residents(seams, held, calls);
   const written = new Set<string>();
   return {
     deploy: (text) => {
@@ -182,11 +129,15 @@ export function createRuntime(seams: RuntimeSeams): Runtime {
     },
     fill: (instance, token, json) =>
       calls.run(instance, () => {
-        const resident = residentOf(instance);
-        const arrival = arrivalAt(resident, token, json);
-        return arrival === undefined
-          ? unadvanced(resident.committed)
-          : held.advance(resident, arrival);
+        try {
+          const resident = residentOf(instance);
+          const arrival = arrivalAt(resident, token, json);
+          return arrival === undefined
+            ? unadvanced(resident.committed)
+            : held.advance(resident, arrival);
+        } finally {
+          held.touched(instance);
+        }
       }),
     retry: (instance) =>
       calls.run(instance, () => {
@@ -197,23 +148,56 @@ export function createRuntime(seams: RuntimeSeams): Runtime {
       calls.run(instance, () => {
         const resident = residentOf(instance);
         panicked(resident.committed);
-        return terminate(scheduling, resident);
+        return held.terminated(instance, terminate(scheduling, resident));
       }),
   };
 }
 
 /**
+ * How a runtime binds Definition texts and finds its instances: held, or read from the store,
+ * with the program its snapshot names bound (a Refusal for an instance the store lacks).
+ */
+function residents(seams: RuntimeSeams, held: Held, calls: InstanceCalls) {
+  const bind = programBinder({
+    ...seams,
+    advance: held.advance,
+    observe: held.observe,
+    calls,
+    residentOf: (instance) =>
+      held.of(instance) === undefined && seams.store.readSnapshot(instance) === undefined
+        ? undefined
+        : residentOf(instance),
+  });
+  const residentOf = (instance: string) =>
+    held.of(instance) ?? storedInstance(seams.store, (text) => bind(text).program, instance);
+  return { bind, residentOf };
+}
+
+/** The instances a runtime holds (`heldInstances`). */
+type Held = ReturnType<typeof heldInstances>;
+
+/**
  * The instances a runtime holds, those whose last commit has them active (§5): whatever advancing
  * one did, it is held once it committed active, and let go of otherwise, from when on the store has
- * it, or never had it when its first commit failed.
+ * it, or never had it when its first commit failed. Every advance, and every termination, is shown
+ * to whoever observes the runtime's instances, as the contexts of a live run do (contexts.ts), so
+ * one a host's call made, a fill's or a retry's, reaches them too.
  */
 function heldInstances(seams: SchedulerSeams) {
   const held = new Map<string, Resident<BoundProgram>>();
+  const observers = new Set<InstanceObserver>();
+  const shown = (instance: string, advanced: Advance): Advance => {
+    for (const observer of observers) {
+      observer(instance, advanced);
+    }
+    return advanced;
+  };
   return {
     of: (instance: string): Resident<BoundProgram> | undefined => held.get(instance),
-    advance: (resident: Resident<BoundProgram>, first?: AdvanceFirst): Advanced => {
+    advance: (resident: Resident<BoundProgram>, first?: AdvanceFirst): Advance => {
+      let advanced: Advance;
       try {
-        return advance(seams, resident, first);
+        advanced = advance(seams, resident, first);
       } finally {
         const { instance, status } = resident.committed;
         if (status.kind === 'active') {
@@ -222,6 +206,21 @@ function heldInstances(seams: SchedulerSeams) {
           held.delete(instance);
         }
       }
+      return shown(resident.committed.instance, advanced);
+    },
+    terminated: (instance: string, advanced: Advanced): Advanced =>
+      shown(instance, { ...advanced, answered: [] }),
+    /** Shows that a host's call on `instance` ended, which may have changed what can wake it. */
+    touched: (instance: string): void => {
+      for (const observer of observers) {
+        observer(instance, undefined);
+      }
+    },
+    observe: (observer: InstanceObserver): (() => void) => {
+      observers.add(observer);
+      return () => {
+        observers.delete(observer);
+      };
     },
   };
 }
@@ -278,141 +277,4 @@ function panicked(snapshot: Snapshot): PanickedSnapshot {
     throw new Refusal('notPanicked', `Instance '${snapshot.instance}' hasn't panicked.`);
   }
   return { ...snapshot, status };
-}
-
-/** A deployed program as the runtime holds it: bound to its natives, the program it loads. */
-interface BoundProgram extends DeployedProgram, LoadedDefinition {}
-
-/** A Definition text bound to its program, with the canonical text the store keeps. */
-interface Binding {
-  readonly program: BoundProgram;
-  readonly canonical: string;
-}
-
-/**
- * What binding a program needs: its natives, its host's, seeds, the clock its live runs wait on,
- * how to advance an instance, and the host's calls on each instance, one after another.
- */
-interface BindingSeams extends Pick<RuntimeSeams, 'natives' | 'host' | 'seed' | 'store' | 'clock'> {
-  readonly advance: (resident: Resident<BoundProgram>) => Advanced;
-  readonly calls: InstanceCalls;
-}
-
-/**
- * Reads and binds Definition texts: each text is read, validated and written back once, and each
- * hash bound once, since every operation on a stored instance binds the text its snapshot names.
- * The canonical text finds its binding too, as the store gives that text back. It writes nothing.
- */
-function programBinder(seams: BindingSeams) {
-  const byHash = new Map<string, Binding>();
-  const byText = new Map<string, Binding>();
-  return (text: string): Binding =>
-    memo(byText, text, () => {
-      const { value: definition, hash, text: canonical } = definitionFormat.readCanonical(text);
-      const binding = memo(byHash, hash, () => ({
-        program: boundProgram(seams, definition, hash),
-        canonical,
-      }));
-      byText.set(binding.canonical, binding);
-      return binding;
-    });
-}
-
-/** `definition`, bound to its natives and able to start its instances. */
-function boundProgram(seams: BindingSeams, definition: Definition, hash: string): BoundProgram {
-  const loaded = loadDefinition(definition, hash, {
-    ...seams.natives,
-    ...hostNatives(seams.host ?? {}),
-  });
-  const program: BoundProgram = {
-    ...loaded,
-    starts: definition.starts.map(({ key }) => key),
-    outcome: (finished) => outcomeJson(finished, definition),
-    outcomeText: (finished) => outcomeText(finished, definition),
-    start: (instance, { function: key, arguments: given = [], ...options } = {}) => {
-      const begun = (): Snapshot => {
-        if (instance.includes(spawnedSeparator)) {
-          throw new Refusal(
-            'reservedName',
-            `'${instance}' names a spawned instance: a host's names have no '${spawnedSeparator}'.`,
-          );
-        }
-        if (seams.store.readSnapshot(instance) !== undefined) {
-          throw new Refusal('instanceExists', `The store already holds an instance '${instance}'.`);
-        }
-        const { entry, encoder } = startOf(definition, key, given.length);
-        const values = given.map((json) => jsonIn(definition, json));
-        const call = { function: entry, captures: [], arguments: values };
-        const beginning = { ...options, seed: seedTextOf(seams.seed()), encoder };
-        return unstarted(program, instance, call, beginning);
-      };
-      return startsLive(definition, key)
-        ? (async () => await runLive(seams.clock, program, begun()))()
-        : seams.calls.run(instance, () => seams.advance(new Resident(program, begun())));
-    },
-  };
-  return program;
-}
-
-/**
- * The entry `key` names, `main`'s without one, with the encoder its listing in `starts` gives its
- * outcome; a Refusal unless it takes `count` arguments.
- */
-function startOf(definition: Definition, key: string | undefined, count: number): StartCall {
-  const { entry, encoder } = listedStart(definition, key);
-  const takes = entry === undefined ? undefined : definition.functions[entry]?.parameters.length;
-  if (entry === undefined || takes !== count) {
-    const what = key === undefined ? "'main'" : `'${key}'`;
-    throw new Refusal(
-      'notStartable',
-      takes === undefined
-        ? `The program has no ${what} a host can start.`
-        : `${what} takes ${takes} arguments, not ${count}.`,
-    );
-  }
-  return { entry, encoder };
-}
-
-/** The entry `key` names, `main`'s without one, and its encoder; undefined for what none has. */
-function listedStart(
-  definition: Definition,
-  key: string | undefined,
-): { readonly entry: FunctionId | undefined; readonly encoder: FunctionId | undefined } {
-  const listed = definition.starts.find((start) =>
-    key === undefined ? start.function === definition.main : start.key === key,
-  );
-  return {
-    entry: key === undefined ? definition.main : listed?.function,
-    encoder: listed?.encoder,
-  };
-}
-
-/**
- * Whether what `key` names starts as a live run (proposal 8): its entry is live code, which runs
- * outside any instance. Anything else starts an instance, a simple entry included, as it always
- * has.
- */
-function startsLive(definition: Definition, key: string | undefined): boolean {
-  const { entry } = listedStart(definition, key);
-  const code = entry === undefined ? undefined : definition.functions[entry];
-  return code?.kind === 'code' && code.mode === 'live';
-}
-
-/** What a host starts: the entry, and the encoder of its outcome when it has one. */
-interface StartCall {
-  readonly entry: FunctionId;
-  readonly encoder: FunctionId | undefined;
-}
-
-/** JSON a host gave, as the `Json` value it holds; a Refusal for what JSON can't hold. */
-function jsonIn(definition: Definition, json: unknown): Value {
-  try {
-    return jsonOfPlain(json, jsonTypeOf(definition.types));
-  } catch (error) {
-    if (error instanceof JsonError) {
-      // biome-ignore lint/style/useErrorCause: a Refusal takes its reason first, so the cause is third.
-      throw new Refusal('unfitJson', error.message, { cause: error });
-    }
-    throw error;
-  }
 }

@@ -32,7 +32,9 @@ fn flagged(pair: (Int, Bool)) -> Int:
     case (1 | 2, true): 2
     case _: 0
 
-ista async fn main() -> (String, String, String, String, Int, Int, Int, Int, Int, Bool):
+import * as runtime from 'runtime'
+live async fn main() -> (String, String, String, String, Int, Int, Int, Int, Int, Bool): await runtime.run(runtime.id()) _main()
+ista async fn _main() -> (String, String, String, String, Int, Int, Int, Int, Int, Bool):
   const square: Shape = Square(4)
   (size(2), size(3), kind(0), kind(1), measure(Circle(3)), measure(Triangle(3)),
     other((5, 0)), other((0, 7)), flagged((1, true)), square is Circle(n) | Square(n) and n == 4)

@@ -5,6 +5,7 @@
 
 import Inbox from 'inbox'
 import * as time from 'time'
+import * as runtime from 'runtime'
 
 struct Job { id: Int, wait: time.Duration }
 
@@ -29,7 +30,8 @@ ista async fn processFirst(
     outcomes.push(await results.receive())
   outcomes
 
-ista async fn main() -> String:
+live async fn main() -> String: await runtime.run(runtime.id()) _main()
+ista async fn _main() -> String:
   const empty: Array<String> = []
   const log = new Shared{value: empty}
   const jobs = [Job{id: 1, wait: 1ms}, Job{id: 2, wait: 1h}, Job{id: 3, wait: 2ms}]

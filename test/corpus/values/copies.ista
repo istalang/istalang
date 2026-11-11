@@ -31,7 +31,9 @@ fn setFrom(a: &P, b: P):
 
 fn get(self: W) -> P: self.p
 
-ista async fn main():
+import * as runtime from 'runtime'
+live async fn main(): await runtime.run(runtime.id()) _main()
+ista async fn _main():
   let p = P{x: 1, y: 2}
   reset(&p)
   let w = W{p: p, n: (1, 1)}

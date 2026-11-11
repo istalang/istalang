@@ -17,6 +17,8 @@ fn note() -> Note:
 fn uncoded() -> Error:
   Error{message: "m"}
 
-ista async fn main():
+import * as runtime from 'runtime'
+live async fn main(): await runtime.run(runtime.id()) _main()
+ista async fn _main():
   const kept = note()
   drop kept

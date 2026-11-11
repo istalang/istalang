@@ -15,7 +15,7 @@
  * - Code that waits runs only in a run of its own kind (proposal 8's call rule): live code in a
  *   live run, ista code in an instance. The checker keeps every call so (K1), so a call across
  *   kinds is a bug, and running it would commit live code or keep ista code waiting in memory.
- * - What a replacement gives back arrives as another instance's would (mocks.ts `arriving`): a
+ * - What a replacement gives back arrives as another instance's would (../instance/crossing.ts `arriving`): a
  *   native's answer at once, code's when its frame returns, which `arrives` marks.
  */
 
@@ -25,8 +25,9 @@ import { unreachable } from '../../../foundation/structures/unreachable.ts';
 import type { ActiveFrame, FrameEntry } from '../../interpreter/frames.ts';
 import { capturesOf, parameterContents } from '../../interpreter/machine.ts';
 import { givesEvery, type Passed, passedValues } from '../../interpreter/registers.ts';
+import { arriving } from '../instance/crossing.ts';
 import type { Instance } from '../instance/index.ts';
-import { arriving, mockedCall, type ReachedMock, reachedMock } from '../testing/mocks.ts';
+import { mockedCall, type ReachedMock, reachedMock } from '../testing/mocks.ts';
 import type { Waiting } from '../waiting.ts';
 import type { NativeCalls } from './native-calls.ts';
 

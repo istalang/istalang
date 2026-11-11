@@ -21,18 +21,24 @@ function awaitable(mode: string): readonly string[] {
 
 describe('an awaited value', () => {
   it('is any type with an onAwait, giving what its resolver takes', () => {
-    expect(codesOf(...awaitable('ista'), 'ista async fn main() -> Int: 1 + await Ticket')).toEqual(
-      [],
-    );
+    expect(
+      codesOf(
+        ...awaitable('ista'),
+        "import * as runtime from 'runtime'\nlive async fn main() -> Int: await runtime.run(runtime.id()) _main()\nista async fn _main() -> Int: 1 + await Ticket",
+      ),
+    ).toEqual([]);
     expect(codesOf(...awaitable('live'), 'live async fn run() -> Int: 1 + await Ticket')).toEqual(
       [],
     );
   });
 
   it('waits in its Mode, which must be the kind of the code awaiting it', () => {
-    expect(codesOf(...awaitable('live'), 'ista async fn main() -> Int: await Ticket')).toEqual([
-      waitOfOtherKind.code,
-    ]);
+    expect(
+      codesOf(
+        ...awaitable('live'),
+        "import * as runtime from 'runtime'\nlive async fn main() -> Int: await runtime.run(runtime.id()) _main()\nista async fn _main() -> Int: await Ticket",
+      ),
+    ).toEqual([waitOfOtherKind.code]);
   });
 
   it("is refused through a type parameter's awaitable, whose Mode no kind is", () => {
@@ -42,26 +48,30 @@ describe('an awaited value', () => {
   });
 
   it('is refused without an onAwait, or with one taking no resolver, or with an async or non-Unit onAwait', () => {
-    expect(codesOf('ista async fn main() -> Int: await 1')).toEqual([awaitNeedsFuture.code]);
+    expect(
+      codesOf(
+        "import * as runtime from 'runtime'\nlive async fn main() -> Int: await runtime.run(runtime.id()) _main()\nista async fn _main() -> Int: await 1",
+      ),
+    ).toEqual([awaitNeedsFuture.code]);
     expect(
       codesOf(
         'struct Odd {}',
         'fn onAwait(self: Odd, done: Int): ()',
-        'ista async fn main(): await Odd',
+        "import * as runtime from 'runtime'\nlive async fn main(): await runtime.run(runtime.id()) _main()\nista async fn _main(): await Odd",
       ),
     ).toEqual([awaitNeedsFuture.code]);
     expect(
       codesOf(
         'struct AsyncOdd { type Mode = "ista" }',
         'ista async fn onAwait(self: AsyncOdd, done: Resolver<Int, "ista">): done.resolve(1)',
-        'ista async fn main() -> Int: await AsyncOdd',
+        "import * as runtime from 'runtime'\nlive async fn main() -> Int: await runtime.run(runtime.id()) _main()\nista async fn _main() -> Int: await AsyncOdd",
       ),
     ).toEqual([awaitNeedsFuture.code]);
     expect(
       codesOf(
         'struct NonUnitOdd { type Mode = "ista" }',
         'ista fn onAwait(self: NonUnitOdd, done: Resolver<Int, "ista">) -> Int: 1',
-        'ista async fn main() -> Int: await NonUnitOdd',
+        "import * as runtime from 'runtime'\nlive async fn main() -> Int: await runtime.run(runtime.id()) _main()\nista async fn _main() -> Int: await NonUnitOdd",
       ),
     ).toEqual([awaitNeedsFuture.code]);
   });
@@ -95,7 +105,7 @@ describe('an awaited value', () => {
         '  type Mode = K',
         'K fn onAwait<T, K in Persistence>(self: Custom<T, K>, done: Resolver<T, K>): done.resolve(self.value)',
         'K async fn waitCustom<T, K in Persistence>(c: Custom<T, K>) -> T: await c',
-        'ista async fn main() -> Int: await waitCustom(Custom<Int, "ista">{value: 42})',
+        'import * as runtime from \'runtime\'\nlive async fn main() -> Int: await runtime.run(runtime.id()) _main()\nista async fn _main() -> Int: await waitCustom(Custom<Int, "ista">{value: 42})',
       ),
     ).toEqual([]);
   });

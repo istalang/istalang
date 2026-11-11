@@ -212,14 +212,19 @@ describe('the data rule beside layouts, passes and instantiations', () => {
     expect(
       codesOf(
         socket,
-        'ista async fn main() -> Int:',
+        "import * as runtime from 'runtime'\nlive async fn main() -> Int: await runtime.run(runtime.id()) _main()\nista async fn _main() -> Int:",
         '  const t = (1, none)',
         '  const _: (Int, Socket?) = t',
         '  0',
       ),
     ).toEqual([codes.kindsHeld.code]);
     expect(
-      codesOf(socket, 'ista async fn main() -> Int:', '  const _: Socket = panic("boom")', '  0'),
+      codesOf(
+        socket,
+        "import * as runtime from 'runtime'\nlive async fn main() -> Int: await runtime.run(runtime.id()) _main()\nista async fn _main() -> Int:",
+        '  const _: Socket = panic("boom")',
+        '  0',
+      ),
     ).toEqual([codes.kindsHeld.code]);
   });
 
@@ -232,7 +237,7 @@ describe('the data rule beside layouts, passes and instantiations', () => {
         '  const x = T.default()',
         '  Phantom<T>{tag: 0}',
         'fn createAndDrop<P is Default>() -> P: P.default()',
-        'ista async fn main() -> Int: createAndDrop<Phantom<LiveResource>>().tag',
+        "import * as runtime from 'runtime'\nlive async fn main() -> Int: await runtime.run(runtime.id()) _main()\nista async fn _main() -> Int: createAndDrop<Phantom<LiveResource>>().tag",
       ),
     ).not.toEqual([]);
   });
@@ -326,7 +331,7 @@ describe('the data rule beside layouts, passes and instantiations', () => {
         '  const x = T.default()',
         '  0',
         'fn runSimple(f: fn() -> Int) -> Int: f()',
-        'ista async fn main() -> Int: runSimple createAndDrop<LiveResource>()',
+        "import * as runtime from 'runtime'\nlive async fn main() -> Int: await runtime.run(runtime.id()) _main()\nista async fn _main() -> Int: runSimple createAndDrop<LiveResource>()",
       ),
     ).not.toEqual([]);
     expect(
@@ -336,7 +341,7 @@ describe('the data rule beside layouts, passes and instantiations', () => {
         '  const xs: Array<T> = []',
         '  xs.length()',
         'fn runSimple(f: fn() -> Int) -> Int: f()',
-        'ista async fn main() -> Int: runSimple makeEmpty<Socket>()',
+        "import * as runtime from 'runtime'\nlive async fn main() -> Int: await runtime.run(runtime.id()) _main()\nista async fn _main() -> Int: runSimple makeEmpty<Socket>()",
       ),
     ).not.toEqual([]);
     expect(

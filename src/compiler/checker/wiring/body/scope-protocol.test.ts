@@ -25,9 +25,15 @@ describe('parentheses', () => {
       'fn value() -> Result<Int, String>: apply(1, (Result.Ok))',
       'fn empty() -> Int: take(id(([])))',
     ];
-    expect(reported([declarations, ...uses, 'ista async fn main(): 0'].join('\n'))).toEqual(
-      reportedNothing,
-    );
+    expect(
+      reported(
+        [
+          declarations,
+          ...uses,
+          "import * as runtime from 'runtime'\nlive async fn main(): await runtime.run(runtime.id()) _main()\nista async fn _main(): 0",
+        ].join('\n'),
+      ),
+    ).toEqual(reportedNothing);
   });
 });
 
@@ -42,9 +48,15 @@ describe("a field loop's passes", () => {
       '  for k, v in ...s:',
       '    drop id(v)',
     ];
-    expect(reported([declarations, ...uses, 'ista async fn main(): 0'].join('\n'))).toEqual(
-      reportedNothing,
-    );
+    expect(
+      reported(
+        [
+          declarations,
+          ...uses,
+          "import * as runtime from 'runtime'\nlive async fn main(): await runtime.run(runtime.id()) _main()\nista async fn _main(): 0",
+        ].join('\n'),
+      ),
+    ).toEqual(reportedNothing);
   });
 
   it('each choose the overload their own field takes', async () => {

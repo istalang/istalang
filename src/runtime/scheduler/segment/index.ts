@@ -34,7 +34,7 @@
 
 import type { Argument } from '../../../definition/instructions/places.ts';
 import type { FunctionId } from '../../../definition/operands.ts';
-import { depthOf, handleTo, type Value } from '../../../definition/values/values.ts';
+import { handleTo, type Value } from '../../../definition/values/values.ts';
 import { unreachable } from '../../../foundation/structures/unreachable.ts';
 import type { ActiveFrame } from '../../interpreter/frames.ts';
 import { runInstruction } from '../../interpreter/instructions.ts';
@@ -47,14 +47,14 @@ import {
 import { argumentContents } from '../../interpreter/registers.ts';
 import type { Decision } from '../../interpreter/suspension.ts';
 import type { Panic } from '../../natives.ts';
-import type { HeapObject } from '../../snapshot/objects.ts';
-import type { InstanceCall } from '../../snapshot/snapshot.ts';
+import type { InstanceCall, Invocation } from '../../snapshot/snapshot.ts';
 import type { LiveExecution, LiveObjectOf } from '../instance/heap.ts';
 import { type Instance, topFrame } from '../instance/index.ts';
 import type { ReadyToRun } from '../instance/ready.ts';
 import { startAnswer } from '../testing/mocks.ts';
 import type { MockCall } from '../testing/test-world.ts';
-import { istaWaiting, type LiveResumes, resumedPanicOf, type Waiting } from '../waiting.ts';
+import { istaWaiting, type LiveWaiting, resumedPanicOf, type Waiting } from '../waiting.ts';
+import { startInvocation } from './answering.ts';
 import {
   type Caller,
   type CallTarget,
@@ -64,34 +64,32 @@ import {
   startCall,
 } from './calls.ts';
 import { SegmentCollection } from './collection.ts';
-import { panicOf, requireDepth } from './limits.ts';
+import { panicOf } from './limits.ts';
 import { NativeCalls } from './native-calls.ts';
 import { type Arrival, type Outcome, RootOutcome } from './root-outcome.ts';
 import { RunCalls } from './run-calls.ts';
 import { RunStack } from './run-stack.ts';
+import {
+  endOrPanic,
+  type LiveSegmentEnd,
+  persistable,
+  type RunEnd,
+  type SegmentEnd,
+} from './segment-ends.ts';
 
 /**
- * What a segment begins with: an execution about to run from its start, answering a call, or the
- * call of an extern a new instance starts with, which the segment makes (root-outcome.ts).
+ * What a segment begins with: an execution about to run from its start, answering a call from
+ * outside (answering.ts), or the call of an extern a new instance starts with (root-outcome.ts).
  */
 export type SegmentStart =
   | { readonly kind: 'driver'; readonly execution: LiveExecution }
   | { readonly kind: 'answer'; readonly call: MockCall }
+  | { readonly kind: 'invocation'; readonly invocation: Invocation }
   | { readonly kind: 'call'; readonly call: InstanceCall };
 
-export type SegmentEnd =
-  /** A driver awaited: commit `objects`, then run the next segment. */
-  | { readonly kind: 'awaited'; readonly objects: readonly HeapObject[] }
-  /** Nothing is ready: commit `objects`, then wait. */
-  | { readonly kind: 'idle'; readonly objects: readonly HeapObject[] }
-  /** The root returned: commit its outcome, encoded too when the instance has an encoder. */
-  | ({ readonly kind: 'finished' } & Outcome)
-  | { readonly kind: 'panicked'; readonly message: string; readonly trace: string };
-
 /**
- * Runs one segment of `instance`, which started at `startedAt`. It begins with `first`: an
- * execution about to run from its start, or the answer to a call to one of the instance's mocks
- * (§10); without one, with the next ready execution.
+ * Runs one segment of `instance`, which started at `startedAt`, beginning with `first`, or else
+ * with the next ready execution.
  */
 export function runSegment(
   instance: Instance,
@@ -101,24 +99,18 @@ export function runSegment(
   return new SegmentRunner(instance, () => startedAt, istaWaiting).run(first);
 }
 
-/** How a live run's segment ended: a driver awaited, nothing is ready, it finished or panicked. */
-export type LiveSegmentEnd =
-  | { readonly kind: 'awaited' }
-  | { readonly kind: 'idle' }
-  | Extract<SegmentEnd, { kind: 'finished' | 'panicked' }>;
-
 /**
- * Runs the first segment of `instance` as a live run, resumed through `resumes`, its code reading
+ * Runs the first segment of `instance` as a live run waiting as `waiting` says, its code reading
  * `now` for `now()`: `root` from its start. It runs inside its host's start, so JSON that doesn't
  * fit refuses the start, as an instance's first segment does.
  */
 export function startLiveSegment(
   instance: Instance,
   now: () => bigint,
-  resumes: LiveResumes,
+  waiting: LiveWaiting,
   root: LiveExecution | undefined,
 ): LiveSegmentEnd {
-  return new SegmentRunner(instance, now, { kind: 'live', resumes }).runLive(root, panicOf);
+  return new SegmentRunner(instance, now, waiting).runLive(root, panicOf);
 }
 
 /**
@@ -129,19 +121,15 @@ export function startLiveSegment(
 export function runLiveSegment(
   instance: Instance,
   now: () => bigint,
-  resumes: LiveResumes,
+  waiting: LiveWaiting,
 ): LiveSegmentEnd {
-  return new SegmentRunner(instance, now, { kind: 'live', resumes }).runLive(
-    undefined,
-    resumedPanicOf,
-  );
+  return new SegmentRunner(instance, now, waiting).runLive(undefined, resumedPanicOf);
 }
 
 /**
- * Ends `instance` (§3.12): its root is let go of, its execution stopped or the outcome it awaits
- * dropped, so what it held is disposed (§7), a disposed call's cleanup included, then any
- * execution that only other executions hold stops too. A disposal that
- * panics counts as done, so the rest still run and tell their hosts.
+ * Ends `instance` (§3.12): its root and the answers it owes are let go of, its execution stopped or
+ * the outcome it awaits dropped, so what they held is disposed (§7), a disposed call's cleanup
+ * included, then any execution only others hold stops too. A disposal that panics counts as done.
  */
 export function endInstance(instance: Instance, startedAt: bigint): void {
   new SegmentRunner(instance, () => startedAt, istaWaiting).end();
@@ -149,12 +137,6 @@ export function endInstance(instance: Instance, startedAt: bigint): void {
 
 /** How driving one execution ended. */
 type DriveEnd = 'awaited' | 'returned' | { readonly finished: Outcome };
-
-/** How a segment ended before what it leaves is checked for persisting. */
-type RunEnd =
-  | { readonly kind: 'awaited' }
-  | { readonly kind: 'idle' }
-  | Extract<SegmentEnd, { kind: 'finished' }>;
 
 class SegmentRunner implements Machine {
   readonly #instance: Instance;
@@ -183,7 +165,10 @@ class SegmentRunner implements Machine {
   }
 
   run(first: SegmentStart | undefined): SegmentEnd {
-    return this.#panicking(() => this.#persistable(this.#runDrivers(this.#started(first))));
+    return this.#panicking(
+      () => persistable(this.#instance, this.#runDrivers(this.#started(first))),
+      panicOf,
+    );
   }
 
   /** The execution `first` begins the segment with: none once an extern's root call is made. */
@@ -192,8 +177,11 @@ class SegmentRunner implements Machine {
       this.#outcome.callExtern(first.call);
       return undefined;
     }
-    return first?.kind === 'answer'
-      ? startAnswer(this.#instance, this.#natives, first.call)
+    if (first?.kind === 'answer') {
+      return startAnswer(this.#instance, this.#natives, first.call);
+    }
+    return first?.kind === 'invocation'
+      ? startInvocation(this.#instance, this.#natives, first.invocation)
       : first?.execution;
   }
 
@@ -205,28 +193,14 @@ class SegmentRunner implements Machine {
   }
 
   /** What `run` gives, or the panic it threw, as `panicking` reads it, where it threw it. */
-  #panicking<End>(
-    run: () => End,
-    panicking: (error: unknown) => Panic | undefined = panicOf,
-  ): End | Extract<SegmentEnd, { kind: 'panicked' }> {
-    try {
-      return run();
-    } catch (error) {
-      const panic = panicking(error);
-      if (panic !== undefined) {
-        return {
-          kind: 'panicked',
-          message: panic.message,
-          trace: this.#runStack.trace(this.definition),
-        };
-      }
-      throw error;
-    }
+  #panicking<End>(run: () => End, panicking: (error: unknown) => Panic | undefined) {
+    return endOrPanic(run, panicking, () => this.#runStack.trace(this.definition));
   }
 
   end(): void {
     const step = () => this.#step();
     this.#instance.releaseRoot();
+    this.#instance.releaseAnswers();
     this.#collection.collectEnding(step);
     for (const execution of this.#instance.heap.objectsOf('execution')) {
       this.#instance.stop(execution);
@@ -326,6 +300,7 @@ class SegmentRunner implements Machine {
     if (future === undefined && returning.kind === 'await') {
       this.#instance.remove(execution);
       this.#runStack.pop();
+      this.#waitsOn(returned);
       this.#end = 'awaited';
       return;
     }
@@ -335,7 +310,8 @@ class SegmentRunner implements Machine {
     }
     this.#instance.remove(execution);
     this.#instance.futures.resolve(future, returned);
-    this.#leave(future, 'returned');
+    const waits = frame.code.mode === 'simple' && this.#waitsOn(returned);
+    this.#leave(future, waits ? 'awaited' : 'returned');
   }
 
   wait(): void {
@@ -412,23 +388,6 @@ class SegmentRunner implements Machine {
     return arrival.kind === 'encode' ? arrival.root : arrival;
   }
 
-  /**
-   * `end` with what a commit persists, found in one walk; a panic when it holds a value too deep
-   * to persist (§5).
-   */
-  #persistable(end: RunEnd): Exclude<SegmentEnd, { kind: 'panicked' }> {
-    if (end.kind === 'finished') {
-      requireDepth(depthOf(end.outcome));
-      if (end.encoded !== undefined) {
-        requireDepth(depthOf(end.encoded));
-      }
-      return end;
-    }
-    const { objects, depth } = this.#instance.persisted();
-    requireDepth(depth);
-    return { kind: end.kind, objects };
-  }
-
   /** Runs `driver` until it awaits or returns, and collecting what that let go of is done. */
   #drive(driver: LiveExecution): DriveEnd {
     this.#runStack.drive(driver);
@@ -449,6 +408,19 @@ class SegmentRunner implements Machine {
       unreachable(`pc ${frame.pc} is past the end; loading checks termination.`);
     }
     runInstruction(this, frame, instruction);
+  }
+
+  /**
+   * Whether `returned`, what a simple driver gives, is a future still pending, which it then waits
+   * on as an async driver awaits: the segment ends, stopped where the call resolving it waits.
+   */
+  #waitsOn(returned: Value): boolean {
+    const awaited = this.#instance.futures.pendingIn(returned);
+    if (awaited === undefined) {
+      return false;
+    }
+    this.#runStack.stoppedIn(this.#instance.heap.find('executions', awaited)[0]);
+    return true;
   }
 
   /**

@@ -47,7 +47,7 @@ describe('lowering trait objects', () => {
   it('gives an any type a variant per type converted into it, and dispatches over every one', () => {
     const definition = compiled([
       'fn late() -> any Named & Sendable: Sms{number: "1"}',
-      'ista async fn main():',
+      "import * as runtime from 'runtime'\nlive async fn main(): await runtime.run(runtime.id()) _main()\nista async fn _main():",
       '  const email: any Named = Email{to: "a"}',
       '  const sms: any Named = late()',
       '  (email.name(), sms.name())',
@@ -58,7 +58,7 @@ describe('lowering trait objects', () => {
 
   it("dispatches a call on a union over the union's members, and converts it member by member", () => {
     const definition = compiled([
-      'ista async fn main():',
+      "import * as runtime from 'runtime'\nlive async fn main(): await runtime.run(runtime.id()) _main()\nista async fn _main():",
       '  const contact: Email | Sms = Sms{number: "1"}',
       '  const named: any Named = contact',
       '  (contact.name(), named.name())',
@@ -91,7 +91,7 @@ describe('lowering a call through an instantiation standing for another (§3.10)
         '  fn next(self: Self) -> T',
         'struct Counter { n: Int }',
         'fn next(self: Counter) -> Int: self.n',
-        'ista async fn main():',
+        "import * as runtime from 'runtime'\nlive async fn main(): await runtime.run(runtime.id()) _main()\nista async fn _main():",
         '  const narrow: any Source<Int> = Counter{n: 3}',
         '  const wide: any Source<Int?> = narrow',
         '  match wide.next():',
@@ -108,7 +108,7 @@ describe('lowering a call through an instantiation standing for another (§3.10)
         '  ista async fn fetch(self: Self) -> T',
         'struct Box { n: Int }',
         'ista async fn fetch(self: Box) -> Int: self.n',
-        'ista async fn main():',
+        "import * as runtime from 'runtime'\nlive async fn main(): await runtime.run(runtime.id()) _main()\nista async fn _main():",
         '  const source: any Fetch<Int> = Box{n: 21}',
         '  2 * await source.fetch()',
       ]),
@@ -125,7 +125,7 @@ describe('lowering a call through an instantiation standing for another (§3.10)
         'ista async fn run(self: Job) -> Int:',
         '  await runtime.commit()',
         '  self.n',
-        'ista async fn main():',
+        'live async fn main(): await runtime.run(runtime.id()) _main()\nista async fn _main():',
         '  const runner: any Runner<"ista"> = Job{n: 7}',
         '  6 * await runner.run()',
       ]),
@@ -145,7 +145,7 @@ describe('lowering a call through an instantiation standing for another (§3.10)
         '    case none: 10',
         '    case Int as n: n',
         '    case String: 20',
-        'ista async fn main():',
+        "import * as runtime from 'runtime'\nlive async fn main(): await runtime.run(runtime.id()) _main()\nista async fn _main():",
         '  const each: any Each<Int? | String> = Both{k: 0}',
         '  each.each(picked)',
       ]),

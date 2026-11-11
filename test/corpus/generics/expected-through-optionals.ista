@@ -10,7 +10,9 @@ struct Bag<T> { items: Array<T> }
 fn kind(t: Tag<Int>) -> String:
   "Int"
 
-ista async fn main() -> String:
+import * as runtime from 'runtime'
+live async fn main() -> String: await runtime.run(runtime.id()) _main()
+ista async fn _main() -> String:
   const expected: Tag<Int>? = Tag
   const defaulted = Tag
   const empty: Bag<Int>? = Bag{items: []}

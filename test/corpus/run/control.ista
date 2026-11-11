@@ -5,7 +5,9 @@
 fn size(n: Int) -> String:
   if n < 10: "small" elif n < 100: "medium" else: "large"
 
-ista async fn main():
+import * as runtime from 'runtime'
+live async fn main(): await runtime.run(runtime.id()) _main()
+ista async fn _main():
   let total = 0
   let i = 0
   while true:

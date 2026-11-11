@@ -4,7 +4,9 @@
 # before the first waiting take yields it, and that take empties the slot; a put waiting on a full
 # slot fills it once a take empties it.
 
-ista async fn main() -> String:
+import * as runtime from 'runtime'
+live async fn main() -> String: await runtime.run(runtime.id()) _main()
+ista async fn _main() -> String:
   const s = Slot.create<Int>()
   await s.put(1)
   const first = await s.take()

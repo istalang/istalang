@@ -10,7 +10,9 @@ fn bump(value: &Int):
 fn show(xs: Array<Int>) -> String:
   "[" + [for x in xs: String(x)].join(", ") + "]"
 
-ista async fn main() -> String:
+import * as runtime from 'runtime'
+live async fn main() -> String: await runtime.run(runtime.id()) _main()
+ista async fn _main() -> String:
   let xs = [1, 2]
   const before = xs
   xs[0] = 10

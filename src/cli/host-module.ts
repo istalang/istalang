@@ -7,9 +7,10 @@
  *   module's own, unique across runs, so a run resumed from a store never gives the name of a
  *   future an earlier run left pending, and filled with what the promise gives once it settles. A
  *   promise that rejects leaves its future unfilled, and says why on the error stream.
- * - Filling happens between wakes, never inside one: a settled promise only queues its JSON, and
- *   the run's loop fills what is queued when it next resumes (`arrivals`), so the runtime is never
- *   entered while it runs.
+ * - Filling happens outside any segment: a settled promise only queues its JSON, and the command
+ *   fills what is queued once it hears of the settling (`nextSettled`, `arrivals`), so the runtime
+ *   is never entered while it runs. Whether a future may still be filled (`mayFill`) is what tells
+ *   a `main` waiting only on such futures that nothing can wake it any more.
  */
 
 import { randomUUID } from 'node:crypto';
@@ -30,9 +31,9 @@ interface PromisedFill {
 /** A host module loaded, with the promises its externs gave still to settle. */
 export interface HostModule {
   readonly externs: HostExterns;
-  /** Whether a promise an extern gave hasn't settled yet. */
-  readonly waiting: () => boolean;
-  /** Settles once the next promise does. */
+  /** Whether a future may still be filled: a promise is pending, or settled and not yet filled. */
+  readonly mayFill: () => boolean;
+  /** Settles once the next promise settles, one given after the call included. */
   readonly nextSettled: () => Promise<void>;
   /** Fills every future whose promise settled since the last call; how each instance advanced. */
   readonly arrivals: (
@@ -81,6 +82,7 @@ type ModuleExtern = (...arguments_: readonly unknown[]) => unknown;
 
 function promising(entries: readonly [string, ModuleExtern][]): HostModule {
   const pending = new Set<Promise<void>>();
+  let next = Promise.withResolvers<void>();
   const settled: PromisedFill[] = [];
   const failures: string[] = [];
   const adapt =
@@ -102,14 +104,16 @@ function promising(entries: readonly [string, ModuleExtern][]): HostModule {
         )
         .finally(() => {
           pending.delete(done);
+          next.resolve();
+          next = Promise.withResolvers<void>();
         });
       pending.add(done);
       return call.pending(token);
     };
   return {
     externs: Object.fromEntries(entries.map(([key, extern]) => [key, adapt(key, extern)])),
-    waiting: () => pending.size > 0,
-    nextSettled: () => Promise.race(pending),
+    mayFill: () => pending.size > 0 || settled.length > 0,
+    nextSettled: () => next.promise,
     arrivals: async (runtime, report) => {
       for (const failure of failures.splice(0)) {
         report(failure);

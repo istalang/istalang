@@ -15,7 +15,11 @@ import { reported } from '../../check.test-kit.ts';
 
 /** What `async fn main() -> Future<String>: body` gives after `declarations`. */
 async function outcome(declarations: readonly string[], body: string): Promise<unknown> {
-  const source = [...declarations, 'ista async fn main() -> String:', `  ${body}`].join('\n');
+  const source = [
+    ...declarations,
+    "import * as runtime from 'runtime'\nlive async fn main() -> String: await runtime.run(runtime.id()) _main()\nista async fn _main() -> String:",
+    `  ${body}`,
+  ].join('\n');
   const state = await startToEnd(testRuntime(), compiledText(source));
   return state.kind === 'finished' ? decodeJson(String(state.outcome)) : state;
 }

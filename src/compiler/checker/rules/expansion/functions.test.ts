@@ -82,13 +82,13 @@ describe('endless instantiation', () => {
 
   it("never forms where a codec would spawn: an ista one meets no codec's requirement (§3.3)", () => {
     const main = [
-      "import Json from 'json'",
+      "import Json from 'json'\nimport * as runtime from 'runtime'",
       'struct Box<T> { value: T }',
       'fn leaf<T is Sendable>(x: T) -> Box<T>: Box{value: x}',
       'ista fn toJson<T is Sendable>(self: Box<T>) -> Json:',
       '  drop spawn leaf(self)',
       '  none',
-      'ista async fn main(): { drop spawn leaf(1); 0 }',
+      'live async fn main(): await runtime.run(runtime.id()) _main()\nista async fn _main(): { drop spawn leaf(1); 0 }',
     ].join('\n');
     const { diagnostics } = diagnosedAt(stdProgramOf({ main }), 'main');
     expect(diagnostics.map(({ code }) => code)).toEqual([]);

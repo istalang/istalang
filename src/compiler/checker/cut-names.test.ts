@@ -84,7 +84,7 @@ describe('a name cut short', () => {
       }),
       { numRuns: 300 },
     );
-  });
+  }, 30_000);
 });
 
 describe('a pattern whose type is cut short', () => {

@@ -3,6 +3,7 @@
 # and captures never reaches the parent, and what the parent does after the spawn never reaches it.
 
 import * as time from 'time'
+import * as runtime from 'runtime'
 
 struct Cart:
   items: Array<Int>
@@ -13,7 +14,8 @@ ista async fn grow(cart: Cart):
   mine.items.push(200)
   await time.delay(1ms)
 
-ista async fn main() -> String:
+live async fn main() -> String: await runtime.run(runtime.id()) _main()
+ista async fn _main() -> String:
   let cart = Cart{items: [1, 2]}
   spawn grow(cart)
   cart.items.push(3)

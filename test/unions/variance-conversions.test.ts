@@ -207,7 +207,11 @@ describe('conversions composing inside types (§2, §3.1, §3.5, §3.14, §3.15)
       '  case Err(_): -1',
       '`${text}:${decoded}`',
     ].join('\n  ');
-    const source = [...decls, 'ista async fn main() -> String:', `  ${body}`].join('\n');
+    const source = [
+      ...decls,
+      "import * as runtime from 'runtime'\nlive async fn main() -> String: await runtime.run(runtime.id()) _main()\nista async fn _main() -> String:",
+      `  ${body}`,
+    ].join('\n');
     const definition = definitionOf(source);
     const env = testRuntime();
     const ended = await startToEnd(env, compiledText(source));

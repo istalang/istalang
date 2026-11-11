@@ -3,8 +3,8 @@ description: phase test kits, fast-check arbitraries, spec-example extractors, c
 owner: tech-lead
 status: active
 applies_to: istalang
-last_verified: 2026-10-29
-last_updated: 2026-11-10
+last_verified: 2026-11-11
+last_updated: 2026-11-11
 tags: [reuse, testing, test-kit, arbitraries, fast-check, corpus]
 ---
 
@@ -48,7 +48,8 @@ tags: [reuse, testing, test-kit, arbitraries, fast-check, corpus]
 - compile in-memory sources to a `Definition` or its text (the text checked after the std modules, once per file) → `compiledDefinition`, `compiledText`, `diagnosedAt` (`src/compiler/compile.test-kit.ts`)
 - create a test `Runtime` with manual clock and store → `testRuntime`, `recordingStore`, `testSeed` (`src/runtime/runtime.test-kit.ts`), `ManualClock` (`src/runtime/clock.ts`)
 - advance a test `Runtime` instance and its spawns until settled, awaited → `settleAll`, `runToEnd`, `startToEnd` (`src/runtime/runtime.test-kit.ts`)
-- make `Futures` alone in a unit test, their decisions and answers ignored → `futuresOn` (`src/runtime/scheduler/instance/futures.test-kit.ts`)
+- start a program's ista function by name directly as a root instance, for a test of the instance engine (a host starts only live code; its outcome is the raw value, nothing encoding it) → `TestRuntime.startInstance` (`src/runtime/runtime.test-kit.ts`)
+- make `Futures` alone in a unit test, their decisions and answers ignored → `futuresOn`; with the `Waits` they decide, the callbacks their resolvers call recorded → `recordingFutures` (`src/runtime/scheduler/instance/futures.test-kit.ts`)
 - compile and run `main()` for a body of one line or several, written unindented, beside declarations → `mainGives` (`src/stdlib/prelude/prelude.test-kit.ts`)
 - compile and run an `.ista` test module in memory on a manual clock → `reportsOf`, `outcomesOf`, `testModule` (`src/runtime/testing/testing.test-kit.ts`)
 - run the `ista` CLI in-process without spawning a child process → `runCli` (`src/cli/cli.ts`), `exitCodes`, `CliEnvironment` (`src/cli/command.ts`)

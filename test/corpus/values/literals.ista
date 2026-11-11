@@ -20,7 +20,9 @@ fn pointText(p: Point) -> String:
 fn markerText(m: Marker) -> String:
   "marked"
 
-ista async fn main():
+import * as runtime from 'runtime'
+live async fn main(): await runtime.run(runtime.id()) _main()
+ista async fn _main():
   const x = 3
   const y = 4
   const p = Point{x, y}

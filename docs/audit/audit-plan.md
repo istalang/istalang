@@ -172,7 +172,7 @@ Companion to `docs/audit/audit-items.md`. This plan partitions all actionable bu
 - `src/runtime/**` (+ `*.test.ts` and `*.test-kit.ts`)
 
 **Tasks in Group E:**
-1. **Fix same-instance mock return values bypassing `arriving` (D182 — `runtime/scheduler/testing/mocks.ts`):**
+1. **Fix same-instance mock return values bypassing `arriving` (D182 — `runtime/scheduler/instance/crossing.ts`):**
    - Ensure that when a mock is called within the holder's own instance (`callTargetOf` / `NativeCalls`), a returned host resource value (`testing.handle<T>()`) goes through `arriving(instance, value)` so it is wrapped in a `resource` heap object and disposed when dropped.
 2. **Unify `HeapObject` kind tables and `isRoot` predicate (D165, D198 — `runtime/snapshot/holdings.ts`, `runtime/lifetimes/holders.ts`, `runtime/lifetimes/orphans.ts`, `runtime/lifetimes/disposal.ts`, `runtime/scheduler/instance/heap.ts`, `runtime/scheduler/instance/index.ts`, `runtime/scheduler/instance/futures.ts`):**
    - Export one `isRoot(object: HeapObject | LiveObject): boolean` (`object.kind === 'execution' || object.kind === 'answer'`) from `src/runtime/snapshot/holdings.ts` and use it in `instance/index.ts`, `lifetimes/holders.ts`, `lifetimes/orphans.ts`, and `scheduler/instance/heap.ts`.

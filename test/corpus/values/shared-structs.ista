@@ -22,7 +22,9 @@ shared struct Box<T>:
 fn bump(self: Counter):
   self->count = self->count + 1
 
-ista async fn main() -> String:
+import * as runtime from 'runtime'
+live async fn main() -> String: await runtime.run(runtime.id()) _main()
+ista async fn _main() -> String:
   const a = new Counter{count: 1}
   const b = a
   a.bump()

@@ -74,8 +74,8 @@ export interface DisposalContext extends Disposability {
    */
   readonly cleanupCase: (execution: LiveExecution) => number | undefined;
   readonly weak: WeakSide;
-  /** Tells what observes the pending future `id` that it was disposed (§7). */
-  readonly disposedFuture: (id: number) => void;
+  /** Tells what observes the object `id` that it was disposed (§7). */
+  readonly disposed: (id: number) => void;
   /** Cancels a pending resolver, readying its `onCancel` callbacks (proposal 8, Rule 5). */
   readonly cancel: (resolver: LiveObjectOf<'resolver'>) => void;
 }
@@ -105,19 +105,20 @@ const futureStates: { readonly [Kind in FutureState['kind']]: boolean } = {
   watch: false,
 };
 
-/** How a cell or resource is disposed through its type entry's `disposal`. */
+/**
+ * How a cell or resource is disposed through its type entry's `disposal`: a call of its `dispose`,
+ * or the runtime's own, which what observes it from outside the language performs.
+ */
 function declared(object: LiveObjectOf<'cell' | 'resource'>): KindDisposal {
   return {
     disposable: ({ types }) => disposalOf(types, object.type).kind !== 'none',
     dispose: (context) => {
       const disposal = disposalOf(context.types, object.type);
-      return disposal.kind === 'function'
-        ? {
-            kind: 'call',
-            function: disposal.function,
-            arguments: [handleTo(object.id)],
-          }
-        : undefined;
+      if (disposal.kind !== 'function') {
+        context.disposed(object.id);
+        return;
+      }
+      return { kind: 'call', function: disposal.function, arguments: [handleTo(object.id)] };
     },
   };
 }
@@ -200,7 +201,7 @@ function disposeFuture(
   future: LiveObjectOf<'future'>,
 ): Cleanup | undefined {
   const { state } = future;
-  context.disposedFuture(future.id);
+  context.disposed(future.id);
   if (state.kind === 'call') {
     const [execution] = context.heap.find('executions', future.id);
     return execution === undefined ? undefined : disposeCall(context, execution);

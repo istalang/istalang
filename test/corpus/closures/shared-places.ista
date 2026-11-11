@@ -8,7 +8,9 @@ struct Counter { n: Int, items: Array<String> }
 fn bump(n: &Int):
   n += 1
 
-ista async fn main():
+import * as runtime from 'runtime'
+live async fn main(): await runtime.run(runtime.id()) _main()
+ista async fn _main():
   const c = new Shared{value: Counter{n: 1, items: []}}
   bump(&c->value.n)
   c->value.items.push("a")

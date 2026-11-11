@@ -1,10 +1,12 @@
-# The runtime module (spec §3.8): what an instance can ask of the runtime about itself, and
-# `isolate`, which runs a function as an instance of its own.
+# The runtime module (spec §3.8, §9): what an instance can ask of the runtime about itself;
+# `isolate`, which runs a function as an instance of its own; and for live code, the runtimes that
+# run ista code in contexts, instances named by key in the host's store.
 #
 # `commit` returns an already-resolved future, so `await runtime.commit()` commits without
 # waiting (§5).
 
-# The instance's name, as its host gave it or as its parent's spawn made it (§9).
+# The instance's name: a context's key, or what its parent's spawn made it; a live run's, as its
+# host started it (§9).
 extern fn id() -> String
 
 # The content hash of the program the instance runs, fixed for its life (§5).
@@ -19,3 +21,43 @@ ista fn isolate<T is Sendable>(f: sendable ista async fn() -> T) -> Future<Resul
 
 # Spawns `f` as an instance a panic terminates at once.
 extern ista fn _isolated<T>(f: sendable ista async fn() -> T) -> Instance<T>
+
+# The host's store, where contexts live (§9): `ista run`'s `--store`, memory without it, and a
+# test's own under a test.
+extern live struct Store
+extern live fn hostStore() -> Store
+
+# A runtime over a store (§9): opening it resumes the work persisted there, which it runs while the
+# live code that opened it runs. Disposing it stops that work, which the next open resumes.
+extern live struct Runtime
+extern live async fn Runtime.open(store: Store) -> Runtime
+extern live fn dispose(self: Runtime)
+
+# A call into a context (§9): awaited, `Ok` of what it gave, or `Err` once the context panicked.
+struct Call<R>:
+  result: Future<Result<R>, "live">
+  type Mode = "live"
+
+live fn onAwait<R>(self: Call<R>, done: Resolver<Result<R>, "live">): self.result.onAwait(done)
+
+# Runs `f` in the context named `key`, made if new (§9). Every call starts a new invocation, which
+# releasing the `Call` doesn't cancel, and what crosses into the context and back is sendable.
+live fn call<R is Sendable>(self: Runtime, key: String, f: sendable ista async fn() -> R) -> Call<R>:
+  Call<R>{result: _call(self, key, f)}
+
+extern live fn _call<R is Sendable>(
+  runtime: Runtime
+  key: String
+  f: sendable ista async fn() -> R
+) -> Future<Result<R>, "live">
+
+# Runs `f` in the context named `key` of a runtime over the host's store, and gives what it gave;
+# its panic panics here, as it did there (§9).
+live async fn run<R is Sendable>(key: String, f: sendable ista async fn() -> R) -> R:
+  const rt = await Runtime.open(hostStore())
+  match await rt.call(key, f):
+    case Ok(value): value
+    case Err(error): _raise(error)
+
+# Panics as `error` says, where it says: a panic from elsewhere, raised again here.
+extern fn _raise(error: Error) -> Never

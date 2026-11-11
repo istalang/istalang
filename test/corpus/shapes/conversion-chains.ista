@@ -18,7 +18,9 @@ type Pair<A, B> = { a: A, z: B }
 struct Boxed { z: String, a: Int }
 shared struct SharedBox<A, B> { a: A, z: B }
 
-ista async fn main():
+import * as runtime from 'runtime'
+live async fn main(): await runtime.run(runtime.id()) _main()
+ista async fn _main():
   const p: Pixel? = Pixel{z: 10, a: "hi"}
   const h: Holder? = Holder{p: Pixel{z: 10, a: "hi"}}
   const missing: Pixel? = none

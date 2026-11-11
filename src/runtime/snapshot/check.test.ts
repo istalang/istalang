@@ -16,11 +16,11 @@ import { type Snapshot, snapshotFormat } from './snapshot.ts';
 /** A program committed while it waits two executions deep. */
 const waitingProgram = compiledText(
   [
-    "import * as time from 'time'",
+    "import * as time from 'time'\nimport * as runtime from 'runtime'",
     'ista async fn inner() -> Int:',
     '  await time.delay(10ms)',
     '  1',
-    'ista async fn main():',
+    'live async fn main(): await runtime.run(runtime.id()) _main()\nista async fn _main():',
     '  await inner()',
   ].join('\n'),
 );
@@ -29,10 +29,10 @@ const waitingProgram = compiledText(
  * A store holding one instance of `waitingProgram`, committed while it waits, and a runtime
  * restarted on it, which reads the instance back from the store when it next touches it.
  */
-async function waitingInstance() {
+function waitingInstance() {
   const test = testRuntime();
   const program = test.runtime.deploy(waitingProgram);
-  await program.start('i');
+  test.startInstance(waitingProgram, 'i');
   const text = test.store.readSnapshot('i') ?? '';
   const restarted = testRuntime({ store: test.store, clock: test.clock });
   return { ...restarted, program, snapshot: snapshotFormat.read(text) };
@@ -104,21 +104,21 @@ const withVersion = (text: string, version: number) =>
 
 describe('reading an instance back', () => {
   it('refuses a snapshot of a version this runtime does not know, saying so', async () => {
-    const test = await waitingInstance();
+    const test = waitingInstance();
     test.store.writeSnapshot('i', withVersion(test.store.readSnapshot('i') ?? '', 99));
     await expect(test.runtime.wake('i')).rejects.toThrow(FormatError);
     await expect(test.runtime.wake('i')).rejects.toThrow(version99Refused);
   });
 
   it('refuses a stored Definition of a version this runtime does not know', async () => {
-    const test = await waitingInstance();
+    const test = waitingInstance();
     test.store.writeDefinition(test.program.hash, withVersion(waitingProgram, 7));
     const fresh = testRuntime({ store: test.store, clock: test.clock });
     await expect(fresh.runtime.wake('i')).rejects.toThrow(version7Refused);
   });
 
   it('refuses a snapshot whose Definition the store lacks', async () => {
-    const test = await waitingInstance();
+    const test = waitingInstance();
     storeChanged(test, (snapshot) => ({ ...snapshot, definition: '0'.repeat(64) }));
     await expect(test.runtime.wake('i')).rejects.toThrow(
       expect.objectContaining({ reason: 'unknownDefinition' }),
@@ -134,7 +134,7 @@ describe('reading an instance back', () => {
     ],
     ['a frame of a function that is not code', (frame) => ({ ...frame, function: 10_000 })],
   ])('refuses a snapshot with %s, before resuming', async (_case, change) => {
-    const test = await waitingInstance();
+    const test = waitingInstance();
     storeChanged(test, (snapshot) => ({
       ...snapshot,
       objects: snapshot.objects.map((object) =>
@@ -157,7 +157,7 @@ describe('reading an instance back', () => {
       { kind: 'struct', type: 0, fields: [1n, 2n, 3n, 4n] },
     ],
   ])('refuses a snapshot holding %s', async (_case, value) => {
-    const test = await waitingInstance();
+    const test = waitingInstance();
     storeChanged(test, (snapshot) => ({
       ...snapshot,
       objects: snapshot.objects.map((object) =>
@@ -176,7 +176,7 @@ describe('reading an instance back', () => {
   });
 
   it('refuses a resource of a type that is not extern', async () => {
-    const test = await waitingInstance();
+    const test = waitingInstance();
     storeChanged(test, (snapshot) => ({
       ...snapshot,
       objects: [...snapshot.objects, { kind: 'resource', id: 1000, type: 0, payload: null }],
@@ -185,7 +185,7 @@ describe('reading an instance back', () => {
   });
 
   it('refuses a ready execution that is not at an await', async () => {
-    const test = await waitingInstance();
+    const test = waitingInstance();
     storeChanged(test, (snapshot) => ({
       ...snapshot,
       ready: snapshot.objects.flatMap((object) => (object.kind === 'execution' ? [object.id] : [])),
@@ -261,42 +261,44 @@ describe('reading an instance back', () => {
       (snapshot) => ({ ...snapshot, encoder: frameEntry(snapshot) }),
     ],
   ])('refuses a snapshot with %s', async (_case, change) => {
-    const test = await waitingInstance();
+    const test = waitingInstance();
     storeChanged(test, change);
     await expect(test.runtime.wake('i')).rejects.toThrow(mismatch);
   });
 
   it('accepts a Resolver.at resolver deciding one made before it', async () => {
-    const test = await waitingInstance();
+    const test = waitingInstance();
     storeChanged(test, (snapshot) => withPosition(snapshot, 10_000, 10_001));
     await expect(test.runtime.wake('i')).resolves.toBeDefined();
   });
 
   it("refuses a snapshot whose stored Definition doesn't hash to the one it names", async () => {
-    const test = await waitingInstance();
-    test.store.writeDefinition(test.program.hash, compiledText('ista async fn main(): 2'));
+    const test = waitingInstance();
+    test.store.writeDefinition(
+      test.program.hash,
+      compiledText(
+        "import * as runtime from 'runtime'\nlive async fn main(): await runtime.run(runtime.id()) _main()\nista async fn _main(): 2",
+      ),
+    );
     const fresh = testRuntime({ store: test.store, clock: test.clock });
     await expect(fresh.runtime.wake('i')).rejects.toThrow(mismatch);
   });
 
   it('reads the store on a wake without writing the Definition back', async () => {
-    const test = await waitingInstance();
+    const test = waitingInstance();
     const store = recordingStore(test.store);
     const fresh = testRuntime({ store, clock: test.clock });
     test.clock.set(10n);
     expect(await runToEnd(fresh, 'i', await fresh.runtime.wake('i'))).toEqual({
       kind: 'finished',
-      outcome: '1',
+      outcome: 1n,
     });
     expect(store.definitions).toEqual([]);
   });
 
-  it('refuses to wake an instance the store lacks, and to start one it already has', async () => {
-    const test = await waitingInstance();
+  it('refuses to wake an instance the store lacks', async () => {
+    const test = waitingInstance();
     await expect(test.runtime.wake('nobody')).rejects.toThrow(Refusal);
-    await expect(test.program.start('i')).rejects.toThrow(
-      expect.objectContaining({ reason: 'instanceExists' }),
-    );
   });
 });
 

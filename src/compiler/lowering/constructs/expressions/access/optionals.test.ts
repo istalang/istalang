@@ -10,12 +10,18 @@ import { compiledText } from '../../../../compile.test-kit.ts';
 
 const shapes = ['struct Inner { code: Int }', 'struct Outer { inner: Inner? }'];
 
-/** The one frame of a panic in `main`, at the `!` on the program's fifth line. */
-const unwrapFrame = /^at \S*main \(\S+:5:3\)$/u;
+/** The frames of a panic in `_main`, at the `!` on the program's seventh line, and the live `main` above it. */
+const unwrapFrame = /^at \S*main\._main \(\S+:7:3\)\nat \S*main\.main\.deferred@\S+ \(\S+\)$/u;
 
 /** How `main`, giving a `result` with `body`, ends. */
 async function ended(result: string, body: string) {
-  const program = [...shapes, `ista async fn main() -> ${result}:`, `  ${body}`].join('\n');
+  const program = [
+    ...shapes,
+    `import * as runtime from 'runtime'
+live async fn main() -> ${result}: await runtime.run(runtime.id()) _main()
+ista async fn _main() -> ${result}:`,
+    `  ${body}`,
+  ].join('\n');
   return await startToEnd(testRuntime(), compiledText(program));
 }
 

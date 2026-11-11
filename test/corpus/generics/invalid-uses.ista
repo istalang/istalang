@@ -1,8 +1,8 @@
-# error: 5001 at 22:35
-# error: 5016 at 23:17
-# error: 5001 at 24:22
-# error: 5109 at 25:24
-# error: 5118 at 26:32
+# error: 5001 at 24:35
+# error: 5016 at 25:17
+# error: 5001 at 26:22
+# error: 5109 at 27:24
+# error: 5118 at 28:32
 # A generic struct's arguments come from its fields, which must then fit the expected type
 # (§3.5); an operator needs a function for its operands (§3.9); a conversion needs a `from`
 # taking its argument (§3.10), so `Int` explains that it takes a float; a variant with fields is
@@ -18,7 +18,9 @@ enum Shape:
   Circle(radius: Int)
   Square(side: Int)
 
-ista async fn main():
+import * as runtime from 'runtime'
+live async fn main(): await runtime.run(runtime.id()) _main()
+ista async fn _main():
   const pair: Pair<Int, String> = Pair{first: 1, second: 2}
   const twice = Money{cents: 1} * 2
   const parsed = Int("12")

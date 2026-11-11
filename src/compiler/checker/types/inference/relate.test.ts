@@ -32,16 +32,25 @@ const tree =
 
 /** What `main` gives after the declarations above and `functions`. */
 async function outcome(body: string, ...functions: readonly string[]): Promise<unknown> {
-  const source = [...declarations, ...functions, 'ista async fn main() -> Int:', `  ${body}`].join(
-    '\n',
-  );
+  const source = [
+    ...declarations,
+    ...functions,
+    "import * as runtime from 'runtime'\nlive async fn main() -> Int: await runtime.run(runtime.id()) _main()\nista async fn _main() -> Int:",
+    `  ${body}`,
+  ].join('\n');
   const state = await startToEnd(testRuntime(), compiledText(source));
   return state.kind === 'finished' ? decodeJson(String(state.outcome)) : state;
 }
 
 /** The codes reported for the declarations above and `functions`. */
 function codesAfter(...functions: readonly string[]): readonly number[] {
-  return reported([...declarations, ...functions, 'ista async fn main(): 0'].join('\n')).codes;
+  return reported(
+    [
+      ...declarations,
+      ...functions,
+      "import * as runtime from 'runtime'\nlive async fn main(): await runtime.run(runtime.id()) _main()\nista async fn _main(): 0",
+    ].join('\n'),
+  ).codes;
 }
 
 describe('a conversion into an `any` type while inferring', () => {

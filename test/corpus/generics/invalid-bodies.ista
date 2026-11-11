@@ -1,7 +1,7 @@
 # error: 5013 at 17:28
 # error: 5016 at 18:32
-# error: 5101 at 26:13
-# error: 5101 at 27:13
+# error: 5101 at 28:13
+# error: 5101 at 29:13
 # A generic body is checked once, against its constraints only (§3.5): `T` has no `cents`, and no
 # `<`. A type meets its constraints' fields and generic requirements exactly (§3.10).
 
@@ -22,7 +22,9 @@ fn use<T is Mapper>(t: T) -> Int: 1
 fn conv(self: Money, x: Int) -> Int: x
 fn conv<V>(self: Cheap, x: V) -> V: x
 
-ista async fn main():
+import * as runtime from 'runtime'
+live async fn main(): await runtime.run(runtime.id()) _main()
+ista async fn _main():
   const a = price(Cheap{price: 1.0})
   const b = use(Money{cents: 1})
   const c = use(Cheap{price: 1.0})

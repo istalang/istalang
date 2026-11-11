@@ -97,7 +97,7 @@ describe('key types: `keyof S`, `S[K]`, `s[k]`, and `Entry` / `AnyEntry` (§8)',
           'w[kw] = 42',
           '`${counts.x}:${counts.y}|${lists.a.length()}:${lists.b[0]}|${w.a ?? 0}`',
         ].join('\n  '),
-        ["import * as runtime from 'runtime'", ...decls],
+        decls,
       ),
     ).toBe('11:7|2:9|42');
   });

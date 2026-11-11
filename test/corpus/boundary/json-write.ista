@@ -7,6 +7,7 @@
 
 import * as time from 'time'
 import JsonName, JsonSkip, JsonBigInt, Json, encodeText from 'json'
+import * as runtime from 'runtime'
 
 struct Item:
   sku: String
@@ -41,7 +42,8 @@ struct Order:
   raw: Json
   cache: Map<String, Int> @JsonSkip
 
-ista async fn main() -> Order:
+live async fn main() -> Order: await runtime.run(runtime.id()) _main()
+ista async fn _main() -> Order:
   Order{
     id: "o1",
     items: [Item{sku: "a", qty: 2}],

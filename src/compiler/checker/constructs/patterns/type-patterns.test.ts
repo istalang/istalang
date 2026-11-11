@@ -39,7 +39,7 @@ describe('type patterns', () => {
       fc.asyncProperty(converted, async ({ type, literal }) => {
         const main = [
           emailDeclarations,
-          'ista async fn main() -> Array<Bool>:',
+          "import * as runtime from 'runtime'\nlive async fn main() -> Array<Bool>: await runtime.run(runtime.id()) _main()\nista async fn _main() -> Array<Bool>:",
           `  const value: any Stringable = ${literal}`,
           `  [${testedTypes.map((tested) => `value is ${tested}`).join(', ')}]`,
         ].join('\n');

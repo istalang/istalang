@@ -6,6 +6,7 @@
 # resolves.
 
 import * as time from 'time'
+import * as runtime from 'runtime'
 
 ista fn resolved(signal: Future<Unit, "ista">) -> Bool:
   select:
@@ -26,7 +27,8 @@ ista async fn worker(n: Int) -> Int:
 ista async fn watcher() -> ista fn() -> Future<Unit, "ista">:
   fn() -> Future<Unit, "ista">: watcher.disposing()
 
-ista async fn main() -> String:
+live async fn main() -> String: await runtime.run(runtime.id()) _main()
+ista async fn _main() -> String:
   const slot = Slot.create<Int>()
   const other = Slot.create<Int>()
   const weak = WeakRef(slot)

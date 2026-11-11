@@ -34,7 +34,7 @@ describe('an associated type of a type not known yet', () => {
     expect(codesOf(...source)).toEqual([]);
     const { codes: found, messages } = reportedMessages(
       ...source,
-      'ista async fn main() -> Int: useData<Box>()',
+      "import * as runtime from 'runtime'\nlive async fn main() -> Int: await runtime.run(runtime.id()) _main()\nista async fn _main() -> Int: useData<Box>()",
     );
     expect(found).toEqual([codes.notConforming.code]);
     expect(messages[0]).toContain('Box');
@@ -69,9 +69,12 @@ describe('a type match of types not known yet', () => {
       '  const x: PickResource<T>? = none',
       '  0',
     ];
-    expect(codesOf(...source, 'ista async fn main() -> Int: holdPicked<Int>()')).toEqual([
-      codes.unmarkedHolds.code,
-    ]);
+    expect(
+      codesOf(
+        ...source,
+        "import * as runtime from 'runtime'\nlive async fn main() -> Int: await runtime.run(runtime.id()) _main()\nista async fn _main() -> Int: holdPicked<Int>()",
+      ),
+    ).toEqual([codes.unmarkedHolds.code]);
   });
 
   it('passes through what a case takes from its subject', () => {

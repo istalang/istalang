@@ -378,13 +378,13 @@ describe('a recursive type in a compiled program (docs/arch/definition.md)', () 
       (entry) => entry.name,
     );
   const program = lines(
-    "import Tree from 'a.ista'",
+    "import Tree from 'a.ista'\nimport * as runtime from 'runtime'",
     'type Forest = Tree | Array<Forest>',
     'fn size(f: Forest) -> Int:',
     '  match f:',
     '    case Int as n: return n',
     '    case _: return 2',
-    'ista async fn main() -> Int:',
+    'live async fn main() -> Int: await runtime.run(runtime.id()) _main()\nista async fn _main() -> Int:',
     '  const f: Forest = [1, [2]]',
     '  return size(f)',
   );

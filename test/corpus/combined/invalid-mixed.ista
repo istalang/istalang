@@ -1,6 +1,6 @@
 # error: 5400 at 11:9
 # error: 5502 at 16:26
-# error: 5025 at 21:3
+# error: 5025 at 23:3
 # Mixed errors from three slices in one module: a `match` missing a variant, a comprehension body
 # capturing a `&`, and an unused Result.
 enum Shape:
@@ -17,6 +17,8 @@ fn captures(x: &Int) -> Array<Int>:
 
 fn parse() -> Result<Int>: Ok(1)
 
-ista async fn main() -> Int:
+import * as runtime from 'runtime'
+live async fn main() -> Int: await runtime.run(runtime.id()) _main()
+ista async fn _main() -> Int:
   parse()
   1

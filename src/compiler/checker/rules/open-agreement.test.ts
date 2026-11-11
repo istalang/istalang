@@ -15,7 +15,11 @@ const id = 'fn id<T>(x: T) -> T: x';
 
 /** The messages checking `function` beside `id` reports. */
 function messagesOf(function_: string): readonly string[] {
-  const text = [id, function_, 'ista async fn main(): 0'].join('\n');
+  const text = [
+    id,
+    function_,
+    "import * as runtime from 'runtime'\nlive async fn main(): await runtime.run(runtime.id()) _main()\nista async fn _main(): 0",
+  ].join('\n');
   return diagnosedAt(stdProgramOf({ main: text }), 'main').diagnostics.map(
     ({ message }) => message,
   );

@@ -23,7 +23,7 @@ const leasing = compiledText(
     'fn dispose(self: Lease):',
     '  release(self)',
     '',
-    'ista async fn main() -> String:',
+    "import * as runtime from 'runtime'\nlive async fn main() -> String: await runtime.run(runtime.id()) _main()\nista async fn _main() -> String:",
     '  const lease = open("a")',
     '  const note = await approval()',
     '  note + describe(lease)',
@@ -59,7 +59,7 @@ const terminated = compiledText(
     'fn dispose(self: Lease):',
     '  release(self)',
     '',
-    'ista async fn main() -> String:',
+    "import * as runtime from 'runtime'\nlive async fn main() -> String: await runtime.run(runtime.id()) _main()\nista async fn _main() -> String:",
     '  const first = open("plain")',
     '  const second = open("refusing")',
     '  if not await approval():',
@@ -72,11 +72,11 @@ describe('a disposable host type', () => {
   it('keeps what the host gave across commits, and tells the host once nothing holds it', async () => {
     const { host, released } = leasingHost();
     const test = testRuntime({ host });
-    const started = await test.runtime.deploy(leasing).start('l');
+    const started = test.startInstance(leasing, 'l');
     expect(started.state).toEqual({ kind: 'waiting', until: undefined, watching: [] });
     expect(released).toEqual([]);
     const filled = await test.runtime.fill('l', 'approval', 'leased ');
-    expect(await runToEnd(test, 'l', filled)).toEqual({ kind: 'finished', outcome: '"leased a"' });
+    expect(await runToEnd(test, 'l', filled)).toEqual({ kind: 'finished', outcome: 'leased a' });
     expect(released).toEqual([{ id: 'a' }]);
   });
 
@@ -90,7 +90,7 @@ describe('a disposable host type', () => {
       },
     };
     const test = testRuntime({ host: refusing });
-    await test.runtime.deploy(terminated).start('t');
+    test.startInstance(terminated, 't');
     expect((await test.runtime.fill('t', 'approval', false)).state).toMatchObject({
       kind: 'panicked',
     });
@@ -98,6 +98,7 @@ describe('a disposable host type', () => {
     expect(await test.runtime.terminate('t')).toEqual({
       state: { kind: 'terminated', message: 'refused', trace: expect.any(String) },
       spawned: [],
+      answered: [],
       logs: [],
     });
     expect(released).toEqual([{ id: 'refusing' }, { id: 'plain' }]);
@@ -117,12 +118,12 @@ describe('a disposable host type', () => {
         'extern shared struct Lease',
         'extern fn open(name: String) -> Lease',
         'extern fn dispose(self: Lease)',
-        'ista async fn main(): { const lease = open("b"); 1 }',
+        'import * as runtime from \'runtime\'\nlive async fn main(): await runtime.run(runtime.id()) _main()\nista async fn _main(): { const lease = open("b"); 1 }',
       ].join('\n'),
     );
     const test = testRuntime({ host });
-    const started = await test.runtime.deploy(program).start('h');
-    expect(await runToEnd(test, 'h', started)).toEqual({ kind: 'finished', outcome: '1' });
+    const started = test.startInstance(program, 'h');
+    expect(await runToEnd(test, 'h', started)).toEqual({ kind: 'finished', outcome: 1n });
     expect(disposed).toEqual([{ id: 'b' }]);
   });
 
@@ -143,7 +144,7 @@ describe('a disposable host type', () => {
     const program = compiledText(
       [
         "import Revertible from 'inbox'",
-        "import Encodable from 'json'",
+        "import Encodable from 'json'\nimport * as runtime from 'runtime'",
         '',
         'extern sendable struct Queue<T is Sendable>',
         'extern shared struct Sent',
@@ -155,17 +156,17 @@ describe('a disposable host type', () => {
         'ista fn sendRevertible<T is Encodable>(self: Queue<T>, msg: T) -> Revertible<T>:',
         '  Revertible.holding(_sendRevertible(self, msg))',
         '',
-        'ista async fn main() -> Int:',
+        'live async fn main() -> Int: await runtime.run(runtime.id()) _main()\nista async fn _main() -> Int:',
         '  hold _ = announcements("ann").sendRevertible("hello")',
         '  await gate()',
         '  1',
       ].join('\n'),
     );
     const test = testRuntime({ host });
-    await test.runtime.deploy(program).start('r');
+    test.startInstance(program, 'r');
     expect(calls).toEqual([['send', { queue: 'ann' }, 'hello']]);
     const filled = await test.runtime.fill('r', 'gate', null);
-    expect(await runToEnd(test, 'r', filled)).toEqual({ kind: 'finished', outcome: '1' });
+    expect(await runToEnd(test, 'r', filled)).toEqual({ kind: 'finished', outcome: 1n });
     expect(calls.at(-1)).toEqual(['retract', { message: 7n }]);
   });
 });

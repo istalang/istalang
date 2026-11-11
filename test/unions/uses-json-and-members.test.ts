@@ -288,7 +288,7 @@ describe('extern keys, hover, completion, and formatter (notes 8, 10, 11)', () =
   it('keeps `prelude.Optional<T>` in extern keys for `T?` and `T | None`', () => {
     const def = definitionOf(
       'extern fn poll(id: String | None) -> Int?',
-      'ista async fn main() -> Int:',
+      "import * as runtime from 'runtime'\nlive async fn main() -> Int: await runtime.run(runtime.id()) _main()\nista async fn _main() -> Int:",
       '  poll("x") ?? 0',
     );
     const externs = def.functions.flatMap((fn) => (fn.kind === 'extern' ? [fn.key] : []));

@@ -1,6 +1,7 @@
 # outcome: ["r1 read 10","t1 take 10","r2 read 20","t2 take 20","last 7"]
 # QA M3 (§6): one queue per slot, longest waiter first: a read before the first take sees the value, the take empties it, and a read queued behind that take waits for the next put.
 import Inbox from 'inbox'
+import * as runtime from 'runtime'
 
 ista async fn reader(log: Inbox<String>, s: Slot<Int>, name: String, take: Bool):
     if take:
@@ -10,7 +11,8 @@ ista async fn reader(log: Inbox<String>, s: Slot<Int>, name: String, take: Bool)
         const v = await s.read()
         log.send(name + " read " + v.toString())
 
-ista async fn main() -> Array<String>:
+live async fn main() -> Array<String>: await runtime.run(runtime.id()) _main()
+ista async fn _main() -> Array<String>:
     const log = Inbox.create<String>()
     const s = Slot.create<Int>()
     hold _ = reader(log, s, "r1", false)

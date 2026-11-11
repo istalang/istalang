@@ -9,7 +9,9 @@ fn valueOf(outcome: Result<Int>) -> Int:
     case Ok(value): value
     case Err(...): -1
 
-ista async fn main() -> Array<Int>:
+import * as runtime from 'runtime'
+live async fn main() -> Array<Int>: await runtime.run(runtime.id()) _main()
+ista async fn _main() -> Array<Int>:
   const first = await (spawn scaled(offset: 2)).result()
   const second = await (spawn scaled(3)).result()
   [valueOf(first), valueOf(second)]

@@ -29,7 +29,9 @@ fn name(self: Point) -> String:
   """Points are named by their coordinates."""
   `${self.x},${self.y}`
 
-ista async fn main():
+import * as runtime from 'runtime'
+live async fn main(): await runtime.run(runtime.id()) _main()
+ista async fn _main():
   """Runs the program."""
   const shape: Shape = Dot
   const point = Point{x: 1, y: 2}

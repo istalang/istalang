@@ -4,9 +4,10 @@
  * knowledge of their contents and any storage that keeps strings will do.
  *
  * - A Definition is kept once, by its content hash; every instance names the hash it runs.
- * - An instance's snapshot is kept by the instance's name, which the host chose when it started
- *   it. Writing replaces the previous snapshot: a commit is one write, so a store whose writes are
- *   atomic keeps every instance at a committed state.
+ * - An instance's snapshot is kept by the instance's name: a context's key (§9), or the name the
+ *   runtime gave one spawned. Writing replaces the previous snapshot: a commit is one write, so a
+ *   store whose writes are atomic keeps every instance at a committed state. A store lists the
+ *   names it keeps, so a runtime opened over it resumes them all.
  * - The signatures of the externs its host implements are one text, which the runtime checks every
  *   Definition it deploys against (boundary/extern-signatures.ts).
  */
@@ -16,6 +17,8 @@ export interface InstanceStore {
   readonly writeDefinition: (hash: string, text: string) => void;
   readonly readSnapshot: (instance: string) => string | undefined;
   readonly writeSnapshot: (instance: string, text: string) => void;
+  /** The names of the instances it keeps a snapshot of, in no particular order. */
+  readonly instances: () => readonly string[];
   readonly readExterns: () => string | undefined;
   readonly writeExterns: (text: string) => void;
 }
@@ -34,6 +37,7 @@ export function memoryStore(): InstanceStore {
     writeSnapshot: (instance, text) => {
       snapshots.set(instance, text);
     },
+    instances: () => [...snapshots.keys()],
     readExterns: () => externs,
     writeExterns: (text) => {
       externs = text;

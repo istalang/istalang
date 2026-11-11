@@ -1,9 +1,9 @@
-# error: 5640 at 33:9
-# error: 5643 at 35:14
-# error: 5644 at 37:9
-# error: 5645 at 39:9
-# error: 5644 at 40:18
-# error: 5644 at 41:13
+# error: 5640 at 35:9
+# error: 5643 at 37:14
+# error: 5644 at 39:9
+# error: 5645 at 41:9
+# error: 5644 at 42:18
+# error: 5644 at 43:13
 # spawn (§9) takes a sendable function giving the new instance's outcome, which a deferred call
 # gives it (§3.14): `spawn` of no call gives nothing to run. What the call computes now is copied
 # into the new instance, so it can't pass a reference, can't capture anything unsendable, a value
@@ -12,6 +12,7 @@
 
 import Inbox from 'inbox'
 import * as time from 'time'
+import * as runtime from 'runtime'
 
 struct Job:
   box: Inbox<Int>
@@ -28,7 +29,8 @@ ista fn run(self: Job) -> Int:
 fn show(self: Id) -> Int:
   self.value
 
-ista async fn main():
+live async fn main(): await runtime.run(runtime.id()) _main()
+ista async fn _main():
   let n = 1
   spawn n
   spawn time.now()

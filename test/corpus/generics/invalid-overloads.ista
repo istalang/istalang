@@ -1,7 +1,7 @@
 # error: 5105 at 12:4
 # error: 5105 at 15:4
 # error: 5105 at 18:4
-# error: 5003 at 21:18
+# error: 5003 at 23:18
 # Overloads that some call fits alike clash (§3.7): through a generated default overload, by
 # `self` taken as a value and as a reference, or as generic functions each instantiating its own
 # type parameter, so a call both take is ambiguous too.
@@ -17,5 +17,7 @@ fn h(self: &Point) -> Int: 2
 fn either<T>(value: T, other: Int) -> Int: other
 fn either<T>(value: Int, other: T) -> Int: value
 
-ista async fn main():
+import * as runtime from 'runtime'
+live async fn main(): await runtime.run(runtime.id()) _main()
+ista async fn _main():
   const chosen = either(1, 2)

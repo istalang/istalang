@@ -88,4 +88,6 @@ fn unexpected(v: Int, t: String) -> Node:
   drop b
   Node.Group{t}
 
-ista async fn main(): 0
+import * as runtime from 'runtime'
+live async fn main(): await runtime.run(runtime.id()) _main()
+ista async fn _main(): 0

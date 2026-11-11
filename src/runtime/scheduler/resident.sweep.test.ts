@@ -10,15 +10,33 @@ import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { runPrograms } from '../../../test/corpus/programs.ts';
 import { compiledText } from '../../compiler/compile.test-kit.ts';
+import { memo } from '../../foundation/structures/memo.ts';
 import type { StartOptions } from '../instance-state.ts';
 import { type RecordingStore, startToEnd, testRuntime } from '../runtime.test-kit.ts';
 import { snapshotFormat } from '../snapshot/snapshot.ts';
 
-/** What `store` committed, each snapshot without the `crashEveryAwait` option. */
+const callToken = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/u;
+
+/**
+ * What `store` committed, each snapshot without the `crashEveryAwait` option, and each call into a
+ * context named by the order its token, random per process, first appears in.
+ */
 function commitsOf(store: RecordingStore): readonly unknown[] {
+  const ordinals = new Map<string, string>();
+  const renamed = (value: unknown): unknown => {
+    if (typeof value === 'string' && callToken.test(value)) {
+      return memo(ordinals, value, () => `call ${ordinals.size}`);
+    }
+    if (Array.isArray(value)) {
+      return value.map(renamed);
+    }
+    return typeof value === 'object' && value !== null
+      ? Object.fromEntries(Object.entries(value).map(([key, each]) => [key, renamed(each)]))
+      : value;
+  };
   return store.commits.map((text) => {
     const { crashEveryAwait: _, ...rest } = snapshotFormat.read(text);
-    return rest;
+    return renamed(rest);
   });
 }
 
@@ -80,7 +98,8 @@ function programOf(chosen: readonly (readonly [number, number])[]): string {
     'ista async fn half(n: Int) -> Int:',
     '  await time.delay(2ms)',
     '  n // 2',
-    'ista async fn main() -> Int:',
+    'live async fn main() -> Int: await runtime.run(runtime.id()) _main()',
+    'ista async fn _main() -> Int:',
     '  let total = 1',
     ...body,
     '  total',

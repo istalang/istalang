@@ -29,5 +29,7 @@ fn either<T in Int | String>(x: T) -> String:
     case Int as n: `${n}`
     case String as t: t
 
-ista async fn main() -> String:
+import * as runtime from 'runtime'
+live async fn main() -> String: await runtime.run(runtime.id()) _main()
+ista async fn _main() -> String:
   `${wide("draft")}|${back("sent")}|${opt("failed")}|${either(1)}:${either("one")}`

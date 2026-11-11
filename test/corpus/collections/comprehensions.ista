@@ -2,7 +2,9 @@
 # Comprehensions (§4): over any iterable, kept by a condition, taking items apart like `for`, and
 # nested; the expected array's element type, through optionals around the array, guides the body.
 
-ista async fn main() -> String:
+import * as runtime from 'runtime'
+live async fn main() -> String: await runtime.run(runtime.id()) _main()
+ista async fn _main() -> String:
   const doubled = [for i in 1..5: 5 * i]
   const small = [for x in doubled if x > 5 and x < 20: String(x)]
   const big = [for key, value in ["a": 1, "b": 2] if value > 1: key]

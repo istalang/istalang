@@ -100,7 +100,9 @@ fn collapsedBox<T is Stringable>(x: Box<T> | Box<Int>) -> String:
     case Box<T>{value}: `first:${value}`
     case Box<Int>{value}: `second:${value}`
 
-ista async fn main() -> String:
+import * as runtime from 'runtime'
+live async fn main() -> String: await runtime.run(runtime.id()) _main()
+ista async fn _main() -> String:
   const p1 = `${describe(none)}|${describe(42)}|${describe("ok")}|${label("draft")}|${label("failed")}|${contactTo(Email{to: "cfo"})}`
   const p2 = `${checkIntOpt(5)}:${checkIntOpt(none)}:${checkLitOpt(1)}:${checkLitOpt(2)}`
   const p3 = `${splitLiterals("sent")}:${splitLiterals(7)}`

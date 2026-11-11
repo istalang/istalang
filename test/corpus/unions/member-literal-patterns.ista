@@ -18,6 +18,8 @@ fn both<K in "a" | "b">(k: K) -> String:
 fn reversed<K in "a" | "b">(k: K) -> Bool:
   "b" == k
 
-ista async fn main() -> String:
+import * as runtime from 'runtime'
+live async fn main() -> String: await runtime.run(runtime.id()) _main()
+ista async fn _main() -> String:
   const results = [describe("a"), describe("b"), `${equalsA("a")}`, `${equalsA("b")}`]
   `${results.join("|")}|${both("a")}|${both("b")}|${reversed("b")}`

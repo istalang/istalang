@@ -1,7 +1,9 @@
 # panic: A stepped slice of 3 items can't be replaced by 2.
 # Writing a stepped slice replaces each item it selects, so it needs as many (§3.9).
 
-ista async fn main() -> Int:
+import * as runtime from 'runtime'
+live async fn main() -> Int: await runtime.run(runtime.id()) _main()
+ista async fn _main() -> Int:
   let xs = [0, 1, 2, 3, 4]
   xs[.. by 2] = [7, 8]
   xs.length()

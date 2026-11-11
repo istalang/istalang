@@ -21,7 +21,9 @@ fn kept<...A>(...args: A) -> Array<A>: [args]
 
 fn packed<...A>(...args: A) -> A: args
 
-ista async fn main() -> (Int, Int, Int, String, Int, String, Array<(Int, String)>, String, ()):
+import * as runtime from 'runtime'
+live async fn main() -> (Int, Int, Int, String, Int, String, Array<(Int, String)>, String, ()): await runtime.run(runtime.id()) _main()
+ista async fn _main() -> (Int, Int, Int, String, Int, String, Array<(Int, String)>, String, ()):
   const measure = logged(area)
   const named: fn(Int, Int) -> Int = logged<(Int, Int), Int>(area)
   const empty: () = packed()

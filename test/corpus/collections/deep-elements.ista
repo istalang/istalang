@@ -13,7 +13,9 @@ fn setIndex(self: &Tree, depth: Int, value: Int) -> Unit:
   else:
     self.children[0][depth - 1] = value
 
-ista async fn main() -> Int:
+import * as runtime from 'runtime'
+live async fn main() -> Int: await runtime.run(runtime.id()) _main()
+ista async fn _main() -> Int:
   let tree = Tree{children: [], value: 0}
   for _ in 0..3000:
     tree = Tree{children: [tree], value: 0}

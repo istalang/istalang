@@ -2,6 +2,7 @@
 # Top-level constants convert part by part as values do (§3.5): computed at compile time, and a
 # box widened from a literal type equals one built wide, so a map keyed by both holds one entry.
 import * as json from 'json'
+import * as runtime from 'runtime'
 
 struct Box<T>:
   value: T
@@ -21,5 +22,6 @@ const opts: Array<Int?> = ints
 const t: (Int, String) = (1, "x")
 const u: (Int?, String) = t
 
-ista async fn main():
+live async fn main(): await runtime.run(runtime.id()) _main()
+ista async fn _main():
   "" + (b == Box{value: "s"}) + " " + qs[0].x + " " + json.stringify(j) + " " + m.size() + " " + (opts[1] ?? 0) + " " + (u.0 ?? 0)

@@ -31,5 +31,7 @@ fn reassigned() -> Int:
   f = fn(): 7
   g()
 
-ista async fn main():
+import * as runtime from 'runtime'
+live async fn main(): await runtime.run(runtime.id()) _main()
+ista async fn _main():
   String(nested()) + " | " + eq() + " | " + String(mut()) + " | " + String(reassigned())

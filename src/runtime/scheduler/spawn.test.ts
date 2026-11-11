@@ -20,11 +20,11 @@ import { type Snapshot, snapshotFormat } from '../snapshot/snapshot.ts';
 
 /** `main` spawning two children that each wait before giving their outcome. */
 const spawningMain = [
-  "import * as time from 'time'",
+  "import * as time from 'time'\nimport * as runtime from 'runtime'",
   'ista async fn child(n: Int) -> Int:',
   '  await time.delay(10ms)',
   '  n * 2',
-  'ista async fn main() -> Int:',
+  'live async fn main() -> Int: await runtime.run(runtime.id()) _main()\nista async fn _main() -> Int:',
   '  spawn child(1)',
   '  await time.delay(1ms)',
   '  spawn child(2)',
@@ -37,35 +37,35 @@ const readBack = (store: RecordingStore): readonly Snapshot[] =>
 describe('spawning an instance', () => {
   it('runs each child on its own snapshot, named after its parent, to its own outcome', async () => {
     const test = testRuntime();
-    const started = await test.runtime.deploy(compiledText(spawningMain)).start('p');
+    const started = test.startInstance(compiledText(spawningMain), 'p');
     expect(started.spawned).toEqual(['p/1']);
     const settled = await settleAll(test, 'p', started);
     expect([...settled.keys()]).toEqual(['p', 'p/1', 'p/2']);
-    expect(await runToEnd(test, 'p', started)).toEqual({ kind: 'finished', outcome: '5' });
+    expect(await runToEnd(test, 'p', started)).toEqual({ kind: 'finished', outcome: 5n });
     expect(settled.get('p/1')).toMatchObject({ kind: 'finished', outcome: 2n });
     expect(settled.get('p/2')).toMatchObject({ kind: 'finished', outcome: 4n });
   });
 
-  it("writes a child before its parent's commit, as a call not yet started", async () => {
+  it("writes a child before its parent's commit, as a call not yet started", () => {
     const test = testRuntime();
-    await test.runtime.deploy(compiledText(spawningMain)).start('p');
+    test.startInstance(compiledText(spawningMain), 'p');
     const [child, parent] = readBack(test.store);
     expect(child?.instance).toBe('p/1');
     expect(child?.status).toMatchObject({ kind: 'unstarted' });
     expect(parent).toMatchObject({ instance: 'p', spawned: 1 });
   });
 
-  it('spawns nothing from a segment that panics', async () => {
+  it('spawns nothing from a segment that panics', () => {
     const text = compiledText(
       spawningMain.replace('  spawn child(1)', '  spawn child(1)\n  panic("no")'),
     );
     const test = testRuntime();
-    const started = await test.runtime.deploy(text).start('p');
+    const started = test.startInstance(text, 'p');
     expect(started).toMatchObject({ state: { kind: 'panicked' }, spawned: [] });
     expect(readBack(test.store).map((snapshot) => snapshot.instance)).toEqual(['p']);
   });
 
-  it("doesn't write a child twice when its parent's segment re-runs after a crash", async () => {
+  it("doesn't write a child twice when its parent's segment re-runs after a crash", () => {
     const inner = recordingStore();
     let crashed = false;
     const crashingOnce: RecordingStore = {
@@ -79,18 +79,16 @@ describe('spawning an instance', () => {
       },
     };
     const text = compiledText(spawningMain);
-    await expect(
-      testRuntime({ store: crashingOnce }).runtime.deploy(text).start('p'),
-    ).rejects.toThrow('crash');
-    const started = await testRuntime({ store: inner }).runtime.deploy(text).start('p');
+    expect(() => testRuntime({ store: crashingOnce }).startInstance(text, 'p')).toThrow('crash');
+    const started = testRuntime({ store: inner }).startInstance(text, 'p');
     expect(started.spawned).toEqual(['p/1']);
     const children = readBack(inner).filter((snapshot) => snapshot.instance === 'p/1');
     expect(children).toHaveLength(1);
   });
 
-  it("gives a child its parent's crashEveryAwait", async () => {
+  it("gives a child its parent's crashEveryAwait", () => {
     const test = testRuntime();
-    await test.runtime.deploy(compiledText(spawningMain)).start('p', { crashEveryAwait: true });
+    test.startInstance(compiledText(spawningMain), 'p', { crashEveryAwait: true });
     expect(readBack(test.store).find((snapshot) => snapshot.instance === 'p/1')).toMatchObject({
       crashEveryAwait: true,
     });
@@ -99,7 +97,7 @@ describe('spawning an instance', () => {
   it("carries a sendable closure's captures into the child", async () => {
     const text = compiledText(
       [
-        'ista async fn main() -> Int:',
+        "import * as runtime from 'runtime'\nlive async fn main() -> Int: await runtime.run(runtime.id()) _main()\nista async fn _main() -> Int:",
         '  const base = 40',
         '  const add = fn(n: Int): base + n',
         '  spawn add(2)',
@@ -107,7 +105,7 @@ describe('spawning an instance', () => {
       ].join('\n'),
     );
     const test = testRuntime();
-    const started = await test.runtime.deploy(text).start('p');
+    const started = test.startInstance(text, 'p');
     expect((await settleAll(test, 'p', started)).get('p/1')).toMatchObject({
       kind: 'finished',
       outcome: 42n,
@@ -117,12 +115,12 @@ describe('spawning an instance', () => {
 
 /** `main` spawning an async callee, which waits across commits, and a plain one. */
 const awaitingMain = [
-  "import * as time from 'time'",
+  "import * as time from 'time'\nimport * as runtime from 'runtime'",
   'ista async fn child(n: Int) -> Int:',
   '  await time.delay(10ms)',
   '  n * 2',
   'fn twice(n: Int) -> Int: n * 2',
-  'ista async fn main() -> Int:',
+  'live async fn main() -> Int: await runtime.run(runtime.id()) _main()\nista async fn _main() -> Int:',
   '  spawn child(1)',
   '  spawn twice(2)',
   '  0',
@@ -134,8 +132,8 @@ async function spawnedOutcomes(
   options: { readonly crashEveryAwait?: boolean } = {},
 ): Promise<ReadonlyMap<string, string>> {
   const test = testRuntime();
-  const program = test.runtime.deploy(text);
-  const settled = await settleAll(test, 'p', await program.start('p', options));
+  const settled = await settleAll(test, 'p', test.startInstance(text, 'p', options));
+  const program = test.programOf('p');
   return new Map(
     [...settled].flatMap(([name, state]) =>
       name === 'p' || state.kind !== 'finished' ? [] : [[name, program.outcomeText(state)]],
@@ -158,7 +156,7 @@ describe("a spawned instance's root", () => {
 
   it('commits the future a plain root gave as the outcome it awaits, no frame waiting for it', async () => {
     const test = testRuntime();
-    await test.runtime.deploy(compiledText(awaitingMain)).start('p');
+    test.startInstance(compiledText(awaitingMain), 'p');
     await test.runtime.wake('p/1');
     const child = readBack(test.store).findLast((snapshot) => snapshot.instance === 'p/1');
     const objects = child?.objects ?? [];
@@ -169,7 +167,7 @@ describe("a spawned instance's root", () => {
     expect(executions).toHaveLength(1);
     expect(awaited).toEqual(executions);
     expect(test.runtime.inspect('p/1').waitingAt).toEqual([
-      { waypoint: undefined, location: 'memory:main:3:3' },
+      { waypoint: undefined, location: 'memory:main:4:3' },
     ]);
   });
 
@@ -177,7 +175,7 @@ describe("a spawned instance's root", () => {
     const text = compiledText(
       [
         "import * as runtime from 'runtime'",
-        'ista async fn main() -> Int:',
+        'live async fn main() -> Int: await runtime.run(runtime.id()) _main()\nista async fn _main() -> Int:',
         '  drop runtime.isolate(fn(): "isolated")',
         '  0',
       ].join('\n'),
@@ -189,7 +187,7 @@ describe("a spawned instance's root", () => {
     const text = compiledText(
       [
         "import * as runtime from 'runtime'",
-        'ista async fn main() -> Int:',
+        'live async fn main() -> Int: await runtime.run(runtime.id()) _main()\nista async fn _main() -> Int:',
         '  drop await spawn(runtime.commit).result()',
         '  drop await runtime.isolate(runtime.commit)',
         '  0',
@@ -207,7 +205,7 @@ describe("a spawned instance's root", () => {
     const text = compiledText(
       [
         "import * as time from 'time'",
-        "import * as log from 'log'",
+        "import * as log from 'log'\nimport * as runtime from 'runtime'",
         'shared struct Lease { name: String }',
         'fn dispose(self: Lease): log.info("disposed " + self->name)',
         'ista async fn boomAfterDelay() -> Unit:',
@@ -223,15 +221,14 @@ describe("a spawned instance's root", () => {
         'ista async fn makesLease() -> Lease:',
         '  await time.delay(5ms)',
         '  new Lease{name: "awaited"}',
-        'ista async fn main() -> Int:',
+        'live async fn main() -> Int: await runtime.run(runtime.id()) _main()\nista async fn _main() -> Int:',
         '  drop spawn worker()',
         '  drop spawn makesLease()',
         '  0',
       ].join('\n'),
     );
     const test = testRuntime();
-    const program = test.runtime.deploy(text);
-    await program.start('p');
+    test.startInstance(text, 'p');
     await test.runtime.wake('p/1');
     await test.runtime.wake('p/2');
     test.clock.set(test.clock.now() + 5n);
@@ -244,12 +241,12 @@ describe("a spawned instance's root", () => {
 });
 
 describe('inspecting an instance', () => {
-  it('shows where each execution waits, and how the instance stands', async () => {
+  it('shows where each execution waits, and how the instance stands', () => {
     const test = testRuntime();
-    await test.runtime.deploy(compiledText(spawningMain)).start('p');
+    test.startInstance(compiledText(spawningMain), 'p');
     const { state, waitingAt } = test.runtime.inspect('p');
     expect(state).toEqual({ kind: 'waiting', until: 1n, watching: [] });
-    expect(waitingAt).toEqual([{ waypoint: undefined, location: 'memory:main:7:3' }]);
+    expect(waitingAt).toEqual([{ waypoint: undefined, location: 'memory:main:9:3' }]);
     expect(test.runtime.inspect('p/1')).toEqual({ state: { kind: 'ready' }, waitingAt: [] });
   });
 });

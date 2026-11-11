@@ -1,7 +1,7 @@
 /**
- * One test's world (§10): a fresh runtime, in memory, running the test's instance and every
- * instance it starts or spawns, and the seam (scheduler/testing/test-world.ts) through which those
- * reach each other.
+ * One test's world (§10): a fresh runtime, in memory, running the test in a context of its own
+ * (§9) and every instance it spawns, and the seam (scheduler/testing/test-world.ts) through which
+ * those reach each other.
  *
  * - Instances run one at a time, each advanced from its last commit and held in memory between
  *   (scheduler/resident.ts): what one reads of another is that one's last commit, as a host would
@@ -14,9 +14,9 @@
  *   what can run now: answers to deliver, ready instances, then instances whose watches hold. When
  *   nothing can, it waits for the earliest timer on the clock it is given, real time unless the
  *   test mocked it (§10), so the runtime never sleeps. A wait past the deadline ends the test.
- * - The test ends when its own instance finishes, or when any instance panics, which fails it at
- *   once with that panic (§10), unless an instance waits for its end (`result()`, as `expectPanic`
- *   does). Such a wait ends once it is answered, so the world remembers each panic waited for as it
+ * - The test is the world's call into its context, an invocation as live code's is: it ends when
+ *   that call answers, or when any instance panics, which fails it at once with that panic (§10),
+ *   unless an instance waits for its end (`result()`, as `expectPanic` does). Such a wait ends once it is answered, so the world remembers each panic waited for as it
  *   records it.
  *   One whose instances all wait on nothing left to wake them fails, naming where each waits.
  * - An extern no mock replaces panics the instance calling it: a test's only host is its mocks.
@@ -42,8 +42,8 @@ import {
   type Advance,
   type AdvanceFirst,
   advance,
+  newContext,
   type SchedulerSeams,
-  unstarted,
 } from '../../scheduler/wake.ts';
 import type { TestWatch } from '../../snapshot/objects.ts';
 import type { InstanceCall, Snapshot } from '../../snapshot/snapshot.ts';
@@ -77,8 +77,14 @@ export interface WorldSeams {
   readonly deadline: bigint;
 }
 
-/** What the test's own instance is named; the instances it starts are named after it. */
+/** The key of the test's own context; the instances it spawns are named after it. */
 const testInstance = 'test';
+
+/** The token naming the world's call into the test's context, whose answer is the test's end. */
+const testCall = 'test';
+
+/** An answer to another instance's call to a mock, which the world delivers to it. */
+type Arrival = Answered & { readonly instance: string };
 
 const allowTest = (): void => undefined;
 
@@ -91,7 +97,9 @@ export class World implements TestWorld {
   readonly #deadline: bigint;
   readonly #seed: string;
   readonly #group = new InstanceGroup();
-  readonly #arrivals: Answered[] = [];
+  readonly #arrivals: Arrival[] = [];
+  /** What the call into the test's context gave, once it answered. */
+  #outcome: { readonly value: Value } | undefined;
   /** The log records every instance of the world committed, in the order they did. */
   readonly #logs: LogRecord[] = [];
   readonly #mocks = new WeakMap<Snapshot, ReadonlyMap<FunctionId, number>>();
@@ -114,14 +122,18 @@ export class World implements TestWorld {
     );
   }
 
-  /** Runs `call` as the test's instance, with what it starts and spawns, until it ends. */
+  /**
+   * Runs `call` in the test's own context (§9), with what it starts and spawns, until the call
+   * answers or something panics.
+   */
   async run(call: InstanceCall): Promise<Ended> {
     const test = new Resident(
       this.#loaded,
-      unstarted(this.#loaded, testInstance, call, { seed: this.#seed }),
+      newContext(this.#loaded, testInstance, { seed: this.#seed }),
     );
     this.#residents.set(testInstance, test);
-    this.#record(testInstance, advance(this.#seams, test));
+    const invocation = { call, token: testCall };
+    this.#record(testInstance, advance(this.#seams, test, { kind: 'invocation', invocation }));
     const driven = await drive({
       group: this.#group,
       now: this.#clock.now,
@@ -248,7 +260,13 @@ export class World implements TestWorld {
 
   #record(instance: string, advanced: Advance): void {
     this.#group.record(instance, advanced);
-    this.#arrivals.push(...advanced.answered);
+    for (const answered of advanced.answered) {
+      if (answered.instance !== undefined) {
+        this.#arrivals.push({ ...answered, instance: answered.instance });
+      } else if (answered.token === testCall) {
+        this.#outcome = { value: answered.value };
+      }
+    }
     this.#logs.push(...advanced.logs);
     this.#withdrawAnswersTo(instance);
     if (advanced.state.kind === 'panicked' && this.#waitsForPanicOf(instance)) {
@@ -291,8 +309,9 @@ export class World implements TestWorld {
         return { kind: 'failed', message, trace: state.trace, logs: this.#logs };
       }
     }
-    const own = this.#group.states.get(testInstance);
-    return own?.kind === 'finished' ? { kind: 'finished', outcome: own.outcome } : undefined;
+    return this.#outcome === undefined
+      ? undefined
+      : { kind: 'finished', outcome: this.#outcome.value };
   }
 
   /** A failure saying `why`, and where each instance still waits. */

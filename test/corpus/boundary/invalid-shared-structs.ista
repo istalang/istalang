@@ -10,4 +10,6 @@ extern fn counter() -> Counter
 extern fn shared() -> Shared<Int>
 extern fn bump(c: Counter)
 
-ista async fn main(): 0
+import * as runtime from 'runtime'
+live async fn main(): await runtime.run(runtime.id()) _main()
+ista async fn _main(): 0

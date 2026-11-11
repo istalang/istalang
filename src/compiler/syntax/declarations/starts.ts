@@ -21,6 +21,7 @@ export function startShapeOf(declaration: FunctionDeclaration): StartShape {
       reference: parameter.kind === 'Parameter' && writtenByReference(parameter),
     })),
     awaits: awaits(declaration.qualifiers),
+    isIsta: declaration.qualifiers.kind === 'ista',
   };
 }
 

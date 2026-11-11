@@ -5,5 +5,7 @@
 fn g(x: Int?) -> Int: 1
 fn g(x: String) -> Int: 2
 
-ista async fn main() -> String:
+import * as runtime from 'runtime'
+live async fn main() -> String: await runtime.run(runtime.id()) _main()
+ista async fn _main() -> String:
   String(g(none)) + " " + String(g("a")) + " " + String(g(1))

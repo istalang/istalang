@@ -47,6 +47,7 @@ ista async fn remindLater(role: String):
 
 ```python
 import * as time from 'time'
+import * as runtime from 'runtime'
 
 struct PurchaseRequest { id: String, amount: Int }
 struct Verdict { role: String, ok: Bool }
@@ -55,7 +56,8 @@ extern purchaseRequests: Queue<PurchaseRequest>          # provided by the host
 extern fn verdicts(id: String) -> Queue<Verdict>
 extern fn chargeCard(id: String, amount: Int) -> Result<String>
 
-ista async fn main():                                         # the one entry point
+live async fn main(): await runtime.run(runtime.id()) _main()
+ista async fn _main():                                         # the one entry point
     while true:
         const req = await purchaseRequests.receive()     # saved; may wait for weeks
         spawn purchase(req)                              # each purchase is its own instance

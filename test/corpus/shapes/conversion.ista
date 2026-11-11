@@ -33,7 +33,9 @@ fn unwrap(b: { value: Int }) -> Int:
 fn maybe(p: Point?) -> Int:
   p?.x ?? 0
 
-ista async fn main():
+import * as runtime from 'runtime'
+live async fn main(): await runtime.run(runtime.id()) _main()
+ista async fn _main():
   const pixel = Pixel{x: 3, y: 4}
   const point: Point = pixel
   const pair = twice(pixel)

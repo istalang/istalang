@@ -13,7 +13,7 @@ function loggingMain(fails: boolean): string {
   return [
     "import * as log from 'log'",
     "import * as runtime from 'runtime'",
-    'ista async fn main() -> Int:',
+    'live async fn main() -> Int: await runtime.run(runtime.id()) _main()\nista async fn _main() -> Int:',
     '  log.info("first", struct{n: 1})',
     '  await runtime.commit()',
     '  log.warn("second")',
@@ -27,10 +27,11 @@ const messagesOf = (logs: readonly { readonly message: string }[]) =>
   logs.map(({ message }) => message);
 
 describe('log records', () => {
-  it('reach the host with their segments, stamped with the instance and the segment time', async () => {
-    const { runtime, clock } = testRuntime();
+  it('reach the host with their segments, stamped with the instance and the segment time', () => {
+    const test = testRuntime();
+    const { clock } = test;
     clock.set(1000n);
-    const advanced = await runtime.deploy(compiledText(loggingMain(false))).start('main');
+    const advanced = test.startInstance(compiledText(loggingMain(false)), 'main');
     expect(advanced.logs).toEqual([
       { instance: 'main', time: 1000n, level: 'info', message: 'first', fields: { n: 1n } },
       { instance: 'main', time: 1000n, level: 'warn', message: 'second', fields: {} },
@@ -38,17 +39,16 @@ describe('log records', () => {
     ]);
   });
 
-  it('are lost with a segment that panics, and kept with those that committed before it', async () => {
-    const { runtime } = testRuntime();
-    const advanced = await runtime.deploy(compiledText(loggingMain(true))).start('main');
+  it('are lost with a segment that panics, and kept with those that committed before it', () => {
+    const advanced = testRuntime().startInstance(compiledText(loggingMain(true)), 'main');
     expect(advanced.state.kind).toBe('panicked');
     expect(messagesOf(advanced.logs)).toEqual(['first', 'second']);
   });
 
-  it("are reported once when crashEveryAwait discards each segment's first run", async () => {
-    const { runtime } = testRuntime();
-    const program = runtime.deploy(compiledText(loggingMain(false)));
-    const advanced = await program.start('main', { crashEveryAwait: true });
+  it("are reported once when crashEveryAwait discards each segment's first run", () => {
+    const advanced = testRuntime().startInstance(compiledText(loggingMain(false)), 'main', {
+      crashEveryAwait: true,
+    });
     expect(advanced.state.kind).toBe('finished');
     expect(messagesOf(advanced.logs)).toEqual(['first', 'second', 'lost']);
   });

@@ -13,7 +13,7 @@ describe('a value crossing to its host', () => {
   it('crosses through the codecs its type declares, both ways', async () => {
     const program = compiledText(
       [
-        "import Json from 'json'",
+        "import Json from 'json'\nimport * as runtime from 'runtime'",
         'struct Name:',
         '  text: String',
         'fn toJson(self: Name) -> Json:',
@@ -21,7 +21,7 @@ describe('a value crossing to its host', () => {
         'fn Name.fromJson(json: Json, path: String) -> Result<Name>:',
         '  Ok(Name{text: String.fromJson(json, path)?})',
         'extern fn greet(name: Name) -> Name',
-        'ista async fn main() -> String:',
+        'live async fn main() -> String: await runtime.run(runtime.id()) _main()\nista async fn _main() -> String:',
         '  greet(Name{text: "ada"}).text',
       ].join('\n'),
     );
@@ -39,10 +39,10 @@ describe('a value crossing to its host', () => {
       [
         "import Json from 'json'",
         "import Point from 'shapes'",
-        "import * as queue from 'queue'",
+        "import * as queue from 'queue'\nimport * as runtime from 'runtime'",
         'fn toJson(self: Point) -> Json:',
         '  "not this one"',
-        'ista async fn main():',
+        'live async fn main(): await runtime.run(runtime.id()) _main()\nista async fn _main():',
         '  queue.send(Point{x: 1})',
       ].join('\n'),
       {
@@ -77,7 +77,7 @@ describe('a value crossing to its host', () => {
         'extern fn release(lease: Lease)',
         'fn dispose(self: Lease):',
         '  release(self)',
-        'ista async fn main() -> String:',
+        "import * as runtime from 'runtime'\nlive async fn main() -> String: await runtime.run(runtime.id()) _main()\nista async fn _main() -> String:",
         '  describeAll(openAll(), find())',
       ].join('\n'),
     );

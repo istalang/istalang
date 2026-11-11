@@ -1,14 +1,16 @@
-# error: 5101 at 27:7
-# error: 5101 at 28:7
+# error: 5101 at 29:7
 # error: 5101 at 30:7
-# error: 5101 at 32:8
-# error: 5101 at 34:25
+# error: 5101 at 32:7
+# error: 5101 at 34:8
+# error: 5101 at 36:25
+# error: 5101 at 36:44
 # json writes and reads only what is Encodable, or Decodable (§9): not a function, not a map whose
 # keys aren't Stringable, not an enum with a variant field keyed _type, which the tag uses; and a
 # type declaring a toJson but no fromJson is written but not read, since nothing is derived for it.
 # main's outcome is written as JSON for its host.
 import * as json from 'json'
 import JsonName from 'json'
+import * as runtime from 'runtime'
 
 struct Point:
   x: Int
@@ -31,5 +33,6 @@ fn uses():
   _ = json.stringify(Label{text: "ok"})
   drop json.parse<Label>("\"ok\"")
 
-ista async fn main() -> fn() -> Int:
+live async fn main() -> fn() -> Int: await runtime.run(runtime.id()) _main()
+ista async fn _main() -> fn() -> Int:
   fn(): 1

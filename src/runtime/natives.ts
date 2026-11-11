@@ -172,6 +172,27 @@ export interface NativeInstances {
 }
 
 /**
+ * The contexts live code runs ista code in (§9): instances named by key, in the host's store, run
+ * by the runtimes the live run opens over it while it runs. Only a live run has them; the call rule
+ * keeps ista code from these natives (proposal 8, Rule 2).
+ */
+export interface NativeContexts {
+  /** The host's store, a value of the extern type entry `type`. */
+  readonly hostStore: (type: TypeId) => Value;
+  /**
+   * A runtime over `store`, a resource of the extern type entry `type`, which resumes the work
+   * persisted there and runs it while the live run does, until it is disposed, which stops it.
+   */
+  readonly open: (store: Value, type: TypeId) => Value;
+  /**
+   * Calls the closure `call`, which takes nothing, in the context named `key` of `runtime`, made if
+   * new: a live future resolving with a `Result` of type entry `result`, `Ok` of what the call gave,
+   * or `Err` once the context panicked (code `panic`).
+   */
+  readonly call: (runtime: Value, key: string, call: Value, result: TypeId) => Value;
+}
+
+/**
  * What a test reaches through the `testing` module (§10): mocks, which its calls and those of the
  * instances it spawns reach, waits on those instances, and host values equal to no other. A read
  * of another instance's last commit that only the runtime running a test can answer
@@ -232,6 +253,10 @@ export interface WithTesting {
   readonly testing: NativeTesting;
 }
 
+export interface WithContexts {
+  readonly contexts: NativeContexts;
+}
+
 /** Every capability: what the runtime gives each native. */
 export type NativeCapabilities = WithFutures &
   WithWaits &
@@ -241,7 +266,8 @@ export type NativeCapabilities = WithFutures &
   WithRandom &
   WithLogs &
   WithInstances &
-  WithTesting;
+  WithTesting &
+  WithContexts;
 
 export type FullNativeContext = NativeContext & NativeCapabilities;
 
@@ -257,7 +283,16 @@ export type Native<Context = FullNativeContext> = (
 /** A table of natives needing `Context`, by key. */
 export type Natives<Context = FullNativeContext> = Readonly<Record<string, Native<Context>>>;
 
-/** Thrown by a native to panic the instance (§3.12). */
+/**
+ * Thrown by a native to panic the instance (§3.12), where its code stands, or at `trace` for a
+ * panic raised again from elsewhere, as a context's panic is in the live code that called it (§9).
+ */
 export class Panic extends Error {
   override readonly name = 'Panic';
+  readonly trace: string | undefined;
+
+  constructor(message: string, options?: ErrorOptions & { readonly trace?: string }) {
+    super(message, options);
+    this.trace = options?.trace;
+  }
 }

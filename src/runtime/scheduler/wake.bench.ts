@@ -16,12 +16,14 @@ const workers = 400;
 
 const text = compiledText(`
 import Inbox from 'inbox'
+import * as runtime from 'runtime'
 
 ista async fn worker(jobs: Inbox<Int>, results: Inbox<Int>):
   const job = await jobs.receive()
   results.send(job)
 
-ista async fn main() -> Int:
+live async fn main() -> Int: await runtime.run(runtime.id()) _main()
+ista async fn _main() -> Int:
   const jobs = Inbox.create<Int>()
   const results = Inbox.create<Int>()
   let running: Array<Future<Unit, "ista">> = []

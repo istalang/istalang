@@ -29,7 +29,9 @@ fn iterate(self: Bag) -> fn() -> Step<(String, Int)>:
     Next((self.keys[position - 1], self.values[position - 1]))
   next
 
-ista async fn main() -> String:
+import * as runtime from 'runtime'
+live async fn main() -> String: await runtime.run(runtime.id()) _main()
+ista async fn _main() -> String:
   let bag: Bag = ["a": 1, "b": 2]
   bag["a"] = 10
   bag["b"] += 5

@@ -19,12 +19,23 @@ import type { Persistence } from '../../foundation/language/well-known/index.ts'
 import { unreachable } from '../../foundation/structures/unreachable.ts';
 import { Panic } from '../natives.ts';
 import { Refusal } from '../refusal.ts';
+import type { RunContexts } from './run-contexts.ts';
 import { panicOf } from './segment/limits.ts';
 
-/** How a run waits: committing, or in memory, resumed through `resumes`. */
+/**
+ * How a run waits: committing, or in memory, resumed through `resumes`, with the contexts its
+ * runtimes run (§9).
+ */
 export type Waiting =
   | { readonly kind: Extract<Persistence, 'ista'> }
-  | { readonly kind: Extract<Persistence, 'live'>; readonly resumes: LiveResumes };
+  | {
+      readonly kind: Extract<Persistence, 'live'>;
+      readonly resumes: LiveResumes;
+      readonly contexts: RunContexts;
+    };
+
+/** How a live run waits. */
+export type LiveWaiting = Extract<Waiting, { readonly kind: 'live' }>;
 
 /** How an instance waits: every wait commits. */
 export const istaWaiting: Waiting = { kind: 'ista' };

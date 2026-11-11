@@ -20,7 +20,7 @@ const waitingMain = compiledText(
     '  await time.delay(10ms)',
     '  n * 2',
     'fn broken() -> Int: panic("broken")',
-    'ista async fn main() -> String:',
+    'live async fn main() -> String: await runtime.run(runtime.id()) _main()\nista async fn _main() -> String:',
     '  const doubled = await (spawn child(21)).result()',
     '  const isolated = await runtime.isolate(fn(): broken())',
     '  match (doubled, isolated):',
@@ -32,12 +32,12 @@ const waitingMain = compiledText(
 describe("waiting for an instance's end", () => {
   it("gives a child's outcome, and an isolated panic as an Err, terminating that child", async () => {
     const test = testRuntime();
-    const started = await test.runtime.deploy(waitingMain).start('p');
+    const started = test.startInstance(waitingMain, 'p');
     expect(started.state).toEqual({ kind: 'waiting', until: undefined, watching: ['p/1'] });
     const settled = await settleAll(test, 'p', started);
     expect(await runToEnd(test, 'p', await test.runtime.wake('p'))).toEqual({
       kind: 'finished',
-      outcome: '"42 panic broken"',
+      outcome: '42 panic broken',
     });
     expect(settled.get('p/2')).toMatchObject({ kind: 'terminated', message: 'broken' });
   });
@@ -46,7 +46,7 @@ describe("waiting for an instance's end", () => {
     const store = recordingStore();
     const clock = new ManualClock();
     const first = testRuntime({ store, clock });
-    await first.runtime.deploy(waitingMain).start('p');
+    first.startInstance(waitingMain, 'p');
     expect((await first.runtime.wake('p/1')).state).toMatchObject({ kind: 'waiting', until: 10n });
     const restarted = testRuntime({ store, clock });
     clock.set(10n);
@@ -56,16 +56,16 @@ describe("waiting for an instance's end", () => {
     });
     expect(await runToEnd(restarted, 'p', await restarted.runtime.wake('p'))).toEqual({
       kind: 'finished',
-      outcome: '"42 panic broken"',
+      outcome: '42 panic broken',
     });
   });
 
   it('resolves a wait on an instance that ended before the wait began', async () => {
     const text = compiledText(
       [
-        "import * as time from 'time'",
+        "import * as time from 'time'\nimport * as runtime from 'runtime'",
         'fn quick() -> Int: 7',
-        'ista async fn main() -> String:',
+        'live async fn main() -> String: await runtime.run(runtime.id()) _main()\nista async fn _main() -> String:',
         '  const child = spawn quick()',
         '  await time.delay(5ms)',
         '  match await child.result():',
@@ -74,16 +74,16 @@ describe("waiting for an instance's end", () => {
       ].join('\n'),
     );
     const test = testRuntime();
-    const started = await test.runtime.deploy(text).start('p');
-    expect(await runToEnd(test, 'p', started)).toEqual({ kind: 'finished', outcome: '"7"' });
+    const started = test.startInstance(text, 'p');
+    expect(await runToEnd(test, 'p', started)).toEqual({ kind: 'finished', outcome: '7' });
   });
 
   it('commits a resolved wait nothing awaits, so its instance stops being woken for it', async () => {
     const text = compiledText(
       [
-        "import * as time from 'time'",
+        "import * as time from 'time'\nimport * as runtime from 'runtime'",
         'fn quick() -> Int: 7',
-        'ista async fn main() -> Int:',
+        'live async fn main() -> Int: await runtime.run(runtime.id()) _main()\nista async fn _main() -> Int:',
         '  const ending = (spawn quick()).result()',
         '  await time.delay(5ms)',
         '  match await ending:',
@@ -92,7 +92,7 @@ describe("waiting for an instance's end", () => {
       ].join('\n'),
     );
     const test = testRuntime();
-    const started = await test.runtime.deploy(text).start('p');
+    const started = test.startInstance(text, 'p');
     expect(started.state).toMatchObject({ watching: ['p/1'] });
     const child = await test.runtime.wake('p/1');
     expect(child.state).toMatchObject({ kind: 'finished', outcome: 7n });
@@ -103,7 +103,7 @@ describe("waiting for an instance's end", () => {
     });
     expect(await runToEnd(test, 'p', await test.runtime.wake('p'))).toEqual({
       kind: 'finished',
-      outcome: '7',
+      outcome: 7n,
     });
   });
 });

@@ -5,6 +5,7 @@
 # and round-trip through JSON; a generic body converts as each instantiation makes it.
 import * as json from 'json'
 import * as time from 'time'
+import * as runtime from 'runtime'
 
 struct Box<T>:
   value: T
@@ -28,7 +29,8 @@ fn leaves(t: Tree<Int?>) -> Int:
       total
     case _: 1
 
-ista async fn main():
+live async fn main(): await runtime.run(runtime.id()) _main()
+ista async fn _main():
   const ints: Array<Int> = [1, 2, 3]
   const optionals: Array<Int?> = ints
   const counts: Map<String, Int> = ["a": 1]

@@ -44,7 +44,9 @@ fn updateTitle<S is struct { title: String, [_]: Int }>(s: &S, next: String) -> 
   s.title = next
   old
 
-ista async fn main() -> String:
+import * as runtime from 'runtime'
+live async fn main() -> String: await runtime.run(runtime.id()) _main()
+ista async fn _main() -> String:
   const tok = Token<Int>{type: "bearer", first: (20, 22)}
   const cellVal: Cell<Int>.Data = tok.first.0 + tok.first.1
   const step: Stage<Int> = Ready(3)

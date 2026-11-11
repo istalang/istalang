@@ -17,7 +17,9 @@ fn shared() -> String:
   total += 10
   String(first) + " " + String(add(2))
 
-ista async fn main():
+import * as runtime from 'runtime'
+live async fn main(): await runtime.run(runtime.id()) _main()
+ista async fn _main():
   const next = makeCounter(0)
   const alias = next
   const a = next()

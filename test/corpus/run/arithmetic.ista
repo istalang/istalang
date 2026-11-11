@@ -5,6 +5,8 @@
 fn describe(a: Int, b: Int) -> String:
   "" + (a + b) + " " + a // b + " " + a % b + " " + -a % b
 
-ista async fn main():
+import * as runtime from 'runtime'
+live async fn main(): await runtime.run(runtime.id()) _main()
+ista async fn _main():
   const big = 10_000_000_000 * 10_000_000_000
   describe(3, 4) + " " + 7 / 2 + " " + (1.5 + 0.5) + " " + 2 / 4 + " " + -7 // 3 + " " + -7 % 5 + " big " + big + " " + 1 / 0 + " " + -1.5 / 0 + " " + 0.0 / 0.0

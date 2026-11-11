@@ -264,7 +264,7 @@ export const definitionArbitrary: fc.Arbitrary<Definition> = fc
         const scope = { sizes, types, signatures, registers: 1, async: false };
         return fc.tuple(...signatures.map((entry) => body(scope, entry))).chain((functions) => {
           const mains = functions.flatMap((entry, id) =>
-            entry.kind === 'code' && entry.mode !== 'simple' && entry.parameters.length === 0
+            entry.kind === 'code' && entry.mode === 'live' && entry.parameters.length === 0
               ? [id]
               : [],
           );
@@ -272,7 +272,9 @@ export const definitionArbitrary: fc.Arbitrary<Definition> = fc
             encoderProblem(entry) === undefined ? [id] : [],
           );
           const startable = functions.flatMap((entry, id) =>
-            entry.kind === 'code' && entry.parameters.every((parameter) => !parameter.reference)
+            entry.kind === 'code' &&
+            entry.mode !== 'ista' &&
+            entry.parameters.every((parameter) => !parameter.reference)
               ? [id]
               : [],
           );

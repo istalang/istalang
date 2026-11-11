@@ -18,10 +18,10 @@ const modules = {
 function entryNames(first: string, second: string): readonly (string | undefined)[] {
   const main = [
     "import FormTree from 'a.ista'",
-    "import CrmTree from 'b.ista'",
+    "import CrmTree from 'b.ista'\nimport * as runtime from 'runtime'",
     'fn fromForm(t: FormTree<Int>) -> Int: 1',
     'fn fromCrm(t: CrmTree<Int>) -> Int: 2',
-    'ista async fn main() -> Int:',
+    'live async fn main() -> Int: await runtime.run(runtime.id()) _main()\nista async fn _main() -> Int:',
     `  return ${first}([1, [2]]) + ${second}([3])`,
   ].join('\n');
   return compiledDefinition(stdProgramOf({ 'main.ista': main, ...modules }), 'main.ista')

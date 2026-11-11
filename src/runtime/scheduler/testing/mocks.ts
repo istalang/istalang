@@ -16,31 +16,29 @@
  *   arguments and the result are copied across, the caller's future is filled once the answer is
  *   given, and the holder records the call. A segment that runs again calls it again, as it calls
  *   an extern again (§5).
- * - Only values without handles cross between instances, except a host value a `dispose` made a
- *   resource: it crosses as its host's JSON. A mock plays the host, in its own instance or
- *   another's, so it receives and holds such a value as that JSON and never disposes it (§7), and
- *   `testing.handle` makes one so; the caller gets it as its resource for that JSON, the one it has
- *   already if any, so a handle a mock hands out and gets back stays the same (§3.6), and the
- *   caller alone disposes it.
+ * - Values cross as between any instances (../instance/crossing.ts). A mock plays the host, in its
+ *   own instance or another's, so it receives and holds a resource as its host's JSON and never
+ *   disposes it (§7), and `testing.handle` makes one so; the caller alone disposes it.
  */
 
 import type { FunctionId } from '../../../definition/operands.ts';
-import { isResourceType } from '../../../definition/tables/types.ts';
 import {
   type CompositeValue,
   childValues,
   closureOf,
+  handleTarget,
   handleTo,
   isComposite,
-  samePayload,
   type Value,
   withChildValues,
 } from '../../../definition/values/values.ts';
 import { unreachable } from '../../../foundation/structures/unreachable.ts';
 import { Panic } from '../../natives.ts';
+import { arriving, leaving } from '../instance/crossing.ts';
 import type { LiveExecution, LiveObjectOf } from '../instance/heap.ts';
 import type { Instance } from '../instance/index.ts';
 import { ancestorsOf } from '../instance/instance-names.ts';
+import { startAnswering } from '../segment/answering.ts';
 import type { NativeCalls } from '../segment/native-calls.ts';
 import type { MockCall } from './test-world.ts';
 
@@ -168,9 +166,7 @@ function relayCall(call: CallToMock, held: HeldMock): Value {
 
 /**
  * Starts answering `call` to one of `instance`'s mocks in a segment calling natives through
- * `natives`: records it, and runs the replacement as the call would have, a native at once and a
- * function with a body in an execution whose return the answer waits on, which it gives back to
- * drive first.
+ * `natives`: records it, and runs the replacement as the call would have (../segment/answering.ts).
  */
 export function startAnswer(
   instance: Instance,
@@ -178,17 +174,14 @@ export function startAnswer(
   call: MockCall,
 ): LiveExecution | undefined {
   const mock = instance.heap.of(call.mock, 'mock');
-  const values = call.arguments;
-  recordCall(instance, mock, values);
+  recordCall(instance, mock, call.arguments);
   const replacement = replacementOf(mock);
-  const future = instance.futures.create({ kind: 'call' });
-  instance.futures.answer(future, call.instance, call.token);
-  const callable = instance.loaded.functions.callee(replacement.function);
-  if (callable.kind === 'code') {
-    return instance.startExecution(callable, values, replacement.captures, future);
-  }
-  instance.futures.resolve(future, natives.call(replacement.function, callable.native, values));
-  return undefined;
+  return startAnswering(instance, natives, {
+    function: replacement.function,
+    captures: replacement.captures,
+    arguments: call.arguments,
+    caller: { instance: call.instance, token: call.token },
+  });
 }
 
 /** `value` as a mock in `instance` sees it: any resource handle turned into its host value. */
@@ -196,8 +189,9 @@ function asHostValue(instance: Instance, value: Value): Value {
   if (!isComposite(value)) {
     return value;
   }
-  if (value.kind === 'handle') {
-    const object = instance.heap.objectOf(value.object);
+  const target = handleTarget(value);
+  if (target !== undefined) {
+    const object = instance.heap.objectOf(target);
     return object.kind === 'resource'
       ? { kind: 'extern', type: object.type, payload: object.payload }
       : value;
@@ -205,57 +199,6 @@ function asHostValue(instance: Instance, value: Value): Value {
   return withChildValues(
     value,
     childValues(value).map((child) => asHostValue(instance, child)),
-  );
-}
-
-/**
- * `value` as it leaves `instance` for another, as an argument of a call to a mock or its answer; a
- * panic for a handle that can't leave.
- */
-export function leaving(instance: Instance, value: Value): Value {
-  if (!isComposite(value)) {
-    return value;
-  }
-  if (value.kind === 'handle') {
-    const object = instance.heap.objectOf(value.object);
-    if (object.kind !== 'resource') {
-      throw new Panic(
-        "A call to a mock another instance holds carries a value that isn't sendable (§10).",
-      );
-    }
-    return { kind: 'extern', type: object.type, payload: object.payload };
-  }
-  return withChildValues(
-    value,
-    childValues(value).map((child) => leaving(instance, child)),
-  );
-}
-
-/**
- * `value`, arriving in `instance` from another: a host value of a resource type made its resource.
- * A host's JSON holds no host value, so what a host fills arrives unchanged.
- */
-export function arriving(instance: Instance, value: Value): Value {
-  if (!isComposite(value)) {
-    return value;
-  }
-  if (value.kind === 'extern' && isResourceType(instance.loaded.definition.types, value.type)) {
-    const known = instance.heap
-      .objectsOf('resource')
-      .find((each) => each.type === value.type && samePayload(each.payload, value.payload));
-    const resource =
-      known ??
-      instance.heap.add((id) => ({
-        kind: 'resource',
-        id,
-        type: value.type,
-        payload: value.payload,
-      }));
-    return handleTo(resource.id);
-  }
-  return withChildValues(
-    value,
-    childValues(value).map((child) => arriving(instance, child)),
   );
 }
 

@@ -11,7 +11,9 @@ fn bitNot(value: Flags) -> Flags: Flags{~value.bits}
 
 fn either<T is Bitwise>(left: T, right: T) -> T: left | right
 
-ista async fn main() -> (Int, Int, Bool):
+import * as runtime from 'runtime'
+live async fn main() -> (Int, Int, Bool): await runtime.run(runtime.id()) _main()
+ista async fn _main() -> (Int, Int, Bool):
   const read = Flags{1}
   const write = Flags{2}
   const both = either(read, write)

@@ -1,13 +1,14 @@
-# error: 5910 at 18:4
-# error: 5911 at 26:15
-# error: 5101 at 33:3
-# error: 5910 at 37:4
+# error: 5910 at 19:4
+# error: 5911 at 27:15
+# error: 5101 at 35:3
+# error: 5910 at 39:4
 # A host type a `dispose` makes disposable has values with an identity of their own (§3.6, §7):
 # an `extern shared struct` or `extern ephemeral struct`, never a value or `sendable`, neither
 # Encodable nor Decodable, which imply Sendable, and held by no extern constant, which every read
 # shares. It still crosses to its own host, kept in a resource while the program holds it.
 
 import * as json from 'json'
+import * as runtime from 'runtime'
 
 extern sendable struct Ticket
 
@@ -27,7 +28,8 @@ extern lease: Lease
 
 extern ista fn keep(lease: Lease) -> Future<Lease, "ista">
 
-ista async fn main():
+live async fn main(): await runtime.run(runtime.id()) _main()
+ista async fn _main():
   const kept = await keep(open())
   release(kept)
   json.encode(open())

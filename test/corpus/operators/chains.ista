@@ -6,7 +6,9 @@
 fn ordered<T is Comparable>(low: T, middle: T, high: T) -> Bool:
   low <= middle < high
 
-ista async fn main() -> (Bool, Bool, Bool, Bool, Bool, Bool, Bool, Int):
+import * as runtime from 'runtime'
+live async fn main() -> (Bool, Bool, Bool, Bool, Bool, Bool, Bool, Int): await runtime.run(runtime.id()) _main()
+ista async fn _main() -> (Bool, Bool, Bool, Bool, Bool, Bool, Bool, Int):
   let calls = 0
   fn counted(value: Int) -> Int:
     calls += 1

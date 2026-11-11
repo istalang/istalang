@@ -104,7 +104,9 @@ fn inferred() -> String:
     case (Err(error), Ok(value)): `${error} ${value}`
     case _: ""
 
-ista async fn main() -> String:
+import * as runtime from 'runtime'
+live async fn main() -> String: await runtime.run(runtime.id()) _main()
+ista async fn _main() -> String:
   const pair: Pair<Int> = Both(1, 2)
   const both = match pair:
     case Both(first, second): `${first} ${second}`

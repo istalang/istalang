@@ -18,7 +18,9 @@ fn first(x: any Named?) -> String:
 fn flip(x: any Tagged & Named) -> any Named & Tagged:
   x
 
-ista async fn main():
+import * as runtime from 'runtime'
+live async fn main(): await runtime.run(runtime.id()) _main()
+ista async fn _main():
   const some: any Named? = Email{to: "a"}
   const nothing: any Named? = none
   const both: any Named & Tagged = Email{to: "a"}

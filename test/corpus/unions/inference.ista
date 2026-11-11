@@ -5,7 +5,9 @@
 fn keep<T>(x: T | Int | String) -> T | Int | String: x
 fn first<T>(x: T | Int) -> T | Int: x
 
-ista async fn main() -> String:
+import * as runtime from 'runtime'
+live async fn main() -> String: await runtime.run(runtime.id()) _main()
+ista async fn _main() -> String:
   const v: Int | Bool = true
   const w: Bool | Int = 3
   const a = keep(v)

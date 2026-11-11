@@ -3,7 +3,7 @@ description: the host boundary (spec §3.6, §9) — JSON codecs as traits and d
 owner: tech-lead
 status: active
 applies_to: istalang
-last_verified: 2026-11-10
+last_verified: 2026-11-11
 last_updated: 2026-11-11
 tags: [boundary, json, externs, host, runtime, lowering]
 ---
@@ -147,8 +147,9 @@ it held is disposed as any release disposes it, a disposed call's `disposing()` 
 and any execution only other executions hold stops after it (`scheduler/segment/`, `endInstance`);
 a disposal that panics counts as done, so the rest still tell their hosts. A fill naming no future the instance waits
 on, disposed or never there, changes nothing: the runtime keeps no record of disposed tokens,
-which would grow without end. A panicked instance refuses fills until retried. A name with `/` is
-the runtime's, for spawned instances.
+which would grow without end. A panicked instance refuses fills until retried. A host names only its
+live runs, which never reach the store; the store's instances are contexts, named by the program's
+keys, and the instances they spawn, `<parent>/<n>`.
 
 ## The host contract
 
@@ -170,17 +171,29 @@ host awaits the same way whatever an instance waits on. Calls that only read (`d
   (`runtime/host/instance-calls.ts`): each starts once the one before it settled, and sees what it
   committed. A host extern calling the runtime for its own instance therefore waits for the segment
   calling it to commit, instead of running halfway through it.
-- **Live runs.** Starting live code, an entry whose mode is `live` (`startsLive`): an unmarked or
-  `live` async function (spec §3.3, §9), which lowering compiles as live code, runs it outside any
-  instance, in memory, to its end (`runtime/scheduler/live-run.ts`): `start` settles with its
-  outcome or panic, and nothing reaches the store, so a restart ends it. It runs segment after
+- **Live runs.** A host starts live or simple code only (`runtime/host/programs.ts`), refusing an
+  `ista` entry (`notStartable`), and runs it outside any instance, in memory, to its end
+  (`runtime/scheduler/live-run.ts`): `start` settles with its outcome or panic, and nothing of the
+  run reaches the store, so a restart ends it. It runs segment after
   segment as an instance does, with no commit between: what nothing holds is let go of and due
   timers resolve after each, and its `now()` reads the clock. Its waits ride the host's event loop:
   its timers on the runtime's `Clock`, and its host futures on the host's promises, a settled one
-  resuming it before a manual clock may jump to a timer. It takes no instance's options and holds
-  no instance's name, so no other call waits for it or reaches it. Any other start begins an
-  instance, a simple entry's and an `ista async fn main`'s included: for a `main` that waits on ista
-  futures, an interim until proposal 9's contexts.
+  resuming it before a manual clock may jump to a timer. Its name is what `runtime.id()` reads, and
+  no other call waits for it or reaches it.
+- **Contexts.** A live run drives the contexts its runtimes reach (`runtime/host/contexts.ts`,
+  behind `scheduler/run-contexts.ts`) in its own loop: between two of its segments, what can run
+  in them runs, their due timers woken, and with nothing ready it waits for the earliest timer of
+  either. A context is an instance named by its key, made with the run's start options and seed;
+  a call into one is an invocation, the first step of an advance (`scheduler/wake.ts`), named by a
+  token unique to the process, whose answer the context's commit carries to the live future. A
+  call starts even once its runtime is disposed or the run ended. Opening a runtime while none is
+  open resumes every instance in the store that hasn't ended (`InstanceStore.instances`); a
+  runtime is a resource whose disposal the runtime performs, telling the run's contexts through
+  its disposal notice (`scheduler/instance/disposal-notices.ts`). The run ends waiting on nothing
+  when no timer, no host future outside its calls and no host fill (`HostFills`) can wake it or
+  its contexts. Their advances show to the runtime's observers, so a host call made on a context
+  meanwhile (a fill) pokes the run; what their own advances report reaches the host through
+  `HostReports`: log records, and a panic no call waits to hear.
 - **One driver loop.** A host drives a group of instances with `drive` (`runtime/host/drive.ts`):
   run what can run, wait for the earliest timer, wake what is due, until nothing can wake them. What
   differs between hosts is passed in: what can run now, how to wait (a `Clock`,

@@ -15,16 +15,17 @@ import {
   recordingStore,
   runToEnd,
   startToEnd,
+  type TestRuntime,
   testRuntime,
 } from '../runtime.test-kit.ts';
 import { type Snapshot, snapshotFormat } from '../snapshot/snapshot.ts';
 
 const childAndMain = [
-  "import * as time from 'time'",
+  "import * as time from 'time'\nimport * as runtime from 'runtime'",
   'ista async fn child(n: Int) -> Int:',
   '  await time.delay(10ms)',
   '  n + 1',
-  'ista async fn main():',
+  'live async fn main(): await runtime.run(runtime.id()) _main()\nista async fn _main():',
   '  const x = await child(41)',
   '  x',
 ].join('\n');
@@ -34,13 +35,13 @@ const childAndMain = [
  * cell, and the reference to it waits in the callee's frame across commits (§3.7).
  */
 const referenceAcrossAwaits = [
-  "import * as time from 'time'",
+  "import * as time from 'time'\nimport * as runtime from 'runtime'",
   'struct Tally { count: Int }',
   'ista async fn addLater(total: &Tally, n: Int):',
   '  total.count += n',
   '  await time.delay(5ms)',
   '  total.count += n',
-  'ista async fn main():',
+  'live async fn main(): await runtime.run(runtime.id()) _main()\nista async fn _main():',
   '  let tally = Tally{count: 1}',
   '  await addLater(&tally, 2)',
   '  tally.count',
@@ -54,7 +55,7 @@ const severalAwaits = [
   '  await time.delay(5ms)',
   '  await runtime.commit()',
   '  n + 1',
-  'ista async fn main():',
+  'live async fn main(): await runtime.run(runtime.id()) _main()\nista async fn _main():',
   '  const a = await step(1)',
   '  await time.delay(7ms)',
   '  const b = await step(a)',
@@ -82,15 +83,22 @@ function countingAdd(calls: { count: number }, drifting = false): Natives {
   };
 }
 
+/** Starts the ista body of `text` as the root instance `test`, and runs it to its end. */
+const instanceToEnd = async (
+  test: TestRuntime,
+  text: string,
+  options?: { readonly crashEveryAwait?: boolean },
+) => await runToEnd(test, 'test', test.startInstance(text, 'test', options));
+
 const committed = (texts: readonly string[]): readonly Snapshot[] =>
   texts.map((text) => snapshotFormat.read(text));
 
 describe('advancing an instance', () => {
   it("runs an async callee inside its caller's segment, so its first await commits nothing", async () => {
     const test = testRuntime();
-    expect(await startToEnd(test, compiledText(childAndMain))).toEqual({
+    expect(await instanceToEnd(test, compiledText(childAndMain))).toEqual({
       kind: 'finished',
-      outcome: '42',
+      outcome: 42n,
     });
     const [waiting, finished, ...more] = committed(test.store.commits);
     expect(more).toEqual([]);
@@ -106,9 +114,7 @@ describe('advancing an instance', () => {
       'wait',
     ]);
     const status = finished?.status;
-    expect(status?.kind === 'finished' && test.runtime.programOf('test').outcomeText(status)).toBe(
-      '42',
-    );
+    expect(status).toMatchObject({ kind: 'finished', outcome: 42n });
   });
 
   it('rolls an eager callee back with its caller when the caller panics in the same segment', async () => {
@@ -125,38 +131,40 @@ describe('advancing an instance', () => {
 
   it('commits at await runtime.commit() and goes on without waiting', async () => {
     const text = compiledText(
-      "import * as runtime from 'runtime'\nista async fn main():\n  await runtime.commit()\n  7",
+      "import * as runtime from 'runtime'\nlive async fn main(): await runtime.run(runtime.id()) _main()\nista async fn _main():\n  await runtime.commit()\n  7",
     );
     const test = testRuntime();
-    expect(await runToEnd(test, 'i', await test.runtime.deploy(text).start('i'))).toEqual({
+    expect(await runToEnd(test, 'i', test.startInstance(text, 'i'))).toEqual({
       kind: 'finished',
-      outcome: '7',
+      outcome: 7n,
     });
     expect(test.store.commits).toHaveLength(2);
   });
 
   it('continues on a fresh runtime from the store where the first one committed', async () => {
     const text = compiledText(severalAwaits);
-    const uninterrupted = await startToEnd(testRuntime(), text);
+    const uninterrupted = await instanceToEnd(testRuntime(), text);
     const store = recordingStore();
     const clock = new ManualClock();
-    const first = await testRuntime({ store, clock }).runtime.deploy(text).start('restarted');
+    const first = testRuntime({ store, clock }).startInstance(text, 'restarted');
     expect(first.state).toEqual({ kind: 'waiting', until: 5n, watching: [] });
     const second = testRuntime({ store, clock });
     expect(await runToEnd(second, 'restarted', await second.runtime.wake('restarted'))).toEqual(
       uninterrupted,
     );
-    expect(uninterrupted).toEqual({ kind: 'finished', outcome: '5' });
+    expect(uninterrupted).toEqual({ kind: 'finished', outcome: 5n });
   });
 
   it("keeps a reference to its caller's variable across a restart and crashEveryAwait", async () => {
     const text = compiledText(referenceAcrossAwaits);
-    const uninterrupted = await startToEnd(testRuntime(), text);
-    expect(uninterrupted).toEqual({ kind: 'finished', outcome: '5' });
-    expect(await startToEnd(testRuntime(), text, { crashEveryAwait: true })).toEqual(uninterrupted);
+    const uninterrupted = await instanceToEnd(testRuntime(), text);
+    expect(uninterrupted).toEqual({ kind: 'finished', outcome: 5n });
+    expect(await instanceToEnd(testRuntime(), text, { crashEveryAwait: true })).toEqual(
+      uninterrupted,
+    );
     const store = recordingStore();
     const clock = new ManualClock();
-    const first = await testRuntime({ store, clock }).runtime.deploy(text).start('restarted');
+    const first = testRuntime({ store, clock }).startInstance(text, 'restarted');
     expect(first.state).toEqual({ kind: 'waiting', until: 5n, watching: [] });
     const second = testRuntime({ store, clock });
     expect(await runToEnd(second, 'restarted', await second.runtime.wake('restarted'))).toEqual(
@@ -170,8 +178,8 @@ describe('advancing an instance', () => {
     const normal = testRuntime({ natives: countingAdd(normalCalls) });
     const crashingCalls = { count: 0 };
     const crashing = testRuntime({ natives: countingAdd(crashingCalls) });
-    expect(await startToEnd(crashing, text, { crashEveryAwait: true })).toEqual(
-      await startToEnd(normal, text),
+    expect(await instanceToEnd(crashing, text, { crashEveryAwait: true })).toEqual(
+      await instanceToEnd(normal, text),
     );
     const withoutOption = ({ crashEveryAwait: _, ...rest }: Snapshot) => rest;
     expect(committed(crashing.store.commits).map(withoutOption)).toEqual(
@@ -184,12 +192,12 @@ describe('advancing an instance', () => {
   it('with crashEveryAwait, keeps re-running segments on a fresh runtime after a restart', async () => {
     const text = compiledText(severalAwaits);
     const normalCalls = { count: 0 };
-    await startToEnd(testRuntime({ natives: countingAdd(normalCalls) }), text);
+    await instanceToEnd(testRuntime({ natives: countingAdd(normalCalls) }), text);
     const store = recordingStore();
     const clock = new ManualClock();
     const crashingCalls = { count: 0 };
     const first = testRuntime({ natives: countingAdd(crashingCalls), store, clock });
-    await first.runtime.deploy(text).start('restarted', { crashEveryAwait: true });
+    first.startInstance(text, 'restarted', { crashEveryAwait: true });
     const second = testRuntime({ natives: countingAdd(crashingCalls), store, clock });
     await runToEnd(second, 'restarted', await second.runtime.wake('restarted'));
     expect(crashingCalls.count).toBe(2 * normalCalls.count);
@@ -208,8 +216,8 @@ describe('advancing an instance', () => {
   it('answers now() with the time its segment started', async () => {
     const text = compiledText(
       [
-        "import * as time from 'time'",
-        'ista async fn main():',
+        "import * as time from 'time'\nimport * as runtime from 'runtime'",
+        'live async fn main(): await runtime.run(runtime.id()) _main()\nista async fn _main():',
         '  const before = time.now()',
         '  await time.delay(500ms)',
         '  time.now().value - before.value',
@@ -221,8 +229,7 @@ describe('advancing an instance', () => {
 
   it('waits until the earliest timer, and wakes to nothing new before it is due', async () => {
     const test = testRuntime();
-    const program = test.runtime.deploy(compiledText(childAndMain));
-    expect((await program.start('early')).state).toEqual({
+    expect(test.startInstance(compiledText(childAndMain), 'early').state).toEqual({
       kind: 'waiting',
       until: 10n,
       watching: [],
@@ -239,8 +246,8 @@ describe('advancing an instance', () => {
   it('commits a timer that came due while nothing waited on it, so its host stops waking it', async () => {
     const text = compiledText(
       [
-        "import * as time from 'time'",
-        'ista async fn main():',
+        "import * as time from 'time'\nimport * as runtime from 'runtime'",
+        'live async fn main(): await runtime.run(runtime.id()) _main()\nista async fn _main():',
         '  const early = time.delay(5ms)',
         '  await time.delay(10ms)',
         '  await early',
@@ -248,7 +255,7 @@ describe('advancing an instance', () => {
       ].join('\n'),
     );
     const test = testRuntime();
-    expect((await test.runtime.deploy(text).start('held')).state).toMatchObject({ until: 5n });
+    expect(test.startInstance(text, 'held').state).toMatchObject({ until: 5n });
     test.clock.set(5n);
     expect((await test.runtime.wake('held')).state).toEqual({
       kind: 'waiting',
@@ -257,15 +264,15 @@ describe('advancing an instance', () => {
     });
     expect(await runToEnd(test, 'held', await test.runtime.wake('held'))).toEqual({
       kind: 'finished',
-      outcome: '1',
+      outcome: 1n,
     });
   });
 
   it('keeps a panicked instance frozen at its last commit', async () => {
     const text = compiledText(
       [
-        "import * as time from 'time'",
-        'ista async fn main():',
+        "import * as time from 'time'\nimport * as runtime from 'runtime'",
+        'live async fn main(): await runtime.run(runtime.id()) _main()\nista async fn _main():',
         '  await time.delay(1ms)',
         '  panic("late")',
       ].join('\n'),
@@ -284,8 +291,7 @@ describe('advancing an instance', () => {
 function lettingGo(panics: boolean): string {
   return compiledText(
     [
-      "import * as runtime from 'runtime'",
-      'ista async fn main() -> Int:',
+      "import * as runtime from 'runtime'\nlive async fn main() -> Int: await runtime.run(runtime.id()) _main()\nista async fn _main() -> Int:",
       '  const s = Slot.create<Int>()',
       '  if true:',
       '    const taken = s.take()',
@@ -322,7 +328,7 @@ describe("an instance's disposal notices", () => {
     const told: number[] = [];
     const store = recordingStore();
     const test = testRuntime({ store, natives: observingTakes(told, store) });
-    expect(await startToEnd(test, lettingGo(false))).toMatchObject({ kind: 'finished' });
+    expect(await instanceToEnd(test, lettingGo(false))).toMatchObject({ kind: 'finished' });
     expect(told).toEqual([2]);
   });
 
@@ -330,7 +336,7 @@ describe("an instance's disposal notices", () => {
     const told: number[] = [];
     const store = recordingStore();
     const test = testRuntime({ store, natives: observingTakes(told, store) });
-    expect(await startToEnd(test, lettingGo(true))).toMatchObject({ kind: 'panicked' });
+    expect(await instanceToEnd(test, lettingGo(true))).toMatchObject({ kind: 'panicked' });
     expect(told).toEqual([]);
   });
 });

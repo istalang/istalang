@@ -6,7 +6,8 @@ import * as time from 'time'
 ista fn soon() -> Future<Unit, "ista">:
   time.delay(1ms)
 
-ista async fn main():
+live async fn main(): await runtime.run(runtime.id()) _main()
+ista async fn _main():
   await runtime.commit()
   await soon()
   const pause = 5ms

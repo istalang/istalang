@@ -2,11 +2,11 @@
 # error: 5125 at 23:19
 # error: 5125 at 28:3
 # error: 5125 at 31:3
-# error: 5125 at 60:3
-# error: 5125 at 61:3
 # error: 5125 at 62:3
 # error: 5125 at 63:3
 # error: 5125 at 64:3
+# error: 5125 at 65:3
+# error: 5125 at 66:3
 # A generic type is compiled per instantiation, so one that refers to itself, directly or through
 # others, with a type argument built from its own would need endlessly many of them (§3.5): it is
 # reported at the field that grows the argument. A field that passes its parameter on whole, or
@@ -44,7 +44,9 @@ fn bare() -> Chain<Int>:
 fn qualified() -> Chain<Int>:
   Chain.Deeper(head: 1, tail: Chain.End)
 
-ista async fn main() -> Int:
+import * as runtime from 'runtime'
+live async fn main() -> Int: await runtime.run(runtime.id()) _main()
+ista async fn _main() -> Int:
   made()
   Tree<Int>{value: 1, children: [], pairs: []}.value
 

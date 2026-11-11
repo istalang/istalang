@@ -2,7 +2,7 @@
 # error: 5404 at 18:3
 # error: 5405 at 21:17
 # error: 5404 at 29:17
-# error: 5025 at 33:3
+# error: 5025 at 35:3
 # `?` takes a Result apart (§3.12): never an optional, and only inside a function whose own Result
 # holds the same error type, declared or inferred. A Result must be used.
 
@@ -29,6 +29,8 @@ fn inferredNotResult(text: String):
   const value = parse(text)?
   value
 
-ista async fn main():
+import * as runtime from 'runtime'
+live async fn main(): await runtime.run(runtime.id()) _main()
+ista async fn _main():
   parse("ignored")
   _ = inferred("x")

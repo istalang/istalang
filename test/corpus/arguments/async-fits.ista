@@ -10,7 +10,9 @@ ista async fn twice(f: ista async fn(Int) -> Int, x: Int) -> Int:
 ista async fn generic<T>(f: ista async fn() -> T) -> T:
   await f()
 
-ista async fn main() -> Array<Int>:
+import * as runtime from 'runtime'
+live async fn main() -> Array<Int>: await runtime.run(runtime.id()) _main()
+ista async fn _main() -> Array<Int>:
   const plain = fn(x: Int) -> Int: x + 1
   const g: ista async fn(Int) -> Int = double
   const h: (ista async fn(Int) -> Int)? = plain

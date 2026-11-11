@@ -26,7 +26,14 @@ const program = compiledText(
     '  const first = slow("a")',
     '  await gate() + await first',
     '',
-    'ista async fn main(): 0',
+    "import * as runtime from 'runtime'\nlive async fn main(): await runtime.run(runtime.id()) _main()\nista async fn _main(): 0",
+    '',
+    '# Roots the ista entries a test starts by name: only code a live start reaches is kept.',
+    'live async fn reach():',
+    '  _ = await runtime.run(runtime.id()) dropped()',
+    '  _ = await runtime.run(runtime.id()) readLimit()',
+    '  _ = await runtime.run(runtime.id()) twice()',
+    '  0',
   ].join('\n'),
 );
 
@@ -42,32 +49,32 @@ function hostOf(overrides: HostExterns = {}): HostExterns {
 describe('host fills and constants at the boundary', () => {
   it('ignores a fill of a future that was disposed, leaving the instance waiting on its own', async () => {
     const test = testRuntime({ host: hostOf() });
-    const started = await test.runtime.deploy(program).start('d', { function: 'main.dropped()' });
+    const started = test.startInstance(program, 'd', { function: 'main.dropped' });
     expect(started.state).toMatchObject({ kind: 'waiting' });
     const ignored = await test.runtime.fill('d', 'slow a', 1);
     expect(ignored.state).toMatchObject({ kind: 'waiting' });
     const filled = await test.runtime.fill('d', 'gate', 7);
-    expect(await runToEnd(test, 'd', filled)).toEqual({ kind: 'finished', outcome: '7' });
+    expect(await runToEnd(test, 'd', filled)).toEqual({ kind: 'finished', outcome: 7n });
   });
 
-  it('panics the instance when an extern constant is not of its declared type', async () => {
+  it('panics the instance when an extern constant is not of its declared type', () => {
     const test = testRuntime({ host: hostOf() });
-    const started = await test.runtime.deploy(program).start('c', { function: 'main.readLimit()' });
+    const started = test.startInstance(program, 'c', { function: 'main.readLimit' });
     expect(started.state).toMatchObject({ kind: 'panicked' });
   });
 
-  it('panics the instance when the host names a future as one it has yet to fill', async () => {
+  it('panics the instance when the host names a future as one it has yet to fill', () => {
     const test = testRuntime({
       host: hostOf({ 'main.gate()': (_, call: HostCall) => call.pending('slow a') }),
     });
-    const started = await test.runtime.deploy(program).start('t', { function: 'main.twice()' });
+    const started = test.startInstance(program, 't', { function: 'main.twice' });
     expect(started.state).toMatchObject({ kind: 'panicked' });
   });
 
   it('ignores a fill after the instance ended', async () => {
     const test = testRuntime({ host: hostOf({ 'main.limit': () => 3 }) });
-    const started = await test.runtime.deploy(program).start('e', { function: 'main.readLimit()' });
-    expect(await runToEnd(test, 'e', started)).toEqual({ kind: 'finished', outcome: '3' });
+    const started = test.startInstance(program, 'e', { function: 'main.readLimit' });
+    expect(await runToEnd(test, 'e', started)).toEqual({ kind: 'finished', outcome: 3n });
     expect((await test.runtime.fill('e', 'gate', 1)).state).toMatchObject({ kind: 'finished' });
   });
 });

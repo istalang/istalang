@@ -70,7 +70,9 @@ ista async fn fetchUser(id: String) -> String: id
 ista async fn retryGeneric<R>(call: ista async fn(String) -> R) -> R: await call("u1")
 ista async fn retryConcrete(call: ista async fn(String) -> String) -> String: await call("u1")
 
-ista async fn main():
+import * as runtime from 'runtime'
+live async fn main(): await runtime.run(runtime.id()) _main()
+ista async fn _main():
   const forwarded: ista async fn(Int) -> Int = fn(x): later(x)
   const retryInferred = await retryGeneric(fn(id): fetchUser(id))
   const retryExplicit = await retryGeneric<String>(fn(id): fetchUser(id))
@@ -118,7 +120,9 @@ ista async fn later(x: &Int) -> Int:
 
 ista fn starting(x: &Int) -> Future<Int, "ista">: later(&x)
 
-ista async fn main():
+import * as runtime from 'runtime'
+live async fn main(): await runtime.run(runtime.id()) _main()
+ista async fn _main():
   let xs = [10]
   _ = await starting(&xs[0])
 `),
@@ -134,7 +138,9 @@ ista async fn mutate(self: M, x: &Int) -> Int:
   x += 1
   x
 
-ista async fn main():
+import * as runtime from 'runtime'
+live async fn main(): await runtime.run(runtime.id()) _main()
+ista async fn _main():
   let xs = [10]
   const m: any Mutator = M
   _ = await m.mutate(&xs[0])
@@ -157,7 +163,9 @@ ista fn setIndex(self: &Bag, key: String, value: Int) -> Future<Unit, "ista">:
   _ = (self, key, value)
   laterSet()
 
-ista async fn main():
+import * as runtime from 'runtime'
+live async fn main(): await runtime.run(runtime.id()) _main()
+ista async fn _main():
   let bag = Bag{values: [:]}
   bag["a"] = 1
 `),

@@ -8,11 +8,8 @@
 
 import { describe, expect, it } from 'vitest';
 import { compiledText } from '../../../compiler/compile.test-kit.ts';
-import type { Value } from '../../../definition/values/values.ts';
 import { startToEnd, testRuntime } from '../../runtime.test-kit.ts';
-import { Futures } from './futures.ts';
-import { Heap } from './heap.ts';
-import { Waits } from './waits.ts';
+import { recordingFutures } from './futures.test-kit.ts';
 
 const imports = [
   "import * as futures from 'futures'",
@@ -38,7 +35,7 @@ const peek = [
 describe('futures.first in a select', () => {
   it('wins at its case when its future resolves together with a later case', async () => {
     const main = [
-      'ista async fn main() -> Int:',
+      'live async fn main() -> Int: await runtime.run(runtime.id()) _main()\nista async fn _main() -> Int:',
       '  const f0 = time.delay(1s)',
       '  const f1 = time.delay(1s)',
       '  await select:',
@@ -57,7 +54,7 @@ describe('futures.first in a select', () => {
         '  await runtime.commit()',
         '  _ = s0.put(10)',
         '  _ = s1.put(20)',
-        'ista async fn main() -> (Int, Int, Int):',
+        'live async fn main() -> (Int, Int, Int): await runtime.run(runtime.id()) _main()\nista async fn _main() -> (Int, Int, Int):',
         '  const s0 = Slot.create<Int>()',
         '  const s1 = Slot.create<Int>()',
         '  _ = fill(s0, s1)',
@@ -77,7 +74,7 @@ describe('futures.first in a select', () => {
   it('takes nothing from a later future once an earlier one had resolved', async () => {
     const main = [
       ...peek,
-      'ista async fn main() -> (Int, Int):',
+      'live async fn main() -> (Int, Int): await runtime.run(runtime.id()) _main()\nista async fn _main() -> (Int, Int):',
       '  const full = Slot.create<Int>()',
       '  _ = full.put(1)',
       '  const s = Slot.create<Int>()',
@@ -95,7 +92,7 @@ describe('a slot operation awaited once', () => {
     async (crashEveryAwait) => {
       const main = [
         ...peek,
-        'ista async fn main() -> (Int, Int, Int):',
+        'live async fn main() -> (Int, Int, Int): await runtime.run(runtime.id()) _main()\nista async fn _main() -> (Int, Int, Int):',
         '  const s = Slot.create<Int>()',
         '  const pending = s.take()',
         '  const got = await select:',
@@ -124,7 +121,7 @@ describe('a Resolver.at resolver', () => {
       'ista fn onAwait(self: Late, done: Resolver<(Int, Int), "ista">):',
       '  done.resolve((7, 8))',
       '  self.took->took = Resolver.at(done, 0).tryResolve(1)',
-      'ista async fn main() -> Int:',
+      'live async fn main() -> Int: await runtime.run(runtime.id()) _main()\nista async fn _main() -> Int:',
       '  const took = new Took{took: true}',
       '  const (position, value) = await Late{took}',
       '  position * 10 + value + (if took->took: 100 else: 0)',
@@ -144,7 +141,7 @@ describe('a Resolver.at resolver', () => {
         'ista fn onAwait(self: Earliest, done: Resolver<(Int, Int), "ista">):',
         '  later(2).onAwait(Resolver.at(done, 1))',
         '  later(1).onAwait(Resolver.at(done, 0))',
-        'ista async fn main() -> Int:',
+        'live async fn main() -> Int: await runtime.run(runtime.id()) _main()\nista async fn _main() -> Int:',
         '  const (position, value) = await Earliest',
         '  position * 10 + value',
       ];
@@ -156,14 +153,7 @@ describe('a Resolver.at resolver', () => {
 describe('resolvers decided together', () => {
   /** Waits whose callbacks are recorded, over futures pending until resolved together. */
   function racing(count: number) {
-    const heap = new Heap([]);
-    const calls: (readonly [Value, readonly Value[]])[] = [];
-    const waits = new Waits(heap, {
-      decided: () => undefined,
-      watchesCall: () => false,
-      called: (callback, argumentValues) => calls.push([callback, argumentValues]),
-    });
-    const futures = new Futures(heap, waits, () => undefined);
+    const { calls, waits, futures } = recordingFutures();
     const ids = Array.from({ length: count }, () => futures.create({ kind: 'timer', at: 1n }));
     const resolveAll = () =>
       futures.resolveTogether(ids.map((id, future) => ({ id, value: BigInt(future) })));

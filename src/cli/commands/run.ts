@@ -1,22 +1,23 @@
 /**
- * `ista run <entry>`: compile the program rooted at `entry` and run its `async fn main()` (§9) as
- * a new instance, printing its outcome as JSON. `--store <dir>` persists the Definition and every
- * commit in a directory; `ista run --store <dir> --resume <instance>` continues an instance from
- * its last commit there, on the Definition it started with (§5). `--host <module>` loads the
- * externs the program's host implements from a JavaScript module (host-module.ts).
+ * `ista run <entry>`: compile the program rooted at `entry` and run its `live async fn main()`
+ * (§9) as a live run, printing its outcome as JSON. Its ista work runs in the contexts its
+ * runtimes open over the host's store (§9): `--store <dir>` keeps the Definition and every commit
+ * in a directory, so running a program again on it resumes the contexts it left, and memory keeps
+ * them otherwise. `--host <module>` loads the externs the program's host implements from a
+ * JavaScript module (host-module.ts), whose promises fill their futures as they settle, while `main`
+ * runs.
  *
- * The instance runs on real time: when it waits, the command sleeps until its earliest timer is
- * due, or until a promise its host gave settles, and wakes it. When nothing is left that could
- * wake it, it reports where it waits; a host's promise can wake it only while the process has
- * something left to run, since once it has nothing, no promise can settle. Every instance it spawns runs alongside it, theirs too,
- * until all of them have settled; `main`'s outcome is printed, and a spawned instance that panics
- * or can never wake is reported on the error stream and fails the run. Nothing runs unless the
- * whole program checks clean. Diagnostics, warnings included, go to the error stream as `check`
- * renders them, and so does each log record its instances commit, as a line of JSON (§9), so the
- * output holds only the outcome.
+ * `main` runs on real time, its timers and its contexts' on the system clock, until it ends: its
+ * outcome is printed, its panic, with a context's that reached it, reported, and a `main` that
+ * waits on nothing that can wake it reported so, with where the store's instances wait. An
+ * instance its contexts spawned that panics, heard by no call, is reported as it panics and fails
+ * the run. Nothing runs unless the whole program checks
+ * clean. Diagnostics, warnings included, go to the error stream as `check` renders them, and so
+ * does each log record `main` and its contexts committed, as a line of JSON (§9), so the output
+ * holds only the outcome.
  * Exit codes: 0 when `main` finishes; 1 when the program has errors, declares no `main`, panics,
- * the runtime refuses it, or an instance waits on nothing that can wake it; 2 when the entry
- * can't be read, the options don't fit together, or the host module can't implement externs.
+ * the runtime refuses it, an instance panics unheard, or `main` waits on nothing that can wake it; 2 when the entry can't be
+ * read or the host module can't implement externs.
  */
 
 import { randomBytes, randomUUID } from 'node:crypto';
@@ -25,12 +26,12 @@ import { compileProgram, diagnose } from '../../compiler/compile.ts';
 import { definitionFormat } from '../../definition/definition.ts';
 import { FormatError } from '../../definition/formats/format.ts';
 import { loadProject } from '../../project/project.ts';
-import { type Settled, settle } from '../../runtime/host/drive.ts';
-import { createRuntime, type DeployedProgram, type Runtime } from '../../runtime/host/index.ts';
+import { createRuntime, type Runtime } from '../../runtime/host/index.ts';
+import type { DeployedProgram, HostReports } from '../../runtime/host/programs.ts';
 import type { Advanced } from '../../runtime/instance-state.ts';
 import { Refusal } from '../../runtime/refusal.ts';
 import { seedBytes } from '../../runtime/snapshot/random.ts';
-import { memoryStore } from '../../runtime/store.ts';
+import { type InstanceStore, memoryStore } from '../../runtime/store.ts';
 import { stdNatives } from '../../stdlib/natives.ts';
 import { clock } from '../clock.ts';
 import {
@@ -46,7 +47,6 @@ import { reportDiagnostics, reportUnreadable } from '../report.ts';
 
 interface RunOptions {
   readonly store?: string;
-  readonly resume?: string;
   readonly host?: string;
 }
 
@@ -56,7 +56,6 @@ export const defineRunCommand: CommandDefinition = (cli, { environment, exitWith
     .description("run a program's async fn main() and print its outcome")
     .argument('[entry]', 'the module declaring main')
     .option('--store <dir>', 'keep the Definition and every commit in this directory')
-    .option('--resume <instance>', 'continue an instance from its last commit in --store')
     .option('--host <module>', "load the externs the program's host implements from a module")
     .action(async (entry: string | undefined, options: RunOptions) => {
       exitWith(await run(entry, options, environment));
@@ -68,12 +67,8 @@ async function run(
   options: RunOptions,
   environment: CliEnvironment,
 ): Promise<ExitCode> {
-  if ((entry === undefined) === (options.resume === undefined)) {
-    environment.writeError('ista: run takes an entry, or --resume with --store, but not both.\n');
-    return exitCodes.couldNotRun;
-  }
-  if (options.resume !== undefined && options.store === undefined) {
-    environment.writeError('ista: --resume needs the --store that holds the instance.\n');
+  if (entry === undefined) {
+    environment.writeError('ista: run takes the entry module declaring main.\n');
     return exitCodes.couldNotRun;
   }
   const loaded =
@@ -85,31 +80,61 @@ async function run(
     return exitCodes.couldNotRun;
   }
   const host = loaded?.module;
+  const store =
+    options.store === undefined
+      ? memoryStore()
+      : directoryStore(resolve(environment.cwd, options.store));
+  const reports = errorStreamReports(environment);
   const runtime = createRuntime({
     natives: stdNatives,
-    store:
-      options.store === undefined
-        ? memoryStore()
-        : directoryStore(resolve(environment.cwd, options.store)),
+    store,
     clock,
     seed: () => randomBytes(seedBytes),
+    reports,
+    fills: {
+      may: () => host?.mayFill() === true,
+      changed: () => host?.nextSettled() ?? new Promise<void>(() => undefined),
+    },
     ...(host === undefined ? {} : { host: host.externs }),
   });
-  const session: Session = { runtime, host, environment };
-  const instance = options.resume;
-  if (instance !== undefined) {
-    return (
-      (await unlessRefused(environment, () => resume(session, instance))) ?? exitCodes.problems
-    );
-  }
-  return entry === undefined ? exitCodes.couldNotRun : start(session, entry, options);
+  return start({ runtime, store, reports, host, environment }, entry, options);
 }
 
-/** What a run drives its instances with: its runtime, its host module if any, where it writes. */
+/**
+ * What a run runs `main` with: its runtime over `store`, what its contexts report, its host module
+ * if any, where it writes.
+ */
 interface Session {
   readonly runtime: Runtime;
+  readonly store: InstanceStore;
+  readonly reports: RunReports;
   readonly host: HostModule | undefined;
   readonly environment: CliEnvironment;
+}
+
+/** What the run's contexts report, and whether an instance among them panicked unheard. */
+interface RunReports extends HostReports {
+  readonly failed: () => boolean;
+}
+
+/**
+ * Reports written to the error stream: each log record as a line of JSON, and each instance that
+ * panicked with no call hearing it, which fails the run, as a spawned one does (§9).
+ */
+function errorStreamReports(environment: CliEnvironment): RunReports {
+  let failed = false;
+  return {
+    logs: (records) => {
+      for (const record of records) {
+        environment.writeError(`${logLine(record)}\n`);
+      }
+    },
+    panicked: (instance, { message, trace }) => {
+      failed = true;
+      environment.writeError(`ista: instance ${instance} panicked: ${message}\n${trace}\n`);
+    },
+    failed: () => failed,
+  };
 }
 
 async function start(session: Session, entry: string, options: RunOptions): Promise<ExitCode> {
@@ -126,7 +151,7 @@ async function start(session: Session, entry: string, options: RunOptions): Prom
     case 'failed':
       return exitCodes.problems;
     case 'noMain':
-      environment.writeError(`ista: ${entry} declares no 'async fn main()'.\n`);
+      environment.writeError(`ista: ${entry} declares no 'live async fn main()'.\n`);
       return exitCodes.problems;
     case 'compiled': {
       const { text } = definitionFormat.write(compilation.definition);
@@ -134,9 +159,9 @@ async function start(session: Session, entry: string, options: RunOptions): Prom
         const deployed = runtime.deploy(text);
         const name = randomUUID();
         if (options.store !== undefined) {
-          environment.writeError(`ista: instance ${name}\n`);
+          environment.writeError(`ista: run ${name}\n`);
         }
-        return finish(session, { program: deployed, name }, await deployed.start(name));
+        return finish(session, deployed, await whileFilling(session, deployed.start(name)));
       });
       return outcome ?? exitCodes.problems;
     }
@@ -147,132 +172,74 @@ async function start(session: Session, entry: string, options: RunOptions): Prom
   }
 }
 
-async function resume(session: Session, name: string): Promise<ExitCode> {
-  const { runtime } = session;
-  return finish(session, { program: runtime.programOf(name), name }, await runtime.wake(name));
-}
-
-/** An instance the command runs: its name, and its program. */
-interface RunningInstance {
-  readonly program: DeployedProgram;
-  readonly name: string;
-}
-
 /**
- * Waits for each timer the instance and those it spawned wait on, and for each promise its host
- * gave, and wakes them; prints how the instance ended, and reports each spawned instance that
- * didn't finish.
+ * What `running`, `main`'s live run, ends with: meanwhile, each promise the host's externs gave
+ * fills its future as it settles, which reaches the context waiting on it (§9). Once the process
+ * goes idle, nothing is left that could settle a promise or come due, so `main` waits on nothing
+ * that can wake it.
  */
-async function finish(
-  { runtime, host, environment }: Session,
-  { program, name }: RunningInstance,
-  initial: Advanced,
-): Promise<ExitCode> {
-  const writeLogs = ({ logs }: Advanced) => {
-    for (const record of logs) {
-      environment.writeError(`${logLine(record)}\n`);
-    }
-  };
-  const settled = await settle(
-    {
-      wake: (instance) => runtime.wake(instance),
-      now: clock.now,
-      wait: (due) => arrivalsBy(due, { runtime, host, environment }),
-      seen: writeLogs,
-    },
-    { instance: name, advanced: initial },
-  );
-  const unfinished = [...settled].flatMap(([instance, ending]) => {
-    const role = instance === name ? 'main' : 'spawned';
-    return failsRun(ending, role) ? [unfinishedText(runtime, instance, ending, role)] : [];
-  });
-  for (const text of unfinished) {
-    environment.writeError(text);
-  }
-  const ended = settled.get(name);
-  if (ended?.kind === 'finished') {
-    environment.write(`${program.outcomeText(ended)}\n`);
-  }
-  return unfinished.length === 0 ? exitCodes.clean : exitCodes.problems;
-}
-
-/**
- * What the host filled by the time the earliest timer is due: waits, and waits again while only a
- * promise that failed settled and others are still pending, since a run ends when it is resumed
- * with nothing and no timer is due.
- */
-async function arrivalsBy(due: bigint | undefined, session: Session) {
-  const { runtime, host, environment } = session;
+async function whileFilling(
+  { runtime, host, reports, environment }: Session,
+  running: Promise<Advanced>,
+): Promise<Advanced> {
+  const ended = running.then((advanced) => ({ advanced }));
+  const idle = environment.idle.then(() => ({ advanced: stuck }));
   for (;;) {
-    // biome-ignore lint/performance/noAwaitInLoops: each wait depends on what the last one settled.
-    const woke = await nextWake(due, session);
+    const settled = host?.nextSettled().then(() => undefined);
+    // biome-ignore lint/performance/noAwaitInLoops: each fill follows the promise settling before it.
+    const next = await Promise.race(settled === undefined ? [ended, idle] : [ended, idle, settled]);
+    if (next !== undefined) {
+      return next.advanced;
+    }
     const arrived = (await host?.arrivals(runtime, environment.writeError)) ?? [];
-    if (arrived.length > 0 || due !== undefined || woke === 'idle' || host?.waiting() !== true) {
-      return arrived;
+    for (const { advanced } of arrived) {
+      reports.logs(advanced.logs);
     }
   }
 }
 
-/** Whether an instance is the run's `main` or one it spawned. */
-type Role = 'main' | 'spawned';
-
-/** What ended a wait: a timer came due or a host's promise settled, or the process went idle. */
-type Wake = 'woke' | 'idle';
-
-/**
- * Until the earliest timer is due, or the host's next promise settles, whichever is first; at once
- * when nothing could wake an instance, so the run ends. Waiting only on the host's promises ends
- * too when the process goes idle, since none of them can settle then. A sleep a promise cut short
- * is cancelled, so a far timer, such as a day's reminder, keeps no process alive once the run ends.
- */
-async function nextWake(due: bigint | undefined, { host, environment }: Session): Promise<Wake> {
-  const sleeping = new AbortController();
-  const waits: Promise<Wake>[] = [];
-  if (due !== undefined) {
-    waits.push(clock.until(due, sleeping.signal).then(() => 'woke' as const));
-  }
-  if (host?.waiting() === true) {
-    waits.push(
-      host.nextSettled().then(() => 'woke' as const),
-      environment.idle.then(() => 'idle' as const),
-    );
-  }
-  if (waits.length === 0) {
-    return 'woke';
-  }
-  const woke = await Promise.race(waits);
-  sleeping.abort();
-  return woke;
-}
+/** How a `main` the process went idle under ended: waiting on nothing that can wake it. */
+const stuck: Advanced = {
+  state: { kind: 'waiting', until: undefined, watching: [] },
+  spawned: [],
+  logs: [],
+};
 
 /**
- * Whether an instance that settled as `settled` fails the run: one that didn't finish, except a
- * spawned one that was terminated, which only `runtime.isolate` does in a run, once its caller has
- * the panic as an `Err` (§9).
+ * Prints how `main`'s live run ended: its logs, then its outcome, or why it didn't finish; a run
+ * in which an instance panicked unheard fails all the same.
  */
-function failsRun(settled: Settled, role: Role): settled is Exclude<Settled, { kind: 'finished' }> {
-  return settled.kind !== 'finished' && !(settled.kind === 'terminated' && role === 'spawned');
+function finish(
+  { runtime, store, reports, environment }: Session,
+  program: DeployedProgram,
+  { state, logs }: Advanced,
+): ExitCode {
+  reports.logs(logs);
+  switch (state.kind) {
+    case 'finished':
+      environment.write(`${program.outcomeText(state)}\n`);
+      return reports.failed() ? exitCodes.problems : exitCodes.clean;
+    case 'panicked':
+    case 'terminated':
+      environment.writeError(`panic: ${state.message}\n${state.trace}\n`);
+      return exitCodes.problems;
+    default:
+      environment.writeError(
+        `ista: main waits on nothing that can wake it${waitsOf(runtime, store)}.\n`,
+      );
+      return exitCodes.problems;
+  }
 }
 
-/** What the error stream says of an instance that didn't finish: `main`'s, or one it spawned. */
-function unfinishedText(
-  runtime: Runtime,
-  instance: string,
-  settled: Exclude<Settled, { kind: 'finished' }>,
-  role: Role,
-): string {
-  if (settled.kind === 'stuck') {
-    const where = runtime
-      .inspect(instance)
-      .waitingAt.map(({ waypoint, location }) => waypoint ?? location)
-      .join(', ');
-    return `ista: instance ${instance} waits on nothing that can wake it, at ${where}.\n`;
-  }
-  if (settled.kind === 'terminated') {
-    return `ista: instance ${instance} was terminated.\n`;
-  }
-  const subject = role === 'main' ? 'panic' : `ista: instance ${instance} panicked`;
-  return `${subject}: ${settled.message}\n${settled.trace}\n`;
+/** Where the store's instances that wait stand, the contexts `main` called among them, as `, at …`. */
+function waitsOf(runtime: Runtime, store: InstanceStore): string {
+  const where = store.instances().flatMap((instance) => {
+    const { state, waitingAt } = runtime.inspect(instance);
+    return state.kind === 'waiting'
+      ? waitingAt.map(({ waypoint, location }) => waypoint ?? location)
+      : [];
+  });
+  return where.length === 0 ? '' : `, at ${where.join(', ')}`;
 }
 
 /**

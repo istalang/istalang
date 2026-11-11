@@ -1,19 +1,29 @@
 /**
  * A runtime under test: time that moves only when the test says so, a store that keeps every
  * commit it was asked to write, and running an instance to its end by moving time to each timer.
+ *
+ * A test of the instance engine starts an instance directly (`startInstance`), as a spawn starts
+ * one, running a function of the program as its root: no host starts ista code, which runs in
+ * contexts (§9), and a context, whose calls answer rather than finish it, never ends the way such a
+ * test reads. Nothing encodes its outcome, which is the value its function gave.
  */
 
 import { definitionFormat } from '../definition/definition.ts';
 import type { Value } from '../definition/values/values.ts';
+import { unreachable } from '../foundation/structures/unreachable.ts';
 import { stdNatives } from '../stdlib/natives.ts';
-import type { HostExterns } from './boundary/host-natives.ts';
+import { type HostExterns, hostNatives } from './boundary/host-natives.ts';
 import { ManualClock } from './clock.ts';
 import { type Settled, settle } from './host/drive.ts';
-import { createRuntime, type DeployedProgram, type Runtime } from './host/index.ts';
+import { createRuntime, type Runtime } from './host/index.ts';
+import type { DeployedProgram } from './host/programs.ts';
 import type { Advanced, StartOptions } from './instance-state.ts';
 import type { FullNativeContext, Natives } from './natives.ts';
 import { Refusal } from './refusal.ts';
-import { seedBytes } from './snapshot/random.ts';
+import { loadDefinition } from './scheduler/loaded-definition.ts';
+import { Resident } from './scheduler/resident.ts';
+import { advance, unstarted } from './scheduler/wake.ts';
+import { seedBytes, seedTextOf } from './snapshot/random.ts';
 import { type InstanceStore, memoryStore } from './store.ts';
 
 /** A store that also keeps what was written to it, in order: snapshot texts, and Definition hashes. */
@@ -64,17 +74,29 @@ export interface TestRuntime {
    * that name, which a live run, kept by no runtime, needs to read its outcome; else the runtime's.
    */
   readonly programOf: (instance: string) => DeployedProgram;
+  /**
+   * Deploys `text` and starts the instance `instance` calling the function `request` names,
+   * `main._main`, a rewritten `main`'s ista body, by default, as a spawn starts one; its first
+   * advance, the instance then the store's for the runtime to wake.
+   */
+  readonly startInstance: (text: string, instance: string, request?: InstanceRequest) => Advanced;
+}
+
+/** The function an instance a test starts calls, by its name, with `arguments`, and its options. */
+interface InstanceRequest extends StartOptions {
+  readonly function?: string;
+  readonly arguments?: readonly Value[];
 }
 
 /** A runtime on the std natives, a recording store and a manual clock, unless told otherwise. */
 export function testRuntime({
-  natives = stdNatives,
+  natives: nativesGiven = stdNatives,
   store = recordingStore(),
   clock = new ManualClock(),
   host = {},
   seed = () => testSeed,
 }: TestRuntimeOptions = {}): TestRuntime {
-  const inner = createRuntime({ natives, store, clock, seed, host });
+  const inner = createRuntime({ natives: nativesGiven, store, clock, seed, host });
   const starters = new Map<string, DeployedProgram>();
   const deploy: Runtime['deploy'] = (text) => {
     const program = inner.deploy(text);
@@ -86,11 +108,31 @@ export function testRuntime({
       },
     };
   };
+  const natives = { ...nativesGiven, ...hostNatives(host) };
   return {
     runtime: { ...inner, deploy },
     store,
     clock,
     programOf: (instance) => starters.get(instance) ?? inner.programOf(instance),
+    startInstance: (
+      text,
+      instance,
+      { function: name = 'main._main', arguments: given = [], ...options } = {},
+    ) => {
+      const { hash } = inner.deploy(text);
+      const definition = definitionFormat.read(text);
+      const loaded = loadDefinition(definition, hash, natives);
+      const called = definition.functions.findIndex(
+        (entry) => entry.kind === 'code' && entry.name === name,
+      );
+      if (called < 0) {
+        unreachable(`The program has no function '${name}'.`);
+      }
+      const call = { function: called, captures: [], arguments: [...given] };
+      const beginning = { ...options, seed: seedTextOf(seed()) };
+      const resident = new Resident(loaded, unstarted(loaded, instance, call, beginning));
+      return advance({ store, now: clock.now }, resident);
+    },
   };
 }
 
@@ -161,22 +203,6 @@ export async function startToEnd(
 ): Promise<Ended> {
   const program: DeployedProgram = test.runtime.deploy(text);
   return await runToEnd(test, instance, await program.start(instance, options));
-}
-
-/**
- * The program `text` with its code that waits made live, as compiling it as live code will
- * (proposal 8): the entries named in `entries`, or every one without them.
- */
-export function asLive(text: string, entries?: readonly string[]): string {
-  const definition = definitionFormat.read(text);
-  const functions = definition.functions.map((entry) =>
-    entry.kind === 'code' &&
-    entry.mode === 'ista' &&
-    (entries === undefined || entries.includes(entry.name))
-      ? { ...entry, mode: 'live' as const }
-      : entry,
-  );
-  return definitionFormat.write({ ...definition, functions }).text;
 }
 
 /** A context for natives that never use theirs; touching it is a bug in the test. */

@@ -20,7 +20,9 @@ fn setThenPeek(value: &Int, peek: fn() -> Int) -> Int:
 fn show(xs: Array<Int>) -> String:
   "[" + [for x in xs: String(x)].join(", ") + "]"
 
-ista async fn main() -> String:
+import * as runtime from 'runtime'
+live async fn main() -> String: await runtime.run(runtime.id()) _main()
+ista async fn _main() -> String:
   let xs = [1, 2]
   let ys = [3]
   swap(&xs[0], &ys[0])

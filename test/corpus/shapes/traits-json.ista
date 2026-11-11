@@ -5,6 +5,7 @@
 # and a generic alias is a family: a struct with its arguments substituted fits one member.
 
 import * as json from 'json'
+import * as runtime from 'runtime'
 
 type Point = { x: Int, y: Int }
 type Spot = Point
@@ -22,7 +23,8 @@ fn show<T is Area>(v: T) -> Int: v.area()
 
 fn second(p: Pair<Int, String>) -> String: p.second
 
-ista async fn main():
+live async fn main(): await runtime.run(runtime.id()) _main()
+ista async fn _main():
   const shape: Spot = Pixel{x: 2, y: 3}
   const back = json.parse<Point>("{\"y\": 4, \"x\": 5}")
   const text = json.stringify(struct{b: 1, a: [struct{x: 2, y: 1}]})

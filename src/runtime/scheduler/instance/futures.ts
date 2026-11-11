@@ -19,6 +19,7 @@ import { unreachable } from '../../../foundation/structures/unreachable.ts';
 import { Panic } from '../../natives.ts';
 import type { FutureState, Watch } from '../../snapshot/objects.ts';
 import type { CallerFuture } from '../testing/test-world.ts';
+import type { DisposalNotices } from './disposal-notices.ts';
 import { type Heap, handleObject, type LiveObjectOf } from './heap.ts';
 import type { Waits } from './waits.ts';
 
@@ -28,17 +29,24 @@ export interface Settled {
 }
 
 /**
- * An answer given: the value that fills the future `instance` named `token`, and whether it came
- * from a future the replacement returned rather than from the replacement itself.
+ * Who a call made into an instance from outside answers: the future `instance` named `token`, or
+ * with no `instance`, the one its host named so, for a host's call into a context (§9).
  */
-export interface Answered {
-  readonly instance: string;
+export interface Caller {
+  readonly instance?: string | undefined;
   readonly token: string;
+}
+
+/**
+ * An answer given: the value that fills the caller's future, and whether it came from a future the
+ * call returned rather than from the call itself.
+ */
+export interface Answered extends Caller {
   readonly value: Value;
   readonly followed: boolean;
 }
 
-/** An answer to another instance's call was given. */
+/** An answer to a call made from outside was given. */
 export type AnswerGiven = (answered: Answered) => void;
 
 /** A pending future to resolve, and its value. */
@@ -51,41 +59,18 @@ export class Futures {
   readonly #heap: Heap;
   readonly #waits: Waits;
   readonly #answered: AnswerGiven;
-  /**
-   * What observes each pending future's disposal, by future: kept in memory, as an observer outside
-   * the language is (§7, proposal 8, Rule 9).
-   */
-  readonly #disposalNotices = new Map<number, (() => void)[]>();
+  /** What observes a pending future's disposal, which resolving it ends. */
+  readonly #notices: DisposalNotices;
 
-  /** Futures on `heap`, deciding `waits` as they resolve, and telling `answered` each answer. */
-  constructor(heap: Heap, waits: Waits, answered: AnswerGiven) {
+  /**
+   * Futures on `heap`, deciding `waits` as they resolve, telling `answered` each answer, and ending
+   * the `notices` of each they resolve.
+   */
+  constructor(heap: Heap, waits: Waits, notices: DisposalNotices, answered: AnswerGiven) {
     this.#heap = heap;
     this.#waits = waits;
+    this.#notices = notices;
     this.#answered = answered;
-  }
-
-  /** Has `notice` told if the pending future `id` is disposed before it resolves. */
-  onDisposed(id: number, notice: () => void): void {
-    this.#disposalNotices.set(id, [...(this.#disposalNotices.get(id) ?? []), notice]);
-  }
-
-  /** What observes the disposal of the future `id`, which no longer needs observing. */
-  takeNotices(id: number): readonly (() => void)[] {
-    const notices = this.#disposalNotices.get(id) ?? [];
-    this.#disposalNotices.delete(id);
-    return notices;
-  }
-
-  /**
-   * Forgets the observers of futures no longer on the heap, left out unseen as a commit leaves out
-   * what nothing holds, so a later future reusing an id isn't observed.
-   */
-  forgetGone(): void {
-    for (const id of this.#disposalNotices.keys()) {
-      if (!this.#heap.has(id)) {
-        this.#disposalNotices.delete(id);
-      }
-    }
   }
 
   /** A new future in `state`; its id. */
@@ -142,8 +127,8 @@ export class Futures {
       return;
     }
     this.#heap.remove(answer.id);
-    const { instance, token, followed } = answer;
-    this.#answered({ instance, token, value, followed });
+    const { kind: _kind, id: _id, future: _future, ...given } = answer;
+    this.#answered({ ...given, value });
   }
 
   /**
@@ -156,6 +141,12 @@ export class Futures {
     return next === undefined ? settled : this.endOf(next);
   }
 
+  /** The future `value` is a handle to while it is pending, which code giving `value` waits on. */
+  pendingIn(value: Value): number | undefined {
+    const future = this.#futureIn(value);
+    return future === undefined || this.endOf(future) !== undefined ? undefined : future;
+  }
+
   /** The future `value` is a handle to, which no value leaving its instance can be; else none. */
   #futureIn(value: Value): number | undefined {
     const target = handleTarget(value);
@@ -164,17 +155,10 @@ export class Futures {
       : undefined;
   }
 
-  /** An answer to the call another instance named `token`, given once `future` resolves (§10). */
-  answer(future: number, instance: string, token: string): void {
+  /** An answer to the call `caller` made, given once `future` resolves (§9, §10). */
+  answer(future: number, caller: Caller): void {
     const answer = this.#heap.add(
-      (id): LiveObjectOf<'answer'> => ({
-        kind: 'answer',
-        id,
-        future,
-        instance,
-        token,
-        followed: false,
-      }),
+      (id): LiveObjectOf<'answer'> => ({ kind: 'answer', id, future, ...caller, followed: false }),
     );
     if (this.#heap.of(future, 'future').state.kind === 'resolved') {
       this.#answer(answer);
@@ -226,7 +210,7 @@ export class Futures {
       unreachable(`Future ${id} has resolved already.`);
     }
     this.#heap.replace({ ...future, state: { kind: 'resolved', value } });
-    this.#disposalNotices.delete(id);
+    this.#notices.forget(id);
   }
 
   /**
@@ -257,9 +241,9 @@ export class Futures {
     return this.#hostFuture(token) !== undefined;
   }
 
-  /** Whether any future is pending on the host. */
-  awaitsHost(): boolean {
-    return this.#heap.find('pending', 'host').length > 0;
+  /** The futures pending on the host, by id. */
+  awaitedFromHost(): readonly number[] {
+    return this.#heap.find('pending', 'host').map(({ id }) => id);
   }
 
   /**

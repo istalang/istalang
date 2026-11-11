@@ -12,7 +12,9 @@ fn passed(r: Result<Int, String>) -> String:
     case Err(error): error + "!"
     case Ok(value): `${value}`
 
-ista async fn main() -> String:
+import * as runtime from 'runtime'
+live async fn main() -> String: await runtime.run(runtime.id()) _main()
+ista async fn _main() -> String:
   const p1 = `${wrap<String>("draft") + "!"}|${wrapOne<String>("sent") + "?"}`
   const p2 = `${passed(step<String>(Err("a")))}|${passed(step<String>(Ok(7)))}`
   `${p1}|${p2}`

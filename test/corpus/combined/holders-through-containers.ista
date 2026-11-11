@@ -2,6 +2,7 @@
 # QA M3 (§6, §7): an inbox held through an array element outlives its block and is disposed only when the array drops it, signalling the `disposed()` watcher then; the block-local watcher and revertible holder die at block end without signalling.
 import Inbox, Revertible from 'inbox'
 import * as time from 'time'
+import * as runtime from 'runtime'
 
 struct Holder:
     box: Inbox<Int>
@@ -11,7 +12,8 @@ ista async fn watcher(log: Inbox<String>, name: String, w: WeakRef<Inbox<Int>>):
     await w.disposed()
     log.send(name + " gone")
 
-ista async fn main() -> Array<String>:
+live async fn main() -> Array<String>: await runtime.run(runtime.id()) _main()
+ista async fn _main() -> Array<String>:
     const log = Inbox.create<String>()
     let hs: Array<Holder> = []
     let w1: WeakRef<Inbox<Int>>? = none

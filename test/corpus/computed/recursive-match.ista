@@ -2,6 +2,7 @@
 # A type match whose reduction reaches itself is one recursive type (§3.17): its values are built,
 # read, compared and encoded as the struct type it stands for.
 import * as json from 'json'
+import * as runtime from 'runtime'
 
 struct Box<T> { value: T }
 
@@ -20,7 +21,8 @@ fn sumTree(t: TreeData<Tree>) -> Int:
     sum += sumTree(child)
   sum
 
-ista async fn main() -> String:
+live async fn main() -> String: await runtime.run(runtime.id()) _main()
+ista async fn _main() -> String:
   const tree: TreeData<Tree> = struct{
     value: 1,
     children: [struct{value: 1, children: []}, struct{value: 1, children: []}],

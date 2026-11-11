@@ -185,14 +185,15 @@ export const heapObject = z.discriminatedUnion('kind', [
    */
   defineObject('mock', { target: functionId, replacement: value, calls: z.array(value) }),
   /**
-   * A call another instance made to one of this instance's mocks (spec §10), answered here: when
-   * `future` resolves, its value fills the future `instance` named `token`, or, when it is itself
-   * a future, the answer waits on that one instead, and is then `followed`. An answer is a root,
-   * held until it is given.
+   * A call made to this instance from outside, answered here: another instance's call to one of its
+   * mocks (spec §10), or with no `instance`, a host's call into it as a context (§9). When `future`
+   * resolves, its value fills the future the caller named `token`, or, when it is itself a future,
+   * the answer waits on that one instead, and is then `followed`. An answer is a root, held until
+   * it is given.
    */
   defineObject('answer', {
     future: objectId,
-    instance: z.string(),
+    instance: z.string().optional(),
     token: z.string(),
     followed: z.boolean(),
   }),

@@ -26,7 +26,9 @@ fn roleOf(verdict: Verdict?) -> String:
 fn neverCalled() -> Int:
   panic("'??' evaluated its right side")
 
-ista async fn main() -> String:
+import * as runtime from 'runtime'
+live async fn main() -> String: await runtime.run(runtime.id()) _main()
+ista async fn _main() -> String:
   const someone = Person{name: "a", address: Address{city: "x", zip: 42}}
   const nobody = Person{name: "b", address: none}
   const counted: Int? = someone.address?.length()

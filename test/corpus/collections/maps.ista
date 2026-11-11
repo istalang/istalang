@@ -3,7 +3,9 @@
 # `get`, `&self` methods, assignment through an index, iteration in the order keys were first
 # set, and `==` that ignores that order.
 
-ista async fn main() -> String:
+import * as runtime from 'runtime'
+live async fn main() -> String: await runtime.run(runtime.id()) _main()
+ista async fn _main() -> String:
   let m = ["a": 1, "b": 2]
   const size = m.size()
   m["c"] = 3

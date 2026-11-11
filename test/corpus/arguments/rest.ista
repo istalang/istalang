@@ -21,7 +21,9 @@ fn count<T>(...items: Array<T>) -> Int:
 fn apply(f: fn(String, Array<String>) -> Int, xs: Array<String>) -> Int:
   f("", xs)
 
-ista async fn main() -> Array<Int>:
+import * as runtime from 'runtime'
+live async fn main() -> Array<Int>: await runtime.run(runtime.id()) _main()
+ista async fn _main() -> Array<Int>:
   const more = ["c", "d"]
   [
     sum(), sum(1), sum(1, 2), sum(...[1, 2], 3),

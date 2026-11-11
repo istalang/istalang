@@ -10,5 +10,7 @@ fn decided(id: String, verdict: Verdict?) -> String:
     case Rejected: "rejected"
     case None: panic("no verdict for " + id)
 
-ista async fn main() -> String:
+import * as runtime from 'runtime'
+live async fn main() -> String: await runtime.run(runtime.id()) _main()
+ista async fn _main() -> String:
   decided("p-1", none)

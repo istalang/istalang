@@ -8,7 +8,9 @@ struct Pair { first: Int, second: Int }
 fn ordered(a: Int, b: Int) -> (Int, Int):
   if a < b: (a, b) else: (b, a)
 
-ista async fn main():
+import * as runtime from 'runtime'
+live async fn main(): await runtime.run(runtime.id()) _main()
+ista async fn _main():
   const t = (1, "x")
   const nested = ((3, 4), 5)
   const lo, hi = ordered(4, 3)

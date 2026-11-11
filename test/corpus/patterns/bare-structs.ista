@@ -29,7 +29,9 @@ fn inTuple(pair: (Marker, Bool)) -> String:
     case (Marker, true): "pair"
     case (Marker, false): "other"
 
-ista async fn main() -> String:
+import * as runtime from 'runtime'
+live async fn main() -> String: await runtime.run(runtime.id()) _main()
+ista async fn _main() -> String:
   const box: Box<Int> = Box
   const parts = [plain(Marker), nested(Full(Marker)), nested(Empty), generic(box), inTuple((Marker, true))]
   parts[0] + "|" + parts[1] + "|" + parts[2] + "|" + parts[3] + "|" + parts[4]

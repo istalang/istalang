@@ -13,6 +13,8 @@ fn show<U is Stringable>(self: Box, u: U) -> String:
 fn viaParameter<T is Shower>(x: T) -> String:
   x.show(5)
 
-ista async fn main():
+import * as runtime from 'runtime'
+live async fn main(): await runtime.run(runtime.id()) _main()
+ista async fn _main():
   const shower: any Shower = Box{label: "a"}
   (viaParameter(Box{label: "p"}), shower.show(true), shower.show("s"))

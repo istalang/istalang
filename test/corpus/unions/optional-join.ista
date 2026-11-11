@@ -20,7 +20,9 @@ fn sent(yes: Bool, s: Status) -> Status:
   const d: "draft" = "draft"
   if yes: s else: d
 
-ista async fn main() -> String:
+import * as runtime from 'runtime'
+live async fn main() -> String: await runtime.run(runtime.id()) _main()
+ista async fn _main() -> String:
   const yes = true
   const x = if yes: 2 else: none
   const y = if yes: none else: 2

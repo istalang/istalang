@@ -25,7 +25,9 @@ fn counted<C is Iterable<Int?>>(collection: C) -> Int:
     count += 1
   count
 
-ista async fn main() -> String:
+import * as runtime from 'runtime'
+live async fn main() -> String: await runtime.run(runtime.id()) _main()
+ista async fn _main() -> String:
   const xs: Array<Int?> = [1, none, 3]
   let looped: Array<String> = []
   for x in xs:

@@ -15,7 +15,8 @@ const otherPeoplesCode = /node_modules|vendor|hidden/u;
 const versionNumber = /^\d+\.\d+\.\d+/u;
 
 const valid = {
-  'main.ista': "import helper from 'lib/helper'\n\nista async fn main(): helper()\n",
+  'main.ista':
+    "import helper from 'lib/helper'\nimport * as runtime from 'runtime'\n\nlive async fn main(): await runtime.run(runtime.id()) _main()\nista async fn _main(): helper()\n",
   'lib/helper.ista': "import main from '../main'\n\nfn helper() -> Int: 1\n",
 };
 
@@ -34,7 +35,8 @@ describe('ista check', () => {
   });
 
   it('fails on a name error across modules, showing where', async () => {
-    const main = "import helper, missing from 'lib/helper'\n\nista async fn main(): helper()\n";
+    const main =
+      "import helper, missing from 'lib/helper'\nimport * as runtime from 'runtime'\n\nlive async fn main(): await runtime.run(runtime.id()) _main()\nista async fn _main(): helper()\n";
     const run = await ista(project({ ...valid, 'main.ista': main }), 'check');
     expect(run.code).toBe(1);
     expect(run.out).toContain(

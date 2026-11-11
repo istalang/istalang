@@ -10,6 +10,8 @@ fn count(first: Int, ...more: Array<Int>) -> Int:
 fn applied(f: fn(Int, Array<Int>) -> Int) -> Int:
   f(0, [1, 2])
 
-ista async fn main() -> Array<Int>:
+import * as runtime from 'runtime'
+live async fn main() -> Array<Int>: await runtime.run(runtime.id()) _main()
+ista async fn _main() -> Array<Int>:
   const shorter: fn(Int) -> Int = window
   [shorter(1), shorter(2), applied(count)]

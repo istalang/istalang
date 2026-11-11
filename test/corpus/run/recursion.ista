@@ -6,5 +6,7 @@ fn sum(n: Int) -> Int:
     return 0
   n + sum(n - 1)
 
-ista async fn main():
+import * as runtime from 'runtime'
+live async fn main(): await runtime.run(runtime.id()) _main()
+ista async fn _main():
   sum(100_000)

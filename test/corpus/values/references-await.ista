@@ -15,7 +15,8 @@ ista async fn tick(self: &Counter):
   await runtime.commit()
   self.count += 1
 
-ista async fn main():
+live async fn main(): await runtime.run(runtime.id()) _main()
+ista async fn _main():
   let total = 5
   await addTwice(&total, 5)
   let counter = Counter{count: 6}

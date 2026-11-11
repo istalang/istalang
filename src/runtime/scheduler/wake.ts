@@ -22,6 +22,9 @@
  *   when the failed segment started, so a retry sees the same time. One `runtime.isolate` started
  *   is then terminated at once, as an operator would (§9). Its log records are lost with it, as a
  *   discarded run's are: only a commit reports a segment's logs (§3.8 `log`).
+ * - A context (§9) is an instance named by its key, made running nothing (`newContext`): each call a
+ *   host makes into it, an invocation, starts the first segment of an advance as an answer does,
+ *   the answer named by the host's token, and a retry of a segment it started replays it.
  * - A segment also starts by resolving the watches whose condition holds: another instance's end,
  *   read from its last commit in the store (instance/instance-ends.ts), and under a test (§10) a
  *   test's own waits, which only the test world can tell. Under a test, an advance may also start
@@ -46,13 +49,14 @@ import {
   snapshotFormat,
 } from '../snapshot/snapshot.ts';
 import type { InstanceStore } from '../store.ts';
+import { arriving } from './instance/crossing.ts';
 import type { Answered } from './instance/futures.ts';
 import type { Instance } from './instance/index.ts';
 import { storedEnds } from './instance/instance-ends.ts';
 import type { LoadedDefinition } from './loaded-definition.ts';
 import type { Resident } from './resident.ts';
-import { endInstance, runSegment, type SegmentEnd, type SegmentStart } from './segment/index.ts';
-import { arriving } from './testing/mocks.ts';
+import { endInstance, runSegment, type SegmentStart } from './segment/index.ts';
+import type { SegmentEnd } from './segment/segment-ends.ts';
 import type { CallerFuture, MockCall } from './testing/test-world.ts';
 
 export interface SchedulerSeams {
@@ -76,12 +80,30 @@ export function unstarted(
   loaded: LoadedDefinition,
   name: string,
   call: InstanceCall,
+  beginning: Beginning,
+): Snapshot {
+  return begun(loaded, name, { kind: 'unstarted', call }, beginning);
+}
+
+/**
+ * The snapshot of a new context named `key` of `loaded` (§9): an instance running nothing, whose
+ * work the calls into it start, so it never finishes.
+ */
+export function newContext(loaded: LoadedDefinition, key: string, beginning: Beginning): Snapshot {
+  return begun(loaded, key, { kind: 'active' }, beginning);
+}
+
+/** The snapshot of a new instance named `name` of `loaded`, beginning with `status`. */
+function begun(
+  loaded: LoadedDefinition,
+  name: string,
+  status: Extract<Snapshot['status'], { kind: 'unstarted' | 'active' }>,
   { crashEveryAwait = false, terminatesOnPanic = false, seed, encoder }: Beginning,
 ): Snapshot {
   return {
     definition: loaded.hash,
     instance: name,
-    status: { kind: 'unstarted', call },
+    status,
     crashEveryAwait,
     terminatesOnPanic,
     ...(encoder !== undefined && { encoder }),
@@ -162,7 +184,7 @@ export function advance(
     }
     spawned.push(...commitChildren(seams.store, instance));
     const next = commit(seams.store, instance.snapshot(statusOf(end), objectsOf(end)));
-    instance.tellCancelled();
+    instance.notices.tellCommitted();
     logs.push(...instance.logs());
     const given = instance.answered();
     answered.push(...given);
@@ -188,7 +210,7 @@ export function terminate(seams: SchedulerSeams, resident: Resident): Advanced {
   const spawned = commitChildren(seams.store, instance);
   const { message, trace } = status;
   const ended = commit(seams.store, instance.snapshot({ kind: 'terminated', message, trace }, []));
-  instance.tellCancelled();
+  instance.notices.tellCommitted();
   resident.frozenAt(ended);
   return { state: stateOf(ended), spawned, logs: instance.logs() };
 }
@@ -198,7 +220,7 @@ function replayOf(status: Snapshot['status'], step: FirstStep): Replay | undefin
   if (status.kind === 'unstarted') {
     return { kind: 'call', call: status.call };
   }
-  return step.kind === 'arrival' ? step : undefined;
+  return step.kind === 'arrival' || step.kind === 'invocation' ? step : undefined;
 }
 
 /** One segment's run: the instance as it left it, and how it ended. */
@@ -248,8 +270,17 @@ function runFrom(
     resident.giveBack(instance);
     return undefined;
   }
-  const first = step.kind === 'answer' ? ({ kind: 'answer', call: step.call } as const) : undefined;
-  return { instance, end: runSegment(instance, startedAt, first) };
+  return { instance, end: runSegment(instance, startedAt, segmentStartOf(step)) };
+}
+
+/** What a segment begins with for `step`, the first of an advance: an answer to start, if any. */
+function segmentStartOf(step: FirstStep): SegmentStart | undefined {
+  if (step.kind === 'answer') {
+    return { kind: 'answer', call: step.call };
+  }
+  return step.kind === 'invocation'
+    ? { kind: 'invocation', invocation: step.invocation }
+    : undefined;
 }
 
 /** The re-run of a segment, or a panic when it ended differently from the first run (§10). */

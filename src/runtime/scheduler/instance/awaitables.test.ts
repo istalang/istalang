@@ -43,7 +43,7 @@ const delegated = [
 describe('an awaitable', () => {
   it('starts its work only once it is awaited', async () => {
     const main = [
-      'ista async fn main() -> Int:',
+      'live async fn main() -> Int: await runtime.run(runtime.id()) _main()\nista async fn _main() -> Int:',
       '  const starts = new Starts{count: 0}',
       '  const awaited = Cold{starts: starts, value: 7}',
       '  const before = starts->count',
@@ -56,7 +56,9 @@ describe('an awaitable', () => {
   it.each([false, true])(
     "waits on a future through that future's onAwait (crashing at every await: %s)",
     async (crashEveryAwait) => {
-      const main = ['ista async fn main() -> Int: await Delegated{inner: later(42)}'];
+      const main = [
+        'live async fn main() -> Int: await runtime.run(runtime.id()) _main()\nista async fn _main() -> Int: await Delegated{inner: later(42)}',
+      ];
       expect(await ended([...delegated, ...main], crashEveryAwait)).toEqual({
         kind: 'finished',
         outcome: '42',
@@ -66,7 +68,7 @@ describe('an awaitable', () => {
 
   it("races in a select, a case's value given by its own onAwait", async () => {
     const main = [
-      'ista async fn main() -> Int:',
+      'live async fn main() -> Int: await runtime.run(runtime.id()) _main()\nista async fn _main() -> Int:',
       '  const starts = new Starts{count: 0}',
       '  await select:',
       '    case Delegated{inner: later(1)} as slow:',
@@ -83,11 +85,12 @@ describe('an awaitable', () => {
   it('waits in memory in a live run, its Mode live, committing nothing', async () => {
     const text = compiledText(
       [
+        "import * as runtime from 'runtime'",
         'struct Ticket:',
         '  type Mode = "live"',
         'live fn onAwait(self: Ticket, done: Resolver<Int, "live">): done.resolve(41)',
         'live async fn run() -> Int: 1 + await Ticket',
-        'ista async fn main(): 0',
+        'live async fn main(): await runtime.run(runtime.id()) _main()\nista async fn _main(): 0',
       ].join('\n'),
     );
     const test = testRuntime();
@@ -108,7 +111,7 @@ describe('an awaitable', () => {
       '    else:',
       '      self.inner.onAwait(done)',
       'ista async fn now(value: Int) -> Int: value',
-      'ista async fn main() -> Int:',
+      'live async fn main() -> Int: await runtime.run(runtime.id()) _main()\nista async fn _main() -> Int:',
       '  const first = await Peek{inner: now(1)}',
       '  first * 10 + await Peek{inner: later(2)}',
     ];
@@ -129,7 +132,7 @@ describe('an awaitable', () => {
       '  type Mode = "ista"',
       'ista fn onAwait(self: ColdWork, done: Resolver<Int, "ista">):',
       '  work(self.starts, self.value).onAwait(done)',
-      'ista async fn main() -> Int:',
+      'live async fn main() -> Int: await runtime.run(runtime.id()) _main()\nista async fn _main() -> Int:',
       '  const starts = new Starts{count: 0}',
       '  const job = ColdWork{starts: starts, value: 7}',
       '  const before = starts->count',
@@ -147,7 +150,7 @@ describe('an awaitable', () => {
       '  match self:',
       '    case Left{x}: done.resolve(x)',
       '    case Right{y}: done.resolve(y)',
-      'ista async fn main() -> Int:',
+      'live async fn main() -> Int: await runtime.run(runtime.id()) _main()\nista async fn _main() -> Int:',
       '  const a = await Left{x: 20}',
       '  const b = await (later(22),)',
       '  a + b',
@@ -168,7 +171,7 @@ describe('an awaitable', () => {
       '      log->text = "cold"',
       '    case worker.disposing():',
       '      log->text = "cleaned up"',
-      'ista async fn main() -> String:',
+      'live async fn main() -> String: await runtime.run(runtime.id()) _main()\nista async fn _main() -> String:',
       '  const starts = new Starts{count: 0}',
       '  const log = new Log{text: "none"}',
       '  {',
@@ -202,7 +205,7 @@ describe('an awaitable', () => {
       '  await runtime.commit()',
       '  const lease: any Marker = new Lease{log: log}',
       '  box->done!.resolve(lease)',
-      'ista async fn main() -> Int:',
+      'live async fn main() -> Int: await runtime.run(runtime.id()) _main()\nista async fn _main() -> Int:',
       '  const log = new Log{disposed: 0}',
       '  const box = new Box{done: none}',
       '  const wb = WaitBox{box: box}',
@@ -229,7 +232,7 @@ describe("an awaitable's resolver", () => {
     '  type Mode = "ista"',
     'ista fn onAwait(self: Twice, done: Resolver<Int, "ista">):',
     ...body.map((line) => `  ${line}`),
-    'ista async fn main() -> Int:',
+    'live async fn main() -> Int: await runtime.run(runtime.id()) _main()\nista async fn _main() -> Int:',
     '  const took = new Took{first: false, second: false}',
     '  const got = await Twice{took: took}',
     '  got * 100 + (if took->first: 10 else: 0) + (if took->second: 1 else: 0)',
@@ -265,7 +268,7 @@ describe("an awaitable's resolver", () => {
       '  kept: Kept',
       '  type Mode = "ista"',
       'ista fn onAwait(self: Keep, done: Resolver<Int, "ista">): self.kept->done = done',
-      'ista async fn main() -> Int:',
+      'live async fn main() -> Int: await runtime.run(runtime.id()) _main()\nista async fn _main() -> Int:',
       '  const kept = new Kept{done: none}',
       '  const starts = new Starts{count: 0}',
       '  const got = await select:',
@@ -287,7 +290,7 @@ describe("an awaitable's resolver", () => {
       '  kept: Kept',
       '  type Mode = "ista"',
       'ista fn onAwait(self: Keep, done: Resolver<Int, "ista">): self.kept->done = done',
-      'ista async fn main() -> Int:',
+      'live async fn main() -> Int: await runtime.run(runtime.id()) _main()\nista async fn _main() -> Int:',
       '  const starts = new Starts{count: 0}',
       '  await select:',
       '    case Cold{starts: starts, value: 3} as value:',
@@ -310,7 +313,7 @@ describe("an awaitable's resolver", () => {
       '  type Mode = "ista"',
       'ista fn onAwait(self: TryAfter, done: Resolver<Int, "ista">):',
       '  self.took->took = done.tryResolve(99)',
-      'ista async fn main() -> Int:',
+      'live async fn main() -> Int: await runtime.run(runtime.id()) _main()\nista async fn _main() -> Int:',
       '  const starts = new Starts{count: 0}',
       '  const took = new Took{took: true}',
       '  const got = await select:',
@@ -336,7 +339,7 @@ describe("an awaitable's resolver", () => {
       '  self.first.onAwait(done)',
       '  self.second.onAwait(done)',
       'ista async fn now(value: Int) -> Int: value',
-      'ista async fn main() -> Int:',
+      'live async fn main() -> Int: await runtime.run(runtime.id()) _main()\nista async fn _main() -> Int:',
       '  await TwoFutures{first: later(1), second: now(2)}',
     ];
     expect(await ended([...delegated, ...twoFutures])).toEqual({
@@ -350,7 +353,7 @@ describe("an awaitable's resolver", () => {
       'struct Dropped:',
       '  type Mode = "ista"',
       'ista fn onAwait(self: Dropped, done: Resolver<Int, "ista">): ()',
-      'ista async fn main() -> Int:',
+      'live async fn main() -> Int: await runtime.run(runtime.id()) _main()\nista async fn _main() -> Int:',
       '  const starts = new Starts{count: 0}',
       '  await select:',
       '    case Cold{starts: starts, value: 1} as v: v',
@@ -372,7 +375,7 @@ describe("an awaitable's resolver", () => {
       'ista fn onAwait(self: WatchResolver, done: Resolver<Int, "ista">):',
       '  self.held->weak = WeakRef(done)',
       '  done.resolve(42)',
-      'ista async fn main() -> Int:',
+      'live async fn main() -> Int: await runtime.run(runtime.id()) _main()\nista async fn _main() -> Int:',
       '  const held = new HeldWeak{weak: none}',
       '  const v = await WatchResolver{held: held}',
       '  await runtime.commit()',

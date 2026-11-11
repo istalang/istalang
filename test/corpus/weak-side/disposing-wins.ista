@@ -4,6 +4,7 @@
 # though that case comes later in the `select`.
 
 import Inbox from 'inbox'
+import * as runtime from 'runtime'
 
 fn note(log: Shared<Array<String>>, entry: String):
   log->value = [...log->value, entry]
@@ -15,7 +16,8 @@ ista async fn worker(jobs: Inbox<Int>, log: Shared<Array<String>>) -> Unit:
     case worker.disposing():
       note(log, "cleaned up")
 
-ista async fn main() -> String:
+live async fn main() -> String: await runtime.run(runtime.id()) _main()
+ista async fn _main() -> String:
   const empty: Array<String> = []
   const log = new Shared{value: empty}
   const jobs = Inbox.create<Int>()

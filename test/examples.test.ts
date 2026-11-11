@@ -58,8 +58,8 @@ describe('the examples', () => {
     const mainId = moduleIdOf(pathToFileURL(join(root, 'main-entry.ista')));
     const mainText = [
       "import * as sup from './supplier.gen'",
-      "import * as ord from './order.gen'",
-      'ista async fn main() -> Int:',
+      "import * as ord from './order.gen'\nimport * as runtime from 'runtime'",
+      'live async fn main() -> Int: await runtime.run(runtime.id()) _main()\nista async fn _main() -> Int:',
       '  const _f1 = sup.supplierForm',
       '  const _f2 = ord.orderForm',
       '  0',

@@ -13,7 +13,9 @@ ista async fn later(x: Int) -> Int: x + 1
 
 ista fn starting(x: Int) -> Future<Int, "ista">: later(x)
 
-ista async fn main() -> (String, Int, Array<Int>, Array<Int?>, Int, Int, Array<Int?>, Array<Result<Int, String>>):
+import * as runtime from 'runtime'
+live async fn main() -> (String, Int, Array<Int>, Array<Int?>, Int, Int, Array<Int?>, Array<Result<Int, String>>): await runtime.run(runtime.id()) _main()
+ista async fn _main() -> (String, Int, Array<Int>, Array<Int?>, Int, Int, Array<Int?>, Array<Result<Int, String>>):
   const order = await retry(3, fn(id): Order{id})
   const viaFuture: ista async fn(Int) -> Int = starting
   const plains: Array<fn() -> Int> = [fn(): 3, fn(): 4]

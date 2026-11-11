@@ -5,7 +5,9 @@
 fn show(xs: Array<Int>) -> String:
   "[" + [for x in xs: String(x)].join(", ") + "]"
 
-ista async fn main() -> String:
+import * as runtime from 'runtime'
+live async fn main() -> String: await runtime.run(runtime.id()) _main()
+ista async fn _main() -> String:
   let a = [0, 1, 2, 3, 4, 5, 6]
   const before = a
   a[3..5] = [9, 9, 9, 9]

@@ -78,7 +78,9 @@ fn swapped(p: Pair) -> String:
   match p:
     case Both(a, b): `${b} ${a}`
 
-ista async fn main() -> String:
+import * as runtime from 'runtime'
+live async fn main() -> String: await runtime.run(runtime.id()) _main()
+ista async fn _main() -> String:
   const g = Node.Group("t", true, Node.Text("a"), Node.Empty, Node.Text("b"))
   const flat = Node.Group(title: "t", children: [Node.Text("x"), Node.Empty, Node.Empty])
   const word: Opt<Int> | Opt<String> = Opt.Some<String>("abc")

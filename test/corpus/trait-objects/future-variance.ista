@@ -15,7 +15,9 @@ ista async fn bumped(n: Int) -> Int: n + 1
 ista fn started(self: Counter) -> Future<Int, "ista">: bumped(self.n)
 ista async fn later(self: Counter) -> Int: self.n + 3
 
-ista async fn main() -> Array<Int?>:
+import * as runtime from 'runtime'
+live async fn main() -> Array<Int?>: await runtime.run(runtime.id()) _main()
+ista async fn _main() -> Array<Int?>:
   const counter: any Started<Int?> = Counter{n: 1}
   const later: any Later<Int?> = Counter{n: 1}
   [await counter.started(), await later.later()]

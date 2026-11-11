@@ -49,4 +49,6 @@ fn through(c: Counter?) -> Int?:
 fn unknown(b: Box) -> Int:
   b.p.zzz
 
-ista async fn main(): 0
+import * as runtime from 'runtime'
+live async fn main(): await runtime.run(runtime.id()) _main()
+ista async fn _main(): 0

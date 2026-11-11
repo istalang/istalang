@@ -5,7 +5,9 @@
 fn reset(value: &Int):
   value = 0
 
-ista async fn main() -> Int:
+import * as runtime from 'runtime'
+live async fn main() -> Int: await runtime.run(runtime.id()) _main()
+ista async fn _main() -> Int:
   let m = ["a": 1]
   reset(&m["b"])
   m["b"]

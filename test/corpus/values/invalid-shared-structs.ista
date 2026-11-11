@@ -1,12 +1,12 @@
 # error: 5026 at 22:17
 # error: 5026 at 23:16
-# error: 5218 at 29:16
-# error: 5219 at 30:21
-# error: 5644 at 31:14
-# error: 5221 at 32:35
-# error: 5406 at 33:19
-# error: 5220 at 35:17
-# error: 5210 at 37:3
+# error: 5218 at 31:16
+# error: 5219 at 32:21
+# error: 5644 at 33:14
+# error: 5221 at 34:35
+# error: 5406 at 35:19
+# error: 5220 at 37:17
+# error: 5210 at 39:3
 # A shared struct (§3.18) is built with `new`, and only one is; its fields are read through it
 # with `->`, never `.`; and its values have an identity, so they never leave their instance, nor
 # does compile time compute one into a top-level const, by itself or as a field's default (§3).
@@ -25,7 +25,9 @@ const holder = Holder{}
 fn keep(counter: Counter):
   ()
 
-ista async fn main():
+import * as runtime from 'runtime'
+live async fn main(): await runtime.run(runtime.id()) _main()
+ista async fn _main():
   const bare = Counter{count: 1}
   const plain = new Tally{count: 1}
   spawn keep(new Counter{count: 1})

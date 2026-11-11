@@ -45,12 +45,12 @@ import {
   Panic,
 } from '../../natives.ts';
 import { isReference, type Reference, type RegisterContents } from '../../snapshot/objects.ts';
-import type { Futures } from '../instance/futures.ts';
 import { type Heap, handleObject } from '../instance/heap.ts';
 import type { Instance } from '../instance/index.ts';
 import type { Slots } from '../instance/slots.ts';
 import { liveResolvable } from '../live-resolvers.ts';
 import type { Waiting } from '../waiting.ts';
+import { nativeContextsOf } from './native-contexts.ts';
 
 export class NativeCalls {
   readonly #instance: Instance;
@@ -129,7 +129,7 @@ interface SegmentSide {
 function capabilitiesOf(instance: Instance, side: SegmentSide): NativeCapabilities {
   const { now, waiting } = side;
   return {
-    futures: nativeFuturesOf(instance.futures, side),
+    futures: nativeFuturesOf(instance, side),
     waits: nativeWaitsOf(instance),
     slots: nativeSlotsOf(instance.slots),
     weak: instance.weak,
@@ -138,11 +138,13 @@ function capabilitiesOf(instance: Instance, side: SegmentSide): NativeCapabiliti
     logs: nativeLogsOf(instance, now),
     instances: nativeInstancesOf(instance, waiting),
     testing: nativeTestingOf(instance),
+    contexts: nativeContextsOf(instance, waiting, side.trace),
   };
 }
 
 /** The instance's futures as natives make them (§3.6), in a segment `side` describes. */
-function nativeFuturesOf(futures: Futures, { waiting, trace }: SegmentSide): NativeFutures {
+function nativeFuturesOf(instance: Instance, { waiting, trace }: SegmentSide): NativeFutures {
+  const { futures, notices } = instance;
   return {
     resolved: (value) => futures.createHandle({ kind: 'resolved', value }),
     timer: (at) => futures.createHandle({ kind: 'timer', at }),
@@ -160,10 +162,10 @@ function nativeFuturesOf(futures: Futures, { waiting, trace }: SegmentSide): Nat
           'An instance waits on no future a live resolver resolves, which dies with its process: give call.pending(token).',
         );
       }
-      return liveResolvable(futures, waiting.resumes, trace());
+      return liveResolvable(instance, waiting.resumes, trace());
     },
     onDisposed: (future, notice) => {
-      futures.onDisposed(handleObject(future), notice);
+      notices.onDisposed(handleObject(future), notice);
     },
   };
 }

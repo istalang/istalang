@@ -9,33 +9,38 @@ import { runInNewContext } from 'node:vm';
 import { describe, expect, it } from 'vitest';
 import { compiledText } from '../../compiler/compile.test-kit.ts';
 import type { Advanced } from '../instance-state.ts';
-import { asLive, testRuntime } from '../runtime.test-kit.ts';
+import { testRuntime } from '../runtime.test-kit.ts';
 import type { HostCall, HostExterns, HostResolver } from './host-natives.ts';
 
 setFlagsFromString('--expose_gc');
 /** A full collection of JavaScript's heap, which runs what a `FinalizationRegistry` was told. */
 const collectGarbage = runInNewContext('gc') as () => void;
 
-const text = compiledText(
-  [
-    "import * as time from 'time'",
-    'extern ista fn fetch(name: String) -> Future<Int, "ista">',
-    'ista async fn fetched() -> Int:',
-    '  1 + await fetch("a")',
-    'ista async fn raced() -> Int:',
-    '  await select:',
-    '    case fetch("a") as n:',
-    '      n',
-    '    case time.delay(5ms):',
-    '      0',
-    'ista async fn main(): 0',
-  ].join('\n'),
-);
+/** The program with `kind` code: live code a host starts, or ista code an instance runs. */
+function programOf(kind: 'live' | 'ista'): string {
+  return compiledText(
+    [
+      "import * as time from 'time'\nimport * as runtime from 'runtime'",
+      `extern ${kind} fn fetch(name: String) -> Future<Int, "${kind}">`,
+      `${kind} async fn fetched() -> Int:`,
+      '  1 + await fetch("a")',
+      `${kind} async fn raced() -> Int:`,
+      '  await select:',
+      '    case fetch("a") as n:',
+      '      n',
+      '    case time.delay(5ms):',
+      '      0',
+      `live async fn main(): await runtime.run(runtime.id()) _main()\nista async fn _main(): ${kind === 'ista' ? 'await fetched()' : '0'}`,
+    ].join('\n'),
+  );
+}
+
+const liveText = programOf('live');
 const fetchKey = 'main.fetch(String)';
 
 /** Starts `entry` as a live run of the program, with `fetch` as the host's. */
 function startLive(fetch: HostExterns[string], entry = 'main.fetched()'): Promise<Advanced> {
-  const program = testRuntime({ host: { [fetchKey]: fetch } }).runtime.deploy(asLive(text));
+  const program = testRuntime({ host: { [fetchKey]: fetch } }).runtime.deploy(liveText);
   return program.start('live', { function: entry });
 }
 
@@ -174,9 +179,9 @@ describe("a host's live resolver", () => {
     });
   });
 
-  it("can't be taken by an instance's extern, whose future the host fills by a token", async () => {
+  it("can't be taken by an instance's extern, whose future the host fills by a token", () => {
     const test = testRuntime({ host: { [fetchKey]: (_arguments, call) => call.resolver() } });
-    const advanced = await test.runtime.deploy(text).start('ista', { function: 'main.fetched()' });
+    const advanced = test.startInstance(programOf('ista'), 'ista');
     expect(advanced.state).toMatchObject({
       kind: 'panicked',
       message: expect.stringContaining('An instance waits on no future a live resolver resolves'),

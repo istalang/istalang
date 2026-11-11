@@ -16,6 +16,11 @@ import { Refusal } from '../refusal.ts';
 import { type RecordingStore, recordingStore, testRuntime } from '../runtime.test-kit.ts';
 
 const subsetText = definitionFormat.write(subsetDefinition).text;
+
+/** A program whose ista body commits once, as it ends. */
+const oneCommit = compiledText(
+  "import * as runtime from 'runtime'\nlive async fn main() -> Int: await runtime.run(runtime.id()) _main()\nista async fn _main() -> Int: 1",
+);
 const innermostLocation = /\(main:6:\d+\)$/u;
 const missingKeys = /prelude\.compare\(Int, Int\).*prelude\.add\(Int, Int\)/u;
 
@@ -29,13 +34,14 @@ function finished(state: InstanceState): Finished {
 
 /** The subset fixture deployed on a fresh runtime, with `run` starting a new instance of it. */
 function load(natives: Natives = stdNatives) {
-  const program = testRuntime({ natives }).runtime.deploy(subsetText);
+  const test = testRuntime({ natives });
+  const program = test.runtime.deploy(subsetText);
   let instances = 0;
   return {
     ...program,
     run: async () => {
       instances += 1;
-      return (await program.start(`instance-${instances}`)).state;
+      return (await program.start(`run-${instances}`)).state;
     },
   };
 }
@@ -68,7 +74,9 @@ describe('the runtime', () => {
   it('gives an encoded outcome as JSON or its text, refusing one with no JSON', async () => {
     const test = testRuntime();
     const program = test.runtime.deploy(
-      compiledText('ista async fn main() -> (Float, Int): (0.0 / 0.0, 12345678901234567890)'),
+      compiledText(
+        "import * as runtime from 'runtime'\nlive async fn main() -> (Float, Int): await runtime.run(runtime.id()) _main()\nista async fn _main() -> (Float, Int): (0.0 / 0.0, 12345678901234567890)",
+      ),
     );
     const state = finished((await program.start('i')).state);
     expect(program.outcome(state)).toEqual([null, 12345678901234567890n]);
@@ -80,44 +88,45 @@ describe('the runtime', () => {
 
   it("gives a spawned instance's outcome as JSON when a codec writes its type, refusing one none writes", async () => {
     const test = testRuntime();
-    const program = test.runtime.deploy(
-      compiledText(
-        [
-          'fn answer() -> Int: 42',
-          'ista fn handle() -> Instance<Int>: spawn answer()',
-          'ista async fn main():',
-          '  spawn answer()',
-          '  spawn handle()',
-          '  0',
-        ].join('\n'),
-      ),
+    const text = compiledText(
+      [
+        'fn answer() -> Int: 42',
+        'ista fn handle() -> Instance<Int>: spawn answer()',
+        "import * as runtime from 'runtime'\nlive async fn main(): await runtime.run(runtime.id()) _main()\nista async fn _main():",
+        '  spawn answer()',
+        '  spawn handle()',
+        '  0',
+      ].join('\n'),
     );
+    const program = test.runtime.deploy(text);
     const [encoded, unencoded] = await Promise.all(
-      (await program.start('i')).spawned.map(async (name) =>
-        finished((await test.runtime.wake(name)).state),
-      ),
+      test
+        .startInstance(text, 'i')
+        .spawned.map(async (name) => finished((await test.runtime.wake(name)).state)),
     );
     expect(encoded && program.outcomeText(encoded)).toBe('42');
     expect(() => unencoded && program.outcome(unencoded)).toThrow(Refusal);
   });
 
-  it("encodes the root's outcome before what its frame holds is disposed, so a defer's panic is traced from its Deferred", async () => {
-    const program = testRuntime().runtime.deploy(
-      compiledText('ista async fn main() -> Int:\n  _ = defer panic("boom")\n  42'),
+  it("encodes the root's outcome before what its frame holds is disposed, so a defer's panic is traced from its Deferred", () => {
+    const { state } = testRuntime().startInstance(
+      compiledText(
+        'import * as runtime from \'runtime\'\nlive async fn main() -> Int: await runtime.run(runtime.id()) _main()\nista async fn _main() -> Int:\n  _ = defer panic("boom")\n  42',
+      ),
+      'i',
     );
-    const { state } = await program.start('i');
     expect(state).toMatchObject({ kind: 'panicked', message: 'boom' });
     const frames = state.kind === 'panicked' ? state.trace.split('\n') : [];
     expect(frames.map((frame) => frame.split(' ')[1])).toEqual([
-      'main.main.deferred@2:13',
+      'main._main.deferred@4:13',
       'prelude.dispose<"simple">',
     ]);
   });
 
   it('refuses a start whose seed from the host has the wrong length, writing nothing', async () => {
-    const { runtime, store } = testRuntime({ seed: () => new Uint8Array(3) });
-    const program = runtime.deploy(subsetText);
-    await expect(program.start('short')).rejects.toThrow(
+    const test = testRuntime({ seed: () => new Uint8Array(3) });
+    const { store } = test;
+    await expect(test.runtime.deploy(subsetText).start('short')).rejects.toThrow(
       expect.objectContaining({ reason: 'unfitSeed' }),
     );
     expect(store.readSnapshot('short')).toBeUndefined();
@@ -131,8 +140,8 @@ describe('the runtime', () => {
         throw new Error('the store is down');
       },
     };
-    const { runtime } = testRuntime({ store: failing });
-    await expect(runtime.deploy(subsetText).start('lost')).rejects.toThrow('the store is down');
+    const { runtime, startInstance } = testRuntime({ store: failing });
+    await expect(async () => startInstance(oneCommit, 'lost')).rejects.toThrow('the store is down');
     await expect(runtime.wake('lost')).rejects.toThrow(
       expect.objectContaining({ reason: 'unknownInstance' }),
     );

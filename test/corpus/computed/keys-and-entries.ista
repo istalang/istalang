@@ -19,7 +19,9 @@ fn apply<S is struct, K in keyof S>(self: Entry<S, K>, target: &S):
 fn addTen(target: &Int):
   target += 10
 
-ista async fn main() -> String:
+import * as runtime from 'runtime'
+live async fn main() -> String: await runtime.run(runtime.id()) _main()
+ista async fn _main() -> String:
   let settings = Settings{retries: 1, region: "us"}
   const e1: AnyEntry<Settings> = Entry{key: "region", value: "eu"}
   const e2: AnyEntry<Settings> = Entry{key: "retries", value: 5}

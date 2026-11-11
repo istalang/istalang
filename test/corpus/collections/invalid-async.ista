@@ -1,4 +1,4 @@
-# error: 5306 at 18:3
+# error: 5306 at 20:3
 # A collection runs its `index` and `setIndex` at once, inside the place or literal that needs
 # them, so neither may be async (§3.9).
 
@@ -13,6 +13,8 @@ fn index(self: Bag, key: String) -> Int:
 ista async fn setIndex(self: &Bag, key: String, value: Int):
   self.values[key] = value
 
-ista async fn main():
+import * as runtime from 'runtime'
+live async fn main(): await runtime.run(runtime.id()) _main()
+ista async fn _main():
   let bag = Bag{values: [:]}
   bag["a"] = 1

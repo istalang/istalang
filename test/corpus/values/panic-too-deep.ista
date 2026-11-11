@@ -5,7 +5,8 @@ import * as runtime from 'runtime'
 
 struct Tree { children: Array<Tree> }
 
-ista async fn main() -> Int:
+live async fn main() -> Int: await runtime.run(runtime.id()) _main()
+ista async fn _main() -> Int:
   let tree = Tree{children: []}
   for _ in 0..3000:
     tree = Tree{children: [tree]}

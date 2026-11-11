@@ -6,7 +6,9 @@ fn twice(x: Int) -> Int: x * 2
 fn pick(x: Int) -> String: "int " + x
 fn pick(x: (Int,)) -> String: "tuple"
 
-ista async fn main() -> (Int, (Int,), Int, String, Int?, Int?, String, String):
+import * as runtime from 'runtime'
+live async fn main() -> (Int, (Int,), Int, String, Int?, Int?, String, String): await runtime.run(runtime.id()) _main()
+ista async fn _main() -> (Int, (Int,), Int, String, Int?, Int?, String, String):
   const one: (Int,) = 3
   const back: Int = one
   const wrapped: (Int,) = 4

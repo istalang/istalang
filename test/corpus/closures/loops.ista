@@ -57,5 +57,7 @@ fn forBody() -> String:
     total += 1
   String(first()) + " " + String(second())
 
-ista async fn main():
+import * as runtime from 'runtime'
+live async fn main(): await runtime.run(runtime.id()) _main()
+ista async fn _main():
   fresh() + " | " + sharedOutside() + " | " + String(leaving()) + " | " + forEach() + " | " + forBody()

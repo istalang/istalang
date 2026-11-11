@@ -3,6 +3,7 @@
 # as its base writes it, and read back by each base's codec in turn, then only as one of them.
 
 import * as json from 'json'
+import * as runtime from 'runtime'
 
 type Mixed = "a" | 1 | true
 
@@ -11,6 +12,7 @@ fn read(text: String) -> String:
     case Ok(value): `${value}`
     case Err(error): error.message
 
-ista async fn main() -> String:
+live async fn main() -> String: await runtime.run(runtime.id()) _main()
+ista async fn _main() -> String:
   const written: Array<Mixed> = ["a", 1, true]
   `${json.stringify(written)}|${read("1")}|${read("\"a\"")}|${read("true")}|${read("2")}`

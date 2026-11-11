@@ -8,6 +8,7 @@
 import * as json from 'json'
 import * as time from 'time'
 import JsonBigInt, JsonSkip from 'json'
+import * as runtime from 'runtime'
 
 struct Item:
   sku: String
@@ -47,7 +48,8 @@ fn failure(text: String) -> String:
 fn order(tags: String, shape: String, pair: String, due: String, extra: String) -> String:
   "{\"id\":\"o1\",\"items\":[],\"tags\":" + tags + ",\"shape\":{\"_type\":\"" + shape + "\"},\"pair\":" + pair + ",\"due\":\"" + due + "\"" + extra + "}"
 
-ista async fn main() -> Array<String>:
+live async fn main() -> Array<String>: await runtime.run(runtime.id()) _main()
+ista async fn _main() -> Array<String>:
   const original = Order{id: "o1", items: [Item{sku: "a", qty: 2}], note: "n", tags: [10: 1], shape: Circle(1.5), pair: (3, true), due: 90m}
   const roundTrip = match json.parse<Order>(json.stringify(original)):
     case Ok(value): if value == original: "round trip" else: "changed"

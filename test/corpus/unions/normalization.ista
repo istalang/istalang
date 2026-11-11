@@ -37,7 +37,9 @@ fn chainSum(c: Chain) -> Int:
     case Chain as next: c.value + next.value
     case Int as tail: c.value + tail
 
-ista async fn main() -> String:
+import * as runtime from 'runtime'
+live async fn main() -> String: await runtime.run(runtime.id()) _main()
+ista async fn _main() -> String:
   const u1 = asIntOrString(42)
   const u2 = asString("hi")
   const u3 = doubleOpt(none)

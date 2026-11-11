@@ -142,7 +142,9 @@ trait Settles:
   type Mode in Persistence
   Self.Mode async fn settle(self: Self) -> Int
 ista async fn one() -> Int: 1
-ista async fn main():
+import * as runtime from 'runtime'
+live async fn main(): await runtime.run(runtime.id()) _main()
+ista async fn _main():
   each([1, 2], fn(x): ())
   _ = await twice(one)
 `),

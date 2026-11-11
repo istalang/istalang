@@ -3,6 +3,7 @@
 # value's own type meets the trait with, across a wait, through a generic function, a widening,
 # a map key, `String(x)` and an async requirement.
 import * as time from 'time'
+import * as runtime from 'runtime'
 
 trait Named:
   fn name(self: Self) -> String
@@ -32,7 +33,8 @@ fn twice<X is Named>(x: X) -> String:
 fn widen(x: any Named & Sendable) -> any Named:
   x
 
-ista async fn main():
+live async fn main(): await runtime.run(runtime.id()) _main()
+ista async fn _main():
   const items: Array<any Named> = [Email{to: "a"}, Sms{number: "1"}, wrap(Email{to: "w"})]
   await time.delay(10ms)
   const names = [for item in items: item.name()]

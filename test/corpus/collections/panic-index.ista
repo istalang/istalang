@@ -1,6 +1,8 @@
 # panic: Index 5 is out of range for an array of length 2.
 # Indexing outside an array's bounds is a bug in the program, so it panics (§3.8, §3.12).
 
-ista async fn main() -> Int:
+import * as runtime from 'runtime'
+live async fn main() -> Int: await runtime.run(runtime.id()) _main()
+ista async fn _main() -> Int:
   const xs = [1, 2]
   xs[5]

@@ -5,6 +5,7 @@
 
 import * as futures from 'futures'
 import * as time from 'time'
+import * as runtime from 'runtime'
 
 struct Pending:
   label: String
@@ -14,7 +15,8 @@ ista async fn after(wait: time.Duration, value: Int) -> Int:
   await time.delay(wait)
   value
 
-ista async fn main() -> String:
+live async fn main() -> String: await runtime.run(runtime.id()) _main()
+ista async fn _main() -> String:
   const slow = after(6ms, 1)
   const fast = after(2ms, 2)
   const pending = Pending{label: "slow", done: slow}

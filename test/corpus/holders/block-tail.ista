@@ -20,7 +20,9 @@ fn opened(lease: Lease) -> Int:
   note(lease->log, "lease " + String(lease->id))
   lease->id
 
-ista async fn main() -> String:
+import * as runtime from 'runtime'
+live async fn main() -> String: await runtime.run(runtime.id()) _main()
+ista async fn _main() -> String:
   const empty: Array<String> = []
   const log = new Shared{value: empty}
   let n = 0

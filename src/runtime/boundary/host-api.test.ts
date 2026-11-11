@@ -38,7 +38,17 @@ const program = compiledText(
     '  const approved = await approval(order.id)',
     '  if approved: order.id + " " + String(first) + "/" + String(seed) else: "no"',
     '',
-    'ista async fn main(): 0',
+    'ista async fn decideFor(id: String) -> String: await decide(Order{id, amount: 1})',
+    'ista async fn decideO1() -> String: await decideFor("o1")',
+    'ista async fn decideO() -> String: await decideFor("o")',
+    '',
+    "import * as runtime from 'runtime'\nlive async fn main(): await runtime.run(runtime.id()) _main()\nista async fn _main(): 0",
+    '',
+    '# Roots the ista entries a test starts by name: only code a live start reaches is kept.',
+    'live async fn reach():',
+    '  _ = await runtime.run(runtime.id()) decideO1()',
+    '  _ = await runtime.run(runtime.id()) decideO()',
+    '  0',
   ].join('\n'),
 );
 
@@ -97,11 +107,7 @@ describe('the host API', () => {
   it('fills a named future with JSON, refusing JSON that does not fit and ignoring a token nothing waits on, without committing', async () => {
     const { host } = counting();
     const test = testRuntime({ host });
-    const deployed = test.runtime.deploy(program);
-    const started = await deployed.start('d', {
-      function: 'main.decide(main.Order)',
-      arguments: [{ id: 'o1', amount: 1 }],
-    });
+    const started = test.startInstance(program, 'd', { function: 'main.decideO1' });
     expect(started.state).toEqual({ kind: 'waiting', until: undefined, watching: [] });
     expect(test.runtime.inspect('d').waitingAt.map(({ waypoint }) => waypoint)).toContain(
       'approval',
@@ -115,37 +121,36 @@ describe('the host API', () => {
     expect(ignored.state).toEqual(started.state);
     expect(test.store.commits).toHaveLength(commits);
     const filled = await test.runtime.fill('d', 'approve o1', true);
-    expect(await runToEnd(test, 'd', filled)).toEqual({ kind: 'finished', outcome: '"o1 1/1"' });
+    expect(await runToEnd(test, 'd', filled)).toEqual({ kind: 'finished', outcome: 'o1 1/1' });
   });
 
   it('reads an extern constant once per instance, keeping it across commits', async () => {
     const { host, reads } = counting();
     const test = testRuntime({ host });
-    const deployed = test.runtime.deploy(program);
-    const order = { id: 'o', amount: 1 };
-    await deployed.start('first', { function: 'main.decide(main.Order)', arguments: [order] });
-    await deployed.start('second', { function: 'main.decide(main.Order)', arguments: [order] });
+    const request = { function: 'main.decideO' };
+    test.startInstance(program, 'first', request);
+    test.startInstance(program, 'second', request);
     const first = await runToEnd(
       test,
       'first',
       await test.runtime.fill('first', 'approve o', true),
     );
-    expect(first).toEqual({ kind: 'finished', outcome: '"o 1/1"' });
+    expect(first).toEqual({ kind: 'finished', outcome: 'o 1/1' });
     const second = await runToEnd(
       test,
       'second',
       await test.runtime.fill('second', 'approve o', true),
     );
-    expect(second).toEqual({ kind: 'finished', outcome: '"o 2/2"' });
+    expect(second).toEqual({ kind: 'finished', outcome: 'o 2/2' });
     expect(reads()).toBe(2);
   });
 
   it('retries a panicked instance at the time its failed segment started, or terminates it', async () => {
     const retried = compiledText(
       [
-        "import * as time from 'time'",
+        "import * as time from 'time'\nimport * as runtime from 'runtime'",
         'extern fn ready() -> Bool',
-        'ista async fn main() -> Int:',
+        'live async fn main() -> Int: await runtime.run(runtime.id()) _main()\nista async fn _main() -> Int:',
         '  if not ready():',
         '    panic("not ready")',
         '  time.now().value',
@@ -158,21 +163,20 @@ describe('the host API', () => {
     };
     const test = testRuntime({ host: { 'main.ready()': ready } });
     test.clock.set(5n);
-    const deployed = test.runtime.deploy(retried);
-    expect((await deployed.start('r')).state).toMatchObject({
+    expect(test.startInstance(retried, 'r').state).toMatchObject({
       kind: 'panicked',
       message: 'not ready',
     });
     test.clock.set(9n);
     expect(await runToEnd(test, 'r', await test.runtime.retry('r'))).toEqual({
       kind: 'finished',
-      outcome: '5',
+      outcome: 5n,
     });
     await expect(test.runtime.retry('r')).rejects.toThrow(
       expect.objectContaining({ reason: 'notPanicked' }),
     );
     calls = 0;
-    await deployed.start('t');
+    test.startInstance(retried, 't');
     await expect(test.runtime.fill('t', 'any', true)).rejects.toThrow(
       expect.objectContaining({ reason: 'panicked' }),
     );
@@ -190,7 +194,7 @@ describe('the host API', () => {
       [
         'extern fn pick() -> Int',
         'fn child(n: Int) -> Int: n',
-        'ista async fn main() -> Int:',
+        "import * as runtime from 'runtime'\nlive async fn main() -> Int: await runtime.run(runtime.id()) _main()\nista async fn _main() -> Int:",
         '  spawn child(pick())',
         '  0',
       ].join('\n'),
@@ -213,13 +217,10 @@ describe('the host API', () => {
       },
     };
     const host = { 'main.pick()': pick };
-    const first = testRuntime({ store: crashingOnce, host }).runtime.deploy(spawning);
-    await expect(first.start('a/1')).rejects.toThrow(
-      expect.objectContaining({ reason: 'reservedName' }),
-    );
-    await expect(first.start('p')).rejects.toThrow('crash');
+    const first = testRuntime({ store: crashingOnce, host });
+    expect(() => first.startInstance(spawning, 'p')).toThrow('crash');
     const test = testRuntime({ store: inner, host });
-    const started = await test.runtime.deploy(spawning).start('p');
+    const started = test.startInstance(spawning, 'p');
     expect((await settleAll(test, 'p', started)).get('p/1')).toMatchObject({
       kind: 'finished',
       outcome: 2n,
@@ -229,7 +230,9 @@ describe('the host API', () => {
   it('refuses a deploy that declares an extern its host already provides with another type', () => {
     const declaring = (type: string) =>
       compiledText(
-        `extern limit: ${type}\nextern fn check(n: Int) -> Bool\nista async fn main(): limit`,
+        `extern limit: ${type}\nextern fn check(n: Int) -> Bool\nimport * as runtime from 'runtime'
+live async fn main(): await runtime.run(runtime.id()) _main()
+ista async fn _main(): limit`,
       );
     const host = { 'main.limit': () => 1, 'main.check(Int)': () => true };
     const store = recordingStore();
@@ -246,9 +249,9 @@ describe('the host API', () => {
   it('fills a future once, however many segments the fill runs, crashEveryAwait included', async () => {
     const waiting = compiledText(
       [
-        "import * as time from 'time'",
+        "import * as time from 'time'\nimport * as runtime from 'runtime'",
         'extern ista fn approval() -> Future<Bool, "ista">',
-        'ista async fn main() -> Bool:',
+        'live async fn main() -> Bool: await runtime.run(runtime.id()) _main()\nista async fn _main() -> Bool:',
         '  const approved = await approval()',
         '  await time.at(time.now())',
         '  approved',
@@ -258,10 +261,10 @@ describe('the host API', () => {
       'main.approval()': (_: readonly unknown[], call: HostCall) => call.pending('a'),
     };
     const test = testRuntime({ host });
-    await test.runtime.deploy(waiting).start('c', { crashEveryAwait: true });
+    test.startInstance(waiting, 'c', { crashEveryAwait: true });
     expect(await runToEnd(test, 'c', await test.runtime.fill('c', 'a', true))).toEqual({
       kind: 'finished',
-      outcome: 'true',
+      outcome: true,
     });
   });
 
@@ -270,7 +273,7 @@ describe('the host API', () => {
       [
         'extern ista fn approval() -> Future<Bool, "ista">',
         'extern fn ready() -> Bool',
-        'ista async fn main() -> Bool:',
+        "import * as runtime from 'runtime'\nlive async fn main() -> Bool: await runtime.run(runtime.id()) _main()\nista async fn _main() -> Bool:",
         '  const approved = await approval()',
         '  if not ready():',
         '    panic("not ready")',
@@ -287,11 +290,11 @@ describe('the host API', () => {
       'main.ready()': ready,
     };
     const test = testRuntime({ host });
-    await test.runtime.deploy(filled).start('r');
+    test.startInstance(filled, 'r');
     expect((await test.runtime.fill('r', 'a', true)).state).toMatchObject({ kind: 'panicked' });
     expect(await runToEnd(test, 'r', await test.runtime.retry('r'))).toEqual({
       kind: 'finished',
-      outcome: 'true',
+      outcome: true,
     });
   });
 
@@ -310,7 +313,7 @@ describe('the host API', () => {
     const echoing = compiledText(
       [
         'extern fn echo(count: Int, rate: Float) -> Array<Int>',
-        'ista async fn main() -> Array<Int>: echo(12345678901234567890, 1.5)',
+        "import * as runtime from 'runtime'\nlive async fn main() -> Array<Int>: await runtime.run(runtime.id()) _main()\nista async fn _main() -> Array<Int>: echo(12345678901234567890, 1.5)",
       ].join('\n'),
     );
     const test = testRuntime({ host });

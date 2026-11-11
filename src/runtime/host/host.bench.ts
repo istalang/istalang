@@ -14,8 +14,10 @@ import { testRuntime } from '../runtime.test-kit.ts';
 
 const text = compiledText(`
 import * as strings from 'strings'
+import * as runtime from 'runtime'
 
-ista async fn main() -> String:
+live async fn main() -> String: await runtime.run(runtime.id()) _main()
+ista async fn _main() -> String:
   let items = [5, 3, 9, 1]
   items.sort()
   strings.format("{} items, first {}", items.length().toString(), items[0].toString())

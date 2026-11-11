@@ -3,11 +3,13 @@
 
 import Decimal from 'decimal'
 import * as decimal from 'decimal'
+import * as runtime from 'runtime'
 
 struct Split:
   total: Decimal
   each: Decimal
 
-ista async fn main() -> Split:
+live async fn main() -> Split: await runtime.run(runtime.id()) _main()
+ista async fn _main() -> Split:
   const total = Decimal(1990) / 100
   Split{total, each: decimal.divide(total, 3, 2)}

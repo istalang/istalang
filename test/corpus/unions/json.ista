@@ -3,6 +3,7 @@
 # T, T?? collapses to T? and crosses cleanly, and literal unions derive Encodable and Decodable.
 
 import * as json from 'json'
+import * as runtime from 'runtime'
 
 type Status = "draft" | "sent" | "failed"
 type Sign = -1 | 0 | 1 | 42
@@ -12,7 +13,8 @@ struct Config:
   tag: Status?
   flag: true
 
-ista async fn main() -> String:
+live async fn main() -> String: await runtime.run(runtime.id()) _main()
+ista async fn _main() -> String:
   const s1: Status = "sent"
   const j1 = json.stringify(s1)
   const p1 = match json.parse<Status>("\"draft\""):

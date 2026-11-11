@@ -25,7 +25,9 @@ fn area(s: Shape) -> Int:
 
 fn j(xs: Array<Int>) -> String: [for x in xs: String(x)].join(",")
 
-ista async fn main() -> String:
+import * as runtime from 'runtime'
+live async fn main() -> String: await runtime.run(runtime.id()) _main()
+ista async fn _main() -> String:
   const people = [P{name: "a", age: 3}, P{name: "bb", age: 40}, P{name: "ccc", age: 50}]
   const olds = [for p in people if p.age > 10: p.name]
   let m: Map<String, Int> = [:]

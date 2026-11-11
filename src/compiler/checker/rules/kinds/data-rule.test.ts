@@ -172,7 +172,7 @@ describe('the data rule over generated programs', () => {
           'live fn dispose(self: LiveResource): ()',
           'live fn LiveResource.default() -> LiveResource: new LiveResource{n: 42}',
           'fn createAndDrop<T is Default>() -> Int: { const x = T.default(); 0 }',
-          'ista async fn main() -> Int: createAndDrop<LiveResource>()',
+          "import * as runtime from 'runtime'\nlive async fn main() -> Int: await runtime.run(runtime.id()) _main()\nista async fn _main() -> Int: createAndDrop<LiveResource>()",
         ),
       ).codes,
     ).not.toEqual([]);
@@ -181,7 +181,7 @@ describe('the data rule over generated programs', () => {
         lines(
           'shared struct Guard<T> { value: T }',
           'live fn dispose(self: Guard<Int>): ()',
-          'ista async fn main() -> Int: { const g = new Guard<Int>{value: 1}; g->value }',
+          "import * as runtime from 'runtime'\nlive async fn main() -> Int: await runtime.run(runtime.id()) _main()\nista async fn _main() -> Int: { const g = new Guard<Int>{value: 1}; g->value }",
         ),
       ).codes,
     ).not.toEqual([]);

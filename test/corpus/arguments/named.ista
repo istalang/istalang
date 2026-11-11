@@ -3,6 +3,7 @@
 # before one it gives (§3.3). Arguments run in the order written, then each default left out, which
 # sees the parameters before it however they were given.
 import Duration from 'time'
+import * as runtime from 'runtime'
 
 fn retry(times = 3, backoff: Duration = 1s) -> String:
   String(times) + "/" + backoff.value
@@ -26,7 +27,8 @@ fn add(self: &Bag, item: Int, times: Int = 1):
 fn Bag.of(first: Int, second: Int = 20) -> Bag:
   Bag{items: [first]}
 
-ista async fn main() -> Array<String>:
+live async fn main() -> Array<String>: await runtime.run(runtime.id()) _main()
+ista async fn _main() -> Array<String>:
   let log: Array<String> = []
   ordered(&log, second: trace(&log, "b"), first: trace(&log, "a"))
   let bag = Bag.of(second: 20, first: 10)

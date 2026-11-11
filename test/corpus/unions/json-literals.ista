@@ -3,6 +3,7 @@
 # base writes it, read back only as one of the literals, a field of `Status?` missing read as none.
 
 import * as json from 'json'
+import * as runtime from 'runtime'
 
 type Status = "draft" | "sent" | "failed"
 
@@ -21,7 +22,8 @@ fn described(text: String) -> String:
       `${value.mode}|${tag}|${value.level}`
     case Err(error): error.message
 
-ista async fn main() -> String:
+live async fn main() -> String: await runtime.run(runtime.id()) _main()
+ista async fn _main() -> String:
   const read = described("{\"mode\":\"sent\",\"flag\":true,\"level\":2}")
   const wrongFlag = described("{\"mode\":\"sent\",\"flag\":false,\"level\":2}")
   const wrongLevel = described("{\"mode\":\"sent\",\"flag\":true,\"level\":3}")

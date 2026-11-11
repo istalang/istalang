@@ -31,7 +31,9 @@ fn partly<T>(x: T | Int | String) -> String:
     case Int | String as v: `both:${v}`
     case _: "other"
 
-ista async fn main() -> String:
+import * as runtime from 'runtime'
+live async fn main() -> String: await runtime.run(runtime.id()) _main()
+ista async fn _main() -> String:
   const p1 = `${collapsed<Int>(7)}|${boxed<Int>(Box{value: 7})}`
   const p2 = `${collapsed<String>("a")}|${boxed<String>(Box{value: "s"})}`
   const p3 = `${lit<String>("a")}:${lit<String>("b")}|${litPart<String>("a")}:${litPart<String>(3)}:${litPart<String>("z")}`

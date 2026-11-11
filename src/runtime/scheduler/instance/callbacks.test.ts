@@ -12,11 +12,8 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { compiledText } from '../../../compiler/compile.test-kit.ts';
-import type { Value } from '../../../definition/values/values.ts';
-import { startToEnd, testRuntime } from '../../runtime.test-kit.ts';
-import { Futures } from './futures.ts';
-import { Heap } from './heap.ts';
-import { Waits } from './waits.ts';
+import { runToEnd, startToEnd, testRuntime } from '../../runtime.test-kit.ts';
+import { recordingFutures } from './futures.test-kit.ts';
 
 /** What every scenario uses: somewhere to see a callback's effect, and a future that arrives later. */
 const shared = [
@@ -57,7 +54,7 @@ describe('a Resolver.of resolver', () => {
     'calls back once resolved, after the code resolving it waits (crashing at every await: %s)',
     async (crashEveryAwait) => {
       const main = [
-        'ista async fn main() -> Int:',
+        'live async fn main() -> Int: await runtime.run(runtime.id()) _main()\nista async fn _main() -> Int:',
         '  const seen = new Seen{value: 0}',
         '  const done = Resolver.of(fn(value: Int): see(seen, value))',
         '  done.resolve(3)',
@@ -73,7 +70,7 @@ describe('a Resolver.of resolver', () => {
     'waits on a future without await, through its onAwait (crashing at every await: %s)',
     async (crashEveryAwait) => {
       const main = [
-        'ista async fn main() -> Int:',
+        'live async fn main() -> Int: await runtime.run(runtime.id()) _main()\nista async fn _main() -> Int:',
         '  const seen = new Seen{value: 0}',
         '  const pending = later(7)',
         '  pending.onAwait(Resolver.of(fn(value): see(seen, value)))',
@@ -95,10 +92,12 @@ describe('a Resolver.of resolver', () => {
       'ista fn onAwait(self: Mapped, done: Resolver<Int, "ista">):',
       '  const box = new Box{done}',
       '  later(4).onAwait(Resolver.of(fn(value): box->done.resolve(value * 10)))',
-      'ista async fn main() -> Int:',
+      'live async fn main() -> Int: await runtime.run(runtime.id()) _main()\nista async fn _main() -> Int:',
       '  await Mapped',
     ];
-    expect(await ended(main)).toMatchObject({
+    const test = testRuntime();
+    const text = compiledText([...shared, ...watched, ...main].join('\n'));
+    expect(await runToEnd(test, 'deep', test.startInstance(text, 'deep'))).toMatchObject({
       kind: 'panicked',
       message:
         'A resolver was let go of unresolved, so the wait it was to decide never can. An ' +
@@ -119,7 +118,7 @@ describe('a Resolver.of resolver', () => {
       '  watching.onCancel(fn(): see(self.seen, -1))',
       '  self.slow.onAwait(watching)',
       '  done.resolve(3)',
-      'ista async fn main() -> Int:',
+      'live async fn main() -> Int: await runtime.run(runtime.id()) _main()\nista async fn _main() -> Int:',
       '  const seen = new Seen{value: 0}',
       '  const slow = later(9)',
       '  const got = await Either{slow, seen}',
@@ -131,7 +130,7 @@ describe('a Resolver.of resolver', () => {
 
   it('is cancelled, not dropped, when the future it is registered on is disposed first', async () => {
     const main = [
-      'ista async fn main() -> Int:',
+      'live async fn main() -> Int: await runtime.run(runtime.id()) _main()\nista async fn _main() -> Int:',
       '  const seen = new Seen{value: 0}',
       '  if true:',
       '    const pending = later(1)',
@@ -150,14 +149,16 @@ describe('a Resolver.of resolver', () => {
       'ista fn deepen(depth: Int) -> Deep:',
       '  if depth == 0: return []',
       '  [deepen(depth - 1)]',
-      'ista async fn main() -> Int:',
+      'live async fn main() -> Int: await runtime.run(runtime.id()) _main()\nista async fn _main() -> Int:',
       '  const seen = new Seen{value: 0}',
       '  const done = Resolver.of(fn(_: Deep): see(seen, 1))',
       '  done.resolve(deepen(300))',
       '  await runtime.commit()',
       '  seen->value',
     ];
-    expect(await ended(main)).toMatchObject({
+    const test = testRuntime();
+    const text = compiledText([...shared, ...watched, ...main].join('\n'));
+    expect(await runToEnd(test, 'deep', test.startInstance(text, 'deep'))).toMatchObject({
       kind: 'panicked',
       message: expect.stringContaining('deeper than the'),
     });
@@ -165,7 +166,7 @@ describe('a Resolver.of resolver', () => {
 
   it('is cancelled let go of unresolved, registered on nothing', async () => {
     const main = [
-      'ista async fn main() -> Int:',
+      'live async fn main() -> Int: await runtime.run(runtime.id()) _main()\nista async fn _main() -> Int:',
       '  const seen = new Seen{value: 0}',
       '  if true:',
       '    const dropped = Resolver.of(fn(value: Int): see(seen, value))',
@@ -187,7 +188,7 @@ describe('a Resolver.of resolver', () => {
         '  timer.onAwait(watching)',
         '  await time.delay<"live">(2ms)',
         '  seen->value',
-        'ista async fn main(): 0',
+        'live async fn main(): await runtime.run(runtime.id()) _main()\nista async fn _main(): 0',
       ].join('\n'),
     );
     const test = testRuntime();
@@ -200,7 +201,7 @@ describe('a Resolver.of resolver', () => {
 describe("a resolver's onCancel", () => {
   it('runs once another case decides its wait', async () => {
     const main = [
-      'ista async fn main() -> Int:',
+      'live async fn main() -> Int: await runtime.run(runtime.id()) _main()\nista async fn _main() -> Int:',
       '  const seen = new Seen{value: 0}',
       '  const got = await select:',
       '    case Watched{seen, kept: new Kept{}} as slow:',
@@ -215,7 +216,7 @@ describe("a resolver's onCancel", () => {
 
   it('never runs once its resolver resolved', async () => {
     const main = [
-      'ista async fn main() -> Int:',
+      'live async fn main() -> Int: await runtime.run(runtime.id()) _main()\nista async fn _main() -> Int:',
       '  const seen = new Seen{value: 0}',
       '  const got = await Watched{seen, kept: new Kept{}}',
       '  await runtime.commit()',
@@ -226,7 +227,7 @@ describe("a resolver's onCancel", () => {
 
   it('runs at once when given to a resolver cancelled already', async () => {
     const main = [
-      'ista async fn main() -> Int:',
+      'live async fn main() -> Int: await runtime.run(runtime.id()) _main()\nista async fn _main() -> Int:',
       '  const seen = new Seen{value: 0}',
       '  const kept = new Kept{}',
       '  _ = await select:',
@@ -253,7 +254,7 @@ describe("a resolver's onCancel", () => {
         'ista fn report(seen: Seen, holder: Holder, cancelled: Resolver<Int, "ista">):',
         '  const took = cancelled.tryResolve(1) or holder->resolver!.tryResolve(2)',
         '  see(seen, holder->value * 10 + (if took: 1 else: 0))',
-        'ista async fn main() -> Int:',
+        'live async fn main() -> Int: await runtime.run(runtime.id()) _main()\nista async fn _main() -> Int:',
         '  const seen = new Seen{value: 0}',
         '  if true:',
         '    const holder = new Holder{resolver: none, value: 4}',
@@ -283,7 +284,7 @@ describe("a resolver's onCancel", () => {
         '    time.delay<"live">(1s).onAwait(watching)',
         '  await time.delay<"live">(1ms)',
         '  seen->value',
-        'ista async fn main(): 0',
+        'live async fn main(): await runtime.run(runtime.id()) _main()\nista async fn _main(): 0',
       ].join('\n'),
     );
     const run = await testRuntime().runtime.deploy(text).start('live', { function: 'main.run()' });
@@ -300,7 +301,7 @@ describe("a resolver's onCancel", () => {
       'shared struct Log { order: Array<Int> }',
       'shared struct Item { id: Int, log: Log, r: Resolver<Int, "ista">? }',
       'ista fn dispose(self: Item): self->log->order.push(self->id)',
-      'ista async fn main() -> Array<Int>:',
+      'live async fn main() -> Array<Int>: await runtime.run(runtime.id()) _main()\nista async fn _main() -> Array<Int>:',
       '  const log = new Log{order: []}',
       '  if true:',
       '    const d1 = new Item{id: 1, log, r: none}',
@@ -334,12 +335,16 @@ describe("a resolver's onCancel", () => {
         '  const r = Resolver.of(fn(l: Lease): { _ = l; () })',
         '  r.resolve(lease)',
         '  0',
-        'ista async fn main() -> Int:',
+        'live async fn main() -> Int: await runtime.run(runtime.id()) _main()\nista async fn _main() -> Int:',
         '  const lease = makeLease()',
         '  const r = Resolver.of(fn(l: Lease): { _ = l; () })',
         '  r.resolve(lease)',
         '  await runtime.commit()',
         '  panic("boom")',
+        '# Roots the ista entry the test starts by name: only code a live start reaches is kept.',
+        'live async fn reach():',
+        '  _ = await runtime.run(runtime.id()) finishWithRun()',
+        '  0',
       ].join('\n'),
     );
     let disposed = 0;
@@ -352,10 +357,9 @@ describe("a resolver's onCancel", () => {
         },
       },
     });
-    const deployed = test.runtime.deploy(code);
-    await deployed.start('finishing', { function: 'main.finishWithRun()' });
+    test.startInstance(code, 'finishing', { function: 'main.finishWithRun' });
     expect(disposed).toBe(1);
-    await deployed.start('terminating');
+    test.startInstance(code, 'terminating');
     await test.runtime.terminate('terminating');
     expect(disposed).toBe(2);
   });
@@ -373,14 +377,7 @@ describe('callbacks of futures resolved together', () => {
           }),
         ),
         ({ count, registeredOn, resolved }) => {
-          const heap = new Heap([]);
-          const calls: (readonly [Value, readonly Value[]])[] = [];
-          const waits = new Waits(heap, {
-            decided: () => undefined,
-            watchesCall: () => false,
-            called: (callback, argumentValues) => calls.push([callback, argumentValues]),
-          });
-          const futures = new Futures(heap, waits, () => undefined);
+          const { heap, calls, waits, futures } = recordingFutures();
           const ids = Array.from({ length: count }, () =>
             futures.create({ kind: 'timer', at: 1n }),
           );

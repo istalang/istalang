@@ -7,6 +7,7 @@
 
 import Inbox from 'inbox'
 import * as time from 'time'
+import * as runtime from 'runtime'
 
 ista async fn produce(box: Inbox<Int>, ticks: Inbox<Unit>):
   for i in 0..5:
@@ -38,7 +39,8 @@ ista async fn survives() -> Bool:
     case time.delay(1h):
       false
 
-ista async fn main() -> String:
+live async fn main() -> String: await runtime.run(runtime.id()) _main()
+ista async fn _main() -> String:
   const box = Inbox.create<Int>()
   const ticks = Inbox.create<Unit>()
   _ = produce(box, ticks)

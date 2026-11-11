@@ -10,5 +10,7 @@ fn grade(score: Int) -> String:
     case 90..: "great"
     case _: "unreachable"
 
-ista async fn main() -> (String, String, String, String, String):
+import * as runtime from 'runtime'
+live async fn main() -> (String, String, String, String, String): await runtime.run(runtime.id()) _main()
+ista async fn _main() -> (String, String, String, String, String):
   (grade(-3), grade(59), grade(60), grade(89), grade(90))

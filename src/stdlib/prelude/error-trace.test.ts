@@ -20,11 +20,15 @@ const declarations = [
   '',
 ].join('\n');
 
+/** The live `main` calling `_main` in its context, which every ista body's trace ends with. */
+const liveMainLine = /^at \S*main\.main\.deferred@\S+ \(\S+\)$/u;
+
 /** Each frame's line: `at`, the function (module-qualified), and `module:line:column`. */
 const frameLines = [
   /^at \S*failure \(\S+:2:3\)$/u,
   /^at \S*traced \(\S+:5:3\)$/u,
-  /^at \S*main \(\S+:8:3\)$/u,
+  /^at \S*main\._main \(\S+:10:3\)$/u,
+  liveMainLine,
 ];
 
 /**
@@ -48,8 +52,8 @@ const numberLine = /^at \S*Job \(\S+:3:25\)$/u;
 const madeLine = /^at \S*made \(\S+:5:3\)$/u;
 
 /** `main`'s frame, at `made()` as the body's first expression, then within a `match`. */
-const mainLine = /^at \S*main \(\S+:8:3\)$/u;
-const mainMatchLine = /^at \S*main \(\S+:8:9\)$/u;
+const mainLine = /^at \S*main\._main \(\S+:10:3\)$/u;
+const mainMatchLine = /^at \S*main\._main \(\S+:10:9\)$/u;
 
 /** What `main` gave, one trace line per item; a non-string outcome as its own single item. */
 function linesOf(outcome: unknown): readonly unknown[] {
@@ -68,6 +72,7 @@ describe("an Error's trace", () => {
       expect.stringMatching(failureLine),
       expect.stringMatching(madeLine),
       expect.stringMatching(mainLine),
+      expect.stringMatching(liveMainLine),
     ]);
   });
 
@@ -77,6 +82,7 @@ describe("an Error's trace", () => {
       expect.stringMatching(numberLine),
       expect.stringMatching(madeLine),
       expect.stringMatching(mainMatchLine),
+      expect.stringMatching(liveMainLine),
     ]);
   });
 });

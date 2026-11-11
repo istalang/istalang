@@ -1,9 +1,10 @@
-# error: 5644 at 28:15
-# error: 5101 at 30:42
-# error: 5101 at 31:3
+# error: 5644 at 30:15
+# error: 5101 at 32:42
 # error: 5101 at 33:3
+# error: 5101 at 35:3
 # An `any` type is sendable only when its traits make it so, and has no JSON form (§3.10, §9).
 import * as json from 'json'
+import * as runtime from 'runtime'
 
 trait Named:
   fn name(self: Self) -> String
@@ -23,7 +24,8 @@ ista async fn greet(x: any Named):
 ista async fn greetSendable(x: any Named & Sendable):
   ()
 
-ista async fn main():
+live async fn main(): await runtime.run(runtime.id()) _main()
+ista async fn _main():
   const email: any Named = Email{to: "a"}
   spawn greet(email)
   spawn greetSendable(Email{to: "b"})

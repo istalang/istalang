@@ -112,16 +112,22 @@ export function codesOf(...lines: readonly string[]): readonly number[] {
 }
 
 /**
- * Compiles and runs `ista async fn main() -> result: body` after `declarations`, an instance as
- * every main was before live code, returning the
- * decoded JSON outcome when it finishes, or the ended state otherwise.
+ * Compiles and runs `ista async fn _main() -> result: body` after `declarations`, in a context a
+ * live `main` calls (§9), returning the decoded JSON outcome when it finishes, or the ended state
+ * otherwise.
  */
 export async function runMain(
   result: string,
   body: string,
   declarations: readonly string[] = [],
 ): Promise<unknown> {
-  const source = [...declarations, `ista async fn main() -> ${result}:`, `  ${body}`].join('\n');
+  const source = [
+    ...declarations,
+    `import * as runtime from 'runtime'
+live async fn main() -> ${result}: await runtime.run(runtime.id()) _main()
+ista async fn _main() -> ${result}:`,
+    `  ${body}`,
+  ].join('\n');
   const state = await startToEnd(testRuntime(), compiledText(source));
   return state.kind === 'finished' ? decodeJson(String(state.outcome)) : state;
 }

@@ -9,7 +9,7 @@
  * instance name can reach outside its directory.
  */
 
-import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import process from 'node:process';
 import { isSystemError } from '../project/errno.ts';
@@ -27,6 +27,7 @@ export function directoryStore(directory: string): InstanceStore {
     writeSnapshot: (instance, text) => {
       writeAtomically(instances, fileIn(instances, instance), text);
     },
+    instances: () => storedNames(instances),
     readExterns: () => readIfPresent(join(directory, externsFile)),
     writeExterns: (text) => {
       writeAtomically(directory, join(directory, externsFile), text);
@@ -38,6 +39,22 @@ const externsFile = 'externs.json';
 
 function fileIn(directory: string, name: string): string {
   return join(directory, `${encodeURIComponent(name)}.json`);
+}
+
+/** The names of the instances `directory` keeps, decoded from their files' names. */
+function storedNames(directory: string): readonly string[] {
+  let files: readonly string[];
+  try {
+    files = readdirSync(directory);
+  } catch (error) {
+    if (isSystemError(error) && error.code === 'ENOENT') {
+      return [];
+    }
+    throw error;
+  }
+  return files.flatMap((file) =>
+    file.endsWith('.json') ? [decodeURIComponent(file.slice(0, -'.json'.length))] : [],
+  );
 }
 
 function readIfPresent(file: string): string | undefined {

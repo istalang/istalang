@@ -5,7 +5,7 @@
  */
 
 import { type ChildProcessWithoutNullStreams, spawn } from 'node:child_process';
-import { existsSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import process from 'node:process';
 import { describe, expect, it } from 'vitest';
@@ -23,21 +23,23 @@ describe('ista run', () => {
   });
 
   it('prints a struct outcome as an object keyed by field name', async () => {
-    const text = 'struct P { x: Int, y: String }\nista async fn main(): P{y: "b", x: 1}\n';
+    const text =
+      'struct P { x: Int, y: String }\nimport * as runtime from \'runtime\'\nlive async fn main(): await runtime.run(runtime.id()) _main()\nista async fn _main(): P{y: "b", x: 1}\n';
     const run = await ista(project({ 'main.ista': text }), 'run', 'main.ista');
     expect(run).toEqual({ code: 0, out: '{"x":1,"y":"b"}\n', err: '' });
   });
 
   it('prints a float JSON cannot hold as null, as JavaScript does', async () => {
-    const text = 'ista async fn main(): 1e308 * 10.0\n';
+    const text =
+      "import * as runtime from 'runtime'\nlive async fn main(): await runtime.run(runtime.id()) _main()\nista async fn _main(): 1e308 * 10.0\n";
     const run = await ista(project({ 'main.ista': text }), 'run', 'main.ista');
     expect(run).toEqual({ code: 0, out: 'null\n', err: '' });
   });
 
   it('writes each committed log record to the error stream as a line of JSON', async () => {
     const text = [
-      "import * as log from 'log'",
-      'ista async fn main() -> Int:',
+      "import * as log from 'log'\nimport * as runtime from 'runtime'",
+      'live async fn main() -> Int: await runtime.run(runtime.id()) _main()\nista async fn _main() -> Int:',
       '  log.warn("careful", struct{n: 2})',
       '  1',
     ].join('\n');
@@ -54,7 +56,10 @@ describe('ista run', () => {
 
   it('reports warnings on the error stream and still runs', async () => {
     const run = await ista(
-      project({ 'main.ista': 'ista async fn main():\n  let x = 1\n  x\n' }),
+      project({
+        'main.ista':
+          "import * as runtime from 'runtime'\nlive async fn main(): await runtime.run(runtime.id()) _main()\nista async fn _main():\n  let x = 1\n  x\n",
+      }),
       'run',
       'main.ista',
     );
@@ -65,27 +70,64 @@ describe('ista run', () => {
 
   it('runs nothing when the program has errors, reporting them', async () => {
     const run = await ista(
-      project({ 'main.ista': 'ista async fn main():\n  1 - "a"\n' }),
+      project({
+        'main.ista':
+          'import * as runtime from \'runtime\'\nlive async fn main(): await runtime.run(runtime.id()) _main()\nista async fn _main():\n  1 - "a"\n',
+      }),
       'run',
       'main.ista',
     );
     expect(run.code).toBe(1);
     expect(run.out).toBe('');
-    expect(run.err).toContain("main.ista:2:3: error 5016: '-' isn't defined for Int and String.");
+    expect(run.err).toContain("main.ista:4:3: error 5016: '-' isn't defined for Int and String.");
   });
 
   it.each([
     ['no main at all', 'fn helper() -> Int: 1\n'],
-    ['a generic main', 'ista async fn main<T>(): 1\n'],
+    ['a generic main', 'live async fn main<T>(): 1\n'],
     ['a main that is not async', 'fn main() -> Int: 1\n'],
-    ['a main that takes parameters', 'ista async fn main(n: Int): n\n'],
+    ['a main that takes parameters', 'live async fn main(n: Int): n\n'],
+    ['an ista main', 'ista async fn main() -> Int: 1\n'],
   ])('refuses an entry with %s', async (_case, text) => {
     const run = await ista(project({ 'main.ista': text }), 'run', 'main.ista');
     expect(run).toEqual({
       code: 1,
       out: '',
-      err: "ista: main.ista declares no 'async fn main()'.\n",
+      err: "ista: main.ista declares no 'live async fn main()'.\n",
     });
+  });
+
+  it('reports a spawned instance that panics on the error stream and exits 1 (§9)', async () => {
+    const text = [
+      "import * as runtime from 'runtime'",
+      "import * as time from 'time'",
+      'ista async fn bad(): panic("spawned boom")',
+      'live async fn main() -> Int: await runtime.run(runtime.id()) _main()',
+      'ista async fn _main() -> Int:',
+      '  spawn bad()',
+      '  await time.delay(20ms)',
+      '  42',
+      '',
+    ].join('\n');
+    const run = await ista(project({ 'main.ista': text }), 'run', 'main.ista');
+    expect(run.code).toBe(1);
+    expect(run.err).toContain('spawned boom');
+  });
+
+  it('reports where a context waits when main calls it under an explicit key and nothing can wake it (§9)', async () => {
+    const text = [
+      "import * as runtime from 'runtime'",
+      'ista async fn stuck() -> Int:',
+      '  const s = Slot.create<Int>()',
+      '  @Waypoint{"stuck-slot"}',
+      '  const v = await s.take()',
+      '  v',
+      'live async fn main() -> Int: await runtime.run("o/1") stuck()',
+      '',
+    ].join('\n');
+    const run = await ista(project({ 'main.ista': text }), 'run', 'main.ista');
+    expect(run.code).toBe(1);
+    expect(run.err).toContain('stuck-slot');
   });
 
   it('is a usage error to run a file that does not exist', async () => {
@@ -100,8 +142,8 @@ describe('ista run', () => {
 /** A program that logs and then waits: its run writes the record once that segment committed. */
 const waitingProgram = [
   "import * as log from 'log'",
-  "import * as time from 'time'",
-  'ista async fn main():',
+  "import * as time from 'time'\nimport * as runtime from 'runtime'",
+  'live async fn main(): await runtime.run(runtime.id()) _main()\nista async fn _main():',
   '  const start = time.now()',
   '  log.info("waiting")',
   '  await time.delay(300ms)',
@@ -109,7 +151,7 @@ const waitingProgram = [
   '',
 ].join('\n');
 
-const instanceLine = /^ista: instance (?<name>\S+)$/mu;
+const runLine = /^ista: run (?<name>\S+)$/mu;
 const committedLog = /^\{.*"message":"waiting".*\}$/mu;
 
 /**
@@ -131,35 +173,31 @@ function errorStreamUntil(child: ChildProcessWithoutNullStreams, line: RegExp): 
 }
 
 describe('ista run with a store', () => {
-  it('continues an instance killed while it waits, from its last commit', async () => {
+  it('resumes a context killed while it waits once the program runs again on the store', async () => {
     const root = project({ 'main.ista': waitingProgram });
     const child = spawn(process.execPath, [builtCli, 'run', '--store', 'store', 'main.ista'], {
       cwd: root,
     });
     const exited = new Promise((done) => child.on('exit', done));
-    // A run writes a log record once its segment committed, so the store holds the instance by then.
+    // A context writes a log record once its segment committed, so the store holds it by then.
     const err = await errorStreamUntil(child, committedLog);
-    const name = instanceLine.exec(err)?.groups?.name ?? '';
-    expect(existsSync(join(root, 'store', 'instances', `${name}.json`))).toBe(true);
+    const name = runLine.exec(err)?.groups?.name ?? '';
+    const stored = join(root, 'store', 'instances', `${name}.json`);
+    expect(readFileSync(stored, 'utf8')).toContain('"kind":"execution"');
     child.kill();
     await exited;
-    const resumed = await ista(root, 'run', '--store', 'store', '--resume', name);
-    expect(resumed).toEqual({ code: 0, out: 'true\n', err: '' });
-  });
-
-  it('reports an instance the store lacks', async () => {
-    const resumed = await ista(project({}), 'run', '--store', 'store', '--resume', 'nobody');
-    expect(resumed).toEqual({
-      code: 1,
-      out: '',
-      err: "ista: The store holds no instance 'nobody'.\n",
-    });
+    const again = await ista(root, 'run', '--store', 'store', 'main.ista');
+    expect(again.code).toBe(0);
+    expect(again.out).toBe('true\n');
+    // The killed run's context went on where it committed, and gave its call's answer to nobody.
+    const resumed = readFileSync(stored, 'utf8');
+    expect(resumed).not.toContain('"kind":"execution"');
+    expect(resumed).not.toContain('"kind":"answer"');
   });
 
   it.each([
-    ['both an entry and --resume', ['main.ista', '--store', 's', '--resume', 'x']],
-    ['neither an entry nor --resume', []],
-    ['--resume without --store', ['--resume', 'x']],
+    ['no entry', []],
+    ['the --resume it no longer has', ['main.ista', '--store', 's', '--resume', 'x']],
   ])('is a usage error to give %s', async (_case, args) => {
     const run = await ista(project({ 'main.ista': waitingProgram }), 'run', ...args);
     expect(run.code).toBe(2);

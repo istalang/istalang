@@ -11,7 +11,7 @@ import { istaProcess } from '../cli.test-kit.ts';
 
 const nodeWarning = /unsettled top-level await/u;
 const hostFailed = /^ista: the host's main\.bad\(\) failed: Error: x\n/u;
-const mainStuck = /^ista: instance \S+ waits on nothing that can wake it, at /mu;
+const mainStuck = /^ista: main waits on nothing that can wake it, at /mu;
 
 /** Runs the built `ista run main.ista --host host.mjs` on `program` and `host`, as a process. */
 function runProcess(program: readonly string[], host: readonly string[]) {
@@ -28,7 +28,7 @@ describe('ista run --host as a process', () => {
       [
         'extern ista fn never() -> Future<Int, "ista">',
         'extern ista fn bad() -> Future<Int, "ista">',
-        'ista async fn main() -> Int:',
+        "import * as runtime from 'runtime'\nlive async fn main() -> Int: await runtime.run(runtime.id()) _main()\nista async fn _main() -> Int:",
         '  const pending = never()',
         '  await bad()',
       ],
@@ -47,7 +47,7 @@ describe('ista run --host as a process', () => {
     const run = runProcess(
       [
         'extern ista fn never() -> Future<Int, "ista">',
-        'ista async fn main() -> Int:',
+        "import * as runtime from 'runtime'\nlive async fn main() -> Int: await runtime.run(runtime.id()) _main()\nista async fn _main() -> Int:",
         '  await never()',
       ],
       ["  'main.never()': () => new Promise(() => {}),"],

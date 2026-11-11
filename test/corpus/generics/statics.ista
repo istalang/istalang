@@ -18,7 +18,9 @@ fn add(left: Money, right: Money) -> Money:
 fn compare(left: Money, right: Money) -> Int:
   left.cents - right.cents
 
-ista async fn main() -> String:
+import * as runtime from 'runtime'
+live async fn main() -> String: await runtime.run(runtime.id()) _main()
+ista async fn _main() -> String:
   const total = Money.zero() + Money(250) + Money(5)
   const half: Float = Float(25) / 2
   String(total.cents) + " " + String(Float(3)) + " " + String(Int(3.7)) + " " + String(Int(-3.7)) + " " + String(half) + " " + String(Money(1) < total)

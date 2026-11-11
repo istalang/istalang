@@ -18,14 +18,14 @@ const wrongResult =
   /^panic: The host gave what doesn't fit: main\.charge\.value: expected a string, found an integer\n/u;
 const unfitFill =
   /^ista: the host couldn't fill a future of instance \S+: main\.receive\.amount: expected an integer, found a string\n/u;
-const stuckAtReceive = /waits on nothing that can wake it, at \S+main\.ista:13:17, /u;
+const stuckAtReceive = /waits on nothing that can wake it, at \S+main\.ista:15:17, /u;
 const requestsFailed =
   /^ista: the host's main\.receive\(main\.Queue<T>\) failed: Error: no more requests\n/u;
-const mainStuck = /instance \S+ waits on nothing that can wake it/u;
+const mainStuck = /main waits on nothing that can wake it/u;
 
 /** A program receiving an order from a host queue and charging it through the host. */
 const program = [
-  "import Decodable from 'json'",
+  "import Decodable from 'json'\nimport * as runtime from 'runtime'",
   'struct Order:',
   '  id: String',
   '  amount: Int',
@@ -36,7 +36,7 @@ const program = [
   'extern fn charge(id: String, amount: Int) -> Result<String>',
   'extern limit: Int',
   '',
-  'ista async fn main() -> String:',
+  'live async fn main() -> String: await runtime.run(runtime.id()) _main()\nista async fn _main() -> String:',
   '  const order = await orders().receive()',
   '  if order.amount > limit:',
   '    return "too much"',
@@ -235,8 +235,8 @@ describe('ista run --host', () => {
         '',
       ].join('\n'),
       'main.ista': [
-        "import * as limits from 'limits'",
-        'ista async fn main() -> Int:',
+        "import * as limits from 'limits'\nimport * as runtime from 'runtime'",
+        'live async fn main() -> Int: await runtime.run(runtime.id()) _main()\nista async fn _main() -> Int:',
         '  const band = limits.band',
         '  limits.floor + limits.ceiling + band.low + limits.band.low',
         '',
@@ -258,7 +258,7 @@ describe('ista run --host', () => {
         'extern fn note(text: String)',
         'extern fn lookup() -> Int?',
         'extern fn found() -> Found',
-        'ista async fn main() -> Bool:',
+        "import * as runtime from 'runtime'\nlive async fn main() -> Bool: await runtime.run(runtime.id()) _main()\nista async fn _main() -> Bool:",
         '  note("a")',
         '  lookup() == none and found().name == none',
         '',
@@ -283,7 +283,7 @@ describe('ista run --host', () => {
     const root = project({
       'main.ista': [
         'extern ista fn later(name: String) -> Future<String, "ista">',
-        'ista async fn main() -> String:',
+        "import * as runtime from 'runtime'\nlive async fn main() -> String: await runtime.run(runtime.id()) _main()\nista async fn _main() -> String:",
         '  _ = later("fail")',
         '  await later("ok")',
         '',
@@ -321,7 +321,7 @@ describe('ista run --host', () => {
   it("runs spec §12.1's purchase in place, to the outcome its charge gives", async () => {
     const { run, ...logged } = await runSpec([
       ...specCode('12.1 Purchase approval', (code) => !code.includes('spawn purchase')),
-      'ista async fn main() -> String:',
+      "import * as runtime from 'runtime'\nlive async fn main() -> String: await runtime.run(runtime.id()) _main()\nista async fn _main() -> String:",
       '    await purchase(PurchaseRequest{id: "p1", item: "laptop", amount: 900})',
     ]);
     expect(run).toEqual({ code: 0, out: '"paid: r-p1-900"\n', err: '' });
@@ -336,7 +336,7 @@ describe('ista run --host', () => {
       ...specCode('12.3 Broadcast with expiry').map((code) =>
         code.replace("import * as time from 'time'\n", ''),
       ),
-      'ista async fn main() -> String:',
+      "import * as runtime from 'runtime'\nlive async fn main() -> String: await runtime.run(runtime.id()) _main()\nista async fn _main() -> String:",
       '    await announce("hello", ["ann", "bob"], 10ms)',
       '    "done"',
     ]);

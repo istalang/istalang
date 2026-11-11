@@ -40,8 +40,8 @@ export class SegmentCollection {
       },
       cleanupCase: (execution) => instance.waits.cleanupCase(execution),
       weak: instance.weak,
-      disposedFuture: (id) => {
-        instance.disposedFuture(id, seams.caller.waiting.kind);
+      disposed: (id) => {
+        instance.notices.disposed(id, seams.caller.waiting.kind);
       },
       cancel: (resolver) => {
         instance.waits.cancel(resolver);

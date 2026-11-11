@@ -3,6 +3,8 @@
 # Only a test module may import the testing module (§10), so production code never installs a mock.
 
 import mock from 'testing'
+import * as runtime from 'runtime'
 
-ista async fn main():
+live async fn main(): await runtime.run(runtime.id()) _main()
+ista async fn _main():
   ()

@@ -18,11 +18,11 @@ ista async fn caller() -> Unit:
 fn plain():
   drop plain.disposing()
 
-ista async fn main() -> Int:
+live async fn main() -> Int:
   const late = fn(): 1
   _ = main.disposing()
   const w = WeakRef(5)
-  await other() + late()
+  late()
 
 ista async fn early(started: Future<Unit, "ista"> = early.disposing()) -> Unit:
   await started

@@ -4,12 +4,14 @@
 # watcher's `disposed()` resolves.
 
 import Inbox from 'inbox'
+import * as runtime from 'runtime'
 
 ista async fn watch(w: WeakRef<Inbox<Int>>, seen: Inbox<String>) -> Unit:
   await w.disposed()
   seen.send("signal")
 
-ista async fn main() -> String:
+live async fn main() -> String: await runtime.run(runtime.id()) _main()
+ista async fn _main() -> String:
   const seen = Inbox.create<String>()
   const holder = {
     const box = Inbox.create<Int>()

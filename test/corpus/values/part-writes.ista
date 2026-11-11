@@ -5,6 +5,7 @@
 # another execution while an `await` waits.
 
 import * as time from 'time'
+import * as runtime from 'runtime'
 
 shared struct Counter:
   a: Int
@@ -79,5 +80,6 @@ ista async fn awaited() -> String:
 fn show(a: Int, b: Int) -> String:
   String(a) + " " + String(b)
 
-ista async fn main() -> String:
+live async fn main() -> String: await runtime.run(runtime.id()) _main()
+ista async fn _main() -> String:
   [compound(), desugared(), referenced(), element(), nested(), await awaited()].join("|")

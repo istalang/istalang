@@ -61,7 +61,7 @@ function programText(a: string, b: string, data: string): string {
     `type A = ${a}`,
     `type B = ${b}`,
     'fn f(a: A, b: B, d: S.Data) -> Int: 0',
-    'ista async fn main() -> Int:',
+    "import * as runtime from 'runtime'\nlive async fn main() -> Int: await runtime.run(runtime.id()) _main()\nista async fn _main() -> Int:",
     '  0',
   ].join('\n');
 }

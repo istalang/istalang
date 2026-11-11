@@ -8,7 +8,9 @@ fn clear(self: &"draft"):
 fn clear(self: &Int):
   self = 0
 
-ista async fn main() -> String:
+import * as runtime from 'runtime'
+live async fn main() -> String: await runtime.run(runtime.id()) _main()
+ista async fn _main() -> String:
   let x: "draft" | Int = "draft"
   x.clear()
   let y: "draft" | Int = 5

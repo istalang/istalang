@@ -19,7 +19,7 @@ describe('fieldsFunctionOf', () => {
       '  Circle(r: Int = 1)',
       'enum Icon:',
       '  Circle(r: Int = 2)',
-      'ista async fn main() -> (Shape, Icon):',
+      "import * as runtime from 'runtime'\nlive async fn main() -> (Shape, Icon): await runtime.run(runtime.id()) _main()\nista async fn _main() -> (Shape, Icon):",
       '  (Shape.Circle(), Icon.Circle())',
     ].join('\n');
     const definition = compiledDefinition(stdProgramOf({ main }), 'main');
@@ -33,7 +33,7 @@ describe('fieldsFunctionOf', () => {
       'struct Retry:',
       '  times: Int = 3',
       '  label: String',
-      'ista async fn main() -> Retry: Retry{label: "a"}',
+      'import * as runtime from \'runtime\'\nlive async fn main() -> Retry: await runtime.run(runtime.id()) _main()\nista async fn _main() -> Retry: Retry{label: "a"}',
     ].join('\n');
     const names = compiledDefinition(stdProgramOf({ main }), 'main').functions.map(
       (entry) => entry.name,

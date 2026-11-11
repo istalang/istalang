@@ -13,7 +13,9 @@ fn record(log: &Array<String>, step: String, v: Int) -> Int:
 fn doubled(m: Misordered) -> Misordered:
   Misordered{for k, v in ...m: [k]: v * 2}
 
-ista async fn main() -> String:
+import * as runtime from 'runtime'
+live async fn main() -> String: await runtime.run(runtime.id()) _main()
+ista async fn _main() -> String:
   const m = Misordered{z: 3, a: 1, m: 2}
   const keys = [for k, _ in ...m: k]
 

@@ -1,5 +1,5 @@
 # error: 5101 at 16:24
-# error: 5101 at 20:17
+# error: 5101 at 22:17
 # A type argument must meet its parameter's constraints (§3.5, §3.10): a call's, here a string
 # with no `zero`, and a type's, here a slot, which isn't Sendable (§3.1).
 
@@ -16,5 +16,7 @@ fn sum2<T is Monoid>(a: T, b: T) -> T:
 ista fn open(envelope: Envelope<Slot<Int>>) -> Int:
   1
 
-ista async fn main():
+import * as runtime from 'runtime'
+live async fn main(): await runtime.run(runtime.id()) _main()
+ista async fn _main():
   const total = sum2("a", "b")

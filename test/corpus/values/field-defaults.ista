@@ -34,7 +34,9 @@ fn radius(shape: Shape) -> Float:
     case Circle(r): r
     case Square(side): Float(side) / 2.0
 
-ista async fn main() -> String:
+import * as runtime from 'runtime'
+live async fn main() -> String: await runtime.run(runtime.id()) _main()
+ista async fn _main() -> String:
   const plain = Retry{}
   const spread = Retry{...plain, times: 10}
   const box = Box<Array<Int>>{size: 4}

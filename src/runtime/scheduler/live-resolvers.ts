@@ -17,7 +17,7 @@
 
 import { handleTo, type Value } from '../../definition/values/values.ts';
 import { Panic, type Resolvable, type ResolverState } from '../natives.ts';
-import type { Futures } from './instance/futures.ts';
+import type { Instance } from './instance/index.ts';
 import type { FailedWait, LiveResumes, Resume } from './waiting.ts';
 
 class LiveResolver {
@@ -95,7 +95,11 @@ function cancelling(callback: () => void): void {
  * A new live future of `futures` and its resolver, in a live run resumed through `resumes`;
  * `trace` is where the future was made, where a failed wait panics.
  */
-export function liveResolvable(futures: Futures, resumes: LiveResumes, trace: string): Resolvable {
+export function liveResolvable(
+  { futures, notices }: Pick<Instance, 'futures' | 'notices'>,
+  resumes: LiveResumes,
+  trace: string,
+): Resolvable {
   const { id, token } = futures.createFilled(String);
   const settle = resumes.once((settled: PromiseSettledResult<Value>) => {
     if (settled.status === 'fulfilled') {
@@ -111,7 +115,7 @@ export function liveResolvable(futures: Futures, resumes: LiveResumes, trace: st
     return { message: settled.reason.message, trace };
   });
   const resolver = new LiveResolver(settle, (failed) => resumes.fail(failed), trace);
-  futures.onDisposed(id, () => {
+  notices.onDisposed(id, () => {
     resolver.cancel();
   });
   return { future: handleTo(id), resolver };

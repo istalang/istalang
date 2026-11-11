@@ -71,7 +71,7 @@ describe('proposal 8 behaviour table: kinds', () => {
       lines(
         twice,
         'live async fn fromLive() -> Int: await twice(1)',
-        'ista async fn main() -> Int: await twice(2)',
+        "import * as runtime from 'runtime'\nlive async fn main() -> Int: await runtime.run(runtime.id()) _main()\nista async fn _main() -> Int: await twice(2)",
       ),
     );
     expect(modesOf(text, 'main.twice')).toEqual(['ista', 'live']);
@@ -83,7 +83,12 @@ describe('proposal 8 behaviour table: kinds', () => {
     expect(await startToEnd(live, fromLive)).toEqual({ kind: 'finished', outcome: '2' });
     expect(live.store.commits).toEqual([]);
     const ista = testRuntime();
-    const fromIsta = compiledText(lines(twice, 'ista async fn main() -> Int: await twice(2)'));
+    const fromIsta = compiledText(
+      lines(
+        twice,
+        "import * as runtime from 'runtime'\nlive async fn main() -> Int: await runtime.run(runtime.id()) _main()\nista async fn _main() -> Int: await twice(2)",
+      ),
+    );
     expect(await startToEnd(ista, fromIsta)).toEqual({ kind: 'finished', outcome: '4' });
     expect(ista.store.commits.length).toBeGreaterThan(0);
   });
@@ -100,7 +105,12 @@ describe('proposal 8 behaviour table: kinds', () => {
   it('an ista main commits at its wait, as every main did', async () => {
     const test = testRuntime();
     const text = compiledText(
-      lines(timeImport, 'ista async fn main() -> Int:', '  await time.delay(5ms)', '  7'),
+      lines(
+        timeImport,
+        "import * as runtime from 'runtime'\nlive async fn main() -> Int: await runtime.run(runtime.id()) _main()\nista async fn _main() -> Int:",
+        '  await time.delay(5ms)',
+        '  7',
+      ),
     );
     expect(await startToEnd(test, text)).toEqual({ kind: 'finished', outcome: '7' });
     expect(test.store.commits.length).toBeGreaterThan(0);
@@ -234,7 +244,7 @@ describe('proposal 8 behaviour table: kinds', () => {
         'live async fn fetchLive() -> Int: 1',
         'ista async fn fetchIsta() -> Int: 2',
         'live async fn inLive() -> Int: await retry(fetchLive, 3)',
-        'ista async fn main() -> Int: await retry(fetchIsta, 3)',
+        "import * as runtime from 'runtime'\nlive async fn main() -> Int: await runtime.run(runtime.id()) _main()\nista async fn _main() -> Int: await retry(fetchIsta, 3)",
       ),
     );
     expect(modesOf(text, 'main.retry')).toEqual(['ista', 'live']);
@@ -244,7 +254,7 @@ describe('proposal 8 behaviour table: kinds', () => {
     const source = lines(
       retry,
       'live async fn fetchLive() -> Int: 1',
-      'ista async fn main() -> Int: await retry(fetchLive, 3)',
+      "import * as runtime from 'runtime'\nlive async fn main() -> Int: await runtime.run(runtime.id()) _main()\nista async fn _main() -> Int: await retry(fetchLive, 3)",
     );
     const { diagnostics } = diagnosedAt(stdProgramOf({ 'main.ista': source }), 'main.ista');
     expect(diagnostics.map(({ code }) => code)).toContain(checkerDiagnostics.kindsMeet.code);
@@ -298,7 +308,7 @@ describe('proposal 8 behaviour table: kinds', () => {
     const source = lines(
       'struct Order { id: String }',
       'ista async fn retry(times: Int, call: ista async fn(String) -> Order) -> Order: await call("x")',
-      'ista async fn main() -> String: (await retry(3, fn(id): Order{id})).id',
+      "import * as runtime from 'runtime'\nlive async fn main() -> String: await runtime.run(runtime.id()) _main()\nista async fn _main() -> String: (await retry(3, fn(id): Order{id})).id",
     );
     expect(codesOf(source)).toEqual([]);
   });

@@ -89,7 +89,7 @@ const text = compiledText(
         ? [`live async fn ${name}() -> Bool: ${body}`]
         : [`live async fn ${name}() -> Bool:`, ...body],
     ),
-    'ista async fn main(): 0',
+    "import * as runtime from 'runtime'\nlive async fn main(): await runtime.run(runtime.id()) _main()\nista async fn _main(): 0",
   ].join('\n'),
 );
 

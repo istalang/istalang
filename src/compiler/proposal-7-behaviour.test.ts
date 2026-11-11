@@ -35,14 +35,20 @@ describe('proposal 7 behaviour table: row by row', () => {
   });
 
   it('row 2: braces declaring a variant are refused, naming its parenthesized form', () => {
-    const text = lines('enum V { R { by: String } }', 'ista async fn main(): 0');
+    const text = lines(
+      'enum V { R { by: String } }',
+      "import * as runtime from 'runtime'\nlive async fn main(): await runtime.run(runtime.id()) _main()\nista async fn _main(): 0",
+    );
     expect(messagesOf(text, parserDiagnostics.bracedVariant.code)).toEqual([
       expect.stringContaining('R(by: String)'),
     ]);
   });
 
   it("row 3: a variant's field after a defaulted one needs a default, as a parameter does", () => {
-    const text = lines('enum V { R(a: Int = 0, b: Int) }', 'ista async fn main(): 0');
+    const text = lines(
+      'enum V { R(a: Int = 0, b: Int) }',
+      "import * as runtime from 'runtime'\nlive async fn main(): await runtime.run(runtime.id()) _main()\nista async fn _main(): 0",
+    );
     expect(reported(text).codes).toEqual([checkerDiagnostics.defaultMissing.code]);
   });
 
@@ -81,7 +87,7 @@ describe('proposal 7 behaviour table: row by row', () => {
       'fn f(xs: Array<Int>) -> Int:',
       '  _ = xs.map(Ok)',
       '  0',
-      'ista async fn main(): 0',
+      "import * as runtime from 'runtime'\nlive async fn main(): await runtime.run(runtime.id()) _main()\nista async fn _main(): 0",
     );
     expect(messagesOf(text, checkerDiagnostics.bareVariant.code)).toEqual([
       expect.stringContaining('Result.Ok'),
@@ -100,7 +106,7 @@ describe('proposal 7 behaviour table: row by row', () => {
       '  match v:',
       '    case Rejected(...) as r: r.by',
       '    case _: ""',
-      'ista async fn main(): 0',
+      "import * as runtime from 'runtime'\nlive async fn main(): await runtime.run(runtime.id()) _main()\nista async fn _main(): 0",
     );
     expect(reported(text).spanTexts).toEqual(['by']);
   });
@@ -119,7 +125,7 @@ describe('proposal 7 behaviour table: row by row', () => {
       '  match r:',
       '    case Ok: 1',
       '    case Err(_): 0',
-      'ista async fn main(): 0',
+      "import * as runtime from 'runtime'\nlive async fn main(): await runtime.run(runtime.id()) _main()\nista async fn _main(): 0",
     );
     expect(messagesOf(text, checkerDiagnostics.bareVariantPattern.code)).toEqual([
       expect.stringContaining("'Rejected(...)'"),
@@ -136,7 +142,7 @@ describe('proposal 7 behaviour table: row by row', () => {
       '  match d:',
       '    case Expired(): 1',
       '    case _: 0',
-      'ista async fn main(): 0',
+      "import * as runtime from 'runtime'\nlive async fn main(): await runtime.run(runtime.id()) _main()\nista async fn _main(): 0",
     );
     expect(messagesOf(text, checkerDiagnostics.fieldlessCalled.code)).toEqual([
       expect.stringContaining("'Expired'"),
@@ -153,7 +159,7 @@ describe('proposal 7 behaviour table: row by row', () => {
       '  match b:',
       '    case List(): 1',
       '    case _: 0',
-      'ista async fn main(): 0',
+      "import * as runtime from 'runtime'\nlive async fn main(): await runtime.run(runtime.id()) _main()\nista async fn _main(): 0",
     );
     expect(messagesOf(text, checkerDiagnostics.defaultsCallPattern.code)).toEqual([
       expect.stringContaining("'List(...)'"),
@@ -170,7 +176,7 @@ describe('proposal 7 behaviour table: row by row', () => {
       '  const v: Verdict = Rejected:',
       '    by: "legal"',
       '  v',
-      'ista async fn main(): 0',
+      "import * as runtime from 'runtime'\nlive async fn main(): await runtime.run(runtime.id()) _main()\nista async fn _main(): 0",
     );
     expect(messagesOf(text, checkerDiagnostics.variantInBraces.code)).toEqual([
       expect.stringContaining("'Ok(…)'"),
@@ -187,7 +193,7 @@ describe('proposal 7 behaviour table: row by row', () => {
       '  match v:',
       '    case Rejected{by}: by',
       '    case Approved: ""',
-      'ista async fn main(): 0',
+      "import * as runtime from 'runtime'\nlive async fn main(): await runtime.run(runtime.id()) _main()\nista async fn _main(): 0",
     );
     expect(messagesOf(text, checkerDiagnostics.variantInBracesPattern.code)).toEqual([
       expect.stringContaining("'Rejected(…)'"),
@@ -198,7 +204,11 @@ describe('proposal 7 behaviour table: row by row', () => {
   it('row 17: `Expired()` is `Expired`, warned of with its name', async () => {
     const decls = 'enum Decision { Approved, Expired }';
     expect(await mainGives('Bool', 'Decision.Expired() == Decision.Expired', decls)).toBe(true);
-    const text = lines(decls, 'fn f() -> Decision: Decision.Expired()', 'ista async fn main(): 0');
+    const text = lines(
+      decls,
+      'fn f() -> Decision: Decision.Expired()',
+      "import * as runtime from 'runtime'\nlive async fn main(): await runtime.run(runtime.id()) _main()\nista async fn _main(): 0",
+    );
     expect(messagesOf(text, checkerDiagnostics.fieldlessCalled.code)).toEqual([
       expect.stringContaining("'Expired'"),
     ]);

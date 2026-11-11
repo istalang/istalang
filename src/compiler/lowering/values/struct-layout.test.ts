@@ -72,7 +72,7 @@ describe('struct layout', () => {
     const program = stdProgramOf({
       main: [
         'struct P { y: Int, x: Int, aZ: Int }',
-        'ista async fn main() -> Int:',
+        "import * as runtime from 'runtime'\nlive async fn main() -> Int: await runtime.run(runtime.id()) _main()\nista async fn _main() -> Int:",
         '  const p = P{y: 1, x: 2, aZ: 3}',
         '  const shape: { y: Int, x: Int, aZ: Int } = p',
         '  p.x + shape.y',
@@ -90,9 +90,9 @@ describe('struct layout', () => {
   it('reads JSON into a struct field by field in name order, reporting the first mismatch (§9)', async () => {
     const text = compiledText(
       [
-        "import * as json from 'json'",
+        "import * as json from 'json'\nimport * as runtime from 'runtime'",
         'struct Late { b: Int, a: Int }',
-        'ista async fn main() -> String:',
+        'live async fn main() -> String: await runtime.run(runtime.id()) _main()\nista async fn _main() -> String:',
         '  match json.parse<Late>("{}"):',
         '    case Ok(value): "parsed"',
         '    case Err(error): error.message',
@@ -104,7 +104,10 @@ describe('struct layout', () => {
 
   it('builds a range by its fields, whatever order they are laid out in (§3.8)', async () => {
     const text = compiledText(
-      ['ista async fn main() -> Array<Int>:', '  [for i in 1..7 by 2: i]'].join('\n'),
+      [
+        "import * as runtime from 'runtime'\nlive async fn main() -> Array<Int>: await runtime.run(runtime.id()) _main()\nista async fn _main() -> Array<Int>:",
+        '  [for i in 1..7 by 2: i]',
+      ].join('\n'),
     );
     const state = await startToEnd(testRuntime(), text);
     expect(state.kind === 'finished' && decodeJson(String(state.outcome))).toEqual([1, 3, 5]);
@@ -118,7 +121,7 @@ describe('struct layout', () => {
         const shapeType = fields.map(({ name }) => `${name}: Int`).join(', ');
         const main = [
           declaration(fields),
-          'ista async fn main() -> (Array<Int>, Array<Int>):',
+          "import * as runtime from 'runtime'\nlive async fn main() -> (Array<Int>, Array<Int>): await runtime.run(runtime.id()) _main()\nista async fn _main() -> (Array<Int>, Array<Int>):",
           `  const s = ${literal(fields)}`,
           `  const shape: { ${shapeType} } = s`,
           `  ([${reads}], [${shapeReads}])`,

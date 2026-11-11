@@ -1,15 +1,15 @@
 # error: 5406 at 32:3
-# error: 5406 at 36:16
-# error: 5406 at 37:20
-# error: 5210 at 39:3
-# error: 2018 at 40:3
-# error: 5409 at 42:31
-# error: 5409 at 44:18
-# error: 5406 at 45:18
-# error: 5506 at 47:18
-# error: 5406 at 48:19
-# error: 5406 at 49:19
-# error: 5220 at 50:20
+# error: 5406 at 38:16
+# error: 5406 at 39:20
+# error: 5210 at 41:3
+# error: 2018 at 42:3
+# error: 5409 at 44:31
+# error: 5409 at 46:18
+# error: 5406 at 47:18
+# error: 5506 at 49:18
+# error: 5406 at 50:19
+# error: 5406 at 51:19
+# error: 5220 at 52:20
 # `?.` and `??` work on optionals (§4). A value read through `?.` is a copy, so a chain is never
 # assigned to, not even an element of it, and calls no method taking `&self`. A `?.` or `?->`
 # reaches inside one optional only: an optional read further along the chain needs its own. A
@@ -31,7 +31,9 @@ fn plain(n: Int) -> Int:
 ista async fn worker() -> Int:
   worker?.(1) ?? 0
 
-ista async fn main():
+import * as runtime from 'runtime'
+live async fn main(): await runtime.run(runtime.id()) _main()
+ista async fn _main():
   const count = 5
   const city = count?.city
   const fallback = count ?? 1

@@ -5,6 +5,7 @@
 # nothing holds what it held, and it is disposed there.
 
 import * as time from 'time'
+import * as runtime from 'runtime'
 
 fn note(log: Shared<Array<String>>, text: String):
   log->value = [...log->value, text]
@@ -32,7 +33,8 @@ ista async fn bindings(log: Shared<Array<String>>):
     id += 1
   note(log, "after while")
 
-ista async fn main() -> String:
+live async fn main() -> String: await runtime.run(runtime.id()) _main()
+ista async fn _main() -> String:
   const empty: Array<String> = []
   const log = new Shared{value: empty}
   await bindings(log)

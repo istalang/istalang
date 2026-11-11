@@ -2,8 +2,8 @@
  * Live runs (proposal 8) through the host's API: live code started by a host runs in memory to its
  * end and never writes the store, while an instance commits at every `await`; a live run's waits
  * ride the host's promises and its clock; and a host's calls on one instance run one after another.
- * Programs are compiled as ista code, as every program is until the checker knows kinds, and made
- * live by `asLive`.
+ * A live run is a host's start of live code; an instance is started directly (`startInstance`), as
+ * ista code runs in a context, whose commits a run of its own ends before it answers.
  */
 
 import fc from 'fast-check';
@@ -12,8 +12,23 @@ import { compiledText } from '../../compiler/compile.test-kit.ts';
 import type { HostCall } from '../boundary/host-natives.ts';
 import { ManualClock } from '../clock.ts';
 import type { Advanced, InstanceState } from '../instance-state.ts';
-import { asLive, runToEnd, settleAll, type TestRuntime, testRuntime } from '../runtime.test-kit.ts';
+import { runToEnd, type TestRuntime, testRuntime } from '../runtime.test-kit.ts';
 import { snapshotFormat } from '../snapshot/snapshot.ts';
+
+/**
+ * The lines of a program's `main`: live code running `body` itself, a live run, or, as a rewritten
+ * `main` is, live code calling `body`, as `_main` here, in a context, whose ista code commits at
+ * every await. `returns` is its return type, with its arrow, if any.
+ */
+function mainLines(mode: 'live' | 'ista', returns: string, body: readonly string[]): string[] {
+  return mode === 'live'
+    ? [`live async fn main()${returns}:`, ...body]
+    : [
+        `live async fn main()${returns}: await runtime.run(runtime.id()) _main()`,
+        `ista async fn _main()${returns}:`,
+        ...body,
+      ];
+}
 
 /** A step of a generated `main`: an `await` of a timer, of a commit or of a call, or no wait. */
 type Step =
@@ -30,10 +45,10 @@ const stepArbitrary: fc.Arbitrary<Step> = fc.oneof(
 );
 
 /** A program whose `main` runs `steps`, its callee waiting on a timer before it returns. */
-function programOf(steps: readonly Step[]): string {
+function programOf(steps: readonly Step[], mode: 'live' | 'ista'): string {
   const lines: Record<Step['kind'], (step: Step) => string> = {
     delay: (step) => `  await time.delay(${step.kind === 'delay' ? step.ms : 0}ms)`,
-    commit: () => '  await runtime.commit()',
+    commit: () => (mode === 'ista' ? '  await runtime.commit()' : ''),
     call: (step) => `  total += await later(${step.kind === 'call' ? step.n : 0})`,
     add: (step) => `  total += ${step.kind === 'add' ? step.n : 0}`,
   };
@@ -41,13 +56,14 @@ function programOf(steps: readonly Step[]): string {
     [
       "import * as time from 'time'",
       "import * as runtime from 'runtime'",
-      'ista async fn later(n: Int) -> Int:',
+      `${mode} async fn later(n: Int) -> Int:`,
       '  await time.delay(3ms)',
       '  n + 1',
-      'ista async fn main():',
-      '  let total = 0',
-      ...steps.map((step) => lines[step.kind](step)),
-      '  total',
+      ...mainLines(mode, '', [
+        '  let total = 0',
+        ...steps.map((step) => lines[step.kind](step)).filter((line) => line !== ''),
+        '  total',
+      ]),
     ].join('\n'),
   );
 }
@@ -79,17 +95,17 @@ describe('live runs', () => {
   it('never write the store, where an instance of the same program writes at every await', async () => {
     await fc.assert(
       fc.asyncProperty(fc.array(stepArbitrary, { maxLength: 6 }), async (steps) => {
-        const text = programOf(steps);
+        const text = programOf(steps, 'ista');
         const test = testRuntime();
-        const instance = await test.runtime.deploy(text).start('ista');
+        const instance = test.startInstance(text, 'ista');
         expect(await runToEnd(test, 'ista', instance)).toEqual({
           kind: 'finished',
-          outcome: String(totalOf(steps)),
+          outcome: BigInt(totalOf(steps)),
         });
         const awaits = steps.filter((step) => step.kind !== 'add').length;
         expect(commitsOf(test, 'ista')).toHaveLength(awaits + 1);
 
-        const live = asLive(text);
+        const live = programOf(steps, 'live');
         const written = test.store.commits.length;
         const run = await test.runtime.deploy(live).start('live');
         expect(test.store.commits).toHaveLength(written);
@@ -102,15 +118,24 @@ describe('live runs', () => {
 
   const waitsOnHost = compiledText(
     [
-      "import * as time from 'time'",
-      'extern ista fn fetch(name: String) -> Future<Int, "ista">',
-      'ista async fn fetched() -> Int:',
+      "import * as time from 'time'\nimport * as runtime from 'runtime'",
+      'extern live fn fetch(name: String) -> Future<Int, "live">',
+      'live async fn fetched() -> Int:',
       '  1 + await fetch("a")',
-      'ista async fn ticks():',
+      'live async fn main(): await runtime.run(runtime.id()) _main()',
+      'ista async fn _main() -> Int:',
       '  await time.delay(5ms)',
       '  await time.delay(5ms)',
       '  7',
-      'ista async fn main(): 0',
+    ].join('\n'),
+  );
+  /** The same wait on a host's `fetch`, as ista code waits, in an instance. */
+  const instanceWaitsOnHost = compiledText(
+    [
+      "import * as runtime from 'runtime'",
+      'extern ista fn fetch(name: String) -> Future<Int, "ista">',
+      'live async fn main(): await runtime.run(runtime.id()) _main()',
+      'ista async fn _main() -> Int: 1 + await fetch("a")',
     ].join('\n'),
   );
   const fetchKey = 'main.fetch(String)';
@@ -118,14 +143,14 @@ describe('live runs', () => {
   it("resolves a host's promise in memory while an instance commits", async () => {
     const answer = Promise.withResolvers<unknown>();
     const test = testRuntime({ host: { [fetchKey]: () => answer.promise } });
-    const program = test.runtime.deploy(asLive(waitsOnHost, ['main.fetched', 'main.fetch']));
+    const program = test.runtime.deploy(waitsOnHost);
     let ended: Advanced | undefined;
     const live = program.start('live', { function: 'main.fetched()' }).then((advanced) => {
       ended = advanced;
       return advanced;
     });
-    const ticking = await program.start('ista', { function: 'main.ticks()' });
-    expect(await runToEnd(test, 'ista', ticking)).toEqual({ kind: 'finished', outcome: '7' });
+    const ticking = test.startInstance(waitsOnHost, 'ista');
+    expect(await runToEnd(test, 'ista', ticking)).toEqual({ kind: 'finished', outcome: 7n });
     expect(commitsOf(test, 'ista')).toHaveLength(3);
     expect(ended).toBeUndefined();
     answer.resolve(41n);
@@ -135,7 +160,7 @@ describe('live runs', () => {
 
   it('panics when the promise it waits on rejects, with a stack trace', async () => {
     const test = testRuntime({ host: { [fetchKey]: () => Promise.reject(new Error('offline')) } });
-    const program = test.runtime.deploy(asLive(waitsOnHost));
+    const program = test.runtime.deploy(waitsOnHost);
     const { state } = await program.start('live', { function: 'main.fetched()' });
     expect(state).toMatchObject({
       kind: 'panicked',
@@ -146,7 +171,7 @@ describe('live runs', () => {
 
   it("panics when a host's promise resolves with a value that doesn't fit its declared type", async () => {
     const test = testRuntime({ host: { [fetchKey]: () => Promise.resolve('not-an-int') } });
-    const program = test.runtime.deploy(asLive(waitsOnHost));
+    const program = test.runtime.deploy(waitsOnHost);
     expect((await program.start('live', { function: 'main.fetched()' })).state).toMatchObject({
       kind: 'panicked',
       message: expect.stringContaining('expected an integer'),
@@ -157,87 +182,92 @@ describe('live runs', () => {
     const text = compiledText(
       [
         "import * as time from 'time'",
-        'extern ista fn fetch(name: String) -> Future<Int, "ista">',
-        'ista async fn main():',
-        '  const s = Slot.create<Int>()',
+        'extern live fn fetch(name: String) -> Future<Int, "live">',
+        'shared struct Kept { done: Resolver<Int, "live">? }',
+        'struct Forever:',
+        '  kept: Kept',
+        '  type Mode = "live"',
+        'live fn onAwait(self: Forever, done: Resolver<Int, "live">): self.kept->done = done',
+        'live async fn main() -> Int:',
         '  await select:',
         '    case fetch("a"):',
         '      1',
         '    case time.delay(5ms):',
-        '      await s.take()',
+        '      await Forever{kept: new Kept{done: none}}',
       ].join('\n'),
     );
     const neverSettles = new Promise<unknown>(() => undefined);
     const test = testRuntime({ host: { [fetchKey]: () => neverSettles } });
-    const live = asLive(text);
-    const run = await test.runtime.deploy(live).start('live');
+    const run = await test.runtime.deploy(text).start('live');
     expect(run.state).toEqual({ kind: 'waiting', until: undefined, watching: [] });
   });
 
   it('resolves a settled host promise before a later timer on a manual clock', async () => {
     const text = compiledText(
       [
-        "import * as time from 'time'",
-        'extern ista fn fetch(name: String) -> Future<Int, "ista">',
-        'ista async fn main() -> Int:',
-        '  await select:',
-        '    case fetch("a") as got:',
-        '      got',
-        '    case time.delay(5d):',
-        '      -1',
+        "import * as time from 'time'\nimport * as runtime from 'runtime'",
+        'extern live fn fetch(name: String) -> Future<Int, "live">',
+        ...mainLines('live', ' -> Int', [
+          '  await select:',
+          '    case fetch("a") as got:',
+          '      got',
+          '    case time.delay(5d):',
+          '      -1',
+        ]),
       ].join('\n'),
     );
     const clock = new ManualClock(1000n);
     const test = testRuntime({ clock, host: { [fetchKey]: () => Promise.resolve(42n) } });
-    const live = asLive(text);
-    const run = await test.runtime.deploy(live).start('live');
-    expect(outcomeText(test, live, run.state)).toBe('42');
+    const run = await test.runtime.deploy(text).start('live');
+    expect(outcomeText(test, text, run.state)).toBe('42');
     expect(clock.now()).toBe(1000n);
   });
 
   it('lets go of a timer nothing waits on any more, so its clock never moves to it', async () => {
     const text = compiledText(
       [
-        "import * as time from 'time'",
-        'extern ista fn fetch(name: String) -> Future<Int, "ista">',
-        'ista async fn main() -> Int:',
-        '  const first = await select:',
-        '    case time.delay(1ms):',
-        '      1',
-        '    case time.delay(5d):',
-        '      2',
-        '  first + await fetch("a")',
+        "import * as time from 'time'\nimport * as runtime from 'runtime'",
+        'extern live fn fetch(name: String) -> Future<Int, "live">',
+        ...mainLines('live', ' -> Int', [
+          '  const first = await select:',
+          '    case time.delay(1ms):',
+          '      1',
+          '    case time.delay(5d):',
+          '      2',
+          '  first + await fetch("a")',
+        ]),
       ].join('\n'),
     );
     const clock = new ManualClock(1000n);
     const later = () => new Promise((resolve) => setTimeout(() => resolve(41n), 5));
     const test = testRuntime({ clock, host: { [fetchKey]: later } });
-    const live = asLive(text);
-    const run = await test.runtime.deploy(live).start('live');
-    expect(outcomeText(test, live, run.state)).toBe('42');
+    const run = await test.runtime.deploy(text).start('live');
+    expect(outcomeText(test, text, run.state)).toBe('42');
     expect(clock.now()).toBe(1001n);
   });
 
   it('resolves due timers across an await while other work is ready, as an instance does', async () => {
-    const text = compiledText(
-      [
-        "import * as time from 'time'",
-        "import * as runtime from 'runtime'",
-        'ista async fn main() -> Int:',
-        '  const due = time.delay(0ms)',
-        '  await runtime.commit()',
-        '  select:',
-        '    case due:',
-        '      1',
-        '    else:',
-        '      0',
-      ].join('\n'),
-    );
+    const programIn = (mode: 'live' | 'ista') =>
+      compiledText(
+        [
+          "import * as time from 'time'",
+          "import * as runtime from 'runtime'",
+          ...mainLines(mode, ' -> Int', [
+            '  const due = time.delay(0ms)',
+            ...(mode === 'ista' ? ['  await runtime.commit()'] : ['  await time.delay(0ms)']),
+            '  select:',
+            '    case due:',
+            '      1',
+            '    else:',
+            '      0',
+          ]),
+        ].join('\n'),
+      );
     const test = testRuntime();
-    const ista = await test.runtime.deploy(text).start('ista');
-    expect(await runToEnd(test, 'ista', ista)).toEqual({ kind: 'finished', outcome: '1' });
+    const ista = test.startInstance(programIn('ista'), 'ista');
+    expect(await runToEnd(test, 'ista', ista)).toEqual({ kind: 'finished', outcome: 1n });
 
-    const live = asLive(text);
+    const live = programIn('live');
     const run = await test.runtime.deploy(live).start('live');
     expect(outcomeText(test, live, run.state)).toBe('1');
   });
@@ -245,12 +275,13 @@ describe('live runs', () => {
   it('reads the live clock on every time.now() call, not a frozen segment start time', async () => {
     const text = compiledText(
       [
-        "import * as time from 'time'",
+        "import * as time from 'time'\nimport * as runtime from 'runtime'",
         'extern fn tick() -> Unit',
-        'ista async fn main() -> Int:',
-        '  const before = time.now()',
-        '  tick()',
-        '  time.now().value - before.value',
+        ...mainLines('live', ' -> Int', [
+          '  const before = time.now()',
+          '  tick()',
+          '  time.now().value - before.value',
+        ]),
       ].join('\n'),
     );
     const clock = new ManualClock(1000n);
@@ -263,20 +294,18 @@ describe('live runs', () => {
         },
       },
     });
-    const live = asLive(text);
-    const run = await test.runtime.deploy(live).start('live');
-    expect(outcomeText(test, live, run.state)).toBe('250');
+    const run = await test.runtime.deploy(text).start('live');
+    expect(outcomeText(test, text, run.state)).toBe('250');
   });
 
   it('panics on a future its host fills by a token, which no fill reaches, and an instance on a promise', async () => {
     const pending = testRuntime({ host: { [fetchKey]: (_, call: HostCall) => call.pending('a') } });
-    const live = pending.runtime.deploy(asLive(waitsOnHost));
+    const live = pending.runtime.deploy(waitsOnHost);
     expect((await live.start('live', { function: 'main.fetched()' })).state).toMatchObject({
       kind: 'panicked',
     });
     const promised = testRuntime({ host: { [fetchKey]: () => Promise.resolve(1n) } });
-    const ista = promised.runtime.deploy(waitsOnHost);
-    expect((await ista.start('ista', { function: 'main.fetched()' })).state).toMatchObject({
+    expect(promised.startInstance(instanceWaitsOnHost, 'ista').state).toMatchObject({
       kind: 'panicked',
     });
   });
@@ -284,18 +313,18 @@ describe('live runs', () => {
   it('fires a live timer on a manual clock, its code reading the clock', async () => {
     const text = compiledText(
       [
-        "import * as time from 'time'",
-        'ista async fn main():',
-        '  const before = time.now()',
-        '  await time.delay(500ms)',
-        '  time.now().value - before.value',
+        "import * as time from 'time'\nimport * as runtime from 'runtime'",
+        ...mainLines('live', '', [
+          '  const before = time.now()',
+          '  await time.delay(500ms)',
+          '  time.now().value - before.value',
+        ]),
       ].join('\n'),
     );
     const clock = new ManualClock(1000n);
     const test = testRuntime({ clock });
-    const live = asLive(text);
-    const run = await test.runtime.deploy(live).start('live');
-    expect(outcomeText(test, live, run.state)).toBe('500');
+    const run = await test.runtime.deploy(text).start('live');
+    expect(outcomeText(test, text, run.state)).toBe('500');
     expect(clock.now()).toBe(1500n);
     expect(test.store.commits).toEqual([]);
   });
@@ -305,11 +334,9 @@ describe("a host's calls on one instance", () => {
   it('run one after another, a call made inside another waiting for it to end', async () => {
     const text = compiledText(
       [
-        "import * as runtime from 'runtime'",
+        "import * as time from 'time'\nimport * as runtime from 'runtime'",
         'extern fn ping() -> Int',
-        'ista async fn main():',
-        '  await runtime.commit()',
-        '  ping()',
+        ...mainLines('ista', '', ['  await time.delay(1ms)', '  ping()']),
       ].join('\n'),
     );
     const events: string[] = [];
@@ -323,9 +350,10 @@ describe("a host's calls on one instance", () => {
         },
       },
     });
-    const outer = await test.runtime.deploy(text).start('x');
+    test.startInstance(text, 'x');
+    test.clock.set(test.clock.now() + 1n);
+    const outer = await test.runtime.wake('x');
     events.push(`outer ${outer.state.kind}`);
-    await settleAll(test, 'x', outer);
     await inner;
     expect(events).toEqual(['ping', 'outer finished', 'inner finished']);
     expect(commitsOf(test, 'x')).toHaveLength(2);
@@ -335,7 +363,7 @@ describe("a host's calls on one instance", () => {
     const text = compiledText(
       [
         'extern ista fn ask(tag: String) -> Future<Int, "ista">',
-        'ista async fn main() -> Int:',
+        "import * as runtime from 'runtime'\nlive async fn main() -> Int: await runtime.run(runtime.id()) _main()\nista async fn _main() -> Int:",
         '  const a = ask("a")',
         '  const b = ask("b")',
         '  (await a) + (await b)',
@@ -344,13 +372,13 @@ describe("a host's calls on one instance", () => {
     const test = testRuntime({
       host: { 'main.ask(String)': ([tag], call: HostCall) => call.pending(String(tag)) },
     });
-    await test.runtime.deploy(text).start('x');
+    test.startInstance(text, 'x');
     const [first, second] = await Promise.all([
       test.runtime.fill('x', 'a', 10n),
       test.runtime.fill('x', 'b', 32n),
     ]);
     expect(first.state.kind).toBe('waiting');
-    expect(outcomeText(test, text, second.state)).toBe('42');
+    expect(second.state).toMatchObject({ kind: 'finished', outcome: 42n });
     expect(commitsOf(test, 'x')).toHaveLength(3);
   });
 });

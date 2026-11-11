@@ -1,6 +1,6 @@
-# error: 5307 at 20:15
-# error: 5307 at 21:9
-# error: 5307 at 22:16
+# error: 5307 at 22:15
+# error: 5307 at 23:9
+# error: 5307 at 24:16
 # An element passed by `&` is written back when its call returns, and an async call returns its
 # future before its callee ends, so no element may be passed by `&` to an async function (§3.7),
 # whether written `&`, taken as `&self`, or passed to an async function value.
@@ -13,7 +13,9 @@ ista async fn run(self: &Job):
 ista async fn bump(value: &Int):
   value += 1
 
-ista async fn main():
+import * as runtime from 'runtime'
+live async fn main(): await runtime.run(runtime.id()) _main()
+ista async fn _main():
   let counts = [1]
   let jobs = [Job{runs: 0}]
   const later: ista async fn(&Int) -> Unit = bump

@@ -33,7 +33,9 @@ ista async fn worker(v: Int | String) -> String:
     case Int as n: `spawned:${n}`
     case String as s: `spawned:${s}`
 
-ista async fn main() -> String:
+import * as runtime from 'runtime'
+live async fn main() -> String: await runtime.run(runtime.id()) _main()
+ista async fn _main() -> String:
   const c1: Contact = Email{to: "cfo"}
   const c2: Contact = Sms{number: "555"}
   const x: Int | Email = 42

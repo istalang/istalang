@@ -20,7 +20,7 @@ const inputs = [
   '# only\n\n# comments\n',
   '@Suite{"s"}\n# comment\nfn f(): 1\n',
   'fn f():\n  @Waypoint{"w"}\n  # comment\n  const x = 1\n  x\n',
-  'ista async fn main(\n  # c\n) -> Int: 1\n',
+  "import * as runtime from 'runtime'\nlive async fn main() -> Int: await runtime.run(runtime.id()) _main()\nista async fn _main(\n  # c\n) -> Int: 1\n",
   'fn f(x: Int\n  # c\n) -> Int: x\n',
   'const a = [await # c\n  f(x)]\n',
   'const a = [not await\n  # c\n  x]\n',

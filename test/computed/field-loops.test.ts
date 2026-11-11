@@ -120,10 +120,7 @@ describe('a field loop', () => {
   });
 
   it('is a loop: break, continue, labels, await and a destructured value', async () => {
-    const declarations = [
-      "import * as runtime from 'runtime'",
-      'struct Pairs { c: (Int, String), b: (Int, String), a: (Int, String) }',
-    ];
+    const declarations = ['struct Pairs { c: (Int, String), b: (Int, String), a: (Int, String) }'];
     const lines = [
       'const pairs = Pairs{c: (3, "three"), b: (2, "two"), a: (1, "one")}',
       'let seen: Array<String> = []',

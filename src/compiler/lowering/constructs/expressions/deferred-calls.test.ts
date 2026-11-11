@@ -112,7 +112,7 @@ function desugared(node: Deferred, values: readonly string[], names: { next: num
 function program(body: string): string {
   return [
     ...declarations,
-    'ista async fn main() -> String:',
+    "import * as runtime from 'runtime'\nlive async fn main() -> String: await runtime.run(runtime.id()) _main()\nista async fn _main() -> String:",
     '  const log = new Shared{value: ""}',
     `  const result = ${body}`,
     '  log->value + "= " + String(result)',
@@ -146,7 +146,7 @@ describe('a deferred call', () => {
       'fn bump(n: &Int):',
       '  n += 1',
       'fn same(n: Int) -> Int: n',
-      'ista async fn main() -> Int:',
+      "import * as runtime from 'runtime'\nlive async fn main() -> Int: await runtime.run(runtime.id()) _main()\nista async fn _main() -> Int:",
       '  let n = 1',
       '  bump(&n)',
       '  const f = keep same(n)',
@@ -171,7 +171,7 @@ describe('a deferred call', () => {
         '  f() * 100 + a * 10 + b',
         'fn call<...A>(run: fn(fn() -> Int, ...A) -> Int, ...args: A) -> Int:',
         `  ${call}`,
-        'ista async fn main() -> Int:',
+        "import * as runtime from 'runtime'\nlive async fn main() -> Int: await runtime.run(runtime.id()) _main()\nista async fn _main() -> Int:",
         '  call(digits, 1, 2)',
       ].join('\n');
       expect(await outcomeOf(text)).toBe(312);
@@ -184,7 +184,7 @@ describe('a deferred call', () => {
       '  f()',
       'fn fail() -> Never:',
       '  panic("now")',
-      'ista async fn main() -> Int:',
+      "import * as runtime from 'runtime'\nlive async fn main() -> Int: await runtime.run(runtime.id()) _main()\nista async fn _main() -> Int:",
       '  later fail().size()',
     ].join('\n');
     expect(await outcomeOf(text)).toMatchObject({ kind: 'panicked', message: 'now' });
@@ -205,7 +205,7 @@ describe('a deferred call', () => {
       '  }',
       'ista async fn firstItem(...items: Array<Int>) -> Int:',
       '  items[0]',
-      'ista async fn main() -> Int:',
+      "import * as runtime from 'runtime'\nlive async fn main() -> Int: await runtime.run(runtime.id()) _main()\nista async fn _main() -> Int:",
       '  const it = SharedIter{s: new Shared{value: 42}}',
       '  match await (spawn firstItem(...it)).result():',
       '    case Ok(value): value',
@@ -229,7 +229,7 @@ describe('a deferred call', () => {
       '  }',
       'ista async fn takeShares(...items: Array<Shared<Int>>) -> Int:',
       '  items[0]->value',
-      'ista async fn main() -> Int:',
+      "import * as runtime from 'runtime'\nlive async fn main() -> Int: await runtime.run(runtime.id()) _main()\nista async fn _main() -> Int:",
       '  _ = spawn takeShares(...BadIter{n: 42})',
       '  0',
     ].join('\n');

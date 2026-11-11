@@ -56,9 +56,9 @@ describe('function-table names', () => {
     const program = stdProgramOf({
       main: [
         "import * as a from 'a'",
-        "import * as b from 'b'",
+        "import * as b from 'b'\nimport * as runtime from 'runtime'",
         'fn show<T>(value: T, times: Int = 1) -> Int: times',
-        'ista async fn main() -> Int:',
+        'live async fn main() -> Int: await runtime.run(runtime.id()) _main()\nista async fn _main() -> Int:',
         '  show(a.Money{cents: 1}) + show(b.Money{cents: 2}, 2) + show<Int?>(none)',
       ].join('\n'),
       a: 'struct Money { cents: Int }',
@@ -82,7 +82,7 @@ describe('defaults', () => {
       main: [
         'struct Retry { tries: Int = 3, backoff: Int = tries * 2 }',
         'fn wait(retry: Retry = Retry{}, times: Int = 1) -> Int: retry.backoff * times',
-        'ista async fn main() -> Int:',
+        "import * as runtime from 'runtime'\nlive async fn main() -> Int: await runtime.run(runtime.id()) _main()\nista async fn _main() -> Int:",
         '  wait()',
       ].join('\n'),
     });
@@ -96,6 +96,8 @@ describe('defaults', () => {
       'main.Retry': [true, true],
       'main.wait': [true, true],
       'main.main': [],
+      'main._main': [],
+      'main.main.deferred@4:62': [],
     });
   });
 });
@@ -127,7 +129,8 @@ describe('extern keys', () => {
 describe('lowering', () => {
   it("qualifies names with each module's canonical name", () => {
     const program = stdProgramOf({
-      'purchase/approve': "import twice from 'lib/math'\nista async fn main(): twice(2)",
+      'purchase/approve':
+        "import twice from 'lib/math'\nimport * as runtime from 'runtime'\nlive async fn main(): await runtime.run(runtime.id()) _main()\nista async fn _main(): twice(2)",
       'lib/math': 'fn twice(n: Int) -> Int: n * 2',
     });
     const names = compiledDefinition(program, 'purchase/approve').functions.map(
@@ -136,7 +139,7 @@ describe('lowering', () => {
     expect(names).toEqual(
       expect.arrayContaining(['purchase/approve.main', 'lib/math.twice', 'prelude.multiply']),
     );
-    const modules = ['purchase/approve', 'lib/math', 'prelude', 'json'];
+    const modules = ['purchase/approve', 'lib/math', 'prelude', 'json', 'runtime'];
     expect(names.every((name) => modules.some((module) => name.startsWith(`${module}.`)))).toBe(
       true,
     );
@@ -146,7 +149,7 @@ describe('lowering', () => {
     const program = stdProgramOf({
       main: [
         'struct Box { size: Int?, items: Array<Int>, next: Slot<Int> }',
-        'ista async fn main(): { const b = Box{size: panic("x"), items: panic("y"), next: panic("z")}; 1 }',
+        'import * as runtime from \'runtime\'\nlive async fn main(): await runtime.run(runtime.id()) _main()\nista async fn _main(): { const b = Box{size: panic("x"), items: panic("y"), next: panic("z")}; 1 }',
       ].join('\n'),
     });
     const { types } = compiledDefinition(program, 'main');
@@ -174,11 +177,11 @@ describe('lowering', () => {
   it('makes a host type disposable through the dispose its host implements (§3.6)', () => {
     const program = stdProgramOf({
       main: [
-        "import Encodable from 'json'",
+        "import Encodable from 'json'\nimport * as runtime from 'runtime'",
         'extern shared struct Lease<T is Sendable>',
         'extern fn dispose<T is Encodable>(self: Lease<T>)',
         'extern fn lease() -> Lease<Int>',
-        'ista async fn main(): { const held = lease(); 1 }',
+        'live async fn main(): await runtime.run(runtime.id()) _main()\nista async fn _main(): { const held = lease(); 1 }',
       ].join('\n'),
     });
     const { types, functions } = compiledDefinition(program, 'main');
@@ -193,7 +196,7 @@ describe('lowering', () => {
 
   it('stores a constant once, computed in its own module even when another imports it', async () => {
     const program = stdProgramOf({
-      main: "import limits from 'lib'\nista async fn main(): limits.high + limits.high",
+      main: "import limits from 'lib'\nimport * as runtime from 'runtime'\nlive async fn main(): await runtime.run(runtime.id()) _main()\nista async fn _main(): limits.high + limits.high",
       lib: 'struct Limits { high: Int }\nconst base = 7\nconst limits = Limits{high: base}',
     });
     const definition = compiledDefinition(program, 'main');
@@ -213,8 +216,8 @@ describe('lowering', () => {
   it("calls a namespace's function-typed constant, and spawns one", async () => {
     const program = stdProgramOf({
       main: [
-        "import * as lib from 'lib'",
-        'ista async fn main() -> Int:',
+        "import * as lib from 'lib'\nimport * as runtime from 'runtime'",
+        'live async fn main() -> Int: await runtime.run(runtime.id()) _main()\nista async fn _main() -> Int:',
         '  match await (spawn lib.twice(1)).result():',
         '    case Ok(value): lib.twice(20) + value',
         '    case Err(error): 0',
@@ -244,7 +247,7 @@ describe('lowering', () => {
         '  let again = start',
         '  bump(&again)',
         '  kept + again',
-        'ista async fn main(): twice(1)',
+        "import * as runtime from 'runtime'\nlive async fn main(): await runtime.run(runtime.id()) _main()\nista async fn _main(): twice(1)",
       ].join('\n'),
     });
     const definition = compiledDefinition(program, 'main');
@@ -268,7 +271,7 @@ describe('lowering', () => {
         '  count: Int',
         'fn bump(n: &Int):',
         '  n += 1',
-        'ista async fn main() -> Int:',
+        "import * as runtime from 'runtime'\nlive async fn main() -> Int: await runtime.run(runtime.id()) _main()\nista async fn _main() -> Int:",
         '  let n = 0',
         '  bump(&n)',
         '  const counter = new Counter{count: n}',
@@ -288,7 +291,7 @@ describe('lowering', () => {
       main: [
         "import * as runtime from 'runtime'",
         'fn shared() -> Shared<Int>: new Shared{value: 1}',
-        'ista async fn main() -> Int:',
+        'live async fn main() -> Int: await runtime.run(runtime.id()) _main()\nista async fn _main() -> Int:',
         '  drop spawn shared()',
         '  drop runtime.isolate(fn(): "isolated")',
         '  0',
@@ -318,9 +321,9 @@ describe('lowering', () => {
   it("gives the json module's Json enum the json role, and no other enum one", () => {
     const program = stdProgramOf({
       main: [
-        "import * as json from 'json'",
+        "import * as json from 'json'\nimport * as runtime from 'runtime'",
         'enum Shape { Dot }',
-        'ista async fn main() -> String: json.stringify<Array<Shape>>([Dot])',
+        'live async fn main() -> String: await runtime.run(runtime.id()) _main()\nista async fn _main() -> String: json.stringify<Array<Shape>>([Dot])',
       ].join('\n'),
     });
     const enums = compiledDefinition(program, 'main').types.flatMap((type) =>
@@ -335,7 +338,7 @@ describe('lowering', () => {
   it('gives each shape one unnamed entry, shared by every place writing it (§3.1)', () => {
     const program = stdProgramOf({
       main: [
-        'ista async fn main():',
+        "import * as runtime from 'runtime'\nlive async fn main(): await runtime.run(runtime.id()) _main()\nista async fn _main():",
         '  const a = struct{x: 1}',
         '  const b = struct{x: 2}',
         '  const c = if a.x > 0: struct{y: 3, x: 0} else: struct{x: 4, y: 0}',
@@ -351,7 +354,11 @@ describe('lowering', () => {
 
   it('lowers a select with only an else to its else body', async () => {
     const program = stdProgramOf({
-      main: ['ista async fn main() -> Int:', '  select:', '    else: 42'].join('\n'),
+      main: [
+        "import * as runtime from 'runtime'\nlive async fn main() -> Int: await runtime.run(runtime.id()) _main()\nista async fn _main() -> Int:",
+        '  select:',
+        '    else: 42',
+      ].join('\n'),
     });
     const definition = compiledDefinition(program, 'main');
     const test = testRuntime();

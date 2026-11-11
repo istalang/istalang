@@ -19,5 +19,7 @@ fn named(x: Status | Int) -> String:
     case Status: "status"
     case _: "other"
 
-ista async fn main() -> String:
+import * as runtime from 'runtime'
+live async fn main() -> String: await runtime.run(runtime.id()) _main()
+ista async fn _main() -> String:
   `${wide("sent")}|${wide(3)}|${rest("draft")}|${rest("sent")}|${named(4)}`

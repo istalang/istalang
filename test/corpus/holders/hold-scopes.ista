@@ -5,6 +5,7 @@
 # a commit. `hold(f)` naming the function is plain `hold`. Each scope releases newest first (§7).
 
 import * as time from 'time'
+import * as runtime from 'runtime'
 
 fn note(log: Shared<Array<String>>, text: String):
   log->value = [...log->value, text]
@@ -51,7 +52,8 @@ ista async fn whole(log: Shared<Array<String>>):
     hold(whole) _ = sleeper(50 + i, log)
   note(log, "function done")
 
-ista async fn main() -> String:
+live async fn main() -> String: await runtime.run(runtime.id()) _main()
+ista async fn _main() -> String:
   const empty: Array<String> = []
   const log = new Shared{value: empty}
   await rows(log)

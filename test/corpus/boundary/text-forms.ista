@@ -4,13 +4,15 @@
 # whose Error has code parse.
 
 import * as time from 'time'
+import * as runtime from 'runtime'
 
 fn read(parsed: Result<Int>) -> String:
   match parsed:
     case Ok(value): String(value)
     case Err(error): error.message
 
-ista async fn main() -> Array<String>:
+live async fn main() -> Array<String>: await runtime.run(runtime.id()) _main()
+ista async fn _main() -> Array<String>:
   const due = match time.Duration.parse("PT1M30S"):
     case Ok(value): String(value.value)
     case Err(error): error.message
