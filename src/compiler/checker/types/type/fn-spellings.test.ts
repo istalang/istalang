@@ -86,7 +86,7 @@ describe('every spelling of a function type', () => {
 
   it('writes a type whose slots are variables as Fn', () => {
     const program = stdProgramOf({
-      'main.ista': 'fn keep<T, M in DataKind, S in Sendability>(f: Fn<(T,), T, M, S>): ()\n',
+      'main.ista': 'fn keep<T, M in Mark, S in Sendability>(f: Fn<(T,), T, M, S>): ()\n',
     });
     const checker = checkProgram(program);
     const [keep] = program.modules.get(idOf('main.ista'))?.tree.root.items ?? [];
@@ -129,7 +129,7 @@ describe('a head naming its mark', () => {
   it('is generic over its mark, which may be its parameter or an associated type', () => {
     expect(
       reported(`
-M fn each<T, M in DataKind>(xs: Array<T>, f: Fn<(T,), Unit, M>):
+M fn each<T, M in Mark>(xs: Array<T>, f: Fn<(T,), Unit, M>):
   for x in xs:
     f(x)
 K async fn twice<K in Persistence, T>(f: Fn<(), Future<T, K>, K>) -> T:
@@ -150,7 +150,7 @@ ista async fn main():
     expect(reported('X fn f<X>(): ()')).toEqual(
       reportedOnce(checkerDiagnostics.unknownMark.code, 'X'),
     );
-    expect(reported('M async fn f<M in DataKind>() -> Int: 1')).toEqual(
+    expect(reported('M async fn f<M in Mark>() -> Int: 1')).toEqual(
       reportedOnce(checkerDiagnostics.asyncMarkNotKind.code, 'M'),
     );
     expect(
@@ -173,7 +173,7 @@ fn main():
 
 describe('a higher-order function written over M and S', () => {
   const logged = `
-fn logged<...A, R, M in DataKind, S in Sendability>(f: Fn<A, R, M, S>) -> Fn<A, R, M, S>:
+fn logged<...A, R, M in Mark, S in Sendability>(f: Fn<A, R, M, S>) -> Fn<A, R, M, S>:
   fn(...args: A) -> R: f(...args)
 fn area(width: Int, height: Int) -> Int: width * height
 `;
@@ -205,13 +205,13 @@ fn main():
   it('joins marks through their order, a simple argument fixing none', () => {
     expect(
       reported(`
-fn choose<M in DataKind, S in Sendability>(
+fn choose<M in Mark, S in Sendability>(
   first: Bool,
   a: Fn<(Int,), Int, M, S>,
   b: Fn<(Int,), Int, M, S>,
 ) -> Fn<(Int,), Int, M, S>:
   if first: a else: b
-M fn runBoth<...A, R, M in DataKind>(a: Fn<A, R, M>, b: Fn<A, R, M>) -> Int: 0
+M fn runBoth<...A, R, M in Mark>(a: Fn<A, R, M>, b: Fn<A, R, M>) -> Int: 0
 fn inc(x: Int) -> Int: x + 1
 live fn liveInc(x: Int) -> Int: x + 1
 live fn main(plainSimple: Fn<(Int,), Int, "simple", "plain">):
@@ -224,9 +224,9 @@ live fn main(plainSimple: Fn<(Int,), Int, "simple", "plain">):
   it('gives a lambda or local function the mark parameter expected or declared for it', () => {
     expect(
       reported(`
-ista fn makeWrapper<M in DataKind>(f: Fn<(), Int, M>) -> Fn<(), Int, M>:
+ista fn makeWrapper<M in Mark>(f: Fn<(), Int, M>) -> Fn<(), Int, M>:
   fn() -> Int: f()
-fn wrapSecond<M1 in DataKind, M2 in DataKind>(
+fn wrapSecond<M1 in Mark, M2 in Mark>(
   f: Fn<(), Int, M1>,
   g: Fn<(), Int, M2>,
 ) -> Fn<(), Int, M2>:

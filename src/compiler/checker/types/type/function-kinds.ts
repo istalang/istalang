@@ -1,6 +1,6 @@
 /**
  * The marks of code as types (proposal 8, Rules 1–4): what a function type's mark slot and a
- * future's `K` hold. A mark is a literal of the prelude's `DataKind`: `"live"` or `"ista"`, the
+ * future's `K` hold. A mark is a literal of the prelude's `Mark`: `"live"` or `"ista"`, the
  * two kinds, `Persistence`'s members, or `"simple"`, an unmarked function's, which either kind may
  * call; a generic one's a mark parameter, as the checker knows one by what its union holds
  * (types/properties/qualifiers.ts).
@@ -33,7 +33,7 @@ import type { Checker } from '../../check.ts';
 import type { CheckerContext } from '../../contexts/context.ts';
 import type { Fitting } from '../fitting/fit/index.ts';
 import type { Type } from './index.ts';
-import { dataKindOrder } from './mark-orders.ts';
+import { markOrder } from './mark-orders.ts';
 import { markType } from './primitives.ts';
 
 /** The mark of unmarked code and function types (proposal 8, Rule 2): `"simple"`. */
@@ -55,7 +55,7 @@ export type KindNames = Pick<
 
 /**
  * Whether a function of kind `callee` may be called, or fit, where code of kind `code` calls it
- * (proposal 8, Rules 2 and 4): by `DataKind`'s order (mark-orders.ts), the kinds compared by
+ * (proposal 8, Rules 2 and 4): by `Mark`'s order (mark-orders.ts), the kinds compared by
  * `same`, which may infer them.
  */
 export function kindAdmits(
@@ -63,7 +63,7 @@ export function kindAdmits(
   callee: Type,
   same: (expected: Type, found: Type) => boolean,
 ): boolean {
-  return dataKindOrder.below(callee, code, same);
+  return markOrder.below(callee, code, same);
 }
 
 /**
@@ -156,7 +156,7 @@ export function isOneKind(lookup: QualifierLookup, kind: Type): boolean {
   );
 }
 
-/** Whether `type` is a mark parameter: `K in Persistence` or `M in DataKind`. */
+/** Whether `type` is a mark parameter: `K in Persistence` or `M in Mark`. */
 export function isMarkVariable(lookup: QualifierLookup, type: Type): boolean {
   return (
     type.kind === 'parameter' &&
@@ -213,13 +213,13 @@ export interface QualifierLookup {
   readonly fitting: Pick<Fitting, 'qualifierOf'>;
 }
 
-/** Whether `parameter` stands for a mark: `M in DataKind`, `K in Persistence`, or a subset. */
+/** Whether `parameter` stands for a mark: `M in Mark`, `K in Persistence`, or a subset. */
 export function isMarkParameter(lookup: QualifierLookup, parameter: TypeParameter): boolean {
-  return lookup.fitting.qualifierOf(parameter)?.order === dataKindOrder;
+  return lookup.fitting.qualifierOf(parameter)?.order === markOrder;
 }
 
 /** Whether `parameter` stands for one of the two kinds: `K in Persistence`, or a subset. */
 export function standsForOneKind(lookup: QualifierLookup, parameter: TypeParameter): boolean {
   const qualifier = lookup.fitting.qualifierOf(parameter);
-  return qualifier?.order === dataKindOrder && !qualifier.mayBeBottom;
+  return qualifier?.order === markOrder && !qualifier.mayBeBottom;
 }

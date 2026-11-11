@@ -1,6 +1,6 @@
 /**
  * What a type parameter qualifies functions by (proposal 8, Rules 3 and 4): one whose union, as
- * `in` names it, holds only marks (`DataKind`'s members) is a mark parameter, one holding only
+ * `in` names it, holds only marks (`Mark`'s members) is a mark parameter, one holding only
  * sendabilities a sendability parameter. They are known by what the union holds, whatever spells
  * it, so `Persistence`, an alias of the two kinds and a written subset (`M in "simple" | "live"`)
  * alike make one; each is then a member parameter as any other, its value one member. Code reads
@@ -8,17 +8,17 @@
  */
 
 import {
-  type DataKind,
+  type Mark,
   persistences,
   sendabilities,
 } from '../../../../foundation/language/well-known/index.ts';
 import type { TypeParameter } from '../../../syntax/declarations/index.ts';
 import type { CheckerContext } from '../../contexts/context.ts';
 import type { Type } from '../type/index.ts';
-import { dataKindOrder, type QualifierParameter, sendabilityOrder } from '../type/mark-orders.ts';
+import { markOrder, type QualifierParameter, sendabilityOrder } from '../type/mark-orders.ts';
 import { membersOf } from '../unions/unions.ts';
 
-const dataKinds: readonly DataKind[] = ['simple', ...persistences];
+const marks: readonly Mark[] = ['simple', ...persistences];
 
 /**
  * What `parameter` qualifies functions by, read from its union (`memberUnionOf`); undefined for any
@@ -33,8 +33,8 @@ export function qualifierParameterOf(
   if (members === undefined || members.length === 0) {
     return undefined;
   }
-  if (members.every((member) => (dataKinds as readonly string[]).includes(member))) {
-    return { order: dataKindOrder, mayBeBottom: members.includes('simple') };
+  if (members.every((member) => (marks as readonly string[]).includes(member))) {
+    return { order: markOrder, mayBeBottom: members.includes('simple') };
   }
   return members.every((member) => (sendabilities as readonly string[]).includes(member))
     ? { order: sendabilityOrder, mayBeBottom: members.includes('sendable') }

@@ -14,7 +14,7 @@ extern shared struct WeakRef<T is Disposable>
 # Data is simple, live or ista, and code is marked with the data it may handle (proposal 8): unmarked
 # code handles simple data, `live` code waits in memory and never commits, `ista` code commits at
 # every wait. `Persistence` is the two kinds, and a future is of the kind of the code waiting on it.
-type DataKind = "simple" | "live" | "ista"
+type Mark = "simple" | "live" | "ista"
 type Persistence = "live" | "ista"
 extern shared struct Future<T, K in Persistence>
 
@@ -24,7 +24,7 @@ type Sendability = "sendable" | "plain"
 # The one function type (§3.14): `Args` is the tuple of its parameters, `(A,)` for one, a pack, or
 # items written `&T` for parameters taken by reference. Every other spelling is its sugar:
 # `sendable live fn(A) -> R` is `Fn<(A,), R, "live", "sendable">`.
-extern struct Fn<Args, Result, Kind in DataKind = "simple", Send in Sendability = "plain">
+extern struct Fn<Args, Result, Kind in Mark = "simple", Send in Sendability = "plain">
 
 # What `spawn` gives (§9): a handle to the new instance, compared by identity, which holds nothing.
 # `result()` resolves with its first end: `Ok` of its outcome, or `Err` of its panic.
@@ -70,12 +70,12 @@ extern ista fn dispose<T>(self: Slot<T>)
 # `x` now and logs when the block ends, and `hold _ = defer log(x)` when the function does. Its
 # function is of the mark of the code deferring it (§3.3), which its release runs in, so ista code
 # defers an ista call and simple code a simple one.
-shared struct Deferred<M in DataKind>:
+shared struct Deferred<M in Mark>:
   run: Fn<(), Unit, M>
 
-M fn defer<M in DataKind>(f: Fn<(), Unit, M>) -> Deferred<M>: new Deferred<M>{run: f}
+M fn defer<M in Mark>(f: Fn<(), Unit, M>) -> Deferred<M>: new Deferred<M>{run: f}
 
-M fn dispose<M in DataKind>(self: Deferred<M>): self->run()
+M fn dispose<M in Mark>(self: Deferred<M>): self->run()
 
 # `T?` is `T | None` (§2); this alias names it, so the statics declared on it are `T?`'s (§3.17).
 type Optional<T> = T?
@@ -158,33 +158,33 @@ extern fn index(self: String, key: Range) -> String
 
 # Methods taking a function (§3.8), with JavaScript's names. Each calls its function on the items in
 # order, a search only until it finds one.
-M fn map<T, U, M in DataKind>(self: Array<T>, f: Fn<(T,), U, M>) -> Array<U>: [for item in self: f(item)]
+M fn map<T, U, M in Mark>(self: Array<T>, f: Fn<(T,), U, M>) -> Array<U>: [for item in self: f(item)]
 
-M fn filter<T, M in DataKind>(self: Array<T>, keep: Fn<(T,), Bool, M>) -> Array<T>: [
+M fn filter<T, M in Mark>(self: Array<T>, keep: Fn<(T,), Bool, M>) -> Array<T>: [
   for item in self if keep(item): item
 ]
 
-M fn flatMap<T, U, M in DataKind>(self: Array<T>, f: Fn<(T,), Array<U>, M>) -> Array<U>: self.map(f).flat()
+M fn flatMap<T, U, M in Mark>(self: Array<T>, f: Fn<(T,), Array<U>, M>) -> Array<U>: self.map(f).flat()
 
-M fn find<T, M in DataKind>(self: Array<T>, test: Fn<(T,), Bool, M>) -> T?: self._itemAt(self.findIndex(test))
+M fn find<T, M in Mark>(self: Array<T>, test: Fn<(T,), Bool, M>) -> T?: self._itemAt(self.findIndex(test))
 
-M fn findLast<T, M in DataKind>(self: Array<T>, test: Fn<(T,), Bool, M>) -> T?: self._itemAt(self.findLastIndex(test))
+M fn findLast<T, M in Mark>(self: Array<T>, test: Fn<(T,), Bool, M>) -> T?: self._itemAt(self.findLastIndex(test))
 
-M fn findIndex<T, M in DataKind>(self: Array<T>, test: Fn<(T,), Bool, M>) -> Int:
+M fn findIndex<T, M in Mark>(self: Array<T>, test: Fn<(T,), Bool, M>) -> Int:
   for position in 0..self.length():
     if test(self[position]): return position
   -1
 
-M fn findLastIndex<T, M in DataKind>(self: Array<T>, test: Fn<(T,), Bool, M>) -> Int:
+M fn findLastIndex<T, M in Mark>(self: Array<T>, test: Fn<(T,), Bool, M>) -> Int:
   let position = self.length() - 1
   while position >= 0 and not test(self[position]): position -= 1
   position
 
-M fn some<T, M in DataKind>(self: Array<T>, test: Fn<(T,), Bool, M>) -> Bool: self.findIndex(test) >= 0
+M fn some<T, M in Mark>(self: Array<T>, test: Fn<(T,), Bool, M>) -> Bool: self.findIndex(test) >= 0
 
-M fn every<T, M in DataKind>(self: Array<T>, test: Fn<(T,), Bool, M>) -> Bool: not self.some(fn(item): not test(item))
+M fn every<T, M in Mark>(self: Array<T>, test: Fn<(T,), Bool, M>) -> Bool: not self.some(fn(item): not test(item))
 
-M fn reduce<T, A, M in DataKind>(self: Array<T>, f: Fn<(A, T), A, M>, initial: A) -> A:
+M fn reduce<T, A, M in Mark>(self: Array<T>, f: Fn<(A, T), A, M>, initial: A) -> A:
   let result = initial
   for item in self: result = f(result, item)
   result
@@ -193,9 +193,9 @@ M fn reduce<T, A, M in DataKind>(self: Array<T>, f: Fn<(A, T), A, M>, initial: A
 # first.
 fn sort<T is Comparable>(self: &Array<T>): self.sort(fn(left, right): compare(left, right))
 
-M fn sort<T, M in DataKind>(self: &Array<T>, order: Fn<(T, T), Int, M>): self = _sorted(self, order)
+M fn sort<T, M in Mark>(self: &Array<T>, order: Fn<(T, T), Int, M>): self = _sorted(self, order)
 
-M fn Map.groupBy<K, T, M in DataKind>(items: Array<T>, key: Fn<(T,), K, M>) -> Map<K, Array<T>>:
+M fn Map.groupBy<K, T, M in Mark>(items: Array<T>, key: Fn<(T,), K, M>) -> Map<K, Array<T>>:
   let groups: Map<K, Array<T>> = [:]
   for item in items:
     const group = key(item)
@@ -203,7 +203,7 @@ M fn Map.groupBy<K, T, M in DataKind>(items: Array<T>, key: Fn<(T,), K, M>) -> M
   groups
 
 # A map converted part by part (§3.5): each value made what `f` makes of it, its key kept.
-M fn _mapValues<K, V, W, M in DataKind>(self: Map<K, V>, f: Fn<(V,), W, M>) -> Map<K, W>:
+M fn _mapValues<K, V, W, M in Mark>(self: Map<K, V>, f: Fn<(V,), W, M>) -> Map<K, W>:
   let mapped: Map<K, W> = [:]
   for (key, value) in self: mapped[key] = f(value)
   mapped
@@ -213,13 +213,13 @@ fn _itemAt<T>(self: Array<T>, position: Int) -> T?:
   if position < 0: none
   else: self[position]
 
-M fn _sorted<T, M in DataKind>(items: Array<T>, order: Fn<(T, T), Int, M>) -> Array<T>:
+M fn _sorted<T, M in Mark>(items: Array<T>, order: Fn<(T, T), Int, M>) -> Array<T>:
   if items.length() <= 1: return items
   const middle = items.length() // 2
   _merged(_sorted(items[..middle], order), _sorted(items[middle..], order), order)
 
 # `left` and `right`, each sorted, merged into one sorted array; `left`'s items go first on a tie.
-M fn _merged<T, M in DataKind>(left: Array<T>, right: Array<T>, order: Fn<(T, T), Int, M>) -> Array<T>:
+M fn _merged<T, M in Mark>(left: Array<T>, right: Array<T>, order: Fn<(T, T), Int, M>) -> Array<T>:
   let merged: Array<T> = []
   let fromLeft = 0
   let fromRight = 0

@@ -6,7 +6,7 @@
  *   alike, so its pack is flattened wherever a tuple fills it: into parameters by value, `Unit`
  *   into none.
  * - A function type is `Fn<Args, Result, Kind, Send>` (proposal 8, Rule 4), whatever spelling wrote
- *   it: its mark and sendability are type slots, each a `DataKind` or `Sendability` member or a
+ *   it: its mark and sendability are type slots, each a `Mark` or `Sendability` member or a
  *   variable, `"simple"` and `"plain"` where its head writes none (`sendOf`), and its text and key
  *   print the head's words for them (`modifiersOf`).
  * - An async head is no part of the type (§3.14): `async fn(A) -> R` is `fn(A) -> Future<R>`,

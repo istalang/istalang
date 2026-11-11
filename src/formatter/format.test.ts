@@ -377,7 +377,7 @@ describe('the canonical style', () => {
 describe("a head's modifiers", () => {
   it.each([
     ['ista async extern fn f()', 'extern ista async fn f()'],
-    ['async M extern fn f<M in DataKind>()', 'extern M async fn f<M in DataKind>()'],
+    ['async M extern fn f<M in Mark>()', 'extern M async fn f<M in Mark>()'],
     ['shared extern struct H', 'extern shared struct H'],
     ['type F = ista async sendable fn(Int)', 'type F = sendable ista async fn(Int)'],
     ['const f = async fn(x): x', 'const f = async fn(x): x'],
@@ -388,7 +388,7 @@ describe("a head's modifiers", () => {
   });
 
   it('keeps a comment between an annotation and a head naming its mark', () => {
-    const text = lines('@Anno', '# comment', 'M fn f<M in DataKind>(): 1');
+    const text = lines('@Anno', '# comment', 'M fn f<M in Mark>(): 1');
     expect(formatText(text)).toBe(text);
   });
 });

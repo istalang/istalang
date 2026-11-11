@@ -9,7 +9,7 @@ import { describe, expect, it } from 'vitest';
 import type { TypeParameter } from '../../../syntax/declarations/index.ts';
 import { sameType } from '../identity/identity.ts';
 import type { Type } from './index.ts';
-import { dataKindOrder, type QualifierOrder, sendabilityOrder } from './mark-orders.ts';
+import { markOrder, type QualifierOrder, sendabilityOrder } from './mark-orders.ts';
 import { markType, sendType } from './primitives.ts';
 
 /** A mark parameter fixed around the code, as `K` is in a `K async fn`. */
@@ -19,7 +19,7 @@ const variable: Type = {
 };
 
 const orders: readonly (readonly [string, QualifierOrder, readonly Type[]])[] = [
-  ['DataKind', dataKindOrder, [markType('simple'), markType('live'), markType('ista'), variable]],
+  ['Mark', markOrder, [markType('simple'), markType('live'), markType('ista'), variable]],
   ['Sendability', sendabilityOrder, [sendType('sendable'), sendType('plain'), variable]],
 ];
 

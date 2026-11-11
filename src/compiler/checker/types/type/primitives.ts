@@ -6,7 +6,7 @@
  */
 
 import type { PrimitiveName } from '../../../../foundation/language/primitives.ts';
-import type { DataKind, Sendability } from '../../../../foundation/language/well-known/index.ts';
+import type { Mark, Sendability } from '../../../../foundation/language/well-known/index.ts';
 import type { ErrorType, LiteralType, LiteralValue, PrimitiveType, Type } from './index.ts';
 
 /** The primitive type named `name`. */
@@ -62,8 +62,8 @@ export function literalType(value: LiteralValue): LiteralType {
   return { kind: 'literal', value };
 }
 
-/** The mark `mark` (proposal 8, Rule 2) as a type: its `DataKind` member, a literal. */
-export function markType(mark: DataKind): Type {
+/** The mark `mark` (proposal 8, Rule 2) as a type: its `Mark` member, a literal. */
+export function markType(mark: Mark): Type {
   return literalType(mark);
 }
 

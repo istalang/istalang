@@ -117,9 +117,9 @@ export type Persistence = (typeof persistences)[number];
 
 /**
  * What data is and what code may handle (proposal 8, Rule 2), the members of the prelude's
- * `DataKind`: `simple`, below both kinds, and the two kinds, `Persistence`'s members.
+ * `Mark`: `simple`, below both kinds, and the two kinds, `Persistence`'s members.
  */
-export type DataKind = 'simple' | Persistence;
+export type Mark = 'simple' | Persistence;
 
 /**
  * What a function's values may capture (§3.14), the members of the prelude's `Sendability`: only

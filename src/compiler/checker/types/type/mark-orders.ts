@@ -1,5 +1,5 @@
 /**
- * The two qualifier orders (proposal 8, Rule 4): `DataKind`'s, `"simple"` below `"live"` and
+ * The two qualifier orders (proposal 8, Rule 4): `Mark`'s, `"simple"` below `"live"` and
  * `"ista"`, which are apart, and `Sendability`'s, `"sendable"` below `"plain"`. They order these two
  * types alone, not their members as subtypes, so fitting and inference read them here wherever a
  * mark or a `Send` is compared: a function type's slots, and a variable standing for one
@@ -33,7 +33,7 @@ export interface QualifierOrder {
 
 /**
  * What a type parameter qualifying functions is (types/properties/qualifiers.ts): the order it is of, and
- * whether it may stand for the order's bottom, as `M in DataKind` may be `"simple"` and
+ * whether it may stand for the order's bottom, as `M in Mark` may be `"simple"` and
  * `K in Persistence` may not, so the bottom given where it stands bounds nothing.
  */
 export interface QualifierParameter {
@@ -57,8 +57,8 @@ export function aboveBottom(types: readonly Type[], bottom: Type, same: Same): r
   );
 }
 
-/** `DataKind`'s order: `"simple"` below every other mark, the rest apart. */
-export const dataKindOrder: QualifierOrder = {
+/** `Mark`'s order: `"simple"` below every other mark, the rest apart. */
+export const markOrder: QualifierOrder = {
   bottom: simpleMarkType,
   below: (lower, upper, same) => isLiteral(lower, 'simple') || same(upper, lower),
   join: (types, same) => {

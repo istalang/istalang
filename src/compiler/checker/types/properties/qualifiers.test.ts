@@ -13,15 +13,15 @@ describe('a mark parameter, as a member parameter', () => {
   it('gives a value of one member, compared, matched and given back as its union', () => {
     expect(
       reported(`
-fn isLive<M in DataKind>(m: M) -> Bool: m == "live"
-fn index<M in DataKind>(m: M) -> Int:
+fn isLive<M in Mark>(m: M) -> Bool: m == "live"
+fn index<M in Mark>(m: M) -> Int:
   match m:
     case "simple": 0
     case "live": 1
     case "ista": 2
-fn back<M in DataKind>(m: M) -> DataKind: m
-fn takeMark<M in DataKind>(m: M) -> M: m
-fn main() -> (Bool, Int, DataKind, DataKind):
+fn back<M in Mark>(m: M) -> Mark: m
+fn takeMark<M in Mark>(m: M) -> M: m
+fn main() -> (Bool, Int, Mark, Mark):
   (isLive("ista"), index("simple"), back("live"), takeMark("live"))
 `),
     ).toEqual(reportedNothing);

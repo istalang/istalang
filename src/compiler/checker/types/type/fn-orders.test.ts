@@ -1,5 +1,5 @@
 /**
- * `DataKind`'s and `Sendability`'s orders where a variable stands for a slot (proposal 8, Rules 3
+ * `Mark`'s and `Sendability`'s orders where a variable stands for a slot (proposal 8, Rules 3
  * and 4): a function given or expected where one stands bounds it by the order, its bounds join by
  * it and settle to the least they allow, an upper bound alone choosing as any variable's does; a
  * callee's own mark settles at most to its caller's, a mark decided above that left to the call
@@ -12,7 +12,7 @@ import { reported } from '../../check.test-kit.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 
 const logged = `
-fn logged<...A, R, M in DataKind, S in Sendability>(f: Fn<A, R, M, S>) -> Fn<A, R, M, S>:
+fn logged<...A, R, M in Mark, S in Sendability>(f: Fn<A, R, M, S>) -> Fn<A, R, M, S>:
   fn(...args: A) -> R: f(...args)
 fn area(width: Int, height: Int) -> Int: width * height
 `;
@@ -72,8 +72,8 @@ describe('a mark or sendability variable, bounded by its order', () => {
   it('settles to the least its bounds allow, a simple argument giving a simple result', () => {
     expect(
       reported(`
-fn logged1<M in DataKind, S in Sendability>(f: Fn<(Int,), Int, M, S>) -> Fn<(Int,), Int, M, S>: f
-struct Holder<M in DataKind, S in Sendability> { f: Fn<(), Int, M, S> }
+fn logged1<M in Mark, S in Sendability>(f: Fn<(Int,), Int, M, S>) -> Fn<(Int,), Int, M, S>: f
+struct Holder<M in Mark, S in Sendability> { f: Fn<(), Int, M, S> }
 fn inc(x: Int) -> Int: x + 1
 live fn ping(x: Int) -> Int: x
 ista fn main():
@@ -91,7 +91,7 @@ ista fn main():
   it('joins lower bounds by the order, and takes an upper bound where no lower one is', () => {
     expect(
       reported(`
-fn choose<M in DataKind, S in Sendability>(
+fn choose<M in Mark, S in Sendability>(
   first: Bool,
   a: Fn<(Int,), Int, M, S>,
   b: Fn<(Int,), Int, M, S>,
@@ -119,7 +119,7 @@ live fn main(takesPlain: Fn<(Fn<(), Int, "simple", "plain">,), Int>):
   it('refuses lower bounds of both kinds, which the order joins to nothing', () => {
     expect(
       reported(`${logged}
-fn choose<M in DataKind>(first: Bool, a: Fn<(), Int, M>, b: Fn<(), Int, M>) -> Fn<(), Int, M>:
+fn choose<M in Mark>(first: Bool, a: Fn<(), Int, M>, b: Fn<(), Int, M>) -> Fn<(), Int, M>:
   if first: a else: b
 live fn l() -> Int: 1
 ista fn i() -> Int: 2
@@ -131,7 +131,7 @@ fn main(): _ = choose(true, l, i)
   it("fits a mark-generic call's result where a function of a kind is expected", () => {
     expect(
       reported(`
-fn logged2<R, M in DataKind, S in Sendability>(f: Fn<(Int, Int), R, M, S>) -> Fn<(Int, Int), R, M, S>: f
+fn logged2<R, M in Mark, S in Sendability>(f: Fn<(Int, Int), R, M, S>) -> Fn<(Int, Int), R, M, S>: f
 fn area(width: Int, height: Int) -> Int: width * height
 live fn takesLive(f: live fn(Int, Int) -> Int) -> Int: f(1, 2)
 live fn main() -> Int: takesLive(logged2(area))
@@ -139,7 +139,7 @@ live fn main() -> Int: takesLive(logged2(area))
     ).toEqual(reportedNothing);
     expect(
       reported(`
-M fn loggedHead<M in DataKind, S in Sendability>(f: Fn<(Int,), Int, M, S>) -> Fn<(Int,), Int, M, S>: f
+M fn loggedHead<M in Mark, S in Sendability>(f: Fn<(Int,), Int, M, S>) -> Fn<(Int,), Int, M, S>: f
 fn inc(x: Int) -> Int: x + 1
 ista fn main():
   const kept: live fn(Int) -> Int = loggedHead(inc)
@@ -187,7 +187,7 @@ describe("a callee's mark, bounded by its caller's", () => {
     expect(
       reported(`
 import * as time from 'time'
-M fn nothing<M in DataKind>() -> Fn<(), Int, M>: fn() -> Int: 1
+M fn nothing<M in Mark>() -> Fn<(), Int, M>: fn() -> Int: 1
 ista async fn later() -> Int:
   const f = nothing()
   const checkF: Fn<(), Int, "simple"> = f

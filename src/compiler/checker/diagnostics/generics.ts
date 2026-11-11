@@ -348,7 +348,7 @@ export const genericTemplates = {
   unknownMark: {
     code: 5692,
     message: (written: string) =>
-      `'${written}' is no mark: a head names a type parameter 'M in DataKind' or 'K in Persistence' as its mark (§3.5).`,
+      `'${written}' is no mark: a head names a type parameter 'M in Mark' or 'K in Persistence' as its mark (§3.5).`,
   },
   asyncMarkNotKind: {
     code: 5693,

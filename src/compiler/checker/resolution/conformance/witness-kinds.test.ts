@@ -60,6 +60,6 @@ describe('a witness of a kind', () => {
         'ista fn main() -> Int: via(R{n: 1})',
       );
     expect(runner('K fn run<K in Persistence = "live">(self: R) -> Int: 1')).toContain(unmet);
-    expect(runner('M fn run<M in DataKind>(self: R) -> Int: 1')).toEqual([]);
+    expect(runner('M fn run<M in Mark>(self: R) -> Int: 1')).toEqual([]);
   });
 });

@@ -102,7 +102,7 @@ export function ownerSubstitution(owner: BodyOwner): Substitution {
 /**
  * The instance of `declaration` that nothing calls in code of a kind, with its `written` type
  * arguments: a start, which a host runs (§9), or a conversion's own function. A mark parameter
- * left unwritten (`M in DataKind`) is `"simple"`: a conversion's converter is simple code.
+ * left unwritten (`M in Mark`) is `"simple"`: a conversion's converter is simple code.
  */
 export function rootInstance(
   lookup: QualifierLookup,

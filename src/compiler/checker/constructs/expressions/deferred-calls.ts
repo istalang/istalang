@@ -48,7 +48,7 @@ import { capturedSend } from '../../types/traits/sendable.ts';
 import { simpleMark } from '../../types/type/function-kinds.ts';
 import { functionType } from '../../types/type/function-types.ts';
 import type { Type } from '../../types/type/index.ts';
-import { dataKindOrder } from '../../types/type/mark-orders.ts';
+import { markOrder } from '../../types/type/mark-orders.ts';
 import { errorType, isPrimitive, neverType } from '../../types/type/primitives.ts';
 import { typeText } from '../../types/type/type-text.ts';
 import { calledValueType } from '../closures/value-calls.ts';
@@ -179,7 +179,7 @@ function laterMarkOf(
 ): Type {
   let mark = callee;
   for (const { node, type } of computed) {
-    const joined = dataKindOrder.join([mark, ...context.checker.valueKindsOf(type)], sameType);
+    const joined = markOrder.join([mark, ...context.checker.valueKindsOf(type)], sameType);
     if (joined === undefined) {
       const held = typeText(type);
       context.report(

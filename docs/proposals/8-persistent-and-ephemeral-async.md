@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-11-10
-last_updated: 2026-11-10
+last_updated: 2026-11-11
 tags: [proposal, language, async, persistence, functions]
 ---
 
@@ -42,8 +42,8 @@ K async fn twice<K in Persistence, T>(f: Fn<(), Future<T, K>, K>) -> T:   # gene
 ### 1. Two kinds of future
 
 ```python
-type DataKind = "simple" | "live" | "ista"          # prelude: data kinds and code marks
-type Persistence = "live" | "ista"                  # DataKind's kinded members
+type Mark = "simple" | "live" | "ista"          # prelude: data kinds and code marks
+type Persistence = "live" | "ista"                  # Mark's kinded members
 type Sendability = "sendable" | "plain"
 extern shared struct Future<T, K in Persistence>
 ```
@@ -75,7 +75,7 @@ Data is **simple**, **live** or **ista**. Code is marked with the data it may ha
 | `fn f(a: A) -> T` | `Fn<(A,), T>` | simple data, and its type parameters' values (Rule 3) | can't `await` |
 | `live fn f(a: A) -> T` | `Fn<(A,), T, "live">` | simple and live data | can't `await` |
 | `ista fn f(a: A) -> T` | `Fn<(A,), T, "ista">` | simple and ista data | can't `await` |
-| `M fn f<M in DataKind>(a: A) -> T` | `Fn<(A,), T, M>` | simple data and `M`'s | can't `await` |
+| `M fn f<M in Mark>(a: A) -> T` | `Fn<(A,), T, M>` | simple data and `M`'s | can't `await` |
 | `live async fn f(a: A) -> T` | `Fn<(A,), Future<T, "live">, "live">` | simple and live data | waits in memory |
 | `ista async fn f(a: A) -> T` | `Fn<(A,), Future<T, "ista">, "ista">` | simple and ista data | every `await` commits |
 | `K async fn f<K in Persistence>(a: A) -> T` | `Fn<(A,), Future<T, K>, K>` | simple data and `K`'s | awaits in `K` |
@@ -88,12 +88,12 @@ An unmarked `async fn` is an error: its future would be `Future<T, "simple">`.
 ### 3. Code generic over the kind
 
 - **Generics are transparent.** Unmarked code also handles its type parameters' values, whatever they stand for: the caller handles the concrete types, and the rule checks them there. So `Array<Socket>`'s functions work in live code, and `id(f)`, `f` a live future, is an error in ista code, which would hold it, and valid in live code. A type parameter's requirements and its `dispose` pass through the same way: unmarked generic code releasing a `T` that is a `Socket` is no error, its caller handling the `Socket`.
-- **A mark may be a type parameter,** `M in DataKind`, or `K in Persistence` on an `async` head, whose future takes it. The body handles that kind's data and calls functions of it:
+- **A mark may be a type parameter,** `M in Mark`, or `K in Persistence` on an `async` head, whose future takes it. The body handles that kind's data and calls functions of it:
 
   ```python
-  M fn dispose<M in DataKind>(self: Deferred<M>)
+  M fn dispose<M in Mark>(self: Deferred<M>)
   K async fn retry<K in Persistence, T>(f: Fn<(), Future<T, K>, K>, times: Int) -> T
-  M fn map<T, U, M in DataKind, S in Sendability>(self: Array<T>, f: Fn<(T,), U, M, S>) -> Array<U>
+  M fn map<T, U, M in Mark, S in Sendability>(self: Array<T>, f: Fn<(T,), U, M, S>) -> Array<U>
   ```
 
   So combinators exist once for both worlds: `retry` takes a live `f` and waits in memory in live code, and an ista one and commits in ista code.
@@ -108,14 +108,14 @@ An unmarked `async fn` is an error: its future would be `Future<T, "simple">`.
 
 - **One function type.** `Fn<Args, Result, Kind = "simple", Send = "plain">` is the builtin function type. `Args` is always a tuple, one parameter's being `(A,)`, the spec's one-element tuple, and a pack one too; an item may be `&T`, a by-reference parameter. Every other spelling is its sugar, as a header is (Rule 2), `fn(A) -> R` covering the common case: `fn(A, B) -> R` is `Fn<(A, B), R>`, `live fn(A) -> R` is `Fn<(A,), R, "live">`, `sendable fn(A) -> R` is `Fn<(A,), R, "simple", "sendable">`, `fn(x: &A)` is `Fn<(&A,), Unit>`, and `ista async fn(A) -> R` is `Fn<(A,), Future<R, "ista">, "ista">`. An `async fn` type needs its kind: unmarked, its future has none, an error.
 - **The kinds never meet.** An ista future never fits where a live one is expected, nor the reverse, and so for functions and resolvers of the two kinds: `Future` is invariant in `K`.
-- **Two orders of their own.** `DataKind` is ordered `"simple"` below `"live"` and `"ista"`, which are apart, and `Sendability` `"sendable"` below `"plain"`. They are orders on these two types alone, not subtyping between their members, and how the checker encodes them is its own. A function fits where one of a mark and sendability at or above its own is expected.
+- **Two orders of their own.** `Mark` is ordered `"simple"` below `"live"` and `"ista"`, which are apart, and `Sendability` `"sendable"` below `"plain"`. They are orders on these two types alone, not subtyping between their members, and how the checker encodes them is its own. A function fits where one of a mark and sendability at or above its own is expected.
 - **What converts** is subtyping, composed inside other types through their variance (§3.5), as every conversion is, the two orders included:
 
   | A value of | fits where this is expected |
   | --- | --- |
   | `fn(A) -> R` | `live async fn(A) -> R` or `ista async fn(A) -> R`; its call gives a resolved future |
   | `sendable fn …` | `fn …`, by `Sendability`'s order |
-  | an unmarked `fn …` | `live fn …` or `ista fn …`, by `DataKind`'s order |
+  | an unmarked `fn …` | `live fn …` or `ista fn …`, by `Mark`'s order |
 
 - **Qualifier parameters.** A higher-order function keeps its arguments' mark and sendability through written `Fn` parameters: `map`'s `M` and `S` take `f`'s (Rule 3), and `logged(f)` is `sendable` when `f` is.
 - **Requirements carry a mark,** `live`, `ista`, a mark parameter or none. An implementation handles what its requirement allows, and the implementing type's own data too, `Self` being the trait's type parameter (Rule 3). So a requirement of a kind is met by a function of that kind or an unmarked one, an unmarked requirement by an unmarked function, and `Socket`'s `live fn dispose` meets `Disposable`'s unmarked `dispose`.
@@ -216,7 +216,7 @@ retry((fn(x): fn(): fetchUser(x))(id))
 - **Callbacks with parameters** keep their lambda: `bus.subscribe(fn msg: …)`.
 - **No call needs a keyword of its own.** `spawn`, `delegate` and `defer` are functions called this way, as are the runtime's other functions taking a call to run later (proposal 9).
 - **`spawn` leaves the keywords:** the runtime provides it as an `ista` function, so `spawn purchase(req)` keeps its spelling. What it does is proposal 9's.
-- **`defer` becomes a prelude function,** no longer a keyword: `fn defer<M in DataKind>(callback: Fn<(), Unit, M>) -> Deferred<M>`, where `shared struct Deferred<M in DataKind> { callback: Fn<(), Unit, M> }` is a disposable whose `M fn dispose` calls it. Code of any mark defers, the simple included: `fn w(): _ = defer log(x)` makes a `Deferred<"simple">`. `_ = defer log(x)` computes `x` now and logs when the block ends, and `hold _ = defer log(x)` when the function ends, as Go's `defer` does. Release order runs them last first (§7). A disposable is must-use, so a bare `defer log(x)` is an error.
+- **`defer` becomes a prelude function,** no longer a keyword: `fn defer<M in Mark>(callback: Fn<(), Unit, M>) -> Deferred<M>`, where `shared struct Deferred<M in Mark> { callback: Fn<(), Unit, M> }` is a disposable whose `M fn dispose` calls it. Code of any mark defers, the simple included: `fn w(): _ = defer log(x)` makes a `Deferred<"simple">`. `_ = defer log(x)` computes `x` now and logs when the block ends, and `hold _ = defer log(x)` when the function ends, as Go's `defer` does. Release order runs them last first (§7). A disposable is must-use, so a bare `defer log(x)` is an error.
 
 ### 11. The runtime contract
 
@@ -306,10 +306,10 @@ After the repository's rewrite (implementation note 9), every program that compi
   - The conversions list: a sync function into either future kind, an unmarked function into either kind, and nothing between the kinds.
 - **§3.1.** `extern live struct` values, neither persisted nor sendable.
 - **§3.3.** Data kinds, code marks and the one rule, calls as its consequence, code as data, code generic over the kind (Rules 2 and 3). **Defaults** are part of the function, as in JavaScript and Kotlin: computed at the start of each call that leaves them out, in the function's scope and before its body, never awaiting. A spawned call computing its defaults in the new instance then follows, no longer a rule of its own. §3.1's field defaults are likewise part of building the value.
-- **§3.5.** Generic code transparent to its type parameters' data; a mark parameter, `M in DataKind` or `K in Persistence`, inferred with a call's other type arguments under its caller's mark as an upper bound, the least mark allowed; a decided mark above it an error.
+- **§3.5.** Generic code transparent to its type parameters' data; a mark parameter, `M in Mark` or `K in Persistence`, inferred with a call's other type arguments under its caller's mark as an upper bound, the least mark allowed; a decided mark above it an error.
 - **§3.6.** `extern live fn`, `extern live async fn` and `extern live struct`; externs generic over their mark and `ista` externs are the runtime's; a future-returning extern's resolver.
 - **§3.7.** Overloads on the two kinds.
-- **§3.8.** The prelude gains `DataKind`, `Persistence`, `Sendability`, `Fn`, `Awaitable`, `Resolver`, `defer` and `Deferred`, and its `Future` takes the kind. Its slot externs are `ista`. `futures` becomes awaitables generic over the kind, `time.delay` and `time.at` run in both kinds, and the runtime module gains `delegate`.
+- **§3.8.** The prelude gains `Mark`, `Persistence`, `Sendability`, `Fn`, `Awaitable`, `Resolver`, `defer` and `Deferred`, and its `Future` takes the kind. Its slot externs are `ista`. `futures` becomes awaitables generic over the kind, `time.delay` and `time.at` run in both kinds, and the runtime module gains `delegate`.
 - **§3.9.** The precedence table's prefix level gains the deferred call.
 - **§3.10.** The built-in traits table gains `Awaitable`. Associated types take a member bound. A requirement carries a mark, and its implementation also handles the implementing type's data.
 - **§3.14.** **Async function types** becomes Rule 4. `live fn` and `ista fn` beside `sendable fn`. A new paragraph, **Deferred calls** (Rule 10).
@@ -338,7 +338,7 @@ After the repository's rewrite (implementation note 9), every program that compi
 4. **Runtime.** Instances run only ista code and commit at every `await`, as today (`runtime/scheduler/segment/index.ts`). Live code runs on the host's event loop. New: resolvers, with their one-shot rule and `onCancel`; the job inbox and its runner.
 5. **Host** (`runtime/host/index.ts`, `cli/host-module.ts`). A live extern returning a future receives its resolver, and a returned promise still resolves it. Host-filled persistent futures and their tokens go.
 6. **Definition** (`definition/extern-key.ts`, `docs/arch/definition.md`). Function types carry their kind and lose the `async` flag. Every extern key is respelled, so hosts re-key as after proposal 1.
-7. **Standard library.** The prelude gains `DataKind`, `Persistence`, `Sendability`, `Fn`, `Awaitable` and `Resolver`, with `Future` taking the kind, and `defer` with `Deferred`, a shared struct whose `dispose` calls its function. Slot externs are `ista`. `futures` becomes awaitables over the kind (`stdlib/futures/futures.ista`), `time`'s timers run in both kinds, and `runtime` gains `delegate`. `log.write` stays unmarked: a re-run's repeated line is harmless. Higher-order functions take written `M in DataKind` and `S in Sendability` parameters, keeping their arguments' mark and sendability (tracker F28).
+7. **Standard library.** The prelude gains `Mark`, `Persistence`, `Sendability`, `Fn`, `Awaitable` and `Resolver`, with `Future` taking the kind, and `defer` with `Deferred`, a shared struct whose `dispose` calls its function. Slot externs are `ista`. `futures` becomes awaitables over the kind (`stdlib/futures/futures.ista`), `time`'s timers run in both kinds, and `runtime` gains `delegate`. `log.write` stays unmarked: a re-run's repeated line is harmless. Higher-order functions take written `M in Mark` and `S in Sendability` parameters, keeping their arguments' mark and sendability (tracker F28).
 8. **Formatter and tools** (`formatter/types.ts`, `declarations.ts`). Types print `live async fn(A) -> R` and `ista async fn(A) -> R`, and headers the body's result, `ista async fn f() -> R`, since `async` carries the future; externs alike, `extern live async fn f() -> R`. Modifiers print in Rule 4's order. Hover and signature help print the spelling the formatter writes, and a deferred call's hover shows the call it defers.
 9. **The repository's sources: a scripted rewrite through the project's own parser.** No live code exists yet, so every program keeps its meaning:
    - every `async fn` but `main` becomes `ista async fn`: about 308 in `.ista` files and 40 in the spec, beside about 220 `main`s, which become `ista async fn main` until phase CX, then `live async fn main` running the rest through `rt.call`;
@@ -370,7 +370,7 @@ After the repository's rewrite (implementation note 9), every program that compi
 5. **The host learns when a future is disposed,** so it can cancel its work.
 6. **One rule: code handles only data its mark allows.** Data is simple, live or ista, and kinded when it contains kinded data. Unmarked code handles simple data, `live` code simple and live, `ista` code simple and ista, in its parameters, result, locals, temporaries and every value it computes. Calls follow: running a marked function makes its kind of data in its caller, so ista code calls nothing live, live code nothing ista and unmarked code nothing marked. No in-memory wait happens inside persistent code, so a segment commits whole, and no check of what lives across a commit, or of effects, is needed.
 7. **Marks are privileges, written** on headers, externs, function types and requirements, `live`, `ista` or a mark parameter, never implied; a missing one is an error naming the value or the call, and only a lambda infers its mark. A function value is simple data whatever its mark, and a closure captures only data its mark allows.
-8. **Code generic over the kind** writes its mark as a type parameter, `M in DataKind` or `K in Persistence`, never implied; generic code passes through its type parameters' data, checked at the caller; lowering compiles one copy per mark. An unmarked `async fn`, or `async fn` type, is an error.
+8. **Code generic over the kind** writes its mark as a type parameter, `M in Mark` or `K in Persistence`, never implied; generic code passes through its type parameters' data, checked at the caller; lowering compiles one copy per mark. An unmarked `async fn`, or `async fn` type, is an error.
 9. **Persistent code acts on the world through `delegate`,** proposal 9's jobs: queued at the commit, run as live code, run again under a stable key until its result commits. Only the runtime fills an ista future.
 10. **A host's externs are unmarked, `live` or `live async`;** externs generic over their mark and `ista` externs are the runtime's, which deploy checks. A forgotten `live` isn't caught, a risk accepted: a crash repeats the call, as today.
 11. **Slots are ista only, and nothing special to the checker.** `Inbox` is written on slots in the language.
@@ -383,4 +383,4 @@ After the repository's rewrite (implementation note 9), every program that compi
 18. **Defaults are part of the function,** computed at the start of its call, as in JavaScript and Kotlin. They never affect the caller, and a deferred call computes them when it runs.
 19. **The language is separate from the runtime.** The compiler checks everything, the runtime contract is fixed, and a backend implements futures as it needs. Starting persistent work from live code, and every other runtime mechanism, is proposal 9's.
 20. **Conversions are subtyping** composed through variance, and `Fn`'s written `Kind` and `Send` parameters keep a higher-order function's mark and sendability (tracker F28, `docs/work/variance-inference/design.md` §7).
-21. **One function type, `Fn<Args, Result, Kind = "simple", Send = "plain">`,** `Args` a tuple, every spelling its sugar. The prelude has `DataKind = "simple" | "live" | "ista"`, for data kinds and code marks, `Persistence`, its kinded subset, and `Sendability = "sendable" | "plain"`.
+21. **One function type, `Fn<Args, Result, Kind = "simple", Send = "plain">`,** `Args` a tuple, every spelling its sugar. The prelude has `Mark = "simple" | "live" | "ista"`, for data kinds and code marks, `Persistence`, its kinded subset, and `Sendability = "sendable" | "plain"`.

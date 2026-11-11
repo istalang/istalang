@@ -73,7 +73,7 @@ describe('calls between kinds', () => {
     );
     expect(found).toContain(codes.unmarkedCalls.code);
     expect(messages.join()).toContain("'bg'");
-    // `defer` takes `M in DataKind`, so simple code defers (proposal 8, Rule 10).
+    // `defer` takes `M in Mark`, so simple code defers (proposal 8, Rule 10).
     expect(codesOf('fn c(): ()', 'fn w(): _ = defer c()')).toEqual([]);
   });
 

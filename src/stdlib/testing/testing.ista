@@ -89,12 +89,12 @@ extern fn _mock<F>(target: F, replacement: F) -> Mock<F>
 extern fn _calls<F, A>(self: Mock<F>) -> Array<A>
 
 # Holding them calls neither, so code of every mark mocks a function of any (proposal 8, Rule 3).
-fn mock<...A, R, M in DataKind = "simple">(target: Fn<A, R, M>, replacement: Fn<A, R, M>) -> Mock<Fn<A, R, M>>:
+fn mock<...A, R, M in Mark = "simple">(target: Fn<A, R, M>, replacement: Fn<A, R, M>) -> Mock<Fn<A, R, M>>:
   _mock(target, replacement)
 
 # The arguments of every call so far, oldest first, a tuple per call: `(x,)` for a function of one
 # parameter, and `()`, the unit, for one of none.
-fn calls<...A, R, M in DataKind = "simple">(self: Mock<Fn<A, R, M>>) -> Array<A>: _calls(self)
+fn calls<...A, R, M in Mark = "simple">(self: Mock<Fn<A, R, M>>) -> Array<A>: _calls(self)
 
 # Where an instance stands, as its last commit says (§10).
 enum InstanceState:

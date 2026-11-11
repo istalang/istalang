@@ -296,9 +296,9 @@ describe("a struct's value where its shape is expected (§3.1)", () => {
         const declared = `struct S { ${listed(written)} }`;
         const shape = `{ ${listed(written)} }`;
         const [first, ...rest] = written;
-        const annotated = `struct A { ${[`${first?.[0]}: ${first?.[1]} @Mark`, ...rest.map(([name, type]) => `${name}: ${type}`)].join(', ')} }`;
+        const annotated = `struct A { ${[`${first?.[0]}: ${first?.[1]} @Tag`, ...rest.map(([name, type]) => `${name}: ${type}`)].join(', ')} }`;
         const text = [
-          'struct Mark',
+          'struct Tag',
           declared,
           annotated,
           `fn all(p: Array<${shape}>) -> Int: 0`,

@@ -9,7 +9,7 @@
  * contradict each other whatever the declaration.
  *
  * A member parameter takes no constraint beside its union (§3.5); its default, one of the union's
- * members (`Kind in DataKind = "simple"`), is the checker's to judge. A constraint written is still
+ * members (`Kind in Mark = "simple"`), is the checker's to judge. A constraint written is still
  * read, so the tree shows it, and reported once, over all of it.
  */
 

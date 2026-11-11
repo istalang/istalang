@@ -25,7 +25,7 @@ import { sameType } from '../../types/identity/identity.ts';
 import { substitute, substitutionFor } from '../../types/parts/substitution.ts';
 import { isSimpleMark, kindAdmits, kindOfFunction } from '../../types/type/function-kinds.ts';
 import type { Type } from '../../types/type/index.ts';
-import { dataKindOrder } from '../../types/type/mark-orders.ts';
+import { markOrder } from '../../types/type/mark-orders.ts';
 import { typeText } from '../../types/type/type-text.ts';
 import { callMade } from '../choosing/calls-made.ts';
 import type { Application } from '../choosing/choice.ts';
@@ -98,7 +98,7 @@ export function markMaking(
     kind: Type,
     refusal: (at: AnchoredSpan, mark: string) => Diagnostic<AnchoredSpan>,
   ) => {
-    const joined = dataKindOrder.join([least, kind], sameType);
+    const joined = markOrder.join([least, kind], sameType);
     if (joined === undefined) {
       const refused = kindText(least);
       made.report((at) => refusal(at, refused));

@@ -15,7 +15,7 @@ import type {
   NominalType,
   Type,
 } from '../../type/index.ts';
-import { dataKindOrder, type QualifierOrder, sendabilityOrder } from '../../type/mark-orders.ts';
+import { markOrder, type QualifierOrder, sendabilityOrder } from '../../type/mark-orders.ts';
 import type { Variance } from '../../variance/lattice.ts';
 import type { Fitting } from './index.ts';
 
@@ -133,7 +133,7 @@ function functionFitsByParts(
   // The error type fits either way: a mistake reported already.
   const by = (order: QualifierOrder) => (declared: Type, given: Type) =>
     given.kind === 'error' || declared.kind === 'error' || relation.ordered(order, given, declared);
-  const marks = by(dataKindOrder);
+  const marks = by(markOrder);
   const sends = by(sendabilityOrder);
   if (expected.pack !== undefined) {
     return functionFits(expected, found, { parts: same, marks, sends });

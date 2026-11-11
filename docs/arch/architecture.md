@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-11-10
-last_updated: 2026-11-10
+last_updated: 2026-11-11
 tags: [architecture, compiler, runtime, tooling]
 ---
 
@@ -96,7 +96,7 @@ src/
                                                                  needs of the program (type-rules.ts), which the checker implements once and every type-building
                                                                  path takes; the marks of code (function-kinds.ts): a function's mark, its head's alone, or for
                                                                  a fields function what its fields' written types hold, which marks fit, and which parameters
-                                                                 stand for a mark (proposal 8); the two qualifier orders, `DataKind`'s and `Sendability`'s, that
+                                                                 stand for a mark (proposal 8); the two qualifier orders, `Mark`'s and `Sendability`'s, that
                                                                  fitting and inference compare marks and sendabilities by (mark-orders.ts)
         identity/                                                identity as key equality (a shape is its fields in name order), and
                                                                  recursive types as minimized graphs, equi-recursive, closed by one

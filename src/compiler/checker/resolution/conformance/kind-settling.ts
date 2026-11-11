@@ -19,7 +19,7 @@ import type { UseSite } from '../../contexts/use-site.ts';
 import type { Settling } from '../../types/inference/settle.ts';
 import { simpleMark } from '../../types/type/function-kinds.ts';
 import type { ParameterKey, Type } from '../../types/type/index.ts';
-import { dataKindOrder } from '../../types/type/mark-orders.ts';
+import { markOrder } from '../../types/type/mark-orders.ts';
 import type { Signature } from '../choosing/choice.ts';
 
 /**
@@ -38,7 +38,7 @@ export function kindsSettledAt(
       if (qualifier === undefined) {
         return [];
       }
-      if (qualifier.order !== dataKindOrder) {
+      if (qualifier.order !== markOrder) {
         return [[parameter, qualifier.order.bottom]];
       }
       if (qualifier.mayBeBottom) {

@@ -20,7 +20,7 @@
  *   lower one's lower bounds are the upper one's, and the upper one's upper bounds the lower one's,
  *   an equality each way as both, now and as they are added (design.md §4), so a placeholder under
  *   an invariant parameter (`Item{value: Small}`) is told what the parameter is.
- * - A variable standing for a mark or a sendability (`M in DataKind`, `S in Sendability`) has bounds
+ * - A variable standing for a mark or a sendability (`M in Mark`, `S in Sendability`) has bounds
  *   that agree by its order (types/type/mark-orders.ts), not by fitting: `"simple"` below `"live"`.
  * - A variable may refuse a bound it can't stand under (`admit`): a placeholder's expression can't
  *   be a value of every type (i2-scope.md §3), as a lambda of one parameter can't be a function of
