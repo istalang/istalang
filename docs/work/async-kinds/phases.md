@@ -117,33 +117,11 @@ and `Resolver`; `await` and `select` as an implicit `onAwait` on an explicit wai
 a resolver registered on several futures, so `futures` is plain Istalang and keeps §8's guarantees;
 composing through callbacks decides later, as documented. Design: `aw-design.md`.
 
-## CX Contexts, the minimal slice of proposal 9 (behavioural)
+## CX Contexts: done (`741dee51`)
 
-**Scope.** Only what running and testing ista code from live code needs; the rest of proposal 9 is
-a plan of its own.
-- `Runtime.open(runtime.hostStore())`, a `live async fn`, gives a `Runtime`, a live disposable value
-  over the host's store: the CLI's `--store`, memory without it, a test's own in the test runner.
-  Opening it resumes the work persisted there, so `--resume` goes: running the program again on the
-  same store resumes its contexts.
-- `rt.call(key) f(args)`, the deferred form with arguments, runs `f`, an `ista` function, in the
-  context named `key`, an instance, creating it. It gives a `Call<R>`, a live awaitable: awaiting
-  it gives `Result<R>`, an `Err` when `f` panics. Every call starts a new invocation, and releasing
-  a `Call` cancels nothing. The wait is the one cross-instance wait `Instance.result()` and mock
-  answers use. Its arguments and result must be sendable, the crossing check (Rule 2).
-- A host starts only live code, through K1a's entry rule, and what else it may start today
-  (`starts`) follows. The interim ends: the rewriter moves each `ista async fn main`'s body into an
-  `ista async fn` that a `live async fn main` calls in a context through `rt.call`. The test runner, `World` and the
-  test kits run ista code in contexts of their own; `testing`'s crash-every-await is a context
-  option.
-- Left to proposal 9's plan: `runtime.call` from ista code, `Call` replacing `Instance` (`spawn`
-  unchanged here), `accepted()`, `delete`, context constants (`ista const`), `Kv` stores,
-  `runtime.jobKey()`.
+`Runtime.open(runtime.hostStore())`, `rt.call(key) f(args)` giving a live `Call<R>`, and
+`runtime.run(key) f()`; contexts as store instances by key, driven inside the live run's loop;
+opening a runtime resumes the store, so `--resume` goes; hosts start only live code; every
+`ista async fn main` rewritten to a live `main` calling `_main` in a context. Test-suite cost +13%,
+from every program now importing `runtime`.
 
-**Accept.** `live async fn main()` awaiting `rt.call("o/1") purchase(order)` runs `purchase`
-persistently and gives `Ok` of its result; crashed at every `await` of the context, it resumes to the
-same result; a panicking `purchase` gives an `Err`; a non-sendable argument is refused. The context commits while `main` waits in
-memory. On `--store`, a context stopped mid-invocation resumes when the program next opens the
-store. A host asked to start an `ista` function refuses. No `ista async fn main` remains; the full
-suite passes.
-
-**Spec.** §9 runtimes, contexts and hosts; §10 testing persistent work.
