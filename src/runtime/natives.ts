@@ -13,8 +13,9 @@
  * extern being called, its declared result and type arguments, and the Definition's types (for
  * building typed values), what `now()` reads (§5), and
  * capabilities, one per part of the instance a native reaches: the futures the runtime creates
- * for an extern that returns one (§3.6), its slots (§6), its weak references and its resources
- * (§7), its random source and its log (§3.8), and what a test reaches (§10). Every capability has
+ * for an extern that returns one (§3.6), its waits and language resolvers and its slots (§6), its
+ * weak references and its resources (§7), its random source and its log (§3.8), its instances and
+ * a live run's contexts (§9), and what a test reaches (§10). Every capability has
  * one shape, a member of the context, and the runtime builds them once per segment. A native
  * states the capabilities it uses and never holds the context beyond its call.
  */

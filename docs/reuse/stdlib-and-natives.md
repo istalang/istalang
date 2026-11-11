@@ -20,6 +20,7 @@ tags: [reuse, stdlib, natives, ranges, positions, time, decimal]
 - request futures, slots, weak refs or resources in a native's context → `WithFutures`, `WithSlots`, `WithWeakSide`, `WithResources` (`src/runtime/natives.ts`)
 - register a language resolver on a future, resolve one, make a `Resolver.of` or `Resolver.at` one or give one an `onCancel` callback, in a native's context → `WithWaits`, `NativeWaits` (`src/runtime/natives.ts`)
 - request random, logs, instances or testing in a native's context → `WithRandom`, `WithLogs`, `WithInstances`, `WithTesting` (`src/runtime/natives.ts`)
+- reach a live run's contexts (open a runtime, call into a context, serve its jobs) in a native's context → `WithContexts`, `NativeContexts` (`src/runtime/natives.ts`)
 - generate the four `Int`/`Float` overloads of a binary native or throw division by zero → `numeric`, `asFloat`, `divisionByZero` (`src/stdlib/numeric.ts`)
 - map `math.Rounding` variants to float rounding functions → `roundingType`, `floatRoundings` (`src/stdlib/math/rounding.ts`)
 - map `math.Rounding` variants to decimal.js rounding modes → `decimalRoundings` (`src/stdlib/decimal/arithmetic.ts`)

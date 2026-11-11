@@ -145,6 +145,7 @@ DRY, double standards, cohesion, layering, dead or misplaced code.
 | Q52 | Proposal 9 (Contexts) says an ista `Call` is sendable, so it can be passed to another context; proposal 8 says no ista data crosses (crossings are sendable). Proposal 9's design of `runtime.call` from ista code decides which gives. | small | proposal 9 | async-kinds merge review 2026-11-11 |
 | Q53 | A runtime serves delegated jobs through three natives standing in for state proposal 9's runtime keeps itself: `_served` (the keys of its instances), `_jobServer` and `_jobCall` (its own calls, which leave an instance's panic to the host) in `runtime.ista`. Proposal 9's runtime replaces them, with P48. | medium | proposal 9 | async-kinds DG 2026-11-11 |
 | Q54 | `docs/work/linker/js-interpreter.md`'s Durable Objects hosting is built on `Runtime.fill` and `settle`, gone since async-kinds: a host now starts `live async fn main` as a live run that drives its contexts, and host futures are live. Redesign the hosting around live runs and contexts, or archive the section. | small | — | async-kinds merge review 2026-11-11 |
+| Q55 | Nothing holds `docs/reuse/`'s `→ symbol (path)` citations, or inline signatures in the spec's prose, to the code: fences are compiled, but a split file or a renamed export leaves a citation stale until a review finds it (the async-kinds merge review found a dozen). A test resolving each cited symbol in its cited file, with `tsm`, would. | small | none; can be done now | async-kinds merge review 2026-11-11 |
 
 ### Behaviour and correctness (B)
 

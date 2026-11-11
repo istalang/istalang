@@ -99,7 +99,7 @@ const a, b = (1, "x")          # destructuring
 
 - **Literals:** `"a"` `'a'` `` `x=${x}` `` `42` `1_000` `0x1F` `0b1010` `3.14` `true` `none` `500ms` `30s` `15m` `2h` `5d` `[1, 2]` `["k": 1]` `[:]` `[...xs, 3]` `(1, "x")` `(x,)` `0..10` `0..=10` `0..10 by 2`.
 - **Names:** types, traits and variants are `PascalCase`; functions, variables and fields are `camelCase` (both compiler-enforced). Leading `_` on a top-level declaration makes it module-private.
-- **Keywords:** `fn`, `async`, `await`, `let`, `const`, `if`, `elif`, `else`, `for`, `in`, `while`, `match`, `case`, `select`, `return`, `break`, `continue`, `struct`, `enum`, `trait`, `import`, `extern`, `drop`, `is`, `and`, `or`, `not`, `true`, `false`, `none`, `as` are reserved everywhere (never field or variable names). `type`, `shared`, `live`, `ista`, `new`, `from`, `sendable`, `any`, `keyof`, `infer`, `hold` and `by` are contextual and may name fields or functions.
+- **Keywords:** `fn`, `async`, `await`, `let`, `const`, `if`, `elif`, `else`, `for`, `in`, `while`, `match`, `case`, `select`, `return`, `break`, `continue`, `struct`, `enum`, `trait`, `import`, `extern`, `drop`, `is`, `and`, `or`, `not`, `true`, `false`, `none`, `as` are reserved everywhere (never field or variable names). `type`, `shared`, `live`, `ista`, `gives`, `takes`, `new`, `from`, `sendable`, `any`, `keyof`, `infer`, `hold` and `by` are contextual and may name fields or functions.
 
 ### 2.3 Data: structs, enums, optionals (§3.1, §3.11, §3.18)
 
@@ -259,7 +259,7 @@ ista async fn pay(req: Req) -> Result<String>:
 
 ### 2.8 Persistence (§5)
 
-- **Every `await` commits**, even on an already-resolved future (`await runtime.commit()` commits without waiting).
+- **Every `await` in ista code commits**, even on an already-resolved future; a live one waits in memory (`await runtime.commit()` commits without waiting).
 - **Atomic segments:** state mutations, slot operations and disposals between two `await`s commit together or roll back together.
 - **Deterministic:** `time.now()` is fixed per segment, `random` draws from the snapshot's seed. Extern side effects are not rolled back on crash, so make externs idempotent.
 
@@ -318,7 +318,7 @@ import helper from './helper'                     # relative to this file
 ```
 
 - **Import lists and renames.** Bare names stay on one line, `import a, b as bee from 'x'`; a longer list goes in parentheses and may break one name per line: `import (approve, decide as decidePurchase) from 'purchase/approve'`. Only an alias is in scope, so `import f as add` clashes with the prelude's `add`.
-- **Prelude (no import needed):** `Int`, `Float`, `Bool`, `String`, `None`, `Unit`, `Never`, `Optional`, `Result`/`Ok`/`Err`, `Error`, `Step`, `Range`, `Array`, `Map`, `Slot`, `Future`, `WeakRef`, `Instance`, `Shared`, `Waypoint`, `panic`, and built-in traits (`Sendable`, `Disposable`, `Iterable`, `Container`, `Indexable`, `IndexAssignable`, `Convertible`, `Default`, `Stringable`, `Parsable`, `Comparable`, arithmetic/bitwise traits).
+- **Prelude (no import needed):** `Int`, `Float`, `Bool`, `String`, `None`, `Unit`, `Never`, `Optional`, `Result`/`Ok`/`Err`, `Error`, `Step`, `Range`, `Array`, `Map`, `Slot`, `Future`, `Resolver`, `WeakRef`, `Instance`, `Shared`, `Deferred`, `Waypoint`, `Fn`, the marks `Mark`, `Persistence` and `Sendability`, `panic`, `spawn`, `defer`, and built-in traits (`Sendable`, `DataKind`, `Awaitable`, `Disposable`, `Iterable`, `Container`, `Indexable`, `IndexAssignable`, `Convertible`, `Default`, `Stringable`, `Parsable`, `Comparable`, arithmetic/bitwise traits).
 - **Standard library (must be imported):**
   - `'inbox'`: `Inbox`, `Revertible`
   - `'strings'`: `indexOf`, `lastIndexOf`, `startsWith`, `endsWith`, `slice`, `split`, `trim`, `trimStart`, `trimEnd`, `padStart`, `padEnd`, `repeat`, `replace`, `replaceAll`, `toUpperCase`, `toLowerCase`, `format`, `graphemes`, `utf16Length` (import a function by name to call it as a `String` method: `s.replaceAll(a, b)`)
