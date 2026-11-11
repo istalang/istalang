@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-10-25
-last_updated: 2026-11-10
+last_updated: 2026-11-11
 tags: [tracker]
 ---
 
@@ -180,3 +180,4 @@ Crashes, spec gaps, wrong or missing diagnostics, host-visible behaviour.
 | B70 | A struct field whose default is a lambda reading the struct's own fields, `struct A { x: Int = 1, f = fn(a: A) -> Int: a.x }`, is refused as a default depending on itself (5112), though the lambda's written result fixes the field's type: checking the default to type the field reads the layout it completes. On main before K1c too. | small | — | async-kinds K1c 2026-11-10 |
 | B71 | The data rule costs `profile:check` about +8–12% on FormBuilder and std-tests (the corpus within noise): a type's kinds compose per declaration (`declaredKindsOf`, types/properties/value-kinds.ts), but one holding a recursive type (`Json`) or a type its arguments compute (`Group<Model>.Seen`) is walked whole once per type, and an instantiated part's own kind reads its disposal. Compose those too without letting a reduced part reach the type being computed. | small | — | async-kinds K1c 2026-11-11 |
 | B72 | A generic body's values its type parameters compute through an associated type or a type match are judged at no caller (proposal 8, Rule 3, charges the caller only with the types it names): `fn f<T is HasData>(): const x = T.Data.default()` called `f<Box>`, `Box.Data` a live type, or `const x: Pick<T>? = none` with `Pick<Int>` live, in ista code, holds live data. Judging them needs each generic callee's body instantiated per call, transitively, which proposal 8 rules out ("no whole-program analysis"): a decision first. Repros pinned with `it.fails` in rules/kinds/data-kinds.test.ts. | medium | — | async-kinds K1c 2026-11-11 |
+| B73 | Two homes for every call a call makes through its witnesses: `callsMadeWith`/`witnessCallsOf` (resolution/applying/call-kinds.ts; rules/kinds/data-kinds.ts reads its `witnessCallsOf`) and `functionCallsWithin`/`witnessCallsOf` (surface/resolved-call.ts); K1d's empty-witnesses fast path (`c79f4e49`) landed in one only. Keep the surface one, `call-kinds.ts` reading it. | small | — | async-kinds K1d review 2026-11-11 |
