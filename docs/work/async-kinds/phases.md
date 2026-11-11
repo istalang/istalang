@@ -85,7 +85,7 @@ its residual left as B71.
 
 After CX. Built on existing constructs, with no native, extern or runtime state (human,
 2026-11-11).
-Three steps, each reviewed and merged on its own: **DG1** context constants; **DG2** `delegate`, its
+Three steps, each reviewed and merged on its own: **DG1** context constants (done, `2b4a62ec`); **DG2** `delegate`, its
 queue and loop, the runtime's instance keys; **DG3** host externs `live`, the checker's refusal, host
 fills gone, the rewrite.
 
