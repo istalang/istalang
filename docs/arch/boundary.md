@@ -106,22 +106,21 @@ its instance is numbered by, so its native sees only JSON:
   panics the run, with the trace of where the extern was called, and so does JSON that doesn't
   fit: no host call came with it to refuse. So does a resolver the host lets go of unresolved,
   naming the extern, once JavaScript collects it and every function of it (`FinalizationRegistry`),
-  and an extern that gives back no promise and takes no resolver, at once. A pending future given
-  to a live run panics it, and so does a resolver taken in an instance, whose futures are filled by
-  token.
+  and an extern that gives back no promise and takes no resolver, at once. So does a resolver
+  taken for no future of its call: by an extern not returning one, or once the extern returned.
 
-## Starting instances
+## Starting runs
 
-A startable function (top-level, not generic or extern, or a constant holding a sendable lambda;
-by-value parameters that can be read, an outcome that can be written; the rule is
-`foundation/language/starts.ts`'s, which the compiler, the checker, lowering and the Definition's
-validation read) gets a start entry, listed in
+A startable function (top-level, not generic, extern or ista code, or a constant holding a sendable
+lambda that isn't ista code; by-value parameters that can be read, an outcome that can be written;
+the rule is `foundation/language/starts.ts`'s, which the compiler, the checker, lowering and the
+Definition's validation read) gets a start entry, listed in
 the Definition's `starts` under its key. A start entry is the function's own body compiled once
 more with its arguments as JSON (`lowering/synthesized/boundary/starts.ts`, `instanceLowering` in `functions/index.ts`): it
-decodes each argument, a mismatch failing the host's start, so the instance is one execution of the
-function and its traces and waits are the function's own. A mark parameter left unwritten
-(`M in Mark`) is compiled at `"simple"` (`rootInstance`); a start's own mark is its head's
-(spec §3.3), `ista` for `main` until hosts start only live code. `starts` lists it with its outcome's
+decodes each argument, a mismatch failing the host's start, so the run is one execution of the
+function and its traces and waits are the function's own. A start is live or simple code, its
+head's mark (spec §3.3): ista code runs only in an instance, a context live code calls, so `main`
+is `live async fn main()`. `starts` lists it with its outcome's
 encoder, the entry of the codec writing the declared result (`synthesized/boundary/starts.ts`), which the
 instance keeps for life and its segment calls with the outcome on top of the root's last frame as
 it returns, so what that frame holds is disposed after (`scheduler/segment/root-outcome.ts`): a
@@ -135,23 +134,25 @@ in the body's expansion (§3.5, `checker/rules/boundary/outcome-codecs.ts`). `ma
 as JavaScript values (`outcome`) like everything else it exchanges, or as text (`outcomeText`),
 which `ista run` prints (`runtime/boundary/outbound.ts`).
 
-The host API (`runtime/host/index.ts`) starts by key with JSON arguments (`start`), fills a named future
-(`fill`), inspects, and operates panicked instances: `retry` re-runs the failed segment from the
+The host API (`runtime/host/index.ts`, `createRuntime`) deploys a Definition text (`deploy`),
+giving its program (`runtime/host/programs.ts`), whose `start` runs a function by key with JSON
+arguments as a live run; the `Runtime` wakes a stored instance (`wake`), reads its program and
+where it stands (`programOf`, `inspect`), and operates panicked instances: `retry` re-runs the failed segment from the
 last commit at the time it first started, `terminate` ends it from its last commit: its root stops, so what
 it held is disposed as any release disposes it, a disposed call's `disposing()` cleanup included,
 and any execution only other executions hold stops after it (`scheduler/segment/`, `endInstance`);
-a disposal that panics counts as done, so the rest still tell their hosts. A fill naming no future the instance waits
-on, disposed or never there, changes nothing: the runtime keeps no record of disposed tokens,
-which would grow without end. A panicked instance refuses fills until retried. A host names only its
+a disposal that panics counts as done, so the rest still tell their hosts. No host fills an
+instance's future: what reaches an instance from outside is a call into it as a context, a
+delegated job's result among them (`runtime.delegate`). A host names only its
 live runs, which never reach the store; the store's instances are contexts, named by the program's
 keys, and the instances they spawn, `<parent>/<n>`.
 
 ## The host contract
 
-The host API (`runtime/host/index.ts`) is asynchronous: every call that runs an instance's code
-(`start`, `wake`, `fill`, `retry`, `terminate`) gives a promise, and a refusal rejects it, so a
-host awaits the same way whatever an instance waits on. Calls that only read (`deploy`,
-`programOf`, `inspect`, `outcome`) answer at once.
+The host API (`runtime/host/index.ts`) is asynchronous: every call that runs code (`start`,
+`wake`, `retry`, `terminate`) gives a promise, and a refusal rejects it, so a host awaits the same
+way whatever the code waits on. The others (`deploy`, `programOf`, `inspect`, `outcome`,
+`outcomeText`) answer at once.
 
 - **Residency.** A runtime keeps each active instance in memory between calls
   (`scheduler/resident.ts`): its next segment runs on the instance its last segment committed,
@@ -194,13 +195,13 @@ host awaits the same way whatever an instance waits on. Calls that only read (`d
   `HostReports`: log records, and a panic no call of the program's waits to hear; the job loop's
   calls (`CallMaker` `jobs`) never hear one, so an instance's panic reaches the host though the
   loop serving it waits on it.
-- **One driver loop.** A host drives a group of instances with `drive` (`runtime/testing/world/drive.ts`):
+- **One driver loop.** A group of instances is driven with `drive` (`runtime/testing/world/drive.ts`):
   run what can run, wait for the earliest timer, wake what is due, until nothing can wake them. What
-  differs between hosts is passed in: what can run now, how to wait (a `Clock`,
-  `runtime/clock.ts`, or the CLI's sleep racing its host's promises), when to end and a
-  deadline. `settle` is a host's drive of what its start or wake gave; a test's world
-  (`runtime/testing/world/`) drives its instances with the same loop, delivering its answers and
-  resolving its own waits first.
+  differs between drivers is passed in: what can run now, how to wait (on a `Clock`,
+  `runtime/clock.ts`), when to end and a deadline. A test's world (`runtime/testing/world/`)
+  drives its instances with it, delivering its answers and resolving its own waits first, and so
+  do the instance engine's tests (`runtime/runtime.test-kit.ts`); a live run drives its contexts
+  inside its own loop (Contexts, above).
 
 ## Packages
 

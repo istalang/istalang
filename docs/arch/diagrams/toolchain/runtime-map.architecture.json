@@ -34,7 +34,7 @@
     {
       "id": "hostapi",
       "type": "frontend",
-      "label": "host.ts",
+      "label": "host/index.ts",
       "sublabel": "createRuntime",
       "pos": [245, 40],
       "size": [128, 56]
@@ -50,8 +50,8 @@
     {
       "id": "wake",
       "type": "backend",
-      "label": "advance",
-      "sublabel": "scheduler/wake.ts",
+      "label": "advance, runLive",
+      "sublabel": "wake.ts, live-run.ts",
       "pos": [245, 150],
       "size": [128, 56]
     },
@@ -122,7 +122,7 @@
       "id": "wake-store",
       "from": "wake",
       "to": "store",
-      "label": "commit",
+      "label": "advance commits",
       "fromSide": "right",
       "toSide": "bottom",
       "variant": "emphasis"

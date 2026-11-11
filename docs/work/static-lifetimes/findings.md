@@ -45,7 +45,7 @@ tags: [lifetimes, disposal, research]
   The counting hooks are the interpreter's existing write and release sites. The Definition gains only the `tracked` flag on type entries (design.md, Contract).
 - **Composites are built in many places,** which R2 gathers into one constructor:
   - `interpreter/instructions.ts` (tuple, array, map, struct, keep);
-  - `waits.ts`, `testing/mocks.ts`;
+  - `scheduler/instance/waits/resolvers.ts`, `testing/mocks.ts`;
   - natives (`maps.ts`, `values/arguments.ts`, `results.ts`, `strings.ts`, `range-natives.ts`);
   - the decoders (`json-values.ts`, `declared-values.ts`);
   - `parts.ts` `withChildValues`.
@@ -63,7 +63,7 @@ tags: [lifetimes, disposal, research]
 - **Per release:**
   - `registers.ts` (`writeRegister`, `clearRegister`) notes every handle in the old value: `handlesIn` is memoized per value.
   - `Heap.#noteHoldings` diffs `heldObjects` on every replace and remove.
-  - `waits.ts` notes every resolver state change.
+  - `scheduler/instance/waits/` (`index.ts`, `endings.ts`) notes every resolver state change.
 - **Per live segment:** `Instance.dropUnheld` runs `#kept` (`heldFrom`, a full-heap scan, the depth), then `keepOnly` and `forgetGone`.
 - **Per commit:** `persisted` runs `#kept`; `continueFrom` runs `keepOnly`.
 - **Slots:** `#owed`/`serveOwed` exist because serving waits on collection after a `select`'s losers are let go.

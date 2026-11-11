@@ -3,8 +3,8 @@ description: building, narrowing and reading language values, structs, variants,
 owner: tech-lead
 status: active
 applies_to: istalang
-last_verified: 2026-10-28
-last_updated: 2026-11-08
+last_verified: 2026-11-11
+last_updated: 2026-11-11
 tags: [reuse, values, equality, maps, json, natives, runtime]
 ---
 
@@ -18,7 +18,7 @@ tags: [reuse, values, equality, maps, json, natives, runtime]
 - read or build a struct or variant `Value` by declared name → `fieldValueOf`, `structOf`, `variantOf`, `variantShape` (`src/definition/values/declared-values.ts`)
 - build an optional (a union holding `None`, laid out as `unionLayout` says), a `Result` (`Ok`, `Err`) or `Error` `Value` → `optionalOf`, `okOf`, `errOf`, `errorOf`, `okTypeOf` (`src/definition/values/declared-values.ts`)
 - look up a field's `TypeReference`, a type argument, or a named `TypeId` → `fieldTypeOf`, `typeArgumentOf`, `namedType`, `namedTypeOf` (`src/definition/values/declared-values.ts`)
-- read primitive, tuple or extern native arguments → `given`, `int`, `float`, `text`, `elementOf`, `externPayloadOf`, `textPayloadOf` (`src/stdlib/values/arguments.ts`)
+- read primitive, optional `Int`, enum (by its variant's name, from a table) or extern native arguments, or build an array result → `given`, `int`, `float`, `text`, `optionalInt`, `variantEntry`, `externPayloadOf`, `textPayloadOf`, `arrayOf` (`src/stdlib/values/arguments.ts`)
 - read an optional by its declared variant → `optionalValueOf` (`src/definition/values/declared-values.ts`); an optional `Int` native argument → `optionalInt`, or map an enum argument by variant name → `variantEntry` (`src/stdlib/values/arguments.ts`)
 - build array, struct, variant or extern results → `arrayOf` (`src/stdlib/values/arguments.ts`), `resultStruct`, `resultVariant`, `resultExtern`, `resultOptional` (`src/stdlib/values/results.ts`)
 - the type entry a native's declared result names → `declaredResult` (`src/stdlib/values/results.ts`)

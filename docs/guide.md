@@ -3,8 +3,8 @@ description: A developer's guide to writing Istalang programs, breadth first —
 owner: tech-lead
 status: active
 applies_to: istalang
-last_verified: 2026-11-05
-last_updated: 2026-11-10
+last_verified: 2026-11-11
+last_updated: 2026-11-11
 tags: [language, guide]
 ---
 
@@ -27,7 +27,7 @@ ista async fn remindLater(role: String):
 
 ---
 
-## Level 1: the eight ideas
+## Level 1: the nine ideas
 
 1. **Python syntax, strict types.** Indentation, `#` comments, no implicit numeric or boolean conversions. Locals and return types are inferred; parameters and fields are annotated.
 2. **Values are copied.** Structs, arrays, maps and tuples are copied on assignment, argument pass, return or send. Mutate caller data via `&x`, or share a *handle* (`Shared`, `shared struct`, `Slot`, `Inbox`).
@@ -37,7 +37,7 @@ ista async fn remindLater(role: String):
 6. **Code handles only the data its mark allows.** Data is simple, live (a live future, an `extern live struct`) or ista (an ista future, a slot, an inbox). An unmarked `fn` handles and calls only simple things; a `live fn` adds live ones, an `ista fn` ista ones; `M fn`/`K async fn` are generic over the mark. A missing mark is a compile error naming the value or call; generic code passes its type parameters' values through.
 7. **Concurrency without threads.** Calling an `async fn` without `await` starts it alongside the caller. Coordinate with futures, `select`, slots and inboxes; `spawn` starts an independent instance.
 8. **Lifetimes follow blocks.** When a block ends, resources it alone holds are deterministically disposed: pending calls stop, timers cancel and unread revertible messages retract.
-9. **The host is the only I/O.** `extern` functions, constants and types cross the host boundary as JSON. Deploys freeze code: each instance finishes on the version it started with.
+9. **The host is the only I/O.** `extern` functions, constants and types cross the host boundary as JSON. A host extern giving a future is `extern live async fn`; `ista` code reaches it through a job, `await runtime.delegate f(args)`, run as live code after the commit. Deploys freeze code: each instance finishes on the version it started with.
 
 ---
 
@@ -59,13 +59,13 @@ extern fn chargeCard(id: String, amount: Int) -> Result<String>
 live async fn main(): await runtime.run(runtime.id()) _main()
 ista async fn _main():                                         # the one entry point
     while true:
-        const req = await purchaseRequests.receive()     # saved; may wait for weeks
+        const req = await runtime.delegate purchaseRequests.receive()  # saved; may wait for weeks
         spawn purchase(req)                              # each purchase is its own instance
 
 ista async fn purchase(req: PurchaseRequest) -> String:
     const deadline = time.delay(5d)                      # a timer, running from now
     const verdict = await select:                        # whichever comes first
-        case verdicts(req.id).receive() as v: v
+        case runtime.delegate verdicts(req.id).receive() as v: v
         case deadline: return "expired"
     if not verdict.ok:
         return "rejected by " + verdict.role
@@ -74,7 +74,7 @@ ista async fn purchase(req: PurchaseRequest) -> String:
         case Err(error): "failed: " + error.message
 ```
 
-A file holds only declarations: imports, `struct`, `shared struct`, `enum`, `trait`, `type`, `fn`, `extern`, and compile-time `const` (no top-level statements or mutable globals).
+A file holds only declarations: imports, `struct`, `shared struct`, `enum`, `trait`, `type`, `fn`, `extern`, compile-time `const`, and `ista const`, one value per context made at its first read (§3.4) (no top-level statements or mutable globals).
 
 ### 2.2 Syntax, types, variables (§2, §3.4)
 
@@ -261,7 +261,7 @@ ista async fn pay(req: Req) -> Result<String>:
 
 - **Every `await` commits**, even on an already-resolved future (`await runtime.commit()` commits without waiting).
 - **Atomic segments:** state mutations, slot operations and disposals between two `await`s commit together or roll back together.
-- **Deterministic:** `time.now()` is fixed per segment, `random` draws from the snapshot's seed, and `extern fn` results are recorded in the snapshot. Extern side effects are not rolled back on crash, so make externs idempotent.
+- **Deterministic:** `time.now()` is fixed per segment, `random` draws from the snapshot's seed. Extern side effects are not rolled back on crash, so make externs idempotent.
 
 ### 2.9 Concurrency (§6, §8, §9)
 
@@ -306,7 +306,7 @@ ista async fn approve(req: Req, roles: Array<String>) -> String:
     # when approve returns by any path, every unread review request is retracted
 ```
 
-- **Graceful stop:** Inside `async fn worker`, `case worker.disposing():` in `select` runs synchronous cleanup (cannot `await`) when `worker`'s future is disposed.
+- **Graceful stop:** Inside `ista async fn worker`, `case worker.disposing():` in `select` runs synchronous cleanup (cannot `await`) when `worker`'s future is disposed.
 - **Weak references:** `WeakRef(x)` watches a disposable without holding it (`w.deref() -> T?`, `w.disposed() -> Future<Unit, "ista">`).
 
 ### 2.11 Modules, host, JSON, tools (§3.6, §3.13, §9, §11)
@@ -327,7 +327,7 @@ import helper from './helper'                     # relative to this file
   - `'time'`, `'math'`, `'decimal'`, `'crypto'`, `'random'`, `'log'`, `'runtime'`, `'collections'` (`WeakMap`), `'futures'`, `'rpc'`, `'fanout'`, `'testing'`
 - **`Json`** is the recursive union `None | Bool | Int | Float | String | Array<Json> | Map<String, Json>`: write JSON of any depth as plain values (`const j: Json = ["a": 1, "b": [true, none]]`, or as an indented value), and take it apart with type patterns (`case Map<String, Json> as fields`, `case Int as n`). `[]` against it is the array, `[:]` the map.
 - **JSON codecs:** Derived automatically for structs, shapes, enums (tagged by `"type"`), tuples, literal types, and **unions of literals** (`"a" | "b"`). General non-literal unions (other than `T?`) do not derive `Encodable`/`Decodable`. Generic code calling `json.parse<T>` or `json.stringify` must constrain `T is Decodable` / `T is Encodable`.
-- **CLI:** `ista check`, `ista fmt`, `ista run <entry> [--store <dir>] [--resume <id>] [--host <js>]`, `ista test`.
+- **CLI:** `ista check`, `ista fmt`, `ista run <entry> [--store <dir>] [--host <js>]` (running again on the same store resumes its work), `ista test`.
 
 ### 2.12 Testing (§10)
 
@@ -372,7 +372,7 @@ Only `*.test.ista` files may import `'testing'` (`Suite`, `Test`, `test`, `group
 
 **Mutation, references, and lifetimes**
 - **`const` is deeply immutable** (`const xs = [1]; xs.push(2)` is an error), stopping only at handles (`const u = new Lease{…}; u->renewals += 1` is valid). Shared struct fields use `->` (`u.renewals` is an error); `new` is used if and only if constructing a `shared struct`.
-- **Reference rules:** `&` stands only before a call argument (`&x`). Passing two element/shared-field references in one call (`f(&xs[i], &xs[j])`, `f(&u->a, &w->b)`) or passing `&xs[i]` / `&u->a` to an `async fn` is a compile error (copy into a local `let`, pass `&local`, and assign back).
+- **Reference rules:** `&` stands only before a call argument (`&x`). Passing two element/shared-field references in one call (`f(&xs[i], &xs[j])`, `f(&u->a, &w->b)`) or passing `&xs[i]` / `&u->a` to an async function is a compile error (copy into a local `let`, pass `&local`, and assign back).
 - **Loop lifetimes:** `_ = q.sendRevertible(m)` or `_ = asyncCall()` inside a loop disposes at the end of **each iteration**; use `hold _ = …` to keep it alive until the enclosing function returns.
 - **Boundaries:** Handles and plain `fn` values are not `Sendable` and cannot cross `spawn` or `extern`. A `sendable fn` (all captures sendable) is what `spawn` takes, but has no JSON form and cannot cross `extern` or `json`.
 - **`defer` is a function:** a bare `defer f(x)` is an error, since the `Deferred` it gives must be kept (`_ = defer f(x)`), and `x` is computed where it is written; pass a lambda, `_ = defer(fn(): …)`, to read variables when it runs.

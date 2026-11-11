@@ -3,7 +3,7 @@ description: tokens, AST nodes, operators, places, chains, field defaults, templ
 owner: tech-lead
 status: active
 applies_to: istalang
-last_verified: 2026-11-05
+last_verified: 2026-11-11
 last_updated: 2026-11-11
 tags: [reuse, syntax, ast, scanner, parser, operators]
 ---
@@ -19,7 +19,7 @@ tags: [reuse, syntax, ast, scanner, parser, operators]
 - read a tree's tokens again, all of them or only its code's, or the bracket closing each opening one → `allTokensOf`, `codeTokensOf`, `closingBracketsOf` (`src/editor/language-service/reading/tokens.ts`)
 - pair a token list's brackets as the parser does, and find where each one left open ends → `pairBrackets` (`src/compiler/parser/cursor/brackets.ts`)
 - check whether a word is a reserved or contextual keyword → `isKeyword`, `isContextualWord`, `keywords`, `punctuators` (`src/compiler/syntax/tokens/index.ts`)
-- know a head's modifiers (a function's, a function type's, a lambda's, an extern's, a shared struct's): their groups in print order, the groups each form takes, what may follow one, a function's qualifiers, whether a head is async (read it nowhere else), and their text in print order, a named mark (`M fn`) in its kind's place → `modifierGroups`, `ModifierWord`, `headForms`, `groupIn`, `followersIn`, `FunctionQualifiers`, `qualifiersOf`, `awaits`, `modifiersText` (`src/compiler/syntax/tokens/modifiers.ts`); a named type's path as written (`Self.Mode`) → `namedTypeText` (`src/compiler/syntax/types/index.ts`); parse one, a declared function's with the mark it names, or look past one to its keyword → `parseHead`, `parseFunctionHead`, `parseModifiers`, `headAhead` (`src/compiler/parser/grammar/parts/heads.ts`)
+- know a head's modifiers (a function's, a function type's, a lambda's, an extern's, a shared struct's): their groups in print order, the groups each form takes, what may follow one, a function's qualifiers, whether a head is async (read it nowhere else), and their text in print order, a named mark (`M fn`) in its kind's place → `modifierGroups`, `ModifierWord`, `headForms`, `groupIn`, `followersIn`, `FunctionQualifiers`, `qualifiersOf`, `awaits`, `modifiersText` (`src/compiler/syntax/tokens/modifiers.ts`); a named type's path as written (`Self.Mode`) → `namedTypeText` (`src/compiler/syntax/types/index.ts`); parse one, a declared function's with the mark it names, or look past one to its keyword → `parseHead`, `parseFunctionHead`, `headAhead` (`src/compiler/parser/grammar/parts/heads.ts`)
 - list the words a grammar position dispatches on: a declaration's, a statement's, an operand's, a type's or a pattern's start, what goes on after an operand, and what follows each modifier → `declarationWords`, `statementWords`, `operandWords`, `infixWords`, `typeWords`, `PatternWord`, `followers` (`src/compiler/syntax/tokens/grammar-words.ts`); what a module's item starts with → `moduleItemWords` (`src/compiler/syntax/items.ts`)
 - key a parser table by those words, checked both ways by type, read a contextual word's parselet, or ask whether a modifier's follower comes next → `StartParselets`, `WordParselets`, `wordParseletAt`, `followsModifier` (`src/compiler/parser/grammar/word-parselets.ts`)
 - parse the `case` of a `match`, a `select` or a type `match`, a line not starting with one skipped whole → `parseCase` (`src/compiler/parser/grammar/parts/cases.ts`); an alias's or associated type's body, a type or a type `match` → `parseAliasBody` (`src/compiler/parser/grammar/declarations/type-matches.ts`); the `infer` variables a case's pattern declares → `inferTypesIn` (`src/compiler/syntax/types/type-matches.ts`)
@@ -56,7 +56,6 @@ tags: [reuse, syntax, ast, scanner, parser, operators]
 - test whether a text scans as one name, no keyword → `spellsName` (`src/compiler/scanner/characters.ts`)
 - read the number a literal writes, negated or not (`-5`, `-(5)`), as one signed value → `signedNumberOf` (`src/compiler/syntax/expressions/literals/numbers.ts`)
 - list valid `MatchCase`s of a `Match`, or `SelectCase`s of a `Select` → `casesOf`, `selectCasesOf` (`src/compiler/syntax/expressions/readings.ts`); never filter `node.cases` by kind
-- list the blocks whose tails give an `if`, `match` or `select` its value → `valueBranchesOf` (`src/compiler/syntax/expressions/branches.ts`)
 - unwrap a `CallArgument`'s expression or find an out-of-order argument → `argumentValue`, `misplacedArgument` (`src/compiler/syntax/expressions/arguments.ts`)
 - inspect an optional chain step, or spell a link form's operator, optional or not → `chainStepOf`, `isOptionalStep`, `linkOperator`, `optionalOperatorOf` (`src/compiler/syntax/expressions/chains.ts`)
 - test whether an expression is inside an optional chain → `isOptionallyChained` (`src/compiler/syntax/expressions/chains.ts`)

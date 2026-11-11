@@ -5,9 +5,9 @@ Istalang is one layered package in which each phase is a memoized function of an
 - `compile.ts` alone knows the phase order; each phase knows only its own input and output.[](source:compile)
 - Imports point only downward, and dependency-cruiser enforces every layer as an allow-list.[](source:cruiser)
 - Every open set of handlers is a `Handlers` table, exhaustive by node or instruction kind.[](source:kindtable)
-- I/O happens only behind seams the consumer owns: `ModuleLoader`, `InstanceStore`, `Natives`, `now` and `seed`.[](source:host)
+- I/O happens only behind seams the consumer owns: `ModuleLoader`, `InstanceStore`, `Natives`, `Clock` and `seed`.[](source:host)
 
-@answer scope="Implementation, not the language spec · worktree p4-computed at 5403091 · 2026-11-05"
+@answer scope="Implementation, not the language spec · worktree p4-computed at 5403091 · 2026-11-05; runtime re-traced 2026-11-11"
 @meta locale=en
 @source compile title="Phase coordinator" path=src/compiler/compile.ts lines=38:88
 @source cruiser title="Layer allow-list" path=.dependency-cruiser.mjs lines=22:124
@@ -16,9 +16,9 @@ Istalang is one layered package in which each phase is a memoized function of an
 @source bind title="bindProgram and per-module binding" path=src/compiler/binder/module/bind-module.ts lines=40:54
 @source link title="Linker: imports, prelude, overloads" path=src/compiler/binder/link/index.ts lines=65:105
 @source lower title="lower: start entries and the worklist" path=src/compiler/lowering/lower.ts lines=46:92
-@source host title="Runtime host API and seams" path=src/runtime/host/index.ts lines=129:200
-@source wake title="advance: segment, commit, repeat" path=src/runtime/scheduler/wake.ts lines=117:166
-@source run title="ista run" path=src/cli/commands/run.ts lines=116:140
+@source host title="Runtime host API and seams" path=src/runtime/host/index.ts lines=59:128
+@source wake title="advance: segment, commit, repeat" path=src/runtime/scheduler/wake.ts lines=149:197
+@source run title="ista run" path=src/cli/commands/run.ts lines=64:96
 @source memo title="memo over immutable inputs" path=src/foundation/structures/memo.ts lines=1:50
 @source workspace title="Language-service workspace" path=src/editor/language-service/workspace.ts lines=1:40
 
@@ -72,7 +72,7 @@ Two arrows are left out to keep the map readable. `formatter` imports only `synt
 | st-lower | lower | A worklist from `main` and every startable function; generics are compiled once per instantiation. | phase-pipeline | lower |
 | st-def | Definition | Flat tables referring by index: modules, types, functions, constants and linear register code. | phase-pipeline | def |
 | st-deploy | deploy | Validates the text, binds each extern to a native, and stores it by content hash. | phase-pipeline | deploy |
-| st-advance | start / wake | Runs segment after segment; every `await` of the driver ends a segment, which commits a snapshot. | phase-pipeline | advance |
+| st-advance | start / wake | `start` runs live code in memory to its end, its ista work in contexts; `wake` advances an instance segment after segment, every `await` of the driver ending a segment, which commits a snapshot. | phase-pipeline | advance |
 
 | Phase | Entry | Output | Memoized on |
 | --- | --- | --- | --- |
@@ -82,11 +82,11 @@ Two arrows are left out to keep the map readable. `formatter` imports only `synt
 | bind | `bindProgram(program)` | `Bindings`: entities and queries | tree (module), Program (link) |
 | check | `checkProgram(program, { previous })` | `Checker` and its `CheckedBody`s | Program; entries for reuse |
 | lower | `lower(checker, main)` | `Definition` | — (runs on error-free programs) |
-| run | `createRuntime(seams).deploy(text).start(name)` | `Advanced { state, spawned, logs }` | the instance snapshot in the store |
+| run | `createRuntime(seams).deploy(text).start(run)` | `Advanced { state, spawned, logs }` | contexts' snapshots in the store; a live run keeps none |
 
 ## What happens on `ista run main.ista`? {#run-sequence}
 
-@sequence id=run-flow title="ista run: load, check, lower, deploy, advance"
+@sequence id=run-flow title="ista run: load, check, lower, deploy, run"
 | actor cli | ista run | frontend |
 | actor project | project | backend |
 | actor compile | compile.ts | backend |
@@ -110,10 +110,9 @@ Two arrows are left out to keep the map readable. `formatter` imports only `synt
 | phase | Run |
 | cli | runtime | deploy(definition text) |
 | runtime | store | write Definition by hash |
-| cli | runtime | start(name) |
-| runtime | store | commit snapshot per segment |
-| runtime | cli | Advanced state | return |
-| cli | runtime | settle: wake when due | emphasis |
+| cli | runtime | start(run): main as a live run | emphasis |
+| runtime | store | contexts commit per segment |
+| runtime | cli | how main ended | return |
 
 The CLI picks every implementation at its composition root: `memoryStore` or `directoryStore`, `stdNatives`, the host module of `--host`, the clock and a random seed.[](source:run) A failed compile stops after `diagnose`, because `compile` refuses any program with an error.
 
@@ -123,7 +122,8 @@ The CLI picks every implementation at its composition root: `memoryStore` or `di
 
 - A frame is data: a function index, a pc and registers, so any `await` can be persisted.
 - A segment restores the last commit, resolves due timers and watches, runs, then commits; a panic commits nothing.[](source:wake)
-- The runtime holds no timers. A waiting state names the next due time, and the host wakes it then.
+- A live run never commits: it runs in memory to its end, waiting on the host's promises and clock, and drives its contexts, the instances its ista work runs in, inside its own loop.
+- The runtime holds no timers of its own. A waiting state names the next due time, and its driver wakes it then on the host's `Clock`.
 - `crashEveryAwait` runs each segment twice from one snapshot and panics if the runs differ.
 
 ## Where are the registries and seams? {#registries}
@@ -146,7 +146,7 @@ The CLI picks every implementation at its composition root: `memoryStore` or `di
 | `ProgramLoader` | language-service | the LSP's project loader with open documents over files |
 | `InstanceStore` | runtime | memory, directory (atomic rename), host persistence |
 | `Natives` | runtime | std natives, host externs adapted from JSON, test mocks |
-| `now`, `seed` | runtime | the host clock and entropy |
+| `Clock`, `seed` | runtime | the host's time and entropy |
 
 @callout level=note title="Derive, never mirror"
 Every result is memoized on the immutable object it derives from, through `memo` over a `WeakMap`.[](source:memo) A new snapshot is a new key, so nothing is invalidated by hand. The language server holds only document texts and derives the rest.[](source:workspace)

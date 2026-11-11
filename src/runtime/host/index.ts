@@ -18,8 +18,9 @@
  *   life. Starting or waking one advances it as far as it goes without waiting, committing every
  *   segment (../scheduler/wake.ts), and says where it stands: waiting until its next timer,
  *   finished with its outcome, or panicked with a message and a trace (§3.12), and which instances
- *   it spawned (§9), which the host wakes like any other. The host decides when to wake each again
- *   (../testing/world/drive.ts runs that loop); the runtime holds no timers of its own.
+ *   it spawned (§9), which the host wakes like any other. A live run drives the contexts it opens
+ *   itself (../scheduler/run-contexts.ts); otherwise the host decides when to wake each again (the
+ *   test world's loop, ../testing/world/drive.ts); the runtime holds no timers of its own.
  * - Inspecting an instance reads its last commit only: where it stands, and where each of its
  *   executions waits (§9, §10).
  * - An instance the runtime doesn't hold, one that has ended or panicked, or any after a restart,
