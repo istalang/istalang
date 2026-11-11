@@ -37,14 +37,13 @@
 import { recordExternSignatures } from '../boundary/extern-signatures.ts';
 import type { Advanced, Inspection } from '../instance-state.ts';
 import { Refusal } from '../refusal.ts';
-import { inspection } from '../scheduler/inspect.ts';
+import { inspection, stateOf } from '../scheduler/inspect.ts';
 import { Resident } from '../scheduler/resident.ts';
 import {
   type Advance,
   type AdvanceFirst,
   advance,
   type SchedulerSeams,
-  stateOf,
   terminate,
 } from '../scheduler/wake.ts';
 import type { PanickedSnapshot, Snapshot } from '../snapshot/snapshot.ts';

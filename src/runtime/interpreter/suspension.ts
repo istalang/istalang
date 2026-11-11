@@ -3,13 +3,13 @@
  * at the case that won.
  *
  * - Each names the wait it ends, in a register (proposal 8, Rule 5): a blocking one resumes as that
- *   wait was decided (scheduler/instance/waits.ts), and a `select` with `otherwise` goes to the case
- *   it was decided at already, or to `otherwise`. Ending a wait takes it out of its register: the
- *   wait goes then, so nothing notes it let go of.
+ *   wait was decided (scheduler/instance/waits/index.ts), and a `select` with `otherwise` goes to
+ *   the case it was decided at already, or to `otherwise`. Ending a wait takes it out of its
+ *   register: the wait goes then, so nothing notes it let go of.
  * - The cases a `select` lost let go of what their expressions created (spec §8, "Losers are
  *   released") once the winner is decided, which for a blocking one is before it resumes. A losing
  *   case's resolver still to resume a disposed call on its `disposing()` watch holds that watch
- *   itself, its wait holding it (§7; scheduler/instance/waits.ts), so its registers go too.
+ *   itself, its wait holding it (§7; scheduler/instance/waits/index.ts), so its registers go too.
  * - Entering the winning case lets go of every other case's holdings left, binds its value for
  *   `as`, and jumps to its body. The winner's holdings stay in their registers, for the enclosing
  *   block to release.

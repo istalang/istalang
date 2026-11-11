@@ -4,7 +4,7 @@ import type { Value } from '../../../definition/values/values.ts';
 import { DisposalNotices } from './disposal-notices.ts';
 import { Futures } from './futures.ts';
 import { Heap } from './heap.ts';
-import { Waits } from './waits.ts';
+import { Waits } from './waits/index.ts';
 
 /** A callback a resolver called, with the values it was called with. */
 type CalledBack = readonly [Value, readonly Value[]];

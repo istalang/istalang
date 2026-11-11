@@ -15,15 +15,14 @@
  * - What holds a wait's resolvers and their futures is the heap's (`Heap.holds`): a resolver
  *   nothing awaits that is let go of unresolved is a misused one (lifetimes/disposal.ts).
  * - A wait is decided once, by the first of its resolvers to resolve. Futures resolved together, or
- *   resolved when one is registered, decide in rank order (`#rank`): per wait, its lowest case;
- *   within it, the lowest position among `Resolver.at` ones; among the futures one resolver is
- *   registered on, the earliest registration. Deciding cancels the resolvers then pending, which do
- *   nothing after and let go of their futures, and so a resolver's pending `Resolver.at` ones; a
- *   wait's losing cases are let go of then (spec §8), so a losing `take` consumes nothing, as a slot
- *   passes over an operation no resolver awaits any more (slots.ts). A resolver on its waiter's own
- *   `disposing()` watch stays registered until the waiter moves on, as a disposal still resumes the
- *   call on it (§7), even one registered after the wait was decided; one registered on anything
- *   else then is cancelled. The waiter is ready once it is stopped at its wait and that is decided.
+ *   resolved when one is registered, decide in order (settle-order.ts). Deciding cancels the
+ *   resolvers then pending, which do nothing after and let go of their futures, and so a resolver's
+ *   pending `Resolver.at` ones; a wait's losing cases are let go of then (spec §8), so a losing
+ *   `take` consumes nothing, as a slot passes over an operation no resolver awaits any more
+ *   (../slots.ts). A resolver on its waiter's own `disposing()` watch stays registered until the
+ *   waiter moves on, as a disposal still resumes the call on it (§7), even one registered after the
+ *   wait was decided; one registered on anything else then is cancelled. The waiter is ready once
+ *   it is stopped at its wait and that is decided.
  * - Waiters that become ready together are readied in creation order, once each (§6), each
  *   followed by the `onCancel` callbacks of its losing cases, and then the callbacks of the
  *   `Resolver.of` resolvers resolved with them, in the order those were made.
@@ -37,38 +36,30 @@
  *   discards a decision with the segment that made it; a live run's stay in memory.
  */
 
-import { handleTo, type Value } from '../../../definition/values/values.ts';
-import { unreachable } from '../../../foundation/structures/unreachable.ts';
-import { type Decision, stoppedAt, takeWait } from '../../interpreter/suspension.ts';
-import { Panic } from '../../natives.ts';
-import type { ResolverTarget } from '../../snapshot/objects.ts';
-import type { Settled } from './futures.ts';
-import { type Heap, handleObject, type LiveExecution, type LiveObjectOf } from './heap.ts';
-
-type Wait = LiveObjectOf<'wait'>;
-
-type Resolver = LiveObjectOf<'resolver'>;
-
-type PendingState = Extract<Resolver['state'], { readonly kind: 'pending' }>;
-
-type PendingResolver = Resolver & { readonly state: PendingState };
-
-type CaseTarget = Extract<ResolverTarget, { readonly kind: 'case' }>;
-
-/** A pending resolver of a wait's case. */
-type CaseResolver = Resolver & {
-  readonly state: PendingState & { readonly target: CaseTarget };
-};
-
-/** How a pending resolver ends without deciding anything. */
-type Ended = Exclude<Resolver['state'], PendingState>;
-
-/** A pending resolver registered on a future that resolved, at its `order`-th registration. */
-interface Registration {
-  readonly resolver: PendingResolver;
-  readonly future: number;
-  readonly order: number;
-}
+import { handleTo, type Value } from '../../../../definition/values/values.ts';
+import { unreachable } from '../../../../foundation/structures/unreachable.ts';
+import { type Decision, takeWait } from '../../../interpreter/suspension.ts';
+import { Panic } from '../../../natives.ts';
+import type { ResolverTarget } from '../../../snapshot/objects.ts';
+import type { Settled } from '../futures.ts';
+import { type Heap, handleObject, type LiveExecution } from '../heap.ts';
+import {
+  type CaseResolver,
+  type CaseTarget,
+  type Ended,
+  isCase,
+  isPending,
+  type PendingResolver,
+  pendingCases,
+  pendingOf,
+  positioned,
+  type Resolver,
+  rootOf,
+  stoppedWait,
+  type Wait,
+  waiterOf,
+} from './resolvers.ts';
+import { settleOrder } from './settle-order.ts';
 
 /** What waits reach outside themselves. */
 export interface WaitSeams {
@@ -138,10 +129,10 @@ export class Waits {
   }
 
   /**
-   * Resolves the resolver `done` as the future `future` resolves, a future's `onAwait`: at once with
-   * what `settled` says it resolved with, else registered on it; once its wait was decided, only on
-   * its waiter's own `disposing()` watch, cancelled otherwise. One no longer pending is left as it
-   * is.
+   * Resolves the resolver `done` as the future `future` resolves, a future's `onAwait`: at once
+   * with what `settled` says it resolved with, else registered on it; once its wait was decided,
+   * only on its waiter's own `disposing()` watch, cancelled otherwise. One no longer pending is
+   * left as it is.
    */
   register(done: Value, future: number, settled: Settled | undefined): void {
     const resolver = this.#resolver(done);
@@ -152,7 +143,7 @@ export class Waits {
       this.resolve(done, settled.value);
       return;
     }
-    const root = this.#rootOf(resolver);
+    const root = rootOf(this.#heap, resolver);
     if (isCase(root)) {
       const wait = this.#waitOf(root);
       if (wait.state.kind !== 'pending' && !this.#keeps(wait, future)) {
@@ -204,18 +195,11 @@ export class Waits {
 
   /**
    * Resolves what is registered on `resolved`, futures that resolved together, each with what
-   * `settled` says its future resolved with, in rank order (`#rank`): what something ranked
-   * earlier decided first, a resolver taking nothing then, is cancelled.
+   * `settled` says its future resolved with, in the order they decide (settle-order.ts): what
+   * something earlier decided first, a resolver taking nothing then, is cancelled.
    */
   settle(resolved: ReadonlySet<number>, settled: (future: number) => Settled): void {
-    const ranked = [...this.#registrations(resolved)]
-      .map((registration) => ({ registration, rank: this.#rank(registration.resolver) }))
-      .toSorted(
-        (first, second) =>
-          compareRanks(first.rank, second.rank) ||
-          first.registration.order - second.registration.order,
-      );
-    for (const { registration } of ranked) {
+    for (const registration of settleOrder(this.#heap, resolved)) {
       const resolver = this.#heap.of(registration.resolver.id, 'resolver');
       if (isPending(resolver) && !this.#take(resolver, settled(registration.future).value)) {
         this.#lose(resolver, { kind: 'cancelled' });
@@ -228,7 +212,7 @@ export class Waits {
    * its cases' `onAwait`s ran, so the resolvers made after are cancelled now, every case known.
    */
   stopped(waiter: LiveExecution): void {
-    const wait = this.#stoppedWait(waiter);
+    const wait = stoppedWait(this.#heap, waiter);
     if (wait?.state.kind === 'decided') {
       this.#ready(waiter, wait, wait.state);
     }
@@ -239,11 +223,11 @@ export class Waits {
    * watch of its own call, by position: the case a disposal of that call resumes it on (§7).
    */
   cleanupCase(waiter: LiveExecution): number | undefined {
-    const wait = this.#stoppedWait(waiter);
+    const wait = stoppedWait(this.#heap, waiter);
     const resolver =
       wait === undefined
         ? undefined
-        : this.#pendingCases(wait).find(({ state }) =>
+        : pendingCases(this.#heap, wait).find(({ state }) =>
             state.on.some((future) => this.#seams.watchesCall(waiter, future)),
           );
     return resolver?.state.target.position;
@@ -259,7 +243,7 @@ export class Waits {
     if (id === undefined) {
       return undefined;
     }
-    for (const resolver of this.#pendingCases({ id })) {
+    for (const resolver of pendingCases(this.#heap, { id })) {
       this.#cancel(resolver);
     }
     const { state } = this.#heap.of(id, 'wait');
@@ -288,14 +272,14 @@ export class Waits {
    * decided that already; whether it did. Its pending `Resolver.at` ones lose.
    */
   #take(resolver: PendingResolver, value: Value): boolean {
-    const { target } = this.#rootOf(resolver).state;
+    const { target } = rootOf(this.#heap, resolver).state;
     if (target.kind === 'case' && this.#heap.of(target.wait, 'wait').state.kind !== 'pending') {
       return false;
     }
     this.#replace(resolver, { kind: 'resolved' });
     const own = resolver.state.target;
     if (own.kind === 'at') {
-      this.#take(this.#pendingOf(own.done), positioned(own.position, value));
+      this.#take(pendingOf(this.#heap, own.done), positioned(own.position, value));
     } else if (own.kind === 'case') {
       this.#decide(own, value);
     } else {
@@ -305,23 +289,14 @@ export class Waits {
     return true;
   }
 
-  /**
-   * What the pending `resolver` comes down to deciding: itself, or what the resolver a
-   * `Resolver.at` one decides comes down to, pending as long as it is.
-   */
-  #rootOf(resolver: PendingResolver): PendingResolver {
-    const { target } = resolver.state;
-    return target.kind === 'at' ? this.#rootOf(this.#pendingOf(target.done)) : resolver;
-  }
-
   /** Decides the pending wait `target` names at its case with `value`, readying its waiter. */
   #decide({ wait: id, position }: CaseTarget, value: Value): void {
     const wait = this.#heap.of(id, 'wait');
     const decision = { position, value };
     const decided: Wait = { ...wait, state: { kind: 'decided', ...decision } };
     this.#heap.replace(decided);
-    const waiter = this.#waiterOf(wait);
-    if (waiter !== undefined && this.#stoppedWait(waiter)?.id === wait.id) {
+    const waiter = waiterOf(this.#heap, wait);
+    if (waiter !== undefined && stoppedWait(this.#heap, waiter)?.id === wait.id) {
       this.#ready(waiter, decided, decision);
     } else {
       this.#cancelLosers(decided);
@@ -339,7 +314,7 @@ export class Waits {
    * lets go of what it awaited, a losing case's (spec §8), which may wait in a slot's queue.
    */
   #cancelLosers(wait: Wait): void {
-    for (const other of this.#pendingCases(wait)) {
+    for (const other of pendingCases(this.#heap, wait)) {
       if (!other.state.on.some((future) => this.#keeps(wait, future))) {
         this.#cancel(other);
         this.#heap.noteLosersReleased();
@@ -349,7 +324,7 @@ export class Waits {
 
   /** Whether a resolver of `wait`, decided, stays registered on `future`: its own call's watch. */
   #keeps(wait: Wait, future: number): boolean {
-    const waiter = this.#waiterOf(wait);
+    const waiter = waiterOf(this.#heap, wait);
     return waiter !== undefined && this.#seams.watchesCall(waiter, future);
   }
 
@@ -380,11 +355,11 @@ export class Waits {
     this.#end(resolver, state);
     const { target } = resolver.state;
     if (target.kind === 'at') {
-      this.#lose(this.#pendingOf(target.done), state);
+      this.#lose(pendingOf(this.#heap, target.done), state);
     }
   }
 
-  /** Cancels the pending `Resolver.at` resolvers deciding `resolver`, which no longer is pending. */
+  /** Cancels the pending `Resolver.at` resolvers deciding `resolver`, no longer pending. */
   #cancelPositions(resolver: Resolver): void {
     for (const position of this.#heap.find('positions', resolver.id)) {
       this.#cancel(position);
@@ -397,98 +372,11 @@ export class Waits {
     this.#heap.noteReleased([resolver.id]);
   }
 
-  /** The registrations on `resolved` of the resolvers pending, each at its earliest among them. */
-  #registrations(resolved: ReadonlySet<number>): Iterable<Registration> {
-    const earliest = new Map<number, Registration>();
-    for (const future of resolved) {
-      for (const resolver of this.#heap.find('resolvers', future).filter(isPending)) {
-        const order = resolver.state.on.indexOf(future);
-        const known = earliest.get(resolver.id);
-        if (known === undefined || order < known.order) {
-          earliest.set(resolver.id, { resolver, future, order });
-        }
-      }
-    }
-    return earliest.values();
-  }
-
-  /**
-   * Where the pending `resolver` ranks among those resolving together, lowest first: what decides a
-   * wait, by its waiter's creation then its case, before `Resolver.of` ones, by creation; a
-   * `Resolver.at` one as what it decides, then by its position.
-   */
-  #rank(resolver: PendingResolver): readonly bigint[] {
-    const { target } = resolver.state;
-    if (target.kind === 'at') {
-      return [...this.#rank(this.#pendingOf(target.done)), target.position];
-    }
-    return target.kind === 'case'
-      ? [0n, BigInt(this.#heap.of(target.wait, 'wait').waiter), BigInt(target.position)]
-      : [1n, BigInt(resolver.id)];
-  }
-
-  /**
-   * The execution waiting on `wait`; none for a disposal's call run on a carrier of its own, which
-   * isn't on the heap (../segment/disposal-runs.ts) and never stops at a wait, since a `dispose`
-   * can't await.
-   */
-  #waiterOf(wait: Wait): LiveExecution | undefined {
-    return this.#heap.has(wait.waiter) ? this.#heap.of(wait.waiter, 'execution') : undefined;
-  }
-
-  /** The wait `waiter` is stopped at, if it is. */
-  #stoppedWait(waiter: LiveExecution): Wait | undefined {
-    const top = waiter.frames.at(-1);
-    const id = top === undefined ? undefined : stoppedAt(top);
-    return id === undefined ? undefined : this.#heap.of(id, 'wait');
-  }
-
-  /** The resolvers of `wait`'s cases still pending. */
-  #pendingCases(wait: Pick<Wait, 'id'>): readonly CaseResolver[] {
-    return this.#heap.find('cases', wait.id).filter(isCase);
-  }
-
   #waitOf(resolver: CaseResolver): Wait {
     return this.#heap.of(resolver.state.target.wait, 'wait');
-  }
-
-  /**
-   * The resolver `id`, which a pending `Resolver.at` one decides, so pending itself: deciding a
-   * resolver cancels the `Resolver.at` ones deciding it.
-   */
-  #pendingOf(id: number): PendingResolver {
-    const resolver = this.#heap.of(id, 'resolver');
-    return isPending(resolver) ? resolver : unreachable(`Resolver ${id} decided already.`);
   }
 
   #resolver(handle: Value): Resolver {
     return this.#heap.of(handleObject(handle), 'resolver');
   }
-}
-
-function isPending(resolver: Resolver): resolver is PendingResolver {
-  return resolver.state.kind === 'pending';
-}
-
-function isCase(resolver: Resolver): resolver is CaseResolver {
-  return resolver.state.kind === 'pending' && resolver.state.target.kind === 'case';
-}
-
-/** What a `Resolver.at` resolver decides its resolver with: `(position, value)`. */
-function positioned(position: bigint, value: Value): Value {
-  return { kind: 'tuple', elements: [position, value] };
-}
-
-/** Orders two ranks (`Waits.#rank`) element by element, a prefix first. */
-function compareRanks(first: readonly bigint[], second: readonly bigint[]): number {
-  for (const [index, element] of first.entries()) {
-    const other = second[index];
-    if (other === undefined) {
-      return 1;
-    }
-    if (element !== other) {
-      return element < other ? -1 : 1;
-    }
-  }
-  return first.length < second.length ? -1 : 0;
 }

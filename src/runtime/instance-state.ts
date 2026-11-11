@@ -6,8 +6,8 @@
  * the host wakes it now. A finished instance has its outcome, the value its function returned, and
  * that outcome as `Json` when its type has a codec writing it, which is what a host reads (§9).
  *
- * It is derived from the committed snapshot alone (scheduler/wake.ts `stateOf`), so what a host is
- * told is always what a restarted runtime would tell it. Advancing an instance also says what a
+ * It is derived from the committed snapshot alone (scheduler/inspect.ts `stateOf`), so what a host
+ * is told is always what a restarted runtime would tell it. Advancing an instance also says what a
  * snapshot doesn't tell (`Advanced`): which instances it spawned, which the host runs too, and the
  * log records its committed segments wrote (§3.8 `log`), which no snapshot keeps.
  */

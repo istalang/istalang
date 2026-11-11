@@ -2,7 +2,7 @@
  * The natives of the prelude's waits (proposal 8, Rule 5): a future's `onAwait`, the runtime's
  * awaitable, and a `Resolver`'s `resolve`, `tryResolve`, `Resolver.of`, `Resolver.at` and
  * `onCancel`. Deciding a wait, the order waits decided together resume in, and when a callback runs
- * are the runtime's (runtime/scheduler/instance/waits.ts).
+ * are the runtime's (runtime/scheduler/instance/waits/index.ts).
  */
 
 import { functionKey, parameterKey, tupleKey } from '../../definition/extern-key.ts';

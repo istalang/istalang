@@ -21,8 +21,8 @@
  *   when the failed segment started, so a retry sees the same time. One `runtime.isolate` started
  *   is then terminated at once, as an operator would (§9). Its log records are lost with it, as a
  *   discarded run's are: only a commit reports a segment's logs (§3.8 `log`).
- * - A context (§9) is an instance named by its key, made running nothing (`newContext`): each call a
- *   host makes into it, an invocation, starts the first segment of an advance as an answer does,
+ * - A context (§9) is an instance named by its key, made running nothing (`newContext`): each call
+ *   a host makes into it, an invocation, starts the first segment of an advance as an answer does,
  *   the answer named by the host's token, and a retry of a segment it started replays it.
  * - A segment also starts by resolving the watches whose condition holds: another instance's end,
  *   read from its last commit in the store (instance/instance-ends.ts), and under a test (§10) a
@@ -31,9 +31,9 @@
  *   gives are, like its spawns, effects of its commit, which the advance reports for the world to
  *   deliver; it ends at that commit, so the answers arrive, and the instances they wake run, before
  *   this instance runs on.
- * - Where the instance stands afterwards is read from the last commit (`stateOf`), the one place
- *   a host's view of an instance comes from: one whose commit left executions ready, as an advance
- *   ended at its answers leaves them, is ready, so its host advances it again.
+ * - Where the instance stands afterwards is read from the last commit (inspect.ts `stateOf`), the
+ *   one place a host's view of an instance comes from: one whose commit left executions ready, as
+ *   an advance ended at its answers leaves them, is ready, so its host advances it again.
  */
 
 import { encodeJson } from '../../definition/formats/codec.ts';
@@ -49,6 +49,7 @@ import {
   snapshotFormat,
 } from '../snapshot/snapshot.ts';
 import type { InstanceStore } from '../store.ts';
+import { stateOf } from './inspect.ts';
 import { arriving } from './instance/crossing.ts';
 import type { Answered } from './instance/futures.ts';
 import type { Instance } from './instance/index.ts';
@@ -67,8 +68,8 @@ export interface SchedulerSeams {
 
 /**
  * How a new instance begins: the options it keeps for life, its random source's seed, and the entry
- * encoding its outcome as JSON for its host (§9) when a codec writes the outcome's type, the one its
- * start lists or its `Instance<T>` type entry names.
+ * encoding its outcome as JSON for its host (§9) when a codec writes the outcome's type, the one
+ * its start lists or its `Instance<T>` type entry names.
  */
 export interface Beginning extends SpawnOptions {
   readonly seed: string;
@@ -185,8 +186,8 @@ export function advance(
     }
     spawned.push(...commitChildren(seams.store, instance));
     const next = commit(seams.store, instance.snapshot(statusOf(end), objectsOf(end)));
-    logs.push(...instance.logs());
-    const given = instance.answered();
+    logs.push(...instance.effects.logs());
+    const given = instance.effects.answered();
     answered.push(...given);
     resident.committedBy(instance, next);
     if (end.kind === 'finished' || given.length > 0) {
@@ -211,7 +212,7 @@ export function terminate(seams: SchedulerSeams, resident: Resident): Advanced {
   const { message, trace } = status;
   const ended = commit(seams.store, instance.snapshot({ kind: 'terminated', message, trace }, []));
   resident.frozenAt(ended);
-  return { state: stateOf(ended), spawned, logs: instance.logs() };
+  return { state: stateOf(ended), spawned, logs: instance.effects.logs() };
 }
 
 /** What a retry runs again after a segment from `status`, starting with `step`, panicked. */
@@ -304,7 +305,7 @@ function runText({ instance, end }: SegmentRun): string {
     ...[instance.snapshot(statusOf(end), objectsOf(end)), ...childrenOf(instance)].map(
       (snapshot) => snapshotFormat.write(snapshot).text,
     ),
-    encodeJson(instance.logs()),
+    encodeJson(instance.effects.logs()),
   ].join('\n');
 }
 
@@ -330,7 +331,7 @@ function commitChildren(store: InstanceStore, instance: Instance): readonly stri
 
 /** The instances `instance`'s segment spawned, as their `unstarted` snapshots, in spawn order. */
 function childrenOf(instance: Instance): readonly Snapshot[] {
-  return instance
+  return instance.effects
     .spawns()
     .map(({ name, call, ...beginning }) => unstarted(instance.loaded, name, call, beginning));
 }
@@ -356,49 +357,4 @@ function statusOf(
   end: Exclude<SegmentEnd, { kind: 'panicked' }>,
 ): Exclude<Snapshot['status'], { kind: 'panicked' | 'unstarted' }> {
   return end.kind === 'finished' ? end : { kind: 'active' };
-}
-
-/** What a committed snapshot says about its instance. */
-export function stateOf(snapshot: Snapshot): InstanceState {
-  const { status } = snapshot;
-  switch (status.kind) {
-    case 'unstarted':
-      return { kind: 'ready' };
-    case 'active':
-      return snapshot.ready.length > 0
-        ? { kind: 'ready' }
-        : { kind: 'waiting', until: nextTimerOf(snapshot), watching: watchedOf(snapshot) };
-    case 'finished':
-      return status;
-    case 'panicked':
-      return { kind: 'panicked', message: status.message, trace: status.trace };
-    case 'terminated':
-      return status;
-    default: {
-      const unhandled: never = status;
-      return unhandled;
-    }
-  }
-}
-
-/** The instances whose end `snapshot`'s instance waits for (§9), each once. */
-function watchedOf(snapshot: Snapshot): readonly string[] {
-  const watched = snapshot.objects.flatMap((object) =>
-    object.kind === 'future' && object.state.kind === 'watch' && object.state.until.kind === 'ended'
-      ? [object.state.instance]
-      : [],
-  );
-  return [...new Set(watched)];
-}
-
-function nextTimerOf(snapshot: Snapshot): bigint | undefined {
-  return snapshot.objects.reduce<bigint | undefined>(
-    (earliest, object) =>
-      object.kind === 'future' &&
-      object.state.kind === 'timer' &&
-      (earliest === undefined || object.state.at < earliest)
-        ? object.state.at
-        : earliest,
-    undefined,
-  );
 }

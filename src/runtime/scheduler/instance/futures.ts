@@ -2,8 +2,8 @@
  * The futures of a running instance (spec §6): every wait is on one, and a future resolves once
  * and stays resolved.
  *
- * - Who waits on a future is the resolvers registered on it (waits.ts): resolving it decides them.
- *   No future waits on another; code that waits on several registers a resolver on each, as
+ * - Who waits on a future is the resolvers registered on it (waits/index.ts): resolving it decides
+ *   them. No future waits on another; code that waits on several registers a resolver on each, as
  *   `futures.first` registers a `Resolver.at` of its own.
  * - An answer to another instance's call to a mock (§10) waits on a future too. When it resolves
  *   with a future, as the replacement of a function returning one does, the answer waits on that
@@ -20,7 +20,7 @@ import type { FutureState, Watch } from '../../snapshot/objects.ts';
 import type { CallerFuture } from '../testing/test-world.ts';
 import type { DisposalNotices } from './disposal-notices.ts';
 import { type Heap, handleObject, type LiveObjectOf } from './heap.ts';
-import type { Waits } from './waits.ts';
+import type { Waits } from './waits/index.ts';
 
 /** A future that has resolved, with its value. */
 export interface Settled {

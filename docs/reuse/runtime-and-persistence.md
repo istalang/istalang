@@ -16,7 +16,7 @@ tags: [reuse, runtime, snapshot, persistence, scheduler, lifetimes, host]
 - define a versioned format `{ format, version, body }` with depth/zod validation → `defineFormat`, `Format`, `FormatError` (`src/definition/formats/format.ts`)
 - read or write a persisted `Definition` text → `definitionFormat` (`src/definition/definition.ts`); read a text together with its canonical text and hash, never as a `read` then a `write` → `Format.readCanonical` (`src/definition/formats/format.ts`)
 - read or write a persisted `Snapshot` text → `snapshotFormat` (`src/runtime/snapshot/snapshot.ts`)
-- validate a `Snapshot` against its `Definition` before restoring → `checkSnapshot` (`src/runtime/snapshot/check.ts`)
+- validate a `Snapshot` against its `Definition` before restoring → `checkSnapshot` (`src/runtime/snapshot/check/index.ts`)
 - query what a `HeapObject` holds or watches → `isRoot`, `heldObjects`, `valuesIn`, `referencedObjects` (`src/runtime/snapshot/holdings.ts`)
 - query what a `HoldingFrame` holds in its registers or cells → `frameValues`, `frameCells` (`src/runtime/snapshot/holdings.ts`)
 - check whether a register's contents is a `&` reference → `isReference` (`src/runtime/snapshot/objects.ts`)
@@ -36,13 +36,13 @@ tags: [reuse, runtime, snapshot, persistence, scheduler, lifetimes, host]
 - inspect an instance's committed state and waiting points → `inspection` (`src/runtime/scheduler/inspect.ts`), `hasEnded` (`src/runtime/instance-state.ts`)
 - spawn an instance from a native, its outcome encoded by its `Instance<T>` type entry's encoder → `NativeInstances.spawn` (`src/runtime/natives.ts`), the one spawning seam; never a second spawn path
 - an instance's outcome, its root call's answer (code or an extern), awaited through an `outcome` object when a future and encoded for its host → `RootOutcome` (`src/runtime/scheduler/segment/root-outcome.ts`); what a value leaving its instance ends with, futures followed → `Futures.endOf` (`src/runtime/scheduler/instance/futures.ts`)
-- advance, terminate or derive `InstanceState` from a `Snapshot` → `advance`, `terminate`, `unstarted`, `stateOf` (`src/runtime/scheduler/wake.ts`)
+- advance or terminate an instance → `advance`, `terminate`, `unstarted` (`src/runtime/scheduler/wake.ts`); derive `InstanceState` from a `Snapshot` → `stateOf` (`src/runtime/scheduler/inspect.ts`)
 - hold an instance between host calls, running on from its last commit → `Resident` (`src/runtime/scheduler/resident.ts`)
 - run live code to its end in memory, never committing → `runLive` (`src/runtime/scheduler/live-run.ts`); one segment of it → `startLiveSegment`, `runLiveSegment` (`src/runtime/scheduler/segment/index.ts`)
 - tell how a run waits (committing, or in memory), resume a live wait once from the host's event loop, or read what panics a resumed live run → `Waiting`, `istaWaiting`, `LiveResumes`, `resumedPanicOf` (`src/runtime/scheduler/waiting.ts`)
 - observe from outside the language the disposal of a future or a resource the runtime disposes itself, told at once in a live run and at the commit in an instance → `DisposalNotices` (`src/runtime/scheduler/instance/disposal-notices.ts`), as natives reach it for futures `NativeFutures.onDisposed` (`src/runtime/natives.ts`)
 - give a live run a future something outside it resolves, with its one-shot resolver and cancellation → `liveResolvable` (`src/runtime/scheduler/live-resolvers.ts`), as natives reach it, `NativeFutures.resolvable` (`src/runtime/natives.ts`)
-- open a wait, make its case resolvers, a `Resolver.of` or a `Resolver.at` one, register one on futures, resolve or cancel one, decide the wait when futures resolve together, or end it as the waiter moves on → `Waits` (`src/runtime/scheduler/instance/waits.ts`); queue what is ready, waiters and the runs of callbacks a resolver readied, and take the next → `ReadyQueue` (`src/runtime/scheduler/instance/ready.ts`); find the wait a frame stands at, resume or enter a case as decided, let go of a `select`'s losers → `stoppedAt`, `takeWait`, `resume`, `enterCase`, `releaseLosers` (`src/runtime/interpreter/suspension.ts`)
+- open a wait, make its case resolvers, a `Resolver.of` or a `Resolver.at` one, register one on futures, resolve or cancel one, decide the wait when futures resolve together, or end it as the waiter moves on → `Waits` (`src/runtime/scheduler/instance/waits/index.ts`); queue what is ready, waiters and the runs of callbacks a resolver readied, and take the next → `ReadyQueue` (`src/runtime/scheduler/instance/ready.ts`); find the wait a frame stands at, resume or enter a case as decided, let go of a `select`'s losers → `stoppedAt`, `takeWait`, `resume`, `enterCase`, `releaseLosers` (`src/runtime/interpreter/suspension.ts`)
 - let go of what nothing holds without committing → `Instance.dropUnheld` (`src/runtime/scheduler/instance/index.ts`)
 - run a host's calls on one instance one after another → `InstanceCalls` (`src/runtime/host/instance-calls.ts`)
 - run the contexts a live run's runtimes reach: calls into them, resuming the store's instances on the first open, their timers and fills → `Contexts` (`src/runtime/host/contexts.ts`), seen by the run as `RunContexts` (`src/runtime/scheduler/run-contexts.ts`); a new context's snapshot → `newContext`; the instances a runtime serves the jobs of → `RunContexts.served`
@@ -75,6 +75,6 @@ tags: [reuse, runtime, snapshot, persistence, scheduler, lifetimes, host]
 
 1. Add the zod schema to `heapObject` or `futureState` in `src/runtime/snapshot/objects.ts`.
 2. Add its holding and watching rules to `kinds` or `futureStates` in `src/runtime/snapshot/holdings.ts`.
-3. Add its load-time check to `kindProblems` in `src/runtime/snapshot/check.ts` and its disposal rule to `src/runtime/lifetimes/disposal.ts`.
+3. Add its load-time check to `kindProblems` in `src/runtime/snapshot/check/index.ts` and its disposal rule to `src/runtime/lifetimes/disposal.ts`.
 4. If it is indexed in memory, add the derived index to `Heap` (`src/runtime/scheduler/instance/heap.ts`).
 5. If it is a root keeping values, hold them as a frame through `keptFrame` (`src/runtime/snapshot/holdings.ts`), which `Instance.keptFrames` gives both the collector and the commit.

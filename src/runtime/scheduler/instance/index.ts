@@ -5,7 +5,7 @@
  * the scheduler runs it in between (../segment/, wake.ts).
  *
  * - An execution waits at its top frame's `await` or `select`, on the wait its register holds
- *   (waits.ts). It is ready once that is decided, and executions run in the order they became
+ *   (waits/index.ts). It is ready once that is decided, and executions run in the order they became
  *   ready (§6), among the callbacks resolvers readied (ready.ts).
  * - The root execution, the one the instance started with, is the one that resolves no call
  *   future.
@@ -13,13 +13,8 @@
  *   was disposable and lost its last holder was disposed where it lost it, so what is left out is
  *   only what no one can observe any more.
  * - Stopping an execution (§7: its call future disposed) lets go of everything its frames hold.
- * - What a segment spawns becomes instances only when the segment commits (wake.ts), so a segment
- *   that is discarded spawned nothing. So do the answers it gave other instances' calls to its
- *   mocks (§10): each fills its caller's future once the segment commits. The log records it wrote
- *   reach the host only then too (§3.8 `log`).
- * - Its random values are draws from the source its snapshot keeps (random.ts), counted
- *   from the draws committed before the segment, so a segment that runs again draws the same ones.
- *   Each instance it spawns is seeded with the first bytes of a draw.
+ * - What a segment spawns, answers, logs and draws is real only once it commits
+ *   (segment-effects.ts, wake.ts), so a segment that is discarded did none of it.
  * - A mock this instance holds replaces its target for the calls it makes itself (`mockOf`); one an
  *   instance it descends from holds replaces it too, through the runtime running the test.
  * - The instance is its frames' heap (interpreter/machine.ts): a variable passed by `&` is a cell
@@ -31,7 +26,6 @@
 import type { FunctionId } from '../../../definition/operands.ts';
 import { handlesIn, type Value } from '../../../definition/values/values.ts';
 import { unreachable } from '../../../foundation/structures/unreachable.ts';
-import type { LogRecord, SpawnOptions } from '../../instance-state.ts';
 import type { ActiveFrame, FrameEntry, FrameHeap } from '../../interpreter/frames.ts';
 import { newFrame, releaseFrame } from '../../interpreter/machine.ts';
 import type { Passed } from '../../interpreter/registers.ts';
@@ -40,32 +34,20 @@ import { isDisposable } from '../../lifetimes/disposal.ts';
 import { heldFrom } from '../../lifetimes/holders.ts';
 import { type HoldingFrame, heldObjects, isRoot, keptFrame } from '../../snapshot/holdings.ts';
 import { type HeapObject, isReference } from '../../snapshot/objects.ts';
-import { drawOf, seedFrom } from '../../snapshot/random.ts';
-import type { InstanceCall, Snapshot } from '../../snapshot/snapshot.ts';
+import type { Snapshot } from '../../snapshot/snapshot.ts';
 import type { LoadedDefinition } from '../loaded-definition.ts';
 import { reachingMock } from '../testing/mocks.ts';
 import { ContextConstants } from './context-constants.ts';
 import { leaving } from './crossing.ts';
 import { DisposalNotices } from './disposal-notices.ts';
-import { type Answered, Futures } from './futures.ts';
+import { Futures } from './futures.ts';
 import { Heap, type LiveExecution, type LiveObject, type LiveObjectOf } from './heap.ts';
-import { spawnedName } from './instance-names.ts';
 import { liveObject, storedObject } from './live-objects.ts';
 import { ReadyQueue, type ReadyToRun } from './ready.ts';
+import { SegmentEffects } from './segment-effects.ts';
 import { Slots } from './slots.ts';
-import { Waits } from './waits.ts';
+import { Waits } from './waits/index.ts';
 import { WeakSide } from './weak-side.ts';
-
-/**
- * A call this segment spawned (§9): the new instance's name, what it calls, its own options, the
- * seed of its random source, drawn from this instance's, and its outcome's encoder.
- */
-export interface Spawn extends Required<SpawnOptions> {
-  readonly name: string;
-  readonly call: InstanceCall;
-  readonly seed: string;
-  readonly encoder: FunctionId | undefined;
-}
 
 export type InstanceStatus = Snapshot['status'];
 
@@ -99,20 +81,15 @@ export class Instance {
    * where it ran.
    */
   #from: Snapshot;
-  #spawns: Spawn[] = [];
-  #answered: Answered[] = [];
-  #logs: LogRecord[] = [];
-  /** How many random draws this segment made. */
-  #draws = 0;
+  /** What this segment did that only its commit makes real. */
+  readonly effects: SegmentEffects;
   readonly #constants: ContextConstants;
   readonly #ready: ReadyQueue;
-  /** The extern constants read before this segment, and those it read itself (§3.6). */
-  readonly #pinned: Map<string, Value>;
 
   private constructor(loaded: LoadedDefinition, snapshot: Snapshot) {
     this.loaded = loaded;
     this.#from = snapshot;
-    this.#pinned = new Map(snapshot.pinned.map(({ key, value }) => [key, value]));
+    this.effects = new SegmentEffects(() => this.#from);
     this.heap = new Heap(
       snapshot.objects.map((object) => liveObject(loaded.definition, object, this.frameHeap)),
     );
@@ -132,7 +109,7 @@ export class Instance {
       },
     });
     this.futures = new Futures(this.heap, this.waits, this.notices, (answered) => {
-      this.#answered.push({ ...answered, value: leaving(this, answered.value) });
+      this.effects.answer({ ...answered, value: leaving(this, answered.value) });
     });
     this.slots = new Slots(this.heap, this.futures);
     this.weak = new WeakSide(this.heap, this.futures);
@@ -216,10 +193,8 @@ export class Instance {
     const active = status.kind === 'active';
     return {
       ...this.#from,
+      ...this.effects.committing(),
       status,
-      spawned: this.#from.spawned + this.#spawns.length,
-      random: { ...this.#from.random, draws: this.#from.random.draws + this.#draws },
-      pinned: [...this.#pinned].map(([key, value]) => ({ key, value })),
       objects: active ? [...objects] : [],
       ready: active ? [...this.#ready.ids] : [],
     };
@@ -233,10 +208,7 @@ export class Instance {
   continueFrom(committed: Snapshot): void {
     this.heap.keepOnly(new Set(committed.objects.map(({ id }) => id)));
     this.#from = committed;
-    this.#spawns = [];
-    this.#answered = [];
-    this.#logs = [];
-    this.#draws = 0;
+    this.effects.clear();
   }
 
   /** The instance's name, as its host gave it or as its parent's spawn made it (§9). */
@@ -260,66 +232,6 @@ export class Instance {
   }
 
   /**
-   * What the extern constant `key` gives this instance: what `read` gives the first time any of
-   * its segments reads it, and that same value ever after (§3.6).
-   */
-  pinned(key: string, read: () => Value): Value {
-    const known = this.#pinned.get(key);
-    if (known !== undefined) {
-      return known;
-    }
-    const value = read();
-    this.#pinned.set(key, value);
-    return value;
-  }
-
-  /** The calls this segment spawned, each a new instance once the segment commits (§9). */
-  spawns(): readonly Spawn[] {
-    return this.#spawns;
-  }
-
-  /** How many instances this one spawned before its current segment, which numbers the next. */
-  get spawnedBefore(): number {
-    return this.#from.spawned;
-  }
-
-  /**
-   * Records `call` as spawned by this segment, with `options`, and with `crashEveryAwait` too when
-   * this instance runs with it (§9, §10), its outcome encoded by `encoder`; the name the new
-   * instance will have.
-   */
-  spawn(call: InstanceCall, options: SpawnOptions, encoder: FunctionId | undefined): string {
-    const name = spawnedName(this.name, this.spawnedBefore + this.#spawns.length + 1);
-    this.#spawns.push({
-      name,
-      call,
-      crashEveryAwait: this.crashEveryAwait || options.crashEveryAwait === true,
-      terminatesOnPanic: options.terminatesOnPanic === true,
-      encoder,
-      seed: seedFrom(this.draw()),
-    });
-    return name;
-  }
-
-  /** The next draw from this instance's random source (§3.8 `random`). */
-  draw(): Uint8Array {
-    const { seed, draws } = this.#from.random;
-    const index = draws + this.#draws;
-    this.#draws += 1;
-    return drawOf(seed, index);
-  }
-
-  /** Records `record`, which reaches the host once this segment commits (§3.8 `log`). */
-  log(record: LogRecord): void {
-    this.#logs.push(record);
-  }
-
-  /** The log records this segment wrote, in order. */
-  logs(): readonly LogRecord[] {
-    return this.#logs;
-  }
-
-  /**
    * What the instance's roots other than executions and runs hold: the futures the answers still to
    * give other instances' calls wait on (§10), and its outcome, once its root gave a future (§9).
    */
@@ -337,11 +249,6 @@ export class Instance {
     return [...this.heap.objectsOf('run'), ...this.heap.objectsOf('contextConstant')].map(
       keptFrame,
     );
-  }
-
-  /** The answers this segment gave other instances' calls, each filled once it commits (§10). */
-  answered(): readonly Answered[] {
-    return this.#answered;
   }
 
   /** The mock this instance holds for `target`: the newest, the one a call reaches (§10). */

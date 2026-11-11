@@ -5,7 +5,8 @@
  * - A run is a root object holding a callback's function and arguments (snapshot/objects.ts), so
  *   what it calls with is committed while it waits its turn, and a segment a crash discards readied
  *   nothing. Taking it off the queue takes it off the heap: the segment reaching it makes the call.
- * - A waiter is moved past its wait as it is taken, its decision read off the wait (waits.ts).
+ * - A waiter is moved past its wait as it is taken, its decision read off the wait
+ *   (waits/index.ts).
  * - An instance that ends (§3.12) runs nothing more: closing the queue drops its runs, so what they
  *   would have called with is let go of and disposed with the rest, and readies none after.
  */
@@ -14,7 +15,7 @@ import { closureOf, type Value } from '../../../definition/values/values.ts';
 import { unreachable } from '../../../foundation/structures/unreachable.ts';
 import { resume } from '../../interpreter/suspension.ts';
 import type { Heap, LiveExecution, LiveObjectOf } from './heap.ts';
-import type { Waits } from './waits.ts';
+import type { Waits } from './waits/index.ts';
 
 /** What is ready taken off the queue: a waiter moved past its wait, or a run whose call to make. */
 export type ReadyToRun = LiveExecution | LiveObjectOf<'run'>;

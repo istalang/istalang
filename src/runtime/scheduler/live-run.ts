@@ -60,7 +60,11 @@ export async function runLive(
 /** Runs the live run `instance`, waiting as `waiting` says, to its end. */
 async function runToEnd(clock: Clock, instance: Instance, waiting: LiveWaiting): Promise<Advanced> {
   const { resumes } = waiting;
-  const ended = (state: InstanceState): Advanced => ({ state, spawned: [], logs: instance.logs() });
+  const ended = (state: InstanceState): Advanced => ({
+    state,
+    spawned: [],
+    logs: instance.effects.logs(),
+  });
   let end = startLiveSegment(instance, clock.now, waiting, instance.root());
   while (end.kind === 'awaited' || end.kind === 'idle') {
     instance.dropUnheld();

@@ -23,7 +23,7 @@
  * spawned instance as it runs any other.
  *
  * Validation checks that ids ascend and that every object id refers to an object of this
- * snapshot. Checks that need the Definition, such as pc ranges, are check.ts's, run when the
+ * snapshot. Checks that need the Definition, such as pc ranges, are check/index.ts's, run when the
  * runtime reads a snapshot back.
  */
 

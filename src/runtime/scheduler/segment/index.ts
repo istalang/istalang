@@ -9,21 +9,17 @@
  * commits one, reads the clock for `now()`, and panics where a promise's JSON doesn't fit
  * (`startLiveSegment`, `runLiveSegment`).
  *
- * An async call starts its callee at once, inside the caller's segment: the callee's execution
- * runs on top of the caller's until it awaits or returns, and only then does the caller receive
- * its future and go on. The callee's first await doesn't commit. It gives control back, and the
- * callee's effects so far commit or roll back with the caller's segment. Executions on top of one
- * another form the run stack; it lives here, not on JavaScript's stack, so a deep chain of async
- * calls can't overflow it. When a segment ends, the run stack holds only its driver, and every
- * other execution stands at an `await`, as a snapshot requires. Every call is a `call`
- * instruction, so a program's calls never nest on JavaScript's stack.
+ * An async call starts its callee at once, inside the caller's segment, on top of the caller on
+ * the run stack (run-stack.ts) until it awaits or returns, and only then does the caller receive
+ * its future and go on (returns.ts). The callee's first await doesn't commit: its effects so far
+ * commit or roll back with the caller's segment. When a segment ends, the run stack holds only its
+ * driver, and every other execution stands at an `await`, as a snapshot requires.
  *
  * What a segment leaves is persisted when it commits, so it must nest no deeper than a snapshot
  * may (limits.ts).
  *
- * The root's answer is the instance's outcome, awaited when it is a future, and the instance's
- * encoder, if it has one, encodes the outcome for the host (root-outcome.ts): before the root's
- * last frame returns it, or as a root of its own once an outcome no frame returns arrives.
+ * The root's answer is the instance's outcome, awaited when it is a future, and encoded for the
+ * host by the instance's encoder (root-outcome.ts).
  *
  * After every instruction that let go of something, the segment collects (collection.ts): what
  * lost its last holder is disposed right there (§7). A disposal that runs code runs on the run
@@ -54,16 +50,10 @@ import { startAnswer } from '../testing/mocks.ts';
 import type { MockCall } from '../testing/test-world.ts';
 import { istaWaiting, type LiveWaiting, type Waiting } from '../waiting.ts';
 import { startInvocation } from './answering.ts';
-import {
-  type Caller,
-  type CallTarget,
-  handOver,
-  returnedValue,
-  runsAsExecution,
-  startCall,
-} from './calls.ts';
+import { type Caller, type CallTarget, handOver, runsAsExecution, startCall } from './calls.ts';
 import { SegmentCollection } from './collection.ts';
 import { NativeCalls } from './native-calls.ts';
+import { type DriveEnd, landReturn, leave, type ReturnSeams } from './returns.ts';
 import { type Arrival, type Outcome, RootOutcome } from './root-outcome.ts';
 import { RunCalls } from './run-calls.ts';
 import { RunStack } from './run-stack.ts';
@@ -129,9 +119,6 @@ export function endInstance(instance: Instance, startedAt: bigint): void {
   new SegmentRunner(instance, () => startedAt, istaWaiting).end();
 }
 
-/** How driving one execution ended. */
-type DriveEnd = 'awaited' | 'returned' | { readonly finished: Outcome };
-
 class SegmentRunner implements Machine {
   readonly #instance: Instance;
   readonly #caller: Caller;
@@ -140,6 +127,7 @@ class SegmentRunner implements Machine {
   readonly #collection: SegmentCollection;
   readonly #outcome: RootOutcome;
   readonly #runCalls = new RunCalls(this.#runStack);
+  readonly #returns: ReturnSeams;
   #end: DriveEnd | undefined;
 
   constructor(instance: Instance, now: () => bigint, waiting: Waiting) {
@@ -152,6 +140,13 @@ class SegmentRunner implements Machine {
     const running = { instance, caller: this.#caller, runStack: this.#runStack };
     this.#outcome = new RootOutcome(running);
     this.#collection = new SegmentCollection(running);
+    this.#returns = {
+      instance,
+      runStack: this.#runStack,
+      outcome: this.#outcome,
+      collection: this.#collection,
+      runCalls: this.#runCalls,
+    };
   }
 
   get definition() {
@@ -255,54 +250,7 @@ class SegmentRunner implements Machine {
   }
 
   return(frame: ActiveFrame, given: Value): void {
-    const returning = this.#outcome.returning(frame, given);
-    if (returning.kind === 'encode') {
-      return;
-    }
-    const value = returning.kind === 'return' ? returning.value : given;
-    const execution = this.#runStack.popFrame(frame);
-    releaseFrame(frame);
-    if (this.#collection.disposals.returned(execution, frame)) {
-      return;
-    }
-    const returned = returnedValue(this.#instance, frame, value);
-    const rootReturn = this.#outcome.returned(frame, returned);
-    if (rootReturn?.root !== undefined) {
-      this.return(rootReturn.root, rootReturn.outcome);
-      return;
-    }
-    if (rootReturn !== undefined) {
-      this.#end = { finished: this.#outcome.finished(rootReturn.outcome) };
-      return;
-    }
-    const caller = execution.frames.at(-1);
-    if (caller !== undefined) {
-      resumeAfterCall(caller, returned);
-      return;
-    }
-    if (this.#collection.disposals.suspended(execution)) {
-      return;
-    }
-    if (this.#runCalls.returned(execution)) {
-      this.#end = 'returned';
-      return;
-    }
-    const future = execution.resolves;
-    if (future === undefined && returning.kind === 'await') {
-      this.#instance.remove(execution);
-      this.#runStack.pop();
-      this.#waitsOn(returned);
-      this.#end = 'awaited';
-      return;
-    }
-    if (future === undefined) {
-      this.#end = { finished: this.#outcome.finished(returned) };
-      return;
-    }
-    this.#instance.remove(execution);
-    this.#instance.futures.resolve(future, returned);
-    const waits = frame.code.mode === 'simple' && this.#waitsOn(returned);
-    this.#leave(future, waits ? 'awaited' : 'returned');
+    this.#endWith(landReturn(this.#returns, frame, given));
   }
 
   wait(): void {
@@ -322,7 +270,14 @@ class SegmentRunner implements Machine {
     if (execution.resolves === undefined) {
       unreachable(`Execution ${execution.id} runs on top of another without a call future.`);
     }
-    this.#leave(execution.resolves, 'awaited');
+    this.#endWith(leave(this.#runStack, execution.resolves, 'awaited'));
+  }
+
+  /** Ends the drive with `end`, if the step that gave it ended it. */
+  #endWith(end: DriveEnd | undefined): void {
+    if (end !== undefined) {
+      this.#end = end;
+    }
   }
 
   openWait(): Value {
@@ -408,31 +363,5 @@ class SegmentRunner implements Machine {
       unreachable(`pc ${frame.pc} is past the end; loading checks termination.`);
     }
     runInstruction(this, frame, instruction);
-  }
-
-  /**
-   * Whether `returned`, what a simple driver gives, is a future still pending, which it then waits
-   * on as an async driver awaits: the segment ends, stopped where the call resolving it waits.
-   */
-  #waitsOn(returned: Value): boolean {
-    const awaited = this.#instance.futures.pendingIn(returned);
-    if (awaited === undefined) {
-      return false;
-    }
-    this.#runStack.stoppedIn(this.#instance.heap.find('executions', awaited)[0]);
-    return true;
-  }
-
-  /**
-   * Takes the top execution, which just awaited or returned, off the run stack. The execution
-   * under it receives the call's future; with none under it, the driver's run ends with `end`.
-   */
-  #leave(future: number, end: 'awaited' | 'returned'): void {
-    const caller = this.#runStack.pop();
-    if (caller === undefined) {
-      this.#end = end;
-      return;
-    }
-    resumeAfterCall(topFrame(caller), handleTo(future));
   }
 }

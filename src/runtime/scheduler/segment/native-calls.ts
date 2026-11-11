@@ -95,7 +95,7 @@ export class NativeCalls {
         },
       });
     return entry.kind === 'extern' && entry.constant
-      ? this.#instance.pinned(entry.key, run)
+      ? this.#instance.effects.pinned(entry.key, run)
       : run();
   }
 
@@ -202,14 +202,14 @@ function nativeResourcesOf(heap: Heap): NativeResources {
 
 /** The instance's random source as natives draw from it (§3.8 `random`). */
 function nativeRandomOf(instance: Instance): NativeRandom {
-  return { draw: () => instance.draw() };
+  return { draw: () => instance.effects.draw() };
 }
 
 /** The instance's log as natives write to it, each record stamped with its segment (§3.8 `log`). */
 function nativeLogsOf(instance: Instance, now: () => bigint): NativeLogs {
   return {
     write: (entry) => {
-      instance.log({ instance: instance.name, time: now(), ...entry });
+      instance.effects.log({ instance: instance.name, time: now(), ...entry });
     },
   };
 }
@@ -231,7 +231,7 @@ function nativeInstancesOf(instance: Instance, waiting: Waiting): NativeInstance
         unreachable('An instance is spawned with no function; the checker forbids it.');
       const call = { function: closure.function, captures: closure.captures, arguments: [] };
       const encoder = outcomeEncoderOf(instance.loaded.definition.types, type);
-      return instanceHandle(type, instance.spawn(call, options, encoder));
+      return instanceHandle(type, instance.effects.spawn(call, options, encoder));
     },
     ended: (name, result) =>
       instance.futures.createHandle({

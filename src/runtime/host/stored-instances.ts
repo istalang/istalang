@@ -8,7 +8,7 @@
 import { Refusal } from '../refusal.ts';
 import type { LoadedDefinition } from '../scheduler/loaded-definition.ts';
 import { Resident } from '../scheduler/resident.ts';
-import { checkSnapshot } from '../snapshot/check.ts';
+import { checkSnapshot } from '../snapshot/check/index.ts';
 import { snapshotFormat } from '../snapshot/snapshot.ts';
 import type { InstanceStore } from '../store.ts';
 
