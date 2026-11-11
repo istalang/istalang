@@ -4,11 +4,12 @@
  * an `await` or a `hold` can't reach past one.
  *
  * A function's header (its parameters' defaults) is code that runs but never waits: the callee
- * computes a default before its body starts (§3.3). So is a context constant's value, made at its
- * first read (§3.4). Only a top-level constant's value, computed when the program compiles (§3),
- * runs in no code.
+ * computes a default before its body starts (§3.3), as what builds a struct or a variant computes
+ * its fields' (§3.1). So is a context constant's value, made at its first read (§3.4). Only a
+ * top-level constant's value, computed when the program compiles (§3), runs in no code.
  */
 
+import { isDefaultOf } from '../../../../../compiler/syntax/declarations/index.ts';
 import type { LabelledScope } from '../../../../../compiler/syntax/statements/index.ts';
 import { awaits } from '../../../../../compiler/syntax/tokens/modifiers.ts';
 import {
@@ -46,6 +47,11 @@ export function surroundingsOf(tree: SyntaxTree, chain: readonly SyntaxNode[]): 
         };
       case 'ContextConstantDeclaration':
         return { body: 'sync', scopes };
+      case 'DeclaredField':
+        if (isDefaultOf(node, child)) {
+          return { body: 'sync', scopes };
+        }
+        break;
       case 'For':
       case 'FieldLoop':
       case 'While':

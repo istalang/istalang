@@ -8,7 +8,11 @@
 
 import type { ModuleId } from '../../program/program.ts';
 import { type FieldsFunction, fieldsFunctionOf } from '../../syntax/declarations/field-defaults.ts';
-import type { Declaration, FunctionDeclaration } from '../../syntax/declarations/index.ts';
+import {
+  type Declaration,
+  type FunctionDeclaration,
+  isDefaultOf,
+} from '../../syntax/declarations/index.ts';
 import type { Annotation } from '../../syntax/items.ts';
 import { ancestorsOf, type SyntaxNode, type SyntaxTree } from '../../syntax/tree/index.ts';
 import type { CheckerContext } from '../contexts/context.ts';
@@ -78,9 +82,11 @@ function bodyInItem(
       return part === item.initializer ? checker.contextConstants.bodyOf(item) : undefined;
     case 'StructDeclaration':
     case 'SharedStructDeclaration':
-      return isDefault(part, inner) ? fieldDefaultsOf(checker, fieldsFunctionOf(item)) : undefined;
+      return isDefaultOf(part, inner)
+        ? fieldDefaultsOf(checker, fieldsFunctionOf(item))
+        : undefined;
     case 'EnumDeclaration':
-      return part?.kind === 'Variant' && isDefault(inner, innermost)
+      return part?.kind === 'Variant' && isDefaultOf(inner, innermost)
         ? fieldDefaultsOf(checker, fieldsFunctionOf(item, part))
         : undefined;
     default:
@@ -101,16 +107,7 @@ function bodyInFunction(
   if (part?.kind === 'Block' || (part?.kind === 'Parameter' && inner === part.pattern)) {
     return checker.bodyOf(declaration);
   }
-  return isDefault(part, inner) ? checker.defaultsOf(declaration) : undefined;
-}
-
-/** Whether `value` is the default of `holder`, a parameter or a struct's or variant's field. */
-function isDefault(holder: SyntaxNode | undefined, value: SyntaxNode | undefined): boolean {
-  return (
-    (holder?.kind === 'Parameter' || holder?.kind === 'DeclaredField') &&
-    value !== undefined &&
-    value === holder.defaultValue
-  );
+  return isDefaultOf(part, inner) ? checker.defaultsOf(declaration) : undefined;
 }
 
 function fieldDefaultsOf(

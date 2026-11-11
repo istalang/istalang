@@ -265,7 +265,7 @@ function roleIn(link: Link<SyntaxNode>): ParsedPlaceKind | undefined {
     return 'declaredName';
   }
   if (isWrittenType(node)) {
-    return builtNameRole(link) ?? 'type';
+    return child?.kind === 'Invalid' ? 'grammar' : (builtNameRole(link) ?? 'type');
   }
   const role = roles[node.kind] as Role<SyntaxNode> | undefined;
   return role?.(link);

@@ -179,6 +179,18 @@ export function hasDefault(field: Field | Invalid): boolean {
   return field.kind === 'DeclaredField' && field.defaultValue !== undefined;
 }
 
+/**
+ * Whether `value` is the default of `holder`, a parameter or a struct's or variant's field (§3.1,
+ * §3.3): code the callee, or what builds the value, computes before its body.
+ */
+export function isDefaultOf(holder: NodeOf<string> | undefined, value: unknown): boolean {
+  return (
+    (holder?.kind === 'Parameter' || holder?.kind === 'DeclaredField') &&
+    value !== undefined &&
+    value === (holder as Parameter | DeclaredField).defaultValue
+  );
+}
+
 /** Whether `field` is a variant's rest, `...children: Array<Node>` (§3.11). */
 export function isRestField(field: Field | Invalid): boolean {
   return field.kind === 'DeclaredField' && field.isRest;

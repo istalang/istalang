@@ -81,3 +81,7 @@ function flatten(tokens: readonly Token[]): readonly Token[] {
       : [token];
   });
 }
+
+export function tokenBefore(tree: SyntaxTree, token: Token): Token | undefined {
+  return codeTokensOf(tree).findLast(({ span }) => span.end <= token.span.start);
+}

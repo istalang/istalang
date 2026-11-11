@@ -37,10 +37,11 @@ import {
   type SyntaxTree,
 } from '../../../../../compiler/syntax/tree/index.ts';
 import type { Identifier, Invalid } from '../../../../../compiler/syntax/tree/node.ts';
-import { codeTokensOf } from '../../../reading/tokens.ts';
+import { codeTokensOf, tokenBefore } from '../../../reading/tokens.ts';
 import { adjoins, adjoinsBefore, type Cursor, touchingBefore } from '../../cursor.ts';
 import type { ParsedPlace } from '../../placeholder.ts';
 import { holderIn } from './chain.ts';
+import { itemStartedBy, startsItem, startsItemOf } from './item-starts.ts';
 import { type Surroundings, surroundingsOf } from './surroundings.ts';
 
 export type GrammarPosition =
@@ -217,38 +218,6 @@ function unplacedIn(
 }
 
 /**
- * The block's item the placeholder's name starts, written alone or first of an expression
- * (`to‸tal + count`): the outermost node whose own text starts where the name does, past its
- * annotations, if a block holds it.
- */
-function itemStartedBy(
-  { tree, chain }: Parse,
-  name: SyntaxNode,
-): { readonly block: SyntaxNode; readonly node: SyntaxNode } | undefined {
-  const { start } = extentIn(tree, name);
-  let node = name;
-  for (
-    let holder = holderIn(chain, node);
-    holder !== undefined && holder.kind !== 'Block' && ownStartOf(tree, holder) === start;
-    holder = holderIn(chain, node)
-  ) {
-    node = holder;
-  }
-  const block = holderIn(chain, node);
-  return block?.kind === 'Block' ? { block, node } : undefined;
-}
-
-/** Whether what the cursor writes starts an item: first on its line, or after `;`, `:` or `{`. */
-function startsItem({ tree, before, name, offset }: Cursor): boolean {
-  if (before === undefined || itemOpeners.has(before.kind)) {
-    return true;
-  }
-  return tree.source.text.slice(before.span.end, name?.span.start ?? offset).includes('\n');
-}
-
-const itemOpeners: ReadonlySet<string> = new Set([';', ':', '{']);
-
-/**
  * The modifier right before the cursor, if the word there stands as one in the placeholder's
  * parse, which reads it alike whatever name is begun after it (`sendable fn‸` as `sendable ‸`).
  */
@@ -321,34 +290,6 @@ function readAsType(tree: SyntaxTree, word: Token): boolean {
   return nodesAt(tree, word.span.start).some(({ kind }) => kind === 'NamedType');
 }
 
-/**
- * Whether `word` starts an item of a `holder` node, as the parser read the text holding it: the
- * item's own first token, past the annotations it holds, an Invalid one's included.
- */
-function startsItemOf(
-  holder: 'Module' | 'Block' | 'TraitDeclaration',
-  tree: SyntaxTree,
-  word: Token,
-): boolean {
-  const chain = nodesAt(tree, word.span.start);
-  return chain.some((node, index) => {
-    const item = chain[index + 1];
-    return node.kind === holder && item !== undefined && ownStartOf(tree, item) === word.span.start;
-  });
-}
-
-/** Where `item`'s own text starts: its first token not inside one of its annotations. */
-function ownStartOf(tree: SyntaxTree, item: SyntaxNode): number | undefined {
-  const annotations = ('annotations' in item ? item.annotations : undefined) ?? [];
-  const annotated = annotations.map((annotation) => extentIn(tree, annotation));
-  const { start } = extentIn(tree, item);
-  return codeTokensOf(tree).find(
-    ({ span }) =>
-      span.start >= start &&
-      !annotated.some((each) => each.start <= span.start && span.start < each.end),
-  )?.span.start;
-}
-
 /** The `hold` of `hold(label)` when `closing` is its `)`, which `let` or `const` follows. */
 function heldLabelOf(tree: SyntaxTree, closing: Token): Token | undefined {
   if (closing.kind !== ')') {
@@ -362,10 +303,6 @@ function heldLabelOf(tree: SyntaxTree, closing: Token): Token | undefined {
   }
   const { start } = extentIn(tree, call.callee);
   return codeTokensOf(tree).find(({ span }) => span.start === start);
-}
-
-function tokenBefore(tree: SyntaxTree, token: Token): Token | undefined {
-  return codeTokensOf(tree).findLast(({ span }) => span.end <= token.span.start);
 }
 
 /** Whether `token` is an operand's last: a name, a literal, a closing bracket, `?` or `!`. */
