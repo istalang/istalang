@@ -111,6 +111,14 @@ rewrite; `wake.bench.ts` within 10%.
 
 ## AW Awaitables (behavioural)
 
+Built in three steps, each reviewed and merged on its own; design in `aw-design.md`.
+- **AW1 language:** member-bounded associated types (`type Mode in Persistence`), `Self.Mode fn`,
+  extern structs declaring associated types (`Future`'s `type Mode = K`).
+- **AW2 one await path:** prelude `Awaitable` and `Resolver`; `await` and `select` as an implicit
+  `onAwait` call; waits decided by language resolvers.
+- **AW3 `Resolver.of`:** a closure started as a ready execution; `futures` over it in both kinds,
+  the native `first` and its state gone.
+
 **Scope.**
 - `Awaitable<T>` with `type Mode in Persistence`, member bounds on associated types being new, and
   `Self.Mode fn onAwait`, an associated type bound to `Persistence` as a requirement's mark; `Resolver<T, K>` over R2, with `Resolver.of`. `Future<T, K>` is the runtime's
