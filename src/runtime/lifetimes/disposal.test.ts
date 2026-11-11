@@ -23,7 +23,7 @@ describe('disposability', () => {
       {
         kind: 'future',
         id: 0,
-        state: { kind: 'slot', slot: 2, operation: 'take', awaited: false },
+        state: { kind: 'slot', slot: 2, operation: 'take', givenUp: false },
       },
       true,
     ],

@@ -70,15 +70,15 @@ const futureState = z.discriminatedUnion('kind', [
   /** The result of an async call, resolved when the execution that names it returns. */
   z.strictObject({ kind: z.literal('call') }),
   /**
-   * A pending `put`, `take` or `read`, queued on the slot in `waiting` order; `awaited` once a
-   * resolver was given it to wait on (runtime/scheduler/instance/slots.ts).
+   * A pending `put`, `take` or `read`, queued on the slot in `waiting` order; `givenUp` once a
+   * losing case awaited it (runtime/scheduler/instance/slots.ts).
    */
   z.strictObject({
     kind: z.literal('slot'),
     slot: objectId,
     operation: z.enum(['put', 'take', 'read']),
     value: value.optional(),
-    awaited: z.boolean(),
+    givenUp: z.boolean(),
   }),
   /** `time.at(t)`: due at `at`, in milliseconds since the Unix epoch. */
   z.strictObject({ kind: z.literal('timer'), at: integer }),

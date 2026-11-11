@@ -154,12 +154,10 @@ function nativeFuturesOf(instance: Instance, { waiting, trace }: SegmentSide): N
 }
 
 /** The instance's waits as natives reach them (proposal 8, Rule 5). */
-function nativeWaitsOf({ waits, futures, slots }: Instance): NativeWaits {
+function nativeWaitsOf({ waits, futures }: Instance): NativeWaits {
   return {
     onAwait: (future, done) => {
-      const id = handleObject(future);
-      waits.register(done, id, futures.settled(future));
-      slots.awaited(id);
+      waits.register(done, handleObject(future), futures.settled(future));
     },
     resolve: (done, value) => {
       waits.resolve(done, value);

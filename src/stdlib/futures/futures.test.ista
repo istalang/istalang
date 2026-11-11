@@ -78,9 +78,9 @@ fn firstSuite() -> Array<Test>: [
   test("loses cleanly in a select after an earlier case already resolved", async fn(): {
     const s = Slot.create<Int>()
     const passedOver = s.take()
-    _ = select:
+    _ = await select:
       case passedOver: 0
-      else: -1
+      case runtime.commit(): -1
     _ = s.put(42)
     const blocking = await select:
       case runtime.commit(): 1
@@ -228,6 +228,75 @@ fn quorumSuite() -> Array<Test>: [
     const message = await expectPanic(async fn(): await futures.quorum<Int, String, "ista">(-1, []))
     assertEq(message, "A quorum of -1 can't be reached among 0 futures.")
   })
+]
+
+# Each combinator's takes wait in their slot's queue from the call on, ahead of a take made after
+# it, between the arrivals it waits for as before the first: `late` gets only what comes once the
+# combinator returned.
+ista async fn allKeepingItsPlace() -> (Result<Array<Int>, String>, Outcome):
+  const s = Slot.create<Outcome>()
+  const all = futures.all([s.take(), s.take()])
+  const late = s.take()
+  await runtime.commit()
+  drop s.put(Ok(1))
+  drop s.put(Ok(2))
+  const got = await all
+  drop s.put(Ok(3))
+  (got, await late)
+
+ista async fn anyKeepingItsPlace() -> (Result<Int, Array<String>>, Outcome):
+  const s = Slot.create<Outcome>()
+  const either = futures.any([s.take(), s.take()])
+  const late = s.take()
+  await runtime.commit()
+  drop s.put(Err("a"))
+  drop s.put(Ok(2))
+  const got = await either
+  drop s.put(Ok(3))
+  (got, await late)
+
+ista async fn quorumKeepingItsPlace() -> (Result<Array<Int>, Array<String>>, Outcome):
+  const s = Slot.create<Outcome>()
+  const two = futures.quorum(2, [s.take(), s.take(), s.take()])
+  const late = s.take()
+  await runtime.commit()
+  drop s.put(Ok(1))
+  drop s.put(Ok(2))
+  const got = await two
+  drop s.put(Ok(3))
+  (got, await late)
+
+# A take that lost a select is passed over until awaited again (§8): `allSettled` awaits it from
+# the call on, not once the futures before it arrived.
+ista async fn allSettledAwaitingFromTheCall() -> (Array<Int>, Int):
+  const (a, s) = (Slot.create<Int>(), Slot.create<Int>())
+  const fromS = s.take()
+  _ = await select:
+    case fromS: -1
+    case runtime.commit(): 0
+  const settled = futures.allSettled([a.take(), fromS])
+  const late = s.take()
+  await runtime.commit()
+  drop s.put(10)
+  drop a.put(5)
+  const got = await settled
+  drop s.put(11)
+  (got, await late)
+
+@Suite{"futures › watching from the call on"}
+fn watchingSuite() -> Array<Test>: [
+  ...runAndReRun("all keeps its takes' place between arrivals", allKeepingItsPlace, (Ok([1, 2]), Ok(3)))
+  ...runAndReRun("any keeps its takes' place between arrivals", anyKeepingItsPlace, (Ok(2), Ok(3)))
+  ...runAndReRun(
+    "quorum keeps its takes' place between arrivals"
+    quorumKeepingItsPlace
+    (Ok([1, 2]), Ok(3))
+  )
+  ...runAndReRun(
+    "allSettled awaits a passed-over take from the call on"
+    allSettledAwaitingFromTheCall
+    ([5, 10], 11)
+  )
 ]
 
 ista async fn timeoutInTime() -> Int?:

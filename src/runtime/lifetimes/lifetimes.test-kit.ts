@@ -61,7 +61,7 @@ export function heapArbitrary(size = 8): fc.Arbitrary<TestHeap> {
         ({ slot, value }): LiveObject => ({
           kind: 'future',
           id: object,
-          state: { kind: 'slot', slot, operation: 'put', value, awaited: false },
+          state: { kind: 'slot', slot, operation: 'put', value, givenUp: false },
         }),
       ),
       fc.record({ callback: contents, on: fc.uniqueArray(id, { maxLength: 2 }) }).map(

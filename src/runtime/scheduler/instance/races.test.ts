@@ -1,8 +1,9 @@
 /**
  * Racing through `Resolver.at` (proposal 8, Rule 5): a `Resolver.at` resolver decides another with
  * its position in the same step, so `futures.first` decides as a `select`'s cases do, its losers
- * consuming nothing (spec §8). A slot operation awaited once is passed over while no resolver
- * registered on it is pending, and served once awaited again. Resolvers decided together go by
+ * consuming nothing (spec §8). A slot operation a losing case awaited is passed over while no
+ * resolver registered on it is pending, and served once awaited again; a `select` that doesn't wait
+ * awaits nothing, so it leaves one as it was. Resolvers decided together go by
  * rank: per wait its lowest case, within it the lowest position, then the earliest registration.
  */
 
@@ -86,7 +87,31 @@ describe('futures.first in a select', () => {
   });
 });
 
-describe('a slot operation awaited once', () => {
+describe('a select that does not wait', () => {
+  it.each([false, true])(
+    'leaves a held take in its slot queue, having awaited nothing (crashing at every await: %s)',
+    async (crashEveryAwait) => {
+      const main = [
+        'live async fn main() -> (Int, Int, Int): await runtime.run(runtime.id()) _main()\nista async fn _main() -> (Int, Int, Int):',
+        '  const s = Slot.create<Int>()',
+        '  const held = s.take()',
+        '  const polled = select:',
+        '    case held as v: v',
+        '    else: -1',
+        '  _ = s.put(7)',
+        '  const late = s.take()',
+        '  _ = s.put(8)',
+        '  (polled, await held, await late)',
+      ];
+      expect(await ended(main, crashEveryAwait)).toEqual({
+        kind: 'finished',
+        outcome: '[-1,7,8]',
+      });
+    },
+  );
+});
+
+describe('a slot operation a losing case awaited', () => {
   it.each([false, true])(
     'is passed over while nothing awaits it, and served once awaited again (crashing at every await: %s)',
     async (crashEveryAwait) => {

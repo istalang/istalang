@@ -15,11 +15,11 @@
  *   take, must leave the queue unserved, which only collecting can tell. So serving stops before
  *   its next event while such losers await collecting, and the slot is owed serving, which goes on
  *   once collecting is done (`serveOwed`). Meanwhile every operation on it joins its queue.
- * - **Given up on, passed over.** Serving passes over an operation a resolver was given to wait on
- *   (`awaited`) while no resolver registered on it is pending: what awaited it was decided
- *   otherwise, as a losing `select` case or `futures.first` entry is (spec §8), so it consumes
- *   nothing, though something still holds it. One never awaited is served as it waits, and one
- *   awaited again is served where it stands.
+ * - **Given up on, passed over.** Serving passes over an operation a losing case awaited, a wait
+ *   decided otherwise, as a losing `select` case or `futures.first` entry is (spec §8), while no
+ *   resolver registered on it is pending (`givenUp`): it consumes nothing, though something still
+ *   holds it. One never given up on is served as it waits, and one awaited again is served where it
+ *   stands. A `select` that doesn't wait awaits nothing, so it gives up on nothing.
  * - A full slot therefore never has a take or read waiting that it would serve, and an empty one
  *   never such a put, unless it is owed serving, so an operation that completes at once never jumps
  *   a waiter.
@@ -67,7 +67,7 @@ export class Slots {
         slot: slot.id,
         operation,
         ...(operation === 'put' ? { value } : {}),
-        awaited: false,
+        givenUp: false,
       });
       this.#heap.replace({ ...slot, waiting: [...slot.waiting, future] });
       return handleTo(future);
@@ -79,19 +79,26 @@ export class Slots {
   }
 
   /**
-   * A resolver was given the future `id` to wait on: a slot operation pending is awaited from now
-   * on, and served now if it can be, as one passed over is once awaited again.
+   * A resolver now waits on the future `id`: a slot operation pending is served now if it can be,
+   * as one given up on is once awaited again.
    */
   awaited(id: number): void {
+    const { state } = this.#heap.of(id, 'future');
+    if (state.kind === 'slot') {
+      this.#serve(state.slot);
+    }
+  }
+
+  /**
+   * A case awaiting the future `id` lost (spec §8): a slot operation pending is given up on, passed
+   * over while nothing else awaits it.
+   */
+  givenUp(id: number): void {
     const future = this.#heap.of(id, 'future');
     const { state } = future;
-    if (state.kind !== 'slot') {
-      return;
+    if (state.kind === 'slot' && !state.givenUp) {
+      this.#heap.replace({ ...future, state: { ...state, givenUp: true } });
     }
-    if (!state.awaited) {
-      this.#heap.replace({ ...future, state: { ...state, awaited: true } });
-    }
-    this.#serve(state.slot);
   }
 
   /** Serves the queues whose serving paused, now that collecting is done; whether there were any. */
@@ -110,7 +117,7 @@ export class Slots {
   #serve(id: number): void {
     for (;;) {
       const slot = this.#heap.of(id, 'slot');
-      const served = nextServed(slot, (future) => this.#awaitedState(future));
+      const served = nextServed(slot, (future) => this.#servableState(future));
       if (served === undefined) {
         return;
       }
@@ -126,11 +133,11 @@ export class Slots {
   }
 
   /** The state of the pending operation `id`; none while serving passes it over, given up on. */
-  #awaitedState(id: number): FutureState | undefined {
+  #servableState(id: number): FutureState | undefined {
     const { state } = this.#heap.of(id, 'future');
-    const givenUp =
-      state.kind === 'slot' && state.awaited && this.#heap.find('resolvers', id).length === 0;
-    return givenUp ? undefined : state;
+    const passedOver =
+      state.kind === 'slot' && state.givenUp && this.#heap.find('resolvers', id).length === 0;
+    return passedOver ? undefined : state;
   }
 }
 

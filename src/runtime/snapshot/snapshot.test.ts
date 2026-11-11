@@ -116,7 +116,7 @@ function objectsArbitrary(ids: readonly number[]): fc.Arbitrary<HeapObject[]> {
       slot: id,
       operation: fc.constantFrom('put' as const, 'take' as const, 'read' as const),
       value,
-      awaited: fc.boolean(),
+      givenUp: fc.boolean(),
     }),
     fc.record({ kind: fc.constant('timer' as const), at: fc.bigInt({ min: 0n, max: 2n ** 60n }) }),
     fc.record({ kind: fc.constant('host' as const), token: fc.string() }),

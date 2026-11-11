@@ -64,8 +64,9 @@ Scope and acceptance: `phases.md`, AW. Rules: proposal 8, Rules 5 and 6.
   or cancelled resolver a `WeakRef` refers to is disposed when let go of, its watches resolved.
 - **Dropped unresolved** (its last holder lets go while pending) panics, as any panic does: the
   instance, or the live run.
-- A non-blocking `select` that finds its wait undecided goes to `otherwise`, cancelling its case
-  resolvers.
+- A non-blocking `select` that finds its wait undecided goes to `otherwise`, withdrawing its case
+  resolvers: it awaited nothing, so it gives up on nothing, and only a decided wait's losing cases
+  are passed over by their slots (merge review M2, tech-lead 2026-11-11).
 - **Must change with it:** `snapshot/check.ts` (waits no longer name futures in registers),
   `snapshot/holdings.ts` (a pending resolver holds its future, its wait holds it; a wait watches its
   waiter), `weak-side.ts` and `disposal-runs.ts` (`waitingOn`: a case watching the call's own

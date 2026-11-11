@@ -17,12 +17,14 @@
  * - A wait is decided once, by the first of its resolvers to resolve. Futures resolved together, or
  *   resolved when one is registered, decide in order (settle-order.ts). Deciding cancels the
  *   resolvers then pending, which do nothing after and let go of their futures, and so a resolver's
- *   pending `Resolver.at` ones; a wait's losing cases are let go of then (spec §8), so a losing
- *   `take` consumes nothing, as a slot passes over an operation no resolver awaits any more
- *   (../slots.ts). A resolver on its waiter's own `disposing()` watch stays registered until the
- *   waiter moves on, as a disposal still resumes the call on it (§7), even one registered after the
- *   wait was decided; one registered on anything else then is cancelled. The waiter is ready once
- *   it is stopped at its wait and that is decided.
+ *   pending `Resolver.at` ones; a wait's losing cases are let go of then (spec §8), and what they
+ *   awaited is given up on, so a slot passes over a losing `take`, which consumes nothing
+ *   (../slots.ts). A wait that ends undecided, a `select` that doesn't wait going to `otherwise`,
+ *   awaited nothing: its resolvers are withdrawn, which gives up on nothing, so what they were
+ *   registered on is as it was. A resolver on its waiter's own `disposing()` watch stays registered
+ *   until the waiter moves on, as a disposal still resumes the call on it (§7), even one registered
+ *   after the wait was decided; one registered on anything else then is cancelled. The waiter is
+ *   ready once it is stopped at its wait and that is decided.
  * - Waiters that become ready together are readied in creation order, once each (§6), each
  *   followed by the `onCancel` callbacks of its losing cases, and then the callbacks of the
  *   `Resolver.of` resolvers resolved with them, in the order those were made.
@@ -31,7 +33,7 @@
  *   `onAwait` decided is cancelled once its waiter stops there, every case known; until then
  *   `resolve` takes its value to no effect, `tryResolve` cancels it, and letting it go panics
  *   (lifetimes/disposal.ts), so an awaitable's misuse is caught however the race went. Registering
- *   a resolver no longer pending does nothing.
+ *   a resolver no longer pending decides nothing, and gives up on its future as a loser does.
  * - Waits and resolvers are heap objects, committed with the frames they resume, so a crash
  *   discards a decision with the segment that made it; a live run's stay in memory.
  */
@@ -61,6 +63,12 @@ import {
 } from './resolvers.ts';
 import { settleOrder } from './settle-order.ts';
 
+/**
+ * Why a pending resolver stops being awaited: its case lost to another (spec §8), which gives up on
+ * what it awaited, or withdrawn undecided, which leaves that as it was.
+ */
+type Ending = 'lost' | 'withdrawn';
+
 /** What waits reach outside themselves. */
 export interface WaitSeams {
   /** `waiter`, stopped at its wait, is to resume as `decision` says. */
@@ -69,6 +77,10 @@ export interface WaitSeams {
   readonly watchesCall: (waiter: LiveExecution, future: number) => boolean;
   /** Readies a call of the function value `callback` with `argumentValues`, a driver of its own. */
   readonly called: (callback: Value, argumentValues: readonly Value[]) => void;
+  /** A resolver now waits on `future`, which is served now if it can be (slots.ts). */
+  readonly awaited: (future: number) => void;
+  /** A case awaiting `future` lost to another (spec §8): it is given up on (slots.ts). */
+  readonly givenUp: (future: number) => void;
 }
 
 export class Waits {
@@ -129,14 +141,15 @@ export class Waits {
   }
 
   /**
-   * Resolves the resolver `done` as the future `future` resolves, a future's `onAwait`: at once
-   * with what `settled` says it resolved with, else registered on it; once its wait was decided,
-   * only on its waiter's own `disposing()` watch, cancelled otherwise. One no longer pending is
-   * left as it is.
+   * Resolves the resolver `done` as the future `future` resolves, a future's `onAwait`: at once with
+   * what `settled` says it resolved with, else registered on it; once its wait was decided, only on
+   * its waiter's own `disposing()` watch, cancelled otherwise. A resolver that can decide nothing any
+   * more, one no longer pending or whose case lost so, awaits `future` as a loser: given up on.
    */
   register(done: Value, future: number, settled: Settled | undefined): void {
     const resolver = this.#resolver(done);
     if (!isPending(resolver)) {
+      this.#seams.givenUp(future);
       return;
     }
     if (settled !== undefined) {
@@ -148,6 +161,7 @@ export class Waits {
       const wait = this.#waitOf(root);
       if (wait.state.kind !== 'pending' && !this.#keeps(wait, future)) {
         this.#lose(resolver, { kind: 'cancelled' });
+        this.#seams.givenUp(future);
         return;
       }
     }
@@ -155,6 +169,7 @@ export class Waits {
     if (!state.on.includes(future)) {
       this.#heap.replace({ ...resolver, state: { ...state, on: [...state.on, future] } });
     }
+    this.#seams.awaited(future);
   }
 
   /**
@@ -190,7 +205,7 @@ export class Waits {
 
   /** Cancels `resolver` if it is still pending: as the future it is registered on is disposed. */
   cancel(resolver: Resolver): void {
-    this.#cancel(this.#heap.of(resolver.id, 'resolver'));
+    this.#cancel(this.#heap.of(resolver.id, 'resolver'), 'withdrawn');
   }
 
   /**
@@ -234,26 +249,41 @@ export class Waits {
   }
 
   /**
-   * Ends the wait `waiter`'s top frame stands at, if any: it resumes or goes on past it, or stops.
-   * Its pending resolvers are cancelled and it goes; its decision, once it was decided.
+   * Ends the wait `waiter`'s top frame stands at, if any: it resumes past it, or stops there, its
+   * call disposed, whose cases lose (§8). Its pending resolvers are cancelled and it goes; its
+   * decision, once it was decided.
    */
   end(waiter: LiveExecution): Decision | undefined {
+    return this.#endWith(waiter, 'lost');
+  }
+
+  /**
+   * Ends the wait of the `select` that doesn't wait `waiter`'s top frame stands at (§8): its
+   * decision, once a case decided it; else it goes to `otherwise`, having awaited nothing, so its
+   * resolvers are withdrawn.
+   */
+  endNonBlocking(waiter: LiveExecution): Decision | undefined {
+    return this.#endWith(waiter, 'withdrawn');
+  }
+
+  /** Ends the wait `waiter` resumes from, which was decided: how it resumes. */
+  take(waiter: LiveExecution): Decision {
+    return this.end(waiter) ?? unreachable(`Execution ${waiter.id} resumed undecided.`);
+  }
+
+  /** Ends the wait `waiter`'s top frame stands at, if any, its pending resolvers ending so. */
+  #endWith(waiter: LiveExecution, ending: Ending): Decision | undefined {
     const top = waiter.frames.at(-1);
     const id = top === undefined ? undefined : takeWait(top);
     if (id === undefined) {
       return undefined;
     }
     for (const resolver of pendingCases(this.#heap, { id })) {
-      this.#cancel(resolver);
+      this.#cancel(resolver, ending);
     }
     const { state } = this.#heap.of(id, 'wait');
     this.#heap.remove(id);
     return state.kind === 'decided' ? state : undefined;
-  }
-
-  /** Ends the wait `waiter` resumes from, which was decided: how it resumes. */
-  take(waiter: LiveExecution): Decision {
-    return this.end(waiter) ?? unreachable(`Execution ${waiter.id} resumed undecided.`);
   }
 
   #pending(target: ResolverTarget): Value {
@@ -285,7 +315,7 @@ export class Waits {
     } else {
       this.#seams.called(own.callback, [value]);
     }
-    this.#cancelPositions(resolver);
+    this.#cancelPositions(resolver, 'lost');
     return true;
   }
 
@@ -316,7 +346,7 @@ export class Waits {
   #cancelLosers(wait: Wait): void {
     for (const other of pendingCases(this.#heap, wait)) {
       if (!other.state.on.some((future) => this.#keeps(wait, future))) {
-        this.#cancel(other);
+        this.#cancel(other, 'lost');
         this.#heap.noteLosersReleased();
       }
     }
@@ -328,23 +358,28 @@ export class Waits {
     return waiter !== undefined && this.#seams.watchesCall(waiter, future);
   }
 
-  /** Cancels `resolver`, if it is still pending. */
-  #cancel(resolver: Resolver): void {
+  /** Cancels `resolver`, if it is still pending, ending as `ending` says. */
+  #cancel(resolver: Resolver, ending: Ending): void {
     if (isPending(resolver)) {
-      this.#end(resolver, { kind: 'cancelled' });
+      this.#end(resolver, { kind: 'cancelled' }, ending);
     }
   }
 
   /**
-   * Ends the pending `resolver` as `state` says without deciding anything: its `onCancel` run, and
-   * its pending `Resolver.at` ones cancelled.
+   * Ends the pending `resolver` as `state` says without deciding anything: its `onCancel` run, what
+   * it awaited given up on once it lost, and its pending `Resolver.at` ones ending as it did.
    */
-  #end(resolver: PendingResolver, state: Ended): void {
+  #end(resolver: PendingResolver, state: Ended, ending: Ending): void {
     this.#replace(resolver, state);
     for (const callback of resolver.state.onCancel) {
       this.#seams.called(callback, []);
     }
-    this.#cancelPositions(resolver);
+    if (ending === 'lost') {
+      for (const future of resolver.state.on) {
+        this.#seams.givenUp(future);
+      }
+    }
+    this.#cancelPositions(resolver, ending);
   }
 
   /**
@@ -352,17 +387,20 @@ export class Waits {
    * one decides in turn, whose case it lost too.
    */
   #lose(resolver: PendingResolver, state: Ended): void {
-    this.#end(resolver, state);
+    this.#end(resolver, state, 'lost');
     const { target } = resolver.state;
     if (target.kind === 'at') {
       this.#lose(pendingOf(this.#heap, target.done), state);
     }
   }
 
-  /** Cancels the pending `Resolver.at` resolvers deciding `resolver`, no longer pending. */
-  #cancelPositions(resolver: Resolver): void {
+  /**
+   * Cancels the pending `Resolver.at` resolvers deciding `resolver`, which no longer is pending:
+   * lost once it was decided or lost, withdrawn with it.
+   */
+  #cancelPositions(resolver: Resolver, ending: Ending): void {
     for (const position of this.#heap.find('positions', resolver.id)) {
-      this.#cancel(position);
+      this.#cancel(position, ending);
     }
   }
 

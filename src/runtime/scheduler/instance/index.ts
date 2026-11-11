@@ -107,6 +107,12 @@ export class Instance {
       called: (callback, argumentValues) => {
         this.#ready.run(callback, argumentValues);
       },
+      awaited: (future) => {
+        this.slots.awaited(future);
+      },
+      givenUp: (future) => {
+        this.slots.givenUp(future);
+      },
     });
     this.futures = new Futures(this.heap, this.waits, this.notices, (answered) => {
       this.effects.answer({ ...answered, value: leaving(this, answered.value) });

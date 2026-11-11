@@ -3,32 +3,34 @@
 #
 # Receivers wait on the slot itself: `receive()` is the slot's `take`, so the slot's queue gives
 # the receiver rules (each message goes to exactly one receiver, the one that has waited longest),
-# and a receive that loses a `select` and is released consumes nothing. The slot holds the next
-# message; the ones behind it wait in the backlog, in the order they were sent, which is the order
-# their segments committed. Segments run one at a time, so nothing else runs between reading the
-# inbox's fields and writing them back.
+# and a receive that loses a `select` consumes nothing. Each message waits on the slot too, as a
+# `put` queued in the order sent, which is the order their segments committed: the slot moves the
+# next one in as soon as a receiver takes one, however that receive came to be awaited, so no
+# inbox code runs between two receives. A message is only in its put, then in the slot, so once
+# received it is nowhere, and what it holds is let go of then.
 #
-# A full slot never has a receiver waiting, so the backlog moves into the slot only when it is
-# empty: on a send, and before a receive takes. Whether the slot is full, and taking from it only
-# if it is, are both a slot operation that either settles at once or is let go (`_settles`).
+# The inbox keeps each message's number beside its put, oldest first, to retract one. Puts are
+# served in order, so the ones served come first, and only the last of them can still be in the
+# slot: it is while the slot is full. A `select` that doesn't wait leaves what it asks about as it
+# was (§8), so asking whether a put was served (`_settles`) keeps it in the queue. Listing the
+# messages takes them all out of the slot and queues them again, in one step, so no receiver sees
+# it. Segments run one at a time, so nothing else runs between reading the inbox's fields and
+# writing them back.
 #
-# Retracting a message removes it wherever it waits. Every message is numbered as it is queued, and
-# the inbox remembers the number of the one it moved into the slot: a receiver empties the slot
-# without telling the inbox, but only a later move fills it again, so while the slot is full and
-# that number is the retracted one's, the slot holds it. Once received, a message is no longer
+# Retracting a message removes it wherever it waits: in the queue by letting go of its put, which
+# a slot's queue drops (§7), in the slot by taking it out. Once received, a message is no longer
 # anywhere, so retracting it changes nothing.
 
-struct Queued<T>:
+struct Queued:
   number: Int
-  message: T
+  put: Future<Unit, "ista">
 
 shared struct Inbox<T>:
   slot: Slot<T>
-  # the number of the message the inbox last moved into the slot
-  slotted: Int? = none
-  backlog: Array<Queued<T>> = []
-  # how many messages were ever queued, which numbers the next
-  queued: Int = 0
+  # the puts of the messages not known to be received, oldest first
+  queued: Array<Queued> = []
+  # how many messages were ever sent, which numbers the next
+  sent: Int = 0
 
 # A revertible message's holder: disposing it calls `retract`, which the queue that made it
 # supplies, so every queue, the host's included (§3.6), hands out this one type.
@@ -54,50 +56,61 @@ ista fn sendRevertible<T>(self: Inbox<T>, message: T) -> Revertible<T>:
   const inbox = WeakRef(self)
   new Revertible<T>{retract: fn(): _retract(inbox, number)}
 
-ista fn receive<T>(self: Inbox<T>) -> Future<T, "ista">:
-  _fill(self)
-  self->slot.take()
+ista fn receive<T>(self: Inbox<T>) -> Future<T, "ista">: self->slot.take()
 
-# The messages waiting, oldest first, without receiving them: the slot's, then the backlog's.
+# The messages waiting, oldest first, without receiving them: taken out of the slot one after
+# another, as their puts move them in, and queued again in that order.
 ista fn pending<T>(self: Inbox<T>) -> Array<T>:
-  const next: Array<T> = select:
-    case self->slot.read() as message: [message]
-    else: []
-  [...next, ...[for queued in self->backlog: queued.message]]
+  _forgetReceived(self)
+  let messages: Array<T> = []
+  let waiting = true
+  while waiting:
+    select:
+      case self->slot.take() as message: messages.push(message)
+      else: waiting = false
+  const numbers = [for each in self->queued: each.number]
+  self->queued = [
+    for index in 0..messages.length(): Queued{
+      number: numbers[index]
+      put: self->slot.put(messages[index])
+    }
+  ]
+  messages
 
 # Disposing an inbox (§6, §7) lets go of its fields, so the slot dies with the message in it, and
-# the backlog with it. Declaring `dispose` is what makes an inbox disposable, and so something a
-# `WeakRef` can watch.
+# the puts queued with theirs. Declaring `dispose` is what makes an inbox disposable, and so
+# something a `WeakRef` can watch.
 ista fn dispose<T>(self: Inbox<T>): ()
 
 ista fn dispose<T>(self: Revertible<T>): self->retract()
 
 # Queues `message` behind the others; its number.
 ista fn _queue<T>(self: Inbox<T>, message: T) -> Int:
-  const number = self->queued
-  self->backlog.push(Queued{number, message})
-  self->queued += 1
-  _fill(self)
+  _forgetReceived(self)
+  const number = self->sent
+  self->queued.push(Queued{number, put: self->slot.put(message)})
+  self->sent += 1
   number
 
-# Moves the first message of the backlog into the slot, if the slot is empty.
-ista fn _fill<T>(self: Inbox<T>):
-  if self->backlog.length() > 0 and not _settles(self->slot.read()):
-    const next = self->backlog[0]
-    drop self->slot.put(next.message)
-    self->slotted = next.number
-    self->backlog = self->backlog[1..]
+# Forgets the messages received: those whose put was served, but the last one while the slot,
+# full, still holds it.
+ista fn _forgetReceived<T>(self: Inbox<T>):
+  let served = 0
+  while served < self->queued.length() and _settles(self->queued[served].put): served += 1
+  const inSlot = served > 0 and _settles(self->slot.read())
+  self->queued = self->queued[(if inSlot: served - 1 else: served)..]
 
 # Removes message `number` from the inbox, if the inbox is still there and the message unread.
 ista fn _retract<T>(inbox: WeakRef<Inbox<T>>, number: Int):
   if inbox.deref() is Inbox as box:
-    box->backlog = [for queued in box->backlog if queued.number != number: queued]
-    if box->slotted == number and _settles(box->slot.take()):
-      box->slotted = none
-      _fill(box)
+    _forgetReceived(box)
+    const queued = box->queued
+    if queued.length() > 0 and queued[0].number == number and _settles(queued[0].put):
+      drop _settles(box->slot.take())
+    box->queued = [for each in queued if each.number != number: each]
 
-# Whether `operation` settles at once. One that doesn't is let go with the parameter, and a slot
-# operation let go does nothing (§6), so a `take` that doesn't settle consumes nothing.
+# Whether `operation` settled. One that didn't is as it was (§8), and one let go with the parameter
+# does nothing (§6), so a `take` that doesn't settle consumes nothing.
 ista fn _settles<T>(operation: Future<T, "ista">) -> Bool:
   select:
     case operation: true

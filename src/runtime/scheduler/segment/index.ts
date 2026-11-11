@@ -289,7 +289,7 @@ class SegmentRunner implements Machine {
   }
 
   endWait(): Decision | undefined {
-    return this.#instance.waits.end(this.#runStack.current());
+    return this.#instance.waits.endNonBlocking(this.#runStack.current());
   }
 
   currentCall(): Value {

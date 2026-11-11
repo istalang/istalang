@@ -6,6 +6,7 @@
 import Suite, Test, test, group, skip, only, Setup, setups, assert, assertEq, expectPanic from 'testing'
 import FakeClock, FakeQueue, FakeReceipts, withClock, mock, handle, idle, state from 'testing'
 import * as testing from 'testing'
+import * as runtime from 'runtime'
 import * as time from 'time'
 import Time, Duration from 'time'
 import Encodable, Decodable from 'json'
@@ -49,6 +50,13 @@ fn record(name: String): ()
 ista async fn waitsThenRecords(name: String, deadline: Int):
   await time.at(Time{value: deadline})
   record(name)
+
+# Which of two deadlines its select took: the case written first wins when both pass together.
+ista async fn racesDeadlines(first: Int, second: Int) -> String:
+  const (atFirst, atSecond) = (time.at(Time{value: first}), time.at(Time{value: second}))
+  await select:
+    case atSecond: "second"
+    case atFirst: "first"
 
 ista async fn waitsAday() -> Int:
   await time.delay(Duration{value: 86_400_000})
@@ -222,6 +230,12 @@ ista fn clocks() -> Array<Test>: [
       Ok(())
     ])
     assertEq(records.calls(), [("first",), ("second",), ("late",)])
+  })
+  test("passes the deadlines due at one instant together", withClock, async fn(clock): {
+    const racing = racesDeadlines(1, 1)
+    await runtime.commit()
+    clock.advance(Duration{value: 1})
+    assertEq(await racing, "second")
   })
   test("resolves a deadline already reached at once", async fn(): {
     const clock = FakeClock{start: Time{value: 5}}

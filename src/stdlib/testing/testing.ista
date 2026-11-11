@@ -213,29 +213,37 @@ struct FakeClock:
   now: fn() -> Time = fn(): _time->value
   at: ista fn(Time) -> Future<Unit, "ista"> = fn(deadline: Time): _waitUntil(_state, deadline)
 
-# A fake clock's time, and the waits it fills as it passes their deadlines: ordered by deadline,
-# ties in the order they began, so it fills them in that order. Its time is simple data, apart from
-# its waits, so `now` fakes a simple extern (proposal 8, Rule 2).
+# A fake clock's time, and the deadlines it passes: each a slot every wait for it reads, ordered by
+# deadline, so it passes them earliest first, and the waits due at one instant resolve together, as
+# timers do (§6). Its time is simple data, apart from its deadlines, so `now` fakes a simple extern
+# (proposal 8, Rule 2).
 shared struct _Clock:
   time: Shared<Time>
-  waits: Array<_Wait> = []
+  deadlines: Array<_Deadline> = []
 
-struct _Wait:
-  deadline: Time
-  slot: Slot<Unit>
+struct _Deadline:
+  at: Time
+  passed: Slot<Unit>
 
 ista fn _waitUntil(clock: _Clock, deadline: Time) -> Future<Unit, "ista">:
-  const slot = Slot.create<Unit>()
-  const (due, later) = _splitDue(clock->waits, deadline)
-  clock->waits = [...due, _Wait{deadline, slot}, ...later]
-  _fillDue(clock)
-  slot.take()
+  const read = _deadlineAt(clock, deadline).read()
+  _passDue(clock)
+  read
 
-# Moves the clock forward by `by`, filling every wait whose deadline it passes (§10).
+# The slot of `deadline` among the clock's, added in its place when new.
+ista fn _deadlineAt(clock: _Clock, deadline: Time) -> Slot<Unit>:
+  for each in clock->deadlines:
+    if each.at == deadline: return each.passed
+  const passed = Slot.create<Unit>()
+  const (due, later) = _splitDue(clock->deadlines, deadline)
+  clock->deadlines = [...due, _Deadline{at: deadline, passed}, ...later]
+  passed
+
+# Moves the clock forward by `by`, passing every deadline it reaches (§10).
 ista fn advance(self: FakeClock, by: Duration):
   if by < Duration{value: 0}: panic("A fake clock only moves forward, not by " + by + ".")
   self._time->value = self._time->value + by
-  _fillDue(self._state)
+  _passDue(self._state)
 
 # A setup installing a `FakeClock` starting at 0 as `time.now` and `time.at` (§10).
 ista async fn withClock(body: ista async fn(FakeClock) -> Unit):
@@ -244,16 +252,16 @@ ista async fn withClock(body: ista async fn(FakeClock) -> Unit):
   hold _ = mock(time.at, clock.at)
   await body(clock)
 
-# Fills every wait whose deadline the clock has reached, in order, and lets go of them.
-ista fn _fillDue(clock: _Clock):
-  const (due, later) = _splitDue(clock->waits, clock->time->value)
-  clock->waits = later
-  for each in due: drop each.slot.put(())
+# Passes every deadline the clock has reached, earliest first, and lets go of them.
+ista fn _passDue(clock: _Clock):
+  const (due, later) = _splitDue(clock->deadlines, clock->time->value)
+  clock->deadlines = later
+  for each in due: drop each.passed.put(())
 
-# `waits` split at `time`: those due by then, and the later ones, each in their order.
-ista fn _splitDue(waits: Array<_Wait>, time: Time) -> (Array<_Wait>, Array<_Wait>):
-  const due = [for each in waits if each.deadline <= time: each]
-  const later = [for each in waits if each.deadline > time: each]
+# `deadlines` split at `time`: those due by then, and the later ones, each in their order.
+ista fn _splitDue(deadlines: Array<_Deadline>, time: Time) -> (Array<_Deadline>, Array<_Deadline>):
+  const due = [for each in deadlines if each.at <= time: each]
+  const later = [for each in deadlines if each.at > time: each]
   (due, later)
 
 # A host's queues of type `Q` carrying `T`, one per key, each faked with an inbox (§10). Its fields

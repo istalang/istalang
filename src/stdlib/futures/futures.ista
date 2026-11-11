@@ -6,8 +6,12 @@
 # so it decides as a `select`'s cases do (§8): at the lowest position among those resolved already
 # or together, and the others take nothing, a pending `take` no value. The others are async
 # functions, so they watch their futures from the call on, and `timeout`'s limit counts from it.
-# Those waiting for several arrivals await a `First` of the futures still out, turn after turn, so
-# nothing is taken from those between two turns.
+# Those waiting for several arrivals await each future in a call of its own (`_arrivals`), started
+# with theirs, and a `First` of those calls still out, turn after turn: a `First` lets go of its
+# losers, which a slot then passes over (§8), so between two turns only the calls keep the futures
+# waiting in their queues. Calls are readied as their futures arrive and were made in position
+# order, so racing them keeps both the arrival order and, among those arriving together, the
+# position order.
 #
 # A failure is a `Result`, never a rejection, so `all`, `any` and `quorum` read `Ok` and `Err` to
 # decide when to stop. None disposes a future it is given (§7): it lets go of them when it returns,
@@ -33,10 +37,11 @@ K fn onAwait<T, K in Persistence>(self: First<T, K>, done: Resolver<(Int, T), K>
 K async fn all<T, E, K in Persistence>(
   futures: Array<Future<Result<T, E>, K>>
 ) -> Result<Array<T>, E>:
+  const arrivals = _arrivals(futures)
   let values: Map<Int, T> = [:]
   let out = _everyPosition(futures)
   while out.length() > 0:
-    const (position, result) = await First<Result<T, E>, K>{futures, positions: out}
+    const (position, result) = await First<Result<T, E>, K>{futures: arrivals, positions: out}
     out = _without(out, position)
     match result:
       case Ok(value): values[position] = value
@@ -46,7 +51,7 @@ K async fn all<T, E, K in Persistence>(
 # Every value in position order, once all resolved.
 K async fn allSettled<T, K in Persistence>(futures: Array<Future<T, K>>) -> Array<T>:
   let values: Array<T> = []
-  for future in futures: values.push(await future)
+  for arrival in _arrivals(futures): values.push(await arrival)
   values
 
 # The first value to arrive; panics on an empty list, as `first` does.
@@ -57,10 +62,11 @@ K async fn race<T, K in Persistence>(futures: Array<Future<T, K>>) -> T:
 K async fn any<T, E, K in Persistence>(
   futures: Array<Future<Result<T, E>, K>>
 ) -> Result<T, Array<E>>:
+  const arrivals = _arrivals(futures)
   let errors: Map<Int, E> = [:]
   let out = _everyPosition(futures)
   while out.length() > 0:
-    const (position, result) = await First<Result<T, E>, K>{futures, positions: out}
+    const (position, result) = await First<Result<T, E>, K>{futures: arrivals, positions: out}
     out = _without(out, position)
     match result:
       case Ok(value): return Ok(value)
@@ -75,11 +81,12 @@ K async fn quorum<T, E, K in Persistence>(
 ) -> Result<Array<T>, Array<E>>:
   if n < 0 or n > futures.length():
     panic("A quorum of " + n + " can't be reached among " + futures.length() + " futures.")
+  const arrivals = _arrivals(futures)
   let values: Array<T> = []
   let errors: Map<Int, E> = [:]
   let out = _everyPosition(futures)
   while values.length() < n:
-    const (position, result) = await First<Result<T, E>, K>{futures, positions: out}
+    const (position, result) = await First<Result<T, E>, K>{futures: arrivals, positions: out}
     out = _without(out, position)
     match result:
       case Ok(value): values.push(value)
@@ -109,6 +116,13 @@ K async fn retry<T, E, K in Persistence>(
     await time.delay(wait)
     wait = wait * 2
   await attempt()
+
+# Each of `futures` awaited from now on in a call of its own, in position order.
+K fn _arrivals<T, K in Persistence>(futures: Array<Future<T, K>>) -> Array<Future<T, K>>: [
+  for future in futures: _arrival(future)
+]
+
+K async fn _arrival<T, K in Persistence>(future: Future<T, K>) -> T: await future
 
 # Every position of `items`, in order.
 fn _everyPosition<T>(items: Array<T>) -> Array<Int>: [for position in 0..items.length(): position]

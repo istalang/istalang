@@ -1,7 +1,10 @@
-# The inbox module's `pending` (spec §6); the rest of the module is the corpus's.
+# The inbox module's `pending` and its receivers' order (spec §6); the rest of the module is the
+# corpus's.
 
 import Suite, Test, test, assertEq from 'testing'
 import Inbox from 'inbox'
+import * as futures from 'futures'
+import * as runtime from 'runtime'
 
 @Suite{"inbox › pending"}
 fn pending() -> Array<Test>: [
@@ -20,5 +23,66 @@ fn pending() -> Array<Test>: [
     box.send(2)
     drop held
     assertEq(box.pending(), [2])
+  })
+]
+
+@Suite{"inbox › receivers"}
+fn receivers() -> Array<Test>: [
+  test("each get the next message once awaited again after losing a select", async fn(): {
+    const box = Inbox.create<Int>()
+    const (first, second) = (box.receive(), box.receive())
+    _ = await select:
+      case first: 0
+      case second: 0
+      case runtime.commit(): -1
+    box.send(1)
+    box.send(2)
+    box.send(3)
+    assertEq((await first, await second, await box.receive()), (1, 2, 3))
+  })
+  test("racing in futures.all get every message in the order sent", async fn(): {
+    const box = Inbox.create<Result<Int, String>>()
+    const all = futures.all([box.receive(), box.receive(), box.receive()])
+    await runtime.commit()
+    box.send(Ok(1))
+    box.send(Ok(2))
+    box.send(Ok(3))
+    assertEq(await all, Ok([1, 2, 3]))
+  })
+  test("retracting a queued message keeps the others in order", fn(): {
+    const box = Inbox.create<Int>()
+    box.send(1)
+    const held = box.sendRevertible(2)
+    box.send(3)
+    drop held
+    assertEq(box.pending(), [1, 3])
+  })
+  test("keep pending and retraction exact after losing a select", async fn(): {
+    const box = Inbox.create<Int>()
+    const (first, second) = (box.receive(), box.receive())
+    _ = await select:
+      case first: 0
+      case second: 0
+      case runtime.commit(): -1
+    const held1 = box.sendRevertible(1)
+    const held2 = box.sendRevertible(2)
+    box.send(3)
+    assertEq(box.pending(), [1, 2, 3])
+    assertEq(await first, 1)
+    drop held1
+    drop held2
+    assertEq(box.pending(), [3])
+    assertEq(await second, 3)
+  })
+  test("polled in a non-blocking select keep their place ahead of later receivers", async fn(): {
+    const box = Inbox.create<Int>()
+    const early = box.receive()
+    const polled = select:
+      case early as v: v
+      else: -1
+    const late = box.receive()
+    box.send(1)
+    box.send(2)
+    assertEq((polled, await early, await late), (-1, 1, 2))
   })
 ]
