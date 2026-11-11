@@ -3,8 +3,8 @@ description: std modules, native keys/capabilities, sequence positions, ranges, 
 owner: tech-lead
 status: active
 applies_to: istalang
-last_verified: 2026-11-11
-last_updated: 2026-11-11
+last_verified: 2026-11-12
+last_updated: 2026-11-12
 tags: [reuse, stdlib, natives, ranges, positions, time, decimal]
 ---
 
@@ -43,6 +43,7 @@ tags: [reuse, stdlib, natives, ranges, positions, time, decimal]
 - Methods taking a function value (`map`, `filter`, `sort`, `futures.retry`) are written in `.ista`, never in TS natives (`docs/arch/architecture.md`).
 - Extern types needing canonical equality (`decimal.Decimal`, `time.Zone`) keep their canonical string as the extern payload (`docs/arch/architecture.md`).
 - External input failures (`parse`, `crypto.decode`, `json.parse`) return `Result`; broken preconditions throw `Panic`; broken invariants call `unreachable`.
+- A native keeps no language value past its call outside the instance: it returns it, writes it through `NativeContext.write`, or stores it through a capability (`NativeSlots`, `NativeFutures`, `NativeWaits`, `NativeWeakSide`, `NativeTesting`), never in a closure or module state. Lifetimes read holders from registers and heap objects alone (`src/runtime/lifetimes/`).
 
 ## Recipes
 

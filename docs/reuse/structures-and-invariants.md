@@ -3,7 +3,7 @@ description: memoization, kind tables, explicit stacks, cycle components and bro
 owner: tech-lead
 status: active
 applies_to: istalang
-last_verified: 2026-11-09
+last_verified: 2026-11-12
 last_updated: 2026-11-09
 tags: [reuse, structures, memo, kind-table, invariants]
 ---

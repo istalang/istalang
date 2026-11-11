@@ -3,8 +3,8 @@ description: lowering to Definition IR, interned tables, function instances, cal
 owner: tech-lead
 status: active
 applies_to: istalang
-last_verified: 2026-11-11
-last_updated: 2026-11-11
+last_verified: 2026-11-12
+last_updated: 2026-11-12
 tags: [reuse, lowering, definition, ir, instructions]
 ---
 
@@ -68,6 +68,7 @@ tags: [reuse, lowering, definition, ir, instructions]
 - Lower every checked body through `instanceLowering`, `nestedLowering` or, for a context constant's initializer, `accessorLowering` (`functions/index.ts`), and syntaxless code through `SynthesizedCode`.
 - Lower std code a program needs only once it reaches a function, as the job server once it reaches `runtime.delegate`, from `lowerReached` (`lower.ts`), naming it in the Definition as `main` is, never from code every program reaches.
 - Never recognize a `Definition` type by name string at runtime; use `TypeDefinition.role` (`hasRole`, `isResourceType` in `src/definition/tables/types.ts`).
+- The lowering decides every release point, and the runtime never infers a scope (`src/definition/instructions/lifetimes.ts`): `release` at a block's end on every exit, a statement's or header's end and `drop`, `keep` for `hold`, a `select` case's `holds`, and `return` releasing every register. A `release` lists a block's variables in the order they were declared.
 
 ## Recipes
 

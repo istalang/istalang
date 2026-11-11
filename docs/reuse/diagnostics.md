@@ -3,8 +3,8 @@ description: diagnostic model, per-phase catalogs, code blocks, rendering and te
 owner: tech-lead
 status: active
 applies_to: istalang
-last_verified: 2026-10-29
-last_updated: 2026-11-04
+last_verified: 2026-11-12
+last_updated: 2026-11-12
 tags: [reuse, diagnostics, errors, testing]
 ---
 
@@ -20,6 +20,8 @@ tags: [reuse, diagnostics, errors, testing]
 - write all module diagnostics with an error and warning summary count → `reportDiagnostics` (`src/cli/report.ts`)
 - report command-line paths that name no file → `reportUnreadable` (`src/cli/report.ts`)
 - one module's diagnostics from every phase, sorted (an editor's document) → `diagnoseModule` (`src/compiler/compile.ts`); every module's → `diagnose`
+- the checker's one catalog → `checkerDiagnostics` (`src/compiler/checker/diagnostics/index.ts`), whose shared codes (5000–5059) sit there and each feature's blocks in a part beside it, named for the feature, its banner listing its blocks (`lifetimes.ts`: holders and disposal 5700–5799, the weak side 5800–5899; `concurrency.ts`: 5600–5699; `closures.ts`: 5500–5599)
+- state the diagnostics a whole program must report, as a corpus case → its header lines `# error: <code> at <line>:<column>`, one per diagnostic and no other (`test/corpus/<topic>/`, most named `invalid-*.ista`), read by `invalidPrograms` (`test/corpus/programs.ts`)
 
 ## One-way rules
 

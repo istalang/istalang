@@ -3,8 +3,8 @@ description: building, narrowing and reading language values, structs, variants,
 owner: tech-lead
 status: active
 applies_to: istalang
-last_verified: 2026-11-11
-last_updated: 2026-11-11
+last_verified: 2026-11-12
+last_updated: 2026-11-12
 tags: [reuse, values, equality, maps, json, natives, runtime]
 ---
 
@@ -42,4 +42,6 @@ tags: [reuse, values, equality, maps, json, natives, runtime]
 - Build and read structs, variants, `Optional`, `Result` and `Error` by declared name (`declared-values.ts`, `values/arguments.ts`, `values/results.ts`), never by positional index.
 - Narrow closures with `closureOf` and handles with `handleTarget`, and make handles with `handleTo` (`src/definition/values/values.ts`), never with ad-hoc `isComposite(v) && v.kind === ...` checks or `{ kind: 'handle', … }` literals.
 - Values are immutable: never mutate `fields`, `elements`, `entries` or `captures`; rebuild with `withPart`, `withChildValues`, or `withEntry`/`withoutEntry`.
+- A composite is shared by identity: a copy, a part a rebuild kept, a constant every instance reads, and a value in a snapshot restored twice in memory can be one object. Data keyed by a composite's identity (a `WeakMap`, as `values.ts`'s summaries) describes the value wherever it is; what describes one place or one instance's use of it is kept per instance, never on the value.
+- Handles compare and hash by the object id they name (`equality.ts`): `==` on handles is identity, never their objects' contents.
 - Built-in `==` and map hashing live in `ValueSemantics` (`src/foundation/language/values.ts`), shared by `definition/values/equality.ts` and `checker/surface/constant-form.ts`. A head compares no instantiated type id: a value converted part by part keeps its own where its layout stays (§3.5).
