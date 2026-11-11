@@ -94,3 +94,8 @@ Scope and acceptance: `phases.md`, AW. Rules: proposal 8, Rules 5 and 6.
   and `stdlib/futures/natives.ts`.
 - Live tests: a TypeScript test compiling `live async fn` scenarios over live timers and starting
   each with `program.start('live', …)` (`boundary/host-resolvers.test.ts` shows how).
+- Holding (from AW2): a pending resolver is held only by its wait (wait → registered resolver →
+  future, `lifetimes/holders.ts`). A `Resolver.of` resolver has no wait, so its registration on a
+  future must hold it some other way while registered, or it is collected and panics as dropped.
+- A resolver made after its wait was decided stays pending until the waiter stops (`waits.ts`);
+  the waiter lookup tolerates the off-heap disposal carrier (id -1).
