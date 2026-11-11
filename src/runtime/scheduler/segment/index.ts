@@ -183,15 +183,24 @@ class SegmentRunner implements Machine {
   }
 
   end(): void {
-    const step = () => this.#step();
     this.#instance.releaseRoot();
+    this.#letGoOfTheRest(() => this.#collection.collectEnding(() => this.#step()));
+  }
+
+  /**
+   * Lets go of what the instance holds once its root is gone, as it finishes or ends (§3.12, §7):
+   * the answers it owes, then any execution left, a call still waiting in it included, so what
+   * they hold is disposed while the context constants they read are still there; the constants
+   * last (§3.4). `collect` collects after each.
+   */
+  #letGoOfTheRest(collect: () => void): void {
     this.#instance.releaseAnswers();
-    this.#collection.collectEnding(step);
+    collect();
     for (const execution of this.#instance.heap.objectsOf('execution')) {
       this.#instance.stop(execution);
     }
-    this.#collection.collectEnding(step);
-    this.#instance.releaseConstants(() => this.#collection.collectEnding(step));
+    collect();
+    this.#instance.releaseConstants(collect);
   }
 
   /**
@@ -296,12 +305,9 @@ class SegmentRunner implements Machine {
     return this.#instance.weak.reference(handleTo(this.#runStack.current().id));
   }
 
-  /**
-   * The instance finished with `outcome`, everything else it held disposed: it lets go of its
-   * context constants last (§3.4).
-   */
+  /** The instance finished with `outcome`, everything else it held disposed. */
   #finished(outcome: Outcome): RunEnd {
-    this.#instance.releaseConstants(() => this.#collection.collectFully(() => this.#step()));
+    this.#letGoOfTheRest(() => this.#collection.collectFully(() => this.#step()));
     return { kind: 'finished', ...outcome };
   }
 

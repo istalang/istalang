@@ -48,6 +48,8 @@ export type Resume<T> = (value: T) => void;
 /** The resumes of one live run's waits, and the wake of its driver when one is called. */
 export class LiveResumes {
   readonly #queued: (() => FailedWait | undefined)[] = [];
+  /** A host's misuse, which ends the run whatever is queued and however its segment ended. */
+  #misused: FailedWait | undefined;
   #wake: (() => void) | undefined;
 
   /**
@@ -66,17 +68,23 @@ export class LiveResumes {
   }
 
   /**
-   * Panics the run from outside it, as `failed` says, at its next segment: before any resume still
-   * queued, since a host's misuse ends the run whatever it was given.
+   * Panics the run from outside it, as `failed` says, once its segment ends: before any resume
+   * still queued, and even should the segment finish it, since a host's misuse ends the run
+   * whatever it was given. The first misuse is the one it panics with.
    */
   fail(failed: FailedWait): void {
-    this.#queued.unshift(() => failed);
+    this.#misused ??= failed;
     this.#wake?.();
   }
 
-  /** Whether a resume was called and not yet applied. */
+  /** The host's misuse the run panics with, if there was one. */
+  get misused(): FailedWait | undefined {
+    return this.#misused;
+  }
+
+  /** Whether a resume was called and not yet applied, or a misuse is to end the run. */
   get queued(): boolean {
-    return this.#queued.length > 0;
+    return this.#misused !== undefined || this.#queued.length > 0;
   }
 
   /** Settles once a resume has been called and not yet applied: at once when one has. */
@@ -97,6 +105,9 @@ export class LiveResumes {
    * whether it failed its wait, after which the run applies nothing more.
    */
   applyNext(): { readonly failed: FailedWait | undefined } | undefined {
+    if (this.#misused !== undefined) {
+      return { failed: this.#misused };
+    }
     const resolve = this.#queued.shift();
     return resolve === undefined ? undefined : { failed: resolve() };
   }

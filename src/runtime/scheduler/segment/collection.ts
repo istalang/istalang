@@ -8,8 +8,10 @@
  * served once it is done, before anything else runs.
  */
 
+import type { ActiveFrame } from '../../interpreter/frames.ts';
 import { Collector } from '../../lifetimes/collector.ts';
 import type { Roots } from '../../lifetimes/holders.ts';
+import type { LiveExecution } from '../instance/heap.ts';
 import { type DisposalRunSeams, DisposalRuns } from './disposal-runs.ts';
 import { panicOf } from './limits.ts';
 
@@ -58,7 +60,7 @@ export class SegmentCollection {
     const { heap, slots } = this.#seams.instance;
     for (;;) {
       const released = heap.takeReleased();
-      if (released.length > 0) {
+      if (released.length > 0 || this.#collector.stalled) {
         this.#collector.collect(released);
       }
       if (this.#collector.busy) {
@@ -78,20 +80,41 @@ export class SegmentCollection {
   }
 
   /**
-   * Collects until no disposal is left to run, while the instance ends: one that panics, as `step`
-   * runs it, is let go.
+   * Collects until no disposal is left to run, while the instance ends (§3.12): one that panics is
+   * let go of, and the rest go on. A panic is the innermost running disposal's, its code's own or
+   * a disposal of what that code let go of, which the collector lets go of at once: the running
+   * one is abandoned once what it set off is done and it is innermost again, inside the loop, so a
+   * panic abandoning it raises is let go of in turn.
    */
   collectEnding(step: () => void): void {
-    this.collectFully(() => {
+    let abandoning: ActiveFrame | LiveExecution | undefined;
+    for (;;) {
+      // What abandoning a disposal lets go of is that disposal's: a panic it raises abandons no more.
+      let attributing = true;
       try {
-        step();
+        if (this.collected()) {
+          return;
+        }
+        if (abandoning !== undefined && abandoning === this.disposals.innermost()) {
+          abandoning = undefined;
+          attributing = false;
+          this.disposals.abandon();
+        } else {
+          step();
+        }
       } catch (error) {
         if (panicOf(error) === undefined) {
           throw error;
         }
-        this.disposals.abandon();
+        const letGo = this.#collector.panicked();
+        if (attributing) {
+          abandoning = this.disposals.innermost();
+        }
+        if (!(letGo || abandoning !== undefined)) {
+          throw error;
+        }
       }
-    });
+    }
   }
 
   /**

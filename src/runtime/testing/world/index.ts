@@ -15,8 +15,10 @@
  *   hold. When nothing can, it waits for the earliest timer on the clock it is given, real time
  *   unless the test mocked it (§10), so the runtime never sleeps. A wait past the deadline ends the
  *   test.
- * - The test is the world's call into its context, an invocation as live code's is: it ends when
- *   that call answers, or when any instance panics, which fails it at once with that panic (§10),
+ * - The test is the world's call into its context, an invocation as live code's is. The context
+ *   lives on as any context does (§9): nothing ends it when the call answers, so what its context
+ *   constants hold is never disposed, the world being discarded with it as a store is. The test
+ *   ends when that call answers, or when any instance panics, which fails it at once with that panic (§10),
  *   unless an instance waits for its end (`result()`, as `expectPanic` does). Such a wait ends once it is answered, so the world remembers each panic waited for as it
  *   records it.
  *   One whose instances all wait on nothing left to wake them fails, naming where each waits.

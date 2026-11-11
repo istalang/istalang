@@ -90,4 +90,56 @@ describe('terminating an instance', () => {
     expect((await test.runtime.terminate('t')).state).toMatchObject({ kind: 'terminated' });
     expect(notes).toEqual(['child cleaned up']);
   });
+
+  it('lets go of a disposal that panics before its call runs, the rest going on', async () => {
+    const notes: unknown[] = [];
+    const host: HostExterns = {
+      'main.note(String)': ([text]) => {
+        notes.push(text);
+        return null;
+      },
+    };
+    const test = testRuntime({ host });
+    const dropping = compiledText(
+      [
+        'extern fn note(text: String)',
+        "import * as time from 'time'\nimport * as runtime from 'runtime'",
+        'struct Dropper:',
+        '  type Mode = "ista"',
+        'ista fn onAwait(self: Dropper, done: Resolver<Int, "ista">): ()',
+        'struct Panicking:',
+        '  type Mode = "ista"',
+        'ista fn onAwait(self: Panicking, done: Resolver<Int, "ista">) -> Unit: panic("in onAwait")',
+        'shared struct Probe { name: String }',
+        'ista fn dispose(self: Probe):',
+        '  const got = select:',
+        '    case Dropper: 1',
+        '    else: 0',
+        '  note("probed " + self->name)',
+        'shared struct CrashProbe { name: String }',
+        'ista fn dispose(self: CrashProbe):',
+        '  const got = select:',
+        '    case Panicking: 1',
+        '    else: 0',
+        '  note("crashed " + self->name)',
+        'shared struct Lease { name: String }',
+        'fn dispose(self: Lease): note("disposed " + self->name)',
+        'ista async fn boom():',
+        '  await time.delay(5ms)',
+        '  panic("boom")',
+        'live async fn main() -> Int: await runtime.run(runtime.id()) _main()',
+        'ista async fn _main() -> Int:',
+        '  const crash = new CrashProbe{name: "crash"}',
+        '  const lease = new Lease{name: "lease"}',
+        '  const probe = new Probe{name: "probe"}',
+        '  hold _ = boom()',
+        '  await time.delay(1d)',
+        '  0',
+      ].join('\n'),
+    );
+    const started = test.startInstance(dropping, 't');
+    expect(await runToEnd(test, 't', started)).toMatchObject({ kind: 'panicked', message: 'boom' });
+    expect((await test.runtime.terminate('t')).state).toMatchObject({ kind: 'terminated' });
+    expect(notes).toEqual(['disposed lease']);
+  });
 });

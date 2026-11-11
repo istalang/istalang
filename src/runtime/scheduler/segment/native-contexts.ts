@@ -24,7 +24,7 @@ import type { Instance } from '../instance/index.ts';
 import { panicCode } from '../instance/instance-ends.ts';
 import { liveResolvable } from '../live-resolvers.ts';
 import type { CallListener, RunContexts } from '../run-contexts.ts';
-import type { Waiting } from '../waiting.ts';
+import type { LiveWaiting, Waiting } from '../waiting.ts';
 
 /** What a `Store` holds: the host's store, the only one a live run reaches today. */
 const hostStorePayload = 'host';
@@ -35,23 +35,13 @@ export function nativeContextsOf(
   waiting: Waiting,
   trace: () => string,
 ): NativeContexts {
-  const reached = (): Extract<Waiting, { kind: 'live' }> =>
-    waiting.kind === 'live'
-      ? waiting
-      : unreachable('Ista code reaches no runtime; the call rule keeps it from live natives.');
+  const reached = (): LiveWaiting => liveOf(waiting);
   const runtimeOf = (runtime: Value): number => {
     const { payload } = instance.heap.of(handleObject(runtime), 'resource');
     return typeof payload === 'number' ? payload : unreachable('A Runtime holds its number.');
   };
-  /** A live future the run's contexts resolve, which `waitOn` hands them with its resolver. */
-  const awaitingContexts = (
-    waitOn: (contexts: RunContexts, future: number, resolver: NativeResolver) => void,
-  ): Value => {
-    const { resumes, contexts } = reached();
-    const { future, resolver } = liveResolvable(instance, resumes, trace());
-    waitOn(contexts, handleObject(future), resolver);
-    return future;
-  };
+  const awaitingContexts = (waitOn: WaitOn): Value =>
+    awaitedFromContexts(instance, reached(), trace(), waitOn);
   return {
     hostStore: (type) => ({ kind: 'extern', type, payload: hostStorePayload }),
     open: (_store, type) => {
@@ -96,6 +86,35 @@ export function nativeContextsOf(
         : { kind: 'closure', function: jobServer, captures: [] };
     },
   };
+}
+
+/** How `waiting` waits, which is live: only a live run reaches contexts. */
+function liveOf(waiting: Waiting): LiveWaiting {
+  return waiting.kind === 'live'
+    ? waiting
+    : unreachable('Ista code reaches no runtime; the call rule keeps it from live natives.');
+}
+
+/** Hands the run's contexts the live future `future` with its resolver, to resolve it. */
+type WaitOn = (contexts: RunContexts, future: number, resolver: NativeResolver) => void;
+
+/**
+ * A live future of `instance`, made at `trace`, which the run's contexts resolve once `waitOn`
+ * hands it to them; let go of, they release what waits on it.
+ */
+function awaitedFromContexts(
+  instance: Instance,
+  { resumes, contexts }: LiveWaiting,
+  trace: string,
+  waitOn: WaitOn,
+): Value {
+  const { future, resolver } = liveResolvable(instance, resumes, trace);
+  const id = handleObject(future);
+  waitOn(contexts, id, resolver);
+  resolver.onCancel(() => {
+    contexts.release(id);
+  });
+  return future;
 }
 
 /** The call `closure`, a function taking nothing, makes, as it leaves `instance`. */

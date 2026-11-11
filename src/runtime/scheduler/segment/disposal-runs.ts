@@ -8,7 +8,8 @@
  * - A disposed call's cleanup is that call's own execution, resumed at its `disposing()` case,
  *   that case winning whatever else has resolved. Its next await or return stops the call there.
  * - While an instance ends (§3.12), a disposal that panics is abandoned with whatever it started,
- *   so it counts as done and the rest still run and tell their hosts.
+ *   the waits its frames opened ended, so it counts as done and the rest still run and tell their
+ *   hosts.
  * - A disposal's call is a call like any other to a mock that replaces it (§10).
  */
 
@@ -92,6 +93,7 @@ export class DisposalRuns {
       const at = frames.findLastIndex((frame) => this.#frames.has(frame));
       if (at >= 0) {
         for (const frame of runStack.dropFrames(execution, at)) {
+          instance.waits.abandon(frame);
           releaseFrame(frame);
         }
         this.#callDone(execution);
@@ -103,6 +105,23 @@ export class DisposalRuns {
       runStack.pop();
       instance.stop(execution);
     }
+  }
+
+  /**
+   * The innermost disposal running, as `abandon` finds it: a disposal's call, by its frame, or a
+   * disposed call's cleanup, by its execution; none when none runs.
+   */
+  innermost(): ActiveFrame | LiveExecution | undefined {
+    for (const execution of this.#seams.runStack.innermostFirst()) {
+      const frame = execution.frames.findLast((each) => this.#frames.has(each));
+      if (frame !== undefined) {
+        return frame;
+      }
+      if (this.#cleanups.has(execution)) {
+        return execution;
+      }
+    }
+    return undefined;
   }
 
   #call(call: DisposalCall): boolean {

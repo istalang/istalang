@@ -111,6 +111,27 @@ describe('spawning an instance', () => {
       outcome: 42n,
     });
   });
+
+  it('starts a child through a shorter function value, its function computing what it left out', async () => {
+    const text = compiledText(
+      [
+        "import * as time from 'time'\nimport * as runtime from 'runtime'",
+        'ista async fn work(x: Int = 42) -> Int:',
+        '  await time.delay(1ms)',
+        '  x',
+        'live async fn main() -> Int: await runtime.run(runtime.id()) _main()\nista async fn _main() -> Int:',
+        '  const f: sendable ista async fn() -> Int = work',
+        '  drop spawn(f)',
+        '  0',
+      ].join('\n'),
+    );
+    const test = testRuntime();
+    const started = test.startInstance(text, 'p');
+    expect((await settleAll(test, 'p', started)).get('p/1')).toMatchObject({
+      kind: 'finished',
+      outcome: 42n,
+    });
+  });
 });
 
 /** `main` spawning an async callee, which waits across commits, and a plain one. */

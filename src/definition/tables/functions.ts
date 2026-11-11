@@ -124,6 +124,22 @@ export function bodyStart(entry: CodeFunction): number {
   );
 }
 
+/**
+ * Whether a call of `entry` gives its value at once, as a callback's or an encoder's must: an
+ * extern's call does, its future being a value, and code running as no execution of its own.
+ */
+export function returnsAtOnce(entry: FunctionDefinition): boolean {
+  return entry.kind !== 'code' || entry.mode === 'simple';
+}
+
+/** Whether a call passing `given` arguments fits `entry`, leaving out only what its code computes. */
+export function takesArguments(entry: FunctionDefinition, given: number): boolean {
+  return (
+    given <= entry.parameters.length &&
+    entry.parameters.every((_, index) => index < given || mayLeaveOut(entry, index))
+  );
+}
+
 /** How many captured values a closure of `entry` carries; an extern captures nothing. */
 export function capturesOf(entry: FunctionDefinition): number {
   return entry.kind === 'code' ? entry.captures : 0;
@@ -138,8 +154,7 @@ export function encoderProblem(entry: FunctionDefinition): string | undefined {
     entry.parameters.length > 0 &&
     !takesReference(entry, 0) &&
     entry.parameters.every((_, index) => index === 0 || mayLeaveOut(entry, index));
-  const waits = entry.kind === 'code' && entry.mode !== 'simple';
-  return takesOneValue && !waits && capturesOf(entry) === 0
+  return takesOneValue && returnsAtOnce(entry) && capturesOf(entry) === 0
     ? undefined
     : `${entry.name} can't encode an outcome: an encoder takes one value and gives its JSON at once`;
 }

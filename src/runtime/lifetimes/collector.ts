@@ -59,6 +59,8 @@ interface Round {
 export class Collector {
   readonly #seams: CollectorSeams;
   readonly #rounds: Round[] = [];
+  /** The object being disposed before any code of its disposal runs: one that panics leaves it. */
+  #making: number | undefined;
 
   constructor(seams: CollectorSeams) {
     this.#seams = seams;
@@ -89,6 +91,31 @@ export class Collector {
     this.#proceed();
   }
 
+  /**
+   * The disposal it was making panicked before any code of it ran, while its instance ends: its
+   * object is gone, and its round stalls until the next `collect` takes it on. Whether it was
+   * making one.
+   */
+  panicked(): boolean {
+    const id = this.#making;
+    if (id === undefined) {
+      return false;
+    }
+    this.#making = undefined;
+    const round = this.#rounds.at(-1);
+    if (round?.disposing === id) {
+      round.disposing = undefined;
+    }
+    this.#gone(id);
+    return true;
+  }
+
+  /** Whether a round, its disposal let go of after it panicked, waits to be taken on again. */
+  get stalled(): boolean {
+    const round = this.#rounds.at(-1);
+    return round !== undefined && round.disposing === undefined;
+  }
+
   #proceed(): void {
     for (let round = this.#rounds.at(-1); round !== undefined; round = this.#rounds.at(-1)) {
       if (round.disposing !== undefined) {
@@ -115,15 +142,19 @@ export class Collector {
     if (kept && readiedBy(object).length === 0) {
       return;
     }
+    this.#making = id;
     const run = dispose(this.#seams, object);
     if (run === undefined) {
+      this.#making = undefined;
       if (!kept) {
         this.#gone(id);
       }
       return;
     }
     round.disposing = id;
-    if (this.#seams.run(run)) {
+    const done = this.#seams.run(run);
+    this.#making = undefined;
+    if (done) {
       this.#gone(id);
       round.disposing = undefined;
     }

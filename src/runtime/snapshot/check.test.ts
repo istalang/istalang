@@ -6,12 +6,13 @@
 
 import { describe, expect, it } from 'vitest';
 import { compiledText } from '../../compiler/compile.test-kit.ts';
+import { definitionFormat } from '../../definition/definition.ts';
 import { FormatError } from '../../definition/formats/format.ts';
 import type { Value } from '../../definition/values/values.ts';
 import { Refusal } from '../refusal.ts';
 import { recordingStore, runToEnd, testRuntime } from '../runtime.test-kit.ts';
 import type { ResolverTarget } from './objects.ts';
-import { type Snapshot, snapshotFormat } from './snapshot.ts';
+import { type InstanceCall, type Snapshot, snapshotFormat } from './snapshot.ts';
 
 /** A program committed while it waits two executions deep. */
 const waitingProgram = compiledText(
@@ -85,19 +86,62 @@ const withRun = (snapshot: Snapshot, call: { readonly arguments?: readonly Value
   return { ...snapshot, objects: [...snapshot.objects, run], ready: [...snapshot.ready, id] };
 };
 
+/**
+ * A function value of a plain function `waitingProgram` holds taking `arity` arguments, none
+ * left out or by reference: one a callback called with that many may be.
+ */
+const plainFunctionTaking = (arity: number): Value => ({
+  kind: 'closure',
+  function: definitionFormat
+    .read(waitingProgram)
+    .functions.findIndex(
+      (entry) =>
+        entry.kind === 'code' &&
+        entry.mode === 'simple' &&
+        entry.captures === 0 &&
+        entry.parameters.length === arity &&
+        entry.parameters.every(({ reference, hasDefault }) => !(reference || hasDefault)),
+    ),
+  captures: [],
+});
+
+/** What a resolver calls back with its value, and what it calls once cancelled. */
+const valueCallback = plainFunctionTaking(1);
+const cancelCallback = plainFunctionTaking(0);
+
+/** A pending resolver `id` deciding `target`, with `onCancel` callbacks. */
+const pendingResolver = (id: number, target: ResolverTarget, onCancel: readonly Value[] = []) => ({
+  kind: 'resolver' as const,
+  id,
+  state: { kind: 'pending' as const, target, on: [], onCancel: [...onCancel] },
+});
+
 /** `snapshot` with a pending `Resolver.of` resolver `done`, and a `Resolver.at` one `at` of it. */
 const withPosition = (snapshot: Snapshot, done: number, at: number): Snapshot => {
-  const pending = (id: number, target: ResolverTarget) => ({
-    kind: 'resolver' as const,
-    id,
-    state: { kind: 'pending' as const, target, on: [], onCancel: [] },
-  });
   const resolvers = [
-    pending(done, { kind: 'callback', callback: null }),
-    pending(at, { kind: 'at', done, position: 0n }),
+    pendingResolver(done, { kind: 'callback', callback: valueCallback }),
+    pendingResolver(at, { kind: 'at', done, position: 0n }),
   ].toSorted((first, second) => first.id - second.id);
   return { ...snapshot, objects: [...snapshot.objects, ...resolvers] };
 };
+
+/** `snapshot` with a pending resolver calling back `callback`, cancelled calling `onCancel`. */
+const withCallback = (snapshot: Snapshot, callback: Value, onCancel: readonly Value[] = []) => ({
+  ...snapshot,
+  objects: [...snapshot.objects, pendingResolver(10_000, { kind: 'callback', callback }, onCancel)],
+});
+
+/** `snapshot` panicked in the segment a host's call `call` started, which a retry runs again. */
+const panickedReplaying = (snapshot: Snapshot, call: InstanceCall): Snapshot => ({
+  ...snapshot,
+  status: {
+    kind: 'panicked',
+    message: 'no',
+    trace: '',
+    segmentStartedAt: 0n,
+    replay: { kind: 'invocation', invocation: { call, token: 't' } },
+  },
+});
 
 const withVersion = (text: string, version: number) =>
   text.replace(versionAtEnd, `"version":${version}}`);
@@ -243,6 +287,29 @@ describe('reading an instance back', () => {
       (snapshot) => withRun(snapshot, { arguments: [1n, 2n, 3n, 4n, 5n, 6n, 7n, 8n, 9n] }),
     ],
     ['a run that is not ready', (snapshot) => ({ ...withRun(snapshot, {}), ready: [] })],
+    ['a run calling back an async function', (snapshot) => withRun(snapshot, {})],
+    ['a resolver calling back what is no function', (snapshot) => withCallback(snapshot, 1n)],
+    [
+      'a resolver calling back an async function',
+      (snapshot) =>
+        withCallback(snapshot, { kind: 'closure', function: frameEntry(snapshot), captures: [] }),
+    ],
+    [
+      'a resolver cancelled calling what is no function',
+      (snapshot) => withCallback(snapshot, valueCallback, [null]),
+    ],
+    [
+      'a resolver calling back a function taking no value',
+      (snapshot) => withCallback(snapshot, cancelCallback),
+    ],
+    [
+      'a resolver cancelled calling a function that takes a value',
+      (snapshot) => withCallback(snapshot, valueCallback, [valueCallback]),
+    ],
+    [
+      "a host's call to replay into a function the Definition lacks",
+      (snapshot) => panickedReplaying(snapshot, { function: 9999, captures: [], arguments: [] }),
+    ],
     [
       'a Resolver.at resolver deciding one made after it',
       (snapshot) => withPosition(snapshot, 10_001, 10_000),
@@ -264,6 +331,12 @@ describe('reading an instance back', () => {
     const test = waitingInstance();
     storeChanged(test, change);
     await expect(test.runtime.wake('i')).rejects.toThrow(mismatch);
+  });
+
+  it('accepts a resolver calling back a plain function, cancelled calling one', async () => {
+    const test = waitingInstance();
+    storeChanged(test, (snapshot) => withCallback(snapshot, valueCallback, [cancelCallback]));
+    await expect(test.runtime.wake('i')).resolves.toBeDefined();
   });
 
   it('accepts a Resolver.at resolver deciding one made before it', async () => {

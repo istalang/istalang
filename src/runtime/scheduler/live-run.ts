@@ -9,8 +9,10 @@
  * - Its waits ride the host's own event loop, as JavaScript's do: the run adds no loop of its own.
  *   With nothing ready, it awaits whichever comes first, its earliest timer on the host's clock or
  *   a resume, called when a host resolves a future it waits on (waiting.ts). Each segment begins
- *   with one resume applied, as an instance's begins with one arrival, and collects what deciding
- *   its waits let go of before anything runs. A promise that has settled already resumes before
+ *   with one resume applied, as an instance's begins with one arrival: two answers are two events
+ *   (§6), so one arriving first decides a wait first, and a later one is seen by the next segment,
+ *   even when it arrived before this one ran. Each collects what deciding its waits let go of
+ *   before anything runs. A promise that has settled already resumes before
  *   the clock is waited on, so a manual clock, which jumps to whatever it is waited until, never
  *   jumps past it; with none, a test's manual clock fires a live timer at once, as it does an
  *   instance's.
@@ -19,8 +21,9 @@
  *   it as a host's does, and with nothing ready its wait lasts until the earliest timer of either.
  *   They run only while it does, but every call it made starts, its end included.
  * - It ends when its root returns, with its outcome, encoded as an instance's is (§9), or when it
- *   panics, a promise it waits on rejecting included, with the trace of where that wait began: as a
- *   restart would end it, nothing is disposed or retried. With nothing ready, no timer and no host
+ *   panics, a promise it waits on rejecting included, with the trace of where that wait began, and
+ *   a host's misuse of a resolver, even in the segment its root returned in: as a restart would end
+ *   it, nothing is disposed or retried. With nothing ready, no timer and no host
  *   future but calls into contexts that nothing can wake either, nothing can wake it, so it ends
  *   waiting on nothing. What it logged reaches its host at its end.
  */
@@ -82,7 +85,10 @@ async function runToEnd(clock: Clock, instance: Instance, waiting: LiveWaiting):
     instance.futures.resolveDueTimers(clock.now());
     end = runLiveSegment(instance, clock.now, waiting);
   }
-  return ended(end);
+  const { misused } = resumes;
+  return ended(
+    end.kind === 'finished' && misused !== undefined ? { kind: 'panicked', ...misused } : end,
+  );
 }
 
 /**
@@ -106,11 +112,13 @@ async function idled(
     return { kind: 'waiting', until: undefined, watching: [] };
   }
   await woken(clock, due, awaitsHost ? resumes : undefined);
-  await contexts.wakeDue(clock.now());
-  return undefined;
+  return await runContexts(clock, contexts);
 }
 
-/** Runs what can run in `contexts` between two segments of a run that hasn't waited: never its end. */
+/**
+ * Runs what can run in `contexts` between two segments of the run, those whose timers came due
+ * included, so what they answer is applied before it runs again: never its end.
+ */
 async function runContexts(clock: Clock, contexts: RunContexts): Promise<undefined> {
   await contexts.wakeDue(clock.now());
   await contexts.runReady();

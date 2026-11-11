@@ -2,14 +2,16 @@
  * Checking a snapshot's waits and resolvers against its executions and the Definition (index.ts):
  * an execution that waits does so on a wait of its own, which is decided exactly when it is ready,
  * every wait is one an execution stands at, and every pending resolver decides a wait, a resolver
- * or a callback that is there.
+ * or a callback that is there. A callback, and an `onCancel` one, is a function value its resolver
+ * can call back, with its value or with nothing (calls.ts).
  */
 
 import type { Definition } from '../../../definition/definition.ts';
 import { waitRegister } from '../../../definition/instructions/flow.ts';
-import { handleTarget } from '../../../definition/values/values.ts';
+import { closureOf, handleTarget, type Value } from '../../../definition/values/values.ts';
 import { type Frame, type HeapObject, isReference, type ResolverTarget } from '../objects.ts';
 import type { Snapshot } from '../snapshot.ts';
+import { calledBackProblems } from './calls.ts';
 
 /**
  * An execution waits exactly when its top frame stands at an instruction that waits, its register
@@ -44,7 +46,7 @@ export function waitProblems(definition: Definition, snapshot: Snapshot): readon
       problems.push(...waitObjectProblems(object, stoodAt.get(object.id), pending.get(object.id)));
     }
     if (isPendingResolver(object)) {
-      problems.push(...resolverProblems(objects, object, stoodAt));
+      problems.push(...resolverProblems({ definition, objects, stoodAt }, object));
     }
   }
   return problems;
@@ -111,23 +113,41 @@ function waitObjectProblems(
 }
 
 /**
- * What is wrong with the pending `resolver`: what it decides (`targetProblems`), and a
- * registration on anything but a pending future.
+ * What is wrong with the pending `resolver`: what it decides (`targetProblems`), its `onCancel`
+ * callbacks, and a registration on anything but a pending future.
  */
-function resolverProblems(
-  objects: ReadonlyMap<number, HeapObject>,
-  resolver: PendingResolverObject,
-  stoodAt: ReadonlyMap<number, number>,
-): readonly string[] {
-  const { target, on } = resolver.state;
+function resolverProblems(checked: Checked, resolver: PendingResolverObject): readonly string[] {
+  const { target, on, onCancel } = resolver.state;
   const registered = on.every((id) => {
-    const future = objects.get(id);
+    const future = checked.objects.get(id);
     return future?.kind === 'future' && future.state.kind !== 'resolved';
   });
+  const described = `resolver ${resolver.id}`;
   return [
-    ...targetProblems(objects, resolver.id, target, stoodAt),
-    ...(registered ? [] : [`resolver ${resolver.id} is registered on what is no pending future`]),
+    ...targetProblems(checked, resolver.id, target),
+    ...onCancel.flatMap((callback) => callbackProblems(checked.definition, callback, 0, described)),
+    ...(registered ? [] : [`${described} is registered on what is no pending future`]),
   ];
+}
+
+/**
+ * What is wrong with `callback`, which `described` calls back with `given` arguments: no function
+ * value, or one that can't be called so.
+ */
+function callbackProblems(
+  definition: Definition,
+  callback: Value,
+  given: number,
+  described: string,
+): readonly string[] {
+  const closure = closureOf(callback);
+  return closure === undefined
+    ? [`${described} calls back what is no function`]
+    : calledBackProblems(
+        definition,
+        { function: closure.function, captures: closure.captures.length, arguments: given },
+        described,
+      );
 }
 
 /**
@@ -136,14 +156,13 @@ function resolverProblems(
  * `Resolver.at` ones decide each other round.
  */
 function targetProblems(
-  objects: ReadonlyMap<number, HeapObject>,
+  { definition, objects, stoodAt }: Checked,
   id: number,
   target: ResolverTarget,
-  stoodAt: ReadonlyMap<number, number>,
 ): readonly string[] {
   switch (target.kind) {
     case 'callback':
-      return [];
+      return callbackProblems(definition, target.callback, 1, `resolver ${id}`);
     case 'at': {
       const done = objects.get(target.done);
       return done?.kind === 'resolver' && done.state.kind === 'pending' && done.id < id
@@ -175,6 +194,14 @@ type PendingCaseObject = PendingResolverObject & {
 
 function isPendingResolver(object: HeapObject): object is PendingResolverObject {
   return object.kind === 'resolver' && object.state.kind === 'pending';
+}
+
+/** What checking a resolver reads: the Definition, the snapshot's objects, and its waits' cases. */
+interface Checked {
+  readonly definition: Definition;
+  readonly objects: ReadonlyMap<number, HeapObject>;
+  /** How many cases each wait has, by its id, where an execution stands at it. */
+  readonly stoodAt: ReadonlyMap<number, number>;
 }
 
 /** Where an execution stops: how many cases its wait has, and the wait its register holds. */

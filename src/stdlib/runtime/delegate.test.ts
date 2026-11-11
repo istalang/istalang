@@ -16,13 +16,7 @@ import { definitionFormat } from '../../definition/definition.ts';
 import type { HostExterns } from '../../runtime/boundary/host-natives.ts';
 import { recordingStore, startToEnd, testRuntime } from '../../runtime/runtime.test-kit.ts';
 import { memoryStore } from '../../runtime/store.ts';
-
-const chargeKey = 'main.charge(String)';
-
-const header = [
-  "import * as runtime from 'runtime'",
-  'extern live async fn charge(id: String) -> String',
-];
+import { chargeKey, countingHost, header } from './delegate.test-kit.ts';
 
 /** A program whose `main` runs `body`, ista code, in the context "o/1". */
 function running(...body: string[]): string {
@@ -33,23 +27,6 @@ function running(...body: string[]): string {
       'live async fn main() -> String: await runtime.run("o/1") purchase("o/1")',
     ),
   );
-}
-
-/** A host's `charge`, counting its calls by id into `calls`. */
-type Charge = (arguments_: readonly unknown[]) => Promise<string>;
-
-/** A host whose `charge` answers with a receipt naming its id, counting its calls by id. */
-function countingHost(): {
-  readonly host: HostExterns;
-  readonly charge: Charge;
-  readonly calls: Map<string, number>;
-} {
-  const calls = new Map<string, number>();
-  const charge: Charge = ([id]) => {
-    calls.set(String(id), (calls.get(String(id)) ?? 0) + 1);
-    return Promise.resolve(`receipt for ${String(id)}`);
-  };
-  return { host: { [chargeKey]: charge }, charge, calls };
 }
 
 /**

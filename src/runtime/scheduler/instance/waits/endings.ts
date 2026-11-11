@@ -44,13 +44,21 @@ export class ResolverEndings {
   }
 
   /**
-   * Cancels the resolvers still pending of `wait`, decided, but one on its waiter's own watch. Each
-   * lets go of what it awaited, a losing case's (spec §8), which may wait in a slot's queue.
+   * Cancels the resolvers still pending of `wait`, decided, but one on its waiter's own watch,
+   * which stays registered there alone. Each lets go of what else it awaited, a losing case's
+   * (spec §8), which may wait in a slot's queue.
    */
   cancelLosers(wait: Wait): void {
     for (const other of pendingCases(this.#heap, wait)) {
-      if (!other.state.on.some((future) => this.keeps(wait, future))) {
+      const kept = other.state.on.filter((future) => this.keeps(wait, future));
+      if (kept.length === 0) {
         this.cancel(other, 'lost');
+        this.#heap.noteLosersReleased();
+      } else if (kept.length < other.state.on.length) {
+        this.#heap.replace({ ...other, state: { ...other.state, on: kept } });
+        for (const future of other.state.on.filter((each) => !kept.includes(each))) {
+          this.#seams.givenUp(future);
+        }
         this.#heap.noteLosersReleased();
       }
     }

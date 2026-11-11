@@ -24,6 +24,9 @@ function liveProgram(): string {
       'extern live fn fetch(name: String) -> Future<Int, "live">',
       'live async fn fetched() -> Int:',
       '  1 + await fetch("a")',
+      'live async fn ignored() -> Int:',
+      '  _ = fetch("a")',
+      '  42',
       'live async fn raced() -> Int:',
       '  await select:',
       '    case fetch("a") as n:',
@@ -112,6 +115,36 @@ describe("a host's live resolver", () => {
       resolver.resolve(5n);
     }).not.toThrow();
     expect(cancelled).toHaveLength(2);
+  });
+
+  it('panics its run when misused, even in a segment that finishes it', async () => {
+    const run = startLive((_arguments, call) => {
+      const resolver = call.resolver();
+      resolver.resolve(1n);
+      resolver.resolve(2n);
+    }, 'main.ignored()');
+    expect((await run).state).toMatchObject({ kind: 'panicked' });
+  });
+
+  it('panics its run when an onCancel throws, still calling the others, never throwing at the host', async () => {
+    const host = handingOut();
+    const run = startLive(host.fetch, 'main.raced()');
+    const resolver = await host.resolver;
+    const cancelled: string[] = [];
+    resolver.onCancel(() => {
+      throw new Error('boom');
+    });
+    resolver.onCancel(() => cancelled.push('second'));
+    expect((await run).state).toMatchObject({
+      kind: 'panicked',
+      message: "A host's onCancel threw: boom",
+    });
+    expect(cancelled).toEqual(['second']);
+    expect(() => {
+      resolver.onCancel(() => {
+        throw new Error('late');
+      });
+    }).not.toThrow();
   });
 
   it('panics its run, naming the extern, once the host lets go of it unresolved', async () => {

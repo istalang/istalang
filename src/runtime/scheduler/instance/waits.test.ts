@@ -128,6 +128,40 @@ describe('resolvers', () => {
     });
   });
 
+  it("leaves a slot's value to a later take when a losing case keeps only its disposing() watch", async () => {
+    const keptForDisposal = compiledText(
+      [
+        "import * as time from 'time'\nimport * as runtime from 'runtime'",
+        'struct Now:',
+        '  type Mode = "ista"',
+        'ista fn onAwait(self: Now, done: Resolver<Unit, "ista">): done.resolve(())',
+        'struct TakeOrDisposed:',
+        '  take: Future<Unit, "ista">',
+        '  disposing: Future<Unit, "ista">',
+        '  type Mode = "ista"',
+        'ista fn onAwait(self: TakeOrDisposed, done: Resolver<Unit, "ista">):',
+        '  self.take.onAwait(done)',
+        '  self.disposing.onAwait(done)',
+        'ista async fn worker(s: Slot<Unit>) -> String:',
+        '  await select:',
+        '    case TakeOrDisposed{take: s.take(), disposing: worker.disposing()}: "took"',
+        '    case Now: "now"',
+        'live async fn main() -> String: await runtime.run(runtime.id()) _main()\nista async fn _main() -> String:',
+        '  const s = Slot.create<Unit>()',
+        '  const working = worker(s)',
+        '  const put = s.put(())',
+        '  const got = await working',
+        '  await select:',
+        '    case s.take(): got + ", value kept"',
+        '    case time.delay(1s): got + ", value lost"',
+      ].join('\n'),
+    );
+    expect(await startToEnd(testRuntime(), keptForDisposal)).toEqual({
+      kind: 'finished',
+      outcome: '"now, value kept"',
+    });
+  });
+
   it.each([
     [
       'slot reads',

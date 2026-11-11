@@ -40,6 +40,7 @@
 
 import { handleTo, type Value } from '../../../../definition/values/values.ts';
 import { unreachable } from '../../../../foundation/structures/unreachable.ts';
+import type { ActiveFrame } from '../../../interpreter/frames.ts';
 import { type Decision, takeWait } from '../../../interpreter/suspension.ts';
 import { Panic } from '../../../natives.ts';
 import type { ResolverTarget } from '../../../snapshot/objects.ts';
@@ -244,7 +245,7 @@ export class Waits {
    * decision, once it was decided.
    */
   end(waiter: LiveExecution): Decision | undefined {
-    return this.#endWith(waiter, 'lost');
+    return this.#endWith(waiter.frames.at(-1), 'lost');
   }
 
   /**
@@ -253,7 +254,16 @@ export class Waits {
    * resolvers are withdrawn.
    */
   endNonBlocking(waiter: LiveExecution): Decision | undefined {
-    return this.#endWith(waiter, 'withdrawn');
+    return this.#endWith(waiter.frames.at(-1), 'withdrawn');
+  }
+
+  /**
+   * Ends the wait `frame` stands at, if any, as the disposal whose call it runs is abandoned while
+   * its instance ends (§3.12): a `select` that doesn't wait, mid-way, so its resolvers are
+   * withdrawn, having awaited nothing.
+   */
+  abandon(frame: ActiveFrame): void {
+    this.#endWith(frame, 'withdrawn');
   }
 
   /** Ends the wait `waiter` resumes from, which was decided: how it resumes. */
@@ -261,10 +271,9 @@ export class Waits {
     return this.end(waiter) ?? unreachable(`Execution ${waiter.id} resumed undecided.`);
   }
 
-  /** Ends the wait `waiter`'s top frame stands at, if any, its pending resolvers ending so. */
-  #endWith(waiter: LiveExecution, ending: Ending): Decision | undefined {
-    const top = waiter.frames.at(-1);
-    const id = top === undefined ? undefined : takeWait(top);
+  /** Ends the wait `frame` stands at, if any, its pending resolvers ending so. */
+  #endWith(frame: ActiveFrame | undefined, ending: Ending): Decision | undefined {
+    const id = frame === undefined ? undefined : takeWait(frame);
     if (id === undefined) {
       return undefined;
     }

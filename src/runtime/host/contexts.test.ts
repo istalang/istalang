@@ -248,6 +248,100 @@ describe('a context', () => {
       outcome: '"The context \'o/1/1\' has ended."',
     });
   });
+
+  it('disposes what a call still waiting holds when its instance finishes, before its constants', async () => {
+    const finishedFirst = compiledText(
+      lines(
+        "import * as runtime from 'runtime'",
+        "import * as time from 'time'",
+        "import * as log from 'log'",
+        'shared struct Lease { name: String }',
+        'fn dispose(self: Lease): log.info("disposed " + self->name)',
+        'ista const lease = new Lease{name: "constant"}',
+        'ista async fn child() -> Int:',
+        '  _ = lease',
+        '  await time.delay(10ms)',
+        '  1',
+        'ista fn cleanup(): log.info("query cleaned up")',
+        'ista async fn slowQuery() -> Int:',
+        '  hold _ = defer cleanup()',
+        '  await time.delay(1s)',
+        '  2',
+        'ista async fn spawner() -> String:',
+        '  drop spawn child()',
+        '  await runtime.commit()',
+        '  "spawned"',
+        'live async fn main() -> String:',
+        '  const rt = await runtime.Runtime.open(runtime.hostStore())',
+        '  drop await rt.call("o/1") spawner()',
+        '  match await rt.call("o/1/1") slowQuery():',
+        '    case Ok(v): `ok:${v}`',
+        '    case Err(e): e.message',
+      ),
+    );
+    const logged: string[] = [];
+    const test = testRuntime({
+      reports: {
+        logs: (records) => logged.push(...records.map(({ message }) => message)),
+        panicked: () => undefined,
+      },
+    });
+    expect(await startToEnd(test, finishedFirst)).toMatchObject({ kind: 'finished' });
+    expect(logged).toEqual(['query cleaned up', 'disposed constant']);
+  });
+
+  it('runs a context a timer readied before the live run decides what waited on both', async () => {
+    const readied = compiledText(
+      lines(
+        "import * as runtime from 'runtime'",
+        "import * as time from 'time'",
+        'ista async fn child() -> Int:',
+        '  await time.delay(5ms)',
+        '  1',
+        'ista async fn parent() -> String:',
+        '  drop await spawn(child).result()',
+        '  "context"',
+        'live async fn main() -> String:',
+        '  const rt = await runtime.Runtime.open(runtime.hostStore())',
+        '  const call = rt.call("o/1") parent()',
+        '  await select:',
+        '    case call as answer:',
+        '      drop answer',
+        '      "context"',
+        '    case time.delay(5ms): "timer"',
+      ),
+    );
+    expect(await startToEnd(testRuntime(), readied)).toEqual({
+      kind: 'finished',
+      outcome: '"context"',
+    });
+  });
+
+  it("tells the host of a context's panic that only a call let go of was waiting on", async () => {
+    const dropped = compiledText(
+      lines(
+        "import * as runtime from 'runtime'",
+        "import * as time from 'time'",
+        'ista async fn bad() -> Int:',
+        '  await time.delay(5ms)',
+        '  panic("bad")',
+        'live async fn main() -> Int:',
+        '  const rt = await runtime.Runtime.open(runtime.hostStore())',
+        '  drop rt.call("o/1") bad()',
+        '  await time.delay(20ms)',
+        '  0',
+      ),
+    );
+    const panicked: string[] = [];
+    const test = testRuntime({
+      reports: {
+        logs: () => undefined,
+        panicked: (instance, { message }) => panicked.push(`${instance}: ${message}`),
+      },
+    });
+    expect(await startToEnd(test, dropped)).toEqual({ kind: 'finished', outcome: '0' });
+    expect(panicked).toEqual(['o/1: bad']);
+  });
 });
 
 describe('a host', () => {

@@ -5,21 +5,22 @@
  *
  * - Opening a runtime while none is open resumes the work persisted in the store: every instance
  *   that hasn't ended joins the group the run drives (instance-group.ts), to advance once and be
- *   woken as its timers come due. So no host resumes an instance by name. With no runtime open,
- *   the group stays as it is.
+ *   woken as its timers come due, as does one a host's call makes run again while one is open, a
+ *   retry. So no host resumes an instance by name. With no runtime open, the group stays as it is.
  * - A call into a context is an invocation (../scheduler/wake.ts): it advances the context, made
  *   with the options of the run's start when the store has none by its key, from its last commit,
  *   starting the call. Its answer goes to the call's listener, the value it gave; a context that
  *   panics ends every call into it still waiting, as does calling one that had ended or panicked,
- *   and the host hears of the panic unless a call of the program's was among them: the calls the
- *   loop serving jobs makes hear none (`CallMaker`).
+ *   and the host hears of the panic unless a call of the program's was among them: one let go of
+ *   waits no more, and the calls the loop serving jobs makes hear none (`CallMaker`).
  * - Each call is named by a token unique to the process, so an answer the store kept from an
  *   earlier process, whose caller is gone, reaches nobody.
  * - Calls run first, then what the group can run: a context or instance the run made ready, or one
  *   waiting on the end of one that has ended.
  * - The earliest runtime still open serves the jobs of every instance of the group running the
  *   run's own program (`served`), so one serves each at a time, and one opened later takes them
- *   over once those before it are disposed. An instance on another program waits for a run of its
+ *   over once those before it are disposed. A panic ends the loop serving an instance, so a retry
+ *   names it again, for a loop of its own. An instance on another program waits for a run of its
  *   own: the loop serving it calls functions of its program (§5, versioning). A call made starts even once its runtime is disposed,
  *   or the run has ended: releasing it cancels nothing, and only its invocation's later work waits
  *   for the next open.
@@ -79,6 +80,12 @@ export class Contexts<Program extends LoadedDefinition> implements RunContexts {
   readonly #pending: PendingCall[] = [];
   readonly #waiting = new Map<string, WaitingCall>();
   readonly #served = new Set<ServedWait>();
+  /**
+   * The instances of the run's own program whose jobs to serve, in the order each began to run in
+   * the group: as it joined, and again each time it was retried after a panic, which ended the
+   * loop serving it, so it gets one of its own again.
+   */
+  readonly #servedLives: string[] = [];
   /** Whether each instance runs the run's own program, which it does for its whole life. */
   readonly #runsOwnProgram = new Map<string, boolean>();
   readonly #open = new Set<number>();
@@ -91,7 +98,8 @@ export class Contexts<Program extends LoadedDefinition> implements RunContexts {
   constructor(seams: ContextSeams<Program>) {
     this.#seams = seams;
     this.#unobserve = seams.observe((instance, advanced) => {
-      if (!(this.#group.states.has(instance) || this.#awaitsAnswerFrom(instance))) {
+      const joins = this.#open.size > 0 && runs(advanced.state);
+      if (!(joins || this.#group.states.has(instance) || this.#awaitsAnswerFrom(instance))) {
         return;
       }
       const own = this.#advancing.has(instance);
@@ -136,6 +144,19 @@ export class Contexts<Program extends LoadedDefinition> implements RunContexts {
   served(wait: ServedWait): void {
     this.#served.add(wait);
     this.#serve();
+  }
+
+  release(future: number): void {
+    for (const [token, waiting] of this.#waiting) {
+      if (waiting.future === future) {
+        this.#waiting.delete(token);
+      }
+    }
+    for (const wait of this.#served) {
+      if (wait.future === future) {
+        this.#served.delete(wait);
+      }
+    }
   }
 
   dispose(runtime: number): void {
@@ -202,19 +223,24 @@ export class Contexts<Program extends LoadedDefinition> implements RunContexts {
     if (waits.length === 0) {
       return;
     }
-    const { program } = this.#seams;
-    const instances = [...this.#group.states.keys()].filter((instance) =>
-      memo(
-        this.#runsOwnProgram,
-        instance,
-        () => this.#seams.residentOf(instance)?.loaded.hash === program.hash,
-      ),
-    );
     for (const wait of waits) {
-      if (instances.length > wait.known) {
+      if (this.#servedLives.length > wait.known) {
         this.#served.delete(wait);
-        wait.listener(instances);
+        wait.listener([...this.#servedLives]);
       }
+    }
+  }
+
+  /** Records that `instance` began to run in the group, to serve when it runs the run's program. */
+  #began(instance: string): void {
+    const { program } = this.#seams;
+    const own = memo(
+      this.#runsOwnProgram,
+      instance,
+      () => this.#seams.residentOf(instance)?.loaded.hash === program.hash,
+    );
+    if (own) {
+      this.#servedLives.push(instance);
     }
   }
 
@@ -224,6 +250,7 @@ export class Contexts<Program extends LoadedDefinition> implements RunContexts {
       const status = storedSnapshot(this.#seams.store, instance)?.status.kind;
       if (status === 'active' || status === 'unstarted') {
         this.#group.record(instance, { state: { kind: 'ready' }, spawned: [], logs: [] });
+        this.#began(instance);
       }
     }
   }
@@ -279,7 +306,13 @@ export class Contexts<Program extends LoadedDefinition> implements RunContexts {
    * program's waits to.
    */
   #record(instance: string, advanced: Advance, own: boolean): void {
+    const { states } = this.#group;
+    const joined = [instance, ...advanced.spawned].filter((each) => !states.has(each));
+    const retried = states.get(instance)?.kind === 'panicked' && runs(advanced.state);
     this.#group.record(instance, advanced);
+    for (const each of retried ? [instance, ...joined] : joined) {
+      this.#began(each);
+    }
     if (own) {
       this.#seams.reports.logs(advanced.logs);
     }
@@ -291,17 +324,24 @@ export class Contexts<Program extends LoadedDefinition> implements RunContexts {
       }
     }
     const { state } = advanced;
-    if (state.kind === 'ready' || state.kind === 'waiting') {
-      return;
-    }
-    const ended = [...this.#waiting].filter(([, waiting]) => waiting.key === instance);
-    for (const [token] of ended) {
-      this.#end(token, endedMessage(instance, state));
-    }
-    const heard = ended.some(([, waiting]) => waiting.maker === 'program');
-    if (own && !heard && state.kind === 'panicked') {
+    if (!(runs(state) || this.#endCallsInto(instance, state)) && own && state.kind === 'panicked') {
       this.#seams.reports.panicked(instance, state);
     }
+  }
+
+  /**
+   * Ends every call into `instance` still waiting, as it ran no more at `state`; whether a call of
+   * the program's heard it.
+   */
+  #endCallsInto(instance: string, state: Ended): boolean {
+    let heard = false;
+    for (const [token, waiting] of this.#waiting) {
+      if (waiting.key === instance) {
+        this.#end(token, endedMessage(instance, state));
+        heard ||= waiting.maker === 'program';
+      }
+    }
+    return heard;
   }
 
   /** Ends the call named `token` with `panic`, before it gave anything. */
@@ -310,6 +350,13 @@ export class Contexts<Program extends LoadedDefinition> implements RunContexts {
     this.#waiting.delete(token);
     waiting?.listener.panicked(panic);
   }
+}
+
+/** Whether an instance standing at `state` still runs: it hasn't ended or panicked. */
+function runs(
+  state: InstanceState,
+): state is Extract<InstanceState, { kind: 'ready' | 'waiting' }> {
+  return state.kind === 'ready' || state.kind === 'waiting';
 }
 
 /** Where an instance stands once it runs no more, as its last commit or its advance says. */

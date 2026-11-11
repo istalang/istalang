@@ -16,7 +16,7 @@ import { type HostExterns, hostNatives } from './boundary/host-natives.ts';
 import { ManualClock } from './clock.ts';
 import { createRuntime, type Runtime } from './host/index.ts';
 import { InstanceGroup } from './host/instance-group.ts';
-import type { DeployedProgram } from './host/programs.ts';
+import type { DeployedProgram, HostReports } from './host/programs.ts';
 import type { Advanced, InstanceState, StartOptions } from './instance-state.ts';
 import type { FullNativeContext, Natives } from './natives.ts';
 import { Refusal } from './refusal.ts';
@@ -64,6 +64,8 @@ export interface TestRuntimeOptions {
   readonly clock?: ManualClock;
   readonly host?: HostExterns;
   readonly seed?: () => Uint8Array;
+  /** Told what the contexts a live run drives report by themselves. */
+  readonly reports?: HostReports;
 }
 
 export interface TestRuntime {
@@ -96,8 +98,16 @@ export function testRuntime({
   clock = new ManualClock(),
   host = {},
   seed = () => testSeed,
+  reports,
 }: TestRuntimeOptions = {}): TestRuntime {
-  const inner = createRuntime({ natives: nativesGiven, store, clock, seed, host });
+  const inner = createRuntime({
+    natives: nativesGiven,
+    store,
+    clock,
+    seed,
+    host,
+    ...(reports === undefined ? {} : { reports }),
+  });
   const starters = new Map<string, DeployedProgram>();
   const deploy: Runtime['deploy'] = (text) => {
     const program = inner.deploy(text);

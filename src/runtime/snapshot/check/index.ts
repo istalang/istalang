@@ -9,11 +9,12 @@
  *   `select`, the only places an execution stops (docs/arch/definition.md, "Frames")
  * - an execution that waits does so on a wait of its own, which is decided exactly when it is
  *   ready, and every wait is one an execution stands at (waits.ts); a run is always ready, and its
- *   call fits the function it calls, as a new instance's does
+ *   call fits the function it calls, as a new instance's does, leaving out only what its code
+ *   computes; what a run or a resolver calls back is a function giving its value at once
  * - an async call's execution names a pending call future, and the instance has at most one root:
  *   the execution that names none, or the `outcome` it awaits once that returned (§9)
- * - a new instance's call starts a function, code or an extern, given its captures and its
- *   arguments by value, with values the Definition agrees with
+ * - a new instance's call, or the call a retry runs again, starts a function, code or an extern,
+ *   given its captures and its arguments by value, with values the Definition agrees with
  * - its outcome's encoder, when it has one, is an entry that can encode one, and a finished
  *   instance's JSON of its outcome is a `Json` value (§9)
  * - a cell is of a shared struct's type entry or a `_Cell<T>`'s, and a resource of an extern type
@@ -25,11 +26,7 @@ import type { Definition } from '../../../definition/definition.ts';
 import { waits } from '../../../definition/instructions/flow.ts';
 import type { Instruction } from '../../../definition/instructions/instruction.ts';
 import type { FunctionId } from '../../../definition/operands.ts';
-import {
-  capturesOf,
-  encoderProblem,
-  takesReference,
-} from '../../../definition/tables/functions.ts';
+import { encoderProblem } from '../../../definition/tables/functions.ts';
 import { isCellType } from '../../../definition/tables/types.ts';
 import { valueProblems } from '../../../definition/validation/references.ts';
 import { isJsonValue, jsonTypeIn } from '../../../definition/values/json-values.ts';
@@ -38,6 +35,7 @@ import { Refusal } from '../../refusal.ts';
 import { valuesIn } from '../holdings.ts';
 import type { Frame, HeapObject } from '../objects.ts';
 import type { InstanceCall, Snapshot } from '../snapshot.ts';
+import { calledBackProblems, callProblems, shapeOf } from './calls.ts';
 import { waitProblems } from './waits.ts';
 
 /** Throws a Refusal listing every way `snapshot` doesn't fit `definition`. */
@@ -84,7 +82,7 @@ const kindProblems: Handlers<Definition, HeapObject, [], readonly string[]> = {
     mock.target < definition.functions.length
       ? []
       : [`mock ${mock.id} replaces function ${mock.target}, which doesn't exist`],
-  run: (definition, run) => callProblems(definition, run, `run ${run.id}`),
+  run: (definition, run) => calledBackProblems(definition, shapeOf(run), `run ${run.id}`),
   contextConstant: () => [],
   answer: () => [],
   outcome: () => [],
@@ -146,17 +144,21 @@ function startingCallProblems(
   const values = [...call.captures, ...call.arguments].flatMap((value) =>
     valueProblems(definition, value).map(({ message }) => `the instance's call: ${message}`),
   );
-  return [...values, ...callProblems(definition, call, "the instance's call")];
+  return [...values, ...callProblems(definition, shapeOf(call), "the instance's call")];
 }
 
-/** The call an instance starts with, or a retry starts it with again; none once it started. */
+/**
+ * The call an instance starts with, or a retry runs again: the call it was starting, or a host's
+ * call into it; none once it started.
+ */
 function startingCallOf(status: Snapshot['status']): InstanceCall | undefined {
   if (status.kind === 'unstarted') {
     return status.call;
   }
-  return status.kind === 'panicked' && status.replay?.kind === 'call'
-    ? status.replay.call
-    : undefined;
+  if (status.kind !== 'panicked' || status.replay === undefined) {
+    return undefined;
+  }
+  return status.replay.kind === 'call' ? status.replay.call : status.replay.invocation.call;
 }
 
 /** What is wrong with the entry encoding the instance's outcome, if it has one. */
@@ -185,35 +187,6 @@ function outcomeProblems(definition: Definition, status: Snapshot['status']): re
   const shape = jsonTypeIn(definition.types);
   if (encoded !== undefined && (shape === undefined || !isJsonValue(encoded, shape))) {
     problems.push("the outcome's JSON is no Json value");
-  }
-  return problems;
-}
-
-/**
- * What is wrong with `call` against the function it calls, values aside: a call made from outside
- * any frame, an instance's or a run's, which `described` names.
- */
-function callProblems(
-  definition: Definition,
-  call: InstanceCall,
-  described: string,
-): readonly string[] {
-  const entry = definition.functions[call.function];
-  if (entry === undefined) {
-    return [`${described} calls function ${call.function}, which doesn't exist`];
-  }
-  const problems: string[] = [];
-  const captures = capturesOf(entry);
-  if (call.captures.length !== captures) {
-    problems.push(`${entry.name} carries ${captures} captures, not ${call.captures.length}`);
-  }
-  if (call.arguments.length !== entry.parameters.length) {
-    problems.push(
-      `${entry.name} takes ${entry.parameters.length} arguments, not ${call.arguments.length}`,
-    );
-  }
-  if (entry.parameters.some((_, index) => takesReference(entry, index))) {
-    problems.push(`${entry.name} takes a reference, which ${described} can't pass`);
   }
   return problems;
 }

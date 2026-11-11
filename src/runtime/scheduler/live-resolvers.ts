@@ -10,7 +10,7 @@
  *   `resolve`.
  * - Once its future is disposed unresolved, it is cancelled: each `onCancel` callback is called
  *   once, at once, since a live wait's cancellation commits nothing (§7). A callback that throws
- *   panics the run, as a host's bug does.
+ *   panics the run, as a host's misuse does, and the others are still called.
  * - Its future is filled through a token no host names, so the run's futures say whether it still
  *   waits (futures.ts): a value queued for a future disposed meanwhile is dropped.
  */
@@ -63,7 +63,7 @@ class LiveResolver {
 
   onCancel(callback: () => void): void {
     if (this.#state === 'cancelled') {
-      cancelling(callback);
+      this.#cancelling(callback);
       return;
     }
     this.#cancels.push(callback);
@@ -76,18 +76,18 @@ class LiveResolver {
     }
     this.#state = 'cancelled';
     for (const callback of this.#cancels.splice(0)) {
-      cancelling(callback);
+      this.#cancelling(callback);
     }
   }
-}
 
-/** Calls `callback`, an `onCancel`'s; a throw panics the run. */
-function cancelling(callback: () => void): void {
-  try {
-    callback();
-  } catch (error) {
-    const why = error instanceof Error ? error.message : String(error);
-    throw new Panic(`A host's onCancel threw: ${why}`, { cause: error });
+  /** Calls `callback`, an `onCancel`'s; a throw panics the run, as any misuse of it does. */
+  #cancelling(callback: () => void): void {
+    try {
+      callback();
+    } catch (error) {
+      const why = error instanceof Error ? error.message : String(error);
+      this.#misused({ message: `A host's onCancel threw: ${why}`, trace: this.#trace });
+    }
   }
 }
 

@@ -65,6 +65,11 @@ export interface RunContexts {
    */
   readonly served: (wait: ServedWait) => void;
   /**
+   * The live future `future`, a call's or a served wait's, was let go of: nothing hears it any
+   * more, though a call made still starts.
+   */
+  readonly release: (future: number) => void;
+  /**
    * Stops the runtime numbered `runtime`: its contexts run on only while another is open, but the
    * calls made through it still start.
    */
