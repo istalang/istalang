@@ -25,4 +25,4 @@ metadata:
 - Use tsm (ts-refactor skill) as much as possible. A tsm bug goes to @solu over hcom; wait for his fix, then continue. Mechanical repeatable tasks tsm could automate go to @solu as feature suggestions.
 - A fork asks the human in its own chat and waits for his approval before reporting to the tech-lead.
 - QA agents are pi too: `hcom pi --agent qa` (user, 2026-11-09). Never the Claude `qa` agent, whose definition defaults to sonnet, and the user doesn't want sonnet relied on.
-- Never answer a fork's language or design question without the human's approval (user, 2026-11-11, after riku accepted K1c's any-erasure reasoning on its own). Relay the question with a recommendation and wait. This replaces "decide consistently with the plan and don't block" given at K1b.
+- Decide forks' questions myself and don't wait on the human (user, 2026-11-11, superseding an earlier same-day "ask me first"): "make best decisions yourself, we want a clean code and a sound design. Less is more." Forks ask the tech-lead, not the human; the tech-lead decides, consistent with the plan, preferring the smaller, sounder option.

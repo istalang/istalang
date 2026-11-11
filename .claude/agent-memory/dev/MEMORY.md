@@ -1,4 +1,4 @@
-- [Coordination](feedback_coordination.md) — minimal fork briefs, forks self-rebase, escalate to human, fork questions need human approval, lean coordinator
+- [Coordination](feedback_coordination.md) — minimal fork briefs, forks self-rebase, escalate to human, tech-lead decides fork questions, no waiting on human, lean coordinator
 - [Tracker](feedback_tracker.md) — tracker lists open items only; delete resolved rows, keep ids increasing
 - [Defer later fixes](feedback_defer-fixes.md) — fix only what blocks the phase; later-phase issues deferred ("break now, fix later")
 - [Reuse docs](feedback_reuse_docs.md) — reusable units indexed in docs/reuse/ by caller need; AGENTS.md stays static
