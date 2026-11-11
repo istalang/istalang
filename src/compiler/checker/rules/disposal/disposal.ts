@@ -84,8 +84,12 @@ export function isDisposable(checker: CheckerContext, type: Type): boolean {
   }
 }
 
-export function disposalOf(checker: CheckerContext, type: NominalType): Disposal {
-  const found = disposeCandidates(checker, type);
+/** How `type`, whose `dispose` candidates are `found` (`disposeCandidates`), is disposed. */
+export function disposalOf(
+  checker: CheckerContext,
+  type: NominalType,
+  found: DisposeCandidates | undefined,
+): Disposal {
   const call =
     found === undefined
       ? undefined
@@ -97,12 +101,16 @@ export function disposalOf(checker: CheckerContext, type: NominalType): Disposal
 }
 
 /**
- * The kinds of the `dispose` functions that may take `type` as `self`, each as that instantiates
- * it, whatever its constraints (proposal 8, Rule 2): a type's kinds are read from declarations,
- * never from what meets a trait, which asks them (Rule 4).
+ * The kinds of the `dispose` functions that may take `type` as `self`, of its candidates `found`,
+ * each as `type` instantiates it, whatever its constraints (proposal 8, Rule 2): a type's kinds
+ * are read from declarations, never from what meets a trait, which asks them (Rule 4).
  */
-export function disposeKindsOf(checker: CheckerContext, type: NominalType): readonly Type[] {
-  return (disposeCandidates(checker, type)?.candidates ?? []).flatMap((candidate) => {
+export function disposeKindsOf(
+  checker: CheckerContext,
+  type: NominalType,
+  found: DisposeCandidates | undefined,
+): readonly Type[] {
+  return (found?.candidates ?? []).flatMap((candidate) => {
     const kind = kindOfFunction(checker, candidate.declaration);
     // An unmarked `dispose` adds no kind, whatever it takes.
     const taken = isSimpleMark(kind) ? undefined : selfInference(checker, candidate, type);
@@ -163,15 +171,21 @@ function runtimeDisposes(checker: CheckerContext, type: NominalType): boolean {
   });
 }
 
+/** The `dispose` functions declared for a type, and whether they are the runtime's. */
+export interface DisposeCandidates {
+  readonly candidates: readonly Candidate[];
+  readonly runtime: boolean;
+}
+
 /**
  * The `dispose` functions declared for `type`, found as an operator's function is: the runtime's
  * where a std module declares one beside it, else a program's for a handle a program may make
  * disposable; undefined for any other type.
  */
-function disposeCandidates(
+export function disposeCandidates(
   checker: CheckerContext,
   type: NominalType,
-): { readonly candidates: readonly Candidate[]; readonly runtime: boolean } | undefined {
+): DisposeCandidates | undefined {
   const runtime = isStdType(checker, type) && runtimeDisposes(checker, type);
   if (!(runtime || isOwnedHandle(checker, type))) {
     return undefined;
