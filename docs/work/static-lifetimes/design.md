@@ -123,7 +123,10 @@ Today a registration holds both its ends: a future holds its pending resolvers, 
   - per-kind disposal (`disposal.ts`);
   - dispose code on the run stack (`disposal-runs.ts`);
   - weak watches, resolved when their target is disposed;
-  - `Slots.#owed`, unless a phase shows serving no longer waits on dispose code.
+  - `Slots.#owed`, unless a phase shows serving no longer waits on dispose code;
+  - an ending instance's recovery (`segment/collection.ts`, `collectEnding`): a disposal that panics
+    is let go of and the rest still run, the panic charged to the innermost running disposal. R4
+    rebuilds it over the queue of zeroes.
 
 ## Off the id heap (R6)
 
