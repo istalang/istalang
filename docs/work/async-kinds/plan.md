@@ -1,7 +1,7 @@
 ---
 description: plan for implementing proposal 8 (live and ista async), with `delegate` and the minimal slice of proposal 9 that lets live code run and test ista code — process, fourteen phases with order, shared surfaces and owners, diagnostic ranges and verification; read before forking or examining an async-kinds phase
 owner: tech-lead
-status: active
+status: archived
 applies_to: istalang
 last_verified: 2026-11-10
 last_updated: 2026-11-11
@@ -47,7 +47,7 @@ structural change the later phases build on lands first, on its own.
 | **AW** Awaitables ✓ | `Awaitable`, `Resolver`, one await path, `futures` over the kind; `Self.Mode` as a requirement's mark | R2, K1d |
 | **CX** Contexts ✓ | Proposal 9's minimal slice: a `Runtime` over the host's store and `rt.call(key) f(args)`, enough to run and test ista code; sendable crossing; hosts start only `live async fn main` | AW |
 
-**Order:** {A0 ∥ R1a} → {T0 ∥ R1b} → DC → K1a → {K1b ∥ R2} → F1 → K1c → K1d → AW → CX → DG → merge review.
+**Order:** {A0 ∥ R1a} → {T0 ∥ R1b} → DC → K1a → {K1b ∥ R2} → F1 → K1c → K1d → AW → CX → DG → merge review: all done.
 At most three run at once. *Why:* a phase starts only on landed code, and structure lands before
 what builds on it. The `Fn` surface (F1) is structure the data rule (K1c) checks through; AW's associated-type bounds build on K1d's. DG is
 built on existing constructs, CX's contexts, not a runtime job runner (human, 2026-11-11). `Call<R>` is an awaitable.

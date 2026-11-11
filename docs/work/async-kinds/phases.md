@@ -1,7 +1,7 @@
 ---
 description: scope, acceptance and spec edits of each async-kinds phase (proposal 8, with `delegate` and the minimal slice of proposal 9 that enters contexts) — the text fork briefs quote verbatim; read before forking or examining a phase
 owner: tech-lead
-status: active
+status: archived
 applies_to: istalang
 last_verified: 2026-11-10
 last_updated: 2026-11-11

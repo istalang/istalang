@@ -1,7 +1,7 @@
 ---
 description: the code's state before proposal 8 (persistent and ephemeral async) — where function types, the async fit, futures, sendability, await/select/spawn/defer, defaults, segments, snapshots and host futures live today, what is missing (liveness, effect summaries, resident instances, cancellation) and the rewrite's real size; read before planning, implementing or examining an async-kinds phase
 owner: tech-lead
-status: active
+status: archived
 applies_to: istalang
 last_verified: 2026-11-09
 last_updated: 2026-11-11

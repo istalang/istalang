@@ -1,7 +1,7 @@
 ---
 description: how phase AW (awaitables) is built — the await path through `onAwait`, language-level resolvers in the runtime, `Resolver.of` callbacks and the `futures` rewrite, with the runtime facts they rest on; read before implementing or examining AW
 owner: tech-lead
-status: active
+status: archived
 applies_to: istalang
 last_verified: 2026-11-11
 last_updated: 2026-11-11
