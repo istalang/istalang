@@ -3,8 +3,10 @@
  * the scopes a label may name around it. Both stop at the innermost function, since a `break`,
  * an `await` or a `hold` can't reach past one.
  *
- * A function's header (its parameters' defaults) is no body: a default runs before the body
- * starts, where nothing waits (§3.3), as a top-level constant's value does (§3).
+ * A function's header (its parameters' defaults) is code that runs but never waits: the callee
+ * computes a default before its body starts (§3.3). So is a context constant's value, made at its
+ * first read (§3.4). Only a top-level constant's value, computed when the program compiles (§3),
+ * runs in no code.
  */
 
 import type { LabelledScope } from '../../../../../compiler/syntax/statements/index.ts';
@@ -16,7 +18,10 @@ import {
 } from '../../../../../compiler/syntax/tree/index.ts';
 
 export interface Surroundings {
-  /** The body of the innermost function holding the position, if it is in one. */
+  /**
+   * The code holding the position: an async function's body, other code that runs (`sync`), or
+   * none, a top-level constant's value.
+   */
   readonly body: 'none' | 'sync' | 'async';
   /** The loops and labelled blocks holding the position in that body, innermost first. */
   readonly scopes: readonly LabelledScope[];
@@ -39,7 +44,10 @@ export function surroundingsOf(tree: SyntaxTree, chain: readonly SyntaxNode[]): 
           body: bodyKind(node.body === child, awaits(node.qualifiers)),
           scopes,
         };
+      case 'ContextConstantDeclaration':
+        return { body: 'sync', scopes };
       case 'For':
+      case 'FieldLoop':
       case 'While':
       case 'LabelledBlock':
         if (node.body === child) {
@@ -53,9 +61,7 @@ export function surroundingsOf(tree: SyntaxTree, chain: readonly SyntaxNode[]): 
   return { body: 'none', scopes };
 }
 
+/** A function's code: its body waits where the function is async, its header never. */
 function bodyKind(inBody: boolean, isAsync: boolean): Surroundings['body'] {
-  if (!inBody) {
-    return 'none';
-  }
-  return isAsync ? 'async' : 'sync';
+  return inBody && isAsync ? 'async' : 'sync';
 }

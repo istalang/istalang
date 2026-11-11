@@ -43,7 +43,9 @@ const functionStarts = [
 
 /**
  * What starts a declaration only a module holds (§3); a function and `const` start statements too.
- * An extern's or a shared struct's head may start with any of its modifiers.
+ * An extern's and a shared struct's head start with the word a printed head does (`extern`,
+ * `shared`). The parser takes a head's modifiers in any order
+ * (parser/grammar/declarations/declaration.ts), but completion offers what a printed head starts with.
  */
 export const declarationWords = [
   'import',
@@ -52,7 +54,7 @@ export const declarationWords = [
   'trait',
   'type',
   ...modifierGroups.extern,
-  ...modifierGroups.handle,
+  ...modifierGroups.shared,
 ] as const satisfies readonly Word[];
 
 export type DeclarationWord = (typeof declarationWords)[number];

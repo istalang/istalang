@@ -24,9 +24,10 @@ import { completionsAt } from '../index.ts';
 
 /**
  * What a call taking its receiver reports when its arguments, each `panic("")`, decide nothing:
- * several overloads take them (5003), or a type parameter only they give is left open (5100).
+ * several overloads take them (5003), or a type parameter only they give is left open (5100), or
+ * is given `Never`, which meets none of its constraints (5101).
  */
-const undecided = new Set([5003, 5100]);
+const undecided = new Set([5003, 5100, 5101]);
 
 /**
  * A member read or called after `.` or `?.`, in `main`: a probe takes the place of the access, or
@@ -172,6 +173,14 @@ describe('member completion offers only what resolves there', () => {
     ['inside an optional', 'fn f(x: String?) -> Int:', '  x?.‸', '  1'],
     ['an array', 'fn f(x: Array<Int>) -> Int:', '  x.‸', '  1'],
     ['a constrained type parameter', 'fn f<T is Stringable>(x: T) -> Int:', '  x.‸', '  1'],
+    [
+      "a requirement's own constrained type parameter",
+      'trait Shower:',
+      '  fn show<U is Stringable>(self: Self, u: U) -> String',
+      'fn f<T is Shower>(x: T) -> String:',
+      '  x.‸',
+      '  ""',
+    ],
     ['a value that is no place', 'fn f() -> Int:', '  [1, 2].‸', '  1'],
     ['`?.` on a value that is not optional', 'fn f(x: Int) -> Int:', '  x?.‸', '  1'],
     [

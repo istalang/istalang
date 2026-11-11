@@ -154,6 +154,23 @@ function names(...lines: readonly string[]): readonly string[] {
   return completionsAt(program, module, offset).map(({ name }) => name);
 }
 
+it("offers a module's item words once each, only those a printed head starts with", () => {
+  expect(names('‸')).toEqual([
+    'import',
+    'struct',
+    'enum',
+    'trait',
+    'type',
+    'extern',
+    'shared',
+    'const',
+    'fn',
+    'live',
+    'ista',
+    'async',
+  ]);
+});
+
 describe('completion asks what encloses a position', () => {
   it.each([
     [
@@ -175,7 +192,15 @@ describe('completion asks what encloses a position', () => {
       [],
       ['await'],
     ],
-    ['a default', ['fn g(a = ‸'], ['true', 'not'], ['await', 'select', 'new', 'let']],
+    ['a default', ['fn g(a = ‸'], ['true', 'not', 'select', 'new'], ['await', 'let']],
+    ['a context constant', ['ista const c = ‸'], ['select', 'new'], ['await', 'let']],
+    ['a top-level constant', ['const c = ‸'], ['true', 'not'], ['await', 'select', 'new']],
+    [
+      'a loop over fields',
+      ['fn f(s: struct{a: Int}):', '  for k, v in ...s:', '    ‸', '  1'],
+      ['break', 'continue'],
+      [],
+    ],
     ["a function's body", ['fn f():', '  let x = ‸', '  1'], ['select', 'new'], ['await']],
     [
       'a statement an annotation above opens',
@@ -278,6 +303,9 @@ describe('completion offers the words that go on after what is written', () => {
     ['`extern ista`', ['extern ista ‸'], ['fn', 'async']],
     ['`ista` starting a top-level item', ['ista ‸'], ['fn', 'async', 'const']],
     ['`live` in a type', ['type F = live ‸'], ['fn', 'async']],
+    ['`ista` in a top-level type', ['type F = ista ‸'], ['fn', 'async']],
+    ['`ista` starting a lambda', ['fn f():', '  const g = ista ‸', '  1'], ['fn', 'async']],
+    ['`live` starting an argument', ['fn f():', '  f(live ‸)', '  1'], ['fn', 'async']],
     ['`ista` in a trait', ['trait T:', '  ista ‸'], ['fn', 'async']],
     ['a range', ['fn f():', '  let r = 0..10 ‸', '  1'], ['or', 'and', 'in', 'not', 'is', 'by']],
     [

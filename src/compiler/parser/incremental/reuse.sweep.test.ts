@@ -124,6 +124,12 @@ describe('a tree parsed after an edit', () => {
     );
   });
 
+  it('parses again a function whose body stands in its header, when its body changed', () => {
+    const before = parsed('i: fn f() -> Int:\n  1\n');
+    const text = 'i: fn f() -> Int:\n  2\n';
+    expect(told(parsed(text, before))).toEqual(told(parsed(text)));
+  });
+
   it('parses an item again when the indentation its line begins with changed', () => {
     const before = parsed('fn f() -> Int:\n  1\n');
     const after = parsed(' fn f() -> Int:\n  1\n', before);

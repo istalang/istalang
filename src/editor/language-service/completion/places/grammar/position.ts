@@ -104,10 +104,10 @@ function positionAfter(
 ): GrammarPosition | undefined {
   const modifier = modifierBefore(cursor, parsed);
   if (modifier !== undefined) {
-    const topLevel = headsTopLevel(cursor, parsed, parent)
-      ? (topLevelFollowers[modifier] ?? [])
+    const topLevel = startsItemOf('Module', parsed.tree, modifier.word)
+      ? (topLevelFollowers[modifier.text] ?? [])
       : [];
-    return words([...followers[modifier], ...topLevel]);
+    return words([...followers[modifier.text], ...topLevel]);
   }
   if (iteratesOver(parent, node) && !writesIn(parsed, parent)) {
     return words(['in']);
@@ -252,13 +252,16 @@ const itemOpeners: ReadonlySet<string> = new Set([';', ':', '{']);
  * The modifier right before the cursor, if the word there stands as one in the placeholder's
  * parse, which reads it alike whatever name is begun after it (`sendable fn‸` as `sendable ‸`).
  */
-function modifierBefore({ before }: Cursor, { tree }: Parse): Modifier | undefined {
+function modifierBefore(
+  { before }: Cursor,
+  { tree }: Parse,
+): { readonly text: Modifier; readonly word: Token } | undefined {
   if (before === undefined) {
     return undefined;
   }
   const word = heldLabelOf(tree, before) ?? before;
   const text = tree.source.text.slice(word.span.start, word.span.end);
-  return isModifier(text) && standsAsModifier[text](tree, word) ? text : undefined;
+  return isModifier(text) && standsAsModifier[text](tree, word) ? { text, word } : undefined;
 }
 
 function isModifier(text: string): text is Modifier {
@@ -266,8 +269,8 @@ function isModifier(text: string): text is Modifier {
 }
 
 /**
- * Where each modifier is one: `async` anywhere; a kind, `live` or `ista`, starting an item, read
- * as a type or after another modifier; `shared` starting a module's item; `hold` starting a
+ * Where each modifier is one: `async` anywhere; a kind, `live` or `ista`, starting an item or an
+ * operand, read as a type or after another modifier; `shared` starting a module's item; `hold` starting a
  * block's item; `sendable` read as a type; `not` after an operand, only spaces and tabs between,
  * starting `not in`: a line break or a template's `${` between starts an operand instead.
  */
@@ -284,7 +287,10 @@ const standsAsModifier: Readonly<Record<Modifier, (tree: SyntaxTree, word: Token
   },
 };
 
-/** Whether `word` stands in a head: starting an item or a function type, or after a modifier. */
+/**
+ * Whether `word` stands in a head: starting an item, a lambda or a function type, or after a
+ * modifier.
+ */
 function startsHead(tree: SyntaxTree, word: Token): boolean {
   const previous = tokenBefore(tree, word);
   return (
@@ -292,8 +298,22 @@ function startsHead(tree: SyntaxTree, word: Token): boolean {
     startsItemOf('Block', tree, word) ||
     startsItemOf('TraitDeclaration', tree, word) ||
     readAsType(tree, word) ||
+    takesAlone(tree, word) ||
     (previous !== undefined &&
       isModifierWord(tree.source.text.slice(previous.span.start, previous.span.end)))
+  );
+}
+
+/**
+ * Whether the parse read `word` alone as a deferred call's taker, as it reads a kind starting an
+ * operand when a name follows it where a lambda's head would (§3.14).
+ */
+function takesAlone(tree: SyntaxTree, word: Token): boolean {
+  return nodesAt(tree, word.span.start).some(
+    (node) =>
+      node.kind === 'DeferredCall' &&
+      node.taker.kind === 'Identifier' &&
+      extentIn(tree, node.taker).start === word.span.start,
   );
 }
 
@@ -342,14 +362,6 @@ function heldLabelOf(tree: SyntaxTree, closing: Token): Token | undefined {
   }
   const { start } = extentIn(tree, call.callee);
   return codeTokensOf(tree).find(({ span }) => span.start === start);
-}
-
-/** Whether the modifier before the cursor is the first word of a top-level item's head. */
-function headsTopLevel({ before }: Cursor, { tree }: Parse, parent: SyntaxNode): boolean {
-  const previous = before === undefined ? undefined : tokenBefore(tree, before);
-  const previousText =
-    previous === undefined ? '' : tree.source.text.slice(previous.span.start, previous.span.end);
-  return parent.kind === 'Module' && !isModifierWord(previousText);
 }
 
 function tokenBefore(tree: SyntaxTree, token: Token): Token | undefined {

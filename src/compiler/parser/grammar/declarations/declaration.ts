@@ -61,26 +61,22 @@ const topLevelParselets: Partial<Record<CursorKind, DeclarationParselet>> = {
 const wordParselets = {
   type: (parser) => (namedNext(parser) ? parseTypeAlias(parser) : undefined),
   shared: parseModified,
-  sendable: parseModified,
-  live: parseModified,
 } satisfies WordParselets<DeclarationWord, DeclarationParselet>;
 
 /**
  * A declaration whose head holds modifiers, at the first, whichever it is: an extern function,
  * struct or constant, or a struct. Undefined, with nothing consumed, where no head starts there
- * (`shared = 1`) or it is a statement's, a local function's or a lambda's.
+ * (`shared = 1`) or it is a statement's: a function's, its mark a name's (`M fn`) included, which
+ * the statements' parser tells from a lambda's, as it does any function's.
  */
 function parseModified(parser: Parser): Declaration | undefined {
   const head = headAhead(parser, true);
-  if (head === undefined || (head.modifiers.length === 0 && !head.named)) {
+  if (head === undefined || head.modifiers.length === 0) {
     return undefined;
   }
   const { modifiers, keyword } = head;
   if (keyword === 'const') {
     return parseContextConstant(parser);
-  }
-  if (head.named) {
-    return parseFunction(parser, 'item');
   }
   if (modifiers.includes('extern')) {
     return parseExtern(parser, modifiers, keyword);

@@ -15,13 +15,26 @@ import type { VariantMember } from '../../../../compiler/checker/check.ts';
 import { bindValue, isBinding } from '../../../../compiler/checker/resolution/choosing/binding.ts';
 import { expectedFunction } from '../../../../compiler/checker/types/fitting/expected.ts';
 import { sameType } from '../../../../compiler/checker/types/identity/identity.ts';
+import {
+  kindOfFunction,
+  simpleMark,
+} from '../../../../compiler/checker/types/type/function-kinds.ts';
+import {
+  functionType,
+  sendableSend,
+} from '../../../../compiler/checker/types/type/function-types.ts';
 import type { Type } from '../../../../compiler/checker/types/type/index.ts';
 import { errorType } from '../../../../compiler/checker/types/type/primitives.ts';
+import {
+  type FieldsFunction,
+  fieldsFunctionOf,
+} from '../../../../compiler/syntax/declarations/field-defaults.ts';
 import {
   type FunctionDeclaration,
   hasDefault,
   isRestField,
   typeParametersOf,
+  type Variant,
 } from '../../../../compiler/syntax/declarations/index.ts';
 import { isMethod } from '../../../../compiler/syntax/declarations/methods.ts';
 import type { TokenKind } from '../../../../compiler/syntax/tokens/index.ts';
@@ -101,21 +114,28 @@ export function fitsExpected({ cursor, expected }: Presenting, found: Type): boo
 /** A parameter as a function value's type binds it (§3.14): its type, and how it may be left. */
 interface ValueParameter {
   readonly type: Type;
+  readonly reference: boolean;
   readonly hasDefault: boolean;
   readonly isRest: boolean;
 }
 
+/** A function named as a value: what it takes, what its call gives and the mark of its code. */
+interface ValueFunction {
+  readonly parameters: readonly ValueParameter[];
+  readonly result: Type;
+  readonly mark: Type;
+}
+
 /**
- * Where a function value is expected, the expected type when a function taking `parameters` and
- * giving `result` fits it as a value (§3.14), as checking binds one: by position, trailing
- * parameters left to their defaults and a rest taken as one array, each matching the expected
- * parameter exactly and the result fitting; nothing otherwise, a generic one among them, whose
- * instance only checking finds.
+ * Where a function value is expected, the expected type when the function fits it as a value (§3.14),
+ * as checking binds one: by position, trailing parameters left to their defaults and a rest taken
+ * as one array, each matching the expected parameter exactly; then its type as a value fits the
+ * expected one, its result into a future and its mark by their orders. Nothing otherwise, a generic
+ * one among them, whose instance only checking finds.
  */
 function givenAsValue(
   presenting: Presenting,
-  parameters: readonly ValueParameter[],
-  result: Type,
+  { parameters, result, mark }: ValueFunction,
 ): readonly Type[] {
   const { cursor, expected } = presenting;
   const shape = expectedFunction(expected);
@@ -130,18 +150,26 @@ function givenAsValue(
     slots,
     shape.parameters.map(() => ({})),
   );
-  const matches =
-    isBinding(binding) &&
-    binding.every(
-      (bound, index) =>
-        bound?.kind !== 'argument' ||
-        sameType(
-          shape.parameters[bound.index]?.type ?? errorType,
-          parameters[index]?.type ?? errorType,
-        ),
-    ) &&
-    cursor.checker.fitOf(result, shape.result) !== undefined;
-  return matches ? [expected] : [];
+  if (!isBinding(binding)) {
+    return [];
+  }
+  const takesExactly = binding.every(
+    (bound, index) =>
+      bound?.kind !== 'argument' ||
+      sameType(
+        shape.parameters[bound.index]?.type ?? errorType,
+        parameters[index]?.type ?? errorType,
+      ),
+  );
+  const value = functionType({
+    send: sendableSend,
+    mark,
+    parameters: parameters
+      .filter((_parameter, index) => binding[index]?.kind === 'argument')
+      .map(({ type, reference }) => ({ type, reference })),
+    result,
+  });
+  return takesExactly && cursor.checker.fitOf(value, expected) !== undefined ? [expected] : [];
 }
 
 /** `givenAsValue` of a declared function: none for a generic one or a method. */
@@ -153,12 +181,17 @@ export function functionGivenAsValue(
   if (typeParametersOf(declaration.typeParameters).length > 0 || isMethod(declaration)) {
     return [];
   }
-  const parameters = checker.parametersOf(declaration).map(({ node, type }) => ({
+  const parameters = checker.parametersOf(declaration).map(({ node, type, reference }) => ({
     type,
+    reference,
     hasDefault: node.defaultValue !== undefined,
     isRest: node.isRest,
   }));
-  return givenAsValue(presenting, parameters, checker.resultOf(declaration));
+  return givenAsValue(presenting, {
+    parameters,
+    result: checker.resultOf(declaration),
+    mark: kindOfFunction(checker, declaration),
+  });
 }
 
 /** `givenAsValue` of a variant's constructor at its enum's type `enumType` (§3.11). */
@@ -169,10 +202,29 @@ export function variantGivenAsValue(
 ): readonly Type[] {
   const parameters = variant.fields.map(({ type, declared }) => ({
     type,
+    reference: false,
     hasDefault: declared !== undefined && hasDefault(declared.node),
     isRest: declared !== undefined && isRestField(declared.node),
   }));
-  return parameters.length === 0 ? [] : givenAsValue(presenting, parameters, enumType);
+  if (parameters.length === 0) {
+    return [];
+  }
+  const making = constructorOf(variant, enumType);
+  const mark =
+    making === undefined ? simpleMark : kindOfFunction(presenting.cursor.checker, making);
+  return givenAsValue(presenting, { parameters, result: enumType, mark });
+}
+
+/** The function constructing `variant` of `enumType`'s enum (§3.11), whose kind its fields give. */
+function constructorOf(variant: VariantMember, enumType: Type): FieldsFunction | undefined {
+  const declaration = enumType.kind === 'nominal' ? enumType.entity.declaration : undefined;
+  if (declaration?.kind !== 'EnumDeclaration') {
+    return undefined;
+  }
+  const node = declaration.variants.find(
+    (each): each is Variant => each.kind === 'Variant' && each.name.text === variant.name,
+  );
+  return node === undefined ? undefined : fieldsFunctionOf(declaration, node);
 }
 
 /**

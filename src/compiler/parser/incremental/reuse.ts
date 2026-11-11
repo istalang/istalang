@@ -30,7 +30,7 @@ import type {
   TraitDeclaration,
 } from '../../syntax/declarations/index.ts';
 import type { Block } from '../../syntax/statements/index.ts';
-import type { SyntaxTree } from '../../syntax/tree/index.ts';
+import { bodyOf, type SyntaxTree } from '../../syntax/tree/index.ts';
 import { type Segment, spanIn } from '../../syntax/tree/positions.ts';
 import { bodiesHeldBy } from './held-bodies.ts';
 
@@ -218,10 +218,22 @@ function runsOf<Node extends Listed>(
   }
   return runs.map((run) => {
     const [{ span }] = run as [Node, ...Node[]];
-    const to = Math.max(...run.map((node) => node.span.to));
+    const to = Math.max(...run.map((node) => endInSegment(tree, node)));
     const text = span.segment.kind === 'header' ? segmentText(tree, span.segment, to) : undefined;
     return { segment: span.segment, nodes: run, text };
   });
+}
+
+/**
+ * Where `node`'s text ends in its segment: past its body for a function whose body stands there,
+ * one not starting its header's item (`i: fn f(): …`), whose body takes no segment of its own
+ * (parser.ts `inFunctionBody`), though a function's span is its head's alone.
+ */
+function endInSegment(tree: SyntaxTree, node: Listed): number {
+  const body = node.kind === 'FunctionDeclaration' ? bodyOf(tree, node) : undefined;
+  return body?.span.segment === node.span.segment
+    ? Math.max(node.span.to, body.span.to)
+    : node.span.to;
 }
 
 /** The runs of `trait`'s members heading segments of their own; none when it heads none. */

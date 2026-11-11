@@ -133,6 +133,28 @@ describe('what accepting an item writes', () => {
     expect(fitting('const r: fn(String) -> Choice = ‸')).not.toContain('count');
   });
 
+  it('ranks a function value as checking fits it: by its mark, its result into a future', () => {
+    const decls = [
+      'enum Wrap { W(n: Int) }',
+      'ista fn istaWork(x: Int) -> Int: x',
+      'fn plainWork(x: Int) -> Int: x',
+      'fn run(f: fn(Int) -> Int) -> Int: f(1)',
+      'ista fn later(f: ista async fn(Int) -> Int) -> Int: 1',
+      'ista fn wrapped(f: ista async fn(Int) -> Wrap) -> Int: 1',
+    ];
+    const fitting = (...lines: readonly string[]) =>
+      listed(...decls, ...lines)
+        .filter(({ rank }) => rank?.fitsExpected === true)
+        .map(({ name }) => name);
+    const simple = fitting('ista fn caller() -> Int: run(‸)');
+    expect(simple).toContain('plainWork');
+    expect(simple).not.toContain('istaWork');
+    expect(fitting('ista fn caller() -> Int: later(‸)')).toEqual(
+      expect.arrayContaining(['plainWork', 'istaWork']),
+    );
+    expect(fitting('ista fn caller() -> Int: wrapped(‸)')).toContain('W');
+  });
+
   it('writes a function or a variant alone where a function value is expected (§3.14)', () => {
     const nothing = { insert: undefined, next: undefined };
     expect(insertOf('pl', 'fn t(xs: Array<Int>):', '  _ = xs.map(p‸)')).toEqual(nothing);

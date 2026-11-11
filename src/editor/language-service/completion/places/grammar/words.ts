@@ -20,7 +20,7 @@ import type { Surroundings } from './surroundings.ts';
 /** Whether surroundings give a word meaning. */
 type Need = (surroundings: Surroundings) => boolean;
 
-/** A function's body, where an instance runs; a top-level constant and a default run none. */
+/** Code that runs, where an instance may; a top-level constant's value runs in none. */
 const runsInInstance: Need = ({ body }) => body !== 'none';
 
 const waits: Need = ({ body }) => body === 'async';

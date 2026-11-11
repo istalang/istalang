@@ -220,6 +220,9 @@ describe('externs and functions', () => {
     ['fn f', expected, ''],
     ['let x = 1', topLevelStatement, 'let x = 1'],
     ['hold let x = 1', topLevelStatement, 'hold let x = 1'],
+    ['live fn(x): x', topLevelStatement, 'live fn(x): x'],
+    ['M fn(x): x', topLevelStatement, 'M'],
+    ['M fn x: x', topLevelStatement, 'M'],
   ])('reports %s once', (text, diagnostic, spanText) => {
     expect(reported('module', text)).toEqual(reportedOnce(diagnostic.code, spanText));
   });
