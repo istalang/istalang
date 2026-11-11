@@ -194,7 +194,7 @@ host awaits the same way whatever an instance waits on. Calls that only read (`d
   `HostReports`: log records, and a panic no call of the program's waits to hear; the job loop's
   calls (`CallMaker` `jobs`) never hear one, so an instance's panic reaches the host though the
   loop serving it waits on it.
-- **One driver loop.** A host drives a group of instances with `drive` (`runtime/host/drive.ts`):
+- **One driver loop.** A host drives a group of instances with `drive` (`runtime/testing/world/drive.ts`):
   run what can run, wait for the earliest timer, wake what is due, until nothing can wake them. What
   differs between hosts is passed in: what can run now, how to wait (a `Clock`,
   `runtime/clock.ts`, or the CLI's sleep racing its host's promises), when to end and a

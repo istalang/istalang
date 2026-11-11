@@ -52,7 +52,7 @@ interface RunOptions {
 export const defineRunCommand: CommandDefinition = (cli, { environment, exitWith }) => {
   cli
     .command('run')
-    .description("run a program's async fn main() and print its outcome")
+    .description("run a program's live async fn main() and print its outcome")
     .argument('[entry]', 'the module declaring main')
     .option('--store <dir>', 'keep the Definition and every commit in this directory')
     .option('--host <module>', "load the externs the program's host implements from a module")

@@ -19,7 +19,7 @@
  *   segment (../scheduler/wake.ts), and says where it stands: waiting until its next timer,
  *   finished with its outcome, or panicked with a message and a trace (§3.12), and which instances
  *   it spawned (§9), which the host wakes like any other. The host decides when to wake each again
- *   (drive.ts runs that loop); the runtime holds no timers of its own.
+ *   (../testing/world/drive.ts runs that loop); the runtime holds no timers of its own.
  * - Inspecting an instance reads its last commit only: where it stands, and where each of its
  *   executions waits (§9, §10).
  * - An instance the runtime doesn't hold, one that has ended or panicked, or any after a restart,
@@ -164,7 +164,7 @@ type Held = ReturnType<typeof heldInstances>;
  * one did, it is held once it committed active, and let go of otherwise, from when on the store has
  * it, or never had it when its first commit failed. Every advance, and every termination, is shown
  * to whoever observes the runtime's instances, as the contexts of a live run do (contexts.ts), so
- * one a host's call made, a fill's or a retry's, reaches them too.
+ * one a host's call made, a retry's or a termination's, reaches them too.
  */
 function heldInstances(seams: SchedulerSeams) {
   const held = new Map<string, Resident<BoundProgram>>();

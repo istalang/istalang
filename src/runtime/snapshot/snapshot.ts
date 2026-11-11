@@ -45,9 +45,6 @@ const instanceCall = z.strictObject({
 
 export type InstanceCall = z.output<typeof instanceCall>;
 
-/** A value the host fills a future it named `token` with (§9). */
-const arrival = z.strictObject({ token: z.string(), value });
-
 /** A host's call into a context (§9), its captures and arguments sent in, and the token its answer names. */
 const invocation = z.strictObject({ call: instanceCall, token: z.string() });
 
@@ -55,14 +52,13 @@ export type Invocation = z.output<typeof invocation>;
 
 /**
  * What a retry of a panicked instance runs again (§3.12): the call it was starting, when it
- * panicked before its first commit; what its host filled, when it panicked in the segment the fill
- * ran; or the call a host made into it, when it panicked in the segment that call started. A
- * segment answering a call to one of its mocks has nothing to replay: mocks live only in a test's
- * world, which never retries (§10).
+ * panicked before its first commit, or the call a host made into it, when it panicked in the
+ * segment that call started. A segment answering a call to one of its mocks, or taking another
+ * instance's answer to one, has nothing to replay: mocks live only in a test's world, which never
+ * retries (§10).
  */
 const replay = z.discriminatedUnion('kind', [
   z.strictObject({ kind: z.literal('call'), call: instanceCall }),
-  z.strictObject({ kind: z.literal('arrival'), arrival }),
   z.strictObject({ kind: z.literal('invocation'), invocation }),
 ]);
 

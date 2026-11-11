@@ -10,10 +10,11 @@
  *   holder gives later are filled in once the caller's advance is over, as a host fills a future.
  *   The holder may run on meanwhile, and sees the caller neither idle nor at a waypoint, since the
  *   caller's segment hasn't committed.
- * - The world is driven as any host's instances are (runtime/host/drive.ts). What it runs first is
- *   what can run now: answers to deliver, ready instances, then instances whose watches hold. When
- *   nothing can, it waits for the earliest timer on the clock it is given, real time unless the
- *   test mocked it (§10), so the runtime never sleeps. A wait past the deadline ends the test.
+ * - The world is driven as any host's instances are (runtime/testing/world/drive.ts). What it runs
+ *   first is what can run now: answers to deliver, ready instances, then instances whose watches
+ *   hold. When nothing can, it waits for the earliest timer on the clock it is given, real time
+ *   unless the test mocked it (§10), so the runtime never sleeps. A wait past the deadline ends the
+ *   test.
  * - The test is the world's call into its context, an invocation as live code's is: it ends when
  *   that call answers, or when any instance panics, which fails it at once with that panic (§10),
  *   unless an instance waits for its end (`result()`, as `expectPanic` does). Such a wait ends once it is answered, so the world remembers each panic waited for as it
@@ -29,7 +30,6 @@ import { jobWaypoint } from '../../../foundation/language/well-known/jobs.ts';
 import { memo } from '../../../foundation/structures/memo.ts';
 import { unreachable } from '../../../foundation/structures/unreachable.ts';
 import type { Clock } from '../../clock.ts';
-import { drive } from '../../host/drive.ts';
 import { InstanceGroup } from '../../host/instance-group.ts';
 import type { Inspection, LogRecord } from '../../instance-state.ts';
 import type { Natives } from '../../natives.ts';
@@ -49,6 +49,7 @@ import {
 import type { TestWatch } from '../../snapshot/objects.ts';
 import type { InstanceCall, Snapshot } from '../../snapshot/snapshot.ts';
 import { memoryStore } from '../../store.ts';
+import { drive } from './drive.ts';
 import { pendingTestWatches, withdrawnAnswers } from './snapshot-reads.ts';
 import { unmockedExterns } from './test-host.ts';
 

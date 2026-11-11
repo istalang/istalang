@@ -54,7 +54,7 @@ tags: [reuse, runtime, snapshot, persistence, scheduler, lifetimes, host]
 - check host extern signatures across deploys → `recordExternSignatures` (`src/runtime/boundary/extern-signatures.ts`)
 - format a finished instance's encoded outcome as host JSON or JSON text → `outcomeJson`, `outcomeText` (`src/runtime/boundary/outbound.ts`)
 - create a `Runtime` or catch a host refusal → `createRuntime` (`src/runtime/host/index.ts`), `Refusal` (`src/runtime/refusal.ts`)
-- drive a group of instances and their spawns until settled, or with a host's own steps and end → `settle`, `drive` (`src/runtime/host/drive.ts`), `InstanceGroup` (`src/runtime/host/instance-group.ts`)
+- drive a group of instances and their spawns on a test's clock until settled, or with a test's own steps and end → `drive` (`src/runtime/testing/world/drive.ts`), `settleAll` (`src/runtime/runtime.test-kit.ts`), `InstanceGroup` (`src/runtime/host/instance-group.ts`)
 - read or wait on time, real or manual, a wait that can be called off → `Clock`, `ManualClock` (`src/runtime/clock.ts`)
 - store Definitions and snapshots in memory → `memoryStore`, `InstanceStore` (`src/runtime/store.ts`)
 - store Definitions and snapshots atomically in a directory → `directoryStore` (`src/cli/directory-store.ts`)

@@ -24,7 +24,7 @@ import { formattableInputs } from '../src/formatter/format.test-kit.ts';
 import { formatText } from '../src/formatter/format.ts';
 import { tempProject } from '../src/project/project.test-kit.ts';
 import { findProjectSources, loadProject } from '../src/project/project.ts';
-import { settleAll, testRuntime } from '../src/runtime/runtime.test-kit.ts';
+import { testRuntime } from '../src/runtime/runtime.test-kit.ts';
 import { corpusDirectory, runPrograms } from './corpus/programs.ts';
 
 /** A copy of the corpus on disk, its `.ista` files only. */
@@ -55,15 +55,19 @@ function diagnosticsOf(program: Program) {
 }
 
 /**
- * How each instance a run of the program `text` drove ended, by name: `main`'s outcome as the JSON
- * `ista run` prints, and each panic's message without its trace, which names the lines frames
- * stood at.
+ * Where a run of the program `text` left `main` and each instance it committed, its contexts and
+ * what they spawned, by name: `main`'s outcome as the JSON `ista run` prints, and each panic's
+ * message without its trace, which names the lines frames stood at.
  */
 async function endingsOf(text: string) {
   const test = testRuntime();
   const program = test.runtime.deploy(compiledText(text));
-  const settled = await settleAll(test, 'main', await program.start('main'));
-  return [...settled].map(([instance, ending]) => {
+  const main = await program.start('main');
+  const stored = test.store
+    .instances()
+    .toSorted((a, b) => a.localeCompare(b))
+    .map((instance) => [instance, test.runtime.inspect(instance).state] as const);
+  return [['main', main.state] as const, ...stored].map(([instance, ending]) => {
     switch (ending.kind) {
       case 'finished':
         return instance === 'main'

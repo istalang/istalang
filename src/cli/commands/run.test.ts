@@ -1,7 +1,7 @@
 /**
  * `ista run` end to end, through the CLI in-process, on real time: what it prints, logs and
- * reports (every corpus program's outcome is run.sweep.test.ts's). With a store, a run killed
- * while it waits is continued by a later `--resume`, in a process of its own.
+ * reports (every corpus program's outcome is run.sweep.test.ts's). With a store, a context killed
+ * while it waits is resumed by a later run of the program on that store, in a process of its own.
  */
 
 import { type ChildProcessWithoutNullStreams, spawn } from 'node:child_process';

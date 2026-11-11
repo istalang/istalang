@@ -8,8 +8,7 @@
  * - A segment starts by resolving the timers due at its start time, which is also what `now()`
  *   returns inside it.
  * - A commit writes the snapshot through the store and only then goes on (§5). With nothing ready
- *   and no timer due, nothing changed since the last commit, so nothing is written. What observes a
- *   future the segment disposed is told once it is written, so a discarded segment tells nothing.
+ *   and no timer due, nothing changed since the last commit, so nothing is written.
  * - What a segment spawned becomes instances at its commit: each is written as `unstarted`, named
  *   `<parent>/<n>`, before the parent's snapshot. A segment that re-runs after a crash between the
  *   two finds the child there already and doesn't write it again (§9).
@@ -120,12 +119,14 @@ function begun(
 type FirstStep =
   | { readonly kind: 'none' }
   | Exclude<Replay, { readonly kind: 'call' }>
+  | { readonly kind: 'arrival'; readonly arrival: Answered }
   | { readonly kind: 'answer'; readonly call: MockCall }
   | { readonly kind: 'withdraw'; readonly withdrawn: readonly CallerFuture[] };
 
 /**
- * What an advance does before its first segment: fill a future, answer a call to a mock or drop
- * the answers to calls whose callers let go of their futures (§10), or start at a given time.
+ * What an advance does before its first segment: take another instance's answer to a call to its
+ * mock, answer such a call, or drop the answers to calls whose callers let go of their futures
+ * (§10); start a host's call (§9); or start at a given time.
  */
 export type AdvanceFirst = FirstStep & {
   /** When the first segment counts as started, for a retry of one that panicked (§3.12, §5). */
@@ -140,10 +141,9 @@ export interface Advance extends Advanced {
 }
 
 /**
- * Advances `resident` from its last commit as far as it goes without waiting. The future
- * `first.arrival` names is filled in its first segment, which runs whoever waits on it and commits
- * the filled future even when nobody does; a panic there keeps the arrival with the panic, so a
- * retry fills it again.
+ * Advances `resident` from its last commit as far as it goes without waiting. The answer
+ * `first.arrival` gives fills its caller's future in the first segment, which runs whoever waits
+ * on it and commits the filled future even when nobody does.
  */
 export function advance(
   seams: SchedulerSeams,
@@ -185,7 +185,6 @@ export function advance(
     }
     spawned.push(...commitChildren(seams.store, instance));
     const next = commit(seams.store, instance.snapshot(statusOf(end), objectsOf(end)));
-    instance.notices.tellCommitted();
     logs.push(...instance.logs());
     const given = instance.answered();
     answered.push(...given);
@@ -211,7 +210,6 @@ export function terminate(seams: SchedulerSeams, resident: Resident): Advanced {
   const spawned = commitChildren(seams.store, instance);
   const { message, trace } = status;
   const ended = commit(seams.store, instance.snapshot({ kind: 'terminated', message, trace }, []));
-  instance.notices.tellCommitted();
   resident.frozenAt(ended);
   return { state: stateOf(ended), spawned, logs: instance.logs() };
 }
@@ -221,7 +219,7 @@ function replayOf(status: Snapshot['status'], step: FirstStep): Replay | undefin
   if (status.kind === 'unstarted') {
     return { kind: 'call', call: status.call };
   }
-  return step.kind === 'arrival' || step.kind === 'invocation' ? step : undefined;
+  return step.kind === 'invocation' ? step : undefined;
 }
 
 /** One segment's run: the instance as it left it, and how it ended. */
@@ -231,11 +229,11 @@ interface SegmentRun {
 }
 
 /**
- * Runs one segment of `resident` from its last commit: the future `arrival` names filled first, or
- * the answer to `answering` started first, once the answers that would fill `withdrawn` are
- * dropped, and every watch `watched` says holds resolved. Undefined when nothing can run and
- * nothing arrived or resolved, or when `arrival` names no future the instance waits on: one it
- * disposed, whose later fill changes nothing (§7), or one it never had.
+ * Runs one segment of `resident` from its last commit: the future an `arrival` answers filled
+ * first, or the answer to `answering` or a host's invocation started first, once the answers that
+ * would fill `withdrawn` are dropped, and every watch `watched` says holds resolved. Undefined when
+ * nothing can run and nothing arrived or resolved, or when an `arrival` answers no future the
+ * instance waits on: one it disposed, whose later answer changes nothing (§7).
  */
 function runFrom(
   resident: Resident,

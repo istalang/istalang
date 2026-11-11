@@ -66,9 +66,9 @@ const indexes = {
   weakRefs: index('weakRef', (weak) => (typeof weak.target === 'number' ? [weak.target] : [])),
   /** Each pending `disposed()` watch, by the weak reference it is on. */
   watches: index('future', ({ state }) => (state.kind === 'disposed' ? [state.weakRef] : [])),
-  /** Each pending future its host fills, by its token. */
+  /** Each pending future filled from outside, a mock's answer or a host's promise, by its token. */
   hostFutures: index('future', ({ state }) => (state.kind === 'host' ? [state.token] : [])),
-  /** Each pending timer, watch and future its host fills, by its state's kind. */
+  /** Each pending timer, watch and future filled from outside, by its state's kind. */
   pending: index('future', ({ state }) =>
     state.kind === 'timer' || state.kind === 'watch' || state.kind === 'host' ? [state.kind] : [],
   ),

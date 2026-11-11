@@ -11,7 +11,6 @@ import { stdNatives } from '../../stdlib/natives.ts';
 import { ManualClock } from '../clock.ts';
 import type { Native, Natives } from '../natives.ts';
 import {
-  type RecordingStore,
   recordingStore,
   runToEnd,
   startToEnd,
@@ -284,59 +283,5 @@ describe('advancing an instance', () => {
     const [waiting, panicked] = committed(test.store.commits);
     expect(panicked?.objects).toEqual(waiting?.objects);
     expect(panicked?.status).toMatchObject({ kind: 'panicked', segmentStartedAt: 1n });
-  });
-});
-
-/** A program whose `main` lets go of a pending take, then panics or not. */
-function lettingGo(panics: boolean): string {
-  return compiledText(
-    [
-      "import * as runtime from 'runtime'\nlive async fn main() -> Int: await runtime.run(runtime.id()) _main()\nista async fn _main() -> Int:",
-      '  const s = Slot.create<Int>()',
-      '  if true:',
-      '    const taken = s.take()',
-      '    await runtime.commit()',
-      ...(panics ? ['  panic("boom")'] : []),
-      '  await runtime.commit()',
-      '  1',
-    ].join('\n'),
-  );
-}
-
-/**
- * The std natives, with a slot's `take` observing the disposal of the future it gives, telling
- * `told` how many commits `store` holds as it is told.
- */
-function observingTakes(told: number[], store: RecordingStore): Natives {
-  const key = Object.keys(stdNatives).find((name) => name.startsWith('prelude.take('));
-  const take: Native | undefined = key === undefined ? undefined : stdNatives[key];
-  if (key === undefined || take === undefined) {
-    throw new Error("No native for a slot's take.");
-  }
-  return {
-    ...stdNatives,
-    [key]: (values, context) => {
-      const taken = take(values, context);
-      context.futures.onDisposed(taken, () => told.push(store.commits.length));
-      return taken;
-    },
-  };
-}
-
-describe("an instance's disposal notices", () => {
-  it('tell what observes a future its segment disposed once that segment commits', async () => {
-    const told: number[] = [];
-    const store = recordingStore();
-    const test = testRuntime({ store, natives: observingTakes(told, store) });
-    expect(await instanceToEnd(test, lettingGo(false))).toMatchObject({ kind: 'finished' });
-    expect(told).toEqual([2]);
-  });
-
-  it('tell nothing for a segment a panic discards', async () => {
-    const told: number[] = [];
-    const store = recordingStore();
-    const test = testRuntime({ store, natives: observingTakes(told, store) });
-    expect(await instanceToEnd(test, lettingGo(true))).toMatchObject({ kind: 'panicked' });
-    expect(told).toEqual([]);
   });
 });

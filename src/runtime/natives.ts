@@ -70,12 +70,6 @@ export interface NativeFutures {
   readonly timer: (at: bigint) => Value;
   /** A live future something outside the run resolves, and its resolver: a live run's (proposal 8). */
   readonly resolvable: () => Resolvable;
-  /**
-   * Has `notice` called once if the pending future `future` is disposed before it resolves: at
-   * once in a live run, once the disposing segment commits in an instance, so a segment a crash
-   * discards tells nothing (§7). It lasts as long as the instance stays in memory.
-   */
-  readonly onDisposed: (future: Value, notice: () => void) => void;
 }
 
 /**

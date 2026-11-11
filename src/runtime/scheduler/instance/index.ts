@@ -232,7 +232,6 @@ export class Instance {
    */
   continueFrom(committed: Snapshot): void {
     this.heap.keepOnly(new Set(committed.objects.map(({ id }) => id)));
-    this.notices.forgetGone();
     this.#from = committed;
     this.#spawns = [];
     this.#answered = [];

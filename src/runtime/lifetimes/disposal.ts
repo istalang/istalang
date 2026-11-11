@@ -6,9 +6,9 @@
  *   execution holds its own future (holders.ts). Its `disposing()` watches resolve, and a call
  *   waiting on one of them runs its cleanup, resuming at that case and stopped at its next await;
  *   any other is stopped where it waits, its frames let go.
- * - A pending slot operation leaves its slot's queue without consuming anything, and a future the
- *   host fills frees its token, so a later fill changes nothing and the host may name a new one so.
- *   A disposed future tells what observes it, such as a live resolver of it (proposal 8, Rule 9).
+ * - A pending slot operation leaves its slot's queue without consuming anything, and a future
+ *   filled from outside the instance frees its token, so a later answer to it changes nothing. A
+ *   disposed future tells what observes it, such as a live resolver of it (proposal 8, Rule 9).
  * - A value whose type declares `dispose` as code calls that: a call the collector runs as code
  *   (collector.ts), and the object is gone once the call returns. A disposal never awaits, since a
  *   `dispose` can't.

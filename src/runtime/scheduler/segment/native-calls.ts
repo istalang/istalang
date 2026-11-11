@@ -142,7 +142,7 @@ function capabilitiesOf(instance: Instance, side: SegmentSide): NativeCapabiliti
 
 /** The instance's futures as natives make them (§3.6), in a segment `side` describes. */
 function nativeFuturesOf(instance: Instance, { waiting, trace }: SegmentSide): NativeFutures {
-  const { futures, notices } = instance;
+  const { futures } = instance;
   return {
     resolved: (value) => futures.createHandle({ kind: 'resolved', value }),
     timer: (at) => futures.createHandle({ kind: 'timer', at }),
@@ -150,9 +150,6 @@ function nativeFuturesOf(instance: Instance, { waiting, trace }: SegmentSide): N
       waiting.kind === 'live'
         ? liveResolvable(instance, waiting.resumes, trace())
         : unreachable("Ista code calls no host's extern giving a future; the checker refuses one."),
-    onDisposed: (future, notice) => {
-      notices.onDisposed(handleObject(future), notice);
-    },
   };
 }
 

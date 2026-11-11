@@ -14,10 +14,10 @@ import { unreachable } from '../foundation/structures/unreachable.ts';
 import { stdNatives } from '../stdlib/natives.ts';
 import { type HostExterns, hostNatives } from './boundary/host-natives.ts';
 import { ManualClock } from './clock.ts';
-import { type Settled, settle } from './host/drive.ts';
 import { createRuntime, type Runtime } from './host/index.ts';
+import { InstanceGroup } from './host/instance-group.ts';
 import type { DeployedProgram } from './host/programs.ts';
-import type { Advanced, StartOptions } from './instance-state.ts';
+import type { Advanced, InstanceState, StartOptions } from './instance-state.ts';
 import type { FullNativeContext, Natives } from './natives.ts';
 import { Refusal } from './refusal.ts';
 import { loadDefinition } from './scheduler/loaded-definition.ts';
@@ -25,6 +25,7 @@ import { Resident } from './scheduler/resident.ts';
 import { advance, unstarted } from './scheduler/wake.ts';
 import { seedBytes, seedTextOf } from './snapshot/random.ts';
 import { type InstanceStore, memoryStore } from './store.ts';
+import { drive } from './testing/world/drive.ts';
 
 /** A store that also keeps what was written to it, in order: snapshot texts, and Definition hashes. */
 export interface RecordingStore extends InstanceStore {
@@ -136,28 +137,50 @@ export function testRuntime({
   };
 }
 
+/** How an instance nothing will wake again ended: finished, panicked, or `stuck` waiting. */
+export type Settled =
+  | Exclude<InstanceState, { kind: 'waiting' | 'ready' }>
+  | { readonly kind: 'stuck' };
+
 /**
  * Moves time to each timer the instance, or one it spawned, waits for and wakes them, until none
- * waits any more; how each settled, the instance first.
+ * waits any more; how each settled, the instance first and the others in the order they were
+ * spawned.
  */
-export function settleAll(
+export async function settleAll(
   { runtime, clock }: TestRuntime,
   instance: string,
   initial: Advanced,
 ): Promise<ReadonlyMap<string, Settled>> {
-  return settle(
-    {
-      wake: async (name) => await runtime.wake(name),
-      now: clock.now,
-      wait: async (due) => {
-        if (due !== undefined) {
-          await clock.until(due);
-        }
-        return [];
-      },
+  const group = new InstanceGroup();
+  group.record(instance, initial);
+  const wake = async (name: string) => {
+    group.record(name, await runtime.wake(name));
+  };
+  await drive({
+    group,
+    now: clock.now,
+    runNext: async () => {
+      const ready = group.ready();
+      if (ready !== undefined) {
+        await wake(ready);
+      }
+      return ready !== undefined;
     },
-    { instance, advanced: initial },
-  );
+    wake,
+    wait: async (due) => {
+      if (due !== undefined) {
+        await clock.until(due);
+      }
+      return false;
+    },
+  });
+  return new Map([...group.states].map(([name, state]) => [name, settledOf(state)]));
+}
+
+/** How an instance in `state`, which nothing will wake again, ended. */
+function settledOf(state: InstanceState): Settled {
+  return state.kind === 'waiting' || state.kind === 'ready' ? { kind: 'stuck' } : state;
 }
 
 /** How an instance ended, an outcome its start wrapper encoded (§9) read as its JSON text. */
@@ -175,7 +198,11 @@ export async function runToEnd(
   instance: string,
   initial: Advanced,
 ): Promise<Ended> {
-  const settled = (await settleAll(test, instance, initial)).get(instance);
+  return endedOf(test, instance, (await settleAll(test, instance, initial)).get(instance));
+}
+
+/** How `instance`, `settled`, ended, its outcome read as `runToEnd` reads it. */
+function endedOf(test: TestRuntime, instance: string, settled: Settled | undefined): Ended {
   if (settled === undefined || settled.kind === 'stuck') {
     throw new Error(`Instance ${instance} waits on nothing that can wake it.`);
   }
@@ -195,14 +222,18 @@ export async function runToEnd(
   }
 }
 
-/** Deploys `text`, starts `main` as an instance and runs it to its end. */
+/**
+ * Deploys `text` and starts its live `main` under the name `instance`, a run that drives its
+ * contexts itself and has ended once its start returns; how it ended.
+ */
 export async function startToEnd(
   test: TestRuntime,
   text: string,
   { instance = 'test', ...options }: StartOptions & { readonly instance?: string } = {},
 ): Promise<Ended> {
   const program: DeployedProgram = test.runtime.deploy(text);
-  return await runToEnd(test, instance, await program.start(instance, options));
+  const { state } = await program.start(instance, options);
+  return endedOf(test, instance, settledOf(state));
 }
 
 /** A context for natives that never use theirs; touching it is a bug in the test. */
