@@ -75,27 +75,11 @@ lambdas infer their mark; Rule 4 witness marks; least-mark settling; the corpus 
 rewriter. A kind hidden in an `any` value stays sound (spec §3.3). B72 goes to K1d; its profile
 cost (B71) is K1d's first fix.
 
-## K1d Data-kind bounds (behavioural)
+## K1d Data-kind bounds: done (`c79f4e49`..`28f683e2`)
 
-After K1c, by K1c's implementer. Closes B72: values a generic body computes from its type
-parameters, through an associated type or a type match, were judged at no caller.
-
-**Scope.**
-- First, B71: K1c's profile cost, mostly lambda mark inference reading kinds at every handled site,
-  brought back within noise of `698d8bdd`.
-- The prelude's `DataKind` alias becomes `Mark`, every use following. `DataKind<K in Mark>` is a
-  derived trait, met by a type whose kind is in `K`; `Sendable` implies `DataKind<"simple">`, and
-  `DataKind<K1>` implies `DataKind<K2>` when `K1` is within `K2`.
-- An associated type's kind is its bound's. Unbounded, it is `DataKind<"simple">`, as simple is
-  never written; a written `DataKind` bound replaces that default. A type match's kind comes from its cases where it is defined: their concrete kinds,
-  while what they take from the subject stays transparent (Rule 3).
-
-**Accept.** B72's repros are refused; `createAndDrop<Box>()` with `Box.Data` live and a bound of
-`DataKind<"simple">` is an error naming that use, conformance being structural; a `live fn` holding `T.Data` bounded
-`DataKind<"live" | "simple">` checks, and ista code calling it is refused, naming the call. The
-full suite passes. Profile within noise of `698d8bdd`, before K1c.
-
-**Spec.** Proposal 8 Rules 2–3; §3.5 associated types; §3.10 `DataKind`; §3.17 type matches.
+`DataKind` renamed `Mark`; the derived trait `DataKind<K in Mark>`; an associated type's kind its
+bounds', unbounded `DataKind<"simple">`; a type match's its cases' (B72). K1c's profile cost cut,
+its residual left as B71.
 
 ## DG Delegate, on contexts (Istalang, then rewrite)
 
