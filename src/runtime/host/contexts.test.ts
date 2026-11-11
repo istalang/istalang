@@ -211,6 +211,43 @@ describe('a context', () => {
       watching: [],
     });
   });
+
+  it('Runtime is Disposable (§9)', () => {
+    const disposableRuntime = lines(
+      "import * as runtime from 'runtime'",
+      'live fn watch(rt: runtime.Runtime) -> WeakRef<runtime.Runtime>: WeakRef(rt)',
+    );
+    expect(reported(disposableRuntime).codes).toEqual([]);
+  });
+
+  it('ends a call waiting on an instance when the instance finishes before the call answers', async () => {
+    const finishedFirst = compiledText(
+      lines(
+        "import * as runtime from 'runtime'",
+        "import * as time from 'time'",
+        'ista async fn child() -> Int:',
+        '  await time.delay(10ms)',
+        '  1',
+        'ista async fn slowQuery() -> Int:',
+        '  await time.delay(1s)',
+        '  2',
+        'ista async fn spawner() -> String:',
+        '  const c = spawn child()',
+        '  await runtime.commit()',
+        '  "spawned"',
+        'live async fn main() -> String:',
+        '  const rt = await runtime.Runtime.open(runtime.hostStore())',
+        '  drop await rt.call("o/1") spawner()',
+        '  match await rt.call("o/1/1") slowQuery():',
+        '    case Ok(v): `ok:${v}`',
+        '    case Err(e): e.message',
+      ),
+    );
+    expect(await startToEnd(testRuntime(), finishedFirst)).toEqual({
+      kind: 'finished',
+      outcome: '"The context \'o/1/1\' has ended."',
+    });
+  });
 });
 
 describe('a host', () => {

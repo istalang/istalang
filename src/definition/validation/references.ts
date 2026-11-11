@@ -47,6 +47,7 @@ export function checkReferences(tables: Tables, refinement: z.RefinementCtx): vo
     },
   };
   checkMain(context);
+  checkJobServer(context);
   checkStarts(context);
   checkTests(context);
   tables.modules.forEach((module, index) => {
@@ -84,6 +85,17 @@ function checkMain(context: Context): void {
   const entry = context.tables.functions[main];
   if (entry?.kind !== 'code' || !isMainShaped(startShapeOf(entry))) {
     context.report(['main'], 'main must be live code running as an execution, with no parameters.');
+  }
+}
+
+/** The Definition's `jobServer`, which must point at code: `Runtime.open` calls it with a runtime. */
+function checkJobServer(context: Context): void {
+  const { jobServer } = context.tables;
+  if (jobServer === undefined || !inRange(context, { functions: [jobServer] }, ['jobServer'])) {
+    return;
+  }
+  if (context.tables.functions[jobServer]?.kind !== 'code') {
+    context.report(['jobServer'], 'The job server must be code.');
   }
 }
 

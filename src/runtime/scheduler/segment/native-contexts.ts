@@ -7,19 +7,23 @@
  * - A call's closure leaves the run as any crossing value does (../instance/crossing.ts), and what
  *   the call gives arrives back; its live future resolves with `Ok` of that, or `Err` of the
  *   context's panic, as a wait on an instance's end does (../instance/instance-ends.ts).
+ * - The names of the instances a runtime serves the jobs of arrive the same way, as an array.
  * - Only a live run reaches contexts: the call rule keeps ista code from these natives
  *   (proposal 8, Rule 2), so an instance reaching one is a bug.
  */
 
+import type { TypeId } from '../../../definition/operands.ts';
 import { errorOf, okOf } from '../../../definition/values/declared-values.ts';
 import { closureOf, handleTo, type Value } from '../../../definition/values/values.ts';
 import { unreachable } from '../../../foundation/structures/unreachable.ts';
-import type { NativeContexts } from '../../natives.ts';
+import type { NativeContexts, NativeResolver } from '../../natives.ts';
+import type { InstanceCall } from '../../snapshot/snapshot.ts';
 import { arriving, leaving } from '../instance/crossing.ts';
 import { handleObject } from '../instance/heap.ts';
 import type { Instance } from '../instance/index.ts';
 import { panicCode } from '../instance/instance-ends.ts';
 import { liveResolvable } from '../live-resolvers.ts';
+import type { CallListener, RunContexts } from '../run-contexts.ts';
 import type { Waiting } from '../waiting.ts';
 
 /** What a `Store` holds: the host's store, the only one a live run reaches today. */
@@ -39,6 +43,15 @@ export function nativeContextsOf(
     const { payload } = instance.heap.of(handleObject(runtime), 'resource');
     return typeof payload === 'number' ? payload : unreachable('A Runtime holds its number.');
   };
+  /** A live future the run's contexts resolve, which `waitOn` hands them with its resolver. */
+  const awaitingContexts = (
+    waitOn: (contexts: RunContexts, future: number, resolver: NativeResolver) => void,
+  ): Value => {
+    const { resumes, contexts } = reached();
+    const { future, resolver } = liveResolvable(instance, resumes, trace());
+    waitOn(contexts, handleObject(future), resolver);
+    return future;
+  };
   return {
     hostStore: (type) => ({ kind: 'extern', type, payload: hostStorePayload }),
     open: (_store, type) => {
@@ -55,31 +68,57 @@ export function nativeContextsOf(
       });
       return handleTo(resource.id);
     },
-    call: (runtime, key, call, result) => {
-      const { resumes, contexts } = reached();
-      const { future, resolver } = liveResolvable(instance, resumes, trace());
-      const closure =
-        closureOf(call) ??
-        unreachable('A context is called with no function; the checker forbids it.');
-      const { types } = instance.loaded.definition;
-      const ended = (value: Value) => {
-        resolver.tryResolve(value);
-      };
-      contexts.call(runtimeOf(runtime), {
-        key,
-        call: {
-          function: closure.function,
-          captures: closure.captures.map((each) => leaving(instance, each)),
-          arguments: [],
-        },
-        future: handleObject(future),
-        listener: {
-          answered: (value) => ended(okOf(types, result, arriving(instance, value))),
-          panicked: ({ message, trace: where }) =>
-            ended(errorOf(types, result, { message, code: panicCode, trace: where })),
-        },
-      });
-      return future;
+    call: (runtime, { key, call, result, maker }) =>
+      awaitingContexts((contexts, future, resolver) => {
+        contexts.call(runtimeOf(runtime), {
+          key,
+          call: leavingCall(instance, call),
+          future,
+          listener: answering(instance, result, resolver),
+          maker,
+        });
+      }),
+    served: (runtime, known) =>
+      awaitingContexts((contexts, future, resolver) => {
+        contexts.served({
+          runtime: runtimeOf(runtime),
+          known,
+          future,
+          listener: (instances) => {
+            resolver.tryResolve({ kind: 'array', elements: [...instances] });
+          },
+        });
+      }),
+    jobServer: () => {
+      const { jobServer } = instance.loaded.definition;
+      return jobServer === undefined
+        ? undefined
+        : { kind: 'closure', function: jobServer, captures: [] };
+    },
+  };
+}
+
+/** The call `closure`, a function taking nothing, makes, as it leaves `instance`. */
+function leavingCall(instance: Instance, closure: Value): InstanceCall {
+  const { function: called, captures } =
+    closureOf(closure) ??
+    unreachable('A context is called with no function; the checker forbids it.');
+  return {
+    function: called,
+    captures: captures.map((each) => leaving(instance, each)),
+    arguments: [],
+  };
+}
+
+/** Hears a call's end into `resolver`: `Ok` of what it gave, or `Err` of the context's panic. */
+function answering(instance: Instance, result: TypeId, resolver: NativeResolver): CallListener {
+  const { types } = instance.loaded.definition;
+  return {
+    answered: (value) => {
+      resolver.tryResolve(okOf(types, result, arriving(instance, value)));
+    },
+    panicked: ({ message, trace }) => {
+      resolver.tryResolve(errorOf(types, result, { message, code: panicCode, trace }));
     },
   };
 }

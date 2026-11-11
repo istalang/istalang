@@ -114,6 +114,26 @@ describe('ista run', () => {
     expect(run.err).toContain('spawned boom');
   });
 
+  it('reports a spawned instance that panics while the runtime serves its jobs (§9)', async () => {
+    const text = [
+      "import * as runtime from 'runtime'",
+      "import * as time from 'time'",
+      'live async fn one() -> Int: 1',
+      'ista async fn bad():',
+      '  await time.delay(5ms)',
+      '  panic("spawned boom")',
+      'live async fn main() -> Int: await runtime.run(runtime.id()) _main()',
+      'ista async fn _main() -> Int:',
+      '  spawn bad()',
+      '  await time.delay(20ms)',
+      '  41 + (await runtime.delegate one())',
+      '',
+    ].join('\n');
+    const run = await ista(project({ 'main.ista': text }), 'run', 'main.ista');
+    expect(run.code).toBe(1);
+    expect(run.err).toContain('spawned boom');
+  });
+
   it('reports where a context waits when main calls it under an explicit key and nothing can wake it (§9)', async () => {
     const text = [
       "import * as runtime from 'runtime'",

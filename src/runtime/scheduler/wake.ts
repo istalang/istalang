@@ -33,7 +33,8 @@
  *   deliver; it ends at that commit, so the answers arrive, and the instances they wake run, before
  *   this instance runs on.
  * - Where the instance stands afterwards is read from the last commit (`stateOf`), the one place
- *   a host's view of an instance comes from.
+ *   a host's view of an instance comes from: one whose commit left executions ready, as an advance
+ *   ended at its answers leaves them, is ready, so its host advances it again.
  */
 
 import { encodeJson } from '../../definition/formats/codec.ts';
@@ -366,7 +367,9 @@ export function stateOf(snapshot: Snapshot): InstanceState {
     case 'unstarted':
       return { kind: 'ready' };
     case 'active':
-      return { kind: 'waiting', until: nextTimerOf(snapshot), watching: watchedOf(snapshot) };
+      return snapshot.ready.length > 0
+        ? { kind: 'ready' }
+        : { kind: 'waiting', until: nextTimerOf(snapshot), watching: watchedOf(snapshot) };
     case 'finished':
       return status;
     case 'panicked':

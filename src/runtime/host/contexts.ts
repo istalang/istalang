@@ -10,20 +10,28 @@
  * - A call into a context is an invocation (../scheduler/wake.ts): it advances the context, made
  *   with the options of the run's start when the store has none by its key, from its last commit,
  *   starting the call. Its answer goes to the call's listener, the value it gave; a context that
- *   panics ends every call into it still waiting, as does calling one that had ended or panicked.
+ *   panics ends every call into it still waiting, as does calling one that had ended or panicked,
+ *   and the host hears of the panic unless a call of the program's was among them: the calls the
+ *   loop serving jobs makes hear none (`CallMaker`).
  * - Each call is named by a token unique to the process, so an answer the store kept from an
  *   earlier process, whose caller is gone, reaches nobody.
  * - Calls run first, then what the group can run: a context or instance the run made ready, or one
- *   waiting on the end of one that has ended. A call made starts even once its runtime is disposed,
+ *   waiting on the end of one that has ended.
+ * - The earliest runtime still open serves the jobs of every instance of the group running the
+ *   run's own program (`served`), so one serves each at a time, and one opened later takes them
+ *   over once those before it are disposed. An instance on another program waits for a run of its
+ *   own: the loop serving it calls functions of its program (§5, versioning). A call made starts even once its runtime is disposed,
  *   or the run has ended: releasing it cancels nothing, and only its invocation's later work waits
  *   for the next open.
  */
 
 import { randomUUID } from 'node:crypto';
+import { memo } from '../../foundation/structures/memo.ts';
+import type { InstanceState } from '../instance-state.ts';
 import { storedSnapshot } from '../scheduler/instance/instance-ends.ts';
 import type { LoadedDefinition } from '../scheduler/loaded-definition.ts';
 import { Resident } from '../scheduler/resident.ts';
-import type { ContextCall, RunContexts } from '../scheduler/run-contexts.ts';
+import type { ContextCall, RunContexts, ServedWait } from '../scheduler/run-contexts.ts';
 import { type Advance, type AdvanceFirst, type Beginning, newContext } from '../scheduler/wake.ts';
 import type { InstanceCall } from '../snapshot/snapshot.ts';
 import type { InstanceStore } from '../store.ts';
@@ -60,7 +68,7 @@ export interface ContextSeams<Program extends LoadedDefinition> {
  */
 export type InstanceObserver = (instance: string, advanced: Advance | undefined) => void;
 
-/** A call waiting for its answer: the context it went to, its live future and its listener. */
+/** A call waiting for its answer: the context it went to, its live future, listener and maker. */
 type WaitingCall = Omit<ContextCall, 'call'>;
 
 /** A call to make into the context `key`, named by `token`. */
@@ -75,6 +83,9 @@ export class Contexts<Program extends LoadedDefinition> implements RunContexts {
   readonly #group = new InstanceGroup();
   readonly #pending: PendingCall[] = [];
   readonly #waiting = new Map<string, WaitingCall>();
+  readonly #served = new Set<ServedWait>();
+  /** Whether each instance runs the run's own program, which it does for its whole life. */
+  readonly #runsOwnProgram = new Map<string, boolean>();
   readonly #open = new Set<number>();
   #opened = 0;
   /** The instances whose advance it makes now, so one of them shown meanwhile is its own. */
@@ -91,6 +102,7 @@ export class Contexts<Program extends LoadedDefinition> implements RunContexts {
       const own = this.#advancing.has(instance);
       if (advanced !== undefined) {
         this.#record(instance, advanced, own);
+        this.#serve();
       }
       if (!own) {
         this.#poke?.();
@@ -105,6 +117,7 @@ export class Contexts<Program extends LoadedDefinition> implements RunContexts {
   close(): void {
     this.#unobserve();
     this.#open.clear();
+    this.#served.clear();
   }
 
   fillsChanged(): Promise<void> {
@@ -127,21 +140,33 @@ export class Contexts<Program extends LoadedDefinition> implements RunContexts {
     }
     this.#opened += 1;
     this.#open.add(this.#opened);
+    this.#serve();
     return this.#opened;
   }
 
-  call(runtime: number, { key, call, future, listener }: ContextCall): void {
+  call(runtime: number, { key, call, future, listener, maker }: ContextCall): void {
     if (!this.#open.has(runtime)) {
       listener.panicked({ message: 'The runtime was disposed before the call.', trace: '' });
       return;
     }
     const token = randomUUID();
-    this.#waiting.set(token, { key, future, listener });
+    this.#waiting.set(token, { key, future, listener, maker });
     this.#pending.push({ key, call, token });
+  }
+
+  served(wait: ServedWait): void {
+    this.#served.add(wait);
+    this.#serve();
   }
 
   dispose(runtime: number): void {
     this.#open.delete(runtime);
+    for (const wait of this.#served) {
+      if (wait.runtime === runtime) {
+        this.#served.delete(wait);
+      }
+    }
+    this.#serve();
   }
 
   async runReady(): Promise<boolean> {
@@ -185,8 +210,33 @@ export class Contexts<Program extends LoadedDefinition> implements RunContexts {
     }
   }
 
-  awaitsCall(future: number): boolean {
-    return [...this.#waiting.values()].some((waiting) => waiting.future === future);
+  awaitsContexts(future: number): boolean {
+    return [...this.#waiting.values(), ...this.#served].some(
+      (waiting) => waiting.future === future,
+    );
+  }
+
+  /** Has the waits of the earliest open runtime hear the instances served, once they know fewer. */
+  #serve(): void {
+    const serving = Math.min(...this.#open);
+    const waits = [...this.#served].filter((wait) => wait.runtime === serving);
+    if (waits.length === 0) {
+      return;
+    }
+    const { program } = this.#seams;
+    const instances = [...this.#group.states.keys()].filter((instance) =>
+      memo(
+        this.#runsOwnProgram,
+        instance,
+        () => this.#seams.residentOf(instance)?.loaded.hash === program.hash,
+      ),
+    );
+    for (const wait of waits) {
+      if (instances.length > wait.known) {
+        this.#served.delete(wait);
+        wait.listener(instances);
+      }
+    }
   }
 
   /** Has every instance of the store that hasn't ended join the group, to advance once. */
@@ -245,8 +295,9 @@ export class Contexts<Program extends LoadedDefinition> implements RunContexts {
   }
 
   /**
-   * Records where `instance` stands after `advanced`, delivering its answers and its panic, which
-   * the host hears of, its own advance's, when no call waits to.
+   * Records where `instance` stands after `advanced`, delivering its answers, and its end to every
+   * call still waiting on it; its panic the host hears of, its own advance's, when no call of the
+   * program's waits to.
    */
   #record(instance: string, advanced: Advance, own: boolean): void {
     this.#group.record(instance, advanced);
@@ -261,14 +312,15 @@ export class Contexts<Program extends LoadedDefinition> implements RunContexts {
       }
     }
     const { state } = advanced;
-    if (state.kind !== 'panicked' && state.kind !== 'terminated') {
+    if (state.kind === 'ready' || state.kind === 'waiting') {
       return;
     }
-    const heard = [...this.#waiting].filter(([, waiting]) => waiting.key === instance);
-    for (const [token] of heard) {
-      this.#end(token, state);
+    const ended = [...this.#waiting].filter(([, waiting]) => waiting.key === instance);
+    for (const [token] of ended) {
+      this.#end(token, endedMessage(instance, state));
     }
-    if (own && heard.length === 0 && state.kind === 'panicked') {
+    const heard = ended.some(([, waiting]) => waiting.maker === 'program');
+    if (own && !heard && state.kind === 'panicked') {
       this.#seams.reports.panicked(instance, state);
     }
   }
@@ -281,10 +333,15 @@ export class Contexts<Program extends LoadedDefinition> implements RunContexts {
   }
 }
 
-/** Why a call into the context `key` whose last commit is `status`, not active, gives nothing. */
+/** Where an instance stands once it runs no more, as its last commit or its advance says. */
+type Ended =
+  | Exclude<Resident['committed']['status'], { kind: 'active' }>
+  | Exclude<InstanceState, { kind: 'ready' | 'waiting' }>;
+
+/** Why a call into the context `key`, which runs no more as `status` says, gives nothing. */
 function endedMessage(
   key: string,
-  status: Exclude<Resident['committed']['status'], { kind: 'active' }>,
+  status: Ended,
 ): { readonly message: string; readonly trace: string } {
   return status.kind === 'panicked' || status.kind === 'terminated'
     ? { message: status.message, trace: status.trace }

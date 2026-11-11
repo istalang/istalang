@@ -189,11 +189,16 @@ host awaits the same way whatever an instance waits on. Calls that only read (`d
   call starts even once its runtime is disposed or the run ended. Opening a runtime while none is
   open resumes every instance in the store that hasn't ended (`InstanceStore.instances`); a
   runtime is a resource whose disposal the runtime performs, telling the run's contexts through
-  its disposal notice (`scheduler/instance/disposal-notices.ts`). The run ends waiting on nothing
+  its disposal notice (`scheduler/instance/disposal-notices.ts`). The earliest runtime still open
+  hears the names of the instances whose jobs it serves (`RunContexts.served`): every one the run
+  drives on its own program, since the loop serving them, Istalang in `stdlib/runtime`, calls its
+  program's functions into each; a wait for them is a wait on the contexts, as a call is. The run ends waiting on nothing
   when no timer, no host future outside its calls and no host fill (`HostFills`) can wake it or
   its contexts. Their advances show to the runtime's observers, so a host call made on a context
   meanwhile (a fill) pokes the run; what their own advances report reaches the host through
-  `HostReports`: log records, and a panic no call waits to hear.
+  `HostReports`: log records, and a panic no call of the program's waits to hear; the job loop's
+  calls (`CallMaker` `jobs`) never hear one, so an instance's panic reaches the host though the
+  loop serving it waits on it.
 - **One driver loop.** A host drives a group of instances with `drive` (`runtime/host/drive.ts`):
   run what can run, wait for the earliest timer, wake what is due, until nothing can wake them. What
   differs between hosts is passed in: what can run now, how to wait (a `Clock`,

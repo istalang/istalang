@@ -23,6 +23,7 @@ import type { FunctionId, TypeId } from '../definition/operands.ts';
 import type { TypeDefinition } from '../definition/tables/types.ts';
 import type { Value } from '../definition/values/values.ts';
 import type { Inspection, LogRecord, SpawnOptions } from './instance-state.ts';
+import type { CallMaker } from './scheduler/run-contexts.ts';
 import type { TestWatch } from './snapshot/objects.ts';
 
 /** Base context every native gets: the call, and the segment it runs in. */
@@ -176,6 +177,17 @@ export interface NativeInstances {
  * by the runtimes the live run opens over it while it runs. Only a live run has them; the call rule
  * keeps ista code from these natives (proposal 8, Rule 2).
  */
+/**
+ * A call into a context as code makes it: the context's key, the closure it calls, which takes
+ * nothing, the type entry of the `Result` its future gives, and who makes it.
+ */
+interface NativeContextCall {
+  readonly key: string;
+  readonly call: Value;
+  readonly result: TypeId;
+  readonly maker: CallMaker;
+}
+
 export interface NativeContexts {
   /** The host's store, a value of the extern type entry `type`. */
   readonly hostStore: (type: TypeId) => Value;
@@ -185,11 +197,18 @@ export interface NativeContexts {
    */
   readonly open: (store: Value, type: TypeId) => Value;
   /**
-   * Calls the closure `call`, which takes nothing, in the context named `key` of `runtime`, made if
-   * new: a live future resolving with a `Result` of type entry `result`, `Ok` of what the call gave,
-   * or `Err` once the context panicked (code `panic`).
+   * Makes `call` into its context of `runtime`, made if new: a live future resolving with a
+   * `Result` of type entry `call.result`, `Ok` of what the call gave, or `Err` once the context
+   * panicked (code `panic`).
    */
-  readonly call: (runtime: Value, key: string, call: Value, result: TypeId) => Value;
+  readonly call: (runtime: Value, call: NativeContextCall) => Value;
+  /**
+   * A live future resolving with the names of the instances `runtime` serves the jobs of, once
+   * they are more than `known`: every instance it drives while it is the earliest open runtime.
+   */
+  readonly served: (runtime: Value, known: number) => Value;
+  /** The program's job server (§5) as a function value; undefined in a program with no jobs. */
+  readonly jobServer: () => Value | undefined;
 }
 
 /**

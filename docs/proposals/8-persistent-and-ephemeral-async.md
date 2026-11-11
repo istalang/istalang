@@ -182,7 +182,7 @@ ista async fn purchase(order: Order) -> Receipt:
     await delegate charge(order.card, order.total)
 ```
 
-- **`delegate` is an `ista` runtime function,** called in the deferred form (Rule 10): `ista fn delegate<R is Sendable>(job: sendable live async fn() -> R) -> Future<R, "ista">`. A `live fn` fits, its call a resolved future.
+- **`delegate` is an `ista` runtime function,** called in the deferred form (Rule 10): `ista fn delegate<R is Encodable & Decodable>(job: sendable live async fn() -> R) -> Future<R, "ista">`. A `live fn` fits, its call a resolved future. The result crosses back as JSON, so it needs its codecs rather than sendability.
 - **The job is queued at the commit,** in the instance's job inbox, the transactional outbox, so a discarded segment runs nothing.
 - **The runtime's loop runs it as live code,** and again after a crash or restart until its result commits into the future: it runs at least once, and only for committed history.
 - **A job has a stable key,** the same on every run, so the work it calls can deduplicate. How live code reads it is proposal 9's.

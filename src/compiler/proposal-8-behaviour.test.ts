@@ -1,7 +1,7 @@
 /**
  * Proposal 8's behaviour table, the rows its kinds and its data rule decide (phase K1): each row's
  * program, and what it does now. The rows on deferred calls are DC's (deferred-calls tests), and
- * those on `delegate` and contexts are later phases'.
+ * those on contexts CX's (runtime/host/contexts.test.ts).
  */
 
 import { describe, expect, it } from 'vitest';
@@ -214,12 +214,36 @@ describe('proposal 8 behaviour table: kinds', () => {
     expect(codesOf(receiving)).toContain(checkerDiagnostics.kindsHeld.code);
   });
 
-  it('ista code calls nothing live', () => {
-    const source = lines(
+  it('ista code calls nothing live, and delegates it instead', async () => {
+    const fetching = lines(
       'extern live async fn get(u: String) -> String',
       'ista async fn f() -> String: await get("u")',
     );
-    expect(codesOf(source)).toContain(checkerDiagnostics.kindsMeet.code);
+    expect(codesOf(fetching)).toContain(checkerDiagnostics.kindsMeet.code);
+    const charging = lines(
+      'extern live fn charge(id: String) -> Int',
+      'ista fn g() -> Int: charge("o/1")',
+    );
+    expect(codesOf(charging)).toContain(checkerDiagnostics.kindsMeet.code);
+    const delegated = compiledText(
+      lines(
+        "import * as runtime from 'runtime'",
+        'extern live async fn get(u: String) -> String',
+        'extern live fn charge(id: String) -> Int',
+        'ista async fn f() -> String:',
+        '  const page = await runtime.delegate get("u")',
+        '  `${page} ${await runtime.delegate charge("o/1")}`',
+        'live async fn main() -> String: await runtime.run("o/1") f()',
+      ),
+    );
+    const host = {
+      'main.get(String)': ([u]: readonly unknown[]) => Promise.resolve(`page ${String(u)}`),
+      'main.charge(String)': () => 7n,
+    };
+    expect(await startToEnd(testRuntime({ host }), delegated)).toEqual({
+      kind: 'finished',
+      outcome: '"page u 7"',
+    });
   });
 
   it('`time.delay` in live code is a live timer', async () => {

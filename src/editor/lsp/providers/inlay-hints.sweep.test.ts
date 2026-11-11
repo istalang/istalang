@@ -34,6 +34,9 @@ function untypedNames(node: SyntaxNode): readonly Identifier[] {
   if (node.kind === 'VariableDeclaration' && node.type === undefined) {
     return node.targets.flatMap(targetNames);
   }
+  if (node.kind === 'ContextConstantDeclaration' && node.type === undefined) {
+    return [node.name];
+  }
   if (node.kind === 'For' || node.kind === 'FieldHeader') {
     return declaredTargets(node).flatMap(targetNames);
   }
@@ -53,11 +56,21 @@ describe('inlay hints over the corpus', () => {
       const { line, character } = rangeOf(tree.source, { start: offset, end: offset }).start;
       return `${line}:${character}${label}`;
     };
-    const expected = nodesUnder(tree, tree.root)
+    const nodes = nodesUnder(tree, tree.root);
+    const contextConstantTypes = new Map(
+      nodes.flatMap((node) =>
+        node.kind === 'ContextConstantDeclaration'
+          ? [[node.name, checker.contextConstants.typeOf(node)] as const]
+          : [],
+      ),
+    );
+    const expected = nodes
       .flatMap(untypedNames)
       .filter((name) => !isMissingName(name))
       .flatMap((name) => {
-        const type = checker.lookup.bodyHolding(module, name)?.declaredTypeOf(name);
+        const type =
+          checker.lookup.bodyHolding(module, name)?.declaredTypeOf(name) ??
+          contextConstantTypes.get(name);
         return type === undefined || type.kind === 'error'
           ? []
           : [hintAt(spanIn(tree, name.span).end, `: ${typeText(type)}`)];

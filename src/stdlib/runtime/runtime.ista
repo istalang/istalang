@@ -1,9 +1,39 @@
-# The runtime module (spec §3.8, §9): what an instance can ask of the runtime about itself;
-# `isolate`, which runs a function as an instance of its own; and for live code, the runtimes that
-# run ista code in contexts, instances named by key in the host's store.
+# The runtime module (spec §3.8, §5, §9): what an instance can ask of the runtime about itself;
+# `isolate`, which runs a function as an instance of its own; `delegate`, ista code's effects; and
+# for live code, the runtimes that run ista code in contexts, instances named by key in the host's
+# store.
 #
 # `commit` returns an already-resolved future, so `await runtime.commit()` commits without
 # waiting (§5).
+#
+# Jobs (§5) are Istalang over a context constant, with no state of the runtime's own. A context's
+# jobs wait in an inbox, sent at the commit, and each stays among the unanswered until its result
+# commits. A runtime's live loop serves every instance it drives, each through calls into it: it
+# takes over the instance's jobs, takes them one by one and replies with each result, so a job
+# runs as live code only for committed history.
+#
+# - Taking over rings the loop before it out, one of a runtime since disposed or of an earlier
+#   process, whose call into the instance waits still, and hands every job it took and never
+#   answered back to the inbox: a waiting take that loses its `select` consumes nothing (§8), and
+#   one decided before its loop was rung out hands what it took back, so no earlier loop keeps a
+#   job for good, and every one runs again until its result commits.
+# - A loop holds each job it runs until the instance tells it to let go: once the job's result
+#   commits, or once its future is let go of (§7), which withdraws it: queued, it is passed over,
+#   and running, its live future is disposed. So a job whose future loses a `select` never runs, or
+#   stops, and never runs again, and disposing a runtime cancels every job its loop runs.
+# - A result crosses back as JSON, so what a job gives needs its codecs, not sendability; a job's
+#   number and its instance's name are its stable key.
+# - One open runtime serves an instance at a time, the earliest opened (`_served`), so two never
+#   take turns ringing each other out.
+# - The loop's calls into an instance are its own (`_jobCall`): the instance's panic ends them, but
+#   the host still hears of it, as of one no call waits on (§9).
+# - Only a program that delegates has a loop serving jobs: lowering adds `_serve` to the program
+#   once it reaches `delegate`, as its job server (`_jobServer`), so one that never does lowers
+#   none of it.
+
+import Inbox from 'inbox'
+import Decodable, Encodable, Json from 'json'
+import * as json from 'json'
 
 # The instance's name: a context's key, or what its parent's spawn made it; a live run's, as its
 # host started it (§9).
@@ -28,10 +58,35 @@ extern live struct Store
 extern live fn hostStore() -> Store
 
 # A runtime over a store (§9): opening it resumes the work persisted there, which it runs while the
-# live code that opened it runs. Disposing it stops that work, which the next open resumes.
-extern live struct Runtime
-extern live async fn Runtime.open(store: Store) -> Runtime
-extern live fn dispose(self: Runtime)
+# live code that opened it runs, the jobs of its instances included. Releasing it stops that work,
+# which the next open resumes.
+shared struct Runtime:
+  _host: _Runtime
+  _serving: Future<Unit, "live">?
+
+live async fn Runtime.open(store: Store) -> Runtime:
+  const host = await _Runtime.open(store)
+  new Runtime{_host: host, _serving: _jobServer()?.(host)}
+
+# Stops serving jobs first, so the loop never calls into a runtime that has stopped; the host's
+# runtime, released next, stops the rest.
+live fn dispose(self: Runtime):
+  self->_serving = none
+
+# The runtime itself, which the host holds: disposing it stops the work in its store.
+extern live struct _Runtime
+extern live async fn _Runtime.open(store: Store) -> _Runtime
+extern live fn dispose(self: _Runtime)
+
+# The names of the instances `runtime` serves the jobs of, once they are more than `known`: every
+# instance it drives, resumed or made since, while it is the earliest open runtime; none before.
+extern live async fn _served(runtime: _Runtime, known: Int) -> Array<String>
+
+# The program's job server, `_serve`, which lowering adds to a program that delegates; none in one
+# that doesn't, which has no jobs to serve.
+extern live fn _jobServer() -> _JobServer?
+
+type _JobServer = live async fn(_Runtime) -> Unit
 
 # A call into a context (§9): awaited, `Ok` of what it gave, or `Err` once the context panicked.
 struct Call<R>:
@@ -43,10 +98,18 @@ live fn onAwait<R>(self: Call<R>, done: Resolver<Result<R>, "live">): self.resul
 # Runs `f` in the context named `key`, made if new (§9). Every call starts a new invocation, which
 # releasing the `Call` doesn't cancel, and what crosses into the context and back is sendable.
 live fn call<R is Sendable>(self: Runtime, key: String, f: sendable ista async fn() -> R) -> Call<R>:
-  Call<R>{result: _call(self, key, f)}
+  Call<R>{result: _call(self->_host, key, f)}
 
 extern live fn _call<R is Sendable>(
-  runtime: Runtime
+  runtime: _Runtime
+  key: String
+  f: sendable ista async fn() -> R
+) -> Future<Result<R>, "live">
+
+# A call into the context named `key` that the loop serving its jobs makes: as `_call`, but the
+# context's panic, which ends it, is still the host's to hear, as though no call waited (§9).
+extern live fn _jobCall<R is Sendable>(
+  runtime: _Runtime
   key: String
   f: sendable ista async fn() -> R
 ) -> Future<Result<R>, "live">
@@ -61,3 +124,116 @@ live async fn run<R is Sendable>(key: String, f: sendable ista async fn() -> R) 
 
 # Panics as `error` says, where it says: a panic from elsewhere, raised again here.
 extern fn _raise(error: Error) -> Never
+
+# Runs `job` as live code after the commit (§5), and again under the same key until its result
+# commits; a segment discarded runs it never, nor does one letting go of its future (§7).
+ista fn delegate<R is Encodable & Decodable>(job: sendable live async fn() -> R) -> Future<R, "ista">:
+  const jobs = _jobs
+  const queued = _Job{number: jobs->count, run: live async fn() -> Json: json.encode(await job())}
+  const result = Slot.create<Json>()
+  jobs->unanswered[queued.number] = result
+  jobs->count += 1
+  jobs->queue.send(Run(queued))
+  _decoded<R>(queued.number, result)
+
+# Job `number`'s result, once it commits. Its release withdraws the job, which leaves nothing to
+# withdraw once its result has committed.
+ista async fn _decoded<R is Decodable>(number: Int, result: Slot<Json>) -> R:
+  _ = defer _release(number)
+  match json.decode<R>(await result.take()):
+    case Ok(value): value
+    case Err(error): _raise(error)
+
+struct _Job:
+  number: Int
+  run: sendable live async fn() -> Json
+
+# What the loop serving an instance's jobs does next: run a job, or let go of one it runs, which
+# cancels it unless it has ended.
+enum _Work:
+  Run(job: _Job)
+  Release(number: Int)
+
+shared struct _Jobs:
+  queue: Inbox<_Work> = Inbox.create<_Work>()
+  # the slot each job's result goes to, by number, while it hasn't committed
+  unanswered: Map<Int, Slot<Json>> = [:]
+  # the unanswered jobs a loop took, by number
+  taken: Map<Int, _Job> = [:]
+  # how many jobs were ever delegated, which numbers the next
+  count: Int = 0
+  # the number of the loop serving them, and what rings it out once another takes over
+  server: Int = 0
+  takenOver: Slot<Unit> = Slot.create<Unit>()
+
+ista const _jobs = new _Jobs{}
+
+# Makes the caller the loop serving the instance's jobs; its number.
+ista fn _takeOver() -> Int:
+  const jobs = _jobs
+  drop jobs->takenOver.put(())
+  jobs->takenOver = Slot.create<Unit>()
+  jobs->server += 1
+  for job in jobs->taken.values():
+    jobs->queue.send(Run(job))
+  jobs->taken = [:]
+  jobs->server
+
+# What the loop numbered `server` does next, once there is something: a job still unanswered,
+# which it has then taken, or a release; none once another took over.
+ista async fn _nextWork(server: Int) -> _Work?:
+  const jobs = _jobs
+  while jobs->server == server:
+    const next: _Work? = await select:
+      case jobs->takenOver.read(): none
+      case jobs->queue.receive() as work: work
+    if next is _Work as work:
+      if jobs->server != server:
+        # its take was decided before it was rung out: the loop serving now gets what it took
+        jobs->queue.send(work)
+      elif work is Run(job):
+        if jobs->unanswered.has(job.number):
+          jobs->taken[job.number] = job
+          return work
+      else:
+        return work
+  none
+
+# Ends job `number`, answered or withdrawn: it leaves the unanswered, and the loop that took it is
+# told to let go of it, so it never runs again.
+ista fn _release(number: Int):
+  const jobs = _jobs
+  drop jobs->unanswered.delete(number)
+  if jobs->taken.delete(number):
+    jobs->queue.send(Release(number))
+
+# Answers job `number` with `result`, unless it was answered or withdrawn already.
+ista fn _reply(number: Int, result: Json):
+  if _jobs->unanswered.get(number) is Slot as answer:
+    drop answer.put(result)
+    _release(number)
+
+# Serves the jobs of every instance `host` drives, each with a loop of its own.
+live async fn _serve(host: _Runtime):
+  let serving: Array<Future<Unit, "live">> = []
+  while true:
+    const instances = await _served(host, serving.length())
+    while serving.length() < instances.length():
+      serving.push(_serveInstance(host, instances[serving.length()]))
+
+# Takes over the jobs of the instance `key` and does what it is told, until it ends: runs each job,
+# holding it alone, and lets go of one as told.
+live async fn _serveInstance(host: _Runtime, key: String):
+  if await _jobCall(host, key) _takeOver() is Ok(server):
+    let running: Map<Int, Future<Unit, "live">> = [:]
+    while await _jobCall(host, key) _nextWork(server) is Ok(next) and next is _Work as work:
+      match work:
+        case Run(job):
+          running[job.number] = _runJob(host, key, job)
+        case Release(number):
+          drop running.delete(number)
+
+# Runs `job` and replies with its result, which has its loop let go of it.
+live async fn _runJob(host: _Runtime, key: String, job: _Job):
+  const result = await job.run()
+  drop await _jobCall(host, key) _reply(job.number, result)

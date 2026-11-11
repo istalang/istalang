@@ -97,7 +97,8 @@ async function idled(
   const due = earliest(instance.futures.nextTimer(), contexts.nextTimer());
   const awaitsFill = contexts.awaitsHost();
   const awaitsHost =
-    awaitsFill || instance.futures.awaitedFromHost().some((future) => !contexts.awaitsCall(future));
+    awaitsFill ||
+    instance.futures.awaitedFromHost().some((future) => !contexts.awaitsContexts(future));
   if (due === undefined && !awaitsHost) {
     return { kind: 'waiting', until: undefined, watching: [] };
   }

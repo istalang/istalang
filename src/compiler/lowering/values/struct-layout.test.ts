@@ -84,7 +84,7 @@ describe('struct layout', () => {
         type.kind === 'struct' && type.name === name ? [type.fields.map((f) => f.name)] : [],
       );
     expect(fieldNames('main.P')).toEqual([['aZ', 'x', 'y']]);
-    expect(fieldNames('')).toEqual([['aZ', 'x', 'y']]);
+    expect(fieldNames('')).toContainEqual(['aZ', 'x', 'y']);
   });
 
   it('reads JSON into a struct field by field in name order, reporting the first mismatch (§9)', async () => {

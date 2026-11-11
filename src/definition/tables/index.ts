@@ -31,6 +31,12 @@ export const tables = z.strictObject({
    */
   main: functionId.optional(),
   /**
+   * The loop serving the jobs of the instances a runtime drives (§5, stdlib/runtime), which
+   * `Runtime.open` starts: present when the program delegates, which a program with no jobs never
+   * does.
+   */
+  jobServer: functionId.optional(),
+  /**
    * What a host may start (§9), by the key it names each by: the code entry that takes the
    * arguments as JSON and runs the function, and the entry encoding its outcome as JSON, which the
    * runtime calls as it returns (docs/arch/boundary.md).

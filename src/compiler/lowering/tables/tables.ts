@@ -409,21 +409,21 @@ export class DefinitionTables {
   }
 
   /** The finished tables, every referenced function lowered. */
-  finish(main: FunctionId | undefined): Tables {
+  finish(main: FunctionId | undefined, jobServer: FunctionId | undefined): Tables {
     const functions = this.#functions.map((entry, index) => {
       if (entry === undefined) {
         unreachable(`Function ${index} was referenced but never lowered.`);
       }
       return entry;
     });
-    const withMain = main === undefined ? {} : { main };
     return {
       modules: this.#modules,
       types: [...this.types.entries],
       functions,
       constants: this.#constants,
       starts: this.#starts,
-      ...withMain,
+      ...(main === undefined ? {} : { main }),
+      ...(jobServer === undefined ? {} : { jobServer }),
     };
   }
 }

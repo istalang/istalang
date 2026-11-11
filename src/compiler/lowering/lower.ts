@@ -2,7 +2,8 @@
  * Lowering's entry: a checked program, compiled into a Definition (docs/arch/definition.md).
  *
  * Lowering starts from `main`, or from a test program's suites (§10), and compiles every function
- * instance it reaches, through a worklist (tables/tables.ts, tables/instances.ts): a function with
+ * instance it reaches, through a worklist (tables/tables.ts, tables/instances.ts), and the runtime's
+ * loop serving jobs once it reaches `delegate` (§5), as the program's job server: a function with
  * a body becomes code computing the defaults its call leaves out before its body, a struct's or a
  * variant's fields code building it, and an extern an entry bound to its native by key, beside code
  * computing its defaults for a call leaving them out. Lowering runs only on a program the checker
@@ -10,12 +11,15 @@
  */
 
 import type { Definition } from '../../definition/definition.ts';
+import type { FunctionId } from '../../definition/operands.ts';
 import type { FunctionDefinition } from '../../definition/tables/functions.ts';
-import { languageModules } from '../../foundation/language/well-known/index.ts';
+import { languageModules, stdScheme } from '../../foundation/language/well-known/index.ts';
+import { jobFunctions } from '../../foundation/language/well-known/jobs.ts';
 import { testingFunctions } from '../../foundation/language/well-known/testing.ts';
 import { unreachable } from '../../foundation/structures/unreachable.ts';
 import type { Checker } from '../checker/check.ts';
 import { substitute } from '../checker/types/parts/substitution.ts';
+import { moduleIdOf } from '../program/program.ts';
 import type { FunctionDeclaration } from '../syntax/declarations/index.ts';
 import { deferredEntry } from './constructs/expressions/deferred-calls.ts';
 import { writtenBodyOf } from './functions/bodies.ts';
@@ -61,8 +65,7 @@ export function lower(checker: Checker, main: FunctionDeclaration): Definition {
   for (const startable of startables(checker)) {
     listStart(lowering, startable);
   }
-  lowerReached(checker, tables);
-  return tables.finish(mainIndex);
+  return tables.finish(mainIndex, lowerReached(checker, tables));
 }
 
 /** A `@Suite` function (§10), with the title its annotation gives. */
@@ -87,15 +90,42 @@ export function lowerTests(checker: Checker, suites: readonly Suite[]): Definiti
     run: indexOf(runner(testingFunctions.run)),
     suites: suites.map(({ title, declaration }) => ({ title, function: indexOf(declaration) })),
   };
-  lowerReached(checker, tables);
-  return { ...tables.finish(undefined), tests };
+  return { ...tables.finish(undefined, lowerReached(checker, tables)), tests };
 }
 
-/** Lowers every entry referenced so far, and every entry those reference. */
-function lowerReached(checker: Checker, tables: DefinitionTables): void {
+/**
+ * Lowers every entry referenced so far, and every entry those reference; the index of the job
+ * server, lowered with them once one is an instance of `delegate`.
+ */
+function lowerReached(checker: Checker, tables: DefinitionTables): FunctionId | undefined {
+  const jobs = jobDeclarationsOf(checker);
+  let jobServer: FunctionId | undefined;
   for (let next = tables.nextPending(); next !== undefined; next = tables.nextPending()) {
+    const delegates = next.kind === 'instance' && next.instance.declaration === jobs?.delegate;
+    if (delegates && jobs !== undefined && jobServer === undefined) {
+      jobServer = tables.functionIndex(rootInstance(checker, jobs.server));
+    }
     tables.define(next.index, pendingEntry(checker, tables, next));
   }
+  return jobServer;
+}
+
+/** The runtime module's `delegate` and the job server serving what it queues; none without it. */
+function jobDeclarationsOf(
+  checker: Checker,
+): { readonly delegate: FunctionDeclaration; readonly server: FunctionDeclaration } | undefined {
+  const runtime = moduleIdOf(new URL(`${stdScheme}:${jobFunctions.module}`));
+  if (!checker.program.modules.has(runtime)) {
+    return undefined;
+  }
+  const declared = (name: string): FunctionDeclaration => {
+    const entity = checker.bindings.topLevelNamed(runtime, name);
+    return (
+      (entity?.kind === 'functions' ? checker.bindings.overloadsOf(entity)[0] : undefined) ??
+      unreachable(`The runtime module declares no '${name}'.`)
+    );
+  };
+  return { delegate: declared(jobFunctions.delegate), server: declared(jobFunctions.server) };
 }
 
 /** The entry `pending` stands for. */

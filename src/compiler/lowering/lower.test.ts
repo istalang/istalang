@@ -283,7 +283,10 @@ describe('lowering', () => {
     );
     expect(roles).toContainEqual(['main.Counter', 'shared']);
     expect(roles).toContainEqual(['prelude._Cell', 'cell']);
-    expect(roles.filter(([, role]) => role === 'shared')).toEqual([['main.Counter', 'shared']]);
+    const ownShared = roles.filter(
+      ([name, role]) => role === 'shared' && name?.startsWith('main.'),
+    );
+    expect(ownShared).toEqual([['main.Counter', 'shared']]);
   });
 
   it("names the codec writing T as each Instance<T>'s encoder, whichever native spawns it", () => {
@@ -347,9 +350,11 @@ describe('lowering', () => {
     });
     const { types } = compiledDefinition(program, 'main');
     const anonymous = types.filter((type) => type.kind === 'struct' && type.name === '');
-    expect(
-      anonymous.map((type) => type.kind === 'struct' && type.fields.map((f) => f.name)),
-    ).toEqual([['x'], ['x', 'y']]);
+    const shapes = anonymous.map(
+      (type) => type.kind === 'struct' && type.fields.map((f) => f.name),
+    );
+    expect(shapes).toEqual(expect.arrayContaining([['x'], ['x', 'y']]));
+    expect(new Set(shapes.map(String)).size).toBe(shapes.length);
   });
 
   it('lowers a select with only an else to its else body', async () => {

@@ -64,6 +64,7 @@ tags: [reuse, lowering, definition, ir, instructions]
 
 - Emit every `call` through `emitCall` / `emitFunctionCall`, every loop through `emitLoop`, and every value conversion through `FunctionContext.fitted`.
 - Lower every checked body through `instanceLowering`, `nestedLowering` or, for a context constant's initializer, `accessorLowering` (`functions/index.ts`), and syntaxless code through `SynthesizedCode`.
+- Lower std code a program needs only once it reaches a function, as the job server once it reaches `runtime.delegate`, from `lowerReached` (`lower.ts`), naming it in the Definition as `main` is, never from code every program reaches.
 - Never recognize a `Definition` type by name string at runtime; use `TypeDefinition.role` (`hasRole`, `isResourceType` in `src/definition/tables/types.ts`).
 
 ## Recipes
