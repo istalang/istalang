@@ -44,7 +44,7 @@ import type { Application } from '../choosing/choice.ts';
  * The kind of the function `call` calls, as the call instantiates it: a requirement's through its
  * trait's `Self` and type parameters too.
  */
-export function kindOfCall(checker: CheckerContext, call: ResolvedCall): Type {
+function kindOfCall(checker: CheckerContext, call: ResolvedCall): Type {
   const kind = kindOfFunction(checker, call.function);
   // Most marks are written, `"simple"` most of all, naming no type parameter to instantiate.
   if (kind.kind === 'literal') {
