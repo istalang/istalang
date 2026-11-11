@@ -66,12 +66,7 @@ export function chooseWitnessAmong(
 ): Choice {
   const candidates = given.filter(({ declaration }) => {
     const kind = kindOfFunction(checker, declaration);
-    // Most witnesses are unmarked, which meets any requirement: its kind needn't be found.
-    return (
-      isSimpleMark(kind) ||
-      isMarkVariable(checker, kind) ||
-      meetsRequirementKind(checker, required.kind(), kind, type)
-    );
+    return isMarkVariable(checker, kind) || meetsRequirementKind(checker, required, kind, type);
   });
   const callArguments = required.parameters.map(
     ({ type: each, reference }): CallArgument => ({
@@ -93,12 +88,12 @@ export function instanceMeetsKind(
   call: ResolvedCall,
   self: Type,
 ): boolean {
-  return meetsRequirementKind(checker, required.kind(), kindOfCall(checker, call), self);
+  return meetsRequirementKind(checker, required, kindOfCall(checker, call), self);
 }
 
 /**
- * Whether a witness of kind `given` meets a requirement of kind `required`, the requirement's as
- * its conformance instantiates it, for `self`, the type meeting it (proposal 8, Rule 4): a simple
+ * Whether a witness of kind `given` meets the kind of `required`, as its conformance instantiates
+ * it, for `self`, the type meeting it (proposal 8, Rule 4): a simple
  * witness meets any, one of the requirement's kind meets it, and an unmarked requirement is met by
  * a witness of the kind `self`'s values are of, which handles that type's own data: `Socket`'s
  * `live fn dispose` meets `Disposable`'s unmarked one. A requirement of a kind is met by nothing of
@@ -106,13 +101,17 @@ export function instanceMeetsKind(
  */
 function meetsRequirementKind(
   checker: Pick<CheckerContext, 'valueKindsOf'>,
-  required: Type,
+  required: Pick<Signature, 'kind'>,
   given: Type,
   self: Type,
 ): boolean {
+  // Most witnesses are simple: only one of a kind needs the requirement's, mapped for its trait.
+  if (isSimpleMark(given)) {
+    return true;
+  }
+  const kind = required.kind();
   return (
-    isSimpleMark(given) ||
-    sameType(given, required) ||
-    (isSimpleMark(required) && checker.valueKindsOf(self).some((kind) => sameType(kind, given)))
+    sameType(given, kind) ||
+    (isSimpleMark(kind) && checker.valueKindsOf(self).some((each) => sameType(each, given)))
   );
 }

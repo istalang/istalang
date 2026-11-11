@@ -12,6 +12,7 @@
  *   the same text, and what differs between them is their types.
  */
 
+import { distinctItems } from '../../../../../foundation/structures/equality.ts';
 import type { PassRecords } from '../../../contexts/passes.ts';
 import type { PassAnswers } from '../../../lookup/pass-views.ts';
 import type { Type } from '../../../types/type/index.ts';
@@ -72,9 +73,10 @@ export function everyDistinct<Args extends unknown[], Value>(
   same: (one: Value, other: Value) => boolean,
 ): (...args: Args) => readonly Value[] {
   return (...args) =>
-    answers
-      .flatMap((answer) => answer(...args) ?? [])
-      .filter((value, index, all) => all.findIndex((other) => same(value, other)) === index);
+    distinctItems(
+      answers.flatMap((answer) => answer(...args) ?? []),
+      same,
+    );
 }
 
 /**

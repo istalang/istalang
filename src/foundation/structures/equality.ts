@@ -48,3 +48,11 @@ export function sameProperties<Value extends object>(first: Value, second: Value
     keys.every((key) => Object.is(first[key], second[key]))
   );
 }
+
+/** `items` with each one equal to one before it, by `same`, left out: the first of each, in order. */
+export function distinctItems<Item>(
+  items: readonly Item[],
+  same: Equality<Item> = Object.is,
+): readonly Item[] {
+  return items.filter((item, index) => items.findIndex((each) => same(each, item)) === index);
+}

@@ -22,6 +22,7 @@
 
 import type { Register } from '../../../definition/operands.ts';
 import type { Value } from '../../../definition/values/values.ts';
+import { distinctItems } from '../../../foundation/structures/equality.ts';
 import { unreachable } from '../../../foundation/structures/unreachable.ts';
 import { sameType } from '../../checker/types/identity/identity.ts';
 import type { AnyType, LiteralType, Type, UnionType } from '../../checker/types/type/index.ts';
@@ -132,9 +133,10 @@ function outOfAny(
   const { code } = context;
   const result = code.allocate();
   const end = code.newLabel();
-  const carriers = to.members
-    .map((member) => (member.kind === 'literal' ? baseOf(member) : member))
-    .filter((carrier, index, all) => all.findIndex((each) => sameType(each, carrier)) === index);
+  const carriers = distinctItems(
+    to.members.map((member) => (member.kind === 'literal' ? baseOf(member) : member)),
+    sameType,
+  );
   for (const [index, carrier] of carriers.entries()) {
     const next = code.newLabel();
     if (index < carriers.length - 1) {

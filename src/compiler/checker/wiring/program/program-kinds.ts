@@ -12,9 +12,9 @@ import { standingFor } from '../../types/inference/variables.ts';
 import { sameTypeSpelled } from '../../types/parts/type-parts.ts';
 import { qualifierParameterOf } from '../../types/properties/qualifiers.ts';
 import {
+  composedKindsOf,
   declaredKindsOf,
   heldKindsOf,
-  holdsNoKind,
   type KeptKinds,
   walkedKindsOf,
 } from '../../types/properties/value-kinds.ts';
@@ -45,32 +45,20 @@ export function programKinds(
     equal: sameItems(sameTypeSpelled),
     cyclic: { standIn: () => [] },
   });
-  const kept: KeptKinds = {
-    declaredOf: (entity) => declarations.get(entity),
-    walkedOf: (type) => walked.get(checker.typeKeys.typeKey(type), type),
-  };
-  const values = checker.entries.table({
-    name: 'value kinds',
-    compute: (_key: string, type: Parameters<CheckerContext['valueKindsOf']>[0]) =>
-      heldKindsOf(checker, type, kept),
+  const composed = checker.entries.table({
+    name: 'composed kinds',
+    compute: (_key: string, type: Type) => composedKindsOf(checker, type, kept),
     equal: sameItems(sameTypeSpelled),
     cyclic: { standIn: () => [] },
   });
+  const kept: KeptKinds = {
+    declaredOf: (entity) => declarations.get(entity),
+    composedOf: (type) => composed.get(checker.typeKeys.typeKey(type), type),
+    walkedOf: (type) => walked.get(checker.typeKeys.typeKey(type), type),
+  };
   return {
     kindOf: (declaration) => functions.get(declaration),
-    valueKindsOf: (type) => {
-      if (holdsNoKind(type)) {
-        return [];
-      }
-      // A nominal type whose arguments' kinds its declaration only passes through composes from
-      // theirs, each kept, so it needs no key of its own, which is as costly as composing.
-      const passesThrough =
-        type.kind === 'nominal' &&
-        declarations.get(type.entity).dependent.every((part) => part.kind === 'parameter');
-      return passesThrough
-        ? heldKindsOf(checker, type, kept)
-        : values.get(checker.typeKeys.typeKey(type), type);
-    },
+    valueKindsOf: (type) => heldKindsOf(checker, type, kept),
   };
 }
 

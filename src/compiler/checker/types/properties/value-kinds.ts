@@ -19,6 +19,7 @@
  *   which a body still being checked may ask (a lambda inferring its mark).
  */
 
+import { distinctItems } from '../../../../foundation/structures/equality.ts';
 import { typeParametersOf } from '../../../syntax/declarations/index.ts';
 import type { CheckerContext } from '../../contexts/context.ts';
 import { sameType } from '../identity/identity.ts';
@@ -36,8 +37,9 @@ import { TypeCycle } from './type-cycle.ts';
 /**
  * What the values of a nominal type's declaration hold of kinds, its own type parameters standing
  * for its arguments, found by one walk over what they hold (held.ts), kept per declaration: the
- * kinds of the parts no argument decides, and the parts an argument does, read again for each
- * instantiation (`heldKindsOf`), so a type's kinds compose without walking its layout again.
+ * kinds of the parts no argument decides (`marks`), and each part an argument decides that may add
+ * a kind once instantiated (`dependent`), read again for each instantiation (`composedKindsOf`),
+ * so a type's kinds compose without walking its layout again.
  */
 export interface DeclaredKinds {
   readonly marks: readonly Type[];
@@ -54,24 +56,26 @@ export function declaredKindsOf(checker: CheckerContext, entity: NominalEntity):
   const parts = writtenTypesOf(checker, own);
   const decided = (part: Type) =>
     parametersIn(part).some((parameter) => parameters.some((each) => each === parameter));
-  // Only a part that may add a kind once instantiated is read again per instantiation, once.
+  // The walk lists every part at any depth, so a part holding others, `List<T>`, adds only its
+  // own kind, and the parts it holds, `T`, are read again themselves.
   const adds = (part: Type) =>
     part.kind === 'parameter' || isComputed(part) || mayOwnKind(checker, part);
   return {
     marks: distinctKinds(
       parts.flatMap((part) => (decided(part) ? [] : ownValueKindsOf(checker, part))),
     ),
-    dependent: parts
-      .filter((part) => decided(part) && adds(part))
-      .filter((part, index, all) => all.findIndex((each) => sameType(each, part)) === index),
+    dependent: distinctItems(
+      parts.filter((part) => decided(part) && adds(part)),
+      sameType,
+    ),
   };
 }
 
 /**
  * The distinct kinds the parts a value of `type` holds are of, outermost first; none where no part
- * has one. A nominal type's are its declaration's (`declaredOf`), with those of each part its
- * arguments decide, instantiated: an argument's own, a type its arguments compute walked whole,
- * any other part's own kind, its own parts being parts of the declaration's too.
+ * has one. They are composed (`composedKindsOf`), each kept under its type's key, but for a
+ * recursive type's, walked whole under its own, since its unfolding holds it again, and those of a
+ * type whose arguments its declaration only passes through (`passesArgumentsThrough`).
  */
 export function heldKindsOf(checker: CheckerContext, type: Type, kept: KeptKinds): readonly Type[] {
   if (holdsNoKind(type)) {
@@ -80,9 +84,36 @@ export function heldKindsOf(checker: CheckerContext, type: Type, kept: KeptKinds
   if (type.kind === 'recursive') {
     return kept.walkedOf(type);
   }
+  if (type.kind === 'nominal' && passesArgumentsThrough(kept.declaredOf(type.entity))) {
+    return composedKindsOf(checker, type, kept);
+  }
+  return kept.composedOf(type);
+}
+
+/**
+ * Whether a type of a declaration of `declared` composes its kinds with no key of its own: every
+ * part its arguments decide is an argument itself, so composing reads only its arguments' kinds,
+ * each a type smaller than it, kept on its own, a recursive one walked under its own key. So no
+ * type is reached again while its kinds compose, and a key would cost as much as composing.
+ */
+function passesArgumentsThrough(declared: DeclaredKinds): boolean {
+  return declared.dependent.every((part) => part.kind === 'parameter');
+}
+
+/**
+ * The kinds of `type`, composed of its parts': a nominal type's its declaration's (`declaredOf`),
+ * with those of each part its arguments decide, instantiated: an argument's own, a type its
+ * arguments compute walked whole, any other part's own kind, its own parts being parts of the
+ * declaration's too.
+ */
+export function composedKindsOf(
+  checker: CheckerContext,
+  type: Type,
+  kept: KeptKinds,
+): readonly Type[] {
   if (type.kind !== 'nominal') {
     return distinctKinds(
-      writtenPartsOf(checker, type).flatMap((part) => partKindsOf(checker, kept, part)),
+      writtenPartsOf(checker, type).flatMap((part) => checker.valueKindsOf(part)),
     );
   }
   const declared = kept.declaredOf(type.entity);
@@ -106,7 +137,7 @@ function instantiatedKindsOf(
   instantiated: Type,
 ): readonly Type[] {
   if (part.kind === 'parameter') {
-    return partKindsOf(checker, kept, instantiated);
+    return checker.valueKindsOf(instantiated);
   }
   if (isComputed(part)) {
     return kept.walkedOf(instantiated);
@@ -115,19 +146,13 @@ function instantiatedKindsOf(
 }
 
 /**
- * The kinds of `part`, a part of a type whose kinds are composed: a recursive type's walked whole,
- * since its unfolding, whose key is its own, holds it again; any other's composed in turn.
- */
-function partKindsOf(checker: CheckerContext, kept: KeptKinds, part: Type): readonly Type[] {
-  return part.kind === 'recursive' ? kept.walkedOf(part) : checker.valueKindsOf(part);
-}
-
-/**
- * What composing a type's kinds reads of the checker's entries: each declaration's kinds, and the
- * kinds of a type walked whole (`walkedKindsOf`), each kept per declaration or type.
+ * What finding a type's kinds reads of the checker's entries, each kept per declaration or type:
+ * each declaration's kinds, a type's kinds composed (`composedKindsOf`), and those of a type
+ * walked whole (`walkedKindsOf`).
  */
 export interface KeptKinds {
   readonly declaredOf: (entity: NominalEntity) => DeclaredKinds;
+  readonly composedOf: (type: Type) => readonly Type[];
   readonly walkedOf: (type: Type) => readonly Type[];
 }
 
@@ -218,9 +243,10 @@ function writtenPartsOf(checker: CheckerContext, type: Type): readonly Type[] {
 
 /** `kinds` but simple ones, each once. */
 function distinctKinds(kinds: readonly Type[]): readonly Type[] {
-  return kinds
-    .filter((kind) => !isSimpleMark(kind))
-    .filter((kind, index, all) => all.findIndex((each) => sameType(each, kind)) === index);
+  return distinctItems(
+    kinds.filter((kind) => !isSimpleMark(kind)),
+    sameType,
+  );
 }
 
 /**
@@ -259,7 +285,7 @@ function ownValueKindsOf(checker: CheckerContext, part: Type): readonly Type[] {
  * function (simple data, proposal 8, Rule 2) or a type parameter's value (passed through, Rule 3).
  * Most values a body computes are, so their kinds need no key.
  */
-export function holdsNoKind(type: Type): boolean {
+function holdsNoKind(type: Type): boolean {
   switch (type.kind) {
     case 'primitive':
     case 'literal':
