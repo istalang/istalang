@@ -2,7 +2,8 @@
  * Extern declarations (§3.6, §3.8): what the host implements. An extern's head holds `extern`
  * among its modifiers (../parts/heads.ts), before a function's `fn` or a struct's `struct`; a
  * struct's may say which handle it is: `shared`, `sendable` or `live`. A constant is
- * `extern name: Type`, with no value. An extern struct's docstring stands on the line below it.
+ * `extern name: Type`, with no value. An extern struct's docstring stands on the line below it, or
+ * in its body, which declares only associated types.
  */
 
 import type {
@@ -10,10 +11,10 @@ import type {
   ExternStructDeclaration,
 } from '../../../syntax/declarations/index.ts';
 import { headForms } from '../../../syntax/tokens/modifiers.ts';
-import { parseDocstringBelow } from '../../layout/bodies.ts';
 import { documentedBy } from '../../layout/docstrings.ts';
 import type { Parser } from '../../parser.ts';
 import { parseHead } from '../parts/heads.ts';
+import { parseExternStructMembers } from './type-declarations.ts';
 import { parseTypeParameters } from './type-parameters.ts';
 
 /** `extern name: Type`, at `extern`. */
@@ -30,7 +31,7 @@ export function parseExternStruct(parser: Parser): ExternStructDeclaration {
   const { handle } = parseHead(parser, headForms.externStruct);
   const name = parser.identifier('a type name');
   const typeParameters = parseTypeParameters(parser);
-  const doc = parseDocstringBelow(parser, start);
+  const { value: associatedTypes, doc } = parseExternStructMembers(parser, start);
   const span = parser.spanFrom(start);
   return {
     kind: 'ExternStructDeclaration',
@@ -38,6 +39,7 @@ export function parseExternStruct(parser: Parser): ExternStructDeclaration {
     handle,
     name,
     typeParameters,
+    associatedTypes,
     ...documentedBy(doc),
   };
 }

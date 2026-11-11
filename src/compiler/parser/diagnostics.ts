@@ -227,7 +227,12 @@ export const parserDiagnostics = defineDiagnostics('parser', {
   memberParameterAlone: {
     code: 2027,
     message: () =>
-      "A member parameter ('S in Status') stands for one member of its union, so it takes no constraint (§3.5).",
+      "A member parameter ('S in Status') or associated type ('type Mode in Persistence') stands for one member of its union, so it takes no constraint (§3.5, §3.10).",
+  },
+  externStructField: {
+    code: 2060,
+    message: () =>
+      "An extern struct declares only associated types ('type Mode = K'): its fields are the host's (§3.6).",
   },
   positionalAfterNamed: {
     code: 2050,

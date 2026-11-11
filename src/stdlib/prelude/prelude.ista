@@ -13,10 +13,12 @@ extern shared struct WeakRef<T is Disposable>
 
 # Data is simple, live or ista, and code is marked with the data it may handle (proposal 8): unmarked
 # code handles simple data, `live` code waits in memory and never commits, `ista` code commits at
-# every wait. `Persistence` is the two kinds, and a future is of the kind of the code waiting on it.
+# every wait. `Persistence` is the two kinds, and a future is of the kind of the code waiting on it,
+# its `Mode`.
 type Mark = "simple" | "live" | "ista"
 type Persistence = "live" | "ista"
-extern shared struct Future<T, K in Persistence>
+extern shared struct Future<T, K in Persistence>:
+  type Mode = K
 
 # What a function's values may capture (§3.14): only sendable values, or any.
 type Sendability = "sendable" | "plain"

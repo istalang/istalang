@@ -76,7 +76,7 @@ describe('every list in §4 separates its items with ","', () => {
       'module' as const,
       'trait Shape { fn area(self: Self) -> Float, type Unit }',
       moduleOf(
-        `(TraitDeclaration Shape [] [(FunctionDeclaration _ area [] [(Parameter self _ ${named('Self')} _)] ${float} _) (RequiredAssociatedType Unit [])])`,
+        `(TraitDeclaration Shape [] [(FunctionDeclaration _ area [] [(Parameter self _ ${named('Self')} _)] ${float} _) (RequiredAssociatedType Unit _ [])])`,
       ),
     ],
     [
@@ -107,7 +107,7 @@ describe('every list in §4 separates its items with ","', () => {
       moduleOf(
         `(StructDeclaration Req [] [${declaredField('id', int)} ${declaredField('value', string)}] [])`,
         '(EnumDeclaration Color [] [(Variant Red []) (Variant Green []) (Variant Blue [])] [])',
-        `(TraitDeclaration Shape [] [(FunctionDeclaration _ area [] [(Parameter self _ ${named('Self')} _)] ${float} _) (RequiredAssociatedType Unit [])])`,
+        `(TraitDeclaration Shape [] [(FunctionDeclaration _ area [] [(Parameter self _ ${named('Self')} _)] ${float} _) (RequiredAssociatedType Unit _ [])])`,
       ),
     ],
   ])('parses %s', (_name, category, text, expectedTree) => {

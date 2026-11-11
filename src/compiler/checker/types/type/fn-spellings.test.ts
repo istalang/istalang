@@ -136,8 +136,11 @@ K async fn twice<K in Persistence, T>(f: Fn<(), Future<T, K>, K>) -> T:
   _ = await f()
   await f()
 trait Waits:
-  type Mode
+  type Mode in Persistence
   Self.Mode fn wait(self: Self)
+trait Settles:
+  type Mode in Persistence
+  Self.Mode async fn settle(self: Self) -> Int
 ista async fn one() -> Int: 1
 ista async fn main():
   each([1, 2], fn(x): ())
@@ -168,6 +171,15 @@ fn main():
   _ = helper()
 `),
     ).toEqual(reportedOnce(checkerDiagnostics.unknownMark.code, 'NotAMark'));
+  });
+
+  it('names an associated type bounded to marks, to one of the two kinds on an async head', () => {
+    expect(reported('trait Waits:\n  type Mode\n  Self.Mode fn wait(self: Self)')).toEqual(
+      reportedOnce(checkerDiagnostics.unknownMark.code, 'Self.Mode'),
+    );
+    expect(
+      reported('trait Waits:\n  type Mode in Mark\n  Self.Mode async fn wait(self: Self) -> Int'),
+    ).toEqual(reportedOnce(checkerDiagnostics.asyncMarkNotKind.code, 'Self.Mode'));
   });
 });
 

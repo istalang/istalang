@@ -45,7 +45,7 @@ import {
 } from '../../identity/identity.ts';
 import { UnfoldingPairs } from '../../identity/unfolding-pairs.ts';
 import { parametersIn } from '../../parts/type-parts.ts';
-import { unfolded } from '../../type/computed-types.ts';
+import { type AssociatedOfType, unfolded } from '../../type/computed-types.ts';
 import { type Futures, madeAsync } from '../../type/function-types.ts';
 import type {
   AnonymousStructType,
@@ -120,9 +120,9 @@ export interface Fitting extends TypeRules, Futures {
   readonly shapeOf: (found: Type) => AnonymousStructType | undefined;
   /**
    * The union a member parameter type stands for one member of: the one it carries, or its declared
-   * one.
+   * one; or the one an associated type of a type not known yet is bounded by (`type Mode in U`).
    */
-  readonly memberUnionOf: (parameter: TypeParameterType) => Type | undefined;
+  readonly memberUnionOf: (type: TypeParameterType | AssociatedOfType) => Type | undefined;
   /**
    * What a variable standing for a mark or a sendability qualifies functions by
    * (types/properties/qualifiers.ts): the order its bounds agree and join by; undefined for any

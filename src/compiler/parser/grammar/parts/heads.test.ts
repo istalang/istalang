@@ -113,7 +113,7 @@ describe('modifiers in any order', () => {
       '(FunctionType sendable ista async [(NamedType [A] [])] _)',
     );
     expect(dumpClean('module', 'shared extern struct H')).toContain(
-      '(ExternStructDeclaration shared H [])',
+      '(ExternStructDeclaration shared H [] [])',
     );
   });
 });

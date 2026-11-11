@@ -200,7 +200,7 @@ const declarationHandlers: Handlers<LocalBinder, Declaration, [Scope], void> = {
   StructDeclaration: bindStruct,
   SharedStructDeclaration: bindStruct,
   ExternStructDeclaration: (binder, node, scope) => {
-    typeParameterScope(binder, node, scope);
+    bindAssociatedTypes(binder, node, typeParameterScope(binder, node, scope));
   },
   TypeAliasDeclaration: (binder, node, scope) =>
     bindAliasBody(binder, node.type, typeParameterScope(binder, node, scope)),
@@ -248,6 +248,9 @@ function bindTrait(binder: LocalBinder, node: TraitDeclaration, scope: Scope): v
     // recorded as its name's entity, the tree's own, without standing in a scope.
     binder.record(member.name, typeEntity(member));
     binder.annotations(member, inner);
+    if (member.memberOf !== undefined) {
+      binder.walk.type(binder, member.memberOf, inner);
+    }
     bindConstraints(binder, member.constraints, inner);
   }
   for (const member of node.members) {

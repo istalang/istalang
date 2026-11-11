@@ -37,10 +37,7 @@ export interface AssociatedOfType extends WrittenThrough {
 
 /** The associated type `name` a nominal type's own declaration declares (§3.1); else undefined. */
 export function ownAssociatedType(owner: NominalType, name: string): AssociatedType | undefined {
-  const { declaration } = owner.entity;
-  return declaration.kind === 'ExternStructDeclaration'
-    ? undefined
-    : declaration.associatedTypes.find((each) => each.name.text === name);
+  return owner.entity.declaration.associatedTypes.find((each) => each.name.text === name);
 }
 
 /**

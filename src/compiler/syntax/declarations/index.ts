@@ -112,10 +112,12 @@ export interface AssociatedType extends NodeOf<'AssociatedType'>, Annotatable {
 
 /**
  * `type Key is Stringable & Encodable` in a trait (§3.10): a type meeting the trait declares an
- * associated type of that name, meeting each constraint.
+ * associated type of that name, meeting each constraint. `type Mode in Persistence` bounds it to
+ * one member of a union instead, as a member parameter is (§3.5), with no constraint beside it.
  */
 export interface RequiredAssociatedType extends NodeOf<'RequiredAssociatedType'>, Annotatable {
   readonly name: Identifier;
+  readonly memberOf: TypeNode | undefined;
   readonly constraints: readonly ConstraintNode[];
 }
 
@@ -182,7 +184,8 @@ export function isRestField(field: Field | Invalid): boolean {
 
 /**
  * `extern sendable struct Queue<T>`: a struct the host implements, a handle of the kind `handle`
- * says, or a value when it says none (§3.6).
+ * says, or a value when it says none (§3.6). Its body, if any, holds only associated types, since
+ * its fields are the host's (`type Mode = K`).
  */
 export interface ExternStructDeclaration
   extends NodeOf<'ExternStructDeclaration'>,
@@ -191,6 +194,7 @@ export interface ExternStructDeclaration
   readonly handle: ModifierWord<'handle'> | undefined;
   readonly name: Identifier;
   readonly typeParameters: TypeParameters;
+  readonly associatedTypes: readonly AssociatedType[];
 }
 
 /** `extern approvalDeadline: Duration`: a value the host provides. */
@@ -214,20 +218,34 @@ export interface EnumDeclaration extends NodeOf<'EnumDeclaration'>, Annotatable,
  */
 export type AliasDeclaration = TypeAliasDeclaration | AssociatedType;
 
-/** A declaration whose body may declare associated types (§3.1). */
-export type AssociatingDeclaration = DeclaredStruct | EnumDeclaration;
+/** A declaration whose body may declare associated types (§3.1, §3.6). */
+export type AssociatingDeclaration = DeclaredStruct | EnumDeclaration | ExternStructDeclaration;
 
 /**
  * A struct's or an enum's members as written: its fields or variants and its associated types,
- * in source order, which only reading the text back (formatting, outlines) needs.
+ * in source order, which only reading the text back (formatting, outlines) needs. An extern
+ * struct's are its associated types alone.
  */
 export function membersAsWritten(
   declaration: AssociatingDeclaration,
 ): readonly (DeclaredField | Variant | AssociatedType | Invalid)[] {
-  const listed = declaration.kind === 'EnumDeclaration' ? declaration.variants : declaration.fields;
-  return [...listed, ...declaration.associatedTypes].toSorted(
+  return [...listedMembers(declaration), ...declaration.associatedTypes].toSorted(
     (first, second) => first.span.from - second.span.from,
   );
+}
+
+/** A declaration's fields or variants, as listed. */
+function listedMembers(
+  declaration: AssociatingDeclaration,
+): readonly (DeclaredField | Variant | Invalid)[] {
+  switch (declaration.kind) {
+    case 'EnumDeclaration':
+      return declaration.variants;
+    case 'ExternStructDeclaration':
+      return [];
+    default:
+      return declaration.fields;
+  }
 }
 
 /** `Expired`, or `Rejected(by: String, reason: String)` (§3.11). */

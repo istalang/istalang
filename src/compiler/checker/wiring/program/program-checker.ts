@@ -97,7 +97,10 @@ import {
   type NominalType,
   type Type,
 } from '../../types/type/index.ts';
-import type { ConstraintSet, StructConstraintModel } from '../../types/type/struct-constraint.ts';
+import type {
+  AssociatedBounds,
+  StructConstraintModel,
+} from '../../types/type/struct-constraint.ts';
 import type { TypeRules } from '../../types/type/type-rules.ts';
 import type { StaticOwner } from '../../types/written/named-types.ts';
 import { resolveTypeNode } from '../../types/written/resolve-type.ts';
@@ -307,7 +310,7 @@ export class ProgramChecker implements CheckerContext {
     return this.#typeParameters.structConstraintsOf(standingFor(parameter));
   }
 
-  associatedBoundsOf(requirement: RequiredAssociatedType): ConstraintSet {
+  associatedBoundsOf(requirement: RequiredAssociatedType): AssociatedBounds {
     return this.#typeParameters.associatedBoundsOf(requirement);
   }
 

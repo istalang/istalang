@@ -32,6 +32,14 @@ export interface ConstraintSet {
   readonly structs: readonly StructConstraintModel[];
 }
 
+/**
+ * What a trait's associated type requirement bounds it by (§3.10): constraints, or the union after
+ * `in`, which it stands for one member of (`type Mode in Persistence`).
+ */
+export interface AssociatedBounds extends ConstraintSet {
+  readonly memberOf: Type | undefined;
+}
+
 /** What an entry asks of a field's type: to be exactly `type`, or to meet a constraint set. */
 export type EntryRule =
   | { readonly kind: 'type'; readonly type: Type }

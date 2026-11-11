@@ -33,8 +33,7 @@ import {
   fieldsFunctionOf,
 } from '../../../syntax/declarations/field-defaults.ts';
 import {
-  type DeclaredStruct,
-  type EnumDeclaration,
+  type AssociatingDeclaration,
   type FunctionDeclaration,
   type TypeAliasDeclaration,
   typeParametersOf,
@@ -154,8 +153,7 @@ export class ReductionRequirements {
       return [this.#instance(declaration)];
     }
     const held = this.#held(declaration).filter((type) => !isKnown(type) && this.#standsIn(type));
-    return declaration.kind === 'FunctionDeclaration' ||
-      declaration.kind === 'ExternStructDeclaration'
+    return declaration.kind === 'FunctionDeclaration'
       ? held
       : [...held, ...associated(this.#checker, declaration)];
   }
@@ -250,11 +248,8 @@ export class ReductionRequirements {
   }
 }
 
-/** The types a struct's or enum's associated types stand for, its parameters open (§3.1). */
-function associated(
-  checker: CheckerContext,
-  declaration: DeclaredStruct | EnumDeclaration,
-): readonly Type[] {
+/** The types a type's own associated types stand for, its parameters open (§3.1). */
+function associated(checker: CheckerContext, declaration: AssociatingDeclaration): readonly Type[] {
   return declaration.associatedTypes.map((each) =>
     aliasInstance(each, checker.aliasedType(each), new Map(), checker.typeRules),
   );

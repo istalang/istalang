@@ -20,7 +20,7 @@
  */
 
 import { z } from 'zod';
-import { persistences } from '../../foundation/language/well-known/index.ts';
+import { marks } from '../../foundation/language/well-known/index.ts';
 import { memo } from '../../foundation/structures/memo.ts';
 import { instruction } from '../instructions/instruction.ts';
 import { count, moduleId, register, span, typeId } from '../operands.ts';
@@ -48,7 +48,7 @@ const cell = z.strictObject({ register, type: typeId });
  * never waiting; a `live` or `ista` one runs as an execution of its own, given a future. Live code
  * waits in memory and never commits; ista code runs in an instance, every wait committing.
  */
-export const codeMode = z.enum(['simple', ...persistences]);
+export const codeMode = z.enum(marks);
 
 export type CodeMode = z.output<typeof codeMode>;
 

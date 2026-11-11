@@ -191,14 +191,18 @@ describe('externs and functions', () => {
     ],
     [
       'extern sendable struct Queue<T is Sendable>',
-      `(ExternStructDeclaration sendable Queue [(TypeParameter _ T _ [${named('Sendable')}] _)])`,
+      `(ExternStructDeclaration sendable Queue [(TypeParameter _ T _ [${named('Sendable')}] _)] [])`,
     ],
     [
       'extern shared struct Slot<T>',
-      `(ExternStructDeclaration shared Slot [${typeParameter('T')}])`,
+      `(ExternStructDeclaration shared Slot [${typeParameter('T')}] [])`,
     ],
-    ['extern live struct Socket', '(ExternStructDeclaration live Socket [])'],
-    ['extern struct Zone', '(ExternStructDeclaration _ Zone [])'],
+    ['extern live struct Socket', '(ExternStructDeclaration live Socket [] [])'],
+    ['extern struct Zone', '(ExternStructDeclaration _ Zone [] [])'],
+    [
+      'extern shared struct Future<T, K in Persistence>:\n  type Mode = K',
+      `(ExternStructDeclaration shared Future [${typeParameter('T')} (TypeParameter _ K ${named('Persistence')} [] _)] [(AssociatedType Mode ${named('K')})])`,
+    ],
     [
       'fn Duration.zero() -> Duration: Duration{value: 0}',
       `(FunctionDeclaration Duration zero [] [] ${named('Duration')} ${bodyOf(`(StructLiteral ${named('Duration')} [(FieldInitializer value 0)])`)})`,
@@ -238,6 +242,28 @@ describe('member type parameters (§3.5)', () => {
   ])('reports a constraint beside the membership in %j once', (text, spanText) => {
     expect(reported('module', text)).toEqual(
       reportedOnce(parserDiagnostics.memberParameterAlone.code, spanText),
+    );
+  });
+});
+
+describe('member-bounded associated types (§3.10)', () => {
+  it('reads `type Name in Type` in a trait', () => {
+    expect(dumpClean('module', 'trait Waits:\n  type Mode in Persistence')).toContain(
+      `(RequiredAssociatedType Mode ${named('Persistence')} [])`,
+    );
+  });
+
+  it('reports a constraint beside the membership once', () => {
+    expect(reported('module', 'trait Waits:\n  type Mode in Persistence is Stringable')).toEqual(
+      reportedOnce(parserDiagnostics.memberParameterAlone.code, 'is Stringable'),
+    );
+  });
+});
+
+describe('extern struct bodies (§3.6)', () => {
+  it('reports a field, the host having fields of its own', () => {
+    expect(reported('module', 'extern struct Zone:\n  name: String\n  type Mode = "live"')).toEqual(
+      reportedOnce(parserDiagnostics.externStructField.code, 'name: String'),
     );
   });
 });

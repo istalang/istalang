@@ -21,10 +21,12 @@ import type { RequiredAssociatedType, TypeParameter } from '../../../syntax/decl
 import type { CheckerContext } from '../../contexts/context.ts';
 import type { UseSite } from '../../contexts/use-site.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
+import { isOneMember } from '../../types/fitting/member-arguments.ts';
 import { sameType } from '../../types/identity/identity.ts';
 import {
   constraintOn,
   type Substitution,
+  substitute,
   substituteConstraint,
 } from '../../types/parts/substitution.ts';
 import {
@@ -136,6 +138,11 @@ function boundShortfall(
 ): string | undefined {
   const bounds = checker.associatedBoundsOf(requirement);
   const rules = checker.typeRules;
+  const union =
+    bounds.memberOf === undefined ? undefined : substitute(bounds.memberOf, substitution, rules);
+  if (union !== undefined && !isOneMember(union, associated, checker.fitting.memberUnionOf)) {
+    return `its associated type '${requirement.name.text}' (${typeText(associated)}) to be one member of ${typeText(union)}`;
+  }
   const unmet = bounds.traits.find(
     (bound) => !meets(associated, substituteConstraint(bound, substitution, rules)),
   );

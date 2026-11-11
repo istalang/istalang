@@ -103,7 +103,7 @@ export const declarationPrinters: Printers<DeclarationKind> = {
       modifiersText({ extern: 'extern', handle: node.handle }),
       'struct ',
       named(printer, node.name, node.typeParameters),
-      docBelow(printer, node.doc),
+      members(printer, node, membersAsWritten(node)),
     ]),
   ExternConstantDeclaration: (printer, node) =>
     annotated(printer, node, ['extern ', printer.print(node.name), ': ', printer.print(node.type)]),
@@ -119,6 +119,7 @@ export const declarationPrinters: Printers<DeclarationKind> = {
     annotated(printer, node, [
       'type ',
       printer.print(node.name),
+      node.memberOf === undefined ? '' : [' in ', printer.print(node.memberOf)],
       constraintsAfterIs(printer, node.constraints),
     ]),
   // A variant's fields are its parameters (spec §3.11), so they print as a parameter list; one

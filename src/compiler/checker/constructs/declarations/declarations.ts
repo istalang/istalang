@@ -194,6 +194,7 @@ const declarationHandlers: Handlers<CheckerContext, Declaration, [ModuleId], voi
   ExternStructDeclaration: (checker, node, module) => {
     annotatedNowhere('an extern struct')(checker, node, module);
     checkTypeParameters(checker, node);
+    checkAssociatedTypes(checker, node, module);
   },
   TraitDeclaration: (checker, node, module) => {
     annotatedNowhere('a trait')(checker, node, module);

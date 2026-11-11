@@ -37,7 +37,7 @@ import type { ResolvedCall } from '../surface/resolved-call.ts';
 import type { Fit, Fitting } from '../types/fitting/fit/index.ts';
 import type { Substitution } from '../types/parts/substitution.ts';
 import type { Constraint, FieldMember, NominalDeclaration, Type } from '../types/type/index.ts';
-import type { ConstraintSet, StructConstraintModel } from '../types/type/struct-constraint.ts';
+import type { AssociatedBounds, StructConstraintModel } from '../types/type/struct-constraint.ts';
 import type { StaticOwner } from '../types/written/named-types.ts';
 import type { TypeMatchQueries } from '../types/written/type-match.ts';
 import type { UseSite } from './use-site.ts';
@@ -189,7 +189,7 @@ export interface CheckerContext extends Omit<Checker, 'program'> {
    * The bound a trait's associated type requirement states (`type Key is C`, §3.10), resolved in
    * the trait's module: each trait's `Self` the associated type of the trait's own `Self`.
    */
-  readonly associatedBoundsOf: (requirement: RequiredAssociatedType) => ConstraintSet;
+  readonly associatedBoundsOf: (requirement: RequiredAssociatedType) => AssociatedBounds;
   /**
    * The union after `in` on a member parameter, which it stands for one member of, resolved where
    * it is declared (§3.5); undefined for any other parameter.

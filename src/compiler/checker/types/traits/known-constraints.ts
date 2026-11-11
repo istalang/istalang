@@ -248,8 +248,7 @@ export function associatedDeclarationsOn(
   of: Type,
 ): readonly (AssociatedType | RequiredAssociatedType)[] {
   if (of.kind === 'nominal') {
-    const { declaration } = of.entity;
-    return declaration.kind === 'ExternStructDeclaration' ? [] : declaration.associatedTypes;
+    return of.entity.declaration.associatedTypes;
   }
   const fields = of.kind === 'field' ? keyedFieldTypes(checker, of.of, of.key) : undefined;
   if (fields !== undefined) {
@@ -399,7 +398,7 @@ interface DeclaringConstraint {
  * one type, meeting each one's bound. Inside a trait, `Self` meets the trait itself, with its own
  * parameters.
  */
-function requirementsDeclaring(
+export function requirementsDeclaring(
   checker: CheckerContext,
   of: Type,
   name: string,

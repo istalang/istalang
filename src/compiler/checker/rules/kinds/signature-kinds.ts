@@ -12,10 +12,12 @@
  * - An async head's written result is read as written too: its call gives a future of the head's
  *   kind, so a written `Future<…>` of the other kind would otherwise go unread.
  * - A head naming its mark (`M fn`) names a mark parameter, or a requirement's associated type
- *   (`Self.Mode fn`); an async head's is one of the two kinds, which its future takes.
+ *   (`Self.Mode fn`) bounded to one member of the marks (`type Mode in Persistence`); an async
+ *   head's is one of the two kinds, which its future takes.
  */
 
 import type { Diagnostic } from '../../../../foundation/diagnostics/diagnostic.ts';
+import { marks, persistences } from '../../../../foundation/language/well-known/index.ts';
 import type { ModuleId } from '../../../program/program.ts';
 import { declaredFunctionName } from '../../../syntax/declarations/field-defaults.ts';
 import type { FunctionDeclaration } from '../../../syntax/declarations/index.ts';
@@ -35,6 +37,7 @@ import {
 } from '../../types/type/function-kinds.ts';
 import type { Type } from '../../types/type/index.ts';
 import { typeText } from '../../types/type/type-text.ts';
+import { membersOf } from '../../types/unions/unions.ts';
 
 /** A type a signature holds, and where it is written. */
 interface HeldInSignature {
@@ -125,7 +128,8 @@ function refusalOf(
 /**
  * Reports the mark `declaration`'s head names (`M fn`), a defined, local or required function's,
  * where it is none: a mark parameter, or on a trait's requirement an associated type of its `Self`
- * (`Self.Mode fn`); one of the two kinds on an async head, whose future takes it.
+ * bounded to marks (`Self.Mode fn`, `type Mode in Mark`); one of the two kinds on an async head,
+ * whose future takes it.
  */
 export function checkNamedMark(
   checker: CheckerContext,
@@ -137,15 +141,35 @@ export function checkNamedMark(
     return;
   }
   const mark = checker.resolveType(module, written);
-  if (mark.kind === 'error' || isOwnSelfType(checker, module, declaration, mark)) {
+  if (mark.kind === 'error') {
     return;
   }
   const text = namedTypeText(written);
-  if (!isMarkVariable(checker, mark)) {
+  const ownSelfType = isOwnSelfType(checker, module, declaration, mark);
+  const among = (members: readonly string[]) =>
+    ownSelfType && isBoundWithin(checker, mark, members);
+  if (!(among(marks) || (!ownSelfType && isMarkVariable(checker, mark)))) {
     checker.report(module, checkerDiagnostics.unknownMark(written.span, text));
-  } else if (awaits(declaration.qualifiers) && !isOneKind(checker, mark)) {
+  } else if (
+    awaits(declaration.qualifiers) &&
+    !(among(persistences) || (!ownSelfType && isOneKind(checker, mark)))
+  ) {
     checker.report(module, checkerDiagnostics.asyncMarkNotKind(written.span, text));
   }
+}
+
+/**
+ * Whether `mark`, an associated type, is bounded to one member of a union of `members`
+ * (`type Mode in Persistence`), as a mark parameter is (§3.10).
+ */
+function isBoundWithin(checker: CheckerContext, mark: Type, members: readonly string[]): boolean {
+  const union = mark.kind === 'associated' ? checker.fitting.memberUnionOf(mark) : undefined;
+  return (
+    union !== undefined &&
+    membersOf(union).every(
+      (member) => member.kind === 'literal' && members.some((each) => each === member.value),
+    )
+  );
 }
 
 /** Whether `mark` is an associated type of the `Self` of the trait requiring `declaration`. */

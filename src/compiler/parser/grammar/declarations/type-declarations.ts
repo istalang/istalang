@@ -132,11 +132,40 @@ function parseAssociatedType(parser: Parser): AssociatedType {
   return { kind: 'AssociatedType', span: parser.spanFrom(start), name, type };
 }
 
-/** `type Key`, or `type Key is C & D`, at `type`, in a trait. */
+/**
+ * `type Key`, `type Key is C & D` or `type Mode in Persistence`, at `type`, in a trait. A member
+ * bound takes no constraint beside it, as a member parameter takes none (§3.5).
+ */
 function parseRequiredAssociatedType(parser: Parser): RequiredAssociatedType {
+  const { cursor } = parser;
   const { start, name } = parseAssociatedHead(parser);
-  const constraints = parser.cursor.eat('is') === undefined ? [] : parseConstraints(parser);
-  return { kind: 'RequiredAssociatedType', span: parser.spanFrom(start), name, constraints };
+  const memberOf = cursor.eat('in') === undefined ? undefined : parser.type();
+  const besides = cursor.token.span.start;
+  const constraints = cursor.eat('is') === undefined ? [] : parseConstraints(parser);
+  if (memberOf !== undefined && constraints.length > 0) {
+    parser.report(parserDiagnostics.memberParameterAlone(parser.textSpanFrom(besides)));
+  }
+  const span = parser.spanFrom(start);
+  return { kind: 'RequiredAssociatedType', span, name, memberOf, constraints };
+}
+
+/**
+ * An extern struct's members after its head, `type Mode = K`, and its docstring (§3.6). A field
+ * written there is read, so checking goes on, and reported: the host's value has fields of its own.
+ */
+export function parseExternStructMembers(
+  parser: Parser,
+  headerStart: number,
+): WithDocstring<readonly AssociatedType[]> {
+  const rules = withAssociatedTypes(declaredFieldRules);
+  const { value: members, doc } = parseMembers(parser, rules, headerStart);
+  const { associatedTypes, others } = associatedTypesApart(members);
+  for (const field of others) {
+    if (field.kind !== 'Invalid') {
+      parser.report(parserDiagnostics.externStructField(parser.textSpanOf(field.span)));
+    }
+  }
+  return { value: associatedTypes, doc };
 }
 
 /** `type Name` at `type`, reporting type parameters written after the name. */

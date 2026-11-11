@@ -38,6 +38,7 @@ import {
   ReductionRequirements,
 } from '../../resolution/type-matches/reduction-requirements.ts';
 import { standsForMember } from '../../types/fitting/member-arguments.ts';
+import { sameType } from '../../types/identity/identity.ts';
 import { typeKeys } from '../../types/identity/type-keys.ts';
 import { substituteConstraint } from '../../types/parts/substitution.ts';
 import { sameConstraintSpelled } from '../../types/parts/type-parts.ts';
@@ -49,7 +50,7 @@ import {
 } from '../../types/traits/struct-constraints.ts';
 import type { Constraint, Type } from '../../types/type/index.ts';
 import {
-  type ConstraintSet,
+  type AssociatedBounds,
   type StructConstraintModel,
   sameStructConstraint,
 } from '../../types/type/struct-constraint.ts';
@@ -63,7 +64,7 @@ export class TypeParameters {
     TypeParameter,
     readonly StructConstraintModel[]
   >;
-  readonly #bounds: EntryTable<CheckerNote, RequiredAssociatedType, ConstraintSet>;
+  readonly #bounds: EntryTable<CheckerNote, RequiredAssociatedType, AssociatedBounds>;
   /** Each check by `checkKey`, run with the note that asked for it. */
   readonly #checks: EntryTable<CheckerNote, string, void, ConstraintNote>;
   readonly #requirements: ReductionRequirements;
@@ -108,22 +109,11 @@ export class TypeParameters {
       name: 'associated type bounds',
       compute: (requirement) => {
         const module = moduleOf(requirement);
-        const trait =
-          module === undefined ? undefined : traitRequiring(checker, module, requirement);
-        if (module === undefined || trait === undefined) {
-          return { traits: [], structs: [] };
-        }
-        const self: Type = {
-          kind: 'associated',
-          of: parameterType(trait),
-          name: requirement.name.text,
-        };
-        const bounds = resolveConstraintSet(checker, module, requirement.constraints, () => self);
-        return { ...bounds, traits: withKindBound(checker, bounds.traits) };
+        return module === undefined
+          ? unbounded
+          : resolveAssociatedBounds(checker, module, requirement);
       },
-      equal: (first, second) =>
-        sameItems(sameConstraintSpelled)(first.traits, second.traits) &&
-        sameItems(sameStructConstraint)(first.structs, second.structs),
+      equal: sameAssociatedBounds,
     });
     this.#checks = checker.entries.table({
       name: 'constraint checks',
@@ -139,7 +129,7 @@ export class TypeParameters {
     return this.#structConstraints.get(parameter);
   }
 
-  associatedBoundsOf(requirement: RequiredAssociatedType): ConstraintSet {
+  associatedBoundsOf(requirement: RequiredAssociatedType): AssociatedBounds {
     return this.#bounds.get(requirement);
   }
 
@@ -246,6 +236,40 @@ function checkKey(note: ConstraintNote): string {
         typeKeys.spelledKey(argument),
       ]),
     ]),
+  );
+}
+
+/** What bounds an associated type no trait requires, as an unknown module's. */
+const unbounded: AssociatedBounds = { traits: [], structs: [], memberOf: undefined };
+
+/** What `requirement` bounds its associated type by, resolved in `module`, its trait's. */
+function resolveAssociatedBounds(
+  checker: CheckerContext,
+  module: ModuleId,
+  requirement: RequiredAssociatedType,
+): AssociatedBounds {
+  const trait = traitRequiring(checker, module, requirement);
+  if (trait === undefined) {
+    return unbounded;
+  }
+  const self: Type = { kind: 'associated', of: parameterType(trait), name: requirement.name.text };
+  const bounds = resolveConstraintSet(checker, module, requirement.constraints, () => self);
+  const memberOf =
+    requirement.memberOf === undefined
+      ? undefined
+      : checker.resolveType(module, requirement.memberOf);
+  return { ...bounds, traits: withKindBound(checker, bounds.traits), memberOf };
+}
+
+function sameAssociatedBounds(first: AssociatedBounds, second: AssociatedBounds): boolean {
+  const sameMembers =
+    first.memberOf === undefined || second.memberOf === undefined
+      ? first.memberOf === second.memberOf
+      : sameType(first.memberOf, second.memberOf);
+  return (
+    sameMembers &&
+    sameItems(sameConstraintSpelled)(first.traits, second.traits) &&
+    sameItems(sameStructConstraint)(first.structs, second.structs)
   );
 }
 
