@@ -43,7 +43,7 @@ structural change the later phases build on lands first, on its own.
 | **R2** Resolvers ✓ | Registered one-shot resolvers of both kinds, `onCancel`, `select`'s losers cancelled | K1a |
 | **K1c** Data rule ✓ | The three-valued data kind in one home, over every value; calls as its consequence, with bounded mark inference; requirements' marks; the rewrite | F1 |
 | **K1d** Data-kind bounds ✓ | K1c's profile cost (B71); `DataKind` renamed `Mark`; a derived trait `DataKind<K in Mark>`; associated types' kinds from their bounds, type matches' from their cases (B72) | K1c |
-| **DG** Delegate | `delegate` in Istalang over CX's contexts and context constants (`ista const`), no native: ista sends the job, a live loop runs it and replies; host externs `live`; host-filled futures gone | CX |
+| **DG** Delegate ✓ | `delegate` in Istalang over CX's contexts and context constants (`ista const`), no delegate native: ista sends the job, a live loop runs it and replies; host externs `live`; host-filled futures gone | CX |
 | **AW** Awaitables ✓ | `Awaitable`, `Resolver`, one await path, `futures` over the kind; `Self.Mode` as a requirement's mark | R2, K1d |
 | **CX** Contexts ✓ | Proposal 9's minimal slice: a `Runtime` over the host's store and `rt.call(key) f(args)`, enough to run and test ista code; sendable crossing; hosts start only `live async fn main` | AW |
 

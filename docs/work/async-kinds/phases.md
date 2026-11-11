@@ -81,39 +81,13 @@ cost (B71) is K1d's first fix.
 bounds', unbounded `DataKind<"simple">`; a type match's its cases' (B72). K1c's profile cost cut,
 its residual left as B71.
 
-## DG Delegate, on contexts (Istalang, then rewrite)
+## DG Delegate: done (`2b4a62ec`, `a2954bc9`, `fd8be1c4`)
 
-After CX. Built on existing constructs, with no native, extern or runtime state (human,
-2026-11-11).
-Three steps, each reviewed and merged on its own: **DG1** context constants (done, `2b4a62ec`); **DG2** `delegate`, its
-queue and loop, the runtime's instance keys; **DG3** host externs `live`, the checker's refusal, host
-fills gone, the rewrite.
-
-**Scope.**
-- Context constants, as proposal 9 states them and no more: a top-level `ista const` holds one
-  value per context, made at its first read inside the reading segment and kept in the context's
-  memory; reading one is an `ista` call. The job queue and pending replies live in them.
-- `delegate` (Rule 8) written in Istalang: ista code sends the job as a message; a live loop,
-  itself Istalang, takes jobs with `rt.call(key) nextJob()`, runs each as a live run and replies
-  with `rt.call(key) reply(r)`, which resolves the delegating code's future. The job's stable key
-  and its running at least once come from the context and the loop. Job and result are sendable,
-  CX's crossing check.
-- Host externs: a host's async externs are `live`; externs generic over their mark and `ista`
-  externs are the runtime's; the checker refuses them outside the std modules. What only host fills use goes (`findings.md`,
-  DG); what live resolvers and the test world share stays. The extern wrapper execution goes (B6).
-- The rewriter makes every host extern giving a future `extern live async fn`, and ista code's
-  `await` of one `await delegate …`.
-
-**Accept.** `await delegate charge(c, n)` runs `charge` once after the commit, its result in the
-future; a segment crashed before its commit never runs it; crashed after the job starts and before
-its result commits, it runs again under the same key. The behaviour table's `await http.get(u)` and
-`charge(id)` rows in their `delegate` form. A job or result that isn't sendable is refused. The checker
-refuses a host's mark-generic or `ista` extern, so no Definition holds one. No host token remains. No `delegate` native or job
-state exists. Property: over generated programs crashed at every `await`, every job runs at least
-once per committed start and never for a discarded segment. The full suite passes after the
-rewrite; `wake.bench.ts` within 10%.
-
-**Spec.** §3.6 externs; §3.8 `delegate`; §5 jobs; §9 hosts.
+DG1: top-level `ista const`, one value per context. DG2: `runtime.delegate` in Istalang over an
+`ista const` inbox, jobs run as live code by each runtime's loop, run again until their result
+commits, withdrawn when their future is released; natives only for the runtime's instance keys and
+its own calls. DG3: a host's externs unmarked or live (5913); host fills gone; the `host-futures`
+rewrite; tests mock the program's own ista seam. Debt F30, P47, P48, B80.
 
 ## AW Awaitables: done (`6544d98b`, `bba96c1e`, `3342bb51`)
 
