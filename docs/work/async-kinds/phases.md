@@ -109,35 +109,13 @@ rewrite; `wake.bench.ts` within 10%.
 
 **Spec.** §3.6 externs; §3.8 `delegate`; §5 jobs; §9 hosts.
 
-## AW Awaitables (behavioural)
+## AW Awaitables: done (`6544d98b`, `bba96c1e`, `3342bb51`)
 
-Built in three steps, each reviewed and merged on its own; design in `aw-design.md`.
-- **AW1 language** (done, `6544d98b`): member-bounded associated types (`type Mode in Persistence`), `Self.Mode fn`,
-  extern structs declaring associated types (`Future`'s `type Mode = K`).
-- **AW2 one await path** (done, `bba96c1e`): prelude `Awaitable` and `Resolver`; `await` and `select` as an implicit
-  `onAwait` call; waits decided by language resolvers.
-- **AW3 `Resolver.of`:** a closure started as a ready execution; `futures` over it in both kinds,
-  the native `first` and its state gone.
-
-**Scope.**
-- `Awaitable<T>` with `type Mode in Persistence`, member bounds on associated types being new, and
-  `Self.Mode fn onAwait`, an associated type bound to `Persistence` as a requirement's mark; `Resolver<T, K>` over R2, with `Resolver.of`. `Future<T, K>` is the runtime's
-  awaitable, `K` its `Mode`, with a native `onAwait`.
-- One await path: `await` and `select` cases over any awaitable, the conformance found through
-  `awaitedOf`, `Mode` read, lowering calling `onAwait` with the runtime's resolver; no second
-  instruction for futures.
-- `Resolver.of`'s callback takes `K` as its kind; an ista one runs as a segment of its own.
-- `futures` rewritten once as awaitables over `Resolver.of`, generic over the kind through mark
-  parameters (`K fn first`, Rule 6);
-  inference refuses a mix. `futures.timeout` starts its timer when called. The native `first`, its
-  future state and `#pendingFirsts` go.
-
-**Accept.** A cold custom awaitable starts its work at `await`, its `Mode` deciding the commit.
-`first` over two kinds is an inference error; over one kind it works in a `live async fn` and an
-`ista async fn`. `Resolver.of` waits without `await`; an ista callback runs as its own segment.
-Every `futures` test passes in both kinds. No `futures` native remains.
-
-**Spec.** §3.5 member-bound associated types; §3.8 prelude and `futures`; §3.10 `Awaitable`; §8.
+AW1: member-bounded associated types, `Self.Mode fn`, `Future`'s `type Mode = K`. AW2: `Awaitable`
+and `Resolver`; `await` and `select` as an implicit `onAwait` on an explicit wait register. AW3:
+`Resolver.of` and `onCancel` as runs of their own; `Resolver.at` tagging positions in the same step,
+a resolver registered on several futures, so `futures` is plain Istalang and keeps §8's guarantees;
+composing through callbacks decides later, as documented. Design: `aw-design.md`.
 
 ## CX Contexts, the minimal slice of proposal 9 (behavioural)
 

@@ -1,4 +1,9 @@
 {
   "ista.server.path": "./dist/cli/main.js",
-  "i18n-ally.localesPaths": ["src/foundation/language"]
+  "i18n-ally.localesPaths": [
+    "src/foundation/language"
+  ],
+  "cSpell.words": [
+    "ista"
+  ]
 }
