@@ -85,6 +85,9 @@ its residual left as B71.
 
 After CX. Built on existing constructs, with no native, extern or runtime state (human,
 2026-11-11).
+Three steps, each reviewed and merged on its own: **DG1** context constants; **DG2** `delegate`, its
+queue and loop, the runtime's instance keys; **DG3** host externs `live`, the deploy check, host
+fills gone, the rewrite.
 
 **Scope.**
 - Context constants, as proposal 9 states them and no more: a top-level `ista const` holds one
