@@ -96,7 +96,16 @@ describe('advancing an instance', () => {
     const [waiting, finished, ...more] = committed(test.store.commits);
     expect(more).toEqual([]);
     const kinds = waiting?.objects.map((object) => object.kind).sort();
-    expect(kinds).toEqual(['execution', 'execution', 'future', 'future', 'resolver', 'resolver']);
+    expect(kinds).toEqual([
+      'execution',
+      'execution',
+      'future',
+      'future',
+      'resolver',
+      'resolver',
+      'wait',
+      'wait',
+    ]);
     const status = finished?.status;
     expect(status?.kind === 'finished' && test.runtime.programOf('test').outcomeText(status)).toBe(
       '42',

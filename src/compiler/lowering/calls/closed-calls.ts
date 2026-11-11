@@ -25,12 +25,11 @@ import {
   type Substitution,
   substitute,
   substituteAny,
-  substitutionFor,
 } from '../../checker/types/parts/substitution.ts';
 import { isOpaque } from '../../checker/types/type/computed-types.ts';
 import type { AnyType, Type } from '../../checker/types/type/index.ts';
 import { typeText } from '../../checker/types/type/type-text.ts';
-import { type FunctionDeclaration, typeParametersOf } from '../../syntax/declarations/index.ts';
+import type { FunctionDeclaration } from '../../syntax/declarations/index.ts';
 import {
   type BodyOwner,
   type FunctionInstance,
@@ -91,13 +90,41 @@ export function calledParameters(
   return checker.parametersOf(declaration);
 }
 
+/** What `call` gives, of the type its function's result is in its instance, or its dispatch. */
+export function resultOfCall(
+  checker: Pick<Checker, 'resultOf' | 'typeRules' | 'traitObjects'>,
+  call: ClosedCall,
+): Type {
+  const declaration = call.kind === 'dispatch' ? call.dispatch.required : call.instance.declaration;
+  return substitute(
+    checker.resultOf(declaration),
+    substitutionOfCall(checker, call),
+    checker.typeRules,
+  );
+}
+
 /** How `call`'s function maps its type parameters: its instance's, or its dispatch's. */
-export function substitutionOfCall(call: ClosedCall): Substitution {
-  if (call.kind === 'function') {
-    return substitutionOf(call.instance);
-  }
-  const { required, typeArguments } = call.dispatch;
-  return substitutionFor(typeParametersOf(required.typeParameters), typeArguments);
+export function substitutionOfCall(
+  checker: Pick<Checker, 'traitObjects'>,
+  call: ClosedCall,
+): Substitution {
+  return call.kind === 'function'
+    ? substitutionOf(call.instance)
+    : dispatchSubstitution(checker, call.dispatch);
+}
+
+/**
+ * How a dispatch maps its required function's types: the trait's parameters and `Self` as the
+ * constraint it is called through gives them, and the function's own as the call does.
+ */
+export function dispatchSubstitution(
+  checker: Pick<Checker, 'traitObjects'>,
+  { through, constraint, on, required, typeArguments }: Dispatch,
+): Substitution {
+  return checker.traitObjects.callSubstitution(through, constraint, on, {
+    required,
+    typeArguments,
+  });
 }
 
 /** A closed call of a function: its own entry's instance, and the call's binding. */

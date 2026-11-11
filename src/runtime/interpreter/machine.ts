@@ -20,6 +20,7 @@ import {
   type Passed,
   writeRegister,
 } from './registers.ts';
+import type { Decision } from './suspension.ts';
 
 export interface Machine {
   readonly definition: Definition;
@@ -35,13 +36,20 @@ export interface Machine {
   ) => void;
   /** Returns `value` from `frame`, the top frame. */
   readonly return: (frame: ActiveFrame, value: Value) => void;
+  /** A handle to a new wait of the running execution (proposal 8, Rule 5). */
+  readonly openWait: () => Value;
+  /** A handle to a new resolver of the wait `wait` names, for its case `position`. */
+  readonly resolver: (wait: Value, position: number) => Value;
   /**
-   * Waits at `frame`'s `await` or blocking `select` on the futures its registers name. The frame
-   * stays there until one resolves; resuming moves it on (suspension.ts).
+   * Waits at the top frame's `await` or blocking `select` on the wait its register holds. The
+   * frame stays there until it is decided; resuming moves it on (suspension.ts).
    */
-  readonly wait: (frame: ActiveFrame) => void;
-  /** The value of the future `handle` names, once it has resolved. */
-  readonly settled: (handle: Value) => { readonly value: Value } | undefined;
+  readonly wait: () => void;
+  /**
+   * Ends the wait of the non-blocking `select` the top frame stands at, deciding nothing more; its
+   * decision, once it was decided.
+   */
+  readonly endWait: () => Decision | undefined;
   /** A handle to the weak reference to the running async call, for `worker.disposing()` (§7). */
   readonly currentCall: () => Value;
   /**

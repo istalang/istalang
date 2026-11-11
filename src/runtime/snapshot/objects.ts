@@ -8,8 +8,9 @@
  * - Nothing about holders is stored. Whether an object is held is decided by reachability from
  *   the executions' frames (runtime/lifetimes/), so nothing can disagree with the values that hold
  *   it.
- * - What an execution waits on is its resolver's (proposal 8, Rule 5): one per wait, registered on
- *   the futures its `await` or `select` names, until the first of them to resolve decides it.
+ * - An execution waits on a wait its frame holds in a register (proposal 8, Rule 5), decided by the
+ *   first of its cases' resolvers to resolve. A future's `onAwait` registers a resolver on it, and
+ *   the registration is what holds a pending resolver, so one nothing would resolve is let go of.
  * - Timers are the futures whose state is a timer.
  *
  * Disposability follows from an object's kind and state, its type, and whether a weak reference
@@ -111,13 +112,28 @@ export type FutureState = z.output<typeof futureState>;
 export type Watch = Extract<FutureState, { kind: 'watch' }>;
 
 /**
- * A wait's resolver (proposal 8, Rule 5): pending, registered on the futures its `await` or
- * `select` names, in its cases' order; or decided, its waiter to resume at case `position` with
+ * A wait (proposal 8, Rule 5): pending, or decided, its waiter to resume at case `position` with
  * `value`. It decides once.
  */
+const waitState = z.discriminatedUnion('kind', [
+  z.strictObject({ kind: z.literal('pending') }),
+  z.strictObject({ kind: z.literal('decided'), position: count, value }),
+]);
+
+/**
+ * A resolver (proposal 8, Rule 5): pending for case `position` of `wait`, registered on the future
+ * `on` once a future's `onAwait` was given it; resolved; or cancelled, its wait decided by another
+ * case or ended, after which resolving it does nothing.
+ */
 const resolverState = z.discriminatedUnion('kind', [
-  z.strictObject({ kind: z.literal('pending'), futures: z.array(objectId).min(1) }),
-  z.strictObject({ kind: z.literal('resolved'), position: count, value }),
+  z.strictObject({
+    kind: z.literal('pending'),
+    wait: objectId,
+    position: count,
+    on: objectId.optional(),
+  }),
+  z.strictObject({ kind: z.literal('resolved') }),
+  z.strictObject({ kind: z.literal('cancelled') }),
 ]);
 
 /** A condition only the runtime running a test can tell (§10). */
@@ -173,10 +189,15 @@ export const heapObject = z.discriminatedUnion('kind', [
    */
   defineObject('outcome', { future: objectId }),
   /**
-   * A wait's resolver: it resumes `waiter`, an execution suspended at an `await` or a blocking
-   * `select`, as `state` decides. It is a root, kept until its waiter resumes or stops.
+   * A wait of `waiter`, the execution whose frame holds it, which an `await` or a `select` stands
+   * at (proposal 8, Rule 5). It goes once its waiter moves past it, or stops.
    */
-  defineObject('resolver', { waiter: objectId, state: resolverState }),
+  defineObject('wait', { waiter: objectId, state: waitState }),
+  /**
+   * A language `Resolver`, doing what its state says when resolved. While pending and registered on
+   * a future, that registration holds it (runtime/lifetimes/holders.ts).
+   */
+  defineObject('resolver', { state: resolverState }),
   /**
    * An execution: a call stack, innermost frame last. An async call's execution names the future
    * its return resolves (spec §3.3); the root, the instance's own, names none.

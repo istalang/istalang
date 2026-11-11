@@ -7,7 +7,8 @@
 export const concurrencyTemplates = {
   caseNeedsFuture: {
     code: 5600,
-    message: (found: string) => `A select case waits on a Future, not ${found}.`,
+    message: (found: string) =>
+      `A select case waits on an awaitable, a type with an 'onAwait', not ${found}.`,
   },
   selectWithoutElse: {
     code: 5601,

@@ -18,7 +18,6 @@
  */
 
 import { handleTo, type Value } from '../../../definition/values/values.ts';
-import { waitingOn } from '../../interpreter/suspension.ts';
 import type { NativeWeakSide } from '../../natives.ts';
 import type { Futures } from './futures.ts';
 import { type Heap, handleObject, type LiveExecution, type LiveObjectOf } from './heap.ts';
@@ -65,14 +64,9 @@ export class WeakSide implements NativeWeakSide {
     this.#resolveWatches(id, 'disposed');
   }
 
-  /**
-   * The call `execution` runs is being disposed: its `disposing()` watches resolve. When it waits
-   * on one of them, it is to resume on that one, whatever else has resolved (§7); that watch.
-   */
-  disposing(execution: LiveExecution): number | undefined {
-    const watches = this.#resolveWatches(execution.id, 'callEnded');
-    const top = execution.frames.at(-1);
-    return top && waitingOn(top).find((future) => future !== undefined && watches.includes(future));
+  /** The call `execution` runs is being disposed: its `disposing()` watches resolve (§7). */
+  disposing(execution: LiveExecution): void {
+    this.#resolveWatches(execution.id, 'callEnded');
   }
 
   /** Whether `future` is a pending `disposing()` watch on the call `execution` runs (§7). */
@@ -88,14 +82,10 @@ export class WeakSide implements NativeWeakSide {
     this.#letGo(execution, 'callEnded');
   }
 
-  /**
-   * Lets go of `target` and resolves the watches pending on its weak reference, together; those
-   * watches.
-   */
-  #resolveWatches(target: number, gone: 'disposed' | 'callEnded'): readonly number[] {
+  /** Lets go of `target` and resolves the watches pending on its weak reference, together. */
+  #resolveWatches(target: number, gone: 'disposed' | 'callEnded'): void {
     const watches = this.#letGo(target, gone);
     this.#futures.resolveTogether(watches.map((id) => ({ id, value: null })));
-    return watches;
   }
 
   /**

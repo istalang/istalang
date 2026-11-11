@@ -45,7 +45,7 @@ import {
   resumeAfterCall,
 } from '../../interpreter/machine.ts';
 import { argumentContents } from '../../interpreter/registers.ts';
-import { waitingOn } from '../../interpreter/suspension.ts';
+import type { Decision } from '../../interpreter/suspension.ts';
 import type { Panic } from '../../natives.ts';
 import type { HeapObject } from '../../snapshot/objects.ts';
 import type { InstanceCall } from '../../snapshot/snapshot.ts';
@@ -331,15 +331,12 @@ class SegmentRunner implements Machine {
     this.#leave(future, 'returned');
   }
 
-  wait(frame: ActiveFrame): void {
+  wait(): void {
     const execution = this.#runStack.current();
     if (this.#collection.disposals.suspended(execution)) {
       return;
     }
-    const futures = waitingOn(frame).map(
-      (future) => future ?? unreachable(`Execution ${execution.id} waits on what is no future.`),
-    );
-    this.#instance.resolvers.wait(execution, futures, (future) => this.settled(handleTo(future)));
+    this.#instance.waits.stopped(execution);
     if (this.#runStack.driverOnly) {
       this.#runStack.pop();
       this.#instance.heap.noteReleased(
@@ -354,8 +351,17 @@ class SegmentRunner implements Machine {
     this.#leave(execution.resolves, 'awaited');
   }
 
-  readonly settled = (handle: Value): { readonly value: Value } | undefined =>
-    this.#instance.futures.settled(handle);
+  openWait(): Value {
+    return this.#instance.waits.open(this.#runStack.current());
+  }
+
+  resolver(wait: Value, position: number): Value {
+    return this.#instance.waits.resolver(wait, position);
+  }
+
+  endWait(): Decision | undefined {
+    return this.#instance.waits.end(this.#runStack.current());
+  }
 
   currentCall(): Value {
     return this.#instance.weak.reference(handleTo(this.#runStack.current().id));

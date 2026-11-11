@@ -233,6 +233,11 @@ export function namesFunctionValue(site: NodeOf<string>): site is FunctionValueS
 export type ImplicitRole =
   /** `iterate`, which an iteration through a cursor calls on what it runs over (§3.10). */
   | 'iterate'
+  /**
+   * `onAwait`, which an `await` or a `select`'s case calls on what it waits on, with the wait's
+   * resolver (proposal 8, Rule 5).
+   */
+  | 'onAwait'
   /** `..=` storing its end one past the written one, in the step's direction. */
   | 'inclusiveEnd'
   /**

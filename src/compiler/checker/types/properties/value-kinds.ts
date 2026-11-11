@@ -4,11 +4,11 @@
  * (traits/sendable.ts). The data rule (rules/kinds/data-kinds.ts) holds every value code handles to
  * its code's mark.
  *
- * - A future holds its kind, `live`, `ista` or a variable; a handle that stays in its process
- *   (`extern live struct`) is `live`; a value a `dispose` of a kind may take is of it, since
- *   releasing it calls that code (Rule 2's implicit calls), whatever that dispose's constraints:
- *   meeting a trait asks a type's kinds (Rule 4), so they never ask it. So a slot, whose runtime
- *   `dispose` is `ista`, is ista. Anything holding one at any depth is of its kind, whatever else it
+ * - A handle that stays in its process (`extern live struct`) is `live`; a value a `dispose` of a
+ *   kind may take is of it, since releasing it calls that code (Rule 2's implicit calls), whatever
+ *   that dispose's constraints: meeting a trait asks a type's kinds (Rule 4), so they never ask it.
+ *   So a slot, whose runtime `dispose` is `ista`, is ista, and a future and a resolver are of their
+ *   kind, `live`, `ista` or a variable, as their `K fn dispose` is. Anything holding one at any depth is of its kind, whatever else it
  *   holds, a future's value among it, so one type may hold both kinds, which no code may handle.
  * - A function is simple data, whatever its mark: holding one isn't calling it (Rule 2).
  * - A type parameter's values are simple where they are handled: generic code passes them through,
@@ -33,7 +33,6 @@ import { isOneKind } from '../type/function-kinds.ts';
 import { type NominalEntity, type NominalType, nominalType, type Type } from '../type/index.ts';
 import { aboveBottom, markOrder } from '../type/mark-orders.ts';
 import { markType } from '../type/primitives.ts';
-import { awaitedOf } from '../type/well-known.ts';
 import { isConfined, staysInProcess } from './handles.ts';
 import { heldPartsOf } from './held.ts';
 import { TypeCycle } from './type-cycle.ts';
@@ -62,8 +61,7 @@ export function declaredKindsOf(checker: CheckerContext, entity: NominalEntity):
     parametersIn(part).some((parameter) => parameters.some((each) => each === parameter));
   // The walk lists every part at any depth, so a part holding others, `List<T>`, adds only its
   // own kind, and the parts it holds, `T`, are read again themselves.
-  const adds = (part: Type) =>
-    part.kind === 'parameter' || isComputed(part) || mayOwnKind(checker, part);
+  const adds = (part: Type) => part.kind === 'parameter' || isComputed(part) || mayOwnKind(part);
   return {
     marks: distinctKinds(
       parts.flatMap((part) => (decided(part) ? [] : ownValueKindsOf(checker, part))),
@@ -279,16 +277,15 @@ function distinctKinds(kinds: readonly Type[]): readonly Type[] {
 
 /**
  * Whether a value of `part` may be of a kind by what it is, whatever its arguments: a handle that
- * stays in its process, a future, or a value with an identity of its own, which may be disposable.
+ * stays in its process, or a value with an identity of its own, which may be disposable, a future
+ * and a resolver among them.
  */
-function mayOwnKind(checker: CheckerContext, part: Type): part is NominalType {
+function mayOwnKind(part: Type): part is NominalType {
   if (part.kind !== 'nominal') {
     return false;
   }
   const { declaration } = part.entity;
-  return (
-    staysInProcess(declaration) || isConfined(declaration) || awaitedOf(checker, part) !== undefined
-  );
+  return staysInProcess(declaration) || isConfined(declaration);
 }
 
 /**
@@ -299,19 +296,15 @@ function ownValueKindsOf(checker: CheckerContext, part: Type): readonly Type[] {
   if (part.kind === 'associated') {
     return checker.boundKindsOf(part);
   }
-  if (!mayOwnKind(checker, part)) {
+  if (!mayOwnKind(part)) {
     return [];
   }
   if (staysInProcess(part.entity.declaration)) {
     return [markType('live')];
   }
-  const awaited = awaitedOf(checker, part)?.mode;
-  if (awaited !== undefined) {
-    // A future of no mark, `Future<Int, Int>`, is refused where it is written; it holds no kind.
-    return isOneKind(checker, awaited) ? [awaited] : [];
-  }
-  // Only a value with an identity of its own is disposable (rules/disposal/disposal.ts).
-  return isConfined(part.entity.declaration) ? checker.disposeKindsOf(part) : [];
+  // Only a value with an identity of its own is disposable (rules/disposal/disposal.ts). One of no
+  // mark, `Future<Int, Int>`, is refused where it is written; it holds no kind.
+  return checker.disposeKindsOf(part).filter((kind) => isOneKind(checker, kind));
 }
 
 /**

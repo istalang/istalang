@@ -3,8 +3,8 @@ description: lowering to Definition IR, interned tables, function instances, cal
 owner: tech-lead
 status: active
 applies_to: istalang
-last_verified: 2026-11-10
-last_updated: 2026-11-10
+last_verified: 2026-11-11
+last_updated: 2026-11-11
 tags: [reuse, lowering, definition, ir, instructions]
 ---
 
@@ -21,6 +21,7 @@ tags: [reuse, lowering, definition, ir, instructions]
 - declare a frame's parameters, running its prologue: each parameter a call leaves out computed from its default, read through `EntryContext.inDefaults`, then the `body` marker → `declareFrame` (`src/compiler/lowering/functions/frame-variables.ts`); never compute a default in a caller
 - close a `ResolvedCall` against an instantiation's substitution/witnesses → `closeCall`, `closeCallWithin` (`src/compiler/lowering/calls/closed-calls.ts`), given the checker as a `Closer` (its type rules, and the witnesses a requirement on a computed type takes once known)
 - close a `FunctionCall` or a trait witness call → `closeFunctionCall`, `closeWitness` (`src/compiler/lowering/calls/closed-calls.ts`)
+- read what a closed call gives, or how it or a dispatch maps its function's types (the constraint's trait arguments and `Self` included) → `resultOfCall`, `substitutionOfCall`, `dispatchSubstitution` (`src/compiler/lowering/calls/closed-calls.ts`)
 - build a root `FunctionInstance` → `rootInstance`, `substitutionOf` (`src/compiler/lowering/tables/instances.ts`); the entry a call leaving parameters out calls, its function's own or an extern's defaults entry → `DefinitionTables.leavingOutIndex`; whether a function value of a shorter type leaves any out → `leavesOut` (`src/compiler/lowering/calls/closed-calls.ts`)
 - allocate registers, place labels, and emit jumps, branches or instructions → `CodeWriter` (`src/compiler/lowering/functions/code-writer.ts`), via `context.code`
 - write code with no syntax behind it (codecs, a host's extern constant's read, `any` dispatch, async fits) → `SynthesizedCode` (`src/compiler/lowering/synthesized/index.ts`); pass its parameters on, those it takes by `&` by `&` (into a part too) → `SynthesizedCode.passedOn`; pass by `&` a value it has no place for → `SynthesizedCode.inCell`
@@ -52,7 +53,8 @@ tags: [reuse, lowering, definition, ir, instructions]
 - release block variables or statement temporaries → `endScope`, `headerTemporaries`, `lowerGuarded`, `release` (`src/compiler/lowering/constructs/statements/scopes.ts`)
 - copy the value a register holds, a cell's rather than the cell, into a fresh one → `copied` (`src/compiler/lowering/constructs/statements/variables.ts`)
 - list an instruction's operands → `operandsOf` (`src/definition/instructions/instruction.ts`)
-- inspect instruction wait/termination flow → `awaitedRegisters`, `waits`, `terminates` (`src/definition/instructions/flow.ts`)
+- inspect instruction wait/termination flow → `waitRegister`, `waits`, `terminates` (`src/definition/instructions/flow.ts`)
+- write a wait: a resolver per case handed to its `onAwait`, then the instruction that waits; or await a future from synthesized code → `openWait`, `awaitWait`, `awaitFuture` (`src/compiler/lowering/calls/waits.ts`)
 - inspect `Definition` function parameters or captures → `takesReference`, `mayLeaveOut`, `capturesOf`; where a code entry's body begins, past its prologue → `bodyStart` (`src/definition/tables/functions.ts`)
 - check an entry can encode an instance's outcome → `encoderProblem` (`src/definition/tables/functions.ts`); the encoder an `Instance<T>` type entry names for what it spawns → `outcomeEncoderOf` (`src/definition/tables/types.ts`)
 - inspect `Definition` type references, roles, cell or resource types → `typesIn`, `isResourceType`, `isCellType`, `hasRole` (`src/definition/tables/types.ts`)

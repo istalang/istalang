@@ -22,7 +22,7 @@ describe('holding', () => {
         (test, objects) => {
           const { heap, frames } = test;
           const start = [...objects, ...frames.flatMap(frameValues).flatMap(handlesIn)];
-          const expected = reachedFrom(start, (id) => holdsOf(heap.objectOf(id)));
+          const expected = reachedFrom(start, (id) => holdsOf(heap, heap.objectOf(id)));
           expect(heldFrom(heap, { frames, objects }).objects).toEqual(expected);
         },
       ),

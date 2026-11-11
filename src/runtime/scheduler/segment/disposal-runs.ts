@@ -5,7 +5,7 @@
  * - A disposal's call runs as a frame on top of whatever runs, or on a carrier execution of its
  *   own when nothing does, as when a driver's await or return let go of things. Its return resumes
  *   collecting, not a caller.
- * - A disposed call's cleanup is that call's own execution, resumed on its `disposing()` watcher,
+ * - A disposed call's cleanup is that call's own execution, resumed at its `disposing()` case,
  *   that case winning whatever else has resolved. Its next await or return stops the call there.
  * - While an instance ends (§3.12), a disposal that panics is abandoned with whatever it started,
  *   so it counts as done and the rest still run and tell their hosts.
@@ -14,10 +14,9 @@
 
 import type { ActiveFrame } from '../../interpreter/frames.ts';
 import { newFrame, releaseFrame } from '../../interpreter/machine.ts';
-import { waitingOn } from '../../interpreter/suspension.ts';
 import type { Cleanup, DisposalCall, DisposalRun } from '../../lifetimes/disposal.ts';
 import type { LiveExecution } from '../instance/heap.ts';
-import { type Instance, topFrame } from '../instance/index.ts';
+import type { Instance } from '../instance/index.ts';
 import { type Caller, startCall } from './calls.ts';
 import type { RunStack } from './run-stack.ts';
 
@@ -129,8 +128,7 @@ export class DisposalRuns {
     this.#seams.returned();
   }
 
-  #cleanup({ execution, watcher }: Cleanup): false {
-    const position = waitingOn(topFrame(execution)).indexOf(watcher);
+  #cleanup({ execution, position }: Cleanup): false {
     this.#seams.instance.resumeOn(execution, { position, value: null });
     this.#cleanups.add(execution);
     this.#seams.runStack.push(execution);

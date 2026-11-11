@@ -23,9 +23,8 @@ export interface Label {
   readonly id: number;
 }
 
-/** One case of a `select` being written: its future, what it holds, its `as` register, its body. */
+/** One case of a `select` being written: what it holds, its `as` register, its body. */
 export interface SelectCaseCode {
-  readonly future: Register;
   readonly holds: readonly Register[];
   readonly bind: Register | undefined;
   readonly target: Label;
@@ -189,19 +188,41 @@ export class CodeWriter {
     }
   }
 
-  /** Waits on the future in `future`, its value then in `dst` (§5). */
-  await(dst: Register, future: Register, span: AnchoredSpan): void {
-    this.emit({ kind: 'await', span, dst, future, ...this.#waypointField() });
+  /** A new wait (proposal 8, Rule 5); its register. */
+  wait(span: AnchoredSpan): Register {
+    const dst = this.allocate();
+    this.emit({ kind: 'wait', span, dst });
+    return dst;
   }
 
-  /** Chooses among `cases` by their futures (§8): waits for one, or goes to `otherwise` at once. */
-  select(cases: readonly SelectCaseCode[], otherwise: Label | undefined, span: AnchoredSpan): void {
+  /** A new resolver of the wait in `wait`, for its case `position`; its register. */
+  resolver(wait: Register, position: number, span: AnchoredSpan): Register {
+    const dst = this.allocate();
+    this.emit({ kind: 'resolver', span, dst, wait, position });
+    return dst;
+  }
+
+  /** Waits until the wait in `wait` is decided, its value then in `dst` (§5). */
+  await(dst: Register, wait: Register, span: AnchoredSpan): void {
+    this.emit({ kind: 'await', span, dst, wait, ...this.#waypointField() });
+  }
+
+  /**
+   * Chooses among `cases` as the wait in `wait` is decided (§8): waits for it, or goes to
+   * `otherwise` at once when it is undecided.
+   */
+  select(
+    wait: Register,
+    cases: readonly SelectCaseCode[],
+    otherwise: Label | undefined,
+    span: AnchoredSpan,
+  ): void {
     const instruction: Extract<WrittenInstruction, { kind: 'select' }> = {
       kind: 'select',
       span,
+      wait,
       ...this.#waypointField(),
-      cases: cases.map(({ future, holds, bind }) => ({
-        future,
+      cases: cases.map(({ holds, bind }) => ({
         holds: [...holds],
         ...(bind === undefined ? {} : { bind }),
         target: 0,

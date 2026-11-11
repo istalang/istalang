@@ -18,13 +18,18 @@
  */
 
 import { unreachable } from '../../../../foundation/structures/unreachable.ts';
-import { typeParametersOf } from '../../../syntax/declarations/index.ts';
+import { type FunctionDeclaration, typeParametersOf } from '../../../syntax/declarations/index.ts';
 import type { MemberConversion, TraitObjects } from '../../check.ts';
 import type { CheckerContext } from '../../contexts/context.ts';
 import { searchSite, type UseSite } from '../../contexts/use-site.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import { sameConstraint } from '../../types/identity/identity.ts';
-import { constraintOn, substitute, substitutionFor } from '../../types/parts/substitution.ts';
+import {
+  constraintOn,
+  type Substitution,
+  substitute,
+  substitutionFor,
+} from '../../types/parts/substitution.ts';
 import {
   constraintSubstitution,
   requiredFieldType,
@@ -105,19 +110,21 @@ export function traitObjectsOf(checker: CheckerContext): TraitObjects {
         unreachable(`${typeText(member)} went into ${typeText(type)} without meeting it.`)
       );
     },
-    memberSignatures: (type, constraint, member, { required, typeArguments }) => {
-      const signature = requirementType(checker, required);
-      const own = substitutionFor(typeParametersOf(required.typeParameters), typeArguments);
+    memberSignatures: (type, constraint, member, call) => {
+      const signature = requirementType(checker, call.required);
       return converting(memberConstraints(checker, { type, constraint, member }), (each) =>
         functionTypeOf(
-          substitute(
-            signature,
-            new Map([...constraintSubstitution(each, member), ...own]),
-            checker.typeRules,
-          ),
+          substitute(signature, requiredSubstitution(each, member, call), checker.typeRules),
         ),
       );
     },
+    callSubstitution: (type, constraint, on, call) =>
+      requiredSubstitution(
+        type.constraints[constraint] ??
+          unreachable(`${typeText(type)} has no constraint ${constraint}.`),
+        on,
+        call,
+      ),
     memberFieldTypes: (type, constraint, member, field) =>
       converting(memberConstraints(checker, { type, constraint, member }), (each) =>
         requiredFieldType(checker, each, field, member),
@@ -129,6 +136,24 @@ export function traitObjectsOf(checker: CheckerContext): TraitObjects {
         (found, constraint) => checker.fitting.metInstantiation(found, constraint).kind !== 'none',
       ),
   };
+}
+
+/**
+ * How a call of `required`, with its own `typeArguments`, through `met` on a value of `self` maps
+ * the required function's types: the trait's parameters and `Self`, then its own.
+ */
+function requiredSubstitution(
+  met: Constraint,
+  self: Type,
+  {
+    required,
+    typeArguments,
+  }: { readonly required: FunctionDeclaration; readonly typeArguments: readonly Type[] },
+): Substitution {
+  return new Map([
+    ...constraintSubstitution(met, self),
+    ...substitutionFor(typeParametersOf(required.typeParameters), typeArguments),
+  ]);
 }
 
 /** A value of `member` inside `type`, called through its `constraint`-th constraint. */

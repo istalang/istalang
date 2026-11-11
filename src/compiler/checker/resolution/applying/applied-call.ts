@@ -64,10 +64,12 @@ export interface CallApplication {
   readonly none: (reasons: readonly Inapplicability[]) => void;
 }
 
-/** A call made: what was chosen and instantiated, and what it gives. */
+/** A call made: what was chosen and instantiated, what each argument fills, and what it gives. */
 export interface AppliedCall {
   readonly application: Application;
   readonly instantiation: Instantiation;
+  /** The type of the parameter each argument fills, by position, instantiated. */
+  readonly filled: readonly (Type | undefined)[];
   readonly result: Type;
 }
 
@@ -146,15 +148,18 @@ export function completeCall(
     return undefined;
   }
   const settled = withSolvedTypes(request.arguments, (type) => application.inference.solved(type));
-  fitArguments(
-    context,
-    settled,
-    filledTypes(checker.typeRules, application, instantiation.substitution, settled.length),
+  const filled = filledTypes(
+    checker.typeRules,
+    application,
+    instantiation.substitution,
+    settled.length,
   );
+  fitArguments(context, settled, filled);
   recordArgumentKeys(context, settled, { application, instantiation });
   return {
     application: { ...application, candidate: closed.candidate },
     instantiation: closed.instantiation,
+    filled,
     result: substitute(
       application.signature.result(),
       instantiation.substitution,

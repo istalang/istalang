@@ -30,13 +30,17 @@ import type { FunctionDefinition } from '../../../definition/tables/functions.ts
 import { unreachable } from '../../../foundation/structures/unreachable.ts';
 import type { MemberConversion } from '../../checker/check.ts';
 import { type RequiredField, requiredFieldRead } from '../../checker/surface/checked-field.ts';
-import { substitute, substitutionFor } from '../../checker/types/parts/substitution.ts';
+import { substitute } from '../../checker/types/parts/substitution.ts';
 import { kindOfFunction } from '../../checker/types/type/function-kinds.ts';
 import type { AnyType, FunctionType, Type } from '../../checker/types/type/index.ts';
 import { awaitedOf } from '../../checker/types/type/well-known.ts';
 import { hasOneValue } from '../../checker/types/unions/unions.ts';
-import { typeParametersOf } from '../../syntax/declarations/index.ts';
-import { closeWitness, type Dispatch } from '../calls/closed-calls.ts';
+import {
+  closeWitness,
+  type Dispatch,
+  dispatchSubstitution,
+  resultOfCall,
+} from '../calls/closed-calls.ts';
 import type { CodeContext } from '../context.ts';
 import { fittedIn } from '../functions/fits/index.ts';
 import { resultFitBetween } from '../functions/fits/parts.ts';
@@ -71,7 +75,7 @@ export function dispatchEntry(lowering: Lowering, dispatch: Dispatch): FunctionD
   const givesFuture = awaited !== undefined;
   const kindOfDispatch = substitute(
     awaited?.mode ?? kindOfFunction(checker, required),
-    substitutionFor(typeParametersOf(required.typeParameters), dispatch.typeArguments),
+    dispatchSubstitution(checker, dispatch),
     checker.typeRules,
   );
   switchOverMembers(code, on, receiver, (type) => {
@@ -92,9 +96,10 @@ export function dispatchEntry(lowering: Lowering, dispatch: Dispatch): FunctionD
       return { kind: 'value' as const, register };
     });
     const self = memberReceiver(code, receiver, { on, type, references });
-    const call = code.call(closeWitness(witness, dispatch, checker), [self, ...passed]);
-    const result = givesFuture ? code.await(call) : call;
-    code.return(signatures === undefined ? result : convertedResult(code, result, signatures, at));
+    const closed = closeWitness(witness, dispatch, checker);
+    const call = code.call(closed, [self, ...passed]);
+    const given = givesFuture ? code.await(call, resultOfCall(checker, closed)) : call;
+    code.return(signatures === undefined ? given : convertedResult(code, given, signatures, at));
   });
   const generic = dispatch.typeArguments.map((type) => spelledType(checker, type));
   const name = `${spelledType(checker, on)}.${required.name.text}${generic.length === 0 ? '' : `<${generic.join(', ')}>`}`;

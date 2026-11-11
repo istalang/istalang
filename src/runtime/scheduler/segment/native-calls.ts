@@ -41,6 +41,7 @@ import {
   type NativeResources,
   type NativeSlots,
   type NativeTesting,
+  type NativeWaits,
   Panic,
 } from '../../natives.ts';
 import { isReference, type Reference, type RegisterContents } from '../../snapshot/objects.ts';
@@ -129,6 +130,7 @@ function capabilitiesOf(instance: Instance, side: SegmentSide): NativeCapabiliti
   const { now, waiting } = side;
   return {
     futures: nativeFuturesOf(instance.futures, side),
+    waits: nativeWaitsOf(instance),
     slots: nativeSlotsOf(instance.slots),
     weak: instance.weak,
     resources: nativeResourcesOf(instance.heap),
@@ -164,6 +166,19 @@ function nativeFuturesOf(futures: Futures, { waiting, trace }: SegmentSide): Nat
     onDisposed: (future, notice) => {
       futures.onDisposed(handleObject(future), notice);
     },
+  };
+}
+
+/** The instance's waits as natives reach them (proposal 8, Rule 5). */
+function nativeWaitsOf({ waits, futures }: Instance): NativeWaits {
+  return {
+    onAwait: (future, done) => {
+      waits.register(done, handleObject(future), futures.settled(future));
+    },
+    resolve: (done, value) => {
+      waits.resolve(done, value);
+    },
+    tryResolve: (done, value) => waits.tryResolve(done, value),
   };
 }
 

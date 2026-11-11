@@ -34,7 +34,7 @@ import {
   writeCell,
   writeRegister,
 } from './registers.ts';
-import { enterCase, resolvedCase } from './suspension.ts';
+import { enterCase } from './suspension.ts';
 
 const relations = {
   less: (comparison: bigint) => comparison < 0n,
@@ -132,8 +132,15 @@ const handlers: Handlers<Machine, Instruction, [ActiveFrame], void> = {
   return: (machine, instruction, frame) => {
     machine.return(frame, readRegister(frame, instruction.value));
   },
-  await: (machine, _instruction, frame) => {
-    machine.wait(frame);
+  wait: (machine, instruction, frame) => {
+    next(frame, instruction.dst, machine.openWait());
+  },
+  resolver: (machine, instruction, frame) => {
+    const wait = readRegister(frame, instruction.wait);
+    next(frame, instruction.dst, machine.resolver(wait, instruction.position));
+  },
+  await: (machine) => {
+    machine.wait();
   },
   call: (machine, instruction, frame) => {
     const { function: callee, captures } = calledFunction(frame, instruction.callee);
@@ -183,10 +190,10 @@ const handlers: Handlers<Machine, Instruction, [ActiveFrame], void> = {
   },
   select: (machine, instruction, frame) => {
     if (instruction.otherwise === undefined) {
-      machine.wait(frame);
+      machine.wait();
       return;
     }
-    enterCase(frame, instruction, resolvedCase(frame, instruction, machine.settled));
+    enterCase(frame, instruction, machine.endWait());
   },
   release: (_machine, instruction, frame) => {
     for (const register of instruction.registers) {

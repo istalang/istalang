@@ -119,7 +119,8 @@ export const checkerDiagnostics = defineDiagnostics('checker', {
   },
   awaitNeedsFuture: {
     code: 5023,
-    message: (found: string) => `'await' waits on a Future, not ${found}.`,
+    message: (found: string) =>
+      `'await' waits on an awaitable, a type with an 'onAwait', not ${found}.`,
   },
   missingStdModule: {
     code: 5024,

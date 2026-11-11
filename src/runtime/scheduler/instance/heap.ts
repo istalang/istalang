@@ -81,10 +81,12 @@ const indexes = {
   mocks: index('mock', (mock) => [mock.target]),
   /** Each answer to another instance's call, by the future it waits on. */
   answers: index('answer', (answer) => [answer.future]),
-  /** Each pending resolver, by the futures it is registered on. */
-  resolvers: index('resolver', ({ state }) => (state.kind === 'pending' ? state.futures : [])),
-  /** Each resolver, by the execution it resumes. */
-  waits: index('resolver', (resolver) => [resolver.waiter]),
+  /** Each pending resolver registered on a future, by that future. */
+  resolvers: index('resolver', ({ state }) =>
+    state.kind === 'pending' && state.on !== undefined ? [state.on] : [],
+  ),
+  /** Each pending resolver, by the wait it decides. */
+  cases: index('resolver', ({ state }) => (state.kind === 'pending' ? [state.wait] : [])),
 };
 
 type Indexes = typeof indexes;

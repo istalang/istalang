@@ -3,8 +3,8 @@ description: canonical JSON codecs, versioned formats, snapshots, heap objects, 
 owner: tech-lead
 status: active
 applies_to: istalang
-last_verified: 2026-11-10
-last_updated: 2026-11-10
+last_verified: 2026-11-11
+last_updated: 2026-11-11
 tags: [reuse, runtime, snapshot, persistence, scheduler, lifetimes, host]
 ---
 
@@ -41,7 +41,7 @@ tags: [reuse, runtime, snapshot, persistence, scheduler, lifetimes, host]
 - tell how a run waits (committing, or in memory), resume a live wait once from the host's event loop, or read what panics a resumed live run → `Waiting`, `istaWaiting`, `LiveResumes`, `resumedPanicOf` (`src/runtime/scheduler/waiting.ts`)
 - observe a future's disposal from outside the language, told at once in a live run and at the commit in an instance → `NativeFutures.onDisposed` (`src/runtime/natives.ts`)
 - give a live run a future something outside it resolves, with its one-shot resolver and cancellation → `liveResolvable` (`src/runtime/scheduler/live-resolvers.ts`), as natives reach it, `NativeFutures.resolvable` (`src/runtime/natives.ts`)
-- make an execution wait, decide its wait when a future resolves, or resume it as decided → `Resolvers` (`src/runtime/scheduler/instance/resolvers.ts`), `resume`, `releaseLosers`, `waitingOn` (`src/runtime/interpreter/suspension.ts`)
+- open a wait, make its case resolvers, register one on a future, resolve one, decide the wait when futures resolve together, or end it as the waiter moves on → `Waits` (`src/runtime/scheduler/instance/waits.ts`); find the wait a frame stands at, resume or enter a case as decided, let go of a `select`'s losers → `stoppedAt`, `takeWait`, `resume`, `enterCase`, `releaseLosers` (`src/runtime/interpreter/suspension.ts`)
 - let go of what nothing holds without committing → `Instance.dropUnheld` (`src/runtime/scheduler/instance/index.ts`)
 - run a host's calls on one instance one after another → `InstanceCalls` (`src/runtime/host/instance-calls.ts`)
 - make a compiled program's code that waits live, until the checker compiles live code → `asLive` (`src/runtime/runtime.test-kit.ts`)

@@ -81,6 +81,19 @@ export interface NativeFutures {
   readonly onDisposed: (future: Value, notice: () => void) => void;
 }
 
+/**
+ * The running instance's waits (proposal 8, Rule 5): the resolvers `await` and `select` hand an
+ * awaitable's `onAwait`, which a future registers and code resolves.
+ */
+export interface NativeWaits {
+  /** Resolves the resolver `done` as the future `future` resolves: at once when it has (`onAwait`). */
+  readonly onAwait: (future: Value, done: Value) => void;
+  /** Resolves `done` with `value`: nothing once it is cancelled, a panic once it resolved. */
+  readonly resolve: (done: Value, value: Value) => void;
+  /** Resolves `done` with `value` if it is pending; whether it took `value`. */
+  readonly tryResolve: (done: Value, value: Value) => boolean;
+}
+
 /** Whether a resolver waits for its value, took one or failed, or lost its future first. */
 export type ResolverState = 'pending' | 'resolved' | 'cancelled';
 
@@ -190,6 +203,9 @@ export interface NativeLogs {
 export interface WithFutures {
   readonly futures: NativeFutures;
 }
+export interface WithWaits {
+  readonly waits: NativeWaits;
+}
 export interface WithSlots {
   readonly slots: NativeSlots;
 }
@@ -214,6 +230,7 @@ export interface WithTesting {
 
 /** Every capability: what the runtime gives each native. */
 export type NativeCapabilities = WithFutures &
+  WithWaits &
   WithSlots &
   WithWeakSide &
   WithResources &

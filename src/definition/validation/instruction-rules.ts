@@ -100,6 +100,8 @@ const rules: Handlers<Tables, Instruction, [CodeFunction], string | undefined> =
       ? undefined
       : `register ${i.parameter} is no parameter a call may leave out.`,
   body: none,
+  wait: none,
+  resolver: none,
   await: waitsOnlyInExecutions,
   select: waitsOnlyInExecutions,
   release: none,

@@ -756,10 +756,18 @@ extern shared struct WeakRef<T is Disposable>
 type Mark = "simple" | "live" | "ista"   # what data is, and what code may handle (§3.3)
 type Persistence = "live" | "ista"            # the two kinds of code (§5)
 extern shared struct Future<T, K in Persistence> { type Mode = K }   # waited on in its kind
+extern shared struct Resolver<T, K in Persistence>   # one wait's one-shot resolver (§5)
 type Sendability = "sendable" | "plain"       # what a function's values may capture (§3.14)
 extern struct Fn<Args, Result, Kind in Mark = "simple", Send in Sendability = "plain">   # §3.14
 extern sendable struct Instance<T>          # compared by identity, never Encodable (§9)
 shared struct Shared<T> { value: T }        # not sendable (§3.18)
+
+trait Awaitable<T>:                         # what `await` and a `select` case wait on (§5, §8)
+  type Mode in Persistence
+  Self.Mode fn onAwait(self: Self, done: Resolver<T, Self.Mode>)
+extern K fn onAwait<T, K in Persistence>(self: Future<T, K>, done: Resolver<T, K>)   # the runtime's
+extern K fn resolve<T, K in Persistence>(self: Resolver<T, K>, value: T)   # a second one panics
+extern K fn tryResolve<T, K in Persistence>(self: Resolver<T, K>, value: T) -> Bool   # took it?
 
 extern ista fn Slot.create<T>() -> Slot<T>                  # starts empty; a slot is ista data
 extern ista fn put<T>(self: Slot<T>, value: T) -> Future<Unit, "ista">   # waits until empty, then fills
@@ -837,6 +845,7 @@ An operator is sugar for a named function: `a + b` calls `add(a, b)`. On concret
 | `x[k]` | `index` | `Indexable` |
 | `x[k] = v` | `setIndex` | `IndexAssignable` |
 | `for x in c` | `iterate` | `Iterable` |
+| `await x`, a `select` case on `x` | `onAwait(x, done)`, `done` the wait's resolver (§5) | `Awaitable` |
 | `x in c`, `x not in c` | `includes(c, x)` | `Container` |
 | `T(x)` | `T.from` | `Convertible` |
 
@@ -873,7 +882,7 @@ fn multiply(left: Duration, factor: Int) -> Duration:
 - **Floor division and remainder share a trait,** because they are defined together: `a == (a // b) * b + a % b` always holds. A type can thus offer exact division, floor division, or both.
 - **Powers.** `**` groups to the right, `2 ** 3 ** 2` being `2 ** 9`, and binds tighter than a prefix operator on its right, so `2 ** -1` reads as written. A prefix operator directly on its left (`-x ** 2`) is a syntax error, since languages disagree on whether the sign applies first: write `(-x) ** 2` or `-(x ** 2)`. An `Int` to an `Int` power is an exact `Int`, which a negative exponent can't be, so it panics; any `Float` operand makes a `Float`. `Powerable<E = Self, T = Self>` lets the exponent have a type of its own, as a `Decimal`'s `Int` does.
 - **Bitwise operators** work on `Int` only, as on a two's complement of unbounded width, as in Python: `~x` is `-x - 1`, and `>>` rounds toward negative infinity, so `-9 >> 1` is `-5`. A negative shift count panics. A type of a program's own takes `&`, `|`, `^` and `~` through `Bitwise`, and the shifts through `Shiftable`, which a set of flags has no use for.
-- **Not overloadable:** `and`, `or` and `not` (they short-circuit, and a function call would evaluate both sides), `=`, `.`, `->`, prefix `*` and `&`. `await` and `select` aren't overloaded either; they work on futures (§6).
+- **Not overloadable:** `and`, `or` and `not` (they short-circuit, and a function call would evaluate both sides), `=`, `.`, `->`, prefix `*` and `&`. `await` and `select` aren't overloaded either: they wait on any awaitable, through its `onAwait` (§3.10, §5).
 - **Compound assignment.** `x += y` is sugar for `x = x + y`.
 - **No implicit conversions.** Mixed-type operators work only through overloads, for primitives as for a program's own types. The prelude declares them for `Int` and `Float`, such as `add(Int, Float) -> Float`, and `Decimal` declares its own beside it for `Int` only: mixing it with `Float` would bring back the rounding it exists to avoid. Any `Stringable` value appends to a string, on either side, through `add<T is Stringable>(left: String, right: T)` and its mirror, so `"Total: " + count` and `count + " items"` just work. Anything else converts explicitly with `T(x)` (§3.10).
 
@@ -1493,9 +1502,9 @@ When the runtime or the host fills a slot, it wakes the waiters even if the whol
 - **The runtime:** when an async call returns, when a `time.delay` or `time.at` timer fires, and when a value is disposed (`disposed()`, `worker.disposing()`).
 - **The host,** through what it provides.
 
-`await` and `select` work only on futures. A future resolves once and stays resolved.
+`await` and `select` wait on awaitables (§5), a future the runtime's own. A future resolves once and stays resolved.
 
-**Resolvers.** Each wait has a resolver of its own, which the runtime registers on the futures it waits on: the one an `await` names, or each case of a `select`. The first of them to resolve decides it, once: the waiting execution becomes ready and resumes with that future's value. Several resolving together, or resolved before the wait began, decide it at the first in order. Futures resolve together when one event resolves them at once: the reads one value serves, the timers due at one instant, the watches one disposal resolves, or a `futures.first` with what it races; each take or put a slot serves is an event of its own, in queue order. Executions that become ready together run in the order they were created. In a persistent instance the resolver is part of its state, committed with the waiting frame, so a segment that is discarded decided nothing; in live code it lives in memory. Resolving a future costs what waits on that future, however many executions wait on others.
+**Resolvers.** Each wait has a resolver per case, which the runtime makes and gives the case's awaitable through its `onAwait` (§3.10): an `await`'s one, or each case of a `select`, in order. A future registers it on itself, and another awaitable resolves it, hands it to one, or keeps it to resolve later. The first of a wait's resolvers to resolve decides it, once: the waiting execution becomes ready and resumes with that value, and the wait's other resolvers are cancelled, after which resolving them does nothing. Several resolving together, or resolved before the wait began, decide it at the first in order. A resolver let go of unresolved panics: nothing can decide its wait through it any more. Futures resolve together when one event resolves them at once: the reads one value serves, the timers due at one instant, the watches one disposal resolves, or a `futures.first` with what it races; each take or put a slot serves is an event of its own, in queue order. Executions that become ready together run in the order they were created. In a persistent instance the resolver is part of its state, committed with the waiting frame, so a segment that is discarded decided nothing; in live code it lives in memory. Resolving a future costs what waits on that future, however many executions wait on others.
 
 **Inboxes.** The standard library's `Inbox<T>` is a FIFO message queue built on slots, the way Haskell builds its channels on `MVar`s, and written in the language. It is a shared struct (§3.18), which the `inbox` module makes disposable by declaring its `dispose` (§7), so an inbox is a handle that a `WeakRef` can watch. It is created with `Inbox.create<T>()`, and `box.pending()` gives the messages waiting in it, oldest first, without receiving them:
 
@@ -1652,7 +1661,7 @@ ista async fn processAll(jobs: Array<Job>) -> Array<Outcome>:
 
 ## 8. select
 
-`await select` waits until one of several futures resolves, then runs that case. It is an expression: its value is the value of the winning case's body.
+`await select` waits until one of several awaitables resolves its case (§5), then runs that case. It is an expression: its value is the value of the winning case's body.
 
 ```python statements
 const got: Verdict? = await select:
@@ -1668,7 +1677,7 @@ const got: Verdict? = await select:
 
 The rules:
 
-- **Cases are expressions.** Each case expression must be a `Future`: a receive, an async call, a `delay`, or a future variable. `as name` binds the resolved value inside that case.
+- **Cases are expressions.** Each case expression is an awaitable (§5): a receive, an async call, a `delay`, a future variable, or a value of any type with an `onAwait`. `as name` binds what it resolves its case with inside that case.
 - **Sequential evaluation.** Case expressions are evaluated top to bottom. If one contains an `await`, evaluation suspends there and the later cases are evaluated after it resumes. Selection happens only after all cases are evaluated.
 - **The first to resolve wins.** The case whose future resolves first wins, as the `select`'s resolver decides (§6). If several have resolved together, or before the `select` waits, the first case in order wins.
 - **Each case holds what its expression creates.** Futures, slots and revertible holders created while evaluating a case expression are held by that case.

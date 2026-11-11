@@ -83,10 +83,17 @@ export function heapArbitrary(size = 8): fc.Arbitrary<TestHeap> {
         .map((target): LiveObject => ({ kind: 'weakRef', id: object, target })),
       fc.record({ waiter: id, value: contents }).map(
         ({ waiter, value }): LiveObject => ({
-          kind: 'resolver',
+          kind: 'wait',
           id: object,
           waiter,
-          state: { kind: 'resolved', position: 0, value },
+          state: { kind: 'decided', position: 0, value },
+        }),
+      ),
+      fc.record({ wait: id, on: fc.option(id, { nil: undefined }) }).map(
+        ({ wait, on }): LiveObject => ({
+          kind: 'resolver',
+          id: object,
+          state: { kind: 'pending', wait, position: 0, ...(on === undefined ? {} : { on }) },
         }),
       ),
     );

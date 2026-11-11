@@ -252,7 +252,7 @@ describe('definition format', () => {
       'an await in simple code',
       (json) => {
         const { span } = instructionAt(json, 3, 4);
-        at(json, 'functions', 3, 'instructions')[4] = { kind: 'await', span, dst: 0, future: 0 };
+        at(json, 'functions', 3, 'instructions')[4] = { kind: 'await', span, dst: 0, wait: 0 };
       },
       'await: only code running as an execution can wait',
       'functions[3].instructions[4]',

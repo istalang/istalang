@@ -97,6 +97,37 @@ describe('resolvers', () => {
     });
   });
 
+  it("leaves a slot's value to a losing cold take, held only by its resolver", async () => {
+    const coldTakeLoses = compiledText(
+      [
+        "import * as runtime from 'runtime'",
+        'struct ColdTake:',
+        '  slot: Slot<Int>',
+        '  type Mode = "ista"',
+        'ista fn onAwait(self: ColdTake, done: Resolver<Int, "ista">): self.slot.take().onAwait(done)',
+        'ista async fn fill(s: Slot<Int>):',
+        '  await runtime.commit()',
+        '  _ = s.put(42)',
+        'ista async fn main() -> Int:',
+        '  const s = Slot.create<Int>()',
+        '  const cold = ColdTake{slot: s}',
+        '  const filling = fill(s)',
+        '  const got = await select:',
+        '    case s.read() as x:',
+        '      x',
+        '    case cold as y:',
+        '      y',
+        '  const left = await s.take()',
+        '  await filling',
+        '  got * 100 + left',
+      ].join('\n'),
+    );
+    expect(await startToEnd(testRuntime(), coldTakeLoses)).toEqual({
+      kind: 'finished',
+      outcome: '4242',
+    });
+  });
+
   it.each([
     [
       'slot reads',

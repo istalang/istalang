@@ -33,7 +33,7 @@ import type { Type } from '../../types/type/index.ts';
 import { typeText } from '../../types/type/type-text.ts';
 import type { CallArgument } from '../choosing/call-arguments.ts';
 import { type Candidate, topLevelCandidates } from '../choosing/candidates.ts';
-import { applyCall } from './applied-call.ts';
+import { type AppliedCall, applyCall } from './applied-call.ts';
 import { judgedCall } from './call-kinds.ts';
 
 /** The implicit calls of one body, by construct and role. */
@@ -145,7 +145,22 @@ export function implicitOperatorCall(
  * or undefined after reporting why no call could be made.
  */
 export function implicitCall(context: BodyContext, request: ImplicitRequest): Type | undefined {
-  const applied = applyCall(context, {
+  const applied = applyImplicitCall(context, request);
+  if (applied !== undefined) {
+    recordImplicitCall(context, request, applied);
+  }
+  return applied?.result;
+}
+
+/**
+ * Makes the call `request` asks for without recording it, so its construct reads what it made
+ * before `recordImplicitCall` judges and records it; undefined after reporting why none could be.
+ */
+export function applyImplicitCall(
+  context: BodyContext,
+  request: ImplicitRequest,
+): AppliedCall | undefined {
+  return applyCall(context, {
     span: request.span ?? request.node.span,
     name: request.operator ?? request.candidates[0]?.declaration.name.text ?? request.role,
     candidates: request.candidates,
@@ -153,13 +168,16 @@ export function implicitCall(context: BodyContext, request: ImplicitRequest): Ty
     expected: request.expected,
     none: () => context.report(request.failure()),
   });
-  if (applied === undefined) {
-    return undefined;
-  }
-  const { application, instantiation } = applied;
+}
+
+/** Judges the call `applied`, made as `request` asked, by its kind, and records it. */
+export function recordImplicitCall(
+  context: BodyContext,
+  request: Pick<ImplicitRequest, 'node' | 'span' | 'role'>,
+  { application, instantiation }: AppliedCall,
+): void {
   const at = request.span ?? request.node.span;
   const frame = context.functions.current;
   const call = judgedCall(context, { at, frame, application, instantiation });
   context.implicit.record(request.node, request.role, call);
-  return applied.result;
 }

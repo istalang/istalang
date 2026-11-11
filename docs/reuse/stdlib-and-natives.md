@@ -3,8 +3,8 @@ description: std modules, native keys/capabilities, sequence positions, ranges, 
 owner: tech-lead
 status: active
 applies_to: istalang
-last_verified: 2026-10-28
-last_updated: 2026-11-04
+last_verified: 2026-11-11
+last_updated: 2026-11-11
 tags: [reuse, stdlib, natives, ranges, positions, time, decimal]
 ---
 
@@ -18,6 +18,7 @@ tags: [reuse, stdlib, natives, ranges, positions, time, decimal]
 - get the combined std natives table or the list of std module records → `stdNatives` (`src/stdlib/natives.ts`), `stdModules` (`src/stdlib/std-modules.ts`)
 - type a native function/table by the capabilities it uses, or throw a language panic → `Native`, `Natives`, `NativeContext`, `Panic` (`src/runtime/natives.ts`)
 - request futures, slots, weak refs or resources in a native's context → `WithFutures`, `WithSlots`, `WithWeakSide`, `WithResources` (`src/runtime/natives.ts`)
+- register a language resolver on a future, or resolve one, in a native's context → `WithWaits`, `NativeWaits` (`src/runtime/natives.ts`)
 - request random, logs, instances or testing in a native's context → `WithRandom`, `WithLogs`, `WithInstances`, `WithTesting` (`src/runtime/natives.ts`)
 - generate the four `Int`/`Float` overloads of a binary native or throw division by zero → `numeric`, `asFloat`, `divisionByZero` (`src/stdlib/numeric.ts`)
 - map `math.Rounding` variants to float rounding functions → `roundingType`, `floatRoundings` (`src/stdlib/math/rounding.ts`)

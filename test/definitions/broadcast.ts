@@ -58,9 +58,18 @@ export const broadcastTypes = {
   duration: 4,
   time: 5,
   futureUnit: 6,
+  resolverUnit: 7,
 } as const;
 
-const { announcement, stringArray, queue, revertible, time: timeType, futureUnit } = broadcastTypes;
+const {
+  announcement,
+  stringArray,
+  queue,
+  revertible,
+  time: timeType,
+  futureUnit,
+  resolverUnit,
+} = broadcastTypes;
 
 /** Indexes into the function table. */
 export const broadcastFunctions = {
@@ -74,9 +83,10 @@ export const broadcastFunctions = {
   at: 7,
   delay: 8,
   announce: 9,
+  onAwait: 10,
 } as const;
 
-const { announcements, sendRevertible, length, index, compare, add, now, delay } =
+const { announcements, sendRevertible, length, index, compare, add, now, delay, onAwait } =
   broadcastFunctions;
 const timeAt = broadcastFunctions.at;
 const [zero, one] = [0, 1];
@@ -134,6 +144,12 @@ export const broadcastDefinition: Definition = {
       arguments: [unit],
       disposal: { kind: 'runtime' },
       role: 'future',
+    },
+    {
+      kind: 'extern',
+      name: 'prelude.Resolver',
+      arguments: [unit],
+      disposal: { kind: 'runtime' },
     },
   ],
   constants: [0n, 1n],
@@ -225,7 +241,7 @@ export const broadcastDefinition: Definition = {
       ],
       captures: 0,
       annotations: [],
-      registers: 16,
+      registers: 18,
       cells: [],
       instructions: [
         { kind: 'move', span: loop, dst: 3, src: 1 },
@@ -287,18 +303,39 @@ export const broadcastDefinition: Definition = {
           callee: functionCallee(delay),
           arguments: [v(2)],
         },
+        { kind: 'wait', span: at('await time.delay(visibleFor)'), dst: 16 },
+        {
+          kind: 'resolver',
+          span: at('await time.delay(visibleFor)'),
+          dst: 17,
+          wait: 16,
+          position: 0,
+        },
+        {
+          kind: 'call',
+          span: at('await time.delay(visibleFor)'),
+          callee: functionCallee(onAwait),
+          arguments: [v(13), v(17)],
+        },
+        { kind: 'release', span: at('await time.delay(visibleFor)'), registers: [17] },
         {
           kind: 'await',
           span: at('await time.delay(visibleFor)'),
           dst: 14,
-          future: 13,
+          wait: 16,
         },
         { kind: 'release', span: at('await time.delay(visibleFor)'), registers: [13] },
         { kind: 'return', span: at('await time.delay(visibleFor)'), value: 14 },
       ],
     },
+    externFunction({
+      module: prelude,
+      key: 'prelude.onAwait(Future<T, K>, Resolver<T, K>)',
+      parameters: [named(futureUnit), named(resolverUnit)],
+      result: unit,
+    }),
   ],
 };
 
 /** Where `announce` stops: the pc of its `await`, for snapshot tests. */
-export const broadcastAwaitPc = 17;
+export const broadcastAwaitPc = 21;

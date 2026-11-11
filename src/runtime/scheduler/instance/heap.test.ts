@@ -42,25 +42,25 @@ const madeArbitrary: fc.Arbitrary<Made> = fc.oneof(
     (resolves): Made =>
       (object) => ({ kind: 'execution', id: object, resolves, frames: [], disposing: false }),
   ),
+  id.map(
+    (waiter): Made =>
+      (object) => ({ kind: 'wait', id: object, waiter, state: { kind: 'pending' } }),
+  ),
   fc
-    .record({
-      waiter: id,
-      state: fc.oneof(
-        fc
-          .array(id, { minLength: 1, maxLength: 2 })
-          .map((futures): ResolverState => ({ kind: 'pending', futures })),
-        fc.nat({ max: 1 }).map(
-          (position): ResolverState => ({
-            kind: 'resolved',
-            position,
-            value: null,
-          }),
-        ),
+    .oneof(
+      fc.record({ wait: id, on: fc.option(id, { nil: undefined }) }).map(
+        ({ wait, on }): ResolverState => ({
+          kind: 'pending',
+          wait,
+          position: 0,
+          ...(on === undefined ? {} : { on }),
+        }),
       ),
-    })
+      fc.constantFrom<ResolverState>({ kind: 'resolved' }, { kind: 'cancelled' }),
+    )
     .map(
-      ({ waiter, state }): Made =>
-        (object) => ({ kind: 'resolver', id: object, waiter, state }),
+      (state): Made =>
+        (object) => ({ kind: 'resolver', id: object, state }),
     ),
 );
 
@@ -136,14 +136,12 @@ describe('heap indexes', () => {
             );
             const resolvers = heap.objectsOf('resolver');
             expect(idsOf(heap.find('resolvers', key))).toEqual(
-              idsOf(
-                resolvers.filter(
-                  ({ state }) => state.kind === 'pending' && state.futures.includes(key),
-                ),
-              ),
+              idsOf(resolvers.filter(({ state }) => state.kind === 'pending' && state.on === key)),
             );
-            expect(idsOf(heap.find('waits', key))).toEqual(
-              idsOf(resolvers.filter((resolver) => resolver.waiter === key)),
+            expect(idsOf(heap.find('cases', key))).toEqual(
+              idsOf(
+                resolvers.filter(({ state }) => state.kind === 'pending' && state.wait === key),
+              ),
             );
           }
           for (const key of tokens) {

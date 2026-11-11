@@ -189,32 +189,35 @@ const generators: { readonly [Kind in InstructionKind]: Generator<Kind> } = {
   // A prologue stands only at an entry's start, which the entry's own arbitrary writes.
   given: () => undefined,
   body: () => undefined,
+  wait: (s) => fc.record({ dst: index(s.registers) }),
+  resolver: (s) =>
+    fc.record({ dst: index(s.registers), wait: index(s.registers), position: fc.nat(3) }),
   await: (s) =>
     s.async
       ? fc.record(
-          { dst: index(s.registers), future: index(s.registers), waypoint: fc.string() },
-          { requiredKeys: ['dst', 'future'] },
+          { dst: index(s.registers), wait: index(s.registers), waypoint: fc.string() },
+          { requiredKeys: ['dst', 'wait'] },
         )
       : undefined,
   select: (s) =>
     fc.record(
       {
+        wait: index(s.registers),
         cases: fc.array(
           fc.record(
             {
-              future: index(s.registers),
               holds: fc.array(index(s.registers), { maxLength: 2 }),
               bind: index(s.registers),
               target: index(s.labels),
             },
-            { requiredKeys: ['future', 'holds', 'target'] },
+            { requiredKeys: ['holds', 'target'] },
           ),
           { minLength: 1, maxLength: 3 },
         ),
         otherwise: index(s.labels),
         waypoint: fc.string(),
       },
-      { requiredKeys: s.async ? ['cases'] : ['cases', 'otherwise'] },
+      { requiredKeys: s.async ? ['wait', 'cases'] : ['wait', 'cases', 'otherwise'] },
     ),
   release: (s) =>
     fc.record({ registers: fc.array(index(s.registers), { minLength: 1, maxLength: 3 }) }),

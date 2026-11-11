@@ -2,7 +2,7 @@
  * The futures of a running instance (spec §6): every wait is on one, and a future resolves once
  * and stays resolved.
  *
- * - Who waits on a future is the resolvers registered on it (resolvers.ts), one per wait:
+ * - Who waits on a future is the resolvers registered on it (waits.ts), one per wait's case:
  *   resolving it decides them.
  * - `futures.first(fs)` is the one future that waits on others: it resolves with the position and
  *   value of the first of them to resolve, the lowest position among those resolved together.
@@ -22,7 +22,7 @@ import { Panic } from '../../natives.ts';
 import type { FutureState, Watch } from '../../snapshot/objects.ts';
 import type { CallerFuture } from '../testing/test-world.ts';
 import { type Heap, handleObject, type LiveObjectOf } from './heap.ts';
-import type { Resolvers } from './resolvers.ts';
+import type { Waits } from './waits.ts';
 
 /** A pending `futures.first`. */
 type FirstFuture = LiveObjectOf<'future'> & {
@@ -56,7 +56,7 @@ export interface Resolution {
 
 export class Futures {
   readonly #heap: Heap;
-  readonly #resolvers: Resolvers;
+  readonly #waits: Waits;
   readonly #answered: AnswerGiven;
   /**
    * What observes each pending future's disposal, by future: kept in memory, as an observer outside
@@ -64,10 +64,10 @@ export class Futures {
    */
   readonly #disposalNotices = new Map<number, (() => void)[]>();
 
-  /** Futures on `heap`, deciding `resolvers` as they resolve, and telling `answered` each answer. */
-  constructor(heap: Heap, resolvers: Resolvers, answered: AnswerGiven) {
+  /** Futures on `heap`, deciding `waits` as they resolve, and telling `answered` each answer. */
+  constructor(heap: Heap, waits: Waits, answered: AnswerGiven) {
     this.#heap = heap;
-    this.#resolvers = resolvers;
+    this.#waits = waits;
     this.#answered = answered;
   }
 
@@ -137,7 +137,7 @@ export class Futures {
         together.add(first.id);
       }
     }
-    this.#resolvers.settle(together, (future) => ({ value: this.#valueOf(future) }));
+    this.#waits.settle(together, (future) => ({ value: this.#valueOf(future) }));
     for (const future of together) {
       for (const answer of this.#heap.find('answers', future)) {
         this.#answer(answer);

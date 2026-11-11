@@ -319,7 +319,7 @@ export function returnedAs(
     code.return(fittedIn(code, { value: called, type: from.result }, to.result, at));
     return false;
   }
-  const value = result.kind === 'awaited' ? code.await(called) : called;
+  const value = result.kind === 'awaited' ? code.await(called, from.result) : called;
   code.return(fittedIn(code, { value, type: result.value }, result.into, at));
   return true;
 }

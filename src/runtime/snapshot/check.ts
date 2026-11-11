@@ -7,8 +7,8 @@
  *   frame
  * - a caller frame stands at a `call`, and an execution's innermost frame at an `await` or a
  *   `select`, the only places an execution stops (docs/arch/definition.md, "Frames")
- * - an execution that waits does so on futures, with one resolver, and is ready exactly when that
- *   has decided
+ * - an execution that waits does so on a wait of its own, which is decided exactly when it is
+ *   ready, and every wait is one an execution stands at
  * - an async call's execution names a pending call future, and the instance has at most one root:
  *   the execution that names none, or the `outcome` it awaits once that returned (§9)
  * - a new instance's call starts a function, code or an extern, given its captures and its
@@ -21,9 +21,9 @@
  */
 
 import type { Definition } from '../../definition/definition.ts';
-import { awaitedRegisters, waits } from '../../definition/instructions/flow.ts';
+import { waitRegister, waits } from '../../definition/instructions/flow.ts';
 import type { Instruction } from '../../definition/instructions/instruction.ts';
-import type { FunctionId, Register } from '../../definition/operands.ts';
+import type { FunctionId } from '../../definition/operands.ts';
 import { capturesOf, encoderProblem, takesReference } from '../../definition/tables/functions.ts';
 import { isCellType } from '../../definition/tables/types.ts';
 import { valueProblems } from '../../definition/validation/references.ts';
@@ -80,6 +80,7 @@ const kindProblems: Handlers<Definition, HeapObject, [], readonly string[]> = {
       : [`mock ${mock.id} replaces function ${mock.target}, which doesn't exist`],
   answer: () => [],
   outcome: () => [],
+  wait: () => [],
   resolver: () => [],
   slot: () => [],
   future: () => [],
@@ -87,108 +88,132 @@ const kindProblems: Handlers<Definition, HeapObject, [], readonly string[]> = {
 };
 
 /**
- * An execution waits exactly when its top frame stands at an instruction that waits, with one
- * resolver naming it: pending, registered on the futures the wait's registers name, none of them
- * resolved; or decided at one of its cases, which is exactly when the execution is ready. Nothing
- * is ready twice, and every resolver resumes an execution.
+ * An execution waits exactly when its top frame stands at an instruction that waits, its register
+ * holding a wait of that execution's, and every wait is one so stood at: pending, with a pending
+ * resolver left to decide it, or decided at one of its cases, which is exactly when the execution
+ * is ready. Nothing is ready twice. A pending resolver is of a case of its wait, and registered, if
+ * at all, on a future that hasn't resolved.
  */
 function waitProblems(definition: Definition, snapshot: Snapshot): readonly string[] {
   const objects = new Map(snapshot.objects.map((object) => [object.id, object]));
   const ready = new Set(snapshot.ready);
   const problems = ready.size === snapshot.ready.length ? [] : ['an execution is ready twice'];
-  const resolvers = Map.groupBy(snapshot.objects.filter(isResolver), (resolver) => resolver.waiter);
-  for (const [waiter, waiting] of resolvers) {
-    if (objects.get(waiter)?.kind !== 'execution') {
-      problems.push(...waiting.map(({ id }) => `resolver ${id} resumes no execution`));
-    }
-  }
+  const stoodAt = new Map<number, number>();
   for (const object of snapshot.objects) {
     if (object.kind === 'execution') {
-      const wait = { resolvers: resolvers.get(object.id) ?? [], isReady: ready.has(object.id) };
-      problems.push(...executionWaitProblems(definition, objects, object, wait));
+      const stop = stopOf(definition, objects, object);
+      problems.push(...stopProblems(object, stop, ready.has(object.id)));
+      if (stop?.wait !== undefined) {
+        stoodAt.set(stop.wait.id, stop.cases);
+      }
+    }
+  }
+  const pending = Map.groupBy(
+    snapshot.objects.filter(isPendingResolver),
+    ({ state }) => state.wait,
+  );
+  for (const object of snapshot.objects) {
+    if (object.kind === 'wait') {
+      problems.push(...waitObjectProblems(object, stoodAt.get(object.id), pending.get(object.id)));
+    }
+    if (isPendingResolver(object)) {
+      problems.push(...resolverProblems(objects, object, stoodAt.get(object.state.wait)));
     }
   }
   return problems;
 }
 
-type ResolverObject = Extract<HeapObject, { kind: 'resolver' }>;
+type WaitObject = Extract<HeapObject, { kind: 'wait' }>;
 
-function isResolver(object: HeapObject): object is ResolverObject {
-  return object.kind === 'resolver';
+type PendingResolverObject = Extract<HeapObject, { kind: 'resolver' }> & {
+  readonly state: { readonly kind: 'pending' };
+};
+
+function isPendingResolver(object: HeapObject): object is PendingResolverObject {
+  return object.kind === 'resolver' && object.state.kind === 'pending';
 }
 
-/** An execution's wait: the resolvers naming it, and whether it is ready. */
-interface Wait {
-  readonly resolvers: readonly ResolverObject[];
-  readonly isReady: boolean;
+/** Where an execution stops: how many cases its wait has, and the wait its register holds. */
+interface Stop {
+  readonly cases: number;
+  readonly wait: WaitObject | undefined;
 }
 
-type FutureObject = Extract<HeapObject, { kind: 'future' }>;
-
-function executionWaitProblems(
+/** Where `execution` stops, when its top frame stands at an instruction that waits. */
+function stopOf(
   definition: Definition,
   objects: ReadonlyMap<number, HeapObject>,
   execution: Extract<HeapObject, { kind: 'execution' }>,
-  wait: Wait,
-): readonly string[] {
+): Stop | undefined {
   const top = execution.frames.at(-1);
   const instruction = top === undefined ? undefined : instructionAt(definition, top);
-  const awaited = instruction === undefined ? [] : awaitedRegisters(instruction);
-  if (top === undefined || awaited.length === 0) {
-    return [
-      ...(wait.isReady ? [`ready execution ${execution.id} is not waiting`] : []),
-      ...(wait.resolvers.length > 0 ? [`execution ${execution.id} isn't waiting`] : []),
-    ];
+  const register = instruction === undefined ? undefined : waitRegister(instruction);
+  if (top === undefined || instruction === undefined || register === undefined) {
+    return undefined;
   }
-  const [resolver, ...others] = wait.resolvers;
-  if (resolver === undefined || others.length > 0) {
-    return [`execution ${execution.id} waits with ${wait.resolvers.length} resolvers, not one`];
-  }
-  const futures = awaited.map((register) => futureIn(objects, top, register));
-  return resolverProblems(resolver, futures, wait.isReady);
-}
-
-/** The future a handle in `frame`'s `register` names; undefined when it names none. */
-function futureIn(
-  objects: ReadonlyMap<number, HeapObject>,
-  frame: Frame,
-  register: Register,
-): FutureObject | undefined {
-  const held = frame.registers.find(([slot]) => slot === register)?.[1];
+  const held = top.registers.find(([slot]) => slot === register)?.[1];
   const id = held === undefined || isReference(held) ? undefined : handleTarget(held);
   const target = id === undefined ? undefined : objects.get(id);
-  return target?.kind === 'future' ? target : undefined;
+  return {
+    cases: instruction.kind === 'select' ? instruction.cases.length : 1,
+    wait: target?.kind === 'wait' && target.waiter === execution.id ? target : undefined,
+  };
+}
+
+function stopProblems(
+  execution: Extract<HeapObject, { kind: 'execution' }>,
+  stop: Stop | undefined,
+  isReady: boolean,
+): readonly string[] {
+  if (stop === undefined) {
+    return isReady ? [`ready execution ${execution.id} is not waiting`] : [];
+  }
+  if (stop.wait === undefined) {
+    return [`execution ${execution.id} waits on what is no wait of its own`];
+  }
+  const decided = stop.wait.state.kind === 'decided';
+  if (decided !== isReady) {
+    return [
+      `execution ${execution.id} is ${isReady ? '' : 'not '}ready, its wait ${decided ? 'decided' : 'pending'}`,
+    ];
+  }
+  return [];
+}
+
+/** What is wrong with `wait`, with `cases` cases where its waiter stands at it, and `pending`. */
+function waitObjectProblems(
+  wait: WaitObject,
+  cases: number | undefined,
+  pending: readonly PendingResolverObject[] | undefined,
+): readonly string[] {
+  if (cases === undefined) {
+    return [`wait ${wait.id} is stood at by no execution`];
+  }
+  if (wait.state.kind === 'decided') {
+    return wait.state.position < cases ? [] : [`wait ${wait.id} was decided at no case`];
+  }
+  return pending === undefined ? [`wait ${wait.id} has no resolver left to decide it`] : [];
 }
 
 /**
- * What is wrong with `resolver`, for a wait whose cases' registers name `futures`, at whose decision
- * its execution is ready exactly when `isReady`.
+ * What is wrong with the pending `resolver`, whose wait has `cases` cases where it is stood at.
  */
 function resolverProblems(
-  resolver: ResolverObject,
-  futures: readonly (FutureObject | undefined)[],
-  isReady: boolean,
+  objects: ReadonlyMap<number, HeapObject>,
+  resolver: PendingResolverObject,
+  cases: number | undefined,
 ): readonly string[] {
-  const { state, waiter } = resolver;
-  if (state.kind === 'resolved') {
-    return [
-      ...(state.position < futures.length ? [] : [`resolver ${resolver.id} decided no case`]),
-      ...(isReady ? [] : [`execution ${waiter} was resolved but is not ready`]),
-    ];
+  const { wait, position, on } = resolver.state;
+  const future = on === undefined ? undefined : objects.get(on);
+  if (objects.get(wait)?.kind !== 'wait') {
+    return [`resolver ${resolver.id} decides no wait`];
   }
-  if (futures.includes(undefined)) {
-    return [`execution ${waiter} waits on something that is not a future`];
-  }
-  if (
-    futures.length !== state.futures.length ||
-    futures.some((future, position) => future?.id !== state.futures[position])
-  ) {
-    return [`resolver ${resolver.id} isn't registered on what its execution waits on`];
-  }
-  if (futures.some((future) => future?.state.kind === 'resolved')) {
-    return [`execution ${waiter} waits on a resolved future, its resolver pending`];
-  }
-  return isReady ? [`ready execution ${waiter} waits on unresolved futures`] : [];
+  return [
+    ...(cases === undefined || position < cases ? [] : [`resolver ${resolver.id} is of no case`]),
+    ...(on === undefined || (future?.kind === 'future' && future.state.kind !== 'resolved')
+      ? []
+      : [`resolver ${resolver.id} is registered on what is no pending future`]),
+  ];
 }
 
 /**

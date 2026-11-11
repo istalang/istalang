@@ -35,6 +35,7 @@ import type { JsonFormQueries } from './surface/json-form.ts';
 import type { FunctionCall, ResolvedCall } from './surface/resolved-call.ts';
 import type { Fit, Fitting } from './types/fitting/fit/index.ts';
 import type { TypeKeys } from './types/identity/type-keys.ts';
+import type { Substitution } from './types/parts/substitution.ts';
 import type { RestSlot } from './types/type/function-types.ts';
 import type {
   AnonymousStructType,
@@ -229,6 +230,17 @@ export interface TraitObjects {
     member: Type,
     call: { readonly required: FunctionDeclaration; readonly typeArguments: readonly Type[] },
   ) => MemberConversion<FunctionType> | undefined;
+  /**
+   * How a call of `required`, with its own `typeArguments`, through `type`'s `constraint`-th
+   * constraint on a value of `on` maps the required function's types: the trait's parameters as
+   * the constraint gives them, `Self` as `on`, and its own as the call gives them.
+   */
+  readonly callSubstitution: (
+    type: AnyType,
+    constraint: number,
+    on: Type,
+    call: { readonly required: FunctionDeclaration; readonly typeArguments: readonly Type[] },
+  ) => Substitution;
   /**
    * A read of `field`, which `type`'s `constraint`-th constraint requires, on a value of `member`:
    * the type it is read at, and the one `member` holds; undefined where they are the same.

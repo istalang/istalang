@@ -21,6 +21,7 @@ import type { CodeFunction, FunctionDefinition } from '../../../../definition/ta
 import { wellKnown } from '../../../../foundation/language/well-known/index.ts';
 import { unreachable } from '../../../../foundation/structures/unreachable.ts';
 import type { Checker } from '../../../checker/check.ts';
+import { substitute } from '../../../checker/types/parts/substitution.ts';
 import type { AwaitedType } from '../../../checker/types/type/function-types.ts';
 import type { Type } from '../../../checker/types/type/index.ts';
 import { awaitedOf, futureOf } from '../../../checker/types/type/well-known.ts';
@@ -31,8 +32,9 @@ import type {
 } from '../../../syntax/declarations/index.ts';
 import type { AnchoredSpan } from '../../../syntax/tree/positions.ts';
 import { emitCall, emitFunctionCall } from '../../calls/emit-call.ts';
+import { awaitFuture } from '../../calls/waits.ts';
 import type { CodeContext } from '../../context.ts';
-import type { FunctionInstance } from '../../tables/instances.ts';
+import { type FunctionInstance, substitutionOf } from '../../tables/instances.ts';
 import { keyOf, qualifiedNameOf, spelledType } from '../../tables/names.ts';
 import type { DefinitionTables, HostExternDeclaration } from '../../tables/tables.ts';
 import { SynthesizedCode } from '../index.ts';
@@ -54,8 +56,11 @@ export interface HostCall {
   readonly native: FunctionId;
   readonly parameters: readonly Type[];
   readonly result: Type;
-  /** What the host fills, when the native gives a future to fill. */
-  readonly filled: Type | undefined;
+  /**
+   * What the extern's future gives, and its kind, in its instance, when the native gives a future to
+   * fill.
+   */
+  readonly awaited: AwaitedType | undefined;
   readonly path: string;
 }
 
@@ -69,7 +74,7 @@ export function hostCallOf(lowering: Lowering, instance: FunctionInstance): Host
     native: tables.hostNativeIndex(declaration),
     parameters: checker.parametersOf(declaration).map(({ type }) => type),
     result,
-    filled: awaitedOf(checker, result)?.value,
+    awaited: awaitedOf(checker, substitute(result, substitutionOf(instance), checker.typeRules)),
     path: qualifiedNameOf(checker, declaration),
   };
 }
@@ -131,14 +136,22 @@ export function constantNativeEntry(
   };
 }
 
-/** What every native of `declaration` is made of: its header, and JSON for what crosses. */
-function nativeParts(lowering: Lowering, declaration: HostExternDeclaration) {
-  const { checker, tables } = lowering;
-  // `Json` is a recursive alias (§3.17), so it is the type its entity names, not a nominal one.
+/**
+ * `Json`, what crosses to a host. It is a recursive alias (§3.17), so it is the type its entity
+ * names, not a nominal one.
+ */
+function jsonOf(checker: Checker): Type {
   const jsonType = entityType(checker, checker.wellKnownEntity(wellKnown.json));
   if (jsonType === undefined) {
     unreachable('A host extern was lowered in a program without the json module.');
   }
+  return jsonType;
+}
+
+/** What every native of `declaration` is made of: its header, and JSON for what crosses. */
+function nativeParts(lowering: Lowering, declaration: HostExternDeclaration) {
+  const { checker, tables } = lowering;
+  const jsonType = jsonOf(checker);
   const json = tables.types.reference(jsonType);
   return {
     header: {
@@ -171,7 +184,7 @@ export function writeHostCall(
   span: AnchoredSpan,
 ): Register {
   const { checker } = context;
-  const { within, filled, path } = call;
+  const { within, awaited, path } = call;
   const encoded = call.parameters.map((type, index) =>
     emitFunctionCall(context, {
       span,
@@ -180,16 +193,20 @@ export function writeHostCall(
     }),
   );
   const native = emitCall(context, { span, callee: call.native, arguments: encoded });
-  if (filled === undefined) {
+  if (awaited === undefined) {
     const inbound = inboundOf(checker, within, call.result, { from: 'result', path });
     return emitInbound(context, native, inbound, span);
   }
-  const awaited = context.code.allocate();
-  context.code.await(awaited, native, span);
+  const filled = awaitFuture(
+    context,
+    native,
+    futureOf(checker, jsonOf(checker), awaited.mode),
+    span,
+  );
   return emitInbound(
     context,
-    awaited,
-    inboundOf(checker, within, filled, { from: 'input', path }),
+    filled,
+    inboundOf(checker, within, awaited.value, { from: 'input', path }),
     span,
   );
 }

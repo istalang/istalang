@@ -4,8 +4,8 @@
  * - `await select` waits, so only an async function writes one, and it has no `else`. A `select`
  *   without `await` never waits, so any function may write one, and it needs `else`, which runs
  *   when no case's future has resolved.
- * - Each case's expression is a future, checked in source order before its body. `as name` binds
- *   the future's value; a case without `as` discards it, so a value that must be used (§7), such
+ * - Each case's expression is an awaitable, checked in source order before its body, and waited on
+ *   through its `onAwait` as an `await` is (await.ts). `as name` binds what it gives; a case without `as` discards it, so a value that must be used (§7), such
  *   as a `Result`, is reported as a bare expression's would be.
  * - The case bodies and `else` agree on the select's type as an `if`'s branches do
  *   (constructs/expressions/control/branches.ts).
@@ -24,16 +24,15 @@ import { checkDiscarded } from '../../../rules/disposal/must-use.ts';
 import type { Type } from '../../../types/type/index.ts';
 import { errorType } from '../../../types/type/primitives.ts';
 import { typeText } from '../../../types/type/type-text.ts';
-import { awaitedOf } from '../../../types/type/well-known.ts';
 import { ownCallerOf } from '../../closures/own-calls.ts';
-import { checkWaitKind, reportWait } from './await.ts';
+import { awaitedThrough, reportWait } from './await.ts';
 import { Branches } from './branches.ts';
 
 export function checkSelect(context: BodyContext, node: Select, expected: Type | undefined): Type {
   reportForm(context, node);
   const branches = new Branches(context, node, expected);
   for (const selectCase of selectCasesOf(node)) {
-    checkCaseFuture(context, selectCase);
+    checkCaseFuture(context, selectCase, !node.awaits || context.inAsync);
     if (watchesOwnDisposal(context, selectCase.future)) {
       context.functions.current.cleanup(() => branches.add(selectCase.body));
     } else {
@@ -74,18 +73,19 @@ function reportForm(context: BodyContext, node: Select): void {
   }
 }
 
-/** Checks a case's future, and binds or discards the value it gives. */
-function checkCaseFuture(context: BodyContext, selectCase: SelectCase): void {
+/**
+ * Checks a case's awaitable, its kind where `checksKind` says, a blocking select outside an async
+ * function being refused already, and binds or discards the value it gives.
+ */
+function checkCaseFuture(context: BodyContext, selectCase: SelectCase, checksKind: boolean): void {
   const future = context.settled(selectCase.future);
-  const awaited = awaitedOf(context.checker, future);
-  const value = awaited?.value;
-  if (awaited === undefined) {
-    if (future.kind !== 'error') {
-      context.report(checkerDiagnostics.caseNeedsFuture(selectCase.future.span, typeText(future)));
-    }
-  } else {
-    checkWaitKind(context, selectCase.future.span, future, awaited.mode);
-  }
+  const value = awaitedThrough(context, {
+    node: selectCase,
+    operand: selectCase.future,
+    type: future,
+    failure: () => checkerDiagnostics.caseNeedsFuture(selectCase.future.span, typeText(future)),
+    checksKind,
+  })?.value;
   if (selectCase.binding !== undefined) {
     const type = value ?? errorType;
     context.variables.declare(selectCase.binding, type);

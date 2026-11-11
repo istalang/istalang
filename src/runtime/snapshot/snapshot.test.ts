@@ -56,6 +56,7 @@ const broadcastWaiting: Snapshot = {
             [1, { kind: 'array', elements: ['ann', 'bob'] }],
             [2, { kind: 'struct', type: duration, fields: [60_000n] }],
             [13, { kind: 'handle', object: 3 }],
+            [16, { kind: 'handle', object: 4 }],
             [
               14,
               {
@@ -73,7 +74,8 @@ const broadcastWaiting: Snapshot = {
     { id: 1, kind: 'resource', type: revertible, payload: { queue: 'ann', message: 'm-1' } },
     { id: 2, kind: 'resource', type: revertible, payload: { queue: 'bob', message: 'm-2' } },
     { id: 3, kind: 'future', state: { kind: 'timer', at: 1_700_000_060_000n } },
-    { id: 4, kind: 'resolver', waiter: 0, state: { kind: 'pending', futures: [3] } },
+    { id: 4, kind: 'wait', waiter: 0, state: { kind: 'pending' } },
+    { id: 5, kind: 'resolver', state: { kind: 'pending', wait: 4, position: 0, on: 3 } },
   ],
 };
 
@@ -141,18 +143,29 @@ function objectsArbitrary(ids: readonly number[]): fc.Arbitrary<HeapObject[]> {
         .record({
           waiter: id,
           state: fc.oneof(
+            fc.constant({ kind: 'pending' as const }),
             fc.record({
-              kind: fc.constant('pending' as const),
-              futures: fc.array(id, { minLength: 1, maxLength: 3 }),
-            }),
-            fc.record({
-              kind: fc.constant('resolved' as const),
+              kind: fc.constant('decided' as const),
               position: fc.nat({ max: 3 }),
               value,
             }),
           ),
         })
-        .map((parts) => ({ id: objectId, kind: 'resolver' as const, ...parts })),
+        .map((parts) => ({ id: objectId, kind: 'wait' as const, ...parts })),
+      fc
+        .oneof(
+          fc.record(
+            {
+              kind: fc.constant('pending' as const),
+              wait: id,
+              position: fc.nat({ max: 3 }),
+              on: id,
+            },
+            { requiredKeys: ['kind', 'wait', 'position'] },
+          ),
+          fc.constantFrom({ kind: 'resolved' as const }, { kind: 'cancelled' as const }),
+        )
+        .map((state) => ({ id: objectId, kind: 'resolver' as const, state })),
       fc
         .record(
           {
@@ -250,7 +263,7 @@ describe('snapshot format', () => {
         });
       },
       'No object 42',
-      'objects[5]',
+      'objects[6]',
     ],
     [
       'ids that do not ascend',

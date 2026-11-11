@@ -3,7 +3,7 @@ description: istalang toolchain architecture — folder hierarchy, layers, phase
 owner: tech-lead
 status: active
 applies_to: istalang
-last_verified: 2026-11-10
+last_verified: 2026-11-11
 last_updated: 2026-11-11
 tags: [architecture, compiler, runtime, tooling]
 ---
@@ -234,7 +234,7 @@ src/
     scheduler/          segments and commits: wake.ts (advancing, commits, spawned children), resident.ts (an instance held between host calls), inspect.ts, loaded-definition.ts (a Definition bound to its natives once, named by its hash),
                         live-run.ts (live code run in memory to its end, never committing, its waits on the host's promises and clock), waiting.ts (how a run waits, and a live wait's one-shot resume), live-resolvers.ts (a live future's resolver, which a host resolves from outside the run, and its cancellation),
                         instance/ (an instance in memory, and the commit's snapshot from the one it was made from; live-objects.ts, heap objects as stored and as running;
-                        heap.ts, objects by id, and indexes finding them by field, derived, never persisted; futures.ts, resolving, `first`; resolvers.ts, one per wait, registered on what it waits on and decided by the first to resolve, a `select`'s losers let go of then; slots.ts, §6's queue;
+                        heap.ts, objects by id, and indexes finding them by field, derived, never persisted; futures.ts, resolving, `first`; waits.ts, waits and the language's resolvers, a resolver per case, which a future's `onAwait` registers on it and the first to resolve decides the wait with, a `select`'s losers let go of then; slots.ts, §6's queue;
                         weak-side.ts, weak references, `disposed()` and `disposing()`, told by disposal what it disposes;
                         instance-names.ts, `<parent>/<n>` and the ancestors a name says; instance-ends.ts, another instance's end as a wait on it sees it),
                         segment/ (a segment; calls.ts, how a call starts: a mock's replacement, after the target's prologue when the call leaves parameters out, a native at once, or code to push; run-stack.ts, the executions running on one another; disposal-runs.ts, the code disposals run; limits.ts, the limits a program runs into as panics; native-calls.ts, the context a native is called with, built once for both kinds of caller; root-outcome.ts, an instance's outcome: its root call's answer, code's or an extern's, a future awaited through an `outcome` object, encoded for its host),

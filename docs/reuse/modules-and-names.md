@@ -3,8 +3,8 @@ description: well-known declarations, static/qualified/extern names, module load
 owner: tech-lead
 status: active
 applies_to: istalang
-last_verified: 2026-10-28
-last_updated: 2026-11-08
+last_verified: 2026-11-11
+last_updated: 2026-11-11
 tags: [reuse, language, modules, program, binder, names]
 ---
 
@@ -24,7 +24,7 @@ tags: [reuse, language, modules, program, binder, names]
 - look up well-known variant and field names (a union's layout, `Result`, a cursor's `Step`) → `unionLayout`, `resultVariants`, `resultFields`, `stepVariants` (`src/foundation/language/well-known/variants.ts`); `Json` is a union, whose members json-values.ts finds by what each variant holds
 - look up well-known codec function names and helpers → `codecFunctions`, `derivedCodecs`, `codecHelpers` (`src/foundation/language/well-known/codecs.ts`)
 - look up well-known testing function names, the test file suffix, or whether a path names a test module → `testingFunctions`, `testModuleSuffix`, `isTestModulePath` (`src/foundation/language/well-known/testing.ts`)
-- look up collection, template or pattern function names → `collectionFunctions`, `templateFunctions`, `arrayPatternFunctions` (`src/foundation/language/well-known/implicit-calls.ts`)
+- look up collection, template, pattern or await function names → `collectionFunctions`, `templateFunctions`, `arrayPatternFunctions`, `awaitFunction` (`src/foundation/language/well-known/implicit-calls.ts`); the prelude's `Resolver` → `wellKnown.resolver`
 - look up `dispose`, `from` or `main` function names, or `self`, the parameter making a function a method, or `Self`, the type meeting a trait → `disposeFunction`, `conversionFunction` (`src/foundation/language/well-known/implicit-calls.ts`), `entryFunction`, `receiverParameter`, `selfType` (`src/foundation/language/well-known/index.ts`)
 - look up `_inclusiveEnd` or `panic` function names → `inclusiveEndFunction`, `panicFunction` (`src/foundation/language/well-known/implicit-calls.ts`)
 - build a branded `ModuleId` from a `URL` → `moduleIdOf`, `ModuleId` (`src/compiler/program/program.ts`)

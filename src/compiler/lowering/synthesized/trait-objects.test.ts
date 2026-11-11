@@ -101,6 +101,37 @@ describe('lowering a call through an instantiation standing for another (§3.10)
     ).toBe('6');
   });
 
+  it("awaits an async member's future of its trait's argument, in the member's own types", async () => {
+    expect(
+      await outcomeOf([
+        'trait Fetch<T>:',
+        '  ista async fn fetch(self: Self) -> T',
+        'struct Box { n: Int }',
+        'ista async fn fetch(self: Box) -> Int: self.n',
+        'ista async fn main():',
+        '  const source: any Fetch<Int> = Box{n: 21}',
+        '  2 * await source.fetch()',
+      ]),
+    ).toBe('42');
+  });
+
+  it('dispatches an async member of a trait generic over its mark in the kind it is called through', async () => {
+    expect(
+      await outcomeOf([
+        "import * as runtime from 'runtime'",
+        'trait Runner<K in Persistence>:',
+        '  K async fn run(self: Self) -> Int',
+        'struct Job { n: Int }',
+        'ista async fn run(self: Job) -> Int:',
+        '  await runtime.commit()',
+        '  self.n',
+        'ista async fn main():',
+        '  const runner: any Runner<"ista"> = Job{n: 7}',
+        '  6 * await runner.run()',
+      ]),
+    ).toBe('42');
+  });
+
   it('calls the closest of the instantiations that fit, converting what it takes', async () => {
     expect(
       await outcomeOf([

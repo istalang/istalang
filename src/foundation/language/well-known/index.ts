@@ -38,6 +38,11 @@ export interface WellKnownDeclaration {
 export const wellKnown = {
   /** What an async call returns and `await` waits on (§3.3, §6). */
   future: { module: 'prelude', name: 'Future' },
+  /**
+   * One wait's one-shot resolver: the type of what an awaitable's `onAwait` is given, which says
+   * what the wait gives and its kind (proposal 8, Rule 5).
+   */
+  resolver: { module: 'prelude', name: 'Resolver' },
   /** The one function type, every function type's spelling its sugar (§3.14). */
   fn: { module: 'prelude', name: 'Fn' },
   /** What `spawn` gives: a handle to the new instance, whose end `result()` waits for (§9). */

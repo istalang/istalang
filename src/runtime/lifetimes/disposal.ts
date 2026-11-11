@@ -4,14 +4,18 @@
  *
  * - A future of an async call disposes the call: it can only be suspended, since a running
  *   execution holds its own future (holders.ts). Its `disposing()` watches resolve, and a call
- *   waiting on one of them runs its cleanup, resuming on that watcher and stopped at its next
- *   await; any other is stopped where it waits, its frames let go.
+ *   waiting on one of them runs its cleanup, resuming at that case and stopped at its next await;
+ *   any other is stopped where it waits, its frames let go.
  * - A pending slot operation leaves its slot's queue without consuming anything, and a future the
  *   host fills frees its token, so a later fill changes nothing and the host may name a new one so.
  *   A disposed future tells what observes it, such as a live resolver of it (proposal 8, Rule 9).
  * - A value whose type declares `dispose` as code calls that: a call the collector runs as code
  *   (collector.ts), and the object is gone once the call returns. A disposal never awaits, since a
  *   `dispose` can't.
+ * - A resolver let go of while pending panics (proposal 8, Rule 5): it was never resolved, so an
+ *   awaitable misused it. One registered on a future is held by its wait (holders.ts), and ending a
+ *   wait cancels its resolvers, so only an `onAwait`, or code it gave one to, dropping one lets it
+ *   go.
  * - Any object a weak reference refers to has its watches resolved once it is gone (weak-side.ts).
  *
  * An object is disposed when nothing holds it only when that can be seen: it does one of the
@@ -28,6 +32,7 @@ import type { FunctionId } from '../../definition/operands.ts';
 import type { TypeDefinition } from '../../definition/tables/types.ts';
 import { handleTo, type Value } from '../../definition/values/values.ts';
 import { type Handlers, handlerOf } from '../../foundation/structures/kind-table.ts';
+import { Panic } from '../natives.ts';
 import type { Heap, LiveExecution, LiveObject, LiveObjectOf } from '../scheduler/instance/heap.ts';
 import type { WeakSide } from '../scheduler/instance/weak-side.ts';
 import type { FutureState } from '../snapshot/objects.ts';
@@ -39,11 +44,14 @@ export interface DisposalCall {
   readonly arguments: readonly Value[];
 }
 
-/** A disposed call's cleanup: `execution` resumes on its `disposing()` watcher `watcher` (§7). */
+/**
+ * A disposed call's cleanup: `execution` resumes at case `position` of its wait, the one on its
+ * `disposing()` watch (§7).
+ */
 export interface Cleanup {
   readonly kind: 'cleanup';
   readonly execution: LiveExecution;
-  readonly watcher: number;
+  readonly position: number;
 }
 
 /** Code a disposal runs, which its round waits on. */
@@ -59,6 +67,11 @@ export interface Disposability {
 export interface DisposalContext extends Disposability {
   /** Stops a suspended execution where it waits, letting go of everything its frames hold. */
   readonly stop: (execution: LiveExecution) => void;
+  /**
+   * The case of the wait a suspended execution is stopped at that waits on its own call's
+   * `disposing()`, by position: where a disposal of that call resumes it (§7).
+   */
+  readonly cleanupCase: (execution: LiveExecution) => number | undefined;
   readonly weak: WeakSide;
   /** Tells what observes the pending future `id` that it was disposed (§7). */
   readonly disposedFuture: (id: number) => void;
@@ -122,7 +135,17 @@ const kinds: Handlers<undefined, LiveObject, [], KindDisposal> = {
   weakRef: () => inert,
   answer: () => inert,
   outcome: () => inert,
-  resolver: () => inert,
+  wait: () => inert,
+  resolver: (_context, resolver) => ({
+    disposable: (context) => resolver.state.kind === 'pending' || watched(context, resolver),
+    dispose: () => {
+      if (resolver.state.kind === 'pending') {
+        throw new Panic(
+          'A resolver was let go of unresolved, so the wait it was to decide never can.',
+        );
+      }
+    },
+  }),
   execution: () => inert,
 };
 
@@ -166,9 +189,11 @@ function disposeFuture(
 
 /** The disposed call `execution` runs: its cleanup, if it waits for one, or else it stops. */
 function disposeCall(context: DisposalContext, execution: LiveExecution): Cleanup | undefined {
-  const watcher = context.weak.disposing(execution);
-  if (watcher !== undefined) {
-    return { kind: 'cleanup', execution, watcher };
+  // Its case is found before the watches resolve, which settles the resolvers it is found by.
+  const position = context.cleanupCase(execution);
+  context.weak.disposing(execution);
+  if (position !== undefined) {
+    return { kind: 'cleanup', execution, position };
   }
   context.stop(execution);
   return undefined;

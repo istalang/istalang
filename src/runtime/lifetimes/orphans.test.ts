@@ -25,7 +25,8 @@ describe('ready orphans', () => {
         const held = heldFrom(heap, { frames, objects: [] }).objects;
         const orphans = heap.objects().filter((object) => !held.has(object.id));
         const isOrphan = new Set(orphans.map(({ id }) => id));
-        const edges = (id: number) => holdsOf(heap.objectOf(id)).filter((to) => isOrphan.has(to));
+        const edges = (id: number) =>
+          holdsOf(heap, heap.objectOf(id)).filter((to) => isOrphan.has(to));
         const reaches = (source: number, target: number) =>
           edges(source).some((next) => reachedFrom([next], edges).has(target));
         const disposable = disposableIn(heap);

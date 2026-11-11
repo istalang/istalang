@@ -50,14 +50,28 @@ export function futureOf(checker: Pick<Checker, 'wellKnownType'>, value: Type, m
 }
 
 /**
- * What awaiting a value of `type` gives: a `Future<T, K>`'s `T`, awaited in kind `K`; undefined
- * when `type` can't be awaited. The one reading of what an awaitable gives.
+ * What awaiting a value of `type` gives when it is a future: a `Future<T, K>`'s `T`, awaited in kind
+ * `K`; undefined for any other type. The one reading of a future's parts; what any awaitable gives is
+ * read from its `onAwait` (`resolvedThrough`).
  */
 export function awaitedOf(
   checker: Pick<Checker, 'wellKnownType'>,
   type: Type,
 ): AwaitedType | undefined {
   const [value, mode] = wellKnownArguments(checker, wellKnown.future, type) ?? [];
+  return value === undefined || mode === undefined ? undefined : { value, mode };
+}
+
+/**
+ * What a wait resolved through a resolver of `type` gives: a `Resolver<T, K>`'s `T`, waited for in
+ * kind `K`; undefined for any other type. An awaitable's `onAwait` takes one, so it says what
+ * awaiting the awaitable gives (proposal 8, Rule 5).
+ */
+export function resolvedThrough(
+  checker: Pick<Checker, 'wellKnownType'>,
+  type: Type,
+): AwaitedType | undefined {
+  const [value, mode] = wellKnownArguments(checker, wellKnown.resolver, type) ?? [];
   return value === undefined || mode === undefined ? undefined : { value, mode };
 }
 

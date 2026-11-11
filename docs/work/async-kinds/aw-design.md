@@ -33,25 +33,41 @@ Scope and acceptance: `phases.md`, AW. Rules: proposal 8, Rules 5 and 6.
   sound.
 - `awaitedOf` stays the reading of a `Future`'s parts (function results, conversions, kinds); the
   awaitable reading is the implicit call's.
-- **Lowering.** Each operand in order, then per case: `r = resolver(position)`, a new instruction
-  giving the current execution's wait a pending case resolver; the recorded `onAwait(x, r)` call;
-  then `await` or `select`, which name no future any more. A blocking wait commits in ista code
-  even when already decided, as today.
-- **Runtime objects.** Today's `resolver` heap object becomes the *wait* (per waiting execution:
-  pending, or decided at a position with a value). A *resolver* is a heap object per language
-  `Resolver`: a target (`wait` + position, or a callback closure), a state (pending, maybe
-  registered on a future; resolved; cancelled) and its `onCancel` closures.
+- **Lowering.** Each operand in order, then `w = wait()`, then per case `r = resolver(w, position)`,
+  the recorded `onAwait(x, r)` call and `release r`; then `await(dst, w)` or `select(w, …)`, which
+  name no future any more. The wait is an explicit register, not the execution's current wait,
+  since `onAwait`, a plain function, may run a non-blocking `select` of its own while the wait it
+  was called for is open (tech-lead, 2026-11-11). The frame holds its wait, so a wait is no root.
+  Synthesized code awaiting a future calls the prelude's `onAwait` alike (`lowering/calls/waits.ts`),
+  with the future's type in its instance. A blocking wait commits in ista code even when already
+  decided, as today.
+- **Runtime objects.** Today's `resolver` heap object becomes the *wait* (its waiter; pending, or
+  decided at a position with a value). A *resolver* is a heap object per language `Resolver`:
+  pending for a case of a wait, maybe registered on a future; resolved; or cancelled. AW3 adds the
+  callback target and `onCancel` closures.
 - **Deciding.** A future's native `onAwait` resolves `r` at once when the future has resolved, else
   registers it on the future (the `resolvers` index). Futures resolving together decide each wait at
-  its lowest case among them (today's rule), and callbacks start in creation order. Deciding a wait
-  cancels its other case resolvers: registrations dropped, `onCancel` callbacks run. `resolve`
-  twice panics; `tryResolve` says whether it took the value; a cancelled resolver ignores both.
-- **Dropped unresolved** (its last holder lets go) panics its wait, as R2's host resolvers panic
-  their run.
+  its lowest case among them (today's rule). Deciding a wait cancels the case resolvers pending
+  then, their registrations dropped. `resolve` twice panics; `tryResolve` says whether it took the
+  value; a cancelled resolver ignores both. `onCancel` moves to AW3, which runs closures as
+  executions.
+- **Holding.** The wait holds its resolvers registered on futures, read off the heap's index in the
+  walk from the roots (`lifetimes/holders.ts`), and a pending resolver holds its future: the
+  registration persists with the waiting frame (Rule 5), so a future a cold awaitable made in its
+  `onAwait` lives as long as the wait, and a losing `disposing()` case keeps its watch until the
+  call resumes. A cancelled resolver lets go of its future.
+- **A resolver made after its wait was decided** (an earlier case's `onAwait` decided it) is
+  pending until its waiter stops at the wait, every case known, which cancels it: until then
+  `resolve` takes the value to no effect and a second `resolve` panics, `tryResolve` gives false and
+  cancels it, and letting it go panics, so misuse is caught however the race went. Registering it
+  cancels it, unless on its waiter's own `disposing()` watch, kept for a disposal (§7). A resolved
+  or cancelled resolver a `WeakRef` refers to is disposed when let go of, its watches resolved.
+- **Dropped unresolved** (its last holder lets go while pending) panics, as any panic does: the
+  instance, or the live run.
 - A non-blocking `select` that finds its wait undecided goes to `otherwise`, cancelling its case
   resolvers.
 - **Must change with it:** `snapshot/check.ts` (waits no longer name futures in registers),
-  `snapshot/holdings.ts` (a pending resolver is held by its future's registration; a wait holds its
+  `snapshot/holdings.ts` (a pending resolver holds its future, its wait holds it; a wait watches its
   waiter), `weak-side.ts` and `disposal-runs.ts` (`waitingOn`: a case watching the call's own
   `disposing()` is found through its resolver's registration), `suspension.ts`.
 - Live runs use the same `Instance`, heap and segments (`live-run.ts`), so language resolvers are
@@ -60,6 +76,8 @@ Scope and acceptance: `phases.md`, AW. Rules: proposal 8, Rules 5 and 6.
 
 ## `Resolver.of` and `futures` (AW3)
 
+- `onCancel(callback)` on a resolver, its callbacks run once its wait is decided by another case
+  or its waiter stops, the same way `Resolver.of`'s callbacks run.
 - `Resolver.of(callback)` makes a resolver whose target is the callback. Resolving it starts the
   closure as a new execution of the instance, ready at once: its own driver, so in ista code its own
   segment. Nothing does this today: `Instance.startExecution` makes an execution but readies none,

@@ -7,9 +7,13 @@
  * - An object holds the handles in the values it holds, and some ids directly: a pending slot
  *   operation its slot, a `first` its futures, a `disposed()` watch its weak reference, and a
  *   frame's reference the cell it names.
+ * - A pending resolver holds the future it is registered on, and its wait holds it while it is
+ *   registered (proposal 8, Rule 5): the registration persists with the waiting frame, so what a
+ *   cold awaitable started in its `onAwait` lives as long as the wait. The wait's edge is read off
+ *   the heap's index in the walk from the roots (runtime/lifetimes/holders.ts).
  * - It watches what it names without holding: a slot's queue of waiting operations, what a weak
- *   reference refers to, an execution's own call future, which its caller holds, and a resolver's
- *   waiter and the futures it is registered on, which the waiter's frame holds.
+ *   reference refers to, an execution's own call future, which its caller holds, a wait's waiter,
+ *   and a pending resolver's wait, which the waiter's frame holds.
  * - A frame holds the same whether it is live (interpreter/frames.ts) or stored (objects.ts), so
  *   one rule reads both, over what their registers hold.
  */
@@ -31,17 +35,12 @@ export interface HoldingFrame {
 
 /**
  * Whether `object` is a root, kept for its own sake rather than held by another: an execution, an
- * answer, the outcome an instance awaits, or a wait's resolver.
+ * answer, or the outcome an instance awaits.
  */
 export function isRoot<Object extends { readonly kind: HeapObject['kind'] }>(
   object: Object,
-): object is Extract<Object, { readonly kind: 'execution' | 'answer' | 'outcome' | 'resolver' }> {
-  return (
-    object.kind === 'execution' ||
-    object.kind === 'answer' ||
-    object.kind === 'outcome' ||
-    object.kind === 'resolver'
-  );
+): object is Extract<Object, { readonly kind: 'execution' | 'answer' | 'outcome' }> {
+  return object.kind === 'execution' || object.kind === 'answer' || object.kind === 'outcome';
 }
 
 /** What one object holds and watches. */
@@ -83,10 +82,15 @@ const kinds: Handlers<undefined, HeapObject, [], Holding> = {
   mock: (_context, mock) => ({ ...empty, values: [mock.replacement, ...mock.calls] }),
   answer: (_context, answer) => ({ ...empty, holds: [answer.future] }),
   outcome: (_context, outcome) => ({ ...empty, holds: [outcome.future] }),
-  resolver: (_context, { waiter, state }) =>
+  wait: (_context, { waiter, state }) => ({
+    values: state.kind === 'decided' ? [state.value] : [],
+    holds: [],
+    watches: [waiter],
+  }),
+  resolver: (_context, { state }) =>
     state.kind === 'pending'
-      ? { ...empty, watches: [waiter, ...state.futures] }
-      : { values: [state.value], holds: [], watches: [waiter] },
+      ? { values: [], holds: present(state.on), watches: [state.wait] }
+      : empty,
   execution: (_context, { frames, resolves }) => ({
     values: frames.flatMap((frame) => frameValues(holdingFrame(frame))),
     holds: frames.flatMap((frame) => frameCells(holdingFrame(frame))),

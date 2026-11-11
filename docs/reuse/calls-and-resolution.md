@@ -3,7 +3,7 @@ description: candidate lookup, ADL, overload choice, inference, trait witnesses 
 owner: tech-lead
 status: active
 applies_to: istalang
-last_verified: 2026-11-08
+last_verified: 2026-11-11
 last_updated: 2026-11-11
 tags: [reuse, checker, calls, resolution, overloads, traits, witnesses]
 ---
@@ -39,7 +39,8 @@ tags: [reuse, checker, calls, resolution, overloads, traits, witnesses]
 - resolve a type's `Default` witness (`default()`) → `defaultWitness`, `resolveDefault` (`src/compiler/checker/resolution/conformance/default-witness.ts`); what an `@JsonSkip` field reads back as, for its form and for where the annotation may stand alike → `CheckerContext.json.skippedDefaultOf` (`src/compiler/checker/surface/json-form.ts`, decided in `rules/boundary/json-forms.ts`)
 - build a `ResolvedCall` (`function` or `requirement`) from an `Application` and `Instantiation` → `callMade` (`src/compiler/checker/resolution/choosing/calls-made.ts`)
 - make a call the toolchain makes on its own to a plain function (no written call site), by its arguments or by explicit `typeArguments` → `silentCall`, `callWithTypes` (`src/compiler/checker/resolution/applying/silent-choice.ts`)
-- resolve and record an implicit construct call → `implicitCall` (`src/compiler/checker/resolution/applying/implicit.ts`)
+- resolve and record an implicit construct call → `implicitCall`; apply one to read what it made (each argument's filled parameter type) before judging and recording it → `applyImplicitCall`, `recordImplicitCall` (`src/compiler/checker/resolution/applying/implicit.ts`)
+- check a wait on an awaitable (an `await` or a `select` case): its `onAwait` call, what it gives and its kind → `awaitedThrough` (`src/compiler/checker/constructs/expressions/control/await.ts`)
 - resolve an implicit `compare` or `includes` operator call → `implicitOperatorCall` (`src/compiler/checker/resolution/applying/implicit.ts`)
 - resolve and record a prelude-owned helper call (panics if absent) → `preludeCall` (`src/compiler/checker/resolution/applying/implicit.ts`)
 - resolve a written call in a body → `resolveCall`, `recordChosen` (`src/compiler/checker/resolution/calls/resolve/index.ts`); explain why one candidate refused it → `explain` (`src/compiler/checker/resolution/calls/resolve/explanations.ts`)
@@ -63,7 +64,7 @@ tags: [reuse, checker, calls, resolution, overloads, traits, witnesses]
 ## One-way rules
 
 - Every resolved call is built through `callMade` (`src/compiler/checker/resolution/choosing/calls-made.ts`).
-- Extensible protocol calls (`iterate`, `setIndex`, `compare`, `includes`, `toString`) use `implicitCall`; prelude-owned helpers use `preludeCall`.
+- Extensible protocol calls (`iterate`, `setIndex`, `compare`, `includes`, `toString`, `onAwait`) use `implicitCall`, or `applyImplicitCall` and `recordImplicitCall`; prelude-owned helpers use `preludeCall`.
 - Silent resolution without a written call site uses `silentCall`, or `callWithTypes` when type arguments are given (`silent-choice.ts`).
 
 ## Recipes

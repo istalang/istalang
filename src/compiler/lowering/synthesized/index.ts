@@ -27,6 +27,7 @@ import type { AnonymousStructType, NominalType, Type } from '../../checker/types
 import type { AnchoredSpan } from '../../syntax/tree/positions.ts';
 import type { ClosedCall } from '../calls/closed-calls.ts';
 import { emitCall, emitFunctionCall } from '../calls/emit-call.ts';
+import { awaitFuture } from '../calls/waits.ts';
 import { tupleOf } from '../constructs/expressions/literals/tuples.ts';
 import { equal } from '../constructs/expressions/operators.ts';
 import { payloadOf, payloadOr } from '../constructs/expressions/structs/variants.ts';
@@ -144,10 +145,9 @@ export class SynthesizedCode implements CodeContext {
     return payloadOr(this, tested, () => failed(payloadOf(this, result, this.span)), this.span);
   }
 
-  await(future: Register): Register {
-    const dst = this.code.allocate();
-    this.code.await(dst, future, this.span);
-    return dst;
+  /** The value of the future in `future`, of type `type`, awaited. */
+  await(future: Register, type: Type): Register {
+    return awaitFuture(this, future, type, this.span);
   }
 
   return(value: Register): void {

@@ -45,7 +45,7 @@ export function readyOrphans(heap: Heap, search: OrphanSearch): readonly number[
   }
   const isOrphan = new Set(orphans.map((object) => object.id));
   const successors = new Map(
-    orphans.map((object) => [object.id, holdsOf(object).filter((id) => isOrphan.has(id))]),
+    orphans.map((object) => [object.id, holdsOf(heap, object).filter((id) => isOrphan.has(id))]),
   );
   const covered = coveredBy(disposable, successors);
   return disposable.filter((id) => !covered.has(id)).sort((first, second) => second - first);

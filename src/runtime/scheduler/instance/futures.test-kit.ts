@@ -2,9 +2,10 @@
 
 import { Futures } from './futures.ts';
 import type { Heap } from './heap.ts';
-import { Resolvers } from './resolvers.ts';
+import { Waits } from './waits.ts';
 
 /** Futures on `heap`, their decisions and answers ignored. */
 export function futuresOn(heap: Heap): Futures {
-  return new Futures(heap, new Resolvers(heap, () => undefined), () => undefined);
+  const waits = new Waits(heap, { decided: () => undefined, watchesCall: () => false });
+  return new Futures(heap, waits, () => undefined);
 }

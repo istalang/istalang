@@ -59,7 +59,7 @@ export function structEntry(lowering: Lowering, instance: FunctionInstance): Cod
 export function hostExternEntry(lowering: Lowering, instance: FunctionInstance): CodeFunction {
   const { span } = instance.declaration.name;
   const call = hostCallOf(lowering, instance);
-  return builtLowering(lowering, instance, call.filled).lowerBuilt((context, parameters) =>
+  return builtLowering(lowering, instance, call.awaited?.value).lowerBuilt((context, parameters) =>
     writeHostCall(
       context,
       call,

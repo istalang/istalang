@@ -10,8 +10,9 @@
  *   run stack, which keep themselves alive until they suspend, and objects waiting in a collection
  *   round (collector.ts).
  * - An object holds what its kind's entry says (snapshot/holdings.ts), and a frame what the one
- *   frame rule there says; a slot's queue and a weak reference hold nothing, so neither does a
- *   `disposed()` watch, which holds only its weak reference.
+ *   frame rule there says, and a wait its resolvers registered on futures; a slot's queue and a
+ *   weak reference hold nothing, so neither does a `disposed()` watch, which holds only its weak
+ *   reference.
  * - The one walk also finds how deep the deepest held value nests, which is what a commit checks
  *   against `maximumDepth` (spec §5), so a commit walks the live state once.
  * - Asking about some objects (`heldUnlessAll`) walks breadth first, from the roots in the order
@@ -95,15 +96,29 @@ export function walkHolds(
         return;
       }
       if (step === 'through') {
-        pushAll(queue, holdsOf(heap.objectOf(id)));
+        pushAll(queue, holdsOf(heap, heap.objectOf(id)));
       }
     }
   }
 }
 
-/** What `object` holds; a root is never held through. */
-export function holdsOf(object: LiveObject): readonly number[] {
-  return isRoot(object) ? [] : heldObjects(object);
+/**
+ * What `object` holds; a root is never held through. A wait holds its resolvers registered on
+ * futures besides (proposal 8, Rule 5): the registration is on the resolver, so the heap's index of
+ * a wait's cases is read.
+ */
+export function holdsOf(heap: Heap, object: LiveObject): readonly number[] {
+  if (isRoot(object)) {
+    return [];
+  }
+  const held = heldObjects(object);
+  if (object.kind !== 'wait') {
+    return held;
+  }
+  const registered = heap
+    .find('cases', object.id)
+    .filter(({ state }) => state.kind === 'pending' && state.on !== undefined);
+  return [...held, ...registered.map(({ id }) => id)];
 }
 
 /** The objects reached from `frames` and `objects`, until `stop` says to, asked of each. */

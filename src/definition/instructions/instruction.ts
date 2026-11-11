@@ -81,13 +81,14 @@ const operandTable: Handlers<undefined, Instruction, [], Partial<Operands>> = {
   currentCall: (_, i) => ({ registers: [i.dst] }),
   given: (_, i) => ({ registers: [i.parameter], labels: [i.target] }),
   body: () => ({}),
-  await: (_, i) => ({ registers: [i.dst, i.future] }),
+  wait: (_, i) => ({ registers: [i.dst] }),
+  resolver: (_, i) => ({ registers: [i.dst, i.wait] }),
+  await: (_, i) => ({ registers: [i.dst, i.wait] }),
   select: (_, i) => ({
-    registers: i.cases.flatMap((c) => [
-      c.future,
-      ...c.holds,
-      ...(c.bind === undefined ? [] : [c.bind]),
-    ]),
+    registers: [
+      i.wait,
+      ...i.cases.flatMap((c) => [...c.holds, ...(c.bind === undefined ? [] : [c.bind])]),
+    ],
     labels: [...i.cases.map((c) => c.target), ...(i.otherwise === undefined ? [] : [i.otherwise])],
   }),
   release: (_, i) => ({ registers: i.registers }),

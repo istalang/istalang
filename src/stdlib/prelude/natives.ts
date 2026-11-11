@@ -27,6 +27,7 @@ import {
   Panic,
   type WithInstances,
   type WithSlots,
+  type WithWaits,
   type WithWeakSide,
 } from '../../runtime/natives.ts';
 import { divisionByZero, numeric } from '../numeric.ts';
@@ -39,14 +40,16 @@ import { rangeNatives } from './range-natives.ts';
 import { slotNatives } from './slot-natives.ts';
 import { stringNatives } from './strings.ts';
 import { textFormNatives } from './text-forms.ts';
+import { waitNatives } from './wait-natives.ts';
 import { weakNatives } from './weak-natives.ts';
 
 export const preludeNatives = (
   keys: NativeKeys,
-): Natives<NativeContext & WithSlots & WithWeakSide & WithInstances> => ({
+): Natives<NativeContext & WithSlots & WithWaits & WithWeakSide & WithInstances> => ({
   ...arrayNatives(keys),
   ...instanceNatives(keys),
   ...slotNatives(keys),
+  ...waitNatives(keys),
   ...mapNatives(keys),
   ...rangeNatives(keys),
   ...stringNatives(keys),

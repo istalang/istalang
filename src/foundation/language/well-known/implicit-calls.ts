@@ -45,5 +45,8 @@ export const conversionFunction = 'from';
 /** What `x!` calls on none (§4), and what a program calls to panic (§3.12). */
 export const panicFunction = 'panic';
 
+/** What `await` and each `select` case call on what they wait on (proposal 8, Rule 5). */
+export const awaitFunction = 'onAwait';
+
 /** The function `Disposable` requires (§3.10, §7). */
 export const disposeFunction = 'dispose';

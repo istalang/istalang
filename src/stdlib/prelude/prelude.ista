@@ -20,6 +20,25 @@ type Persistence = "live" | "ista"
 extern shared struct Future<T, K in Persistence>:
   type Mode = K
 
+# What `await x` and a `select`'s case wait on (proposal 8, Rule 5): the runtime makes `done`, a
+# resolver for that one wait, and calls `x.onAwait(done)`, which can't itself wait; the waiting code
+# resumes with what `done` is resolved with, waiting in `Mode`, its code's kind. A type meets it
+# with a `Mode` of its own, so its work starts only once it is awaited.
+trait Awaitable<T>:
+  type Mode in Persistence
+  Self.Mode fn onAwait(self: Self, done: Resolver<T, Self.Mode>)
+
+# A future is the runtime's awaitable: it resolves `done` at once when it has resolved, else when it
+# does.
+extern K fn onAwait<T, K in Persistence>(self: Future<T, K>, done: Resolver<T, K>)
+
+# One wait's one-shot resolver (Rule 5). A second `resolve` panics, and `tryResolve` says whether it
+# decided the wait, for races; once another case decided it, neither decides anything. One let go of
+# unresolved panics: an awaitable misused it.
+extern shared struct Resolver<T, K in Persistence>
+extern K fn resolve<T, K in Persistence>(self: Resolver<T, K>, value: T)
+extern K fn tryResolve<T, K in Persistence>(self: Resolver<T, K>, value: T) -> Bool
+
 # What a function's values may capture (§3.14): only sendable values, or any.
 type Sendability = "sendable" | "plain"
 
@@ -62,10 +81,12 @@ shared struct Shared<T>:
 # which the runtime makes, reads and writes as it does a shared struct's.
 extern shared struct _Cell<T>
 
-# Disposal (§7): the runtime disposes a future and a slot once nothing holds them. Declaring their
-# `dispose` is what makes them Disposable (§3.10), and what tells the compiler the runtime does it.
-# A slot's is ista, so a slot is ista data, which only ista code handles (proposal 8, Rule 6).
+# Disposal (§7): the runtime disposes a future, a resolver and a slot once nothing holds them.
+# Declaring their `dispose` is what makes them Disposable (§3.10), and what tells the compiler the
+# runtime does it. A slot's is ista, so a slot is ista data, which only ista code handles (proposal
+# 8, Rule 6).
 extern K fn dispose<T, K in Persistence>(self: Future<T, K>)
+extern K fn dispose<T, K in Persistence>(self: Resolver<T, K>)
 extern ista fn dispose<T>(self: Slot<T>)
 
 # What `defer` gives (§7): a disposable whose release calls `run`, so `_ = defer log(x)` computes
