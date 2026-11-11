@@ -246,12 +246,15 @@ export interface TypeParameterType extends WrittenThrough {
 }
 
 /**
- * Whether `type`, written after `in`, stands for one type already rather than listing members to
- * choose from (§3.5, §3.10): a member parameter, or an associated type, opaque. A member bound
- * naming one is a mistake, and bounds nothing, so nothing follows it round a cycle.
+ * Whether `type`, written after `in`, names among its members one standing for one type already
+ * rather than listing members to choose from (§3.5, §3.10): a member parameter, or an associated
+ * type, opaque. A member bound naming one is a mistake, and bounds nothing, so nothing follows it
+ * round a cycle (`type Mode in Self.Mode | "live"`).
  */
 export function namesOneType(type: Type): boolean {
-  return isMemberParameter(type) || type.kind === 'associated';
+  return membersOf(type).some(
+    (member) => isMemberParameter(member) || member.kind === 'associated',
+  );
 }
 
 /**

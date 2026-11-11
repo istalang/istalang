@@ -184,14 +184,11 @@ export function isKeyWithin(checker: CheckerContext, key: Type, keys: Type): boo
           each.without.every((name) => member.without.includes(name)),
       );
     }
-    if (member.kind === 'parameter') {
-      const union = checker.fitting.memberUnionOf(member);
-      return (
-        among.some((each) => typeKeys.typeKey(each) === typeKeys.typeKey(member)) ||
-        (union !== undefined && isKeyWithin(checker, union, keys))
-      );
-    }
-    return among.some((each) => typeKeys.typeKey(each) === typeKeys.typeKey(member));
+    const union = checker.fitting.memberUnionOf(member);
+    return (
+      among.some((each) => typeKeys.typeKey(each) === typeKeys.typeKey(member)) ||
+      (union !== undefined && isKeyWithin(checker, union, keys))
+    );
   });
 }
 
@@ -222,7 +219,11 @@ export function fieldTypeOf(checker: CheckerContext, of: Type, key: Type): Type 
   if (keys.kind === 'error' || !isKeyWithin(checker, key, keys)) {
     return errorType;
   }
-  if (of.kind === 'mapped' && key.kind === 'parameter' && isKeyWithin(checker, key, of.keys)) {
+  if (
+    of.kind === 'mapped' &&
+    checker.fitting.memberUnionOf(key) !== undefined &&
+    isKeyWithin(checker, key, of.keys)
+  ) {
     return mappedFieldType(checker, of, key);
   }
   return opaqueFieldType(checker, of, key) ?? { kind: 'field', of, key };

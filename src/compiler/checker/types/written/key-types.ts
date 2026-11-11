@@ -126,7 +126,8 @@ function mappedKeysWritten({ checker, module }: Written, entry: MappedField): Ty
 
 /**
  * Whether `key` may stand among a mapped entry's keys: a String literal, `Never`, a struct's other
- * keys not known yet, or a member parameter, which stands for one of its union's.
+ * keys not known yet, or a type standing for one member (a member parameter, a member-bounded
+ * associated type), one of its union's.
  */
 function isKey(checker: CheckerContext, key: Type): boolean {
   switch (key.kind) {
@@ -136,10 +137,8 @@ function isKey(checker: CheckerContext, key: Type): boolean {
       return true;
     case 'primitive':
       return key.name === 'Never';
-    case 'parameter':
-      return checker.fitting.memberUnionOf(key) !== undefined;
     default:
-      return false;
+      return checker.fitting.memberUnionOf(key) !== undefined;
   }
 }
 

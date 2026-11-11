@@ -21,7 +21,6 @@ import type { ModuleId } from '../../../program/program.ts';
 import { declaredFunctionName } from '../../../syntax/declarations/field-defaults.ts';
 import type { FunctionDeclaration } from '../../../syntax/declarations/index.ts';
 import { awaits } from '../../../syntax/tokens/modifiers.ts';
-import { parentOf } from '../../../syntax/tree/index.ts';
 import type { AnchoredSpan } from '../../../syntax/tree/positions.ts';
 import { namedTypeText } from '../../../syntax/types/index.ts';
 import type { CheckerContext } from '../../contexts/context.ts';
@@ -29,10 +28,10 @@ import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import { kindText } from '../../resolution/applying/call-kinds.ts';
 import { sameType } from '../../types/identity/identity.ts';
 import {
-  isMarkVariable,
   isOneKind,
   isSimpleMark,
   kindOfFunction,
+  namedMarkOf,
 } from '../../types/type/function-kinds.ts';
 import type { Type } from '../../types/type/index.ts';
 import { typeText } from '../../types/type/type-text.ts';
@@ -143,28 +142,9 @@ export function checkNamedMark(
     return;
   }
   const text = namedTypeText(written);
-  // An associated type names a mark only on a requirement of its own trait's `Self`.
-  const misplaced =
-    mark.kind === 'associated' && !isOwnSelfType(checker, module, declaration, mark);
-  if (misplaced || !isMarkVariable(checker, mark)) {
+  if (namedMarkOf(checker, declaration) === undefined) {
     checker.report(module, checkerDiagnostics.unknownMark(written.span, text));
   } else if (awaits(declaration.qualifiers) && !isOneKind(checker, mark)) {
     checker.report(module, checkerDiagnostics.asyncMarkNotKind(written.span, text));
   }
-}
-
-/** Whether `mark` is an associated type of the `Self` of the trait requiring `declaration`. */
-function isOwnSelfType(
-  checker: CheckerContext,
-  module: ModuleId,
-  declaration: FunctionDeclaration,
-  mark: Type,
-): boolean {
-  const trait = parentOf(checker.inputs.treeOf(module), declaration);
-  return (
-    trait?.kind === 'TraitDeclaration' &&
-    mark.kind === 'associated' &&
-    mark.of.kind === 'parameter' &&
-    mark.of.declaration === trait
-  );
 }

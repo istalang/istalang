@@ -157,4 +157,32 @@ describe('an associated type bounded to members', () => {
       ),
     ).toEqual([checkerDiagnostics.notObjectSafe.code]);
   });
+
+  it('keys a struct when bounded to its keys', () => {
+    expect(
+      codesOf(
+        'trait Keyed<S is struct>:',
+        '  type Key in keyof S',
+        'fn read<S is struct, K is Keyed<S>>(s: S, k: K.Key) -> S[K.Key]: s[k]',
+        'type Sub<S is struct, K is Keyed<S>> = { [F in K.Key]: S[F] }',
+      ),
+    ).toEqual([]);
+  });
+
+  it('marks nothing outside its own trait, its function then simple', () => {
+    expect(
+      codesOf(
+        'trait Modes:',
+        '  type Mode in Persistence',
+        'W.Mode fn bad<W is Modes>(w: W): ()',
+        'fn caller<W is Modes>(w: W): bad(w)',
+      ),
+    ).toEqual([unknownMark.code]);
+  });
+
+  it('is no union listing itself', () => {
+    expect(
+      codesOf('trait Bad:', '  type Mode in Self.Mode | "live"', 'fn f<B is Bad>(x: B.Mode): ()'),
+    ).toEqual([memberOfMemberParameter.code]);
+  });
 });

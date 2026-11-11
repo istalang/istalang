@@ -52,7 +52,7 @@ export type KindLookup = Pick<Checker, 'kindOf'>;
 /** What finding a function's kind looks up: the mark its head names, or what its fields hold. */
 export type KindNames = Pick<
   CheckerContext,
-  'moduleOf' | 'resolveType' | 'valueKindsOf' | 'fitting'
+  'moduleOf' | 'resolveType' | 'valueKindsOf' | 'fitting' | 'inputs'
 >;
 
 /**
@@ -110,13 +110,35 @@ export function functionKindOf(names: KindNames, declaration: FunctionDeclaratio
   if (isFieldsFunction(declaration)) {
     return fieldsKindOf(names, declaration);
   }
-  if (declaration.mark === undefined) {
-    return simpleMark;
-  }
   // A name that is no mark is reported where the signature is (rules/kinds/signature-kinds.ts);
   // its function is then simple, so its calls report nothing more.
-  const named = names.resolveType(names.moduleOf(declaration), declaration.mark);
-  return isMarkVariable(names, named) ? named : simpleMark;
+  return namedMarkOf(names, declaration) ?? simpleMark;
+}
+
+/**
+ * The mark `declaration`'s head names (`M fn`), where it names one: a mark parameter, or on a
+ * trait's requirement a member-bounded associated type of its own `Self` (`Self.Mode fn`);
+ * undefined for a head naming none, or anything else.
+ */
+export function namedMarkOf(
+  names: Pick<KindNames, 'moduleOf' | 'resolveType' | 'fitting' | 'inputs'>,
+  declaration: FunctionDeclaration,
+): Type | undefined {
+  if (declaration.mark === undefined) {
+    return undefined;
+  }
+  const module = names.moduleOf(declaration);
+  const named = names.resolveType(module, declaration.mark);
+  if (!isMarkVariable(names, named)) {
+    return undefined;
+  }
+  const trait = parentOf(names.inputs.treeOf(module), declaration);
+  const ownSelf =
+    named.kind !== 'associated' ||
+    (trait?.kind === 'TraitDeclaration' &&
+      named.of.kind === 'parameter' &&
+      named.of.declaration === trait);
+  return ownSelf ? named : undefined;
 }
 
 /** How a message names what the kind parameter `parameter` is the kind of: its declaration. */
