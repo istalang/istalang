@@ -7,6 +7,7 @@
 import type { FunctionDeclaration, TypeParameter } from '../../syntax/declarations/index.ts';
 import type { Expression } from '../../syntax/expressions/index.ts';
 import type { NodeOf } from '../../syntax/tree/node.ts';
+import type { Substitution } from '../types/parts/substitution.ts';
 import type { AnyType, Type } from '../types/type/index.ts';
 
 /**
@@ -115,6 +116,11 @@ interface RequirementCall extends WrittenAs {
   /** The trait's function required. */
   readonly function: FunctionDeclaration;
   readonly requirement: RequirementOrigin;
+  /**
+   * What the trait's `Self` and type parameters stand for where it is called (§3.10), which its
+   * signature and mark are read through: `Self.Mode fn` is of `W.Mode` called on a `W`.
+   */
+  readonly substitution: Substitution;
   /** The requirement's own type arguments, when the required function is generic. */
   readonly typeArguments: readonly Type[];
   /** The witnesses of the constraints on those type arguments, as the call meets them. */

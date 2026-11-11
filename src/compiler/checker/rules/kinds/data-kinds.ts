@@ -43,9 +43,8 @@ import { fieldChildrenOf, type SyntaxNode } from '../../../syntax/tree/index.ts'
 import type { AnchoredSpan } from '../../../syntax/tree/positions.ts';
 import type { CheckerContext } from '../../contexts/context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
-import { witnessCallsOf } from '../../resolution/applying/call-kinds.ts';
 import type { CheckedBody, NestedFunction, ValueSite } from '../../surface/checked-body.ts';
-import type { ResolvedCall } from '../../surface/resolved-call.ts';
+import { type ResolvedCall, witnessCallsOf } from '../../surface/resolved-call.ts';
 import { kindOfFunction, simpleMark } from '../../types/type/function-kinds.ts';
 import { isNominalEntity, nominalType, type Type } from '../../types/type/index.ts';
 import { typeText } from '../../types/type/type-text.ts';
@@ -197,7 +196,7 @@ function judgeNode(judging: Judging, node: SyntaxNode, handler: Handler): void {
       : undefined;
   judgeValues(judging, handler, node.span, [found, fitted, declared]);
   for (const call of calls ?? []) {
-    for (const each of [call, ...witnessCallsOf(call)]) {
+    for (const each of [call, ...witnessCallsOf(call.witnesses)]) {
       judgeValues(judging, handler, node.span, each.typeArguments);
     }
   }

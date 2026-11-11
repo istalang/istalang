@@ -11,8 +11,8 @@ import { type Substitution, substitute } from '../parts/substitution.ts';
 import { parametersIn } from '../parts/type-parts.ts';
 import { declaresDefault } from '../type/field-defaults.ts';
 import type { ParameterKey, Type } from '../type/index.ts';
+import { membersOf } from '../type/index.ts';
 import { errorType } from '../type/primitives.ts';
-import { membersOf } from '../unions/unions.ts';
 import { hasBounds, type Settling, type SettlingView, waitedOn } from './settle.ts';
 import {
   type Bound,

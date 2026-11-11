@@ -25,7 +25,7 @@ import { calledVariant } from '../surface/named-variants.ts';
 import type { ResolvedCall } from '../surface/resolved-call.ts';
 import { substitutionFor } from '../types/parts/substitution.ts';
 import type { Type } from '../types/type/index.ts';
-import { membersOf } from '../types/unions/unions.ts';
+import { membersOf } from '../types/type/index.ts';
 import { givenKeysOwner } from '../types/written/key-types.ts';
 import { parameterType } from '../types/written/resolve-type.ts';
 import { bodyHolding } from './holders.ts';

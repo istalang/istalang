@@ -13,8 +13,9 @@ import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import { type Substitution, substitute } from '../parts/substitution.ts';
 import { isSimpleMark, kindHolderName, standsForOneKind } from '../type/function-kinds.ts';
 import type { Type } from '../type/index.ts';
+import { membersOf } from '../type/index.ts';
 import { typeText } from '../type/type-text.ts';
-import { hasMember, membersOf } from '../unions/unions.ts';
+import { hasMember } from '../unions/unions.ts';
 import type { Fitting } from './fit/index.ts';
 
 /** Whether `type` stands for one member of `union`, as a member parameter's argument must. */
@@ -26,8 +27,7 @@ export function isOneMember(
   if (hasMember(union, type)) {
     return true;
   }
-  const own =
-    type.kind === 'parameter' || type.kind === 'associated' ? memberUnionOf(type) : undefined;
+  const own = memberUnionOf(type);
   return (
     own !== undefined && membersOf(own).every((member) => isOneMember(union, member, memberUnionOf))
   );

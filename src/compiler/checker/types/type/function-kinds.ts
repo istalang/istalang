@@ -15,6 +15,7 @@
  */
 
 import {
+  marks,
   type Persistence,
   persistences,
 } from '../../../../foundation/language/well-known/index.ts';
@@ -33,7 +34,8 @@ import type { Checker } from '../../check.ts';
 import type { CheckerContext } from '../../contexts/context.ts';
 import type { Fitting } from '../fitting/fit/index.ts';
 import type { Type } from './index.ts';
-import { markOrder } from './mark-orders.ts';
+import { membersOf } from './index.ts';
+import { markOrder, sameMark } from './mark-orders.ts';
 import { markType } from './primitives.ts';
 
 /** The mark of unmarked code and function types (proposal 8, Rule 2): `"simple"`. */
@@ -81,18 +83,6 @@ function fieldsKindOf(names: KindNames, declaration: FunctionDeclaration): Type 
   return first !== undefined && kinds.every((kind) => sameMark(kind, first)) ? first : simpleMark;
 }
 
-/** Whether `first` and `second` are one mark: one literal, or one mark parameter. */
-function sameMark(first: Type, second: Type): boolean {
-  if (first.kind === 'literal' && second.kind === 'literal') {
-    return first.value === second.value;
-  }
-  return (
-    first.kind === 'parameter' &&
-    second.kind === 'parameter' &&
-    first.declaration === second.declaration
-  );
-}
-
 /** Which of the two kinds `kind` is; undefined for either, or a kind variable. */
 export function persistenceOf(kind: Type): Persistence | undefined {
   return persistences.find((each) => kind.kind === 'literal' && kind.value === each);
@@ -126,7 +116,7 @@ export function functionKindOf(names: KindNames, declaration: FunctionDeclaratio
   // A name that is no mark is reported where the signature is (rules/kinds/signature-kinds.ts);
   // its function is then simple, so its calls report nothing more.
   const named = names.resolveType(names.moduleOf(declaration), declaration.mark);
-  return isMarkVariable(names, named) || named.kind === 'associated' ? named : simpleMark;
+  return isMarkVariable(names, named) ? named : simpleMark;
 }
 
 /** How a message names what the kind parameter `parameter` is the kind of: its declaration. */
@@ -144,24 +134,40 @@ export function kindHolderName(
 }
 
 /**
- * Whether the kind `kind` is one of the two: `live`, `ista`, or a kind parameter standing for one
- * (`K in Persistence`).
+ * Whether the kind `kind` is one of the two: `live`, `ista`, or a kind variable standing for one
+ * (`K in Persistence`, or an associated type `type Mode in Persistence`).
  */
 export function isOneKind(lookup: QualifierLookup, kind: Type): boolean {
   return (
     persistenceOf(kind) !== undefined ||
     (kind.kind === 'parameter' &&
       kind.declaration.kind === 'TypeParameter' &&
-      standsForOneKind(lookup, kind.declaration))
+      standsForOneKind(lookup, kind.declaration)) ||
+    isBoundTo(lookup, kind, persistences)
   );
 }
 
-/** Whether `type` is a mark parameter: `K in Persistence` or `M in Mark`. */
+/**
+ * Whether `type` is a mark variable: a mark parameter, `K in Persistence` or `M in Mark`, or an
+ * associated type bounded to marks, `type Mode in Persistence` (§3.10).
+ */
 export function isMarkVariable(lookup: QualifierLookup, type: Type): boolean {
   return (
-    type.kind === 'parameter' &&
-    type.declaration.kind === 'TypeParameter' &&
-    isMarkParameter(lookup, type.declaration)
+    (type.kind === 'parameter' &&
+      type.declaration.kind === 'TypeParameter' &&
+      isMarkParameter(lookup, type.declaration)) ||
+    isBoundTo(lookup, type, marks)
+  );
+}
+
+/** Whether `type` is an associated type bounded to one member of `members` (§3.10). */
+function isBoundTo(lookup: QualifierLookup, type: Type, members: readonly string[]): boolean {
+  const union = type.kind === 'associated' ? lookup.fitting.memberUnionOf(type) : undefined;
+  return (
+    union !== undefined &&
+    membersOf(union).every(
+      (member) => member.kind === 'literal' && members.some((each) => each === member.value),
+    )
   );
 }
 
@@ -210,7 +216,7 @@ function declaringOf(
 
 /** What knowing a qualifier parameter asks of the checker, which keeps each answer. */
 export interface QualifierLookup {
-  readonly fitting: Pick<Fitting, 'qualifierOf'>;
+  readonly fitting: Pick<Fitting, 'qualifierOf' | 'memberUnionOf'>;
 }
 
 /** Whether `parameter` stands for a mark: `M in Mark`, `K in Persistence`, or a subset. */

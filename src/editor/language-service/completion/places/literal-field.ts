@@ -17,7 +17,7 @@
 
 import { itemField } from '../../../../compiler/checker/surface/struct-items.ts';
 import type { FieldMember, Type } from '../../../../compiler/checker/types/type/index.ts';
-import { membersOf } from '../../../../compiler/checker/types/unions/unions.ts';
+import { membersOf } from '../../../../compiler/checker/types/type/index.ts';
 import { spellsName } from '../../../../compiler/scanner/characters.ts';
 import type {
   FieldItem,

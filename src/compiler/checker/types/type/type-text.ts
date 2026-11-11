@@ -30,6 +30,7 @@ import {
   type TypeParameterType,
   type UnionType,
 } from './index.ts';
+import { sameMark } from './mark-orders.ts';
 import { isPrimitive } from './primitives.ts';
 
 /** The unlabelled recursive types being printed as their bodies, each `…` where reached again. */
@@ -208,22 +209,10 @@ function ownFutureValue(type: FunctionType): Type | undefined {
     return undefined;
   }
   const [value, kind] = result.arguments;
-  return kind !== undefined && sameKind(kind, mark) ? value : undefined;
+  return kind !== undefined && sameMark(kind, mark) ? value : undefined;
 }
 
 const futureName = 'Future';
-
-/** Whether two kinds are one: the same literal, or the same kind variable. */
-function sameKind(first: Type, second: Type): boolean {
-  switch (first.kind) {
-    case 'literal':
-      return second.kind === 'literal' && first.value === second.value;
-    case 'parameter':
-      return second.kind === 'parameter' && first.declaration === second.declaration;
-    default:
-      return false;
-  }
-}
 
 /** A parameter's type as written: `&T` for one passed by reference (§3.7). */
 export function slotText({ type, reference }: ParameterSlot): string {

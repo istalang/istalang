@@ -17,15 +17,11 @@
 
 import type { Expression } from '../../../syntax/expressions/index.ts';
 import { signedNumberOf } from '../../../syntax/expressions/literals/numbers.ts';
+import type { Fitting } from '../fitting/fit/index.ts';
 import { folded } from '../identity/folding.ts';
 import { typeKeys } from '../identity/type-keys.ts';
 import { unfolded, unfoldRecursive } from '../type/computed-types.ts';
-import {
-  isMemberParameter,
-  type LiteralType,
-  type LiteralValue,
-  type Type,
-} from '../type/index.ts';
+import { type LiteralType, type LiteralValue, membersOf, type Type } from '../type/index.ts';
 import { isPrimitive, literalType, neverType, noneType } from '../type/primitives.ts';
 import type { TypeRules } from '../type/type-rules.ts';
 import {
@@ -65,11 +61,6 @@ function memberTypesOf(type: Type): readonly Type[] {
 export function unionOfNormalized(members: readonly Type[]): Type {
   const [only] = members;
   return members.length <= 1 ? (only ?? neverType) : { kind: 'union', members };
-}
-
-/** The members of `type`: a union's, or the type itself, which a value of it is one of. */
-export function membersOf(type: Type): readonly Type[] {
-  return type.kind === 'union' ? type.members : [type];
 }
 
 /** What remains of `type` without `removed`'s members; `Never` when nothing does. */
@@ -136,16 +127,20 @@ export function writtenLiteral(node: Expression): LiteralType | undefined {
 
 /**
  * The type a literal of `value` has where `expected` is expected (§2): its literal type where a
- * literal type of its base is expected, or a union holding one, or a member parameter, each of
- * whose instantiations is one member (§3.5), else its base, as `const s = "draft"` makes a
- * `String`.
+ * literal type of its base is expected, or a union holding one, or a type standing for one member
+ * (a member parameter, a member-bounded associated type), each of whose instantiations is one
+ * member (§3.5), else its base, as `const s = "draft"` makes a `String`.
  */
-export function literalOrBase(value: LiteralValue, expected: Type | undefined): Type {
+export function literalOrBase(
+  value: LiteralValue,
+  expected: Type | undefined,
+  fitting: Pick<Fitting, 'memberUnionOf'>,
+): Type {
   const literal = literalType(value);
   const base = baseOf(literal);
   const literalExpected = membersOf(expected ?? base).some(
     (member) =>
-      isMemberParameter(member) ||
+      fitting.memberUnionOf(member) !== undefined ||
       (member.kind === 'literal' && literalBase(member.value) === literalBase(value)),
   );
   return literalExpected ? literal : base;

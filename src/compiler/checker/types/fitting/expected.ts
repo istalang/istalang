@@ -32,6 +32,7 @@ import { unfolded } from '../type/computed-types.ts';
 import type { Futures } from '../type/function-types.ts';
 import {
   type FunctionType,
+  membersOf,
   type NominalDeclaration,
   type NominalEntity,
   type NominalType,
@@ -40,7 +41,7 @@ import {
 } from '../type/index.ts';
 import { errorType, expectsError } from '../type/primitives.ts';
 import { arrayElement, wellKnownArguments } from '../type/well-known.ts';
-import { membersOf, optionalInner } from '../unions/unions.ts';
+import { optionalInner } from '../unions/unions.ts';
 import { constrainArguments, typeArgumentsFor } from '../written/type-arguments.ts';
 
 /**

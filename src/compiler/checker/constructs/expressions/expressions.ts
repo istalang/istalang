@@ -52,10 +52,13 @@ const misplacedReference = (context: BodyContext, node: Reference): Type => {
 // biome-ignore-start lint/style/useNamingConvention: the keys are the tree's node kinds.
 export const expressionHandlers: Handlers<BodyContext, Expression, [Type | undefined], Type> = {
   Identifier: checkName,
-  IntegerLiteral: (_context, node, expected) => literalOrBase(node.value, expected),
+  IntegerLiteral: (context, node, expected) =>
+    literalOrBase(node.value, expected, context.checker.fitting),
   FloatLiteral: () => floatType,
-  StringLiteral: (_context, node, expected) => literalOrBase(node.value, expected),
-  BooleanLiteral: (_context, node, expected) => literalOrBase(node.value, expected),
+  StringLiteral: (context, node, expected) =>
+    literalOrBase(node.value, expected, context.checker.fitting),
+  BooleanLiteral: (context, node, expected) =>
+    literalOrBase(node.value, expected, context.checker.fitting),
   Parenthesized: (context, node, expected) => context.expression(node.expression, expected),
   Binary: checkBinary,
   Unary: checkUnary,

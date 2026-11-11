@@ -4,7 +4,8 @@
  *
  * - A required function takes `Self` first, its receiver, by value or `&`, and nowhere else: not
  *   in another parameter, which would need a second value of the same unknown type, nor in its
- *   result, whose type no caller could know.
+ *   result, whose type no caller could know, nor in its mark (`Self.Mode fn`), which no caller's
+ *   code could take.
  * - No required function is static, since there is no value to take the type from.
  * - No required field mentions `Self`.
  *
@@ -18,6 +19,7 @@ import type { FunctionDeclaration } from '../../../syntax/declarations/index.ts'
 import type { CheckerContext } from '../../contexts/context.ts';
 import { substitute } from '../parts/substitution.ts';
 import { parametersIn } from '../parts/type-parts.ts';
+import { kindOfFunction } from '../type/function-kinds.ts';
 import type { Constraint, Type } from '../type/index.ts';
 import { parameterType } from '../written/resolve-type.ts';
 import {
@@ -86,6 +88,9 @@ function functionUnsafety(
   }
   if (mentionsSelf(checker.resultOf(required))) {
     return 'gives a type built from Self';
+  }
+  if (mentionsSelf(kindOfFunction(checker, required))) {
+    return 'is of a mark built from Self';
   }
   return undefined;
 }

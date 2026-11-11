@@ -246,11 +246,20 @@ export interface TypeParameterType extends WrittenThrough {
 }
 
 /**
+ * Whether `type`, written after `in`, stands for one type already rather than listing members to
+ * choose from (§3.5, §3.10): a member parameter, or an associated type, opaque. A member bound
+ * naming one is a mistake, and bounds nothing, so nothing follows it round a cycle.
+ */
+export function namesOneType(type: Type): boolean {
+  return isMemberParameter(type) || type.kind === 'associated';
+}
+
+/**
  * Whether `type` stands for exactly one member of a union (§3.5): a member parameter, `K in U`, or
  * a key a mapped type or a field loop ranges over (`within`). Each instantiation makes it a value
  * of one member, never of the union around it.
  */
-export function isMemberParameter(type: Type): type is TypeParameterType {
+function isMemberParameter(type: Type): type is TypeParameterType {
   return (
     type.kind === 'parameter' &&
     (type.within !== undefined ||
@@ -321,3 +330,8 @@ export type Type =
   | MatchType
   | RecursiveType
   | ErrorType;
+
+/** The members of `type`: a union's, or the type itself, which a value of it is one of. */
+export function membersOf(type: Type): readonly Type[] {
+  return type.kind === 'union' ? type.members : [type];
+}

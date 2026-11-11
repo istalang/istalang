@@ -11,10 +11,11 @@ import { isOneMember } from '../fitting/member-arguments.ts';
 import { sameType } from '../identity/identity.ts';
 import { fillsPack, isPack } from '../type/function-types.ts';
 import type { ParameterKey, Type } from '../type/index.ts';
+import { membersOf } from '../type/index.ts';
 import { isPrimitive } from '../type/primitives.ts';
 import { commonType, type Joining } from '../unions/common-type.ts';
 import { baseOf } from '../unions/union-members.ts';
-import { literalOrBase, membersOf, unionOf } from '../unions/unions.ts';
+import { literalOrBase, unionOf } from '../unions/unions.ts';
 import { parameterType } from '../written/resolve-type.ts';
 import type { Bound, LowerBound } from './variable-bounds.ts';
 
@@ -73,7 +74,7 @@ export function joinedLower(
           joining.typeRules,
         );
   const types = lower.map(({ type, fresh }) =>
-    fresh && type.kind === 'literal' ? literalOrBase(type.value, held) : type,
+    fresh && type.kind === 'literal' ? literalOrBase(type.value, held, joining.fitting) : type,
   );
   if (!isMember) {
     return commonType(types, joining);

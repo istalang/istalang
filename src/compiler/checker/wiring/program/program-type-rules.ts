@@ -49,15 +49,9 @@ import {
 import { associatedTypeOf, type Expansion } from '../../types/traits/known-constraints.ts';
 import { associatedMemberUnion } from '../../types/traits/member-bounds.ts';
 import { fieldTypeOf, isKeyWithin, keysOf, mappedTypeOf } from '../../types/traits/struct-keys.ts';
-import { type AssociatedOfType, unfolded } from '../../types/type/computed-types.ts';
+import { unfolded } from '../../types/type/computed-types.ts';
 import { functionType } from '../../types/type/function-types.ts';
-import type {
-  AnonymousStructType,
-  AnyType,
-  Constraint,
-  Type,
-  TypeParameterType,
-} from '../../types/type/index.ts';
+import type { AnonymousStructType, AnyType, Constraint, Type } from '../../types/type/index.ts';
 import { errorType } from '../../types/type/primitives.ts';
 import type { TypeRules } from '../../types/type/type-rules.ts';
 import { futuresOf } from '../../types/type/well-known.ts';
@@ -169,18 +163,20 @@ export function programTypeRules(
 }
 
 /** The union `type` stands for one member of (`Fitting.memberUnionOf`). */
-function memberUnionOf(
-  checker: CheckerContext,
-  type: TypeParameterType | AssociatedOfType,
-): Type | undefined {
-  if (type.kind === 'associated') {
-    return associatedMemberUnion(checker, type);
+function memberUnionOf(checker: CheckerContext, type: Type): Type | undefined {
+  switch (type.kind) {
+    case 'associated':
+      return associatedMemberUnion(checker, type);
+    case 'parameter':
+      return (
+        type.within ??
+        (type.declaration.kind === 'TypeParameter'
+          ? checker.memberUnionOf(type.declaration)
+          : undefined)
+      );
+    default:
+      return undefined;
   }
-  const { declaration, within } = type;
-  return (
-    within ??
-    (declaration.kind === 'TypeParameter' ? checker.memberUnionOf(declaration) : undefined)
-  );
 }
 
 /**

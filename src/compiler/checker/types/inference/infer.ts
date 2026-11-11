@@ -40,7 +40,8 @@ import type { Fitting } from '../fitting/fit/index.ts';
 import { noSubstitution, type Substitution, substitute } from '../parts/substitution.ts';
 import { parametersIn } from '../parts/type-parts.ts';
 import type { LiteralType, LiteralValue, ParameterKey, Type } from '../type/index.ts';
-import { literalOrBase, membersOf, unionOf } from '../unions/unions.ts';
+import { membersOf } from '../type/index.ts';
+import { literalOrBase, unionOf } from '../unions/unions.ts';
 import { fixingToward } from './fixing-toward.ts';
 import type { Matching, MatchKind, Written } from './matching.ts';
 import { type Settling, type SettlingOf, settlesFreely } from './settle.ts';
@@ -405,10 +406,10 @@ export class Inference {
   literalType(value: LiteralValue, declared: Type): Type {
     const expected = this.substituted(declared);
     const taking = membersOf(expected).flatMap((member) => {
-      const union = member.kind === 'parameter' ? this.#fitting.memberUnionOf(member) : undefined;
+      const union = this.#fitting.memberUnionOf(member);
       return union === undefined ? [member] : membersOf(this.substituted(union));
     });
-    return literalOrBase(value, unionOf(taking, this.#fitting));
+    return literalOrBase(value, unionOf(taking, this.#fitting), this.#fitting);
   }
 
   /**

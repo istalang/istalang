@@ -9,7 +9,8 @@ import type { CheckerContext } from '../../contexts/context.ts';
 import { substitute } from '../parts/substitution.ts';
 import type { AssociatedOfType } from '../type/computed-types.ts';
 import type { Type } from '../type/index.ts';
-import { hasMember, membersOf, unionOf } from '../unions/unions.ts';
+import { membersOf } from '../type/index.ts';
+import { hasMember, unionOf } from '../unions/unions.ts';
 import { constraintSubstitution } from './constraints.ts';
 import { requirementsDeclaring } from './known-constraints.ts';
 

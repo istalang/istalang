@@ -187,6 +187,7 @@ const itemLists: ReadonlySet<SyntaxNode['kind']> = new Set([
   'Block',
   'StructDeclaration',
   'SharedStructDeclaration',
+  'ExternStructDeclaration',
   'EnumDeclaration',
   'TraitDeclaration',
   'Match',

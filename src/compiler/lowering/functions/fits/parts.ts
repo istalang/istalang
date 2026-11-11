@@ -37,8 +37,8 @@ import type {
   TupleType,
   Type,
 } from '../../../checker/types/type/index.ts';
+import { membersOf } from '../../../checker/types/type/index.ts';
 import { futuresOf, wellKnownArguments } from '../../../checker/types/type/well-known.ts';
-import { membersOf } from '../../../checker/types/unions/unions.ts';
 import type { AnchoredSpan } from '../../../syntax/tree/positions.ts';
 import { emitCall } from '../../calls/emit-call.ts';
 import { tupleOf } from '../../constructs/expressions/literals/tuples.ts';

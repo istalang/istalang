@@ -7,9 +7,10 @@
 
 import { describe, expect, it } from 'vitest';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
-import { codesOf, reportedMessages } from '../../rules/kinds/kinds.test-kit.ts';
+import { codesOf, reportedMessages, socket } from '../../rules/kinds/kinds.test-kit.ts';
 
-const { notConforming, notMemberArgument } = checkerDiagnostics;
+const { memberOfMemberParameter, notConforming, notMemberArgument, unknownMark } =
+  checkerDiagnostics;
 
 /** A trait whose requirement is of its `Mode`, a box of either kind, and code needing the trait. */
 const waits = [
@@ -65,5 +66,95 @@ describe('an associated type bounded to members', () => {
     expect(
       codesOf(...waits, ...ticket, 'ista fn use(ticket: Ticket<"ista">): need(ticket)'),
     ).toEqual([]);
+  });
+
+  it('is the kind of what holds it, which unmarked code may not', () => {
+    expect(codesOf(...waits, 'fn hold<W is Waits<Int>>(box: Box<Int, W.Mode>): ()')).toEqual([]);
+    expect(
+      codesOf(...waits, 'fn leak<W is Waits<Int>>(waiter: W) -> Future<Int, W.Mode>: leak(waiter)'),
+    ).not.toEqual([]);
+  });
+
+  it("passes through generic code, the requirement's mark instantiated", () => {
+    expect(codesOf(...waits, 'fn pass<W is Waits<Int>>(waiter: W): need(waiter)')).toEqual([]);
+    const producer = [
+      'trait Producer<K in Persistence>:',
+      '  K fn produce(self: Self) -> Future<Int, K>',
+      'ista fn run<P is Producer<"ista">>(p: P): _ = p.produce()',
+    ];
+    expect(codesOf(...producer)).toEqual([]);
+  });
+
+  it('is no union standing for one type already, nor a mark unbounded', () => {
+    expect(codesOf('trait Bad:\n  type Mode in Self.Mode')).toEqual([memberOfMemberParameter.code]);
+    expect(codesOf('trait Bad<K in Persistence>:\n  type Mode in K')).toEqual([
+      memberOfMemberParameter.code,
+    ]);
+    expect(codesOf('trait Bad:\n  type Data\n  Self.Data fn bad(self: Self)')).toEqual([
+      unknownMark.code,
+    ]);
+  });
+
+  it('is of its members kinds, needing no simple bound', () => {
+    expect(
+      codesOf(
+        socket,
+        'trait HasItem:\n  type Item in Socket | Int',
+        'struct Plug { type Item = Socket }',
+        'fn needItem<T is HasItem>(): ()',
+        'live fn main(): needItem<Plug>()',
+      ),
+    ).toEqual([]);
+  });
+
+  it('holds its kind in a future of it, refused where the code may not hold it', () => {
+    const modes = ['trait Modes:', '  type Mode in Persistence'];
+    expect(codesOf(...modes, 'fn hold<W is Modes>(f: Future<Int, W.Mode>): ()')).toEqual([
+      checkerDiagnostics.unmarkedHolds.code,
+    ]);
+    expect(codesOf(...modes, 'live fn hold<W is Modes>(f: Future<Int, W.Mode>): ()')).toEqual([
+      checkerDiagnostics.kindsHeld.code,
+    ]);
+    expect(
+      codesOf(
+        ...modes,
+        'struct Mixed<W is Modes> { a: Future<Int, W.Mode>, b: Future<Int, "live"> }',
+      ),
+    ).toEqual([checkerDiagnostics.holdsBothKinds.code]);
+  });
+
+  it('is a value of one member, as a member parameter is', () => {
+    expect(
+      codesOf(
+        'trait Modes:',
+        '  type Mode in Persistence',
+        'fn asPersistence<W is Modes>(m: W.Mode) -> Persistence: m',
+        'fn asString<W is Modes>(m: W.Mode) -> String: m',
+        'fn matchMode<W is Modes>(m: W.Mode) -> Int:',
+        '  match m:',
+        '    case "live": 1',
+        '    case "ista": 2',
+      ),
+    ).toEqual([]);
+  });
+
+  it('bounds no member parameter', () => {
+    expect(
+      codesOf(
+        'trait Modes:\n  type Mode in Persistence',
+        'fn f<W is Modes, K in W.Mode>(x: K): ()',
+      ),
+    ).toEqual([memberOfMemberParameter.code]);
+  });
+
+  it('marks a requirement no `any` type can call', () => {
+    expect(
+      codesOf(
+        'trait Waits:',
+        '  type Mode in Persistence',
+        '  Self.Mode fn wait(self: Self)',
+        'fn take(x: any Waits): ()',
+      ),
+    ).toEqual([checkerDiagnostics.notObjectSafe.code]);
   });
 });

@@ -31,12 +31,12 @@ import { checkerDiagnostics } from '../../../diagnostics/index.ts';
 import type { PatternTest } from '../../../surface/checked-pattern.ts';
 import { sameType } from '../../../types/identity/identity.ts';
 import type { Type, UnionType } from '../../../types/type/index.ts';
+import { membersOf } from '../../../types/type/index.ts';
 import { floatType, noneType } from '../../../types/type/primitives.ts';
 import { typeText } from '../../../types/type/type-text.ts';
 import {
   hasMember,
   hasOneValue,
-  membersOf,
   unionOfNormalized,
   writtenLiteral,
 } from '../../../types/unions/unions.ts';

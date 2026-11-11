@@ -41,8 +41,8 @@ import {
 } from '../../../types/parts/substitution.ts';
 import { unfolded } from '../../../types/type/computed-types.ts';
 import type { FieldMember, Type } from '../../../types/type/index.ts';
+import { membersOf } from '../../../types/type/index.ts';
 import type { TypeRules } from '../../../types/type/type-rules.ts';
-import { membersOf } from '../../../types/unions/unions.ts';
 
 /** One instantiation: each kind of part a body records, as it reads it. */
 export interface Instantiation {

@@ -194,6 +194,8 @@ export interface ExternStructDeclaration
   readonly handle: ModifierWord<'handle'> | undefined;
   readonly name: Identifier;
   readonly typeParameters: TypeParameters;
+  /** Fields written in its body, each an error the parser reports, kept for tools to see. */
+  readonly fields: readonly (DeclaredField | Invalid)[];
   readonly associatedTypes: readonly AssociatedType[];
 }
 
@@ -223,8 +225,7 @@ export type AssociatingDeclaration = DeclaredStruct | EnumDeclaration | ExternSt
 
 /**
  * A struct's or an enum's members as written: its fields or variants and its associated types,
- * in source order, which only reading the text back (formatting, outlines) needs. An extern
- * struct's are its associated types alone.
+ * in source order, which only reading the text back (formatting, outlines) needs.
  */
 export function membersAsWritten(
   declaration: AssociatingDeclaration,
@@ -241,8 +242,6 @@ function listedMembers(
   switch (declaration.kind) {
     case 'EnumDeclaration':
       return declaration.variants;
-    case 'ExternStructDeclaration':
-      return [];
     default:
       return declaration.fields;
   }

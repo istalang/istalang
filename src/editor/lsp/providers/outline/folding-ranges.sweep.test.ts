@@ -32,6 +32,7 @@ interface Foldable {
 const itemLists = new Set([
   'StructDeclaration',
   'SharedStructDeclaration',
+  'ExternStructDeclaration',
   'EnumDeclaration',
   'Variant',
   'TraitDeclaration',

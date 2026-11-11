@@ -29,6 +29,7 @@ import {
   type Declaration,
   type DeclaredStruct,
   type FunctionDeclaration,
+  type RequiredAssociatedType,
   type TypeParameter,
   typeParametersOf,
 } from '../../../syntax/declarations/index.ts';
@@ -48,6 +49,7 @@ import {
 import { checkSignatureKind } from '../../rules/kinds/signature-kinds.ts';
 import { checkSuite } from '../../rules/testing.ts';
 import { namesMemberParameter } from '../../types/traits/struct-keys.ts';
+import { namesOneType } from '../../types/type/index.ts';
 import { outcomeOf } from '../../types/type/well-known.ts';
 import type { GenericDeclaration } from '../../types/written/type-arguments.ts';
 import { checkFiniteAlias, checkFiniteFields } from './layout/struct-rules.ts';
@@ -158,6 +160,22 @@ function checkStruct(checker: CheckerContext, node: DeclaredStruct, module: Modu
 }
 
 /**
+ * Resolves what a trait's associated type requirement is bounded by, reporting a member bound that
+ * stands for one type already (`type Mode in K`), as a member parameter's would be (§3.5).
+ */
+function checkAssociatedBounds(
+  checker: CheckerContext,
+  module: ModuleId,
+  requirement: RequiredAssociatedType,
+): void {
+  checker.associatedBoundsOf(requirement);
+  const { memberOf, name } = requirement;
+  if (memberOf !== undefined && namesOneType(checker.resolveType(module, memberOf))) {
+    checker.report(module, checkerDiagnostics.memberOfMemberParameter(memberOf.span, name.text));
+  }
+}
+
+/**
  * Resolves a struct's or an enum's associated types, which reports one referring to itself (§3.1).
  */
 function checkAssociatedTypes(
@@ -209,7 +227,7 @@ const declarationHandlers: Handlers<CheckerContext, Declaration, [ModuleId], voi
         checker.annotations.of(module, member, { kind: 'field' });
       } else if (member.kind === 'RequiredAssociatedType') {
         annotatedNowhere('an associated type')(checker, member, module);
-        checker.associatedBoundsOf(member);
+        checkAssociatedBounds(checker, module, member);
       }
     }
   },

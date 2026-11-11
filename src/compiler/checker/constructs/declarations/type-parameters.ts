@@ -48,7 +48,8 @@ import {
   resolveConstraintSet,
   resolveStructConstraint,
 } from '../../types/traits/struct-constraints.ts';
-import type { Constraint, Type } from '../../types/type/index.ts';
+import { type Constraint, namesOneType, type Type } from '../../types/type/index.ts';
+import { errorType } from '../../types/type/primitives.ts';
 import {
   type AssociatedBounds,
   type StructConstraintModel,
@@ -254,11 +255,12 @@ function resolveAssociatedBounds(
   }
   const self: Type = { kind: 'associated', of: parameterType(trait), name: requirement.name.text };
   const bounds = resolveConstraintSet(checker, module, requirement.constraints, () => self);
-  const memberOf =
-    requirement.memberOf === undefined
-      ? undefined
-      : checker.resolveType(module, requirement.memberOf);
-  return { ...bounds, traits: withKindBound(checker, bounds.traits), memberOf };
+  if (requirement.memberOf === undefined) {
+    return { ...bounds, traits: withKindBound(checker, bounds.traits), memberOf: undefined };
+  }
+  // Its members say its kind, and a union of no known members bounds nothing (`namesOneType`).
+  const written = checker.resolveType(module, requirement.memberOf);
+  return { ...bounds, memberOf: namesOneType(written) ? errorType : written };
 }
 
 function sameAssociatedBounds(first: AssociatedBounds, second: AssociatedBounds): boolean {

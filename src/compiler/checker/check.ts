@@ -152,8 +152,11 @@ export interface Checker {
    * when it can't.
    */
   readonly fitOf: (found: Type, expected: Type) => Fit | undefined;
-  /** What fitting decides that lowering reads: what a type parameter qualifies functions by. */
-  readonly fitting: Pick<Fitting, 'qualifierOf'>;
+  /**
+   * What fitting decides that lowering reads: what a type parameter qualifies functions by, and the
+   * union a member-bounded type stands for one member of.
+   */
+  readonly fitting: Pick<Fitting, 'qualifierOf' | 'memberUnionOf'>;
   /**
    * The program's rules for building types (types/type/type-rules.ts), which every substitution and
    * union built after checking, as lowering's, takes, so its types are the checker's.

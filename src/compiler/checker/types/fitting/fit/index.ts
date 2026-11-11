@@ -45,7 +45,7 @@ import {
 } from '../../identity/identity.ts';
 import { UnfoldingPairs } from '../../identity/unfolding-pairs.ts';
 import { parametersIn } from '../../parts/type-parts.ts';
-import { type AssociatedOfType, unfolded } from '../../type/computed-types.ts';
+import { unfolded } from '../../type/computed-types.ts';
 import { type Futures, madeAsync } from '../../type/function-types.ts';
 import type {
   AnonymousStructType,
@@ -54,15 +54,15 @@ import type {
   FunctionType,
   ParameterKey,
   Type,
-  TypeParameterType,
   UnionType,
 } from '../../type/index.ts';
+import { membersOf } from '../../type/index.ts';
 import type { QualifierParameter } from '../../type/mark-orders.ts';
 import { isPrimitive } from '../../type/primitives.ts';
 import type { TypeRules } from '../../type/type-rules.ts';
 import { typeText } from '../../type/type-text.ts';
 import { absorbingMember, baseOf } from '../../unions/union-members.ts';
-import { hasMember, literalsBase, membersOf } from '../../unions/unions.ts';
+import { hasMember, literalsBase } from '../../unions/unions.ts';
 import type { Variance } from '../../variance/lattice.ts';
 import type { VariedDeclaration } from '../../variance/variance.ts';
 import type { MetInstantiation, ProposedInstantiation } from '../met-instantiation.ts';
@@ -119,10 +119,11 @@ export interface Fitting extends TypeRules, Futures {
   readonly meetsAny: (found: Type, target: AnyType) => boolean;
   readonly shapeOf: (found: Type) => AnonymousStructType | undefined;
   /**
-   * The union a member parameter type stands for one member of: the one it carries, or its declared
-   * one; or the one an associated type of a type not known yet is bounded by (`type Mode in U`).
+   * The union a type standing for one member stands for one member of: a member parameter's, the
+   * one it carries or its declared one; an associated type's of a type not known yet, the one it
+   * is bounded by (`type Mode in U`); undefined for any other type.
    */
-  readonly memberUnionOf: (type: TypeParameterType | AssociatedOfType) => Type | undefined;
+  readonly memberUnionOf: (type: Type) => Type | undefined;
   /**
    * What a variable standing for a mark or a sendability qualifies functions by
    * (types/properties/qualifiers.ts): the order its bounds agree and join by; undefined for any
@@ -274,7 +275,7 @@ function intoOneMember(found: Type, expected: UnionType, rules: Matching): Fit |
  * itself, which each instantiation makes the member it stands for; else as its union converts.
  */
 function memberParameterFit(found: Type, expected: Type, rules: Matching): Fit | undefined {
-  const union = found.kind === 'parameter' ? rules.memberUnionOf(found) : undefined;
+  const union = rules.memberUnionOf(found);
   if (union === undefined) {
     return undefined;
   }
@@ -377,7 +378,7 @@ function intoMember(member: Type, expected: UnionType, rules: ConversionRules): 
 
 /** The member of `expected` that `member`'s values are values of as their base, if any. */
 function baseMember(member: Type, expected: UnionType, rules: ConversionRules): Type | undefined {
-  const literals = member.kind === 'parameter' ? rules.memberUnionOf(member) : member;
+  const literals = rules.memberUnionOf(member) ?? member;
   const base = literals === undefined ? undefined : literalsBase(literals);
   return base !== undefined && hasMember(expected, base) ? base : undefined;
 }

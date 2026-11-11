@@ -20,9 +20,13 @@ import type { BodyContext, FunctionFrame } from '../../contexts/body-context.ts'
 import type { CheckerContext } from '../../contexts/context.ts';
 import type { UseSite } from '../../contexts/use-site.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
-import type { FunctionCall, ResolvedCall } from '../../surface/resolved-call.ts';
+import {
+  type FunctionCall,
+  type ResolvedCall,
+  witnessCallsOf,
+} from '../../surface/resolved-call.ts';
 import { sameType } from '../../types/identity/identity.ts';
-import { substitute, substitutionFor } from '../../types/parts/substitution.ts';
+import { type Substitution, substitute, substitutionFor } from '../../types/parts/substitution.ts';
 import { isSimpleMark, kindAdmits, kindOfFunction } from '../../types/type/function-kinds.ts';
 import type { Type } from '../../types/type/index.ts';
 import { markOrder } from '../../types/type/mark-orders.ts';
@@ -30,7 +34,10 @@ import { typeText } from '../../types/type/type-text.ts';
 import { callMade } from '../choosing/calls-made.ts';
 import type { Application } from '../choosing/choice.ts';
 
-/** The kind of the function `call` calls, as the call instantiates it. */
+/**
+ * The kind of the function `call` calls, as the call instantiates it: a requirement's through its
+ * trait's `Self` and type parameters too.
+ */
 export function kindOfCall(checker: CheckerContext, call: ResolvedCall): Type {
   const kind = kindOfFunction(checker, call.function);
   // Most marks are written, `"simple"` most of all, naming no type parameter to instantiate.
@@ -38,7 +45,9 @@ export function kindOfCall(checker: CheckerContext, call: ResolvedCall): Type {
     return kind;
   }
   const own = substitutionFor(typeParametersOf(call.function.typeParameters), call.typeArguments);
-  return substitute(kind, own, checker.typeRules);
+  const through: Substitution =
+    call.kind === 'requirement' ? new Map([...call.substitution, ...own]) : own;
+  return substitute(kind, through, checker.typeRules);
 }
 
 /**
@@ -76,7 +85,7 @@ export function judgedCall(
  * one's type arguments (rules/kinds/data-kinds.ts).
  */
 function callsMadeWith(call: ResolvedCall): readonly ResolvedCall[] {
-  return [call, ...witnessCallsOf(call)];
+  return [call, ...witnessCallsOf(call.witnesses)];
 }
 
 /**
@@ -133,16 +142,6 @@ export function handledBy(checker: CheckerContext, frame: FunctionFrame, type: T
     frame.relyOnKind();
   }
   return type;
-}
-
-/** Every call `call` makes through its constraints' witnesses, theirs included, at any depth. */
-export function witnessCallsOf(call: Pick<ResolvedCall, 'witnesses'>): readonly ResolvedCall[] {
-  if (call.witnesses.size === 0) {
-    return [];
-  }
-  return [...call.witnesses.values()]
-    .flat(2)
-    .flatMap((witness) => [witness, ...witnessCallsOf(witness)]);
 }
 
 /** A call to judge: where it is, the function whose code makes it, what it calls and its kind. */

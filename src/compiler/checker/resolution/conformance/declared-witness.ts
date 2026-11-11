@@ -15,13 +15,19 @@ import type { CheckerContext } from '../../contexts/context.ts';
 import type { ResolvedCall } from '../../surface/resolved-call.ts';
 import { sameType } from '../../types/identity/identity.ts';
 import { constraintSubstitution, requiredFunctions } from '../../types/traits/constraints.ts';
-import { isMarkVariable, isSimpleMark, kindOfFunction } from '../../types/type/function-kinds.ts';
+import { isMarkVariable, isSimpleMark } from '../../types/type/function-kinds.ts';
 import type { Constraint, Type } from '../../types/type/index.ts';
 import { baseOf } from '../../types/unions/union-members.ts';
 import { kindOfCall } from '../applying/call-kinds.ts';
 import type { CallArgument } from '../choosing/call-arguments.ts';
 import { type Candidate, witnessCandidates } from '../choosing/candidates.ts';
-import { type Choice, chooseAsValue, type Signature, signatureOf } from '../choosing/choice.ts';
+import {
+  type Choice,
+  candidateSignature,
+  chooseAsValue,
+  type Signature,
+  signatureOf,
+} from '../choosing/choice.ts';
 
 /**
  * Whether a function declared for `type` meets one that `constraint` requires, whether or not its
@@ -64,8 +70,8 @@ export function chooseWitnessAmong(
   given: readonly Candidate[],
   required: Signature,
 ): Choice {
-  const candidates = given.filter(({ declaration }) => {
-    const kind = kindOfFunction(checker, declaration);
+  const candidates = given.filter((candidate) => {
+    const kind = candidateSignature(checker, candidate).kind();
     return isMarkVariable(checker, kind) || meetsRequirementKind(checker, required, kind, type);
   });
   const callArguments = required.parameters.map(

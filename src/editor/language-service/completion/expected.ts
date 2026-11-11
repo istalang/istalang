@@ -23,9 +23,9 @@ import {
   sameNominal,
 } from '../../../compiler/checker/types/fitting/expected.ts';
 import type { Type } from '../../../compiler/checker/types/type/index.ts';
+import { membersOf } from '../../../compiler/checker/types/type/index.ts';
 import { typeText } from '../../../compiler/checker/types/type/type-text.ts';
 import { futuresOf } from '../../../compiler/checker/types/type/well-known.ts';
-import { membersOf } from '../../../compiler/checker/types/unions/unions.ts';
 import type { ModuleId, Program } from '../../../compiler/program/program.ts';
 import type { Expression } from '../../../compiler/syntax/expressions/index.ts';
 import { literalNaming } from '../../../compiler/syntax/expressions/literals/built-types.ts';

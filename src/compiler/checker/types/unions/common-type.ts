@@ -128,6 +128,6 @@ function holdsAll(holder: Type, types: readonly Type[], joining: Joining): boole
 
 /** The base a member parameter's union of literals has; undefined for any other type. */
 function memberBase(type: Type, joining: Joining): Type | undefined {
-  const union = type.kind === 'parameter' ? joining.fitting.memberUnionOf(type) : undefined;
+  const union = joining.fitting.memberUnionOf(type);
   return union === undefined ? undefined : literalsBase(union);
 }

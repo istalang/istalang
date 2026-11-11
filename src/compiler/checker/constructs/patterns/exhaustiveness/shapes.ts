@@ -24,17 +24,12 @@ import type { Checker } from '../../../check.ts';
 import type { CheckerContext } from '../../../contexts/context.ts';
 import { typeKeys } from '../../../types/identity/type-keys.ts';
 import { unfolded } from '../../../types/type/computed-types.ts';
-import {
-  type FieldMember,
-  isMemberParameter,
-  type LiteralValue,
-  type Type,
-  type UnionType,
-} from '../../../types/type/index.ts';
+import type { FieldMember, LiteralValue, Type, UnionType } from '../../../types/type/index.ts';
+import { membersOf } from '../../../types/type/index.ts';
 import { isPrimitive } from '../../../types/type/primitives.ts';
 import { typeText } from '../../../types/type/type-text.ts';
 import { arrayElement } from '../../../types/type/well-known.ts';
-import { hasOneValue, membersOf } from '../../../types/unions/unions.ts';
+import { hasOneValue } from '../../../types/unions/unions.ts';
 import type { ConstructorOf, Shape, Signature, WitnessShape } from './exhaustiveness.ts';
 
 /**
@@ -72,7 +67,7 @@ function constructorsOf(
     // A recursive type is made of what it unfolds to (§3.17).
     return constructorsOf(checker, unfolded(type));
   }
-  const union = isMemberParameter(type) ? checker.fitting.memberUnionOf(type) : undefined;
+  const union = checker.fitting.memberUnionOf(type);
   if (union === undefined) {
     return ownConstructors(type) ?? declaredConstructors(checker, type);
   }

@@ -30,7 +30,7 @@ import { Inference } from '../../types/inference/infer.ts';
 import type { SettlingOf } from '../../types/inference/settle.ts';
 import { formDecidedBy, isComputed } from '../../types/type/computed-types.ts';
 import type { Type } from '../../types/type/index.ts';
-import { membersOf } from '../../types/unions/unions.ts';
+import { membersOf } from '../../types/type/index.ts';
 
 /** What settling a scope does through the body context. */
 export interface ScopeSettling {

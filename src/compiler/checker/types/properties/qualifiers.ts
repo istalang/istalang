@@ -15,8 +15,8 @@ import {
 import type { TypeParameter } from '../../../syntax/declarations/index.ts';
 import type { CheckerContext } from '../../contexts/context.ts';
 import type { Type } from '../type/index.ts';
+import { membersOf } from '../type/index.ts';
 import { markOrder, type QualifierParameter, sendabilityOrder } from '../type/mark-orders.ts';
-import { membersOf } from '../unions/unions.ts';
 
 const marks: readonly Mark[] = ['simple', ...persistences];
 

@@ -29,7 +29,7 @@ import { sameType } from '../identity/identity.ts';
 import { substitute, substitutionFor } from '../parts/substitution.ts';
 import { parametersIn } from '../parts/type-parts.ts';
 import { isComputed, type MatchType, unfolded } from '../type/computed-types.ts';
-import { persistenceOf } from '../type/function-kinds.ts';
+import { isOneKind } from '../type/function-kinds.ts';
 import { type NominalEntity, type NominalType, nominalType, type Type } from '../type/index.ts';
 import { aboveBottom, markOrder } from '../type/mark-orders.ts';
 import { markType } from '../type/primitives.ts';
@@ -308,7 +308,7 @@ function ownValueKindsOf(checker: CheckerContext, part: Type): readonly Type[] {
   const awaited = awaitedOf(checker, part)?.mode;
   if (awaited !== undefined) {
     // A future of no mark, `Future<Int, Int>`, is refused where it is written; it holds no kind.
-    return persistenceOf(awaited) !== undefined || awaited.kind === 'parameter' ? [awaited] : [];
+    return isOneKind(checker, awaited) ? [awaited] : [];
   }
   // Only a value with an identity of its own is disposable (rules/disposal/disposal.ts).
   return isConfined(part.entity.declaration) ? checker.disposeKindsOf(part) : [];

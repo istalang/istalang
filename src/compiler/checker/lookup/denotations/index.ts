@@ -31,7 +31,7 @@ import type { CheckerContext } from '../../contexts/context.ts';
 import type { Denotation } from '../../surface/denotation.ts';
 import { associatedDeclarationsOn } from '../../types/traits/known-constraints.ts';
 import type { FieldMember, Type } from '../../types/type/index.ts';
-import { membersOf } from '../../types/unions/unions.ts';
+import { membersOf } from '../../types/type/index.ts';
 import { declaredFieldOf } from '../../types/written/declared-fields.ts';
 import { namedType } from '../../types/written/named-types.ts';
 import { bodyHolding } from '../holders.ts';

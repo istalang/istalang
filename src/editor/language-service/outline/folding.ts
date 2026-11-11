@@ -102,6 +102,7 @@ const layoutStarts: LayoutStarts = {
   IndentedValue: introduced,
   StructDeclaration: named,
   SharedStructDeclaration: named,
+  ExternStructDeclaration: named,
   EnumDeclaration: named,
   Variant: named,
   TraitDeclaration: named,

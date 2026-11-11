@@ -27,7 +27,7 @@ import { type Checker, checkProgram } from '../check.ts';
 import type { Denotation, JoinedBody } from '../surface/denotation.ts';
 import { sameType } from '../types/identity/identity.ts';
 import type { Type } from '../types/type/index.ts';
-import { membersOf } from '../types/unions/unions.ts';
+import { membersOf } from '../types/type/index.ts';
 import { answersAt } from './lookup.test-kit.ts';
 
 const corpus = [...runPrograms, ...invalidPrograms].map(({ name, text }) => ({ name, text }));

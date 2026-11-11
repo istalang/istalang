@@ -19,6 +19,7 @@ import type {
   DeclaredField,
   DeclaredStruct,
   EnumDeclaration,
+  ExternStructDeclaration,
   RequiredAssociatedType,
   SharedStructDeclaration,
   StructDeclaration,
@@ -156,16 +157,16 @@ function parseRequiredAssociatedType(parser: Parser): RequiredAssociatedType {
 export function parseExternStructMembers(
   parser: Parser,
   headerStart: number,
-): WithDocstring<readonly AssociatedType[]> {
+): WithDocstring<Pick<ExternStructDeclaration, 'fields' | 'associatedTypes'>> {
   const rules = withAssociatedTypes(declaredFieldRules);
   const { value: members, doc } = parseMembers(parser, rules, headerStart);
-  const { associatedTypes, others } = associatedTypesApart(members);
-  for (const field of others) {
+  const { associatedTypes, others: fields } = associatedTypesApart(members);
+  for (const field of fields) {
     if (field.kind !== 'Invalid') {
       parser.report(parserDiagnostics.externStructField(parser.textSpanOf(field.span)));
     }
   }
-  return { value: associatedTypes, doc };
+  return { value: { fields, associatedTypes }, doc };
 }
 
 /** `type Name` at `type`, reporting type parameters written after the name. */

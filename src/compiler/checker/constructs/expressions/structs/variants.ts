@@ -35,8 +35,8 @@ import { functionsAccepted, namedFunctions } from '../../../resolution/choosing/
 import type { Admits } from '../../../types/fitting/expected.ts';
 import { enumsExpected, expectedNominal, writtenNominal } from '../../../types/fitting/expected.ts';
 import type { Type } from '../../../types/type/index.ts';
+import { membersOf } from '../../../types/type/index.ts';
 import { errorType, noneType } from '../../../types/type/primitives.ts';
-import { membersOf } from '../../../types/unions/unions.ts';
 import { chooseVariant, nominalEntityOf } from '../../../types/written/named-types.ts';
 import { checkFunctionValue } from '../../closures/function-values.ts';
 

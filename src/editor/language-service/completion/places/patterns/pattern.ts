@@ -23,8 +23,8 @@ import type { Entity } from '../../../../../compiler/binder/entities.ts';
 import type { Checker } from '../../../../../compiler/checker/check.ts';
 import { argumentsReach } from '../../../../../compiler/checker/surface/struct-items.ts';
 import type { FieldMember, Type } from '../../../../../compiler/checker/types/type/index.ts';
+import { membersOf } from '../../../../../compiler/checker/types/type/index.ts';
 import { literalType, noneType } from '../../../../../compiler/checker/types/type/primitives.ts';
-import { membersOf } from '../../../../../compiler/checker/types/unions/unions.ts';
 import {
   downcastTargetOf,
   literalMembers,

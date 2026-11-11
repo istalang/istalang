@@ -153,7 +153,10 @@ function itemsFit(context: BodyContext, node: FieldsLiteral, type: Type): boolea
     const literal = writtenLiteral(unparenthesized(value));
     if (literal !== undefined) {
       return (
-        context.checker.fitOf(literalOrBase(literal.value, field.type), field.type) !== undefined
+        context.checker.fitOf(
+          literalOrBase(literal.value, field.type, context.checker.fitting),
+          field.type,
+        ) !== undefined
       );
     }
     const admits = context.admitsOf(value);

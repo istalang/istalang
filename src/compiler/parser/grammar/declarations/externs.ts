@@ -31,7 +31,7 @@ export function parseExternStruct(parser: Parser): ExternStructDeclaration {
   const { handle } = parseHead(parser, headForms.externStruct);
   const name = parser.identifier('a type name');
   const typeParameters = parseTypeParameters(parser);
-  const { value: associatedTypes, doc } = parseExternStructMembers(parser, start);
+  const { value: members, doc } = parseExternStructMembers(parser, start);
   const span = parser.spanFrom(start);
   return {
     kind: 'ExternStructDeclaration',
@@ -39,7 +39,7 @@ export function parseExternStruct(parser: Parser): ExternStructDeclaration {
     handle,
     name,
     typeParameters,
-    associatedTypes,
+    ...members,
     ...documentedBy(doc),
   };
 }

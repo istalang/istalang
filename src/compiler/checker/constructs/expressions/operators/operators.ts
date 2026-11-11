@@ -93,7 +93,9 @@ export function checkUnary(context: BodyContext, node: Unary, expected?: Type): 
     stoppedOperation(context, node, operands) ??
     resolveOperator(context, node, unaryApplied(node.operator), operands);
   const written = writtenLiteral(node);
-  return written === undefined ? type : literalOrBase(written.value, expected);
+  return written === undefined
+    ? type
+    : literalOrBase(written.value, expected, context.checker.fitting);
 }
 
 /** `a < b <= c`: each operand compared with the next (§3.9). */

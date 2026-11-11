@@ -15,8 +15,8 @@ import type { CheckerContext } from '../../contexts/context.ts';
 import { sameConstraint, sameType } from '../identity/identity.ts';
 import { simpleMark } from '../type/function-kinds.ts';
 import type { Constraint, Type } from '../type/index.ts';
+import { membersOf } from '../type/index.ts';
 import { isWellKnownTrait } from '../type/well-known.ts';
-import { membersOf } from '../unions/unions.ts';
 
 /**
  * Whether a type meeting every one of `given` meets `needed` too, whatever the type: `needed` is

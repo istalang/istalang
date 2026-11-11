@@ -25,10 +25,9 @@ import type { CheckerContext } from '../../contexts/context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import type { Fitting } from '../fitting/fit/index.ts';
 import { type Substitution, substitute } from '../parts/substitution.ts';
-import { type ParameterKey, shapeType, type Type } from '../type/index.ts';
+import { membersOf, type ParameterKey, shapeType, type Type } from '../type/index.ts';
 import { errorType } from '../type/primitives.ts';
 import { typeText } from '../type/type-text.ts';
-import { membersOf } from '../unions/unions.ts';
 import { declaredFields } from './declared-fields.ts';
 
 /** Where a type is written: the checker resolving it, and its module. */
@@ -164,7 +163,7 @@ export function keysOwner(
   if (type?.kind === 'keys') {
     return type.of;
   }
-  const union = type?.kind === 'parameter' ? fitting.memberUnionOf(type) : undefined;
+  const union = type === undefined ? undefined : fitting.memberUnionOf(type);
   return union === undefined ? undefined : keysOwner(fitting, union);
 }
 
@@ -178,7 +177,7 @@ export function givenKeysOwner(
   declared: Type,
   substitution: Substitution,
 ): Type | undefined {
-  const union = declared.kind === 'parameter' ? fitting.memberUnionOf(declared) : declared;
+  const union = fitting.memberUnionOf(declared) ?? declared;
   return union === undefined
     ? undefined
     : keysOwner(fitting, substitute(union, substitution, fitting));

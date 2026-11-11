@@ -22,6 +22,7 @@ export function callMade(
       kind: 'requirement',
       function: declaration,
       requirement: requirement.origin,
+      substitution: requirement.substitution,
       typeArguments: instantiation.typeArguments,
       witnesses: instantiation.witnesses,
       binding: application.binding,

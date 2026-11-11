@@ -191,17 +191,17 @@ describe('externs and functions', () => {
     ],
     [
       'extern sendable struct Queue<T is Sendable>',
-      `(ExternStructDeclaration sendable Queue [(TypeParameter _ T _ [${named('Sendable')}] _)] [])`,
+      `(ExternStructDeclaration sendable Queue [(TypeParameter _ T _ [${named('Sendable')}] _)] [] [])`,
     ],
     [
       'extern shared struct Slot<T>',
-      `(ExternStructDeclaration shared Slot [${typeParameter('T')}] [])`,
+      `(ExternStructDeclaration shared Slot [${typeParameter('T')}] [] [])`,
     ],
-    ['extern live struct Socket', '(ExternStructDeclaration live Socket [] [])'],
-    ['extern struct Zone', '(ExternStructDeclaration _ Zone [] [])'],
+    ['extern live struct Socket', '(ExternStructDeclaration live Socket [] [] [])'],
+    ['extern struct Zone', '(ExternStructDeclaration _ Zone [] [] [])'],
     [
       'extern shared struct Future<T, K in Persistence>:\n  type Mode = K',
-      `(ExternStructDeclaration shared Future [${typeParameter('T')} (TypeParameter _ K ${named('Persistence')} [] _)] [(AssociatedType Mode ${named('K')})])`,
+      `(ExternStructDeclaration shared Future [${typeParameter('T')} (TypeParameter _ K ${named('Persistence')} [] _)] [] [(AssociatedType Mode ${named('K')})])`,
     ],
     [
       'fn Duration.zero() -> Duration: Duration{value: 0}',

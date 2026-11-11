@@ -27,15 +27,11 @@ import type { Expression } from '../../../syntax/expressions/index.ts';
 import type { CheckerContext } from '../../contexts/context.ts';
 import { sameType } from '../identity/identity.ts';
 import { isOpaque } from '../type/computed-types.ts';
-import {
-  isMemberParameter,
-  type LiteralValue,
-  type Type,
-  type TypeParameterType,
-} from '../type/index.ts';
+import type { LiteralValue, Type } from '../type/index.ts';
+import { membersOf } from '../type/index.ts';
 import { isPrimitive } from '../type/primitives.ts';
 import { baseOf } from './union-members.ts';
-import { membersOf, writtenLiteral } from './unions.ts';
+import { writtenLiteral } from './unions.ts';
 
 /**
  * Whether `==` and `!=` compare values of these types as they are (§3.9): one type on both sides,
@@ -72,8 +68,7 @@ function isLiteralLike(type: Type): boolean {
  * (constructs/expressions/operators/decided-conditions.ts).
  */
 function comparableAsMembers(context: SidesFitting, first: Type, second: Type): boolean {
-  const unionOf = (type: Type) =>
-    isMemberParameter(type) ? context.checker.fitting.memberUnionOf(type) : undefined;
+  const unionOf = (type: Type) => context.checker.fitting.memberUnionOf(type);
   const [firstUnion, secondUnion] = [unionOf(first), unionOf(second)];
   if (firstUnion === undefined && secondUnion === undefined) {
     return false;
@@ -152,7 +147,7 @@ export function isKnown(type: Type): boolean {
 }
 
 /** The union a member parameter ranges over (types/fitting/fit/index.ts `memberUnionOf`). */
-export type MemberUnionOf = (parameter: TypeParameterType) => Type | undefined;
+export type MemberUnionOf = (type: Type) => Type | undefined;
 
 /** A side of `==`, or a pattern's part and its literal: its type, and the expression giving it. */
 export interface ComparedSide {
@@ -173,7 +168,7 @@ function literalsOf(type: Type, memberUnionOf: MemberUnionOf): KnownLiterals | u
   if (isPrimitive(type, 'Never')) {
     return undefined;
   }
-  const ranging = isMemberParameter(type) ? memberUnionOf(type) : type;
+  const ranging = memberUnionOf(type) ?? type;
   const values: LiteralValue[] = [];
   let anyNameBut: string[] | undefined;
   for (const member of membersOf(ranging ?? type)) {

@@ -24,8 +24,9 @@ import { parametersIn } from '../parts/type-parts.ts';
 import { isComputed } from '../type/computed-types.ts';
 import { functionFits } from '../type/function-types.ts';
 import type { AnonymousStructType, AnyType, ParameterKey, Type, UnionType } from '../type/index.ts';
+import { membersOf } from '../type/index.ts';
 import { isPrimitive } from '../type/primitives.ts';
-import { membersOf, unionOfNormalized } from '../unions/unions.ts';
+import { unionOfNormalized } from '../unions/unions.ts';
 
 /** What matching for equality needs of the inference it serves. */
 export interface Equating {

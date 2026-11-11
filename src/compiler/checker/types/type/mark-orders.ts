@@ -79,3 +79,23 @@ export const sendabilityOrder: QualifierOrder = {
   },
   settlesLeast: false,
 };
+
+/**
+ * Whether two marks are one, as written apart from any order: the same literal, the same mark
+ * parameter, or the same associated type bounded to marks (`W.Mode`, §3.10). What the type-level
+ * readers that can't reach identity compare marks by.
+ */
+export function sameMark(first: Type, second: Type): boolean {
+  switch (first.kind) {
+    case 'literal':
+      return second.kind === 'literal' && first.value === second.value;
+    case 'parameter':
+      return second.kind === 'parameter' && first.declaration === second.declaration;
+    case 'associated':
+      return (
+        second.kind === 'associated' && first.name === second.name && sameMark(first.of, second.of)
+      );
+    default:
+      return false;
+  }
+}

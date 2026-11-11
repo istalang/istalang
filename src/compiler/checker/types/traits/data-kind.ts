@@ -8,7 +8,8 @@
  *   so a parameter is of no kind of its own. An associated type of one is named by no caller: its
  *   bounds are all that gives it a kind (`boundKindsOf`). An associated type's bounds hold
  *   `DataKind<"simple">` where none is written (`withKindBound`), as simple is never written, so a
- *   type giving it data of a kind fails where it meets the trait, naming the bound to widen.
+ *   type giving it data of a kind fails where it meets the trait, naming the bound to widen; one
+ *   bounded to members instead is of their kinds, which the members say.
  * - A type known by its constraints is of the marks they allow (constraint-implication.ts); any
  *   other is of the kinds its values hold.
  */
@@ -18,17 +19,22 @@ import type { CheckerContext } from '../../contexts/context.ts';
 import { sameType } from '../identity/identity.ts';
 import { isSimpleMark, simpleMark } from '../type/function-kinds.ts';
 import type { Constraint, Type } from '../type/index.ts';
+import { membersOf } from '../type/index.ts';
 import { typeText } from '../type/type-text.ts';
 import { isWellKnownTrait } from '../type/well-known.ts';
-import { membersOf } from '../unions/unions.ts';
 import { marksAllowedBy } from './constraint-implication.ts';
 import { knownConstraints } from './known-constraints.ts';
 
 /**
  * The kinds the values of `type`, a type known by its constraints, may hold: those its bounds
- * allow but `"simple"`; none where none bounds them, as a type parameter's pass through.
+ * allow but `"simple"`; none where none bounds them, as a type parameter's pass through. One
+ * bounded to members (`type Mode in Persistence`) is one of them, of their kinds.
  */
 export function boundKindsOf(checker: CheckerContext, type: Type): readonly Type[] {
+  const members = type.kind === 'associated' ? checker.fitting.memberUnionOf(type) : undefined;
+  if (members !== undefined) {
+    return checker.valueKindsOf(members);
+  }
   const marks = marksAllowedBy(checker, knownConstraints(checker, type)) ?? [];
   return marks.filter((mark) => !isSimpleMark(mark));
 }

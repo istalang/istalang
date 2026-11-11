@@ -17,7 +17,6 @@
  */
 
 import type { Diagnostic } from '../../../../foundation/diagnostics/diagnostic.ts';
-import { marks, persistences } from '../../../../foundation/language/well-known/index.ts';
 import type { ModuleId } from '../../../program/program.ts';
 import { declaredFunctionName } from '../../../syntax/declarations/field-defaults.ts';
 import type { FunctionDeclaration } from '../../../syntax/declarations/index.ts';
@@ -37,7 +36,6 @@ import {
 } from '../../types/type/function-kinds.ts';
 import type { Type } from '../../types/type/index.ts';
 import { typeText } from '../../types/type/type-text.ts';
-import { membersOf } from '../../types/unions/unions.ts';
 
 /** A type a signature holds, and where it is written. */
 interface HeldInSignature {
@@ -145,31 +143,14 @@ export function checkNamedMark(
     return;
   }
   const text = namedTypeText(written);
-  const ownSelfType = isOwnSelfType(checker, module, declaration, mark);
-  const among = (members: readonly string[]) =>
-    ownSelfType && isBoundWithin(checker, mark, members);
-  if (!(among(marks) || (!ownSelfType && isMarkVariable(checker, mark)))) {
+  // An associated type names a mark only on a requirement of its own trait's `Self`.
+  const misplaced =
+    mark.kind === 'associated' && !isOwnSelfType(checker, module, declaration, mark);
+  if (misplaced || !isMarkVariable(checker, mark)) {
     checker.report(module, checkerDiagnostics.unknownMark(written.span, text));
-  } else if (
-    awaits(declaration.qualifiers) &&
-    !(among(persistences) || (!ownSelfType && isOneKind(checker, mark)))
-  ) {
+  } else if (awaits(declaration.qualifiers) && !isOneKind(checker, mark)) {
     checker.report(module, checkerDiagnostics.asyncMarkNotKind(written.span, text));
   }
-}
-
-/**
- * Whether `mark`, an associated type, is bounded to one member of a union of `members`
- * (`type Mode in Persistence`), as a mark parameter is (§3.10).
- */
-function isBoundWithin(checker: CheckerContext, mark: Type, members: readonly string[]): boolean {
-  const union = mark.kind === 'associated' ? checker.fitting.memberUnionOf(mark) : undefined;
-  return (
-    union !== undefined &&
-    membersOf(union).every(
-      (member) => member.kind === 'literal' && members.some((each) => each === member.value),
-    )
-  );
 }
 
 /** Whether `mark` is an associated type of the `Self` of the trait requiring `declaration`. */

@@ -34,14 +34,15 @@ import { substitute } from '../parts/substitution.ts';
 import { aliasedAs } from '../type/alias-uses.ts';
 import { isOpaque, type MappedParts } from '../type/computed-types.ts';
 import {
-  isMemberParameter,
+  membersOf,
+  namesOneType,
   type ParameterKey,
   type StructValueType,
   shapeType,
   type Type,
 } from '../type/index.ts';
 import { errorType, isPrimitive, literalType, neverType } from '../type/primitives.ts';
-import { membersOf, unionOf } from '../unions/unions.ts';
+import { unionOf } from '../unions/unions.ts';
 import { keysOwner } from '../written/key-types.ts';
 import { entryRules, structConstraintsOn } from './known-constraints.ts';
 
@@ -155,13 +156,13 @@ export function memberUnionOf(checker: CheckerContext, parameter: TypeParameter)
 }
 
 /**
- * Whether the member parameter `parameter` is written of another member parameter (`S in S`,
- * `A in B, B in A`, `T in S`), which stands for one type already: a mistake (§3.5).
+ * Whether the member parameter `parameter` is written of a type standing for one type already
+ * (`S in S`, `A in B, B in A`, `K in W.Mode`): a mistake (§3.5).
  */
 export function namesMemberParameter(checker: CheckerContext, parameter: TypeParameter): boolean {
   return (
     parameter.memberOf !== undefined &&
-    isMemberParameter(checker.resolveType(checker.moduleOf(parameter), parameter.memberOf))
+    namesOneType(checker.resolveType(checker.moduleOf(parameter), parameter.memberOf))
   );
 }
 

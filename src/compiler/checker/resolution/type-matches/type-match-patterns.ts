@@ -36,9 +36,10 @@ import { isKnown, parametersIn, unaliased } from '../../types/parts/type-parts.t
 import { isStructType } from '../../types/traits/struct-keys.ts';
 import { isOpaque, unfolded } from '../../types/type/computed-types.ts';
 import type { Type } from '../../types/type/index.ts';
+import { membersOf } from '../../types/type/index.ts';
 import type { StructConstraintModel } from '../../types/type/struct-constraint.ts';
 import { baseOf } from '../../types/unions/union-members.ts';
-import { membersOf, unionOf } from '../../types/unions/unions.ts';
+import { unionOf } from '../../types/unions/unions.ts';
 import type { CasePatternForm, InferVariable } from '../../types/written/type-match.ts';
 import { silentMeets } from '../conformance/conformance.ts';
 import { type Meets, structShortfall } from '../conformance/shortfalls.ts';

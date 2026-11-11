@@ -13,9 +13,10 @@ import type { FieldPassType } from '../../contexts/passes.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import { fieldTypeOf, keyName, keysOf } from '../../types/traits/struct-keys.ts';
 import type { Type } from '../../types/type/index.ts';
+import { membersOf } from '../../types/type/index.ts';
 import { errorType, isPrimitive, neverType, tupleType } from '../../types/type/primitives.ts';
 import { typeText } from '../../types/type/type-text.ts';
-import { membersOf, unionOf } from '../../types/unions/unions.ts';
+import { unionOf } from '../../types/unions/unions.ts';
 import { declareTargets } from '../patterns/targets.ts';
 
 /** The passes over the fields of `header`'s subject, which this checks. */
