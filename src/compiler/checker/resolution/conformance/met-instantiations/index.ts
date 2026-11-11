@@ -28,6 +28,7 @@
  *   the receiver binding exactly (§3.10), so one search per declaration serves them all.
  */
 
+import { distinctItems } from '../../../../../foundation/structures/equality.ts';
 import { unreachable } from '../../../../../foundation/structures/unreachable.ts';
 import type { TraitDeclaration, TypeParameter } from '../../../../syntax/declarations/index.ts';
 import { typeParametersOf } from '../../../../syntax/declarations/index.ts';
@@ -203,9 +204,7 @@ function proposedFor(
   ];
   const same = (first: ProposedInstantiation, second: ProposedInstantiation) =>
     sameType(first.self, second.self) && sameConstraint(first.constraint, second.constraint);
-  return proposed.filter(
-    (each, index) => proposed.findIndex((other) => same(other, each)) === index,
-  );
+  return distinctItems(proposed, same);
 }
 
 /**

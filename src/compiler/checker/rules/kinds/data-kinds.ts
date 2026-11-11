@@ -17,7 +17,7 @@
  * - for a field loop, each pass its body was checked in (§4).
  *
  * It reads a body once it is checked, as solved; what a nested function infers its mark from while
- * it is, it reads at the same sites (wiring/body/body-checker.ts `handledBy`).
+ * it is, it reads at the same sites (resolution/applying/call-kinds.ts `handledBy`).
  *
  * A deferred call's own call is made later, by the function its taker is given, of its callee's
  * kind (deferred-calls.ts), so what it gives is that function's, never the code writing it; what it

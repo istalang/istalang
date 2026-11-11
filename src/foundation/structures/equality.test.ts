@@ -8,7 +8,7 @@ describe('distinctItems', () => {
   it('keeps the first of each item equal to others, in order', () => {
     fc.assert(
       fc.property(fc.array(fc.integer({ min: 0, max: 9 })), (items) => {
-        expect(distinctItems(items)).toEqual([...new Set(items)]);
+        expect(distinctItems(items, Object.is)).toEqual([...new Set(items)]);
       }),
     );
   });

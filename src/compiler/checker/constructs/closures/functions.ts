@@ -24,10 +24,10 @@ import { encloses } from '../../../syntax/tree/positions.ts';
 import type { BodyContext, FunctionFrame, Functions } from '../../contexts/body-context.ts';
 import type { Pass, Passes, PassTable } from '../../contexts/passes.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
+import { handledBy } from '../../resolution/applying/call-kinds.ts';
 import type { CheckedFunction, NestedFunction } from '../../surface/checked-body.ts';
 import type { Type } from '../../types/type/index.ts';
 import { errorType } from '../../types/type/primitives.ts';
-import { handledBy } from './function-scope.ts';
 
 export class FunctionScopes implements Functions {
   #stack: FunctionFrame[];

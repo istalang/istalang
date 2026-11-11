@@ -26,8 +26,9 @@ import { sameType } from '../identity/identity.ts';
 import { substitute, substitutionFor } from '../parts/substitution.ts';
 import { parametersIn } from '../parts/type-parts.ts';
 import { isComputed, unfolded } from '../type/computed-types.ts';
-import { isSimpleMark, persistenceOf } from '../type/function-kinds.ts';
+import { persistenceOf } from '../type/function-kinds.ts';
 import { type NominalEntity, type NominalType, nominalType, type Type } from '../type/index.ts';
+import { aboveBottom, dataKindOrder } from '../type/mark-orders.ts';
 import { markType } from '../type/primitives.ts';
 import { awaitedOf } from '../type/well-known.ts';
 import { isConfined, staysInProcess } from './handles.ts';
@@ -243,10 +244,7 @@ function writtenPartsOf(checker: CheckerContext, type: Type): readonly Type[] {
 
 /** `kinds` but simple ones, each once. */
 function distinctKinds(kinds: readonly Type[]): readonly Type[] {
-  return distinctItems(
-    kinds.filter((kind) => !isSimpleMark(kind)),
-    sameType,
-  );
+  return aboveBottom(kinds, dataKindOrder.bottom, sameType);
 }
 
 /**

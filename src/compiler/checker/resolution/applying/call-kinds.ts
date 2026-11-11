@@ -8,6 +8,8 @@
  * - Code of no kind of its own, an unmarked function's or a constant's, calling something of a
  *   kind is the function missing its mark, which the error says to write; code of a kind calling
  *   the other kind is the two kinds meeting, which no mark mends.
+ * - A lambda or a local `fn` given no mark infers it from its body: calling a function of a kind,
+ *   or handling a value of one, a call's type arguments' among them, makes it rely on its code's.
  */
 
 import type { Diagnostic } from '../../../../foundation/diagnostics/diagnostic.ts';
@@ -61,9 +63,8 @@ export function judgedCall(
       calleeKind: kindOfCall(context.checker, each),
       callee: `'${declaredFunctionName(each.function)}'`,
     });
-    const handlesKind = (type: Type) => context.checker.valueKindsOf(type).length > 0;
-    if (!made.frame.reliesOnKind && each.typeArguments.some(handlesKind)) {
-      made.frame.relyOnKind();
+    for (const type of each.typeArguments) {
+      handledBy(context.checker, made.frame, type);
     }
   }
   return call;
@@ -120,6 +121,18 @@ export function markMaking(
     }
   }
   return least;
+}
+
+/**
+ * Notes that `frame` handles a value of `type`, which it gives back: a nested function given no mark
+ * infers it from what its body handles (proposal 8, Rule 2), the data rule's sites
+ * (rules/kinds/data-kinds.ts). A body's own function infers nothing, so its kinds aren't asked.
+ */
+export function handledBy(checker: CheckerContext, frame: FunctionFrame, type: Type): Type {
+  if (frame.reach !== undefined && !frame.reliesOnKind && checker.valueKindsOf(type).length > 0) {
+    frame.relyOnKind();
+  }
+  return type;
 }
 
 /** Every call `call` makes through its constraints' witnesses, theirs included, at any depth. */

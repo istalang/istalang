@@ -10,7 +10,6 @@ import type { FunctionDeclaration } from '../../../syntax/declarations/index.ts'
 import type { Identifier } from '../../../syntax/tree/node.ts';
 import type { AnchoredSpan } from '../../../syntax/tree/positions.ts';
 import type { FunctionFrame } from '../../contexts/body-context.ts';
-import type { CheckerContext } from '../../contexts/context.ts';
 import type { NestedFunction } from '../../surface/checked-body.ts';
 import { type KindLookup, kindOfFunction, simpleMark } from '../../types/type/function-kinds.ts';
 import type { Type } from '../../types/type/index.ts';
@@ -88,16 +87,4 @@ export class FunctionScope implements FunctionFrame {
       this.#cleanups -= 1;
     }
   }
-}
-
-/**
- * Notes that `frame` handles a value of `type`, which it gives back: a nested function given no mark
- * infers it from what its body handles (proposal 8, Rule 2), the data rule's sites
- * (rules/kinds/data-kinds.ts).
- */
-export function handledBy(checker: CheckerContext, frame: FunctionFrame, type: Type): Type {
-  if (frame.reach !== undefined && !frame.reliesOnKind && checker.valueKindsOf(type).length > 0) {
-    frame.relyOnKind();
-  }
-  return type;
 }

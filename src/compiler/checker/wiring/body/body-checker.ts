@@ -37,7 +37,7 @@ import type { Identifier, Invalid } from '../../../syntax/tree/node.ts';
 import type { AnchoredSpan } from '../../../syntax/tree/positions.ts';
 import type { TypeNode } from '../../../syntax/types/index.ts';
 import type { SignatureParameter } from '../../check.ts';
-import { handledBy, rootScope } from '../../constructs/closures/function-scope.ts';
+import { rootScope } from '../../constructs/closures/function-scope.ts';
 import { FunctionScopes } from '../../constructs/closures/functions.ts';
 import { inferLambda } from '../../constructs/closures/lambdas.ts';
 import { declareOwnCall } from '../../constructs/closures/own-calls.ts';
@@ -65,6 +65,7 @@ import type {
 import type { CheckerContext } from '../../contexts/context.ts';
 import type { FieldPassType, PassTable } from '../../contexts/passes.ts';
 import { Passes } from '../../contexts/passes.ts';
+import { handledBy } from '../../resolution/applying/call-kinds.ts';
 import { ImplicitCalls } from '../../resolution/applying/implicit.ts';
 import { CallRecords } from '../../resolution/calls/call-records.ts';
 import { blockTail } from '../../rules/agreement.ts';

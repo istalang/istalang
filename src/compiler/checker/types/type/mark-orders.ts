@@ -9,6 +9,7 @@
  * from every other but the bottom, which is below it; `Sendability`'s top is above it.
  */
 
+import { distinctItems } from '../../../../foundation/structures/equality.ts';
 import type { Type } from './index.ts';
 import { markType, sendType } from './primitives.ts';
 
@@ -49,10 +50,11 @@ function isLiteral(type: Type, value: string): boolean {
 }
 
 /** `types` but `bottom`, each once. */
-function aboveBottom(types: readonly Type[], bottom: Type, same: Same): readonly Type[] {
-  return types
-    .filter((type) => !same(type, bottom))
-    .filter((type, index, all) => all.findIndex((other) => same(other, type)) === index);
+export function aboveBottom(types: readonly Type[], bottom: Type, same: Same): readonly Type[] {
+  return distinctItems(
+    types.filter((type) => !same(type, bottom)),
+    same,
+  );
 }
 
 /** `DataKind`'s order: `"simple"` below every other mark, the rest apart. */
