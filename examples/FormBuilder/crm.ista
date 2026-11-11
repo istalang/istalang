@@ -6,7 +6,7 @@ struct User:
 
 type Order = { note: String? }
 
-extern ista fn users(search: String) -> Future<Array<User>, "ista">
-extern ista fn user(id: String) -> Future<User?, "ista">
-extern ista fn creditLimit(vatId: String) -> Future<Int?, "ista">
-extern ista fn orders(vatId: String) -> Future<Array<Order>, "ista">
+extern live async fn users(search: String) -> Array<User>
+extern live async fn user(id: String) -> User?
+extern live async fn creditLimit(vatId: String) -> Int?
+extern live async fn orders(vatId: String) -> Array<Order>

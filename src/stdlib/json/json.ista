@@ -57,9 +57,9 @@ extern fn _toJson<T>(value: T) -> Json
 
 extern fn _fromJson<T>(json: Json, path: String) -> Result<T>
 
-# What crosses from the host (§9). A result, or an extern constant's value, that doesn't fit is a
-# bug in the host, so it panics the instance; JSON a host starts an instance with, or fills a
-# future with, fails the host's call instead, and nothing that call ran commits.
+# What crosses from the host (§9). A result, what its future gives, or an extern constant's value
+# that doesn't fit is a bug in the host, so it panics the code reading it; JSON a host starts an
+# instance with fails the host's call instead, and nothing that call ran commits.
 fn _hostResult<T>(read: Result<T>) -> T:
   match read:
     case Ok(value): value

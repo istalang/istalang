@@ -9,7 +9,7 @@
 import { describe, expect, it } from 'vitest';
 import { compiledText } from '../../compiler/compile.test-kit.ts';
 import { runToEnd, testRuntime } from '../runtime.test-kit.ts';
-import type { HostCall, HostExterns } from './host-natives.ts';
+import type { HostExterns } from './host-natives.ts';
 
 const leasing = compiledText(
   [
@@ -18,15 +18,14 @@ const leasing = compiledText(
     'extern fn open(name: String) -> Lease',
     'extern fn describe(lease: Lease) -> String',
     'extern fn release(lease: Lease)',
-    'extern ista fn approval() -> Future<String, "ista">',
     '',
     'fn dispose(self: Lease):',
     '  release(self)',
     '',
-    "import * as runtime from 'runtime'\nlive async fn main() -> String: await runtime.run(runtime.id()) _main()\nista async fn _main() -> String:",
+    "import * as time from 'time'\nimport * as runtime from 'runtime'\nlive async fn main() -> String: await runtime.run(runtime.id()) _main()\nista async fn _main() -> String:",
     '  const lease = open("a")',
-    '  const note = await approval()',
-    '  note + describe(lease)',
+    '  await time.delay(1s)',
+    '  describe(lease)',
   ].join('\n'),
 );
 
@@ -41,7 +40,7 @@ function leasingHost(): { readonly host: HostExterns; readonly released: unknown
         released.push(lease);
         return null;
       },
-      'main.approval()': (_, call: HostCall) => call.pending('approval'),
+      'main.ready()': () => false,
     },
     released,
   };
@@ -54,15 +53,16 @@ const terminated = compiledText(
     'extern fn open(name: String) -> Lease',
     'extern fn describe(lease: Lease) -> String',
     'extern fn release(lease: Lease)',
-    'extern ista fn approval() -> Future<Bool, "ista">',
+    'extern fn ready() -> Bool',
     '',
     'fn dispose(self: Lease):',
     '  release(self)',
     '',
-    "import * as runtime from 'runtime'\nlive async fn main() -> String: await runtime.run(runtime.id()) _main()\nista async fn _main() -> String:",
+    "import * as time from 'time'\nimport * as runtime from 'runtime'\nlive async fn main() -> String: await runtime.run(runtime.id()) _main()\nista async fn _main() -> String:",
     '  const first = open("plain")',
     '  const second = open("refusing")',
-    '  if not await approval():',
+    '  await time.delay(1s)',
+    '  if not ready():',
     '    panic("refused")',
     '  describe(first) + describe(second)',
   ].join('\n'),
@@ -73,10 +73,9 @@ describe('a disposable host type', () => {
     const { host, released } = leasingHost();
     const test = testRuntime({ host });
     const started = test.startInstance(leasing, 'l');
-    expect(started.state).toEqual({ kind: 'waiting', until: undefined, watching: [] });
+    expect(started.state).toMatchObject({ kind: 'waiting' });
     expect(released).toEqual([]);
-    const filled = await test.runtime.fill('l', 'approval', 'leased ');
-    expect(await runToEnd(test, 'l', filled)).toEqual({ kind: 'finished', outcome: 'leased a' });
+    expect(await runToEnd(test, 'l', started)).toEqual({ kind: 'finished', outcome: 'a' });
     expect(released).toEqual([{ id: 'a' }]);
   });
 
@@ -90,10 +89,8 @@ describe('a disposable host type', () => {
       },
     };
     const test = testRuntime({ host: refusing });
-    test.startInstance(terminated, 't');
-    expect((await test.runtime.fill('t', 'approval', false)).state).toMatchObject({
-      kind: 'panicked',
-    });
+    const started = test.startInstance(terminated, 't');
+    expect(await runToEnd(test, 't', started)).toMatchObject({ kind: 'panicked' });
     expect(released).toEqual([]);
     expect(await test.runtime.terminate('t')).toEqual({
       state: { kind: 'terminated', message: 'refused', trace: expect.any(String) },
@@ -139,34 +136,31 @@ describe('a disposable host type', () => {
         calls.push(['retract', ...given]);
         return null;
       },
-      'main.gate()': (_, call: HostCall) => call.pending('gate'),
     };
     const program = compiledText(
       [
         "import Revertible from 'inbox'",
-        "import Encodable from 'json'\nimport * as runtime from 'runtime'",
+        "import Encodable from 'json'\nimport * as runtime from 'runtime'\nimport * as time from 'time'",
         '',
         'extern sendable struct Queue<T is Sendable>',
         'extern shared struct Sent',
         'extern fn dispose(self: Sent)',
         'extern fn _sendRevertible<T is Encodable>(self: Queue<T>, msg: T) -> Sent',
         'extern fn announcements(user: String) -> Queue<String>',
-        'extern ista fn gate() -> Future<Unit, "ista">',
         '',
         'ista fn sendRevertible<T is Encodable>(self: Queue<T>, msg: T) -> Revertible<T>:',
         '  Revertible.holding(_sendRevertible(self, msg))',
         '',
         'live async fn main() -> Int: await runtime.run(runtime.id()) _main()\nista async fn _main() -> Int:',
         '  hold _ = announcements("ann").sendRevertible("hello")',
-        '  await gate()',
+        '  await time.delay(1s)',
         '  1',
       ].join('\n'),
     );
     const test = testRuntime({ host });
-    test.startInstance(program, 'r');
+    const started = test.startInstance(program, 'r');
     expect(calls).toEqual([['send', { queue: 'ann' }, 'hello']]);
-    const filled = await test.runtime.fill('r', 'gate', null);
-    expect(await runToEnd(test, 'r', filled)).toEqual({ kind: 'finished', outcome: 1n });
+    expect(await runToEnd(test, 'r', started)).toEqual({ kind: 'finished', outcome: 1n });
     expect(calls.at(-1)).toEqual(['retract', { message: 7n }]);
   });
 });

@@ -16,7 +16,6 @@
 
 import { handleTarget, handleTo, type Value } from '../../../definition/values/values.ts';
 import { unreachable } from '../../../foundation/structures/unreachable.ts';
-import { Panic } from '../../natives.ts';
 import type { FutureState, Watch } from '../../snapshot/objects.ts';
 import type { CallerFuture } from '../testing/test-world.ts';
 import type { DisposalNotices } from './disposal-notices.ts';
@@ -223,17 +222,6 @@ export class Futures {
       this.resolve(future.id, value);
     }
     return future !== undefined;
-  }
-
-  /**
-   * A future the host fills later as `token` (§9); a panic when one pending on the host already
-   * has that name, since a fill could then reach either.
-   */
-  createHost(token: string): Value {
-    if (this.#hostFuture(token) !== undefined) {
-      throw new Panic(`The host named a future '${token}', as one it has yet to fill.`);
-    }
-    return this.createHandle({ kind: 'host', token });
   }
 
   /** Whether a future pending on the host has the name `token`. */

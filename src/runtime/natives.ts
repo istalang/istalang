@@ -68,8 +68,6 @@ export interface NativeFutures {
   readonly resolved: (value: Value) => Value;
   /** A future that resolves at `at`, in milliseconds since the Unix epoch (`time.at`). */
   readonly timer: (at: bigint) => Value;
-  /** A future the host fills later, naming it by `token` (§9): an instance's. */
-  readonly fromHost: (token: string) => Value;
   /** A live future something outside the run resolves, and its resolver: a live run's (proposal 8). */
   readonly resolvable: () => Resolvable;
   /**

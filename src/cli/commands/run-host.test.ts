@@ -1,9 +1,10 @@
 /**
  * `ista run --host` end to end (§3.6, §9): a JavaScript module stands in for the host, implementing
  * the program's externs by key against JSON. A host type's value crosses as the host's own JSON, a
- * promise fills the future its extern returns, an extern constant is read from the host, and a
- * result as JSON says it maps back. What doesn't fit fails where the spec says: a result of the
- * wrong type panics the instance, JSON filling a future that doesn't fit fails the host's fill.
+ * promise resolves the live future its extern returns, which ista code reaches through
+ * `runtime.delegate`, an extern constant is read from the host, and a result as JSON says it maps
+ * back. What doesn't fit panics where the spec says: a result of the wrong type the instance, and a
+ * promise's JSON that doesn't fit, or a promise that rejects, the live code waiting on it.
  * Spec §12's examples, read from the spec itself, run against a scripted host of queues.
  */
 
@@ -16,12 +17,10 @@ import { ista } from '../cli.test-kit.ts';
 
 const wrongResult =
   /^panic: The host gave what doesn't fit: main\.charge\.value: expected a string, found an integer\n/u;
-const unfitFill =
-  /^ista: the host couldn't fill a future of instance \S+: main\.receive\.amount: expected an integer, found a string\n/u;
-const stuckAtReceive = /waits on nothing that can wake it, at \S+main\.ista:15:17, /u;
-const requestsFailed =
-  /^ista: the host's main\.receive\(main\.Queue<T>\) failed: Error: no more requests\n/u;
-const mainStuck = /main waits on nothing that can wake it/u;
+const unfitPromise =
+  /^panic: The host gave what doesn't fit: main\.receive\.amount: expected an integer, found a string\n/u;
+const laterRejected = /^panic: The host's main\.later rejected: no\n/u;
+const requestsFailed = /^panic: The host's main\.receive rejected: no more requests\n/u;
 
 /** A program receiving an order from a host queue and charging it through the host. */
 const program = [
@@ -31,13 +30,13 @@ const program = [
   '  amount: Int',
   '',
   'extern sendable struct Queue<T is Sendable>',
-  'extern ista fn receive<T is Decodable>(self: Queue<T>) -> Future<T, "ista">',
+  'extern live async fn receive<T is Decodable>(self: Queue<T>) -> T',
   'extern fn orders() -> Queue<Order>',
   'extern fn charge(id: String, amount: Int) -> Result<String>',
   'extern limit: Int',
   '',
   'live async fn main() -> String: await runtime.run(runtime.id()) _main()\nista async fn _main() -> String:',
-  '  const order = await orders().receive()',
+  '  const order = await runtime.delegate orders().receive()',
   '  if order.amount > limit:',
   '    return "too much"',
   '  match charge(order.id, order.amount):',
@@ -62,8 +61,9 @@ function host(order: string, charge: string): string {
 /**
  * The host spec §12 declares, scripted: a queue is named after what it carries, and logs to
  * `queue.log` every send, retraction and charge, a send by the token it gave. The purchase requests
- * hold one request, then fail; a purchase's verdicts arrive one after the other, and its cancels
- * late, once nothing waits on them, so filling them changes nothing. A cancel's timer starts only
+ * hold one request, then fail, which panics the run serving the job asking for the next; a
+ * purchase's verdicts arrive one after the other, and its cancels late, once nothing waits on
+ * them, so their answers change nothing. A cancel's timer starts only
  * once the last verdict is given, which the run takes in before any timer can fire, so no load on
  * the machine lets a cancel overtake a verdict. That holds while filling and advancing an instance
  * are synchronous, as `memoryStore` keeps them: between a promise settling and its fill, the run
@@ -191,12 +191,11 @@ describe('ista run --host', () => {
     expect(run.err).toMatch(wrongResult);
   });
 
-  it("fails the host's fill on JSON that doesn't fit, leaving the future to wait", async () => {
+  it("panics the live code waiting on a promise whose JSON doesn't fit", async () => {
     const run = await runWith("{ id: 'o1', amount: 'many' }", "({ _type: 'Ok', value: 'r' })");
     expect(run.code).toBe(1);
     expect(run.out).toBe('');
-    expect(run.err).toMatch(unfitFill);
-    expect(run.err).toMatch(stuckAtReceive);
+    expect(run.err).toMatch(unfitPromise);
   });
 
   it('refuses to run when the host leaves an extern unimplemented, naming its key', async () => {
@@ -279,13 +278,13 @@ describe('ista run --host', () => {
     });
   });
 
-  it('keeps waiting on the promises still pending after one of them fails', async () => {
+  it('panics the live code waiting on a promise that rejects, though another still pends', async () => {
     const root = project({
       'main.ista': [
-        'extern ista fn later(name: String) -> Future<String, "ista">',
+        'extern live async fn later(name: String) -> String',
         "import * as runtime from 'runtime'\nlive async fn main() -> String: await runtime.run(runtime.id()) _main()\nista async fn _main() -> String:",
-        '  _ = later("fail")',
-        '  await later("ok")',
+        '  _ = runtime.delegate later("fail")',
+        '  await runtime.delegate later("ok")',
         '',
       ].join('\n'),
       'host.mjs': [
@@ -299,11 +298,9 @@ describe('ista run --host', () => {
       ].join('\n'),
     });
     const run = await ista(root, 'run', 'main.ista', '--host', 'host.mjs');
-    expect(run).toEqual({
-      code: 0,
-      out: '"fine"\n',
-      err: "ista: the host's main.later(String) failed: Error: no\n",
-    });
+    expect(run.code).toBe(1);
+    expect(run.out).toBe('');
+    expect(run.err).toMatch(laterRejected);
   });
 
   it('runs spec §12.1 and §12.2: a purchase spawned for each request, until requests fail', async () => {
@@ -314,8 +311,9 @@ describe('ista run --host', () => {
     expect(run.code).toBe(1);
     expect(run.out).toBe('');
     expect(run.err).toMatch(requestsFailed);
-    expect(run.err).toMatch(mainStuck);
-    expect(logged).toEqual(purchased);
+    // The failed request panics the live run, which serves the purchase's jobs too, so it stops
+    // having sent its requests, before any verdict arrives.
+    expect(logged).toEqual({ ...purchased, after: [] });
   });
 
   it("runs spec §12.1's purchase in place, to the outcome its charge gives", async () => {

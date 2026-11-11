@@ -376,7 +376,7 @@ describe('the canonical style', () => {
 
 describe("a head's modifiers", () => {
   it.each([
-    ['ista async extern fn f()', 'extern ista async fn f()'],
+    ['live async extern fn f()', 'extern live async fn f()'],
     ['async M extern fn f<M in Mark>()', 'extern M async fn f<M in Mark>()'],
     ['shared extern struct H', 'extern shared struct H'],
     ['type F = ista async sendable fn(Int)', 'type F = sendable ista async fn(Int)'],

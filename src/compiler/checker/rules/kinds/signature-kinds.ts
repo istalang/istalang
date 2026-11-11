@@ -14,6 +14,9 @@
  * - A head naming its mark (`M fn`) names a mark parameter, or a requirement's associated type
  *   (`Self.Mode fn`) bounded to one member of the marks (`type Mode in Persistence`); an async
  *   head's is one of the two kinds, which its future takes.
+ * - A host's extern is simple or live code (proposal 8, Rule 9): only the runtime runs ista code or
+ *   fills an ista future, so one whose head, or else what its signature holds, makes it ista code,
+ *   or code generic over its kind, is refused as such, rather than told to write the mark.
  */
 
 import type { Diagnostic } from '../../../../foundation/diagnostics/diagnostic.ts';
@@ -26,12 +29,14 @@ import { namedTypeText } from '../../../syntax/types/index.ts';
 import type { CheckerContext } from '../../contexts/context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import { kindText } from '../../resolution/applying/call-kinds.ts';
+import { isHostExtern } from '../../surface/host-externs.ts';
 import { sameType } from '../../types/identity/identity.ts';
 import {
   isOneKind,
   isSimpleMark,
   kindOfFunction,
   namedMarkOf,
+  persistenceOf,
 } from '../../types/type/function-kinds.ts';
 import type { Type } from '../../types/type/index.ts';
 import { typeText } from '../../types/type/type-text.ts';
@@ -66,6 +71,11 @@ export function checkSignatureKind(
     checker.report(module, checkerDiagnostics.unkindedFuture(declaration.name.span));
   }
   checkNamedMark(checker, module, declaration);
+  if (isHostExtern(checker, declaration) && !isHostKind(checker, own, held)) {
+    const { name } = declaration;
+    checker.report(module, checkerDiagnostics.hostExternMark(name.span, name.text));
+    return;
+  }
   const refusal = heldKindRefusal(checker, {
     own,
     holder: `'${declaredFunctionName(declaration)}'`,
@@ -74,6 +84,19 @@ export function checkSignatureKind(
   if (refusal !== undefined) {
     checker.report(module, refusal);
   }
+}
+
+/**
+ * Whether a host's extern of kind `own`, holding `held`, is code a host may run: simple, holding
+ * nothing of a kind but live, or live.
+ */
+function isHostKind(checker: CheckerContext, own: Type, held: readonly HeldInSignature[]): boolean {
+  if (!isSimpleMark(own)) {
+    return persistenceOf(own) === 'live';
+  }
+  return held.every(({ type }) =>
+    checker.valueKindsOf(type).every((kind) => persistenceOf(kind) === 'live'),
+  );
 }
 
 /** Code whose values are judged: its mark, how messages name it, and what it holds. */

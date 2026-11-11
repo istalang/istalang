@@ -95,15 +95,13 @@ async function idled(
     return undefined;
   }
   const due = earliest(instance.futures.nextTimer(), contexts.nextTimer());
-  const awaitsFill = contexts.awaitsHost();
-  const awaitsHost =
-    awaitsFill ||
-    instance.futures.awaitedFromHost().some((future) => !contexts.awaitsContexts(future));
+  const awaitsHost = instance.futures
+    .awaitedFromHost()
+    .some((future) => !contexts.awaitsContexts(future));
   if (due === undefined && !awaitsHost) {
     return { kind: 'waiting', until: undefined, watching: [] };
   }
-  const changed = awaitsFill ? contexts.fillsChanged() : undefined;
-  await woken(clock, due, awaitsHost ? resumes : undefined, changed);
+  await woken(clock, due, awaitsHost ? resumes : undefined);
   await contexts.wakeDue(clock.now());
   return undefined;
 }
@@ -124,8 +122,7 @@ function earliest(first: bigint | undefined, second: bigint | undefined): bigint
 }
 
 /**
- * Settles once `due` comes on `clock`, a resume from `resumes` is called, or whether the host may
- * still fill a context's future could have changed (`fillsChanged`), whichever is first.
+ * Settles once `due` comes on `clock` or a resume from `resumes` is called, whichever is first.
  * With resumes to come, the clock is waited on only from the event loop's next turn, once every
  * promise settled by now has called its resume.
  */
@@ -133,15 +130,11 @@ async function woken(
   clock: Clock,
   due: bigint | undefined,
   resumes: LiveResumes | undefined,
-  fillsChanged: Promise<void> | undefined,
 ): Promise<void> {
   const raced = new AbortController();
   const waits: Promise<void>[] = [];
   if (resumes !== undefined) {
     waits.push(resumes.called());
-  }
-  if (fillsChanged !== undefined) {
-    waits.push(fillsChanged);
   }
   if (due !== undefined) {
     const timer = async () => {

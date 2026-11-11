@@ -72,11 +72,11 @@ its instance is numbered by, so its native sees only JSON:
 - The native entry keeps the declared key (`purchase.chargeCard(String, Int)`), so a host binds by
   the signature it was written against, and carries its `declaredType` (the result), which the
   runtime holds the host to across deploys (`runtime/boundary/extern-signatures.ts`).
-- An extern returning an ista future, `Future<T, "ista">`, hands back a future the host names with a token of its own. The
-  wrapper is async: it awaits the raw future and decodes, so it is an execution of its own, which
-  `inspect` shows waiting at the extern's declaration. The host fills the future later
-  (`Runtime.fill`), which runs the waiting wrapper in the same call, so JSON that doesn't decode
-  (`_hostInput`, `_refuse`) rejects the host's call and nothing commits.
+- A host's extern is unmarked or live (the checker refuses one marked `ista` or generic over its
+  mark, 5913): only the runtime fills an ista future, so ista code reaches a host's live extern
+  through a job (`runtime.delegate`, spec §5). One returning a future is `live async`: its wrapper
+  is a live async entry awaiting the native's live future and decoding it, an execution only of a
+  live run, which nothing inspects; JSON that doesn't decode panics the run.
 - An extern constant is read through an entry that decodes the native's value; the runtime calls
   the native once per instance and pins the value in the snapshot (`pinned`).
 - A host type a `dispose` makes disposable (an extern its host implements, or code passing the
@@ -91,16 +91,11 @@ its instance is numbered by, so its native sees only JSON:
   `JSON.parse` of the text gives but with every integer a `bigint`, so none loses digits; what a
   host gives back is read as `JSON.stringify` would write it, `undefined` as `null` or a field
   left out (definition/values/json-values.ts). The
-  runtime's API takes them as `(arguments, call)`, where one returning a future gives back
-  `call.pending(token)` and is filled later by `fill`: a durable host names the future so it can
-  fill it from another process, and a name a future still waiting on the host has panics the
-  instance, so a fill can't reach the wrong one; `ista run --host` names its futures by UUID. A
-  host key the runtime's natives already have, such as `time.now()`, is refused at
-  `createRuntime`, so no host replaces the clock. `ista run --host` loads a module of plain
-  functions instead (`cli/host-module.ts`), each taking the arguments spread, and turns a returned
-  promise into a pending future it fills between wakes; a promise can't outlive its process, which
-  only a development host may assume.
-- To a live run (spec §5), which waits in memory and no fill reaches, an extern returning a live
+  runtime's API takes them as `(arguments, call)`. A host key the runtime's natives already have,
+  such as `time.now()`, is refused at `createRuntime`, so no host replaces the clock. `ista run
+  --host` loads a module of plain functions instead (`cli/host-module.ts`), each taking the
+  arguments spread, a returned promise resolving its live future as below.
+- To a live run (spec §5), which waits in memory, an extern returning a live
   future takes the resolver of the live future its call gives, `call.resolver()`, while it runs,
   and resolves it with JSON when it can, from anywhere: the value reaches the run between its
   segments. Or, taking none, it gives back a promise of its JSON, which resolves the future as it
@@ -193,9 +188,9 @@ host awaits the same way whatever an instance waits on. Calls that only read (`d
   hears the names of the instances whose jobs it serves (`RunContexts.served`): every one the run
   drives on its own program, since the loop serving them, Istalang in `stdlib/runtime`, calls its
   program's functions into each; a wait for them is a wait on the contexts, as a call is. The run ends waiting on nothing
-  when no timer, no host future outside its calls and no host fill (`HostFills`) can wake it or
-  its contexts. Their advances show to the runtime's observers, so a host call made on a context
-  meanwhile (a fill) pokes the run; what their own advances report reaches the host through
+  when no timer and no host future outside its calls can wake it or its contexts. Their advances
+  show to the runtime's observers, so a host call made on a context meanwhile (a retry) pokes the
+  run; what their own advances report reaches the host through
   `HostReports`: log records, and a panic no call of the program's waits to hear; the job loop's
   calls (`CallMaker` `jobs`) never hear one, so an instance's panic reaches the host though the
   loop serving it waits on it.

@@ -4,9 +4,9 @@
  *
  * - The wrapper encodes every argument, calls the native entry, and decodes what comes back, each
  *   by its declared type's codec, closed within the wrapper's instance (codec-calls.ts). A
- *   result that doesn't fit is a bug in the host, so it panics the instance; a future the host
- *   fills is awaited first, and JSON that doesn't fit it fails the host's call that filled it, so
- *   the wrapper of an extern returning `Future<T>` is async and gives `T`. The wrapper is the
+ *   result that doesn't fit is a bug in the host, so it panics the code calling it, and so is
+ *   what a future the host resolves gives, which is awaited first, so the wrapper of an extern
+ *   returning `Future<T>` is async and gives `T`. The wrapper is the
  *   extern's one code entry, so it begins with the prologue computing the defaults a call leaves
  *   out (functions/built-entries.ts `hostExternEntry`), and a trace names the extern once.
  * - The native entry is the extern as declared, bound by its declared key, with JSON for every
@@ -206,7 +206,7 @@ export function writeHostCall(
   return emitInbound(
     context,
     filled,
-    inboundOf(checker, within, awaited.value, { from: 'input', path }),
+    inboundOf(checker, within, awaited.value, { from: 'result', path }),
     span,
   );
 }

@@ -6,26 +6,26 @@
 
 import { describe, expect, it } from 'vitest';
 import { compiledText } from '../../../compiler/compile.test-kit.ts';
-import type { HostCall, HostExterns } from '../../boundary/host-natives.ts';
-import { testRuntime } from '../../runtime.test-kit.ts';
+import type { HostExterns } from '../../boundary/host-natives.ts';
+import { runToEnd, testRuntime } from '../../runtime.test-kit.ts';
 
 const program = compiledText(
   [
     'extern fn note(text: String)',
-    'extern ista fn approval() -> Future<Bool, "ista">',
-    'extern ista fn gate() -> Future<Int, "ista">',
+    'extern fn ready() -> Bool',
     '',
     'ista async fn child() -> Int:',
     '  await select:',
     '    case child.disposing():',
     '      note("child cleaned up")',
     '      0',
-    '    case gate():',
+    '    case time.delay(1d):',
     '      1',
     '',
-    "import * as runtime from 'runtime'\nlive async fn main() -> Int: await runtime.run(runtime.id()) _main()\nista async fn _main() -> Int:",
+    "import * as time from 'time'\nimport * as runtime from 'runtime'\nlive async fn main() -> Int: await runtime.run(runtime.id()) _main()\nista async fn _main() -> Int:",
     '  const running = child()',
-    '  if not await approval():',
+    '  await time.delay(1s)',
+    '  if not ready():',
     '    panic("refused")',
     '  await running',
   ].join('\n'),
@@ -39,14 +39,11 @@ describe('terminating an instance', () => {
         notes.push(text);
         return null;
       },
-      'main.approval()': (_, call: HostCall) => call.pending('approval'),
-      'main.gate()': (_, call: HostCall) => call.pending('gate'),
+      'main.ready()': () => false,
     };
     const test = testRuntime({ host });
-    test.startInstance(program, 't');
-    expect((await test.runtime.fill('t', 'approval', false)).state).toMatchObject({
-      kind: 'panicked',
-    });
+    const started = test.startInstance(program, 't');
+    expect(await runToEnd(test, 't', started)).toMatchObject({ kind: 'panicked' });
     expect(notes).toEqual([]);
     expect((await test.runtime.terminate('t')).state).toMatchObject({ kind: 'terminated' });
     expect(notes).toEqual(['child cleaned up']);
@@ -59,24 +56,22 @@ describe('terminating an instance', () => {
         notes.push(text);
         return null;
       },
-      'main.gate()': (_, call: HostCall) => call.pending('gate'),
     };
     const test = testRuntime({ host });
     const deployed = test.runtime.deploy(
       compiledText(
         [
           'extern fn note(text: String)',
-          'extern ista fn gate() -> Future<Int, "ista">',
           '',
           'ista async fn child() -> Int:',
           '  await select:',
           '    case child.disposing():',
           '      note("child cleaned up")',
           '      0',
-          '    case gate():',
+          '    case time.delay(1d):',
           '      1',
           '',
-          "import * as runtime from 'runtime'",
+          "import * as runtime from 'runtime'\nimport * as time from 'time'",
           'live async fn main() -> Int: await runtime.run("t") _main()',
           'ista async fn _main() -> Int:',
           '  const running = child()',

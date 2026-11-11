@@ -4,8 +4,7 @@
  * runtimes open over the host's store (§9): `--store <dir>` keeps the Definition and every commit
  * in a directory, so running a program again on it resumes the contexts it left, and memory keeps
  * them otherwise. `--host <module>` loads the externs the program's host implements from a
- * JavaScript module (host-module.ts), whose promises fill their futures as they settle, while `main`
- * runs.
+ * JavaScript module (host-module.ts), whose promises resolve the live futures `main` waits on.
  *
  * `main` runs on real time, its timers and its contexts' on the system clock, until it ends: its
  * outcome is printed, its panic, with a context's that reached it, reported, and a `main` that
@@ -41,7 +40,7 @@ import {
   exitCodes,
 } from '../command.ts';
 import { directoryStore } from '../directory-store.ts';
-import { type HostModule, loadHostModule } from '../host-module.ts';
+import { loadHostModule } from '../host-module.ts';
 import { logLine } from '../log-lines.ts';
 import { reportDiagnostics, reportUnreadable } from '../report.ts';
 
@@ -79,7 +78,7 @@ async function run(
     environment.writeError(`ista: ${loaded.problem}\n`);
     return exitCodes.couldNotRun;
   }
-  const host = loaded?.module;
+  const host = loaded?.externs;
   const store =
     options.store === undefined
       ? memoryStore()
@@ -91,24 +90,16 @@ async function run(
     clock,
     seed: () => randomBytes(seedBytes),
     reports,
-    fills: {
-      may: () => host?.mayFill() === true,
-      changed: () => host?.nextSettled() ?? new Promise<void>(() => undefined),
-    },
-    ...(host === undefined ? {} : { host: host.externs }),
+    ...(host === undefined ? {} : { host }),
   });
-  return start({ runtime, store, reports, host, environment }, entry, options);
+  return start({ runtime, store, reports, environment }, entry, options);
 }
 
-/**
- * What a run runs `main` with: its runtime over `store`, what its contexts report, its host module
- * if any, where it writes.
- */
+/** What a run runs `main` with: its runtime over `store`, what its contexts report, where it writes. */
 interface Session {
   readonly runtime: Runtime;
   readonly store: InstanceStore;
   readonly reports: RunReports;
-  readonly host: HostModule | undefined;
   readonly environment: CliEnvironment;
 }
 
@@ -161,7 +152,7 @@ async function start(session: Session, entry: string, options: RunOptions): Prom
         if (options.store !== undefined) {
           environment.writeError(`ista: run ${name}\n`);
         }
-        return finish(session, deployed, await whileFilling(session, deployed.start(name)));
+        return finish(session, deployed, await untilIdle(session, deployed.start(name)));
       });
       return outcome ?? exitCodes.problems;
     }
@@ -173,29 +164,11 @@ async function start(session: Session, entry: string, options: RunOptions): Prom
 }
 
 /**
- * What `running`, `main`'s live run, ends with: meanwhile, each promise the host's externs gave
- * fills its future as it settles, which reaches the context waiting on it (§9). Once the process
- * goes idle, nothing is left that could settle a promise or come due, so `main` waits on nothing
- * that can wake it.
+ * What `running`, `main`'s live run, ends with; once the process goes idle, nothing is left that
+ * could settle a host's promise or come due, so `main` waits on nothing that can wake it.
  */
-async function whileFilling(
-  { runtime, host, reports, environment }: Session,
-  running: Promise<Advanced>,
-): Promise<Advanced> {
-  const ended = running.then((advanced) => ({ advanced }));
-  const idle = environment.idle.then(() => ({ advanced: stuck }));
-  for (;;) {
-    const settled = host?.nextSettled().then(() => undefined);
-    // biome-ignore lint/performance/noAwaitInLoops: each fill follows the promise settling before it.
-    const next = await Promise.race(settled === undefined ? [ended, idle] : [ended, idle, settled]);
-    if (next !== undefined) {
-      return next.advanced;
-    }
-    const arrived = (await host?.arrivals(runtime, environment.writeError)) ?? [];
-    for (const { advanced } of arrived) {
-      reports.logs(advanced.logs);
-    }
-  }
+function untilIdle({ environment }: Session, running: Promise<Advanced>): Promise<Advanced> {
+  return Promise.race([running, environment.idle.then(() => stuck)]);
 }
 
 /** How a `main` the process went idle under ended: waiting on nothing that can wake it. */

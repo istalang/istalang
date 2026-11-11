@@ -16,26 +16,26 @@ setFlagsFromString('--expose_gc');
 /** A full collection of JavaScript's heap, which runs what a `FinalizationRegistry` was told. */
 const collectGarbage = runInNewContext('gc') as () => void;
 
-/** The program with `kind` code: live code a host starts, or ista code an instance runs. */
-function programOf(kind: 'live' | 'ista'): string {
+/** The program whose live code waits on a host's `fetch`, as only live code may (Rule 9). */
+function liveProgram(): string {
   return compiledText(
     [
       "import * as time from 'time'\nimport * as runtime from 'runtime'",
-      `extern ${kind} fn fetch(name: String) -> Future<Int, "${kind}">`,
-      `${kind} async fn fetched() -> Int:`,
+      'extern live fn fetch(name: String) -> Future<Int, "live">',
+      'live async fn fetched() -> Int:',
       '  1 + await fetch("a")',
-      `${kind} async fn raced() -> Int:`,
+      'live async fn raced() -> Int:',
       '  await select:',
       '    case fetch("a") as n:',
       '      n',
       '    case time.delay(5ms):',
       '      0',
-      `live async fn main(): await runtime.run(runtime.id()) _main()\nista async fn _main(): ${kind === 'ista' ? 'await fetched()' : '0'}`,
+      'live async fn main(): await runtime.run(runtime.id()) _main()\nista async fn _main(): 0',
     ].join('\n'),
   );
 }
 
-const liveText = programOf('live');
+const liveText = liveProgram();
 const fetchKey = 'main.fetch(String)';
 
 /** Starts `entry` as a live run of the program, with `fetch` as the host's. */
@@ -176,15 +176,6 @@ describe("a host's live resolver", () => {
     expect((await run).state).toMatchObject({
       kind: 'panicked',
       message: "The host's main.fetch resolved its future twice.",
-    });
-  });
-
-  it("can't be taken by an instance's extern, whose future the host fills by a token", () => {
-    const test = testRuntime({ host: { [fetchKey]: (_arguments, call) => call.resolver() } });
-    const advanced = test.startInstance(programOf('ista'), 'ista');
-    expect(advanced.state).toMatchObject({
-      kind: 'panicked',
-      message: expect.stringContaining('An instance waits on no future a live resolver resolves'),
     });
   });
 });

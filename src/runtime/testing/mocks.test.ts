@@ -135,8 +135,10 @@ fn suite() -> Array<Test>: [test("native", native), test("breaking", breaking)]
   it('drop an answer whose caller let go of its future, so a receive losing a select takes nothing', async () => {
     const source = testModule(`
 extern sendable struct Queue<T is Sendable>
-extern ista fn receive<T is Decodable>(self: Queue<T>) -> Future<T, "ista">
 extern fn queueOf(name: String) -> Queue<Int>
+
+# The program's own read of a queue, its seam a test mocks.
+ista async fn receive<T is Sendable>(self: Queue<T>) -> T: panic("reached the host")
 
 ista async fn pollsThenWaits() -> Int:
   const polled: Int = select:

@@ -6,6 +6,10 @@
 import { describe, expect, it } from 'vitest';
 import { outcomesOf, reportsOf, testModule } from './testing.test-kit.ts';
 
+/** How a test reaching a job no runtime serves fails: where it waits, and why. */
+const unservedJob =
+  /^The test waits on nothing that can wake it: .*test at memory:main\.test\.ista:\d+:30, test at job \(std:runtime:\d+:\d+\)\. A job runtime\.delegate queued waits for a runtime to serve it, which a test has none of: mock the ista function delegating it\.$/u;
+
 describe('the runner', () => {
   it('reports each test under its full title, as passed, failed or skipped', async () => {
     const source = testModule(`
@@ -327,5 +331,50 @@ fn failing() -> Array<Test>: [test("unmocked", unmocked), test("forever", foreve
     expect(messages[0]).toContain('No mock replaces main.test.ista.charge');
     expect(messages[1]).toContain('The test waits on nothing that can wake it: test at');
     expect(messages[2]).toContain('The test waits past its timeout: test at');
+  });
+
+  it('fails on a job it delegates, which no runtime serves in a test, saying where and why', async () => {
+    const source = testModule(`
+import * as runtime from 'runtime'
+extern live fn charge(id: String) -> Int
+
+ista async fn pays() -> Int: await runtime.delegate charge("o1")
+
+ista async fn paid():
+  assertEq(await pays(), 1)
+
+@Suite{"jobs"}
+fn suite() -> Array<Test>: [test("pays", paid)]
+`);
+    const [report] = await reportsOf(source, { timeout: 1000n });
+    expect(report?.outcome).toMatchObject({
+      kind: 'failed',
+      message: expect.stringMatching(unservedJob),
+    });
+  });
+
+  it('passes a test whose job loses a select, which withdraws it before any runtime serves it', async () => {
+    const source = testModule(`
+import * as runtime from 'runtime'
+extern live async fn receiveVerdict(id: String) -> String
+
+ista async fn approve(id: String) -> String:
+  await select:
+    case runtime.delegate receiveVerdict(id) as v:
+      v
+    case time.delay(5d):
+      "expired"
+
+ista async fn unmockedReceive(clock: FakeClock):
+  const t = spawn approve("p1")
+  await t.idle()
+  clock.advance(5d)
+  assertEq(await t.result(), Ok("expired"))
+
+@Suite{"jobs in select"}
+ista fn suite() -> Array<Test>: [test("unmocked in select", testing.withClock, unmockedReceive)]
+`);
+    const [report] = await reportsOf(source, { timeout: 1000n });
+    expect(report?.outcome).toMatchObject({ kind: 'passed' });
   });
 });

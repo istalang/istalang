@@ -1,5 +1,5 @@
 # error: 5101 at 18:15
-# error: 5101 at 20:27
+# error: 5101 at 20:33
 # error: 5901 at 22:16
 # error: 5101 at 24:19
 # error: 5101 at 26:14
@@ -17,7 +17,7 @@ extern shared struct Connection
 
 extern fn run(task: fn() -> Int)
 
-extern ista fn later() -> Future<fn() -> Int, "ista">
+extern live async fn later() -> fn() -> Int
 
 extern fn bump(count: &Int)
 
@@ -29,9 +29,9 @@ extern fn open() -> Connection
 
 extern fn send<T is Encodable>(value: T)
 
-extern ista fn receive<T is Decodable>() -> Future<T, "ista">
+extern live async fn receive<T is Decodable>() -> T
 
 live async fn main(): await runtime.run(runtime.id()) _main()
 ista async fn _main():
   send(1)
-  await receive<String>()
+  await runtime.delegate receive<String>()

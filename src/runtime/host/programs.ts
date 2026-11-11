@@ -72,7 +72,6 @@ function boundProgram(seams: BindingSeams, definition: Definition, hash: string)
       const begun = unstarted(program, run, call, { seed: seedTextOf(seams.seed()), encoder });
       const contexts = new Contexts({
         ...seams,
-        fills: seams.fills ?? fillsByHand,
         reports: seams.reports ?? unheard,
         program,
         beginning: () => ({ ...options, seed: seedTextOf(seams.seed()) }),
@@ -122,7 +121,7 @@ interface StartCall {
 }
 
 /** JSON a host gave, as the `Json` value it holds; a Refusal for what JSON can't hold. */
-export function jsonIn(definition: Definition, json: unknown): Value {
+function jsonIn(definition: Definition, json: unknown): Value {
   try {
     return jsonOfPlain(json, jsonTypeOf(definition.types));
   } catch (error) {
@@ -148,10 +147,7 @@ export interface BoundProgram extends DeployedProgram, LoadedDefinition {}
  * how to advance an instance, and the host's calls on each instance, one after another.
  */
 interface BindingSeams
-  extends Pick<
-    RuntimeSeams,
-    'natives' | 'host' | 'seed' | 'store' | 'clock' | 'fills' | 'reports'
-  > {
+  extends Pick<RuntimeSeams, 'natives' | 'host' | 'seed' | 'store' | 'clock' | 'reports'> {
   /** The instance `instance` as the runtime holds it, or reads it from the store; none for none. */
   readonly residentOf: (instance: string) => Resident<BoundProgram> | undefined;
   readonly advance: (resident: Resident<BoundProgram>, first?: AdvanceFirst) => Advance;
@@ -178,12 +174,6 @@ export interface RuntimeSeams {
    * has, such as `time.now()`, which would replace the runtime's own.
    */
   readonly host?: HostExterns;
-  /**
-   * Whether the host may still fill a future it named (`Runtime.fill`), and when that may have
-   * changed: a live run waits for a context's such future only while the host may fill it. Always,
-   * when not given, as a host filling by hand may.
-   */
-  readonly fills?: HostFills;
   /** Told what the contexts a live run drives report, as no host call returns it; else dropped. */
   readonly reports?: HostReports;
 }
@@ -203,16 +193,6 @@ export interface HostReports {
 }
 
 const unheard: HostReports = { logs: () => undefined, panicked: () => undefined };
-
-/** Whether a host may still fill a future it named, and when that may change. */
-export interface HostFills {
-  readonly may: () => boolean;
-  /** Settles once whether it may could have changed, as one of its promises settled. */
-  readonly changed: () => Promise<void>;
-}
-
-/** A host that fills by hand, so may fill at any time. */
-const fillsByHand: HostFills = { may: () => true, changed: () => new Promise(() => undefined) };
 
 /** What a host starts: `main`, or the function it names by key, with its arguments as JSON (§9). */
 interface StartRequest extends StartOptions {

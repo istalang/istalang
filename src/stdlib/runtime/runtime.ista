@@ -136,11 +136,14 @@ ista fn delegate<R is Encodable & Decodable>(job: sendable live async fn() -> R)
   jobs->queue.send(Run(queued))
   _decoded<R>(queued.number, result)
 
-# Job `number`'s result, once it commits. Its release withdraws the job, which leaves nothing to
-# withdraw once its result has committed.
+# Job `number`'s result, once it commits: its wait is the waypoint `job`, where an operator, or a
+# test that serves no job, sees the instance wait on one (§10). Its release withdraws the job, which
+# leaves nothing to withdraw once its result has committed.
 ista async fn _decoded<R is Decodable>(number: Int, result: Slot<Json>) -> R:
   _ = defer _release(number)
-  match json.decode<R>(await result.take()):
+  @Waypoint{"job"}
+  const answer = await result.take()
+  match json.decode<R>(answer):
     case Ok(value): value
     case Err(error): _raise(error)
 

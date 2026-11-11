@@ -1,8 +1,8 @@
 /**
  * The host API at the boundary (§3.6, §9), on programs the real compiler builds: a host starts any
- * startable function by its key with JSON arguments, fills a future it named with JSON, and reads
- * outcomes as JSON. JSON that doesn't fit refuses the host's call and commits nothing; an extern
- * constant is read once per instance; a `@Waypoint` names where an instance waits.
+ * startable function by its key with JSON arguments and reads outcomes as JSON. JSON that doesn't
+ * fit refuses the host's call and commits nothing; an extern constant is read once per instance; a
+ * `@Waypoint` names where an instance waits.
  */
 
 import { describe, expect, it } from 'vitest';
@@ -15,7 +15,7 @@ import {
   settleAll,
   testRuntime,
 } from '../runtime.test-kit.ts';
-import type { HostCall, HostExterns } from './host-natives.ts';
+import type { HostExterns } from './host-natives.ts';
 
 const program = compiledText(
   [
@@ -23,7 +23,6 @@ const program = compiledText(
     '  id: String',
     '  amount: Int',
     '',
-    'extern ista fn approval(id: String) -> Future<Bool, "ista">',
     'extern seed: Int',
     '',
     'fn total(orders: Array<Order>, rate: Float) -> Float:',
@@ -35,14 +34,14 @@ const program = compiledText(
     'ista async fn decide(order: Order) -> String:',
     '  const first = seed',
     '  @Waypoint{"approval"}',
-    '  const approved = await approval(order.id)',
-    '  if approved: order.id + " " + String(first) + "/" + String(seed) else: "no"',
+    '  await time.delay(1s)',
+    '  order.id + " " + String(first) + "/" + String(seed)',
     '',
     'ista async fn decideFor(id: String) -> String: await decide(Order{id, amount: 1})',
     'ista async fn decideO1() -> String: await decideFor("o1")',
     'ista async fn decideO() -> String: await decideFor("o")',
     '',
-    "import * as runtime from 'runtime'\nlive async fn main(): await runtime.run(runtime.id()) _main()\nista async fn _main(): 0",
+    "import * as time from 'time'\nimport * as runtime from 'runtime'\nlive async fn main(): await runtime.run(runtime.id()) _main()\nista async fn _main(): 0",
     '',
     '# Roots the ista entries a test starts by name: only code a live start reaches is kept.',
     'live async fn reach():',
@@ -52,12 +51,11 @@ const program = compiledText(
   ].join('\n'),
 );
 
-/** A host whose `approval` hands back a pending future named after the order, and whose seed counts reads. */
+/** A host whose seed counts its reads. */
 function counting(): { readonly host: HostExterns; readonly reads: () => number } {
   let reads = 0;
   return {
     host: {
-      'main.approval(String)': ([id], call: HostCall) => call.pending(`approve ${String(id)}`),
       'main.seed': () => {
         reads += 1;
         return reads;
@@ -104,44 +102,17 @@ describe('the host API', () => {
     expect(test.store.commits).toEqual([]);
   });
 
-  it('fills a named future with JSON, refusing JSON that does not fit and ignoring a token nothing waits on, without committing', async () => {
-    const { host } = counting();
-    const test = testRuntime({ host });
-    const started = test.startInstance(program, 'd', { function: 'main.decideO1' });
-    expect(started.state).toEqual({ kind: 'waiting', until: undefined, watching: [] });
-    expect(test.runtime.inspect('d').waitingAt.map(({ waypoint }) => waypoint)).toContain(
-      'approval',
-    );
-    const commits = test.store.commits.length;
-    await expect(test.runtime.fill('d', 'approve o1', 'yes')).rejects.toThrow(
-      expect.objectContaining({ reason: 'unfitJson' }),
-    );
-    expect(test.store.commits).toHaveLength(commits);
-    const ignored = await test.runtime.fill('d', 'approve nobody', true);
-    expect(ignored.state).toEqual(started.state);
-    expect(test.store.commits).toHaveLength(commits);
-    const filled = await test.runtime.fill('d', 'approve o1', true);
-    expect(await runToEnd(test, 'd', filled)).toEqual({ kind: 'finished', outcome: 'o1 1/1' });
-  });
-
   it('reads an extern constant once per instance, keeping it across commits', async () => {
     const { host, reads } = counting();
     const test = testRuntime({ host });
     const request = { function: 'main.decideO' };
-    test.startInstance(program, 'first', request);
-    test.startInstance(program, 'second', request);
-    const first = await runToEnd(
-      test,
-      'first',
-      await test.runtime.fill('first', 'approve o', true),
+    const started = test.startInstance(program, 'first', request);
+    expect(test.runtime.inspect('first').waitingAt.map(({ waypoint }) => waypoint)).toContain(
+      'approval',
     );
-    expect(first).toEqual({ kind: 'finished', outcome: 'o 1/1' });
-    const second = await runToEnd(
-      test,
-      'second',
-      await test.runtime.fill('second', 'approve o', true),
-    );
-    expect(second).toEqual({ kind: 'finished', outcome: 'o 2/2' });
+    expect(await runToEnd(test, 'first', started)).toEqual({ kind: 'finished', outcome: 'o 1/1' });
+    const second = test.startInstance(program, 'second', request);
+    expect(await runToEnd(test, 'second', second)).toEqual({ kind: 'finished', outcome: 'o 2/2' });
     expect(reads()).toBe(2);
   });
 
@@ -177,15 +148,11 @@ describe('the host API', () => {
     );
     calls = 0;
     test.startInstance(retried, 't');
-    await expect(test.runtime.fill('t', 'any', true)).rejects.toThrow(
-      expect.objectContaining({ reason: 'panicked' }),
-    );
     expect((await test.runtime.terminate('t')).state).toMatchObject({
       kind: 'terminated',
       message: 'not ready',
     });
     expect((await test.runtime.wake('t')).state).toMatchObject({ kind: 'terminated' });
-    expect((await test.runtime.fill('t', 'any', true)).state).toMatchObject({ kind: 'terminated' });
     await expect(test.runtime.terminate('t')).rejects.toThrow(Refusal);
   });
 
@@ -244,58 +211,6 @@ ista async fn _main(): limit`,
         message: expect.stringContaining('main.limit: String'),
       }),
     );
-  });
-
-  it('fills a future once, however many segments the fill runs, crashEveryAwait included', async () => {
-    const waiting = compiledText(
-      [
-        "import * as time from 'time'\nimport * as runtime from 'runtime'",
-        'extern ista fn approval() -> Future<Bool, "ista">',
-        'live async fn main() -> Bool: await runtime.run(runtime.id()) _main()\nista async fn _main() -> Bool:',
-        '  const approved = await approval()',
-        '  await time.at(time.now())',
-        '  approved',
-      ].join('\n'),
-    );
-    const host = {
-      'main.approval()': (_: readonly unknown[], call: HostCall) => call.pending('a'),
-    };
-    const test = testRuntime({ host });
-    test.startInstance(waiting, 'c', { crashEveryAwait: true });
-    expect(await runToEnd(test, 'c', await test.runtime.fill('c', 'a', true))).toEqual({
-      kind: 'finished',
-      outcome: true,
-    });
-  });
-
-  it('retries a panic in the segment a fill ran, filling the future again', async () => {
-    const filled = compiledText(
-      [
-        'extern ista fn approval() -> Future<Bool, "ista">',
-        'extern fn ready() -> Bool',
-        "import * as runtime from 'runtime'\nlive async fn main() -> Bool: await runtime.run(runtime.id()) _main()\nista async fn _main() -> Bool:",
-        '  const approved = await approval()',
-        '  if not ready():',
-        '    panic("not ready")',
-        '  approved',
-      ].join('\n'),
-    );
-    let calls = 0;
-    const ready = () => {
-      calls += 1;
-      return calls > 1;
-    };
-    const host = {
-      'main.approval()': (_: readonly unknown[], call: HostCall) => call.pending('a'),
-      'main.ready()': ready,
-    };
-    const test = testRuntime({ host });
-    test.startInstance(filled, 'r');
-    expect((await test.runtime.fill('r', 'a', true)).state).toMatchObject({ kind: 'panicked' });
-    expect(await runToEnd(test, 'r', await test.runtime.retry('r'))).toEqual({
-      kind: 'finished',
-      outcome: true,
-    });
   });
 
   it('refuses a host implementing an extern the runtime implements itself, such as the clock', () => {

@@ -10,3 +10,6 @@ export const jobFunctions = {
   delegate: 'delegate',
   server: '_serve',
 } as const;
+
+/** The waypoint where code waits on a job's result (`runtime._decoded`, §10). */
+export const jobWaypoint = 'job';

@@ -674,8 +674,8 @@ extern purchaseRequests: Queue<PurchaseRequest>     # a queue the host provides
 - **Values and handles.** An extern struct is a value unless a word between `extern` and `struct` makes it a handle (§3.1): `extern shared struct` has an identity in its instance, as a shared struct does (§3.18); `extern sendable struct` one every instance shares, such as a queue the host provides; `extern live struct` one in the process that made it, whose values are live data (§3.3). An extern value crosses as JSON, so it is sendable when its type arguments are, and so is a `sendable` handle; any other handle never is. An extern value's type parameters are invariant unless `gives` or `takes` says otherwise (§3.5); a handle's always are.
 - **Associated types.** An extern struct may declare associated types in an indented body, and nothing else there, its fields being the host's (§3.1): `extern shared struct Future<T, K in Persistence>` declares `type Mode = K`, by which it meets `Awaitable` (§3.10). A field written there is a compile error.
 - **Disposable host types.** A host type is disposable when a `dispose` is declared beside it (§7): an extern one its host implements, or code that passes the value to the host's externs. Each value of it then has an identity of its own: it arrives as the JSON the host gave, which the instance keeps while it holds the value, and leaves to the host as that same JSON. So such a type is declared `extern shared struct` (or `extern live struct`), neither a value nor `sendable`, it isn't `Encodable` or `Decodable`, and no extern constant, which every read shares, can hold one.
-- **Marks.** An extern is code without a body, its signature alone held to the data rule (§3.3): `extern fn getSocket() -> Socket` is an error, written `extern live fn getSocket() -> Socket`. A host's externs are unmarked or `live`; until hosts start only live code (§9), a host's extern giving a future to ista code is `extern ista async fn`, its future filled as below. Externs generic over their mark, such as `time.at`, are the runtime's, which implements each mark.
-- **Futures from the host.** An extern returning a future gives an instance one its host fills later, by a token the host names (§9). To live code it gives a live future, and the host's extern receives that future's resolver (§7): it resolves it when it can, from anywhere, the runtime taking the value between the code's steps, and learns through `onCancel` when the future is disposed first. A host that drops the resolver unresolved panics the waiting code, naming the extern. A JavaScript host may give back a promise instead, which resolves it as it settles.
+- **Marks.** An extern is code without a body, its signature alone held to the data rule (§3.3): `extern fn getSocket() -> Socket` is an error, written `extern live fn getSocket() -> Socket`. A host's externs are unmarked or `live`, and one marked `ista` or generic over its mark is a compile error: only the runtime runs ista code or fills an ista future, so externs generic over their mark, such as `time.at`, and `ista` ones, such as a slot's, are the runtime's, which implements each mark. Ista code reaches a host's `live` extern only through a job (`runtime.delegate`, §5).
+- **Futures from the host.** An extern returning a future is `live async`, so it gives live code a live future, and the host's extern receives that future's resolver (§7): it resolves it when it can, from anywhere, the runtime taking the value between the code's steps, and learns through `onCancel` when the future is disposed first. A host that drops the resolver unresolved panics the waiting code, naming the extern. A JavaScript host may give back a promise instead, which resolves it as it settles.
 
 ### 3.7 Methods and references
 
@@ -699,7 +699,7 @@ fn top<T>(self: Stack<T>) -> T?:          # takes a copy
 ```python
 ista async fn collectSignature(sigs: &Array<Signature>, signer: String):
     _ = signQueue(signer).sendRevertible(SignRequest{signer: signer})
-    sigs.push(await signatures(signer).receive())
+    sigs.push(await runtime.delegate signatures(signer).receive())
 
 ista async fn signContract(contract: Contract) -> Array<Signature>:
     let sigs: Array<Signature> = []
@@ -758,7 +758,7 @@ The type before the dot selects the function, so static functions never need ove
 
 The **prelude** declares the built-in types the runtime implements, using the same `extern` mechanism programs use (§3.6):
 
-```python
+```python fragment
 extern struct Array<gives T>                # an Array<Int> is an Array<Int?> (§3.5)
 extern struct Map<K, gives V>               # keys invariant: widening them would rehash
 extern shared struct Slot<T>                # a handle, not sendable
@@ -1508,13 +1508,13 @@ ista async fn remindLater(role: String):
 - **At once when it can.** An operation that can complete when it is called (a `put` on an empty slot, a `take` or `read` on a full one) completes then, inside the caller's segment, and its future is already resolved.
 - **Awaiting still commits.** Awaiting any of these futures commits, like every `await`, even one already resolved, and the execution then runs after every execution that became ready before it.
 
-When the runtime or the host fills a slot, it wakes the waiters even if the whole instance is suspended and persisted, which only the runtime can do.
+When the runtime fills a slot, it wakes the waiters even if the whole instance is suspended and persisted, which only the runtime can do.
 
 **Futures.** A `Future<T>` is the read-only view of a slot: it can only be waited on. Every wait in the language is a wait on a slot, filled by one of three producers:
 
 - **User code,** with `put`: an inbox's `receive()` or an `rpc` reply.
 - **The runtime:** when an async call returns, when a `time.delay` or `time.at` timer fires, and when a value is disposed (`disposed()`, `worker.disposing()`).
-- **The host,** through what it provides.
+- **The host,** resolving a live future its extern gave (§3.6).
 
 `await` and `select` wait on awaitables (§5), a future the runtime's own. A future resolves once and stays resolved.
 
@@ -1605,7 +1605,7 @@ In the common case nothing is stored anywhere else, so a disposable lives exactl
 | `Future` of an async call | resolves the call's `disposing()`, then stops the call at its next `await` |
 | a job's future (`runtime.delegate`'s, §5) | withdraws the job: one not yet run never runs, and a running one is cancelled, its live future disposed |
 | a pending `take`, `read` or timer | drops the wait without consuming / cancels the timer |
-| a future the host fills | drops the wait; a later fill by the host changes nothing |
+| a live future the host resolves | cancels its resolver, whose `onCancel` tells the host; a later resolve changes nothing |
 | a live future a host's resolver resolves (§3.6) | cancels the resolver: its `onCancel` callbacks run once, and a later `resolve` does nothing |
 | `Slot` or `Inbox` | it dies, along with the values in it |
 | `Revertible<T>` holder | retracts the message if it hasn't been received |
@@ -1741,7 +1741,7 @@ import * as runtime from 'runtime'
 live async fn main(): await runtime.run(runtime.id()) _main()
 ista async fn _main():
     while true:
-        const req: PurchaseRequest = await purchaseRequests.receive()
+        const req: PurchaseRequest = await runtime.delegate purchaseRequests.receive()
         spawn purchase(req)
 ```
 
@@ -1770,11 +1770,11 @@ ista async fn _main() -> Int:
 
 A host names what it starts, and each extern it implements, by its key: the module's name, the function's or constant's name and its parameter types, as in `purchase.chargeCard(String, Int)`, `purchase.dispose(purchase.Sent)` or `purchase.approvalDeadline`, a `T | None` spelled through its alias, `prelude.Optional<T>`, and a function type with its kind, `ista fn() -> prelude.Future<R, "ista">`. Overloads therefore have distinct keys, and every instantiation of a generic extern shares one. A host written in JavaScript works with JSON as `JSON.parse` gives it, except that every integer is a `bigint`, so an `Int` keeps every digit and reads apart from a `Float`; it may give back a `bigint` or a whole number for one. What it gives back is read as `JSON.stringify` would write it, so `undefined` is `null`, or a missing field inside an object: a function returning nothing gives `Unit` or `none`.
 
-Communication across this boundary takes only three forms: the workflow calls an `extern fn`, the host fills something the workflow waits on (such as a queue it provides), or the host starts live code. The host never calls workflow functions directly. Asynchronous host work hands the workflow something to wait on instead of taking a callback, for example `extern fn fetch(req: Request) -> Future<Response>`: the host names the new future with a token of its own choosing and fills it later. An extern's result, or a value an extern constant gives, that doesn't fit its declared type panics the instance; a future filled, or an instance started, with JSON that doesn't fit fails the host's call instead. Filling a future nothing waits on any more, because it was disposed (§7) or its instance ended, changes nothing; filling one of a panicked instance fails until the instance is retried.
+Communication across this boundary takes only three forms: the program calls an `extern fn`, the host resolves a live future its extern gave, or the host starts live code. The host never calls program functions directly. Asynchronous host work hands live code something to wait on instead of taking a callback, for example `extern live async fn fetch(req: Request) -> Response`, whose future the host resolves when it can (§3.6); ista code waits on it through a job, `await runtime.delegate fetch(req)` (§5). An extern's result, a value an extern constant gives, or JSON a host's future resolves with, that doesn't fit its declared type panics the code that called it, as a promise that rejects does; an instance started with JSON that doesn't fit fails the host's call instead.
 
 **Running a program locally.** `ista run <entry>` is a host for development. It compiles the program whose entry module is `entry`, which must declare `live async fn main()`, and runs nothing if any module has errors. It then runs `main` as a live run, with the contexts it calls and every instance they spawn, until `main` ends, and prints `main`'s outcome as JSON, using the mapping below. A panic of `main` prints the panic's message and trace instead. An instance that panics with no call into it waiting to hear it, one a context spawned or a context whose caller is gone, prints its name, message and trace to the error stream, and the run exits with a failure; one that `runtime.isolate` terminated was handled, so it fails nothing. Each log record goes to the error stream as one line of JSON. Two options stand in for what a real host provides:
 - `--store <dir>` is the host's store: it keeps the compiled program and every commit of the run's contexts in a directory, so a run can stop, and running a program again on the same store resumes the contexts it left, each on the program it started with. A run with a store prints its name, the key of `main`'s context, to the error stream.
-- `--host <module>` loads a JavaScript module whose default export implements the program's externs, keyed by their keys: each takes and returns JSON values, and one for an extern returning a `Future` may return a promise, which fills the future when it settles. A run that waits on nothing left to wake it, no timer and no promise that can still settle, reports where it waits and fails.
+- `--host <module>` loads a JavaScript module whose default export implements the program's externs, keyed by their keys: each takes and returns JSON values, and one for an extern returning a `Future` may return a promise, which resolves the future when it settles, or panics the code waiting on it when it rejects. A run that waits on nothing left to wake it, no timer and no promise that can still settle, reports where it waits and fails.
 
 **Values at the boundary.** Every value that crosses between the host and an instance has a declared type: extern constants, extern function parameters and results, and the arguments of an instance the host starts. Each crosses through its type's codecs, the `toJson` that `Encodable` requires and the `fromJson` that `Decodable` does (§3.10), so workflow code needs no reflection. Inbound JSON is validated before it enters the instance; a mismatch fails the host's call, so malformed data never reaches workflow code. `json.parse<T>(s)` and `json.stringify(v)` go through the same codecs for JSON held in strings.
 
@@ -1848,12 +1848,12 @@ ista async fn withPurchaseEnv(test: ista async fn(PurchaseEnv)):
 
 **Time.** `time.at(t)` is the runtime's only time primitive, and `delay(d)` is library code for `at(now() + d)`. Mocking `time.now` and `time.at` therefore controls all time. The library's `FakeClock` is made for that: `FakeClock{start}` stands still at `start`, and its fields `now` and `at` are the replacements, as above. `clock.advance(d)` moves it forward by `d` at once and fills every deadline it passes, the earliest first, and deadlines that tie in the order `at` was called. A deadline already reached resolves at once, and advancing by a negative duration panics.
 
-**Host types.** `testing.handle<T>()` creates a unique, opaque value of any extern type `T`, for mocks that must return one: each call gives a value equal to no other, and a `T` that isn't an extern type is a compile error. The library's `FakeQueue<Q, T, K = String>` fakes a host's queues of type `Q` carrying `T`, with an ordinary inbox behind each: `FakeQueue<Queue<Verdict>, Verdict>{make: handle}`. Its fields are replacements for the program's externs: `open`, for a queue factory such as `verdicts`, gives the queue of a key of type `K`, made with `make` the first time; `send` and `receive` use that queue's inbox. A mock's target must name a function, so the test mocks the program's externs with them itself:
+**Host types.** `testing.handle<T>()` creates a unique, opaque value of any extern type `T`, for mocks that must return one: each call gives a value equal to no other, and a `T` that isn't an extern type is a compile error. The library's `FakeQueue<Q, T, K = String>` fakes a host's queues of type `Q` carrying `T`, with an ordinary inbox behind each: `FakeQueue<Queue<Verdict>, Verdict>{make: handle}`. Its fields are replacements for the program's functions: `open`, for a queue factory such as `verdicts`, gives the queue of a key of type `K`, made with `make` the first time; `send` and `receive` use that queue's inbox. `receive` is ista code, so it replaces the program's own ista read of a queue, such as §12.1's `next`, never the host's live `receive`, which ista code reaches only through a job (§5); a test runs no job, so one waiting on a job's result fails, naming where it waits, while a job whose future it lets go of first is withdrawn (§7) and needs none. A mock's target must name a function, so the test mocks the program's functions with them itself:
 
 ```python statements
 const verdictQueues = FakeQueue<Queue<Verdict>, Verdict>{make: handle}
 hold _ = mock(verdicts, verdictQueues.open)
-hold _ = mock(receive, verdictQueues.receive)
+hold _ = mock(next, verdictQueues.receive)
 verdictQueues.post("p1", Verdict{role: "legal", ok: true, comment: ""})
 ```
 
@@ -1943,10 +1943,15 @@ extern shared struct Sent
 extern fn dispose(self: Sent)
 extern fn send<T is Encodable>(self: Queue<T>, msg: T)
 extern fn _sendRevertible<T is Encodable>(self: Queue<T>, msg: T) -> Sent
-extern ista fn receive<T is Decodable>(self: Queue<T>) -> Future<T, "ista">
+extern live async fn receive<T is Decodable>(self: Queue<T>) -> T
 
 ista fn sendRevertible<T is Encodable>(self: Queue<T>, msg: T) -> Revertible<T>:
     Revertible.holding(_sendRevertible(self, msg))
+
+# the next message of a host's queue: the host's receive, live, as a job after the commit (§5),
+# the program's own read a test mocks (§10)
+ista async fn next<T is Encodable & Decodable>(queue: Queue<T>) -> T:
+    await runtime.delegate queue.receive()
 
 extern purchaseRequests: Queue<PurchaseRequest>
 extern fn reviewQueue(role: String) -> Queue<ReviewRequest>
@@ -1964,7 +1969,7 @@ import * as runtime from 'runtime'
 live async fn main(): await runtime.run(runtime.id()) _main()
 ista async fn _main():
     while true:
-        const req: PurchaseRequest = await purchaseRequests.receive()
+        const req: PurchaseRequest = await next(purchaseRequests)
         spawn purchase(req)
 ```
 
@@ -1976,12 +1981,14 @@ ista async fn purchase(req: PurchaseRequest) -> String:
     if req.amount > 50_000:
         roles.push("cfo")
 
-    const outcome: String = await approve(req, roles)
+    # read once, for the whole purchase: its job is withdrawn when `purchase` ends (§7)
+    const cancel: Future<Cancel, "ista"> = next(cancels(req.id))
+    const outcome: String = await approve(req, roles, cancel)
     if outcome != "approved":
         return outcome
 
     const cancelled: Bool = select:
-        case cancels(req.id).receive():
+        case cancel:
             true
         else:
             false
@@ -2002,10 +2009,10 @@ fn charge(req: PurchaseRequest) -> ChargeResult:
             ChargeResult{ok: false, receipt: error.message}
 ```
 
-**Parallel approval.** Fan-out uses revertible sends into the reviewers' queues, kept with `hold _` so they stay revertible until `approve` returns, although they are sent inside loops. Verdicts come back through the host-provided `verdicts` queue, because the reviewers' side runs in separate instances (§6). The join is a `select` loop that reuses the deadline and reminder futures.
+**Parallel approval.** Fan-out uses revertible sends into the reviewers' queues, kept with `hold _` so they stay revertible until `approve` returns, although they are sent inside loops. Verdicts come back through the host-provided `verdicts` queue, because the reviewers' side runs in separate instances (§6). The join is a `select` loop that reuses the cancel, deadline and reminder futures.
 
 ```python
-ista async fn approve(req: PurchaseRequest, roles: Array<String>) -> String:
+ista async fn approve(req: PurchaseRequest, roles: Array<String>, cancel: Future<Cancel, "ista">) -> String:
     for role in roles:
         hold _ = reviewQueue(role).sendRevertible(
                 ReviewRequest{purchaseId: req.id, item: req.item, amount: req.amount})
@@ -2016,11 +2023,11 @@ ista async fn approve(req: PurchaseRequest, roles: Array<String>) -> String:
 
     while answered.size() < roles.length():
         await select:
-            case cancels(req.id).receive() as c:
+            case cancel as c:
                 return "cancelled: " + c.reason
             case deadline:
                 return "expired"
-            case verdicts(req.id).receive() as v:
+            case next(verdicts(req.id)) as v:
                 if not v.ok:
                     return "rejected by " + v.role
                 answered[v.role] = v
@@ -2033,7 +2040,7 @@ ista async fn approve(req: PurchaseRequest, roles: Array<String>) -> String:
     "approved"
 ```
 
-When `approve` returns by any path, everything it holds is disposed: unclaimed review requests and unread reminders are retracted, and both timers are aborted. Verdicts that arrive after that stay in `verdicts(purchaseId)`; cleaning them up is up to the program.
+When `approve` returns by any path, everything it holds is disposed: unclaimed review requests and unread reminders are retracted, both timers are aborted, and the verdict read still running is withdrawn (§7), as one is each time a reminder wins. Verdicts that arrive after that stay in `verdicts(purchaseId)`; cleaning them up is up to the program.
 
 ### 12.2 Approver side
 

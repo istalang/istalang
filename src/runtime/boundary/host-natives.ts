@@ -7,11 +7,10 @@
  * - A host extern takes and gives JavaScript JSON values, what `JSON.parse` of the text gives but
  *   with every integer a `bigint` (definition/values/json-values.ts), so a host needs nothing of
  *   the runtime's value shapes.
- * - An extern returning a `Future` gives back, to an instance, what `call.pending(token)` gave it:
- *   the runtime creates the future, named by the host's token, and the host fills it later
- *   (`Runtime.fill`). To a live run, which waits in memory, it takes the resolver of the live
- *   future its call gives, `call.resolver()`, and resolves it when it can; or, taking none, gives
- *   back a promise of the JSON, which resolves it as it settles (proposal 8, Rule 9). A resolver
+ * - An extern returning a `Future` is live (proposal 8, Rule 9; the checker refuses any other), so
+ *   only a live run calls one, which waits in memory: it takes the resolver of the live future its
+ *   call gives, `call.resolver()`, and resolves it when it can; or, taking none, gives back a
+ *   promise of the JSON, which resolves it as it settles. A resolver
  *   taken is the future's one producer: a promise given back as well, as an `async` extern's is,
  *   resolves nothing, though its rejection still panics. Anything else it gives back is its result.
  * - A live resolver is one-shot: a second `resolve` is a bug, which panics the run, and
@@ -21,13 +20,10 @@
  *   disposal reaches a host's objects, so the runtime learns it as JavaScript collects the resolver
  *   (`FinalizationRegistry`): maybe late, never wrongly, since each of its functions holds it. A
  *   live extern that gives back no promise and takes no resolver dropped it at once.
- * - A result JSON can't hold, a pending future given where none is expected, or a promise that
- *   rejects, is a bug in the host, so it panics the run (§3.12), as a result of the wrong type does
- *   in the wrapper.
+ * - A result JSON can't hold, or a promise that rejects, is a bug in the host, so it panics the run
+ *   (§3.12), as a result of the wrong type does in the wrapper.
  * - This is the one shape the runtime takes. `ista run --host` loads plain functions taking the
- *   arguments spread and returning promises (cli/host-module.ts), and adapts them to it: a promise
- *   can't outlive its process, so only a development host may stand behind one, while a durable
- *   host names each future by a token it can fill from anywhere.
+ *   arguments spread and returning promises (cli/host-module.ts), and adapts them to it.
  */
 
 import { hasRole } from '../../definition/tables/types.ts';
@@ -51,14 +47,8 @@ import {
 
 /** What a host extern is told about the call it runs. */
 export interface HostCall {
-  /** The instance calling, as the host names it in `start` and `fill`. */
+  /** The instance or live run calling, as the host named it in `start`. */
   readonly instance: string;
-  /**
-   * What an extern returning a `Future` gives back to an instance: the future the host fills later
-   * as `token`, which no future of the instance still waiting on its host may share, or the
-   * instance panics.
-   */
-  readonly pending: (token: string) => HostPending;
   /**
    * The resolver of the live future an extern returning a `Future` gives a live run, taken while
    * the extern runs; the same one each time.
@@ -76,11 +66,6 @@ export interface HostResolver {
   readonly onCancel: (callback: () => void) => void;
 }
 
-/** A future the host will fill, as its extern gives it back. */
-interface HostPending {
-  readonly token: string;
-}
-
 /** An extern a host implements, against JSON. */
 type HostExtern = (arguments_: readonly unknown[], call: HostCall) => unknown;
 
@@ -88,12 +73,6 @@ type HostExtern = (arguments_: readonly unknown[], call: HostCall) => unknown;
 export type HostExterns = Readonly<Record<string, HostExtern>>;
 
 type HostContext = NativeContext & WithFutures & WithResources;
-
-/** What one call of an extern made for its future: the pendings it named, the resolver it took. */
-interface Made {
-  readonly pendings: ReadonlySet<HostPending>;
-  readonly taken: Resolvable | undefined;
-}
 
 /** Fails the wait of each resolver its host let go of unresolved. */
 const dropped = new FinalizationRegistry<() => void>((fail) => {
@@ -109,16 +88,10 @@ function hostNative(extern: HostExtern): Native<HostContext> {
   return (values, context) => {
     const shape = jsonTypeOf(context.types);
     const read = (plain: unknown) => jsonOfPlain(plain, shape);
-    const pendings = new Set<HostPending>();
     let taken: { readonly resolvable: Resolvable; readonly host: HostResolver } | undefined;
     let running = true;
     const call: HostCall = {
       instance: context.instance,
-      pending: (token) => {
-        const pending: HostPending = { token };
-        pendings.add(pending);
-        return pending;
-      },
       resolver: () => {
         if (!(running && returnsFuture(context))) {
           throw new Panic(`The host's ${context.name} took a resolver for no future of its call.`);
@@ -140,8 +113,8 @@ function hostNative(extern: HostExtern): Native<HostContext> {
       running = false;
     }
     return returnsFuture(context)
-      ? futureOf(given, { pendings, taken: taken?.resolvable }, context, read)
-      : resultOf(given, pendings, read);
+      ? futureOf(given, taken?.resolvable, context, read)
+      : fitting(given, read);
   };
 }
 
@@ -150,9 +123,10 @@ function returnsFuture({ resultType, types }: NativeContext): boolean {
   return resultType !== undefined && hasRole(types, resultType, 'future');
 }
 
+/** The live future `given` stands for: the promise's, or the one whose resolver it took. */
 function futureOf(
   given: unknown,
-  { pendings, taken }: Made,
+  taken: Resolvable | undefined,
   context: HostContext,
   read: (plain: unknown) => Value,
 ): Value {
@@ -171,26 +145,12 @@ function futureOf(
     );
     return future;
   }
-  if (pendings.has(given as HostPending)) {
-    return context.futures.fromHost((given as HostPending).token);
-  }
   if (taken !== undefined) {
     return taken.future;
   }
   throw new Panic(
-    `The host's ${context.name} gave no pending future or promise and took no resolver, though it returns a Future.`,
+    `The host's ${context.name} gave no promise and took no resolver, though it returns a Future.`,
   );
-}
-
-function resultOf(
-  given: unknown,
-  pendings: ReadonlySet<HostPending>,
-  read: (plain: unknown) => Value,
-): Value {
-  if (pendings.has(given as HostPending)) {
-    throw new Panic('The host gave a pending future where its extern returns none.');
-  }
-  return fitting(given, read);
 }
 
 /** `resolver` as the host resolves it, with JSON `read` reads, for the extern `name`. */

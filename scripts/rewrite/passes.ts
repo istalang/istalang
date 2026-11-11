@@ -5,6 +5,7 @@
 import type { Pass } from './pass.ts';
 import { contexts } from './passes/contexts/index.ts';
 import { deferredCalls } from './passes/deferred-calls/index.ts';
+import { hostFutures } from './passes/host-futures/index.ts';
 import { kindMarks } from './passes/kind-marks/index.ts';
 import { kinds } from './passes/kinds/index.ts';
 
@@ -13,6 +14,7 @@ export const passes = {
   kinds,
   'kind-marks': kindMarks,
   contexts,
+  'host-futures': hostFutures,
 } satisfies Record<string, Pass>;
 
 export type PassName = keyof typeof passes;

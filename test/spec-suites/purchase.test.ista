@@ -33,8 +33,8 @@ ista async fn withPurchaseEnv(test: ista async fn(PurchaseEnv)):
     hold _ = mock(app.verdicts, env.verdicts.open)
     hold _ = mock(app.cancels, env.cancels.open)
     hold _ = mock(app.notifications, env.notices.open)
-    hold _ = mock(app.receive, env.verdicts.receive)
-    hold _ = mock(app.receive, env.cancels.receive)
+    hold _ = mock(app.next, env.verdicts.receive)
+    hold _ = mock(app.next, env.cancels.receive)
     const receipts = FakeReceipts<Sent>{make: handle}
     hold _ = mock(app._sendRevertible, receipts.revertibleSender(env.reviews))
     hold _ = mock(app._sendRevertible, receipts.revertibleSender(env.notices))

@@ -12,6 +12,6 @@ struct Region:
   code: String
   name: String
 
-extern ista fn countries(region: String) -> Future<Array<Country>, "ista">
-extern ista fn cities(country: String) -> Future<Array<City>, "ista">
-extern ista fn regions() -> Future<Array<Region>, "ista">
+extern live async fn countries(region: String) -> Array<Country>
+extern live async fn cities(country: String) -> Array<City>
+extern live async fn regions() -> Array<Region>

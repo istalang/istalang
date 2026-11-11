@@ -7,9 +7,8 @@
  *   primitive a live resolver extends (live-resolvers.ts). Calling it only queues what it resolves
  *   and wakes the run's driver (live-run.ts), which applies one resume before each segment, as an
  *   instance takes one arrival, so code never runs inside a host's callback, and what a resume
- *   resolves is seen by that segment. A resume may instead fail its wait, which panics the run. So does
- *   JSON a host gave that doesn't fit: it came with no host call that could be refused for it
- *   (§3.12), and so does a host's misuse of a resolver (`fail`).
+ *   resolves is seen by that segment. A resume may instead fail its wait, which panics the run, as
+ *   does a host's misuse of a resolver (`fail`).
  * - Whether a resume may still come is the run's futures' to say, not a count kept here: a future
  *   disposed before it resolved waits for nothing any more (§7).
  * - A resume called twice is a bug in the runtime: its resolver takes one value.
@@ -17,10 +16,7 @@
 
 import type { Persistence } from '../../foundation/language/well-known/index.ts';
 import { unreachable } from '../../foundation/structures/unreachable.ts';
-import { Panic } from '../natives.ts';
-import { Refusal } from '../refusal.ts';
 import type { RunContexts } from './run-contexts.ts';
-import { panicOf } from './segment/limits.ts';
 
 /**
  * How a run waits: committing, or in memory, resumed through `resumes`, with the contexts its
@@ -44,14 +40,6 @@ export const istaWaiting: Waiting = { kind: 'ista' };
 export interface FailedWait {
   readonly message: string;
   readonly trace: string;
-}
-
-/** What panics a live run once it resumed: a panic, or JSON a host's promise gave that doesn't fit. */
-export function resumedPanicOf(error: unknown): Panic | undefined {
-  if (error instanceof Refusal && error.reason === 'unfitJson') {
-    return new Panic(`The host gave what doesn't fit: ${error.message}`, { cause: error });
-  }
-  return panicOf(error);
 }
 
 /** Resumes a live run once from outside it with `value`. */

@@ -2,6 +2,7 @@
   "id": "supplier",
   "version": "2.0.0",
   "imports": {
+    "runtime": "runtime",
     "geo": "./geo",
     "crm": "./crm",
     "approvals": "./approvals",
@@ -262,10 +263,10 @@
                 "widget": "select",
                 "label": "Country",
                 "options": {
-                  "from": "await geo.countries(ctx.params.region)",
+                  "from": "await runtime.delegate geo.countries(ctx.params.region)",
                   "value": "row.id",
                   "label": "row.name",
-                  "resolve": "(await geo.countries(ctx.params.region)).some(fn c: c.id == data.company.country)"
+                  "resolve": "(await runtime.delegate geo.countries(ctx.params.region)).some(fn c: c.id == data.company.country)"
                 }
               },
               {
@@ -285,10 +286,10 @@
                 "when": "data.company.country != none",
                 "pending": "node",
                 "options": {
-                  "from": "await geo.cities(data.company.country ?? \"\")",
+                  "from": "await runtime.delegate geo.cities(data.company.country ?? \"\")",
                   "value": "row.id",
                   "label": "row.name",
-                  "resolve": "(await geo.cities(data.company.country ?? \"\")).some(fn c: c.id == data.company.city)"
+                  "resolve": "(await runtime.delegate geo.cities(data.company.country ?? \"\")).some(fn c: c.id == data.company.city)"
                 }
               }
             ]
@@ -302,11 +303,11 @@
             "store": "snapshot",
             "ui": { "placeholder": "Type a name" },
             "options": {
-              "from": "await crm.users(ctx.search)",
+              "from": "await runtime.delegate crm.users(ctx.search)",
               "value": "row.id",
               "label": "row.name",
               "rowType": "crm.User",
-              "resolve": "(await crm.user(data.manager?.id ?? \"\")) != none"
+              "resolve": "(await runtime.delegate crm.user(data.manager?.id ?? \"\")) != none"
             }
           },
           {
@@ -316,7 +317,9 @@
             "widget": "input",
             "label": "Credit limit",
             "pending": "hidden",
-            "default": { "expr": "(await crm.creditLimit(data.company.vatId ?? \"\")) ?? 0" }
+            "default": {
+              "expr": "(await runtime.delegate crm.creditLimit(data.company.vatId ?? \"\")) ?? 0"
+            }
           }
         ]
       },
@@ -381,10 +384,10 @@
                     "widget": "choice",
                     "label": "Region",
                     "options": {
-                      "from": "await geo.regions()",
+                      "from": "await runtime.delegate geo.regions()",
                       "value": "row.code",
                       "label": "row.name",
-                      "resolve": "(await geo.regions()).some(fn r: r.code == region)"
+                      "resolve": "(await runtime.delegate geo.regions()).some(fn r: r.code == region)"
                     }
                   }
                 }
@@ -477,7 +480,7 @@
             "widget": "list",
             "label": "Previous orders",
             "pending": "hidden",
-            "computed": "await crm.orders(data.company.vatId ?? \"\")",
+            "computed": "await runtime.delegate crm.orders(data.company.vatId ?? \"\")",
             "item": {
               "node": "field",
               "path": "h.note",
@@ -631,11 +634,11 @@
             "label": "Additional questionnaire",
             "store": "snapshot",
             "options": {
-              "from": "await formsCatalog.list(ctx.params.region)",
+              "from": "await runtime.delegate formsCatalog.list(ctx.params.region)",
               "value": "row.id",
               "label": "row.title",
               "rowType": "formsCatalog.Entry",
-              "resolve": "(await formsCatalog.get(data.extraForm?.id ?? \"\")) != none"
+              "resolve": "(await runtime.delegate formsCatalog.get(data.extraForm?.id ?? \"\")) != none"
             }
           },
           {
@@ -708,7 +711,7 @@
                   "message": "Mark one contact as primary"
                 },
                 {
-                  "check": "(data.score ?? 0) < 80 or await approvals.ask(ctx.params.owner.id, data.company.name ?? \"\")",
+                  "check": "(data.score ?? 0) < 80 or await runtime.delegate approvals.ask(ctx.params.owner.id, data.company.name ?? \"\")",
                   "message": "The supplier was not approved",
                   "pending": "Waiting for approval by ${ctx.params.owner.name}"
                 }

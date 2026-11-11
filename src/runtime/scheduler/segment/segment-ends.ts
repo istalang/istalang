@@ -8,10 +8,9 @@
  */
 
 import { depthOf } from '../../../definition/values/values.ts';
-import type { Panic } from '../../natives.ts';
 import type { HeapObject } from '../../snapshot/objects.ts';
 import type { Instance } from '../instance/index.ts';
-import { requireDepth } from './limits.ts';
+import { panicOf, requireDepth } from './limits.ts';
 import type { Outcome } from './root-outcome.ts';
 
 export type SegmentEnd =
@@ -35,19 +34,15 @@ export type RunEnd =
   | { readonly kind: 'idle' }
   | Extract<SegmentEnd, { kind: 'finished' }>;
 
-/**
- * What `run` gives, or the panic it threw, as `panicking` reads it, traced by `trace` where it
- * threw it.
- */
+/** What `run` gives, or the panic it threw, traced by `trace` where it threw it. */
 export function endOrPanic<End>(
   run: () => End,
-  panicking: (error: unknown) => Panic | undefined,
   trace: () => string,
 ): End | Extract<SegmentEnd, { kind: 'panicked' }> {
   try {
     return run();
   } catch (error) {
-    const panic = panicking(error);
+    const panic = panicOf(error);
     if (panic !== undefined) {
       return { kind: 'panicked', message: panic.message, trace: panic.trace ?? trace() };
     }

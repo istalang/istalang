@@ -62,6 +62,11 @@ export const boundaryTemplates = {
     message: () =>
       "A shape's field takes no annotation, since no declaration carries it; a field that needs one belongs to a struct.",
   },
+  hostExternMark: {
+    code: 5913,
+    message: (name: string) =>
+      `The host's extern '${name}' is unmarked or 'live': only the runtime runs ista code or fills an ista future (proposal 8, Rule 9). Declare it 'extern live', and reach it from ista code through 'runtime.delegate'.`,
+  },
 
   // Tests, 5950–5999 (§10): suite functions, and the testing module's calls whose arguments
   // its signatures can't constrain.

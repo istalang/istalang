@@ -46,14 +46,13 @@ import {
 } from '../../interpreter/machine.ts';
 import { argumentContents } from '../../interpreter/registers.ts';
 import type { Decision } from '../../interpreter/suspension.ts';
-import type { Panic } from '../../natives.ts';
 import type { InstanceCall, Invocation } from '../../snapshot/snapshot.ts';
 import type { LiveExecution, LiveObjectOf } from '../instance/heap.ts';
 import { type Instance, topFrame } from '../instance/index.ts';
 import type { ReadyToRun } from '../instance/ready.ts';
 import { startAnswer } from '../testing/mocks.ts';
 import type { MockCall } from '../testing/test-world.ts';
-import { istaWaiting, type LiveWaiting, resumedPanicOf, type Waiting } from '../waiting.ts';
+import { istaWaiting, type LiveWaiting, type Waiting } from '../waiting.ts';
 import { startInvocation } from './answering.ts';
 import {
   type Caller,
@@ -64,7 +63,6 @@ import {
   startCall,
 } from './calls.ts';
 import { SegmentCollection } from './collection.ts';
-import { panicOf } from './limits.ts';
 import { NativeCalls } from './native-calls.ts';
 import { type Arrival, type Outcome, RootOutcome } from './root-outcome.ts';
 import { RunCalls } from './run-calls.ts';
@@ -110,20 +108,16 @@ export function startLiveSegment(
   waiting: LiveWaiting,
   root: LiveExecution | undefined,
 ): LiveSegmentEnd {
-  return new SegmentRunner(instance, now, waiting).runLive(root, panicOf);
+  return new SegmentRunner(instance, now, waiting).runLive(root);
 }
 
-/**
- * Runs the next segment of the live run `instance`, as `startLiveSegment` does its first. What it
- * runs on, a promise's JSON, came with no host call that JSON not fitting could refuse, so it
- * panics the run, as a host's unfit result does (§3.12).
- */
+/** Runs the next segment of the live run `instance`, as `startLiveSegment` does its first. */
 export function runLiveSegment(
   instance: Instance,
   now: () => bigint,
   waiting: LiveWaiting,
 ): LiveSegmentEnd {
-  return new SegmentRunner(instance, now, waiting).runLive(undefined, resumedPanicOf);
+  return new SegmentRunner(instance, now, waiting).runLive(undefined);
 }
 
 /**
@@ -165,9 +159,8 @@ class SegmentRunner implements Machine {
   }
 
   run(first: SegmentStart | undefined): SegmentEnd {
-    return this.#panicking(
-      () => persistable(this.#instance, this.#runDrivers(this.#started(first))),
-      panicOf,
+    return this.#panicking(() =>
+      persistable(this.#instance, this.#runDrivers(this.#started(first))),
     );
   }
 
@@ -185,16 +178,13 @@ class SegmentRunner implements Machine {
       : first?.execution;
   }
 
-  runLive(
-    first: LiveExecution | undefined,
-    panicking: (error: unknown) => Panic | undefined,
-  ): LiveSegmentEnd {
-    return this.#panicking(() => this.#runDrivers(first), panicking);
+  runLive(first: LiveExecution | undefined): LiveSegmentEnd {
+    return this.#panicking(() => this.#runDrivers(first));
   }
 
-  /** What `run` gives, or the panic it threw, as `panicking` reads it, where it threw it. */
-  #panicking<End>(run: () => End, panicking: (error: unknown) => Panic | undefined) {
-    return endOrPanic(run, panicking, () => this.#runStack.trace(this.definition));
+  /** What `run` gives, or the panic it threw, where it threw it. */
+  #panicking<End>(run: () => End) {
+    return endOrPanic(run, () => this.#runStack.trace(this.definition));
   }
 
   end(): void {

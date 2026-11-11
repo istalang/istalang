@@ -10,7 +10,7 @@ import { tempProject as project } from '../../project/project.test-kit.ts';
 import { istaProcess } from '../cli.test-kit.ts';
 
 const nodeWarning = /unsettled top-level await/u;
-const hostFailed = /^ista: the host's main\.bad\(\) failed: Error: x\n/u;
+const hostFailed = /^panic: The host's main\.bad rejected: x\n/u;
 const mainStuck = /^ista: main waits on nothing that can wake it, at /mu;
 
 /** Runs the built `ista run main.ista --host host.mjs` on `program` and `host`, as a process. */
@@ -23,14 +23,14 @@ function runProcess(program: readonly string[], host: readonly string[]) {
 }
 
 describe('ista run --host as a process', () => {
-  it("exits 1 when the host's promise fails, although another promise never settles", () => {
+  it("exits 1, panicking, when the host's promise fails, although another promise never settles", () => {
     const run = runProcess(
       [
-        'extern ista fn never() -> Future<Int, "ista">',
-        'extern ista fn bad() -> Future<Int, "ista">',
+        'extern live async fn never() -> Int',
+        'extern live async fn bad() -> Int',
         "import * as runtime from 'runtime'\nlive async fn main() -> Int: await runtime.run(runtime.id()) _main()\nista async fn _main() -> Int:",
-        '  const pending = never()',
-        '  await bad()',
+        '  const pending = runtime.delegate never()',
+        '  await runtime.delegate bad()',
       ],
       [
         "  'main.never()': () => new Promise(() => {}),",
@@ -38,7 +38,6 @@ describe('ista run --host as a process', () => {
       ],
     );
     expect(run.err).toMatch(hostFailed);
-    expect(run.err).toMatch(mainStuck);
     expect(run.err).not.toMatch(nodeWarning);
     expect(run.code).toBe(1);
   });
@@ -46,9 +45,9 @@ describe('ista run --host as a process', () => {
   it("exits 1, saying where main waits, when the host's only promise never settles", () => {
     const run = runProcess(
       [
-        'extern ista fn never() -> Future<Int, "ista">',
+        'extern live async fn never() -> Int',
         "import * as runtime from 'runtime'\nlive async fn main() -> Int: await runtime.run(runtime.id()) _main()\nista async fn _main() -> Int:",
-        '  await never()',
+        '  await runtime.delegate never()',
       ],
       ["  'main.never()': () => new Promise(() => {}),"],
     );

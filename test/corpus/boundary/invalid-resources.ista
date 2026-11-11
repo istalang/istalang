@@ -26,11 +26,11 @@ extern fn open() -> Lease
 
 extern lease: Lease
 
-extern ista fn keep(lease: Lease) -> Future<Lease, "ista">
+extern fn keep(lease: Lease) -> Lease
 
 live async fn main(): await runtime.run(runtime.id()) _main()
 ista async fn _main():
-  const kept = await keep(open())
+  const kept = keep(open())
   release(kept)
   json.encode(open())
 

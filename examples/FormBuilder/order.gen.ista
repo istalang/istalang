@@ -42,6 +42,7 @@ import (
   Orientation
   Gap
 ) from './forms'
+import * as runtime from 'runtime'
 import * as geo from './geo'
 import * as approvals from './approvals'
 import * as logic from './order'
@@ -99,7 +100,7 @@ ista fn orderView(m: OrderModel) -> any View<Scope<Group<OrderModel>.Seen, Order
   checks: [
     forms.later(
       async fn({data, ctx}): {
-        if logic.totalQty(data.items) <= 500 or await approvals.ask(ctx.user.id, logic.totalQty(data.items)):
+        if logic.totalQty(data.items) <= 500 or await runtime.delegate approvals.ask(ctx.user.id, logic.totalQty(data.items)):
           none
         else: `The order was not approved`
       }
@@ -128,14 +129,14 @@ ista fn orderView(m: OrderModel) -> any View<Scope<Group<OrderModel>.Seen, Order
       ]
       options: Options.Rows(
         from: forms.awaited(Pending.Form, async fn({data, ctx}): [
-          for row in await geo.countries(ctx.params.region): Choice{
+          for row in await runtime.delegate geo.countries(ctx.params.region): Choice{
             value: (row.id)
             label: (row.name)
           }
         ])
         resolve: forms.awaited(
           Pending.Form
-          async fn({data, ctx}): (await geo.countries(ctx.params.region)).some(
+          async fn({data, ctx}): (await runtime.delegate geo.countries(ctx.params.region)).some(
             fn(c): c.id == data.country
           )
         )
@@ -152,14 +153,14 @@ ista fn orderView(m: OrderModel) -> any View<Scope<Group<OrderModel>.Seen, Order
       checks: [forms.answered()]
       options: Options.Rows(
         from: forms.awaited(Pending.Node, async fn({data, ctx}): [
-          for row in await geo.cities(data.country ?? ""): Choice{
+          for row in await runtime.delegate geo.cities(data.country ?? ""): Choice{
             value: (row.id)
             label: (row.name)
           }
         ])
         resolve: forms.awaited(
           Pending.Node
-          async fn({data, ctx}): (await geo.cities(data.country ?? "")).some(
+          async fn({data, ctx}): (await runtime.delegate geo.cities(data.country ?? "")).some(
             fn(c): c.id == data.city
           )
         )
@@ -263,6 +264,11 @@ ista fn orderView(m: OrderModel) -> any View<Scope<Group<OrderModel>.Seen, Order
 
 # ═══════════ The entry point a workflow awaits ═══════════
 
-ista async fn orderForm(params: OrderParams, user: User, events: Inbox<FormEvent>, views: Inbox<Node>):
+ista async fn orderForm(
+  params: OrderParams
+  user: User
+  events: Inbox<FormEvent>
+  views: Inbox<Node>
+):
   const m = orderModel()
   await forms.run(m, orderView(m.fields), OrderCtx{params, user}, translations, events, views)

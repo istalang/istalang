@@ -9,7 +9,6 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { compiledText } from '../../compiler/compile.test-kit.ts';
-import type { HostCall } from '../boundary/host-natives.ts';
 import { ManualClock } from '../clock.ts';
 import type { Advanced, InstanceState } from '../instance-state.ts';
 import { runToEnd, type TestRuntime, testRuntime } from '../runtime.test-kit.ts';
@@ -127,15 +126,6 @@ describe('live runs', () => {
       '  await time.delay(5ms)',
       '  await time.delay(5ms)',
       '  7',
-    ].join('\n'),
-  );
-  /** The same wait on a host's `fetch`, as ista code waits, in an instance. */
-  const instanceWaitsOnHost = compiledText(
-    [
-      "import * as runtime from 'runtime'",
-      'extern ista fn fetch(name: String) -> Future<Int, "ista">',
-      'live async fn main(): await runtime.run(runtime.id()) _main()',
-      'ista async fn _main() -> Int: 1 + await fetch("a")',
     ].join('\n'),
   );
   const fetchKey = 'main.fetch(String)';
@@ -298,18 +288,6 @@ describe('live runs', () => {
     expect(outcomeText(test, text, run.state)).toBe('250');
   });
 
-  it('panics on a future its host fills by a token, which no fill reaches, and an instance on a promise', async () => {
-    const pending = testRuntime({ host: { [fetchKey]: (_, call: HostCall) => call.pending('a') } });
-    const live = pending.runtime.deploy(waitsOnHost);
-    expect((await live.start('live', { function: 'main.fetched()' })).state).toMatchObject({
-      kind: 'panicked',
-    });
-    const promised = testRuntime({ host: { [fetchKey]: () => Promise.resolve(1n) } });
-    expect(promised.startInstance(instanceWaitsOnHost, 'ista').state).toMatchObject({
-      kind: 'panicked',
-    });
-  });
-
   it('fires a live timer on a manual clock, its code reading the clock', async () => {
     const text = compiledText(
       [
@@ -357,28 +335,5 @@ describe("a host's calls on one instance", () => {
     await inner;
     expect(events).toEqual(['ping', 'outer finished', 'inner finished']);
     expect(commitsOf(test, 'x')).toHaveLength(2);
-  });
-
-  it('run two concurrent fills on one instance one after the other', async () => {
-    const text = compiledText(
-      [
-        'extern ista fn ask(tag: String) -> Future<Int, "ista">',
-        "import * as runtime from 'runtime'\nlive async fn main() -> Int: await runtime.run(runtime.id()) _main()\nista async fn _main() -> Int:",
-        '  const a = ask("a")',
-        '  const b = ask("b")',
-        '  (await a) + (await b)',
-      ].join('\n'),
-    );
-    const test = testRuntime({
-      host: { 'main.ask(String)': ([tag], call: HostCall) => call.pending(String(tag)) },
-    });
-    test.startInstance(text, 'x');
-    const [first, second] = await Promise.all([
-      test.runtime.fill('x', 'a', 10n),
-      test.runtime.fill('x', 'b', 32n),
-    ]);
-    expect(first.state.kind).toBe('waiting');
-    expect(second.state).toMatchObject({ kind: 'finished', outcome: 42n });
-    expect(commitsOf(test, 'x')).toHaveLength(3);
   });
 });

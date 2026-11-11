@@ -28,9 +28,10 @@
  *   only driver.
  * - Values cross as JSON (§9), so a host never reads the runtime's value shapes: the externs it
  *   implements take and give JSON (../boundary/host-natives.ts), it starts a function by its key
- *   with JSON arguments and reads the outcome as JSON (`outcome`) or its text (`outcomeText`), and
- *   it fills a future it named with JSON. JSON that doesn't fit what it was given for refuses the
- *   host's call, and nothing commits.
+ *   with JSON arguments and reads the outcome as JSON (`outcome`) or its text (`outcomeText`). JSON
+ *   that doesn't fit what it was given for refuses the host's call, and nothing commits. A host
+ *   resolves the live futures its externs give live code (proposal 8, Rule 9); no future of an
+ *   instance is its to fill.
  */
 
 import { recordExternSignatures } from '../boundary/extern-signatures.ts';
@@ -52,7 +53,6 @@ import { InstanceCalls } from './instance-calls.ts';
 import {
   type BoundProgram,
   type DeployedProgram,
-  jsonIn,
   programBinder,
   type RuntimeSeams,
 } from './programs.ts';
@@ -74,11 +74,6 @@ export interface Runtime {
   readonly programOf: (instance: string) => DeployedProgram;
   /** Where a stored instance stands and waits, read from its last commit; as `wake` refuses. */
   readonly inspect: (instance: string) => Inspection;
-  /**
-   * Fills the future the host named `token` with `json` and advances the instance (§9); a Refusal,
-   * with nothing committed, when no such future waits or the JSON doesn't fit it.
-   */
-  readonly fill: (instance: string, token: string, json: unknown) => Promise<Advanced>;
   /**
    * Runs a panicked instance again from its last commit, the failed segment at the time it first
    * started (§3.12, §5); a Refusal for an instance that hasn't panicked.
@@ -127,18 +122,6 @@ export function createRuntime(seams: RuntimeSeams): Runtime {
       const { committed, loaded } = residentOf(instance);
       return inspection(loaded.definition, committed);
     },
-    fill: (instance, token, json) =>
-      calls.run(instance, () => {
-        try {
-          const resident = residentOf(instance);
-          const arrival = arrivalAt(resident, token, json);
-          return arrival === undefined
-            ? unadvanced(resident.committed)
-            : held.advance(resident, arrival);
-        } finally {
-          held.touched(instance);
-        }
-      }),
     retry: (instance) =>
       calls.run(instance, () => {
         const { resident, first } = retried(residentOf(instance));
@@ -210,12 +193,6 @@ function heldInstances(seams: SchedulerSeams) {
     },
     terminated: (instance: string, advanced: Advanced): Advanced =>
       shown(instance, { ...advanced, answered: [] }),
-    /** Shows that a host's call on `instance` ended, which may have changed what can wake it. */
-    touched: (instance: string): void => {
-      for (const observer of observers) {
-        observer(instance, undefined);
-      }
-    },
     observe: (observer: InstanceObserver): (() => void) => {
       observers.add(observer);
       return () => {
@@ -223,26 +200,6 @@ function heldInstances(seams: SchedulerSeams) {
       };
     },
   };
-}
-
-/**
- * What filling the future `resident`'s host named `token` with `json` starts its next advance
- * with; undefined once it no longer waits. A Refusal when it panicked, or the JSON doesn't fit.
- */
-function arrivalAt(
-  resident: Resident<BoundProgram>,
-  token: string,
-  json: unknown,
-): AdvanceFirst | undefined {
-  const { status, instance } = resident.committed;
-  if (status.kind === 'panicked') {
-    throw new Refusal(
-      'panicked',
-      `Instance '${instance}' has panicked; retry it before filling its futures.`,
-    );
-  }
-  const arrival = { token, value: jsonIn(resident.loaded.definition, json) };
-  return status.kind === 'active' ? { kind: 'arrival', arrival } : undefined;
 }
 
 /**

@@ -449,7 +449,7 @@ The design uses Istalang as the guide describes it: structs, enums, generics, tr
 | 4 | Indexed access on a type by a literal key | Nothing generated: case scopes are inferred (§5.3) | `Group<OrderPaymentCases["card"]>.Seen` | Generate a named alias per case |
 | 5 | Top-level type aliases, including generic ones | Row and case types | `type OrderItemsRow = Group<{ sku: Field<String>, qty: Field<Int> }>` | Associated types on a generated struct |
 | 6 | Constructing a value by an alias of an anonymous struct type | Nothing generated: scope functions build `struct{…}` (§5.3) | `OrderScope1{data: sc.data, ctx: sc.ctx, item: r1.seen()}` | An expected-type annotation on the lambda |
-| 7 | Async lambdas | Awaited props, pending rules, search options | `async fn({data, ctx}): await geo.cities(…)` | None found |
+| 7 | Async lambdas | Awaited props, pending rules, search options | `async fn({data, ctx}): await runtime.delegate geo.cities(…)` | None found |
 | 8 | Struct patterns as lambda parameters | Every pasted expression reads bare `data`, `ctx`, variables | `fn({data, ctx, item}): item.qty > 0` | `fn(s): { const data = s.data … }` |
 | 9 | Generic traits and `any Trait<P>` over generic structs | `any View<Sc>` children of mixed node types | `children: Array<any View<Sc>>` | None found: central to the design |
 | 10 | Async trait methods, and trait impls for generic structs | `View.draw` | `impl View<Sc> for FieldView<Sc, T>` | None found |
@@ -590,7 +590,7 @@ The supplier form (`supplier.form.json`) is the full test. It compiles only if e
     "constraints": {
       "rules": [
         {
-          "check": "logic.totalQty(data.items) <= 500 or await approvals.ask(ctx.user.id, logic.totalQty(data.items))",
+          "check": "logic.totalQty(data.items) <= 500 or await runtime.delegate approvals.ask(ctx.user.id, logic.totalQty(data.items))",
           "message": "The order was not approved",
           "pending": "Waiting for approval of a large order"
         }
@@ -604,10 +604,10 @@ The supplier form (`supplier.form.json`) is the full test. It compiles only if e
         "widget": "select",
         "label": "Country",
         "options": {
-          "from": "await geo.countries(ctx.params.region)",
+          "from": "await runtime.delegate geo.countries(ctx.params.region)",
           "value": "row.id",
           "label": "row.name",
-          "resolve": "(await geo.countries(ctx.params.region)).some(fn c: c.id == data.country)"
+          "resolve": "(await runtime.delegate geo.countries(ctx.params.region)).some(fn c: c.id == data.country)"
         },
         "constraints": {
           "rules": [
@@ -627,10 +627,10 @@ The supplier form (`supplier.form.json`) is the full test. It compiles only if e
         "when": "data.country != none",
         "pending": "node",
         "options": {
-          "from": "await geo.cities(data.country ?? \"\")",
+          "from": "await runtime.delegate geo.cities(data.country ?? \"\")",
           "value": "row.id",
           "label": "row.name",
-          "resolve": "(await geo.cities(data.country ?? \"\")).some(fn c: c.id == data.city)"
+          "resolve": "(await runtime.delegate geo.cities(data.country ?? \"\")).some(fn c: c.id == data.city)"
         }
       },
       {
@@ -836,7 +836,7 @@ fn orderView(m: OrderModel) -> any View<Scope<Group<OrderModel>.Seen, OrderCtx>>
   checks: [
     forms.later(
       async fn({data, ctx}): {
-        if logic.totalQty(data.items) <= 500 or await approvals.ask(ctx.user.id, logic.totalQty(data.items)):
+        if logic.totalQty(data.items) <= 500 or await runtime.delegate approvals.ask(ctx.user.id, logic.totalQty(data.items)):
           none
         else: `The order was not approved`
       }
@@ -865,14 +865,14 @@ fn orderView(m: OrderModel) -> any View<Scope<Group<OrderModel>.Seen, OrderCtx>>
       ]
       options: Options.Rows(
         from: forms.awaited(Pending.Form, async fn({data, ctx}): [
-          for row in await geo.countries(ctx.params.region): Choice{
+          for row in await runtime.delegate geo.countries(ctx.params.region): Choice{
             value: (row.id)
             label: (row.name)
           }
         ])
         resolve: forms.awaited(
           Pending.Form
-          async fn({data, ctx}): (await geo.countries(ctx.params.region)).some(
+          async fn({data, ctx}): (await runtime.delegate geo.countries(ctx.params.region)).some(
             fn(c): c.id == data.country
           )
         )
@@ -889,14 +889,14 @@ fn orderView(m: OrderModel) -> any View<Scope<Group<OrderModel>.Seen, OrderCtx>>
       checks: [forms.answered()]
       options: Options.Rows(
         from: forms.awaited(Pending.Node, async fn({data, ctx}): [
-          for row in await geo.cities(data.country ?? ""): Choice{
+          for row in await runtime.delegate geo.cities(data.country ?? ""): Choice{
             value: (row.id)
             label: (row.name)
           }
         ])
         resolve: forms.awaited(
           Pending.Node
-          async fn({data, ctx}): (await geo.cities(data.country ?? "")).some(
+          async fn({data, ctx}): (await runtime.delegate geo.cities(data.country ?? "")).some(
             fn(c): c.id == data.city
           )
         )

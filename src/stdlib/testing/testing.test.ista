@@ -14,7 +14,8 @@ import * as json from 'json'
 extern sendable struct Queue<T is Sendable>
 extern shared struct Sent
 extern fn send<T is Encodable>(self: Queue<T>, msg: T)
-extern ista fn receive<T is Decodable>(self: Queue<T>) -> Future<T, "ista">
+# The program's own ista read of a queue, which a test mocks; the host's is live (§10).
+ista async fn receive<T is Sendable>(self: Queue<T>) -> T: panic("reached the host")
 extern fn queueOf(name: String) -> Queue<Int>
 
 shared struct Log:

@@ -25,6 +25,7 @@
 import type { Definition } from '../../../definition/definition.ts';
 import type { FunctionId } from '../../../definition/operands.ts';
 import type { Value } from '../../../definition/values/values.ts';
+import { jobWaypoint } from '../../../foundation/language/well-known/jobs.ts';
 import { memo } from '../../../foundation/structures/memo.ts';
 import { unreachable } from '../../../foundation/structures/unreachable.ts';
 import type { Clock } from '../../clock.ts';
@@ -314,15 +315,27 @@ export class World implements TestWorld {
       : { kind: 'finished', outcome: this.#outcome.value };
   }
 
-  /** A failure saying `why`, and where each instance still waits. */
+  /**
+   * A failure saying `why`, and where each instance still waits; one waiting on a job is told no
+   * runtime serves jobs in a test, so the test mocks the ista function delegating it (§10).
+   */
   #failure(why: string): Ended {
     const waits = [...this.#group.states.keys()].flatMap((instance) =>
-      (this.inspect(instance)?.waitingAt ?? []).map(
-        ({ waypoint, location }) =>
-          `${instance} at ${waypoint === undefined ? location : `${waypoint} (${location})`}`,
-      ),
+      (this.inspect(instance)?.waitingAt ?? []).map((wait) => ({ instance, ...wait })),
     );
-    return { kind: 'failed', message: `${why}: ${waits.join(', ')}.`, trace: '', logs: this.#logs };
+    const listed = waits.map(
+      ({ instance, waypoint, location }) =>
+        `${instance} at ${waypoint === undefined ? location : `${waypoint} (${location})`}`,
+    );
+    const onJob = waits.some(({ waypoint }) => waypoint === jobWaypoint)
+      ? ' A job runtime.delegate queued waits for a runtime to serve it, which a test has none of: mock the ista function delegating it.'
+      : '';
+    return {
+      kind: 'failed',
+      message: `${why}: ${listed.join(', ')}.${onJob}`,
+      trace: '',
+      logs: this.#logs,
+    };
   }
 
   /** Whether `instance` waits, with a watch whose condition now holds. */

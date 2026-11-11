@@ -37,7 +37,7 @@ import type { InstanceCall } from '../snapshot/snapshot.ts';
 import type { InstanceStore } from '../store.ts';
 import type { InstanceCalls } from './instance-calls.ts';
 import { InstanceGroup } from './instance-group.ts';
-import type { HostFills, HostReports } from './programs.ts';
+import type { HostReports } from './programs.ts';
 
 /** What a run's contexts need of the runtime running them. */
 export interface ContextSeams<Program extends LoadedDefinition> {
@@ -56,17 +56,12 @@ export interface ContextSeams<Program extends LoadedDefinition> {
   /** Has `observer` shown every advance of the runtime's instances, until the call it gives. */
   readonly observe: (observer: InstanceObserver) => () => void;
   readonly calls: InstanceCalls;
-  /** Whether the host may still fill a future it named, and when that may change. */
-  readonly fills: HostFills;
   /** Told what each of its own advances reports, as no host call returns it. */
   readonly reports: HostReports;
 }
 
-/**
- * Shown each advance of a runtime's instances, by whatever made it, and with none each host call
- * that may have changed what can wake one, a fill refused included.
- */
-export type InstanceObserver = (instance: string, advanced: Advance | undefined) => void;
+/** Shown each advance of a runtime's instances, by whatever made it. */
+export type InstanceObserver = (instance: string, advanced: Advance) => void;
 
 /** A call waiting for its answer: the context it went to, its live future, listener and maker. */
 type WaitingCall = Omit<ContextCall, 'call'>;
@@ -100,10 +95,8 @@ export class Contexts<Program extends LoadedDefinition> implements RunContexts {
         return;
       }
       const own = this.#advancing.has(instance);
-      if (advanced !== undefined) {
-        this.#record(instance, advanced, own);
-        this.#serve();
-      }
+      this.#record(instance, advanced, own);
+      this.#serve();
       if (!own) {
         this.#poke?.();
       }
@@ -118,20 +111,6 @@ export class Contexts<Program extends LoadedDefinition> implements RunContexts {
     this.#unobserve();
     this.#open.clear();
     this.#served.clear();
-  }
-
-  fillsChanged(): Promise<void> {
-    return this.#seams.fills.changed();
-  }
-
-  awaitsHost(): boolean {
-    return (
-      this.#seams.fills.may() &&
-      [...this.#group.states.keys()].some((instance) => {
-        const objects = this.#seams.residentOf(instance)?.committed.objects ?? [];
-        return objects.some((object) => object.kind === 'future' && object.state.kind === 'host');
-      })
-    );
   }
 
   open(): number {

@@ -291,7 +291,6 @@ const uncheckedExamples = new Map<string, readonly number[]>([
   ['docs/spec.md › 3.7 Methods and references #2', [4000, 5103]],
   ['docs/spec.md › 3.7 Methods and references #3', [2001, 4000]],
   ['docs/spec.md › 3.7 Methods and references #4', [4000, 5026]],
-  ['docs/spec.md › 3.8 Prelude and standard library #1', [4008, 5101]],
   ['docs/spec.md › 3.9 Operator overloading #1', [4000]],
   ['docs/spec.md › 3.10 Traits #1', [2001, 4008, 5001]],
   ['docs/spec.md › 3.13 Modules #1', [2001, 3000, 5001]],

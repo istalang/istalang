@@ -257,9 +257,10 @@ ista fn _splitDue(waits: Array<_Wait>, time: Time) -> (Array<_Wait>, Array<_Wait
   (due, later)
 
 # A host's queues of type `Q` carrying `T`, one per key, each faked with an inbox (§10). Its fields
-# replace the program's externs: `open` a queue factory, `send` and `receive` a queue's own. Which
-# queue a key opened is simple data, so `open` fakes a simple extern; a queue's inbox is ista data,
-# made the first time ista code reaches it (proposal 8, Rule 2).
+# replace the program's functions: `open` a queue factory, `send` a queue's own, and `receive` the
+# program's own ista read of one, since the host's is live and ista code reaches it only through a
+# job. Which queue a key opened is simple data, so `open` fakes a simple extern; a queue's inbox is
+# ista data, made the first time ista code reaches it (proposal 8, Rule 2).
 struct FakeQueue<Q, T, K = String>:
   make: fn() -> Q
   _opened: _Opened<Q, K> = new _Opened<Q, K>{}

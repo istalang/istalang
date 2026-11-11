@@ -1,8 +1,9 @@
 /**
  * JSON crossing in from the host (§9; docs/arch/boundary.md), as code: decoded by the type's codec
  * at a path a failure names, then accepted by a helper that decides what a mismatch does. A
- * result or an extern constant's value that doesn't fit panics the instance (`_hostResult`); JSON
- * a host starts an instance with, or fills a future with, fails the host's call (`_hostInput`).
+ * result, what its future gives, or an extern constant's value that doesn't fit panics the code
+ * reading it (`_hostResult`); JSON a host starts an instance with fails the host's call
+ * (`_hostInput`).
  * Host extern wrappers and start entries both read JSON this one way.
  */
 
@@ -27,8 +28,8 @@ const acceptors = {
 } as const satisfies Record<string, CodecHelper>;
 
 /**
- * Where JSON crossing in comes from: a host's result or an extern constant's value (`result`), or
- * what a host starts an instance with or fills a future with (`input`).
+ * Where JSON crossing in comes from: a host's result, what its future gives or an extern
+ * constant's value (`result`), or what a host starts an instance with (`input`).
  */
 export type InboundSource = keyof typeof acceptors;
 

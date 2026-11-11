@@ -79,11 +79,7 @@ export interface RunContexts {
   readonly wakeDue: (now: bigint) => Promise<void>;
   /** Whether the live future `future` waits on the contexts: a call into one, or `served`. */
   readonly awaitsContexts: (future: number) => boolean;
-  /** Whether a context waits on a future its host may still fill, which may wake it whenever. */
-  readonly awaitsHost: () => boolean;
-  /** Settles once whether the host may still fill could have changed. */
-  readonly fillsChanged: () => Promise<void>;
-  /** Has `poke` called whenever something else than the run advanced its contexts: a host's fill. */
+  /** Has `poke` called whenever something else than the run advanced its contexts: a host's call. */
   readonly runOn: (poke: () => void) => void;
   /** Stops the contexts as the run ends: what they do from then on is the store's. */
   readonly close: () => void;

@@ -9,10 +9,9 @@
  * futures and slots, weak references through handles to what they refer to, and a host type's
  * resources through the instance's heap (§7).
  *
- * What waits depends on how the run waits (../waiting.ts). An instance waits on futures that
- * survive a crash, so a host fills one by a token; a live run, in memory, on a future its resolver
- * resolves (../live-resolvers.ts). A host giving the other is a bug in the host, which panics the
- * run (§3.12). A live run spawns
+ * What waits depends on how the run waits (../waiting.ts). A live run, in memory, waits on a future
+ * its resolver resolves (../live-resolvers.ts); only live code calls a host's extern giving one,
+ * since the checker refuses a host's extern of any other kind (proposal 8, Rule 9). A live run spawns
  * nothing: an instance is spawned by a commit, which it never makes, so `spawn` is ista and the
  * call rule keeps live code from it.
  */
@@ -30,19 +29,18 @@ import {
 } from '../../../definition/values/values.ts';
 import { unreachable } from '../../../foundation/structures/unreachable.ts';
 import { passedValues, writeReference } from '../../interpreter/registers.ts';
-import {
-  type FullNativeContext,
-  type Native,
-  type NativeCapabilities,
-  type NativeFutures,
-  type NativeInstances,
-  type NativeLogs,
-  type NativeRandom,
-  type NativeResources,
-  type NativeSlots,
-  type NativeTesting,
-  type NativeWaits,
-  Panic,
+import type {
+  FullNativeContext,
+  Native,
+  NativeCapabilities,
+  NativeFutures,
+  NativeInstances,
+  NativeLogs,
+  NativeRandom,
+  NativeResources,
+  NativeSlots,
+  NativeTesting,
+  NativeWaits,
 } from '../../natives.ts';
 import { isReference, type Reference, type RegisterContents } from '../../snapshot/objects.ts';
 import { type Heap, handleObject } from '../instance/heap.ts';
@@ -148,22 +146,10 @@ function nativeFuturesOf(instance: Instance, { waiting, trace }: SegmentSide): N
   return {
     resolved: (value) => futures.createHandle({ kind: 'resolved', value }),
     timer: (at) => futures.createHandle({ kind: 'timer', at }),
-    fromHost: (token) => {
-      if (waiting.kind === 'live') {
-        throw new Panic(
-          'A live run waits on no future its host fills by a token: give a promise or resolve it.',
-        );
-      }
-      return futures.createHost(token);
-    },
-    resolvable: () => {
-      if (waiting.kind === 'ista') {
-        throw new Panic(
-          'An instance waits on no future a live resolver resolves, which dies with its process: give call.pending(token).',
-        );
-      }
-      return liveResolvable(instance, waiting.resumes, trace());
-    },
+    resolvable: () =>
+      waiting.kind === 'live'
+        ? liveResolvable(instance, waiting.resumes, trace())
+        : unreachable("Ista code calls no host's extern giving a future; the checker refuses one."),
     onDisposed: (future, notice) => {
       notices.onDisposed(handleObject(future), notice);
     },

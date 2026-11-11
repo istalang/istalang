@@ -42,6 +42,7 @@ import (
   Orientation
   Gap
 ) from './forms'
+import * as runtime from 'runtime'
 import * as geo from './geo'
 import * as crm from './crm'
 import * as approvals from './approvals'
@@ -79,48 +80,50 @@ fn addressModel() -> Group<AddressModel>: Group{
   }
 }
 
-ista fn addressView(m: AddressModel, k: String) -> any View<Scope<Group<AddressModel>.Seen, AddressCtx>>:
-  LayoutView{
-    key: `${k}/n1`
-    parent: none
-    widget: Prop.Fixed(LayoutWidget.Labeled(LabelStyle.Top))
-    children: [
-      new FieldView{
-        key: `${k}/n2`
-        parent: none
-        field: m.street
-        widget: Prop.Fixed(FieldWidget.Input(none))
-        label: Prop.Fixed("Street")
-        checks: [forms.answered(), forms.required(Fixed(true)), forms.maxLength(Fixed(120))]
-      }
-      LayoutView{
-        key: `${k}/n3`
-        parent: none
-        widget: Prop.Fixed(LayoutWidget.Hstack(gap: Gap.Sm, labels: none))
-        children: [
-          new FieldView{
-            key: `${k}/n4`
-            parent: Prop.Fixed(ParentUi.Hstack(1.0))
-            field: m.zip
-            widget: Prop.Fixed(FieldWidget.Input(none))
-            label: Prop.Fixed("ZIP")
-            checks: [
-              forms.answered()
-              forms.pattern(Prop.Computed(fn({data, ctx}): logic.zipPattern(ctx.params.country)))
-            ]
-          }
-          new FieldView{
-            key: `${k}/n5`
-            parent: Prop.Fixed(ParentUi.Hstack(3.0))
-            field: m.city
-            widget: Prop.Fixed(FieldWidget.Input(none))
-            label: Prop.Fixed("City")
-            checks: [forms.answered()]
-          }
-        ]
-      }
-    ]
-  }
+ista fn addressView(
+  m: AddressModel
+  k: String
+) -> any View<Scope<Group<AddressModel>.Seen, AddressCtx>>: LayoutView{
+  key: `${k}/n1`
+  parent: none
+  widget: Prop.Fixed(LayoutWidget.Labeled(LabelStyle.Top))
+  children: [
+    new FieldView{
+      key: `${k}/n2`
+      parent: none
+      field: m.street
+      widget: Prop.Fixed(FieldWidget.Input(none))
+      label: Prop.Fixed("Street")
+      checks: [forms.answered(), forms.required(Fixed(true)), forms.maxLength(Fixed(120))]
+    }
+    LayoutView{
+      key: `${k}/n3`
+      parent: none
+      widget: Prop.Fixed(LayoutWidget.Hstack(gap: Gap.Sm, labels: none))
+      children: [
+        new FieldView{
+          key: `${k}/n4`
+          parent: Prop.Fixed(ParentUi.Hstack(1.0))
+          field: m.zip
+          widget: Prop.Fixed(FieldWidget.Input(none))
+          label: Prop.Fixed("ZIP")
+          checks: [
+            forms.answered()
+            forms.pattern(Prop.Computed(fn({data, ctx}): logic.zipPattern(ctx.params.country)))
+          ]
+        }
+        new FieldView{
+          key: `${k}/n5`
+          parent: Prop.Fixed(ParentUi.Hstack(3.0))
+          field: m.city
+          widget: Prop.Fixed(FieldWidget.Input(none))
+          label: Prop.Fixed("City")
+          checks: [forms.answered()]
+        }
+      ]
+    }
+  ]
+}
 
 # ═══════════ def "#category" ═══════════
 
@@ -541,16 +544,16 @@ ista fn supplierView(m: SupplierModel) -> any View<Scope<Group<SupplierModel>.Se
                 checks: [forms.answered()]
                 options: Options.Rows(
                   from: forms.awaited(Pending.Form, async fn({data, ctx}): [
-                    for row in await geo.countries(ctx.params.region): Choice{
+                    for row in await runtime.delegate geo.countries(ctx.params.region): Choice{
                       value: (row.id)
                       label: (row.name)
                     }
                   ])
                   resolve: forms.awaited(
                     Pending.Form
-                    async fn({data, ctx}): (await geo.countries(ctx.params.region)).some(
-                      fn(c): c.id == data.company.country
-                    )
+                    async fn({data, ctx}): (
+                      await runtime.delegate geo.countries(ctx.params.region)
+                    ).some(fn(c): c.id == data.company.country)
                   )
                 )
               }
@@ -580,16 +583,15 @@ ista fn supplierView(m: SupplierModel) -> any View<Scope<Group<SupplierModel>.Se
                 checks: [forms.answered()]
                 options: Options.Rows(
                   from: forms.awaited(Pending.Node, async fn({data, ctx}): [
-                    for row in await geo.cities(data.company.country ?? ""): Choice{
-                      value: (row.id)
-                      label: (row.name)
-                    }
+                    for row in await runtime.delegate geo.cities(
+                      data.company.country ?? ""
+                    ): Choice{value: (row.id), label: (row.name)}
                   ])
                   resolve: forms.awaited(
                     Pending.Node
-                    async fn({data, ctx}): (await geo.cities(data.company.country ?? "")).some(
-                      fn(c): c.id == data.company.city
-                    )
+                    async fn({data, ctx}): (
+                      await runtime.delegate geo.cities(data.company.country ?? "")
+                    ).some(fn(c): c.id == data.company.city)
                   )
                 )
               }
@@ -606,11 +608,17 @@ ista fn supplierView(m: SupplierModel) -> any View<Scope<Group<SupplierModel>.Se
               from: async fn(sc, search): {
                 const ctx = struct{search, for k, v in ...sc.ctx: [k]: v}
                 const data = sc.data
-                [for row in await crm.users(ctx.search): Choice{value: row, label: (row.name)}]
+                [
+                  for row in await runtime.delegate crm.users(ctx.search): Choice{
+                    value: row
+                    label: (row.name)
+                  }
+                ]
               }
               resolve: forms.awaited(
                 Pending.Form
-                async fn({data, ctx}): (await crm.user(data.manager?.id ?? "")) != none
+                async fn({data, ctx}): (await runtime.delegate crm.user(data.manager?.id ?? "")) !=
+                  none
               )
               same: fn(a, b): a.id == b.id
             )
@@ -624,7 +632,10 @@ ista fn supplierView(m: SupplierModel) -> any View<Scope<Group<SupplierModel>.Se
             label: Prop.Fixed("Credit limit")
             default: forms.awaited(
               Pending.Hidden
-              async fn({data, ctx}): (await crm.creditLimit(data.company.vatId ?? "")) ?? 0
+              async fn({data, ctx}): (
+                await runtime.delegate crm.creditLimit(data.company.vatId ?? "")
+              ) ??
+                0
             )
             checks: []
           }
@@ -710,16 +721,16 @@ ista fn supplierView(m: SupplierModel) -> any View<Scope<Group<SupplierModel>.Se
                         checks: [forms.answered()]
                         options: Options.Rows(
                           from: forms.awaited(Pending.Form, async fn({data, ctx, price, region}): [
-                            for row in await geo.regions(): Choice{
+                            for row in await runtime.delegate geo.regions(): Choice{
                               value: (row.code)
                               label: (row.name)
                             }
                           ])
                           resolve: forms.awaited(
                             Pending.Form
-                            async fn({data, ctx, price, region}): (await geo.regions()).some(
-                              fn(r): r.code == region
-                            )
+                            async fn({data, ctx, price, region}): (
+                              await runtime.delegate geo.regions()
+                            ).some(fn(r): r.code == region)
                           )
                         )
                       }
@@ -853,7 +864,7 @@ ista fn supplierView(m: SupplierModel) -> any View<Scope<Group<SupplierModel>.Se
             canAdd: false
             rows: forms.awaited(
               Pending.Hidden
-              async fn({data, ctx}): await crm.orders(data.company.vatId ?? "")
+              async fn({data, ctx}): await runtime.delegate crm.orders(data.company.vatId ?? "")
             )
             computedRows: true
             item: fn(r1, row1): ScopedView{
@@ -1054,14 +1065,17 @@ ista fn supplierView(m: SupplierModel) -> any View<Scope<Group<SupplierModel>.Se
             checks: [forms.answered()]
             options: Options.Rows(
               from: forms.awaited(Pending.Form, async fn({data, ctx}): [
-                for row in await formsCatalog.list(ctx.params.region): Choice{
+                for row in await runtime.delegate formsCatalog.list(ctx.params.region): Choice{
                   value: row
                   label: (row.title)
                 }
               ])
               resolve: forms.awaited(
                 Pending.Form
-                async fn({data, ctx}): (await formsCatalog.get(data.extraForm?.id ?? "")) != none
+                async fn({data, ctx}): (
+                  await runtime.delegate formsCatalog.get(data.extraForm?.id ?? "")
+                ) !=
+                  none
               )
             )
           }
@@ -1157,7 +1171,7 @@ ista fn supplierView(m: SupplierModel) -> any View<Scope<Group<SupplierModel>.Se
               )
               forms.later(
                 async fn({data, ctx}): {
-                  if (data.score ?? 0) < 80 or await approvals.ask(ctx.params.owner.id, data.company.name ?? ""):
+                  if (data.score ?? 0) < 80 or await runtime.delegate approvals.ask(ctx.params.owner.id, data.company.name ?? ""):
                     none
                   else: `The supplier was not approved`
                 }
