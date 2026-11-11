@@ -87,6 +87,9 @@ After CX. Built on existing constructs, with no native, extern or runtime state 
 2026-11-11).
 
 **Scope.**
+- Context constants, as proposal 9 states them and no more: a top-level `ista const` holds one
+  value per context, made at its first read inside the reading segment and kept in the context's
+  memory; reading one is an `ista` call. The job queue and pending replies live in them.
 - `delegate` (Rule 8) written in Istalang: ista code sends the job as a message; a live loop,
   itself Istalang, takes jobs with `rt.call(key) nextJob()`, runs each as a live run and replies
   with `rt.call(key) reply(r)`, which resolves the delegating code's future. The job's stable key
