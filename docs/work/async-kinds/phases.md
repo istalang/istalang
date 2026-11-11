@@ -112,7 +112,7 @@ rewrite; `wake.bench.ts` within 10%.
 ## AW Awaitables (behavioural)
 
 Built in three steps, each reviewed and merged on its own; design in `aw-design.md`.
-- **AW1 language:** member-bounded associated types (`type Mode in Persistence`), `Self.Mode fn`,
+- **AW1 language** (done, `6544d98b`): member-bounded associated types (`type Mode in Persistence`), `Self.Mode fn`,
   extern structs declaring associated types (`Future`'s `type Mode = K`).
 - **AW2 one await path:** prelude `Awaitable` and `Resolver`; `await` and `select` as an implicit
   `onAwait` call; waits decided by language resolvers.
