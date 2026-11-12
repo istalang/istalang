@@ -9,6 +9,8 @@
  *   execution, and `worker.disposing()` watches it as `disposed()` watches any other referent. A
  *   call that returns was never disposed, so its weak reference loses its target and resolves
  *   nothing, and a `disposing()` taken afterwards never resolves.
+ * - `deref()` gives nothing once its referent has no holder (runtime/lifetimes/counts.ts), before
+ *   it is disposed: no one may hold it again, or a disposal would see what it disposes resurrected.
  * - A watch is a future pending on a weak reference, which it holds; the weak reference holds
  *   nothing, so watching keeps nothing alive (runtime/lifetimes/holders.ts).
  * - The disposal step reports what it disposes (runtime/lifetimes/): an object once it is gone,
@@ -39,10 +41,15 @@ export class WeakSide implements NativeWeakSide {
     return handleTo(weak.id);
   }
 
-  /** A handle to what `weak` refers to, until it is disposed. */
+  /**
+   * A handle to what `weak` refers to, until its last holder lets go of it (spec §7): one waiting
+   * to be disposed is held by nothing, and no one may hold it again.
+   */
   target(weak: Value): Value | undefined {
     const { target } = this.#heap.of(handleObject(weak), 'weakRef');
-    return typeof target === 'number' ? handleTo(target) : undefined;
+    return typeof target === 'number' && this.#heap.holdersOf(target) !== 0
+      ? handleTo(target)
+      : undefined;
   }
 
   /**

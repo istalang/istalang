@@ -210,6 +210,11 @@ export class Heap {
     return this.#written.splice(0);
   }
 
+  /** How many holders counted object `id` has (runtime/lifetimes/counts.ts); undefined if uncounted. */
+  holdersOf(id: number): number | undefined {
+    return this.#holders.holdersOf(id);
+  }
+
   /** Whether the object with `id` exists. */
   has(id: number): boolean {
     return this.#objects.has(id);

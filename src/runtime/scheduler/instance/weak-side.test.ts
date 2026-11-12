@@ -1,14 +1,18 @@
 /**
  * The weak side's rules (spec §6, §7) over random sequences of events on a call and a few other
- * disposables: each referent has one weak reference; once a disposable is disposed, `deref` gives
- * nothing and every watch has resolved, whenever it was taken; a call's watches resolve when it
- * is disposed, and never once it has returned.
+ * disposables, which a register holds: each referent has one weak reference; once a disposable is
+ * disposed, `deref` gives nothing and every watch has resolved, whenever it was taken; a call's
+ * watches resolve when it is disposed, and never once it has returned. Once nothing holds a
+ * referent, `deref` gives nothing, before it is disposed.
  */
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import type { Value } from '../../../definition/values/values.ts';
 import { handleTo } from '../../../definition/values/values.ts';
+import { countedIn } from '../../lifetimes/counts.ts';
+import { HolderWrites } from '../../lifetimes/holder-writes.ts';
+import { nothingHeld } from '../../snapshot/holdings.ts';
 import { futuresOn } from './futures.test-kit.ts';
 import { testHeap } from './heap.test-kit.ts';
 import type { LiveExecution } from './heap.ts';
@@ -31,7 +35,8 @@ const event: fc.Arbitrary<Event> = fc.record({
  * disposable.
  */
 class Scene {
-  readonly heap = testHeap();
+  readonly holders = new HolderWrites(countedIn([]));
+  readonly heap = testHeap([], this.holders);
   readonly futures = futuresOn(this.heap);
   readonly weak = new WeakSide(this.heap, this.futures);
   readonly call = this.heap.add(
@@ -56,6 +61,10 @@ class Scene {
     readonly late: boolean;
   }[] = [];
   readonly ended = new Map<number, 'disposed' | 'returned'>();
+
+  constructor() {
+    this.holders.changed(nothingHeld, { values: [], holds: this.ids });
+  }
 
   play({ kind, referent }: Event): void {
     if (kind === 'watch') {
@@ -104,6 +113,19 @@ describe('the weak side', () => {
     expect(weak.reference(handleTo(first ?? -1))).not.toEqual(
       weak.reference(handleTo(second ?? -1)),
     );
+  });
+
+  it('gives nothing for a referent nothing holds, before it is disposed', () => {
+    const holders = new HolderWrites(countedIn([]));
+    const heap = testHeap([], holders);
+    const weak = new WeakSide(heap, futuresOn(heap));
+    const { id } = heap.add((made) => ({ kind: 'slot', id: made, waiting: [] }));
+    const reference = weak.reference(handleTo(id));
+    const register = { values: [handleTo(id)], holds: [] };
+    holders.changed(nothingHeld, register);
+    expect(weak.target(reference)).toEqual(handleTo(id));
+    holders.changed(register, nothingHeld);
+    expect(weak.target(reference)).toBeUndefined();
   });
 
   it('lets go of a referent once it is disposed or its call returned, and only then', () => {

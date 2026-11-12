@@ -9,7 +9,9 @@
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
+import { compiledText } from '../../compiler/compile.test-kit.ts';
 import { handleTo } from '../../definition/values/values.ts';
+import { startToEnd, testRuntime } from '../runtime.test-kit.ts';
 import { futuresOn } from '../scheduler/instance/futures.test-kit.ts';
 import { testHeap } from '../scheduler/instance/heap.test-kit.ts';
 import { handleObject, type LiveObject } from '../scheduler/instance/heap.ts';
@@ -121,5 +123,134 @@ describe('collecting by counts', () => {
       { lease: true, holds: [] },
     ];
     expect(disposalOrder(made)).toEqual([4, 2, 1, 0]);
+  });
+
+  it.each([false, true])(
+    'finishes the current round before disposing what a code disposal in that round held (crashing at every await: %s)',
+    async (crashEveryAwait) => {
+      const text = compiledText(
+        [
+          "import * as runtime from 'runtime'",
+          'shared struct Lease:',
+          '  name: String',
+          '  log: Shared<Array<String>>',
+          '  child: Lease? = none',
+          'fn dispose(self: Lease):',
+          '  self->log->value.push("disposed " + self->name)',
+          'live async fn main() -> String: await runtime.run(runtime.id()) _main()',
+          'ista async fn _main() -> String:',
+          '  const log = new Shared<Array<String>>{value: []}',
+          '  if true:',
+          '    const l0 = new Lease{name: "0", log}',
+          '    const l1 = new Lease{name: "1", log}',
+          '    const l2 = new Lease{name: "2", log, child: l0}',
+          '    drop l0',
+          '  await runtime.commit()',
+          '  log->value.join(", ")',
+        ].join('\n'),
+      );
+      expect(await startToEnd(testRuntime(), text, { crashEveryAwait })).toEqual({
+        kind: 'finished',
+        outcome: '"disposed 2, disposed 1, disposed 0"',
+      });
+    },
+  );
+
+  it('does not preempt a running dispose mid-function with a disposable released by an earlier synchronous disposal in the same round', async () => {
+    const text = compiledText(
+      [
+        "import * as time from 'time'",
+        "import * as runtime from 'runtime'",
+        'shared struct Lease:',
+        '  name: String',
+        '  log: Shared<Array<String>>',
+        'fn dispose(self: Lease):',
+        '  self->log->value.push("start " + self->name)',
+        '  self->log->value.push("end " + self->name)',
+        'ista async fn holder(l: Lease):',
+        '  await time.delay(1h)',
+        '  _ = l',
+        'live async fn main() -> String: await runtime.run(runtime.id()) _main()',
+        'ista async fn _main() -> String:',
+        '  const log = new Shared<Array<String>>{value: []}',
+        '  if true:',
+        '    const l0 = new Lease{name: "0", log}',
+        '    const l1 = new Lease{name: "1", log}',
+        '    const h = holder(l0)',
+        '    drop l0',
+        '  log->value.join(", ")',
+      ].join('\n'),
+    );
+    expect(await startToEnd(testRuntime(), text)).toEqual({
+      kind: 'finished',
+      outcome: '"start 1, end 1, start 0, end 0"',
+    });
+  });
+
+  it("disposes a dispose body's own locals and defers before removing the disposed value or releasing what it holds", async () => {
+    const text = compiledText(
+      [
+        "import * as runtime from 'runtime'",
+        'shared struct Lease:',
+        '  name: String',
+        '  log: Shared<Array<String>>',
+        'fn dispose(self: Lease):',
+        '  self->log->value.push("disposed " + self->name)',
+        'shared struct Outer:',
+        '  log: Shared<Array<String>>',
+        '  box: Shared<Lease?>',
+        '  child: Lease? = none',
+        'fn dispose(self: Outer) -> Unit:',
+        '  const log = self->log',
+        '  const taken = self->box->value',
+        '  self->box->value = none',
+        '  _ = taken',
+        '  log->value.push("outer body")',
+        'live async fn main() -> String: await runtime.run(runtime.id()) _main()',
+        'ista async fn _main() -> String:',
+        '  const log = new Shared<Array<String>>{value: []}',
+        '  if true:',
+        '    const box = new Shared<Lease?>{value: new Lease{name: "local", log}}',
+        '    const outer = new Outer{log, box}',
+        '    const child = new Lease{name: "child", log}',
+        '    outer->child = child',
+        '    drop child',
+        '  log->value.join(", ")',
+      ].join('\n'),
+    );
+    expect(await startToEnd(testRuntime(), text)).toEqual({
+      kind: 'finished',
+      outcome: '"outer body, disposed local, disposed child"',
+    });
+  });
+
+  it("returns none from WeakRef.deref() once the referent's last holder has released it, preventing resurrection during a round", async () => {
+    const text = compiledText(
+      [
+        "import * as runtime from 'runtime'",
+        'shared struct Lease:',
+        '  name: String',
+        'fn dispose(self: Lease): ()',
+        'shared struct Grabber:',
+        '  w: WeakRef<Lease>',
+        '  box: Shared<Lease?>',
+        'fn dispose(self: Grabber):',
+        '  self->box->value = self->w.deref()',
+        'live async fn main() -> String: await runtime.run(runtime.id()) _main()',
+        'ista async fn _main() -> String:',
+        '  const box = new Shared<Lease?>{value: none}',
+        '  if true:',
+        '    const y = new Lease{name: "y"}',
+        '    const g = new Grabber{w: WeakRef(y), box}',
+        '  await runtime.commit()',
+        '  match box->value:',
+        '    case None: "none"',
+        '    case l: l->name',
+      ].join('\n'),
+    );
+    expect(await startToEnd(testRuntime(), text)).toEqual({
+      kind: 'finished',
+      outcome: '"none"',
+    });
   });
 });
