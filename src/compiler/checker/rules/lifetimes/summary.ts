@@ -148,7 +148,8 @@ const sameEffects = sameItems<Effect>(
     sameInput(first.to, second.to) &&
     first.inside === second.inside,
 );
-const sameResults = sameItems<ResultRelation>(
+/** Whether two lists say a result relates to the same inputs alike. */
+export const sameResults = sameItems<ResultRelation>(
   (first, second) => sameInput(first.input, second.input) && first.relation === second.relation,
 );
 const sameCycles = sameItems<TypedCycle>(

@@ -187,4 +187,34 @@ describe('the lifetime rule', () => {
     );
     expect(findingsIn(source)).toEqual(['15:closure']);
   });
+
+  it('finds what a function a default calls back does, through the default', () => {
+    const source = [
+      lease,
+      'fn link(a: Node, b: Node = makeNode()):',
+      '  a->next = b',
+      'fn makeNode() -> Node:',
+      '  const x = new Node{lease: new Lease{n: 1}}',
+      '  x->next = x',
+      '  link(x, x)',
+      '  x',
+    ].join('\n');
+    expect(findingsIn(source)).toEqual(['11:write', '12:call']);
+  });
+
+  it('finds what a function a field default calls back does, through the default', () => {
+    const source = [
+      'shared struct Lease:',
+      '  n: Int',
+      'fn dispose(self: Lease): ()',
+      'shared struct Cell:',
+      '  lease: Lease = fresh()',
+      '  next: Cell? = none',
+      'fn fresh() -> Lease:',
+      '  const c = new Cell{}',
+      '  c->next = c',
+      '  new Lease{n: 1}',
+    ].join('\n');
+    expect(findingsIn(source)).toEqual(['9:write']);
+  });
 });

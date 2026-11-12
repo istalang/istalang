@@ -1,17 +1,24 @@
 /**
  * The recursive groups of the call graph (lifetimes.ts): functions calling each other are summed
- * up together, from summaries that do nothing, until none changes.
+ * up together, from analyses that do nothing, until none changes.
  *
- * A function's group is found in the graph it reaches, which holds every member, so a check reads
- * no body its functions don't reach. Each group is named by its first member in declaration
- * order, module by module, so every member finds it alike and shares its entry.
+ * - **Its nodes are the functions running code of their own,** a body or defaults: a default may
+ *   call back into its function, or into the struct whose field it is, so a group counts its calls.
+ * - A function's group is found in the graph it reaches, which holds every member, so a check
+ *   reads no body its functions don't reach. Each group is named by its first member in
+ *   declaration order, module by module, so every member finds it alike and shares its entry.
  */
 
+import { sameItems } from '../../../../foundation/structures/equality.ts';
 import { stronglyConnected } from '../../../../foundation/structures/strongly-connected.ts';
+import { isFieldsFunction } from '../../../syntax/declarations/field-defaults.ts';
 import type { FunctionDeclaration } from '../../../syntax/declarations/index.ts';
-import { type Summary, sameSummary } from './summary.ts';
+import { defaultValuesOf } from '../../../syntax/expressions/parameters.ts';
+import type { Analysis } from './analysis/index.ts';
+import { type DefaultsFound, noDefaults } from './declared.ts';
+import { emptySummary, sameSummary } from './summary.ts';
 
-/** A call between two functions with bodies: an edge of the call graph. */
+/** A call between two functions running code of their own: an edge of the call graph. */
 export interface Call {
   readonly from: FunctionDeclaration;
   readonly to: FunctionDeclaration;
@@ -46,12 +53,45 @@ export function groupOf(
   return [...members].sort(before);
 }
 
-export function sameGroupSummaries(
-  first: ReadonlyMap<FunctionDeclaration, Summary>,
-  second: ReadonlyMap<FunctionDeclaration, Summary>,
-): boolean {
-  return [...first].every(([member, summary]) => {
+/**
+ * Whether `declaration` is written with a body: neither an extern nor a fields function. Read off
+ * its declaration, so an edit inside a body leaves what asks alone; a body the parser lost is
+ * analysed as doing nothing, its error reported elsewhere.
+ */
+export function hasBody(declaration: FunctionDeclaration): boolean {
+  return !(declaration.isExtern || isFieldsFunction(declaration));
+}
+
+/** Whether `declaration` runs code of its own when called: a body, or defaults it writes. */
+export function hasCode(declaration: FunctionDeclaration): boolean {
+  return hasBody(declaration) || defaultValuesOf(declaration.parameters).length > 0;
+}
+
+/** A function's analysis: its body's, with what its defaults find. */
+export type FunctionAnalysis = Analysis & { readonly defaults: DefaultsFound };
+
+/** What each default's value relates to, by its parameter's position. */
+export type DefaultResults = DefaultsFound['results'];
+
+/** The analyses of a recursive group's members. */
+export type GroupAnalyses = ReadonlyMap<FunctionDeclaration, FunctionAnalysis>;
+
+/** The analysis of a function doing nothing: a group's first guess for each member. */
+export const doesNothing: FunctionAnalysis = {
+  summary: emptySummary,
+  violations: [],
+  inputTypes: new Map(),
+  defaults: noDefaults,
+};
+
+/** Whether two rounds of a group's analyses agree: each member's summary and its defaults'. */
+export function sameGroupAnalyses(first: GroupAnalyses, second: GroupAnalyses): boolean {
+  return [...first].every(([member, analysis]) => {
     const other = second.get(member);
-    return other !== undefined && sameSummary(summary, other);
+    return (
+      other !== undefined &&
+      sameSummary(analysis.summary, other.summary) &&
+      sameItems(sameSummary)(analysis.defaults.summaries, other.defaults.summaries)
+    );
   });
 }

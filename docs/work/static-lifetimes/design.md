@@ -232,6 +232,11 @@ What C3 settled about requirements and defaults:
 - **A default is analysed as a function of the parameters before it,** and its summary joins its
   function's. A call leaving the argument out binds that parameter to what the default's value
   relates to.
+- **A default is analysed with its function, in its recursive group** (found by C4's QA): a typed
+  default may call back into its function, or into the struct whose field it is, so the call
+  graph's nodes are the functions with a body or defaults, and a group iterates its members'
+  defaults with their bodies. Analysed apart, such a default met its function's analysis running
+  and answered a stand-in that found nothing.
 - **A cycle a callee's own code makes at the types a call gives it** is reported at the call as
   its own case (5724), apart from a callee's write of what it is given (5721).
 

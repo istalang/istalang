@@ -6,6 +6,7 @@
  * does.
  */
 
+import { isDeepStrictEqual } from 'node:util';
 import { describe, expect, it } from 'vitest';
 import { stdProgramOf } from '../../../binder/bind.test-kit.ts';
 import { idOf } from '../../../program/program.test-kit.ts';
@@ -19,7 +20,7 @@ const main = idOf('main.ista');
 
 /**
  * A checker of `program` made after `previous`: the functions whose analyses it computed again,
- * by name, and the codes it reports, which a checker made afresh reports too.
+ * by name, the codes it reports, and whether a checker made afresh reports the same.
  */
 function checkedAfter(previous: ProgramChecker, program: Program) {
   const analysed: string[] = [];
@@ -32,8 +33,13 @@ function checkedAfter(previous: ProgramChecker, program: Program) {
     },
   });
   const diagnostics = checker.diagnosticsOf(main);
-  expect(diagnostics).toEqual(checkedApart(program).diagnosticsOf(main));
-  return { checker, analysed, codes: diagnostics.map(({ code }) => code) };
+  const fresh = checkedApart(program).diagnosticsOf(main);
+  return {
+    checker,
+    analysed,
+    codes: diagnostics.map(({ code }) => code),
+    asFresh: isDeepStrictEqual(diagnostics, fresh),
+  };
 }
 
 /** A checker of `program` made afresh, its module checked. */
@@ -58,7 +64,10 @@ describe('after an edit inside a callee', () => {
       ].join('\n');
     const first = stdProgramOf({ 'main.ista': textOf('n + 1') });
     const second = stdProgramOf({ 'main.ista': textOf('n + n') }, first);
-    expect(checkedAfter(checkedFirst(first), second).analysed).toEqual(['helper']);
+    expect(checkedAfter(checkedFirst(first), second)).toMatchObject({
+      analysed: ['helper'],
+      asFresh: true,
+    });
   });
 
   it('changing what it calls, or with defaults, still analyses only the callee', () => {
@@ -72,7 +81,10 @@ describe('after an edit inside a callee', () => {
       ].join('\n');
     const first = stdProgramOf({ 'main.ista': textOf('n + extra') });
     const second = stdProgramOf({ 'main.ista': textOf('id(n) + extra') }, first);
-    expect(checkedAfter(checkedFirst(first), second).analysed).toEqual(['helper']);
+    expect(checkedAfter(checkedFirst(first), second)).toMatchObject({
+      analysed: ['helper'],
+      asFresh: true,
+    });
   });
 
   it('changing its summary, analyses its callers again, and finds what they now do', () => {
@@ -92,8 +104,11 @@ describe('after an edit inside a callee', () => {
     const second = stdProgramOf({ 'main.ista': textOf('x->next = y') }, first);
     const third = stdProgramOf({ 'main.ista': textOf('()') }, second);
     const linked = checkedAfter(checkedFirst(first), second);
-    expect(linked.analysed).toEqual(['link', 'caller']);
-    expect(linked.codes).toEqual([cycleTemplates.cycleCall.code]);
-    expect(checkedAfter(linked.checker, third).codes).toEqual([]);
+    expect(linked).toMatchObject({
+      analysed: ['link', 'caller'],
+      codes: [cycleTemplates.cycleCall.code],
+      asFresh: true,
+    });
+    expect(checkedAfter(linked.checker, third)).toMatchObject({ codes: [], asFresh: true });
   });
 });

@@ -82,6 +82,14 @@ They found false positives too:
 - a callback's caller passing one value twice (`logNode(cb, x, x)`), required apart since the
   callback is unseen code. Kept: it takes that shape and a disposable.
 
+## Found by C4's QA
+
+- **Recursion through a typed default** was unsound: `fn link(a: Node, b: Node = makeNode())`
+  with `makeNode` calling `link`, or a field default calling a function that builds its struct.
+  A default was analysed apart from its function, so the cycle through it met an analysis still
+  running, whose stand-in found nothing, and the rule reported none of either function's cycles.
+  Fixed: a default is analysed with its function, in its recursive group (design.md §5.3).
+
 ## Accepted over-rejections
 
 C4 was to remove these with closures' captures and field labels; it is editor performance only,

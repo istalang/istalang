@@ -6,21 +6,20 @@
  *   leaves its argument out, with the parameters before it, so each is analysed as a function of
  *   those. Its violations are reported where it stands; its summary joins the function's, as a
  *   call that may run it does what it does; and what its value relates to is the argument a call
- *   leaving it out passes (`results`).
+ *   leaving it out passes (`results`). They are analysed with their function, in its recursive
+ *   group (lifetimes.ts): a default may call back into the function or the struct it belongs to.
  * - **A constant's initializer,** a context constant's or a top-level one's, a root: nothing
  *   calls it with anything.
  * - **A `dispose`,** which the runtime runs on any value of its type (design.md §5.5).
  */
 
-import type { EntryTable } from '../../../../foundation/structures/entries/index.ts';
 import type {
   ContextConstantDeclaration,
   FunctionDeclaration,
 } from '../../../syntax/declarations/index.ts';
-import { defaultValuesOf } from '../../../syntax/expressions/parameters.ts';
 import type { VariableDeclaration } from '../../../syntax/statements/index.ts';
 import type { FindingDeclaration } from '../../check.ts';
-import type { CheckerContext, CheckerNote } from '../../contexts/context.ts';
+import type { CheckerContext } from '../../contexts/context.ts';
 import { isDisposeFunction } from '../disposal/disposal.ts';
 import { flowsBuiltFor } from '../flow/build/index.ts';
 import type { FlowFunction } from '../flow/flow-ir.ts';
@@ -39,7 +38,8 @@ export interface DefaultsFound {
   readonly results: ReadonlyMap<number, readonly ResultRelation[]>;
 }
 
-const none: DefaultsFound = { violations: [], summaries: [], results: new Map() };
+/** What defaults find where a function writes none. */
+export const noDefaults: DefaultsFound = { violations: [], summaries: [], results: new Map() };
 
 /** What the declared findings read of the rule over the program. */
 export interface DeclaredDeps {
@@ -86,6 +86,30 @@ export function constantFlow(
   return body === undefined ? undefined : flowsBuiltFor(body).get(declaration.initializer);
 }
 
+/** What `declaration`'s defaults find, analysed in `context`. */
+export function defaultsFound(
+  checker: CheckerContext,
+  context: AnalysisContext,
+  declaration: FunctionDeclaration,
+): DefaultsFound {
+  const flows = defaultsFlows(checker, declaration);
+  if (flows.length === 0) {
+    return noDefaults;
+  }
+  const parameters = checker.parametersOf(declaration);
+  const found = flows.map(({ index, flow }) => {
+    const references = new Set(
+      flow.parameters.filter((_, at) => parameters[at]?.reference === true),
+    );
+    return { index, analysis: analyze(context, flow, { isAsync: false, references }) };
+  });
+  return {
+    violations: found.flatMap(({ analysis }) => analysis.violations),
+    summaries: found.map(({ analysis }) => analysis.summary),
+    results: new Map(found.map(({ index, analysis }) => [index, analysis.summary.result])),
+  };
+}
+
 /** `summary`, doing what its defaults do too, as a call may run any of them. */
 export function withDefaults(summary: Summary, defaults: DefaultsFound): Summary {
   return defaults.summaries.length === 0
@@ -95,29 +119,14 @@ export function withDefaults(summary: Summary, defaults: DefaultsFound): Summary
 
 export class Declared {
   readonly #deps: DeclaredDeps;
-  readonly #defaults: EntryTable<CheckerNote, FunctionDeclaration, DefaultsFound>;
 
   constructor(deps: DeclaredDeps) {
     this.#deps = deps;
-    this.#defaults = deps.checker.entries.table({
-      name: 'lifetime defaults',
-      compute: (declaration: FunctionDeclaration) => this.#defaultsFound(declaration),
-      // A default reaching its own function is an error of its own (§3.3), found elsewhere.
-      cyclic: { standIn: () => none },
-    });
-  }
-
-  /** What `declaration`'s defaults do: none, without an entry, where it writes none. */
-  defaultsOf(declaration: FunctionDeclaration): DefaultsFound {
-    return defaultValuesOf(declaration.parameters).length === 0
-      ? none
-      : this.#defaults.get(declaration);
   }
 
   /**
-   * What `declaration` violates where it stands, beside its body: its defaults' findings, a
-   * `dispose` letting go of what it was given, a constant's initializer. Read inside the entry
-   * reporting the declaration, which is its only reader.
+   * What `declaration` violates where it stands, beside its body and its defaults: a `dispose`
+   * letting go of what it was given, a constant's initializer.
    */
   violationsOf(declaration: FindingDeclaration): readonly Violation[] {
     const { checker } = this.#deps;
@@ -128,41 +137,19 @@ export class Declared {
         ? []
         : analyze(context, flow, { isAsync: false, references: new Set() }).violations;
     }
-    const parameters = checker.parametersOf(declaration);
-    const atDispose =
-      this.#deps.hasBody(declaration) && isDisposeFunction(checker, declaration)
-        ? escapingCycles(context.facts, this.#deps.analysisOf(declaration).summary, (input) =>
-            input.kind === 'parameter' ? parameters[input.index]?.type : undefined,
-          )
-            .filter((cycle) => cycleRelevance(context.facts, cycle) !== 'no')
-            .map(({ deciding }) => ({
-              kind: 'closure' as const,
-              site: declaration.name,
-              holderType: deciding,
-              callee: undefined,
-            }))
-        : [];
-    return [...this.defaultsOf(declaration).violations, ...atDispose];
-  }
-
-  #defaultsFound(declaration: FunctionDeclaration): DefaultsFound {
-    const { checker } = this.#deps;
-    const context = this.#deps.context();
-    const flows = defaultsFlows(checker, declaration);
-    if (flows.length === 0) {
-      return none;
+    if (!(this.#deps.hasBody(declaration) && isDisposeFunction(checker, declaration))) {
+      return [];
     }
     const parameters = checker.parametersOf(declaration);
-    const found = flows.map(({ index, flow }) => {
-      const references = new Set(
-        flow.parameters.filter((_, at) => parameters[at]?.reference === true),
-      );
-      return { index, analysis: analyze(context, flow, { isAsync: false, references }) };
-    });
-    return {
-      violations: found.flatMap(({ analysis }) => analysis.violations),
-      summaries: found.map(({ analysis }) => analysis.summary),
-      results: new Map(found.map(({ index, analysis }) => [index, analysis.summary.result])),
-    };
+    return escapingCycles(context.facts, this.#deps.analysisOf(declaration).summary, (input) =>
+      input.kind === 'parameter' ? parameters[input.index]?.type : undefined,
+    )
+      .filter((cycle) => cycleRelevance(context.facts, cycle) !== 'no')
+      .map(({ deciding }) => ({
+        kind: 'closure' as const,
+        site: declaration.name,
+        holderType: deciding,
+        callee: undefined,
+      }));
   }
 }

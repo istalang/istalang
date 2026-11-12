@@ -22,7 +22,7 @@
  */
 
 import type { EntryTable } from '../../../../foundation/structures/entries/index.ts';
-import { sameItems } from '../../../../foundation/structures/equality.ts';
+import { sameEntries, sameItems } from '../../../../foundation/structures/equality.ts';
 import { edgesReachedFrom } from '../../../../foundation/structures/reachable.ts';
 import type { ModuleId } from '../../../program/program.ts';
 import { functionsOf, isFieldsFunction } from '../../../syntax/declarations/field-defaults.ts';
@@ -42,16 +42,28 @@ import { flowsBuiltFor } from '../flow/build/index.ts';
 import type { FlowFunction } from '../flow/flow-ir.ts';
 import type { AnalysisContext, Violation } from './analysis/body.ts';
 import { type Analysis, analyze } from './analysis/index.ts';
-import { constantFlow, Declared, defaultsFlows, withDefaults } from './declared.ts';
+import { constantFlow, Declared, defaultsFlows, defaultsFound, withDefaults } from './declared.ts';
 import { Dispatch } from './dispatch.ts';
 import { typeFactsOf } from './facts.ts';
-import { type Call, groupOf, sameGroupSummaries } from './groups.ts';
+import {
+  type Call,
+  type DefaultResults,
+  doesNothing,
+  type FunctionAnalysis,
+  type GroupAnalyses,
+  groupOf,
+  hasBody,
+  hasCode,
+  sameGroupAnalyses,
+} from './groups.ts';
 import { diagnosticOf } from './reports.ts';
 import {
   constructorSummary,
   emptySummary,
   nativeSummary,
+  type ResultRelation,
   type Summary,
+  sameResults,
   sameSummary,
 } from './summary.ts';
 
@@ -59,12 +71,9 @@ export class Lifetimes implements LifetimeQueries {
   readonly #checker: CheckerContext;
   readonly #callees: EntryTable<CheckerNote, FunctionDeclaration, readonly FunctionDeclaration[]>;
   readonly #groups: EntryTable<CheckerNote, FunctionDeclaration, readonly FunctionDeclaration[]>;
-  readonly #analyses: EntryTable<
-    CheckerNote,
-    FunctionDeclaration,
-    ReadonlyMap<FunctionDeclaration, Analysis>
-  >;
+  readonly #analyses: EntryTable<CheckerNote, FunctionDeclaration, GroupAnalyses>;
   readonly #summaries: EntryTable<CheckerNote, FunctionDeclaration, Summary>;
+  readonly #defaultResults: EntryTable<CheckerNote, FunctionDeclaration, DefaultResults>;
   readonly #context: AnalysisContext;
   readonly #declared: Declared;
   readonly #dispatch: Dispatch;
@@ -85,7 +94,7 @@ export class Lifetimes implements LifetimeQueries {
     this.#analyses = checker.entries.table({
       name: 'lifetime analyses',
       compute: (first: FunctionDeclaration) => this.#analyzeGroup(this.#groupOf(first)),
-      // Reached again only through a default reaching its own function, an error found elsewhere.
+      // Reached again only where a default types its own function, an error of its own (§3.3).
       cyclic: { standIn: () => new Map() },
     });
     this.#summaries = checker.entries.table({
@@ -97,6 +106,11 @@ export class Lifetimes implements LifetimeQueries {
         standIn: (declaration) =>
           isFieldsFunction(declaration) ? constructorSummary(checker, declaration) : emptySummary,
       },
+    });
+    this.#defaultResults = checker.entries.table({
+      name: 'lifetime default results',
+      compute: (declaration: FunctionDeclaration) => this.#analysisOf(declaration).defaults.results,
+      equal: sameEntries(sameResults),
     });
     this.#declared = new Declared({
       checker,
@@ -119,8 +133,7 @@ export class Lifetimes implements LifetimeQueries {
       facts: typeFactsOf(checker),
       calleeSummary: (call) => this.#calleeSummary(call, undefined),
       parametersOf: (declaration) => checker.parametersOf(declaration),
-      defaultResult: (declaration, index) =>
-        this.#declared.defaultsOf(declaration).results.get(index) ?? [],
+      defaultResult: (declaration, index) => this.#defaultResult(declaration, index, undefined),
       substitute: (type, call) => substitutedIn(checker, type, call),
       readsWhatItIterates: (iterate) => checker.isStd(checker.moduleOf(iterate)),
       witnessesOf: (call) => this.#dispatch.witnessesOf(call),
@@ -155,7 +168,7 @@ export class Lifetimes implements LifetimeQueries {
     const keyOf = (type: Type) => this.#checker.typeKeys.typeKey(type);
     const found = new Map<NodeOf<string>, Map<string, Violation>>();
     for (const violation of [
-      ...(declaration.kind === 'FunctionDeclaration' && hasBody(declaration)
+      ...(declaration.kind === 'FunctionDeclaration' && hasCode(declaration)
         ? this.#analysisOf(declaration).violations
         : []),
       ...this.#declared.violationsOf(declaration),
@@ -178,12 +191,15 @@ export class Lifetimes implements LifetimeQueries {
 
   #ownFunctions(module: ModuleId): readonly FunctionDeclaration[] {
     const items = this.#checker.inputs.itemsOf(module);
-    return functionsOf({ items }).filter((declaration) => hasBody(declaration));
+    return functionsOf({ items }).filter(hasCode);
   }
 
-  /** The functions with bodies `caller`'s body calls, witnesses included. */
+  /** The functions with code `caller`'s body and defaults call, witnesses included. */
   #calleesOf(caller: FunctionDeclaration): readonly FunctionDeclaration[] {
-    const calls = this.#checker.bodyOf(caller)?.madeCalls() ?? [];
+    const calls = [
+      ...((hasBody(caller) ? this.#checker.bodyOf(caller)?.madeCalls() : undefined) ?? []),
+      ...(this.#checker.defaultsOf(caller)?.madeCalls() ?? []),
+    ];
     const callees = new Set(
       calls.flatMap(({ call }) =>
         [
@@ -192,7 +208,7 @@ export class Lifetimes implements LifetimeQueries {
         ].map((each) => each.function),
       ),
     );
-    return [...callees].filter(hasBody);
+    return [...callees].filter(hasCode);
   }
 
   /** The members of `declaration`'s recursive group, in the call graph it reaches. */
@@ -214,67 +230,82 @@ export class Lifetimes implements LifetimeQueries {
     return this.#groups.get(declaration);
   }
 
-  #analysisOf(declaration: FunctionDeclaration): Analysis {
+  #analysisOf(declaration: FunctionDeclaration): FunctionAnalysis {
     const [first] = this.#groupOf(declaration) as [FunctionDeclaration];
-    const found = this.#analyses.get(first).get(declaration);
-    return found ?? { summary: emptySummary, violations: [], inputTypes: new Map() };
+    return this.#analyses.get(first).get(declaration) ?? doesNothing;
   }
 
-  /** Analyses a group's members together, from summaries doing nothing, until none changes. */
-  #analyzeGroup(
-    members: readonly FunctionDeclaration[],
-  ): ReadonlyMap<FunctionDeclaration, Analysis> {
+  /**
+   * Analyses a group's members together, bodies and defaults, from analyses doing nothing, until
+   * no summary changes, a default's included: a default may call back into the group.
+   */
+  #analyzeGroup(members: readonly FunctionDeclaration[]): GroupAnalyses {
     const [first] = members as [FunctionDeclaration];
     const recursive = members.length > 1 || this.#callees.get(first).includes(first);
-    let current = new Map(members.map((member) => [member, emptySummary] as const));
+    let current: GroupAnalyses = new Map(members.map((member) => [member, doesNothing] as const));
     for (;;) {
-      const analyses = this.#analyzeAll(members, current, recursive);
-      const next = new Map(
-        [...analyses].map(([member, { summary }]) => [member, summary] as const),
-      );
-      if (!recursive || sameGroupSummaries(current, next)) {
-        return analyses;
+      const next = this.#analyzeRound(members, current, recursive);
+      if (!recursive || sameGroupAnalyses(current, next)) {
+        return next;
       }
       current = next;
     }
   }
 
-  #analyzeAll(
+  /** One round of a group's analyses, reading the round before's as `guesses`. */
+  #analyzeRound(
     members: readonly FunctionDeclaration[],
-    guesses: ReadonlyMap<FunctionDeclaration, Summary>,
+    guesses: GroupAnalyses,
     recursive: boolean,
-  ): ReadonlyMap<FunctionDeclaration, Analysis> {
+  ): GroupAnalyses {
     return new Map(
       members.map((member) => [member, this.#analyzeFunction(member, guesses, recursive)]),
     );
   }
 
+  /** `declaration`'s analysis, its body's and its defaults', reading `group`'s as guessed. */
   #analyzeFunction(
     declaration: FunctionDeclaration,
-    group: ReadonlyMap<FunctionDeclaration, Summary>,
+    group: GroupAnalyses,
+    recursive: boolean,
+  ): FunctionAnalysis {
+    const context: AnalysisContext = {
+      ...this.#context,
+      calleeSummary: (call) => this.#calleeSummary(call, group),
+      defaultResult: (callee, index) => this.#defaultResult(callee, index, group),
+    };
+    const own = this.#ownAnalysis(declaration, context, recursive);
+    const defaults = defaultsFound(this.#checker, context, declaration);
+    return {
+      ...own,
+      summary: withDefaults(own.summary, defaults),
+      violations: [...own.violations, ...defaults.violations],
+      defaults,
+    };
+  }
+
+  /** What `declaration` does but for its defaults: its body's analysis, or a native's or fields'. */
+  #ownAnalysis(
+    declaration: FunctionDeclaration,
+    context: AnalysisContext,
     recursive: boolean,
   ): Analysis {
+    if (!hasBody(declaration)) {
+      return { ...doesNothing, summary: this.#bodilessSummary(declaration) };
+    }
     const flow = this.#flowOf(declaration);
     if (flow === undefined) {
-      return { summary: emptySummary, violations: [], inputTypes: new Map() };
+      return doesNothing;
     }
     const parameters = this.#checker.parametersOf(declaration);
     const references = new Set(
       flow.parameters.filter((_, index) => parameters[index]?.reference === true),
     );
-    const context: AnalysisContext = {
-      ...this.#context,
-      calleeSummary: (call) => this.#calleeSummary(call, group),
-    };
-    const found = analyze(context, flow, {
+    return analyze(context, flow, {
       isAsync: declaration.qualifiers.async !== undefined,
       references,
       recursive,
     });
-    return {
-      ...found,
-      summary: withDefaults(found.summary, this.#declared.defaultsOf(declaration)),
-    };
   }
 
   /** The flow of `declaration`'s body, if it has one: its body's only root's, as checking built it. */
@@ -301,36 +332,41 @@ export class Lifetimes implements LifetimeQueries {
   }
 
   /** What `call`'s function does: a group member's guess, or its summary. */
-  #calleeSummary(
-    call: FunctionCall,
-    group: ReadonlyMap<FunctionDeclaration, Summary> | undefined,
-  ): Summary {
-    return group?.get(call.function) ?? this.#summaries.get(call.function);
+  #calleeSummary(call: FunctionCall, group: GroupAnalyses | undefined): Summary {
+    return group?.get(call.function)?.summary ?? this.#summaries.get(call.function);
+  }
+
+  /**
+   * What the default of `callee`'s parameter at `index` relates to: a group member's guess, or an
+   * entry of its own, so an edit inside `callee`'s body keeping it stops there, as its summary
+   * does.
+   */
+  #defaultResult(
+    callee: FunctionDeclaration,
+    index: number,
+    group: GroupAnalyses | undefined,
+  ): readonly ResultRelation[] {
+    const results = group?.get(callee)?.defaults.results ?? this.#defaultResults.get(callee);
+    return results.get(index) ?? [];
   }
 
   /**
    * What calling `declaration` does, one entry for every kind of function, so a call reads one: a
-   * native's declaration (design.md §6.4), a fields function's construction, or a body's summary;
+   * body's summary, a native's declaration (design.md §6.4) or a fields function's construction,
    * each with what its defaults do, since a call may run any of them.
    */
   #summaryOf(declaration: FunctionDeclaration): Summary {
-    if (hasBody(declaration)) {
-      return this.#analysisOf(declaration).summary;
-    }
-    const own = declaration.isExtern
+    return hasCode(declaration)
+      ? this.#analysisOf(declaration).summary
+      : this.#bodilessSummary(declaration);
+  }
+
+  /** What a native or a fields function does, but for its defaults. */
+  #bodilessSummary(declaration: FunctionDeclaration): Summary {
+    return declaration.isExtern
       ? nativeSummary(this.#checker, declaration)
       : constructorSummary(this.#checker, declaration);
-    return withDefaults(own, this.#declared.defaultsOf(declaration));
   }
-}
-
-/**
- * Whether `declaration` is written with a body: neither an extern nor a fields function. Read off
- * its declaration, so an edit inside a body leaves what asks alone; a body the parser lost is
- * analysed as doing nothing, its error reported elsewhere.
- */
-function hasBody(declaration: FunctionDeclaration): boolean {
-  return !(declaration.isExtern || isFieldsFunction(declaration));
 }
 
 /** `type`, written in `call`'s function, as `call` instantiates it. */
