@@ -11,7 +11,8 @@
  *
  * A cold open is timed too: a new workspace's first diagnostics of the module, which check every
  * std body its functions reach (static lifetimes' summaries, docs/work/static-lifetimes/design.md
- * §8). It has no budget of its own: plan C4 is held within 20% of C3's.
+ * §8). It has no budget of its own; the rule's share of both is design.md §8's, measured paired
+ * against the rule off.
  *
  * What is timed is the build (`dist/`), which Node loads itself (vitest.config.ts): the code an
  * editor runs. The sources through vitest's module runner take half as long again, every call

@@ -1,5 +1,5 @@
 ---
-description: static lifetimes' dry-run findings — the false positives C3's analysis met over the std, the corpus, the spec and the examples, what C3 refined for each, and the ones left to C4; read before working on the analysis's precision or C4
+description: static lifetimes' dry-run findings — the false positives C3's analysis met over the std, the corpus, the spec and the examples, what C3 refined for each, and the over-rejections accepted with their workarounds; read before working on the analysis's precision
 owner: tech-lead
 status: active
 applies_to: istalang
@@ -12,7 +12,8 @@ tags: [lifetimes, checker, findings]
 
 C3's dry run (plan.md, C3 step 2) ran the analysis over the std, the corpus, the spec's suites, the
 examples and the runtime tests' programs before any diagnostic was on. Here are its false positives,
-what removed each, and the ones C4 must remove. The real cycles it found are in design.md §10.
+what removed each, and those accepted, each with its workaround. The real cycles it found are in
+design.md §10.
 
 ## Removed in C3
 
@@ -39,8 +40,7 @@ what removed each, and the ones C4 must remove. The real cycles it found are in 
   then wrote the rest back. `retract` is code nobody sees, called with the receipts' entries in
   reach, so the body relied on `receipt` sharing nothing with them: a separation requirement no
   caller can meet, since a receipt is held in the receipts it is looked up in. It now retracts once
-  the rest is written back, which also keeps a retraction from seeing its own entry. Under C4's
-  closure captures, `retract` is `held->value = none`, and the requirement goes.
+  the rest is written back, which also keeps a retraction from seeing its own entry.
 
 ## Found by C3's review
 
@@ -82,7 +82,10 @@ They found false positives too:
 - a callback's caller passing one value twice (`logNode(cb, x, x)`), required apart since the
   callback is unseen code. Kept: it takes that shape and a disposable.
 
-## Left to C4
+## Accepted over-rejections
+
+C4 was to remove these with closures' captures and field labels; it is editor performance only,
+and the rule stays conservative (design.md §5.6, §5.7; decided 2026-11-12). Each has a workaround.
 
 - **FormBuilder's `run`** (`forms.ista`, `view.draw(Scope{data: before, ctx}, &out)`). The loop
   awaits `out.waits`' closures, which the drawing's witnesses made (`peek`'s
@@ -90,21 +93,25 @@ They found false positives too:
   function values reaching the scope and the tasks. That unseen code, and the suspends after it,
   relate the model, the view, the context and the inboxes by types, since `M`, `C` and `any View`
   may reach anything. Then the scope's data may reach the view's parts, and the dispatched
-  witnesses' requirements fail: 4 errors at the call, and the generic ones at each generated
-  form's `forms.run(…)`. `test/examples.test.ts` marks FormBuilder `it.fails` until C4's
-  closure captures (design.md §5.6). Its real cycles, the `Task`s, are fixed (design.md §10).
+  witnesses' requirements fail. Workaround: queue what is waited for as data (the task, its
+  `eval` and its scope) rather than closures, and await it in known code. `test/examples.test.ts`
+  marks FormBuilder `it.fails` until its rewrite.
 - **`runtime.delegate`'s tests** (`src/stdlib/runtime/delegate.test.ts`, two programs). Each
   writes a delegated job's future into a context constant, `kept`, from a function it gives
   `rt.call`. That function escapes, so its requirement that `_jobs` not reach `kept` is checked by
-  types, and the job table's closures may hold anything. The tests run through
-  `textDespiteCycles`, the oracle checking their heaps, until C4.
+  types, and the job table's closures may hold anything. They run through `textDespiteCycles`,
+  the oracle checking their heaps. Workaround: keep the job's future through a `WeakRef`, or
+  return it rather than storing it from the function given.
 - **A copy of one part of a parameter related to its others** (`const x = p.a; const y = p.b;
   link(x, y)`): a read part aliases its whole, so a copy of it aliases the whole's other parts once
-  they are read. C4's field labels make containment directional.
-- **Input parts inside recursive groups,** named whole there (design.md §5.7).
+  they are read. Workaround: pass the parts as parameters of their own.
+- **Input parts inside recursive groups,** named whole there (design.md §5.7). Workaround: the
+  same, or take the recursion out of the group.
 - **A read through a value related to its parts' other parts:** reading `x->f` makes what shares
   with `x`, its parts among them, reach the value read, since without labels any part may reach it.
+  Workaround: read the field once, before relating the others.
 - **A closure writing one capture into another** (`fn save(): box->next = n`) is checked for any
-  values of their types where it is made: plan.md's C4, what escaping closures capture.
+  values of their types where it is made. Workaround: a function taking both as parameters.
 - **An escaped plain function written after an `await`,** and **relinking after unlinking**
-  (`node->next = other`): plan.md's C4 acceptance. C3's dry run met neither outside FormBuilder.
+  (`node->next = other`). Workaround: hold one side through a `WeakRef`. C3's dry run met neither
+  outside FormBuilder.

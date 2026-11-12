@@ -1,6 +1,6 @@
 /**
  * The inputs a function's findings are lifted to (design.md §5.3), and the parts of them it read
- * (design.md §5.7, pulled forward from C4): a requirement on two fields of one input, `p.a` and
+ * (design.md §5.7): a requirement on two fields of one input, `p.a` and
  * `p.b`, is its caller's to check of what it gave, where `p` and `p` would be no requirement.
  *
  * - **An input path** is a part read of an input: of its node as given, or of the parameter that
@@ -8,8 +8,8 @@
  *   given. A part of an input path is one too.
  * - **A recursive group's members name their inputs whole** (design.md §5.7): a call within the
  *   group maps a parameter to a part of one, so each round would name parts of parts, without
- *   bound. A part shares with its input, so a finding on the input covers it. C4's field labels
- *   bring parts back there.
+ *   bound. A part shares with its input, so a finding on the input covers it; field labels, not
+ *   built, would bring parts back there.
  * - **Pairs** are lifted between inputs on different branches: an input and a part of it are one
  *   value's, so neither may come to reach the other but through a cycle.
  */

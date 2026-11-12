@@ -28,7 +28,7 @@ tags: [tracker]
 | Identity, variance and inference (`docs/work/variance-inference/plan.md`; closed F25) | done |
 | Proposal 8, live and ista async (`docs/work/async-kinds/plan.md`; merge review closed every finding, Q52–Q55 left) | done |
 | Proposal 9, native runtime (`docs/proposals/9-native-runtime.md`), beyond async-kinds CX's minimal slice | not planned: a plan of its own |
-| Static lifetimes (`docs/work/static-lifetimes/plan.md`) | in progress: C1, C2, R1, R2 and C3 done; C4 follows, beside R3 |
+| Static lifetimes (`docs/work/static-lifetimes/plan.md`) | in progress: C1, C2, R1, R2, C3 and C4 done; R3 next |
 | M8 Packages | planned |
 
 ## Filed
@@ -118,6 +118,7 @@ Time and memory: measured costs, quadratic paths, hot-path checks.
 | P46 | An editor's build reads every project file that isn't open from disk at every keystroke to see whether its text changed (38% of a corpus build with nothing open). | small | — | test-speed report 2026-11-10 |
 | P47 | The checker checks again, for every program it lowers, each std body lowering reaches, and lowering lowers it again: a program opening a runtime costs 3.5 ms to lower before `Runtime.open` became Istalang, 5 ms after, and a delegating one about 14 ms, its job server's 45 functions with it, so every compile pays per std function it reaches. Reusing checked std bodies across programs, or lowered std entries, removes it. | medium | — | async-kinds DG 2026-11-11 |
 | P48 | A runtime's job loop (`runtime._serveInstance`, runtime.ista) takes over and polls every instance of a delegating program, whether or not it ever delegates: each makes `_jobs`, commits twice more, and keeps a `runtime._nextWork` call waiting, which `waitingAt` and a stuck run's report list beside the program's own waits. Fix: serve only an instance with an unanswered job, one whose last commit waits at the `job` waypoint, ending its loop once none remains and serving it again at its next job; cost, one waiting call per instance with jobs. Proposal 9's runtime, keeping job state itself, ends it. | medium | proposal 9 | async-kinds DG review 2026-11-11 |
+| P49 | A revision validates every entry a module's check reaches by replaying its reads, whether or not any input it reaches changed, so an edit costs as much as the module has entries, not as much as it changed. On the 2,098-line module of `edit.bench.ts`, static lifetimes adds about 1,400 of its own entries and 400 std ones to that walk: +3.2 ms per warm edit (paired, rule off 26 ms, most of which is the same validation), of which analysing what changed is 0.3 ms. Options: skip what no changed input reaches (invalidation pushed from the inputs an edit changed), or a durability per input, std inputs never changing in an editor. | big | none | static-lifetimes C4 2026-11-12 |
 
 ### Code quality (Q)
 

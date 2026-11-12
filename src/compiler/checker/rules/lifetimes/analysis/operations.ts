@@ -14,8 +14,8 @@
  * - **An `await`'s own `onAwait`** registers its wait's case, which holds nothing past the wait
  *   (design.md §3), so it is no write.
  * - **The std's cursors** (`iterate`) give the items of what they iterate, and run nothing else:
- *   each is a closure of the std reading its own value, which a summary can't yet say of a
- *   function it gives back (C4).
+ *   each is a closure of the std reading its own value, which a summary can't say of a function
+ *   it gives back (design.md §5.6).
  */
 
 import type { FunctionCall, RequirementCall } from '../../../surface/resolved-call.ts';

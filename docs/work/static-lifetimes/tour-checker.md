@@ -342,7 +342,7 @@ The node kinds are in `src/compiler/syntax/expressions/index.ts` and `syntax/sta
 | Where | What | Decision |
 |---|---|---|
 | `src/stdlib/collections/collections.ista` `WeakMap.set` | `self->entries[reference] = _Entry{value, watch}`, with `watch` from `_deleteOnDisposal(self, reference)`, an `ista async fn` that holds the map until the key is disposed. `WeakMap` declares no `dispose` | rewritten inside `collections`, `WeakMap`'s type, API and conformance unchanged: the entries move into a private `shared struct _Store` with an empty `dispose`, which the watch holds through a `WeakRef<_Store>` (design.md §10). `Bus` declares `ista fn dispose<M>(self: Bus<M>): ()` for the same reason |
-| `examples/FormBuilder/forms.ista` `Task` | `task->running = _run(task, …)` at lines 249 and 512, where `_run` writes `task->value` and `task->done`. Tasks are built through `awaited(` and `later(` 12 times in `supplier.gen.ista` and 5 in `order.gen.ista`; `catalog/contact-card@^1.ista` builds none | `Task` declares an empty `dispose`, and `_run` holds it through a `WeakRef`. FormBuilder still fails on its `run`, `it.fails` in `test/examples.test.ts` until C4 (`findings.md`) |
+| `examples/FormBuilder/forms.ista` `Task` | `task->running = _run(task, …)` at lines 249 and 512, where `_run` writes `task->value` and `task->done`. Tasks are built through `awaited(` and `later(` 12 times in `supplier.gen.ista` and 5 in `order.gen.ista`; `catalog/contact-card@^1.ista` builds none | `Task` declares an empty `dispose`, and `_run` holds it through a `WeakRef`. FormBuilder still fails on its `run`, `it.fails` in `test/examples.test.ts` until its rewrite (`findings.md`) |
 | `src/stdlib/testing/testing.ista` `_disposeReceipt` | calls each receipt's `retract` while iterating the receipts, which unseen code then may have made reach them | it retracts once the rest is written back (`findings.md`) |
 | `test/corpus/holders/dispose.ista` `cycle()` | `b->partner = a; a->partner = b` | `holders/invalid-cycle.ista` |
 | `src/runtime/scheduler/instance/on-cancel.test.ts`, the B76 pair and R1's "given that resolver" cases | `d2->r = r`, with `r`'s callback reading `d2`; `watching.onCancel` capturing `watching` | `holders/invalid-resolver-cycle.ista`, `holders/invalid-own-resolver.ista` |
@@ -377,22 +377,31 @@ A subscriber's call (`_follow`) walks the chain with `read` and reaches the bus 
 `boundary/host-codecs.test.ts`, `boundary/host-resources.test.ts` and `testing/run-tests.test.ts`
 declare only `extern shared struct`s.
 
-## The editor's budget (C3) and the refinements (C4)
+## The editor's cost (C3, C4)
 
 - **Warm edits:** `src/editor/language-service/edit.bench.ts` (`npm run bench`), 5 warmup
   iterations. The budget is 5 ms for 246 lines and 15 ms for 2,098.
 - **A cold open** is timed by `edit.bench.ts` too, through `workspace.ts`: a new workspace's first
-  diagnostics of each module. C4 is held within 20% of C3's.
-- **Measured at C3's end** on a machine slower than the budget's (rule off → on, median ms): warm
-  edit 8.0 → 12.4 (246 lines), 26.5 → 43.2 (2,098 lines); cold open 50.3 → 76.8, 184.1 → 215.2.
-  The 2,098-line edit adds 16.7 ms; C4 owns the 2 ms budget, through per-closure entries.
-  An edit inside one closure of a test suite analyses the suite's function again, all its closures
-  with it. A function holding nothing relevant takes one pass instead of the fixed point
-  (`analysis/index.ts`), which most of a suite's closures are.
-- **C4's entries** are per module, beside the module's other rules (`ModuleRules`). The IR shows
-  which closures escape, so C4 needs no new syntax facts.
-- **C4** changes the transfer functions only. C3 already carries labels in pairs, summaries and
-  requirements.
+  diagnostics of each module.
+- **Measure the rule paired:** skip `checker.lifetimes.check` in `module-checks.ts` behind a
+  temporary environment switch read at compute time, then edit two workspaces in turn in one
+  process, one with the switch on, so both run under the same load. Separate runs on a shared
+  machine differ by more than the rule costs. design.md §8 has C3's and C4's figures.
+- **What a warm edit costs** is mostly validation, not analysis: each revision replays every entry
+  a module's check reaches. Count what is replayed and computed per table (`#takeOver` and the
+  `observe` seam in `foundation/structures/entries/index.ts`) before changing anything; tracker
+  P49.
+- **C4 found two edges an edit kept crossing:** a caller asked whether its callee had a body
+  through the callee's body input, which changes with every edit inside it (now
+  `hasBody` reads the declaration), and the module's walk for noted constraint checks crossed the
+  std bodies the rule's summaries reach (now run before the rule, `module-checks.ts`).
+- **Per-closure entries don't pay:** lambdas aren't segments of their own
+  (`parser/incremental/reuse.ts`), so an edit inside a closure makes every closure of its function
+  anew; after an edit inside a callee they saved nothing measurable once callers stopped reading
+  its body.
+- **What closures capture and field labels** are not built (design.md §5.6, §5.7). C3 carries a
+  label in pairs, summaries and requirements, always `anyField`, and `heldOfFunction`
+  (`type-reach.ts`) is the seam a refinement of closures would take.
 
 ## Lowering on the IR (C5)
 

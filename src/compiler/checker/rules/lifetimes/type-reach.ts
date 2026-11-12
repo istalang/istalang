@@ -5,7 +5,7 @@
  *
  * - **Relevance** is the most any type a value holds at any depth (`heldTypes`) says: a disposable
  *   says yes, and so does a plain function or an `any` value, which hold what they capture or
- *   dispatch to, which no type shows (until C4: `heldOfFunction`); a type parameter says it
+ *   dispatch to, which no type shows (`heldOfFunction`); a type parameter says it
  *   depends on its instantiation. A sendable type reaches nothing of its instance.
  * - **Handles at the grain of their declarations:** a value of a type holds some handles directly,
  *   not through another handle (`top`), and may reach others through their cells (`inner`). Type
@@ -69,8 +69,8 @@ function ownRelevance(checker: CheckerContext, type: Type): Relevance {
 }
 
 /**
- * The seam C4 refines (design.md §5.6): what a plain function value may hold, until then anything,
- * since what it captures is no part of its type. A sendable one captures only sendable values.
+ * The seam a refinement of what closures capture would take (design.md §5.6): what a plain
+ * function value may hold, anything, since what it captures is no part of its type. A sendable one captures only sendable values.
  */
 function heldOfFunction(type: FunctionType): Relevance {
   return isSendableFunction(type) ? 'no' : 'yes';
@@ -83,7 +83,7 @@ type Handles = 'any' | ReadonlySet<NominalEntity>;
  * The handles a value of a type holds directly (`top`), and those it may reach through them
  * (`inner`); and whether it may hold a closure directly, or reach one. A closure is an object of
  * its own, which only another closure may be; what it captures is no part of its type, so it may
- * reach any handle at all (until C4: `heldOfFunction`).
+ * reach any handle at all (`heldOfFunction`).
  */
 export interface HandleReach {
   readonly top: Handles;

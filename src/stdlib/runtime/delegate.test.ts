@@ -259,7 +259,7 @@ describe('delegate', () => {
         });
       },
     };
-    // C4: by types, the job table's closures may hold `kept` until closures' captures are known.
+    // By types, the job table's closures may hold `kept`: what closures capture isn't refined.
     const disposedMidJob = textDespiteCycles(
       lines(
         "import * as runtime from 'runtime'",
@@ -295,7 +295,7 @@ describe('delegate', () => {
       ...host,
       'main.phase()': () => BigInt(phase),
     };
-    // C4: by types, the job table's closures may hold `kept` until closures' captures are known.
+    // By types, the job table's closures may hold `kept`: what closures capture isn't refined.
     const program = textDespiteCycles(
       lines(
         ...header,

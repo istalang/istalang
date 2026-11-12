@@ -39,11 +39,10 @@ function exampleProject(name: string): Project {
 }
 
 /**
- * The examples static lifetimes still rejects where it can't yet see what a closure holds: C4
- * (docs/work/static-lifetimes/plan.md) makes them check, and its findings are listed in
- * docs/work/static-lifetimes/findings.md.
+ * The examples static lifetimes rejects where it can't see what a closure holds, until they are
+ * rewritten as docs/work/static-lifetimes/findings.md says (Accepted over-rejections).
  */
-const awaitingC4: ReadonlySet<string> = new Set(['FormBuilder']);
+const awaitingRewrite: ReadonlySet<string> = new Set(['FormBuilder']);
 
 /** What example project `name` couldn't read, and the errors it reports. */
 function checked(name: string) {
@@ -54,11 +53,14 @@ function checked(name: string) {
 const clean = { unreadable: [], errors: [] };
 
 describe('the examples', () => {
-  it.each(projects.filter((name) => !awaitingC4.has(name)))('%s checks with no error', (name) => {
-    expect(checked(name)).toEqual(clean);
-  });
+  it.each(projects.filter((name) => !awaitingRewrite.has(name)))(
+    '%s checks with no error',
+    (name) => {
+      expect(checked(name)).toEqual(clean);
+    },
+  );
 
-  it.fails.each([...awaitingC4])('%s checks with no error, once C4 lands', (name) => {
+  it.fails.each([...awaitingRewrite])('%s checks with no error, once rewritten', (name) => {
     expect(checked(name)).toEqual(clean);
   });
 
@@ -70,7 +72,7 @@ describe('the examples', () => {
     }
   });
 
-  it.fails('FormBuilder generated views compile, once C4 lands', () => {
+  it.fails('FormBuilder generated views compile, once rewritten', () => {
     const root = `${examples}FormBuilder`;
     const mainId = moduleIdOf(pathToFileURL(join(root, 'main-entry.ista')));
     const mainText = [

@@ -153,7 +153,7 @@ A type **reaches a disposable** when:
 - it is disposable (`isDisposable`); or
 - it holds such a type at any depth (`heldPartsOf`, with `@Holds` for externs); or
 - it is a plain function type or a call future. Both hold what they capture or run, which types
-  don't show; until C4 (§5.6) that counts as anything.
+  don't show, so that counts as anything (§5.6).
 
 A sendable function type reaches nothing. Relevance is memoized per type.
 
@@ -288,7 +288,7 @@ Other code can change how escaped values reach each other:
 
 **The declaration graph** models that code, from declarations alone, with no bodies: handle type
 `H` may come to hold type `V` when one of `H`'s held types fits `V`. Plain function types and call
-futures may hold anything until C4 (§5.6). C3 settled three more points:
+futures may hold anything (§5.6). C3 settled three more points:
 - **A closure is an object of its own.** A function value's reach is a closure, and what that
   closure holds may be anything. So a closure never *is* another object, and a value holding one
   aliases nothing through it.
@@ -325,30 +325,20 @@ This is the only place types stand in for flow, and only for escaped values.
   is possible, and with them holding nothing, whether it is sure. A cycle only a type parameter's
   instantiation could close is decided by that instantiation, as any `depends` one is.
 
-### 5.6 Planned refinement: what closures capture (C4)
+### 5.6 What closures capture: not refined
 
-Until C4, a plain function value may hold anything in the declaration graph, so a write after a
-`suspend` that involves an escaped plain function is often reported. C4 replaces "anything" with
-what closures of a fitting type actually capture. It follows C3 directly (decided 2026-11-12):
-FormBuilder's `run` awaits closures its drawing collected, so it fails until then
-(`findings.md`).
+A plain function value may hold anything in the declaration graph, so a write after a `suspend`
+that involves an escaped plain function is often reported. Refining "anything" into what closures
+of a fitting type actually capture was planned as C4 and is not built (decided 2026-11-12): the
+rule stays conservative, and a program it over-rejects has a workaround (`findings.md`, Accepted
+over-rejections). FormBuilder's `run`, which awaits closures its drawing collected, is one: it
+stays `it.fails` until its rewrite.
 
-- **Per module, an entry** gathers what each escaping closure captures (made in a body and stored,
-  or given to code that keeps it, which the IR shows), keyed by its function type. Functions named
-  as values capture nothing.
-- **The program's view** is the union of the modules' entries, read only when a check reaches an
-  escaped plain function value.
-- **Prepared in C3:** the declaration graph reads a plain function type's held types through one
-  seam, which answers "anything" until C4.
-- **Cost:** the union reads every module's bodies, so C4 measures a cold open (§8). A module whose
-  closures' captured types don't change cuts off.
-
-### 5.7 Fields: paths in C3, labels in C4
+### 5.7 Fields: paths, no labels
 
 C3 took the paths, together with §5.5's separation requirements (decided 2026-11-12). A member
 of a recursive group names its inputs whole: a call within the group maps a parameter to a part
-of one, so each round would name parts of parts without bound. C4's labels bring parts back there
-(decided 2026-11-12).
+of one, so each round would name parts of parts without bound.
 - **An input's parts are inputs of their own** (`self.items`, `self->_store`): a read of one is a
   path node, re-read as the same value until a write may change it. A requirement or separation on
   a part names the part, which a caller passing two fields of one value checks separately.
@@ -356,15 +346,11 @@ of one, so each round would name parts of parts without bound. C4's labels bring
   field's value.
 - **Materializing an input's path at a join** relates it to its root alone, never to its siblings.
 
-C4 keeps the labels:
-- **Labels:** a pair carries the set of fields its path leaves the source through (`a ⇝{f} b`), as
-  in Zanardini–Genaim 2014.
-- **Reads:** `z <- x.f` reaches only what `x` reaches through `f`.
-- **Strong updates on fields:** a write to `x.f`, where `x` aliases nothing else, removes `x`'s pairs
-  labelled `{f}` alone. So unlinking and relinking (`node->next = other`) stays precise.
-- **Unchanged:** the cycle check, since a cycle through any field is one.
-- **Prepared in C3:** pairs, summaries and requirements carry a label from the start, always "any
-  field" until C4. C4 changes the transfer functions only.
+Labels, a set of fields on each pair (`a ⇝{f} b`, Zanardini–Genaim 2014) with reads through one
+field and strong updates on fields, were planned as C4 and are not built (decided 2026-11-12).
+Pairs, summaries and requirements carry a label, always "any field", so they can come later
+without reshaping anything. Until then relinking after unlinking (`node->next = other`) and a read
+related to its parts' siblings are over-rejected (`findings.md`).
 
 ## 6. Externs
 
@@ -523,26 +509,33 @@ give the path.
 ## 8. Editor cost
 
 The design follows the expansion graph's pattern (`rules/expansion/functions.ts`: `#edges`,
-`#endless`, `#reports`), which already lives within the budget:
+`#endless`, `#reports`):
 
-- **Entries:**
-  - a body's IR;
-  - a function's summary, compared by inputs, labels and pairs only, so an edit that keeps its
-    effects stops there;
-  - a function's reports, the only entry that reads positions;
-  - relevance per type.
-
-  Name everything by body and position in the IR, never by syntax node: an edit makes new nodes
-  for the edited body.
+- **Entries per function:** its flow, its callees and recursive group, its group's analysis, its
+  summary, compared by inputs, labels and pairs only, so an edit that keeps its effects stops
+  there, and its reports, the only entry that reads positions. Relevance is an entry per type.
+- **What a caller reads of a callee** is its summary alone, never its body: whether a function has
+  a body is read off its declaration, so an edit inside a callee's body that keeps its summary
+  analyses no caller again (C4).
 - **Lazy:** a module's diagnostics read only the summaries of what its functions call. The
-  declaration graph is read per type, from declarations. Nothing walks the whole program until C4.
-- **Std** summaries are adopted for the whole session.
-- **Budget:**
-  - at most 2 ms added to the median warm edit of `edit.bench.ts` on the 2,098-line module (budget
-    15 ms; 5 ms for 246 lines);
-  - `npm run profile:check` within noise.
+  declaration graph is read per type, from declarations.
+- **Order:** the module's check runs the constraint checks noted for it before this rule, whose
+  summaries reach std bodies that walk would cross on every edit (C4).
+- **Cost, measured paired against the rule off in one process** (C4, 2026-11-12):
 
-  A cold open's first diagnostics are timed by a bench C3 builds, since none exists today.
+  | | C3 | C4 |
+  |---|---|---|
+  | Warm edit, 2,098 lines | +6.75 ms | +3.2 ms |
+  | Warm edit, 246 lines | +2.2 ms | +1.6 ms |
+  | Cold open, 246 lines | +55 ms | +57 ms |
+  | Cold open, 2,098 lines | +69 ms | +55 ms |
+
+  Analysing what an edit changed costs about 0.3 ms. The rest is the entries' validation: each
+  revision replays every entry a module's check reaches, about 1,400 of this rule's and 400 std
+  ones, so its cost follows how many entries there are, not what changed. The budget is 3.2 ms
+  for the 2,098-line module and 2 ms for the 246-line one (decided 2026-11-12); validation that
+  skips what no changed input reaches is tracker P49. A cold open analyses every std body its
+  functions reach.
 
 ## 9. Runtime: counting
 
@@ -632,7 +625,7 @@ C3's dry run is the list that counts. Reading the code today gives:
 | Where | What | Decision |
 |---|---|---|
 | `src/stdlib/collections/collections.ista` `WeakMap.set` | `self->entries[reference] = _Entry{value, watch}`, with `watch = _deleteOnDisposal(self, reference)`, whose call holds `self` | Done in C3, inside `collections`, leaving `WeakMap`'s type, API and conformance as they are: its entries move into a private `shared struct _Store` with an empty `dispose`, and the watch holds a `WeakRef<_Store>`. `Bus` and `_follow` already work this way (`fanout.ista`). Letting go of the map still disposes the store, its entries and their watches |
-| `examples/FormBuilder/forms.ista` `Task` (built 17 times in `*.gen.ista`) | `task->running = _run(task, …)`, at lines 249 and 512 | Done in C3: `Task` declares an empty `dispose`, and `_run` holds it through a `WeakRef`. FormBuilder's `run` still fails, on closures (§5.6), until C4 |
+| `examples/FormBuilder/forms.ista` `Task` (built 17 times in `*.gen.ista`) | `task->running = _run(task, …)`, at lines 249 and 512 | Done in C3: `Task` declares an empty `dispose`, and `_run` holds it through a `WeakRef`. FormBuilder's `run` still fails, on closures (§5.6), until its rewrite |
 | `src/stdlib/testing/testing.ista` `_disposeReceipt` | calls each receipt's `retract` while it iterates the receipts, then writes the rest back | Done in C3: it retracts once the rest is written back. Called while iterating, `retract` is unseen code that may reach the receipt, which a receipt held in the receipts always shares with (`findings.md`) |
 | `test/corpus/holders/dispose.ista` `cycle()` | `b->partner = a; a->partner = b` | Done in C3: `holders/invalid-cycle.ista` |
 | `src/runtime/scheduler/instance/on-cancel.test.ts`, the B76 pair and R1's "given that resolver" cases | `d2->r = r`, with `r`'s callback reading `d2`; a callback holding its own resolver | Done in C3: `holders/invalid-resolver-cycle.ista` and `holders/invalid-own-resolver.ista`; B76 closed with them |
@@ -703,10 +696,11 @@ These go into `test/corpus/lifetimes/`, each with the codes expected.
 - The annotations are `Holds` and `Keeps`, in the std module `lifetimes`.
 - `WeakMap`'s rewrite keeps its type, API and conformance (§10).
 - FormBuilder gets the smallest change that checks; it is rewritten later.
-- Field sensitivity and closures' captures are planned, as C4.
-- Per-field input paths and separation requirements come forward into C3 (§5.5, §5.7). C4 keeps
-  closures' captures and field labels, follows C3 directly beside R3, and lifts FormBuilder's
-  `it.fails`.
+- Per-field input paths and separation requirements come forward into C3 (§5.5, §5.7).
+- C4 is editor performance only. Closures' captures and field labels are not built: the rule stays
+  conservative, and what it over-rejects has a workaround (§5.6, §5.7, `findings.md`). FormBuilder
+  stays `it.fails` until its rewrite.
+- The warm edit's budget is 3.2 ms over the rule off for the 2,098-line module (§8).
 - A call through `any` is checked at its dispatch site, against every type the program converts
   into it (§5.4).
 - The oracle gives a running execution's future no edge to it (§9.2).

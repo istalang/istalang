@@ -60,8 +60,8 @@ const compiledTexts = new Map<string, string>();
  * The Definition text of the program rooted at `main`, with every std module, though static
  * lifetimes rejects its cycles (design.md §7): lowering reads no verdict of the rule, so tests run
  * such programs anyway, the oracle checking their heaps. They are the oracle's own, whose programs
- * make cycles, and those only C4 accepts (docs/work/static-lifetimes/findings.md). Throws at any
- * other error.
+ * make cycles, and those the rule over-rejects (docs/work/static-lifetimes/findings.md). Throws
+ * at any other error.
  */
 export function textDespiteCycles(main: string): string {
   const program = stdProgramOf({ main });

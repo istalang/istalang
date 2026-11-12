@@ -171,7 +171,7 @@ describe('the lifetime rule', () => {
     expect(findingsIn(source)).toEqual([]);
   });
 
-  // A closure is still checked for any values of what it captures where it is made, until C4.
+  // A closure is checked for any values of what it captures where it is made (design.md §5.6).
   it('requires apart of a value written twice only what it may reach', () => {
     const source = inSubject(
       [
