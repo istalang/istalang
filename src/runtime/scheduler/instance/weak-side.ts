@@ -65,7 +65,8 @@ export class WeakSide implements NativeWeakSide {
   }
 
   /**
-   * Object `id` was disposed and is gone: its weak reference lets go of it, its watches resolve.
+   * Object `id` is gone, disposed or doing nothing when it lost its last holder: its weak reference
+   * lets go of it, its watches resolve.
    */
   disposed(id: number): void {
     this.#resolveWatches(id, 'disposed');

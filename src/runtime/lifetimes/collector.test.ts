@@ -156,6 +156,36 @@ describe('collecting by counts', () => {
     },
   );
 
+  it.each(['', '    const w = WeakRef(s)', '    _ = WeakRef(s)'])(
+    'disposes what a slot holds in the slot’s round, whatever weak reference refers to it (%j)',
+    async (weak) => {
+      const text = compiledText(
+        [
+          "import * as runtime from 'runtime'",
+          'shared struct Lease:',
+          '  name: String',
+          '  log: Shared<Array<String>>',
+          'fn dispose(self: Lease):',
+          '  self->log->value.push("disposed " + self->name)',
+          'live async fn main() -> String: await runtime.run(runtime.id()) _main()',
+          'ista async fn _main() -> String:',
+          '  const log = new Shared<Array<String>>{value: []}',
+          '  if true:',
+          '    const first = new Lease{name: "first", log}',
+          '    const s = Slot.create<Lease>()',
+          '    drop s.put(new Lease{name: "inside", log})',
+          weak,
+          '    await runtime.commit()',
+          '  log->value.join(", ")',
+        ].join('\n'),
+      );
+      expect(await startToEnd(testRuntime(), text)).toEqual({
+        kind: 'finished',
+        outcome: '"disposed inside, disposed first"',
+      });
+    },
+  );
+
   it('does not preempt a running dispose mid-function with a disposable released by an earlier synchronous disposal in the same round', async () => {
     const text = compiledText(
       [

@@ -1,6 +1,6 @@
 /**
- * Which objects are disposed when nothing holds them (§7): those whose disposal can be seen, by
- * what it does or by a weak reference to them; any other is left out of the next commit.
+ * Which objects are disposed when nothing holds them (§7): those whose disposal can be seen by what
+ * it does; any other is gone at once. A weak reference only observes, so it changes neither.
  */
 
 import { describe, expect, it } from 'vitest';
@@ -43,15 +43,8 @@ describe('disposability', () => {
     ['a run', { kind: 'run', id: 0, function: 0, captures: [], arguments: [] }, false],
     ['a slot', { kind: 'slot', id: 0, waiting: [] }, false],
     ['a plain cell', { kind: 'cell', id: 0, type: 1, value: null }, false],
-  ])('disposes %s unwatched: %s', (_case, object, expected) => {
+  ])('disposes %s: %s, whether a weak reference refers to it or not', (_case, object, expected) => {
     expect(disposed(object, false)).toBe(expected);
-  });
-
-  it.each<[string, LiveObject]>([
-    ['a resolved future', { kind: 'future', id: 0, state: { kind: 'resolved', value: null } }],
-    ['a timer', { kind: 'future', id: 0, state: { kind: 'timer', at: 0n } }],
-    ['a slot', { kind: 'slot', id: 0, waiting: [] }],
-  ])('disposes %s a weak reference refers to', (_case, object) => {
-    expect(disposed(object, true)).toBe(true);
+    expect(disposed(object, true)).toBe(expected);
   });
 });

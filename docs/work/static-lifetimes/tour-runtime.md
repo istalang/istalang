@@ -18,7 +18,7 @@ and model: [design.md](design.md) §3 and §9. Phases: [plan.md](plan.md). Paths
 
 | Unit | Today | Phase |
 |---|---|---|
-| `snapshot/holdings.ts` | the one per-kind holding table (`kinds`, `futureStates`): values held, ids held, ids watched; `isRoot`, `keptFrame`, `frameValues`, `frameCells` | R1 edges; stays the table counts read |
+| `snapshot/holdings.ts` | the one per-kind holding table (`kinds`, `futureStates`): values held, ids held, ids watched; `rootKinds`, `isRoot`, `frameValues`, `frameCells` | R1 edges; stays the table counts and the commit read |
 | `scheduler/instance/heap.ts` `Heap` | objects by id, a list per kind, 11 derived `indexes`; `holds` = holdings plus index edges (`#indexedHolds`, `#awaited`); `#write`, every change reported to the seam, index edges included (R2); ids are serials (`made`); `keepOnly` | R1, R2, R3, R4 |
 | `lifetimes/holder-writes.ts` `HolderWrites` | the one seam every holder write reports to (R2), and what the heap made and lost (R3); it counts (`counts.ts`), confirms zeroes at the step's end (`takeZeroes`), logs what was let go of for the oracle, and keeps the losers flag | R2, R3 |
 | `lifetimes/counts.ts` `Counts`, `countedIn` | each counted object's holders, composites holding a counted part counted once per holder; zero candidates | R3; R5 counts every composite |
@@ -26,7 +26,7 @@ and model: [design.md](design.md) §3 and §9. Phases: [plan.md](plan.md). Paths
 | `interpreter/machine.ts` | `newFrame`, `releaseFrame` (ascending registers), `currentClosure` | R2, R3 |
 | `scheduler/instance/index.ts` `Instance` | `frameHeap`; the constructor every start and restore goes through, where the counts are built; `persisted`/`#kept` (the walk, and a check that no zero went uncollected); `dropUnheld`, once the heap doubled (R4); `continueFrom`; `stop`; `owed`, `keptFrames` | R3, R4 |
 | `lifetimes/collector.ts` | rounds of the disposables that reached zero, newest first, the rest that did gone at once; waiting on a disposal's code | R3 |
-| `lifetimes/holders.ts` | `heldFrom`, the objects and the commit's depth in one pass (R4), `holdsOf`: only a commit and a live run's `dropUnheld` walk (cruiser `runtime-held-walk`) | R4 |
+| `lifetimes/holders.ts` | `heldFrom`, the objects and the commit's depth in one pass, every root object read through `Heap.held` (R4): only a commit and a live run's `dropUnheld` walk (cruiser `runtime-held-walk`) | R4 |
 | `lifetimes/oracle.test-kit.ts` | the oracle (R1), a `HeapCheck` | test-only, for good |
 | `lifetimes/native-audit.test-kit.ts` | the native audit (C3 step 0), `HeapCheck.native`: edges natives add, against the std's `Keeps` | test-only, for good |
 | `lifetimes/disposal.ts` | per kind: `disposable` and `dispose`; `readiedBy`; the dropped-resolver panic (`isDropped`); a future cancels what is registered on it (R1) | kept |
@@ -45,10 +45,11 @@ and model: [design.md](design.md) §3 and §9. Phases: [plan.md](plan.md). Paths
   indexes. `docs/arch/definition.md`'s Holders table is its prose.
   - The collector, the commit and the snapshot's closure check (`snapshot.ts`, through
     `referencedObjects`) read nothing else.
-- **Roots.** The `isRoot` kinds are execution, run, answer, outcome and context constant. They are
+- **Roots.** The `rootKinds` are execution, run, answer, outcome and context constant. They are
   never counted; their holds are. A commit walks from them (`Instance.#kept`): every execution's
-  frames, `Instance.keptFrames` (runs and constants, as frames) and `Instance.owed` (the futures
-  answers and the outcome hold).
+  frames, and every other root through what `kinds` says it holds (`Heap.held`), as its writes
+  report for counting (R4 removed `keptFrame`, `keptFrames` and `owed`, which said it a second
+  time).
 - **A call future holds nothing** (`futureStates.call`), and an execution only watches its own future.
   The only link from a future to its call is the `executions` index, which `disposeFuture` reads to
   stop the call (`lifetimes/disposal.ts`).
@@ -380,7 +381,13 @@ heap kind a live variant, and a restore would have had to rebuild the values ins
   `#keptByWalk`, `Heap.size`): O(1) amortized per object made. What counting leaves for it is only
   what isn't counted, or a cycle reaching no disposable, which nobody can observe: a weak
   reference's referent is always disposable (`WeakRef<T is Disposable>`), so it never names what a
-  walk drops. `instance/unheld.test.ts` covers the doubling.
+  walk drops, and an unheld weak reference that lingers until the walk only observes (below).
+  `instance/unheld.test.ts` covers the doubling.
+- **A weak reference only observes** (review): it no longer makes a slot, a resolved future or an
+  ended resolver disposable (`watched` went from `disposal.ts`), which put what it held a round
+  later, so a lingering one, or any other, changed the order of disposals. Every object leaving at
+  zero, disposed or gone at once, now tells its weak reference (`Collector.#remove`), whose watches
+  resolve. `collector.test.ts` has the slot case.
 - **The commit's walk finds the depth in the same pass** (`heldFrom`, `lifetimes/holders.ts`): each
   frame's and object's holding is read once (`Heap.held`), for the ids it reaches and the depth of
   its values. `#kept` still scans the heap once after, for the commit's id order and its check that

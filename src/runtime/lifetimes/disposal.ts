@@ -25,14 +25,16 @@
  * - A wait let go of while cases of it are pending, as a disposal abandoned mid-way while its
  *   instance ends lets go of it, withdraws them: its chain holds itself only while it waits
  *   (`Heap.holds`), so ending it is the wait's own rule, never its holder's.
- * - Any object a weak reference refers to has its watches resolved once it is gone (weak-side.ts).
+ * - Any object a weak reference refers to has its watches resolved once it is gone, disposed or
+ *   not (collector.ts, weak-side.ts).
  *
  * An object is disposed when nothing holds it only when that can be seen: it does one of the
- * above. Any other, such as a resolved future, a timer nothing is registered on, or a slot that no
- * weak reference refers to, is simply gone once its count drops to zero (collector.ts), letting
- * go of what it holds, so a disposable among it is disposed in the same round. Disposability
- * comes from an object's kind and state, its type entry for a cell or resource, and the weak
- * references and registrations in the heap, never from a flag of its own (snapshot/objects.ts).
+ * above. Any other, such as a resolved future, a timer nothing is registered on, or a slot, is
+ * simply gone once its count drops to zero (collector.ts), letting go of what it holds, so a
+ * disposable among it is disposed in the same round. A weak reference only observes: whether one
+ * refers to an object never changes the round what it holds is disposed in. Disposability comes
+ * from an object's kind and state, its type entry for a cell or resource, and the registrations and
+ * cases in the heap, never from a flag of its own (snapshot/objects.ts).
  */
 
 import type { FunctionId } from '../../definition/operands.ts';
@@ -64,7 +66,7 @@ export interface Cleanup {
 /** Code a disposal runs, which its round waits on. */
 export type DisposalRun = DisposalCall | Cleanup;
 
-/** What deciding whether an object is disposed reads: the heap's weak references, and type entries. */
+/** What deciding whether an object is disposed reads: the heap's registrations, and type entries. */
 export interface Disposability {
   readonly heap: Heap;
   readonly types: readonly TypeDefinition[];
@@ -96,15 +98,11 @@ interface KindDisposal {
 
 const inert: KindDisposal = { disposable: () => false, dispose: () => undefined };
 
-/** Whether a weak reference refers to `object`, whose watches its disposal resolves. */
-const watched = (context: Disposability, object: LiveObject): boolean =>
-  context.heap.find('weakRefs', object.id).length > 0;
-
 /** Whether a resolver is registered on `future`, which its disposal cancels. */
 const registered = (context: Disposability, future: LiveObject): boolean =>
   context.heap.find('resolvers', future.id).length > 0;
 
-/** Whether disposing a future in each state does something itself, besides what weak references see. */
+/** Whether disposing a future in each state does something itself. */
 const futureStates: { readonly [Kind in FutureState['kind']]: boolean } = {
   call: true,
   slot: true,
@@ -135,14 +133,10 @@ function declared(object: LiveObjectOf<'cell' | 'resource'>): KindDisposal {
 
 const kinds: Handlers<undefined, LiveObject, [], KindDisposal> = {
   future: (_context, future) => ({
-    disposable: (context) =>
-      futureStates[future.state.kind] || watched(context, future) || registered(context, future),
+    disposable: (context) => futureStates[future.state.kind] || registered(context, future),
     dispose: (context) => disposeFuture(context, future),
   }),
-  slot: (_context, slot) => ({
-    disposable: (context) => watched(context, slot),
-    dispose: () => undefined,
-  }),
+  slot: () => inert,
   mock: () => ({ disposable: () => true, dispose: () => undefined }),
   cell: (_context, cell) => declared(cell),
   resource: (_context, resource) => declared(resource),
@@ -158,7 +152,7 @@ const kinds: Handlers<undefined, LiveObject, [], KindDisposal> = {
     },
   }),
   resolver: (_context, resolver) => ({
-    disposable: (context) => resolver.state.kind === 'pending' || watched(context, resolver),
+    disposable: () => resolver.state.kind === 'pending',
     dispose: (context) => {
       if (resolver.state.kind !== 'pending') {
         return;

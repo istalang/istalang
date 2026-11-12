@@ -21,9 +21,11 @@
  * scheduler's run stack, as every call does (scheduler/segment/), and the round waits for it to
  * finish. What that code lets go of is disposed at the end of its step, a round of its own on top,
  * finished before the code goes on; its own variables, released as it returns, are disposed before
- * the object it disposed is gone. Once a disposed object is gone, its weak reference lets go of it
- * and its `disposed()` watches resolve (scheduler/instance/weak-side.ts). Whatever a round has yet
- * to dispose is that round's, so no other round takes it out of order.
+ * the object it disposed is gone. Once any object is gone, disposed or gone at once, its weak
+ * reference lets go of it and its `disposed()` watches resolve (scheduler/instance/weak-side.ts): a
+ * weak reference only observes, so it never makes a holder disposable, which would put what it
+ * holds a round later. Whatever a round has yet to dispose is that round's, so no other round takes
+ * it out of order.
  *
  * A disposal may ready calls as runs, roots of their own: a pending resolver's `onCancel`
  * callbacks. The run holds what it calls with before the resolver lets go of it, so nothing it
@@ -153,9 +155,17 @@ export class Collector {
 
   /** The disposed object `id` is gone: what lost its last holder with it is `round`'s next. */
   #gone(round: Round, id: number): void {
+    this.#remove(id);
+    round.next.push(...this.#zeroDisposables());
+  }
+
+  /**
+   * Takes object `id` out of the heap, which lets go of what it held, and tells its weak reference,
+   * whose watches resolve, whether it was disposed or did nothing when it lost its last holder.
+   */
+  #remove(id: number): void {
     this.#seams.heap.remove(id);
     this.#seams.weak.disposed(id);
-    round.next.push(...this.#zeroDisposables());
   }
 
   /** Starts a round of `ready`, if any. */
@@ -188,7 +198,7 @@ export class Collector {
         if (isDisposable(this.#seams, heap.objectOf(id))) {
           disposables.push(id);
         } else {
-          heap.remove(id);
+          this.#remove(id);
         }
       }
     }
