@@ -19,29 +19,33 @@
 import type { FunctionDeclaration } from '../../../../syntax/declarations/index.ts';
 import type { NodeOf } from '../../../../syntax/tree/node.ts';
 import type { LifetimeFinding, SignatureParameter } from '../../../check.ts';
-import type { FunctionCall, RequirementCall } from '../../../surface/resolved-call.ts';
+import type { FunctionCall } from '../../../surface/resolved-call.ts';
 import type { Type } from '../../../types/type/index.ts';
 import type { FlowFunction, ValueId } from '../../flow/flow-ir.ts';
 import { cycleRelevance } from '../escaping.ts';
+import { type Input, inputKey } from '../input.ts';
 import type { NodeId } from '../reach-state.ts';
 import {
   anyField,
-  type Input,
-  inputKey,
   type Requirement,
+  type ResultRelation,
   type Summary,
   type TypedCycle,
 } from '../summary.ts';
+import type { ByTypes, InputPair, SymbolicCall } from '../symbolic.ts';
 import { moreRelevant, type Relevance } from '../type-reach.ts';
 import { cycleOf } from './cycles.ts';
 import type { FlowState } from './flow-state.ts';
 import { apart, candidatesIn } from './inputs.ts';
 import type { Nodes, TypeFacts } from './nodes.ts';
+import type { Resolving } from './symbolic-calls.ts';
 import { runUnseen, type UnseenCall } from './unseen.ts';
 
 /** What an analysis reads beyond its body: types, and what the functions it calls do. */
-export interface AnalysisContext {
+export interface AnalysisContext extends Resolving {
   readonly facts: TypeFacts & { readonly keyOf: (type: Type) => string };
+  /** Whether `declaration` has a body this rule reads, rather than a native's or a host's. */
+  readonly hasBody: (declaration: FunctionDeclaration) => boolean;
   /** What `call`'s function does; undefined where that is code nobody can see. */
   readonly calleeSummary: (call: FunctionCall) => Summary | undefined;
   readonly parametersOf: (declaration: FunctionDeclaration) => readonly SignatureParameter[];
@@ -53,7 +57,12 @@ export interface AnalysisContext {
    * What a call through an `any` value may run: each witness of the required function among the
    * types the program puts into an `any` of its trait; undefined for a call through anything else.
    */
-  readonly dispatched: (call: RequirementCall) => readonly FunctionCall[] | undefined;
+
+  /** What the default of `declaration`'s parameter at `index` relates to, of those before it. */
+  readonly defaultResult: (
+    declaration: FunctionDeclaration,
+    index: number,
+  ) => readonly ResultRelation[];
 }
 
 /** Where a cycle may close in this function's text (`LifetimeFinding`, the function aside). */
@@ -85,28 +94,39 @@ export class BodyAnalysis {
   readonly violations = new Map<NodeOf<string>, Map<string, Violation>>();
   readonly requirements = new Map<string, Requirement>();
   readonly always = new Map<string, TypedCycle>();
+  readonly symbolic = new Map<string, SymbolicCall>();
+  readonly byTypes = new Map<string, ByTypes>();
   readonly leaks = new Map<string, Input>();
   readonly calls = new Map<string, Input>();
   /** Analyses a nested function, its closure made at `site`, its findings joining this one's. */
   readonly analyzeNested: (flow: FlowFunction, site: NodeOf<string>) => NestedResult;
   /** Whether its callers are seen, so it may rely on what they are required to see to. */
   readonly separates: boolean;
+  /** Whether its findings may name parts of its inputs, not only its inputs (inputs.ts). */
+  readonly inputParts: boolean;
   /** The inputs code it runs unseen may reach. */
   readonly access = new Map<string, Input>();
   #recording = false;
   unseen = false;
+  /** The values it reads that any handle watching them may give (`watchedResult`, calls.ts). */
+  readonly watched = new Set<NodeId>();
 
   constructor(
     nodes: Nodes,
     context: AnalysisContext,
     references: ReadonlySet<ValueId>,
-    nesting: { readonly analyze: BodyAnalysis['analyzeNested']; readonly separates: boolean },
+    nesting: {
+      readonly analyze: BodyAnalysis['analyzeNested'];
+      readonly separates: boolean;
+      readonly inputParts: boolean;
+    },
   ) {
     this.nodes = nodes;
     this.context = context;
     this.references = references;
     this.analyzeNested = nesting.analyze;
     this.separates = nesting.separates;
+    this.inputParts = nesting.inputParts;
   }
 
   /** Whether findings are made: on the last run, over the fixed point (index.ts). */
@@ -208,10 +228,13 @@ export class BodyAnalysis {
       (closes || onCycle) &&
       this.#reachesDisposable(state, closes ? value : holder.node, value)
     ) {
-      const cycle = closes
-        ? cycleOf(this, state, holder, value)
-        : cycleOf(this, state, { ...holder, exact: true }, holder.node);
-      this.violate('write', site, cycle, undefined);
+      // The cycle's types are found only where findings are made: the fixed point needs none.
+      if (this.recording) {
+        const cycle = closes
+          ? cycleOf(this, state, holder, value)
+          : cycleOf(this, state, { ...holder, exact: true }, holder.node);
+        this.violate('write', site, cycle, undefined);
+      }
     } else if (!closes) {
       this.lift(state, holder.node, value, { holderType: holder.type, kind: 'reach' });
     }
@@ -255,11 +278,36 @@ export class BodyAnalysis {
     state: FlowState,
     holder: NodeId,
     value: NodeId,
-    { holderType, kind }: { readonly holderType: Type; readonly kind: Requirement['kind'] },
+    {
+      holderType,
+      valueType = this.nodes.typeOf(value),
+      kind,
+      lands = 'behind',
+    }: {
+      readonly holderType: Type;
+      readonly valueType?: Type | undefined;
+      readonly kind: Requirement['kind'];
+      readonly lands?: Requirement['lands'];
+    },
   ): void {
     if (!this.recording) {
       return;
     }
+    for (const pair of this.liftedPairs(state, holder, value, kind)) {
+      this.require({ kind, ...pair, holderType, valueType, lands, label: anyField });
+    }
+  }
+
+  /**
+   * The pairs of inputs a write of `value` into `holder` (or, `share`, their separation) would
+   * require apart: the one sharing with `value`, the other reaching or holding `holder`.
+   */
+  liftedPairs(
+    state: FlowState,
+    holder: NodeId,
+    value: NodeId,
+    kind: Requirement['kind'],
+  ): readonly InputPair[] {
     const candidates = candidatesIn(this, state);
     const sources = candidates.filter(({ node }) => state.reach.shares(value, node));
     const holders = candidates.filter(({ node }) =>
@@ -267,17 +315,11 @@ export class BodyAnalysis {
         ? state.reach.shares(holder, node)
         : node === holder || state.reach.closes(holder, node) || state.reach.reaches(node, holder),
     );
-    for (const source of sources) {
-      for (const target of holders.filter(({ input }) => apart(input, source.input))) {
-        this.require({
-          kind,
-          holder: target.input,
-          value: source.input,
-          holderType,
-          label: anyField,
-        });
-      }
-    }
+    return sources.flatMap((source) =>
+      holders
+        .filter(({ input }) => apart(input, source.input))
+        .map((target) => ({ holder: target.input, value: source.input })),
+    );
   }
 
   /**
@@ -300,10 +342,19 @@ export class BodyAnalysis {
     return this.references.has(slot.value) ? slot.value : slot.node;
   }
 
+  /** Notes `requirement`; two alike but for what is written require it of any value. */
   require(requirement: Requirement): void {
-    const key = `${requirement.kind}|${inputKey(requirement.holder)}|${inputKey(requirement.value)}|${this.context.facts.keyOf(requirement.holderType)}`;
-    if (!this.requirements.has(key)) {
+    const { keyOf } = this.context.facts;
+    const key = `${requirement.kind}|${requirement.lands}|${inputKey(requirement.holder)}|${inputKey(requirement.value)}|${keyOf(requirement.holderType)}`;
+    const known = this.requirements.get(key);
+    if (known === undefined) {
       this.requirements.set(key, requirement);
+    } else if (
+      known.valueType !== undefined &&
+      (requirement.valueType === undefined ||
+        keyOf(requirement.valueType) !== keyOf(known.valueType))
+    ) {
+      this.requirements.set(key, { ...known, valueType: undefined });
     }
   }
 
@@ -363,5 +414,15 @@ export class BodyAnalysis {
   relevance(type: Type, other?: Type): Relevance {
     const own = this.nodes.relevanceOf(type);
     return other === undefined ? own : moreRelevant(own, this.nodes.relevanceOf(other));
+  }
+}
+
+/**
+ * After `value` is written into a place `holder`'s own cell holds, the variable `place` naming that
+ * place's value holds it too: a captured `let` is its cell's value and a variable at once.
+ */
+export function placeHolds(state: FlowState, holder: Written, place: NodeId, value: NodeId): void {
+  if (place !== holder.node && holder.exact) {
+    state.reach.contain(place, value);
   }
 }

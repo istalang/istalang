@@ -22,8 +22,9 @@ import type { NodeOf } from '../../../../syntax/tree/node.ts';
 import type { Type } from '../../../types/type/index.ts';
 import type { FlowFunction, ValueId } from '../../flow/flow-ir.ts';
 import { type ForwardRule, reachedBlocks, runForward } from '../../flow/solve.ts';
+import { inputKey } from '../input.ts';
 import { type Allowed, type NodeId, ReachState } from '../reach-state.ts';
-import { anyField, type Effect, inputKey, type ResultRelation, type Summary } from '../summary.ts';
+import { anyField, type Effect, type ResultRelation, type Summary } from '../summary.ts';
 import { type HandleReach, mayAlias, mayReach, mayShare } from '../type-reach.ts';
 import { type AnalysisContext, BodyAnalysis, type Violation } from './body.ts';
 import { clonedState, type FlowState, type Given, joinedStates } from './flow-state.ts';
@@ -43,6 +44,11 @@ export interface AnalyzeOptions {
   readonly nested?: boolean;
   /** The parameters taken by `&`. */
   readonly references: ReadonlySet<ValueId>;
+  /**
+   * Whether it is in a recursive group, whose findings name its inputs whole (inputs.ts): each
+   * round lifts each member's findings into the others', and parts of parts would grow unbounded.
+   */
+  readonly recursive?: boolean;
 }
 
 /** Analyses `flow`, reading what it calls through `context`. */
@@ -145,6 +151,7 @@ function analysisOf(
   const nested: NestedAnalyses = new Map();
   const analysis = new BodyAnalysis(nodes, context, options.references, {
     separates: options.nested !== true,
+    inputParts: options.recursive !== true,
     analyze: (inner, site) => {
       const known = nested.get(inner);
       if (known !== undefined) {
@@ -172,9 +179,16 @@ function analysisFound(
     readonly isAsync: boolean;
   },
 ): Analysis {
-  const nestedViolations = [...found.nested.values()].flatMap(({ violations }) => violations);
+  const nested = [...found.nested.values()];
+  const nestedViolations = nested.flatMap(({ violations }) => violations);
+  const summary = summarize(analysis, found.entry, found.exits, found.isAsync);
+  // A nested function's calls through requirements are made by code nobody sees calls: by types.
+  const nestedByTypes = nested.flatMap(({ summary: inner }) => [
+    ...inner.byTypes,
+    ...inner.symbolic.map(({ call }) => ({ kind: 'call' as const, call })),
+  ]);
   return {
-    summary: summarize(analysis, found.entry, found.exits, found.isAsync),
+    summary: { ...summary, byTypes: [...summary.byTypes, ...nestedByTypes] },
     violations: [
       ...[...analysis.violations.values()].flatMap((at) => [...at.values()]),
       ...nestedViolations,
@@ -246,9 +260,14 @@ function summarize(
     effects: effectsOf(analysis, entry, exits, slots),
     result,
     gives,
-    watched: false,
+    // What it returns may be what a watching handle gave it, which may be any value anywhere.
+    watched:
+      analysis.watched.size > 0 &&
+      exits.some(({ value }) => value !== undefined && nodes.isRelevant(value)),
     requirements: [...analysis.requirements.values()],
     always: [...analysis.always.values()],
+    symbolic: [...analysis.symbolic.values()],
+    byTypes: [...analysis.byTypes.values()],
     callReach: isAsync ? slots.map(({ input }) => input) : [],
     leaks: [...analysis.leaks.values()],
     unseen: analysis.unseen,
@@ -279,7 +298,9 @@ function effectsOf(
   return pairs.flatMap(([from, to]): Effect[] => {
     const fromNode = analysis.inputNodeOf(from);
     const toNode = analysis.inputNodeOf(to);
-    if (joined.reach.reaches(fromNode, toNode)) {
+    // A reference parameter is its caller's place: a value it holds that may be `to` holds `to`.
+    const holds = analysis.references.has(from.value) && joined.reach.aliases(fromNode, toNode);
+    if (holds || joined.reach.reaches(fromNode, toNode)) {
       return [{ from: from.input, to: to.input, inside: false, label: anyField }];
     }
     return joined.reach.shares(fromNode, toNode)
@@ -373,15 +394,8 @@ function resultRelations(
 
 /** The pairs `nodes`' types allow: a node whose type isn't known allows any. */
 function allowedBy(nodes: Nodes): Allowed {
-  const both = (
-    first: NodeId,
-    second: NodeId,
-    test: (a: HandleReach, b: HandleReach) => boolean,
-  ) => {
-    const firstReach = nodes.reachOf(first);
-    const secondReach = nodes.reachOf(second);
-    return firstReach === undefined || secondReach === undefined || test(firstReach, secondReach);
-  };
+  const both = (first: NodeId, second: NodeId, test: (a: HandleReach, b: HandleReach) => boolean) =>
+    test(nodes.reachOf(first), nodes.reachOf(second));
   return {
     reach: (from, to) => both(from, to, mayReach),
     alias: (first, second) => both(first, second, mayAlias),

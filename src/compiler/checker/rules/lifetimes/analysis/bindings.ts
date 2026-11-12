@@ -13,8 +13,8 @@
 
 import type { FunctionCall } from '../../../surface/resolved-call.ts';
 import type { Argument } from '../../flow/flow-ir.ts';
+import { type Input, inputKey } from '../input.ts';
 import type { NodeId } from '../reach-state.ts';
-import { type Input, inputKey } from '../summary.ts';
 import type { BodyAnalysis } from './body.ts';
 import { type FlowState, type MadeClosure, materialize } from './flow-state.ts';
 import { type Owner, placeTarget } from './places.ts';
@@ -36,10 +36,13 @@ export type Bindings = ReadonlyMap<string, Bound>;
 
 const unbound: Bound = { nodes: [], owner: undefined };
 
-/** The inputs a call of a function binds, from `call`'s binding of `args`. */
+/**
+ * The inputs a call of a function binds, from `call`'s binding of `args`; a parameter it leaves
+ * out to its default, what that default's value relates to of the arguments before it.
+ */
 export function functionBindings(
   at: At,
-  call: Pick<FunctionCall, 'binding'>,
+  call: Pick<FunctionCall, 'binding' | 'function'>,
   args: readonly Argument[],
 ): Bindings {
   const bindings = new Map<string, Bound>();
@@ -51,6 +54,15 @@ export function functionBindings(
       const items = source.items.map((item) => argumentBound(at, args[item.index]));
       bindings.set(inputKey(input), {
         nodes: items.flatMap(({ nodes }) => nodes),
+        owner: undefined,
+      });
+    } else {
+      const related = at.analysis.context.defaultResult(call.function, index);
+      bindings.set(inputKey(input), {
+        nodes: related.flatMap(
+          (relation) =>
+            (bindings.get(inputKey(relation.input)) ?? globalBound(at, relation.input)).nodes,
+        ),
         owner: undefined,
       });
     }
@@ -132,7 +144,8 @@ export function nodesGiven(at: At, args: readonly Argument[]): readonly NodeId[]
   });
 }
 
-function ownedBy(owner: Owner | undefined): readonly NodeId[] {
+/** The nodes that own a place: a handle's or cell's object, or the variable holding it. */
+export function ownedBy(owner: Owner | undefined): readonly NodeId[] {
   if (owner === undefined) {
     return [];
   }

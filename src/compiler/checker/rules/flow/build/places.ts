@@ -136,7 +136,7 @@ function within(place: Place, part: Part): Place {
 export function partOfField(read: FieldRead): Part {
   switch (read.kind) {
     case 'position':
-      return { kind: 'step', step: read.index };
+      return { kind: 'step', step: { kind: 'field', of: read.on, name: read.name } };
     case 'named':
       return { kind: 'step', step: { kind: 'field', of: read.on, name: read.name } };
     case 'required':

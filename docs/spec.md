@@ -1607,7 +1607,7 @@ In the common case nothing is stored anywhere else, so a disposable lives exactl
 - **Ordered.** Values that lose their last holder at the same block exit are disposed in reverse creation order. A value held by another one being disposed loses its last holder only once that disposal is done, so a holder is disposed before what it holds, and its `dispose`, a `Deferred`'s function included, never sees a disposed value.
 - **Atomic.** The effects of disposal commit with the segment in which the block ends.
 - **Within one instance.** Holding never crosses instances: disposable handles aren't sendable (§3.1), and what the host provides is owned by the host.
-- **Cycles.** Disposables that hold each other in a cycle lose their last holder together, when the last one from outside the cycle releases them, and are disposed then, like any other values that lose their last holder at once.
+- **Cycles.** No cycle of holding may pass through a value that reaches a disposable, so each disposable's holders can be counted and it is disposed when the count reaches zero. A write that may close such a cycle is a compile error, and so is a call whose callee would close one with what it is given, or at the types it is given. A parent that holds its children and is reached back from them, for example, is held by them through a `WeakRef`: `child->parent = WeakRef(node)`, read with `deref()`. A cycle of values that reach no disposable, such as a closure calling itself through the `let` it is assigned to, is allowed.
 
 **What disposing does,** as implemented by the standard library:
 

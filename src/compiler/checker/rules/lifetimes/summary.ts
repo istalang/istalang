@@ -2,9 +2,8 @@
  * What a function does to what reaches what, over its inputs (design.md §5.3): the summary a call
  * site applies instead of the callee's body, so the analysis never clones heaps per instantiation.
  *
- * - **Inputs** are what the call gives the body: its parameters, a closure's captures and the
- *   cells of the captured `let`s, its own closure, and the globals it names. Positions only, never
- *   nodes or spans, so an edit that keeps a function's effects keeps its summary (design.md §8).
+ * - **Inputs** (input.ts) are what the call gives the body, by position only, never nodes or spans,
+ *   so an edit that keeps a function's effects keeps its summary (design.md §8).
  * - **Effects** are the pairs the call may add among its inputs: `from` comes to reach `to`, or
  *   with `inside` only what `to` reaches. **Result** is how what it gives relates to its inputs,
  *   and **gives** how what a future it gives settles with does: an async call's future holds its
@@ -28,37 +27,15 @@
  */
 
 import { sameItems } from '../../../../foundation/structures/equality.ts';
-import type { VariableEntity } from '../../../binder/entities.ts';
 import type { FunctionDeclaration } from '../../../syntax/declarations/index.ts';
 import type { CheckerContext } from '../../contexts/context.ts';
-import type { FunctionCall } from '../../surface/resolved-call.ts';
 import { typeChildren } from '../../types/parts/type-children.ts';
 import { sameTypeSpelled } from '../../types/parts/type-parts.ts';
 import { isHandleType } from '../../types/properties/handles.ts';
 import type { Type } from '../../types/type/index.ts';
 import { awaitedOf } from '../../types/type/well-known.ts';
-import type { Part } from '../flow/flow-ir.ts';
-
-/** What a call gives a body, by position. */
-export type Input =
-  | { readonly kind: 'parameter' | 'capture' | 'cell'; readonly index: number }
-  | { readonly kind: 'self' }
-  | { readonly kind: 'global'; readonly entity: VariableEntity; readonly type: Type }
-  | InputPath;
-
-/**
- * A part of an input as given (design.md §5.7): `of`'s part `part`, named by `key` alike in every
- * function, read through a handle or inside a value (`read`), of type `type`. Only requirements
- * name them, so a caller checks the parts of what it gave.
- */
-interface InputPath {
-  readonly kind: 'path';
-  readonly of: Input;
-  readonly part: Part;
-  readonly key: string;
-  readonly read: 'through' | 'part';
-  readonly type: Type;
-}
+import { type Input, sameInput } from './input.ts';
+import { type ByTypes, type SymbolicCall, sameByTypes, sameSymbolicCalls } from './symbolic.ts';
 
 /** The fields a pair's path leaves its source through; any field until C4. */
 export interface Label {
@@ -91,18 +68,30 @@ export interface Requirement {
   readonly holder: Input;
   readonly value: Input;
   readonly holderType: Type;
+  /**
+   * The type of what is written, which may be narrower than `value`'s: a pair its types can't
+   * close is no cycle. Undefined where it has no recorded type: any value.
+   */
+  readonly valueType: Type | undefined;
+  /**
+   * Where the write lands when `holder` is a parameter taken by `&`: in the caller's place itself
+   * (`r = v`, `xs.push(v)`), or behind a handle the value there holds (`r->next = v`). Any other
+   * holder is a value whose handles the write lands behind.
+   */
+  readonly lands: 'place' | 'behind';
   readonly label: Label;
 }
 
 /**
  * A cycle a function's writes close whatever values its inputs are, for each instantiation to
  * decide (design.md §5.3): one only where a value of a type of `through` may reach or be a
- * `holder` (`reach`), or share with one (`share`), holding a disposable where `deciding` may reach
- * one.
+ * `holder` (`reach`), or share with one (`share`), and a value of each of `sources`, what the
+ * value written came from, may too; holding a disposable where `deciding` may reach one.
  */
 export interface TypedCycle {
   readonly holder: Type;
   readonly through: readonly Type[];
+  readonly sources: readonly Type[];
   readonly kind: Requirement['kind'];
   readonly deciding: Type;
 }
@@ -112,6 +101,7 @@ export function mappedCycle(cycle: TypedCycle, map: (type: Type) => Type): Typed
   return {
     holder: map(cycle.holder),
     through: cycle.through.map(map),
+    sources: cycle.sources.map(map),
     kind: cycle.kind,
     deciding: map(cycle.deciding),
   };
@@ -126,6 +116,10 @@ export interface Summary {
   readonly watched: boolean;
   readonly requirements: readonly Requirement[];
   readonly always: readonly TypedCycle[];
+  /** Its calls through its type parameters' requirements, for each instantiation (symbolic.ts). */
+  readonly symbolic: readonly SymbolicCall[];
+  /** What each instantiation checks against the declaration graph (symbolic.ts). */
+  readonly byTypes: readonly ByTypes[];
   readonly callReach: readonly Input[];
   readonly leaks: readonly Input[];
   readonly unseen: boolean;
@@ -146,45 +140,14 @@ export const emptySummary: Summary = {
   watched: false,
   requirements: [],
   always: [],
+  symbolic: [],
+  byTypes: [],
   callReach: [],
   leaks: [],
   unseen: false,
   calls: [],
   access: [],
 };
-
-function sameInput(first: Input, second: Input): boolean {
-  return inputKey(first) === inputKey(second);
-}
-
-/** A key naming `input`, for sets of inputs. */
-export function inputKey(input: Input): string {
-  switch (input.kind) {
-    case 'self':
-      return 'self';
-    case 'global':
-      return `global:${entityKey(input.entity)}`;
-    case 'path':
-      return `${inputKey(input.of)}/${input.key}`;
-    default:
-      return `${input.kind}:${input.index}`;
-  }
-}
-
-const entityKeys = new WeakMap<VariableEntity, number>();
-let entityCount = 0;
-
-/** A number naming `entity` among the globals of every summary. */
-function entityKey(entity: VariableEntity): number {
-  const known = entityKeys.get(entity);
-  if (known !== undefined) {
-    return known;
-  }
-  const key = entityCount;
-  entityCount += 1;
-  entityKeys.set(entity, key);
-  return key;
-}
 
 const sameEffects = sameItems<Effect>(
   (first, second) =>
@@ -200,14 +163,19 @@ const sameCycles = sameItems<TypedCycle>(
     first.kind === second.kind &&
     sameTypeSpelled(first.holder, second.holder) &&
     sameTypeSpelled(first.deciding, second.deciding) &&
-    sameItems(sameTypeSpelled)(first.through, second.through),
+    sameItems(sameTypeSpelled)(first.through, second.through) &&
+    sameItems(sameTypeSpelled)(first.sources, second.sources),
 );
 const sameRequirements = sameItems<Requirement>(
   (first, second) =>
     first.kind === second.kind &&
+    first.lands === second.lands &&
     sameInput(first.holder, second.holder) &&
     sameInput(first.value, second.value) &&
-    sameTypeSpelled(first.holderType, second.holderType),
+    sameTypeSpelled(first.holderType, second.holderType) &&
+    (first.valueType === undefined
+      ? second.valueType === undefined
+      : second.valueType !== undefined && sameTypeSpelled(first.valueType, second.valueType)),
 );
 const sameInputs = sameItems<Input>(sameInput);
 
@@ -223,6 +191,8 @@ export function sameSummary(first: Summary, second: Summary): boolean {
     sameResults(first.gives, second.gives) &&
     sameRequirements(first.requirements, second.requirements) &&
     sameCycles(first.always, second.always) &&
+    sameSymbolicCalls(first.symbolic, second.symbolic) &&
+    sameByTypes(first.byTypes, second.byTypes) &&
     sameInputs(first.callReach, second.callReach) &&
     sameInputs(first.leaks, second.leaks)
   );
@@ -269,6 +239,9 @@ export function nativeSummary(
             holder: parameter(holder),
             value: parameter(value),
             holderType,
+            valueType: parameters[value]?.type,
+            lands:
+              parameters[holder]?.reference === true ? ('place' as const) : ('behind' as const),
             label: anyField,
           }));
     }),
@@ -350,83 +323,4 @@ function watchesIn(
 /** Whether `type` is `part` or holds it among its parts, as spelled. */
 function mentions(type: Type, part: Type): boolean {
   return sameTypeSpelled(type, part) || typeChildren(type).some((child) => mentions(child, part));
-}
-
-/**
- * A witness's summary over the parameters of the required function it meets (design.md §5.4):
- * each of its parameters is the one `witness.binding` takes, its types as `witness` instantiates
- * them. An input bound to none, a default, says nothing of the call.
- */
-export function requiredBy(
-  summary: Summary,
-  witness: FunctionCall,
-  substitute: (type: Type, call: FunctionCall) => Type,
-): Summary {
-  const sources = witness.binding;
-  const mapped = (input: Input): Input | undefined => {
-    if (input.kind === 'path') {
-      const of = mapped(input.of);
-      return of === undefined ? undefined : { ...input, of };
-    }
-    if (input.kind !== 'parameter') {
-      return input;
-    }
-    const source = sources[input.index];
-    return source?.kind === 'argument' ? { kind: 'parameter', index: source.index } : undefined;
-  };
-  const inputs = (list: readonly Input[]) => list.flatMap((input) => mapped(input) ?? []);
-  const related = <Related extends { readonly input: Input }>(list: readonly Related[]) =>
-    list.flatMap((each) => {
-      const input = mapped(each.input);
-      return input === undefined ? [] : [{ ...each, input }];
-    });
-  return {
-    ...summary,
-    effects: summary.effects.flatMap((effect) => {
-      const from = mapped(effect.from);
-      const to = mapped(effect.to);
-      return from === undefined || to === undefined ? [] : [{ ...effect, from, to }];
-    }),
-    result: related(summary.result),
-    gives: related(summary.gives),
-    requirements: summary.requirements.flatMap((requirement) => {
-      const holder = mapped(requirement.holder);
-      const value = mapped(requirement.value);
-      return holder === undefined || value === undefined
-        ? []
-        : [
-            {
-              ...requirement,
-              holder,
-              value,
-              holderType: substitute(requirement.holderType, witness),
-            },
-          ];
-    }),
-    always: summary.always.map((cycle) => mappedCycle(cycle, (type) => substitute(type, witness))),
-    callReach: inputs(summary.callReach),
-    leaks: inputs(summary.leaks),
-    calls: inputs(summary.calls),
-    access: inputs(summary.access),
-  };
-}
-
-/** What a call that may run any of `summaries`' functions does: what each may. */
-export function joinedSummaries(summaries: readonly Summary[]): Summary {
-  return summaries.reduce<Summary>(
-    (joined, each) => ({
-      effects: [...joined.effects, ...each.effects],
-      result: [...joined.result, ...each.result],
-      gives: [...joined.gives, ...each.gives],
-      watched: joined.watched || each.watched,
-      requirements: [...joined.requirements, ...each.requirements],
-      always: [...joined.always, ...each.always],
-      callReach: [...joined.callReach, ...each.callReach],
-      leaks: [...joined.leaks, ...each.leaks],
-      unseen: joined.unseen || each.unseen,
-      calls: [...joined.calls, ...each.calls],
-      access: [...joined.access, ...each.access],
-    }),
-    emptySummary,
-  );
 }

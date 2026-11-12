@@ -25,10 +25,10 @@ export interface MadeClosure {
 }
 
 /**
- * A function value whose calls the body can tell: a closure it made, or the one a native
- * `iterate` gives, each of whose calls gives an item of `of`.
+ * A function value whose calls the body can tell: a closure it made, or a cursor a native
+ * `iterate` gives, which holds what it iterates, each of its calls giving an item of that.
  */
-type KnownFunction = MadeClosure | { readonly kind: 'items'; readonly of: NodeId | undefined };
+type KnownFunction = MadeClosure | { readonly kind: 'items' };
 
 /** What a future settles with, as related to nodes: a call's result to what it was given. */
 export interface Given {
@@ -67,15 +67,37 @@ export function materialize(nodes: Nodes, state: FlowState, node: NodeId): boole
     return false;
   }
   state.reach.fresh(node);
-  const siblings = isInputRooted(nodes, path.root)
-    ? new Set(nodes.pathsFrom(path.root).filter((each) => each !== node))
-    : undefined;
+  const siblings = isInputRooted(nodes, path.root) ? siblingsOf(nodes, state, node) : undefined;
   if (path.kind === 'through') {
     state.reach.readThrough(node, path.root, siblings);
   } else {
     state.reach.readPart(node, path.root, siblings);
   }
   return true;
+}
+
+/**
+ * What a part of an input is apart from: its root's other parts, the parts read of those, and
+ * every value standing for one of them (`canon`), as a copy of a sibling does. A copy of the root
+ * itself stays related: it holds the part.
+ */
+function siblingsOf(nodes: Nodes, state: FlowState, node: NodeId): ReadonlySet<NodeId> {
+  const root = nodes.pathOf(node)?.root;
+  const apart = new Set<NodeId>();
+  const pending = root === undefined ? [] : nodes.pathsFrom(root).filter((each) => each !== node);
+  while (pending.length > 0) {
+    const each = pending.pop() as NodeId;
+    if (!apart.has(each)) {
+      apart.add(each);
+      pending.push(...nodes.pathsFrom(each));
+    }
+  }
+  for (const [value, named] of state.canon) {
+    if (apart.has(named)) {
+      apart.add(value);
+    }
+  }
+  return apart;
 }
 
 /** What reaches a point where `states` meet. */
@@ -136,5 +158,5 @@ function sameKnown(first: KnownFunction, second: KnownFunction): boolean {
   if (first.kind === 'closure') {
     return second.kind === 'closure' && first.flow === second.flow;
   }
-  return second.kind === 'items' && first.of === second.of;
+  return second.kind === 'items';
 }

@@ -124,4 +124,33 @@ describe('the lifetime rule', () => {
     ]);
     expect(findingsIn(source)).toEqual([]);
   });
+
+  it('dispatches a call on an `any` type met by another `any` type without crashing', () => {
+    const source = inSubject(
+      ['const s: any SubTrait = SubImpl', 'const l: any Linker = s', '_ = l.connect()'].join('\n'),
+      [
+        'trait SubTrait:',
+        '  fn dummy(self: Self) -> Int',
+        'struct SubImpl',
+        'fn dummy(self: SubImpl) -> Int: 0',
+        'trait Linker:',
+        '  fn connect(self: Self) -> Int',
+        'fn connect(self: any SubTrait) -> Int: self.dummy()',
+      ],
+    );
+    expect(findingsIn(source)).toEqual([]);
+  });
+
+  it('keeps sibling handle fields of a struct parameter apart until the caller links them', () => {
+    const source = inSubject(
+      [
+        'const a = new Node{lease: new Lease{n: 1}}',
+        'const b = new Node{lease: new Lease{n: 2}}',
+        'linkPair(Pair{a, b})',
+        'linkPair(Pair{a, b: a})',
+      ].join('\n'),
+      ['struct Pair { a: Node, b: Node }', 'fn linkPair(p: Pair): p.a->next = p.b'],
+    );
+    expect(findingsIn(source)).toEqual(['13:call']);
+  });
 });

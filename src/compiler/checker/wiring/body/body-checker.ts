@@ -72,7 +72,7 @@ import { blockTail } from '../../rules/agreement.ts';
 import { recordOutcomeCodecs } from '../../rules/boundary/outcome-codecs.ts';
 import { checkDisposeUses } from '../../rules/disposal/disposal.ts';
 import { checkDropped } from '../../rules/disposal/dropped.ts';
-import { flowOf } from '../../rules/flow/build/index.ts';
+import { type FlowRoot, flowOf } from '../../rules/flow/build/index.ts';
 import { FlowDecisions } from '../../rules/flow/flow-decisions.ts';
 import { freshLiteralOf } from '../../rules/placeholders.ts';
 import { checkTestingCalls } from '../../rules/testing.ts';
@@ -155,13 +155,14 @@ export class BodyChecker implements BodyContext {
     declareOwnCall(this);
     const tail = this.block(body, this.#result.declared);
     const result = this.#result.result(this, blockTail(body, tail));
-    return this.#finished([body], result, parameters);
+    return this.#finished([{ root: body, parameters }], result);
   }
 
   /**
-   * What checking a function's default `values` found (signatures.ts), once they are all checked.
+   * What checking a function's default `values` found (signatures.ts), once they are all checked,
+   * each with the parameters before it, which it sees.
    */
-  defaults(values: readonly Expression[]): CheckedBody {
+  defaults(values: readonly FlowRoot[]): CheckedBody {
     return this.#finished(values, unitType);
   }
 
@@ -169,7 +170,7 @@ export class BodyChecker implements BodyContext {
   checkValue(node: Expression): CheckedBody {
     const { declared } = this.#result;
     const type = this.expect(node, declared);
-    return this.#finished([node], declared ?? type);
+    return this.#finished([{ root: node, parameters: [] }], declared ?? type);
   }
 
   /** Checks a top-level constant (§3): its initializer as `checkValue` does, then its targets. */
@@ -178,18 +179,14 @@ export class BodyChecker implements BodyContext {
     const type = this.expect(declaration.initializer, declared);
     const value = declared ?? type;
     declareTargets(this, declaration, value);
-    return this.#finished([declaration.initializer], value);
+    return this.#finished([{ root: declaration.initializer, parameters: [] }], value);
   }
 
   /**
-   * The body checked from `roots`, the first taking `parameters`, after the rules over a whole
-   * body ran on it: those over its calls, then those over its flow (rules/flow/).
+   * The body checked from `roots`, each taking its parameters, after the rules over a whole body
+   * ran on it: those over its calls, then those over its flow (rules/flow/).
    */
-  #finished(
-    roots: readonly (Block | Expression)[],
-    result: Type,
-    parameters: readonly SignatureParameter[] = [],
-  ): CheckedBody {
+  #finished(roots: readonly FlowRoot[], result: Type): CheckedBody {
     this.variables.warnUnchanged(this);
     const calls = this.calls.entries();
     checkDisposeUses(this, calls, checkTestingCalls(this, calls));
@@ -202,8 +199,8 @@ export class BodyChecker implements BodyContext {
         this.checker.inputs.bodyOf(this.module, declaration),
       body,
     };
-    for (const root of roots) {
-      checkDropped(this, flowOf(inputs, root, root === roots[0] ? parameters : []));
+    for (const { root, parameters } of roots) {
+      checkDropped(this, flowOf(inputs, root, parameters));
     }
     return body;
   }

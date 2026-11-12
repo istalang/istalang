@@ -90,17 +90,27 @@ export interface ContextConstantQueries {
 /** A program's types, as its later phases read them. */
 /**
  * Where the lifetime rule finds a cycle may close through a disposable (design.md §7): a write, a
- * call whose callee's write would, an escaping closure or a witness whose would, in `function`.
+ * call whose callee's write of what it is given would, an escaping closure or a witness whose
+ * would, or a call at whose types its callee's own code makes one (`instance`).
  */
 export interface LifetimeFinding {
-  readonly kind: 'write' | 'call' | 'closure' | 'witness';
+  readonly kind: 'write' | 'call' | 'closure' | 'witness' | 'instance';
   readonly site: NodeOf<string>;
   /** What holds the cycle: the type of the holder written, or of what is written into it. */
   readonly holderType: Type;
   readonly callee: FunctionDeclaration | undefined;
-  /** The function, or the context constant, whose code it is in. */
-  readonly declaration: FunctionDeclaration | ContextConstantDeclaration;
+  /** The function, or the constant, whose code it is in. */
+  readonly declaration: FindingDeclaration;
 }
+
+/**
+ * What code a lifetime finding is in: a function's, or a constant's initializer, a context
+ * constant's or a top-level one's, which nothing calls with anything.
+ */
+export type FindingDeclaration =
+  | FunctionDeclaration
+  | ContextConstantDeclaration
+  | VariableDeclaration;
 
 export interface LifetimeQueries {
   /** Whether values of `type` may reach a disposable: what the runtime counts (design.md §9.1). */
@@ -270,13 +280,14 @@ export function checkProgram(
 export interface TraitObjects {
   /**
    * The calls a value of `member` inside `type` is called through for its `constraint`-th
-   * constraint: what meets each function its trait requires, in the trait's order.
+   * constraint: what meets each function its trait requires, in the trait's order; undefined
+   * where `member` doesn't meet it, a mistake checking reports where the value goes in.
    */
   readonly memberWitnesses: (
     type: AnyType,
     constraint: number,
     member: Type,
-  ) => readonly ResolvedCall[];
+  ) => readonly ResolvedCall[] | undefined;
   /**
    * A call of `required`, with its own `typeArguments`, through `type`'s `constraint`-th constraint
    * on a value of `member`: the function type it is made at (`called`), and the one `member`'s

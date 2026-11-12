@@ -104,11 +104,11 @@ export function reportUnmet(site: UseSite, found: Type, target: AnyType): boolea
 export function traitObjectsOf(checker: CheckerContext): TraitObjects {
   return {
     memberWitnesses: (type, constraint, member) => {
+      if (!meetsMember(checker, { type, constraint, member })) {
+        return;
+      }
       const { met } = memberConstraints(checker, { type, constraint, member });
-      return (
-        witnessesFor(searchSite(checker), member, met) ??
-        unreachable(`${typeText(member)} went into ${typeText(type)} without meeting it.`)
-      );
+      return witnessesFor(searchSite(checker), member, met);
     },
     memberSignatures: (type, constraint, member, call) => {
       const signature = requirementType(checker, call.required);
@@ -175,6 +175,16 @@ function memberConstraints(
     type.constraints[constraint] ?? unreachable(`${typeText(type)} has no such constraint.`);
   const called = constraintOn(own, member, checker.typeRules);
   return { called, met: memberConstraint(checker, member, called) };
+}
+
+/** Whether `member` meets `type`'s `constraint`-th constraint: not where a mistake put it in. */
+function meetsMember(checker: CheckerContext, { type, constraint, member }: Member): boolean {
+  const own = type.constraints[constraint];
+  return (
+    own !== undefined &&
+    checker.fitting.metInstantiation(member, constraintOn(own, member, checker.typeRules)).kind !==
+      'none'
+  );
 }
 
 /** What `shape` makes of each of `constraints`; undefined where the member meets the one called. */

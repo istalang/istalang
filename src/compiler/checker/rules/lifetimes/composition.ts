@@ -1,0 +1,95 @@
+/**
+ * Summaries composed (design.md §5.4): one re-expressed over the inputs a binding gives it, as a
+ * witness's is over the arguments of the call through the requirement it meets, and several
+ * joined into what a call that may run any of them does.
+ */
+
+import type { Binding } from '../../surface/resolved-call.ts';
+import type { Type } from '../../types/type/index.ts';
+import type { Input } from './input.ts';
+import { emptySummary, mappedCycle, type Summary } from './summary.ts';
+import { mappedByTypes, mappedSymbolic } from './symbolic.ts';
+
+/**
+ * `summary` over the inputs `binding` gives its parameters: each parameter the one its source
+ * argument is, its types mapped by `substitute`. An input bound to none, a default, says nothing
+ * of the call.
+ */
+export function boundBy(
+  summary: Summary,
+  binding: Binding,
+  substitute: (type: Type) => Type,
+): Summary {
+  const mapped = (input: Input): Input | undefined => {
+    if (input.kind === 'path') {
+      const of = mapped(input.of);
+      return of === undefined ? undefined : { ...input, of };
+    }
+    if (input.kind !== 'parameter') {
+      return input;
+    }
+    const source = binding[input.index];
+    return source?.kind === 'argument' ? { kind: 'parameter', index: source.index } : undefined;
+  };
+  const inputs = (list: readonly Input[]) => list.flatMap((input) => mapped(input) ?? []);
+  const related = <Related extends { readonly input: Input }>(list: readonly Related[]) =>
+    list.flatMap((each) => {
+      const input = mapped(each.input);
+      return input === undefined ? [] : [{ ...each, input }];
+    });
+  return {
+    ...summary,
+    effects: summary.effects.flatMap((effect) => {
+      const from = mapped(effect.from);
+      const to = mapped(effect.to);
+      return from === undefined || to === undefined ? [] : [{ ...effect, from, to }];
+    }),
+    result: related(summary.result),
+    gives: related(summary.gives),
+    requirements: summary.requirements.flatMap((requirement) => {
+      const holder = mapped(requirement.holder);
+      const value = mapped(requirement.value);
+      return holder === undefined || value === undefined
+        ? []
+        : [
+            {
+              ...requirement,
+              holder,
+              value,
+              holderType: substitute(requirement.holderType),
+              valueType:
+                requirement.valueType === undefined ? undefined : substitute(requirement.valueType),
+            },
+          ];
+    }),
+    always: summary.always.map((cycle) => mappedCycle(cycle, substitute)),
+    symbolic: summary.symbolic.map((call) => mappedSymbolic(call, mapped)),
+    byTypes: summary.byTypes.map((checked) => mappedByTypes(checked, substitute)),
+    callReach: inputs(summary.callReach),
+    leaks: inputs(summary.leaks),
+    calls: inputs(summary.calls),
+    access: inputs(summary.access),
+  };
+}
+
+/** What a call that may run any of `summaries`' functions does: what each may. */
+export function joinedSummaries(summaries: readonly Summary[]): Summary {
+  return summaries.reduce<Summary>(
+    (joined, each) => ({
+      effects: [...joined.effects, ...each.effects],
+      result: [...joined.result, ...each.result],
+      gives: [...joined.gives, ...each.gives],
+      watched: joined.watched || each.watched,
+      requirements: [...joined.requirements, ...each.requirements],
+      always: [...joined.always, ...each.always],
+      symbolic: [...joined.symbolic, ...each.symbolic],
+      byTypes: [...joined.byTypes, ...each.byTypes],
+      callReach: [...joined.callReach, ...each.callReach],
+      leaks: [...joined.leaks, ...each.leaks],
+      unseen: joined.unseen || each.unseen,
+      calls: [...joined.calls, ...each.calls],
+      access: [...joined.access, ...each.access],
+    }),
+    emptySummary,
+  );
+}

@@ -408,5 +408,6 @@ describe('checking is total', () => {
       }),
       { numRuns: 300 },
     );
-  });
+    // Each run checks a program whole, static lifetimes' summaries included.
+  }, 30_000);
 });

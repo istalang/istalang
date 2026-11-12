@@ -314,7 +314,7 @@ function instantiatedRead(
 ): FieldRead {
   switch (read.kind) {
     case 'position':
-      return read;
+      return { ...read, on: concrete(read.on) };
     case 'dispatch':
     case 'required':
       return requiredFieldRead(checker, concrete(read.on), read.required);

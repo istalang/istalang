@@ -7,7 +7,8 @@
  */
 
 import type { Type } from '../../types/type/index.ts';
-import type { Input, Requirement, Summary, TypedCycle } from './summary.ts';
+import type { Input } from './input.ts';
+import type { Requirement, Summary, TypedCycle } from './summary.ts';
 import {
   type HandleReach,
   lessRelevant,
@@ -21,14 +22,16 @@ import {
 export interface EscapingFacts {
   readonly relevanceOf: (type: Type) => Relevance;
   readonly reachOf: (type: Type) => HandleReach;
+  /** What values of a type surely hold and reach, whatever its type parameters become. */
+  readonly knownReachOf: (type: Type) => HandleReach;
 }
 
 /**
  * Whether values of `holder`'s and `value`'s types may come to break a requirement of `kind` as
  * the declaration graph allows: the value reach or be the holder's, or the two share anything.
  */
-function typesBreak(
-  facts: EscapingFacts,
+export function typesBreak(
+  facts: Pick<EscapingFacts, 'reachOf'>,
   { holder, value }: { readonly holder: Type; readonly value: Type },
   kind: Requirement['kind'],
 ): boolean {
@@ -47,13 +50,21 @@ export function decidingType(facts: EscapingFacts, holder: Type, value: Type): T
   return lessRelevant(facts.relevanceOf(value), facts.relevanceOf(holder)) ? value : holder;
 }
 
-/** How surely `cycle` holds a disposable: never where its types can't close it. */
+/**
+ * How surely `cycle` holds a disposable: never where its types can't close it, and as each
+ * instantiation decides where only what its type parameters become could close it.
+ */
 export function cycleRelevance(facts: EscapingFacts, cycle: TypedCycle): Relevance {
-  return cycle.through.some((value) =>
-    typesBreak(facts, { holder: cycle.holder, value }, cycle.kind),
-  )
-    ? facts.relevanceOf(cycle.deciding)
-    : 'no';
+  const closes = (reachOf: (type: Type) => HandleReach) => {
+    const breaks = (value: Type) =>
+      typesBreak({ reachOf }, { holder: cycle.holder, value }, cycle.kind);
+    return cycle.through.some(breaks) && cycle.sources.every(breaks);
+  };
+  if (!closes(facts.reachOf)) {
+    return 'no';
+  }
+  const relevance = facts.relevanceOf(cycle.deciding);
+  return closes(facts.knownReachOf) || lessRelevant(relevance, 'depends') ? relevance : 'depends';
 }
 
 /**
@@ -65,21 +76,24 @@ export function escapingCycles(
   summary: Pick<Summary, 'requirements' | 'always'>,
   typeOf: (input: Input) => Type | undefined,
 ): readonly TypedCycle[] {
+  // A part of an input, and a global, name their types themselves.
+  const typed = (input: Input) =>
+    input.kind === 'path' || input.kind === 'global' ? input.type : typeOf(input);
+  // A write closes a cycle only where what is written, and the input it comes from, both may.
   const breaking = summary.requirements.flatMap((requirement): readonly TypedCycle[] => {
-    const holder = typeOf(requirement.holder);
-    const value = typeOf(requirement.value);
-    return holder !== undefined &&
-      value !== undefined &&
-      typesBreak(facts, { holder, value }, requirement.kind)
-      ? [
-          {
-            holder,
-            through: [value],
-            kind: requirement.kind,
-            deciding: decidingType(facts, requirement.holderType, value),
-          },
-        ]
-      : [];
+    const holder = typed(requirement.holder);
+    const source = typed(requirement.value);
+    if (holder === undefined || source === undefined) {
+      return [];
+    }
+    const cycle: TypedCycle = {
+      holder,
+      through: [requirement.valueType ?? source],
+      sources: [source],
+      kind: requirement.kind,
+      deciding: decidingType(facts, requirement.holderType, requirement.valueType ?? source),
+    };
+    return cycleRelevance(facts, cycle) === 'no' ? [] : [cycle];
   });
   return [...breaking, ...summary.always];
 }

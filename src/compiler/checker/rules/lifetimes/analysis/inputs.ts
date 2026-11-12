@@ -6,12 +6,16 @@
  * - **An input path** is a part read of an input: of its node as given, or of the parameter that
  *   holds it, where nothing assigns that parameter (`Nodes.isStable`), so the part read is the part
  *   given. A part of an input path is one too.
+ * - **A recursive group's members name their inputs whole** (design.md §5.7): a call within the
+ *   group maps a parameter to a part of one, so each round would name parts of parts, without
+ *   bound. A part shares with its input, so a finding on the input covers it. C4's field labels
+ *   bring parts back there.
  * - **Pairs** are lifted between inputs on different branches: an input and a part of it are one
  *   value's, so neither may come to reach the other but through a cycle.
  */
 
+import { type Input, inputKey } from '../input.ts';
 import type { NodeId } from '../reach-state.ts';
-import { type Input, inputKey } from '../summary.ts';
 import type { BodyAnalysis } from './body.ts';
 import type { FlowState } from './flow-state.ts';
 import type { Nodes } from './nodes.ts';
@@ -28,6 +32,9 @@ export function candidatesIn(analysis: BodyAnalysis, state: FlowState): readonly
   const inputs = nodes.inputs
     .map((slot) => ({ input: slot.input, node: analysis.inputNodeOf(slot) }))
     .filter(({ node }) => state.reach.isLive(node) && nodes.isRelevant(node));
+  if (!analysis.inputParts) {
+    return inputs;
+  }
   const paths = nodes.allPaths().flatMap((node) => {
     const input = inputPathOf(nodes, node);
     return input !== undefined && state.reach.isLive(node) && nodes.isRelevant(node)

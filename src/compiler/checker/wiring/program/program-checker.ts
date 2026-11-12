@@ -43,7 +43,6 @@ import type {
   TypeAliasDeclaration,
   TypeParameter,
 } from '../../../syntax/declarations/index.ts';
-import { writtenByReference } from '../../../syntax/expressions/parameters.ts';
 import type { VariableDeclaration } from '../../../syntax/statements/index.ts';
 import { awaits } from '../../../syntax/tokens/modifiers.ts';
 import type { Identifier, NodeOf } from '../../../syntax/tree/node.ts';
@@ -61,6 +60,7 @@ import { ContextConstantChecks } from '../../constructs/declarations/context-con
 import { FunctionChecks } from '../../constructs/declarations/functions/functions.ts';
 import {
   type DefaultsBody,
+  defaultsBody,
   Parameters,
 } from '../../constructs/declarations/functions/parameters.ts';
 import { StaticFunctions } from '../../constructs/declarations/functions/statics.ts';
@@ -262,12 +262,11 @@ export class ProgramChecker implements CheckerContext {
   /** The body a function's parameter defaults are checked in, each seeing those before it. */
   #defaultsBody(declaration: FunctionDeclaration): DefaultsBody {
     const body = this.#valueBody(this.moduleOf(declaration), undefined, declaration);
-    return {
-      check: (value, declared) => body.expect(value, declared),
-      declare: (node, type) =>
-        declareParameter(body, { node, type, reference: writtenByReference(node) }),
-      checked: (values) => body.defaults(values),
-    };
+    return defaultsBody({
+      expect: (value, declared) => body.expect(value, declared),
+      declare: (parameter) => declareParameter(body, parameter),
+      finished: (roots) => body.defaults(roots),
+    });
   }
 
   report(module: ModuleId, diagnostic: Diagnostic<AnchoredSpan, ModuleId>): void {

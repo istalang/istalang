@@ -118,7 +118,7 @@ export function closedInside(
       return { ...resolved, requirement: { ...origin, on, through }, typeArguments, witnesses };
     }
     const witness =
-      program.traitObjects.memberWitnesses(through, 0, on)[origin.member] ??
+      program.traitObjects.memberWitnesses(through, 0, on)?.[origin.member] ??
       unreachable(`${typeText(on)} meets its bound without '${resolved.function.name.text}'.`);
     const inRequired = closingIn({ declaration: resolved.function, typeArguments, witnesses });
     const met = closedInside(witness, inRequired, program);

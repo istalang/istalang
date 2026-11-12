@@ -145,7 +145,7 @@ describe('an instantiated body', () => {
         : undefined;
     };
     expect(access && body?.fieldReadOf(access)?.kind).toBe('required');
-    expect(readFor(0)).toEqual({ kind: 'position', index: 1 });
+    expect(readFor(0)).toMatchObject({ kind: 'position', name: 'size', index: 1 });
     expect(readFor(1)?.kind).toBe('dispatch');
   });
 });

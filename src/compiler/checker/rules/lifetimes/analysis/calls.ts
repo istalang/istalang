@@ -16,21 +16,25 @@ import type { NodeOf } from '../../../../syntax/tree/node.ts';
 import { type FunctionCall, witnessCallsOf } from '../../../surface/resolved-call.ts';
 import type { Type } from '../../../types/type/index.ts';
 import type { ValueId } from '../../flow/flow-ir.ts';
-import { escapingCycles } from '../escaping.ts';
+import { escapingCycles, typesBreak } from '../escaping.ts';
+import type { Input } from '../input.ts';
 import type { NodeId, ReachState } from '../reach-state.ts';
+import { mappedCycle, type Requirement, type ResultRelation, type Summary } from '../summary.ts';
+import type { ByTypes } from '../symbolic.ts';
 import {
-  type Input,
-  mappedCycle,
-  type Requirement,
-  type ResultRelation,
-  type Summary,
-} from '../summary.ts';
-import { mayAlias } from '../type-reach.ts';
-import { type At, type Bindings, type Bound, boundIn, closureBindings } from './bindings.ts';
-import type { Holder } from './body.ts';
+  type At,
+  type Bindings,
+  type Bound,
+  boundIn,
+  closureBindings,
+  ownedBy,
+} from './bindings.ts';
+import { type Holder, placeHolds } from './body.ts';
 import { cycleOf } from './cycles.ts';
 import type { FlowState, Given } from './flow-state.ts';
 import type { Owner } from './places.ts';
+import { forwardSymbolic, resolvedWithin } from './symbolic-calls.ts';
+import { relateByTypes } from './unseen.ts';
 
 /** How a call is made: where, giving what, of which callee, and whether it gives its future. */
 export interface CallMade {
@@ -42,16 +46,27 @@ export interface CallMade {
 }
 
 /** Applies `summary` at a call binding `bindings`. */
-export function applySummary(at: At, made: CallMade, summary: Summary, bindings: Bindings): void {
+export function applySummary(at: At, made: CallMade, called: Summary, bindings: Bindings): void {
+  const { analysis } = at;
+  const { context } = analysis;
+  const summary = made.call === undefined ? called : resolvedWithin(context, called, made.call);
   const bound = (input: Input) => boundIn(at, bindings, input);
   for (const requirement of summary.requirements) {
     checkRequirement(at, made, requirement, bound);
   }
   for (const cycle of summary.always) {
     const substituted = mappedCycle(cycle, (type) => substitutedAt(at, made, type));
-    at.analysis.violate('call', made.site, substituted, made.callee);
+    analysis.violate('instance', made.site, substituted, made.callee);
   }
-  if (made.call !== undefined) {
+  for (const symbolic of summary.symbolic) {
+    forwardSymbolic(at, symbolic, bound);
+  }
+  if (analysis.recording) {
+    for (const checked of summary.byTypes) {
+      analysis.byTypes.set(byTypesKey(context.facts.keyOf, checked), checked);
+    }
+  }
+  if (made.call !== undefined && !context.hasBody(made.call.function)) {
     checkWitnesses(at, made.call, made.site);
   }
   applyEffects(at, summary, bound);
@@ -128,17 +143,41 @@ function checkRequirement(
   bound: (input: Input) => Bound,
 ): void {
   const holderType = substitutedAt(at, made, requirement.holderType);
-  if (at.analysis.relevance(holderType) === 'no') {
+  const valueType =
+    requirement.valueType === undefined
+      ? undefined
+      : substitutedAt(at, made, requirement.valueType);
+  const { facts } = at.analysis.context;
+  if (
+    at.analysis.relevance(holderType) === 'no' ||
+    (valueType !== undefined &&
+      !typesBreak(facts, { holder: holderType, value: valueType }, requirement.kind))
+  ) {
     return;
   }
   const holder = bound(requirement.holder);
+  // A place given by `&` is written into itself, or behind a handle the value in it holds.
   const targets: readonly Target[] =
-    holder.owner === undefined
-      ? holder.nodes.map((node) => ({ kind: 'node', node }))
-      : [holder.owner];
-  for (const value of bound(requirement.value).nodes) {
+    holder.owner !== undefined && requirement.lands === 'place'
+      ? [holder.owner]
+      : holder.nodes.map((node) => ({ kind: 'node', node }));
+  // What the call gives is written only where its own type, too, may reach the holder.
+  const values = bound(requirement.value).nodes.filter((node) => {
+    const type = at.analysis.nodes.typeOf(node);
+    return (
+      type === undefined || typesBreak(facts, { holder: holderType, value: type }, requirement.kind)
+    );
+  });
+  for (const value of values) {
     for (const target of targets) {
-      checkAt(at, made, { target, value, holderType, kind: requirement.kind });
+      checkAt(at, made, {
+        target,
+        value,
+        holderType,
+        valueType,
+        kind: requirement.kind,
+        lands: requirement.lands,
+      });
     }
   }
 }
@@ -154,16 +193,22 @@ interface Pair {
   readonly target: Target;
   readonly value: NodeId;
   readonly holderType: Type;
+  readonly valueType: Type | undefined;
   readonly kind: Requirement['kind'];
+  readonly lands: Requirement['lands'];
 }
 
-function checkAt(at: At, made: CallMade, { target, value, holderType, kind }: Pair): void {
+function checkAt(
+  at: At,
+  made: CallMade,
+  { target, value, holderType, valueType, kind, lands }: Pair,
+): void {
   const { analysis, state } = at;
   if (target.kind === 'value' && kind === 'reach') {
     return;
   }
   if (target.kind === 'reference' || target.kind === 'value') {
-    analysis.lift(state, target.variable, value, { holderType, kind });
+    analysis.lift(state, target.variable, value, { holderType, valueType, kind, lands });
     return;
   }
   const holder: Holder =
@@ -173,10 +218,12 @@ function checkAt(at: At, made: CallMade, { target, value, holderType, kind }: Pa
     ? state.reach.closes(holder.node, value)
     : state.reach.shares(holder.node, value);
   if (closes) {
-    const cycle = cycleOf(analysis, state, { ...holder, exact }, value);
-    analysis.violate('call', made.site, cycle, made.callee);
+    if (analysis.recording) {
+      const cycle = cycleOf(analysis, state, { ...holder, exact }, value);
+      analysis.violate('call', made.site, cycle, made.callee);
+    }
   } else {
-    analysis.lift(state, holder.node, value, { holderType: holder.type, kind });
+    analysis.lift(state, holder.node, value, { holderType: holder.type, valueType, kind });
   }
 }
 
@@ -190,6 +237,9 @@ function written(at: At, holder: Bound, value: NodeId, inside: boolean): void {
     }
   } else if (owner.kind === 'heap') {
     analysis.link(state, owner.holder, value, inside);
+    for (const place of inside ? [] : holder.nodes) {
+      placeHolds(state, owner.holder, place, value);
+    }
   } else {
     state.reach.contain(owner.variable, value);
     analysis.endPathsFrom(state, owner.variable);
@@ -197,8 +247,9 @@ function written(at: At, holder: Bound, value: NodeId, inside: boolean): void {
 }
 
 /**
- * The witnesses `call` gives its callee are run by it with values the caller doesn't see: each
- * one's writes are checked for any values of its parameters' types (design.md §5.4).
+ * The witnesses `call` gives a callee with no body this rule reads (a native's) are run by it with
+ * values the caller doesn't see: each one's writes are checked for any values of its parameters'
+ * types (design.md §5.4). A callee with a body calls them symbolically (symbolic-calls.ts).
  */
 function checkWitnesses({ analysis }: At, call: FunctionCall, site: NodeOf<string>): void {
   const { context } = analysis;
@@ -242,15 +293,16 @@ function giveResult(
     return;
   }
   state.reach.fresh(into);
-  const relations: readonly ResultRelation[] = [
-    ...summary.result,
-    ...(made.isAsync
-      ? summary.callReach.map((input) => ({ input, relation: 'reaches' as const }))
-      : []),
-  ];
-  for (const { input, relation } of relations) {
+  for (const { input, relation } of summary.result) {
     for (const node of bound(input).nodes) {
       relate(state, into, { node, relation });
+    }
+  }
+  // An async call's frames hold what it was given while it waits, a place's owner among it.
+  for (const input of made.isAsync ? summary.callReach : []) {
+    const { nodes, owner } = bound(input);
+    for (const node of [...nodes, ...ownedBy(owner)]) {
+      relate(state, into, { node, relation: 'reaches' });
     }
   }
   if (summary.watched) {
@@ -291,25 +343,25 @@ function relate(state: FlowState, into: NodeId, { node, relation }: Given): void
   }
 }
 
-/** `into` may be any value of a type its handles watch: anything of a type it may alias. */
+/**
+ * `into` may be any value of a type its handles watch, anywhere: it relates to each value live
+ * as the declaration graph lets their types (unseen.ts), and so does what the function returning
+ * it gives its callers (`watches`).
+ */
 function watchedResult({ analysis, state }: At, into: NodeId): void {
-  const reach = analysis.nodes.reachOf(into);
-  if (reach === undefined) {
-    return;
-  }
+  analysis.watched.add(into);
   state.reach.markEscaped(into);
-  for (const node of state.reach.live()) {
-    const other = analysis.nodes.reachOf(node);
-    if (node !== into && other !== undefined && mayAlias(reach, other)) {
-      state.reach.contain(into, node);
-    }
+  const reach = analysis.nodes.reachOf(into);
+  for (const node of state.reach.live().filter((each) => each !== into)) {
+    relateByTypes(state, [into, reach], [node, analysis.nodes.reachOf(node)]);
   }
 }
 
 /**
- * A call of code nobody sees: what it is given escapes, and its result may be anything escaped.
- * A function value this function was given is code its caller may know (`unseen` false): only
- * code nobody can know makes the summary say it runs unseen code.
+ * A call of code nobody sees: what it is given escapes, and its result is anything that code may
+ * reach, which it may keep: the result is handed to unseen code too, so the code relates it to
+ * what it reaches. A function value this function was given is code its caller may know
+ * (`unseen` false): only code nobody can know makes the summary say it runs unseen code.
  */
 export function unknownCall(at: At, into: ValueId, given: readonly NodeId[], unseen = true): void {
   const { analysis, state } = at;
@@ -318,7 +370,14 @@ export function unknownCall(at: At, into: ValueId, given: readonly NodeId[], uns
   }
   if (analysis.nodes.isRelevant(into)) {
     state.reach.fresh(into);
-    state.reach.markEscaped(into);
+    state.reach.escape(into);
   }
   analysis.runUnseen(state, { given, unseen });
+}
+
+/** A key naming what `checked` checks by types, for sets of them. */
+function byTypesKey(keyOf: (type: Type) => string, checked: ByTypes): string {
+  return checked.kind === 'conversion'
+    ? `conversion:${keyOf(checked.member)}:${keyOf(checked.to)}`
+    : `call:${checked.call.function.name.text}:${checked.call.requirement.member}:${checked.call.typeArguments.map(keyOf).join(',')}`;
 }

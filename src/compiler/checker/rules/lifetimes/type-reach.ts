@@ -18,6 +18,7 @@ import type { CheckerContext } from '../../contexts/context.ts';
 import { isHandleType } from '../../types/properties/handles.ts';
 import { heldPartsOf, heldTypes } from '../../types/properties/held.ts';
 import { isSendable } from '../../types/traits/sendable.ts';
+import { isComputed } from '../../types/type/computed-types.ts';
 import { isSendableFunction } from '../../types/type/function-types.ts';
 import type { FunctionType, NominalEntity, NominalType, Type } from '../../types/type/index.ts';
 import { isDisposable } from '../disposal/disposal.ts';
@@ -58,12 +59,12 @@ function ownRelevance(checker: CheckerContext, type: Type): Relevance {
       return heldOfFunction(type);
     case 'any':
       return isSendable(checker, type) ? 'no' : 'yes';
-    case 'parameter':
-    case 'associated':
-    case 'field':
-      return isSendable(checker, type) ? 'no' : 'depends';
     default:
-      return 'no';
+      // A type parameter, or a type computed from one (a type `match` not reduced yet): what an
+      // instantiation makes it decides.
+      return (type.kind === 'parameter' || isComputed(type)) && !isSendable(checker, type)
+        ? 'depends'
+        : 'no';
   }
 }
 
@@ -91,13 +92,31 @@ export interface HandleReach {
   readonly innerClosures: boolean;
 }
 
+/** What a value of any type at all may hold and reach: anything. */
+export const anyReach: HandleReach = {
+  top: 'any',
+  inner: 'any',
+  topClosures: true,
+  innerClosures: true,
+};
+
+/**
+ * What a type not known yet (a type parameter's, or one computed from it) holds: anything, as some
+ * instantiation may make it; or nothing, as what a value holds whatever its instantiation is.
+ */
+export type Unknown = 'anything' | 'nothing';
+
 /** The handles values of `type` hold and may reach (the declaration graph's answer for it). */
-export function handleReachOf(checker: CheckerContext, type: Type): HandleReach {
-  const top = topHandlesOf(checker, type);
+export function handleReachOf(
+  checker: CheckerContext,
+  type: Type,
+  unknown: Unknown = 'anything',
+): HandleReach {
+  const top = topHandlesOf(checker, type, unknown);
   if (top.any) {
-    return { top: 'any', inner: 'any', topClosures: true, innerClosures: true };
+    return anyReach;
   }
-  const reached = innerOf(checker, top.handles);
+  const reached = innerOf(checker, top.handles, unknown);
   if (top.closures || reached === 'any' || reached.closures) {
     return {
       top: entitiesOf(top.handles),
@@ -118,6 +137,7 @@ export function handleReachOf(checker: CheckerContext, type: Type): HandleReach 
 function innerOf(
   checker: CheckerContext,
   handles: readonly NominalType[],
+  unknown: Unknown,
 ): 'any' | { readonly handles: ReadonlySet<NominalEntity>; readonly closures: boolean } {
   const inner = new Set<NominalEntity>();
   let closures = false;
@@ -128,7 +148,7 @@ function innerOf(
     const key = checker.typeKeys.typeKey(handle);
     const held = seen.has(key)
       ? []
-      : heldPartsOf(checker, handle).map((part) => topHandlesOf(checker, part));
+      : heldPartsOf(checker, handle).map((part) => topHandlesOf(checker, part, unknown));
     seen.add(key);
     if (held.some(({ any }) => any)) {
       return 'any';
@@ -213,7 +233,7 @@ interface TopHandles {
  * handles a value's parts hold; a closure, for a plain function; any at all for a type parameter
  * or an `any` value. A recursive value type holds nothing more where it recurs.
  */
-function topHandlesOf(checker: CheckerContext, type: Type): TopHandles {
+function topHandlesOf(checker: CheckerContext, type: Type, unknown: Unknown): TopHandles {
   const handles: NominalType[] = [];
   let closures = false;
   const seen = new Set<string>();
@@ -226,7 +246,11 @@ function topHandlesOf(checker: CheckerContext, type: Type): TopHandles {
       closures ||= heldOfFunction(part) !== 'no';
       return false;
     }
-    if (ownRelevance(checker, part) !== 'no') {
+    const own = ownRelevance(checker, part);
+    if (own === 'depends' && unknown === 'nothing') {
+      return false;
+    }
+    if (own !== 'no') {
       return true;
     }
     const key = checker.typeKeys.typeKey(part);

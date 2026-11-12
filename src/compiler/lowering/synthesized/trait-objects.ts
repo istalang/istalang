@@ -79,7 +79,7 @@ export function dispatchEntry(lowering: Lowering, dispatch: Dispatch): FunctionD
     checker.typeRules,
   );
   switchOverMembers(code, on, receiver, (type) => {
-    const witness = checker.traitObjects.memberWitnesses(through, constraint, type)[member];
+    const witness = checker.traitObjects.memberWitnesses(through, constraint, type)?.[member];
     if (witness === undefined) {
       unreachable(
         `${spelledType(checker, type)} meets ${spelledType(checker, through)} without '${required.name.text}'.`,

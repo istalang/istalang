@@ -99,8 +99,8 @@ export const cycleTemplates = {
   },
   cycleCall: {
     code: 5721,
-    message: (callee: string, holder: string) =>
-      `'${callee}' writes one of what it is given here into another that may already reach it, making a cycle holding ${holder}, which reaches a disposable: no cycle may (§7). Hold one side through a 'WeakRef'.`,
+    message: (callee: string | undefined, holder: string) =>
+      `${calledHere(callee)} writes one of what it is given here into another that may already reach it, making a cycle holding ${holder}, which reaches a disposable: no cycle may (§7). Hold one side through a 'WeakRef'.`,
   },
   cycleEscaping: {
     code: 5722,
@@ -109,10 +109,20 @@ export const cycleTemplates = {
   },
   cycleWitness: {
     code: 5723,
-    message: (witness: string, holder: string) =>
-      `'${witness}', which this runs through a type's witness, may be given values making a cycle holding ${holder}, which reaches a disposable: no cycle may (§7). Hold one side through a 'WeakRef'.`,
+    message: (witness: string | undefined, holder: string) =>
+      `${calledHere(witness)}, which this runs through a type's witness, may be given values making a cycle holding ${holder}, which reaches a disposable: no cycle may (§7). Hold one side through a 'WeakRef'.`,
+  },
+  cycleInstance: {
+    code: 5724,
+    message: (callee: string | undefined, holder: string) =>
+      `${calledHere(callee)} makes a cycle holding ${holder} at the types this call gives it, which reaches a disposable: no cycle may (§7). Hold one side through a 'WeakRef'.`,
   },
 } as const;
+
+/** The function a call runs, by name where it has one: a closure or a dispatch has none. */
+function calledHere(name: string | undefined): string {
+  return name === undefined ? 'What is called here' : `'${name}'`;
+}
 
 export const weakSideTemplates = {
   awaitInCleanup: {

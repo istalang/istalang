@@ -42,6 +42,25 @@ what removed each, and the ones C4 must remove. The real cycles it found are in 
   the rest is written back, which also keeps a retraction from seeing its own entry. Under C4's
   closure captures, `retract` is `held->value = none`, and the requirement goes.
 
+## Found by C3's review
+
+The reviewer and QA found false negatives the dry run hid. Each is fixed (design.md §5.3–§5.5):
+- untyped IR temporaries treated as holding nothing;
+- an unknown call's result unrelated to what it was given;
+- `&` parameters' effects and whole assignments;
+- defaults built without their earlier parameters;
+- requirement calls on type parameters taken as unseen code;
+- generic and part-by-part `any` conversions;
+- recursion through `any` cutting violations off;
+- a `let` an async call takes by `&`;
+- `WeakRef.deref()`;
+- a future's given temporaries ending before the `await`.
+
+They also found false positives:
+- struct fields mapped to the wrong parts;
+- requirements typed by a fresh wrapper rather than what it wraps;
+- a generic body reporting a cycle only its instantiation decides.
+
 ## Left to C4
 
 - **FormBuilder's `run`** (`forms.ista`, `view.draw(Scope{data: before, ctx}, &out)`). The loop
@@ -58,5 +77,9 @@ what removed each, and the ones C4 must remove. The real cycles it found are in 
   `rt.call`. That function escapes, so its requirement that `_jobs` not reach `kept` is checked by
   types, and the job table's closures may hold anything. The tests run through
   `textDespiteCycles`, the oracle checking their heaps, until C4.
+- **A copy of one part of a parameter related to its others** (`const x = p.a; const y = p.b;
+  link(x, y)`): a read part aliases its whole, so a copy of it aliases the whole's other parts once
+  they are read. C4's field labels make containment directional.
+- **Input parts inside recursive groups,** named whole there (design.md §5.7).
 - **An escaped plain function written after an `await`,** and **relinking after unlinking**
   (`node->next = other`): plan.md's C4 acceptance. C3's dry run met neither outside FormBuilder.

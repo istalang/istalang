@@ -212,13 +212,32 @@ They are **polymorphic by construction**: they speak of inputs, not types. So `I
 **At a call**, the caller checks each requirement in its own state:
 - If the pair may hold → an error at the call, citing the callee's write.
 - If both sides are the caller's inputs → the requirement moves up into the caller's summary.
-- Roots (started functions, tests, context constants' initializers) have unrelated inputs, so a
-  requirement ends there satisfied. **No whole-program pass exists.**
+- Roots (started functions, tests, constants' initializers, context and top-level alike) have
+  unrelated inputs, so a requirement ends there satisfied. **No whole-program pass exists.**
+
+What C3 settled about requirements and defaults:
+- **A requirement carries the written value's type** beside its holder's. A write closes a cycle
+  only where the value written and the input it came from may both reach the holder by types. A
+  typed cycle keeps the input's type among its `sources`.
+- **A requirement on a parameter taken by `&` says where the write lands:** in the caller's place
+  (`r = v`, `xs.push(v)`), or behind a handle the value there holds (`r->next = v`). The caller
+  checks the place's owner or the value in it.
+- **A default is analysed as a function of the parameters before it,** and its summary joins its
+  function's. A call leaving the argument out binds that parameter to what the default's value
+  relates to.
+- **A cycle a callee's own code makes at the types a call gives it** is reported at the call as
+  its own case (5724), apart from a callee's write of what it is given (5721).
 
 ### 5.4 Calls whose callee is decided later
 
 - **A requirement called on a type parameter** (`x.render()` with `x: T`, `T is View`) has no callee
-  until instantiation.
+  until instantiation. C3's summaries keep it as a symbolic call (`rules/lifetimes/symbolic.ts`):
+  for each ordered pair of its arguments, what a witness writing one into the other would meet
+  in the body. That is a cycle closed there, or the pairs of the body's inputs the write would
+  require apart. Each call of the function closes the symbolic call to its witness with C1's
+  closing, and reads the witness's requirements off those pairs. So a generic call commutes with
+  its instantiated copy. A call still open names its caller's own type parameters, and goes on
+  into the caller's summary.
   - The summary keeps it symbolic: "calls `T`'s `render` with inputs …".
   - A call site resolves it through the witnesses the checker records for that call
     (`FunctionCall.witnesses`), then the witness's own symbolic calls through its binding, composed
@@ -238,6 +257,14 @@ They are **polymorphic by construction**: they speak of inputs, not types. So `I
   So a witness that writes one argument into another is checked where the arguments are known.
   Checking at the conversion instead would take them as any values of their types, and it
   rejected FormBuilder's drawing.
+  - The conversions are read off each fitted copy's two types, so a value put in part by part, or
+    into a union holding an `any`, counts too. A union goes in member by member. A value of
+    another `any` goes in as what went into that one.
+  - A value of a type not known yet goes in only in a generic body. Each instantiation checks it
+    against the declaration graph, as an escaping bundle of its type's witnesses. So is a
+    requirement a closure calls, whose callers are unseen.
+  - A call on a union's trait, or on a computed type an instantiation made known, runs each
+    member's witness, as a dispatch does.
 - **A call of a function value:**
   - If the IR shows which closure it is (made in this body, or passed straight to a call), that
     closure's summary applies.
@@ -284,6 +311,12 @@ futures may hold anything until C4 (§5.6). C3 settled three more points:
 
 This is the only place types stand in for flow, and only for escaped values.
 
+- **A value the IR leaves untyped** (a pattern's step, a cursor's step, a spread's item) is any
+  value: it may reach a disposable, and anything at all.
+- **The declaration graph is asked twice:** with type parameters holding anything, whether a cycle
+  is possible, and with them holding nothing, whether it is sure. A cycle only a type parameter's
+  instantiation could close is decided by that instantiation, as any `depends` one is.
+
 ### 5.6 Planned refinement: what closures capture (C4)
 
 Until C4, a plain function value may hold anything in the declaration graph, so a write after a
@@ -304,7 +337,10 @@ FormBuilder's `run` awaits closures its drawing collected, so it fails until the
 
 ### 5.7 Fields: paths in C3, labels in C4
 
-C3 took the paths, together with §5.5's separation requirements (decided 2026-11-12):
+C3 took the paths, together with §5.5's separation requirements (decided 2026-11-12). A member
+of a recursive group names its inputs whole: a call within the group maps a parameter to a part
+of one, so each round would name parts of parts without bound. C4's labels bring parts back there
+(decided 2026-11-12).
 - **An input's parts are inputs of their own** (`self.items`, `self->_store`): a read of one is a
   path node, re-read as the same value until a write may change it. A requirement or separation on
   a part names the part, which a caller passing two fields of one value checks separately.
@@ -460,7 +496,8 @@ give the path.
 | Case | Reported at |
 |---|---|
 | a write whose value may reach its holder | the write |
-| a call whose callee's write would close a cycle | the call; related locations go down to the callee's write |
+| a call whose callee's write of what it is given would close a cycle | the call (5721); related locations go down to the callee |
+| a call at whose types its callee's own code closes a cycle | the call (5724); related locations go down to the callee |
 | a write after a `suspend` or unknown call, where the declaration graph lets its sides reach | the write; related information names the type path |
 | an escaping closure or `any` conversion whose call could close a cycle | where the closure is made or the value converted |
 | `Holds` or `Keeps` misused: an unknown parameter, outside the std, on a non-handle | the annotation |

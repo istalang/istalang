@@ -12,20 +12,23 @@
  *   `self->slot` twice names one value until a write may change it (design.md §5.2).
  * - **Last uses:** a temporary used only in the block computing it ends after its last use there,
  *   so a statement's temporaries don't linger in the state.
+ * - **A value of no recorded type** (a temporary the IR's builder leaves untyped, such as a
+ *   pattern's step or a loop's cursor step) is any value: it may reach a disposable, and anything
+ *   at all, so the operations making it relate it as they would any other.
  */
 
 import type { VariableEntity } from '../../../../binder/entities.ts';
-import { inFieldOrder } from '../../../types/type/field-order.ts';
 import type { Type } from '../../../types/type/index.ts';
 import type { FlowFunction, Operation, Part, ValueId } from '../../flow/flow-ir.ts';
+import type { Input } from '../input.ts';
 import type { NodeId } from '../reach-state.ts';
-import type { Input } from '../summary.ts';
-import type { HandleReach, Relevance } from '../type-reach.ts';
+import { anyReach, type HandleReach, type Relevance } from '../type-reach.ts';
 
 /** What the analysis reads of types: relevance, the handles a value may hold, a cell's type. */
 export interface TypeFacts {
   readonly relevanceOf: (type: Type) => Relevance;
   readonly reachOf: (type: Type) => HandleReach;
+  readonly knownReachOf: (type: Type) => HandleReach;
   readonly cellOf: (type: Type) => Type;
   /** A struct type's fields' names, in declaration order; undefined for another type. */
   readonly fieldNamesOf: (type: Type) => readonly string[] | undefined;
@@ -65,16 +68,18 @@ export class Nodes {
   readonly #steps = new Map<object, number>();
   readonly #globals: InputSlot[] = [];
   readonly #pathNodes = new Map<NodeId, PathNode>();
+  readonly #pathsByRoot = new Map<NodeId, NodeId[]>();
   readonly #relevance = new Map<NodeId, boolean>();
   readonly #lastUses: ReadonlyMap<Operation, readonly ValueId[]>;
   readonly #captured: ReadonlySet<ValueId>;
+  readonly #heldByCalls: ReadonlySet<ValueId>;
   readonly #assigned: ReadonlySet<ValueId>;
 
   constructor(flow: FlowFunction, facts: TypeFacts) {
     this.flow = flow;
     this.#facts = facts;
     this.#size = flow.values.length;
-    this.#inputs = [...inputSlots(flow, this.#size)];
+    this.#inputs = [...inputSlots(flow, this.#size, facts.cellOf)];
     this.#owned = this.#inputs.filter((slot) => slot.input.kind !== 'cell').length;
     this.#lastUses = lastUsesOf(flow);
     this.#assigned = new Set(
@@ -89,19 +94,33 @@ export class Nodes {
         ),
       ),
     );
+    this.#heldByCalls = new Set(
+      flow.blocks.flatMap(({ operations }) =>
+        operations.flatMap((operation) =>
+          operation.op === 'call' && operation.call.function.qualifiers.async !== undefined
+            ? operation.arguments.flatMap((argument) =>
+                argument.kind === 'place' ? [argument.place.root] : [],
+              )
+            : [],
+        ),
+      ),
+    );
   }
 
   /**
-   * Whether `value` lives in a cell: a `let` a closure of this body captures, or one this
-   * function captured. A variable passed by `&` alone is in a cell for lowering, but no object
-   * anything else holds.
+   * Whether `value` lives in a cell: a `let` a closure of this body captures, one this function
+   * captured, or one an async call takes by `&`, whose execution holds the cell while it waits
+   * (spec §3.7). A variable another call takes by `&` is in a cell for lowering, but no object
+   * anything else holds once the call returns.
    */
   isCell(value: ValueId): boolean {
     const found = this.flow.values[value];
     return (
       found?.kind === 'variable' &&
       found.inCell &&
-      (this.#captured.has(value) || this.flow.captures.includes(value))
+      (this.#captured.has(value) ||
+        this.#heldByCalls.has(value) ||
+        this.flow.captures.includes(value))
     );
   }
 
@@ -153,13 +172,15 @@ export class Nodes {
     const node = 2 * this.#size + this.#owned + this.#paths.size;
     this.#paths.set(key, node);
     this.#pathNodes.set(node, { root, part, kind, type });
+    const siblings = this.#pathsByRoot.get(root) ?? [];
+    this.#pathsByRoot.set(root, [...siblings, node]);
     return node;
   }
 
   /**
-   * What names a part, alike wherever it is read: a field by where its struct lays it out, which
-   * a member access and a pattern name alike, a tuple's element by position, any other part by
-   * its kind, and a step of its own kind (a union's member, an array pattern's) by itself.
+   * What names a part, alike wherever it is read: a field by its name, which a member access, a
+   * pattern and a generic's struct constraint name alike, a tuple's element by position, any other
+   * part by its kind, and a step of its own kind (a union's member, an array pattern's) by itself.
    */
   partKey(part: Part): string {
     if (part.kind !== 'step') {
@@ -170,14 +191,7 @@ export class Nodes {
       return `#${step}`;
     }
     if (step.kind === 'field') {
-      const names = this.#facts.fieldNamesOf(step.of);
-      const at =
-        names === undefined
-          ? -1
-          : inFieldOrder(names.map((name) => ({ name }))).findIndex(
-              ({ name }) => name === step.name,
-            );
-      return at < 0 ? `.${step.name}` : `#${at}`;
+      return `.${step.name}`;
     }
     let id = this.#steps.get(step);
     if (id === undefined) {
@@ -189,7 +203,7 @@ export class Nodes {
 
   /**
    * The parts a value made of `parts` (a struct of `type`, in its fields' declaration order, or a
-   * tuple) has, each as a read names it: a field by its place in its struct's layout.
+   * tuple) has, each as a read names it: a field by its name.
    */
   madeParts(
     type: Type,
@@ -203,10 +217,12 @@ export class Nodes {
     if (names === undefined || names.length !== parts.length) {
       return [];
     }
-    const layout = inFieldOrder(names.map((name) => ({ name }))).map(({ name }) => name);
     return parts.map(
       (part, index) =>
-        [{ kind: 'step', step: layout.indexOf(names[index] as string) }, part] as const,
+        [
+          { kind: 'step', step: { kind: 'field', of: type, name: names[index] as string } },
+          part,
+        ] as const,
     );
   }
 
@@ -217,7 +233,7 @@ export class Nodes {
 
   /** The path nodes whose root is `root`. */
   pathsFrom(root: NodeId): readonly NodeId[] {
-    return [...this.#pathNodes].flatMap(([node, path]) => (path.root === root ? [node] : []));
+    return this.#pathsByRoot.get(root) ?? [];
   }
 
   allPaths(): readonly NodeId[] {
@@ -248,7 +264,7 @@ export class Nodes {
       return known;
     }
     const type = this.typeOf(node);
-    const relevant = type !== undefined && this.#facts.relevanceOf(type) !== 'no';
+    const relevant = type === undefined || this.#facts.relevanceOf(type) !== 'no';
     this.#relevance.set(node, relevant);
     return relevant;
   }
@@ -257,9 +273,9 @@ export class Nodes {
     return this.#facts.relevanceOf(type);
   }
 
-  reachOf(node: NodeId): HandleReach | undefined {
+  reachOf(node: NodeId): HandleReach {
     const type = this.typeOf(node);
-    return type === undefined ? undefined : this.#facts.reachOf(type);
+    return type === undefined ? anyReach : this.#facts.reachOf(type);
   }
 
   /** The temporaries whose last use `operation` is. */
@@ -268,7 +284,12 @@ export class Nodes {
   }
 }
 
-function inputSlots(flow: FlowFunction, size: number): readonly InputSlot[] {
+/** The function's inputs, a captured `let`'s cell typed as the cell it is (`cellOf`). */
+function inputSlots(
+  flow: FlowFunction,
+  size: number,
+  cellOf: (type: Type) => Type,
+): readonly InputSlot[] {
   const slots: Omit<InputSlot, 'node'>[] = [];
   const slot = (input: Input, value: ValueId) => {
     const type = flow.values[value]?.type;
@@ -298,7 +319,14 @@ function inputSlots(flow: FlowFunction, size: number): readonly InputSlot[] {
   const cells = flow.captures.flatMap((value, index) => {
     const found = flow.values[value];
     return found?.kind === 'variable' && found.inCell && found.type !== undefined
-      ? [{ input: { kind: 'cell', index } as const, value, type: found.type, node: size + value }]
+      ? [
+          {
+            input: { kind: 'cell', index } as const,
+            value,
+            type: cellOf(found.type),
+            node: size + value,
+          },
+        ]
       : [];
   });
   return [...own, ...cells];

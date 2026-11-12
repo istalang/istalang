@@ -32,19 +32,14 @@ export function diagnosticOf(
     case 'write':
       return checkerDiagnostics.cycleWrite(site.span, holder);
     case 'call':
-      return {
-        ...checkerDiagnostics.cycleCall(
-          site.span,
-          callee?.name.text ?? 'the function called',
-          holder,
-        ),
-        related,
-      };
+      return { ...checkerDiagnostics.cycleCall(site.span, callee?.name.text, holder), related };
+    case 'instance':
+      return { ...checkerDiagnostics.cycleInstance(site.span, callee?.name.text, holder), related };
     case 'closure':
       return checkerDiagnostics.cycleEscaping(site.span, holder);
     case 'witness':
       return {
-        ...checkerDiagnostics.cycleWitness(site.span, callee?.name.text ?? 'a witness', holder),
+        ...checkerDiagnostics.cycleWitness(site.span, callee?.name.text, holder),
         related,
       };
     default: {

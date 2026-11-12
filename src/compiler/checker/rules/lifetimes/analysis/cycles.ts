@@ -30,6 +30,7 @@ export function cycleOf(
   return {
     holder: type,
     through: path?.through ?? [type],
+    sources: [],
     kind: exact ? 'reach' : 'share',
     deciding: path === undefined ? type : decidingType(analysis.context.facts, type, path.least),
   };

@@ -14,8 +14,9 @@
  */
 
 import { isHandleType } from '../../../types/properties/handles.ts';
+import { inputKey } from '../input.ts';
 import type { NodeId } from '../reach-state.ts';
-import { anyField, inputKey } from '../summary.ts';
+import { anyField } from '../summary.ts';
 import { type HandleReach, mayAlias, mayReach, mayShare } from '../type-reach.ts';
 import type { BodyAnalysis } from './body.ts';
 import type { FlowState } from './flow-state.ts';
@@ -110,6 +111,8 @@ function separate(
           holder: holder.input,
           value: value.input,
           holderType,
+          valueType: analysis.nodes.typeOf(value.node),
+          lands: 'behind',
           label: anyField,
         });
       }
@@ -122,11 +125,7 @@ function closeOver(analysis: BodyAnalysis, state: FlowState, live: readonly Node
   const reaches = live.map((node) => [node, analysis.nodes.reachOf(node)] as const);
   for (const [index, [first, firstReach]] of reaches.entries()) {
     for (const [second, secondReach] of reaches.slice(index + 1)) {
-      if (
-        firstReach !== undefined &&
-        secondReach !== undefined &&
-        !oneHandle(analysis, state, [first, second])
-      ) {
+      if (!oneHandle(analysis, state, [first, second])) {
         relateByTypes(state, [first, firstReach], [second, secondReach]);
       }
     }
@@ -163,7 +162,7 @@ function oneHandle(
 }
 
 /** Relates two nodes as the declaration graph says values of their types may come to be. */
-function relateByTypes(
+export function relateByTypes(
   state: FlowState,
   [first, firstReach]: readonly [NodeId, HandleReach],
   [second, secondReach]: readonly [NodeId, HandleReach],

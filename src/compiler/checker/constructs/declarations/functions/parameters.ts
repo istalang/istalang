@@ -16,18 +16,50 @@ import type { EntryTable } from '../../../../../foundation/structures/entries/in
 import { sameItems } from '../../../../../foundation/structures/equality.ts';
 import type { FunctionDeclaration } from '../../../../syntax/declarations/index.ts';
 import type { Expression } from '../../../../syntax/expressions/index.ts';
-import { writesType } from '../../../../syntax/expressions/parameters.ts';
+import { writesType, writtenByReference } from '../../../../syntax/expressions/parameters.ts';
 import type { SignatureParameter } from '../../../check.ts';
 import type { CheckerContext, CheckerNote } from '../../../contexts/context.ts';
 import { checkerDiagnostics } from '../../../diagnostics/index.ts';
+import type { FlowRoot } from '../../../rules/flow/build/index.ts';
 import type { CheckedBody } from '../../../surface/checked-body.ts';
 import { sameTypeSpelled } from '../../../types/parts/type-parts.ts';
 import type { RestSlot } from '../../../types/type/function-types.ts';
+import type { Type } from '../../../types/type/index.ts';
 import { type DefaultValues, declaredParameters, writtenParameters } from './signatures.ts';
 
 /** A body in which a function's defaults are checked, and what checking `values` found. */
 export interface DefaultsBody extends DefaultValues {
   readonly checked: (values: readonly Expression[]) => CheckedBody;
+}
+
+/** What a body checking defaults does: check a value, declare a parameter, finish. */
+export interface DefaultsChecking {
+  readonly expect: (value: Expression, declared: Type | undefined) => Type;
+  readonly declare: (parameter: SignatureParameter) => void;
+  readonly finished: (roots: readonly FlowRoot[]) => CheckedBody;
+}
+
+/**
+ * A body checking a function's defaults through `checking`, each default seeing the parameters
+ * declared before it, and its flow taking them, as a call leaving it out runs it with them.
+ */
+export function defaultsBody(checking: DefaultsChecking): DefaultsBody {
+  const declared: SignatureParameter[] = [];
+  const before = new Map<Expression, readonly SignatureParameter[]>();
+  return {
+    check: (value, type) => {
+      before.set(value, [...declared]);
+      return checking.expect(value, type);
+    },
+    declare: (node, type) => {
+      // No rest parameter comes before a default: it would take the arguments the default's.
+      const parameter = { node, type, reference: writtenByReference(node), rest: undefined };
+      declared.push(parameter);
+      checking.declare(parameter);
+    },
+    checked: (values) =>
+      checking.finished(values.map((root) => ({ root, parameters: before.get(root) ?? [] }))),
+  };
 }
 
 interface ParameterUnit {

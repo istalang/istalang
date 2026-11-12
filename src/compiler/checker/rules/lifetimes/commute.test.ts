@@ -78,4 +78,59 @@ describe('static lifetimes and instantiation', () => {
       { numRuns: 80 },
     );
   });
+
+  it('commutes when a disposable generic handle copies a non-handle `T?` field', () => {
+    const build = (generic: boolean) =>
+      [
+        ...declarations,
+        'shared struct LeasedBox<T> { lease: Lease, value: T? = none }',
+        `fn copyVal${generic ? '<T>' : ''}(a: LeasedBox<${generic ? 'T' : 'Int'}>, b: LeasedBox<${generic ? 'T' : 'Int'}>):`,
+        '  const v = b->value',
+        '  a->value = v',
+        'fn subject():',
+        '  const x = new LeasedBox<Int>{lease: new Lease{n: 1}, value: 42}',
+        '  copyVal(x, x)',
+      ].join('\n');
+    expect(findingsIn(build(true)).length > 0).toBe(findingsIn(build(false)).length > 0);
+  });
+
+  it('commutes when an async generic function writes a disposable wrapper after an await', () => {
+    const build = (generic: boolean) => {
+      const param = generic ? 'T' : 'Int';
+      return [
+        "import * as runtime from 'runtime'",
+        ...declarations,
+        'shared struct Holder<T> { lease: Lease, item: T? = none }',
+        'shared struct Wrapper<T> { lease: Lease, copy: T? = none }',
+        `ista async fn putAfter${generic ? '<T>' : ''}(a: Holder<Wrapper<${param}>>, w: Wrapper<${param}>):`,
+        '  await runtime.commit()',
+        '  a->item = w',
+        'ista fn subject():',
+        '  const a = new Holder<Wrapper<Int>>{lease: new Lease{n: 1}}',
+        '  const w = new Wrapper<Int>{lease: new Lease{n: 2}, copy: 42}',
+        '  hold _ = putAfter(a, w)',
+      ].join('\n');
+    };
+    expect(findingsIn(build(true)).length > 0).toBe(findingsIn(build(false)).length > 0);
+  });
+
+  it('commutes when a generic function writes through a `type match` alias', () => {
+    const build = (generic: boolean) => {
+      const param = generic ? 'T' : 'Int';
+      return [
+        ...declarations,
+        'shared struct MatchNode { lease: Lease, s: Shared<MatchNode?> }',
+        'type PickNode<T> = match T:',
+        '  case Int: MatchNode',
+        '  case _: MatchNode',
+        `fn linkMatch${generic ? '<T>' : ''}(s: Shared<PickNode<${param}>?>, v: PickNode<${param}>):`,
+        '  s->value = v',
+        'fn subject():',
+        '  const s = new Shared<MatchNode?>{value: none}',
+        '  const n = new MatchNode{lease: new Lease{n: 1}, s: s}',
+        `  linkMatch${generic ? '<Int>' : ''}(s, n)`,
+      ].join('\n');
+    };
+    expect(findingsIn(build(true)).length > 0).toBe(findingsIn(build(false)).length > 0);
+  });
 });

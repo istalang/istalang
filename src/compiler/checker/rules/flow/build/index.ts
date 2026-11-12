@@ -27,6 +27,12 @@ import { statementFlows } from './statements.ts';
 
 const flows = new WeakMap<CheckedBody, Map<SyntaxNode, FlowFunction>>();
 
+/** What a body's flow starts from: a function's block or a value, and the parameters it sees. */
+export interface FlowRoot {
+  readonly root: Block | Expression;
+  readonly parameters: readonly SignatureParameter[];
+}
+
 /**
  * The flow of `root` in `inputs.body`: a function's body block, taking `parameters`, a default's
  * value, or a constant's initializer.

@@ -183,7 +183,8 @@ The node kinds are in `src/compiler/syntax/expressions/index.ts` and `syntax/sta
 - **The CLI** prints each as a `note:` excerpt after its diagnostic (`renderDiagnostic`, and
   `renderDiagnostics` over every diagnosed module, `src/foundation/diagnostics/render.ts`).
 - **Codes:** `diagnostics/lifetimes.ts` holds block 5700–5799, and 5712 is the next free code.
-  The cycles are 5720–5723 (`cycleTemplates`: a write, a call, an escaping function, a witness),
+  The cycles are 5720–5724 (`cycleTemplates`: a write, a call, an escaping function, a witness,
+  a cycle a callee makes at a call's types),
   apart so that tests running cyclic programs can let them through (`lifetimes.test-kit.ts`
   `isCycle`). `rules/lifetimes/reports.ts` makes each finding a diagnostic, a call's or a
   witness's with the callee as a related location. `ModuleChecks` runs `checker.lifetimes.check`

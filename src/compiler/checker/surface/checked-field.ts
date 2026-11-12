@@ -24,14 +24,15 @@ export interface RequiredField {
 }
 
 /**
- * How a read reaches its field: by its position in the struct the value is, in its fields' order;
+ * How a read reaches its field: by its position in the struct `on` the value is, in its fields'
+ * order, which lowering reads, the field's `name` naming it for what reads the field itself;
  * through the entry reading it from whichever member an `any` value holds; or, on a value of a
  * type known only per instantiation (a type parameter, or a type computed from one), as a trait
  * of its constraints requires it, which an `any` value may stand for, or as a struct constraint
  * names it, which only a struct meets (§3.5).
  */
 export type FieldRead =
-  | { readonly kind: 'position'; readonly index: number }
+  | { readonly kind: 'position'; readonly on: Type; readonly name: string; readonly index: number }
   | { readonly kind: 'dispatch'; readonly on: AnyType; readonly required: RequiredField }
   | { readonly kind: 'required'; readonly on: Type; readonly required: RequiredField }
   | { readonly kind: 'named'; readonly on: Type; readonly name: string }
@@ -102,5 +103,7 @@ export function structFieldOf(
   const fields = checker.fieldsOf(type) ?? [];
   const index = fields.findIndex((candidate) => candidate.name === name);
   const field = fields[index];
-  return field === undefined ? undefined : { member: field, read: { kind: 'position', index } };
+  return field === undefined
+    ? undefined
+    : { member: field, read: { kind: 'position', on: type, name, index } };
 }

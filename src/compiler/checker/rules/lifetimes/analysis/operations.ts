@@ -19,17 +19,22 @@
  */
 
 import type { FunctionCall, RequirementCall } from '../../../surface/resolved-call.ts';
+import { isKnown } from '../../../types/parts/type-parts.ts';
 import type { Type } from '../../../types/type/index.ts';
 import type { Operation } from '../../flow/flow-ir.ts';
+import { boundBy, joinedSummaries } from '../composition.ts';
+import { anyConversionsBetween } from '../dispatch.ts';
 import { escapingCycles } from '../escaping.ts';
+import { type Input, inputKey } from '../input.ts';
 import type { NodeId } from '../reach-state.ts';
-import { type Input, inputKey, joinedSummaries, requiredBy, type Summary } from '../summary.ts';
+import type { Summary } from '../summary.ts';
 import { type At, closureBindings, functionBindings, nodesGiven } from './bindings.ts';
-import type { BodyAnalysis } from './body.ts';
+import { type BodyAnalysis, placeHolds } from './body.ts';
 import { applySummary, readGiven, unknownCall } from './calls.ts';
 import { type FlowState, materialize } from './flow-state.ts';
 import { readKindOf } from './nodes.ts';
 import { placeTarget } from './places.ts';
+import { recordSymbolic, resolvedWithin } from './symbolic-calls.ts';
 
 type Of<Kind extends Operation['op']> = Extract<Operation, { op: Kind }>;
 
@@ -39,6 +44,7 @@ const handlers: { readonly [Kind in Operation['op']]: Handler<Kind> } = {
   compute: (at, { into }) => fresh(at, into),
   unknown: (at, { into }) => fresh(at, into),
   copy: (at, operation) => {
+    openConversions(at, operation);
     if (!at.analysis.nodes.isRelevant(operation.into)) {
       return;
     }
@@ -72,14 +78,16 @@ const handlers: { readonly [Kind in Operation['op']]: Handler<Kind> } = {
     const { owner } = target;
     if (owner.kind === 'heap') {
       analysis.write(state, owner.holder, value, site);
-      if (owner.holder.node !== target.value && owner.holder.exact) {
-        state.reach.contain(target.value, value);
-      }
+      placeHolds(state, owner.holder, target.value, value);
       return;
     }
     const type = analysis.nodes.typeOf(owner.variable);
     if (owner.kind === 'reference' && type !== undefined) {
-      analysis.lift(state, owner.variable, value, { holderType: type, kind: 'reach' });
+      analysis.lift(state, owner.variable, value, {
+        holderType: type,
+        kind: 'reach',
+        lands: 'place',
+      });
     }
     state.reach.contain(owner.variable, value);
     analysis.endPathsFrom(state, owner.variable);
@@ -114,14 +122,16 @@ const handlers: { readonly [Kind in Operation['op']]: Handler<Kind> } = {
     }
   },
   call: (at, { into, call, role, arguments: args, site }) => {
-    const { analysis, state } = at;
+    const { analysis } = at;
     if (role === 'onAwait') {
       return;
     }
     if (call.kind === 'requirement') {
-      const witnesses = analysis.context.dispatched(call);
+      const witnesses = analysis.context.witnessesOf(call);
       if (witnesses === undefined) {
-        unknownCall(at, into, nodesGiven(at, args));
+        // Each instantiation's witness does it (symbolic-calls.ts); until then, code by types.
+        recordSymbolic(at, call, args);
+        unknownCall(at, into, nodesGiven(at, args), false);
       } else {
         dispatchedCall(at, { into, site, arguments: args }, call, witnesses);
       }
@@ -133,12 +143,11 @@ const handlers: { readonly [Kind in Operation['op']]: Handler<Kind> } = {
       return;
     }
     const bindings = functionBindings(at, call, args);
-    if (role === 'iterate' && analysis.context.readsWhatItIterates(call.function)) {
-      const [iterated] = nodesGiven(at, args);
-      state.callees.set(into, { kind: 'items', of: iterated });
-    }
     const isAsync = call.function.qualifiers.async !== undefined;
     applySummary(at, { site, into, callee: call.function, call, isAsync }, summary, bindings);
+    if (role === 'iterate' && analysis.context.readsWhatItIterates(call.function)) {
+      cursorOver(at, into, nodesGiven(at, args));
+    }
   },
   callValue: (at, { into, callee, arguments: args, site }) => {
     const { analysis, state } = at;
@@ -146,9 +155,7 @@ const handlers: { readonly [Kind in Operation['op']]: Handler<Kind> } = {
     if (known?.kind === 'items') {
       if (analysis.nodes.isRelevant(into)) {
         state.reach.fresh(into);
-        if (known.of !== undefined && state.reach.isLive(known.of)) {
-          state.reach.readPart(into, known.of);
-        }
+        state.reach.readThrough(into, callee);
       }
     } else if (known === undefined) {
       const own = analysis.calledInput(state, callee);
@@ -181,18 +188,64 @@ function dispatchedCall(
   const { context } = at.analysis;
   const summaries = witnesses.flatMap((witness) => {
     const summary = context.calleeSummary(witness);
-    return summary === undefined ? [] : [requiredBy(summary, witness, context.substitute)];
+    return summary === undefined
+      ? []
+      : [
+          boundBy(resolvedWithin(context, summary, witness), witness.binding, (type) =>
+            context.substitute(type, witness),
+          ),
+        ];
   });
   const isAsync = witnesses.some((witness) => witness.function.qualifiers.async !== undefined);
   const made = { site, into, callee: undefined, call: undefined, isAsync };
   applySummary(at, made, joinedSummaries(summaries), functionBindings(at, call, args));
 }
 
+/**
+ * Notes what `copy` puts into an `any` from values of types not known yet, for each instantiation
+ * to check against the declaration graph (../symbolic.ts); the rest is the dispatch's (dispatch.ts).
+ */
+function openConversions({ analysis }: At, { into, from, fit }: Of<'copy'>): void {
+  const { flow } = analysis.nodes;
+  const [fromType, intoType] = [flow.values[from]?.type, flow.values[into]?.type];
+  if (
+    !analysis.recording ||
+    fit === undefined ||
+    fromType === undefined ||
+    intoType === undefined
+  ) {
+    return;
+  }
+  for (const { to, member } of anyConversionsBetween(fromType, intoType)) {
+    if (!isKnown(member)) {
+      const key = `conversion:${analysis.context.facts.keyOf(member)}:${analysis.context.facts.keyOf(to)}`;
+      analysis.byTypes.set(key, { kind: 'conversion', member, to });
+    }
+  }
+}
+
+/**
+ * `cursor`, a native `iterate`'s, holds what it was given to iterate, which the calls of it read
+ * an item of each (`KnownFunction`): the iterated value may end before the loop does.
+ */
+function cursorOver({ state }: At, cursor: NodeId, iterated: readonly NodeId[]): void {
+  state.callees.set(cursor, { kind: 'items' });
+  if (state.reach.isLive(cursor)) {
+    for (const each of iterated.filter((node) => state.reach.isLive(node))) {
+      state.reach.hold(cursor, each);
+    }
+  }
+}
+
 /** Runs `operation` on `state`, then ends the temporaries it used last. */
 export function runOperation(analysis: BodyAnalysis, state: FlowState, operation: Operation): void {
   (handlers[operation.op] as Handler<typeof operation.op>)({ analysis, state }, operation as never);
+  // A temporary a future settles with is read where the future is awaited: it lives till then.
+  const given = new Set([...state.gives.values()].flatMap((each) => each.map(({ node }) => node)));
   for (const ended of analysis.nodes.endingAfter(operation)) {
-    analysis.release(state, ended);
+    if (!given.has(ended)) {
+      analysis.release(state, ended);
+    }
   }
 }
 
@@ -209,6 +262,11 @@ function fresh({ analysis, state }: At, into: NodeId): void {
  */
 function assigned({ analysis, state }: At, { into, from, site }: Of<'copy'>): void {
   const { nodes } = analysis;
+  const placeType = nodes.typeOf(into);
+  if (analysis.references.has(into) && placeType !== undefined && state.reach.isLive(from)) {
+    // A reference parameter assigned whole is its caller's place written.
+    analysis.lift(state, into, from, { holderType: placeType, kind: 'reach', lands: 'place' });
+  }
   const cell = nodes.cell(into);
   const type = nodes.typeOf(cell);
   if (nodes.isCell(into) && type !== undefined) {
