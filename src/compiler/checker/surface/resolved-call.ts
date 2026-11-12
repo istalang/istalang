@@ -111,7 +111,7 @@ export function passesAll(binding: Binding): boolean {
   return binding.every((source, index) => source.kind === 'argument' && source.index === index);
 }
 
-interface RequirementCall extends WrittenAs {
+export interface RequirementCall extends WrittenAs {
   readonly kind: 'requirement';
   /** The trait's function required. */
   readonly function: FunctionDeclaration;

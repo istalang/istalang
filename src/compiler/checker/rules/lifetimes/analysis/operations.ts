@@ -18,12 +18,12 @@
  *   function it gives back (C4).
  */
 
-import type { FunctionCall } from '../../../surface/resolved-call.ts';
-import type { AnyType, Type } from '../../../types/type/index.ts';
+import type { FunctionCall, RequirementCall } from '../../../surface/resolved-call.ts';
+import type { Type } from '../../../types/type/index.ts';
 import type { Operation } from '../../flow/flow-ir.ts';
 import { escapingTypes } from '../escaping.ts';
 import type { NodeId } from '../reach-state.ts';
-import { type Input, inputKey, type Summary } from '../summary.ts';
+import { type Input, inputKey, joinedSummaries, requiredBy, type Summary } from '../summary.ts';
 import { type At, closureBindings, functionBindings, nodesGiven } from './bindings.ts';
 import type { BodyAnalysis } from './body.ts';
 import { applySummary, readGiven, unknownCall } from './calls.ts';
@@ -39,9 +39,6 @@ const handlers: { readonly [Kind in Operation['op']]: Handler<Kind> } = {
   compute: (at, { into }) => fresh(at, into),
   unknown: (at, { into }) => fresh(at, into),
   copy: (at, operation) => {
-    if (operation.fit?.conversion.kind === 'any') {
-      convertedIntoAny(at, operation, operation.fit.conversion.to);
-    }
     if (!at.analysis.nodes.isRelevant(operation.into)) {
       return;
     }
@@ -121,8 +118,17 @@ const handlers: { readonly [Kind in Operation['op']]: Handler<Kind> } = {
     if (role === 'onAwait') {
       return;
     }
-    const summary = call.kind === 'function' ? analysis.context.calleeSummary(call) : undefined;
-    if (call.kind !== 'function' || summary === undefined) {
+    if (call.kind === 'requirement') {
+      const witnesses = analysis.context.dispatched(call);
+      if (witnesses === undefined) {
+        unknownCall(at, into, nodesGiven(at, args));
+      } else {
+        dispatchedCall(at, { into, site, arguments: args }, call, witnesses);
+      }
+      return;
+    }
+    const summary = analysis.context.calleeSummary(call);
+    if (summary === undefined) {
       unknownCall(at, into, nodesGiven(at, args));
       return;
     }
@@ -161,6 +167,26 @@ const handlers: { readonly [Kind in Operation['op']]: Handler<Kind> } = {
     }
   },
 };
+
+/**
+ * A call through an `any` value (design.md §5.4): what each of the witnesses it may run does,
+ * over the required function's parameters, joined, applied as one call's.
+ */
+function dispatchedCall(
+  at: At,
+  { into, site, arguments: args }: Pick<Of<'call'>, 'into' | 'site' | 'arguments'>,
+  call: RequirementCall,
+  witnesses: readonly FunctionCall[],
+): void {
+  const { context } = at.analysis;
+  const summaries = witnesses.flatMap((witness) => {
+    const summary = context.calleeSummary(witness);
+    return summary === undefined ? [] : [requiredBy(summary, witness, context.substitute)];
+  });
+  const isAsync = witnesses.some((witness) => witness.function.qualifiers.async !== undefined);
+  const made = { site, into, callee: undefined, call: undefined, isAsync };
+  applySummary(at, made, joinedSummaries(summaries), functionBindings(at, call, args));
+}
 
 /** Runs `operation` on `state`, then ends the temporaries it used last. */
 export function runOperation(analysis: BodyAnalysis, state: FlowState, operation: Operation): void {
@@ -345,25 +371,5 @@ function checkEscaping(
 ): void {
   for (const type of escapingTypes(analysis.context.facts, summary, typeOf)) {
     analysis.violate(kind, site, type, undefined);
-  }
-}
-
-/**
- * A value put into an `any T`: its type's witnesses of `T` become calls code nobody sees makes,
- * with any values of their parameters' types (design.md §5.4).
- */
-function convertedIntoAny(at: At, { from, site }: Of<'copy'>, to: AnyType): void {
-  const { analysis } = at;
-  const member = analysis.nodes.typeOf(from);
-  if (member === undefined) {
-    return;
-  }
-  for (const [constraint] of to.constraints.entries()) {
-    for (const call of analysis.context.anyWitnesses(to, constraint, member)) {
-      const escaping = functionInputs(analysis, call);
-      if (escaping !== undefined) {
-        checkEscaping(at, site, escaping, 'witness');
-      }
-    }
   }
 }

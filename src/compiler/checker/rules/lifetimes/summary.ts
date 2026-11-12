@@ -31,6 +31,7 @@ import { sameItems } from '../../../../foundation/structures/equality.ts';
 import type { VariableEntity } from '../../../binder/entities.ts';
 import type { FunctionDeclaration } from '../../../syntax/declarations/index.ts';
 import type { CheckerContext } from '../../contexts/context.ts';
+import type { FunctionCall } from '../../surface/resolved-call.ts';
 import { typeChildren } from '../../types/parts/type-children.ts';
 import { sameTypeSpelled } from '../../types/parts/type-parts.ts';
 import { isHandleType } from '../../types/properties/handles.ts';
@@ -319,4 +320,83 @@ function watchesIn(
 /** Whether `type` is `part` or holds it among its parts, as spelled. */
 function mentions(type: Type, part: Type): boolean {
   return sameTypeSpelled(type, part) || typeChildren(type).some((child) => mentions(child, part));
+}
+
+/**
+ * A witness's summary over the parameters of the required function it meets (design.md §5.4):
+ * each of its parameters is the one `witness.binding` takes, its types as `witness` instantiates
+ * them. An input bound to none, a default, says nothing of the call.
+ */
+export function requiredBy(
+  summary: Summary,
+  witness: FunctionCall,
+  substitute: (type: Type, call: FunctionCall) => Type,
+): Summary {
+  const sources = witness.binding;
+  const mapped = (input: Input): Input | undefined => {
+    if (input.kind === 'path') {
+      const of = mapped(input.of);
+      return of === undefined ? undefined : { ...input, of };
+    }
+    if (input.kind !== 'parameter') {
+      return input;
+    }
+    const source = sources[input.index];
+    return source?.kind === 'argument' ? { kind: 'parameter', index: source.index } : undefined;
+  };
+  const inputs = (list: readonly Input[]) => list.flatMap((input) => mapped(input) ?? []);
+  const related = <Related extends { readonly input: Input }>(list: readonly Related[]) =>
+    list.flatMap((each) => {
+      const input = mapped(each.input);
+      return input === undefined ? [] : [{ ...each, input }];
+    });
+  return {
+    ...summary,
+    effects: summary.effects.flatMap((effect) => {
+      const from = mapped(effect.from);
+      const to = mapped(effect.to);
+      return from === undefined || to === undefined ? [] : [{ ...effect, from, to }];
+    }),
+    result: related(summary.result),
+    gives: related(summary.gives),
+    requirements: summary.requirements.flatMap((requirement) => {
+      const holder = mapped(requirement.holder);
+      const value = mapped(requirement.value);
+      return holder === undefined || value === undefined
+        ? []
+        : [
+            {
+              ...requirement,
+              holder,
+              value,
+              holderType: substitute(requirement.holderType, witness),
+            },
+          ];
+    }),
+    always: summary.always.map((type) => substitute(type, witness)),
+    callReach: inputs(summary.callReach),
+    leaks: inputs(summary.leaks),
+    calls: inputs(summary.calls),
+    access: inputs(summary.access),
+  };
+}
+
+/** What a call that may run any of `summaries`' functions does: what each may. */
+export function joinedSummaries(summaries: readonly Summary[]): Summary {
+  return summaries.reduce<Summary>(
+    (joined, each) => ({
+      effects: [...joined.effects, ...each.effects],
+      result: [...joined.result, ...each.result],
+      gives: [...joined.gives, ...each.gives],
+      watched: joined.watched || each.watched,
+      requirements: [...joined.requirements, ...each.requirements],
+      always: [...joined.always, ...each.always],
+      callReach: [...joined.callReach, ...each.callReach],
+      leaks: [...joined.leaks, ...each.leaks],
+      unseen: joined.unseen || each.unseen,
+      calls: [...joined.calls, ...each.calls],
+      access: [...joined.access, ...each.access],
+    }),
+    emptySummary,
+  );
 }

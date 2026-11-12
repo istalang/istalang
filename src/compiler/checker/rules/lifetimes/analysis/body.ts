@@ -19,8 +19,8 @@
 import type { FunctionDeclaration } from '../../../../syntax/declarations/index.ts';
 import type { NodeOf } from '../../../../syntax/tree/node.ts';
 import type { LifetimeFinding, SignatureParameter } from '../../../check.ts';
-import type { FunctionCall } from '../../../surface/resolved-call.ts';
-import type { AnyType, Type } from '../../../types/type/index.ts';
+import type { FunctionCall, RequirementCall } from '../../../surface/resolved-call.ts';
+import type { Type } from '../../../types/type/index.ts';
 import type { FlowFunction, ValueId } from '../../flow/flow-ir.ts';
 import { decidingType } from '../escaping.ts';
 import type { NodeId } from '../reach-state.ts';
@@ -41,8 +41,11 @@ export interface AnalysisContext {
   readonly substitute: (type: Type, call: FunctionCall) => Type;
   /** Whether `iterate`'s cursor gives the items of what it is given and does nothing else. */
   readonly readsWhatItIterates: (iterate: FunctionDeclaration) => boolean;
-  /** The calls a value of `member` put into `to` is called through for its `constraint`-th. */
-  readonly anyWitnesses: (to: AnyType, constraint: number, member: Type) => readonly FunctionCall[];
+  /**
+   * What a call through an `any` value may run: each witness of the required function among the
+   * types the program puts into an `any` of its trait; undefined for a call through anything else.
+   */
+  readonly dispatched: (call: RequirementCall) => readonly FunctionCall[] | undefined;
 }
 
 /** Where a cycle may close in this function's text (`LifetimeFinding`, the function aside). */

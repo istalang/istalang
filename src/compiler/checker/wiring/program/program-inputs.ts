@@ -53,6 +53,11 @@ export function programInputs(
       read: (module: ModuleId) => programModule(program, module).tree.root.items,
       equal: sameItems(),
     }),
+    modules: entries.input({
+      name: 'modules',
+      read: () => [...program.modules.keys()].sort((first, second) => first.localeCompare(second)),
+      equal: sameItems(),
+    }),
     importedBy: entries.input({
       name: 'imported by',
       read: (module: ModuleId) => [...(program.modules.get(module)?.imports.values() ?? [])],

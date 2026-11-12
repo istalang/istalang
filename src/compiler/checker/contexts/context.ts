@@ -93,6 +93,8 @@ export interface ProgramInputs {
   readonly itemsOf: (module: ModuleId) => SyntaxTree['root']['items'];
   /** The modules `module`'s imports name. */
   readonly importedBy: (module: ModuleId) => readonly ModuleId[];
+  /** Every module of the program, in one order. */
+  readonly modules: () => readonly ModuleId[];
   /** The std module the language refers to as `role`; undefined when the program lacks it. */
   readonly role: (role: LanguageModule) => ModuleId | undefined;
   /** `module`'s tree, which tools walk up from a node; checking reads `itemsOf`. */

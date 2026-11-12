@@ -37,7 +37,11 @@ export type Bindings = ReadonlyMap<string, Bound>;
 const unbound: Bound = { nodes: [], owner: undefined };
 
 /** The inputs a call of a function binds, from `call`'s binding of `args`. */
-export function functionBindings(at: At, call: FunctionCall, args: readonly Argument[]): Bindings {
+export function functionBindings(
+  at: At,
+  call: Pick<FunctionCall, 'binding'>,
+  args: readonly Argument[],
+): Bindings {
   const bindings = new Map<string, Bound>();
   call.binding.forEach((source, index) => {
     const input: Input = { kind: 'parameter', index };

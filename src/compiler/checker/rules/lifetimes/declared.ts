@@ -21,6 +21,7 @@ import type { Type } from '../../types/type/index.ts';
 import { isDisposeFunction } from '../disposal/disposal.ts';
 import type { FlowInputs } from '../flow/build/flow-builder.ts';
 import { flowOf } from '../flow/build/index.ts';
+import type { FlowFunction } from '../flow/flow-ir.ts';
 import type { AnalysisContext, Violation } from './analysis/body.ts';
 import { type Analysis, analyze } from './analysis/index.ts';
 import { escapingTypes } from './escaping.ts';
@@ -54,6 +55,35 @@ export function flowInputsOf(
     localBodyOf: (local: FunctionDeclaration) => checker.inputs.bodyOf(module, local),
     body,
   };
+}
+
+/** The flows of the defaults `declaration`'s parameters or fields compute, each a root. */
+export function defaultsFlows(
+  checker: CheckerContext,
+  declaration: FunctionDeclaration,
+): readonly FlowFunction[] {
+  const defaults = checker.defaultsOf(declaration);
+  if (defaults === undefined) {
+    return [];
+  }
+  const inputs = flowInputsOf(checker, checker.moduleOf(declaration), defaults);
+  return declaration.parameters.flatMap((parameter) =>
+    parameter.kind === 'Parameter' && parameter.defaultValue !== undefined
+      ? [flowOf(inputs, parameter.defaultValue)]
+      : [],
+  );
+}
+
+/** The flow of a context constant's initializer. */
+export function contextConstantFlow(
+  checker: CheckerContext,
+  declaration: ContextConstantDeclaration,
+): FlowFunction {
+  const body = checker.contextConstants.bodyOf(declaration);
+  return flowOf(
+    flowInputsOf(checker, checker.moduleOf(declaration), body),
+    declaration.initializer,
+  );
 }
 
 /** `summary`, with the types deciding its defaults' cycles among those it always closes. */
@@ -102,10 +132,8 @@ export class Declared {
   ): readonly Violation[] {
     const { checker } = this.#deps;
     const context = this.#deps.context();
-    const module = checker.moduleOf(declaration);
     if (declaration.kind === 'ContextConstantDeclaration') {
-      const body = checker.contextConstants.bodyOf(declaration);
-      const flow = flowOf(flowInputsOf(checker, module, body), declaration.initializer);
+      const flow = contextConstantFlow(checker, declaration);
       return analyze(context, flow, { isAsync: false, references: new Set() }).violations;
     }
     const parameters = checker.parametersOf(declaration);

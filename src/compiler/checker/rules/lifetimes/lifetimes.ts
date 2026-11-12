@@ -33,9 +33,17 @@ import { substitutionOf } from '../../surface/witness-closing.ts';
 import { substitute } from '../../types/parts/substitution.ts';
 import type { Type } from '../../types/type/index.ts';
 import { flowOf } from '../flow/build/index.ts';
+import type { FlowFunction } from '../flow/flow-ir.ts';
 import type { AnalysisContext } from './analysis/body.ts';
 import { type Analysis, analyze } from './analysis/index.ts';
-import { Declared, flowInputsOf, withDefaults } from './declared.ts';
+import {
+  contextConstantFlow,
+  Declared,
+  defaultsFlows,
+  flowInputsOf,
+  withDefaults,
+} from './declared.ts';
+import { Dispatch } from './dispatch.ts';
 import { type Call, type Groups, groupsOf, sameGroupSummaries, sameGroups } from './groups.ts';
 import {
   constructorSummary,
@@ -66,6 +74,7 @@ export class Lifetimes implements LifetimeQueries {
   readonly #constructors: EntryTable<CheckerNote, FunctionDeclaration, Summary>;
   readonly #context: AnalysisContext;
   readonly #declared: Declared;
+  readonly #dispatch: Dispatch;
 
   constructor(checker: CheckerContext) {
     this.#checker = checker;
@@ -109,16 +118,14 @@ export class Lifetimes implements LifetimeQueries {
       analysisOf: (declaration) => this.#analysisOf(declaration),
       hasBody: (declaration) => this.#hasBody(declaration),
     });
+    this.#dispatch = new Dispatch(checker, (module) => this.#flowsOf(module));
     this.#context = {
       facts: typeFactsOf(checker),
       calleeSummary: (call) => this.#calleeSummary(call, undefined),
       parametersOf: (declaration) => checker.parametersOf(declaration),
       substitute: (type, call) => substitutedIn(checker, type, call),
       readsWhatItIterates: (iterate) => checker.isStd(checker.moduleOf(iterate)),
-      anyWitnesses: (to, constraint, member) =>
-        checker.traitObjects
-          .memberWitnesses(to, constraint, member)
-          .filter((call): call is FunctionCall => call.kind === 'function'),
+      dispatched: (call) => this.#dispatch.dispatched(call),
     };
   }
 
@@ -238,7 +245,7 @@ export class Lifetimes implements LifetimeQueries {
       return { summary: emptySummary, violations: [], inputTypes: new Map() };
     }
     const parameters = checker.parametersOf(declaration);
-    const flow = flowOf(flowInputsOf(checker, module, body), block, parameters);
+    const flow = this.#flowOf(declaration) as FlowFunction;
     const references = new Set(
       flow.parameters.filter((_, index) => parameters[index]?.reference === true),
     );
@@ -254,6 +261,34 @@ export class Lifetimes implements LifetimeQueries {
       ...found,
       summary: withDefaults(found.summary, this.#declared.defaultsOf(declaration)),
     };
+  }
+
+  /** The flow of `declaration`'s body, if it has one. */
+  #flowOf(declaration: FunctionDeclaration): FlowFunction | undefined {
+    const checker = this.#checker;
+    const module = checker.moduleOf(declaration);
+    const body = checker.bodyOf(declaration);
+    const block = bodyOf(checker.inputs.treeOf(module), declaration);
+    return body === undefined || block === undefined
+      ? undefined
+      : flowOf(flowInputsOf(checker, module, body), block, checker.parametersOf(declaration));
+  }
+
+  /** Every flow `module`'s bodies have: its functions', their defaults', its context constants'. */
+  #flowsOf(module: ModuleId): readonly FlowFunction[] {
+    const items = this.#checker.inputs.itemsOf(module);
+    const functions = functionsOf({ items });
+    return [
+      ...functions.flatMap((declaration) =>
+        this.#hasBody(declaration) ? (this.#flowOf(declaration) ?? []) : [],
+      ),
+      ...functions.flatMap((declaration) => defaultsFlows(this.#checker, declaration)),
+      ...items.flatMap((item) =>
+        item.kind === 'ContextConstantDeclaration'
+          ? [contextConstantFlow(this.#checker, item)]
+          : [],
+      ),
+    ];
   }
 
   /** What `call`'s function does: a native's declaration, a group member's guess, a summary. */
