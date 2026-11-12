@@ -10,7 +10,6 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { compiledText } from '../../../compiler/compile.test-kit.ts';
-import { cyclicOracle } from '../../lifetimes/oracle.test-kit.ts';
 import { runToEnd, testRuntime } from '../../runtime.test-kit.ts';
 import { ended, shared, watched } from './callbacks.test-kit.ts';
 import { recordingFutures } from './futures.test-kit.ts';
@@ -81,7 +80,8 @@ describe('a Resolver.of resolver', () => {
       'ista fn offer(done: Resolver<Int, "ista">, value: Int): _ = done.tryResolve(value)',
       'ista fn onAwait(self: Either, done: Resolver<Int, "ista">):',
       '  const watching = Resolver.of(fn(value: Int): offer(done, value))',
-      '  watching.onCancel(fn(): see(self.seen, -1))',
+      '  const seen = self.seen',
+      '  watching.onCancel(fn(): see(seen, -1))',
       '  self.slow.onAwait(watching)',
       '  done.resolve(3)',
       'live async fn main() -> Int: await runtime.run(runtime.id()) _main()\nista async fn _main() -> Int:',
@@ -91,10 +91,7 @@ describe('a Resolver.of resolver', () => {
       '  await runtime.commit()',
       '  got * 10 + seen->value + 0 * await slow',
     ];
-    // `slow` holds `watching`, whose `onCancel` holds `slow`: a cycle C3 rejects.
-    const oracle = cyclicOracle();
-    expect(await ended(main, { oracle })).toEqual({ kind: 'finished', outcome: '30' });
-    expect(oracle.asExpected()).toBe(true);
+    expect(await ended(main)).toEqual({ kind: 'finished', outcome: '30' });
   });
 
   it('is cancelled, not dropped, when the future it is registered on is disposed first', async () => {

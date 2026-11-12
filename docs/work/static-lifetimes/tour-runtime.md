@@ -173,13 +173,17 @@ Landed. What R1 left, for the phases after it:
 - **The oracle** is `lifetimes/oracle.test-kit.ts`.
   - **Its seam** is `HeapCheck` (`scheduler/loaded-definition.ts`). It rides on `LoadedDefinition`
     and comes in through `RuntimeSeams.heapCheck`, `TestRunOptions` and `WorldSeams`, and
-    `CliEnvironment.heapCheck`. `SegmentCollection.collected` calls it as each collection starts,
-    with the released ids. A host passes none.
-  - **Its graph:** `Heap.holds` and the executions' frames, plus call future → execution, minus
-    every edge out of a wait and out of a pending case-root resolver.
-  - **What it walks:** only what the released ids reach. A cycle lost to counting is one that
-    loses its last holder, so it is still on the heap there. Walking the whole heap timed out
-    `collections/deep-elements.ista`.
+    `CliEnvironment.heapCheck`. `SegmentCollection.collected` calls it after every instruction
+    that let go of or wrote into something, before collecting, with those ids: the released ones
+    and `Heap.takeWritten`'s, every object replaced. A host passes none.
+  - **Its graph:** `Heap.holds` and the executions' frames, plus call future → execution. A wait's
+    case chain is collapsed: a wait holds the futures its chain is registered on, what its waiter
+    awaits (design.md §3), and a pending case-root resolver only its `onCancel` values.
+  - **What it walks:** only what the changed ids reach. A cycle closes only by a write into one of
+    its objects (design.md §2), and one lost to counting is one something let go of. Walking the
+    whole heap timed out `collections/deep-elements.ista`. No program yet closes a cycle releasing
+    nothing that reaches it, since statements release their temporaries; the write log keeps the
+    check independent of that, which C5's elision may change.
   - **Where it is on:** by default in `testRuntime`, `reportsOf` and `cli.test-kit`'s `ista`.
     `acyclicOracle` throws at the first cycle. `cyclicOracle()` records instead and expects to see
     one. `oracleFor(name)` picks between them for a corpus program or a std module. `wake.bench.ts`
@@ -193,15 +197,15 @@ Landed. What R1 left, for the phases after it:
   each mark: the `cyclic` set in the kit, and the `cyclicOracle()` uses in the tests.
   - corpus `holders/dispose.ista` `cycle()`;
   - std `collections`: `WeakMap`'s watch future → its call → the map's cell → the future;
-  - `callbacks.test.ts`, "lives as long as its future…": `slow` holds `watching`, whose `onCancel`
-    holds `self.slow`;
   - `on-cancel.test.ts`, "runs once its resolver is let go of, given that resolver…" (both
     variants), and its live run: `watching.onCancel` captures `watching`;
   - `on-cancel.test.ts`, the B76 pair: `d2->r = r`, with `r`'s callback reading `d2` and its
     `onCancel` capturing `r`.
 
-  design.md §10 listed only the first two and B76. The two `callbacks`/`on-cancel` resolver cases
-  are new, and C3's dry run should confirm them.
+  design.md §10 listed only the first two and B76. The `on-cancel` "given that resolver" cases are
+  new, and C3's dry run should confirm them. Two programs that made a cycle only by an `onCancel`
+  capturing `self` now capture a field instead: `callbacks.test.ts`'s "lives as long as its
+  future…" and `callbacks.test-kit.ts`'s `watched`.
 - **Docs edited:** spec §6 (Resolvers) and §7 (the implicit-holds bullet); `definition.md`'s
   Holders, with a `resource` row; the headers of `objects.ts`, `holdings.ts`, `disposal.ts` and
   `waits/index.ts`; `Heap.holds`; `architecture.md`'s runtime tree.

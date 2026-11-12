@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-11-11
-last_updated: 2026-11-11
+last_updated: 2026-11-12
 tags: [reuse, testing, test-kit, arbitraries, fast-check, corpus]
 ---
 
@@ -46,14 +46,15 @@ tags: [reuse, testing, test-kit, arbitraries, fast-check, corpus]
 - ask a checked `main.ista` by names as written, ask every query a tool may ask of a node, or compare two checkers' answers at every node of a module → `checkedMain`, `answersAt`, `spelledAnswers` (`src/compiler/checker/lookup/lookup.test-kit.ts`)
 - check a rule across every std module at once → `everyStdModule` (`src/stdlib/std-modules.test-kit.ts`)
 - compile in-memory sources to a `Definition` or its text (the text checked after the std modules, once per file) → `compiledDefinition`, `compiledText`, `diagnosedAt` (`src/compiler/compile.test-kit.ts`)
-- create a test `Runtime` with manual clock and store → `testRuntime`, `recordingStore`, `testSeed` (`src/runtime/runtime.test-kit.ts`), `ManualClock` (`src/runtime/clock.ts`)
+- create a test `Runtime` with manual clock and store, its heaps checked by the static-lifetimes oracle unless told otherwise (`heapCheck`) → `testRuntime`, `recordingStore`, `testSeed` (`src/runtime/runtime.test-kit.ts`), `ManualClock` (`src/runtime/clock.ts`)
+- check a run's heaps against static lifetimes' oracle (no cycle reaching a disposable): throwing at the first → `acyclicOracle`; for a program C3 rejects, expecting one → `cyclicOracle`; for a corpus program or std module by name → `oracleFor`, `Oracle` (`src/runtime/lifetimes/oracle.test-kit.ts`)
 - advance a test `Runtime` instance and its spawns until settled, awaited → `settleAll`, `runToEnd`, `startToEnd` (`src/runtime/runtime.test-kit.ts`)
 - start a program's ista function by name directly as a root instance, for a test of the instance engine (a host starts only live code; its outcome is the raw value, nothing encoding it) → `TestRuntime.startInstance` (`src/runtime/runtime.test-kit.ts`)
 - make `Futures` alone in a unit test, their decisions and answers ignored → `futuresOn`; with the `Waits` they decide, the callbacks their resolvers call recorded → `recordingFutures` (`src/runtime/scheduler/instance/futures.test-kit.ts`)
 - compile and run `main()` for a body of one line or several, written unindented, beside declarations → `mainGives`; for a body as written under `_main`'s head → `mainOutcome` (`src/stdlib/prelude/prelude.test-kit.ts`)
 - probe written types in a black-box test: resolve them, compare identity, keys and assignability, spell one, list a snippet's codes, run one with its declarations as lines, hover or complete at `‸` → `resolveWrittenTypes`, `compareWrittenTypes`, `spelledTypeOf`, `codesOf`, `runMain`, `definitionOf`, `hoverCodeAt`, `completionNamesAt` (`test/written-types.test-kit.ts`)
 - compile and run an `.ista` test module in memory on a manual clock → `reportsOf`, `outcomesOf`, `testModule` (`src/runtime/testing/testing.test-kit.ts`)
-- run the `ista` CLI in-process without spawning a child process → `runCli` (`src/cli/cli.ts`), `exitCodes`, `CliEnvironment` (`src/cli/command.ts`)
+- run the `ista` CLI in-process without spawning a child process → `runCli` (`src/cli/cli.ts`), `exitCodes`, `CliEnvironment` (`src/cli/command.ts`); with a test's environment, the heaps it runs checked by the oracle → `ista`, or by one of the test's → `istaChecked` (`src/cli/cli.test-kit.ts`)
 - generate random token/fragment soup or randomly mutated valid programs → `soupOf` (`test/soup.ts`), `brokenText` (`test/broken.ts`)
 - generate random `Value`s or deeply nested values → `valueArbitrary`, `nested` (`src/definition/values/values.test-kit.ts`)
 - generate canonical JSON values or non-canonical JSON texts → `exactJson`, `reverseKeys`, `looseText` (`src/definition/formats/codec.test-kit.ts`)

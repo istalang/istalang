@@ -30,7 +30,8 @@ export const watched = [
   '  kept: Kept',
   '  type Mode = "ista"',
   'ista fn onAwait(self: Watched, done: Resolver<Int, "ista">):',
-  '  done.onCancel(fn(): see(self.seen, -1))',
+  '  const seen = self.seen',
+  '  done.onCancel(fn(): see(seen, -1))',
   '  self.kept->resolver = done',
   '  later(1).onAwait(done)',
 ];

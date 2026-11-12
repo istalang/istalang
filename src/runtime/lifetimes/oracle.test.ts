@@ -2,7 +2,8 @@
  * The oracle of static lifetimes (oracle.test-kit.ts) sees the cycles that reach a disposable and
  * only those, over programs shaped as the design's acceptance examples
  * (docs/work/static-lifetimes/design.md §12): what holds what is the runtime's, but for a call's
- * future holding its call and a wait's chain holding nothing.
+ * future holding its call, and a wait holding what its chain is registered on rather than the
+ * chain. It sees a cycle whether something lets go of it or it is undone first.
  */
 
 import { describe, expect, it } from 'vitest';
@@ -25,6 +26,11 @@ const declarations = [
   '  0',
   'shared struct Kept:',
   '  resolver: Resolver<Int, "ista">? = none',
+  'ista async fn holdingKept(kept: Kept) -> Int:',
+  '  await runtime.commit()',
+  '  _ = kept->resolver',
+  '  0',
+  '# An awaitable whose resolver is kept by what its `onCancel` callback holds.',
   'struct Watched:',
   '  kept: Kept',
   '  type Mode = "ista"',
@@ -32,18 +38,38 @@ const declarations = [
   '  done.onCancel(fn(): { _ = self.kept; () })',
   '  self.kept->resolver = done',
   '  holding(new Plain{}).onAwait(done)',
+  '# An awaitable registering its resolver on a call holding what keeps the resolver.',
+  'struct Keeping:',
+  '  kept: Kept',
+  '  type Mode = "ista"',
+  'ista fn onAwait(self: Keeping, done: Resolver<Int, "ista">):',
+  '  self.kept->resolver = done',
+  '  holdingKept(self.kept).onAwait(done)',
+  '# An awaitable handing its box to the call it registers on, keeping it no more itself.',
+  'shared struct Once:',
+  '  box: Plain? = none',
+  '  type Mode = "ista"',
+  'ista fn onAwait(self: Once, done: Resolver<Int, "ista">):',
+  '  const box = self->box!',
+  '  self->box = none',
+  '  holding(box).onAwait(done)',
+  'ista async fn awaiting(once: Once) -> Int: await once',
 ];
 
-/** How running `body` in a block of `_main` ended, and whether it made a cycle the oracle sees. */
-async function seesCycle(...body: string[]) {
+/**
+ * How running `body` in `_main`, in a block of its own or not, ended, and whether it made a cycle
+ * the oracle sees.
+ */
+async function seesCycle(body: readonly string[], inBlock: boolean) {
   const oracle = cyclicOracle();
+  const indent = inBlock ? '    ' : '  ';
   const text = compiledText(
     [
       ...declarations,
       'live async fn main() -> Int: await runtime.run(runtime.id()) _main()',
       'ista async fn _main() -> Int:',
-      '  if true:',
-      ...body.map((line) => `    ${line}`),
+      ...(inBlock ? ['  if true:'] : []),
+      ...body.map((line) => `${indent}${line}`),
       '  await runtime.commit()',
       '  await runtime.commit()',
       '  0',
@@ -55,46 +81,66 @@ async function seesCycle(...body: string[]) {
 
 const finished = { kind: 'finished', outcome: '0' };
 
+/** Each case of `cases`, run in a block of its own and not. */
+const placed = (cases: readonly (readonly [string, readonly string[]])[]) =>
+  cases.flatMap(([name, body]) => [
+    { name, body, inBlock: true },
+    { name, body, inBlock: false },
+  ]);
+
 describe('the oracle of static lifetimes', () => {
-  it.each([
-    [
-      'disposables holding each other',
-      ['const a = new Lease{}', 'const b = new Lease{}', 'a->partner = b', 'b->partner = a'],
-    ],
-    ['a disposable holding itself', ['const a = new Lease{}', 'a->partner = a']],
-    [
-      'a cycle of plain objects holding a disposable',
-      ['const a = new Plain{lease: new Lease{}}', 'const b = new Plain{next: a}', 'a->next = b'],
-    ],
-    [
-      "a call holding what holds the call's future",
-      ['const plain = new Plain{}', 'plain->call = holding(plain)'],
-    ],
-    [
-      'a callback holding the future it is registered on',
+  it.each(
+    placed([
       [
-        'const call = holding(new Plain{})',
-        'call.onAwait(Resolver.of(fn(_: Int): { _ = call; () }))',
+        'disposables holding each other',
+        ['const a = new Lease{}', 'const b = new Lease{}', 'a->partner = b', 'b->partner = a'],
       ],
-    ],
-  ])('sees %s', async (_case, body) => {
-    expect(await seesCycle(...body)).toEqual({ ended: finished, seen: true });
+      ['a disposable holding itself', ['const a = new Lease{}', 'a->partner = a']],
+      [
+        'a cycle of plain objects holding a disposable',
+        ['const a = new Plain{lease: new Lease{}}', 'const b = new Plain{next: a}', 'a->next = b'],
+      ],
+      [
+        "a call holding what holds the call's future",
+        ['const plain = new Plain{}', 'plain->call = holding(plain)'],
+      ],
+      [
+        'a callback holding the future it is registered on',
+        [
+          'const call = holding(new Plain{})',
+          'const callback = Resolver.of(fn(_: Int): { _ = call; () })',
+          'call.onAwait(callback)',
+        ],
+      ],
+      [
+        "a call awaiting what holds the call's future",
+        ['const plain = new Plain{}', 'plain->call = awaiting(new Once{box: plain})'],
+      ],
+      [
+        "a wait's resolver whose onCancel holds what holds it",
+        ['_ = await Watched{kept: new Kept{}}'],
+      ],
+    ]),
+  )('sees $name (in a block: $inBlock)', async ({ body, inBlock }) => {
+    expect(await seesCycle(body, inBlock)).toEqual({ ended: finished, seen: true });
   });
 
-  it.each([
-    [
-      'a cycle of objects reaching no disposable',
-      ['const a = new Plain{}', 'const b = new Plain{next: a}', 'a->next = b'],
-    ],
-    [
-      "a call holding what doesn't hold its future",
-      ['const plain = new Plain{}', 'const call = holding(plain)', 'drop call'],
-    ],
-    [
-      "a wait's resolver whose onCancel holds what holds it, which goes with the wait",
-      ['_ = await Watched{kept: new Kept{}}'],
-    ],
-  ])('sees no cycle in %s', async (_case, body) => {
-    expect(await seesCycle(...body)).toEqual({ ended: finished, seen: false });
+  it.each(
+    placed([
+      [
+        'a cycle of objects reaching no disposable',
+        ['const a = new Plain{}', 'const b = new Plain{next: a}', 'a->next = b'],
+      ],
+      [
+        "a call holding what doesn't hold its future",
+        ['const plain = new Plain{}', 'const call = holding(plain)', 'drop call'],
+      ],
+      [
+        "a wait's chain registered on a call holding what keeps its resolver",
+        ['_ = await Keeping{kept: new Kept{}}'],
+      ],
+    ]),
+  )('sees no cycle in $name (in a block: $inBlock)', async ({ body, inBlock }) => {
+    expect(await seesCycle(body, inBlock)).toEqual({ ended: finished, seen: false });
   });
 });

@@ -7,6 +7,7 @@
 import { readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import { isTestModulePath } from '../../foundation/language/well-known/testing.ts';
 import { oracleFor } from '../../runtime/lifetimes/oracle.test-kit.ts';
 import { istaChecked } from '../cli.test-kit.ts';
 
@@ -14,9 +15,7 @@ const stdlib = fileURLToPath(new URL('../../stdlib/', import.meta.url));
 
 const modules = readdirSync(stdlib, { withFileTypes: true })
   .filter(
-    (entry) =>
-      entry.isDirectory() &&
-      readdirSync(`${stdlib}${entry.name}`).some((name) => name.endsWith('.test.ista')),
+    (entry) => entry.isDirectory() && readdirSync(`${stdlib}${entry.name}`).some(isTestModulePath),
   )
   .map(({ name }) => name)
   .sort();

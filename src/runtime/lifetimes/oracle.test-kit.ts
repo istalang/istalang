@@ -1,15 +1,17 @@
 /**
  * The oracle of static lifetimes (docs/work/static-lifetimes/design.md §1, §9.2): no cycle of what
  * the heap holds passes through an object that reaches a disposable, so counting holders would
- * dispose everything tracing does. Test runtimes check it as every collection starts
- * (`HeapCheck`), over what the objects let go of since the last one reach: a cycle lost to counting
- * is one that loses its last holder, which only letting go of what reaches it does, and it is
- * still there to be seen, even when it was let go of in the step it was made.
+ * dispose everything tracing does. Test runtimes check it after every instruction that let go of
+ * or wrote into something (`HeapCheck`), over what those objects reach. Only a write into one of
+ * its objects closes a cycle (design.md §2), and one lost to counting is one that something let go
+ * of, so each is seen while it is still there, even one let go of in the step that made it.
  *
  * - The graph is the heap's holding (`Heap.holds`, and an execution's frames), with two changes.
  *   A call's future holds its call (spec §7), an edge the runtime keeps as a root instead. A wait's
- *   case's chain, the wait and the resolvers held from it, holds nothing: it ends, letting go of
- *   all it holds, when its waiter resumes or stops, whatever holds what (design.md §3).
+ *   case's chain is no object of its own (design.md §3): the wait holding its resolvers, each
+ *   holding what decides it and the futures it is registered on, ends with the wait whatever holds
+ *   what. So the wait holds the futures its chain is registered on, what its waiter awaits, and a
+ *   resolver of it holds only its `onCancel` callbacks.
  * - It stays in the test runtime for good, the ground truth for the analysis's soundness and for
  *   lowering agreeing with it, so it reads the runtime's own disposability (disposal.ts).
  */
@@ -18,20 +20,26 @@ import { handlesIn } from '../../definition/values/values.ts';
 import { addToGroup } from '../../foundation/structures/groups.ts';
 import { pushAll } from '../../foundation/structures/stack.ts';
 import { stronglyConnected } from '../../foundation/structures/strongly-connected.ts';
-import type { Heap, LiveObject } from '../scheduler/instance/heap.ts';
+import type { Heap, LiveObject, LiveObjectOf } from '../scheduler/instance/heap.ts';
 import type { HeapCheck } from '../scheduler/loaded-definition.ts';
-import { frameCells, frameValues, isHeldFromRoot } from '../snapshot/holdings.ts';
+import {
+  frameCells,
+  frameValues,
+  heldObjects,
+  isHeldFromRoot,
+  valuesIn,
+} from '../snapshot/holdings.ts';
 import { type Disposability, isDisposable } from './disposal.ts';
 
 /**
- * The objects of each cycle through objects reaching a disposable that `released` reaches, by id,
+ * The objects of each cycle through objects reaching a disposable that `changed` reaches, by id,
  * each in id order.
  */
 function disposableCycles(
   state: Disposability,
-  released: Iterable<number>,
+  changed: Iterable<number>,
 ): readonly (readonly number[])[] {
-  const successors = countedGraph(state.heap, released);
+  const successors = countedGraph(state.heap, changed);
   const componentOf = stronglyConnected(
     [...successors].flatMap(([from, tos]) => tos.map((to) => ({ from, to }))),
   );
@@ -51,8 +59,8 @@ function disposableCycles(
 }
 
 /** A check that throws at the first cycle through objects reaching a disposable, naming them. */
-const acyclicDisposables: HeapCheck = (state, released) => {
-  const [cycle] = disposableCycles(state, released);
+const acyclicDisposables: HeapCheck = (state, changed) => {
+  const [cycle] = disposableCycles(state, changed);
   if (cycle !== undefined) {
     const named = cycle.map((id) => `${id}:${state.heap.objectOf(id).kind}`).join(', ');
     throw new Error(`A cycle reaching a disposable holds objects ${named}.`);
@@ -82,8 +90,8 @@ const cyclic: ReadonlySet<string> = new Set(['holders/dispose.ista', 'collection
 export function cyclicOracle(): Oracle {
   let seen = false;
   return {
-    heapCheck: (state, released) => {
-      seen ||= disposableCycles(state, released).length > 0;
+    heapCheck: (state, changed) => {
+      seen ||= disposableCycles(state, changed).length > 0;
     },
     asExpected: () => seen,
   };
@@ -119,8 +127,15 @@ function countedHolds(heap: Heap, object: LiveObject): readonly number[] {
       ...frameValues(frame).flatMap(handlesIn),
     ]);
   }
-  if (isOfWaitsChain(object)) {
-    return [];
+  if (object.kind === 'wait') {
+    return [...heldObjects(object), ...awaitedFutures(heap, object)];
+  }
+  if (
+    object.kind === 'resolver' &&
+    object.state.kind === 'pending' &&
+    isHeldFromRoot(object.state.target)
+  ) {
+    return valuesIn(object).flatMap(handlesIn);
   }
   const held = heap.holds(object);
   return object.kind === 'future'
@@ -128,14 +143,17 @@ function countedHolds(heap: Heap, object: LiveObject): readonly number[] {
     : held;
 }
 
-/** Whether `object` is of a wait's case's chain: the wait, or a pending resolver held from it. */
-function isOfWaitsChain(object: LiveObject): boolean {
-  return (
-    object.kind === 'wait' ||
-    (object.kind === 'resolver' &&
-      object.state.kind === 'pending' &&
-      isHeldFromRoot(object.state.target))
-  );
+/** The futures `wait`'s chain is registered on: what its waiter awaits. */
+function awaitedFutures(heap: Heap, wait: LiveObjectOf<'wait'>): readonly number[] {
+  const futures: number[] = [];
+  const chain = [...heap.find('cases', wait.id)];
+  for (const resolver of chain) {
+    if (resolver.state.kind === 'pending') {
+      pushAll(futures, resolver.state.on);
+      pushAll(chain, heap.find('positions', resolver.id));
+    }
+  }
+  return futures;
 }
 
 /** The objects of `successors` reaching a disposable through it, the disposables included. */
