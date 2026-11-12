@@ -578,8 +578,8 @@ one seam (R2).
 - **Shadow counts (R3, gone with tracing):** counts were kept beside tracing, and each round
   checked that the disposables reaching zero were the ones a walk found unheld and ready. They
   agreed on every round of the runtime suites, the corpus and the std suites.
-- **A commit** checks that no disposable reached zero uncollected, over the unconfirmed zeroes
-  alone (R3), in place of a scan of the whole heap.
+- **A commit** checks that no disposable is among what it leaves out (R3), which counting leaves
+  only what isn't counted and cycles reaching no disposable.
 
 ### 9.3 Identity off the id heap
 
@@ -596,7 +596,11 @@ one seam (R2).
 - **A zero is confirmed at the step's end, not at the decrement,** because several paths let go
   before they hold again (`tour-runtime.md`, R3).
 - **Order stays §7's:** the disposables that reach zero at one point are disposed newest first, as a
-  round, holders before what they hold. A disposal's releases start the next round.
+  round, holders before what they hold. What a round's disposals let go of is the next round,
+  once the round is done; what a disposal's code lets go of is a round of its own at each step's
+  end, its own variables disposed before the object it disposed is gone.
+- **A referent with no holder can't be held again:** `deref()` gives `none` once its count is zero
+  (spec §7), so nothing resurrects what a round has queued.
 - **At zero,** a counted object leaves the heap and its indexes, and its kind's disposal runs where
   it does something. One whose disposal does nothing leaves at once, so what it held reaches zero
   in the same round.

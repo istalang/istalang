@@ -103,17 +103,19 @@ Since R3 (below), counts decide.
   - It loops again only while `Slots.serveOwed` served something.
 - **A round:**
   1. The zeroes: a counted object whose count dropped to zero during the step and is zero at its
-     end. Those a waiting round has queued are left to it.
+     end. Those a round has queued are left to it.
   2. Each one whose disposal does nothing is removed at once (`heap.remove`), which lets go of what
      it held: more zeroes, taken until none is left.
-  3. The disposables among them, newest first, are the round.
-  4. Per object, `dispose`. Code runs on the run stack and the round waits for it, then `returned`
-     → `#gone` (`heap.remove`, `weak.disposed`).
-  5. When the queue is empty, a new round starts from the zeroes the disposals made.
+  3. The disposables among them, newest first, are a round, on top of any round waiting on that
+     step's code.
+  4. Per object, `dispose`. Code runs on the run stack and the round waits for it. Its return
+     (`returned`) only marks it: what that code let go of, its own variables included, is disposed
+     at the step's end first, then `#gone` (`heap.remove`, `weak.disposed`).
+  5. What `#gone` lets go of is the round's `next`; once its queue is empty, `next` is the round
+     after it.
 - **Left until `keepOnly`:** what isn't counted (plain cells of an uncounted type, weak references)
   and a cycle reaching no disposable, which never reaches zero. A commit's `continueFrom` or a live
-  `dropUnheld` removes them. A commit first checks that no disposable reached zero uncollected
-  (`HolderWrites.unconfirmed`).
+  `dropUnheld` removes them, after checking that no disposable is among them.
 
 ## Values: every update copies
 
@@ -297,24 +299,38 @@ Landed. What R3 left, for the phases after it:
 - **Zeroes are confirmed at the step's end** (`HolderWrites.takeZeroes`, which `Collector.collect`
   calls from `SegmentCollection.collected` after every step): the candidates whose count is still
   zero. This is also where the losers flag clears (`Slots.#owed`'s clearing point).
-- **A round** (`collector.ts`): the zeroes not queued by a waiting round; each one whose disposal does
+- **A round** (`collector.ts`): the zeroes not queued by a round; each one whose disposal does
   nothing is removed at once, its releases making more zeroes, taken until none is left; the
   disposables among them, newest first, are the round. A holder keeps what it holds above zero
   until its disposal is done, so holders go before what they hold, and a disposable held only
-  through a plain cell is disposed in the cell's round. A disposal's releases start the next round.
+  through a plain cell is disposed in the cell's round.
+  - **What a round's disposals let go of is its `next`,** the round after it once its queue is done:
+    a synchronous disposal, or a `dispose` returning, never lets what it held run ahead of the rest
+    of its round (QA, R3). Tracing had that wrong too.
+  - **Step zeroes and a disposal's end are apart:** code a disposal runs makes zeroes at each step's
+    end, a round on top. Its return only marks the round (`returned`), so its own variables are
+    disposed before the object it disposed is gone, at the next `collect`.
   - **Gone at zero:** a resolved future, a timer nothing is registered on, a slot nothing watches,
     a plain counted cell. So a pending timer nothing holds no longer wakes a live run once a step
     ends (`live-run.test.ts`), and `dropUnheld` is left with what isn't counted.
   - **`#keptBy` went:** a readied `onCancel` run holds what it calls with before the resolver lets
     go of it, so none of it reaches zero.
-  - **A queued object** a waiting round has yet to dispose is that round's, as before: a new zero
-    of it is left to it, and it is disposed as queued.
+  - **A queued object** a round has yet to dispose is that round's, as before: a new zero of it is
+    left to it, and it is disposed as queued. Nothing can hold it again: `WeakSide.target` gives
+    nothing for a referent with no holder (spec §7, `deref()`), so a disposal can't resurrect one.
+  - **A wait** let go of while cases of it are pending is disposable, and disposing it withdraws
+    them (`disposal.ts`). A case chain holds itself only while its wait waits (R1), so its end is
+    the wait's own rule: a disposal abandoned mid-`select` while the instance ends lets go of its
+    wait, which `Waits.abandon` can't find off an `await` or `select`. A case resolver whose wait
+    nothing holds is withdrawn rather than panicking as dropped.
+  - **A readied call answered at once** collects before anything else runs (`SegmentRunner.#run`).
+  - **Probes don't make objects:** `Futures.resolveHost` builds the arriving value only once a
+    future waits on the token, so an answer to a disposed one makes no resource at zero.
 - **What went:** `orphans.ts` (and its test, replaced by `collector.test.ts`'s properties: rounds,
   holders before what they hold, newest first), the collector's `disposablesFrom`, `heldUnlessAll`,
   `#keptBy` and `#roots`, `SegmentCollection.#roots`, `HolderWrites`' release notes, and `#kept`'s
-  scan of the whole heap. A commit checks instead that no disposable reached zero uncollected
-  (`HolderWrites.unconfirmed`), at the cost of the unconfirmed zeroes. `readiedBy` went with
-  `#keptBy`.
+  scan of every unheld object. A commit checks only what it leaves out for a disposable, which
+  counting leaves few of. `readiedBy` went with `#keptBy`.
 - **Guard:** dependency-cruiser `runtime-held-walk` lets only `Instance` (a commit, a live run's
   `dropUnheld`) and its test import `lifetimes/holders.ts`. `handlesIn` lives in `values.ts` with
   what counting needs, so no rule can ban it.
