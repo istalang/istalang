@@ -348,4 +348,9 @@ export const cyclicPrograms: readonly CyclicCase[] = [
       'ista fn storeDeref(w: WeakRef<Parent>, holder: Shared<Parent?>): holder->value = w.deref()',
     ],
   },
+  {
+    name: 'a default parameter holding the argument before it, returned',
+    body: ['const ch = new Child{}', 'const p = linkDefault(ch)', 'ch->parent = p'],
+    extra: ['ista fn linkDefault(ch: Child, p: Parent = new Parent{child: ch}) -> Parent: p'],
+  },
 ];

@@ -30,7 +30,7 @@ import { type At, closureBindings, functionBindings, nodesGiven } from './bindin
 import { type BodyAnalysis, placeHolds } from './body.ts';
 import { applySummary, unknownCall } from './calls.ts';
 import { type FlowState, materialize } from './flow-state.ts';
-import { giveValue } from './given.ts';
+import { giveValue, withDefaults } from './given.ts';
 import { readKindOf } from './nodes.ts';
 import { placeTarget } from './places.ts';
 
@@ -118,7 +118,8 @@ const handlers: { readonly [Kind in Operation['op']]: Handler<Kind> } = {
       madeParts(at, operation);
     }
   },
-  call: (at, { into, call, role, arguments: args, site }) => {
+  call: (at, operation) => {
+    const { into, call, role, arguments: args, site } = operation;
     const { analysis } = at;
     if (role === 'onAwait') {
       return;
@@ -129,7 +130,7 @@ const handlers: { readonly [Kind in Operation['op']]: Handler<Kind> } = {
         // Code this body can't see; the witnesses a call gives are checked by types (calls.ts).
         unknownCall(at, into, nodesGiven(at, args));
       } else {
-        dispatchedCall(at, { into, site, arguments: args }, call, witnesses);
+        dispatchedCall(at, operation, call, witnesses);
       }
       return;
     }
@@ -138,7 +139,7 @@ const handlers: { readonly [Kind in Operation['op']]: Handler<Kind> } = {
       unknownCall(at, into, nodesGiven(at, args));
       return;
     }
-    const bindings = functionBindings(at, call, args);
+    const bindings = withDefaults(at, operation, functionBindings(at, call, args));
     const isAsync = call.function.qualifiers.async !== undefined;
     applySummary(at, { site, into, callee: call.function, call, isAsync }, summary, bindings);
     if (role === 'iterate' && analysis.context.readsWhatItIterates(call.function)) {
@@ -177,10 +178,11 @@ const handlers: { readonly [Kind in Operation['op']]: Handler<Kind> } = {
  */
 function dispatchedCall(
   at: At,
-  { into, site, arguments: args }: Pick<Of<'call'>, 'into' | 'site' | 'arguments'>,
+  operation: Of<'call'>,
   call: RequirementCall,
   witnesses: readonly FunctionCall[],
 ): void {
+  const { into, site, arguments: args } = operation;
   const { context } = at.analysis;
   const summaries = witnesses.flatMap((witness) => {
     const summary = context.calleeSummary(witness);
@@ -190,7 +192,8 @@ function dispatchedCall(
   });
   const isAsync = witnesses.some((witness) => witness.function.qualifiers.async !== undefined);
   const made = { site, into, callee: undefined, call: undefined, isAsync };
-  applySummary(at, made, joinedSummaries(summaries), functionBindings(at, call, args));
+  const bindings = withDefaults(at, operation, functionBindings(at, call, args));
+  applySummary(at, made, joinedSummaries(summaries), bindings);
 }
 
 /**
@@ -209,6 +212,9 @@ function cursorOver({ state }: At, cursor: NodeId, iterated: readonly NodeId[]):
 /** Runs `operation` on `state`, then ends the temporaries it used last. */
 export function runOperation(analysis: BodyAnalysis, state: FlowState, operation: Operation): void {
   (handlers[operation.op] as Handler<typeof operation.op>)({ analysis, state }, operation as never);
+  for (const value of analysis.nodes.defaultsOf(operation)) {
+    state.reach.kill(value);
+  }
   // A temporary a future settles with is read where the future is awaited: it lives till then.
   const given = new Set(
     [...state.gives.values()].flatMap(({ relations }) => relations.map(({ node }) => node)),

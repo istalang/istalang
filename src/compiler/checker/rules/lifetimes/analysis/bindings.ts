@@ -2,7 +2,8 @@
  * What a call gives its callee's inputs (calls.ts applies a summary over them): the nodes each
  * argument is, by the callee's parameters.
  *
- * - **Arguments bind by parameter** (`Binding`): a rest parameter takes each item, a default none.
+ * - **Arguments bind by parameter** (`Binding`): a rest parameter takes each item; a default is a
+ *   value of the call's own (given.ts, `withDefaults`).
  * - **An argument by `&`** is its place: its value stands for the parameter, and a write through it
  *   lands in what owns the place (places.ts).
  * - **A temporary naming a variable or a path** binds as that, so what the callee is given stays
@@ -36,10 +37,7 @@ export type Bindings = ReadonlyMap<string, Bound>;
 
 const unbound: Bound = { nodes: [], owner: undefined };
 
-/**
- * The inputs a call of a function binds, from `call`'s binding of `args`; a parameter it leaves
- * out to its default, what that default's value relates to of the arguments before it.
- */
+/** The inputs a call of a function binds by its arguments, from `call`'s binding of `args`. */
 export function functionBindings(
   at: At,
   call: Pick<FunctionCall, 'binding' | 'function'>,
@@ -54,15 +52,6 @@ export function functionBindings(
       const items = source.items.map((item) => argumentBound(at, args[item.index]));
       bindings.set(inputKey(input), {
         nodes: items.flatMap(({ nodes }) => nodes),
-        owner: undefined,
-      });
-    } else {
-      const related = at.analysis.context.defaultResult(call.function, index);
-      bindings.set(inputKey(input), {
-        nodes: related.relations.flatMap(
-          (relation) =>
-            (bindings.get(inputKey(relation.input)) ?? globalBound(at, relation.input)).nodes,
-        ),
         owner: undefined,
       });
     }

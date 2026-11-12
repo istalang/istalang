@@ -2,19 +2,24 @@
  * What a call gives (design.md §5.3): its result and what a future it gives settles with, each
  * related to the nodes the call was given as its callee's summary relates them to its inputs.
  *
+ * - **A default** a call leaves out gives a value of the call's own, related to what the call bound
+ *   before it as the default's value relates to the parameters before it, and ended with the call.
  * - **What a watching handle may give** (`deref`) is any value of a type it watches, anywhere: the
  *   function's own node for it relates to nothing, so its callers see only what came to hold such
  *   a value, and each use makes a value of it relating to each value live as the declaration
  *   graph lets their types (`watchedValue`), ended after that use.
  */
 
-import type { Input } from '../input.ts';
+import type { Operation } from '../../flow/flow-ir.ts';
+import { type Input, inputKey } from '../input.ts';
 import type { NodeId, ReachState } from '../reach-state.ts';
 import type { GivenValue, ResultRelation, Summary } from '../summary.ts';
 import { anyReach } from '../type-reach.ts';
-import { type At, type Bound, ownedBy } from './bindings.ts';
+import { type At, type Bindings, type Bound, boundIn, ownedBy } from './bindings.ts';
 import type { Given, Settled } from './flow-state.ts';
 import { relateByTypes } from './unseen.ts';
+
+type CallOperation = Extract<Operation, { readonly op: 'call' }>;
 
 /**
  * The call's result, related to what it was given as the summary says; to what owns each place it
@@ -56,6 +61,32 @@ export function giveResult(
   if (gives.relations.length > 0 || gives.reachesItself) {
     state.gives.set(into, bind(gives));
   }
+}
+
+/**
+ * `bindings`, with each parameter `operation`'s call leaves to its default bound to a value of the
+ * call's own (`Nodes.defaultOf`), in parameter order, so a default may relate to one before it.
+ */
+export function withDefaults(at: At, operation: CallOperation, bindings: Bindings): Bindings {
+  const { analysis } = at;
+  const { call } = operation;
+  const all = new Map(bindings);
+  call.binding.forEach((source, index) => {
+    if (source.kind !== 'default') {
+      return;
+    }
+    const value = analysis.context.defaultResult(call.function, index);
+    const type = analysis.context.parametersOf(call.function)[index]?.type;
+    const node = analysis.nodes.defaultOf(operation, index, type);
+    giveValue(at, node, {
+      relations: value.relations.flatMap(({ input, relation }) =>
+        boundIn(at, all, input).nodes.map((each) => ({ node: each, relation })),
+      ),
+      reachesItself: value.reachesItself,
+    });
+    all.set(inputKey({ kind: 'parameter', index }), { nodes: [node], owner: undefined });
+  });
+  return all;
 }
 
 /** `into` given afresh as `settled` says: a call's result, a future's value, a default's. */
