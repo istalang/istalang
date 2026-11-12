@@ -281,10 +281,11 @@ export class ReachState {
 
   /**
    * `into` may reach something `node` reaches: it shares with `node`, and with what reaches or
-   * holds `node`, which reaches that too.
+   * holds `node`, which reaches that too; and holds some of what `node` was read out of.
    */
   share(into: NodeId, node: NodeId): void {
     this.addShare(into, node);
+    this.#carry(into, node);
     for (const each of this.#live) {
       if (each !== into && (this.reaches(each, node) || this.aliases(each, node))) {
         this.addShare(into, each);
@@ -331,7 +332,8 @@ export class ReachState {
   /**
    * What reaches `holder`, or holds it, comes to reach `value`, written into its cell, or, not
    * `exact`, into one it reaches, which what shares with it may reach too; with `inside`, only
-   * what `value` reaches, as when a part of its value is written there.
+   * what `value` reaches, as when a part of its value is written there, so it reaches some of what
+   * `value` was read out of, whether or not a node for the part is still live.
    */
   link(
     holder: NodeId,
@@ -350,6 +352,9 @@ export class ReachState {
       ...this.reachedFrom(value),
     ];
     for (const each of reaching) {
+      if (inside) {
+        this.addWhole(each, value);
+      }
       for (const target of reached) {
         this.addReach(each, target);
       }
