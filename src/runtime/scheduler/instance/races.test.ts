@@ -136,6 +136,50 @@ describe('a slot operation a losing case awaited', () => {
 });
 
 describe('a Resolver.at resolver', () => {
+  it.each([
+    {
+      type: '(Int, Int)',
+      kept: 'Resolver.at(done, 0)',
+      decided: '(position, value)',
+      outcome: 'position * 100 + value',
+    },
+    {
+      type: '(Int, (Int, Int))',
+      kept: 'Resolver.at(Resolver.at(done, 0), 0)',
+      decided: '(outer, (inner, value))',
+      outcome: 'outer * 1000 + inner * 100 + value',
+    },
+  ])(
+    'keeps the resolver it decides, as $kept kept to resolve later',
+    async ({ type, kept, decided, outcome }) => {
+      const main = [
+        'shared struct Kept:',
+        '  done: Resolver<Int, "ista">? = none',
+        'struct Keep:',
+        '  kept: Kept',
+        '  type Mode = "ista"',
+        'ista fn onAwait(self: Keep, done: Resolver<Int, "ista">): self.kept->done = done',
+        'struct Tagged:',
+        '  inner: Keep',
+        '  type Mode = "ista"',
+        `ista fn onAwait(self: Tagged, done: Resolver<${type}, "ista">): self.inner.onAwait(${kept})`,
+        'ista async fn give(kept: Kept):',
+        '  await runtime.commit()',
+        '  kept->done!.resolve(42)',
+        'live async fn main() -> Int: await runtime.run(runtime.id()) _main()\nista async fn _main() -> Int:',
+        '  const kept = new Kept{}',
+        '  const giving = give(kept)',
+        `  const ${decided} = await Tagged{inner: Keep{kept}}`,
+        '  await giving',
+        `  ${outcome}`,
+      ];
+      for (const crashEveryAwait of [false, true]) {
+        // biome-ignore lint/performance/noAwaitInLoops: each run stands alone, compared in turn.
+        expect(await ended(main, crashEveryAwait)).toEqual({ kind: 'finished', outcome: '42' });
+      }
+    },
+  );
+
   it('is cancelled at once made for a resolver no longer pending', async () => {
     const main = [
       'shared struct Took:',

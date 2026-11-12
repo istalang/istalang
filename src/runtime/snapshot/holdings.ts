@@ -7,20 +7,20 @@
  * - An object holds the handles in the values it holds, and some ids directly: a pending slot
  *   operation its slot, a `disposed()` watch its weak reference, and a frame's reference the cell
  *   it names.
- * - A pending resolver holds its callbacks, and one end of each link of its chain, as the chain's
- *   root says (`isHeldFromRoot`), the other end only watching, so registering never makes a cycle.
- *   A wait's case's chain is held from the wait down, as the wait ends it: the wait holds its case
- *   resolvers, each resolver the `Resolver.at` ones deciding it, and each the futures it is
- *   registered on. A callback's is held from the futures up, as only they can resolve it: each
- *   future holds what is registered on it, and each `Resolver.at` resolver the one it decides. The
- *   edges to what is registered on, or decides, an object are read off the heap's indexes
- *   (`Heap.holds`).
+ * - A pending resolver holds its callbacks, and a `Resolver.at` one the resolver it decides: what
+ *   can still decide a resolver keeps it. A registration holds one end, as the resolver's chain's
+ *   root says (`isHeldFromRoot`), the other only watching, so registering never makes a cycle. A
+ *   wait's case's chain is held from the wait down, as the wait ends it: the wait holds its case
+ *   resolvers and each resolver the `Resolver.at` ones deciding it, those awaited, and each holds
+ *   the futures it is registered on. A callback's is held from its futures up, as only they can
+ *   resolve it: each future holds what is registered on it. The edges to what is registered on, or
+ *   decides, an object are read off the heap's indexes (`Heap.holds`).
  * - A run, a call a resolver readied, holds what it calls with as a frame does, and a context
  *   constant its value (`keptFrame`).
  * - It watches what it names without holding: a slot's queue of waiting operations, what a weak
  *   reference refers to, an execution's own call future, which its caller holds, a wait's waiter,
- *   a pending case resolver's wait, which the waiter's frame holds, and the end of a link of its
- *   chain it doesn't hold.
+ *   a pending case resolver's wait, which the waiter's frame holds, and the end of a registration
+ *   it doesn't hold.
  * - A frame holds the same whether it is live (interpreter/frames.ts) or stored (objects.ts), so
  *   one rule reads both, over what their registers hold.
  */
@@ -119,13 +119,13 @@ type PendingResolverState = Extract<
   { kind: 'pending' }
 >;
 
-/** What a pending resolver holds and watches: its callbacks, and its links' ends by its root. */
+/** What a pending resolver holds: its callbacks, what it decides, its futures as its root says. */
 function pendingResolver({ target, on, onCancel }: PendingResolverState): Holding {
   const values = [...(target.kind === 'callback' ? [target.callback] : []), ...onCancel];
   const decides = target.kind === 'at' ? [target.done] : [];
   const waits = target.kind === 'case' ? [target.wait] : [];
   return isHeldFromRoot(target)
-    ? { values, holds: on, watches: [...waits, ...decides] }
+    ? { values, holds: [...on, ...decides], watches: waits }
     : { values, holds: decides, watches: on };
 }
 

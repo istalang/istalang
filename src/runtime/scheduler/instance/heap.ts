@@ -284,11 +284,11 @@ export class Heap {
 
   /**
    * The ids of the objects `object` holds (spec §7, proposal 8, Rule 5): what its fields and values
-   * hold (snapshot/holdings.ts), and what it holds through the indexes, one end of each link of a
-   * chain of resolvers, as its root says (`isHeldFromRoot`). A wait holds its case resolvers, and a
-   * pending resolver of a case's chain its `Resolver.at` ones, that are awaited: registered, or
-   * decided by `Resolver.at` ones of their own. A future holds the pending resolvers of callbacks'
-   * chains registered on it. So what an awaitable started for a wait lives as long as the wait, a
+   * hold (snapshot/holdings.ts), and what it holds through the indexes, one end of each
+   * registration, as the resolver's chain's root says (`isHeldFromRoot`). A wait holds its case
+   * resolvers, and a pending resolver of a case's chain its `Resolver.at` ones, that are awaited:
+   * registered, or decided by `Resolver.at` ones of their own. A future holds the pending resolvers
+   * of callbacks' chains registered on it. So what an awaitable started for a wait lives as long as the wait, a
    * callback as long as its future, and what lost is let go of as it loses, while a resolver
    * nothing awaits is let go of when its holder drops it.
    */

@@ -79,12 +79,12 @@ Whether a value is held is decided by reachability, never counted (spec §7). Th
 | resource | | |
 | weakRef | | its target: a disposable, or a call's execution |
 | wait | its decision's value, and its awaited pending case resolvers: registered on a future, or decided by awaited `Resolver.at` ones | its waiter, whose frame holds it |
-| resolver | a pending one its `Resolver.of` callback and its `onCancel` callbacks; in a wait's chain the futures it is registered on and its awaited pending `Resolver.at` ones, in a callback's a `Resolver.at` one the resolver it decides | a pending case's its wait; in a wait's chain a `Resolver.at` one the resolver it decides, in a callback's the futures it is registered on |
+| resolver | a pending one its `Resolver.of` callback, its `onCancel` callbacks, and a `Resolver.at` one the resolver it decides; in a wait's chain the futures it is registered on and its awaited pending `Resolver.at` ones | a pending case's its wait; in a callback's chain the futures it is registered on |
 | run | the values its callback is called with: the closure's captures and its arguments (a root until a segment makes the call) | |
 | contextConstant | its value (a root, as a frame holding it, until the instance finishes or ends) | |
 | execution | (a root while it lives) | its own call future, which its caller holds |
 
-A chain of resolvers, `Resolver.at` ones deciding others, comes down to a wait's case or a callback, its root, which each `Resolver.at` one records as it is made (snapshot/objects.ts). A registration, or a `Resolver.at` one deciding another, holds one of its ends, as the root says, and the other end only watches, so no registration makes a cycle: a wait's chain is held from the wait down, as the wait ends it, and a callback's from its futures up, as only they can resolve it.
+A chain of resolvers, `Resolver.at` ones deciding others, comes down to a wait's case or a callback, its root, which each `Resolver.at` one records as it is made (snapshot/objects.ts). A `Resolver.at` one holds the resolver it decides, whatever the root, as it can still decide it. A registration holds one of its ends, as the root says, and the other end only watches, so no registration makes a cycle: a wait's chain is held from the wait down, as the wait ends it, and a callback's from its futures up, as only they can resolve it. Within a wait's chain, a resolver and an awaited `Resolver.at` one deciding it hold each other until the wait ends them both.
 
 An answer (§9, §10) is a root too, until it is given: its caller waits on it. So is an `outcome`, the future an instance whose root has returned awaits to end with (§9).
 
