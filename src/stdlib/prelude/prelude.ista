@@ -26,7 +26,9 @@ extern shared struct WeakRef<T is Disposable>
 # its `Mode`.
 type Mark = "simple" | "live" | "ista"
 type Persistence = "live" | "ista"
-@Holds<T>
+# A future holds its value and the resolvers registered on it, as a callback's chain is held from
+# its futures up (spec §7); a call's future also holds its call, which belongs to the language.
+@Holds<(T, Resolver<T, K>)>
 extern shared struct Future<T, K in Persistence>:
   type Mode = K
 
