@@ -19,6 +19,10 @@
  * finished before the callback goes on. Whatever a waiting round has yet to dispose counts as held,
  * so no later round takes it out of order.
  *
+ * Counts run beside the walk (counts.ts): a counted object whose count dropped to zero and whose
+ * disposal does nothing is gone at once, and a test checks that the disposables that reached zero
+ * are the ones the walk finds ready (`HeapCheck.counted`), before counts alone decide.
+ *
  * A disposal may ready calls as runs, roots of their own: a pending resolver's `onCancel`
  * callbacks (disposal.ts `readiedBy`). What those calls are made with is marked before the round
  * disposes anything, and nothing of the round it reaches is removed: a resolver among it is
@@ -47,6 +51,8 @@ export interface CollectorSeams extends DisposalContext {
   readonly roots: () => Roots;
   /** Starts `run`: true when it has finished already (a native), false while it runs as code. */
   readonly run: (run: DisposalRun) => boolean;
+  /** A test's check of what counts and a walk each find ready (`HeapCheck.counted`). */
+  readonly check: (counted: readonly number[], traced: readonly number[]) => void;
 }
 
 /**
@@ -171,18 +177,44 @@ export class Collector {
 
   /** Starts a round of what is ready, if anything is, after the objects `released` lost a holder. */
   #startRound(released: readonly number[]): void {
-    const { heap } = this.#seams;
-    const reached = disposablesFrom(this.#seams, released);
+    const { heap, holders } = this.#seams;
+    const counted = this.#zeroDisposables();
+    const from = [...released, ...holders.takeReleased()];
+    const reached = disposablesFrom(this.#seams, from);
     const held = reached.size === 0 ? undefined : heldUnlessAll(heap, this.#roots(), reached);
-    if (held === undefined) {
-      return;
-    }
     const isDisposableObject = (object: LiveObject) => isDisposable(this.#seams, object);
-    const ready = readyOrphans(heap, { held, from: released, isDisposable: isDisposableObject });
-    if (ready.length > 0) {
+    const ready =
+      held === undefined
+        ? []
+        : readyOrphans(heap, { held, from, isDisposable: isDisposableObject });
+    this.#seams.check(counted, ready);
+    if (held !== undefined && ready.length > 0) {
       const kept = this.#keptBy(ready, held);
       this.#rounds.push({ queue: [...ready], kept, disposing: undefined });
     }
+  }
+
+  /**
+   * The disposables whose count dropped to zero, newest first, but those a waiting round has yet
+   * to dispose: any other object whose count did is gone at once, which lets go of what it held,
+   * as its disposal does nothing.
+   */
+  #zeroDisposables(): readonly number[] {
+    const { heap, holders } = this.#seams;
+    const waiting = new Set(this.#waiting());
+    const disposables: number[] = [];
+    for (let zeroes = holders.takeZeroes(); zeroes.length > 0; zeroes = holders.takeZeroes()) {
+      for (const id of zeroes) {
+        if (isDisposable(this.#seams, heap.objectOf(id))) {
+          if (!waiting.has(id)) {
+            disposables.push(id);
+          }
+        } else {
+          heap.remove(id);
+        }
+      }
+    }
+    return disposables.sort((first, second) => second - first);
   }
 
   /**
@@ -216,10 +248,14 @@ export class Collector {
    */
   #roots(): Roots {
     const roots = this.#seams.roots();
-    const waiting = this.#rounds.flatMap(({ queue, kept, disposing }) =>
+    return { frames: roots.frames, objects: [...roots.objects, ...this.#waiting()] };
+  }
+
+  /** What waiting rounds have yet to dispose or keep. */
+  #waiting(): readonly number[] {
+    return this.#rounds.flatMap(({ queue, kept, disposing }) =>
       disposing === undefined ? [...queue, ...kept] : [...queue, ...kept, disposing],
     );
-    return { frames: roots.frames, objects: [...roots.objects, ...waiting] };
   }
 }
 

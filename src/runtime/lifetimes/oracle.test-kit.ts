@@ -74,6 +74,13 @@ export const oracle: HeapCheck = {
       throw new Error(`A cycle reaching a disposable holds objects ${named}.`);
     }
   },
+  counted: (counted, traced) => {
+    if (counted.join() !== traced.join()) {
+      throw new Error(
+        `Counted [${counted.join()}] lost their last holder; traced [${traced.join()}].`,
+      );
+    }
+  },
 };
 
 /**

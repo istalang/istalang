@@ -31,6 +31,7 @@ import type { ActiveFrame, FrameEntry, FrameHeap } from '../../interpreter/frame
 import { newFrame, releaseFrame } from '../../interpreter/machine.ts';
 import type { Passed } from '../../interpreter/registers.ts';
 import { type Decision, releaseLosers, resume } from '../../interpreter/suspension.ts';
+import { countedIn } from '../../lifetimes/counts.ts';
 import { isDisposable } from '../../lifetimes/disposal.ts';
 import { HolderWrites } from '../../lifetimes/holder-writes.ts';
 import { heldFrom } from '../../lifetimes/holders.ts';
@@ -62,7 +63,7 @@ export class Instance {
   readonly weak: WeakSide;
   readonly notices: DisposalNotices;
   /** Every holder write, of a register, a heap object or a running call's future, is reported here. */
-  readonly holders = new HolderWrites();
+  readonly holders: HolderWrites;
   /** The heap as its frames reach it (interpreter/machine.ts). */
   readonly frameHeap: FrameHeap = {
     read: (cell) => this.heap.of(cell, 'cell').value,
@@ -92,6 +93,7 @@ export class Instance {
     this.loaded = loaded;
     this.#from = snapshot;
     this.effects = new SegmentEffects(() => this.#from);
+    this.holders = new HolderWrites(countedIn(loaded.definition.types));
     this.heap = new Heap(snapshot.objectsMade, this.holders);
     const objects = snapshot.objects.map((object) =>
       liveObject(loaded.definition, object, this.frameHeap),

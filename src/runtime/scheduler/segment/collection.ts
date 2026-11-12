@@ -52,6 +52,9 @@ export class SegmentCollection {
         instance.waits.cancel(resolver);
       },
       run: (run) => this.disposals.start(run),
+      check: (counted, traced) => {
+        instance.loaded.heapCheck.counted(counted, traced);
+      },
     });
   }
 
@@ -68,7 +71,7 @@ export class SegmentCollection {
         const running = new Set(this.#seams.runStack.innermostFirst().map(({ id }) => id));
         loaded.heapCheck.changed({ heap, types: loaded.definition.types }, changed, running);
       }
-      if (released.length > 0 || this.#collector.stalled) {
+      if (released.length > 0 || holders.zeroed || this.#collector.stalled) {
         this.#collector.collect(released);
       }
       if (this.#collector.busy) {

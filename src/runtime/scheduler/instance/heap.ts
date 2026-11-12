@@ -156,8 +156,8 @@ export class Heap {
    * Makes `changes`, each putting `now` in the place of `old`, either absent for an object made or
    * gone, and reports what each holder they change held and holds: each object written, its index
    * edges included, and each other object whose index edges read one (`#readers`). Every object
-   * reported is in the heap as it is: one made goes in before any report, and one gone leaves only
-   * after them all.
+   * reported is in the heap as it is: one made goes in, and is reported made, before any report,
+   * and one gone leaves, and is reported gone, only after them all.
    */
   #write(changes: readonly ObjectChange[]): void {
     const written = new Set(changes.map(({ old, now }) => (old ?? now)?.id));
@@ -172,6 +172,9 @@ export class Heap {
       if (now !== undefined) {
         this.#objects.set(now.id, now);
         this.#enter(now);
+        if (old === undefined) {
+          this.#holders.made(now);
+        }
       }
     }
     changes.forEach(({ now }, position) => {
@@ -187,6 +190,7 @@ export class Heap {
       if (old !== undefined && now === undefined) {
         this.#kinds.get(old.kind)?.delete(old.id);
         this.#objects.delete(old.id);
+        this.#holders.gone(old.id);
       }
     }
   }

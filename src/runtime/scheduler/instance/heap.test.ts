@@ -10,6 +10,7 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { handleTo } from '../../../definition/values/values.ts';
+import { countedIn } from '../../lifetimes/counts.ts';
 import { HolderWrites } from '../../lifetimes/holder-writes.ts';
 import { type Held, idsHeld } from '../../snapshot/holdings.ts';
 import type { FutureState } from '../../snapshot/objects.ts';
@@ -304,7 +305,7 @@ class Tally extends HolderWrites {
 
   /** Tallies the writes of a new heap that has made `made` objects. */
   constructor(made: number) {
-    super();
+    super(countedIn([]));
     this.heap = new Heap(made, this);
   }
 
@@ -355,8 +356,14 @@ describe('heap holder writes', () => {
           if (kept !== undefined) {
             heap.keepOnly(new Set(kept));
           }
-          expect(withoutZeroes(tally.holders)).toEqual(holdersOf(heap));
+          const held = holdersOf(heap);
+          expect(withoutZeroes(tally.holders)).toEqual(held);
           expect(tally.absent).toEqual([]);
+          for (const object of heap.objects()) {
+            expect(tally.holdersOf(object.id)).toBe(
+              countedIn([])(object) ? (held.get(object.id) ?? 0) : undefined,
+            );
+          }
         },
       ),
     );
