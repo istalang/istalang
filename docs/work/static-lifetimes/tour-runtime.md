@@ -389,6 +389,9 @@ heap kind a live variant, and a restore would have had to rebuild the values ins
   compares a held instance's commits with a restored one's.
 - **`Waits.abandon` went:** a disposal abandoned while its instance ends lets go of its frames, and
   a wait among them is disposed as any wait let go of is, withdrawing its cases (R3).
+- **Measured** (`wake.bench.ts`, means of three runs, against `40a9f6b8`): a live run waking 500
+  times beside 2,000 held boxes, 1,144 ms → 351 ms (the new third workload); 400 workers, 11.86 s →
+  11.65 s, and 2,000 leases, 167 ms → 175 ms, within noise (±6%).
 - **Still to measure:** a commit runs `persisted`, then `snapshotFormat.write`, then reads the text
   back (`wake.ts` `commit`), and crashEveryAwait's `runText` encodes again.
 
