@@ -6,9 +6,9 @@
  *   what it calls, never their bodies, and a requirement reaching a function's callers is checked
  *   by each call. A group of functions calling each other is solved together, from summaries that
  *   do nothing, until none changes: the lattice over a group's inputs is finite.
- * - **Entries, as the expansion graph keeps them** (design.md §8): each function's flow; what it
- *   calls; its recursive group, found in what it reaches; each group's analyses; each function's
- *   summary, which an edit keeping its effects leaves equal, so its callers stop there; and each
+ * - **Entries, as the expansion graph keeps them** (design.md §8): what each function calls; its
+ *   recursive group, found in what it reaches; each group's analyses; each function's summary,
+ *   which an edit keeping its effects leaves equal, so its callers stop there; and each
  *   function's reports, the only entry reading where its findings are. Relevance and the handles a
  *   type may hold are entries per type.
  * - **A caller reads of a callee its summary alone,** one entry per call: whether the callee has a
