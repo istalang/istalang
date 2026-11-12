@@ -178,28 +178,24 @@ export class Instance {
 
   /**
    * What a commit keeps, in id order: the executions and what they hold, and how deep the deepest
-   * value among them nests. Whatever was disposable was disposed where it lost its last holder.
+   * value among them nests. Whatever was disposable was disposed where it lost its last holder, so
+   * none is among what it leaves out: what counting never takes to zero, as what isn't counted.
    */
   #kept(): { readonly kept: readonly LiveObject[]; readonly depth: number } {
-    const lost = this.holders
-      .unconfirmed()
-      .find((id) =>
-        isDisposable(
-          { heap: this.heap, types: this.loaded.definition.types },
-          this.heap.objectOf(id),
-        ),
-      );
-    if (lost !== undefined) {
-      unreachable(`Object ${lost} lost its last holder without being disposed.`);
-    }
     const executions = this.heap.objectsOf('execution');
     const held = heldFrom(this.heap, {
       frames: [...executions.flatMap((execution) => execution.frames), ...this.keptFrames()],
       objects: this.owed(),
     });
-    const kept = this.heap
-      .objects()
-      .filter((object) => isRoot(object) || held.objects.has(object.id));
+    const disposability = { heap: this.heap, types: this.loaded.definition.types };
+    const kept: LiveObject[] = [];
+    for (const object of this.heap.objects()) {
+      if (isRoot(object) || held.objects.has(object.id)) {
+        kept.push(object);
+      } else if (isDisposable(disposability, object)) {
+        unreachable(`Object ${object.id} lost its last holder without being disposed.`);
+      }
+    }
     return { kept, depth: held.depth };
   }
 

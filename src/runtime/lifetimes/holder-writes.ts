@@ -59,11 +59,6 @@ export class HolderWrites {
     return this.#counts.takeZeroes();
   }
 
-  /** The counted objects with no holder now that the zeroes last taken left out: none at a commit. */
-  unconfirmed(): readonly number[] {
-    return this.#counts.zeroes();
-  }
-
   /** The counted objects let go of since the last call, for a test's check of the heap. */
   takeLetGo(): readonly number[] {
     return this.#counts.takeLetGo();
