@@ -38,8 +38,8 @@ import { constant } from './parts.ts';
 
 /**
  * A struct literal (§3.1), as lowering builds it (lowering/constructs/expressions/structs/
- * structs.ts): its items evaluated in the order written, then its fields taken in declaration order,
- * each from its value, its spread's field, a struct comprehension, or its default, which the
+ * structs.ts): its items evaluated in the order written, then its fields taken in declaration
+ * order, each from its value, its spread's field, a struct comprehension, or its default, which the
  * struct's fields function computes from the fields before it; then the struct made of them, put
  * behind a new handle by `new`. (Lowering lets the fields function's entry build the value when a
  * default runs, with what the flow shows made here.)

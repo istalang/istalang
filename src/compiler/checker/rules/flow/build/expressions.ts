@@ -3,8 +3,8 @@
  * exhaustive by kind, so a new kind can't be built unnoticed. Constructs with more to them have
  * modules of their own beside this one.
  *
- * - A name is a copy out of its variable, a global's value, a function named as a value, or a value
- *   the language makes (a variant, a bare struct).
+ * - A name is a copy out of its variable, a global's value, a function named as a value, a variant,
+ *   or a struct without fields written bare (§3.1), its type arguments given or not.
  * - A field read is a `read` of its part; `*x` and `x->` read what is behind the handle.
  * - A lambda is a closure made of what it captures, of a function built of its own.
  */
@@ -73,12 +73,22 @@ function named(builder: FlowBuilder, name: Identifier, read: Identifier | Member
     return into;
   }
   const entity = builder.inputs.checker.bindings.entityOf(builder.inputs.module, name);
+  if (entity?.kind === 'type') {
+    return bareStruct(builder, read);
+  }
   if (entity?.kind !== 'variable') {
     return entity === undefined ? unknown(builder, read) : computed(builder, read);
   }
   const into = builder.temporaryOf(read);
   const from = builder.named(entity, builder.body.typeOf(read));
   builder.emit({ op: 'copy', site: read, into, from, fit: undefined });
+  return into;
+}
+
+/** A struct without fields written bare, with type arguments or not (§3.1): a value of its own. */
+function bareStruct(builder: FlowBuilder, node: Expression): ValueId {
+  const into = builder.temporaryOf(node);
+  builder.emit({ op: 'make', site: node, into, made: { kind: 'struct' }, parts: [] });
   return into;
 }
 
@@ -191,8 +201,17 @@ export const expressionFlows: Handlers<FlowBuilder, Expression, [], ValueId> = {
   Call: callFlow,
   TypeApplication: (builder, node) => {
     const call = builder.body.resolved.get(node);
+    const { target } = node;
+    const name = target.kind === 'MemberAccess' ? target.member : target;
+    const entity =
+      name.kind === 'Identifier'
+        ? builder.inputs.checker.bindings.entityOf(builder.inputs.module, name)
+        : undefined;
+    if (call === undefined && entity?.kind === 'type') {
+      return bareStruct(builder, node);
+    }
     if (call === undefined) {
-      return unknown(builder, node, [builder.expression(node.target)]);
+      return unknown(builder, node, [builder.expression(target)]);
     }
     const into = builder.temporaryOf(node);
     builder.emit({ op: 'make', site: node, into, made: { kind: 'function', call }, parts: [] });
