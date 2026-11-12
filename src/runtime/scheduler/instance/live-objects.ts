@@ -2,6 +2,10 @@
  * The two forms of a heap object: as a snapshot stores it, and as a running instance holds it. Only
  * an execution differs: its frames are live (interpreter/frames.ts), their registers a dense array
  * and their code resolved, and its call future is optional rather than absent.
+ *
+ * A restored frame's registers are filled as any register is written (interpreter/registers.ts),
+ * reporting what they hold, once every object of the heap is in it (`restoreRegisters`): a register
+ * may hold an object made after its execution.
  */
 
 import type { Definition } from '../../../definition/definition.ts';
@@ -12,7 +16,10 @@ import { placeContents } from '../../interpreter/registers.ts';
 import type { Frame, HeapObject, RegisterContents } from '../../snapshot/objects.ts';
 import type { LiveObject } from './heap.ts';
 
-/** A snapshot's object as the running instance holds it: an execution's frames made live. */
+/**
+ * A snapshot's object as the running instance holds it: an execution's frames made live, their
+ * registers empty until `restoreRegisters` fills them.
+ */
 export function liveObject(
   definition: Definition,
   object: HeapObject,
@@ -38,11 +45,24 @@ function liveFrame(definition: Definition, frame: Frame, heap: FrameHeap): Activ
     [],
     heap,
   );
-  for (const [register, contents] of frame.registers) {
-    placeContents(live, register, contents);
-  }
   live.pc = frame.pc;
   return live;
+}
+
+/** Fills the registers of `live`, made by `liveObject` from `stored`, with what `stored`'s hold. */
+export function restoreRegisters(stored: HeapObject, live: LiveObject): void {
+  if (stored.kind !== 'execution' || live.kind !== 'execution') {
+    return;
+  }
+  stored.frames.forEach((frame, position) => {
+    const restored = live.frames[position];
+    if (restored === undefined) {
+      unreachable(`Execution ${live.id} has no frame ${position} to restore.`);
+    }
+    for (const [register, contents] of frame.registers) {
+      placeContents(restored, register, contents);
+    }
+  });
 }
 
 export function storedObject(object: LiveObject): HeapObject {

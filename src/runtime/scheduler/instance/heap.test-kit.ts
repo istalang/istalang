@@ -11,5 +11,7 @@ export function testHeap(
   objects: readonly LiveObject[] = [],
   holders: HolderWrites = new HolderWrites(),
 ): Heap {
-  return new Heap(objects, Math.max(-1, ...objects.map(({ id }) => id)) + 1, holders);
+  const heap = new Heap(Math.max(-1, ...objects.map(({ id }) => id)) + 1, holders);
+  heap.restore(objects);
+  return heap;
 }

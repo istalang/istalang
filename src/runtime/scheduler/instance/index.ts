@@ -44,7 +44,7 @@ import { leaving } from './crossing.ts';
 import { DisposalNotices } from './disposal-notices.ts';
 import { Futures } from './futures.ts';
 import { Heap, type LiveExecution, type LiveObject, type LiveObjectOf } from './heap.ts';
-import { liveObject, storedObject } from './live-objects.ts';
+import { liveObject, restoreRegisters, storedObject } from './live-objects.ts';
 import { ReadyQueue, type ReadyToRun } from './ready.ts';
 import { SegmentEffects } from './segment-effects.ts';
 import { Slots } from './slots.ts';
@@ -92,11 +92,17 @@ export class Instance {
     this.loaded = loaded;
     this.#from = snapshot;
     this.effects = new SegmentEffects(() => this.#from);
-    this.heap = new Heap(
-      snapshot.objects.map((object) => liveObject(loaded.definition, object, this.frameHeap)),
-      snapshot.objectsMade,
-      this.holders,
+    this.heap = new Heap(snapshot.objectsMade, this.holders);
+    const objects = snapshot.objects.map((object) =>
+      liveObject(loaded.definition, object, this.frameHeap),
     );
+    this.heap.restore(objects);
+    snapshot.objects.forEach((stored, position) => {
+      const live = objects[position];
+      if (live !== undefined) {
+        restoreRegisters(stored, live);
+      }
+    });
     this.#constants = new ContextConstants(this.heap);
     this.notices = new DisposalNotices();
     this.#ready = new ReadyQueue(this.heap, snapshot.ready);

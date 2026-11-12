@@ -34,6 +34,15 @@ import {
   nothingHeld,
 } from '../../snapshot/holdings.ts';
 import type { HeapObject } from '../../snapshot/objects.ts';
+import {
+  type Indexes,
+  type IndexKey,
+  type IndexName,
+  indexes,
+  indexNames,
+  keysOf,
+  readIndexes,
+} from './heap-indexes.ts';
 
 export interface LiveExecution {
   readonly kind: 'execution';
@@ -52,63 +61,8 @@ export type LiveKind = LiveObject['kind'];
 
 export type LiveObjectOf<Kind extends LiveKind> = Extract<LiveObject, { readonly kind: Kind }>;
 
-/** A field the heap finds objects of `kind` by: each such object's keys, derived from it alone. */
-interface Index<Kind extends LiveKind, Key> {
-  readonly kind: Kind;
-  readonly keys: (object: LiveObjectOf<Kind>) => readonly Key[];
-}
-
-function index<Kind extends LiveKind, Key>(
-  kind: Kind,
-  keys: (object: LiveObjectOf<Kind>) => readonly Key[],
-): Index<Kind, Key> {
-  return { kind, keys };
-}
-
-const indexes = {
-  /**
-   * Every execution, by the call future its return resolves: the root's, which has none, is
-   * undefined.
-   */
-  executions: index('execution', (execution) => [execution.resolves]),
-  /** Each weak reference, by its referent while it has one. */
-  weakRefs: index('weakRef', (weak) => (typeof weak.target === 'number' ? [weak.target] : [])),
-  /** Each pending `disposed()` watch, by the weak reference it is on. */
-  watches: index('future', ({ state }) => (state.kind === 'disposed' ? [state.weakRef] : [])),
-  /** Each pending future filled from outside, a mock's answer or a host's promise, by its token. */
-  hostFutures: index('future', ({ state }) => (state.kind === 'host' ? [state.token] : [])),
-  /** Each pending timer, watch and future filled from outside, by its state's kind. */
-  pending: index('future', ({ state }) =>
-    state.kind === 'timer' || state.kind === 'watch' || state.kind === 'host' ? [state.kind] : [],
-  ),
-  /** Each held mock, by the function it replaces. */
-  mocks: index('mock', (mock) => [mock.target]),
-  /** Each answer to another instance's call, by the future it waits on. */
-  answers: index('answer', (answer) => [answer.future]),
-  /** Each pending resolver registered on a future, by every future it is registered on. */
-  resolvers: index('resolver', ({ state }) => (state.kind === 'pending' ? state.on : [])),
-  /** Each pending resolver of a wait's case, by that wait. */
-  cases: index('resolver', ({ state }) =>
-    state.kind === 'pending' && state.target.kind === 'case' ? [state.target.wait] : [],
-  ),
-  /** Each context constant's value, by the constant's qualified name (spec §3.4). */
-  contextConstants: index('contextConstant', (constant) => [constant.key]),
-  /** Each pending `Resolver.at` resolver, by the resolver it decides. */
-  positions: index('resolver', ({ state }) =>
-    state.kind === 'pending' && state.target.kind === 'at' ? [state.target.done] : [],
-  ),
-};
-
-type Indexes = typeof indexes;
-
-type IndexName = keyof Indexes;
-
-type IndexKey<Name extends IndexName> = ReturnType<Indexes[Name]['keys']>[number];
-
-const indexNames = Object.keys(indexes) as IndexName[];
-
 export class Heap {
-  readonly #objects: Map<number, LiveObject>;
+  readonly #objects = new Map<number, LiveObject>();
   readonly #holders: HolderWrites;
   #made: number;
   readonly #written: number[] = [];
@@ -119,19 +73,27 @@ export class Heap {
   );
 
   /**
-   * The heap holding `objects`, in id order, having made `made` objects so far: the next one's id.
-   * What each holds is reported to `holders`, as made here.
+   * An empty heap that has made `made` objects so far, the next one's id, reporting its writes to
+   * `holders`; a snapshot's objects go in through `restore`.
    */
-  constructor(objects: readonly LiveObject[], made: number, holders: HolderWrites) {
-    this.#objects = new Map();
+  constructor(made: number, holders: HolderWrites) {
     this.#made = made;
     this.#holders = holders;
-    for (const object of objects) {
-      if (object.id >= made) {
-        unreachable(`Object ${object.id} was never made: only ${made} were.`);
-      }
-      this.#write(undefined, object);
+  }
+
+  /**
+   * Puts a snapshot's objects in this empty heap, in id order, each one it made already: every one
+   * is in before any reports what it holds, as one may hold another made after it.
+   */
+  restore(objects: readonly LiveObject[]): void {
+    if (this.#objects.size > 0) {
+      unreachable('A heap is restored only while empty.');
     }
+    const never = objects.find(({ id }) => id >= this.#made);
+    if (never !== undefined) {
+      unreachable(`Object ${never.id} was never made: only ${this.#made} were.`);
+    }
+    this.#write(objects.map((now) => ({ old: undefined, now })));
   }
 
   /** How many objects the heap has made: the id the next one gets. */
@@ -143,7 +105,7 @@ export class Heap {
   add<Object extends LiveObject>(make: (id: number) => Object): Object {
     const object = make(this.#made);
     this.#made += 1;
-    this.#write(undefined, object);
+    this.#write([{ old: undefined, now: object }]);
     return object;
   }
 
@@ -165,14 +127,14 @@ export class Heap {
     if (old.kind !== object.kind) {
       unreachable(`Object ${object.id} is a ${old.kind}, not a ${object.kind}.`);
     }
-    this.#write(old, object);
+    this.#write([{ old, now: object }]);
     this.#written.push(object.id);
   }
 
   remove(id: number): void {
     const old = this.#objects.get(id);
     if (old !== undefined) {
-      this.#write(old, undefined);
+      this.#write([{ old, now: undefined }]);
     }
   }
 
@@ -181,41 +143,51 @@ export class Heap {
    * from that commit's snapshot: it has nothing noted, as whatever a commit keeps is held.
    */
   keepOnly(kept: ReadonlySet<number>): void {
-    for (const object of this.objects()) {
-      if (!kept.has(object.id)) {
-        this.#write(object, undefined);
-      }
-    }
+    this.#write(
+      this.objects()
+        .filter(({ id }) => !kept.has(id))
+        .map((old) => ({ old, now: undefined })),
+    );
     this.#written.length = 0;
     this.#holders.settled();
   }
 
   /**
-   * Puts `now` in the place of `old`, either absent for an object made or gone, and reports what
-   * each holder it changes held and holds: the object itself, its index edges included, and the
-   * other objects whose index edges read it (`#readers`).
+   * Makes `changes`, each putting `now` in the place of `old`, either absent for an object made or
+   * gone, and reports what each holder they change held and holds: each object written, its index
+   * edges included, and each other object whose index edges read one (`#readers`). Every object
+   * reported is in the heap as it is: one made goes in before any report, and one gone leaves only
+   * after them all.
    */
-  #write(old: LiveObject | undefined, now: LiveObject | undefined): void {
-    const written = (old ?? now)?.id;
-    const readers = this.#readers([old, now])
-      .filter((id) => id !== written)
+  #write(changes: readonly ObjectChange[]): void {
+    const written = new Set(changes.map(({ old, now }) => (old ?? now)?.id));
+    const readers = this.#readers(changes.flatMap(({ old, now }) => [old, now]))
+      .filter((id) => !written.has(id))
       .map((id) => ({ id, before: this.#indexedHeld(id) }));
-    const was = old === undefined ? nothingHeld : this.#held(old);
-    if (old !== undefined) {
-      this.#leave(old);
-    }
-    if (now === undefined) {
+    const was = changes.map(({ old }) => (old === undefined ? nothingHeld : this.#held(old)));
+    for (const { old, now } of changes) {
       if (old !== undefined) {
+        this.#leave(old);
+      }
+      if (now !== undefined) {
+        this.#objects.set(now.id, now);
+        this.#enter(now);
+      }
+    }
+    changes.forEach(({ now }, position) => {
+      this.#holders.changed(
+        was[position] ?? nothingHeld,
+        now === undefined ? nothingHeld : this.#held(now),
+      );
+    });
+    for (const { id, before } of readers) {
+      this.#holders.changed(before, this.#indexedHeld(id));
+    }
+    for (const { old, now } of changes) {
+      if (old !== undefined && now === undefined) {
         this.#kinds.get(old.kind)?.delete(old.id);
         this.#objects.delete(old.id);
       }
-    } else {
-      this.#objects.set(now.id, now);
-      this.#enter(now);
-    }
-    this.#holders.changed(was, now === undefined ? nothingHeld : this.#held(now));
-    for (const { id, before } of readers) {
-      this.#holders.changed(before, this.#indexedHeld(id));
     }
   }
 
@@ -367,15 +339,10 @@ export class Heap {
   }
 }
 
-/** The indexes `Heap.#indexedHolds` finds a holder's edges by, each keyed by that holder's id. */
-const readIndexes: ReadonlySet<IndexName> = new Set(['resolvers', 'cases', 'positions']);
-
-/** Every key `object` has, with the index it has it in. */
-function keysOf(object: LiveObject): readonly (readonly [IndexName, unknown])[] {
-  return indexNames.flatMap((name) => {
-    const { kind, keys } = indexes[name] as Index<LiveKind, unknown>;
-    return kind === object.kind ? keys(object).map((key) => [name, key] as const) : [];
-  });
+/** One change of the heap: `now` in the place of `old`, either absent for an object made or gone. */
+interface ObjectChange {
+  readonly old: LiveObject | undefined;
+  readonly now: LiveObject | undefined;
 }
 
 /** The object `handle` names; anything else is a bug the checker rules out. */

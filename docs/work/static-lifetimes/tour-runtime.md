@@ -230,20 +230,26 @@ Landed. What R2 left, for the phases after it:
     read-only. `newFrame`'s references and captures, and a restored frame's registers
     (`liveFrame`), go through `placeContents`; `takeWait` through `clearRegister`. A reference holds
     its cell (`heldIn`).
-  - **Heap objects:** `Heap.#write` is every add, replace, remove and `keepOnly` drop, and the
-    heap's making from a snapshot. It reports the object's own holds, index edges included, and for
-    each other object whose index edges read it (`#readers`), that object's edges before and after:
-    the futures a resolver is registered on, its case's wait, the resolver it decides, and up that
-    chain, as whether each is awaited may change. `ResolverEndings.replace`'s own note went with
-    that. An execution reports nothing of its own; its registers do.
+  - **Heap objects:** `Heap.#write` is every add, replace, remove and `keepOnly` drop, and a
+    snapshot's objects going in (`restore`). It reports each object's own holds, index edges
+    included, and for each other object whose index edges read one (`#readers`), that object's
+    edges before and after: the futures a resolver is registered on, its case's wait, the resolver
+    it decides, and up that chain, as whether each is awaited may change.
+    `ResolverEndings.replace`'s own note went with that. An execution reports nothing of its own;
+    its registers do.
+  - **Every id a report names is in the heap as it reports**, so a consumer can read its object:
+    `#write` takes a batch, in which every object made goes in before any report and every one gone
+    leaves after them all. A restore makes the empty heap first (`Instance.heap`), puts every object
+    in at once, and fills the restored frames' registers last (`restoreRegisters`), as an older
+    object may hold a newer one.
   - **The run stack:** `RunStack`'s `push`, `pop` and `drive` report the running calls' futures.
     `SegmentRunner.wait`'s note went with that.
   - **Today's consumer is tracing:** `changed` notes what the holder held and holds no more
     (`takeReleased`). The collector's `noteReleased` puts back what a round skipped, the losers
     flag lives there, and `keepOnly` forgets the notes (`settled`).
   - **Exact:** `heap.test.ts`, "heap holder writes", tallies the reports over random changes and
-    commits and checks them against `Heap.holds` of every object. R3's shadow counts are that tally,
-    with the registers and the run stack added.
+    commits and checks them against `Heap.holds` of every object, and that each id reported is in
+    the heap. R3's shadow counts are that tally, with the registers and the run stack added.
   - **Not reported:** a composite's parts. A composite is counted at its first hold, when a register
     or an object reports holding it (design.md §9.1), so R3 does that in `HolderWrites`. The
     collector's waiting rounds hold as roots of their own, which R3 deletes.

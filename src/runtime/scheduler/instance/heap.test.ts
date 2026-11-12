@@ -14,72 +14,128 @@ import { HolderWrites } from '../../lifetimes/holder-writes.ts';
 import { type Held, idsHeld } from '../../snapshot/holdings.ts';
 import type { FutureState } from '../../snapshot/objects.ts';
 import { testHeap } from './heap.test-kit.ts';
-import type { Heap, LiveObject, LiveObjectOf } from './heap.ts';
+import { Heap, type LiveObject, type LiveObjectOf } from './heap.ts';
 
 type ResolverState = LiveObjectOf<'resolver'>['state'];
 
 const ids = [0, 1, 2, 3, 4, 5];
 const tokens = ['a', 'b'];
-const id = fc.constantFrom(...ids);
+
+/**
+ * An object some index files, made once the heap gives it its id, naming only objects it has, as a
+ * running heap does: `existing` is every id it has, this one's included.
+ */
+type Made = (id: number, existing: readonly number[]) => LiveObject;
+
+/** Which of the heap's objects a part names, picked once the object is made. */
+const reference = fc.nat({ max: 20 });
+
+/** The object `existing` has that `picked` names. */
+const among = (existing: readonly number[], picked: number) =>
+  existing[picked % existing.length] ?? 0;
 
 const stateArbitrary = fc.oneof(
-  fc.constant<FutureState>({ kind: 'resolved', value: null }),
-  fc.constant<FutureState>({ kind: 'call' }),
-  fc.constantFrom(...tokens).map((token): FutureState => ({ kind: 'host', token })),
-  fc.bigInt({ min: 0n, max: 9n }).map((at): FutureState => ({ kind: 'timer', at })),
-  id.map((weakRef): FutureState => ({ kind: 'disposed', weakRef })),
+  fc.constant((): FutureState => ({ kind: 'resolved', value: null })),
+  fc.constant((): FutureState => ({ kind: 'call' })),
+  fc.constantFrom(...tokens).map((token) => (): FutureState => ({ kind: 'host', token })),
+  fc.bigInt({ min: 0n, max: 9n }).map((at) => (): FutureState => ({ kind: 'timer', at })),
+  reference.map(
+    (weakRef) =>
+      (existing: readonly number[]): FutureState => ({
+        kind: 'disposed',
+        weakRef: among(existing, weakRef),
+      }),
+  ),
 );
 
-/** An object some index files, made once the heap gives it its id. */
-type Made = (id: number) => LiveObject;
-
 const madeArbitrary: fc.Arbitrary<Made> = fc.oneof(
-  id.map(
+  reference.map(
     (target): Made =>
-      (object) => ({ kind: 'cell', id: object, type: 0, value: handleTo(target) }),
+      (object, existing) => ({
+        kind: 'cell',
+        id: object,
+        type: 0,
+        value: handleTo(among(existing, target)),
+      }),
   ),
   stateArbitrary.map(
     (state): Made =>
-      (object) => ({ kind: 'future', id: object, state }),
+      (object, existing) => ({ kind: 'future', id: object, state: state(existing) }),
   ),
-  fc.oneof(id, fc.constantFrom('disposed' as const, 'callEnded' as const)).map(
+  fc.oneof(reference, fc.constantFrom('disposed' as const, 'callEnded' as const)).map(
     (target): Made =>
-      (object) => ({ kind: 'weakRef', id: object, target }),
+      (object, existing) => ({
+        kind: 'weakRef',
+        id: object,
+        target: typeof target === 'number' ? among(existing, target) : target,
+      }),
   ),
-  fc.option(id, { nil: undefined }).map(
+  fc.option(reference, { nil: undefined }).map(
     (resolves): Made =>
-      (object) => ({ kind: 'execution', id: object, resolves, frames: [], disposing: false }),
+      (object, existing) => ({
+        kind: 'execution',
+        id: object,
+        resolves: resolves === undefined ? undefined : among(existing, resolves),
+        frames: [],
+        disposing: false,
+      }),
   ),
-  id.map(
+  reference.map(
     (waiter): Made =>
-      (object) => ({ kind: 'wait', id: object, waiter, state: { kind: 'pending' } }),
+      (object, existing) => ({
+        kind: 'wait',
+        id: object,
+        waiter: among(existing, waiter),
+        state: { kind: 'pending' },
+      }),
   ),
   fc
     .oneof(
       fc
         .record({
           target: fc.oneof(
-            fc.constant({ kind: 'callback' as const, callback: null }),
-            id.map((wait) => ({ kind: 'case' as const, wait, position: 0 })),
-            id.map((done) => ({ kind: 'at' as const, done, position: 0n, root: 'case' as const })),
+            fc.constant({ kind: 'callback' as const, picked: 0 }),
+            reference.map((picked) => ({ kind: 'case' as const, picked })),
+            reference.map((picked) => ({ kind: 'at' as const, picked })),
           ),
-          on: fc.uniqueArray(id, { maxLength: 2 }),
+          on: fc.array(reference, { maxLength: 2 }),
         })
-        .map(({ target, on }): ResolverState => ({ kind: 'pending', target, on, onCancel: [] })),
-      fc.constantFrom<ResolverState>({ kind: 'resolved' }, { kind: 'cancelled' }),
+        .map(
+          ({ target, on }) =>
+            (object: number, existing: readonly number[]): ResolverState => ({
+              kind: 'pending',
+              target: targetOf(target, object, existing),
+              on: [...new Set(on.map((picked) => among(existing, picked)))],
+              onCancel: [],
+            }),
+        ),
+      fc.constantFrom(
+        (): ResolverState => ({ kind: 'resolved' }),
+        (): ResolverState => ({ kind: 'cancelled' }),
+      ),
     )
     .map(
       (state): Made =>
-        (object) => ({ kind: 'resolver', id: object, state: deciding(state, object) }),
+        (object, existing) => ({ kind: 'resolver', id: object, state: state(object, existing) }),
     ),
 );
 
-/** `state` as resolver `resolver`'s: a `Resolver.at` one decides a resolver made before it. */
-function deciding(state: ResolverState, resolver: number): ResolverState {
-  if (state.kind !== 'pending' || state.target.kind !== 'at') {
-    return state;
+/**
+ * What resolver `resolver` decides: a callback, a case of a wait, or, `Resolver.at`, a resolver
+ * made before it, a callback when there is none.
+ */
+function targetOf(
+  target: { readonly kind: 'callback' | 'case' | 'at'; readonly picked: number },
+  resolver: number,
+  existing: readonly number[],
+): Extract<ResolverState, { kind: 'pending' }>['target'] {
+  const earlier = existing.filter((each) => each < resolver);
+  if (target.kind === 'case') {
+    return { kind: 'case', wait: among(existing, target.picked), position: 0 };
   }
-  return { ...state, target: { ...state.target, done: Math.min(state.target.done, resolver - 1) } };
+  return target.kind === 'at' && earlier.length > 0
+    ? { kind: 'at', done: among(earlier, target.picked), position: 0n, root: 'case' }
+    : { kind: 'callback', callback: null };
 }
 
 type Change =
@@ -97,25 +153,44 @@ const changeArbitrary: fc.Arbitrary<Change> = fc.oneof(
     .map((each): Change => each),
 );
 
+/** The objects `initial` makes, each naming only the others. */
+function objectsOf(initial: readonly Made[]): readonly LiveObject[] {
+  const existing = initial.map((_, position) => position);
+  return initial.map((make, position) => make(position, existing));
+}
+
+/** The heap holding what `initial` makes. */
+const heapOf = (initial: readonly Made[]) => testHeap(objectsOf(initial));
+
 /**
- * Applies `step` to `heap`, a replace keeping its object's kind, so one of another kind is
- * skipped; the id of the object it replaced, if it did.
+ * Applies `step` to `heap`: a replace keeping its object's kind, so one of another kind is skipped,
+ * and a remove only of an object nothing else holds, as the heap removes only those. The id of the
+ * object it replaced, if it did.
  */
 function apply(heap: Heap, step: Change): number | undefined {
+  const objects = heap.objects();
+  const existing = objects.map((object) => object.id);
   if (step.kind === 'add') {
-    heap.add(step.make);
+    heap.add((made) => step.make(made, [...existing, made]));
     return undefined;
   }
-  const objects = heap.objects();
   const target = objects[step.at % Math.max(1, objects.length)];
   if (target === undefined) {
     return undefined;
   }
   if (step.kind === 'remove') {
-    heap.remove(target.id);
+    const held = objects.some(
+      (other) =>
+        other.id !== target.id &&
+        other.kind !== 'execution' &&
+        heap.holds(other).includes(target.id),
+    );
+    if (!held) {
+      heap.remove(target.id);
+    }
     return undefined;
   }
-  const replacement = step.make(target.id);
+  const replacement = step.make(target.id, existing);
   if (replacement.kind !== target.kind) {
     return undefined;
   }
@@ -132,7 +207,7 @@ describe('heap indexes', () => {
         fc.array(madeArbitrary, { maxLength: 6 }),
         fc.array(changeArbitrary, { maxLength: 12 }),
         (initial, changes) => {
-          const heap = testHeap(initial.map((make, position) => make(position)));
+          const heap = heapOf(initial);
           for (const step of changes) {
             apply(heap, step);
           }
@@ -208,7 +283,7 @@ describe('heap writes', () => {
         fc.array(madeArbitrary, { maxLength: 6 }),
         fc.array(changeArbitrary, { maxLength: 12 }),
         (initial, changes) => {
-          const heap = testHeap(initial.map((make, position) => make(position)));
+          const heap = heapOf(initial);
           const replaced = changes.flatMap((step) => apply(heap, step) ?? []);
           expect(heap.takeWritten()).toEqual(replaced);
           expect(heap.takeWritten()).toEqual([]);
@@ -218,9 +293,20 @@ describe('heap writes', () => {
   });
 });
 
-/** Holder writes tallied: each object's holders, as the writes report them held and let go of. */
+/**
+ * The writes of a heap of its own, tallied: each object's holders, as the writes report them held
+ * and let go of, and each id reported while its object wasn't in the heap.
+ */
 class Tally extends HolderWrites {
+  readonly heap: Heap;
   readonly holders = new Map<number, number>();
+  readonly absent: number[] = [];
+
+  /** Tallies the writes of a new heap that has made `made` objects. */
+  constructor(made: number) {
+    super();
+    this.heap = new Heap(made, this);
+  }
 
   override changed(was: Held, now: Held): void {
     super.changed(was, now);
@@ -230,6 +316,9 @@ class Tally extends HolderWrites {
     ] as const) {
       for (const held of counted) {
         this.holders.set(held, (this.holders.get(held) ?? 0) + step);
+        if (!this.heap.has(held)) {
+          this.absent.push(held);
+        }
       }
     }
   }
@@ -250,18 +339,16 @@ const withoutZeroes = (holders: ReadonlyMap<number, number>) =>
   new Map([...holders].filter(([, count]) => count !== 0));
 
 describe('heap holder writes', () => {
-  it('report every holder an object gains and loses, through its index edges too', () => {
+  it('report every holder an object gains and loses, through its index edges too, each in the heap', () => {
     fc.assert(
       fc.property(
         fc.array(madeArbitrary, { maxLength: 6 }),
         fc.array(changeArbitrary, { maxLength: 12 }),
         fc.option(fc.uniqueArray(fc.nat({ max: 20 })), { nil: undefined }),
         (initial, changes, kept) => {
-          const tally = new Tally();
-          const heap = testHeap(
-            initial.map((make, position) => make(position)),
-            tally,
-          );
+          const tally = new Tally(initial.length);
+          const { heap } = tally;
+          heap.restore(objectsOf(initial));
           for (const step of changes) {
             apply(heap, step);
           }
@@ -269,6 +356,7 @@ describe('heap holder writes', () => {
             heap.keepOnly(new Set(kept));
           }
           expect(withoutZeroes(tally.holders)).toEqual(holdersOf(heap));
+          expect(tally.absent).toEqual([]);
         },
       ),
     );
@@ -280,13 +368,13 @@ describe('heap holder writes', () => {
         fc.array(madeArbitrary, { maxLength: 6 }),
         fc.array(fc.option(changeArbitrary, { nil: undefined }), { maxLength: 12 }),
         (initial, changes) => {
-          const heap = testHeap(initial.map((make, position) => make(position)));
+          const heap = heapOf(initial);
           const given = heap.objects().map((object) => object.id);
           for (const step of changes) {
             if (step === undefined) {
               heap.keepOnly(new Set());
             } else if (step.kind === 'add') {
-              given.push(heap.add(step.make).id);
+              given.push(heap.add((made) => step.make(made, [...given, made])).id);
             } else {
               apply(heap, step);
             }
