@@ -200,7 +200,7 @@ Landed. What R1 left, for the phases after it:
     its objects (design.md §2), and one lost to counting is one something let go of. Walking the
     whole heap timed out `collections/deep-elements.ista`. No program yet closes a cycle releasing
     nothing that reaches it, since statements release their temporaries; the write log keeps the
-    check independent of that, which C5's elision may change.
+    check independent of that, which eliding count updates (tracker P50) may change.
   - **Where it is on:** by default in `testRuntime`, `reportsOf` and `cli.test-kit`'s `ista`.
     `oracle` throws at the first cycle. Its own tests' cyclic programs, which C3 rejects, compile
     through `compile.test-kit.ts`'s `textDespiteCycles`, which lets only cycle errors through, and

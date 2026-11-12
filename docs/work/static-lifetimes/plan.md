@@ -1,5 +1,5 @@
 ---
-description: plan for static lifetimes — process, five checker phases (C1 flow IR and witness closing, C2 annotations, C3 the analysis, C4 the editor's cost, C5 lowering on the IR) and five runtime phases (R1 edges and oracle, R2 seams and identity, R3 counting, R4 only indexes, R5 in-place values), with scope, acceptance, order, shared surfaces and diagnostic ranges; read before forking, planning or examining a static-lifetimes phase
+description: plan for static lifetimes — process, five checker phases (C1 flow IR and witness closing, C2 annotations, C3 the analysis, C4 the editor's cost, C5 lowering on the IR, dropped) and five runtime phases (R1 edges and oracle, R2 seams and identity, R3 counting, R4 only indexes, R5 in-place values), with scope, acceptance, order, shared surfaces and diagnostic ranges; read before forking, planning or examining a static-lifetimes phase
 owner: tech-lead
 status: proposed
 applies_to: istalang
@@ -47,7 +47,7 @@ whole. Everything smaller rides inside the phase that needs it, as its own commi
 | **C2** Generic annotations, `Holds` and `Keeps` (behavioural) | `design.md` §6. Parser: `@Name<Types>`, with or without `{…}`. §3.1's bare form with type arguments. A declaration's annotations bound and checked in its type-parameter scope. Struct and extern struct declarations as places. The `lifetimes` std module. `heldPartsOf` reading `Holds`, `keepsOf(extern)`, their misuse, and parameter names as denotations. The prelude and std annotated. The readers of `heldPartsOf` audited | `@Holds<()>` on `WeakRef`: `WeakRef<Future<…>>` holds nothing for sendability and must-use. `@Keeps{["self": ["nope"]]}` is an error, and so is either annotation outside the std. Go-to on `"value"` reaches the parameter |
 | **C3** The analysis, on (behavioural; the largest) | In this order: 0. The native audit (`design.md` §6.6), reading `keepsOf` and `Holds`: it needs R1's edges, since today's `onAwait` adds a resolver → future edge no `Keeps` covers. 1. Related locations on `Diagnostic`, published by the LSP and printed by the CLI. 2. `design.md` §5.1–5.5 as a dry run: relevance and `reachesDisposable`; the domain over the IR, with field labels and the plain-function seam prepared (§5.6), and §5.7's per-field input paths; summaries, requirements (separation ones too, §5.5) and call reach; symbolic requirement calls through C1's closing; `any` and function values; natives from C2; the declaration graph; escaping closures and runtime-run code. Every result an entry. 3. The `counted` flag on the Definition's type entries. 4. The rewrites §10 lists, and whatever else the dry run finds that is a real cycle. 5. The diagnostics on, with `test/corpus/lifetimes/` (§12). 6. The editor's budget, and a cold-open bench | The native audit passes over the std suites and the corpus, and fails when an entry is removed from `put`'s `Keeps`. §12's corpus passes. The std, `test/examples.test.ts`, the spec's fences and the runtime tests' programs report nothing outside the invalid cases, but FormBuilder, `it.fails` until its rewrite (decided 2026-11-12). A property over fragment soups (writes, closures, async calls, inboxes, awaitables): an accepted program never trips R1's oracle when run. A commute property: a generic program is rejected whenever its instantiated copy is, exactly where the generic body calls no requirement of its type parameters (decided 2026-11-12). "Incremental equals fresh" covers the new diagnostics. `edit.bench.ts` times the warm edit and a cold open, with the rule off and on (`tour-checker.md`); their budget is C4's (decided 2026-11-12). The dry run's false positives are listed in `findings.md` |
 | **C4** The editor's cost (structural; performance only, decided 2026-11-12) | Closures' captures and field labels are not built: what they would remove is accepted, each with its workaround (`findings.md`). What a caller reads of a callee is its summary alone, whether a function has a body read off its declaration, so an edit inside a callee's body analyses no caller again. Fewer entries and reads per function: one summary table for natives, fields functions and bodies, flows read off the checked body, no defaults entry where none is written (at `Parameters.defaultsOf` and the rule's), declared findings inside reports, and the module's noted constraint checks run before the rule (`design.md` §8) | No finding moves. An edit inside a callee's body analyses that callee alone (`edits.test.ts`). Paired against the rule off in one process, the median warm edit of `edit.bench.ts` adds at most 3.2 ms on the 2,098-line module and 2 ms on the 246-line one, and a cold open within 20% of C3's (decided 2026-11-12). Validation that skips what no changed input reaches is filed (tracker P49) |
-| **C5** Lowering on the IR (structural, then behavioural) | Lowering reads the flow IR instead of the checked syntax for where values go. Then the retain/release pairs the IR shows to be redundant are elided | Definitions byte-identical before elision on the corpus and std. After elision, every test passes and the oracle stays silent. `wake.bench.ts` faster on R3's fixture |
+| **C5** Lowering on the IR (dropped 2026-11-13) | Not built. Cells are one checker fact lowering and the IR both read; moving lowering onto the IR would rewrite `constructs/` for no behaviour, and the oracle already catches a disagreement (`design.md` §4). Elision's ceiling on R3's fixture is a few percent: counting is 33% of it, register writes 11.8%, and few of those are redundant (tracker P50) | — |
 
 ## Runtime lane
 
@@ -68,7 +68,7 @@ whole. Everything smaller rides inside the phase that needs it, as its own commi
 - **R3** needs R2 and C3. It is sound only once C3 makes every running program cycle-free, and it
   reads C3's flag.
 - **C4** followed C3 directly, beside R3, since their files don't overlap (decided 2026-11-12).
-- **R4 and R5** follow R3. **C5** needs counting first, since elision removes counts.
+- **R4 and R5** follow R3. **C5** was dropped once R3 measured counting (decided 2026-11-13).
 - A phase starts only on landed code, and beside a running one only when their files don't overlap.
 
 ## Shared surfaces and owners
@@ -76,13 +76,13 @@ whole. Everything smaller rides inside the phase that needs it, as its own commi
 | Surface | Owner | Consumers |
 |---|---|---|
 | Witness closing on the checker's surface | C1 | C3, lowering |
-| The flow IR and its entry (`rules/flow/`) | C1 | `dropped.ts`, `data-kinds.ts`, C3, C5 |
+| The flow IR and its entry (`rules/flow/`) | C1 | `dropped.ts`, C3, C4 |
 | Annotations: generic, scoped, on struct declarations | C2 | tools, the boundary's annotations |
 | `Holds` read by `heldPartsOf` (`externHeldOf`); `keepsOf(extern)`; the `lifetimes` module | C2 | C3 (the audit too), sendability, must-use |
 | `Diagnostic`'s related locations | C3 | expansion, the LSP, the CLI |
 | `reachesDisposable(type)` and the Definition's `counted` flag | C3 | R3, lowering |
 | Summaries, requirements, field labels and the plain-function seam | C3 | a later refinement (`design.md` §5.6, §5.7) |
-| Edges by root, and the oracle | R1 | C3's property, R3, C5 |
+| Edges by root, and the oracle | R1 | C3's property, R3 |
 | The holder seam, and serial identity | R2 | R3, R4, R5 |
 
 A contract amendment goes to the tech-lead, who decides and tells the affected phases.

@@ -406,12 +406,19 @@ declare only `extern shared struct`s.
   label in pairs, summaries and requirements, always `anyField`, and `heldOfFunction`
   (`type-reach.ts`) is the seam a refinement of closures would take.
 
-## Lowering on the IR (C5)
+## Lowering and the IR (C5, dropped)
 
 Lowering compiles per instance from `main` through a worklist (`lowering/lower.ts`,
-`tables/tables.ts`) and reads `CheckedBody` directly (`docs/reuse/lowering-and-ir.md`). C5 makes it
-read the IR for where values go: one home for that knowledge. Then C5 elides the retain/release
-pairs the IR shows to be redundant.
+`tables/tables.ts`) and reads `CheckedBody` directly (`docs/reuse/lowering-and-ir.md`); it stays
+so (design.md §4). What it shares with the IR:
+- **Cells:** one checker fact, `CheckedBody.inCell`, read by `declareVariable`
+  (`lowering/constructs/statements/variables.ts`) and the IR's builder (`build/flow-builder.ts`).
+- **Release points and evaluation order:** each derives them from syntax, the IR following
+  lowering's (`build/scopes.ts` against `lowering/constructs/statements/scopes.ts`, `holds.ts`).
+  Their models differ where lowering needs registers: a `hold`'s variable is kept into a list
+  register at its block's end, a field loop is unrolled per pass, and temporaries are released in
+  the same instructions as variables. The Definition names no registers, so a static comparison
+  would need a lowering seam; the oracle sweep and the soup property compare them at runtime.
 
 ## Tests
 

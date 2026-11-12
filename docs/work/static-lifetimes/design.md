@@ -139,9 +139,11 @@ Branches, loops, labels and the ruled-out code of `FlowDecisions` shape the grap
   IR doesn't keep. A sweep proves the IR covers every construct instead
   (`rules/flow/flow.sweep.test.ts`): each expression checking typed has a value at its node, and
   each call `madeCalls()` lists is a call of the IR.
-- **Lowering moves onto it last** (plan C5), together with eliding redundant retain/release pairs,
-  which needs the same IR. Until then the oracle (§9.2) catches any disagreement between the IR and
-  lowering.
+- **Lowering stays on the checked syntax** (plan C5, dropped 2026-11-13). Cells are already one
+  checker fact both read (`CheckedBody.inCell`); what both derive from syntax is the release points
+  and evaluation order, and the IR follows lowering's (`build/scopes.ts`). The oracle sweep and the
+  soup property (§9.2) catch a disagreement between them at runtime. Eliding redundant count
+  updates on register writes is filed (tracker P50).
 - **Flow typing (narrowing) is unrelated.** The checker has already settled every type the IR
   carries.
 
