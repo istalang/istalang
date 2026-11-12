@@ -30,7 +30,6 @@ import { isTagged, taggedCall } from '../../../../syntax/expressions/literals/te
 import { itemValue } from '../../../../syntax/expressions/readings.ts';
 import type { Invalid } from '../../../../syntax/tree/node.ts';
 import type { FieldSource } from '../../../surface/checked-body.ts';
-import type { FunctionCall } from '../../../surface/resolved-call.ts';
 import type { Argument, ValueId } from '../flow-ir.ts';
 import type { FlowBuilder } from './flow-builder.ts';
 import { implicitCall, resolvedCall } from './implicit-calls.ts';
@@ -40,8 +39,10 @@ import { constant } from './parts.ts';
 /**
  * A struct literal (§3.1), as lowering builds it (lowering/constructs/expressions/structs/
  * structs.ts): its items evaluated in the order written, then its fields taken in declaration order,
- * each from its value, its spread's field or a struct comprehension; a literal leaving fields to
- * their defaults is built by its struct's fields function, called with the fields it gives.
+ * each from its value, its spread's field, a struct comprehension, or its default, which the
+ * struct's fields function computes from the fields before it; then the struct made of them, put
+ * behind a new handle by `new`. (Lowering lets the fields function's entry build the value when a
+ * default runs, with what the flow shows made here.)
  */
 export function structLiteral(builder: FlowBuilder, node: FieldsLiteral): ValueId {
   const into = builder.temporaryOf(node);
@@ -53,22 +54,17 @@ export function structLiteral(builder: FlowBuilder, node: FieldsLiteral): ValueI
     return into;
   }
   const parts: ValueId[] = [];
-  let defaults: FunctionCall | undefined;
   for (const source of sources) {
     if (source.kind === 'comprehension') {
       parts.push(...comprehended);
     } else if (source.kind === 'default') {
-      defaults = source.call;
+      parts.push(resolvedCall(builder, source.call, { site: node, passed: [...parts] }));
     } else {
       parts.push(fieldOf(builder, source, values));
     }
   }
-  if (defaults === undefined) {
-    const made = node.kind === 'NewStructLiteral' ? 'handle' : 'struct';
-    builder.emit({ op: 'make', site: node, into, made: { kind: made }, parts });
-  } else {
-    resolvedCall(builder, defaults, { site: node, passed: parts, into });
-  }
+  const made = node.kind === 'NewStructLiteral' ? 'handle' : 'struct';
+  builder.emit({ op: 'make', site: node, into, made: { kind: made }, parts });
   return into;
 }
 

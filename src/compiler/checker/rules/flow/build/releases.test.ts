@@ -4,32 +4,8 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { stdProgramOf } from '../../../../binder/bind.test-kit.ts';
-import { idOf } from '../../../../program/program.test-kit.ts';
-import type { FunctionDeclaration } from '../../../../syntax/declarations/index.ts';
-import { bodyOf } from '../../../../syntax/tree/index.ts';
-import { inFunction } from '../../../check.test-kit.ts';
-import { checkProgram } from '../../../check.ts';
 import type { FlowFunction } from '../flow-ir.ts';
-import { flowOf } from './index.ts';
-
-/** The flow of `subject`, the function `body` is written in. */
-function subjectFlow(body: string): FlowFunction {
-  const program = stdProgramOf({ main: inFunction(body) });
-  const checker = checkProgram(program);
-  const module = idOf('main');
-  const tree = program.modules.get(module)?.tree;
-  const subject = tree?.root.items.find(
-    (item): item is FunctionDeclaration => item.kind === 'FunctionDeclaration',
-  );
-  const checked = subject === undefined ? undefined : checker.bodyOf(subject);
-  const block = tree === undefined || subject === undefined ? undefined : bodyOf(tree, subject);
-  if (subject === undefined || checked === undefined || block === undefined) {
-    throw new Error('The subject was never checked.');
-  }
-  const inputs = { checker, module, localBodyOf: () => undefined, body: checked };
-  return flowOf(inputs, block, checker.parametersOf(subject));
-}
+import { subjectFlow } from './flow.test-kit.ts';
 
 /** How many times `flow` releases the variable named `name`, and by what. */
 function releasesOf(flow: FlowFunction, name: string): readonly string[] {
