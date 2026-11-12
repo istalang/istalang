@@ -3,7 +3,7 @@
  * generically, so what runs for one instantiation reads it with every type it records substituted.
  * The body's facts table (index.ts) says which part each fact is made of; the parts are substituted
  * here. The calls a body records stay as checked: closing one takes the instantiation's witnesses
- * too, which its reader has, so the reader closes it (lowering/calls/closed-calls.ts `closeCall`,
+ * too, which its reader has, so the reader closes it (lowering, through surface/witness-closing.ts;
  * rules/computation/ for a default's). Lowering reads a function instance's body this way, and
  * compile time a field's default for the literal running it.
  */

@@ -12,12 +12,12 @@
 import type { Register } from '../../../definition/operands.ts';
 import { unreachable } from '../../../foundation/structures/unreachable.ts';
 import type { Checker } from '../../checker/check.ts';
+import { type FunctionInstance, substitutionOf } from '../../checker/surface/witness-closing.ts';
 import { substitute } from '../../checker/types/parts/substitution.ts';
 import type { NominalType } from '../../checker/types/type/index.ts';
 import { constructedVariant } from '../../syntax/declarations/field-defaults.ts';
 import type { AnchoredSpan } from '../../syntax/tree/positions.ts';
 import type { CodeContext } from '../context.ts';
-import { type FunctionInstance, substitutionOf } from '../tables/instances.ts';
 
 /** A value of an enum to build: its type, its variant's name, and the variant's fields. */
 export interface VariantValue {

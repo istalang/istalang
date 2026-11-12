@@ -103,38 +103,32 @@ The node kinds are in `src/compiler/syntax/expressions/index.ts` and `syntax/sta
 - **`rules/kinds/data-kinds.ts`** walks every value a checked body computes, for the data rule.
 - C1 replaces `forward.ts` with the IR, and moves `dropped.ts` and `data-kinds.ts` onto it.
 
-## Witness closing (C1)
+## Witness closing (C1, landed)
 
-- **The algorithm exists only in lowering.**
-  - `Closer = Pick<Checker, 'typeRules' | 'traitObjects'>` (`lowering/calls/closed-calls.ts`).
-  - A `constraint` requirement on a type parameter takes
-    `within.witnesses.get(on)?.[constraint]?.[member]` from the instance. It is then closed again
-    inside the required function's instance, with its binding composed (`composed`).
-  - A `computed` requirement asks `traitObjects.memberWitnesses(through, 0, on)[member]` once `on`
-    isn't opaque.
-  - What lives only in lowering: `closedInside`, `closeWitnesses`, `closedCall`, `composed`, and,
-    for `closingIn`, `FunctionInstance`, `substitutionOf` and `ownerSubstitution`
-    (`lowering/tables/instances.ts`).
-- **Already public:**
-  - `Checker.traitObjects` (the `TraitObjects` interface in `check.ts`, implemented by
-    `traitObjectsOf` in `resolution/conformance/trait-objects.ts`, which uses
-    `met-instantiations/`), including `memberWitnesses`;
-  - `callsMadeWith`, `functionCallsWithin`, `witnessCallsOf` and `instantiatingTypesOf`
-    (`surface/resolved-call.ts`).
+- **The algorithm is on the checker's surface** (`surface/witness-closing.ts`), and lowering reads
+  it there.
+  - `Closer = Pick<Checker, 'typeRules' | 'traitObjects'>`; `Closing` is a substitution plus the
+    witnesses an instance was given; `closingIn(instance)` builds one from a `FunctionInstance`
+    (declaration, type arguments, witnesses).
+  - `closedInside(resolved, closing, closer)`: a `constraint` requirement on a type parameter takes
+    `closing.witnesses.get(on)?.[constraint]?.[member]`, closed again inside the required
+    function's instance, its binding composed with the call's. A `computed` requirement asks
+    `traitObjects.memberWitnesses(through, 0, on)[member]` once `on` isn't opaque. A requirement on
+    an `any` value, on a union's trait, or on another function's type parameters stays open.
+  - `closedFunctionCall` closes a `FunctionCall` into the `FunctionInstance` it runs.
+- **What stays in lowering** (`lowering/calls/closed-calls.ts`): what a closed call targets, an
+  entry or a `Dispatch` (`closeCall`, `closeCallWithin`, which adds the field loops' keys to the
+  substitution), `leavesOut`, and the readers of a closed call's types.
 - **What a call records:** `FunctionCall.witnesses` is a
   `ReadonlyMap<TypeParameter, readonly (readonly ResolvedCall[])[]>`: per callee type parameter, per
   constraint, per required function in the trait's order, the call it resolves to. It is set by
   `instantiate` (`resolution/conformance/conformance.ts`) and `callMade`
   (`resolution/choosing/calls-made.ts`). Inside a generic caller, these are `RequirementCall`s on
-  the caller's own type parameters, so they stay open.
-- **The checker can't import lowering** (`compiler/checker`'s layer in `.dependency-cruiser.mjs`), and a
-  second closer would break DRY. So C1 moves the algorithm onto the checker's surface, and lowering
-  reads it there. Every Definition stays byte-identical.
+  the caller's own type parameters, so they stay open. C3 closes a callee's summary at a call site
+  with `closingIn(instanceOf(call))`.
 - **Instance keys** (`lowering/tables/instances.ts`): the declaration and its type arguments, since
   witnesses are coherent and the types decide them. A lambda is keyed by its owner's instance plus
   its node.
-- **Stale:** the `Dispatch` comment in `closed-calls.ts` names `../trait-objects/`. The unit is
-  `lowering/synthesized/trait-objects.ts`.
 
 ## Diagnostics (C3)
 

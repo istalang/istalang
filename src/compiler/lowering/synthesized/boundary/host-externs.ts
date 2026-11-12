@@ -21,6 +21,7 @@ import type { CodeFunction, FunctionDefinition } from '../../../../definition/ta
 import { wellKnown } from '../../../../foundation/language/well-known/index.ts';
 import { unreachable } from '../../../../foundation/structures/unreachable.ts';
 import type { Checker } from '../../../checker/check.ts';
+import { type FunctionInstance, substitutionOf } from '../../../checker/surface/witness-closing.ts';
 import { substitute } from '../../../checker/types/parts/substitution.ts';
 import type { AwaitedType } from '../../../checker/types/type/function-types.ts';
 import type { Type } from '../../../checker/types/type/index.ts';
@@ -34,7 +35,6 @@ import type { AnchoredSpan } from '../../../syntax/tree/positions.ts';
 import { emitCall, emitFunctionCall } from '../../calls/emit-call.ts';
 import { awaitFuture } from '../../calls/waits.ts';
 import type { CodeContext } from '../../context.ts';
-import { type FunctionInstance, substitutionOf } from '../../tables/instances.ts';
 import { keyOf, qualifiedNameOf, spelledType } from '../../tables/names.ts';
 import type { DefinitionTables, HostExternDeclaration } from '../../tables/tables.ts';
 import { SynthesizedCode } from '../index.ts';

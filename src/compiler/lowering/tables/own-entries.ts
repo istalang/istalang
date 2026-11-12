@@ -15,8 +15,8 @@ import { derivedCodecs } from '../../../foundation/language/well-known/codecs.ts
 import type { Checker } from '../../checker/check.ts';
 import { isHostExtern } from '../../checker/surface/host-externs.ts';
 import type { JsonDirection } from '../../checker/surface/json-form.ts';
+import type { FunctionInstance } from '../../checker/surface/witness-closing.ts';
 import { constructedVariant, isFieldsFunction } from '../../syntax/declarations/field-defaults.ts';
-import type { FunctionInstance } from './instances.ts';
 
 /** What an instance's own entry is made of; a derived codec's says which way it crosses. */
 export type OwnEntry =

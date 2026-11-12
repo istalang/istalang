@@ -44,6 +44,7 @@ import { unreachable } from '../../../foundation/structures/unreachable.ts';
 import type { Checker, Disposal } from '../../checker/check.ts';
 import type { CheckedAnnotation } from '../../checker/surface/checked-annotation.ts';
 import { isHostExtern } from '../../checker/surface/host-externs.ts';
+import type { FunctionInstance } from '../../checker/surface/witness-closing.ts';
 import { folded } from '../../checker/types/identity/folding.ts';
 import { sameType } from '../../checker/types/identity/identity.ts';
 import { type RecursiveType, unfoldRecursive } from '../../checker/types/type/computed-types.ts';
@@ -60,7 +61,6 @@ import { hasOneValue } from '../../checker/types/unions/unions.ts';
 import type { FunctionDeclaration } from '../../syntax/declarations/index.ts';
 import { type ClosedCall, closeFunctionCall } from '../calls/closed-calls.ts';
 import { foundCodecCall } from '../synthesized/boundary/codec-calls.ts';
-import type { FunctionInstance } from './instances.ts';
 import { qualifiedNameOf, recursiveName, spelledType, unionName } from './names.ts';
 
 /** What a type entry refers to outside the type table. */

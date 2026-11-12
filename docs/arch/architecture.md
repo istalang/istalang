@@ -83,7 +83,8 @@ src/
                                                                  placing each expression in them: wiring/body/; which expressions a scope
                                                                  postpones and what each can be a value of: constructs/expressions/postponed.ts)
       surface/                                                   the models the surface names, contracts like the root's: a body as checked
-                                                                 (checked-body.ts), what calls resolved to (resolved-call.ts), patterns and targets as checked (checked-pattern.ts),
+                                                                 (checked-body.ts), what calls resolved to (resolved-call.ts), a call closed inside one
+                                                                 instantiation, its requirements made their witnesses (witness-closing.ts), patterns and targets as checked (checked-pattern.ts),
                                                                  computed constants (constant-form.ts), derived JSON forms (json-form.ts),
                                                                  annotations (checked-annotation.ts), how field reads reach their fields
                                                                  (checked-field.ts), the externs a host implements (host-externs.ts), which
@@ -196,8 +197,8 @@ src/
       tables/                                                    the interned tables (types in type-table.ts), qualified names, compile-time
                                                                  constants, function instances (one entry per instantiation), and what each instance's
                                                                  own entry is made of, decided once (own-entries.ts)
-      calls/                                                     a resolved call closed inside one instance (closed-calls.ts: substituted, a
-                                                                 requirement made its witness, or a dispatch); the one place a `call` is
+      calls/                                                     what a call closed inside one instance targets (closed-calls.ts: its
+                                                                 entry, or a dispatch); the one place a `call` is
                                                                  written (emit-call.ts), and the one place a wait is: a resolver per case handed to its
                                                                  `onAwait`, then the instruction waiting (waits.ts); packs as concrete tuples
       values/                                                    how values are laid out: a union's values as its enum lays them out, into and

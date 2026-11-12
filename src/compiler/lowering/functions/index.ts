@@ -46,6 +46,7 @@ import type {
   ResolvedCall,
   ResolvedSite,
 } from '../../checker/surface/resolved-call.ts';
+import type { FunctionInstance } from '../../checker/surface/witness-closing.ts';
 import type { Fit } from '../../checker/types/fitting/fit/index.ts';
 import type { Type } from '../../checker/types/type/index.ts';
 import { type ModuleId, programModule } from '../../program/program.ts';
@@ -69,7 +70,6 @@ import { emitConstant } from '../tables/constants.ts';
 import {
   type BodyOwner,
   type DeferredPlan,
-  type FunctionInstance,
   type NestedInstance,
   ownerDeclaration,
 } from '../tables/instances.ts';

@@ -10,9 +10,9 @@
 import { unreachable } from '../../../../foundation/structures/unreachable.ts';
 import type { Checker } from '../../../checker/check.ts';
 import type { JsonDirection } from '../../../checker/surface/json-form.ts';
+import type { FunctionInstance } from '../../../checker/surface/witness-closing.ts';
 import type { Type } from '../../../checker/types/type/index.ts';
 import { type ClosedCall, closeCall } from '../../calls/closed-calls.ts';
-import type { FunctionInstance } from '../../tables/instances.ts';
 
 /**
  * The codec writing or reading `type`, which checking let through, closed `within` the instance

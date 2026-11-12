@@ -23,6 +23,7 @@ import type {
   CheckedBody,
   NestedFunction,
 } from '../../checker/surface/checked-body.ts';
+import { type FunctionInstance, substitutionOf } from '../../checker/surface/witness-closing.ts';
 import { substitute } from '../../checker/types/parts/substitution.ts';
 import { kindOfFunction } from '../../checker/types/type/function-kinds.ts';
 import type { Type } from '../../checker/types/type/index.ts';
@@ -33,10 +34,8 @@ import type { Identifier } from '../../syntax/tree/node.ts';
 import {
   type BodyOwner,
   type FieldPassStep,
-  type FunctionInstance,
   type NestedInstance,
   passBindings,
-  substitutionOf,
 } from '../tables/instances.ts';
 import type { DefinitionTables, EntryHeader } from '../tables/tables.ts';
 import { codeModeOf } from './modes.ts';

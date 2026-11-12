@@ -19,10 +19,10 @@
 
 import type { CodeFunction } from '../../../definition/tables/functions.ts';
 import { unreachable } from '../../../foundation/structures/unreachable.ts';
+import type { FunctionInstance } from '../../checker/surface/witness-closing.ts';
 import type { NominalType, Type } from '../../checker/types/type/index.ts';
 import { emitCall, referenceTo } from '../calls/emit-call.ts';
 import { hostCallOf, writeHostCall } from '../synthesized/boundary/host-externs.ts';
-import type { FunctionInstance } from '../tables/instances.ts';
 import { structValue } from '../values/struct-values.ts';
 import { buildConstructed } from '../values/variant-values.ts';
 import type { Lowering } from './frames.ts';

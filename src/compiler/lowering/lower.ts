@@ -18,6 +18,7 @@ import { jobFunctions } from '../../foundation/language/well-known/jobs.ts';
 import { testingFunctions } from '../../foundation/language/well-known/testing.ts';
 import { unreachable } from '../../foundation/structures/unreachable.ts';
 import type { Checker } from '../checker/check.ts';
+import { type FunctionInstance, substitutionOf } from '../checker/surface/witness-closing.ts';
 import { substitute } from '../checker/types/parts/substitution.ts';
 import { stdModuleIdOf } from '../program/program.ts';
 import type { FunctionDeclaration } from '../syntax/declarations/index.ts';
@@ -40,12 +41,7 @@ import {
 } from './synthesized/boundary/host-externs.ts';
 import { listStart, startableOf, startables, startEntry } from './synthesized/boundary/starts.ts';
 import { anyConversionEntry, anyFieldEntry, dispatchEntry } from './synthesized/trait-objects.ts';
-import {
-  type FunctionInstance,
-  type NestedInstance,
-  rootInstance,
-  substitutionOf,
-} from './tables/instances.ts';
+import { type NestedInstance, rootInstance } from './tables/instances.ts';
 import { keyOf, qualifiedNameOf } from './tables/names.ts';
 import { ownEntryOf } from './tables/own-entries.ts';
 import { type ClosingEntry, DefinitionTables, type PendingEntry } from './tables/tables.ts';

@@ -23,9 +23,9 @@
 
 import type { Checker } from '../../checker/check.ts';
 import type { ValueSite } from '../../checker/surface/checked-body.ts';
-import type { Witnesses } from '../../checker/surface/resolved-call.ts';
+import { type FunctionInstance, substitutionOf } from '../../checker/surface/witness-closing.ts';
 import type { TypeKeys } from '../../checker/types/identity/type-keys.ts';
-import { type Substitution, substitutionFor } from '../../checker/types/parts/substitution.ts';
+import type { Substitution } from '../../checker/types/parts/substitution.ts';
 import {
   isMarkParameter,
   type QualifierLookup,
@@ -44,13 +44,6 @@ import type { VariableDeclaration } from '../../syntax/statements/index.ts';
 import type { AnchoredSpan } from '../../syntax/tree/positions.ts';
 import type { CallTarget } from '../calls/emit-call.ts';
 import { qualifiedNameOf, spelledType } from './names.ts';
-
-/** One function-table entry's function: a closed call, with every type concrete. */
-export interface FunctionInstance {
-  readonly declaration: FunctionDeclaration;
-  readonly typeArguments: readonly Type[];
-  readonly witnesses: Witnesses;
-}
 
 /** A lambda or local function inside one instance of the top-level function holding it. */
 export interface NestedInstance {
@@ -124,16 +117,6 @@ export function rootInstance(
     .filter((parameter) => isMarkParameter(lookup, parameter))
     .map(() => simpleMark);
   return { declaration, typeArguments: [...written, ...rest], witnesses: new Map() };
-}
-
-/** How the instance maps its declaration's type parameters. */
-export function substitutionOf(
-  instance: Pick<FunctionInstance, 'declaration' | 'typeArguments'>,
-): Substitution {
-  return substitutionFor(
-    typeParametersOf(instance.declaration.typeParameters),
-    instance.typeArguments,
-  );
 }
 
 /**
