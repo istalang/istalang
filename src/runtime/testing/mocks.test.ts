@@ -235,4 +235,25 @@ fn suite() -> Array<Test>: [test("unmocked extern", unmockedExternWithDefault)]
     const panicTrace = report?.outcome.kind === 'failed' ? report.outcome.trace : '';
     expect(panicTrace.split('\n').filter((line) => line.includes('hostDefault'))).toHaveLength(1);
   });
+
+  // B84: a mock records a handle to the object its disposal then removes.
+  it.fails('records calls to a mocked dispose of a shared struct without leaving a dangling handle across a commit (§7, §10)', async () => {
+    const source = testModule(`
+shared struct Lease:
+  id: Int
+
+fn dispose(self: Lease): ()
+
+ista async fn mockedDispose():
+  const m = mock(dispose, fn(self: Lease): ())
+  const l = new Lease{id: 1}
+  drop l
+  await time.delay(1s)
+  assertEq(m.calls().length(), 1)
+
+@Suite{"mock dispose"}
+fn suite() -> Array<Test>: [test("mocked dispose", mockedDispose)]
+`);
+    expect(outcomesOf(await reportsOf(source))).toEqual(['mock dispose › mocked dispose: passed']);
+  });
 });

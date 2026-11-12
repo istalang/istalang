@@ -259,6 +259,30 @@ describe("a spawned instance's root", () => {
     const finished = await test.runtime.wake('p/2');
     expect(finished.logs.map(({ message }) => message)).toEqual(['disposed awaited']);
   });
+
+  // B82: a root's outcome is disposed with its frame, newest first.
+  it.fails("disposes a root function's own defers before disposing its returned outcome when spawned as a function value, matching a deferred spawn (§7, §9)", async () => {
+    const text = compiledText(
+      [
+        "import * as log from 'log'\nimport * as runtime from 'runtime'",
+        'shared struct Lease { name: String }',
+        'fn dispose(self: Lease): log.info("disposed " + self->name)',
+        'ista async fn make() -> Lease:',
+        '  _ = defer(fn(): log.info("defer"))',
+        '  new Lease{name: "out"}',
+        'live async fn main() -> Int: await runtime.run(runtime.id()) _main()\nista async fn _main() -> Int:',
+        '  drop spawn make()',
+        '  drop spawn(make)',
+        '  0',
+      ].join('\n'),
+    );
+    const test = testRuntime();
+    test.startInstance(text, 'p');
+    const deferred = await test.runtime.wake('p/1');
+    const byValue = await test.runtime.wake('p/2');
+    expect(deferred.logs.map(({ message }) => message)).toEqual(['defer', 'disposed out']);
+    expect(byValue.logs.map(({ message }) => message)).toEqual(['defer', 'disposed out']);
+  });
 });
 
 describe('inspecting an instance', () => {

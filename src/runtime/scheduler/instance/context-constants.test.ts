@@ -167,4 +167,49 @@ describe('a context constant', () => {
       expect(records).toEqual(recorded);
     },
   );
+
+  // B83: an ending instance stops every execution before releasing its constants.
+  it.fails('runs the disposing() cleanup of a call a context constant holds when its instance ends, in last-made-first order (§3.4, §7)', async () => {
+    const records: string[] = [];
+    const test = testRuntime({
+      host: {
+        'main.record(String)': ([recordText]) => {
+          records.push(String(recordText));
+          return null;
+        },
+      },
+    });
+    const text = compiledText(
+      [
+        "import * as time from 'time'\nimport * as runtime from 'runtime'",
+        'extern fn record(text: String)',
+        'shared struct Lease { name: String }',
+        'fn dispose(self: Lease): record("disposed " + self->name)',
+        'ista const holder = new Shared<Future<Unit, "ista">?>{value: none}',
+        'ista const laterLease = new Lease{name: "later"}',
+        'ista async fn worker():',
+        '  _ = defer(fn(): record("worker defer"))',
+        '  await select:',
+        '    case time.delay(1h):',
+        '      ()',
+        '    case worker.disposing():',
+        '      record("worker cleanup")',
+        'ista async fn _reads() -> Int:',
+        '  holder->value = worker()',
+        '  _ = laterLease',
+        '  await runtime.commit()',
+        '  0',
+        'live async fn main() -> Int:',
+        '  const child = await runtime.run("a") _spawned()',
+        '  await runtime.run("a") _awaited(child)',
+        'ista fn _spawned() -> Instance<Int>: spawn _reads()',
+        'ista async fn _awaited(child: Instance<Int>) -> Int:',
+        '  match await child.result():',
+        '    case Ok(value): value',
+        '    case Err(_): -1',
+      ].join('\n'),
+    );
+    expect(await startToEnd(test, text)).toEqual({ kind: 'finished', outcome: '0' });
+    expect(records).toEqual(['disposed later', 'worker cleanup', 'worker defer']);
+  });
 });
