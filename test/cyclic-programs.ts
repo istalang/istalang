@@ -323,4 +323,29 @@ export const cyclicPrograms: readonly CyclicCase[] = [
       '    target->next = p2',
     ],
   },
+  {
+    name: "an async call's frame holding what a `WeakRef` gave",
+    body: ['const o = new Owner{}', 'const f = holdDeref(WeakRef(o))', 'o->call = f'],
+    extra: [
+      'shared struct Owner { call: Future<Unit, "ista">? = none }',
+      'ista fn dispose(self: Owner): ()',
+      'ista async fn holdDeref(w: WeakRef<Owner>):',
+      '  const strong = w.deref()',
+      '  await runtime.commit()',
+      '  _ = strong',
+    ],
+  },
+  {
+    name: 'a helper storing what a `WeakRef` gave into a parameter',
+    body: [
+      'const p = new Parent{}',
+      'const holder = new Shared<Parent?>{value: none}',
+      'storeDeref(WeakRef(p), holder)',
+      'if holder->value is Parent as n:',
+      '  p->next = n',
+    ],
+    extra: [
+      'ista fn storeDeref(w: WeakRef<Parent>, holder: Shared<Parent?>): holder->value = w.deref()',
+    ],
+  },
 ];

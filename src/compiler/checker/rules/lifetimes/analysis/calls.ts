@@ -30,7 +30,7 @@ import {
 } from './bindings.ts';
 import { type Holder, placeHolds } from './body.ts';
 import { cycleOf } from './cycles.ts';
-import { giveResult } from './given.ts';
+import { giveResult, withWatched } from './given.ts';
 import type { Owner } from './places.ts';
 
 /** How a call is made: where, giving what, of which callee, and whether it gives its future. */
@@ -110,7 +110,7 @@ function applyEffects(at: At, summary: Summary, bound: (input: Input) => Bound):
       reachesItself(at, from);
     } else {
       for (const value of bound(effect.to).nodes) {
-        written(at, from, value, effect.inside);
+        withWatched(at, value, (each) => written(at, from, each, effect.inside));
       }
     }
   }

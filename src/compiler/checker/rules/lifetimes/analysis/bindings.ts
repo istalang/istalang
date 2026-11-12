@@ -8,7 +8,7 @@
  * - **A temporary naming a variable or a path** binds as that, so what the callee is given stays
  *   named past the statement making the call.
  * - **A global the callee names** binds to the caller's own node for it, given as it was, so the
- *   caller's summary names it in turn.
+ *   caller's summary names it in turn; so does what a watching handle may give.
  */
 
 import type { FunctionCall } from '../../../surface/resolved-call.ts';
@@ -125,10 +125,12 @@ function nodesBound(state: FlowState, nodes: readonly NodeId[]): Bound {
 }
 
 function globalBound(at: At, input: Input): Bound {
-  if (input.kind !== 'global') {
+  const { nodes } = at.analysis;
+  if (input.kind !== 'global' && input.kind !== 'watched') {
     return unbound;
   }
-  const slot = at.analysis.nodes.globalInput(input.entity, input.type);
+  const slot =
+    input.kind === 'global' ? nodes.globalInput(input.entity, input.type) : nodes.watchedInput();
   if (!at.state.reach.isLive(slot.node)) {
     at.state.reach.fresh(slot.node);
     at.state.reach.markEscaped(slot.node);

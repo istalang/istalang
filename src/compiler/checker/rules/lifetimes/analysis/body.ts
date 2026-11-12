@@ -98,8 +98,6 @@ export class BodyAnalysis {
   readonly access = new Map<string, Input>();
   #recording = false;
   unseen = false;
-  /** The values it reads that any handle watching them may give (`watchedResult`, calls.ts). */
-  readonly watched = new Set<NodeId>();
 
   constructor(
     nodes: Nodes,
@@ -296,7 +294,9 @@ export class BodyAnalysis {
     value: NodeId,
     kind: Requirement['kind'],
   ): readonly InputPair[] {
-    const candidates = candidatesIn(this, state);
+    // What a watching handle may give relates by types where a call gives it: a write of it that
+    // may close a cycle is found there, not lifted.
+    const candidates = candidatesIn(this, state).filter(({ input }) => input.kind !== 'watched');
     const sources = candidates.filter(({ node }) => state.reach.carriedBy(value, node));
     const holders = candidates.filter(({ node }) =>
       kind === 'share'

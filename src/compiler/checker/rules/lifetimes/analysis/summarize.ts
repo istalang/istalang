@@ -16,7 +16,13 @@
 import type { ValueId } from '../../flow/flow-ir.ts';
 import { type Input, inputKey } from '../input.ts';
 import type { NodeId } from '../reach-state.ts';
-import { anyField, type Effect, type ResultRelation, type Summary } from '../summary.ts';
+import {
+  anyField,
+  type Effect,
+  type GivenValue,
+  type ResultRelation,
+  type Summary,
+} from '../summary.ts';
 import type { BodyAnalysis } from './body.ts';
 import { type FlowState, type Given, joinedStates } from './flow-state.ts';
 import { apart, type Candidate, candidatesIn } from './inputs.ts';
@@ -44,22 +50,38 @@ export function summarize(
   const { nodes } = analysis;
   const slots = nodes.inputs.filter((slot) => nodes.isRelevant(slot.node));
   const { result, gives } = resultsOf(analysis, ends.returns, slots, isAsync);
-  const returning = ends.returns.some(
-    ({ value }) => value !== undefined && nodes.isRelevant(value),
-  );
   return {
     effects: effectsOf(analysis, entry, [...ends.returns.map(({ state }) => state), ...ends.seen]),
-    // What it returns may be what a watching handle gave it, which may be any value anywhere.
-    result: { ...result, watched: analysis.watched.size > 0 && returning },
-    gives: { ...gives, watched: false },
+    result,
+    gives,
     requirements: [...analysis.requirements.values()],
     always: [...analysis.always.values()],
-    callReach: isAsync ? slots.map(({ input }) => input) : [],
+    callReach: isAsync ? callReachOf(slots, ends.seen) : [],
     leaks: [...analysis.leaks.values()],
     unseen: analysis.unseen,
     calls: [...analysis.calls.values()],
     access: [...analysis.access.values()],
   };
+}
+
+/**
+ * What an async call's future may come to reach: every input its frames hold at a wait, which,
+ * since parameters live until the function ends, is every input; what a watching handle gave it
+ * where something held it as it waited.
+ */
+function callReachOf(slots: readonly InputSlot[], seen: readonly FlowState[]): readonly Input[] {
+  const heldAtWait = (node: NodeId) =>
+    seen.some((state) =>
+      state.reach
+        .live()
+        .some(
+          (each) =>
+            each !== node && (state.reach.reaches(each, node) || state.reach.aliases(each, node)),
+        ),
+    );
+  return slots
+    .filter((slot) => slot.input.kind !== 'watched' || heldAtWait(slot.node))
+    .map(({ input }) => input);
 }
 
 /**
@@ -124,11 +146,6 @@ function effectOf(
     : undefined;
 }
 
-interface Relations {
-  readonly relations: readonly ResultRelation[];
-  readonly reachesItself: boolean;
-}
-
 /**
  * How what the function returns relates to its inputs, and whether it reaches itself: a plain
  * function's result, and what a future it returns settles with; an async function's result is
@@ -139,7 +156,7 @@ function resultsOf(
   exits: readonly Return[],
   slots: readonly InputSlot[],
   isAsync: boolean,
-): { readonly result: Relations; readonly gives: Relations } {
+): { readonly result: GivenValue; readonly gives: GivenValue } {
   const result = new Map<string, ResultRelation>();
   const gives = new Map<string, ResultRelation>();
   const returned = exits.filter(

@@ -21,10 +21,10 @@
  * - Every pair carries a field label, always `anyField`: labels aren't built (design.md §5.7).
  * - A native's summary comes from its declaration (`nativeSummary`): `@Keeps` gives its effects and
  *   requirements; its result is a new handle holding its arguments, or a value made of their
- *   parts, and of what the cells of those that are handles hold, and any
- *   value of a type its handles watch (design.md §6.3, §6.4). A future it gives settles with what an
- *   argument's handle holds of the future's type, as a slot's `take` does; with no such argument,
- *   with anything its arguments are or hold.
+ *   parts, and of what the cells of those that are handles hold, and, where its handles watch a
+ *   type, what any watching handle may give (`watched`, design.md §6.3, §6.4). A future it gives
+ *   settles with what an argument's handle holds of the future's type, as a slot's `take` does;
+ *   with no such argument, with anything its arguments are or hold.
  */
 
 import { sameItems } from '../../../../foundation/structures/equality.ts';
@@ -59,18 +59,16 @@ export interface ResultRelation {
 
 /**
  * A value a call gives, its result or what a future it gives settles with: how it relates to each
- * of the call's inputs, whether its parts may reach each other (a tuple of a handle and what it
- * holds), and whether it may be any value of a type a handle the call read watches (`deref`),
- * which may be any such value anywhere.
+ * of the call's inputs, what any watching handle may give among them, and whether its parts may
+ * reach each other (a tuple of a handle and what it holds).
  */
 export interface GivenValue {
   readonly relations: readonly ResultRelation[];
   readonly reachesItself: boolean;
-  readonly watched: boolean;
 }
 
 /** A value related to no input: a call's fresh, or one that gives nothing a disposable. */
-export const unrelatedValue: GivenValue = { relations: [], reachesItself: false, watched: false };
+export const unrelatedValue: GivenValue = { relations: [], reachesItself: false };
 
 /**
  * A pair that must not hold when the function is called: `value` may not reach or be what
@@ -168,9 +166,7 @@ const sameRelations = sameItems<ResultRelation>(
 /** Whether two values a call gives say alike. */
 export function sameValue(first: GivenValue, second: GivenValue): boolean {
   return (
-    first.watched === second.watched &&
-    first.reachesItself === second.reachesItself &&
-    sameRelations(first.relations, second.relations)
+    first.reachesItself === second.reachesItself && sameRelations(first.relations, second.relations)
   );
 }
 const sameCycles = sameItems<TypedCycle>(
@@ -258,23 +254,38 @@ export function nativeSummary(
             label: anyField,
           }));
     }),
-    result: {
-      relations: isHandleType(checker.resultOf(native))
-        ? anyOf(['reaches'])
-        : parameters.flatMap(({ type }, index) =>
-            (isValueType(type) ? (['aliases'] as const) : (['aliases', 'reachedBy'] as const)).map(
-              (relation) => ({ input: parameter(index), relation }),
-            ),
-          ),
-      reachesItself: false,
-      watched: parameters.some(({ type }) => watchesIn(checker, type, checker.resultOf(native))),
-    },
+    result: { relations: nativeResult(checker, native), reachesItself: false },
     gives: {
       relations: awaited === undefined ? [] : givesOf(holding, anyOf(['aliases', 'reachedBy'])),
       reachesItself: false,
-      watched: false,
     },
   };
+}
+
+/**
+ * How a native's result relates to its arguments: a new handle holding them, or a value made of
+ * their parts and of what their cells hold; and what any watching handle may give, where its
+ * handles watch a type it gives.
+ */
+function nativeResult(
+  checker: Pick<CheckerContext, 'parametersOf' | 'resultOf' | 'externHeldOf'>,
+  native: FunctionDeclaration,
+): readonly ResultRelation[] {
+  const parameters = checker.parametersOf(native);
+  const result = checker.resultOf(native);
+  const relations = (index: number, kinds: readonly ResultRelation['relation'][]) =>
+    kinds.map((relation) => ({ input: { kind: 'parameter', index } as const, relation }));
+  return [
+    ...parameters.flatMap(({ type }, index) => {
+      if (isHandleType(result)) {
+        return relations(index, ['reaches']);
+      }
+      return relations(index, isValueType(type) ? ['aliases'] : ['aliases', 'reachedBy']);
+    }),
+    ...(parameters.some(({ type }) => watchesIn(checker, type, result))
+      ? [{ input: { kind: 'watched' } as const, relation: 'aliases' as const }]
+      : []),
+  ];
 }
 
 /** What a native's future settles with: what the handles `holding` hold, else anything. */
@@ -321,7 +332,6 @@ export function constructorSummary(
         relation: 'aliases',
       })),
       reachesItself: false,
-      watched: false,
     },
   };
 }

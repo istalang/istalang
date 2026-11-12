@@ -30,7 +30,7 @@ import { type At, closureBindings, functionBindings, nodesGiven } from './bindin
 import { type BodyAnalysis, placeHolds } from './body.ts';
 import { applySummary, unknownCall } from './calls.ts';
 import { type FlowState, materialize } from './flow-state.ts';
-import { readGiven } from './given.ts';
+import { giveValue } from './given.ts';
 import { readKindOf } from './nodes.ts';
 import { placeTarget } from './places.ts';
 
@@ -64,7 +64,7 @@ const handlers: { readonly [Kind in Operation['op']]: Handler<Kind> } = {
     } else if (gives === undefined) {
       readOf(at, operation);
     } else {
-      readGiven(at, into, gives);
+      giveValue(at, into, gives);
     }
   },
   write: ({ analysis, state }, { place, value, site }) => {

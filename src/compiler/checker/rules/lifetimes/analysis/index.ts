@@ -219,7 +219,11 @@ function analysisFound(
       ...[...analysis.violations.values()].flatMap((at) => [...at.values()]),
       ...nestedViolations,
     ],
-    inputTypes: new Map(analysis.nodes.inputs.map((slot) => [inputKey(slot.input), slot.type])),
+    inputTypes: new Map(
+      analysis.nodes.inputs.flatMap(({ input, type }) =>
+        type === undefined ? [] : [[inputKey(input), type] as const],
+      ),
+    ),
   };
 }
 

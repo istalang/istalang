@@ -1,7 +1,9 @@
 /**
  * What a call gives a body, by position (design.md §5.3): its parameters, a closure's captures and
- * the cells of the captured `let`s, its own closure, the globals it names, and the parts of those
- * a body reads (design.md §5.7). Summaries name them; never nodes or spans, so an edit that keeps a function's effects keeps its summary.
+ * the cells of the captured `let`s, its own closure, the globals it names, the parts of those a
+ * body reads (design.md §5.7), and what any handle watching values may give (`watched`, design.md
+ * §6.3): any value of a type it watches, anywhere. Summaries name them; never nodes or spans, so
+ * an edit that keeps a function's effects keeps its summary.
  */
 
 import type { VariableEntity } from '../../../binder/entities.ts';
@@ -13,7 +15,7 @@ import type { Part } from '../flow/flow-ir.ts';
 /** What a call gives a body, by position. */
 export type Input =
   | { readonly kind: 'parameter' | 'capture' | 'cell'; readonly index: number }
-  | { readonly kind: 'self' }
+  | { readonly kind: 'self' | 'watched' }
   | { readonly kind: 'global'; readonly entity: VariableEntity; readonly type: Type }
   | InputPath;
 
@@ -52,7 +54,8 @@ export function sameInput(first: Input, second: Input): boolean {
 export function inputKey(input: Input): string {
   switch (input.kind) {
     case 'self':
-      return 'self';
+    case 'watched':
+      return input.kind;
     case 'global':
       return `global:${typeKeys.identityOf(input.entity)}`;
     case 'path':

@@ -8,7 +8,11 @@
  * - **Cells:** a `let` captured or taken by `&` (`inCell`) lives in a cell, a handle of its own beside
  *   the value.
  * - **Inputs** are what the function was called with (../summary.ts), kept apart from the variables
- *   that start as them, which code may assign; a captured `let`'s cell is its own input.
+ *   that start as them, which code may assign; a captured `let`'s cell is its own input. The
+ *   globals it names, and what a watching handle may give (`watched`), are inputs from where it
+ *   first names them on.
+ * - **Nodes it makes:** a watched value as a call gives it (`watchedValue`), and what a default a
+ *   call leaves out gives, each a value of the call alone.
  * - **Paths** are the parts reads name from a variable, interned by root and part, so reading
  *   `self->slot` twice names one value until a write may change it (design.md §5.2).
  * - **Last uses:** a temporary used only in the block computing it ends after its last use there,
@@ -35,12 +39,15 @@ export interface TypeFacts {
   readonly fieldNamesOf: (type: Type) => readonly string[] | undefined;
 }
 
-/** One input: what it is, the node it is as given, and the value that starts as it. */
+/**
+ * One input: what it is, the node it is as given, the value that starts as it, and its type; none
+ * for what a watching handle may give, which may be any value.
+ */
 export interface InputSlot {
   readonly input: Input;
   readonly node: NodeId;
   readonly value: ValueId;
-  readonly type: Type;
+  readonly type: Type | undefined;
 }
 
 /** How a read reaches its part: through a handle's cell (or a future's value), or inside a value. */
@@ -71,6 +78,11 @@ export class Nodes {
   /** How many inputs have nodes of their own, the cells' being theirs already. */
   readonly #owned: number;
   readonly #paths = new Map<string, NodeId>();
+  /** How many nodes it made beyond its values, cells and inputs: paths and a call's own values. */
+  #made = 0;
+  readonly #madeTypes = new Map<NodeId, Type | undefined>();
+  readonly #defaults = new Map<Operation, Map<number, NodeId>>();
+  #watchedValue: NodeId | undefined;
   readonly #steps = new Map<object, number>();
   readonly #globals: InputSlot[] = [];
   readonly #pathNodes = new Map<NodeId, PathNode>();
@@ -113,18 +125,55 @@ export class Nodes {
     const known = this.#inputs.find(
       (slot) => slot.input.kind === 'global' && slot.input.entity === entity,
     );
-    if (known !== undefined) {
-      return known;
-    }
-    const named: InputSlot = {
-      input: { kind: 'global', entity, type },
-      node: -1 - this.#globals.length,
-      value: -1,
-      type,
-    };
+    return known ?? this.#namedInput({ kind: 'global', entity, type }, type);
+  }
+
+  /** The input standing for what any handle watching values may give: one per function. */
+  watchedInput(): InputSlot {
+    const known = this.#inputs.find((slot) => slot.input.kind === 'watched');
+    return known ?? this.#namedInput({ kind: 'watched' }, undefined);
+  }
+
+  #namedInput(input: Input, type: Type | undefined): InputSlot {
+    const named: InputSlot = { input, node: -1 - this.#globals.length, value: -1, type };
     this.#globals.push(named);
     this.#inputs.push(named);
     return named;
+  }
+
+  /** Whether `node` stands for what any watching handle may give. */
+  isWatched(node: NodeId): boolean {
+    return this.#inputs.some((slot) => slot.input.kind === 'watched' && slot.node === node);
+  }
+
+  /**
+   * The node a call makes of what a watching handle may give, as it relates it where it uses it: one
+   * value of the call, ended after its use there.
+   */
+  watchedValue(): NodeId {
+    this.#watchedValue ??= this.#allocate(undefined);
+    return this.#watchedValue;
+  }
+
+  /** The node for what the default of the parameter at `index` gives, where `call` leaves it out. */
+  defaultOf(call: Operation, index: number, type: Type | undefined): NodeId {
+    const known = this.#defaults.get(call) ?? new Map<number, NodeId>();
+    this.#defaults.set(call, known);
+    const node = known.get(index) ?? this.#allocate(type);
+    known.set(index, node);
+    return node;
+  }
+
+  /** The nodes `call`'s defaults gave, which end with it. */
+  defaultsOf(call: Operation): readonly NodeId[] {
+    return [...(this.#defaults.get(call)?.values() ?? [])];
+  }
+
+  #allocate(type: Type | undefined): NodeId {
+    const node = 2 * this.#size + this.#owned + this.#made;
+    this.#made += 1;
+    this.#madeTypes.set(node, type);
+    return node;
   }
 
   cell(value: ValueId): NodeId {
@@ -148,7 +197,7 @@ export class Nodes {
     if (known !== undefined) {
       return known;
     }
-    const node = 2 * this.#size + this.#owned + this.#paths.size;
+    const node = this.#allocate(type);
     this.#paths.set(key, node);
     this.#pathNodes.set(node, { root, part, kind, type });
     const siblings = this.#pathsByRoot.get(root) ?? [];
@@ -233,7 +282,7 @@ export class Nodes {
     if (node < 2 * this.#size + this.#owned) {
       return this.#inputs[node - 2 * this.#size]?.type;
     }
-    return this.#pathNodes.get(node)?.type;
+    return this.#madeTypes.get(node);
   }
 
   /** Whether `node`'s values may reach a disposable, as some instantiation may have them. */
