@@ -14,6 +14,7 @@ import type {
   WellKnownDeclaration,
 } from '../../foundation/language/well-known/index.ts';
 import { memo } from '../../foundation/structures/memo.ts';
+import type { Span } from '../../foundation/text/span.ts';
 import type { Bindings, Entity } from '../binder/entities.ts';
 import type { ModuleId, Program } from '../program/program.ts';
 import type {
@@ -93,7 +94,7 @@ export interface Checker {
   /** Keys for types, and numbers for the identities they are made of, alike in every checker. */
   readonly typeKeys: TypeKeys;
   /** Every diagnostic of checking `module`, which checks all of its declarations. */
-  readonly diagnosticsOf: (module: ModuleId) => readonly Diagnostic[];
+  readonly diagnosticsOf: (module: ModuleId) => readonly Diagnostic<Span, ModuleId>[];
   /** The module declaring `declaration`: whose item it is, or whose tree holds a local one. */
   readonly moduleOf: (declaration: Declaration | VariableDeclaration | TypeParameter) => ModuleId;
   /** Whether the toolchain ships `module` (§3.8); false for none. */

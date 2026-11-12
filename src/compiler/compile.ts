@@ -19,6 +19,7 @@ import {
 import { entryFunction } from '../foundation/language/well-known/index.ts';
 import { memo } from '../foundation/structures/memo.ts';
 import type { SourceText } from '../foundation/text/source-text.ts';
+import type { Span } from '../foundation/text/span.ts';
 import { bindProgram } from './binder/bind.ts';
 import { checkProgram } from './checker/check.ts';
 import { lower, lowerTests } from './lowering/lower.ts';
@@ -28,8 +29,8 @@ import { isMain } from './syntax/declarations/starts.ts';
 
 export interface ModuleDiagnostics {
   readonly source: SourceText;
-  /** Sorted by position. */
-  readonly diagnostics: readonly Diagnostic[];
+  /** Sorted by position; a related location may stand in another module. */
+  readonly diagnostics: readonly Diagnostic<Span, ModuleId>[];
 }
 
 const diagnosed = new WeakMap<Program, ReadonlyMap<ModuleId, ModuleDiagnostics>>();

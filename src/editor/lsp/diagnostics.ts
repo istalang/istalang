@@ -7,6 +7,9 @@
  * opened together) are published once, when they pause.
  * A closed document's diagnostics are cleared, since the client shows only what it was last sent.
  *
+ * A diagnostic's related locations go out as its `relatedInformation`, each at its own module's URI,
+ * which a module's id already is (locations.ts).
+ *
  * A compiler bug while diagnosing one module is logged to the client, and the others are still
  * published: one broken module must not leave every document's diagnostics stale.
  */
@@ -15,7 +18,9 @@ import type { Connection, Diagnostic as LspDiagnostic } from 'vscode-languageser
 import { DiagnosticSeverity } from 'vscode-languageserver/node';
 import type { ModuleId } from '../../compiler/program/program.ts';
 import type { Diagnostic, Severity } from '../../foundation/diagnostics/diagnostic.ts';
+import { unreachable } from '../../foundation/structures/unreachable.ts';
 import type { SourceText } from '../../foundation/text/source-text.ts';
+import type { Span } from '../../foundation/text/span.ts';
 import type { Workspace } from '../language-service/workspace.ts';
 import { rangeOf } from './locations.ts';
 
@@ -50,7 +55,7 @@ export function diagnosticsPublisher(
           uri: module,
           diagnostics:
             diagnosed?.diagnostics.map((diagnostic) =>
-              lspDiagnostic(diagnosed.source, diagnostic),
+              lspDiagnostic(workspace, diagnosed.source, diagnostic),
             ) ?? [],
         });
       } catch (error) {
@@ -74,12 +79,23 @@ export function diagnosticsPublisher(
   };
 }
 
-function lspDiagnostic(source: SourceText, diagnostic: Diagnostic): LspDiagnostic {
+/** `diagnostic` of a document whose text is `source`, its related locations in their modules' text. */
+function lspDiagnostic(
+  workspace: Workspace,
+  source: SourceText,
+  diagnostic: Diagnostic<Span, ModuleId>,
+): LspDiagnostic {
   return {
     range: rangeOf(source, diagnostic.span),
     severity: severities[diagnostic.severity],
     code: diagnostic.code,
     source: 'ista',
     message: diagnostic.message,
+    relatedInformation: diagnostic.related.map(({ module, span, message }) => {
+      const tree =
+        workspace.treeOf(module) ??
+        unreachable(`A related location stands in ${module}, which the workspace doesn't hold.`);
+      return { location: { uri: module, range: rangeOf(tree.source, span) }, message };
+    }),
   };
 }

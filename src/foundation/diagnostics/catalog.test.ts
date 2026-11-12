@@ -20,6 +20,7 @@ describe('defineDiagnostics', () => {
       severity: 'error',
       message: "Unknown name 'x'.",
       span,
+      related: [],
     });
     expect(catalog.unusedLet(span).severity).toBe('warning');
     expect(catalog.unknownName.code).toBe(2901);

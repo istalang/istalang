@@ -268,7 +268,7 @@ export class ProgramChecker implements CheckerContext {
     };
   }
 
-  report(module: ModuleId, diagnostic: Diagnostic<AnchoredSpan>): void {
+  report(module: ModuleId, diagnostic: Diagnostic<AnchoredSpan, ModuleId>): void {
     this.entries.note({ kind: 'diagnostic', module, diagnostic });
   }
 
@@ -407,8 +407,8 @@ export class ProgramChecker implements CheckerContext {
     return namedInModule(this, module, name);
   }
 
-  diagnosticsOf(module: ModuleId): readonly Diagnostic[] {
-    return this.#moduleChecks.diagnosticsOf(module, programModule(this.program, module).tree);
+  diagnosticsOf(module: ModuleId) {
+    return this.#moduleChecks.diagnosticsOf(module, (id) => programModule(this.program, id).tree);
   }
 
   checkItem(module: ModuleId, item: Declaration): void {

@@ -45,9 +45,31 @@ export function spanIn(tree: SegmentBases, span: AnchoredSpan): Span {
   return { start: base + span.from, end: base + span.to };
 }
 
-/** `diagnostic` as it leaves its phase: pointing at text positions in `tree`'s text. */
-export function diagnosticIn(tree: SegmentBases, diagnostic: Diagnostic<AnchoredSpan>): Diagnostic {
-  return { ...diagnostic, span: spanIn(tree, diagnostic.span) };
+/**
+ * `diagnostic` as it leaves its phase: pointing at text positions in `tree`'s text, and each
+ * related location at positions in its own module's, which `treeOf` gives.
+ */
+export function diagnosticIn(tree: SegmentBases, diagnostic: Diagnostic<AnchoredSpan>): Diagnostic;
+export function diagnosticIn<Module extends string>(
+  tree: SegmentBases,
+  diagnostic: Diagnostic<AnchoredSpan, Module>,
+  treeOf: (module: Module) => SegmentBases,
+): Diagnostic<Span, Module>;
+export function diagnosticIn<Module extends string>(
+  tree: SegmentBases,
+  diagnostic: Diagnostic<AnchoredSpan, Module>,
+  treeOf?: (module: Module) => SegmentBases,
+): Diagnostic<Span, Module> {
+  return {
+    ...diagnostic,
+    span: spanIn(tree, diagnostic.span),
+    related: diagnostic.related.map((related) => {
+      if (treeOf === undefined) {
+        return unreachable('A related location left its phase with no tree to place it in.');
+      }
+      return { ...related, span: spanIn(treeOf(related.module), related.span) };
+    }),
+  };
 }
 
 /** From the start of `first` to the end of `last`, two spans of one segment. */

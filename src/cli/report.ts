@@ -1,24 +1,20 @@
 /**
  * How the CLI shows a program's diagnostics: each rendered with its source excerpt, then one
  * summary line. Every command that compiles reports through here, so `check` and `run` read the
- * same. `check` writes them as its output; `run` keeps its output for the outcome and writes them
+ * same, related locations included. `check` writes them as its output; `run` keeps its output for the outcome and writes them
  * to the error stream. A path the command line names that names no file is reported here too, so
  * every command words it alike.
  */
 
-import type { ModuleDiagnostics } from '../compiler/compile.ts';
 import { isError } from '../foundation/diagnostics/diagnostic.ts';
-import { renderDiagnostic } from '../foundation/diagnostics/render.ts';
-/** Writes every diagnostic of `results` through `write`; how many of them are errors. */
+import { type Diagnosed, renderDiagnostics } from '../foundation/diagnostics/render.ts';
+/** Writes every diagnostic of `results`, each module's by its id, through `write`; how many of them are errors. */
 export function reportDiagnostics(
-  results: Iterable<ModuleDiagnostics>,
+  results: ReadonlyMap<string, Diagnosed>,
   write: (text: string) => void,
 ): number {
-  const modules = [...results];
-  const reports = modules.flatMap(({ source, diagnostics }) =>
-    diagnostics.map((diagnostic) => renderDiagnostic(source, diagnostic)),
-  );
-  const all = modules.flatMap((result) => result.diagnostics);
+  const reports = renderDiagnostics(results);
+  const all = [...results.values()].flatMap((result) => result.diagnostics);
   const errors = all.filter(isError).length;
   if (reports.length > 0) {
     write(`${reports.join('\n\n')}\n\n${summary(errors, all.length - errors)}\n`);

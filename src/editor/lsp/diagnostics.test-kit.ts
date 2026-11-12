@@ -7,26 +7,40 @@
 import { pathToFileURL } from 'node:url';
 import { corpusDirectory } from '../../../test/corpus/programs.ts';
 import { diagnoseModule } from '../../compiler/compile.ts';
-import type { Program } from '../../compiler/program/program.ts';
+import { type Program, programModule } from '../../compiler/program/program.ts';
 import { lineMapOf } from '../../foundation/text/line-map.ts';
+import type { SourceText } from '../../foundation/text/source-text.ts';
+import type { Span } from '../../foundation/text/span.ts';
 import { moduleIdOfFile } from '../../project/file-loader.ts';
 import { findProjectSources, loadProject } from '../../project/project.ts';
 
 /** What `ista check` reports in `file` of `program`, as a client receives it. */
 export function checked(program: Program, file: string) {
   const { source, diagnostics } = diagnoseModule(program, moduleIdOfFile(file));
+  return diagnostics.map(({ span, severity, code, message, related }) => ({
+    range: rangeIn(source, span),
+    severity: severity === 'error' ? 1 : 2,
+    code,
+    source: 'ista',
+    message,
+    relatedInformation: related.map((each) => ({
+      location: {
+        uri: each.module,
+        range: rangeIn(programModule(program, each.module).tree.source, each.span),
+      },
+      message: each.message,
+    })),
+  }));
+}
+
+/** The lines and characters `span` covers in `source`, as a client counts them. */
+function rangeIn(source: SourceText, span: Span) {
   const lines = lineMapOf(source);
   const position = (offset: number) => {
     const { line, column } = lines.positionAt(offset);
     return { line, character: column };
   };
-  return diagnostics.map(({ span, severity, code, message }) => ({
-    range: { start: position(span.start), end: position(span.end) },
-    severity: severity === 'error' ? 1 : 2,
-    code,
-    source: 'ista',
-    message,
-  }));
+  return { start: position(span.start), end: position(span.end) };
 }
 
 /** The std modules every program loads, parsed once for every project loaded after. */

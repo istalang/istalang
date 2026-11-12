@@ -14,6 +14,7 @@ import {
   type Diagnostic,
 } from '../../../../foundation/diagnostics/diagnostic.ts';
 import type { EntryTable } from '../../../../foundation/structures/entries/index.ts';
+import type { Span } from '../../../../foundation/text/span.ts';
 import type { ModuleId } from '../../../program/program.ts';
 import type { Declaration } from '../../../syntax/declarations/index.ts';
 import { diagnosticIn, type SegmentBases } from '../../../syntax/tree/positions.ts';
@@ -64,13 +65,16 @@ export class ModuleChecks {
   }
 
   /**
-   * Every diagnostic of `module`, once it is checked whole, at its text positions in `tree`, the
-   * module's: entries keep anchored spans (syntax/tree/positions.ts), and they leave the checker
-   * here.
+   * Every diagnostic of `module`, once it is checked whole, at text positions in the trees
+   * `treeOf` gives, its own and those of the modules its related locations stand in: entries keep
+   * anchored spans (syntax/tree/positions.ts), and they leave the checker here.
    */
-  diagnosticsOf(module: ModuleId, tree: SegmentBases): readonly Diagnostic[] {
+  diagnosticsOf(
+    module: ModuleId,
+    treeOf: (module: ModuleId) => SegmentBases,
+  ): readonly Diagnostic<Span, ModuleId>[] {
     this.#modules.get(module);
-    return diagnosticsIn(module, tree, this.#modules.notesFrom(module));
+    return diagnosticsIn(module, treeOf, this.#modules.notesFrom(module));
   }
 
   /** Checks the top-level item `item` of `module` whole, once. */
@@ -85,13 +89,14 @@ export class ModuleChecks {
  */
 function diagnosticsIn(
   module: ModuleId,
-  tree: SegmentBases,
+  treeOf: (module: ModuleId) => SegmentBases,
   notes: readonly CheckerNote[],
-): readonly Diagnostic[] {
+): readonly Diagnostic<Span, ModuleId>[] {
+  const tree = treeOf(module);
   return notes
     .flatMap((note) =>
       note.kind === 'diagnostic' && note.module === module
-        ? [diagnosticIn(tree, note.diagnostic)]
+        ? [diagnosticIn(tree, note.diagnostic, treeOf)]
         : [],
     )
     .sort(compareDiagnostics)

@@ -7,7 +7,7 @@
 import { stdProgramOf } from '../../compiler/binder/bind.test-kit.ts';
 import { compileTests, diagnose } from '../../compiler/compile.ts';
 import { definitionFormat } from '../../definition/definition.ts';
-import { renderDiagnostic } from '../../foundation/diagnostics/render.ts';
+import { renderDiagnostics } from '../../foundation/diagnostics/render.ts';
 import { stdNatives } from '../../stdlib/natives.ts';
 import { ManualClock } from '../clock.ts';
 import { acyclicOracle } from '../lifetimes/oracle.test-kit.ts';
@@ -32,9 +32,7 @@ export async function reportsOf(
   const program = stdProgramOf({ 'main.test.ista': source });
   const compiled = compileTests(program);
   if (compiled.kind !== 'compiled') {
-    const problems = [...diagnose(program).values()].flatMap(({ source: text, diagnostics }) =>
-      diagnostics.map((diagnostic) => renderDiagnostic(text, diagnostic)),
-    );
+    const problems = renderDiagnostics(diagnose(program));
     throw new Error(`The test module didn't compile (${compiled.kind}):\n${problems.join('\n')}`);
   }
   const clock = new ManualClock(1_000_000n);

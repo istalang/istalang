@@ -170,11 +170,18 @@ The node kinds are in `src/compiler/syntax/expressions/index.ts` and `syntax/sta
 
 ## Diagnostics (C3)
 
-- **`Diagnostic`** (`src/foundation/diagnostics/diagnostic.ts`) is `code`, `severity`, `message` and
-  `span`. It has no related locations.
-- **The LSP** maps only `range`, `severity`, `code`, `source` and `message`
-  (`src/editor/lsp/diagnostics.ts`). Nothing in `src/` sends `relatedInformation`.
-- **The CLI** prints diagnostics in `src/cli/report.ts`.
+- **`Diagnostic<Where, Module>`** (`src/foundation/diagnostics/diagnostic.ts`) is `code`,
+  `severity`, `message`, `span` and `related`: each a `message`, the `module` it stands in and a
+  `span` there. `Module` defaults to `never`, so every catalog's diagnostic has none; a reader of
+  any takes `Diagnostic<Span, string>`.
+  - The checker's notes and `checker.report` take `Diagnostic<AnchoredSpan, ModuleId>`; a report
+    with related locations is `{ ...catalog.code(at, …), related: [{ module, span, message }] }`.
+  - `diagnosticIn(tree, diagnostic, treeOf)` (`syntax/tree/positions.ts`) places each related span
+    in its own module's tree; `ModuleChecks.diagnosticsOf` passes the program's.
+- **The LSP** sends them as `relatedInformation`, each at its module's URI
+  (`src/editor/lsp/diagnostics.ts`).
+- **The CLI** prints each as a `note:` excerpt after its diagnostic (`renderDiagnostic`, and
+  `renderDiagnostics` over every diagnosed module, `src/foundation/diagnostics/render.ts`).
 - **Codes:** `diagnostics/lifetimes.ts` holds block 5700–5799, and 5712 is the next free code.
   5700 is `disposeType`: a `dispose` on anything but a confined handle (`isOwnedHandle`,
   `rules/disposal/disposal.ts`). The weak side is 5800–5899.

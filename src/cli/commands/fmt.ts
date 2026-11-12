@@ -56,7 +56,12 @@ function fmt(files: readonly string[], check: boolean, environment: CliEnvironme
   });
   const refused = results.filter(({ text }) => text === undefined);
   reportDiagnostics(
-    refused.map(({ tree }) => ({ source: tree.source, diagnostics: tree.diagnostics })),
+    new Map(
+      refused.map(({ path, tree }) => [
+        path,
+        { source: tree.source, diagnostics: tree.diagnostics },
+      ]),
+    ),
     environment.writeError,
   );
   const changed = results.flatMap(({ path, original, text }) =>

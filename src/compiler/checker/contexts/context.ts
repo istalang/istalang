@@ -72,7 +72,7 @@ export type CheckerNote =
   | {
       readonly kind: 'diagnostic';
       readonly module: ModuleId;
-      readonly diagnostic: Diagnostic<AnchoredSpan>;
+      readonly diagnostic: Diagnostic<AnchoredSpan, ModuleId>;
     }
   | ConstraintNote;
 
@@ -143,7 +143,7 @@ export interface CheckerContext extends Omit<Checker, 'program'> {
    */
   readonly checkItem: (module: ModuleId, item: Declaration) => void;
   /** Reports `diagnostic` in `module`, from the entry computing now. */
-  readonly report: (module: ModuleId, diagnostic: Diagnostic<AnchoredSpan>) => void;
+  readonly report: (module: ModuleId, diagnostic: Diagnostic<AnchoredSpan, ModuleId>) => void;
   /** How many diagnostics the entry computing now has reported itself, so far. */
   readonly reportCount: () => number;
   /** The type `node` denotes in `module`. */

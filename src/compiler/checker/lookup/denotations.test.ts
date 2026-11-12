@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Diagnostic } from '../../../foundation/diagnostics/diagnostic.ts';
+import type { Span } from '../../../foundation/text/span.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import type { Denotation } from '../surface/denotation.ts';
 import { intType, stringType, tupleType } from '../types/type/primitives.ts';
@@ -134,7 +135,7 @@ describe('what an identifier denotes', () => {
 });
 
 /** The codes of `diagnostics`, in order. */
-function codesOf(diagnostics: readonly Diagnostic[]): readonly number[] {
+function codesOf(diagnostics: readonly Diagnostic<Span, string>[]): readonly number[] {
   return diagnostics.map(({ code }) => code);
 }
 

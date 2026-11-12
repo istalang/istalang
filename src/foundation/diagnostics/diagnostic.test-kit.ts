@@ -6,7 +6,7 @@
  */
 
 import type { SourceText } from '../text/source-text.ts';
-import { textOf } from '../text/span.ts';
+import { type Span, textOf } from '../text/span.ts';
 import type { Diagnostic } from './diagnostic.ts';
 
 export interface Reported {
@@ -15,7 +15,10 @@ export interface Reported {
 }
 
 /** The codes of `diagnostics`, and the text of `source` under each span. */
-export function reportedIn(source: SourceText, diagnostics: readonly Diagnostic[]): Reported {
+export function reportedIn(
+  source: SourceText,
+  diagnostics: readonly Diagnostic<Span, string>[],
+): Reported {
   return {
     codes: diagnostics.map((diagnostic) => diagnostic.code),
     spanTexts: diagnostics.map((diagnostic) => textOf(source, diagnostic.span)),

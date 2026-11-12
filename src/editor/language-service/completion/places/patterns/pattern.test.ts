@@ -14,6 +14,7 @@ import { checkProgram } from '../../../../../compiler/checker/check.ts';
 import { patternHead } from '../../../../../compiler/syntax/patterns.ts';
 import { extentIn, nodesUnder } from '../../../../../compiler/syntax/tree/index.ts';
 import { type Diagnostic, isError } from '../../../../../foundation/diagnostics/diagnostic.ts';
+import type { Span } from '../../../../../foundation/text/span.ts';
 import { editedMainProgram, mainProgram, programAt } from '../../../language-service.test-kit.ts';
 import { checkedModule } from '../../../reading/checked-module.ts';
 import type { Candidate } from '../../candidate.ts';
@@ -61,7 +62,12 @@ const fieldSites = tested.flatMap(({ text, tree, pattern }) =>
 );
 
 /** The errors `text`, an edit of the corpus program `corpus`, makes from `start` to `end`. */
-function errorsIn(corpus: string, text: string, start: number, end: number): readonly Diagnostic[] {
+function errorsIn(
+  corpus: string,
+  text: string,
+  start: number,
+  end: number,
+): readonly Diagnostic<Span, string>[] {
   const { program, module } = editedMainProgram(text, corpus);
   return checkProgram(program)
     .diagnosticsOf(module)

@@ -37,7 +37,7 @@ function check(files: readonly string[], environment: CliEnvironment): ExitCode 
     reportUnreadable(unreadable, environment.writeError);
     return exitCodes.couldNotRun;
   }
-  return reportDiagnostics(diagnose(program).values(), environment.write) > 0
+  return reportDiagnostics(diagnose(program), environment.write) > 0
     ? exitCodes.problems
     : exitCodes.clean;
 }

@@ -15,7 +15,7 @@ import { checkProgram } from '../src/compiler/checker/check.ts';
 import { compileProgram, diagnose } from '../src/compiler/compile.ts';
 import { moduleIdOf } from '../src/compiler/program/program.ts';
 import { isError } from '../src/foundation/diagnostics/diagnostic.ts';
-import { renderDiagnostic } from '../src/foundation/diagnostics/render.ts';
+import { renderDiagnostics } from '../src/foundation/diagnostics/render.ts';
 import { memo } from '../src/foundation/structures/memo.ts';
 import { findProjectSources, loadProject, type Project } from '../src/project/project.ts';
 
@@ -42,9 +42,7 @@ describe('the examples', () => {
   it.each(projects)('%s checks with no error', (name) => {
     const { program, unreadable } = exampleProject(name);
     expect(unreadable).toEqual([]);
-    const errors = [...diagnose(program).values()].flatMap(({ source, diagnostics }) =>
-      diagnostics.filter(isError).map((diagnostic) => renderDiagnostic(source, diagnostic)),
-    );
+    const errors = renderDiagnostics(diagnose(program), isError);
     expect(errors).toEqual([]);
   });
 

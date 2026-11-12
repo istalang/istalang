@@ -6,6 +6,7 @@
 
 import { describe, expect, it } from 'vitest';
 import type { Diagnostic } from '../../../../foundation/diagnostics/diagnostic.ts';
+import type { Span } from '../../../../foundation/text/span.ts';
 import { stdProgramOf } from '../../../binder/bind.test-kit.ts';
 import { diagnosedAt } from '../../../compile.test-kit.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
@@ -19,7 +20,7 @@ const bag = [
 const declared = 'fn Bag.default() -> Bag: Bag{n: 0}';
 
 /** What is reported for a map literal of `Bag` and a skipped `Bag` field, beside `inMain`. */
-function reportedWith(inBag: string, inMain: string): readonly Diagnostic[] {
+function reportedWith(inBag: string, inMain: string): readonly Diagnostic<Span, string>[] {
   const main = [
     "import JsonSkip from 'json'",
     "import Bag from 'bag.ista'",
@@ -31,7 +32,8 @@ function reportedWith(inBag: string, inMain: string): readonly Diagnostic[] {
   return diagnosedAt(program, 'main.ista').diagnostics;
 }
 
-const codesOf = (diagnostics: readonly Diagnostic[]) => diagnostics.map(({ code }) => code);
+const codesOf = (diagnostics: readonly Diagnostic<Span, string>[]) =>
+  diagnostics.map(({ code }) => code);
 
 describe("a type's default()", () => {
   it('declared beside the type, serves a map literal and @JsonSkip', () => {

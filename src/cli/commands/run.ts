@@ -137,7 +137,7 @@ async function start(session: Session, entry: string, options: RunOptions): Prom
     reportUnreadable([entry], environment.writeError);
     return exitCodes.couldNotRun;
   }
-  reportDiagnostics(diagnose(program).values(), environment.writeError);
+  reportDiagnostics(diagnose(program), environment.writeError);
   const compilation = compileProgram(program, root);
   switch (compilation.kind) {
     case 'failed':

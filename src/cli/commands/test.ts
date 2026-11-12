@@ -77,7 +77,7 @@ async function test(
     return exitCodes.couldNotRun;
   }
   const { program } = loadProject(cwd, found.modules);
-  reportDiagnostics(diagnose(program).values(), environment.writeError);
+  reportDiagnostics(diagnose(program), environment.writeError);
   const compiled = compileTests(program);
   if (compiled.kind !== 'compiled') {
     if (compiled.kind === 'noTests') {

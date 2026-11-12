@@ -55,6 +55,7 @@ export function defineDiagnostics<const Templates extends Record<string, Diagnos
       severity: template.severity ?? 'error',
       message: template.message(...args),
       span,
+      related: [],
     });
     factories[name] = Object.assign(make, { code: template.code });
   }
