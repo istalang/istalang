@@ -32,6 +32,7 @@ import { newFrame, releaseFrame } from '../../interpreter/machine.ts';
 import type { Passed } from '../../interpreter/registers.ts';
 import { type Decision, releaseLosers, resume } from '../../interpreter/suspension.ts';
 import { countedIn } from '../../lifetimes/counts.ts';
+import { isDisposable } from '../../lifetimes/disposal.ts';
 import { HolderWrites } from '../../lifetimes/holder-writes.ts';
 import { heldFrom } from '../../lifetimes/holders.ts';
 import { type HoldingFrame, heldObjects, isRoot, keptFrame } from '../../snapshot/holdings.ts';
@@ -180,6 +181,17 @@ export class Instance {
    * value among them nests. Whatever was disposable was disposed where it lost its last holder.
    */
   #kept(): { readonly kept: readonly LiveObject[]; readonly depth: number } {
+    const lost = this.holders
+      .unconfirmed()
+      .find((id) =>
+        isDisposable(
+          { heap: this.heap, types: this.loaded.definition.types },
+          this.heap.objectOf(id),
+        ),
+      );
+    if (lost !== undefined) {
+      unreachable(`Object ${lost} lost its last holder without being disposed.`);
+    }
     const executions = this.heap.objectsOf('execution');
     const held = heldFrom(this.heap, {
       frames: [...executions.flatMap((execution) => execution.frames), ...this.keptFrames()],

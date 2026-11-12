@@ -86,9 +86,14 @@ export class Counts {
 
   /** The counted objects that have no holder now, of those that came to have none since last time. */
   takeZeroes(): readonly number[] {
-    const zeroes = [...this.#zeroes].filter((id) => this.#objects.get(id) === 0);
+    const zeroes = this.zeroes();
     this.#zeroes.clear();
     return zeroes;
+  }
+
+  /** The counted objects that have no holder now, of those that came to have none since `takeZeroes`. */
+  zeroes(): readonly number[] {
+    return [...this.#zeroes].filter((id) => this.#objects.get(id) === 0);
   }
 
   /** The counted objects let go of since the last call, each as often as it was. */
