@@ -35,7 +35,7 @@ import { countedIn } from '../../lifetimes/counts.ts';
 import { isDisposable } from '../../lifetimes/disposal.ts';
 import { HolderWrites } from '../../lifetimes/holder-writes.ts';
 import { heldFrom } from '../../lifetimes/holders.ts';
-import { type HoldingFrame, heldObjects, isRoot, keptFrame } from '../../snapshot/holdings.ts';
+import { isRoot, rootKinds } from '../../snapshot/holdings.ts';
 import type { HeapObject } from '../../snapshot/objects.ts';
 import type { Snapshot } from '../../snapshot/snapshot.ts';
 import type { LoadedDefinition } from '../loaded-definition.ts';
@@ -191,10 +191,10 @@ export class Instance {
    * none is among what it leaves out: what counting never takes to zero, as what isn't counted.
    */
   #kept(): { readonly kept: readonly LiveObject[]; readonly depth: number } {
-    const executions = this.heap.objectsOf('execution');
+    const roots = rootKinds.flatMap((kind) => this.heap.objectsOf(kind));
     const held = heldFrom(this.heap, {
-      frames: [...executions.flatMap((execution) => execution.frames), ...this.keptFrames()],
-      objects: this.owed(),
+      frames: roots.flatMap((root) => (root.kind === 'execution' ? root.frames : [])),
+      objects: roots.flatMap((root) => (root.kind === 'execution' ? [] : [root.id])),
     });
     const disposability = { heap: this.heap, types: this.loaded.definition.types };
     const kept: LiveObject[] = [];
@@ -256,26 +256,6 @@ export class Instance {
   /** The entry encoding the instance's outcome for its host (§9); undefined when none writes it. */
   get encoder(): FunctionId | undefined {
     return this.#from.encoder;
-  }
-
-  /**
-   * What the instance's roots other than executions and runs hold: the futures the answers still to
-   * give other instances' calls wait on (§10), and its outcome, once its root gave a future (§9).
-   */
-  owed(): readonly number[] {
-    return [...this.heap.objectsOf('answer'), ...this.heap.objectsOf('outcome')].flatMap(
-      heldObjects,
-    );
-  }
-
-  /**
-   * The roots keeping values for later, as frames: the runs ready to start, holding what they call
-   * with, and the context constants made, holding their values.
-   */
-  keptFrames(): readonly HoldingFrame[] {
-    return [...this.heap.objectsOf('run'), ...this.heap.objectsOf('contextConstant')].map(
-      keptFrame,
-    );
   }
 
   /** The mock this instance holds for `target`: the newest, the one a call reaches (§10). */

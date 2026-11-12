@@ -15,8 +15,7 @@
  *   the futures it is registered on. A callback's is held from its futures up, as only they can
  *   resolve it: each future holds what is registered on it. The edges to what is registered on, or
  *   decides, an object are read off the heap's indexes (`Heap.holds`).
- * - A run, a call a resolver readied, holds what it calls with as a frame does, and a context
- *   constant its value (`keptFrame`).
+ * - A run, a call a resolver readied, holds what it calls with, and a context constant its value.
  * - It watches what it names without holding: a slot's queue of waiting operations, what a weak
  *   reference refers to, an execution's own call future, which its caller holds, a wait's waiter,
  *   a pending case resolver's wait, which the waiter's frame holds, and the end of a registration
@@ -43,22 +42,20 @@ export interface HoldingFrame {
 }
 
 /**
- * Whether `object` is a root, kept for its own sake rather than held by another: an execution, a
- * run, an answer, the outcome an instance awaits, or a context constant's value.
+ * The kinds of the roots, objects kept for their own sake rather than held by another: an
+ * execution, a run, an answer, the outcome an instance awaits, and a context constant's value.
  */
+export const rootKinds = ['execution', 'run', 'answer', 'outcome', 'contextConstant'] as const;
+
+type RootKind = (typeof rootKinds)[number];
+
+const roots: ReadonlySet<HeapObject['kind']> = new Set(rootKinds);
+
+/** Whether `object` is a root (`rootKinds`). */
 export function isRoot<Object extends { readonly kind: HeapObject['kind'] }>(
   object: Object,
-): object is Extract<
-  Object,
-  { readonly kind: 'execution' | 'run' | 'answer' | 'outcome' | 'contextConstant' }
-> {
-  return (
-    object.kind === 'execution' ||
-    object.kind === 'run' ||
-    object.kind === 'answer' ||
-    object.kind === 'outcome' ||
-    object.kind === 'contextConstant'
-  );
+): object is Extract<Object, { readonly kind: RootKind }> {
+  return roots.has(object.kind);
 }
 
 /**
@@ -187,18 +184,6 @@ export function valuesIn(object: HeapObject): readonly Value[] {
 export function referencedObjects(object: HeapObject): readonly number[] {
   const holding = holdingOf(object);
   return [...holding.holds, ...holding.values.flatMap(handlesIn), ...holding.watches];
-}
-
-/**
- * A root keeping values for later as holding reads it, a frame: a run, one not yet made, holding the
- * captures and arguments it gets, or a context constant, holding its value.
- */
-export function keptFrame(
-  kept: Extract<HeapObject, { kind: 'run' | 'contextConstant' }>,
-): HoldingFrame {
-  return {
-    registers: kept.kind === 'run' ? [...kept.captures, ...kept.arguments] : [kept.value],
-  };
 }
 
 /** The values `frame` holds in its registers, references aside. */

@@ -1,7 +1,7 @@
 /**
  * A running instance's context constants (spec §3.4): one value each, by the constant's qualified
  * name, made the first time code in the instance reads it and kept from then on as a
- * `contextConstant` heap object, a root (snapshot/holdings.ts `keptFrame`).
+ * `contextConstant` heap object, a root (snapshot/holdings.ts `rootKinds`).
  *
  * - The value is made inside the reading segment, a heap object like any other, so a segment that
  *   is discarded made none, and a commit keeps it.

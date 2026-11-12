@@ -10,8 +10,8 @@ import { describe, expect, it } from 'vitest';
 import { depthOf, handlesIn, handleTo } from '../../definition/values/values.ts';
 import { testHeap } from '../scheduler/instance/heap.test-kit.ts';
 import type { LiveObject } from '../scheduler/instance/heap.ts';
-import { frameValues, isRoot, valuesIn } from '../snapshot/holdings.ts';
-import { heldFrom, holdsOf } from './holders.ts';
+import { frameValues, idsHeld } from '../snapshot/holdings.ts';
+import { heldFrom } from './holders.ts';
 import { heapArbitrary, reachedFrom } from './lifetimes.test-kit.ts';
 
 describe('holding', () => {
@@ -23,7 +23,7 @@ describe('holding', () => {
         (test, objects) => {
           const { heap, frames } = test;
           const start = [...objects, ...frames.flatMap(frameValues).flatMap(handlesIn)];
-          const expected = reachedFrom(start, (id) => holdsOf(heap, heap.objectOf(id)));
+          const expected = reachedFrom(start, (id) => idsHeld(heap.held(heap.objectOf(id))));
           expect(heldFrom(heap, { frames, objects }).objects).toEqual(expected);
         },
       ),
@@ -36,10 +36,7 @@ describe('holding', () => {
         const held = heldFrom(heap, { frames, objects: [] });
         const values = [
           ...frames.flatMap(frameValues),
-          ...[...held.objects].flatMap((id) => {
-            const object = heap.objectOf(id);
-            return isRoot(object) ? [] : valuesIn(object);
-          }),
+          ...[...held.objects].flatMap((id) => heap.held(heap.objectOf(id)).values),
         ];
         expect(held.depth).toBe(Math.max(0, ...values.map(depthOf)));
       }),

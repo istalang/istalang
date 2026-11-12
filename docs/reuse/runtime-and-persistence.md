@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-11-12
-last_updated: 2026-11-12
+last_updated: 2026-11-13
 tags: [reuse, runtime, snapshot, persistence, scheduler, lifetimes, host]
 ---
 
@@ -17,12 +17,11 @@ tags: [reuse, runtime, snapshot, persistence, scheduler, lifetimes, host]
 - read or write a persisted `Definition` text → `definitionFormat` (`src/definition/definition.ts`); read a text together with its canonical text and hash, never as a `read` then a `write` → `Format.readCanonical` (`src/definition/formats/format.ts`)
 - read or write a persisted `Snapshot` text → `snapshotFormat` (`src/runtime/snapshot/snapshot.ts`)
 - validate a `Snapshot` against its `Definition` before restoring → `checkSnapshot` (`src/runtime/snapshot/check/index.ts`)
-- query what a `HeapObject` holds or watches → `isRoot`, `heldObjects`, `valuesIn`, `referencedObjects`; which way a chain of resolvers is held, from its root down (a wait's case) or from its futures up (a callback) → `isHeldFromRoot` (`src/runtime/snapshot/holdings.ts`); what a resolver's chain comes down to deciding → `chainRoot` (`src/runtime/snapshot/objects.ts`); what a live object holds, its fields' holds and the edges the heap's indexes add (a registration, a wait's or a resolver's awaited resolvers) → `Heap.holds` (`src/runtime/scheduler/instance/heap.ts`)
-- the roots a commit starts from besides frames: runs and context constants as frames, the futures answers and the outcome wait on → `Instance.keptFrames`, `Instance.owed` (`src/runtime/scheduler/instance/index.ts`); each running call's own future → `RunStack.callFutures` (`src/runtime/scheduler/segment/run-stack.ts`)
+- query what a `HeapObject` holds or watches → `isRoot`, `rootKinds`, `heldObjects`, `valuesIn`, `referencedObjects`; which way a chain of resolvers is held, from its root down (a wait's case) or from its futures up (a callback) → `isHeldFromRoot` (`src/runtime/snapshot/holdings.ts`); what a resolver's chain comes down to deciding → `chainRoot` (`src/runtime/snapshot/objects.ts`); what a live object holds, its fields' holds and the edges the heap's indexes add (a registration, a wait's or a resolver's awaited resolvers) → `Heap.held`, `Heap.holds` (`src/runtime/scheduler/instance/heap.ts`)
 - query what a `HoldingFrame` holds in its registers or cells → `frameValues`, `frameCells`; what a holder holds as one write reports it, a register's contents or an object's → `Held`, `heldIn`, `heldBy`, `idsHeld` (`src/runtime/snapshot/holdings.ts`)
 - report a holder write, of a register, a heap object or a running call's future, or take the counted objects that lost their last holder at a step's end → `HolderWrites` (`src/runtime/lifetimes/holder-writes.ts`), the instance's `holders`; count holders, a composite holding a counted part once per holder, or say which objects are counted → `Counts`, `countedIn` (`src/runtime/lifetimes/counts.ts`)
 - check whether a register's contents is a `&` reference → `isReference` (`src/runtime/snapshot/objects.ts`)
-- find reachable heap objects and deepest value nesting from roots, for a commit → `heldFrom`, `holdsOf` (`src/runtime/lifetimes/holders.ts`)
+- find reachable heap objects and deepest value nesting from roots, in one walk, for a commit → `heldFrom` (`src/runtime/lifetimes/holders.ts`)
 - check object disposability or run one object's disposal → `isDisposable`, `dispose` (`src/runtime/lifetimes/disposal.ts`)
 - run collection rounds of what reached zero → `Collector` (`src/runtime/lifetimes/collector.ts`); collect after a step, until no disposal's code is left, or while an instance ends, a disposal that panics let go of → `SegmentCollection.collected`, `collectFully`, `collectEnding` (`src/runtime/scheduler/segment/collection.ts`); run a disposal's code on the run stack, a `dispose` call or a disposed call's cleanup → `DisposalRuns` (`src/runtime/scheduler/segment/disposal-runs.ts`)
 - make the one weak reference to a referent, watch it (`disposed()`, `disposing()`), or resolve its watches once the referent is gone → `WeakSide` (`src/runtime/scheduler/instance/weak-side.ts`)
@@ -84,4 +83,4 @@ tags: [reuse, runtime, snapshot, persistence, scheduler, lifetimes, host]
 2. Add its holding and watching rules to `kinds` or `futureStates` in `src/runtime/snapshot/holdings.ts`, and its row to `docs/arch/definition.md`'s Holders table.
 3. Add its load-time check to `kindProblems` in `src/runtime/snapshot/check/index.ts` and its disposal rule to `src/runtime/lifetimes/disposal.ts`.
 4. If it is indexed in memory, add the derived index to `Heap` (`src/runtime/scheduler/instance/heap.ts`).
-5. If it is a root keeping values, hold them as a frame through `keptFrame` (`src/runtime/snapshot/holdings.ts`), which its holder writes report for counting, and `Instance.keptFrames` gives the commit.
+5. If it is a root, add its kind to `rootKinds` (`src/runtime/snapshot/holdings.ts`): a commit walks from every root through what `kinds` says it holds.
