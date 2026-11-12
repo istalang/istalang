@@ -84,6 +84,7 @@ import { traitObjectsOf } from '../../resolution/conformance/trait-objects.ts';
 import { Annotations } from '../../rules/annotations.ts';
 import { JsonForms } from '../../rules/boundary/json-forms.ts';
 import { Expansion } from '../../rules/expansion/functions.ts';
+import { externHeldOf, keepsOf } from '../../rules/lifetimes/externs.ts';
 import type { CheckedBody } from '../../surface/checked-body.ts';
 import { type Fit, type Fitting, fitOf } from '../../types/fitting/fit/index.ts';
 import { typeKeys } from '../../types/identity/type-keys.ts';
@@ -148,6 +149,8 @@ export class ProgramChecker implements CheckerContext {
   readonly #resolvedTypes: EntryTable<CheckerNote, TypeNode, Type, ModuleId>;
   readonly disposalOf: CheckerContext['disposalOf'];
   readonly disposeKindsOf: CheckerContext['disposeKindsOf'];
+  readonly externHeldOf: CheckerContext['externHeldOf'] = (type) => externHeldOf(this, type);
+  readonly keepsOf: CheckerContext['keepsOf'] = (declaration) => keepsOf(this, declaration);
   readonly kindOf: CheckerContext['kindOf'];
   readonly valueKindsOf: CheckerContext['valueKindsOf'];
   readonly boundKindsOf: CheckerContext['boundKindsOf'] = (type) => boundKindsOf(this, type);

@@ -3,12 +3,21 @@
 # Built-in types the runtime implements are extern declarations, the same mechanism programs use
 # (§3.6). Primitive types (Int, Float, Bool, String, Unit, Never) are part of the language, not
 # declared here. Functions and methods each type offers arrive with the features that use them.
+#
+# `Holds` and `Keeps` say what the runtime's handles hold and its natives keep, which no code shows
+# (§3.16): a handle holds its type arguments, and a native keeps nothing but through `&`, unless
+# they say otherwise.
+
+import Holds, Keeps from 'lifetimes'
 
 # An array's items and a map's values are covariant (§3.5): an `Array<Int>` is an `Array<Int?>`,
 # rebuilt where its layout changes. A map's keys are invariant: widening them would rehash each.
 extern struct Array<gives T>
 extern struct Map<K, gives V>
+@Holds<T>
 extern shared struct Slot<T>
+# A weak reference holds nothing of its referent, which `deref` gives back.
+@Holds<()>
 extern shared struct WeakRef<T is Disposable>
 
 # Data is simple, live or ista, and code is marked with the data it may handle (proposal 8): unmarked
@@ -17,6 +26,7 @@ extern shared struct WeakRef<T is Disposable>
 # its `Mode`.
 type Mark = "simple" | "live" | "ista"
 type Persistence = "live" | "ista"
+@Holds<T>
 extern shared struct Future<T, K in Persistence>:
   type Mode = K
 
@@ -30,11 +40,16 @@ trait Awaitable<T>:
 
 # A future is the runtime's awaitable: it resolves `done` at once when it has resolved, else when it
 # does.
+@Keeps{["self": ["done"]]}
 extern K fn onAwait<T, K in Persistence>(self: Future<T, K>, done: Resolver<T, K>)
 
 # One wait's one-shot resolver (Rule 5). A second `resolve` panics, and `tryResolve` says whether it
 # decided the wait, for races; once another case decided it, neither decides anything. One let go of
-# unresolved panics: an awaitable misused it.
+# unresolved panics: an awaitable misused it. It holds what it calls, its callback and its `onCancel`
+# callbacks, and an at-resolver the resolver it decides, which they cover, holding anything; never
+# the futures it is registered on. Naming that resolver, a `Resolver<(Int, T), K>`, would make the
+# endless instances §3.5 forbids.
+@Holds<(Fn<(T,), Unit, K>, Fn<(), Unit, K>)>
 extern shared struct Resolver<T, K in Persistence>
 extern K fn resolve<T, K in Persistence>(self: Resolver<T, K>, value: T)
 extern K fn tryResolve<T, K in Persistence>(self: Resolver<T, K>, value: T) -> Bool
@@ -54,6 +69,7 @@ extern K fn Resolver.at<T, K in Persistence>(done: Resolver<(Int, T), K>, positi
 # Has `callback` called once `self` is cancelled: another case decided its wait, its waiter moved on
 # without it, or the future it is registered on was disposed first. It runs as a `Resolver.of`
 # callback does, and at once when `self` was cancelled already; never once `self` resolved.
+@Keeps{["self": ["callback"]]}
 extern K fn onCancel<T, K in Persistence>(self: Resolver<T, K>, callback: Fn<(), Unit, K>)
 
 # What a function's values may capture (§3.14): only sendable values, or any.
@@ -75,6 +91,7 @@ extern ista fn result<T is Sendable>(self: Instance<T>) -> Future<Result<T>, "is
 extern ista fn spawn<R>(f: sendable ista async fn() -> R) -> Instance<R>
 
 extern ista fn Slot.create<T>() -> Slot<T>
+@Keeps{["self": ["value"]]}
 extern ista fn put<T>(self: Slot<T>, value: T) -> Future<Unit, "ista">
 extern ista fn take<T>(self: Slot<T>) -> Future<T, "ista">
 extern ista fn read<T>(self: Slot<T>) -> Future<T, "ista">

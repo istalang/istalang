@@ -63,6 +63,15 @@ export type Disposal =
   | { readonly kind: 'none' }
   | { readonly kind: 'runtime' | 'function'; readonly call: FunctionCall };
 
+/**
+ * What one parameter of an extern function comes to hold (§3.16): the values of the parameters at
+ * `kept`, by position, as the parameter at `holder` does.
+ */
+export interface Kept {
+  readonly holder: number;
+  readonly kept: readonly number[];
+}
+
 /** A top-level constant as checked: its type, and its value, unless a diagnostic said why not. */
 export interface CheckedConstant {
   readonly type: Type;
@@ -130,6 +139,16 @@ export interface Checker {
   readonly disposalOf: (type: NominalType) => Disposal;
   /** The kinds of the `dispose` functions that may take `type` (rules/disposal/disposal.ts). */
   readonly disposeKindsOf: (type: NominalType) => readonly Type[];
+  /**
+   * What a value of an extern type holds one level down, as its `@Holds` says, else its type
+   * arguments (rules/lifetimes/externs.ts).
+   */
+  readonly externHeldOf: (type: NominalType) => readonly Type[];
+  /**
+   * What the parameters of an extern function come to hold, as its `@Keeps` says, else through `&`
+   * (rules/lifetimes/externs.ts).
+   */
+  readonly keepsOf: (declaration: FunctionDeclaration) => readonly Kept[];
   /** How values of `any` types are called, read and taken apart (§3.10). */
   readonly traitObjects: TraitObjects;
   /** `_Cell<T>` for `type`, what a variable passed by `&` or captured lives in (§3.7, §3.14). */

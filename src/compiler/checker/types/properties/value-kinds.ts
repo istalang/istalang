@@ -19,10 +19,12 @@
  * - An unreduced type `match` may be any of its cases' types, as its arguments instantiate them
  *   (§3.17), what a case takes from a type not known yet passing through as a parameter does.
  * - A type holds what its written types do: a struct's fields', an enum's variants', an extern
- *   type's arguments. A field whose type its default gives adds no kind (§3.3: its default is
- *   judged as code of the kind its written fields give, and one holding a part whose kind the type
- *   arguments decide, `partsDecidedBy`, is refused, rules/kinds/data-kinds.ts), so no default is
- *   checked to find a kind, which a body still being checked may ask (a lambda inferring its mark).
+ *   type's arguments, every one whatever its `@Holds` says (§3.16), since a native may give back a
+ *   value of an argument the handle only watches, as `deref` does, which code then handles. A
+ *   field whose type its default gives adds no kind (§3.3: its default is judged as code of the
+ *   kind its written fields give, and one holding a part whose kind the type arguments decide,
+ *   `partsDecidedBy`, is refused, rules/kinds/data-kinds.ts), so no default is checked to find a
+ *   kind, which a body still being checked may ask (a lambda inferring its mark).
  */
 
 import { distinctItems } from '../../../../foundation/structures/equality.ts';

@@ -9,17 +9,27 @@
  * - In a type, the type is the record: the key of `S["region"]` (or of `S["a" | "b"]`) is a key
  *   of `S`, and a literal type given as a type argument for a member parameter within a struct's
  *   keys, `Entry<Settings, "region">`, is a key of the struct the instantiation makes it.
+ *
+ * A literal in an extern function's `@Keeps` names one of its parameters (§3.16), so it denotes
+ * that parameter instead, which its annotation's check reads by name.
  */
 
+import { wellKnown } from '../../../foundation/language/well-known/index.ts';
 import type { ModuleId } from '../../program/program.ts';
 import { type TypeParameters, typeParametersOf } from '../../syntax/declarations/index.ts';
 import type { Call } from '../../syntax/expressions/calls.ts';
 import { literalNaming } from '../../syntax/expressions/literals/built-types.ts';
 import type { StringLiteral } from '../../syntax/expressions/literals/literals.ts';
-import { parentOf, type SyntaxNode, type SyntaxTree } from '../../syntax/tree/index.ts';
+import {
+  ancestorsOf,
+  parentOf,
+  type SyntaxNode,
+  type SyntaxTree,
+} from '../../syntax/tree/index.ts';
 import type { Identifier } from '../../syntax/tree/node.ts';
 import type { LiteralType } from '../../syntax/types/index.ts';
 import type { CheckerContext } from '../contexts/context.ts';
+import { functionPlace } from '../surface/checked-annotation.ts';
 import type { Denotation } from '../surface/denotation.ts';
 import { calledVariant } from '../surface/named-variants.ts';
 import type { ResolvedCall } from '../surface/resolved-call.ts';
@@ -30,15 +40,51 @@ import { givenKeysOwner } from '../types/written/key-types.ts';
 import { parameterType } from '../types/written/resolve-type.ts';
 import { bodyHolding } from './holders.ts';
 
-/** The field the String literal `literal` of `module` names as a key; none where it is no key. */
+/**
+ * The field the String literal `literal` of `module` names as a key, or the parameter it names in a
+ * `@Keeps`; none where it is neither.
+ */
 export function keyDenotationsOf(
   checker: CheckerContext,
   module: ModuleId,
   literal: StringLiteral,
 ): readonly Denotation[] {
-  return keyOwnersAt(checker, module, literal).flatMap((owner) =>
-    keyedFieldDenotations(checker, owner, literal.value),
+  return (
+    keptParameterDenotations(checker, module, literal) ??
+    keyOwnersAt(checker, module, literal).flatMap((owner) =>
+      keyedFieldDenotations(checker, owner, literal.value),
+    )
   );
+}
+
+/**
+ * The parameter `literal` names when it stands in the `@Keeps` of a function, none for a name no
+ * parameter has; undefined where it stands anywhere else.
+ */
+function keptParameterDenotations(
+  checker: CheckerContext,
+  module: ModuleId,
+  literal: StringLiteral,
+): readonly Denotation[] | undefined {
+  const path = ancestorsOf(checker.inputs.treeOf(module), literal);
+  const at = path.findIndex((node) => node.kind === 'Annotation');
+  const [annotation, declaration] = [path[at], path[at + 1]];
+  if (annotation?.kind !== 'Annotation' || declaration?.kind !== 'FunctionDeclaration') {
+    return undefined;
+  }
+  const keeps = checker.wellKnownEntity(wellKnown.keeps);
+  const checked = checker.annotations.of(module, declaration, functionPlace(declaration));
+  if (!checked.some(({ node, type }) => node === annotation && type.entity === keeps)) {
+    return undefined;
+  }
+  const parameter = checker
+    .parametersOf(declaration)
+    .find(({ node }) => node.name?.text === literal.value);
+  const name = parameter?.node.name;
+  const entity = name === undefined ? undefined : checker.bindings.entityOf(module, name);
+  return entity?.kind === 'variable'
+    ? [{ declared: { kind: 'variable', entity }, type: parameter?.type }]
+    : [];
 }
 
 /**

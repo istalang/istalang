@@ -4,14 +4,15 @@
  * register: its value was computed while compiling (constants.ts). A function the checker resolved
  * the name to is a closure (../closures.ts): a top-level function, or a variant's constructor
  * named as a value (§3.14). Any other variant named is a value of its enum (structs/variants.ts),
- * and a struct without fields is a value of its own, written bare (§3.1). A local function or
- * named lambda lives in a register like any variable. An extern constant is read by
- * calling the entry that reads it (§3.6). Only these reach lowering; the checker refuses a name
- * denoting anything else as a value.
+ * and a struct without fields is a value of its own, written bare, type arguments and all (§3.1).
+ * A local function or named lambda lives in a register like any variable. An extern constant is
+ * read by calling the entry that reads it (§3.6). Only these reach lowering; the checker refuses a
+ * name denoting anything else as a value.
  */
 
 import type { Register } from '../../../../../definition/operands.ts';
 import { unreachable } from '../../../../../foundation/structures/unreachable.ts';
+import type { TypeApplication } from '../../../../syntax/expressions/calls.ts';
 import type { MemberAccess } from '../../../../syntax/expressions/index.ts';
 import type { Identifier } from '../../../../syntax/tree/node.ts';
 import { emitCall } from '../../../calls/emit-call.ts';
@@ -23,6 +24,16 @@ import { lowerFieldlessVariant } from '../structs/variants.ts';
 
 export function lowerName(context: FunctionContext, node: Identifier): Register {
   return lowerNamed(context, node, node);
+}
+
+/**
+ * A name given type arguments: the function the checker resolved it to, else the struct without
+ * fields it names, of that instance, the one other the checker lets through (§3.1, §3.5).
+ */
+export function lowerApplied(context: FunctionContext, node: TypeApplication): Register {
+  return context.body.resolved.has(node)
+    ? lowerFunctionValue(context, node)
+    : lowerBareStruct(context, node);
 }
 
 /**

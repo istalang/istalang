@@ -1,6 +1,6 @@
 /**
- * Annotations (§3.16): struct values computed at compile time, attached to fields, functions and
- * statements. ProgramChecker composes this unit; each item's annotations are checked once, on
+ * Annotations (§3.16): struct values computed at compile time, attached to fields, functions,
+ * struct declarations and statements. ProgramChecker composes this unit; each item's annotations are checked once, on
  * first demand: by its declaration's check, a body's statement, the boundary's forms or lowering.
  * What they are checked against depends on the item alone: a field's on its type as declared,
  * whatever instance of its struct asks, and an annotation's value is checked on its own.
@@ -12,9 +12,11 @@
  *   declaration to carry one (§3.16): the json module's on fields (`@JsonSkip` only on a field
  *   whose type, as declared, has a default to read back as, which JSON forms decide,
  *   rules/boundary/json-forms.ts; `@JsonBigInt` only on an `Int`), `@Waypoint` on a statement that
- *   waits, `@Suite` on a function (rules/testing.ts says which), and any other struct on fields and
- *   functions, kept for tools. The same annotation twice on one item says nothing new, so it is an
- *   error.
+ *   waits, `@Suite` on a function (rules/testing.ts says which), `lifetimes`' `@Holds` on an extern
+ *   struct and `@Keeps` on an extern function, both of the std's only, since a host keeps no
+ *   language values and other code shows what it holds (rules/lifetimes/externs.ts reads them), and
+ *   any other struct on fields, functions and struct declarations, kept for tools. The same
+ *   annotation twice on one item says nothing new, so it is an error.
  * - Fields of one struct or variant that end up with the same JSON name are reported where they
  *   are declared, since the clash is in the declaration whether or not the type ever crosses.
  */
@@ -39,6 +41,7 @@ import {
   type AnnotationPlace,
   type CheckedAnnotation,
   canAnnotate,
+  functionPlace,
   statementPlace,
 } from '../surface/checked-annotation.ts';
 import type { CheckedBody } from '../surface/checked-body.ts';
@@ -57,6 +60,8 @@ const known = {
   jsonBigInt: wellKnown.jsonBigInt,
   waypoint: wellKnown.waypoint,
   suite: wellKnown.suite,
+  holds: wellKnown.holds,
+  keeps: wellKnown.keeps,
 } as const satisfies Record<string, WellKnownDeclaration>;
 
 type Known = keyof typeof known;
@@ -137,7 +142,7 @@ export class Annotations implements AnnotationChecks {
   }
 
   suiteTitleOf(module: ModuleId, declaration: FunctionDeclaration): string | undefined {
-    return this.#textOf(this.of(module, declaration, { kind: 'function' }), 'suite');
+    return this.#textOf(this.of(module, declaration, functionPlace(declaration)), 'suite');
   }
 
   /** The one string field of the annotation `name` among `annotations`, if it is there. */
@@ -182,10 +187,11 @@ export class Annotations implements AnnotationChecks {
     if (placed === undefined) {
       return found;
     }
+    const isStd = this.#seams.checker.isStd(module);
     for (const node of item.annotations ?? []) {
       const annotation = this.#value(module, node);
       const problem =
-        annotation === undefined ? undefined : this.#problem(annotation, found, placed);
+        annotation === undefined ? undefined : this.#problem(annotation, found, placed, isStd);
       if (problem !== undefined) {
         this.#seams.checker.report(module, problem);
       } else if (annotation !== undefined) {
@@ -212,11 +218,15 @@ export class Annotations implements AnnotationChecks {
     return { kind: 'field', type: field?.declared?.type ?? errorType };
   }
 
-  /** Why `annotation` doesn't belong at `place` after those `found` there already. */
+  /**
+   * Why `annotation` doesn't belong at `place`, in a std module or not, after those `found` there
+   * already.
+   */
   #problem(
     annotation: CheckedAnnotation,
     found: readonly CheckedAnnotation[],
     place: Placed,
+    isStd: boolean,
   ): Diagnostic<AnchoredSpan> | undefined {
     const { node, type } = annotation;
     const name = type.entity.declaration.name.text;
@@ -225,10 +235,10 @@ export class Annotations implements AnnotationChecks {
     }
     const means = placements[this.knownOf(annotation) ?? 'any'];
     const { json } = this.#seams.checker;
-    const misplaced = means(
-      place,
-      (held) => held.kind === 'error' || json.skippedDefaultOf(held) !== undefined,
-    );
+    const misplaced = means(place, {
+      isDefault: (held) => held.kind === 'error' || json.skippedDefaultOf(held) !== undefined,
+      isStd,
+    });
     if (misplaced === 'elsewhere') {
       return checkerDiagnostics.misplacedAnnotation(node.span, name, placeText(place));
     }
@@ -265,20 +275,28 @@ type Placed =
   | Exclude<AnnotationPlace, { readonly kind: 'field' }>
   | { readonly kind: 'field'; readonly type: Type };
 
+/** What a placement reads beyond the place: whether a type has a default, and where it stands. */
+interface PlaceFacts {
+  readonly isDefault: (type: Type) => boolean;
+  /** Whether the item is the std's. */
+  readonly isStd: boolean;
+}
+
 /**
  * Where each annotation means something: `'elsewhere'` when `place` is no place for it, a
  * diagnostic at its span when the place is right but the item can't take it, else nothing.
- * Annotations the toolchain doesn't read (`any`) mean something to tools on fields and functions.
+ * Annotations the toolchain doesn't read (`any`) mean something to tools on fields, functions and
+ * struct declarations.
  */
 const placements: Record<
   Known | 'any',
   (
     place: Placed,
-    isDefault: (type: Type) => boolean,
+    facts: PlaceFacts,
   ) => 'elsewhere' | ((at: AnchoredSpan) => Diagnostic<AnchoredSpan>) | undefined
 > = {
   jsonName: (place) => (place.kind === 'field' ? undefined : 'elsewhere'),
-  jsonSkip: (place, isDefault) => {
+  jsonSkip: (place, { isDefault }) => {
     if (place.kind !== 'field') {
       return 'elsewhere';
     }
@@ -301,7 +319,22 @@ const placements: Record<
     return place.waits ? undefined : (at) => checkerDiagnostics.waypointWithoutWait(at);
   },
   suite: (place) => (place.kind === 'function' ? undefined : 'elsewhere'),
-  any: (place) => (place.kind === 'field' || place.kind === 'function' ? undefined : 'elsewhere'),
+  holds: (place, { isStd }) => {
+    if (place.kind !== 'struct') {
+      return 'elsewhere';
+    }
+    return place.isExtern && isStd ? undefined : (at) => checkerDiagnostics.holdsOutsideStd(at);
+  },
+  keeps: (place, { isStd }) => {
+    if (place.kind !== 'function') {
+      return 'elsewhere';
+    }
+    return place.isExtern && isStd ? undefined : (at) => checkerDiagnostics.keepsOutsideStd(at);
+  },
+  any: (place) =>
+    place.kind === 'field' || place.kind === 'function' || place.kind === 'struct'
+      ? undefined
+      : 'elsewhere',
 };
 
 /** How a diagnostic names `place`. */
@@ -311,6 +344,8 @@ function placeText(place: Placed): string {
       return 'a field';
     case 'function':
       return 'a function';
+    case 'struct':
+      return place.isExtern ? 'an extern struct' : 'a struct declaration';
     case 'statement':
       return 'a statement';
     case 'other':

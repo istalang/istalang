@@ -1,0 +1,12 @@
+# The lifetimes module (spec §3.8, §3.16): what the std's natives hold and keep, which no code shows
+# the analysis of lifetimes (§7). Both annotations stand only on the std's externs, since a host
+# keeps no language values (§9).
+
+# On an extern struct: a value of it holds what a value of `T` holds, a tuple listing several types
+# and `()` none. Without it, a value holds its type arguments.
+struct Holds<T>
+
+# On an extern function: each parameter, by name, comes to hold the values of the parameters listed
+# for it. Without it, a parameter taken by `&` keeps every other one, and nothing else is kept.
+struct Keeps:
+  into: Map<String, Array<String>>

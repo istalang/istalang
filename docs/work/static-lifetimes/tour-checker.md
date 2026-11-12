@@ -1,5 +1,5 @@
 ---
-description: checker-lane code tour for static lifetimes — what a checked body gives the flow IR, the flow code it replaces, where witness closing lives and what C1 moves, diagnostics and the related locations C3 adds, how annotations are parsed, bound, placed and checked today and what C2 changes, where the analysis plugs in and what it reads, the counted flag's path into the Definition, the code the rule rejects, the editor's benches and the tests; read before planning, implementing or examining C1, C2, C3, C4 or C5
+description: checker-lane code tour for static lifetimes — what a checked body gives the flow IR, the flow code it replaces, where witness closing lives and what C1 moves, diagnostics and the related locations C3 adds, how annotations are parsed, bound, placed and checked, and what C2 landed, where the analysis plugs in and what it reads, the counted flag's path into the Definition, the code the rule rejects, the editor's benches and the tests; read before planning, implementing or examining C1, C2, C3, C4 or C5
 owner: tech-lead
 status: active
 applies_to: checker, binder, parser, lowering, stdlib, corpus, editor diagnostics, cli report
@@ -147,61 +147,69 @@ The node kinds are in `src/compiler/syntax/expressions/index.ts` and `syntax/sta
   5700 is `disposeType`: a `dispose` on anything but a confined handle (`isOwnedHandle`,
   `rules/disposal/disposal.ts`). The weak side is 5800–5899.
 
-## Annotations (C2)
+## Annotations (C2, landed)
 
-- **Syntax:**
-  - Struct and extern struct declarations are `Annotatable` already (`syntax/items.ts`; `StructOf`
-    and `ExternStructDeclaration` in `syntax/declarations/index.ts`). A module item's annotations
-    attach in `parser/grammar/declarations/declaration.ts`.
-  - An annotation is a struct's name, optionally followed by `{…}`, in
-    `parser/layout/annotations.ts`. Anything else is 2017. So `@Holds<T>` doesn't parse.
-  - A function's annotation stands on its own line before it. Written after its head, before the
-    `:`, it is 2001 (probed). A field's may follow it on the same line.
+- **Syntax** (`parser/layout/annotations.ts`): an annotation is a possibly qualified struct name,
+  with type arguments or not, bare or followed by `{…}`: `@Holds<T>` parses as a `TypeApplication`,
+  `@Keeps<A>{…}` as a `StructLiteral` whose `NamedType` has arguments. Anything else, a call
+  included, is 2017. A function's annotation stands on its own line before it; a field's may follow
+  it on the same line. A module item's annotations attach in
+  `parser/grammar/declarations/declaration.ts`.
 - **Values:**
-  - A fieldless generic `struct Holds<T>` declares fine, but `Holds<Int>` is no value: 5508 ("Only a
-    function named as a value takes type arguments", `diagnostics/closures.ts`).
-  - `Holds<T>{}` on a fieldless struct is 5206 ("has no fields, so it is written bare").
-  - A struct can't take a pack (`struct Holds<...A>` is 5081), so `Holds` takes one tuple type.
-  - Map-valued annotations work today: `@Keeps{["x": ["x"]]}` on a function checks clean (probed).
-- **Scope:**
-  - A top-level declaration's annotations are bound in the module scope
-    (`binder/constructs/declarations.ts`, `bindDeclaration`), so `@Holds<U>` on `fn f<U>` is 4000,
-    "'U' is not declared".
-  - A field's annotations are bound in its struct's type-parameter scope
-    (`binder/constructs/types.ts`), so `struct Box<T>: item: T @Holds<T>{}` resolves `T`.
-  - A trait member function's annotations see the trait's scope, not the function's own type
-    parameters.
-  - The checker checks an annotation's value as a body of its own, with no `within`
-    (`#valueBody(module, undefined)` in `wiring/program/program-checker.ts`).
-  - C2 changes both the binder and that `within`.
-- **Placement:**
-  - `rules/annotations.ts`'s `placements` table (`Record<Known | 'any', …>`) says where each one may
-    stand. `any` allows only fields and functions.
-  - Struct declarations get the place `'a struct declaration'`, and extern ones `'an extern struct'`
-    (`constructs/declarations/declarations.ts`). Every annotation there is 5903, "has no meaning
-    on…".
-- **Known annotations** are well-known names (`src/foundation/language/well-known/index.ts`, such as
-  `waypoint: {module: 'prelude', name: 'Waypoint'}`, and `json`'s), read with `knownOf`, `ofField`
-  and `fieldHas`. An annotation's type arguments are on `CheckedAnnotation.type`
-  (`surface/checked-annotation.ts`).
+  - A fieldless generic struct named with type arguments is its value of that instance (§3.1):
+    `constructs/closures/function-values.ts` `checkAppliedFunction`, after the functions the name
+    may name; compile time computes it (`rules/computation/index.ts` `#bareStruct`), and lowering
+    makes it (`lowering/constructs/expressions/access/names.ts` `lowerApplied`).
+  - `Holds<T>{}` on a fieldless struct is still 5206; a struct can't take a pack (5081), so `Holds`
+    takes one tuple type. Map-valued annotations, `@Keeps{["x": ["x"]]}`, work as any value.
+- **Scope** (`binder/module/local-binder.ts`): a declaration with type parameters binds its own
+  annotations right after defining them (`ownAnnotations`: `bindFunction` before its parameters,
+  `typeParameterScope`, `bindTrait`); `annotations` skips such a declaration. So `@Holds<U>` on
+  `fn f<U>` names `U`, and nothing a function declares after its type parameters. A field's
+  annotations see its struct's. The checker needed no `within`: a written type's constraints come
+  from its type parameters' declarations, so `@Tag<U>` with `Tag<T is Encodable>` is 5101 unless
+  `U is Encodable`.
+- **Lowered values:** an entry's annotations are lowered at its instance's type arguments
+  (`lowering/tables/instances.ts` `typedIn`), and a field's at its owner's
+  (`lowering/tables/type-table.ts` `#fields`), so `@Tag<U>` reaches the Definition as `Tag<Int>`.
+- **Placement** (`rules/annotations.ts` `placements`, `Record<Known | 'any', …>`):
+  - Places (`surface/checked-annotation.ts` `AnnotationPlace`): field; function, extern or not
+    (`functionPlace`); struct, extern or not (shared included); statement; other, named.
+  - `any` stands on fields, functions and struct declarations, kept for tools. Enums, aliases,
+    traits, associated types and imports stay `other` (5903).
+  - `holds` stands on a struct place, `keeps` on a function place, each 5903 elsewhere; on a
+    non-extern or outside the std (`checker.isStd(module)`), 5750 and 5751.
+- **Known annotations** are well-known names (`src/foundation/language/well-known/index.ts`:
+  `holds`, `keeps` beside `waypoint` and `json`'s), read with `knownOf`, `ofField` and `fieldHas`.
+  An annotation's type arguments are on `CheckedAnnotation.type` (`surface/checked-annotation.ts`).
 - **Trap:** a struct with an annotated field no longer fits a shape (§3.1, "Nominal to shape";
   `constructs/declarations/layout/index.ts`).
-- **Names:** `followsConvention` (`src/foundation/language/naming.ts`) strips a leading `_`, then
-  requires PascalCase; breaking it is 4012. The annotations are `Holds` and `Keeps`, without `_`.
-- **The `lifetimes` module:**
-  - std modules are listed once, in `src/stdlib/std-sources.ts`, and loaded by
-    `stdlib-loader.ts`;
-  - std modules import each other today (`rpc.ista`, `fanout.ista`, `runtime.ista`, `testing.ista`
-    and others);
-  - nothing can import the prelude, but the prelude can import a std module, cycle included: a probe
-    of the prelude importing `inbox` checks clean, and `binder/link/` needs no fixpoint for cycles.
-- **Parameter names as denotations:** `lookup/key-denotations.ts` already resolves a String literal
-  naming a field. `Keeps`' names join it.
-- **`heldPartsOf`'s readers,** which C2 audits once `Holds` changes what externs hold:
-  `types/traits/sendable.ts`, `types/properties/value-kinds.ts`, `rules/disposal/must-use.ts`, and
-  `held.ts`'s own `heldType`/`heldTypes`.
+- **The `lifetimes` module** (`src/stdlib/lifetimes/lifetimes.ista`): a language module, a role
+  (`languageModules.lifetimes`, `stdRoles`), so every program loads it and `wellKnownEntity` finds
+  it; the prelude imports `Holds, Keeps` from it, an import cycle the binder needs no fixpoint for.
+  It is not the prelude's: a program imports it to name either.
+- **Reading them** (`rules/lifetimes/externs.ts`), by position, never by name:
+  - `externHeldOf(type)` (on `Checker`): an extern type's `@Holds` types at its arguments, a tuple's
+    elements and `()` none; its arguments without one. `heldPartsOf` reads it.
+  - `keepsOf(extern)` (on `Checker`): `Kept { holder, kept }[]` by parameter position, from
+    `@Keeps`, a name no parameter has keeping nothing; without one, each `&` parameter keeps every
+    other. A pure query, no entry of its own.
+  - `checkKeeps`, run by `checkFunction` on externs: 5752 at each String literal naming no
+    parameter, or at the annotation where a constant gave the name.
+  - `Holds` names no growing instance of its own type (§3.5), so `Resolver`'s doesn't name its
+    `done`; nothing enforces it beyond the std's tests, since only the std writes `Holds`.
+- **Parameter names as denotations:** `lookup/key-denotations.ts` `keptParameterDenotations`: a
+  String literal in a function's `@Keeps` denotes the parameter it names, so go-to reaches it.
+  References and rename skip the std's String literals (`navigation/references.ts`).
+- **`heldPartsOf`'s readers, audited:**
+  - `held.ts` `heldType`/`heldTypes` and `rules/disposal/must-use.ts` read `Holds`: a
+    `WeakRef<Future<…>>` may be lost, where a tuple of a future must be used.
+  - `types/traits/sendable.ts` reads it too; the std's `Holds` stand only on handles that stay in
+    their instance, which never cross, and the one sendable handle, `Instance`, has none.
+  - `types/properties/value-kinds.ts` reads every extern type argument, held or watched: a native may
+    give back a watched argument's value (`deref`), which code then handles.
 
-### What the std declares (C2)
+### What the std declares (C2, landed)
 
 `src/stdlib/prelude/prelude.ista` unless noted:
 
@@ -210,7 +218,7 @@ The node kinds are in `src/compiler/syntax/expressions/index.ts` and `syntax/sta
 | `extern shared struct Slot<T>` | `@Holds<T>` (the default, written for clarity) |
 | `extern shared struct WeakRef<T is Disposable>` | `@Holds<()>`: `T` watched |
 | `extern shared struct Future<T, K>` | `@Holds<T>`; its call belongs to the language |
-| `extern shared struct Resolver<T, K>` | `@Holds<(Fn<(T,), Unit, K>, Fn<(), Unit, K>, Resolver<(Int, T), K>)>` |
+| `extern shared struct Resolver<T, K>` | `@Holds<(Fn<(T,), Unit, K>, Fn<(), Unit, K>)>`; an at-resolver's `done` is covered by them |
 | `extern shared struct _Cell<T>` | the default, `T` |
 | `extern shared struct _Call` | none: no type arguments, so it holds nothing |
 | `extern shared struct Mock<F>` (`testing.ista`) | none: a mock holds anything (design.md §6.3) |
@@ -241,6 +249,11 @@ The node kinds are in `src/compiler/syntax/expressions/index.ts` and `syntax/sta
 - **Pruning by declared type:** `isSendable` (`types/traits/sendable.ts`) and `isSendableFunction`
   (`types/type/function-types.ts`), whose kinds are memoized in `wiring/program/program-kinds.ts`.
   A sendable value reaches no handle of the instance.
+- **Natives (C2):** `checker.keepsOf(extern)` gives what each parameter keeps, by position, and
+  `checker.externHeldOf(type)` what a handle holds one level down; the type arguments `Holds` leaves
+  out are watched (design.md §6.3), so read them off the declaration's type parameters. The
+  Definition carries neither: the native audit (step 0) reads them off the checker of the programs
+  it compiles, or lowering adds them, its call.
 - **Calls the program never writes, which the runtime makes** (design.md §5.5):
 
   | Call | When | Unit |
@@ -327,7 +340,8 @@ pairs the IR shows to be redundant.
 - **Invalid programs:** a corpus case's header is `# error: <code> at <line>:<column>` lines
   (`test/corpus/programs.ts`). See `test/corpus/holders/invalid-*.ista`.
 - **Checker units:** `check.test-kit.ts`; `rules/expansion/functions.test.ts` is the precedent for a
-  graph rule's tests.
+  graph rule's tests, and `rules/lifetimes/externs.test.ts` (`reportedInStd`) for a std module's own
+  diagnostics.
 - **"Checks as before":**
   - the checker's sweeps: `order.sweep.test.ts`, `revisions.sweep.test.ts` (whose adoption check
     covers new entries) and `lookup/lookup.sweep.test.ts`;

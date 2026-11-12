@@ -302,7 +302,7 @@ general, not specific to lifetimes. Today:
 |---|---|
 | a fieldless generic `struct Holds<T>` | an annotation with type arguments: the parser takes only a name and an optional `{…}` (2017) |
 | map-valued annotations on functions: `@Keeps{["x": ["x"]]}` | a bare fieldless struct value with type arguments, `Holds<Int>` (5508) |
-| a field's annotation sees its struct's type parameters | a function's or a type's own annotations seeing their type parameters: the binder binds them in the module scope (4000), and the checker checks their values with no `within` |
+| a field's annotation sees its struct's type parameters | a function's or a type's own annotations seeing their type parameters: the binder binds them in the module scope (4000). The checker needs no `within`: a written type's constraints come from its type parameters' declarations |
 | — | annotations on struct declarations, which the checker reports as misplaced (5903) |
 
 C2 adds all four:
@@ -340,7 +340,7 @@ extern shared struct Slot<T>
 extern shared struct WeakRef<T is Disposable>
 @Holds<T>
 extern shared struct Future<T, K in Persistence>
-@Holds<(Fn<(T,), Unit, K>, Fn<(), Unit, K>, Resolver<(Int, T), K>)>
+@Holds<(Fn<(T,), Unit, K>, Fn<(), Unit, K>)>
 extern shared struct Resolver<T, K in Persistence>
 ```
 
@@ -348,9 +348,15 @@ extern shared struct Resolver<T, K in Persistence>
   types, and `()` holds nothing. There are no packs and no empty `<>`.
 - **A resolver holds** its callback, its `onCancel` callbacks, and an at-resolver's `done`: the
   callback root's direction. It doesn't hold its futures: case chains are transient (§3).
+- **`Holds` names no growing instance of its own type,** as a field can't (spec §3.5): every walk
+  over what values hold meets finitely many types. So a resolver's `done`, a
+  `Resolver<(Int, T), K>`, isn't named: its callbacks cover it, a function value holding anything
+  for the analysis (§5.1).
 - **Default without it:** the type arguments, which is today's rule.
-- **`heldPartsOf` reads it**, so it is the one home of what an extern holds for every reader:
-  sendability, must-use and relevance. C2 audits those readers.
+- **`heldPartsOf` reads it** (through the checker's `externHeldOf`), so it is the one home of what
+  an extern holds for every reader: sendability, must-use and relevance. The data kinds still read
+  every type argument (`value-kinds.ts`): a native may give back a watched argument's value, which
+  code then handles.
 - **Type arguments `Holds` leaves out are watched.** A native given such a handle may return any
   value of a watched type. That is how `deref` is modelled: its result may be any `T`, not
   something its argument holds.
@@ -394,9 +400,10 @@ through `&`, which is also the default.
 
 - **Placement:** `Holds` stands only on a std extern handle, and `Keeps` only on a std extern
   function. Elsewhere they are an error, because a host holds no language values.
-- **Native audit (runtime test):** while the std test suites and the corpus run, the capabilities
-  record every counted edge a native adds. Each edge must be covered by its function's `Keeps` or by
-  `&`, and allowed by the holder's `Holds`.
+- **Native audit (runtime test, C3 step 0):** while the std test suites and the corpus run, the
+  capabilities record every counted edge a native adds. Each edge must be covered by its function's
+  `Keeps` or by `&`, and allowed by the holder's `Holds`. It needs R1's edges: today `onAwait` adds
+  a resolver → future edge (the `on` field) that no `Keeps` covers.
 
 ## 7. Diagnostics
 

@@ -50,6 +50,7 @@ describe('stdRoles', () => {
       'std:prelude',
       'std:time',
       'std:json',
+      'std:lifetimes',
       'std:testing',
     ]);
   });

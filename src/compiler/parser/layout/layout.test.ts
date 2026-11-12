@@ -35,6 +35,7 @@ const {
   topLevelStatement,
   declarationInBlock,
   danglingAnnotation,
+  invalidAnnotation,
   misplacedAnnotation,
 } = parserDiagnostics;
 
@@ -187,6 +188,16 @@ describe('annotations', () => {
     expect(last?.annotations?.map((annotation) => dump(parsed, annotation))).toEqual([
       '(Annotation (StructLiteral (NamedType [A] []) [(FieldInitializer x 1)]))',
     ]);
+  });
+
+  it('name a struct with type arguments, bare or before braces, and nothing else', () => {
+    const text = lines('@Holds<T>', '@Keeps<(A, B)>{x: 1}', 'extern struct S<T>');
+    expect(dumpClean('module', text)).toBe(
+      '(Module [(ExternStructDeclaration _ S [(TypeParameter _ T _ [] _)] [] [] [(Annotation (TypeApplication Holds [(NamedType [T] [])])) (Annotation (StructLiteral (NamedType [Keeps] [(TupleType [(NamedType [A] []) (NamedType [B] [])])]) [(FieldInitializer x 1)]))])])',
+    );
+    expect(reported('module', lines('@Holds<T>(1)', 'fn f(): 1'))).toEqual(
+      reportedOnce(invalidAnnotation.code, 'Holds<T>(1)'),
+    );
   });
 
   it("widen their item's span over them, a function's over its header", () => {

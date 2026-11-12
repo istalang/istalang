@@ -47,7 +47,9 @@ import {
   checkDeclaredKinds,
 } from '../../rules/kinds/data-kinds.ts';
 import { checkSignatureKind } from '../../rules/kinds/signature-kinds.ts';
+import { checkKeeps } from '../../rules/lifetimes/externs.ts';
 import { checkSuite } from '../../rules/testing.ts';
+import { functionPlace } from '../../surface/checked-annotation.ts';
 import { namesMemberParameter } from '../../types/traits/struct-keys.ts';
 import { namesOneType } from '../../types/type/index.ts';
 import { outcomeOf } from '../../types/type/well-known.ts';
@@ -102,7 +104,7 @@ function checkPack(
 function checkFunction(checker: CheckerContext, node: FunctionDeclaration): void {
   const module = checker.moduleOf(node);
   checkTypeParameters(checker, node);
-  checker.annotations.of(module, node, { kind: 'function' });
+  checker.annotations.of(module, node, functionPlace(node));
   checker.parametersOf(node);
   checker.defaultsOf(node);
   checker.resultOf(node);
@@ -112,6 +114,7 @@ function checkFunction(checker: CheckerContext, node: FunctionDeclaration): void
   if (node.isExtern) {
     checkHostBoundary(checker, module, node);
     refusePatterns(checker, module, node, 'an extern function');
+    checkKeeps(checker, node);
   }
   if (checker.annotations.suiteTitleOf(module, node) !== undefined) {
     checkSuite(checker, module, node);
@@ -151,7 +154,7 @@ function annotatedNowhere(description: string) {
  * they are finite.
  */
 function checkStruct(checker: CheckerContext, node: DeclaredStruct, module: ModuleId): void {
-  annotatedNowhere('a struct declaration')(checker, node, module);
+  checker.annotations.of(module, node, { kind: 'struct', isExtern: false });
   checkTypeParameters(checker, node);
   checkAssociatedTypes(checker, node, module);
   checker.annotations.checkFields(checker.declaredFieldsOf(node));
@@ -210,7 +213,7 @@ const declarationHandlers: Handlers<CheckerContext, Declaration, [ModuleId], voi
   NamedImport: annotatedNowhere('an import'),
   NamespaceImport: annotatedNowhere('an import'),
   ExternStructDeclaration: (checker, node, module) => {
-    annotatedNowhere('an extern struct')(checker, node, module);
+    checker.annotations.of(module, node, { kind: 'struct', isExtern: true });
     checkTypeParameters(checker, node);
     checkAssociatedTypes(checker, node, module);
   },

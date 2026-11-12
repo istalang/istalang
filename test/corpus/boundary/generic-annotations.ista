@@ -1,0 +1,26 @@
+# outcome: 3
+# An annotation is a struct value of any struct (§3.16): a generic one without fields is given
+# its type arguments as its value is (§3.1), and a declaration's annotations see its type
+# parameters, as its fields' do. A struct declaration takes any annotation, kept for tools.
+
+import * as runtime from 'runtime'
+
+struct Tag<T>
+
+struct Note:
+  text: String
+
+@Tag<T>
+@Note{"kept for tools"}
+struct Box<T>:
+  item: T @Tag<Box<T>>
+
+@Tag<(U, Int)>
+fn unboxed<U>(box: Box<U>) -> U:
+  box.item
+
+live async fn main() -> Int: await runtime.run(runtime.id()) _main()
+ista async fn _main() -> Int:
+  const tag: Tag<Int> = Tag<Int>
+  const same = tag == Tag
+  unboxed(Box{item: if same: 3 else: 0})

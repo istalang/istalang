@@ -12,10 +12,10 @@ import type { FunctionContext } from '../../context.ts';
 import { noneOf } from '../../values/optionals.ts';
 import { neverLowered } from '../never-lowered.ts';
 import { lowerDereference } from '../parts/places.ts';
-import { lowerName, lowerNamed } from './access/names.ts';
+import { lowerApplied, lowerName, lowerNamed } from './access/names.ts';
 import { lowerUnwrap } from './access/optionals.ts';
 import { lowerCall } from './calls.ts';
-import { lowerFunctionValue, lowerLambda } from './closures.ts';
+import { lowerLambda } from './closures.ts';
 import {
   lowerArrayLiteral,
   lowerIndex,
@@ -52,7 +52,7 @@ export const expressionHandlers: Handlers<FunctionContext, Expression, [], Regis
   Binary: lowerBinary,
   Unary: lowerUnary,
   Call: lowerCall,
-  TypeApplication: lowerFunctionValue,
+  TypeApplication: lowerApplied,
   StructLiteral: lowerStructLiteral,
   NewStructLiteral: lowerNewStructLiteral,
   IndentedValue: (context, node) =>

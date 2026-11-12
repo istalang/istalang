@@ -15,6 +15,8 @@
  *   (syntax/declarations/field-defaults.ts).
  * - A named lambda's name is visible only inside the lambda (§3.14).
  * - `Self` is defined in a trait's scope, and only there (§3.10).
+ * - A declaration's annotations see its type parameters (§3.16), and nothing it declares after
+ *   them: a function's are bound before its parameters are defined.
  * - A static function's owner (`Duration` in `fn Duration.zero()`) is a type use in the scope
  *   around the function, which inside a trait includes `Self`.
  */
@@ -57,6 +59,7 @@ export function bindFunction(
       binder.use(node.owner, scope, 'type');
     }
     defineTypeParameters(binder, node.typeParameters, inner);
+    binder.ownAnnotations(node, inner);
   } else if (node.name !== undefined) {
     binder.declareVariable(inner, node.name, node);
   }
@@ -234,6 +237,7 @@ function bindTrait(binder: LocalBinder, node: TraitDeclaration, scope: Scope): v
   const inner = Scope.nested(scope);
   inner.define(selfType, selfEntity(node));
   defineTypeParameters(binder, node.typeParameters, inner);
+  binder.ownAnnotations(node, inner);
   binder.enter(node, inner);
   const fields = node.members.filter(
     (member) => member.kind === 'FieldDeclaration' || member.kind === 'Invalid',
@@ -256,7 +260,6 @@ function bindTrait(binder: LocalBinder, node: TraitDeclaration, scope: Scope): v
   }
   for (const member of node.members) {
     if (member.kind === 'FunctionDeclaration') {
-      binder.annotations(member, inner);
       binder.checkConvention(member.name, 'value');
       bindFunction(binder, member, inner);
     }
@@ -265,7 +268,10 @@ function bindTrait(binder: LocalBinder, node: TraitDeclaration, scope: Scope): v
   binder.enter(node, inner, endOf(last === undefined ? node.span : spanThrough(binder, last)));
 }
 
-/** The scope of a declaration's type parameters, which the whole declaration sees. */
+/**
+ * The scope of a declaration's type parameters, which the whole declaration sees, its annotations
+ * first.
+ */
 function typeParameterScope(
   binder: LocalBinder,
   node: DeclaredStruct | ExternStructDeclaration | TypeAliasDeclaration | EnumDeclaration,
@@ -273,6 +279,7 @@ function typeParameterScope(
 ): Scope {
   const inner = Scope.nested(scope);
   defineTypeParameters(binder, node.typeParameters, inner);
+  binder.ownAnnotations(node, inner);
   binder.enter(node, inner);
   return inner;
 }

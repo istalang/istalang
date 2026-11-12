@@ -2,7 +2,8 @@
  * The checker's diagnostics of lifetimes (§3.4, §4, §7), a part of the checker's one catalog
  * (index.ts):
  *
- * - holders and disposal, codes 5700–5799, the labels `hold`, `break` and `continue` name included;
+ * - holders and disposal, codes 5700–5799, the labels `hold`, `break` and `continue` name included,
+ *   and the std's annotations of what its externs hold and keep (5750–5759, §3.16);
  * - the weak side of disposal, codes 5800–5899: an async call's `disposing()`. Which name denotes
  *   the call, and where none does, is the binder's to report.
  */
@@ -64,6 +65,21 @@ export const lifetimeTemplates = {
     code: 5711,
     severity: 'warning',
     message: (name: string) => `Nothing names the label '${name}'; remove it.`,
+  },
+  holdsOutsideStd: {
+    code: 5750,
+    message: () =>
+      "'@Holds' stands only on an extern struct of the std: any other type shows what its values hold, and a host's hold no language values (§3.16).",
+  },
+  keepsOutsideStd: {
+    code: 5751,
+    message: () =>
+      "'@Keeps' stands only on an extern function of the std: any other function shows what it keeps, and a host's keep no language values (§3.16).",
+  },
+  keepsUnknownParameter: {
+    code: 5752,
+    message: (name: string, function_: string) =>
+      `'${function_}' has no parameter '${name}' for '@Keeps' to name (§3.16).`,
   },
 } as const;
 

@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-11-11
-last_updated: 2026-11-11
+last_updated: 2026-11-12
 tags: [tracker]
 ---
 
@@ -28,6 +28,7 @@ tags: [tracker]
 | Identity, variance and inference (`docs/work/variance-inference/plan.md`; closed F25) | done |
 | Proposal 8, live and ista async (`docs/work/async-kinds/plan.md`; merge review closed every finding, Q52–Q55 left) | done |
 | Proposal 9, native runtime (`docs/proposals/9-native-runtime.md`), beyond async-kinds CX's minimal slice | not planned: a plan of its own |
+| Static lifetimes (`docs/work/static-lifetimes/plan.md`) | in progress: C2 done |
 | M8 Packages | planned |
 
 ## Filed
@@ -176,7 +177,7 @@ Crashes, spec gaps, wrong or missing diagnostics, host-visible behaviour.
 | B36 | A literal of a recursive alias passed where the alias is expected is refused, though it builds as the alias's value elsewhere: for `type R = Int | String | Array<R>`, `passed([2, [[2], [...ints()]]])` with `fn passed(r: R)` reports 5301 (expected Int, found Array<Array<Int>>), while `const r: R = [2, [[2], [...ints()]]]` checks. The property "build a literal mixing items only checking types with items of other types, wherever it goes" (`types/identity/recursive-unfolding.test.ts`) found it at seed 1498164649 (path `7:1:4`); it reproduces on main 1b9195c6. | medium | none; can be done now | applied type arguments work 2026-11-08 |
 | B48 | Checking overflows the stack on a member parameter whose union names the parameter itself, matched on: `fn both<K in "a" \| K>(k: K) -> String:` with `match k:` and literal cases recurses through `constructorsOf` (`constructs/patterns/exhaustiveness/shapes.ts`) and `memberUnionOf`. `check.test.ts`'s property "never throws on broken programs" hits it about once in 15,000 runs (seed 744611511). Present on 4ddaa8df. | low | none; can be done now | variance-inference C4 2026-11-09 |
 | B49 | `examples/FormBuilder/form-spec.test.ts` doesn't compile under `tsc --strict`, which `form-builder-spec.md` claims it does: seven of its 14 rejected forms span several lines, and each has its `// @ts-expect-error` above the `node({` call. tsc reports the excess property on the property's own line, so each directive goes unused and the error it meant to expect is reported. Moving each directive onto its offending property's line fixes it. | low | none; can be done now | variance-inference C4 QA 2026-11-09 |
-| B50 | Checking a broken program can crash resolving a type argument's default: `Unreachable: An entry was reached again while it computed, in a table with no stand-in` (`ProgramChecker.resolveType` from `types/written/type-arguments.ts`, `defaultArgument`), for `type Tree<T> = T \| Array<Tree<T>>` beside `type List< = { head: Int, tail: List? }` and `type Machine = fn(Int) -> Machine`. `lowering/lower.test.ts`'s property hits it at seed 1357070013. | medium | none; can be done now | async-kinds R1b verify 2026-11-10 |
+| B50 | Checking a broken program can crash resolving a type argument's default: `Unreachable: An entry was reached again while it computed, in a table with no stand-in` (`ProgramChecker.resolveType` from `types/written/type-arguments.ts`, `defaultArgument`), for `type Tree<T> = T \| Array<Tree<T>>` beside `type List< = { head: Int, tail: List? }` and `type Machine = fn(Int) -> Machine`. `lowering/lower.test.ts`'s property hits it at seed 1357070013, and `checker/check.test.ts`'s "checking is total" with `struct Tag<T = Tag` (2026-11-12). | medium | none; can be done now | async-kinds R1b verify 2026-11-10 |
 | B51 | Signature help for a call of a function value read from a field, `obj.f(‸)`, shows nothing: `signature-help.ts`'s `valueCallHelp` reads `body.typeOf(calledName(call))`, and checking records no type for a field read as a callee (`calls.ts` `callMethod` reads the field without checking the access). `calledValueType` (`constructs/closures/value-calls.ts`) derives that field's type as spawn and deferred calls read it; signature help reading it through the checker's surface would fix it. | easy | none; can be done now | DC 2026-11-10 |
 | B52 | A function a type entry calls isn't in the expansion graph (§3.5, `rules/expansion/functions.ts`): a generic `dispose<T>(self: Lease<T>)` that makes a `Lease<Array<T>>`, or a codec whose body reaches a generic spawning wrapper (`runtime.isolate`) with a bigger `T`, whose `Instance<T>` entry's encoder is that codec again (`lowering/tables/type-table.ts`), checks clean and overflows the stack in lowering. The checker counts an outcome's codec only where an extern giving the instance is called (`rules/boundary/outcome-codecs.ts`). Count, per body, the functions the type entries it makes call (`disposalOf`, an `Instance<T>`'s encoder), found against its constraints. | low | none; can be done now | async-kinds DC 2026-11-10 |
 | B53 | A `&` parameter with a default, `fn f(a: &Int = 3)`, passes the checker, but its Definition fails to load (`FormatError`): nothing can be passed by `&` from a default, so the checker should refuse it (§3.3, §3.7). | easy | none; can be done now | DC 2026-11-10 |

@@ -19,6 +19,7 @@ import { memo } from '../../../foundation/structures/memo.ts';
 import { unreachable } from '../../../foundation/structures/unreachable.ts';
 import { lineMapOf } from '../../../foundation/text/line-map.ts';
 import type { Checker } from '../../checker/check.ts';
+import { functionPlace } from '../../checker/surface/checked-annotation.ts';
 import type { RequiredField } from '../../checker/surface/checked-field.ts';
 import { passesAll } from '../../checker/surface/resolved-call.ts';
 import type { AnyType, Type } from '../../checker/types/type/index.ts';
@@ -53,6 +54,7 @@ import {
   nestedKey,
   nestedName,
   ownerDeclaration,
+  typedIn,
 } from './instances.ts';
 import { qualifiedNameOf } from './names.ts';
 import { ownEntryOf } from './own-entries.ts';
@@ -132,7 +134,7 @@ export class DefinitionTables {
       functionIndex: (instance) => this.functionIndex(instance),
       callIndex: (call) => this.callIndex(call),
       hostNativeIndex: (declaration) => this.hostNativeIndex(declaration),
-      annotationValues: (annotations) => annotationValues(this, annotations),
+      annotationValues: (annotations, typed) => annotationValues(this, annotations, typed),
     });
   }
 
@@ -176,7 +178,8 @@ export class DefinitionTables {
       span: spanIn(programModule(this.#checker.program, module).tree, declaration.name.span),
       annotations: annotationValues(
         this,
-        this.#checker.annotations.of(module, declaration, { kind: 'function' }),
+        this.#checker.annotations.of(module, declaration, functionPlace(declaration)),
+        typedIn(instance, this.#checker.typeRules),
       ),
     };
   }

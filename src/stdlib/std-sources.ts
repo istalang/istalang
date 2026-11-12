@@ -19,6 +19,7 @@ import fanoutSource from './fanout/fanout.ista';
 import futuresSource from './futures/futures.ista';
 import inboxSource from './inbox/inbox.ista';
 import jsonSource from './json/json.ista';
+import lifetimesSource from './lifetimes/lifetimes.ista';
 import logSource from './log/log.ista';
 import mathSource from './math/math.ista';
 import preludeSource from './prelude/prelude.ista';
@@ -35,6 +36,7 @@ export const stdModuleSources = {
   [languageModules.prelude]: preludeSource,
   [languageModules.time]: timeSource,
   [languageModules.json]: jsonSource,
+  [languageModules.lifetimes]: lifetimesSource,
   futures: futuresSource,
   inbox: inboxSource,
   rpc: rpcSource,

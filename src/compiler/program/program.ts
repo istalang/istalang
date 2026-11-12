@@ -132,7 +132,8 @@ export interface ProgramOptions {
   /**
    * The std modules the language refers to, loaded like roots: the prelude, whose exports binding
    * makes visible everywhere; `time`, which types duration literals; `json`, whose codecs values
-   * crossing to a host go through; and `testing`, which only test modules may import.
+   * crossing to a host go through; `lifetimes`, whose annotations say what the std's externs hold
+   * and keep; and `testing`, which only test modules may import.
    */
   readonly roles?: Readonly<Partial<Record<LanguageModule, LocatedModule>>>;
 }

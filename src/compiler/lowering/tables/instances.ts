@@ -25,7 +25,11 @@ import type { Checker } from '../../checker/check.ts';
 import type { ValueSite } from '../../checker/surface/checked-body.ts';
 import type { Witnesses } from '../../checker/surface/resolved-call.ts';
 import type { TypeKeys } from '../../checker/types/identity/type-keys.ts';
-import { type Substitution, substitutionFor } from '../../checker/types/parts/substitution.ts';
+import {
+  type Substitution,
+  substitute,
+  substitutionFor,
+} from '../../checker/types/parts/substitution.ts';
 import {
   isMarkParameter,
   type QualifierLookup,
@@ -33,6 +37,7 @@ import {
 } from '../../checker/types/type/function-kinds.ts';
 import type { FunctionType, Type } from '../../checker/types/type/index.ts';
 import { literalType } from '../../checker/types/type/primitives.ts';
+import type { TypeRules } from '../../checker/types/type/type-rules.ts';
 import type { ModuleId } from '../../program/program.ts';
 import {
   type ContextConstantDeclaration,
@@ -124,6 +129,15 @@ export function rootInstance(
     .filter((parameter) => isMarkParameter(lookup, parameter))
     .map(() => simpleMark);
   return { declaration, typeArguments: [...written, ...rest], witnesses: new Map() };
+}
+
+/** A type written in `instance`'s declaration, as the instance reads it. */
+export function typedIn(
+  instance: Pick<FunctionInstance, 'declaration' | 'typeArguments'>,
+  rules: TypeRules,
+): (type: Type) => Type {
+  const substitution = substitutionOf(instance);
+  return (type) => substitute(type, substitution, rules);
 }
 
 /** How the instance maps its declaration's type parameters. */

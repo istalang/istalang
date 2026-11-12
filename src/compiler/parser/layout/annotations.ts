@@ -2,8 +2,9 @@
  * Annotations (§3.16): parsing `@…`, and attaching annotations to the item they apply to.
  *
  * An annotation's value is parsed as a postfix expression, the same grammar as a struct literal,
- * and then held to the shape the spec allows: a possibly qualified struct name, bare or followed by
- * `{…}`. Anything else, such as a call, is reported but kept, so the tree shows what was written.
+ * and then held to the shape the spec allows: a possibly qualified struct name, with type arguments
+ * or not, bare or followed by `{…}`. Anything else, such as a call, is reported but kept, so the
+ * tree shows what was written.
  *
  * Attaching adds the annotations to an item already parsed, and widens its span over them, so no
  * item parser has to know about annotations. It makes the item anew, so a function's body, which
@@ -40,10 +41,14 @@ export function parseAnnotation(parser: Parser): Annotation | undefined {
 }
 
 function isAnnotationShape(value: Expression): boolean {
-  if (value.kind === 'StructLiteral') {
-    return value.type !== undefined;
+  switch (value.kind) {
+    case 'StructLiteral':
+      return value.type !== undefined;
+    case 'TypeApplication':
+      return qualifiedPath(value.target) !== undefined;
+    default:
+      return value.kind === 'Missing' || qualifiedPath(value) !== undefined;
   }
-  return value.kind === 'Missing' || qualifiedPath(value) !== undefined;
 }
 
 /**

@@ -21,7 +21,9 @@ export type AnnotationPlace =
    * A field: of a struct, a variant or a trait, whose declared type its annotations' check reads.
    */
   | { readonly kind: 'field' }
-  | { readonly kind: 'function' }
+  | { readonly kind: 'function'; readonly isExtern: boolean }
+  /** A struct declaration, shared or not, or an extern struct. */
+  | { readonly kind: 'struct'; readonly isExtern: boolean }
   | { readonly kind: 'statement'; readonly waits: boolean }
   /** Anything else, named as a diagnostic says it: `an enum variant`, `a struct declaration`. */
   | { readonly kind: 'other'; readonly description: string };
@@ -38,6 +40,11 @@ export function canAnnotate(entity: TypeEntity): boolean {
   return entity.declaration.kind === 'StructDeclaration';
 }
 
+/** Where a function stands, extern or not, at the top level, in a trait or in a body. */
+export function functionPlace(declaration: FunctionDeclaration): AnnotationPlace {
+  return { kind: 'function', isExtern: declaration.isExtern };
+}
+
 /**
  * Where a statement of a body stands: a local function's annotations mean what a function's do,
  * and any other statement's whether it waits, at an `await` or `select` of its own rather than in
@@ -45,7 +52,7 @@ export function canAnnotate(entity: TypeEntity): boolean {
  */
 export function statementPlace(statement: Statement): AnnotationPlace {
   return statement.kind === 'FunctionDeclaration'
-    ? { kind: 'function' }
+    ? functionPlace(statement)
     : { kind: 'statement', waits: waits(statement) };
 }
 

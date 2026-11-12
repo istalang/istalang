@@ -10,13 +10,15 @@
 /**
  * The std modules a program is handed by role: the prelude every module sees without importing it
  * (§3.13), `time`, whose `Duration` types every duration literal (§2), `json`, whose codecs every
- * value crossing to a host goes through (§9), and `testing`, which only test modules may import
- * and whose suites `ista test` runs (§10).
+ * value crossing to a host goes through (§9), `lifetimes`, whose annotations say what the std's
+ * externs hold and keep (§3.16), and `testing`, which only test modules may import and whose suites
+ * `ista test` runs (§10).
  */
 export const languageModules = {
   prelude: 'prelude',
   time: 'time',
   json: 'json',
+  lifetimes: 'lifetimes',
   testing: 'testing',
 } as const;
 
@@ -103,6 +105,12 @@ export const wellKnown = {
   jsonName: { module: 'json', name: 'JsonName' },
   jsonSkip: { module: 'json', name: 'JsonSkip' },
   jsonBigInt: { module: 'json', name: 'JsonBigInt' },
+  /**
+   * What a value of a std extern struct holds, and what a std extern function's parameters come to
+   * keep (§3.16): what the analysis of lifetimes can't read off code.
+   */
+  holds: { module: 'lifetimes', name: 'Holds' },
+  keeps: { module: 'lifetimes', name: 'Keeps' },
   /** The annotation of a function returning a suite's tests (§10). */
   suite: { module: 'testing', name: 'Suite' },
   /** What a suite function returns a list of (§10). */

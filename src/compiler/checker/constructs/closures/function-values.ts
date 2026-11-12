@@ -10,10 +10,12 @@
  * - A name none of whose functions is chosen is reported: as needing a function type where none
  *   is expected, else as fitting none of the one expected; a lone function that doesn't fit is its
  *   own value, which the expected type reports as any value's.
- * - Type arguments after a name of anything but functions are reported, once the name is checked
- *   as it would be alone; a type's or a variant's without fields, which only a literal or a call
- *   gives type arguments (§3.1, §3.11), isn't checked alone, where type arguments would be asked
- *   of the type or enum.
+ * - A struct without fields named with type arguments is its value of that instance (§3.1), as
+ *   bare it is the expected one's (../expressions/access/names.ts): `Holds<Int>`.
+ * - Type arguments after a name of anything else are reported, once the name is checked as it
+ *   would be alone; a type's or a variant's without fields, which only a literal or a call gives
+ *   type arguments (§3.1, §3.11), isn't checked alone, where type arguments would be asked of the
+ *   type or enum.
  */
 
 import type { TypeApplication } from '../../../syntax/expressions/calls.ts';
@@ -35,10 +37,11 @@ import {
   ownChoice,
 } from '../../resolution/choosing/named-functions.ts';
 import type { Admits } from '../../types/fitting/expected.ts';
-import { expectedFunction } from '../../types/fitting/expected.ts';
-import type { FunctionType, Type } from '../../types/type/index.ts';
+import { expectedFunction, writtenNominal } from '../../types/fitting/expected.ts';
+import { type FunctionType, isNominalEntity, type Type } from '../../types/type/index.ts';
 import { errorType, expectsError } from '../../types/type/primitives.ts';
 import { typeText } from '../../types/type/type-text.ts';
+import { fieldlessStructOf } from '../../types/written/named-types.ts';
 
 /** The type of the function `named` names as a value; the error type after a report. */
 export function checkFunctionValue(
@@ -84,7 +87,8 @@ export function recordedValue(
 
 /**
  * The type of `node`, a name given type arguments, as a value: the function it names, instantiated
- * with them (§3.5); the error type after a report.
+ * with them (§3.5), or the struct without fields it names, of that instance (§3.1); the error type
+ * after a report.
  */
 export function checkAppliedFunction(
   context: BodyContext,
@@ -97,6 +101,14 @@ export function checkAppliedFunction(
   }
   const { target } = node;
   const entity = context.entityOf(target.kind === 'Identifier' ? target : target.member);
+  if (
+    entity?.kind === 'type' &&
+    isNominalEntity(entity) &&
+    fieldlessStructOf(context.checker, entity) !== undefined
+  ) {
+    const written = node.typeArguments.map((argument) => context.resolveType(argument));
+    return writtenNominal(context, node.span, entity, written);
+  }
   const isNamedAlone = entity?.kind !== 'variant' && entity?.kind !== 'type';
   if (!isNamedAlone || context.expression(target, expected).kind !== 'error') {
     const name = (qualifiedPath(target) ?? []).map(({ text }) => text).join('.');

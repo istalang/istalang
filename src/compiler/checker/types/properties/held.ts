@@ -2,8 +2,8 @@
  * What a value of a type holds at any depth, for rules about values held inside others: whether it
  * may leave its instance (traits/sendable.ts), a future that must be awaited (§3.3), a `Result`
  * that must be used (§3.12). A type holds itself and what its parts hold: a tuple's elements, a
- * struct's fields, an enum's variants' fields, the value behind a shared struct, and an extern
- * type's type arguments (`heldPartsOf`). A recursive type holds nothing more where it recurs
+ * struct's fields, an enum's variants' fields, the value behind a shared struct, and what an extern
+ * type's `@Holds` says, else its type arguments (`heldPartsOf`). A recursive type holds nothing more where it recurs
  * (type-cycle.ts).
  */
 
@@ -15,7 +15,7 @@ import { TypeCycle } from './type-cycle.ts';
 
 type HeldReader = Pick<
   CheckerContext,
-  'fieldsOf' | 'variantsOf' | 'sharedValueOf' | 'typeKeys' | 'typeRules'
+  'fieldsOf' | 'variantsOf' | 'sharedValueOf' | 'externHeldOf' | 'typeKeys' | 'typeRules'
 >;
 
 /** The first type `type` holds, itself first, that `picks` picks; undefined when none is. */
@@ -56,11 +56,14 @@ function walkHeld(checker: HeldReader, type: Type, visit: (part: Type) => boolea
 
 /**
  * What a value of `type` holds one level down: a tuple's elements, a struct's fields, the fields of
- * each of an enum's variants, what a handle's cell holds, and an extern type's type arguments,
- * which stand for the values the runtime or the host keeps in it.
+ * each of an enum's variants, what a handle's cell holds, and what an extern type's `@Holds` names
+ * (§3.16), else its type arguments, which stand for the values the runtime or the host keeps in it.
  */
 export function heldPartsOf(
-  checker: Pick<CheckerContext, 'fieldsOf' | 'variantsOf' | 'sharedValueOf' | 'typeRules'>,
+  checker: Pick<
+    CheckerContext,
+    'fieldsOf' | 'variantsOf' | 'sharedValueOf' | 'externHeldOf' | 'typeRules'
+  >,
   type: Type,
 ): readonly Type[] {
   switch (type.kind) {
@@ -73,7 +76,7 @@ export function heldPartsOf(
     case 'nominal':
       switch (type.entity.declaration.kind) {
         case 'ExternStructDeclaration':
-          return type.arguments;
+          return checker.externHeldOf(type);
         case 'StructDeclaration':
           return (checker.fieldsOf(type) ?? []).map((field) => field.type);
         case 'SharedStructDeclaration':

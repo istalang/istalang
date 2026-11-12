@@ -3,11 +3,12 @@
  * and computes it, in the same switch, so the two can't disagree. Compile time computes literals, a
  * negated number and a template without values among them, duration literals, tuples (including a
  * value converted to or from a one-element tuple, §3.15), structs in every literal form (a spread
- * copying a computed struct's fields), a struct without fields written bare, arrays and maps of
- * `Map`, lambdas, which capture nothing at the top level (§3.14), and other top-level constants;
- * a struct's value converted into its shape (§3.1); anything else, a map literal of another type,
- * a shared struct's `new`, an enum variant, or a value needing an optional wrap, an `any`
- * conversion or an async function fit among them, is refused where it stands (forms.ts).
+ * copying a computed struct's fields), a struct without fields written bare, type arguments and
+ * all (`Holds<Int>`), arrays and maps of `Map`, lambdas, which capture nothing at the top level
+ * (§3.14), and other top-level constants; a struct's value converted into its shape (§3.1);
+ * anything else, a map literal of another type, a shared struct's `new`, an enum variant, or a
+ * value needing an optional wrap, an `any` conversion or an async function fit among them, is
+ * refused where it stands (forms.ts).
  *
  * A spread spreads only an array or a map compile time built itself: its elements, or its entries
  * as tuples. Anything else iterable is iterated by `iterate` when the program runs, and computing
@@ -23,6 +24,7 @@
 import type { Diagnostic } from '../../../../foundation/diagnostics/diagnostic.ts';
 import type { VariableOwner } from '../../../binder/entities.ts';
 import { type FunctionDeclaration, typeParametersOf } from '../../../syntax/declarations/index.ts';
+import type { TypeApplication } from '../../../syntax/expressions/calls.ts';
 import type {
   ArrayLiteral,
   Expression,
@@ -135,6 +137,8 @@ class Computation {
         }
         return constant.form === undefined ? unknown : computed(constant.form);
       }
+      case 'TypeApplication':
+        return this.#bareStruct(node);
       case 'StructLiteral':
         return this.#struct(node);
       case 'IndentedValue': {
@@ -388,8 +392,11 @@ class Computation {
     return (kind === 'array' || kind === 'map') && isExactItems ? spreading : refused(spread);
   }
 
-  /** A struct without fields named bare (§3.1); any other name that isn't a constant is refused. */
-  #bareStruct(node: Identifier): Outcome {
+  /**
+   * A struct without fields named bare, with type arguments or not (§3.1); any other name that
+   * isn't a constant is refused.
+   */
+  #bareStruct(node: Identifier | TypeApplication): Outcome {
     const type = this.#scope.checked.typeOf(node);
     return type?.kind === 'nominal' && this.#scope.checker.fieldsOf(type)?.length === 0
       ? computed({ kind: 'struct', type, fields: [] })

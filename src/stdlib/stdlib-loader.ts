@@ -43,6 +43,7 @@ export function stdRoles(
     prelude: roleModule(languageModules.prelude, sources),
     time: roleModule(languageModules.time, sources),
     json: roleModule(languageModules.json, sources),
+    lifetimes: roleModule(languageModules.lifetimes, sources),
     testing: roleModule(languageModules.testing, sources),
   };
 }

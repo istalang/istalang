@@ -36,6 +36,7 @@ describe('loadProject', () => {
       'std:prelude',
       'std:time',
       'std:json',
+      'std:lifetimes',
       'std:testing',
     ]);
     expect(textOf(program, 'time')).toBe('fn now(): 1');
@@ -60,13 +61,14 @@ describe('loadProject', () => {
     expect(program.modules.get(lib)?.name).toBe('lib');
   });
 
-  it('loads the prelude, time, json and testing with every program, by their roles, and what they import', () => {
+  it('loads the prelude, time, json, lifetimes and testing with every program, by their roles, and what they import', () => {
     const root = tempProject({ 'main.ista': '' });
     const { program } = loadProject(root, ['main.ista']);
     expect(program.roles).toEqual({
       prelude: 'std:prelude',
       time: 'std:time',
       json: 'std:json',
+      lifetimes: 'std:lifetimes',
       testing: 'std:testing',
     });
     const shipped = [...program.modules.values()].map((module) => [module.name, module.isStd]);
@@ -75,6 +77,7 @@ describe('loadProject', () => {
       ['prelude', true],
       ['time', true],
       ['json', true],
+      ['lifetimes', true],
       ['testing', true],
       ['inbox', true],
     ]);

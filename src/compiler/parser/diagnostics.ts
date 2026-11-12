@@ -81,7 +81,8 @@ export const parserDiagnostics = defineDiagnostics('parser', {
   },
   invalidAnnotation: {
     code: 2017,
-    message: () => "An annotation is a struct's name, optionally followed by '{…}'.",
+    message: () =>
+      "An annotation is a struct's name, with type arguments or not, optionally followed by '{…}'.",
   },
   invalidAssignmentTarget: {
     code: 2018,

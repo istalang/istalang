@@ -3,7 +3,8 @@
  * was declared. A variant's type comes from its enum (structs/variants.ts). Types, primitives and
  * namespaces are not values; a type in value position is how a static function or a conversion is
  * called, which the call checks before it gets here. The one type that is a value is a struct
- * without fields, written bare (§3.1), which takes its type arguments from the expected type.
+ * without fields, written bare (§3.1), which takes its type arguments from the expected type, or
+ * from those written after it (../../closures/function-values.ts).
  */
 
 import { type Entity, localFunctionOf, type VariableEntity } from '../../../../binder/entities.ts';
