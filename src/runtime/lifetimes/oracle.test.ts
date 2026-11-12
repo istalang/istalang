@@ -8,8 +8,10 @@
 
 import { describe, expect, it } from 'vitest';
 import { compiledText } from '../../compiler/compile.test-kit.ts';
+import { handleTo } from '../../definition/values/values.ts';
 import { startToEnd, testRuntime } from '../runtime.test-kit.ts';
-import { cyclicOracle } from './oracle.test-kit.ts';
+import { Heap } from '../scheduler/instance/heap.ts';
+import { acyclicOracle, cyclicOracle } from './oracle.test-kit.ts';
 
 const declarations = [
   "import * as runtime from 'runtime'",
@@ -194,5 +196,30 @@ describe('the oracle of static lifetimes', () => {
     ]),
   )('sees no cycle in $name (in a block: $inBlock)', async ({ body, inBlock }) => {
     expect(await seesCycle(body, inBlock)).toEqual({ ended: finished, seen: false });
+  });
+});
+
+describe("the oracle's walk", () => {
+  it('starts from the futures a resolver written into is registered on, which its registering gave edges', () => {
+    // A cell holding a wait, which holds what its case resolver is registered on, a future holding
+    // the cell: a cycle reaching the resolver that registering it closed.
+    const heap = new Heap([
+      { kind: 'cell', id: 0, type: 0, value: handleTo(1) },
+      { kind: 'wait', id: 1, waiter: 9, state: { kind: 'pending' } },
+      { kind: 'future', id: 2, state: { kind: 'resolved', value: handleTo(0) } },
+      {
+        kind: 'resolver',
+        id: 3,
+        state: {
+          kind: 'pending',
+          target: { kind: 'case', wait: 1, position: 0 },
+          on: [2],
+          onCancel: [],
+        },
+      },
+    ]);
+    expect(() => acyclicOracle.heapCheck({ heap, types: [] }, [3])).toThrow(
+      'A cycle reaching a disposable holds objects 0:cell, 1:wait, 2:future.',
+    );
   });
 });

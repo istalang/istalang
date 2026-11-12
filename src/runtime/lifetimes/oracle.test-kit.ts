@@ -38,7 +38,10 @@ function disposableCycles(
   state: Disposability,
   changed: Iterable<number>,
 ): readonly (readonly number[])[] {
-  const successors = countedGraph(state.heap, changed);
+  const successors = countedGraph(
+    state.heap,
+    [...changed].flatMap((id) => touched(state.heap, id)),
+  );
   const componentOf = stronglyConnected(
     [...successors].flatMap(([from, tos]) => tos.map((to) => ({ from, to }))),
   );
@@ -54,7 +57,7 @@ function disposableCycles(
       addToGroup(cycles, component, id);
     }
   }
-  return [...cycles.values()];
+  return [...cycles.values()].map((cycle) => cycle.toSorted((first, second) => first - second));
 }
 
 /** A check that throws at the first cycle through objects reaching a disposable, naming them. */
@@ -102,6 +105,17 @@ export function cyclicOracle(): Oracle {
  */
 export function oracleFor(name: string): Oracle {
   return cyclic.has(name) ? cyclicOracle() : acyclicOracle;
+}
+
+/**
+ * The objects whose edges in the oracle's graph changing `id` may have changed: itself, and a
+ * pending resolver's futures, whose edges to it registering it adds, as to them its wait's.
+ */
+function touched(heap: Heap, id: number): readonly number[] {
+  const object = heap.has(id) ? heap.objectOf(id) : undefined;
+  return object?.kind === 'resolver' && object.state.kind === 'pending'
+    ? [id, ...object.state.on]
+    : [id];
 }
 
 /** What `from` reaches in the oracle's graph: what each object of it holds there, by id. */
