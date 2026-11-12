@@ -18,9 +18,10 @@ import { createRuntime, type Runtime } from './host/index.ts';
 import { InstanceGroup } from './host/instance-group.ts';
 import type { DeployedProgram, HostReports } from './host/programs.ts';
 import type { Advanced, InstanceState, StartOptions } from './instance-state.ts';
+import { acyclicOracle } from './lifetimes/oracle.test-kit.ts';
 import type { FullNativeContext, Natives } from './natives.ts';
 import { Refusal } from './refusal.ts';
-import { loadDefinition } from './scheduler/loaded-definition.ts';
+import { type HeapCheck, loadDefinition } from './scheduler/loaded-definition.ts';
 import { Resident } from './scheduler/resident.ts';
 import { advance, unstarted } from './scheduler/wake.ts';
 import { seedBytes, seedTextOf } from './snapshot/random.ts';
@@ -66,6 +67,8 @@ export interface TestRuntimeOptions {
   readonly seed?: () => Uint8Array;
   /** Told what the contexts a live run drives report by themselves. */
   readonly reports?: HostReports;
+  /** The check of every instance's heap, the oracle of static lifetimes unless told otherwise. */
+  readonly heapCheck?: HeapCheck;
 }
 
 export interface TestRuntime {
@@ -99,6 +102,7 @@ export function testRuntime({
   host = {},
   seed = () => testSeed,
   reports,
+  heapCheck = acyclicOracle.heapCheck,
 }: TestRuntimeOptions = {}): TestRuntime {
   const inner = createRuntime({
     natives: nativesGiven,
@@ -106,6 +110,7 @@ export function testRuntime({
     clock,
     seed,
     host,
+    heapCheck,
     ...(reports === undefined ? {} : { reports }),
   });
   const starters = new Map<string, DeployedProgram>();
@@ -132,7 +137,7 @@ export function testRuntime({
     ) => {
       const { hash } = inner.deploy(text);
       const definition = definitionFormat.read(text);
-      const loaded = loadDefinition(definition, hash, natives);
+      const loaded = loadDefinition(definition, hash, natives, { heapCheck });
       const called = definition.functions.findIndex(
         (entry) => entry.kind === 'code' && entry.name === name,
       );

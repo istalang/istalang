@@ -10,6 +10,7 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { compiledText } from '../../../compiler/compile.test-kit.ts';
+import { cyclicOracle } from '../../lifetimes/oracle.test-kit.ts';
 import { runToEnd, testRuntime } from '../../runtime.test-kit.ts';
 import { ended, shared, watched } from './callbacks.test-kit.ts';
 import { recordingFutures } from './futures.test-kit.ts';
@@ -27,7 +28,7 @@ describe('a Resolver.of resolver', () => {
         '  await runtime.commit()',
         '  before * 10 + seen->value',
       ];
-      expect(await ended(main, crashEveryAwait)).toEqual({ kind: 'finished', outcome: '3' });
+      expect(await ended(main, { crashEveryAwait })).toEqual({ kind: 'finished', outcome: '3' });
     },
   );
 
@@ -44,7 +45,7 @@ describe('a Resolver.of resolver', () => {
         '  await runtime.commit()',
         '  before * 10 + seen->value',
       ];
-      expect(await ended(main, crashEveryAwait)).toEqual({ kind: 'finished', outcome: '7' });
+      expect(await ended(main, { crashEveryAwait })).toEqual({ kind: 'finished', outcome: '7' });
     },
   );
 
@@ -90,7 +91,10 @@ describe('a Resolver.of resolver', () => {
       '  await runtime.commit()',
       '  got * 10 + seen->value + 0 * await slow',
     ];
-    expect(await ended(main)).toEqual({ kind: 'finished', outcome: '30' });
+    // `slow` holds `watching`, whose `onCancel` holds `slow`: a cycle C3 rejects.
+    const oracle = cyclicOracle();
+    expect(await ended(main, { oracle })).toEqual({ kind: 'finished', outcome: '30' });
+    expect(oracle.asExpected()).toBe(true);
   });
 
   it('is cancelled, not dropped, when the future it is registered on is disposed first', async () => {

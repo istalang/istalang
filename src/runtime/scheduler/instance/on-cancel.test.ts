@@ -7,6 +7,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { compiledText } from '../../../compiler/compile.test-kit.ts';
+import { cyclicOracle, type Oracle } from '../../lifetimes/oracle.test-kit.ts';
 import { testRuntime } from '../../runtime.test-kit.ts';
 import { ended, shared } from './callbacks.test-kit.ts';
 
@@ -83,7 +84,13 @@ describe("a resolver's onCancel", () => {
         '  await runtime.commit()',
         '  seen->value',
       ];
-      expect(await ended(main, crashEveryAwait)).toEqual({ kind: 'finished', outcome: '41' });
+      // `watching`'s `onCancel` holds `watching`: a cycle C3 rejects.
+      const oracle = cyclicOracle();
+      expect(await ended(main, { crashEveryAwait, oracle })).toEqual({
+        kind: 'finished',
+        outcome: '41',
+      });
+      expect(oracle.asExpected()).toBe(true);
     },
   );
 
@@ -102,40 +109,53 @@ describe("a resolver's onCancel", () => {
         'live async fn main(): await runtime.run(runtime.id()) _main()\nista async fn _main(): 0',
       ].join('\n'),
     );
-    const run = await testRuntime().runtime.deploy(text).start('live', { function: 'main.run()' });
+    // `watching`'s `onCancel` holds `watching`: a cycle C3 rejects.
+    const oracle = cyclicOracle();
+    const { runtime } = testRuntime({ heapCheck: oracle.heapCheck });
+    const run = await runtime.deploy(text).start('live', { function: 'main.run()' });
     expect(run.state).toMatchObject({ kind: 'finished', outcome: -1n });
+    expect(oracle.asExpected()).toBe(true);
   });
 
   /**
    * Two disposables and a resolver let go of at one block's end, the resolver's callback holding
    * the second and its `onCancel` the resolver itself, the block ending with `last`; the order the
-   * disposables were disposed in.
+   * disposables were disposed in, its heaps checked by `oracle`. The resolver and the second
+   * disposable hold each other: a cycle C3 rejects.
    */
-  const disposedBeside = (...last: string[]) =>
-    ended([
-      'shared struct Log { order: Array<Int> }',
-      'shared struct Item { id: Int, log: Log, r: Resolver<Int, "ista">? }',
-      'ista fn dispose(self: Item): self->log->order.push(self->id)',
-      'live async fn main() -> Array<Int>: await runtime.run(runtime.id()) _main()\nista async fn _main() -> Array<Int>:',
-      '  const log = new Log{order: []}',
-      '  if true:',
-      '    const d1 = new Item{id: 1, log, r: none}',
-      '    const d2 = new Item{id: 2, log, r: none}',
-      '    const r = Resolver.of(fn(_: Int): { _ = d2->id; () })',
-      '    d2->r = r',
-      '    r.onCancel(fn(): { _ = r.tryResolve(1); () })',
-      ...last,
-      '  await runtime.commit()',
-      '  log->order',
-    ]);
+  const disposedBeside = (oracle: Oracle, ...last: string[]) =>
+    ended(
+      [
+        'shared struct Log { order: Array<Int> }',
+        'shared struct Item { id: Int, log: Log, r: Resolver<Int, "ista">? }',
+        'ista fn dispose(self: Item): self->log->order.push(self->id)',
+        'live async fn main() -> Array<Int>: await runtime.run(runtime.id()) _main()\nista async fn _main() -> Array<Int>:',
+        '  const log = new Log{order: []}',
+        '  if true:',
+        '    const d1 = new Item{id: 1, log, r: none}',
+        '    const d2 = new Item{id: 2, log, r: none}',
+        '    const r = Resolver.of(fn(_: Int): { _ = d2->id; () })',
+        '    d2->r = r',
+        '    r.onCancel(fn(): { _ = r.tryResolve(1); () })',
+        ...last,
+        '  await runtime.commit()',
+        '  log->order',
+      ],
+      { oracle },
+    );
 
   it('preserves reverse-creation disposal order when an orphaned resolver whose onCancel captures itself is cancelled', async () => {
-    expect(await disposedBeside('    _ = d1->id')).toEqual({ kind: 'finished', outcome: '[2,1]' });
+    const oracle = cyclicOracle();
+    expect(await disposedBeside(oracle, '    _ = d1->id')).toEqual({
+      kind: 'finished',
+      outcome: '[2,1]',
+    });
+    expect(oracle.asExpected()).toBe(true);
   });
 
   // B76: with no use of `d1` at the block's end, `d1` is let go of before the others.
   it.fails('preserves it with no use of the first disposable at the block end', async () => {
-    expect(await disposedBeside()).toEqual({ kind: 'finished', outcome: '[2,1]' });
+    expect(await disposedBeside(cyclicOracle())).toEqual({ kind: 'finished', outcome: '[2,1]' });
   });
 
   it('disposes resources held only by a readied callback run when the instance finishes or terminates', async () => {

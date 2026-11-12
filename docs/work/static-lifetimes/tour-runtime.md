@@ -10,7 +10,7 @@ tags: [lifetimes, disposal, runtime, refcount, tour]
 
 # Static lifetimes: runtime tour
 
-Read against `main` at `41160c33`; no file under `src/` or `test/` changed since `67d50e5b`. Rules
+Read against `main` at `41160c33`, and updated where R1 changed the code (the R1 section). Rules
 and model: [design.md](design.md) §3 and §9. Phases: [plan.md](plan.md). Paths are under
 `src/runtime/` unless they say otherwise.
 
@@ -24,9 +24,10 @@ and model: [design.md](design.md) §3 and §9. Phases: [plan.md](plan.md). Paths
 | `interpreter/machine.ts` | `newFrame`, `releaseFrame` (ascending registers), `currentClosure` | R2, R3 |
 | `scheduler/instance/index.ts` `Instance` | `frameHeap`; the constructor every start and restore goes through; `persisted`/`#kept` (walk plus the invariant scan); `dropUnheld`; `continueFrom`; `stop`; `owed`, `keptFrames` | R3, R4 |
 | `lifetimes/collector.ts` | rounds: `disposablesFrom` → `heldUnlessAll` → `readyOrphans`, `#keptBy`, waiting on a disposal's code | R3 deletes the search; the rounds' order stays |
-| `lifetimes/holders.ts` | `heldFrom` (with the commit's depth), `heldUnlessAll`, `walkHolds`, `holdsOf` | R1's oracle, R3, R4 |
-| `lifetimes/orphans.ts` | strongly connected components, cover, descending id | R1's oracle reuses its components; R3 deletes the rest |
-| `lifetimes/disposal.ts` | per kind: `disposable` and `dispose`; `readiedBy`; the dropped-resolver panic (`isDropped`) | kept; R1 adds a cancel |
+| `lifetimes/holders.ts` | `heldFrom` (with the commit's depth), `heldUnlessAll`, `walkHolds`, `holdsOf` | R3, R4 |
+| `lifetimes/orphans.ts` | strongly connected components, cover, descending id | R3 deletes it |
+| `lifetimes/oracle.test-kit.ts` | the oracle (R1), a `HeapCheck` | test-only, for good |
+| `lifetimes/disposal.ts` | per kind: `disposable` and `dispose`; `readiedBy`; the dropped-resolver panic (`isDropped`); a future cancels what is registered on it (R1) | kept |
 | `scheduler/segment/collection.ts` `SegmentCollection` | `collected` after every step, `collectFully`, `collectEnding` (panic recovery), `#roots` | R3 |
 | `scheduler/segment/disposal-runs.ts` | a disposal's code as a frame on top of the running execution, or on a carrier (id −1) when nothing runs; a disposed call's cleanup | kept |
 | `scheduler/instance/waits/` | `Waits`, `ResolverEndings`, `rootOf`, `pendingCases`, `settleOrder` | R1 |
@@ -39,8 +40,7 @@ and model: [design.md](design.md) §3 and §9. Phases: [plan.md](plan.md). Paths
 ## Holding today
 
 - **One table.** `holdings.ts` gives what each object holds, and `Heap.holds` adds edges read off the
-  indexes. `docs/arch/definition.md`'s Holders table is its prose, but it lacks a `resource` row:
-  `holdings.ts` gives a resource no holds.
+  indexes. `docs/arch/definition.md`'s Holders table is its prose.
   - The collector, the commit and the snapshot's closure check (`snapshot.ts`, through
     `referencedObjects`) read nothing else.
 - **Roots.**
@@ -65,20 +65,21 @@ and model: [design.md](design.md) §3 and §9. Phases: [plan.md](plan.md). Paths
 
 ### Registrations
 
-Each direction of a pair lives in a different file:
+Since R1, each link holds one way, as its chain's root says (`isHeldFromRoot`):
 
-| Edge | Where | How |
-|---|---|---|
-| future → every pending resolver registered on it | `heap.ts` `#indexedHolds` | `resolvers` index |
-| pending resolver → its `on` futures, its callback, its `onCancel` values | `holdings.ts`, resolver entry | fields |
-| wait → its awaited case resolvers (one way: a case resolver only watches its wait, a wait only watches its waiter) | `heap.ts` | `cases` index; *awaited* is recursive in `#awaited` |
-| at-resolver → its `done` | `holdings.ts` | field |
-| pending resolver → its awaited at-resolvers | `heap.ts` | `positions` index |
+| Edge | Root | Where | How |
+|---|---|---|---|
+| future → each pending resolver registered on it | callback | `heap.ts` `#indexedHolds` | `resolvers` index, filtered by root |
+| pending resolver → its `on` futures | case | `holdings.ts`, resolver entry | field |
+| pending resolver → its callback, its `onCancel` values | either | `holdings.ts`, resolver entry | fields |
+| wait → its awaited case resolvers (a case resolver only watches its wait, a wait only its waiter) | case | `heap.ts` | `cases` index; *awaited* is recursive in `#awaited` |
+| at-resolver → its `done` | callback | `holdings.ts` | field |
+| pending resolver → its awaited at-resolvers | case | `heap.ts` | `positions` index |
 
 - `Waits.register` grows `on`, `ResolverEndings.replace` ends a resolver and notes it, and
-  `cancelLosers` narrows `on`.
-- So future ↔ resolver and at-resolver ↔ `done` are cycles of disposables the runtime makes
-  itself.
+  `cancelLosers` narrows `on`. `Waits.at` records the root on the at-resolver it makes.
+- No registration makes a cycle any more. A cycle through a callback's chain is the program's own,
+  such as a callback capturing its future.
 
 ## Release and collection today
 
@@ -144,53 +145,66 @@ Each direction of a pair lives in a different file:
 
 ## R1 Edges and the oracle
 
-- **Direction by root.** `rootOf` (`waits/resolvers.ts`) follows `target.done` until a target isn't
-  `at`. The root is fixed at creation, since `Waits.at` makes a pending at-resolver only on a
-  pending `done`. `waits/` imports `heap.ts`, so the root walk must live where `Heap` can read it.
-  - **Case root (a wait's case):**
-    - the resolver holds `on`;
-    - `done` holds its awaited at-resolvers;
-    - the wait holds its awaited case resolvers, as today;
-    - the future only watches, and an at-resolver only watches its `done`.
-  - **Callback root (`Resolver.of`):**
-    - the future holds the resolver or at-resolver registered on it;
-    - an at-resolver holds its `done`;
-    - a resolver no longer holds `on`, and `done` only watches its at-resolvers.
-  - **Sites:**
-    - `holdings.ts`'s resolver entry: `on` and `done` become conditional and stay referenced, as
-      watches, for the closure check;
-    - `heap.ts`: `#indexedHolds` and `#awaited`.
-- **`disposeFuture` must cancel what is registered on it.**
-  - With one-way edges, a future can be disposed while a resolver registered on it is held
-    elsewhere.
-  - Spec §6's **Resolvers** paragraph and `objects.ts` already say such a resolver is cancelled.
-    Today that happens only because the two are orphaned together.
-  - Otherwise the resolver's `on` names a gone object, and the next commit fails `snapshot.ts`'s
-    closure check.
-- **Already true, unchanged:**
-  - A case resolver is cancelled when its waiter stops: `Instance.stop` → `#endWait` → `Waits.end`,
-    as `'lost'`.
-  - The drop panic is `isDropped`: a pending case resolver with an empty `on`. An at-resolver let go
-    of is cancelled; the panic comes from its case root once nothing holds the root.
+Landed. What R1 left, for the phases after it:
+
+- **Direction by root.** A chain of resolvers comes down to a wait's case or a callback, its root.
+  `isHeldFromRoot(target)` (`snapshot/holdings.ts`) is the rule's one home. The resolver entry
+  there, and `Heap.#indexedHolds`, read it.
+  - **Case root:** the wait holds its awaited case resolvers, each pending resolver holds its awaited
+    `Resolver.at` ones, and each resolver holds its `on`. A future and an at-resolver's `done` only
+    watch.
+  - **Callback root:** a future holds the pending resolvers registered on it, and an at-resolver holds
+    its `done`. A resolver only watches its `on`.
+  - **The root is recorded, not walked.** Each `at` target carries `root` (`snapshot/objects.ts`,
+    `chainRoot`), set by `Waits.at` and checked against its `done` by `snapshot/check/waits.ts`.
+    A walk can't stand in for it: `ResolverEndings` ends a resolver before it cancels the
+    at-resolvers deciding it, so mid-step their `done` is no longer pending, while
+    `#noteHoldings` must still read what they held. R3's counting needs the same.
+- **A future disposes what is registered on it.** `disposeFuture` first cancels every resolver
+  still registered on the future. A future with resolvers registered on it is disposable whatever
+  its state (`registered` in `lifetimes/disposal.ts`). Without that, a timer nothing else holds is
+  dropped at the commit while a held callback still names it, and the snapshot's closure check
+  fails. A callback registered on several futures is cancelled when the first of them is disposed.
+- **Behaviour that changed:** a `Resolver.of` resolver no longer keeps alive the futures it is
+  registered on. `on-cancel.test.ts`'s "given that resolver and what it holds" now holds its `take`
+  through the holder. `callbacks.test.ts` has the new case: a held callback is cancelled once its
+  future, a call or a timer, is let go of.
 - **Executions stay roots.** The analysis models a call future as holding its call (design.md §2).
-- **The oracle (test-only):**
-  - After each collection it builds the counted graph: `holdings.ts`'s held edges and the index
-    edges, minus a case chain's edges, which end with their wait (design.md §3), plus call future →
-    execution through the `executions` index.
-  - It asserts that no strongly connected component reaches a disposable, reusing
-    `foundation/structures/strongly-connected.ts`, as `orphans.ts` does.
-  - It runs over the corpus, the spec's fences and the std suites through the runners below.
-- **Docs:**
-  - `definition.md`'s Holders rows for future, wait and resolver, plus the missing `resource` row;
-  - spec §7's implicit-holds bullet;
-  - the `objects.ts` header, `Heap.holds`'s comment, and the `waits/index.ts` header.
-- **Tests:**
-  - `test/corpus` has no resolver program. Resolver lifetimes are tested in
-    `scheduler/instance/callbacks.test.ts`: "lives as long as its future…", "is cancelled, not
-    dropped, when the future it is registered on is disposed first", "holds nothing a cold
-    awaitable started…". All three must pass under the new edges, and the new case goes beside
-    them.
-  - `on-cancel.test.ts`, `waits.test.ts`, `awaitables.test.ts` and `races.test.ts` cover the rest.
+- **The oracle** is `lifetimes/oracle.test-kit.ts`.
+  - **Its seam** is `HeapCheck` (`scheduler/loaded-definition.ts`). It rides on `LoadedDefinition`
+    and comes in through `RuntimeSeams.heapCheck`, `TestRunOptions` and `WorldSeams`, and
+    `CliEnvironment.heapCheck`. `SegmentCollection.collected` calls it as each collection starts,
+    with the released ids. A host passes none.
+  - **Its graph:** `Heap.holds` and the executions' frames, plus call future → execution, minus
+    every edge out of a wait and out of a pending case-root resolver.
+  - **What it walks:** only what the released ids reach. A cycle lost to counting is one that
+    loses its last holder, so it is still on the heap there. Walking the whole heap timed out
+    `collections/deep-elements.ista`.
+  - **Where it is on:** by default in `testRuntime`, `reportsOf` and `cli.test-kit`'s `ista`.
+    `acyclicOracle` throws at the first cycle. `cyclicOracle()` records instead and expects to see
+    one. `oracleFor(name)` picks between them for a corpus program or a std module. `wake.bench.ts`
+    turns it off.
+  - **Runners:** the corpus through `wake.sweep`, `resident.sweep`, `run.sweep` (`ista run`) and
+    the fmt sweep; the std suites through `cli/commands/test.sweep.test.ts` (`ista test`, one
+    module at a time); and every runtime test on `testRuntime` or `reportsOf`. The CLI's
+    spec-example tests run under it too.
+  - **Its own tests** are `oracle.test.ts`, over programs shaped as design.md §12's.
+- **What the oracle flags today**, each marked in place. C3 rejects or rewrites them, then drops
+  each mark: the `cyclic` set in the kit, and the `cyclicOracle()` uses in the tests.
+  - corpus `holders/dispose.ista` `cycle()`;
+  - std `collections`: `WeakMap`'s watch future → its call → the map's cell → the future;
+  - `callbacks.test.ts`, "lives as long as its future…": `slow` holds `watching`, whose `onCancel`
+    holds `self.slow`;
+  - `on-cancel.test.ts`, "runs once its resolver is let go of, given that resolver…" (both
+    variants), and its live run: `watching.onCancel` captures `watching`;
+  - `on-cancel.test.ts`, the B76 pair: `d2->r = r`, with `r`'s callback reading `d2` and its
+    `onCancel` capturing `r`.
+
+  design.md §10 listed only the first two and B76. The two `callbacks`/`on-cancel` resolver cases
+  are new, and C3's dry run should confirm them.
+- **Docs edited:** spec §6 (Resolvers) and §7 (the implicit-holds bullet); `definition.md`'s
+  Holders, with a `resource` row; the headers of `objects.ts`, `holdings.ts`, `disposal.ts` and
+  `waits/index.ts`; `Heap.holds`; `architecture.md`'s runtime tree.
 
 ## R2 Seams and identity
 

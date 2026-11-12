@@ -43,10 +43,13 @@ ista async fn _main() -> Int:
   sum
 `);
 
+/** A runtime as a host runs one, its heaps unchecked by the test runtime's oracle. */
+const hosted = () => testRuntime({ heapCheck: () => undefined });
+
 it(`${workers} workers on one inbox`, async ({ bench, expect }) => {
   const sum = String((workers * (workers - 1)) / 2);
-  expect(await startToEnd(testRuntime(), text)).toEqual({ kind: 'finished', outcome: sum });
+  expect(await startToEnd(hosted(), text)).toEqual({ kind: 'finished', outcome: sum });
   await bench('start to end', async () => {
-    await startToEnd(testRuntime(), text);
+    await startToEnd(hosted(), text);
   }).run({ time: 0, iterations: 3, warmupTime: 0, warmupIterations: 1 });
 });

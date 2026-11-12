@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-11-11
-last_updated: 2026-11-11
+last_updated: 2026-11-12
 tags: [definition, ir, snapshot, runtime, lowering]
 ---
 

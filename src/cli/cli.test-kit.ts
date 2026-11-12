@@ -7,6 +7,7 @@ import { spawnSync } from 'node:child_process';
 import process from 'node:process';
 import { PassThrough, Readable } from 'node:stream';
 import { fileURLToPath } from 'node:url';
+import { acyclicOracle, type Oracle } from '../runtime/lifetimes/oracle.test-kit.ts';
 import { runCli } from './cli.ts';
 
 /** The built `ista` executable, which the test setup builds before any test runs. */
@@ -20,8 +21,16 @@ export interface Run {
   readonly err: string;
 }
 
-/** Runs `ista` with `args` in `cwd`, in-process. */
+/**
+ * Runs `ista` with `args` in `cwd`, in-process, the heaps of the instances it runs checked by the
+ * oracle of static lifetimes.
+ */
 export async function ista(cwd: string, ...args: string[]): Promise<Run> {
+  return await istaChecked(acyclicOracle, cwd, ...args);
+}
+
+/** Runs `ista` as `ista` does, the heaps of the instances it runs checked by `oracle`. */
+export async function istaChecked(oracle: Oracle, cwd: string, ...args: string[]): Promise<Run> {
   let out = '';
   let err = '';
   const code = await runCli(args, {
@@ -35,6 +44,7 @@ export async function ista(cwd: string, ...args: string[]): Promise<Run> {
     // A test's process always has work left, so its host's promises are never given up on.
     idle: new Promise(() => undefined),
     stdio: { input: Readable.from([]), output: new PassThrough() },
+    heapCheck: oracle.heapCheck,
   });
   return { code, out, err };
 }

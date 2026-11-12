@@ -5,6 +5,7 @@
  */
 
 import { compiledText } from '../../../compiler/compile.test-kit.ts';
+import { acyclicOracle, type Oracle } from '../../lifetimes/oracle.test-kit.ts';
 import { startToEnd, testRuntime } from '../../runtime.test-kit.ts';
 
 /** What every scenario uses: somewhere to see a callback's effect, and a future that arrives later. */
@@ -34,9 +35,17 @@ export const watched = [
   '  later(1).onAwait(done)',
 ];
 
-/** `main`, given every line of `lines`, run to its end, crashing at every await or not. */
-export function ended(lines: readonly string[], crashEveryAwait = false) {
-  return startToEnd(testRuntime(), compiledText([...shared, ...watched, ...lines].join('\n')), {
-    crashEveryAwait,
-  });
+/** How `ended` runs `main`: crashing at every await or not, and its heaps' oracle. */
+interface Run {
+  readonly crashEveryAwait?: boolean;
+  readonly oracle?: Oracle;
+}
+
+/** `main`, given every line of `lines`, run to its end as `run` says. */
+export function ended(
+  lines: readonly string[],
+  { crashEveryAwait = false, oracle = acyclicOracle }: Run = {},
+) {
+  const text = compiledText([...shared, ...watched, ...lines].join('\n'));
+  return startToEnd(testRuntime({ heapCheck: oracle.heapCheck }), text, { crashEveryAwait });
 }

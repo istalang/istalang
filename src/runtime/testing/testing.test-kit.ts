@@ -10,6 +10,8 @@ import { definitionFormat } from '../../definition/definition.ts';
 import { renderDiagnostic } from '../../foundation/diagnostics/render.ts';
 import { stdNatives } from '../../stdlib/natives.ts';
 import { ManualClock } from '../clock.ts';
+import { acyclicOracle } from '../lifetimes/oracle.test-kit.ts';
+import type { HeapCheck } from '../scheduler/loaded-definition.ts';
 import { runTests, type TestReport } from './run-tests.ts';
 
 export interface ReportsOptions {
@@ -18,6 +20,8 @@ export interface ReportsOptions {
   readonly timeout?: bigint;
   /** What the manual clock gives each time it is read, given what it gave before. */
   readonly tick?: (before: bigint) => bigint;
+  /** The check of every instance's heap, the oracle of static lifetimes unless told otherwise. */
+  readonly heapCheck?: HeapCheck;
 }
 
 /** The reports of running the tests of `source`, a test module importing what it needs. */
@@ -48,6 +52,7 @@ export async function reportsOf(
       until: clock.until,
     },
     timeout: options.timeout ?? 5000n,
+    heapCheck: options.heapCheck ?? acyclicOracle.heapCheck,
     ...(options.filter === undefined ? {} : { filter: options.filter }),
   })) {
     reports.push(report);
