@@ -135,7 +135,7 @@ function hasErrors(program: Program): boolean {
 }
 
 /** The `live async fn main()` that `entry` declares (§9). */
-function mainOf(program: Program, entry: ModuleId): FunctionDeclaration | undefined {
+export function mainOf(program: Program, entry: ModuleId): FunctionDeclaration | undefined {
   const entity = bindProgram(program).exportsOf(entry).get(entryFunction);
   return entity?.kind === 'functions' ? entity.overloads.find(isMain) : undefined;
 }

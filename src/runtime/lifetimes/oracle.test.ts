@@ -7,11 +7,11 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { compiledText } from '../../compiler/compile.test-kit.ts';
+import { textDespiteCycles } from '../../compiler/compile.test-kit.ts';
 import { handleTo } from '../../definition/values/values.ts';
 import { startToEnd, testRuntime } from '../runtime.test-kit.ts';
 import { testHeap } from '../scheduler/instance/heap.test-kit.ts';
-import { acyclicOracle, cyclicOracle } from './oracle.test-kit.ts';
+import { cycleWatch, oracle } from './oracle.test-kit.ts';
 
 const declarations = [
   "import * as runtime from 'runtime'",
@@ -87,9 +87,9 @@ const declarations = [
  * the oracle sees.
  */
 async function seesCycle(body: readonly string[], inBlock: boolean) {
-  const oracle = cyclicOracle();
+  const watch = cycleWatch();
   const indent = inBlock ? '    ' : '  ';
-  const text = compiledText(
+  const text = textDespiteCycles(
     [
       ...declarations,
       'live async fn main() -> Int: await runtime.run(runtime.id()) _main()',
@@ -101,8 +101,8 @@ async function seesCycle(body: readonly string[], inBlock: boolean) {
       '  0',
     ].join('\n'),
   );
-  const ended = await startToEnd(testRuntime({ heapCheck: oracle.heapCheck }), text);
-  return { ended, seen: oracle.asExpected() };
+  const ended = await startToEnd(testRuntime({ heapCheck: watch.heapCheck }), text);
+  return { ended, seen: watch.seen() };
 }
 
 const finished = { kind: 'finished', outcome: '0' };
@@ -218,7 +218,7 @@ describe("the oracle's walk", () => {
         },
       },
     ]);
-    expect(() => acyclicOracle.heapCheck.changed({ heap, types: [] }, [3], new Set())).toThrow(
+    expect(() => oracle.changed({ heap, types: [] }, [3], new Set())).toThrow(
       'A cycle reaching a disposable holds objects 0:cell, 1:wait, 2:future.',
     );
   });

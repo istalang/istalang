@@ -107,6 +107,8 @@ export interface LifetimeQueries {
   readonly reachesDisposable: (type: Type) => boolean;
   /** What the rule finds in `module`'s functions, in their order. */
   readonly findingsOf: (module: ModuleId) => readonly LifetimeFinding[];
+  /** Reports what the rule finds in `module`, each where the cycle closes (design.md §7). */
+  readonly check: (module: ModuleId) => void;
 }
 
 export interface Checker {

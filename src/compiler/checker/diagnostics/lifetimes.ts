@@ -4,6 +4,8 @@
  *
  * - holders and disposal, codes 5700–5799, the labels `hold`, `break` and `continue` name included,
  *   and the std's annotations of what its externs hold and keep (5750–5759, §3.16);
+ * - the cycles static lifetimes rejects, codes 5720–5739 (§7), apart so tests that run them can
+ *   tell them from the rest;
  * - the weak side of disposal, codes 5800–5899: an async call's `disposing()`. Which name denotes
  *   the call, and where none does, is the binder's to report.
  */
@@ -88,6 +90,30 @@ export const lifetimeTemplates = {
  * `disposing()`. Which name denotes the call, and where none does, is the binder's to report. A
  * part of the checker's one catalog (index.ts).
  */
+/** The cycles static lifetimes rejects (§7). */
+export const cycleTemplates = {
+  cycleWrite: {
+    code: 5720,
+    message: (holder: string) =>
+      `What is written here may already reach what it is written into, so this makes a cycle holding ${holder}, which reaches a disposable: no cycle may (§7). Hold one side through a 'WeakRef'.`,
+  },
+  cycleCall: {
+    code: 5721,
+    message: (callee: string, holder: string) =>
+      `'${callee}' writes one of what it is given here into another that may already reach it, making a cycle holding ${holder}, which reaches a disposable: no cycle may (§7). Hold one side through a 'WeakRef'.`,
+  },
+  cycleEscaping: {
+    code: 5722,
+    message: (holder: string) =>
+      `Code that calls this function may give it values making a cycle holding ${holder}, which reaches a disposable: no cycle may (§7). Hold one side through a 'WeakRef'.`,
+  },
+  cycleWitness: {
+    code: 5723,
+    message: (witness: string, holder: string) =>
+      `'${witness}', which this runs through a type's witness, may be given values making a cycle holding ${holder}, which reaches a disposable: no cycle may (§7). Hold one side through a 'WeakRef'.`,
+  },
+} as const;
+
 export const weakSideTemplates = {
   awaitInCleanup: {
     code: 5802,

@@ -10,7 +10,6 @@ import { runPrograms } from '../../../test/corpus/programs.ts';
 import { compiledText } from '../../compiler/compile.test-kit.ts';
 import { stdNativeKeeps } from '../../stdlib/std-externs.test-kit.ts';
 import { nativeAudit, withNativeAudit } from '../lifetimes/native-audit.test-kit.ts';
-import { oracleFor } from '../lifetimes/oracle.test-kit.ts';
 import { runToEnd, testRuntime } from '../runtime.test-kit.ts';
 
 const keeps = stdNativeKeeps();
@@ -18,10 +17,9 @@ const keeps = stdNativeKeeps();
 describe('advancing an instance', () => {
   it.each(runPrograms)(
     'runs $name to the outcome it states',
-    async ({ name, text, expects, expected }) => {
-      const oracle = oracleFor(name);
+    async ({ text, expects, expected }) => {
       const audit = nativeAudit(keeps);
-      const test = testRuntime({ heapCheck: withNativeAudit(oracle, audit).heapCheck });
+      const test = testRuntime({ heapCheck: withNativeAudit(audit) });
       const program = test.runtime.deploy(compiledText(text));
       const state = await runToEnd(test, 'corpus', await program.start('corpus'));
       const ended =
@@ -29,7 +27,6 @@ describe('advancing an instance', () => {
           ? { expects: 'outcome', expected: state.outcome }
           : { expects: 'panic', expected: state.kind === 'panicked' ? state.message : '' };
       expect(ended).toEqual({ expects, expected });
-      expect(oracle.asExpected()).toBe(true);
       expect(audit.uncovered()).toEqual([]);
     },
   );

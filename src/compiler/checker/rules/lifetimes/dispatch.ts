@@ -5,8 +5,14 @@
  *
  * - **Per module, an entry** lists the values its bodies put into an `any`, by the `any` type and
  *   the value's type; an edit keeping those leaves it equal, so nothing reading it runs again.
- * - **Per trait, an entry** gathers, over every module, each required function's witnesses.
- *   Values of an `any` are only ever made by putting a value into it, so nothing else can run.
+ * - **Per trait, an entry** gathers each required function's witnesses over the modules that can
+ *   name the trait: its own, and those importing it, directly, through others or through the
+ *   prelude every module sees. Values of an `any` are only ever made by putting a value into it,
+ *   so nothing else can run.
+ * - **A value of a type not known yet** (a type parameter's, one computed from it) going in makes
+ *   the trait's calls through `any` code nobody sees: what goes in is its instantiations' to say.
+ * - **A union goes in member by member,** as lowering puts it (`into-any.ts`), and a value of
+ *   another `any` goes in as the values put into that one.
  */
 
 import type { EntryTable } from '../../../../foundation/structures/entries/index.ts';
@@ -15,7 +21,7 @@ import type { ModuleId } from '../../../program/program.ts';
 import type { TraitDeclaration } from '../../../syntax/declarations/index.ts';
 import type { CheckerContext, CheckerNote } from '../../contexts/context.ts';
 import type { FunctionCall, RequirementCall } from '../../surface/resolved-call.ts';
-import { sameTypeSpelled } from '../../types/parts/type-parts.ts';
+import { isKnown, sameTypeSpelled } from '../../types/parts/type-parts.ts';
 import type { AnyType, Type } from '../../types/type/index.ts';
 import type { FlowFunction } from '../flow/flow-ir.ts';
 
@@ -25,8 +31,13 @@ export interface Conversion {
   readonly member: Type;
 }
 
-/** The witnesses of a trait's required functions, by their position in the trait. */
-type Witnesses = ReadonlyMap<number, readonly FunctionCall[]>;
+/**
+ * What a call through an `any` of a trait may run: the witnesses of each required function, by
+ * its position in the trait, or anything, where a value of a type not known yet goes in.
+ */
+type Dispatched =
+  | { readonly kind: 'known'; readonly witnesses: ReadonlyMap<number, readonly FunctionCall[]> }
+  | { readonly kind: 'open' };
 
 const sameConversions = sameItems<Conversion>(
   (first, second) =>
@@ -36,7 +47,8 @@ const sameConversions = sameItems<Conversion>(
 export class Dispatch {
   readonly #checker: CheckerContext;
   readonly #conversions: EntryTable<CheckerNote, ModuleId, readonly Conversion[]>;
-  readonly #witnesses: EntryTable<CheckerNote, TraitDeclaration, Witnesses>;
+  readonly #witnesses: EntryTable<CheckerNote, TraitDeclaration, Dispatched>;
+  readonly #named: EntryTable<CheckerNote, ModuleId, ReadonlySet<ModuleId>>;
 
   /** `flowsOf` gives every flow a module's bodies have, closures' included. */
   constructor(checker: CheckerContext, flowsOf: (module: ModuleId) => readonly FlowFunction[]) {
@@ -49,7 +61,13 @@ export class Dispatch {
     this.#witnesses = checker.entries.table({
       name: 'dispatched witnesses',
       compute: (trait: TraitDeclaration) => this.#witnessesOf(trait),
-      equal: sameWitnesses,
+      equal: sameDispatched,
+    });
+    this.#named = checker.entries.table({
+      name: 'modules named',
+      compute: (module: ModuleId) => this.#modulesNamedBy(module),
+      equal: (first, second) =>
+        first.size === second.size && [...first].every((each) => second.has(each)),
     });
   }
 
@@ -60,22 +78,50 @@ export class Dispatch {
       return undefined;
     }
     const constraint = requirement.on.constraints[requirement.constraint];
-    return constraint === undefined
+    if (constraint === undefined) {
+      return undefined;
+    }
+    const dispatched = this.#witnesses.get(constraint.trait);
+    return dispatched.kind === 'open'
       ? undefined
-      : (this.#witnesses.get(constraint.trait).get(requirement.member) ?? []);
+      : (dispatched.witnesses.get(requirement.member) ?? []);
   }
 
-  #witnessesOf(trait: TraitDeclaration): Witnesses {
-    const witnesses = new Map<number, FunctionCall[]>();
+  #witnessesOf(trait: TraitDeclaration): Dispatched {
+    const declaring = this.#checker.moduleOf(trait);
     const conversions = this.#checker.inputs
       .modules()
+      .filter((module) => this.#named.get(module).has(declaring))
       .flatMap((module) => this.#conversions.get(module));
-    for (const { to, member } of conversions) {
+    const members = conversions.flatMap(({ to, member }) =>
+      putInto(member, conversions, []).map((each) => ({ to, member: each })),
+    );
+    if (members.some(({ member }) => !isKnown(member))) {
+      return { kind: 'open' };
+    }
+    const witnesses = new Map<number, FunctionCall[]>();
+    for (const { to, member } of members) {
       for (const [position, call] of this.#callsThrough(to, member, trait)) {
         witnesses.set(position, [...(witnesses.get(position) ?? []), call]);
       }
     }
-    return witnesses;
+    return { kind: 'known', witnesses };
+  }
+
+  /** The modules `module` can name what they declare in: itself, and those it imports, transitively. */
+  #modulesNamedBy(module: ModuleId): ReadonlySet<ModuleId> {
+    const { inputs } = this.#checker;
+    const prelude = inputs.role('prelude');
+    const named = new Set<ModuleId>();
+    const pending = [module, ...(prelude === undefined ? [] : [prelude])];
+    while (pending.length > 0) {
+      const each = pending.pop() as ModuleId;
+      if (!named.has(each)) {
+        named.add(each);
+        pending.push(...inputs.importedBy(each));
+      }
+    }
+    return named;
   }
 
   /** The witnesses `member` gives `to`'s constraints of `trait`, by required function. */
@@ -94,6 +140,31 @@ export class Dispatch {
   }
 }
 
+/**
+ * The types of the values a value of `member` may be: itself, but for an `any`, each put into one
+ * spelled alike, unless `seen` has it already.
+ */
+function putInto(
+  member: Type,
+  conversions: readonly Conversion[],
+  seen: readonly AnyType[],
+): readonly Type[] {
+  if (member.kind !== 'any') {
+    return [member];
+  }
+  if (seen.some((each) => sameTypeSpelled(each, member))) {
+    return [];
+  }
+  return conversions
+    .filter(({ to }) => sameTypeSpelled(to, member))
+    .flatMap((conversion) => putInto(conversion.member, conversions, [...seen, member]));
+}
+
+/** The types of the values a value of `type` may be, a union's each of its members'. */
+function membersOf(type: Type): readonly Type[] {
+  return type.kind === 'union' ? type.members.flatMap(membersOf) : [type];
+}
+
 /** The values `flow` puts into an `any`. */
 function conversionsIn(flow: FlowFunction): readonly Conversion[] {
   return flow.blocks.flatMap(({ operations }) =>
@@ -104,13 +175,23 @@ function conversionsIn(flow: FlowFunction): readonly Conversion[] {
       if (operation.op !== 'copy' || operation.fit?.conversion.kind !== 'any') {
         return [];
       }
-      const member = flow.values[operation.from]?.type;
-      return member === undefined ? [] : [{ to: operation.fit.conversion.to, member }];
+      const { to } = operation.fit.conversion;
+      const from = flow.values[operation.from]?.type;
+      return from === undefined ? [] : membersOf(from).map((member) => ({ to, member }));
     }),
   );
 }
 
-function sameWitnesses(first: Witnesses, second: Witnesses): boolean {
+function sameDispatched(first: Dispatched, second: Dispatched): boolean {
+  return first.kind === 'open' || second.kind === 'open'
+    ? first.kind === second.kind
+    : sameWitnesses(first.witnesses, second.witnesses);
+}
+
+function sameWitnesses(
+  first: ReadonlyMap<number, readonly FunctionCall[]>,
+  second: ReadonlyMap<number, readonly FunctionCall[]>,
+): boolean {
   const sameCalls = sameItems<FunctionCall>(
     (one, other) =>
       one.function === other.function &&

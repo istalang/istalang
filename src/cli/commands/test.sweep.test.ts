@@ -10,7 +10,6 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { isTestModulePath } from '../../foundation/language/well-known/testing.ts';
 import { nativeAudit, withNativeAudit } from '../../runtime/lifetimes/native-audit.test-kit.ts';
-import { oracleFor } from '../../runtime/lifetimes/oracle.test-kit.ts';
 import { stdNativeKeeps } from '../../stdlib/std-externs.test-kit.ts';
 import { istaChecked } from '../cli.test-kit.ts';
 
@@ -27,11 +26,9 @@ const keeps = stdNativeKeeps();
 
 describe('ista test over the std suites', () => {
   it.each(modules)('passes the suites of %s', async (module) => {
-    const oracle = oracleFor(module);
     const audit = nativeAudit(keeps);
-    const run = await istaChecked(withNativeAudit(oracle, audit), stdlib, 'test', module);
+    const run = await istaChecked(withNativeAudit(audit), stdlib, 'test', module);
     expect({ code: run.code, err: run.err }).toEqual({ code: 0, err: '' });
-    expect(oracle.asExpected()).toBe(true);
     expect(audit.uncovered()).toEqual([]);
   });
 });

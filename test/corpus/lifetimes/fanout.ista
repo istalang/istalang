@@ -1,0 +1,40 @@
+# outcome: "got a, first 2"
+# Static lifetimes accepts the std's own linking (§7): a subscription kept in a `Shared` and let
+# go of by setting it to `none`, the bus's `_publish` linking each message into its stream behind
+# fresh slots, and `futures.first` over several futures.
+
+import * as fanout from 'fanout'
+import * as futures from 'futures'
+import * as runtime from 'runtime'
+
+fn note(log: Shared<Array<String>>, text: String):
+  log->value = [...log->value, text]
+
+ista async fn subscribed() -> String:
+  const log = new Shared<Array<String>>{value: []}
+  const bus = fanout.create<String>()
+  const sub = new Shared<Future<Unit, "ista">?>{value: bus.subscribe(fn(msg: String): note(log, "got " + msg))}
+  bus.send("a")
+  await runtime.commit()
+  sub->value = none
+  bus.send("b")
+  await runtime.commit()
+  log->value[0]
+
+ista async fn later(slot: Slot<Int>, value: Int):
+  await runtime.commit()
+  await slot.put(value)
+
+ista async fn firstOfTwo() -> Int:
+  const (a, b) = (Slot.create<Int>(), Slot.create<Int>())
+  const raced = futures.first([a.read(), b.read()])
+  await later(b, 2)
+  const (_, value) = await raced
+  value
+
+live async fn main() -> String: await runtime.run(runtime.id()) _main()
+
+ista async fn _main() -> String:
+  const got = await subscribed()
+  const first = await firstOfTwo()
+  got + ", first " + String(first)

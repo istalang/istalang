@@ -1,8 +1,8 @@
 /**
  * A module's check, and the diagnostics derived from it (docs/work/m6-m7/incremental-checking.md
  * §3). The check reads each top-level item's check, then the rules over the module as a whole:
- * clashes among its functions, endless expansion, and the constraint checks noted for it by
- * everything it read. Each is an entry, so a lookup can read one item's check alone.
+ * clashes among its functions, endless expansion, the cycles static lifetimes rejects, and the
+ * constraint checks noted for it by everything it read. Each is an entry, so a lookup can read one item's check alone.
  *
  * A module's diagnostics are those reported in it by its check and by everything that check read,
  * transitively, so they never depend on what was asked before; ties at one position are sorted by
@@ -35,6 +35,7 @@ export class ModuleChecks {
   readonly #items: EntryTable<CheckerNote, Declaration, void, ModuleId>;
   readonly #clashes: EntryTable<CheckerNote, ModuleId, void>;
   readonly #expansions: EntryTable<CheckerNote, ModuleId, void>;
+  readonly #lifetimes: EntryTable<CheckerNote, ModuleId, void>;
 
   constructor(checker: CheckerContext, rules: ModuleRules) {
     this.#modules = checker.entries.table({
@@ -47,6 +48,7 @@ export class ModuleChecks {
         }
         this.#clashes.get(module);
         this.#expansions.get(module);
+        this.#lifetimes.get(module);
         rules.typeParameters.checkNoted(module);
       },
     });
@@ -61,6 +63,10 @@ export class ModuleChecks {
     this.#expansions = checker.entries.table({
       name: 'expansions',
       compute: (module) => rules.expansion.check(module),
+    });
+    this.#lifetimes = checker.entries.table({
+      name: 'lifetimes',
+      compute: (module) => checker.lifetimes.check(module),
     });
   }
 

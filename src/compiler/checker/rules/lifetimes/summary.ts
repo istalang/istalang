@@ -94,6 +94,29 @@ export interface Requirement {
   readonly label: Label;
 }
 
+/**
+ * A cycle a function's writes close whatever values its inputs are, for each instantiation to
+ * decide (design.md §5.3): one only where a value of a type of `through` may reach or be a
+ * `holder` (`reach`), or share with one (`share`), holding a disposable where `deciding` may reach
+ * one.
+ */
+export interface TypedCycle {
+  readonly holder: Type;
+  readonly through: readonly Type[];
+  readonly kind: Requirement['kind'];
+  readonly deciding: Type;
+}
+
+/** `cycle`, each of its types mapped by `map`. */
+export function mappedCycle(cycle: TypedCycle, map: (type: Type) => Type): TypedCycle {
+  return {
+    holder: map(cycle.holder),
+    through: cycle.through.map(map),
+    kind: cycle.kind,
+    deciding: map(cycle.deciding),
+  };
+}
+
 export interface Summary {
   readonly effects: readonly Effect[];
   readonly result: readonly ResultRelation[];
@@ -102,7 +125,7 @@ export interface Summary {
   /** Whether the result may be any value of a type an argument's handle watches. */
   readonly watched: boolean;
   readonly requirements: readonly Requirement[];
-  readonly always: readonly Type[];
+  readonly always: readonly TypedCycle[];
   readonly callReach: readonly Input[];
   readonly leaks: readonly Input[];
   readonly unseen: boolean;
@@ -172,6 +195,13 @@ const sameEffects = sameItems<Effect>(
 const sameResults = sameItems<ResultRelation>(
   (first, second) => sameInput(first.input, second.input) && first.relation === second.relation,
 );
+const sameCycles = sameItems<TypedCycle>(
+  (first, second) =>
+    first.kind === second.kind &&
+    sameTypeSpelled(first.holder, second.holder) &&
+    sameTypeSpelled(first.deciding, second.deciding) &&
+    sameItems(sameTypeSpelled)(first.through, second.through),
+);
 const sameRequirements = sameItems<Requirement>(
   (first, second) =>
     first.kind === second.kind &&
@@ -192,7 +222,7 @@ export function sameSummary(first: Summary, second: Summary): boolean {
     sameResults(first.result, second.result) &&
     sameResults(first.gives, second.gives) &&
     sameRequirements(first.requirements, second.requirements) &&
-    sameItems(sameTypeSpelled)(first.always, second.always) &&
+    sameCycles(first.always, second.always) &&
     sameInputs(first.callReach, second.callReach) &&
     sameInputs(first.leaks, second.leaks)
   );
@@ -373,7 +403,7 @@ export function requiredBy(
             },
           ];
     }),
-    always: summary.always.map((type) => substitute(type, witness)),
+    always: summary.always.map((cycle) => mappedCycle(cycle, (type) => substitute(type, witness))),
     callReach: inputs(summary.callReach),
     leaks: inputs(summary.leaks),
     calls: inputs(summary.calls),

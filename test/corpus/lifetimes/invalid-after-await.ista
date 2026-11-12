@@ -1,0 +1,22 @@
+# error: 5720 at 22:3
+# After an `await`, other code may have linked what the function was given as their declarations
+# allow (§7), so a write that would close a cycle through a disposable if it had is reported in
+# the function itself: here `b` may hold `a` by then, and `a` holds a lease.
+
+import * as runtime from 'runtime'
+
+shared struct Lease:
+  n: Int
+
+fn dispose(self: Lease): ()
+
+shared struct A:
+  lease: Lease
+  x: B? = none
+
+shared struct B:
+  a: A? = none
+
+ista async fn after(a: A, b: B):
+  await runtime.commit()
+  a->x = b

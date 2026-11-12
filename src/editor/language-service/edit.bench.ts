@@ -9,6 +9,10 @@
  * times over, its declarations renamed in each copy. Each edit goes through the workspace, as an
  * editor's does, and changes a call's argument back and forth, so every iteration is an edit.
  *
+ * A cold open is timed too: a new workspace's first diagnostics of the module, which check every
+ * std body its functions reach (static lifetimes' summaries, docs/work/static-lifetimes/design.md
+ * §8). It has no budget of its own: plan C4 is held within 20% of C3's.
+ *
  * What is timed is the build (`dist/`), which Node loads itself (vitest.config.ts): the code an
  * editor runs. The sources through vitest's module runner take half as long again, every call
  * across modules going through an export getter.
@@ -114,3 +118,12 @@ it.for(fixtures)(
     await annotate(`median ${latency.p50.toFixed(1)} ms (budget ${budget} ms on an Apple M2 Max)`);
   },
 );
+
+it.for(fixtures)('a cold open of $title', async ({ text }, { annotate, bench, expect }) => {
+  const { latency } = await bench('new workspace to diagnostics', () => {
+    const open = workspace();
+    open.write(module, text);
+    expect(open.diagnosticsOf(module)?.diagnostics).toEqual([]);
+  }).run({ time: 0, iterations: 5, warmupTime: 0, warmupIterations: 1 });
+  await annotate(`median ${latency.p50.toFixed(1)} ms`);
+});

@@ -21,7 +21,7 @@ import { pushAll } from '../../foundation/structures/stack.ts';
 import type { Heap } from '../scheduler/instance/heap.ts';
 import type { HeapCheck, NativeCallMade } from '../scheduler/loaded-definition.ts';
 import { isReference, type RegisterContents } from '../snapshot/objects.ts';
-import { countedHolds, type Oracle } from './oracle.test-kit.ts';
+import { countedHolds, oracle } from './oracle.test-kit.ts';
 
 /** What the parameter at `holder` keeps of an extern's: the parameters at `kept`. */
 interface NativeKept {
@@ -88,9 +88,9 @@ function uncoveredEdge(
   return `${key}: argument ${holder} came to hold a ${kind} ${given}`;
 }
 
-/** `oracle`, auditing natives' calls with `audit` too. */
-export function withNativeAudit(oracle: Oracle, audit: NativeAudit): Oracle {
-  return { ...oracle, heapCheck: { ...oracle.heapCheck, native: audit.native } };
+/** The oracle, auditing natives' calls with `audit` too. */
+export function withNativeAudit(audit: NativeAudit): HeapCheck {
+  return { ...oracle, native: audit.native };
 }
 
 /** The objects a native may write into through an argument passing `contents`, valued `value`. */

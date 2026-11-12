@@ -10,7 +10,7 @@ import { definitionFormat } from '../../definition/definition.ts';
 import { renderDiagnostics } from '../../foundation/diagnostics/render.ts';
 import { stdNatives } from '../../stdlib/natives.ts';
 import { ManualClock } from '../clock.ts';
-import { acyclicOracle } from '../lifetimes/oracle.test-kit.ts';
+import { oracle } from '../lifetimes/oracle.test-kit.ts';
 import type { HeapCheck } from '../scheduler/loaded-definition.ts';
 import { runTests, type TestReport } from './run-tests.ts';
 
@@ -50,7 +50,7 @@ export async function reportsOf(
       until: clock.until,
     },
     timeout: options.timeout ?? 5000n,
-    heapCheck: options.heapCheck ?? acyclicOracle.heapCheck,
+    heapCheck: options.heapCheck ?? oracle,
     ...(options.filter === undefined ? {} : { filter: options.filter }),
   })) {
     reports.push(report);

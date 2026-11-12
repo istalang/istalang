@@ -51,6 +51,16 @@ export function runForward<State>(
   return reaching;
 }
 
+/** Whether each block of `flow` is one some path reaches, by its position. */
+export function reachedBlocks(flow: FlowFunction): readonly boolean[] {
+  const reached = runForward<true>(
+    flow,
+    { join: () => true, settled: () => true, operation: (_, state) => state },
+    true,
+  );
+  return reached.map((state) => state !== undefined);
+}
+
 const stop: Exit = { kind: 'stop' };
 
 /** Joins `state` into what reaches `block`; whether that grew, so `block` runs again. */

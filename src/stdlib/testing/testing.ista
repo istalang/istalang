@@ -343,9 +343,12 @@ ista fn revertibleSender<R, Q, T, K>(self: FakeReceipts<R>, queues: FakeQueue<Q,
     receipt
   sendInto
 
+# Retracts once the receipt's entries are let go of, so a retraction never sees them.
 ista fn _disposeReceipt<R>(entries: _Receipts<R>, receipt: R):
   let remaining: Array<_Receipt<R>> = []
+  let retracted: Array<_Receipt<R>> = []
   for each in entries->held:
-    if each.receipt == receipt: (each.retract)()
+    if each.receipt == receipt: retracted.push(each)
     else: remaining.push(each)
   entries->held = remaining
+  for each in retracted: (each.retract)()

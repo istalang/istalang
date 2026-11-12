@@ -1,0 +1,57 @@
+# outcome: "3 built, 3 appended, 3 linked, 3 counted down"
+# Static lifetimes accepts what builds structures without closing a cycle through a disposable
+# (§7): a list built in a loop, each node holding the one before it; appending at the tail
+# through a fresh node, which nothing reaches yet; a generic link used with a value, which reaches
+# nothing; and a closure calling itself through its captured `let`, a cycle that reaches no
+# disposable.
+
+import * as runtime from 'runtime'
+
+shared struct Lease:
+  n: Int
+
+fn dispose(self: Lease): ()
+
+shared struct Node:
+  lease: Lease
+  next: Node? = none
+
+fn length(node: Node?) -> Int:
+  match node:
+    case None: 0
+    case n: 1 + length(n->next)
+
+fn built() -> Int:
+  let prev: Node? = none
+  for i in 0..3:
+    prev = new Node{lease: new Lease{n: i}, next: prev}
+  length(prev)
+
+fn appended() -> Int:
+  const head = new Node{lease: new Lease{n: 0}}
+  let tail = head
+  for i in 1..3:
+    const n = new Node{lease: new Lease{n: i}}
+    tail->next = n
+    tail = n
+  length(head)
+
+fn link<T>(a: Shared<T?>, b: T): a->value = b
+
+fn linked() -> Int:
+  const s = new Shared<Int?>{value: none}
+  link(s, 3)
+  match s->value:
+    case None: 0
+    case n: n
+
+fn countedDown() -> Int:
+  let left = 3
+  let f: fn() -> Int = fn(): 0
+  f = fn(): if left == 0: 0 else: { left -= 1; 1 + f() }
+  f()
+
+live async fn main() -> String: await runtime.run(runtime.id()) _main()
+
+ista async fn _main() -> String:
+  String(built()) + " built, " + String(appended()) + " appended, " + String(linked()) + " linked, " + String(countedDown()) + " counted down"

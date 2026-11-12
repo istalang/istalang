@@ -22,10 +22,18 @@ import type { LifetimeFinding, SignatureParameter } from '../../../check.ts';
 import type { FunctionCall, RequirementCall } from '../../../surface/resolved-call.ts';
 import type { Type } from '../../../types/type/index.ts';
 import type { FlowFunction, ValueId } from '../../flow/flow-ir.ts';
-import { decidingType } from '../escaping.ts';
+import { cycleRelevance } from '../escaping.ts';
 import type { NodeId } from '../reach-state.ts';
-import { anyField, type Input, inputKey, type Requirement, type Summary } from '../summary.ts';
-import { lessRelevant, moreRelevant, type Relevance } from '../type-reach.ts';
+import {
+  anyField,
+  type Input,
+  inputKey,
+  type Requirement,
+  type Summary,
+  type TypedCycle,
+} from '../summary.ts';
+import { moreRelevant, type Relevance } from '../type-reach.ts';
+import { cycleOf } from './cycles.ts';
 import type { FlowState } from './flow-state.ts';
 import { apart, candidatesIn } from './inputs.ts';
 import type { Nodes, TypeFacts } from './nodes.ts';
@@ -76,7 +84,7 @@ export class BodyAnalysis {
   readonly references: ReadonlySet<ValueId>;
   readonly violations = new Map<NodeOf<string>, Map<string, Violation>>();
   readonly requirements = new Map<string, Requirement>();
-  readonly always = new Map<string, Type>();
+  readonly always = new Map<string, TypedCycle>();
   readonly leaks = new Map<string, Input>();
   readonly calls = new Map<string, Input>();
   /** Analyses a nested function, its closure made at `site`, its findings joining this one's. */
@@ -200,7 +208,10 @@ export class BodyAnalysis {
       (closes || onCycle) &&
       this.#reachesDisposable(state, closes ? value : holder.node, value)
     ) {
-      this.violate('write', site, this.holderTypeOf(state, holder, value), undefined);
+      const cycle = closes
+        ? cycleOf(this, state, holder, value)
+        : cycleOf(this, state, { ...holder, exact: true }, holder.node);
+      this.violate('write', site, cycle, undefined);
     } else if (!closes) {
       this.lift(state, holder.node, value, { holderType: holder.type, kind: 'reach' });
     }
@@ -231,62 +242,8 @@ export class BodyAnalysis {
    * its cell, or, not `exact`, into one it reaches.
    */
   link(state: FlowState, holder: Written, value: NodeId, inside: boolean): void {
-    state.reach.link(holder.node, value, inside);
+    state.reach.link(holder.node, value, { exact: holder.exact, inside });
     this.endPathsThrough(state, holder);
-  }
-
-  /**
-   * The type deciding a cycle closed by writing `value` into `holder`, of `holderType`. Each path
-   * the value may reach the holder by holds a disposable only where every value on it may reach
-   * one, so a path through a value of a type parameter's type is decided by its instantiation; the
-   * surest path decides (`cyclePath`).
-   */
-  holderTypeOf(state: FlowState, { node: holder, type: holderType }: Holder, value: NodeId): Type {
-    const path = this.#pathType(state, holder, value);
-    return path === undefined ? holderType : this.decidingType(holderType, path);
-  }
-
-  /**
-   * The least relevant type on the surest path from `value` to `holder`: through the parts of a
-   * value this body made where it has them, each a path of its own, else through what it reaches.
-   */
-  #pathType(state: FlowState, holder: NodeId, value: NodeId): Type | undefined {
-    const valueType = this.nodes.typeOf(value);
-    if (valueType === undefined) {
-      return undefined;
-    }
-    const parts = this.nodes
-      .pathsFrom(value)
-      .filter((path) => this.nodes.pathOf(path)?.kind === 'part' && state.reach.isLive(path));
-    if (parts.length > 0) {
-      const closing = parts
-        .filter((path) => state.reach.closes(holder, path))
-        .flatMap((path) => this.#pathType(state, holder, path) ?? []);
-      const most = closing.reduce<Type | undefined>(
-        (found, type) =>
-          found === undefined ||
-          lessRelevant(this.nodes.relevanceOf(found), this.nodes.relevanceOf(type))
-            ? type
-            : found,
-        undefined,
-      );
-      return most === undefined ? valueType : this.decidingType(valueType, most);
-    }
-    const sure = cyclePath(this.nodes, state, { from: value, to: holder, least: 'yes' });
-    return (
-      sure ??
-      cyclePath(this.nodes, state, { from: value, to: holder, least: 'depends' }) ??
-      valueType
-    );
-  }
-
-  /**
-   * Of a cycle's holder's and value's types, the one deciding whether it may hold a disposable:
-   * the value reaches the holder on it, so it holds one only where both types may reach one, and a
-   * value of a type parameter's type only where its instantiation may (design.md §5.3).
-   */
-  decidingType(holderType: Type, valueType: Type): Type {
-    return decidingType(this.context.facts, holderType, valueType);
   }
 
   /**
@@ -350,26 +307,35 @@ export class BodyAnalysis {
     }
   }
 
-  /** Notes a cycle closing at `site`: reported where a disposable is surely on it, else lifted. */
+  /**
+   * Notes `cycle` closing at `site`: reported where a disposable is surely on it, else the
+   * function's always, where its instantiation may close it.
+   */
   violate(
     kind: Violation['kind'],
     site: NodeOf<string>,
-    holderType: Type,
+    cycle: TypedCycle,
     callee: FunctionDeclaration | undefined,
   ): void {
     if (!this.recording) {
       return;
     }
-    const relevance: Relevance = this.nodes.relevanceOf(holderType);
-    const key = this.context.facts.keyOf(holderType);
+    const { keyOf } = this.context.facts;
+    const relevance = cycleRelevance(this.context.facts, cycle);
     if (relevance === 'yes') {
+      const holderType = cycle.deciding;
       const at = this.violations.get(site) ?? new Map<string, Violation>();
       this.violations.set(site, at);
-      if (!at.has(`${kind}:${key}`)) {
-        at.set(`${kind}:${key}`, { kind, site, holderType, callee });
+      if (!at.has(`${kind}:${keyOf(holderType)}`)) {
+        at.set(`${kind}:${keyOf(holderType)}`, { kind, site, holderType, callee });
       }
-    } else if (relevance === 'depends' && !this.always.has(key)) {
-      this.always.set(key, holderType);
+    } else if (relevance === 'depends') {
+      const key = [cycle.kind, cycle.holder, cycle.deciding, ...cycle.through]
+        .map((each) => (typeof each === 'string' ? each : keyOf(each)))
+        .join('|');
+      if (!this.always.has(key)) {
+        this.always.set(key, cycle);
+      }
     }
   }
 
@@ -398,41 +364,4 @@ export class BodyAnalysis {
     const own = this.nodes.relevanceOf(type);
     return other === undefined ? own : moreRelevant(own, this.nodes.relevanceOf(other));
   }
-}
-
-/**
- * The least relevant type on a path from `from` to what reaches or is `to`, by what each value
- * reaches or holds, through values at least `least` relevant; undefined where there is none.
- */
-function cyclePath(
-  nodes: Nodes,
-  state: FlowState,
-  { from, to, least }: { readonly from: NodeId; readonly to: NodeId; readonly least: Relevance },
-): Type | undefined {
-  const allowed = (node: NodeId) => {
-    const type = nodes.typeOf(node);
-    return type !== undefined && !lessRelevant(nodes.relevanceOf(type), least);
-  };
-  const leastOf = new Map<NodeId, Type>();
-  const pending = allowed(from) ? [from] : [];
-  const typeOf = (node: NodeId) => nodes.typeOf(node) as Type;
-  leastOf.set(from, typeOf(from));
-  while (pending.length > 0) {
-    const node = pending.shift() as NodeId;
-    const found = leastOf.get(node) as Type;
-    if (node === to || state.reach.closes(to, node)) {
-      return found;
-    }
-    for (const next of [...state.reach.reachedFrom(node), ...state.reach.aliasesOf(node)]) {
-      if (!leastOf.has(next) && allowed(next)) {
-        const type = typeOf(next);
-        leastOf.set(
-          next,
-          lessRelevant(nodes.relevanceOf(type), nodes.relevanceOf(found)) ? type : found,
-        );
-        pending.push(next);
-      }
-    }
-  }
-  return undefined;
 }

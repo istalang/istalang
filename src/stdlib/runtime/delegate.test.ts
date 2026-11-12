@@ -10,7 +10,7 @@ import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { reported } from '../../compiler/checker/check.test-kit.ts';
 import { checkerDiagnostics } from '../../compiler/checker/diagnostics/index.ts';
-import { compiledText } from '../../compiler/compile.test-kit.ts';
+import { compiledText, textDespiteCycles } from '../../compiler/compile.test-kit.ts';
 import { lines } from '../../compiler/parser/parse.test-kit.ts';
 import { definitionFormat } from '../../definition/definition.ts';
 import type { HostExterns } from '../../runtime/boundary/host-natives.ts';
@@ -259,7 +259,8 @@ describe('delegate', () => {
         });
       },
     };
-    const disposedMidJob = compiledText(
+    // C4: by types, the job table's closures may hold `kept` until closures' captures are known.
+    const disposedMidJob = textDespiteCycles(
       lines(
         "import * as runtime from 'runtime'",
         "import * as time from 'time'",
@@ -294,7 +295,8 @@ describe('delegate', () => {
       ...host,
       'main.phase()': () => BigInt(phase),
     };
-    const program = compiledText(
+    // C4: by types, the job table's closures may hold `kept` until closures' captures are known.
+    const program = textDespiteCycles(
       lines(
         ...header,
         "import * as time from 'time'",

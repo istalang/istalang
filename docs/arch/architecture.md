@@ -152,7 +152,12 @@ src/
                                                                  annotations, tests' rules (testing.ts) at its root; computation/ (compile-time computation),
                                                                  disposal/ (disposal, must-use, `drop`), boundary/ (what externs may take, derived JSON codecs),
                                                                  lifetimes/ (what the std's externs hold and keep: `lifetimes`' `@Holds` and `@Keeps`, read
-                                                                 by what a value holds, types/properties/held.ts, through the checker's `externHeldOf`),
+                                                                 by what a value holds, types/properties/held.ts, through the checker's `externHeldOf`; and
+                                                                 static lifetimes, the cycles reaching a disposable it rejects, `checker.lifetimes`:
+                                                                 lifetimes.ts the entries over functions and their SCC groups, type-reach.ts relevance and
+                                                                 the declaration graph, summary.ts summaries, analysis/ one body's reach over the flow IR,
+                                                                 declared.ts defaults, context constants and `dispose`, dispatch.ts calls through `any`,
+                                                                 reports.ts the diagnostics),
                                                                  expansion/ (generics needing endlessly many instantiations), kinds/ (the data rule: what a
                                                                  function's signature holds of a kind, and every value its checked body
                                                                  and defaults compute, run where declarations are checked); beneath them flow/, a checked
@@ -263,7 +268,7 @@ src/
                         a heap object or a running call's future, noting what lost a holder), holders.ts (what the live frames
                         reach: held), orphans.ts (what to dispose now,
                         holders before what they hold), disposal.ts (each kind's disposal), collector.ts (rounds, a disposal's call on the run stack),
-                        oracle.test-kit.ts (static lifetimes' oracle, a `HeapCheck`: no cycle reaching a disposable; every test runtime, `ista run` and `ista test` in the CLI's tests check it, but for the programs known to make one)
+                        oracle.test-kit.ts (static lifetimes' oracle, a `HeapCheck`: no cycle reaching a disposable; every test runtime, `ista run` and `ista test` in the CLI's tests check it; its own tests compile cyclic programs through `compile.test-kit.ts`'s `textDespiteCycles`)
                         native-audit.test-kit.ts (static lifetimes' native audit, `HeapCheck.native`: every edge a native's call adds to what an argument holds is one its extern keeps, by the std's `@Keeps` or `&`; the corpus and std suites' sweeps run it)
     testing/            running a test Definition (§10): world/ (one test's fresh runtime in memory: its instances, the mocks they reach, its watches, timers on the caller's clock; drive.ts, the loop driving a group of instances on a test's clock; test-host.ts, the externs no mock replaces), run-tests.ts (listing each suite, then each test in a world of its own)
   stdlib/               std-sources.ts: the one list of std modules, each name with its embedded source, where a module's name is spelled unless the language names it by role; stdlib-loader.ts: the std ModuleLoader (simple name → source) and the roles, read from the list alone, so compiling imports no native (a cruiser rule); std-modules.ts: each module with its natives (std-module.ts: natives built from keys bound to the name, which key its functions and its own types; a module whose natives take another std module's type gets that module's keys, as `decimal` gets `math`'s for `Rounding`); natives.ts: every std native in one table, derived from the list; values/arguments.ts: the values natives read; values/results.ts: what they return, built as the declared result says; positions.ts: what an index, a range, `at` and `slice` select of an array or a string; prelude/ and one folder per std module: <module>.ista + natives.ts when it has any (keys built by definition/extern-key.ts, as lowering's are; the prelude's waits in prelude/wait-natives.ts)

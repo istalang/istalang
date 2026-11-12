@@ -9,7 +9,6 @@ import { compiledText } from '../../compiler/compile.test-kit.ts';
 import { stdNativeKeeps } from '../../stdlib/std-externs.test-kit.ts';
 import { startToEnd, testRuntime } from '../runtime.test-kit.ts';
 import { type NativeKeeps, nativeAudit, withNativeAudit } from './native-audit.test-kit.ts';
-import { acyclicOracle } from './oracle.test-kit.ts';
 
 const keeps = stdNativeKeeps();
 
@@ -40,7 +39,7 @@ async function uncoveredRunning(body: readonly string[], table: NativeKeeps) {
       '  0',
     ].join('\n'),
   );
-  const { heapCheck } = withNativeAudit(acyclicOracle, audit);
+  const heapCheck = withNativeAudit(audit);
   const ended = await startToEnd(testRuntime({ heapCheck }), text);
   return { ended, uncovered: audit.uncovered() };
 }

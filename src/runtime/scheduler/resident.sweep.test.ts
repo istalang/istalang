@@ -12,7 +12,6 @@ import { runPrograms } from '../../../test/corpus/programs.ts';
 import { compiledText } from '../../compiler/compile.test-kit.ts';
 import { memo } from '../../foundation/structures/memo.ts';
 import type { StartOptions } from '../instance-state.ts';
-import { acyclicOracle, type Oracle, oracleFor } from '../lifetimes/oracle.test-kit.ts';
 import { type RecordingStore, startToEnd, testRuntime } from '../runtime.test-kit.ts';
 import { snapshotFormat } from '../snapshot/snapshot.ts';
 
@@ -41,18 +40,18 @@ function commitsOf(store: RecordingStore): readonly unknown[] {
   });
 }
 
-/** How a run of the Definition `text`, its heaps checked by `oracle`, ended, and what it committed. */
-async function runOf(text: string, oracle: Oracle, options: StartOptions = {}) {
-  const test = testRuntime({ heapCheck: oracle.heapCheck });
+/** How a run of the Definition `text` ended, and what it committed. */
+async function runOf(text: string, options: StartOptions = {}) {
+  const test = testRuntime();
   const ended = await startToEnd(test, text, options);
   return { ended, commits: commitsOf(test.store) };
 }
 
 /** Runs of `text` resident and restored at every segment, for comparing. */
-async function bothRuns(text: string, oracle: Oracle) {
+async function bothRuns(text: string) {
   return {
-    resident: await runOf(text, oracle),
-    restored: await runOf(text, oracle, { crashEveryAwait: true }),
+    resident: await runOf(text),
+    restored: await runOf(text, { crashEveryAwait: true }),
   };
 }
 
@@ -108,11 +107,9 @@ function programOf(chosen: readonly (readonly [number, number])[]): string {
 }
 
 describe('a resident instance', () => {
-  it.each(runPrograms)('runs $name as one restored at every segment', async ({ name, text }) => {
-    const oracle = oracleFor(name);
-    const { resident, restored } = await bothRuns(compiledText(text), oracle);
+  it.each(runPrograms)('runs $name as one restored at every segment', async ({ text }) => {
+    const { resident, restored } = await bothRuns(compiledText(text));
     expect(restored).toEqual(resident);
-    expect(oracle.asExpected()).toBe(true);
   });
 
   it('runs generated programs as one restored at every segment', async () => {
@@ -125,10 +122,7 @@ describe('a resident instance', () => {
     );
     await fc.assert(
       fc.asyncProperty(chosen, async (program) => {
-        const { resident, restored } = await bothRuns(
-          compiledText(programOf(program)),
-          acyclicOracle,
-        );
+        const { resident, restored } = await bothRuns(compiledText(programOf(program)));
         expect(restored).toEqual(resident);
       }),
       { numRuns: 40 },

@@ -11,6 +11,9 @@
  *   since parameters live until the function ends, is every input (design.md §5.3).
  * - **A nested function** is analysed once, as a function of its own, its findings joining this
  *   one's: it is in this function's text.
+ * - **A function holding nothing that may reach a disposable** relates nothing, so one pass finds
+ *   what the fixed point would: its calls' cycles and unseen code. Most of a test suite's closures
+ *   are such, and an edit inside one analyses its whole suite again.
  */
 
 import type { FunctionDeclaration } from '../../../../syntax/declarations/index.ts';
@@ -18,7 +21,7 @@ import type { Lambda } from '../../../../syntax/expressions/index.ts';
 import type { NodeOf } from '../../../../syntax/tree/node.ts';
 import type { Type } from '../../../types/type/index.ts';
 import type { FlowFunction, ValueId } from '../../flow/flow-ir.ts';
-import { type ForwardRule, runForward } from '../../flow/solve.ts';
+import { type ForwardRule, reachedBlocks, runForward } from '../../flow/solve.ts';
 import { type Allowed, type NodeId, ReachState } from '../reach-state.ts';
 import { anyField, type Effect, inputKey, type ResultRelation, type Summary } from '../summary.ts';
 import { type HandleReach, mayAlias, mayReach, mayShare } from '../type-reach.ts';
@@ -49,7 +52,97 @@ export function analyze(
   options: AnalyzeOptions,
 ): Analysis {
   const nodes = new Nodes(flow, context.facts);
-  const nested = new Map<FlowFunction, Analysis & { readonly isAsync: boolean }>();
+  const once = holdsNothingRelevant(nodes) ? analyzedOnce(context, nodes, options) : undefined;
+  return once ?? analyzedToFixpoint(context, nodes, options);
+}
+
+/** Whether no value of `nodes`' function, nor any of its inputs, may reach a disposable. */
+function holdsNothingRelevant(nodes: Nodes): boolean {
+  return (
+    nodes.flow.values.every((_, value) => !nodes.isRelevant(value)) &&
+    nodes.inputs.every((slot) => !nodes.isRelevant(slot.node))
+  );
+}
+
+/**
+ * A function's analysis as one pass recording what it finds, where nothing ever relates: its
+ * calls still carry their callees' cycles and unseen code. Undefined where a callee's summary
+ * relates something after all (a global it reaches), which only the fixed point decides.
+ */
+function analyzedOnce(
+  context: AnalysisContext,
+  nodes: Nodes,
+  options: AnalyzeOptions,
+): Analysis | undefined {
+  const { analysis, nested } = analysisOf(context, nodes, options);
+  analysis.record();
+  const entry = entryState(analysis);
+  const state = clonedState(entry);
+  const exits: Exit[] = [];
+  const reached = reachedBlocks(nodes.flow);
+  for (const block of nodes.flow.blocks.filter((_, index) => reached[index] === true)) {
+    for (const operation of block.operations) {
+      runOperation(analysis, state, operation);
+    }
+    if (block.exit.kind === 'return') {
+      exits.push({ state, value: block.exit.value });
+    }
+  }
+  return state.reach.live().length > 0
+    ? undefined
+    : analysisFound(analysis, { nested, entry, exits, isAsync: options.isAsync });
+}
+
+/** A function's analysis run forward to its fixed point, then once more recording what it finds. */
+function analyzedToFixpoint(
+  context: AnalysisContext,
+  nodes: Nodes,
+  options: AnalyzeOptions,
+): Analysis {
+  const { analysis, nested } = analysisOf(context, nodes, options);
+  const rule: ForwardRule<FlowState> = {
+    join: (states) => joinedStates(nodes, states),
+    settled: (earlier, later) =>
+      later.reach.size() === earlier.reach.size() &&
+      later.canon.size === earlier.canon.size &&
+      later.callees.size === earlier.callees.size &&
+      later.gives.size === earlier.gives.size,
+    operation: (operation, state) => {
+      runOperation(analysis, state, operation);
+      return state;
+    },
+    enter: clonedState,
+  };
+  const entry = entryState(analysis);
+  const reaching = runForward(nodes.flow, rule, entry);
+  analysis.record();
+  const exits: Exit[] = [];
+  nodes.flow.blocks.forEach((block, index) => {
+    const start = reaching[index];
+    if (start === undefined) {
+      return;
+    }
+    const state = clonedState(start);
+    for (const operation of block.operations) {
+      runOperation(analysis, state, operation);
+    }
+    if (block.exit.kind === 'return') {
+      exits.push({ state, value: block.exit.value });
+    }
+  });
+  return analysisFound(analysis, { nested, entry, exits, isAsync: options.isAsync });
+}
+
+/** The nested functions a function's analysis made, analysed once each. */
+type NestedAnalyses = Map<FlowFunction, Analysis & { readonly isAsync: boolean }>;
+
+/** A function's analysis as it starts, and where it keeps its nested functions'. */
+function analysisOf(
+  context: AnalysisContext,
+  nodes: Nodes,
+  options: AnalyzeOptions,
+): { readonly analysis: BodyAnalysis; readonly nested: NestedAnalyses } {
+  const nested: NestedAnalyses = new Map();
   const analysis = new BodyAnalysis(nodes, context, options.references, {
     separates: options.nested !== true,
     analyze: (inner, site) => {
@@ -66,44 +159,27 @@ export function analyze(
       return found;
     },
   });
-  const rule: ForwardRule<FlowState> = {
-    join: (states) => joinedStates(nodes, states),
-    settled: (earlier, later) =>
-      later.reach.size() === earlier.reach.size() &&
-      later.canon.size === earlier.canon.size &&
-      later.callees.size === earlier.callees.size &&
-      later.gives.size === earlier.gives.size,
-    operation: (operation, state) => {
-      runOperation(analysis, state, operation);
-      return state;
-    },
-    enter: clonedState,
-  };
-  const entry = entryState(analysis);
-  const reaching = runForward(flow, rule, entry);
-  analysis.record();
-  const exits: Exit[] = [];
-  flow.blocks.forEach((block, index) => {
-    const start = reaching[index];
-    if (start === undefined) {
-      return;
-    }
-    const state = clonedState(start);
-    for (const operation of block.operations) {
-      runOperation(analysis, state, operation);
-    }
-    if (block.exit.kind === 'return') {
-      exits.push({ state, value: block.exit.value });
-    }
-  });
-  const nestedViolations = [...nested.values()].flatMap(({ violations }) => violations);
+  return { analysis, nested };
+}
+
+/** What `analysis` found, its nested functions' findings among its own, and its summary. */
+function analysisFound(
+  analysis: BodyAnalysis,
+  found: {
+    readonly nested: NestedAnalyses;
+    readonly entry: FlowState;
+    readonly exits: readonly Exit[];
+    readonly isAsync: boolean;
+  },
+): Analysis {
+  const nestedViolations = [...found.nested.values()].flatMap(({ violations }) => violations);
   return {
-    summary: summarize(analysis, entry, exits, options.isAsync),
+    summary: summarize(analysis, found.entry, found.exits, found.isAsync),
     violations: [
       ...[...analysis.violations.values()].flatMap((at) => [...at.values()]),
       ...nestedViolations,
     ],
-    inputTypes: new Map(nodes.inputs.map((slot) => [inputKey(slot.input), slot.type])),
+    inputTypes: new Map(analysis.nodes.inputs.map((slot) => [inputKey(slot.input), slot.type])),
   };
 }
 

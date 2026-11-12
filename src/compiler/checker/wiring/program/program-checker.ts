@@ -169,23 +169,22 @@ export class ProgramChecker implements CheckerContext {
   readonly traitObjects: TraitObjects;
   readonly rootGoals: RootGoals;
   readonly lookup: Lookup;
-  #lifetimes: Lifetimes | undefined;
+  readonly lifetimes: Lifetimes;
 
   constructor(program: Program, { previous, tentative = false, observe }: CheckerOptions = {}) {
     if (!tentative) {
       previous?.entries.release();
     }
     this.program = program;
-    const entries = new Entries<CheckerNote>({ previous: previous?.entries, observe });
-    this.entries = entries;
+    this.entries = new Entries<CheckerNote>({ previous: previous?.entries, observe });
     const bindings = bindProgram(program);
-    this.bindings = recordedBindings(entries, bindings);
-    this.inputs = programInputs(entries, program, bindings);
-    const declaring = declaringInputs(entries, program);
+    this.bindings = recordedBindings(this.entries, bindings);
+    this.inputs = programInputs(this.entries, program, bindings);
+    const declaring = declaringInputs(this.entries, program);
     this.moduleOf = declaring.moduleOf;
     this.#itemModuleOf = declaring.itemModuleOf;
     this.isStd = declaring.isStd;
-    this.#resolvedTypes = entries.table({
+    this.#resolvedTypes = this.entries.table({
       name: 'resolved types',
       compute: (node, module) => resolveTypeNode(this, module, node),
       equal: sameTypeSpelled,
@@ -230,11 +229,7 @@ export class ProgramChecker implements CheckerContext {
     this.traitObjects = traitObjectsOf(this);
     this.rootGoals = programRootGoals(this, rootSearches);
     this.lookup = new Lookup(this);
-  }
-
-  get lifetimes(): Lifetimes {
-    this.#lifetimes ??= new Lifetimes(this);
-    return this.#lifetimes;
+    this.lifetimes = new Lifetimes(this);
   }
 
   /** Checks a function's body, which must produce `declaredResult` if given. */

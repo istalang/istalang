@@ -14,7 +14,7 @@ import { closureTemplates } from './closures.ts';
 import { collectionTemplates } from './collections.ts';
 import { concurrencyTemplates } from './concurrency.ts';
 import { genericTemplates } from './generics.ts';
-import { lifetimeTemplates, weakSideTemplates } from './lifetimes.ts';
+import { cycleTemplates, lifetimeTemplates, weakSideTemplates } from './lifetimes.ts';
 import { patternTemplates } from './patterns.ts';
 import { valueTemplates } from './values.ts';
 import { varianceTemplates } from './variance.ts';
@@ -154,6 +154,7 @@ export const checkerDiagnostics = defineDiagnostics('checker', {
   ...closureTemplates,
   ...concurrencyTemplates,
   ...lifetimeTemplates,
+  ...cycleTemplates,
   ...weakSideTemplates,
   ...boundaryTemplates,
 });

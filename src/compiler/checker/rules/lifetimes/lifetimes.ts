@@ -6,15 +6,15 @@
  *   what it calls, never their bodies, and a requirement reaching a function's callers is checked
  *   by each call. A group of functions calling each other is solved together, from summaries that
  *   do nothing, until none changes: the lattice over a group's inputs is finite.
- * - **Entries, as the expansion graph keeps them** (design.md §8): what each function calls; per
- *   module, the recursive groups what its functions call fall into; each group's analyses; each
+ * - **Entries, as the expansion graph keeps them** (design.md §8): what each function calls; each
+ *   function's recursive group, found in what it reaches; each group's analyses; each
  *   function's summary, which an edit keeping its effects leaves equal, so its callers stop there;
  *   and each function's reports, the only entry reading where its findings are. Relevance and the
  *   handles a type may hold are entries per type.
  * - **Lazy:** a module's check reads the summaries of what its functions call, transitively, and
  *   nothing else.
- * - **Dry until switched on** (plan C3): `findingsOf` lists what the rule would report; `check`
- *   reports only once the rule is on.
+ * - **Reported per module:** `check` reports each finding where it stands, through the
+ *   `lifetime reports` entry (reports.ts); `findingsOf` lists them, for tests.
  */
 
 import type { EntryTable } from '../../../../foundation/structures/entries/index.ts';
@@ -34,7 +34,7 @@ import { substitute } from '../../types/parts/substitution.ts';
 import type { Type } from '../../types/type/index.ts';
 import { flowOf } from '../flow/build/index.ts';
 import type { FlowFunction } from '../flow/flow-ir.ts';
-import type { AnalysisContext } from './analysis/body.ts';
+import type { AnalysisContext, Violation } from './analysis/body.ts';
 import { type Analysis, analyze } from './analysis/index.ts';
 import {
   contextConstantFlow,
@@ -44,7 +44,8 @@ import {
   withDefaults,
 } from './declared.ts';
 import { Dispatch } from './dispatch.ts';
-import { type Call, type Groups, groupsOf, sameGroupSummaries, sameGroups } from './groups.ts';
+import { type Call, groupOf, sameGroupSummaries } from './groups.ts';
+import { diagnosticOf } from './reports.ts';
 import {
   constructorSummary,
   emptySummary,
@@ -64,7 +65,7 @@ export class Lifetimes implements LifetimeQueries {
   readonly #checker: CheckerContext;
   readonly #natives: EntryTable<CheckerNote, FunctionDeclaration, Summary>;
   readonly #callees: EntryTable<CheckerNote, FunctionDeclaration, readonly FunctionDeclaration[]>;
-  readonly #groups: EntryTable<CheckerNote, ModuleId, Groups>;
+  readonly #groups: EntryTable<CheckerNote, FunctionDeclaration, readonly FunctionDeclaration[]>;
   readonly #analyses: EntryTable<
     CheckerNote,
     FunctionDeclaration,
@@ -75,6 +76,12 @@ export class Lifetimes implements LifetimeQueries {
   readonly #context: AnalysisContext;
   readonly #declared: Declared;
   readonly #dispatch: Dispatch;
+  readonly #reports: EntryTable<
+    CheckerNote,
+    FunctionDeclaration | ContextConstantDeclaration,
+    void,
+    ModuleId
+  >;
 
   constructor(checker: CheckerContext) {
     this.#checker = checker;
@@ -90,8 +97,8 @@ export class Lifetimes implements LifetimeQueries {
     });
     this.#groups = checker.entries.table({
       name: 'lifetime groups',
-      compute: (module: ModuleId) => this.#groupsFrom(module),
-      equal: sameGroups,
+      compute: (declaration: FunctionDeclaration) => this.#groupFrom(declaration),
+      equal: sameItems(),
     });
     this.#analyses = checker.entries.table({
       name: 'lifetime analyses',
@@ -119,6 +126,11 @@ export class Lifetimes implements LifetimeQueries {
       hasBody: (declaration) => this.#hasBody(declaration),
     });
     this.#dispatch = new Dispatch(checker, (module) => this.#flowsOf(module));
+    this.#reports = checker.entries.table({
+      name: 'lifetime reports',
+      compute: (declaration: FunctionDeclaration | ContextConstantDeclaration, module: ModuleId) =>
+        this.#report(declaration, module),
+    });
     this.#context = {
       facts: typeFactsOf(checker),
       calleeSummary: (call) => this.#calleeSummary(call, undefined),
@@ -136,21 +148,43 @@ export class Lifetimes implements LifetimeQueries {
 
   /** What the rule finds in `module`'s functions, in their order. */
   findingsOf(module: ModuleId): readonly LifetimeFinding[] {
+    return this.#declarationsOf(module).flatMap((declaration) =>
+      this.#violationsOf(declaration).map((violation) => ({ ...violation, declaration })),
+    );
+  }
+
+  check(module: ModuleId): void {
+    for (const declaration of this.#declarationsOf(module)) {
+      this.#reports.get(declaration, module);
+    }
+  }
+
+  #declarationsOf(module: ModuleId): readonly (FunctionDeclaration | ContextConstantDeclaration)[] {
     const items = this.#checker.inputs.itemsOf(module);
-    const declarations = [
+    return [
       ...functionsOf({ items }),
       ...items.filter(
         (item): item is ContextConstantDeclaration => item.kind === 'ContextConstantDeclaration',
       ),
     ];
-    return declarations.flatMap((declaration) =>
-      [
-        ...(declaration.kind === 'FunctionDeclaration' && this.#hasBody(declaration)
-          ? this.#analysisOf(declaration).violations
-          : []),
-        ...this.#declared.violationsOf(declaration),
-      ].map((violation) => ({ ...violation, declaration })),
-    );
+  }
+
+  #violationsOf(
+    declaration: FunctionDeclaration | ContextConstantDeclaration,
+  ): readonly Violation[] {
+    return [
+      ...(declaration.kind === 'FunctionDeclaration' && this.#hasBody(declaration)
+        ? this.#analysisOf(declaration).violations
+        : []),
+      ...this.#declared.violationsOf(declaration),
+    ];
+  }
+
+  /** Reports each of `declaration`'s violations, the callee or witness whose write it is beside. */
+  #report(declaration: FunctionDeclaration | ContextConstantDeclaration, module: ModuleId): void {
+    for (const violation of this.#violationsOf(declaration)) {
+      this.#checker.report(module, diagnosticOf(this.#checker, violation));
+    }
   }
 
   #ownFunctions(module: ModuleId): readonly FunctionDeclaration[] {
@@ -175,11 +209,11 @@ export class Lifetimes implements LifetimeQueries {
     return [...callees].filter((callee) => this.#hasBody(callee));
   }
 
-  /** The recursive groups of the functions `module`'s functions call, each listing its members. */
-  #groupsFrom(module: ModuleId): Groups {
+  /** The members of `declaration`'s recursive group, in the call graph it reaches. */
+  #groupFrom(declaration: FunctionDeclaration): readonly FunctionDeclaration[] {
     const edges: Call[] = [];
     const seen = new Set<FunctionDeclaration>();
-    const pending = [...this.#ownFunctions(module)];
+    const pending = [declaration];
     while (pending.length > 0) {
       const caller = pending.pop() as FunctionDeclaration;
       if (!seen.has(caller)) {
@@ -189,16 +223,16 @@ export class Lifetimes implements LifetimeQueries {
         pending.push(...callees);
       }
     }
-    const position = (declaration: FunctionDeclaration) => {
-      const declaring = this.#checker.moduleOf(declaration);
-      return [String(declaring), this.#ownFunctions(declaring).indexOf(declaration)] as const;
+    const position = (member: FunctionDeclaration) => {
+      const declaring = this.#checker.moduleOf(member);
+      return [String(declaring), this.#ownFunctions(declaring).indexOf(member)] as const;
     };
-    return groupsOf(edges, position);
+    return groupOf(edges, declaration, position);
   }
 
   /** The members of `declaration`'s recursive group, the first naming it; itself alone if none. */
   #groupOf(declaration: FunctionDeclaration): readonly FunctionDeclaration[] {
-    return this.#groups.get(this.#checker.moduleOf(declaration)).get(declaration) ?? [declaration];
+    return this.#groups.get(declaration);
   }
 
   #analysisOf(declaration: FunctionDeclaration): Analysis {

@@ -18,7 +18,7 @@ import { createRuntime, type Runtime } from './host/index.ts';
 import { InstanceGroup } from './host/instance-group.ts';
 import type { DeployedProgram, HostReports } from './host/programs.ts';
 import type { Advanced, InstanceState, StartOptions } from './instance-state.ts';
-import { acyclicOracle } from './lifetimes/oracle.test-kit.ts';
+import { oracle } from './lifetimes/oracle.test-kit.ts';
 import type { FullNativeContext, Natives } from './natives.ts';
 import { Refusal } from './refusal.ts';
 import { type HeapCheck, loadDefinition } from './scheduler/loaded-definition.ts';
@@ -102,7 +102,7 @@ export function testRuntime({
   host = {},
   seed = () => testSeed,
   reports,
-  heapCheck = acyclicOracle.heapCheck,
+  heapCheck = oracle,
 }: TestRuntimeOptions = {}): TestRuntime {
   const inner = createRuntime({
     natives: nativesGiven,

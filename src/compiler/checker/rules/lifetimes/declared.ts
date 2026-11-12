@@ -17,20 +17,19 @@ import type {
 } from '../../../syntax/declarations/index.ts';
 import type { CheckerContext, CheckerNote } from '../../contexts/context.ts';
 import type { CheckedBody } from '../../surface/checked-body.ts';
-import type { Type } from '../../types/type/index.ts';
 import { isDisposeFunction } from '../disposal/disposal.ts';
 import type { FlowInputs } from '../flow/build/flow-builder.ts';
 import { flowOf } from '../flow/build/index.ts';
 import type { FlowFunction } from '../flow/flow-ir.ts';
 import type { AnalysisContext, Violation } from './analysis/body.ts';
 import { type Analysis, analyze } from './analysis/index.ts';
-import { escapingTypes } from './escaping.ts';
-import { inputKey, type Summary } from './summary.ts';
+import { cycleRelevance, escapingCycles } from './escaping.ts';
+import { inputKey, type Summary, type TypedCycle } from './summary.ts';
 
 /** What a function's defaults find. */
 export interface DefaultsFound {
   readonly violations: readonly Violation[];
-  readonly always: readonly Type[];
+  readonly always: readonly TypedCycle[];
 }
 
 const none: DefaultsFound = { violations: [], always: [] };
@@ -139,18 +138,18 @@ export class Declared {
     const parameters = checker.parametersOf(declaration);
     const atDispose =
       this.#deps.hasBody(declaration) && isDisposeFunction(checker, declaration)
-        ? escapingTypes(context.facts, this.#deps.analysisOf(declaration).summary, (input) =>
+        ? escapingCycles(context.facts, this.#deps.analysisOf(declaration).summary, (input) =>
             input.kind === 'parameter' ? parameters[input.index]?.type : undefined,
-          ).map((holderType) => ({
-            kind: 'closure' as const,
-            site: declaration.name,
-            holderType,
-            callee: undefined,
-          }))
+          )
+            .filter((cycle) => cycleRelevance(context.facts, cycle) !== 'no')
+            .map(({ deciding }) => ({
+              kind: 'closure' as const,
+              site: declaration.name,
+              holderType: deciding,
+              callee: undefined,
+            }))
         : [];
-    return [...this.defaultsOf(declaration).violations, ...atDispose].filter(
-      ({ holderType }) => context.facts.relevanceOf(holderType) !== 'no',
-    );
+    return [...this.defaultsOf(declaration).violations, ...atDispose];
   }
 
   #defaultsFound(declaration: FunctionDeclaration): DefaultsFound {
@@ -172,26 +171,26 @@ export class Declared {
         references: new Set(),
         nested: true,
       });
-      const types = escapingTypes(context.facts, analysis.summary, (input) =>
+      const cycles = escapingCycles(context.facts, analysis.summary, (input) =>
         analysis.inputTypes.get(inputKey(input)),
       );
-      return { root, analysis, types };
+      return { root, analysis, cycles };
     });
-    const relevance = (type: Type) => context.facts.relevanceOf(type);
+    const relevance = (cycle: TypedCycle) => cycleRelevance(context.facts, cycle);
     return {
-      violations: found.flatMap(({ root, analysis, types }) => [
+      violations: found.flatMap(({ root, analysis, cycles }) => [
         ...analysis.violations,
-        ...types
-          .filter((type) => relevance(type) === 'yes')
-          .map((holderType) => ({
+        ...cycles
+          .filter((cycle) => relevance(cycle) === 'yes')
+          .map(({ deciding }) => ({
             kind: 'closure' as const,
             site: root,
-            holderType,
+            holderType: deciding,
             callee: undefined,
           })),
       ]),
-      always: found.flatMap(({ analysis, types }) =>
-        [...types, ...analysis.summary.always].filter((type) => relevance(type) === 'depends'),
+      always: found.flatMap(({ analysis, cycles }) =>
+        [...cycles, ...analysis.summary.always].filter((cycle) => relevance(cycle) === 'depends'),
       ),
     };
   }

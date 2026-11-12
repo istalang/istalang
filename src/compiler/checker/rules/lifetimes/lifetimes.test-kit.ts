@@ -8,6 +8,16 @@ import { stdProgramOf } from '../../../binder/bind.test-kit.ts';
 import { idOf } from '../../../program/program.test-kit.ts';
 import { spanIn } from '../../../syntax/tree/positions.ts';
 import { checkProgram } from '../../check.ts';
+import { cycleTemplates } from '../../diagnostics/lifetimes.ts';
+
+const cycleCodes: ReadonlySet<number> = new Set(
+  Object.values(cycleTemplates).map(({ code }) => code),
+);
+
+/** Whether `diagnostic` reports a cycle static lifetimes rejects (design.md §7). */
+export function isCycle({ code }: { readonly code: number }): boolean {
+  return cycleCodes.has(code);
+}
 
 /** Each finding in `main`, as `line:kind`, the line counted from 1. */
 export function findingsIn(main: string): readonly string[] {
@@ -18,7 +28,9 @@ export function findingsIn(main: string): readonly string[] {
   if (tree === undefined) {
     throw new Error('The program has no main module.');
   }
-  const errors = checker.diagnosticsOf(module).filter(isError);
+  const errors = checker
+    .diagnosticsOf(module)
+    .filter((diagnostic) => isError(diagnostic) && !isCycle(diagnostic));
   if (errors.length > 0) {
     throw new Error(
       `The program doesn't check: ${errors.map(({ message }) => message).join('; ')}`,

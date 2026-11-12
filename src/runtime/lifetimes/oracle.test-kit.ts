@@ -64,8 +64,8 @@ function disposableCycles(
   return [...cycles.values()].map((cycle) => cycle.toSorted((first, second) => first - second));
 }
 
-/** A check that throws at the first cycle through objects reaching a disposable, naming them. */
-const acyclicDisposables: HeapCheck = {
+/** The oracle: a check that throws at the first cycle through objects reaching a disposable, naming them. */
+export const oracle: HeapCheck = {
   ...noHeapCheck,
   changed: (state, changed, running) => {
     const [cycle] = disposableCycles(state, changed, running);
@@ -76,26 +76,11 @@ const acyclicDisposables: HeapCheck = {
   },
 };
 
-/** How a program's heaps are checked, and whether what the check saw was what it expected. */
-export interface Oracle {
-  readonly heapCheck: HeapCheck;
-  readonly asExpected: () => boolean;
-}
-
-/** The oracle of a program making no cycle reaching a disposable: it throws at the first. */
-export const acyclicOracle: Oracle = { heapCheck: acyclicDisposables, asExpected: () => true };
-
 /**
- * What makes a cycle reaching a disposable, by name: corpus programs (test/corpus/programs.ts),
- * which C3 turns into invalid cases (docs/work/static-lifetimes/design.md §10).
+ * A check recording whether it saw a cycle the oracle throws at, for the oracle's own tests, whose
+ * programs make them (oracle.test.ts).
  */
-const cyclic: ReadonlySet<string> = new Set(['holders/dispose.ista']);
-
-/**
- * The oracle for a program that makes a cycle reaching a disposable, which C3 rejects: it records
- * the cycles rather than throwing, and expects to have seen one.
- */
-export function cyclicOracle(): Oracle {
+export function cycleWatch(): { readonly heapCheck: HeapCheck; readonly seen: () => boolean } {
   let seen = false;
   return {
     heapCheck: {
@@ -104,16 +89,8 @@ export function cyclicOracle(): Oracle {
         seen ||= disposableCycles(state, changed, running).length > 0;
       },
     },
-    asExpected: () => seen,
+    seen: () => seen,
   };
-}
-
-/**
- * The oracle for the corpus program or std module `name`: a cyclic one's for one known to make a
- * cycle, else the one throwing at a cycle.
- */
-export function oracleFor(name: string): Oracle {
-  return cyclic.has(name) ? cyclicOracle() : acyclicOracle;
 }
 
 /**

@@ -1,0 +1,36 @@
+# error: 5720 at 23:3
+# error: 5721 at 24:3
+# error: 5720 at 30:3
+# error: 5720 at 36:3
+# Static lifetimes rejects each write that may close a cycle through a disposable (§7), where it
+# closes: a node holding a lease written into itself, and through a function linking two; a parent
+# pointer, written into the child its parent holds; and an async call written into what it holds,
+# since a call's future holds the call.
+
+shared struct Lease:
+  n: Int
+
+fn dispose(self: Lease): ()
+
+shared struct Node:
+  lease: Lease
+  next: Node? = none
+
+fn link(x: Node, y: Node): x->next = y
+
+fn itself():
+  const a = new Node{lease: new Lease{n: 0}}
+  a->next = a
+  link(a, a)
+
+fn parent():
+  const node = new Node{lease: new Lease{n: 0}}
+  const child = new Node{lease: new Lease{n: 1}}
+  node->next = child
+  child->next = node
+
+ista async fn worker(s: Shared<Future<Unit, "ista">?>): ()
+
+ista fn holding():
+  const s = new Shared<Future<Unit, "ista">?>{value: none}
+  s->value = worker(s)

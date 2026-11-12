@@ -1,0 +1,38 @@
+# error: 5720 at 22:3
+# error: 5721 at 30:3
+# error: 5721 at 38:7
+# Static lifetimes rejects code that holds what holds it, through a disposable (§7): a button's
+# handler using the button, which holds a lease; a callback registered on the future it keeps,
+# since a future holds what is registered on it; and a slot's own pending take put into it, since
+# a pending take holds its slot.
+
+shared struct Lease:
+  n: Int
+
+fn dispose(self: Lease): ()
+
+shared struct Button:
+  lease: Lease
+  onClick: fn() -> Unit = fn(): ()
+
+fn use(button: Button): ()
+
+fn wire():
+  const button = new Button{lease: new Lease{n: 1}}
+  button->onClick = fn(): use(button)
+
+ista fn keep(f: Future<Int, "ista">): ()
+
+ista async fn later() -> Int: 1
+
+ista fn watch():
+  const f = later()
+  f.onAwait(Resolver.of(fn(_: Int): keep(f)))
+
+struct Pending:
+  take: Future<Pending, "ista">
+
+ista fn retake():
+  const s = Slot.create<Pending>()
+  const t = s.take()
+  _ = s.put(Pending{take: t})

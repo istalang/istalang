@@ -7,7 +7,7 @@
  */
 
 import type { Type } from '../../types/type/index.ts';
-import type { Input, Requirement, Summary } from './summary.ts';
+import type { Input, Requirement, Summary, TypedCycle } from './summary.ts';
 import {
   type HandleReach,
   lessRelevant,
@@ -47,22 +47,38 @@ export function decidingType(facts: EscapingFacts, holder: Type, value: Type): T
   return lessRelevant(facts.relevanceOf(value), facts.relevanceOf(holder)) ? value : holder;
 }
 
+/** How surely `cycle` holds a disposable: never where its types can't close it. */
+export function cycleRelevance(facts: EscapingFacts, cycle: TypedCycle): Relevance {
+  return cycle.through.some((value) =>
+    typesBreak(facts, { holder: cycle.holder, value }, cycle.kind),
+  )
+    ? facts.relevanceOf(cycle.deciding)
+    : 'no';
+}
+
 /**
- * The types deciding the cycles an escaping function's writes may close, its inputs any values of
- * the types `typeOf` gives: each requirement values of those types could break, and each always.
+ * The cycles an escaping function's writes may close, its inputs any values of the types `typeOf`
+ * gives: one for each requirement values of those types could break, and each always.
  */
-export function escapingTypes(
+export function escapingCycles(
   facts: EscapingFacts,
   summary: Pick<Summary, 'requirements' | 'always'>,
   typeOf: (input: Input) => Type | undefined,
-): readonly Type[] {
-  const breaking = summary.requirements.flatMap((requirement) => {
+): readonly TypedCycle[] {
+  const breaking = summary.requirements.flatMap((requirement): readonly TypedCycle[] => {
     const holder = typeOf(requirement.holder);
     const value = typeOf(requirement.value);
     return holder !== undefined &&
       value !== undefined &&
       typesBreak(facts, { holder, value }, requirement.kind)
-      ? [decidingType(facts, requirement.holderType, value)]
+      ? [
+          {
+            holder,
+            through: [value],
+            kind: requirement.kind,
+            deciding: decidingType(facts, requirement.holderType, value),
+          },
+        ]
       : [];
   });
   return [...breaking, ...summary.always];

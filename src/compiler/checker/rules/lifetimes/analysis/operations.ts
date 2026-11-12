@@ -21,7 +21,7 @@
 import type { FunctionCall, RequirementCall } from '../../../surface/resolved-call.ts';
 import type { Type } from '../../../types/type/index.ts';
 import type { Operation } from '../../flow/flow-ir.ts';
-import { escapingTypes } from '../escaping.ts';
+import { escapingCycles } from '../escaping.ts';
 import type { NodeId } from '../reach-state.ts';
 import { type Input, inputKey, joinedSummaries, requiredBy, type Summary } from '../summary.ts';
 import { type At, closureBindings, functionBindings, nodesGiven } from './bindings.ts';
@@ -369,7 +369,7 @@ function checkEscaping(
   { summary, typeOf }: Escaping,
   kind: 'closure' | 'witness',
 ): void {
-  for (const type of escapingTypes(analysis.context.facts, summary, typeOf)) {
-    analysis.violate(kind, site, type, undefined);
+  for (const cycle of escapingCycles(analysis.context.facts, summary, typeOf)) {
+    analysis.violate(kind, site, cycle, undefined);
   }
 }

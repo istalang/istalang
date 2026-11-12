@@ -183,6 +183,12 @@ The node kinds are in `src/compiler/syntax/expressions/index.ts` and `syntax/sta
 - **The CLI** prints each as a `note:` excerpt after its diagnostic (`renderDiagnostic`, and
   `renderDiagnostics` over every diagnosed module, `src/foundation/diagnostics/render.ts`).
 - **Codes:** `diagnostics/lifetimes.ts` holds block 5700–5799, and 5712 is the next free code.
+  The cycles are 5720–5723 (`cycleTemplates`: a write, a call, an escaping function, a witness),
+  apart so that tests running cyclic programs can let them through (`lifetimes.test-kit.ts`
+  `isCycle`). `rules/lifetimes/reports.ts` makes each finding a diagnostic, a call's or a
+  witness's with the callee as a related location. `ModuleChecks` runs `checker.lifetimes.check`
+  per module, which reports through the `lifetime reports` entry. `checker.lifetimes` is built
+  with the checker, never lazily, since an edit's checker replays entries by table name.
   5700 is `disposeType`: a `dispose` on anything but a confined handle (`isOwnedHandle`,
   `rules/disposal/disposal.ts`). The weak side is 5800–5899.
 
@@ -335,9 +341,10 @@ The node kinds are in `src/compiler/syntax/expressions/index.ts` and `syntax/sta
 | Where | What | Decision |
 |---|---|---|
 | `src/stdlib/collections/collections.ista` `WeakMap.set` | `self->entries[reference] = _Entry{value, watch}`, with `watch` from `_deleteOnDisposal(self, reference)`, an `ista async fn` that holds the map until the key is disposed. `WeakMap` declares no `dispose` | rewritten inside `collections`, `WeakMap`'s type, API and conformance unchanged: the entries move into a private `shared struct _Store` with an empty `dispose`, which the watch holds through a `WeakRef<_Store>` (design.md §10). `Bus` declares `ista fn dispose<M>(self: Bus<M>): ()` for the same reason |
-| `examples/FormBuilder/forms.ista` `Task` | `task->running = _run(task, …)` at lines 249 and 512, where `_run` writes `task->value` and `task->done`. Tasks are built through `awaited(` and `later(` 12 times in `supplier.gen.ista` and 5 in `order.gen.ista`; `catalog/contact-card@^1.ista` builds none | the smallest change that checks; FormBuilder is rewritten later |
-| `test/corpus/holders/dispose.ista` `cycle()` | `b->partner = a; a->partner = b` | an invalid case |
-| `src/runtime/scheduler/instance/on-cancel.test.ts`, the B76 pair | `d2->r = r`, with `r`'s callback reading `d2` | an invalid case |
+| `examples/FormBuilder/forms.ista` `Task` | `task->running = _run(task, …)` at lines 249 and 512, where `_run` writes `task->value` and `task->done`. Tasks are built through `awaited(` and `later(` 12 times in `supplier.gen.ista` and 5 in `order.gen.ista`; `catalog/contact-card@^1.ista` builds none | `Task` declares an empty `dispose`, and `_run` holds it through a `WeakRef`. FormBuilder still fails on its `run`, `it.fails` in `test/examples.test.ts` until C4 (`findings.md`) |
+| `src/stdlib/testing/testing.ista` `_disposeReceipt` | calls each receipt's `retract` while iterating the receipts, which unseen code then may have made reach them | it retracts once the rest is written back (`findings.md`) |
+| `test/corpus/holders/dispose.ista` `cycle()` | `b->partner = a; a->partner = b` | `holders/invalid-cycle.ista` |
+| `src/runtime/scheduler/instance/on-cancel.test.ts`, the B76 pair and R1's "given that resolver" cases | `d2->r = r`, with `r`'s callback reading `d2`; `watching.onCancel` capturing `watching` | `holders/invalid-resolver-cycle.ista`, `holders/invalid-own-resolver.ista` |
 
 **Accepted with no annotation:** fanout's `_publish` (`src/stdlib/fanout/fanout.ista`):
 
@@ -373,8 +380,14 @@ declare only `extern shared struct`s.
 
 - **Warm edits:** `src/editor/language-service/edit.bench.ts` (`npm run bench`), 5 warmup
   iterations. The budget is 5 ms for 246 lines and 15 ms for 2,098.
-- **A cold open's first diagnostics are timed by nothing today.** C3 builds that bench through
-  `src/editor/language-service/workspace.ts`, and C4 is held to it.
+- **A cold open** is timed by `edit.bench.ts` too, through `workspace.ts`: a new workspace's first
+  diagnostics of each module. C4 is held within 20% of C3's.
+- **Measured at C3's end** on a machine slower than the budget's (rule off → on, median ms): warm
+  edit 8.0 → 12.4 (246 lines), 26.5 → 43.2 (2,098 lines); cold open 50.3 → 76.8, 184.1 → 215.2.
+  The 2,098-line edit adds 16.7 ms against plan C3's 2 ms.
+  An edit inside one closure of a test suite analyses the suite's function again, all its closures
+  with it. A function holding nothing relevant takes one pass instead of the fixed point
+  (`analysis/index.ts`), which most of a suite's closures are.
 - **C4's entries** are per module, beside the module's other rules (`ModuleRules`). The IR shows
   which closures escape, so C4 needs no new syntax facts.
 - **C4** changes the transfer functions only. C3 already carries labels in pairs, summaries and

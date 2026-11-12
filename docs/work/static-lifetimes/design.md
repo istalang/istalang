@@ -228,10 +228,16 @@ They are **polymorphic by construction**: they speak of inputs, not types. So `I
     `TraitObjects.memberWitnesses`.
   - The composition algorithm exists only in lowering's closer (`closedInside`, `closeWitnesses`,
     `composed`). Plan C1 moves it onto the checker's surface, and both read it there.
-- **A call through an `any T` value** dispatches on the value's own type, so it is code the body
-  doesn't see (§5.5). A value converted into `any T` is an escaping bundle of its type's
-  witnesses, so their requirements are discharged at the conversion, as an escaping closure's are
-  where it is made.
+- **A call through an `any T` value** dispatches on the value's own type, which is one of the
+  types the program converts into `any T` (decided 2026-11-12):
+  - an entry per module gathers the conversions into `any` in its bodies, and an entry per trait
+    unions their witnesses across the program's modules, cutting off where an edit converts
+    nothing new;
+  - at a dispatch site the call is a call of each of those witnesses with the site's arguments,
+    whose requirements the caller checks in its own state, as any callee's.
+  So a witness that writes one argument into another is checked where the arguments are known.
+  Checking at the conversion instead would take them as any values of their types, and it
+  rejected FormBuilder's drawing.
 - **A call of a function value:**
   - If the IR shows which closure it is (made in this body, or passed straight to a call), that
     closure's summary applies.
@@ -247,10 +253,26 @@ Other code can change how escaped values reach each other:
 
 **The declaration graph** models that code, from declarations alone, with no bodies: handle type
 `H` may come to hold type `V` when one of `H`'s held types fits `V`. Plain function types and call
-futures may hold anything until C4 (§5.6).
+futures may hold anything until C4 (§5.6). C3 settled three more points:
+- **A closure is an object of its own.** A function value's reach is a closure, and what that
+  closure holds may be anything. So a closure never *is* another object, and a value holding one
+  aliases nothing through it.
+- **Types filter every pair.** The reach state never adds a pair the declaration graph forbids,
+  whatever adds it: a read, a call's summary or unseen code.
+- **The surest path decides.** A cycle's deciding type is the least relevant one on its surest path:
+  through the parts of a value the body made, else the path through values that surely reach a
+  disposable, then through those that may. A cycle decided by a type parameter is recorded with
+  its holder's type and the types its value reaches the holder through. So an instantiation that
+  makes it impossible, such as one whose value type reaches nothing, drops it. A call's cycle is
+  the object written into, of its own type, not the callee's parameter.
 
-- After a `suspend` or an unknown call, the reach among *escaped* values is closed under the
-  declaration graph. Fresh values stay precise.
+- After a `suspend`, the reach among *escaped* values is closed under the declaration graph.
+  Fresh values stay precise.
+- **An unknown call** reaches only what it is given, the globals, what the body handed unseen code
+  before, and what those reach. It relies on each input it doesn't reach sharing nothing with each
+  it does. The body's callers see to that, through a `share` requirement on each such pair of
+  inputs, or of their parts as §5.7 paths them. A closure's callers are themselves unseen, so in a
+  closure's body an unknown call reaches everything escaped.
 - A requirement that was discharged at a call holds only until the callee's first `suspend` or
   unknown call. After that, a write checks its escaped sides against the declaration graph and is
   reported in the callee.
@@ -266,7 +288,9 @@ This is the only place types stand in for flow, and only for escaped values.
 
 Until C4, a plain function value may hold anything in the declaration graph, so a write after a
 `suspend` that involves an escaped plain function is often reported. C4 replaces "anything" with
-what closures of a fitting type actually capture.
+what closures of a fitting type actually capture. It follows C3 directly (decided 2026-11-12):
+FormBuilder's `run` awaits closures its drawing collected, so it fails until then
+(`findings.md`).
 
 - **Per module, an entry** gathers what each escaping closure captures (made in a body and stored,
   or given to code that keeps it, which the IR shows), keyed by its function type. Functions named
@@ -278,8 +302,17 @@ what closures of a fitting type actually capture.
 - **Cost:** the union reads every module's bodies, so C4 measures a cold open (§8). A module whose
   closures' captured types don't change cuts off.
 
-### 5.7 Planned refinement: fields (C4)
+### 5.7 Fields: paths in C3, labels in C4
 
+C3 took the paths, together with §5.5's separation requirements (decided 2026-11-12):
+- **An input's parts are inputs of their own** (`self.items`, `self->_store`): a read of one is a
+  path node, re-read as the same value until a write may change it. A requirement or separation on
+  a part names the part, which a caller passing two fields of one value checks separately.
+- **A value the body made has its parts as paths,** so a read of a field of it reaches only that
+  field's value.
+- **Materializing an input's path at a join** relates it to its root alone, never to its siblings.
+
+C4 keeps the labels:
 - **Labels:** a pair carries the set of fields its path leaves the source through (`a ⇝{f} b`), as
   in Zanardini–Genaim 2014.
 - **Reads:** `z <- x.f` reaches only what `x` reaches through `f`.
@@ -487,6 +520,9 @@ one seam (R2).
     reaches a disposable.
   - The graph is `holdings.ts`'s held edges plus the index edges, minus case-chain edges (§3), plus
     call future → call.
+  - A running execution's future gets no edge to it (decided 2026-11-12). While a call runs, it is a
+    root, and what its frames hold only for that moment closes no cycle: the analysis's call reach
+    is what they hold at an `await` (§5.3).
   - It stays in the test runtime for good: it is the ground truth for the analysis's soundness and
     for the IR agreeing with lowering.
 - **Shadow counts (R3):** counts are kept beside tracing, and each step checks:
@@ -550,10 +586,11 @@ C3's dry run is the list that counts. Reading the code today gives:
 
 | Where | What | Decision |
 |---|---|---|
-| `src/stdlib/collections/collections.ista` `WeakMap.set` | `self->entries[reference] = _Entry{value, watch}`, with `watch = _deleteOnDisposal(self, reference)`, whose call holds `self` | C3 rewrites it inside `collections`, leaving `WeakMap`'s type, API and conformance as they are: its entries move into a private `shared struct _Store` with an empty `dispose`, and the watch holds a `WeakRef<_Store>`. `Bus` and `_follow` already work this way (`fanout.ista`). Letting go of the map still disposes the store, its entries and their watches |
-| `examples/FormBuilder/forms.ista` `Task` (built 17 times in `*.gen.ista`) | `task->running = _run(task, …)`, at lines 249 and 512 | C3 makes the smallest change that checks, for example `_run` writing into a cell `Task` holds rather than into `task`. FormBuilder is rewritten later |
-| `test/corpus/holders/dispose.ista` `cycle()` | `b->partner = a; a->partner = b` | C3: becomes an invalid case |
-| `src/runtime/scheduler/instance/on-cancel.test.ts`, the B76 pair | `d2->r = r`, with `r`'s callback reading `d2` | C3: becomes an invalid case |
+| `src/stdlib/collections/collections.ista` `WeakMap.set` | `self->entries[reference] = _Entry{value, watch}`, with `watch = _deleteOnDisposal(self, reference)`, whose call holds `self` | Done in C3, inside `collections`, leaving `WeakMap`'s type, API and conformance as they are: its entries move into a private `shared struct _Store` with an empty `dispose`, and the watch holds a `WeakRef<_Store>`. `Bus` and `_follow` already work this way (`fanout.ista`). Letting go of the map still disposes the store, its entries and their watches |
+| `examples/FormBuilder/forms.ista` `Task` (built 17 times in `*.gen.ista`) | `task->running = _run(task, …)`, at lines 249 and 512 | Done in C3: `Task` declares an empty `dispose`, and `_run` holds it through a `WeakRef`. FormBuilder's `run` still fails, on closures (§5.6), until C4 |
+| `src/stdlib/testing/testing.ista` `_disposeReceipt` | calls each receipt's `retract` while it iterates the receipts, then writes the rest back | Done in C3: it retracts once the rest is written back. Called while iterating, `retract` is unseen code that may reach the receipt, which a receipt held in the receipts always shares with (`findings.md`) |
+| `test/corpus/holders/dispose.ista` `cycle()` | `b->partner = a; a->partner = b` | Done in C3: `holders/invalid-cycle.ista` |
+| `src/runtime/scheduler/instance/on-cancel.test.ts`, the B76 pair and R1's "given that resolver" cases | `d2->r = r`, with `r`'s callback reading `d2`; a callback holding its own resolver | Done in C3: `holders/invalid-resolver-cycle.ista` and `holders/invalid-own-resolver.ista`; B76 closed with them |
 | `src/stdlib/fanout/fanout.ista` `_publish` | put `_Link{message, retracted, next}` into `bus->_end`, then `bus->_end = next` | **accepted**: `next` and `retracted` are fresh, and `message` gives a requirement its callers discharge |
 
 The runtime tests' own programs that declare a `shared struct` must check clean or become invalid
@@ -622,6 +659,12 @@ These go into `test/corpus/lifetimes/`, each with the codes expected.
 - `WeakMap`'s rewrite keeps its type, API and conformance (§10).
 - FormBuilder gets the smallest change that checks; it is rewritten later.
 - Field sensitivity and closures' captures are planned, as C4.
+- Per-field input paths and separation requirements come forward into C3 (§5.5, §5.7). C4 keeps
+  closures' captures and field labels, follows C3 directly beside R3, and lifts FormBuilder's
+  `it.fails`.
+- A call through `any` is checked at its dispatch site, against every type the program converts
+  into it (§5.4).
+- The oracle gives a running execution's future no edge to it (§9.2).
 
 ## References
 

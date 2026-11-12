@@ -1,0 +1,13 @@
+# error: 5721 at 12:5
+# A resolver holds its `onCancel` callbacks (§6), so a callback holding its own resolver is a cycle
+# holding a disposable, which no count could ever dispose (§7): registering it is the error.
+
+ista fn see(value: Int): ()
+ista async fn later(value: Int) -> Int: value
+
+ista fn watch():
+  if true:
+    const watching = Resolver.of(fn(_: Int): ())
+    see(1)
+    watching.onCancel(fn(): see(if watching.tryResolve(1): 1 else: 0))
+    later(2).onAwait(watching)

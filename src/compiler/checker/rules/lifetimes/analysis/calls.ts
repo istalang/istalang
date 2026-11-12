@@ -16,12 +16,19 @@ import type { NodeOf } from '../../../../syntax/tree/node.ts';
 import { type FunctionCall, witnessCallsOf } from '../../../surface/resolved-call.ts';
 import type { Type } from '../../../types/type/index.ts';
 import type { ValueId } from '../../flow/flow-ir.ts';
-import { escapingTypes } from '../escaping.ts';
+import { escapingCycles } from '../escaping.ts';
 import type { NodeId, ReachState } from '../reach-state.ts';
-import type { Input, Requirement, ResultRelation, Summary } from '../summary.ts';
+import {
+  type Input,
+  mappedCycle,
+  type Requirement,
+  type ResultRelation,
+  type Summary,
+} from '../summary.ts';
 import { mayAlias } from '../type-reach.ts';
 import { type At, type Bindings, type Bound, boundIn, closureBindings } from './bindings.ts';
 import type { Holder } from './body.ts';
+import { cycleOf } from './cycles.ts';
 import type { FlowState, Given } from './flow-state.ts';
 import type { Owner } from './places.ts';
 
@@ -40,8 +47,9 @@ export function applySummary(at: At, made: CallMade, summary: Summary, bindings:
   for (const requirement of summary.requirements) {
     checkRequirement(at, made, requirement, bound);
   }
-  for (const type of summary.always) {
-    at.analysis.violate('call', made.site, substitutedAt(at, made, type), made.callee);
+  for (const cycle of summary.always) {
+    const substituted = mappedCycle(cycle, (type) => substitutedAt(at, made, type));
+    at.analysis.violate('call', made.site, substituted, made.callee);
   }
   if (made.call !== undefined) {
     checkWitnesses(at, made.call, made.site);
@@ -138,7 +146,10 @@ function checkRequirement(
 /** Where a write through an input lands: a node it was given, or what owns a place. */
 type Target = { readonly kind: 'node'; readonly node: NodeId } | Owner;
 
-/** A requirement's pair at a call: `value` may not reach (or share with) what `target` is. */
+/**
+ * A requirement's pair at a call: `value` may not reach (or share with) what `target` is; a heap
+ * target is the object written into, its own type the holder's rather than the callee's.
+ */
 interface Pair {
   readonly target: Target;
   readonly value: NodeId;
@@ -157,15 +168,15 @@ function checkAt(at: At, made: CallMade, { target, value, holderType, kind }: Pa
   }
   const holder: Holder =
     target.kind === 'heap' ? target.holder : { node: target.node, exact: true, type: holderType };
-  const closes =
-    holder.exact && kind === 'reach'
-      ? state.reach.closes(holder.node, value)
-      : state.reach.shares(holder.node, value);
+  const exact = holder.exact && kind === 'reach';
+  const closes = exact
+    ? state.reach.closes(holder.node, value)
+    : state.reach.shares(holder.node, value);
   if (closes) {
-    const type = analysis.holderTypeOf(state, { ...holder, type: holderType }, value);
-    analysis.violate('call', made.site, type, made.callee);
+    const cycle = cycleOf(analysis, state, { ...holder, exact }, value);
+    analysis.violate('call', made.site, cycle, made.callee);
   } else {
-    analysis.lift(state, holder.node, value, { holderType, kind });
+    analysis.lift(state, holder.node, value, { holderType: holder.type, kind });
   }
 }
 
@@ -199,19 +210,19 @@ function checkWitnesses({ analysis }: At, call: FunctionCall, site: NodeOf<strin
       const type = input.kind === 'parameter' ? parameters[input.index]?.type : undefined;
       return type === undefined ? undefined : substituted(type);
     };
-    const types = escapingTypes(
+    const cycles = escapingCycles(
       context.facts,
       {
         requirements: summary.requirements.map((requirement) => ({
           ...requirement,
           holderType: substituted(requirement.holderType),
         })),
-        always: summary.always.map(substituted),
+        always: summary.always.map((cycle) => mappedCycle(cycle, substituted)),
       },
       typeOf,
     );
-    for (const type of types) {
-      analysis.violate('witness', site, type, witness.function);
+    for (const cycle of cycles) {
+      analysis.violate('witness', site, cycle, witness.function);
     }
   }
 }
@@ -270,10 +281,7 @@ const relating: Readonly<
   reaches: (reach, into, node) => reach.hold(into, node),
   reachedBy: (reach, into, node) => reach.readThrough(into, node),
   aliases: (reach, into, node) => reach.contain(into, node),
-  shares: (reach, into, node) => {
-    reach.readThrough(into, node);
-    reach.hold(into, node);
-  },
+  shares: (reach, into, node) => reach.share(into, node),
 };
 
 /** Relates a result `into` to `node` as the callee's result relates to its input. */

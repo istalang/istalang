@@ -24,7 +24,6 @@ import { formattableInputs } from '../src/formatter/format.test-kit.ts';
 import { formatText } from '../src/formatter/format.ts';
 import { tempProject } from '../src/project/project.test-kit.ts';
 import { findProjectSources, loadProject } from '../src/project/project.ts';
-import { type Oracle, oracleFor } from '../src/runtime/lifetimes/oracle.test-kit.ts';
 import { settleStored, testRuntime } from '../src/runtime/runtime.test-kit.ts';
 import { corpusDirectory, runPrograms } from './corpus/programs.ts';
 
@@ -60,10 +59,10 @@ function diagnosticsOf(program: Program) {
  * store, its contexts and what they spawned, run on to the end as a later run would resume them.
  * `main`'s outcome is the JSON `ista run` prints, another's the value its function gave, and each
  * panic's message is given without its trace, which names the lines frames stood at. Its heaps are
- * checked by `oracle`.
+ * checked by the oracle of static lifetimes.
  */
-async function endingsOf(text: string, oracle: Oracle) {
-  const test = testRuntime({ heapCheck: oracle.heapCheck });
+async function endingsOf(text: string) {
+  const test = testRuntime();
   const program = test.runtime.deploy(compiledText(text));
   const main = await program.start('main');
   const stored = await settleStored(test);
@@ -83,13 +82,13 @@ async function endingsOf(text: string, oracle: Oracle) {
 }
 
 /**
- * How a run of `text` ends, and of `rewritten`, both checked by `oracle`; neither runs when they are
+ * How a run of `text` ends, and of `rewritten`, both checked by the oracle; neither runs when they are
  * the same program.
  */
-async function bothEndings(text: string, rewritten: string, oracle: Oracle) {
+async function bothEndings(text: string, rewritten: string) {
   return rewritten === text
     ? { before: [], after: [] }
-    : { before: await endingsOf(text, oracle), after: await endingsOf(rewritten, oracle) };
+    : { before: await endingsOf(text), after: await endingsOf(rewritten) };
 }
 
 /** A module with syntax errors, in line breaks and a tab that fmt would rewrite if it touched it. */
@@ -145,7 +144,7 @@ describe('ista fmt over the corpus', () => {
 
   it.each(runPrograms)('leaves what $name does as it was', async ({ name, text }) => {
     const rewritten = formatted.texts.get(name) ?? '';
-    const { before, after } = await bothEndings(text, rewritten, oracleFor(name));
+    const { before, after } = await bothEndings(text, rewritten);
     expect(after).toEqual(before);
   });
 });

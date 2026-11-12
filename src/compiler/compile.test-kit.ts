@@ -10,10 +10,13 @@
 
 import type { Definition } from '../definition/definition.ts';
 import { definitionFormat } from '../definition/definition.ts';
+import { isError } from '../foundation/diagnostics/diagnostic.ts';
 import { memo } from '../foundation/structures/memo.ts';
 import { stdProgramOf } from './binder/bind.test-kit.ts';
 import { type Checker, checkProgram } from './checker/check.ts';
-import { compileProgram, diagnose, type ModuleDiagnostics } from './compile.ts';
+import { isCycle } from './checker/rules/lifetimes/lifetimes.test-kit.ts';
+import { compileProgram, diagnose, type ModuleDiagnostics, mainOf } from './compile.ts';
+import { lower } from './lowering/lower.ts';
 import { type Files, idOf } from './program/program.test-kit.ts';
 import type { Program } from './program/program.ts';
 
@@ -52,6 +55,26 @@ export function compiledDefinition(program: Program, entry: string): Definition 
 }
 
 const compiledTexts = new Map<string, string>();
+
+/**
+ * The Definition text of the program rooted at `main`, with every std module, though static
+ * lifetimes rejects its cycles (design.md §7): lowering reads no verdict of the rule, so tests run
+ * such programs anyway, the oracle checking their heaps. They are the oracle's own, whose programs
+ * make cycles, and those only C4 accepts (docs/work/static-lifetimes/findings.md). Throws at any
+ * other error.
+ */
+export function textDespiteCycles(main: string): string {
+  const program = stdProgramOf({ main });
+  const checker = checkedAfterStd(program);
+  const errors = [...diagnose(program).values()].flatMap(({ diagnostics }) =>
+    diagnostics.filter((diagnostic) => isError(diagnostic) && !isCycle(diagnostic)),
+  );
+  const entry = mainOf(program, idOf('main'));
+  if (errors.length > 0 || entry === undefined) {
+    throw new Error(`main doesn't compile: ${errors.map(({ message }) => message).join('; ')}`);
+  }
+  return definitionFormat.write(lower(checker, entry)).text;
+}
 
 /** The Definition text of the program rooted at `main`, beside `others`, with every std module. */
 export function compiledText(main: string, others: Files = {}): string {

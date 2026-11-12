@@ -182,7 +182,8 @@ Landed. What R1 left, for the phases after it:
     `noHeapCheck`.
   - **Its graph is the analysis's holding** (design.md §3, §6.3, §6.4), so an accepted program
     never trips it. That is `Heap.holds` and the executions' frames, plus call future → execution,
-    with three differences:
+    but for the executions running (decided 2026-11-12): `changed` gets them from the run stack,
+    and `countedHolds` leaves their futures' edges out. With three differences:
     - a future holds every resolver registered on it, whatever the root, as `onAwait` keeps one;
     - a resolver holds its callbacks and its `done`, never its `on` or the at-resolvers deciding it;
     - a wait holds the futures its chain is registered on, what its waiter awaits.
@@ -196,16 +197,16 @@ Landed. What R1 left, for the phases after it:
     nothing that reaches it, since statements release their temporaries; the write log keeps the
     check independent of that, which C5's elision may change.
   - **Where it is on:** by default in `testRuntime`, `reportsOf` and `cli.test-kit`'s `ista`.
-    `acyclicOracle` throws at the first cycle. `cyclicOracle()` records instead and expects to see
-    one. `oracleFor(name)` picks between them for a corpus program or a std module. `wake.bench.ts`
-    turns it off.
+    `oracle` throws at the first cycle. `cycleWatch()` records instead, for the oracle's own tests,
+    whose cyclic programs C3 rejects, so they compile through `compile.test-kit.ts`'s
+    `textDespiteCycles`, which lets only cycle errors through. `wake.bench.ts` turns it off.
   - **Runners:** the corpus through `wake.sweep`, `resident.sweep`, `run.sweep` (`ista run`) and
     the fmt sweep; the std suites through `cli/commands/test.sweep.test.ts` (`ista test`, one
     module at a time); and every runtime test on `testRuntime` or `reportsOf`. The CLI's
     spec-example tests run under it too.
   - **Its own tests** are `oracle.test.ts`, over programs shaped as design.md §12's.
-- **What the oracle flags today**, each marked in place. C3 rejects or rewrites them, then drops
-  each mark: the `cyclic` set in the kit, and the `cyclicOracle()` uses in the tests.
+- **What the oracle flagged after R1.** C3 rejected or rewrote each (design.md §10) and dropped the
+  marks, so the oracle flags nothing now:
   - corpus `holders/dispose.ista` `cycle()`;
   - std `collections`: `WeakMap`'s watch future → its call → the map's cell → the future;
   - `on-cancel.test.ts`, "runs once its resolver is let go of, given that resolver…" (both
@@ -213,8 +214,8 @@ Landed. What R1 left, for the phases after it:
   - `on-cancel.test.ts`, the B76 pair: `d2->r = r`, with `r`'s callback reading `d2` and its
     `onCancel` capturing `r`.
 
-  design.md §10 listed only the first two and B76. The `on-cancel` "given that resolver" cases are
-  new, and C3's dry run should confirm them. Two programs that made a cycle only by an `onCancel`
+  The `on-cancel` cases are `test/corpus/holders/invalid-own-resolver.ista` and
+  `invalid-resolver-cycle.ista` now, and `cycle()` is `invalid-cycle.ista`. Two programs that made a cycle only by an `onCancel`
   capturing `self` now capture a field instead: `callbacks.test.ts`'s "lives as long as its
   future…" and `callbacks.test-kit.ts`'s `watched`.
 - **Docs edited:** spec §6 (Resolvers) and §7 (the implicit-holds bullet); `definition.md`'s

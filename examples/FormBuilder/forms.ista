@@ -226,6 +226,10 @@ shared struct Task<Sc, T>:
   done: Bool = false
   running: Future<Unit, "ista">? = none # replacing it releases, and so stops, the old run
 
+# Declaring `dispose` is what makes a task disposable, and so something its run's `WeakRef` can
+# refer to: the run doesn't hold the task holding it, which would be a cycle (§7).
+ista fn dispose<Sc, T>(self: Task<Sc, T>): ()
+
 # The value now, or none while pending. A Form prop keeps its value for the scope it ran with; for
 # a new scope it queues its run, which the loop awaits before drawing again (the form waits).
 ista fn peek<Sc, T>(self: Prop<Sc, T>, sc: Sc, out: &Drawing) -> T?:
@@ -246,7 +250,7 @@ ista fn peek<Sc, T>(self: Prop<Sc, T>, sc: Sc, out: &Drawing) -> T?:
         task->sc = sc
         task->value = none
         task->done = false
-        task->running = _run(task, eval(sc), out.events)
+        task->running = _run(WeakRef(task), eval(sc), out.events)
       }
       if not task->done: out.valid = false
       task->value
@@ -263,9 +267,11 @@ ista fn isHiddenPending<Sc, T>(self: Prop<Sc, T>) -> Bool:
     case Awaited(Pending.Hidden, ...): true
     case _: false
 
-ista async fn _run<Sc, T>(task: Task<Sc, T>, call: Future<T, "ista">, events: Inbox<FormEvent>) -> Unit:
-  task->value = await call
-  task->done = true
+ista async fn _run<Sc, T>(task: WeakRef<Task<Sc, T>>, call: Future<T, "ista">, events: Inbox<FormEvent>) -> Unit:
+  const value = await call
+  match task.deref():
+    case None: ()
+    case held: { held->value = value; held->done = true }
   events.send(FormEvent.Resolved)
 
 # The scope of a form's top level. Inside repeats, variants and mounts, generated code defines
@@ -509,7 +515,7 @@ ista fn _check<Sc, T>(
             task->sc = sc
             task->value = none
             task->done = false
-            task->running = _run(task, test(sc), out.events)
+            task->running = _run(WeakRef(task), test(sc), out.events)
           }
           if not task->done: { out.valid = false; waiting.push(pending(sc)) }
           elif task->value is String as msg: { out.valid = false; errors.push(msg) }

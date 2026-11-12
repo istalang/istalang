@@ -1,22 +1,23 @@
 /**
  * Checking a module as tests write it: `main.ista` beside the std modules, its diagnostics read
  * as codes over the text they explain, and a statement placed in a function with a few parameters
- * to use.
+ * to use. The std modules are checked once per test file (compile.test-kit.ts `checkedAfterStd`),
+ * since checking a module reads the bodies of the std functions it calls (static lifetimes'
+ * summaries).
  */
 
 import { reportedIn } from '../../foundation/diagnostics/diagnostic.test-kit.ts';
 import type { Persistence } from '../../foundation/language/well-known/index.ts';
 import { stdProgramOf } from '../binder/bind.test-kit.ts';
-import { diagnosedAt } from '../compile.test-kit.ts';
+import { checkedAfterStd, diagnosedAt } from '../compile.test-kit.ts';
 import type { Program } from '../program/program.ts';
 import { type CheckerOptions, ProgramChecker } from './wiring/program/program-checker.ts';
 
 /** Everything reported for `text` as module `main.ista`, beside the std modules and `others`. */
 export function reported(text: string, others: Readonly<Record<string, string>> = {}) {
-  const { source, diagnostics } = diagnosedAt(
-    stdProgramOf({ 'main.ista': text, ...others }),
-    'main.ista',
-  );
+  const program = stdProgramOf({ 'main.ista': text, ...others });
+  checkedAfterStd(program);
+  const { source, diagnostics } = diagnosedAt(program, 'main.ista');
   return reportedIn(source, diagnostics);
 }
 
