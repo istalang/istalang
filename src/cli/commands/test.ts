@@ -91,6 +91,7 @@ async function test(
     natives: stdNatives,
     clock,
     timeout,
+    heapCheck: environment.heapCheck,
     ...(options.filter === undefined ? {} : { filter: options.filter }),
   })) {
     counts[report.outcome.kind] += 1;

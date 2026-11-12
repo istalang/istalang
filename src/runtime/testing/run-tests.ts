@@ -23,6 +23,7 @@ import { elementsOf, type Value } from '../../definition/values/values.ts';
 import { unreachable } from '../../foundation/structures/unreachable.ts';
 import type { Clock } from '../clock.ts';
 import type { Natives } from '../natives.ts';
+import type { HeapCheck } from '../scheduler/loaded-definition.ts';
 import { seedFrom } from '../snapshot/random.ts';
 import type { InstanceCall } from '../snapshot/snapshot.ts';
 import { type Ended, type Failed, World } from './world/index.ts';
@@ -34,6 +35,8 @@ export interface TestRunOptions {
   readonly timeout: bigint;
   /** Run only the tests whose full title contains this. */
   readonly filter?: string;
+  /** The check of every instance's heap, when the run is a test of the runtime's own. */
+  readonly heapCheck?: HeapCheck | undefined;
 }
 
 /** How one test went. */

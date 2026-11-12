@@ -26,7 +26,11 @@ import type {
 import type { Natives } from '../natives.ts';
 import { Refusal } from '../refusal.ts';
 import { runLive } from '../scheduler/live-run.ts';
-import { type LoadedDefinition, loadDefinition } from '../scheduler/loaded-definition.ts';
+import {
+  type HeapCheck,
+  type LoadedDefinition,
+  loadDefinition,
+} from '../scheduler/loaded-definition.ts';
 import type { Resident } from '../scheduler/resident.ts';
 import { type Advance, type AdvanceFirst, unstarted } from '../scheduler/wake.ts';
 import { seedTextOf } from '../snapshot/random.ts';
@@ -56,10 +60,12 @@ export function programBinder(seams: BindingSeams) {
 
 /** `definition`, bound to its natives and able to start its instances. */
 function boundProgram(seams: BindingSeams, definition: Definition, hash: string): BoundProgram {
-  const loaded = loadDefinition(definition, hash, {
-    ...seams.natives,
-    ...hostNatives(seams.host ?? {}),
-  });
+  const loaded = loadDefinition(
+    definition,
+    hash,
+    { ...seams.natives, ...hostNatives(seams.host ?? {}) },
+    { heapCheck: seams.heapCheck },
+  );
   const program: BoundProgram = {
     ...loaded,
     starts: definition.starts.map(({ key }) => key),
@@ -147,7 +153,10 @@ export interface BoundProgram extends DeployedProgram, LoadedDefinition {}
  * how to advance an instance, and the host's calls on each instance, one after another.
  */
 interface BindingSeams
-  extends Pick<RuntimeSeams, 'natives' | 'host' | 'seed' | 'store' | 'clock' | 'reports'> {
+  extends Pick<
+    RuntimeSeams,
+    'natives' | 'host' | 'seed' | 'store' | 'clock' | 'reports' | 'heapCheck'
+  > {
   /** The instance `instance` as the runtime holds it, or reads it from the store; none for none. */
   readonly residentOf: (instance: string) => Resident<BoundProgram> | undefined;
   readonly advance: (resident: Resident<BoundProgram>, first?: AdvanceFirst) => Advance;
@@ -176,6 +185,11 @@ export interface RuntimeSeams {
   readonly host?: HostExterns;
   /** Told what the contexts a live run drives report, as no host call returns it; else dropped. */
   readonly reports?: HostReports;
+  /**
+   * A test's check of every instance's heap as each collection starts (lifetimes/oracle.test-kit.ts);
+   * a host has none.
+   */
+  readonly heapCheck?: HeapCheck | undefined;
 }
 
 /** What a host hears of the work the contexts a live run drives do by themselves (§9). */

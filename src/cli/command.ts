@@ -7,6 +7,7 @@
 
 import type { Readable, Writable } from 'node:stream';
 import type { Command } from 'commander';
+import type { HeapCheck } from '../runtime/scheduler/loaded-definition.ts';
 
 export interface CliEnvironment {
   /** The directory `ista` runs in, used as the project root. */
@@ -23,6 +24,11 @@ export interface CliEnvironment {
    * Every other command writes text through `write`.
    */
   readonly stdio: { readonly input: Readable; readonly output: Writable };
+  /**
+   * A check of every instance's heap as each collection starts, which only the CLI's tests give
+   * (runtime/lifetimes/oracle.test-kit.ts): `ista run` and `ista test` pass it to their runtime.
+   */
+  readonly heapCheck?: HeapCheck;
 }
 
 /** What a command's exit code says. */

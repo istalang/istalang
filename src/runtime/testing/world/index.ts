@@ -38,7 +38,11 @@ import type { Natives } from '../../natives.ts';
 import { inspection } from '../../scheduler/inspect.ts';
 import type { Answered } from '../../scheduler/instance/futures.ts';
 import { storedSnapshot } from '../../scheduler/instance/instance-ends.ts';
-import { type LoadedDefinition, loadDefinition } from '../../scheduler/loaded-definition.ts';
+import {
+  type HeapCheck,
+  type LoadedDefinition,
+  loadDefinition,
+} from '../../scheduler/loaded-definition.ts';
 import { Resident } from '../../scheduler/resident.ts';
 import type { MockAnswer, MockCall, TestWorld } from '../../scheduler/testing/test-world.ts';
 import {
@@ -79,6 +83,8 @@ export interface WorldSeams {
   readonly seed: string;
   /** When the test must have ended, in milliseconds since the Unix epoch. */
   readonly deadline: bigint;
+  /** The check of every instance's heap, when the run is a test of the runtime's own. */
+  readonly heapCheck?: HeapCheck | undefined;
 }
 
 /** The key of the test's own context; the instances it spawns are named after it. */
@@ -113,7 +119,7 @@ export class World implements TestWorld {
   readonly #expectedPanics = new Set<string>();
   #handles = 0;
 
-  constructor({ definition, hash, natives, clock, seed, deadline }: WorldSeams) {
+  constructor({ definition, hash, natives, clock, seed, deadline, heapCheck }: WorldSeams) {
     this.#seams = { store: memoryStore(), now: clock.now };
     this.#clock = clock;
     this.#deadline = deadline;
@@ -122,7 +128,7 @@ export class World implements TestWorld {
       definition,
       hash,
       { ...natives, ...unmockedExterns(definition, natives) },
-      this,
+      { world: this, heapCheck },
     );
   }
 

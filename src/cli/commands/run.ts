@@ -90,6 +90,7 @@ async function run(
     clock,
     seed: () => randomBytes(seedBytes),
     reports,
+    heapCheck: environment.heapCheck,
     ...(host === undefined ? {} : { host }),
   });
   return start({ runtime, store, reports, environment }, entry, options);
