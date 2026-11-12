@@ -329,6 +329,29 @@ const cyclicPrograms: readonly CyclicCase[] = [
       'takeImpl(Impl)',
     ],
   },
+  {
+    name: 'a part read out of an input bounced through a local handle cell',
+    body: ['b->next = a', 'bounce(b, a)'],
+    extra: [
+      'ista fn bounce(whole: Node, target: Node):',
+      '  const temp = new Shared<Node?>{value: whole->next}',
+      '  whole->next = new Node{lease: new Lease{n: 9}}',
+      '  if temp->value is Node as p2:',
+      '    target->next = p2',
+    ],
+  },
+  {
+    name: 'a helper result read out of an input and stored in a local handle cell',
+    body: ['b->next = a', 'bounceCall(b, a)'],
+    extra: [
+      'ista fn getNext(x: Node) -> Node?: x->next',
+      'ista fn bounceCall(whole: Node, target: Node):',
+      '  const temp = new Shared<Node?>{value: none}',
+      '  temp->value = getNext(whole)',
+      '  if temp->value is Node as p2:',
+      '    target->next = p2',
+    ],
+  },
 ];
 
 describe('static lifetimes over fragment soups', () => {

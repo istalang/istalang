@@ -8,9 +8,10 @@
  *   **Alias:** `a` and `b` hold one handle directly. **Share:** they reach one handle at all, so
  *   reach and alias imply share. All are may-relations: a pair absent is a pair that can't hold.
  * - **Read out of:** what a value was read out of, and what that was, kept whole when a temporary
- *   in between ends. Share has no direction, and `a ⇝ b` holds both for a part `b` read out of
- *   `a` and for a value `b` written into `a`; only the part's reach is some of `a`'s
- *   (`carriedBy`). A relation by types may be either, so it is both.
+ *   in between ends; and what comes to reach or hold such a value holds it too, so a part stored
+ *   in a handle and read back out is still one. Share has no direction, and `a ⇝ b` holds both
+ *   for a part `b` read out of `a` and for a value `b` written into `a`; only the part's reach is
+ *   some of `a`'s (`carriedBy`). A relation by types may be either, so it is both.
  * - **Escaped:** what callers, other executions or unseen code may also reach.
  * - **Updates are weak.** A node's own relations are replaced only when it is given a new value
  *   (`fresh`); what a write adds to what reaches its holder is only ever added, since the holder's
@@ -23,15 +24,22 @@ export type NodeId = number;
 
 /**
  * Which pairs the nodes' types allow at all (the declaration graph's answer): a relation they
- * forbid can't hold, so it is never added, whatever it would be inherited from.
+ * forbid can't hold, so it is never added, whatever it would be inherited from. And which nodes
+ * what is read out of them is followed back to (`whole`): only those `carriedBy` is asked of.
  */
 export interface Allowed {
   readonly reach: (from: NodeId, to: NodeId) => boolean;
   readonly alias: (first: NodeId, second: NodeId) => boolean;
   readonly share: (first: NodeId, second: NodeId) => boolean;
+  readonly whole: (node: NodeId) => boolean;
 }
 
-const anything: Allowed = { reach: () => true, alias: () => true, share: () => true };
+const anything: Allowed = {
+  reach: () => true,
+  alias: () => true,
+  share: () => true,
+  whole: () => true,
+};
 
 type Pairs = Map<NodeId, Set<NodeId>>;
 
@@ -138,10 +146,19 @@ export class ReachState {
   /** `part` may be read out of `whole`: of what `whole` and its aliases are, and were read out of. */
   addWhole(part: NodeId, whole: NodeId): void {
     for (const each of [whole, ...this.aliasesOf(whole)]) {
-      if (each !== part) {
+      if (each !== part && this.#allowed.whole(each)) {
         added(this.#wholes, part, each);
-        for (const outer of this.#wholes.get(each) ?? []) {
-          added(this.#wholes, part, outer);
+      }
+      this.#carry(part, each);
+    }
+  }
+
+  /** `node` comes to reach or hold `other`: what that was read out of, `node` holds some of. */
+  #carry(node: NodeId, other: NodeId): void {
+    if (node !== other) {
+      for (const each of this.#wholes.get(other) ?? []) {
+        if (each !== node) {
+          added(this.#wholes, node, each);
         }
       }
     }
@@ -190,6 +207,7 @@ export class ReachState {
     if ((from !== to || this.#live.has(from)) && this.#allowed.reach(from, to)) {
       added(this.#reach, from, to);
       this.addShare(from, to);
+      this.#carry(from, to);
     }
   }
 
@@ -198,6 +216,8 @@ export class ReachState {
       added(this.#alias, first, second);
       added(this.#alias, second, first);
       this.addShare(first, second);
+      this.#carry(first, second);
+      this.#carry(second, first);
     }
   }
 
@@ -242,9 +262,6 @@ export class ReachState {
     }
     for (const each of this.sharesOf(part).filter(kept)) {
       this.addShare(into, each);
-    }
-    for (const each of this.#wholes.get(part) ?? []) {
-      added(this.#wholes, into, each);
     }
     if (this.#escaped.has(part)) {
       this.#escaped.add(into);

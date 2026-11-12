@@ -16,6 +16,7 @@
  *   are such, and an edit inside one analyses its whole suite again.
  */
 
+import { memo } from '../../../../../foundation/structures/memo.ts';
 import type { FunctionDeclaration } from '../../../../syntax/declarations/index.ts';
 import type { Lambda } from '../../../../syntax/expressions/index.ts';
 import type { NodeOf } from '../../../../syntax/tree/node.ts';
@@ -28,6 +29,7 @@ import { anyField, type Effect, type ResultRelation, type Summary } from '../sum
 import { type HandleReach, mayAlias, mayReach, mayShare } from '../type-reach.ts';
 import { type AnalysisContext, BodyAnalysis, type Violation } from './body.ts';
 import { clonedState, type FlowState, type Given, joinedStates } from './flow-state.ts';
+import { isInputRooted } from './inputs.ts';
 import { type InputSlot, Nodes } from './nodes.ts';
 import { runOperation } from './operations.ts';
 
@@ -386,13 +388,26 @@ function resultRelations(
   return relations;
 }
 
-/** The pairs `nodes`' types allow: a node whose type isn't known allows any. */
+/**
+ * The pairs `nodes`' types allow: a node whose type isn't known allows any. What is read out of
+ * the function's inputs, and their parts, is followed back to them: findings are lifted only to
+ * those (inputs.ts).
+ */
 function allowedBy(nodes: Nodes): Allowed {
   const both = (first: NodeId, second: NodeId, test: (a: HandleReach, b: HandleReach) => boolean) =>
     test(nodes.reachOf(first), nodes.reachOf(second));
+  const wholes = new Map<NodeId, boolean>();
   return {
     reach: (from, to) => both(from, to, mayReach),
     alias: (first, second) => both(first, second, mayAlias),
     share: (first, second) => both(first, second, mayShare),
+    whole: (node) =>
+      memo(
+        wholes,
+        node,
+        () =>
+          isInputRooted(nodes, node) ||
+          nodes.inputs.some((slot) => slot.node === node || slot.value === node),
+      ),
   };
 }
