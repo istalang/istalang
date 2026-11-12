@@ -92,6 +92,7 @@ function typeDefinition(sizes: Sizes): fc.Arbitrary<TypeDefinition> {
           fc.constant({ kind: 'runtime' as const }),
           index(sizes.functions).map((fn) => ({ kind: 'function' as const, function: fn })),
         ),
+        counted: fc.boolean(),
         role: fc.option(fc.constantFrom<ExternRole>('shared', 'cell', 'future', 'instance'), {
           nil: undefined,
         }),

@@ -19,12 +19,14 @@ export const testTypes: readonly TypeDefinition[] = [
     name: 'test.Lease',
     arguments: [],
     disposal: { kind: 'function', function: 0 },
+    counted: true,
   },
   {
     kind: 'extern',
     name: 'test.Plain',
     arguments: [],
     disposal: { kind: 'none' },
+    counted: false,
   },
 ];
 

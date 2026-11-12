@@ -143,6 +143,12 @@ const external = z.strictObject({
   kind: z.literal('extern'),
   ...identity,
   disposal,
+  /**
+   * Whether the runtime counts this type's handles: values of it may reach a disposable, so no
+   * cycle passes through them (static lifetimes, spec §7), and a count decides when one loses its
+   * last holder. The checker decides it (`reachesDisposable`); the runtime only reads it.
+   */
+  counted: z.boolean(),
   role: externRole.optional(),
   /**
    * An `instance` type's, `Instance<T>`'s, when a codec writes `T`: that codec's entry, which

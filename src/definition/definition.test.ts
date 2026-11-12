@@ -297,6 +297,7 @@ describe('definition format', () => {
           name: 'prelude.Shared',
           arguments: [{ kind: 'primitive', name: 'Int' }],
           disposal: { kind: 'function', function: 99 },
+          counted: true,
           role: 'cell',
         });
       },
@@ -311,6 +312,7 @@ describe('definition format', () => {
           name: 'prelude.Instance',
           arguments: [{ kind: 'primitive', name: 'Int' }],
           disposal: { kind: 'none' },
+          counted: false,
           role: 'instance',
           encoder: 4,
         });
@@ -326,6 +328,7 @@ describe('definition format', () => {
           name: 'prelude.Future',
           arguments: [{ kind: 'primitive', name: 'Int' }],
           disposal: { kind: 'runtime' },
+          counted: true,
           role: 'future',
           encoder: 3,
         });

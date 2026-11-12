@@ -113,18 +113,21 @@ export const broadcastDefinition: Definition = {
       name: 'prelude.Array',
       arguments: [string],
       disposal: { kind: 'none' },
+      counted: false,
     },
     {
       kind: 'extern',
       name: 'main.Queue',
       arguments: [named(announcement)],
       disposal: { kind: 'none' },
+      counted: false,
     },
     {
       kind: 'extern',
       name: 'inbox.Revertible',
       arguments: [named(announcement)],
       disposal: { kind: 'runtime' },
+      counted: true,
     },
     {
       kind: 'struct',
@@ -143,6 +146,7 @@ export const broadcastDefinition: Definition = {
       name: 'prelude.Future',
       arguments: [unit],
       disposal: { kind: 'runtime' },
+      counted: true,
       role: 'future',
     },
     {
@@ -150,6 +154,7 @@ export const broadcastDefinition: Definition = {
       name: 'prelude.Resolver',
       arguments: [unit],
       disposal: { kind: 'runtime' },
+      counted: true,
     },
   ],
   constants: [0n, 1n],

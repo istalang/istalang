@@ -302,6 +302,7 @@ export class TypeTable {
           name,
           arguments: typeArguments,
           disposal: this.#disposal(this.#checker.disposalOf(type)),
+          counted: this.#checker.lifetimes.reachesDisposable(type),
           role: 'shared',
         };
       case 'StructDeclaration':
@@ -332,6 +333,7 @@ export class TypeTable {
           name,
           arguments: typeArguments,
           disposal: this.#disposal(this.#checker.disposalOf(type)),
+          counted: this.#checker.lifetimes.reachesDisposable(type),
           ...(role === undefined ? {} : { role }),
           ...(encoder === undefined ? {} : { encoder }),
         };
