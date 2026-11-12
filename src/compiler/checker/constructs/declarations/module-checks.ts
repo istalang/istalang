@@ -1,8 +1,13 @@
 /**
  * A module's check, and the diagnostics derived from it (docs/work/m6-m7/incremental-checking.md
  * §3). The check reads each top-level item's check, then the rules over the module as a whole:
- * clashes among its functions, endless expansion, the cycles static lifetimes rejects, and the
- * constraint checks noted for it by everything it read. Each is an entry, so a lookup can read one item's check alone.
+ * clashes among its functions, endless expansion, the constraint checks noted for it by everything
+ * it read, and the cycles static lifetimes rejects. Each is an entry, so a lookup can read one
+ * item's check alone.
+ *
+ * Static lifetimes runs last: it reads only what the items' checks already did of this module, so
+ * it notes no constraint check of its own, while it reaches the bodies of every std function this
+ * module's functions call, which the walk for noted checks would cross on every edit.
  *
  * A module's diagnostics are those reported in it by its check and by everything that check read,
  * transitively, so they never depend on what was asked before; ties at one position are sorted by
@@ -48,8 +53,8 @@ export class ModuleChecks {
         }
         this.#clashes.get(module);
         this.#expansions.get(module);
-        this.#lifetimes.get(module);
         rules.typeParameters.checkNoted(module);
+        this.#lifetimes.get(module);
       },
     });
     this.#items = checker.entries.table({
