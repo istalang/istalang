@@ -66,8 +66,13 @@ export interface OpenChain {
 }
 
 /** A scope whose variables end with it: a block, a loop's pass, a case, or a labelled scope. */
+/**
+ * A scope whose variables end with it: a block, a loop's pass or a case; or the variables `hold`s
+ * keep until a labelled scope ends (`holder`), which its `continue` leaves alone.
+ */
 interface Scope {
   readonly node: SyntaxNode;
+  readonly holder?: LabelledScope;
   readonly variables: ValueId[];
 }
 
@@ -331,33 +336,44 @@ export class FlowBuilder {
     const scope =
       until === undefined
         ? this.#scopes.at(-1)
-        : this.#scopes.findLast((each) => each.node === until || each.node === bodyOf(until));
+        : this.#scopes.findLast((each) => each.holder === until);
     scope?.variables.push(variable);
   }
 
-  /** Runs `build` with `scope`'s exits going to `breakTo` and `continueTo`. */
+  /**
+   * Runs `build` with `scope`'s exits going to `breakTo` and `continueTo`; what `hold`s keep until
+   * it ends is released where it is left: at `breakTo`, which nothing has been built in yet, and
+   * by any exit leaving it.
+   */
   withExits<Result>(
     scope: LabelledScope,
     breakTo: BlockId,
     continueTo: BlockId | undefined,
     build: () => Result,
   ): Result {
-    this.#exits.push({ scope, breakTo, continueTo, depth: this.#scopes.length });
-    try {
-      return build();
-    } finally {
-      this.#exits.pop();
+    const depth = this.#scopes.length;
+    this.#scopes.push({ node: scope, holder: scope, variables: [] });
+    this.#exits.push({ scope, breakTo, continueTo, depth });
+    const result = build();
+    this.#exits.pop();
+    const held = this.#scopes.pop() as Scope;
+    if (held.variables.length > 0) {
+      this.#open(breakTo).operations.unshift(released(held.variables, scope));
     }
+    return result;
   }
 
-  /** An exit from `scope`: releases every scope it leaves, then goes past it or to its next pass. */
+  /**
+   * An exit from `scope`: releases every scope inside it that it leaves, then goes past it, where
+   * what `hold`s keep until it ends is released, or to its next pass, which keeps them.
+   */
   exit(scope: LabelledScope | undefined, kind: 'break' | 'continue', site: SyntaxNode): void {
     const target = this.#exits.findLast((each) => each.scope === scope);
     if (target === undefined) {
       this.end({ kind: 'stop' });
       return;
     }
-    for (const left of this.#scopes.slice(target.depth).toReversed()) {
+    for (const left of this.#scopes.slice(target.depth + 1).toReversed()) {
       this.#release(left.variables, site);
     }
     const to = kind === 'break' ? target.breakTo : target.continueTo;
@@ -366,12 +382,11 @@ export class FlowBuilder {
 
   #release(variables: readonly ValueId[], site: SyntaxNode): void {
     if (variables.length > 0) {
-      this.emit({ op: 'release', site, values: [...variables], reason: 'scope' });
+      this.emit(released(variables, site));
     }
   }
 }
 
-/** The block a labelled scope runs: a loop's body or a labelled block's. */
-function bodyOf(scope: LabelledScope): Block {
-  return scope.body;
+function released(variables: readonly ValueId[], site: SyntaxNode): Operation {
+  return { op: 'release', site, values: [...variables], reason: 'scope' };
 }
