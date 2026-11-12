@@ -65,7 +65,7 @@ and model: [design.md](design.md) §3 and §9. Phases: [plan.md](plan.md). Paths
 
 ### Registrations
 
-Since R1, each link holds one way, as its chain's root says (`isHeldFromRoot`):
+Since R1, each registration holds one way, as its chain's root says (`isHeldFromRoot`):
 
 | Edge | Root | Where | How |
 |---|---|---|---|
@@ -73,13 +73,14 @@ Since R1, each link holds one way, as its chain's root says (`isHeldFromRoot`):
 | pending resolver → its `on` futures | case | `holdings.ts`, resolver entry | field |
 | pending resolver → its callback, its `onCancel` values | either | `holdings.ts`, resolver entry | fields |
 | wait → its awaited case resolvers (a case resolver only watches its wait, a wait only its waiter) | case | `heap.ts` | `cases` index; *awaited* is recursive in `#awaited` |
-| at-resolver → its `done` | callback | `holdings.ts` | field |
+| at-resolver → its `done` | either | `holdings.ts` | field |
 | pending resolver → its awaited at-resolvers | case | `heap.ts` | `positions` index |
 
 - `Waits.register` grows `on`, `ResolverEndings.replace` ends a resolver and notes it, and
   `cancelLosers` narrows `on`. `Waits.at` records the root on the at-resolver it makes.
-- No registration makes a cycle any more. A cycle through a callback's chain is the program's own,
-  such as a callback capturing its future.
+- No registration makes a cycle any more. Within a wait's chain, an awaited at-resolver and its
+  `done` hold each other until the wait ends both. A cycle through a callback's chain is the
+  program's own, such as a callback capturing its future.
 
 ## Release and collection today
 
@@ -150,11 +151,14 @@ Landed. What R1 left, for the phases after it:
 - **Direction by root.** A chain of resolvers comes down to a wait's case or a callback, its root.
   `isHeldFromRoot(target)` (`snapshot/holdings.ts`) is the rule's one home. The resolver entry
   there, and `Heap.#indexedHolds`, read it.
+  - **Either root:** an at-resolver holds its `done`, since it can still decide it (design.md §6.3).
+    QA found that an at-resolver kept to resolve later, and registered on nothing, otherwise
+    lets its wait's resolver go: the wait panics as dropped.
   - **Case root:** the wait holds its awaited case resolvers, each pending resolver holds its awaited
-    `Resolver.at` ones, and each resolver holds its `on`. A future and an at-resolver's `done` only
-    watch.
-  - **Callback root:** a future holds the pending resolvers registered on it, and an at-resolver holds
-    its `done`. A resolver only watches its `on`.
+    `Resolver.at` ones, and each resolver holds its `on`. A future only watches. So an awaited
+    at-resolver and its `done` hold each other, which the wait's end undoes, as it ends both.
+  - **Callback root:** a future holds the pending resolvers registered on it. A resolver only
+    watches its `on`.
   - **The root is recorded, not walked.** Each `at` target carries `root` (`snapshot/objects.ts`,
     `chainRoot`), set by `Waits.at` and checked against its `done` by `snapshot/check/waits.ts`.
     A walk can't stand in for it: `ResolverEndings` ends a resolver before it cancels the
@@ -176,9 +180,16 @@ Landed. What R1 left, for the phases after it:
     `CliEnvironment.heapCheck`. `SegmentCollection.collected` calls it after every instruction
     that let go of or wrote into something, before collecting, with those ids: the released ones
     and `Heap.takeWritten`'s, every object replaced. A host passes none.
-  - **Its graph:** `Heap.holds` and the executions' frames, plus call future → execution. A wait's
-    case chain is collapsed: a wait holds the futures its chain is registered on, what its waiter
-    awaits (design.md §3), and a pending case-root resolver only its `onCancel` values.
+  - **Its graph is the analysis's holding** (design.md §3, §6.3, §6.4), so an accepted program
+    never trips it. That is `Heap.holds` and the executions' frames, plus call future → execution,
+    with three differences:
+    - a future holds every resolver registered on it, whatever the root, as `onAwait` keeps one;
+    - a resolver holds its callbacks and its `done`, never its `on` or the at-resolvers deciding it;
+    - a wait holds the futures its chain is registered on, what its waiter awaits.
+  - **Its disposables are the language's** (spec §7): pending futures and resolvers, slots, values
+    whose type declares `dispose`, and mocks. They are not `disposal.ts`'s `isDisposable`, which
+    says whether the collector must act at once and leaves an unwatched slot or timer to the
+    commit. Counting must reach every disposable.
   - **What it walks:** only what the changed ids reach. A cycle closes only by a write into one of
     its objects (design.md §2), and one lost to counting is one something let go of. Walking the
     whole heap timed out `collections/deep-elements.ista`. No program yet closes a cycle releasing

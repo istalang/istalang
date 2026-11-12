@@ -6,29 +6,28 @@
  * its objects closes a cycle (design.md §2), and one lost to counting is one that something let go
  * of, so each is seen while it is still there, even one let go of in the step that made it.
  *
- * - The graph is the heap's holding (`Heap.holds`, and an execution's frames), with two changes.
- *   A call's future holds its call (spec §7), an edge the runtime keeps as a root instead. A wait's
- *   case's chain is no object of its own (design.md §3): the wait holding its resolvers, each
- *   holding what decides it and the futures it is registered on, ends with the wait whatever holds
- *   what. So the wait holds the futures its chain is registered on, what its waiter awaits, and a
- *   resolver of it holds only its `onCancel` callbacks.
+ * - The graph is what the analysis has hold, so an accepted program never trips it (design.md §3,
+ *   §6.3, §6.4): the heap's holding (`Heap.holds`, and an execution's frames), but where they part.
+ *   A call's future holds its call (spec §7), which the runtime keeps as a root instead. A future
+ *   holds every resolver registered on it, as `onAwait` keeps one. A resolver holds its callbacks
+ *   and the resolver it decides, never its futures or the resolvers deciding it: a wait's case's
+ *   chain is no object of its own, and ends with its wait whatever holds what. A wait holds what
+ *   its chain is registered on, what its waiter awaits.
+ * - A disposable is the language's (spec §7): a pending future or resolver, a slot, a value whose
+ *   type declares `dispose`, and a mock, whether or not the runtime must do something at once when
+ *   it loses its last holder (disposal.ts `isDisposable`). Counting is for the former.
  * - It stays in the test runtime for good, the ground truth for the analysis's soundness and for
- *   lowering agreeing with it, so it reads the runtime's own disposability (disposal.ts).
+ *   lowering agreeing with it.
  */
 
 import { handlesIn } from '../../definition/values/values.ts';
 import { addToGroup } from '../../foundation/structures/groups.ts';
+import { type Handlers, handlerOf } from '../../foundation/structures/kind-table.ts';
 import { pushAll } from '../../foundation/structures/stack.ts';
 import { stronglyConnected } from '../../foundation/structures/strongly-connected.ts';
 import type { Heap, LiveObject, LiveObjectOf } from '../scheduler/instance/heap.ts';
 import type { HeapCheck } from '../scheduler/loaded-definition.ts';
-import {
-  frameCells,
-  frameValues,
-  heldObjects,
-  isHeldFromRoot,
-  valuesIn,
-} from '../snapshot/holdings.ts';
+import { frameCells, frameValues, heldObjects, valuesIn } from '../snapshot/holdings.ts';
 import { type Disposability, isDisposable } from './disposal.ts';
 
 /**
@@ -130,17 +129,20 @@ function countedHolds(heap: Heap, object: LiveObject): readonly number[] {
   if (object.kind === 'wait') {
     return [...heldObjects(object), ...awaitedFutures(heap, object)];
   }
-  if (
-    object.kind === 'resolver' &&
-    object.state.kind === 'pending' &&
-    isHeldFromRoot(object.state.target)
-  ) {
-    return valuesIn(object).flatMap(handlesIn);
+  if (object.kind === 'resolver') {
+    const { state } = object;
+    const decides =
+      state.kind === 'pending' && state.target.kind === 'at' ? [state.target.done] : [];
+    return [...valuesIn(object).flatMap(handlesIn), ...decides];
   }
-  const held = heap.holds(object);
-  return object.kind === 'future'
-    ? [...held, ...heap.find('executions', object.id).map((execution) => execution.id)]
-    : held;
+  if (object.kind === 'future') {
+    return [
+      ...heldObjects(object),
+      ...heap.find('resolvers', object.id).map((resolver) => resolver.id),
+      ...heap.find('executions', object.id).map((execution) => execution.id),
+    ];
+  }
+  return heap.holds(object);
 }
 
 /** The futures `wait`'s chain is registered on: what its waiter awaits. */
@@ -168,7 +170,10 @@ function reachingDisposables(
     }
   }
   const reaching = new Set(
-    [...successors.keys()].filter((id) => isDisposable(state, state.heap.objectOf(id))),
+    [...successors.keys()].filter((id) => {
+      const object = state.heap.objectOf(id);
+      return handlerOf(disposables, object)(state, object);
+    }),
   );
   const queue = [...reaching];
   for (const id of queue) {
@@ -181,3 +186,20 @@ function reachingDisposables(
   }
   return reaching;
 }
+
+/** Whether an object of each kind is a disposable as the language has it (see the header). */
+const disposables: Handlers<Disposability, LiveObject, [], boolean> = {
+  future: (_state, { state }) => state.kind !== 'resolved',
+  resolver: (_state, { state }) => state.kind === 'pending',
+  slot: () => true,
+  cell: (state, cell) => isDisposable(state, cell),
+  resource: (state, resource) => isDisposable(state, resource),
+  mock: () => true,
+  weakRef: () => false,
+  answer: () => false,
+  outcome: () => false,
+  wait: () => false,
+  run: () => false,
+  contextConstant: () => false,
+  execution: () => false,
+};

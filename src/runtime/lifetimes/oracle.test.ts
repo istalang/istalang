@@ -13,6 +13,7 @@ import { cyclicOracle } from './oracle.test-kit.ts';
 
 const declarations = [
   "import * as runtime from 'runtime'",
+  "import * as time from 'time'",
   'shared struct Lease:',
   '  partner: Lease? = none',
   'fn dispose(self: Lease): ()',
@@ -20,6 +21,8 @@ const declarations = [
   '  next: Plain? = none',
   '  lease: Lease? = none',
   '  call: Future<Int, "ista">? = none',
+  '  slot: Slot<Plain>? = none',
+  '  timer: Future<Unit, "ista">? = none',
   'ista async fn holding(plain: Plain) -> Int:',
   '  await runtime.commit()',
   '  _ = plain->next',
@@ -54,6 +57,27 @@ const declarations = [
   '  self->box = none',
   '  holding(box).onAwait(done)',
   'ista async fn awaiting(once: Once) -> Int: await once',
+  '# An awaitable whose resolver, registered on a call, cancels into the box it takes from itself.',
+  'shared struct Cancelling:',
+  '  box: Plain? = none',
+  '  type Mode = "ista"',
+  'ista fn onAwait(self: Cancelling, done: Resolver<Int, "ista">):',
+  '  const box = self->box!',
+  '  self->box = none',
+  '  done.onCancel(fn(): { _ = box->next; () })',
+  '  holding(new Plain{}).onAwait(done)',
+  'ista async fn awaitingCancelling(cancelling: Cancelling) -> Int: await cancelling',
+  'shared struct KeptPair:',
+  '  resolver: Resolver<(Int, Int), "ista">? = none',
+  '# An awaitable whose `Resolver.at` cancels into what keeps the resolver it decides.',
+  'struct WatchedAt:',
+  '  kept: KeptPair',
+  '  type Mode = "ista"',
+  'ista fn onAwait(self: WatchedAt, done: Resolver<(Int, Int), "ista">):',
+  '  const at = Resolver.at(done, 0)',
+  '  at.onCancel(fn(): { _ = self.kept; () })',
+  '  self.kept->resolver = done',
+  '  holding(new Plain{}).onAwait(at)',
 ];
 
 /**
@@ -120,6 +144,29 @@ describe('the oracle of static lifetimes', () => {
         "a wait's resolver whose onCancel holds what holds it",
         ['_ = await Watched{kept: new Kept{}}'],
       ],
+      [
+        "a call awaiting a resolver whose onCancel holds what holds the call's future",
+        [
+          'const plain = new Plain{}',
+          'plain->call = awaitingCancelling(new Cancelling{box: plain})',
+        ],
+      ],
+      [
+        'a slot holding what holds it',
+        [
+          'const slot = Slot.create<Plain>()',
+          'const plain = new Plain{slot}',
+          '_ = slot.put(plain)',
+        ],
+      ],
+      [
+        'a cycle of plain objects holding a pending timer',
+        [
+          'const a = new Plain{timer: time.delay(10s)}',
+          'const b = new Plain{next: a}',
+          'a->next = b',
+        ],
+      ],
     ]),
   )('sees $name (in a block: $inBlock)', async ({ body, inBlock }) => {
     expect(await seesCycle(body, inBlock)).toEqual({ ended: finished, seen: true });
@@ -138,6 +185,11 @@ describe('the oracle of static lifetimes', () => {
       [
         "a wait's chain registered on a call holding what keeps its resolver",
         ['_ = await Keeping{kept: new Kept{}}'],
+      ],
+      [
+        // A resolver doesn't hold the `Resolver.at` ones deciding it (design.md §6.3).
+        'a Resolver.at whose onCancel holds what keeps the resolver it decides',
+        ['_ = await WatchedAt{kept: new KeptPair{}}'],
       ],
     ]),
   )('sees no cycle in $name (in a block: $inBlock)', async ({ body, inBlock }) => {
