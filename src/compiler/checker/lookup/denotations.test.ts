@@ -220,3 +220,34 @@ fn main(b: Box<Int>) -> (Box<Int>, Box<Int>, Box<String>, Opt<Int>):
     expect(at('Some', 1)).toEqual(['variant Some: Opt<Int>']);
   });
 });
+
+describe('what a struct without fields given type arguments denotes', () => {
+  const { checker, module, named, first } = checkedMain(
+    `struct Tag<T>
+struct Settings { retries: Int, region: String }
+struct Keyed<S is struct, K in keyof S>
+@Tag<Int>
+fn main() -> Tag<Int>:
+  const keyed = Keyed<Settings, "region">
+  drop keyed
+  Tag<Int>
+`,
+  );
+
+  it('answers its name with the type of that instance, as a value or an annotation', () => {
+    expect(checker.diagnosticsOf(module)).toEqual([]);
+    expect(described(checker.lookup.denotationsOf(module, named('Tag', 1)))).toEqual([
+      'type type: Tag<Int>',
+    ]);
+    expect(described(checker.lookup.denotationsOf(module, named('Tag', 3)))).toEqual([
+      'type type: Tag<Int>',
+    ]);
+  });
+
+  it('answers a key given as its type argument with the field it names', () => {
+    const key = first('StringLiteral');
+    expect(key && described(checker.lookup.keyDenotationsOf(module, key))).toEqual([
+      'field region: String',
+    ]);
+  });
+});

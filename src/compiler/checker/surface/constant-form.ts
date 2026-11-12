@@ -44,6 +44,33 @@ export type ConstantForm =
     }
   | { readonly kind: 'function'; readonly lambda: Lambda; readonly constant: VariableDeclaration };
 
+/**
+ * The types `form`'s value is built of, each a type lowering gives an entry (lowering/tables/
+ * constants.ts): every struct's, and every union a member is put into, with that member. A
+ * generic declaration's annotation is lowered at each instance (§3.16), so these are the types its
+ * instances must make.
+ */
+export function typesIn(form: ConstantForm): readonly Type[] {
+  switch (form.kind) {
+    case 'struct':
+      return [form.type, ...form.fields.flatMap(typesIn)];
+    case 'tuple':
+    case 'array':
+      return form.elements.flatMap(typesIn);
+    case 'map':
+      return form.entries.flatMap(([key, value]) => [...typesIn(key), ...typesIn(value)]);
+    case 'member':
+      return [form.union, form.member, ...typesIn(form.value)];
+    case 'primitive':
+    case 'function':
+      return [];
+    default: {
+      const unhandled: never = form;
+      return unhandled;
+    }
+  }
+}
+
 /** What a duration literal is (§2): a `time.Duration`, whose one field is its milliseconds. */
 export function durationForm(type: NominalType, milliseconds: bigint): ConstantForm {
   return { kind: 'struct', type, fields: [{ kind: 'primitive', value: milliseconds }] };

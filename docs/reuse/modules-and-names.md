@@ -20,7 +20,7 @@ tags: [reuse, language, modules, program, binder, names]
 - build an extern key (`prelude.add(Int, Float)`) from a signature or native table → `externKey`, `nativeKey`, `keyTypeText` (`src/definition/extern-key.ts`)
 - build type descriptors for `nativeKey` → `namedKey`, `primitiveKey`, `functionKey`, `tupleKey`, `parameterKey` (`src/definition/extern-key.ts`)
 - mark a `nativeKey` parameter as `&` reference or `...` rest → `referenceKey`, `restKey` (`src/definition/extern-key.ts`)
-- look up a language-role module (`prelude`, `time`, `json`, `testing`), the `std:` scheme, or a well-known declaration → `languageModules`, `stdScheme`, `wellKnown` (`src/foundation/language/well-known/index.ts`)
+- look up a language-role module (`prelude`, `time`, `json`, `lifetimes`, `testing`), the `std:` scheme, or a well-known declaration (`wellKnown.holds`, `wellKnown.keeps` among them) → `languageModules`, `stdScheme`, `wellKnown` (`src/foundation/language/well-known/index.ts`)
 - look up well-known variant and field names (a union's layout, `Result`, a cursor's `Step`) → `unionLayout`, `resultVariants`, `resultFields`, `stepVariants` (`src/foundation/language/well-known/variants.ts`); `Json` is a union, whose members json-values.ts finds by what each variant holds
 - look up well-known codec function names and helpers → `codecFunctions`, `derivedCodecs`, `codecHelpers` (`src/foundation/language/well-known/codecs.ts`)
 - look up well-known testing function names, the test file suffix, or whether a path names a test module → `testingFunctions`, `testModuleSuffix`, `isTestModulePath` (`src/foundation/language/well-known/testing.ts`)
@@ -48,7 +48,9 @@ tags: [reuse, language, modules, program, binder, names]
 - ask the checker about a node of completion's placeholder parse (one ending before the cursor) → `checkedTwinOf` (`src/editor/language-service/completion/places/patterns/matched-type.ts`)
 - the type a `case`, `is` or parameter pattern being written matches, or the fields its struct pattern names → `matchedTypeOf`, `fieldsMatchedBy` (`src/editor/language-service/completion/places/patterns/matched-type.ts`)
 - offer the module paths an import's path may go on with, one segment at a time, from the importer or the project root → `modulePathsAt` (`src/editor/language-service/completion/places/imports/module-paths.ts`)
-- tell whether a type may annotate (§3.16: a struct, not a shared or extern one) → `canAnnotate` (`src/compiler/checker/surface/checked-annotation.ts`)
+- tell whether a type may annotate (§3.16: a struct, not a shared or extern one) → `canAnnotate`; where a function stands for its annotations, extern or not → `functionPlace` (`src/compiler/checker/surface/checked-annotation.ts`)
+- what the std's externs hold and keep (§3.16): a value of an extern type one level down → `Checker.externHeldOf`; an extern function's parameters, by position → `Checker.keepsOf`, its unknown names reported by `checkKeeps` (`src/compiler/checker/rules/lifetimes/externs.ts`)
+- tell a declaration that takes type parameters, which its annotations see → `isGenericDeclaration`, `GenericDeclaration` (`src/compiler/syntax/declarations/index.ts`)
 - turn completion candidates into items, or an item into an LSP item → `present` (`src/editor/language-service/completion/presentation/present.ts`), `completionItem` (`src/editor/lsp/providers/completion.ts`)
 - the type expected where a cursor writes a value, and the variants that may be written bare there → `expectedTypeAt`, `expectedVariants`, `isBareVariant` (`src/editor/language-service/completion/expected.ts`)
 - read a checked body at a node as tools do, the passes of the field loops around it read as one (§4) → `checker.lookup.bodyHolding`, a `JoinedBody` (`src/compiler/checker/surface/denotation.ts`): its types joined, and every pass's call or lambda listed (`callsAt`, `implicitCallsOf`, `functionsOf`); never a pass's single call, which lowering alone reads

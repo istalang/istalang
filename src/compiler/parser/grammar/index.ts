@@ -15,6 +15,7 @@ import {
   startsItemOnNewLine,
 } from './expressions/expression.ts';
 import { parseValue } from './expressions/literals/indented-values.ts';
+import { parseCommittedTypeApplication } from './expressions/postfix.ts';
 import { nested } from './nesting.ts';
 import { parseParameterPattern, parsePattern } from './patterns.ts';
 import { parseStatement } from './statements/statement.ts';
@@ -30,6 +31,8 @@ const grammar: Grammar = {
   type: (parser) => nested(parser, () => parseType(parser)),
   parameterType: (parser) => nested(parser, () => parseParameterType(parser)),
   typeArguments: parseTypeArguments,
+  // Its type arguments and literal body nest through the entries that parse them.
+  typeApplication: parseCommittedTypeApplication,
   pattern: (parser) => nested(parser, () => parsePattern(parser)),
   parameterPattern: (parser) => nested(parser, () => parseParameterPattern(parser)),
   statement: (parser) => nested(parser, () => parseStatement(parser)),

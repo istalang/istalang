@@ -13,9 +13,7 @@
 
 import type { ModuleId } from '../../../program/program.ts';
 import {
-  type FunctionDeclaration,
-  type TraitDeclaration,
-  type TypeAliasDeclaration,
+  type GenericDeclaration,
   type TypeParameter,
   typeParametersOf,
 } from '../../../syntax/declarations/index.ts';
@@ -23,15 +21,8 @@ import type { AnchoredSpan } from '../../../syntax/tree/positions.ts';
 import type { CheckerContext } from '../../contexts/context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import { substitute, substitutionFor } from '../parts/substitution.ts';
-import type { NominalDeclaration, ParameterKey, Type } from '../type/index.ts';
+import type { ParameterKey, Type } from '../type/index.ts';
 import { errorType } from '../type/primitives.ts';
-
-/** A declaration that takes type parameters. */
-export type GenericDeclaration =
-  | NominalDeclaration
-  | TraitDeclaration
-  | TypeAliasDeclaration
-  | FunctionDeclaration;
 
 /**
  * Type arguments given a generic declaration at `at`; `self` is what a trait's `Self` stands for.

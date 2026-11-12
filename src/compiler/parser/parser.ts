@@ -53,9 +53,8 @@ import { parserDiagnostics } from './diagnostics.ts';
 export interface Grammar {
   readonly expression: (parser: Parser, minLevel: PrecedenceLevel) => Expression;
   /**
-   * Continues an expression whose leftmost operand is already parsed. This and `startsExpression`
-   * sit here so that parselets can re-enter the Pratt engine without importing it, which would be
-   * a cycle.
+   * Continues an expression whose leftmost operand is already parsed. This, `startsExpression` and
+   * `typeApplication` sit here so parselets re-enter the Pratt engine without importing it, a cycle.
    */
   readonly continueExpression: (
     parser: Parser,
@@ -81,6 +80,7 @@ export interface Grammar {
   readonly parameterPattern: (parser: Parser) => Pattern;
   /** `<A, B>`, starting at the `<`. */
   readonly typeArguments: (parser: Parser) => readonly TypeNode[];
+  readonly typeApplication: (parser: Parser, left: Expression) => Expression | undefined;
   readonly pattern: (parser: Parser) => Pattern;
   readonly statement: (parser: Parser) => Statement | Invalid;
   /** A declaration only the top level allows, or undefined if none starts here. */
@@ -316,6 +316,9 @@ export class Parser implements SegmentBases {
   parameterType(): TypeNode {
     return this.#grammar.parameterType(this);
   }
+
+  /** An annotation's `name<…>` or `name<…>{…}` after `left` (§3.16), its `<` never compared. */
+  readonly typeApplication = (left: Expression) => this.#grammar.typeApplication(this, left);
 
   typeArguments(): readonly TypeNode[] {
     return this.#grammar.typeArguments(this);

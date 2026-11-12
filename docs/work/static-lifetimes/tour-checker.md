@@ -162,16 +162,24 @@ The node kinds are in `src/compiler/syntax/expressions/index.ts` and `syntax/sta
     makes it (`lowering/constructs/expressions/access/names.ts` `lowerApplied`).
   - `Holds<T>{}` on a fieldless struct is still 5206; a struct can't take a pack (5081), so `Holds`
     takes one tuple type. Map-valued annotations, `@Keeps{["x": ["x"]]}`, work as any value.
-- **Scope** (`binder/module/local-binder.ts`): a declaration with type parameters binds its own
-  annotations right after defining them (`ownAnnotations`: `bindFunction` before its parameters,
-  `typeParameterScope`, `bindTrait`); `annotations` skips such a declaration. So `@Holds<U>` on
-  `fn f<U>` names `U`, and nothing a function declares after its type parameters. A field's
-  annotations see its struct's. The checker needed no `within`: a written type's constraints come
-  from its type parameters' declarations, so `@Tag<U>` with `Tag<T is Encodable>` is 5101 unless
-  `U is Encodable`.
+- **Scope** (`binder/constructs/declarations.ts`): a generic declaration (`isGenericDeclaration`,
+  `syntax/declarations/index.ts`) binds its annotations right after defining its type parameters
+  (`bindFunction` before its parameters, `typeParameterScope`, `bindTrait`); `bindDeclaration` and
+  `bindBlock` bind any other's in the scope around it. So `@Holds<U>` on `fn f<U>` names `U`, and
+  nothing a function declares after its type parameters; a local function's see its own name, as a
+  top-level one's do. A field's annotations see its struct's. The checker needed no `within`: a
+  written type's constraints come from its type parameters' declarations, so `@Tag<U>` with
+  `Tag<T is Encodable>` is 5101 unless `U is Encodable`.
+- **Parsing them on an item's line:** a `<` after an annotation's name is always type arguments
+  (`Parser.typeApplication`, `parseCommittedTypeApplication` in
+  `parser/grammar/expressions/postfix.ts`), so `@Tag<Int> fn f(): 1` reads.
 - **Lowered values:** an entry's annotations are lowered at its instance's type arguments
   (`lowering/tables/instances.ts` `typedIn`), and a field's at its owner's
   (`lowering/tables/type-table.ts` `#fields`), so `@Tag<U>` reaches the Definition as `Tag<Int>`.
+  So the types their values are built of (`typesIn`, `surface/constant-form.ts`) are held to an
+  instance's reductions (`resolution/type-matches/reduction-requirements.ts`), and the types
+  written in a field's annotations make expansion edges as its type does
+  (`rules/expansion/types.ts`): `test/corpus/boundary/invalid-generic-annotations.ista`.
 - **Placement** (`rules/annotations.ts` `placements`, `Record<Known | 'any', …>`):
   - Places (`surface/checked-annotation.ts` `AnnotationPlace`): field; function, extern or not
     (`functionPlace`); struct, extern or not (shared included); statement; other, named.
@@ -200,7 +208,8 @@ The node kinds are in `src/compiler/syntax/expressions/index.ts` and `syntax/sta
     `done`; nothing enforces it beyond the std's tests, since only the std writes `Holds`.
 - **Parameter names as denotations:** `lookup/key-denotations.ts` `keptParameterDenotations`: a
   String literal in a function's `@Keeps` denotes the parameter it names, so go-to reaches it.
-  References and rename skip the std's String literals (`navigation/references.ts`).
+  References read the std's String literals in annotations, none in its bodies
+  (`editor/language-service/navigation/references.ts`); rename refuses std declarations.
 - **`heldPartsOf`'s readers, audited:**
   - `held.ts` `heldType`/`heldTypes` and `rules/disposal/must-use.ts` read `Holds`: a
     `WeakRef<Future<…>>` may be lost, where a tuple of a future must be used.

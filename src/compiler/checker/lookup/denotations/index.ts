@@ -105,9 +105,13 @@ const chosenIn: Handlers<NameSite, NameHolder, [], readonly Denotation[] | undef
       return;
     }
     const call = callOfCallee(site.name, site.holders);
-    return call === undefined
-      ? calledAt(site, node, site.body?.typeOf(node))
-      : calleeDenotations(site, call);
+    if (call !== undefined) {
+      return calleeDenotations(site, call);
+    }
+    // Type arguments written after the name make the value: a function the checker resolved, or
+    // a struct without fields of that instance (§3.1).
+    const type = site.body?.typeOf(node);
+    return calledAt(site, node, type) ?? named(site, type);
   },
   TemplateLiteral: (site, node) =>
     isTagged(node) && site.name === node.tag

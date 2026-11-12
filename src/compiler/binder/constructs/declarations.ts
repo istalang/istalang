@@ -15,8 +15,9 @@
  *   (syntax/declarations/field-defaults.ts).
  * - A named lambda's name is visible only inside the lambda (§3.14).
  * - `Self` is defined in a trait's scope, and only there (§3.10).
- * - A declaration's annotations see its type parameters (§3.16), and nothing it declares after
- *   them: a function's are bound before its parameters are defined.
+ * - A generic declaration's annotations see its type parameters (§3.16), and nothing it declares
+ *   after them: a function's are bound before its parameters are defined. A local function's see
+ *   its own name, as its body does and a top-level function's do.
  * - A static function's owner (`Duration` in `fn Duration.zero()`) is a type use in the scope
  *   around the function, which inside a trait includes `Self`.
  */
@@ -31,6 +32,7 @@ import {
   type EnumDeclaration,
   type ExternStructDeclaration,
   type FunctionDeclaration,
+  isGenericDeclaration,
   type TraitDeclaration,
   type TypeAliasDeclaration,
   type TypeParameters,
@@ -59,7 +61,7 @@ export function bindFunction(
       binder.use(node.owner, scope, 'type');
     }
     defineTypeParameters(binder, node.typeParameters, inner);
-    binder.ownAnnotations(node, inner);
+    binder.annotations(node, inner);
   } else if (node.name !== undefined) {
     binder.declareVariable(inner, node.name, node);
   }
@@ -215,9 +217,15 @@ const declarationHandlers: Handlers<LocalBinder, Declaration, [Scope], void> = {
 };
 // biome-ignore-end lint/style/useNamingConvention: the keys are the tree's node kinds.
 
-/** Binds what is inside a top-level declaration, whose name the module scope already defines. */
+/**
+ * Binds what is inside a top-level declaration, whose name the module scope already defines: a
+ * generic one's annotations in its type parameters' scope, which binding it makes, any other's in
+ * the module's.
+ */
 export function bindDeclaration(binder: LocalBinder, node: Declaration, scope: Scope): void {
-  binder.annotations(node, scope);
+  if (!isGenericDeclaration(node)) {
+    binder.annotations(node, scope);
+  }
   handlerOf(declarationHandlers, node)(binder, node, scope);
 }
 
@@ -237,7 +245,7 @@ function bindTrait(binder: LocalBinder, node: TraitDeclaration, scope: Scope): v
   const inner = Scope.nested(scope);
   inner.define(selfType, selfEntity(node));
   defineTypeParameters(binder, node.typeParameters, inner);
-  binder.ownAnnotations(node, inner);
+  binder.annotations(node, inner);
   binder.enter(node, inner);
   const fields = node.members.filter(
     (member) => member.kind === 'FieldDeclaration' || member.kind === 'Invalid',
@@ -279,7 +287,7 @@ function typeParameterScope(
 ): Scope {
   const inner = Scope.nested(scope);
   defineTypeParameters(binder, node.typeParameters, inner);
-  binder.ownAnnotations(node, inner);
+  binder.annotations(node, inner);
   binder.enter(node, inner);
   return inner;
 }

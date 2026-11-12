@@ -32,6 +32,7 @@ import { isPlace } from '../../../syntax/expressions/places.ts';
 import { qualifiedPath } from '../../../syntax/expressions/readings.ts';
 import { fieldChildrenOf, type SyntaxNode } from '../../../syntax/tree/index.ts';
 import type { Identifier } from '../../../syntax/tree/node.ts';
+import type { TypeNode } from '../../../syntax/types/index.ts';
 import { parseDelimited, parseEnclosed } from '../../cursor/recovery.ts';
 import { parserDiagnostics } from '../../diagnostics.ts';
 import { atPostfix, breakSeparatesItems } from '../../layout/item-breaks.ts';
@@ -47,6 +48,37 @@ import type { InfixParselet } from './parselet.ts';
  * comparison.
  */
 export function parseTypeApplication(parser: Parser, left: Expression): Expression | undefined {
+  return appliedName(parser, left, () =>
+    parser.speculate(() => {
+      const parsed = parser.typeArguments();
+      return namesTypesOnly(parsed) && endsTypeArguments(parser) ? parsed : undefined;
+    }),
+  );
+}
+
+/**
+ * `name<…>` or `name<…>{…}` where a `<` after a name is never a comparison, whatever follows its
+ * `>`: an annotation's (§3.16), which may stand before its item on one line, `@Tag<Int> fn f()`;
+ * undefined after anything but a name, or with no `<` on its line.
+ */
+export function parseCommittedTypeApplication(
+  parser: Parser,
+  left: Expression,
+): Expression | undefined {
+  return atPostfix(parser, '<')
+    ? appliedName(parser, left, () => parser.typeArguments())
+    : undefined;
+}
+
+/**
+ * `left`, a name, given the type arguments `parse` reads, and the struct literal's body after them
+ * if one follows; undefined for another `left`, or where `parse` reads none.
+ */
+function appliedName(
+  parser: Parser,
+  left: Expression,
+  parse: () => readonly TypeNode[] | undefined,
+): Expression | undefined {
   if (left.kind !== 'Identifier' && left.kind !== 'MemberAccess') {
     return undefined;
   }
@@ -54,10 +86,7 @@ export function parseTypeApplication(parser: Parser, left: Expression): Expressi
   if (path === undefined) {
     return undefined;
   }
-  const typeArguments = parser.speculate(() => {
-    const parsed = parser.typeArguments();
-    return namesTypesOnly(parsed) && endsTypeArguments(parser) ? parsed : undefined;
-  });
+  const typeArguments = parse();
   if (typeArguments === undefined) {
     return undefined;
   }

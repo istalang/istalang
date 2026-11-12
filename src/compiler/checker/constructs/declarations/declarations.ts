@@ -29,6 +29,7 @@ import {
   type Declaration,
   type DeclaredStruct,
   type FunctionDeclaration,
+  type GenericDeclaration,
   type RequiredAssociatedType,
   type TypeParameter,
   typeParametersOf,
@@ -53,7 +54,6 @@ import { functionPlace } from '../../surface/checked-annotation.ts';
 import { namesMemberParameter } from '../../types/traits/struct-keys.ts';
 import { namesOneType } from '../../types/type/index.ts';
 import { outcomeOf } from '../../types/type/well-known.ts';
-import type { GenericDeclaration } from '../../types/written/type-arguments.ts';
 import { checkFiniteAlias, checkFiniteFields } from './layout/struct-rules.ts';
 import { checkVarianceMarkers } from './variance-markers.ts';
 

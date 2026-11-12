@@ -6,7 +6,10 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { reportedOnce } from '../../../foundation/diagnostics/diagnostic.test-kit.ts';
+import {
+  reportedNothing,
+  reportedOnce,
+} from '../../../foundation/diagnostics/diagnostic.test-kit.ts';
 import type { Module } from '../../syntax/declarations/index.ts';
 import { spanIn } from '../../syntax/tree/positions.ts';
 import { dump, handMadeSpan } from '../../syntax/tree/tree.test-kit.ts';
@@ -198,6 +201,15 @@ describe('annotations', () => {
     expect(reported('module', lines('@Holds<T>(1)', 'fn f(): 1'))).toEqual(
       reportedOnce(invalidAnnotation.code, 'Holds<T>(1)'),
     );
+  });
+
+  it('read type arguments before their item on its line, which no comparison goes on with', () => {
+    expect(dumpClean('module', 'struct S<T> { @Tag<T> a: T }')).toBe(
+      '(Module [(StructDeclaration S [(TypeParameter _ T _ [] _)] [(DeclaredField a (NamedType [T] []) _ [(Annotation (TypeApplication Tag [(NamedType [T] [])]))])] [])])',
+    );
+    for (const item of ['fn f(): 1', 'ista fn f(): 1', 'async fn f(): 1']) {
+      expect(reported('module', `@Tag<Int> ${item}`)).toEqual(reportedNothing);
+    }
   });
 
   it("widen their item's span over them, a function's over its header", () => {

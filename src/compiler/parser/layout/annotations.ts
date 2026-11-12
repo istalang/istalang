@@ -4,7 +4,9 @@
  * An annotation's value is parsed as a postfix expression, the same grammar as a struct literal,
  * and then held to the shape the spec allows: a possibly qualified struct name, with type arguments
  * or not, bare or followed by `{…}`. Anything else, such as a call, is reported but kept, so the
- * tree shows what was written.
+ * tree shows what was written. An annotation compares nothing, so a `<` after its name is always
+ * type arguments, even where what follows on the line could go on with a comparison: its item,
+ * `@Tag<Int> fn f()`.
  *
  * Attaching adds the annotations to an item already parsed, and widens its span over them, so no
  * item parser has to know about annotations. It makes the item anew, so a function's body, which
@@ -33,7 +35,9 @@ export function parseAnnotation(parser: Parser): Annotation | undefined {
   if (at === undefined) {
     return undefined;
   }
-  const value = parser.expression('postfix');
+  const head = parser.expression('postfix');
+  const applied = parser.typeApplication(head);
+  const value = applied === undefined ? head : parser.continueExpression(applied, 'postfix');
   if (!isAnnotationShape(value)) {
     parser.report(parserDiagnostics.invalidAnnotation(parser.textSpanOf(value.span)));
   }

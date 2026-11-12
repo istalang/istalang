@@ -23,7 +23,7 @@ import type { Diagnostic } from '../../../foundation/diagnostics/diagnostic.ts';
 import { type Convention, isUnnamed } from '../../../foundation/language/naming.ts';
 import { memo, SequenceMemo } from '../../../foundation/structures/memo.ts';
 import { unreachable } from '../../../foundation/structures/unreachable.ts';
-import type { Declaration, FunctionDeclaration, Module } from '../../syntax/declarations/index.ts';
+import type { FunctionDeclaration, Module } from '../../syntax/declarations/index.ts';
 import { isMain } from '../../syntax/declarations/starts.ts';
 import type {
   Comprehension,
@@ -310,18 +310,11 @@ export class LocalBinder {
   }
 
   /**
-   * Binds the annotations on an item, each a struct value written in the scope around it (§3.16).
-   * A declaration with type parameters is skipped: its annotations see them, so it binds its own
-   * once they are defined (`ownAnnotations`), and `@Holds<T>` names its `T`.
+   * Binds the annotations on an item, each a struct value written in `scope` (§3.16): the scope
+   * around it, or a generic declaration's own once its type parameters are defined, which they see
+   * (constructs/declarations.ts).
    */
-  annotations(item: Annotatable & { readonly kind: string }, scope: Scope): void {
-    if (!declaresTypeParameters(item)) {
-      this.ownAnnotations(item, scope);
-    }
-  }
-
-  /** Binds the annotations on an item in `scope`, its own type parameters' where it has them. */
-  ownAnnotations(item: Annotatable, scope: Scope): void {
+  annotations(item: Annotatable, scope: Scope): void {
     for (const annotation of item.annotations ?? []) {
       this.walk.expression(this, annotation.value, scope);
     }
@@ -405,18 +398,3 @@ function withoutMissingLast(parts: QualifiedName): QualifiedName {
   const last = rest.at(-1);
   return last !== undefined && isMissingName(last) ? [head, ...rest.slice(0, -1)] : parts;
 }
-
-/** Whether an item of `kind` declares type parameters, which its annotations see. */
-function declaresTypeParameters(item: { readonly kind: string }): boolean {
-  return typeParameterDeclarations.has(item.kind);
-}
-
-const typeParameterDeclarations: ReadonlySet<string> = new Set([
-  'FunctionDeclaration',
-  'StructDeclaration',
-  'SharedStructDeclaration',
-  'ExternStructDeclaration',
-  'EnumDeclaration',
-  'TraitDeclaration',
-  'TypeAliasDeclaration',
-] satisfies Declaration['kind'][]);

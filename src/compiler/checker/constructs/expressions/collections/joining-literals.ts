@@ -13,7 +13,7 @@
 
 import type { WellKnownDeclaration } from '../../../../../foundation/language/well-known/index.ts';
 import { wellKnown } from '../../../../../foundation/language/well-known/index.ts';
-import type { TypeParameter } from '../../../../syntax/declarations/index.ts';
+import type { GenericDeclaration, TypeParameter } from '../../../../syntax/declarations/index.ts';
 import { typeParametersOf } from '../../../../syntax/declarations/index.ts';
 import type { ArrayLiteral, Expression, MapLiteral } from '../../../../syntax/expressions/index.ts';
 import { unparenthesized } from '../../../../syntax/expressions/readings.ts';
@@ -30,7 +30,6 @@ import { arrayOf, wellKnownOf } from '../../../types/type/well-known.ts';
 import { commonType } from '../../../types/unions/common-type.ts';
 import { writtenLiteral } from '../../../types/unions/unions.ts';
 import { parameterType } from '../../../types/written/resolve-type.ts';
-import type { GenericDeclaration } from '../../../types/written/type-arguments.ts';
 import { agreeOn } from './collections.ts';
 import {
   agreedElement,

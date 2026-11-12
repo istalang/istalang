@@ -68,6 +68,31 @@ export function typeParametersOf(parameters: TypeParameters): readonly TypeParam
   return parameters.filter((parameter) => parameter.kind === 'TypeParameter');
 }
 
+/** A declaration that takes type parameters, which the whole declaration sees. */
+export type GenericDeclaration =
+  | FunctionDeclaration
+  | StructDeclaration
+  | SharedStructDeclaration
+  | ExternStructDeclaration
+  | EnumDeclaration
+  | TraitDeclaration
+  | TypeAliasDeclaration;
+
+const genericKinds: ReadonlySet<string> = new Set<GenericDeclaration['kind']>([
+  'FunctionDeclaration',
+  'StructDeclaration',
+  'SharedStructDeclaration',
+  'ExternStructDeclaration',
+  'EnumDeclaration',
+  'TraitDeclaration',
+  'TypeAliasDeclaration',
+]);
+
+/** Whether `node` is a declaration that takes type parameters. */
+export function isGenericDeclaration(node: { readonly kind: string }): node is GenericDeclaration {
+  return genericKinds.has(node.kind);
+}
+
 /**
  * A function: top-level, local, a trait's requirement, or extern. `owner` is the type a static
  * function is declared on: `Duration` in `fn Duration.zero()`.

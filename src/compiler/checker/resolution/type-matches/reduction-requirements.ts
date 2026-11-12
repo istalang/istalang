@@ -8,7 +8,9 @@
  *   type with arguments not known yet stands in: its fields, variants and associated types, an
  *   alias's body, and a function's written types, signature and body alike, and its result, with
  *   the type arguments its calls give and their callees' requirements, read through those
- *   arguments; a struct's or variant's field defaults bring what their calls reach alike. A
+ *   arguments; a struct's or variant's field defaults bring what their calls reach alike, and the
+ *   annotations of a function and of fields the types their values are built of, which lowering
+ *   makes at each instance (§3.16, surface/constant-form.ts `typesIn`). A
  *   function reached again while its requirements are found adds none: the cycle's own uses are
  *   among the others'.
  * - An instantiation substitutes them, and any use whose arguments are then all known reduces:
@@ -43,14 +45,16 @@ import type { AnchoredSpan } from '../../../syntax/tree/positions.ts';
 import { isWrittenType } from '../../../syntax/types/index.ts';
 import type { CheckerContext, CheckerNote, Instantiable } from '../../contexts/context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
+import { type CheckedAnnotation, functionPlace } from '../../surface/checked-annotation.ts';
 import type { CheckedBody } from '../../surface/checked-body.ts';
+import { typesIn } from '../../surface/constant-form.ts';
 import { functionCallsWithin } from '../../surface/resolved-call.ts';
 import { typeKeys } from '../../types/identity/type-keys.ts';
 import { type Substitution, substitute, substitutionFor } from '../../types/parts/substitution.ts';
 import { typeChildren } from '../../types/parts/type-children.ts';
 import { isKnown, sameTypeSpelled } from '../../types/parts/type-parts.ts';
 import { unfoldRecursive } from '../../types/type/computed-types.ts';
-import type { RecursiveUse, Type, UnreducedUse } from '../../types/type/index.ts';
+import type { FieldMember, RecursiveUse, Type, UnreducedUse } from '../../types/type/index.ts';
 import { spellingText, typeText } from '../../types/type/type-text.ts';
 import { aliasInstance, type TypeMatchQueries } from '../../types/written/type-match.ts';
 
@@ -174,7 +178,7 @@ export class ReductionRequirements {
         return [
           ...checker
             .declaredVariantsOf(declaration)
-            .flatMap(({ fields }) => fields.map((field) => field.type)),
+            .flatMap(({ fields }) => fields.flatMap((field) => this.#fieldTypes(field))),
           ...declaration.variants.flatMap((variant) =>
             variant.kind === 'Variant'
               ? this.#defaultsReach(fieldsFunctionOf(declaration, variant))
@@ -185,10 +189,15 @@ export class ReductionRequirements {
         return [];
       default:
         return [
-          ...checker.declaredFieldsOf(declaration).map((field) => field.type),
+          ...checker.declaredFieldsOf(declaration).flatMap((field) => this.#fieldTypes(field)),
           ...this.#defaultsReach(fieldsFunctionOf(declaration)),
         ];
     }
+  }
+
+  /** A field's type, and the types its annotations' values are built of. */
+  #fieldTypes(field: FieldMember): readonly Type[] {
+    return [field.type, ...annotatedTypes(this.#checker.annotations.ofField(field))];
   }
 
   /** What the defaults of a struct's or variant's fields reach through their calls (§3.1). */
@@ -206,16 +215,20 @@ export class ReductionRequirements {
     if (checker.isStd(checker.moduleOf(declaration))) {
       return [];
     }
+    const module = checker.moduleOf(declaration);
     const bodies = [checker.bodyOf(declaration), checker.defaultsOf(declaration)];
     checker.parametersOf(declaration);
     const result = checker.resultOf(declaration);
-    const tree = checker.inputs.treeOf(checker.moduleOf(declaration));
+    const annotated = annotatedTypes(
+      checker.annotations.of(module, declaration, functionPlace(declaration)),
+    );
+    const tree = checker.inputs.treeOf(module);
     const written = nodesUnder(tree, declaration).flatMap((node) => {
       const type =
         isWrittenType(node) && node.kind !== 'RestType' ? checker.resolvedTypeOf(node) : undefined;
       return type === undefined ? [] : [type];
     });
-    return [...written, result, ...this.#calledThrough(bodies)];
+    return [...written, result, ...annotated, ...this.#calledThrough(bodies)];
   }
 
   /**
@@ -258,4 +271,9 @@ function associated(checker: CheckerContext, declaration: AssociatingDeclaration
 /** Whether `declaration` has type parameters, which an instantiation gives arguments. */
 function isGenericDeclaration(declaration: Instantiable): boolean {
   return typeParametersOf(declaration.typeParameters).length > 0;
+}
+
+/** The types the values of `annotations` are built of. */
+function annotatedTypes(annotations: readonly CheckedAnnotation[]): readonly Type[] {
+  return annotations.flatMap(({ form }) => typesIn(form));
 }

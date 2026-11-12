@@ -162,8 +162,8 @@ interface Instantiated {
 /**
  * What `node`, a type or a name taking type arguments, instantiates, with the arguments it was
  * given: a nominal type or an alias written in a type, a struct literal's type, what the call of a
- * name given type arguments makes (`callInstantiations`), or the function such a name names as a
- * value (§3.14).
+ * name given type arguments makes (`callInstantiations`), the function such a name names as a
+ * value (§3.14), or else the struct without fields it makes (§3.1).
  */
 function instantiationsAt(
   checker: CheckerContext,
@@ -178,7 +178,12 @@ function instantiationsAt(
   if (call?.kind === 'Call' && call.callee === node) {
     return callInstantiations(checker, module, call);
   }
-  return functionsInstantiated(bodyHolding(checker, module, node)?.callsAt(node) ?? []);
+  const body = bodyHolding(checker, module, node);
+  const calls = body?.callsAt(node) ?? [];
+  const made = body?.typeOf(node);
+  return calls.length === 0 && made !== undefined
+    ? nominalMade(made)
+    : functionsInstantiated(calls);
 }
 
 /**
@@ -198,7 +203,7 @@ function callInstantiations(
       entityOf: (name: Identifier) => checker.bindings.entityOf(module, name),
       chosenVariantOf: body.chosenVariantOf,
     };
-    return calledVariant(names, call) === undefined ? [] : membersOf(made).flatMap(enumMade);
+    return calledVariant(names, call) === undefined ? [] : membersOf(made).flatMap(nominalMade);
   }
   return functionsInstantiated(calls);
 }
@@ -212,8 +217,11 @@ function functionsInstantiated(calls: readonly ResolvedCall[]): readonly Instant
   );
 }
 
-/** What a variant without fields called made, `type`, in one pass, instantiates: its enum. */
-function enumMade(type: Type): readonly Instantiated[] {
+/**
+ * What `type` instantiates, made in one pass by a variant without fields called, its enum, or by a
+ * struct without fields given type arguments, the struct.
+ */
+function nominalMade(type: Type): readonly Instantiated[] {
   return type.kind === 'nominal'
     ? [{ parameters: type.entity.declaration.typeParameters, typeArguments: type.arguments }]
     : [];

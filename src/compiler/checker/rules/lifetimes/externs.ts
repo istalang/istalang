@@ -18,7 +18,6 @@ import type {
   ExternStructDeclaration,
   FunctionDeclaration,
 } from '../../../syntax/declarations/index.ts';
-import { writtenByReference } from '../../../syntax/expressions/parameters.ts';
 import { nodesUnder } from '../../../syntax/tree/index.ts';
 import type { Kept } from '../../check.ts';
 import type { CheckerContext } from '../../contexts/context.ts';
@@ -66,13 +65,13 @@ export function externHeldOf(checker: Reader, type: NominalType): readonly Type[
  * every other.
  */
 export function keepsOf(checker: Reader, declaration: FunctionDeclaration): readonly Kept[] {
-  const parameters = checker.parametersOf(declaration).map(({ node }) => node);
   const keeps = annotationNamed(checker, declaration, 'keeps');
   if (keeps === undefined) {
+    const parameters = checker.parametersOf(declaration);
     const others = (position: number) =>
       parameters.flatMap((_, other) => (other === position ? [] : [other]));
-    return parameters.flatMap((parameter, holder) =>
-      writtenByReference(parameter) ? [{ holder, kept: others(holder) }] : [],
+    return parameters.flatMap(({ reference }, holder) =>
+      reference ? [{ holder, kept: others(holder) }] : [],
     );
   }
   const positions = positionsOf(checker, declaration);

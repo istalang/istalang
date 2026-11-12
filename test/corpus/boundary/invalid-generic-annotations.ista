@@ -1,0 +1,36 @@
+# error: 5125 at 30:3
+# error: 5170 at 34:15
+# error: 5170 at 35:15
+# error: 5170 at 36:3
+# The annotations of a generic declaration are made at each of its instances (§3.16), so the types
+# their values are built of are held to what any type it holds is (§3.5, §3.17): a type match
+# naming no type at an instance is reported where the instance is written, a field's, a variant
+# field's and a function's alike, and an annotation naming its type again with a type argument
+# built from its own makes it endless, as its field would.
+
+import * as runtime from 'runtime'
+
+struct Tag<T>
+
+type OnlyInt<T> = match T:
+  case Int: Int
+
+struct Box<U>:
+  item: U @Tag<OnlyInt<U>>
+
+enum Opt<U>:
+  Some(value: U @Tag<OnlyInt<U>>)
+  Empty
+
+@Tag<OnlyInt<U>>
+fn helper<U>(u: U) -> Int:
+  1
+
+struct Grow<U>:
+  item: U @Tag<Grow<(U,)>>
+
+live async fn main() -> Int: await runtime.run(runtime.id()) _main()
+ista async fn _main() -> Int:
+  const box = Box{item: "nope"}
+  const opt = Opt.Some("nope")
+  helper("nope")

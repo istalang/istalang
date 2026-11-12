@@ -10,14 +10,13 @@
  *   derived where it is used through `any`, and an alias has the variance of the type it names.
  */
 
-import type { TypeParameter } from '../../../syntax/declarations/index.ts';
+import type { GenericDeclaration, TypeParameter } from '../../../syntax/declarations/index.ts';
 import { typeParametersOf } from '../../../syntax/declarations/index.ts';
 import type { VarianceMarker } from '../../../syntax/tokens/grammar-words.ts';
 import type { CheckerContext } from '../../contexts/context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import { isHandleDeclaration } from '../../types/properties/handles.ts';
 import { isDerived, markerVariances } from '../../types/variance/variance.ts';
-import type { GenericDeclaration } from '../../types/written/type-arguments.ts';
 
 /** Reports each variance written on `declaration`'s type parameters where it doesn't belong. */
 export function checkVarianceMarkers(
