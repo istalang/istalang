@@ -21,9 +21,14 @@ import { noTestWorld, type TestWorld } from './testing/test-world.ts';
 export interface HeapCheck {
   /**
    * Made after every instruction that let go of or wrote into something, before collecting, with
-   * the objects `changed` since the last: let go of or written into.
+   * the objects `changed` since the last: let go of or written into; and the executions on the
+   * run stack (`running`), which run as roots, their futures holding no frame of theirs.
    */
-  readonly changed: (heap: Disposability, changed: readonly number[]) => void;
+  readonly changed: (
+    heap: Disposability,
+    changed: readonly number[],
+    running: ReadonlySet<number>,
+  ) => void;
   /** Made as `call` starts, while the heap is as it found it; what checks it once it returned. */
   readonly native: (heap: Disposability, call: NativeCallMade) => () => void;
 }

@@ -8,7 +8,9 @@
  *
  * - The graph is what the analysis has hold, so an accepted program never trips it (design.md §3,
  *   §6.3, §6.4): the heap's holding (`Heap.holds`, and an execution's frames), but where they part.
- *   A call's future holds its call (spec §7), which the runtime keeps as a root instead. A future
+ *   A call's future holds its call (spec §7), which the runtime keeps as a root instead, but while
+ *   the call runs: then it is a root, and what its frames hold only for the moment it runs is
+ *   no cycle, as the analysis's call reach is what they hold at an `await` (design.md §5.3). A future
  *   holds every resolver registered on it, as `onAwait` keeps one. A resolver holds its callbacks
  *   and the resolver it decides, never its futures or the resolvers deciding it: a wait's case's
  *   chain is no object of its own, and ends with its wait whatever holds what. A wait holds what
@@ -37,10 +39,12 @@ import { type Disposability, isDisposable } from './disposal.ts';
 function disposableCycles(
   state: Disposability,
   changed: Iterable<number>,
+  running: ReadonlySet<number>,
 ): readonly (readonly number[])[] {
   const successors = countedGraph(
     state.heap,
     [...changed].flatMap((id) => touched(state.heap, id)),
+    running,
   );
   const componentOf = stronglyConnected(
     [...successors].flatMap(([from, tos]) => tos.map((to) => ({ from, to }))),
@@ -63,8 +67,8 @@ function disposableCycles(
 /** A check that throws at the first cycle through objects reaching a disposable, naming them. */
 const acyclicDisposables: HeapCheck = {
   ...noHeapCheck,
-  changed: (state, changed) => {
-    const [cycle] = disposableCycles(state, changed);
+  changed: (state, changed, running) => {
+    const [cycle] = disposableCycles(state, changed, running);
     if (cycle !== undefined) {
       const named = cycle.map((id) => `${id}:${state.heap.objectOf(id).kind}`).join(', ');
       throw new Error(`A cycle reaching a disposable holds objects ${named}.`);
@@ -83,10 +87,9 @@ export const acyclicOracle: Oracle = { heapCheck: acyclicDisposables, asExpected
 
 /**
  * What makes a cycle reaching a disposable, by name: corpus programs (test/corpus/programs.ts),
- * which C3 turns into invalid cases, and std modules whose suites do, `collections` by `WeakMap`,
- * which C3 rewrites (docs/work/static-lifetimes/design.md §10).
+ * which C3 turns into invalid cases (docs/work/static-lifetimes/design.md §10).
  */
-const cyclic: ReadonlySet<string> = new Set(['holders/dispose.ista', 'collections']);
+const cyclic: ReadonlySet<string> = new Set(['holders/dispose.ista']);
 
 /**
  * The oracle for a program that makes a cycle reaching a disposable, which C3 rejects: it records
@@ -97,8 +100,8 @@ export function cyclicOracle(): Oracle {
   return {
     heapCheck: {
       ...noHeapCheck,
-      changed: (state, changed) => {
-        seen ||= disposableCycles(state, changed).length > 0;
+      changed: (state, changed, running) => {
+        seen ||= disposableCycles(state, changed, running).length > 0;
       },
     },
     asExpected: () => seen,
@@ -125,12 +128,16 @@ function touched(heap: Heap, id: number): readonly number[] {
 }
 
 /** What `from` reaches in the oracle's graph: what each object of it holds there, by id. */
-function countedGraph(heap: Heap, from: Iterable<number>): ReadonlyMap<number, readonly number[]> {
+function countedGraph(
+  heap: Heap,
+  from: Iterable<number>,
+  running: ReadonlySet<number>,
+): ReadonlyMap<number, readonly number[]> {
   const successors = new Map<number, readonly number[]>();
   const queue = [...from];
   for (const id of queue) {
     if (!successors.has(id) && heap.has(id)) {
-      const held = countedHolds(heap, heap.objectOf(id)).filter((to) => heap.has(to));
+      const held = countedHolds(heap, heap.objectOf(id), running).filter((to) => heap.has(to));
       successors.set(id, held);
       pushAll(queue, held);
     }
@@ -139,7 +146,11 @@ function countedGraph(heap: Heap, from: Iterable<number>): ReadonlyMap<number, r
 }
 
 /** What `object` holds in the oracle's graph (see the header). */
-export function countedHolds(heap: Heap, object: LiveObject): readonly number[] {
+export function countedHolds(
+  heap: Heap,
+  object: LiveObject,
+  running: ReadonlySet<number> = new Set(),
+): readonly number[] {
   if (object.kind === 'execution') {
     return object.frames.flatMap((frame) => [
       ...frameCells(frame),
@@ -159,7 +170,9 @@ export function countedHolds(heap: Heap, object: LiveObject): readonly number[] 
     return [
       ...heldObjects(object),
       ...heap.find('resolvers', object.id).map((resolver) => resolver.id),
-      ...heap.find('executions', object.id).map((execution) => execution.id),
+      ...heap
+        .find('executions', object.id)
+        .flatMap((execution) => (running.has(execution.id) ? [] : [execution.id])),
     ];
   }
   return heap.holds(object);

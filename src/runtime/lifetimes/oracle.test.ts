@@ -218,7 +218,7 @@ describe("the oracle's walk", () => {
         },
       },
     ]);
-    expect(() => acyclicOracle.heapCheck.changed({ heap, types: [] }, [3])).toThrow(
+    expect(() => acyclicOracle.heapCheck.changed({ heap, types: [] }, [3], new Set())).toThrow(
       'A cycle reaching a disposable holds objects 0:cell, 1:wait, 2:future.',
     );
   });

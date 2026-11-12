@@ -65,7 +65,8 @@ export class SegmentCollection {
       const released = holders.takeReleased();
       const changed = [...released, ...heap.takeWritten()];
       if (changed.length > 0) {
-        loaded.heapCheck.changed({ heap, types: loaded.definition.types }, changed);
+        const running = new Set(this.#seams.runStack.innermostFirst().map(({ id }) => id));
+        loaded.heapCheck.changed({ heap, types: loaded.definition.types }, changed, running);
       }
       if (released.length > 0 || this.#collector.stalled) {
         this.#collector.collect(released);
