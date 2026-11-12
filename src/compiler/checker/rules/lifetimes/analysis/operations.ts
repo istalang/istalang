@@ -28,8 +28,9 @@ import type { NodeId } from '../reach-state.ts';
 import type { Summary } from '../summary.ts';
 import { type At, closureBindings, functionBindings, nodesGiven } from './bindings.ts';
 import { type BodyAnalysis, placeHolds } from './body.ts';
-import { applySummary, readGiven, unknownCall } from './calls.ts';
+import { applySummary, unknownCall } from './calls.ts';
 import { type FlowState, materialize } from './flow-state.ts';
+import { readGiven } from './given.ts';
 import { readKindOf } from './nodes.ts';
 import { placeTarget } from './places.ts';
 
