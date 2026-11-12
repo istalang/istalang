@@ -24,17 +24,13 @@
 import type { FunctionId } from '../../../definition/operands.ts';
 import {
   type CompositeValue,
-  childValues,
   closureOf,
-  handleTarget,
   handleTo,
-  isComposite,
   type Value,
-  withChildValues,
 } from '../../../definition/values/values.ts';
 import { unreachable } from '../../../foundation/structures/unreachable.ts';
 import { Panic } from '../../natives.ts';
-import { arriving, leaving } from '../instance/crossing.ts';
+import { arriving, hostValuesIn, leaving } from '../instance/crossing.ts';
 import type { LiveExecution, LiveObjectOf } from '../instance/heap.ts';
 import type { Instance } from '../instance/index.ts';
 import { ancestorsOf } from '../instance/instance-names.ts';
@@ -113,7 +109,7 @@ export function mockedCall(call: CallToMock, reached: ReachedMock): MockedCall {
   if (reached.kind === 'relayed') {
     return { kind: 'answered', value: relayCall(call, reached.held) };
   }
-  const values = call.values().map((each) => asHostValue(call.instance, each));
+  const values = call.values().map((each) => hostValuesIn(call.instance, each, (handle) => handle));
   recordCall(call.instance, reached.mock, values);
   return { kind: 'replaced', replacement: replacementOf(reached.mock), values };
 }
@@ -182,24 +178,6 @@ export function startAnswer(
     arguments: call.arguments,
     caller: { instance: call.instance, token: call.token },
   });
-}
-
-/** `value` as a mock in `instance` sees it: any resource handle turned into its host value. */
-function asHostValue(instance: Instance, value: Value): Value {
-  if (!isComposite(value)) {
-    return value;
-  }
-  const target = handleTarget(value);
-  if (target !== undefined) {
-    const object = instance.heap.objectOf(target);
-    return object.kind === 'resource'
-      ? { kind: 'extern', type: object.type, payload: object.payload }
-      : value;
-  }
-  return withChildValues(
-    value,
-    childValues(value).map((child) => asHostValue(instance, child)),
-  );
 }
 
 /** How messages name function `target`. */
