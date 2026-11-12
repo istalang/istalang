@@ -6,11 +6,15 @@
  *   what it calls, never their bodies, and a requirement reaching a function's callers is checked
  *   by each call. A group of functions calling each other is solved together, from summaries that
  *   do nothing, until none changes: the lattice over a group's inputs is finite.
- * - **Entries, as the expansion graph keeps them** (design.md §8): what each function calls; each
- *   function's recursive group, found in what it reaches; each group's analyses; each
- *   function's summary, which an edit keeping its effects leaves equal, so its callers stop there;
- *   and each function's reports, the only entry reading where its findings are. Relevance and the
- *   handles a type may hold are entries per type.
+ * - **Entries, as the expansion graph keeps them** (design.md §8): each function's flow; what it
+ *   calls; its recursive group, found in what it reaches; each group's analyses; each function's
+ *   summary, which an edit keeping its effects leaves equal, so its callers stop there; and each
+ *   function's reports, the only entry reading where its findings are. Relevance and the handles a
+ *   type may hold are entries per type.
+ * - **A caller reads of a callee its summary alone,** one entry per call: whether the callee has a
+ *   body is read off its declaration, never off the body, which every edit inside it makes anew.
+ *   Each revision validates every entry a module's check reaches, so an entry earns its place only
+ *   by cutting work off (tracker P49).
  * - **Lazy:** a module's check reads the summaries of what its functions call, transitively, and
  *   nothing else.
  * - **Reported per module:** `check` reports each finding where it stands, through the
@@ -53,6 +57,7 @@ import {
 export class Lifetimes implements LifetimeQueries {
   readonly #checker: CheckerContext;
   readonly #natives: EntryTable<CheckerNote, FunctionDeclaration, Summary>;
+  readonly #flows: EntryTable<CheckerNote, FunctionDeclaration, FlowFunction | undefined>;
   readonly #callees: EntryTable<CheckerNote, FunctionDeclaration, readonly FunctionDeclaration[]>;
   readonly #groups: EntryTable<CheckerNote, FunctionDeclaration, readonly FunctionDeclaration[]>;
   readonly #analyses: EntryTable<
@@ -74,6 +79,10 @@ export class Lifetimes implements LifetimeQueries {
       compute: (native: FunctionDeclaration) => nativeSummary(checker, native),
       equal: sameSummary,
     });
+    this.#flows = checker.entries.table({
+      name: 'lifetime flows',
+      compute: (declaration: FunctionDeclaration) => this.#builtFlow(declaration),
+    });
     this.#callees = checker.entries.table({
       name: 'lifetime callees',
       compute: (caller: FunctionDeclaration) => this.#calleesOf(caller),
@@ -92,7 +101,7 @@ export class Lifetimes implements LifetimeQueries {
     });
     this.#summaries = checker.entries.table({
       name: 'lifetime summaries',
-      compute: (declaration: FunctionDeclaration) => this.#analysisOf(declaration).summary,
+      compute: (declaration: FunctionDeclaration) => this.#summaryOf(declaration),
       equal: sameSummary,
       cyclic: { standIn: () => emptySummary },
     });
@@ -107,7 +116,7 @@ export class Lifetimes implements LifetimeQueries {
       checker,
       context: () => this.#context,
       analysisOf: (declaration) => this.#analysisOf(declaration),
-      hasBody: (declaration) => this.#hasBody(declaration),
+      hasBody,
     });
     this.#dispatch = new Dispatch(checker, (module) => this.#flowsOf(module));
     this.#reports = checker.entries.table({
@@ -160,7 +169,7 @@ export class Lifetimes implements LifetimeQueries {
     const keyOf = (type: Type) => this.#checker.typeKeys.typeKey(type);
     const found = new Map<NodeOf<string>, Map<string, Violation>>();
     for (const violation of [
-      ...(declaration.kind === 'FunctionDeclaration' && this.#hasBody(declaration)
+      ...(declaration.kind === 'FunctionDeclaration' && hasBody(declaration)
         ? this.#analysisOf(declaration).violations
         : []),
       ...this.#declared.violationsOf(declaration),
@@ -183,18 +192,13 @@ export class Lifetimes implements LifetimeQueries {
 
   #ownFunctions(module: ModuleId): readonly FunctionDeclaration[] {
     const items = this.#checker.inputs.itemsOf(module);
-    return functionsOf({ items }).filter((declaration) => this.#hasBody(declaration));
+    return functionsOf({ items }).filter((declaration) => hasBody(declaration));
   }
 
-  #hasBody(declaration: FunctionDeclaration): boolean {
-    if (declaration.isExtern) {
-      return false;
-    }
-    const module = this.#checker.moduleOf(declaration);
-    return this.#checker.inputs.bodyOf(module, declaration) !== undefined;
-  }
-
-  /** The functions `caller`'s body calls that have bodies, witnesses included. */
+  /**
+   * The functions `caller`'s body calls, witnesses included, but externs, which call no function
+   * back. One without a body calls nothing, so the group walk ends there without asking which.
+   */
   #calleesOf(caller: FunctionDeclaration): readonly FunctionDeclaration[] {
     const calls = this.#checker.bodyOf(caller)?.madeCalls() ?? [];
     const callees = new Set(
@@ -205,7 +209,7 @@ export class Lifetimes implements LifetimeQueries {
         ].map((each) => each.function),
       ),
     );
-    return [...callees].filter((callee) => this.#hasBody(callee));
+    return [...callees].filter((callee) => !callee.isExtern);
   }
 
   /** The members of `declaration`'s recursive group, in the call graph it reaches. */
@@ -274,15 +278,11 @@ export class Lifetimes implements LifetimeQueries {
     group: ReadonlyMap<FunctionDeclaration, Summary>,
     recursive: boolean,
   ): Analysis {
-    const checker = this.#checker;
-    const module = checker.moduleOf(declaration);
-    const body = checker.bodyOf(declaration);
-    const block = checker.inputs.bodyOf(module, declaration);
-    if (body === undefined || block === undefined) {
+    const flow = this.#flowOf(declaration);
+    if (flow === undefined) {
       return { summary: emptySummary, violations: [], inputTypes: new Map() };
     }
-    const parameters = checker.parametersOf(declaration);
-    const flow = this.#flowOf(declaration) as FlowFunction;
+    const parameters = this.#checker.parametersOf(declaration);
     const references = new Set(
       flow.parameters.filter((_, index) => parameters[index]?.reference === true),
     );
@@ -301,8 +301,12 @@ export class Lifetimes implements LifetimeQueries {
     };
   }
 
-  /** The flow of `declaration`'s body, if it has one. */
+  /** The flow of `declaration`'s body, if it has one: an entry, which its readers read once. */
   #flowOf(declaration: FunctionDeclaration): FlowFunction | undefined {
+    return this.#flows.get(declaration);
+  }
+
+  #builtFlow(declaration: FunctionDeclaration): FlowFunction | undefined {
     const checker = this.#checker;
     const module = checker.moduleOf(declaration);
     const body = checker.bodyOf(declaration);
@@ -318,7 +322,7 @@ export class Lifetimes implements LifetimeQueries {
     const functions = functionsOf({ items });
     return [
       ...functions.flatMap((declaration) =>
-        this.#hasBody(declaration) ? (this.#flowOf(declaration) ?? []) : [],
+        hasBody(declaration) ? (this.#flowOf(declaration) ?? []) : [],
       ),
       ...functions.flatMap((declaration) =>
         defaultsFlows(this.#checker, declaration).map(({ flow }) => flow),
@@ -338,15 +342,27 @@ export class Lifetimes implements LifetimeQueries {
     if (callee.isExtern) {
       return this.#natives.get(callee);
     }
-    const guess = group?.get(callee);
-    if (guess !== undefined) {
-      return guess;
-    }
-    if (this.#hasBody(callee)) {
-      return this.#summaries.get(callee);
-    }
-    return isFieldsFunction(callee) ? this.#constructors.get(callee) : undefined;
+    return group?.get(callee) ?? this.#summaries.get(callee);
   }
+
+  /**
+   * What calling `declaration`, written in Istalang, does: a fields function's construction, or
+   * its body's summary. One entry answers it, so a call reads one.
+   */
+  #summaryOf(declaration: FunctionDeclaration): Summary {
+    return isFieldsFunction(declaration)
+      ? this.#constructors.get(declaration)
+      : this.#analysisOf(declaration).summary;
+  }
+}
+
+/**
+ * Whether `declaration` is written with a body: neither an extern nor a fields function. Read off
+ * its declaration, so an edit inside a body leaves what asks alone; a body the parser lost is
+ * analysed as doing nothing, its error reported elsewhere.
+ */
+function hasBody(declaration: FunctionDeclaration): boolean {
+  return !(declaration.isExtern || isFieldsFunction(declaration));
 }
 
 /** `type`, written in `call`'s function, as `call` instantiates it. */

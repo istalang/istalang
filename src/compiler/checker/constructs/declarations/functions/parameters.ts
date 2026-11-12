@@ -16,7 +16,11 @@ import type { EntryTable } from '../../../../../foundation/structures/entries/in
 import { sameItems } from '../../../../../foundation/structures/equality.ts';
 import type { FunctionDeclaration } from '../../../../syntax/declarations/index.ts';
 import type { Expression } from '../../../../syntax/expressions/index.ts';
-import { writesType, writtenByReference } from '../../../../syntax/expressions/parameters.ts';
+import {
+  defaultValuesOf,
+  writesType,
+  writtenByReference,
+} from '../../../../syntax/expressions/parameters.ts';
 import type { SignatureParameter } from '../../../check.ts';
 import type { CheckerContext, CheckerNote } from '../../../contexts/context.ts';
 import { checkerDiagnostics } from '../../../diagnostics/index.ts';
@@ -128,7 +132,7 @@ export class Parameters {
         const module = checker.moduleOf(declaration);
         const body = this.#unit.defaultsBody(declaration);
         const parameters = declaredParameters(checker, module, declaration, body);
-        return { parameters, defaults: body.checked(defaultValuesOf(declaration)) };
+        return { parameters, defaults: body.checked(defaultValuesOf(declaration.parameters)) };
       },
     });
   }
@@ -151,7 +155,7 @@ export class Parameters {
 
   /** The defaults of a function whose parameters all declare their types, checked against them. */
   #checkDefaults(declaration: FunctionDeclaration): CheckedBody | undefined {
-    const values = defaultValuesOf(declaration);
+    const values = defaultValuesOf(declaration.parameters);
     if (values.length === 0) {
       return undefined;
     }
@@ -165,15 +169,6 @@ export class Parameters {
     }
     return body.checked(values);
   }
-}
-
-/** The default values of `declaration`'s parameters, in order. */
-function defaultValuesOf(declaration: FunctionDeclaration): readonly Expression[] {
-  return declaration.parameters.flatMap((parameter) =>
-    parameter.kind === 'Parameter' && parameter.defaultValue !== undefined
-      ? [parameter.defaultValue]
-      : [],
-  );
 }
 
 /** Whether a parameter takes its type from its default, writing none (`writesType`). */

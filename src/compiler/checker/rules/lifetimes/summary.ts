@@ -17,7 +17,7 @@
  *   `await` and its result (§3). **Leaks** are the inputs it hands code nobody sees, **unseen**
  *   says it runs such code before it returns, and **calls** which function values it was given it
  *   calls, which the caller may know.
- * - Every pair carries a field label, always `anyField` until C4 (design.md §5.7).
+ * - Every pair carries a field label, always `anyField`: labels aren't built (design.md §5.7).
  * - A native's summary comes from its declaration (`nativeSummary`): `@Keeps` gives its effects and
  *   requirements; its result is a new handle holding its arguments, or a value made of their
  *   parts, and of what the cells of those that are handles hold, and any
@@ -36,7 +36,7 @@ import type { Type } from '../../types/type/index.ts';
 import { awaitedOf } from '../../types/type/well-known.ts';
 import { type Input, sameInput } from './input.ts';
 
-/** The fields a pair's path leaves its source through; any field until C4. */
+/** The fields a pair's path leaves its source through; any field, labels not being built. */
 export interface Label {
   readonly kind: 'any';
 }
@@ -175,17 +175,18 @@ const sameInputs = sameItems<Input>(sameInput);
 /** Whether two summaries say alike, so a caller's analysis may stop at an edit keeping it. */
 export function sameSummary(first: Summary, second: Summary): boolean {
   return (
-    first.watched === second.watched &&
-    first.unseen === second.unseen &&
-    sameInputs(first.calls, second.calls) &&
-    sameInputs(first.access, second.access) &&
-    sameEffects(first.effects, second.effects) &&
-    sameResults(first.result, second.result) &&
-    sameResults(first.gives, second.gives) &&
-    sameRequirements(first.requirements, second.requirements) &&
-    sameCycles(first.always, second.always) &&
-    sameInputs(first.callReach, second.callReach) &&
-    sameInputs(first.leaks, second.leaks)
+    first === second ||
+    (first.watched === second.watched &&
+      first.unseen === second.unseen &&
+      sameInputs(first.calls, second.calls) &&
+      sameInputs(first.access, second.access) &&
+      sameEffects(first.effects, second.effects) &&
+      sameResults(first.result, second.result) &&
+      sameResults(first.gives, second.gives) &&
+      sameRequirements(first.requirements, second.requirements) &&
+      sameCycles(first.always, second.always) &&
+      sameInputs(first.callReach, second.callReach) &&
+      sameInputs(first.leaks, second.leaks))
   );
 }
 

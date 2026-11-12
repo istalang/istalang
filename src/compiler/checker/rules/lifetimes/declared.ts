@@ -18,6 +18,7 @@ import type {
   ContextConstantDeclaration,
   FunctionDeclaration,
 } from '../../../syntax/declarations/index.ts';
+import { defaultValuesOf } from '../../../syntax/expressions/parameters.ts';
 import type { VariableDeclaration } from '../../../syntax/statements/index.ts';
 import type { FindingDeclaration } from '../../check.ts';
 import type { CheckerContext, CheckerNote } from '../../contexts/context.ts';
@@ -118,7 +119,6 @@ export function withDefaults(summary: Summary, defaults: DefaultsFound): Summary
 export class Declared {
   readonly #deps: DeclaredDeps;
   readonly #defaults: EntryTable<CheckerNote, FunctionDeclaration, DefaultsFound>;
-  readonly #declared: EntryTable<CheckerNote, FindingDeclaration, readonly Violation[]>;
 
   constructor(deps: DeclaredDeps) {
     this.#deps = deps;
@@ -128,21 +128,21 @@ export class Declared {
       // A default reaching its own function is an error of its own (§3.3), found elsewhere.
       cyclic: { standIn: () => none },
     });
-    this.#declared = deps.checker.entries.table({
-      name: 'lifetime declared findings',
-      compute: (declaration: FindingDeclaration) => this.#violationsOf(declaration),
-    });
   }
 
+  /** What `declaration`'s defaults do: none, without an entry, where it writes none. */
   defaultsOf(declaration: FunctionDeclaration): DefaultsFound {
-    return this.#defaults.get(declaration);
+    return defaultValuesOf(declaration.parameters).length === 0
+      ? none
+      : this.#defaults.get(declaration);
   }
 
+  /**
+   * What `declaration` violates where it stands, beside its body: its defaults' findings, a
+   * `dispose` letting go of what it was given, a constant's initializer. Read inside the entry
+   * reporting the declaration, which is its only reader.
+   */
   violationsOf(declaration: FindingDeclaration): readonly Violation[] {
-    return this.#declared.get(declaration);
-  }
-
-  #violationsOf(declaration: FindingDeclaration): readonly Violation[] {
     const { checker } = this.#deps;
     const context = this.#deps.context();
     if (declaration.kind !== 'FunctionDeclaration') {

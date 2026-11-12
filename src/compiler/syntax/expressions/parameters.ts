@@ -10,9 +10,9 @@
  */
 
 import { type Pattern, type StructPattern, targetNames } from '../patterns.ts';
-import type { Identifier } from '../tree/node.ts';
+import type { Identifier, Invalid } from '../tree/node.ts';
 import { type NamedType, unparenthesizedType } from '../types/index.ts';
-import type { Parameter } from './index.ts';
+import type { Expression, Parameter } from './index.ts';
 
 /** What a diagnostic about `parameter` points at: its name, or else the pattern it is instead. */
 export function parameterSite(parameter: Parameter): Identifier | Pattern {
@@ -30,6 +30,17 @@ export function parameterNames(parameter: Parameter): readonly Identifier[] {
  */
 export function patternNamedType(parameter: Parameter): NamedType | undefined {
   return typingPattern(parameter)?.type;
+}
+
+/** The default values `parameters` write, in order. */
+export function defaultValuesOf(
+  parameters: readonly (Parameter | Invalid)[],
+): readonly Expression[] {
+  return parameters.flatMap((parameter) =>
+    parameter.kind === 'Parameter' && parameter.defaultValue !== undefined
+      ? [parameter.defaultValue]
+      : [],
+  );
 }
 
 /** Whether `parameter` writes its type: an annotation, or a pattern naming one. */
