@@ -24,7 +24,7 @@ and model: [design.md](design.md) §3 and §9. Phases: [plan.md](plan.md). Paths
 | `lifetimes/counts.ts` `Counts`, `countedIn` | each counted object's holders, composites holding a counted part counted once per holder; zero candidates | R3; R5 counts every composite |
 | `interpreter/registers.ts` | the only register writer, reporting each write (`FrameHeap.changed`); `raw-registers.ts` is its raw write | R2 |
 | `interpreter/machine.ts` | `newFrame`, `releaseFrame` (ascending registers), `currentClosure` | R2, R3 |
-| `scheduler/instance/index.ts` `Instance` | `frameHeap`; the constructor every start and restore goes through, where the counts are built; `persisted`/`#kept` (the walk, and a check that no zero went uncollected); `dropUnheld`, once the heap doubled (R4); `continueFrom`; `stop`; `owed`, `keptFrames` | R3, R4 |
+| `scheduler/instance/index.ts` `Instance` | `frameHeap`; the constructor every start and restore goes through, where the counts are built; `persisted`/`#kept` (the walk, and a check that no zero went uncollected); `dropUnheld`, once the heap doubled (R4); `continueFrom`; `stop` | R3, R4 |
 | `lifetimes/collector.ts` | rounds of the disposables that reached zero, newest first, the rest that did gone at once; waiting on a disposal's code | R3 |
 | `lifetimes/holders.ts` | `heldFrom`, the objects and the commit's depth in one pass, every root object read through `Heap.held` (R4): only a commit and a live run's `dropUnheld` walk (cruiser `runtime-held-walk`) | R4 |
 | `lifetimes/oracle.test-kit.ts` | the oracle (R1), a `HeapCheck` | test-only, for good |
