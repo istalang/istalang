@@ -261,15 +261,6 @@ export class Waits {
     return this.#endWith(waiter.frames.at(-1), 'withdrawn');
   }
 
-  /**
-   * Ends the wait `frame` stands at, if any, as the disposal whose call it runs is abandoned while
-   * its instance ends (§3.12): a `select` that doesn't wait, mid-way, so its resolvers are
-   * withdrawn, having awaited nothing.
-   */
-  abandon(frame: ActiveFrame): void {
-    this.#endWith(frame, 'withdrawn');
-  }
-
   /** Ends the wait `waiter` resumes from, which was decided: how it resumes. */
   take(waiter: LiveExecution): Decision {
     return this.end(waiter) ?? unreachable(`Execution ${waiter.id} resumed undecided.`);

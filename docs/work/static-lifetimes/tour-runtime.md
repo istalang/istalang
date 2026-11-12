@@ -321,8 +321,9 @@ Landed. What R3 left, for the phases after it:
   - **A wait** let go of while cases of it are pending is disposable, and disposing it withdraws
     them (`disposal.ts`). A case chain holds itself only while its wait waits (R1), so its end is
     the wait's own rule: a disposal abandoned mid-`select` while the instance ends lets go of its
-    wait, which `Waits.abandon` can't find off an `await` or `select`. A case resolver whose wait
-    nothing holds is withdrawn rather than panicking as dropped.
+    wait with its frames, which withdraws its cases (R4 removed `Waits.abandon`, which did that
+    for a frame standing at an `await` or `select` only). A case resolver whose wait nothing holds
+    is withdrawn rather than panicking as dropped.
   - **A readied call answered at once** collects before anything else runs (`SegmentRunner.#run`).
   - **Probes don't make objects:** `Futures.resolveHost` builds the arriving value only once a
     future waits on the token, so an answer to a disposed one makes no resource at zero.

@@ -7,9 +7,9 @@
  *   collecting, not a caller.
  * - A disposed call's cleanup is that call's own execution, resumed at its `disposing()` case,
  *   that case winning whatever else has resolved. Its next await or return stops the call there.
- * - While an instance ends (§3.12), a disposal that panics is abandoned with whatever it started,
- *   the waits its frames opened ended, so it counts as done and the rest still run and tell their
- *   hosts.
+ * - While an instance ends (§3.12), a disposal that panics is abandoned with whatever it started:
+ *   its frames are let go of, and a wait one opened goes as any wait let go of does
+ *   (lifetimes/disposal.ts), so it counts as done and the rest still run and tell their hosts.
  * - A disposal's call is a call like any other to a mock that replaces it (§10).
  */
 
@@ -93,7 +93,6 @@ export class DisposalRuns {
       const at = frames.findLastIndex((frame) => this.#frames.has(frame));
       if (at >= 0) {
         for (const frame of runStack.dropFrames(execution, at)) {
-          instance.waits.abandon(frame);
           releaseFrame(frame);
         }
         this.#callDone(execution);
