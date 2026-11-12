@@ -110,11 +110,13 @@ describe('a Resolver.of resolver', () => {
   });
 
   it.each([
-    { future: 'later(1)', type: 'Int', value: '1' },
-    { future: 'time.delay(1s)', type: 'Unit', value: '()' },
+    { future: 'later(1)', type: 'Int', value: '1', crashEveryAwait: false },
+    { future: 'later(1)', type: 'Int', value: '1', crashEveryAwait: true },
+    { future: 'time.delay(1s)', type: 'Unit', value: '()', crashEveryAwait: false },
+    { future: 'time.delay(1s)', type: 'Unit', value: '()', crashEveryAwait: true },
   ])(
-    'is cancelled once the future it is registered on, $future, is let go of, though something holds it',
-    async ({ future, type, value }) => {
+    'is cancelled once the future it is registered on, $future, is let go of, though something holds it (crashing at every await: $crashEveryAwait)',
+    async ({ future, type, value, crashEveryAwait }) => {
       const main = [
         'live async fn main() -> Int: await runtime.run(runtime.id()) _main()\nista async fn _main() -> Int:',
         '  const seen = new Seen{value: 0}',
@@ -127,7 +129,107 @@ describe('a Resolver.of resolver', () => {
         '  await runtime.commit()',
         `  seen->value * 10 + (if watching.tryResolve(${value}): 1 else: 0)`,
       ];
-      expect(await ended(main)).toEqual({ kind: 'finished', outcome: '-10' });
+      expect(await ended(main, { crashEveryAwait })).toEqual({ kind: 'finished', outcome: '-10' });
+    },
+  );
+
+  it.each([false, true])(
+    'is cancelled when one of several futures it is registered on is let go of, ignoring the remaining future (crashing at every await: %s)',
+    async (crashEveryAwait) => {
+      const main = [
+        'live async fn main() -> Int: await runtime.run(runtime.id()) _main()\nista async fn _main() -> Int:',
+        '  const seen = new Seen{value: 0}',
+        '  const kept = later(2)',
+        '  if true:',
+        '    const watching = Resolver.of(fn(value: Int): see(seen, value * 100))',
+        '    watching.onCancel(fn(): see(seen, seen->value - 1))',
+        '    const dropped = later(1)',
+        '    kept.onAwait(watching)',
+        '    dropped.onAwait(watching)',
+        '  await runtime.commit()',
+        '  const got = await kept',
+        '  await runtime.commit()',
+        '  got * 10 + seen->value',
+      ];
+      expect(await ended(main, { crashEveryAwait })).toEqual({ kind: 'finished', outcome: '19' });
+    },
+  );
+
+  it.each([false, true])(
+    'stays alive through a surviving Resolver.at registration when another position future is let go of (crashing at every await: %s)',
+    async (crashEveryAwait) => {
+      const main = [
+        'live async fn main() -> Int: await runtime.run(runtime.id()) _main()\nista async fn _main() -> Int:',
+        '  const seen = new Seen{value: 0}',
+        '  const cancelled = new Seen{value: 0}',
+        '  const kept = later(7)',
+        '  if true:',
+        '    const done = Resolver.of(fn(pair: (Int, Int)): see(seen, (pair.0 + 1) * 10 + pair.1))',
+        '    done.onCancel(fn(): see(cancelled, 100))',
+        '    const at0 = Resolver.at(done, 0)',
+        '    at0.onCancel(fn(): see(cancelled, cancelled->value + 1))',
+        '    const at1 = Resolver.at(done, 1)',
+        '    at1.onCancel(fn(): see(cancelled, cancelled->value + 10))',
+        '    const dropped = later(1)',
+        '    dropped.onAwait(at0)',
+        '    kept.onAwait(at1)',
+        '  await runtime.commit()',
+        '  _ = await kept',
+        '  await runtime.commit()',
+        '  seen->value * 100 + cancelled->value',
+      ];
+      expect(await ended(main, { crashEveryAwait })).toEqual({ kind: 'finished', outcome: '2701' });
+    },
+  );
+
+  it.each([false, true])(
+    'is cancelled once every Resolver.at future holding its callback chain is let go of, and resolves through nested Resolver.at chains (crashing at every await: %s)',
+    async (crashEveryAwait) => {
+      const main = [
+        'live async fn main() -> Int: await runtime.run(runtime.id()) _main()\nista async fn _main() -> Int:',
+        '  const seen = new Seen{value: 0}',
+        '  const survived = later(5)',
+        '  if true:',
+        '    const gone = Resolver.of(fn(pair: (Int, Int)): see(seen, pair.1))',
+        '    gone.onCancel(fn(): see(seen, seen->value + 3))',
+        '    later(1).onAwait(Resolver.at(gone, 0))',
+        '    later(2).onAwait(Resolver.at(gone, 1))',
+        '    const nested = Resolver.of(fn(outer: (Int, (Int, Int))): see(seen, seen->value + outer.0 * 100 + outer.1.0 * 10 + outer.1.1))',
+        '    survived.onAwait(Resolver.at(Resolver.at(nested, 2), 4))',
+        '  await runtime.commit()',
+        '  _ = await survived',
+        '  await runtime.commit()',
+        '  seen->value',
+      ];
+      expect(await ended(main, { crashEveryAwait })).toEqual({ kind: 'finished', outcome: '248' });
+    },
+  );
+
+  it.each([false, true])(
+    'disposes losing futures.first and select cases when the winner resolves across commits (crashing at every await: %s)',
+    async (crashEveryAwait) => {
+      const main = [
+        'ista async fn tracked(seen: Seen, tag: Int) -> Int:',
+        '  await select:',
+        '    case time.delay(10s): tag',
+        '    case tracked.disposing():',
+        '      see(seen, seen->value + tag)',
+        '      0',
+        'live async fn main() -> Int: await runtime.run(runtime.id()) _main()\nista async fn _main() -> Int:',
+        '  const seen = new Seen{value: 0}',
+        '  const s = Slot.create<Int>()',
+        '  const won = await select:',
+        '    case futures.first([tracked(seen, 10), s.take()]) as pair: pair.1',
+        '    case tracked(seen, 20) as slow: slow',
+        '    case later(4) as fast: fast',
+        '  _ = s.put(9)',
+        '  const left = await s.take()',
+        '  won * 1000 + left * 100 + seen->value',
+      ];
+      expect(await ended(main, { crashEveryAwait })).toEqual({
+        kind: 'finished',
+        outcome: '4930',
+      });
     },
   );
 
