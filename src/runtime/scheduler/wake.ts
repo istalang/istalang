@@ -255,7 +255,7 @@ function runFrom(
   }
   if (
     step.kind === 'arrival' &&
-    !instance.futures.resolveHost(step.arrival.token, arriving(instance, step.arrival.value))
+    !instance.futures.resolveHost(step.arrival.token, () => arriving(instance, step.arrival.value))
   ) {
     resident.giveBack(instance);
     return undefined;

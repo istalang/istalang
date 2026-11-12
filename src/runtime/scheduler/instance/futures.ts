@@ -213,13 +213,14 @@ export class Futures {
   }
 
   /**
-   * Resolves the future its host named `token` with `value` (§9); false when no future pending on
-   * the host has that name.
+   * Resolves the future its host named `token` with what `value` makes (§9); false when no future
+   * pending on the host has that name, which makes nothing: a value arriving may add objects to
+   * the heap.
    */
-  resolveHost(token: string, value: Value): boolean {
+  resolveHost(token: string, value: () => Value): boolean {
     const future = this.#hostFuture(token);
     if (future !== undefined) {
-      this.resolve(future.id, value);
+      this.resolve(future.id, value());
     }
     return future !== undefined;
   }

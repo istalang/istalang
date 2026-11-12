@@ -103,7 +103,7 @@ export function liveResolvable(
   const { id, token } = futures.createFilled(String);
   const settle = resumes.once((settled: PromiseSettledResult<Value>) => {
     if (settled.status === 'fulfilled') {
-      futures.resolveHost(token, settled.value);
+      futures.resolveHost(token, () => settled.value);
       return;
     }
     if (!futures.waitsOnHost(token)) {
