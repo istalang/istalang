@@ -186,7 +186,7 @@ export interface RuntimeSeams {
   /** Told what the contexts a live run drives report, as no host call returns it; else dropped. */
   readonly reports?: HostReports;
   /**
-   * A test's check of every instance's heap as each collection starts (lifetimes/oracle.test-kit.ts);
+   * A test's check of every instance's heap as it changes (lifetimes/oracle.test-kit.ts);
    * a host has none.
    */
   readonly heapCheck?: HeapCheck | undefined;

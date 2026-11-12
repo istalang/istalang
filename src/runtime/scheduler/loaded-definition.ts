@@ -3,8 +3,8 @@
  * finds its entry ready (interpreter/function-table.ts), and named by its hash, which every
  * snapshot of its instances refers to. A test's Definition also runs in that test's world
  * (testing/test-world.ts), which only the runtime running the test gives, and a test runtime may
- * check each of its instances' heaps as every collection starts (`HeapCheck`), which a host never
- * does: the check is a test's oracle, as costly as a walk of the whole heap.
+ * check each of its instances' heaps as they change (`HeapCheck`), which a host never does: the
+ * check is a test's oracle, as costly as a walk of what changed reaches.
  */
 
 import type { Definition } from '../../definition/definition.ts';
@@ -14,10 +14,11 @@ import type { Natives } from '../natives.ts';
 import { noTestWorld, type TestWorld } from './testing/test-world.ts';
 
 /**
- * A check of an instance's heap, made as every collection starts with the objects `released` since
- * the last; a failed one throws.
+ * A check of an instance's heap, made after every instruction that let go of or wrote into
+ * something, before collecting, with the objects `changed` since the last: let go of or written
+ * into. A failed one throws.
  */
-export type HeapCheck = (heap: Disposability, released: readonly number[]) => void;
+export type HeapCheck = (heap: Disposability, changed: readonly number[]) => void;
 
 export interface LoadedDefinition {
   readonly definition: Definition;

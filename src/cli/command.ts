@@ -25,7 +25,7 @@ export interface CliEnvironment {
    */
   readonly stdio: { readonly input: Readable; readonly output: Writable };
   /**
-   * A check of every instance's heap as each collection starts, which only the CLI's tests give
+   * A check of every instance's heap as it changes, which only the CLI's tests give
    * (runtime/lifetimes/oracle.test-kit.ts): `ista run` and `ista test` pass it to their runtime.
    */
   readonly heapCheck?: HeapCheck;

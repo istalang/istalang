@@ -5,8 +5,9 @@
  * (disposal-runs.ts), each of its steps the segment's own, so collecting is handed the step to
  * take. What holds things is every execution's frames, the running ones first, and what the run
  * stack and the test world hold. A slot's queue whose serving paused for collecting (slots.ts) is
- * served once it is done, before anything else runs. A test runtime checks the heap as each
- * collection starts, while what it is to collect is still there (`LoadedDefinition.heapCheck`).
+ * served once it is done, before anything else runs. A test runtime checks the heap after every
+ * instruction that let go of or wrote into something, before collecting, while what is to be
+ * collected is still there (`LoadedDefinition.heapCheck`).
  */
 
 import type { ActiveFrame } from '../../interpreter/frames.ts';
@@ -61,8 +62,11 @@ export class SegmentCollection {
     const { heap, slots, loaded } = this.#seams.instance;
     for (;;) {
       const released = heap.takeReleased();
+      const changed = [...released, ...heap.takeWritten()];
+      if (changed.length > 0) {
+        loaded.heapCheck({ heap, types: loaded.definition.types }, changed);
+      }
       if (released.length > 0 || this.#collector.stalled) {
-        loaded.heapCheck({ heap, types: loaded.definition.types }, released);
         this.#collector.collect(released);
       }
       if (this.#collector.busy) {

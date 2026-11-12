@@ -11,7 +11,9 @@
  *   place. Changing any other object replaces it.
  * - Replacing or removing an object notes the objects it held, as frames note what their
  *   registers let go (interpreter/machine.ts): each may have lost its last holder. The scheduler
- *   takes the notes after each instruction and collects (runtime/lifetimes/).
+ *   takes the notes after each instruction and collects (runtime/lifetimes/). Replacing one also
+ *   notes it as written: only a write into an existing object can close a cycle, so a test's check
+ *   of the heap walks from there (scheduler/loaded-definition.ts `HeapCheck`).
  * - Finding an object by a field is a lookup, not a scan: the heap indexes the fields its users
  *   find objects by (`indexes`), each key derived from the object alone. No key reads an
  *   execution's frames, the one part that changes in place, so `add`, `replace` and `remove`, the
@@ -102,6 +104,7 @@ export class Heap {
   readonly #objects: Map<number, LiveObject>;
   #next: number;
   readonly #released: number[] = [];
+  readonly #written: number[] = [];
   #losersReleased = false;
   /** Each kind's objects, in creation order: a kind never changes, and ids only grow. */
   readonly #kinds = new Map<LiveKind, Set<number>>();
@@ -145,6 +148,7 @@ export class Heap {
       unreachable(`Object ${object.id} is a ${old.kind}, not a ${object.kind}.`);
     }
     this.#noteHoldings(old, object);
+    this.#written.push(object.id);
     this.#leave(old);
     this.#objects.set(object.id, object);
     this.#enter(object);
@@ -171,6 +175,7 @@ export class Heap {
     }
     this.#next = nextId(this.#objects.keys());
     this.#released.length = 0;
+    this.#written.length = 0;
     this.#losersReleased = false;
   }
 
@@ -200,6 +205,11 @@ export class Heap {
   takeReleased(): readonly number[] {
     this.#losersReleased = false;
     return this.#released.splice(0);
+  }
+
+  /** The objects replaced since the last call: written into, so maybe closing a cycle. */
+  takeWritten(): readonly number[] {
+    return this.#written.splice(0);
   }
 
   /** Notes that a decided `select` let go of what its losing cases held (spec §8). */

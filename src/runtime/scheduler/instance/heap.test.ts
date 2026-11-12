@@ -1,7 +1,8 @@
 /**
  * The heap's indexes against their definition, over random heaps changed by random adds, replaces
  * and removes: every lookup finds exactly what a scan of the heap's objects finds, in creation
- * order, and each kind's objects are listed in creation order.
+ * order, and each kind's objects are listed in creation order. The objects written are those
+ * replaced.
  */
 
 import fc from 'fast-check';
@@ -87,26 +88,29 @@ const changeArbitrary: fc.Arbitrary<Change> = fc.oneof(
 );
 
 /**
- * Applies `step` to `heap`; a replace keeps its object's kind, so one of another kind is skipped.
+ * Applies `step` to `heap`, a replace keeping its object's kind, so one of another kind is
+ * skipped; the id of the object it replaced, if it did.
  */
-function apply(heap: Heap, step: Change): void {
+function apply(heap: Heap, step: Change): number | undefined {
   if (step.kind === 'add') {
     heap.add(step.make);
-    return;
+    return undefined;
   }
   const objects = heap.objects();
   const target = objects[step.at % Math.max(1, objects.length)];
   if (target === undefined) {
-    return;
+    return undefined;
   }
   if (step.kind === 'remove') {
     heap.remove(target.id);
-    return;
+    return undefined;
   }
   const replacement = step.make(target.id);
-  if (replacement.kind === target.kind) {
-    heap.replace(replacement);
+  if (replacement.kind !== target.kind) {
+    return undefined;
   }
+  heap.replace(replacement);
+  return target.id;
 }
 
 const idsOf = (objects: readonly LiveObject[]) => objects.map((object) => object.id);
@@ -181,6 +185,23 @@ describe('heap indexes', () => {
           expect(idsOf(objects)).toEqual(
             idsOf(objects).toSorted((first, second) => first - second),
           );
+        },
+      ),
+    );
+  });
+});
+
+describe('heap writes', () => {
+  it('are every replace since they were last taken, in order', () => {
+    fc.assert(
+      fc.property(
+        fc.array(madeArbitrary, { maxLength: 6 }),
+        fc.array(changeArbitrary, { maxLength: 12 }),
+        (initial, changes) => {
+          const heap = new Heap(initial.map((make, position) => make(position)));
+          const replaced = changes.flatMap((step) => apply(heap, step) ?? []);
+          expect(heap.takeWritten()).toEqual(replaced);
+          expect(heap.takeWritten()).toEqual([]);
         },
       ),
     );
