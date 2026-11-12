@@ -39,6 +39,7 @@ export interface Given {
 /** What a future settles with, as a summary's `GivenValue` says, its inputs bound to nodes. */
 export interface Settled {
   readonly relations: readonly Given[];
+  readonly reachesItself: boolean;
   readonly watched: boolean;
 }
 
@@ -156,6 +157,7 @@ function keepAgreeing<Key, Value>(
 function sameSettled(first: Settled, second: Settled): boolean {
   return (
     first.watched === second.watched &&
+    first.reachesItself === second.reachesItself &&
     first.relations.length === second.relations.length &&
     first.relations.every(
       (each, index) =>

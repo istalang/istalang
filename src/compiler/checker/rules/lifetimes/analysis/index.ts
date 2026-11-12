@@ -21,7 +21,7 @@ import type { FunctionDeclaration } from '../../../../syntax/declarations/index.
 import type { Lambda } from '../../../../syntax/expressions/index.ts';
 import type { NodeOf } from '../../../../syntax/tree/node.ts';
 import type { Type } from '../../../types/type/index.ts';
-import type { FlowFunction, ValueId } from '../../flow/flow-ir.ts';
+import type { FlowBlock, FlowFunction, ValueId } from '../../flow/flow-ir.ts';
 import { type ForwardRule, reachedBlocks, runForward } from '../../flow/solve.ts';
 import { inputKey } from '../input.ts';
 import { type Allowed, type NodeId, ReachState } from '../reach-state.ts';
@@ -32,7 +32,7 @@ import { clonedState, type FlowState, joinedStates } from './flow-state.ts';
 import { isInputRooted } from './inputs.ts';
 import { Nodes } from './nodes.ts';
 import { runOperation } from './operations.ts';
-import { type Exit, summarize } from './summarize.ts';
+import { type Ends, type Return, summarize } from './summarize.ts';
 
 export interface Analysis {
   readonly summary: Summary;
@@ -87,19 +87,14 @@ function analyzedOnce(
   analysis.record();
   const entry = entryState(analysis);
   const state = clonedState(entry);
-  const exits: Exit[] = [];
+  const ends = noEnds();
   const reached = reachedBlocks(nodes.flow);
   for (const block of nodes.flow.blocks.filter((_, index) => reached[index] === true)) {
-    for (const operation of block.operations) {
-      runOperation(analysis, state, operation);
-    }
-    if (block.exit.kind === 'return') {
-      exits.push({ state, value: block.exit.value });
-    }
+    runRecording(analysis, { block, state, ends, isAsync: options.isAsync });
   }
   return state.reach.live().length > 0
     ? undefined
-    : analysisFound(analysis, { nested, entry, exits, isAsync: options.isAsync });
+    : analysisFound(analysis, { nested, entry, ends, isAsync: options.isAsync });
 }
 
 /** A function's analysis run forward to its fixed point, then once more recording what it finds. */
@@ -125,21 +120,55 @@ function analyzedToFixpoint(
   const entry = entryState(analysis);
   const reaching = runForward(nodes.flow, rule, entry);
   analysis.record();
-  const exits: Exit[] = [];
+  const ends = noEnds();
   nodes.flow.blocks.forEach((block, index) => {
     const start = reaching[index];
-    if (start === undefined) {
-      return;
-    }
-    const state = clonedState(start);
-    for (const operation of block.operations) {
-      runOperation(analysis, state, operation);
-    }
-    if (block.exit.kind === 'return') {
-      exits.push({ state, value: block.exit.value });
+    if (start !== undefined) {
+      runRecording(analysis, { block, state: clonedState(start), ends, isAsync: options.isAsync });
     }
   });
-  return analysisFound(analysis, { nested, entry, exits, isAsync: options.isAsync });
+  return analysisFound(analysis, { nested, entry, ends, isAsync: options.isAsync });
+}
+
+/** Where a function's callers see it, gathered as its last run passes them. */
+interface Gathered extends Ends {
+  readonly returns: Return[];
+  readonly seen: FlowState[];
+}
+
+function noEnds(): Gathered {
+  return { returns: [], seen: [] };
+}
+
+/**
+ * Runs `block`'s operations on `state` on the run recording findings, gathering where the
+ * function's callers see it: where it returns, and where an async one waits or stops.
+ */
+function runRecording(
+  analysis: BodyAnalysis,
+  {
+    block,
+    state,
+    ends,
+    isAsync,
+  }: {
+    readonly block: FlowBlock;
+    readonly state: FlowState;
+    readonly ends: Gathered;
+    readonly isAsync: boolean;
+  },
+): void {
+  for (const operation of block.operations) {
+    runOperation(analysis, state, operation);
+    if (isAsync && operation.op === 'suspend') {
+      ends.seen.push(clonedState(state));
+    }
+  }
+  if (block.exit.kind === 'return') {
+    ends.returns.push({ state, value: block.exit.value });
+  } else if (isAsync && block.exit.kind === 'stop') {
+    ends.seen.push(state);
+  }
 }
 
 /** The nested functions a function's analysis made, analysed once each. */
@@ -177,13 +206,13 @@ function analysisFound(
   found: {
     readonly nested: NestedAnalyses;
     readonly entry: FlowState;
-    readonly exits: readonly Exit[];
+    readonly ends: Ends;
     readonly isAsync: boolean;
   },
 ): Analysis {
   const nested = [...found.nested.values()];
   const nestedViolations = nested.flatMap(({ violations }) => violations);
-  const summary = summarize(analysis, found.entry, found.exits, found.isAsync);
+  const summary = summarize(analysis, found.entry, found.ends, found.isAsync);
   return {
     summary,
     violations: [

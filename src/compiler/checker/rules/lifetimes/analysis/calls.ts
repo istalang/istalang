@@ -17,7 +17,7 @@ import { type FunctionCall, witnessCallsOf } from '../../../surface/resolved-cal
 import type { Type } from '../../../types/type/index.ts';
 import type { ValueId } from '../../flow/flow-ir.ts';
 import { escapingCycles, typesBreak } from '../escaping.ts';
-import type { Input } from '../input.ts';
+import { type Input, sameInput } from '../input.ts';
 import type { NodeId, ReachState } from '../reach-state.ts';
 import { mappedCycle, type Requirement, type ResultRelation, type Summary } from '../summary.ts';
 import {
@@ -107,8 +107,12 @@ function calledBack(at: At, node: NodeId, given: readonly NodeId[], seen: Set<No
 function applyEffects(at: At, summary: Summary, bound: (input: Input) => Bound): void {
   for (const effect of summary.effects) {
     const from = bound(effect.from);
-    for (const value of bound(effect.to).nodes) {
-      written(at, from, value, effect.inside);
+    if (sameInput(effect.from, effect.to)) {
+      reachesItself(at, from);
+    } else {
+      for (const value of bound(effect.to).nodes) {
+        written(at, from, value, effect.inside);
+      }
     }
   }
   for (const node of summary.leaks.flatMap((input) => bound(input).nodes)) {
@@ -216,6 +220,18 @@ function checkAt(
   }
 }
 
+/**
+ * What `bound` is comes to reach itself, its parts each other: each node it was given, and the
+ * variable a place it was given by `&` is; a heap place's holder reaches it already.
+ */
+function reachesItself({ analysis, state }: At, bound: Bound): void {
+  const variable =
+    bound.owner === undefined || bound.owner.kind === 'heap' ? [] : [bound.owner.variable];
+  for (const node of [...bound.nodes, ...variable]) {
+    analysis.link(state, { node, exact: true }, node, false);
+  }
+}
+
 /** `value` comes to be reached from what `holder` is bound to. */
 function written(at: At, holder: Bound, value: NodeId, inside: boolean): void {
   const { analysis, state } = at;
@@ -291,6 +307,9 @@ function giveResult(
       relate(state, into, { node, relation });
     }
   }
+  if (summary.result.reachesItself) {
+    state.reach.addReach(into, into);
+  }
   for (const node of places) {
     relate(state, into, { node, relation: 'reaches' });
   }
@@ -304,12 +323,14 @@ function giveResult(
   if (summary.result.watched) {
     watchedResult({ analysis, state }, into);
   }
-  if (summary.gives.relations.length > 0) {
+  const { gives } = summary;
+  if (gives.relations.length > 0 || gives.reachesItself || gives.watched) {
     state.gives.set(into, {
-      relations: summary.gives.relations.flatMap(({ input, relation }) =>
+      relations: gives.relations.flatMap(({ input, relation }) =>
         bound(input).nodes.map((node) => ({ node, relation })),
       ),
-      watched: summary.gives.watched,
+      reachesItself: gives.reachesItself,
+      watched: gives.watched,
     });
   }
 }
@@ -319,6 +340,9 @@ export function readGiven(at: At, into: NodeId, settled: Settled): void {
   at.state.reach.fresh(into);
   for (const given of settled.relations) {
     relate(at.state, into, given);
+  }
+  if (settled.reachesItself) {
+    at.state.reach.addReach(into, into);
   }
   if (settled.watched) {
     watchedResult(at, into);

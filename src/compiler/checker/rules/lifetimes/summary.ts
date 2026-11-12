@@ -4,10 +4,11 @@
  *
  * - **Inputs** (input.ts) are what the call gives the body, by position only, never nodes or spans,
  *   so an edit that keeps a function's effects keeps its summary (design.md §8).
- * - **Effects** are the pairs the call may add among its inputs: `from` comes to reach `to`, or
- *   with `inside` only what `to` reaches. **Result** is what it gives, and **gives** what a future
- *   it gives settles with, each a value related to its inputs (`GivenValue`): an async call's
- *   future holds its frames, and settles with its result.
+ * - **Effects** are the pairs the call may add among its inputs and the parts of them it read:
+ *   `from` comes to reach `to`, or with `inside` only what `to` reaches; `from` reaching itself
+ *   has its parts come to reach each other. **Result** is what it gives, and **gives** what a
+ *   future it gives settles with, each a value related to its inputs (`GivenValue`): an async
+ *   call's future holds its frames, and settles with its result.
  * - **Requirements** are the pairs that must not hold when it is called: `value` may not reach
  *   `holder`, since the body writes the one into the other. Each carries the holder's type, read
  *   where the call instantiates it, so a requirement on a type reaching no disposable lapses.
@@ -58,16 +59,18 @@ export interface ResultRelation {
 
 /**
  * A value a call gives, its result or what a future it gives settles with: how it relates to each
- * of the call's inputs, and whether it may be any value of a type a handle the call read watches
- * (`deref`), which may be any such value anywhere.
+ * of the call's inputs, whether its parts may reach each other (a tuple of a handle and what it
+ * holds), and whether it may be any value of a type a handle the call read watches (`deref`),
+ * which may be any such value anywhere.
  */
 export interface GivenValue {
   readonly relations: readonly ResultRelation[];
+  readonly reachesItself: boolean;
   readonly watched: boolean;
 }
 
 /** A value related to no input: a call's fresh, or one that gives nothing a disposable. */
-export const unrelatedValue: GivenValue = { relations: [], watched: false };
+export const unrelatedValue: GivenValue = { relations: [], reachesItself: false, watched: false };
 
 /**
  * A pair that must not hold when the function is called: `value` may not reach or be what
@@ -164,7 +167,11 @@ const sameRelations = sameItems<ResultRelation>(
 
 /** Whether two values a call gives say alike. */
 export function sameValue(first: GivenValue, second: GivenValue): boolean {
-  return first.watched === second.watched && sameRelations(first.relations, second.relations);
+  return (
+    first.watched === second.watched &&
+    first.reachesItself === second.reachesItself &&
+    sameRelations(first.relations, second.relations)
+  );
 }
 const sameCycles = sameItems<TypedCycle>(
   (first, second) =>
@@ -259,10 +266,12 @@ export function nativeSummary(
               (relation) => ({ input: parameter(index), relation }),
             ),
           ),
+      reachesItself: false,
       watched: parameters.some(({ type }) => watchesIn(checker, type, checker.resultOf(native))),
     },
     gives: {
       relations: awaited === undefined ? [] : givesOf(holding, anyOf(['aliases', 'reachedBy'])),
+      reachesItself: false,
       watched: false,
     },
   };
@@ -311,6 +320,7 @@ export function constructorSummary(
         input: { kind: 'parameter', index },
         relation: 'aliases',
       })),
+      reachesItself: false,
       watched: false,
     },
   };

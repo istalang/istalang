@@ -1,41 +1,57 @@
 /**
- * A function's analysis summed up over its inputs (design.md §5.3), read off the states where it
- * returns: what the functions calling it apply instead of its body (../summary.ts).
+ * A function's analysis summed up over its inputs (design.md §5.3): what the functions calling it
+ * apply instead of its body (../summary.ts), one projection of its states onto what a summary
+ * names.
+ *
+ * - **What a summary names** are its inputs and the parts of them it read (inputs.ts), each standing
+ *   for itself: a pair of them related as the function ends that weren't as it started is an
+ *   effect, two parts of one input among them, and one that comes to reach itself is an effect on
+ *   itself: a value whose parts reach each other.
+ * - **What a call gives,** its result and what its future settles with, relates to those, and may
+ *   reach itself too: a tuple of a handle and what it holds.
+ * - **Where its callers see it:** where it returns, and for an async function also where it waits
+ *   or stops, since its caller runs on from its first wait with what it did so far.
  */
 
 import type { ValueId } from '../../flow/flow-ir.ts';
-import { inputKey } from '../input.ts';
+import { type Input, inputKey } from '../input.ts';
+import type { NodeId } from '../reach-state.ts';
 import { anyField, type Effect, type ResultRelation, type Summary } from '../summary.ts';
 import type { BodyAnalysis } from './body.ts';
 import { type FlowState, type Given, joinedStates } from './flow-state.ts';
+import { apart, type Candidate, candidatesIn } from './inputs.ts';
 import type { InputSlot } from './nodes.ts';
 
 /** A state where the function returns, and the value it returns there. */
-export interface Exit {
+export interface Return {
   readonly state: FlowState;
   readonly value: ValueId | undefined;
 }
 
-/** What the function does over its inputs, read off where it returns. */
+/** The states a function's callers see: where it returns, and where an async one waits or stops. */
+export interface Ends {
+  readonly returns: readonly Return[];
+  readonly seen: readonly FlowState[];
+}
+
+/** What the function does over its inputs, read off where its callers see it. */
 export function summarize(
   analysis: BodyAnalysis,
   entry: FlowState,
-  exits: readonly Exit[],
+  ends: Ends,
   isAsync: boolean,
 ): Summary {
   const { nodes } = analysis;
   const slots = nodes.inputs.filter((slot) => nodes.isRelevant(slot.node));
-  const { result, gives } = resultsOf(analysis, exits, slots, isAsync);
+  const { result, gives } = resultsOf(analysis, ends.returns, slots, isAsync);
+  const returning = ends.returns.some(
+    ({ value }) => value !== undefined && nodes.isRelevant(value),
+  );
   return {
-    effects: effectsOf(analysis, entry, exits, slots),
-    result: {
-      relations: result,
-      // What it returns may be what a watching handle gave it, which may be any value anywhere.
-      watched:
-        analysis.watched.size > 0 &&
-        exits.some(({ value }) => value !== undefined && nodes.isRelevant(value)),
-    },
-    gives: { relations: gives, watched: false },
+    effects: effectsOf(analysis, entry, [...ends.returns.map(({ state }) => state), ...ends.seen]),
+    // What it returns may be what a watching handle gave it, which may be any value anywhere.
+    result: { ...result, watched: analysis.watched.size > 0 && returning },
+    gives: { ...gives, watched: false },
     requirements: [...analysis.requirements.values()],
     always: [...analysis.always.values()],
     callReach: isAsync ? slots.map(({ input }) => input) : [],
@@ -46,54 +62,88 @@ export function summarize(
   };
 }
 
-/** The pairs of inputs related where the function returns that weren't as it started. */
+/**
+ * The pairs of what the summary names that `states` relate and the function's start didn't: each
+ * input and part of one reaching another on a branch of its own, or itself.
+ */
 function effectsOf(
   analysis: BodyAnalysis,
   entry: FlowState,
-  exits: readonly Exit[],
-  slots: readonly InputSlot[],
+  states: readonly FlowState[],
 ): readonly Effect[] {
-  if (exits.length === 0) {
+  if (states.length === 0) {
     return [];
   }
-  const joined = joinedStates(
-    analysis.nodes,
-    exits.map(({ state }) => state),
+  const joined = joinedStates(analysis.nodes, states);
+  const named = candidatesIn(analysis, joined);
+  const rootNodes = new Map(
+    analysis.nodes.inputs.map((slot) => [inputKey(slot.input), analysis.inputNodeOf(slot)]),
   );
-  const pairs = slots.flatMap((from) =>
-    slots
-      .filter((to) => from !== to && !related(entry, from.node, to.node))
-      .map((to) => [from, to] as const),
-  );
-  return pairs.flatMap(([from, to]): Effect[] => {
-    const fromNode = analysis.inputNodeOf(from);
-    const toNode = analysis.inputNodeOf(to);
-    // A reference parameter is its caller's place: a value it holds that may be `to` holds `to`.
-    const holds = analysis.references.has(from.value) && joined.reach.aliases(fromNode, toNode);
-    if (holds || joined.reach.reaches(fromNode, toNode)) {
-      return [{ from: from.input, to: to.input, inside: false, label: anyField }];
+  const rootOf = (input: Input): NodeId | undefined =>
+    input.kind === 'path' ? rootOf(input.of) : rootNodes.get(inputKey(input));
+  const effects = new Map<string, Effect>();
+  for (const from of named) {
+    for (const to of named) {
+      const effect = effectOf(analysis, { entry, joined }, { from, to }, rootOf);
+      if (effect !== undefined) {
+        effects.set(`${inputKey(from.input)}>${inputKey(to.input)}:${effect.inside}`, effect);
+      }
     }
-    // `from` comes to reach what `to` holds: something read out of it, or sharing with it.
-    return joined.reach.reachedFrom(fromNode).some((node) => joined.reach.carriedBy(node, toNode))
-      ? [{ from: from.input, to: to.input, inside: true, label: anyField }]
-      : [];
-  });
+  }
+  return [...effects.values()];
+}
+
+/** What `from` came to reach of `to` by `joined` that it didn't at `entry`, if anything. */
+function effectOf(
+  analysis: BodyAnalysis,
+  { entry, joined }: { readonly entry: FlowState; readonly joined: FlowState },
+  { from, to }: { readonly from: Candidate; readonly to: Candidate },
+  rootOf: (input: Input) => NodeId | undefined,
+): Effect | undefined {
+  if (from.node === to.node) {
+    // No input reaches itself as given: one that does now holds parts reaching each other.
+    return joined.reach.reaches(from.node, from.node)
+      ? { from: from.input, to: from.input, inside: false, label: anyField }
+      : undefined;
+  }
+  const roots = [rootOf(from.input), rootOf(to.input)];
+  if (
+    !apart(from.input, to.input) ||
+    (roots[0] !== undefined && roots[1] !== undefined && related(entry, roots[0], roots[1]))
+  ) {
+    return undefined;
+  }
+  // A reference parameter is its caller's place: a value it holds that may be `to` holds `to`.
+  const holds = analysis.references.has(from.node) && joined.reach.aliases(from.node, to.node);
+  if (holds || joined.reach.reaches(from.node, to.node)) {
+    return { from: from.input, to: to.input, inside: false, label: anyField };
+  }
+  // `from` comes to reach what `to` holds: something read out of it, or sharing with it.
+  return joined.reach.reachedFrom(from.node).some((node) => joined.reach.carriedBy(node, to.node))
+    ? { from: from.input, to: to.input, inside: true, label: anyField }
+    : undefined;
+}
+
+interface Relations {
+  readonly relations: readonly ResultRelation[];
+  readonly reachesItself: boolean;
 }
 
 /**
- * How what the function returns relates to its inputs: a plain function's result, and what a
- * future it returns settles with; an async function's result is what its future settles with.
+ * How what the function returns relates to its inputs, and whether it reaches itself: a plain
+ * function's result, and what a future it returns settles with; an async function's result is
+ * what its future settles with.
  */
 function resultsOf(
   analysis: BodyAnalysis,
-  exits: readonly Exit[],
+  exits: readonly Return[],
   slots: readonly InputSlot[],
   isAsync: boolean,
-): { readonly result: readonly ResultRelation[]; readonly gives: readonly ResultRelation[] } {
+): { readonly result: Relations; readonly gives: Relations } {
   const result = new Map<string, ResultRelation>();
   const gives = new Map<string, ResultRelation>();
   const returned = exits.filter(
-    (exit): exit is Exit & { readonly value: ValueId } =>
+    (exit): exit is Return & { readonly value: ValueId } =>
       exit.value !== undefined && exit.state.reach.isLive(exit.value),
   );
   for (const { state, value } of returned) {
@@ -113,10 +163,20 @@ function resultsOf(
       }
     }
   }
-  return { result: [...result.values()], gives: [...gives.values()] };
+  const selfReaching = returned.some(({ state, value }) => state.reach.reaches(value, value));
+  const settlesSelfReaching = returned.some(
+    ({ state, value }) => state.gives.get(value)?.reachesItself === true,
+  );
+  return {
+    result: { relations: [...result.values()], reachesItself: !isAsync && selfReaching },
+    gives: {
+      relations: [...gives.values()],
+      reachesItself: isAsync ? selfReaching : settlesSelfReaching,
+    },
+  };
 }
 
-function related(state: FlowState, first: number, second: number): boolean {
+function related(state: FlowState, first: NodeId, second: NodeId): boolean {
   return state.reach.reaches(first, second) || state.reach.shares(first, second);
 }
 
@@ -127,7 +187,7 @@ function related(state: FlowState, first: number, second: number): boolean {
 function givenRelations(
   state: FlowState,
   given: Given,
-  node: number,
+  node: NodeId,
 ): readonly ResultRelation['relation'][] {
   if (given.node === node || state.reach.aliases(given.node, node)) {
     return [given.relation];
@@ -145,7 +205,7 @@ function givenRelations(
 function resultRelations(
   state: FlowState,
   value: ValueId,
-  node: number,
+  node: NodeId,
 ): readonly ResultRelation['relation'][] {
   const relations: ResultRelation['relation'][] = [];
   if (state.reach.aliases(value, node)) {

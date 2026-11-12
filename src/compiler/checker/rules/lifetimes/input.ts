@@ -19,8 +19,8 @@ export type Input =
 
 /**
  * A part of an input as given (design.md §5.7): `of`'s part `part`, named by `key` alike in every
- * function, read through a handle or inside a value (`read`), of type `type`. Only requirements
- * name them, so a caller checks the parts of what it gave.
+ * function, read through a handle or inside a value (`read`), of type `type`. Requirements and
+ * effects name them, so a caller checks and relates the parts of what it gave.
  */
 interface InputPath {
   readonly kind: 'path';

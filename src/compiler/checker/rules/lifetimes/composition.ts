@@ -92,6 +92,7 @@ export function joinedSummaries(summaries: readonly Summary[]): Summary {
 function joinedValues(first: GivenValue, second: GivenValue): GivenValue {
   return {
     relations: [...first.relations, ...second.relations],
+    reachesItself: first.reachesItself || second.reachesItself,
     watched: first.watched || second.watched,
   };
 }

@@ -260,6 +260,58 @@ export const cyclicPrograms: readonly CyclicCase[] = [
     ],
   },
   {
+    name: 'a helper linking two parts of one struct parameter',
+    body: ['linkPair(NodePair{a, b})', 'b->next = a'],
+    extra: [
+      'struct NodePair { a: Node, b: Node }',
+      'ista fn linkPair(p: NodePair): p.a->next = p.b',
+    ],
+  },
+  {
+    name: 'a factory returning a future and the node its call holds',
+    body: ['const (f, n) = startWorker()', 'n->call = f'],
+    extra: [
+      'ista fn startWorker() -> (Future<Unit, "ista">, Node):',
+      '  const n = new Node{lease: new Lease{n: 1}}',
+      '  (holding(n), n)',
+    ],
+  },
+  {
+    name: 'a factory returning a parent and the child it holds',
+    body: ['const (p, ch) = makeParentAndChild()', 'ch->parent = p'],
+    extra: [
+      'ista fn makeParentAndChild() -> (Parent, Child):',
+      '  const p = new Parent{}',
+      '  const ch = new Child{}',
+      '  p->child = ch',
+      '  (p, ch)',
+    ],
+  },
+  {
+    name: 'a part read out of an input copied between local handle cells by a helper',
+    body: ['b->next = a', 'bounceCopy(b, a)'],
+    extra: [
+      'ista fn copyBox(src: Shared<Node?>, dst: Shared<Node?>): dst->value = src->value',
+      'ista fn bounceCopy(whole: Node, target: Node):',
+      '  const held = new Shared<Node?>{value: whole->next}',
+      '  whole->next = new Node{lease: new Lease{n: 9}}',
+      '  const dst = new Shared<Node?>{value: none}',
+      '  copyBox(held, dst)',
+      '  if dst->value is Node as p2:',
+      '    target->next = p2',
+    ],
+  },
+  {
+    name: 'an async call linking its arguments before an `await` it never returns from',
+    body: ['drop linkAndHang(a, b)', 'b->next = a'],
+    extra: [
+      'ista async fn linkAndHang(x: Node, y: Node):',
+      '  x->next = y',
+      '  await runtime.commit()',
+      '  _ = panic("hang") + 1',
+    ],
+  },
+  {
     name: 'a helper result read out of an input and stored in a local handle cell',
     body: ['b->next = a', 'bounceCall(b, a)'],
     extra: [
