@@ -19,6 +19,7 @@ import { idOf } from '../../../program/program.test-kit.ts';
 import { functionsOf } from '../../../syntax/declarations/field-defaults.ts';
 import type { FunctionDeclaration } from '../../../syntax/declarations/index.ts';
 import type { Expression } from '../../../syntax/expressions/index.ts';
+import { defaultValuesOf } from '../../../syntax/expressions/parameters.ts';
 import { placePath } from '../../../syntax/expressions/places.ts';
 import { calledName } from '../../../syntax/expressions/readings.ts';
 import type { Block } from '../../../syntax/statements/index.ts';
@@ -240,11 +241,7 @@ function rootsOf(checker: Checker, tree: SyntaxTree): readonly Rooted[] {
         ? []
         : [{ body, roots: [{ root: block, parameters }] }];
     const defaults = checker.defaultsOf(declaration);
-    const values = declaration.parameters.flatMap((parameter) =>
-      parameter.kind === 'Parameter' && parameter.defaultValue !== undefined
-        ? [parameter.defaultValue]
-        : [],
-    );
+    const values = defaultValuesOf(declaration.parameters);
     const given = values.map((root) => ({ root, parameters: [] }));
     return [...own, ...(defaults === undefined ? [] : [{ body: defaults, roots: given }])];
   });

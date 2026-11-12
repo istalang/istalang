@@ -98,7 +98,7 @@ export class Parameters {
   /** Each function's parameters; a function's whose defaults reach them stand as written. */
   readonly #types: EntryTable<CheckerNote, FunctionDeclaration, readonly SignatureParameter[]>;
   /** The defaults of a function whose parameters all declare their types. */
-  readonly #defaults: EntryTable<CheckerNote, FunctionDeclaration, CheckedBody | undefined>;
+  readonly #defaults: EntryTable<CheckerNote, FunctionDeclaration, CheckedBody>;
   /** Types and defaults together, for a function whose types wait on a default. */
   readonly #together: EntryTable<CheckerNote, FunctionDeclaration, Checked>;
 
@@ -142,10 +142,14 @@ export class Parameters {
   }
 
   /**
-   * The checked defaults of `declaration`. Those its types wait on are reached through its
-   * types, so a cycle through them always reaches the types first.
+   * The checked defaults of `declaration`; none, without an entry, where it writes none. Those
+   * its types wait on are reached through its types, so a cycle through them always reaches the
+   * types first.
    */
   defaultsOf(declaration: FunctionDeclaration): CheckedBody | undefined {
+    if (defaultValuesOf(declaration.parameters).length === 0) {
+      return undefined;
+    }
     if (typesWaitOnDefaults(declaration)) {
       this.parametersOf(declaration);
       return this.#together.get(declaration).defaults;
@@ -154,11 +158,8 @@ export class Parameters {
   }
 
   /** The defaults of a function whose parameters all declare their types, checked against them. */
-  #checkDefaults(declaration: FunctionDeclaration): CheckedBody | undefined {
+  #checkDefaults(declaration: FunctionDeclaration): CheckedBody {
     const values = defaultValuesOf(declaration.parameters);
-    if (values.length === 0) {
-      return undefined;
-    }
     const body = this.#unit.defaultsBody(declaration);
     for (const parameter of this.parametersOf(declaration)) {
       const { defaultValue } = parameter.node;

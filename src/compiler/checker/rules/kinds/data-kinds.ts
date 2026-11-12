@@ -41,6 +41,7 @@ import {
   typeParametersOf,
 } from '../../../syntax/declarations/index.ts';
 import type { Expression } from '../../../syntax/expressions/index.ts';
+import { defaultValuesOf } from '../../../syntax/expressions/parameters.ts';
 import type { VariableDeclaration } from '../../../syntax/statements/index.ts';
 import { awaits } from '../../../syntax/tokens/modifiers.ts';
 import { fieldChildrenOf, type SyntaxNode } from '../../../syntax/tree/index.ts';
@@ -106,10 +107,8 @@ export function checkDataKinds(
   if (defaults !== undefined) {
     const judging = judgingOf(checker, module, defaults);
     const handler = own();
-    for (const parameter of declaration.parameters) {
-      if (parameter.kind === 'Parameter' && parameter.defaultValue !== undefined) {
-        judge(judging, parameter.defaultValue, handler);
-      }
+    for (const value of defaultValuesOf(declaration.parameters)) {
+      judge(judging, value, handler);
     }
   }
   if (isFieldsFunction(declaration)) {

@@ -511,9 +511,11 @@ give the path.
 The design follows the expansion graph's pattern (`rules/expansion/functions.ts`: `#edges`,
 `#endless`, `#reports`):
 
-- **Entries per function:** its flow, its callees and recursive group, its group's analysis, its
-  summary, compared by inputs, labels and pairs only, so an edit that keeps its effects stops
-  there, and its reports, the only entry that reads positions. Relevance is an entry per type.
+- **Entries per function:** its callees and recursive group, its group's analysis, its summary,
+  one table for natives, fields functions and bodies alike, compared by inputs, labels and pairs
+  only, so an edit that keeps its effects stops there, and its reports, the only entry that reads
+  positions. Relevance is an entry per type. A body's flow is read off its checked body, which
+  checking built it for (`flowsBuiltFor`); an entry earns its place only by cutting work off.
 - **What a caller reads of a callee** is its summary alone, never its body: whether a function has
   a body is read off its declaration, so an edit inside a callee's body that keeps its summary
   analyses no caller again (C4).
@@ -525,14 +527,14 @@ The design follows the expansion graph's pattern (`rules/expansion/functions.ts`
 
   | | C3 | C4 |
   |---|---|---|
-  | Warm edit, 2,098 lines | +6.75 ms | +3.2 ms |
-  | Warm edit, 246 lines | +2.2 ms | +1.6 ms |
-  | Cold open, 246 lines | +55 ms | +57 ms |
+  | Warm edit, 2,098 lines | +6.75 ms | +2.2 to 2.9 ms |
+  | Warm edit, 246 lines | +2.2 ms | +1.35 ms |
+  | Cold open, 246 lines | +55 ms | +55 ms |
   | Cold open, 2,098 lines | +69 ms | +55 ms |
 
   Analysing what an edit changed costs about 0.3 ms. The rest is the entries' validation: each
-  revision replays every entry a module's check reaches, about 1,400 of this rule's and 400 std
-  ones, so its cost follows how many entries there are, not what changed. The budget is 3.2 ms
+  revision replays every entry a module's check reaches, about 1,000 of this rule's and 400 std
+  ones (9,300 reads), so its cost follows how many entries there are, not what changed. The budget is 3.2 ms
   for the 2,098-line module and 2 ms for the 246-line one (decided 2026-11-12); validation that
   skips what no changed input reaches is tracker P49. A cold open analyses every std body its
   functions reach.

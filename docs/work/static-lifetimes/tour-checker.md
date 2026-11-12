@@ -395,6 +395,9 @@ declare only `extern shared struct`s.
   through the callee's body input, which changes with every edit inside it (now
   `hasBody` reads the declaration), and the module's walk for noted constraint checks crossed the
   std bodies the rule's summaries reach (now run before the rule, `module-checks.ts`).
+- **And entries that cut nothing off:** a flow is read off its checked body (`flowsBuiltFor`), not
+  kept in an entry of its own; natives', fields functions' and bodies' summaries are one table; a
+  function writing no default makes no defaults entry (`Parameters.defaultsOf`, `Declared`).
 - **Per-closure entries don't pay:** lambdas aren't segments of their own
   (`parser/incremental/reuse.ts`), so an edit inside a closure makes every closure of its function
   anew; after an edit inside a callee they saved nothing measurable once callers stopped reading

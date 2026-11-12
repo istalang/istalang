@@ -1,6 +1,7 @@
 /**
  * Building a checked body's flow (../flow-ir.ts), memoized on the body it derives from: a body
- * checked again is a new body, with a new flow, and one taken over keeps its own.
+ * checked again is a new body, with a new flow, and one taken over keeps its own. Body checking
+ * builds every root's, so readers find them by body (`flowsBuiltFor`).
  *
  * Every expression is built the same way here, whatever its kind:
  * - An operation that meets a value of type `Never` runs the operands before it and stops (§2).
@@ -12,6 +13,7 @@
  */
 
 import { handlerOf } from '../../../../../foundation/structures/kind-table.ts';
+import { unreachable } from '../../../../../foundation/structures/unreachable.ts';
 import type { Expression } from '../../../../syntax/expressions/index.ts';
 import type { Block, Statement } from '../../../../syntax/statements/index.ts';
 import { tailExpressionOf } from '../../../../syntax/statements/readings.ts';
@@ -57,6 +59,14 @@ export function flowOf(
   const flow = builder.finished(value);
   ofBody.set(root, flow);
   return flow;
+}
+
+/**
+ * The flows built for `body`, by root: body checking builds one for each root it checks
+ * (wiring/body/body-checker.ts), so a reader finds them here without the inputs building takes.
+ */
+export function flowsBuiltFor(body: CheckedBody): ReadonlyMap<SyntaxNode, FlowFunction> {
+  return flows.get(body) ?? unreachable('A body was finished without building its flows.');
 }
 
 /** `node`'s value as computed, a temporary of its own node. */

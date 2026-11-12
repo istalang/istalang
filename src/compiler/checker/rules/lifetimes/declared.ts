@@ -13,7 +13,6 @@
  */
 
 import type { EntryTable } from '../../../../foundation/structures/entries/index.ts';
-import type { ModuleId } from '../../../program/program.ts';
 import type {
   ContextConstantDeclaration,
   FunctionDeclaration,
@@ -22,10 +21,8 @@ import { defaultValuesOf } from '../../../syntax/expressions/parameters.ts';
 import type { VariableDeclaration } from '../../../syntax/statements/index.ts';
 import type { FindingDeclaration } from '../../check.ts';
 import type { CheckerContext, CheckerNote } from '../../contexts/context.ts';
-import type { CheckedBody } from '../../surface/checked-body.ts';
 import { isDisposeFunction } from '../disposal/disposal.ts';
-import type { FlowInputs } from '../flow/build/flow-builder.ts';
-import { flowOf } from '../flow/build/index.ts';
+import { flowsBuiltFor } from '../flow/build/index.ts';
 import type { FlowFunction } from '../flow/flow-ir.ts';
 import type { AnalysisContext, Violation } from './analysis/body.ts';
 import { type Analysis, analyze } from './analysis/index.ts';
@@ -52,20 +49,6 @@ export interface DeclaredDeps {
   readonly hasBody: (declaration: FunctionDeclaration) => boolean;
 }
 
-/** What a body of `module` gives the flow builder. */
-export function flowInputsOf(
-  checker: CheckerContext,
-  module: ModuleId,
-  body: CheckedBody,
-): FlowInputs {
-  return {
-    checker,
-    module,
-    localBodyOf: (local: FunctionDeclaration) => checker.inputs.bodyOf(module, local),
-    body,
-  };
-}
-
 /** A default's flow, of the parameters before it, and its parameter's position. */
 interface DefaultFlow {
   readonly index: number;
@@ -81,18 +64,14 @@ export function defaultsFlows(
   if (defaults === undefined) {
     return [];
   }
-  const inputs = flowInputsOf(checker, checker.moduleOf(declaration), defaults);
-  const parameters = checker.parametersOf(declaration);
-  return declaration.parameters.flatMap((parameter, index) =>
-    parameter.kind === 'Parameter' && parameter.defaultValue !== undefined
-      ? [
-          {
-            index,
-            flow: flowOf(inputs, parameter.defaultValue, parameters.slice(0, index)),
-          },
-        ]
-      : [],
-  );
+  const built = flowsBuiltFor(defaults);
+  return declaration.parameters.flatMap((parameter, index) => {
+    const flow =
+      parameter.kind === 'Parameter' && parameter.defaultValue !== undefined
+        ? built.get(parameter.defaultValue)
+        : undefined;
+    return flow === undefined ? [] : [{ index, flow }];
+  });
 }
 
 /** The flow of a constant's initializer, a context constant's or a top-level one's. */
@@ -104,9 +83,7 @@ export function constantFlow(
     declaration.kind === 'ContextConstantDeclaration'
       ? checker.contextConstants.bodyOf(declaration)
       : checker.constantBodyOf(declaration);
-  return body === undefined
-    ? undefined
-    : flowOf(flowInputsOf(checker, checker.moduleOf(declaration), body), declaration.initializer);
+  return body === undefined ? undefined : flowsBuiltFor(body).get(declaration.initializer);
 }
 
 /** `summary`, doing what its defaults do too, as a call may run any of them. */
