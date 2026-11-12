@@ -384,7 +384,7 @@ declare only `extern shared struct`s.
   diagnostics of each module. C4 is held within 20% of C3's.
 - **Measured at C3's end** on a machine slower than the budget's (rule off → on, median ms): warm
   edit 8.0 → 12.4 (246 lines), 26.5 → 43.2 (2,098 lines); cold open 50.3 → 76.8, 184.1 → 215.2.
-  The 2,098-line edit adds 16.7 ms against plan C3's 2 ms.
+  The 2,098-line edit adds 16.7 ms; C4 owns the 2 ms budget, through per-closure entries.
   An edit inside one closure of a test suite analyses the suite's function again, all its closures
   with it. A function holding nothing relevant takes one pass instead of the fixed point
   (`analysis/index.ts`), which most of a suite's closures are.
