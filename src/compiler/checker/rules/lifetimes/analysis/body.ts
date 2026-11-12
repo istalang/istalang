@@ -27,8 +27,8 @@ import { type Input, type InputPair, inputKey } from '../input.ts';
 import type { NodeId } from '../reach-state.ts';
 import {
   anyField,
+  type GivenValue,
   type Requirement,
-  type ResultRelation,
   type Summary,
   type TypedCycle,
 } from '../summary.ts';
@@ -56,10 +56,7 @@ export interface AnalysisContext {
   readonly witnessesOf: (call: RequirementCall) => readonly FunctionCall[] | undefined;
 
   /** What the default of `declaration`'s parameter at `index` relates to, of those before it. */
-  readonly defaultResult: (
-    declaration: FunctionDeclaration,
-    index: number,
-  ) => readonly ResultRelation[];
+  readonly defaultResult: (declaration: FunctionDeclaration, index: number) => GivenValue;
 }
 
 /** Where a cycle may close in this function's text (`LifetimeFinding`, the function aside). */

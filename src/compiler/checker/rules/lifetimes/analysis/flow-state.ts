@@ -30,10 +30,16 @@ export interface MadeClosure {
  */
 type KnownFunction = MadeClosure | { readonly kind: 'items' };
 
-/** What a future settles with, as related to nodes: a call's result to what it was given. */
+/** How a value relates to a node: a call's result to what it was given. */
 export interface Given {
   readonly node: NodeId;
   readonly relation: ResultRelation['relation'];
+}
+
+/** What a future settles with, as a summary's `GivenValue` says, its inputs bound to nodes. */
+export interface Settled {
+  readonly relations: readonly Given[];
+  readonly watched: boolean;
 }
 
 export interface FlowState {
@@ -41,7 +47,7 @@ export interface FlowState {
   readonly canon: Map<ValueId, NodeId>;
   readonly callees: Map<NodeId, KnownFunction>;
   /** The futures whose value is known apart from what they hold. */
-  readonly gives: Map<NodeId, readonly Given[]>;
+  readonly gives: Map<NodeId, Settled>;
 }
 
 export function clonedState(state: FlowState): FlowState {
@@ -124,7 +130,7 @@ export function joinedStates(nodes: Nodes, states: readonly FlowState[]): FlowSt
     joined.reach.join(other.reach);
     keepAgreeing(joined.canon, other.canon, Object.is);
     keepAgreeing(joined.callees, other.callees, sameKnown);
-    keepAgreeing(joined.gives, other.gives, sameGiven);
+    keepAgreeing(joined.gives, other.gives, sameSettled);
   }
   return joined;
 }
@@ -147,12 +153,14 @@ function keepAgreeing<Key, Value>(
   }
 }
 
-function sameGiven(first: readonly Given[], second: readonly Given[]): boolean {
+function sameSettled(first: Settled, second: Settled): boolean {
   return (
-    first.length === second.length &&
-    first.every(
+    first.watched === second.watched &&
+    first.relations.length === second.relations.length &&
+    first.relations.every(
       (each, index) =>
-        each.node === second[index]?.node && each.relation === second[index]?.relation,
+        each.node === second.relations[index]?.node &&
+        each.relation === second.relations[index]?.relation,
     )
   );
 }

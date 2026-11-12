@@ -7,7 +7,7 @@
 import type { Binding } from '../../surface/resolved-call.ts';
 import type { Type } from '../../types/type/index.ts';
 import type { Input } from './input.ts';
-import { emptySummary, mappedCycle, type Summary } from './summary.ts';
+import { emptySummary, type GivenValue, mappedCycle, type Summary } from './summary.ts';
 
 /**
  * `summary` over the inputs `binding` gives its parameters: each parameter the one its source
@@ -43,8 +43,8 @@ export function boundBy(
       const to = mapped(effect.to);
       return from === undefined || to === undefined ? [] : [{ ...effect, from, to }];
     }),
-    result: related(summary.result),
-    gives: related(summary.gives),
+    result: { ...summary.result, relations: related(summary.result.relations) },
+    gives: { ...summary.gives, relations: related(summary.gives.relations) },
     requirements: summary.requirements.flatMap((requirement) => {
       const holder = mapped(requirement.holder);
       const value = mapped(requirement.value);
@@ -74,9 +74,8 @@ export function joinedSummaries(summaries: readonly Summary[]): Summary {
   return summaries.reduce<Summary>(
     (joined, each) => ({
       effects: [...joined.effects, ...each.effects],
-      result: [...joined.result, ...each.result],
-      gives: [...joined.gives, ...each.gives],
-      watched: joined.watched || each.watched,
+      result: joinedValues(joined.result, each.result),
+      gives: joinedValues(joined.gives, each.gives),
       requirements: [...joined.requirements, ...each.requirements],
       always: [...joined.always, ...each.always],
       callReach: [...joined.callReach, ...each.callReach],
@@ -87,4 +86,12 @@ export function joinedSummaries(summaries: readonly Summary[]): Summary {
     }),
     emptySummary,
   );
+}
+
+/** A value that may be either of two a call gives. */
+function joinedValues(first: GivenValue, second: GivenValue): GivenValue {
+  return {
+    relations: [...first.relations, ...second.relations],
+    watched: first.watched || second.watched,
+  };
 }

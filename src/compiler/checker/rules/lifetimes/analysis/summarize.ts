@@ -28,12 +28,14 @@ export function summarize(
   const { result, gives } = resultsOf(analysis, exits, slots, isAsync);
   return {
     effects: effectsOf(analysis, entry, exits, slots),
-    result,
-    gives,
-    // What it returns may be what a watching handle gave it, which may be any value anywhere.
-    watched:
-      analysis.watched.size > 0 &&
-      exits.some(({ value }) => value !== undefined && nodes.isRelevant(value)),
+    result: {
+      relations: result,
+      // What it returns may be what a watching handle gave it, which may be any value anywhere.
+      watched:
+        analysis.watched.size > 0 &&
+        exits.some(({ value }) => value !== undefined && nodes.isRelevant(value)),
+    },
+    gives: { relations: gives, watched: false },
     requirements: [...analysis.requirements.values()],
     always: [...analysis.always.values()],
     callReach: isAsync ? slots.map(({ input }) => input) : [],
@@ -97,7 +99,7 @@ function resultsOf(
   for (const { state, value } of returned) {
     for (const slot of slots) {
       const node = analysis.inputNodeOf(slot);
-      const given = isAsync ? [] : (state.gives.get(value) ?? []);
+      const given = isAsync ? [] : (state.gives.get(value)?.relations ?? []);
       const relations = [
         ...resultRelations(state, value, node).map(
           (relation) => [isAsync ? gives : result, relation] as const,

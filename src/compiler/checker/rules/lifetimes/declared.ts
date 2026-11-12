@@ -27,7 +27,7 @@ import type { AnalysisContext, Violation } from './analysis/body.ts';
 import { type Analysis, analyze } from './analysis/index.ts';
 import { joinedSummaries } from './composition.ts';
 import { cycleRelevance, escapingCycles } from './escaping.ts';
-import type { ResultRelation, Summary } from './summary.ts';
+import type { GivenValue, Summary } from './summary.ts';
 
 /** What a function's defaults find. */
 export interface DefaultsFound {
@@ -35,7 +35,7 @@ export interface DefaultsFound {
   /** Each default's summary, over the parameters before it. */
   readonly summaries: readonly Summary[];
   /** What each default's value relates to, by its parameter's position. */
-  readonly results: ReadonlyMap<number, readonly ResultRelation[]>;
+  readonly results: ReadonlyMap<number, GivenValue>;
 }
 
 /** What defaults find where a function writes none. */

@@ -63,7 +63,7 @@ const handlers: { readonly [Kind in Operation['op']]: Handler<Kind> } = {
     } else if (gives === undefined) {
       readOf(at, operation);
     } else {
-      readGiven(state, into, gives);
+      readGiven(at, into, gives);
     }
   },
   write: ({ analysis, state }, { place, value, site }) => {
@@ -209,7 +209,9 @@ function cursorOver({ state }: At, cursor: NodeId, iterated: readonly NodeId[]):
 export function runOperation(analysis: BodyAnalysis, state: FlowState, operation: Operation): void {
   (handlers[operation.op] as Handler<typeof operation.op>)({ analysis, state }, operation as never);
   // A temporary a future settles with is read where the future is awaited: it lives till then.
-  const given = new Set([...state.gives.values()].flatMap((each) => each.map(({ node }) => node)));
+  const given = new Set(
+    [...state.gives.values()].flatMap(({ relations }) => relations.map(({ node }) => node)),
+  );
   for (const ended of analysis.nodes.endingAfter(operation)) {
     if (!given.has(ended)) {
       analysis.release(state, ended);

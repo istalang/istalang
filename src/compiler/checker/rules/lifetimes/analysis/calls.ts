@@ -30,7 +30,7 @@ import {
 } from './bindings.ts';
 import { type Holder, placeHolds } from './body.ts';
 import { cycleOf } from './cycles.ts';
-import type { FlowState, Given } from './flow-state.ts';
+import type { FlowState, Given, Settled } from './flow-state.ts';
 import type { Owner } from './places.ts';
 import { relateByTypes } from './unseen.ts';
 
@@ -286,7 +286,7 @@ function giveResult(
     return;
   }
   state.reach.fresh(into);
-  for (const { input, relation } of summary.result) {
+  for (const { input, relation } of summary.result.relations) {
     for (const node of bound(input).nodes) {
       relate(state, into, { node, relation });
     }
@@ -301,24 +301,27 @@ function giveResult(
       relate(state, into, { node, relation: 'reaches' });
     }
   }
-  if (summary.watched) {
+  if (summary.result.watched) {
     watchedResult({ analysis, state }, into);
   }
-  if (summary.gives.length > 0) {
-    state.gives.set(
-      into,
-      summary.gives.flatMap(({ input, relation }) =>
+  if (summary.gives.relations.length > 0) {
+    state.gives.set(into, {
+      relations: summary.gives.relations.flatMap(({ input, relation }) =>
         bound(input).nodes.map((node) => ({ node, relation })),
       ),
-    );
+      watched: summary.gives.watched,
+    });
   }
 }
 
-/** A future's value read where `gives` says what it settles with. */
-export function readGiven(state: FlowState, into: NodeId, gives: readonly Given[]): void {
-  state.reach.fresh(into);
-  for (const given of gives) {
-    relate(state, into, given);
+/** A future's value read where `settled` says what it settles with. */
+export function readGiven(at: At, into: NodeId, settled: Settled): void {
+  at.state.reach.fresh(into);
+  for (const given of settled.relations) {
+    relate(at.state, into, given);
+  }
+  if (settled.watched) {
+    watchedResult(at, into);
   }
 }
 

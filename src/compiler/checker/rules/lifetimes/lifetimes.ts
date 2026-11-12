@@ -60,11 +60,12 @@ import { diagnosticOf } from './reports.ts';
 import {
   constructorSummary,
   emptySummary,
+  type GivenValue,
   nativeSummary,
-  type ResultRelation,
   type Summary,
-  sameResults,
   sameSummary,
+  sameValue,
+  unrelatedValue,
 } from './summary.ts';
 
 export class Lifetimes implements LifetimeQueries {
@@ -110,7 +111,7 @@ export class Lifetimes implements LifetimeQueries {
     this.#defaultResults = checker.entries.table({
       name: 'lifetime default results',
       compute: (declaration: FunctionDeclaration) => this.#analysisOf(declaration).defaults.results,
-      equal: sameEntries(sameResults),
+      equal: sameEntries(sameValue),
     });
     this.#declared = new Declared({
       checker,
@@ -345,9 +346,9 @@ export class Lifetimes implements LifetimeQueries {
     callee: FunctionDeclaration,
     index: number,
     group: GroupAnalyses | undefined,
-  ): readonly ResultRelation[] {
+  ): GivenValue {
     const results = group?.get(callee)?.defaults.results ?? this.#defaultResults.get(callee);
-    return results.get(index) ?? [];
+    return results.get(index) ?? unrelatedValue;
   }
 
   /**

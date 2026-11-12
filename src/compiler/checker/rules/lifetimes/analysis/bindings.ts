@@ -59,7 +59,7 @@ export function functionBindings(
     } else {
       const related = at.analysis.context.defaultResult(call.function, index);
       bindings.set(inputKey(input), {
-        nodes: related.flatMap(
+        nodes: related.relations.flatMap(
           (relation) =>
             (bindings.get(inputKey(relation.input)) ?? globalBound(at, relation.input)).nodes,
         ),

@@ -5,9 +5,9 @@
  * - **Inputs** (input.ts) are what the call gives the body, by position only, never nodes or spans,
  *   so an edit that keeps a function's effects keeps its summary (design.md §8).
  * - **Effects** are the pairs the call may add among its inputs: `from` comes to reach `to`, or
- *   with `inside` only what `to` reaches. **Result** is how what it gives relates to its inputs,
- *   and **gives** how what a future it gives settles with does: an async call's future holds its
- *   frames, and settles with its result.
+ *   with `inside` only what `to` reaches. **Result** is what it gives, and **gives** what a future
+ *   it gives settles with, each a value related to its inputs (`GivenValue`): an async call's
+ *   future holds its frames, and settles with its result.
  * - **Requirements** are the pairs that must not hold when it is called: `value` may not reach
  *   `holder`, since the body writes the one into the other. Each carries the holder's type, read
  *   where the call instantiates it, so a requirement on a type reaching no disposable lapses.
@@ -55,6 +55,19 @@ export interface ResultRelation {
   readonly input: Input;
   readonly relation: 'reaches' | 'reachedBy' | 'aliases' | 'shares';
 }
+
+/**
+ * A value a call gives, its result or what a future it gives settles with: how it relates to each
+ * of the call's inputs, and whether it may be any value of a type a handle the call read watches
+ * (`deref`), which may be any such value anywhere.
+ */
+export interface GivenValue {
+  readonly relations: readonly ResultRelation[];
+  readonly watched: boolean;
+}
+
+/** A value related to no input: a call's fresh, or one that gives nothing a disposable. */
+export const unrelatedValue: GivenValue = { relations: [], watched: false };
 
 /**
  * A pair that must not hold when the function is called: `value` may not reach or be what
@@ -108,11 +121,9 @@ export function mappedCycle(cycle: TypedCycle, map: (type: Type) => Type): Typed
 
 export interface Summary {
   readonly effects: readonly Effect[];
-  readonly result: readonly ResultRelation[];
-  /** What the future the call gives settles with, related to its inputs. */
-  readonly gives: readonly ResultRelation[];
-  /** Whether the result may be any value of a type an argument's handle watches. */
-  readonly watched: boolean;
+  readonly result: GivenValue;
+  /** What the future the call gives settles with. */
+  readonly gives: GivenValue;
   readonly requirements: readonly Requirement[];
   readonly always: readonly TypedCycle[];
   readonly callReach: readonly Input[];
@@ -130,9 +141,8 @@ export interface Summary {
 /** What a function summed up so far, before anything is known: it does nothing. */
 export const emptySummary: Summary = {
   effects: [],
-  result: [],
-  gives: [],
-  watched: false,
+  result: unrelatedValue,
+  gives: unrelatedValue,
   requirements: [],
   always: [],
   callReach: [],
@@ -148,10 +158,14 @@ const sameEffects = sameItems<Effect>(
     sameInput(first.to, second.to) &&
     first.inside === second.inside,
 );
-/** Whether two lists say a result relates to the same inputs alike. */
-export const sameResults = sameItems<ResultRelation>(
+const sameRelations = sameItems<ResultRelation>(
   (first, second) => sameInput(first.input, second.input) && first.relation === second.relation,
 );
+
+/** Whether two values a call gives say alike. */
+export function sameValue(first: GivenValue, second: GivenValue): boolean {
+  return first.watched === second.watched && sameRelations(first.relations, second.relations);
+}
 const sameCycles = sameItems<TypedCycle>(
   (first, second) =>
     first.kind === second.kind &&
@@ -177,13 +191,12 @@ const sameInputs = sameItems<Input>(sameInput);
 export function sameSummary(first: Summary, second: Summary): boolean {
   return (
     first === second ||
-    (first.watched === second.watched &&
-      first.unseen === second.unseen &&
+    (first.unseen === second.unseen &&
       sameInputs(first.calls, second.calls) &&
       sameInputs(first.access, second.access) &&
       sameEffects(first.effects, second.effects) &&
-      sameResults(first.result, second.result) &&
-      sameResults(first.gives, second.gives) &&
+      sameValue(first.result, second.result) &&
+      sameValue(first.gives, second.gives) &&
       sameRequirements(first.requirements, second.requirements) &&
       sameCycles(first.always, second.always) &&
       sameInputs(first.callReach, second.callReach) &&
@@ -238,15 +251,20 @@ export function nativeSummary(
             label: anyField,
           }));
     }),
-    result: isHandleType(checker.resultOf(native))
-      ? anyOf(['reaches'])
-      : parameters.flatMap(({ type }, index) =>
-          (isValueType(type) ? (['aliases'] as const) : (['aliases', 'reachedBy'] as const)).map(
-            (relation) => ({ input: parameter(index), relation }),
+    result: {
+      relations: isHandleType(checker.resultOf(native))
+        ? anyOf(['reaches'])
+        : parameters.flatMap(({ type }, index) =>
+            (isValueType(type) ? (['aliases'] as const) : (['aliases', 'reachedBy'] as const)).map(
+              (relation) => ({ input: parameter(index), relation }),
+            ),
           ),
-        ),
-    gives: awaited === undefined ? [] : givesOf(holding, anyOf(['aliases', 'reachedBy'])),
-    watched: parameters.some(({ type }) => watchesIn(checker, type, checker.resultOf(native))),
+      watched: parameters.some(({ type }) => watchesIn(checker, type, checker.resultOf(native))),
+    },
+    gives: {
+      relations: awaited === undefined ? [] : givesOf(holding, anyOf(['aliases', 'reachedBy'])),
+      watched: false,
+    },
   };
 }
 
@@ -288,10 +306,13 @@ export function constructorSummary(
 ): Summary {
   return {
     ...emptySummary,
-    result: checker.parametersOf(fields).map((_, index) => ({
-      input: { kind: 'parameter', index },
-      relation: 'aliases',
-    })),
+    result: {
+      relations: checker.parametersOf(fields).map((_, index) => ({
+        input: { kind: 'parameter', index },
+        relation: 'aliases',
+      })),
+      watched: false,
+    },
   };
 }
 
