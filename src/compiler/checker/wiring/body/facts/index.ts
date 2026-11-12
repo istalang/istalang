@@ -124,8 +124,8 @@ const bodyFacts: { readonly [Name in FactName]: BodyFact<BodyFacts[Name], Across
     at:
       ({ units }, pass) =>
       (iteration) =>
-        units.iterations.of(iteration, pass),
-    instantiated: (iterationOf, by) => (iteration) => by.iteration(iterationOf(iteration)),
+        units.iterations.formOf(iteration, pass),
+    instantiated: (iterationOf, by) => readThrough(iterationOf, by.iteration),
     joined: firstPass,
   },
   fitAt: {

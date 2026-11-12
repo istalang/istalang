@@ -10,7 +10,7 @@ import type { Register } from '../../../../definition/operands.ts';
 import { wellKnown } from '../../../../foundation/language/well-known/index.ts';
 import { stepVariants } from '../../../../foundation/language/well-known/variants.ts';
 import { unreachable } from '../../../../foundation/structures/unreachable.ts';
-import type { Iteration } from '../../../checker/surface/checked-body.ts';
+import type { Iteration, IterationForm } from '../../../checker/surface/checked-body.ts';
 import type { Comprehension, Expression } from '../../../syntax/expressions/index.ts';
 import type { For } from '../../../syntax/statements/index.ts';
 import { emitCall, emitImplicitCall } from '../../calls/emit-call.ts';
@@ -49,7 +49,7 @@ export function emitLoop(
     callee: { kind: 'value', register: cursor },
     arguments: [],
   });
-  const form = context.body.iterationOf(node);
+  const form = iterationFormOf(context, node);
   if (form.kind !== 'cursor') {
     unreachable('A loop runs over a spread its literal copies whole.');
   }
@@ -80,4 +80,12 @@ export function emitLoopOver(
     });
     endScope(context, scope, node.span);
   });
+}
+
+/** How `node` runs, as checking recorded it; lowering runs only on a program checked clean. */
+export function iterationFormOf(context: FunctionContext, node: Iteration): IterationForm {
+  return (
+    context.body.iterationOf(node) ??
+    unreachable(`An iteration at ${node.span.from} was never checked.`)
+  );
 }

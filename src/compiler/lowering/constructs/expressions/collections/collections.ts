@@ -35,7 +35,7 @@ import type { CodeContext, FunctionContext } from '../../../context.ts';
 import { lowerKeyRead } from '../../../values/keyed-fields.ts';
 import { noneOf, someOf } from '../../../values/optionals.ts';
 import { construct } from '../../../values/struct-values.ts';
-import { cursorOf, emitLoop } from '../../loops/iteration.ts';
+import { cursorOf, emitLoop, iterationFormOf } from '../../loops/iteration.ts';
 import { cellRegister } from '../../parts/places.ts';
 
 /** An element of an `array` instruction. */
@@ -210,7 +210,7 @@ export function spreadArray(context: FunctionContext, spread: Spread): Register 
 
 /** `item`, one `spread`'s cursor gives, fitted where the literal's items are expected (§2). */
 function fittedItem(context: FunctionContext, spread: Spread, item: Register): Register {
-  const form = context.body.iterationOf(spread);
+  const form = iterationFormOf(context, spread);
   if (form.kind !== 'cursor') {
     unreachable('A spread copied whole has no cursor to give items.');
   }
@@ -223,7 +223,7 @@ function isSpread(node: Expression | MapEntry | Spread): node is Spread {
 
 /** Whether `spread` copies a value of the collection its literal builds whole. */
 function isCopied(context: FunctionContext, spread: Spread): boolean {
-  return context.body.iterationOf(spread).kind === 'copied';
+  return iterationFormOf(context, spread).kind === 'copied';
 }
 
 /** A value of a declared type built by its `default()`, then `setIndex` for each of `entries`. */

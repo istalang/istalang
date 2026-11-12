@@ -203,8 +203,8 @@ export interface BodyFacts {
   readonly implicitCallOf: (node: NodeOf<string>, role: ImplicitRole) => ResolvedCall | undefined;
   /** What a collection literal builds (§2). */
   readonly collectionFormOf: (literal: ArrayLiteral | MapLiteral) => CollectionForm;
-  /** How an iteration runs: through its cursor, or copied whole (§3.10). */
-  readonly iterationOf: (iteration: Iteration) => IterationForm;
+  /** How an iteration runs: through its cursor, or copied whole (§3.10); undefined if never checked. */
+  readonly iterationOf: (iteration: Iteration) => IterationForm | undefined;
   /** How the value `site` gives is converted to fit where it is used (§2, §3.10, §3.14). */
   readonly fitAt: (site: ValueSite) => Fit;
   /**

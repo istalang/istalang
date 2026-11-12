@@ -18,7 +18,6 @@
 
 import { collectionFunctions } from '../../../../foundation/language/well-known/implicit-calls.ts';
 import { wellKnown } from '../../../../foundation/language/well-known/index.ts';
-import { unreachable } from '../../../../foundation/structures/unreachable.ts';
 import type { Comprehension, Expression } from '../../../syntax/expressions/index.ts';
 import type { For } from '../../../syntax/statements/index.ts';
 import type { Checker } from '../../check.ts';
@@ -47,17 +46,9 @@ export class Iterations implements IterationRecord {
     this.#forms.set(iteration, form);
   }
 
+  /** The form recorded for `iteration`; undefined for one never checked. */
   formOf(iteration: Iteration, pass?: Pass): IterationForm | undefined {
     return this.#forms.get(iteration, pass);
-  }
-
-  /** The form recorded for `iteration`; lowering asks only of a program checked clean. */
-  of(iteration: Iteration, pass?: Pass): IterationForm {
-    const form = this.formOf(iteration, pass);
-    if (form === undefined) {
-      unreachable(`An iteration at ${iteration.span.from} was never checked.`);
-    }
-    return form;
   }
 }
 
