@@ -1,158 +1,249 @@
 ---
-description: design of static lifetimes — holding sets on types, held arguments, the acyclic rule, one-way resolver edges, counted disposal and its order, the checker–runtime contract, handles off the id heap, and what is deleted; read before implementing or reviewing a static-lifetimes phase or changing spec §6–§7
+description: design of static lifetimes — a whole-program flow analysis that rejects every disposable a cycle reaches, `@Holds` declarations, the checker–runtime contract, one-way resolver edges, counted disposal and its order, handles off the id heap, and what is deleted; read before implementing or reviewing a static-lifetimes phase or changing spec §3.6, §3.16, §6 or §7
 owner: tech-lead
 status: active
-applies_to: checker, runtime lifetimes, spec §3.3 §3.14 §6 §7
-last_verified: 2026-11-11
-last_updated: 2026-11-11
-tags: [lifetimes, disposal, design]
+applies_to: checker, runtime lifetimes, spec §3.6 §3.16 §6 §7
+last_verified: 2026-11-12
+last_updated: 2026-11-12
+tags: [lifetimes, disposal, design, flow-analysis]
 ---
 
 # Static lifetimes: design
 
-Decided with the human (2026-11-11):
-- Nothing that can hold a disposable is part of a cycle, checked at compile time.
-- A call that holds the struct storing its own future is rejected at compile time.
-- A closure's captures that can hold a disposable are part of its function type, read like a call's arguments. Its other captures are not.
-- `holding H` names that set (Holding). `holding Never` is the empty set; an inferred set prints as `holding {Lease, Conn}`, in diagnostics only.
+Supersedes [archive/design.md](archive/design.md), whose `holding` types are dropped. Code-level
+pre-research: [tour-checker.md](tour-checker.md), [tour-runtime.md](tour-runtime.md).
+
+Decided with the human (2026-11-12):
+- Every disposable that any cycle reaches is an error. That includes one held by a cycle of
+  non-disposables: a closure assigned to the variable it captures, holding a lease. A cycle that
+  reaches no disposable is fine.
+- A whole-program flow analysis decides it, apart from the type system: no type changes.
+- The error is reported on the disposable only, at its creation site. Its message gives the cycle.
+- What the analysis can't see or prove is declared with the `@Holds` annotation.
 - §7's order becomes reverse release order.
+- Greenfield: the Definition's format changes with no version bump.
 
-Open until L0: the order's wording, the resolver edges' spec wording, and the costs (Costs, below).
+## The analysis (L1)
 
-## Holding (L1)
+A checker rule unit beside endless expansion, with the same three entries: per-body constraints,
+the solve, and the reports (tour-checker.md). It needs the program's calls closed per
+instantiation, and `any` dispatch. L0 moves both from lowering into the checker's surface, where
+lowering reads them.
 
-- **Tracked:** a disposable, or a type that may hold one at any depth (Reach, below).
-- **What it is.** A function, future, resolver or trait-object type carries the set of tracked types it holds. A parameter of its own sort names the set, as a mark parameter names a mark (`qualifierParameterOf`). It is written only after `holding` and is never a value's type.
-  - **Order-free.** The set has no order and no arity, so variadic packs don't touch it.
-  - **Tracked only.** An untracked type can't reach a tracked one, so nothing else is kept.
-- **Inferred:**
-  - A lambda: the tracked types among its captures. A declared function holds nothing.
-  - A call's future: the tracked types among its arguments, and its callee's set. The call holds them until it finishes, and the future's last holder is what stops it.
-  - `Resolver.of`: its callback's set. `Resolver.at`: the set of the resolver it decides.
-  - A trait object: its value's type, when tracked.
-- **Written** only where a declaration keeps one and something depends on it:
-  - `fn defer<M in Mark, H>(f: Fn<(), Unit, M> holding H) -> Deferred<M, H>`
-  - Only `Never`, the empty set, or a holding parameter is written after `holding`; anything else there is an error.
-  - `holding Never` is the usual bound, `any T holding Never` included.
-- **Fit is set inclusion.** A parameter binds the inferred set.
-- **Unwritten** (and `any T` without one) is *unknown*. Anything fits it, as with `Send`'s `plain`, so code that only calls stays as it is. Unknown reaches anything.
-- **Holding feeds only reach.** Must-use and `capturedSend` keep reading what they read today.
+- **Objects.** One abstract object per creation site and generic instantiation:
+  - a handle: a shared struct, or what an extern call makes (a slot, a resolver, a mock);
+  - a lambda;
+  - an async call's future, and a deferred call;
+  - a captured `let`'s cell (`_Cell`), one per declaration;
+  - a value whose type is Disposable.
+
+  Other values (plain structs, tuples, unions, arrays, maps) are not objects. A place holding one
+  holds its parts, and a store into one (a push, an element set) is a store into the place's owner.
+  A disposable object is one whose type is Disposable.
+- **Flow.** Inclusion constraints, flow-insensitive and context-insensitive except for generic
+  instantiation:
+  - every variable, parameter, return and place gets the set of objects that may flow into it;
+  - a call binds arguments to parameters and returns to its result. A write through a `&`
+    parameter lands on the place it refers to: a shared struct's field, or a captured `let`'s cell;
+  - a call through a function value, or a method of an `any T`, calls the lambdas, functions and
+    impls in its receiver's set, found as the sets grow. An `any T` value is its underlying object;
+  - calls the runtime makes are calls too: a disposable's `dispose`, a callback resolver's callback,
+    an `onCancel` callback;
+  - a value given to a resolver flows to what it decides: the result of the `await` or `select`
+    case it decides, its callback's parameter, or, as `(position, value)`, the resolver an
+    at-resolver decides;
+  - **what an extern yields** is apart from what it holds. Every value given to an extern object,
+    to the call that made it, or, for a mock, to a call of its target, is that object's
+    content. An extern's result may be any content of the objects among its arguments, receiver
+    included, any object among its arguments' parts (an array's or a map's elements), or anything
+    those reach, whose type fits the declared result type. So may the
+    value a future it returns resolves with. That covers `WeakRef.deref`, a slot's `take` and
+    `read`, and a mock's recorded calls.
+- **Holds.** An object holds what flows into its places:
+  - a shared struct: its fields, and the parts of the values in them;
+  - a lambda: what it captures, through the cell for a captured `let`;
+  - a cell: what is assigned to its variable;
+  - a call's future: its callee and arguments, and its result once resolved. That includes an
+    extern call's future, whose receiver is an argument: a slot operation's future holds the slot
+    and the value. Not its frame: a running call is a root, and it can reach its own future only
+    through what its arguments, captures or top-level cells reach;
+  - a mock: the arguments of every call to the functions in its target's set, which it records;
+  - any other extern object: what its `@Holds` declarations say.
+- **Construction and mutation.** Each hold is one of two kinds:
+  - **Construction:** made with the object, from values that already exist: fields given to a
+    literal, captures, a call's callee and arguments, an extern's result holding its arguments.
+    These hold only older objects.
+  - **Mutation:** everything else: a field or element store, a push, assigning a captured `let`, a
+    registration, a future's result.
+
+  So every real cycle contains a mutation.
+- **`@Holds`.** The prelude declares `struct Holds<...A>{}`. Annotations extend to extern
+  declarations (§3.16).
+  - **On an extern function,** its receiver, or its result when it has none, holds its arguments
+    whose declared parameter type is one of `A`. `A` may name the function's and its type's type
+    parameters. An extern function without one holds nothing,
+    beyond what its future holds as a call's (Holds). Std declares:
+    - `Slot.put`, and the stores of `Array` and `Map`;
+    - `Future.onAwait` (the future holds `done`), `onCancel` (the resolver holds its callback),
+      `Resolver.of` (its callback), `Resolver.at` (the resolver it decides).
+
+    `WeakRef`, `Instance` and `_Call` declare nothing: they hold nothing.
+  - **On a field,** `@Holds<…>` replaces what the analysis infers it holds, and `@Holds` holds
+    nothing.
+    - It is for a pattern the analysis can't prove, such as fanout's chain of slots: one
+      `Slot.create` site makes every link's `next`, so the abstract slot holds itself.
+    - Any code may write it, std, packages and programs alike. It is the language's one unchecked
+      declaration.
+    - A wrong one hides a real cycle. A disposable it hides is then never disposed: a lease is never
+      released, and a call is never stopped.
+    - Each one in std has a test that its holdings are let go of. For fanout, that is the chain
+      behind the slowest subscriber.
+- **A wait's case chain is not modelled:** its case resolver, and the at-resolvers deciding it. They
+  are pending only while their wait is, and a resolver that is no longer pending holds nothing. The
+  waiting call reaches its own future only through what its arguments, captures or top-level cells
+  reach, which the analysis models. Holds declared to or from them are dropped.
+- **Incremental.** Each function body's constraints are a checker entry (incremental-checking.md), so
+  an edit recomputes one body's, and an equal result skips the solve. The solve covers the whole
+  program, std included, from its own modules' bodies; a generic body is analysed once per
+  instantiation reached. It may skip any place whose declared type can't reach a disposable, such
+  as a sendable type.
 
 ## The rule (L2)
 
-- **Reach.** A type reaches every type a value of it may hold at any depth, through:
-  - fields, elements and variants;
-  - a handle's contents;
-  - the type parameters an extern declares it holds (marked as variance is; `WeakRef<T>` and `Instance<T>` hold nothing);
-  - holding sets.
-- **Held arguments.** An extern declares which of its parameters a call makes another argument hold: `Future`'s `onAwait` makes `self` hold `done`, and `onCancel` makes `self` hold `callback`. At the call, the held argument must not reach its holder's type, compared with holding sets ignored: the holder's type at the call can be wider than the place that keeps it (`const f: Future<Int, "live"> = s->sub`).
-- **Rule:** a tracked handle type must not reach itself, meaning any type it fits. Since unknown reaches anything, a tracked handle can't hold an unknown holding.
-  - It is checked where a handle type is declared, and where a generic one is instantiated.
-  - Inside a generic body, a handle type over a parameter, or a held argument of a parameter's type, becomes a requirement that every call meets with its type arguments, as kinds and sendability do (`call-kinds.ts`).
-- **Why stores need no check of their own:**
-  - Construction can't close a cycle.
-  - A mutation stores a value whose type fits the declared place. Inside a tracked handle, that place's type bounds what the value reaches.
-  - Every runtime-made edge is in a type, or is a held argument checked at its call, except a pending case resolver's (Resolver edges). Those are rooted by the waiting call, and go when the resolver is resolved or cancelled, which its call stopping does.
+- **Error:** a disposable object reached from a cycle of holds that contains a mutation. In graph
+  terms: a strongly connected component with a mutation edge inside it, and every disposable it
+  reaches. A cycle of construction holds only is objects merged by the abstraction (a list built in
+  a loop), never a real one.
+- **Where:**
+  - One diagnostic per disposable's creation site. When that site is in std or a package, it goes
+    on every call in the program's own code that leads to it.
+  - The message names the cycle starting from its first site, in module-then-position order, so a
+    report never depends on what was checked first.
+  - Every module's check reads the reports entry. The editor therefore shows a report in its own
+    module, whichever module was edited.
 - **What it catches:**
 
   | Kind | Example |
   |---|---|
-  | data | `Lease{partner: Lease?}` |
+  | data | `a->partner = b; b->partner = a`, where a partner holds a lease |
   | call | `task->running = _run(task, …)`; WeakMap's watch |
-  | closure | a `Deferred` whose `run` captures a cell holding it |
-  | resolver | a struct keeping a resolver whose callback reaches the struct; `s->sub.onAwait(Resolver.of(fn v: s->last = v))`; `r.onCancel(cb)` with `cb` reaching `r`'s type (`r`, or what holds it) |
-  | `any` | `Hub{subs: Array<any Listener>}` with a `Listener` holding the hub |
+  | closure | `f = fn: { use(lease); f() }` |
+  | resolver | `s->sub.onAwait(Resolver.of(fn v: s->last = v))`; `r.onCancel(cb)` with `cb` reaching `r` |
+  | `any` | `Hub{subs: Array<any Listener>}`, with a listener holding the hub |
+  | mock | a mock recording an argument that reaches the mock |
 
-- **A call reaching its own future by a path no type shows,** e.g. through `WeakRef.deref()` or a top-level cell, still runs on as a root. That is today's behaviour, not a new leak.
+- **Accepted:**
+  - a list or tree built by construction, and a recursive async function;
+  - a path through a `WeakRef`, a top-level cell, or a field declared `@Holds`.
 
-## Resolver edges (R1; wording in L0)
-
-Today a registration holds both its ends: a future holds its pending resolvers, and each resolver holds its future. That is a 2-cycle by construction (heap `#indexedHolds`, holdings `state.on`). Each edge becomes one-way, a change of behaviour of its own (R1). The other direction is a watch: an index entry, never a count.
-
-- **A wait's case resolver:**
-  - Its wait holds it while it is awaited. An awaitable may keep it too.
-  - It holds the futures it is registered on, and the at-resolvers registered on a future to decide it, as today. These only watch it.
-  - It holds its `onCancel` callbacks, as every resolver does.
-  - It lets go of them when it is resolved or cancelled. It is cancelled when its waiting call stops, whatever else holds it.
-- **A callback resolver** (`Resolver.of`):
-  - The future it is registered on holds it, as a held argument. It only watches that future.
-  - It holds its callback and its `onCancel` callbacks.
-- **An at-resolver** (`Resolver.at`) takes the direction of the resolver its chain ends in:
-  - in a case chain, `done` holds the at-resolvers, and they hold their futures;
-  - in a callback chain, the futures hold the at-resolvers, and they hold `done`.
-
-## Costs (L0 decides)
-
-- **`done` and `Awaitable`.** The resolver an awaitable is given is Disposable and its holding is unknown, so no awaitable can keep it in a handle. That makes §6's "keeps it to resolve later" inexpressible.
-  - Proposal: `Awaitable.onAwait` takes `done: Resolver<T, Self.Mode> holding Never`. An awaitable then keeps or registers `done` with no check. The case resolver meets it, and its pending edges are rooted by the waiting call (The rule).
-  - It is required, not optional: with `done` unknown, `futures.first` fails L2 (it registers `Resolver.at(done, …)` on a future), as does every awaitable that composes.
-  - Then a callback holding a tracked value can't be given to an awaitable's `onAwait`. It registers on a future instead: an async call awaiting the awaitable.
-- **`any T`.** Decided: `any T holding Never` is the usual bound, and `any T holding H` is used where something depends on it. No hidden generics. A tracked value can't become an `any T holding Never`; FormBuilder's views hold `any View` and `any Showable`.
-- **Recursive tracked types,** even acyclic chains (`fanout`).
-- **Held arguments are checked by type.** A callback can't be registered on a future, or added by `onCancel` to a resolver, whose type it reaches, even when what it reaches is a different one. Holding that through a `WeakRef` passes, when it is Disposable.
-- **A kept resolver's `onCancel` cleanup is rejected.** `self->waiters.push(done); done.onCancel(fn: self->waiters.remove(done))` reaches its holder's type, so §6's keeper loses the cleanup `onCancel` exists for, unless the keeper is Disposable and the callback holds it through a `WeakRef`.
-- **Every handle holding a function, future, resolver or trait object spells its holding,** since unknown reaches anything: `Deferred`, `Revertible`, `Mock`, the testing fakes, FormBuilder (`List.make` included), §7's `Shared` example, and instantiations such as `Shared<fn() -> Unit>` or `Inbox<fn() -> Unit>`.
+  A call that reaches its own future through one of these still runs on as a root, as it does
+  today.
+- **Precision beyond this** (per-call contexts for helpers that pass values through) is added only
+  if L1's dry run shows false errors that `@Holds` shouldn't cover, and is designed with the human.
 
 ## Contract between the lanes
 
-- **The flag.** L2 writes `tracked` on the Definition's type entries for shared structs and externs. The checker is its one home; the runtime only reads it.
+- **The flag.** L2 writes `tracked` on the Definition's type entries: some object of the type may
+  reach a disposable. The checker is its one home; the runtime only reads it.
 - **What the runtime counts:**
-  - every disposable: futures, slots, resolvers, resources, mocks;
-  - a cell, when its type is tracked;
-  - a composite value, when one of its direct parts is counted. Its one constructor decides that (R2).
+  - every disposable;
+  - a handle or cell whose type is tracked;
+  - a composite value, when one of its direct parts is counted. That is decided at its first hold
+    (R4), because natives build values with no instance at hand.
+- **Exact where it matters.** The rule keeps every object that reaches a disposable out of cycles,
+  so the counts of those objects are exact.
+  - An object of a tracked type may still sit in a cycle that reaches no disposable (`let f = fn:
+    f()`). It never reaches zero, which nothing observes: it disposes nothing, and the weakly keyed
+    count table lets it go with its last reference.
+  - R4's check is therefore: every zero is an orphan, and every orphan that reaches a disposable is
+    a zero.
 
-## Counted disposal (R3–R5)
+## Resolver edges (R1)
 
-- **Where counts live:**
-  - in a per-instance table keyed by object (a `WeakMap` for composite values);
-  - never on values or heap records, which in-memory snapshots share.
+Today a registration holds both its ends: a future holds its pending resolvers, and each resolver
+holds its future. That is a 2-cycle by construction (heap `#indexedHolds`, holdings `state.on`).
+Each edge becomes one-way, a behaviour change of its own. The other direction is a watch: an index
+entry, never a count.
 
-  A restore rebuilds the table in one pass over what it restores: decoding, or a resident's in-memory `take()`.
-- **Holders:**
-  - a register, a cell or slot, a composite, a capture: each when written or built over the value;
-  - a held argument's holder;
-  - the resolver edges above, as they say.
-- **At zero:** a disposable is disposed, then the object's direct parts are let go of. That is the free of the dead object's parts, never a walk of the live state. The rule makes counted objects acyclic, so counts are exact. R3 checks it against the collector before anything relies on it.
-- **Calls:** a call is a root until it finishes, and its frames take counts. A future whose count reaches zero stops its call, at its next `await` when it is running.
-- **Order (R5; wording in L0):** what one release lets go of is disposed last-held first.
-  - A block's variables go last-declared first.
-  - A composite's parts go last-first.
-  - A holder is disposed, and its dispose code run, before its parts are let go of. The parts are let go of depth-first.
-  - Zeroes made by a dispose's own code are handled before that dispose's siblings, as nested rounds are today.
+- **A wait's case resolver:**
+  - its wait holds it while it is awaited, and an awaitable may keep it too;
+  - it holds the futures it is registered on, the at-resolvers registered to decide it, and its
+    `onCancel` callbacks;
+  - it lets go of them once resolved or cancelled. It is cancelled when its waiting call stops, as
+    today.
+- **A callback resolver** (`Resolver.of`): the future it is registered on holds it. It holds its
+  callback and its `onCancel` callbacks.
+- **An at-resolver** takes the direction of the resolver its chain ends in:
+  - in a case chain, `done` holds the at-resolvers, and they hold their futures;
+  - in a callback chain, the futures hold the at-resolvers, and they hold `done`.
+- **A future disposed first** cancels the pending resolvers registered on it, found through the
+  resolvers index. With one-way edges they no longer share its last holder.
+- **Awaited edges** (a wait holding its case resolver, a resolver holding an at-resolver) change
+  when another object's status changes (`Waits.register`, `ResolverEndings.replace`). The holder
+  seam covers them.
+
+## Counted disposal (R2–R6)
+
+- **Where counts live:** in a per-instance table keyed weakly by object, never on values or heap
+  records, which in-memory snapshots share. Every restore rebuilds the table in one pass over what
+  it restores: a decode, or a resident's in-memory `take()`.
+- **Holders:** what `snapshot/holdings.ts` and `Heap.holds` hold today, their one home, with the
+  resolver edges above.
+- **At zero:**
+  - confirmed at the end of a step, not at the decrement, since several paths let go before they
+    hold again;
+  - an object confirmed at zero leaves the heap and its indexes: resolved futures, timers and cells
+    included;
+  - a disposable is disposed first, then the object's direct parts are let go of. That frees the
+    dead object's parts and never walks the live state.
+- **Calls:** a call is a root until it finishes, and its frames take counts. A future reaching zero
+  stops its call, at its next `await` when it is running, as disposing a call's future does today.
+- **Order (R6):** what one release lets go of is disposed last-held first:
+  - a block's variables go last-declared first, and a composite's parts last-first;
+  - a holder is disposed, its dispose code run, before its parts are let go of, depth-first;
+  - zeroes made by a dispose's own code are handled before that dispose's siblings.
 - **Kept:**
-  - per-kind disposal (`disposal.ts`);
-  - dispose code on the run stack (`disposal-runs.ts`);
+  - per-kind disposal (`disposal.ts`), and dispose code on the run stack (`disposal-runs.ts`);
   - weak watches, resolved when their target is disposed;
-  - `Slots.#owed`, unless a phase shows serving no longer waits on dispose code;
-  - an ending instance's recovery (`segment/collection.ts`, `collectEnding`): a disposal that panics
-    is let go of and the rest still run, the panic charged to the innermost running disposal. R4
-    rebuilds it over the queue of zeroes.
+  - `Slots.#owed`;
+  - an ending instance's recovery (`collectEnding`), rebuilt by R5 over the queue of zeroes.
 
-## Off the id heap (R6)
+## Off the id heap (R3, R7)
 
-- **Every handle refers to its object directly,** with a creation serial for `==`, hashing and snapshot ids. That settles Q51.
-- **The heap keeps only the scheduler's indexes:** executions, resolvers, waits, pending futures and timers, and weak watches. An object's membership changing over its life touches neither its handles nor its count.
-- **Live runs never walk.**
-- **An ista commit** writes what its roots reach in the one pass that encodes it, with the depth check made in that pass.
+- **Identity (R3):** every handle refers to its object directly, with a creation serial for `==`,
+  hashing, snapshot ids and the creation order the scheduler reads (`Heap.find`). That settles
+  Q51, and R4's count table is keyed by identity from the start.
+- **Only indexes (R7):** the heap keeps only the scheduler's indexes. An object's membership changing
+  over its life touches neither its handles nor its count. Live runs never walk, and an ista commit
+  writes what its roots reach in its encoding pass.
+- Handles' identity across a record's replacement, the in-memory and stored forms, and the full
+  index list: [tour-runtime.md](tour-runtime.md).
 
 ## Deleted
 
 | Phase | What goes |
 |---|---|
-| R4 | the collector's rounds (it becomes a queue of zeroes); `orphans.ts`; `handlesIn`/`summaryOf` for releases; `Heap.noteReleased`/`takeReleased`; the commit's invariant scan (P4) |
-| R6 | `holders.ts`; `Instance.dropUnheld`, `#kept`, `Heap.keepOnly`; holding rules in `snapshot/holdings.ts` that only served the walks; id handles |
+| R5 | the collector's rounds (it becomes a queue of zeroes); `orphans.ts`; `handlesIn`/`summaryOf` for releases; `Heap.noteReleased`/`takeReleased`; the commit's invariant scan (P4) |
+| R7 | `holders.ts`; `Instance.dropUnheld`, `#kept`, `Heap.keepOnly`; holding rules in `snapshot/holdings.ts` that only served the walks; id handles |
 
 ## Spec and docs
 
-L0 approves the wording. Each phase commits the sections it makes true, so the spec never describes behaviour the code lacks.
+Each phase commits the sections it makes true, so the spec never describes behaviour the code lacks.
 
-- §3.3, §3.14: holding and held arguments (L1, L2).
-- §6: resolver edges (R1), and `onAwait`'s `done` (L2).
-- §7:
-  - "A registration holds both its ends" becomes the one-way edges (R1).
-  - Cycles: the bullet goes, and the rule takes its place (L2).
-  - Holders by count (R4).
-  - "An async call's execution is held through its future" becomes: a call is a root until it finishes, and its future's last holder stops it (R4).
-  - Order (R5).
-- `docs/arch/definition.md`'s row "Rejected: Reference counts" is reversed (R4). Cycles are now excluded by types. Counts can't disagree with values because they are derived in memory, never stored, rebuilt on every restore, and checked against the collector in R3.
-- `docs/reuse/runtime-and-persistence.md`'s one-way rule narrows to "never persist counts" (R4).
+- §3.6 (externs) and §3.16 (annotations): `@Holds` (L1).
+- §7: the cycles bullet becomes the rule (L2). The one-way edges replace "a registration holds both
+  its ends" (R1), with §6's resolver wording. Holders by count, and a call as a root (R5). The
+  order (R6).
+- `docs/arch/architecture.md`:
+  - the checker's and lowering's entries, and "Phase contracts": instantiation closure and `any`
+    dispatch move to the checker (L0);
+  - the analysis unit, and its solve as an entry that every module's check reads (L1).
+- `docs/work/m6-m7/incremental-checking.md`: changed if module checks read the solve differently
+  (L1).
+- `docs/arch/definition.md`:
+  - the Holders rows for future, wait and resolver (R1);
+  - the "Disposable cycles" row (L2);
+  - the Rejected column of "What a snapshot stores", which rejects reference counts, is reversed
+    (R5). Counts are derived in memory, never stored, rebuilt on every restore, and checked against
+    the collector in R4.
+- `docs/reuse/runtime-and-persistence.md`'s one-way rule narrows to "never persist counts" (R5).

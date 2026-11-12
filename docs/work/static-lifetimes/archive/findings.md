@@ -1,10 +1,10 @@
 ---
-description: research behind the static-lifetimes plan — the checker units to build on, the lowering's release points, everything the runtime's reachability machinery feeds, the heap and handle representation, the corpus code that breaks the rule, the tests asserting disposal order, and measurements; read before implementing a static-lifetimes phase
+description: ARCHIVED (folded into tour-checker.md and tour-runtime.md, 2026-11-12) — research behind the static-lifetimes plan — the checker units to build on, the lowering's release points, everything the runtime's reachability machinery feeds, the heap and handle representation, the corpus code that breaks the rule, the tests asserting disposal order, and measurements; read before implementing a static-lifetimes phase
 owner: tech-lead
-status: active
+status: archived
 applies_to: checker, lowering, runtime lifetimes, stdlib
 last_verified: 2026-11-11
-last_updated: 2026-11-11
+last_updated: 2026-11-12
 tags: [lifetimes, disposal, research]
 ---
 
