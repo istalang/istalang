@@ -10,7 +10,7 @@ tags: [lifetimes, disposal, runtime, refcount, tour]
 
 # Static lifetimes: runtime tour
 
-Read against `main` at `41160c33`, and updated where R1 and R2 changed the code (their sections). Rules
+Read against `main` at `41160c33`, and updated where R1, R2 and R3 changed the code (their sections). Rules
 and model: [design.md](design.md) §3 and §9. Phases: [plan.md](plan.md). Paths are under
 `src/runtime/` unless they say otherwise.
 
@@ -20,23 +20,23 @@ and model: [design.md](design.md) §3 and §9. Phases: [plan.md](plan.md). Paths
 |---|---|---|
 | `snapshot/holdings.ts` | the one per-kind holding table (`kinds`, `futureStates`): values held, ids held, ids watched; `isRoot`, `keptFrame`, `frameValues`, `frameCells` | R1 edges; stays the table counts read |
 | `scheduler/instance/heap.ts` `Heap` | objects by id, a list per kind, 11 derived `indexes`; `holds` = holdings plus index edges (`#indexedHolds`, `#awaited`); `#write`, every change reported to the seam, index edges included (R2); ids are serials (`made`); `keepOnly` | R1, R2, R3, R4 |
-| `lifetimes/holder-writes.ts` `HolderWrites` | the one seam every holder write reports to (R2); today it notes releases for the collector (`takeReleased`) and keeps the losers flag | R2; R3 counts here |
+| `lifetimes/holder-writes.ts` `HolderWrites` | the one seam every holder write reports to (R2), and what the heap made and lost (R3); it counts (`counts.ts`), confirms zeroes at the step's end (`takeZeroes`), logs what was let go of for the oracle, and keeps the losers flag | R2, R3 |
+| `lifetimes/counts.ts` `Counts`, `countedIn` | each counted object's holders, composites holding a counted part counted once per holder; zero candidates | R3; R5 counts every composite |
 | `interpreter/registers.ts` | the only register writer, reporting each write (`FrameHeap.changed`); `raw-registers.ts` is its raw write | R2 |
 | `interpreter/machine.ts` | `newFrame`, `releaseFrame` (ascending registers), `currentClosure` | R2, R3 |
-| `scheduler/instance/index.ts` `Instance` | `frameHeap`; the constructor every start and restore goes through; `persisted`/`#kept` (walk plus the invariant scan); `dropUnheld`; `continueFrom`; `stop`; `owed`, `keptFrames` | R3, R4 |
-| `lifetimes/collector.ts` | rounds: `disposablesFrom` → `heldUnlessAll` → `readyOrphans`, `#keptBy`, waiting on a disposal's code | R3 deletes the search; the rounds' order stays |
-| `lifetimes/holders.ts` | `heldFrom` (with the commit's depth), `heldUnlessAll`, `walkHolds`, `holdsOf` | R3, R4 |
-| `lifetimes/orphans.ts` | strongly connected components, cover, descending id | R3 deletes it |
+| `scheduler/instance/index.ts` `Instance` | `frameHeap`; the constructor every start and restore goes through, where the counts are built; `persisted`/`#kept` (the walk, and a check that no zero went uncollected); `dropUnheld`; `continueFrom`; `stop`; `owed`, `keptFrames` | R3, R4 |
+| `lifetimes/collector.ts` | rounds of the disposables that reached zero, newest first, the rest that did gone at once; waiting on a disposal's code | R3 |
+| `lifetimes/holders.ts` | `heldFrom` (with the commit's depth), `holdsOf`: only a commit and a live run's `dropUnheld` walk (cruiser `runtime-held-walk`) | R4 |
 | `lifetimes/oracle.test-kit.ts` | the oracle (R1), a `HeapCheck` | test-only, for good |
 | `lifetimes/native-audit.test-kit.ts` | the native audit (C3 step 0), `HeapCheck.native`: edges natives add, against the std's `Keeps` | test-only, for good |
 | `lifetimes/disposal.ts` | per kind: `disposable` and `dispose`; `readiedBy`; the dropped-resolver panic (`isDropped`); a future cancels what is registered on it (R1) | kept |
-| `scheduler/segment/collection.ts` `SegmentCollection` | `collected` after every step, `collectFully`, `collectEnding` (panic recovery), `#roots` | R3 |
+| `scheduler/segment/collection.ts` `SegmentCollection` | `collected` after every step, `collectFully`, `collectEnding` (panic recovery) | R3 |
 | `scheduler/segment/disposal-runs.ts` | a disposal's code as a frame on top of the running execution, or on a carrier (id −1) when nothing runs; a disposed call's cleanup | kept |
 | `scheduler/instance/waits/` | `Waits`, `ResolverEndings`, `rootOf`, `pendingCases`, `settleOrder` | R1 |
 | `scheduler/instance/weak-side.ts` | one `weakRef` per referent, found by the `weakRefs` index; watches | kept |
 | `scheduler/instance/slots.ts` | `#owed`/`serveOwed`: serving waits on a decided `select`'s losers being collected | kept |
 | `scheduler/live-run.ts`, `scheduler/resident.ts` | `dropUnheld` after each live segment; `take` returns the held instance, or restores | R3, R4 |
-| `definition/values/values.ts` | `handlesIn`, `depthOf` over memoized `summaries`; `withChildValues` | releases stop using `handlesIn` in R3; `depthOf` stays for commits; R5 |
+| `definition/values/values.ts` | `handlesIn`, `depthOf` over memoized `summaries`; `withChildValues` | counting reads `handlesIn` only to skip a value holding no handle at its first hold; `depthOf` stays for commits; R5 |
 | `stdlib/prelude/arrays.ts`, `prelude/maps.ts`, `foundation/language/values.ts`, `interpreter/parts.ts` | every update of a composite value copies (below) | R5 |
 
 ## Holding today
@@ -45,22 +45,17 @@ and model: [design.md](design.md) §3 and §9. Phases: [plan.md](plan.md). Paths
   indexes. `docs/arch/definition.md`'s Holders table is its prose.
   - The collector, the commit and the snapshot's closure check (`snapshot.ts`, through
     `referencedObjects`) read nothing else.
-- **Roots.**
-  - The `isRoot` kinds are execution, run, answer, outcome and context constant.
-  - `SegmentCollection.#roots` lists, in this order:
-    1. the running frames, innermost first;
-    2. every other execution on the heap, waiting or ready;
-    3. `Instance.keptFrames` (runs and constants, as frames);
-    4. `RunStack.callFutures` (each running call's own future);
-    5. `Instance.owed` (the futures answers and the outcome hold).
-  - The collector adds its waiting rounds to these.
+- **Roots.** The `isRoot` kinds are execution, run, answer, outcome and context constant. They are
+  never counted; their holds are. A commit walks from them (`Instance.#kept`): every execution's
+  frames, `Instance.keptFrames` (runs and constants, as frames) and `Instance.owed` (the futures
+  answers and the outcome hold).
 - **A call future holds nothing** (`futureStates.call`), and an execution only watches its own future.
   The only link from a future to its call is the `executions` index, which `disposeFuture` reads to
   stop the call (`lifetimes/disposal.ts`).
 - **So a call that holds its own future is never disposed.** For example, its `Shared` cell holds
   the future, and the caller lets go of it:
-  - Collection finds the future held from the waiting execution's frames (a root), so no round
-    starts.
+  - The future keeps a holder in the waiting execution's frames (a root), so it never reaches
+    zero.
   - The call ends only if it returns, or when the instance ends, which stops it with no cleanup.
   - This breaks spec §7, "An async call's execution is held through its future". The analysis
     rejects the program (design.md §2), so R1 keeps executions as roots.
@@ -86,32 +81,39 @@ Since R1, each registration holds one way, as its chain's root says (`isHeldFrom
 
 ## Release and collection today
 
-- **What is noted** (since R2, through the seam, `HolderWrites`; R2 below): whatever a holder
-  write reports the holder held and holds no more.
+Since R3 (below), counts decide.
+
+- **What is counted** (`counts.ts` `countedIn`): every non-root object but weak references, a cell
+  or resource only when its type entry is `counted` or declares a disposal. A composite value
+  holding a counted object, at any depth, is a node: counted once per holder, and holding each of
+  its parts once, decided at its first hold.
+- **What is reported** (R2's seam, `HolderWrites`): each holder write's before and after.
   - Registers: every write, clear and frame release (`registers.ts`). A reference holds its cell.
   - Heap objects: every add, replace, remove and `keepOnly` drop (`Heap.#write`): the object's own
-    holds, index edges included, and the index edges of the objects that read it. An execution
-    reports nothing of its own: `stop` or `landReturn` has already released its frames.
-  - The run stack: a running call's own future, on every pop (`RunStack`).
+    holds, index edges included, and the index edges of the objects that read it; and which objects
+    were made and are gone. An execution reports nothing of its own: `stop` or `landReturn` has
+    already released its frames.
+  - The run stack: a running call's own future, on every push and pop (`RunStack`).
   - A decided `select`'s losers set the losers flag (`noteLosersReleased`).
 - **After every step,** `SegmentRunner.#drive` calls `SegmentCollection.collected()`:
-  - It runs `takeReleased`.
-  - It runs `Collector.collect` only when something was released or the collector is stalled.
+  - It gives the oracle what was let go of or written into (`takeLetGo`, `Heap.takeWritten`).
+  - It runs `Collector.collect`, which takes the step's zeroes (`takeZeroes`, which clears the
+    losers flag).
   - It returns early while a disposal's code still has to run.
   - It loops again only while `Slots.serveOwed` served something.
 - **A round:**
-  1. `disposablesFrom(released)`.
-  2. `heldUnlessAll(roots, reached)`, which stops once every one is found held.
-  3. `readyOrphans`, newest first.
+  1. The zeroes: a counted object whose count dropped to zero during the step and is zero at its
+     end. Those a waiting round has queued are left to it.
+  2. Each one whose disposal does nothing is removed at once (`heap.remove`), which lets go of what
+     it held: more zeroes, taken until none is left.
+  3. The disposables among them, newest first, are the round.
   4. Per object, `dispose`. Code runs on the run stack and the round waits for it, then `returned`
      → `#gone` (`heap.remove`, `weak.disposed`).
-  5. When the queue is empty, a new round starts from `takeReleased`.
-
-  `#keptBy` skips, for this round, whatever the runs a disposal readies (the `onCancel` callbacks)
-  will hold.
-- **Left until `keepOnly`:** unheld objects whose disposal does nothing, such as resolved futures,
-  timers, plain cells and weak references. A commit's `continueFrom` or a live `dropUnheld` removes
-  them.
+  5. When the queue is empty, a new round starts from the zeroes the disposals made.
+- **Left until `keepOnly`:** what isn't counted (plain cells of an uncounted type, weak references)
+  and a cycle reaching no disposable, which never reaches zero. A commit's `continueFrom` or a live
+  `dropUnheld` removes them. A commit first checks that no disposable reached zero uncollected
+  (`HolderWrites.unconfirmed`).
 
 ## Values: every update copies
 
@@ -175,8 +177,9 @@ Landed. What R1 left, for the phases after it:
   - **Its seam** is `HeapCheck` (`scheduler/loaded-definition.ts`). It rides on `LoadedDefinition`
     and comes in through `RuntimeSeams.heapCheck`, `TestRunOptions` and `WorldSeams`, and
     `CliEnvironment.heapCheck`. `SegmentCollection.collected` calls its `changed` after every
-    instruction that let go of or wrote into something, before collecting, with those ids: the
-    released ones and `Heap.takeWritten`'s, every object replaced. `NativeCalls` calls its `native`
+    step that let go of or wrote into something, before collecting, with those ids: the counted
+    objects let go of (`HolderWrites.takeLetGo`, since R3) and `Heap.takeWritten`'s, every object
+    replaced. `NativeCalls` calls its `native`
     as an extern's native starts, and what it returns once the native returned: the native audit's
     hook (C3 step 0, `lifetimes/native-audit.test-kit.ts`; design.md §6.6). A host passes
     `noHeapCheck`.
@@ -189,17 +192,17 @@ Landed. What R1 left, for the phases after it:
     - a wait holds the futures its chain is registered on, what its waiter awaits.
   - **Its disposables are the language's** (spec §7): pending futures and resolvers, slots, values
     whose type declares `dispose`, and mocks. They are not `disposal.ts`'s `isDisposable`, which
-    says whether the collector must act at once and leaves an unwatched slot or timer to the
-    commit. Counting must reach every disposable.
+    says whether reaching zero runs a disposal or only removes the object. Counting reaches every
+    disposable (`countedIn`).
   - **What it walks:** only what the changed ids reach. A cycle closes only by a write into one of
     its objects (design.md §2), and one lost to counting is one something let go of. Walking the
     whole heap timed out `collections/deep-elements.ista`. No program yet closes a cycle releasing
     nothing that reaches it, since statements release their temporaries; the write log keeps the
     check independent of that, which C5's elision may change.
   - **Where it is on:** by default in `testRuntime`, `reportsOf` and `cli.test-kit`'s `ista`.
-    `oracle` throws at the first cycle. `cycleWatch()` records instead, for the oracle's own tests,
-    whose cyclic programs C3 rejects, so they compile through `compile.test-kit.ts`'s
-    `textDespiteCycles`, which lets only cycle errors through. `wake.bench.ts` turns it off.
+    `oracle` throws at the first cycle. Its own tests' cyclic programs, which C3 rejects, compile
+    through `compile.test-kit.ts`'s `textDespiteCycles`, which lets only cycle errors through, and
+    it stops them (R3: counting never disposes a cycle). `wake.bench.ts` turns it off.
   - **Runners:** the corpus through `wake.sweep`, `resident.sweep`, `run.sweep` (`ista run`) and
     the fmt sweep; the std suites through `cli/commands/test.sweep.test.ts` (`ista test`, one
     module at a time); and every runtime test on `testRuntime` or `reportsOf`. The CLI's
@@ -249,12 +252,10 @@ Landed. What R2 left, for the phases after it:
     object may hold a newer one.
   - **The run stack:** `RunStack`'s `push`, `pop` and `drive` report the running calls' futures.
     `SegmentRunner.wait`'s note went with that.
-  - **Today's consumer is tracing:** `changed` notes what the holder held and holds no more
-    (`takeReleased`). The collector's `noteReleased` puts back what a round skipped, the losers
-    flag lives there, and `keepOnly` forgets the notes (`settled`).
+  - **Its consumer is counting** since R3 (below); tracing read it before.
   - **Exact:** `heap.test.ts`, "heap holder writes", tallies the reports over random changes and
     commits and checks them against `Heap.holds` of every object, and that each id reported is in
-    the heap. R3's shadow counts are that tally, with the registers and the run stack added.
+    the heap; since R3, the counts against that tally too.
   - **Not reported:** a composite's parts. A composite is counted at its first hold, when a register
     or an object reports holding it (design.md §9.1), so R3 does that in `HolderWrites`. The
     collector's waiting rounds hold as roots of their own, which R3 deletes.
@@ -275,95 +276,80 @@ Landed. What R2 left, for the phases after it:
 
 ## R3 Counting
 
-In this order: shadow counts beside tracing, then the switch, then order under counts.
+Landed. What R3 left, for the phases after it:
 
-### Shadow counts
-
-- **The one rebuild site is the `Instance` constructor.** `Instance.start` and `Instance.restore`
-  both go through it.
-  - `Resident.take` returns the held instance, the one that committed and continued through
-    `continueFrom`, whenever one is held. It restores only when nothing is held.
-  - crashEveryAwait's rerun is usually the held instance plus one restore, and those two share
-    nothing.
-  - Two restores, or two starts of one unstarted snapshot, happen only when nothing is held: a fresh
-    resident or runtime, after `frozenAt`, or a segment started while another runs. Those share
-    objects (`live-objects.ts`).
-- **What the table survives:** `continueFrom` keeps it.
-  - `keepOnly` drops what nothing holds, and that may include counted objects: one of a counted
-    type on a cycle that reaches no disposable never reaches zero (design.md §1).
-  - So everything `keepOnly` drops is uncounted or reaches no disposable. `keepOnly` reports its
-    drops through the seam (R2), so the table forgets those.
-- **What is counted** (design.md §9.1):
-  - every disposable;
-  - a shared struct's cell or a `_Cell` whose type entry is `counted` (written by C3, only read here);
-  - a composite value with a counted direct part, decided at its first hold, in `HolderWrites`
-    (R2's seam).
-- **The check:** every zero is an orphan, and every orphan that reaches a disposable is a zero.
-  - Compare each round's `readyOrphans` with the counts' zeroes for the same step.
-  - Counted objects whose disposal does nothing are left to `keepOnly` today, so compare those
-    against the commit's `#kept`.
-  - An object of a counted type on a cycle that reaches no disposable (`let f = fn: f()`) is an
-    orphan that never reaches zero. That is legal, and the acceptance includes one.
-- **Runners:** `scheduler/wake.sweep.test.ts`, `scheduler/resident.sweep.test.ts` and
-  `src/cli/commands/run.sweep.test.ts`.
-
-### Switch
-
-- **What goes:**
-  - `HolderWrites`' tracing: what `changed` notes, `takeReleased` and `noteReleased`;
-  - the orphan search: `disposablesFrom`, `heldUnlessAll`, `readyOrphans` and `#keptBy`;
-  - `#kept`'s invariant scan;
-  - `lifetimes/holders.test.ts`, `orphans.test.ts` and `lifetimes.test-kit.ts`, rewritten or
-    deleted. The oracle keeps its own copy of the component search.
-  - Guard: dependency-cruiser bans release paths from importing the walks (`handlesIn`,
-    `heldFrom`).
-- **What stays:**
-  - per-kind disposal;
-  - `DisposalRuns`;
-  - `collectEnding`'s attribution;
-  - `weak.disposed` after the object is gone;
-  - `Slots.#owed`. `takeReleased` clears its flag (`HolderWrites`) today, so it needs a new
-    clearing point.
-- **At zero, every counted object leaves the heap and its indexes.** Its kind's disposal runs only
-  where `isDisposable` says it does something. Otherwise a pending timer nothing holds stays in the
-  `pending` index and wakes a live run (`live-run.test.ts`, "lets go of a timer nothing waits on any
-  more…").
-- **Confirm zeroes at the step's end, not at the decrement.** Several paths let go before they hold
-  again:
-  - `ResolverEndings.end` replaces the resolver before it readies the `onCancel` runs;
-  - `ReadyQueue.next` removes a run before `RunCalls.start` writes its captures;
-  - `withPart` rebuilds a value along a path, sharing the parts off it.
-
-  Confirming at the step's end also deletes `#keptBy`: the readied run holds what it calls with
-  before the zeroes are confirmed.
-- **Ordered as today:** descending id within a batch, holders before what they hold.
-- **Until R4,** `persisted` keeps `heldFrom` for the commit's objects and depth, and live runs keep
-  `dropUnheld`.
-
-### Order
-
-- **Where order is decided today:**
-  - The `release` handler (`interpreter/instructions.ts`) clears in the instruction's list order.
-    Lowering writes the lists:
-    - a block's end lists `scope.declared`
-      (`compiler/lowering/constructs/statements/scopes.ts`);
-    - statement and header ends list their temporaries;
-    - a guarded scope's failing path lists the declared variables, then the temporaries;
-    - exits list the blocks left, innermost first (`variables.ts`);
-    - `drop` lists one register;
-    - `calls/waits.ts` releases `done`.
-  - `releaseFrame` clears registers in ascending order.
-  - `Instance.stop` releases frames innermost first.
-  - `keep` builds an array in keep order.
-  - `#letGoOfTheRest` releases answers, then executions, then constants last.
-  - `ContextConstants.release` releases the last one made first.
-- **Tests:**
-  - corpus `holders/`: `dispose`, `defer`, `function-holdings`, `hold-scopes`, `lifetimes` and
-    `exits`; and `combined/scope-teardown`;
-  - `lifetimes/orphans.test.ts`;
-  - `testing/mocks.test.ts`, "are released with their holder…";
-  - `on-cancel.test.ts`'s B76 pair. Its program is a cycle (`d2->r = r`, with `r`'s callback reading
-    `d2`), so C3 makes it invalid.
+- **Counts** are `lifetimes/counts.ts` `Counts`, one per instance inside `HolderWrites`, fed by R2's
+  seam only. Each report holds the new before letting go of the old, so no count passes through
+  zero within one write.
+  - **What is counted** is `countedIn(types)`: every object but the roots and weak references, a
+    cell or resource only when its type entry is `counted` (C3) or declares a disposal. A future,
+    a slot, a wait, a resolver and a mock are counted whatever they hold: each may hold a disposable,
+    and an uncounted holder would keep what it holds above zero until the commit.
+  - **Composites** (design.md §9.1): a value holding a counted object at any depth is a node,
+    keyed by identity in the instance's own `WeakMap`, counted once per holder and holding each of
+    its parts once. Whether it is one is decided at its first hold, by its parts, and kept for good;
+    `handlesIn`'s memoized summary skips a value holding no handle at all. Releases never walk
+    beyond a node whose count stays above zero. R5 extends the nodes to every composite.
+  - **Made and gone:** `Heap.#write` reports each object made (count 0, a zero candidate) before
+    any report, and each gone after them all, which forgets its count. A restore builds the counts
+    through the same reports, in the `Instance` constructor, so nothing is persisted or rebuilt
+    apart.
+- **Zeroes are confirmed at the step's end** (`HolderWrites.takeZeroes`, which `Collector.collect`
+  calls from `SegmentCollection.collected` after every step): the candidates whose count is still
+  zero. This is also where the losers flag clears (`Slots.#owed`'s clearing point).
+- **A round** (`collector.ts`): the zeroes not queued by a waiting round; each one whose disposal does
+  nothing is removed at once, its releases making more zeroes, taken until none is left; the
+  disposables among them, newest first, are the round. A holder keeps what it holds above zero
+  until its disposal is done, so holders go before what they hold, and a disposable held only
+  through a plain cell is disposed in the cell's round. A disposal's releases start the next round.
+  - **Gone at zero:** a resolved future, a timer nothing is registered on, a slot nothing watches,
+    a plain counted cell. So a pending timer nothing holds no longer wakes a live run once a step
+    ends (`live-run.test.ts`), and `dropUnheld` is left with what isn't counted.
+  - **`#keptBy` went:** a readied `onCancel` run holds what it calls with before the resolver lets
+    go of it, so none of it reaches zero.
+  - **A queued object** a waiting round has yet to dispose is that round's, as before: a new zero
+    of it is left to it, and it is disposed as queued.
+- **What went:** `orphans.ts` (and its test, replaced by `collector.test.ts`'s properties: rounds,
+  holders before what they hold, newest first), the collector's `disposablesFrom`, `heldUnlessAll`,
+  `#keptBy` and `#roots`, `SegmentCollection.#roots`, `HolderWrites`' release notes, and `#kept`'s
+  scan of the whole heap. A commit checks instead that no disposable reached zero uncollected
+  (`HolderWrites.unconfirmed`), at the cost of the unconfirmed zeroes. `readiedBy` went with
+  `#keptBy`.
+- **Guard:** dependency-cruiser `runtime-held-walk` lets only `Instance` (a commit, a live run's
+  `dropUnheld`) and its test import `lifetimes/holders.ts`. `handlesIn` lives in `values.ts` with
+  what counting needs, so no rule can ban it.
+- **The oracle** gets the counted objects let go of (`HolderWrites.takeLetGo`), each step, besides
+  what was written: a cycle can close as a call suspends, which writes into nothing. Its own tests
+  now run under it and expect it to stop their cyclic programs (`cycleWatch` went): counting leaks a
+  cycle, so a commit may then name an object it doesn't persist, and what such a program does
+  after is no one's to say.
+- **The shadow check** ran counts beside tracing, the collector handing each round's two answers
+  to `HeapCheck.counted`, over the runtime suites and every runner below; they agreed on every
+  round but the oracle's own cyclic programs. It went with tracing at the switch (commits
+  `c41a4c40`, then `cfb0ba2a`).
+- **Order:** every place below decides the order of releases within a step, and counting batches
+  them per step as tracing did, newest first, so each kept its order; the tests listed pass
+  unchanged.
+  - The `release` handler (`interpreter/instructions.ts`) clears in the instruction's list order,
+    which lowering writes: a block's end lists `scope.declared`
+    (`compiler/lowering/constructs/statements/scopes.ts`); statement and header ends their
+    temporaries; a guarded scope's failing path the declared variables, then the temporaries;
+    exits the blocks left, innermost first (`variables.ts`); `drop` one register; `calls/waits.ts`
+    releases `done`.
+  - `releaseFrame` clears registers in ascending order; `Instance.stop` releases frames innermost
+    first; `keep` builds an array in keep order; `#letGoOfTheRest` releases answers, then
+    executions, then constants last; `ContextConstants.release` releases the last one made first.
+  - Tests: corpus `holders/` (`dispose`, `defer`, `function-holdings`, `hold-scopes`, `lifetimes`,
+    `exits`) and `combined/scope-teardown`; `testing/mocks.test.ts`, "are released with their
+    holder…"; `lifetimes/collector.test.ts`.
+- **`let f = fn: f()`:** its cell is counted (a function value may hold anything until C4) and
+  never reaches zero; the commit drops it (`counts.test.ts`, and corpus
+  `lifetimes/structures.ista`'s `countedDown`, run by every runner).
+- **Measured** (`wake.bench.ts`, means of three runs, against `6eedb318`): 2,000 leases let go of
+  beside 500 held, 766 ms → 170 ms; 400 workers on one inbox, 19.0 s → 12.3 s. FormBuilder's live
+  change is measured once it compiles (C4).
+- **For R4:** `persisted` keeps `heldFrom` for the commit's objects and depth, and live runs keep
+  `dropUnheld`, now for uncounted objects only.
 
 ## R4 Only indexes
 
@@ -437,7 +423,7 @@ In this order: shadow counts beside tracing, then the switch, then order under c
 ## Tests
 
 - **Order and cycles:**
-  - `lifetimes/orphans.test.ts`;
+  - `lifetimes/collector.test.ts`, `lifetimes/counts.test.ts`;
   - corpus `holders/` (`dispose`, `defer`, `function-holdings`, `hold-scopes`, `lifetimes`,
     `exits`) and `combined/scope-teardown`;
   - `testing/mocks.test.ts`, "are released with their holder…".

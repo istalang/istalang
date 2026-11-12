@@ -44,8 +44,8 @@ rules are in [design.md](design.md) and the phases in [plan.md](plan.md). The un
     (`types.ts`) and type `match`es (`type-matches.ts`). Its nodes are type parameters.
   - `endlessEdgesFrom` is `edgesReachedFrom` (`src/foundation/structures/reachable.ts`) plus
     `stronglyConnected` (`src/foundation/structures/strongly-connected.ts`, iterative Tarjan).
-  - `stronglyConnected` is also used by `types/variance/variance.ts` and
-    `src/runtime/lifetimes/orphans.ts`. Recursive groups of summaries reuse it.
+  - `stronglyConnected` is also used by `types/variance/variance.ts` and the oracle
+    (`src/runtime/lifetimes/oracle.test-kit.ts`). Recursive groups of summaries reuse it.
 - **How a module's diagnostics are found.** They are whatever was reported by the entries its check
   read, transitively (`constructs/declarations/module-checks.ts`).
   - `ModuleRules` names the program-wide units a module's check runs (`expansion`,

@@ -550,12 +550,15 @@ The design follows the expansion graph's pattern (`rules/expansion/functions.ts`
 
 ### 9.1 What is counted
 
-- every disposable;
+- every disposable, and every other heap object that may hold one: a future, a slot, a wait, a
+  resolver, a mock, whatever it holds now. Roots, which are kept for their own sake, and weak
+  references, which hold nothing, are not;
 - a shared struct's cell or a `_Cell` whose Definition type entry is `counted`: the handle types
   that reach a disposable. C3 writes the flag from `reachesDisposable`, and the runtime only reads
   it;
 - a composite value with a counted direct part, decided at its first hold, because natives build
-  values with no instance at hand (`tour-runtime.md`, R2).
+  values with no instance at hand (`tour-runtime.md`, R2), and kept for good, as a value never
+  changes. It is counted once per holder and holds each of its parts once.
 
 Holders are registers, heap objects' fields, and composites' parts. Every holder write goes through
 one seam (R2).
@@ -572,9 +575,11 @@ one seam (R2).
     is what they hold at an `await` (§5.3).
   - It stays in the test runtime for good: it is the ground truth for the analysis's soundness and
     for the IR agreeing with lowering.
-- **Shadow counts (R3):** counts are kept beside tracing, and each step checks:
-  - every zero is an orphan;
-  - every orphan that reaches a disposable is a zero.
+- **Shadow counts (R3, gone with tracing):** counts were kept beside tracing, and each round
+  checked that the disposables reaching zero were the ones a walk found unheld and ready. They
+  agreed on every round of the runtime suites, the corpus and the std suites.
+- **A commit** checks that no disposable reached zero uncollected, over the unconfirmed zeroes
+  alone (R3), in place of a scan of the whole heap.
 
 ### 9.3 Identity off the id heap
 
@@ -593,7 +598,8 @@ one seam (R2).
 - **Order stays §7's:** the disposables that reach zero at one point are disposed newest first, as a
   round, holders before what they hold. A disposal's releases start the next round.
 - **At zero,** a counted object leaves the heap and its indexes, and its kind's disposal runs where
-  it does something.
+  it does something. One whose disposal does nothing leaves at once, so what it held reaches zero
+  in the same round.
 - **Counts are rebuilt when an instance is made,** from start or restore, and never persisted.
 
 ### 9.5 Only indexes
