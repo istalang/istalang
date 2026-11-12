@@ -122,8 +122,8 @@ The node kinds are in `src/compiler/syntax/expressions/index.ts` and `syntax/sta
     call's arguments in its parameters' order (`ValueCallMade.binding`); a deferred call computes
     now by value and makes a closure of a function making the call later. A chain's step target is
     fitted after `?.` unwraps it (`stepTarget`). A struct literal evaluates its items in the order
-    written, then takes its fields in declaration order (`sourcesOf`); one leaving fields to their
-    defaults is the call of its fields function.
+    written, then takes its fields in declaration order (`sourcesOf`), a default computed by a
+    call of its fields function on the fields before it, and makes the struct, a handle for `new`.
   - A field loop is a loop whose each pass may follow any, read in that pass's view (`inView`).
   - Decided conditions (`decidedOf`) and ruled-out bodies (`isRuledOut`) shape the graph; code no
     path reaches is kept in blocks nothing jumps to.
