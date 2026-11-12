@@ -1,10 +1,10 @@
 ---
-description: plan for static lifetimes — process, five checker phases (C1 flow IR and witness closing, C2 annotations, C3 the analysis, C4 the editor's cost, C5 lowering on the IR, dropped) and five runtime phases (R1 edges and oracle, R2 seams and identity, R3 counting, R4 only indexes, R5 in-place values), with scope, acceptance, order, shared surfaces and diagnostic ranges; read before forking, planning or examining a static-lifetimes phase
+description: plan for static lifetimes — process, five checker phases (C1 flow IR and witness closing, C2 annotations, C3 the analysis, C4 the editor's cost, C5 lowering on the IR, dropped) and five runtime phases (R1 edges and oracle, R2 seams and identity, R3 counting, R4 amortized walks, R5 in-place values), with scope, acceptance, order, shared surfaces and diagnostic ranges; read before forking, planning or examining a static-lifetimes phase
 owner: tech-lead
 status: proposed
 applies_to: istalang
 last_verified: 2026-11-12
-last_updated: 2026-11-12
+last_updated: 2026-11-13
 tags: [plan, lifetimes, disposal, checker, flow, runtime, refcount]
 ---
 
@@ -56,7 +56,7 @@ whole. Everything smaller rides inside the phase that needs it, as its own commi
 | **R1** Edges and the oracle (behavioural) | Registration edges by the chain's root, and `disposeFuture` cancelling what is registered on the future (`tour-runtime.md`, R1). The test-only oracle (`design.md` §9.2) | The spec examples, `test/corpus/holders/` and `weak-side/`, the std suites and the resolver tests give the same outcomes. The oracle passes over all of them, except the cases C3 turns invalid, which it flags. `wake.bench.ts` within noise |
 | **R2** Seams and identity (structural; reviewer only) | One seam for every holder write (`tour-runtime.md`, R2). A counted handle's identity off the id heap: a serial keeping creation order, never reused. `asHostValue` and `leaving` become one walk. Q51 settled | No behaviour change. Creation order is unchanged for `Heap.find`, `settleOrder`, losers and `reachingMock`. A dependency-cruiser rule lets only the seam import the raw writers |
 | **R3** Counting (behavioural) | In this order: 1. Shadow counts beside tracing, keyed by R2's identity, rebuilt in the `Instance` constructor, counting what `design.md` §9.1 says, from C3's `counted` flag. 2. The switch: counts decide disposal; the orphan search, release noting and `#kept`'s scan go; zeroes are confirmed at the step's end. 3. Order under counts, against every place order is decided today (`tour-runtime.md`, R3) | The shadow check passes over the runners before the switch. After it, the full suite and corpus pass in the same disposal order, including the order tests `tour-runtime.md` lists. A `let f = fn: f()` case is an orphan that never reaches zero. `wake.bench.ts` shows collection cost below tracing on a release-heavy fixture. A live change on a fixture of FormBuilder's shape gets closer to the 26 ms ceiling from 48 ms: FormBuilder itself compiles only once rewritten (decided 2026-11-12) |
-| **R4** Only indexes (behavioural) | The heap keeps indexes, and live paths hold objects directly. The commit walks once, for objects and depth. A weak reference is kept alive by its referent (`tour-runtime.md`, R4) | Live paths can't import a walk (dependency-cruiser). An uncounted cell is reclaimed (a finalization test). Commits are byte-identical |
+| **R4** Amortized walks (behavioural) | A live run walks for what nothing holds only once its heap has doubled since its last walk. The commit's walk finds the depth in the same pass. `Waits.abandon` goes. Decided 2026-11-13: the heap still keeps every object by id, as direct references would rewrite every handle and id field for memory nobody can observe (`tour-runtime.md`, R4) | A live run's walks cost O(1) amortized per object made (a test). Commits are byte-identical |
 | **R5** Unique values in place (behavioural) | Every composite node counted. A node held once and made by this instance is updated in place; any other is copied at its first write (`design.md` §9.6) | P2's figures (20k-element comprehension, 5k map inserts, `[...0..20000]`) become linear. Constants and restored values are never written: a property over two restores of one snapshot. `wake.bench.ts` not slower beyond noise |
 
 ## Order

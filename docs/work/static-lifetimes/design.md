@@ -4,7 +4,7 @@ owner: tech-lead
 status: proposed
 applies_to: istalang
 last_verified: 2026-11-12
-last_updated: 2026-11-12
+last_updated: 2026-11-13
 tags: [design, lifetimes, disposal, checker, flow, runtime, refcount, lsp]
 ---
 
@@ -608,12 +608,18 @@ one seam (R2).
   in the same round.
 - **Counts are rebuilt when an instance is made,** from start or restore, and never persisted.
 
-### 9.5 Only indexes
+### 9.5 Amortized walks
 
-- **The heap keeps indexes, not every object:** live paths read objects through direct references.
-  Uncounted garbage goes with its last JavaScript reference.
+- **What counting leaves is unobservable:** an object that isn't counted, or a cycle reaching no
+  disposable. Neither runs a disposal or answers `deref()`, as a weak reference's referent is
+  always disposable, so how long it stays changes nothing a program sees.
+- **So a live run walks only once its heap has doubled** since its last walk: O(1) amortized per
+  object made, where a walk after every segment cost the whole heap each time.
 - **A commit walks the roots once,** for both the objects it persists and the depth it checks.
-- **A weak reference is kept alive by its referent,** through the `weakRefs` index.
+- **The heap still keeps every object by id** (decided 2026-11-13). Holding objects through direct
+  references, so that JavaScript's collector reclaims what isn't counted, would make every handle
+  and every id field a reference to a mutable entry, a restore rebuild the values instances share,
+  and lookups by id weak: thousands of lines, for memory nobody can observe.
 
 ### 9.6 Unique values in place
 

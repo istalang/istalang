@@ -101,6 +101,11 @@ export class Heap {
     return this.#made;
   }
 
+  /** How many objects the heap has now. */
+  get size(): number {
+    return this.#objects.size;
+  }
+
   /** A new object, made by `make` with the next id. */
   add<Object extends LiveObject>(make: (id: number) => Object): Object {
     const object = make(this.#made);
@@ -164,7 +169,7 @@ export class Heap {
     const readers = this.#readers(changes.flatMap(({ old, now }) => [old, now]))
       .filter((id) => !written.has(id))
       .map((id) => ({ id, before: this.#indexedHeld(id) }));
-    const was = changes.map(({ old }) => (old === undefined ? nothingHeld : this.#held(old)));
+    const was = changes.map(({ old }) => (old === undefined ? nothingHeld : this.held(old)));
     for (const { old, now } of changes) {
       if (old !== undefined) {
         this.#leave(old);
@@ -180,7 +185,7 @@ export class Heap {
     changes.forEach(({ now }, position) => {
       this.#holders.changed(
         was[position] ?? nothingHeld,
-        now === undefined ? nothingHeld : this.#held(now),
+        now === undefined ? nothingHeld : this.held(now),
       );
     });
     for (const { id, before } of readers) {
@@ -272,14 +277,15 @@ export class Heap {
    * resolver nothing awaits is let go of when its holder drops it.
    */
   holds(object: Exclude<LiveObject, LiveExecution>): readonly number[] {
-    return idsHeld(this.#held(object));
+    return idsHeld(this.held(object));
   }
 
   /**
-   * What `object` holds (`holds`), as its writes report it; an execution, nothing of its own: its
-   * frames' registers report their writes themselves (interpreter/registers.ts).
+   * What `object` holds (`holds`), its values and the ids it holds directly, as its writes report
+   * it; an execution, nothing of its own: its frames' registers report their writes themselves
+   * (interpreter/registers.ts).
    */
-  #held(object: LiveObject): Held {
+  held(object: LiveObject): Held {
     if (object.kind === 'execution') {
       return nothingHeld;
     }

@@ -88,6 +88,8 @@ export class Instance {
   readonly effects: SegmentEffects;
   readonly #constants: ContextConstants;
   readonly #ready: ReadyQueue;
+  /** How many objects the heap kept after `dropUnheld` last walked it; none before. */
+  #keptByWalk = 0;
 
   private constructor(loaded: LoadedDefinition, snapshot: Snapshot) {
     this.loaded = loaded;
@@ -169,11 +171,18 @@ export class Instance {
   }
 
   /**
-   * Lets go of what nothing holds any more, as a commit leaves it out (§5): a live run's, which
-   * never commits, so a timer no one waits on no longer wakes it.
+   * Lets go of what nothing holds any more, as a commit leaves it out (§5), for a live run, which
+   * never commits: once the heap has at least doubled since the last time, so the walk costs O(1)
+   * per object made. Counting has disposed or removed every counted object that lost its last
+   * holder, so what is left is only what isn't counted, or a cycle reaching no disposable, which no
+   * one can observe: how long it stays changes nothing a program sees (runtime/lifetimes/counts.ts).
    */
   dropUnheld(): void {
+    if (this.heap.size < 2 * this.#keptByWalk) {
+      return;
+    }
     this.heap.keepOnly(new Set(this.#kept().kept.map(({ id }) => id)));
+    this.#keptByWalk = this.heap.size;
   }
 
   /**

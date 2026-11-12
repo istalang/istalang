@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: runtime lifetimes, scheduler/instance, interpreter, snapshot, definition values
 last_verified: 2026-11-12
-last_updated: 2026-11-12
+last_updated: 2026-11-13
 tags: [lifetimes, disposal, runtime, refcount, tour]
 ---
 
@@ -24,9 +24,9 @@ and model: [design.md](design.md) §3 and §9. Phases: [plan.md](plan.md). Paths
 | `lifetimes/counts.ts` `Counts`, `countedIn` | each counted object's holders, composites holding a counted part counted once per holder; zero candidates | R3; R5 counts every composite |
 | `interpreter/registers.ts` | the only register writer, reporting each write (`FrameHeap.changed`); `raw-registers.ts` is its raw write | R2 |
 | `interpreter/machine.ts` | `newFrame`, `releaseFrame` (ascending registers), `currentClosure` | R2, R3 |
-| `scheduler/instance/index.ts` `Instance` | `frameHeap`; the constructor every start and restore goes through, where the counts are built; `persisted`/`#kept` (the walk, and a check that no zero went uncollected); `dropUnheld`; `continueFrom`; `stop`; `owed`, `keptFrames` | R3, R4 |
+| `scheduler/instance/index.ts` `Instance` | `frameHeap`; the constructor every start and restore goes through, where the counts are built; `persisted`/`#kept` (the walk, and a check that no zero went uncollected); `dropUnheld`, once the heap doubled (R4); `continueFrom`; `stop`; `owed`, `keptFrames` | R3, R4 |
 | `lifetimes/collector.ts` | rounds of the disposables that reached zero, newest first, the rest that did gone at once; waiting on a disposal's code | R3 |
-| `lifetimes/holders.ts` | `heldFrom` (with the commit's depth), `holdsOf`: only a commit and a live run's `dropUnheld` walk (cruiser `runtime-held-walk`) | R4 |
+| `lifetimes/holders.ts` | `heldFrom`, the objects and the commit's depth in one pass (R4), `holdsOf`: only a commit and a live run's `dropUnheld` walk (cruiser `runtime-held-walk`) | R4 |
 | `lifetimes/oracle.test-kit.ts` | the oracle (R1), a `HeapCheck` | test-only, for good |
 | `lifetimes/native-audit.test-kit.ts` | the native audit (C3 step 0), `HeapCheck.native`: edges natives add, against the std's `Keeps` | test-only, for good |
 | `lifetimes/disposal.ts` | per kind: `disposable` and `dispose`; `readiedBy`; the dropped-resolver panic (`isDropped`); a future cancels what is registered on it (R1) | kept |
@@ -35,7 +35,7 @@ and model: [design.md](design.md) §3 and §9. Phases: [plan.md](plan.md). Paths
 | `scheduler/instance/waits/` | `Waits`, `ResolverEndings`, `rootOf`, `pendingCases`, `settleOrder` | R1 |
 | `scheduler/instance/weak-side.ts` | one `weakRef` per referent, found by the `weakRefs` index; watches | kept |
 | `scheduler/instance/slots.ts` | `#owed`/`serveOwed`: serving waits on a decided `select`'s losers being collected | kept |
-| `scheduler/live-run.ts`, `scheduler/resident.ts` | `dropUnheld` after each live segment; `take` returns the held instance, or restores | R3, R4 |
+| `scheduler/live-run.ts`, `scheduler/resident.ts` | `dropUnheld` after each live segment, walking once the heap doubled (R4); `take` returns the held instance, or restores | R3, R4 |
 | `definition/values/values.ts` | `handlesIn`, `depthOf` over memoized `summaries`; `withChildValues` | counting reads `handlesIn` only to skip a value holding no handle at its first hold; `depthOf` stays for commits; R5 |
 | `stdlib/prelude/arrays.ts`, `prelude/maps.ts`, `foundation/language/values.ts`, `interpreter/parts.ts` | every update of a composite value copies (below) | R5 |
 
@@ -266,8 +266,7 @@ Landed. What R2 left, for the phases after it:
   next object as the held one would: the resident sweep compares their commits. Validation refuses
   an object id at or past `objectsMade`. Q51 is closed.
   - Counts can be keyed by id: `keepOnly` reports what it drops through the seam, so a count goes
-    with its object. On disk the serial stays the handle's `object` when R4 makes live handles
-    direct references.
+    with its object.
 - **Creation order:** unchanged. Ids still grow with creation, which `Heap.find`, `settleOrder`,
   losers and `reachingMock` read.
 - **One walk:** `replacingParts` (`definition/values/replacing.ts`), on a stack of its own, is
@@ -366,28 +365,32 @@ Landed. What R3 left, for the phases after it:
   beside 500 held, 766 ms → 170 ms; 400 workers on one inbox, 19.0 s → 12.3 s. FormBuilder's live
   change is measured once it compiles (C4).
 - **For R4:** `persisted` keeps `heldFrom` for the commit's objects and depth, and live runs keep
-  `dropUnheld`, now for uncounted objects only.
+  `dropUnheld`, now for uncounted objects only (R4 makes it amortized).
 
-## R4 Only indexes
+## R4 Amortized walks
 
-- **What the scheduler reads besides objects by id:**
-  - All 11 indexes in `heap.ts` `indexes` are read: `mocks` (on every call, `Instance.mockOf`),
-    `answers`, `hostFutures`, `contextConstants`, `cases`, `positions`, `weakRefs`, `executions`,
-    `watches`, `pending` and `resolvers`.
-  - The kind lists read are `execution`, `answer`, `outcome`, `run`, `contextConstant` (the roots)
-    and `resource` (`arriving` finds one by payload). Mocks are read only through their index and
-    `heap.of`.
-- **Commit:**
-  - Today a commit runs `persisted`, then `snapshotFormat.write`, then reads the text back
-    (`wake.ts` `commit`). crashEveryAwait's `runText` encodes again.
-  - The root walk can build the objects and the depth in one pass. The format's encoding is a
-    second pass unless it is replaced.
-- **Weak references:** no index keeps a weak reference alive today. An unheld one is inert
-  (`lifetimes/disposal.ts`) and is dropped at the next commit or `dropUnheld`.
-  - R4 must keep a weak reference alive as long as its referent, through the `weakRefs` index,
-    which "one weak reference per referent" needs.
-- **Guards:** live paths can't import a walk (dependency-cruiser), and an uncounted cell is
-  reclaimed (a finalization test).
+Landed. Planned as "only indexes": the heap would keep indexes, and live paths would hold objects
+directly, so that JavaScript's collector took what counting doesn't. Dropped (design.md §9.5,
+decided 2026-11-13): objects are immutable records replaced on write, and name one another by id
+fields (a resolver's `on`, a watch's `weakRef`, a weak reference's `target`, an outcome's
+`future`), so every handle and id field would have become a reference to a mutable entry, every
+heap kind a live variant, and a restore would have had to rebuild the values instances share.
+
+- **A live run walks once its heap has doubled** since its last walk (`Instance.dropUnheld`,
+  `#keptByWalk`, `Heap.size`): O(1) amortized per object made. What counting leaves for it is only
+  what isn't counted, or a cycle reaching no disposable, which nobody can observe: a weak
+  reference's referent is always disposable (`WeakRef<T is Disposable>`), so it never names what a
+  walk drops. `instance/unheld.test.ts` covers the doubling.
+- **The commit's walk finds the depth in the same pass** (`heldFrom`, `lifetimes/holders.ts`): each
+  frame's and object's holding is read once (`Heap.held`), for the ids it reaches and the depth of
+  its values. `#kept` still scans the heap once after, for the commit's id order and its check that
+  nothing disposable was left out.
+- **Commits are byte-identical:** what a commit persists is unchanged, and the resident sweep
+  compares a held instance's commits with a restored one's.
+- **`Waits.abandon` went:** a disposal abandoned while its instance ends lets go of its frames, and
+  a wait among them is disposed as any wait let go of is, withdrawing its cases (R3).
+- **Still to measure:** a commit runs `persisted`, then `snapshotFormat.write`, then reads the text
+  back (`wake.ts` `commit`), and crashEveryAwait's `runText` encodes again.
 
 ## R5 Unique values in place
 
