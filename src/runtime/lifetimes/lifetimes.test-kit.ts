@@ -113,14 +113,18 @@ export function heapArbitrary(size = 8): fc.Arbitrary<TestHeap> {
       ? []
       : [
           fc
-            .record({ done: fc.nat({ max: object - 1 }), on: fc.uniqueArray(id, { maxLength: 2 }) })
+            .record({
+              done: fc.nat({ max: object - 1 }),
+              on: fc.uniqueArray(id, { maxLength: 2 }),
+              root: fc.constantFrom('case' as const, 'callback' as const),
+            })
             .map(
-              ({ done, on }): LiveObject => ({
+              ({ done, on, root }): LiveObject => ({
                 kind: 'resolver',
                 id: object,
                 state: {
                   kind: 'pending',
-                  target: { kind: 'at', done, position: 0n },
+                  target: { kind: 'at', done, position: 0n, root },
                   on,
                   onCancel: [],
                 },

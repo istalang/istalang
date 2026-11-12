@@ -9,7 +9,13 @@
 import type { Definition } from '../../../definition/definition.ts';
 import { waitRegister } from '../../../definition/instructions/flow.ts';
 import { closureOf, handleTarget, type Value } from '../../../definition/values/values.ts';
-import { type Frame, type HeapObject, isReference, type ResolverTarget } from '../objects.ts';
+import {
+  chainRoot,
+  type Frame,
+  type HeapObject,
+  isReference,
+  type ResolverTarget,
+} from '../objects.ts';
 import type { Snapshot } from '../snapshot.ts';
 import { calledBackProblems } from './calls.ts';
 
@@ -153,7 +159,7 @@ function callbackProblems(
 /**
  * What is wrong with what the pending resolver `id` decides: a case of a wait with as many cases
  * as `stoodAt` says where it is stood at, a callback, or a pending resolver made before it, so no
- * `Resolver.at` ones decide each other round.
+ * `Resolver.at` ones decide each other round, whose chain comes down to the root it names.
  */
 function targetProblems(
   { definition, objects, stoodAt }: Checked,
@@ -165,9 +171,12 @@ function targetProblems(
       return callbackProblems(definition, target.callback, 1, `resolver ${id}`);
     case 'at': {
       const done = objects.get(target.done);
-      return done?.kind === 'resolver' && done.state.kind === 'pending' && done.id < id
+      if (!(done?.kind === 'resolver' && done.state.kind === 'pending' && done.id < id)) {
+        return [`resolver ${id} decides no pending resolver made before it`];
+      }
+      return chainRoot(done.state.target) === target.root
         ? []
-        : [`resolver ${id} decides no pending resolver made before it`];
+        : [`resolver ${id} names a root its chain doesn't come down to`];
     }
     case 'case': {
       if (objects.get(target.wait)?.kind !== 'wait') {

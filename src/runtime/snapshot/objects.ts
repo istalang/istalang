@@ -10,7 +10,10 @@
  *   it.
  * - An execution waits on a wait its frame holds in a register (proposal 8, Rule 5), decided by the
  *   first of its cases' resolvers to resolve. A future's `onAwait` registers a resolver on it, and
- *   the registration holds both (runtime/scheduler/instance/heap.ts `Heap.holds`).
+ *   the registration holds one end, as the resolver's chain's root says (snapshot/holdings.ts,
+ *   runtime/scheduler/instance/heap.ts `Heap.holds`). A `Resolver.at` resolver records that root,
+ *   fixed when it is made, rather than finding it through the resolvers it decides: those end
+ *   before it does, while what it held must still be known.
  *   Resolving a `Resolver.of` resolver, or cancelling one with `onCancel` callbacks, readies a
  *   `run` of each callback, which the ready queue holds beside waiters.
  * - Timers are the futures whose state is a timer.
@@ -121,17 +124,28 @@ const waitState = z.discriminatedUnion('kind', [
   z.strictObject({ kind: z.literal('decided'), position: count, value }),
 ]);
 
+/** What a chain of resolvers comes down to deciding: a wait's case, or a callback. */
+const chainRoots = z.enum(['case', 'callback']);
+
+export type ChainRoot = z.output<typeof chainRoots>;
+
 /**
  * What a resolver decides once resolved: case `position` of `wait`; a `Resolver.of` call of
- * `callback` with its value; or, `Resolver.at`, the resolver `done` with `(position, value)`.
+ * `callback` with its value; or, `Resolver.at`, the resolver `done` with `(position, value)`, in a
+ * chain coming down to `root`.
  */
 const resolverTarget = z.discriminatedUnion('kind', [
   z.strictObject({ kind: z.literal('case'), wait: objectId, position: count }),
   z.strictObject({ kind: z.literal('callback'), callback: value }),
-  z.strictObject({ kind: z.literal('at'), done: objectId, position: integer }),
+  z.strictObject({ kind: z.literal('at'), done: objectId, position: integer, root: chainRoots }),
 ]);
 
 export type ResolverTarget = z.output<typeof resolverTarget>;
+
+/** What the chain of a resolver deciding `target` comes down to deciding. */
+export function chainRoot(target: ResolverTarget): ChainRoot {
+  return target.kind === 'at' ? target.root : target.kind;
+}
 
 /**
  * A resolver (proposal 8, Rule 5): pending for its `target`, registered `on` the futures whose

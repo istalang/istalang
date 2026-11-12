@@ -11,7 +11,7 @@ import { FormatError } from '../../definition/formats/format.ts';
 import type { Value } from '../../definition/values/values.ts';
 import { Refusal } from '../refusal.ts';
 import { recordingStore, runToEnd, testRuntime } from '../runtime.test-kit.ts';
-import type { ResolverTarget } from './objects.ts';
+import type { ChainRoot, ResolverTarget } from './objects.ts';
 import { type InstanceCall, type Snapshot, snapshotFormat } from './snapshot.ts';
 
 /** A program committed while it waits two executions deep. */
@@ -116,11 +116,19 @@ const pendingResolver = (id: number, target: ResolverTarget, onCancel: readonly 
   state: { kind: 'pending' as const, target, on: [], onCancel: [...onCancel] },
 });
 
-/** `snapshot` with a pending `Resolver.of` resolver `done`, and a `Resolver.at` one `at` of it. */
-const withPosition = (snapshot: Snapshot, done: number, at: number): Snapshot => {
+/**
+ * `snapshot` with a pending `Resolver.of` resolver `done`, and a `Resolver.at` one `at` of it, which
+ * names `root` as its chain's.
+ */
+const withPosition = (
+  snapshot: Snapshot,
+  done: number,
+  at: number,
+  root: ChainRoot = 'callback',
+): Snapshot => {
   const resolvers = [
     pendingResolver(done, { kind: 'callback', callback: valueCallback }),
-    pendingResolver(at, { kind: 'at', done, position: 0n }),
+    pendingResolver(at, { kind: 'at', done, position: 0n, root }),
   ].toSorted((first, second) => first.id - second.id);
   return { ...snapshot, objects: [...snapshot.objects, ...resolvers] };
 };
@@ -313,6 +321,10 @@ describe('reading an instance back', () => {
     [
       'a Resolver.at resolver deciding one made after it',
       (snapshot) => withPosition(snapshot, 10_001, 10_000),
+    ],
+    [
+      "a Resolver.at resolver naming a root its chain doesn't come down to",
+      (snapshot) => withPosition(snapshot, 10_000, 10_001, 'case'),
     ],
     ['an outcome encoder that is no function', (snapshot) => ({ ...snapshot, encoder: 10_000 })],
     [

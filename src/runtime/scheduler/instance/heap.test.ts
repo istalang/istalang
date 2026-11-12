@@ -50,7 +50,7 @@ const madeArbitrary: fc.Arbitrary<Made> = fc.oneof(
           target: fc.oneof(
             fc.constant({ kind: 'callback' as const, callback: null }),
             id.map((wait) => ({ kind: 'case' as const, wait, position: 0 })),
-            id.map((done) => ({ kind: 'at' as const, done, position: 0n })),
+            id.map((done) => ({ kind: 'at' as const, done, position: 0n, root: 'case' as const })),
           ),
           on: fc.uniqueArray(id, { maxLength: 2 }),
         })

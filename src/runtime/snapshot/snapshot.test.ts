@@ -173,6 +173,7 @@ function objectsArbitrary(ids: readonly number[]): fc.Arbitrary<HeapObject[]> {
                 kind: fc.constant('at' as const),
                 done: id,
                 position: fc.bigInt({ min: -9n, max: 9n }),
+                root: fc.constantFrom('case' as const, 'callback' as const),
               }),
             ),
             on: fc.array(id, { maxLength: 2 }),

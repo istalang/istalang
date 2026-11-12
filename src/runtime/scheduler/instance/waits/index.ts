@@ -43,7 +43,7 @@ import { unreachable } from '../../../../foundation/structures/unreachable.ts';
 import type { ActiveFrame } from '../../../interpreter/frames.ts';
 import { type Decision, takeWait } from '../../../interpreter/suspension.ts';
 import { Panic } from '../../../natives.ts';
-import type { ResolverTarget } from '../../../snapshot/objects.ts';
+import { chainRoot, type ResolverTarget } from '../../../snapshot/objects.ts';
 import type { Settled } from '../futures.ts';
 import { type Heap, handleObject, type LiveExecution } from '../heap.ts';
 import { type Ending, type EndingSeams, ResolverEndings } from './endings.ts';
@@ -109,7 +109,8 @@ export class Waits {
   at(done: Value, position: bigint): Value {
     const decides = this.#resolver(done);
     if (isPending(decides)) {
-      return this.#pending({ kind: 'at', done: decides.id, position });
+      const root = chainRoot(decides.state.target);
+      return this.#pending({ kind: 'at', done: decides.id, position, root });
     }
     const cancelled = this.#heap.add(
       (id): Resolver => ({ kind: 'resolver', id, state: { kind: 'cancelled' } }),
