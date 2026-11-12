@@ -286,9 +286,9 @@ futures may hold anything until C4 (§5.6). C3 settled three more points:
   aliases nothing through it.
 - **Types filter every pair.** The reach state never adds a pair the declaration graph forbids,
   whatever adds it: a read, a call's summary or unseen code.
-- **The surest path decides.** A cycle's deciding type is the least relevant one on its surest path:
-  through the parts of a value the body made, else the path through values that surely reach a
-  disposable, then through those that may. A cycle decided by a type parameter is recorded with
+- **The value and its holder decide.** A cycle's deciding type is the less relevant of its holder's
+  and its value's, a value the body made going by the parts that reach the holder: reach is closed
+  under itself, so the values between aren't kept. A cycle decided by a type parameter is recorded with
   its holder's type and the types its value reaches the holder through. So an instantiation that
   makes it impossible, such as one whose value type reaches nothing, drops it. A call's cycle is
   the object written into, of its own type, not the callee's parameter.
