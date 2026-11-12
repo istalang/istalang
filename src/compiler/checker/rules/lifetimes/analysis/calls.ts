@@ -16,6 +16,7 @@ import type { NodeOf } from '../../../../syntax/tree/node.ts';
 import { type FunctionCall, witnessCallsOf } from '../../../surface/resolved-call.ts';
 import type { Type } from '../../../types/type/index.ts';
 import type { ValueId } from '../../flow/flow-ir.ts';
+import { escapingTypes } from '../escaping.ts';
 import type { NodeId, ReachState } from '../reach-state.ts';
 import type { Input, Requirement, ResultRelation, Summary } from '../summary.ts';
 import { mayAlias } from '../type-reach.ts';
@@ -193,27 +194,22 @@ function checkWitnesses({ analysis }: At, call: FunctionCall, site: NodeOf<strin
   for (const witness of witnessCallsOf(call.witnesses)) {
     const summary = context.calleeSummary(witness) ?? { requirements: [], always: [] };
     const parameters = context.parametersOf(witness.function);
-    const typeOf = (input: Input) =>
-      input.kind === 'parameter' ? parameters[input.index]?.type : undefined;
-    const closing = (requirement: Requirement): readonly Type[] => {
-      const holder = typeOf(requirement.holder);
-      const value = typeOf(requirement.value);
-      if (holder === undefined || value === undefined) {
-        return [];
-      }
-      const valueType = context.substitute(value, witness);
-      const closes = analysis.typesClose(
-        context.substitute(holder, witness),
-        valueType,
-        requirement.kind,
-      );
-      const deciding = context.substitute(requirement.holderType, witness);
-      return closes ? [analysis.decidingType(deciding, valueType)] : [];
+    const substituted = (type: Type) => context.substitute(type, witness);
+    const typeOf = (input: Input) => {
+      const type = input.kind === 'parameter' ? parameters[input.index]?.type : undefined;
+      return type === undefined ? undefined : substituted(type);
     };
-    const types = [
-      ...summary.requirements.flatMap(closing),
-      ...summary.always.map((type) => context.substitute(type, witness)),
-    ];
+    const types = escapingTypes(
+      context.facts,
+      {
+        requirements: summary.requirements.map((requirement) => ({
+          ...requirement,
+          holderType: substituted(requirement.holderType),
+        })),
+        always: summary.always.map(substituted),
+      },
+      typeOf,
+    );
     for (const type of types) {
       analysis.violate('witness', site, type, witness.function);
     }

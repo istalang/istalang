@@ -19,8 +19,9 @@
  */
 
 import type { FunctionCall } from '../../../surface/resolved-call.ts';
-import type { Type } from '../../../types/type/index.ts';
+import type { AnyType, Type } from '../../../types/type/index.ts';
 import type { Operation } from '../../flow/flow-ir.ts';
+import { escapingTypes } from '../escaping.ts';
 import type { NodeId } from '../reach-state.ts';
 import { type Input, inputKey, type Summary } from '../summary.ts';
 import { type At, closureBindings, functionBindings, nodesGiven } from './bindings.ts';
@@ -38,6 +39,9 @@ const handlers: { readonly [Kind in Operation['op']]: Handler<Kind> } = {
   compute: (at, { into }) => fresh(at, into),
   unknown: (at, { into }) => fresh(at, into),
   copy: (at, operation) => {
+    if (operation.fit?.conversion.kind === 'any') {
+      convertedIntoAny(at, operation, operation.fit.conversion.to);
+    }
     if (!at.analysis.nodes.isRelevant(operation.into)) {
       return;
     }
@@ -95,7 +99,7 @@ const handlers: { readonly [Kind in Operation['op']]: Handler<Kind> } = {
         ? functionInputs(analysis, made.call)
         : undefined;
     if (named !== undefined) {
-      checkEscaping(at, operation.site, named);
+      checkEscaping(at, operation.site, named, 'closure');
     }
     if (!analysis.nodes.isRelevant(into)) {
       return;
@@ -300,10 +304,12 @@ function madeClosure(at: At, operation: Of<'make'>): void {
     }
     analysis.leak(state, node);
   }
-  checkEscaping(at, site, {
-    summary: found.summary,
-    typeOf: (input) => found.inputTypes.get(inputKey(input)),
-  });
+  checkEscaping(
+    at,
+    site,
+    { summary: found.summary, typeOf: (input) => found.inputTypes.get(inputKey(input)) },
+    'closure',
+  );
 }
 
 /** A function code nobody sees may call, with any values of its inputs' types. */
@@ -335,17 +341,29 @@ function checkEscaping(
   { analysis }: At,
   site: Of<'make'>['site'],
   { summary, typeOf }: Escaping,
+  kind: 'closure' | 'witness',
 ): void {
-  const closing = summary.requirements.flatMap((requirement) => {
-    const holder = typeOf(requirement.holder);
-    const value = typeOf(requirement.value);
-    return holder !== undefined &&
-      value !== undefined &&
-      analysis.typesClose(holder, value, requirement.kind)
-      ? [analysis.decidingType(requirement.holderType, value)]
-      : [];
-  });
-  for (const type of [...closing, ...summary.always]) {
-    analysis.violate('closure', site, type, undefined);
+  for (const type of escapingTypes(analysis.context.facts, summary, typeOf)) {
+    analysis.violate(kind, site, type, undefined);
+  }
+}
+
+/**
+ * A value put into an `any T`: its type's witnesses of `T` become calls code nobody sees makes,
+ * with any values of their parameters' types (design.md §5.4).
+ */
+function convertedIntoAny(at: At, { from, site }: Of<'copy'>, to: AnyType): void {
+  const { analysis } = at;
+  const member = analysis.nodes.typeOf(from);
+  if (member === undefined) {
+    return;
+  }
+  for (const [constraint] of to.constraints.entries()) {
+    for (const call of analysis.context.anyWitnesses(to, constraint, member)) {
+      const escaping = functionInputs(analysis, call);
+      if (escaping !== undefined) {
+        checkEscaping(at, site, escaping, 'witness');
+      }
+    }
   }
 }

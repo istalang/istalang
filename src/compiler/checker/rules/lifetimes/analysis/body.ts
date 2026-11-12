@@ -20,18 +20,12 @@ import type { FunctionDeclaration } from '../../../../syntax/declarations/index.
 import type { NodeOf } from '../../../../syntax/tree/node.ts';
 import type { LifetimeFinding, SignatureParameter } from '../../../check.ts';
 import type { FunctionCall } from '../../../surface/resolved-call.ts';
-import type { Type } from '../../../types/type/index.ts';
+import type { AnyType, Type } from '../../../types/type/index.ts';
 import type { FlowFunction, ValueId } from '../../flow/flow-ir.ts';
+import { decidingType } from '../escaping.ts';
 import type { NodeId } from '../reach-state.ts';
 import { anyField, type Input, inputKey, type Requirement, type Summary } from '../summary.ts';
-import {
-  lessRelevant,
-  mayAlias,
-  mayReach,
-  mayShare,
-  moreRelevant,
-  type Relevance,
-} from '../type-reach.ts';
+import { lessRelevant, moreRelevant, type Relevance } from '../type-reach.ts';
 import type { FlowState } from './flow-state.ts';
 import { apart, candidatesIn } from './inputs.ts';
 import type { Nodes, TypeFacts } from './nodes.ts';
@@ -47,10 +41,12 @@ export interface AnalysisContext {
   readonly substitute: (type: Type, call: FunctionCall) => Type;
   /** Whether `iterate`'s cursor gives the items of what it is given and does nothing else. */
   readonly readsWhatItIterates: (iterate: FunctionDeclaration) => boolean;
+  /** The calls a value of `member` put into `to` is called through for its `constraint`-th. */
+  readonly anyWitnesses: (to: AnyType, constraint: number, member: Type) => readonly FunctionCall[];
 }
 
 /** Where a cycle may close in this function's text (`LifetimeFinding`, the function aside). */
-export type Violation = Omit<LifetimeFinding, 'function'>;
+export type Violation = Omit<LifetimeFinding, 'declaration'>;
 
 /** What analysing a nested function gives the body making its closure. */
 export interface NestedResult {
@@ -287,9 +283,7 @@ export class BodyAnalysis {
    * value of a type parameter's type only where its instantiation may (design.md §5.3).
    */
   decidingType(holderType: Type, valueType: Type): Type {
-    return lessRelevant(this.nodes.relevanceOf(valueType), this.nodes.relevanceOf(holderType))
-      ? valueType
-      : holderType;
+    return decidingType(this.context.facts, holderType, valueType);
   }
 
   /**
@@ -394,18 +388,6 @@ export class BodyAnalysis {
   /** Runs code nobody sees (unseen.ts): other executions, or the code `call` runs. */
   runUnseen(state: FlowState, call?: UnseenCall): void {
     runUnseen(this, state, call);
-  }
-
-  /**
-   * Whether values of `holder`'s and `value`'s types may come to break a requirement of `kind` as
-   * the declaration graph allows: the value reach or be the holder's, or the two share anything.
-   */
-  typesClose(holder: Type, value: Type, kind: Requirement['kind']): boolean {
-    const holderReach = this.context.facts.reachOf(holder);
-    const valueReach = this.context.facts.reachOf(value);
-    return kind === 'share'
-      ? mayShare(valueReach, holderReach)
-      : mayReach(valueReach, holderReach) || mayAlias(valueReach, holderReach);
   }
 
   /** The relevance of `type`, the more of it and `other`'s. */

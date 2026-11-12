@@ -19,10 +19,12 @@
 
 import type { EntryTable } from '../../../../foundation/structures/entries/index.ts';
 import { sameItems } from '../../../../foundation/structures/equality.ts';
-import { stronglyConnected } from '../../../../foundation/structures/strongly-connected.ts';
 import type { ModuleId } from '../../../program/program.ts';
 import { functionsOf, isFieldsFunction } from '../../../syntax/declarations/field-defaults.ts';
-import type { FunctionDeclaration } from '../../../syntax/declarations/index.ts';
+import type {
+  ContextConstantDeclaration,
+  FunctionDeclaration,
+} from '../../../syntax/declarations/index.ts';
 import { bodyOf } from '../../../syntax/tree/index.ts';
 import type { LifetimeFinding, LifetimeQueries } from '../../check.ts';
 import type { CheckerContext, CheckerNote } from '../../contexts/context.ts';
@@ -33,6 +35,8 @@ import type { Type } from '../../types/type/index.ts';
 import { flowOf } from '../flow/build/index.ts';
 import type { AnalysisContext } from './analysis/body.ts';
 import { type Analysis, analyze } from './analysis/index.ts';
+import { Declared, flowInputsOf, withDefaults } from './declared.ts';
+import { type Call, type Groups, groupsOf, sameGroupSummaries, sameGroups } from './groups.ts';
 import {
   constructorSummary,
   emptySummary,
@@ -48,12 +52,8 @@ import {
   sameHandleReach,
 } from './type-reach.ts';
 
-type Groups = ReadonlyMap<FunctionDeclaration, readonly FunctionDeclaration[]>;
-
 export class Lifetimes implements LifetimeQueries {
   readonly #checker: CheckerContext;
-  readonly #relevance: EntryTable<CheckerNote, string, Relevance, Type>;
-  readonly #handles: EntryTable<CheckerNote, string, HandleReach, Type>;
   readonly #natives: EntryTable<CheckerNote, FunctionDeclaration, Summary>;
   readonly #callees: EntryTable<CheckerNote, FunctionDeclaration, readonly FunctionDeclaration[]>;
   readonly #groups: EntryTable<CheckerNote, ModuleId, Groups>;
@@ -65,18 +65,10 @@ export class Lifetimes implements LifetimeQueries {
   readonly #summaries: EntryTable<CheckerNote, FunctionDeclaration, Summary>;
   readonly #constructors: EntryTable<CheckerNote, FunctionDeclaration, Summary>;
   readonly #context: AnalysisContext;
+  readonly #declared: Declared;
 
   constructor(checker: CheckerContext) {
     this.#checker = checker;
-    this.#relevance = checker.entries.table({
-      name: 'lifetime relevance',
-      compute: (_key: string, type: Type) => relevanceOf(checker, type),
-    });
-    this.#handles = checker.entries.table({
-      name: 'lifetime handles',
-      compute: (_key: string, type: Type) => handleReachOf(checker, type),
-      equal: sameHandleReach,
-    });
     this.#natives = checker.entries.table({
       name: 'native summaries',
       compute: (native: FunctionDeclaration) => nativeSummary(checker, native),
@@ -95,30 +87,38 @@ export class Lifetimes implements LifetimeQueries {
     this.#analyses = checker.entries.table({
       name: 'lifetime analyses',
       compute: (first: FunctionDeclaration) => this.#analyzeGroup(this.#groupOf(first)),
+      // Reached again only through a default reaching its own function, an error found elsewhere.
+      cyclic: { standIn: () => new Map() },
     });
     this.#summaries = checker.entries.table({
       name: 'lifetime summaries',
       compute: (declaration: FunctionDeclaration) => this.#analysisOf(declaration).summary,
       equal: sameSummary,
+      cyclic: { standIn: () => emptySummary },
     });
     this.#constructors = checker.entries.table({
       name: 'constructor summaries',
-      compute: (fields: FunctionDeclaration) => constructorSummary(checker, fields),
+      compute: (fields: FunctionDeclaration) =>
+        withDefaults(constructorSummary(checker, fields), this.#declared.defaultsOf(fields)),
       equal: sameSummary,
+      cyclic: { standIn: (fields) => constructorSummary(checker, fields) },
     });
-    const typeKey = (type: Type) => checker.typeKeys.typeKey(type);
+    this.#declared = new Declared({
+      checker,
+      context: () => this.#context,
+      analysisOf: (declaration) => this.#analysisOf(declaration),
+      hasBody: (declaration) => this.#hasBody(declaration),
+    });
     this.#context = {
-      facts: {
-        relevanceOf: (type) => this.#relevance.get(typeKey(type), type),
-        reachOf: (type) => this.#handles.get(typeKey(type), type),
-        cellOf: (type) => checker.cellOf(type),
-        fieldNamesOf: (type) => checker.fieldsOf(type)?.map(({ name }) => name),
-        keyOf: typeKey,
-      },
+      facts: typeFactsOf(checker),
       calleeSummary: (call) => this.#calleeSummary(call, undefined),
       parametersOf: (declaration) => checker.parametersOf(declaration),
       substitute: (type, call) => substitutedIn(checker, type, call),
       readsWhatItIterates: (iterate) => checker.isStd(checker.moduleOf(iterate)),
+      anyWitnesses: (to, constraint, member) =>
+        checker.traitObjects
+          .memberWitnesses(to, constraint, member)
+          .filter((call): call is FunctionCall => call.kind === 'function'),
     };
   }
 
@@ -129,11 +129,20 @@ export class Lifetimes implements LifetimeQueries {
 
   /** What the rule finds in `module`'s functions, in their order. */
   findingsOf(module: ModuleId): readonly LifetimeFinding[] {
-    return this.#ownFunctions(module).flatMap((declaration) =>
-      this.#analysisOf(declaration).violations.map((violation) => ({
-        ...violation,
-        function: declaration,
-      })),
+    const items = this.#checker.inputs.itemsOf(module);
+    const declarations = [
+      ...functionsOf({ items }),
+      ...items.filter(
+        (item): item is ContextConstantDeclaration => item.kind === 'ContextConstantDeclaration',
+      ),
+    ];
+    return declarations.flatMap((declaration) =>
+      [
+        ...(declaration.kind === 'FunctionDeclaration' && this.#hasBody(declaration)
+          ? this.#analysisOf(declaration).violations
+          : []),
+        ...this.#declared.violationsOf(declaration),
+      ].map((violation) => ({ ...violation, declaration })),
     );
   }
 
@@ -229,13 +238,7 @@ export class Lifetimes implements LifetimeQueries {
       return { summary: emptySummary, violations: [], inputTypes: new Map() };
     }
     const parameters = checker.parametersOf(declaration);
-    const inputs = {
-      checker,
-      module,
-      localBodyOf: (local: FunctionDeclaration) => checker.inputs.bodyOf(module, local),
-      body,
-    };
-    const flow = flowOf(inputs, block, parameters);
+    const flow = flowOf(flowInputsOf(checker, module, body), block, parameters);
     const references = new Set(
       flow.parameters.filter((_, index) => parameters[index]?.reference === true),
     );
@@ -243,10 +246,14 @@ export class Lifetimes implements LifetimeQueries {
       ...this.#context,
       calleeSummary: (call) => this.#calleeSummary(call, group),
     };
-    return analyze(context, flow, {
+    const found = analyze(context, flow, {
       isAsync: declaration.qualifiers.async !== undefined,
       references,
     });
+    return {
+      ...found,
+      summary: withDefaults(found.summary, this.#declared.defaultsOf(declaration)),
+    };
   }
 
   /** What `call`'s function does: a native's declaration, a group member's guess, a summary. */
@@ -278,64 +285,26 @@ function substitutedIn(checker: CheckerContext, type: Type, call: FunctionCall):
   return substitute(type, substitution, checker.typeRules);
 }
 
-/** A call between two functions with bodies: an edge of the call graph. */
-interface Call {
-  readonly from: FunctionDeclaration;
-  readonly to: FunctionDeclaration;
-}
-
 /**
- * The recursive groups of the call graph `edges`: each member's group, ordered by where its
- * members are declared (`position`), so every module's exploration names it alike.
+ * What the analysis reads of types, kept as entries per type: whether its values may reach a
+ * disposable, and which handles they may hold; and its cell, and its fields' names.
  */
-function groupsOf(
-  edges: readonly Call[],
-  position: (declaration: FunctionDeclaration) => readonly [string, number],
-): Groups {
-  const componentOf = stronglyConnected(edges);
-  const members = new Map<FunctionDeclaration, Set<FunctionDeclaration>>();
-  for (const { from, to } of edges) {
-    const component = componentOf(from);
-    if (component !== undefined && component === componentOf(to)) {
-      const group = members.get(component) ?? new Set();
-      group.add(from).add(to);
-      members.set(component, group);
-    }
-  }
-  const before = (first: FunctionDeclaration, second: FunctionDeclaration) => {
-    const [firstModule, firstAt] = position(first);
-    const [secondModule, secondAt] = position(second);
-    return firstModule.localeCompare(secondModule) || firstAt - secondAt;
-  };
-  const groups = new Map<FunctionDeclaration, readonly FunctionDeclaration[]>();
-  for (const group of members.values()) {
-    const ordered = [...group].sort(before);
-    for (const each of ordered) {
-      groups.set(each, ordered);
-    }
-  }
-  return groups;
-}
-
-function sameGroupSummaries(
-  first: ReadonlyMap<FunctionDeclaration, Summary>,
-  second: ReadonlyMap<FunctionDeclaration, Summary>,
-): boolean {
-  return [...first].every(([member, summary]) => {
-    const other = second.get(member);
-    return other !== undefined && sameSummary(summary, other);
+function typeFactsOf(checker: CheckerContext): AnalysisContext['facts'] {
+  const relevance: EntryTable<CheckerNote, string, Relevance, Type> = checker.entries.table({
+    name: 'lifetime relevance',
+    compute: (_key: string, type: Type) => relevanceOf(checker, type),
   });
-}
-
-function sameGroups(first: Groups, second: Groups): boolean {
-  if (first.size !== second.size) {
-    return false;
-  }
-  for (const [declaration, members] of first) {
-    const other = second.get(declaration);
-    if (other === undefined || !sameItems()(members, other)) {
-      return false;
-    }
-  }
-  return true;
+  const handles: EntryTable<CheckerNote, string, HandleReach, Type> = checker.entries.table({
+    name: 'lifetime handles',
+    compute: (_key: string, type: Type) => handleReachOf(checker, type),
+    equal: sameHandleReach,
+  });
+  const typeKey = (type: Type) => checker.typeKeys.typeKey(type);
+  return {
+    relevanceOf: (type) => relevance.get(typeKey(type), type),
+    reachOf: (type) => handles.get(typeKey(type), type),
+    cellOf: (type) => checker.cellOf(type),
+    fieldNamesOf: (type) => checker.fieldsOf(type)?.map(({ name }) => name),
+    keyOf: typeKey,
+  };
 }

@@ -98,7 +98,8 @@ export interface LifetimeFinding {
   /** What holds the cycle: the type of the holder written, or of what is written into it. */
   readonly holderType: Type;
   readonly callee: FunctionDeclaration | undefined;
-  readonly function: FunctionDeclaration;
+  /** The function, or the context constant, whose code it is in. */
+  readonly declaration: FunctionDeclaration | ContextConstantDeclaration;
 }
 
 export interface LifetimeQueries {
