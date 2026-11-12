@@ -1,18 +1,15 @@
 /**
- * A segment's collecting (runtime/lifetimes/): after every instruction that let go of something,
- * what lost its last holder is disposed right there (§7), and a drive ends only once collecting
- * has. A disposal that runs code runs on the segment's run stack as any call does
- * (disposal-runs.ts), each of its steps the segment's own, so collecting is handed the step to
- * take. What holds things is every execution's frames, the running ones first, and what the run
- * stack and the test world hold. A slot's queue whose serving paused for collecting (slots.ts) is
- * served once it is done, before anything else runs. A test runtime checks the heap after every
- * instruction that let go of or wrote into something, before collecting, while what is to be
- * collected is still there (`LoadedDefinition.heapCheck`).
+ * A segment's collecting (runtime/lifetimes/): at the end of every step, what lost its last holder
+ * during it is disposed right there (§7), and a drive ends only once collecting has. A disposal
+ * that runs code runs on the segment's run stack as any call does (disposal-runs.ts), each of its
+ * steps the segment's own, so collecting is handed the step to take. A slot's queue whose serving
+ * paused for collecting (slots.ts) is served once it is done, before anything else runs. A test
+ * runtime checks the heap after every step that let go of or wrote into something, before
+ * collecting, while what is to be collected is still there (`LoadedDefinition.heapCheck`).
  */
 
 import type { ActiveFrame } from '../../interpreter/frames.ts';
 import { Collector } from '../../lifetimes/collector.ts';
-import type { Roots } from '../../lifetimes/holders.ts';
 import type { LiveExecution } from '../instance/heap.ts';
 import { type DisposalRunSeams, DisposalRuns } from './disposal-runs.ts';
 import { panicOf } from './limits.ts';
@@ -39,7 +36,6 @@ export class SegmentCollection {
       heap: instance.heap,
       holders: instance.holders,
       types: instance.loaded.definition.types,
-      roots: () => this.#roots(),
       stop: (execution) => {
         instance.stop(execution);
       },
@@ -52,28 +48,23 @@ export class SegmentCollection {
         instance.waits.cancel(resolver);
       },
       run: (run) => this.disposals.start(run),
-      check: (counted, traced) => {
-        instance.loaded.heapCheck.counted(counted, traced);
-      },
     });
   }
 
   /**
-   * Collects what lost a holder since the last step, then serves the slots' queues whose serving
-   * waited for it, as long as that lets go of more; whether no disposal's call is left to run.
+   * Collects what lost its last holder by the end of the step, then serves the slots' queues whose
+   * serving waited for it, as long as that lets go of more; whether no disposal's call is left to
+   * run.
    */
   collected(): boolean {
     const { heap, holders, slots, loaded } = this.#seams.instance;
     for (;;) {
-      const released = holders.takeReleased();
-      const changed = [...released, ...heap.takeWritten()];
-      if (changed.length > 0) {
+      const changed = new Set([...holders.takeLetGo(), ...heap.takeWritten()]);
+      if (changed.size > 0) {
         const running = new Set(this.#seams.runStack.innermostFirst().map(({ id }) => id));
-        loaded.heapCheck.changed({ heap, types: loaded.definition.types }, changed, running);
+        loaded.heapCheck.changed({ heap, types: loaded.definition.types }, [...changed], running);
       }
-      if (released.length > 0 || holders.zeroed || this.#collector.stalled) {
-        this.#collector.collect(released);
-      }
+      this.#collector.collect();
       if (this.#collector.busy) {
         return false;
       }
@@ -126,27 +117,5 @@ export class SegmentCollection {
         }
       }
     }
-  }
-
-  /**
-   * What holds things besides the collector's own rounds (lifetimes/holders.ts): every execution's
-   * frames, the carriers', the runs' and context constants' (`Instance.keptFrames`), the call
-   * futures of the executions
-   * running on the run stack, and what the instance owes (`Instance.owed`). The frames running now
-   * come first, innermost first, as what code lets go of is mostly held there.
-   */
-  #roots(): Roots {
-    const { instance, runStack } = this.#seams;
-    const running = runStack.innermostFirst();
-    const waiting = instance.heap
-      .objectsOf('execution')
-      .filter((execution) => !running.includes(execution));
-    return {
-      frames: [
-        ...[...running, ...waiting].flatMap((execution) => execution.frames.toReversed()),
-        ...instance.keptFrames(),
-      ],
-      objects: [...runStack.callFutures(), ...instance.owed()],
-    };
   }
 }

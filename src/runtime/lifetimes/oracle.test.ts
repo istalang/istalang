@@ -3,7 +3,8 @@
  * only those, over programs shaped as the design's acceptance examples
  * (docs/work/static-lifetimes/design.md §12): what holds what is the runtime's, but for a call's
  * future holding its call, and a wait holding what its chain is registered on rather than the
- * chain. It sees a cycle whether something lets go of it or it is undone first.
+ * chain. It sees a cycle whether something lets go of it or it is undone first, and stops the run
+ * there: counting never disposes a cycle, so what such a program does after is no one's to say.
  */
 
 import { describe, expect, it } from 'vitest';
@@ -11,7 +12,7 @@ import { textDespiteCycles } from '../../compiler/compile.test-kit.ts';
 import { handleTo } from '../../definition/values/values.ts';
 import { startToEnd, testRuntime } from '../runtime.test-kit.ts';
 import { testHeap } from '../scheduler/instance/heap.test-kit.ts';
-import { cycleWatch, oracle } from './oracle.test-kit.ts';
+import { oracle } from './oracle.test-kit.ts';
 
 const declarations = [
   "import * as runtime from 'runtime'",
@@ -82,12 +83,8 @@ const declarations = [
   '  holding(new Plain{}).onAwait(at)',
 ];
 
-/**
- * How running `body` in `_main`, in a block of its own or not, ended, and whether it made a cycle
- * the oracle sees.
- */
-async function seesCycle(body: readonly string[], inBlock: boolean) {
-  const watch = cycleWatch();
+/** How running `body` in `_main`, in a block of its own or not, under the oracle ended. */
+function ran(body: readonly string[], inBlock: boolean) {
   const indent = inBlock ? '    ' : '  ';
   const text = textDespiteCycles(
     [
@@ -101,8 +98,7 @@ async function seesCycle(body: readonly string[], inBlock: boolean) {
       '  0',
     ].join('\n'),
   );
-  const ended = await startToEnd(testRuntime({ heapCheck: watch.heapCheck }), text);
-  return { ended, seen: watch.seen() };
+  return startToEnd(testRuntime({ heapCheck: oracle }), text);
 }
 
 const finished = { kind: 'finished', outcome: '0' };
@@ -171,7 +167,7 @@ describe('the oracle of static lifetimes', () => {
       ],
     ]),
   )('sees $name (in a block: $inBlock)', async ({ body, inBlock }) => {
-    expect(await seesCycle(body, inBlock)).toEqual({ ended: finished, seen: true });
+    await expect(ran(body, inBlock)).rejects.toThrow('A cycle reaching a disposable holds objects');
   });
 
   it.each(
@@ -195,7 +191,7 @@ describe('the oracle of static lifetimes', () => {
       ],
     ]),
   )('sees no cycle in $name (in a block: $inBlock)', async ({ body, inBlock }) => {
-    expect(await seesCycle(body, inBlock)).toEqual({ ended: finished, seen: false });
+    expect(await ran(body, inBlock)).toEqual(finished);
   });
 });
 

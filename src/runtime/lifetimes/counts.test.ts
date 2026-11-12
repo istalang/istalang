@@ -2,7 +2,8 @@
  * Counting holders over random holders of random values sharing parts by identity, as registers
  * and objects share them: a counted object's count is how many holders hold it directly, where a
  * composite reaching a counted object is one holder of each of its parts however many hold it, so
- * it has no holder exactly when no holder reaches it. Objects not counted are never counted.
+ * it has no holder exactly when no holder reaches it. Objects not counted are never counted, and a
+ * cycle reaching no disposable never reaches zero, left to the commit.
  */
 
 import fc from 'fast-check';
@@ -14,8 +15,10 @@ import {
   isComposite,
   type Value,
 } from '../../definition/values/values.ts';
+import { testHeap } from '../scheduler/instance/heap.test-kit.ts';
 import { type Held, nothingHeld } from '../snapshot/holdings.ts';
-import { Counts } from './counts.ts';
+import { Counts, countedIn } from './counts.ts';
+import { HolderWrites } from './holder-writes.ts';
 
 /** The objects counted; handles to 4 and 5 name objects that aren't. */
 const counted = [0, 1, 2, 3];
@@ -139,5 +142,38 @@ describe('counts', () => {
     counts.changed(held, nothingHeld);
     expect(counts.takeZeroes()).toEqual([0]);
     expect(counts.takeZeroes()).toEqual([]);
+  });
+});
+
+describe('counting a heap', () => {
+  it('never takes a counted cycle reaching no disposable to zero, which a commit drops', () => {
+    // `let f = fn: f()`: f's cell holds a closure capturing the cell (design.md §1).
+    const holders = new HolderWrites(
+      countedIn([
+        {
+          kind: 'extern',
+          name: 'prelude._Cell',
+          arguments: [],
+          disposal: { kind: 'none' },
+          counted: true,
+        },
+      ]),
+    );
+    const heap = testHeap([], holders);
+    const cell = heap.add((id) => ({
+      kind: 'cell',
+      id,
+      type: 0,
+      value: { kind: 'closure', function: 0, captures: [handleTo(id)] },
+    }));
+    const register: Held = { values: [handleTo(cell.id)], holds: [] };
+    holders.changed(nothingHeld, register);
+    expect(holders.takeZeroes()).toEqual([]);
+    holders.changed(register, nothingHeld);
+    expect(holders.takeZeroes()).toEqual([]);
+    expect(holders.holdersOf(cell.id)).toBe(1);
+    heap.keepOnly(new Set());
+    expect(heap.has(cell.id)).toBe(false);
+    expect(holders.holdersOf(cell.id)).toBeUndefined();
   });
 });

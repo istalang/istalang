@@ -58,6 +58,8 @@ export class Counts {
   readonly #counted = new WeakMap<CompositeValue, boolean>();
   /** Counted objects that came to have no holder since the last `takeZeroes`. */
   readonly #zeroes = new Set<number>();
+  /** Counted objects let go of since the last `takeLetGo`. */
+  readonly #letGo: number[] = [];
 
   /** Counted object `id` was made, held by nothing yet. */
   made(id: number): void {
@@ -82,16 +84,16 @@ export class Counts {
     return this.#objects.get(id);
   }
 
-  /** Whether some counted object came to have no holder since the last `takeZeroes`. */
-  get zeroed(): boolean {
-    return this.#zeroes.size > 0;
-  }
-
   /** The counted objects that have no holder now, of those that came to have none since last time. */
   takeZeroes(): readonly number[] {
     const zeroes = [...this.#zeroes].filter((id) => this.#objects.get(id) === 0);
     this.#zeroes.clear();
     return zeroes;
+  }
+
+  /** The counted objects let go of since the last call, each as often as it was. */
+  takeLetGo(): readonly number[] {
+    return this.#letGo.splice(0);
   }
 
   #hold({ values, holds }: Held): void {
@@ -172,6 +174,7 @@ export class Counts {
       unreachable(`Object ${id} was let go of by more holders than held it.`);
     }
     this.#objects.set(id, holders - 1);
+    this.#letGo.push(id);
     if (holders === 1) {
       this.#zeroes.add(id);
     }

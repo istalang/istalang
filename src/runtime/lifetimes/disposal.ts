@@ -24,13 +24,11 @@
  * - Any object a weak reference refers to has its watches resolved once it is gone (weak-side.ts).
  *
  * An object is disposed when nothing holds it only when that can be seen: it does one of the
- * above. Any other, such as a resolved future, a timer nothing is registered on, a run or a slot
- * that no weak reference refers to, is simply left out of the next commit, as a plain value is.
- * What it holds is let go of all the same, since holding is reachability (holders.ts), so a
- * disposable among it is disposed when it would have been; only nothing has to prove the object
- * itself unheld, which costs a walk of the instance's live state. Disposability comes from an
- * object's kind and state, its type entry for a cell or resource, and the weak references and
- * registrations in the heap, never from a flag of its own (snapshot/objects.ts).
+ * above. Any other, such as a resolved future, a timer nothing is registered on, or a slot that no
+ * weak reference refers to, is simply gone once its count drops to zero (collector.ts), letting
+ * go of what it holds, so a disposable among it is disposed in the same round. Disposability
+ * comes from an object's kind and state, its type entry for a cell or resource, and the weak
+ * references and registrations in the heap, never from a flag of its own (snapshot/objects.ts).
  */
 
 import type { FunctionId } from '../../definition/operands.ts';
@@ -176,16 +174,6 @@ function disposalFor(object: LiveObject): KindDisposal {
 /** Whether `object` is disposed when nothing holds it any more, rather than simply left out of the next commit. */
 export function isDisposable(context: Disposability, object: LiveObject): boolean {
   return disposalFor(object).disposable(context);
-}
-
-/**
- * The values the calls disposing `object` readies as runs are made with: a pending resolver's
- * `onCancel` callbacks, unless its disposal panics.
- */
-export function readiedBy(object: LiveObject): readonly Value[] {
-  return object.kind === 'resolver' && object.state.kind === 'pending' && !isDropped(object)
-    ? object.state.onCancel
-    : [];
 }
 
 /** Whether `resolver`, let go of while pending, is a wait's an awaitable dropped, which panics. */

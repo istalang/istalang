@@ -74,31 +74,7 @@ export const oracle: HeapCheck = {
       throw new Error(`A cycle reaching a disposable holds objects ${named}.`);
     }
   },
-  counted: (counted, traced) => {
-    if (counted.join() !== traced.join()) {
-      throw new Error(
-        `Counted [${counted.join()}] lost their last holder; traced [${traced.join()}].`,
-      );
-    }
-  },
 };
-
-/**
- * A check recording whether it saw a cycle the oracle throws at, for the oracle's own tests, whose
- * programs make them (oracle.test.ts).
- */
-export function cycleWatch(): { readonly heapCheck: HeapCheck; readonly seen: () => boolean } {
-  let seen = false;
-  return {
-    heapCheck: {
-      ...noHeapCheck,
-      changed: (state, changed, running) => {
-        seen ||= disposableCycles(state, changed, running).length > 0;
-      },
-    },
-    seen: () => seen,
-  };
-}
 
 /**
  * The objects whose edges in the oracle's graph changing `id` may have changed: itself, and a

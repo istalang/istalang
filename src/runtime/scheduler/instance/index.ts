@@ -32,7 +32,6 @@ import { newFrame, releaseFrame } from '../../interpreter/machine.ts';
 import type { Passed } from '../../interpreter/registers.ts';
 import { type Decision, releaseLosers, resume } from '../../interpreter/suspension.ts';
 import { countedIn } from '../../lifetimes/counts.ts';
-import { isDisposable } from '../../lifetimes/disposal.ts';
 import { HolderWrites } from '../../lifetimes/holder-writes.ts';
 import { heldFrom } from '../../lifetimes/holders.ts';
 import { type HoldingFrame, heldObjects, isRoot, keptFrame } from '../../snapshot/holdings.ts';
@@ -186,16 +185,6 @@ export class Instance {
       frames: [...executions.flatMap((execution) => execution.frames), ...this.keptFrames()],
       objects: this.owed(),
     });
-    const lost = this.heap
-      .objects()
-      .find(
-        (object) =>
-          !held.objects.has(object.id) &&
-          isDisposable({ heap: this.heap, types: this.loaded.definition.types }, object),
-      );
-    if (lost !== undefined) {
-      unreachable(`Object ${lost.id} lost its last holder without being disposed.`);
-    }
     const kept = this.heap
       .objects()
       .filter((object) => isRoot(object) || held.objects.has(object.id));

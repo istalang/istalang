@@ -306,6 +306,17 @@ export default {
       to: { path: '^src/runtime/|natives\\.ts$', reachable: true },
     },
     {
+      // Counting decides disposal (runtime/lifetimes/counts.ts): only a commit, and a live run
+      // dropping what a commit would, walk the live state for what is held.
+      name: 'runtime-held-walk',
+      severity: 'error',
+      from: {
+        path: '^src/',
+        pathNot: '^src/runtime/(scheduler/instance/index\\.ts|lifetimes/holders\\.test\\.ts)$',
+      },
+      to: { path: '^src/runtime/lifetimes/holders\\.ts$' },
+    },
+    {
       // Every register write is a holder write, which the runtime's one seam reports
       // (runtime/lifetimes/holder-writes.ts): registers.ts alone writes a register raw.
       name: 'runtime-raw-register-write',

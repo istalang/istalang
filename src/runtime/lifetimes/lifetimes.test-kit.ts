@@ -2,7 +2,8 @@
  * Random heaps for the properties of holding and disposal: objects of every kind that holds or
  * watches others, their values holding handles to any of them, cycles included, and frames whose
  * registers hold some of them. Ids are 0 to `size - 1`, and only type entry 0 is
- * disposable by a declared `dispose`, so a cell is disposable or not by its type.
+ * disposable by a declared `dispose`, so a cell is disposable or not by its type; a cell's type
+ * says whether it is counted, as one that may hold a disposable is.
  */
 
 import fc from 'fast-check';
@@ -12,7 +13,16 @@ import { testHeap } from '../scheduler/instance/heap.test-kit.ts';
 import type { Heap, LiveObject } from '../scheduler/instance/heap.ts';
 import type { HoldingFrame } from '../snapshot/holdings.ts';
 
-/** Type entry 0 disposes by function 0; type entry 1 disposes nothing. */
+/** A lease's type entry, disposing by function 0. */
+export const leaseType = 0;
+
+/** A counted cell's type entry, disposing nothing: one that may hold a lease. */
+export const counterType = 2;
+
+/**
+ * Type entry 0 disposes by function 0; type entry 1 disposes nothing and is not counted; type
+ * entry 2 disposes nothing and is counted.
+ */
 export const testTypes: readonly TypeDefinition[] = [
   {
     kind: 'extern',
@@ -27,6 +37,13 @@ export const testTypes: readonly TypeDefinition[] = [
     arguments: [],
     disposal: { kind: 'none' },
     counted: false,
+  },
+  {
+    kind: 'extern',
+    name: 'test.Holder',
+    arguments: [],
+    disposal: { kind: 'none' },
+    counted: true,
   },
 ];
 

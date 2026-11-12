@@ -2,29 +2,25 @@
  * Every write of a holder, reported in one place (docs/work/static-lifetimes/design.md §9.1): a
  * register (interpreter/registers.ts), a heap object's fields and the edges its indexes give it
  * (scheduler/instance/heap.ts), and a running call's own future (scheduler/segment/run-stack.ts).
- * Each reports what the holder held and what it holds now, so whatever decides lifetimes sees every
- * change, both what was let go of and what is held anew. The heap also says which objects it made
- * and which are gone.
+ * Each reports what the holder held and what it holds now, and the heap which objects it made and
+ * which are gone, so counting sees every change (counts.ts): a counted object whose count drops to
+ * zero lost its last holder, which the collector confirms at the step's end (collector.ts).
  *
- * - Counting reads every report (counts.ts): a counted object whose count drops to zero has lost
- *   its last holder, which the collector confirms at the step's end (collector.ts).
- * - Tracing reads only what was let go of: an object a holder no longer holds may have lost its
- *   last holder, so it is noted for the collector, which checks it by reachability against the
- *   counts.
+ * - The counted objects let go of are logged for a test's check of the heap, which walks from
+ *   them (scheduler/loaded-definition.ts `HeapCheck`): a cycle can close as a call suspends, which
+ *   writes into nothing.
  * - A decided `select`'s losers are noted apart (`noteLosersReleased`): until the collector takes
- *   the noted objects, a loser may still wait in a slot's queue (scheduler/instance/slots.ts).
+ *   the step's zeroes, a loser may still wait in a slot's queue (scheduler/instance/slots.ts).
  * - A commit keeps only what is held, so it forgets what was noted (`settled`).
  */
 
-import { pushAll } from '../../foundation/structures/stack.ts';
 import type { LiveObject } from '../scheduler/instance/heap.ts';
-import { type Held, idsHeld } from '../snapshot/holdings.ts';
+import type { Held } from '../snapshot/holdings.ts';
 import { Counts } from './counts.ts';
 
 export class HolderWrites {
   readonly #counted: (object: LiveObject) => boolean;
   readonly #counts = new Counts();
-  readonly #released: number[] = [];
   #losersReleased = false;
 
   /** Holder writes counting the objects `counted` says (counts.ts `countedIn`). */
@@ -47,12 +43,6 @@ export class HolderWrites {
   /** A holder that held `was` holds `now`. */
   changed(was: Held, now: Held): void {
     this.#counts.changed(was, now);
-    const lost = idsHeld(was);
-    if (lost.length === 0) {
-      return;
-    }
-    const kept = new Set(idsHeld(now));
-    pushAll(this.#released, kept.size === 0 ? lost : lost.filter((id) => !kept.has(id)));
   }
 
   /** How many holders counted object `id` has; undefined for one not counted. */
@@ -60,25 +50,18 @@ export class HolderWrites {
     return this.#counts.holdersOf(id);
   }
 
-  /** Whether a counted object came to have no holder since the zeroes were last taken. */
-  get zeroed(): boolean {
-    return this.#counts.zeroed;
-  }
-
-  /** The counted objects with no holder now, of those that came to have none since last time. */
+  /**
+   * The counted objects with no holder now, of those that came to have none since last time: the
+   * step's end, which collects the losers a decided `select` let go of too.
+   */
   takeZeroes(): readonly number[] {
+    this.#losersReleased = false;
     return this.#counts.takeZeroes();
   }
 
-  /** Notes `ids` again for collecting, as the collector puts back what a round skipped. */
-  noteReleased(ids: Iterable<number>): void {
-    pushAll(this.#released, ids);
-  }
-
-  /** The objects that may have lost their last holder since the last call, for collecting. */
-  takeReleased(): readonly number[] {
-    this.#losersReleased = false;
-    return this.#released.splice(0);
+  /** The counted objects let go of since the last call, for a test's check of the heap. */
+  takeLetGo(): readonly number[] {
+    return this.#counts.takeLetGo();
   }
 
   /** Notes that a decided `select` let go of what its losing cases held (spec §8). */
@@ -87,8 +70,8 @@ export class HolderWrites {
   }
 
   /**
-   * Whether a decided `select` let go of what its losing cases held since the released were last
-   * taken for collecting: until then, one of them may still wait in a queue.
+   * Whether a decided `select` let go of what its losing cases held since the step's zeroes were
+   * last taken: until then, one of them may still wait in a queue.
    */
   get losersUncollected(): boolean {
     return this.#losersReleased;
@@ -96,7 +79,7 @@ export class HolderWrites {
 
   /** Forgets what was noted, as a commit keeps only what is held (`Heap.keepOnly`). */
   settled(): void {
-    this.#released.length = 0;
     this.#losersReleased = false;
+    this.#counts.takeLetGo();
   }
 }

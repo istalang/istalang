@@ -31,11 +31,6 @@ export interface HeapCheck {
   ) => void;
   /** Made as `call` starts, while the heap is as it found it; what checks it once it returned. */
   readonly native: (heap: Disposability, call: NativeCallMade) => () => void;
-  /**
-   * Made as a collection round starts, with the disposables whose count dropped to zero and those
-   * a walk from the roots finds unheld and ready, each newest first: the same, but for a cycle.
-   */
-  readonly counted: (counted: readonly number[], traced: readonly number[]) => void;
 }
 
 /** A native's call: the extern's key, and what each argument passes, value or reference. */
@@ -50,7 +45,6 @@ export interface NativeCallMade {
 export const noHeapCheck: HeapCheck = {
   changed: () => undefined,
   native: () => () => undefined,
-  counted: () => undefined,
 };
 
 export interface LoadedDefinition {
