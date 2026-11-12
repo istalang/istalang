@@ -29,6 +29,8 @@ export interface DisposalRunSeams {
   readonly runStack: RunStack;
   /** Tells the collector that the disposal its innermost round waits on is done. */
   readonly returned: () => void;
+  /** Tells the collector that the disposal its innermost round waits on was abandoned. */
+  readonly abandoned: () => void;
 }
 
 export class DisposalRuns {
@@ -76,8 +78,7 @@ export class DisposalRuns {
     if (!this.#cleanups.has(execution)) {
       return false;
     }
-    this.#seams.runStack.pop();
-    this.#seams.instance.stop(execution);
+    this.#stopCleanup(execution);
     this.#seams.returned();
     return true;
   }
@@ -95,10 +96,13 @@ export class DisposalRuns {
         for (const frame of runStack.dropFrames(execution, at)) {
           releaseFrame(frame);
         }
-        this.#callDone(execution);
+        this.#leaveCarrier(execution);
+        this.#seams.abandoned();
         return;
       }
-      if (this.suspended(execution)) {
+      if (this.#cleanups.has(execution)) {
+        this.#stopCleanup(execution);
+        this.#seams.abandoned();
         return;
       }
       runStack.pop();
@@ -138,12 +142,23 @@ export class DisposalRuns {
     return false;
   }
 
-  /** A disposal's call, on `execution`, is done: the carrier leaves the run stack once empty. */
+  /** A disposal's call, on `execution`, is done. */
   #callDone(execution: LiveExecution): void {
+    this.#leaveCarrier(execution);
+    this.#seams.returned();
+  }
+
+  /** A disposal's call left `execution`: the carrier leaves the run stack once empty. */
+  #leaveCarrier(execution: LiveExecution): void {
     if (execution === this.#carrier && execution.frames.length === 0) {
       this.#seams.runStack.pop();
     }
-    this.#seams.returned();
+  }
+
+  /** A disposed call's cleanup stopped: its execution leaves the run stack, its frames let go. */
+  #stopCleanup(execution: LiveExecution): void {
+    this.#seams.runStack.pop();
+    this.#seams.instance.stop(execution);
   }
 
   #cleanup({ execution, position }: Cleanup): false {

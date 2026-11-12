@@ -242,4 +242,150 @@ describe('terminating an instance', () => {
       'disposed in-slot',
     ]);
   });
+
+  it.each(['frame', 'field', 'fieldAfterLocalDispose'] as const)(
+    'keeps an outer disposal running when an inner abandoned disposal lets go of an unregistered resolver (%s)',
+    async (where) => {
+      const notes: unknown[] = [];
+      const host: HostExterns = {
+        'main.note(String)': ([text]) => {
+          notes.push(text);
+          return null;
+        },
+      };
+      const test = testRuntime({ host });
+      const innerDeclaration =
+        where === 'frame'
+          ? [
+              'shared struct Inner { box: Shared<Resolver<Int, "ista">?> }',
+              'ista fn dispose(self: Inner) -> Unit: { const r = self->box->value; self->box->value = none; panic("inner panic") }',
+            ]
+          : [
+              'shared struct Child { name: String }',
+              'fn dispose(self: Child): note("disposed " + self->name)',
+              'shared struct Inner { r: Resolver<Int, "ista">? }',
+              'ista fn dispose(self: Inner) -> Unit:',
+              ...(where === 'fieldAfterLocalDispose' ? ['  const c = new Child{name: "c"}'] : []),
+              '  panic("inner panic")',
+            ];
+      const dropInner =
+        where === 'frame'
+          ? ['  drop new Inner{box: self.box}']
+          : ['  if true: { const inner = new Inner{r: self.box->value}; self.box->value = none }'];
+      const nested = compiledText(
+        [
+          'extern fn note(text: String)',
+          "import * as time from 'time'\nimport * as runtime from 'runtime'",
+          ...innerDeclaration,
+          'struct SaveDone { box: Shared<Resolver<Int, "ista">?>, type Mode = "ista" }',
+          'ista fn onAwait(self: SaveDone, done: Resolver<Int, "ista">): self.box->value = done',
+          'struct DropInner { box: Shared<Resolver<Int, "ista">?>, type Mode = "ista" }',
+          'ista fn onAwait(self: DropInner, done: Resolver<Int, "ista">):',
+          ...dropInner,
+          '  done.resolve(2)',
+          'shared struct Outer { name: String }',
+          'ista fn dispose(self: Outer):',
+          '  const box = new Shared<Resolver<Int, "ista">?>{value: none}',
+          '  const got = select:',
+          '    case SaveDone{box}: 1',
+          '    case DropInner{box}: 2',
+          '    else: 0',
+          '  note("outer survived " + got)',
+          'ista async fn boom(): { await time.delay(5ms); panic("boom") }',
+          'live async fn main() -> Int: await runtime.run(runtime.id()) _main()',
+          'ista async fn _main() -> Int: { const outer = new Outer{name: "outer"}; hold _ = boom(); await time.delay(1d); 0 }',
+        ].join('\n'),
+      );
+      const started = test.startInstance(nested, 't');
+      expect(await runToEnd(test, 't', started)).toMatchObject({
+        kind: 'panicked',
+        message: 'boom',
+      });
+      expect((await test.runtime.terminate('t')).state).toMatchObject({ kind: 'terminated' });
+      expect(notes).toEqual(
+        where === 'fieldAfterLocalDispose'
+          ? ['disposed c', 'outer survived 2']
+          : ['outer survived 2'],
+      );
+    },
+  );
+
+  it.each(['terminate', 'blockExit'] as const)(
+    'does not panic or abandon a disposal that releases a resolver whose waiter already lost its last holder (%s)',
+    async (mode) => {
+      const notes: unknown[] = [];
+      const host: HostExterns = {
+        'main.note(String)': ([text]) => {
+          notes.push(text);
+          return null;
+        },
+      };
+      const test = testRuntime({ host });
+      const bodies = {
+        terminate: [
+          '  const box = new Shared<Resolver<Int, "ista">?>{value: none}',
+          '  const waiting = waiter(box); const cleaner = new Cleaner{box}',
+          '  hold _ = boom(); await time.delay(1d); await waiting',
+        ],
+        blockExit: [
+          '  if true: { const box = new Shared<Resolver<Int, "ista">?>{value: none}; const _ = waiter(box); const cleaner = new Cleaner{box} }',
+          '  0',
+        ],
+      } as const;
+      const programText = compiledText(
+        [
+          'extern fn note(text: String)',
+          "import * as time from 'time'\nimport * as runtime from 'runtime'",
+          'struct SaveDone { box: Shared<Resolver<Int, "ista">?>, type Mode = "ista" }',
+          'ista fn onAwait(self: SaveDone, done: Resolver<Int, "ista">): self.box->value = done',
+          'ista async fn waiter(box: Shared<Resolver<Int, "ista">?>) -> Int: await SaveDone{box}',
+          'shared struct Cleaner { box: Shared<Resolver<Int, "ista">?> }',
+          'ista fn dispose(self: Cleaner): { self->box->value = none; note("cleaned up") }',
+          'ista async fn boom(): { await time.delay(5ms); panic("boom") }',
+          'live async fn main() -> Int: await runtime.run(runtime.id()) _main()',
+          'ista async fn _main() -> Int:',
+          ...bodies[mode],
+        ].join('\n'),
+      );
+      const started = test.startInstance(programText, 't');
+      const ran = await runToEnd(test, 't', started);
+      const ended = mode === 'terminate' ? (await test.runtime.terminate('t')).state : ran;
+      expect(ended).toMatchObject({ kind: mode === 'terminate' ? 'terminated' : 'finished' });
+      expect(notes).toEqual(['cleaned up']);
+    },
+  );
+
+  it.each([
+    ['clears the resolver in its dispose, while it still holds the call', true],
+    ['leaves the resolver to go with its fields, the call with it', false],
+  ])(
+    'panics only while a call its holder still holds waits, when that holder %s',
+    async (_case, clears) => {
+      const taskProgram = compiledText(
+        [
+          'struct SaveDone { box: Shared<Resolver<Int, "ista">?>, type Mode = "ista" }',
+          'ista fn onAwait(self: SaveDone, done: Resolver<Int, "ista">): self.box->value = done',
+          'ista async fn waiter(box: Shared<Resolver<Int, "ista">?>) -> Int: await SaveDone{box}',
+          'shared struct Task { box: Shared<Resolver<Int, "ista">?>, running: Future<Int, "ista"> }',
+          `ista fn dispose(self: Task): ${clears ? 'self->box->value = none' : '()'}`,
+          "import * as runtime from 'runtime'",
+          'live async fn main() -> Int: await runtime.run(runtime.id()) _main()',
+          'ista async fn _main() -> Int:',
+          '  if true: { const box = new Shared<Resolver<Int, "ista">?>{value: none}; const task = new Task{box, running: waiter(box)} }',
+          '  0',
+        ].join('\n'),
+      );
+      const test = testRuntime();
+      const ran = await runToEnd(test, 't', test.startInstance(taskProgram, 't'));
+      expect(ran).toMatchObject(
+        clears
+          ? {
+              kind: 'panicked',
+              message: expect.stringContaining('let go of unresolved'),
+              trace: expect.stringContaining('main.dispose'),
+            }
+          : { kind: 'finished' },
+      );
+    },
+  );
 });

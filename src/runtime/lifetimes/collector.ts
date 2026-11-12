@@ -27,6 +27,11 @@
  * holds a round later. Whatever a round has yet to dispose is that round's, so no other round takes
  * it out of order.
  *
+ * While an instance ends, a disposal whose code panics is abandoned (scheduler/segment/): it ends
+ * as a return does, and what it lets go of, its frames and its object's fields, is released by it,
+ * as is what a disposal of any of that lets go of in turn (`#released`): a disposal of any of it
+ * that panics abandons no other, where any other panic is the innermost running disposal's.
+ *
  * A disposal may ready calls as runs, roots of their own: a pending resolver's `onCancel`
  * callbacks. The run holds what it calls with before the resolver lets go of it, so nothing it
  * calls with reaches zero.
@@ -60,6 +65,12 @@ export class Collector {
   readonly #rounds: Round[] = [];
   /** The object being disposed before any code of its disposal runs: one that panics leaves it. */
   #making: number | undefined;
+  /**
+   * The disposables an abandoned disposal let go of, through its frames or its object, or through
+   * the disposal of one of them: a disposal of one that panics is that abandoned disposal's, which
+   * abandons no more.
+   */
+  readonly #released = new Set<number>();
 
   constructor(seams: CollectorSeams) {
     this.#seams = seams;
@@ -75,7 +86,10 @@ export class Collector {
    * call must run: a round of its own, on top of any round waiting on that step's code.
    */
   collect(): void {
-    this.#push(this.#zeroDisposables());
+    // What the step let go of is released if the disposal whose code ran it was released, or
+    // abandoned, which leaves its round waiting on it until the next `#proceed`.
+    const running = this.#rounds.at(-1)?.disposing;
+    this.#push(this.#zeroDisposables(running !== undefined && this.#released.has(running)));
     this.#proceed();
   }
 
@@ -92,22 +106,37 @@ export class Collector {
   }
 
   /**
-   * The disposal it was making panicked before any code of it ran, while its instance ends: its
-   * object is gone, and its round stalls until the next `collect` takes it on. Whether it was
-   * making one.
+   * The code the newest round waited on was abandoned, as it panicked while its instance ends: it
+   * ends as a return does, and what it let go of, its frames now and its object's fields once it is
+   * gone, is released by it (`#released`).
    */
-  panicked(): boolean {
+  abandoned(): void {
+    this.returned();
+    const id = this.#rounds.at(-1)?.disposing;
+    if (id !== undefined) {
+      this.#released.add(id);
+    }
+  }
+
+  /**
+   * The disposal it was making panicked before any code of it ran, while its instance ends: its
+   * object is gone, and its round stalls until the next `collect` takes it on. Which it was making:
+   * none; one of what abandoning a disposal released, which abandons no more; or one of what the
+   * running code let go of.
+   */
+  panicked(): 'none' | 'released' | 'letGo' {
     const id = this.#making;
     const round = this.#rounds.at(-1);
     if (id === undefined || round === undefined) {
-      return false;
+      return 'none';
     }
     this.#making = undefined;
     if (round.disposing === id) {
       round.disposing = undefined;
     }
+    const released = this.#released.has(id);
     this.#gone(round, id);
-    return true;
+    return released ? 'released' : 'letGo';
   }
 
   #proceed(): void {
@@ -153,10 +182,14 @@ export class Collector {
     }
   }
 
-  /** The disposed object `id` is gone: what lost its last holder with it is `round`'s next. */
+  /**
+   * The disposed object `id` is gone: what lost its last holder with it is `round`'s next, released
+   * by an abandoned disposal if `id` was.
+   */
   #gone(round: Round, id: number): void {
+    const released = this.#released.has(id);
     this.#remove(id);
-    round.next.push(...this.#zeroDisposables());
+    round.next.push(...this.#zeroDisposables(released));
   }
 
   /**
@@ -166,6 +199,7 @@ export class Collector {
   #remove(id: number): void {
     this.#seams.heap.remove(id);
     this.#seams.weak.disposed(id);
+    this.#released.delete(id);
   }
 
   /** Starts a round of `ready`, if any. */
@@ -179,9 +213,9 @@ export class Collector {
   /**
    * The disposables whose count dropped to zero since the zeroes were last taken, but those a
    * round has yet to dispose: any other object whose count did is gone at once, which lets go of
-   * what it held, as its disposal does nothing.
+   * what it held, as its disposal does nothing. Each is `released` by an abandoned disposal or not.
    */
-  #zeroDisposables(): readonly number[] {
+  #zeroDisposables(released: boolean): readonly number[] {
     const { heap, holders } = this.#seams;
     let zeroes = holders.takeZeroes();
     if (zeroes.length === 0) {
@@ -197,6 +231,9 @@ export class Collector {
       for (const id of zeroes.filter((zero) => !waiting.has(zero))) {
         if (isDisposable(this.#seams, heap.objectOf(id))) {
           disposables.push(id);
+          if (released) {
+            this.#released.add(id);
+          }
         } else {
           this.#remove(id);
         }

@@ -16,12 +16,11 @@
  * - A value whose type declares `dispose` as code calls that: a call the collector runs as code
  *   (collector.ts), and the object is gone once the call returns. A disposal never awaits, since a
  *   `dispose` can't.
- * - A wait's resolver let go of while pending, never registered, panics its waiter (proposal 8,
- *   Rule 5): an awaitable dropped it, so nothing can decide the wait through it. Any other pending
- *   resolver let go of is cancelled, its `onCancel` callbacks readied: one registered for a wait
- *   goes only once the wait ends, which cancels it first (`Heap.holds`), and a `Resolver.of` or
- *   `Resolver.at` one decides no wait of its own. One whose wait nothing holds any more is
- *   withdrawn, as no one waits.
+ * - A pending resolver let go of is cancelled, its `onCancel` callbacks readied: one registered for
+ *   a wait goes only once the wait ends, which cancels it first (`Heap.holds`), and a `Resolver.of`
+ *   or `Resolver.at` one decides no wait of its own. A wait's resolver never registered was dropped
+ *   by its awaitable, so nothing can decide the wait through it: its waiter panics if it still waits
+ *   (proposal 8, Rule 5; `isAwaited`).
  * - A wait let go of while cases of it are pending, as a disposal abandoned mid-way while its
  *   instance ends lets go of it, withdraws them: its chain holds itself only while it waits
  *   (`Heap.holds`), so ending it is the wait's own rule, never its holder's.
@@ -183,7 +182,7 @@ export function isDisposable(context: Disposability, object: LiveObject): boolea
 
 /**
  * Whether `resolver`, let go of while pending, is a wait's an awaitable dropped, which panics: its
- * wait is still held, so its waiter waits on it.
+ * wait is still awaited (`isAwaited`).
  */
 function isDropped(context: Disposability, resolver: LiveObjectOf<'resolver'>): boolean {
   const { state } = resolver;
@@ -191,8 +190,25 @@ function isDropped(context: Disposability, resolver: LiveObjectOf<'resolver'>): 
     state.kind === 'pending' &&
     state.target.kind === 'case' &&
     state.on.length === 0 &&
-    (context.heap.holdersOf(state.target.wait) ?? 0) > 0
+    isAwaited(context.heap, state.target.wait)
   );
+}
+
+/**
+ * Whether wait `id` still has a waiter waiting on it: held by its waiter's frame, and that waiter
+ * held itself, as the instance's root, a carrier running a disposal off the heap, or a call whose
+ * future something holds (spec §7: an async call's execution is held through its future). A holder
+ * being disposed still holds what it holds, intact, until its disposal is done, so a waiter held
+ * through it still waits; one whose own future lost its last holder goes in the same round, though
+ * its frame holds the wait until that future's turn.
+ */
+function isAwaited(heap: Heap, id: number): boolean {
+  if ((heap.holdersOf(id) ?? 0) === 0) {
+    return false;
+  }
+  const { waiter } = heap.of(id, 'wait');
+  const resolves = heap.has(waiter) ? heap.of(waiter, 'execution').resolves : undefined;
+  return resolves === undefined || (heap.holdersOf(resolves) ?? 0) > 0;
 }
 
 /**

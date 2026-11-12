@@ -387,15 +387,22 @@ heap kind a live variant, and a restore would have had to rebuild the values ins
   ended resolver disposable (`watched` went from `disposal.ts`), which put what it held a round
   later, so a lingering one, or any other, changed the order of disposals. Every object leaving at
   zero, disposed or gone at once, now tells its weak reference (`Collector.#remove`), whose watches
-  resolve. `collector.test.ts` has the slot case.
-- **The commit's walk finds the depth in the same pass** (`heldFrom`, `lifetimes/holders.ts`): each
-  frame's and object's holding is read once (`Heap.held`), for the ids it reaches and the depth of
-  its values. `#kept` still scans the heap once after, for the commit's id order and its check that
-  nothing disposable was left out.
-- **Commits are byte-identical:** what a commit persists is unchanged, and the resident sweep
-  compares a held instance's commits with a restored one's.
-- **`Waits.abandon` went:** a disposal abandoned while its instance ends lets go of its frames, and
-  a wait among them is disposed as any wait let go of is, withdrawing its cases (R3).
+  resolve. `collector.test.ts` has the slot case, and `live-run.test.ts` a resolved future's, across
+  a walk at an `await` or none.
+- **Two of R3's, found by R4's QA and review** (`end-instance.test.ts`):
+  - **What an abandoned disposal lets go of is its own** (`Collector.abandoned`, `#released`): it
+    ends as a return does, and the disposables its frames and then its object's fields let go of,
+    and what their disposals let go of in turn, are marked released. One that panics while being
+    disposed abandons no other disposal (`Collector.panicked` says `released`); any other panic is
+    the innermost running disposal's, as before. Before, the flag saying whose a panic is had been
+    reset by the time the abandoned object's own fields were let go of, after its frame's
+    disposals ran, so a dropped resolver in a field abandoned the disposal around it.
+  - **A wait is awaited only while its waiter is held** (`disposal.ts` `isAwaited`): the root, a
+    carrier, or a call whose future something holds. A call future at zero, queued in a round, still
+    leaves its execution's frame holding the wait until its turn, so a newer disposal letting go of
+    the wait's resolver panicked as dropped. A holder being disposed still holds what it holds
+    (spec §7), so a disposal that clears the resolver of a call it still holds panics; one that
+    leaves it to go with its fields, the call with it, doesn't.
 - **Measured** (`wake.bench.ts`, means of three runs, against `40a9f6b8`): a live run waking 500
   times beside 2,000 held boxes, 1,144 ms → 351 ms (the new third workload); 400 workers, 11.86 s →
   11.65 s, and 2,000 leases, 167 ms → 175 ms, within noise (±6%).

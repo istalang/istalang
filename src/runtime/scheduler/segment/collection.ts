@@ -15,7 +15,7 @@ import { type DisposalRunSeams, DisposalRuns } from './disposal-runs.ts';
 import { panicOf } from './limits.ts';
 
 /** What a segment's collecting reads: its instance, its run stack, the caller of its calls. */
-type CollectionSeams = Omit<DisposalRunSeams, 'returned'>;
+type CollectionSeams = Omit<DisposalRunSeams, 'returned' | 'abandoned'>;
 
 export class SegmentCollection {
   readonly #seams: CollectionSeams;
@@ -30,6 +30,9 @@ export class SegmentCollection {
       ...seams,
       returned: () => {
         this.#collector.returned();
+      },
+      abandoned: () => {
+        this.#collector.abandoned();
       },
     });
     this.#collector = new Collector({
@@ -83,23 +86,21 @@ export class SegmentCollection {
 
   /**
    * Collects until no disposal is left to run, while the instance ends (§3.12): one that panics is
-   * let go of, and the rest go on. A panic is the innermost running disposal's, its code's own or
-   * a disposal of what that code let go of, which the collector lets go of at once: the running
-   * one is abandoned once what it set off is done and it is innermost again, inside the loop, so a
-   * panic abandoning it raises is let go of in turn.
+   * let go of, and the rest go on. A panic is the innermost running disposal's, its code's own or a
+   * disposal of what that code let go of, which the collector lets go of at once: the running one
+   * is abandoned once what it set off is done and it is innermost again, inside the loop. What
+   * abandoning it releases is its own (`Collector.abandoned`): a panic disposing that abandons no
+   * more.
    */
   collectEnding(step: () => void): void {
     let abandoning: ActiveFrame | LiveExecution | undefined;
     for (;;) {
-      // What abandoning a disposal lets go of is that disposal's: a panic it raises abandons no more.
-      let attributing = true;
       try {
         if (this.collected()) {
           return;
         }
         if (abandoning !== undefined && abandoning === this.disposals.innermost()) {
           abandoning = undefined;
-          attributing = false;
           this.disposals.abandon();
         } else {
           step();
@@ -108,11 +109,11 @@ export class SegmentCollection {
         if (panicOf(error) === undefined) {
           throw error;
         }
-        const letGo = this.#collector.panicked();
-        if (attributing) {
+        const made = this.#collector.panicked();
+        if (made !== 'released') {
           abandoning = this.disposals.innermost();
         }
-        if (!(letGo || abandoning !== undefined)) {
+        if (made === 'none' && abandoning === undefined) {
           throw error;
         }
       }
