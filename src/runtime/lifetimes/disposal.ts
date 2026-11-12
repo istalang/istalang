@@ -1,7 +1,7 @@
 /**
  * What disposing each kind of object does (spec §7's table): one entry per kind, saying whether
- * such an object is disposed when nothing holds it, rather than simply left out of the next
- * commit, and how.
+ * such an object runs a disposal when nothing holds it, rather than only leaving the heap, and
+ * how.
  *
  * - A future of an async call disposes the call: it can only be suspended, since a running
  *   execution holds its own future (holders.ts). Its `disposing()` watches resolve, and a call
@@ -20,7 +20,11 @@
  *   Rule 5): an awaitable dropped it, so nothing can decide the wait through it. Any other pending
  *   resolver let go of is cancelled, its `onCancel` callbacks readied: one registered for a wait
  *   goes only once the wait ends, which cancels it first (`Heap.holds`), and a `Resolver.of` or
- *   `Resolver.at` one decides no wait of its own.
+ *   `Resolver.at` one decides no wait of its own. One whose wait nothing holds any more is
+ *   withdrawn, as no one waits.
+ * - A wait let go of while cases of it are pending, as a disposal abandoned mid-way while its
+ *   instance ends lets go of it, withdraws them: its chain holds itself only while it waits
+ *   (`Heap.holds`), so ending it is the wait's own rule, never its holder's.
  * - Any object a weak reference refers to has its watches resolved once it is gone (weak-side.ts).
  *
  * An object is disposed when nothing holds it only when that can be seen: it does one of the
@@ -84,7 +88,7 @@ export interface DisposalContext extends Disposability {
 
 /** How one object is disposed. */
 interface KindDisposal {
-  /** Whether it is disposed when nothing holds it, rather than simply left out of the next commit. */
+  /** Whether reaching zero holders runs its disposal, rather than only taking it out of the heap. */
   readonly disposable: (context: Disposability) => boolean;
   /** Disposes it its own way: the code to run, for a disposal that runs code. */
   readonly dispose: (context: DisposalContext) => DisposalRun | undefined;
@@ -145,14 +149,21 @@ const kinds: Handlers<undefined, LiveObject, [], KindDisposal> = {
   weakRef: () => inert,
   answer: () => inert,
   outcome: () => inert,
-  wait: () => inert,
+  wait: (_context, wait) => ({
+    disposable: (context) => context.heap.find('cases', wait.id).length > 0,
+    dispose: (context) => {
+      for (const resolver of context.heap.find('cases', wait.id)) {
+        context.cancel(resolver);
+      }
+    },
+  }),
   resolver: (_context, resolver) => ({
     disposable: (context) => resolver.state.kind === 'pending' || watched(context, resolver),
     dispose: (context) => {
       if (resolver.state.kind !== 'pending') {
         return;
       }
-      if (isDropped(resolver)) {
+      if (isDropped(context, resolver)) {
         throw new Panic(
           'A resolver was let go of unresolved, so the wait it was to decide never can. An ' +
             'awaitable keeps the work it starts alive by registering its resolver, or a ' +
@@ -171,15 +182,23 @@ function disposalFor(object: LiveObject): KindDisposal {
   return handlerOf(kinds, object)(undefined, object);
 }
 
-/** Whether `object` is disposed when nothing holds it any more, rather than simply left out of the next commit. */
+/** Whether `object` reaching zero holders runs its disposal, rather than only taking it out of the heap. */
 export function isDisposable(context: Disposability, object: LiveObject): boolean {
   return disposalFor(object).disposable(context);
 }
 
-/** Whether `resolver`, let go of while pending, is a wait's an awaitable dropped, which panics. */
-function isDropped(resolver: LiveObjectOf<'resolver'>): boolean {
+/**
+ * Whether `resolver`, let go of while pending, is a wait's an awaitable dropped, which panics: its
+ * wait is still held, so its waiter waits on it.
+ */
+function isDropped(context: Disposability, resolver: LiveObjectOf<'resolver'>): boolean {
   const { state } = resolver;
-  return state.kind === 'pending' && state.target.kind === 'case' && state.on.length === 0;
+  return (
+    state.kind === 'pending' &&
+    state.target.kind === 'case' &&
+    state.on.length === 0 &&
+    (context.heap.holdersOf(state.target.wait) ?? 0) > 0
+  );
 }
 
 /**

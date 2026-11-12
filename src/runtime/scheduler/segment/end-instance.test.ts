@@ -142,4 +142,104 @@ describe('terminating an instance', () => {
     expect((await test.runtime.terminate('t')).state).toMatchObject({ kind: 'terminated' });
     expect(notes).toEqual(['disposed lease']);
   });
+
+  it.each([
+    ['before', ['disposed lease']],
+    ['after', ['disposed lease']],
+  ])(
+    'withdraws the wait a disposal abandoned mid-way opened, a lease made %s it still disposed',
+    async (order, expected) => {
+      const notes: unknown[] = [];
+      const host: HostExterns = {
+        'main.note(String)': ([text]) => {
+          notes.push(text);
+          return null;
+        },
+      };
+      const test = testRuntime({ host });
+      const lease = '  const lease = new Lease{name: "lease"}';
+      const crash = '  const crash = new CrashProbe{name: "crash"}';
+      const abandoning = compiledText(
+        [
+          'extern fn note(text: String)',
+          "import * as time from 'time'\nimport * as runtime from 'runtime'",
+          'struct Panicking:',
+          '  type Mode = "ista"',
+          'ista fn onAwait(self: Panicking, done: Resolver<Int, "ista">) -> Unit: panic("in onAwait")',
+          'shared struct CrashProbe { name: String }',
+          'ista fn dispose(self: CrashProbe):',
+          '  const got = select:',
+          '    case Panicking: 1',
+          '    else: 0',
+          '  note("crashed " + self->name)',
+          'shared struct Lease { name: String }',
+          'fn dispose(self: Lease): note("disposed " + self->name)',
+          'ista async fn boom():',
+          '  await time.delay(5ms)',
+          '  panic("boom")',
+          'live async fn main() -> Int: await runtime.run(runtime.id()) _main()',
+          'ista async fn _main() -> Int:',
+          ...(order === 'before' ? [lease, crash] : [crash, lease]),
+          '  hold _ = boom()',
+          '  await time.delay(1d)',
+          '  0',
+        ].join('\n'),
+      );
+      const started = test.startInstance(abandoning, 't');
+      expect(await runToEnd(test, 't', started)).toMatchObject({
+        kind: 'panicked',
+        message: 'boom',
+      });
+      expect((await test.runtime.terminate('t')).state).toMatchObject({ kind: 'terminated' });
+      expect(notes).toEqual(expected);
+    },
+  );
+
+  it('disposes what a case of a wait a disposal abandoned mid-way awaited', async () => {
+    const notes: unknown[] = [];
+    const host: HostExterns = {
+      'main.note(String)': ([text]) => {
+        notes.push(text);
+        return null;
+      },
+    };
+    const test = testRuntime({ host });
+    const awaiting = compiledText(
+      [
+        'extern fn note(text: String)',
+        "import * as time from 'time'\nimport * as runtime from 'runtime'",
+        "import * as futures from 'futures'",
+        'struct Panicking:',
+        '  type Mode = "ista"',
+        'ista fn onAwait(self: Panicking, done: Resolver<Int, "ista">) -> Unit: panic("in onAwait")',
+        'shared struct Lease { name: String }',
+        'fn dispose(self: Lease): note("disposed " + self->name)',
+        'shared struct CrashProbe { s: Slot<Lease> }',
+        'ista fn dispose(self: CrashProbe):',
+        '  const got = select:',
+        '    case futures.first([self->s.put(new Lease{name: "in-put"})]): 1',
+        '    case Panicking: 2',
+        '    else: 0',
+        '  note("crashed")',
+        'ista async fn boom():',
+        '  await time.delay(5ms)',
+        '  panic("boom")',
+        'live async fn main() -> Int: await runtime.run(runtime.id()) _main()',
+        'ista async fn _main() -> Int:',
+        '  const s = Slot.create<Lease>()',
+        '  _ = s.put(new Lease{name: "in-slot"})',
+        '  const crash = new CrashProbe{s}',
+        '  hold _ = boom()',
+        '  await time.delay(1d)',
+        '  0',
+      ].join('\n'),
+    );
+    const started = test.startInstance(awaiting, 't');
+    expect(await runToEnd(test, 't', started)).toMatchObject({ kind: 'panicked', message: 'boom' });
+    expect((await test.runtime.terminate('t')).state).toMatchObject({ kind: 'terminated' });
+    expect(notes.map(String).toSorted((first, second) => first.localeCompare(second))).toEqual([
+      'disposed in-put',
+      'disposed in-slot',
+    ]);
+  });
 });
