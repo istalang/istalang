@@ -3,9 +3,8 @@
  * type `W<(T,)>?` makes `W<Int>`, `W<(Int,)>` and so on without end.
  *
  * The expansion graph (edges.ts) takes its edges from fields here: each generic struct or enum a
- * field's type or the types written in its annotations name, at any depth, gives that type's
- * parameters arguments built from the declaring type's own; an annotation's value is lowered at
- * each instance of its field's type (§3.16), so `@Tag<W<(T,)>>` expands as a field `W<(T,)>` does. A field making an expanding edge on a cycle is endless: it is reported where its
+ * field's type names, at any depth, gives that type's parameters arguments built from the declaring
+ * type's own. A field making an expanding edge on a cycle is endless: it is reported where its
  * declaration's layout is made, once, and the layout reads its type as the error type
  * (constructs/declarations/layout/index.ts), so every walk over types meets finitely many
  * instantiations.
@@ -27,8 +26,6 @@ import {
   type EnumDeclaration,
   typeParametersOf,
 } from '../../../syntax/declarations/index.ts';
-import { fieldChildrenOf, type SyntaxNode } from '../../../syntax/tree/index.ts';
-import { isWrittenType, type TypeNode } from '../../../syntax/types/index.ts';
 import type { CheckerContext, CheckerNote } from '../../contexts/context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import { nominalsIn } from '../../types/parts/type-parts.ts';
@@ -95,34 +92,24 @@ export class TypeExpansion {
     const own = new Set<ParameterKey>(typeParametersOf(declaration.typeParameters));
     const module = this.#checker.moduleOf(declaration);
     return writtenFieldsOf(declaration).flatMap((field) =>
-      writtenTypesOf(field)
-        .flatMap((written) => nominalsIn(this.#checker.resolveType(module, written)))
-        .flatMap(({ entity, arguments: typeArguments }) => {
-          const reached = entity.declaration;
-          if (reached.kind === 'ExternStructDeclaration') {
-            return [];
-          }
-          return argumentEdges(own, reached.typeParameters, typeArguments).map((edge) => ({
-            ...edge,
-            declaration,
-            field,
-            reached,
-          }));
-        }),
+      field.type === undefined
+        ? []
+        : nominalsIn(this.#checker.resolveType(module, field.type)).flatMap(
+            ({ entity, arguments: typeArguments }) => {
+              const reached = entity.declaration;
+              if (reached.kind === 'ExternStructDeclaration') {
+                return [];
+              }
+              return argumentEdges(own, reached.typeParameters, typeArguments).map((edge) => ({
+                ...edge,
+                declaration,
+                field,
+                reached,
+              }));
+            },
+          ),
     );
   }
-}
-
-/** The types written for `field`: its own, and the outermost ones written in its annotations. */
-function writtenTypesOf(field: DeclaredField): readonly TypeNode[] {
-  const outermost = (node: SyntaxNode): readonly TypeNode[] =>
-    isWrittenType(node) && node.kind !== 'RestType'
-      ? [node]
-      : fieldChildrenOf(node).flatMap(outermost);
-  return [
-    ...(field.type === undefined ? [] : [field.type]),
-    ...(field.annotations ?? []).flatMap(outermost),
-  ];
 }
 
 /** The fields `declaration` declares: a struct's, or every variant's of an enum. */

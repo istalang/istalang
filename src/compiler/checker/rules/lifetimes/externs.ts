@@ -51,12 +51,10 @@ export function externHeldOf(checker: Reader, type: NominalType): readonly Type[
   if (holds === undefined) {
     return type.arguments;
   }
-  const held = substitute(
-    holds,
-    substitutionFor(declaration.typeParameters, type.arguments),
-    checker.typeRules,
+  const substitution = substitutionFor(declaration.typeParameters, type.arguments);
+  return (tupleElements(holds) ?? [holds]).map((held) =>
+    substitute(held, substitution, checker.typeRules),
   );
-  return tupleElements(held) ?? [held];
 }
 
 /**

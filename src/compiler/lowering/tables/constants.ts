@@ -8,10 +8,8 @@
 
 import type { Register } from '../../../definition/operands.ts';
 import type { Value } from '../../../definition/values/values.ts';
-import { unreachable } from '../../../foundation/structures/unreachable.ts';
 import type { CheckedAnnotation } from '../../checker/surface/checked-annotation.ts';
 import type { ConstantForm } from '../../checker/surface/constant-form.ts';
-import type { Type } from '../../checker/types/type/index.ts';
 import { hasOneValue } from '../../checker/types/unions/unions.ts';
 import type { AnchoredSpan } from '../../syntax/tree/positions.ts';
 import type { CodeWriter } from '../functions/code-writer.ts';
@@ -28,54 +26,40 @@ export function emitConstant(
   return dst;
 }
 
-/**
- * The persisted value of a form the checker computed, its types read through `typed`: a generic
- * function's annotation at the type arguments of one of its instances (§3.16).
- */
-export function constantValue(
-  tables: DefinitionTables,
-  form: ConstantForm,
-  typed: (type: Type) => Type = (type) => type,
-): Value {
-  const partValue = (part: ConstantForm) => constantValue(tables, part, typed);
+/** The persisted value of a form the checker computed. */
+export function constantValue(tables: DefinitionTables, form: ConstantForm): Value {
   switch (form.kind) {
     case 'primitive':
       return form.value;
-    case 'struct': {
-      const type = typed(form.type);
+    case 'struct':
       return {
         kind: 'struct',
-        type: tables.types.index(
-          type.kind === 'nominal' || type.kind === 'anonymous'
-            ? type
-            : unreachable('A struct type substituted is a struct type.'),
-        ),
-        fields: form.fields.map(partValue),
+        type: tables.types.index(form.type),
+        fields: form.fields.map((field) => constantValue(tables, field)),
       };
-    }
     case 'tuple':
     case 'array':
-      return { kind: form.kind, elements: form.elements.map(partValue) };
+      return {
+        kind: form.kind,
+        elements: form.elements.map((element) => constantValue(tables, element)),
+      };
     case 'map':
       return {
         kind: 'map',
-        entries: form.entries.map(([key, value]) => [partValue(key), partValue(value)]),
+        entries: form.entries.map(([key, value]) => [
+          constantValue(tables, key),
+          constantValue(tables, value),
+        ]),
       };
-    case 'member': {
+    case 'member':
       // A union is an enum with a variant per member, a member of one value its tag
-      // (type-table.ts); one whose members an instance merges into one is that member alone.
-      const union = typed(form.union);
-      const member = typed(form.member);
-      if (union.kind !== 'union') {
-        return partValue(form.value);
-      }
+      // (type-table.ts).
       return {
         kind: 'variant',
-        type: tables.types.index(union),
-        variant: tables.types.unionVariant(union, member),
-        fields: hasOneValue(member) ? [] : [partValue(form.value)],
+        type: tables.types.index(form.union),
+        variant: tables.types.unionVariant(form.union, form.member),
+        fields: hasOneValue(form.member) ? [] : [constantValue(tables, form.value)],
       };
-    }
     case 'function':
       return {
         kind: 'closure',
@@ -92,14 +76,10 @@ export function constantValue(
   }
 }
 
-/**
- * The values of `annotations`, as an entry carries them for tools to read (§3.16), their types
- * read through `typed`, its instance's.
- */
+/** The values of `annotations`, as an entry carries them for tools to read (§3.16). */
 export function annotationValues(
   tables: DefinitionTables,
   annotations: readonly CheckedAnnotation[],
-  typed: (type: Type) => Type,
 ): Value[] {
-  return annotations.map(({ form }) => constantValue(tables, form, typed));
+  return annotations.map(({ form }) => constantValue(tables, form));
 }

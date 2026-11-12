@@ -46,7 +46,6 @@ import type { CheckedAnnotation } from '../../checker/surface/checked-annotation
 import { isHostExtern } from '../../checker/surface/host-externs.ts';
 import { folded } from '../../checker/types/identity/folding.ts';
 import { sameType } from '../../checker/types/identity/identity.ts';
-import { substitute, substitutionFor } from '../../checker/types/parts/substitution.ts';
 import { type RecursiveType, unfoldRecursive } from '../../checker/types/type/computed-types.ts';
 import type {
   AnonymousStructType,
@@ -72,14 +71,8 @@ export interface TypeTableSeams {
   readonly callIndex: (call: ClosedCall) => FunctionId;
   /** The native a host implements a function by. */
   readonly hostNativeIndex: (declaration: FunctionDeclaration) => FunctionId;
-  /**
-   * The persisted values of annotations the checker computed (§3.16), their types read through
-   * `typed`: a generic type's at the arguments of the instance whose fields they annotate.
-   */
-  readonly annotationValues: (
-    annotations: readonly CheckedAnnotation[],
-    typed: (type: Type) => Type,
-  ) => Value[];
+  /** The persisted values of annotations the checker computed (§3.16). */
+  readonly annotationValues: (annotations: readonly CheckedAnnotation[]) => Value[];
 }
 
 /** A type with an entry of its own: a declared struct, enum or extern type, a shape or a union. */
@@ -294,7 +287,7 @@ export class TypeTable {
   /** The entry describing `type`: its fields, its variants, or how an extern type is disposed. */
   #layout(type: EntryType): TypeDefinition {
     if (type.kind === 'anonymous') {
-      return { kind: 'struct', name: '', arguments: [], fields: this.#fields(type.fields, type) };
+      return { kind: 'struct', name: '', arguments: [], fields: this.#fields(type.fields) };
     }
     if (type.kind === 'union') {
       return this.#unionLayout(type);
@@ -316,7 +309,7 @@ export class TypeTable {
           kind: 'struct',
           name,
           arguments: typeArguments,
-          fields: this.#fields(this.#checker.fieldsOf(type) ?? [], type),
+          fields: this.#fields(this.#checker.fieldsOf(type) ?? []),
         };
       case 'EnumDeclaration': {
         const role = this.#roleOf(enumRoles, declaration);
@@ -326,7 +319,7 @@ export class TypeTable {
           arguments: typeArguments,
           variants: (this.#checker.variantsOf(type) ?? []).map((variant) => ({
             name: variant.name,
-            fields: this.#fields(variant.fields, type),
+            fields: this.#fields(variant.fields),
           })),
           ...(role === undefined ? {} : { role }),
         };
@@ -417,17 +410,11 @@ export class TypeTable {
       : entry;
   }
 
-  /** The entries of `fields` of `owner`, their annotations at its type arguments. */
-  #fields(fields: readonly FieldMember[], owner: NominalType | AnonymousStructType) {
-    const substitution =
-      owner.kind === 'nominal'
-        ? substitutionFor(owner.entity.declaration.typeParameters, owner.arguments)
-        : new Map();
-    const typed = (type: Type) => substitute(type, substitution, this.#checker.typeRules);
+  #fields(fields: readonly FieldMember[]) {
     return fields.map((field) => ({
       name: field.name,
       type: this.reference(field.type),
-      annotations: this.#seams.annotationValues(this.#checker.annotations.ofField(field), typed),
+      annotations: this.#seams.annotationValues(this.#checker.annotations.ofField(field)),
     }));
   }
 }

@@ -19,7 +19,7 @@ import type { FunctionDeclaration } from '../../../syntax/declarations/index.ts'
 import { checkedApart, reported } from '../../check.test-kit.ts';
 import { heldTypes } from '../../types/properties/held.ts';
 import type { NominalType, Type } from '../../types/type/index.ts';
-import { intType, literalType } from '../../types/type/primitives.ts';
+import { intType, literalType, tupleType } from '../../types/type/primitives.ts';
 import { typeText } from '../../types/type/type-text.ts';
 
 const checker = checkedApart(stdProgramOf({ 'main.ista': '' }));
@@ -57,6 +57,13 @@ describe('what a value of an extern type holds', () => {
     const future = preludeType('future', preludeType('slot', intType), ista);
     expect(checker.externHeldOf(future).map(typeText)).toEqual(['Slot<Int>']);
     expect(checker.externHeldOf(preludeType('array', intType)).map(typeText)).toEqual(['Int']);
+  });
+
+  it('is a tuple argument whole where @Holds names its parameter alone', () => {
+    const pair = tupleType([intType, preludeType('slot', intType)]);
+    expect(checker.externHeldOf(preludeType('slot', pair)).map(typeText)).toEqual([
+      '(Int, Slot<Int>)',
+    ]);
   });
 
   it("is a resolver's callbacks, never its value", () => {

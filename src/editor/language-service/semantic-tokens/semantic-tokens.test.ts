@@ -58,6 +58,14 @@ describe('highlighting', () => {
     ]);
   });
 
+  it("shows an annotation's struct as a type, qualified or given type arguments (§3.16)", () => {
+    const shown = highlighted('@Holds<T> @json.Skip<Int>', 'extern struct S<T>');
+    expect(shown.filter(([text]) => text === 'Holds' || text === 'Skip')).toEqual([
+      ['Holds', 'type'],
+      ['Skip', 'type'],
+    ]);
+  });
+
   it("shows a deferred call's taker as the function or method it calls (§3.14)", () => {
     const shown = highlighted('const n = retry(times: 5) pool.submit fetch(id)');
     expect(shown.filter(([, type]) => type === 'function' || type === 'method')).toEqual([

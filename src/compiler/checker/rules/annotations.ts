@@ -17,6 +17,9 @@
  *   language values and other code shows what it holds (rules/lifetimes/externs.ts reads them), and
  *   any other struct on fields, functions and struct declarations, kept for tools. The same
  *   annotation twice on one item says nothing new, so it is an error.
+ * - A field's and a function's annotations are carried by every instance's entry (lowering), and
+ *   their values are computed once, so they name none of their declaration's type parameters; a
+ *   struct declaration's, which no entry carries, may (`@Holds<T>`).
  * - Fields of one struct or variant that end up with the same JSON name are reported where they
  *   are declared, since the clash is in the declaration whether or not the type ever crosses.
  */
@@ -45,8 +48,8 @@ import {
   statementPlace,
 } from '../surface/checked-annotation.ts';
 import type { CheckedBody } from '../surface/checked-body.ts';
-import { sameForm } from '../surface/constant-form.ts';
-import { sameTypeSpelled } from '../types/parts/type-parts.ts';
+import { sameForm, typesIn } from '../surface/constant-form.ts';
+import { parametersIn, sameTypeSpelled } from '../types/parts/type-parts.ts';
 import type { FieldMember, Type } from '../types/type/index.ts';
 import { errorType } from '../types/type/primitives.ts';
 import { typeText } from '../types/type/type-text.ts';
@@ -242,7 +245,13 @@ export class Annotations implements AnnotationChecks {
     if (misplaced === 'elsewhere') {
       return checkerDiagnostics.misplacedAnnotation(node.span, name, placeText(place));
     }
-    return misplaced?.(node.span);
+    if (misplaced !== undefined) {
+      return misplaced(node.span);
+    }
+    const isInstances = place.kind === 'field' || place.kind === 'function';
+    return isInstances && typesIn(annotation.form).some((part) => parametersIn(part).length > 0)
+      ? checkerDiagnostics.annotationOfInstances(node.span, name, placeText(place))
+      : undefined;
   }
 
   /** `node`'s value as an annotation; undefined after reporting why it isn't one. */

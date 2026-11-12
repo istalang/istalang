@@ -55,6 +55,20 @@ function calleeRoles(callee: Expression): readonly Role[] {
   return callee.kind === 'MemberAccess' ? [[callee.member, 'method']] : [];
 }
 
+/** The struct's name an annotation's value names it by, where no literal's type names it. */
+function annotatedStruct(value: Expression): readonly Role[] {
+  switch (value.kind) {
+    case 'Identifier':
+      return [[value, 'type']];
+    case 'MemberAccess':
+      return [[value.member, 'type']];
+    case 'TypeApplication':
+      return annotatedStruct(value.target);
+    default:
+      return [];
+  }
+}
+
 // biome-ignore-start lint/style/useNamingConvention: the keys are the tree's node kinds.
 const rolesOf: RolesOf = {
   FunctionDeclaration: (node) => [
@@ -96,8 +110,9 @@ const rolesOf: RolesOf = {
   // Only a function's name takes type arguments as a value (§3.14).
   TypeApplication: (node) => calleeRoles(node.target),
   TemplateLiteral: (node) => (node.tag === undefined ? [] : calleeRoles(node.tag)),
-  // An annotation is a struct value (§3.16); written bare, its name is still the struct's.
-  Annotation: (node) => (node.value.kind === 'Identifier' ? [[node.value, 'type']] : []),
+  // An annotation is a struct value (§3.16); written bare, qualified or given type arguments, its
+  // name is still the struct's.
+  Annotation: (node) => annotatedStruct(node.value),
   For: labelled,
   FieldLoop: labelled,
   While: labelled,

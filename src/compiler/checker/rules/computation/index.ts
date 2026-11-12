@@ -5,7 +5,8 @@
  * value converted to or from a one-element tuple, §3.15), structs in every literal form (a spread
  * copying a computed struct's fields), a struct without fields written bare, type arguments and
  * all (`Holds<Int>`), arrays and maps of `Map`, lambdas, which capture nothing at the top level
- * (§3.14), and other top-level constants; a struct's value converted into its shape (§3.1);
+ * (§3.14), and other top-level constants, through a namespace too (`lib.limit`, `lib.Marker`); a
+ * struct's value converted into its shape (§3.1);
  * anything else, a map literal of another type, a shared struct's `new`, an enum variant, or a
  * value needing an optional wrap, an `any` conversion or an async function fit among them, is
  * refused where it stands (forms.ts).
@@ -30,6 +31,7 @@ import type {
   Expression,
   Lambda,
   MapLiteral,
+  MemberAccess,
   Spread,
   StructLiteral,
 } from '../../../syntax/expressions/index.ts';
@@ -139,6 +141,8 @@ class Computation {
       }
       case 'TypeApplication':
         return this.#bareStruct(node);
+      case 'MemberAccess':
+        return this.#qualified(node);
       case 'StructLiteral':
         return this.#struct(node);
       case 'IndentedValue': {
@@ -393,10 +397,25 @@ class Computation {
   }
 
   /**
-   * A struct without fields named bare, with type arguments or not (§3.1); any other name that
-   * isn't a constant is refused.
+   * A name read through a namespace, `lib.limit` or `lib.Marker` (§3.13): a constant, or a struct
+   * without fields; a field read from a value is refused.
    */
-  #bareStruct(node: Identifier | TypeApplication): Outcome {
+  #qualified(node: MemberAccess): Outcome {
+    if (this.#scope.checked.typeOf(node.target) !== undefined) {
+      return refused(node);
+    }
+    const constant = this.#scope.valueNamed(node.member);
+    if (constant === undefined) {
+      return this.#bareStruct(node);
+    }
+    return constant.form === undefined ? unknown : computed(constant.form);
+  }
+
+  /**
+   * A struct without fields named bare, qualified or not, with type arguments or not (§3.1); any
+   * other name that isn't a constant is refused.
+   */
+  #bareStruct(node: Identifier | MemberAccess | TypeApplication): Outcome {
     const type = this.#scope.checked.typeOf(node);
     return type?.kind === 'nominal' && this.#scope.checker.fieldsOf(type)?.length === 0
       ? computed({ kind: 'struct', type, fields: [] })

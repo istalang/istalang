@@ -46,9 +46,9 @@ export type ConstantForm =
 
 /**
  * The types `form`'s value is built of, each a type lowering gives an entry (lowering/tables/
- * constants.ts): every struct's, and every union a member is put into, with that member. A
- * generic declaration's annotation is lowered at each instance (§3.16), so these are the types its
- * instances must make.
+ * constants.ts): every struct's, and every union a member is put into, with that member. An
+ * annotation every instance's entry carries names none of its declaration's type parameters in
+ * them (§3.16, rules/annotations.ts).
  */
 export function typesIn(form: ConstantForm): readonly Type[] {
   switch (form.kind) {

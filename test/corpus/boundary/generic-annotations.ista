@@ -1,7 +1,8 @@
 # outcome: 3
 # An annotation is a struct value of any struct (§3.16): a generic one without fields is given
-# its type arguments as its value is (§3.1), and a declaration's annotations see its type
-# parameters, as its fields' do. A struct declaration takes any annotation, kept for tools.
+# its type arguments as its value is (§3.1). A struct declaration takes any annotation, kept for
+# tools, and sees its type parameters; a field's and a function's name the types they mean, on
+# their own line or before their item on its line.
 
 import * as runtime from 'runtime'
 
@@ -13,10 +14,9 @@ struct Note:
 @Tag<T>
 @Note{"kept for tools"}
 struct Box<T>:
-  item: T @Tag<Box<T>>
+  item: T @Tag<Box<Int>>
 
-@Tag<(U, Int)>
-fn unboxed<U>(box: Box<U>) -> U:
+@Tag<(Int, String)> fn unboxed<U>(box: Box<U>) -> U:
   box.item
 
 live async fn main() -> Int: await runtime.run(runtime.id()) _main()

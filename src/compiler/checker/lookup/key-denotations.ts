@@ -182,7 +182,7 @@ function instantiationsAt(
   const calls = body?.callsAt(node) ?? [];
   const made = body?.typeOf(node);
   return calls.length === 0 && made !== undefined
-    ? nominalMade(made)
+    ? membersOf(made).flatMap(nominalMade)
     : functionsInstantiated(calls);
 }
 

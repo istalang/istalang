@@ -173,18 +173,22 @@ The node kinds are in `src/compiler/syntax/expressions/index.ts` and `syntax/sta
 - **Parsing them on an item's line:** a `<` after an annotation's name is always type arguments
   (`Parser.typeApplication`, `parseCommittedTypeApplication` in
   `parser/grammar/expressions/postfix.ts`), so `@Tag<Int> fn f(): 1` reads.
-- **Lowered values:** an entry's annotations are lowered at its instance's type arguments
-  (`lowering/tables/instances.ts` `typedIn`), and a field's at its owner's
-  (`lowering/tables/type-table.ts` `#fields`), so `@Tag<U>` reaches the Definition as `Tag<Int>`.
-  So the types their values are built of (`typesIn`, `surface/constant-form.ts`) are held to an
-  instance's reductions (`resolution/type-matches/reduction-requirements.ts`), and the types
-  written in a field's annotations make expansion edges as its type does
-  (`rules/expansion/types.ts`): `test/corpus/boundary/invalid-generic-annotations.ista`.
+- **Lowered values:** every instance's entry carries a function's and a field's annotations, which
+  are computed once, so those name none of their declaration's type parameters (5914, through the
+  types their values are built of, `typesIn` in `surface/constant-form.ts`;
+  `test/corpus/boundary/invalid-generic-annotations.ista`). A struct declaration's annotations,
+  which no entry carries, may (`@Holds<T>`). So lowering reads annotations as before, and no
+  instance check reads them.
+- **A fieldless struct named with type arguments in code,** `Tag<D>`, is among a generic body's or
+  field default's reduction requirements (`madeBare` in
+  `resolution/type-matches/reduction-requirements.ts`), and postpones as a bare variant does
+  (`bareStructAccepts` in `constructs/expressions/access/names.ts`).
 - **Placement** (`rules/annotations.ts` `placements`, `Record<Known | 'any', …>`):
   - Places (`surface/checked-annotation.ts` `AnnotationPlace`): field; function, extern or not
     (`functionPlace`); struct, extern or not (shared included); statement; other, named.
   - `any` stands on fields, functions and struct declarations, kept for tools. Enums, aliases,
-    traits, associated types and imports stay `other` (5903).
+    traits, associated types and imports stay `other` (5903). A field's or a function's names no
+    type parameter (5914).
   - `holds` stands on a struct place, `keeps` on a function place, each 5903 elsewhere; on a
     non-extern or outside the std (`checker.isStd(module)`), 5750 and 5751.
 - **Known annotations** are well-known names (`src/foundation/language/well-known/index.ts`:

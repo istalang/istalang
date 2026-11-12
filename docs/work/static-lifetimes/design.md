@@ -312,8 +312,10 @@ C2 adds all four:
 - struct and extern struct declarations take annotations, any struct's kept for tools as on fields
   and functions.
 
-An annotation's value is still computed at compile time, so its fields never depend on those type
-parameters.
+An annotation's value is still computed at compile time, once for the declaration, so its fields
+never depend on those type parameters. Every instance's entry carries a field's and a function's
+annotations, so those name none of them (5914); a struct declaration's, which no entry carries,
+may.
 
 ### 6.2 Their home
 

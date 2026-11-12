@@ -6,7 +6,10 @@
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { reportedOnce } from '../../../../foundation/diagnostics/diagnostic.test-kit.ts';
+import {
+  reportedNothing,
+  reportedOnce,
+} from '../../../../foundation/diagnostics/diagnostic.test-kit.ts';
 import { startToEnd, testRuntime } from '../../../../runtime/runtime.test-kit.ts';
 import { compiledText } from '../../../compile.test-kit.ts';
 import { reported } from '../../check.test-kit.ts';
@@ -170,5 +173,29 @@ describe('computed constants', () => {
     expect(reported('shared struct Box { n: Int }\nconst b = Box{n: 1}')).toEqual(
       reportedOnce(checkerDiagnostics.sharedNeedsNew.code, 'Box'),
     );
+  });
+
+  it('read a constant and a struct without fields through a namespace, as named alone', async () => {
+    const lib = 'struct Marker\nstruct Tag<T>\nconst limit = 3\n';
+    const main = [
+      "import * as lib from 'lib'",
+      "import * as runtime from 'runtime'",
+      'const limit = lib.limit',
+      'const marker = lib.Marker',
+      'const tag: lib.Tag<Int> = lib.Tag',
+      'live async fn main() -> Bool: await runtime.run(runtime.id()) _main()',
+      '@lib.Marker',
+      'ista async fn _main() -> Bool: (limit, marker, tag) == (3, lib.Marker, lib.Tag<Int>)',
+    ].join('\n');
+    expect(reported(main, { lib })).toEqual(reportedNothing);
+    expect(await startToEnd(testRuntime(), compiledText(main, { lib }))).toEqual({
+      kind: 'finished',
+      outcome: 'true',
+    });
+  });
+
+  it("refuse a field read from a value's, which only running computes", () => {
+    const text = 'struct Pair { a: Int }\nconst p = Pair{a: 1}\nconst a = p.a';
+    expect(reported(text)).toEqual(reportedOnce(checkerDiagnostics.notConstant.code, 'p.a'));
   });
 });

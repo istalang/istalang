@@ -9,6 +9,7 @@
 
 import { type Entity, localFunctionOf, type VariableEntity } from '../../../../binder/entities.ts';
 import type { ContextConstantDeclaration } from '../../../../syntax/declarations/index.ts';
+import { typeParametersOf } from '../../../../syntax/declarations/index.ts';
 import type { MemberAccess } from '../../../../syntax/expressions/index.ts';
 import type { Identifier } from '../../../../syntax/tree/node.ts';
 import type { BodyContext } from '../../../contexts/body-context.ts';
@@ -18,7 +19,7 @@ import { checkCallKind } from '../../../resolution/applying/call-kinds.ts';
 import { namedFunctions } from '../../../resolution/choosing/named-functions.ts';
 import type { Admits } from '../../../types/fitting/expected.ts';
 import { expectedNominal } from '../../../types/fitting/expected.ts';
-import { isNominalEntity, type Type } from '../../../types/type/index.ts';
+import { isNominalEntity, membersOf, type Type } from '../../../types/type/index.ts';
 import { errorType, markType } from '../../../types/type/primitives.ts';
 import { fieldlessStructOf } from '../../../types/written/named-types.ts';
 import { checkFunctionValue, namedFunctionsAccepted } from '../../closures/function-values.ts';
@@ -39,23 +40,44 @@ export function checkName(
 /**
  * Which types a name passed to a call can take when the call decides its type (§3.5): a function
  * among several or a generic one the function types it can be, a bare variant the enums having it
- * and the function types its constructor can be.
+ * and the function types its constructor can be, a generic struct without fields its instances.
  */
 export function nameAccepts(context: BodyContext, node: Identifier): Admits | undefined {
   const entity = context.entityOf(node);
   if (entity?.kind === 'variants') {
     return variantNameAccepts(context, node, entity);
   }
-  return namedFunctionsAccepted(context, node);
+  return bareStructAccepts(context, node) ?? namedFunctionsAccepted(context, node);
 }
 
 /**
  * Which types a member access passed to a call can take when the call decides its type (§3.5): a
- * qualified variant without fields of a generic enum the instances of its enum, functions named
- * through a namespace or a type the function types they can be.
+ * qualified variant without fields of a generic enum the instances of its enum, and a qualified
+ * generic struct without fields its own, as their names alone can't give their type arguments;
+ * functions named through a namespace or a type the function types they can be.
  */
 export function memberAccepts(context: BodyContext, node: MemberAccess): Admits | undefined {
-  return qualifiedVariantAccepts(context, node) ?? namedFunctionsAccepted(context, node);
+  return (
+    qualifiedVariantAccepts(context, node) ??
+    bareStructAccepts(context, node.member) ??
+    namedFunctionsAccepted(context, node)
+  );
+}
+
+/**
+ * For a generic struct without fields named bare, `Tag` (§3.1), the instances of it, whose type
+ * arguments its name alone can't give; undefined for any other name.
+ */
+function bareStructAccepts(context: BodyContext, name: Identifier): Admits | undefined {
+  const entity = context.entityOf(name);
+  const declaration = entity === undefined ? undefined : fieldlessStructOf(context.checker, entity);
+  if (declaration === undefined || typeParametersOf(declaration.typeParameters).length === 0) {
+    return undefined;
+  }
+  return (expected) =>
+    membersOf(expected).some(
+      (member) => member.kind === 'nominal' && member.entity.declaration === declaration,
+    );
 }
 
 /** The type of the value `entity` denotes where `node` names it. */

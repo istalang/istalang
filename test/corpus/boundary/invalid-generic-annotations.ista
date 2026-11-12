@@ -1,36 +1,31 @@
-# error: 5125 at 30:3
-# error: 5170 at 34:15
-# error: 5170 at 35:15
-# error: 5170 at 36:3
-# The annotations of a generic declaration are made at each of its instances (§3.16), so the types
-# their values are built of are held to what any type it holds is (§3.5, §3.17): a type match
-# naming no type at an instance is reported where the instance is written, a field's, a variant
-# field's and a function's alike, and an annotation naming its type again with a type argument
-# built from its own makes it endless, as its field would.
-
-import * as runtime from 'runtime'
+# error: 5914 at 14:11
+# error: 5914 at 17:17
+# error: 5914 at 20:1
+# error: 5914 at 24:1
+# Every instance's entry carries the annotations of a field and of a function, their values
+# computed once for the declaration (§3.16), so they name none of its type parameters, written or
+# reached through another; a struct declaration's annotations, which no instance carries, may.
 
 struct Tag<T>
 
-type OnlyInt<T> = match T:
-  case Int: Int
-
-struct Box<U>:
-  item: U @Tag<OnlyInt<U>>
+@Tag<T>
+struct Box<T>:
+  size: Int @Tag<Int>
+  item: T @Tag<T>
 
 enum Opt<U>:
-  Some(value: U @Tag<OnlyInt<U>>)
+  Some(value: U @Tag<Array<U>>)
   Empty
 
-@Tag<OnlyInt<U>>
+@Tag<(U, Int)>
 fn helper<U>(u: U) -> Int:
   1
 
-struct Grow<U>:
-  item: U @Tag<Grow<(U,)>>
+@Tag<Box<U>>
+@Tag<Int>
+fn pair<U>(u: U) -> Int:
+  2
 
-live async fn main() -> Int: await runtime.run(runtime.id()) _main()
-ista async fn _main() -> Int:
-  const box = Box{item: "nope"}
-  const opt = Opt.Some("nope")
-  helper("nope")
+@Tag<Int>
+fn plain<U>(u: U) -> Int:
+  3

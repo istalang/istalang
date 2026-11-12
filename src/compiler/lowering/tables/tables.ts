@@ -54,7 +54,6 @@ import {
   nestedKey,
   nestedName,
   ownerDeclaration,
-  typedIn,
 } from './instances.ts';
 import { qualifiedNameOf } from './names.ts';
 import { ownEntryOf } from './own-entries.ts';
@@ -134,7 +133,7 @@ export class DefinitionTables {
       functionIndex: (instance) => this.functionIndex(instance),
       callIndex: (call) => this.callIndex(call),
       hostNativeIndex: (declaration) => this.hostNativeIndex(declaration),
-      annotationValues: (annotations, typed) => annotationValues(this, annotations, typed),
+      annotationValues: (annotations) => annotationValues(this, annotations),
     });
   }
 
@@ -179,7 +178,6 @@ export class DefinitionTables {
       annotations: annotationValues(
         this,
         this.#checker.annotations.of(module, declaration, functionPlace(declaration)),
-        typedIn(instance, this.#checker.typeRules),
       ),
     };
   }

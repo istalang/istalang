@@ -62,6 +62,11 @@ export const boundaryTemplates = {
     message: () =>
       "A shape's field takes no annotation, since no declaration carries it; a field that needs one belongs to a struct.",
   },
+  annotationOfInstances: {
+    code: 5914,
+    message: (annotation: string, place: string) =>
+      `'@${annotation}' names a type parameter, yet an annotation on ${place} has one value for every instance; name the types it means (§3.16).`,
+  },
   hostExternMark: {
     code: 5913,
     message: (name: string) =>
