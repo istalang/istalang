@@ -11,6 +11,7 @@
 import { test as it } from 'vitest';
 import { compiledText } from '../../compiler/compile.test-kit.ts';
 import { startToEnd, testRuntime } from '../runtime.test-kit.ts';
+import { noHeapCheck } from './loaded-definition.ts';
 
 const workers = 400;
 
@@ -44,7 +45,7 @@ ista async fn _main() -> Int:
 `);
 
 /** A runtime as a host runs one, its heaps unchecked by the test runtime's oracle. */
-const hosted = () => testRuntime({ heapCheck: () => undefined });
+const hosted = () => testRuntime({ heapCheck: noHeapCheck });
 
 it(`${workers} workers on one inbox`, async ({ bench, expect }) => {
   const sum = String((workers * (workers - 1)) / 2);

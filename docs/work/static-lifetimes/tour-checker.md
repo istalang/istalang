@@ -262,7 +262,7 @@ The node kinds are in `src/compiler/syntax/expressions/index.ts` and `syntax/sta
 |---|---|
 | `extern shared struct Slot<T>` | `@Holds<T>` (the default, written for clarity) |
 | `extern shared struct WeakRef<T is Disposable>` | `@Holds<()>`: `T` watched |
-| `extern shared struct Future<T, K>` | `@Holds<T>`; its call belongs to the language |
+| `extern shared struct Future<T, K>` | `@Holds<(T, Resolver<T, K>)>`: its value, and the resolvers registered on it (C3 step 0); its call belongs to the language |
 | `extern shared struct Resolver<T, K>` | `@Holds<(Fn<(T,), Unit, K>, Fn<(), Unit, K>)>`; an at-resolver's `done` is covered by them |
 | `extern shared struct _Cell<T>` | the default, `T` |
 | `extern shared struct _Call` | none: no type arguments, so it holds nothing |
@@ -297,8 +297,8 @@ The node kinds are in `src/compiler/syntax/expressions/index.ts` and `syntax/sta
 - **Natives (C2):** `checker.keepsOf(extern)` gives what each parameter keeps, by position, and
   `checker.externHeldOf(type)` what a handle holds one level down; the type arguments `Holds` leaves
   out are watched (design.md §6.3), so read them off the declaration's type parameters. The
-  Definition carries neither: the native audit (step 0) reads them off the checker of the programs
-  it compiles, or lowering adds them, its call.
+  Definition carries neither: the native audit (step 0) reads `keepsOf` off a checker of every std
+  module, by the extern key lowering gives (`stdlib/std-externs.test-kit.ts` `stdNativeKeeps`).
 - **Calls the program never writes, which the runtime makes** (design.md §5.5):
 
   | Call | When | Unit |

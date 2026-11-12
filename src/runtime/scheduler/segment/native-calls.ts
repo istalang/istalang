@@ -47,6 +47,7 @@ import { type Heap, handleObject } from '../instance/heap.ts';
 import type { Instance } from '../instance/index.ts';
 import type { Slots } from '../instance/slots.ts';
 import { liveResolvable } from '../live-resolvers.ts';
+import type { NativeCallMade } from '../loaded-definition.ts';
 import type { Waiting } from '../waiting.ts';
 import { nativeContextsOf } from './native-contexts.ts';
 
@@ -84,7 +85,7 @@ export class NativeCalls {
     const values = passedValues(heap, contents);
     const entry = this.#entry(callee);
     const declared = entry.kind === 'extern' ? entry : undefined;
-    const run = (): Value =>
+    const called = (): Value =>
       native(values, {
         ...this.#segment,
         name: entry.name,
@@ -94,9 +95,20 @@ export class NativeCalls {
           writeReference(heap, referenceAt(contents, position), value);
         },
       });
-    return entry.kind === 'extern' && entry.constant
-      ? this.#instance.effects.pinned(entry.key, run)
-      : run();
+    const run =
+      declared === undefined
+        ? called
+        : () => this.#checked({ key: declared.key, passed: contents, values }, called);
+    return declared?.constant === true ? this.#instance.effects.pinned(declared.key, run) : run();
+  }
+
+  /** What `called`, the native's `call`, gives, the instance's heap checked around it. */
+  #checked(call: NativeCallMade, called: () => Value): Value {
+    const { heap, loaded } = this.#instance;
+    const check = loaded.heapCheck.native({ heap, types: loaded.definition.types }, call);
+    const result = called();
+    check();
+    return result;
   }
 
   #entry(callee: FunctionId): FunctionDefinition {

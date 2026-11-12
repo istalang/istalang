@@ -65,7 +65,7 @@ export class SegmentCollection {
       const released = holders.takeReleased();
       const changed = [...released, ...heap.takeWritten()];
       if (changed.length > 0) {
-        loaded.heapCheck({ heap, types: loaded.definition.types }, changed);
+        loaded.heapCheck.changed({ heap, types: loaded.definition.types }, changed);
       }
       if (released.length > 0 || this.#collector.stalled) {
         this.#collector.collect(released);

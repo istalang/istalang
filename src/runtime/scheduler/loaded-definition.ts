@@ -4,21 +4,40 @@
  * snapshot of its instances refers to. A test's Definition also runs in that test's world
  * (testing/test-world.ts), which only the runtime running the test gives, and a test runtime may
  * check each of its instances' heaps as they change (`HeapCheck`), which a host never does: the
- * check is a test's oracle, as costly as a walk of what changed reaches.
+ * check is a test's oracle, as costly as a walk of what changed reaches. It sees the heap both
+ * after an instruction and around a native's call, since only the latter tells which of the
+ * call's arguments an edge a native adds holds (docs/work/static-lifetimes/design.md §6.6).
  */
 
 import type { Definition } from '../../definition/definition.ts';
+import type { Value } from '../../definition/values/values.ts';
 import { FunctionTable } from '../interpreter/function-table.ts';
 import type { Disposability } from '../lifetimes/disposal.ts';
 import type { Natives } from '../natives.ts';
+import type { RegisterContents } from '../snapshot/objects.ts';
 import { noTestWorld, type TestWorld } from './testing/test-world.ts';
 
-/**
- * A check of an instance's heap, made after every instruction that let go of or wrote into
- * something, before collecting, with the objects `changed` since the last: let go of or written
- * into. A failed one throws.
- */
-export type HeapCheck = (heap: Disposability, changed: readonly number[]) => void;
+/** A check of an instance's heap as it changes. A failed one throws. */
+export interface HeapCheck {
+  /**
+   * Made after every instruction that let go of or wrote into something, before collecting, with
+   * the objects `changed` since the last: let go of or written into.
+   */
+  readonly changed: (heap: Disposability, changed: readonly number[]) => void;
+  /** Made as `call` starts, while the heap is as it found it; what checks it once it returned. */
+  readonly native: (heap: Disposability, call: NativeCallMade) => () => void;
+}
+
+/** A native's call: the extern's key, and what each argument passes, value or reference. */
+export interface NativeCallMade {
+  readonly key: string;
+  readonly passed: readonly RegisterContents[];
+  /** Each argument's value, a reference's read through it. */
+  readonly values: readonly Value[];
+}
+
+/** The check a host makes: none. */
+export const noHeapCheck: HeapCheck = { changed: () => undefined, native: () => () => undefined };
 
 export interface LoadedDefinition {
   readonly definition: Definition;
@@ -42,7 +61,7 @@ export function loadDefinition(
   definition: Definition,
   hash: string,
   natives: Natives,
-  { world = noTestWorld, heapCheck = () => undefined }: TestLoading = {},
+  { world = noTestWorld, heapCheck = noHeapCheck }: TestLoading = {},
 ): LoadedDefinition {
   return { definition, hash, functions: new FunctionTable(definition, natives), world, heapCheck };
 }

@@ -343,7 +343,7 @@ struct Keeps:
 extern shared struct Slot<T>
 @Holds<()>
 extern shared struct WeakRef<T is Disposable>
-@Holds<T>
+@Holds<(T, Resolver<T, K>)>
 extern shared struct Future<T, K in Persistence>
 @Holds<(Fn<(T,), Unit, K>, Fn<(), Unit, K>)>
 extern shared struct Resolver<T, K in Persistence>
@@ -351,6 +351,8 @@ extern shared struct Resolver<T, K in Persistence>
 
 - **It reuses `heldPartsOf`'s meaning exactly:** what a value of `X` holds. A tuple lists several
   types, and `()` holds nothing. There are no packs and no empty `<>`.
+- **A future holds** its value and the resolvers registered on it: a callback's chain is held from
+  its futures up (§3), as `onAwait`'s `Keeps` says. The native audit found this one missing.
 - **A resolver holds** its callback, its `onCancel` callbacks, and an at-resolver's `done`: the
   callback root's direction. It doesn't hold its futures: case chains are transient (§3).
 - **`Holds` names no growing instance of its own type,** as a field can't (spec §3.5): every walk
@@ -405,10 +407,17 @@ through `&`, which is also the default.
 
 - **Placement:** `Holds` stands only on a std extern handle, and `Keeps` only on a std extern
   function. Elsewhere they are an error, because a host holds no language values.
-- **Native audit (runtime test, C3 step 0):** while the std test suites and the corpus run, the
-  capabilities record every counted edge a native adds. Each edge must be covered by its function's
-  `Keeps` or by `&`, and allowed by the holder's `Holds`. It needs R1's edges: today `onAwait` adds
-  a resolver → future edge (the `on` field) that no `Keeps` covers.
+- **Native audit (C3 step 0, landed):** two halves.
+  - At run time (`runtime/lifetimes/native-audit.test-kit.ts`), while the std suites and the corpus
+    run, each native's call is checked around it (`HeapCheck.native`): every edge it adds to what an
+    argument holds, in the oracle's graph and through what the call made, must come from an argument
+    its extern's `Keeps` (or the `&` default) has that argument keep. The table is the std's, read
+    off the checker by extern key (`stdlib/std-externs.test-kit.ts`). A slot's waiting puts' values
+    count as the slot's, since `put` keeps its value whether the slot takes it now or once served.
+  - Statically (`stdlib/natives.test.ts`), every kept parameter's type must be held by the holder's
+    type as its `Holds` says, or be a value made only of such parts.
+  - It needs R1's edges: before them, `onAwait` added a resolver → future edge (the `on` field) that
+    no `Keeps` covers.
 
 ## 7. Diagnostics
 

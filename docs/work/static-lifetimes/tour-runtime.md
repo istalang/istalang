@@ -28,6 +28,7 @@ and model: [design.md](design.md) §3 and §9. Phases: [plan.md](plan.md). Paths
 | `lifetimes/holders.ts` | `heldFrom` (with the commit's depth), `heldUnlessAll`, `walkHolds`, `holdsOf` | R3, R4 |
 | `lifetimes/orphans.ts` | strongly connected components, cover, descending id | R3 deletes it |
 | `lifetimes/oracle.test-kit.ts` | the oracle (R1), a `HeapCheck` | test-only, for good |
+| `lifetimes/native-audit.test-kit.ts` | the native audit (C3 step 0), `HeapCheck.native`: edges natives add, against the std's `Keeps` | test-only, for good |
 | `lifetimes/disposal.ts` | per kind: `disposable` and `dispose`; `readiedBy`; the dropped-resolver panic (`isDropped`); a future cancels what is registered on it (R1) | kept |
 | `scheduler/segment/collection.ts` `SegmentCollection` | `collected` after every step, `collectFully`, `collectEnding` (panic recovery), `#roots` | R3 |
 | `scheduler/segment/disposal-runs.ts` | a disposal's code as a frame on top of the running execution, or on a carrier (id −1) when nothing runs; a disposed call's cleanup | kept |
@@ -173,9 +174,12 @@ Landed. What R1 left, for the phases after it:
 - **The oracle** is `lifetimes/oracle.test-kit.ts`.
   - **Its seam** is `HeapCheck` (`scheduler/loaded-definition.ts`). It rides on `LoadedDefinition`
     and comes in through `RuntimeSeams.heapCheck`, `TestRunOptions` and `WorldSeams`, and
-    `CliEnvironment.heapCheck`. `SegmentCollection.collected` calls it after every instruction
-    that let go of or wrote into something, before collecting, with those ids: the released ones
-    and `Heap.takeWritten`'s, every object replaced. A host passes none.
+    `CliEnvironment.heapCheck`. `SegmentCollection.collected` calls its `changed` after every
+    instruction that let go of or wrote into something, before collecting, with those ids: the
+    released ones and `Heap.takeWritten`'s, every object replaced. `NativeCalls` calls its `native`
+    as an extern's native starts, and what it returns once the native returned: the native audit's
+    hook (C3 step 0, `lifetimes/native-audit.test-kit.ts`; design.md §6.6). A host passes
+    `noHeapCheck`.
   - **Its graph is the analysis's holding** (design.md §3, §6.3, §6.4), so an accepted program
     never trips it. That is `Heap.holds` and the executions' frames, plus call future → execution,
     with three differences:

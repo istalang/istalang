@@ -26,7 +26,7 @@ import { type Handlers, handlerOf } from '../../foundation/structures/kind-table
 import { pushAll } from '../../foundation/structures/stack.ts';
 import { stronglyConnected } from '../../foundation/structures/strongly-connected.ts';
 import type { Heap, LiveObject, LiveObjectOf } from '../scheduler/instance/heap.ts';
-import type { HeapCheck } from '../scheduler/loaded-definition.ts';
+import { type HeapCheck, noHeapCheck } from '../scheduler/loaded-definition.ts';
 import { frameCells, frameValues, heldObjects, valuesIn } from '../snapshot/holdings.ts';
 import { type Disposability, isDisposable } from './disposal.ts';
 
@@ -61,12 +61,15 @@ function disposableCycles(
 }
 
 /** A check that throws at the first cycle through objects reaching a disposable, naming them. */
-const acyclicDisposables: HeapCheck = (state, changed) => {
-  const [cycle] = disposableCycles(state, changed);
-  if (cycle !== undefined) {
-    const named = cycle.map((id) => `${id}:${state.heap.objectOf(id).kind}`).join(', ');
-    throw new Error(`A cycle reaching a disposable holds objects ${named}.`);
-  }
+const acyclicDisposables: HeapCheck = {
+  ...noHeapCheck,
+  changed: (state, changed) => {
+    const [cycle] = disposableCycles(state, changed);
+    if (cycle !== undefined) {
+      const named = cycle.map((id) => `${id}:${state.heap.objectOf(id).kind}`).join(', ');
+      throw new Error(`A cycle reaching a disposable holds objects ${named}.`);
+    }
+  },
 };
 
 /** How a program's heaps are checked, and whether what the check saw was what it expected. */
@@ -92,8 +95,11 @@ const cyclic: ReadonlySet<string> = new Set(['holders/dispose.ista', 'collection
 export function cyclicOracle(): Oracle {
   let seen = false;
   return {
-    heapCheck: (state, changed) => {
-      seen ||= disposableCycles(state, changed).length > 0;
+    heapCheck: {
+      ...noHeapCheck,
+      changed: (state, changed) => {
+        seen ||= disposableCycles(state, changed).length > 0;
+      },
     },
     asExpected: () => seen,
   };
@@ -133,7 +139,7 @@ function countedGraph(heap: Heap, from: Iterable<number>): ReadonlyMap<number, r
 }
 
 /** What `object` holds in the oracle's graph (see the header). */
-function countedHolds(heap: Heap, object: LiveObject): readonly number[] {
+export function countedHolds(heap: Heap, object: LiveObject): readonly number[] {
   if (object.kind === 'execution') {
     return object.frames.flatMap((frame) => [
       ...frameCells(frame),
