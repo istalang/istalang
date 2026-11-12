@@ -2,10 +2,15 @@
  * Scheduler speed, measured with `npm run bench` and kept out of `npm run verify`, as the parser's
  * is (parse.bench.ts).
  *
- * The workload is the one the scheduler's costs were filed against (docs/work/tracker.md, the
- * scheduler's commit cost): many executions waiting on one inbox, each woken by a job of its own,
- * with `main` awaiting every result, so every result is a commit of a heap that holds every waiting
- * worker. A run takes seconds, so a few runs are measured.
+ * - The first workload is the one the scheduler's costs were filed against (docs/work/tracker.md,
+ *   the scheduler's commit cost): many executions waiting on one inbox, each woken by a job of its
+ *   own, with `main` awaiting every result, so every result is a commit of a heap that holds every
+ *   waiting worker.
+ * - The second lets go of a disposable on every turn of a loop, beside many held ones: what
+ *   collecting costs per release, which counting keeps from growing with what is held
+ *   (docs/work/static-lifetimes/design.md §9).
+ *
+ * A run takes seconds, so a few runs are measured.
  */
 
 import { test as it } from 'vitest';
@@ -52,5 +57,36 @@ it(`${workers} workers on one inbox`, async ({ bench, expect }) => {
   expect(await startToEnd(hosted(), text)).toEqual({ kind: 'finished', outcome: sum });
   await bench('start to end', async () => {
     await startToEnd(hosted(), text);
+  }).run({ time: 0, iterations: 3, warmupTime: 0, warmupIterations: 1 });
+});
+
+const held = 500;
+const dropped = 2000;
+
+const releasing = compiledText(`
+import * as runtime from 'runtime'
+
+shared struct Lease:
+  n: Int
+
+fn dispose(self: Lease): ()
+
+live async fn main() -> Int: await runtime.run(runtime.id()) _main()
+ista async fn _main() -> Int:
+  let kept: Array<Lease> = []
+  for i in 0..${held}:
+    kept.push(new Lease{n: i})
+  let total = 0
+  for i in 0..${dropped}:
+    const lease = new Lease{n: i}
+    total = total + lease->n
+  total + kept.length()
+`);
+
+it(`${dropped} leases let go of beside ${held} held`, async ({ bench, expect }) => {
+  const total = String((dropped * (dropped - 1)) / 2 + held);
+  expect(await startToEnd(hosted(), releasing)).toEqual({ kind: 'finished', outcome: total });
+  await bench('start to end', async () => {
+    await startToEnd(hosted(), releasing);
   }).run({ time: 0, iterations: 3, warmupTime: 0, warmupIterations: 1 });
 });
