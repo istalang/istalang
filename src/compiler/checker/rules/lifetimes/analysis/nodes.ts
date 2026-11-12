@@ -15,6 +15,7 @@
  */
 
 import type { VariableEntity } from '../../../../binder/entities.ts';
+import { inFieldOrder } from '../../../types/type/field-order.ts';
 import type { Type } from '../../../types/type/index.ts';
 import type { FlowFunction, Operation, Part, ValueId } from '../../flow/flow-ir.ts';
 import type { NodeId } from '../reach-state.ts';
@@ -26,6 +27,8 @@ export interface TypeFacts {
   readonly relevanceOf: (type: Type) => Relevance;
   readonly reachOf: (type: Type) => HandleReach;
   readonly cellOf: (type: Type) => Type;
+  /** A struct type's fields' names, in declaration order; undefined for another type. */
+  readonly fieldNamesOf: (type: Type) => readonly string[] | undefined;
 }
 
 /** One input: what it is, the node it is as given, and the value that starts as it. */
@@ -46,6 +49,7 @@ export function readKindOf(part: Part): ReadKind {
 /** A path node: the part `part` of what `root` holds. */
 interface PathNode {
   readonly root: NodeId;
+  readonly part: Part;
   readonly kind: ReadKind;
   readonly type: Type;
 }
@@ -58,11 +62,13 @@ export class Nodes {
   /** How many inputs have nodes of their own, the cells' being theirs already. */
   readonly #owned: number;
   readonly #paths = new Map<string, NodeId>();
+  readonly #steps = new Map<object, number>();
   readonly #globals: InputSlot[] = [];
   readonly #pathNodes = new Map<NodeId, PathNode>();
   readonly #relevance = new Map<NodeId, boolean>();
   readonly #lastUses: ReadonlyMap<Operation, readonly ValueId[]>;
   readonly #captured: ReadonlySet<ValueId>;
+  readonly #assigned: ReadonlySet<ValueId>;
 
   constructor(flow: FlowFunction, facts: TypeFacts) {
     this.flow = flow;
@@ -71,6 +77,11 @@ export class Nodes {
     this.#inputs = [...inputSlots(flow, this.#size)];
     this.#owned = this.#inputs.filter((slot) => slot.input.kind !== 'cell').length;
     this.#lastUses = lastUsesOf(flow);
+    this.#assigned = new Set(
+      flow.blocks.flatMap(({ operations }) =>
+        operations.flatMap((operation) => ('into' in operation ? [operation.into] : [])),
+      ),
+    );
     this.#captured = new Set(
       flow.blocks.flatMap(({ operations }) =>
         operations.flatMap((operation) =>
@@ -122,6 +133,11 @@ export class Nodes {
     return this.#size + value;
   }
 
+  /** Whether `value` is a parameter nothing assigns: it holds what the function was given. */
+  isStable(value: ValueId): boolean {
+    return this.flow.parameters.includes(value) && !this.#assigned.has(value);
+  }
+
   /** Whether `node` is a captured `let`'s cell. */
   isCellNode(node: NodeId): boolean {
     return node >= this.#size && node < 2 * this.#size;
@@ -129,15 +145,69 @@ export class Nodes {
 
   /** The node of the part `part` of `root`'s value, read as `kind`, of type `type`. */
   path(root: NodeId, part: Part, kind: ReadKind, type: Type): NodeId {
-    const key = `${root}/${JSON.stringify(part)}`;
+    const key = `${root}/${this.partKey(part)}`;
     const known = this.#paths.get(key);
     if (known !== undefined) {
       return known;
     }
     const node = 2 * this.#size + this.#owned + this.#paths.size;
     this.#paths.set(key, node);
-    this.#pathNodes.set(node, { root, kind, type });
+    this.#pathNodes.set(node, { root, part, kind, type });
     return node;
+  }
+
+  /**
+   * What names a part, alike wherever it is read: a field by where its struct lays it out, which
+   * a member access and a pattern name alike, a tuple's element by position, any other part by
+   * its kind, and a step of its own kind (a union's member, an array pattern's) by itself.
+   */
+  partKey(part: Part): string {
+    if (part.kind !== 'step') {
+      return part.kind;
+    }
+    const { step } = part;
+    if (typeof step === 'number') {
+      return `#${step}`;
+    }
+    if (step.kind === 'field') {
+      const names = this.#facts.fieldNamesOf(step.of);
+      const at =
+        names === undefined
+          ? -1
+          : inFieldOrder(names.map((name) => ({ name }))).findIndex(
+              ({ name }) => name === step.name,
+            );
+      return at < 0 ? `.${step.name}` : `#${at}`;
+    }
+    let id = this.#steps.get(step);
+    if (id === undefined) {
+      id = this.#steps.size;
+      this.#steps.set(step, id);
+    }
+    return `@${id}`;
+  }
+
+  /**
+   * The parts a value made of `parts` (a struct of `type`, in its fields' declaration order, or a
+   * tuple) has, each as a read names it: a field by its place in its struct's layout.
+   */
+  madeParts(
+    type: Type,
+    parts: readonly NodeId[],
+    kind: 'struct' | 'tuple',
+  ): readonly (readonly [Part, NodeId])[] {
+    if (kind === 'tuple') {
+      return parts.map((part, index) => [{ kind: 'step', step: index }, part] as const);
+    }
+    const names = this.#facts.fieldNamesOf(type);
+    if (names === undefined || names.length !== parts.length) {
+      return [];
+    }
+    const layout = inFieldOrder(names.map((name) => ({ name }))).map(({ name }) => name);
+    return parts.map(
+      (part, index) =>
+        [{ kind: 'step', step: layout.indexOf(names[index] as string) }, part] as const,
+    );
   }
 
   /** The path `node` is, if it is one. */

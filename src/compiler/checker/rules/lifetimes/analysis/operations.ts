@@ -78,7 +78,7 @@ const handlers: { readonly [Kind in Operation['op']]: Handler<Kind> } = {
     }
     const type = analysis.nodes.typeOf(owner.variable);
     if (owner.kind === 'reference' && type !== undefined) {
-      analysis.lift(state, owner.variable, value, type);
+      analysis.lift(state, owner.variable, value, { holderType: type, kind: 'reach' });
     }
     state.reach.contain(owner.variable, value);
     analysis.endPathsFrom(state, owner.variable);
@@ -107,6 +107,9 @@ const handlers: { readonly [Kind in Operation['op']]: Handler<Kind> } = {
       } else if (made.kind !== 'function') {
         state.reach.contain(into, part);
       }
+    }
+    if (made.kind === 'struct' || made.kind === 'tuple') {
+      madeParts(at, operation);
     }
   },
   call: (at, { into, call, role, arguments: args, site }) => {
@@ -194,6 +197,7 @@ function assigned({ analysis, state }: At, { into, from, site }: Of<'copy'>): vo
 function copied({ analysis, state }: At, { into, from }: Of<'copy'>): void {
   if (state.reach.isLive(from)) {
     state.reach.copy(into, from);
+    analysis.carryPaths(state, into, from);
   } else {
     state.reach.fresh(into);
   }
@@ -224,6 +228,25 @@ function readOf({ analysis, state }: At, { into, from, part }: Of<'read'>): void
     state.reach.readThrough(into, from);
   } else {
     state.reach.readPart(into, from);
+  }
+}
+
+/**
+ * The parts of a value made here, each the path a read of it names, so reading one gives that
+ * part, apart from the others (design.md §5.7).
+ */
+function madeParts({ analysis, state }: At, { into, made, parts }: Of<'make'>): void {
+  const type = analysis.nodes.typeOf(into);
+  if (type === undefined || (made.kind !== 'struct' && made.kind !== 'tuple')) {
+    return;
+  }
+  for (const [part, node] of analysis.nodes.madeParts(type, parts, made.kind)) {
+    const partType = analysis.nodes.typeOf(node);
+    if (partType !== undefined && state.reach.isLive(node) && analysis.nodes.isRelevant(node)) {
+      const path = analysis.nodes.path(into, part, 'part', partType);
+      state.reach.copy(path, node);
+      state.reach.addAlias(path, into);
+    }
   }
 }
 
@@ -313,12 +336,16 @@ function checkEscaping(
   site: Of<'make'>['site'],
   { summary, typeOf }: Escaping,
 ): void {
-  const closing = summary.requirements.filter((requirement) => {
+  const closing = summary.requirements.flatMap((requirement) => {
     const holder = typeOf(requirement.holder);
     const value = typeOf(requirement.value);
-    return holder !== undefined && value !== undefined && analysis.typesClose(holder, value);
+    return holder !== undefined &&
+      value !== undefined &&
+      analysis.typesClose(holder, value, requirement.kind)
+      ? [analysis.decidingType(requirement.holderType, value)]
+      : [];
   });
-  for (const type of [...closing.map(({ holderType }) => holderType), ...summary.always]) {
+  for (const type of [...closing, ...summary.always]) {
     analysis.violate('closure', site, type, undefined);
   }
 }

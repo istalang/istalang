@@ -12,6 +12,7 @@
 import type { FlowFunction, ValueId } from '../../flow/flow-ir.ts';
 import type { NodeId, ReachState } from '../reach-state.ts';
 import type { ResultRelation, Summary } from '../summary.ts';
+import { isInputRooted } from './inputs.ts';
 import type { Nodes } from './nodes.ts';
 
 /** A closure this body made: its function, what it does, and the nodes it captured. */
@@ -52,7 +53,11 @@ export function clonedState(state: FlowState): FlowState {
   };
 }
 
-/** Reads the path `node` names into `state`, as reading it there would (`readThrough`, `readPart`). */
+/**
+ * Reads the path `node` names into `state`, as reading it there would (`readThrough`,
+ * `readPart`); a part of an input apart from its other parts, whose sharing its caller is required
+ * to see to where a finding relies on it (inputs.ts).
+ */
 export function materialize(nodes: Nodes, state: FlowState, node: NodeId): boolean {
   const path = nodes.pathOf(node);
   if (path === undefined) {
@@ -62,10 +67,13 @@ export function materialize(nodes: Nodes, state: FlowState, node: NodeId): boole
     return false;
   }
   state.reach.fresh(node);
+  const siblings = isInputRooted(nodes, path.root)
+    ? new Set(nodes.pathsFrom(path.root).filter((each) => each !== node))
+    : undefined;
   if (path.kind === 'through') {
-    state.reach.readThrough(node, path.root);
+    state.reach.readThrough(node, path.root, siblings);
   } else {
-    state.reach.readPart(node, path.root);
+    state.reach.readPart(node, path.root, siblings);
   }
   return true;
 }

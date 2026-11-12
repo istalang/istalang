@@ -36,12 +36,28 @@ import { sameTypeSpelled } from '../../types/parts/type-parts.ts';
 import { isHandleType } from '../../types/properties/handles.ts';
 import type { Type } from '../../types/type/index.ts';
 import { awaitedOf } from '../../types/type/well-known.ts';
+import type { Part } from '../flow/flow-ir.ts';
 
 /** What a call gives a body, by position. */
 export type Input =
   | { readonly kind: 'parameter' | 'capture' | 'cell'; readonly index: number }
   | { readonly kind: 'self' }
-  | { readonly kind: 'global'; readonly entity: VariableEntity; readonly type: Type };
+  | { readonly kind: 'global'; readonly entity: VariableEntity; readonly type: Type }
+  | InputPath;
+
+/**
+ * A part of an input as given (design.md §5.7): `of`'s part `part`, named by `key` alike in every
+ * function, read through a handle or inside a value (`read`), of type `type`. Only requirements
+ * name them, so a caller checks the parts of what it gave.
+ */
+interface InputPath {
+  readonly kind: 'path';
+  readonly of: Input;
+  readonly part: Part;
+  readonly key: string;
+  readonly read: 'through' | 'part';
+  readonly type: Type;
+}
 
 /** The fields a pair's path leaves its source through; any field until C4. */
 export interface Label {
@@ -63,7 +79,14 @@ export interface ResultRelation {
   readonly relation: 'reaches' | 'reachedBy' | 'aliases' | 'shares';
 }
 
+/**
+ * A pair that must not hold when the function is called: `value` may not reach or be what
+ * `holder` holds (`reach`), since the body writes it there; or the two may share nothing
+ * (`share`), since code the body runs unseen reaches one and the body relies on its not reaching
+ * the other (unseen.ts).
+ */
 export interface Requirement {
+  readonly kind: 'reach' | 'share';
   readonly holder: Input;
   readonly value: Input;
   readonly holderType: Type;
@@ -87,6 +110,8 @@ export interface Summary {
    * so calling those is no unseen code of its own (design.md §5.4).
    */
   readonly calls: readonly Input[];
+  /** The inputs the unseen code it runs may reach. */
+  readonly access: readonly Input[];
 }
 
 /** What a function summed up so far, before anything is known: it does nothing. */
@@ -101,17 +126,11 @@ export const emptySummary: Summary = {
   leaks: [],
   unseen: false,
   calls: [],
+  access: [],
 };
 
 function sameInput(first: Input, second: Input): boolean {
-  switch (first.kind) {
-    case 'self':
-      return second.kind === 'self';
-    case 'global':
-      return second.kind === 'global' && first.entity === second.entity;
-    default:
-      return second.kind === first.kind && 'index' in second && second.index === first.index;
-  }
+  return inputKey(first) === inputKey(second);
 }
 
 /** A key naming `input`, for sets of inputs. */
@@ -121,6 +140,8 @@ export function inputKey(input: Input): string {
       return 'self';
     case 'global':
       return `global:${entityKey(input.entity)}`;
+    case 'path':
+      return `${inputKey(input.of)}/${input.key}`;
     default:
       return `${input.kind}:${input.index}`;
   }
@@ -152,6 +173,7 @@ const sameResults = sameItems<ResultRelation>(
 );
 const sameRequirements = sameItems<Requirement>(
   (first, second) =>
+    first.kind === second.kind &&
     sameInput(first.holder, second.holder) &&
     sameInput(first.value, second.value) &&
     sameTypeSpelled(first.holderType, second.holderType),
@@ -164,6 +186,7 @@ export function sameSummary(first: Summary, second: Summary): boolean {
     first.watched === second.watched &&
     first.unseen === second.unseen &&
     sameInputs(first.calls, second.calls) &&
+    sameInputs(first.access, second.access) &&
     sameEffects(first.effects, second.effects) &&
     sameResults(first.result, second.result) &&
     sameResults(first.gives, second.gives) &&
@@ -211,6 +234,7 @@ export function nativeSummary(
       return holderType === undefined
         ? []
         : values.map((value) => ({
+            kind: 'reach' as const,
             holder: parameter(holder),
             value: parameter(value),
             holderType,

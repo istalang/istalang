@@ -112,6 +112,7 @@ export class Lifetimes implements LifetimeQueries {
         relevanceOf: (type) => this.#relevance.get(typeKey(type), type),
         reachOf: (type) => this.#handles.get(typeKey(type), type),
         cellOf: (type) => checker.cellOf(type),
+        fieldNamesOf: (type) => checker.fieldsOf(type)?.map(({ name }) => name),
         keyOf: typeKey,
       },
       calleeSummary: (call) => this.#calleeSummary(call, undefined),

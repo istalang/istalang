@@ -87,7 +87,7 @@ function calledBack(at: At, node: NodeId, given: readonly NodeId[], seen: Set<No
   for (const each of given) {
     analysis.leak(state, each);
   }
-  analysis.runUnseen(state, own === undefined);
+  analysis.runUnseen(state, { given: [node, ...given], unseen: own === undefined });
 }
 
 /** What `summary` does to what its inputs are bound to: its effects, leaks and unseen code. */
@@ -102,7 +102,8 @@ function applyEffects(at: At, summary: Summary, bound: (input: Input) => Bound):
     at.analysis.leak(at.state, node);
   }
   if (summary.unseen) {
-    at.analysis.runUnseen(at.state, true);
+    const given = summary.access.flatMap((input) => bound(input).nodes);
+    at.analysis.runUnseen(at.state, { given, unseen: true });
   }
 }
 
@@ -128,7 +129,7 @@ function checkRequirement(
       : [holder.owner];
   for (const value of bound(requirement.value).nodes) {
     for (const target of targets) {
-      checkAt(at, made, { target, value, holderType });
+      checkAt(at, made, { target, value, holderType, kind: requirement.kind });
     }
   }
 }
@@ -136,31 +137,34 @@ function checkRequirement(
 /** Where a write through an input lands: a node it was given, or what owns a place. */
 type Target = { readonly kind: 'node'; readonly node: NodeId } | Owner;
 
-/** A requirement's pair at a call: `value` may not reach what `target` lands in. */
+/** A requirement's pair at a call: `value` may not reach (or share with) what `target` is. */
 interface Pair {
   readonly target: Target;
   readonly value: NodeId;
   readonly holderType: Type;
+  readonly kind: Requirement['kind'];
 }
 
-function checkAt(at: At, made: CallMade, { target, value, holderType }: Pair): void {
+function checkAt(at: At, made: CallMade, { target, value, holderType, kind }: Pair): void {
   const { analysis, state } = at;
-  if (target.kind === 'value') {
+  if (target.kind === 'value' && kind === 'reach') {
     return;
   }
-  if (target.kind === 'reference') {
-    analysis.lift(state, target.variable, value, holderType);
+  if (target.kind === 'reference' || target.kind === 'value') {
+    analysis.lift(state, target.variable, value, { holderType, kind });
     return;
   }
   const holder: Holder =
     target.kind === 'heap' ? target.holder : { node: target.node, exact: true, type: holderType };
-  const closes = holder.exact
-    ? state.reach.closes(holder.node, value)
-    : state.reach.shares(holder.node, value);
+  const closes =
+    holder.exact && kind === 'reach'
+      ? state.reach.closes(holder.node, value)
+      : state.reach.shares(holder.node, value);
   if (closes) {
-    analysis.violate('call', made.site, analysis.holderTypeOf(holderType, value), made.callee);
+    const type = analysis.holderTypeOf(state, { ...holder, type: holderType }, value);
+    analysis.violate('call', made.site, type, made.callee);
   } else {
-    analysis.lift(state, holder.node, value, holderType);
+    analysis.lift(state, holder.node, value, { holderType, kind });
   }
 }
 
@@ -191,21 +195,27 @@ function checkWitnesses({ analysis }: At, call: FunctionCall, site: NodeOf<strin
     const parameters = context.parametersOf(witness.function);
     const typeOf = (input: Input) =>
       input.kind === 'parameter' ? parameters[input.index]?.type : undefined;
-    const closes = (requirement: Requirement) => {
+    const closing = (requirement: Requirement): readonly Type[] => {
       const holder = typeOf(requirement.holder);
       const value = typeOf(requirement.value);
-      return (
-        holder !== undefined &&
-        value !== undefined &&
-        analysis.typesClose(context.substitute(holder, witness), context.substitute(value, witness))
+      if (holder === undefined || value === undefined) {
+        return [];
+      }
+      const valueType = context.substitute(value, witness);
+      const closes = analysis.typesClose(
+        context.substitute(holder, witness),
+        valueType,
+        requirement.kind,
       );
+      const deciding = context.substitute(requirement.holderType, witness);
+      return closes ? [analysis.decidingType(deciding, valueType)] : [];
     };
     const types = [
-      ...summary.requirements.filter(closes).map(({ holderType }) => holderType),
-      ...summary.always,
+      ...summary.requirements.flatMap(closing),
+      ...summary.always.map((type) => context.substitute(type, witness)),
     ];
     for (const type of types) {
-      analysis.violate('witness', site, context.substitute(type, witness), witness.function);
+      analysis.violate('witness', site, type, witness.function);
     }
   }
 }
@@ -306,5 +316,5 @@ export function unknownCall(at: At, into: ValueId, given: readonly NodeId[], uns
     state.reach.fresh(into);
     state.reach.markEscaped(into);
   }
-  analysis.runUnseen(state, unseen);
+  analysis.runUnseen(state, { given, unseen });
 }

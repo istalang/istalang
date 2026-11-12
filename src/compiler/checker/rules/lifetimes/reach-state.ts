@@ -17,6 +17,18 @@
 
 export type NodeId = number;
 
+/**
+ * Which pairs the nodes' types allow at all (the declaration graph's answer): a relation they
+ * forbid can't hold, so it is never added, whatever it would be inherited from.
+ */
+export interface Allowed {
+  readonly reach: (from: NodeId, to: NodeId) => boolean;
+  readonly alias: (first: NodeId, second: NodeId) => boolean;
+  readonly share: (first: NodeId, second: NodeId) => boolean;
+}
+
+const anything: Allowed = { reach: () => true, alias: () => true, share: () => true };
+
 type Pairs = Map<NodeId, Set<NodeId>>;
 
 export class ReachState {
@@ -24,10 +36,17 @@ export class ReachState {
   readonly #alias: Pairs = new Map();
   readonly #share: Pairs = new Map();
   readonly #escaped = new Set<NodeId>();
+  readonly #leaked = new Set<NodeId>();
   readonly #live = new Set<NodeId>();
 
+  readonly #allowed: Allowed;
+
+  constructor(allowed: Allowed = anything) {
+    this.#allowed = allowed;
+  }
+
   clone(): ReachState {
-    const copy = new ReachState();
+    const copy = new ReachState(this.#allowed);
     copy.join(this);
     return copy;
   }
@@ -40,6 +59,9 @@ export class ReachState {
     joined(this.#share, other.#share);
     for (const each of other.#escaped) {
       this.#escaped.add(each);
+    }
+    for (const each of other.#leaked) {
+      this.#leaked.add(each);
     }
     for (const each of other.#live) {
       this.#live.add(each);
@@ -54,6 +76,7 @@ export class ReachState {
       countOf(this.#alias) +
       countOf(this.#share) +
       this.#escaped.size +
+      this.#leaked.size +
       this.#live.size
     );
   }
@@ -72,6 +95,11 @@ export class ReachState {
 
   escaped(): readonly NodeId[] {
     return [...this.#escaped].filter((node) => this.#live.has(node));
+  }
+
+  /** What the body handed code it doesn't see, which that code may keep and reach again. */
+  leaked(): readonly NodeId[] {
+    return [...this.#leaked].filter((node) => this.#live.has(node));
   }
 
   reaches(from: NodeId, to: NodeId): boolean {
@@ -115,6 +143,7 @@ export class ReachState {
       }
     }
     this.#escaped.delete(node);
+    this.#leaked.delete(node);
     this.#live.delete(node);
   }
 
@@ -125,14 +154,14 @@ export class ReachState {
   }
 
   addReach(from: NodeId, to: NodeId): void {
-    if (from !== to || this.#live.has(from)) {
+    if ((from !== to || this.#live.has(from)) && this.#allowed.reach(from, to)) {
       added(this.#reach, from, to);
       this.addShare(from, to);
     }
   }
 
   addAlias(first: NodeId, second: NodeId): void {
-    if (first !== second) {
+    if (first !== second && this.#allowed.alias(first, second)) {
       added(this.#alias, first, second);
       added(this.#alias, second, first);
       this.addShare(first, second);
@@ -140,7 +169,7 @@ export class ReachState {
   }
 
   addShare(first: NodeId, second: NodeId): void {
-    if (first !== second) {
+    if (first !== second && this.#allowed.share(first, second)) {
       added(this.#share, first, second);
       added(this.#share, second, first);
     }
@@ -167,17 +196,18 @@ export class ReachState {
   }
 
   /** What `into` gets of `part`'s relations when it holds what `part` holds directly. */
-  #contained(into: NodeId, part: NodeId): void {
-    for (const each of this.aliasesOf(part)) {
+  #contained(into: NodeId, part: NodeId, apart?: ReadonlySet<NodeId>): void {
+    const kept = (each: NodeId) => apart?.has(each) !== true;
+    for (const each of this.aliasesOf(part).filter(kept)) {
       this.addAlias(into, each);
     }
-    for (const each of this.reachedFrom(part)) {
+    for (const each of this.reachedFrom(part).filter(kept)) {
       this.addReach(into, each);
     }
-    for (const each of this.#reachersOf(part)) {
+    for (const each of this.#reachersOf(part).filter(kept)) {
       this.addReach(each, into);
     }
-    for (const each of this.sharesOf(part)) {
+    for (const each of this.sharesOf(part).filter(kept)) {
       this.addShare(into, each);
     }
     if (this.#escaped.has(part)) {
@@ -196,11 +226,15 @@ export class ReachState {
     }
   }
 
-  /** `into` is something reachable through `from`'s handles: a cell's value, a future's. */
-  readThrough(into: NodeId, from: NodeId): void {
-    const reached = this.reachedFrom(from).filter((each) => each !== into);
-    const sharing = [...this.#live].filter((each) => each !== into && this.shares(each, from));
-    const shared = this.sharesOf(from).filter((each) => each !== into);
+  /**
+   * `into` is something reachable through `from`'s handles: a cell's value, a future's; related to
+   * none of `apart`, which are other parts of `from`.
+   */
+  readThrough(into: NodeId, from: NodeId, apart?: ReadonlySet<NodeId>): void {
+    const kept = (each: NodeId) => each !== into && apart?.has(each) !== true;
+    const reached = this.reachedFrom(from).filter(kept);
+    const sharing = [...this.#live].filter((each) => kept(each) && this.shares(each, from));
+    const shared = this.sharesOf(from).filter(kept);
     this.addReach(from, into);
     for (const each of reached) {
       this.addReach(into, each);
@@ -217,9 +251,13 @@ export class ReachState {
     }
   }
 
-  /** `into` is a part of `from`'s value: a field, an element, what an optional holds. */
-  readPart(into: NodeId, from: NodeId): void {
-    this.contain(into, from);
+  /**
+   * `into` is a part of `from`'s value: a field, an element, what an optional holds; related to
+   * none of `apart`, which are other parts of `from`.
+   */
+  readPart(into: NodeId, from: NodeId, apart?: ReadonlySet<NodeId>): void {
+    this.addAlias(into, from);
+    this.#contained(into, from, apart);
   }
 
   /**
@@ -255,6 +293,7 @@ export class ReachState {
     }
     for (const each of [node, ...this.reachedFrom(node), ...this.aliasesOf(node)]) {
       this.#escaped.add(each);
+      this.#leaked.add(each);
     }
   }
 

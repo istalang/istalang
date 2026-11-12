@@ -20,13 +20,12 @@ import type { FunctionDeclaration } from '../../../../syntax/declarations/index.
 import type { NodeOf } from '../../../../syntax/tree/node.ts';
 import type { LifetimeFinding, SignatureParameter } from '../../../check.ts';
 import type { FunctionCall } from '../../../surface/resolved-call.ts';
-import { isHandleType } from '../../../types/properties/handles.ts';
 import type { Type } from '../../../types/type/index.ts';
 import type { FlowFunction, ValueId } from '../../flow/flow-ir.ts';
 import type { NodeId } from '../reach-state.ts';
 import { anyField, type Input, inputKey, type Requirement, type Summary } from '../summary.ts';
 import {
-  type HandleReach,
+  lessRelevant,
   mayAlias,
   mayReach,
   mayShare,
@@ -34,7 +33,9 @@ import {
   type Relevance,
 } from '../type-reach.ts';
 import type { FlowState } from './flow-state.ts';
+import { apart, candidatesIn } from './inputs.ts';
 import type { Nodes, TypeFacts } from './nodes.ts';
+import { runUnseen, type UnseenCall } from './unseen.ts';
 
 /** What an analysis reads beyond its body: types, and what the functions it calls do. */
 export interface AnalysisContext {
@@ -81,6 +82,10 @@ export class BodyAnalysis {
   readonly calls = new Map<string, Input>();
   /** Analyses a nested function, its closure made at `site`, its findings joining this one's. */
   readonly analyzeNested: (flow: FlowFunction, site: NodeOf<string>) => NestedResult;
+  /** Whether its callers are seen, so it may rely on what they are required to see to. */
+  readonly separates: boolean;
+  /** The inputs code it runs unseen may reach. */
+  readonly access = new Map<string, Input>();
   #recording = false;
   unseen = false;
 
@@ -88,12 +93,13 @@ export class BodyAnalysis {
     nodes: Nodes,
     context: AnalysisContext,
     references: ReadonlySet<ValueId>,
-    analyzeNested: BodyAnalysis['analyzeNested'],
+    nesting: { readonly analyze: BodyAnalysis['analyzeNested']; readonly separates: boolean },
   ) {
     this.nodes = nodes;
     this.context = context;
     this.references = references;
-    this.analyzeNested = analyzeNested;
+    this.analyzeNested = nesting.analyze;
+    this.separates = nesting.separates;
   }
 
   /** Whether findings are made: on the last run, over the fixed point (index.ts). */
@@ -120,8 +126,21 @@ export class BodyAnalysis {
     this.endPathsFrom(state, variable);
     if (state.reach.isLive(from)) {
       state.reach.copy(variable, from);
+      this.carryPaths(state, variable, from);
     } else {
       state.reach.fresh(variable);
+    }
+  }
+
+  /** `into`, a copy of `from`, has the parts read of it read of `into` too: one value. */
+  carryPaths(state: FlowState, into: NodeId, from: NodeId): void {
+    for (const path of this.nodes.pathsFrom(from).filter((each) => state.reach.isLive(each))) {
+      const read = this.nodes.pathOf(path);
+      if (read !== undefined) {
+        const carried = this.nodes.path(into, read.part, read.kind, read.type);
+        state.reach.copy(carried, path);
+        this.carryPaths(state, carried, path);
+      }
     }
   }
 
@@ -137,7 +156,7 @@ export class BodyAnalysis {
   endPathsFrom(state: FlowState, root: NodeId): void {
     for (const path of this.nodes.pathsFrom(root)) {
       if (state.reach.isLive(path)) {
-        this.#endPath(state, path);
+        this.endPath(state, path);
       }
     }
     for (const [value, named] of state.canon) {
@@ -147,7 +166,7 @@ export class BodyAnalysis {
     }
   }
 
-  #endPath(state: FlowState, path: NodeId): void {
+  endPath(state: FlowState, path: NodeId): void {
     this.endPathsFrom(state, path);
     state.reach.kill(path);
   }
@@ -165,7 +184,7 @@ export class BodyAnalysis {
       return read?.kind === 'through' && state.reach.isLive(path) && written(read.root);
     });
     for (const path of through.filter((each) => state.reach.isLive(each))) {
-      this.#endPath(state, path);
+      this.endPath(state, path);
     }
   }
 
@@ -182,9 +201,9 @@ export class BodyAnalysis {
       (closes || onCycle) &&
       this.#reachesDisposable(state, closes ? value : holder.node, value)
     ) {
-      this.violate('write', site, this.holderTypeOf(holder.type, value), undefined);
+      this.violate('write', site, this.holderTypeOf(state, holder, value), undefined);
     } else if (!closes) {
-      this.lift(state, holder.node, value, holder.type);
+      this.lift(state, holder.node, value, { holderType: holder.type, kind: 'reach' });
     }
     this.link(state, holder, value, false);
   }
@@ -217,12 +236,58 @@ export class BodyAnalysis {
     this.endPathsThrough(state, holder);
   }
 
-  /** The more relevant of a holder's type and the value written: the cycle holds both. */
-  holderTypeOf(holderType: Type, value: NodeId): Type {
+  /**
+   * The type deciding a cycle closed by writing `value` into `holder`, of `holderType`. Each path
+   * the value may reach the holder by holds a disposable only where every value on it may reach
+   * one, so a path through a value of a type parameter's type is decided by its instantiation; the
+   * surest path decides (`cyclePath`).
+   */
+  holderTypeOf(state: FlowState, { node: holder, type: holderType }: Holder, value: NodeId): Type {
+    const path = this.#pathType(state, holder, value);
+    return path === undefined ? holderType : this.decidingType(holderType, path);
+  }
+
+  /**
+   * The least relevant type on the surest path from `value` to `holder`: through the parts of a
+   * value this body made where it has them, each a path of its own, else through what it reaches.
+   */
+  #pathType(state: FlowState, holder: NodeId, value: NodeId): Type | undefined {
     const valueType = this.nodes.typeOf(value);
-    return valueType !== undefined &&
-      this.nodes.relevanceOf(valueType) === 'yes' &&
-      this.nodes.relevanceOf(holderType) !== 'yes'
+    if (valueType === undefined) {
+      return undefined;
+    }
+    const parts = this.nodes
+      .pathsFrom(value)
+      .filter((path) => this.nodes.pathOf(path)?.kind === 'part' && state.reach.isLive(path));
+    if (parts.length > 0) {
+      const closing = parts
+        .filter((path) => state.reach.closes(holder, path))
+        .flatMap((path) => this.#pathType(state, holder, path) ?? []);
+      const most = closing.reduce<Type | undefined>(
+        (found, type) =>
+          found === undefined ||
+          lessRelevant(this.nodes.relevanceOf(found), this.nodes.relevanceOf(type))
+            ? type
+            : found,
+        undefined,
+      );
+      return most === undefined ? valueType : this.decidingType(valueType, most);
+    }
+    const sure = cyclePath(this.nodes, state, { from: value, to: holder, least: 'yes' });
+    return (
+      sure ??
+      cyclePath(this.nodes, state, { from: value, to: holder, least: 'depends' }) ??
+      valueType
+    );
+  }
+
+  /**
+   * Of a cycle's holder's and value's types, the one deciding whether it may hold a disposable:
+   * the value reaches the holder on it, so it holds one only where both types may reach one, and a
+   * value of a type parameter's type only where its instantiation may (design.md §5.3).
+   */
+  decidingType(holderType: Type, valueType: Type): Type {
+    return lessRelevant(this.nodes.relevanceOf(valueType), this.nodes.relevanceOf(holderType))
       ? valueType
       : holderType;
   }
@@ -232,23 +297,31 @@ export class BodyAnalysis {
    * put: one on each pair of inputs, the one sharing with `value`, the other reaching or holding
    * `holder`.
    */
-  lift(state: FlowState, holder: NodeId, value: NodeId, holderType: Type): void {
+  lift(
+    state: FlowState,
+    holder: NodeId,
+    value: NodeId,
+    { holderType, kind }: { readonly holderType: Type; readonly kind: Requirement['kind'] },
+  ): void {
     if (!this.recording) {
       return;
     }
-    const inputs = this.nodes.inputs.filter((slot) => state.reach.isLive(this.inputNodeOf(slot)));
-    const sources = inputs.filter((slot) => state.reach.shares(value, this.inputNodeOf(slot)));
-    const holders = inputs.filter((slot) => {
-      const node = this.inputNodeOf(slot);
-      return (
-        node === holder || state.reach.closes(holder, node) || state.reach.reaches(node, holder)
-      );
-    });
+    const candidates = candidatesIn(this, state);
+    const sources = candidates.filter(({ node }) => state.reach.shares(value, node));
+    const holders = candidates.filter(({ node }) =>
+      kind === 'share'
+        ? state.reach.shares(holder, node)
+        : node === holder || state.reach.closes(holder, node) || state.reach.reaches(node, holder),
+    );
     for (const source of sources) {
-      for (const target of holders) {
-        if (inputKey(source.input) !== inputKey(target.input)) {
-          this.require({ holder: target.input, value: source.input, holderType, label: anyField });
-        }
+      for (const target of holders.filter(({ input }) => apart(input, source.input))) {
+        this.require({
+          kind,
+          holder: target.input,
+          value: source.input,
+          holderType,
+          label: anyField,
+        });
       }
     }
   }
@@ -274,7 +347,7 @@ export class BodyAnalysis {
   }
 
   require(requirement: Requirement): void {
-    const key = `${inputKey(requirement.holder)}|${inputKey(requirement.value)}|${this.context.facts.keyOf(requirement.holderType)}`;
+    const key = `${requirement.kind}|${inputKey(requirement.holder)}|${inputKey(requirement.value)}|${this.context.facts.keyOf(requirement.holderType)}`;
     if (!this.requirements.has(key)) {
       this.requirements.set(key, requirement);
     }
@@ -318,79 +391,21 @@ export class BodyAnalysis {
     state.reach.escape(node);
   }
 
-  /**
-   * Code nobody sees runs (design.md §5.5): what is escaped may come to reach each other as the
-   * declaration graph allows, so does what reaches those, and the paths through them may change.
-   * Other executions run only where this one suspends; an async call suspends long after its
-   * caller called it, so only a call of unseen code made before returning (`calls`) makes its
-   * summary `unseen`.
-   */
-  runUnseen(state: FlowState, calls = false): void {
-    if (calls) {
-      this.unseen = true;
-    }
-    const reached = state.reach
-      .escaped()
-      .filter((node) => this.nodes.isRelevant(node) && state.reach.isLive(node));
-    const live = new Set(reached);
-    for (const path of this.nodes.allPaths()) {
-      const read = this.nodes.pathOf(path);
-      if (read?.kind === 'through' && state.reach.isLive(path) && live.has(read.root)) {
-        this.#endPath(state, path);
-      }
-    }
-    this.#closeOver(
-      state,
-      [...live].filter((node) => state.reach.isLive(node)),
-    );
+  /** Runs code nobody sees (unseen.ts): other executions, or the code `call` runs. */
+  runUnseen(state: FlowState, call?: UnseenCall): void {
+    runUnseen(this, state, call);
   }
 
   /**
-   * Whether two handles may be one object: then neither can come to reach the other but through a
-   * cycle, which none may pass through (design.md §1).
+   * Whether values of `holder`'s and `value`'s types may come to break a requirement of `kind` as
+   * the declaration graph allows: the value reach or be the holder's, or the two share anything.
    */
-  #oneHandle(state: FlowState, first: NodeId, second: NodeId): boolean {
-    const types = [this.nodes.typeOf(first), this.nodes.typeOf(second)];
-    return (
-      state.reach.aliases(first, second) &&
-      types.every((type) => type !== undefined && isHandleType(type))
-    );
-  }
-
-  /** What `live` may come to reach of each other, and what reaches them comes to reach too. */
-  #closeOver(state: FlowState, live: readonly NodeId[]): void {
-    const reaches = live.map((node) => [node, this.nodes.reachOf(node)] as const);
-    for (const [index, [first, firstReach]] of reaches.entries()) {
-      for (const [second, secondReach] of reaches.slice(index + 1)) {
-        if (
-          firstReach !== undefined &&
-          secondReach !== undefined &&
-          !this.#oneHandle(state, first, second)
-        ) {
-          relateByTypes(state, [first, firstReach], [second, secondReach]);
-        }
-      }
-    }
-    const reached = new Set(live);
-    const reaching = state.reach.live().filter((node) => !reached.has(node));
-    for (const node of reaching) {
-      const through = live.filter(
-        (each) => state.reach.reaches(node, each) || state.reach.aliases(node, each),
-      );
-      for (const target of through.flatMap((each) => [
-        ...state.reach.reachedFrom(each),
-        ...state.reach.aliasesOf(each),
-      ])) {
-        state.reach.addReach(node, target);
-      }
-    }
-  }
-
-  /** Whether a value of `value`'s type may come to reach or be one of `holder`'s. */
-  typesClose(holder: Type, value: Type): boolean {
+  typesClose(holder: Type, value: Type, kind: Requirement['kind']): boolean {
     const holderReach = this.context.facts.reachOf(holder);
     const valueReach = this.context.facts.reachOf(value);
-    return mayReach(valueReach, holderReach) || mayAlias(valueReach, holderReach);
+    return kind === 'share'
+      ? mayShare(valueReach, holderReach)
+      : mayReach(valueReach, holderReach) || mayAlias(valueReach, holderReach);
   }
 
   /** The relevance of `type`, the more of it and `other`'s. */
@@ -400,21 +415,39 @@ export class BodyAnalysis {
   }
 }
 
-/** Relates two nodes as the declaration graph says values of their types may come to be. */
-function relateByTypes(
+/**
+ * The least relevant type on a path from `from` to what reaches or is `to`, by what each value
+ * reaches or holds, through values at least `least` relevant; undefined where there is none.
+ */
+function cyclePath(
+  nodes: Nodes,
   state: FlowState,
-  [first, firstReach]: readonly [NodeId, HandleReach],
-  [second, secondReach]: readonly [NodeId, HandleReach],
-): void {
-  if (mayReach(firstReach, secondReach)) {
-    state.reach.addReach(first, second);
+  { from, to, least }: { readonly from: NodeId; readonly to: NodeId; readonly least: Relevance },
+): Type | undefined {
+  const allowed = (node: NodeId) => {
+    const type = nodes.typeOf(node);
+    return type !== undefined && !lessRelevant(nodes.relevanceOf(type), least);
+  };
+  const leastOf = new Map<NodeId, Type>();
+  const pending = allowed(from) ? [from] : [];
+  const typeOf = (node: NodeId) => nodes.typeOf(node) as Type;
+  leastOf.set(from, typeOf(from));
+  while (pending.length > 0) {
+    const node = pending.shift() as NodeId;
+    const found = leastOf.get(node) as Type;
+    if (node === to || state.reach.closes(to, node)) {
+      return found;
+    }
+    for (const next of [...state.reach.reachedFrom(node), ...state.reach.aliasesOf(node)]) {
+      if (!leastOf.has(next) && allowed(next)) {
+        const type = typeOf(next);
+        leastOf.set(
+          next,
+          lessRelevant(nodes.relevanceOf(type), nodes.relevanceOf(found)) ? type : found,
+        );
+        pending.push(next);
+      }
+    }
   }
-  if (mayReach(secondReach, firstReach)) {
-    state.reach.addReach(second, first);
-  }
-  if (mayAlias(firstReach, secondReach)) {
-    state.reach.addAlias(first, second);
-  } else if (mayShare(firstReach, secondReach)) {
-    state.reach.addShare(first, second);
-  }
+  return undefined;
 }

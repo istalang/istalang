@@ -16,7 +16,7 @@ import type { Argument } from '../../flow/flow-ir.ts';
 import type { NodeId } from '../reach-state.ts';
 import { type Input, inputKey } from '../summary.ts';
 import type { BodyAnalysis } from './body.ts';
-import type { FlowState, MadeClosure } from './flow-state.ts';
+import { type FlowState, type MadeClosure, materialize } from './flow-state.ts';
 import { type Owner, placeTarget } from './places.ts';
 
 /** Where a call is made: the analysis making it, and its state there. */
@@ -76,8 +76,19 @@ export function closureBindings(
   return bindings;
 }
 
-/** What `input` is bound to: as `bindings` say, or, for a global, the caller's own. */
+/**
+ * What `input` is bound to: as `bindings` say; for a global, the caller's own; for a part of an
+ * input, that part of what the input is bound to.
+ */
 export function boundIn(at: At, bindings: Bindings, input: Input): Bound {
+  if (input.kind === 'path') {
+    const { nodes, state } = { nodes: at.analysis.nodes, state: at.state };
+    const parts = boundIn(at, bindings, input.of).nodes.flatMap((root) => {
+      const node = nodes.path(root, input.part, input.read, input.type);
+      return state.reach.isLive(node) || materialize(nodes, state, node) ? [node] : [];
+    });
+    return { nodes: parts, owner: undefined };
+  }
   return bindings.get(inputKey(input)) ?? globalBound(at, input);
 }
 

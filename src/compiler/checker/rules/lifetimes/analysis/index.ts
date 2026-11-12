@@ -19,8 +19,9 @@ import type { NodeOf } from '../../../../syntax/tree/node.ts';
 import type { Type } from '../../../types/type/index.ts';
 import type { FlowFunction, ValueId } from '../../flow/flow-ir.ts';
 import { type ForwardRule, runForward } from '../../flow/solve.ts';
-import { ReachState } from '../reach-state.ts';
+import { type Allowed, type NodeId, ReachState } from '../reach-state.ts';
 import { anyField, type Effect, inputKey, type ResultRelation, type Summary } from '../summary.ts';
+import { type HandleReach, mayAlias, mayReach, mayShare } from '../type-reach.ts';
 import { type AnalysisContext, BodyAnalysis, type Violation } from './body.ts';
 import { clonedState, type FlowState, type Given, joinedStates } from './flow-state.ts';
 import { type InputSlot, Nodes } from './nodes.ts';
@@ -35,6 +36,8 @@ export interface Analysis {
 
 export interface AnalyzeOptions {
   readonly isAsync: boolean;
+  /** Whether it is a closure's, whose callers are code nobody sees. */
+  readonly nested?: boolean;
   /** The parameters taken by `&`. */
   readonly references: ReadonlySet<ValueId>;
 }
@@ -47,18 +50,21 @@ export function analyze(
 ): Analysis {
   const nodes = new Nodes(flow, context.facts);
   const nested = new Map<FlowFunction, Analysis & { readonly isAsync: boolean }>();
-  const analysis = new BodyAnalysis(nodes, context, options.references, (inner, site) => {
-    const known = nested.get(inner);
-    if (known !== undefined) {
-      return known;
-    }
-    const isAsync = isAsyncSite(site);
-    const found = {
-      ...analyze(context, inner, { isAsync, references: new Set() }),
-      isAsync,
-    };
-    nested.set(inner, found);
-    return found;
+  const analysis = new BodyAnalysis(nodes, context, options.references, {
+    separates: options.nested !== true,
+    analyze: (inner, site) => {
+      const known = nested.get(inner);
+      if (known !== undefined) {
+        return known;
+      }
+      const isAsync = isAsyncSite(site);
+      const found = {
+        ...analyze(context, inner, { isAsync, references: new Set(), nested: true }),
+        isAsync,
+      };
+      nested.set(inner, found);
+      return found;
+    },
   });
   const rule: ForwardRule<FlowState> = {
     join: (states) => joinedStates(nodes, states),
@@ -120,7 +126,7 @@ function isAsyncSite(site: NodeOf<string>): boolean {
  */
 function entryState(analysis: BodyAnalysis): FlowState {
   const { nodes } = analysis;
-  const reach = new ReachState();
+  const reach = new ReachState(allowedBy(nodes));
   const relevant = nodes.inputs.filter((slot) => nodes.isRelevant(slot.node));
   for (const slot of relevant) {
     reach.fresh(slot.node);
@@ -171,6 +177,7 @@ function summarize(
     leaks: [...analysis.leaks.values()],
     unseen: analysis.unseen,
     calls: [...analysis.calls.values()],
+    access: [...analysis.access.values()],
   };
 }
 
@@ -286,4 +293,22 @@ function resultRelations(
     relations.push('shares');
   }
   return relations;
+}
+
+/** The pairs `nodes`' types allow: a node whose type isn't known allows any. */
+function allowedBy(nodes: Nodes): Allowed {
+  const both = (
+    first: NodeId,
+    second: NodeId,
+    test: (a: HandleReach, b: HandleReach) => boolean,
+  ) => {
+    const firstReach = nodes.reachOf(first);
+    const secondReach = nodes.reachOf(second);
+    return firstReach === undefined || secondReach === undefined || test(firstReach, secondReach);
+  };
+  return {
+    reach: (from, to) => both(from, to, mayReach),
+    alias: (first, second) => both(first, second, mayAlias),
+    share: (first, second) => both(first, second, mayShare),
+  };
 }
