@@ -37,15 +37,48 @@ const declarations = [
   'ista fn connect(self: Impl, x: Node, y: Node): x->next = y',
   'ista async fn holding(n: Node): await runtime.commit()',
   'ista fn link(x: Node, y: Node): x->next = y',
+  // Helpers whose summaries carry what a call does to its arguments' parts, gives back made of
+  // them, reads through a weak reference, leaves to a default, or does before it waits.
+  'struct Duo { first: Node, second: Node }',
+  'ista fn linkDuo(d: Duo): d.first->next = d.second',
+  'ista fn relinkDuo(d: Duo): d.second->next = d.first',
+  'ista fn duoOf(x: Node, y: Node) -> Duo: Duo{first: x, second: y}',
+  'ista fn chainedDuo() -> Duo:',
+  '  const x = new Node{lease: new Lease{n: 4}}',
+  '  const y = new Node{}',
+  '  x->next = y',
+  '  Duo{first: x, second: y}',
+  'ista fn nextOr(x: Node, y: Node = new Node{next: x}) -> Node: y',
+  'shared struct Keeper { call: Future<Unit, "ista">? = none }',
+  'ista fn dispose(self: Keeper): ()',
+  'ista async fn holdWeak(w: WeakRef<Keeper>):',
+  '  const strong = w.deref()',
+  '  await runtime.commit()',
+  '  _ = strong',
+  'struct Linking { first: Node, second: Node, type Mode = "ista" }',
+  'ista fn onAwait(self: Linking, done: Resolver<Unit, "ista">):',
+  '  self.first->next = self.second',
+  '  done.resolve(())',
+  'ista async fn linkThenWait(x: Node, y: Node):',
+  '  x->next = y',
+  '  await runtime.commit()',
   'live async fn main() -> Int: await runtime.run(runtime.id()) _main()',
+];
+
+/** The start of `_main`, which every soup's statements follow. */
+const mainStart = [
   'ista async fn _main() -> Int:',
   '  const a = new Node{lease: new Lease{n: 1}}',
   '  const b = new Node{}',
   '  const c = new Node{lease: new Lease{n: 2}}',
   '  const box = Inbox.create<Node>()',
+  '  const keep = new Keeper{}',
 ];
 
-/** Statements over `a`, `b`, `c` and `box`, each checking on its own but for a cycle it closes. */
+/**
+ * Statements over `a`, `b`, `c`, `box` and the keeper `keep`, each checking on its own but for a
+ * cycle it closes.
+ */
 const fragments = [
   'a->next = b',
   'b->next = a',
@@ -69,14 +102,28 @@ const fragments = [
   'box.send(b)',
   'b->lease = new Lease{n: 3}',
   'await runtime.commit()',
+  'linkDuo(Duo{first: a, second: b})',
+  'linkDuo(duoOf(b, a))',
+  'relinkDuo(Duo{first: c, second: b})',
+  'relinkDuo(chainedDuo())',
+  'linkDuo(chainedDuo())',
+  'b->next = duoOf(a, c).first',
+  'b->next = nextOr(a)',
+  'a->next = nextOr(b, c)',
+  'keep->call = holdWeak(WeakRef(keep))',
+  'b->call = holdWeak(WeakRef(keep))',
+  'await Linking{first: a, second: b}',
+  'await Linking{first: b, second: a}',
+  'drop linkThenWait(a, b)',
+  'drop linkThenWait(b, a)',
 ];
 
 /** `body`'s statements run in `_main`, after the declarations, then a commit. */
 function programOf(body: readonly string[], extra: readonly string[] = []): string {
   return [
-    ...declarations.slice(0, -5),
+    ...declarations,
     ...extra,
-    ...declarations.slice(-5),
+    ...mainStart,
     ...body.map((line) => `  ${line}`),
     '  await runtime.commit()',
     '  0',
@@ -84,6 +131,12 @@ function programOf(body: readonly string[], extra: readonly string[] = []): stri
 }
 
 describe('static lifetimes over fragment soups', () => {
+  it('declares what the soups share checking clean, so a soup is rejected only for its own', () => {
+    const program = stdProgramOf({ main: programOf([]) });
+    checkedAfterStd(program);
+    expect(diagnosedAt(program, 'main').diagnostics.filter(isError)).toEqual([]);
+  });
+
   it('never lets a program it accepts trip the oracle, and rejects only for cycles', async () => {
     await fc.assert(
       fc.asyncProperty(fc.array(fc.constantFrom(...fragments), { maxLength: 8 }), async (body) => {
