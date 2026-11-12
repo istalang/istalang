@@ -33,6 +33,24 @@ describe('dropped variables', () => {
       lines('let t = "a"', 'while c:', '  drop t', '  t = "b"'),
     ],
     ['captured before the drop', lines('const t = "a"', 'const f = fn(): t.length()', 'drop t')],
+    [
+      'bound afresh by a condition on each pass',
+      lines(
+        'let r: Result<String, String> = Ok("a")',
+        'while r is Ok(t):',
+        '  drop t',
+        '  r = Err("b")',
+      ),
+    ],
+    [
+      'bound afresh by a branch on each pass',
+      lines(
+        'const r: Result<String, String> = Ok("a")',
+        'for i in 0..2:',
+        '  if r is Ok(t):',
+        '    drop t',
+      ),
+    ],
   ])('may be used when %s', (_case, body) => {
     expect(reported(inFunction(body))).toEqual(reportedNothing);
   });
@@ -62,6 +80,10 @@ describe('dropped variables', () => {
       lines('const t = "a"', 'while c:', '  drop t', '  break', 'const k = t.length()'),
     ],
     ['by a lambda made after', lines('const t = "a"', 'drop t', 'const f = fn(): t.length()')],
+    [
+      "in a literal's field written after the one dropping it",
+      lines('const t = "a"', 'const p = Point{y: { drop t; 1 }, x: t.length()}'),
+    ],
     [
       'when a `?.` before the assignment may skip it',
       lines(

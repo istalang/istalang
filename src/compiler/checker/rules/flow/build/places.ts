@@ -12,6 +12,7 @@
 
 import type { Expression, Index } from '../../../../syntax/expressions/index.ts';
 import { type PlaceStep, placePath } from '../../../../syntax/expressions/places.ts';
+import type { Identifier } from '../../../../syntax/tree/node.ts';
 import type { FieldRead } from '../../../surface/checked-field.ts';
 import type { Argument, Part, Place, ValueId } from '../flow-ir.ts';
 import type { FlowBuilder } from './flow-builder.ts';
@@ -68,43 +69,57 @@ function stepInto(
   };
 }
 
+/** The place an assignment writes, entered: what it holds now, and writing it, which leaves it. */
+export interface AssignedPlace {
+  readonly read: () => ValueId;
+  readonly write: (value: ValueId) => void;
+}
+
 /**
- * Writes `value` into the place `target` names: a variable assigned whole, a part of a place, or
- * an element its container's `setIndex` writes.
+ * Enters the place `target` names for an assignment: a variable assigned whole, a part of a place,
+ * or an element its container's `setIndex` writes, never read unless asked to (a map may not hold
+ * its key yet).
  */
-export function assign(builder: FlowBuilder, target: Expression, value: ValueId): void {
-  const { steps } = placePath(target);
-  const last = steps.at(-1);
+export function enterAssigned(builder: FlowBuilder, target: Expression): AssignedPlace {
+  const last = placePath(target).steps.at(-1);
   if (last?.kind === 'Index' && builder.body.fieldReadOf(last) === undefined) {
     const container = enterPlace(builder, last.target);
     const key = builder.expression(last.index);
-    writeElement(builder, last, { container: container.place, key, element: value });
-    container.leave();
-    return;
+    return {
+      read: () =>
+        resolvedCall(builder, builder.body.resolved.get(last), {
+          site: last,
+          passed: [builder.valueAt(container.place), key],
+          into: builder.temporaryOf(last),
+        }),
+      write: (element) => {
+        writeElement(builder, last, { container: container.place, key, element });
+        container.leave();
+      },
+    };
   }
   const { place, leave } = enterPlace(builder, target);
-  const root = builder.valueOf(place.root);
-  if (place.path.length === 0 && root.kind === 'variable') {
-    builder.emit({
-      op: 'copy',
-      site: place.name ?? target,
-      into: place.root,
-      from: value,
-      fit: undefined,
-    });
-  } else {
-    builder.emit({ op: 'write', site: target, place, value });
-  }
-  leave();
+  return {
+    read: () => builder.valueAt(place),
+    write: (value) => {
+      const root = builder.valueOf(place.root);
+      if (place.path.length === 0 && root.kind === 'variable') {
+        const site = place.name ?? target;
+        builder.emit({ op: 'copy', site, into: place.root, from: value, fit: undefined });
+      } else {
+        builder.emit({ op: 'write', site: target, place, value });
+      }
+      leave();
+    },
+  };
 }
 
 /** The place `root` names: a variable (or a global), what is behind a handle, or a value. */
 function rootPlace(builder: FlowBuilder, root: Expression, node: Expression): Place {
-  if (root.kind === 'Identifier') {
-    const entity = builder.entityOf(root);
-    if (entity !== undefined && builder.body.declaredTypeOf(entity.name) !== undefined) {
-      return { root: builder.variable(entity), path: [], site: node, name: root };
-    }
+  const entity = root.kind === 'Identifier' ? builder.entityOf(root) : undefined;
+  if (entity !== undefined) {
+    const named = builder.named(entity, builder.body.typeOf(root));
+    return { root: named, path: [], site: node, name: root as Identifier };
   }
   if (root.kind === 'Dereference') {
     const handle = builder.expression(root.operand);

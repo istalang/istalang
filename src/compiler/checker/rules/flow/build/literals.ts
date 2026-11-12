@@ -27,62 +27,84 @@ import type {
   TemplateLiteral,
 } from '../../../../syntax/expressions/index.ts';
 import { isTagged, taggedCall } from '../../../../syntax/expressions/literals/templates.ts';
+import { itemValue } from '../../../../syntax/expressions/readings.ts';
 import type { Invalid } from '../../../../syntax/tree/node.ts';
+import type { FieldSource } from '../../../surface/checked-body.ts';
+import type { FunctionCall } from '../../../surface/resolved-call.ts';
 import type { Argument, ValueId } from '../flow-ir.ts';
 import type { FlowBuilder } from './flow-builder.ts';
 import { implicitCall, resolvedCall } from './implicit-calls.ts';
 import { fieldLoop, itemLoop, targetsLoop } from './loops.ts';
 import { constant } from './parts.ts';
 
+/**
+ * A struct literal (§3.1), as lowering builds it (lowering/constructs/expressions/structs/
+ * structs.ts): its items evaluated in the order written, then its fields taken in declaration order,
+ * each from its value, its spread's field or a struct comprehension; a literal leaving fields to
+ * their defaults is built by its struct's fields function, called with the fields it gives.
+ */
 export function structLiteral(builder: FlowBuilder, node: FieldsLiteral): ValueId {
   const into = builder.temporaryOf(node);
+  const { values, comprehended } = evaluatedItems(builder, node);
   const sources = builder.body.sourcesOf(node);
   if (sources === undefined) {
-    const operands = node.items.flatMap((item) =>
-      'value' in item && item.value !== undefined ? [builder.expression(item.value)] : [],
-    );
+    const operands = [...values.values(), ...comprehended];
     builder.emit({ op: 'unknown', site: node, into, operands });
     return into;
   }
-  const spreads = new Map<Expression, ValueId>();
   const parts: ValueId[] = [];
+  let defaults: FunctionCall | undefined;
   for (const source of sources) {
-    switch (source.kind) {
-      case 'value':
-        parts.push(builder.expression(source.value));
-        break;
-      case 'spread': {
-        const whole = spreads.get(source.from) ?? builder.expression(source.from);
-        spreads.set(source.from, whole);
-        const field = builder.temporary(source.from, undefined);
-        const step = { kind: 'step', step: source.index } as const;
-        builder.emit({ op: 'read', site: source.from, into: field, from: whole, part: step });
-        parts.push(field);
-        break;
-      }
-      case 'default': {
-        const value = builder.temporary(node, undefined);
-        const earlier = parts.map((part): Argument => ({ kind: 'value', value: part }));
-        resolvedCall(builder, source.call, { site: node, passed: earlier, into: value });
-        parts.push(value);
-        break;
-      }
-      case 'comprehension':
-        parts.push(...structComprehension(builder, source.comprehension));
-        break;
-      default: {
-        const unhandled: never = source;
-        return unhandled;
-      }
+    if (source.kind === 'comprehension') {
+      parts.push(...comprehended);
+    } else if (source.kind === 'default') {
+      defaults = source.call;
+    } else {
+      parts.push(fieldOf(builder, source, values));
     }
   }
-  const made = node.kind === 'NewStructLiteral' ? 'handle' : 'struct';
-  builder.emit({ op: 'make', site: node, into, made: { kind: made }, parts });
+  if (defaults === undefined) {
+    const made = node.kind === 'NewStructLiteral' ? 'handle' : 'struct';
+    builder.emit({ op: 'make', site: node, into, made: { kind: made }, parts });
+  } else {
+    resolvedCall(builder, defaults, { site: node, passed: parts, into });
+  }
   return into;
 }
 
+/** A literal's items, evaluated in the order written: each value, and a comprehension's fields. */
+function evaluatedItems(builder: FlowBuilder, node: FieldsLiteral) {
+  const values = new Map<Expression, ValueId>();
+  let comprehended: readonly ValueId[] = [];
+  for (const item of node.items) {
+    if (item.kind === 'StructComprehension') {
+      comprehended = structComprehension(builder, item);
+    } else if (item.kind !== 'Invalid') {
+      const value = item.kind === 'Spread' ? item.expression : itemValue(item);
+      values.set(value, builder.expression(value));
+    }
+  }
+  return { values, comprehended };
+}
+
+/** A field's value: an item's, or its spread's field. */
+function fieldOf(
+  builder: FlowBuilder,
+  source: Extract<FieldSource, { readonly kind: 'value' | 'spread' }>,
+  values: ReadonlyMap<Expression, ValueId>,
+): ValueId {
+  if (source.kind === 'value') {
+    return values.get(source.value) ?? builder.expression(source.value);
+  }
+  const whole = values.get(source.from) ?? builder.expression(source.from);
+  const field = builder.temporary(source.from, undefined);
+  const step = { kind: 'step', step: source.index } as const;
+  builder.emit({ op: 'read', site: source.from, into: field, from: whole, part: step });
+  return field;
+}
+
 /** The fields a struct comprehension gives, one per pass. */
-function structComprehension(builder: FlowBuilder, node: StructComprehension): ValueId[] {
+function structComprehension(builder: FlowBuilder, node: StructComprehension): readonly ValueId[] {
   const values: ValueId[] = [];
   fieldLoop(builder, node, undefined, () => {
     builder.expression(node.key);

@@ -10,10 +10,10 @@
  *   matched, and the pattern's names are bound there, each a copy into its variable at its name.
  */
 
-import type { Parameter } from '../../../../syntax/expressions/index.ts';
 import type { Pattern } from '../../../../syntax/patterns.ts';
 import type { LabelledScope } from '../../../../syntax/statements/index.ts';
-import type { Invalid, NodeOf } from '../../../../syntax/tree/node.ts';
+import type { NodeOf } from '../../../../syntax/tree/node.ts';
+import type { SignatureParameter } from '../../../check.ts';
 import type {
   ArrayStep,
   CheckedPattern,
@@ -32,20 +32,20 @@ import { implicitCall } from './implicit-calls.ts';
 export type Lifetime = LabelledScope | 'function' | undefined;
 
 /**
- * The function's parameters: a named one is its variable; one written as a pattern is an argument
- * taken apart into the names it binds.
+ * The function's parameters, as checked: a named one is its variable; one written as a pattern is
+ * an argument of its type, taken apart into the names it binds.
  */
 export function bindParameters(
   builder: FlowBuilder,
-  parameters: readonly (Parameter | Invalid)[],
+  parameters: readonly SignatureParameter[],
 ): void {
-  for (const parameter of parameters.filter((each) => each.kind !== 'Invalid')) {
-    const entity = parameter.name === undefined ? undefined : builder.entityOf(parameter.name);
+  for (const { node, type } of parameters) {
+    const entity = node.name === undefined ? undefined : builder.entityOf(node.name);
     const argument =
-      entity === undefined ? builder.temporary(parameter, undefined) : builder.variable(entity);
+      entity === undefined ? builder.temporary(node, type) : builder.variable(entity);
     builder.parameters.push(argument);
-    if (parameter.pattern !== undefined) {
-      bindTargets(builder, parameter, argument, 'function');
+    if (node.pattern !== undefined) {
+      bindTargets(builder, node, argument, 'function');
     }
   }
 }
@@ -211,7 +211,7 @@ function bind(
       const variable = builder.variable(entity);
       const part = readAlong(builder, value, path, name);
       builder.emit({ op: 'copy', site: name, into: variable, from: part, fit: undefined });
-      builder.declare(variable, lifetime);
+      builder.scopes.declare(variable, lifetime);
     }
   }
 }

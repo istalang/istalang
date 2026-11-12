@@ -27,8 +27,8 @@ function subjectFlow(body: string): FlowFunction {
   if (subject === undefined || checked === undefined || block === undefined) {
     throw new Error('The subject was never checked.');
   }
-  const inputs = { checker: { ...checker, inputs: { bodyOf: () => undefined } }, module };
-  return flowOf({ ...inputs, body: checked }, block, subject.parameters);
+  const inputs = { checker, module, localBodyOf: () => undefined, body: checked };
+  return flowOf(inputs, block, checker.parametersOf(subject));
 }
 
 /** How many times `flow` releases the variable named `name`, and by what. */

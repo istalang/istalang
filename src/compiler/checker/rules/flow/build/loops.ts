@@ -65,7 +65,7 @@ export function targetsLoop(
   itemLoop(builder, node, iterable, {
     scope,
     pass: (item) =>
-      builder.inScope(node, () => {
+      builder.scopes.inScope(node, () => {
         bindTargets(builder, node, item);
         body();
       }),
@@ -90,7 +90,7 @@ export function fieldLoop(
     for (const [index, each] of passes.entries()) {
       builder.resumeIn(starts[index] as BlockId);
       builder.inView(each.body, () =>
-        builder.inScope(node, () => {
+        builder.scopes.inScope(node, () => {
           const key = constant(builder, header);
           const value = builder.temporary(header, each.value);
           builder.emit({
@@ -138,7 +138,7 @@ function loop(
   if (scope === undefined) {
     body(top);
   } else {
-    builder.withExits(scope, exit, top, () => body(top));
+    builder.scopes.withExits(scope, exit, top, () => body(top));
   }
   builder.resumeIn(exit);
 }

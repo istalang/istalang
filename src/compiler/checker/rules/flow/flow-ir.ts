@@ -59,13 +59,14 @@ export type FlowValue =
  * A part of a value an operation reads or a place reaches: a part a pattern or a target reads
  * (`PartStep`: a tuple element by position, a field by name, a union's member, an array's items),
  * the value behind a handle (`*x`, `x->f`), the value inside an optional where it isn't `none`
- * (§4), a field a key of several names reads, or an item a cursor, a copied collection or a
- * comprehension's result holds.
+ * (§4), what a future gives once it has settled (§8), a field a key of several names reads, or an
+ * item a cursor, a copied collection or a comprehension's result holds.
  */
 export type Part =
   | { readonly kind: 'step'; readonly step: PartStep }
   | { readonly kind: 'behind' }
   | { readonly kind: 'inside' }
+  | { readonly kind: 'given' }
   | { readonly kind: 'keyed' }
   | { readonly kind: 'item' };
 
@@ -105,7 +106,8 @@ type Made =
  * - `write`: `value` written into the part `place` reaches.
  * - `call`: a resolved call, written or implicit (`role`), its arguments by value or by `&`.
  * - `callValue`: a call of a function value.
- * - `suspend`: an `await` or `select`, waiting on each awaited future, giving what one gives.
+ * - `suspend`: an `await` or an awaiting `select`, waiting until one of the futures it awaits
+ *   settles; what each gives is read from it (`given`).
  * - `release`: the end of variables, at a scope's end or a `drop`.
  * - `unknown`: code checking found a mistake in: its operands run, and what it gives is unknown.
  */
@@ -138,7 +140,7 @@ export type Operation = { readonly site: NodeOf<string> } & (
       readonly callee: ValueId;
       readonly arguments: readonly Argument[];
     }
-  | { readonly op: 'suspend'; readonly into: ValueId; readonly awaited: readonly ValueId[] }
+  | { readonly op: 'suspend'; readonly awaited: readonly ValueId[] }
   | {
       readonly op: 'release';
       readonly values: readonly ValueId[];
@@ -164,12 +166,14 @@ export interface FlowBlock {
 
 /**
  * A function's flow: its body's root, the values it takes as arguments and captures, in order,
- * every value it names, and its blocks, the entry first.
+ * the variable its own name is inside it (a local `fn`'s or a named lambda's: the closure it runs
+ * as, §3.14), every value it names, and its blocks, the entry first.
  */
 export interface FlowFunction {
   readonly root: SyntaxNode;
   readonly parameters: readonly ValueId[];
   readonly captures: readonly ValueId[];
+  readonly self: ValueId | undefined;
   readonly values: readonly FlowValue[];
   readonly blocks: readonly FlowBlock[];
 }

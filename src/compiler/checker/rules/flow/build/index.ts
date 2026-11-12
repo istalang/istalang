@@ -8,15 +8,15 @@
  *   optional goes to the chain's end with `none` where it meets one (chains.ts).
  * - Its value is then a temporary of its own node, so each expression checking typed has a value
  *   at its node; where checking fitted it to the type expected there, a copy of that type follows,
- *   converted as checking recorded.
+ *   converted as checking recorded, unless what uses it fits it itself, as a chain's step does.
  */
 
 import { handlerOf } from '../../../../../foundation/structures/kind-table.ts';
-import type { Expression, Parameter } from '../../../../syntax/expressions/index.ts';
+import type { Expression } from '../../../../syntax/expressions/index.ts';
 import type { Block, Statement } from '../../../../syntax/statements/index.ts';
 import { tailExpressionOf } from '../../../../syntax/statements/readings.ts';
 import type { SyntaxNode } from '../../../../syntax/tree/index.ts';
-import type { Invalid } from '../../../../syntax/tree/node.ts';
+import type { SignatureParameter } from '../../../check.ts';
 import type { CheckedBody } from '../../../surface/checked-body.ts';
 import type { FlowFunction, ValueId } from '../flow-ir.ts';
 import { closeChain, openChain } from './chains.ts';
@@ -34,7 +34,7 @@ const flows = new WeakMap<CheckedBody, Map<SyntaxNode, FlowFunction>>();
 export function flowOf(
   inputs: FlowInputs,
   root: Block | Expression,
-  parameters: readonly (Parameter | Invalid)[] = [],
+  parameters: readonly SignatureParameter[] = [],
 ): FlowFunction {
   let ofBody = flows.get(inputs.body);
   if (ofBody === undefined) {
@@ -53,27 +53,32 @@ export function flowOf(
   return flow;
 }
 
+/** `node`'s value as computed, a temporary of its own node. */
+function computed(builder: FlowBuilder, node: Expression): ValueId {
+  const stops = builder.body.stopsAt(node);
+  if (stops !== undefined) {
+    const operands = stops.map((operand) => builder.expression(operand));
+    builder.end({ kind: 'stop' });
+    // Past the stop, in code no path reaches, it is a value of no parts.
+    const value = builder.temporaryOf(node);
+    builder.emit({ op: 'compute', site: node, into: value, operands });
+    return value;
+  }
+  const chain = openChain(builder, node);
+  const value = handlerOf(expressionFlows, node)(builder, node);
+  return atSite(builder, node, closeChain(builder, node, chain, value));
+}
+
 const constructs: Constructs = {
-  expression: (builder, node) => {
-    const stops = builder.body.stopsAt(node);
-    if (stops !== undefined) {
-      const operands = stops.map((operand) => builder.expression(operand));
-      builder.end({ kind: 'stop' });
-      const value = builder.temporaryOf(node);
-      builder.emit({ op: 'unknown', site: node, into: value, operands });
-      return value;
-    }
-    const chain = openChain(builder, node);
-    const value = handlerOf(expressionFlows, node)(builder, node);
-    return fitted(builder, node, atSite(builder, node, closeChain(builder, node, chain, value)));
-  },
+  expression: (builder, node) => builder.fit(node, computed(builder, node)),
+  unfitted: computed,
   statement: (builder, node) => {
     if (node.kind !== 'Invalid') {
       handlerOf(statementFlows, node as Statement)(builder, node as Statement);
     }
   },
   block: (builder, node) =>
-    builder.inScope(node, () => {
+    builder.scopes.inScope(node, () => {
       const tail = tailExpressionOf(node);
       const leading = tail === undefined ? node.statements : node.statements.slice(0, -1);
       for (const statement of leading) {
@@ -92,16 +97,4 @@ function atSite(builder: FlowBuilder, node: Expression, value: ValueId): ValueId
   const copy = builder.temporaryOf(node);
   builder.emit({ op: 'copy', site: node, into: copy, from: value, fit: undefined });
   return copy;
-}
-
-/** `value`, converted to the type expected of `node`, where checking fitted it to one. */
-function fitted(builder: FlowBuilder, node: Expression, value: ValueId): ValueId {
-  const { body } = builder;
-  const expected = body.expectedOf(node);
-  if (expected === undefined || expected === body.typeOf(node)) {
-    return value;
-  }
-  const converted = builder.temporary(node, expected);
-  builder.emit({ op: 'copy', site: node, into: converted, from: value, fit: body.fitAt(node) });
-  return converted;
 }

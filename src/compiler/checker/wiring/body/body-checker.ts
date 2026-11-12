@@ -28,12 +28,8 @@ import { handlerOf } from '../../../../foundation/structures/kind-table.ts';
 import { unreachable } from '../../../../foundation/structures/unreachable.ts';
 import type { Entity, VariantEntity } from '../../../binder/entities.ts';
 import type { ModuleId } from '../../../program/program.ts';
-import type {
-  Expression,
-  FieldHeader,
-  IndentedValue,
-  Parameter,
-} from '../../../syntax/expressions/index.ts';
+import type { FunctionDeclaration } from '../../../syntax/declarations/index.ts';
+import type { Expression, FieldHeader, IndentedValue } from '../../../syntax/expressions/index.ts';
 import type { BuiltLiteral } from '../../../syntax/expressions/literals/indented-values.ts';
 import { unparenthesized } from '../../../syntax/expressions/readings.ts';
 import type { Block, Statement, VariableDeclaration } from '../../../syntax/statements/index.ts';
@@ -159,11 +155,7 @@ export class BodyChecker implements BodyContext {
     declareOwnCall(this);
     const tail = this.block(body, this.#result.declared);
     const result = this.#result.result(this, blockTail(body, tail));
-    return this.#finished(
-      [body],
-      result,
-      parameters.map((parameter) => parameter.node),
-    );
+    return this.#finished([body], result, parameters);
   }
 
   /**
@@ -196,14 +188,20 @@ export class BodyChecker implements BodyContext {
   #finished(
     roots: readonly (Block | Expression)[],
     result: Type,
-    parameters: readonly Parameter[] = [],
+    parameters: readonly SignatureParameter[] = [],
   ): CheckedBody {
     this.variables.warnUnchanged(this);
     const calls = this.calls.entries();
     checkDisposeUses(this, calls, checkTestingCalls(this, calls));
     recordOutcomeCodecs(this, calls);
     const body = checkedAt({ records: this.#records, units: this, result }, this.#passes.root);
-    const inputs = { checker: this.checker, module: this.module, body };
+    const inputs = {
+      checker: this.checker,
+      module: this.module,
+      localBodyOf: (declaration: FunctionDeclaration) =>
+        this.checker.inputs.bodyOf(this.module, declaration),
+      body,
+    };
     for (const root of roots) {
       checkDropped(this, flowOf(inputs, root, root === roots[0] ? parameters : []));
     }

@@ -1,9 +1,13 @@
 /**
- * Optional chains (§4): `a?.b.c` meets `none` at its `?.` and gives `none` without running the
- * links after it. The outermost link opens the chain; each link stepping through an optional goes
- * to the chain's end with `none` where its target is none, and on with the value inside where it
- * isn't; the last link's value is the chain's on the other path. A part of a link that is no step
- * target (an argument, an index's key) is no part of the chain, and starts any chain of its own.
+ * Optional chains (§4), as lowering builds them (lowering/values/optionals.ts `Chains`): `a?.b.c`
+ * meets `none` at its `?.` and gives `none` without running the links after it.
+ *
+ * - The outermost link opens the chain. A part of a link that is no step target (an argument, an
+ *   index's key) is no part of the chain, and starts any chain of its own.
+ * - What a link's step works on is its target's value, the value inside after `?.`, and then made
+ *   to fit as checking fitted the target (a receiver converted for the method a call chose, §2):
+ *   inside the optional, never the optional around it. A `?.` meeting `none` goes to the chain's
+ *   end, where the chain gives `none`; the last link's value is the chain's on the other path.
  */
 
 import { chainStepOf, isOptionalStep } from '../../../../syntax/expressions/chains.ts';
@@ -56,24 +60,28 @@ export function closeChain(
 }
 
 /**
- * `target`, the value `node`'s step works on: where the step reads through an optional, the value
- * inside it, the chain going to its end with `none` where there is none.
+ * The value `link`'s step works on (`chainStepOf`): its target's, inside the optional after `?.`,
+ * fitted as checking fitted the target; an expression's own value where `link` is no chain's.
  */
-export function throughOptional(builder: FlowBuilder, node: Expression, target: ValueId): ValueId {
-  const step = chainStepOf(node);
+export function stepTarget(builder: FlowBuilder, link: Expression, target: Expression): ValueId {
+  const step = chainStepOf(link);
+  const chained = builder.body.chainOf(link);
   const { chain } = builder;
-  const link = builder.body.chainOf(node);
-  if (step === undefined || !isOptionalStep(step) || chain === undefined || link === undefined) {
-    return target;
+  if (step === undefined || chained === undefined || chain === undefined) {
+    return builder.expression(target);
+  }
+  const value = builder.unfitted(target);
+  if (!isOptionalStep(step)) {
+    return builder.fit(target, value);
   }
   const [none, some] = builder.branch(2) as [number, number];
   builder.resumeIn(none);
-  builder.emit({ op: 'compute', site: node, into: chain.result, operands: [] });
+  builder.emit({ op: 'compute', site: link, into: chain.result, operands: [] });
   builder.end({ kind: 'goto', to: chain.end });
   builder.resumeIn(some);
-  const inside = builder.temporary(node, link.base);
-  builder.emit({ op: 'read', site: node, into: inside, from: target, part: { kind: 'inside' } });
-  return inside;
+  const inside = builder.temporary(target, chained.base);
+  builder.emit({ op: 'read', site: target, into: inside, from: value, part: { kind: 'inside' } });
+  return builder.fit(target, inside);
 }
 
 /** The links of the chain whose outermost link is `node`: it, and each step target that is one. */

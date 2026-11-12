@@ -21,7 +21,7 @@ import type {
 import type { Identifier } from '../../../../syntax/tree/node.ts';
 import type { FlowFunction, Part, ValueId } from '../flow-ir.ts';
 import { callFlow } from './calls.ts';
-import { throughOptional } from './chains.ts';
+import { stepTarget } from './chains.ts';
 import {
   awaitFlow,
   binaryFlow,
@@ -77,8 +77,7 @@ function named(builder: FlowBuilder, name: Identifier, read: Identifier | Member
     return entity === undefined ? unknown(builder, read) : computed(builder, read);
   }
   const into = builder.temporaryOf(read);
-  const local = builder.body.declaredTypeOf(entity.name) !== undefined;
-  const from = local ? builder.variable(entity) : builder.global(entity, builder.body.typeOf(read));
+  const from = builder.named(entity, builder.body.typeOf(read));
   builder.emit({ op: 'copy', site: read, into, from, fit: undefined });
   return into;
 }
@@ -100,7 +99,7 @@ function memberAccess(builder: FlowBuilder, node: MemberAccess): ValueId {
 
 /** The part `part` of what `node`'s step works on. */
 function readPart(builder: FlowBuilder, node: MemberAccess | TupleElement, part: Part): ValueId {
-  const target = throughOptional(builder, node, builder.expression(node.target));
+  const target = stepTarget(builder, node, node.target);
   const into = builder.temporaryOf(node);
   builder.emit({ op: 'read', site: node, into, from: target, part });
   return into;
@@ -108,7 +107,7 @@ function readPart(builder: FlowBuilder, node: MemberAccess | TupleElement, part:
 
 /** `a[k]`: the call of the container's `index`, or the field a key names. */
 function index(builder: FlowBuilder, node: Index): ValueId {
-  const container = throughOptional(builder, node, builder.expression(node.target));
+  const container = stepTarget(builder, node, node.target);
   const key = builder.expression(node.index);
   const read = builder.body.fieldReadOf(node);
   const into = builder.temporaryOf(node);
@@ -123,7 +122,8 @@ function index(builder: FlowBuilder, node: Index): ValueId {
 
 /**
  * The closure of a lambda or local function: a function built of its own, from the parameters it
- * takes and the variables it captures, made of the captured variables' values here.
+ * takes, the variables it captures and its own name, the closure it runs as, made of the captured
+ * variables' values here.
  */
 export function closureOf(builder: FlowBuilder, node: Lambda | FunctionDeclaration): ValueId {
   const checked = builder.body.functionOf(node);
@@ -132,7 +132,10 @@ export function closureOf(builder: FlowBuilder, node: Lambda | FunctionDeclarati
   for (const { entity, type } of captures) {
     nested.captured(entity, type);
   }
-  bindParameters(nested, node.parameters);
+  if (node.name !== undefined) {
+    nested.ownName(node.name, checked?.type);
+  }
+  bindParameters(nested, checked?.parameters ?? []);
   const flow: FlowFunction = nested.finished(bodyValue(builder, nested, node));
   const into = builder.temporary(node, checked?.type);
   builder.emit({
@@ -154,7 +157,7 @@ function bodyValue(
   if (node.kind === 'Lambda') {
     return nested.expression(node.body);
   }
-  const block = builder.inputs.checker.inputs.bodyOf(builder.inputs.module, node);
+  const block = builder.inputs.localBodyOf(node);
   return block === undefined ? undefined : nested.block(block);
 }
 
@@ -204,7 +207,7 @@ export const expressionFlows: Handlers<FlowBuilder, Expression, [], ValueId> = {
   Propagate: propagate,
   Unwrap: unwrap,
   Dereference: (builder, node) => {
-    const handle = throughOptional(builder, node, builder.expression(node.operand));
+    const handle = stepTarget(builder, node, node.operand);
     const into = builder.temporaryOf(node);
     builder.emit({ op: 'read', site: node, into, from: handle, part: { kind: 'behind' } });
     return into;

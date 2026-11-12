@@ -1,25 +1,23 @@
 /**
  * One flow function under construction (../flow-ir.ts): its values, its blocks and the block code
- * is added to now, the scopes whose variables end with them, and where each `break` and `continue`
- * goes. The construct tables (expressions.ts, statements.ts, …) say what each construct adds; this
- * module owns the graph's shape.
+ * is added to now. The construct tables (expressions.ts, statements.ts, …) say what each construct
+ * adds, scopes.ts what is released where; this module owns the graph's shape.
  *
  * - Code is added to the current block. Once it has ended (a `return`, an exit, a stop), code built
  *   after it goes in a fresh block nothing jumps to, so it is still built, as code no path reaches.
- * - A scope is a block, a loop's pass or a case: it releases the variables declared in it where it
- *   ends and where an exit leaves it, innermost first; a `hold`'s variable is released by the scope
- *   it names instead, or by the function's `return`.
- * - The view of the body facts are read through changes inside a field loop's pass (`inView`):
+ * - A name the body declares is one variable per function; any other name a global.
+ * - The view the body's facts are read through changes inside a field loop's pass (`inView`):
  *   each pass reads the body as that pass checked it (§4).
  */
 
 import type { VariableEntity } from '../../../../binder/entities.ts';
 import type { ModuleId } from '../../../../program/program.ts';
+import type { FunctionDeclaration } from '../../../../syntax/declarations/index.ts';
 import type { Expression } from '../../../../syntax/expressions/index.ts';
-import type { Block, LabelledScope, Statement } from '../../../../syntax/statements/index.ts';
+import type { Block, Statement } from '../../../../syntax/statements/index.ts';
 import type { SyntaxNode } from '../../../../syntax/tree/index.ts';
 import type { Identifier, Invalid, NodeOf } from '../../../../syntax/tree/node.ts';
-import type { CheckerContext, ProgramInputs } from '../../../contexts/context.ts';
+import type { CheckerContext } from '../../../contexts/context.ts';
 import type { CheckedBody } from '../../../surface/checked-body.ts';
 import type { Type } from '../../../types/type/index.ts';
 import type {
@@ -32,25 +30,27 @@ import type {
   Place,
   ValueId,
 } from '../flow-ir.ts';
+import { Scopes } from './scopes.ts';
 
 /**
- * What building a body's flow reads: what names bind to, the parameters of the functions it calls,
- * and the bodies of the local functions it declares, of the body's module; and the body as checked.
+ * What building a body's flow reads: what names bind to and the parameters of the functions it
+ * calls, of the body's module; the bodies of the local functions it declares, which its tree holds
+ * apart; and the body as checked.
  */
 export interface FlowInputs {
-  readonly checker: Pick<CheckerContext, 'bindings' | 'parametersOf'> & {
-    readonly inputs: Pick<ProgramInputs, 'bodyOf'>;
-  };
+  readonly checker: Pick<CheckerContext, 'bindings' | 'parametersOf'>;
   readonly module: ModuleId;
+  readonly localBodyOf: (declaration: FunctionDeclaration) => Block | undefined;
   readonly body: CheckedBody;
 }
 
 /**
- * What each construct adds to a flow (index.ts assembles them): an expression's value, a
- * statement's operations, and a block's, with the value its tail gives.
+ * What each construct adds to a flow (index.ts assembles them): an expression's value, as it fits
+ * where it is used or as computed, a statement's operations, and a block's, with its tail's value.
  */
 export interface Constructs {
   readonly expression: (builder: FlowBuilder, node: Expression) => ValueId;
+  readonly unfitted: (builder: FlowBuilder, node: Expression) => ValueId;
   readonly statement: (builder: FlowBuilder, node: Statement | Invalid) => void;
   readonly block: (builder: FlowBuilder, node: Block) => ValueId | undefined;
 }
@@ -65,26 +65,6 @@ export interface OpenChain {
   readonly result: ValueId;
 }
 
-/** A scope whose variables end with it: a block, a loop's pass, a case, or a labelled scope. */
-/**
- * A scope whose variables end with it: a block, a loop's pass or a case; or the variables `hold`s
- * keep until a labelled scope ends (`holder`), which its `continue` leaves alone.
- */
-interface Scope {
-  readonly node: SyntaxNode;
-  readonly holder?: LabelledScope;
-  readonly variables: ValueId[];
-}
-
-/** Where an exit naming `scope` goes: past its end, or, for a loop, to its next pass. */
-interface ExitTarget {
-  readonly scope: LabelledScope;
-  readonly breakTo: BlockId;
-  readonly continueTo: BlockId | undefined;
-  /** How many scopes were open outside it, which an exit leaving it ends. */
-  readonly depth: number;
-}
-
 interface OpenBlock {
   readonly operations: Operation[];
   exit: Exit | undefined;
@@ -95,13 +75,17 @@ export class FlowBuilder {
   readonly root: SyntaxNode;
   readonly parameters: ValueId[] = [];
   readonly captures: ValueId[] = [];
+  readonly scopes = new Scopes({
+    emit: (operation) => this.emit(operation),
+    end: (exit) => this.end(exit),
+    prepend: (block, operation) => this.#open(block).operations.unshift(operation),
+  });
   readonly #values: FlowValue[] = [];
   readonly #blocks: OpenBlock[] = [];
   readonly #variables = new Map<VariableEntity, ValueId>();
   readonly #globals = new Map<VariableEntity, ValueId>();
-  readonly #scopes: Scope[] = [];
-  readonly #exits: ExitTarget[] = [];
   readonly #constructs: Constructs;
+  #self: ValueId | undefined;
   #body: CheckedBody;
   #current: BlockId;
   /** The optional chain whose links are being built, if any. */
@@ -115,9 +99,14 @@ export class FlowBuilder {
     this.#current = this.newBlock();
   }
 
-  /** `node`'s value, computed in the current block. */
+  /** `node`'s value, computed in the current block, as it fits where it is used. */
   expression(node: Expression): ValueId {
     return this.#constructs.expression(this, node);
+  }
+
+  /** `node`'s value as computed, before any conversion checking fitted it with. */
+  unfitted(node: Expression): ValueId {
+    return this.#constructs.unfitted(this, node);
   }
 
   statement(node: Statement | Invalid): void {
@@ -150,6 +139,23 @@ export class FlowBuilder {
     }
   }
 
+  /** `value`, converted to the type expected of `node`, where checking fitted it to one. */
+  fit(node: Expression, value: ValueId): ValueId {
+    const expected = this.#body.expectedOf(node);
+    if (expected === undefined || expected === this.#body.typeOf(node)) {
+      return value;
+    }
+    const converted = this.temporary(node, expected);
+    this.emit({
+      op: 'copy',
+      site: node,
+      into: converted,
+      from: value,
+      fit: this.#body.fitAt(node),
+    });
+    return converted;
+  }
+
   /** The flow built: every block ended, the last one returning what reaches it. */
   finished(value: ValueId | undefined): FlowFunction {
     if (this.#open(this.#current).exit === undefined) {
@@ -159,6 +165,7 @@ export class FlowBuilder {
       root: this.root,
       parameters: this.parameters,
       captures: this.captures,
+      self: this.#self,
       values: this.#values,
       blocks: this.#blocks.map(
         ({ operations, exit }): FlowBlock => ({ operations, exit: exit ?? { kind: 'stop' } }),
@@ -178,7 +185,7 @@ export class FlowBuilder {
     return this.#value({ kind: 'temporary', site, type });
   }
 
-  /** The value of a variable the body declares, the same one wherever it is named. */
+  /** The variable a name of the body declares, one value wherever it is named. */
   variable(entity: VariableEntity): ValueId {
     const known = this.#variables.get(entity);
     if (known !== undefined) {
@@ -191,6 +198,20 @@ export class FlowBuilder {
       inCell: this.#body.inCell(entity.name),
     });
     this.#variables.set(entity, value);
+    return value;
+  }
+
+  /** What `entity` names: a variable the body declares, or a global, of `type` if one. */
+  named(entity: VariableEntity, type: Type | undefined): ValueId {
+    if (this.#variables.has(entity) || this.#body.declaredTypeOf(entity.name) !== undefined) {
+      return this.variable(entity);
+    }
+    const known = this.#globals.get(entity);
+    if (known !== undefined) {
+      return known;
+    }
+    const value = this.#value({ kind: 'global', entity, type });
+    this.#globals.set(entity, value);
     return value;
   }
 
@@ -214,15 +235,14 @@ export class FlowBuilder {
     return value;
   }
 
-  /** A top-level constant, extern constant or context constant named in the body. */
-  global(entity: VariableEntity, type: Type | undefined): ValueId {
-    const known = this.#globals.get(entity);
-    if (known !== undefined) {
-      return known;
+  /** `name`, the function's own name inside it, as the closure it runs as (§3.14). */
+  ownName(name: Identifier, type: Type | undefined): void {
+    const entity = this.entityOf(name);
+    if (entity !== undefined) {
+      const value = this.#value({ kind: 'variable', entity, type, inCell: false });
+      this.#variables.set(entity, value);
+      this.#self = value;
     }
-    const value = this.#value({ kind: 'global', entity, type });
-    this.#globals.set(entity, value);
-    return value;
   }
 
   /**
@@ -316,77 +336,4 @@ export class FlowBuilder {
   #open(block: BlockId): OpenBlock {
     return this.#blocks[block] as OpenBlock;
   }
-
-  // Scopes and exits.
-
-  /** Runs `build` in a scope of `node`'s, releasing its variables where it ends. */
-  inScope<Result>(node: SyntaxNode, build: () => Result): Result {
-    this.#scopes.push({ node, variables: [] });
-    const result = build();
-    const scope = this.#scopes.pop() as Scope;
-    this.#release(scope.variables, scope.node);
-    return result;
-  }
-
-  /** `variable`, declared in the innermost scope, or held until `until` ends (§7). */
-  declare(variable: ValueId, until?: LabelledScope | 'function'): void {
-    if (until === 'function') {
-      return;
-    }
-    const scope =
-      until === undefined
-        ? this.#scopes.at(-1)
-        : this.#scopes.findLast((each) => each.holder === until);
-    scope?.variables.push(variable);
-  }
-
-  /**
-   * Runs `build` with `scope`'s exits going to `breakTo` and `continueTo`; what `hold`s keep until
-   * it ends is released where it is left: at `breakTo`, which nothing has been built in yet, and
-   * by any exit leaving it.
-   */
-  withExits<Result>(
-    scope: LabelledScope,
-    breakTo: BlockId,
-    continueTo: BlockId | undefined,
-    build: () => Result,
-  ): Result {
-    const depth = this.#scopes.length;
-    this.#scopes.push({ node: scope, holder: scope, variables: [] });
-    this.#exits.push({ scope, breakTo, continueTo, depth });
-    const result = build();
-    this.#exits.pop();
-    const held = this.#scopes.pop() as Scope;
-    if (held.variables.length > 0) {
-      this.#open(breakTo).operations.unshift(released(held.variables, scope));
-    }
-    return result;
-  }
-
-  /**
-   * An exit from `scope`: releases every scope inside it that it leaves, then goes past it, where
-   * what `hold`s keep until it ends is released, or to its next pass, which keeps them.
-   */
-  exit(scope: LabelledScope | undefined, kind: 'break' | 'continue', site: SyntaxNode): void {
-    const target = this.#exits.findLast((each) => each.scope === scope);
-    if (target === undefined) {
-      this.end({ kind: 'stop' });
-      return;
-    }
-    for (const left of this.#scopes.slice(target.depth + 1).toReversed()) {
-      this.#release(left.variables, site);
-    }
-    const to = kind === 'break' ? target.breakTo : target.continueTo;
-    this.end(to === undefined ? { kind: 'stop' } : { kind: 'goto', to });
-  }
-
-  #release(variables: readonly ValueId[], site: SyntaxNode): void {
-    if (variables.length > 0) {
-      this.emit(released(variables, site));
-    }
-  }
-}
-
-function released(variables: readonly ValueId[], site: SyntaxNode): Operation {
-  return { op: 'release', site, values: [...variables], reason: 'scope' };
 }

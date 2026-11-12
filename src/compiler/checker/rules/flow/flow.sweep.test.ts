@@ -2,7 +2,9 @@
  * A body's flow holds everything checking recorded of it (flow-ir.ts): over every corpus program
  * and spec example, each expression checking typed has a value at its node, or is part of a place
  * the flow writes or passes by `&`; and each call the body makes, written or implicit, is a call
- * of the flow, or a function it names as a value. Two calls checking records are never made: the
+ * of the flow, or a function it names as a value; and a program checking accepts runs no code of
+ * unknown value. Its every body is swept: functions', defaults', and constants' initializers. Two
+ * calls checking records are never made: the
  * `index` of an element an assignment writes with `setIndex` alone (build/places.ts), and an array
  * pattern's item or rest no test or binding reads, as a wildcard's.
  */
@@ -10,8 +12,11 @@
 import { describe, expect, it } from 'vitest';
 import { runPrograms } from '../../../../../test/corpus/programs.ts';
 import { specExamples } from '../../../../../test/corpus/spec-examples.ts';
+import { isError } from '../../../../foundation/diagnostics/diagnostic.ts';
 import { stdProgramOf } from '../../../binder/bind.test-kit.ts';
+import { diagnoseModule } from '../../../compile.ts';
 import { idOf } from '../../../program/program.test-kit.ts';
+import { functionsOf } from '../../../syntax/declarations/field-defaults.ts';
 import type { FunctionDeclaration } from '../../../syntax/declarations/index.ts';
 import type { Expression } from '../../../syntax/expressions/index.ts';
 import { placePath } from '../../../syntax/expressions/places.ts';
@@ -24,7 +29,7 @@ import {
   type SyntaxTree,
 } from '../../../syntax/tree/index.ts';
 import { spanIn } from '../../../syntax/tree/positions.ts';
-import { type Checker, checkProgram } from '../../check.ts';
+import { type Checker, checkProgram, type SignatureParameter } from '../../check.ts';
 import type { CheckedBody } from '../../surface/checked-body.ts';
 import type { CheckedPattern, PartStep } from '../../surface/checked-pattern.ts';
 import type { MadeCall, ResolvedCall } from '../../surface/resolved-call.ts';
@@ -48,6 +53,8 @@ interface Held {
   readonly calls: Set<ResolvedCall>;
   /** The elements written with `setIndex`. */
   readonly written: Set<unknown>;
+  /** Where code checking found a mistake in runs, which a program it accepts has none of. */
+  readonly unknown: SyntaxNode[];
 }
 
 /** What `flow` and the flows it makes hold, added to `held`. */
@@ -68,6 +75,9 @@ function heldBy(flow: FlowFunction, held: Held): Held {
 function holdOperation(operation: Operation, held: Held): void {
   for (const place of placesOf(operation)) {
     holdPlace(place, held);
+  }
+  if (operation.op === 'unknown') {
+    held.unknown.push(operation.site as SyntaxNode);
   }
   if (operation.op === 'call') {
     held.calls.add(operation.call);
@@ -167,40 +177,91 @@ function neverMade(body: CheckedBody, root: SyntaxNode, local: Local, held: Held
 
 /** What `flow` misses of what checking recorded of `body`, whose block is `root`. */
 function missedBy(
-  flow: FlowFunction,
-  { body, root }: { readonly body: CheckedBody; readonly root: SyntaxNode },
-  { local, textOf }: { readonly local: Local; readonly textOf: (node: SyntaxNode) => string },
+  flows: readonly FlowFunction[],
+  { body, roots }: { readonly body: CheckedBody; readonly roots: readonly SyntaxNode[] },
+  context: {
+    readonly local: Local;
+    readonly textOf: (node: SyntaxNode) => string;
+    readonly clean: boolean;
+  },
 ): readonly string[] {
-  const held = heldBy(flow, { nodes: new Set(), calls: new Set(), written: new Set() });
-  const callees = calleesUnder(body, root, local);
+  const { local, textOf } = context;
+  const held: Held = { nodes: new Set(), calls: new Set(), written: new Set(), unknown: [] };
+  for (const flow of flows) {
+    heldBy(flow, held);
+  }
   const missing: string[] = [];
-  walk(root, local, (node) => {
-    const typed = body.typeOf(node as Expression) !== undefined;
-    if (typed && !callees.has(node) && !held.nodes.has(node)) {
-      missing.push(`no value of ${textOf(node)}`);
-    }
-  });
-  const isNeverMade = neverMade(body, root, local, held);
+  for (const root of roots) {
+    const callees = calleesUnder(body, root, local);
+    walk(root, local, (node) => {
+      const typed = body.typeOf(node as Expression) !== undefined;
+      if (typed && !callees.has(node) && !held.nodes.has(node)) {
+        missing.push(`no value of ${textOf(node)}`);
+      }
+    });
+  }
+  const neverMadeIn = roots.map((root) => neverMade(body, root, local, held));
   for (const made of body.madeCalls()) {
-    if (!(held.calls.has(made.call) || isNeverMade(made))) {
+    if (!(held.calls.has(made.call) || neverMadeIn.some((isNeverMade) => isNeverMade(made)))) {
       missing.push(
         `no call of ${made.call.function.name.text} at ${textOf(made.site as SyntaxNode)}`,
       );
     }
   }
+  if (context.clean) {
+    missing.push(...held.unknown.map((site) => `an unknown value at ${textOf(site)}`));
+  }
   return missing;
 }
 
-/** The functions of `tree`'s module, each with its checked body and its block. */
-function functionsOf(checker: Checker, tree: SyntaxTree) {
-  return tree.root.items.flatMap((item) => {
-    if (item.kind !== 'FunctionDeclaration') {
-      return [];
-    }
-    const body = checker.bodyOf(item);
-    const block = bodyOf(tree, item);
-    return body === undefined || block === undefined ? [] : [{ declaration: item, body, block }];
+/**
+ * A body checking checked, and the roots its flows start at, each with the parameters it takes:
+ * a function's block, each of its defaults, a constant's initializer.
+ */
+interface Rooted {
+  readonly body: CheckedBody;
+  readonly roots: readonly {
+    readonly root: Block | Expression;
+    readonly parameters: readonly SignatureParameter[];
+  }[];
+}
+
+/**
+ * Every body of `tree`'s module: each function's, its fields functions' among them, and their
+ * defaults, each default a root of its own; each constant's and context constant's initializer.
+ */
+function rootsOf(checker: Checker, tree: SyntaxTree): readonly Rooted[] {
+  const functions = functionsOf(tree.root).flatMap((declaration): Rooted[] => {
+    const body = checker.bodyOf(declaration);
+    const block = bodyOf(tree, declaration);
+    const parameters = checker.parametersOf(declaration);
+    const own =
+      body === undefined || block === undefined
+        ? []
+        : [{ body, roots: [{ root: block, parameters }] }];
+    const defaults = checker.defaultsOf(declaration);
+    const values = declaration.parameters.flatMap((parameter) =>
+      parameter.kind === 'Parameter' && parameter.defaultValue !== undefined
+        ? [parameter.defaultValue]
+        : [],
+    );
+    const given = values.map((root) => ({ root, parameters: [] }));
+    return [...own, ...(defaults === undefined ? [] : [{ body: defaults, roots: given }])];
   });
+  const constants = tree.root.items.flatMap((item): Rooted[] => {
+    if (item.kind === 'VariableDeclaration') {
+      const body = checker.constantBodyOf(item);
+      return body === undefined
+        ? []
+        : [{ body, roots: [{ root: item.initializer, parameters: [] }] }];
+    }
+    if (item.kind === 'ContextConstantDeclaration') {
+      const body = checker.contextConstants.bodyOf(item);
+      return [{ body, roots: [{ root: item.initializer, parameters: [] }] }];
+    }
+    return [];
+  });
+  return [...functions, ...constants];
 }
 
 /** A loaded module's tree; every program here loads its `main`. */
@@ -222,16 +283,12 @@ describe("a body's flow", () => {
       const { start, end } = spanIn(tree, node.span);
       return `${node.kind} ${text.slice(start, end).slice(0, 40)}`;
     };
-    const inputs = {
-      checker: {
-        ...checker,
-        inputs: { bodyOf: (_: unknown, node: FunctionDeclaration) => local(node) },
-      },
-      module,
-    };
-    const missing = functionsOf(checker, tree).flatMap(({ declaration, body, block }) => {
-      const flow = flowOf({ ...inputs, body }, block, declaration.parameters);
-      return missedBy(flow, { body, root: block }, { local, textOf });
+    const clean = !diagnoseModule(program, module).diagnostics.some(isError);
+    const missing = rootsOf(checker, tree).flatMap(({ body, roots }) => {
+      const inputs = { checker, module, localBodyOf: local, body };
+      const flows = roots.map(({ root, parameters }) => flowOf(inputs, root, parameters));
+      const nodes = roots.map(({ root }) => root);
+      return missedBy(flows, { body, roots: nodes }, { local, textOf, clean });
     });
     expect(missing).toEqual([]);
   });

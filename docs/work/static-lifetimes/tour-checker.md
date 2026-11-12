@@ -96,33 +96,44 @@ The node kinds are in `src/compiler/syntax/expressions/index.ts` and `syntax/sta
 ## The flow IR (C1, landed)
 
 - **The model** is `rules/flow/flow-ir.ts`: per function (`FlowFunction`), its values (a variable
-  the body declares, a global, or a temporary of a node), and blocks of operations ending in an
-  `Exit` (`goto`, `branch`, `return`, `stop`). A closure's function is held by its `make`.
+  the body declares, a global, or a temporary of a node), its parameters, captures and own name
+  (`self`, a local `fn`'s or named lambda's closure), and blocks of operations ending in an `Exit`
+  (`goto`, `branch`, `return`, `stop`). A closure's function is held by its `make`. `suspend`
+  waits on futures; what one gave is a `read` of its `given` part.
   - A use of a variable is a `copy` out of it at its name; a place (`Place`: a root value and
     `Part`s) passed by `&` or written names its root's variable. Any operation writing `into` a
     variable declares or assigns it.
-  - Releases: a block's variables at its end and where an exit leaves it, a `hold`'s at the scope it
-    names; `drop` is a `release` of reason `drop`. A `return` releases everything; a temporary
-    ends with its statement and an assignment ends what its variable held, with no operation.
+  - Releases (`build/scopes.ts`): a scope's variables at its end and on every path leaving it
+    early (an exit, a failing guard, a condition's false path); an `if` branch, a loop's pass and
+    a case are scopes their header binds into. A `hold(name)`'s at the end of the scope it names,
+    however it ends. `drop` is a `release` of reason `drop`. A target with no name keeps the value
+    as a temporary of its scope. A `return` releases everything; a temporary ends with its
+    statement and an assignment ends what its variable held, with no operation.
   - `unknown` is code checking found a mistake in: its operands run, its value is unknown.
 - **The builder** is `rules/flow/build/`: `flowOf(inputs, root, parameters)`, memoized on the
-  `CheckedBody`, reading only the body's facts, `bindings`, `parametersOf` and local functions'
-  bodies (`FlowInputs`). `index.ts` builds every expression alike: a `Never` operand stops the path
+  `CheckedBody`, reading only the body's facts, `bindings`, `parametersOf` and, through
+  `FlowInputs.localBodyOf`, local functions' bodies, which the tree holds apart. `index.ts` builds every expression alike: a `Never` operand stops the path
   (`stopsAt`), the outermost link of an optional chain opens it (`chains.ts`), its value is a
   temporary of its node, and a fitted value is copied into one of the expected type with its
   `Fit`. `expressionFlows` and `statementFlows` are exhaustive by kind; the rest is per construct
   (`calls.ts`, `places.ts`, `parts.ts`, `literals.ts`, `loops.ts`, `control.ts`).
   - Calls follow lowering: arguments in the order written, a `&` argument or `&self` receiver a
-    place, an element reached through `index` and written back with the implicit `write`; a
-    deferred call computes now by value and makes a closure of a function making the call later.
+    place, an element reached through `index` and written back with the implicit `write`; a value
+    call's arguments in its parameters' order (`ValueCallMade.binding`); a deferred call computes
+    now by value and makes a closure of a function making the call later. A chain's step target is
+    fitted after `?.` unwraps it (`stepTarget`). A struct literal evaluates its items in the order
+    written, then takes its fields in declaration order (`sourcesOf`); one leaving fields to their
+    defaults is the call of its fields function.
   - A field loop is a loop whose each pass may follow any, read in that pass's view (`inView`).
   - Decided conditions (`decidedOf`) and ruled-out bodies (`isRuledOut`) shape the graph; code no
     path reaches is kept in blocks nothing jumps to.
 - **Rules:** `rules/flow/solve.ts` `runForward` runs a forward rule to a fixed point.
   `rules/disposal/dropped.ts` is the first, run once a body is checked (`BodyChecker.#finished`).
-- **Coverage:** `rules/flow/flow.sweep.test.ts` checks, over the corpus and the spec's fences,
-  that each typed expression has a value at its node or is part of a place, and that each made
-  call is an IR call (but an element's unread `index` and a wildcard's array reads).
+- **Coverage:** `rules/flow/flow.sweep.test.ts` checks, over every body of the corpus and the
+  spec's fences (functions', defaults', fields functions', constants'), that each typed expression
+  has a value at its node or is part of a place, that each made call is an IR call (but an
+  element's unread `index` and a wildcard's array reads), and that a program checking accepts has
+  no `unknown` operation.
 - **`data-kinds.ts` stays a tree walk** (decided 2026-11-12): it reports the first refused value
   in a function's text, an order the IR doesn't keep, across segments of a local `fn`'s body.
 - **`iterationOf`** answers undefined for an iteration never checked; lowering asserts it

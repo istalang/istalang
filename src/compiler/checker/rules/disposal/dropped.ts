@@ -68,11 +68,16 @@ class DroppedUses {
   }
 }
 
-/** What is dropped after `operation`: its `drop`'s variables, less any variable it writes. */
+/**
+ * What is dropped after `operation`: its `drop`'s variables, less any variable it writes or a
+ * scope it ends releases, which a later declaration makes afresh.
+ */
 function droppedAfter(flow: FlowFunction, operation: Operation, dropped: Dropped): Dropped {
-  if (operation.op === 'release' && operation.reason === 'drop') {
+  if (operation.op === 'release') {
     const variables = operation.values.flatMap((value) => variableOf(flow, value) ?? []);
-    return new Set([...dropped, ...variables]);
+    return operation.reason === 'drop'
+      ? new Set([...dropped, ...variables])
+      : variables.reduce(without, dropped);
   }
   const assigned = 'into' in operation ? variableOf(flow, operation.into) : undefined;
   return assigned === undefined ? dropped : without(dropped, assigned);
