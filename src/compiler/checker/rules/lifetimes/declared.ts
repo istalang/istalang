@@ -86,11 +86,15 @@ export function constantFlow(
   return body === undefined ? undefined : flowsBuiltFor(body).get(declaration.initializer);
 }
 
-/** What `declaration`'s defaults find, analysed in `context`. */
+/**
+ * What `declaration`'s defaults find, analysed in `context`, as members of a recursive group
+ * where `recursive` says, so their findings name inputs whole, as the group's bodies do.
+ */
 export function defaultsFound(
   checker: CheckerContext,
   context: AnalysisContext,
   declaration: FunctionDeclaration,
+  recursive: boolean,
 ): DefaultsFound {
   const flows = defaultsFlows(checker, declaration);
   if (flows.length === 0) {
@@ -101,7 +105,10 @@ export function defaultsFound(
     const references = new Set(
       flow.parameters.filter((_, at) => parameters[at]?.reference === true),
     );
-    return { index, analysis: analyze(context, flow, { isAsync: false, references }) };
+    return {
+      index,
+      analysis: analyze(context, flow, { isAsync: false, references, recursive }),
+    };
   });
   return {
     violations: found.flatMap(({ analysis }) => analysis.violations),
@@ -110,11 +117,18 @@ export function defaultsFound(
   };
 }
 
-/** `summary`, doing what its defaults do too, as a call may run any of them. */
+/**
+ * `summary`, doing what its defaults do too, as a call may run any of them. What a default's
+ * value relates to is its parameter's (`results`), never the function's result.
+ */
 export function withDefaults(summary: Summary, defaults: DefaultsFound): Summary {
   return defaults.summaries.length === 0
     ? summary
-    : joinedSummaries([summary, ...defaults.summaries]);
+    : {
+        ...joinedSummaries([summary, ...defaults.summaries]),
+        result: summary.result,
+        gives: summary.gives,
+      };
 }
 
 export class Declared {

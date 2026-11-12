@@ -217,4 +217,28 @@ describe('the lifetime rule', () => {
     ].join('\n');
     expect(findingsIn(source)).toEqual(['9:write']);
   });
+
+  it('ends on a recursive default passing a part of an earlier parameter', () => {
+    const source = [
+      lease,
+      'struct Box:',
+      '  a: Node',
+      '  b: Node',
+      '  next: Shared<Box>',
+      'fn walk(x: Box, y: Int = { x.a->next = x.b; walk(x.next->value, 0) }) -> Int: y',
+    ].join('\n');
+    expect(findingsIn(source)).toEqual([]);
+  });
+
+  it("relates a function's result to what it returns, not to what its defaults give", () => {
+    const source = inSubject(
+      [
+        'const x = new Node{lease: new Lease{n: 0}}',
+        'const fresh = makeFresh(x)',
+        'x->next = fresh',
+      ].join('\n'),
+      ['fn makeFresh(a: Node, unused: Node = a) -> Node:', '  new Node{lease: new Lease{n: 1}}'],
+    );
+    expect(findingsIn(source)).toEqual([]);
+  });
 });

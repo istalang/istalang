@@ -275,7 +275,7 @@ export class Lifetimes implements LifetimeQueries {
       defaultResult: (callee, index) => this.#defaultResult(callee, index, group),
     };
     const own = this.#ownAnalysis(declaration, context, recursive);
-    const defaults = defaultsFound(this.#checker, context, declaration);
+    const defaults = defaultsFound(this.#checker, context, declaration, recursive);
     return {
       ...own,
       summary: withDefaults(own.summary, defaults),
