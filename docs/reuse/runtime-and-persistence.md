@@ -19,7 +19,8 @@ tags: [reuse, runtime, snapshot, persistence, scheduler, lifetimes, host]
 - validate a `Snapshot` against its `Definition` before restoring → `checkSnapshot` (`src/runtime/snapshot/check/index.ts`)
 - query what a `HeapObject` holds or watches → `isRoot`, `heldObjects`, `valuesIn`, `referencedObjects`; which way a chain of resolvers is held, from its root down (a wait's case) or from its futures up (a callback) → `isHeldFromRoot` (`src/runtime/snapshot/holdings.ts`); what a resolver's chain comes down to deciding → `chainRoot` (`src/runtime/snapshot/objects.ts`); what a live object holds, its fields' holds and the edges the heap's indexes add (a registration, a wait's or a resolver's awaited resolvers) → `Heap.holds` (`src/runtime/scheduler/instance/heap.ts`)
 - the roots a collection and a commit start from besides frames: runs and context constants as frames, the futures answers and the outcome wait on → `Instance.keptFrames`, `Instance.owed` (`src/runtime/scheduler/instance/index.ts`); each running call's own future → `RunStack.callFutures` (`src/runtime/scheduler/segment/run-stack.ts`)
-- query what a `HoldingFrame` holds in its registers or cells → `frameValues`, `frameCells` (`src/runtime/snapshot/holdings.ts`)
+- query what a `HoldingFrame` holds in its registers or cells → `frameValues`, `frameCells`; what a holder holds as one write reports it, a register's contents or an object's → `Held`, `heldIn`, `heldBy`, `idsHeld` (`src/runtime/snapshot/holdings.ts`)
+- report a holder write, of a register, a heap object or a running call's future, or take what lost a holder for collecting → `HolderWrites` (`src/runtime/lifetimes/holder-writes.ts`), the instance's `holders`
 - check whether a register's contents is a `&` reference → `isReference` (`src/runtime/snapshot/objects.ts`)
 - find reachable heap objects and deepest value nesting from roots → `heldFrom`, `heldUnlessAll`, `walkHolds`, `holdsOf` (`src/runtime/lifetimes/holders.ts`)
 - find ready disposable orphans → `readyOrphans` (`src/runtime/lifetimes/orphans.ts`)
@@ -71,8 +72,8 @@ tags: [reuse, runtime, snapshot, persistence, scheduler, lifetimes, host]
 ## One-way rules
 
 - Persisted formats use `defineFormat` (`src/definition/formats/format.ts`) and `encodeJson`/`decodeJson` (`codec.ts`), never `JSON.parse`/`JSON.stringify`.
-- Snapshots store only what cannot be derived: never store reference counts, holder lists, next object IDs or timer lists (`docs/arch/definition.md`).
-- Register changes go through `src/runtime/interpreter/registers.ts` and heap changes through `Heap` (`scheduler/instance/heap.ts`) so released handles are noted.
+- Snapshots store only what cannot be derived: never store reference counts, holder lists or timer lists (`docs/arch/definition.md`). How many objects were made (`objectsMade`) is stored because ids are never given twice, and what a commit let go of can't be read back from what it kept.
+- Every holder write reports to `HolderWrites` (`src/runtime/lifetimes/holder-writes.ts`): register changes go through `src/runtime/interpreter/registers.ts` (the raw write, `raw-registers.ts`, no other module may import), heap changes through `Heap` (`scheduler/instance/heap.ts`), index edges included, and a running call's future through `RunStack`.
 - What an object holds is read from `snapshot/holdings.ts` and `Heap.holds` alone: the collector, a commit and the snapshot's closure check never list holds of their own, and a new edge goes there (and in `docs/arch/definition.md`'s Holders table).
 - Every start and restore of an instance goes through `Instance`'s one constructor (`Instance.start`, `Instance.restore`, so `Resident.take`): whatever an instance derives in memory from its objects is built there, never on the objects or values, which in-memory commits share.
 

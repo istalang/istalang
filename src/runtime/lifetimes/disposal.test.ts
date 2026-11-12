@@ -4,14 +4,15 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { Heap, type LiveObject } from '../scheduler/instance/heap.ts';
+import { testHeap } from '../scheduler/instance/heap.test-kit.ts';
+import type { LiveObject } from '../scheduler/instance/heap.ts';
 import { isDisposable } from './disposal.ts';
 import { testTypes } from './lifetimes.test-kit.ts';
 
 /** Whether `object`, alone in a heap or beside a weak reference to it, is disposed. */
 function disposed(object: LiveObject, watched: boolean): boolean {
   const weak: LiveObject = { kind: 'weakRef', id: 1, target: 0 };
-  const heap = new Heap(watched ? [object, weak] : [object]);
+  const heap = testHeap(watched ? [object, weak] : [object]);
   return isDisposable({ heap, types: testTypes }, object);
 }
 

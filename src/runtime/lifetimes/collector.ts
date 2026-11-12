@@ -36,10 +36,13 @@ import {
   isDisposable,
   readiedBy,
 } from './disposal.ts';
+import type { HolderWrites } from './holder-writes.ts';
 import { heldUnlessAll, type Roots, walkHolds } from './holders.ts';
 import { readyOrphans } from './orphans.ts';
 
 export interface CollectorSeams extends DisposalContext {
+  /** Where every holder write is reported, and what lost a holder is noted. */
+  readonly holders: HolderWrites;
   /** What holds things besides waiting rounds: frames, and objects the scheduler names. */
   readonly roots: () => Roots;
   /** Starts `run`: true when it has finished already (a native), false while it runs as code. */
@@ -124,8 +127,8 @@ export class Collector {
       const id = round.queue.shift();
       if (id === undefined) {
         this.#rounds.pop();
-        this.#seams.heap.noteReleased(round.kept);
-        this.#startRound(this.#seams.heap.takeReleased());
+        this.#seams.holders.noteReleased(round.kept);
+        this.#startRound(this.#seams.holders.takeReleased());
       } else {
         this.#dispose(round, id);
       }

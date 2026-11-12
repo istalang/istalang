@@ -3,8 +3,10 @@
  * frames as data (spec §5).
  *
  * Only what can't be derived is stored:
- * - Object ids are allocated in increasing order and never reused, so id order is creation order,
- *   which disposal follows in reverse (spec §7). No creation counter is stored.
+ * - An object id is a serial: ids are given in increasing order and never twice, so id order is
+ *   creation order, which disposal follows in reverse (spec §7). The snapshot keeps how many were
+ *   given (`objectsMade`, snapshot.ts), so a restored instance numbers its next object as the one
+ *   that committed would, after however many the commit let go of.
  * - Nothing about holders is stored. Whether an object is held is decided by reachability from
  *   the executions' frames (runtime/lifetimes/), so nothing can disagree with the values that hold
  *   it.

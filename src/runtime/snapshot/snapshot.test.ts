@@ -42,6 +42,7 @@ const broadcastWaiting: Snapshot = {
   random: { seed: seedTextOf(testSeed), draws: 3 },
   pinned: [],
   ready: [],
+  objectsMade: 6,
   objects: [
     {
       id: 0,
@@ -243,6 +244,9 @@ const snapshotArbitrary: fc.Arbitrary<Snapshot> = fc
         draws: fc.nat(),
       }),
       pinned: fc.constant([]),
+      objectsMade: fc
+        .nat({ max: 50 })
+        .map((after) => Math.max(...objects.map(({ id }) => id)) + 1 + after),
       objects: fc.constant(objects),
       ready: fc.subarray(executions.map((execution) => execution.id)),
     });
@@ -298,6 +302,14 @@ describe('snapshot format', () => {
       'objects[1]',
     ],
     [
+      'an object the instance never made',
+      (json) => {
+        json.body.objectsMade = 5;
+      },
+      'Object 5 was never made: only 5 were',
+      'objects[5]',
+    ],
+    [
       'a ready entry that is neither an execution nor a run',
       (json) => {
         json.body.ready = [3];
@@ -331,6 +343,7 @@ function holding(contents: Value): Snapshot {
     spawned: 0,
     random: broadcastWaiting.random,
     pinned: [],
+    objectsMade: 1,
     objects: [{ kind: 'cell', id: 0, type: 0, value: contents }],
     ready: [],
   };

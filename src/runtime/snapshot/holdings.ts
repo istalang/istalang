@@ -61,20 +61,31 @@ export function isRoot<Object extends { readonly kind: HeapObject['kind'] }>(
   );
 }
 
-/** What one object holds and watches. */
-interface Holding {
+/**
+ * What a holder holds: a register, a heap object, or what holds through an index or a running
+ * call's stack. Each write of a holder reports what it held and what it holds now
+ * (runtime/lifetimes/holder-writes.ts).
+ */
+export interface Held {
   /** Every value it holds, each counted once with whatever it contains. */
   readonly values: readonly Value[];
   /** The ids it holds itself, rather than through a value. */
   readonly holds: readonly number[];
+}
+
+/** What holds nothing: an empty register, an object not made yet or gone. */
+export const nothingHeld: Held = { values: [], holds: [] };
+
+/** What one object holds, and what it watches. */
+interface Holding extends Held {
   /** The ids it names without holding them. */
   readonly watches: readonly number[];
 }
 
-const empty: Holding = { values: [], holds: [], watches: [] };
+const empty: Holding = { ...nothingHeld, watches: [] };
 
 /** What a future holds by its state; a future watches nothing. */
-const futureStates: Handlers<undefined, FutureState, [], Omit<Holding, 'watches'>> = {
+const futureStates: Handlers<undefined, FutureState, [], Held> = {
   resolved: (_context, state) => ({ values: [state.value], holds: [] }),
   call: () => empty,
   slot: (_context, state) => ({ values: present(state.value), holds: [state.slot] }),
@@ -142,8 +153,29 @@ export function isHeldFromRoot(target: ResolverTarget): boolean {
  * holds. What nothing holds any more is disposed (runtime/lifetimes/).
  */
 export function heldObjects(object: HeapObject): readonly number[] {
-  const holding = holdingOf(object);
-  return [...holding.holds, ...holding.values.flatMap(handlesIn)];
+  return idsHeld(holdingOf(object));
+}
+
+/** What `object` holds by its fields and values, an execution by its frames (`heldObjects`). */
+export function heldBy(object: HeapObject): Held {
+  const { values, holds } = holdingOf(object);
+  return { values, holds };
+}
+
+/** What a register holding `contents` holds: its value, or a reference's cell (`frameCells`). */
+export function heldIn(contents: RegisterContents | undefined): Held {
+  if (contents === undefined) {
+    return nothingHeld;
+  }
+  return isReference(contents)
+    ? { values: [], holds: [contents.cell] }
+    : { values: [contents], holds: [] };
+}
+
+/** The ids `held` holds: itself, or through a handle in one of its values. */
+export function idsHeld(held: Held): readonly number[] {
+  const inValues = held.values.flatMap(handlesIn);
+  return held.holds.length === 0 ? inValues : [...held.holds, ...inValues];
 }
 
 /** Every value `object` holds, each counted once with whatever it contains. */

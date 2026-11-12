@@ -22,8 +22,8 @@
  * with sendable arguments, and nothing else yet. Waking it starts that call, so the host runs a
  * spawned instance as it runs any other.
  *
- * Validation checks that ids ascend and that every object id refers to an object of this
- * snapshot. Checks that need the Definition, such as pc ranges, are check/index.ts's, run when the
+ * Validation checks that ids ascend, each one of the objects made, and that every object id refers
+ * to an object of this snapshot. Checks that need the Definition, such as pc ranges, are check/index.ts's, run when the
  * runtime reads a snapshot back.
  */
 
@@ -100,6 +100,11 @@ const snapshotContents = z.strictObject({
   random: z.strictObject({ seed: seedText, draws: count }),
   /** What each extern constant read so far gave, by key: read once, kept for life (§3.6). */
   pinned: z.array(z.strictObject({ key: z.string(), value })),
+  /**
+   * How many heap objects it has made, which numbers the next: an id is a serial, never given twice
+   * (objects.ts).
+   */
+  objectsMade: count,
   /** In ascending id order. */
   objects: z.array(heapObject),
   /**
@@ -131,6 +136,13 @@ function checkObjectReferences(contents: Contents, context: z.RefinementCtx): vo
         code: 'custom',
         path: ['objects', index],
         message: 'Object ids must ascend.',
+      });
+    }
+    if (object.id >= contents.objectsMade) {
+      context.addIssue({
+        code: 'custom',
+        path: ['objects', index],
+        message: `Object ${object.id} was never made: only ${contents.objectsMade} were.`,
       });
     }
     for (const id of referencedObjects(object).filter((target) => !kinds.has(target))) {

@@ -4,34 +4,45 @@
  * disposal's code runs on top of whatever runs (disposal-runs.ts), so the stack, not JavaScript's,
  * holds every nested run. It is one unit both the runner and the disposals share, so what runs is
  * always its top. Every frame push and pop goes through it, so the total frame count across the
- * stack stays exact and bounded (limits.ts).
+ * stack stays exact and bounded (limits.ts). A running call holds its own future (§7), so every
+ * push and pop of an execution is a holder write, reported as one
+ * (runtime/lifetimes/holder-writes.ts).
  */
 
 import type { Definition } from '../../../definition/definition.ts';
 import { unreachable } from '../../../foundation/structures/unreachable.ts';
 import type { ActiveFrame } from '../../interpreter/frames.ts';
 import { callerTraceOf, traceOf } from '../../interpreter/trace.ts';
+import type { HolderWrites } from '../../lifetimes/holder-writes.ts';
+import type { Held } from '../../snapshot/holdings.ts';
 import type { LiveExecution } from '../instance/heap.ts';
 import { requireFrameDepth } from './limits.ts';
 
 export class RunStack {
+  readonly #holders: HolderWrites;
   readonly #executions: LiveExecution[] = [];
   /** The execution the segment drives now, kept once it has left the stack at its await. */
   #driver: LiveExecution | undefined;
   /** How many frames are running across every execution on the stack. */
   #frames = 0;
 
+  constructor(holders: HolderWrites) {
+    this.#holders = holders;
+  }
+
   /** Starts driving `driver`: it runs alone. */
   drive(driver: LiveExecution): void {
     this.#driver = driver;
-    this.#executions.splice(0, this.#executions.length, driver);
+    const left = this.#executions.splice(0, this.#executions.length, driver);
     this.#frames = driver.frames.length;
+    this.#holders.changed(futuresOf(left), futuresOf([driver]));
   }
 
   push(execution: LiveExecution): void {
     requireFrameDepth(this.#frames + execution.frames.length);
     this.#frames += execution.frames.length;
     this.#executions.push(execution);
+    this.#holders.changed(futuresOf([]), futuresOf([execution]));
   }
 
   /** Pushes `frame` onto the running execution, guarding the segment's frame limit. */
@@ -70,6 +81,7 @@ export class RunStack {
   pop(): LiveExecution | undefined {
     const popped = this.#executions.pop();
     this.#frames -= popped?.frames.length ?? 0;
+    this.#holders.changed(futuresOf(popped === undefined ? [] : [popped]), futuresOf([]));
     return this.top();
   }
 
@@ -99,7 +111,7 @@ export class RunStack {
 
   /** The call futures of the executions running, which each holds while it runs (§7). */
   callFutures(): readonly number[] {
-    return this.#executions.flatMap(({ resolves }) => resolves ?? []);
+    return futuresOf(this.#executions).holds;
   }
 
   /** Where every running frame is, innermost first (§3.12). */
@@ -117,4 +129,9 @@ export class RunStack {
     const stack = this.#executions.length === 0 && this.#driver ? [this.#driver] : this.#executions;
     return stack.toReversed().flatMap((execution) => execution.frames.toReversed());
   }
+}
+
+/** What `executions` hold while they run: their call futures (§7). */
+function futuresOf(executions: readonly LiveExecution[]): Held {
+  return { values: [], holds: executions.flatMap(({ resolves }) => resolves ?? []) };
 }

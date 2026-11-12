@@ -8,6 +8,7 @@ import type { Definition } from '../../../definition/definition.ts';
 import { unreachable } from '../../../foundation/structures/unreachable.ts';
 import type { ActiveFrame, FrameHeap } from '../../interpreter/frames.ts';
 import { newFrame } from '../../interpreter/machine.ts';
+import { placeContents } from '../../interpreter/registers.ts';
 import type { Frame, HeapObject, RegisterContents } from '../../snapshot/objects.ts';
 import type { LiveObject } from './heap.ts';
 
@@ -38,7 +39,7 @@ function liveFrame(definition: Definition, frame: Frame, heap: FrameHeap): Activ
     heap,
   );
   for (const [register, contents] of frame.registers) {
-    live.registers[register] = contents;
+    placeContents(live, register, contents);
   }
   live.pc = frame.pc;
   return live;

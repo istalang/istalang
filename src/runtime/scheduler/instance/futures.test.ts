@@ -3,10 +3,10 @@
 import { describe, expect, it } from 'vitest';
 import { Unreachable } from '../../../foundation/structures/unreachable.ts';
 import { futuresOn } from './futures.test-kit.ts';
-import { Heap } from './heap.ts';
+import { testHeap } from './heap.test-kit.ts';
 
 function freshFutures() {
-  return futuresOn(new Heap([]));
+  return futuresOn(testHeap());
 }
 
 describe('futures', () => {

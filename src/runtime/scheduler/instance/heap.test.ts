@@ -2,13 +2,19 @@
  * The heap's indexes against their definition, over random heaps changed by random adds, replaces
  * and removes: every lookup finds exactly what a scan of the heap's objects finds, in creation
  * order, and each kind's objects are listed in creation order. The objects written are those
- * replaced.
+ * replaced. Its holder writes are exact: what they report held, less what they report let go of,
+ * is what its objects hold, their index edges included, however it changed, and ids are serials,
+ * never given twice.
  */
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
+import { handleTo } from '../../../definition/values/values.ts';
+import { HolderWrites } from '../../lifetimes/holder-writes.ts';
+import { type Held, idsHeld } from '../../snapshot/holdings.ts';
 import type { FutureState } from '../../snapshot/objects.ts';
-import { Heap, type LiveObject, type LiveObjectOf } from './heap.ts';
+import { testHeap } from './heap.test-kit.ts';
+import type { Heap, LiveObject, LiveObjectOf } from './heap.ts';
 
 type ResolverState = LiveObjectOf<'resolver'>['state'];
 
@@ -28,6 +34,10 @@ const stateArbitrary = fc.oneof(
 type Made = (id: number) => LiveObject;
 
 const madeArbitrary: fc.Arbitrary<Made> = fc.oneof(
+  id.map(
+    (target): Made =>
+      (object) => ({ kind: 'cell', id: object, type: 0, value: handleTo(target) }),
+  ),
   stateArbitrary.map(
     (state): Made =>
       (object) => ({ kind: 'future', id: object, state }),
@@ -122,7 +132,7 @@ describe('heap indexes', () => {
         fc.array(madeArbitrary, { maxLength: 6 }),
         fc.array(changeArbitrary, { maxLength: 12 }),
         (initial, changes) => {
-          const heap = new Heap(initial.map((make, position) => make(position)));
+          const heap = testHeap(initial.map((make, position) => make(position)));
           for (const step of changes) {
             apply(heap, step);
           }
@@ -198,10 +208,91 @@ describe('heap writes', () => {
         fc.array(madeArbitrary, { maxLength: 6 }),
         fc.array(changeArbitrary, { maxLength: 12 }),
         (initial, changes) => {
-          const heap = new Heap(initial.map((make, position) => make(position)));
+          const heap = testHeap(initial.map((make, position) => make(position)));
           const replaced = changes.flatMap((step) => apply(heap, step) ?? []);
           expect(heap.takeWritten()).toEqual(replaced);
           expect(heap.takeWritten()).toEqual([]);
+        },
+      ),
+    );
+  });
+});
+
+/** Holder writes tallied: each object's holders, as the writes report them held and let go of. */
+class Tally extends HolderWrites {
+  readonly holders = new Map<number, number>();
+
+  override changed(was: Held, now: Held): void {
+    super.changed(was, now);
+    for (const [counted, step] of [
+      [idsHeld(was), -1],
+      [idsHeld(now), 1],
+    ] as const) {
+      for (const held of counted) {
+        this.holders.set(held, (this.holders.get(held) ?? 0) + step);
+      }
+    }
+  }
+}
+
+/** How many times each object is held by the objects of `heap`, their index edges included. */
+function holdersOf(heap: Heap): ReadonlyMap<number, number> {
+  const holders = new Map<number, number>();
+  for (const object of heap.objects()) {
+    for (const held of object.kind === 'execution' ? [] : heap.holds(object)) {
+      holders.set(held, (holders.get(held) ?? 0) + 1);
+    }
+  }
+  return holders;
+}
+
+const withoutZeroes = (holders: ReadonlyMap<number, number>) =>
+  new Map([...holders].filter(([, count]) => count !== 0));
+
+describe('heap holder writes', () => {
+  it('report every holder an object gains and loses, through its index edges too', () => {
+    fc.assert(
+      fc.property(
+        fc.array(madeArbitrary, { maxLength: 6 }),
+        fc.array(changeArbitrary, { maxLength: 12 }),
+        fc.option(fc.uniqueArray(fc.nat({ max: 20 })), { nil: undefined }),
+        (initial, changes, kept) => {
+          const tally = new Tally();
+          const heap = testHeap(
+            initial.map((make, position) => make(position)),
+            tally,
+          );
+          for (const step of changes) {
+            apply(heap, step);
+          }
+          if (kept !== undefined) {
+            heap.keepOnly(new Set(kept));
+          }
+          expect(withoutZeroes(tally.holders)).toEqual(holdersOf(heap));
+        },
+      ),
+    );
+  });
+
+  it('number objects in the order made, never giving an id twice, whatever a commit lets go of', () => {
+    fc.assert(
+      fc.property(
+        fc.array(madeArbitrary, { maxLength: 6 }),
+        fc.array(fc.option(changeArbitrary, { nil: undefined }), { maxLength: 12 }),
+        (initial, changes) => {
+          const heap = testHeap(initial.map((make, position) => make(position)));
+          const given = heap.objects().map((object) => object.id);
+          for (const step of changes) {
+            if (step === undefined) {
+              heap.keepOnly(new Set());
+            } else if (step.kind === 'add') {
+              given.push(heap.add(step.make).id);
+            } else {
+              apply(heap, step);
+            }
+          }
+          expect(given).toEqual(given.map((_, position) => position));
+          expect(heap.made).toBe(given.length);
         },
       ),
     );

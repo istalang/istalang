@@ -10,7 +10,7 @@ tags: [lifetimes, disposal, runtime, refcount, tour]
 
 # Static lifetimes: runtime tour
 
-Read against `main` at `41160c33`, and updated where R1 changed the code (the R1 section). Rules
+Read against `main` at `41160c33`, and updated where R1 and R2 changed the code (their sections). Rules
 and model: [design.md](design.md) §3 and §9. Phases: [plan.md](plan.md). Paths are under
 `src/runtime/` unless they say otherwise.
 
@@ -19,8 +19,9 @@ and model: [design.md](design.md) §3 and §9. Phases: [plan.md](plan.md). Paths
 | Unit | Today | Phase |
 |---|---|---|
 | `snapshot/holdings.ts` | the one per-kind holding table (`kinds`, `futureStates`): values held, ids held, ids watched; `isRoot`, `keptFrame`, `frameValues`, `frameCells` | R1 edges; stays the table counts read |
-| `scheduler/instance/heap.ts` `Heap` | objects by id, a list per kind, 11 derived `indexes`; `holds` = holdings plus index edges (`#indexedHolds`, `#awaited`); `#noteHoldings` on `replace`/`remove`; `noteReleased`/`takeReleased`; the losers flag; `keepOnly` | R1, R2, R3, R4 |
-| `interpreter/registers.ts` | the register writers; `FrameHeap.released` on overwrite and clear of value registers | R2 |
+| `scheduler/instance/heap.ts` `Heap` | objects by id, a list per kind, 11 derived `indexes`; `holds` = holdings plus index edges (`#indexedHolds`, `#awaited`); `#write`, every change reported to the seam, index edges included (R2); ids are serials (`made`); `keepOnly` | R1, R2, R3, R4 |
+| `lifetimes/holder-writes.ts` `HolderWrites` | the one seam every holder write reports to (R2); today it notes releases for the collector (`takeReleased`) and keeps the losers flag | R2; R3 counts here |
+| `interpreter/registers.ts` | the only register writer, reporting each write (`FrameHeap.changed`); `raw-registers.ts` is its raw write | R2 |
 | `interpreter/machine.ts` | `newFrame`, `releaseFrame` (ascending registers), `currentClosure` | R2, R3 |
 | `scheduler/instance/index.ts` `Instance` | `frameHeap`; the constructor every start and restore goes through; `persisted`/`#kept` (walk plus the invariant scan); `dropUnheld`; `continueFrom`; `stop`; `owed`, `keptFrames` | R3, R4 |
 | `lifetimes/collector.ts` | rounds: `disposablesFrom` → `heldUnlessAll` → `readyOrphans`, `#keptBy`, waiting on a disposal's code | R3 deletes the search; the rounds' order stays |
@@ -84,19 +85,14 @@ Since R1, each registration holds one way, as its chain's root says (`isHeldFrom
 
 ## Release and collection today
 
-- **What is noted:**
-  - Clearing or overwriting a *value* register goes through `writeRegister`, `clearRegister` or
-    `releaseFrame` to `FrameHeap.released`, which calls `heap.noteReleased(handlesIn(old))`.
-    `released` ignores references.
-  - Overwriting a *cell's* contents goes through `heap.write` → `Heap.replace` → `#noteHoldings`.
-  - `Heap.replace` and `Heap.remove` note an object's old holds minus its new ones, except for
-    executions (`notesOwnReleases`). `stop` or `landReturn` has already released an execution's
-    frames.
-  - `Heap.add` notes nothing.
-  - `ResolverEndings.replace` notes the resolver itself, because the index edges to it vanish with
-    it.
+- **What is noted** (since R2, through the seam, `HolderWrites`; R2 below): whatever a holder
+  write reports the holder held and holds no more.
+  - Registers: every write, clear and frame release (`registers.ts`). A reference holds its cell.
+  - Heap objects: every add, replace, remove and `keepOnly` drop (`Heap.#write`): the object's own
+    holds, index edges included, and the index edges of the objects that read it. An execution
+    reports nothing of its own: `stop` or `landReturn` has already released its frames.
+  - The run stack: a running call's own future, on every pop (`RunStack`).
   - A decided `select`'s losers set the losers flag (`noteLosersReleased`).
-  - A driver that awaits notes its own call future (`SegmentRunner.wait`).
 - **After every step,** `SegmentRunner.#drive` calls `SegmentCollection.collected()`:
   - It runs `takeReleased`.
   - It runs `Collector.collect` only when something was released or the collector is stalled.
@@ -127,7 +123,7 @@ Since R1, each registration holds one way, as its chain's root says (`isHeldFrom
   - `withPart` rebuilds the spine along a path, each level through `withChildValues`, which copies
     again (`interpreter/parts.ts`, `definition/values/values.ts`).
   - A write through `&` or a cell goes `writeReference` → `withPart` → `FrameHeap.write` →
-    `Heap.replace`. `#noteHoldings` then summarizes the new spine.
+    `Heap.replace`. Its report to the seam then summarizes the new spine.
 - **Nothing mutates a value in place.** Only frames (registers, pc) and an execution's frame stack
   change in place.
 - **Values shared by identity:**
@@ -162,8 +158,8 @@ Landed. What R1 left, for the phases after it:
   - **The root is recorded, not walked.** Each `at` target carries `root` (`snapshot/objects.ts`,
     `chainRoot`), set by `Waits.at` and checked against its `done` by `snapshot/check/waits.ts`.
     A walk can't stand in for it: `ResolverEndings` ends a resolver before it cancels the
-    at-resolvers deciding it, so mid-step their `done` is no longer pending, while
-    `#noteHoldings` must still read what they held. R3's counting needs the same.
+    at-resolvers deciding it, so mid-step their `done` is no longer pending, while the heap's
+    report must still read what they held. R3's counting needs the same.
 - **A future disposes what is registered on it.** `disposeFuture` first cancels every resolver
   still registered on the future. A future with resolvers registered on it is disposable whatever
   its state (`registered` in `lifetimes/disposal.ts`). Without that, a timer nothing else holds is
@@ -223,75 +219,48 @@ Landed. What R1 left, for the phases after it:
 
 ## R2 Seams and identity
 
-### Seams
+Landed. What R2 left, for the phases after it:
 
-- **Every holder write today:**
-  - **Registers:** `registers.ts` (`writeRegister`, `clearRegister`; cells through
-    `FrameHeap.create`/`write`). These write registers directly:
-    - `newFrame` (captures and reference parameters);
-    - `liveFrame` (restore);
-    - `takeWait` (a wait, which isn't counted).
-  - **Heap objects:** `Heap.add`, `replace`, `remove`, and `keepOnly`, which drops without noting.
-  - **Edges that change when another object changes:**
-    - `Waits.register`: a growing `on` adds a holder to the future, or makes the resolver awaited,
-      which adds it to its wait or to its `done`'s, recursively;
-    - `ResolverEndings.replace`: an ending drops all of them;
-    - `cancelLosers` narrows `on`.
-  - **A running call's own future:** `RunStack` push, pop and `drive` (which resets the stack), and
-    the await note in `SegmentRunner.wait`.
-- **Composite builders,** if R2 gathers them:
-  - **Values and parts:** `values.ts` `withChildValues`; `interpreter/parts.ts` `withPart`.
-  - **Interpreter:** `interpreter/instructions.ts` (tuple, struct, variant, array, `map` through
-    `mapOf`, closure, `keep`); `machine.ts` `currentClosure`.
-  - **Declared values and maps:**
-    - `definition/values/declared-values.ts` (`structOf`, `variantOf`); `json-values.ts`;
-    - `ValueSemantics`'s `withEntry`, `withoutEntry` and `mapOf` (`foundation/language/values.ts`),
-      exported for runtime values from `definition/values/equality.ts`.
-  - **Std natives:** `stdlib/values/arguments.ts` `arrayOf`; `results.ts`; the prelude's `arrays.ts`,
-    `maps.ts`, `strings.ts` and `range-natives.ts`; the regex, strings and testing natives.
-  - **Scheduler:**
-    - `waits/resolvers.ts` `positioned`;
-    - `testing/mocks.ts` (`callRecord`, `asHostValue`);
-    - `instance/crossing.ts` (`leaving`, `arriving`);
-    - `segment/native-contexts.ts`.
-  - **Definition tables:** `definition/tables/test-runner.ts`.
-  - **Decoding:** zod decodes every value in a snapshot.
-- **A constructor alone can't tell whether a part is counted.** That depends on the handle's kind
-  and, for a cell, its type entry's `counted` flag, and natives build values with no instance at
-  hand. So R3 decides it at a composite's first hold, at this seam (design.md §9.1).
-- **Guard:** a dependency-cruiser rule lets only the seam import the raw writers.
-
-### Identity
-
-- **Scale** (call sites, non-test code):
-
-  | Function | Calls | Files |
-  |---|---|---|
-  | `handleTo` (`definition/values/values.ts`) | 20 | 13 |
-  | `handleTarget` (same file) | 10 | 10 |
-  | `handleObject` (`heap.ts`) | 11 | 6 |
-  | `heap.of` | 31 | 12 |
-  | `heap.objectOf` | 10 | 7 |
-  | `heap.find` | 18 | 10 |
-
-- **Identity:**
-  - Records other than executions are immutable and replaced on every change (`Heap.replace`). So a
-    direct handle needs an identity that outlives a replace.
-  - `HandleValue.object` is part of the persisted `Value` that snapshots share. An in-memory
-    reference therefore differs from the stored serial, and the two convert only where a commit
-    encodes and a restore decodes.
-- **Creation order matters beyond disposal:** `Heap.find` returns objects in it, and `settleOrder`,
-  cancelling losers and `reachingMock` (the newest) depend on it. The serial must keep it.
-- **Handle reads today:**
-  - `==` compares ids (`definition/values/equality.ts`, `sameHead`), and hashing is
-    `handle:${id}`.
-  - Cells are read and written only through `FrameHeap` (`interpreter/registers.ts`).
-  - The raw `.object` reads are `equality.ts`'s two and `values.ts`'s `summaryOver`.
-  - `mocks.ts`'s `asHostValue` and `crossing.ts`'s `leaving` are two copies of one walk (through
-    `handleTarget` and `heap.objectOf`), to be merged.
-- **Ids are reused:** `keepOnly` resets `#next`, so ids above the highest kept one come back.
-  `objects.ts`'s "never reused" is wrong (tracker Q51). The serial settles it.
-- **Counts follow:** R3's table is keyed by this identity from the start (design.md §9.3).
+- **One seam:** `HolderWrites` (`lifetimes/holder-writes.ts`), one per instance
+  (`Instance.holders`). Every holder write reports `changed(was, now)`, each a `Held`
+  (`snapshot/holdings.ts`: values, and ids held directly).
+  - **Registers:** `registers.ts` alone writes them. Its `put` writes through `raw-registers.ts`
+    `setRegister` and reports, through `FrameHeap.changed`. Only `registers.ts` may import the raw
+    write (dependency-cruiser `runtime-raw-register-write`), and `ActiveFrame.registers` is
+    read-only. `newFrame`'s references and captures, and a restored frame's registers
+    (`liveFrame`), go through `placeContents`; `takeWait` through `clearRegister`. A reference holds
+    its cell (`heldIn`).
+  - **Heap objects:** `Heap.#write` is every add, replace, remove and `keepOnly` drop, and the
+    heap's making from a snapshot. It reports the object's own holds, index edges included, and for
+    each other object whose index edges read it (`#readers`), that object's edges before and after:
+    the futures a resolver is registered on, its case's wait, the resolver it decides, and up that
+    chain, as whether each is awaited may change. `ResolverEndings.replace`'s own note went with
+    that. An execution reports nothing of its own; its registers do.
+  - **The run stack:** `RunStack`'s `push`, `pop` and `drive` report the running calls' futures.
+    `SegmentRunner.wait`'s note went with that.
+  - **Today's consumer is tracing:** `changed` notes what the holder held and holds no more
+    (`takeReleased`). The collector's `noteReleased` puts back what a round skipped, the losers
+    flag lives there, and `keepOnly` forgets the notes (`settled`).
+  - **Exact:** `heap.test.ts`, "heap holder writes", tallies the reports over random changes and
+    commits and checks them against `Heap.holds` of every object. R3's shadow counts are that tally,
+    with the registers and the run stack added.
+  - **Not reported:** a composite's parts. A composite is counted at its first hold, when a register
+    or an object reports holding it (design.md §9.1), so R3 does that in `HolderWrites`. The
+    collector's waiting rounds hold as roots of their own, which R3 deletes.
+- **Identity:** an object id is a serial. The heap counts on from the snapshot's `objectsMade`
+  (`Heap.made`) and never resets it, so no id is given twice, and a restored instance numbers its
+  next object as the held one would: the resident sweep compares their commits. Validation refuses
+  an object id at or past `objectsMade`. Q51 is closed.
+  - Counts can be keyed by id: `keepOnly` reports what it drops through the seam, so a count goes
+    with its object. On disk the serial stays the handle's `object` when R4 makes live handles
+    direct references.
+- **Creation order:** unchanged. Ids still grow with creation, which `Heap.find`, `settleOrder`,
+  losers and `reachingMock` read.
+- **One walk:** `replacingParts` (`definition/values/replacing.ts`), on a stack of its own, is
+  `leaving`, `arriving` and what a mock records (`hostValuesIn`, `crossing.ts`): tracker Q29.
+- **Composite builders** stay as they were: a constructor alone can't tell whether a part is counted,
+  which depends on the handle's kind and, for a cell, its type entry's `counted` flag, and natives
+  build values with no instance at hand.
 
 ## R3 Counting
 
@@ -311,12 +280,13 @@ In this order: shadow counts beside tracing, then the switch, then order under c
 - **What the table survives:** `continueFrom` keeps it.
   - `keepOnly` drops what nothing holds, and that may include counted objects: one of a counted
     type on a cycle that reaches no disposable never reaches zero (design.md §1).
-  - So everything `keepOnly` drops is uncounted or reaches no disposable. A weakly keyed table lets
-    those go with their last reference.
+  - So everything `keepOnly` drops is uncounted or reaches no disposable. `keepOnly` reports its
+    drops through the seam (R2), so the table forgets those.
 - **What is counted** (design.md §9.1):
   - every disposable;
   - a shared struct's cell or a `_Cell` whose type entry is `counted` (written by C3, only read here);
-  - a composite value with a counted direct part, decided at its first hold (R2's seam).
+  - a composite value with a counted direct part, decided at its first hold, in `HolderWrites`
+    (R2's seam).
 - **The check:** every zero is an orphan, and every orphan that reaches a disposable is a zero.
   - Compare each round's `readyOrphans` with the counts' zeroes for the same step.
   - Counted objects whose disposal does nothing are left to `keepOnly` today, so compare those
@@ -329,7 +299,7 @@ In this order: shadow counts beside tracing, then the switch, then order under c
 ### Switch
 
 - **What goes:**
-  - `noteReleased`/`takeReleased` and `#noteHoldings`;
+  - `HolderWrites`' tracing: what `changed` notes, `takeReleased` and `noteReleased`;
   - the orphan search: `disposablesFrom`, `heldUnlessAll`, `readyOrphans` and `#keptBy`;
   - `#kept`'s invariant scan;
   - `lifetimes/holders.test.ts`, `orphans.test.ts` and `lifetimes.test-kit.ts`, rewritten or
@@ -341,7 +311,8 @@ In this order: shadow counts beside tracing, then the switch, then order under c
   - `DisposalRuns`;
   - `collectEnding`'s attribution;
   - `weak.disposed` after the object is gone;
-  - `Slots.#owed`. `takeReleased` clears its flag today, so it needs a new clearing point.
+  - `Slots.#owed`. `takeReleased` clears its flag (`HolderWrites`) today, so it needs a new
+    clearing point.
 - **At zero, every counted object leaves the heap and its indexes.** Its kind's disposal runs only
   where `isDisposable` says it does something. Otherwise a pending timer nothing holds stays in the
   `pending` index and wakes a live run (`live-run.test.ts`, "lets go of a timer nothing waits on any
@@ -425,7 +396,6 @@ In this order: shadow counts beside tracing, then the switch, then order under c
   provably unique (R5).
 - **Carriers are executions off the heap.** `DisposalRuns` uses id −1 and `RunCalls` id −2; their
   frames hold values.
-- **Ids are reused** (Q51; R2).
 - **`LiveExecution.disposing` is never set true,** but it is in the snapshot schema.
 - **A mock records its calls' arguments** (`mock.calls`), so it holds every handle it was called
   with, except resources, which it records as their host values. The analysis counts a mock as

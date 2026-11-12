@@ -3,7 +3,8 @@
 import type { Value } from '../../../definition/values/values.ts';
 import { DisposalNotices } from './disposal-notices.ts';
 import { Futures } from './futures.ts';
-import { Heap } from './heap.ts';
+import { testHeap } from './heap.test-kit.ts';
+import type { Heap } from './heap.ts';
 import { Waits } from './waits/index.ts';
 
 /** A callback a resolver called, with the values it was called with. */
@@ -16,7 +17,7 @@ export function futuresOn(heap: Heap): Futures {
 
 /** Waits and futures on a heap of their own, the callbacks their resolvers call kept in `calls`. */
 export function recordingFutures() {
-  const heap = new Heap([]);
+  const heap = testHeap();
   const calls: CalledBack[] = [];
   const made = waitsAndFutures(heap, (callback, argumentValues) => {
     calls.push([callback, argumentValues]);
@@ -34,6 +35,7 @@ function waitsAndFutures(
     called,
     awaited: () => undefined,
     givenUp: () => undefined,
+    losersReleased: () => undefined,
   });
   return { waits, futures: new Futures(heap, waits, new DisposalNotices(), () => undefined) };
 }

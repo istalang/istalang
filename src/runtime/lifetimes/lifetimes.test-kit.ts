@@ -8,7 +8,8 @@
 import fc from 'fast-check';
 import type { TypeDefinition } from '../../definition/tables/types.ts';
 import { valueArbitrary } from '../../definition/values/values.test-kit.ts';
-import { Heap, type LiveObject } from '../scheduler/instance/heap.ts';
+import { testHeap } from '../scheduler/instance/heap.test-kit.ts';
+import type { Heap, LiveObject } from '../scheduler/instance/heap.ts';
 import type { HoldingFrame } from '../snapshot/holdings.ts';
 
 /** Type entry 0 disposes by function 0; type entry 1 disposes nothing. */
@@ -139,7 +140,7 @@ export function heapArbitrary(size = 8): fc.Arbitrary<TestHeap> {
       objects: fc.tuple(...ids.map(objectAt)),
       frames: fc.array(frame, { maxLength: 3 }),
     })
-    .map(({ objects, frames }) => ({ heap: new Heap(objects), frames }));
+    .map(({ objects, frames }) => ({ heap: testHeap(objects), frames }));
 }
 
 /** Every object `start` reaches through `edges`, each found by the naive recursion. */

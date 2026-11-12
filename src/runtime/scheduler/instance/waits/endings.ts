@@ -32,6 +32,8 @@ export interface EndingSeams {
   readonly called: (callback: Value, argumentValues: readonly Value[]) => void;
   /** A case awaiting `future` lost to another (spec §8): it is given up on (slots.ts). */
   readonly givenUp: (future: number) => void;
+  /** A decided wait's losing cases let go of what they awaited (spec §8). */
+  readonly losersReleased: () => void;
 }
 
 export class ResolverEndings {
@@ -53,13 +55,13 @@ export class ResolverEndings {
       const kept = other.state.on.filter((future) => this.keeps(wait, future));
       if (kept.length === 0) {
         this.cancel(other, 'lost');
-        this.#heap.noteLosersReleased();
+        this.#seams.losersReleased();
       } else if (kept.length < other.state.on.length) {
         this.#heap.replace({ ...other, state: { ...other.state, on: kept } });
         for (const future of other.state.on.filter((each) => !kept.includes(each))) {
           this.#seams.givenUp(future);
         }
-        this.#heap.noteLosersReleased();
+        this.#seams.losersReleased();
       }
     }
   }
@@ -116,9 +118,8 @@ export class ResolverEndings {
     }
   }
 
-  /** Replaces `resolver`'s state, noting it may have lost its holder, what it was awaited by. */
+  /** Replaces `resolver`'s state, which lets go of what awaited it through the heap's indexes. */
   replace(resolver: Resolver, state: Resolver['state']): void {
     this.#heap.replace({ ...resolver, state });
-    this.#heap.noteReleased([resolver.id]);
   }
 }

@@ -489,7 +489,8 @@ one seam (R2).
 - **Records other than executions are replaced on every change,** so a counted handle needs an
   identity that outlives a replace.
 - **That identity is a serial.** It keeps creation order, which `settleOrder`, losers and
-  `reachingMock` read, and serials are never reused (today ids are: Q51).
+  `reachingMock` read, and serials are never reused: an object id is one since R2, the snapshot
+  keeping how many were given (`objectsMade`).
 - **Counts are keyed by that identity, never by value,** because values are shared by identity
   across constants, registers and restores.
 

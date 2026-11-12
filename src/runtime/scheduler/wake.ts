@@ -111,6 +111,7 @@ function begun(
     spawned: 0,
     random: { seed, draws: 0 },
     pinned: [],
+    objectsMade: 0,
     objects: [],
     ready: [],
   };

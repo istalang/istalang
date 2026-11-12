@@ -8,7 +8,8 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { handleTo } from '../../definition/values/values.ts';
-import { Heap, type LiveObject } from '../scheduler/instance/heap.ts';
+import { testHeap } from '../scheduler/instance/heap.test-kit.ts';
+import type { Heap, LiveObject } from '../scheduler/instance/heap.ts';
 import { isDisposable } from './disposal.ts';
 import { heldFrom, holdsOf } from './holders.ts';
 import { heapArbitrary, reachedFrom, testTypes } from './lifetimes.test-kit.ts';
@@ -51,7 +52,7 @@ describe('ready orphans', () => {
       value: holds === undefined ? null : handleTo(holds),
     });
     const plain: LiveObject = { kind: 'cell', id: 4, type: 1, value: handleTo(5) };
-    const heap = new Heap([lease(0, 1), lease(1, 0), lease(2, 4), lease(3), plain, lease(5)]);
+    const heap = testHeap([lease(0, 1), lease(1, 0), lease(2, 4), lease(3), plain, lease(5)]);
     const frames = [{ registers: [handleTo(3)] }];
     const held = heldFrom(heap, { frames, objects: [] }).objects;
     const from = [0, 2];

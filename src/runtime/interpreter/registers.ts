@@ -9,19 +9,23 @@
  * A path holds field positions only (interpreter/parts.ts), so reading or writing a register never
  * runs code.
  *
- * Whatever a register lets go of, overwritten or emptied, and whatever a frame held when it ends,
- * is reported to the heap (`released`): it may have been the last holder of something disposable,
- * which the scheduler then collects (runtime/lifetimes/). Registers change only through the
- * functions here, so no write can skip the report.
+ * Every write of a register is reported as a holder write (`FrameHeap.changed`): what it held and
+ * what it holds now, whether it is written, emptied, filled as a frame starts or is restored, or
+ * cleared as its frame ends (runtime/lifetimes/holder-writes.ts). What it let go of may have been
+ * the last holder of something disposable, which the scheduler then collects. Registers change only
+ * through the functions here, the one module the raw write (raw-registers.ts) may be imported by,
+ * so no write can skip the report.
  */
 
 import type { Argument, Place } from '../../definition/instructions/places.ts';
 import type { Register, TypeId } from '../../definition/operands.ts';
 import { handleTarget, handleTo, type Value } from '../../definition/values/values.ts';
 import { unreachable } from '../../foundation/structures/unreachable.ts';
+import { heldIn } from '../snapshot/holdings.ts';
 import { isReference, type Reference, type RegisterContents } from '../snapshot/objects.ts';
 import type { ActiveFrame, FrameHeap } from './frames.ts';
 import { partAt, withPart } from './parts.ts';
+import { setRegister } from './raw-registers.ts';
 
 /** The value in `register` of `frame`; loading checks indexes, so an empty one is a bug. */
 export function readRegister(frame: ActiveFrame, register: Register): Value {
@@ -43,12 +47,9 @@ export function writeRegister(frame: ActiveFrame, register: Register, value: Val
   }
   const cell = frame.code.cells.find((each) => each.register === register);
   if (cell === undefined) {
-    frame.registers[register] = value;
-    if (contents !== undefined) {
-      frame.heap.released(contents);
-    }
+    put(frame, register, value);
   } else if (contents === undefined) {
-    frame.registers[register] = handleTo(frame.heap.create(cell.type, value));
+    put(frame, register, handleTo(frame.heap.create(cell.type, value)));
   } else {
     frame.heap.write(cellOf(contents), value);
   }
@@ -71,11 +72,26 @@ export function writeCell(frame: ActiveFrame, register: Register, value: Value):
 
 /** Empties `register`, letting go of what it held: a cell register, its cell. */
 export function clearRegister(frame: ActiveFrame, register: Register): void {
-  const contents = frame.registers[register];
-  frame.registers[register] = undefined;
-  if (contents !== undefined) {
-    frame.heap.released(contents);
-  }
+  put(frame, register, undefined);
+}
+
+/**
+ * Puts `contents` in `register` as they stand, making no cell: a reference parameter's reference, a
+ * closure's capture as the closure carries it, or a restored frame's register.
+ */
+export function placeContents(
+  frame: ActiveFrame,
+  register: Register,
+  contents: RegisterContents,
+): void {
+  put(frame, register, contents);
+}
+
+/** Puts `contents` in `register`, reporting what the register held and holds now. */
+function put(frame: ActiveFrame, register: Register, contents: RegisterContents | undefined): void {
+  const was = frame.registers[register];
+  setRegister(frame, register, contents);
+  frame.heap.changed(heldIn(was), heldIn(contents));
 }
 
 /** Writes `value` to `place`, building the new value of its variable along the path. */

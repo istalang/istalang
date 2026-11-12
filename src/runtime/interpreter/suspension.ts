@@ -49,15 +49,12 @@ export function stoppedAt(frame: ActiveFrame): number | undefined {
     : undefined;
 }
 
-/**
- * Takes the wait `frame` stands at out of its register, as the wait ends and goes with it, so
- * nothing notes it let go of; its id.
- */
+/** Takes the wait `frame` stands at out of its register, as the wait ends and goes with it; its id. */
 export function takeWait(frame: ActiveFrame): number | undefined {
   const wait = waitAt(frame);
   const instruction = frame.code.instructions[frame.pc];
   if (wait !== undefined && (instruction?.kind === 'await' || instruction?.kind === 'select')) {
-    frame.registers[instruction.wait] = undefined;
+    clearRegister(frame, instruction.wait);
   }
   return wait;
 }

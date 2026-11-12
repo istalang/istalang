@@ -18,22 +18,24 @@
  * - A mock this instance holds replaces its target for the calls it makes itself (`mockOf`); one an
  *   instance it descends from holds replaces it too, through the runtime running the test.
  * - The instance is its frames' heap (interpreter/machine.ts): a variable passed by `&` is a cell
- *   object here, a reference names one, and what a frame lets go of is noted on the heap.
+ *   object here, a reference names one, and every write of a register, as of a heap object, is
+ *   reported to the instance's holder writes (`holders`, runtime/lifetimes/holder-writes.ts).
  * - A live run (proposal 8) runs on one too, made from an `unstarted` snapshot and never turned
  *   back into one (../live-run.ts): what it spawns, logs and draws is never committed.
  */
 
 import type { FunctionId } from '../../../definition/operands.ts';
-import { handlesIn, type Value } from '../../../definition/values/values.ts';
+import type { Value } from '../../../definition/values/values.ts';
 import { unreachable } from '../../../foundation/structures/unreachable.ts';
 import type { ActiveFrame, FrameEntry, FrameHeap } from '../../interpreter/frames.ts';
 import { newFrame, releaseFrame } from '../../interpreter/machine.ts';
 import type { Passed } from '../../interpreter/registers.ts';
 import { type Decision, releaseLosers, resume } from '../../interpreter/suspension.ts';
 import { isDisposable } from '../../lifetimes/disposal.ts';
+import { HolderWrites } from '../../lifetimes/holder-writes.ts';
 import { heldFrom } from '../../lifetimes/holders.ts';
 import { type HoldingFrame, heldObjects, isRoot, keptFrame } from '../../snapshot/holdings.ts';
-import { type HeapObject, isReference } from '../../snapshot/objects.ts';
+import type { HeapObject } from '../../snapshot/objects.ts';
 import type { Snapshot } from '../../snapshot/snapshot.ts';
 import type { LoadedDefinition } from '../loaded-definition.ts';
 import { reachingMock } from '../testing/mocks.ts';
@@ -59,6 +61,8 @@ export class Instance {
   readonly slots: Slots;
   readonly weak: WeakSide;
   readonly notices: DisposalNotices;
+  /** Every holder write, of a register, a heap object or a running call's future, is reported here. */
+  readonly holders = new HolderWrites();
   /** The heap as its frames reach it (interpreter/machine.ts). */
   readonly frameHeap: FrameHeap = {
     read: (cell) => this.heap.of(cell, 'cell').value,
@@ -70,10 +74,8 @@ export class Instance {
     makeContextConstant: (name, value) => {
       this.#constants.make(name, value);
     },
-    released: (contents) => {
-      if (!isReference(contents)) {
-        this.heap.noteReleased(handlesIn(contents));
-      }
+    changed: (was, now) => {
+      this.holders.changed(was, now);
     },
   };
   /**
@@ -92,6 +94,8 @@ export class Instance {
     this.effects = new SegmentEffects(() => this.#from);
     this.heap = new Heap(
       snapshot.objects.map((object) => liveObject(loaded.definition, object, this.frameHeap)),
+      snapshot.objectsMade,
+      this.holders,
     );
     this.#constants = new ContextConstants(this.heap);
     this.notices = new DisposalNotices();
@@ -99,7 +103,7 @@ export class Instance {
     this.waits = new Waits(this.heap, {
       decided: (waiter, { position }) => {
         if (releaseLosers(topFrame(waiter), position)) {
-          this.heap.noteLosersReleased();
+          this.holders.noteLosersReleased();
         }
         this.#ready.waiter(waiter);
       },
@@ -113,11 +117,14 @@ export class Instance {
       givenUp: (future) => {
         this.slots.givenUp(future);
       },
+      losersReleased: () => {
+        this.holders.noteLosersReleased();
+      },
     });
     this.futures = new Futures(this.heap, this.waits, this.notices, (answered) => {
       this.effects.answer({ ...answered, value: leaving(this, answered.value) });
     });
-    this.slots = new Slots(this.heap, this.futures);
+    this.slots = new Slots(this.heap, this.holders, this.futures);
     this.weak = new WeakSide(this.heap, this.futures);
   }
 
@@ -200,6 +207,7 @@ export class Instance {
       ...this.#from,
       ...this.effects.committing(),
       status,
+      objectsMade: this.heap.made,
       objects: active ? [...objects] : [],
       ready: active ? [...this.#ready.ids] : [],
     };

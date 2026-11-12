@@ -37,6 +37,7 @@ export class SegmentCollection {
     });
     this.#collector = new Collector({
       heap: instance.heap,
+      holders: instance.holders,
       types: instance.loaded.definition.types,
       roots: () => this.#roots(),
       stop: (execution) => {
@@ -59,9 +60,9 @@ export class SegmentCollection {
    * waited for it, as long as that lets go of more; whether no disposal's call is left to run.
    */
   collected(): boolean {
-    const { heap, slots, loaded } = this.#seams.instance;
+    const { heap, holders, slots, loaded } = this.#seams.instance;
     for (;;) {
-      const released = heap.takeReleased();
+      const released = holders.takeReleased();
       const changed = [...released, ...heap.takeWritten()];
       if (changed.length > 0) {
         loaded.heapCheck({ heap, types: loaded.definition.types }, changed);

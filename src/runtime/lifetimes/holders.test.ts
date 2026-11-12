@@ -8,7 +8,8 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { depthOf, handlesIn, handleTo } from '../../definition/values/values.ts';
-import { Heap, type LiveObject } from '../scheduler/instance/heap.ts';
+import { testHeap } from '../scheduler/instance/heap.test-kit.ts';
+import type { LiveObject } from '../scheduler/instance/heap.ts';
 import { frameValues, isRoot, valuesIn } from '../snapshot/holdings.ts';
 import { heldFrom, holdsOf } from './holders.ts';
 import { heapArbitrary, reachedFrom } from './lifetimes.test-kit.ts';
@@ -49,12 +50,12 @@ describe('holding', () => {
     ['a weak reference', { kind: 'weakRef', id: 0, target: 1 }],
     ['a slot waited on', { kind: 'slot', id: 0, waiting: [1] }],
   ])('holds nothing through %s', (_case, watcher) => {
-    const heap = new Heap([watcher, { kind: 'cell', id: 1, type: 0, value: null }]);
+    const heap = testHeap([watcher, { kind: 'cell', id: 1, type: 0, value: null }]);
     expect([...heldFrom(heap, { frames: [], objects: [0] }).objects]).toEqual([0]);
   });
 
   it('holds the weak reference a disposed() watch is on, and never its referent', () => {
-    const heap = new Heap([
+    const heap = testHeap([
       { kind: 'future', id: 0, state: { kind: 'disposed', weakRef: 2 } },
       { kind: 'cell', id: 1, type: 0, value: null },
       { kind: 'weakRef', id: 2, target: 1 },
@@ -73,7 +74,7 @@ describe('holding', () => {
         value: id + 1 < length ? handleTo(id + 1) : null,
       }),
     );
-    const held = heldFrom(new Heap(cells), {
+    const held = heldFrom(testHeap(cells), {
       frames: [{ registers: [handleTo(0)] }],
       objects: [],
     });

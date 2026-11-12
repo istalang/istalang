@@ -2,18 +2,19 @@
  * A running instance's heap: the objects handles point at, by id, with executions holding live
  * frames (spec §5). The scheduler's parts (futures.ts, slots.ts, /) read and change it.
  *
- * - Ids grow with creation, so id order is creation order (snapshot/objects.ts). Counting starts
- *   one past the highest id the heap was made with, so the next id is never stored; an id a commit
- *   freed may come back in a later segment, once nothing refers to it. A heap is made from objects
- *   in id order, as a snapshot keeps them, and adds each new one last, so iterating it is in id
- *   order too.
+ * - An id is a serial: the heap numbers the objects it makes in the order it makes them, counting
+ *   on from the count its snapshot kept (`objectsMade`), so id order is creation order and no id is
+ *   ever given twice, however many a commit lets go of (snapshot/objects.ts). A heap is made from
+ *   objects in id order, as a snapshot keeps them, and adds each new one last, so iterating it is in
+ *   id order too.
  * - Objects are immutable records, except an execution's frames, which the interpreter runs in
  *   place. Changing any other object replaces it.
- * - Replacing or removing an object notes the objects it held, as frames note what their
- *   registers let go (interpreter/machine.ts): each may have lost its last holder. The scheduler
- *   takes the notes after each instruction and collects (runtime/lifetimes/). Replacing one also
- *   notes it as written: only a write into an existing object can close a cycle, so a test's check
- *   of the heap walks from there (scheduler/loaded-definition.ts `HeapCheck`).
+ * - Every change of an object reports, as a holder write, what it held and what it holds now
+ *   (runtime/lifetimes/holder-writes.ts), as frames report their registers (interpreter/
+ *   registers.ts): what it holds through its fields and values, and the edges its indexes give it
+ *   (`holds`), its own and those of the objects whose edges read it. Replacing one also notes it as
+ *   written: only a write into an existing object can close a cycle, so a test's check of the heap
+ *   walks from there (scheduler/loaded-definition.ts `HeapCheck`).
  * - Finding an object by a field is a lookup, not a scan: the heap indexes the fields its users
  *   find objects by (`indexes`), each key derived from the object alone. No key reads an
  *   execution's frames, the one part that changes in place, so `add`, `replace` and `remove`, the
@@ -22,10 +23,16 @@
  */
 
 import { handleTarget, type Value } from '../../../definition/values/values.ts';
-import { pushAll } from '../../../foundation/structures/stack.ts';
 import { unreachable } from '../../../foundation/structures/unreachable.ts';
 import type { ActiveFrame } from '../../interpreter/frames.ts';
-import { heldObjects, isHeldFromRoot } from '../../snapshot/holdings.ts';
+import type { HolderWrites } from '../../lifetimes/holder-writes.ts';
+import {
+  type Held,
+  heldBy,
+  idsHeld,
+  isHeldFromRoot,
+  nothingHeld,
+} from '../../snapshot/holdings.ts';
 import type { HeapObject } from '../../snapshot/objects.ts';
 
 export interface LiveExecution {
@@ -102,30 +109,41 @@ const indexNames = Object.keys(indexes) as IndexName[];
 
 export class Heap {
   readonly #objects: Map<number, LiveObject>;
-  #next: number;
-  readonly #released: number[] = [];
+  readonly #holders: HolderWrites;
+  #made: number;
   readonly #written: number[] = [];
-  #losersReleased = false;
   /** Each kind's objects, in creation order: a kind never changes, and ids only grow. */
   readonly #kinds = new Map<LiveKind, Set<number>>();
   readonly #indexes = new Map<IndexName, Map<unknown, Set<number>>>(
     indexNames.map((name) => [name, new Map()]),
   );
 
-  constructor(objects: readonly LiveObject[]) {
-    this.#objects = new Map(objects.map((object) => [object.id, object]));
-    this.#next = nextId(this.#objects.keys());
+  /**
+   * The heap holding `objects`, in id order, having made `made` objects so far: the next one's id.
+   * What each holds is reported to `holders`, as made here.
+   */
+  constructor(objects: readonly LiveObject[], made: number, holders: HolderWrites) {
+    this.#objects = new Map();
+    this.#made = made;
+    this.#holders = holders;
     for (const object of objects) {
-      this.#enter(object);
+      if (object.id >= made) {
+        unreachable(`Object ${object.id} was never made: only ${made} were.`);
+      }
+      this.#write(undefined, object);
     }
+  }
+
+  /** How many objects the heap has made: the id the next one gets. */
+  get made(): number {
+    return this.#made;
   }
 
   /** A new object, made by `make` with the next id. */
   add<Object extends LiveObject>(make: (id: number) => Object): Object {
-    const object = make(this.#next);
-    this.#next += 1;
-    this.#objects.set(object.id, object);
-    this.#enter(object);
+    const object = make(this.#made);
+    this.#made += 1;
+    this.#write(undefined, object);
     return object;
   }
 
@@ -147,43 +165,58 @@ export class Heap {
     if (old.kind !== object.kind) {
       unreachable(`Object ${object.id} is a ${old.kind}, not a ${object.kind}.`);
     }
-    this.#noteHoldings(old, object);
+    this.#write(old, object);
     this.#written.push(object.id);
-    this.#leave(old);
-    this.#objects.set(object.id, object);
-    this.#enter(object);
   }
 
   remove(id: number): void {
     const old = this.#objects.get(id);
     if (old !== undefined) {
-      this.#noteHoldings(old);
-      this.#drop(old);
+      this.#write(old, undefined);
     }
   }
 
   /**
    * Keeps only the objects `kept` names, those a commit persisted (§5), so the heap is the one made
-   * from that commit's snapshot: it counts on from the highest id kept, and has nothing noted, as
-   * whatever a commit keeps is held.
+   * from that commit's snapshot: it has nothing noted, as whatever a commit keeps is held.
    */
   keepOnly(kept: ReadonlySet<number>): void {
     for (const object of this.objects()) {
       if (!kept.has(object.id)) {
-        this.#drop(object);
+        this.#write(object, undefined);
       }
     }
-    this.#next = nextId(this.#objects.keys());
-    this.#released.length = 0;
     this.#written.length = 0;
-    this.#losersReleased = false;
+    this.#holders.settled();
   }
 
-  /** Takes `object` off the heap and out of every index. */
-  #drop(object: LiveObject): void {
-    this.#leave(object);
-    this.#kinds.get(object.kind)?.delete(object.id);
-    this.#objects.delete(object.id);
+  /**
+   * Puts `now` in the place of `old`, either absent for an object made or gone, and reports what
+   * each holder it changes held and holds: the object itself, its index edges included, and the
+   * other objects whose index edges read it (`#readers`).
+   */
+  #write(old: LiveObject | undefined, now: LiveObject | undefined): void {
+    const written = (old ?? now)?.id;
+    const readers = this.#readers([old, now])
+      .filter((id) => id !== written)
+      .map((id) => ({ id, before: this.#indexedHeld(id) }));
+    const was = old === undefined ? nothingHeld : this.#held(old);
+    if (old !== undefined) {
+      this.#leave(old);
+    }
+    if (now === undefined) {
+      if (old !== undefined) {
+        this.#kinds.get(old.kind)?.delete(old.id);
+        this.#objects.delete(old.id);
+      }
+    } else {
+      this.#objects.set(now.id, now);
+      this.#enter(now);
+    }
+    this.#holders.changed(was, now === undefined ? nothingHeld : this.#held(now));
+    for (const { id, before } of readers) {
+      this.#holders.changed(before, this.#indexedHeld(id));
+    }
   }
 
   /** The objects index `name` holds under `key`, in creation order. */
@@ -196,33 +229,9 @@ export class Heap {
     return [...ids].sort((first, second) => first - second).map((id) => this.of(id, kind));
   }
 
-  /** Notes that the objects `ids` may have lost their last holder. */
-  noteReleased(ids: Iterable<number>): void {
-    pushAll(this.#released, ids);
-  }
-
-  /** The objects that may have lost their last holder since the last call, for collecting. */
-  takeReleased(): readonly number[] {
-    this.#losersReleased = false;
-    return this.#released.splice(0);
-  }
-
   /** The objects replaced since the last call: written into, so maybe closing a cycle. */
   takeWritten(): readonly number[] {
     return this.#written.splice(0);
-  }
-
-  /** Notes that a decided `select` let go of what its losing cases held (spec §8). */
-  noteLosersReleased(): void {
-    this.#losersReleased = true;
-  }
-
-  /**
-   * Whether a decided `select` let go of what its losing cases held since the released were last
-   * taken for collecting: until then, one of them may still wait in a queue.
-   */
-  get losersUncollected(): boolean {
-    return this.#losersReleased;
   }
 
   /** Whether the object with `id` exists. */
@@ -271,31 +280,63 @@ export class Heap {
     }
   }
 
-  /** Notes what `old`, an object being replaced or removed, held and its replacement doesn't. */
-  #noteHoldings(old: LiveObject, replacement?: LiveObject): void {
-    if (notesOwnReleases(old)) {
-      return;
-    }
-    const kept = new Set(
-      replacement === undefined || notesOwnReleases(replacement) ? [] : this.holds(replacement),
-    );
-    this.noteReleased(this.holds(old).filter((id) => !kept.has(id)));
-  }
-
   /**
    * The ids of the objects `object` holds (spec §7, proposal 8, Rule 5): what its fields and values
    * hold (snapshot/holdings.ts), and what it holds through the indexes, one end of each
    * registration, as the resolver's chain's root says (`isHeldFromRoot`). A wait holds its case
    * resolvers, and a pending resolver of a case's chain its `Resolver.at` ones, that are awaited:
    * registered, or decided by `Resolver.at` ones of their own. A future holds the pending resolvers
-   * of callbacks' chains registered on it. So what an awaitable started for a wait lives as long as the wait, a
-   * callback as long as its future, and what lost is let go of as it loses, while a resolver
-   * nothing awaits is let go of when its holder drops it.
+   * of callbacks' chains registered on it. So what an awaitable started for a wait lives as long as
+   * the wait, a callback as long as its future, and what lost is let go of as it loses, while a
+   * resolver nothing awaits is let go of when its holder drops it.
    */
   holds(object: Exclude<LiveObject, LiveExecution>): readonly number[] {
-    const held = heldObjects(object);
+    return idsHeld(this.#held(object));
+  }
+
+  /**
+   * What `object` holds (`holds`), as its writes report it; an execution, nothing of its own: its
+   * frames' registers report their writes themselves (interpreter/registers.ts).
+   */
+  #held(object: LiveObject): Held {
+    if (object.kind === 'execution') {
+      return nothingHeld;
+    }
+    const held = heldBy(object);
     const indexed = this.#indexedHolds(object);
-    return indexed.length === 0 ? held : [...held, ...indexed];
+    return indexed.length === 0
+      ? held
+      : { values: held.values, holds: [...held.holds, ...indexed] };
+  }
+
+  /** What object `reader` holds through the indexes, as a holder of those edges; nothing once gone. */
+  #indexedHeld(reader: number): Held {
+    const object = this.#objects.get(reader);
+    return object === undefined || object.kind === 'execution'
+      ? nothingHeld
+      : { values: [], holds: this.#indexedHolds(object) };
+  }
+
+  /**
+   * The objects whose index edges read any of `objects` (`#indexedHolds`): for a resolver, the
+   * futures it is registered on, its case's wait, or the resolver it decides, and, as whether that
+   * one is awaited may change with it, what reads that one in turn.
+   */
+  #readers(objects: readonly (LiveObject | undefined)[]): readonly number[] {
+    const readers = new Set<number>();
+    const reading = objects.filter((object) => object !== undefined);
+    for (let object = reading.pop(); object !== undefined; object = reading.pop()) {
+      for (const [name, key] of keysOf(object)) {
+        if (readIndexes.has(name) && typeof key === 'number' && !readers.has(key)) {
+          readers.add(key);
+          const reader = this.#objects.get(key);
+          if (reader?.kind === 'resolver') {
+            reading.push(reader);
+          }
+        }
+      }
+    }
+    return [...readers];
   }
 
   /** What `object` holds through the indexes (`holds`). */
@@ -326,14 +367,8 @@ export class Heap {
   }
 }
 
-/**
- * Whether `object` notes its own releases as its registers change (interpreter/machine.ts), rather
- * than when the heap replaces or removes it, as every other object, an `answer` root included,
- * does.
- */
-function notesOwnReleases(object: LiveObject): object is LiveExecution {
-  return object.kind === 'execution';
-}
+/** The indexes `Heap.#indexedHolds` finds a holder's edges by, each keyed by that holder's id. */
+const readIndexes: ReadonlySet<IndexName> = new Set(['resolvers', 'cases', 'positions']);
 
 /** Every key `object` has, with the index it has it in. */
 function keysOf(object: LiveObject): readonly (readonly [IndexName, unknown])[] {
@@ -341,11 +376,6 @@ function keysOf(object: LiveObject): readonly (readonly [IndexName, unknown])[] 
     const { kind, keys } = indexes[name] as Index<LiveKind, unknown>;
     return kind === object.kind ? keys(object).map((key) => [name, key] as const) : [];
   });
-}
-
-/** The id after the highest of `ids`, the first a heap holding them gives a new object. */
-function nextId(ids: Iterable<number>): number {
-  return Math.max(-1, ...ids) + 1;
 }
 
 /** The object `handle` names; anything else is a bug the checker rules out. */

@@ -10,7 +10,7 @@ import { describe, expect, it } from 'vitest';
 import { compiledText } from '../../compiler/compile.test-kit.ts';
 import { handleTo } from '../../definition/values/values.ts';
 import { startToEnd, testRuntime } from '../runtime.test-kit.ts';
-import { Heap } from '../scheduler/instance/heap.ts';
+import { testHeap } from '../scheduler/instance/heap.test-kit.ts';
 import { acyclicOracle, cyclicOracle } from './oracle.test-kit.ts';
 
 const declarations = [
@@ -203,7 +203,7 @@ describe("the oracle's walk", () => {
   it('starts from the futures a resolver written into is registered on, which its registering gave edges', () => {
     // A cell holding a wait, which holds what its case resolver is registered on, a future holding
     // the cell: a cycle reaching the resolver that registering it closed.
-    const heap = new Heap([
+    const heap = testHeap([
       { kind: 'cell', id: 0, type: 0, value: handleTo(1) },
       { kind: 'wait', id: 1, waiter: 9, state: { kind: 'pending' } },
       { kind: 'future', id: 2, state: { kind: 'resolved', value: handleTo(0) } },

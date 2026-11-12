@@ -9,9 +9,13 @@
 import type { FunctionId, TypeId } from '../../definition/operands.ts';
 import type { CodeFunction } from '../../definition/tables/functions.ts';
 import type { Value } from '../../definition/values/values.ts';
+import type { Held } from '../snapshot/holdings.ts';
 import type { RegisterContents } from '../snapshot/objects.ts';
 
-/** The instance's heap as frames reach it: the cells their registers name, and what they let go. */
+/**
+ * The instance's heap as frames reach it: the cells their registers name, and what their registers
+ * held and hold.
+ */
 export interface FrameHeap {
   readonly read: (cell: number) => Value;
   readonly write: (cell: number, value: Value) => void;
@@ -23,11 +27,8 @@ export interface FrameHeap {
   readonly contextConstant: (name: string) => Value | undefined;
   /** Makes `value` the instance's value of the context constant `name`, kept from now on. */
   readonly makeContextConstant: (name: string, value: Value) => void;
-  /**
-   * Notes that a frame no longer holds `contents`, which may have held something's last handle. A
-   * reference never does: it borrows a cell its caller holds for the whole call.
-   */
-  readonly released: (contents: RegisterContents) => void;
+  /** Reports a register write: the register held `was` and holds `now` (registers.ts). */
+  readonly changed: (was: Held, now: Held) => void;
 }
 
 /**
@@ -46,7 +47,8 @@ export interface ActiveFrame {
   readonly function: FunctionId;
   readonly code: CodeFunction;
   pc: number;
-  readonly registers: (RegisterContents | undefined)[];
+  /** Written only through registers.ts, which reports each write. */
+  readonly registers: readonly (RegisterContents | undefined)[];
   readonly heap: FrameHeap;
   /** Set when the frame runs a mock's replacement in its own instance, so its result arrives. */
   readonly arrives?: true;

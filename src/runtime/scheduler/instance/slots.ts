@@ -26,6 +26,7 @@
  */
 
 import { handleTo, type Value } from '../../../definition/values/values.ts';
+import type { HolderWrites } from '../../lifetimes/holder-writes.ts';
 import type { FutureState } from '../../snapshot/objects.ts';
 import type { Futures, Resolution } from './futures.ts';
 import { type Heap, handleObject, type LiveObjectOf } from './heap.ts';
@@ -42,12 +43,14 @@ interface Served {
 
 export class Slots {
   readonly #heap: Heap;
+  readonly #holders: HolderWrites;
   readonly #futures: Futures;
   /** The slots whose serving paused while collecting was due, by id. */
   readonly #owed = new Set<number>();
 
-  constructor(heap: Heap, futures: Futures) {
+  constructor(heap: Heap, holders: HolderWrites, futures: Futures) {
     this.#heap = heap;
+    this.#holders = holders;
     this.#futures = futures;
   }
 
@@ -121,7 +124,7 @@ export class Slots {
       if (served === undefined) {
         return;
       }
-      if (this.#heap.losersUncollected) {
+      if (this.#holders.losersUncollected) {
         this.#owed.add(id);
         return;
       }

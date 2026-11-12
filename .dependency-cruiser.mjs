@@ -304,6 +304,14 @@ export default {
       to: { path: '^src/runtime/|natives\\.ts$', reachable: true },
     },
     {
+      // Every register write is a holder write, which the runtime's one seam reports
+      // (runtime/lifetimes/holder-writes.ts): registers.ts alone writes a register raw.
+      name: 'runtime-raw-register-write',
+      severity: 'error',
+      from: { path: '^src/', pathNot: '^src/runtime/interpreter/registers\\.ts$' },
+      to: { path: '^src/runtime/interpreter/raw-registers\\.ts$' },
+    },
+    {
       name: 'checker-internals-imported',
       severity: 'error',
       from: { path: '^src/', pathNot: '^src/compiler/checker/' },

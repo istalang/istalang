@@ -11,7 +11,7 @@ import { FormatError } from '../../definition/formats/format.ts';
 import type { Value } from '../../definition/values/values.ts';
 import { Refusal } from '../refusal.ts';
 import { recordingStore, runToEnd, testRuntime } from '../runtime.test-kit.ts';
-import type { ChainRoot, ResolverTarget } from './objects.ts';
+import type { ChainRoot, HeapObject, ResolverTarget } from './objects.ts';
 import { type InstanceCall, type Snapshot, snapshotFormat } from './snapshot.ts';
 
 /** A program committed while it waits two executions deep. */
@@ -73,6 +73,12 @@ const frameEntry = (snapshot: Snapshot) =>
     object.kind === 'execution' ? object.frames.map((frame) => frame.function) : [],
   )[0] ?? 0;
 
+/** `snapshot` holding `added` too, ids past every other's, as though it had made them. */
+const adding = (snapshot: Snapshot, added: readonly HeapObject[]) => ({
+  objects: [...snapshot.objects, ...added],
+  objectsMade: Math.max(snapshot.objectsMade, ...added.map(({ id }) => id + 1)),
+});
+
 /** `snapshot` with a ready run calling the entry of a frame it holds, with `call`'s parts. */
 const withRun = (snapshot: Snapshot, call: { readonly arguments?: readonly Value[] }): Snapshot => {
   const id = 10_000;
@@ -83,7 +89,7 @@ const withRun = (snapshot: Snapshot, call: { readonly arguments?: readonly Value
     captures: [],
     arguments: [...(call.arguments ?? [])],
   };
-  return { ...snapshot, objects: [...snapshot.objects, run], ready: [...snapshot.ready, id] };
+  return { ...snapshot, ...adding(snapshot, [run]), ready: [...snapshot.ready, id] };
 };
 
 /**
@@ -130,13 +136,13 @@ const withPosition = (
     pendingResolver(done, { kind: 'callback', callback: valueCallback }),
     pendingResolver(at, { kind: 'at', done, position: 0n, root }),
   ].toSorted((first, second) => first.id - second.id);
-  return { ...snapshot, objects: [...snapshot.objects, ...resolvers] };
+  return { ...snapshot, ...adding(snapshot, resolvers) };
 };
 
 /** `snapshot` with a pending resolver calling back `callback`, cancelled calling `onCancel`. */
 const withCallback = (snapshot: Snapshot, callback: Value, onCancel: readonly Value[] = []) => ({
   ...snapshot,
-  objects: [...snapshot.objects, pendingResolver(10_000, { kind: 'callback', callback }, onCancel)],
+  ...adding(snapshot, [pendingResolver(10_000, { kind: 'callback', callback }, onCancel)]),
 });
 
 /** `snapshot` panicked in the segment a host's call `call` started, which a retry runs again. */
@@ -231,7 +237,7 @@ describe('reading an instance back', () => {
     const test = waitingInstance();
     storeChanged(test, (snapshot) => ({
       ...snapshot,
-      objects: [...snapshot.objects, { kind: 'resource', id: 1000, type: 0, payload: null }],
+      ...adding(snapshot, [{ kind: 'resource', id: 1000, type: 0, payload: null }]),
     }));
     await expect(test.runtime.wake('i')).rejects.toThrow(mismatch);
   });

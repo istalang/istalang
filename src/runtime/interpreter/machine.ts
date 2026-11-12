@@ -18,6 +18,7 @@ import {
   clearRegister,
   givesEvery,
   type Passed,
+  placeContents,
   writeRegister,
 } from './registers.ts';
 import type { Decision } from './suspension.ts';
@@ -73,26 +74,25 @@ export function newFrame(
   captures: readonly Value[] = [],
 ): ActiveFrame {
   const { code, arrives, handsOver } = entry;
-  const registers: (RegisterContents | undefined)[] = Array.from({ length: code.registers });
   const frame: ActiveFrame = {
     function: entry.function,
     code,
     pc: 0,
-    registers,
+    registers: Array.from({ length: code.registers }),
     heap,
     ...(arrives ? { arrives } : {}),
     ...(handsOver ? { handsOver } : {}),
   };
   contents.forEach((each, index) => {
-    if (each === undefined || isReference(each)) {
-      registers[index] = each;
-    } else {
+    if (each !== undefined && isReference(each)) {
+      placeContents(frame, index, each);
+    } else if (each !== undefined) {
       writeRegister(frame, index, each);
     }
   });
   const first = code.parameters.length;
   captures.forEach((each, index) => {
-    registers[first + index] = each;
+    placeContents(frame, first + index, each);
   });
   return frame;
 }

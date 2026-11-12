@@ -123,15 +123,17 @@ class SegmentRunner implements Machine {
   readonly #instance: Instance;
   readonly #caller: Caller;
   readonly #natives: NativeCalls;
-  readonly #runStack = new RunStack();
+  readonly #runStack: RunStack;
   readonly #collection: SegmentCollection;
   readonly #outcome: RootOutcome;
-  readonly #runCalls = new RunCalls(this.#runStack);
+  readonly #runCalls: RunCalls;
   readonly #returns: ReturnSeams;
   #end: DriveEnd | undefined;
 
   constructor(instance: Instance, now: () => bigint, waiting: Waiting) {
     this.#instance = instance;
+    this.#runStack = new RunStack(instance.holders);
+    this.#runCalls = new RunCalls(this.#runStack);
     this.#natives = new NativeCalls(instance, now, waiting, {
       trace: () => this.#runStack.trace(this.definition),
       callerTrace: () => this.#runStack.callerTrace(this.definition),
@@ -270,9 +272,6 @@ class SegmentRunner implements Machine {
     this.#instance.waits.stopped(execution);
     if (this.#runStack.driverOnly) {
       this.#runStack.pop();
-      this.#instance.heap.noteReleased(
-        execution.resolves === undefined ? [] : [execution.resolves],
-      );
       this.#end = 'awaited';
       return;
     }
