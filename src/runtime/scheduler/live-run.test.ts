@@ -306,6 +306,46 @@ describe('live runs', () => {
     expect(clock.now()).toBe(1500n);
     expect(test.store.commits).toEqual([]);
   });
+
+  it('disposes values in the same order after a dropped WeakRef whether or not the heap doubled at an await', async () => {
+    const runWithUnheldBox = async (extraBox: boolean): Promise<readonly string[]> => {
+      const notes: string[] = [];
+      const text = compiledText(
+        [
+          "import * as time from 'time'",
+          'extern fn note(text: String)',
+          'shared struct Box { n: Int }',
+          'shared struct Lease { name: String }',
+          'fn dispose(self: Lease): note(self->name)',
+          'live async fn resolved(lease: Lease) -> Lease: lease',
+          'live async fn main() -> Int:',
+          '  let kept: Array<Box> = []',
+          `  for i in 0..${extraBox ? 10 : 0}:`,
+          '    kept.push(new Box{n: i})',
+          '  await time.delay(1ms)',
+          '  if true:',
+          '    const older = new Lease{name: "older"}',
+          '    const future = resolved(new Lease{name: "newer"})',
+          '    drop WeakRef(future)',
+          '    await time.delay(1ms)',
+          '  kept.length()',
+        ].join('\n'),
+      );
+      const test = testRuntime({
+        host: {
+          'main.note(String)': ([name]) => {
+            notes.push(String(name));
+            return null;
+          },
+        },
+      });
+      const run = await test.runtime.deploy(text).start('live');
+      expect(run.state).toMatchObject({ kind: 'finished' });
+      return notes;
+    };
+    expect(await runWithUnheldBox(true)).toEqual(['newer', 'older']);
+    expect(await runWithUnheldBox(false)).toEqual(['newer', 'older']);
+  });
 });
 
 describe("a host's calls on one instance", () => {
