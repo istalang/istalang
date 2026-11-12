@@ -7,33 +7,49 @@
 # or replacing the entry, or dropping the map, stops it at its await (§7). The watch resumes in a
 # segment after the one that disposed the key, so that is when the entry and its value go. Nothing
 # lists or counts the entries, as in JavaScript.
+#
+# The entries live in a store the map holds, which each watch reaches only through a `WeakRef`: a
+# watch holding the map, which holds the watch, would be a cycle, which no disposable may be on
+# (§7). Letting go of the map lets go of the store, so its entries and their watches go with it.
 
 struct _Entry<V>:
   value: V
   watch: Future<Unit, "ista">
 
 shared struct WeakMap<K is Disposable, V>:
+  _store: _Store<K, V> = new _Store<K, V>{}
+
+shared struct _Store<K is Disposable, V>:
   entries: Map<WeakRef<K>, _Entry<V>> = [:]
+
+# Declaring `dispose` is what makes a store disposable, and so something a watch's `WeakRef` can
+# refer to; disposing it lets go of its entries.
+ista fn dispose<K is Disposable, V>(self: _Store<K, V>): ()
 
 ista fn WeakMap.create<K is Disposable, V>() -> WeakMap<K, V>: new WeakMap<K, V>{}
 
 ista fn get<K is Disposable, V>(self: WeakMap<K, V>, key: K) -> V?:
-  self->entries.get(WeakRef(key))?.value
+  self->_store->entries.get(WeakRef(key))?.value
 
-ista fn has<K is Disposable, V>(self: WeakMap<K, V>, key: K) -> Bool: self->entries.has(WeakRef(key))
+ista fn has<K is Disposable, V>(self: WeakMap<K, V>, key: K) -> Bool:
+  self->_store->entries.has(WeakRef(key))
 
 # As `has`, for `in` (§3.9).
 ista fn includes<K is Disposable, V>(self: WeakMap<K, V>, key: K) -> Bool: self.has(key)
 
 # Setting a key the map holds keeps its watch.
 ista fn set<K is Disposable, V>(self: WeakMap<K, V>, key: K, value: V):
+  const store = self->_store
   const reference = WeakRef(key)
-  const watch = self->entries.get(reference)?.watch ?? _deleteOnDisposal(self, reference)
-  self->entries[reference] = _Entry{value, watch}
+  const watch = store->entries.get(reference)?.watch ?? _deleteOnDisposal(WeakRef(store), reference)
+  store->entries[reference] = _Entry{value, watch}
 
 ista fn delete<K is Disposable, V>(self: WeakMap<K, V>, key: K) -> Bool:
-  self->entries.delete(WeakRef(key))
+  self->_store->entries.delete(WeakRef(key))
 
-ista async fn _deleteOnDisposal<K is Disposable, V>(map: WeakMap<K, V>, key: WeakRef<K>) -> Unit:
+ista async fn _deleteOnDisposal<K is Disposable, V>(
+  store: WeakRef<_Store<K, V>>
+  key: WeakRef<K>
+) -> Unit:
   await key.disposed()
-  drop map->entries.delete(key)
+  if store.deref() is _Store as entries: drop entries->entries.delete(key)
