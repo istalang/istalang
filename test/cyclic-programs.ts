@@ -353,4 +353,14 @@ export const cyclicPrograms: readonly CyclicCase[] = [
     body: ['const ch = new Child{}', 'const p = linkDefault(ch)', 'ch->parent = p'],
     extra: ['ista fn linkDefault(ch: Child, p: Parent = new Parent{child: ch}) -> Parent: p'],
   },
+  {
+    name: 'an awaitable whose `onAwait` links two of its fields',
+    body: ['b->next = a', 'await LinkingAwaitable{a, b}'],
+    extra: [
+      'struct LinkingAwaitable { a: Node, b: Node, type Mode = "ista" }',
+      'ista fn onAwait(self: LinkingAwaitable, done: Resolver<Unit, "ista">):',
+      '  self.a->next = self.b',
+      '  done.resolve(())',
+    ],
+  },
 ];

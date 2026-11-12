@@ -11,8 +11,9 @@
  *   since the closure may be called by code nobody sees, and its requirements are checked for any
  *   values of its inputs' types where it is made (design.md §5.5). So are a function's named as a
  *   value, which nothing it captures holds.
- * - **An `await`'s own `onAwait`** registers its wait's case, which holds nothing past the wait
- *   (design.md §3), so it is no write.
+ * - **An `await`'s own `onAwait`** is a call like any, of the awaitable's own `onAwait`, a user's
+ *   or a generic's among them; it isn't given the wait's case, which holds nothing past the wait
+ *   (design.md §3), so a `Future`'s keeping of it relates nothing.
  * - **The std's cursors** (`iterate`) give the items of what they iterate, and run nothing else:
  *   each is a closure of the std reading its own value, which a summary can't say of a function
  *   it gives back (design.md §5.6).
@@ -121,9 +122,6 @@ const handlers: { readonly [Kind in Operation['op']]: Handler<Kind> } = {
   call: (at, operation) => {
     const { into, call, role, arguments: args, site } = operation;
     const { analysis } = at;
-    if (role === 'onAwait') {
-      return;
-    }
     if (call.kind === 'requirement') {
       const witnesses = analysis.context.witnessesOf(call);
       if (witnesses === undefined) {
