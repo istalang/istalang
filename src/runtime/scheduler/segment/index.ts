@@ -21,9 +21,10 @@
  * The root's answer is the instance's outcome, awaited when it is a future, and encoded for the
  * host by the instance's encoder (root-outcome.ts).
  *
- * After every instruction that let go of something, the segment collects (collection.ts): what
- * lost its last holder is disposed right there (§7). A disposal that runs code runs on the run
- * stack as any call does (disposal-runs.ts). A drive ends only once collecting has. An
+ * After every step, and after a readied call answered at once, the segment collects
+ * (collection.ts): what lost its last holder is disposed right there (§7), before anything else
+ * runs. A disposal that runs code runs on the run stack as any call does (disposal-runs.ts). A
+ * drive ends only once collecting has. An
  * execution running on the run stack holds its own call future, so code that lets go of the last
  * holder of its own call runs on until it suspends, and is stopped there.
  */
@@ -328,15 +329,20 @@ class SegmentRunner implements Machine {
         return this.#finished(end.finished);
       }
     }
-    // A run answered at once let go of its arguments outside any drive, which collects first.
-    this.#collection.collectFully(() => this.#step());
     return { kind: 'idle' };
   }
 
-  /** Makes the call `run` readied and drives it as any driver: at once returned when answered. */
+  /**
+   * Makes the call `run` readied and drives it as any driver: at once returned when answered, once
+   * what it let go of, its captures and arguments, is disposed, before anything else runs.
+   */
   #run(run: LiveObjectOf<'run'>): DriveEnd {
     const driver = this.#runCalls.start(this.#caller, run);
-    return driver === undefined ? 'returned' : this.#drive(driver);
+    if (driver !== undefined) {
+      return this.#drive(driver);
+    }
+    this.#collection.collectFully(() => this.#step());
+    return 'returned';
   }
 
   /** What runs next: an arrived outcome's encoder or itself (root-outcome.ts), else what is ready. */
