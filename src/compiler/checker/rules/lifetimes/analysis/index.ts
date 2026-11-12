@@ -59,7 +59,7 @@ export function analyze(
   flow: FlowFunction,
   options: AnalyzeOptions,
 ): Analysis {
-  const nodes = new Nodes(flow, context.facts);
+  const nodes = new Nodes(flow, context.facts, options.recursive !== true);
   const once = holdsNothingRelevant(nodes) ? analyzedOnce(context, nodes, options) : undefined;
   return once ?? analyzedToFixpoint(context, nodes, options);
 }
@@ -153,7 +153,6 @@ function analysisOf(
   const nested: NestedAnalyses = new Map();
   const analysis = new BodyAnalysis(nodes, context, options.references, {
     separates: options.nested !== true,
-    inputParts: options.recursive !== true,
     analyze: (inner, site) => {
       const known = nested.get(inner);
       if (known !== undefined) {

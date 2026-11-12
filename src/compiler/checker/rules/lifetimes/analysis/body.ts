@@ -97,8 +97,6 @@ export class BodyAnalysis {
   readonly analyzeNested: (flow: FlowFunction, site: NodeOf<string>) => NestedResult;
   /** Whether its callers are seen, so it may rely on what they are required to see to. */
   readonly separates: boolean;
-  /** Whether its findings may name parts of its inputs, not only its inputs (inputs.ts). */
-  readonly inputParts: boolean;
   /** The inputs code it runs unseen may reach. */
   readonly access = new Map<string, Input>();
   #recording = false;
@@ -113,7 +111,6 @@ export class BodyAnalysis {
     nesting: {
       readonly analyze: BodyAnalysis['analyzeNested'];
       readonly separates: boolean;
-      readonly inputParts: boolean;
     },
   ) {
     this.nodes = nodes;
@@ -121,7 +118,6 @@ export class BodyAnalysis {
     this.references = references;
     this.analyzeNested = nesting.analyze;
     this.separates = nesting.separates;
-    this.inputParts = nesting.inputParts;
   }
 
   /** Whether findings are made: on the last run, over the fixed point (index.ts). */

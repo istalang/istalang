@@ -343,7 +343,9 @@ stays `it.fails` until its rewrite.
 
 C3 took the paths, together with §5.5's separation requirements (decided 2026-11-12). A member
 of a recursive group names its inputs whole: a call within the group maps a parameter to a part
-of one, so each round would name parts of parts without bound.
+of one, so each round would name parts of parts without bound. There, an input's parts also stay
+related through it: no caller is required anything of them, so nothing keeps them apart (found
+by C4's review).
 - **An input's parts are inputs of their own** (`self.items`, `self->_store`): a read of one is a
   path node, re-read as the same value until a write may change it. A requirement or separation on
   a part names the part, which a caller passing two fields of one value checks separately.

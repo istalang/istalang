@@ -90,6 +90,19 @@ They found false positives too:
   running, whose stand-in found nothing, and the rule reported none of either function's cycles.
   Fixed: a default is analysed with its function, in its recursive group (design.md §5.3).
 
+## Found by C4's review
+
+- **Parts of an input kept apart in a recursive group** was unsound: `fn linkRec(p: Pair, n: Int)`
+  writing `p.a->next = p.b` and calling itself reported nothing, since reading a part kept it
+  apart from its siblings, which only a caller required to see to can rely on, and a group's
+  members require nothing of parts. Fixed: there they stay related through their input
+  (design.md §5.7).
+- **A default analysed in a recursive group** named parts of inputs, each round deeper, so a
+  default calling its function with a part of an earlier parameter never ended. Fixed: it names
+  inputs whole, as the group's bodies do.
+- **A default's value joined to its function's result** made a function with a default claim its
+  result aliased what the default gives. Fixed: a default's value is its parameter's alone.
+
 ## Accepted over-rejections
 
 C4 was to remove these with closures' captures and field labels; it is editor performance only,

@@ -56,7 +56,8 @@ export function clonedState(state: FlowState): FlowState {
 /**
  * Reads the path `node` names into `state`, as reading it there would (`readThrough`,
  * `readPart`); a part of an input apart from its other parts, whose sharing its caller is required
- * to see to where a finding relies on it (inputs.ts).
+ * to see to where a finding relies on it (inputs.ts). Where findings name inputs whole, in a
+ * recursive group, no caller is required anything of its parts, so they stay related through it.
  */
 export function materialize(nodes: Nodes, state: FlowState, node: NodeId): boolean {
   const path = nodes.pathOf(node);
@@ -67,7 +68,10 @@ export function materialize(nodes: Nodes, state: FlowState, node: NodeId): boole
     return false;
   }
   state.reach.fresh(node);
-  const siblings = isInputRooted(nodes, path.root) ? siblingsOf(nodes, state, node) : undefined;
+  const siblings =
+    nodes.inputParts && isInputRooted(nodes, path.root)
+      ? siblingsOf(nodes, state, node)
+      : undefined;
   if (path.kind === 'through') {
     state.reach.readThrough(node, path.root, siblings);
   } else {

@@ -32,7 +32,7 @@ export function candidatesIn(analysis: BodyAnalysis, state: FlowState): readonly
   const inputs = nodes.inputs
     .map((slot) => ({ input: slot.input, node: analysis.inputNodeOf(slot) }))
     .filter(({ node }) => state.reach.isLive(node) && nodes.isRelevant(node));
-  if (!analysis.inputParts) {
+  if (!nodes.inputParts) {
     return inputs;
   }
   const paths = nodes.allPaths().flatMap((node) => {

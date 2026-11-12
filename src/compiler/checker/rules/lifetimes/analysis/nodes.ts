@@ -60,6 +60,11 @@ interface PathNode {
 
 export class Nodes {
   readonly flow: FlowFunction;
+  /**
+   * Whether findings may name parts of its inputs, not only its inputs (inputs.ts): not in a
+   * recursive group, whose members name their inputs whole.
+   */
+  readonly inputParts: boolean;
   readonly #inputs: InputSlot[];
   readonly #facts: TypeFacts;
   readonly #size: number;
@@ -74,8 +79,9 @@ export class Nodes {
   readonly #lastUses: ReadonlyMap<Operation, readonly ValueId[]>;
   readonly #assigned: ReadonlySet<ValueId>;
 
-  constructor(flow: FlowFunction, facts: TypeFacts) {
+  constructor(flow: FlowFunction, facts: TypeFacts, inputParts: boolean) {
     this.flow = flow;
+    this.inputParts = inputParts;
     this.#facts = facts;
     this.#size = flow.values.length;
     this.#inputs = [...inputSlots(flow, this.#size, facts.cellOf)];

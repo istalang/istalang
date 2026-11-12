@@ -225,9 +225,30 @@ describe('the lifetime rule', () => {
       '  a: Node',
       '  b: Node',
       '  next: Shared<Box>',
-      'fn walk(x: Box, y: Int = { x.a->next = x.b; walk(x.next->value, 0) }) -> Int: y',
+      'fn walk(x: Box, z: Node, y: Int = { x.a->next = z; walk(x.next->value, z, 0) }) -> Int: y',
+      'fn use(box: Box):',
+      '  const n = new Node{lease: new Lease{n: 1}}',
+      '  _ = walk(box, n)',
+      '  _ = walk(box, box.a)',
     ].join('\n');
-    expect(findingsIn(source)).toEqual([]);
+    // Its own call is one too: in a recursive group, `x.next->value` is `x`, which reaches `z`.
+    expect(findingsIn(source)).toEqual(['11:call', '15:call']);
+  });
+
+  it('relates the parts of an input of a recursive group, named whole there', () => {
+    const source = inSubject(
+      ['const x = new Node{lease: new Lease{n: 1}}', 'linkRec(Pair{a: x, b: x}, 1)'].join('\n'),
+      [
+        'struct Pair:',
+        '  a: Node',
+        '  b: Node',
+        'fn linkRec(p: Pair, n: Int) -> ():',
+        '  p.a->next = p.b',
+        '  if n > 0:',
+        '    linkRec(p, n - 1)',
+      ],
+    );
+    expect(findingsIn(source)).toEqual(['11:write']);
   });
 
   it("relates a function's result to what it returns, not to what its defaults give", () => {
