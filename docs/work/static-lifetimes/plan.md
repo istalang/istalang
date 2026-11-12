@@ -1,69 +1,107 @@
 ---
-description: plan for static lifetimes — a whole-program flow analysis rejects every disposable a cycle reaches, and the runtime disposes by counts with no walk of values or the heap; process, phases, acceptance; read before working on or examining a static-lifetimes phase
+description: plan for static lifetimes — process, five checker phases (C1 flow IR and witness closing, C2 annotations, C3 the analysis, C4 its refinements, C5 lowering on the IR) and five runtime phases (R1 edges and oracle, R2 seams and identity, R3 counting, R4 only indexes, R5 in-place values), with scope, acceptance, order, shared surfaces and diagnostic ranges; read before forking, planning or examining a static-lifetimes phase
 owner: tech-lead
-status: active
+status: proposed
 applies_to: istalang
 last_verified: 2026-11-12
 last_updated: 2026-11-12
-tags: [plan, lifetimes, disposal, performance]
+tags: [plan, lifetimes, disposal, checker, flow, runtime, refcount]
 ---
 
-# Static lifetimes: plan
+# Static lifetimes — plan
 
-**Goal.** No cycle reaches a disposable, as the checker decides with a whole-program flow analysis.
-The runtime then disposes by counting holders, and never walks values or the heap to decide a
-lifetime. Rules and model: [design.md](design.md). Pre-research per phase:
-[tour-checker.md](tour-checker.md), [tour-runtime.md](tour-runtime.md). Supersedes
-[archive/plan.md](archive/plan.md).
-
-**Why.** Deciding holders by reachability is about 45% of a live FormBuilder change (48 → 26 ms
-with it off), and every live `await` walks the whole heap (tracker P3, P4).
+Design: `design.md`, whose §14 holds the human's decisions. Code tours, one per lane:
+`tour-checker.md` and `tour-runtime.md`. Each phase's planner starts from its lane's tour. Spec:
+`docs/spec.md` §3.16, §5, §6, §7.
 
 ## Process
 
-One fork per phase, and a merge review after the last.
+**Ten phases in two lanes.** Each phase is an implementer fork in its own worktree, reviewed by a
+cold Claude `reviewer` over hcom. Behavioural phases also get a qa.
 
-- **Three lanes:**
-  - checker: L0 → L1 → L2;
-  - violators: V, beside L0 and L1;
-  - runtime: R1 → R2 → R3 → R4 → R5 → R6 → R7.
+*Why ten:* a phase is something that merges on its own, is days of work, and is reviewed as a
+whole. Everything smaller rides inside the phase that needs it, as its own commits:
+- witness closing rides with the IR, since both are behaviour-neutral moves of what the analysis
+  reads;
+- related diagnostics, the rewrites and the editor budget ride with the analysis, so the rule never
+  lands without its fixes;
+- shadow counts and order ride with the switch to counting.
 
-  R1–R3 run beside the checker lane. R4 needs L2 merged: L2 writes the `tracked` flag the runtime
-  reads, and rids the corpus of real cycles.
-- **Examiners.** Every phase gets a reviewer.
-  - Phases that change what a program does get qa as well: L1, L2, V, R1, R5, R6, R7.
-  - L0, R2, R3 and R4 skip qa: they change nothing the spec shows, and the corpus, the sweeps and
-    the runtime suites, unchanged, are their check.
-- **V states its rewrite for the human's approval** if it changes a std signature or conformance
-  (a type becoming Disposable is must-use).
-- **Precision is settled before L2 forks:** L1 ends with a dry run of the rule.
-- **The human approves `@Holds`'s spec wording** before L1 commits it.
-- **Behaviour changes stand alone.** R1 changes the resolver edges and R6 the order, so R4's check
-  compares counts with a collector of the same edges, and R5 changes only the mechanism.
-- **Each phase updates the docs it changes** (design.md, Spec and docs).
-- **Bench thresholds.** V rewrites FormBuilder's `Task`, so the FormBuilder live bench is measured
-  again when V merges, and R5's and R7's thresholds are restated then. 32 and 28 ms are
-  placeholders.
+- **Merging:** a fork rebases and fast-forwards `main` once its reviewer, and its qa where there is
+  one, approve.
+- **Profiles:** checker phases run `npm run profile:check` and `edit.bench.ts`, runtime phases
+  `wake.bench.ts`, against their base. Both must stay within noise unless the phase says otherwise.
+- **Each phase** edits:
+  - the spec sections it changes (`design.md` §11);
+  - the docs it touches (`architecture.md`'s trees included);
+  - its lane's tour, where its code moved;
+  - its tracker rows.
 
-## Phases
+  Its acceptance names every corpus diagnostic it moves; nothing else moves.
+
+## Checker lane
 
 | Phase | Scope | Accept |
 |---|---|---|
-| **L0** Instances | Closing calls per instantiation and `any` dispatch move from lowering into the checker's surface, and lowering reads them there; no behaviour change | every program checks, lowers and runs as before; suites unchanged |
-| **L1** Flow analysis | Objects, flow (an extern's yield included), holds, construction and mutation, and `@Holds` (prelude, extern functions with their type parameters in scope, fields), with one checker entry per body and a query of the graph. Ends with a dry run of the rule over std, examples, corpus, spec fences and runtime tests' programs; no diagnostics | unit tests per Flow and Holds bullet, per call through a function value and an `any T`, generic instantiations kept apart, and construction told from mutation; every program checks as before; `edit.bench.ts` gains an edit that changes constraints, and the solve stays within the 5 / 15 ms budgets; the first diagnostics after a cold open at most 20% slower than before L1, the human deciding if it is over; the dry run's report lists every rejection with its cause |
-| **V** Violators | Rewrite the real cycles in std and examples (WeakMap; FormBuilder's `Task`), behaviour preserved | std suites and the examples' tests unchanged; L1's dry run reports neither, whichever of V and L1 merges last checking it; the FormBuilder live bench measured again |
-| **L2** The rule | The rule and its diagnostic; the `tracked` flag on the Definition; fanout's `@Holds`; the corpus's real cycles (`dispose.ista` `cycle()`, on-cancel's B76) made invalid cases | an invalid corpus case per kind in What it catches; a list built by construction and a recursive async function accepted; an edit in one module that closes a cycle shows the error in another open module; a test that fanout lets go of the chain behind its slowest subscriber; std, examples, spec fences and runtime tests' programs check clean |
-| **R1** Edges | design.md's resolver edges, including a disposed future cancelling its pending resolvers; spec §6, §7 and the corpus updated | a kept `Resolver.of` registered on an otherwise dropped call's future: the call stops and the resolver is cancelled; nothing else changes |
-| **R2** Seams | One seam for every hold and release (interpreter, natives, decoders, waits, mocks, awaited-status changes); no behaviour change | suites unchanged; a dependency-cruiser rule lets only the seam import the raw writers |
-| **R3** Identity | Every handle direct, with a creation serial (design.md, Off the id heap); no behaviour change | suites unchanged; resident sweep unchanged |
-| **R4** Shadow counts | Counts kept beside the collector in a per-instance table rebuilt by every restore; whether a composite is counted decided at its first hold; the check in design.md, Contract | the check holds over the corpus, the sweeps and the runtime suites, including a legal cycle of a tracked type that reaches no disposable |
-| **R5** Switch | Counts decide disposal, zeroes confirmed at the end of a step and each batch ordered as today; the collector's rounds, `orphans.ts` and the release walks go | suites unchanged, including live-run's unheld timer; dependency-cruiser bans release paths from importing the walks (`handlesIn`, `heldFrom`); FormBuilder live bench ≤ 32 ms per settled change |
-| **R6** Order | §7's reverse release order replaces the creation-order sort | the order-asserting corpus updated; nothing else changes |
-| **R7** Only indexes | The heap keeps only the scheduler's indexes; `dropUnheld`, `#kept`, `keepOnly` and `holders.ts` go; an ista commit writes what its roots reach in its encoding pass | live paths can't import a walk (dependency-cruiser); an untracked cell is reclaimed (finalization test); resident sweep unchanged; FormBuilder live bench ≤ 28 ms per settled change |
+| **C1** Flow IR and witness closing (structural; reviewer only) | 1. The closing algorithm moves from `lowering/calls/closed-calls.ts` onto the checker's surface, and lowering reads it there (`tour-checker.md`, Witness closing). 2. The IR of `design.md` §4 per checked body, an entry in `rules/flow/`. `dropped.ts` and `data-kinds.ts` read it, and `forward.ts` is deleted. `architecture.md` names the IR's contract | No behaviour change. Every Definition byte-identical on the corpus, the spec's fences and the std. Every `dropped`, `data-kinds` and `kinds` test unchanged. A property: every expression and statement kind, and every implicit role, maps to IR (exhaustive tables). Profile within noise |
+| **C2** Generic annotations, `Holds` and `Keeps` (behavioural) | `design.md` §6. Parser: `@Name<Types>`, with or without `{…}`. §3.1's bare form with type arguments. A declaration's annotations bound and checked in its type-parameter scope. Struct and extern struct declarations as places. The `lifetimes` std module. `heldPartsOf` reading `Holds`, `keepsOf(extern)`, their misuse, and parameter names as denotations. The prelude and std annotated. The native audit test. The readers of `heldPartsOf` audited | `@Holds<()>` on `WeakRef`: `WeakRef<Future<…>>` holds nothing for sendability and must-use. `@Keeps{["self": ["nope"]]}` is an error, and so is either annotation outside the std. Go-to on `"value"` reaches the parameter. The audit passes over the std suites and the corpus, and fails when an entry is removed from `put`'s `Keeps` |
+| **C3** The analysis, on (behavioural; the largest) | In this order: 1. Related locations on `Diagnostic`, published by the LSP and printed by the CLI. 2. `design.md` §5.1–5.5 as a dry run: relevance and `reachesDisposable`; the domain over the IR, with field labels and the plain-function seam prepared (§5.6, §5.7); summaries, requirements and call reach; symbolic requirement calls through C1's closing; `any` and function values; natives from C2; the declaration graph; escaping closures and runtime-run code. Every result an entry. 3. The `counted` flag on the Definition's type entries. 4. The rewrites §10 lists, and whatever else the dry run finds that is a real cycle. 5. The diagnostics on, with `test/corpus/lifetimes/` (§12). 6. The editor's budget, and a cold-open bench | §12's corpus passes. The std, `test/examples.test.ts`, the spec's fences and the runtime tests' programs report nothing outside the invalid cases. A property over fragment soups (writes, closures, async calls, inboxes, awaitables): an accepted program never trips R1's oracle when run. A commute property: a generic call's verdict equals its instantiated copy's. "Incremental equals fresh" covers the new diagnostics. The median warm edit of `edit.bench.ts` on the 2,098-line module adds ≤ 2 ms. The dry run's false positives are listed in `findings.md` |
+| **C4** What closures capture, and fields (behavioural; postponed) | `design.md` §5.6 and §5.7, through C3's prepared seam and labels: per-module entries of what escaping closures capture; labelled pairs, reads through one field, and strong updates on fields | The false positives `findings.md` lists for both pass: an escaped plain function written after an `await`, and relinking (`node->next = other`) after unlinking. No rejection of §12 moves. The cold open within 20% of C3's baseline; the warm edit budget holds |
+| **C5** Lowering on the IR (structural, then behavioural) | Lowering reads the flow IR instead of the checked syntax for where values go. Then the retain/release pairs the IR shows to be redundant are elided | Definitions byte-identical before elision on the corpus and std. After elision, every test passes and the oracle stays silent. `wake.bench.ts` faster on R3's fixture |
 
-## Out of scope (tracker)
+## Runtime lane
 
-- A live `await` on a settled future continuing in place, the per-step collection check, and
-  `newFrame`'s register array.
-- Updating a value in place when its count says it is unshared (P2).
-- Q49 and Q50, filed from the first plan review. R3 settles Q51.
+| Phase | Scope | Accept |
+|---|---|---|
+| **R1** Edges and the oracle (behavioural) | Registration edges by the chain's root, and `disposeFuture` cancelling what is registered on the future (`tour-runtime.md`, R1). The test-only oracle (`design.md` §9.2) | The spec examples, `test/corpus/holders/` and `weak-side/`, the std suites and the resolver tests give the same outcomes. The oracle passes over all of them, except the cases C3 turns invalid, which it flags. `wake.bench.ts` within noise |
+| **R2** Seams and identity (structural; reviewer only) | One seam for every holder write (`tour-runtime.md`, R2). A counted handle's identity off the id heap: a serial keeping creation order, never reused. `asHostValue` and `leaving` become one walk. Q51 settled | No behaviour change. Creation order is unchanged for `Heap.find`, `settleOrder`, losers and `reachingMock`. A dependency-cruiser rule lets only the seam import the raw writers |
+| **R3** Counting (behavioural) | In this order: 1. Shadow counts beside tracing, keyed by R2's identity, rebuilt in the `Instance` constructor, counting what `design.md` §9.1 says, from C3's `counted` flag. 2. The switch: counts decide disposal; the orphan search, release noting and `#kept`'s scan go; zeroes are confirmed at the step's end. 3. Order under counts, against every place order is decided today (`tour-runtime.md`, R3) | The shadow check passes over the runners before the switch. After it, the full suite and corpus pass in the same disposal order, including the order tests `tour-runtime.md` lists. A `let f = fn: f()` case is an orphan that never reaches zero. `wake.bench.ts` shows collection cost below tracing on a release-heavy fixture. FormBuilder's live change gets closer to the 26 ms ceiling from 48 ms |
+| **R4** Only indexes (behavioural) | The heap keeps indexes, and live paths hold objects directly. The commit walks once, for objects and depth. A weak reference is kept alive by its referent (`tour-runtime.md`, R4) | Live paths can't import a walk (dependency-cruiser). An uncounted cell is reclaimed (a finalization test). Commits are byte-identical |
+| **R5** Unique values in place (behavioural) | Every composite node counted. A node held once and made by this instance is updated in place; any other is copied at its first write (`design.md` §9.6) | P2's figures (20k-element comprehension, 5k map inserts, `[...0..20000]`) become linear. Constants and restored values are never written: a property over two restores of one snapshot. `wake.bench.ts` not slower beyond noise |
+
+## Order
+
+- **C1, C2 and R1** start together, since they touch disjoint layers.
+- **C3** needs all three: the IR and closing, the externs' facts, and the oracle for its property.
+- **R2** follows R1.
+- **R3** needs R2 and C3. It is sound only once C3 makes every running program cycle-free, and it
+  reads C3's flag.
+- **R4 and R5** follow R3. **C4** can wait. **C5** needs counting first, since elision removes
+  counts.
+- A phase starts only on landed code, and beside a running one only when their files don't overlap.
+
+## Shared surfaces and owners
+
+| Surface | Owner | Consumers |
+|---|---|---|
+| Witness closing on the checker's surface | C1 | C3, lowering |
+| The flow IR and its entry (`rules/flow/`) | C1 | `dropped.ts`, `data-kinds.ts`, C3, C4, C5 |
+| Annotations: generic, scoped, on struct declarations | C2 | tools, the boundary's annotations |
+| `Holds` read by `heldPartsOf`; `keepsOf(extern)`; the `lifetimes` module | C2 | C3, sendability, must-use, the audit |
+| `Diagnostic`'s related locations | C3 | expansion, the LSP, the CLI |
+| `reachesDisposable(type)` and the Definition's `counted` flag | C3 | R3, lowering |
+| Summaries, requirements, field labels and the plain-function seam | C3 | C4 |
+| Edges by root, and the oracle | R1 | C3's property, R3, C5 |
+| The holder seam, and serial identity | R2 | R3, R4, R5 |
+
+A contract amendment goes to the tech-lead, who decides and tells the affected phases.
+
+**Diagnostic ranges** (checker, `diagnostics/lifetimes.ts`; 5712 is the next free code today):
+
+| Phase | Codes |
+|---|---|
+| C2 | 5750–5759 |
+| C3 | 5720–5739 |
+
+## Verification beyond each phase
+
+- **The oracle** stays in the test runtime for good. It is the ground truth both for the analysis's
+  soundness and for the IR agreeing with lowering.
+- **Properties** over fragment soups (`test/soup.ts`):
+  - accepted programs never trip the oracle;
+  - generic and instantiated verdicts commute;
+  - incremental equals fresh.
+- **Merge reviews:**
+  - after C3, on the invariant, the spec text, and every edge in `holdings.ts` modelled by the
+    analysis;
+  - after R3, on the runtime lane.
