@@ -14,6 +14,11 @@ export interface ForwardRule<State> {
   readonly settled: (earlier: State, later: State) => boolean;
   /** The state after `operation`, run from `state`. */
   readonly operation: (operation: Operation, state: State) => State;
+  /**
+   * The state a block's operations start from, given what reaches it: a copy, for a rule whose
+   * operations update their state in place rather than make a new one.
+   */
+  readonly enter?: (state: State) => State;
 }
 
 /**
@@ -31,7 +36,8 @@ export function runForward<State>(
   for (const block of pending) {
     pending.delete(block);
     const { operations, exit } = flow.blocks[block] ?? { operations: [], exit: stop };
-    const start = reaching[block] as State;
+    const reached = reaching[block] as State;
+    const start = rule.enter === undefined ? reached : rule.enter(reached);
     const state = operations.reduce(
       (before, operation) => rule.operation(operation, before),
       start,

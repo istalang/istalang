@@ -23,10 +23,9 @@
  */
 
 import type { Diagnostic } from '../../../../foundation/diagnostics/diagnostic.ts';
-import {
-  type LanguageModule,
-  type WellKnownDeclaration,
-  wellKnown,
+import type {
+  LanguageModule,
+  WellKnownDeclaration,
 } from '../../../../foundation/language/well-known/index.ts';
 import { Entries, type EntryTable } from '../../../../foundation/structures/entries/index.ts';
 import { unreachable } from '../../../../foundation/structures/unreachable.ts';
@@ -85,6 +84,7 @@ import { Annotations } from '../../rules/annotations.ts';
 import { JsonForms } from '../../rules/boundary/json-forms.ts';
 import { Expansion } from '../../rules/expansion/functions.ts';
 import { externHeldOf, keepsOf } from '../../rules/lifetimes/externs.ts';
+import { Lifetimes } from '../../rules/lifetimes/lifetimes.ts';
 import type { CheckedBody } from '../../surface/checked-body.ts';
 import { type Fit, type Fitting, fitOf } from '../../types/fitting/fit/index.ts';
 import { typeKeys } from '../../types/identity/type-keys.ts';
@@ -106,6 +106,7 @@ import type {
   StructConstraintModel,
 } from '../../types/type/struct-constraint.ts';
 import type { TypeRules } from '../../types/type/type-rules.ts';
+import { cellTypeOf } from '../../types/type/well-known.ts';
 import type { StaticOwner } from '../../types/written/named-types.ts';
 import { resolveTypeNode } from '../../types/written/resolve-type.ts';
 import type { TypeMatchQueries } from '../../types/written/type-match.ts';
@@ -168,6 +169,7 @@ export class ProgramChecker implements CheckerContext {
   readonly traitObjects: TraitObjects;
   readonly rootGoals: RootGoals;
   readonly lookup: Lookup;
+  #lifetimes: Lifetimes | undefined;
 
   constructor(program: Program, { previous, tentative = false, observe }: CheckerOptions = {}) {
     if (!tentative) {
@@ -228,6 +230,11 @@ export class ProgramChecker implements CheckerContext {
     this.traitObjects = traitObjectsOf(this);
     this.rootGoals = programRootGoals(this, rootSearches);
     this.lookup = new Lookup(this);
+  }
+
+  get lifetimes(): Lifetimes {
+    this.#lifetimes ??= new Lifetimes(this);
+    return this.#lifetimes;
   }
 
   /** Checks a function's body, which must produce `declaredResult` if given. */
@@ -301,15 +308,7 @@ export class ProgramChecker implements CheckerContext {
     return this.#parameters.defaultsOf(declaration);
   }
 
-  cellOf(type: Type): NominalType {
-    const cell = this.wellKnownType(wellKnown.cell, [type]);
-    if (cell === undefined) {
-      unreachable(
-        "A variable needs a cell (passed by '&' or shared with a closure) in a program without a prelude.",
-      );
-    }
-    return cell;
-  }
+  readonly cellOf = (type: Type): NominalType => cellTypeOf(this, type);
 
   /** An arrow, so the relation can be passed around on its own (rules/agreement.ts). */
   readonly fitOf = (found: Type, expected: Type): Fit | undefined =>

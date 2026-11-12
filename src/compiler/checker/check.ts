@@ -27,7 +27,7 @@ import type {
 } from '../syntax/declarations/index.ts';
 import type { Parameter } from '../syntax/expressions/index.ts';
 import type { VariableDeclaration } from '../syntax/statements/index.ts';
-import type { Identifier } from '../syntax/tree/node.ts';
+import type { Identifier, NodeOf } from '../syntax/tree/node.ts';
 import type { FieldDeclaration } from '../syntax/types/index.ts';
 import type { AnnotationQueries } from './surface/checked-annotation.ts';
 import type { CheckedBody } from './surface/checked-body.ts';
@@ -88,6 +88,26 @@ export interface ContextConstantQueries {
 }
 
 /** A program's types, as its later phases read them. */
+/**
+ * Where the lifetime rule finds a cycle may close through a disposable (design.md §7): a write, a
+ * call whose callee's write would, an escaping closure or a witness whose would, in `function`.
+ */
+export interface LifetimeFinding {
+  readonly kind: 'write' | 'call' | 'closure' | 'witness';
+  readonly site: NodeOf<string>;
+  /** What holds the cycle: the type of the holder written, or of what is written into it. */
+  readonly holderType: Type;
+  readonly callee: FunctionDeclaration | undefined;
+  readonly function: FunctionDeclaration;
+}
+
+export interface LifetimeQueries {
+  /** Whether values of `type` may reach a disposable: what the runtime counts (design.md §9.1). */
+  readonly reachesDisposable: (type: Type) => boolean;
+  /** What the rule finds in `module`'s functions, in their order. */
+  readonly findingsOf: (module: ModuleId) => readonly LifetimeFinding[];
+}
+
 export interface Checker {
   readonly program: Program;
   readonly bindings: Bindings;
@@ -208,6 +228,8 @@ export interface Checker {
     type: Type,
   ) => readonly Type[] | undefined;
   /** What tools ask by position: what names denote, the body holding a node (lookup/). */
+  /** Static lifetimes (rules/lifetimes/): what reaches a disposable, and what the rule finds. */
+  readonly lifetimes: LifetimeQueries;
   readonly lookup: LookupQueries;
 }
 

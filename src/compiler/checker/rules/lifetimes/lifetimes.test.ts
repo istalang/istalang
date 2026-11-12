@@ -1,0 +1,127 @@
+/**
+ * The lifetime rule on design.md §12's examples: what builds structures, appends, replies, links
+ * generically and reaches through weak references is accepted, and every write or call that may
+ * close a cycle through a disposable is found where it closes.
+ */
+
+import { describe, expect, it } from 'vitest';
+import { findingsIn } from './lifetimes.test-kit.ts';
+
+const lease = [
+  'shared struct Lease:',
+  '  n: Int',
+  'fn dispose(self: Lease): ()',
+  'shared struct Node:',
+  '  lease: Lease',
+  '  next: Node? = none',
+].join('\n');
+
+/** `body` as the body of `fn subject`, after the lease declarations and `declarations`. */
+function inSubject(body: string, declarations: readonly string[] = []): string {
+  return [
+    lease,
+    ...declarations,
+    'ista fn subject():',
+    ...body.split('\n').map((line) => `  ${line}`),
+  ].join('\n');
+}
+
+describe('the lifetime rule', () => {
+  it('accepts a list built in a loop', () => {
+    const source = inSubject(
+      [
+        'let prev: Node? = none',
+        'for i in 0..3:',
+        '  prev = new Node{lease: new Lease{n: i}, next: prev}',
+      ].join('\n'),
+    );
+    expect(findingsIn(source)).toEqual([]);
+  });
+
+  it('accepts appending at the tail through a fresh node', () => {
+    const source = inSubject(
+      [
+        'let tail = new Node{lease: new Lease{n: 0}}',
+        'for i in 0..3:',
+        '  const n = new Node{lease: new Lease{n: i}}',
+        '  tail->next = n',
+        '  tail = n',
+      ].join('\n'),
+    );
+    expect(findingsIn(source)).toEqual([]);
+  });
+
+  it('finds a node written into itself, and through a function linking two', () => {
+    const source = inSubject(
+      ['const a = new Node{lease: new Lease{n: 0}}', 'a->next = a', 'link(a, a)'].join('\n'),
+      ['fn link(x: Node, y: Node): x->next = y'],
+    );
+    expect(findingsIn(source)).toEqual(['10:write', '11:call']);
+  });
+
+  it('finds a parent pointer', () => {
+    const source = inSubject(
+      [
+        'const node = new Node{lease: new Lease{n: 0}}',
+        'const child = new Node{lease: new Lease{n: 1}}',
+        'node->next = child',
+        'child->next = node',
+      ].join('\n'),
+    );
+    expect(findingsIn(source)).toEqual(['11:write']);
+  });
+
+  it('finds an async call written into what it holds', () => {
+    const source = inSubject(
+      ['const s = new Shared<Future<Unit, "ista">?>{value: none}', 's->value = worker(s)'].join(
+        '\n',
+      ),
+      ['ista async fn worker(s: Shared<Future<Unit, "ista">?>) -> Unit: ()'],
+    );
+    expect(findingsIn(source)).toEqual(['10:write']);
+  });
+
+  it("finds a slot's own pending take put into it", () => {
+    const source = inSubject(
+      [
+        'const s = Slot.create<Pending>()',
+        'const t = s.take()',
+        '_ = s.put(Pending{take: t})',
+      ].join('\n'),
+      ['struct Pending:', '  take: Future<Pending, "ista">'],
+    );
+    expect(findingsIn(source)).toEqual(['12:call']);
+  });
+
+  it('accepts a generic link used with a value', () => {
+    const source = inSubject(['const s = new Shared<Int?>{value: none}', 'link(s, 3)'].join('\n'), [
+      'fn link<T>(a: Shared<T?>, b: T): a->value = b',
+    ]);
+    expect(findingsIn(source)).toEqual([]);
+  });
+
+  it('accepts a closure calling itself through its captured `let`', () => {
+    const source = inSubject('let f: fn() -> Int = fn: f()\ndrop f()');
+    expect(findingsIn(source)).toEqual([]);
+  });
+
+  it('finds a closure holding a disposable written into its own cell', () => {
+    const source = inSubject(
+      [
+        'const l = new Lease{n: 1}',
+        'let f: fn() -> Int = fn: l->n',
+        'f = fn: l->n + f()',
+        'drop f()',
+      ].join('\n'),
+    );
+    expect(findingsIn(source)).toEqual(['10:write']);
+  });
+
+  it('accepts a cycle that reaches no disposable', () => {
+    const source = inSubject(['const r = new Ring{}', 'r->next = r'].join('\n'), [
+      'shared struct Ring:',
+      '  next: Ring? = none',
+    ]);
+    expect(findingsIn(source)).toEqual([]);
+  });
+});

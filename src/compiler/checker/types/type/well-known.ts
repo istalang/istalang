@@ -9,11 +9,12 @@ import {
   type WellKnownDeclaration,
   wellKnown,
 } from '../../../../foundation/language/well-known/index.ts';
+import { unreachable } from '../../../../foundation/structures/unreachable.ts';
 import type { TraitDeclaration } from '../../../syntax/declarations/index.ts';
 import type { Checker } from '../../check.ts';
 import type { CheckerContext } from '../../contexts/context.ts';
 import type { AwaitedType, Futures } from './function-types.ts';
-import type { Type } from './index.ts';
+import type { NominalType, Type } from './index.ts';
 import { errorType } from './primitives.ts';
 
 /**
@@ -45,6 +46,17 @@ export function wellKnownOf(
  * `Future<T, K>`, what an async call of kind `mode` gives; the error type in a program without a
  * prelude.
  */
+/** `_Cell<T>`, what a variable passed by `&` or shared with a closure lives in. */
+export function cellTypeOf(checker: Pick<Checker, 'wellKnownType'>, type: Type): NominalType {
+  const cell = checker.wellKnownType(wellKnown.cell, [type]);
+  if (cell === undefined) {
+    unreachable(
+      "A variable needs a cell (passed by '&' or shared with a closure) in a program without a prelude.",
+    );
+  }
+  return cell;
+}
+
 export function futureOf(checker: Pick<Checker, 'wellKnownType'>, value: Type, mode: Type): Type {
   return wellKnownOf(checker, wellKnown.future, [value, mode]);
 }
