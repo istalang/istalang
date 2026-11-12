@@ -134,8 +134,11 @@ Branches, loops, labels and the ruled-out code of `FlowDecisions` shape the grap
 
 - **Semantics, not layout.** No registers, offsets or instance-specific shapes. The IR is generic:
   `CheckedBody` gives calls as checked, not substituted. Lowering derives layout later (AGENTS.md).
-- **First clients:** `dropped.ts` and `data-kinds.ts` move onto it, which proves it covers every
-  construct. `forward.ts` is deleted.
+- **First client:** `dropped.ts` moves onto it, and `forward.ts` is deleted. `data-kinds.ts` stays
+  a walk of the tree: its rule reports the first refused value in a function's text, an order the
+  IR doesn't keep. A sweep proves the IR covers every construct instead
+  (`rules/flow/flow.sweep.test.ts`): each expression checking typed has a value at its node, and
+  each call `madeCalls()` lists is a call of the IR.
 - **Lowering moves onto it last** (plan C5), together with eliding redundant retain/release pairs,
   which needs the same IR. Until then the oracle (§9.2) catches any disagreement between the IR and
   lowering.

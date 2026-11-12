@@ -1,5 +1,5 @@
 ---
-description: checker-lane code tour for static lifetimes — what a checked body gives the flow IR, the flow code it replaces, where witness closing lives and what C1 moves, diagnostics and the related locations C3 adds, how annotations are parsed, bound, placed and checked, and what C2 landed, where the analysis plugs in and what it reads, the counted flag's path into the Definition, the code the rule rejects, the editor's benches and the tests; read before planning, implementing or examining C1, C2, C3, C4 or C5
+description: checker-lane code tour for static lifetimes — what a checked body gives the flow IR, the IR and its builder, where witness closing lives, diagnostics and the related locations C3 adds, how annotations are parsed, bound, placed and checked, and what C2 landed, where the analysis plugs in and what it reads, the counted flag's path into the Definition, the code the rule rejects, the editor's benches and the tests; read before planning, implementing or examining C1, C2, C3, C4 or C5
 owner: tech-lead
 status: active
 applies_to: checker, binder, parser, lowering, stdlib, corpus, editor diagnostics, cli report
@@ -10,7 +10,7 @@ tags: [lifetimes, flow-analysis, checker, annotations, tour]
 
 # Static lifetimes: checker tour
 
-Read against `main` at `41160c33`; no file under `src/` or `test/` changed since `67d50e5b`. The
+Read against `main` at `41160c33`, and the sections marked landed against their phase's merge. The
 rules are in [design.md](design.md) and the phases in [plan.md](plan.md). The units to call are in
 `docs/reuse/types-and-fitting.md` and `docs/reuse/calls-and-resolution.md`. Paths are under
 `src/compiler/checker/` unless they say otherwise.
@@ -65,7 +65,7 @@ rules are in [design.md](design.md) and the phases in [plan.md](plan.md). The un
   std modules (`src/compiler/compile.ts`). Std must check clean, which only
   `src/stdlib/std-modules.test.ts` asserts.
 
-## What a checked body gives (C1's inputs)
+## What a checked body gives (the IR's inputs)
 
 `CheckedBody` (`surface/checked-body.ts`) holds every fact lowering reads, so the IR reads the same
 facts and derives nothing again. Calls come as checked, not substituted.
@@ -93,15 +93,42 @@ suits a generic IR.
 
 The node kinds are in `src/compiler/syntax/expressions/index.ts` and `syntax/statements/index.ts`.
 
-## Flow today (C1)
+## The flow IR (C1, landed)
 
-- **`rules/flow/forward.ts`** is the one model of the order code runs in. It is a syntax walker whose
-  rules see names, whole assignments and `drop` (`FlowRule`), with an exhaustive table of how each
-  construct runs. It has one client, `rules/disposal/dropped.ts`.
-- **`rules/flow/flow-decisions.ts`** (`FlowDecisions`) records ruled-out bodies, the operands an
-  operation stops at, and conditions' decided values, per pass. Lowering reads it.
-- **`rules/kinds/data-kinds.ts`** walks every value a checked body computes, for the data rule.
-- C1 replaces `forward.ts` with the IR, and moves `dropped.ts` and `data-kinds.ts` onto it.
+- **The model** is `rules/flow/flow-ir.ts`: per function (`FlowFunction`), its values (a variable
+  the body declares, a global, or a temporary of a node), and blocks of operations ending in an
+  `Exit` (`goto`, `branch`, `return`, `stop`). A closure's function is held by its `make`.
+  - A use of a variable is a `copy` out of it at its name; a place (`Place`: a root value and
+    `Part`s) passed by `&` or written names its root's variable. Any operation writing `into` a
+    variable declares or assigns it.
+  - Releases: a block's variables at its end and where an exit leaves it, a `hold`'s at the scope it
+    names; `drop` is a `release` of reason `drop`. A `return` releases everything; a temporary
+    ends with its statement and an assignment ends what its variable held, with no operation.
+  - `unknown` is code checking found a mistake in: its operands run, its value is unknown.
+- **The builder** is `rules/flow/build/`: `flowOf(inputs, root, parameters)`, memoized on the
+  `CheckedBody`, reading only the body's facts, `bindings`, `parametersOf` and local functions'
+  bodies (`FlowInputs`). `index.ts` builds every expression alike: a `Never` operand stops the path
+  (`stopsAt`), the outermost link of an optional chain opens it (`chains.ts`), its value is a
+  temporary of its node, and a fitted value is copied into one of the expected type with its
+  `Fit`. `expressionFlows` and `statementFlows` are exhaustive by kind; the rest is per construct
+  (`calls.ts`, `places.ts`, `parts.ts`, `literals.ts`, `loops.ts`, `control.ts`).
+  - Calls follow lowering: arguments in the order written, a `&` argument or `&self` receiver a
+    place, an element reached through `index` and written back with the implicit `write`; a
+    deferred call computes now by value and makes a closure of a function making the call later.
+  - A field loop is a loop whose each pass may follow any, read in that pass's view (`inView`).
+  - Decided conditions (`decidedOf`) and ruled-out bodies (`isRuledOut`) shape the graph; code no
+    path reaches is kept in blocks nothing jumps to.
+- **Rules:** `rules/flow/solve.ts` `runForward` runs a forward rule to a fixed point.
+  `rules/disposal/dropped.ts` is the first, run once a body is checked (`BodyChecker.#finished`).
+- **Coverage:** `rules/flow/flow.sweep.test.ts` checks, over the corpus and the spec's fences,
+  that each typed expression has a value at its node or is part of a place, and that each made
+  call is an IR call (but an element's unread `index` and a wildcard's array reads).
+- **`data-kinds.ts` stays a tree walk** (decided 2026-11-12): it reports the first refused value
+  in a function's text, an order the IR doesn't keep, across segments of a local `fn`'s body.
+- **`iterationOf`** answers undefined for an iteration never checked; lowering asserts it
+  (`lowering/constructs/loops/iteration.ts` `iterationFormOf`).
+- **Cost:** on 2026-11-12 the IR and `dropped` took 1.1% of `profile:check`'s fb-warm and 2.4% of
+  decimal16 (the old walker 0.6% and 1.2%); the warm edit stayed within noise. C3 adds to this.
 
 ## Witness closing (C1, landed)
 

@@ -28,7 +28,7 @@ tags: [tracker]
 | Identity, variance and inference (`docs/work/variance-inference/plan.md`; closed F25) | done |
 | Proposal 8, live and ista async (`docs/work/async-kinds/plan.md`; merge review closed every finding, Q52–Q55 left) | done |
 | Proposal 9, native runtime (`docs/proposals/9-native-runtime.md`), beyond async-kinds CX's minimal slice | not planned: a plan of its own |
-| Static lifetimes (`docs/work/static-lifetimes/plan.md`) | in progress: C2 done |
+| Static lifetimes (`docs/work/static-lifetimes/plan.md`) | in progress: C1 and C2 done |
 | M8 Packages | planned |
 
 ## Filed

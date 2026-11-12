@@ -28,11 +28,15 @@ import { handlerOf } from '../../../../foundation/structures/kind-table.ts';
 import { unreachable } from '../../../../foundation/structures/unreachable.ts';
 import type { Entity, VariantEntity } from '../../../binder/entities.ts';
 import type { ModuleId } from '../../../program/program.ts';
-import type { Expression, FieldHeader, IndentedValue } from '../../../syntax/expressions/index.ts';
+import type {
+  Expression,
+  FieldHeader,
+  IndentedValue,
+  Parameter,
+} from '../../../syntax/expressions/index.ts';
 import type { BuiltLiteral } from '../../../syntax/expressions/literals/indented-values.ts';
 import { unparenthesized } from '../../../syntax/expressions/readings.ts';
 import type { Block, Statement, VariableDeclaration } from '../../../syntax/statements/index.ts';
-import type { SyntaxNode } from '../../../syntax/tree/index.ts';
 import type { Identifier, Invalid } from '../../../syntax/tree/node.ts';
 import type { AnchoredSpan } from '../../../syntax/tree/positions.ts';
 import type { TypeNode } from '../../../syntax/types/index.ts';
@@ -72,6 +76,7 @@ import { blockTail } from '../../rules/agreement.ts';
 import { recordOutcomeCodecs } from '../../rules/boundary/outcome-codecs.ts';
 import { checkDisposeUses } from '../../rules/disposal/disposal.ts';
 import { checkDropped } from '../../rules/disposal/dropped.ts';
+import { flowOf } from '../../rules/flow/build/index.ts';
 import { FlowDecisions } from '../../rules/flow/flow-decisions.ts';
 import { freshLiteralOf } from '../../rules/placeholders.ts';
 import { checkTestingCalls } from '../../rules/testing.ts';
@@ -153,7 +158,12 @@ export class BodyChecker implements BodyContext {
     }
     declareOwnCall(this);
     const tail = this.block(body, this.#result.declared);
-    return this.#finished([body], this.#result.result(this, blockTail(body, tail)));
+    const result = this.#result.result(this, blockTail(body, tail));
+    return this.#finished(
+      [body],
+      result,
+      parameters.map((parameter) => parameter.node),
+    );
   }
 
   /**
@@ -179,16 +189,25 @@ export class BodyChecker implements BodyContext {
     return this.#finished([declaration.initializer], value);
   }
 
-  /** The body checked from `roots`, after the rules over a whole body ran on it. */
-  #finished(roots: readonly SyntaxNode[], result: Type): CheckedBody {
+  /**
+   * The body checked from `roots`, the first taking `parameters`, after the rules over a whole
+   * body ran on it: those over its calls, then those over its flow (rules/flow/).
+   */
+  #finished(
+    roots: readonly (Block | Expression)[],
+    result: Type,
+    parameters: readonly Parameter[] = [],
+  ): CheckedBody {
     this.variables.warnUnchanged(this);
-    for (const root of roots) {
-      checkDropped(this, root);
-    }
     const calls = this.calls.entries();
     checkDisposeUses(this, calls, checkTestingCalls(this, calls));
     recordOutcomeCodecs(this, calls);
-    return checkedAt({ records: this.#records, units: this, result }, this.#passes.root);
+    const body = checkedAt({ records: this.#records, units: this, result }, this.#passes.root);
+    const inputs = { checker: this.checker, module: this.module, body };
+    for (const root of roots) {
+      checkDropped(this, flowOf(inputs, root, root === roots[0] ? parameters : []));
+    }
+    return body;
   }
 
   admitsOf(node: Expression): Admits | undefined {
