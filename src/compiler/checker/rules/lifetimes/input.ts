@@ -1,8 +1,7 @@
 /**
  * What a call gives a body, by position (design.md §5.3): its parameters, a closure's captures and
  * the cells of the captured `let`s, its own closure, the globals it names, and the parts of those
- * a body reads (design.md §5.7). Summaries, and what each instantiation decides (symbolic.ts),
- * name them; never nodes or spans, so an edit that keeps a function's effects keeps its summary.
+ * a body reads (design.md §5.7). Summaries name them; never nodes or spans, so an edit that keeps a function's effects keeps its summary.
  */
 
 import type { VariableEntity } from '../../../binder/entities.ts';
@@ -61,4 +60,10 @@ export function inputKey(input: Input): string {
     default:
       return `${input.kind}:${input.index}`;
   }
+}
+
+/** Two inputs a requirement names: what may not come to reach (or share with) what. */
+export interface InputPair {
+  readonly holder: Input;
+  readonly value: Input;
 }

@@ -8,7 +8,6 @@ import type { Binding } from '../../surface/resolved-call.ts';
 import type { Type } from '../../types/type/index.ts';
 import type { Input } from './input.ts';
 import { emptySummary, mappedCycle, type Summary } from './summary.ts';
-import { mappedByTypes, mappedSymbolic } from './symbolic.ts';
 
 /**
  * `summary` over the inputs `binding` gives its parameters: each parameter the one its source
@@ -63,8 +62,6 @@ export function boundBy(
           ];
     }),
     always: summary.always.map((cycle) => mappedCycle(cycle, substitute)),
-    symbolic: summary.symbolic.map((call) => mappedSymbolic(call, mapped)),
-    byTypes: summary.byTypes.map((checked) => mappedByTypes(checked, substitute)),
     callReach: inputs(summary.callReach),
     leaks: inputs(summary.leaks),
     calls: inputs(summary.calls),
@@ -82,8 +79,6 @@ export function joinedSummaries(summaries: readonly Summary[]): Summary {
       watched: joined.watched || each.watched,
       requirements: [...joined.requirements, ...each.requirements],
       always: [...joined.always, ...each.always],
-      symbolic: [...joined.symbolic, ...each.symbolic],
-      byTypes: [...joined.byTypes, ...each.byTypes],
       callReach: [...joined.callReach, ...each.callReach],
       leaks: [...joined.leaks, ...each.leaks],
       unseen: joined.unseen || each.unseen,

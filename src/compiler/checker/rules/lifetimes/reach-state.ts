@@ -7,6 +7,10 @@
  * - **`a ⇝ b` (reach):** some handle reachable through what `a` holds is one `b` holds directly.
  *   **Alias:** `a` and `b` hold one handle directly. **Share:** they reach one handle at all, so
  *   reach and alias imply share. All are may-relations: a pair absent is a pair that can't hold.
+ * - **Read out of:** what a value was read out of, and what that was, kept whole when a temporary
+ *   in between ends. Share has no direction, and `a ⇝ b` holds both for a part `b` read out of
+ *   `a` and for a value `b` written into `a`; only the part's reach is some of `a`'s
+ *   (`carriedBy`). A relation by types may be either, so it is both.
  * - **Escaped:** what callers, other executions or unseen code may also reach.
  * - **Updates are weak.** A node's own relations are replaced only when it is given a new value
  *   (`fresh`); what a write adds to what reaches its holder is only ever added, since the holder's
@@ -35,6 +39,7 @@ export class ReachState {
   readonly #reach: Pairs = new Map();
   readonly #alias: Pairs = new Map();
   readonly #share: Pairs = new Map();
+  readonly #wholes: Pairs = new Map();
   readonly #escaped = new Set<NodeId>();
   readonly #leaked = new Set<NodeId>();
   readonly #live = new Set<NodeId>();
@@ -57,6 +62,7 @@ export class ReachState {
     joined(this.#reach, other.#reach);
     joined(this.#alias, other.#alias);
     joined(this.#share, other.#share);
+    joined(this.#wholes, other.#wholes);
     for (const each of other.#escaped) {
       this.#escaped.add(each);
     }
@@ -75,6 +81,7 @@ export class ReachState {
       countOf(this.#reach) +
       countOf(this.#alias) +
       countOf(this.#share) +
+      countOf(this.#wholes) +
       this.#escaped.size +
       this.#leaked.size +
       this.#live.size
@@ -114,6 +121,32 @@ export class ReachState {
     return first === second || (this.#share.get(first)?.has(second) ?? false);
   }
 
+  /**
+   * Whether `whole` reaching something may be `value` reaching it: `value` is it, reaches it, was
+   * read out of it, or shares with it other than by `whole` reaching it, as a value written into
+   * `whole` does, whose own reach is none of `whole`'s.
+   */
+  carriedBy(value: NodeId, whole: NodeId): boolean {
+    return (
+      this.aliases(value, whole) ||
+      this.reaches(value, whole) ||
+      [whole, ...this.aliasesOf(whole)].some((each) => this.#wholes.get(value)?.has(each)) ||
+      (this.shares(value, whole) && !this.reaches(whole, value))
+    );
+  }
+
+  /** `part` may be read out of `whole`: of what `whole` and its aliases are, and were read out of. */
+  addWhole(part: NodeId, whole: NodeId): void {
+    for (const each of [whole, ...this.aliasesOf(whole)]) {
+      if (each !== part) {
+        added(this.#wholes, part, each);
+        for (const outer of this.#wholes.get(each) ?? []) {
+          added(this.#wholes, part, outer);
+        }
+      }
+    }
+  }
+
   /** Whether `value` may reach or be what `holder` holds directly: writing it in closes a cycle. */
   closes(holder: NodeId, value: NodeId): boolean {
     return this.reaches(value, holder) || this.aliases(value, holder);
@@ -136,7 +169,7 @@ export class ReachState {
 
   /** Ends `node`'s value: it relates to nothing, and is no longer live. */
   kill(node: NodeId): void {
-    for (const pairs of [this.#reach, this.#alias, this.#share]) {
+    for (const pairs of [this.#reach, this.#alias, this.#share, this.#wholes]) {
       pairs.delete(node);
       for (const related of pairs.values()) {
         related.delete(node);
@@ -210,6 +243,9 @@ export class ReachState {
     for (const each of this.sharesOf(part).filter(kept)) {
       this.addShare(into, each);
     }
+    for (const each of this.#wholes.get(part) ?? []) {
+      added(this.#wholes, into, each);
+    }
     if (this.#escaped.has(part)) {
       this.#escaped.add(into);
     }
@@ -249,6 +285,7 @@ export class ReachState {
     const sharing = [...this.#live].filter((each) => kept(each) && this.shares(each, from));
     const shared = this.sharesOf(from).filter(kept);
     this.addReach(from, into);
+    this.addWhole(into, from);
     for (const each of reached) {
       this.addReach(into, each);
       this.addAlias(into, each);
@@ -270,6 +307,7 @@ export class ReachState {
    */
   readPart(into: NodeId, from: NodeId, apart?: ReadonlySet<NodeId>): void {
     this.addAlias(into, from);
+    this.addWhole(into, from);
     this.#contained(into, from, apart);
   }
 

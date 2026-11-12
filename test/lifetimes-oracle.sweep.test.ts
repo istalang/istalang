@@ -24,6 +24,16 @@ const declarations = [
   '  next: Node? = none',
   '  call: Future<Unit, "ista">? = none',
   '  hook: ista fn() -> Unit = fn(): ()',
+  'shared struct Parent { child: Child? = none, next: Parent? = none }',
+  'fn dispose(self: Parent): ()',
+  'shared struct Child { parent: Parent? = none }',
+  'struct Pair { p: Parent, ch: Child }',
+  'shared struct GlobNode { lease: Lease, box: Shared<GlobNode?> }',
+  'ista const globalBox = new Shared<GlobNode?>{value: none}',
+  'trait Linker:',
+  '  ista fn connect(self: Self, x: Node, y: Node)',
+  'struct Impl',
+  'ista fn connect(self: Impl, x: Node, y: Node): x->next = y',
   'ista async fn holding(n: Node): await runtime.commit()',
   'ista fn link(x: Node, y: Node): x->next = y',
   'live async fn main() -> Int: await runtime.run(runtime.id()) _main()',
@@ -138,11 +148,7 @@ const cyclicPrograms: readonly CyclicCase[] = [
       '  case None: ()',
       '  case n: p->next = n',
     ],
-    extra: [
-      'shared struct Parent { next: Parent? = none }',
-      'fn dispose(self: Parent): ()',
-      'ista fn unwrapWeak(w: WeakRef<Parent>) -> Parent?: w.deref()',
-    ],
+    extra: ['ista fn unwrapWeak(w: WeakRef<Parent>) -> Parent?: w.deref()'],
   },
   {
     name: '`WeakRef.deref()` across distinct parent and child handle types',
@@ -153,9 +159,6 @@ const cyclicPrograms: readonly CyclicCase[] = [
       'linkWeak(ch, WeakRef(p))',
     ],
     extra: [
-      'shared struct Parent { child: Child? = none }',
-      'fn dispose(self: Parent): ()',
-      'shared struct Child { parent: Parent? = none }',
       'ista fn linkWeak(ch: Child, w: WeakRef<Parent>):',
       '  match w.deref():',
       '    case None: ()',
@@ -171,9 +174,6 @@ const cyclicPrograms: readonly CyclicCase[] = [
       'drop new BadDispose{p, ch}',
     ],
     extra: [
-      'shared struct Parent { child: Child? = none }',
-      'fn dispose(self: Parent): ()',
-      'shared struct Child { parent: Parent? = none }',
       'shared struct BadDispose { p: Parent, ch: Child }',
       'fn dispose(self: BadDispose): self->ch->parent = self->p',
     ],
@@ -188,12 +188,6 @@ const cyclicPrograms: readonly CyclicCase[] = [
       'f = fn(pair: Pair): { pair.ch->parent = pair.p; () }',
       'f(Pair{p, ch})',
     ],
-    extra: [
-      'shared struct Parent { child: Child? = none }',
-      'fn dispose(self: Parent): ()',
-      'shared struct Child { parent: Parent? = none }',
-      'struct Pair { p: Parent, ch: Child }',
-    ],
   },
   {
     name: 'a function named as a value writing into a context constant',
@@ -202,11 +196,7 @@ const cyclicPrograms: readonly CyclicCase[] = [
       'const f = stashGlob',
       'f(n)',
     ],
-    extra: [
-      'shared struct GlobNode { lease: Lease, box: Shared<GlobNode?> }',
-      'ista const globalBox = new Shared<GlobNode?>{value: none}',
-      'ista fn stashGlob(n: GlobNode): globalBox->value = n',
-    ],
+    extra: ['ista fn stashGlob(n: GlobNode): globalBox->value = n'],
   },
   {
     name: 'a generic function writing through an unreduced `type match`',
@@ -234,13 +224,7 @@ const cyclicPrograms: readonly CyclicCase[] = [
   {
     name: 'a call through `any` converted in a top-level `const` lambda',
     body: ['const l = makeLinker()', 'l.connect(a, a)'],
-    extra: [
-      'trait Linker:',
-      '  ista fn connect(self: Self, x: Node, y: Node)',
-      'struct Impl',
-      'ista fn connect(self: Impl, x: Node, y: Node): x->next = y',
-      'const makeLinker = fn() -> any Linker: Impl',
-    ],
+    extra: ['const makeLinker = fn() -> any Linker: Impl'],
   },
   {
     name: 'a call through `any` converted part-by-part inside an array',
@@ -248,12 +232,6 @@ const cyclicPrograms: readonly CyclicCase[] = [
       'const raw = [Impl]',
       'const linkers: Array<any Linker> = raw',
       'linkers[0].connect(a, a)',
-    ],
-    extra: [
-      'trait Linker:',
-      '  ista fn connect(self: Self, x: Node, y: Node)',
-      'struct Impl',
-      'ista fn connect(self: Impl, x: Node, y: Node): x->next = y',
     ],
   },
   {
@@ -265,11 +243,90 @@ const cyclicPrograms: readonly CyclicCase[] = [
       '  case None: ()',
       '  case l: l.connect(a, a)',
     ],
+  },
+  {
+    name: 'a sync wrapper forwarding `&` to an async call',
+    body: ['let f: Future<Unit, "ista">? = none', 'f = startHold(&f)'],
     extra: [
-      'trait Linker:',
-      '  ista fn connect(self: Self, x: Node, y: Node)',
-      'struct Impl',
-      'ista fn connect(self: Impl, x: Node, y: Node): x->next = y',
+      'ista async fn holdRef(x: &Future<Unit, "ista">?): await runtime.commit()',
+      'ista fn startHold(x: &Future<Unit, "ista">?) -> Future<Unit, "ista">: holdRef(&x)',
+    ],
+  },
+  {
+    name: 'an async lambda called as a value with `&`',
+    body: [
+      'const g = ista async fn(x: &Future<Unit, "ista">?): await runtime.commit()',
+      'let f: Future<Unit, "ista">? = none',
+      'f = g(&f)',
+    ],
+  },
+  {
+    name: 'a symbolic requirement call linking two fields of `self`',
+    body: [
+      'const p = new Parent{}',
+      'const ch = new Child{}',
+      'p->child = ch',
+      'runSelfLink(Pair{p, ch})',
+    ],
+    extra: [
+      'trait SelfLinker:',
+      '  fn linkSelf(self: Self)',
+      'fn linkSelf(self: Pair): self.ch->parent = self.p',
+      'fn runSelfLink<T is SelfLinker>(x: T): x.linkSelf()',
+    ],
+  },
+  {
+    name: 'a symbolic requirement call writing into a context constant',
+    body: ['const n = new GlobNode{lease: new Lease{n: 1}, box: globalBox}', 'runStash(n)'],
+    extra: [
+      'trait Stasher:',
+      '  ista fn stash(self: Self)',
+      'ista fn stash(self: GlobNode): globalBox->value = self',
+      'ista fn runStash<T is Stasher>(x: T): x.stash()',
+    ],
+  },
+  {
+    name: 'a generic conversion into `any` whose witness returns its argument',
+    body: ['const id = boxAny(Impl)', 'a->next = id.same(a)'],
+    extra: [
+      'trait Identity:',
+      '  ista fn same(self: Self, n: Node) -> Node',
+      'ista fn same(self: Impl, n: Node) -> Node: n',
+      'fn boxAny<T is Identity>(x: T) -> any Identity: x',
+    ],
+  },
+  {
+    name: 'a nominal struct converted to a shape holding `any`',
+    body: [
+      'const h = Holder{l: Impl}',
+      'const shaped: { l: any Linker } = h',
+      'shaped.l.connect(a, a)',
+    ],
+    extra: ['struct Holder { l: Impl }'],
+  },
+  {
+    name: 'an optional array `Array<Impl>?` converted to `Array<any Linker>?`',
+    body: [
+      'const opt: Array<Impl>? = [Impl]',
+      'const xs: Array<any Linker>? = opt',
+      'xs![0].connect(a, a)',
+    ],
+  },
+  {
+    name: 'a plain function `ista fn() -> Impl` converted to `ista async fn() -> any Linker`',
+    body: [
+      'const f: ista fn() -> Impl = ista fn() -> Impl: Impl',
+      'const g: ista async fn() -> any Linker = f',
+      'const l = await g()',
+      'l.connect(a, a)',
+    ],
+  },
+  {
+    name: 'a contravariant function parameter converting `Impl` into `any Linker`',
+    body: [
+      'const takeAny: ista fn(any Linker) -> Unit = ista fn(l: any Linker): l.connect(a, a)',
+      'const takeImpl: ista fn(Impl) -> Unit = takeAny',
+      'takeImpl(Impl)',
     ],
   },
 ];

@@ -20,7 +20,6 @@ import { escapingCycles, typesBreak } from '../escaping.ts';
 import type { Input } from '../input.ts';
 import type { NodeId, ReachState } from '../reach-state.ts';
 import { mappedCycle, type Requirement, type ResultRelation, type Summary } from '../summary.ts';
-import type { ByTypes } from '../symbolic.ts';
 import {
   type At,
   type Bindings,
@@ -33,7 +32,6 @@ import { type Holder, placeHolds } from './body.ts';
 import { cycleOf } from './cycles.ts';
 import type { FlowState, Given } from './flow-state.ts';
 import type { Owner } from './places.ts';
-import { forwardSymbolic, resolvedWithin } from './symbolic-calls.ts';
 import { relateByTypes } from './unseen.ts';
 
 /** How a call is made: where, giving what, of which callee, and whether it gives its future. */
@@ -46,10 +44,8 @@ export interface CallMade {
 }
 
 /** Applies `summary` at a call binding `bindings`. */
-export function applySummary(at: At, made: CallMade, called: Summary, bindings: Bindings): void {
+export function applySummary(at: At, made: CallMade, summary: Summary, bindings: Bindings): void {
   const { analysis } = at;
-  const { context } = analysis;
-  const summary = made.call === undefined ? called : resolvedWithin(context, called, made.call);
   const bound = (input: Input) => boundIn(at, bindings, input);
   for (const requirement of summary.requirements) {
     checkRequirement(at, made, requirement, bound);
@@ -58,19 +54,12 @@ export function applySummary(at: At, made: CallMade, called: Summary, bindings: 
     const substituted = mappedCycle(cycle, (type) => substitutedAt(at, made, type));
     analysis.violate('instance', made.site, substituted, made.callee);
   }
-  for (const symbolic of summary.symbolic) {
-    forwardSymbolic(at, symbolic, bound);
-  }
-  if (analysis.recording) {
-    for (const checked of summary.byTypes) {
-      analysis.byTypes.set(byTypesKey(context.facts.keyOf, checked), checked);
-    }
-  }
-  if (made.call !== undefined && !context.hasBody(made.call.function)) {
+  if (made.call !== undefined) {
     checkWitnesses(at, made.call, made.site);
   }
   applyEffects(at, summary, bound);
-  giveResult(at, made, summary, bound);
+  const places = [...bindings.values()].flatMap(({ owner }) => ownedBy(owner));
+  giveResult(at, made, summary, { bound, places });
   const given = [...[...bindings.values()].flatMap(({ nodes }) => nodes), made.into];
   for (const node of summary.calls.flatMap((input) => bound(input).nodes)) {
     calledBack(at, node, given, new Set());
@@ -247,9 +236,9 @@ function written(at: At, holder: Bound, value: NodeId, inside: boolean): void {
 }
 
 /**
- * The witnesses `call` gives a callee with no body this rule reads (a native's) are run by it with
- * values the caller doesn't see: each one's writes are checked for any values of its parameters'
- * types (design.md §5.4). A callee with a body calls them symbolically (symbolic-calls.ts).
+ * The witnesses `call` gives its callee are run by it with values the caller doesn't see, as code
+ * its body can't see: each one's writes are checked for any values of its parameters' types
+ * (design.md §5.4).
  */
 function checkWitnesses({ analysis }: At, call: FunctionCall, site: NodeOf<string>): void {
   const { context } = analysis;
@@ -279,14 +268,18 @@ function checkWitnesses({ analysis }: At, call: FunctionCall, site: NodeOf<strin
 }
 
 /**
- * The call's result, related to what it was given as the summary says; an async call's future to
- * what its call may come to reach; and, for a future, what it settles with.
+ * The call's result, related to what it was given as the summary says; to what owns each place it
+ * was given by `&`, which it may keep, as a future an async call it makes does; an async call's
+ * future to what its call may come to reach; and, for a future, what it settles with.
  */
 function giveResult(
   { analysis, state }: At,
   made: CallMade,
   summary: Summary,
-  bound: (input: Input) => Bound,
+  {
+    bound,
+    places,
+  }: { readonly bound: (input: Input) => Bound; readonly places: readonly NodeId[] },
 ): void {
   const { into } = made;
   if (!analysis.nodes.isRelevant(into)) {
@@ -297,6 +290,9 @@ function giveResult(
     for (const node of bound(input).nodes) {
       relate(state, into, { node, relation });
     }
+  }
+  for (const node of places) {
+    relate(state, into, { node, relation: 'reaches' });
   }
   // An async call's frames hold what it was given while it waits, a place's owner among it.
   for (const input of made.isAsync ? summary.callReach : []) {
@@ -373,11 +369,4 @@ export function unknownCall(at: At, into: ValueId, given: readonly NodeId[], uns
     state.reach.escape(into);
   }
   analysis.runUnseen(state, { given, unseen });
-}
-
-/** A key naming what `checked` checks by types, for sets of them. */
-function byTypesKey(keyOf: (type: Type) => string, checked: ByTypes): string {
-  return checked.kind === 'conversion'
-    ? `conversion:${keyOf(checked.member)}:${keyOf(checked.to)}`
-    : `call:${checked.call.function.name.text}:${checked.call.requirement.member}:${checked.call.typeArguments.map(keyOf).join(',')}`;
 }

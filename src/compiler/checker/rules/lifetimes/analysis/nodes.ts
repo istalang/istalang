@@ -5,7 +5,8 @@
  * - **Values** are the function's own (flow-ir.ts `FlowValue`), one node each, as in
  *   Genaim–Zanardini: a variable holds one object at a time, so a loop's object of this pass is
  *   never confused with the last pass's.
- * - **Cells:** a captured `let` (`inCell`) lives in a cell, a handle of its own beside the value.
+ * - **Cells:** a `let` captured or taken by `&` (`inCell`) lives in a cell, a handle of its own beside
+ *   the value.
  * - **Inputs** are what the function was called with (../summary.ts), kept apart from the variables
  *   that start as them, which code may assign; a captured `let`'s cell is its own input.
  * - **Paths** are the parts reads name from a variable, interned by root and part, so reading
@@ -71,8 +72,6 @@ export class Nodes {
   readonly #pathsByRoot = new Map<NodeId, NodeId[]>();
   readonly #relevance = new Map<NodeId, boolean>();
   readonly #lastUses: ReadonlyMap<Operation, readonly ValueId[]>;
-  readonly #captured: ReadonlySet<ValueId>;
-  readonly #heldByCalls: ReadonlySet<ValueId>;
   readonly #assigned: ReadonlySet<ValueId>;
 
   constructor(flow: FlowFunction, facts: TypeFacts) {
@@ -87,41 +86,15 @@ export class Nodes {
         operations.flatMap((operation) => ('into' in operation ? [operation.into] : [])),
       ),
     );
-    this.#captured = new Set(
-      flow.blocks.flatMap(({ operations }) =>
-        operations.flatMap((operation) =>
-          operation.op === 'make' && operation.made.kind === 'closure' ? operation.parts : [],
-        ),
-      ),
-    );
-    this.#heldByCalls = new Set(
-      flow.blocks.flatMap(({ operations }) =>
-        operations.flatMap((operation) =>
-          operation.op === 'call' && operation.call.function.qualifiers.async !== undefined
-            ? operation.arguments.flatMap((argument) =>
-                argument.kind === 'place' ? [argument.place.root] : [],
-              )
-            : [],
-        ),
-      ),
-    );
   }
 
   /**
-   * Whether `value` lives in a cell: a `let` a closure of this body captures, one this function
-   * captured, or one an async call takes by `&`, whose execution holds the cell while it waits
-   * (spec §3.7). A variable another call takes by `&` is in a cell for lowering, but no object
-   * anything else holds once the call returns.
+   * Whether `value` lives in a cell: a `let` a closure captures or a call takes by `&` (`inCell`),
+   * as lowering puts it in one. What holds the cell is what the analysis finds holds it.
    */
   isCell(value: ValueId): boolean {
     const found = this.flow.values[value];
-    return (
-      found?.kind === 'variable' &&
-      found.inCell &&
-      (this.#captured.has(value) ||
-        this.#heldByCalls.has(value) ||
-        this.flow.captures.includes(value))
-    );
+    return found?.kind === 'variable' && found.inCell;
   }
 
   /** What the function was called with, and the globals it reaches through what it calls. */

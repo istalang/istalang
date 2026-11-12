@@ -19,11 +19,9 @@
  */
 
 import type { FunctionCall, RequirementCall } from '../../../surface/resolved-call.ts';
-import { isKnown } from '../../../types/parts/type-parts.ts';
 import type { Type } from '../../../types/type/index.ts';
 import type { Operation } from '../../flow/flow-ir.ts';
 import { boundBy, joinedSummaries } from '../composition.ts';
-import { anyConversionsBetween } from '../dispatch.ts';
 import { escapingCycles } from '../escaping.ts';
 import { type Input, inputKey } from '../input.ts';
 import type { NodeId } from '../reach-state.ts';
@@ -34,7 +32,6 @@ import { applySummary, readGiven, unknownCall } from './calls.ts';
 import { type FlowState, materialize } from './flow-state.ts';
 import { readKindOf } from './nodes.ts';
 import { placeTarget } from './places.ts';
-import { recordSymbolic, resolvedWithin } from './symbolic-calls.ts';
 
 type Of<Kind extends Operation['op']> = Extract<Operation, { op: Kind }>;
 
@@ -44,7 +41,6 @@ const handlers: { readonly [Kind in Operation['op']]: Handler<Kind> } = {
   compute: (at, { into }) => fresh(at, into),
   unknown: (at, { into }) => fresh(at, into),
   copy: (at, operation) => {
-    openConversions(at, operation);
     if (!at.analysis.nodes.isRelevant(operation.into)) {
       return;
     }
@@ -129,9 +125,8 @@ const handlers: { readonly [Kind in Operation['op']]: Handler<Kind> } = {
     if (call.kind === 'requirement') {
       const witnesses = analysis.context.witnessesOf(call);
       if (witnesses === undefined) {
-        // Each instantiation's witness does it (symbolic-calls.ts); until then, code by types.
-        recordSymbolic(at, call, args);
-        unknownCall(at, into, nodesGiven(at, args), false);
+        // Code this body can't see; the witnesses a call gives are checked by types (calls.ts).
+        unknownCall(at, into, nodesGiven(at, args));
       } else {
         dispatchedCall(at, { into, site, arguments: args }, call, witnesses);
       }
@@ -190,38 +185,11 @@ function dispatchedCall(
     const summary = context.calleeSummary(witness);
     return summary === undefined
       ? []
-      : [
-          boundBy(resolvedWithin(context, summary, witness), witness.binding, (type) =>
-            context.substitute(type, witness),
-          ),
-        ];
+      : [boundBy(summary, witness.binding, (type) => context.substitute(type, witness))];
   });
   const isAsync = witnesses.some((witness) => witness.function.qualifiers.async !== undefined);
   const made = { site, into, callee: undefined, call: undefined, isAsync };
   applySummary(at, made, joinedSummaries(summaries), functionBindings(at, call, args));
-}
-
-/**
- * Notes what `copy` puts into an `any` from values of types not known yet, for each instantiation
- * to check against the declaration graph (../symbolic.ts); the rest is the dispatch's (dispatch.ts).
- */
-function openConversions({ analysis }: At, { into, from, fit }: Of<'copy'>): void {
-  const { flow } = analysis.nodes;
-  const [fromType, intoType] = [flow.values[from]?.type, flow.values[into]?.type];
-  if (
-    !analysis.recording ||
-    fit === undefined ||
-    fromType === undefined ||
-    intoType === undefined
-  ) {
-    return;
-  }
-  for (const { to, member } of anyConversionsBetween(fromType, intoType)) {
-    if (!isKnown(member)) {
-      const key = `conversion:${analysis.context.facts.keyOf(member)}:${analysis.context.facts.keyOf(to)}`;
-      analysis.byTypes.set(key, { kind: 'conversion', member, to });
-    }
-  }
 }
 
 /**

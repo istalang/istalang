@@ -169,9 +169,11 @@ export function relateByTypes(
 ): void {
   if (mayReach(firstReach, secondReach)) {
     state.reach.addReach(first, second);
+    state.reach.addWhole(second, first);
   }
   if (mayReach(secondReach, firstReach)) {
     state.reach.addReach(second, first);
+    state.reach.addWhole(first, second);
   }
   if (mayAlias(firstReach, secondReach)) {
     state.reach.addAlias(first, second);

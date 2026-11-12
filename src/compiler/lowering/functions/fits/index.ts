@@ -21,6 +21,7 @@ import type { CodeFunction } from '../../../../definition/tables/functions.ts';
 import { unreachable } from '../../../../foundation/structures/unreachable.ts';
 import type { ValueSite } from '../../../checker/surface/checked-body.ts';
 import { type Fit, singleElement } from '../../../checker/types/fitting/fit/index.ts';
+import { resultFitBetween } from '../../../checker/types/fitting/part-pairs.ts';
 import { unfolded } from '../../../checker/types/type/computed-types.ts';
 import type { FunctionType, StructValueType, Type } from '../../../checker/types/type/index.ts';
 import { membersOf } from '../../../checker/types/type/index.ts';
@@ -43,7 +44,7 @@ import { convertedIntoAny } from '../../values/into-any.ts';
 import { rebuiltAs } from '../../values/struct-values.ts';
 import { asBase, intoUnion } from '../../values/unions.ts';
 import { builtKindOf, codeModeOf } from '../modes.ts';
-import { changesLayout, type Rebuilding, rebuilt, resultFitBetween } from './parts.ts';
+import { changesLayout, type Rebuilding, rebuilt } from './parts.ts';
 
 /** A register and the type of the value it holds. */
 export interface TypedRegister {

@@ -81,7 +81,7 @@ suits a generic IR.
 | captured `let` | `inCell(name)`, true for a `let` a closure captures and for a variable passed by `&` | a cell only when captured; a `&` reference is never stored |
 | call | `resolved`; `madeCalls()`, which adds the implicit calls, field defaults and functions named as values; `FunctionCall.{function, typeArguments, witnesses, binding}`; `argumentsInOrder`, `parameterOfArgument` | `call` |
 | implicit calls | `implicitCallOf`, `ImplicitRole` (`surface/resolved-call.ts`): `iterate`, `onAwait`, `inclusiveEnd`, `compare`, `includes`, `length`, `item`, `rest`, `panic`, `write` (`a[i] = v` through `setIndex`), `default`, `insert`, `interpolate`, `join`, `encodeOutcome` | `call`, with `&` places for `write` |
-| requirement call | `RequirementCall`: `constraint` on a type parameter, `constraint` on an `AnyType` (dispatch on the receiver), `members`, `computed` | `call`, symbolic until a call site resolves it (design.md §5.4) |
+| requirement call | `RequirementCall`: `constraint` on a type parameter, `constraint` on an `AnyType` (dispatch on the receiver), `members`, `computed` | `call`; on a type parameter, code the body doesn't see (design.md §5.4) |
 | call of a function value | `valueCalls` (`ValueCallMade.binding`) | `callValue` |
 | async call | `checker.resultOf`; the head comes from `headResult`/`madeAsync` (`types/type/function-types.ts`) | `call` whose result is a call future |
 | deferred call (`f(x)` given as a function, `spawn f(x)`) | a `DeferredCall` site in `resolved`; `deferredFunctionOf`; `constructs/expressions/deferred-calls.ts` | `make` of a closure holding the callee and arguments |
@@ -421,6 +421,6 @@ pairs the IR shows to be redundant.
 - **C3's dry run** runs over the program sets the suites already build: the std, examples, the
   corpus, the spec's fences, and the runtime tests' programs.
 - **Fragment soups** for C3's properties: `test/soup.ts`.
-- **Commute laws** across generic → instantiated (`test/AGENTS.md`): a generic call's verdict
-  equals its instantiated copy's.
+- **Commute laws** across generic → instantiated (`test/AGENTS.md`): a generic program is
+  rejected whenever its instantiated copy is.
 - Iterate on the affected tests alone, and run the whole suite once at the end.

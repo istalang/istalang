@@ -184,6 +184,8 @@ const checkerSurface = [
   'types/parts/substitution.ts',
   'types/type/type-rules.ts',
   'types/fitting/fit/index.ts',
+  // The parts a conversion of parts pairs, which lowering rebuilds a value by.
+  'types/fitting/part-pairs.ts',
   'types/fitting/expected.ts',
   'types/unions/unions.ts',
   'types/unions/union-members.ts',

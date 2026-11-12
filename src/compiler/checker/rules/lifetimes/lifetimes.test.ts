@@ -153,4 +153,38 @@ describe('the lifetime rule', () => {
     );
     expect(findingsIn(source)).toEqual(['13:call']);
   });
+
+  it('keeps a link directed: what is written gains nothing of what it is written into', () => {
+    const source = inSubject(
+      [
+        'const a = new Node{lease: new Lease{n: 1}}',
+        'const b = new Node{lease: new Lease{n: 2}}',
+        'const c = new Node{lease: new Lease{n: 3}}',
+        'const d = new Node{lease: new Lease{n: 4}}',
+        'link(a, d)',
+        'link(a, b)',
+        'link(d, b)',
+        'b->next = c',
+      ].join('\n'),
+      ['fn link(x: Node, y: Node): x->next = y'],
+    );
+    expect(findingsIn(source)).toEqual([]);
+  });
+
+  // A closure is still checked for any values of what it captures where it is made, until C4.
+  it('requires apart of a value written twice only what it may reach', () => {
+    const source = inSubject(
+      [
+        'const n = new Node{lease: new Lease{n: 1}}',
+        'const box = new Node{lease: new Lease{n: 2}}',
+        'const p = new Node{lease: new Lease{n: 3}, next: box}',
+        'storeBoth(p, box, n)',
+        'fn save():',
+        '  box->next = n',
+        'save()',
+      ].join('\n'),
+      ['fn storeBoth(p: Node, box: Node, n: Node):', '  p->next = n', '  box->next = n'],
+    );
+    expect(findingsIn(source)).toEqual(['15:closure']);
+  });
 });

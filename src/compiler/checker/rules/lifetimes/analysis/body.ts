@@ -19,11 +19,11 @@
 import type { FunctionDeclaration } from '../../../../syntax/declarations/index.ts';
 import type { NodeOf } from '../../../../syntax/tree/node.ts';
 import type { LifetimeFinding, SignatureParameter } from '../../../check.ts';
-import type { FunctionCall } from '../../../surface/resolved-call.ts';
+import type { FunctionCall, RequirementCall } from '../../../surface/resolved-call.ts';
 import type { Type } from '../../../types/type/index.ts';
 import type { FlowFunction, ValueId } from '../../flow/flow-ir.ts';
 import { cycleRelevance } from '../escaping.ts';
-import { type Input, inputKey } from '../input.ts';
+import { type Input, type InputPair, inputKey } from '../input.ts';
 import type { NodeId } from '../reach-state.ts';
 import {
   anyField,
@@ -32,20 +32,16 @@ import {
   type Summary,
   type TypedCycle,
 } from '../summary.ts';
-import type { ByTypes, InputPair, SymbolicCall } from '../symbolic.ts';
 import { moreRelevant, type Relevance } from '../type-reach.ts';
 import { cycleOf } from './cycles.ts';
 import type { FlowState } from './flow-state.ts';
 import { apart, candidatesIn } from './inputs.ts';
 import type { Nodes, TypeFacts } from './nodes.ts';
-import type { Resolving } from './symbolic-calls.ts';
 import { runUnseen, type UnseenCall } from './unseen.ts';
 
 /** What an analysis reads beyond its body: types, and what the functions it calls do. */
-export interface AnalysisContext extends Resolving {
+export interface AnalysisContext {
   readonly facts: TypeFacts & { readonly keyOf: (type: Type) => string };
-  /** Whether `declaration` has a body this rule reads, rather than a native's or a host's. */
-  readonly hasBody: (declaration: FunctionDeclaration) => boolean;
   /** What `call`'s function does; undefined where that is code nobody can see. */
   readonly calleeSummary: (call: FunctionCall) => Summary | undefined;
   readonly parametersOf: (declaration: FunctionDeclaration) => readonly SignatureParameter[];
@@ -54,9 +50,10 @@ export interface AnalysisContext extends Resolving {
   /** Whether `iterate`'s cursor gives the items of what it is given and does nothing else. */
   readonly readsWhatItIterates: (iterate: FunctionDeclaration) => boolean;
   /**
-   * What a call through an `any` value may run: each witness of the required function among the
-   * types the program puts into an `any` of its trait; undefined for a call through anything else.
+   * The witnesses a call through a requirement runs where they are known (dispatch.ts); undefined
+   * where this body can't see them, which it calls as code nobody sees.
    */
+  readonly witnessesOf: (call: RequirementCall) => readonly FunctionCall[] | undefined;
 
   /** What the default of `declaration`'s parameter at `index` relates to, of those before it. */
   readonly defaultResult: (
@@ -94,8 +91,6 @@ export class BodyAnalysis {
   readonly violations = new Map<NodeOf<string>, Map<string, Violation>>();
   readonly requirements = new Map<string, Requirement>();
   readonly always = new Map<string, TypedCycle>();
-  readonly symbolic = new Map<string, SymbolicCall>();
-  readonly byTypes = new Map<string, ByTypes>();
   readonly leaks = new Map<string, Input>();
   readonly calls = new Map<string, Input>();
   /** Analyses a nested function, its closure made at `site`, its findings joining this one's. */
@@ -309,7 +304,7 @@ export class BodyAnalysis {
     kind: Requirement['kind'],
   ): readonly InputPair[] {
     const candidates = candidatesIn(this, state);
-    const sources = candidates.filter(({ node }) => state.reach.shares(value, node));
+    const sources = candidates.filter(({ node }) => state.reach.carriedBy(value, node));
     const holders = candidates.filter(({ node }) =>
       kind === 'share'
         ? state.reach.shares(holder, node)

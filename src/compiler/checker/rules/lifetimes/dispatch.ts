@@ -6,15 +6,18 @@
  * given, as a call of each would be.
  *
  * - **Per module, an entry** lists the values its bodies put into an `any`, by the `any` type and
- *   the value's type, read off each fitted copy's two types: a value put in whole, a union member
- *   by member as lowering puts it (`into-any.ts`), the parts of a value converted part by part,
- *   and a value going into a union holding an `any`. An edit keeping those leaves it equal.
+ *   the value's type, as the checker fitted each copy: a value put in whole, a union member by
+ *   member as lowering puts it (`into-any.ts`), the parts of a value converted part by part
+ *   (types/fitting/part-pairs.ts), and a union's members going into a union holding an `any`. An
+ *   edit keeping those leaves it equal.
  * - **Per trait, an entry** gathers each required function's witnesses over the modules that can
  *   name the trait: its own, and those importing it, directly, through others or through the
  *   prelude every module sees. Values of an `any` are only ever made by putting a value into it,
  *   so nothing else can run. A value of another `any` goes in as the values put into that one.
- * - **A value of a type not known yet** goes in only in a generic body, and each instantiation
- *   checks what it puts in against the declaration graph (symbolic.ts): it is no member here.
+ * - **A value of a type not known yet** goes in only in a generic body, whose instantiations this
+ *   rule doesn't follow: a trait some module puts one into is open, and a call through an `any`
+ *   of it runs code nobody sees. The witnesses each instantiation gives are checked by types where
+ *   the call instantiating it is made (analysis/calls.ts).
  */
 
 import type { EntryTable } from '../../../../foundation/structures/entries/index.ts';
@@ -23,7 +26,9 @@ import type { ModuleId } from '../../../program/program.ts';
 import type { TraitDeclaration } from '../../../syntax/declarations/index.ts';
 import type { CheckerContext, CheckerNote } from '../../contexts/context.ts';
 import type { FunctionCall, RequirementCall } from '../../surface/resolved-call.ts';
-import { typeChildren } from '../../types/parts/type-children.ts';
+import type { Fit } from '../../types/fitting/fit/index.ts';
+import { type PartRules, partPairs } from '../../types/fitting/part-pairs.ts';
+import { UnfoldingPairs } from '../../types/identity/unfolding-pairs.ts';
 import { isKnown, mentionsError, sameTypeSpelled } from '../../types/parts/type-parts.ts';
 import { type AnyType, membersOf, type Type } from '../../types/type/index.ts';
 import type { FlowFunction } from '../flow/flow-ir.ts';
@@ -37,6 +42,11 @@ export interface Conversion {
 /** The witnesses of a trait's required functions, by their position in the trait. */
 type Witnesses = ReadonlyMap<number, readonly FunctionCall[]>;
 
+/** What a call through an `any` of a trait may run: its witnesses, or code not known here. */
+type Dispatched =
+  | { readonly kind: 'known'; readonly witnesses: Witnesses }
+  | { readonly kind: 'open' };
+
 const sameConversions = sameItems<Conversion>(
   (first, second) =>
     sameTypeSpelled(first.to, second.to) && sameTypeSpelled(first.member, second.member),
@@ -45,7 +55,7 @@ const sameConversions = sameItems<Conversion>(
 export class Dispatch {
   readonly #checker: CheckerContext;
   readonly #conversions: EntryTable<CheckerNote, ModuleId, readonly Conversion[]>;
-  readonly #witnesses: EntryTable<CheckerNote, TraitDeclaration, Witnesses>;
+  readonly #dispatched: EntryTable<CheckerNote, TraitDeclaration, Dispatched>;
   readonly #named: EntryTable<CheckerNote, ModuleId, ReadonlySet<ModuleId>>;
 
   /** `flowsOf` gives every flow a module's bodies have, closures' included. */
@@ -55,14 +65,14 @@ export class Dispatch {
       name: 'conversions into any',
       compute: (module: ModuleId) =>
         flowsOf(module)
-          .flatMap(conversionsIn)
-          .filter(({ member }) => hasWitnesses(member)),
+          .flatMap((flow) => conversionsIn(checker, flow))
+          .filter(({ member }) => !mentionsError(member)),
       equal: sameConversions,
     });
-    this.#witnesses = checker.entries.table({
+    this.#dispatched = checker.entries.table({
       name: 'dispatched witnesses',
-      compute: (trait: TraitDeclaration) => this.#witnessesOf(trait),
-      equal: sameWitnesses,
+      compute: (trait: TraitDeclaration) => this.#dispatchedOf(trait),
+      equal: sameDispatched,
     });
     this.#named = checker.entries.table({
       name: 'modules named',
@@ -74,8 +84,8 @@ export class Dispatch {
 
   /**
    * The witnesses `call` runs where it is made: through an `any`, each the program may have put
-   * in; on a union, each member's; on a computed type made known, its own. Undefined where its
-   * types aren't known yet: a type parameter's requirement, for an instantiation to close.
+   * in; on a union, each member's; on a computed type made known, its own. Undefined where they
+   * can't be known here: a type parameter's requirement, or a call through an open trait's `any`.
    */
   witnessesOf(call: RequirementCall): readonly FunctionCall[] | undefined {
     const { requirement } = call;
@@ -85,9 +95,13 @@ export class Dispatch {
         return undefined;
       }
       const constraint = on.constraints[requirement.constraint];
-      return constraint === undefined
-        ? []
-        : (this.#witnesses.get(constraint.trait).get(requirement.member) ?? []);
+      if (constraint === undefined) {
+        return [];
+      }
+      const dispatched = this.#dispatched.get(constraint.trait);
+      return dispatched.kind === 'open'
+        ? undefined
+        : (dispatched.witnesses.get(requirement.member) ?? []);
     }
     const members = requirement.kind === 'members' ? membersOf(requirement.on) : [requirement.on];
     return members.every(isKnown)
@@ -97,32 +111,24 @@ export class Dispatch {
       : undefined;
   }
 
-  /** The witnesses of `to`'s requirements a value of `member` put into it carries, all of them. */
-  conversionWitnesses(to: AnyType, member: Type): readonly FunctionCall[] {
-    if (!hasWitnesses(member)) {
-      return [];
-    }
-    return [...to.constraints.keys()].flatMap((index) =>
-      (this.#checker.traitObjects.memberWitnesses(to, index, member) ?? []).flatMap((call) =>
-        call.kind === 'function' ? [call] : [],
-      ),
-    );
-  }
-
-  #witnessesOf(trait: TraitDeclaration): Witnesses {
+  #dispatchedOf(trait: TraitDeclaration): Dispatched {
     const declaring = this.#checker.moduleOf(trait);
     const conversions = this.#checker.inputs
       .modules()
       .filter((module) => this.#named.get(module).has(declaring))
       .flatMap((module) => this.#conversions.get(module));
-    const calls = conversions.flatMap(({ to, member }) =>
-      putInto(member, conversions, []).flatMap((each) =>
-        [...to.constraints.entries()]
-          .filter(([, constraint]) => constraint.trait === trait)
-          .flatMap(([index]) => [
-            ...(this.#checker.traitObjects.memberWitnesses(to, index, each) ?? []).entries(),
-          ]),
-      ),
+    const members = conversions
+      .filter(({ to }) => to.constraints.some((constraint) => constraint.trait === trait))
+      .flatMap(({ to, member }) => putInto(member, conversions, []).map((each) => ({ to, each })));
+    if (members.some(({ each }) => !isKnown(each))) {
+      return { kind: 'open' };
+    }
+    const calls = members.flatMap(({ to, each }) =>
+      [...to.constraints.entries()]
+        .filter(([, constraint]) => constraint.trait === trait)
+        .flatMap(([index]) => [
+          ...(this.#checker.traitObjects.memberWitnesses(to, index, each) ?? []).entries(),
+        ]),
     );
     const witnesses = new Map<number, FunctionCall[]>();
     for (const [position, call] of calls) {
@@ -130,7 +136,7 @@ export class Dispatch {
         witnesses.set(position, [...(witnesses.get(position) ?? []), call]);
       }
     }
-    return witnesses;
+    return { kind: 'known', witnesses };
   }
 
   /** The witness of `through`'s `position`-th required function a value of `member` has. */
@@ -185,45 +191,64 @@ function putInto(
 }
 
 /**
- * The values a value of `from` fitted to `to` puts into an `any`: itself, member by member, where
- * `to` is one; those its parts put into `to`'s, part by part, where the two are built alike; and
- * where `to` is a union, each member of `from` it doesn't hold as such, into each `any` it holds.
+ * The values a value of `from` fitted to `to` puts into an `any`, as the checker fits them
+ * (`fitOf`): itself, member by member, where it converts into one; its parts, where it converts
+ * part by part or into a shape (types/fitting/part-pairs.ts); a union's members, where it goes
+ * into a union member by member. A pair met again while it is read puts nothing new in.
  */
-export function anyConversionsBetween(from: Type, to: Type): readonly Conversion[] {
-  if (to.kind === 'any') {
-    return from.kind === 'any' && sameTypeSpelled(from, to)
-      ? []
-      : membersOf(from).map((member) => ({ to, member }));
+function anyConversionsBetween(
+  rules: PartRules,
+  from: Type,
+  to: Type,
+  relating = new UnfoldingPairs(),
+): readonly Conversion[] {
+  return relating.relate(from, to, [], (value, place) => {
+    const fit = rules.fitOf(value, place);
+    return fit === undefined ? [] : fitConversions(rules, value, fit, relating);
+  });
+}
+
+/** The values a value of `from` fitted as `fit` says puts into an `any`. */
+function fitConversions(
+  rules: PartRules,
+  from: Type,
+  { conversion, into }: Fit,
+  relating: UnfoldingPairs,
+): readonly Conversion[] {
+  if (conversion.kind === 'any') {
+    return membersOf(from).map((member) => ({ to: conversion.to, member }));
   }
-  if (to.kind === 'union') {
-    const anys = to.members.filter((member): member is AnyType => member.kind === 'any');
-    return membersOf(from).flatMap((member) =>
-      to.members.some((each) => sameTypeSpelled(each, member))
-        ? []
-        : anys.flatMap((any) => anyConversionsBetween(member, any)),
+  if (conversion.kind === 'parts' || conversion.kind === 'shape') {
+    return partPairs(rules, from, conversion.to).flatMap(([part, target]) =>
+      anyConversionsBetween(rules, part, target, relating),
     );
   }
-  const [fromParts, toParts] = [typeChildren(from), typeChildren(to)];
-  return from.kind === to.kind && fromParts.length === toParts.length
-    ? fromParts.flatMap((part, index) => anyConversionsBetween(part, toParts[index] as Type))
+  return conversion.kind === 'none' && into !== undefined && into.member === undefined
+    ? membersOf(from).flatMap((member) =>
+        anyConversionsBetween(rules, member, into.union, relating),
+      )
     : [];
 }
 
 /** The values `flow` puts into an `any`, its nested functions' among them. */
-function conversionsIn(flow: FlowFunction): readonly Conversion[] {
+function conversionsIn(rules: PartRules, flow: FlowFunction): readonly Conversion[] {
   return flow.blocks.flatMap(({ operations }) =>
     operations.flatMap((operation): readonly Conversion[] => {
       if (operation.op === 'make' && operation.made.kind === 'closure') {
-        return conversionsIn(operation.made.function);
+        return conversionsIn(rules, operation.made.function);
       }
-      if (operation.op !== 'copy' || operation.fit === undefined) {
-        return [];
-      }
-      const from = flow.values[operation.from]?.type;
-      const into = flow.values[operation.into]?.type;
-      return from === undefined || into === undefined ? [] : anyConversionsBetween(from, into);
+      const from = operation.op === 'copy' ? flow.values[operation.from]?.type : undefined;
+      return operation.op !== 'copy' || operation.fit === undefined || from === undefined
+        ? []
+        : fitConversions(rules, from, operation.fit, new UnfoldingPairs());
     }),
   );
+}
+
+function sameDispatched(first: Dispatched, second: Dispatched): boolean {
+  return first.kind === 'known' && second.kind === 'known'
+    ? sameWitnesses(first.witnesses, second.witnesses)
+    : first.kind === second.kind;
 }
 
 function sameWitnesses(first: Witnesses, second: Witnesses): boolean {

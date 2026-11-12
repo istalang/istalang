@@ -30,6 +30,7 @@ import type { FunctionDefinition } from '../../../definition/tables/functions.ts
 import { unreachable } from '../../../foundation/structures/unreachable.ts';
 import type { MemberConversion } from '../../checker/check.ts';
 import { type RequiredField, requiredFieldRead } from '../../checker/surface/checked-field.ts';
+import { resultFitBetween } from '../../checker/types/fitting/part-pairs.ts';
 import { substitute } from '../../checker/types/parts/substitution.ts';
 import { kindOfFunction } from '../../checker/types/type/function-kinds.ts';
 import type { AnyType, FunctionType, Type } from '../../checker/types/type/index.ts';
@@ -43,7 +44,6 @@ import {
 } from '../calls/closed-calls.ts';
 import type { CodeContext } from '../context.ts';
 import { fittedIn } from '../functions/fits/index.ts';
-import { resultFitBetween } from '../functions/fits/parts.ts';
 import { codeModeOf } from '../functions/modes.ts';
 import type { ConversionSite } from '../tables/instances.ts';
 import { spelledType } from '../tables/names.ts';

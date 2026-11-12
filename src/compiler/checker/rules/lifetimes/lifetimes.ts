@@ -30,12 +30,7 @@ import type { NodeOf } from '../../../syntax/tree/node.ts';
 import type { FindingDeclaration, LifetimeFinding, LifetimeQueries } from '../../check.ts';
 import type { CheckerContext, CheckerNote } from '../../contexts/context.ts';
 import { type FunctionCall, functionCallsWithin } from '../../surface/resolved-call.ts';
-import {
-  closedInside,
-  closingIn,
-  instanceOf,
-  substitutionOf,
-} from '../../surface/witness-closing.ts';
+import { substitutionOf } from '../../surface/witness-closing.ts';
 import { substitute } from '../../types/parts/substitution.ts';
 import type { Type } from '../../types/type/index.ts';
 import { flowOf } from '../flow/build/index.ts';
@@ -133,10 +128,7 @@ export class Lifetimes implements LifetimeQueries {
         this.#declared.defaultsOf(declaration).results.get(index) ?? [],
       substitute: (type, call) => substitutedIn(checker, type, call),
       readsWhatItIterates: (iterate) => checker.isStd(checker.moduleOf(iterate)),
-      closedIn: (call, within) => closedInside(call, closingIn(instanceOf(within)), checker),
       witnessesOf: (call) => this.#dispatch.witnessesOf(call),
-      conversionWitnesses: (to, member) => this.#dispatch.conversionWitnesses(to, member),
-      hasBody: (declaration) => this.#hasBody(declaration),
     };
   }
 

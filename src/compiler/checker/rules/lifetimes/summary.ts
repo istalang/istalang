@@ -35,7 +35,6 @@ import { isHandleType } from '../../types/properties/handles.ts';
 import type { Type } from '../../types/type/index.ts';
 import { awaitedOf } from '../../types/type/well-known.ts';
 import { type Input, sameInput } from './input.ts';
-import { type ByTypes, type SymbolicCall, sameByTypes, sameSymbolicCalls } from './symbolic.ts';
 
 /** The fields a pair's path leaves its source through; any field until C4. */
 export interface Label {
@@ -116,10 +115,6 @@ export interface Summary {
   readonly watched: boolean;
   readonly requirements: readonly Requirement[];
   readonly always: readonly TypedCycle[];
-  /** Its calls through its type parameters' requirements, for each instantiation (symbolic.ts). */
-  readonly symbolic: readonly SymbolicCall[];
-  /** What each instantiation checks against the declaration graph (symbolic.ts). */
-  readonly byTypes: readonly ByTypes[];
   readonly callReach: readonly Input[];
   readonly leaks: readonly Input[];
   readonly unseen: boolean;
@@ -140,8 +135,6 @@ export const emptySummary: Summary = {
   watched: false,
   requirements: [],
   always: [],
-  symbolic: [],
-  byTypes: [],
   callReach: [],
   leaks: [],
   unseen: false,
@@ -191,8 +184,6 @@ export function sameSummary(first: Summary, second: Summary): boolean {
     sameResults(first.gives, second.gives) &&
     sameRequirements(first.requirements, second.requirements) &&
     sameCycles(first.always, second.always) &&
-    sameSymbolicCalls(first.symbolic, second.symbolic) &&
-    sameByTypes(first.byTypes, second.byTypes) &&
     sameInputs(first.callReach, second.callReach) &&
     sameInputs(first.leaks, second.leaks)
   );

@@ -24,13 +24,15 @@ import { wellKnown } from '../../../../foundation/language/well-known/index.ts';
 import { unreachable } from '../../../../foundation/structures/unreachable.ts';
 import type { Checker } from '../../../checker/check.ts';
 import type { Fit } from '../../../checker/types/fitting/fit/index.ts';
+import {
+  type PartPair,
+  partPairs,
+  resultFitBetween,
+} from '../../../checker/types/fitting/part-pairs.ts';
 import { sameType } from '../../../checker/types/identity/identity.ts';
 import { UnfoldingPairs } from '../../../checker/types/identity/unfolding-pairs.ts';
 import { unfolded } from '../../../checker/types/type/computed-types.ts';
-import { type ResultFit, resultFitOf } from '../../../checker/types/type/function-types.ts';
 import type {
-  AnonymousStructType,
-  FieldMember,
   FunctionType,
   NominalType,
   StructValueType,
@@ -38,7 +40,7 @@ import type {
   Type,
 } from '../../../checker/types/type/index.ts';
 import { membersOf } from '../../../checker/types/type/index.ts';
-import { futuresOf, wellKnownArguments } from '../../../checker/types/type/well-known.ts';
+import { wellKnownArguments } from '../../../checker/types/type/well-known.ts';
 import type { AnchoredSpan } from '../../../syntax/tree/positions.ts';
 import { emitCall } from '../../calls/emit-call.ts';
 import { tupleOf } from '../../constructs/expressions/literals/tuples.ts';
@@ -107,109 +109,22 @@ function fitChangesLayout(
 }
 
 /**
- * The pairs of parts converting a value of `from` into `to` converts, by the shape both have;
- * undefined where the layout changes whatever its parts do: a union's value goes into another
- * union's variants, a nominal struct's into a shape, a function's result is made a future.
+ * The pairs of parts converting a value of `from` into `to` converts (part-pairs.ts); undefined
+ * where the layout changes whatever its parts do: a union's value goes into another union's
+ * variants, a nominal struct's into a shape, a function's result is made a future.
  */
 function pairsOf(
   checker: Pick<Checker, 'fitOf' | 'fieldsOf' | 'variantsOf' | 'wellKnownType'>,
   from: Type,
   to: Type,
-): readonly (readonly [Type, Type])[] | undefined {
-  if (from.kind === 'union') {
-    return undefined;
-  }
-  if (to.kind === 'anonymous') {
-    return from.kind === 'anonymous' ? shapePairs(from, to) : undefined;
-  }
-  if (from.kind === 'function' && to.kind === 'function') {
-    return functionPairs(checker, from, to);
-  }
-  if (from.kind === 'tuple' && to.kind === 'tuple') {
-    return from.elements.flatMap((element, index) => paired(element, to.elements[index]));
-  }
-  if (from.kind === 'nominal' && to.kind === 'nominal') {
-    return collectionPairs(checker, from, to) ?? fieldPairs(checker, from, to);
-  }
-  return [];
-}
-
-/**
- * A shape's fields paired with another's of the same names, by their index in the one field order
- * every struct lays its fields out in (types/type/field-order.ts).
- */
-function shapePairs(
-  from: AnonymousStructType,
-  to: AnonymousStructType,
-): readonly (readonly [Type, Type])[] {
-  return from.fields.flatMap((field, index) => paired(field.type, to.fields[index]?.type));
-}
-
-/**
- * A function's parameters paired the other way round, `to`'s into its own, and its results, the
- * values of the futures they are where both give one; undefined where its result is made a future.
- */
-function functionPairs(
-  checker: Pick<Checker, 'fitOf' | 'wellKnownType'>,
-  from: FunctionType,
-  to: FunctionType,
-): readonly (readonly [Type, Type])[] | undefined {
-  const parameters = from.parameters.flatMap((parameter, index) => {
-    const other = to.parameters[index];
-    return parameter.reference ? [] : paired(other?.type, parameter.type);
-  });
-  const result = resultFitBetween(checker, from, to);
-  switch (result.kind) {
-    case 'value':
-      return [...parameters, ...paired(from.result, to.result)];
-    case 'awaited':
-      return [...parameters, ...paired(result.value, result.into)];
-    default:
-      return undefined;
-  }
-}
-
-/** How the result of a function of type `from` fits where `to` is expected, as the checker found. */
-export function resultFitBetween(
-  checker: Pick<Checker, 'fitOf' | 'wellKnownType'>,
-  from: FunctionType,
-  to: FunctionType,
-): ResultFit {
-  const fits = (given: Type, expected: Type) => checker.fitOf(given, expected) !== undefined;
-  return (
-    resultFitOf(from.result, to.result, fits, futuresOf(checker)) ??
-    unreachable('A function converted part by part gives what fits.')
-  );
-}
-
-/** An array's items, or a map's values, paired; undefined for any other type. */
-function collectionPairs(
-  checker: Pick<Checker, 'wellKnownType'>,
-  from: NominalType,
-  to: NominalType,
-): readonly (readonly [Type, Type])[] | undefined {
-  const items = wellKnownArguments(checker, wellKnown.array, from);
-  if (items !== undefined) {
-    return paired(items[0], to.arguments[0]);
-  }
-  const entries = wellKnownArguments(checker, wellKnown.map, from);
-  return entries === undefined ? undefined : paired(entries[1], to.arguments[1]);
-}
-
-/** A struct's fields, or every variant's, paired; none for a host's value. */
-function fieldPairs(
-  checker: Pick<Checker, 'fieldsOf' | 'variantsOf'>,
-  from: NominalType,
-  to: NominalType,
-): readonly (readonly [Type, Type])[] {
-  const fields = (type: NominalType): readonly FieldMember[] =>
-    checker.fieldsOf(type) ?? (checker.variantsOf(type) ?? []).flatMap((variant) => variant.fields);
-  const targets = fields(to);
-  return fields(from).flatMap((field, index) => paired(field.type, targets[index]?.type));
-}
-
-function paired(from: Type | undefined, to: Type | undefined): readonly (readonly [Type, Type])[] {
-  return from === undefined || to === undefined ? [] : [[from, to]];
+): readonly PartPair[] | undefined {
+  const rebuiltWhole =
+    from.kind === 'union' ||
+    (to.kind === 'anonymous' && from.kind !== 'anonymous') ||
+    (from.kind === 'function' &&
+      to.kind === 'function' &&
+      resultFitBetween(checker, from, to).kind === 'resolved');
+  return rebuiltWhole ? undefined : partPairs(checker, from, to);
 }
 
 /** `value`, of type `value.type`, rebuilt as a value of `to`, its parts converted. */

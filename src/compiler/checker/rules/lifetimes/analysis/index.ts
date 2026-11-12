@@ -182,13 +182,8 @@ function analysisFound(
   const nested = [...found.nested.values()];
   const nestedViolations = nested.flatMap(({ violations }) => violations);
   const summary = summarize(analysis, found.entry, found.exits, found.isAsync);
-  // A nested function's calls through requirements are made by code nobody sees calls: by types.
-  const nestedByTypes = nested.flatMap(({ summary: inner }) => [
-    ...inner.byTypes,
-    ...inner.symbolic.map(({ call }) => ({ kind: 'call' as const, call })),
-  ]);
   return {
-    summary: { ...summary, byTypes: [...summary.byTypes, ...nestedByTypes] },
+    summary,
     violations: [
       ...[...analysis.violations.values()].flatMap((at) => [...at.values()]),
       ...nestedViolations,
@@ -266,8 +261,6 @@ function summarize(
       exits.some(({ value }) => value !== undefined && nodes.isRelevant(value)),
     requirements: [...analysis.requirements.values()],
     always: [...analysis.always.values()],
-    symbolic: [...analysis.symbolic.values()],
-    byTypes: [...analysis.byTypes.values()],
     callReach: isAsync ? slots.map(({ input }) => input) : [],
     leaks: [...analysis.leaks.values()],
     unseen: analysis.unseen,
@@ -303,7 +296,8 @@ function effectsOf(
     if (holds || joined.reach.reaches(fromNode, toNode)) {
       return [{ from: from.input, to: to.input, inside: false, label: anyField }];
     }
-    return joined.reach.shares(fromNode, toNode)
+    // `from` comes to reach what `to` holds: something read out of it, or sharing with it.
+    return joined.reach.reachedFrom(fromNode).some((node) => joined.reach.carriedBy(node, toNode))
       ? [{ from: from.input, to: to.input, inside: true, label: anyField }]
       : [];
   });

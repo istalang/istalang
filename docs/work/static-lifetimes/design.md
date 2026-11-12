@@ -173,6 +173,13 @@ The state at each point has three parts:
 - **may-alias**;
 - **escaped**: reachable from inputs, globals, or code the body doesn't see.
 
+Beside them, C3 keeps what each value was **read out of** (decided 2026-11-12). `a ⇝ b` holds both
+for a part `b` read out of `a` and for a value `b` written into `a`, and sharing has no direction.
+Only a part's reach is some of its whole's. So a requirement's sources, and the effects saying a
+caller's input comes to reach what another holds, follow what was read out of what, and a value
+written into another gains nothing of it. A relation guessed by types may be either, so it is
+both.
+
 | Operation | Effect |
 |---|---|
 | `make n` | `n` reaches what its parts reach; nothing reaches `n` |
@@ -231,22 +238,20 @@ What C3 settled about requirements and defaults:
 ### 5.4 Calls whose callee is decided later
 
 - **A requirement called on a type parameter** (`x.render()` with `x: T`, `T is View`) has no callee
-  until instantiation. C3's summaries keep it as a symbolic call (`rules/lifetimes/symbolic.ts`):
-  for each ordered pair of its arguments, what a witness writing one into the other would meet
-  in the body. That is a cycle closed there, or the pairs of the body's inputs the write would
-  require apart. Each call of the function closes the symbolic call to its witness with C1's
-  closing, and reads the witness's requirements off those pairs. So a generic call commutes with
-  its instantiated copy. A call still open names its caller's own type parameters, and goes on
-  into the caller's summary.
-  - The summary keeps it symbolic: "calls `T`'s `render` with inputs …".
-  - A call site resolves it through the witnesses the checker records for that call
-    (`FunctionCall.witnesses`), then the witness's own symbolic calls through its binding, composed
-    with the caller's. A generic caller's witnesses are requirements of its own type parameters, so
-    the call stays symbolic in its summary.
-  - A computed type's requirement resolves once its type is known, through
-    `TraitObjects.memberWitnesses`.
-  - The composition algorithm exists only in lowering's closer (`closedInside`, `closeWitnesses`,
-    `composed`). Plan C1 moves it onto the checker's surface, and both read it there.
+  until instantiation, so the generic body calls it as code it doesn't see (§5.5): what it is
+  given escapes, and may come to reach each other as their types allow (decided 2026-11-12).
+  - Each call of the function checks the witnesses it gives (`FunctionCall.witnesses`) against the
+    declaration graph, for any values of their parameters' types, as a native's are.
+  - So a generic program is rejected whenever its instantiated copy is, and may be where the copy
+    isn't: a witness doing nothing counts as one that may link what it is given. The workaround is
+    a `WeakRef`, or values kept apart.
+  - A computed type's requirement, or a union's trait, runs each member's witness once known, as a
+    dispatch does.
+  - **If generic code is rejected too often later:** C3 first kept such a call symbolic, closing
+    it per instantiation with C1's closing and reading the witness's writes off pairs of its
+    arguments (commit `45610cbf`: `rules/lifetimes/symbolic.ts`, `analysis/symbolic-calls.ts`).
+    Review found it missed the witness's result and effects, and how they change the rest of the
+    body. The exact form is analysing each instantiation's body (findings.md).
 - **A call through an `any T` value** dispatches on the value's own type, which is one of the
   types the program converts into `any T` (decided 2026-11-12):
   - an entry per module gathers the conversions into `any` in its bodies, and an entry per trait
@@ -257,12 +262,15 @@ What C3 settled about requirements and defaults:
   So a witness that writes one argument into another is checked where the arguments are known.
   Checking at the conversion instead would take them as any values of their types, and it
   rejected FormBuilder's drawing.
-  - The conversions are read off each fitted copy's two types, so a value put in part by part, or
-    into a union holding an `any`, counts too. A union goes in member by member. A value of
-    another `any` goes in as what went into that one.
-  - A value of a type not known yet goes in only in a generic body. Each instantiation checks it
-    against the declaration graph, as an escaping bundle of its type's witnesses. So is a
-    requirement a closure calls, whose callers are unseen.
+  - The conversions are read as the checker fits each copy, by the pairs of parts lowering
+    rebuilds a value by (`types/fitting/part-pairs.ts`). So a value put in part by part, into a
+    shape, as a function's parameter the other way round, as its result made a future, or into a
+    union holding an `any`, counts too. A union goes in member by member. A value of another `any`
+    goes in as what went into that one.
+  - A value of a type not known yet goes in only in a generic body, whose instantiations the
+    dispatch doesn't follow: a trait some module puts one into is open, and a call through its
+    `any` is code the body doesn't see. The witnesses the instantiating call gives are checked by
+    types, as above.
   - A call on a union's trait, or on a computed type an instantiation made known, runs each
     member's witness, as a dispatch does.
 - **A call of a function value:**

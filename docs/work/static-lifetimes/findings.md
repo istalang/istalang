@@ -49,7 +49,7 @@ The reviewer and QA found false negatives the dry run hid. Each is fixed (design
 - an unknown call's result unrelated to what it was given;
 - `&` parameters' effects and whole assignments;
 - defaults built without their earlier parameters;
-- requirement calls on type parameters taken as unseen code;
+- requirement calls on type parameters whose witnesses nothing checked;
 - generic and part-by-part `any` conversions;
 - recursion through `any` cutting violations off;
 - a `let` an async call takes by `&`;
@@ -60,6 +60,27 @@ They also found false positives:
 - struct fields mapped to the wrong parts;
 - requirements typed by a fresh wrapper rather than what it wraps;
 - a generic body reporting a cycle only its instantiation decides.
+
+## Found by C3's second review
+
+The reviewer and QA found more false negatives, each fixed (design.md §5.2, §5.4):
+- conversions into `any` through a shape, a union's parts, a function made async, or a function's
+  parameter, now read as the checker fits them;
+- a `&` taken by a sync call keeping it in what it gives, or by a closure called as a value;
+- a requirement call on a type parameter whose witness links its own argument's fields, writes a
+  global or gives its argument back. Such a call is now code the body doesn't see, and each
+  witness a call gives is checked by types;
+- a type parameter put into an `any`, whose trait is now open.
+
+They found false positives too:
+- a written value read as reaching its holder (`link(a, b); b->next = c`), since sharing has no
+  direction. Fixed by keeping what each value was read out of (design.md §5.2);
+- generic code rejected where an instance isn't, since requirement calls are unseen code. Kept, by
+  decision (design.md §5.4). A precise form, should real code need it, analyses each instantiation's
+  body: the generic summary can't say what a witness does to the rest of the body. C3's first,
+  pair-based version is in commit `45610cbf`;
+- a callback's caller passing one value twice (`logNode(cb, x, x)`), required apart since the
+  callback is unseen code. Kept: it takes that shape and a disposable.
 
 ## Left to C4
 
@@ -81,5 +102,9 @@ They also found false positives:
   link(x, y)`): a read part aliases its whole, so a copy of it aliases the whole's other parts once
   they are read. C4's field labels make containment directional.
 - **Input parts inside recursive groups,** named whole there (design.md §5.7).
+- **A read through a value related to its parts' other parts:** reading `x->f` makes what shares
+  with `x`, its parts among them, reach the value read, since without labels any part may reach it.
+- **A closure writing one capture into another** (`fn save(): box->next = n`) is checked for any
+  values of their types where it is made: plan.md's C4, what escaping closures capture.
 - **An escaped plain function written after an `await`,** and **relinking after unlinking**
   (`node->next = other`): plan.md's C4 acceptance. C3's dry run met neither outside FormBuilder.
