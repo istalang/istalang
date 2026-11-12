@@ -23,7 +23,7 @@ import { handleTarget, type Value } from '../../../definition/values/values.ts';
 import { pushAll } from '../../../foundation/structures/stack.ts';
 import { unreachable } from '../../../foundation/structures/unreachable.ts';
 import type { ActiveFrame } from '../../interpreter/frames.ts';
-import { heldObjects } from '../../snapshot/holdings.ts';
+import { heldObjects, isHeldFromRoot } from '../../snapshot/holdings.ts';
 import type { HeapObject } from '../../snapshot/objects.ts';
 
 export interface LiveExecution {
@@ -274,12 +274,13 @@ export class Heap {
 
   /**
    * The ids of the objects `object` holds (spec §7, proposal 8, Rule 5): what its fields and values
-   * hold (snapshot/holdings.ts), and what it holds through the indexes. A registration holds both
-   * ends: a future the pending resolvers registered on it, as a resolver its futures. A wait holds
-   * its case resolvers, and a pending resolver its `Resolver.at` ones, that are awaited: registered,
-   * or decided by `Resolver.at` ones of their own. So what an awaitable started for a wait lives as
-   * long as the wait, a callback as long as its future, and what lost is let go of as it loses,
-   * while a resolver nothing awaits is let go of when its holder drops it.
+   * hold (snapshot/holdings.ts), and what it holds through the indexes, one end of each link of a
+   * chain of resolvers, as its root says (`isHeldFromRoot`). A wait holds its case resolvers, and a
+   * pending resolver of a case's chain its `Resolver.at` ones, that are awaited: registered, or
+   * decided by `Resolver.at` ones of their own. A future holds the pending resolvers of callbacks'
+   * chains registered on it. So what an awaitable started for a wait lives as long as the wait, a
+   * callback as long as its future, and what lost is let go of as it loses, while a resolver
+   * nothing awaits is let go of when its holder drops it.
    */
   holds(object: Exclude<LiveObject, LiveExecution>): readonly number[] {
     const held = heldObjects(object);
@@ -290,12 +291,16 @@ export class Heap {
   /** What `object` holds through the indexes (`holds`). */
   #indexedHolds(object: Exclude<LiveObject, LiveExecution>): readonly number[] {
     if (object.kind === 'future') {
-      return this.find('resolvers', object.id).map(({ id }) => id);
+      return this.find('resolvers', object.id).flatMap(({ id, state }) =>
+        state.kind === 'pending' && !isHeldFromRoot(state.target) ? [id] : [],
+      );
     }
     if (object.kind === 'wait') {
       return this.#awaited(this.find('cases', object.id));
     }
-    return object.kind === 'resolver' && object.state.kind === 'pending'
+    return object.kind === 'resolver' &&
+      object.state.kind === 'pending' &&
+      isHeldFromRoot(object.state.target)
       ? this.#awaited(this.find('positions', object.id))
       : [];
   }

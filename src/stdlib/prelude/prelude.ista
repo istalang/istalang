@@ -67,8 +67,8 @@ extern K fn Resolver.of<T, K in Persistence>(callback: Fn<(T,), Unit, K>) -> Res
 extern K fn Resolver.at<T, K in Persistence>(done: Resolver<(Int, T), K>, position: Int) -> Resolver<T, K>
 
 # Has `callback` called once `self` is cancelled: another case decided its wait, its waiter moved on
-# without it, or the future it is registered on was disposed first. It runs as a `Resolver.of`
-# callback does, and at once when `self` was cancelled already; never once `self` resolved.
+# without it, or a future it is registered on was disposed. It runs as a `Resolver.of` callback
+# does, and at once when `self` was cancelled already; never once `self` resolved.
 @Keeps{["self": ["callback"]]}
 extern K fn onCancel<T, K in Persistence>(self: Resolver<T, K>, callback: Fn<(), Unit, K>)
 

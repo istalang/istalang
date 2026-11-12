@@ -1,6 +1,7 @@
 /**
  * What disposing each kind of object does (spec §7's table): one entry per kind, saying whether
- * such an object is disposed when nothing holds it, rather than simply left out of the next commit, and how.
+ * such an object is disposed when nothing holds it, rather than simply left out of the next
+ * commit, and how.
  *
  * - A future of an async call disposes the call: it can only be suspended, since a running
  *   execution holds its own future (holders.ts). Its `disposing()` watches resolve, and a call
@@ -9,24 +10,27 @@
  * - A pending slot operation leaves its slot's queue without consuming anything, and a future
  *   filled from outside the instance frees its token, so a later answer to it changes nothing. A
  *   disposed future tells what observes it, such as a live resolver of it (proposal 8, Rule 9).
+ * - A future, whatever its state, first cancels the resolvers still registered on it, which it can
+ *   no longer resolve (§6): a callback's chain's, which it held, as a case's chain holds its
+ *   futures instead (snapshot/holdings.ts).
  * - A value whose type declares `dispose` as code calls that: a call the collector runs as code
  *   (collector.ts), and the object is gone once the call returns. A disposal never awaits, since a
  *   `dispose` can't.
  * - A wait's resolver let go of while pending, never registered, panics its waiter (proposal 8,
  *   Rule 5): an awaitable dropped it, so nothing can decide the wait through it. Any other pending
- *   resolver let go of is cancelled, its `onCancel` callbacks readied: one registered goes only with
- *   its futures, which nothing can resolve any more (`Heap.holds`), and a `Resolver.of` or
+ *   resolver let go of is cancelled, its `onCancel` callbacks readied: one registered for a wait
+ *   goes only once the wait ends, which cancels it first (`Heap.holds`), and a `Resolver.of` or
  *   `Resolver.at` one decides no wait of its own.
  * - Any object a weak reference refers to has its watches resolved once it is gone (weak-side.ts).
  *
  * An object is disposed when nothing holds it only when that can be seen: it does one of the
- * above. Any other, such as a resolved future, a timer, a run or a slot that no weak reference
- * refers to, is simply left out of the next commit, as a plain value is. What it holds is let go of
- * all the same, since holding is reachability (holders.ts), so a disposable among it is disposed
- * when it would have been; only nothing has to prove the object itself unheld, which costs a walk
- * of the instance's live state. Disposability comes from an object's kind and state, its type entry
- * for a cell or resource, and the weak references in the heap, never from a flag of its own
- * (snapshot/objects.ts).
+ * above. Any other, such as a resolved future, a timer nothing is registered on, a run or a slot
+ * that no weak reference refers to, is simply left out of the next commit, as a plain value is.
+ * What it holds is let go of all the same, since holding is reachability (holders.ts), so a
+ * disposable among it is disposed when it would have been; only nothing has to prove the object
+ * itself unheld, which costs a walk of the instance's live state. Disposability comes from an
+ * object's kind and state, its type entry for a cell or resource, and the weak references and
+ * registrations in the heap, never from a flag of its own (snapshot/objects.ts).
  */
 
 import type { FunctionId } from '../../definition/operands.ts';
@@ -94,6 +98,10 @@ const inert: KindDisposal = { disposable: () => false, dispose: () => undefined 
 const watched = (context: Disposability, object: LiveObject): boolean =>
   context.heap.find('weakRefs', object.id).length > 0;
 
+/** Whether a resolver is registered on `future`, which its disposal cancels. */
+const registered = (context: Disposability, future: LiveObject): boolean =>
+  context.heap.find('resolvers', future.id).length > 0;
+
 /** Whether disposing a future in each state does something itself, besides what weak references see. */
 const futureStates: { readonly [Kind in FutureState['kind']]: boolean } = {
   call: true,
@@ -125,7 +133,8 @@ function declared(object: LiveObjectOf<'cell' | 'resource'>): KindDisposal {
 
 const kinds: Handlers<undefined, LiveObject, [], KindDisposal> = {
   future: (_context, future) => ({
-    disposable: (context) => futureStates[future.state.kind] || watched(context, future),
+    disposable: (context) =>
+      futureStates[future.state.kind] || watched(context, future) || registered(context, future),
     dispose: (context) => disposeFuture(context, future),
   }),
   slot: (_context, slot) => ({
@@ -194,13 +203,16 @@ export function dispose(context: DisposalContext, object: LiveObject): DisposalR
 }
 
 /**
- * Tells what observes the future it is disposed; then a call's future disposes its call, and a
- * pending slot operation leaves its slot's queue.
+ * Cancels the resolvers registered on the future and tells what observes it that it is disposed;
+ * then a call's future disposes its call, and a pending slot operation leaves its slot's queue.
  */
 function disposeFuture(
   context: DisposalContext,
   future: LiveObjectOf<'future'>,
 ): Cleanup | undefined {
+  for (const resolver of context.heap.find('resolvers', future.id)) {
+    context.cancel(resolver);
+  }
   const { state } = future;
   context.disposed(future.id);
   if (state.kind === 'call') {

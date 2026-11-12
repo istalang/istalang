@@ -108,6 +108,28 @@ describe('a Resolver.of resolver', () => {
     expect(await ended(main)).toEqual({ kind: 'finished', outcome: '-1' });
   });
 
+  it.each([
+    { future: 'later(1)', type: 'Int', value: '1' },
+    { future: 'time.delay(1s)', type: 'Unit', value: '()' },
+  ])(
+    'is cancelled once the future it is registered on, $future, is let go of, though something holds it',
+    async ({ future, type, value }) => {
+      const main = [
+        'live async fn main() -> Int: await runtime.run(runtime.id()) _main()\nista async fn _main() -> Int:',
+        '  const seen = new Seen{value: 0}',
+        `  const watching = Resolver.of(fn(_: ${type}): see(seen, 1))`,
+        '  watching.onCancel(fn(): see(seen, -1))',
+        '  if true:',
+        `    const pending = ${future}`,
+        '    pending.onAwait(watching)',
+        '  await runtime.commit()',
+        '  await runtime.commit()',
+        `  seen->value * 10 + (if watching.tryResolve(${value}): 1 else: 0)`,
+      ];
+      expect(await ended(main)).toEqual({ kind: 'finished', outcome: '-10' });
+    },
+  );
+
   it('panics committing a value too deep to persist that only its callback is to get', async () => {
     const main = [
       'type Deep = Array<Deep>',

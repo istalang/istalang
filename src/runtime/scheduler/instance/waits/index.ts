@@ -12,8 +12,11 @@
  *   call of its callback with the value, a driver of its own (`WaitSeams.called`), so in ista code
  *   it runs in a segment of its own, and decides whatever it decides only then. Cancelling any
  *   resolver readies its `onCancel` callbacks the same way, each once.
- * - What holds a wait's resolvers and their futures is the heap's (`Heap.holds`): a resolver
- *   nothing awaits that is let go of unresolved is a misused one (lifetimes/disposal.ts).
+ * - What holds a wait's resolvers and their futures is the heap's (`Heap.holds`), one end of each
+ *   registration, as what the resolver's chain comes down to deciding says: a wait's case, held
+ *   from the wait down, or a callback, held from its futures up. A `Resolver.at` resolver records
+ *   its chain's as it is made (`at`). A resolver nothing awaits that is let go of unresolved is a
+ *   misused one (lifetimes/disposal.ts).
  * - A wait is decided once, by the first of its resolvers to resolve. Futures resolved together, or
  *   resolved when one is registered, decide in order (settle-order.ts). Deciding cancels the
  *   resolvers then pending, which do nothing after and let go of their futures, and so a resolver's
