@@ -18,7 +18,7 @@
  * - **Lazy:** a module's check reads the summaries of what its functions call, transitively, and
  *   nothing else.
  * - **Reported per module:** `check` reports each finding where it stands, through the
- *   `lifetime reports` entry (reports.ts); `findingsOf` lists them, for tests.
+ *   `lifetime reports` entry (reports.ts).
  */
 
 import type { EntryTable } from '../../../../foundation/structures/entries/index.ts';
@@ -39,12 +39,12 @@ import { substitute } from '../../types/parts/substitution.ts';
 import type { Type } from '../../types/type/index.ts';
 import { flowsBuiltFor } from '../flow/build/index.ts';
 import type { FlowFunction } from '../flow/flow-ir.ts';
-import type { AnalysisContext, Violation } from './analysis/body.ts';
+import type { AnalysisContext } from './analysis/body.ts';
 import { type Analysis, analyze } from './analysis/index.ts';
 import { Declared, defaultsFlows, defaultsFound, withDefaults } from './declared.ts';
 import { conversionsOf, witnessesConvertedIn, witnessesOf, witnessesPutIn } from './dispatch.ts';
 import { typeFactsOf } from './facts.ts';
-import type { FindingDeclaration, LifetimeFinding } from './finding.ts';
+import type { FindingDeclaration, Violation } from './finding.ts';
 import {
   type Call,
   type DefaultResults,
@@ -144,13 +144,6 @@ export class Lifetimes {
   /** Whether values of `type` may reach a disposable: what decides that the runtime counts them. */
   reachesDisposable(type: Type): boolean {
     return this.#context.facts.relevanceOf(type) !== 'no';
-  }
-
-  /** What the rule finds in `module`'s functions, in their order. */
-  findingsOf(module: ModuleId): readonly LifetimeFinding[] {
-    return this.#declarationsOf(module).flatMap((declaration) =>
-      this.#violationsOf(declaration).map((violation) => ({ ...violation, declaration })),
-    );
   }
 
   /** Reports what the rule finds in `module`, each where the cycle closes (design.md §7). */

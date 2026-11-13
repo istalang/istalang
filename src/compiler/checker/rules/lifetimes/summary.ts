@@ -18,7 +18,6 @@
  *   `await` and its result (§3). **Leaks** are the inputs it hands code nobody sees, **unseen**
  *   says it runs such code before it returns, and **calls** which function values it was given it
  *   calls, which the caller may know.
- * - Every pair carries a field label, always `anyField`: labels aren't built (design.md §5.7).
  * - A native's summary comes from its declaration (`nativeSummary`): `@Keeps` gives its effects and
  *   requirements; its result is a new handle holding its arguments, or a value made of their
  *   parts, and of what the cells of those that are handles hold, and, where its handles watch a
@@ -37,18 +36,10 @@ import type { AnyType, Type } from '../../types/type/index.ts';
 import { awaitedOf } from '../../types/type/well-known.ts';
 import { type Input, inputKey, sameInput } from './input.ts';
 
-/** The fields a pair's path leaves its source through; any field, labels not being built. */
-export interface Label {
-  readonly kind: 'any';
-}
-
-export const anyField: Label = { kind: 'any' };
-
 export interface Effect {
   readonly from: Input;
   readonly to: Input;
   readonly inside: boolean;
-  readonly label: Label;
 }
 
 /** How a call's result relates to one of its inputs. */
@@ -92,7 +83,6 @@ export interface Requirement {
    * holder is a value whose handles the write lands behind.
    */
   readonly lands: 'place' | 'behind';
-  readonly label: Label;
 }
 
 /**
@@ -289,7 +279,6 @@ export function nativeSummary(
         from: parameter(holder),
         to: parameter(value),
         inside: false,
-        label: anyField,
       })),
     ),
     requirements: kept.flatMap(({ holder, kept: values }) => {
@@ -304,7 +293,6 @@ export function nativeSummary(
             valueType: parameters[value]?.type,
             lands:
               parameters[holder]?.reference === true ? ('place' as const) : ('behind' as const),
-            label: anyField,
           }));
     }),
     result: { relations: nativeResult(checker, native), reachesItself: false },

@@ -10,7 +10,7 @@ import type { AnchoredSpan } from '../../../syntax/tree/positions.ts';
 import type { CheckerContext } from '../../contexts/context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import { typeText } from '../../types/type/type-text.ts';
-import type { Violation } from './analysis/body.ts';
+import type { Violation } from './finding.ts';
 
 /** The diagnostic reporting `violation`. */
 export function diagnosticOf(

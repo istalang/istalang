@@ -16,14 +16,12 @@ import type { Type } from '../../types/type/index.ts';
  * call whose callee's write of what it is given would, an escaping closure or a witness whose
  * would, or a call at whose types its callee's own code makes one (`instance`).
  */
-export interface LifetimeFinding {
+export interface Violation {
   readonly kind: 'write' | 'call' | 'closure' | 'witness' | 'instance';
   readonly site: NodeOf<string>;
   /** What holds the cycle: the type of the holder written, or of what is written into it. */
   readonly holderType: Type;
   readonly callee: FunctionDeclaration | undefined;
-  /** The function, or the constant, whose code it is in. */
-  readonly declaration: FindingDeclaration;
 }
 
 /**

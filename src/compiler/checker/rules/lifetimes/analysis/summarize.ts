@@ -17,7 +17,6 @@ import type { ValueId } from '../../flow/flow-ir.ts';
 import { type Input, inputKey, sameInput } from '../input.ts';
 import type { NodeId } from '../reach-state.ts';
 import {
-  anyField,
   type Effect,
   type GivenValue,
   type ResultRelation,
@@ -137,7 +136,7 @@ function effectOf(
   if (from.node === to.node) {
     // No input reaches itself as given: one that does now holds parts reaching each other.
     return joined.reach.reaches(from.node, from.node)
-      ? { from: from.input, to: from.input, inside: false, label: anyField }
+      ? { from: from.input, to: from.input, inside: false }
       : undefined;
   }
   // Parts of one input start apart; inputs related as given relate their parts as given too.
@@ -154,11 +153,11 @@ function effectOf(
   // A reference parameter is its caller's place: a value it holds that may be `to` holds `to`.
   const holds = analysis.references.has(from.node) && joined.reach.aliases(from.node, to.node);
   if (holds || joined.reach.reaches(from.node, to.node)) {
-    return { from: from.input, to: to.input, inside: false, label: anyField };
+    return { from: from.input, to: to.input, inside: false };
   }
   // `from` comes to reach what `to` holds: something read out of it, or sharing with it.
   return joined.reach.reachedFrom(from.node).some((node) => joined.reach.carriedBy(node, to.node))
-    ? { from: from.input, to: to.input, inside: true, label: anyField }
+    ? { from: from.input, to: to.input, inside: true }
     : undefined;
 }
 

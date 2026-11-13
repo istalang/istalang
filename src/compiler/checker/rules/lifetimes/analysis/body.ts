@@ -24,17 +24,10 @@ import type { FunctionCall, RequirementCall } from '../../../surface/resolved-ca
 import type { Type } from '../../../types/type/index.ts';
 import type { FlowFunction, ValueId } from '../../flow/flow-ir.ts';
 import { cycleRelevance } from '../escaping.ts';
-import type { LifetimeFinding } from '../finding.ts';
+import type { Violation } from '../finding.ts';
 import { type Input, type InputPair, inputKey } from '../input.ts';
 import type { NodeId } from '../reach-state.ts';
-import {
-  anyField,
-  type Conversion,
-  type GivenValue,
-  type Requirement,
-  type Summary,
-  type TypedCycle,
-} from '../summary.ts';
+import type { Conversion, GivenValue, Requirement, Summary, TypedCycle } from '../summary.ts';
 import { moreRelevant, type Relevance } from '../type-reach.ts';
 import { cycleOf } from './cycles.ts';
 import type { FlowState } from './flow-state.ts';
@@ -74,9 +67,6 @@ export interface AnalysisContext {
   /** What the default of `declaration`'s parameter at `index` relates to, of those before it. */
   readonly defaultResult: (declaration: FunctionDeclaration, index: number) => GivenValue;
 }
-
-/** Where a cycle may close in this function's text (`LifetimeFinding`, the function aside). */
-export type Violation = Omit<LifetimeFinding, 'declaration'>;
 
 /** What analysing a nested function gives the body making its closure. */
 export interface NestedResult {
@@ -298,7 +288,7 @@ export class BodyAnalysis {
       return;
     }
     for (const pair of this.liftedPairs(state, holder, value, kind)) {
-      this.require({ kind, ...pair, holderType, valueType, lands, label: anyField });
+      this.require({ kind, ...pair, holderType, valueType, lands });
     }
   }
 

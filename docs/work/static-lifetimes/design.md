@@ -192,9 +192,6 @@ both.
 
 Paths join by union, and loops iterate to a fixpoint (the domain is finite per body).
 
-**Prepared for fields (§5.7):** each pair carries a field label, which C3 always sets to "any
-field".
-
 ### 5.3 Across calls: bottom-up summaries with requirements
 
 Each function gets a summary over its **inputs**: parameters, captures, the context constants it
@@ -378,10 +375,9 @@ by C4's review).
 - **Materializing an input's path at a join** relates it to its root alone, never to its siblings.
 
 Labels, a set of fields on each pair (`a ⇝{f} b`, Zanardini–Genaim 2014) with reads through one
-field and strong updates on fields, were planned as C4 and are not built (decided 2026-11-12).
-Pairs, summaries and requirements carry a label, always "any field", so they can come later
-without reshaping anything. Until then relinking after unlinking (`node->next = other`) and a read
-related to its parts' siblings are over-rejected (`findings.md`).
+field and strong updates on fields, were planned as C4 and are not built (decided 2026-11-12):
+pairs, summaries and requirements carry none. Until then relinking after unlinking
+(`node->next = other`) and a read related to its parts' siblings are over-rejected (`findings.md`).
 
 ## 6. Externs
 

@@ -16,7 +16,6 @@
 import { isHandleType } from '../../../types/properties/handles.ts';
 import { inputKey } from '../input.ts';
 import type { NodeId } from '../reach-state.ts';
-import { anyField } from '../summary.ts';
 import { type HandleReach, mayAlias, mayReach, mayShare } from '../type-reach.ts';
 import type { BodyAnalysis } from './body.ts';
 import type { FlowState } from './flow-state.ts';
@@ -113,7 +112,6 @@ function separate(
           holderType,
           valueType: analysis.nodes.typeOf(value.node),
           lands: 'behind',
-          label: anyField,
         });
       }
     }

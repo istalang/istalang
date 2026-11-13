@@ -404,9 +404,8 @@ declare only `extern shared struct`s.
   (`parser/incremental/reuse.ts`), so an edit inside a closure makes every closure of its function
   anew; after an edit inside a callee they saved nothing measurable once callers stopped reading
   its body.
-- **What closures capture and field labels** are not built (design.md §5.6, §5.7). C3 carries a
-  label in pairs, summaries and requirements, always `anyField`, and `heldOfFunction`
-  (`type-reach.ts`) is the seam a refinement of closures would take.
+- **What closures capture and field labels** are not built (design.md §5.6, §5.7).
+  `heldOfFunction` (`type-reach.ts`) is the seam a refinement of closures would take.
 
 ## Lowering and the IR (C5, dropped)
 
