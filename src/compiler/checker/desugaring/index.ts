@@ -24,6 +24,7 @@ import { type Origin, originOf } from '../contexts/synthesized.ts';
 import type { CoreExpression, Sugar, SugarKind } from '../surface/checked-body.ts';
 import type { Type } from '../types/type/index.ts';
 import { errorType } from '../types/type/primitives.ts';
+import { chainedComparisons } from './chained-comparisons.ts';
 import { deferredCalls } from './deferred-calls.ts';
 import { unwraps } from './unwrap.ts';
 
@@ -44,7 +45,7 @@ type Reword<Node extends Sugar> = (
 
 // biome-ignore-start lint/style/useNamingConvention: the keys are the tree's node kinds.
 const desugars: { readonly [Kind in SugarKind]: Desugar<Extract<Sugar, { readonly kind: Kind }>> } =
-  { DeferredCall: deferredCalls, Unwrap: unwraps };
+  { ChainedComparison: chainedComparisons, DeferredCall: deferredCalls, Unwrap: unwraps };
 // biome-ignore-end lint/style/useNamingConvention: the keys are the tree's node kinds.
 
 /** The entry of `node`'s kind, typed for the node as its union sees it. */

@@ -1,14 +1,11 @@
-# error: 5016 at 11:7
-# error: 5016 at 11:11
-# error: 5016 at 12:11
-# error: 5016 at 13:7
-# error: 5016 at 14:3
-# Each link of a chain is checked as its comparison alone would be; `in`
-# needs an `includes` taking the container and the item (§3.9). An operand between two links is
-# compared on both sides, so it isn't wrapped into an optional for one.
+# error: 5016 at 9:7
+# error: 5016 at 9:11
+# error: 5016 at 10:11
+# error: 5016 at 11:3
+# Each link of a chain is checked as its comparison alone would be; `in` needs an `includes`
+# taking the container and the item (§3.9).
 
-fn f(x: Int, y: Int, flag: Bool, maybe: Int?) -> Bool:
+fn f(x: Int, y: Int, flag: Bool) -> Bool:
   _ = 1 < "a" < 2
   _ = x < y == flag
-  _ = maybe == x < y
   1 in 5

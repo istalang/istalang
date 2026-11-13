@@ -14,8 +14,8 @@
  * - Nothing narrows: an undecided condition leaves its operands' types as they are.
  */
 
+import type { Comparison } from '../../../../syntax/expressions/comparisons.ts';
 import type { Expression } from '../../../../syntax/expressions/index.ts';
-import type { AnchoredSpan } from '../../../../syntax/tree/positions.ts';
 import type { BodyContext } from '../../../contexts/body-context.ts';
 import { checkerDiagnostics } from '../../../diagnostics/index.ts';
 import { keyOwnerOfValue } from '../../../types/traits/struct-keys.ts';
@@ -48,25 +48,15 @@ export function decidedValue(context: BodyContext, condition: Expression): boole
 }
 
 /**
- * Where an `==` or `!=` stands: the comparison, unless it is a link of a chain, and its operator.
- */
-interface EqualityAt {
-  readonly comparison: Expression | undefined;
-  readonly span: AnchoredSpan;
-  readonly operator: string;
-}
-
-/**
- * Checks that `left` and `right` compare by `==` (types/unions/equality.ts), deciding the
- * comparison by their types where they fix it: a single comparison then records and warns of its
- * value. Sides that never compare are reported, unless their types decide them unequal
- * (types/unions/equality.ts), which only a single comparison may be: a chain's link always runs.
+ * Checks that `left` and `right`, `comparison`'s sides, compare by `==` (types/unions/equality.ts),
+ * deciding it by their types where they fix it, recording and warning of its value. Sides that
+ * never compare are reported, unless their types decide them unequal (types/unions/equality.ts).
  */
 export function checkEquality(
   context: BodyContext,
   left: EqualitySide,
   right: EqualitySide,
-  at: EqualityAt,
+  comparison: Comparison,
 ): void {
   const compare = fitEqualSides(context, left, right);
   for (const [side, other] of [
@@ -79,11 +69,12 @@ export function checkEquality(
   }
   const { memberUnionOf } = context.checker.fitting;
   const equal = decidedEquality(left, right, compare, memberUnionOf);
-  if (!compare && (equal === undefined || at.comparison === undefined)) {
+  const { span, operator } = comparison;
+  if (!compare && equal === undefined) {
     const types = [typeText(left.type), typeText(right.type)];
-    context.report(checkerDiagnostics.operatorTypes(at.span, at.operator, types));
-  } else if (equal !== undefined && at.comparison !== undefined) {
-    decideComparison(context, at.comparison, equal === (at.operator === '=='));
+    context.report(checkerDiagnostics.operatorTypes(span, operator, types));
+  } else if (equal !== undefined) {
+    decideComparison(context, comparison, equal === (operator === '=='));
   }
 }
 

@@ -18,15 +18,10 @@
  */
 
 import { wellKnown } from '../../../../../foundation/language/well-known/index.ts';
-import {
-  type ComparisonLink,
-  comparisonLinkOf,
-  comparisonLinksOf,
-} from '../../../../syntax/expressions/comparisons.ts';
+import { type Comparison, isComparison } from '../../../../syntax/expressions/comparisons.ts';
 import type {
   Await,
   Binary,
-  ChainedComparison,
   ConditionalBranch,
   If,
   Is,
@@ -38,7 +33,6 @@ import type {
 import { binaryOperators } from '../../../../syntax/expressions/operators.ts';
 import { casesOf, selectCasesOf } from '../../../../syntax/expressions/readings.ts';
 import type { Block } from '../../../../syntax/statements/index.ts';
-import type { SyntaxNode } from '../../../../syntax/tree/index.ts';
 import type { BlockId, ValueId } from '../../../surface/flow-ir.ts';
 import { awaitedOf, wellKnownArguments } from '../../../types/type/well-known.ts';
 import type { FlowBuilder } from './flow-builder.ts';
@@ -134,11 +128,10 @@ export function binaryFlow(builder: FlowBuilder, node: Binary): ValueId {
   }
   const left = builder.expression(node.left);
   const result = builder.temporaryOf(node);
-  const link = comparisonLinkOf(node);
-  if (link !== undefined) {
+  if (isComparison(node)) {
     const right = builder.expression(node.right);
     if (builder.body.decidedOf(node) === undefined) {
-      compared(builder, link, [left, right], result);
+      compared(builder, node, [left, right], result);
     } else {
       builder.emit({ op: 'compute', site: node, into: result, operands: [] });
     }
@@ -165,46 +158,24 @@ export function binaryFlow(builder: FlowBuilder, node: Binary): ValueId {
   return result;
 }
 
-export function chainedComparison(builder: FlowBuilder, node: ChainedComparison): ValueId {
-  const result = builder.temporaryOf(node);
-  const evaluated = new Map<SyntaxNode, ValueId>();
-  const operand = (expression: ChainedComparison['operands'][number]) => {
-    const value = evaluated.get(expression) ?? builder.expression(expression);
-    evaluated.set(expression, value);
-    return value;
-  };
-  const end = builder.newBlock();
-  for (const [index, link] of comparisonLinksOf(node).entries()) {
-    if (index > 0) {
-      const [next, done] = builder.branch(2) as [BlockId, BlockId];
-      builder.resumeIn(done);
-      builder.end({ kind: 'goto', to: end });
-      builder.resumeIn(next);
-    }
-    compared(builder, link, [operand(link.left), operand(link.right)], result);
-  }
-  builder.continueIn(end);
-  return result;
-}
-
 /**
- * Whether `link` holds, into `result`: the built-in `==`, or the `compare` or `includes` checking
+ * Whether `node` holds, into `result`: the built-in `==`, or the `compare` or `includes` checking
  * made at its right operand, `includes` taking the collection first.
  */
 function compared(
   builder: FlowBuilder,
-  link: ComparisonLink,
+  node: Comparison,
   [left, right]: readonly [ValueId, ValueId],
   result: ValueId,
 ): void {
-  const { meaning } = binaryOperators[link.operator];
+  const { meaning } = binaryOperators[node.operator];
   if (meaning.kind === 'equality') {
-    builder.emit({ op: 'compute', site: link.right, into: result, operands: [left, right] });
+    builder.emit({ op: 'compute', site: node.right, into: result, operands: [left, right] });
     return;
   }
   const role = meaning.kind === 'membership' ? 'includes' : 'compare';
   const passed = role === 'includes' ? [right, left] : [left, right];
-  implicitCall(builder, role, { site: link.right, passed, into: result });
+  implicitCall(builder, role, { site: node.right, passed, into: result });
 }
 
 export function propagate(builder: FlowBuilder, node: Propagate): ValueId {

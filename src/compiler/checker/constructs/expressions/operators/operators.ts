@@ -5,11 +5,9 @@
  *   negation, the orderings and `in` call functions (resolution/calls/operators.ts); an ordering is
  *   `Bool` whatever `compare` returns, since lowering turns its int into the relation. `item in c`
  *   calls `includes(c, item)`, which must give a `Bool`.
- * - A chain `a < b == c`, `in` and `not in` included, compares each operand with the next, each
- *   operand checked once. Its orderings' `compare` and its memberships' `includes` calls are
- *   implicit, at their right operands, since the chain is one node.
- *   An operand between two links is compared on both sides, so it is never wrapped into an
- *   optional for one of them; the first and the last may be, as in a single comparison.
+ * - An ordering's `compare` and a membership's `includes` are implicit calls, made at the right
+ *   operand. A chain `a < b == c` is sugar for its links
+ *   (checker/desugaring/chained-comparisons.ts).
  * - `==` and `!=` are built in for every type and can't be overloaded (types/unions/equality.ts).
  *   The left side's type is what the right one is expected to have, so `x == none` reads naturally.
  *   One whose sides' types fix its value is decided
@@ -19,31 +17,17 @@
  */
 
 import { unreachable } from '../../../../../foundation/structures/unreachable.ts';
-import {
-  type ComparisonLink,
-  comparisonLinkOf,
-  comparisonLinksOf,
-  linkSpan,
-} from '../../../../syntax/expressions/comparisons.ts';
-import type {
-  Binary,
-  ChainedComparison,
-  Expression,
-  Unary,
-} from '../../../../syntax/expressions/index.ts';
+import { type Comparison, isComparison } from '../../../../syntax/expressions/comparisons.ts';
+import type { Binary, Unary } from '../../../../syntax/expressions/index.ts';
 import {
   type BinaryMeaning,
   binaryOperators,
-  type ImplicitOperator,
   isImplicitOperator,
 } from '../../../../syntax/expressions/operators.ts';
 import type { AnchoredSpan } from '../../../../syntax/tree/positions.ts';
 import type { BodyContext } from '../../../contexts/body-context.ts';
 import { checkerDiagnostics } from '../../../diagnostics/index.ts';
-import {
-  type ImplicitOperand,
-  implicitOperatorCall,
-} from '../../../resolution/applying/implicit.ts';
+import { implicitOperatorCall } from '../../../resolution/applying/implicit.ts';
 import {
   applied,
   type Operand,
@@ -59,9 +43,8 @@ import { checkNullish } from '../access/optionals.ts';
 import { checkEquality } from './decided-conditions.ts';
 
 export function checkBinary(context: BodyContext, node: Binary, expected: Type | undefined): Type {
-  const link = comparisonLinkOf(node);
-  if (link !== undefined) {
-    return checkComparisons(context, node, [link]);
+  if (isComparison(node)) {
+    return checkComparison(context, node);
   }
   const { operator } = node;
   const { meaning }: { readonly meaning: BinaryMeaning } = binaryOperators[operator];
@@ -74,7 +57,7 @@ export function checkBinary(context: BodyContext, node: Binary, expected: Type |
     return checkNullish(context, node, expected);
   }
   if (meaning.kind !== 'call') {
-    unreachable(`'${operator}' is a comparison; comparisonLinkOf should have matched it.`);
+    unreachable(`'${operator}' is a comparison; isComparison should have matched it.`);
   }
   const operands = operandsOf(context, node);
   return (
@@ -98,72 +81,35 @@ export function checkUnary(context: BodyContext, node: Unary, expected?: Type): 
     : literalOrBase(written.value, expected, context.checker.fitting);
 }
 
-/** `a < b <= c`: each operand compared with the next (§3.9). */
-export function checkChainedComparison(context: BodyContext, node: ChainedComparison): Type {
-  return checkComparisons(context, node, comparisonLinksOf(node));
-}
-
 /**
- * Checks one or more comparison links of `comparison` in sequence, checking shared operands once;
- * an operand with no value stops it (resolution/calls/stopped-operations.ts).
+ * `node`, a comparison: an equality, or its call made at its right operand, an ordering's
+ * `compare` or `in`'s `includes`; an operand with no value stops it
+ * (resolution/calls/stopped-operations.ts).
  */
-function checkComparisons(
-  context: BodyContext,
-  comparison: Expression,
-  links: readonly ComparisonLink[],
-): Type {
-  const checked = new Map<Expression, Type>();
-  const operand = (expression: Expression, expected?: Type): Operand => {
-    const type = checked.get(expression) ?? context.expression(expression, expected);
-    checked.set(expression, type);
-    return { node: expression, type };
-  };
-  const [first, last] = [links[0]?.left, links.at(-1)?.right];
-  const wrappable = (side: Operand): ImplicitOperand =>
-    side.node === first || side.node === last ? side : { type: side.type, node: undefined };
-  for (const link of links) {
-    const { operator } = link;
-    const left = operand(link.left);
-    const right = operand(link.right, isImplicitOperator(operator) ? undefined : left.type);
-    const stopped = stoppedOperation(
-      context,
-      comparison,
-      [...checked].map(([node, type]) => ({ node, type })),
-    );
-    if (stopped !== undefined) {
-      return stopped;
-    }
-    if (isImplicitOperator(operator)) {
-      checkLinkCall(context, link, operator, [wrappable(left), wrappable(right)]);
-    } else {
-      checkEquality(context, wrappable(left), wrappable(right), {
-        comparison: links.length === 1 ? comparison : undefined,
-        span: linkSpan(link),
-        operator,
-      });
-    }
+function checkComparison(context: BodyContext, node: Comparison): Type {
+  const { operator } = node;
+  const left = { node: node.left, type: context.expression(node.left) };
+  const rightExpected = isImplicitOperator(operator) ? undefined : left.type;
+  const right = { node: node.right, type: context.expression(node.right, rightExpected) };
+  const stopped = stoppedOperation(context, node, [left, right]);
+  if (stopped !== undefined) {
+    return stopped;
   }
-  return boolType;
-}
-
-/** A link's call, made at its right operand: an ordering's `compare`, or `in`'s `includes`. */
-function checkLinkCall(
-  context: BodyContext,
-  link: ComparisonLink,
-  operator: ImplicitOperator,
-  [left, right]: readonly [ImplicitOperand, ImplicitOperand],
-): void {
+  if (!isImplicitOperator(operator)) {
+    checkEquality(context, left, right, node);
+    return boolType;
+  }
   const membership = binaryOperators[operator].meaning.kind === 'membership';
-  const span = linkSpan(link);
   const result = implicitOperatorCall(context, {
-    node: link.right,
-    span,
+    node: node.right,
+    span: node.span,
     operator,
     arguments: membership ? [right, left] : [left, right],
   });
   if (membership && result !== undefined) {
-    expectBool(context, result, span);
+    expectBool(context, result, node.span);
   }
+  return boolType;
 }
 
 /** `includes` must give a `Bool`, since `in` is one. */

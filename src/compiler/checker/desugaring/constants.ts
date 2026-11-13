@@ -16,6 +16,7 @@ import type { VariableDeclaration } from '../../syntax/statements/index.ts';
 import type { Identifier } from '../../syntax/tree/node.ts';
 import type { AnchoredSpan } from '../../syntax/tree/positions.ts';
 import { bound, type Origin, synthesized } from '../contexts/synthesized.ts';
+import type { CoreExpression } from '../surface/checked-body.ts';
 
 /** A constant built for a sugar: its declaration, and a read of it. */
 export interface HeldConstant {
@@ -58,7 +59,7 @@ export function afterConstants(
   value: Expression,
   span: AnchoredSpan,
   origin: Origin,
-): Expression {
+): CoreExpression {
   const tail = synthesized(origin, {
     kind: 'ExpressionStatement',
     span: value.span,

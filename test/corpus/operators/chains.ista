@@ -1,14 +1,15 @@
-# outcome: [true,false,true,false,true,true,false,1]
+# outcome: [true,false,true,false,true,true,false,true,2]
 # A chain compares each operand with the next, as Python's does, `in` and `not in` included,
 # evaluating each operand once and stopping at the first comparison that fails (§3.9); a generic one
-# goes through `Comparable`.
+# goes through `Comparable`. Each link is checked as it would be alone, so an operand between two
+# converts for each on its own.
 
 fn ordered<T is Comparable>(low: T, middle: T, high: T) -> Bool:
   low <= middle < high
 
 import * as runtime from 'runtime'
-live async fn main() -> (Bool, Bool, Bool, Bool, Bool, Bool, Bool, Int): await runtime.run(runtime.id()) _main()
-ista async fn _main() -> (Bool, Bool, Bool, Bool, Bool, Bool, Bool, Int):
+live async fn main() -> (Bool, Bool, Bool, Bool, Bool, Bool, Bool, Bool, Int): await runtime.run(runtime.id()) _main()
+ista async fn _main() -> (Bool, Bool, Bool, Bool, Bool, Bool, Bool, Bool, Int):
   let calls = 0
   fn counted(value: Int) -> Int:
     calls += 1
@@ -19,4 +20,6 @@ ista async fn _main() -> (Bool, Bool, Bool, Bool, Bool, Bool, Bool, Int):
   const stopped = 5 < counted(1) < counted(9)
   const member = 0 < 2 in [2, 3]
   const absent = 0 < 5 not in [5]
-  (rising, falling, mixed, stopped, ordered("a", "b", "c"), member, absent, calls)
+  const maybe: Int? = 2
+  const optional = maybe == counted(2) < 3
+  (rising, falling, mixed, stopped, ordered("a", "b", "c"), member, absent, optional, calls)

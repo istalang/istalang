@@ -215,11 +215,12 @@ export function instantiatingTypesOf(call: ResolvedCall): readonly Type[] {
 
 /**
  * Nodes the checker resolves to a function: the nodes a call can be written as, a call, a deferred
- * call, read as the call to its taker it was checked as (§3.14, `BodyFacts.coreOf`), an operator that calls a
- * function (§3.9), indexing, which calls `index`, an assignment, whose compound operator calls a
- * function; and a function named as a value (§3.14), `f`, `ns.f` or `T.f`, or given type
- * arguments, `f<Int>`, for the function its closure runs. A call of a function value resolves to
- * none (`CheckedBody.valueCalls`), and a call the language makes is implicit (`ImplicitRole`).
+ * call, read as the call to its taker it was checked as (§3.14, `BodyFacts.coreOf`), an operator
+ * that calls a function (§3.9), indexing, which calls `index`, an assignment, whose compound
+ * operator calls a function; and a function named as a value (§3.14), `f`, `ns.f` or `T.f`, or
+ * given type arguments, `f<Int>`, for the function its closure runs. A call of a function value
+ * resolves to none (`CheckedBody.valueCalls`), and a call the language makes is implicit
+ * (`ImplicitRole`).
  */
 export type ResolvedSite = NodeOf<
   | 'Call'
@@ -266,11 +267,11 @@ export type ImplicitRole =
   /** `..=` storing its end one past the written one, in the step's direction. */
   | 'inclusiveEnd'
   /**
-   * The `compare` an ordering calls where no operator node stands for it: a chain's link, a range
-   * pattern's bound, or an array pattern's length against its fixed count.
+   * The `compare` an ordering calls, which no operator's function stands for: a comparison's, a
+   * range pattern's bound's, or an array pattern's length against its fixed count.
    */
   | 'compare'
-  /** The `includes` a chain's `in` or `not in` calls, at its right operand (§3.9). */
+  /** The `includes` an `in` or `not in` calls, at its right operand (§3.9). */
   | 'includes'
   /** An array pattern's reads of its array (§3.11): its length, an item, and the items between. */
   | 'length'

@@ -5,8 +5,6 @@
  * - An operator that calls a function calls the one the checker resolved; an ordering calls
  *   `compare` and turns its int into the relation with `order`. `item in c` calls
  *   `includes(c, item)`, its operands evaluated as written.
- * - A chain compares each operand with the next, evaluating each once, in order, and stops at the
- *   first comparison that fails, as `and` would.
  * - `==` and `!=` are the built-in `equal`, `not` its own instruction. One whose sides' types fix
  *   its value (§4) is that value, its sides still run.
  * - `and` and `or` short-circuit through `branch`, so their right side runs only when needed;
@@ -14,18 +12,8 @@
  */
 
 import type { Register } from '../../../../definition/operands.ts';
-import {
-  type ComparisonLink,
-  comparisonLinkOf,
-  comparisonLinksOf,
-  linkSpan,
-} from '../../../syntax/expressions/comparisons.ts';
-import type {
-  Binary,
-  ChainedComparison,
-  Expression,
-  Unary,
-} from '../../../syntax/expressions/index.ts';
+import { type Comparison, isComparison } from '../../../syntax/expressions/comparisons.ts';
+import type { Binary, Unary } from '../../../syntax/expressions/index.ts';
 import {
   binaryOperators,
   type Relation,
@@ -37,15 +25,14 @@ import type { CodeContext, FunctionContext } from '../../context.ts';
 import { lowerNullish } from './access/optionals.ts';
 
 export function lowerBinary(context: FunctionContext, node: Binary): Register {
-  const link = comparisonLinkOf(node);
   const decided = context.body.decidedOf(node);
-  if (link !== undefined && decided !== undefined) {
+  if (isComparison(node) && decided !== undefined) {
     // Its sides' types fix its value (§4): they run for what they do, and nothing compares them.
     operands(context, node);
     return context.constant(decided, node.span);
   }
-  if (link !== undefined) {
-    return compared(context, link, operands(context, node));
+  if (isComparison(node)) {
+    return compared(context, node, operands(context, node));
   }
   const { meaning } = binaryOperators[node.operator];
   if (meaning.kind === 'logic') {
@@ -57,50 +44,24 @@ export function lowerBinary(context: FunctionContext, node: Binary): Register {
   return emitCallAt(context, node, operands(context, node));
 }
 
-export function lowerChainedComparison(
-  context: FunctionContext,
-  node: ChainedComparison,
-): Register {
-  const { code } = context;
-  const evaluated = new Map<Expression, Register>();
-  const operand = (expression: Expression): Register => {
-    const register = evaluated.get(expression) ?? context.expression(expression);
-    evaluated.set(expression, register);
-    return register;
-  };
-  const result = code.allocate();
-  const end = code.newLabel();
-  for (const [index, link] of comparisonLinksOf(node).entries()) {
-    if (index > 0) {
-      const next = code.newLabel();
-      code.branch(result, next, end, node.span);
-      code.place(next);
-    }
-    const holds = compared(context, link, [operand(link.left), operand(link.right)]);
-    code.emit({ kind: 'move', span: node.span, dst: result, src: holds });
-  }
-  code.place(end);
-  return result;
-}
-
 /**
- * Whether a link holds: the built-in `==`, or the `compare` or `includes` the checker made at its
- * right operand.
+ * Whether a comparison holds: the built-in `==`, or the `compare` or `includes` the checker made at
+ * its right operand.
  */
 function compared(
   context: FunctionContext,
-  link: ComparisonLink,
+  node: Comparison,
   [left, right]: readonly [Register, Register],
 ): Register {
-  const { meaning } = binaryOperators[link.operator];
-  const span = linkSpan(link);
+  const { meaning } = binaryOperators[node.operator];
+  const { span } = node;
   if (meaning.kind === 'equality') {
     return equal(context, span, [left, right], meaning.negated);
   }
   const call = (role: 'includes' | 'compare', argumentList: readonly Register[]) =>
     emitFunctionCall(context, {
       span,
-      call: context.implicitCallAt(link.right, role),
+      call: context.implicitCallAt(node.right, role),
       arguments: argumentList,
     });
   if (meaning.kind === 'membership') {

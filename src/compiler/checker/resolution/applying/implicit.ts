@@ -75,7 +75,7 @@ export interface ImplicitRequest {
 }
 
 /** An operand of an implicit operator call; `node` is given when it may be wrapped to fit. */
-export interface ImplicitOperand {
+interface ImplicitOperand {
   readonly type: Type;
   readonly node: Expression | undefined;
 }

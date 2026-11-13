@@ -31,7 +31,7 @@ import { lowerSelect } from './control/select.ts';
 import { lowerDurationLiteral } from './literals/literals.ts';
 import { lowerTemplate } from './literals/templates.ts';
 import { lowerTuple, lowerTupleElement } from './literals/tuples.ts';
-import { lowerBinary, lowerChainedComparison, lowerUnary } from './operators.ts';
+import { lowerBinary, lowerUnary } from './operators.ts';
 import { lowerFieldRead, lowerFieldsLiteral, readsField } from './structs/structs.ts';
 
 // biome-ignore-start lint/style/useNamingConvention: the keys are the tree's node kinds.
@@ -68,7 +68,6 @@ export const expressionHandlers: Handlers<FunctionContext, CoreExpression, [], R
   Reference: neverLowered,
   Index: lowerIndex,
   Propagate: lowerPropagate,
-  ChainedComparison: lowerChainedComparison,
   TemplateLiteral: lowerTemplate,
   Dereference: lowerDereference,
   Await: lowerAwait,

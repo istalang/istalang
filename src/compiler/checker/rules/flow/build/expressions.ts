@@ -27,7 +27,6 @@ import { stepTarget } from './chains.ts';
 import {
   awaitFlow,
   binaryFlow,
-  chainedComparison,
   ifFlow,
   isFlow,
   matchFlow,
@@ -248,7 +247,6 @@ export const expressionFlows: Handlers<FlowBuilder, CoreExpression, [], ValueId>
   },
   Await: awaitFlow,
   Binary: binaryFlow,
-  ChainedComparison: chainedComparison,
   Is: isFlow,
   Range: range,
   TemplateLiteral: template,

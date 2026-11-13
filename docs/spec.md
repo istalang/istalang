@@ -886,7 +886,7 @@ const next = head->next?->value   # Int?: none when head->next is none
 
 All four comparisons go through a single `compare(left, right) -> Int` (negative, zero or positive), so they can never contradict each other.
 
-**Chains.** Comparisons in a row chain as in Python: `a < b <= c` is `a < b and b <= c`, and any mix of `<`, `<=`, `>`, `>=`, `==`, `!=`, `in` and `not in` chains the same way, each operand compared with the next, so `0 < x in xs` is `0 < x and x in xs`. Every operand is evaluated at most once, in order, and evaluation stops at the first comparison that fails. An operand between two comparisons is compared on both sides, so it is never converted into a union for one of them. A misreading of `x < y == flag` as `(x < y) == flag` fails to check, since it compares `y` with a `Bool`; parenthesize to mean that. `is` doesn't chain, since a pattern follows it.
+**Chains.** Comparisons in a row chain as in Python: `a < b <= c` is `a < b and b <= c`, and any mix of `<`, `<=`, `>`, `>=`, `==`, `!=`, `in` and `not in` chains the same way, each operand compared with the next, so `0 < x in xs` is `0 < x and x in xs`. Every operand is evaluated at most once, in order, and evaluation stops at the first comparison that fails; each comparison is checked as it would be written alone. A misreading of `x < y == flag` as `(x < y) == flag` fails to check, since it compares `y` with a `Bool`; parenthesize to mean that. `is` doesn't chain, since a pattern follows it.
 
 **Membership.** `x in c` calls `includes(c, x)`, and `x not in c` is `not (x in c)`. An `Array` includes its elements, compared by `==`; a `Map` its keys, as `has` says; a `String` its substrings; and a `Range` the ints it reaches (§3.8).
 

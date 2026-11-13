@@ -31,7 +31,7 @@ import { checkIndentedValue } from './literals/indented-values.ts';
 import { checkDurationLiteral } from './literals/literals.ts';
 import { checkTemplate } from './literals/templates.ts';
 import { checkTuple, checkTupleElement } from './literals/tuples.ts';
-import { checkBinary, checkChainedComparison, checkUnary } from './operators/operators.ts';
+import { checkBinary, checkUnary } from './operators/operators.ts';
 import { checkNamedLiteral, checkStructLiteral } from './structs/structs.ts';
 import { checkNone } from './structs/variants.ts';
 
@@ -82,7 +82,7 @@ export const expressionHandlers: Handlers<BodyContext, Expression, [Type | undef
   Propagate: checkPropagate,
   DeferredCall: (context, node, expected) => context.sugars.check(context, node, expected),
   Unwrap: (context, node, expected) => context.sugars.check(context, node, expected),
-  ChainedComparison: checkChainedComparison,
+  ChainedComparison: (context, node, expected) => context.sugars.check(context, node, expected),
   TemplateLiteral: checkTemplate,
   Dereference: checkDereference,
   Await: checkAwait,
