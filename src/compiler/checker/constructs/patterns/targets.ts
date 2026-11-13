@@ -16,7 +16,6 @@ import type { SignatureParameter } from '../../check.ts';
 import type { BodyContext } from '../../contexts/body-context.ts';
 import type { Type } from '../../types/type/index.ts';
 import { walkTargets } from './walk/index.ts';
-import { bodyScope } from './walk/parts.ts';
 
 /**
  * Takes a value of `type` apart into `owner`'s targets, declaring each name with its part's type.
@@ -27,7 +26,7 @@ export function declareTargets(
   type: Type,
 ): void {
   const typed = owner.kind === 'Parameter' ? typingPattern(owner) : undefined;
-  const bindings = walkTargets(bodyScope(context), declaredTargets(owner), type, typed);
+  const bindings = walkTargets(context, declaredTargets(owner), type, typed);
   for (const { name, type: part } of bindings) {
     context.variables.declare(name, part);
   }

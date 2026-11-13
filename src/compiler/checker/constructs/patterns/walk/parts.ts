@@ -12,13 +12,12 @@
 
 import type { Diagnostic } from '../../../../../foundation/diagnostics/diagnostic.ts';
 import type { Entity } from '../../../../binder/entities.ts';
-import type { ModuleId } from '../../../../program/program.ts';
 import { type Identifier, lastName } from '../../../../syntax/tree/node.ts';
 import type { AnchoredSpan } from '../../../../syntax/tree/positions.ts';
-import type { NamedType, TypeNode } from '../../../../syntax/types/index.ts';
+import type { NamedType } from '../../../../syntax/types/index.ts';
 import type { Checker } from '../../../check.ts';
+import type { BodyContext } from '../../../contexts/body-context.ts';
 import { checkerDiagnostics } from '../../../diagnostics/index.ts';
-import type { FieldGiver } from '../../../surface/checked-body.ts';
 import type { FieldStep, PartStep } from '../../../surface/checked-pattern.ts';
 import { itemField } from '../../../surface/struct-items.ts';
 import { unfolded } from '../../../types/type/computed-types.ts';
@@ -26,57 +25,6 @@ import type { AnyType, FieldMember, Type, UnionType } from '../../../types/type/
 import { errorType } from '../../../types/type/primitives.ts';
 import { typeText } from '../../../types/type/type-text.ts';
 import { namesOwnType, patternTypeOf } from '../../../types/written/pattern-types.ts';
-
-/** What a pattern reads and where it reports, in a body or in a top-level constant. */
-export interface PatternScope {
-  readonly fieldsOf: Checker['fieldsOf'];
-  readonly aliasedType: Checker['aliasedType'];
-  readonly typeRules: Checker['typeRules'];
-  readonly wellKnownEntity: Checker['wellKnownEntity'];
-  readonly variantsOf: Checker['variantsOf'];
-  readonly entityOf: (name: Identifier) => Entity | undefined;
-  /** The type a type argument written in a pattern names (§3.11). */
-  readonly resolveType: (node: TypeNode) => Type;
-  readonly wellKnownType: Checker['wellKnownType'];
-  /** The type of the top-level constant `name` names, which a pattern compares with. */
-  readonly constantType: (name: Identifier) => Type | undefined;
-  readonly report: (diagnostic: Diagnostic<AnchoredSpan>) => void;
-  /** Records the field an item's name names. */
-  readonly recordField: (giver: FieldGiver, field: FieldMember) => void;
-}
-
-/** The body as a pattern reads it. */
-export function bodyScope(
-  context: Pick<PatternScope, 'entityOf' | 'resolveType' | 'report' | 'recordField'> & {
-    readonly checker: Pick<
-      Checker,
-      | 'fieldsOf'
-      | 'aliasedType'
-      | 'typeRules'
-      | 'variantsOf'
-      | 'wellKnownType'
-      | 'wellKnownEntity'
-      | 'constantNamed'
-    >;
-    readonly module: ModuleId;
-  },
-): PatternScope {
-  const { checker } = context;
-  return {
-    fieldsOf: (type) => checker.fieldsOf(type),
-    aliasedType: (alias) => checker.aliasedType(alias),
-    typeRules: checker.typeRules,
-    wellKnownEntity: (declaration) => checker.wellKnownEntity(declaration),
-    variantsOf: (type) => checker.variantsOf(type),
-    wellKnownType: (declaration, typeArguments) =>
-      checker.wellKnownType(declaration, typeArguments),
-    constantType: (name) => checker.constantNamed(context.module, name)?.type,
-    entityOf: (name) => context.entityOf(name),
-    resolveType: (node) => context.resolveType(node),
-    report: (diagnostic) => context.report(diagnostic),
-    recordField: (giver, field) => context.recordField(giver, field),
-  };
-}
 
 /**
  * A part of a value being taken apart: its type, and the steps to it from the whole value; `Step`
@@ -99,7 +47,7 @@ export interface ValuePart<Step extends PartStep = PartStep> {
  * (§3.17), at `span`; each of the error type, after a report, when it is anything else.
  */
 export function elementParts<Step extends PartStep>(
-  scope: Pick<PatternScope, 'report' | 'typeRules'>,
+  context: Pick<BodyContext, 'report' | 'checker'>,
   part: ValuePart<Step | number>,
   count: number,
   span: AnchoredSpan,
@@ -107,7 +55,7 @@ export function elementParts<Step extends PartStep>(
   const type = unfolded(part.type);
   const fits = type.kind === 'error' || (type.kind === 'tuple' && type.elements.length === count);
   if (!fits) {
-    scope.report(checkerDiagnostics.tupleArity(span, count, typeText(type)));
+    context.report(checkerDiagnostics.tupleArity(span, count, typeText(type)));
   }
   return Array.from({ length: count }, (_, index) => ({
     type: type.kind === 'tuple' && fits ? (type.elements[index] ?? errorType) : errorType,
@@ -123,28 +71,33 @@ export function elementParts<Step extends PartStep>(
  * takes a variant apart itself.
  */
 export function structParts(
-  scope: PatternScope,
+  context: BodyContext,
   named: NamedType | undefined,
   type: Type,
   span: AnchoredSpan,
 ): readonly FieldMember[] | undefined {
-  const entity = named === undefined ? undefined : scope.entityOf(lastName(named.path));
+  const entity = named === undefined ? undefined : context.entityOf(lastName(named.path));
   if (entity?.kind === 'variant' || entity?.kind === 'variants') {
-    scope.report(checkerDiagnostics.refutableTarget(span));
+    context.report(checkerDiagnostics.refutableTarget(span));
     return undefined;
   }
   if (type.kind === 'error' || (named !== undefined && entity === undefined)) {
     return undefined;
   }
-  if (named !== undefined && entity !== undefined && !namesOwnType(scope, entity, type)) {
-    scope.report(
-      otherTypeNamed(scope, entity, { span: named.span, name: lastName(named.path) }, type),
+  if (named !== undefined && entity !== undefined && !namesOwnType(context.checker, entity, type)) {
+    context.report(
+      otherTypeNamed(
+        context.checker,
+        entity,
+        { span: named.span, name: lastName(named.path) },
+        type,
+      ),
     );
     return undefined;
   }
-  const fields = scope.fieldsOf(type);
+  const fields = context.checker.fieldsOf(type);
   if (fields === undefined) {
-    scope.report(checkerDiagnostics.notStructValue(span, typeText(type)));
+    context.report(checkerDiagnostics.notStructValue(span, typeText(type)));
   }
   return fields;
 }
@@ -154,12 +107,12 @@ export function structParts(
  * generic alias names no one type, and anything else names another type than the value's.
  */
 export function otherTypeNamed(
-  scope: Pick<PatternScope, 'aliasedType' | 'typeRules' | 'wellKnownEntity'>,
+  checker: Pick<Checker, 'aliasedType' | 'typeRules' | 'wellKnownEntity'>,
   entity: Entity,
   { span, name }: { readonly span: AnchoredSpan; readonly name: Identifier },
   type: Type,
 ): Diagnostic<AnchoredSpan> {
-  return patternTypeOf(scope, entity).kind === 'genericAlias'
+  return patternTypeOf(checker, entity).kind === 'genericAlias'
     ? checkerDiagnostics.genericAliasPattern(span, name.text)
     : checkerDiagnostics.typeMismatch(span, typeText(type), name.text);
 }
@@ -175,7 +128,7 @@ export function structFieldStep(part: ValuePart<PartStep>, name: string): FieldS
  * and its part has the error type.
  */
 export function fieldPart<Step extends PartStep>(
-  scope: Pick<PatternScope, 'report' | 'recordField'>,
+  context: Pick<BodyContext, 'report' | 'recordField'>,
   fields: readonly FieldMember[] | undefined,
   item: { readonly name: Identifier | undefined; readonly span: AnchoredSpan },
   part: ValuePart<Step | FieldStep>,
@@ -183,11 +136,11 @@ export function fieldPart<Step extends PartStep>(
   const index = fields === undefined ? -1 : itemField(item.name, fields);
   const field = fields?.[index];
   if (field !== undefined && item.name !== undefined) {
-    scope.recordField(item.name, field);
+    context.recordField(item.name, field);
   }
   if (fields !== undefined && field === undefined) {
     const type = typeText(part.type);
-    scope.report(
+    context.report(
       item.name === undefined
         ? checkerDiagnostics.positionalNeedsOneField(item.span, type, fields.length)
         : checkerDiagnostics.unknownField(item.name.span, type, item.name.text),

@@ -7,17 +7,12 @@
 
 import type { Destructuring, FieldTarget } from '../../../../syntax/statements/targets.ts';
 import type { AnchoredSpan } from '../../../../syntax/tree/positions.ts';
+import type { BodyContext } from '../../../contexts/body-context.ts';
 import type { FieldStep, PartStep } from '../../../surface/checked-pattern.ts';
 import type { FieldMember } from '../../../types/type/index.ts';
 import { anyShape, type Shape } from '../exhaustiveness/exhaustiveness.ts';
 import { structKey, tupleKey } from '../exhaustiveness/shapes.ts';
-import {
-  elementParts,
-  fieldPart,
-  type PatternScope,
-  structParts,
-  type ValuePart,
-} from './parts.ts';
+import { elementParts, fieldPart, structParts, type ValuePart } from './parts.ts';
 
 /**
  * How a walk takes the targets a value is taken apart into: where it reports, and each target.
@@ -25,7 +20,7 @@ import {
  * member, an assignment's never does, so its paths are positions and fields.
  */
 export interface Taking<Target, Step extends PartStep = PartStep> {
-  readonly scope: PatternScope;
+  readonly context: BodyContext;
   /** Takes `target` over the part of the value it reaches; its shape. */
   readonly take: (target: Target, part: ValuePart<Step>) => Shape | undefined;
 }
@@ -59,11 +54,11 @@ export function takeApart<Target, Step extends PartStep>(
 ): Shape | undefined {
   if (destructuring.kind === 'tuple') {
     const { elements, span } = destructuring;
-    const parts = elementParts(taking.scope, part, elements.length, span);
+    const parts = elementParts(taking.context, part, elements.length, span);
     const shapes = elements.map((element, index) => taking.take(element, parts[index] ?? part));
     return constructed(tupleKey, shapes);
   }
-  const fields = structParts(taking.scope, destructuring.type, part.type, destructuring.span);
+  const fields = structParts(taking.context, destructuring.type, part.type, destructuring.span);
   const shapes = takeFields(taking, destructuring.items, fields, part);
   return fields === undefined ? undefined : constructed(structKey, shapes);
 }
@@ -81,7 +76,7 @@ function takeFields<Target, Step extends PartStep>(
   const shapes: (Shape | undefined)[] = (fields ?? []).map(() => anyShape);
   const taken = new Set<number>();
   for (const item of items) {
-    const field = fieldPart(taking.scope, fields, item, part);
+    const field = fieldPart(taking.context, fields, item, part);
     const shape = taking.take(item.target, field.part);
     if (field.index >= 0) {
       shapes[field.index] = taken.has(field.index) ? undefined : shape;

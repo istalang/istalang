@@ -9,6 +9,7 @@ import type { Entity } from '../../../../binder/entities.ts';
 import type { NamePattern } from '../../../../syntax/patterns.ts';
 import { lastName } from '../../../../syntax/tree/node.ts';
 import type { TypeNode } from '../../../../syntax/types/index.ts';
+import type { BodyContext } from '../../../contexts/body-context.ts';
 import { checkerDiagnostics } from '../../../diagnostics/index.ts';
 import { sameType } from '../../../types/identity/identity.ts';
 import type { Type, UnionType } from '../../../types/type/index.ts';
@@ -25,7 +26,6 @@ import {
   variantOwners,
 } from '../../../types/written/pattern-types.ts';
 import { typeOfEntity } from '../../../types/written/resolve-type.ts';
-import type { PatternScope } from './parts.ts';
 
 /**
  * The members a pattern naming a type, variant or constant selects (types/written/pattern-types.ts
@@ -35,33 +35,33 @@ import type { PatternScope } from './parts.ts';
  * qualified instead (§3.11).
  */
 export function namedMembers(
-  scope: PatternScope,
+  context: BodyContext,
   written: WrittenName,
   union: UnionType,
 ): readonly Type[] | undefined {
   const name = lastName(written.path);
-  const entity = scope.entityOf(name);
+  const entity = context.entityOf(name);
   if (entity === undefined) {
     return undefined;
   }
   const { members } = union;
   if (entity.kind === 'variable') {
-    const type = scope.constantType(name);
+    const type = context.checker.constantNamed(context.module, name)?.type;
     return type === undefined ? [] : members.filter((member) => sameType(member, baseOf(type)));
   }
-  const named = membersNamed(scope, entity, members);
-  const owners = entity.kind === 'type' ? variantOwners(scope, members, name.text) : [];
+  const named = membersNamed(context.checker, entity, members);
+  const owners = entity.kind === 'type' ? variantOwners(context.checker, members, name.text) : [];
   if (named.length === 0 && owners.length > 0) {
     const texts = owners.map(typeText);
     const qualified = `qualify it, as in '${texts[0]}.${name.text}'`;
-    scope.report(
+    context.report(
       checkerDiagnostics.severalMembers(written.span, typeText(union), texts, qualified),
     );
     return undefined;
   }
   return written.typeArguments.length === 0
     ? named
-    : instanceNamed(scope, entity, written, { named, members });
+    : instanceNamed(context, entity, written, { named, members });
 }
 
 /**
@@ -70,30 +70,32 @@ export function namedMembers(
  * what it names doesn't take, or naming a type in error.
  */
 function instanceNamed(
-  scope: PatternScope,
+  context: BodyContext,
   entity: Entity,
   written: WrittenName,
   { named, members }: { readonly named: readonly Type[]; readonly members: readonly Type[] },
 ): readonly Type[] | undefined {
-  const pattern = patternTypeOf(scope, entity);
-  const given = written.typeArguments.map((argument) => scope.resolveType(argument));
+  const pattern = patternTypeOf(context.checker, entity);
+  const given = written.typeArguments.map((argument) => context.resolveType(argument));
   if (
     pattern.kind === 'genericAlias' &&
     given.length === pattern.declaration.typeParameters.length
   ) {
-    const type = typeOfEntity(scope, entity, () => given);
+    const type = typeOfEntity(context.checker, entity, () => given);
     return type === undefined || type.kind === 'error'
       ? undefined
-      : membersOfType(scope, type, members);
+      : membersOfType(context.checker, type, members);
   }
   if (given.some((type) => type.kind === 'error')) {
     return undefined;
   }
-  const instances = instancesNamed(scope, entity, named, given);
+  const instances = instancesNamed(context.checker, entity, named, given);
   if (instances === undefined) {
     const { text } = lastName(written.path);
     const declared = typeParameterCount(pattern, variantEnums(entity, named));
-    scope.report(checkerDiagnostics.typeArgumentCount(written.span, text, declared, given.length));
+    context.report(
+      checkerDiagnostics.typeArgumentCount(written.span, text, declared, given.length),
+    );
   }
   return instances;
 }

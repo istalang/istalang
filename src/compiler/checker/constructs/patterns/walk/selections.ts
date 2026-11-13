@@ -29,6 +29,7 @@ import {
 } from '../../../../syntax/patterns.ts';
 import { lastName } from '../../../../syntax/tree/node.ts';
 import { spanAcross } from '../../../../syntax/tree/positions.ts';
+import type { BodyContext } from '../../../contexts/body-context.ts';
 import { checkerDiagnostics } from '../../../diagnostics/index.ts';
 import { sameType } from '../../../types/identity/identity.ts';
 import type { AnyType, Type } from '../../../types/type/index.ts';
@@ -41,7 +42,7 @@ import {
   variantOwners,
 } from '../../../types/written/pattern-types.ts';
 import { literalTypeOf, memberTaken, selectsMember, unionPart } from './members.ts';
-import type { PatternScope, ValuePart } from './parts.ts';
+import type { ValuePart } from './parts.ts';
 import { type PatternTests, ruledOutSelection, type Selection } from './pattern-tests.ts';
 
 /**
@@ -49,28 +50,28 @@ import { type PatternTests, ruledOutSelection, type Selection } from './pattern-
  * after a report, or undefined when it selects nothing, so it is taken as it is.
  */
 export function selectionOf(
-  scope: PatternScope,
+  context: BodyContext,
   tests: PatternTests,
   node: Pattern | PatternPart,
   part: ValuePart,
 ): Selection | 'refused' | undefined {
   const { type } = part;
   if (type.kind === 'any' && node.kind === 'LiteralPattern') {
-    return literalThroughAny(scope, node, { ...part, type });
+    return literalThroughAny(context, node, { ...part, type });
   }
   if (type.kind === 'any') {
-    return isDowncasting(scope, node, type)
+    return isDowncasting(context, node, type)
       ? downcastSelection(tests, node, { ...part, type })
       : undefined;
   }
   const union = unionPart(part);
   if (union === undefined) {
-    return namesOtherType(scope, node, type) ? ruledOutSelection(part) : undefined;
+    return namesOtherType(context, node, type) ? ruledOutSelection(part) : undefined;
   }
-  if (!selectsMember(scope, node, part)) {
+  if (!selectsMember(context, node, part)) {
     return undefined;
   }
-  return memberTaken(scope, node, part, union) ?? 'refused';
+  return memberTaken(context, node, part, union) ?? 'refused';
 }
 
 /**
@@ -79,9 +80,9 @@ export function selectionOf(
  * instantiation (types/unions/equality.ts `isKnown`). A generic alias names no one type, which is
  * reported where the pattern stands, not ruled out.
  */
-function namesOtherType(scope: PatternScope, node: Pattern | PatternPart, type: Type): boolean {
+function namesOtherType(context: BodyContext, node: Pattern | PatternPart, type: Type): boolean {
   const named = patternHead(node);
-  const entity = named === undefined ? undefined : scope.entityOf(lastName(named.path));
+  const entity = named === undefined ? undefined : context.entityOf(lastName(named.path));
   if (entity === undefined || !isKnown(type)) {
     return false;
   }
@@ -89,11 +90,13 @@ function namesOtherType(scope: PatternScope, node: Pattern | PatternPart, type: 
     case 'variant':
       return !(type.kind === 'nominal' && type.entity.declaration === entity.enum);
     case 'variants':
-      return variantOwners(scope, [type], entity.name).length === 0;
+      return variantOwners(context.checker, [type], entity.name).length === 0;
     case 'type':
     case 'primitive': {
-      const naming = patternTypeOf(scope, entity).kind;
-      return (naming === 'type' || naming === 'generic') && !namesOwnType(scope, entity, type);
+      const naming = patternTypeOf(context.checker, entity).kind;
+      return (
+        (naming === 'type' || naming === 'generic') && !namesOwnType(context.checker, entity, type)
+      );
     }
     default:
       return false;
@@ -105,15 +108,15 @@ function namesOtherType(scope: PatternScope, node: Pattern | PatternPart, type: 
  * or call pattern, or a name not naming `type` itself.
  */
 function isDowncasting(
-  scope: PatternScope,
+  context: BodyContext,
   node: Pattern | PatternPart,
   type: AnyType,
 ): node is StructPattern | VariantCallPattern | NamePattern {
   if (node.kind !== 'NamePattern') {
     return node.kind === 'StructPattern' || node.kind === 'VariantCallPattern';
   }
-  const entity = scope.entityOf(lastName(node.path));
-  return entity === undefined || !namesOwnType(scope, entity, type);
+  const entity = context.entityOf(lastName(node.path));
+  return entity === undefined || !namesOwnType(context.checker, entity, type);
 }
 
 /**
@@ -141,13 +144,13 @@ function downcastSelection(
  * type holds no such value, so the literal is compared as written.
  */
 function literalThroughAny(
-  scope: PatternScope,
+  context: BodyContext,
   node: LiteralPattern,
   part: ValuePart & { readonly type: AnyType },
 ): Selection | undefined {
   const literal = literalTypeOf(node.value);
   const [member] =
-    literal === undefined ? [] : literalMembers([part.type], literal, scope.typeRules);
+    literal === undefined ? [] : literalMembers([part.type], literal, context.checker.typeRules);
   return member === undefined
     ? undefined
     : {
@@ -174,7 +177,7 @@ export function literalPart(node: Pattern | PatternPart, part: ValuePart): Value
  * gives them, to tell apart the members instantiating one generic type (§3.11).
  */
 export function refuseTypeArguments(
-  scope: Pick<PatternScope, 'report'>,
+  context: Pick<BodyContext, 'report'>,
   node: Pattern | PatternPart,
 ): void {
   const named = patternHead(node);
@@ -184,7 +187,7 @@ export function refuseTypeArguments(
   const [first] = named.typeArguments;
   const last = named.typeArguments.at(-1);
   if (first !== undefined && last !== undefined) {
-    scope.report(
+    context.report(
       checkerDiagnostics.typeArgumentsOutsideUnion(
         spanAcross(first.span, last.span),
         lastName(named.path).text,

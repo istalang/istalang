@@ -73,7 +73,7 @@ import { literalShape, memberShape, nullaryShape } from './exhaustiveness/shapes
 import { type WalkedPattern, walkPattern } from './walk/index.ts';
 import { downcastOf } from './walk/kinds/downcasts.ts';
 import { compareFunction, rangeLeaf } from './walk/kinds/ranges.ts';
-import { bodyScope, otherTypeNamed, type ValuePart } from './walk/parts.ts';
+import { otherTypeNamed, type ValuePart } from './walk/parts.ts';
 import {
   type ArrayItems,
   type ArrayPart,
@@ -114,7 +114,7 @@ export function checkPattern(
   remaining: Type = subject,
 ): WalkedPattern {
   const whole = subjectPart(unfolded(subject), unfolded(remaining));
-  const walked = walkPattern(bodyScope(context), testsIn(context), pattern, whole);
+  const walked = walkPattern(context, testsIn(context), pattern, whole);
   for (const { name, type } of namesBound(walked)) {
     context.variables.declare(name, type);
   }

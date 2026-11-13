@@ -53,7 +53,7 @@ import type { FieldStep } from '../../surface/checked-pattern.ts';
 import type { Type } from '../../types/type/index.ts';
 import { errorType, tupleType } from '../../types/type/primitives.ts';
 import { anyShape, type Shape } from '../patterns/exhaustiveness/exhaustiveness.ts';
-import { bodyScope, type ValuePart } from '../patterns/walk/parts.ts';
+import type { ValuePart } from '../patterns/walk/parts.ts';
 import { type Taking, takeApart, takeTargets } from '../patterns/walk/taking.ts';
 
 export function checkAssignment(context: BodyContext, node: Assignment): void {
@@ -195,7 +195,7 @@ interface Assigning extends Taking<PreparedTarget, AssignedStep> {
 
 function assigningIn(context: BodyContext, valueSpan: AnchoredSpan): Assigning {
   const assigning: Assigning = {
-    scope: bodyScope(context),
+    context,
     parts: [],
     valueSpan,
     take: (target, part) => assignPart(context, assigning, target, part),

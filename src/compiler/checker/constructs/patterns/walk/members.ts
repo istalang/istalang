@@ -27,6 +27,7 @@ import {
   patternHead,
 } from '../../../../syntax/patterns.ts';
 import { isMissingName, lastName } from '../../../../syntax/tree/node.ts';
+import type { BodyContext } from '../../../contexts/body-context.ts';
 import { checkerDiagnostics } from '../../../diagnostics/index.ts';
 import type { PatternTest } from '../../../surface/checked-pattern.ts';
 import { sameType } from '../../../types/identity/identity.ts';
@@ -48,7 +49,7 @@ import {
 import { anyShape } from '../exhaustiveness/exhaustiveness.ts';
 import { memberShape } from '../exhaustiveness/shapes.ts';
 import { namedMembers } from './named-members.ts';
-import type { PatternScope, ValuePart } from './parts.ts';
+import type { ValuePart } from './parts.ts';
 import { ruledOutSelection, type Selection } from './pattern-tests.ts';
 
 /**
@@ -72,13 +73,13 @@ export function unionPart(part: ValuePart): UnionType | undefined {
  * as earlier cases left them.
  */
 export function memberTaken(
-  scope: PatternScope,
+  context: BodyContext,
   node: Pattern | PatternPart,
   part: ValuePart,
   union: UnionType,
 ): Selection | undefined {
-  const isTypePattern = node.kind === 'NamePattern' && namesType(scope, node);
-  const selected = selectedMembers(scope, node, union, !isTypePattern);
+  const isTypePattern = node.kind === 'NamePattern' && namesType(context, node);
+  const selected = selectedMembers(context, node, union, !isTypePattern);
   if (selected === undefined) {
     return undefined;
   }
@@ -92,7 +93,7 @@ export function memberTaken(
     const left = leftOf(part, selected);
     return {
       test,
-      part: { type: asNamed(scope, node, left), path: part.path, narrowedFrom: union },
+      part: { type: asNamed(context, node, left), path: part.path, narrowedFrom: union },
       decided: true,
       shapeOf: () => ({ kind: 'or', alternatives }),
     };
@@ -129,7 +130,7 @@ export function leftOf(part: ValuePart, selected: readonly Type[]): Type {
  * but a name naming the part's own type, which matches every value of it.
  */
 export function selectsMember(
-  scope: PatternScope,
+  context: BodyContext,
   node: Pattern | PatternPart,
   part: ValuePart,
 ): boolean {
@@ -143,7 +144,7 @@ export function selectsMember(
       return true;
     case 'NamePattern': {
       const name = lastName(node.path);
-      return !(isMissingName(name) || namesOwn(scope, node, part));
+      return !(isMissingName(name) || namesOwn(context, node, part));
     }
     default:
       return false;
@@ -154,33 +155,33 @@ export function selectsMember(
  * Whether a name pattern names `part`'s own type, a union, as an alias of it does; an alias of
  * another union, or of the part's union before earlier cases narrowed it, selects its members.
  */
-function namesOwn(scope: PatternScope, node: NamePattern, part: ValuePart): boolean {
-  const named = namedType(scope, node);
+function namesOwn(context: BodyContext, node: NamePattern, part: ValuePart): boolean {
+  const named = namedType(context, node);
   return named?.kind === 'union' && sameType(named, part.type);
 }
 
 /** `type`, as the type `node` names where it is that type, so what binds it keeps its alias. */
-function asNamed(scope: PatternScope, node: Pattern | PatternPart, type: Type): Type {
-  const named = node.kind === 'NamePattern' ? namedType(scope, node) : undefined;
+function asNamed(context: BodyContext, node: Pattern | PatternPart, type: Type): Type {
+  const named = node.kind === 'NamePattern' ? namedType(context, node) : undefined;
   return named !== undefined && sameType(named, type) ? named : type;
 }
 
 /** The one type a name pattern names, as patternTypeOf says; undefined when it names none. */
-function namedType(scope: PatternScope, node: NamePattern): Type | undefined {
-  const entity = scope.entityOf(lastName(node.path));
-  const named = entity === undefined ? undefined : patternTypeOf(scope, entity);
+function namedType(context: BodyContext, node: NamePattern): Type | undefined {
+  const entity = context.entityOf(lastName(node.path));
+  const named = entity === undefined ? undefined : patternTypeOf(context.checker, entity);
   return named?.kind === 'type' ? named.type : undefined;
 }
 
 /** Whether a name pattern that refers names a type, rather than a variant or a constant. */
-function namesType(scope: PatternScope, node: NamePattern): boolean {
-  const entity = scope.entityOf(lastName(node.path));
+function namesType(context: BodyContext, node: NamePattern): boolean {
+  const entity = context.entityOf(lastName(node.path));
   return (
     entity !== undefined &&
     entity.kind !== 'variant' &&
     entity.kind !== 'variants' &&
     entity.kind !== 'variable' &&
-    patternTypeOf(scope, entity).kind !== 'none'
+    patternTypeOf(context.checker, entity).kind !== 'none'
   );
 }
 
@@ -190,20 +191,20 @@ function namesType(scope: PatternScope, node: NamePattern): boolean {
  * (`single`).
  */
 function selectedMembers(
-  scope: PatternScope,
+  context: BodyContext,
   node: Pattern | PatternPart,
   union: UnionType,
   single: boolean,
 ): readonly Type[] | undefined {
-  const members = candidates(scope, node, union);
+  const members = candidates(context, node, union);
   if (members === undefined) {
     return undefined;
   }
   const text = typeText(union);
   if (single && members.length > 1) {
     const texts = members.map(typeText);
-    const how = variantTelling(scope, node, members) ?? telling(node, texts);
-    scope.report(checkerDiagnostics.severalMembers(node.span, text, texts, how));
+    const how = variantTelling(context, node, members) ?? telling(node, texts);
+    context.report(checkerDiagnostics.severalMembers(node.span, text, texts, how));
     return undefined;
   }
   return members;
@@ -233,7 +234,7 @@ function telling(node: Pattern | PatternPart, texts: readonly string[]): string 
  * pattern.
  */
 function variantTelling(
-  scope: PatternScope,
+  context: BodyContext,
   node: Pattern | PatternPart,
   members: readonly Type[],
 ): string | undefined {
@@ -242,7 +243,7 @@ function variantTelling(
   }
   const name = patternHead(node)?.path;
   const variant = name === undefined ? undefined : lastName(name);
-  const entity = variant === undefined ? undefined : scope.entityOf(variant);
+  const entity = variant === undefined ? undefined : context.entityOf(variant);
   const [first] = members;
   if ((entity?.kind !== 'variant' && entity?.kind !== 'variants') || first?.kind !== 'nominal') {
     return undefined;
@@ -257,34 +258,34 @@ function variantTelling(
 
 /** The members `node` may select, as its kind says; undefined for a name naming nothing. */
 function candidates(
-  scope: PatternScope,
+  context: BodyContext,
   node: Pattern | PatternPart,
   union: UnionType,
 ): readonly Type[] | undefined {
   const { members } = union;
   switch (node.kind) {
     case 'LiteralPattern':
-      return literalSelected(scope, members, node.value);
+      return literalSelected(context, members, node.value);
     case 'RangePattern': {
       const bound = node.start ?? node.end;
-      return bound === undefined ? [] : literalSelected(scope, members, bound.value);
+      return bound === undefined ? [] : literalSelected(context, members, bound.value);
     }
     case 'TuplePattern':
-      return kindMembers(scope, { kind: 'tuple', count: node.elements.length }, members);
+      return kindMembers(context.checker, { kind: 'tuple', count: node.elements.length }, members);
     case 'ArrayPattern':
-      return kindMembers(scope, { kind: 'array' }, members);
+      return kindMembers(context.checker, { kind: 'array' }, members);
     case 'NamePattern':
-      return namedMembers(scope, node, union);
+      return namedMembers(context, node, union);
     case 'VariantCallPattern':
-      return namedMembers(scope, node.callee, union);
+      return namedMembers(context, node.callee, union);
     case 'StructPattern': {
       if (node.type !== undefined) {
-        return namedMembers(scope, node.type, union);
+        return namedMembers(context, node.type, union);
       }
       const fields = node.fields.flatMap((item) =>
         item.kind === 'Invalid' ? [] : [item.field.text],
       );
-      return kindMembers(scope, { kind: 'shape', fields }, members);
+      return kindMembers(context.checker, { kind: 'shape', fields }, members);
     }
     default:
       return members;
@@ -295,12 +296,12 @@ function candidates(
  * The members a literal pattern's value selects (types/written/pattern-types.ts `literalMembers`).
  */
 function literalSelected(
-  scope: PatternScope,
+  context: BodyContext,
   members: readonly Type[],
   value: Expression,
 ): readonly Type[] {
   const type = literalTypeOf(value);
-  return type === undefined ? [] : literalMembers(members, type, scope.typeRules);
+  return type === undefined ? [] : literalMembers(members, type, context.checker.typeRules);
 }
 
 /**

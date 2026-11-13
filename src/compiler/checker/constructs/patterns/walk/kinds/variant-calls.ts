@@ -38,6 +38,7 @@ import type {
 import { lastName } from '../../../../../syntax/tree/node.ts';
 import type { AnchoredSpan } from '../../../../../syntax/tree/positions.ts';
 import type { NamedType } from '../../../../../syntax/types/index.ts';
+import type { BodyContext } from '../../../../contexts/body-context.ts';
 import { checkerDiagnostics } from '../../../../diagnostics/index.ts';
 import {
   type BindingFailure,
@@ -54,7 +55,7 @@ import {
 import type { FieldMember, Type } from '../../../../types/type/index.ts';
 import { errorType } from '../../../../types/type/primitives.ts';
 import { anyShape, type Shape } from '../../exhaustiveness/exhaustiveness.ts';
-import type { PatternScope, ValuePart } from '../parts.ts';
+import type { ValuePart } from '../parts.ts';
 import type { ArrayItems, PatternTests, VariantPart } from '../pattern-tests.ts';
 import { constructed } from '../taking.ts';
 import { type ItemTaking, takeArray } from './arrays.ts';
@@ -74,14 +75,14 @@ export interface VariantBraced {
 
 /** `node` when it is a struct pattern naming a variant (§3.11); undefined for any other. */
 export function variantBraced(
-  scope: Pick<PatternScope, 'entityOf'>,
+  context: Pick<BodyContext, 'entityOf'>,
   node: Pattern | PatternPart,
 ): VariantBraced | undefined {
   if (node.kind !== 'StructPattern' || node.type === undefined) {
     return undefined;
   }
   const head = lastName(node.type.path);
-  const named = scope.entityOf(head);
+  const named = context.entityOf(head);
   return named?.kind === 'variant' || named?.kind === 'variants'
     ? { node, type: node.type, named, name: head.text }
     : undefined;
@@ -140,16 +141,16 @@ function declaresVariant(type: Type, { named, name }: VariantBraced): boolean {
  * naming nothing, which binding reported.
  */
 export function calledVariant(
-  scope: PatternScope,
+  context: BodyContext,
   node: VariantCallPattern,
 ): VariantNaming | undefined {
   const name = lastName(node.callee.path);
-  const naming = scope.entityOf(name);
+  const naming = context.entityOf(name);
   if (naming?.kind === 'variant' || naming?.kind === 'variants') {
     return naming;
   }
   if (naming !== undefined) {
-    scope.report(checkerDiagnostics.notVariantCalled(node.callee.span, name.text));
+    context.report(checkerDiagnostics.notVariantCalled(node.callee.span, name.text));
   }
   return undefined;
 }
@@ -173,7 +174,7 @@ export function takeVariantCall(
   node: VariantCallPattern,
   part: ValuePart,
 ): Shape | undefined {
-  const naming = walk.scope.entityOf(lastName(node.callee.path));
+  const naming = walk.context.entityOf(lastName(node.callee.path));
   if (naming?.kind !== 'variant' && naming?.kind !== 'variants') {
     return unreachable('A call pattern naming no variant is refused before it is taken.');
   }
@@ -195,7 +196,7 @@ export function takeVariantCall(
   const call: BoundCall = { node, given, slots, leavesOthers };
   const binding = bindArguments(slots, given.map(boundArgument));
   if (!isBinding(binding)) {
-    walk.scope.report(failureReport(call, variant, binding));
+    walk.context.report(failureReport(call, variant, binding));
     takeReached(walk, call, variant, part);
     return constructed(
       variant.key,
@@ -218,10 +219,10 @@ function warnEmpty(walk: ItemTaking, node: VariantCallPattern, slots: readonly B
   const { text } = lastName(node.callee.path);
   if (slots.length === 0) {
     if (node.callee.typeArguments.length === 0) {
-      walk.scope.report(checkerDiagnostics.fieldlessCalled(node.span, text));
+      walk.context.report(checkerDiagnostics.fieldlessCalled(node.span, text));
     }
   } else if (slots.every((slot) => slot.hasDefault || slot.rest !== undefined)) {
-    walk.scope.report(checkerDiagnostics.defaultsCallPattern(node.span, text));
+    walk.context.report(checkerDiagnostics.defaultsCallPattern(node.span, text));
   }
 }
 
@@ -335,7 +336,7 @@ function takeReached(
 
 /** Records the field `argument` gives: by its name, or as itself, written by position (§3.11). */
 function recordGiven(walk: ItemTaking, argument: BoundPatternArgument, field: FieldMember): void {
-  walk.scope.recordField(
+  walk.context.recordField(
     argument.kind === 'NamedPatternArgument' ? argument.name : argument,
     field,
   );

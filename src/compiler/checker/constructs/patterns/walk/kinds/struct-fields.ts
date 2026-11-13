@@ -15,6 +15,7 @@
 import type { RestPattern, StructPattern } from '../../../../../syntax/patterns.ts';
 import type { FieldTarget } from '../../../../../syntax/statements/targets.ts';
 import type { Identifier } from '../../../../../syntax/tree/node.ts';
+import type { BodyContext } from '../../../../contexts/body-context.ts';
 import { checkerDiagnostics } from '../../../../diagnostics/index.ts';
 import type { PartBinding } from '../../../../surface/checked-pattern.ts';
 import type { Type, TypeParameterType } from '../../../../types/type/index.ts';
@@ -22,17 +23,17 @@ import { literalType } from '../../../../types/type/primitives.ts';
 import type { TypeRules } from '../../../../types/type/type-rules.ts';
 import { typeText } from '../../../../types/type/type-text.ts';
 import { anyShape, type Shape } from '../../exhaustiveness/exhaustiveness.ts';
-import { type PatternScope, structFieldStep, type ValuePart } from '../parts.ts';
+import { structFieldStep, type ValuePart } from '../parts.ts';
 import type { Taking } from '../taking.ts';
 
 /**
  * Whether a pattern takes `type` apart by its fields' names: a struct whose fields aren't known.
  */
-export function isStructNotKnown(scope: PatternScope, type: Type): boolean {
+export function isStructNotKnown(context: BodyContext, type: Type): boolean {
   return (
     type.kind !== 'error' &&
-    scope.fieldsOf(type) === undefined &&
-    scope.typeRules.keysOf(type, []).kind !== 'error'
+    context.checker.fieldsOf(type) === undefined &&
+    context.checker.typeRules.keysOf(type, []).kind !== 'error'
   );
 }
 
@@ -52,19 +53,19 @@ export function takeFieldsByName<Target>(
   const shapes = items.map(({ name, target }) => {
     takenTwice ||= names.has(name.text);
     names.add(name.text);
-    const type = fieldTypeNamed(taking.scope, part, name);
+    const type = fieldTypeNamed(taking.context, part, name);
     return taking.take(target, { type, path: [...part.path, structFieldStep(part, name.text)] });
   });
   return !takenTwice && shapes.every((shape) => shape === anyShape) ? anyShape : undefined;
 }
 
 /** The type of the field `name` names in `part`'s struct; reported and the error type when none. */
-function fieldTypeNamed(scope: PatternScope, part: ValuePart, name: Identifier): Type {
-  const type = scope.typeRules.fieldType(part.type, literalType(name.text));
+function fieldTypeNamed(context: BodyContext, part: ValuePart, name: Identifier): Type {
+  const type = context.checker.typeRules.fieldType(part.type, literalType(name.text));
   if (type.kind === 'error') {
-    scope.report(checkerDiagnostics.unknownField(name.span, typeText(part.type), name.text));
+    context.report(checkerDiagnostics.unknownField(name.span, typeText(part.type), name.text));
   } else {
-    scope.recordField(name, { name: name.text, type });
+    context.recordField(name, { name: name.text, type });
   }
   return type;
 }

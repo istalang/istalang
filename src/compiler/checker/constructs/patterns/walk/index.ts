@@ -38,6 +38,7 @@ import type {
 import { targetNames, unparenthesizedPattern } from '../../../../syntax/patterns.ts';
 import { type Identifier, isMissingName, lastName } from '../../../../syntax/tree/node.ts';
 import { type AnchoredSpan, spanAcross } from '../../../../syntax/tree/positions.ts';
+import type { BodyContext } from '../../../contexts/body-context.ts';
 import { checkerDiagnostics } from '../../../diagnostics/index.ts';
 import {
   cantMatch,
@@ -59,7 +60,7 @@ import {
   takeVariantCall,
   variantBraced,
 } from './kinds/variant-calls.ts';
-import type { PatternScope, ValuePart } from './parts.ts';
+import type { ValuePart } from './parts.ts';
 import type { Leaf, PatternTests, Selection } from './pattern-tests.ts';
 import { literalPart, refuseTypeArguments, selectionOf } from './selections.ts';
 import { type Taking, takeApart, takeTargets } from './taking.ts';
@@ -73,12 +74,12 @@ export interface WalkedPattern {
 
 /** Walks `pattern` over a value of `part`; without `tests`, as a target that must always match. */
 export function walkPattern(
-  scope: PatternScope,
+  context: BodyContext,
   tests: PatternTests | undefined,
   pattern: Pattern,
   part: ValuePart,
 ): WalkedPattern {
-  const walk = newWalk(scope, tests);
+  const walk = newWalk(context, tests);
   const shape = walk.take(pattern, part);
   return { tests: walk.found, bindings: walk.bindings, shape };
 }
@@ -90,12 +91,12 @@ export function walkPattern(
  * written type is the value's own, a parameter's (§3.3), so its type arguments are that type's.
  */
 export function walkTargets(
-  scope: PatternScope,
+  context: BodyContext,
   targets: readonly Pattern[],
   type: Type,
   typed?: StructPattern,
 ): readonly TargetBinding[] {
-  const walk = newWalk(scope, undefined, typed);
+  const walk = newWalk(context, undefined, typed);
   takeTargets(walk, targets, { type, path: [] }, spanOf(targets));
   return walk.bindings.map(({ path, ...binding }) => ({
     ...binding,
@@ -127,12 +128,12 @@ interface Matched {
 }
 
 function newWalk(
-  scope: PatternScope,
+  context: BodyContext,
   tests: PatternTests | undefined,
   typed?: StructPattern,
 ): Walk {
   const walk: Walk = {
-    scope,
+    context,
     tests,
     typed,
     found: [],
@@ -229,7 +230,7 @@ function refusedCall(
   node: Pattern | PatternPart,
   part: ValuePart,
 ): Matched | undefined {
-  if (node.kind !== 'VariantCallPattern' || calledVariant(walk.scope, node) !== undefined) {
+  if (node.kind !== 'VariantCallPattern' || calledVariant(walk.context, node) !== undefined) {
     return undefined;
   }
   if (walk.tests === undefined) {
@@ -239,8 +240,8 @@ function refusedCall(
       walk.take(argument, { type: errorType, path: part.path });
     }
   }
-  const entity = walk.scope.entityOf(lastName(node.callee.path));
-  const covers = entity !== undefined && namesOwnType(walk.scope, entity, part.type);
+  const entity = walk.context.entityOf(lastName(node.callee.path));
+  const covers = entity !== undefined && namesOwnType(walk.context.checker, entity, part.type);
   return { shape: covers ? anyShape : undefined, part };
 }
 
@@ -253,11 +254,11 @@ function refusedBraces(
   node: Pattern | PatternPart,
   part: ValuePart,
 ): Matched | undefined {
-  const braced = variantBraced(walk.scope, node);
+  const braced = variantBraced(walk.context, node);
   if (braced === undefined) {
     return undefined;
   }
-  walk.scope.report(checkerDiagnostics.variantInBracesPattern(node.span, braced.name));
+  walk.context.report(checkerDiagnostics.variantInBracesPattern(node.span, braced.name));
   if (walk.tests === undefined) {
     bindAt(walk, node, part, errorType);
     return { shape: anyShape, part };
@@ -281,7 +282,7 @@ function takeSelecting(walk: Walk, node: Pattern | PatternPart, part: ValuePart)
   const selection =
     walk.tests === undefined || isBinding
       ? undefined
-      : selectionOf(walk.scope, walk.tests, node, part);
+      : selectionOf(walk.context, walk.tests, node, part);
   if (selection === 'refused') {
     bindAt(walk, node, part, errorType);
     // A downcast is a guard however it goes, the types inside an `any` type being an open set.
@@ -301,7 +302,7 @@ function takeSelecting(walk: Walk, node: Pattern | PatternPart, part: ValuePart)
 /** Refuses type arguments `node` gives, unless they write its value's own type (`typed`). */
 function refuseUnwritten(walk: Walk, node: Pattern | PatternPart): void {
   if (node !== walk.typed) {
-    refuseTypeArguments(walk.scope, node);
+    refuseTypeArguments(walk.context, node);
   }
 }
 
@@ -310,7 +311,7 @@ function refuseUnwritten(walk: Walk, node: Pattern | PatternPart): void {
  */
 function takeSelected(walk: Walk, node: Pattern | PatternPart, selection: Selection): Matched {
   if (selection.test.kind !== 'member') {
-    refuseTypeArguments(walk.scope, node);
+    refuseTypeArguments(walk.context, node);
   }
   walk.found.push(selection.test);
   const inside = selection.decided
@@ -337,7 +338,7 @@ function binds(walk: Walk, node: NamePattern): boolean {
   const [name, ...rest] = node.path;
   return (
     rest.length === 0 &&
-    (walk.tests === undefined || walk.scope.entityOf(name)?.kind === 'variable')
+    (walk.tests === undefined || walk.context.entityOf(name)?.kind === 'variable')
   );
 }
 
@@ -352,7 +353,7 @@ function takeAlternatives(walk: Walk, node: OrPattern, part: ValuePart): Matched
   }
   const { tests } = walk;
   const alternatives = node.alternatives.map((alternative) => {
-    const own = newWalk(walk.scope, tests);
+    const own = newWalk(walk.context, tests);
     const { shape, selected } = takeMatched(own, alternative, part);
     const bindings = own.bindings.map((binding) => ({
       ...binding,
@@ -368,7 +369,7 @@ function takeAlternatives(walk: Walk, node: OrPattern, part: ValuePart): Matched
   }
   for (const other of others) {
     if (!sameNames(first.bindings, other.bindings)) {
-      walk.scope.report(checkerDiagnostics.differentAlternatives(other.span));
+      walk.context.report(checkerDiagnostics.differentAlternatives(other.span));
     }
   }
   walk.found.push({
@@ -381,14 +382,14 @@ function takeAlternatives(walk: Walk, node: OrPattern, part: ValuePart): Matched
     part: partSelected(
       part,
       live.map(({ selected }) => selected),
-      walk.scope.typeRules,
+      walk.context.checker.typeRules,
     ),
   };
 }
 
 /** The name declaring the variable `name` binds: the first alternative's, for a later one's. */
 function declaringName(walk: Walk, name: Identifier): Identifier {
-  const entity = walk.scope.entityOf(name);
+  const entity = walk.context.entityOf(name);
   return entity?.kind === 'variable' ? entity.name : name;
 }
 
@@ -401,10 +402,10 @@ function takeStruct(walk: Walk, node: StructPattern, part: ValuePart): Shape | u
     item.kind === 'Invalid' ? [] : [{ name: item.field, span: item.span, target: item }],
   );
   const shape =
-    node.type === undefined && isStructNotKnown(walk.scope, part.type)
+    node.type === undefined && isStructNotKnown(walk.context, part.type)
       ? takeFieldsByName(walk, items, part)
       : takeApart(walk, { kind: 'struct', type: node.type, items, span: node.span }, part);
-  const rest = restBinding(walk.scope.typeRules, node, part);
+  const rest = restBinding(walk.context.checker.typeRules, node, part);
   if (rest !== undefined) {
     walk.bindings.push(rest);
   }
@@ -432,7 +433,7 @@ function refutable(
  * target's parts are fields and tuple elements only.
  */
 function refused(walk: Walk, node: Pattern | PatternPart, part: ValuePart): Shape {
-  walk.scope.report(checkerDiagnostics.refutableTarget(node.span));
+  walk.context.report(checkerDiagnostics.refutableTarget(node.span));
   bindAt(walk, node, part, errorType);
   return anyShape;
 }
@@ -447,7 +448,7 @@ function refused(walk: Walk, node: Pattern | PatternPart, part: ValuePart): Shap
 function bindAt(walk: Walk, node: Pattern | PatternPart, part: ValuePart, type: Type): void {
   const names = new Set(
     targetNames(node).flatMap((name) => {
-      const entity = walk.scope.entityOf(name);
+      const entity = walk.context.entityOf(name);
       if (entity?.kind === 'variable') {
         return [entity.name];
       }
