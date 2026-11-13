@@ -60,6 +60,9 @@ Each root cause below explains a family of the ranked findings; fixing the root 
 ## Ranked findings
 
 ### 1. [high] The flow IR builder and lowering are two lowerings of every construct  **[L][2×: rules, lead]**
+- **In progress** (option A: lowering reads the flow IR). Done (`2128668b..2b81dee1`): every flow value typed (the punned
+  `type: undefined` bug), spreads read by field name, one `presentOr`, one `callSubstitution`, the flow IR in the checker's
+  surface. Next: the IR made exact (A3–A7), then lowering built from it.
 - where: `checker/rules/flow/build/{calls,literals,statements,scopes,chains,control}.ts` vs
   `lowering/constructs/{expressions,statements,parts}/`; clone pairs in `raw/clones45.txt` (`flow/build/literals.ts:73-127`
   ~ `lowering/.../structs.ts:90-96`, `collections.ts:74-112`; `flow/build/calls.ts:194-207` ~ `lowering/.../calls.ts:161-171`).
@@ -308,6 +311,8 @@ that are test seams (unexporting would copy knowledge or drop property tests).
   two reporting seams, so pass holding and sugar wording are skipped for `completeCall`/`instantiate`/`reportedFits`.
 - Inference: a type variable that met the error type settles to its other bounds, so a mistake inside a type
   (`Future<?>`) can still cascade.
+- Lifetimes reports a false write cycle for names bound from an input's parts (`const a = p.a; const b = p.b; a->next = b`)
+  while `p.a->next = p.b` is accepted.
 - Fixed on the way: a trait called as a function was accepted silently and crashed lowering (`8a578aee`).
 
 ## Rejected proposals
