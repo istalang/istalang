@@ -32,7 +32,6 @@ import type {
   FunctionDeclaration,
 } from '../../../syntax/declarations/index.ts';
 import type { NodeOf } from '../../../syntax/tree/node.ts';
-import type { FindingDeclaration, LifetimeFinding, LifetimeQueries } from '../../check.ts';
 import type { CheckerContext, CheckerNote } from '../../contexts/context.ts';
 import { type FunctionCall, functionCallsWithin } from '../../surface/resolved-call.ts';
 import { substitutionOf } from '../../surface/witness-closing.ts';
@@ -45,6 +44,7 @@ import { type Analysis, analyze } from './analysis/index.ts';
 import { constantFlow, Declared, defaultsFlows, defaultsFound, withDefaults } from './declared.ts';
 import { Dispatch } from './dispatch.ts';
 import { typeFactsOf } from './facts.ts';
+import type { FindingDeclaration, LifetimeFinding } from './finding.ts';
 import {
   type Call,
   type DefaultResults,
@@ -68,7 +68,7 @@ import {
   unrelatedValue,
 } from './summary.ts';
 
-export class Lifetimes implements LifetimeQueries {
+export class Lifetimes {
   readonly #checker: CheckerContext;
   readonly #callees: EntryTable<CheckerNote, FunctionDeclaration, readonly FunctionDeclaration[]>;
   readonly #groups: EntryTable<CheckerNote, FunctionDeclaration, readonly FunctionDeclaration[]>;
@@ -153,6 +153,7 @@ export class Lifetimes implements LifetimeQueries {
     );
   }
 
+  /** Reports what the rule finds in `module`, each where the cycle closes (design.md §7). */
   check(module: ModuleId): void {
     for (const declaration of this.#declarationsOf(module)) {
       this.#reports.get(declaration, module);

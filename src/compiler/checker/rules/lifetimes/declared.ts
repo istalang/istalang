@@ -18,7 +18,6 @@ import type {
   FunctionDeclaration,
 } from '../../../syntax/declarations/index.ts';
 import type { VariableDeclaration } from '../../../syntax/statements/index.ts';
-import type { FindingDeclaration } from '../../check.ts';
 import type { CheckerContext } from '../../contexts/context.ts';
 import { isDisposeFunction } from '../disposal/disposal.ts';
 import { flowsBuiltFor } from '../flow/build/index.ts';
@@ -27,6 +26,7 @@ import type { AnalysisContext, Violation } from './analysis/body.ts';
 import { type Analysis, analyze } from './analysis/index.ts';
 import { joinedSummaries } from './composition.ts';
 import { cycleRelevance, escapingCycles } from './escaping.ts';
+import type { FindingDeclaration } from './finding.ts';
 import type { GivenValue, Summary } from './summary.ts';
 
 /** What a function's defaults find. */

@@ -25,6 +25,7 @@ import type { Declaration } from '../../../syntax/declarations/index.ts';
 import { diagnosticIn, type SegmentBases } from '../../../syntax/tree/positions.ts';
 import type { CheckerContext, CheckerNote } from '../../contexts/context.ts';
 import type { Expansion } from '../../rules/expansion/functions.ts';
+import type { Lifetimes } from '../../rules/lifetimes/lifetimes.ts';
 import { checkDeclaration } from './declarations.ts';
 import { checkClashes } from './functions/clashes.ts';
 import type { TypeParameters } from './type-parameters.ts';
@@ -33,6 +34,7 @@ import type { TypeParameters } from './type-parameters.ts';
 export interface ModuleRules {
   readonly expansion: Expansion;
   readonly typeParameters: TypeParameters;
+  readonly lifetimes: Pick<Lifetimes, 'check'>;
 }
 
 export class ModuleChecks {
@@ -71,7 +73,7 @@ export class ModuleChecks {
     });
     this.#lifetimes = checker.entries.table({
       name: 'lifetimes',
-      compute: (module) => checker.lifetimes.check(module),
+      compute: (module) => rules.lifetimes.check(module),
     });
   }
 

@@ -18,11 +18,12 @@
 
 import type { FunctionDeclaration } from '../../../../syntax/declarations/index.ts';
 import type { NodeOf } from '../../../../syntax/tree/node.ts';
-import type { LifetimeFinding, SignatureParameter } from '../../../check.ts';
+import type { SignatureParameter } from '../../../check.ts';
 import type { FunctionCall, RequirementCall } from '../../../surface/resolved-call.ts';
 import type { Type } from '../../../types/type/index.ts';
 import type { FlowFunction, ValueId } from '../../flow/flow-ir.ts';
 import { cycleRelevance } from '../escaping.ts';
+import type { LifetimeFinding } from '../finding.ts';
 import { type Input, type InputPair, inputKey } from '../input.ts';
 import type { NodeId } from '../reach-state.ts';
 import {

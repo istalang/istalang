@@ -181,9 +181,7 @@ export class ProgramChecker implements CheckerContext {
     this.bindings = recordedBindings(this.entries, bindings);
     this.inputs = programInputs(this.entries, program, bindings);
     const declaring = declaringInputs(this.entries, program);
-    this.moduleOf = declaring.moduleOf;
-    this.#itemModuleOf = declaring.itemModuleOf;
-    this.isStd = declaring.isStd;
+    ({ moduleOf: this.moduleOf, itemModuleOf: this.#itemModuleOf, isStd: this.isStd } = declaring);
     this.#resolvedTypes = this.entries.table({
       name: 'resolved types',
       compute: (node, module) => resolveTypeNode(this, module, node),
@@ -217,9 +215,11 @@ export class ProgramChecker implements CheckerContext {
     this.#typeParameters = new TypeParameters(this, (node) =>
       node.kind === 'TypeParameter' ? declaring.moduleOf(node) : this.#itemModuleOf(node),
     );
+    this.lifetimes = new Lifetimes(this);
     this.#moduleChecks = new ModuleChecks(this, {
       expansion: new Expansion(this),
       typeParameters: this.#typeParameters,
+      lifetimes: this.lifetimes,
     });
     this.annotations = new Annotations({
       checker: this,
@@ -229,7 +229,10 @@ export class ProgramChecker implements CheckerContext {
     this.traitObjects = traitObjectsOf(this);
     this.rootGoals = programRootGoals(this, rootSearches);
     this.lookup = new Lookup(this);
-    this.lifetimes = new Lifetimes(this);
+  }
+
+  reachesDisposable(type: Type): boolean {
+    return this.lifetimes.reachesDisposable(type);
   }
 
   /** Checks a function's body, which must produce `declaredResult` if given. */

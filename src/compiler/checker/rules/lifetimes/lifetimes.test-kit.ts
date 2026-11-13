@@ -7,8 +7,8 @@ import { isError } from '../../../../foundation/diagnostics/diagnostic.ts';
 import { stdProgramOf } from '../../../binder/bind.test-kit.ts';
 import { idOf } from '../../../program/program.test-kit.ts';
 import { spanIn } from '../../../syntax/tree/positions.ts';
-import { checkProgram } from '../../check.ts';
 import { cycleTemplates } from '../../diagnostics/lifetimes.ts';
+import { ProgramChecker } from '../../wiring/program/program-checker.ts';
 
 const cycleCodes: ReadonlySet<number> = new Set(
   Object.values(cycleTemplates).map(({ code }) => code),
@@ -22,7 +22,7 @@ export function isCycle({ code }: { readonly code: number }): boolean {
 /** Each finding in `main`, as `line:kind`, the line counted from 1. */
 export function findingsIn(main: string): readonly string[] {
   const program = stdProgramOf({ main });
-  const checker = checkProgram(program);
+  const checker = new ProgramChecker(program);
   const module = idOf('main');
   const tree = program.modules.get(module)?.tree;
   if (tree === undefined) {
