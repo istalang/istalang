@@ -27,10 +27,10 @@ tags: [reuse, values, equality, maps, json, natives, runtime]
 - read a result's type argument or build `Ok` native results → `resultTypeArgument`, `resultOk`, `okStruct`, `okExtern` (`src/stdlib/values/results.ts`)
 - build `Err` or `parse` native return values → `resultErr`, `resultError`, `parseFailure`, `parseResult` (`src/stdlib/values/results.ts`)
 - read or build `time.Time` and `time.Duration` millisecond values → `millisecondsOf`, `resultMilliseconds`, `okMilliseconds` (`src/stdlib/time/fields.ts`)
-- read or write a nested part of an immutable `Value` along field positions → `partAt`, `withPart` (`src/runtime/interpreter/parts.ts`)
+- read a nested part of a `Value` along field positions → `partAt` (`src/runtime/interpreter/parts.ts`); write one, or change an array or map a native takes by `&`, in place where nothing else holds it → the instance's `InPlace` (`src/runtime/lifetimes/in-place.ts`): `withPart`, `changed`, `appended`, `withEntries`, and the `ValueChanges` a native's `context.change` hands it
 - read a nested part of a compile-time `ConstantForm` along a target's steps (a struct pattern's rest built by name), or build a duration form → `formAt`, `durationForm` (`src/compiler/checker/surface/constant-form.ts`)
 - compare runtime `Value`s with `==` or build a `MapValue` → `valuesEqual`, `mapOf` (`src/definition/values/equality.ts`)
-- look up, insert or remove an entry in a runtime `MapValue` → `entryPosition`, `entryValue`, `withEntry`, `withoutEntry` (`src/definition/values/equality.ts`)
+- look up an entry in a runtime `MapValue`, or build one → `entryPosition`, `entryValue`, `mapOf`; set or delete an entry of a map nothing else holds, keeping its table → `setEntryInPlace`, `deleteEntryInPlace`; forget what was derived from a value changed in place → `forgetDerived` (`src/definition/values/equality.ts`), `forgetSummary` (`src/definition/values/values.ts`)
 - compare compile-time `ConstantForm`s with `==` or build constant maps → `formSemantics` (`src/compiler/checker/surface/constant-form.ts`)
 - tell whether a constant computed again has the form lowering emits alike (map order and lambdas by identity) → `sameForm` (`src/compiler/checker/surface/constant-form.ts`)
 - define `==` and structural map hashing over a value representation → `ValueSemantics` (`src/foundation/language/values.ts`)
@@ -42,7 +42,7 @@ tags: [reuse, values, equality, maps, json, natives, runtime]
 
 - Build and read structs, variants, `Optional`, `Result` and `Error` by declared name (`declared-values.ts`, `values/arguments.ts`, `values/results.ts`), never by positional index.
 - Narrow closures with `closureOf` and handles with `handleTarget`, and make handles with `handleTo` (`src/definition/values/values.ts`), never with ad-hoc `isComposite(v) && v.kind === ...` checks or `{ kind: 'handle', … }` literals.
-- Values are immutable: never mutate `fields`, `elements`, `entries` or `captures`; rebuild with `withPart`, `withChildValues`, or `withEntry`/`withoutEntry`.
+- Values are immutable to everything but `InPlace` (`src/runtime/lifetimes/in-place.ts`) and `mapOf`'s own build: never mutate `fields`, `elements`, `entries` or `captures` elsewhere; write through the instance's `InPlace`, or rebuild with `withChildValues`.
 - A composite is shared by identity: a copy, a part a rebuild kept, a constant every instance reads, and a value in a snapshot restored twice in memory can be one object. Data keyed by a composite's identity (a `WeakMap`, as `values.ts`'s summaries) describes the value wherever it is; what describes one place or one instance's use of it is kept per instance, never on the value.
 - Handles compare and hash by the object id they name (`equality.ts`): `==` on handles is identity, never their objects' contents.
 - Built-in `==` and map hashing live in `ValueSemantics` (`src/foundation/language/values.ts`), shared by `definition/values/equality.ts` and `checker/surface/constant-form.ts`. A head compares no instantiated type id: a value converted part by part keeps its own where its layout stays (§3.5).

@@ -573,9 +573,9 @@ The design follows the expansion graph's pattern (`rules/expansion/functions.ts`
 - a shared struct's cell or a `_Cell` whose Definition type entry is `counted`: the handle types
   that reach a disposable. C3 writes the flag from `reachesDisposable`, and the runtime only reads
   it;
-- a composite value with a counted direct part, decided at its first hold, because natives build
-  values with no instance at hand (`tour-runtime.md`, R2), and kept for good, as a value never
-  changes. It is counted once per holder and holds each of its parts once.
+- every composite value (R5), from its first hold, because natives build values with no instance
+  at hand (`tour-runtime.md`, R2). It is counted once per holder and holds each of its parts once,
+  so a node held once is one an update may change in place (§9.6).
 
 Holders are registers, heap objects' fields, and composites' parts. Every holder write goes through
 one seam (R2).
@@ -638,27 +638,31 @@ one seam (R2).
 
 ### 9.6 Unique values in place
 
-**Today every update of an array, map or struct copies it, and a write through `&` or a cell
-rebuilds the path to the part.** `push` even copies twice (`tour-runtime.md`, Values). The runtime
-copies because it can't tell whether anything else holds the old value, and value semantics require
-that any other holder keep what it holds. That is why building a collection one item at a time is
-quadratic (tracker P2, P8).
+**Before R5 every update of an array, map or struct copied it, and a write through `&` or a cell
+rebuilt the path to the part.** `push` even copied twice. The runtime copied because it couldn't
+tell whether anything else held the old value, and value semantics require that any other holder
+keep what it holds. That is why building a collection one item at a time was quadratic (tracker
+P2, P8).
 
-**Counting tells.**
-- **In place:** a composite node held once (count 1), and made by this instance, is updated in
-  place.
-- **Copied once:** a node something else still holds (`const b = a` and then `a.push(x)`) is copied
-  at its first write, and the copy holds its parts (+1 each).
-- **Copying a value into another holder** costs one increment on its node, never one per handle
-  inside.
+**Counting tells** (`runtime/lifetimes/in-place.ts`, R5).
+- **In place:** a node this instance copied for writing, held once (count 1), is changed in place.
+- **Copied once:** any other node, one something else holds (`const b = a` and then `a.push(x)`),
+  a constant, a restored value, or one a native or the host made, is copied at its first write.
+  The copy is this instance's own from then on, and holds its parts (+1 each) from its first hold.
+- **Copying a value into another holder** costs one increment on its node, never one per part.
+- **A path** (`s.items.push(x)`, `s.f = v`, a native's `&` argument) is opened from its holder's
+  value down: the first node on it that is shared is copied with every node below it.
+- **A value going in that is a node of the path itself** (`xs.push(xs)`) is read without a holder,
+  so the path is copied from that node down: a value never holds itself.
 
-**Never written in place:**
+**Never written in place**, since none is a copy this instance made for writing:
 - constants (`definition.constants`, shared by every instance);
 - values a restore shares with another instance or with its snapshot;
-- values that derived data is keyed by (`summaries`, `#hashes`, `#tables`), unless that entry goes
-  with the write.
+- values a native or the host made.
 
-R5 extends counting to every composite node and measures it against P2's figures.
+**Derived data** keyed by a value's identity is forgotten as it changes (`summaries`, `#hashes`);
+a map setting an entry keeps its table up to date, and `mapOf` builds a map that way, so a map
+literal or a JSON object of n keys is built in O(n) too.
 
 ## 10. Code the rule rejects
 

@@ -250,7 +250,7 @@ src/
                         (stored-instances.ts); programs.ts (Definition texts bound once per hash, and
                         a start of live or simple code as a live run); contexts.ts (the contexts a live run's runtimes reach, driven inside
                         its loop as a group of instances (instance-group.ts))
-    interpreter/        the instruction table, and parts of values along paths (parts.ts); registers.ts, the only
+    interpreter/        the instruction table, and reading parts of values along paths (parts.ts); registers.ts, the only
                         register writer, reporting each write as a holder write (raw-registers.ts, its raw write, imported by no
                         other module: a cruiser rule)
     snapshot/           objects.ts (heap objects and frames as stored), holdings.ts (what each object kind holds and watches, and the one rule for a frame, live or stored), snapshot.ts (the persisted instance), check/ (a snapshot against its Definition, its waits and resolvers in waits.ts, and in calls.ts the one rule for calls made from outside any frame: an instance's starting call, a run's, a resolver's callback's),
@@ -268,7 +268,9 @@ src/
                         extern-signatures.ts (one name, one type across deploys)
     lifetimes/          holders and disposal (§7): holder-writes.ts (the one seam every holder write reports to, a register,
                         a heap object or a running call's future, and what the heap made and lost), counts.ts (each counted object's
-                        holders, a composite holding a counted part counted once per holder; a zero confirmed at the step's end),
+                        holders, every composite value a node counted once per holder; a zero confirmed at the step's end),
+                        in-place.ts (values written in place where this instance copied them for writing and one holder holds them,
+                        else copied once: paths, a native's `&` argument, an array or map grown in its own register),
                         holders.ts (what the live frames reach: held, which only a commit and a live run's drop walk, a cruiser rule),
                         disposal.ts (each kind's disposal), collector.ts (rounds of what reached zero, newest first, a disposal's call on the run stack),
                         oracle.test-kit.ts (static lifetimes' oracle, a `HeapCheck`: no cycle reaching a disposable; every test runtime, `ista run` and `ista test` in the CLI's tests check it; its own tests compile cyclic programs through `compile.test-kit.ts`'s `textDespiteCycles`, which it stops)

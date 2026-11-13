@@ -21,7 +21,8 @@ and model: [design.md](design.md) §3 and §9. Phases: [plan.md](plan.md). Paths
 | `snapshot/holdings.ts` | the one per-kind holding table (`kinds`, `futureStates`): values held, ids held, ids watched; `rootKinds`, `isRoot`, `frameValues`, `frameCells` | R1 edges; stays the table counts and the commit read |
 | `scheduler/instance/heap.ts` `Heap` | objects by id, a list per kind, 11 derived `indexes`; `holds` = holdings plus index edges (`#indexedHolds`, `#awaited`); `#write`, every change reported to the seam, index edges included (R2); ids are serials (`made`); `keepOnly` | R1, R2, R3, R4 |
 | `lifetimes/holder-writes.ts` `HolderWrites` | the one seam every holder write reports to (R2), and what the heap made and lost (R3); it counts (`counts.ts`), confirms zeroes at the step's end (`takeZeroes`), logs what was let go of for the oracle, and keeps the losers flag | R2, R3 |
-| `lifetimes/counts.ts` `Counts`, `countedIn` | each counted object's holders, composites holding a counted part counted once per holder; zero candidates | R3; R5 counts every composite |
+| `lifetimes/counts.ts` `Counts`, `countedIn` | each counted object's holders, every composite counted once per holder (R5); zero candidates | R3, R5 |
+| `lifetimes/in-place.ts` `InPlace` | values written in place: a node this instance copied for writing, held once; any other copied once at its first write; paths opened from their holder down | R5 |
 | `interpreter/registers.ts` | the only register writer, reporting each write (`FrameHeap.changed`); `raw-registers.ts` is its raw write | R2 |
 | `interpreter/machine.ts` | `newFrame`, `releaseFrame` (ascending registers), `currentClosure` | R2, R3 |
 | `scheduler/instance/index.ts` `Instance` | `frameHeap`; the constructor every start and restore goes through, where the counts are built; `persisted`/`#kept` (the walk, and a check that no zero went uncollected); `dropUnheld`, once the heap doubled (R4); `continueFrom`; `stop` | R3, R4 |
@@ -36,8 +37,8 @@ and model: [design.md](design.md) §3 and §9. Phases: [plan.md](plan.md). Paths
 | `scheduler/instance/weak-side.ts` | one `weakRef` per referent, found by the `weakRefs` index; watches | kept |
 | `scheduler/instance/slots.ts` | `#owed`/`serveOwed`: serving waits on a decided `select`'s losers being collected | kept |
 | `scheduler/live-run.ts`, `scheduler/resident.ts` | `dropUnheld` after each live segment, walking once the heap doubled (R4); `take` returns the held instance, or restores | R3, R4 |
-| `definition/values/values.ts` | `handlesIn`, `depthOf` over memoized `summaries`; `withChildValues` | counting reads `handlesIn` only to skip a value holding no handle at its first hold; `depthOf` stays for commits; R5 |
-| `stdlib/prelude/arrays.ts`, `prelude/maps.ts`, `foundation/language/values.ts`, `interpreter/parts.ts` | every update of a composite value copies (below) | R5 |
+| `definition/values/values.ts` | `handlesIn`, `depthOf` over memoized `summaries`, forgotten by a change in place (`forgetSummary`); `withChildValues` | `depthOf` stays for commits; R5 |
+| `stdlib/prelude/arrays.ts`, `prelude/maps.ts`, `foundation/language/values.ts`, `interpreter/instructions.ts` | the `&self` natives change their argument through `context.change`; a map's entries set in place keep its table, and `mapOf` builds that way; `array` and `map` grow their own register's value | R5 |
 
 ## Holding today
 
@@ -118,7 +119,7 @@ Since R3 (below), counts decide.
   and a cycle reaching no disposable, which never reaches zero. A commit's `continueFrom` or a live
   `dropUnheld` removes them, after checking that no disposable is among them.
 
-## Values: every update copies
+## Values: every update copied, before R5
 
 - **How each update copies:**
   - `push` builds `[...elements, x]`, and `arrayOf` copies it again (`stdlib/prelude/arrays.ts`,
@@ -143,8 +144,8 @@ Since R3 (below), counts decide.
     other.
   - **Derived data keyed by value identity:** `summaries` (`values.ts`), `#hashes` and `#tables`
     (`foundation/language/values.ts`).
-- **Tracker:** P2 is the general row (building a collection one item at a time is quadratic). P8 is
-  `mapOf`/`#carryTable` building maps in O(n²).
+- **Tracker:** P2 was the general row (building a collection one item at a time was quadratic),
+  P8 `mapOf`/`#carryTable` building maps in O(n²); R5 closed P8 and left P2 to `Map.groupBy`.
 
 ## R1 Edges and the oracle
 
@@ -287,11 +288,9 @@ Landed. What R3 left, for the phases after it:
     cell or resource only when its type entry is `counted` (C3) or declares a disposal. A future,
     a slot, a wait, a resolver and a mock are counted whatever they hold: each may hold a disposable,
     and an uncounted holder would keep what it holds above zero until the commit.
-  - **Composites** (design.md §9.1): a value holding a counted object at any depth is a node,
-    keyed by identity in the instance's own `WeakMap`, counted once per holder and holding each of
-    its parts once. Whether it is one is decided at its first hold, by its parts, and kept for good;
-    `handlesIn`'s memoized summary skips a value holding no handle at all. Releases never walk
-    beyond a node whose count stays above zero. R5 extends the nodes to every composite.
+  - **Composites** (design.md §9.1): every composite value is a node (R5), keyed by identity in
+    the instance's own `WeakMap`, counted once per holder from its first hold and holding each of
+    its parts once. Releases never walk beyond a node whose count stays above zero.
   - **Made and gone:** `Heap.#write` reports each object made (count 0, a zero candidate) before
     any report, and each gone after them all, which forgets its count. A restore builds the counts
     through the same reports, in the `Instance` constructor, so nothing is persisted or rebuilt
@@ -409,25 +408,43 @@ heap kind a live variant, and a restore would have had to rebuild the values ins
 - **Still to measure:** a commit runs `persisted`, then `snapshotFormat.write`, then reads the text
   back (`wake.ts` `commit`), and crashEveryAwait's `runText` encodes again.
 
-## R5 Unique values in place
+## R5 Unique values in place (landed)
 
-- **The copies are listed under "Values: every update copies" above.** A copy is needed only when
-  something else still holds the old value. Value semantics require that holder keep its contents.
-- **Counts tell uniqueness**, which today's runtime can't know:
-  - A composite node held once, and made by this instance, is updated in place.
-  - Any other node is copied once on its first write, and the copy holds its parts (+1 each).
-- **Never in place:**
-  - constants (`definition.constants`, shared by every instance);
-  - values a restore shares with another instance or with its snapshot;
-  - values derived data is keyed by (`summaries`, `#hashes`, `#tables`), unless that entry is
-    dropped with the write.
-- **Measure** against P2's figures: 20k-element comprehension, 5k map inserts, `[...0..20000]`.
+- **Counts tell uniqueness** (`lifetimes/in-place.ts`, `InPlace`, the instance's
+  `HolderWrites.values`, reached as `FrameHeap.values`):
+  - a node this instance copied for writing (`#own`), held once, is changed in place;
+  - any other node is copied once at its first write, and the copy is this instance's own: a
+    constant, a restored value, one a native or the host made, or one held twice.
+- **Where it writes:**
+  - a store and a write through `&` or a cell (`registers.ts` `storeAt`, `writeReference`):
+    `withPart` opens the path from its holder's value down, copying from the first shared node;
+  - the `&self` natives (`push`, `pop`, `reverse`, both `setIndex`, a map's `setIndex` and
+    `delete`): `context.change(position, inserted, change)` opens their argument's place and hands
+    the native `ValueChanges` (`registers.ts` `changeReference`), the one place natives write;
+  - `array`/`map` building from the value their own register holds (`[...dst, item]`: a
+    comprehension, a spread through a cursor, a map spread), and `keep`'s list.
+- **A value going in that is a node of the path** (`xs.push(xs)`, `s.f = s`) is read without a
+  holder, so the path is copied from that node down.
+- **Derived data:** a node changed forgets its `summaries` entry and hash; a map setting an entry
+  keeps its table (`setEntryInPlace`), and `mapOf` builds each map so (P8).
+- **Every holder of a value is reported** (registers, heap objects, the run stack); crossings and
+  a mock's records rebuild every value (`replacingParts`), and a commit reads its text back, so no
+  holder outside the counts sees an own value.
+- **Tests:** `in-place.test.ts` (random writes over counted registers against immutable values,
+  every start frozen) and `shared-values.test.ts` (a Definition's constants and one snapshot's
+  values frozen, two restores of it ending as the instance that committed it).
+- **Measured** (`in-place.bench.ts`, means of three runs, against `1f0fb067`): a comprehension of
+  20k 3.15 s → 0.70 s, 40k 10.9 s → 1.40 s; map inserts of 5k 1.13 s → 0.20 s, 10k 4.46 s →
+  0.39 s; `[...0..20000]` 2.77 s → 0.67 s, 40k 10.8 s → 1.34 s. `wake.bench.ts`: 400 workers
+  11.67 s → 11.49 s; 2,000 leases 169 ms → 124 ms; a live run waking 500 times 361 ms → 129 ms
+  (its 2,000 pushes were quadratic).
 
 ## Traps
 
 - **Values are shared by identity.** A copy, a constant and a restored snapshot's value can be one
-  object. Key per-instance data by identity, never on the value, and never mutate one that isn't
-  provably unique (R5).
+  object. Key per-instance data by identity, never on the value, and change one only through
+  `InPlace` (R5), which writes in place only what this instance copied for writing and one holder
+  holds. A holder the counts don't see (a JS structure keeping a value) would break that.
 - **Carriers are executions off the heap.** `DisposalRuns` uses id −1 and `RunCalls` id −2; their
   frames hold values.
 - **`LiveExecution.disposing` is never set true,** but it is in the snapshot schema.
@@ -490,6 +507,6 @@ Live micro-benchmarks, n = 2000:
 |---|---|---|
 | `await` loop, with a settled-future fast path | 50 ms | 33 ms |
 | per-step check without allocation | | −15% |
-| map set (quadratic, P8) | 183 ms | |
+| map set (quadratic until R5, P8) | 183 ms | |
 
 The fast path and the per-step check are out of scope.
