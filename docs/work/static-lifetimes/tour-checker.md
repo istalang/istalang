@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: checker, binder, parser, lowering, stdlib, corpus, editor diagnostics, cli report
 last_verified: 2026-11-12
-last_updated: 2026-11-12
+last_updated: 2026-11-13
 tags: [lifetimes, flow-analysis, checker, annotations, tour]
 ---
 
@@ -187,9 +187,11 @@ The node kinds are in `src/compiler/syntax/expressions/index.ts` and `syntax/sta
   a cycle a callee makes at a call's types),
   apart so that tests running cyclic programs can let them through (`lifetimes.test-kit.ts`
   `isCycle`). `rules/lifetimes/reports.ts` makes each finding a diagnostic, a call's or a
-  witness's with the callee as a related location. `ModuleChecks` runs `checker.lifetimes.check`
-  per module, which reports through the `lifetime reports` entry. `checker.lifetimes` is built
-  with the checker, never lazily, since an edit's checker replays entries by table name.
+  witness's with the callee as a related location. `ModuleChecks` runs `Lifetimes.check` per
+  module through its `ModuleRules`, as it runs the expansion check, which reports through the
+  `lifetime reports` entry; the checker's surface shows only `reachesDisposable`, which lowering
+  reads. `Lifetimes` is built with the checker, never lazily, since an edit's checker replays
+  entries by table name.
   5700 is `disposeType`: a `dispose` on anything but a confined handle (`isOwnedHandle`,
   `rules/disposal/disposal.ts`). The weak side is 5800–5899.
 
@@ -383,7 +385,7 @@ declare only `extern shared struct`s.
   iterations. The budget is 5 ms for 246 lines and 15 ms for 2,098.
 - **A cold open** is timed by `edit.bench.ts` too, through `workspace.ts`: a new workspace's first
   diagnostics of each module.
-- **Measure the rule paired:** skip `checker.lifetimes.check` in `module-checks.ts` behind a
+- **Measure the rule paired:** skip `rules.lifetimes.check` in `module-checks.ts` behind a
   temporary environment switch read at compute time, then edit two workspaces in turn in one
   process, one with the switch on, so both run under the same load. Separate runs on a shared
   machine differ by more than the rule costs. design.md §8 has C3's and C4's figures.

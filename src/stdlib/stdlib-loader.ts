@@ -7,10 +7,11 @@
  * (§3.13). Every module it loads is marked as shipped with the toolchain, so its externs need no
  * host.
  *
- * Four std modules the language itself refers to are handed to a program by role: the prelude,
+ * Five std modules the language itself refers to are handed to a program by role: the prelude,
  * which every module sees without importing it and no import names; `time`, whose `Duration`
  * types every duration literal (§2); `json`, whose codecs every value crossing to a host goes
- * through (§9); and `testing`, which only test modules may import (§10). The last three are loaded
+ * through (§9); `lifetimes`, whose `Holds` and `Keeps` the std's externs are annotated with
+ * (§3.16); and `testing`, which only test modules may import (§10). All but the prelude are loaded
  * with every program but visible only where imported.
  *
  * Tests lay sources of their own over the shipped ones. The loader then answers only theirs, while

@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-11-12
-last_updated: 2026-11-12
+last_updated: 2026-11-13
 tags: [lifetimes, checker, findings]
 ---
 
@@ -103,6 +103,26 @@ They found false positives too:
 - **A default's value joined to its function's result** made a function with a default claim its
   result aliased what the default gives. Fixed: a default's value is its parameter's alone.
 
+## Found by the merge review (2026-11-13)
+
+Each was unsound, accepted with no diagnostic though it trips the oracle when run; each has a
+case in `test/cyclic-programs.ts`, and the soups now build the helper shapes that missed them.
+
+- **What a summary named was projected field by field:** effects among an input's parts
+  (`p.a->next = p.b`) and an input reaching itself were dropped, as was a result whose parts reach
+  each other (`(holding(n), n)`). Fixed: one projection relates inputs, their parts and the result,
+  self pairs included (design.md §5.3).
+- **An async call's effects before a wait it never returns from** were dropped: only returns were
+  read. Fixed: its callers see it where it waits and stops too.
+- **What a `WeakRef` gave** was a flag on results only, lost when written into a parameter or held
+  across a wait. Fixed: it is an input of its own (design.md §6.3).
+- **A default a call leaves out** bound its parameter to the arguments it relates to, dropping how
+  it relates. Fixed: it is a value of the call's own (design.md §5.3).
+- **An `await`'s own `onAwait`** was skipped, a user's awaitable's among them. Fixed: it is a call
+  like any.
+- **What a value was read out of** was lost through a link copying only what a value reaches, or a
+  value sharing with another. Fixed in the reach state (`reach-state.test.ts`).
+
 ## Accepted over-rejections
 
 C4 was to remove these with closures' captures and field labels; it is editor performance only,
@@ -131,6 +151,10 @@ and the rule stays conservative (design.md §5.6, §5.7; decided 2026-11-12). Ea
 - **A read through a value related to its parts' other parts:** reading `x->f` makes what shares
   with `x`, its parts among them, reach the value read, since without labels any part may reach it.
   Workaround: read the field once, before relating the others.
+- **Writing what a `WeakRef` gave into a value whose type may reach it**
+  (`into->next = w.deref()!`): the value given relates by types to everything live, so the write
+  closes a cycle where it is written. Workaround: keep the value in a local, or hold it through a
+  `WeakRef` again.
 - **A closure writing one capture into another** (`fn save(): box->next = n`) is checked for any
   values of their types where it is made. Workaround: a function taking both as parameters.
 - **An escaped plain function written after an `await`,** and **relinking after unlinking**

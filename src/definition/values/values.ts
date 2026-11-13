@@ -346,9 +346,9 @@ interface Summary {
 const noHandles: readonly number[] = [];
 
 /**
- * Each composite's summary, derived once, since a value never changes. Holders are decided by
- * walking values at every release point (runtime/lifetimes/), so a value walked before is free:
- * its parts are never listed again.
+ * Each composite's summary, derived once, since a value never changes. A value's handles are
+ * walked wherever it is held, counted and committed (runtime/lifetimes/), so a value walked before
+ * is free: its parts are never listed again.
  */
 const summaries = new WeakMap<CompositeValue, Summary>();
 

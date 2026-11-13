@@ -7,9 +7,8 @@
  *   creation order, which disposal follows in reverse (spec §7). The snapshot keeps how many were
  *   given (`objectsMade`, snapshot.ts), so a restored instance numbers its next object as the one
  *   that committed would, after however many the commit let go of.
- * - Nothing about holders is stored. Whether an object is held is decided by reachability from
- *   the executions' frames (runtime/lifetimes/), so nothing can disagree with the values that hold
- *   it.
+ * - Nothing about holders is stored. A restored instance counts each object's holders afresh
+ *   from the values that hold it (runtime/lifetimes/counts.ts), so nothing can disagree with them.
  * - An execution waits on a wait its frame holds in a register (proposal 8, Rule 5), decided by the
  *   first of its cases' resolvers to resolve. A future's `onAwait` registers a resolver on it, and
  *   the registration holds one end, as the resolver's chain's root says (snapshot/holdings.ts,

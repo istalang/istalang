@@ -120,7 +120,7 @@ export class Collector {
 
   /**
    * The disposal it was making panicked before any code of it ran, while its instance ends: its
-   * object is gone, and its round stalls until the next `collect` takes it on. Which it was making:
+   * object is gone, and its round goes on at the next `collect`. Which it was making:
    * none; one of what abandoning a disposal released, which abandons no more; or one of what the
    * running code let go of.
    */

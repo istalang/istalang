@@ -201,9 +201,11 @@ Each function gets a summary over its **inputs**: parameters, captures, the cont
 reads, and its result. Summaries hold no positions or nodes, so editing a body without changing its
 effects cuts off (§8).
 
-- **Effects:** the reach pairs a call may add among its inputs. For example, `link(a, b)` adds
-  `a ⇝ b`.
-- **Result:** what the result may reach or alias, and whether it is made by the call.
+- **Effects:** the reach pairs a call may add among its inputs and the parts of them it reads
+  (§5.7). For example, `link(a, b)` adds `a ⇝ b`, and `p.a->next = p.b` adds `p.a ⇝ p.b`. An
+  input coming to reach itself is an effect on itself: its parts now reach each other.
+- **Result:** what the result may reach or alias, and whether it reaches itself (a tuple of a
+  handle and what that holds). What an async call's future settles with is described alike.
 - **Requirements:** pairs that must not hold when the function is called. A write `p <- q` inside it
   requires `¬(q ⇝ p)`. Each requirement carries the holder's type, so it applies only where the
   instantiated type reaches a disposable.
@@ -214,6 +216,12 @@ effects cuts off (§8).
 
 Summaries are computed bottom-up over the call graph. A group of mutually recursive functions
 iterates to a fixpoint, which terminates because the lattice is finite over input positions.
+
+**One projection** reads a summary off a body's states (`analysis/summarize.ts`, after the merge
+review of 2026-11-13): effects, results and call reach relate the same ends, its inputs, their
+parts and what a watching handle may give (§6.3), self pairs included. Its callers see an async
+function where it returns and also where it waits or stops, since they run on from its first
+wait with what it did so far.
 
 They are **polymorphic by construction**: they speak of inputs, not types. So `Inbox.send`,
 `Shared` and generic helpers stay precise at every call without cloning heaps.
@@ -232,8 +240,9 @@ What C3 settled about requirements and defaults:
   (`r = v`, `xs.push(v)`), or behind a handle the value there holds (`r->next = v`). The caller
   checks the place's owner or the value in it.
 - **A default is analysed as a function of the parameters before it,** and its summary joins its
-  function's. A call leaving the argument out binds that parameter to what the default's value
-  relates to.
+  function's. A call leaving the argument out binds that parameter to a value of the call's own,
+  related to the arguments before it as the default's value is (merge review, 2026-11-13: binding
+  the parameter to those arguments directly dropped how it related to them).
 - **A default is analysed with its function, in its recursive group** (found by C4's QA): a typed
   default may call back into its function, or into the struct whose field it is, so the call
   graph's nodes are the functions with a body or defaults, and a group iterates its members'
@@ -439,6 +448,12 @@ extern shared struct Resolver<T, K in Persistence>
 - **Type arguments `Holds` leaves out are watched.** A native given such a handle may return any
   value of a watched type. That is how `deref` is modelled: its result may be any `T`, not
   something its argument holds.
+- **What a watching handle may give is an input of its own** to every function that names it
+  (`watched`, merge review 2026-11-13). Its node relates to nothing, so a summary says only what
+  came to hold such a value: a result, an input written into, an async call's frames holding it at
+  a wait. Each use at a call makes a value of it relating to everything live as the declaration
+  graph allows, as `deref`'s result did. A write of it closes a cycle by types where it is made,
+  so no requirement names it.
 - **Not annotated:**
   - `Fn` and a call future's call belong to the language (§5.1).
   - A `Mock` records the arguments of every call of its target while it lives. No `Holds` can name
