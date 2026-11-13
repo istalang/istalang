@@ -23,4 +23,19 @@ describe('distinctItems', () => {
       }),
     );
   });
+
+  it('keeps the same items when keyed by a key equal items share', () => {
+    fc.assert(
+      fc.property(
+        fc.array(fc.integer({ min: 0, max: 99 })),
+        fc.integer({ min: 1, max: 5 }),
+        (items, buckets) => {
+          const sameTens = (first: number, second: number) =>
+            Math.floor(first / 10) === Math.floor(second / 10);
+          const key = (item: number) => String(Math.floor(item / 10) % buckets);
+          expect(distinctItems(items, sameTens, key)).toEqual(distinctItems(items, sameTens));
+        },
+      ),
+    );
+  });
 });

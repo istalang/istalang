@@ -49,7 +49,30 @@ export function sameProperties<Value extends object>(first: Value, second: Value
   );
 }
 
-/** `items` with each one equal to one before it, by `same`, left out: the first of each, in order. */
-export function distinctItems<Item>(items: readonly Item[], same: Equality<Item>): readonly Item[] {
-  return items.filter((item, index) => items.findIndex((each) => same(each, item)) === index);
+/**
+ * `items` with each one equal to one before it, by `same`, left out: the first of each, in order.
+ * Given `key`, which equal items share, an item is compared only with those of its key, so a long
+ * list costs about its length rather than its square.
+ */
+export function distinctItems<Item>(
+  items: readonly Item[],
+  same: Equality<Item>,
+  key?: (item: Item) => string,
+): readonly Item[] {
+  if (key === undefined) {
+    return items.filter((item, index) => items.findIndex((each) => same(each, item)) === index);
+  }
+  const kept = new Map<string, Item[]>();
+  return items.filter((item) => {
+    const bucket = kept.get(key(item));
+    if (bucket === undefined) {
+      kept.set(key(item), [item]);
+      return true;
+    }
+    if (bucket.some((each) => same(each, item))) {
+      return false;
+    }
+    bucket.push(item);
+    return true;
+  });
 }
