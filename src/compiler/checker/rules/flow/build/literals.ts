@@ -30,6 +30,7 @@ import { isTagged, taggedCall } from '../../../../syntax/expressions/literals/te
 import { itemValue } from '../../../../syntax/expressions/readings.ts';
 import type { Invalid } from '../../../../syntax/tree/node.ts';
 import type { FieldSource } from '../../../surface/checked-body.ts';
+import type { Argument, ValueId } from '../../../surface/flow-ir.ts';
 import {
   errorType,
   intType,
@@ -38,7 +39,6 @@ import {
   tupleElements,
 } from '../../../types/type/primitives.ts';
 import { arrayOf } from '../../../types/type/well-known.ts';
-import type { Argument, ValueId } from '../flow-ir.ts';
 import type { FlowBuilder } from './flow-builder.ts';
 import { implicitCall, resolvedCall } from './implicit-calls.ts';
 import { fieldLoop, itemLoop, targetsLoop } from './loops.ts';

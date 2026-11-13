@@ -1,10 +1,11 @@
 /**
- * Running a rule forward over a flow function (flow-ir.ts): a rule's state flows through the blocks
- * as the code runs, joining where paths meet, around a loop until what reaches its top stops
- * growing, and nowhere past a `return` or a stop. Blocks no path reaches are never run.
+ * Running a rule forward over a flow function (../../surface/flow-ir.ts): a rule's state flows
+ * through the blocks as the code runs, joining where paths meet, around a loop until what reaches
+ * its top stops growing, and nowhere past a `return` or a stop. Blocks no path reaches are never
+ * run.
  */
 
-import type { BlockId, Exit, FlowFunction, Operation } from './flow-ir.ts';
+import type { BlockId, Exit, FlowFunction, Operation } from '../../surface/flow-ir.ts';
 
 /** What a forward rule decides: what reaches where paths meet, and what an operation does. */
 export interface ForwardRule<State> {

@@ -13,6 +13,7 @@
 
 import type { FunctionDeclaration } from '../../../../syntax/declarations/index.ts';
 import type { NodeOf } from '../../../../syntax/tree/node.ts';
+import type { ValueId } from '../../../surface/flow-ir.ts';
 import type {
   FunctionCall,
   RequirementCall,
@@ -20,7 +21,6 @@ import type {
   Witnesses,
 } from '../../../surface/resolved-call.ts';
 import { membersOf, type Type } from '../../../types/type/index.ts';
-import type { ValueId } from '../../flow/flow-ir.ts';
 import { instantiated } from '../composition.ts';
 import { escapingCycles, typesBreak } from '../escaping.ts';
 import { type Input, sameInput } from '../input.ts';

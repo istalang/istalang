@@ -33,12 +33,12 @@ import type {
 } from '../../../syntax/declarations/index.ts';
 import type { NodeOf } from '../../../syntax/tree/node.ts';
 import type { CheckerContext, CheckerNote } from '../../contexts/context.ts';
+import type { FlowFunction } from '../../surface/flow-ir.ts';
 import { type FunctionCall, functionCallsWithin } from '../../surface/resolved-call.ts';
 import { substitutionOf } from '../../surface/witness-closing.ts';
 import { substitute } from '../../types/parts/substitution.ts';
 import type { Type } from '../../types/type/index.ts';
 import { flowsBuiltFor } from '../flow/build/index.ts';
-import type { FlowFunction } from '../flow/flow-ir.ts';
 import type { AnalysisContext } from './analysis/body.ts';
 import { type Analysis, analyze } from './analysis/index.ts';
 import { Declared, defaultsFlows, defaultsFound, withDefaults } from './declared.ts';

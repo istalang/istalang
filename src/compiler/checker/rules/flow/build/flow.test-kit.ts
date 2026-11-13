@@ -8,7 +8,7 @@ import type { FunctionDeclaration } from '../../../../syntax/declarations/index.
 import { bodyOf } from '../../../../syntax/tree/index.ts';
 import { inFunction } from '../../../check.test-kit.ts';
 import { checkProgram } from '../../../check.ts';
-import type { FlowFunction } from '../flow-ir.ts';
+import type { FlowFunction } from '../../../surface/flow-ir.ts';
 import { flowOf } from './index.ts';
 
 /** The flow of `subject`, the function `body` is written in, after `declarations`. */

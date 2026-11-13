@@ -12,8 +12,8 @@
  *   caller's summary names it in turn; so does what a watching handle may give.
  */
 
+import type { Argument } from '../../../surface/flow-ir.ts';
 import type { FunctionCall } from '../../../surface/resolved-call.ts';
-import type { Argument } from '../../flow/flow-ir.ts';
 import { type Input, inputKey } from '../input.ts';
 import type { NodeId } from '../reach-state.ts';
 import type { BodyAnalysis } from './body.ts';

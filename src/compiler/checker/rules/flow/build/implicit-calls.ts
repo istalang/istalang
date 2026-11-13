@@ -7,11 +7,11 @@
  */
 
 import type { NodeOf } from '../../../../syntax/tree/node.ts';
+import type { Argument, ValueId } from '../../../surface/flow-ir.ts';
 import type { ImplicitRole, ResolvedCall } from '../../../surface/resolved-call.ts';
 import { callSubstitution } from '../../../surface/witness-closing.ts';
 import { substitute } from '../../../types/parts/substitution.ts';
 import type { Type } from '../../../types/type/index.ts';
-import type { Argument, ValueId } from '../flow-ir.ts';
 import type { FlowBuilder } from './flow-builder.ts';
 
 /** Where a call is made, what it passes, and the value its result goes into, if not a new one. */

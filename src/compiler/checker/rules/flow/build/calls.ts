@@ -13,13 +13,13 @@ import type { Call } from '../../../../syntax/expressions/calls.ts';
 import type { Expression } from '../../../../syntax/expressions/index.ts';
 import { calledName, writtenArgumentsOf } from '../../../../syntax/expressions/readings.ts';
 import type { SignatureParameter } from '../../../check.ts';
+import type { Argument, ValueId } from '../../../surface/flow-ir.ts';
 import { calledVariant } from '../../../surface/named-variants.ts';
 import {
   argumentsInOrder,
   parameterOfArgument,
   type ResolvedCall,
 } from '../../../surface/resolved-call.ts';
-import type { Argument, ValueId } from '../flow-ir.ts';
 import { stepTarget } from './chains.ts';
 import type { FlowBuilder } from './flow-builder.ts';
 import { implicitCall, resolvedCall } from './implicit-calls.ts';

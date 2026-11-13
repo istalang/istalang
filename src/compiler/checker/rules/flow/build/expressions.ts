@@ -20,8 +20,8 @@ import type {
 } from '../../../../syntax/expressions/index.ts';
 import type { Identifier } from '../../../../syntax/tree/node.ts';
 import type { CoreExpression, Sugar } from '../../../surface/checked-body.ts';
+import type { FlowFunction, Part, ValueId } from '../../../surface/flow-ir.ts';
 import { unitType } from '../../../types/type/primitives.ts';
-import type { FlowFunction, Part, ValueId } from '../flow-ir.ts';
 import { callFlow } from './calls.ts';
 import { stepTarget } from './chains.ts';
 import {

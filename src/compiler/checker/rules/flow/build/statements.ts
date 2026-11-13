@@ -25,7 +25,7 @@ import type {
 import { droppedName } from '../../../../syntax/statements/readings.ts';
 import { hasUnnamedTarget } from '../../../../syntax/statements/targets.ts';
 import type { AssignedPart } from '../../../surface/checked-body.ts';
-import type { BlockId, ValueId } from '../flow-ir.ts';
+import type { BlockId, ValueId } from '../../../surface/flow-ir.ts';
 import { closureOf } from './expressions.ts';
 import type { FlowBuilder } from './flow-builder.ts';
 import { resolvedCall } from './implicit-calls.ts';

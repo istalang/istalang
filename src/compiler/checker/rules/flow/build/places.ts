@@ -14,7 +14,7 @@ import type { Expression, Index } from '../../../../syntax/expressions/index.ts'
 import { type PlaceStep, placePath } from '../../../../syntax/expressions/places.ts';
 import type { Identifier } from '../../../../syntax/tree/node.ts';
 import type { FieldRead } from '../../../surface/checked-field.ts';
-import type { Argument, Part, Place, ValueId } from '../flow-ir.ts';
+import type { Argument, Part, Place, ValueId } from '../../../surface/flow-ir.ts';
 import type { FlowBuilder } from './flow-builder.ts';
 import { implicitCall, resolvedCall } from './implicit-calls.ts';
 

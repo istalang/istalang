@@ -1,7 +1,7 @@
 /**
- * Building a checked body's flow (../flow-ir.ts), memoized on the body it derives from: a body
- * checked again is a new body, with a new flow, and one taken over keeps its own. Body checking
- * builds every root's, so readers find them by body (`flowsBuiltFor`).
+ * Building a checked body's flow (../../../surface/flow-ir.ts), memoized on the body it derives
+ * from: a body checked again is a new body, with a new flow, and one taken over keeps its own. Body
+ * checking builds every root's, so readers find them by body (`flowsBuiltFor`).
  *
  * Every expression is built the same way here, whatever its kind:
  * - An operation that meets a value of type `Never` runs the operands before it and stops (§2).
@@ -20,7 +20,7 @@ import { tailExpressionOf } from '../../../../syntax/statements/readings.ts';
 import type { SyntaxNode } from '../../../../syntax/tree/index.ts';
 import type { SignatureParameter } from '../../../check.ts';
 import { type CheckedBody, isSugar } from '../../../surface/checked-body.ts';
-import type { FlowFunction, ValueId } from '../flow-ir.ts';
+import type { FlowFunction, ValueId } from '../../../surface/flow-ir.ts';
 import { closeChain, openChain } from './chains.ts';
 import { coreFlow, expressionFlows } from './expressions.ts';
 import { type Constructs, FlowBuilder, type FlowInputs } from './flow-builder.ts';

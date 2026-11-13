@@ -19,9 +19,9 @@ import type {
 } from '../../../syntax/declarations/index.ts';
 import type { VariableDeclaration } from '../../../syntax/statements/index.ts';
 import type { CheckerContext } from '../../contexts/context.ts';
+import type { FlowFunction } from '../../surface/flow-ir.ts';
 import { isDisposeFunction } from '../disposal/disposal.ts';
 import { flowsBuiltFor } from '../flow/build/index.ts';
-import type { FlowFunction } from '../flow/flow-ir.ts';
 import type { AnalysisContext } from './analysis/body.ts';
 import { type Analysis, analyze } from './analysis/index.ts';
 import { joinedSummaries } from './composition.ts';

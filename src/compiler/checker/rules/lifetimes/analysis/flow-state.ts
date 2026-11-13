@@ -9,7 +9,7 @@
  * one value (`materialize`); one whose root isn't there is left out.
  */
 
-import type { FlowFunction, ValueId } from '../../flow/flow-ir.ts';
+import type { FlowFunction, ValueId } from '../../../surface/flow-ir.ts';
 import type { NodeId, ReachState } from '../reach-state.ts';
 import type { ResultRelation, Summary } from '../summary.ts';
 import { isInputRooted } from './inputs.ts';

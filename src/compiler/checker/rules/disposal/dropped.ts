@@ -17,7 +17,7 @@ import type { VariableEntity } from '../../../binder/entities.ts';
 import type { Identifier, NodeOf } from '../../../syntax/tree/node.ts';
 import type { BodyContext } from '../../contexts/body-context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
-import type { FlowFunction, Operation, Place, ValueId } from '../flow/flow-ir.ts';
+import type { FlowFunction, Operation, Place, ValueId } from '../../surface/flow-ir.ts';
 import { type ForwardRule, runForward } from '../flow/solve.ts';
 
 /** The variables dropped on some path to a point. */

@@ -27,7 +27,7 @@
 - confidence: high
 
 ### [high] Untyped temporaries in `flow/build/` pun `type: undefined` ("error/unknown") with "omitted by builder", defeating `holdsNothingRelevant` and dropping destructured input paths in `lifetimes`
-- where: `src/compiler/checker/rules/flow/flow-ir.ts:40–52`, `src/compiler/checker/rules/flow/build/parts.ts:90–106, 158, 195–217`, `src/compiler/checker/rules/flow/build/literals.ts:87–98, 272`, `src/compiler/checker/rules/flow/build/loops.ts:48, 103`, `src/compiler/checker/rules/flow/build/control.ts:143, 221, 252`, `src/compiler/checker/rules/lifetimes/analysis/nodes.ts:22–25, 289–307`, `src/compiler/checker/rules/lifetimes/analysis/operations.ts:280–297`, `src/compiler/checker/rules/lifetimes/analysis/index.ts:63–98`
+- where: `src/compiler/checker/surface/flow-ir.ts:40–52`, `src/compiler/checker/rules/flow/build/parts.ts:90–106, 158, 195–217`, `src/compiler/checker/rules/flow/build/literals.ts:87–98, 272`, `src/compiler/checker/rules/flow/build/loops.ts:48, 103`, `src/compiler/checker/rules/flow/build/control.ts:143, 221, 252`, `src/compiler/checker/rules/lifetimes/analysis/nodes.ts:22–25, 289–307`, `src/compiler/checker/rules/lifetimes/analysis/operations.ts:280–297`, `src/compiler/checker/rules/lifetimes/analysis/index.ts:63–98`
 - evidence:
   - `flow-ir.ts:40` documents `FlowValue.type: Type | undefined` as: `"A type is undefined where checking recorded none, in code it found a mistake in."`
   - `lifetimes/analysis/nodes.ts:289–307` treats `type === undefined` as maximally conservative (`isRelevant` returns `true`; `reachOf` returns `anyReach`).

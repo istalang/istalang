@@ -1,12 +1,12 @@
 /**
- * A body's flow holds everything checking recorded of it (flow-ir.ts): over every corpus program
- * and spec example, each expression checking typed has a value at its node, or is part of a place
- * the flow writes or passes by `&`; and each call the body makes, written or implicit, is a call
- * of the flow, or a function it names as a value; and a program checking accepts runs no code of
- * unknown value. Its every body is swept: functions', defaults', and constants' initializers. Two
- * calls checking records are never made: the
- * `index` of an element an assignment writes with `setIndex` alone (build/places.ts), and an array
- * pattern's item or rest no test or binding reads, as a wildcard's.
+ * A body's flow holds everything checking recorded of it (../../surface/flow-ir.ts): over every
+ * corpus program and spec example, each expression checking typed has a value at its node, or is
+ * part of a place the flow writes or passes by `&`; and each call the body makes, written or
+ * implicit, is a call of the flow, or a function it names as a value; and a program checking
+ * accepts runs no code of unknown value. Its every body is swept: functions', defaults', and
+ * constants' initializers. Two calls checking records are never made: the `index` of an element an
+ * assignment writes with `setIndex` alone (build/places.ts), and an array pattern's item or rest no
+ * test or binding reads, as a wildcard's.
  */
 
 import { describe, expect, it } from 'vitest';
@@ -28,9 +28,9 @@ import { spanIn } from '../../../syntax/tree/positions.ts';
 import { type Checker, checkProgram, type SignatureParameter } from '../../check.ts';
 import { type CheckedBody, checkedChildrenOf } from '../../surface/checked-body.ts';
 import type { CheckedPattern, PartStep } from '../../surface/checked-pattern.ts';
+import type { FlowFunction, Operation, Place } from '../../surface/flow-ir.ts';
 import type { MadeCall, ResolvedCall } from '../../surface/resolved-call.ts';
 import { flowOf } from './build/index.ts';
-import type { FlowFunction, Operation, Place } from './flow-ir.ts';
 
 const programs = [
   ...runPrograms.map(({ name, text }) => ({ name, text })),

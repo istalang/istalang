@@ -4,8 +4,8 @@
  * one call's. A union names few members, so the join is made where the call runs.
  */
 
+import type { Operation } from '../../../surface/flow-ir.ts';
 import type { FunctionCall, RequirementCall } from '../../../surface/resolved-call.ts';
-import type { Operation } from '../../flow/flow-ir.ts';
 import { boundBy, joinedSummaries } from '../composition.ts';
 import { type At, functionBindings } from './bindings.ts';
 import { applySummary } from './calls.ts';

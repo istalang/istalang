@@ -13,7 +13,7 @@
  *   or stops, since its caller runs on from its first wait with what it did so far.
  */
 
-import type { ValueId } from '../../flow/flow-ir.ts';
+import type { ValueId } from '../../../surface/flow-ir.ts';
 import { type Input, inputKey, sameInput } from '../input.ts';
 import type { NodeId } from '../reach-state.ts';
 import {

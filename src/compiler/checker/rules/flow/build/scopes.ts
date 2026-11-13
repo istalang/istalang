@@ -12,7 +12,7 @@
 
 import type { LabelledScope } from '../../../../syntax/statements/index.ts';
 import type { SyntaxNode } from '../../../../syntax/tree/index.ts';
-import type { BlockId, Exit, Operation, ValueId } from '../flow-ir.ts';
+import type { BlockId, Exit, Operation, ValueId } from '../../../surface/flow-ir.ts';
 
 /** What releasing needs of the flow being built: adding operations and ending blocks. */
 interface Releasing {

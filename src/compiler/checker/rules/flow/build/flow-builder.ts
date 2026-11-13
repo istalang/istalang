@@ -1,7 +1,7 @@
 /**
- * One flow function under construction (../flow-ir.ts): its values, its blocks and the block code
- * is added to now. The construct tables (expressions.ts, statements.ts, …) say what each construct
- * adds, scopes.ts what is released where; this module owns the graph's shape.
+ * One flow function under construction (../../../surface/flow-ir.ts): its values, its blocks and
+ * the block code is added to now. The construct tables (expressions.ts, statements.ts, …) say what
+ * each construct adds, scopes.ts what is released where; this module owns the graph's shape.
  *
  * - Code is added to the current block. Once it has ended (a `return`, an exit, a stop), code built
  *   after it goes in a fresh block nothing jumps to, so it is still built, as code no path reaches.
@@ -20,7 +20,6 @@ import type { SyntaxNode } from '../../../../syntax/tree/index.ts';
 import type { Identifier, Invalid, NodeOf } from '../../../../syntax/tree/node.ts';
 import type { CheckerContext } from '../../../contexts/context.ts';
 import type { CheckedBody } from '../../../surface/checked-body.ts';
-import type { Type } from '../../../types/type/index.ts';
 import type {
   BlockId,
   Exit,
@@ -30,7 +29,8 @@ import type {
   Operation,
   Place,
   ValueId,
-} from '../flow-ir.ts';
+} from '../../../surface/flow-ir.ts';
+import type { Type } from '../../../types/type/index.ts';
 import { Scopes } from './scopes.ts';
 
 /**

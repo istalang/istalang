@@ -12,7 +12,7 @@
 
 import { chainStepOf, isOptionalStep } from '../../../../syntax/expressions/chains.ts';
 import type { Expression } from '../../../../syntax/expressions/index.ts';
-import type { ValueId } from '../flow-ir.ts';
+import type { ValueId } from '../../../surface/flow-ir.ts';
 import type { FlowBuilder, OpenChain } from './flow-builder.ts';
 
 /** The chain open around a node, and the one the node itself opens, if it opens one. */

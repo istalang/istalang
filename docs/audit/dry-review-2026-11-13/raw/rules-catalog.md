@@ -302,7 +302,7 @@
 - FlowDecisions.decide(condition, value) — record the constant boolean outcome of a type-decided condition; [exp]; callers: 1 outside folder
 - FlowDecisions.decidedAt(node, pass?) — return the constant boolean outcome of a condition if decided; [exp]; callers: 1 outside folder
 
-## src/compiler/checker/rules/flow/flow-ir.ts — Control-flow graph and value-operation IR for checked bodies
+## src/compiler/checker/surface/flow-ir.ts — Control-flow graph and value-operation IR for checked bodies
 - ValueId — numeric index of a FlowValue in FlowFunction.values; [exp]; callers: 20 outside folder
 - BlockId — numeric index of a FlowBlock in FlowFunction.blocks; [exp]; callers: 6 outside folder
 - FlowValue — discriminated union of variable, global, and temporary values in a FlowFunction; [exp]; callers: 1 outside folder

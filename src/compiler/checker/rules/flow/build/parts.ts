@@ -24,9 +24,9 @@ import type {
   TargetBinding,
   TargetOwner,
 } from '../../../surface/checked-pattern.ts';
+import type { BlockId, ValueId } from '../../../surface/flow-ir.ts';
 import type { Type } from '../../../types/type/index.ts';
 import { boolType, intType, tupleElements } from '../../../types/type/primitives.ts';
-import type { BlockId, ValueId } from '../flow-ir.ts';
 import type { FlowBuilder } from './flow-builder.ts';
 import { implicitCall } from './implicit-calls.ts';
 

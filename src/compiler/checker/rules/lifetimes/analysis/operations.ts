@@ -19,8 +19,8 @@
  *   it gives back (design.md §5.6).
  */
 
+import type { Operation } from '../../../surface/flow-ir.ts';
 import type { Type } from '../../../types/type/index.ts';
-import type { Operation } from '../../flow/flow-ir.ts';
 import { copiedTypes } from '../dispatch.ts';
 import { escapingCycles } from '../escaping.ts';
 import { type Input, inputKey } from '../input.ts';

@@ -20,9 +20,9 @@ import type { FunctionDeclaration } from '../../../../syntax/declarations/index.
 import type { NodeOf } from '../../../../syntax/tree/node.ts';
 import type { SignatureParameter } from '../../../check.ts';
 import type { WrittenFit } from '../../../surface/checked-body.ts';
+import type { FlowFunction, ValueId } from '../../../surface/flow-ir.ts';
 import type { FunctionCall, RequirementCall } from '../../../surface/resolved-call.ts';
 import type { Type } from '../../../types/type/index.ts';
-import type { FlowFunction, ValueId } from '../../flow/flow-ir.ts';
 import { cycleRelevance } from '../escaping.ts';
 import type { Violation } from '../finding.ts';
 import { type Input, type InputPair, inputKey } from '../input.ts';

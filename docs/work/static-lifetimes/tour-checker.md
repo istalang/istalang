@@ -95,7 +95,7 @@ The node kinds are in `src/compiler/syntax/expressions/index.ts` and `syntax/sta
 
 ## The flow IR (C1, landed)
 
-- **The model** is `rules/flow/flow-ir.ts`: per function (`FlowFunction`), its values (a variable
+- **The model** is `surface/flow-ir.ts`: per function (`FlowFunction`), its values (a variable
   the body declares, a global, or a temporary of a node), its parameters, captures and own name
   (`self`, a local `fn`'s or named lambda's closure), and blocks of operations ending in an `Exit`
   (`goto`, `branch`, `return`, `stop`). A closure's function is held by its `make`. `suspend`

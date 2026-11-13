@@ -10,7 +10,7 @@
  *   graph lets their types (`watchedValue`), ended after that use.
  */
 
-import type { Operation } from '../../flow/flow-ir.ts';
+import type { Operation } from '../../../surface/flow-ir.ts';
 import { type Input, inputKey } from '../input.ts';
 import type { NodeId, ReachState } from '../reach-state.ts';
 import type { GivenValue, ResultRelation, Summary } from '../summary.ts';

@@ -7,10 +7,10 @@
  */
 
 import type { VariableEntity } from '../../../binder/entities.ts';
+import type { Part } from '../../surface/flow-ir.ts';
 import { typeKeys } from '../../types/identity/type-keys.ts';
 import { sameTypeSpelled } from '../../types/parts/type-parts.ts';
 import type { Type } from '../../types/type/index.ts';
-import type { Part } from '../flow/flow-ir.ts';
 
 /** What a call gives a body, by position. */
 export type Input =

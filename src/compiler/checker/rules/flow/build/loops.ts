@@ -13,8 +13,8 @@
 import type { Comprehension, Spread } from '../../../../syntax/expressions/index.ts';
 import type { For, LabelledScope } from '../../../../syntax/statements/index.ts';
 import type { OverFields } from '../../../../syntax/statements/readings.ts';
+import type { BlockId, ValueId } from '../../../surface/flow-ir.ts';
 import { tupleType } from '../../../types/type/primitives.ts';
-import type { BlockId, ValueId } from '../flow-ir.ts';
 import type { FlowBuilder } from './flow-builder.ts';
 import { implicitCall } from './implicit-calls.ts';
 import { bindTargets, constant } from './parts.ts';

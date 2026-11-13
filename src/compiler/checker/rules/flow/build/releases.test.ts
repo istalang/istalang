@@ -4,7 +4,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import type { FlowFunction } from '../flow-ir.ts';
+import type { FlowFunction } from '../../../surface/flow-ir.ts';
 import { subjectFlow } from './flow.test-kit.ts';
 
 /** How many times `flow` releases the variable named `name`, and by what. */

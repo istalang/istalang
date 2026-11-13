@@ -20,6 +20,7 @@
 
 import type { CheckerContext } from '../../contexts/context.ts';
 import type { WrittenFit } from '../../surface/checked-body.ts';
+import type { FlowFunction, Operation } from '../../surface/flow-ir.ts';
 import {
   type FunctionCall,
   functionCallsWithin,
@@ -30,7 +31,6 @@ import { type PartRules, partPairs } from '../../types/fitting/part-pairs.ts';
 import { UnfoldingPairs } from '../../types/identity/unfolding-pairs.ts';
 import { isKnown, mentionsError } from '../../types/parts/type-parts.ts';
 import { membersOf, type Type } from '../../types/type/index.ts';
-import type { FlowFunction, Operation } from '../flow/flow-ir.ts';
 import type { Conversion } from './summary.ts';
 
 type DispatchRules = PartRules & Pick<CheckerContext, 'traitObjects'>;

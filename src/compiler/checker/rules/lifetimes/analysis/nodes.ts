@@ -24,8 +24,8 @@
 
 import { memo } from '../../../../../foundation/structures/memo.ts';
 import type { VariableEntity } from '../../../../binder/entities.ts';
+import type { FlowFunction, Operation, Part, ValueId } from '../../../surface/flow-ir.ts';
 import type { Type } from '../../../types/type/index.ts';
-import type { FlowFunction, Operation, Part, ValueId } from '../../flow/flow-ir.ts';
 import type { Input } from '../input.ts';
 import type { NodeId } from '../reach-state.ts';
 import { anyReach, type HandleReach, type Relevance } from '../type-reach.ts';

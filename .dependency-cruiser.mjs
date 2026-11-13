@@ -159,6 +159,7 @@ const checkerSurface = [
   'surface/resolved-call.ts',
   'surface/witness-closing.ts',
   'surface/checked-pattern.ts',
+  'surface/flow-ir.ts',
   'surface/checked-field.ts',
   'surface/constant-form.ts',
   'surface/json-form.ts',

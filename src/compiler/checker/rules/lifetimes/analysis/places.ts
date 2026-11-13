@@ -10,7 +10,7 @@
  * - The place's value is stood for by its root, which holds it as a part or reaches it.
  */
 
-import type { Place } from '../../flow/flow-ir.ts';
+import type { Place } from '../../../surface/flow-ir.ts';
 import type { NodeId } from '../reach-state.ts';
 import type { BodyAnalysis, Holder } from './body.ts';
 import type { FlowState } from './flow-state.ts';

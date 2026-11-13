@@ -2,7 +2,7 @@
  * The flow IR (§2–§8): a checked body as the code runs, a control-flow graph of explicit value
  * operations over the body's variables and temporaries, derived from what checking recorded
  * (CheckedBody) and nothing else. Rules over the order code runs in and where values go read it
- * (build/ derives it; solve.ts runs a rule forward over it).
+ * (../rules/flow/build/ derives it; ../rules/flow/solve.ts runs a rule forward over it).
  *
  * - **Semantics, not layout.** Calls stay as checked, generic: a call's type arguments may name
  *   the body's own type parameters, and a requirement call stays open, closed per instantiation by
@@ -24,14 +24,14 @@
  *   held, with no operation of their own.
  */
 
-import type { VariableEntity } from '../../../binder/entities.ts';
-import type { Expression } from '../../../syntax/expressions/index.ts';
-import type { SyntaxNode } from '../../../syntax/tree/index.ts';
-import type { Identifier, NodeOf } from '../../../syntax/tree/node.ts';
-import type { WrittenFit } from '../../surface/checked-body.ts';
-import type { PartStep } from '../../surface/checked-pattern.ts';
-import type { ImplicitRole, ResolvedCall } from '../../surface/resolved-call.ts';
-import type { Type } from '../../types/type/index.ts';
+import type { VariableEntity } from '../../binder/entities.ts';
+import type { Expression } from '../../syntax/expressions/index.ts';
+import type { SyntaxNode } from '../../syntax/tree/index.ts';
+import type { Identifier, NodeOf } from '../../syntax/tree/node.ts';
+import type { Type } from '../types/type/index.ts';
+import type { WrittenFit } from './checked-body.ts';
+import type { PartStep } from './checked-pattern.ts';
+import type { ImplicitRole, ResolvedCall } from './resolved-call.ts';
 
 /** A value of a flow function, by its position in `FlowFunction.values`. */
 export type ValueId = number;
