@@ -11,7 +11,7 @@ import { handMadeSpan } from '../../../syntax/tree/tree.test-kit.ts';
 import { sameType } from '../identity/identity.ts';
 import { substitute } from '../parts/substitution.ts';
 import { simpleMark } from './function-kinds.ts';
-import { functionType, plainSend, sameShape } from './function-types.ts';
+import { functionFits, functionType, plainSend } from './function-types.ts';
 import type { FunctionType, Type } from './index.ts';
 import { boolType, intType, stringType, tupleType, unitType } from './primitives.ts';
 import { noProgramRules } from './type-rules.test-kit.ts';
@@ -74,7 +74,8 @@ describe('a function type ending in a pack', () => {
           }
           return sameType(declared, given);
         };
-        expect(sameShape(packed(fixed), plain([...fixed, ...rest]), parts)).toBe(true);
+        const relation = { parts, marks: sameType, sends: sameType };
+        expect(functionFits(packed(fixed), plain([...fixed, ...rest]), relation)).toBe(true);
         expect(found).toEqual([tupleType(rest)]);
       }),
     );

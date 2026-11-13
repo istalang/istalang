@@ -146,14 +146,9 @@ export function isHeldFromRoot(target: ResolverTarget): boolean {
 }
 
 /**
- * The ids of the objects `object` holds (spec §7): directly, or through a handle in a value it
- * holds. What nothing holds any more is disposed (runtime/lifetimes/).
+ * What `object` holds by its fields and values, an execution by its frames (spec §7); what nothing
+ * holds any more is disposed (runtime/lifetimes/).
  */
-export function heldObjects(object: HeapObject): readonly number[] {
-  return idsHeld(holdingOf(object));
-}
-
-/** What `object` holds by its fields and values, an execution by its frames (`heldObjects`). */
 export function heldBy(object: HeapObject): Held {
   const { values, holds } = holdingOf(object);
   return { values, holds };

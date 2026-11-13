@@ -29,7 +29,7 @@ import { pushAll } from '../../foundation/structures/stack.ts';
 import { stronglyConnected } from '../../foundation/structures/strongly-connected.ts';
 import type { Heap, LiveObject, LiveObjectOf } from '../scheduler/instance/heap.ts';
 import { type HeapCheck, noHeapCheck } from '../scheduler/loaded-definition.ts';
-import { frameCells, frameValues, heldObjects, valuesIn } from '../snapshot/holdings.ts';
+import { frameCells, frameValues, heldBy, idsHeld, valuesIn } from '../snapshot/holdings.ts';
 import { type Disposability, isDisposable } from './disposal.ts';
 
 /**
@@ -118,7 +118,7 @@ export function countedHolds(
     ]);
   }
   if (object.kind === 'wait') {
-    return [...heldObjects(object), ...awaitedFutures(heap, object)];
+    return [...idsHeld(heldBy(object)), ...awaitedFutures(heap, object)];
   }
   if (object.kind === 'resolver') {
     const { state } = object;
@@ -128,7 +128,7 @@ export function countedHolds(
   }
   if (object.kind === 'future') {
     return [
-      ...heldObjects(object),
+      ...idsHeld(heldBy(object)),
       ...heap.find('resolvers', object.id).map((resolver) => resolver.id),
       ...heap
         .find('executions', object.id)

@@ -176,7 +176,7 @@ type ParameterRelation = (declared: Type, given: Type, byReference: boolean) => 
  * A declared pack takes the given type's parameters past the declared ones, as their tuple, or the
  * given type's own pack when none are left (§3.5).
  */
-export function sameShape(
+function sameShape(
   declared: FunctionType,
   given: FunctionType,
   parts: ParameterRelation,
