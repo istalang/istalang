@@ -22,9 +22,7 @@ import type {
   Expression,
   FieldsLiteral,
   MemberAccess,
-  NewStructLiteral,
   StructComprehension,
-  StructLiteral,
 } from '../../../../syntax/expressions/index.ts';
 import { itemValue } from '../../../../syntax/expressions/readings.ts';
 import { emitCall } from '../../../calls/emit-call.ts';
@@ -32,19 +30,11 @@ import type { FunctionContext } from '../../../context.ts';
 import { construct, structValue } from '../../../values/struct-values.ts';
 import { fieldsVisited, valueInFieldScope } from '../../loops/field-passes.ts';
 
-export function lowerStructLiteral(context: FunctionContext, node: StructLiteral): Register {
-  return literalValue(context, node);
-}
-
-export function lowerNewStructLiteral(context: FunctionContext, node: NewStructLiteral): Register {
-  return literalValue(context, node);
-}
-
 /**
  * The value `node` builds: its struct, a shared struct's in a new cell, built where it stands, or
  * by its struct's entry when it leaves fields to their defaults.
  */
-function literalValue(context: FunctionContext, node: FieldsLiteral): Register {
+export function lowerFieldsLiteral(context: FunctionContext, node: FieldsLiteral): Register {
   const { fields, defaults } = literalFields(context, node);
   const named = new Map(fields.map(({ field, register }) => [field, register]));
   if (defaults === undefined) {

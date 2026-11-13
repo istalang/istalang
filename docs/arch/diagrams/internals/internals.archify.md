@@ -69,7 +69,7 @@ A `VariableOwner` is one of 14 node kinds: `VariableDeclaration`, `Parameter`, `
 | `BodyChecker.#fits` | `ValueSite`, per pass | `Fit` (conversion, union member) | `fit` | lowering `fitted` |
 | `CallRecords` (`BodyContext.calls`) | `ResolvedSite`, per pass | `ResolvedCall` | `calls.record` | lowering `closeCall`, signature help |
 | `FunctionScope.#captures` | declaring `Identifier` | `VariableEntity` | `noteUse` | `CheckedFunction.captures` |
-| lowering `Variables.#registers` | declaring `Identifier` | `Register` | `declareVariable` | `lowerName` via `registerOf(entity.name)` |
+| lowering `Variables.#registers` | declaring `Identifier` | `Register` | `declareVariable` | `lowerNamed` via `registerOf(entity.name)` |
 
 A variable read gets its type in this order: an extern constant's written type, a top-level constant's checked type, a local function's type, else `VariableScope.#types` at the current pass.[](source:names)
 
@@ -114,7 +114,7 @@ The example is `let total = price * qty`, later read inside a lambda: `fn(): log
 | vs-input | entityOf | `useEntity` asks `Bindings.entityOf` through `recordedBindings`, so the answer joins the reads of the entry checking this body.[](source:inputs) | variable-flow | link |
 | vs-capture | noteUse | A frame captures the variable when its `reach` span does not enclose the declaring name's span; a captured `let` goes into `#inCell`.[](source:functions) | variable-flow | fns |
 | vs-type | typeOf | `variableType` asks `declaredOutsideBodies` first, then `VariableScope.typeOf(entity)`, which reads `#types` by `entity.name`. | variable-flow | vars |
-| vs-lower | registerOf | `declareVariable` makes a cell register when `inCell(decl name)`, and `lowerName` finds it by `entity.name`.[](source:lowervars) | variable-flow | low |
+| vs-lower | registerOf | `declareVariable` makes a cell register when `inCell(decl name)`, and `lowerNamed` finds it by `entity.name`.[](source:lowervars) | variable-flow | low |
 
 ## How does one node get a different type in each field-loop pass? {#pass-records}
 

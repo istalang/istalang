@@ -12,7 +12,7 @@ import type { FunctionContext } from '../../context.ts';
 import { noneOf } from '../../values/optionals.ts';
 import { neverLowered } from '../never-lowered.ts';
 import { lowerDereference } from '../parts/places.ts';
-import { lowerApplied, lowerName, lowerNamed } from './access/names.ts';
+import { lowerApplied, lowerNamed } from './access/names.ts';
 import { lowerUnwrap } from './access/optionals.ts';
 import { lowerCall } from './calls.ts';
 import { lowerLambda } from './closures.ts';
@@ -33,16 +33,11 @@ import { lowerDurationLiteral } from './literals/literals.ts';
 import { lowerTemplate } from './literals/templates.ts';
 import { lowerTuple, lowerTupleElement } from './literals/tuples.ts';
 import { lowerBinary, lowerChainedComparison, lowerUnary } from './operators.ts';
-import {
-  lowerFieldRead,
-  lowerNewStructLiteral,
-  lowerStructLiteral,
-  readsField,
-} from './structs/structs.ts';
+import { lowerFieldRead, lowerFieldsLiteral, readsField } from './structs/structs.ts';
 
 // biome-ignore-start lint/style/useNamingConvention: the keys are the tree's node kinds.
 export const expressionHandlers: Handlers<FunctionContext, Expression, [], Register> = {
-  Identifier: lowerName,
+  Identifier: lowerNamed,
   IntegerLiteral: (context, node) => context.constant(node.value, node.span),
   FloatLiteral: (context, node) => context.constant(node.value, node.span),
   StringLiteral: (context, node) => context.constant(node.value, node.span),
@@ -53,8 +48,8 @@ export const expressionHandlers: Handlers<FunctionContext, Expression, [], Regis
   Unary: lowerUnary,
   Call: lowerCall,
   TypeApplication: lowerApplied,
-  StructLiteral: lowerStructLiteral,
-  NewStructLiteral: lowerNewStructLiteral,
+  StructLiteral: lowerFieldsLiteral,
+  NewStructLiteral: lowerFieldsLiteral,
   IndentedValue: (context, node) =>
     context.expression(
       context.body.builtLiteralOf(node) ??

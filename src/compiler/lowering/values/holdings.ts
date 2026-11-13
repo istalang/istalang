@@ -134,11 +134,6 @@ export function heldInAny(context: CodeContext, { value, from, to }: IntoAny, sp
   return dst;
 }
 
-/** The variant of `union`'s enum holding `member`. */
-function variantOf(context: CodeContext, union: UnionType, member: Type): number {
-  return context.tables.types.unionVariant(union, member);
-}
-
 /** Where a branch goes: to `matched` when its test passes, else to `otherwise`. */
 interface Branch {
   readonly matched: Label;
@@ -251,7 +246,7 @@ export function memberValue(
     span,
     dst,
     type: context.tables.types.index(union),
-    variant: variantOf(context, union, member),
+    variant: context.tables.types.unionVariant(union, member),
     fields: [...fields],
   });
   return dst;

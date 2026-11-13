@@ -22,10 +22,6 @@ import { lowerFunctionValue } from '../closures.ts';
 import { lowerBareStruct } from '../structs/structs.ts';
 import { lowerFieldlessVariant } from '../structs/variants.ts';
 
-export function lowerName(context: FunctionContext, node: Identifier): Register {
-  return lowerNamed(context, node, node);
-}
-
 /**
  * A name given type arguments: the function the checker resolved it to, else the struct without
  * fields it names, of that instance, the one other the checker lets through (§3.1, §3.5).
@@ -43,7 +39,7 @@ export function lowerApplied(context: FunctionContext, node: TypeApplication): R
 export function lowerNamed(
   context: FunctionContext,
   name: Identifier,
-  read: Identifier | MemberAccess,
+  read: Identifier | MemberAccess = name,
 ): Register {
   if (context.body.resolved.has(read)) {
     return lowerFunctionValue(context, read);

@@ -46,7 +46,6 @@ export interface Startable {
   readonly target: StartTarget;
   readonly key: string;
   readonly parameters: readonly Type[];
-  readonly isAsync: boolean;
   /** What it gives: `T` for an async function returning `Future<T>`. */
   readonly outcome: Type;
 }
@@ -88,7 +87,6 @@ function functionStartable(
         target: declaration,
         key: keyOf(checker, declaration, parameters),
         parameters: parameters.map(({ type }) => type),
-        isAsync: shape.awaits,
         outcome,
       });
 }
@@ -122,7 +120,6 @@ function lambdaStartable(
     target: declaration,
     key: keyOf(checker, declaration, signature.parameters),
     parameters: signature.parameters.map(({ type: each }) => each),
-    isAsync: shape.awaits,
     outcome: shape.awaits ? outcomeOf(checker, signature.result) : signature.result,
   });
 }

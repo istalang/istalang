@@ -41,7 +41,7 @@ import {
 } from './synthesized/boundary/host-externs.ts';
 import { listStart, startableOf, startables, startEntry } from './synthesized/boundary/starts.ts';
 import { anyConversionEntry, anyFieldEntry, dispatchEntry } from './synthesized/trait-objects.ts';
-import { type NestedInstance, rootInstance } from './tables/instances.ts';
+import { rootInstance } from './tables/instances.ts';
 import { keyOf, qualifiedNameOf } from './tables/names.ts';
 import { ownEntryOf } from './tables/own-entries.ts';
 import { type ClosingEntry, DefinitionTables, type PendingEntry } from './tables/tables.ts';
@@ -133,7 +133,7 @@ function pendingEntry(
     case 'externDefaults':
       return externDefaultsEntry(lowering, pending.instance);
     case 'nested':
-      return nestedEntryOf(checker, tables, pending.nested);
+      return nestedLowering(lowering, pending.nested).lowerNested(pending.nested.node);
     case 'hostNative':
       return hostNativeEntry(lowering, pending.declaration);
     case 'constantNative':
@@ -233,13 +233,4 @@ function nativeEntry(lowering: Lowering, instance: FunctionInstance): FunctionDe
     ),
     typeArguments: instance.typeArguments.map((type) => tables.types.reference(type)),
   };
-}
-
-/** The code entry of a lambda or local function, read through its owner's body (§3.14). */
-function nestedEntryOf(
-  checker: Checker,
-  tables: DefinitionTables,
-  nested: NestedInstance,
-): FunctionDefinition {
-  return nestedLowering({ checker, tables }, nested).lowerNested(nested.node);
 }

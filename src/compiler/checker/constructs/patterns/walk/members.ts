@@ -10,10 +10,10 @@
  * - A pattern selecting no member never matches, a case its union rules out (§3.11). One selecting
  *   several where it must name one is refused: a variant several member enums declare is qualified,
  *   a generic type several members instantiate, or a variant of one, is given its type arguments,
- *   written in full, since the member names them all (`case Box<Int>{value}`, `case Some<Int>(x)`,
- *   named-members.ts), and several shapes having the fields are
- *   named through their aliases (`case Point as p`). A type's name a member enum's variant shares
- *   is qualified too.
+ *   written in full, since the member names them all (`case Box<Int>{value}`,
+ *   `case Ok<Int, String>(v)`, named-members.ts), and several shapes having the fields are named
+ *   through their aliases (`case Point as p`). A type's name a member enum's variant shares is
+ *   qualified too.
  * - What binds the selection has the members selected that earlier cases left (`leftOf`), through
  *   the alias the pattern names when that is all of them.
  */

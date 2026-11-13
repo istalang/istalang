@@ -1,8 +1,8 @@
 /**
  * The members of a union a name written in a pattern selects (§3.11): a type, a variant or a
  * constant, as types/written/pattern-types.ts says, and with type arguments the instances they
- * give, a variant's those of its enum (`case Some<Int>(x)`). members.ts applies it to a pattern,
- * reporting what selects several members where it must select one.
+ * give, a variant's those of its enum (`case Ok<Int, String>(v)`). members.ts applies it to a
+ * pattern, reporting what selects several members where it must select one.
  */
 
 import type { Entity } from '../../../../binder/entities.ts';

@@ -16,13 +16,17 @@ import type { CodeContext, FunctionContext } from '../../../context.ts';
 import type { Label } from '../../../functions/code-writer.ts';
 import { buildVariant, variantIndexOf } from '../../../values/variant-values.ts';
 
-/** A variant without fields, named bare, qualified, or as `none`. */
+/** A variant without fields, named bare or qualified. */
 export function lowerFieldlessVariant(
   context: FunctionContext,
   node: Expression,
   name: string,
 ): Register {
-  return emitVariant(context, node, name, []);
+  const type = context.typeOf(node);
+  if (!isEnum(type)) {
+    unreachable(`Expected an enum at ${node.span.from}; the checker should have said so.`);
+  }
+  return buildVariant(context, { type, name, fields: [] }, node.span);
 }
 
 /**
@@ -67,7 +71,7 @@ export function branchOnVariant(
   context.code.switch(test.register, targets, span, labels.otherwise);
 }
 
-/** The value a `Some`, `Ok` or `Err` in `register` holds: its one field (§3.11, §3.12). */
+/** The value an `Ok` or `Err` in `register` holds: its one field (§3.11, §3.12). */
 export function payloadOf(context: CodeContext, register: Register, span: AnchoredSpan): Register {
   return context.code.field(register, 0, span);
 }
@@ -103,17 +107,4 @@ export function payloadOr(
 /** Whether `type` is an enum's, whose literals are its variants'. */
 export function isEnum(type: Type): type is NominalType {
   return type.kind === 'nominal' && type.entity.declaration.kind === 'EnumDeclaration';
-}
-
-function emitVariant(
-  context: FunctionContext,
-  node: Expression,
-  name: string,
-  fields: readonly Register[],
-): Register {
-  const type = context.typeOf(node);
-  if (!isEnum(type)) {
-    unreachable(`Expected an enum at ${node.span.from}; the checker should have said so.`);
-  }
-  return buildVariant(context, { type, name, fields }, node.span);
 }
