@@ -11,6 +11,9 @@
  * - Its value is then a temporary of its own node, so each expression checking typed has a value
  *   at its node; where checking fitted it to the type expected there, a copy of that type follows,
  *   converted as checking recorded, unless what uses it fits it itself, as a chain's step does.
+ *
+ * A statement releases the temporaries it computed at its end, unless it leaves; a block, those of
+ * its value but the value, after its scope's end (build/scopes.ts).
  */
 
 import { handlerOf } from '../../../../../foundation/structures/kind-table.ts';
@@ -56,7 +59,7 @@ export function flowOf(
   }
   const builder = new FlowBuilder(inputs, root, constructs);
   bindParameters(builder, parameters);
-  const value = root.kind === 'Block' ? builder.block(root) : builder.expression(root);
+  const value = root.kind === 'Block' ? builder.functionBlock(root) : builder.expression(root);
   const flow = builder.finished(value);
   ofBody.set(root, flow);
   return flow;
@@ -92,20 +95,41 @@ const constructs: Constructs = {
   expression: (builder, node) => builder.fit(node, computed(builder, node)),
   unfitted: computed,
   statement: (builder, node) => {
-    if (node.kind !== 'Invalid') {
-      handlerOf(statementFlows, node as Statement)(builder, node as Statement);
+    if (node.kind === 'Invalid') {
+      return;
+    }
+    const { temporaries } = builder.temporariesIn(() =>
+      handlerOf(statementFlows, node as Statement)(builder, node as Statement),
+    );
+    if (!leaves(node)) {
+      builder.scopes.release(builder.scopes.claim(temporaries), node);
     }
   },
-  block: (builder, node) =>
-    builder.scopes.inScope(node, () => {
-      const tail = tailExpressionOf(node);
-      const leading = tail === undefined ? node.statements : node.statements.slice(0, -1);
-      for (const statement of leading) {
-        builder.statement(statement);
-      }
-      return tail === undefined ? tail : builder.expression(tail);
-    }),
+  block: (builder, node) => {
+    const { result: value, temporaries } = builder.temporariesIn(() =>
+      builder.scopes.inScope(node, () => blockValue(builder, node)),
+    );
+    const others = temporaries.filter((temporary) => temporary !== value);
+    builder.scopes.release(builder.scopes.claim(others), node);
+    return value;
+  },
+  functionBlock: blockValue,
 };
+
+/** `node`'s statements, and the value its tail gives, if any. */
+function blockValue(builder: FlowBuilder, node: Block): ValueId | undefined {
+  const tail = tailExpressionOf(node);
+  const leading = tail === undefined ? node.statements : node.statements.slice(0, -1);
+  for (const statement of leading) {
+    builder.statement(statement);
+  }
+  return tail === undefined ? tail : builder.expression(tail);
+}
+
+/** Whether `node` never ends where it stands, leaving its temporaries to what it goes to. */
+function leaves(node: Statement): boolean {
+  return node.kind === 'Return' || node.kind === 'Break' || node.kind === 'Continue';
+}
 
 /** `value`, as the value of `node`: copied into a temporary of the node unless it is one. */
 function atSite(builder: FlowBuilder, node: Expression, value: ValueId): ValueId {

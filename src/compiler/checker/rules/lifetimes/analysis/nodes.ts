@@ -24,7 +24,13 @@
 
 import { memo } from '../../../../../foundation/structures/memo.ts';
 import type { VariableEntity } from '../../../../binder/entities.ts';
-import type { FlowFunction, Operation, Part, ValueId } from '../../../surface/flow-ir.ts';
+import {
+  type FlowFunction,
+  type Operation,
+  operandsOf,
+  type Part,
+  type ValueId,
+} from '../../../surface/flow-ir.ts';
 import type { Type } from '../../../types/type/index.ts';
 import type { Input } from '../input.ts';
 import type { NodeId } from '../reach-state.ts';
@@ -407,35 +413,4 @@ function lastUsesOf(flow: FlowFunction): ReadonlyMap<Operation, readonly ValueId
     }
   }
   return ending;
-}
-
-/** The values `operation` reads. */
-function operandsOf(operation: Operation): readonly ValueId[] {
-  const argumentValues = (
-    each: Extract<Operation, { op: 'call' | 'callValue' }>['arguments'][number],
-  ) => (each.kind === 'value' ? [each.value] : [each.place.root]);
-  switch (operation.op) {
-    case 'compute':
-    case 'unknown':
-      return operation.operands;
-    case 'make':
-      return operation.parts;
-    case 'copy':
-    case 'read':
-      return [operation.from];
-    case 'write':
-      return [operation.place.root, operation.value];
-    case 'call':
-      return operation.arguments.flatMap(argumentValues);
-    case 'callValue':
-      return [operation.callee, ...operation.arguments.flatMap(argumentValues)];
-    case 'suspend':
-      return operation.awaited;
-    case 'release':
-      return operation.values;
-    default: {
-      const unhandled: never = operation;
-      return unhandled;
-    }
-  }
 }

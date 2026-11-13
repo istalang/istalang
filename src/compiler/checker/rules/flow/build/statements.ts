@@ -9,7 +9,7 @@
  * - An assignment runs its value, then, for each part of it, enters its place and writes it there,
  *   left to right (§3.15), converted as checking fitted it; `_ = v` keeps `v` until its block ends.
  *   A compound one reads its place first and writes what its operator's call gives.
- * - `drop x` uses `x`, then releases it.
+ * - `drop x` uses `x`, then releases it; `drop e` leaves `e`'s value to its statement's end.
  * - A loop's pass is a scope of its own, its header's bindings in it; `break` goes past the loop
  *   and `continue` to its top, a labelled block's `break` past it.
  */
@@ -25,7 +25,8 @@ import type {
 import { droppedName } from '../../../../syntax/statements/readings.ts';
 import { hasUnnamedTarget } from '../../../../syntax/statements/targets.ts';
 import type { AssignedPart } from '../../../surface/checked-body.ts';
-import type { BlockId, ValueId } from '../../../surface/flow-ir.ts';
+import type { ValueId } from '../../../surface/flow-ir.ts';
+import { guarded } from './control.ts';
 import { closureOf } from './expressions.ts';
 import type { FlowBuilder } from './flow-builder.ts';
 import { resolvedCall } from './implicit-calls.ts';
@@ -111,17 +112,13 @@ function whileLoop(builder: FlowBuilder, node: While): void {
   const exit = builder.newBlock();
   builder.continueIn(top);
   builder.scopes.withExits(node, exit, top, () => {
-    builder.scopes.inScope(node, () => {
-      const condition = builder.expression(node.condition);
-      const test = { kind: 'condition', value: condition } as const;
-      const [pass, done] = builder.branch(test) as [BlockId, BlockId];
-      builder.resumeIn(done);
-      builder.scopes.leave(node);
-      builder.end({ kind: 'goto', to: exit });
-      builder.resumeIn(pass);
-      builder.block(node.body);
+    guarded(builder, {
+      scope: node,
+      condition: node.condition,
+      body: () => builder.block(node.body),
+      leave: () => builder.end({ kind: 'goto', to: top }),
     });
-    builder.end({ kind: 'goto', to: top });
+    builder.end({ kind: 'goto', to: exit });
   });
   builder.resumeIn(exit);
 }
@@ -164,9 +161,10 @@ export const statementFlows: Handlers<FlowBuilder, Statement, [], void> = {
     const value = builder.expression(node.value);
     const name = droppedName(node);
     const entity = name === undefined ? undefined : builder.entityOf(name);
-    const dropped =
-      entity === undefined ? value : builder.named(entity, builder.valueOf(value).type);
-    builder.emit({ op: 'release', site: node, values: [dropped], reason: 'drop' });
+    if (entity !== undefined) {
+      const dropped = builder.named(entity, builder.valueOf(value).type);
+      builder.emit({ op: 'release', site: node, values: [dropped], reason: 'drop' });
+    }
   },
 };
 // biome-ignore-end lint/style/useNamingConvention: the keys are the tree's node kinds.

@@ -60,13 +60,15 @@ export interface FlowInputs {
 
 /**
  * What each construct adds to a flow (index.ts assembles them): an expression's value, as it fits
- * where it is used or as computed, a statement's operations, and a block's, with its tail's value.
+ * where it is used or as computed, a statement's operations, and a block's, with its tail's value,
+ * as a scope of its own or as a function's own block, which its return ends.
  */
 export interface Constructs {
   readonly expression: (builder: FlowBuilder, node: Expression) => ValueId;
   readonly unfitted: (builder: FlowBuilder, node: Expression) => ValueId;
   readonly statement: (builder: FlowBuilder, node: Statement | Invalid) => void;
   readonly block: (builder: FlowBuilder, node: Block) => ValueId | undefined;
+  readonly functionBlock: (builder: FlowBuilder, node: Block) => ValueId | undefined;
 }
 
 /**
@@ -138,6 +140,11 @@ export class FlowBuilder {
   /** `node`'s statements in a scope of their own, and the value its tail gives, if any. */
   block(node: Block): ValueId | undefined {
     return this.#constructs.block(this, node);
+  }
+
+  /** `node`, the function's own block, whose variables its return releases. */
+  functionBlock(node: Block): ValueId | undefined {
+    return this.#constructs.functionBlock(this, node);
   }
 
   /** A builder of a function nested in this one, rooted at `root`, returning `result`. */
@@ -221,6 +228,19 @@ export class FlowBuilder {
   /** The value `form`, of `type`, made at `site`: a literal, an offset, `Unit`. */
   constant(site: NodeOf<string>, type: Type | undefined, form: ConstantForm): ValueId {
     return this.compute(this.temporary(site, type), site, { kind: 'constant', form });
+  }
+
+  /** What `build` gives, and the temporaries it computed, as lowering allocates registers. */
+  temporariesIn<Result>(build: () => Result): {
+    readonly result: Result;
+    readonly temporaries: readonly ValueId[];
+  } {
+    const first = this.#values.length;
+    const result = build();
+    const temporaries = this.#values
+      .slice(first)
+      .flatMap((value, offset) => (value.kind === 'temporary' ? [first + offset] : []));
+    return { result, temporaries };
   }
 
   /** The variable a name of the body declares, one value wherever it is named. */

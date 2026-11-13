@@ -14,6 +14,8 @@
  * - **An `await`'s own `onAwait`** is a call like any, of the awaitable's own `onAwait`, a user's
  *   or a generic's among them; it isn't given the wait's case, which holds nothing past the wait
  *   (design.md §3), so a `Future`'s keeping of it relates nothing.
+ * - **A `keep`** relates nothing: what a `hold` keeps stays in its variables, which the scope it
+ *   names releases.
  * - **The std's cursors** (`iterate`) give the items of what they iterate, and run nothing else:
  *   each is a closure of the std reading its own value, which a summary can't say of a function
  *   it gives back (design.md §5.6).
@@ -169,6 +171,7 @@ const handlers: { readonly [Kind in Operation['op']]: Handler<Kind> } = {
   suspend: ({ analysis, state }) => {
     analysis.runUnseen(state);
   },
+  keep: () => undefined,
   release: ({ analysis, state }, { values }) => {
     for (const value of values) {
       analysis.release(state, value);

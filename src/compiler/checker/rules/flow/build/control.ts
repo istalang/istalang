@@ -25,7 +25,7 @@ import { type Comparison, isComparison } from '../../../../syntax/expressions/co
 import type {
   Await,
   Binary,
-  ConditionalBranch,
+  Expression,
   If,
   Is,
   Match,
@@ -37,6 +37,7 @@ import type {
 import { binaryOperators, unaryOperators } from '../../../../syntax/expressions/operators.ts';
 import { casesOf, selectCasesOf } from '../../../../syntax/expressions/readings.ts';
 import type { Block } from '../../../../syntax/statements/index.ts';
+import type { SyntaxNode } from '../../../../syntax/tree/index.ts';
 import { unitForm } from '../../../surface/constant-form.ts';
 import type { BlockId, ValueId } from '../../../surface/flow-ir.ts';
 import type { Type } from '../../../types/type/index.ts';
@@ -54,7 +55,16 @@ export function ifFlow(builder: FlowBuilder, node: If): ValueId {
   const always = node.branches.findIndex((branch) => decidedOf(branch.condition) === true);
   const reached = always < 0 ? node.branches : node.branches.slice(0, always + 1);
   for (const branch of reached) {
-    builder.scopes.inScope(branch, () => guardedBranch(builder, branch, given));
+    if (decidedOf(branch.condition) === false) {
+      builder.expression(branch.condition);
+    } else {
+      guarded(builder, {
+        scope: branch,
+        condition: branch.condition,
+        body: () => valueInto(builder, given.result, branch.body),
+        leave: () => builder.end({ kind: 'goto', to: given.end }),
+      });
+    }
   }
   const otherwise = node.elseClause?.body;
   if (otherwise !== undefined && !builder.body.isRuledOut(otherwise)) {
@@ -68,48 +78,76 @@ export function ifFlow(builder: FlowBuilder, node: If): ValueId {
 }
 
 /**
- * An `if`'s branch, in its scope: its condition, then its body given as the `if`'s value, the scope
- * ended on the way out; where the condition may fail, the scope ends on that path too.
+ * A scope entered through a condition that may not hold (§3.4, §7), as lowering writes it
+ * (`lowerGuarded`): an `if`'s branch, a `while`'s pass, a guarded case.
  */
-function guardedBranch(builder: FlowBuilder, branch: ConditionalBranch, given: Given): void {
-  const condition = builder.expression(branch.condition);
-  const taken = () => {
-    valueInto(builder, given.result, branch.body);
-    builder.scopes.leave(branch);
-    builder.end({ kind: 'goto', to: given.end });
-  };
-  const decided = builder.body.decidedOf(branch.condition);
-  if (decided === undefined) {
-    const test = { kind: 'condition', value: condition } as const;
-    const [body, skipped] = builder.branch(test) as [BlockId, BlockId];
-    builder.resumeIn(body);
-    taken();
-    builder.resumeIn(skipped);
-  } else if (decided) {
-    taken();
-  }
+interface Guarded {
+  readonly scope: SyntaxNode;
+  /** What runs in the scope before the condition: a case's pattern. */
+  readonly before?: () => void;
+  readonly condition: Expression;
+  /** What runs where the condition holds, after its temporaries are released. */
+  readonly body: () => void;
+  /** Where the body goes once its scope has ended. */
+  readonly leave: () => void;
 }
 
+/**
+ * Builds `guarded`, going on where its condition fails: there, the scope's variables so far and
+ * the condition's temporaries are released, as they are before the body where it holds.
+ */
+export function guarded(
+  builder: FlowBuilder,
+  { scope, before, condition, body, leave }: Guarded,
+): void {
+  const otherwise = builder.newBlock();
+  builder.scopes.inScope(scope, () => {
+    before?.();
+    const { result: value, temporaries } = builder.temporariesIn(() =>
+      builder.expression(condition),
+    );
+    const header = builder.scopes.claim(temporaries);
+    const [holds, fails] = builder.branch({ kind: 'condition', value }) as [BlockId, BlockId];
+    builder.resumeIn(fails);
+    builder.scopes.leave(condition, header);
+    builder.end({ kind: 'goto', to: otherwise });
+    builder.resumeIn(holds);
+    builder.scopes.release(header, condition);
+    body();
+  });
+  leave();
+  builder.resumeIn(otherwise);
+}
+
+/**
+ * Each case not ruled out, in turn: its pattern tested and bound, then its guard; where they hold,
+ * the subject's temporaries are released and its body gives the `match`'s value.
+ */
 export function matchFlow(builder: FlowBuilder, node: Match): ValueId {
-  const subject = builder.expression(node.subject);
+  const { result: subject, temporaries } = builder.temporariesIn(() =>
+    builder.expression(node.subject),
+  );
+  const header = builder.scopes.claim(temporaries);
   const given = { result: builder.temporaryOf(node), end: builder.newBlock() };
   const cases = casesOf(node).filter((each) => !builder.body.isRuledOut(each.body));
   for (const each of cases) {
     const failed = builder.newBlock();
-    builder.scopes.inScope(each, () => {
-      matchPattern(builder, each.pattern, subject, failed);
-      if (each.guard !== undefined) {
-        const guard = builder.expression(each.guard);
-        const test = { kind: 'condition', value: guard } as const;
-        const [holds, fails] = builder.branch(test) as [BlockId, BlockId];
-        builder.resumeIn(fails);
-        builder.scopes.leave(each);
-        builder.end({ kind: 'goto', to: failed });
-        builder.resumeIn(holds);
-      }
+    const tested = () => matchPattern(builder, each.pattern, subject, failed);
+    const body = () => {
+      builder.scopes.release(header, node.subject);
       valueInto(builder, given.result, each.body);
-    });
-    builder.end({ kind: 'goto', to: given.end });
+    };
+    const leave = () => builder.end({ kind: 'goto', to: given.end });
+    if (each.guard === undefined) {
+      builder.scopes.inScope(each, () => {
+        tested();
+        body();
+      });
+      leave();
+    } else {
+      guarded(builder, { scope: each, before: tested, condition: each.guard, body, leave });
+      builder.end({ kind: 'goto', to: failed });
+    }
     builder.resumeIn(failed);
   }
   builder.end({ kind: 'stop' });

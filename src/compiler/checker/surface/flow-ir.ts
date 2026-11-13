@@ -18,15 +18,19 @@
  *   where it is declared.
  * - **Code no path reaches is kept,** in blocks nothing jumps to, so every construct the text holds
  *   is in the graph; code checking ruled out (§4) was never checked, and is left out.
- * - **Releases:** a block releases its variables at its end and where an exit leaves it, a `hold`'s
- *   at the end of the scope it names; `drop` releases its variable; a `return` releases everything.
- *   A temporary ends with the statement it was computed in, and assigning a variable ends what it
- *   held, with no operation of their own.
+ * - **Releases** are where lowering releases (lowering/constructs/statements/scopes.ts): a block
+ *   releases its variables at its end and where an exit leaves it, keeping first what its `hold`s
+ *   keep, which the scope a `hold` names releases where it ends; `drop` releases its variable; a
+ *   statement releases its temporaries at its end, a header (a condition, a guard, a `match`'s
+ *   subject) on each path out of it, a block the temporaries of its value but that value. A
+ *   `return` releases everything, a function's own block included. Assigning a variable ends what
+ *   it held, with no operation of its own.
  */
 
 import type { VariableEntity } from '../../binder/entities.ts';
 import type { Expression, FieldHeader, Select } from '../../syntax/expressions/index.ts';
 import type { Relation } from '../../syntax/expressions/operators.ts';
+import type { LabelledScope } from '../../syntax/statements/index.ts';
 import type { SyntaxNode } from '../../syntax/tree/index.ts';
 import type { Identifier, NodeOf } from '../../syntax/tree/node.ts';
 import type { Type } from '../types/type/index.ts';
@@ -126,7 +130,8 @@ export type Computation =
  * - `callValue`: a call of a function value.
  * - `suspend`: an `await` or an awaiting `select`, waiting until one of the futures it awaits
  *   settles; what each gives is read from it (`given`).
- * - `release`: the end of variables, at a scope's end or a `drop`.
+ * - `keep`: what `values` hold, kept past the scope ending here until `until` ends (§7).
+ * - `release`: the end of values: a scope's variables, a construct's temporaries, or a `drop`'s.
  * - `unknown`: code checking found a mistake in: its operands run, and what it gives is unknown.
  */
 export type Operation = { readonly site: NodeOf<string> } & (
@@ -165,9 +170,14 @@ export type Operation = { readonly site: NodeOf<string> } & (
     }
   | { readonly op: 'suspend'; readonly awaited: readonly ValueId[] }
   | {
+      readonly op: 'keep';
+      readonly values: readonly ValueId[];
+      readonly until: LabelledScope | 'function';
+    }
+  | {
       readonly op: 'release';
       readonly values: readonly ValueId[];
-      readonly reason: 'scope' | 'drop';
+      readonly reason: 'end' | 'drop';
     }
   | { readonly op: 'unknown'; readonly into: ValueId; readonly operands: readonly ValueId[] }
 );
@@ -217,4 +227,42 @@ export interface FlowFunction {
   readonly self: ValueId | undefined;
   readonly values: readonly FlowValue[];
   readonly blocks: readonly FlowBlock[];
+}
+
+/** The values `operation` reads: its operands, and the keys a part it reads or a place names. */
+export function operandsOf(operation: Operation): readonly ValueId[] {
+  const placeValues = ({ root, path }: Place) => [root, ...path.flatMap(keyOf)];
+  const argumentValues = (each: Argument) =>
+    each.kind === 'value' ? [each.value] : placeValues(each.place);
+  switch (operation.op) {
+    case 'compute':
+    case 'unknown':
+      return operation.operands;
+    case 'make':
+      return operation.parts;
+    case 'copy':
+      return [operation.from];
+    case 'read':
+      return [operation.from, ...keyOf(operation.part)];
+    case 'write':
+      return [...placeValues(operation.place), operation.value];
+    case 'call':
+      return operation.arguments.flatMap(argumentValues);
+    case 'callValue':
+      return [operation.callee, ...operation.arguments.flatMap(argumentValues)];
+    case 'suspend':
+      return operation.awaited;
+    case 'keep':
+    case 'release':
+      return operation.values;
+    default: {
+      const unhandled: never = operation;
+      return unhandled;
+    }
+  }
+}
+
+/** The key `part` is read by, if it is a field a key of several names names. */
+function keyOf(part: Part): readonly ValueId[] {
+  return part.kind === 'keyed' ? [part.key] : [];
 }

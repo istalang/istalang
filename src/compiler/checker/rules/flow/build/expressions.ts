@@ -186,7 +186,7 @@ function bodyValue(
     return nested.expression(node.body);
   }
   const block = builder.inputs.localBodyOf(node);
-  return block === undefined ? undefined : nested.block(block);
+  return block === undefined ? undefined : nested.functionBlock(block);
 }
 
 // biome-ignore-start lint/style/useNamingConvention: the keys are the tree's node kinds.
