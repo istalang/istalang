@@ -134,6 +134,7 @@ export const joinedFacts = [
   'fieldGivenBy',
   'keyOwnerOf',
   'builtLiteralOf',
+  'coreOf',
   'chosenVariantOf',
   'candidatesAt',
   'labels',

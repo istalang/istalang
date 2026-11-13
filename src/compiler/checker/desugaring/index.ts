@@ -26,6 +26,7 @@ import type { Type } from '../types/type/index.ts';
 import { errorType } from '../types/type/primitives.ts';
 import { chainedComparisons } from './chained-comparisons.ts';
 import { deferredCalls } from './deferred-calls.ts';
+import { templates } from './templates.ts';
 import { unwraps } from './unwrap.ts';
 
 /** How a sugar of kind `Node` is desugared. */
@@ -37,7 +38,7 @@ export interface Desugar<Node extends Sugar> {
 }
 
 /** `diagnostic`, reported where a node built as `origin` says was checked, as the sugar words it. */
-type Reword<Node extends Sugar> = (
+export type Reword<Node extends Sugar> = (
   context: BodyContext,
   diagnostic: Diagnostic<AnchoredSpan>,
   origin: Origin & { readonly sugar: Node },
@@ -45,7 +46,12 @@ type Reword<Node extends Sugar> = (
 
 // biome-ignore-start lint/style/useNamingConvention: the keys are the tree's node kinds.
 const desugars: { readonly [Kind in SugarKind]: Desugar<Extract<Sugar, { readonly kind: Kind }>> } =
-  { ChainedComparison: chainedComparisons, DeferredCall: deferredCalls, Unwrap: unwraps };
+  {
+    ChainedComparison: chainedComparisons,
+    DeferredCall: deferredCalls,
+    TemplateLiteral: templates,
+    Unwrap: unwraps,
+  };
 // biome-ignore-end lint/style/useNamingConvention: the keys are the tree's node kinds.
 
 /** The entry of `node`'s kind, typed for the node as its union sees it. */

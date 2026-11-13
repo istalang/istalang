@@ -247,6 +247,7 @@ const bodyFacts: { readonly [Name in FactName]: FactEntry<Name> } = {
       (node) =>
         units.sugars.coreOf(node, pass),
     instantiated: asChecked,
+    joined: firstFound,
   },
   chosenVariantOf: {
     at:

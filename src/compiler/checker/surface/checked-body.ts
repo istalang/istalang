@@ -60,7 +60,7 @@ import type {
  * means where it is written, and every later phase reads that tree in its place (`coreOf`), never
  * the sugar; tools reading a position and the formatter keep the written one.
  */
-const sugarKinds = ['ChainedComparison', 'DeferredCall', 'Unwrap'] as const;
+const sugarKinds = ['ChainedComparison', 'DeferredCall', 'TemplateLiteral', 'Unwrap'] as const;
 
 export type SugarKind = (typeof sugarKinds)[number];
 

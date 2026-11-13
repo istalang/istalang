@@ -231,7 +231,7 @@ Every expression has a static type; a value whose type is known only when the pr
 | `Int`, `Float`, `Bool`, `String` | Primitives: language built-ins, not structs. `Bool` is `true \| false` (below). |
 | `None` | The primitive whose one value is `none`. |
 | `Unit` | The type of statements and of blocks that end in a statement. It is the empty tuple `()`. |
-| `Never` | The type of `return`, `break`, `continue` and `panic`. It fits wherever any type is expected. No value of it exists, so code operating on one never runs: reading its members, calling it or through it, indexing it, an operator, a template, a comparison, `await`, `?`, `!`, `??`, `->`, a field loop or a pattern over it is allowed, gives `Never` and reports nothing. |
+| `Never` | The type of `return`, `break`, `continue` and `panic`. It fits wherever any type is expected. No value of it exists, so code operating on one never runs: reading its members, calling it or through it, indexing it, an operator, a comparison, `await`, `?`, `!`, `??`, `->`, a field loop or a pattern over it is allowed, gives `Never` and reports nothing. |
 | `A \| B` | A union: a value of one of its member types (below). |
 | `"draft"`, `42`, `-1`, `true` | Literal types: a `String`, `Int` or `Bool` literal as the type of its one value (below). |
 | `T?` | Sugar for `T \| None`, which the prelude names `Optional<T>` (§3.8). The empty value is `none`. |

@@ -24,20 +24,12 @@ import type {
   Range,
   Spread,
   StructComprehension,
-  TemplateLiteral,
 } from '../../../../syntax/expressions/index.ts';
-import { isTagged, taggedCall } from '../../../../syntax/expressions/literals/templates.ts';
 import { itemValue } from '../../../../syntax/expressions/readings.ts';
 import type { Invalid } from '../../../../syntax/tree/node.ts';
 import type { FieldSource } from '../../../surface/checked-body.ts';
 import type { Argument, ValueId } from '../../../surface/flow-ir.ts';
-import {
-  errorType,
-  intType,
-  noneType,
-  stringType,
-  tupleElements,
-} from '../../../types/type/primitives.ts';
+import { errorType, intType, noneType, tupleElements } from '../../../types/type/primitives.ts';
 import { arrayOf } from '../../../types/type/well-known.ts';
 import type { FlowBuilder } from './flow-builder.ts';
 import { implicitCall, resolvedCall } from './implicit-calls.ts';
@@ -265,24 +257,4 @@ export function range(builder: FlowBuilder, node: Range): ValueId {
     parts: [start, end, step],
   });
   return into;
-}
-
-export function template(builder: FlowBuilder, node: TemplateLiteral): ValueId {
-  if (isTagged(node)) {
-    return builder.expression(taggedCall(node));
-  }
-  if (node.values.length === 0) {
-    return constant(builder, node, stringType);
-  }
-  const texts = node.values.map((value) =>
-    implicitCall(builder, 'interpolate', { site: value, passed: [builder.expression(value)] }),
-  );
-  const joined = builder.temporary(node, arrayOf(builder.inputs.checker, stringType));
-  builder.emit({ op: 'make', site: node, into: joined, made: { kind: 'array' }, parts: texts });
-  const into = builder.temporaryOf(node);
-  return implicitCall(builder, 'join', {
-    site: node,
-    passed: [joined, constant(builder, node, stringType)],
-    into,
-  });
 }

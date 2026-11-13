@@ -1,7 +1,7 @@
 /**
  * Operations on an operand with no value (§2): a value of type `Never` can't exist, so it stands
  * only in code that never runs, and an operation that reaches its target through it — a member
- * read, a method or value call, an index, an operator (a compound assignment's too), a template, a
+ * read, a method or value call, an index, an operator (a compound assignment's too), a
  * comparison, `await`, `?`, `->`, an optional step, a field loop or a pattern over it — never runs
  * either. Such an operation is checked no further and gives `Never`, reporting nothing, so a field
  * loop over a struct with no field checks its body once for the mistakes that don't depend on a

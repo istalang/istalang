@@ -283,10 +283,6 @@ export type ImplicitRole =
   | 'default'
   /** Assigning an entry of such a map literal with `setIndex`. */
   | 'insert'
-  /** A template's value written as text with its `toString` (§2). */
-  | 'interpolate'
-  /** A template's texts and values joined into its string (§2). */
-  | 'join'
   /**
    * The codec writing what a new instance gives, which encodes its outcome for the host (§9), at
    * an extern starting one (rules/boundary/outcome-codecs.ts); recorded only when a codec writes

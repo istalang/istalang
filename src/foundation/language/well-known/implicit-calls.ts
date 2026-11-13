@@ -12,8 +12,8 @@ export const collectionFunctions = {
 } as const;
 
 /**
- * The functions an untagged template calls (§2): each value's `toString`, found as an operator's
- * function is, and the prelude's `join` of its texts and values.
+ * The functions an untagged template calls (§2): each value's `toString`, as a method, and the
+ * prelude's `join` of its texts and values.
  */
 export const templateFunctions = {
   toString: 'toString',

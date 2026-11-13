@@ -29,7 +29,6 @@ import { lowerIs, lowerMatch } from './control/matching.ts';
 import { lowerPropagate } from './control/propagate.ts';
 import { lowerSelect } from './control/select.ts';
 import { lowerDurationLiteral } from './literals/literals.ts';
-import { lowerTemplate } from './literals/templates.ts';
 import { lowerTuple, lowerTupleElement } from './literals/tuples.ts';
 import { lowerBinary, lowerUnary } from './operators.ts';
 import { lowerFieldRead, lowerFieldsLiteral, readsField } from './structs/structs.ts';
@@ -68,7 +67,6 @@ export const expressionHandlers: Handlers<FunctionContext, CoreExpression, [], R
   Reference: neverLowered,
   Index: lowerIndex,
   Propagate: lowerPropagate,
-  TemplateLiteral: lowerTemplate,
   Dereference: lowerDereference,
   Await: lowerAwait,
   Is: lowerIs,

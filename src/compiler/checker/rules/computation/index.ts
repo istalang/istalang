@@ -36,7 +36,6 @@ import type {
   StructLiteral,
 } from '../../../syntax/expressions/index.ts';
 import { signedNumberOf } from '../../../syntax/expressions/literals/numbers.ts';
-import { constantTextOf } from '../../../syntax/expressions/literals/templates.ts';
 import type { VariableDeclaration } from '../../../syntax/statements/index.ts';
 import type { Identifier } from '../../../syntax/tree/node.ts';
 import type { AnchoredSpan } from '../../../syntax/tree/positions.ts';
@@ -44,6 +43,7 @@ import type { CheckedConstant } from '../../check.ts';
 import type { CheckerContext } from '../../contexts/context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import type { CheckedBody, FieldSource } from '../../surface/checked-body.ts';
+import { isSugar } from '../../surface/checked-body.ts';
 import {
   type ConstantForm,
   durationForm,
@@ -112,6 +112,10 @@ class Computation {
   }
 
   #own(node: Expression): Outcome {
+    if (isSugar(node)) {
+      const core = this.#scope.checked.coreOf(node);
+      return core === undefined ? unknown : this.of(core);
+    }
     switch (node.kind) {
       case 'IntegerLiteral':
       case 'FloatLiteral':
@@ -121,10 +125,6 @@ class Computation {
       case 'NoneLiteral':
         // `none` is the one value of `None`, written as `null`, as `Unit`'s is (§2).
         return computed({ kind: 'primitive', value: null });
-      case 'TemplateLiteral': {
-        const text = constantTextOf(node);
-        return text === undefined ? refused(node) : computed({ kind: 'primitive', value: text });
-      }
       case 'DurationLiteral': {
         const type = this.#scope.checked.typeOf(node);
         return type?.kind === 'nominal' ? computed(durationForm(type, node.value)) : unknown;

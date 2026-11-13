@@ -18,10 +18,13 @@ import { typeEntity } from '../../../binder/entities.ts';
 import type { ModuleId } from '../../../program/program.ts';
 import { constructedVariant } from '../../../syntax/declarations/field-defaults.ts';
 import type { CallingNode } from '../../../syntax/expressions/calls.ts';
-import type { FieldInitializer, MemberAccess } from '../../../syntax/expressions/index.ts';
+import type {
+  FieldInitializer,
+  MemberAccess,
+  TemplateLiteral,
+} from '../../../syntax/expressions/index.ts';
 import { literalNaming } from '../../../syntax/expressions/literals/built-types.ts';
 import { bareKeyOf } from '../../../syntax/expressions/literals/indented-values.ts';
-import { isTagged, taggedCall } from '../../../syntax/expressions/literals/templates.ts';
 import { callOfCallee, makerOf } from '../../../syntax/expressions/readings.ts';
 import type { Hold } from '../../../syntax/statements/index.ts';
 import { ancestorsOf, nestsFunction, type SyntaxNode } from '../../../syntax/tree/index.ts';
@@ -113,10 +116,7 @@ const chosenIn: Handlers<NameSite, NameHolder, [], readonly Denotation[] | undef
     const type = site.body?.typeOf(node);
     return calledAt(site, node, type) ?? named(site, type);
   },
-  TemplateLiteral: (site, node) =>
-    isTagged(node) && site.name === node.tag
-      ? calledAt(site, taggedCall(node), undefined)
-      : undefined,
+  TemplateLiteral: (site, node) => (site.name === node.tag ? taggedAt(site, node) : undefined),
   DeclaredField: (site, node) => (site.name === node.name ? declaredField(site) : undefined),
   FieldDeclaration: (site, node) => (site.name === node.name ? declaredField(site) : undefined),
   NamedType: (site, node) =>
@@ -185,8 +185,8 @@ function memberDenotations(site: NameSite, access: MemberAccess): readonly Denot
   if (call !== undefined) {
     return calleeDenotations(site, call);
   }
-  if (holder?.kind === 'TemplateLiteral' && isTagged(holder) && holder.tag === access) {
-    return calledAt(site, taggedCall(holder), undefined) ?? named(site);
+  if (holder?.kind === 'TemplateLiteral' && holder.tag === access) {
+    return taggedAt(site, holder) ?? named(site);
   }
   // Type arguments written after the access make the value, a function the checker resolved.
   const value = holder?.kind === 'TypeApplication' ? holder : access;
@@ -336,4 +336,10 @@ function writtenTypeName(
     literal === undefined ? site.checker.resolvedTypeOf(node) : site.body?.typeOf(literal);
   const bound = named(site, type);
   return bound.length > 0 ? bound : associatedNamed(site.checker, type);
+}
+
+/** What a tagged template's tag denotes: the function the call it was checked as resolved to. */
+function taggedAt(site: NameSite, template: TemplateLiteral): readonly Denotation[] | undefined {
+  const core = site.body?.coreOf(template);
+  return core?.kind === 'Call' ? calledAt(site, core, undefined) : undefined;
 }

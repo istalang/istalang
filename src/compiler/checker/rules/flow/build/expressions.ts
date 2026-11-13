@@ -42,7 +42,6 @@ import {
   mapLiteral,
   range,
   structLiteral,
-  template,
 } from './literals.ts';
 import { bindParameters, constant } from './parts.ts';
 import { partOfField } from './places.ts';
@@ -249,7 +248,6 @@ export const expressionFlows: Handlers<FlowBuilder, CoreExpression, [], ValueId>
   Binary: binaryFlow,
   Is: isFlow,
   Range: range,
-  TemplateLiteral: template,
   BlockExpression: (builder, node) =>
     builder.block(node.block) ?? constant(builder, node, unitType),
   If: ifFlow,

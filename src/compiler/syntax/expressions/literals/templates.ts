@@ -1,50 +1,14 @@
 /**
- * What a template stands for (§2), decided once for every phase that reads one.
- *
- * - A template without values or a tag is its text, as a string literal is: the checker makes no
- *   call for it, compile time computes it, and lowering writes it as a constant.
- * - `` tag`a ${x} b` `` is the call `tag(["a ", " b"], x)`. The tree keeps the template as written,
- *   for tools; the checker and lowering read the call derived here instead, so a tag is called
- *   exactly as a written call is, whatever its form (a function, a method, a function value). It is
- *   one node per template, memoized, so whatever one phase records for the call, the next finds.
+ * What a template stands for (§2), read off the syntax: a template without values or a tag is its
+ * text, as a string literal is, so compile time computes it. Every template is sugar for the core
+ * expression it means (checker/desugaring/templates.ts), so no other phase reads one.
  */
 
-import { memo } from '../../../../foundation/structures/memo.ts';
-import { endOf, spanAcross } from '../../tree/positions.ts';
-import type { Call } from '../calls.ts';
-import type { ArrayLiteral, Expression, TemplateLiteral } from '../index.ts';
-
-/** A template with a tag. */
-type TaggedTemplate = TemplateLiteral & { readonly tag: Expression };
-
-export function isTagged(template: TemplateLiteral): template is TaggedTemplate {
-  return template.tag !== undefined;
-}
+import type { TemplateLiteral } from '../index.ts';
 
 /** The text `template` is when it has no values or tag; undefined otherwise. */
 export function constantTextOf(template: TemplateLiteral): string | undefined {
   return template.tag === undefined && template.values.length === 0
     ? (template.texts[0]?.value ?? '')
     : undefined;
-}
-
-const calls = new WeakMap<TaggedTemplate, Call>();
-
-/** The call `template` makes of its tag: its texts as an array of strings, then each value. */
-export function taggedCall(template: TaggedTemplate): Call {
-  return memo(calls, template, () => {
-    const { tag } = template;
-    const texts: ArrayLiteral = {
-      kind: 'ArrayLiteral',
-      span: spanAcross(endOf(tag.span), template.span),
-      elements: template.texts.map(({ span, value }) => ({ kind: 'StringLiteral', span, value })),
-    };
-    return {
-      kind: 'Call',
-      span: template.span,
-      callee: tag,
-      isOptional: false,
-      arguments: [texts, ...template.values],
-    };
-  });
 }
