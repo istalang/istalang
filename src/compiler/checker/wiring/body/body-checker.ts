@@ -76,7 +76,13 @@ import { FlowDecisions } from '../../rules/flow/flow-decisions.ts';
 import { freshLiteralOf } from '../../rules/placeholders.ts';
 import { checkTestingCalls } from '../../rules/testing.ts';
 import { statementPlace } from '../../surface/checked-annotation.ts';
-import type { CheckedBody, FieldGiver, ValueSite } from '../../surface/checked-body.ts';
+import {
+  type CheckedBody,
+  type CoreExpression,
+  type FieldGiver,
+  isSugar,
+  type ValueSite,
+} from '../../surface/checked-body.ts';
 import { type Admits, collectionTarget } from '../../types/fitting/expected.ts';
 import { type Fit, isExact } from '../../types/fitting/fit/index.ts';
 import { unfolded } from '../../types/type/computed-types.ts';
@@ -215,6 +221,9 @@ export class BodyChecker implements BodyContext {
 
   expression(node: Expression, given?: Type): Type {
     return this.sugars.checking(node, () => {
+      if (isSugar(node)) {
+        return this.sugars.check(this, node, given);
+      }
       const admits = postponedAdmits(this, node);
       const type = this.scopes.checking(
         node,
@@ -240,7 +249,7 @@ export class BodyChecker implements BodyContext {
     return fresh === undefined ? this.expression(node, given) : this.#record(node, fresh);
   }
 
-  #checked(node: Expression, given: Type | undefined, admits: Admits | undefined): Type {
+  #checked(node: CoreExpression, given: Type | undefined, admits: Admits | undefined): Type {
     const expected = given === undefined ? undefined : unfolded(given);
     const isSettled = expected !== undefined && !this.scopes.holds(expected);
     if (admits !== undefined && this.scopes.isOpen && !isSettled) {
@@ -254,7 +263,7 @@ export class BodyChecker implements BodyContext {
    * Checks `node` by its kind's handler where `expected`, of a union the member `admits` takes,
    * recording it.
    */
-  #checkedAs(node: Expression, expected: Type | undefined, admits: Admits | undefined): Type {
+  #checkedAs(node: CoreExpression, expected: Type | undefined, admits: Admits | undefined): Type {
     if (expected !== undefined) {
       this.#expected(node, expected);
       if (node.kind === 'StringLiteral') {
@@ -304,7 +313,8 @@ export class BodyChecker implements BodyContext {
   }
 
   checkedTypeOf(node: Expression): Type | undefined {
-    return this.#records.types.get(node);
+    const core = isSugar(node) ? this.sugars.coreOf(node) : undefined;
+    return this.#records.types.get(core ?? node);
   }
 
   expectAt(site: Expression, expected: Type): void {

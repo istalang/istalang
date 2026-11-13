@@ -62,7 +62,7 @@ function unknown(builder: FlowBuilder, node: Expression, operands: readonly Valu
 /** A sugar's value: its core's, which checking checked in its place; none where it refused it. */
 export function coreFlow(builder: FlowBuilder, node: Sugar): ValueId {
   const core = builder.body.coreOf(node);
-  return core === undefined ? unknown(builder, node) : builder.expression(core);
+  return core === undefined ? unknown(builder, node) : builder.unfitted(core);
 }
 
 /**

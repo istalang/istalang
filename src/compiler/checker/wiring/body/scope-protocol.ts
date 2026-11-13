@@ -18,11 +18,13 @@
  *   postponed.
  * - An `if` with no `else` gives nothing: its branches' values are dropped, so they settle on their
  *   own, as a statement's do.
- * - A deferred call opens as the call to its taker it is checked as does (checker/desugaring/).
+ * - A sugar takes no place of its own: its core, checked in its place, stands as its own kind does
+ *   (checker/desugaring/), so one in parentheses joins.
  */
 
 import { type Handlers, handlerOf } from '../../../../foundation/structures/kind-table.ts';
 import type { Expression } from '../../../syntax/expressions/index.ts';
+import { type CoreExpression, isSugar } from '../../surface/checked-body.ts';
 import type { Type } from '../../types/type/index.ts';
 
 /** How an expression stands toward the current constraint scope. */
@@ -66,15 +68,13 @@ function collectionStanding(
 }
 
 // biome-ignore-start lint/style/useNamingConvention: the keys are the tree's node kinds.
-const standings: Handlers<ScopeHolding, Expression, [Type | undefined], Standing> = {
+const standings: Handlers<ScopeHolding, CoreExpression, [Type | undefined], Standing> = {
   Call: opens,
-  DeferredCall: opens,
   StructLiteral: opens,
   NewStructLiteral: opens,
   Tuple: opens,
   ArrayLiteral: (scopes, node, expected) => collectionStanding(scopes, node.elements, expected),
   MapLiteral: (scopes, node, expected) => collectionStanding(scopes, node.entries, expected),
-  IndentedValue: (_scopes, node) => (node.type === undefined ? 'joins' : 'opens'),
   Parenthesized: (scopes, node, expected) =>
     standingOf(scopes, node.expression, expected) === 'opens' ? 'opens' : 'joins',
   If: (_scopes, node) => (node.elseClause === undefined ? 'boundary' : 'opens'),
@@ -91,18 +91,14 @@ const standings: Handlers<ScopeHolding, Expression, [Type | undefined], Standing
   BooleanLiteral: boundary,
   DurationLiteral: boundary,
   NoneLiteral: boundary,
-  TemplateLiteral: boundary,
   Binary: boundary,
   Unary: boundary,
-  ChainedComparison: boundary,
   Is: boundary,
-  Range: boundary,
   TupleElement: boundary,
   Index: boundary,
   Reference: boundary,
   Dereference: boundary,
   Propagate: boundary,
-  Unwrap: boundary,
   Await: boundary,
   Comprehension: boundary,
   FieldComprehension: boundary,
@@ -117,7 +113,7 @@ export function standingOf(
   node: Expression,
   expected: Type | undefined,
 ): Standing {
-  return handlerOf(standings, node)(scopes, node, expected);
+  return isSugar(node) ? 'joins' : handlerOf(standings, node)(scopes, node, expected);
 }
 
 /**

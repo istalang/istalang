@@ -81,10 +81,9 @@ const bodyFacts: { readonly [Name in FactName]: FactEntry<Name> } = {
     joined: typesJoined,
   },
   expectedOf: {
-    at:
-      ({ records }, pass) =>
-      (site) =>
-        records.expected.get(site, pass),
+    at: (recorded, pass) => (site) =>
+      recorded.records.expected.get(site, pass) ??
+      recorded.records.expected.get(coreAt(recorded, pass, site), pass),
     instantiated: (expectedOf, by) => readThrough(expectedOf, by.concrete),
     joined: typesJoined,
   },

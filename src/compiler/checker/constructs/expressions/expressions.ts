@@ -7,8 +7,8 @@
 
 import type { Handlers } from '../../../../foundation/structures/kind-table.ts';
 import type { Reference } from '../../../syntax/expressions/calls.ts';
-import type { Expression } from '../../../syntax/expressions/index.ts';
 import type { BodyContext } from '../../contexts/body-context.ts';
+import type { CoreExpression } from '../../surface/checked-body.ts';
 import type { Type } from '../../types/type/index.ts';
 import { errorType, floatType } from '../../types/type/primitives.ts';
 import { literalOrBase } from '../../types/unions/unions.ts';
@@ -45,7 +45,7 @@ const misplacedReference = (context: BodyContext, node: Reference): Type => {
 };
 
 // biome-ignore-start lint/style/useNamingConvention: the keys are the tree's node kinds.
-export const expressionHandlers: Handlers<BodyContext, Expression, [Type | undefined], Type> = {
+export const expressionHandlers: Handlers<BodyContext, CoreExpression, [Type | undefined], Type> = {
   Identifier: checkName,
   IntegerLiteral: (context, node, expected) =>
     literalOrBase(node.value, expected, context.checker.fitting),
@@ -60,7 +60,6 @@ export const expressionHandlers: Handlers<BodyContext, Expression, [Type | undef
   Call: checkCall,
   StructLiteral: checkStructLiteral,
   NewStructLiteral: checkNamedLiteral,
-  IndentedValue: (context, node, expected) => context.sugars.check(context, node, expected),
   MemberAccess: checkMemberAccess,
   TypeApplication: checkAppliedFunction,
   TupleElement: checkTupleElement,
@@ -77,14 +76,9 @@ export const expressionHandlers: Handlers<BodyContext, Expression, [Type | undef
   Reference: misplacedReference,
   Index: checkIndex,
   Propagate: checkPropagate,
-  DeferredCall: (context, node, expected) => context.sugars.check(context, node, expected),
-  Unwrap: (context, node, expected) => context.sugars.check(context, node, expected),
-  ChainedComparison: (context, node, expected) => context.sugars.check(context, node, expected),
-  TemplateLiteral: (context, node, expected) => context.sugars.check(context, node, expected),
   Dereference: checkDereference,
   Await: checkAwait,
   Is: checkIs,
-  Range: (context, node, expected) => context.sugars.check(context, node, expected),
   Match: checkMatch,
   Select: checkSelect,
   Missing: alreadyReported,
