@@ -4,9 +4,7 @@
  * refuses those constructs there (walk/index.ts).
  */
 
-import type { Pattern, RestPattern } from '../../../../syntax/patterns.ts';
-import { type ArraySite, neverTest, type PatternTest } from '../../../surface/checked-pattern.ts';
-import type { FieldMember, Type } from '../../../types/type/index.ts';
+import { neverTest, type PatternTest } from '../../../surface/checked-pattern.ts';
 import { neverType } from '../../../types/type/primitives.ts';
 import { nothingShape, type Shape } from '../exhaustiveness/exhaustiveness.ts';
 import type { ValuePart } from './parts.ts';
@@ -22,29 +20,6 @@ export const failed: Leaf = { tests: [], shape: undefined };
 
 /** A construct its part's type rules out (§3.11): it never matches, so it covers nothing. */
 export const ruledOutLeaf: Leaf = { tests: [neverTest], shape: nothingShape };
-
-/**
- * Items matched against an array's in order, one of them a rest at most, and where (`ArraySite`);
- * open when the items past them match anything, as a call pattern's last `...` leaves them.
- */
-export interface ArrayItems {
-  readonly site: ArraySite;
-  readonly elements: readonly (Pattern | RestPattern)[];
-  readonly isOpen?: boolean;
-}
-
-/** What an array pattern tests of its part, an array: its length, and the type of its items. */
-export interface ArrayPart {
-  readonly test: PatternTest;
-  readonly items: Type;
-}
-
-/** The variant a struct or call pattern names: the test for it, its key among shapes, its fields. */
-export interface VariantPart {
-  readonly test: PatternTest;
-  readonly key: string;
-  readonly fields: readonly FieldMember[];
-}
 
 /**
  * What a pattern selects of its part before taking it apart (selections.ts): its test, the part the

@@ -9,12 +9,12 @@ import { lastName } from '../../../../../syntax/tree/node.ts';
 import type { NamedType } from '../../../../../syntax/types/index.ts';
 import type { BodyContext } from '../../../../contexts/body-context.ts';
 import { checkerDiagnostics } from '../../../../diagnostics/index.ts';
-import type { NominalDeclaration, Type } from '../../../../types/type/index.ts';
+import type { PatternTest } from '../../../../surface/checked-pattern.ts';
+import type { FieldMember, NominalDeclaration, Type } from '../../../../types/type/index.ts';
 import { errorType } from '../../../../types/type/primitives.ts';
 import { typeText } from '../../../../types/type/type-text.ts';
 import { chooseVariant } from '../../../../types/written/named-types.ts';
 import type { ValuePart } from '../parts.ts';
-import type { VariantPart } from '../pattern-tests.ts';
 
 /**
  * The variant `naming` names, written at `at`, among the variants of the part's enum; undefined
@@ -60,4 +60,11 @@ function variantOf(context: BodyContext, part: ValuePart, name: string): Variant
 /** `type` when it is a type of the enum `declaration`, else the error type. */
 function enumOf(type: Type, declaration: NominalDeclaration): Type {
   return type.kind === 'nominal' && type.entity.declaration === declaration ? type : errorType;
+}
+
+/** The variant a struct or call pattern names: the test for it, its key among shapes, its fields. */
+export interface VariantPart {
+  readonly test: PatternTest;
+  readonly key: string;
+  readonly fields: readonly FieldMember[];
 }

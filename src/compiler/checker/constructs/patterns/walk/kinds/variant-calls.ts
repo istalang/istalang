@@ -56,9 +56,10 @@ import type { FieldMember, Type } from '../../../../types/type/index.ts';
 import { errorType } from '../../../../types/type/primitives.ts';
 import { anyShape, type Shape } from '../../exhaustiveness/exhaustiveness.ts';
 import type { ValuePart } from '../parts.ts';
-import type { ArrayItems, VariantPart } from '../pattern-tests.ts';
 import { constructed } from '../taking.ts';
+import type { ArrayItems } from './arrays.ts';
 import { type ItemTaking, takeArray } from './arrays.ts';
+import type { VariantPart } from './named-variants.ts';
 import { namedVariant } from './named-variants.ts';
 
 /** A call pattern's argument that binds to a field: any but a last `...`. */

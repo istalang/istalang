@@ -19,9 +19,9 @@ import { comparable } from '../../../../types/unions/equality.ts';
 import { namesOwnType, patternTypeOf } from '../../../../types/written/pattern-types.ts';
 import { anyShape } from '../../exhaustiveness/exhaustiveness.ts';
 import { otherTypeNamed, type ValuePart } from '../parts.ts';
-import { failed, type Leaf, type VariantPart } from '../pattern-tests.ts';
+import { failed, type Leaf } from '../pattern-tests.ts';
 import { constructed } from '../taking.ts';
-import { namedVariant } from './named-variants.ts';
+import { namedVariant, type VariantPart } from './named-variants.ts';
 
 export function reference(context: BodyContext, node: NamePattern, part: ValuePart): Leaf {
   const name = lastName(node.path);

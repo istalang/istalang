@@ -12,11 +12,11 @@
  */
 
 import { arrayPatternFunctions } from '../../../../../../foundation/language/well-known/implicit-calls.ts';
-import type { Pattern, PatternPart } from '../../../../../syntax/patterns.ts';
+import type { Pattern, PatternPart, RestPattern } from '../../../../../syntax/patterns.ts';
 import type { BodyContext } from '../../../../contexts/body-context.ts';
 import { checkerDiagnostics } from '../../../../diagnostics/index.ts';
 import { preludeCall } from '../../../../resolution/applying/implicit.ts';
-import type { PatternTest } from '../../../../surface/checked-pattern.ts';
+import type { ArraySite, PatternTest } from '../../../../surface/checked-pattern.ts';
 import type { ImplicitRole } from '../../../../surface/resolved-call.ts';
 import type { Type } from '../../../../types/type/index.ts';
 import { errorType, intType } from '../../../../types/type/primitives.ts';
@@ -24,7 +24,6 @@ import { typeText } from '../../../../types/type/type-text.ts';
 import { arrayElement } from '../../../../types/type/well-known.ts';
 import { anyShape, type Shape } from '../../exhaustiveness/exhaustiveness.ts';
 import type { ValuePart } from '../parts.ts';
-import type { ArrayItems, ArrayPart } from '../pattern-tests.ts';
 import type { Taking } from '../taking.ts';
 import { compareFunction } from './ranges.ts';
 
@@ -123,4 +122,20 @@ function arrayTest(
     ? { kind: 'compare', path: lengthPath, site, value, relation: 'greaterOrEqual' }
     : { kind: 'equal', path: lengthPath, value, negated: false };
   return { test, items };
+}
+
+/**
+ * Items matched against an array's in order, one of them a rest at most, and where (`ArraySite`);
+ * open when the items past them match anything, as a call pattern's last `...` leaves them.
+ */
+export interface ArrayItems {
+  readonly site: ArraySite;
+  readonly elements: readonly (Pattern | RestPattern)[];
+  readonly isOpen?: boolean;
+}
+
+/** What an array pattern tests of its part, an array: its length, and the type of its items. */
+interface ArrayPart {
+  readonly test: PatternTest;
+  readonly items: Type;
 }
