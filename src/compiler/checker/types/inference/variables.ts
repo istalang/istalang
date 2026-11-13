@@ -107,11 +107,6 @@ export class CallVariables {
     return this.#parameters.get(variable);
   }
 
-  /** Whether `key` is one of these variables. */
-  isVariable(key: ParameterKey): boolean {
-    return this.#parameters.has(key);
-  }
-
   /** The variables, in their parameters' order. */
   get variables(): readonly ParameterKey[] {
     return [...this.#parameters.keys()];

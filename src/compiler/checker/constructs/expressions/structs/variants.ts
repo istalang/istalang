@@ -11,7 +11,7 @@
  *   closures/function-values.ts) wherever no enum is expected of it: qualified, or bare where an
  *   expected function type's result gives its enum. A variant without fields is a value, so
  *   `Expired()` is `Expired`.
- * - `none` needs an optional type to be expected (§3.11).
+ * - `none` needs no expected type: alone, its type is `None` (§2).
  * - Where a call's chosen function decides an argument's type, `none`, a bare variant and a call
  *   of one wait for it (§3.5), so `f(none)` reads like `const x: T? = none`.
  */

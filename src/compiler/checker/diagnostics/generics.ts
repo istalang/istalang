@@ -104,10 +104,6 @@ export const genericTemplates = {
         ? `'${name}' is a variant, and no enum type is expected here; qualify it with its enum.`
         : `'${name}' is a variant, and no enum type is expected here; qualify it, as in ${qualified.map((each) => `'${each}'`).join(' or ')}.`,
   },
-  noneNeedsType: {
-    code: 5108,
-    message: () => "'none' needs an optional type to be expected here; annotate it.",
-  },
   variantFields: {
     code: 5109,
     message: (name: string, written: string) =>

@@ -100,7 +100,7 @@ function formStep(
   fieldsOf: (type: Type) => readonly FieldMember[] | undefined,
 ): ConstantForm | undefined {
   if (typeof step === 'number') {
-    return (form.kind === 'map' ? form.entries.flat() : partsOf(form))[step];
+    return partsOf(form)[step];
   }
   if (form.kind !== 'struct') {
     return undefined;

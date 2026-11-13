@@ -255,8 +255,6 @@ export interface RootGoals {
 
 /** What declarations ask of annotations beyond later phases' queries (rules/annotations.ts). */
 export interface AnnotationChecks extends AnnotationQueries {
-  /** The title `declaration`'s `@Suite` gives its suite (§10); undefined without one. */
-  readonly suiteTitleOf: (module: ModuleId, declaration: FunctionDeclaration) => string | undefined;
   /**
    * Checks the annotations of each of `fields`, declared together, and reports each field whose
    * JSON name an earlier one already has.

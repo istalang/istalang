@@ -20,10 +20,6 @@
  * The literal checked is recorded with the body (`builtLiteralOf`), for lowering and tools.
  */
 
-import {
-  type WellKnownDeclaration,
-  wellKnown,
-} from '../../../../../foundation/language/well-known/index.ts';
 import type { Entity } from '../../../../binder/entities.ts';
 import { isDeclaredStruct } from '../../../../syntax/declarations/index.ts';
 import type { IndentedEntry, IndentedValue } from '../../../../syntax/expressions/index.ts';
@@ -105,22 +101,15 @@ function anonymousForm(
 }
 
 /**
- * Whether a literal naming `entity` builds a struct: a struct other than an `Array` or a `Map`,
- * which collection literals build, or an alias of a shape.
+ * Whether a literal naming `entity` builds a struct: a declared struct, never an `Array` or a
+ * `Map`, extern ones collection literals build, or an alias of a shape.
  */
 function namesStruct(context: BodyContext, entity: Entity): boolean {
-  if (entity.kind !== 'type' || collections.some((each) => isWellKnown(context, entity, each))) {
+  if (entity.kind !== 'type') {
     return false;
   }
   const { declaration } = entity;
   return aliasedShape(context, declaration) !== undefined || isDeclaredStruct(declaration);
-}
-
-const collections = [wellKnown.array, wellKnown.map];
-
-function isWellKnown(context: BodyContext, entity: Entity, known: WellKnownDeclaration): boolean {
-  const type = context.checker.wellKnownType(known);
-  return type?.kind === 'nominal' && type.entity === entity;
 }
 
 /**
