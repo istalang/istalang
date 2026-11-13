@@ -13,10 +13,10 @@ import { unreachable } from '../../../foundation/structures/unreachable.ts';
 import type { Call } from '../../syntax/expressions/calls.ts';
 import type { Binary, Unwrap } from '../../syntax/expressions/index.ts';
 import type { StringLiteral } from '../../syntax/expressions/literals/literals.ts';
+import { bound, synthesized } from '../contexts/synthesized.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { typeText } from '../types/type/type-text.ts';
 import type { Desugar } from './index.ts';
-import { boundName, synthesized } from './synthesized.ts';
 
 /** What the panic of a `none` unwrapped says. */
 const unwrappedNone = 'Force-unwrapped none.';
@@ -31,7 +31,10 @@ export const unwraps: Desugar<Unwrap> = {
     const call: Call = {
       kind: 'Call',
       span: node.span,
-      callee: boundName(node, panicFunction, node.span, panic),
+      callee: bound(
+        synthesized(node, { kind: 'Identifier', span: node.span, text: panicFunction }),
+        panic,
+      ),
       isOptional: false,
       arguments: [synthesized(node, message satisfies StringLiteral)],
     };

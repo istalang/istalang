@@ -18,12 +18,7 @@
 import type { CodeMode } from '../../../definition/tables/functions.ts';
 import { unreachable } from '../../../foundation/structures/unreachable.ts';
 import type { Checker, SignatureParameter } from '../../checker/check.ts';
-import type {
-  Capture,
-  CapturedVariable,
-  CheckedBody,
-  NestedFunction,
-} from '../../checker/surface/checked-body.ts';
+import type { Capture, CheckedBody, NestedFunction } from '../../checker/surface/checked-body.ts';
 import { type FunctionInstance, substitutionOf } from '../../checker/surface/witness-closing.ts';
 import { substitute } from '../../checker/types/parts/substitution.ts';
 import { kindOfFunction } from '../../checker/types/type/function-kinds.ts';
@@ -68,7 +63,7 @@ export interface Frame {
   /** How its code waits: in its function's kind, or never (modes.ts). */
   readonly mode: CodeMode;
   readonly parameters: readonly SignatureParameter[];
-  readonly captures: readonly CapturedVariable[];
+  readonly captures: readonly Capture[];
   /**
    * What the entry runs: a top-level declaration, a nested function, or a context constant's
    * initializer (§3.4).
@@ -238,22 +233,9 @@ export function nestedFrame(
     header: startHeader ?? lowered.tables.nestedHeader(nested),
     mode: codeModeOf(awaits(node.qualifiers), type.mark),
     parameters,
-    captures: variablesCaptured(captures),
+    captures,
     function: node,
     result,
     self: node.name,
   };
-}
-
-/**
- * What a lambda or local `fn` written in the code captures: variables only, since the function a
- * deferred call gives, which captures what its call computed now, has an entry of its own
- * (constructs/expressions/deferred-calls.ts).
- */
-export function variablesCaptured(captures: readonly Capture[]): readonly CapturedVariable[] {
-  return captures.map((capture) =>
-    capture.kind === 'variable'
-      ? capture
-      : unreachable("A deferred call's function is lowered by an entry of its own."),
-  );
 }

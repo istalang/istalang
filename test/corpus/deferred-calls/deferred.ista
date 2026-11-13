@@ -1,9 +1,10 @@
-# outcome: "load later | x inner | later | 40 5 12 | 9 | 14 3 3 8"
+# outcome: "load later | x inner | later | 40 5 12 | 9 | 14 3 3 8 20"
 # A deferred call, `g f(args)` (§3.14), gives `g` a function making the call later, everything
 # written in it computed now: `load(id)` before `.process()` is deferred, `x` of `a b c(x)` once,
 # and a default the call leaves out when it runs. Its taker may write arguments of its own, by
 # position or by name, be a method on a receiver or a function value; the function fits as any
-# does, an async callee's future forwarded as is and a value made a future where one is taken.
+# does, an async callee's future forwarded as is and a value made a future where one is taken. A
+# call through `?.` makes it later, or gives `none`, its receiver read now.
 
 struct User:
   id: Int
@@ -79,6 +80,8 @@ ista async fn _main() -> String:
   const wrapped = optional pick() ?? 0
   const awaited = await eventually pick()
   const applied = apply(fn(f: fn() -> Int): f() * 2)
+  const maybe: Box? = Box{n: 2}
+  const chained = optional maybe?.process() ?? 0
   const users = String(first.id + second.id)
-  const fits = [submitted, wrapped, awaited, applied].map(fn(n: Int): String(n)).join(" ")
+  const fits = [submitted, wrapped, awaited, applied, chained].map(fn(n: Int): String(n)).join(" ")
   log->value + "| " + String(a) + " " + String(b) + " " + String(c) + " | " + users + " | " + fits

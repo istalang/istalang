@@ -23,7 +23,7 @@ import {
   fieldsFunctionOf,
 } from '../../../../syntax/declarations/field-defaults.ts';
 import { typeParametersOf } from '../../../../syntax/declarations/index.ts';
-import type { Call, CallingNode } from '../../../../syntax/expressions/calls.ts';
+import type { Call } from '../../../../syntax/expressions/calls.ts';
 import type { MemberAccess } from '../../../../syntax/expressions/index.ts';
 import { calledName } from '../../../../syntax/expressions/readings.ts';
 import type { Identifier } from '../../../../syntax/tree/node.ts';
@@ -157,7 +157,7 @@ function checkVariantName(
 
 /** A call naming a variant, as written: its arguments, any type arguments, what is expected. */
 interface VariantCall {
-  readonly node: CallingNode;
+  readonly node: Call;
   readonly expected: Type | undefined;
   readonly typeArguments: readonly Type[] | undefined;
   readonly written: readonly WrittenArgument[];

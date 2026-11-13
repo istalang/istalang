@@ -118,7 +118,7 @@ describe('the runtime', () => {
     expect(state).toMatchObject({ kind: 'panicked', message: 'boom' });
     const frames = state.kind === 'panicked' ? state.trace.split('\n') : [];
     expect(frames.map((frame) => frame.split(' ')[1])).toEqual([
-      'main._main.deferred@4:13',
+      'main._main.lambda@4:13',
       'prelude.dispose<"simple">',
     ]);
   });

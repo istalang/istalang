@@ -19,7 +19,7 @@ const noting = [
 ].join('\n');
 
 /** The live `main` calling `_main` in its context, the last frame of an ista body's trace. */
-const liveMain = /^at main\.main\.deferred@\S+ \(\S+\)$/u;
+const liveMain = /^at main\.main\.lambda@\S+ \(\S+\)$/u;
 
 /**
  * Each trace expected, one line per frame, innermost first: `at`, the function, and
@@ -29,7 +29,11 @@ const traces = {
   inFunction: [/^at main\.where \(\S+:1:23\)$/u, /^at main\._main \(\S+:5:3\)$/u, liveMain],
   shorter: [/^at main\.failing \(\S+:2:3\)$/u, /^at main\._main \(\S+:7:3\)$/u, liveMain],
   encoder: [/^at main\.toJson \(\S+:3:37\)$/u, /^at main\.main \(\S+:6:32\)$/u],
-  spawned: [/^at main\.failing \(\S+:2:3\)$/u, /^at main\._main\.deferred@\S+ \(\S+\)$/u],
+  spawned: [
+    /^at main\.failing \(\S+:2:3\)$/u,
+    /^at main\._main\.lambda@\S+ \(\S+\)$/u,
+    /^at main\._main\.async@\S+ \(\S+\)$/u,
+  ],
 };
 
 /** The lines of the trace `outcome` holds, innermost frame first. */
@@ -95,7 +99,7 @@ describe('a trace through a call leaving defaults out', () => {
     );
   });
 
-  it('shows no frame but the function and its deferred call for a spawn', async () => {
+  it('shows no frame but the function, its deferred call and the async entry it is made into, for a spawn', async () => {
     const body = [
       'match await (spawn failing()).result():',
       '  case Ok(trace): trace',

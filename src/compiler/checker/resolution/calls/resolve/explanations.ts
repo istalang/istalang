@@ -160,9 +160,9 @@ function packReport(
     : checkerDiagnostics.packMismatch(at, typeText(expected), typeText(found));
 }
 
-/** Where the function a deferred call gives is given to is named: its taker's name. */
+/** Where the function a call gives after its arguments is given to is named: its callee's name. */
 function takerAt({ site }: ExplainedCall): AnchoredSpan {
-  return isCalling(site) && site.kind === 'DeferredCall' ? calledName(site).span : site.span;
+  return isCalling(site) && site.given !== undefined ? calledName(site).span : site.span;
 }
 
 /** Where the argument named `name` is written; the call, if none is. */

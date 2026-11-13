@@ -16,9 +16,8 @@
  *   scope, and is fitted, or reported, once it settles, with every type as it settled.
  */
 
-import type { CallArgument, CallingNode } from '../../../syntax/expressions/calls.ts';
+import type { Call, CallArgument } from '../../../syntax/expressions/calls.ts';
 import type { Expression } from '../../../syntax/expressions/index.ts';
-import { calledName } from '../../../syntax/expressions/readings.ts';
 import type { BodyContext, ValueCallRecord } from '../../contexts/body-context.ts';
 import type { Pass, Passes, PassRecords, PassTable } from '../../contexts/passes.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
@@ -42,7 +41,6 @@ import type { Inapplicability, Takes } from '../../resolution/choosing/call-argu
 import type { Binding, ValueCallMade } from '../../surface/resolved-call.ts';
 import type { Inference } from '../../types/inference/infer.ts';
 import { noSubstitution } from '../../types/parts/substitution.ts';
-import { fieldOf } from '../../types/traits/known-fields.ts';
 import { packRestSlot } from '../../types/type/function-types.ts';
 import type { FunctionType, Type } from '../../types/type/index.ts';
 import { errorType } from '../../types/type/primitives.ts';
@@ -78,50 +76,35 @@ export function valueParameterTypes(
   return matches ? parameters.map((parameter) => parameter.type) : [];
 }
 
-/**
- * The type of the function value the value call `node` calls, as its call read it: its callee's,
- * or for `x.f(…)`, which reads it from a field of its receiver and checks no expression for it,
- * that field's.
- */
-export function calledValueType(context: BodyContext, node: CallingNode): Type {
-  const callee = calledName(node);
-  const checked = context.checkedTypeOf(callee);
-  if (checked !== undefined || callee.kind !== 'MemberAccess') {
-    return checked ?? errorType;
-  }
-  const receiver = context.typeOf(callee.target);
-  return fieldOf(context.checker, receiver, callee.member.text)?.member.type ?? errorType;
-}
-
 /** The calls of function values in one body, recorded as each is checked. */
 export class ValueCalls implements ValueCallRecord {
-  readonly #calls: PassTable<CallingNode, ValueCallMade>;
+  readonly #calls: PassTable<Call, ValueCallMade>;
 
   constructor(passes: Passes) {
     this.#calls = passes.table();
   }
 
-  record(node: CallingNode): void {
+  record(node: Call): void {
     this.#calls.set(node, { binding: undefined });
   }
 
-  bind(node: CallingNode, binding: Binding): void {
+  bind(node: Call, binding: Binding): void {
     this.#calls.set(node, { binding });
   }
 
-  has(node: CallingNode): boolean {
+  has(node: Call): boolean {
     return this.#calls.has(node);
   }
 
   /** The calls as `pass` sees them. */
-  at(pass: Pass): PassRecords<CallingNode, ValueCallMade> {
+  at(pass: Pass): PassRecords<Call, ValueCallMade> {
     return this.#calls.at(pass);
   }
 }
 
 /** A call as written: where it stands, with its arguments and any type arguments. */
 interface ValueCall {
-  readonly node: CallingNode;
+  readonly node: Call;
   readonly typeArguments: readonly Type[] | undefined;
   readonly written: readonly WrittenArgument[];
 }
@@ -183,7 +166,7 @@ export function checkValueCall(
 
 /** A function value's call whose arguments can be judged: what judging and completing it read. */
 interface MadeValueCall {
-  readonly node: CallingNode;
+  readonly node: Call;
   /** The callee's name, or its type, as reports name the call. */
   readonly name: string;
   readonly written: readonly WrittenArgument[];

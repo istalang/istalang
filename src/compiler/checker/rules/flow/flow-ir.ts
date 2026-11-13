@@ -14,8 +14,8 @@
  *   name), and a place passed by `&` or written names its variable as its root; any operation
  *   writing into a variable assigns it whole or declares it, which ends what it held.
  * - **A nested function is a function of its own,** made where the body makes its closure from
- *   the values it captures: a lambda's or local `fn`'s captured variables, a deferred call's
- *   copies of what it computes now. A local `fn` is made where it is declared.
+ *   the values it captures: a lambda's or local `fn`'s captured variables. A local `fn` is made
+ *   where it is declared.
  * - **Code no path reaches is kept,** in blocks nothing jumps to, so every construct the text holds
  *   is in the graph; code checking ruled out (§4) was never checked, and is left out.
  * - **Releases:** a block releases its variables at its end and where an exit leaves it, a `hold`'s

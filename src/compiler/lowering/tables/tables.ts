@@ -44,9 +44,6 @@ import {
   type BodyOwner,
   type ConversionEntry,
   conversionKey,
-  type DeferredFunction,
-  deferredKey,
-  deferredName,
   instanceKey,
   instanceName,
   type NestedInstance,
@@ -64,9 +61,7 @@ import { TypeTable } from './type-table.ts';
  * instance, an extern a host implements as its native sees it (synthesized/boundary/host-externs.ts),
  * the read of an extern constant, the wrapper a host starts a function through
  * (synthesized/boundary/starts.ts), a context constant's accessor (§3.4), the async entry of a
- * plain function made async, the
- * function a deferred call gives (constructs/expressions/deferred-calls.ts), or a conversion of
- * parts (functions/fits/).
+ * plain function made async, or a conversion of parts (functions/fits/).
  */
 export type PendingEntry =
   | { readonly kind: 'instance'; readonly instance: FunctionInstance }
@@ -87,7 +82,6 @@ export type PendingEntry =
   | { readonly kind: 'start'; readonly target: StartTarget }
   | { readonly kind: 'contextConstant'; readonly declaration: ContextConstantDeclaration }
   | { readonly kind: 'asyncFit'; readonly fit: AsyncFit }
-  | { readonly kind: 'deferred'; readonly deferred: DeferredFunction }
   | ConversionEntry;
 
 /**
@@ -195,13 +189,6 @@ export class DefinitionTables {
     );
   }
 
-  /** The header of a deferred call's function's entry: named after its owner, where its call is. */
-  deferredHeader(deferred: DeferredFunction): EntryHeader {
-    return this.#ownedHeader(deferred.owner, deferred.plan.site.span, (where) =>
-      deferredName(this.#checker, deferred, where),
-    );
-  }
-
   /** The header of an entry a body owns, at `span`, named by `nameAt` from where it stands. */
   #ownedHeader(owner: BodyOwner, at: AnchoredSpan, nameAt: (where: string) => string): EntryHeader {
     const module = this.#checker.moduleOf(ownerDeclaration(owner));
@@ -299,12 +286,6 @@ export class DefinitionTables {
   /** The index of the async entry of a plain function made async (§3.14), lowered later too. */
   asyncFitIndex(fit: AsyncFit): FunctionId {
     return this.#entryIndex(asyncFitKey(this.#checker.typeKeys, fit), { kind: 'asyncFit', fit });
-  }
-
-  /** The index of the entry of the function a deferred call gives (§3.14), lowered later too. */
-  deferredIndex(deferred: DeferredFunction): FunctionId {
-    const key = deferredKey(this.#checker.typeKeys, deferred);
-    return this.#entryIndex(key, { kind: 'deferred', deferred });
   }
 
   /** The index of a conversion's entry (§3.5), one per pair of types, lowered later too. */

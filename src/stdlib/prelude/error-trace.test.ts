@@ -21,7 +21,7 @@ const declarations = [
 ].join('\n');
 
 /** The live `main` calling `_main` in its context, which every ista body's trace ends with. */
-const liveMainLine = /^at \S*main\.main\.deferred@\S+ \(\S+\)$/u;
+const liveMainLine = /^at \S*main\.main\.lambda@\S+ \(\S+\)$/u;
 
 /** Each frame's line: `at`, the function (module-qualified), and `module:line:column`. */
 const frameLines = [

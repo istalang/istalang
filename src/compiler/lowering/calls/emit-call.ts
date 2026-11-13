@@ -13,7 +13,7 @@
  * field out runs the constructor's entry, which computes it.
  *
  * What a call calls (`CallTarget`) is a closed call or a function value in a register, and `emitTo`
- * calls either, as a written call, a deferred call and the function a deferred call gives do.
+ * calls either.
  *
  * This is the one place a rest parameter is made of what a call passes: an array of its items, a
  * spread's spliced in, or, for a pack, its items as single parameters and a spread's tuple as its

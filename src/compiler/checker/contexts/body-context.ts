@@ -13,7 +13,7 @@
 
 import type { Entity, VariableEntity, VariantEntity } from '../../binder/entities.ts';
 import type { FunctionDeclaration } from '../../syntax/declarations/index.ts';
-import type { CallingNode } from '../../syntax/expressions/calls.ts';
+import type { Call } from '../../syntax/expressions/calls.ts';
 import type {
   ArrayLiteral,
   Expression,
@@ -21,7 +21,6 @@ import type {
   FieldsLiteral,
   IndentedValue,
   MapLiteral,
-  Spread,
 } from '../../syntax/expressions/index.ts';
 import type { BuiltLiteral } from '../../syntax/expressions/literals/indented-values.ts';
 import type { Pattern } from '../../syntax/patterns.ts';
@@ -45,7 +44,6 @@ import type {
   ChainLink,
   CheckedFunction,
   CollectionForm,
-  ComputedCapture,
   CoreExpression,
   FieldGiver,
   FieldSource,
@@ -53,7 +51,6 @@ import type {
   IterationForm,
   LabelResolution,
   NestedFunction,
-  Sugar,
   ValueSite,
 } from '../surface/checked-body.ts';
 import type { FieldRead, FieldReading } from '../surface/checked-field.ts';
@@ -85,6 +82,12 @@ export interface BodyContext extends CheckedModule {
   readonly settled: (node: Expression, expected?: Type) => Type;
   /** Checks `node` as `expect` does where no scope is current, as a condition is: its type, settled. */
   readonly expectSettled: (node: Expression, expected: Type) => Type;
+  /**
+   * Checks speculatively: what `check` records and reports is dropped once it returns, and so is
+   * whatever else of the body it changed, so the body reads as if it never ran; what it returns,
+   * read from its records, is kept.
+   */
+  readonly probe: <Result>(check: () => Result) => Result;
   /** The body's constraint scopes, and the one current (scopes.ts). */
   readonly scopes: Scopes;
   /**
@@ -106,6 +109,8 @@ export interface BodyContext extends CheckedModule {
   readonly typeOf: (node: Expression) => Type;
   /** The type `node` was checked to have; undefined for a node not checked yet. */
   readonly checkedTypeOf: (node: Expression) => Type | undefined;
+  /** What `site` was checked expecting; undefined where nothing was expected of it. */
+  readonly expectedOf: (site: ValueSite) => Type | undefined;
   /** Records that `expected` is what `site` will be expected to be, as a call being written says. */
   readonly expectAt: (site: Expression, expected: Type) => void;
   /** Checks `node` and, when a type is expected, reports when its type doesn't fit it. */
@@ -159,12 +164,12 @@ export interface BodyContext extends CheckedModule {
    * (constructs/expressions/literals/indented-values.ts).
    */
   readonly recordBuilt: (value: IndentedValue, literal: BuiltLiteral) => void;
-  /** Records the core tree the sugar `sugar` is checked as (checker/desugaring/). */
-  readonly recordCore: (sugar: Sugar, core: CoreExpression) => void;
   /** Records the variant the bare name `name` chose (types/written/named-types.ts). */
   readonly recordVariant: (name: Identifier, variant: VariantEntity) => void;
   /** The variant the bare name `name` chose; undefined for one not checked yet or naming none. */
   readonly chosenVariantOf: (name: Identifier) => VariantEntity | undefined;
+  /** The sugars the body desugars, and the operands they checked (checker/desugaring/). */
+  readonly sugars: Sugars;
   /** What the body's checking decided of which of its code runs (rules/flow/flow-decisions.ts). */
   readonly decisions: DecisionRecord;
   /**
@@ -212,6 +217,11 @@ export interface CheckedPasses {
 /** A body's variables: types, uses, and what targets take (constructs/statements/variables.ts). */
 export interface Variables {
   readonly declare: (name: Identifier, type: Type) => void;
+  /**
+   * What the body notes of its variables across passes (which change, which live in a cell, which
+   * are references), kept by the function returned, which puts it back.
+   */
+  readonly checkpoint: () => () => void;
   readonly declareParameter: (
     parameter: Pick<SignatureParameter, 'node' | 'type' | 'reference'>,
   ) => void;
@@ -240,6 +250,22 @@ export interface LiteralSources {
   readonly recordFields: (literal: FieldsLiteral, fields: readonly FieldMember[]) => void;
 }
 
+/** What checking keeps of the sugars a body desugars (checker/desugaring/index.ts). */
+export interface Sugars {
+  /**
+   * Checks `node`, a sugar's written operand, settled, guided by `guide`, before the core tree
+   * holding it: checking the core reads this type of it, checking it no more.
+   */
+  readonly operand: (context: BodyContext, node: Expression, guide: Type | undefined) => Type;
+  /**
+   * Records the core tree `node` is checked as: a sugar's, or the core call a written call a sugar
+   * makes was rebuilt as.
+   */
+  readonly record: (node: Expression, core: CoreExpression) => void;
+  /** The core tree recorded for `node`; undefined for a node no desugaring rebuilt. */
+  readonly coreOf: (node: Expression) => CoreExpression | undefined;
+}
+
 /** The functions a body is checked in, innermost current (constructs/closures/functions.ts). */
 export interface Functions {
   readonly current: FunctionFrame;
@@ -254,20 +280,6 @@ export interface Functions {
   readonly inside: <Result>(scope: FunctionFrame, check: () => Result) => Result;
   /** Notes that `entity` is used where `name` is written, capturing it where it must be. */
   readonly noteUse: (context: BodyContext, name: Identifier, entity: VariableEntity) => void;
-  /**
-   * Runs `check`, a part of `call` it computes now, where it runs: in the functions around the
-   * function a deferred call gives, where that function makes `call` later (§3.14); here otherwise.
-   */
-  readonly computedNow: <Result>(call: CallingNode, check: () => Result) => Result;
-  /**
-   * Notes what `call` computed now, `computed`, as captured by the function making it later, the
-   * one being checked; nothing for any other call.
-   */
-  readonly captureNow: (
-    context: BodyContext,
-    call: CallingNode,
-    computed: () => readonly ComputedCapture[],
-  ) => void;
   /** The type of a local function or named lambda used by `name`, or the error after a report. */
   readonly typeOfFunction: (context: BodyContext, name: Identifier, entity: VariableEntity) => Type;
   readonly record: (node: NestedFunction, checked: CheckedFunction) => void;
@@ -278,16 +290,6 @@ export interface Functions {
 export interface CapturedUse {
   readonly entity: VariableEntity;
   readonly site: Identifier;
-}
-
-/**
- * The call the function a deferred call gives makes later (§3.14), and the functions what that call
- * computes now is checked in: those around the outermost deferred call it is part of, so in
- * `a b c(x)` both functions capture `x`, computed once.
- */
-export interface MadeLater {
-  readonly call: CallingNode;
-  readonly now: readonly FunctionFrame[];
 }
 
 /**
@@ -312,21 +314,14 @@ export interface FunctionFrame {
   readonly reliesOnKind: boolean;
   /** Notes that its code depends on its kind. */
   readonly relyOnKind: () => void;
+  /** What `relyOnKind` noted so far, kept by the function returned, which puts it back. */
+  readonly checkpoint: () => () => void;
   readonly returns: Returns;
   readonly enclosing: Enclosing;
   /** The variables the function captures, by the name each declares, in the order first used. */
   readonly captures: ReadonlyMap<Identifier, CapturedUse>;
   /** Notes that the function captures `entity`, used where `site` is written. */
   readonly capture: (entity: VariableEntity, site: Identifier) => void;
-  /**
-   * For the function a deferred call gives (§3.14), the call it makes later and where what that
-   * call computes now is checked; undefined for any other function.
-   */
-  readonly makesLater: MadeLater | undefined;
-  /** What the function captures that was computed now, by the operand computing it, in order. */
-  readonly computed: ReadonlyMap<Expression | Spread, Type>;
-  /** Notes that the function captures what `site` computed now, of `type`. */
-  readonly captureComputed: (site: Expression | Spread, type: Type) => void;
   /** Whether a `select` case watching this function's own call encloses what is checked (§7). */
   readonly inCleanup: boolean;
   /** Runs `check` inside a case that cleans up after this function's call is disposed. */
@@ -408,10 +403,10 @@ export interface CollectionRecord {
 /** The calls of function values (constructs/closures/value-calls.ts, §3.14). */
 export interface ValueCallRecord {
   /** Records that `node` calls a function value, its arguments not judged yet. */
-  readonly record: (node: CallingNode) => void;
+  readonly record: (node: Call) => void;
   /** Records how `node`'s arguments fill the value's parameters, as judging them bound them. */
-  readonly bind: (node: CallingNode, binding: Binding) => void;
-  readonly has: (node: CallingNode) => boolean;
+  readonly bind: (node: Call, binding: Binding) => void;
+  readonly has: (node: Call) => boolean;
 }
 
 /** How each iteration runs (constructs/loops/iteration.ts). */

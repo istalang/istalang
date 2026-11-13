@@ -48,7 +48,7 @@ src/
                         how targets (statements/targets.ts), places (expressions/places.ts), optional chains (expressions/chains.ts), struct items and parameters
                         (expressions/parameters.ts: a name, a pattern, or both) read as written, the function a declaration's
                         fields read as, a variant's constructor (declarations/field-defaults.ts), a top-level function as what a host may
-                        start reads it (declarations/starts.ts), calls and the deferred call `g f(args)` (expressions/calls.ts), the lambda a deferred call's function reads as (expressions/deferred-functions.ts), what a template stands for: its text, or the call a tag makes
+                        start reads it (declarations/starts.ts), calls and the deferred call `g f(args)` (expressions/calls.ts), what a template stands for: its text, or the call a tag makes
                         (expressions/literals/templates.ts), the literal an indented value reads as once its form is known
                         (expressions/literals/indented-values.ts), operator precedence (expressions/operators.ts); a folder per construct
                         whose nodes have readings beside them (declarations/, statements/, types/, expressions/), types/type-matches.ts
@@ -77,7 +77,8 @@ src/
                         placeholder per name until linked, bound as its alias where renamed (`aliasOf`)
     checker/            check.ts is the entry and the surface later phases read
       contexts/                                                  the contexts a program and a body are checked in (context.ts, body-context.ts), a field loop's
-                                                                 passes (passes.ts), where a check reports (use-site.ts), and what a construct
+                                                                 passes and the probe, a pass dropped once checked (passes.ts), the nodes a desugaring
+                                                                 builds and the names they bind (synthesized.ts), where a check reports (use-site.ts), and what a construct
                                                                  asks of the constraint scopes a body's calls and literals infer in
                                                                  (scopes.ts; the scopes themselves, settled on every path, and the protocol
                                                                  placing each expression in them: wiring/body/; which expressions a scope
@@ -184,7 +185,7 @@ src/
                                                                  structs keep)
         closures/                                                the functions a body nests (§3.14), their scopes, returns and captures, lambdas and local fns,
                                                                  function values
-        expressions/                                             the handler table, calls and deferred calls (deferred-calls.ts) at its root, then by family: structs/ (struct and variant
+        expressions/                                             the handler table and calls at its root, then by family: structs/ (struct and variant
                                                                  literals, struct comprehensions), collections/ (collection literals, array comprehensions),
                                                                  control/ (branching, `match`, `?`, `await`, `select`), access/ (names, members,
                                                                  indexing, `*`, optionals), operators/ (and the conditions types decide), literals/
@@ -192,9 +193,9 @@ src/
                                                                  is built as)
         statements/                                              one handler per statement kind, and blocks
       desugaring/                                                a sugar checked as the core tree it means, built where it is written: one entry per sugar
-                                                                 kind (index.ts), a module per sugar (its core, its own refusals, its wording), the nodes
-                                                                 built and the names they bind (synthesized.ts); its layer stands between
-                                                                 constructs/closures and constructs/expressions
+                                                                 kind and what a body keeps of its sugars (index.ts), a module per sugar (its core, its
+                                                                 own refusals, its wording); its layer stands between constructs/closures and
+                                                                 constructs/expressions
       lookup/                                                    what tools ask by position (denotation.ts): what a name denotes, the field a
                                                                  String literal names as a key (key-denotations.ts), the body holding a node,
                                                                  a written type's type, a type's members
@@ -229,8 +230,7 @@ src/
                                                                  (trait-objects.ts: the entries switching over every type one holds, dispatch, conversion,
                                                                  field read, written once the program is reached, each converting through the instantiation
                                                                  a member meets; a call on a union through a trait dispatches over its members alike)
-      constructs/                                                per-construct handlers, as the checker's constructs/: expressions/ (deferred calls,
-                                                                 the function each gives its taker a closure of an entry of its own: deferred-calls.ts; by the checker's
+      constructs/                                                per-construct handlers, as the checker's constructs/: expressions/ (by the checker's
                                                                  families: structs/, collections/, control/, access/ (names, `??`), literals/),
                                                                  statements/, loops/ (the one loop of every iterating construct, and the passes over a
                                                                  struct's fields), parts/ (places and parts of values: what assignments write and `&` passes
@@ -366,8 +366,8 @@ foundation/language · structures        beneath every layer; they import nothin
 
 Sugar is split by whether it has typing consequences:
 - **Resolved in the checker** (it affects types or diagnostics): a call's arguments are bound to its function's parameters, each one left out to its default, a call through a requirement to the required function's, which its witness's binding then maps onto its own (and an overload clash is an error); `T?` is `T | None`, and where a value is put into a union, as which member; operators, indexing, `for` and `T(x)` become resolved function calls; trait-constrained calls become requirement calls; compound index assignment requires a `let`; closure captures become cells (`_Cell<T>`).
-- **Desugared by the checker** (its core tree depends on types, `checker/desugaring/`): `a!` is `a ?? panic("Force-unwrapped none.")`. The core is checked where the sugar is written and recorded (`CheckedBody.coreOf`); flow, lowering, the rules and tools read it, and no later phase knows the sugar.
-- **Done mechanically in lowering**, following the checker's decisions: overload bodies (a prologue computing their defaults), conversions into unions, instantiation, capture structs, deferred calls' closures, `?.`/`??`/`is` as `match`, comprehensions as loops.
+- **Desugared by the checker** (its core tree depends on types, `checker/desugaring/`): `a!` is `a ?? panic("Force-unwrapped none.")`; a deferred call `g f(x)` is `g` called with, given after its arguments, `{ const v = x; fn(): f(v) }`, its operands typed by a probe of the call `f(x)` (a check that leaves nothing behind). The core is checked where the sugar is written and recorded (`CheckedBody.coreOf`); flow, lowering, the rules and tools read it, and no later phase knows the sugar.
+- **Done mechanically in lowering**, following the checker's decisions: overload bodies (a prologue computing their defaults), conversions into unions, instantiation, capture structs, `?.`/`??`/`is` as `match`, comprehensions as loops.
 
 Each phase returns its diagnostics as values; there is no global sink. Codes are unique, with one catalog per phase.
 

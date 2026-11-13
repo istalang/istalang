@@ -15,13 +15,13 @@
 import type { Diagnostic } from '../../../../foundation/diagnostics/diagnostic.ts';
 import { declaredFunctionName } from '../../../syntax/declarations/field-defaults.ts';
 import { typeParametersOf } from '../../../syntax/declarations/index.ts';
-import { deferredCallOf } from '../../../syntax/expressions/deferred-functions.ts';
 import type { AnchoredSpan } from '../../../syntax/tree/positions.ts';
 import type { BodyContext, FunctionFrame } from '../../contexts/body-context.ts';
 import type { CheckerContext } from '../../contexts/context.ts';
+import { originOf } from '../../contexts/synthesized.ts';
 import type { UseSite } from '../../contexts/use-site.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
-import type { NestedFunction } from '../../surface/checked-body.ts';
+import { type NestedFunction, sugarNames } from '../../surface/checked-body.ts';
 import {
   callsMadeWith,
   type FunctionCall,
@@ -196,17 +196,18 @@ export function callerName(frame: FunctionFrame): string {
 }
 
 /**
- * Whether a mark can be declared on the head of `node`, a function checked: on any but the function
- * a deferred call gives, which has none.
+ * Whether a mark can be declared on the head of `node`, a function checked: on any written, never
+ * on one built for a sugar (checker/desugaring/), which has none.
  */
 export function hasHead(node: NestedFunction | undefined): boolean {
-  return node?.kind !== 'Lambda' || deferredCallOf(node) === undefined;
+  return node === undefined || originOf(node) === undefined;
 }
 
-/** How a message names a nested function: a lambda, the function a deferred call gives, or by name. */
+/** How a message names a nested function: by its name, a lambda, or the sugar it was built for. */
 export function functionName(node: NestedFunction): string {
   if (node.kind === 'FunctionDeclaration') {
     return `'${declaredFunctionName(node)}'`;
   }
-  return deferredCallOf(node) === undefined ? 'a lambda' : 'a deferred call';
+  const sugar = originOf(node);
+  return sugar === undefined ? 'a lambda' : sugarNames[sugar.kind];
 }

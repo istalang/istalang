@@ -6,20 +6,24 @@
  *   its core, the mistakes it refuses itself (only those no core rule catches), and how it words
  *   the core diagnostics it can cause.
  * - The core reuses the written operand nodes, their spans and bindings; what it adds is built for
- *   the sugar (synthesized.ts). It is checked in the sugar's place by the core's own rules and
- *   recorded (`BodyFacts.coreOf`), which flow, lowering, rules and tools read instead of the sugar.
+ *   the sugar (../contexts/synthesized.ts). It is checked in the sugar's place by the core's own
+ *   rules and recorded (`BodyFacts.coreOf`), which flow, lowering, rules and tools read instead of
+ *   the sugar.
  * - A diagnostic reported while a node built for a sugar is checked is reworded by that sugar's
  *   entry, by its code (`reworded`), so a report reads as about the code written.
  */
 
 import type { Diagnostic } from '../../../foundation/diagnostics/diagnostic.ts';
 import type { Expression } from '../../syntax/expressions/index.ts';
+import type { NodeOf } from '../../syntax/tree/node.ts';
 import type { AnchoredSpan } from '../../syntax/tree/positions.ts';
-import type { BodyContext } from '../contexts/body-context.ts';
+import type { BodyContext, Sugars } from '../contexts/body-context.ts';
+import type { Pass, Passes, PassTable } from '../contexts/passes.ts';
+import { originOf } from '../contexts/synthesized.ts';
 import type { CoreExpression, Sugar, SugarKind } from '../surface/checked-body.ts';
 import type { Type } from '../types/type/index.ts';
 import { errorType } from '../types/type/primitives.ts';
-import { originOf } from './synthesized.ts';
+import { deferredCalls } from './deferred-calls.ts';
 import { unwraps } from './unwrap.ts';
 
 /** How a sugar of kind `Node` is desugared. */
@@ -38,7 +42,7 @@ type Reword<Node extends Sugar> = (
 
 // biome-ignore-start lint/style/useNamingConvention: the keys are the tree's node kinds.
 const desugars: { readonly [Kind in SugarKind]: Desugar<Extract<Sugar, { readonly kind: Kind }>> } =
-  { Unwrap: unwraps };
+  { DeferredCall: deferredCalls, Unwrap: unwraps };
 // biome-ignore-end lint/style/useNamingConvention: the keys are the tree's node kinds.
 
 /** The entry of `node`'s kind, typed for the node as its union sees it. */
@@ -52,26 +56,66 @@ export function checkSugar(context: BodyContext, node: Sugar, expected: Type | u
   if (core === undefined) {
     return errorType;
   }
-  context.recordCore(node, core);
+  context.sugars.record(node, core);
   return context.expression(core, expected);
 }
 
 /**
- * Which sugar's words a body reports in: those of the sugar a node being checked was built for,
- * none while a written node is, its operands included.
+ * What checking a body keeps of its sugars as it goes: the core each was checked as, the operands a
+ * sugar checked before its core, which checking the core reads rather than checks again, and the
+ * sugar whose words the body reports in: that of a node being checked built for one, none while a
+ * written node is, its operands included.
  */
-export class Wordings {
+export class Desugarings implements Sugars {
+  readonly #operands: PassTable<Expression, Type>;
+  readonly #cores: PassTable<NodeOf<string>, CoreExpression>;
   #sugar: Sugar | undefined;
 
-  /** Runs `check` of `node`, reporting in the words of the sugar it was built for, if any. */
-  checking<T>(node: Expression, check: () => T): T {
+  constructor(passes: Passes) {
+    this.#operands = passes.table();
+    this.#cores = passes.table();
+  }
+
+  record(node: Expression, core: CoreExpression): void {
+    this.#cores.set(node, core);
+  }
+
+  coreOf(node: NodeOf<string>, pass?: Pass): CoreExpression | undefined {
+    return this.#cores.get(node, pass);
+  }
+
+  /**
+   * `node`'s type: an operand's as checked, else what `check` gives, reporting in the words of the
+   * sugar it was built for, if any.
+   */
+  checking(node: Expression, check: () => Type): Type {
+    const operand = this.#operands.get(node);
+    if (operand !== undefined) {
+      return operand;
+    }
+    return this.#within(originOf(node), check);
+  }
+
+  /** Runs work later in the words reported in now. */
+  here(): <Result>(work: () => Result) => Result {
+    const sugar = this.#sugar;
+    return (work) => this.#within(sugar, work);
+  }
+
+  #within<Result>(sugar: Sugar | undefined, work: () => Result): Result {
     const outer = this.#sugar;
-    this.#sugar = originOf(node);
+    this.#sugar = sugar;
     try {
-      return check();
+      return work();
     } finally {
       this.#sugar = outer;
     }
+  }
+
+  operand(context: BodyContext, node: Expression, guide: Type | undefined): Type {
+    const type = context.settled(node, guide);
+    this.#operands.set(node, type);
+    return type;
   }
 
   /** `diagnostic`, as the sugar of the node being checked words it. */

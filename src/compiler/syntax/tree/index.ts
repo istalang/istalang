@@ -31,7 +31,6 @@ import type {
   Module,
 } from '../declarations/index.ts';
 import type { Expression, ExpressionPart, Lambda } from '../expressions/index.ts';
-import { deferredOf } from '../expressions/readings.ts';
 import type { Annotation } from '../items.ts';
 import type { Pattern, PatternPart } from '../patterns.ts';
 import type { Block, Statement, StatementPart } from '../statements/index.ts';
@@ -211,17 +210,9 @@ export function nestsFunction(node: SyntaxNode): node is Lambda | FunctionDeclar
 
 /**
  * The children of `node` that run where it stands, as part of the function holding it: none for a
- * lambda or local function, whose body runs when it is called; for a deferred call, its taker and
- * what the call it defers computes now, never that call, which runs when the function it gives is
- * called (§3.14). Walking a body by these alone never enters code that runs later.
+ * lambda or local function, whose body runs when it is called. Walking a body by these alone never
+ * enters code that runs later; a checked body's sugar runs as its core (checker `childrenRunning`).
  */
 export function bodyChildrenOf(node: SyntaxNode): readonly SyntaxNode[] {
-  if (nestsFunction(node)) {
-    return [];
-  }
-  if (node.kind !== 'DeferredCall') {
-    return fieldChildrenOf(node);
-  }
-  const deferred = deferredOf(node);
-  return [node.taker, ...(deferred === undefined ? [node.call] : bodyChildrenOf(deferred))];
+  return nestsFunction(node) ? [] : fieldChildrenOf(node);
 }

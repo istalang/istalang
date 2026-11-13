@@ -19,6 +19,12 @@ export interface Call extends NodeOf<'Call'> {
   readonly callee: Expression;
   readonly isOptional: boolean;
   readonly arguments: readonly CallArgument[];
+  /**
+   * The function the call gives after its arguments, which fills the first parameter they leave
+   * unfilled of a function type taking nothing (§3.14): what a deferred call is checked as. No text
+   * writes one; the checker builds it (checker/desugaring/deferred-calls.ts).
+   */
+  readonly given?: Expression | undefined;
 }
 
 /**

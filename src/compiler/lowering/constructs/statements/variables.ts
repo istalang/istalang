@@ -207,10 +207,10 @@ export function bindTargets(
 }
 
 /**
- * A fresh register holding a copy of `value`, as a variable with no name keeps it (§7) and a
- * deferred call captures what it computes now (§3.14): the value a cell holds, not the cell.
+ * A fresh register holding a copy of `value`, as a variable with no name keeps it (§7): the value
+ * a cell holds, not the cell.
  */
-export function copied(context: FunctionContext, value: Register, span: AnchoredSpan): Register {
+function copied(context: FunctionContext, value: Register, span: AnchoredSpan): Register {
   const copy = context.code.allocate();
   context.code.emit({ kind: 'move', span, dst: copy, src: value });
   return copy;

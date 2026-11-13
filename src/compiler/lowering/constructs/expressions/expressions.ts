@@ -28,7 +28,6 @@ import { lowerIf } from './control/control.ts';
 import { lowerIs, lowerMatch } from './control/matching.ts';
 import { lowerPropagate } from './control/propagate.ts';
 import { lowerSelect } from './control/select.ts';
-import { lowerDeferredCall } from './deferred-calls.ts';
 import { lowerDurationLiteral } from './literals/literals.ts';
 import { lowerTemplate } from './literals/templates.ts';
 import { lowerTuple, lowerTupleElement } from './literals/tuples.ts';
@@ -69,7 +68,6 @@ export const expressionHandlers: Handlers<FunctionContext, CoreExpression, [], R
   Reference: neverLowered,
   Index: lowerIndex,
   Propagate: lowerPropagate,
-  DeferredCall: lowerDeferredCall,
   ChainedComparison: lowerChainedComparison,
   TemplateLiteral: lowerTemplate,
   Dereference: lowerDereference,

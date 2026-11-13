@@ -10,7 +10,8 @@
 
 import { sameItems } from '../../../../../foundation/structures/equality.ts';
 import { constructedVariant } from '../../../../syntax/declarations/field-defaults.ts';
-import type { Pass } from '../../../contexts/passes.ts';
+import type { NodeOf } from '../../../../syntax/tree/node.ts';
+import type { Pass, PassRecords } from '../../../contexts/passes.ts';
 import type { PassAnswers } from '../../../lookup/pass-views.ts';
 import type { BodyFacts, CheckedBody } from '../../../surface/checked-body.ts';
 import {
@@ -73,10 +74,9 @@ type FactEntry<Name extends FactName> = BodyFact<BodyFacts[Name]> &
  */
 const bodyFacts: { readonly [Name in FactName]: FactEntry<Name> } = {
   typeOf: {
-    at:
-      ({ records }, pass) =>
-      (expression) =>
-        records.types.get(expression, pass),
+    at: (recorded, pass) => (expression) =>
+      recorded.records.types.get(expression, pass) ??
+      recorded.records.types.get(coreAt(recorded, pass, expression), pass),
     instantiated: (typeOf, by) => readThrough(typeOf, by.concrete),
     joined: typesJoined,
   },
@@ -89,7 +89,7 @@ const bodyFacts: { readonly [Name in FactName]: FactEntry<Name> } = {
     joined: typesJoined,
   },
   resolved: {
-    at: ({ units }, pass) => units.calls.at(pass),
+    at: (recorded, pass) => throughCore(recorded, pass, recorded.units.calls.at(pass)),
     instantiated: asChecked,
     joined: (answers) =>
       everyDistinct(
@@ -98,7 +98,7 @@ const bodyFacts: { readonly [Name in FactName]: FactEntry<Name> } = {
       ),
   },
   valueCalls: {
-    at: ({ units }, pass) => units.valueCalls.at(pass),
+    at: (recorded, pass) => throughCore(recorded, pass, recorded.units.valueCalls.at(pass)),
     instantiated: asChecked,
     joined: firstRecorded,
   },
@@ -243,9 +243,9 @@ const bodyFacts: { readonly [Name in FactName]: FactEntry<Name> } = {
   },
   coreOf: {
     at:
-      ({ records }, pass) =>
-      (sugar) =>
-        records.cores.get(sugar, pass),
+      ({ units }, pass) =>
+      (node) =>
+        units.sugars.coreOf(node, pass),
     instantiated: asChecked,
   },
   chosenVariantOf: {
@@ -257,10 +257,8 @@ const bodyFacts: { readonly [Name in FactName]: FactEntry<Name> } = {
     joined: firstFound,
   },
   candidatesAt: {
-    at:
-      ({ units }, pass) =>
-      (site) =>
-        units.calls.candidatesAt(site, pass),
+    at: (recorded, pass) => (site) =>
+      recorded.units.calls.candidatesAt(coreAt(recorded, pass, site), pass),
     instantiated: asChecked,
     joined: everyListed,
   },
@@ -305,6 +303,31 @@ const bodyFacts: { readonly [Name in FactName]: FactEntry<Name> } = {
     instantiated: (result, by) => by.concrete(result),
   },
 };
+
+/**
+ * `site`, or what a desugaring rebuilt it as (checker/desugaring/), whose records answer for it: a
+ * deferred call's call to its taker, and a call it makes later as rebuilt.
+ */
+function coreAt<Key extends NodeOf<string>>(
+  { units }: RecordedBody,
+  pass: Pass,
+  site: NodeOf<string>,
+): Key {
+  // A site's core is a call, a site of the same records.
+  return (units.sugars.coreOf(site, pass) ?? site) as Key;
+}
+
+/** `records`, which a written node a desugaring rebuilt reads at its core (`coreAt`). */
+function throughCore<Written extends NodeOf<string>, Key extends Written, Record>(
+  recorded: RecordedBody,
+  pass: Pass,
+  records: PassRecords<Key, Record>,
+): PassRecords<Written, Record> {
+  return {
+    get: (site) => records.get(coreAt(recorded, pass, site)),
+    has: (site) => records.has(coreAt(recorded, pass, site)),
+  };
+}
 
 const factNames = Object.keys(bodyFacts) as readonly FactName[];
 

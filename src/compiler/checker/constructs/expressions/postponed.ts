@@ -3,7 +3,8 @@
  * (docs/work/variance-inference/i2-scope.md §3, wiring/body/constraint-scope.ts): a lambda whose
  * result or a parameter isn't written, a function or a variant named as a value, a bare variant
  * called, an indented value naming no type, `[]` or `[:]`, which build what they go into, and a
- * `struct{…}` with a comprehension, whose fields may be known only once what it builds is (§3.1). Checked in an open scope with nothing settled
+ * `struct{…}` with a comprehension, whose fields may be known only once what it builds is (§3.1), and
+ * a block giving one of these. Checked in an open scope with nothing settled
  * expected of it, each is a placeholder of the scope, which refuses a bound it can't be a value of
  * (`admits`), so a candidate a call probes that gives it one fails.
  *
@@ -23,6 +24,7 @@
  */
 
 import type { Expression, Lambda } from '../../../syntax/expressions/index.ts';
+import { tailExpressionOf } from '../../../syntax/statements/readings.ts';
 import type { BodyContext } from '../../contexts/body-context.ts';
 import { bodySite } from '../../contexts/use-site.ts';
 import {
@@ -182,6 +184,10 @@ function formAdmits(context: BodyContext, node: Expression, expected: Type): Adm
 
 function ownAdmits(context: BodyContext, node: Expression): Admits | undefined {
   switch (node.kind) {
+    case 'BlockExpression': {
+      const tail = tailExpressionOf(node.block);
+      return tail === undefined ? undefined : ownAdmits(context, tail);
+    }
     case 'Lambda':
       return lambdaAccepts(context, node);
     case 'Identifier':

@@ -78,11 +78,14 @@ export function callTypeArguments(node: CallingNode): readonly TypeNode[] | unde
 }
 
 /**
- * The arguments `node` writes in parentheses: a deferred call's taker's, none where the taker is a
- * path alone; the function making its call is passed besides them.
+ * The arguments `node` passes: those in its parentheses, a deferred call's taker's, none where the
+ * taker is a path alone; then the function a call gives after them (`Call.given`), if any.
  */
 export function writtenArgumentsOf(node: CallingNode): readonly CallArgument[] {
-  return node.kind === 'Call' ? node.arguments : (takerCallOf(node)?.arguments ?? []);
+  if (node.kind === 'DeferredCall') {
+    return takerCallOf(node)?.arguments ?? [];
+  }
+  return node.given === undefined ? node.arguments : [...node.arguments, node.given];
 }
 
 /** Whether `node` calls the function inside an optional, `f?.(…)` (§4); a taker never does. */

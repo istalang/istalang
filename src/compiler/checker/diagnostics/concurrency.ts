@@ -44,10 +44,6 @@ export const concurrencyTemplates = {
     message: (found: string) =>
       `A sendable function is taken here, so what it captures must be sendable, and ${found} isn't (§3.14).`,
   },
-  notDeferrable: {
-    code: 5645,
-    message: (callee: string, reason: string) => `${callee} can't be deferred: ${reason}.`,
-  },
   unmarkedCalls: {
     code: 5606,
     message: (caller: string, kind: string, callee: string) =>

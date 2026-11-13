@@ -75,7 +75,7 @@ import type {
   ProgramInputs,
   RootGoals,
 } from '../../contexts/context.ts';
-import { withSynthesizedNames } from '../../desugaring/synthesized.ts';
+import { withSynthesizedNames } from '../../contexts/synthesized.ts';
 import { Lookup } from '../../lookup/lookup.ts';
 import { namedInModule } from '../../resolution/choosing/candidates.ts';
 import { rootSearches } from '../../resolution/conformance/conformance.ts';

@@ -1,14 +1,15 @@
 /**
  * Why a closure isn't sendable where a sendable function is taken (§3.14, §9): it captures a value
- * that isn't. Where a lambda, or the function a deferred call gives, doesn't fit a sendable function
- * type only for being plain, each capture of a type that isn't sendable is reported where it is
- * captured, rather than the two function types: a variable where the function first uses it, a value computed now at the
- * operand computing it. A captured `let` of a sendable type is a cell, which only the two types
- * explain.
+ * that isn't. Where a lambda doesn't fit a sendable function type only for being plain, each capture
+ * of a type that isn't sendable is reported where the function first uses it, rather than the two
+ * function types; the function a deferred call gives uses its constants at the operands they hold
+ * (checker/desugaring/deferred-calls.ts). A captured `let` of a sendable type is a cell, which only
+ * the two types explain.
  */
 
 import type { Expression } from '../../../syntax/expressions/index.ts';
 import { unparenthesized } from '../../../syntax/expressions/readings.ts';
+import { tailExpressionOf } from '../../../syntax/statements/readings.ts';
 import type { BodyContext } from '../../contexts/body-context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import { isSendable } from '../../types/traits/sendable.ts';
@@ -21,8 +22,8 @@ import { typeText } from '../../types/type/type-text.ts';
  * sendable function; whether that explained why it doesn't fit there.
  */
 export function explainedCaptures(context: BodyContext, node: Expression, expected: Type): boolean {
-  const closure = unparenthesized(node);
-  if (closure.kind !== 'Lambda' || expected.kind !== 'function' || !isSendableFunction(expected)) {
+  const closure = closureIn(node);
+  if (closure?.kind !== 'Lambda' || expected.kind !== 'function' || !isSendableFunction(expected)) {
     return false;
   }
   const checked = context.functions.checkedOf(closure);
@@ -34,8 +35,7 @@ export function explainedCaptures(context: BodyContext, node: Expression, expect
     ({ type }) => type.kind !== 'error' && !isSendable(context.checker, type),
   );
   for (const { site, type } of unsendable) {
-    const at = site.kind === 'Spread' ? site.expression : site;
-    context.report(checkerDiagnostics.unsendableCapture(at.span, typeText(type)));
+    context.report(checkerDiagnostics.unsendableCapture(site.span, typeText(type)));
   }
   return unsendable.length > 0;
 }
@@ -52,4 +52,14 @@ function fitsAsSendable(
 ): boolean {
   const sendable = functionType({ ...found, send: expected.send, result: expected.result });
   return context.checker.fitOf(sendable, expected) !== undefined;
+}
+
+/** What `node` gives as written: itself, or a block's value (§4), the one a deferred call gives. */
+function closureIn(node: Expression): Expression | undefined {
+  const value = unparenthesized(node);
+  if (value.kind !== 'BlockExpression') {
+    return value;
+  }
+  const tail = tailExpressionOf(value.block);
+  return tail === undefined ? undefined : closureIn(tail);
 }

@@ -94,6 +94,11 @@ export function spanBetween(first: AnchoredSpan, last: AnchoredSpan): AnchoredSp
   return { segment: segmentOf(first, last), from: first.to, to: last.from };
 }
 
+/** The empty span where `span` starts. */
+export function startOf(span: AnchoredSpan): AnchoredSpan {
+  return { segment: span.segment, from: span.from, to: span.from };
+}
+
 /** The empty span where `span` ends. */
 export function endOf(span: AnchoredSpan): AnchoredSpan {
   return { segment: span.segment, from: span.to, to: span.to };

@@ -35,6 +35,7 @@ import {
   namedInModule,
 } from '../../resolution/choosing/candidates.ts';
 import { selfInference } from '../../resolution/choosing/receivers.ts';
+import { checkedChildrenOf } from '../../surface/checked-body.ts';
 import { isHostExtern, isHostType } from '../../surface/host-externs.ts';
 import type { ResolvedCall, ResolvedSite } from '../../surface/resolved-call.ts';
 import { sameType } from '../../types/identity/identity.ts';
@@ -241,9 +242,8 @@ export function checkDisposeDeclaration(
 }
 
 /**
- * Reports each use of `dispose`'s `self` other than `*self` or an argument of an extern call. What a
- * deferred call's call is given is captured to be passed later, as a nested function's uses are
- * (§3.14), so `self` escapes there however it is used.
+ * Reports each use of `dispose`'s `self` other than `*self` or an argument of an extern call, in the
+ * code as checked: what a deferred call computes now is kept in a constant its function captures.
  */
 function checkSelfStays(
   checker: CheckerContext,
@@ -253,8 +253,7 @@ function checkSelfStays(
   const module = checker.moduleOf(declaration);
   const body = checker.bodyOf(declaration);
   const isExternCall = (node: SyntaxNode | undefined): boolean =>
-    (node?.kind === 'Call' || node?.kind === 'DeferredCall') &&
-    body?.resolved.get(node)?.function.isExtern === true;
+    node?.kind === 'Call' && body?.resolved.get(node)?.function.isExtern === true;
   // A local function's body is read as checking reads bodies, not through the tree.
   const bodyHeldApart = (node: SyntaxNode): readonly SyntaxNode[] => {
     const held =
@@ -283,9 +282,10 @@ function checkSelfStays(
       checker.report(module, checkerDiagnostics.disposeSelfEscapes(node.span, entity.name.text));
     }
     const inner = nested || nestsFunction(node);
-    for (const child of [...fieldChildrenOf(node), ...bodyHeldApart(node)]) {
-      const captured = node.kind === 'DeferredCall' && child === node.call;
-      visit(child, [node, ...outer], inner || captured);
+    const children =
+      body === undefined ? fieldChildrenOf(node) : checkedChildrenOf(node, body.coreOf);
+    for (const child of [...children, ...bodyHeldApart(node)]) {
+      visit(child, [node, ...outer], inner);
     }
   };
   const root = checker.inputs.bodyOf(module, declaration);

@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-11-11
-last_updated: 2026-11-12
+last_updated: 2026-11-13
 tags: [definition, ir, snapshot, runtime, lowering]
 ---
 
@@ -243,7 +243,7 @@ Instruction names are in `code`. A call is always to a function-table entry; for
 | `runtime.commit()` (§3.8) | a call to an already-resolved future, then `await` |
 | Slots and their operations (§6) | calls to prelude externs that return futures |
 | Inbox, `futures`, `rpc`, `fanout` (§3.8, §6) | library code over slots and resolvers: an `Inbox<T>` is a shared struct of one slot, each message a `put` queued on it, and `receive` is the slot's `take`; `futures.first` is a struct whose `onAwait` registers a `Resolver.at` of its resolver on each future, and has no extern |
-| Deferred call `g f(args)` (§3.14) | a call of the taker `g`, given, where the checker's binding numbers it among what its parentheses write, a closure of an entry of its own capturing copies of what the call computes now, in order (the callee's value or receiver, then the arguments, a nested deferred call's parts among them); the entry, one per call in a body's instance, makes the call from its captures, so a default it leaves out is computed when it runs, and gives what the call gives as the function is given (`returnedAs`) (lowering/constructs/expressions/deferred-calls.ts) |
+| Deferred call `g f(args)` (§3.14) | what the checker checked it as (checker/desugaring/deferred-calls.ts): a call of the taker `g`, given, where the checker's binding numbers it, a closure built in a block of constants holding what the call computes now, in order (the callee's value or receiver, then the arguments, a nested deferred call's parts among them); the closure is a lambda's, making the call from those constants, so a default it leaves out is computed when it runs |
 | `_ = defer f(x)` (§7) | a deferred call (§3.14) of the prelude's `defer`, giving a `Deferred<M>`, a shared struct of the function, of its mark `M`, whose declared `dispose` calls it; `_` keeps it in an unnamed register of the block |
 | `WeakRef`, `deref()`, `disposed()` (§7) | calls to prelude externs |
 | `worker.disposing()` (§7) | `currentCall` at the function's entry, into a hidden variable a nested function captures like any other, which the function's own name reads before a `.`; `disposing` is then an ordinary prelude method on that `_Call` handle |

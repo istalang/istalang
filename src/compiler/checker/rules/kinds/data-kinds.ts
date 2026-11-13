@@ -19,11 +19,10 @@
  * It reads a body once it is checked, as solved; what a nested function infers its mark from while
  * it is, it reads at the same sites (resolution/applying/call-kinds.ts `handledBy`).
  *
- * A deferred call's own call is made later, by the function its taker is given, a lambda
- * (syntax/expressions/deferred-functions.ts), so it is that function's to handle and is judged by
- * its mark; what it computes now is the code writing it's: the walk takes a node's children where
- * they run (`bodyChildrenOf`). One value per function is reported, the first its text holds: the
- * mark it asks for mends them all, or none does.
+ * The walk takes a node's children where they run, a sugar's being the core it was checked as
+ * (`childrenRunning`), so a deferred call's own call is judged inside the function it gives, by that
+ * function's mark. One value per function is reported, the first its text holds: the mark it asks
+ * for mends them all, or none does.
  *
  * A type's kinds are read off its fields' written types (properties/value-kinds.ts), so a field
  * whose type its default gives holds no part whose kind the type arguments decide (§3.3).
@@ -41,24 +40,21 @@ import {
   type FunctionDeclaration,
   typeParametersOf,
 } from '../../../syntax/declarations/index.ts';
-import type { DeferredCall } from '../../../syntax/expressions/calls.ts';
-import { deferredLambdaOf } from '../../../syntax/expressions/deferred-functions.ts';
 import type { Expression } from '../../../syntax/expressions/index.ts';
 import { defaultValuesOf } from '../../../syntax/expressions/parameters.ts';
-import { deferredOf } from '../../../syntax/expressions/readings.ts';
 import type { VariableDeclaration } from '../../../syntax/statements/index.ts';
 import { awaits } from '../../../syntax/tokens/modifiers.ts';
-import {
-  bodyChildrenOf,
-  fieldChildrenOf,
-  nestsFunction,
-  type SyntaxNode,
-} from '../../../syntax/tree/index.ts';
+import { fieldChildrenOf, nestsFunction, type SyntaxNode } from '../../../syntax/tree/index.ts';
 import type { AnchoredSpan } from '../../../syntax/tree/positions.ts';
 import type { CheckerContext } from '../../contexts/context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import { functionName, hasHead } from '../../resolution/applying/call-kinds.ts';
-import type { CheckedBody, NestedFunction, ValueSite } from '../../surface/checked-body.ts';
+import {
+  type CheckedBody,
+  childrenRunning,
+  type NestedFunction,
+  type ValueSite,
+} from '../../surface/checked-body.ts';
 import {
   callsMadeWith,
   instantiatingTypesOf,
@@ -234,12 +230,11 @@ function judge(judging: Judging, node: SyntaxNode, handler: Handler): void {
     judgeNested(judging, node as NestedFunction, nested);
   }
   // A nested function's own nodes are judged by its handler; any other node's, where they run.
-  const children = nestsFunction(node) ? fieldChildrenOf(node) : bodyChildrenOf(node);
+  const children = nestsFunction(node)
+    ? fieldChildrenOf(node)
+    : childrenRunning(node, judging.body.coreOf);
   for (const child of children) {
     judge(judging, child, inner);
-  }
-  if (node.kind === 'DeferredCall') {
-    judgeLater(judging, node, handler);
   }
   if ('header' in node && node.header?.kind === 'FieldHeader') {
     for (const pass of judging.body.passesOf(node.header)) {
@@ -316,32 +311,11 @@ function nestedOf(judging: Judging, node: SyntaxNode): Handler | undefined {
     : {
         own: checked.type.mark,
         holder: functionName(node),
-        // The function a deferred call gives has no head to declare a mark on.
+        // A function built for a sugar has no head to declare a mark on.
         remedy: hasHead(node) ? undefined : '',
         reported: false,
         judged: new Set(),
       };
-}
-
-/**
- * Judges the function deferred call `node` gives (§3.14) by its own mark, as a lambda is, and the
- * call it makes later; what that call computes now, the walk judged where it runs.
- */
-function judgeLater(judging: Judging, node: DeferredCall, handler: Handler): void {
-  const lambda = deferredLambdaOf(node);
-  const call = deferredOf(node);
-  if (lambda === undefined || call === undefined) {
-    return;
-  }
-  const nested = nestedOf(judging, lambda);
-  const inner = nested ?? handler;
-  if (nested !== undefined) {
-    judgeNested(judging, lambda, nested);
-  }
-  judgeNode(judging, call, inner);
-  if (call.kind === 'DeferredCall') {
-    judgeLater(judging, call, inner);
-  }
 }
 
 /**

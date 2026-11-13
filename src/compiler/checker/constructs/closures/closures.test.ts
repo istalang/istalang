@@ -61,7 +61,7 @@ describe('captures', () => {
           const lambdas = lambdasIn(program, f);
           const captured = lambdas.map((lambda) =>
             (body?.functionOf(lambda)?.captures ?? []).find(
-              (capture) => capture.kind === 'variable' && capture.entity.name.text === 'x',
+              ({ entity }) => entity.name.text === 'x',
             ),
           );
           expect(checker.diagnosticsOf(idOf('main.ista'))).toEqual([]);
@@ -69,7 +69,7 @@ describe('captures', () => {
             lambdas.map((_, index) => index + 1 > declared),
           );
           const innermost = captured.at(-1);
-          expect(innermost?.kind === 'variable' && body?.inCell(innermost.entity.name)).toBe(true);
+          expect(innermost !== undefined && body?.inCell(innermost.entity.name)).toBe(true);
         },
       ),
     );
@@ -132,6 +132,10 @@ describe('closures accept', () => {
     [
       'a lambda passed for an optional function parameter',
       'fn maybe(g: (fn(Int) -> Int)?, x: Int) -> Int: (g ?? fn(n): n)(x)\nfn f() -> Int: maybe(fn(n): n + 1, 1)',
+    ],
+    [
+      "a plain lambda forwarding a call, its future's value inferred though the call never gives",
+      'ista async fn boom() -> Never: panic("x")\nista async fn f() -> Instance<Never>: spawn(fn(): boom())',
     ],
     [
       'a let shared with a closure and changed on both sides',

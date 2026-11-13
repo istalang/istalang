@@ -13,26 +13,19 @@
  * - A captured `let` is shared with the closure, so it lives in a cell (§3.14); anything else
  *   captured is copied, since it never changes. A reference can't be captured, as references are
  *   never stored (§3.7).
- * - The function a deferred call gives captures what its call computes now (§3.14), which is checked
- *   in the functions around the outermost deferred call the function is part of, where it runs.
  * - A nested function without a declared result, checked while its own name is used inside it,
  *   can't know its type: that is recursion needing a declared result (§2), as for top-level ones.
  */
 
 import type { VariableEntity } from '../../../binder/entities.ts';
 import { localFunctionOf } from '../../../binder/entities.ts';
-import type { CallingNode } from '../../../syntax/expressions/calls.ts';
 import type { Identifier } from '../../../syntax/tree/node.ts';
 import { encloses } from '../../../syntax/tree/positions.ts';
 import type { BodyContext, FunctionFrame, Functions } from '../../contexts/body-context.ts';
 import type { Pass, Passes, PassTable } from '../../contexts/passes.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import { handledBy } from '../../resolution/applying/call-kinds.ts';
-import type {
-  CheckedFunction,
-  ComputedCapture,
-  NestedFunction,
-} from '../../surface/checked-body.ts';
+import type { CheckedFunction, NestedFunction } from '../../surface/checked-body.ts';
 import type { Type } from '../../types/type/index.ts';
 import { errorType } from '../../types/type/primitives.ts';
 
@@ -98,26 +91,6 @@ export class FunctionScopes implements Functions {
     }
     if (capturing.length > 0) {
       capture(context, name, entity);
-    }
-  }
-
-  computedNow<Result>(call: CallingNode, check: () => Result): Result {
-    const later = this.current.makesLater;
-    return later?.call === call ? this.within(later.now, check) : check();
-  }
-
-  captureNow(
-    context: BodyContext,
-    call: CallingNode,
-    computed: () => readonly ComputedCapture[],
-  ): void {
-    const scope = this.current;
-    if (scope.makesLater?.call !== call) {
-      return;
-    }
-    for (const { site, type } of computed()) {
-      scope.captureComputed(site, type);
-      handledBy(context.checker, scope, type);
     }
   }
 

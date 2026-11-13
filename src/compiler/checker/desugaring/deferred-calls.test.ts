@@ -1,18 +1,22 @@
 /**
- * Deferred calls lowered (§3.14), held to their meaning by the commute law: over generated nests of
- * takers and calls, `g f(args)` runs as the closure it stands for, `g((fn(x): fn(): f(x))(args))`,
- * giving the same value and logging the same effects in the same order, so what runs now, what runs
- * later, and how often, all agree.
+ * Deferred calls (§3.14), held to their meaning by the commute law: over generated nests of takers
+ * and calls, `g f(args)` runs as the closure it stands for, `g((fn(x): fn(): f(x))(args))`, giving
+ * the same value and logging the same effects in the same order, so what runs now, what runs later,
+ * and how often, all agree. The call it makes is first checked as a probe, which leaves nothing of
+ * the body behind.
  */
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { decodeJson } from '../../../../definition/formats/codec.ts';
-import { reportedOnce } from '../../../../foundation/diagnostics/diagnostic.test-kit.ts';
-import { startToEnd, testRuntime } from '../../../../runtime/runtime.test-kit.ts';
-import { reported } from '../../../checker/check.test-kit.ts';
-import { checkerDiagnostics } from '../../../checker/diagnostics/index.ts';
-import { compiledText } from '../../../compile.test-kit.ts';
+import { decodeJson } from '../../../definition/formats/codec.ts';
+import {
+  reportedNothing,
+  reportedOnce,
+} from '../../../foundation/diagnostics/diagnostic.test-kit.ts';
+import { startToEnd, testRuntime } from '../../../runtime/runtime.test-kit.ts';
+import { compiledText } from '../../compile.test-kit.ts';
+import { reported } from '../check.test-kit.ts';
+import { checkerDiagnostics } from '../diagnostics/index.ts';
 
 /** An argument: the log itself, or a value logging its label when it is computed. */
 type Argument = { readonly log: true } | { readonly label: string; readonly value: number };
@@ -178,6 +182,20 @@ describe('a deferred call', () => {
     },
   );
 
+  it('types what a nested deferred call computes now by the call it is passed to, `x` of `a b c(x)`', async () => {
+    const text = [
+      'fn outer(f: fn() -> Int) -> Int:',
+      '  f()',
+      'fn middle(f: fn() -> Int) -> Int:',
+      '  f() + 1',
+      'fn sizeOf(xs: Array<Int>) -> Int:',
+      '  xs.length()',
+      "import * as runtime from 'runtime'\nlive async fn main() -> Int: await runtime.run(runtime.id()) _main()\nista async fn _main() -> Int:",
+      '  outer middle sizeOf([])',
+    ].join('\n');
+    expect(await outcomeOf(text)).toBe(1);
+  });
+
   it('leaves before any function is built where its call stops before it is made (§2)', async () => {
     const text = [
       'fn later(f: fn() -> Int) -> Int:',
@@ -235,6 +253,58 @@ describe('a deferred call', () => {
     ].join('\n');
     expect(reported(text)).toEqual(
       reportedOnce(checkerDiagnostics.unsendableCapture.code, 'BadIter{n: 42}'),
+    );
+  });
+});
+
+describe("a deferred call's probe of its call", () => {
+  const changing = [
+    'struct Counter:',
+    '  n: Int',
+    'fn bump(self: &Counter):',
+    '  self.n += 1',
+    'fn grow(n: &Int):',
+    '  n += 1',
+    'fn run(f: fn() -> Unit):',
+    '  f()',
+    'live fn liveThing(): ()',
+    'fn hold(f: live fn() -> Unit): ()',
+  ];
+
+  it.each([
+    ['a receiver its method takes by &self', '  let counter = Counter{n: 0}\n  run counter.bump()'],
+    ['an argument passed by &', '  let n = 1\n  run grow(&n)'],
+  ])('leaves the variable %s would change unchanged, the call refused', (_case, body) => {
+    const text = [...changing, 'fn f():', body].join('\n');
+    expect(reported(text).codes).toEqual([
+      checkerDiagnostics.letNeverReassigned.code,
+      checkerDiagnostics.deferredReference.code,
+    ]);
+  });
+
+  it('leaves the function around it relying on no kind for the call it defers', () => {
+    const text = [
+      ...changing,
+      'live fn f():',
+      '  const deferring = fn(): hold liveThing()',
+      '  const plain: fn() -> Unit = deferring',
+    ].join('\n');
+    expect(reported(text)).toEqual(reportedNothing);
+  });
+});
+
+describe('a deferred call of a variant without fields', () => {
+  it('gives a function making its value, warned of as the value written as a call', () => {
+    const text = [
+      'enum State:',
+      '  Idle',
+      '  Busy(n: Int)',
+      'fn keep(f: fn() -> State) -> State:',
+      '  f()',
+      'fn f() -> State: keep State.Idle()',
+    ].join('\n');
+    expect(reported(text)).toEqual(
+      reportedOnce(checkerDiagnostics.fieldlessCalled.code, 'State.Idle()'),
     );
   });
 });

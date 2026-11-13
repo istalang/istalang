@@ -2,21 +2,14 @@
  * One function being checked within a body (§3.14): the body's own, or a lambda or local `fn`
  * nested in it, with what is the function's own while checking it: its result, its loops and
  * labelled blocks, whether it may `await`, the kind of code it is (proposal 8, Rule 2), and what
- * it captures (functions.ts): the variables it uses from around it, and, for the function a
- * deferred call gives, what its call computed now (§3.14).
+ * it captures (functions.ts): the variables it uses from around it.
  */
 
 import type { VariableEntity } from '../../../binder/entities.ts';
 import type { FunctionDeclaration } from '../../../syntax/declarations/index.ts';
-import type { Expression, Spread } from '../../../syntax/expressions/index.ts';
 import type { Identifier } from '../../../syntax/tree/node.ts';
 import type { AnchoredSpan } from '../../../syntax/tree/positions.ts';
-import type {
-  BodyContext,
-  CapturedUse,
-  FunctionFrame,
-  MadeLater,
-} from '../../contexts/body-context.ts';
+import type { BodyContext, CapturedUse, FunctionFrame } from '../../contexts/body-context.ts';
 import type { Capture, NestedFunction } from '../../surface/checked-body.ts';
 import type { Type } from '../../types/type/index.ts';
 import { EnclosingScopes } from './enclosing-scopes.ts';
@@ -29,8 +22,6 @@ interface FunctionOwn {
   readonly returns: ReturnScope;
   /** What a nested function's text covers; none for the body's own function. */
   readonly reach?: AnchoredSpan | undefined;
-  /** For the function a deferred call gives, what it makes later (§3.14). */
-  readonly makesLater?: MadeLater | undefined;
 }
 
 /** What a body's own code is checked as: the function it is, if any, whether it may wait, its kind. */
@@ -54,9 +45,7 @@ export class FunctionScope implements FunctionFrame {
   readonly codeKind: Type;
   readonly returns: ReturnScope;
   readonly enclosing: EnclosingScopes;
-  readonly makesLater: MadeLater | undefined;
   readonly #captures = new Map<Identifier, CapturedUse>();
-  readonly #computed = new Map<Expression | Spread, Type>();
   #cleanups = 0;
   #reliesOnKind = false;
 
@@ -66,7 +55,6 @@ export class FunctionScope implements FunctionFrame {
     this.isAsync = own.isAsync;
     this.codeKind = own.codeKind;
     this.returns = own.returns;
-    this.makesLater = own.makesLater;
     this.enclosing = new EnclosingScopes(checked?.name);
   }
 
@@ -80,20 +68,19 @@ export class FunctionScope implements FunctionFrame {
     }
   }
 
-  get computed(): ReadonlyMap<Expression | Spread, Type> {
-    return this.#computed;
-  }
-
-  captureComputed(site: Expression | Spread, type: Type): void {
-    this.#computed.set(site, type);
-  }
-
   get reliesOnKind(): boolean {
     return this.#reliesOnKind;
   }
 
   relyOnKind(): void {
     this.#reliesOnKind = true;
+  }
+
+  checkpoint(): () => void {
+    const relies = this.#reliesOnKind;
+    return () => {
+      this.#reliesOnKind = relies;
+    };
   }
 
   get inCleanup(): boolean {
@@ -110,18 +97,11 @@ export class FunctionScope implements FunctionFrame {
   }
 }
 
-/** What `scope` captured: its variables, in the order first used, then what was computed now. */
+/** What `scope` captured, in the order first used. */
 export function capturesOf(context: BodyContext, scope: FunctionScope): readonly Capture[] {
-  const variables = [...scope.captures.values()].map(
-    ({ entity, site }): Capture => ({
-      kind: 'variable',
-      entity,
-      site,
-      type: context.variables.typeOf(entity),
-    }),
-  );
-  const computed = [...scope.computed].map(
-    ([site, type]): Capture => ({ kind: 'computed', site, type }),
-  );
-  return [...variables, ...computed];
+  return [...scope.captures.values()].map(({ entity, site }) => ({
+    entity,
+    site,
+    type: context.variables.typeOf(entity),
+  }));
 }

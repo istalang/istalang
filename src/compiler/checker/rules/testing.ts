@@ -30,11 +30,12 @@ import type { Call } from '../../syntax/expressions/calls.ts';
 import type { Expression } from '../../syntax/expressions/index.ts';
 import { unparenthesized } from '../../syntax/expressions/readings.ts';
 import { awaits } from '../../syntax/tokens/modifiers.ts';
-import { bodyChildrenOf, type SyntaxNode } from '../../syntax/tree/index.ts';
+import type { SyntaxNode } from '../../syntax/tree/index.ts';
 import type { NodeOf } from '../../syntax/tree/node.ts';
 import type { BodyContext } from '../contexts/body-context.ts';
 import type { CheckerContext } from '../contexts/context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
+import { type CheckedBody, childrenRunning } from '../surface/checked-body.ts';
 import { isHostType } from '../surface/host-externs.ts';
 import {
   type FunctionCall,
@@ -162,25 +163,26 @@ export function checkSuite(
       )
       .map(({ site }) => site),
   );
-  const offending = firstEffect(effectSites, written);
+  const offending = firstEffect(effectSites, written, body.coreOf);
   if (offending !== undefined) {
     checker.report(module, checkerDiagnostics.suiteEffect(offending.span));
   }
 }
 
 /**
- * The first node of `node`'s own code that makes a shared struct or is one of `effectSites`, the
- * calls of the body that call an extern or give a handle.
+ * The first node of `node`'s own code, as checked (`coreOf`), that makes a shared struct or is one
+ * of `effectSites`, the calls of the body that call an extern or give a handle.
  */
 function firstEffect(
   effectSites: ReadonlySet<NodeOf<string>>,
   node: SyntaxNode,
+  coreOf: CheckedBody['coreOf'],
 ): SyntaxNode | undefined {
   if (effectSites.has(node) || node.kind === 'NewStructLiteral') {
     return node;
   }
-  for (const child of bodyChildrenOf(node)) {
-    const found = firstEffect(effectSites, child);
+  for (const child of childrenRunning(node, coreOf)) {
+    const found = firstEffect(effectSites, child, coreOf);
     if (found !== undefined) {
       return found;
     }

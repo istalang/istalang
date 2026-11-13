@@ -67,12 +67,7 @@ import { lowerBlock, lowerBody, lowerStatement } from '../constructs/statements/
 import { VariableRegisters } from '../constructs/statements/variables.ts';
 import type { CodeContext, FunctionContext } from '../context.ts';
 import { emitConstant } from '../tables/constants.ts';
-import {
-  type BodyOwner,
-  type DeferredPlan,
-  type NestedInstance,
-  ownerDeclaration,
-} from '../tables/instances.ts';
+import { type BodyOwner, type NestedInstance, ownerDeclaration } from '../tables/instances.ts';
 import type { DefinitionTables, EntryHeader } from '../tables/tables.ts';
 import { OptionalChains } from '../values/optionals.ts';
 import { writtenBodyOf } from './bodies.ts';
@@ -350,10 +345,6 @@ class FunctionLowering implements EntryContext {
 
   nestedIndex(node: Lambda | FunctionDeclaration): FunctionId {
     return this.tables.nestedIndex({ owner: this.owner, node });
-  }
-
-  deferredIndex(plan: DeferredPlan): FunctionId {
-    return this.tables.deferredIndex({ owner: this.owner, plan });
   }
 
   callAt(site: ResolvedSite): ClosedCall {

@@ -4,20 +4,12 @@
  * `&x`, or a receiver whose `self` takes a reference) passes its place, and what an accessor read
  * for it is written back once the call returns. A call of a function value calls its callee's
  * value with its arguments in its parameters' order, as checking bound them; only one written `&x`
- * passes a place. A call naming a variant with no fields is that variant's value (§3.11).
- *
- * A deferred call `g f(args)` (§3.14) computes now its taker's parts, then gives its taker, where
- * the binding numbers it, the closure of the lambda it reads as, which computes now what its call
- * does and makes the call later (expressions.ts `closureOf`); a spread it captured is its items, and
- * a field value it calls the field read.
+ * passes a place. A call naming a variant with no fields is that variant's value (§3.11). A
+ * function a call gives after its arguments (`Call.given`) is its last argument.
  */
 
 import { argumentValue } from '../../../../syntax/expressions/arguments.ts';
-import type { CallingNode, DeferredCall } from '../../../../syntax/expressions/calls.ts';
-import {
-  deferredLambdaOf,
-  makesItsCall,
-} from '../../../../syntax/expressions/deferred-functions.ts';
+import type { Call } from '../../../../syntax/expressions/calls.ts';
 import type { Expression } from '../../../../syntax/expressions/index.ts';
 import {
   calledName,
@@ -45,13 +37,12 @@ interface Prepared {
 }
 
 /** `node`'s call, its value in a temporary of its own. */
-export function callFlow(builder: FlowBuilder, node: CallingNode): ValueId {
+export function callFlow(builder: FlowBuilder, node: Call): ValueId {
   const into = builder.temporaryOf(node);
   if (builder.body.valueCalls.has(node)) {
     const callee = calleeValue(builder, node);
     const { arguments: passed, leave } = prepared(builder, node, undefined);
-    const given = node.kind === 'DeferredCall' ? deferredFunction(builder, node) : undefined;
-    const ordered = inParameterOrder(builder, node, passed, given);
+    const ordered = inParameterOrder(builder, node, passed);
     builder.emit({ op: 'callValue', site: node, into, callee, arguments: ordered });
     leave();
     return into;
@@ -62,9 +53,6 @@ export function callFlow(builder: FlowBuilder, node: CallingNode): ValueId {
     return into;
   }
   const { arguments: passed, leave } = prepared(builder, node, call);
-  if (node.kind === 'DeferredCall') {
-    passed.push({ kind: 'value', value: deferredFunction(builder, node) });
-  }
   resolvedCall(builder, call, { site: node, passed, into });
   leave();
   encodedOutcome(builder, node);
@@ -75,14 +63,14 @@ export function callFlow(builder: FlowBuilder, node: CallingNode): ValueId {
  * A call neither resolved nor of a value: a variant's with no fields, its value (§3.11); else a
  * mistake checking reported, whose parts run all the same.
  */
-function unresolved(builder: FlowBuilder, node: CallingNode, into: ValueId) {
+function unresolved(builder: FlowBuilder, node: Call, into: ValueId) {
   const { checker, module } = builder.inputs;
   const names = {
     entityOf: (name: Parameters<typeof checker.bindings.entityOf>[1]) =>
       checker.bindings.entityOf(module, name),
     chosenVariantOf: builder.body.chosenVariantOf,
   };
-  const variant = node.kind === 'Call' ? calledVariant(names, node) : undefined;
+  const variant = calledVariant(names, node);
   if (variant !== undefined && variant.variant.fields.length === 0) {
     return { op: 'compute', site: node, into, operands: [] } as const;
   }
@@ -91,15 +79,14 @@ function unresolved(builder: FlowBuilder, node: CallingNode, into: ValueId) {
   const operands = passed.map((argument) =>
     argument.kind === 'value' ? argument.value : builder.valueAt(argument.place),
   );
-  const later = node.kind === 'DeferredCall' ? [builder.expression(node.call)] : [];
-  return { op: 'unknown', site: node, into, operands: [callee, ...operands, ...later] } as const;
+  return { op: 'unknown', site: node, into, operands: [callee, ...operands] } as const;
 }
 
 /**
  * The codec writing the outcome of the instance an extern call starts (§9), which the started
  * instance runs on what it gives, where checking recorded one.
  */
-function encodedOutcome(builder: FlowBuilder, node: CallingNode): void {
+function encodedOutcome(builder: FlowBuilder, node: Call): void {
   if (builder.body.implicitCallOf(node, 'encodeOutcome') !== undefined) {
     implicitCall(builder, 'encodeOutcome', { site: node, passed: [] });
   }
@@ -109,7 +96,7 @@ function encodedOutcome(builder: FlowBuilder, node: CallingNode): void {
  * The function value a value call calls: the one inside an optional for `f?.()`, the field read
  * from `x` for `x.f(…)`, else its callee's value.
  */
-function calleeValue(builder: FlowBuilder, node: CallingNode): ValueId {
+function calleeValue(builder: FlowBuilder, node: Call): ValueId {
   const callee = calledName(node);
   if (callsThroughOptional(node)) {
     return stepTarget(builder, node, callee);
@@ -118,10 +105,6 @@ function calleeValue(builder: FlowBuilder, node: CallingNode): ValueId {
   if (callee.kind !== 'MemberAccess' || read === undefined) {
     return builder.expression(callee);
   }
-  const captured = builder.computedNowAt(callee);
-  if (captured !== undefined) {
-    return captured;
-  }
   const target = stepTarget(builder, node, callee.target);
   const value = builder.temporaryOf(callee);
   builder.emit({ op: 'read', site: callee, into: value, from: target, part: partOfField(read) });
@@ -129,29 +112,22 @@ function calleeValue(builder: FlowBuilder, node: CallingNode): ValueId {
 }
 
 /**
- * The arguments a function value takes, `passed` as written and `given`, a deferred call's
- * function, in its parameters' order as checking bound them (`ValueCallMade`).
+ * The arguments a function value takes, `passed` as written, in its parameters' order as checking
+ * bound them (`ValueCallMade`).
  */
 function inParameterOrder(
   builder: FlowBuilder,
-  node: CallingNode,
+  node: Call,
   passed: readonly Argument[],
-  given: ValueId | undefined,
 ): readonly Argument[] {
-  const all: readonly Argument[] =
-    given === undefined ? passed : [...passed, { kind: 'value', value: given }];
   const binding = builder.body.valueCalls.get(node)?.binding;
   return binding === undefined
-    ? all
-    : argumentsInOrder(binding).flatMap(({ index }) => all[index] ?? []);
+    ? passed
+    : argumentsInOrder(binding).flatMap(({ index }) => passed[index] ?? []);
 }
 
 /** `node`'s receiver and written arguments, as written: each by `&` where its parameter takes one. */
-function prepared(
-  builder: FlowBuilder,
-  node: CallingNode,
-  call: ResolvedCall | undefined,
-): Prepared {
+function prepared(builder: FlowBuilder, node: Call, call: ResolvedCall | undefined): Prepared {
   const parameterAt = parametersOf(builder, call);
   const passed: Argument[] = [];
   const leaves: (() => void)[] = [];
@@ -178,8 +154,7 @@ function prepared(
   for (const [position, argument] of writtenArgumentsOf(node).entries()) {
     if (argument.kind === 'Spread') {
       const isPack = call === undefined || parameterAt(position + offset)?.rest?.kind === 'pack';
-      const collected = builder.computedNowAt(argument) ?? spreadValue(builder, argument, isPack);
-      passed.push({ kind: 'value', value: collected });
+      passed.push({ kind: 'value', value: spreadValue(builder, argument, isPack) });
     } else {
       pass(argumentValue(argument), position + offset);
     }
@@ -201,16 +176,4 @@ function parametersOf(
     const parameter = parameterOf.get(index);
     return parameter === undefined ? undefined : parameters[parameter];
   };
-}
-
-/**
- * The function `node` gives its taker: the closure of the lambda it reads as (§3.14,
- * expressions.ts `closureOf`); its call's value where the call was never made, which checking
- * reported.
- */
-function deferredFunction(builder: FlowBuilder, node: DeferredCall): ValueId {
-  const { resolved, valueCalls } = builder.body;
-  const lambda = deferredLambdaOf(node);
-  const makes = makesItsCall(node, (call) => resolved.has(call) || valueCalls.has(call));
-  return builder.expression(lambda !== undefined && makes ? lambda : node.call);
 }

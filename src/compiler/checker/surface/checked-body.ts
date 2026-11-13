@@ -35,6 +35,7 @@ import type {
   LabelledScope,
   Return,
 } from '../../syntax/statements/index.ts';
+import { fieldChildrenOf, nestsFunction, type SyntaxNode } from '../../syntax/tree/index.ts';
 import type { Identifier, NodeOf } from '../../syntax/tree/node.ts';
 import type { Checker, SignatureParameter } from '../check.ts';
 import type { FieldPassType, PassRecords } from '../contexts/passes.ts';
@@ -59,9 +60,17 @@ import type {
  * means where it is written, and every later phase reads that tree in its place (`coreOf`), never
  * the sugar; tools reading a position and the formatter keep the written one.
  */
-const sugarKinds = ['Unwrap'] as const;
+const sugarKinds = ['DeferredCall', 'Unwrap'] as const;
 
 export type SugarKind = (typeof sugarKinds)[number];
+
+/** How messages name code written as a sugar, a function built for it among them. */
+// biome-ignore-start lint/style/useNamingConvention: the keys are the tree's node kinds.
+export const sugarNames: { readonly [Kind in SugarKind]: string } = {
+  DeferredCall: 'a deferred call',
+  Unwrap: "a '!'",
+};
+// biome-ignore-end lint/style/useNamingConvention: the keys are the tree's node kinds.
 
 /** A written node checking desugars. */
 export type Sugar = Extract<Expression, { readonly kind: SugarKind }>;
@@ -71,6 +80,26 @@ export type CoreExpression = Exclude<Expression, Sugar>;
 
 export function isSugar(node: Expression): node is Sugar {
   return (sugarKinds as readonly string[]).includes(node.kind);
+}
+
+/** The children of `node` as checked: a sugar's, the core tree it was checked as (`coreOf`). */
+export function checkedChildrenOf(
+  node: SyntaxNode,
+  coreOf: (node: Expression) => CoreExpression | undefined,
+): readonly SyntaxNode[] {
+  const core = isSugar(node as Expression) ? coreOf(node as Expression) : undefined;
+  return core === undefined ? fieldChildrenOf(node) : [core];
+}
+
+/**
+ * The children of `node` as checked that run where it stands (`bodyChildrenOf`), so a walk over a
+ * checked body meets only core code, and never code that runs later.
+ */
+export function childrenRunning(
+  node: SyntaxNode,
+  coreOf: (node: Expression) => CoreExpression | undefined,
+): readonly SyntaxNode[] {
+  return nestsFunction(node) ? [] : checkedChildrenOf(node, coreOf);
 }
 
 /**
@@ -89,28 +118,11 @@ export interface CheckedFunction {
 /** A function nested in a body: a lambda, or a local `fn` (a `const` bound to one, §3.14). */
 export type NestedFunction = Lambda | FunctionDeclaration;
 
-/**
- * What a closure captures, with its type: a variable, at where the function first uses it, or what
- * a deferred call's function computed now (§3.14), at the operand computing it; variables first.
- */
-export type Capture = CapturedVariable | ComputedCapture;
-
-/** A variable a closure captures. */
-export interface CapturedVariable {
-  readonly kind: 'variable';
+/** A variable a closure captures, with its type, at where the function first uses it (§3.14). */
+export interface Capture {
   readonly entity: VariableEntity;
   readonly type: Type;
   readonly site: Identifier;
-}
-
-/**
- * A value the function a deferred call gives captures, computed now by `site` (§3.14): an operand,
- * or a spread argument, whose items it collected.
- */
-export interface ComputedCapture {
-  readonly kind: 'computed';
-  readonly site: Expression | Spread;
-  readonly type: Type;
 }
 
 /**
@@ -287,8 +299,11 @@ export interface BodyFacts {
   readonly keyOwnerOf: (literal: StringLiteral) => Type | undefined;
   /** The literal an indented value was checked as (§2); undefined for one never checked as one. */
   readonly builtLiteralOf: (value: IndentedValue) => BuiltLiteral | undefined;
-  /** The core tree a sugar was checked as; undefined for one refused, reported. */
-  readonly coreOf: (sugar: Sugar) => CoreExpression | undefined;
+  /**
+   * The core tree a sugar was checked as, and the core call a written call it makes was rebuilt as
+   * (checker/desugaring/); undefined for any other node, and for a sugar refused.
+   */
+  readonly coreOf: (node: Expression) => CoreExpression | undefined;
   /** The variant a bare variant name chose by the type expected of it (§3.11). */
   readonly chosenVariantOf: (name: Identifier) => VariantEntity | undefined;
   /** The functions a call site chose among, in the order considered; none where nothing was. */

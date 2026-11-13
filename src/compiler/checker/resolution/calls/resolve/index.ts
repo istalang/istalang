@@ -52,8 +52,8 @@ import { expectWrittenArguments } from './written-expectations.ts';
  * constraint scope where the scope checks it once it knows what the call expects of it
  * (wiring/body/constraint-scope.ts); its name when named. A spread's node is what it spreads, its
  * type that of its items, which fit the rest parameter's element exactly: the items are copied or
- * iterated as they are (§3.3). The function a deferred call gives its taker (§3.14) is a lambda
- * argument the binding places itself.
+ * iterated as they are (§3.3). The function a call gives after its arguments (`Call.given`, §3.14)
+ * is one the binding places itself.
  */
 export interface WrittenArgument {
   readonly node: Expression;
@@ -62,7 +62,7 @@ export interface WrittenArgument {
   readonly literal?: LiteralType | undefined;
   readonly name?: Identifier | undefined;
   readonly isSpread?: boolean | undefined;
-  /** Whether it is the function a deferred call gives its taker (§3.14, choosing/binding.ts). */
+  /** Whether it is the function the call gives after its arguments (§3.14, choosing/binding.ts). */
   readonly isDeferred?: boolean | undefined;
 }
 

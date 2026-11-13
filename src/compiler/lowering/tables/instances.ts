@@ -16,9 +16,7 @@
  * - A lambda or local function (§3.14) is an entry of its own per instance of the top-level
  *   function holding it: it is checked within that body, so it reads the body through the same
  *   substitution, and its key is the instance's plus its node. A lambda in a top-level constant's
- *   value is one entry, owned by the constant, which has no type parameters to substitute. The
- *   function a deferred call gives (§3.14) is keyed alike, by the call it makes later, and carries
- *   that call as its owner's instance closed it, since it has no body of its own to read.
+ *   value is one entry, owned by the constant, which has no type parameters to substitute.
  */
 
 import type { Checker } from '../../checker/check.ts';
@@ -39,10 +37,9 @@ import {
   type FunctionDeclaration,
   typeParametersOf,
 } from '../../syntax/declarations/index.ts';
-import type { Expression, FieldHeader, Lambda } from '../../syntax/expressions/index.ts';
+import type { FieldHeader, Lambda } from '../../syntax/expressions/index.ts';
 import type { VariableDeclaration } from '../../syntax/statements/index.ts';
 import type { AnchoredSpan } from '../../syntax/tree/positions.ts';
-import type { CallTarget } from '../calls/emit-call.ts';
 import { qualifiedNameOf, spelledType } from './names.ts';
 
 /** A lambda or local function inside one instance of the top-level function holding it. */
@@ -132,46 +129,6 @@ export interface AsyncFit {
 }
 
 /**
- * The function a deferred call gives its taker (§3.14), in the body `owner` lowers: an entry
- * making the call `plan` closes from what it captures.
- */
-export interface DeferredFunction {
-  readonly owner: BodyOwner;
-  readonly plan: DeferredPlan;
-}
-
-/**
- * How the function a deferred call gives makes its call from what it captures, in order: a
- * function value's callee first, then each value the call passes, then, for a deferred call, what
- * the function it gives in turn captures.
- */
-export interface DeferredPlan {
-  /** The call made later, as written: where its entry stands. */
-  readonly site: Expression;
-  /**
-   * What the call calls: the function the checker resolved, as any call targets it, or a function
-   * value the function captured first, which has no register until its entry runs (§3.14).
-   */
-  readonly target:
-    | Extract<CallTarget, { readonly kind: 'function' }>
-    | { readonly kind: 'captured' };
-  /**
-   * How many values the call passes as written: a method's receiver and its arguments, a function
-   * value's in its parameters' order, a pack's spread as its elements.
-   */
-  readonly passes: number;
-  /**
-   * For a deferred call, the function it gives its taker and where among those values it goes:
-   * past them for a resolved function, at the parameter it fills for a function value.
-   */
-  readonly gives: { readonly plan: DeferredPlan; readonly at: number } | undefined;
-  /** What the call gives. */
-  readonly result: Type;
-  /** The type the function is given as: the parameter of the taker it fills. */
-  readonly givenAs: FunctionType;
-}
-
-/**
  * A conversion of parts lowering writes an entry for (§3.5), one per pair of types, wherever the
  * pair is met: a value of `from` made to fit `to` as the checker fits them (`converting`), or a
  * function of type `from` wrapped as one of `to`, converting what it takes and gives (`wrapping`).
@@ -212,11 +169,6 @@ export function nestedKey(keys: TypeKeys, nested: NestedInstance): string {
   return `${ownerKey(keys, nested.owner)}#${keys.identityOf(nested.node)}`;
 }
 
-/** The key of a deferred call's function's entry: its owner's, then the call's identity. */
-export function deferredKey(keys: TypeKeys, deferred: DeferredFunction): string {
-  return `${ownerKey(keys, deferred.owner)}#deferred${keys.identityOf(deferred.plan.site)}`;
-}
-
 /** The key of an async fit's entry: its owner's, then its site's identity. */
 export function asyncFitKey(keys: TypeKeys, fit: AsyncFit): string {
   return `${ownerKey(keys, fit.owner)}#async${keys.identityOf(fit.site)}`;
@@ -238,11 +190,6 @@ export function nestedName(checker: Checker, nested: NestedInstance, where: stri
   const { node } = nested;
   const own = node.name === undefined ? `lambda@${where}` : node.name.text;
   return `${ownerName(checker, nested.owner)}.${own}`;
-}
-
-/** A deferred call's function's name: its owner's, then where the call stands. */
-export function deferredName(checker: Checker, deferred: DeferredFunction, where: string): string {
-  return `${ownerName(checker, deferred.owner)}.deferred@${where}`;
 }
 
 /** An async fit's name: its owner's, then where its site stands. */

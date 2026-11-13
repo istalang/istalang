@@ -28,7 +28,6 @@ import { checkIf } from './control/control.ts';
 import { checkIs, checkMatch } from './control/match.ts';
 import { checkPropagate } from './control/propagate.ts';
 import { checkSelect } from './control/select.ts';
-import { checkDeferredCall } from './deferred-calls.ts';
 import { checkIndentedValue } from './literals/indented-values.ts';
 import { checkDurationLiteral } from './literals/literals.ts';
 import { checkTemplate } from './literals/templates.ts';
@@ -82,7 +81,7 @@ export const expressionHandlers: Handlers<BodyContext, Expression, [Type | undef
   Reference: misplacedReference,
   Index: checkIndex,
   Propagate: checkPropagate,
-  DeferredCall: checkDeferredCall,
+  DeferredCall: checkSugar,
   Unwrap: checkSugar,
   ChainedComparison: checkChainedComparison,
   TemplateLiteral: checkTemplate,

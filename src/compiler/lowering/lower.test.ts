@@ -97,7 +97,7 @@ describe('defaults', () => {
       'main.wait': [true, true],
       'main.main': [],
       'main._main': [],
-      'main.main.deferred@4:62': [],
+      'main.main.lambda@4:62': [],
     });
   });
 });

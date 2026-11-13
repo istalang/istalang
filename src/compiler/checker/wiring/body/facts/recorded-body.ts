@@ -14,6 +14,7 @@ import type { Iterations } from '../../../constructs/loops/iteration.ts';
 import type { CheckedPatterns } from '../../../constructs/patterns/matching.ts';
 import type { LabelTargets } from '../../../constructs/statements/loops.ts';
 import type { VariableScope } from '../../../constructs/statements/variables.ts';
+import type { Desugarings } from '../../../desugaring/index.ts';
 import type { ImplicitCalls } from '../../../resolution/applying/implicit.ts';
 import type { CallRecords } from '../../../resolution/calls/call-records.ts';
 import type { FlowDecisions } from '../../../rules/flow/flow-decisions.ts';
@@ -37,6 +38,7 @@ interface BodyUnits {
   readonly chains: OptionalChains;
   readonly fieldReads: FieldReads;
   readonly labels: LabelTargets;
+  readonly sugars: Desugarings;
 }
 
 /** What checking a body recorded: its own records, its units', and what it produces. */

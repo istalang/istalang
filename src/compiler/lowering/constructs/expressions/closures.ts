@@ -19,7 +19,6 @@ import type { Lambda, MemberAccess } from '../../../syntax/expressions/index.ts'
 import type { Identifier } from '../../../syntax/tree/node.ts';
 import type { FunctionContext } from '../../context.ts';
 import { nestedSpanOf } from '../../functions/bodies.ts';
-import { variablesCaptured } from '../../functions/frames.ts';
 import { declareVariable } from '../statements/variables.ts';
 
 export function lowerLambda(context: FunctionContext, node: Lambda): Register {
@@ -69,9 +68,7 @@ function closureOf(
     span: nestedSpanOf(context.checker.program, context.module, node),
     dst,
     function: context.nestedIndex(node),
-    captures: variablesCaptured(checked.captures).map(({ entity }) =>
-      context.variables.registerOf(entity.name),
-    ),
+    captures: checked.captures.map(({ entity }) => context.variables.registerOf(entity.name)),
   });
   return dst;
 }

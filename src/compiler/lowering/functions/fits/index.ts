@@ -309,7 +309,7 @@ export function wrappingEntry(
  * `from` gave, if any, so the entry gives a future already resolved when `from` gives none. Whether
  * the entry is async.
  */
-export function returnedAs(
+function returnedAs(
   code: SynthesizedCode,
   called: Register,
   { from, to }: { readonly from: FunctionType; readonly to: FunctionType },

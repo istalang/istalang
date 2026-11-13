@@ -16,6 +16,7 @@
  * - Each pass checks the same text, so what passes report waits for the loop's passes to be checked
  *   (`hold`), then a diagnostic several made is reported once, and a case no value reaches only
  *   when no pass reaches it (`settled`).
+ * - A probe is a pass dropped once checked (`probe`): every table forgets it, and what it reported.
  */
 
 import type { Diagnostic } from '../../../foundation/diagnostics/diagnostic.ts';
@@ -34,6 +35,8 @@ export class Passes {
   readonly root: Pass = { outer: undefined };
   #current: Pass = this.root;
   readonly #held = new Map<Pass, Diagnostic<AnchoredSpan>[]>();
+  /** Every table's records, by pass, so a probe's pass is dropped from all of them. */
+  readonly #tables: Map<Pass, unknown>[] = [];
 
   get current(): Pass {
     return this.#current;
@@ -50,6 +53,26 @@ export class Passes {
       this.#current = outer;
     }
     return pass;
+  }
+
+  /**
+   * Runs `check` in a pass of its own, then drops that pass, what it recorded and reported with it,
+   * and calls each of `restores`, putting back what else of the body it changed: a probe
+   * (BodyContext `probe`), of which only what `check` returns is kept.
+   */
+  probe<Result>(check: () => Result, restores: readonly (() => void)[]): Result {
+    let result: Result | undefined;
+    const pass = this.check(() => {
+      result = check();
+    });
+    for (const records of this.#tables) {
+      records.delete(pass);
+    }
+    this.#held.delete(pass);
+    for (const restore of restores) {
+      restore();
+    }
+    return result as Result;
   }
 
   /**
@@ -95,7 +118,9 @@ export class Passes {
 
   /** A table of records by node, kept per pass. */
   table<Key, Value>(): PassTable<Key, Value> {
-    return passTable(this);
+    const records = new Map<Pass, Map<Key, Value>>();
+    this.#tables.push(records);
+    return passTable(this, records);
   }
 
   /**
@@ -174,8 +199,10 @@ export interface PassTable<Key, Value> {
 }
 
 /** A table of records by node kept per pass of `passes`. */
-function passTable<Key, Value>(passes: Passes): PassTable<Key, Value> {
-  const records = new Map<Pass, Map<Key, Value>>();
+function passTable<Key, Value>(
+  passes: Passes,
+  records: Map<Pass, Map<Key, Value>>,
+): PassTable<Key, Value> {
   const get = (key: Key, pass: Pass = passes.current): Value | undefined => {
     for (let at: Pass | undefined = pass; at !== undefined; at = at.outer) {
       const value = records.get(at)?.get(key);

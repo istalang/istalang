@@ -30,11 +30,9 @@
  * arguments and records the candidates a tool shows while the call is being written, and reports
  * nothing more.
  *
- * A deferred call calls its taker as a call calls its callee, with the function making its call
- * given after the arguments its parentheses write (deferred-calls.ts, §3.14), so every form of
- * callee above may take one, and its call is resolved and recorded at the deferred call. The call
- * that function makes later reads its callee's value and its arguments where the deferred call
- * stands (`Functions.computedNow`), which is where they run.
+ * A call may give a function after its arguments (`Call.given`), which binding gives the first
+ * parameter they leave unfilled of a function type taking nothing: a deferred call is checked as such
+ * a call (checker/desugaring/deferred-calls.ts, §3.14), so every form of callee above may take one.
  */
 
 import { staticName } from '../../../../foundation/language/static-names.ts';
@@ -42,7 +40,7 @@ import { conversionFunction } from '../../../../foundation/language/well-known/i
 import type { Entity } from '../../../binder/entities.ts';
 import { isMethod } from '../../../syntax/declarations/methods.ts';
 import { misplacedArgument } from '../../../syntax/expressions/arguments.ts';
-import type { Call, CallingNode } from '../../../syntax/expressions/calls.ts';
+import type { Call } from '../../../syntax/expressions/calls.ts';
 import type { MemberAccess } from '../../../syntax/expressions/index.ts';
 import {
   calledName,
@@ -79,49 +77,32 @@ import { checkVariantCall } from './structs/variants.ts';
  * own, once what it is called on is read.
  */
 export function checkCall(context: BodyContext, node: Call, expected: Type | undefined): Type {
-  const call = { node, expected, value: calledValue(context, node) };
-  return context.chains.continues(node)
-    ? context.scopes.isolated(() => checkCallMade(context, call))
-    : checkCallMade(context, call);
-}
-
-/**
- * A call to check: its node, the type expected of it, and what was read of its callee's value; for
- * a deferred call, the function it gives its taker after the arguments written, checked after them.
- */
-interface CallToCheck {
-  readonly node: CallingNode;
-  readonly expected: Type | undefined;
-  readonly value: CalledValue | undefined;
-  readonly given?: () => WrittenArgument;
+  const value = calledValue(context, node);
+  const check = () => checkCallMade(context, node, expected, value);
+  return context.chains.continues(node) ? context.scopes.isolated(check) : check();
 }
 
 /**
  * Checks a call whose callee's value, if it has one, is read: its arguments, then what it calls.
  * One that can't be made gives the error type where its arguments go (`BodyContext.abandon`).
  */
-export function checkCallMade(
+function checkCallMade(
   context: BodyContext,
-  { node, expected, value, given }: CallToCheck,
+  node: Call,
+  expected: Type | undefined,
+  value: CalledValue | undefined,
 ): Type {
-  const written = writtenArgumentsOf(node);
-  const misplaced = misplacedArgument(written);
+  const misplaced = misplacedArgument(node.arguments);
   const typeArguments = callTypeArguments(node)?.map((argument) => context.resolveType(argument));
-  const known = valueParameterTypes(value?.type, written, typeArguments);
-  const checked = context.functions.computedNow(node, () =>
-    written.map((argument, index) => {
-      if (argument === misplaced) {
-        return { ...writtenArgument(context, argument, undefined), type: errorType };
-      }
-      return writtenArgument(context, argument, known[index]);
-    }),
-  );
-  const call: WrittenCall = {
-    node,
-    expected,
-    typeArguments,
-    written: given === undefined ? checked : [...checked, given()],
-  };
+  const known = valueParameterTypes(value?.type, node.arguments, typeArguments);
+  const written = writtenArgumentsOf(node).map((argument, index): WrittenArgument => {
+    if (argument === misplaced) {
+      return { ...writtenArgument(context, argument, undefined), type: errorType };
+    }
+    const checked = writtenArgument(context, argument, known[index]);
+    return argument === node.given ? { ...checked, isDeferred: true } : checked;
+  });
+  const call: WrittenCall = { node, expected, typeArguments, written };
   const type = calledBy(context, call, value);
   if (type.kind === 'error') {
     context.scopes.abandon(call.written.map((argument) => argument.type));
@@ -166,23 +147,21 @@ function calledBy(context: BodyContext, call: WrittenCall, value: CalledValue | 
  * than a name, or an optional call's target (§3.14), and a receiver's field (`receiverField`),
  * which a method of the same name makes an error the call reports.
  */
-export function calledValue(context: BodyContext, node: CallingNode): CalledValue | undefined {
-  return context.functions.computedNow(node, () => {
-    if (callsThroughOptional(node)) {
-      return { type: context.chains.target(context, node) };
-    }
-    const callee = calledName(node);
-    switch (callee.kind) {
-      case 'Identifier':
-        return context.entityOf(callee)?.kind === 'variable'
-          ? { type: context.expression(callee) }
-          : undefined;
-      case 'MemberAccess':
-        return receiverField(context, node, callee);
-      default:
-        return { type: context.settled(callee) };
-    }
-  });
+function calledValue(context: BodyContext, node: Call): CalledValue | undefined {
+  if (callsThroughOptional(node)) {
+    return { type: context.chains.target(context, node) };
+  }
+  const callee = calledName(node);
+  switch (callee.kind) {
+    case 'Identifier':
+      return context.entityOf(callee)?.kind === 'variable'
+        ? { type: context.expression(callee) }
+        : undefined;
+    case 'MemberAccess':
+      return receiverField(context, node, callee);
+    default:
+      return { type: context.settled(callee) };
+  }
 }
 
 /**
@@ -192,7 +171,7 @@ export function calledValue(context: BodyContext, node: CallingNode): CalledValu
  */
 function receiverField(
   context: BodyContext,
-  node: CallingNode,
+  node: Call,
   callee: MemberAccess,
 ): CalledValue | undefined {
   if (
@@ -278,7 +257,7 @@ function callMethod(
 
 /** A call with plain arguments, each checked unless the chosen function decides its type. */
 interface WrittenCall {
-  readonly node: CallingNode;
+  readonly node: Call;
   readonly expected: Type | undefined;
   readonly typeArguments: readonly Type[] | undefined;
   readonly written: readonly WrittenArgument[];

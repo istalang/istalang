@@ -22,7 +22,6 @@ import { type FunctionInstance, substitutionOf } from '../checker/surface/witnes
 import { substitute } from '../checker/types/parts/substitution.ts';
 import { stdModuleIdOf } from '../program/program.ts';
 import type { FunctionDeclaration } from '../syntax/declarations/index.ts';
-import { deferredEntry } from './constructs/expressions/deferred-calls.ts';
 import { writtenBodyOf } from './functions/bodies.ts';
 import {
   constructorEntry,
@@ -160,8 +159,6 @@ function pendingEntry(
       return anyFieldEntry(lowering, pending.on, pending.required);
     case 'asyncFit':
       return asyncFitEntry(lowering, pending.fit);
-    case 'deferred':
-      return deferredEntry(lowering, pending.deferred);
     case 'converting':
       return convertingEntry(lowering, pending);
     case 'wrapping':

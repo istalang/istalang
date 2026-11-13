@@ -21,8 +21,7 @@
  * A call of a variant's constructor builds the variant where it stands (emit-call.ts), and
  * `Expired()`, naming a variant without fields, is that variant's value (§3.11).
  *
- * A deferred call's taker is prepared as a call is, its taker's parts computed where it stands
- * (deferred-calls.ts, §3.14).
+ * A function a call gives after its arguments (`Call.given`, §3.14) is its last argument.
  */
 
 import type { Argument } from '../../../../definition/instructions/places.ts';
@@ -32,7 +31,7 @@ import type { SignatureParameter } from '../../../checker/check.ts';
 import { argumentsInOrder, parameterOfArgument } from '../../../checker/surface/resolved-call.ts';
 import type { RestSlot } from '../../../checker/types/type/function-types.ts';
 import { argumentValue } from '../../../syntax/expressions/arguments.ts';
-import type { Call, CallingNode } from '../../../syntax/expressions/calls.ts';
+import type { Call } from '../../../syntax/expressions/calls.ts';
 import type { Expression } from '../../../syntax/expressions/index.ts';
 import {
   calledName,
@@ -53,35 +52,25 @@ export function lowerCall(context: FunctionContext, node: Call): Register {
   if (fieldless !== undefined) {
     return lowerFieldlessVariant(context, node, fieldless);
   }
-  const { target, passed, arguments: given } = preparedCall(context, node, 'asWritten');
+  const { target, passed, arguments: given } = preparedCall(context, node);
   const dst = emitTo(context, node.span, target, given);
   leaveAll(passed);
   return dst;
 }
 
-/**
- * A call ready to emit: what it calls, its arguments as passed, and how each is passed; for a
- * deferred call, where among those arguments the function it gives goes (§3.14), which is made
- * after them: past them for a resolved function, whose binding numbers it last, and at the
- * parameter it fills for a function value, which takes its arguments in its parameters' order.
- */
+/** A call ready to emit: what it calls, its arguments as passed, and how each is passed. */
 interface PreparedCall {
   readonly target: CallTarget;
   readonly passed: readonly PassedArgument[];
   readonly arguments: readonly Argument[];
-  readonly givenAt: number | undefined;
 }
 
 /**
  * What `node` calls and passes, evaluated in the order written: a function value's callee first,
  * then its arguments, each as written; a resolved function's receiver, then its arguments, by `&`
- * where their parameters take one, or all by value for a deferred call's parts (§3.14). A deferred call passes what its taker's parentheses write.
+ * where their parameters take one.
  */
-export function preparedCall(
-  context: FunctionContext,
-  node: CallingNode,
-  references: 'asWritten' | 'byValue',
-): PreparedCall {
+function preparedCall(context: FunctionContext, node: Call): PreparedCall {
   if (context.body.valueCalls.has(node)) {
     const register = valueCallee(context, node);
     const passed = passedArguments(context, node, packsOnly);
@@ -93,8 +82,7 @@ export function preparedCall(
   }
   const call = context.callAt(node);
   const parameterAt = parametersByArgument(context, call);
-  const byReference = (index: number) =>
-    references === 'asWritten' && parameterAt(index)?.reference === true;
+  const byReference = (index: number) => parameterAt(index)?.reference === true;
   const receiver = receiverOf(context, node, receiverAt(context, node), byReference(0));
   const passed = passedArguments(context, node, {
     receiver,
@@ -105,12 +93,11 @@ export function preparedCall(
     target: { kind: 'function', call },
     passed,
     arguments: passed.map(({ argument }) => argument),
-    givenAt: node.kind === 'DeferredCall' ? passed.length : undefined,
   };
 }
 
 /** The receiver the method call `node` was written on (§3.7); undefined for any other call. */
-function receiverAt(context: FunctionContext, node: CallingNode): Expression | undefined {
+function receiverAt(context: FunctionContext, node: Call): Expression | undefined {
   return context.body.resolved.get(node)?.receiver;
 }
 
@@ -120,7 +107,7 @@ function receiverAt(context: FunctionContext, node: CallingNode): Expression | u
  */
 function receiverOf(
   context: FunctionContext,
-  node: CallingNode,
+  node: Call,
   receiver: Expression | undefined,
   byReference: boolean,
 ): PassedArgument | undefined {
@@ -137,7 +124,7 @@ function receiverOf(
  * The function value a value call calls; `f?.()` calls the one inside `f`, and `x.f(…)` the field
  * read from `x` (a namespace's constant `ns.f(…)` is read as a name).
  */
-function valueCallee(context: FunctionContext, node: CallingNode): Register {
+function valueCallee(context: FunctionContext, node: Call): Register {
   if (callsThroughOptional(node)) {
     return context.chains.target(context, node);
   }
@@ -196,7 +183,7 @@ const packsOnly: Passing = { byReference: () => false, spreadFills: () => 'pack'
  */
 function passedArguments(
   context: FunctionContext,
-  node: CallingNode,
+  node: Call,
   { receiver, byReference, spreadFills }: Passing,
 ): readonly PassedArgument[] {
   const offset = receiver === undefined ? 0 : 1;
@@ -218,26 +205,22 @@ function passedArguments(
 /**
  * The arguments a function value takes of what its call passes, in its parameters' order as the
  * checker bound them: each as passed, a pack's spread as the elements of its tuple, since the
- * value's type flattens the pack (§3.5); and where the function a deferred call gives goes among
- * them, the argument after those written (§3.14).
+ * value's type flattens the pack (§3.5).
  */
 function valueArguments(
   context: FunctionContext,
-  node: CallingNode,
+  node: Call,
   passed: readonly PassedArgument[],
-): Pick<PreparedCall, 'arguments' | 'givenAt'> {
+): Pick<PreparedCall, 'arguments'> {
   const { binding } = context.body.valueCalls.get(node) ?? {};
   const written = writtenArgumentsOf(node);
   const taken: Argument[] = [];
-  let givenAt: number | undefined;
   for (const { index, isSpread } of argumentsInOrder(
     binding ?? unreachable('A function value called clean binds its arguments.'),
   )) {
     const argument = written[index];
     const given = passed[index]?.argument;
-    if (node.kind === 'DeferredCall' && index === written.length) {
-      givenAt = taken.length;
-    } else if (argument === undefined || given === undefined) {
+    if (argument === undefined || given === undefined) {
       unreachable(`Argument ${index} isn't passed.`);
     } else if (isSpread && argument.kind === 'Spread' && given.kind === 'value') {
       const elements = packElementsOf(context, given.register, {
@@ -249,7 +232,7 @@ function valueArguments(
       taken.push(given);
     }
   }
-  return { arguments: taken, givenAt };
+  return { arguments: taken };
 }
 
 /**
@@ -277,7 +260,7 @@ function referencedPlace(argument: Expression, byReference: boolean): Expression
 }
 
 /** Writes back what the call's arguments copied in, the last first. */
-export function leaveAll(argumentList: readonly PassedArgument[]): void {
+function leaveAll(argumentList: readonly PassedArgument[]): void {
   for (const { leave } of argumentList.toReversed()) {
     leave?.();
   }

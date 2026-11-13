@@ -23,15 +23,10 @@ import { defaultValuesOf } from '../../../syntax/expressions/parameters.ts';
 import { placePath } from '../../../syntax/expressions/places.ts';
 import { calledName } from '../../../syntax/expressions/readings.ts';
 import type { Block } from '../../../syntax/statements/index.ts';
-import {
-  bodyOf,
-  fieldChildrenOf,
-  type SyntaxNode,
-  type SyntaxTree,
-} from '../../../syntax/tree/index.ts';
+import { bodyOf, type SyntaxNode, type SyntaxTree } from '../../../syntax/tree/index.ts';
 import { spanIn } from '../../../syntax/tree/positions.ts';
 import { type Checker, checkProgram, type SignatureParameter } from '../../check.ts';
-import type { CheckedBody } from '../../surface/checked-body.ts';
+import { type CheckedBody, checkedChildrenOf } from '../../surface/checked-body.ts';
 import type { CheckedPattern, PartStep } from '../../surface/checked-pattern.ts';
 import type { MadeCall, ResolvedCall } from '../../surface/resolved-call.ts';
 import { flowOf } from './build/index.ts';
@@ -112,19 +107,27 @@ function holdPlace(place: Place, held: Held): void {
   }
 }
 
-/** A function's body, its local functions' too, walked node by node. */
-function walk(root: SyntaxNode, local: Local, visit: (node: SyntaxNode) => void): void {
+/**
+ * A function's body as checked, its local functions' too, walked node by node, a sugar's core in
+ * its place.
+ */
+function walk(
+  root: SyntaxNode,
+  { local, body }: { readonly local: Local; readonly body: CheckedBody },
+  visit: (node: SyntaxNode) => void,
+): void {
   visit(root);
   const nested = root.kind === 'FunctionDeclaration' ? local(root) : undefined;
-  for (const child of [...fieldChildrenOf(root), ...(nested === undefined ? [] : [nested])]) {
-    walk(child, local, visit);
+  const children = checkedChildrenOf(root, body.coreOf);
+  for (const child of [...children, ...(nested === undefined ? [] : [nested])]) {
+    walk(child, { local, body }, visit);
   }
 }
 
 /** The callees under `root`: the names of the functions resolved calls call. */
 function calleesUnder(body: CheckedBody, root: SyntaxNode, local: Local): ReadonlySet<unknown> {
   const callees = new Set<unknown>();
-  walk(root, local, (node) => {
+  walk(root, { local, body }, (node) => {
     if ((node.kind === 'Call' || node.kind === 'DeferredCall') && body.resolved.has(node)) {
       const callee = calledName(node);
       callees.add(callee);
@@ -156,7 +159,7 @@ function arrayReadsUnder(body: CheckedBody, root: SyntaxNode, local: Local) {
       }
     }
   };
-  walk(root, local, (node) => {
+  walk(root, { local, body }, (node) => {
     const pattern = node.kind === 'MatchCase' || node.kind === 'Is' ? node.pattern : undefined;
     const checked = pattern === undefined ? undefined : body.patternOf(pattern);
     if (checked !== undefined) {
@@ -194,7 +197,7 @@ function missedBy(
   const missing: string[] = [];
   for (const root of roots) {
     const callees = calleesUnder(body, root, local);
-    walk(root, local, (node) => {
+    walk(root, { local, body }, (node) => {
       const typed = body.typeOf(node as Expression) !== undefined;
       if (typed && !callees.has(node) && !held.nodes.has(node)) {
         missing.push(`no value of ${textOf(node)}`);

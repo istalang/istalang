@@ -115,6 +115,19 @@ export class VariableScope implements Variables {
     return this.#inCell.has(name);
   }
 
+  checkpoint(): () => void {
+    const sets = [this.#changed, this.#inCell, this.#references];
+    const kept = sets.map((set) => [...set]);
+    return () => {
+      for (const [index, set] of sets.entries()) {
+        set.clear();
+        for (const name of kept[index] ?? []) {
+          set.add(name);
+        }
+      }
+    };
+  }
+
   targetsOf(owner: TargetOwner, pass?: Pass): readonly TargetBinding[] {
     return this.#targets.get(owner, pass) ?? [];
   }

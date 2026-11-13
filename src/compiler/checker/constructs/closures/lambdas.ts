@@ -23,9 +23,8 @@
  * - Its type is sendable when every capture is a copy of a sendable value: a captured `let` is a
  *   cell (§3.14), so a function capturing one isn't (§9). Inside its own body, its name has the
  *   plain type, since what it captures is known only once the body is checked.
- * - The function a deferred call gives is such a lambda (syntax/expressions/deferred-functions.ts),
- *   whose call computes its parts where the deferred call stands and captures them (made-later.ts);
- *   its mark, sendability and captures are a lambda's.
+ * - The function a deferred call gives is such a lambda, over constants computed now
+ *   (checker/desugaring/deferred-calls.ts).
  * - The type is recorded with the parameters and captures for lowering (`functionOf`).
  */
 
@@ -33,7 +32,6 @@ import {
   type FunctionDeclaration,
   nestedFunctionSpan,
 } from '../../../syntax/declarations/index.ts';
-import { deferredCallOf } from '../../../syntax/expressions/deferred-functions.ts';
 import type { Lambda, Parameter } from '../../../syntax/expressions/index.ts';
 import { parameterSite, writtenByReference } from '../../../syntax/expressions/parameters.ts';
 import { unparenthesized } from '../../../syntax/expressions/readings.ts';
@@ -77,7 +75,6 @@ import {
 } from '../declarations/functions/signatures.ts';
 import { declareParameter } from '../patterns/targets.ts';
 import { capturesOf, FunctionScope } from './function-scope.ts';
-import { madeLater, madeLaterBy } from './made-later.ts';
 import { givenKindOf, heldKindOf, nestedTypeOf, nestedValueKind } from './nested-types.ts';
 import { declareOwnCall } from './own-calls.ts';
 import { type GuidedResult, ReturnScope } from './returns.ts';
@@ -238,7 +235,8 @@ interface BodyResultGiven extends ResultGiven {
  * What a lambda's position says of what its body gives, where it says `result` of its call
  * (§3.14): the value of the future expected, which an async lambda's body gives, and a plain
  * one's too, made a future already resolved, or else that future itself, as a plain lambda
- * forwarding a call gives it; nothing where no future is expected of an async one.
+ * forwarding a call gives it; nothing where no future is expected of an async one, nor where a
+ * plain one's result is still being inferred.
  */
 function bodyResultGiven(
   context: BodyContext,
@@ -253,7 +251,12 @@ function bodyResultGiven(
   if (value === undefined) {
     return isPlain ? result : undefined;
   }
-  const orFuture = isPlain && result.kind === 'declared' ? result.type : undefined;
+  if (isPlain && result.kind === 'guided') {
+    // Its body gives the value, or forwards a future of it: only what it gives says which, and the
+    // value guessed would bound the call's result by a forwarded future.
+    return undefined;
+  }
+  const orFuture = isPlain ? result.type : undefined;
   return { ...result, type: value, orFuture };
 }
 
@@ -282,12 +285,6 @@ function checkLambdaAs(
     givenKind:
       givenKindOf(context, node.qualifiers, slots?.mark) ?? heldKindOf(context.checker, parameters),
     tail: (declared) => {
-      const deferred = deferredCallOf(node);
-      if (deferred !== undefined) {
-        // A deferred call's call is checked settled, as a callee is, so what it computed now is
-        // known when it is captured (made-later.ts).
-        return producedBy(node.body, madeLater(context, deferred, context.settled(node.body)));
-      }
       // A literal it gives while its result is open stays fresh, as a block's value does.
       const type = context.part(node.body, declared ?? hint);
       // A body of several statements is a block expression, whose tail produces as a `fn`'s does.
@@ -356,7 +353,6 @@ function checkNested(context: BodyContext, node: NestedFunction, header: NestedH
     codeKind,
     returns: new ReturnScope(declaredResult, true, header.guided, header.orFuture),
     reach: header.reach,
-    makesLater: madeLaterBy(context.functions, node),
   });
   const result = context.functions.inside(scope, () => {
     for (const parameter of parameters) {
@@ -369,9 +365,7 @@ function checkNested(context: BodyContext, node: NestedFunction, header: NestedH
   // settles with the scope (wiring/body/constraint-scope.ts): it is recorded again then.
   const finished = (produces: Type): FunctionType => {
     const captures = capturesOf(context, scope);
-    const shared = captures.some(
-      (capture) => capture.kind === 'variable' && context.variables.isChangeable(capture.entity),
-    );
+    const shared = captures.some((capture) => context.variables.isChangeable(capture.entity));
     const send = shared
       ? plainSend
       : capturedSend(

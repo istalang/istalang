@@ -5,7 +5,7 @@
  */
 
 import type { FunctionDeclaration, TypeParameter } from '../../syntax/declarations/index.ts';
-import type { CallingNode } from '../../syntax/expressions/calls.ts';
+import type { Call } from '../../syntax/expressions/calls.ts';
 import type { Expression } from '../../syntax/expressions/index.ts';
 import type { NodeOf } from '../../syntax/tree/node.ts';
 import type { Substitution } from '../types/parts/substitution.ts';
@@ -215,7 +215,7 @@ export function instantiatingTypesOf(call: ResolvedCall): readonly Type[] {
 
 /**
  * Nodes the checker resolves to a function: the nodes a call can be written as, a call, a deferred
- * call, which calls its taker with the function making its call (§3.14), an operator that calls a
+ * call, read as the call to its taker it was checked as (§3.14, `BodyFacts.coreOf`), an operator that calls a
  * function (§3.9), indexing, which calls `index`, an assignment, whose compound operator calls a
  * function; and a function named as a value (§3.14), `f`, `ns.f` or `T.f`, or given type
  * arguments, `f<Int>`, for the function its closure runs. A call of a function value resolves to
@@ -233,9 +233,9 @@ export type ResolvedSite = NodeOf<
   | 'TypeApplication'
 >;
 
-/** Whether `site` calls what it resolves to, as a written or a deferred call does. */
-export function isCalling(site: ResolvedSite): site is CallingNode {
-  return site.kind === 'Call' || site.kind === 'DeferredCall';
+/** Whether `site` calls what it resolves to, as a call does. */
+export function isCalling(site: ResolvedSite): site is Call {
+  return site.kind === 'Call';
 }
 
 /** The sites a function named as a value is written as: `f`, `ns.f`, `T.f` or `f<Int>` (§3.14). */

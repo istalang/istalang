@@ -12,9 +12,9 @@
  * - A member that joins with no scope open settles at once, in a scope of its own, which its
  *   inference's system is, so what it judges still joins it.
  * - What settling does for a member (completing it and recording its type, judging a placeholder,
- *   work waiting for the scope) runs in the functions being checked where it joined, not where the
- *   scope settles: a deferred call's call is checked inside its function, and its operands around
- *   it (§3.14), yet they join one scope.
+ *   work waiting for the scope) runs where it joined, not where the scope settles: in the functions
+ *   being checked then, since a lambda checked while a scope is open joins it from inside, and in
+ *   the words of the sugar it was built for, if any (checker/desugaring/).
  */
 
 import { unreachable } from '../../../../foundation/structures/unreachable.ts';
@@ -26,8 +26,11 @@ import type { Type } from '../../types/type/index.ts';
 import { ConstraintScope, type ScopeSettling } from './constraint-scope.ts';
 import { placeOf, standingOf } from './scope-protocol.ts';
 
-/** Runs work in the functions that were being checked where it was made. */
-type InFunctions = <Result>(work: () => Result) => Result;
+/**
+ * Runs work where it was made: in the functions being checked then, reporting in the words of the
+ * sugar a node then being checked was built for (checker/desugaring/).
+ */
+type Here = <Result>(work: () => Result) => Result;
 
 /** How a body's scopes reach the rest of its checker. */
 interface ScopeSeams {
@@ -35,8 +38,8 @@ interface ScopeSeams {
   readonly record: (node: Expression, type: Type) => void;
   /** The protocol's (scope-protocol.ts `ScopeHolding`). */
   readonly decidesItems: (expected: Type) => boolean;
-  /** Runs work later in the functions being checked now. */
-  readonly functionsHere: () => InFunctions;
+  /** Runs work later where it is made now. */
+  readonly here: () => Here;
 }
 
 export class BodyScopes implements Scopes {
@@ -138,8 +141,8 @@ export class BodyScopes implements Scopes {
 
   postpone(member: PostponedMember): Type {
     const scope = this.#current ?? unreachable('A placeholder joins only an open scope.');
-    const inFunctions = this.#seams.functionsHere();
-    scope.postpone({ ...member, judge: (expected) => inFunctions(() => member.judge(expected)) });
+    const here = this.#seams.here();
+    scope.postpone({ ...member, judge: (expected) => here(() => member.judge(expected)) });
     return member.type;
   }
 
@@ -166,8 +169,8 @@ export class BodyScopes implements Scopes {
     if (this.#current === undefined) {
       work((type) => type);
     } else {
-      const inFunctions = this.#seams.functionsHere();
-      this.#current.whenSolved((solved) => inFunctions(() => work(solved)));
+      const here = this.#seams.here();
+      this.#current.whenSolved((solved) => here(() => work(solved)));
     }
   }
 
@@ -186,10 +189,10 @@ export class BodyScopes implements Scopes {
    * what it makes as the functions around it handle it.
    */
   #bound(member: ScopeMember): ScopeMember {
-    const inFunctions = this.#seams.functionsHere();
+    const here = this.#seams.here();
     const { node } = member;
     const complete = () =>
-      inFunctions(() => {
+      here(() => {
         const type = member.complete();
         if (node !== undefined) {
           this.#seams.record(node, type);

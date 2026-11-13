@@ -64,7 +64,7 @@ import type {
 import type { CheckerContext } from '../../contexts/context.ts';
 import type { FieldPassType, PassTable } from '../../contexts/passes.ts';
 import { Passes } from '../../contexts/passes.ts';
-import { Wordings } from '../../desugaring/index.ts';
+import { Desugarings } from '../../desugaring/index.ts';
 import { handledBy } from '../../resolution/applying/call-kinds.ts';
 import { ImplicitCalls } from '../../resolution/applying/implicit.ts';
 import { CallRecords } from '../../resolution/calls/call-records.ts';
@@ -77,13 +77,7 @@ import { FlowDecisions } from '../../rules/flow/flow-decisions.ts';
 import { freshLiteralOf } from '../../rules/placeholders.ts';
 import { checkTestingCalls } from '../../rules/testing.ts';
 import { statementPlace } from '../../surface/checked-annotation.ts';
-import type {
-  CheckedBody,
-  CoreExpression,
-  FieldGiver,
-  Sugar,
-  ValueSite,
-} from '../../surface/checked-body.ts';
+import type { CheckedBody, FieldGiver, ValueSite } from '../../surface/checked-body.ts';
 import { type Admits, collectionTarget } from '../../types/fitting/expected.ts';
 import { type Fit, isExact } from '../../types/fitting/fit/index.ts';
 import { unfolded } from '../../types/type/computed-types.ts';
@@ -117,7 +111,7 @@ export class BodyChecker implements BodyContext {
   readonly fieldReads = new FieldReads(this.#passes);
   readonly labels = new LabelTargets();
   readonly #records = bodyRecords(this.#passes);
-  readonly #wordings = new Wordings();
+  readonly sugars = new Desugarings(this.#passes);
   /** The body's own result, which only the body's own function returns into. */
   readonly #result: ReturnScope;
   readonly scopes: BodyScopes;
@@ -130,9 +124,10 @@ export class BodyChecker implements BodyContext {
         this.#record(node, type);
       },
       decidesItems: (expected) => collectionTarget(checker, expected) !== undefined,
-      functionsHere: () => {
+      here: () => {
         const { frames } = this.functions;
-        return (work) => this.functions.within(frames, work);
+        const words = this.sugars.here();
+        return (work) => words(() => this.functions.within(frames, work));
       },
     });
     const isFunction = kind.kind === 'function';
@@ -220,7 +215,7 @@ export class BodyChecker implements BodyContext {
   }
 
   expression(node: Expression, given?: Type): Type {
-    return this.#wordings.checking(node, () => {
+    return this.sugars.checking(node, () => {
       const admits = postponedAdmits(this, node);
       const type = this.scopes.checking(
         node,
@@ -234,6 +229,12 @@ export class BodyChecker implements BodyContext {
 
   settled(node: Expression, expected?: Type): Type {
     return this.scopes.suspended(() => this.expression(node, expected));
+  }
+
+  probe<Result>(check: () => Result): Result {
+    // What a probe changes beside its pass's records is put back too (passes.ts `probe`).
+    const restores = [this.variables.checkpoint(), this.functions.current.checkpoint()];
+    return this.#passes.probe(() => this.scopes.suspended(check), restores);
   }
 
   expectSettled(node: Expression, expected: Type): Type {
@@ -313,6 +314,10 @@ export class BodyChecker implements BodyContext {
     return this.#records.types.get(node);
   }
 
+  expectedOf(site: ValueSite): Type | undefined {
+    return this.#records.expected.get(site);
+  }
+
   expectAt(site: Expression, expected: Type): void {
     this.#expected(site, expected);
   }
@@ -359,7 +364,7 @@ export class BodyChecker implements BodyContext {
     );
   }
   report(diagnostic: Diagnostic<AnchoredSpan>): void {
-    const worded = this.#wordings.worded(this, diagnostic);
+    const worded = this.sugars.worded(this, diagnostic);
     if (!this.#passes.hold(worded)) {
       this.checker.report(this.module, worded);
     }
@@ -412,10 +417,6 @@ export class BodyChecker implements BodyContext {
 
   recordBuilt(value: IndentedValue, literal: BuiltLiteral): void {
     this.#records.builtLiterals.set(value, literal);
-  }
-
-  recordCore(sugar: Sugar, core: CoreExpression): void {
-    this.#records.cores.set(sugar, core);
   }
 
   recordVariant(name: Identifier, variant: VariantEntity): void {

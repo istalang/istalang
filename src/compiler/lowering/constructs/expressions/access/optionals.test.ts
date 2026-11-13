@@ -11,7 +11,7 @@ import { compiledText } from '../../../../compile.test-kit.ts';
 const shapes = ['struct Inner { code: Int }', 'struct Outer { inner: Inner? }'];
 
 /** The frames of a panic in `_main`, at the `!` on the program's seventh line, and the live `main` above it. */
-const unwrapFrame = /^at \S*main\._main \(\S+:7:3\)\nat \S*main\.main\.deferred@\S+ \(\S+\)$/u;
+const unwrapFrame = /^at \S*main\._main \(\S+:7:3\)\nat \S*main\.main\.lambda@\S+ \(\S+\)$/u;
 
 /** How `main`, giving a `result` with `body`, ends. */
 async function ended(result: string, body: string) {
