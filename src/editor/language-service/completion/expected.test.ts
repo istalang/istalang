@@ -12,6 +12,8 @@ const declarations = [
   'struct Cfg { color: Color, n: Int, note: String }',
   'fn paint(c: Color, n: Int) -> Int: n',
   'fn show(cfg: Cfg) -> Int: cfg.n',
+  'fn mix(c: Color) -> Int: 1',
+  'fn mix(n: Int) -> Int: n',
   '',
 ];
 
@@ -70,6 +72,11 @@ describe('the type expected where a value is written', () => {
     expect(expectedAt('  let x = ‸')).toBeUndefined();
     expect(expectedAt('  col.‸')).toBeUndefined();
     expect(expectedAt('  let x: ‸')).toBeUndefined();
+  });
+
+  it("is the checker's nothing at an argument of a call that can't choose its function yet", () => {
+    expect(expectedAt('  mix(‸')).toBeUndefined();
+    expect(expectedAt('  mix(Color.‸')).toBeUndefined();
   });
 });
 

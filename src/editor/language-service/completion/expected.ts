@@ -29,22 +29,16 @@ import { futuresOf } from '../../../compiler/checker/types/type/well-known.ts';
 import type { ModuleId, Program } from '../../../compiler/program/program.ts';
 import type { Expression } from '../../../compiler/syntax/expressions/index.ts';
 import { literalNaming } from '../../../compiler/syntax/expressions/literals/built-types.ts';
-import {
-  nodesAt,
-  parentOf,
-  type SyntaxNode,
-  type SyntaxTree,
-} from '../../../compiler/syntax/tree/index.ts';
+import { nodesAt, type SyntaxNode, type SyntaxTree } from '../../../compiler/syntax/tree/index.ts';
 import type { Identifier } from '../../../compiler/syntax/tree/node.ts';
 import { spanIn } from '../../../compiler/syntax/tree/positions.ts';
 import { type Handlers, handlerOf } from '../../../foundation/structures/kind-table.ts';
 import { memo } from '../../../foundation/structures/memo.ts';
 import { identifierAt } from '../reading/identifier-at.ts';
-import { argumentParameterAt } from '../signatures/call-at.ts';
 import type { Candidate } from './candidate.ts';
 import type { Cursor } from './cursor.ts';
 import type { Place } from './place.ts';
-import type { ParsedPlace, PlaceholderParse } from './placeholder.ts';
+import type { ParsedPlace } from './placeholder.ts';
 import { holderIn } from './places/grammar/chain.ts';
 import type { MemberPlace } from './places/member.ts';
 import { matchedTypeOf, patternStartedBy } from './places/patterns/matched-type.ts';
@@ -152,18 +146,14 @@ function expectedOfQualified(
   cursor: Cursor,
   { names, head, access }: MemberPlace,
 ): Type | undefined {
-  const { checker, module, tree } = cursor;
+  const { checker, module } = cursor;
   const qualified = names === 'value' && head !== undefined ? access : undefined;
-  return (
-    qualified &&
-    (checker.lookup.bodyHolding(module, qualified)?.expectedOf(qualified) ??
-      argumentParameter(cursor, parentOf(tree, qualified)))
-  );
+  return qualified && checker.lookup.bodyHolding(module, qualified)?.expectedOf(qualified);
 }
 
 /**
- * What the checker expects of the value written at `place`; for a call's argument, which stops a
- * call being written from resolving, the type of the parameter it gives (call-at.ts).
+ * What the checker expects of the value written at `place`: of a call's argument, what its
+ * parameter will be once the call is whole, where only one function can be meant.
  */
 function expectedOfValue(cursor: Cursor, { parsed }: ParsedPlace): Type | undefined {
   const placeholder = parsed.chain.at(-1);
@@ -176,7 +166,7 @@ function expectedOfValue(cursor: Cursor, { parsed }: ParsedPlace): Type | undefi
     written === undefined
       ? expectedOfPlaceholder(cursor, parsed.tree, value)
       : expectedOfWritten(cursor, written);
-  return checked ?? parameterGiven(cursor, parsed, value);
+  return checked;
 }
 
 /**
@@ -185,27 +175,8 @@ function expectedOfValue(cursor: Cursor, { parsed }: ParsedPlace): Type | undefi
 function expectedOfString(cursor: Cursor, { parsed }: ParsedPlace): Type | undefined {
   const literal = parsed.chain.at(-1);
   return literal?.kind === 'StringLiteral'
-    ? (expectedOfPlaceholder(cursor, parsed.tree, literal) ??
-        parameterGiven(cursor, parsed, literal))
+    ? expectedOfPlaceholder(cursor, parsed.tree, literal)
     : undefined;
-}
-
-/**
- * Where `value` is a call's argument, the type of the parameter it gives: checking expects nothing
- * of an argument it couldn't choose a function for, as one being written often is.
- */
-function parameterGiven(
-  cursor: Cursor,
-  parsed: PlaceholderParse,
-  value: Expression,
-): Type | undefined {
-  return argumentParameter(cursor, holderIn(parsed.chain, value));
-}
-
-/** Where `holder` holds the value written as a call's argument, the parameter it gives's type. */
-function argumentParameter(cursor: Cursor, holder: SyntaxNode | undefined): Type | undefined {
-  const isArgument = holder?.kind === 'Call' || holder?.kind === 'NamedArgument';
-  return isArgument ? argumentParameterAt(cursor, cursor.offset)?.type : undefined;
 }
 
 /**
