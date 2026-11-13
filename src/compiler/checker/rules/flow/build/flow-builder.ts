@@ -13,7 +13,7 @@
 import type { VariableEntity } from '../../../../binder/entities.ts';
 import type { ModuleId } from '../../../../program/program.ts';
 import type { FunctionDeclaration } from '../../../../syntax/declarations/index.ts';
-import type { Expression } from '../../../../syntax/expressions/index.ts';
+import type { Expression, Spread } from '../../../../syntax/expressions/index.ts';
 import type { Block, Statement } from '../../../../syntax/statements/index.ts';
 import type { SyntaxNode } from '../../../../syntax/tree/index.ts';
 import type { Identifier, Invalid, NodeOf } from '../../../../syntax/tree/node.ts';
@@ -84,6 +84,7 @@ export class FlowBuilder {
   readonly #blocks: OpenBlock[] = [];
   readonly #variables = new Map<VariableEntity, ValueId>();
   readonly #globals = new Map<VariableEntity, ValueId>();
+  readonly #computedNow = new Map<Expression | Spread, ValueId>();
   readonly #constructs: Constructs;
   #self: ValueId | undefined;
   #body: CheckedBody;
@@ -228,11 +229,20 @@ export class FlowBuilder {
     return value;
   }
 
-  /** A value an enclosing function computed and this one captures, in the order captured. */
-  capturedValue(type: Type | undefined, site: NodeOf<string>): ValueId {
+  /**
+   * What the function a deferred call gives captured of `site`, an operand of the call it makes
+   * later, computed where the deferred call stands (§3.14), in the order captured: `site` reads as
+   * it here.
+   */
+  capturedNow(site: Expression | Spread, type: Type): void {
     const value = this.temporary(site, type);
     this.captures.push(value);
-    return value;
+    this.#computedNow.set(site, value);
+  }
+
+  /** The value this function captured of `site`, computed before it was made, if it did. */
+  computedNowAt(site: Expression | Spread): ValueId | undefined {
+    return this.#computedNow.get(site);
   }
 
   /** `name`, the function's own name inside it, as the closure it runs as (§3.14). */

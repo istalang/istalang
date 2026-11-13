@@ -6,11 +6,12 @@
  * - A name is a copy out of its variable, a global's value, a function named as a value, a variant,
  *   or a struct without fields written bare (§3.1), its type arguments given or not.
  * - A field read is a `read` of its part; `*x` and `x->` read what is behind the handle.
- * - A lambda is a closure made of what it captures, of a function built of its own.
+ * - A lambda is a closure made of what it captures, of a function built of its own; so is the
+ *   function a deferred call gives, the lambda it reads as (§3.14), whose call reads each operand
+ *   as what was computed of it before the closure was made.
  */
 
 import type { Handlers } from '../../../../../foundation/structures/kind-table.ts';
-import { unreachable } from '../../../../../foundation/structures/unreachable.ts';
 import type { FunctionDeclaration } from '../../../../syntax/declarations/index.ts';
 import type {
   Expression,
@@ -20,6 +21,8 @@ import type {
   TupleElement,
 } from '../../../../syntax/expressions/index.ts';
 import type { Identifier } from '../../../../syntax/tree/node.ts';
+import type { ComputedCapture } from '../../../surface/checked-body.ts';
+import { isPack } from '../../../types/type/function-types.ts';
 import type { FlowFunction, Part, ValueId } from '../flow-ir.ts';
 import { callFlow } from './calls.ts';
 import { stepTarget } from './chains.ts';
@@ -42,6 +45,7 @@ import {
   fieldComprehension,
   mapLiteral,
   range,
+  spreadValue,
   structLiteral,
   template,
 } from './literals.ts';
@@ -133,21 +137,21 @@ function index(builder: FlowBuilder, node: Index): ValueId {
 
 /**
  * The closure of a lambda or local function: a function built of its own, from the parameters it
- * takes, the variables it captures and its own name, the closure it runs as, made of the captured
- * variables' values here.
+ * takes, what it captures and its own name, the closure it runs as, made of what it captures here:
+ * a variable's value, or for the function a deferred call gives, each operand of its call computed
+ * now, in the order it runs (§3.14).
  */
 export function closureOf(builder: FlowBuilder, node: Lambda | FunctionDeclaration): ValueId {
   const checked = builder.body.functionOf(node);
-  // A written function captures variables; the function a deferred call gives is built by it.
-  const captures = (checked?.captures ?? []).map((capture) =>
-    capture.kind === 'variable'
-      ? capture
-      : unreachable("A deferred call's function is built where the call is (calls.ts)."),
-  );
   const nested = builder.nested(node);
-  for (const { entity, type } of captures) {
-    nested.captured(entity, type);
-  }
+  const parts = (checked?.captures ?? []).map((capture) => {
+    if (capture.kind === 'variable') {
+      nested.captured(capture.entity, capture.type);
+      return builder.variable(capture.entity);
+    }
+    nested.capturedNow(capture.site, capture.type);
+    return computedNow(builder, capture);
+  });
   if (node.name !== undefined) {
     nested.ownName(node.name, checked?.type);
   }
@@ -159,9 +163,14 @@ export function closureOf(builder: FlowBuilder, node: Lambda | FunctionDeclarati
     site: node,
     into,
     made: { kind: 'closure', function: flow },
-    parts: captures.map(({ entity }) => builder.variable(entity)),
+    parts,
   });
   return into;
+}
+
+/** What a deferred call's function captures of `capture`'s operand, computed here: a spread's items collected. */
+function computedNow(builder: FlowBuilder, { site, type }: ComputedCapture): ValueId {
+  return site.kind === 'Spread' ? spreadValue(builder, site, isPack(type)) : builder.unfitted(site);
 }
 
 /** What a nested function's body gives, built into `nested`. */

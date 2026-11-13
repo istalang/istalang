@@ -6,10 +6,10 @@
  * value with its arguments in its parameters' order, as checking bound them; only one written `&x`
  * passes a place. A call naming a variant with no fields is that variant's value (§3.11).
  *
- * A deferred call `g f(args)` (§3.14) computes now its taker's parts, then what its call computes
- * now, by value, and gives its taker, where the binding numbers it, a closure of a function of its
- * own capturing those values, which makes the call later; a deferred call within it builds its own
- * function from its captures first.
+ * A deferred call `g f(args)` (§3.14) computes now its taker's parts, then gives its taker, where
+ * the binding numbers it, the closure of the lambda it reads as, which computes now what its call
+ * does and makes the call later (expressions.ts `closureOf`); a spread it captured is its items, and
+ * a field value it calls the field read.
  */
 
 import { argumentValue } from '../../../../syntax/expressions/arguments.ts';
@@ -47,7 +47,7 @@ export function callFlow(builder: FlowBuilder, node: CallingNode): ValueId {
   const into = builder.temporaryOf(node);
   if (builder.body.valueCalls.has(node)) {
     const callee = calleeValue(builder, node);
-    const { arguments: passed, leave } = prepared(builder, node, undefined, 'asWritten');
+    const { arguments: passed, leave } = prepared(builder, node, undefined);
     const given = node.kind === 'DeferredCall' ? deferredFunction(builder, node) : undefined;
     const ordered = inParameterOrder(builder, node, passed, given);
     builder.emit({ op: 'callValue', site: node, into, callee, arguments: ordered });
@@ -59,7 +59,7 @@ export function callFlow(builder: FlowBuilder, node: CallingNode): ValueId {
     builder.emit(unresolved(builder, node, into));
     return into;
   }
-  const { arguments: passed, leave } = prepared(builder, node, call, 'asWritten');
+  const { arguments: passed, leave } = prepared(builder, node, call);
   if (node.kind === 'DeferredCall') {
     passed.push({ kind: 'value', value: deferredFunction(builder, node) });
   }
@@ -85,7 +85,7 @@ function unresolved(builder: FlowBuilder, node: CallingNode, into: ValueId) {
     return { op: 'compute', site: node, into, operands: [] } as const;
   }
   const callee = builder.expression(calledName(node));
-  const { arguments: passed } = prepared(builder, node, undefined, 'asWritten');
+  const { arguments: passed } = prepared(builder, node, undefined);
   const operands = passed.map((argument) =>
     argument.kind === 'value' ? argument.value : builder.valueAt(argument.place),
   );
@@ -116,6 +116,10 @@ function calleeValue(builder: FlowBuilder, node: CallingNode): ValueId {
   if (callee.kind !== 'MemberAccess' || read === undefined) {
     return builder.expression(callee);
   }
+  const captured = builder.computedNowAt(callee);
+  if (captured !== undefined) {
+    return captured;
+  }
   const target = stepTarget(builder, node, callee.target);
   const value = builder.temporaryOf(callee);
   builder.emit({ op: 'read', site: callee, into: value, from: target, part: partOfField(read) });
@@ -140,15 +144,11 @@ function inParameterOrder(
     : argumentsInOrder(binding).flatMap(({ index }) => all[index] ?? []);
 }
 
-/**
- * `node`'s receiver and written arguments: as written, each by `&` where its parameter takes one,
- * or all by value, as a deferred call computes them now (§3.14).
- */
+/** `node`'s receiver and written arguments, as written: each by `&` where its parameter takes one. */
 function prepared(
   builder: FlowBuilder,
   node: CallingNode,
   call: ResolvedCall | undefined,
-  references: 'asWritten' | 'byValue',
 ): Prepared {
   const parameterAt = parametersOf(builder, call);
   const passed: Argument[] = [];
@@ -156,7 +156,7 @@ function prepared(
   const pass = (argument: Expression, index: number) => {
     const place = argument.kind === 'Reference' ? argument.expression : undefined;
     const byReference = parameterAt(index)?.reference === true;
-    if (references === 'asWritten' && (place !== undefined || byReference)) {
+    if (place !== undefined || byReference) {
       const entered = enterPlace(builder, place ?? argument);
       passed.push({ kind: 'place', place: entered.place });
       leaves.push(entered.leave);
@@ -176,7 +176,8 @@ function prepared(
   for (const [position, argument] of writtenArgumentsOf(node).entries()) {
     if (argument.kind === 'Spread') {
       const isPack = call === undefined || parameterAt(position + offset)?.rest?.kind === 'pack';
-      passed.push({ kind: 'value', value: spreadValue(builder, argument, isPack) });
+      const collected = builder.computedNowAt(argument) ?? spreadValue(builder, argument, isPack);
+      passed.push({ kind: 'value', value: collected });
     } else {
       pass(argumentValue(argument), position + offset);
     }
@@ -201,38 +202,17 @@ function parametersOf(
 }
 
 /**
- * The function `node` gives its taker: a closure capturing what its call computes now, of a
- * function making the call from them; its call's value where the call was never made, which
- * checking reported.
+ * The function `node` gives its taker: the closure of the lambda it reads as (§3.14,
+ * expressions.ts `closureOf`); its call's value where the call was never made, which checking
+ * reported.
  */
 function deferredFunction(builder: FlowBuilder, node: DeferredCall): ValueId {
   const call = deferredOf(node);
-  if (call === undefined || !isMade(builder, call)) {
+  const lambda = deferredLambdaOf(node);
+  if (call === undefined || lambda === undefined || !isMade(builder, call)) {
     return builder.expression(node.call);
   }
-  return closureMaking(builder, node, computedNow(builder, call));
-}
-
-/**
- * The closure `node` gives its taker, made in `builder` of `values`: a function capturing them,
- * which makes `node`'s call from them.
- */
-function closureMaking(
-  builder: FlowBuilder,
-  node: DeferredCall,
-  values: readonly ValueId[],
-): ValueId {
-  const call = deferredOf(node) as CallingNode;
-  const later = builder.nested(node.call);
-  const captured = values.map((value) =>
-    later.capturedValue(builder.valueOf(value).type, node.call),
-  );
-  later.end({ kind: 'return', value: madeLater(later, call, captured), site: node.call });
-  const lambda = deferredLambdaOf(node);
-  const made = builder.temporary(node.call, lambda && builder.body.functionOf(lambda)?.type);
-  const closure = { kind: 'closure', function: later.finished(undefined) } as const;
-  builder.emit({ op: 'make', site: node.call, into: made, made: closure, parts: values });
-  return made;
+  return builder.expression(lambda);
 }
 
 /** Whether `call`, and each call it defers in turn, was recorded made (§2). */
@@ -243,44 +223,4 @@ function isMade(builder: FlowBuilder, call: CallingNode): boolean {
   }
   const inner = call.kind === 'DeferredCall' ? deferredOf(call) : undefined;
   return call.kind === 'Call' || (inner !== undefined && isMade(builder, inner));
-}
-
-/**
- * What `call` computes now, in the order it runs: a value call's callee, or a method's receiver,
- * then its arguments, by value; then, for a deferred call, what its own call computes now.
- */
-function computedNow(builder: FlowBuilder, call: CallingNode): readonly ValueId[] {
-  const isValue = builder.body.valueCalls.has(call);
-  const callee = isValue ? [calleeValue(builder, call)] : [];
-  const resolved = isValue ? undefined : builder.body.resolved.get(call);
-  const { arguments: passed } = prepared(builder, call, resolved, 'byValue');
-  const now = passed.map((argument) =>
-    argument.kind === 'value' ? argument.value : argument.place.root,
-  );
-  const inner = call.kind === 'DeferredCall' ? deferredOf(call) : undefined;
-  return [...callee, ...now, ...(inner === undefined ? [] : computedNow(builder, inner))];
-}
-
-/** `call` made from `captured`, the values it computed when its function was made. */
-function madeLater(later: FlowBuilder, call: CallingNode, captured: readonly ValueId[]): ValueId {
-  const into = later.temporaryOf(call);
-  const isValue = later.body.valueCalls.has(call);
-  const resolved = isValue ? undefined : later.body.resolved.get(call);
-  const [callee, ...rest] = isValue ? captured : [undefined, ...captured];
-  const count = writtenArgumentsOf(call).length + (resolved?.receiver === undefined ? 0 : 1);
-  const passed = rest
-    .slice(0, count)
-    .map((value): Argument => ({ kind: 'value', value: value as ValueId }));
-  const given =
-    call.kind === 'DeferredCall'
-      ? closureMaking(later, call, rest.slice(count) as ValueId[])
-      : undefined;
-  if (callee === undefined) {
-    const all = given === undefined ? passed : [...passed, given];
-    resolvedCall(later, resolved, { site: call, passed: all, into });
-  } else {
-    const ordered = inParameterOrder(later, call, passed, given);
-    later.emit({ op: 'callValue', site: call, into, callee, arguments: ordered });
-  }
-  return into;
 }

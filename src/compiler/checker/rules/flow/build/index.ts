@@ -69,8 +69,15 @@ export function flowsBuiltFor(body: CheckedBody): ReadonlyMap<SyntaxNode, FlowFu
   return flows.get(body) ?? unreachable('A body was finished without building its flows.');
 }
 
-/** `node`'s value as computed, a temporary of its own node. */
+/**
+ * `node`'s value as computed, a temporary of its own node; what a deferred call's function captured
+ * of it, where it is an operand of the call the function makes (§3.14).
+ */
 function computed(builder: FlowBuilder, node: Expression): ValueId {
+  const captured = builder.computedNowAt(node);
+  if (captured !== undefined) {
+    return captured;
+  }
   const stops = builder.body.stopsAt(node);
   if (stops !== undefined) {
     const operands = stops.map((operand) => builder.expression(operand));
