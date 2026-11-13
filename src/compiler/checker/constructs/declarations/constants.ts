@@ -34,7 +34,7 @@ import type { Type } from '../../types/type/index.ts';
 import { errorType } from '../../types/type/primitives.ts';
 
 /** What ProgramChecker gives the unit: how to find a constant's module, and to check a value. */
-export interface ConstantSeams {
+interface ConstantSeams {
   readonly checker: CheckerContext;
   /** The module whose top-level item `declaration` is; undefined for a local variable. */
   readonly moduleOfItem: (declaration: VariableDeclaration) => ModuleId | undefined;

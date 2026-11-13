@@ -120,7 +120,7 @@ export class ValueCalls implements ValueCallRecord {
 }
 
 /** A call as written: where it stands, with its arguments and any type arguments. */
-export interface ValueCall {
+interface ValueCall {
   readonly node: CallingNode;
   readonly typeArguments: readonly Type[] | undefined;
   readonly written: readonly WrittenArgument[];

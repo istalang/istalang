@@ -58,7 +58,7 @@ import {
 } from './items.ts';
 
 /** Where a literal stands beside its shape: its leading spread, and what it is expected to be. */
-export interface LiteralSetting {
+interface LiteralSetting {
   readonly spread?: LiteralSpread | undefined;
   /** What it is expected to be, which advises its type arguments as a call's does (§3.5). */
   readonly expected?: Type | undefined;

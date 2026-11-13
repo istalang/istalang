@@ -65,7 +65,7 @@ export function lowerCall(context: FunctionContext, node: Call): Register {
  * after them: past them for a resolved function, whose binding numbers it last, and at the
  * parameter it fills for a function value, which takes its arguments in its parameters' order.
  */
-export interface PreparedCall {
+interface PreparedCall {
   readonly target: CallTarget;
   readonly passed: readonly PassedArgument[];
   readonly arguments: readonly Argument[];
@@ -148,7 +148,7 @@ function valueCallee(context: FunctionContext, node: CallingNode): Register {
 }
 
 /** An argument as the call passes it, and for a place copied in, how it is written back. */
-export interface PassedArgument {
+interface PassedArgument {
   readonly argument: Argument;
   readonly leave?: (() => void) | undefined;
 }

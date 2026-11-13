@@ -19,7 +19,7 @@ import type { FlowBuilder } from './flow-builder.ts';
 import { implicitCall, resolvedCall } from './implicit-calls.ts';
 
 /** A place entered: where it is, and how what an accessor read is written back once done with. */
-export interface EnteredPlace {
+interface EnteredPlace {
   readonly place: Place;
   readonly leave: () => void;
 }
@@ -70,7 +70,7 @@ function stepInto(
 }
 
 /** The place an assignment writes, entered: what it holds now, and writing it, which leaves it. */
-export interface AssignedPlace {
+interface AssignedPlace {
   readonly read: () => ValueId;
   readonly write: (value: ValueId) => void;
 }

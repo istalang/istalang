@@ -46,14 +46,14 @@ import { unreachable } from '../../foundation/structures/unreachable.ts';
 import { partAt } from '../interpreter/parts.ts';
 
 /** What changing values in place reads of and tells the counts (counts.ts). */
-export interface NodeCounts {
+interface NodeCounts {
   readonly holdersOfNode: (node: CompositeValue) => number | undefined;
   readonly partHeld: (node: CompositeValue, part: Value) => void;
   readonly partReleased: (node: CompositeValue, part: Value) => void;
 }
 
 /** A place a value is changed at: its holder's whole value, read and written, and the path in it. */
-export interface Place {
+interface Place {
   readonly read: () => Value;
   readonly path: readonly number[];
   readonly write: (whole: Value) => void;

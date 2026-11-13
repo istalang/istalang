@@ -13,7 +13,7 @@
 import fc from 'fast-check';
 import type { TypeNode } from '../../syntax/types/index.ts';
 
-export type TypeTree =
+type TypeTree =
   | { readonly atom: string }
   | { readonly union: readonly TypeTree[] }
   | { readonly optional: TypeTree }

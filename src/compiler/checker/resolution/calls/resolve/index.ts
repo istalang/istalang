@@ -263,7 +263,7 @@ export function appliedArgumentOf(
 }
 
 /** A chosen function, instantiated, at the site calling it or naming it as a value. */
-export interface Chosen {
+interface Chosen {
   readonly site: ResolvedSite;
   readonly application: Application;
   readonly instantiation: Instantiation;

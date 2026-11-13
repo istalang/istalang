@@ -63,7 +63,7 @@ function recordCall(
 }
 
 /** A replacement a call runs instead of its target, or the answer another instance gave it. */
-export type MockedCall =
+type MockedCall =
   | {
       readonly kind: 'replaced';
       readonly replacement: Extract<CompositeValue, { kind: 'closure' }>;
@@ -72,7 +72,7 @@ export type MockedCall =
   | { readonly kind: 'answered'; readonly value: Value };
 
 /** A call a mock may replace: who makes it, what it calls, and with what, read once a mock does. */
-export interface CallToMock {
+interface CallToMock {
   readonly instance: Instance;
   readonly startedAt: bigint;
   readonly target: FunctionId;

@@ -23,7 +23,7 @@ import type { Parser } from './parser.ts';
 
 export type Category = 'expression' | 'type' | 'pattern' | 'parameterType' | 'statement' | 'module';
 
-export interface Parsed {
+interface Parsed {
   readonly source: SourceText;
   readonly node: SyntaxNode;
   /** The bodies of the functions parsed, which the tree holds apart from them. */

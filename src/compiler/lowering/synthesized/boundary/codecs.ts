@@ -22,7 +22,7 @@ import { Decoder } from './decoder.ts';
 import { Encoder } from './encoder.ts';
 
 /** What writing a codec reads: the checker, the tables, and the instance whose body it is. */
-export interface CodecLowering {
+interface CodecLowering {
   readonly checker: Checker;
   readonly tables: DefinitionTables;
   readonly instance: FunctionInstance;

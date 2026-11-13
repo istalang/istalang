@@ -16,7 +16,7 @@ import type { Fit } from '../../types/fitting/fit/index.ts';
 import type { FieldMember, Type } from '../../types/type/index.ts';
 
 /** A field loop's pass as checked: its key and value, and the pass its records are kept in. */
-export interface CheckedPass extends FieldPassType {
+interface CheckedPass extends FieldPassType {
   readonly pass: Pass;
 }
 

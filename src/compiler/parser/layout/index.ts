@@ -70,7 +70,7 @@ export interface ItemRules<Item extends SyntaxNode> {
 
 export type Items<Item> = readonly (Item | Invalid)[];
 
-export interface Lines<Item> {
+interface Lines<Item> {
   readonly items: Items<Item>;
   /** Whether its items head segments of their own (`ItemRules.headsSegments`). */
   readonly headedSegments: boolean;

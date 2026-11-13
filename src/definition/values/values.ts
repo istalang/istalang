@@ -175,6 +175,10 @@ export type Value =
   | ExternValue
   | HandleValue;
 
+/**
+ * A value as persisted text holds it, before the codecs; exported because the declarations of every
+ * schema built on `value` name it.
+ */
 export type ValueOnDisk =
   | null
   | boolean

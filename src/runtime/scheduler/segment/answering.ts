@@ -23,7 +23,7 @@ import type { Instance } from '../instance/index.ts';
 import type { NativeCalls } from './native-calls.ts';
 
 /** A call to answer: what it calls, with which captures and arguments, and who it answers. */
-export interface AnsweredCall {
+interface AnsweredCall {
   readonly function: FunctionId;
   readonly captures: readonly Value[];
   readonly arguments: readonly Value[];

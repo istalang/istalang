@@ -83,7 +83,7 @@ const handleHasNoForm = 'a JSON form, which no handle has: it stays in its insta
 const unionHasNoForm = 'a JSON form, which a union has only as an optional or as literals';
 
 /** What the unit needs beside the checker: field annotations. */
-export interface JsonFormSeams {
+interface JsonFormSeams {
   readonly checker: CheckerContext;
   readonly annotations: Annotations;
 }

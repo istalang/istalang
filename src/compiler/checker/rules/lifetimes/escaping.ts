@@ -19,7 +19,7 @@ import {
 } from './type-reach.ts';
 
 /** What the check reads of types. */
-export interface EscapingFacts {
+interface EscapingFacts {
   readonly relevanceOf: (type: Type) => Relevance;
   readonly reachOf: (type: Type) => HandleReach;
   /** What values of a type surely hold and reach, whatever its type parameters become. */

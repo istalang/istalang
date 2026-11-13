@@ -40,13 +40,13 @@ export interface Enclosed<Value> {
   readonly span: AnchoredSpan;
 }
 
-export interface CommaSeparated<Item> {
+interface CommaSeparated<Item> {
   readonly items: readonly (Item | Invalid)[];
   /** Whether any comma was written, which tells `(x,)` from `(x)`; a line break doesn't. */
   readonly separated: boolean;
 }
 
-export type DelimitedList<Item> = CommaSeparated<Item> & { readonly span: AnchoredSpan };
+type DelimitedList<Item> = CommaSeparated<Item> & { readonly span: AnchoredSpan };
 
 /**
  * Parses `opener`, whatever `parseInner` reads, and the matching closer; the cursor must be at
@@ -120,7 +120,7 @@ export function parseDelimited<Item>(
 }
 
 /** How `parseGroup` builds what it parsed: a tuple, or a group around one item. */
-export interface GroupShapes<Item, Node> {
+interface GroupShapes<Item, Node> {
   readonly tuple: (span: AnchoredSpan, elements: readonly (Item | Invalid)[]) => Node;
   readonly grouped: (span: AnchoredSpan, item: Item | Invalid) => Node;
 }

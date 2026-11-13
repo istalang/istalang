@@ -38,7 +38,7 @@ export type WrittenInstruction = Instruction extends infer Each
   : never;
 
 /** A function's code as written: how many registers its frame needs, and its instructions. */
-export interface WrittenCode {
+interface WrittenCode {
   readonly registers: number;
   readonly instructions: Instruction[];
 }

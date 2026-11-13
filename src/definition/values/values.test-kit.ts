@@ -12,7 +12,7 @@ import fc from 'fast-check';
 import { exactJson } from '../formats/codec.test-kit.ts';
 import { handleTo, type Value } from './values.ts';
 
-export interface ValueOptions {
+interface ValueOptions {
   readonly typed?: boolean;
   readonly handles?: readonly number[];
 }

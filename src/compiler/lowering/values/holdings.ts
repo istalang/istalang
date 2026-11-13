@@ -40,7 +40,7 @@ export interface TypedValue {
  * member that took it whole, none when `holder` is no union; and inside `inAny`, where an `any`
  * type took it whole, `holder` itself or its member.
  */
-export interface Holding {
+interface Holding {
   readonly variant?: Type | undefined;
   readonly inAny?: AnyType | undefined;
 }
@@ -79,7 +79,7 @@ export function heldPositions(holder: Type, holding: Holding): readonly number[]
 }
 
 /** A value of a type, which `inside` gives once asked, with its type. */
-export interface HeldValue {
+interface HeldValue {
   readonly member: Type;
   readonly inside: () => Register;
 }

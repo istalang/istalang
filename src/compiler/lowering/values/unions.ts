@@ -43,7 +43,7 @@ import {
 } from './holdings.ts';
 
 /** A value of a union in a register. */
-export interface UnionValue {
+interface UnionValue {
   readonly register: Register;
   readonly type: UnionType;
 }

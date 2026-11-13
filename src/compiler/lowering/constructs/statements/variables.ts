@@ -45,10 +45,10 @@ export interface CellRegister {
  * How long what a variable holds lasts: until its block ends, or until the hold scope ends whose
  * list is `into` (holds.ts).
  */
-export type Lifetime = 'block' | { readonly into: Register };
+type Lifetime = 'block' | { readonly into: Register };
 
 /** A held variable's register, and the list its block's end keeps what it holds into. */
-export interface Kept {
+interface Kept {
   readonly register: Register;
   readonly into: Register;
 }

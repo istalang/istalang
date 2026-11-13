@@ -20,7 +20,7 @@ import type { AnchoredSpan } from '../../syntax/tree/positions.ts';
 import type { CodeContext } from '../context.ts';
 
 /** A value of an enum to build: its type, its variant's name, and the variant's fields. */
-export interface VariantValue {
+interface VariantValue {
   readonly type: NominalType;
   readonly name: string;
   readonly fields: readonly Register[];
@@ -54,7 +54,7 @@ export function variantIndexOf(checker: Checker, type: NominalType, name: string
 }
 
 /** A call of a variant's constructor: the instance called, and its parameters, the fields. */
-export interface ConstructorCall {
+interface ConstructorCall {
   readonly instance: FunctionInstance;
   readonly fields: readonly Register[];
 }

@@ -11,7 +11,7 @@ import { pathToFileURL } from 'node:url';
 import type { HostExterns } from '../runtime/boundary/host-natives.ts';
 
 /** A host module loaded, its externs, or why it can't implement them: the user's to fix. */
-export type LoadedHostModule =
+type LoadedHostModule =
   | { readonly kind: 'loaded'; readonly externs: HostExterns }
   | { readonly kind: 'unfit'; readonly problem: string };
 

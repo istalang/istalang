@@ -50,7 +50,7 @@ export function isSimpleMark(mark: Type): boolean {
 export type KindLookup = Pick<Checker, 'kindOf'>;
 
 /** What finding a function's kind looks up: the mark its head names, or what its fields hold. */
-export type KindNames = Pick<
+type KindNames = Pick<
   CheckerContext,
   'moduleOf' | 'resolveType' | 'valueKindsOf' | 'fitting' | 'inputs'
 >;

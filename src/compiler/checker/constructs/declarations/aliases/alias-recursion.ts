@@ -62,7 +62,7 @@ const unguardedStanding: Standing = { guards: false, blocks: false };
  * What an alias's body makes of it: nothing recursive, a recursive alias, one reaching itself
  * unguarded (a cycle), or a recursive one that isn't regular.
  */
-export type AliasRecursion = 'none' | 'recursive' | 'cycle' | 'irregular';
+type AliasRecursion = 'none' | 'recursive' | 'cycle' | 'irregular';
 
 export class AliasRecursions {
   readonly #checker: CheckerContext;

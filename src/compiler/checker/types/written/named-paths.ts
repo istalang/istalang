@@ -15,7 +15,7 @@ import type { Identifier } from '../../../syntax/tree/node.ts';
 import type { NamedType } from '../../../syntax/types/index.ts';
 
 /** A named type's path split: its name and what that denotes, and the associated types past it. */
-export interface NamedPath {
+interface NamedPath {
   /** The last part the binder resolved; undefined when even the first resolves to nothing. */
   readonly name: Identifier | undefined;
   readonly entity: Entity | undefined;

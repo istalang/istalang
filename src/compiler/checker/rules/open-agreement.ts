@@ -21,7 +21,7 @@ import { placeholderOf } from './placeholders.ts';
 
 /** Producers agreeing on one value's type: whose value, what they are expected to be, and how
  * one that doesn't fit what the others agree on is reported. */
-export interface Producers {
+interface Producers {
   readonly node: Expression;
   readonly produced: readonly Produced[];
   readonly expected: Type | undefined;

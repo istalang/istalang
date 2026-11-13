@@ -70,7 +70,7 @@ export function blockTail(body: Block, type: Type): Produced {
   return tail === undefined ? { type, span, site: body } : { ...producedBy(tail, type), span };
 }
 
-export interface Agreement {
+interface Agreement {
   /** The agreed type; undefined when no producer has a value, as when every one leaves. */
   readonly decided: Type | undefined;
   /** The producers whose type doesn't fit the agreed one. */
@@ -208,7 +208,7 @@ export function settleAgreement(
  * The type producers agreed on, the type expected of them, if any, and how one that doesn't fit is
  * reported.
  */
-export interface Agreed {
+interface Agreed {
   readonly decided: Type;
   readonly expected: Type | undefined;
   readonly mismatch: (span: AnchoredSpan, decided: Type, found: Type) => Diagnostic<AnchoredSpan>;

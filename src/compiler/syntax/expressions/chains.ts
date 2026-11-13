@@ -19,10 +19,10 @@ const optionalOperators = { '.': '?.', '->': '?->', '[': '?.[', '(': '?.(' } as 
 export type LinkForm = keyof typeof optionalOperators;
 
 /** An operator taking a link's step on the value inside an optional. */
-export type OptionalOperator = (typeof optionalOperators)[LinkForm];
+type OptionalOperator = (typeof optionalOperators)[LinkForm];
 
 /** The operator a link of an optional chain takes its step with (§4). */
-export type ChainOperator = Exclude<LinkForm, '('> | OptionalOperator;
+type ChainOperator = Exclude<LinkForm, '('> | OptionalOperator;
 
 /** The operator taking a step of `form` on the value inside an optional: `?.[` for `[`. */
 export function optionalOperatorOf(form: LinkForm): OptionalOperator {

@@ -43,7 +43,7 @@ export function fieldlessVariantCalled(context: FunctionContext, node: Call): st
 }
 
 /** The enum value in `register` tested for one of its variants, the `variant`-th. */
-export interface VariantTest {
+interface VariantTest {
   readonly register: Register;
   readonly variant: number;
 }
@@ -77,7 +77,7 @@ export function payloadOf(context: CodeContext, register: Register, span: Anchor
 }
 
 /** A value of the enum `type` in `register`, tested for its variant `name`, which has one field. */
-export interface VariantCase {
+interface VariantCase {
   readonly register: Register;
   readonly type: NominalType;
   readonly name: string;

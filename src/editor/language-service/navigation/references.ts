@@ -31,7 +31,7 @@ import {
 } from './declarations.ts';
 
 /** A name denoting a declaration. */
-export interface Reference extends NamePlace {
+interface Reference extends NamePlace {
   /** Whether the name declares it, rather than referring to it. */
   readonly declares: boolean;
 }

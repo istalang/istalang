@@ -6,7 +6,7 @@ import type { ModuleId, ProgramModule } from '../compiler/program/program.ts';
 import { languageModules } from '../foundation/language/well-known/index.ts';
 import { stdModuleSources } from './std-sources.ts';
 
-export interface EveryStdModule {
+interface EveryStdModule {
   readonly checker: Checker;
   /** Each std module the program loaded, the prelude included, by id. */
   readonly modules: readonly (readonly [ModuleId, ProgramModule])[];

@@ -43,7 +43,7 @@ export interface Analysis {
   readonly inputTypes: ReadonlyMap<string, Type>;
 }
 
-export interface AnalyzeOptions {
+interface AnalyzeOptions {
   readonly isAsync: boolean;
   /** Whether it is a closure's, whose callers are code nobody sees. */
   readonly nested?: boolean;

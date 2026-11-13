@@ -19,7 +19,7 @@ import { endScope, valueInBlock } from '../statements/scopes.ts';
 import { bindTargets } from '../statements/variables.ts';
 
 /** A field loop's header, the struct it runs over, evaluated, and its fields in name order. */
-export interface VisitedFields {
+interface VisitedFields {
   readonly header: FieldHeader;
   readonly subject: Register;
   readonly fields: readonly FieldMember[];

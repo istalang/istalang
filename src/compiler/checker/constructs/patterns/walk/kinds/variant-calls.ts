@@ -66,7 +66,7 @@ import { namedVariant } from './named-variants.ts';
 /**
  * A struct pattern naming a variant, `case Rejected{by}`, which only its call pattern takes apart.
  */
-export interface VariantBraced {
+interface VariantBraced {
   readonly node: StructPattern;
   readonly type: NamedType;
   readonly named: VariantNaming;

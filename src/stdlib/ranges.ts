@@ -41,7 +41,7 @@ export function rangeOf(
 }
 
 /** A range with both ends. */
-export interface BoundedRange {
+interface BoundedRange {
   readonly start: bigint;
   readonly end: bigint;
   readonly step: bigint;

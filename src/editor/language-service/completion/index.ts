@@ -32,7 +32,7 @@ import { present } from './presentation/present.ts';
 import { placesOpenedAt } from './triggers.ts';
 
 /** What a request says beyond where it stands. */
-export interface CompletionRequest {
+interface CompletionRequest {
   /** The character whose typing asked; absent when the editor invoked completion. */
   readonly trigger?: string;
   /** The std modules the app ships, which an import may name; none when absent. */

@@ -16,7 +16,7 @@ import type { ValueId } from '../flow-ir.ts';
 import type { FlowBuilder, OpenChain } from './flow-builder.ts';
 
 /** The chain open around a node, and the one the node itself opens, if it opens one. */
-export interface ChainFrame {
+interface ChainFrame {
   readonly outer: OpenChain | undefined;
   readonly opened: OpenChain | undefined;
 }

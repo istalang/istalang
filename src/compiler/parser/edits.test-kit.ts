@@ -16,7 +16,7 @@ import { bodyOf, nodesUnder, type SyntaxNode, type SyntaxTree } from '../syntax/
 import { spanIn } from '../syntax/tree/positions.ts';
 
 /** A module's text, named for a test's title. */
-export interface ModuleText {
+interface ModuleText {
   readonly name: string;
   readonly text: string;
 }
@@ -96,7 +96,7 @@ export function applied(text: string, edit: Edit): string {
 }
 
 /** An edit inside one function's body: the text after it, and the function edited. */
-export interface BodyEdit {
+interface BodyEdit {
   readonly text: string;
   readonly edited: FunctionDeclaration;
 }

@@ -40,7 +40,7 @@ import { parameterType } from '../../types/written/resolve-type.ts';
 import { defaultArgument } from '../../types/written/type-arguments.ts';
 
 /** A call through a union's trait, as a candidate: the required function, and how it is reached. */
-export interface MembersCall {
+interface MembersCall {
   readonly declaration: FunctionDeclaration;
   readonly requirement: Requirement & { readonly origin: MembersRequirement };
 }

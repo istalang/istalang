@@ -104,7 +104,7 @@ export function parameterKey(name: string): KeyType {
 }
 
 /** A parameter the extern takes by `&`, as a natives table writes it (§3.7). */
-export interface ReferenceKey {
+interface ReferenceKey {
   readonly reference: KeyType;
 }
 
@@ -113,7 +113,7 @@ export function referenceKey(type: KeyType): ReferenceKey {
 }
 
 /** A rest parameter, as a natives table writes it (§3.3). */
-export interface RestKey {
+interface RestKey {
   readonly rest: KeyType;
 }
 

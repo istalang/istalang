@@ -87,7 +87,7 @@ export function checkCall(context: BodyContext, node: Call, expected: Type | und
  * A call to check: its node, the type expected of it, and what was read of its callee's value; for
  * a deferred call, the function it gives its taker after the arguments written, checked after them.
  */
-export interface CallToCheck {
+interface CallToCheck {
   readonly node: CallingNode;
   readonly expected: Type | undefined;
   readonly value: CalledValue | undefined;
@@ -205,7 +205,7 @@ function receiverField(
  * The type of what a call calls, when it is known before its arguments, and for `x.f(…)` the
  * receiver's type, read then.
  */
-export interface CalledValue {
+interface CalledValue {
   readonly type: Type | undefined;
   readonly receiver?: Type;
 }

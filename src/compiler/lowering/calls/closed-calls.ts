@@ -124,7 +124,7 @@ export function dispatchSubstitution(
 }
 
 /** A closed call of a function: its own entry's instance, and the call's binding. */
-export interface ClosedFunctionCall {
+interface ClosedFunctionCall {
   readonly kind: 'function';
   readonly instance: FunctionInstance;
   readonly binding: Binding;

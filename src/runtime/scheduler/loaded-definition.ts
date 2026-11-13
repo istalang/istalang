@@ -56,7 +56,7 @@ export interface LoadedDefinition {
 }
 
 /** What only a test gives a Definition it loads: the world it runs in, and its heaps' check. */
-export interface TestLoading {
+interface TestLoading {
   readonly world?: TestWorld;
   readonly heapCheck?: HeapCheck | undefined;
 }

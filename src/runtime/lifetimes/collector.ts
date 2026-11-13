@@ -41,7 +41,7 @@ import { unreachable } from '../../foundation/structures/unreachable.ts';
 import { type DisposalContext, type DisposalRun, dispose, isDisposable } from './disposal.ts';
 import type { HolderWrites } from './holder-writes.ts';
 
-export interface CollectorSeams extends DisposalContext {
+interface CollectorSeams extends DisposalContext {
   /** Where every holder write is reported and counted. */
   readonly holders: HolderWrites;
   /** Starts `run`: true when it has finished already (a native), false while it runs as code. */

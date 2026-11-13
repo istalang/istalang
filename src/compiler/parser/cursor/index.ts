@@ -69,14 +69,14 @@ export type CursorToken = Token | LineBreak;
 
 export type CursorKind = CursorToken['kind'];
 
-export interface CursorMark {
+interface CursorMark {
   readonly index: number;
   readonly remainder: Token | undefined;
   readonly regionStart: number;
 }
 
 /** How indentation reads a token list: where brackets left open end, and each token's column. */
-export interface Indentation {
+interface Indentation {
   /**
    * Where each bracket no closer matches ends, by the index its region starts at
    * (brackets.ts).

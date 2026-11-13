@@ -89,7 +89,7 @@ export interface QualifiedPath {
  * value's member, in a type an associated type (§3.1), naming a pattern's or literal's type
  * nothing.
  */
-export type PathRole = 'expression' | 'type' | 'named';
+type PathRole = 'expression' | 'type' | 'named';
 
 /** What binding one tree produced. */
 export interface LocalResult {

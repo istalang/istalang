@@ -64,7 +64,7 @@ import { foundCodecCall } from '../synthesized/boundary/codec-calls.ts';
 import { qualifiedNameOf, recursiveName, spelledType, unionName } from './names.ts';
 
 /** What a type entry refers to outside the type table. */
-export interface TypeTableSeams {
+interface TypeTableSeams {
   /** The entry of a function instance, such as a declared `dispose` (§7). */
   readonly functionIndex: (instance: FunctionInstance) => FunctionId;
   /** The entry a closed call runs, such as the codec writing an instance's outcome (§9). */

@@ -29,7 +29,7 @@ import { isPrimitive } from '../type/primitives.ts';
 import { unionOfNormalized } from '../unions/unions.ts';
 
 /** What matching for equality needs of the inference it serves. */
-export interface Equating {
+interface Equating {
   readonly unfolding: UnfoldingPairs;
   readonly isUnknown: (parameter: ParameterKey) => boolean;
   /** Binds `parameter` exactly to `type`; whether its bounds agree. */

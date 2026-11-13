@@ -23,7 +23,7 @@ import { childrenOf, type SyntaxNode, type SyntaxTree } from '../../compiler/syn
  * - in `braces` that hold lines again: a braced block's `{}`, a field list's, a template's `${…}`;
  * - on a block's `lines`, with no delimiters around them, where line breaks count again.
  */
-export type Standing = 'outside' | 'brackets' | 'braces' | 'lines';
+type Standing = 'outside' | 'brackets' | 'braces' | 'lines';
 
 /** Where `child` of `parent` stands (`Standing`). */
 export function standingIn(parent: SyntaxNode, child: SyntaxNode): Standing {

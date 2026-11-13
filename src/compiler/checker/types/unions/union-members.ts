@@ -16,7 +16,7 @@ import { isPrimitive, primitiveType } from '../type/primitives.ts';
 import type { TypeRules } from '../type/type-rules.ts';
 
 /** The primitive a literal's value is a value of. */
-export type LiteralBase = 'Int' | 'String' | 'Bool';
+type LiteralBase = 'Int' | 'String' | 'Bool';
 
 /** The base type of a literal of `value`: `Int`, `String` or `Bool`. */
 export function literalBase(value: LiteralValue): LiteralBase {

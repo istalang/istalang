@@ -60,7 +60,7 @@ export interface EntryTable<Note, Key, Value, Context = void> {
 }
 
 /** A named read of what a revision is computed over, recorded in the entry computing now. */
-export interface InputOptions<Args extends readonly unknown[], Value> {
+interface InputOptions<Args extends readonly unknown[], Value> {
   /** Unique among a revision's inputs: a later revision replays this one's reads by it. */
   readonly name: string;
   readonly read: (...args: Args) => Value;

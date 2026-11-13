@@ -52,7 +52,7 @@ import type { Passing } from '../choosing/call-arguments.ts';
 import { runsAtOnce, writeElement } from './collection-functions.ts';
 
 /** Why a place is to change: assigned to, or passed by `&` (explicitly, or as `&self`). */
-export type PlaceUse = 'assigned' | 'referenced';
+type PlaceUse = 'assigned' | 'referenced';
 
 /**
  * Checks `node` as a place that will change; its type, read as the place's value, so lowering
@@ -182,7 +182,7 @@ function holdsFieldByTrait(context: BodyContext, type: Type, name: string): bool
 }
 
 /** What the places a call passes by `&` are checked against: the callee's parameters and kind. */
-export interface ReferencingCallee {
+interface ReferencingCallee {
   readonly name: string;
   readonly isAsync: boolean;
   readonly slots: readonly { readonly reference: boolean }[];

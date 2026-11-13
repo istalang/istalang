@@ -63,7 +63,7 @@ export interface LiteralSpread {
 }
 
 /** A field given a value: the value, its type, and the field's type as declared. */
-export interface GivenField {
+interface GivenField {
   readonly node: Expression;
   readonly type: Type;
   readonly declared: Type;

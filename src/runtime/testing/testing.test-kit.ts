@@ -14,7 +14,7 @@ import { oracle } from '../lifetimes/oracle.test-kit.ts';
 import type { HeapCheck } from '../scheduler/loaded-definition.ts';
 import { runTests, type TestReport } from './run-tests.ts';
 
-export interface ReportsOptions {
+interface ReportsOptions {
   readonly filter?: string;
   /** How long a test may run, in milliseconds of the manual clock. */
   readonly timeout?: bigint;

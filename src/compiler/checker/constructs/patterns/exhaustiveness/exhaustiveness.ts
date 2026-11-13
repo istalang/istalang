@@ -29,7 +29,7 @@ type LaidOutShape =
 /** A missing-value witness: anything, or a constructor of witnesses. */
 export type WitnessShape = AnyShape | ConstructorShape<WitnessShape, ConstructorKey>;
 
-export interface AnyShape {
+interface AnyShape {
   readonly kind: 'any';
 }
 
@@ -99,7 +99,7 @@ export type Signature<T> = (
 const witnessLimit = 3;
 
 /** What analyzing a `match` found. */
-export interface Analysis {
+interface Analysis {
   /** Shapes of values no case matches; empty when the cases are exhaustive. */
   readonly missing: readonly WitnessShape[];
   /** The indexes of the cases no value can reach, given the unguarded cases before them. */

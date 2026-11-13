@@ -22,7 +22,7 @@ import { programAt } from '../src/editor/language-service/language-service.test-
 import { mainOutcome } from '../src/stdlib/prelude/prelude.test-kit.ts';
 
 /** A checked program with `declarations` and a probe function `fn _probe(...parameters)`. */
-export interface ProbedTypes {
+interface ProbedTypes {
   readonly checker: Checker;
   readonly types: readonly Type[];
   readonly syntaxErrors: readonly number[];

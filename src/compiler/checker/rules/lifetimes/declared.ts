@@ -42,7 +42,7 @@ export interface DefaultsFound {
 export const noDefaults: DefaultsFound = { violations: [], summaries: [], results: new Map() };
 
 /** What the declared findings read of the rule over the program. */
-export interface DeclaredDeps {
+interface DeclaredDeps {
   readonly checker: CheckerContext;
   readonly context: () => AnalysisContext;
   readonly analysisOf: (declaration: FunctionDeclaration) => Analysis;

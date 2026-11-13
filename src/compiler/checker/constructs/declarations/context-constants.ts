@@ -25,7 +25,7 @@ import type { Type } from '../../types/type/index.ts';
 import { errorType } from '../../types/type/primitives.ts';
 
 /** How ProgramChecker checks a value of its own in `module` against `declared`, `within` what. */
-export type ValueBody = (
+type ValueBody = (
   module: ModuleId,
   declared: Type | undefined,
   within: FunctionDeclaration | ContextConstantDeclaration,

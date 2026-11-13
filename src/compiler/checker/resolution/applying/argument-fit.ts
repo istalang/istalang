@@ -24,7 +24,7 @@ import type { Application } from '../choosing/choice.ts';
 import type { Instantiation } from '../conformance/conformance.ts';
 
 /** An argument as fitting sees it; its type is undefined when the chosen function decides it. */
-export interface FittedArgument {
+interface FittedArgument {
   readonly node?: Expression | undefined;
   readonly type: Type | undefined;
   readonly literal?: LiteralType | undefined;

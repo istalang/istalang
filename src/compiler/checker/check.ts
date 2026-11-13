@@ -219,7 +219,7 @@ export interface Checker {
 const checkers = new WeakMap<Program, ProgramChecker>();
 
 /** What the checker of a program is made with, the first time it is asked for. */
-export interface CheckProgramOptions {
+interface CheckProgramOptions {
   /**
    * An earlier snapshot, whose checker's entries this one takes over, if that checker was made,
    * wherever what they read answers alike (incremental-checking.md §1).

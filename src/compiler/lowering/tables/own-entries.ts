@@ -19,7 +19,7 @@ import type { FunctionInstance } from '../../checker/surface/witness-closing.ts'
 import { constructedVariant, isFieldsFunction } from '../../syntax/declarations/field-defaults.ts';
 
 /** What an instance's own entry is made of; a derived codec's says which way it crosses. */
-export type OwnEntry =
+type OwnEntry =
   | { readonly kind: 'struct' | 'constructor' | 'hostExtern' | 'body' | 'native' }
   | { readonly kind: 'derivedCodec'; readonly direction: JsonDirection };
 

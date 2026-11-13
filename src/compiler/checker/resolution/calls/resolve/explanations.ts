@@ -109,7 +109,7 @@ export function explainNone(
 }
 
 /** A call as a report about it reads it: where, of what name, with what written. */
-export type ExplainedCall = Pick<CallRequest, 'site' | 'name' | 'arguments' | 'typeArguments'>;
+type ExplainedCall = Pick<CallRequest, 'site' | 'name' | 'arguments' | 'typeArguments'>;
 
 /** The report saying why a call's arguments can't fill its one function's parameters (§3.3). */
 function bindingReport(request: ExplainedCall, reason: BindingFailure): Diagnostic<AnchoredSpan> {

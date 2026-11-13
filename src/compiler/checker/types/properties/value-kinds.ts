@@ -49,7 +49,7 @@ import { TypeCycle } from './type-cycle.ts';
  * a kind once instantiated (`dependent`), read again for each instantiation (`composedKindsOf`),
  * so a type's kinds compose without walking its layout again.
  */
-export interface DeclaredKinds {
+interface DeclaredKinds {
   readonly marks: readonly Type[];
   readonly dependent: readonly Type[];
 }

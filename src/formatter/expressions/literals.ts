@@ -30,7 +30,7 @@ import type { Printer, Printers } from '../printer.ts';
 const { lineSuffixBoundary, literalline, markAsRoot } = builders;
 
 /** Literals spanning lines, which print as copies. */
-export type CopiedLiteral = TemplateLiteral | Docstring;
+type CopiedLiteral = TemplateLiteral | Docstring;
 
 /** Whether `node` is a template or docstring spanning lines. */
 export function isMultiLine(tree: SyntaxTree, node: SyntaxNode): node is CopiedLiteral {

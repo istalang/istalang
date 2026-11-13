@@ -14,7 +14,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 /** A program that compiles, with what running it must give. */
-export interface RunProgram {
+interface RunProgram {
   /** Its path from the corpus directory, which is also how `ista run` names it there. */
   readonly name: string;
   readonly text: string;
@@ -24,7 +24,7 @@ export interface RunProgram {
 }
 
 /** A program that doesn't compile, with exactly the diagnostics it must report. */
-export interface InvalidProgram {
+interface InvalidProgram {
   readonly name: string;
   readonly text: string;
   readonly errors: readonly ExpectedError[];
@@ -46,7 +46,7 @@ const outcome = /^# (?<expects>outcome|panic): (?<expected>.*)$/u;
 const error = /^# error: (?<code>\d+) at (?<line>\d+):(?<column>\d+)$/u;
 
 /** A module of the corpus, by its path from the corpus directory. */
-export interface CorpusFile {
+interface CorpusFile {
   readonly name: string;
   readonly text: string;
 }

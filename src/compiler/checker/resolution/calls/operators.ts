@@ -25,7 +25,7 @@ import { topLevelCandidates } from '../choosing/candidates.ts';
 import { resolveCall } from './resolve/index.ts';
 
 /** An operator a call site applies: as it is written, and the function it calls (§3.9). */
-export interface AppliedOperator {
+interface AppliedOperator {
   readonly spelling: BinaryOperator | UnaryOperator;
   readonly function: string;
 }

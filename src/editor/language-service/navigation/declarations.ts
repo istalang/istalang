@@ -105,7 +105,7 @@ export function spanOfUse(program: Program, { module, name }: NamePlace): Span {
 }
 
 /** A name, and what it denotes. */
-export interface NameAt {
+interface NameAt {
   readonly name: WrittenName;
   /** Every declaration the name denotes. */
   readonly declarations: readonly DeclaredAt[];

@@ -9,7 +9,7 @@
  * request failing. Anything else the runtime throws is a bug, and propagates with its stack.
  */
 
-export type RefusalReason =
+type RefusalReason =
   | 'missingNatives'
   | 'noJsonForm'
   | 'unfitJson'

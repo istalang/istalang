@@ -9,7 +9,7 @@ import type { SyntaxNode } from '../../tree/index.ts';
 import type { IndentedValue, NewStructLiteral, StructLiteral } from '../index.ts';
 
 /** A value literal naming its type: braces after it, or an indented value's `T:`. */
-export type NamingLiteral = StructLiteral | NewStructLiteral | IndentedValue;
+type NamingLiteral = StructLiteral | NewStructLiteral | IndentedValue;
 
 /** `holder` where `type` is the type it names as the one it builds; undefined anywhere else. */
 export function literalNaming(

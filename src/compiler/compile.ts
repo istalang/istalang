@@ -67,7 +67,7 @@ export function diagnoseModule(program: Program, id: ModuleId): ModuleDiagnostic
 }
 
 /** A program compiled for running, or why it couldn't be. */
-export type Compilation =
+type Compilation =
   | { readonly kind: 'compiled'; readonly definition: Definition }
   /** Some module has errors; `diagnose` lists them. */
   | { readonly kind: 'failed' }
@@ -94,7 +94,7 @@ function compile(program: Program, entry: ModuleId): Compilation {
 }
 
 /** A program's tests compiled for running (§10), or why they couldn't be. */
-export type TestCompilation =
+type TestCompilation =
   | { readonly kind: 'compiled'; readonly definition: Definition }
   /** Some module has errors; `diagnose` lists them. */
   | { readonly kind: 'failed' }

@@ -81,7 +81,7 @@ export interface ImplicitOperand {
 }
 
 /** An operator call (`compare` or `includes`) recorded as an implicit call at `node`. */
-export interface ImplicitOperatorRequest {
+interface ImplicitOperatorRequest {
   readonly node: NodeOf<string>;
   readonly span?: AnchoredSpan;
   readonly operator: ImplicitOperator;
@@ -89,7 +89,7 @@ export interface ImplicitOperatorRequest {
 }
 
 /** A call the language makes on a prelude function it owns, whose absence is a toolchain bug. */
-export interface PreludeRequest {
+interface PreludeRequest {
   readonly node: NodeOf<string>;
   readonly role: ImplicitRole;
   readonly name: string;

@@ -17,7 +17,7 @@ export function inferTypesIn(node: SyntaxNode): readonly InferType[] {
 /**
  * Where a node stands among type `match`es: in a case's pattern, elsewhere inside one, or outside.
  */
-export type MatchPlace = 'pattern' | 'match' | 'outside';
+type MatchPlace = 'pattern' | 'match' | 'outside';
 
 /** Where `node` stands in `tree` among type `match`es: the innermost one holding it decides. */
 export function matchPlaceOf(tree: SyntaxTree, node: SyntaxNode): MatchPlace {

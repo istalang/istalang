@@ -69,7 +69,7 @@ export interface AnalysisContext {
 }
 
 /** What analysing a nested function gives the body making its closure. */
-export interface NestedResult {
+interface NestedResult {
   readonly summary: Summary;
   readonly isAsync: boolean;
   /** Its inputs' types, by `inputKey`. */
@@ -77,7 +77,7 @@ export interface NestedResult {
 }
 
 /** Where a write lands: in the cell of `node`'s handle, or, not `exact`, of one it reaches. */
-export interface Written {
+interface Written {
   readonly node: NodeId;
   readonly exact: boolean;
 }

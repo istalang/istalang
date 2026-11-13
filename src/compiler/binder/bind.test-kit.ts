@@ -92,7 +92,7 @@ export function declaringName(entity: Entity | undefined): Identifier | undefine
 }
 
 /** A name the binder resolved, and what it denotes. */
-export interface ResolvedName {
+interface ResolvedName {
   readonly module: ModuleId;
   readonly name: Identifier;
   readonly entity: Entity;

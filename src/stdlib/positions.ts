@@ -58,7 +58,7 @@ export function sliced<T>(items: readonly T[], start: bigint, end: bigint | unde
 }
 
 /** What a range selects in a sequence: a span between two positions, or every step-th position. */
-export type Selection =
+type Selection =
   | { readonly kind: 'span'; readonly start: number; readonly end: number }
   | { readonly kind: 'stepped'; readonly positions: readonly number[] };
 
@@ -97,7 +97,7 @@ export function selected<T>(items: readonly T[], selection: Selection): T[] {
 }
 
 /** Replacing `count` items from `start` with `items`. */
-export interface Splice<T> {
+interface Splice<T> {
   readonly start: number;
   readonly count: number;
   readonly items: readonly T[];

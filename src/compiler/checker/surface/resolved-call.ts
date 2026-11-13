@@ -60,7 +60,7 @@ type ParameterSource =
   | { readonly kind: 'default' };
 
 /** An argument a rest parameter collects: its number, and whether it spreads its items (§3.3). */
-export interface RestItem {
+interface RestItem {
   readonly index: number;
   readonly isSpread: boolean;
 }

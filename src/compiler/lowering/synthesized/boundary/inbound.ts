@@ -31,10 +31,10 @@ const acceptors = {
  * Where JSON crossing in comes from: a host's result, what its future gives or an extern
  * constant's value (`result`), or what a host starts an instance with (`input`).
  */
-export type InboundSource = keyof typeof acceptors;
+type InboundSource = keyof typeof acceptors;
 
 /** How JSON at `path` becomes a value: the call decoding it, and the call accepting the result. */
-export interface Inbound {
+interface Inbound {
   readonly path: string;
   readonly decode: ClosedCall;
   readonly accept: ClosedCall;

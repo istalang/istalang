@@ -68,7 +68,7 @@ import {
 import { settleOrder } from './settle-order.ts';
 
 /** What waits reach outside themselves. */
-export interface WaitSeams extends EndingSeams {
+interface WaitSeams extends EndingSeams {
   /** `waiter`, stopped at its wait, is to resume as `decision` says. */
   readonly decided: (waiter: LiveExecution, decision: Decision) => void;
   /** A resolver now waits on `future`, which is served now if it can be (slots.ts). */

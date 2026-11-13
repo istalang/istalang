@@ -73,7 +73,7 @@ export function headerTemporaries(
  * A scope entered through a header that may not hold: an `if` branch, a `while` pass, a guarded
  * case.
  */
-export interface Guarded {
+interface Guarded {
   /** What runs in the scope before the header: a case's tests and bindings. */
   readonly before?: () => void;
   /** The header, whose value decides: a condition or a guard. */

@@ -53,7 +53,7 @@ import { errorType } from '../../types/type/primitives.ts';
 import { computed, fittedForm, itemsOf, type Outcome, pairOf, refused, unknown } from './forms.ts';
 
 /** What the walk reads: layouts, field defaults, the constant or annotation checked, and others. */
-export interface ComputationScope {
+interface ComputationScope {
   readonly checker: Pick<
     CheckerContext,
     | 'fieldsOf'

@@ -147,10 +147,10 @@ export function isKnown(type: Type): boolean {
 }
 
 /** The union a member parameter ranges over (types/fitting/fit/index.ts `memberUnionOf`). */
-export type MemberUnionOf = (type: Type) => Type | undefined;
+type MemberUnionOf = (type: Type) => Type | undefined;
 
 /** A side of `==`, or a pattern's part and its literal: its type, and the expression giving it. */
-export interface ComparedSide {
+interface ComparedSide {
   readonly type: Type;
   readonly node: Expression | undefined;
 }

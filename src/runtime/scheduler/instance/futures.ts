@@ -46,7 +46,7 @@ export interface Answered extends Caller {
 }
 
 /** An answer to a call made from outside was given. */
-export type AnswerGiven = (answered: Answered) => void;
+type AnswerGiven = (answered: Answered) => void;
 
 /** A pending future to resolve, and its value. */
 export interface Resolution {

@@ -46,7 +46,7 @@ import { giveResult, withWatched } from './given.ts';
 import type { Owner } from './places.ts';
 
 /** How a call is made: where, giving what, of which callee, and whether it gives its future. */
-export interface CallMade {
+interface CallMade {
   readonly site: NodeOf<string>;
   readonly into: ValueId;
   readonly callee: FunctionDeclaration | undefined;

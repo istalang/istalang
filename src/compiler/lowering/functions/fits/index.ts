@@ -47,7 +47,7 @@ import { builtKindOf, codeModeOf } from '../modes.ts';
 import { changesLayout, type Rebuilding, rebuilt } from './parts.ts';
 
 /** A register and the type of the value it holds. */
-export interface TypedRegister {
+interface TypedRegister {
   readonly value: Register;
   readonly type: Type;
 }

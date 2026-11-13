@@ -21,7 +21,7 @@ import type { JoinedBody } from '../surface/denotation.ts';
 import { passesAround } from './pass-views.ts';
 
 /** What finding a holding body reads of the checker. */
-export type Holders = Pick<
+type Holders = Pick<
   CheckerContext,
   | 'inputs'
   | 'bodyOf'

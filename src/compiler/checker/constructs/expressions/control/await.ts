@@ -55,7 +55,7 @@ export function checkAwait(context: BodyContext, node: Await, expected: Type | u
 }
 
 /** A wait on `operand`, of `type`, at `node`, as its `onAwait` call is made. */
-export interface AwaitedOperand {
+interface AwaitedOperand {
   readonly node: Await | SelectCase;
   readonly operand: Expression;
   readonly type: Type;

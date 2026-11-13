@@ -34,7 +34,7 @@ export interface ScannedValue {
  * Scans the code of a template's value from `from`, up to the `}` closing it; undefined where
  * templates nest too deeply to hold another value, which leaves `${` as text.
  */
-export type ValueScanner = (from: number) => ScannedValue | undefined;
+type ValueScanner = (from: number) => ScannedValue | undefined;
 
 export const docstringDelimiter = '"""';
 

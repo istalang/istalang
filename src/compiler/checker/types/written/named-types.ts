@@ -116,7 +116,7 @@ export function declaredOwnerOf(
 }
 
 /** What naming a type in value position reads: the checker, and what the binder says a name is. */
-export interface Naming {
+interface Naming {
   readonly checker: CheckerContext;
   readonly entityOf: (name: Identifier) => Entity | undefined;
 }

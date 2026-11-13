@@ -22,7 +22,7 @@ import { angleBracketsOf } from './angle-brackets.ts';
 import { nameTypesOf } from './name-types.ts';
 import type { SemanticType } from './semantic-types.ts';
 
-export interface ClassifiedSpan {
+interface ClassifiedSpan {
   readonly span: Span;
   readonly type: SemanticType;
 }

@@ -104,7 +104,7 @@ export const anyReach: HandleReach = {
  * What a type not known yet (a type parameter's, or one computed from it) holds: anything, as some
  * instantiation may make it; or nothing, as what a value holds whatever its instantiation is.
  */
-export type Unknown = 'anything' | 'nothing';
+type Unknown = 'anything' | 'nothing';
 
 /** The handles values of `type` hold and may reach (the declaration graph's answer for it). */
 export function handleReachOf(

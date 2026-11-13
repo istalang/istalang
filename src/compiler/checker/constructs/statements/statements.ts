@@ -61,7 +61,7 @@ export const statementHandlers: Handlers<
 // biome-ignore-end lint/style/useNamingConvention: the keys are the tree's node kinds.
 
 /** How a block's value is used: as the block's own, or discarded, as a loop's body discards it. */
-export type BlockUse =
+type BlockUse =
   | { readonly kind: 'value'; readonly expected: Type | undefined }
   | { readonly kind: 'effect' };
 

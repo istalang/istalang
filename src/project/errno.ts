@@ -5,7 +5,7 @@
  */
 
 /** An error the operating system raised. */
-export type SystemError = Error & { readonly errno: number; readonly code: string };
+type SystemError = Error & { readonly errno: number; readonly code: string };
 
 export function isSystemError(error: unknown): error is SystemError {
   return (

@@ -22,7 +22,7 @@ import { spawnedName } from './instance-names.ts';
  * A call this segment spawned (§9): the new instance's name, what it calls, its own options, the
  * seed of its random source, drawn from this instance's, and its outcome's encoder.
  */
-export interface Spawn extends Required<SpawnOptions> {
+interface Spawn extends Required<SpawnOptions> {
   readonly name: string;
   readonly call: InstanceCall;
   readonly seed: string;

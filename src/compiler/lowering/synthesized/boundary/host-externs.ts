@@ -51,7 +51,7 @@ interface Lowering {
  * A wrapper's call to a host native, and how it reads what the native gives: its types as
  * declared, whose codecs are closed `within` the extern's instance.
  */
-export interface HostCall {
+interface HostCall {
   readonly within: FunctionInstance | undefined;
   readonly native: FunctionId;
   readonly parameters: readonly Type[];

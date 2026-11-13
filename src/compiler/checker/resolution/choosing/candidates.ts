@@ -53,7 +53,7 @@ export interface Candidate {
  * declaring it, which a shape has none of; or a type known only per instantiation, a type
  * parameter or a type computed from one (`R.Data`, §3.1), through its constraints.
  */
-export type StaticTarget =
+type StaticTarget =
   | {
       readonly kind: 'owner';
       readonly owner: StaticOwner;

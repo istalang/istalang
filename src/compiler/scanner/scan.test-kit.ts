@@ -19,7 +19,7 @@ import { textOf } from '../../foundation/text/span.ts';
 import type { ScanResult, Token } from '../syntax/tokens/index.ts';
 import { scan } from './scan.ts';
 
-export interface ScannedText extends ScanResult {
+interface ScannedText extends ScanResult {
   readonly source: SourceText;
 }
 
@@ -104,7 +104,7 @@ export function losslessnessViolations(scanned: ScannedText): readonly string[] 
   return violations;
 }
 
-export interface MalformedScan extends Reported {
+interface MalformedScan extends Reported {
   /** Whether the line after the malformed input still starts with the identifier `next`. */
   readonly resumes: boolean;
 }

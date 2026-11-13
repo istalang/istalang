@@ -44,7 +44,7 @@ import { declareVariable } from '../statements/variables.ts';
 import { readPartAlong } from './part-paths.ts';
 
 /** A value being matched, in a register, and the pattern it is matched against. */
-export interface Matching {
+interface Matching {
   readonly subject: Register;
   readonly pattern: CheckedPattern;
 }

@@ -52,7 +52,7 @@ export interface InputSlot {
 }
 
 /** How a read reaches its part: through a handle's cell (or a future's value), or inside a value. */
-export type ReadKind = 'through' | 'part';
+type ReadKind = 'through' | 'part';
 
 export function readKindOf(part: Part): ReadKind {
   return part.kind === 'behind' || part.kind === 'given' ? 'through' : 'part';

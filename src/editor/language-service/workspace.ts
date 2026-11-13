@@ -38,7 +38,7 @@ export type ProgramLoader = (open: OpenTexts, previous: Program | undefined) => 
  * The checker of `program`, made the first time it is asked for, taking over what it can from
  * `previous`'s (check.ts `checkProgram`); asked again, it answers that checker.
  */
-export type ProgramChecking = (program: Program, previous: Program | undefined) => Checker;
+type ProgramChecking = (program: Program, previous: Program | undefined) => Checker;
 
 const checkAfter: ProgramChecking = (program, previous) => checkProgram(program, { previous });
 

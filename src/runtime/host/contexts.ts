@@ -41,7 +41,7 @@ import { InstanceGroup } from './instance-group.ts';
 import type { HostReports } from './programs.ts';
 
 /** What a run's contexts need of the runtime running them. */
-export interface ContextSeams<Program extends LoadedDefinition> {
+interface ContextSeams<Program extends LoadedDefinition> {
   readonly store: InstanceStore;
   /** What a new context runs: the run's own program. */
   readonly program: Program;

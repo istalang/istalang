@@ -85,7 +85,7 @@ function reachedThrough(
 }
 
 /** A call through a union's trait closed with the trait's arguments it inferred. */
-export type ClosedTraitCall =
+type ClosedTraitCall =
   | {
       readonly kind: 'members';
       readonly candidate: Candidate;

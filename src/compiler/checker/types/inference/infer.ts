@@ -58,7 +58,7 @@ import {
 import { CallVariables } from './variables.ts';
 
 /** Where an inference stands: its call's site, and the system it infers in. */
-export interface InferenceSite {
+interface InferenceSite {
   /** The call's own site, which its variables are twins at (variables.ts). */
   readonly site?: object | undefined;
   /**
@@ -69,7 +69,7 @@ export interface InferenceSite {
 }
 
 /** A call or literal inferring, with how its type parameters settle where it stands. */
-export interface InferringCall {
+interface InferringCall {
   readonly inference: Inference;
   readonly settling: Settling;
 }

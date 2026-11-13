@@ -10,7 +10,7 @@ import { calledName } from '../../syntax/expressions/readings.ts';
 import type { Identifier } from '../../syntax/tree/node.ts';
 
 /** How a body's names read: what each binds, and the variant a bare one chose. */
-export interface VariantNames {
+interface VariantNames {
   readonly entityOf: (name: Identifier) => Entity | undefined;
   readonly chosenVariantOf: (name: Identifier) => VariantEntity | undefined;
 }

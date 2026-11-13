@@ -26,7 +26,7 @@ import { downcastTargetOf } from '../../../../types/written/pattern-types.ts';
 import type { ValuePart } from '../parts.ts';
 
 /** A downcast: its test, and the part it matches the rest of the pattern against. */
-export interface Downcast {
+interface Downcast {
   readonly test: PatternTest;
   readonly part: ValuePart;
 }

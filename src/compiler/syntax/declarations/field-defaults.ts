@@ -46,7 +46,7 @@ import {
 type FieldsOwner = { readonly struct: DeclaredStruct } | ConstructedVariant;
 
 /** The variant a constructor builds: its enum, and which of its variants. */
-export interface ConstructedVariant {
+interface ConstructedVariant {
   readonly enumeration: EnumDeclaration;
   readonly variant: Variant;
 }

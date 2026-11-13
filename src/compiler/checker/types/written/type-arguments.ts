@@ -27,7 +27,7 @@ import { errorType } from '../type/primitives.ts';
 /**
  * Type arguments given a generic declaration at `at`; `self` is what a trait's `Self` stands for.
  */
-export interface ArgumentList {
+interface ArgumentList {
   readonly at: AnchoredSpan;
   readonly declaration: GenericDeclaration;
   readonly types: readonly Type[];

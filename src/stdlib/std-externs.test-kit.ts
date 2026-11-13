@@ -20,7 +20,7 @@ interface StdExtern {
   readonly declaration: FunctionDeclaration;
 }
 
-export interface StdExterns {
+interface StdExterns {
   readonly checker: Checker;
   readonly externs: readonly StdExtern[];
 }

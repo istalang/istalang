@@ -155,7 +155,7 @@ export function handledBy(checker: CheckerContext, frame: FunctionFrame, type: T
 }
 
 /** A call to judge: where it is, the function whose code makes it, what it calls and its kind. */
-export interface CallOfKind {
+interface CallOfKind {
   readonly at: AnchoredSpan;
   /** The function making the call, as it was when the call was made, which may complete later. */
   readonly frame: FunctionFrame;

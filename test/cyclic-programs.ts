@@ -5,7 +5,7 @@
  * oracle.
  */
 
-export interface CyclicCase {
+interface CyclicCase {
   readonly name: string;
   readonly body: readonly string[];
   readonly extra?: readonly string[];

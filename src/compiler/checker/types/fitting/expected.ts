@@ -113,7 +113,7 @@ export function plainResultExpected(
  * `Map`'s entries, or another declared type, built through its `default()`; undefined when it
  * doesn't guide the literal.
  */
-export type CollectionTarget =
+type CollectionTarget =
   | { readonly kind: 'array'; readonly item: Type }
   | { readonly kind: 'map'; readonly type: Type; readonly arguments: readonly Type[] }
   | { readonly kind: 'declared'; readonly type: NominalType };

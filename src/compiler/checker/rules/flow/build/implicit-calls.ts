@@ -12,7 +12,7 @@ import type { Argument, ValueId } from '../flow-ir.ts';
 import type { FlowBuilder } from './flow-builder.ts';
 
 /** Where a call is made, what it passes, and the value its result goes into, if not a new one. */
-export interface CallSite {
+interface CallSite {
   readonly site: NodeOf<string>;
   readonly passed: readonly (ValueId | Argument)[];
   readonly into?: ValueId | undefined;

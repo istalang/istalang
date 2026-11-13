@@ -20,7 +20,7 @@ import { parameterType } from '../written/resolve-type.ts';
 import type { Bound, LowerBound } from './variable-bounds.ts';
 
 /** What `given` fills a parameter with: a type, nothing, or nothing for holding several members. */
-export type Filling =
+type Filling =
   | { readonly kind: 'fills'; readonly type: Type }
   | { readonly kind: 'none' }
   | { readonly kind: 'severalMembers' };

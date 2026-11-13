@@ -22,7 +22,7 @@ export type Owner =
   | { readonly kind: 'value'; readonly variable: NodeId }
   | { readonly kind: 'reference'; readonly variable: NodeId };
 
-export interface PlaceTarget {
+interface PlaceTarget {
   readonly value: NodeId;
   readonly owner: Owner;
 }

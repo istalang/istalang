@@ -36,7 +36,7 @@ import { type ClosedCall, calledParameters, substitutionOfCall } from './closed-
 import { packElementsOf } from './packs.ts';
 
 /** A call to write: where it is written, what it calls, and its arguments. */
-export interface CallToEmit {
+interface CallToEmit {
   readonly span: AnchoredSpan;
   /** A function-table entry, or a callee as the Definition writes it. */
   readonly callee: FunctionId | Callee;
@@ -64,7 +64,7 @@ export function emitCall(
 }
 
 /** A closed call of a resolved function to write: where, the call, and the arguments it passes. */
-export interface FunctionCallToEmit {
+interface FunctionCallToEmit {
   readonly span: AnchoredSpan;
   readonly call: ClosedCall;
   /** Numbered as the call's binding numbers them: a method's receiver first, then as written. */

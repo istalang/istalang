@@ -28,13 +28,13 @@ import {
 } from '../snapshot/holdings.ts';
 
 /** Where holding starts: the executions' frames, and the other root objects. */
-export interface Roots {
+interface Roots {
   readonly frames: Iterable<HoldingFrame>;
   readonly objects: Iterable<number>;
 }
 
 /** What a walk from the roots found. */
-export interface Held {
+interface Held {
   /** Every object reached, the roots given as objects among them; executions aside. */
   readonly objects: ReadonlySet<number>;
   /** How deep the deepest value the roots and held objects hold nests. */

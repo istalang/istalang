@@ -23,7 +23,7 @@ import { implicitCall } from '../applying/implicit.ts';
 import { topLevelCandidates } from '../choosing/candidates.ts';
 
 /** An element written: by which construct and role, into what, and what to report when it can't. */
-export interface ElementWrite {
+interface ElementWrite {
   readonly node: NodeOf<string>;
   readonly role: ImplicitRole;
   readonly container: Type;

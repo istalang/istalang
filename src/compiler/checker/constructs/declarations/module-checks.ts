@@ -31,7 +31,7 @@ import { checkClashes } from './functions/clashes.ts';
 import type { TypeParameters } from './type-parameters.ts';
 
 /** The program-wide units whose rules a module's check runs over the module as a whole. */
-export interface ModuleRules {
+interface ModuleRules {
   readonly expansion: Expansion;
   readonly typeParameters: TypeParameters;
   readonly lifetimes: Pick<Lifetimes, 'check'>;

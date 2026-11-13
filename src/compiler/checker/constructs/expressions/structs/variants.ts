@@ -156,7 +156,7 @@ function checkVariantName(
 }
 
 /** A call naming a variant, as written: its arguments, any type arguments, what is expected. */
-export interface VariantCall {
+interface VariantCall {
   readonly node: CallingNode;
   readonly expected: Type | undefined;
   readonly typeArguments: readonly Type[] | undefined;

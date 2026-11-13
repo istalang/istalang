@@ -10,7 +10,7 @@ import type { Heap } from '../heap.ts';
 import { isPending, type PendingResolver, pendingOf } from './resolvers.ts';
 
 /** A pending resolver's registration on a future that resolved, `order`th among its futures. */
-export interface Registration {
+interface Registration {
   readonly resolver: PendingResolver;
   readonly future: number;
   readonly order: number;

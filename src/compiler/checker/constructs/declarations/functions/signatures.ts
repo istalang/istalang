@@ -192,7 +192,7 @@ function wholeTypeNamedByPattern(
 }
 
 /** Where a parameter's form is checked: its module, and where what it finds goes. */
-export interface ParameterSite {
+interface ParameterSite {
   readonly checker: CheckerContext;
   readonly module: ModuleId;
   readonly report: (diagnostic: Diagnostic<AnchoredSpan>) => void;

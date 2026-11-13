@@ -85,7 +85,7 @@ function isShape(shape: Shape | undefined): shape is Shape {
   return shape !== undefined;
 }
 
-export function arrayTest(
+function arrayTest(
   context: BodyContext,
   { site, elements, isOpen = false }: ArrayItems,
   part: ValuePart,

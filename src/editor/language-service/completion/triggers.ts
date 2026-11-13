@@ -24,7 +24,7 @@ import { adjoinsBefore, type Cursor, touchingBefore } from './cursor.ts';
 import type { Place, PlaceKind } from './place.ts';
 
 /** Whether a list opens in a place. */
-export type PlaceTest = (place: Place) => boolean;
+type PlaceTest = (place: Place) => boolean;
 
 /** The places a typed trigger may open a list in, read from the cursor's tokens; none if absent. */
 type Opening = (cursor: Cursor) => PlaceTest | undefined;

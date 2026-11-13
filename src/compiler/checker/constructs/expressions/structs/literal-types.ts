@@ -29,7 +29,7 @@ import { typeArgumentsFor } from '../../../types/written/type-arguments.ts';
 import type { LiteralShape } from './literal-fields/items.ts';
 
 /** What a literal naming a type builds: a declared struct, or a shape an alias names. */
-export type Built =
+type Built =
   | {
       readonly kind: 'declared';
       readonly entity: NominalEntity;

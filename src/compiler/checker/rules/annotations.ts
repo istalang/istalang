@@ -70,7 +70,7 @@ const known = {
 type Known = keyof typeof known;
 
 /** What ProgramChecker gives the unit: how to check an annotation's value as a value of its own. */
-export interface AnnotationSeams {
+interface AnnotationSeams {
   readonly checker: CheckerContext;
   readonly checkValue: (module: ModuleId, value: Expression) => CheckedBody;
 }

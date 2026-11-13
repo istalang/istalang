@@ -26,7 +26,7 @@ import type { Bound, LowerBound } from './variable-bounds.ts';
 import type { CallVariables } from './variables.ts';
 
 /** What bounding a system's variables reads and writes of it. */
-export interface BindingTarget {
+interface BindingTarget {
   readonly store: BoundStore;
   readonly notes: MatchNotes;
   readonly fitting: Fitting;

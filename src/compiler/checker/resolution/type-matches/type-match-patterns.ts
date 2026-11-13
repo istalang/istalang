@@ -45,7 +45,7 @@ import { silentMeets } from '../conformance/conformance.ts';
 import { type Meets, structShortfall } from '../conformance/shortfalls.ts';
 
 /** What matching found: a match, none whatever is substituted, or none decided yet (the banner). */
-export type Outcome = 'match' | 'fail' | 'undecided';
+type Outcome = 'match' | 'fail' | 'undecided';
 
 /** A case's variables, and what they have bound so far. */
 interface Matching {

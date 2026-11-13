@@ -47,7 +47,7 @@ export interface Lowering {
 }
 
 /** What lowering an entry starts from: what owns its body, the body read through it, the tables. */
-export interface LoweredFunction extends Lowering {
+interface LoweredFunction extends Lowering {
   readonly owner: BodyOwner;
   readonly body: CheckedBody;
 }

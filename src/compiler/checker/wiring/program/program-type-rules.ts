@@ -89,13 +89,13 @@ interface Absorbing {
 }
 
 /** The type rules and the fitting of `checker`'s program. */
-export interface ProgramTypeRules {
+interface ProgramTypeRules {
   readonly typeRules: TypeRules;
   readonly fitting: Fitting;
 }
 
 /** What the program's rules read of its declarations: struct layouts. */
-export interface TypeRuleSeams {
+interface TypeRuleSeams {
   /** A nominal struct's shape, which its layouts know. */
   readonly layouts: { readonly nominalShapeOf: (type: Type) => AnonymousStructType | undefined };
 }

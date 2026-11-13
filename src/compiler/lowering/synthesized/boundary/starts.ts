@@ -42,7 +42,7 @@ import { codecCall } from './codec-calls.ts';
 import { emitInbound, inboundOf } from './inbound.ts';
 
 /** A function a host may start: what it is, the key it goes by, and its signature. */
-export interface Startable {
+interface Startable {
   readonly target: StartTarget;
   readonly key: string;
   readonly parameters: readonly Type[];

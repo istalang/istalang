@@ -41,7 +41,7 @@ export type Slot =
   | { readonly kind: 'term'; readonly term: number };
 
 /** What a term graph is built from and keyed by. */
-export interface TermSource {
+interface TermSource {
   /** The bodies placeholders stand for: a group's own, empty when keying a type. */
   readonly bodies: readonly Type[];
   /** The index of the body the placeholder `type` stands for; undefined for any other type. */
@@ -61,7 +61,7 @@ interface Term {
 }
 
 /** A node of a recursive type's graph reached while building, as the term it became. */
-export interface ImportedNode {
+interface ImportedNode {
   readonly graph: RecursiveGraph;
   readonly node: number;
   readonly term: number;

@@ -49,7 +49,7 @@ function comprehensionSource(comprehension: StructComprehension): FieldSource {
 }
 
 /** What a literal builds, as its comprehension's fields are checked against it. */
-export interface ComprehensionTarget {
+interface ComprehensionTarget {
   /** Its fields, as declared, and the name of the literal, for reports. */
   readonly fields: readonly FieldMember[];
   readonly name: string;

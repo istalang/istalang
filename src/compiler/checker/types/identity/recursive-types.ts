@@ -43,7 +43,7 @@ import { type Slot, TermGraph } from './recursive-terms.ts';
 import { typeKeys } from './type-keys.ts';
 
 /** A group of bodies closing together, and what each one reads as. */
-export interface RecursiveGroup {
+interface RecursiveGroup {
   /** Each body, a placeholder wherever a body of the group is reached again. */
   readonly bodies: readonly Type[];
   /** The index of the body the placeholder `type` stands for; undefined for any other type. */

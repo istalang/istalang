@@ -21,7 +21,7 @@ import { spanIn } from '../../compiler/syntax/tree/positions.ts';
 import type { Span } from '../../foundation/text/span.ts';
 import { type CheckedModule, checkedModule } from './reading/checked-module.ts';
 
-export interface InlayHint {
+interface InlayHint {
   /** Where the hint stands: right after the name it types. */
   readonly offset: number;
   /** `: T`. */

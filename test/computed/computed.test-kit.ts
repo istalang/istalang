@@ -30,7 +30,7 @@ export function declaredPlacesAt(...lines: readonly string[]): readonly string[]
 }
 
 /** Formatting `source` twice, and the syntax tree's dump before and after. */
-export interface FormattedRoundTrip {
+interface FormattedRoundTrip {
   readonly formatted: string | undefined;
   readonly twice: string | undefined;
   readonly dumpBefore: string;

@@ -11,7 +11,7 @@ import { aliases, shows } from './recursive-types.test-kit.ts';
 import { typeKeys } from './type-keys.ts';
 
 /** A type of a group's bodies, read through its placeholders. */
-export interface Side {
+interface Side {
   readonly bodies: readonly Type[];
   readonly type: Type;
 }

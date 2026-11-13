@@ -28,7 +28,7 @@ import { seedFrom } from '../snapshot/random.ts';
 import type { InstanceCall } from '../snapshot/snapshot.ts';
 import { type Ended, type Failed, World } from './world/index.ts';
 
-export interface TestRunOptions {
+interface TestRunOptions {
   readonly natives: Natives;
   readonly clock: Clock;
   /** How long one test may run, in milliseconds. */

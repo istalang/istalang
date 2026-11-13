@@ -15,7 +15,7 @@ export type PlaceStep = MemberAccess | TupleElement | Index;
  * handle's value (`*x`) in any valid place, and those reads, innermost first. `a?.b`, `t?.0` and
  * `a?.[i]` are no steps, so they stand as the root.
  */
-export interface PlacePath {
+interface PlacePath {
   readonly root: Expression;
   readonly steps: readonly PlaceStep[];
 }

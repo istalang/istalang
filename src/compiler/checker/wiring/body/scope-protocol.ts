@@ -27,7 +27,7 @@ import type { Expression } from '../../../syntax/expressions/index.ts';
 import type { Type } from '../../types/type/index.ts';
 
 /** How an expression stands toward the current constraint scope. */
-export type Standing =
+type Standing =
   /** Checked in the current scope, opening one where none is, which settles once it is checked. */
   | 'opens'
   /** Checked in the current scope; where none is open, checked as ever, opening none. */
@@ -46,7 +46,7 @@ export type Standing =
  * builds collections (types/fitting/expected.ts `collectionTarget`) does, where `any Sendable`
  * doesn't.
  */
-export interface ScopeHolding {
+interface ScopeHolding {
   readonly holds: (type: Type | undefined) => boolean;
   readonly decidesItems: (expected: Type) => boolean;
 }

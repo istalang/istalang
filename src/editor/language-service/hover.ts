@@ -39,7 +39,7 @@ import { identifierAt } from './reading/identifier-at.ts';
 import { importedModule } from './reading/namespaces.ts';
 import { signatureOf } from './signatures/signatures.ts';
 
-export interface Hover {
+interface Hover {
   /** The name or expression hovered over. */
   readonly span: Span;
   /** Each declaration the name denotes, or the expression's type, as a line of code. */

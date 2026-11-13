@@ -113,7 +113,7 @@ export function enterAssigned(context: FunctionContext, node: Expression): Assig
 }
 
 /** A place passed by `&`, and what writes its copy back once the call returns. */
-export interface ReferencedPlace {
+interface ReferencedPlace {
   readonly place: Place;
   readonly leave: (() => void) | undefined;
 }

@@ -22,7 +22,7 @@ import { parseDocstring, type WithDocstring } from './docstrings.ts';
 import { type ItemRules, type Items, parseAnnotatedItems, parseLines } from './index.ts';
 
 /** A list of items after a declaration's `:`, and where its header ends: before the list. */
-export interface Members<Item> {
+interface Members<Item> {
   readonly items: Items<Item>;
   /** Whether its items head segments of their own (`ItemRules.headsSegments`). */
   readonly headedSegments: boolean;
@@ -31,7 +31,7 @@ export interface Members<Item> {
 }
 
 /** A body after a construct's `:`: its items, from the first to the last (`span`). */
-export interface Body<Item> extends Members<Item> {
+interface Body<Item> extends Members<Item> {
   readonly span: AnchoredSpan;
 }
 

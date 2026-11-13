@@ -25,7 +25,7 @@ export function itemField(named: Identifier | undefined, fields: readonly FieldM
 }
 
 /** Where a call pattern's argument reaches among its variant's fields: a field, or its items. */
-export interface ReachedField {
+interface ReachedField {
   readonly index: number;
   /** Whether it matches an item of the rest field at `index`, rather than the field whole. */
   readonly isItem: boolean;

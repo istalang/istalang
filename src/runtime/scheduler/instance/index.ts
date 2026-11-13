@@ -52,7 +52,7 @@ import { Slots } from './slots.ts';
 import { Waits } from './waits/index.ts';
 import { WeakSide } from './weak-side.ts';
 
-export type InstanceStatus = Snapshot['status'];
+type InstanceStatus = Snapshot['status'];
 
 export class Instance {
   readonly loaded: LoadedDefinition;
@@ -390,7 +390,7 @@ export class Instance {
 }
 
 /** What a commit persists of a running instance (`Instance.persisted`). */
-export interface Persisted {
+interface Persisted {
   readonly objects: readonly HeapObject[];
   readonly depth: number;
 }

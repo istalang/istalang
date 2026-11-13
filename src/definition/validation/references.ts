@@ -190,7 +190,7 @@ function checkValue(context: Context, value: Value, path: Path): void {
 }
 
 /** A problem with part of a value: where in the value, by child index, and what. */
-export interface ValueProblem {
+interface ValueProblem {
   readonly path: readonly number[];
   readonly message: string;
 }

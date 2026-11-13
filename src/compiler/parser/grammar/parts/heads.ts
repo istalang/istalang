@@ -35,7 +35,7 @@ import { parserDiagnostics } from '../../diagnostics.ts';
 import type { Parser } from '../../parser.ts';
 
 /** A head ahead of the cursor, looked over without reading it. */
-export interface HeadAhead {
+interface HeadAhead {
   readonly modifiers: readonly ModifierWord[];
   /** Whether a mark's name stands among them (`withMark`). */
   readonly named: boolean;

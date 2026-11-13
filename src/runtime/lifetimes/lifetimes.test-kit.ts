@@ -48,7 +48,7 @@ export const testTypes: readonly TypeDefinition[] = [
 ];
 
 /** A heap of `size` objects, and the frames holding some of them. */
-export interface TestHeap {
+interface TestHeap {
   readonly heap: Heap;
   readonly frames: readonly HoldingFrame[];
 }

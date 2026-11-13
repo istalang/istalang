@@ -52,7 +52,7 @@ import { comprehensionOf } from './structs/struct-comprehensions.ts';
 import { variantCallAccepts } from './structs/variants.ts';
 
 /** How an expression is postponed: what it can be a value of, what is expected of it so far, and how it is checked as ever. */
-export interface Postponing {
+interface Postponing {
   readonly admits: Admits;
   readonly expected: Type | undefined;
   readonly check: (expected: Type | undefined) => Type;

@@ -15,7 +15,7 @@ import type { Clock } from '../../clock.ts';
 import type { InstanceGroup } from '../../host/instance-group.ts';
 
 /** What driving a group asks of whoever drives it. */
-export interface Driving {
+interface Driving {
   /** Where each driven instance stands, as every advance is recorded. */
   readonly group: InstanceGroup;
   /** The clock timers fall due on, waited on for the earliest one. */
@@ -31,7 +31,7 @@ export interface Driving {
 }
 
 /** Why driving stopped: the group settled, the host ended it, or its next timer is too late. */
-export type Driven = 'settled' | 'ended' | 'late';
+type Driven = 'settled' | 'ended' | 'late';
 
 /** Drives `driving.group` until nothing can wake it, the host ends it, or it waits too long. */
 export async function drive(driving: Driving): Promise<Driven> {

@@ -69,7 +69,7 @@ import {
 import { namesDenoting } from './references.ts';
 
 /** What renaming a name renames, or why it can't be renamed. */
-export type Renaming =
+type Renaming =
   | { readonly kind: 'renamable'; readonly name: WrittenName; readonly target: DeclaredAt }
   | Refusal;
 
@@ -80,7 +80,7 @@ export interface Refusal {
 }
 
 /** What a rename changes: names of modules, each spelled anew. */
-export interface Renamed {
+interface Renamed {
   readonly kind: 'renamed';
   readonly edits: readonly NameEdit[];
 }

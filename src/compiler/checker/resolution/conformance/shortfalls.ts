@@ -391,7 +391,7 @@ function structEntailed(
 /**
  * Whether `argument` meets the struct constraint `model`, reporting at its site when it doesn't.
  */
-export type StructJudge = (argument: Type, model: StructConstraintModel) => boolean;
+type StructJudge = (argument: Type, model: StructConstraintModel) => boolean;
 
 /**
  * Whether `argument`, given for `parameter` with the others in `substitution`, meets the struct

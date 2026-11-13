@@ -71,7 +71,7 @@ type PartRef =
   | { readonly kind: 'term'; readonly term: number };
 
 /** A term graph as refinement reads it (the banner). */
-export interface Refinable {
+interface Refinable {
   /** How many terms there are: ranks are indexed by term. */
   readonly size: number;
   /** The live terms that aren't unions. */

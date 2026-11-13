@@ -15,7 +15,7 @@ import type { Call } from '../calls.ts';
 import type { ArrayLiteral, Expression, TemplateLiteral } from '../index.ts';
 
 /** A template with a tag. */
-export type TaggedTemplate = TemplateLiteral & { readonly tag: Expression };
+type TaggedTemplate = TemplateLiteral & { readonly tag: Expression };
 
 export function isTagged(template: TemplateLiteral): template is TaggedTemplate {
   return template.tag !== undefined;

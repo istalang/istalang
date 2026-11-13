@@ -40,7 +40,7 @@ import { construct } from '../values/struct-values.ts';
 import { buildVariant } from '../values/variant-values.ts';
 
 /** What a call names: an entry already numbered, or a closed call to number. */
-export type Callee = FunctionId | ClosedCall;
+type Callee = FunctionId | ClosedCall;
 
 export class SynthesizedCode implements CodeContext {
   readonly checker: Checker;

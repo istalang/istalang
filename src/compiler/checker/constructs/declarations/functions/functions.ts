@@ -24,7 +24,7 @@ import { errorType, unitType } from '../../../types/type/primitives.ts';
 import { declaredResultOf } from './signatures.ts';
 
 /** What ProgramChecker gives the unit: how to check a body against its declared result. */
-export interface FunctionSeams {
+interface FunctionSeams {
   readonly checker: CheckerContext;
   /**
    * Checks the body of `declaration`, a function with one, in `module`, where it must produce

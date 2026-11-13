@@ -37,7 +37,7 @@ export interface DefaultsBody extends DefaultValues {
 }
 
 /** What a body checking defaults does: check a value, declare a parameter, finish. */
-export interface DefaultsChecking {
+interface DefaultsChecking {
   readonly expect: (value: Expression, declared: Type | undefined) => Type;
   readonly declare: (parameter: SignatureParameter) => void;
   readonly finished: (roots: readonly FlowRoot[]) => CheckedBody;

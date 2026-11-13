@@ -33,7 +33,7 @@ const severities = {
 } as const satisfies Record<Severity, DiagnosticSeverity>;
 
 /** What publishes the diagnostics of `workspace`'s open documents. */
-export interface DiagnosticsPublisher {
+interface DiagnosticsPublisher {
   /** Publishes every open document's diagnostics once changes pause. */
   readonly schedule: () => void;
   /** Clears what the client shows for a document closed now. */

@@ -44,7 +44,7 @@ const readers = {
 // biome-ignore-end lint/style/useNamingConvention: the keys are the primitive types' names (§2).
 
 /** A primitive type `parse` reads. */
-export type ParsedPrimitive = keyof typeof readers;
+type ParsedPrimitive = keyof typeof readers;
 
 /** What `source` reads back as, a value of `type`; undefined for text that isn't one. */
 export function readPrimitive(type: ParsedPrimitive, source: string): Value | undefined {

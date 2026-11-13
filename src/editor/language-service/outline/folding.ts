@@ -32,7 +32,7 @@ import type { Span } from '../../../foundation/text/span.ts';
 import { closingBracketsOf, codeTokensOf } from '../reading/tokens.ts';
 
 /** Lines `start` through `end`, 0-based. */
-export interface LineRange {
+interface LineRange {
   readonly start: number;
   readonly end: number;
 }

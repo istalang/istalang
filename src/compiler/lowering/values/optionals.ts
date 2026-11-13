@@ -43,7 +43,7 @@ import { jumpIfHeld, laidOutAs, type TypedValue } from './holdings.ts';
 import { intoUnion, oneValueIn, outOfUnion } from './unions.ts';
 
 /** A value of the optional type `type` in `register`, read as `to` where it isn't `none`. */
-export interface OptionalRead {
+interface OptionalRead {
   readonly register: Register;
   readonly type: Type;
   readonly to: Type;

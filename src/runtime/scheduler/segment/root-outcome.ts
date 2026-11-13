@@ -39,7 +39,7 @@ import { type Instance, topFrame } from '../instance/index.ts';
 import { type Caller, type CallTarget, startCall } from './calls.ts';
 import type { RunStack } from './run-stack.ts';
 
-export interface RootOutcomeSeams {
+interface RootOutcomeSeams {
   readonly instance: Instance;
   /** Who the segment's calls are made by, which a call to another instance's mock carries. */
   readonly caller: Caller;
@@ -57,7 +57,7 @@ export interface Outcome {
  * What the top frame does as it returns: returns a value, the root's outcome when the root returns;
  * ends the root, which awaits the future it gives; or lets the encoder run on top of it first.
  */
-export type Returning =
+type Returning =
   | { readonly kind: 'return'; readonly value: Value }
   | { readonly kind: 'await' }
   | { readonly kind: 'encode' };

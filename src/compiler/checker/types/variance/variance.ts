@@ -47,7 +47,7 @@ import { joined, type Usage, type Variance } from './lattice.ts';
 import { UsageWalk } from './usage-walk.ts';
 
 /** What deriving a declaration's variance reads of the program. */
-export interface VarianceReading {
+interface VarianceReading {
   /**
    * What a struct's, an enum's or an alias's values hold, in terms of its own type parameters: a
    * struct's fields, every variant's fields, the type an alias names; a trait's requirements, each

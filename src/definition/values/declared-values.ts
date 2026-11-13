@@ -192,7 +192,7 @@ function variantFieldOf(
 }
 
 /** What an `Error` says (§3.12). */
-export interface ErrorFields {
+interface ErrorFields {
   readonly message: string;
   readonly code: string;
   readonly trace: string;

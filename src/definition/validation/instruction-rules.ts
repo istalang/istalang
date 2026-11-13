@@ -34,7 +34,7 @@ import type { Tables } from '../tables/index.ts';
 import { hasRole } from '../tables/types.ts';
 
 /** A struct or enum value being built: by an instruction or as a constant. */
-export interface Construction {
+interface Construction {
   readonly shape: 'struct' | 'variant';
   readonly type: number;
   readonly variant: number;

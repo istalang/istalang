@@ -59,7 +59,7 @@ export function recordingStore(inner: InstanceStore = memoryStore()): RecordingS
 /** The seed of every instance a test runtime starts, so its random values repeat (§3.8). */
 export const testSeed = new Uint8Array(seedBytes);
 
-export interface TestRuntimeOptions {
+interface TestRuntimeOptions {
   readonly natives?: Natives;
   readonly store?: RecordingStore;
   readonly clock?: ManualClock;
@@ -153,9 +153,7 @@ export function testRuntime({
 }
 
 /** How an instance nothing will wake again ended: finished, panicked, or `stuck` waiting. */
-export type Settled =
-  | Exclude<InstanceState, { kind: 'waiting' | 'ready' }>
-  | { readonly kind: 'stuck' };
+type Settled = Exclude<InstanceState, { kind: 'waiting' | 'ready' }> | { readonly kind: 'stuck' };
 
 /**
  * Moves time to each timer the instance, or one it spawned, waits for and wakes them, until none
@@ -216,7 +214,7 @@ function settledOf(state: InstanceState): Settled {
 }
 
 /** How an instance ended, an outcome its start wrapper encoded (§9) read as its JSON text. */
-export type Ended =
+type Ended =
   | Exclude<Settled, { kind: 'stuck' | 'finished' }>
   | { readonly kind: 'finished'; readonly outcome: Value | string };
 

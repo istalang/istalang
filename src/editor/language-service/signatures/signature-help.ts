@@ -25,7 +25,7 @@ import { checkedModule } from '../reading/checked-module.ts';
 import { type CallAt, callAt, calleesOf, writtenParameter } from './call-at.ts';
 import { functionTypeSignature, type Signature, signatureOf } from './signatures.ts';
 
-export interface SignatureHelp {
+interface SignatureHelp {
   readonly signatures: readonly CallSignature[];
   /**
    * The signature of the function the call calls, among `signatures`; undefined where the passes

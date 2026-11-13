@@ -75,7 +75,7 @@ export function patternTypeOf(checker: Aliases, entity: Entity): PatternType {
 }
 
 /** What a pattern naming a type tests an `any` value for: a type it may hold, or one it can't. */
-export type DowncastTarget = PatternType | { readonly kind: 'unheld'; readonly type: Type };
+type DowncastTarget = PatternType | { readonly kind: 'unheld'; readonly type: Type };
 
 /**
  * What a pattern naming `entity` tests a value of the `any` type `from` for (§3.10): a type that
@@ -310,7 +310,7 @@ function takenWhole(members: readonly Type[], type: Type, rules: TypeRules): boo
  * members of that many, an array pattern the `Array` members, a `struct{…}` pattern the shape
  * members having each of its `fields`.
  */
-export type PatternKind =
+type PatternKind =
   | { readonly kind: 'tuple'; readonly count: number }
   | { readonly kind: 'array' }
   | { readonly kind: 'shape'; readonly fields: readonly string[] };

@@ -82,7 +82,7 @@ export function sendFits(
 }
 
 /** What `functionType` builds a function type of; its pack may be any type bound to one. */
-export interface FunctionParts extends WrittenThrough {
+interface FunctionParts extends WrittenThrough {
   readonly send: Type;
   readonly mark: Type;
   readonly parameters: readonly ParameterSlot[];

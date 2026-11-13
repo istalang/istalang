@@ -15,7 +15,7 @@ import type { SyntaxNode } from '../../../../syntax/tree/index.ts';
 import type { BlockId, Exit, Operation, ValueId } from '../flow-ir.ts';
 
 /** What releasing needs of the flow being built: adding operations and ending blocks. */
-export interface Releasing {
+interface Releasing {
   readonly emit: (operation: Operation) => void;
   readonly end: (exit: Exit) => void;
   /** Puts `operation` first in `block`, which nothing has been built in yet. */

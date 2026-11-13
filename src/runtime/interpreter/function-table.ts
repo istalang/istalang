@@ -15,7 +15,7 @@ import type { Native, Natives } from '../natives.ts';
 import { Refusal } from '../refusal.ts';
 
 /** What a call runs: a code entry, or a native. */
-export type Callable =
+type Callable =
   | { readonly kind: 'code'; readonly function: FunctionId; readonly code: CodeFunction }
   | { readonly kind: 'native'; readonly native: Native };
 

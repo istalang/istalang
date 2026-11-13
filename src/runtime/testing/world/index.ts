@@ -74,7 +74,7 @@ export type Ended = { readonly kind: 'finished'; readonly outcome: Value } | Fai
  * What a world is given: the program, the runtime's natives, its clock, the seed of its test's
  * random source and how long it may run.
  */
-export interface WorldSeams {
+interface WorldSeams {
   readonly definition: Definition;
   readonly hash: string;
   readonly natives: Natives;

@@ -17,7 +17,7 @@ import {
 } from '../../../definition/tables/functions.ts';
 
 /** A call's shape: the function it calls, and how many captures and arguments it passes. */
-export interface CallShape {
+interface CallShape {
   readonly function: FunctionId;
   readonly captures: number;
   readonly arguments: number;
