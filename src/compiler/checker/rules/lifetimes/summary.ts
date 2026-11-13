@@ -359,18 +359,19 @@ function holdsDirectly(
 
 /**
  * The summary of a fields function with no body of its own (§3.1, §3.11): the value it gives holds
- * every field it is given, directly.
+ * every field it is given, directly, or, a shared struct's, behind the new handle it is (§3.18).
  */
 export function constructorSummary(
-  checker: Pick<CheckerContext, 'parametersOf'>,
+  checker: Pick<CheckerContext, 'parametersOf' | 'resultOf'>,
   fields: FunctionDeclaration,
 ): Summary {
+  const relation = isHandleType(checker.resultOf(fields)) ? 'reaches' : 'aliases';
   return summaryOf({
     ...emptySummary,
     result: {
       relations: checker.parametersOf(fields).map((_, index) => ({
         input: { kind: 'parameter', index },
-        relation: 'aliases',
+        relation,
       })),
       reachesItself: false,
     },

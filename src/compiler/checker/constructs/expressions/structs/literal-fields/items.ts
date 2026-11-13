@@ -24,7 +24,7 @@ import { lastName } from '../../../../../syntax/tree/node.ts';
 import type { BodyContext } from '../../../../contexts/body-context.ts';
 import { checkerDiagnostics } from '../../../../diagnostics/index.ts';
 import { callWithTypes } from '../../../../resolution/applying/silent-choice.ts';
-import type { FunctionCall } from '../../../../surface/resolved-call.ts';
+import type { Binding, FunctionCall } from '../../../../surface/resolved-call.ts';
 import { itemField } from '../../../../surface/struct-items.ts';
 import type { Inference } from '../../../../types/inference/infer.ts';
 import { parametersIn } from '../../../../types/parts/type-parts.ts';
@@ -250,9 +250,10 @@ export function reportMissing(
 }
 
 /**
- * By field position, for each field the literal leaves out, the call of `shape`'s defaults with the
- * literal's `typeArguments`, whose default for that field gives it. Its parameters are the fields
- * in order, so they are numbered as the shape's fields are (syntax/declarations/field-defaults.ts).
+ * By field position, for each field the literal leaves out, the call of `shape`'s fields function
+ * with the literal's `typeArguments` that builds the value: given the fields the literal gives, in
+ * order, it leaves the others to their defaults. Its parameters are the fields in order, so they
+ * are numbered as the shape's fields are (syntax/declarations/field-defaults.ts).
  */
 export function defaultCalls(
   context: BodyContext,
@@ -266,7 +267,12 @@ export function defaultCalls(
     return [];
   }
   const candidates = [{ declaration: defaults }];
-  const call = callWithTypes(context.checker, candidates, typeArguments);
+  const chosen = callWithTypes(context.checker, candidates, typeArguments);
+  const passed = fields.flatMap((_, index) => (isLeftOut(index) ? [] : [index]));
+  const binding: Binding = fields.map((_, index) =>
+    isLeftOut(index) ? { kind: 'default' } : { kind: 'argument', index: passed.indexOf(index) },
+  );
+  const call = chosen && { ...chosen, binding };
   return fields.map((_, index) => (isLeftOut(index) ? call : undefined));
 }
 

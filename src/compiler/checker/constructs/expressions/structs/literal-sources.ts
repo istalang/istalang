@@ -46,15 +46,12 @@ export class StructLiterals implements LiteralSources {
     return this.#fields.get(literal, pass);
   }
 
-  /** The calls of the defaults the literals leave their fields to, each at its literal. */
+  /** The calls of the fields functions the literals leave fields to the defaults of, at each. */
   made(): readonly MadeCall[] {
-    return this.#sources
-      .entries()
-      .flatMap(([site, sources]) =>
-        sources.flatMap((source) =>
-          source.kind === 'default' ? [{ site, call: source.call }] : [],
-        ),
-      );
+    return this.#sources.entries().flatMap(([site, sources]) => {
+      const defaulted = sources.find((source) => source.kind === 'default');
+      return defaulted === undefined ? [] : [{ site, call: defaulted.call }];
+    });
   }
 }
 
