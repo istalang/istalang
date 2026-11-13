@@ -18,6 +18,7 @@ tags: [reuse, structures, memo, kind-table, invariants]
 - cache what is derived from an owner that changes in place (an inference system), once per revision the owner names, every member of a cycle answering a stand-in whichever was asked first (as `Entries`) → `RevisionMemo` (`src/foundation/structures/revision-memo.ts`)
 - compute results once per key, each recording what it read and the notes it made, with cycles answered by a stand-in whichever member was asked first, and taken over by a later revision whose reads answer alike → `Entries`, `EntryTable` (`table`), `input`, `release`, `RevisionOptions` (`src/foundation/structures/entries/index.ts`)
 - compare results item by item, entry by entry, member by member or property by property → `sameItems`, `sameEntries`, `sameMembers`, `sameProperties`, `Equality` (`src/foundation/structures/equality.ts`)
+- leave out the items of a list equal to one before them, by a given equality, bucketed by a key equal items share when the list is long → `distinctItems` (`src/foundation/structures/equality.ts`)
 - push an active item onto a work stack for the duration of a callback and pop in `finally` → `withPushed` (`src/foundation/structures/stack.ts`)
 - push an iterable onto an explicit stack without overflowing the JS call stack → `pushAll` (`src/foundation/structures/stack.ts`)
 - keep a group of items per key, adding them one at a time → `addToGroup` (`src/foundation/structures/groups.ts`); group a whole list by a key every item has → `Map.groupBy`

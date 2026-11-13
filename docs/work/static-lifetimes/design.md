@@ -283,8 +283,17 @@ What C3 settled about requirements and defaults:
     shape, as a function's parameter the other way round, as its result made a future, or into a
     union holding an `any`, counts too. A union goes in member by member. A value of another `any`
     puts in no witness: what went into that one was checked as it went in.
-  - A value of a type not known yet goes in only in a generic body: the witnesses the
-    instantiating call gives are checked by types, as above.
+  - A witness's summary is checked as its instantiation sees it (`instantiated`): its
+    requirements' holder and value types, its parts of inputs' types and its always cycles, alike.
+    A cycle through the handle a write lands in is decided by that handle's type, not by the input
+    reaching it.
+  - In a generic body, a value whose witnesses the body names (`Box<T>`'s, generic over `T`) is
+    checked there, a cycle its type parameters decide going to the function's always. One whose
+    witnesses only an instantiation names (a type parameter's, `S["f"]`'s, `T.Data`'s) goes into
+    the function's summary (`conversions`): each call instantiating it checks those witnesses, or
+    passes them on to its own callers. A closure's go to the function making it.
+  - A destructuring assignment converts each part it takes, and a write into a field a key naming
+    several gives converts into any of them: each checks what it puts into an `any`.
   - The witnesses a function puts into an `any` count among its callees, so one calling back into
     it is analysed in one group with it.
   - A call on a union's trait, or on a computed type an instantiation made known, runs each
