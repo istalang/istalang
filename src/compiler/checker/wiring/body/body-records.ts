@@ -6,8 +6,7 @@
  */
 
 import type { VariantEntity } from '../../../binder/entities.ts';
-import type { Expression, FieldHeader, IndentedValue } from '../../../syntax/expressions/index.ts';
-import type { BuiltLiteral } from '../../../syntax/expressions/literals/indented-values.ts';
+import type { Expression, FieldHeader } from '../../../syntax/expressions/index.ts';
 import type { StringLiteral } from '../../../syntax/expressions/literals/literals.ts';
 import type { Identifier } from '../../../syntax/tree/node.ts';
 import type { FieldPassType, Pass, Passes } from '../../contexts/passes.ts';
@@ -27,7 +26,6 @@ export function bodyRecords(passes: Passes) {
     expected: passes.table<ValueSite, Type>(),
     givenFields: passes.table<FieldGiver, FieldMember>(),
     keyOwners: passes.table<StringLiteral, Type>(),
-    builtLiterals: passes.table<IndentedValue, BuiltLiteral>(),
     chosenVariants: passes.table<Identifier, VariantEntity>(),
     fits: passes.table<ValueSite, Fit>(),
     fieldPasses: passes.table<FieldHeader, readonly CheckedPass[]>(),

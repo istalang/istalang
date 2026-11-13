@@ -2,10 +2,10 @@
  * Expressions a constraint scope checks only once it knows what is expected of them
  * (docs/work/variance-inference/i2-scope.md §3, wiring/body/constraint-scope.ts): a lambda whose
  * result or a parameter isn't written, a function or a variant named as a value, a bare variant
- * called, an indented value naming no type, `[]` or `[:]`, which build what they go into, and a
- * `struct{…}` with a comprehension, whose fields may be known only once what it builds is (§3.1). Checked in an open scope with nothing settled
- * expected of it, each is a placeholder of the scope, which refuses a bound it can't be a value of
- * (`admits`), so a candidate a call probes that gives it one fails.
+ * called, `[]` or `[:]`, which build what they go into, and a `struct{…}` with a comprehension,
+ * whose fields may be known only once what it builds is (§3.1). Checked in an open scope with
+ * nothing settled expected of it, each is a placeholder of the scope, which refuses a bound it
+ * can't be a value of (`admits`), so a candidate a call probes that gives it one fails.
  *
  * - What each can be a value of is read from it before checking: a lambda's arity and written
  *   parameters, the enums having a variant of a bare name, a function named's overloads. A
@@ -23,7 +23,6 @@
  */
 
 import type { Expression, Lambda } from '../../../syntax/expressions/index.ts';
-import { literalOf } from '../../../syntax/expressions/literals/indented-values.ts';
 import type { BodyContext } from '../../contexts/body-context.ts';
 import { bodySite } from '../../contexts/use-site.ts';
 import {
@@ -84,8 +83,7 @@ export function postponed(
         return check(known);
     }
   };
-  const standsAlone = node.kind === 'IndentedValue';
-  context.scopes.postpone({ node, inference, type, admits, judge, standsAlone });
+  context.scopes.postpone({ node, inference, type, admits, judge });
   const inputs = node.kind === 'Lambda' ? writtenInputs(context, node) : undefined;
   if (inputs !== undefined) {
     inference.match(type, inputs);
@@ -192,8 +190,6 @@ function ownAdmits(context: BodyContext, node: Expression): Admits | undefined {
       return namedFunctionsAccepted(context, node);
     case 'Call':
       return variantCallAccepts(context, node);
-    case 'IndentedValue':
-      return ownAdmits(context, literalOf(node));
     case 'StructLiteral':
       return node.type === undefined && comprehensionOf(node) !== undefined
         ? (expected) => builtFrom(expected) !== undefined

@@ -197,10 +197,6 @@ export const expressionFlows: Handlers<FlowBuilder, CoreExpression, [], ValueId>
   Parenthesized: (builder, node) => builder.expression(node.expression),
   StructLiteral: structLiteral,
   NewStructLiteral: structLiteral,
-  IndentedValue: (builder, node) => {
-    const built = builder.body.builtLiteralOf(node);
-    return built === undefined ? unknown(builder, node) : builder.expression(built);
-  },
   Lambda: closureOf,
   Call: callFlow,
   TypeApplication: (builder, node) => {

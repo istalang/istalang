@@ -150,7 +150,7 @@ export function offerLiteralFields(cursor: Cursor, place: LiteralFieldPlace): re
   const { literal, item, opens } = place;
   const { checker, module } = cursor;
   const body = checker.lookup.bodyHolding(module, literal);
-  const built = literal.kind === 'IndentedValue' ? body?.builtLiteralOf(literal) : literal;
+  const built = literal.kind === 'IndentedValue' ? body?.coreOf(literal) : literal;
   const items = literal.kind === 'IndentedValue' ? literal.entries : literal.items;
   const others = items.flatMap((each) =>
     each !== item && isFieldItem(each) ? [itemName(each)] : [],

@@ -6,7 +6,6 @@
 
 import type { Register } from '../../../../definition/operands.ts';
 import type { Handlers } from '../../../../foundation/structures/kind-table.ts';
-import { unreachable } from '../../../../foundation/structures/unreachable.ts';
 import type { CoreExpression } from '../../../checker/surface/checked-body.ts';
 import type { MemberAccess } from '../../../syntax/expressions/index.ts';
 import type { FunctionContext } from '../../context.ts';
@@ -43,11 +42,6 @@ export const expressionHandlers: Handlers<FunctionContext, CoreExpression, [], R
   TypeApplication: lowerApplied,
   StructLiteral: lowerFieldsLiteral,
   NewStructLiteral: lowerFieldsLiteral,
-  IndentedValue: (context, node) =>
-    context.expression(
-      context.body.builtLiteralOf(node) ??
-        unreachable('An indented value is lowered once checked.'),
-    ),
   MemberAccess: lowerMemberAccess,
   TupleElement: lowerTupleElement,
   If: lowerIf,

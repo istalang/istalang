@@ -233,14 +233,6 @@ const bodyFacts: { readonly [Name in FactName]: FactEntry<Name> } = {
     instantiated: (keyOwnerOf, by) => readThrough(keyOwnerOf, by.concrete),
     joined: firstFound,
   },
-  builtLiteralOf: {
-    at:
-      ({ records }, pass) =>
-      (value) =>
-        records.builtLiterals.get(value, pass),
-    instantiated: asChecked,
-    joined: firstFound,
-  },
   coreOf: {
     at:
       ({ units }, pass) =>

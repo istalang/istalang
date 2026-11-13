@@ -19,10 +19,8 @@ import type {
   Expression,
   FieldHeader,
   FieldsLiteral,
-  IndentedValue,
   MapLiteral,
 } from '../../syntax/expressions/index.ts';
-import type { BuiltLiteral } from '../../syntax/expressions/literals/indented-values.ts';
 import type { Pattern } from '../../syntax/patterns.ts';
 import type {
   Assignment,
@@ -156,7 +154,6 @@ export interface BodyContext extends CheckedModule {
    * Records the literal the indented value `value` was checked as
    * (constructs/expressions/literals/indented-values.ts).
    */
-  readonly recordBuilt: (value: IndentedValue, literal: BuiltLiteral) => void;
   /** Records the variant the bare name `name` chose (types/written/named-types.ts). */
   readonly recordVariant: (name: Identifier, variant: VariantEntity) => void;
   /** The variant the bare name `name` chose; undefined for one not checked yet or naming none. */

@@ -26,7 +26,6 @@ import { checkIf } from './control/control.ts';
 import { checkIs, checkMatch } from './control/match.ts';
 import { checkPropagate } from './control/propagate.ts';
 import { checkSelect } from './control/select.ts';
-import { checkIndentedValue } from './literals/indented-values.ts';
 import { checkDurationLiteral } from './literals/literals.ts';
 import { checkTuple, checkTupleElement } from './literals/tuples.ts';
 import { checkBinary, checkUnary } from './operators/operators.ts';
@@ -61,7 +60,7 @@ export const expressionHandlers: Handlers<BodyContext, Expression, [Type | undef
   Call: checkCall,
   StructLiteral: checkStructLiteral,
   NewStructLiteral: checkNamedLiteral,
-  IndentedValue: checkIndentedValue,
+  IndentedValue: (context, node, expected) => context.sugars.check(context, node, expected),
   MemberAccess: checkMemberAccess,
   TypeApplication: checkAppliedFunction,
   TupleElement: checkTupleElement,

@@ -16,13 +16,11 @@ import type {
   Expression,
   FieldHeader,
   FieldsLiteral,
-  IndentedValue,
   Lambda,
   MapLiteral,
   Spread,
   StructComprehension,
 } from '../../syntax/expressions/index.ts';
-import type { BuiltLiteral } from '../../syntax/expressions/literals/indented-values.ts';
 import type { StringLiteral } from '../../syntax/expressions/literals/literals.ts';
 import type { Pattern, PatternArgument } from '../../syntax/patterns.ts';
 import type {
@@ -63,6 +61,7 @@ import type {
 const sugarKinds = [
   'ChainedComparison',
   'DeferredCall',
+  'IndentedValue',
   'Range',
   'TemplateLiteral',
   'Unwrap',
@@ -296,8 +295,6 @@ export interface BodyFacts {
   readonly fieldGivenBy: (giver: FieldGiver) => FieldMember | undefined;
   /** The struct whose key a String literal of this body was checked as (§3.1); else undefined. */
   readonly keyOwnerOf: (literal: StringLiteral) => Type | undefined;
-  /** The literal an indented value was checked as (§2); undefined for one never checked as one. */
-  readonly builtLiteralOf: (value: IndentedValue) => BuiltLiteral | undefined;
   /**
    * The core tree a sugar was checked as, and the core call a written call it makes was rebuilt as
    * (checker/desugaring/); undefined for any other node, and for a sugar refused.

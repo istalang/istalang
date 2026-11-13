@@ -26,6 +26,7 @@ import type { Type } from '../types/type/index.ts';
 import { errorType } from '../types/type/primitives.ts';
 import { chainedComparisons } from './chained-comparisons.ts';
 import { deferredCalls } from './deferred-calls.ts';
+import { indentedValues } from './indented-values.ts';
 import { ranges } from './ranges.ts';
 import { templates } from './templates.ts';
 import { unwraps } from './unwrap.ts';
@@ -50,6 +51,7 @@ const desugars: { readonly [Kind in SugarKind]: Desugar<Extract<Sugar, { readonl
   {
     ChainedComparison: chainedComparisons,
     DeferredCall: deferredCalls,
+    IndentedValue: indentedValues,
     Range: ranges,
     TemplateLiteral: templates,
     Unwrap: unwraps,
