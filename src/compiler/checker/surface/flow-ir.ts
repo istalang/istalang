@@ -190,14 +190,20 @@ export type Operation = { readonly site: NodeOf<string> } & (
  * - `is`: whether a value holds what `test` asks, going to `[holds, fails]`.
  * - `fieldPass`: the top of the field loop `header` heads (§4), going past the loop, then to each
  *   pass `passesOf(header)` gives, in its order; each pass runs once per field it visits.
- * - `select`: which of a `select`'s cases goes on (§8), going to each case's, then to its `else`.
+ * - `select`: which of a `select`'s cases goes on (§8), going to each case's, then to its `else`;
+ *   each case `holds` the temporaries its awaitable computed, which it releases where it loses,
+ *   and the scope around the `select` releases where it doesn't.
  * - `unknown`: a test checking found a mistake in, which may go either way.
  */
 export type BranchTest =
   | { readonly kind: 'condition' | 'present'; readonly value: ValueId }
   | { readonly kind: 'is'; readonly value: ValueId; readonly test: TypeTest }
   | { readonly kind: 'fieldPass'; readonly header: FieldHeader }
-  | { readonly kind: 'select'; readonly node: Select }
+  | {
+      readonly kind: 'select';
+      readonly node: Select;
+      readonly holds: readonly (readonly ValueId[])[];
+    }
   | { readonly kind: 'unknown' };
 
 /**

@@ -12,9 +12,10 @@
  * - A comparison its operands' types decide is that constant, its operands still run; any other is
  *   the built-in `==`, or what the `compare` or `includes` checking made gives, related or negated.
  * - `await` hands what it waits on to its `onAwait`, suspends, and gives what it settled with. A
- *   `select` evaluates every case's awaitable and hands each to its `onAwait`; an awaiting one
- *   suspends on them all, one that doesn't await never suspends (§8). Then one case's body runs,
- *   what its own future gave bound, or the `else`.
+ *   `select` evaluates every case's awaitable, each holding the temporaries it computed, which a
+ *   case losing releases and the scope around the `select` releases otherwise, and hands each to
+ *   its `onAwait`; an awaiting one suspends on them all, one that doesn't await never suspends
+ *   (§8). Then one case's body runs, what its own future gave bound, or the `else`.
  *
  * A construct giving a value gives it through a temporary each path copies its value into.
  */
@@ -332,7 +333,14 @@ function givenBy(builder: FlowBuilder, site: Await | SelectCase, future: ValueId
 
 export function selectFlow(builder: FlowBuilder, node: Select): ValueId {
   const cases = selectCasesOf(node);
-  const futures = cases.map((each) => builder.expression(each.future));
+  const evaluated = cases.map((each) =>
+    builder.temporariesIn(() => builder.expression(each.future)),
+  );
+  const futures = evaluated.map(({ result }) => result);
+  const holds = evaluated.map(({ temporaries }) => temporaries);
+  for (const held of holds.flat()) {
+    builder.scopes.declare(held);
+  }
   for (const [index, each] of cases.entries()) {
     awaitedAt(builder, each, futures[index] as ValueId);
   }
@@ -342,7 +350,7 @@ export function selectFlow(builder: FlowBuilder, node: Select): ValueId {
   const given = { result: builder.temporaryOf(node), end: builder.newBlock() };
   const otherwise = node.elseClause?.body;
   const count = cases.length + (otherwise === undefined ? 0 : 1);
-  const starts = builder.branch({ kind: 'select', node }, count);
+  const starts = builder.branch({ kind: 'select', node, holds }, count);
   for (const [index, each] of cases.entries()) {
     builder.resumeIn(starts[index] as BlockId);
     builder.scopes.inScope(each, () => {

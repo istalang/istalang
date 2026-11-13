@@ -101,6 +101,29 @@ describe("a body's flow", () => {
     expect(releasesOf(subjectFlow('const t = "a"\ndrop t'), 't')).toEqual(['drop']);
   });
 
+  it("holds each `select` case's temporaries in the case, which the scope around releases", () => {
+    const flow = subjectFlow(
+      [
+        'if c:',
+        '  const s = Slot.create<Int>()',
+        '  select:',
+        '    case s.read() as v:',
+        '      v',
+        '    else:',
+        '      0',
+      ].join('\n'),
+    );
+    const [test] = flow.blocks.flatMap(({ exit }) =>
+      exit.kind === 'branch' && exit.test.kind === 'select' ? [exit.test] : [],
+    );
+    const [held] = test?.holds ?? [];
+    expect(held?.length).toBeGreaterThan(0);
+    const released = operationsOf(flow, 'release').filter(({ values }) =>
+      held?.every((value) => values.includes(value)),
+    );
+    expect(released).toHaveLength(1);
+  });
+
   it("releases each of a statement's temporaries once, at its end", () => {
     const flow = subjectFlow('const t = (1, 2)');
     const released = operationsOf(flow, 'release').flatMap(({ values }) => values);
