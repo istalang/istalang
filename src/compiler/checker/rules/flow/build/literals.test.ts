@@ -34,4 +34,20 @@ describe("a struct literal's flow", () => {
     const flow = subjectFlow('const p = new Pair{first: 1}', pair);
     expect(madeIn(flow)).toEqual(['call Pair of 1']);
   });
+
+  it("makes a comprehension's fields of what each pass gives, copied out before the pass ends", () => {
+    const lines = ['const p = Point{x: 1, y: 2}', 'const q = struct{for k, v in ...p: [k]: v}'];
+    const flow = subjectFlow(lines.join('\n'));
+    const operations = flow.blocks.flatMap((block) => block.operations);
+    const made = operations.findLast(
+      (operation) => operation.op === 'make' && operation.made.kind === 'struct',
+    );
+    const sources = (made?.op === 'make' ? made.parts : []).map((part) => {
+      const copy = operations.find(
+        (operation) => operation.op === 'copy' && operation.into === part,
+      );
+      return copy?.op === 'copy' ? flow.values[copy.from]?.kind : undefined;
+    });
+    expect(sources).toEqual(['temporary', 'temporary']);
+  });
 });

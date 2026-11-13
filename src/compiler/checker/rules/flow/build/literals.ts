@@ -99,10 +99,12 @@ function fieldOf(
   return readAlong(builder, whole, [step], source.from);
 }
 
-/** The fields a struct comprehension gives, one per pass. */
+/** The fields a struct comprehension gives, one per pass, each its own past the pass's end. */
 function structComprehension(builder: FlowBuilder, node: StructComprehension): readonly ValueId[] {
   const values: ValueId[] = [];
-  fieldLoop(builder, node, undefined, () => values.push(builder.expression(node.value)));
+  fieldLoop(builder, node, undefined, () =>
+    values.push(builder.owned(builder.expression(node.value), node)),
+  );
   return values;
 }
 

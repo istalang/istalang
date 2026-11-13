@@ -1,12 +1,14 @@
 /**
  * Places (§3.7, §3.9, §3.15): what `&` passes and an assignment writes, located once, in source
- * order, as lowering locates them (lowering/constructs/parts/places.ts).
+ * order.
  *
  * - A place is a variable or the value behind a handle (`*x`, `x->`), with fields, tuple elements
  *   and keyed fields read off it: a `Place` of parts.
  * - An indexed element is reached through its container's accessors instead: read with the
- *   container's `index`, the read part then the place's root; once done with, written back with
- *   `setIndex(&container, key, element)` (the implicit `write`), innermost first. An assignment
+ *   container's `index` where the place is entered, the read part then the place's root, which a
+ *   compound assignment reads and `&` passes. A change to it is made to it as it stands then: read
+ *   anew, changed, and written back with `setIndex(&container, key, element)` (the implicit
+ *   `write`), innermost first, so what changed another part meanwhile stays changed. An assignment
  *   ending at an element writes it with `setIndex` alone, never reading it.
  */
 
@@ -20,56 +22,112 @@ import { errorType } from '../../../types/type/primitives.ts';
 import type { FlowBuilder } from './flow-builder.ts';
 import { implicitCall, resolvedCall, valueAt } from './implicit-calls.ts';
 
-/** A place entered: where it is, and how what an accessor read is written back once done with. */
+/** Runs a change on a place as it stands now, given that place. */
+type Changing = (change: (now: Place) => void) => void;
+
+/**
+ * A place entered: where it is, an element in it read where entered; and how it is changed as
+ * its containers stand now, which a place with no element in it is, where it is.
+ */
 interface EnteredPlace {
   readonly place: Place;
-  readonly leave: () => void;
-}
-
-/** Enters the place `node` names, its root and keys computed now. */
-export function enterPlace(builder: FlowBuilder, node: Expression): EnteredPlace {
-  const { root, steps } = placePath(node);
-  let place = rootPlace(builder, root);
-  const leaves: (() => void)[] = [];
-  for (const step of steps) {
-    const { place: next, leave } = stepInto(builder, place, step);
-    place = next;
-    leaves.push(leave);
-  }
-  return { place: { ...place, site: node }, leave: () => leaveAll(leaves) };
+  readonly changing: Changing | undefined;
 }
 
 /**
- * `place` stepped into by `step`, the place it then names: a part of it, or an element its
- * container's `index` reads, written back once done with.
+ * Enters the place `node` names, its root and keys computed now, to pass it by `&`; what writes
+ * back what the call left in it once the call returns.
  */
-function stepInto(builder: FlowBuilder, place: Place, step: PlaceStep): EnteredPlace {
-  const stays = () => undefined;
+export function enterPlace(
+  builder: FlowBuilder,
+  node: Expression,
+): { readonly place: Place; readonly leave: () => void } {
+  const entered = enteredAt(builder, node);
+  const { place, changing } = entered;
+  const leave = () => {
+    if (changing !== undefined) {
+      const value = valueAt(builder, place);
+      changing((now) => builder.emit({ op: 'write', site: place.site, place: now, value }));
+    }
+  };
+  return { place, leave };
+}
+
+/** The place `node` names, entered. */
+function enteredAt(builder: FlowBuilder, node: Expression): EnteredPlace {
+  const { root, steps } = placePath(node);
+  let entered: EnteredPlace = { place: rootPlace(builder, root), changing: undefined };
+  for (const step of steps) {
+    entered = stepInto(builder, entered, step);
+  }
+  return { ...entered, place: { ...entered.place, site: node } };
+}
+
+/**
+ * `entered` stepped into by `step`, the place it then names: a part of it, or an element its
+ * container's `index` reads, changed by reading it anew and writing it back.
+ */
+function stepInto(builder: FlowBuilder, entered: EnteredPlace, step: PlaceStep): EnteredPlace {
+  const { place, changing } = entered;
+  if (step.kind !== 'Index' || builder.body.fieldReadOf(step) !== undefined) {
+    const part = partAt(builder, step);
+    return {
+      place: within(place, part, step),
+      changing: changing && ((change) => changing((now) => change(within(now, part, step)))),
+    };
+  }
+  const index = step;
+  const key = builder.expression(index.index);
+  const element = (container: Place) => ({
+    root: indexed(builder, index, container, key),
+    path: [],
+    site: index,
+    name: undefined,
+  });
+  return {
+    place: element(place),
+    changing: (change) =>
+      changed(entered, (now) => {
+        const fresh = element(now);
+        change(fresh);
+        writeElement(builder, index, { container: now, key, element: fresh.root });
+      }),
+  };
+}
+
+/** The part `step` reaches: a field, a tuple element or a keyed field, its key computed now. */
+function partAt(builder: FlowBuilder, step: PlaceStep): Part {
   if (step.kind === 'TupleElement') {
-    return { place: within(place, { kind: 'step', step: step.element }, step), leave: stays };
+    return { kind: 'step', step: step.element };
   }
   const read = builder.body.fieldReadOf(step);
   if (step.kind === 'MemberAccess') {
     // A member checking found no field for names the field all the same.
     const of = builder.body.typeOf(step.target) ?? errorType;
     const named: Part = { kind: 'step', step: { kind: 'field', of, name: step.member.text } };
-    const part = read === undefined ? named : partOfField(read);
-    return { place: within(place, part, step), leave: stays };
+    return read === undefined ? named : partOfField(read);
   }
-  const key = builder.expression(step.index);
-  if (read !== undefined) {
-    return { place: within(place, partOfField(read, key), step), leave: stays };
+  return read === undefined
+    ? unreachable('An element is no part of its container.')
+    : partOfField(read, builder.expression(step.index));
+}
+
+/** Runs `change` on `entered` as it stands now: through its containers, or where it is. */
+function changed({ place, changing }: EnteredPlace, change: (now: Place) => void): void {
+  if (changing === undefined) {
+    change(place);
+  } else {
+    changing(change);
   }
-  const element = builder.temporaryOf(step);
-  resolvedCall(builder, builder.body.resolved.get(step), {
-    site: step,
-    passed: [valueAt(builder, place), key],
-    into: element,
+}
+
+/** The element of `container` at `key`, read now with the `index` checking resolved at `node`. */
+function indexed(builder: FlowBuilder, node: Index, container: Place, key: ValueId): ValueId {
+  return resolvedCall(builder, builder.body.resolved.get(node), {
+    site: node,
+    passed: [valueAt(builder, container), key],
+    into: builder.temporaryOf(node),
   });
-  return {
-    place: { root: element, path: [], site: step, name: undefined },
-    leave: () => writeElement(builder, step, { container: place, key, element }),
-  };
 }
 
 /** The place an assignment writes, entered: what it holds now, and writing it, which leaves it. */
@@ -86,33 +144,26 @@ interface AssignedPlace {
 export function enterAssigned(builder: FlowBuilder, target: Expression): AssignedPlace {
   const last = placePath(target).steps.at(-1);
   if (last?.kind === 'Index' && builder.body.fieldReadOf(last) === undefined) {
-    const container = enterPlace(builder, last.target);
+    const container = enteredAt(builder, last.target);
     const key = builder.expression(last.index);
     return {
-      read: () =>
-        resolvedCall(builder, builder.body.resolved.get(last), {
-          site: last,
-          passed: [valueAt(builder, container.place), key],
-          into: builder.temporaryOf(last),
-        }),
-      write: (element) => {
-        writeElement(builder, last, { container: container.place, key, element });
-        container.leave();
-      },
+      read: () => indexed(builder, last, container.place, key),
+      write: (element) =>
+        changed(container, (now) => writeElement(builder, last, { container: now, key, element })),
     };
   }
-  const { place, leave } = enterPlace(builder, target);
+  const entered = enteredAt(builder, target);
+  const { place } = entered;
   return {
     read: () => valueAt(builder, place),
     write: (value) => {
       const root = builder.valueOf(place.root);
-      if (place.path.length === 0 && root.kind === 'variable') {
+      if (entered.changing === undefined && place.path.length === 0 && root.kind === 'variable') {
         const site = place.name ?? target;
         builder.emit({ op: 'copy', site, into: place.root, from: value, fit: undefined });
       } else {
-        builder.emit({ op: 'write', site: target, place, value });
+        changed(entered, (now) => builder.emit({ op: 'write', site: target, place: now, value }));
       }
-      leave();
     },
   };
 }

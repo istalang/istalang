@@ -1,9 +1,9 @@
 /**
- * What a flow releases where (§3.4, §7), as lowering releases it (lowering/constructs/statements/
- * scopes.ts, holds.ts): a scope's variables where it ends and on every path leaving it early, what
- * a `hold` keeps kept there first and released where the scope it names ends, however it ends,
- * `break` and `continue` going where the scope they name says; and a construct's temporaries where
- * it says, each once (`claim`): a statement's at its end, a header's on each path out of it.
+ * What a flow releases where (§3.4, §7): a scope's variables where it ends and on every path
+ * leaving it early, what a `hold` keeps kept there first and released where the scope it names
+ * ends, however it ends, `break` and `continue` going where the scope they name says; and a
+ * construct's temporaries where it says, each once (`claim`): a statement's at its end, a header's
+ * on each path out of it.
  *
  * - A scope is a block, a loop's pass, a case or a guarded body, whose header (a condition, a
  *   pattern) binds into it; the variables `hold`s keep until a labelled scope ends are a scope of
@@ -21,6 +21,8 @@ interface Releasing {
   readonly end: (exit: Exit) => void;
   /** Puts `operation` first in `block`, which nothing has been built in yet. */
   readonly prepend: (block: BlockId, operation: Operation) => void;
+  /** A new block going on to `to`, which nothing has been built in yet. */
+  readonly goingTo: (to: BlockId) => BlockId;
 }
 
 /** Where what a `hold` keeps lasts until: a labelled scope's end, or the function's (§7). */
@@ -29,6 +31,8 @@ type HeldUntil = LabelledScope | 'function';
 interface Scope {
   readonly node: SyntaxNode;
   readonly holder?: LabelledScope;
+  /** A holder's: the blocks exits leaving it go through, where what it holds is released. */
+  readonly leaving?: BlockId[];
   readonly variables: ValueId[];
   /** Its variables `hold`s keep longer, each kept where the scope ends, before it releases them. */
   readonly kept: { readonly value: ValueId; readonly until: HeldUntil }[];
@@ -105,32 +109,43 @@ export class Scopes {
     build: () => Result,
   ): Result {
     const depth = this.#scopes.length;
-    this.#scopes.push({ node: scope, holder: scope, variables: [], kept: [] });
+    const leaving: BlockId[] = [];
+    this.#scopes.push({ node: scope, holder: scope, leaving, variables: [], kept: [] });
     this.#exits.push({ scope, breakTo, continueTo, depth });
     const result = build();
     this.#exits.pop();
     const held = this.#scopes.pop() as Scope;
     if (held.variables.length > 0) {
-      this.#flow.prepend(breakTo, released(held.variables, scope));
+      for (const block of [breakTo, ...leaving]) {
+        this.#flow.prepend(block, released(held.variables, scope));
+      }
     }
     return result;
   }
 
   /**
    * An exit from `scope`: ends every scope inside it that it leaves, then goes past it, where what
-   * `hold`s keep until it ends is released, or to its next pass, which keeps them.
+   * `hold`s keep until it ends is released, or to its next pass, which keeps them. What a labelled
+   * scope inside it holds, which a `hold` built after the exit may add to, is released in a block
+   * the exit goes through, once that scope is built (`withExits`).
    */
   exit(scope: LabelledScope | undefined, kind: 'break' | 'continue', site: SyntaxNode): void {
     const target = this.#exits.findLast((each) => each.scope === scope);
-    if (target === undefined) {
+    const to = kind === 'break' ? target?.breakTo : target?.continueTo;
+    if (target === undefined || to === undefined) {
       this.#flow.end({ kind: 'stop' });
       return;
     }
-    for (const left of this.#scopes.slice(target.depth + 1).toReversed()) {
-      this.#end(left, site);
+    const left = this.#scopes.slice(target.depth + 1).toReversed();
+    for (const each of left.filter(({ leaving }) => leaving === undefined)) {
+      this.#end(each, site);
     }
-    const to = kind === 'break' ? target.breakTo : target.continueTo;
-    this.#flow.end(to === undefined ? { kind: 'stop' } : { kind: 'goto', to });
+    const holders = left.flatMap(({ leaving }) => (leaving === undefined ? [] : [leaving]));
+    const through = holders.length === 0 ? to : this.#flow.goingTo(to);
+    for (const leaving of holders) {
+      leaving.push(through);
+    }
+    this.#flow.end({ kind: 'goto', to: through });
   }
 
   /**

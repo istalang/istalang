@@ -131,7 +131,7 @@ const constructs: Constructs = {
   },
   block: (builder, node) => {
     const { result: value, temporaries } = builder.temporariesIn(() =>
-      builder.scopes.inScope(node, () => owned(builder, blockValue(builder, node), node)),
+      builder.scopes.inScope(node, () => builder.owned(blockValue(builder, node), node)),
     );
     const others = temporaries.filter((temporary) => temporary !== value);
     builder.scopes.release(builder.scopes.claim(others), node);
@@ -148,16 +148,6 @@ function blockValue(builder: FlowBuilder, node: Block): ValueId {
     builder.statement(statement);
   }
   return tail === undefined ? unitAt(builder, node) : builder.expression(tail);
-}
-
-/** `value`, a block's, its own: a variable's moved out of it, so the block's end can't end it. */
-function owned(builder: FlowBuilder, value: ValueId, block: Block): ValueId {
-  if (!builder.isRead(value)) {
-    return value;
-  }
-  const moved = builder.temporary(block, builder.valueOf(value).type);
-  builder.emit({ op: 'copy', site: block, into: moved, from: value, fit: undefined });
-  return moved;
 }
 
 /** Whether `node` never ends where it stands, leaving its temporaries to what it goes to. */

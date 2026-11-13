@@ -96,6 +96,11 @@ export class FlowBuilder {
     emit: (operation) => this.emit(operation),
     end: (exit) => this.end(exit),
     prepend: (block, operation) => this.#open(block).operations.unshift(operation),
+    goingTo: (to) => {
+      const block = this.newBlock();
+      this.#open(block).exit = { kind: 'goto', to };
+      return block;
+    },
   });
   readonly #values: FlowValue[] = [];
   readonly #blocks: OpenBlock[] = [];
@@ -281,9 +286,17 @@ export class FlowBuilder {
     return into;
   }
 
-  /** Whether `value` reads a variable at a name, a copy of its value as it stands. */
-  isRead(value: ValueId): boolean {
-    return this.#reads.has(value);
+  /**
+   * `value`, given past the end of the scope it is computed in, its own: a variable's moved out of
+   * it, so the scope's end can't end it.
+   */
+  owned(value: ValueId, site: NodeOf<string>): ValueId {
+    if (!this.#reads.has(value)) {
+      return value;
+    }
+    const moved = this.temporary(site, this.valueOf(value).type);
+    this.emit({ op: 'copy', site, into: moved, from: value, fit: undefined });
+    return moved;
   }
 
   /** What `entity` names: a variable the body declares, or a global, of `type` if one. */

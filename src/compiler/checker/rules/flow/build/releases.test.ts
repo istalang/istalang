@@ -90,6 +90,19 @@ describe("a body's flow", () => {
     expect(releasesOf(flow, 'h')).toEqual(['end']);
   });
 
+  it('releases what a `hold(name)` keeps where an exit built before the `hold` leaves its scope', () => {
+    const flow = subjectFlow(
+      [
+        'outer: for i in 0..3:',
+        '  inner: for j in 0..3:',
+        '    if c:',
+        '      break outer',
+        '    hold(inner) const h = "a"',
+      ].join('\n'),
+    );
+    expect(releasesOf(flow, 'h')).toEqual(['end', 'end']);
+  });
+
   it("keeps what a `hold(name)` keeps where its variable's block ends", () => {
     const flow = subjectFlow(['outer:', '  if c:', '    hold(outer) const h = "a"'].join('\n'));
     const kept = operationsOf(flow, 'keep');
