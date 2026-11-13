@@ -126,15 +126,14 @@ export function loadProject(
   paths: readonly string[],
   { files = diskFiles, std, previous, buffers = [] }: ProjectOptions = {},
 ): Project {
-  const places = { projectRoot: cwd, cwd };
   const roots = paths.map((path) => ({
     path,
-    module: locateFile(resolve(cwd, path), places, files),
+    module: locateFile(resolve(cwd, path), cwd, files),
   }));
   const program = buildProgram(
     {
       roots: [...roots.flatMap(({ module }) => module ?? []), ...buffers],
-      loaders: [fileLoader(places, files), stdlibLoader(std)],
+      loaders: [fileLoader(cwd, files), stdlibLoader(std)],
       roles: stdRoles(std),
     },
     previous,

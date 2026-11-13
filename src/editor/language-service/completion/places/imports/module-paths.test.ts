@@ -22,7 +22,7 @@ import {
 } from '../../../../../stdlib/stdlib-loader.ts';
 import { completionsAt } from '../../index.ts';
 
-const places = { projectRoot: '/p', cwd: '/p' };
+const root = '/p';
 const project = [
   'purchase/approve',
   'purchase/reject',
@@ -33,7 +33,7 @@ const project = [
 ];
 const fileOf = (name: string) => `/p/${name}.ista`;
 
-const loaders = [stdlibLoader(), fileLoader(places, filesWith('tools', ''))];
+const loaders = [stdlibLoader(), fileLoader(root, filesWith('tools', ''))];
 
 /** The project's files, `importer`'s holding `importerText`. */
 function filesWith(importer: string, importerText: string): ProjectFiles {
@@ -57,8 +57,8 @@ function offeredAt(
   const files = filesWith(importer, text);
   previous = buildProgram(
     {
-      roots: project.flatMap((name) => locateFile(fileOf(name), places, files) ?? []),
-      loaders: [stdlibLoader(), fileLoader(places, files)],
+      roots: project.flatMap((name) => locateFile(fileOf(name), root, files) ?? []),
+      loaders: [stdlibLoader(), fileLoader(root, files)],
       roles: stdRoles(),
     },
     previous,

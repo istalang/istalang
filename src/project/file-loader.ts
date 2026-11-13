@@ -7,9 +7,9 @@
  * Locating a file only checks that it is there; the loading core reads it once, when it loads the
  * module. A path to nothing, or to a directory, is simply not a module. Any other error is the
  * system refusing, and propagates for the app to report. Which files are there, and what they hold,
- * is the files seam's (project-files.ts): the disk, or open documents over it. A module's label is its path relative to
- * the working directory, which is how diagnostics show it; its name is its path from the project
- * root in this same syntax, which never depends on where `ista` runs.
+ * is the files seam's (project-files.ts): the disk, or open documents over it. A module's label is
+ * its file's path from the project root, the directory the toolchain runs in (project.ts), which
+ * is how diagnostics show it; its name is that path in the import syntax.
  */
 
 import { dirname, relative, resolve, sep } from 'node:path';
@@ -27,55 +27,46 @@ import { diskFiles, type ProjectFiles } from './project-files.ts';
 
 export const sourceExtension = '.ista';
 
-/** Where the project is, and where the toolchain runs, which labels are relative to. */
-export interface ProjectPlaces {
-  readonly projectRoot: string;
-  readonly cwd: string;
-}
-
-/** The loader of the project's `files`. */
-export function fileLoader(places: ProjectPlaces, files: ProjectFiles = diskFiles): ModuleLoader {
+/** The loader of the `files` of the project at `root`. */
+export function fileLoader(root: string, files: ProjectFiles = diskFiles): ModuleLoader {
   return (path, importer) => {
-    const file = filePathOf(path, importer, places.projectRoot);
-    return file === undefined ? undefined : locateFile(file, places, files);
+    const file = filePathOf(path, importer, root);
+    return file === undefined ? undefined : locateFile(file, root, files);
   };
 }
 
 /** The module in `file`, an absolute path; `undefined` when `files` has no such file. */
 export function locateFile(
   file: string,
-  places: ProjectPlaces,
+  root: string,
   files: ProjectFiles = diskFiles,
 ): LocatedModule | undefined {
   if (!files.isFile(file)) {
     return;
   }
-  return { ...namesOf(file, places), read: () => files.read(file) };
+  return { ...namesOf(file, root), read: () => files.read(file) };
 }
 
-/** What a located module is called, which its file and the places alone decide. */
+/** What a located module is called, which its file and the project root alone decide. */
 type ModuleNames = Omit<LocatedModule, 'read'>;
 
 /**
- * Each file's names, by project root, then working directory, then file: an editor locates every
- * root of its project at every keystroke, and making a URL and two relative paths per file was most
- * of a build's time.
+ * Each file's names, by project root, then file: an editor locates every root of its project at
+ * every keystroke, and making a URL and a relative path per file was most of a build's time.
  */
-const located = new Map<string, Map<string, Map<string, ModuleNames>>>();
+const located = new Map<string, Map<string, ModuleNames>>();
 
-function namesOf(file: string, places: ProjectPlaces): ModuleNames {
-  const byCwd = memo(
-    located,
-    places.projectRoot,
-    () => new Map<string, Map<string, ModuleNames>>(),
-  );
-  const byFile = memo(byCwd, places.cwd, () => new Map<string, ModuleNames>());
-  return memo(byFile, file, () => ({
-    id: moduleIdOfFile(file),
-    name: withoutExtension(relative(places.projectRoot, file).split(sep).join('/')),
-    label: relative(places.cwd, file),
-    isTest: isTestModulePath(file),
-  }));
+function namesOf(file: string, root: string): ModuleNames {
+  const byFile = memo(located, root, () => new Map<string, ModuleNames>());
+  return memo(byFile, file, () => {
+    const label = relative(root, file);
+    return {
+      id: moduleIdOfFile(file),
+      name: withoutExtension(label.split(sep).join('/')),
+      label,
+      isTest: isTestModulePath(file),
+    };
+  });
 }
 
 /** The id of the module in `file`, an absolute path: its file's URL. */
