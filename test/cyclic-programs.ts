@@ -363,4 +363,9 @@ export const cyclicPrograms: readonly CyclicCase[] = [
       '  done.resolve(())',
     ],
   },
+  {
+    name: "an async call's future settling with a default holding the argument before it",
+    body: ['const ch = new Child{}', 'const p = await echoDefault(ch)', 'ch->parent = p'],
+    extra: ['ista async fn echoDefault(ch: Child, p: Parent = new Parent{child: ch}) -> Parent: p'],
+  },
 ];

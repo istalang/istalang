@@ -164,9 +164,9 @@ export class Nodes {
     return node;
   }
 
-  /** The nodes `call`'s defaults gave, which end with it. */
-  defaultsOf(call: Operation): readonly NodeId[] {
-    return [...(this.#defaults.get(call)?.values() ?? [])];
+  /** The nodes the defaults calls left out gave, which end with their calls. */
+  defaults(): readonly NodeId[] {
+    return [...this.#defaults.values()].flatMap((byIndex) => [...byIndex.values()]);
   }
 
   #allocate(type: Type | undefined): NodeId {
