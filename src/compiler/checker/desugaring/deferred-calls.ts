@@ -43,12 +43,14 @@ import { unqualified } from '../../syntax/tokens/modifiers.ts';
 import type { SyntaxNode } from '../../syntax/tree/index.ts';
 import type { Identifier } from '../../syntax/tree/node.ts';
 import { spanBetween, startOf } from '../../syntax/tree/positions.ts';
+import { readsThroughNamespace } from '../constructs/expressions/access/member-access.ts';
 import { calleeRead, memberCalled } from '../constructs/expressions/calls.ts';
 import type { BodyContext } from '../contexts/body-context.ts';
 import { bound, synthesized } from '../contexts/synthesized.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { isPack } from '../types/type/function-types.ts';
 import { presentType } from '../types/unions/unions.ts';
+import { namedType } from '../types/written/named-types.ts';
 import type { Desugar } from './index.ts';
 
 /** The parts a deferred call's core is built of, as its wording reads them. */
@@ -164,18 +166,22 @@ function hoisted(building: Building, call: Call): (given: Expression | undefined
   } else if (read.kind === 'member') {
     const { access } = read;
     const receiver = context.sugars.operand(context, access.target);
-    const looked = access.isOptional
+    // What a link of an optional chain computes now holds the chain's optional, read through later.
+    const chained = access.isOptional || context.chains.chainOf(access.target) !== undefined;
+    const looked = chained
       ? (presentType(receiver, context.checker.typeRules) ?? receiver)
       : receiver;
     const { field, methods } = memberCalled(context, access.member.text, looked, []);
-    // What a link of an optional chain computes now holds the chain's optional, read through later.
-    const chained = access.isOptional || context.chains.chainOf(access.target) !== undefined;
     if (field !== undefined && methods.length === 0) {
-      callee = constant(building, access);
+      callee = constant(building, call.callee);
       isOptional ||= chained;
     } else {
       const target = constant(building, access.target);
-      callee = built(building, 'later', { ...access, target, isOptional: chained });
+      const member = built(building, 'later', { ...access, target, isOptional: chained });
+      callee =
+        call.callee.kind === 'TypeApplication'
+          ? built(building, 'later', { ...call.callee, target: member })
+          : member;
     }
   }
   const written = call.arguments.map((argument) => argumentHoisted(building, argument));
@@ -249,7 +255,7 @@ function constant(building: Building, value: Expression): Identifier {
 
 /**
  * Whether `node` computes nothing, the same value made now or later: a literal, a lambda, a name
- * of a function, a variant or a type, or a literal of such parts.
+ * of a function, a variant or a type (given type arguments or not), or a literal of such parts.
  */
 function computesNothing(context: BodyContext, node: Expression): boolean {
   const value = unparenthesized(node);
@@ -261,8 +267,9 @@ function computesNothing(context: BodyContext, node: Expression): boolean {
     case 'DurationLiteral':
     case 'NoneLiteral':
     case 'Lambda':
-    case 'TypeApplication':
       return true;
+    case 'TypeApplication':
+      return computesNothing(context, value.target);
     case 'Unary':
       return signedNumberOf(value) !== undefined;
     case 'TemplateLiteral':
@@ -270,7 +277,11 @@ function computesNothing(context: BodyContext, node: Expression): boolean {
     case 'Identifier':
       return context.entityOf(value)?.kind !== 'variable';
     case 'MemberAccess':
-      return qualifiedPath(value) !== undefined && context.entityOf(value.member) !== undefined;
+      // A namespace's or a type's member, as a call names one (calls.ts `calleeRead`), but a variable.
+      return (
+        (readsThroughNamespace(context, value) || namedType(context, value.target) !== undefined) &&
+        context.entityOf(value.member)?.kind !== 'variable'
+      );
     case 'ArrayLiteral':
     case 'Tuple':
       return value.elements.every(
