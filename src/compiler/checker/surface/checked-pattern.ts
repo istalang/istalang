@@ -161,7 +161,7 @@ export type PatternTest =
  *   the value is then that type's value itself, which the test passes when a member is that type,
  *   compares with when a member is a literal of it, and fails otherwise.
  */
-type TypeTest =
+export type TypeTest =
   | { readonly kind: 'variant'; readonly variant: number }
   | { readonly kind: 'downcast'; readonly from: AnyType; readonly to: Type }
   | { readonly kind: 'member'; readonly union: Type; readonly members: readonly Type[] };

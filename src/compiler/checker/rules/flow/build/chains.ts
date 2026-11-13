@@ -12,6 +12,7 @@
 
 import { chainStepOf, isOptionalStep } from '../../../../syntax/expressions/chains.ts';
 import type { Expression } from '../../../../syntax/expressions/index.ts';
+import { unitForm } from '../../../surface/constant-form.ts';
 import type { ValueId } from '../../../surface/flow-ir.ts';
 import type { FlowBuilder, OpenChain } from './flow-builder.ts';
 
@@ -76,7 +77,7 @@ export function stepTarget(builder: FlowBuilder, link: Expression, target: Expre
   }
   const inside = builder.temporary(target, chained.base);
   builder.presentOr(value, { site: target, into: inside }, () => {
-    builder.emit({ op: 'compute', site: link, into: chain.result, operands: [] });
+    builder.compute(chain.result, link, { kind: 'constant', form: unitForm });
     builder.end({ kind: 'goto', to: chain.end });
   });
   return builder.fit(target, inside);

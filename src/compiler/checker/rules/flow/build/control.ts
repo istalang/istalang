@@ -6,9 +6,11 @@
  *   and every later branch when true. A branch is a scope its condition binds into, ended on both
  *   of its paths. `match` tests each case's pattern and guard in turn, a failing guard ending the
  *   case's scope.
- * - `and`, `or` and `??` run their right side only sometimes; `e?` returns `e`'s error, and `e!`,
- *   read as `e ??` a panic, calls `panic` where `e` is none; both go on with the value inside
- *   otherwise.
+ * - `and`, `or` and `??` run their right side only sometimes. `e?` tests `e` for `Ok`, going on
+ *   with its value, else returning a new `Err` of the function's own `Result`, holding `e`'s
+ *   error converted to the function's error type, as checking fits it (§3.12).
+ * - A comparison its operands' types decide is that constant, its operands still run; any other is
+ *   the built-in `==`, or what the `compare` or `includes` checking made gives, related or negated.
  * - `await` hands what it waits on to its `onAwait`, suspends, and gives what it settled with. A
  *   `select` evaluates every case's awaitable and hands each to its `onAwait`; an awaiting one
  *   suspends on them all, one that doesn't await never suspends (§8). Then one case's body runs,
@@ -18,6 +20,7 @@
  */
 
 import { wellKnown } from '../../../../../foundation/language/well-known/index.ts';
+import { resultVariants } from '../../../../../foundation/language/well-known/variants.ts';
 import { type Comparison, isComparison } from '../../../../syntax/expressions/comparisons.ts';
 import type {
   Await,
@@ -29,15 +32,20 @@ import type {
   Propagate,
   Select,
   SelectCase,
+  Unary,
 } from '../../../../syntax/expressions/index.ts';
-import { binaryOperators } from '../../../../syntax/expressions/operators.ts';
+import { binaryOperators, unaryOperators } from '../../../../syntax/expressions/operators.ts';
 import { casesOf, selectCasesOf } from '../../../../syntax/expressions/readings.ts';
 import type { Block } from '../../../../syntax/statements/index.ts';
+import { unitForm } from '../../../surface/constant-form.ts';
 import type { BlockId, ValueId } from '../../../surface/flow-ir.ts';
+import type { Type } from '../../../types/type/index.ts';
+import { boolType, errorType } from '../../../types/type/primitives.ts';
 import { awaitedOf, wellKnownArguments } from '../../../types/type/well-known.ts';
 import type { FlowBuilder } from './flow-builder.ts';
 import { implicitCall, resolvedCall } from './implicit-calls.ts';
 import { bindTargets, matchPattern } from './parts.ts';
+import { madeVariant, variantTest } from './variants.ts';
 
 export function ifFlow(builder: FlowBuilder, node: If): ValueId {
   const given = { result: builder.temporaryOf(node), end: builder.newBlock() };
@@ -52,7 +60,7 @@ export function ifFlow(builder: FlowBuilder, node: If): ValueId {
   if (otherwise !== undefined && !builder.body.isRuledOut(otherwise)) {
     giveInto(builder, given, otherwise);
   } else {
-    builder.emit({ op: 'compute', site: node, into: given.result, operands: [] });
+    builder.compute(given.result, node, { kind: 'constant', form: unitForm });
     builder.end({ kind: 'goto', to: given.end });
   }
   builder.resumeIn(given.end);
@@ -64,7 +72,7 @@ export function ifFlow(builder: FlowBuilder, node: If): ValueId {
  * ended on the way out; where the condition may fail, the scope ends on that path too.
  */
 function guardedBranch(builder: FlowBuilder, branch: ConditionalBranch, given: Given): void {
-  builder.expression(branch.condition);
+  const condition = builder.expression(branch.condition);
   const taken = () => {
     valueInto(builder, given.result, branch.body);
     builder.scopes.leave(branch);
@@ -72,7 +80,8 @@ function guardedBranch(builder: FlowBuilder, branch: ConditionalBranch, given: G
   };
   const decided = builder.body.decidedOf(branch.condition);
   if (decided === undefined) {
-    const [body, skipped] = builder.branch(2) as [BlockId, BlockId];
+    const test = { kind: 'condition', value: condition } as const;
+    const [body, skipped] = builder.branch(test) as [BlockId, BlockId];
     builder.resumeIn(body);
     taken();
     builder.resumeIn(skipped);
@@ -90,8 +99,9 @@ export function matchFlow(builder: FlowBuilder, node: Match): ValueId {
     builder.scopes.inScope(each, () => {
       matchPattern(builder, each.pattern, subject, failed);
       if (each.guard !== undefined) {
-        builder.expression(each.guard);
-        const [holds, fails] = builder.branch(2) as [BlockId, BlockId];
+        const guard = builder.expression(each.guard);
+        const test = { kind: 'condition', value: guard } as const;
+        const [holds, fails] = builder.branch(test) as [BlockId, BlockId];
         builder.resumeIn(fails);
         builder.scopes.leave(each);
         builder.end({ kind: 'goto', to: failed });
@@ -107,16 +117,22 @@ export function matchFlow(builder: FlowBuilder, node: Match): ValueId {
   return given.result;
 }
 
+/** `x is P`: whether `x` matches `P`, `false` where its type rules the match out (§4). */
 export function isFlow(builder: FlowBuilder, node: Is): ValueId {
   const subject = builder.expression(node.subject);
   const result = builder.temporaryOf(node);
+  const holds = (value: boolean) =>
+    builder.compute(result, node, { kind: 'constant', form: { kind: 'primitive', value } });
+  if (builder.body.decidedOf(node) === false) {
+    return holds(false);
+  }
   const failed = builder.newBlock();
   const end = builder.newBlock();
   matchPattern(builder, node.pattern, subject, failed);
-  builder.emit({ op: 'compute', site: node, into: result, operands: [] });
+  holds(true);
   builder.end({ kind: 'goto', to: end });
   builder.resumeIn(failed);
-  builder.emit({ op: 'compute', site: node, into: result, operands: [] });
+  holds(false);
   builder.continueIn(end);
   return result;
 }
@@ -130,37 +146,59 @@ export function binaryFlow(builder: FlowBuilder, node: Binary): ValueId {
   const result = builder.temporaryOf(node);
   if (isComparison(node)) {
     const right = builder.expression(node.right);
-    if (builder.body.decidedOf(node) === undefined) {
+    const decided = builder.body.decidedOf(node);
+    if (decided === undefined) {
       compared(builder, node, [left, right], result);
     } else {
-      builder.emit({ op: 'compute', site: node, into: result, operands: [] });
+      builder.compute(result, node, {
+        kind: 'constant',
+        form: { kind: 'primitive', value: decided },
+      });
     }
     return result;
   }
   if (kind === 'logic') {
-    builder.paths([
-      () => builder.emit({ op: 'copy', site: node, into: result, from: left, fit: undefined }),
-      () => {
-        const right = builder.expression(node.right);
-        builder.emit({ op: 'copy', site: node, into: result, from: right, fit: undefined });
-      },
-    ]);
+    // `and` goes on to its right side where its left is true, `or` where it is false.
+    builder.emit({ op: 'copy', site: node, into: result, from: left, fit: undefined });
+    const { rightWhen } = binaryOperators[node.operator].meaning as { readonly rightWhen: boolean };
+    const [whenTrue, whenFalse] = builder.branch({ kind: 'condition', value: left }) as [
+      BlockId,
+      BlockId,
+    ];
+    const end = rightWhen ? whenFalse : whenTrue;
+    builder.resumeIn(rightWhen ? whenTrue : whenFalse);
+    const right = builder.expression(node.right);
+    builder.emit({ op: 'copy', site: node, into: result, from: right, fit: undefined });
+    builder.continueIn(end);
     return result;
   }
   const right = builder.expression(node.right);
-  const call = builder.body.resolved.get(node);
-  if (call === undefined) {
-    builder.emit({ op: 'compute', site: node, into: result, operands: [left, right] });
-  } else {
-    const passed = [left, right].map((value) => ({ kind: 'value', value }) as const);
-    resolvedCall(builder, call, { site: node, passed, into: result });
+  const passed = [left, right].map((value) => ({ kind: 'value', value }) as const);
+  return resolvedCall(builder, builder.body.resolved.get(node), {
+    site: node,
+    passed,
+    into: result,
+  });
+}
+
+/** `not x` is the language's own; any other unary operator is the call checking resolved. */
+export function unaryFlow(builder: FlowBuilder, node: Unary): ValueId {
+  const operand = builder.expression(node.operand);
+  const into = builder.temporaryOf(node);
+  if (unaryOperators[node.operator].meaning.kind === 'negation') {
+    return builder.compute(into, node, { kind: 'not' }, [operand]);
   }
-  return result;
+  return resolvedCall(builder, builder.body.resolved.get(node), {
+    site: node,
+    passed: [operand],
+    into,
+  });
 }
 
 /**
- * Whether `node` holds, into `result`: the built-in `==`, or the `compare` or `includes` checking
- * made at its right operand, `includes` taking the collection first.
+ * Whether `node` holds, into `result`: the built-in `==`, `!=` negated; whether the `includes`
+ * checking made at its right operand, which takes the collection first, gives true, negated for
+ * `not in`; or whether the `compare` made there gives a result in its relation.
  */
 function compared(
   builder: FlowBuilder,
@@ -170,28 +208,56 @@ function compared(
 ): void {
   const { meaning } = binaryOperators[node.operator];
   if (meaning.kind === 'equality') {
-    builder.emit({ op: 'compute', site: node.right, into: result, operands: [left, right] });
-    return;
+    builder.compute(result, node, { kind: 'equal', negated: meaning.negated }, [left, right]);
+  } else if (meaning.kind === 'membership') {
+    const site = node.right;
+    const into = meaning.negated ? builder.temporary(site, boolType) : result;
+    const includes = implicitCall(builder, 'includes', { site, passed: [right, left], into });
+    if (meaning.negated) {
+      builder.compute(result, node, { kind: 'not' }, [includes]);
+    }
+  } else if (meaning.kind === 'order') {
+    const comparison = implicitCall(builder, 'compare', {
+      site: node.right,
+      passed: [left, right],
+    });
+    builder.compute(result, node, { kind: 'order', relation: meaning.relation }, [comparison]);
   }
-  const role = meaning.kind === 'membership' ? 'includes' : 'compare';
-  const passed = role === 'includes' ? [right, left] : [left, right];
-  implicitCall(builder, role, { site: node.right, passed, into: result });
 }
 
 export function propagate(builder: FlowBuilder, node: Propagate): ValueId {
   const operand = builder.expression(node.operand);
-  const [failed, ok] = builder.branch(2) as [BlockId, BlockId];
+  const { checker } = builder.inputs;
+  const argumentsOf = (type: Type | undefined) =>
+    (type && wellKnownArguments(checker, wellKnown.result, type)) ?? [];
+  const [, error] = argumentsOf(builder.valueOf(operand).type);
+  const test = variantTest(builder, operand, resultVariants.ok);
+  const [ok, failed] = builder.branch(test) as [BlockId, BlockId];
   builder.resumeIn(failed);
-  const result = builder.valueOf(operand).type;
-  const [, errorOf] =
-    (result && wellKnownArguments(builder.inputs.checker, wellKnown.result, result)) ?? [];
-  const error = builder.temporary(node, errorOf);
-  builder.emit({ op: 'read', site: node, into: error, from: operand, part: { kind: 'inside' } });
-  builder.end({ kind: 'return', value: error, site: node });
+  const passed = variantField(builder, node, operand, error);
+  const [, returned] = argumentsOf(builder.result);
+  const converted = builder.temporary(node, returned);
+  const fit = error && returned && checker.fitOf(error, returned);
+  builder.emit({ op: 'copy', site: node, into: converted, from: passed, fit });
+  const err = { site: node, type: builder.result, name: resultVariants.err };
+  const value = madeVariant(builder, err, [converted]);
+  builder.end({ kind: 'return', value, site: node });
   builder.resumeIn(ok);
-  const inside = builder.temporaryOf(node);
-  builder.emit({ op: 'read', site: node, into: inside, from: operand, part: { kind: 'inside' } });
-  return inside;
+  return variantField(builder, node, operand, builder.body.typeOf(node));
+}
+
+/** The one field of the variant `value` holds, of `type`, read at `site`. */
+function variantField(
+  builder: FlowBuilder,
+  site: Propagate,
+  value: ValueId,
+  type: Type | undefined,
+): ValueId {
+  const into = builder.temporary(site, type);
+  const step = { kind: 'variantField', index: 0, type: type ?? errorType } as const;
+  const part = { kind: 'step', step } as const;
+  builder.emit({ op: 'read', site, into, from: value, part });
+  return into;
 }
 
 /** `a ?? b`: the value inside `a`, or else `b`'s value, evaluated only then. */
@@ -237,7 +303,8 @@ export function selectFlow(builder: FlowBuilder, node: Select): ValueId {
   }
   const given = { result: builder.temporaryOf(node), end: builder.newBlock() };
   const otherwise = node.elseClause?.body;
-  const starts = builder.branch(cases.length + (otherwise === undefined ? 0 : 1));
+  const count = cases.length + (otherwise === undefined ? 0 : 1);
+  const starts = builder.branch({ kind: 'select', node }, count);
   for (const [index, each] of cases.entries()) {
     builder.resumeIn(starts[index] as BlockId);
     builder.scopes.inScope(each, () => {

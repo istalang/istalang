@@ -112,8 +112,9 @@ function whileLoop(builder: FlowBuilder, node: While): void {
   builder.continueIn(top);
   builder.scopes.withExits(node, exit, top, () => {
     builder.scopes.inScope(node, () => {
-      builder.expression(node.condition);
-      const [pass, done] = builder.branch(2) as [BlockId, BlockId];
+      const condition = builder.expression(node.condition);
+      const test = { kind: 'condition', value: condition } as const;
+      const [pass, done] = builder.branch(test) as [BlockId, BlockId];
       builder.resumeIn(done);
       builder.scopes.leave(node);
       builder.end({ kind: 'goto', to: exit });

@@ -20,8 +20,11 @@ import type { SyntaxNode } from '../../../../syntax/tree/index.ts';
 import type { Identifier, Invalid, NodeOf } from '../../../../syntax/tree/node.ts';
 import type { CheckerContext } from '../../../contexts/context.ts';
 import type { CheckedBody } from '../../../surface/checked-body.ts';
+import type { ConstantForm } from '../../../surface/constant-form.ts';
 import type {
   BlockId,
+  BranchTest,
+  Computation,
   Exit,
   FlowBlock,
   FlowFunction,
@@ -41,7 +44,14 @@ import { Scopes } from './scopes.ts';
 export interface FlowInputs {
   readonly checker: Pick<
     CheckerContext,
-    'bindings' | 'parametersOf' | 'resultOf' | 'fieldsOf' | 'typeRules' | 'wellKnownType'
+    | 'bindings'
+    | 'parametersOf'
+    | 'resultOf'
+    | 'fieldsOf'
+    | 'variantsOf'
+    | 'fitOf'
+    | 'typeRules'
+    | 'wellKnownType'
   >;
   readonly module: ModuleId;
   readonly localBodyOf: (declaration: FunctionDeclaration) => Block | undefined;
@@ -77,6 +87,8 @@ interface OpenBlock {
 export class FlowBuilder {
   readonly inputs: FlowInputs;
   readonly root: SyntaxNode;
+  /** What the function returns: its body's result; undefined where checking found none. */
+  readonly result: Type | undefined;
   readonly parameters: ValueId[] = [];
   readonly captures: ValueId[] = [];
   readonly scopes = new Scopes({
@@ -95,9 +107,15 @@ export class FlowBuilder {
   /** The optional chain whose links are being built, if any. */
   chain: OpenChain | undefined;
 
-  constructor(inputs: FlowInputs, root: SyntaxNode, constructs: Constructs) {
+  constructor(
+    inputs: FlowInputs,
+    root: SyntaxNode,
+    constructs: Constructs,
+    result: Type | undefined = inputs.body.result,
+  ) {
     this.inputs = inputs;
     this.root = root;
+    this.result = result;
     this.#constructs = constructs;
     this.#body = inputs.body;
     this.#current = this.newBlock();
@@ -122,9 +140,9 @@ export class FlowBuilder {
     return this.#constructs.block(this, node);
   }
 
-  /** A builder of a function nested in this one, rooted at `root`, reading the same view. */
-  nested(root: SyntaxNode): FlowBuilder {
-    return new FlowBuilder({ ...this.inputs, body: this.#body }, root, this.#constructs);
+  /** A builder of a function nested in this one, rooted at `root`, returning `result`. */
+  nested(root: SyntaxNode, result: Type | undefined): FlowBuilder {
+    return new FlowBuilder({ ...this.inputs, body: this.#body }, root, this.#constructs, result);
   }
 
   /** The body's facts, as the pass being built reads them. */
@@ -187,6 +205,22 @@ export class FlowBuilder {
   /** A temporary computed at `site`, of `type`, undefined where checking recorded none. */
   temporary(site: NodeOf<string>, type: Type | undefined): ValueId {
     return this.#value({ kind: 'temporary', site, type });
+  }
+
+  /** `computation` of `operands`, computed at `site` into `into`, which it gives. */
+  compute(
+    into: ValueId,
+    site: NodeOf<string>,
+    computation: Computation,
+    operands: readonly ValueId[] = [],
+  ): ValueId {
+    this.emit({ op: 'compute', site, into, computation, operands });
+    return into;
+  }
+
+  /** The value `form`, of `type`, made at `site`: a literal, an offset, `Unit`. */
+  constant(site: NodeOf<string>, type: Type | undefined, form: ConstantForm): ValueId {
+    return this.compute(this.temporary(site, type), site, { kind: 'constant', form });
   }
 
   /** The variable a name of the body declares, one value wherever it is named. */
@@ -301,11 +335,19 @@ export class FlowBuilder {
     this.#current = block;
   }
 
-  /** Branches from the current block to `count` new ones, which it gives. */
-  branch(count: number): readonly BlockId[] {
+  /** Branches from the current block on `test` to `count` new ones, which it gives. */
+  branch(test: BranchTest, count = 2): readonly BlockId[] {
     const to = Array.from({ length: count }, () => this.newBlock());
-    this.end({ kind: 'branch', to });
+    this.end({ kind: 'branch', test, to });
     return to;
+  }
+
+  /** Runs `then` from a branch where `test` holds, then goes on where it doesn't. */
+  when(test: BranchTest, then: () => void): void {
+    const [holds, otherwise] = this.branch(test) as [BlockId, BlockId];
+    this.resumeIn(holds);
+    then();
+    this.continueIn(otherwise);
   }
 
   /** Goes on in `block`, which something else jumps to. */
@@ -322,23 +364,11 @@ export class FlowBuilder {
     { site, into }: { readonly site: Expression; readonly into: ValueId },
     absent: () => void,
   ): void {
-    const [present, none] = this.branch(2) as [BlockId, BlockId];
+    const [present, none] = this.branch({ kind: 'present', value: whole }) as [BlockId, BlockId];
     this.resumeIn(none);
     absent();
     this.resumeIn(present);
     this.emit({ op: 'read', site, into, from: whole, part: { kind: 'inside' } });
-  }
-
-  /** Runs each of `paths` from a branch of its own, then goes on where they all meet. */
-  paths(paths: readonly (() => void)[]): void {
-    const starts = this.branch(paths.length);
-    const join = this.newBlock();
-    for (const [index, start] of starts.entries()) {
-      this.resumeIn(start);
-      paths[index]?.();
-      this.end({ kind: 'goto', to: join });
-    }
-    this.resumeIn(join);
   }
 
   /** The current block, or a new one nothing jumps to where it has ended. */

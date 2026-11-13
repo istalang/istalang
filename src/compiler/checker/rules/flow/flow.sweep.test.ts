@@ -3,10 +3,11 @@
  * corpus program and spec example, each expression checking typed has a value at its node, or is
  * part of a place the flow writes or passes by `&`; and each call the body makes, written or
  * implicit, is a call of the flow, or a function it names as a value; and a program checking
- * accepts runs no code of unknown value and computes no value of no type. Its every body is swept: functions', defaults', and
- * constants' initializers. Two calls checking records are never made: the `index` of an element an
- * assignment writes with `setIndex` alone (build/places.ts), and an array pattern's item or rest no
- * test or binding reads, as a wildcard's.
+ * accepts runs no code of unknown value, tests nothing it can't tell, and computes no value of no
+ * type. Its every body is swept: functions', defaults', and constants' initializers. Two calls
+ * checking records are never made: the `index` of an element an assignment writes with `setIndex`
+ * alone (build/places.ts), and an array pattern's item or rest no test or binding reads, as a
+ * wildcard's.
  */
 
 import { describe, expect, it } from 'vitest';
@@ -70,9 +71,12 @@ function heldBy(flow: FlowFunction, held: Held): Held {
       held.untyped.push(value);
     }
   }
-  for (const { operations } of flow.blocks) {
+  for (const { operations, exit } of flow.blocks) {
     for (const operation of operations) {
       holdOperation(operation, held);
+    }
+    if (exit.kind === 'branch' && exit.test.kind === 'unknown') {
+      held.unknown.push(flow.root);
     }
   }
   return held;

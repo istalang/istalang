@@ -10,11 +10,13 @@
  *   ending at an element writes it with `setIndex` alone, never reading it.
  */
 
+import { unreachable } from '../../../../../foundation/structures/unreachable.ts';
 import type { Expression, Index } from '../../../../syntax/expressions/index.ts';
 import { type PlaceStep, placePath } from '../../../../syntax/expressions/places.ts';
 import type { Identifier } from '../../../../syntax/tree/node.ts';
 import type { FieldRead } from '../../../surface/checked-field.ts';
 import type { Argument, Part, Place, ValueId } from '../../../surface/flow-ir.ts';
+import { errorType } from '../../../types/type/primitives.ts';
 import type { FlowBuilder } from './flow-builder.ts';
 import { implicitCall, resolvedCall } from './implicit-calls.ts';
 
@@ -46,11 +48,17 @@ function stepInto(builder: FlowBuilder, place: Place, step: PlaceStep): EnteredP
   if (step.kind === 'TupleElement') {
     return { place: within(place, { kind: 'step', step: step.element }, step), leave: stays };
   }
-  const key = step.kind === 'Index' ? builder.expression(step.index) : undefined;
   const read = builder.body.fieldReadOf(step);
-  if (key === undefined || read !== undefined) {
-    const part: Part = read === undefined ? { kind: 'keyed' } : partOfField(read);
+  if (step.kind === 'MemberAccess') {
+    // A member checking found no field for names the field all the same.
+    const of = builder.body.typeOf(step.target) ?? errorType;
+    const named: Part = { kind: 'step', step: { kind: 'field', of, name: step.member.text } };
+    const part = read === undefined ? named : partOfField(read);
     return { place: within(place, part, step), leave: stays };
+  }
+  const key = builder.expression(step.index);
+  if (read !== undefined) {
+    return { place: within(place, partOfField(read, key), step), leave: stays };
   }
   const element = builder.temporaryOf(step);
   resolvedCall(builder, builder.body.resolved.get(step), {
@@ -60,7 +68,7 @@ function stepInto(builder: FlowBuilder, place: Place, step: PlaceStep): EnteredP
   });
   return {
     place: { root: element, path: [], site: step, name: undefined },
-    leave: () => writeElement(builder, step as Index, { container: place, key, element }),
+    leave: () => writeElement(builder, step, { container: place, key, element }),
   };
 }
 
@@ -128,8 +136,11 @@ function within(place: Place, part: Part, site: Expression): Place {
   return { ...place, path: [...place.path, part], site };
 }
 
-/** The part a field read reaches: a field by name or position, or one a key names. */
-export function partOfField(read: FieldRead): Part {
+/**
+ * The part a field read reaches: a field by name or position, or the one `key`, a key of several
+ * names an index reads with, names.
+ */
+export function partOfField(read: FieldRead, key?: ValueId): Part {
   switch (read.kind) {
     case 'position':
       return { kind: 'step', step: { kind: 'field', of: read.on, name: read.name } };
@@ -142,7 +153,9 @@ export function partOfField(read: FieldRead): Part {
         step: { kind: 'field', of: read.on, name: read.required.field.name.text },
       };
     case 'keyed':
-      return { kind: 'keyed' };
+      return key === undefined
+        ? unreachable('A key of several names is read only by an index.')
+        : { kind: 'keyed', key };
     default: {
       const unhandled: never = read;
       return unhandled;

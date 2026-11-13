@@ -1,23 +1,27 @@
 /**
  * Loops (§3.10, §4), the way every iterating construct runs (lowering/constructs/loops/):
  *
- * - Over an iterable, through the cursor its `iterate` gives: each pass calls the cursor, and goes
- *   on with the item it gives, or leaves; a spread a literal copies whole is read whole instead.
- * - Over a struct's fields: the subject once, then a pass per field, each read as checking
- *   checked that pass (`passesOf`), with the header's key and value bound to the field's name and
- *   value. Which field comes next is left open: each pass may follow any, as a loop's would.
+ * - Over an iterable, through the cursor its `iterate` gives: the top calls the cursor and tests
+ *   its step for `Next`, going on with the item it holds, or leaving past the loop on `Done`. A
+ *   spread a literal copies whole runs no cursor: it gives an item its collection holds.
+ * - Over a struct's fields: the subject once, then the top goes past the loop or to a pass of
+ *   those `passesOf` gives, each read as checking checked that pass, with the header's key and value
+ *   bound to the name of the field it visits and that field's value. Which comes next is left
+ *   open: lowering runs each pass once per field it visits.
  *
  * A pass is a scope of its own; `break` leaves past the loop and `continue` goes to its top.
  */
 
+import { stepVariants } from '../../../../../foundation/language/well-known/variants.ts';
 import type { Comprehension, Spread } from '../../../../syntax/expressions/index.ts';
 import type { For, LabelledScope } from '../../../../syntax/statements/index.ts';
 import type { OverFields } from '../../../../syntax/statements/readings.ts';
 import type { BlockId, ValueId } from '../../../surface/flow-ir.ts';
-import { tupleType } from '../../../types/type/primitives.ts';
+import { errorType, tupleType } from '../../../types/type/primitives.ts';
 import type { FlowBuilder } from './flow-builder.ts';
 import { implicitCall } from './implicit-calls.ts';
-import { bindTargets, constant } from './parts.ts';
+import { bindTargets } from './parts.ts';
+import { variantTest } from './variants.ts';
 
 /** A loop's passes: the scope its exits name, if any, and what each pass runs. */
 interface Passes<Pass> {
@@ -39,20 +43,35 @@ export function itemLoop(
   { scope, pass }: Passes<(item: ValueId) => void>,
 ): void {
   const form = builder.body.iterationOf(node);
-  const isCopied = form?.kind === 'copied';
-  const source = isCopied ? iterable : cursorOf(builder, node, iterable);
-  loop(builder, scope, (top) => {
-    const item = builder.temporary(node, form?.item);
-    if (isCopied) {
-      builder.emit({ op: 'read', site: node, into: item, from: source, part: { kind: 'item' } });
-    } else {
-      const cursor = builder.valueOf(source).type;
-      const step = builder.temporary(node, cursor?.kind === 'function' ? cursor.result : undefined);
-      builder.emit({ op: 'callValue', site: node, into: step, callee: source, arguments: [] });
-      builder.emit({ op: 'read', site: node, into: item, from: step, part: { kind: 'item' } });
-    }
+  const item = builder.temporary(node, form?.item);
+  if (form?.kind === 'copied') {
+    builder.emit({ op: 'read', site: node, into: item, from: iterable, part: { kind: 'item' } });
     pass(item);
-    builder.end({ kind: 'goto', to: top });
+    return;
+  }
+  const cursor = implicitCall(builder, 'iterate', { site: node, passed: [iterable] });
+  loop(builder, scope, (top) => {
+    const { type } = builder.valueOf(cursor);
+    const step = builder.temporary(node, type?.kind === 'function' ? type.result : undefined);
+    builder.emit({ op: 'callValue', site: node, into: step, callee: cursor, arguments: [] });
+    const test = variantTest(builder, step, stepVariants.next);
+    const [next, done] = builder.branch(test) as [BlockId, BlockId];
+    const given = { kind: 'variantField', index: 0, type: form?.item ?? errorType } as const;
+    return {
+      exit: done,
+      passes: () => {
+        builder.resumeIn(next);
+        builder.emit({
+          op: 'read',
+          site: node,
+          into: item,
+          from: step,
+          part: { kind: 'step', step: given },
+        });
+        pass(item);
+        builder.end({ kind: 'goto', to: top });
+      },
+    };
   });
 }
 
@@ -88,59 +107,56 @@ export function fieldLoop(
   const subject = builder.expression(header.subject);
   const passes = builder.body.passesOf(header);
   loop(builder, scope, (top) => {
-    const [...starts] = builder.branch(passes.length);
-    for (const [index, each] of passes.entries()) {
-      builder.resumeIn(starts[index] as BlockId);
-      builder.inView(each.body, () =>
-        builder.scopes.inScope(node, () => {
-          const key = constant(builder, header, each.key);
-          const value = builder.temporary(header, each.value);
-          builder.emit({
-            op: 'read',
-            site: header,
-            into: value,
-            from: subject,
-            part: { kind: 'keyed' },
-          });
-          const field = builder.temporary(header, tupleType([each.key, each.value]));
-          builder.emit({
-            op: 'make',
-            site: header,
-            into: field,
-            made: { kind: 'tuple' },
-            parts: [key, value],
-          });
-          bindTargets(builder, header, field);
-          pass();
-        }),
-      );
-      builder.end({ kind: 'goto', to: top });
-    }
+    const test = { kind: 'fieldPass', header } as const;
+    const [exit, ...starts] = builder.branch(test, passes.length + 1) as [BlockId, ...BlockId[]];
+    return {
+      exit,
+      passes: () => {
+        for (const [index, each] of passes.entries()) {
+          builder.resumeIn(starts[index] as BlockId);
+          builder.inView(each.body, () =>
+            builder.scopes.inScope(node, () => {
+              const key = builder.temporary(header, each.key);
+              builder.compute(key, header, { kind: 'fieldKey', header });
+              const value = builder.temporary(header, each.value);
+              const part = { kind: 'keyed', key } as const;
+              builder.emit({ op: 'read', site: header, into: value, from: subject, part });
+              const field = builder.temporary(header, tupleType([each.key, each.value]));
+              const made = { kind: 'tuple' } as const;
+              builder.emit({ op: 'make', site: header, into: field, made, parts: [key, value] });
+              bindTargets(builder, header, field);
+              pass();
+            }),
+          );
+          builder.end({ kind: 'goto', to: top });
+        }
+      },
+    };
   });
 }
 
-/** The cursor `node`'s `iterate` gives for `iterable`. */
-function cursorOf(builder: FlowBuilder, node: Iterating, iterable: ValueId): ValueId {
-  return implicitCall(builder, 'iterate', { site: node, passed: [iterable] });
+/** A loop's top, tested: where it goes past the loop, and how its passes are built from there. */
+interface LoopTop {
+  readonly exit: BlockId;
+  readonly passes: () => void;
 }
 
 /**
- * A loop: its top, which goes past the loop or into a pass that `body` builds from the top's
- * block; `break` goes past it, `continue` back to its top.
+ * A loop: its top, which `test` builds, testing whether to run a pass or go past the loop; `break`
+ * goes past it, `continue` back to its top.
  */
 function loop(
   builder: FlowBuilder,
   scope: LabelledScope | undefined,
-  body: (top: BlockId) => void,
+  test: (top: BlockId) => LoopTop,
 ): void {
   const top = builder.newBlock();
   builder.continueIn(top);
-  const [exit, pass] = builder.branch(2) as [BlockId, BlockId];
-  builder.resumeIn(pass);
+  const { exit, passes } = test(top);
   if (scope === undefined) {
-    body(top);
+    passes();
   } else {
-    builder.scopes.withExits(scope, exit, top, () => body(top));
+    builder.scopes.withExits(scope, exit, top, passes);
   }
   builder.resumeIn(exit);
 }

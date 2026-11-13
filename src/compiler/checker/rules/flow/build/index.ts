@@ -4,7 +4,8 @@
  * checking builds every root's, so readers find them by body (`flowsBuiltFor`).
  *
  * Every expression is built the same way here, whatever its kind:
- * - An operation that meets a value of type `Never` runs the operands before it and stops (§2).
+ * - An operation that meets a value of type `Never` runs the operands before it and stops (§2);
+ *   its value, past the stop, is one no operation computes.
  * - The outermost link of an optional chain (§4) opens the chain: a link stepping through an
  *   optional goes to the chain's end with `none` where it meets one (chains.ts).
  * - Its value is then a temporary of its own node, so each expression checking typed has a value
@@ -73,12 +74,12 @@ export function flowsBuiltFor(body: CheckedBody): ReadonlyMap<SyntaxNode, FlowFu
 function computed(builder: FlowBuilder, node: Expression): ValueId {
   const stops = builder.body.stopsAt(node);
   if (stops !== undefined) {
-    const operands = stops.map((operand) => builder.expression(operand));
+    for (const operand of stops) {
+      builder.expression(operand);
+    }
     builder.end({ kind: 'stop' });
-    // Past the stop, in code no path reaches, it is a value of no parts.
-    const value = builder.temporaryOf(node);
-    builder.emit({ op: 'compute', site: node, into: value, operands });
-    return value;
+    // Past the stop, no path reaches: no operation computes its value.
+    return builder.temporaryOf(node);
   }
   const chain = openChain(builder, node);
   const value = isSugar(node)

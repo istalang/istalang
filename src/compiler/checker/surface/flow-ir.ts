@@ -25,12 +25,14 @@
  */
 
 import type { VariableEntity } from '../../binder/entities.ts';
-import type { Expression } from '../../syntax/expressions/index.ts';
+import type { Expression, FieldHeader, Select } from '../../syntax/expressions/index.ts';
+import type { Relation } from '../../syntax/expressions/operators.ts';
 import type { SyntaxNode } from '../../syntax/tree/index.ts';
 import type { Identifier, NodeOf } from '../../syntax/tree/node.ts';
 import type { Type } from '../types/type/index.ts';
 import type { WrittenFit } from './checked-body.ts';
-import type { PartStep } from './checked-pattern.ts';
+import type { PartStep, TypeTest } from './checked-pattern.ts';
+import type { ConstantForm } from './constant-form.ts';
 import type { ImplicitRole, ResolvedCall } from './resolved-call.ts';
 
 /** A value of a flow function, by its position in `FlowFunction.values`. */
@@ -57,17 +59,17 @@ export type FlowValue =
 
 /**
  * A part of a value an operation reads or a place reaches: a part a pattern or a target reads
- * (`PartStep`: a tuple element by position, a field by name, a union's member, an array's items),
- * the value behind a handle (`*x`, `x->f`), the value inside an optional where it isn't `none`
- * (§4), what a future gives once it has settled (§8), a field a key of several names reads, or an
- * item a cursor, a copied collection or a comprehension's result holds.
+ * (`PartStep`: a tuple element by position, a field by name, a variant's field, a union's member,
+ * an array's items), the value behind a handle (`*x`, `x->f`), the value inside an optional where
+ * it isn't `none` (§4), what a future gives once it has settled (§8), the field `key`, a key of
+ * several names, names, or an item a copied collection or a comprehension's result holds.
  */
 export type Part =
   | { readonly kind: 'step'; readonly step: PartStep }
   | { readonly kind: 'behind' }
   | { readonly kind: 'inside' }
   | { readonly kind: 'given' }
-  | { readonly kind: 'keyed' }
+  | { readonly kind: 'keyed'; readonly key: ValueId }
   | { readonly kind: 'item' };
 
 /** A place, as an assignment writes it or `&` passes it: a value, and the parts into it. */
@@ -86,19 +88,34 @@ export type Argument =
 
 /**
  * What a `make` makes, of its parts in order: a struct (a literal's fields in declaration order),
- * a tuple, an array, a `Map`, a struct put behind a new handle (`new S{…}`), a closure of a
- * nested function and the values it captures, or a function named as a value, which `call` runs.
+ * a tuple, an array, a `Map`, a struct put behind a new handle (`new S{…}`), the `variant`-th
+ * variant of the enum `type` (its fields in order), a closure of a nested function and the values
+ * it captures, or a function named as a value, which `call` runs.
  */
 type Made =
   | { readonly kind: 'struct' | 'tuple' | 'array' | 'map' | 'handle' }
+  | { readonly kind: 'variant'; readonly type: Type; readonly variant: number }
   | { readonly kind: 'closure'; readonly function: FlowFunction }
   | { readonly kind: 'function'; readonly call: ResolvedCall };
 
 /**
+ * What a `compute` computes, of its operands: a constant (a literal, `Unit`, an offset, a condition
+ * checking decided), the built-in `==` of two, `!=` `negated`, `not` of a `Bool`, whether a
+ * `compare`'s result is in `relation`, or, in a pass of the field loop `header` heads (§4), the
+ * name of the field it visits, one per field for a pass over several.
+ */
+export type Computation =
+  | { readonly kind: 'constant'; readonly form: ConstantForm }
+  | { readonly kind: 'equal'; readonly negated: boolean }
+  | { readonly kind: 'not' }
+  | { readonly kind: 'order'; readonly relation: Relation }
+  | { readonly kind: 'fieldKey'; readonly header: FieldHeader };
+
+/**
  * An operation, at the node it runs for.
  *
- * - `compute`: a value the language computes from its operands, holding none of them: a literal,
- *   arithmetic, a comparison, a test.
+ * - `compute`: a value the language computes from its operands, holding none of them
+ *   (`Computation`).
  * - `make`: a value holding `parts` (`Made`).
  * - `copy`: `from` bound to `into`, converted as `fit` says where checking fitted it to `into`'s
  *   type; into whichever field a key naming several gives (`intoKeyedField`), each field's own way,
@@ -113,7 +130,12 @@ type Made =
  * - `unknown`: code checking found a mistake in: its operands run, and what it gives is unknown.
  */
 export type Operation = { readonly site: NodeOf<string> } & (
-  | { readonly op: 'compute'; readonly into: ValueId; readonly operands: readonly ValueId[] }
+  | {
+      readonly op: 'compute';
+      readonly into: ValueId;
+      readonly computation: Computation;
+      readonly operands: readonly ValueId[];
+    }
   | {
       readonly op: 'make';
       readonly into: ValueId;
@@ -151,12 +173,30 @@ export type Operation = { readonly site: NodeOf<string> } & (
 );
 
 /**
- * How a block ends: going on to one block, to any of several (a test, a loop's top), returning
- * `value` from the function, or stopping, where no path goes on (a `panic`, a value of `Never`).
+ * What a branch tests, which says what each block it goes to is for:
+ *
+ * - `condition`: a `Bool`, going to `[true, false]`.
+ * - `present`: whether an optional holds a value (§4), going to `[present, none]`.
+ * - `is`: whether a value holds what `test` asks, going to `[holds, fails]`.
+ * - `fieldPass`: the top of the field loop `header` heads (§4), going past the loop, then to each
+ *   pass `passesOf(header)` gives, in its order; each pass runs once per field it visits.
+ * - `select`: which of a `select`'s cases goes on (§8), going to each case's, then to its `else`.
+ * - `unknown`: a test checking found a mistake in, which may go either way.
+ */
+export type BranchTest =
+  | { readonly kind: 'condition' | 'present'; readonly value: ValueId }
+  | { readonly kind: 'is'; readonly value: ValueId; readonly test: TypeTest }
+  | { readonly kind: 'fieldPass'; readonly header: FieldHeader }
+  | { readonly kind: 'select'; readonly node: Select }
+  | { readonly kind: 'unknown' };
+
+/**
+ * How a block ends: going on to one block, to one of several as `test` decides, returning `value`
+ * from the function, or stopping, where no path goes on (a `panic`, a value of `Never`).
  */
 export type Exit =
   | { readonly kind: 'goto'; readonly to: BlockId }
-  | { readonly kind: 'branch'; readonly to: readonly BlockId[] }
+  | { readonly kind: 'branch'; readonly test: BranchTest; readonly to: readonly BlockId[] }
   | { readonly kind: 'return'; readonly value: ValueId | undefined; readonly site: NodeOf<string> }
   | { readonly kind: 'stop' };
 

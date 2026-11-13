@@ -5,9 +5,11 @@
  *
  * - A step through an array (its length, an item, the items between) is the implicit call its
  *   site makes in that role; any other step is a `read` of the part.
- * - A pattern's tests run in order, each failing one going on to what follows a failed match; an
- *   `or` tries each alternative, binding the names of the one that matches. What reaches the end
- *   matched, and the pattern's names are bound there, each a copy into its variable at its name.
+ * - A pattern's tests run in order, each failing one going on to what follows a failed match: a
+ *   test of what its part holds by type branches on it (`TypeTest`); `==` is the built-in one, any
+ *   other comparison the `compare` checking made, related as the test says. An `or` tries each
+ *   alternative, binding the names of the one that matches. What reaches the end matched, and the
+ *   pattern's names are bound there, each a copy into its variable at its name.
  */
 
 import type { Pattern } from '../../../../syntax/patterns.ts';
@@ -24,7 +26,7 @@ import type {
   TargetBinding,
   TargetOwner,
 } from '../../../surface/checked-pattern.ts';
-import type { BlockId, ValueId } from '../../../surface/flow-ir.ts';
+import type { BlockId, BranchTest, ValueId } from '../../../surface/flow-ir.ts';
 import type { Type } from '../../../types/type/index.ts';
 import { boolType, intType, literalType, tupleElements } from '../../../types/type/primitives.ts';
 import type { FlowBuilder } from './flow-builder.ts';
@@ -75,7 +77,7 @@ export function matchPattern(
   const checked = builder.body.patternOf(pattern);
   if (checked === undefined) {
     // A pattern checking found a mistake in may match or not.
-    branchTo(builder, failed);
+    branchTo(builder, { kind: 'unknown' }, failed);
     return;
   }
   matchChecked(builder, checked, { subject, failed, pattern });
@@ -101,7 +103,9 @@ export function readAlong(
   let part = from;
   for (const step of path) {
     if (typeof step === 'object' && isArrayStep(step)) {
-      const offsets = offsetsOf(step).map(() => constant(builder, step.site, intType));
+      const offsets = offsetsOf(step).map((offset) =>
+        builder.constant(step.site, intType, { kind: 'primitive', value: BigInt(offset) }),
+      );
       part = implicitCall(builder, step.kind, { site: step.site, passed: [part, ...offsets] });
     } else {
       const read = builder.temporary(site, partTypeAt(builder, step, builder.valueOf(part).type));
@@ -187,21 +191,24 @@ function testPart(builder: FlowBuilder, test: PatternTest, matching: Matching): 
   }
   const site = test.kind === 'compare' ? test.site : pattern;
   const part = readAlong(builder, subject, test.path, site);
-  if (test.kind === 'compare') {
-    const passed = [part, patternValueOf(builder, test.value, site)];
-    implicitCall(builder, 'compare', { site: test.site, passed });
-  } else {
-    const holds = builder.temporary(site, boolType);
-    const operands =
-      test.kind === 'equal' ? [part, patternValueOf(builder, test.value, site)] : [part];
-    builder.emit({ op: 'compute', site, into: holds, operands });
+  if (test.kind !== 'compare' && test.kind !== 'equal') {
+    branchTo(builder, { kind: 'is', value: part, test }, failed);
+    return;
   }
-  branchTo(builder, failed);
+  const value = patternValueOf(builder, test.value, site);
+  const holds = builder.temporary(site, boolType);
+  if (test.kind === 'equal') {
+    builder.compute(holds, site, { kind: 'equal', negated: test.negated }, [part, value]);
+  } else {
+    const comparison = implicitCall(builder, 'compare', { site, passed: [part, value] });
+    builder.compute(holds, site, { kind: 'order', relation: test.relation }, [comparison]);
+  }
+  branchTo(builder, { kind: 'condition', value: holds }, failed);
 }
 
-/** Goes on, or to `failed`: a test that may fail. */
-function branchTo(builder: FlowBuilder, failed: BlockId): void {
-  const [holds, fails] = builder.branch(2) as [BlockId, BlockId];
+/** Goes on where `test` holds, else to `failed`. */
+function branchTo(builder: FlowBuilder, test: BranchTest, failed: BlockId): void {
+  const [holds, fails] = builder.branch(test) as [BlockId, BlockId];
   builder.resumeIn(fails);
   builder.end({ kind: 'goto', to: failed });
   builder.resumeIn(holds);
@@ -215,19 +222,12 @@ function patternValueOf(builder: FlowBuilder, value: PatternValue, site: NodeOf<
     case 'constant':
       return builder.expression(value.name);
     case 'int':
-      return constant(builder, site, intType);
+      return builder.constant(site, intType, { kind: 'primitive', value: value.value });
     default: {
       const unhandled: never = value;
       return unhandled;
     }
   }
-}
-
-/** A value of `type` the language makes at `site` with no parts: a literal, an offset. */
-export function constant(builder: FlowBuilder, site: NodeOf<string>, type: Type): ValueId {
-  const value = builder.temporary(site, type);
-  builder.emit({ op: 'compute', site, into: value, operands: [] });
-  return value;
 }
 
 /** Each of `bindings`' names, its part of `value`, copied into its variable at its name. */

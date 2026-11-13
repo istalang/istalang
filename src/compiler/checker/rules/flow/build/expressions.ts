@@ -3,8 +3,10 @@
  * exhaustive by kind, so a new kind can't be built unnoticed. Constructs with more to them have
  * modules of their own beside this one.
  *
- * - A name is a copy out of its variable, a global's value, a function named as a value, a variant,
- *   or a struct without fields written bare (§3.1), its type arguments given or not.
+ * - A literal is the constant it writes (`literalForm`).
+ * - A name is a copy out of its variable, a global's value, a function named as a value, a variant
+ *   without fields, or a struct without fields written bare (§3.1), its type arguments given or
+ *   not.
  * - A field read is a `read` of its part; `*x` and `x->` read what is behind the handle.
  * - A lambda is a closure made of what it captures, of a function built of its own.
  */
@@ -18,8 +20,10 @@ import type {
   MemberAccess,
   TupleElement,
 } from '../../../../syntax/expressions/index.ts';
+import type { Literal } from '../../../../syntax/expressions/literals/literals.ts';
 import type { Identifier } from '../../../../syntax/tree/node.ts';
 import type { CoreExpression, Sugar } from '../../../surface/checked-body.ts';
+import { literalForm, unitForm } from '../../../surface/constant-form.ts';
 import type { FlowFunction, Part, ValueId } from '../../../surface/flow-ir.ts';
 import { unitType } from '../../../types/type/primitives.ts';
 import { callFlow } from './calls.ts';
@@ -32,6 +36,7 @@ import {
   matchFlow,
   propagate,
   selectFlow,
+  unaryFlow,
 } from './control.ts';
 import type { FlowBuilder } from './flow-builder.ts';
 import { resolvedCall } from './implicit-calls.ts';
@@ -42,14 +47,16 @@ import {
   mapLiteral,
   structLiteral,
 } from './literals.ts';
-import { bindParameters, constant } from './parts.ts';
+import { bindParameters } from './parts.ts';
 import { partOfField } from './places.ts';
+import { madeVariant } from './variants.ts';
 
-/** A value the language computes from `operands` at `node`, holding none of them. */
-function computed(builder: FlowBuilder, node: Expression, operands: readonly ValueId[] = []) {
-  const into = builder.temporaryOf(node);
-  builder.emit({ op: 'compute', site: node, into, operands });
-  return into;
+/** The constant `node` writes; unknown where checking found its type no duration's. */
+function literal(builder: FlowBuilder, node: Literal): ValueId {
+  const form = literalForm(node, builder.body.typeOf(node));
+  return form === undefined
+    ? unknown(builder, node)
+    : builder.compute(builder.temporaryOf(node), node, { kind: 'constant', form });
 }
 
 /** What checking found a mistake in: its parts run, and what it gives is unknown. */
@@ -67,7 +74,8 @@ export function coreFlow(builder: FlowBuilder, node: Sugar): ValueId {
 
 /**
  * What `name` denotes, read as the value of `read` (the name, or a namespace's member qualifying
- * it): a function named as a value, a variable of the body, a global, or a value with no parts.
+ * it): a function named as a value, a variable of the body, a global, a variant without fields,
+ * or a struct without fields.
  */
 function named(builder: FlowBuilder, name: Identifier, read: Identifier | MemberAccess): ValueId {
   const call = builder.body.resolved.get(read);
@@ -80,8 +88,13 @@ function named(builder: FlowBuilder, name: Identifier, read: Identifier | Member
   if (entity?.kind === 'type') {
     return bareStruct(builder, read);
   }
+  if (entity?.kind === 'variant' || entity?.kind === 'variants') {
+    const type = builder.body.typeOf(read);
+    const into = builder.temporaryOf(read);
+    return madeVariant(builder, { site: read, type, name: name.text }, [], into);
+  }
   if (entity?.kind !== 'variable') {
-    return entity === undefined ? unknown(builder, read) : computed(builder, read);
+    return unknown(builder, read);
   }
   const into = builder.temporaryOf(read);
   const from = builder.named(entity, builder.body.typeOf(read));
@@ -126,7 +139,8 @@ function index(builder: FlowBuilder, node: Index): ValueId {
   const read = builder.body.fieldReadOf(node);
   const into = builder.temporaryOf(node);
   if (read !== undefined) {
-    builder.emit({ op: 'read', site: node, into, from: container, part: partOfField(read) });
+    const part = partOfField(read, key);
+    builder.emit({ op: 'read', site: node, into, from: container, part });
     return into;
   }
   const passed = [container, key].map((value) => ({ kind: 'value', value }) as const);
@@ -142,7 +156,7 @@ function index(builder: FlowBuilder, node: Index): ValueId {
 export function closureOf(builder: FlowBuilder, node: Lambda | FunctionDeclaration): ValueId {
   const checked = builder.body.functionOf(node);
   const captures = checked?.captures ?? [];
-  const nested = builder.nested(node);
+  const nested = builder.nested(node, checked?.result);
   for (const { entity, type } of captures) {
     nested.captured(entity, type);
   }
@@ -178,12 +192,12 @@ function bodyValue(
 // biome-ignore-start lint/style/useNamingConvention: the keys are the tree's node kinds.
 export const expressionFlows: Handlers<FlowBuilder, CoreExpression, [], ValueId> = {
   Identifier: (builder, node) => named(builder, node, node),
-  IntegerLiteral: computed,
-  FloatLiteral: computed,
-  DurationLiteral: computed,
-  StringLiteral: computed,
-  BooleanLiteral: computed,
-  NoneLiteral: computed,
+  IntegerLiteral: literal,
+  FloatLiteral: literal,
+  DurationLiteral: literal,
+  StringLiteral: literal,
+  BooleanLiteral: literal,
+  NoneLiteral: literal,
   ArrayLiteral: arrayLiteral,
   MapLiteral: mapLiteral,
   Comprehension: comprehension,
@@ -229,21 +243,12 @@ export const expressionFlows: Handlers<FlowBuilder, CoreExpression, [], ValueId>
     builder.emit({ op: 'read', site: node, into, from: handle, part: { kind: 'behind' } });
     return into;
   },
-  Unary: (builder, node) => {
-    const operand = builder.expression(node.operand);
-    const call = builder.body.resolved.get(node);
-    if (call === undefined) {
-      return computed(builder, node, [operand]);
-    }
-    const into = builder.temporaryOf(node);
-    resolvedCall(builder, call, { site: node, passed: [operand], into });
-    return into;
-  },
+  Unary: unaryFlow,
   Await: awaitFlow,
   Binary: binaryFlow,
   Is: isFlow,
   BlockExpression: (builder, node) =>
-    builder.block(node.block) ?? constant(builder, node, unitType),
+    builder.block(node.block) ?? builder.constant(node, unitType, unitForm),
   If: ifFlow,
   Match: matchFlow,
   Select: selectFlow,

@@ -215,8 +215,7 @@ export function comprehension(builder: FlowBuilder, node: Comprehension): ValueI
     if (node.condition === undefined) {
       keep();
     } else {
-      builder.expression(node.condition);
-      builder.paths([keep, () => undefined]);
+      builder.when({ kind: 'condition', value: builder.expression(node.condition) }, keep);
     }
   });
   return result;

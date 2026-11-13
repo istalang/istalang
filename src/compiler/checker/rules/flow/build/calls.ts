@@ -25,6 +25,7 @@ import type { FlowBuilder } from './flow-builder.ts';
 import { implicitCall, resolvedCall } from './implicit-calls.ts';
 import { spreadValue } from './literals.ts';
 import { enterPlace, leaveAll, partOfField } from './places.ts';
+import { madeVariant } from './variants.ts';
 
 /** A call evaluated now: its arguments as passed, and how to write back what they copied in. */
 interface Prepared {
@@ -45,8 +46,7 @@ export function callFlow(builder: FlowBuilder, node: Call): ValueId {
   }
   const call = builder.body.resolved.get(node);
   if (call === undefined) {
-    builder.emit(unresolved(builder, node, into));
-    return into;
+    return unresolved(builder, node, into);
   }
   const { arguments: passed, leave } = prepared(builder, node, call);
   resolvedCall(builder, call, { site: node, passed, into });
@@ -59,23 +59,25 @@ export function callFlow(builder: FlowBuilder, node: Call): ValueId {
  * A call neither resolved nor of a value: a variant's with no fields, its value (§3.11); else a
  * mistake checking reported, whose parts run all the same.
  */
-function unresolved(builder: FlowBuilder, node: Call, into: ValueId) {
+function unresolved(builder: FlowBuilder, node: Call, into: ValueId): ValueId {
   const { checker, module } = builder.inputs;
   const names = {
     entityOf: (name: Parameters<typeof checker.bindings.entityOf>[1]) =>
       checker.bindings.entityOf(module, name),
     chosenVariantOf: builder.body.chosenVariantOf,
   };
-  const variant = calledVariant(names, node);
-  if (variant !== undefined && variant.variant.fields.length === 0) {
-    return { op: 'compute', site: node, into, operands: [] } as const;
+  const { variant } = calledVariant(names, node) ?? {};
+  if (variant !== undefined && variant.fields.length === 0) {
+    const type = builder.body.typeOf(node);
+    return madeVariant(builder, { site: node, type, name: variant.name.text }, [], into);
   }
   const callee = builder.expression(calledName(node));
   const { arguments: passed } = prepared(builder, node, undefined);
   const operands = passed.map((argument) =>
     argument.kind === 'value' ? argument.value : builder.valueAt(argument.place),
   );
-  return { op: 'unknown', site: node, into, operands: [callee, ...operands] } as const;
+  builder.emit({ op: 'unknown', site: node, into, operands: [callee, ...operands] });
+  return into;
 }
 
 /**
