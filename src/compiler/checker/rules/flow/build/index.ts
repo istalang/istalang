@@ -8,9 +8,13 @@
  *   its value, past the stop, is one no operation computes.
  * - The outermost link of an optional chain (§4) opens the chain: a link stepping through an
  *   optional goes to the chain's end with `none` where it meets one (chains.ts).
- * - Its value is then a temporary of its own node, so each expression checking typed has a value
- *   at its node; where checking fitted it to the type expected there, a copy of that type follows,
- *   converted as checking recorded, unless what uses it fits it itself, as a chain's step does.
+ * - Its value is a temporary of its own node, or, for a node standing for another (parentheses, a
+ *   block expression, a sugar), that other's; where checking fitted it to the type expected there
+ *   with a conversion, a copy of that type follows, unless what uses it fits it itself, as a chain's
+ *   step does.
+ *
+ * A read of a variable is a copy of its value at the name, which a block gives as its own value by
+ * a copy out of it before its end releases the variable, as lowering moves it.
  *
  * A statement releases the temporaries it computed at its end, unless it leaves; a block, those of
  * its value but the value, after its scope's end (build/scopes.ts).
@@ -26,7 +30,7 @@ import type { SignatureParameter } from '../../../check.ts';
 import { type CheckedBody, isSugar } from '../../../surface/checked-body.ts';
 import type { FlowFunction, ValueId } from '../../../surface/flow-ir.ts';
 import { closeChain, openChain } from './chains.ts';
-import { coreFlow, expressionFlows } from './expressions.ts';
+import { coreFlow, expressionFlows, unitAt } from './expressions.ts';
 import { type Constructs, FlowBuilder, type FlowInputs } from './flow-builder.ts';
 import { bindParameters } from './parts.ts';
 import { statementFlows } from './statements.ts';
@@ -88,7 +92,7 @@ function computed(builder: FlowBuilder, node: Expression): ValueId {
   const value = isSugar(node)
     ? coreFlow(builder, node)
     : handlerOf(expressionFlows, node)(builder, node);
-  return atSite(builder, node, closeChain(builder, node, chain, value));
+  return closeChain(builder, node, chain, value);
 }
 
 const constructs: Constructs = {
@@ -107,7 +111,7 @@ const constructs: Constructs = {
   },
   block: (builder, node) => {
     const { result: value, temporaries } = builder.temporariesIn(() =>
-      builder.scopes.inScope(node, () => blockValue(builder, node)),
+      builder.scopes.inScope(node, () => owned(builder, blockValue(builder, node), node)),
     );
     const others = temporaries.filter((temporary) => temporary !== value);
     builder.scopes.release(builder.scopes.claim(others), node);
@@ -116,28 +120,27 @@ const constructs: Constructs = {
   functionBlock: blockValue,
 };
 
-/** `node`'s statements, and the value its tail gives, if any. */
-function blockValue(builder: FlowBuilder, node: Block): ValueId | undefined {
+/** `node`'s statements, and the value its tail gives, or `Unit`, fitted as checked (§4). */
+function blockValue(builder: FlowBuilder, node: Block): ValueId {
   const tail = tailExpressionOf(node);
   const leading = tail === undefined ? node.statements : node.statements.slice(0, -1);
   for (const statement of leading) {
     builder.statement(statement);
   }
-  return tail === undefined ? tail : builder.expression(tail);
+  return tail === undefined ? unitAt(builder, node) : builder.expression(tail);
+}
+
+/** `value`, a block's, its own: a variable's moved out of it, so the block's end can't end it. */
+function owned(builder: FlowBuilder, value: ValueId, block: Block): ValueId {
+  if (!builder.isRead(value)) {
+    return value;
+  }
+  const moved = builder.temporary(block, builder.valueOf(value).type);
+  builder.emit({ op: 'copy', site: block, into: moved, from: value, fit: undefined });
+  return moved;
 }
 
 /** Whether `node` never ends where it stands, leaving its temporaries to what it goes to. */
 function leaves(node: Statement): boolean {
   return node.kind === 'Return' || node.kind === 'Break' || node.kind === 'Continue';
-}
-
-/** `value`, as the value of `node`: copied into a temporary of the node unless it is one. */
-function atSite(builder: FlowBuilder, node: Expression, value: ValueId): ValueId {
-  const found = builder.valueOf(value);
-  if (found.kind === 'temporary' && found.site === node) {
-    return value;
-  }
-  const copy = builder.temporaryOf(node);
-  builder.emit({ op: 'copy', site: node, into: copy, from: value, fit: undefined });
-  return copy;
 }

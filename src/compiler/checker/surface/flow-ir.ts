@@ -239,7 +239,7 @@ export interface FlowFunction {
 }
 
 /** The values `operation` reads: its operands, and the keys a part it reads or a place names. */
-export function operandsOf(operation: Operation): readonly ValueId[] {
+export function valuesReadBy(operation: Operation): readonly ValueId[] {
   const placeValues = ({ root, path }: Place) => [root, ...path.flatMap(keyOf)];
   const argumentValues = (each: Argument) =>
     each.kind === 'value' ? [each.value] : placeValues(each.place);

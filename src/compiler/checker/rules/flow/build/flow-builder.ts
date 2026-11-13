@@ -14,12 +14,11 @@ import type { VariableEntity } from '../../../../binder/entities.ts';
 import type { ModuleId } from '../../../../program/program.ts';
 import type { FunctionDeclaration } from '../../../../syntax/declarations/index.ts';
 import type { Expression } from '../../../../syntax/expressions/index.ts';
-import { placePath } from '../../../../syntax/expressions/places.ts';
 import type { Block, Statement } from '../../../../syntax/statements/index.ts';
 import type { SyntaxNode } from '../../../../syntax/tree/index.ts';
 import type { Identifier, Invalid, NodeOf } from '../../../../syntax/tree/node.ts';
 import type { CheckerContext } from '../../../contexts/context.ts';
-import type { CheckedBody } from '../../../surface/checked-body.ts';
+import type { CheckedBody, ValueSite, WrittenFit } from '../../../surface/checked-body.ts';
 import type { ConstantForm } from '../../../surface/constant-form.ts';
 import type {
   BlockId,
@@ -30,9 +29,9 @@ import type {
   FlowFunction,
   FlowValue,
   Operation,
-  Place,
   ValueId,
 } from '../../../surface/flow-ir.ts';
+import { isExact } from '../../../types/fitting/fit/index.ts';
 import type { Type } from '../../../types/type/index.ts';
 import { Scopes } from './scopes.ts';
 
@@ -67,8 +66,8 @@ export interface Constructs {
   readonly expression: (builder: FlowBuilder, node: Expression) => ValueId;
   readonly unfitted: (builder: FlowBuilder, node: Expression) => ValueId;
   readonly statement: (builder: FlowBuilder, node: Statement | Invalid) => void;
-  readonly block: (builder: FlowBuilder, node: Block) => ValueId | undefined;
-  readonly functionBlock: (builder: FlowBuilder, node: Block) => ValueId | undefined;
+  readonly block: (builder: FlowBuilder, node: Block) => ValueId;
+  readonly functionBlock: (builder: FlowBuilder, node: Block) => ValueId;
 }
 
 /**
@@ -102,6 +101,8 @@ export class FlowBuilder {
   readonly #blocks: OpenBlock[] = [];
   readonly #variables = new Map<VariableEntity, ValueId>();
   readonly #globals = new Map<VariableEntity, ValueId>();
+  /** The temporaries that read a variable at a name: its value, which they compute nothing of. */
+  readonly #reads = new Set<ValueId>();
   readonly #constructs: Constructs;
   #self: ValueId | undefined;
   #body: CheckedBody;
@@ -137,13 +138,13 @@ export class FlowBuilder {
     this.#constructs.statement(this, node);
   }
 
-  /** `node`'s statements in a scope of their own, and the value its tail gives, if any. */
-  block(node: Block): ValueId | undefined {
+  /** `node`'s statements in a scope of their own, and the value it gives (`Unit` with no tail). */
+  block(node: Block): ValueId {
     return this.#constructs.block(this, node);
   }
 
   /** `node`, the function's own block, whose variables its return releases. */
-  functionBlock(node: Block): ValueId | undefined {
+  functionBlock(node: Block): ValueId {
     return this.#constructs.functionBlock(this, node);
   }
 
@@ -168,20 +169,28 @@ export class FlowBuilder {
     }
   }
 
-  /** `value`, converted to the type expected of `node`, where checking fitted it to one. */
-  fit(node: Expression, value: ValueId): ValueId {
-    const expected = this.#body.expectedOf(node);
-    if (expected === undefined || expected === this.#body.typeOf(node)) {
+  /** `value`, converted to the type expected at `site`, as checking fitted it there. */
+  fit(site: ValueSite, value: ValueId): ValueId {
+    return this.fitted(site, value, {
+      type: this.#body.expectedOf(site),
+      fit: this.#body.fitAt(site),
+    });
+  }
+
+  /**
+   * `value` converted as `fit` says, into a temporary of `type` at `site`; `value` itself where the
+   * fit converts nothing, as lowering's `fittedValue` leaves it.
+   */
+  fitted(
+    site: NodeOf<string>,
+    value: ValueId,
+    { type, fit }: { readonly type: Type | undefined; readonly fit: WrittenFit | undefined },
+  ): ValueId {
+    if (fit === undefined || (fit !== 'intoKeyedField' && isExact(fit))) {
       return value;
     }
-    const converted = this.temporary(node, expected);
-    this.emit({
-      op: 'copy',
-      site: node,
-      into: converted,
-      from: value,
-      fit: this.#body.fitAt(node),
-    });
+    const converted = this.temporary(site, type);
+    this.emit({ op: 'copy', site, into: converted, from: value, fit });
     return converted;
   }
 
@@ -204,9 +213,12 @@ export class FlowBuilder {
 
   // Values.
 
-  /** A temporary holding the value of `node`, of the type checking recorded for it. */
+  /**
+   * A temporary holding the value of `node`, of the type checking recorded for it; a link of an
+   * optional chain's, of what its own step gives, which only the chain wraps (§4).
+   */
   temporaryOf(node: Expression): ValueId {
-    return this.temporary(node, this.#body.typeOf(node));
+    return this.temporary(node, this.#body.chainOf(node)?.carried ?? this.#body.typeOf(node));
   }
 
   /** A temporary computed at `site`, of `type`, undefined where checking recorded none. */
@@ -239,7 +251,9 @@ export class FlowBuilder {
     const result = build();
     const temporaries = this.#values
       .slice(first)
-      .flatMap((value, offset) => (value.kind === 'temporary' ? [first + offset] : []));
+      .flatMap((value, offset) =>
+        value.kind === 'temporary' && !this.#reads.has(first + offset) ? [first + offset] : [],
+      );
     return { result, temporaries };
   }
 
@@ -257,6 +271,24 @@ export class FlowBuilder {
     });
     this.#variables.set(entity, value);
     return value;
+  }
+
+  /**
+   * `from`'s value, read at `site` into a temporary of `type`: a copy out of a variable, the
+   * variable's value as it stands, which no release ends; or a global's, computed there.
+   */
+  read(from: ValueId, site: NodeOf<string>, type: Type | undefined): ValueId {
+    const into = this.temporary(site, type);
+    this.emit({ op: 'copy', site, into, from, fit: undefined });
+    if (this.valueOf(from).kind === 'variable') {
+      this.#reads.add(into);
+    }
+    return into;
+  }
+
+  /** Whether `value` reads a variable at a name, a copy of its value as it stands. */
+  isRead(value: ValueId): boolean {
+    return this.#reads.has(value);
   }
 
   /** What `entity` names: a variable the body declares, or a global, of `type` if one. */
@@ -294,28 +326,6 @@ export class FlowBuilder {
       this.#variables.set(entity, value);
       this.#self = value;
     }
-  }
-
-  /**
-   * The value `place` holds now, read: a variable copied out of at its name, then the part its
-   * path reaches, each read of the type of the expression it ends at, its place's last parts
-   * being the last levels of the place its site names (places.ts).
-   */
-  valueAt(place: Place): ValueId {
-    let value = place.root;
-    if (this.valueOf(value).kind === 'variable') {
-      const site = place.name ?? place.site;
-      value = this.temporary(site, this.valueOf(place.root).type);
-      this.emit({ op: 'copy', site, into: value, from: place.root, fit: undefined });
-    }
-    const { root, steps } = placePath(place.site);
-    const levels = [root, ...steps].slice(-place.path.length);
-    for (const [index, part] of place.path.entries()) {
-      const read = this.temporary(place.site, this.#body.typeOf(levels[index] as Expression));
-      this.emit({ op: 'read', site: place.site, into: read, from: value, part });
-      value = read;
-    }
-    return value;
   }
 
   valueOf(id: ValueId): FlowValue {
@@ -362,33 +372,9 @@ export class FlowBuilder {
     return to;
   }
 
-  /** Runs `then` from a branch where `test` holds, then goes on where it doesn't. */
-  when(test: BranchTest, then: () => void): void {
-    const [holds, otherwise] = this.branch(test) as [BlockId, BlockId];
-    this.resumeIn(holds);
-    then();
-    this.continueIn(otherwise);
-  }
-
   /** Goes on in `block`, which something else jumps to. */
   resumeIn(block: BlockId): void {
     this.#current = block;
-  }
-
-  /**
-   * The value inside the optional `whole`, read into `into` at `site` where `whole` holds one; where
-   * it is `none`, `absent` runs from a branch of its own, which goes on elsewhere or ends (§4).
-   */
-  presentOr(
-    whole: ValueId,
-    { site, into }: { readonly site: Expression; readonly into: ValueId },
-    absent: () => void,
-  ): void {
-    const [present, none] = this.branch({ kind: 'present', value: whole }) as [BlockId, BlockId];
-    this.resumeIn(none);
-    absent();
-    this.resumeIn(present);
-    this.emit({ op: 'read', site, into, from: whole, part: { kind: 'inside' } });
   }
 
   /** The current block, or a new one nothing jumps to where it has ended. */

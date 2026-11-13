@@ -1,7 +1,7 @@
 /**
  * A body's flow holds everything checking recorded of it (../../surface/flow-ir.ts): over every
- * corpus program and spec example, each expression checking typed has a value at its node, or is
- * part of a place the flow writes or passes by `&`; and each call the body makes, written or
+ * corpus program and spec example, each expression checking typed has a value at its node, or at
+ * the node it stands for (`standsFor`), or is part of a place the flow writes or passes by `&`; and each call the body makes, written or
  * implicit, is a call of the flow, or a function it names as a value; and a program checking
  * accepts runs no code of unknown value, tests nothing it can't tell, and computes no value of no
  * type. Its every body is swept: functions', defaults', and constants' initializers. Two calls
@@ -24,10 +24,11 @@ import { defaultValuesOf } from '../../../syntax/expressions/parameters.ts';
 import { placePath } from '../../../syntax/expressions/places.ts';
 import { calledName } from '../../../syntax/expressions/readings.ts';
 import type { Block } from '../../../syntax/statements/index.ts';
+import { tailExpressionOf } from '../../../syntax/statements/readings.ts';
 import { bodyOf, type SyntaxNode, type SyntaxTree } from '../../../syntax/tree/index.ts';
 import { spanIn } from '../../../syntax/tree/positions.ts';
 import { type Checker, checkProgram, type SignatureParameter } from '../../check.ts';
-import { type CheckedBody, checkedChildrenOf } from '../../surface/checked-body.ts';
+import { type CheckedBody, checkedChildrenOf, isSugar } from '../../surface/checked-body.ts';
 import type { CheckedPattern, PartStep } from '../../surface/checked-pattern.ts';
 import type { FlowFunction, FlowValue, Operation, Place } from '../../surface/flow-ir.ts';
 import type { MadeCall, ResolvedCall } from '../../surface/resolved-call.ts';
@@ -193,6 +194,23 @@ function neverMade(body: CheckedBody, root: SyntaxNode, local: Local, held: Held
     );
 }
 
+/**
+ * The nodes whose value `node` gives, where it stands for another: parentheses' expression, a block
+ * expression's block or its tail, a sugar's core.
+ */
+function standsFor(body: CheckedBody, node: SyntaxNode): readonly SyntaxNode[] {
+  const expression = node as Expression;
+  if (expression.kind === 'Parenthesized') {
+    return [expression.expression];
+  }
+  if (expression.kind === 'BlockExpression') {
+    const tail = tailExpressionOf(expression.block);
+    return tail === undefined ? [expression.block] : [expression.block, tail];
+  }
+  const core = isSugar(expression) ? body.coreOf(expression) : undefined;
+  return core === undefined ? [] : [core];
+}
+
 /** What `flow` misses of what checking recorded of `body`, whose block is `root`. */
 function missedBy(
   flows: readonly FlowFunction[],
@@ -217,9 +235,11 @@ function missedBy(
   const missing: string[] = [];
   for (const root of roots) {
     const callees = calleesUnder(body, root, local);
+    const hasValue = (node: SyntaxNode): boolean =>
+      held.nodes.has(node) || standsFor(body, node).some(hasValue);
     walk(root, { local, body }, (node) => {
       const typed = body.typeOf(node as Expression) !== undefined;
-      if (typed && !callees.has(node) && !held.nodes.has(node)) {
+      if (typed && !callees.has(node) && !hasValue(node)) {
         missing.push(`no value of ${textOf(node)}`);
       }
     });

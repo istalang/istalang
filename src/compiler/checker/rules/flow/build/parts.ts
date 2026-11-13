@@ -26,6 +26,7 @@ import type {
   TargetBinding,
   TargetOwner,
 } from '../../../surface/checked-pattern.ts';
+import type { ConstantForm } from '../../../surface/constant-form.ts';
 import type { BlockId, BranchTest, ValueId } from '../../../surface/flow-ir.ts';
 import type { Type } from '../../../types/type/index.ts';
 import {
@@ -86,14 +87,20 @@ export function matchPattern(
     branchTo(builder, { kind: 'unknown' }, failed);
     return;
   }
-  matchChecked(builder, checked, { subject, failed, pattern });
+  const matching = { subject, failed, pattern, choices: new Map() };
+  testAll(builder, checked.tests, matching);
+  bindMatched(builder, checked, matching);
 }
 
-/** A pattern being matched: its subject, where a failing test goes, and the pattern's node. */
+/**
+ * A pattern being matched: its subject, where a failing test goes, the pattern's node, and the
+ * value saying which alternative of each `or` test matched.
+ */
 interface Matching {
   readonly subject: ValueId;
   readonly failed: BlockId;
   readonly pattern: NodeOf<string>;
+  readonly choices: Map<PatternTest, ValueId>;
 }
 
 /**
@@ -175,11 +182,44 @@ function offsetsOf(step: ArrayStep): readonly number[] {
   }
 }
 
-function matchChecked(builder: FlowBuilder, checked: CheckedPattern, matching: Matching): void {
-  for (const test of checked.tests) {
+function testAll(builder: FlowBuilder, tests: readonly PatternTest[], matching: Matching): void {
+  for (const test of tests) {
     testPart(builder, test, matching);
   }
+}
+
+/**
+ * Binds the names `checked` binds, once every test has passed: its own, then, for each `or` test,
+ * those of the alternative that matched.
+ */
+function bindMatched(builder: FlowBuilder, checked: CheckedPattern, matching: Matching): void {
   bind(builder, checked.bindings, matching.subject, undefined);
+  for (const test of checked.tests) {
+    const choice = test.kind === 'or' ? matching.choices.get(test) : undefined;
+    if (test.kind === 'or' && choice !== undefined) {
+      const end = builder.newBlock();
+      for (const [index, alternative] of test.alternatives.entries()) {
+        const chosen = builder.temporary(matching.pattern, boolType);
+        const position = builder.constant(matching.pattern, intType, chosenAs(index));
+        builder.compute(chosen, matching.pattern, { kind: 'equal', negated: false }, [
+          choice,
+          position,
+        ]);
+        const isChosen = { kind: 'condition', value: chosen } as const;
+        const [bound, next] = builder.branch(isChosen) as [BlockId, BlockId];
+        builder.resumeIn(bound);
+        bindMatched(builder, alternative, matching);
+        builder.end({ kind: 'goto', to: end });
+        builder.resumeIn(next);
+      }
+      builder.continueIn(end);
+    }
+  }
+}
+
+/** The constant an `or` test's choice holds where its alternative at `index` matched. */
+function chosenAs(index: number): ConstantForm {
+  return { kind: 'primitive', value: BigInt(index) };
 }
 
 function testPart(builder: FlowBuilder, test: PatternTest, matching: Matching): void {
@@ -189,15 +229,18 @@ function testPart(builder: FlowBuilder, test: PatternTest, matching: Matching): 
     return;
   }
   if (test.kind === 'or') {
+    const choice = builder.temporary(pattern, intType);
     const matched = builder.newBlock();
-    for (const alternative of test.alternatives) {
+    for (const [index, alternative] of test.alternatives.entries()) {
       const next = builder.newBlock();
-      matchChecked(builder, alternative, { ...matching, failed: next });
+      testAll(builder, alternative.tests, { ...matching, failed: next });
+      builder.compute(choice, pattern, { kind: 'constant', form: chosenAs(index) });
       builder.end({ kind: 'goto', to: matched });
       builder.resumeIn(next);
     }
     builder.end({ kind: 'goto', to: failed });
     builder.resumeIn(matched);
+    matching.choices.set(test, choice);
     return;
   }
   const site = test.kind === 'compare' ? test.site : pattern;
@@ -241,20 +284,33 @@ function patternValueOf(builder: FlowBuilder, value: PatternValue, site: NodeOf<
   }
 }
 
-/** Each of `bindings`' names, its part of `value`, copied into its variable at its name. */
+/**
+ * Each of `bindings`' names, its part of `value`, narrowed to the name's type where the pattern
+ * narrows it, copied into its variable at its name.
+ */
 function bind(
   builder: FlowBuilder,
   bindings: readonly (TargetBinding | PartBinding)[],
   value: ValueId,
   lifetime: Lifetime,
 ): void {
-  for (const { name, path } of bindings) {
+  for (const binding of bindings) {
+    const { name, path } = binding;
     const entity = builder.entityOf(name);
     if (entity !== undefined) {
       const variable = builder.variable(entity);
-      const part = readAlong(builder, value, path, name);
+      const part = readAlong(builder, value, [...path, ...narrowing(binding)], name);
       builder.emit({ op: 'copy', site: name, into: variable, from: part, fit: undefined });
       builder.scopes.declare(variable, lifetime);
     }
   }
+}
+
+/**
+ * The step a pattern's name takes past its part when it holds only some of the part's values
+ * (`narrowedFrom`, §3.11): to them, out of the union or `any` type the part is of.
+ */
+function narrowing(binding: TargetBinding | PartBinding): readonly PartStep[] {
+  const from = 'narrowedFrom' in binding ? binding.narrowedFrom : undefined;
+  return from === undefined ? [] : [{ kind: 'member', union: from, member: binding.type }];
 }

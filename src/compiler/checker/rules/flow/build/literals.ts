@@ -25,8 +25,8 @@ import type {
 import { itemValue } from '../../../../syntax/expressions/readings.ts';
 import type { Invalid } from '../../../../syntax/tree/node.ts';
 import type { FieldSource } from '../../../surface/checked-body.ts';
-import type { Argument, ValueId } from '../../../surface/flow-ir.ts';
-import { errorType, tupleElements } from '../../../types/type/primitives.ts';
+import type { Argument, BlockId, ValueId } from '../../../surface/flow-ir.ts';
+import { errorType } from '../../../types/type/primitives.ts';
 import { arrayOf } from '../../../types/type/well-known.ts';
 import type { FlowBuilder } from './flow-builder.ts';
 import { implicitCall, resolvedCall } from './implicit-calls.ts';
@@ -167,20 +167,7 @@ function built(
     } else {
       make();
       itemLoop(builder, node, builder.expression(node.expression), {
-        pass: (item) => {
-          const fitted = builder.temporary(
-            node,
-            builder.body.expectedOf(node) ?? builder.valueOf(item).type,
-          );
-          builder.emit({
-            op: 'copy',
-            site: node,
-            into: fitted,
-            from: item,
-            fit: builder.body.fitAt(node),
-          });
-          appendTo(builder, node, into, fitted);
-        },
+        pass: (item) => appendTo(builder, node, into, builder.fit(node, item)),
       });
     }
   }
@@ -212,13 +199,7 @@ function declaredLiteral(
       const iterable = builder.expression(entry.expression);
       itemLoop(builder, entry, iterable, {
         pass: (item) => {
-          const [key, value] = [0, 1].map((position) => {
-            const pair = builder.valueOf(item).type;
-            const part = builder.temporary(entry, pair && tupleElements(pair)?.[position]);
-            const step = { kind: 'step', step: position } as const;
-            builder.emit({ op: 'read', site: entry, into: part, from: item, part: step });
-            return part;
-          });
+          const [key, value] = [0, 1].map((step) => readAlong(builder, item, [step], entry));
           implicitCall(builder, 'insert', {
             site: entry,
             passed: [place, key as ValueId, value as ValueId],
@@ -238,7 +219,11 @@ export function comprehension(builder: FlowBuilder, node: Comprehension): ValueI
     if (node.condition === undefined) {
       keep();
     } else {
-      builder.when({ kind: 'condition', value: builder.expression(node.condition) }, keep);
+      const test = { kind: 'condition', value: builder.expression(node.condition) } as const;
+      const [kept, skipped] = builder.branch(test) as [BlockId, BlockId];
+      builder.resumeIn(kept);
+      keep();
+      builder.continueIn(skipped);
     }
   });
   return result;

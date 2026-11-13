@@ -18,7 +18,7 @@ import type { FieldRead } from '../../../surface/checked-field.ts';
 import type { Argument, Part, Place, ValueId } from '../../../surface/flow-ir.ts';
 import { errorType } from '../../../types/type/primitives.ts';
 import type { FlowBuilder } from './flow-builder.ts';
-import { implicitCall, resolvedCall } from './implicit-calls.ts';
+import { implicitCall, resolvedCall, valueAt } from './implicit-calls.ts';
 
 /** A place entered: where it is, and how what an accessor read is written back once done with. */
 interface EnteredPlace {
@@ -63,7 +63,7 @@ function stepInto(builder: FlowBuilder, place: Place, step: PlaceStep): EnteredP
   const element = builder.temporaryOf(step);
   resolvedCall(builder, builder.body.resolved.get(step), {
     site: step,
-    passed: [builder.valueAt(place), key],
+    passed: [valueAt(builder, place), key],
     into: element,
   });
   return {
@@ -92,7 +92,7 @@ export function enterAssigned(builder: FlowBuilder, target: Expression): Assigne
       read: () =>
         resolvedCall(builder, builder.body.resolved.get(last), {
           site: last,
-          passed: [builder.valueAt(container.place), key],
+          passed: [valueAt(builder, container.place), key],
           into: builder.temporaryOf(last),
         }),
       write: (element) => {
@@ -103,7 +103,7 @@ export function enterAssigned(builder: FlowBuilder, target: Expression): Assigne
   }
   const { place, leave } = enterPlace(builder, target);
   return {
-    read: () => builder.valueAt(place),
+    read: () => valueAt(builder, place),
     write: (value) => {
       const root = builder.valueOf(place.root);
       if (place.path.length === 0 && root.kind === 'variable') {

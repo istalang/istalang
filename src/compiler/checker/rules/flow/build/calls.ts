@@ -22,7 +22,7 @@ import {
 } from '../../../surface/resolved-call.ts';
 import { stepTarget } from './chains.ts';
 import type { FlowBuilder } from './flow-builder.ts';
-import { implicitCall, resolvedCall } from './implicit-calls.ts';
+import { implicitCall, resolvedCall, valueAt } from './implicit-calls.ts';
 import { spreadValue } from './literals.ts';
 import { enterPlace, leaveAll, partOfField } from './places.ts';
 import { madeVariant } from './variants.ts';
@@ -74,7 +74,7 @@ function unresolved(builder: FlowBuilder, node: Call, into: ValueId): ValueId {
   const callee = builder.expression(calledName(node));
   const { arguments: passed } = prepared(builder, node, undefined);
   const operands = passed.map((argument) =>
-    argument.kind === 'value' ? argument.value : builder.valueAt(argument.place),
+    argument.kind === 'value' ? argument.value : valueAt(builder, argument.place),
   );
   builder.emit({ op: 'unknown', site: node, into, operands: [callee, ...operands] });
   return into;

@@ -44,6 +44,7 @@ import type { BlockId, ValueId } from '../../../surface/flow-ir.ts';
 import type { Type } from '../../../types/type/index.ts';
 import { boolType } from '../../../types/type/primitives.ts';
 import { awaitedOf, wellKnownArguments } from '../../../types/type/well-known.ts';
+import { presentOr } from './chains.ts';
 import type { FlowBuilder } from './flow-builder.ts';
 import { implicitCall, resolvedCall } from './implicit-calls.ts';
 import { bindTargets, matchPattern, payload, readAlong } from './parts.ts';
@@ -275,9 +276,8 @@ export function propagate(builder: FlowBuilder, node: Propagate): ValueId {
   builder.resumeIn(failed);
   const passed = readAlong(builder, operand, [payload(error)], node);
   const [, returned] = argumentsOf(builder.result);
-  const converted = builder.temporary(node, returned);
   const fit = error && returned && checker.fitOf(error, returned);
-  builder.emit({ op: 'copy', site: node, into: converted, from: passed, fit });
+  const converted = builder.fitted(node, passed, { type: returned, fit });
   const err = { site: node, type: builder.result, name: resultVariants.err };
   const value = madeVariant(builder, err, [converted]);
   builder.end({ kind: 'return', value, site: node });
@@ -290,7 +290,7 @@ function nullishFlow(builder: FlowBuilder, node: Binary): ValueId {
   const whole = builder.expression(node.left);
   const result = builder.temporaryOf(node);
   const join = builder.newBlock();
-  builder.presentOr(whole, { site: node, into: result }, () => {
+  presentOr(builder, whole, { site: node, into: result }, () => {
     const right = builder.expression(node.right);
     builder.emit({ op: 'copy', site: node, into: result, from: right, fit: undefined });
     builder.end({ kind: 'goto', to: join });
@@ -369,9 +369,7 @@ interface Given {
 /** `body`'s value copied into `result`. */
 function valueInto(builder: FlowBuilder, result: ValueId, body: Block): void {
   const value = builder.block(body);
-  if (value !== undefined) {
-    builder.emit({ op: 'copy', site: body, into: result, from: value, fit: undefined });
-  }
+  builder.emit({ op: 'copy', site: body, into: result, from: value, fit: undefined });
 }
 
 /** `body`'s value given as the construct's, then on to where its paths meet. */

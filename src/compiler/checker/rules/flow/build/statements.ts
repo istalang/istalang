@@ -18,6 +18,7 @@ import type { Handlers } from '../../../../../foundation/structures/kind-table.t
 import { hasUnnamedPart } from '../../../../syntax/patterns.ts';
 import type {
   Assignment,
+  Block,
   Statement,
   VariableDeclaration,
   While,
@@ -27,7 +28,7 @@ import { hasUnnamedTarget } from '../../../../syntax/statements/targets.ts';
 import type { AssignedPart } from '../../../surface/checked-body.ts';
 import type { ValueId } from '../../../surface/flow-ir.ts';
 import { guarded } from './control.ts';
-import { closureOf } from './expressions.ts';
+import { closureOf, unitAt } from './expressions.ts';
 import type { FlowBuilder } from './flow-builder.ts';
 import { resolvedCall } from './implicit-calls.ts';
 import { fieldLoop, targetsLoop } from './loops.ts';
@@ -98,9 +99,7 @@ function compound(builder: FlowBuilder, node: Assignment, only: AssignedPart): v
  */
 function fitted(builder: FlowBuilder, part: AssignedPart, value: ValueId): ValueId {
   const type = part.fit === 'intoKeyedField' ? builder.body.typeOf(part.target) : part.type;
-  const converted = builder.temporary(part.target, type);
-  builder.emit({ op: 'copy', site: part.target, into: converted, from: value, fit: part.fit });
-  return converted;
+  return builder.fitted(part.target, value, { type, fit: part.fit });
 }
 
 /**
@@ -115,12 +114,21 @@ function whileLoop(builder: FlowBuilder, node: While): void {
     guarded(builder, {
       scope: node,
       condition: node.condition,
-      body: () => builder.block(node.body),
+      body: () => effectBlock(builder, node.body),
       leave: () => builder.end({ kind: 'goto', to: top }),
     });
     builder.end({ kind: 'goto', to: exit });
   });
   builder.resumeIn(exit);
+}
+
+/** A body run for what it does, a loop's or a labelled block's: every statement, in its scope. */
+function effectBlock(builder: FlowBuilder, node: Block): void {
+  builder.scopes.inScope(node, () => {
+    for (const statement of node.statements) {
+      builder.statement(statement);
+    }
+  });
 }
 
 // biome-ignore-start lint/style/useNamingConvention: the keys are the tree's node kinds.
@@ -140,21 +148,21 @@ export const statementFlows: Handlers<FlowBuilder, Statement, [], void> = {
   },
   Assignment: assignment,
   Return: (builder, node) => {
-    const value = node.value === undefined ? undefined : builder.expression(node.value);
+    const value = node.value === undefined ? unitAt(builder, node) : builder.expression(node.value);
     builder.end({ kind: 'return', value, site: node });
   },
   Break: (builder, node) => builder.scopes.exit(builder.body.labels.exitOf(node), 'break', node),
   Continue: (builder, node) =>
     builder.scopes.exit(builder.body.labels.exitOf(node), 'continue', node),
-  For: (builder, node) => targetsLoop(builder, node, node, () => builder.block(node.body)),
+  For: (builder, node) => targetsLoop(builder, node, node, () => effectBlock(builder, node.body)),
   FieldLoop: (builder, node) =>
     fieldLoop(builder, node, node, () => {
-      builder.block(node.body);
+      effectBlock(builder, node.body);
     }),
   While: whileLoop,
   LabelledBlock: (builder, node) => {
     const end = builder.newBlock();
-    builder.scopes.withExits(node, end, undefined, () => builder.block(node.body));
+    builder.scopes.withExits(node, end, undefined, () => effectBlock(builder, node.body));
     builder.continueIn(end);
   },
   Drop: (builder, node) => {

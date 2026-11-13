@@ -21,6 +21,7 @@ import type {
   TupleElement,
 } from '../../../../syntax/expressions/index.ts';
 import type { Literal } from '../../../../syntax/expressions/literals/literals.ts';
+import type { Block, Return } from '../../../../syntax/statements/index.ts';
 import type { Identifier } from '../../../../syntax/tree/node.ts';
 import type { CoreExpression, Sugar } from '../../../surface/checked-body.ts';
 import { literalForm, unitForm } from '../../../surface/constant-form.ts';
@@ -96,10 +97,8 @@ function named(builder: FlowBuilder, name: Identifier, read: Identifier | Member
   if (entity?.kind !== 'variable') {
     return unknown(builder, read);
   }
-  const into = builder.temporaryOf(read);
-  const from = builder.named(entity, builder.body.typeOf(read));
-  builder.emit({ op: 'copy', site: read, into, from, fit: undefined });
-  return into;
+  const type = builder.body.typeOf(read);
+  return builder.read(builder.named(entity, type), read, type);
 }
 
 /** A struct without fields written bare, with type arguments or not (§3.1): a value of its own. */
@@ -247,12 +246,16 @@ export const expressionFlows: Handlers<FlowBuilder, CoreExpression, [], ValueId>
   Await: awaitFlow,
   Binary: binaryFlow,
   Is: isFlow,
-  BlockExpression: (builder, node) =>
-    builder.block(node.block) ?? builder.constant(node, unitType, unitForm),
+  BlockExpression: (builder, node) => builder.block(node.block),
   If: ifFlow,
   Match: matchFlow,
   Select: selectFlow,
   Missing: (builder, node) => unknown(builder, node),
   Invalid: (builder, node) => unknown(builder, node),
 };
+
+/** The `Unit` a block with no tail or a bare `return` gives, fitted as checking fitted it there. */
+export function unitAt(builder: FlowBuilder, site: Block | Return): ValueId {
+  return builder.fit(site, builder.constant(site, unitType, unitForm));
+}
 // biome-ignore-end lint/style/useNamingConvention: the keys are the tree's node kinds.

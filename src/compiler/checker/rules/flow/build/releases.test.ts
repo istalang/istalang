@@ -36,9 +36,11 @@ function operationsOf<Kind extends Operation['op']>(
   );
 }
 
-/** The temporaries of `flow`. */
+/** The temporaries of `flow` its statements compute, not the `Unit` a block with no tail gives. */
 function temporariesOf(flow: FlowFunction): readonly ValueId[] {
-  return flow.values.flatMap((value, id) => (value.kind === 'temporary' ? [id] : []));
+  return flow.values.flatMap((value, id) =>
+    value.kind === 'temporary' && value.site.kind !== 'Block' ? [id] : [],
+  );
 }
 
 describe("a body's flow", () => {

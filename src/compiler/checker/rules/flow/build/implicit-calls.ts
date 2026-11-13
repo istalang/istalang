@@ -3,11 +3,13 @@
  * construct with no call written (`ImplicitRole`, resolution/applying/implicit.ts), where the
  * construct makes them, with the arguments lowering passes them (lowering/calls/emit-call.ts
  * `emitImplicitCall`). One checking resolved no function for runs its arguments, a place passed
- * by `&` read where it stands, and gives what is unknown.
+ * by `&` read where it stands (`valueAt`), and gives what is unknown.
  */
 
+import type { Expression } from '../../../../syntax/expressions/index.ts';
+import { placePath } from '../../../../syntax/expressions/places.ts';
 import type { NodeOf } from '../../../../syntax/tree/node.ts';
-import type { Argument, ValueId } from '../../../surface/flow-ir.ts';
+import type { Argument, Place, ValueId } from '../../../surface/flow-ir.ts';
 import type { ImplicitRole, ResolvedCall } from '../../../surface/resolved-call.ts';
 import { callSubstitution } from '../../../surface/witness-closing.ts';
 import { substitute } from '../../../types/parts/substitution.ts';
@@ -44,7 +46,7 @@ function emitCall(
   const arguments_ = passed.map(asArgument);
   if (call === undefined) {
     const operands = arguments_.map((each) =>
-      each.kind === 'value' ? each.value : builder.valueAt(each.place),
+      each.kind === 'value' ? each.value : valueAt(builder, each.place),
     );
     builder.emit({ op: 'unknown', site, into, operands });
   } else {
@@ -60,4 +62,24 @@ function resultOf({ inputs: { checker } }: FlowBuilder, call: ResolvedCall): Typ
 
 function asArgument(passed: ValueId | Argument): Argument {
   return typeof passed === 'number' ? { kind: 'value', value: passed } : passed;
+}
+
+/**
+ * The value `place` holds now, read: a variable read at its name, then the part its path reaches,
+ * each read of the type of the expression it ends at, its place's last parts being the last levels
+ * of the place its site names.
+ */
+export function valueAt(builder: FlowBuilder, place: Place): ValueId {
+  let value = place.root;
+  if (builder.valueOf(value).kind === 'variable') {
+    value = builder.read(place.root, place.name ?? place.site, builder.valueOf(place.root).type);
+  }
+  const { root, steps } = placePath(place.site);
+  const levels = [root, ...steps].slice(-place.path.length);
+  for (const [index, part] of place.path.entries()) {
+    const read = builder.temporary(place.site, builder.body.typeOf(levels[index] as Expression));
+    builder.emit({ op: 'read', site: place.site, into: read, from: value, part });
+    value = read;
+  }
+  return value;
 }

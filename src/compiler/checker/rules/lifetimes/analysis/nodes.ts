@@ -27,9 +27,9 @@ import type { VariableEntity } from '../../../../binder/entities.ts';
 import {
   type FlowFunction,
   type Operation,
-  operandsOf,
   type Part,
   type ValueId,
+  valuesReadBy,
 } from '../../../surface/flow-ir.ts';
 import type { Type } from '../../../types/type/index.ts';
 import type { Input } from '../input.ts';
@@ -394,7 +394,7 @@ function lastUsesOf(flow: FlowFunction): ReadonlyMap<Operation, readonly ValueId
       }
     };
     for (const operation of block.operations) {
-      for (const value of operandsOf(operation)) {
+      for (const value of valuesReadBy(operation)) {
         note(value, operation);
       }
       if ('into' in operation) {
