@@ -10,6 +10,7 @@ import type { NamedType } from '../../../../../syntax/types/index.ts';
 import type { BodyContext } from '../../../../contexts/body-context.ts';
 import { checkerDiagnostics } from '../../../../diagnostics/index.ts';
 import type { PatternTest } from '../../../../surface/checked-pattern.ts';
+import { variantNamedIn } from '../../../../surface/named-variants.ts';
 import type { FieldMember, NominalDeclaration, Type } from '../../../../types/type/index.ts';
 import { errorType } from '../../../../types/type/primitives.ts';
 import { typeText } from '../../../../types/type/type-text.ts';
@@ -44,16 +45,14 @@ export function namedVariant(
 
 /** The test that a part of an enum type holds its variant `name`, with that variant's fields. */
 function variantOf(context: BodyContext, part: ValuePart, name: string): VariantPart | undefined {
-  const variants = part.type.kind === 'nominal' ? context.checker.variantsOf(part.type) : undefined;
-  const index = variants?.findIndex((candidate) => candidate.name === name) ?? -1;
-  const found = variants?.[index];
-  if (variants === undefined || found === undefined) {
+  const found = variantNamedIn(context.checker, part.type, name);
+  if (found === undefined) {
     return undefined;
   }
   return {
-    test: { kind: 'variant', path: part.path, variant: index },
+    test: { kind: 'variant', path: part.path, variant: found.index },
     key: name,
-    fields: found.fields,
+    fields: found.variant.fields,
   };
 }
 

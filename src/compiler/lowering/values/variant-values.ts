@@ -12,6 +12,7 @@
 import type { Register } from '../../../definition/operands.ts';
 import { unreachable } from '../../../foundation/structures/unreachable.ts';
 import type { Checker } from '../../checker/check.ts';
+import { variantNamedIn } from '../../checker/surface/named-variants.ts';
 import { type FunctionInstance, substitutionOf } from '../../checker/surface/witness-closing.ts';
 import { substitute } from '../../checker/types/parts/substitution.ts';
 import type { NominalType } from '../../checker/types/type/index.ts';
@@ -46,11 +47,10 @@ export function buildVariant(
 
 /** The index of the variant `name` of the enum `type`. */
 export function variantIndexOf(checker: Checker, type: NominalType, name: string): number {
-  const index = (checker.variantsOf(type) ?? []).findIndex((variant) => variant.name === name);
-  if (index < 0) {
-    unreachable(`No variant '${name}'; the checker should have said so.`);
-  }
-  return index;
+  return (
+    variantNamedIn(checker, type, name)?.index ??
+    unreachable(`No variant '${name}'; the checker should have said so.`)
+  );
 }
 
 /** A call of a variant's constructor: the instance called, and its parameters, the fields. */

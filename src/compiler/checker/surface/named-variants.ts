@@ -1,13 +1,16 @@
 /**
  * Which variant a name or a call names (§3.11), as checking decided it: a qualified name's own
- * variant, or the one a bare name chose by the type expected of it. The checker, lowering and their
- * tests read it here, so none tells a call of a variant from a function's another way.
+ * variant, or the one a bare name chose by the type expected of it; and which variant of an enum a
+ * name is, by its position. The checker, lowering and their tests read it here, so none tells a
+ * call of a variant from a function's, or finds a variant's position, another way.
  */
 
 import type { Entity, VariantEntity } from '../../binder/entities.ts';
 import type { Call } from '../../syntax/expressions/calls.ts';
 import { calledName } from '../../syntax/expressions/readings.ts';
 import type { Identifier } from '../../syntax/tree/node.ts';
+import type { Checker, VariantMember } from '../check.ts';
+import type { Type } from '../types/type/index.ts';
 
 /** How a body's names read: what each binds, and the variant a bare one chose. */
 interface VariantNames {
@@ -32,4 +35,22 @@ export function calledVariant(names: VariantNames, call: Call): VariantEntity | 
   const callee = calledName(call);
   const name = callee.kind === 'MemberAccess' ? callee.member : callee;
   return call.isOptional || name.kind !== 'Identifier' ? undefined : variantNamed(names, name);
+}
+
+/** A variant of an enum, and its position among the enum's variants, which a test or a value names. */
+interface IndexedVariant {
+  readonly index: number;
+  readonly variant: VariantMember;
+}
+
+/** The variant `name` of the enum `type`; undefined where `type` has no such variant. */
+export function variantNamedIn(
+  checker: Pick<Checker, 'variantsOf'>,
+  type: Type,
+  name: string,
+): IndexedVariant | undefined {
+  const variants = type.kind === 'nominal' ? checker.variantsOf(type) : undefined;
+  const index = variants?.findIndex((candidate) => candidate.name === name) ?? -1;
+  const variant = variants?.[index];
+  return variant === undefined ? undefined : { index, variant };
 }

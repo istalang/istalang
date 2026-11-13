@@ -63,7 +63,7 @@ tags: [reuse, checker, calls, resolution, overloads, traits, witnesses]
 - what static functions on a type are declared on (a nominal declaration, a primitive, a shape's key), and what a static function's owner names → `staticOwnerOf`, `declaredOwnerOf`, `StaticOwner` (`src/compiler/checker/types/written/named-types.ts`); never resolve a static's owner another way
 - the type a pattern naming an entity tests for, what it downcasts an `any` value to, or whether it names a value's own type → `patternTypeOf`, `downcastTargetOf`, `namesOwnType` (`src/compiler/checker/types/written/pattern-types.ts`); the checker's patterns and completion both read them, never their own copy
 - choose a bare or qualified enum variant against an expected type → `chooseVariant` (`src/compiler/checker/types/written/named-types.ts`)
-- check a call naming a variant, `Ok(v)`, as a call of its constructor → `checkVariantCall` (`src/compiler/checker/constructs/expressions/structs/variants.ts`); which variant a call names, as checking chose it, in the checker, lowering or a test → `calledVariant` (`src/compiler/checker/surface/named-variants.ts`)
+- check a call naming a variant, `Ok(v)`, as a call of its constructor → `checkVariantCall` (`src/compiler/checker/constructs/expressions/structs/variants.ts`); which variant a call names, as checking chose it, in the checker, lowering or a test → `calledVariant`; an enum's variant by name and its position, which a variant test or value names → `variantNamedIn` (`src/compiler/checker/surface/named-variants.ts`), never a `findIndex` of `variantsOf` of your own
 - check `for`/comprehension/spread iteration → `checkIterated`, `iteratedItem`, `checkLoopOver` (`src/compiler/checker/constructs/loops/iteration.ts`)
 
 ## One-way rules

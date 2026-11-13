@@ -120,14 +120,7 @@ export interface PartBinding {
  * whole value, as for a binding). A pattern's tests run in order, so a variant's fields are read
  * only after its variant was tested, and an array's items after its length.
  *
- * - `variant`: the part is its enum's `variant`-th variant.
- * - `downcast`: the part, of the `any` type `from`, holds a value of the type `to` (§3.10), which
- *   the tests after it reach through a `downcast` step.
- * - `member`: the part, of the union `union`, holds a value of one of `members` (§3.11); the tests
- *   after it reach the value of the one member through a `member` step. An instantiation may
- *   collapse the union into one type (§3.5, wiring/body/facts/instantiation.ts): the part is then
- *   that type's value itself, which the test passes when a member is that type, compares with when
- *   a member is a literal of it, and fails otherwise.
+ * - A `TypeTest`: what the part holds.
  * - `equal`: the part `==` a value: a literal or comparison's expression, a top-level constant's
  *   name, or an array pattern's fixed item count; `negated` for `!=`.
  * - `compare`: `compare(part, value)`, the implicit call recorded at `site`, is in `relation`: a
@@ -138,23 +131,7 @@ export interface PartBinding {
  *   never matches (`cantMatch`): a case is ruled out, an `is` always false.
  */
 export type PatternTest =
-  | {
-      readonly kind: 'variant';
-      readonly path: readonly PartStep[];
-      readonly variant: number;
-    }
-  | {
-      readonly kind: 'downcast';
-      readonly path: readonly PartStep[];
-      readonly from: AnyType;
-      readonly to: Type;
-    }
-  | {
-      readonly kind: 'member';
-      readonly path: readonly PartStep[];
-      readonly union: Type;
-      readonly members: readonly Type[];
-    }
+  | ({ readonly path: readonly PartStep[] } & TypeTest)
   | {
       readonly kind: 'equal';
       readonly path: readonly PartStep[];
@@ -170,6 +147,24 @@ export type PatternTest =
     }
   | { readonly kind: 'or'; readonly alternatives: readonly CheckedPattern[] }
   | { readonly kind: 'never' };
+
+/**
+ * What a value holds, tested by its type, as a pattern tests a part and `?` and a loop test a
+ * `Result` and a cursor's step:
+ *
+ * - `variant`: the value is its enum's `variant`-th variant.
+ * - `downcast`: the value, of the `any` type `from`, holds a value of the type `to` (§3.10), which
+ *   a pattern's tests after it reach through a `downcast` step.
+ * - `member`: the value, of the union `union`, holds a value of one of `members` (§3.11); a
+ *   pattern's tests after it reach the value of the one member through a `member` step. An
+ *   instantiation may collapse the union into one type (§3.5, wiring/body/facts/instantiation.ts):
+ *   the value is then that type's value itself, which the test passes when a member is that type,
+ *   compares with when a member is a literal of it, and fails otherwise.
+ */
+type TypeTest =
+  | { readonly kind: 'variant'; readonly variant: number }
+  | { readonly kind: 'downcast'; readonly from: AnyType; readonly to: Type }
+  | { readonly kind: 'member'; readonly union: Type; readonly members: readonly Type[] };
 
 /** The test of a part whose type can't hold what the pattern matches there (§3.11). */
 export const neverTest: PatternTest = { kind: 'never' };

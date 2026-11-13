@@ -7,6 +7,7 @@
 
 import { type MapOf, ValueSemantics } from '../../../foundation/language/values.ts';
 import type { Lambda } from '../../syntax/expressions/index.ts';
+import type { Literal } from '../../syntax/expressions/literals/literals.ts';
 import type { VariableDeclaration } from '../../syntax/statements/index.ts';
 import { sameType } from '../types/identity/identity.ts';
 import { sameTypeSpelled } from '../types/parts/type-parts.ts';
@@ -75,6 +76,25 @@ export function typesIn(form: ConstantForm): readonly Type[] {
 export function durationForm(type: NominalType, milliseconds: bigint): ConstantForm {
   return { kind: 'struct', type, fields: [{ kind: 'primitive', value: milliseconds }] };
 }
+
+/**
+ * The value `literal` writes (§2), of `type`, the type checking gave it: `none` is the one value of
+ * `None`, written as `null`, as `Unit`'s is; a duration is a `time.Duration`, undefined where its
+ * type is no such struct.
+ */
+export function literalForm(literal: Literal, type: Type | undefined): ConstantForm | undefined {
+  switch (literal.kind) {
+    case 'NoneLiteral':
+      return unitForm;
+    case 'DurationLiteral':
+      return type?.kind === 'nominal' ? durationForm(type, literal.value) : undefined;
+    default:
+      return { kind: 'primitive', value: literal.value };
+  }
+}
+
+/** The one value of `Unit` and of `None`. */
+export const unitForm: ConstantForm = { kind: 'primitive', value: null };
 
 /**
  * The part of `form` at `path`, outermost first (§3.15): a field or element by position, a field

@@ -46,9 +46,10 @@ import type { CheckedBody, FieldSource } from '../../surface/checked-body.ts';
 import { isSugar } from '../../surface/checked-body.ts';
 import {
   type ConstantForm,
-  durationForm,
   formAt,
   formSemantics,
+  literalForm,
+  unitForm,
 } from '../../surface/constant-form.ts';
 import type { FunctionCall } from '../../surface/resolved-call.ts';
 import { isExact } from '../../types/fitting/fit/index.ts';
@@ -121,13 +122,10 @@ class Computation {
       case 'FloatLiteral':
       case 'StringLiteral':
       case 'BooleanLiteral':
-        return computed({ kind: 'primitive', value: node.value });
       case 'NoneLiteral':
-        // `none` is the one value of `None`, written as `null`, as `Unit`'s is (§2).
-        return computed({ kind: 'primitive', value: null });
       case 'DurationLiteral': {
-        const type = this.#scope.checked.typeOf(node);
-        return type?.kind === 'nominal' ? computed(durationForm(type, node.value)) : unknown;
+        const form = literalForm(node, this.#scope.checked.typeOf(node));
+        return form === undefined ? unknown : computed(form);
       }
       case 'Parenthesized':
         return this.of(node.expression);
@@ -324,7 +322,7 @@ class Computation {
 
   #tuple(elements: readonly Expression[]): Outcome {
     if (elements.length === 0) {
-      return computed({ kind: 'primitive', value: null });
+      return computed(unitForm);
     }
     const forms: ConstantForm[] = [];
     for (const element of elements) {
