@@ -55,7 +55,7 @@ export function noneOf(context: CodeContext, type: Type, span: AnchoredSpan): Re
 }
 
 /** `value` put into the optional type `optional` (§2), unless it is a value of it already. */
-export function someOf(
+function someOf(
   context: CodeContext,
   optional: Type,
   value: TypedValue,

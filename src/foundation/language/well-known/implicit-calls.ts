@@ -20,8 +20,8 @@ export const templateFunctions = {
   join: 'join',
 } as const;
 
-/** The end `..=` stores, one past the written end in the step's direction (§3.8). */
-export const inclusiveEndFunction = '_inclusiveEnd';
+/** The range `..=` builds, its end one past the written end in the step's direction (§3.8). */
+export const inclusiveRangeFunction = '_inclusiveRange';
 
 /**
  * What an array pattern calls in the prelude once its length test passed (§3.11): its length, an

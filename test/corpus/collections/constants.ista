@@ -1,7 +1,7 @@
 # outcome: "3 2 b 4 7 2 3 [1, 2]"
 # Top-level constants may be arrays and maps built from literals and from spreads of other array
-# and map constants (§3), and every instance shares their values, which a change to a copy must
-# leave alone (§3.1).
+# and map constants, and ranges, structs built from literals (§3), and every instance shares their
+# values, which a change to a copy must leave alone (§3.1).
 
 const primes = [2, 3, 5]
 const names = ["a": "first", "b": "second"]
@@ -9,6 +9,7 @@ const nested = [[1, 2], [3, 4]]
 const more = [...primes, 7]
 const lookup = [...names, "c": "third", "a": "again"]
 const empty: Map<String, Int> = []
+const window = 1..4
 
 import * as runtime from 'runtime'
 live async fn main() -> String: await runtime.run(runtime.id()) _main()
@@ -17,7 +18,7 @@ ista async fn _main() -> String:
   copy[0] = 9
   copy.push(7)
   let total = 0
-  for i in 1..4:
+  for i in window:
     total += i
   const parts = [
     String(primes.length()),

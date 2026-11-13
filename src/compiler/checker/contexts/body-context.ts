@@ -243,10 +243,11 @@ export interface Sugars {
   /** Checks `node` as the core tree it means where it stands, recording it (`coreOf`). */
   readonly check: (context: BodyContext, node: Sugar, expected: Type | undefined) => Type;
   /**
-   * Checks `node`, a sugar's written operand, settled, before the core tree holding it: checking
-   * the core reads this type of it, checking it no more.
+   * Checks `node`, a sugar's written operand, settled, before the core tree holding it, against
+   * `expected` if given: checking the core reads this type of it, checking it no more, or the error
+   * type when it doesn't fit `expected`, which was reported.
    */
-  readonly operand: (context: BodyContext, node: Expression) => Type;
+  readonly operand: (context: BodyContext, node: Expression, expected?: Type) => Type;
   /**
    * Records the core tree `node` is checked as: a sugar's, or the core call a written call a sugar
    * makes was rebuilt as.

@@ -26,6 +26,7 @@ import type { Type } from '../types/type/index.ts';
 import { errorType } from '../types/type/primitives.ts';
 import { chainedComparisons } from './chained-comparisons.ts';
 import { deferredCalls } from './deferred-calls.ts';
+import { ranges } from './ranges.ts';
 import { templates } from './templates.ts';
 import { unwraps } from './unwrap.ts';
 
@@ -49,6 +50,7 @@ const desugars: { readonly [Kind in SugarKind]: Desugar<Extract<Sugar, { readonl
   {
     ChainedComparison: chainedComparisons,
     DeferredCall: deferredCalls,
+    Range: ranges,
     TemplateLiteral: templates,
     Unwrap: unwraps,
   };
@@ -92,9 +94,16 @@ export class Desugarings implements Sugars {
     return this.#cores.get(node, pass);
   }
 
-  operand(context: BodyContext, node: Expression): Type {
-    const type = context.settled(node);
-    this.#operands.set(node, type);
+  operand(context: BodyContext, node: Expression, expected?: Type): Type {
+    if (expected === undefined) {
+      const type = context.settled(node);
+      this.#operands.set(node, type);
+      return type;
+    }
+    const type = context.expectSettled(node, expected);
+    // A value not fitting was reported, so the core reads it as one explained.
+    const fits = context.checker.fitOf(type, expected) !== undefined;
+    this.#operands.set(node, fits ? type : errorType);
     return type;
   }
 

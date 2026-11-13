@@ -9,9 +9,9 @@
  *   in scope, through argument-dependent lookup, and among the requirements of type parameters
  *   (§3.10, §3.13).
  * - Constructs backed by prelude-owned helpers (array patterns' `length`, `_patternItem`,
- *   `_patternRest` and `compare`, range patterns' `compare`, `..=`'s `_inclusiveEnd`) go through
- *   `preludeCall`: the prelude is a toolchain invariant, so a missing or inapplicable prelude
- *   helper is `unreachable`.
+ *   `_patternRest` and `compare`, and range patterns' `compare`) go through `preludeCall`: the
+ *   prelude is a toolchain invariant, so a missing or inapplicable prelude helper is
+ *   `unreachable`.
  * - Every implicit call chooses, instantiates, fits wrappable operands and records under one rule:
  *   ambiguity (`5003`) and unmet trait constraints (`5101`) are reported as on a written call, and
  *   the construct's `failure` callback reports only when no candidate takes the arguments (`none`).

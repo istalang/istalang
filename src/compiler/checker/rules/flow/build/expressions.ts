@@ -40,7 +40,6 @@ import {
   comprehension,
   fieldComprehension,
   mapLiteral,
-  range,
   structLiteral,
 } from './literals.ts';
 import { bindParameters, constant } from './parts.ts';
@@ -247,7 +246,6 @@ export const expressionFlows: Handlers<FlowBuilder, CoreExpression, [], ValueId>
   Await: awaitFlow,
   Binary: binaryFlow,
   Is: isFlow,
-  Range: range,
   BlockExpression: (builder, node) =>
     builder.block(node.block) ?? constant(builder, node, unitType),
   If: ifFlow,

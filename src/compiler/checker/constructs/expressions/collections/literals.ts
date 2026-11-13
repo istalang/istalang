@@ -14,28 +14,15 @@
  *   cursor as an array literal's spread is, so `[...m, "b": none]` wraps each of `m`'s values.
  */
 
-import { inclusiveEndFunction } from '../../../../../foundation/language/well-known/implicit-calls.ts';
 import { wellKnown } from '../../../../../foundation/language/well-known/index.ts';
-import type {
-  ArrayLiteral,
-  MapLiteral,
-  Range,
-  Spread,
-} from '../../../../syntax/expressions/index.ts';
+import type { ArrayLiteral, MapLiteral, Spread } from '../../../../syntax/expressions/index.ts';
 import type { BodyContext } from '../../../contexts/body-context.ts';
 import { checkerDiagnostics } from '../../../diagnostics/index.ts';
-import { preludeCall } from '../../../resolution/applying/implicit.ts';
 import { decidedSoFar, type Produced } from '../../../rules/agreement.ts';
 import { collectionTarget } from '../../../types/fitting/expected.ts';
 import { isExact, misfitOf } from '../../../types/fitting/fit/index.ts';
 import type { Type } from '../../../types/type/index.ts';
-import {
-  errorType,
-  expectsError,
-  intType,
-  neverType,
-  tupleType,
-} from '../../../types/type/primitives.ts';
+import { errorType, expectsError, neverType, tupleType } from '../../../types/type/primitives.ts';
 import { typeText } from '../../../types/type/type-text.ts';
 import {
   arrayElement,
@@ -263,25 +250,4 @@ function settleSpread(context: BodyContext, spread: Spread, item: Type): void {
   if (arrayElement(context.checker, type) !== undefined) {
     itemsOf(context, spread, type, item);
   }
-}
-
-/**
- * `a..b`, `a..=b`, the open forms and `by` a step: a prelude `Range` of ints. `..=` stores its end
- * through `_inclusiveEnd`, one past the written end in the step's direction (§3.8).
- */
-export function checkRange(context: BodyContext, node: Range): Type {
-  for (const operand of [node.start, node.end, node.step]) {
-    if (operand !== undefined) {
-      context.expect(operand, intType);
-    }
-  }
-  if (node.isInclusive && node.end !== undefined) {
-    preludeCall(context, {
-      node,
-      role: 'inclusiveEnd',
-      name: inclusiveEndFunction,
-      arguments: [intType, intType],
-    });
-  }
-  return wellKnownOf(context.checker, wellKnown.range);
 }

@@ -1,5 +1,5 @@
 /**
- * Collection literals, ranges and indexing (§2, §3.8, §3.9; docs/arch/definition.md).
+ * Collection literals and indexing (§2, §3.9; docs/arch/definition.md).
  *
  * - An array literal is `array`, and a map literal of a `Map` is `map`, as the checker decided
  *   (`collectionFormOf`). A spread of the collection the literal builds is copied whole by the
@@ -9,7 +9,6 @@
  * - A map literal of another declared type, and `[]` of one, calls its `default()`, then the
  *   `setIndex` of each entry on the value, which lives in a cell so it can be passed by `&`; a
  *   spread's tuples are assigned one by one in the same loop.
- * - A range is the prelude's `Range` struct of two optional ints; `..=` stores `end + 1`.
  * - `x[k]` calls the `index` the checker resolved, or reads the field a key of a struct names
  *   (keyed-fields.ts).
  */
@@ -17,15 +16,12 @@
 import type { Instruction } from '../../../../../definition/instructions/instruction.ts';
 import type { Register } from '../../../../../definition/operands.ts';
 import { unreachable } from '../../../../../foundation/structures/unreachable.ts';
-import { intType } from '../../../../checker/types/type/primitives.ts';
-import { optionalOf } from '../../../../checker/types/unions/unions.ts';
 import type {
   ArrayLiteral,
   Expression,
   Index,
   MapEntry,
   MapLiteral,
-  Range,
   Spread,
 } from '../../../../syntax/expressions/index.ts';
 import type { Invalid } from '../../../../syntax/tree/node.ts';
@@ -33,8 +29,6 @@ import type { AnchoredSpan } from '../../../../syntax/tree/positions.ts';
 import { emitCallAt, emitImplicitCall, referenceTo } from '../../../calls/emit-call.ts';
 import type { CodeContext, FunctionContext } from '../../../context.ts';
 import { lowerKeyRead } from '../../../values/keyed-fields.ts';
-import { noneOf, someOf } from '../../../values/optionals.ts';
-import { construct } from '../../../values/struct-values.ts';
 import { cursorOf, emitLoop, iterationFormOf } from '../../loops/iteration.ts';
 import { cellRegister } from '../../parts/places.ts';
 
@@ -139,28 +133,6 @@ export function lowerMapLiteral(context: FunctionContext, node: MapLiteral): Reg
   );
 }
 
-/** A range's operands in the order written, then its stored end: `..=`'s one past it (§3.8). */
-export function lowerRange(context: FunctionContext, node: Range): Register {
-  const { span } = node;
-  const start = node.start === undefined ? undefined : context.expression(node.start);
-  const written = node.end === undefined ? undefined : context.expression(node.end);
-  const step = node.step === undefined ? context.constant(1n, span) : context.expression(node.step);
-  const end =
-    written !== undefined && node.isInclusive
-      ? emitImplicitCall(context, node, 'inclusiveEnd', [written, step])
-      : written;
-  const range = context.typeOf(node);
-  if (range.kind !== 'nominal') {
-    unreachable("A range isn't the prelude's Range; the checker should have said so.");
-  }
-  const fields = new Map([
-    ['start', optionalInt(context, span, start)],
-    ['end', optionalInt(context, span, end)],
-    ['step', step],
-  ]);
-  return construct(context, range, fields, span);
-}
-
 export function lowerIndex(context: FunctionContext, node: Index): Register {
   const container = context.chains.target(context, node);
   const key = context.expression(node.index);
@@ -256,16 +228,4 @@ function lowerDeclaredLiteral(
   const result = code.allocate();
   code.emit({ kind: 'move', span: node.span, dst: result, src: value });
   return result;
-}
-
-/** An `Int?` of a range's end: its value, or `none` when it is left out. */
-function optionalInt(
-  context: FunctionContext,
-  span: AnchoredSpan,
-  value: Register | undefined,
-): Register {
-  const type = optionalOf(intType, context.checker.typeRules);
-  return value === undefined
-    ? noneOf(context, type, span)
-    : someOf(context, type, { register: value, type: intType }, span);
 }

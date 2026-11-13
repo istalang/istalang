@@ -16,12 +16,7 @@ import { lowerDereference } from '../parts/places.ts';
 import { lowerApplied, lowerNamed } from './access/names.ts';
 import { lowerCall } from './calls.ts';
 import { lowerLambda } from './closures.ts';
-import {
-  lowerArrayLiteral,
-  lowerIndex,
-  lowerMapLiteral,
-  lowerRange,
-} from './collections/collections.ts';
+import { lowerArrayLiteral, lowerIndex, lowerMapLiteral } from './collections/collections.ts';
 import { lowerComprehension, lowerFieldComprehension } from './collections/comprehensions.ts';
 import { lowerAwait } from './control/await.ts';
 import { lowerIf } from './control/control.ts';
@@ -70,7 +65,6 @@ export const expressionHandlers: Handlers<FunctionContext, CoreExpression, [], R
   Dereference: lowerDereference,
   Await: lowerAwait,
   Is: lowerIs,
-  Range: lowerRange,
   Match: lowerMatch,
   Select: lowerSelect,
   Missing: neverLowered,

@@ -264,8 +264,6 @@ export type ImplicitRole =
    * resolver (proposal 8, Rule 5).
    */
   | 'onAwait'
-  /** `..=` storing its end one past the written one, in the step's direction. */
-  | 'inclusiveEnd'
   /**
    * The `compare` an ordering calls, which no operator's function stands for: a comparison's, a
    * range pattern's bound's, or an array pattern's length against its fixed count.

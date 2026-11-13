@@ -21,7 +21,6 @@ import { checkName } from './access/names.ts';
 import { checkCall } from './calls.ts';
 import { checkComprehension, checkFieldComprehension } from './collections/comprehensions.ts';
 import { checkArray, checkMap } from './collections/joining-literals.ts';
-import { checkRange } from './collections/literals.ts';
 import { checkAwait } from './control/await.ts';
 import { checkIf } from './control/control.ts';
 import { checkIs, checkMatch } from './control/match.ts';
@@ -86,7 +85,7 @@ export const expressionHandlers: Handlers<BodyContext, Expression, [Type | undef
   Dereference: checkDereference,
   Await: checkAwait,
   Is: checkIs,
-  Range: checkRange,
+  Range: (context, node, expected) => context.sugars.check(context, node, expected),
   Match: checkMatch,
   Select: checkSelect,
   Missing: alreadyReported,

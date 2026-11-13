@@ -21,7 +21,6 @@ import type {
   FieldsLiteral,
   MapEntry,
   MapLiteral,
-  Range,
   Spread,
   StructComprehension,
 } from '../../../../syntax/expressions/index.ts';
@@ -29,12 +28,12 @@ import { itemValue } from '../../../../syntax/expressions/readings.ts';
 import type { Invalid } from '../../../../syntax/tree/node.ts';
 import type { FieldSource } from '../../../surface/checked-body.ts';
 import type { Argument, ValueId } from '../../../surface/flow-ir.ts';
-import { errorType, intType, noneType, tupleElements } from '../../../types/type/primitives.ts';
+import { errorType, tupleElements } from '../../../types/type/primitives.ts';
 import { arrayOf } from '../../../types/type/well-known.ts';
 import type { FlowBuilder } from './flow-builder.ts';
 import { implicitCall, resolvedCall } from './implicit-calls.ts';
 import { fieldLoop, itemLoop, targetsLoop } from './loops.ts';
-import { constant, readAlong } from './parts.ts';
+import { readAlong } from './parts.ts';
 
 /**
  * A struct literal (§3.1), as lowering builds it (lowering/constructs/expressions/structs/
@@ -236,25 +235,4 @@ export function fieldComprehension(builder: FlowBuilder, node: FieldComprehensio
 function appendTo(builder: FlowBuilder, node: Expression, result: ValueId, item: ValueId): void {
   const place = { root: result, path: [{ kind: 'item' }] as const, site: node, name: undefined };
   builder.emit({ op: 'write', site: node, place, value: item });
-}
-
-export function range(builder: FlowBuilder, node: Range): ValueId {
-  const start =
-    node.start === undefined ? constant(builder, node, noneType) : builder.expression(node.start);
-  const written = node.end === undefined ? undefined : builder.expression(node.end);
-  const step =
-    node.step === undefined ? constant(builder, node, intType) : builder.expression(node.step);
-  let end = written ?? constant(builder, node, noneType);
-  if (written !== undefined && node.isInclusive) {
-    end = implicitCall(builder, 'inclusiveEnd', { site: node, passed: [written, step] });
-  }
-  const into = builder.temporaryOf(node);
-  builder.emit({
-    op: 'make',
-    site: node,
-    into,
-    made: { kind: 'struct' },
-    parts: [start, end, step],
-  });
-  return into;
 }

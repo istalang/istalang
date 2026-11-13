@@ -163,11 +163,10 @@ struct Range:
   end: Int?
   step: Int = 1
 
-# The end `..=` stores: one past the written end in the step's direction, so every range is
-# half-open (§3.8).
-fn _inclusiveEnd(end: Int, step: Int) -> Int:
-  if step < 0: end - 1
-  else: end + 1
+# The range `..=` builds: its end stored one past the written one in the step's direction, so
+# every range is half-open (§3.8).
+fn _inclusiveRange(start: Int?, end: Int, step: Int) -> Range:
+  Range{start, end: if step < 0: end - 1 else: end + 1, step}
 
 extern fn panic(message: String) -> Never
 

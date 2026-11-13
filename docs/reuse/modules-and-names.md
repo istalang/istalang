@@ -26,7 +26,7 @@ tags: [reuse, language, modules, program, binder, names]
 - look up well-known testing function names, the test file suffix, or whether a path names a test module → `testingFunctions`, `testModuleSuffix`, `isTestModulePath` (`src/foundation/language/well-known/testing.ts`)
 - look up collection, template, pattern or await function names → `collectionFunctions`, `templateFunctions`, `arrayPatternFunctions`, `awaitFunction` (`src/foundation/language/well-known/implicit-calls.ts`); the prelude's `Resolver` → `wellKnown.resolver`
 - look up `dispose`, `from` or `main` function names, or `self`, the parameter making a function a method, or `Self`, the type meeting a trait → `disposeFunction`, `conversionFunction` (`src/foundation/language/well-known/implicit-calls.ts`), `entryFunction`, `receiverParameter`, `selfType` (`src/foundation/language/well-known/index.ts`)
-- look up `_inclusiveEnd` or `panic` function names → `inclusiveEndFunction`, `panicFunction` (`src/foundation/language/well-known/implicit-calls.ts`)
+- look up `_inclusiveRange` or `panic` function names → `inclusiveRangeFunction`, `panicFunction` (`src/foundation/language/well-known/implicit-calls.ts`)
 - build a branded `ModuleId` from a `URL` → `moduleIdOf`, `ModuleId` (`src/compiler/program/program.ts`)
 - load a `Program` from roots and `ModuleLoader`s (reusing unchanged trees) → `buildProgram`, `Program`, `ModuleLoader` (`src/compiler/program/program.ts`)
 - get a loaded `ProgramModule` by `ModuleId` or test for a test/std module → `programModule`, `isTestModule`, `isStdModule` (`src/compiler/program/program.ts`)
