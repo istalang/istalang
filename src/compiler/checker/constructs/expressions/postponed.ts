@@ -71,23 +71,19 @@ export function postponed(
   const { inference, type } = placeholderOf(context, node);
   inference.admitOpen(type, admits);
   // Judged once the scope knows enough, inside the functions it is written in, which capture what
-  // it names (constructs/closures/functions.ts).
-  const { functions } = context;
-  const { frames } = functions;
-  const checkWithin = (known: Type | undefined) => functions.within(frames, () => check(known));
-  const judge = (known: Type | undefined) =>
-    functions.within(frames, () => {
-      switch (node.kind) {
-        case 'Lambda':
-          return judgeLambda(context, node, known);
-        case 'Identifier':
-        case 'MemberAccess':
-        case 'TypeApplication':
-          return judgeNamed(context, node, known, checkWithin);
-        default:
-          return check(known);
-      }
-    });
+  // it names (wiring/body/body-scopes.ts).
+  const judge = (known: Type | undefined) => {
+    switch (node.kind) {
+      case 'Lambda':
+        return judgeLambda(context, node, known);
+      case 'Identifier':
+      case 'MemberAccess':
+      case 'TypeApplication':
+        return judgeNamed(context, node, known, check);
+      default:
+        return check(known);
+    }
+  };
   const standsAlone = node.kind === 'IndentedValue';
   context.scopes.postpone({ node, inference, type, admits, judge, standsAlone });
   const inputs = node.kind === 'Lambda' ? writtenInputs(context, node) : undefined;

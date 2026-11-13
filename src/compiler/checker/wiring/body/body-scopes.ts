@@ -11,6 +11,10 @@
  *   given.
  * - A member that joins with no scope open settles at once, in a scope of its own, which its
  *   inference's system is, so what it judges still joins it.
+ * - What settling does for a member (completing it and recording its type, judging a placeholder,
+ *   work waiting for the scope) runs in the functions being checked where it joined, not where the
+ *   scope settles: a deferred call's call is checked inside its function, and its operands around
+ *   it (§3.14), yet they join one scope.
  */
 
 import { unreachable } from '../../../../foundation/structures/unreachable.ts';
@@ -22,22 +26,30 @@ import type { Type } from '../../types/type/index.ts';
 import { ConstraintScope, type ScopeSettling } from './constraint-scope.ts';
 import { placeOf, standingOf } from './scope-protocol.ts';
 
+/** Runs work in the functions that were being checked where it was made. */
+type InFunctions = <Result>(work: () => Result) => Result;
+
+/** How a body's scopes reach the rest of its checker. */
+interface ScopeSeams {
+  /** Records a node's type, as settling a scope records each member's. */
+  readonly record: (node: Expression, type: Type) => void;
+  /** The protocol's (scope-protocol.ts `ScopeHolding`). */
+  readonly decidesItems: (expected: Type) => boolean;
+  /** Runs work later in the functions being checked now. */
+  readonly functionsHere: () => InFunctions;
+}
+
 export class BodyScopes implements Scopes {
   readonly #settling: ScopeSettling;
+  readonly #seams: ScopeSeams;
   #current: ConstraintScope | undefined;
 
   readonly decidesItems: (expected: Type) => boolean;
 
-  /**
-   * `record` records a node's type, as settling a scope records each member's; `decidesItems` is
-   * the protocol's (scope-protocol.ts `ScopeHolding`).
-   */
-  constructor(
-    record: (node: Expression, type: Type) => void,
-    decidesItems: (expected: Type) => boolean,
-  ) {
-    this.#settling = { suspended: (check) => this.suspended(check), record };
-    this.decidesItems = decidesItems;
+  constructor(seams: ScopeSeams) {
+    this.#settling = { suspended: (check) => this.suspended(check) };
+    this.#seams = seams;
+    this.decidesItems = seams.decidesItems;
   }
 
   get isOpen(): boolean {
@@ -110,22 +122,24 @@ export class BodyScopes implements Scopes {
 
   /** Joins `member` to the current scope: its type, open; with none open, settles it: its type. */
   join(member: ScopeMember): Type {
+    const bound = this.#bound(member);
     if (this.#current !== undefined) {
-      this.#current.join(member);
+      this.#current.join(bound);
       return member.type;
     }
     let completed = member.type;
     const complete = () => {
-      completed = member.complete();
+      completed = bound.complete();
       return completed;
     };
-    this.#opening(new ConstraintScope(), () => this.#current?.join({ ...member, complete }));
+    this.#opening(new ConstraintScope(), () => this.#current?.join({ ...bound, complete }));
     return completed;
   }
 
   postpone(member: PostponedMember): Type {
     const scope = this.#current ?? unreachable('A placeholder joins only an open scope.');
-    scope.postpone(member);
+    const inFunctions = this.#seams.functionsHere();
+    scope.postpone({ ...member, judge: (expected) => inFunctions(() => member.judge(expected)) });
     return member.type;
   }
 
@@ -152,7 +166,8 @@ export class BodyScopes implements Scopes {
     if (this.#current === undefined) {
       work((type) => type);
     } else {
-      this.#current.whenSolved(work);
+      const inFunctions = this.#seams.functionsHere();
+      this.#current.whenSolved((solved) => inFunctions(() => work(solved)));
     }
   }
 
@@ -164,6 +179,24 @@ export class BodyScopes implements Scopes {
     if (this.#current?.holds(type) === true) {
       this.whenSolved((solved) => write(solved(type)));
     }
+  }
+
+  /**
+   * `member`, completed where it joined, recording its node's type there: completing it records
+   * what it makes as the functions around it handle it.
+   */
+  #bound(member: ScopeMember): ScopeMember {
+    const inFunctions = this.#seams.functionsHere();
+    const { node } = member;
+    const complete = () =>
+      inFunctions(() => {
+        const type = member.complete();
+        if (node !== undefined) {
+          this.#seams.record(node, type);
+        }
+        return type;
+      });
+    return { ...member, node: undefined, complete };
   }
 
   /** Runs `check` with `scope` current, the outer one current again after. */

@@ -23,7 +23,6 @@
  *   order they joined, what it was given before it. One pass writes every record.
  */
 
-import type { Expression } from '../../../syntax/expressions/index.ts';
 import type { PostponedMember, ScopeMember } from '../../contexts/scopes.ts';
 import { builtFrom, expectedFunction } from '../../types/fitting/expected.ts';
 import { Inference } from '../../types/inference/infer.ts';
@@ -36,8 +35,6 @@ import { membersOf } from '../../types/type/index.ts';
 export interface ScopeSettling {
   /** Runs `check` with no scope current, so whatever it checks settles on its own. */
   readonly suspended: (check: () => void) => void;
-  /** Records `node` as having `type`. */
-  readonly record: (node: Expression, type: Type) => void;
 }
 
 export class ConstraintScope {
@@ -117,10 +114,7 @@ export class ConstraintScope {
         write(solve);
       }
       for (const member of this.#members) {
-        const type = member.complete();
-        if (member.node !== undefined) {
-          through.record(member.node, type);
-        }
+        member.complete();
       }
     });
   }

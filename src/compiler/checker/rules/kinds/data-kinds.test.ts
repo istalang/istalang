@@ -273,6 +273,18 @@ describe('the data rule beside layouts, passes and instantiations', () => {
     expect(codesOf(...keep, 'live fn s(): _ = keep liveThing()')).toEqual([]);
   });
 
+  it("judges what a deferred call computes now in the code around it, however its call's scope settles", () => {
+    const keeping = [
+      socket,
+      'live fn liveId(s: Socket) -> Int: 0',
+      'fn consume(n: Int): ()',
+      'fn keep<M in Mark>(f: Fn<(), Unit, M>) -> Fn<(), Unit, M>: f',
+    ];
+    expect(
+      codesOf(...keeping, 'live fn t(s: Socket) -> fn() -> Unit: keep consume(liveId(s))'),
+    ).toEqual([]);
+  });
+
   it('refuses a deferred call capturing a struct of a kind into a function of the other', () => {
     expect(
       codesOf(

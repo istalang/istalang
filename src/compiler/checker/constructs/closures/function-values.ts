@@ -80,8 +80,7 @@ export function recordedValue(
   if (made === undefined) {
     return errorType;
   }
-  const frame = context.functions.current;
-  recordChosen(context, { site, application, instantiation: made.instantiation, frame });
+  recordChosen(context, { site, application, instantiation: made.instantiation });
   return made.type;
 }
 

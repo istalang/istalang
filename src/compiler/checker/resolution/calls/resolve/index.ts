@@ -26,7 +26,7 @@ import type { Diagnostic } from '../../../../../foundation/diagnostics/diagnosti
 import type { Expression } from '../../../../syntax/expressions/index.ts';
 import type { Identifier } from '../../../../syntax/tree/node.ts';
 import type { AnchoredSpan } from '../../../../syntax/tree/positions.ts';
-import type { BodyContext, FunctionFrame } from '../../../contexts/body-context.ts';
+import type { BodyContext } from '../../../contexts/body-context.ts';
 import { bodySite } from '../../../contexts/use-site.ts';
 import { checkerDiagnostics } from '../../../diagnostics/index.ts';
 import type { ResolvedSite } from '../../../surface/resolved-call.ts';
@@ -125,13 +125,12 @@ export function resolveCall(context: BodyContext, request: CallRequest): Type {
     return errorType;
   }
   const settling = settlingAt(bodySite(context, site.span), chosen.signature);
-  const frame = context.functions.current;
   return context.scopes.join({
     node: request.recorded,
     inference: chosen.inference,
     type: chosen.inference.open(chosen.signature.result()),
     settling,
-    complete: () => completeResolved(context, request, applying, { chosen, frame }),
+    complete: () => completeResolved(context, request, applying, chosen),
   });
 }
 
@@ -212,7 +211,7 @@ function completeResolved(
   context: BodyContext,
   request: CallRequest,
   applying: CallApplication,
-  { chosen, frame }: { readonly chosen: Application; readonly frame: FunctionFrame },
+  chosen: Application,
 ): Type {
   const applied = completeCall(context, applying, chosen);
   if (applied === undefined) {
@@ -225,7 +224,6 @@ function completeResolved(
     application: applied.application,
     instantiation: applied.instantiation,
     receiver,
-    frame,
   });
   if (receiver !== undefined && signature.parameters[0]?.reference === true) {
     changeReceiver(context, receiver);
@@ -267,20 +265,17 @@ interface Chosen {
   readonly application: Application;
   readonly instantiation: Instantiation;
   readonly receiver?: Expression | undefined;
-  /**
-   * The function whose code makes the call, as it stood when the call was written: one completed
-   * once its scope settles is recorded from outside that function's code.
-   */
-  readonly frame: FunctionFrame;
 }
 
 /**
- * Records the call `chosen` makes, where its code's kind lets it make it (§3.3); a function named
- * as a value calls nothing yet. That it may make it at all, since only the runtime calls a
- * `dispose` (§7), is checked once the body is (rules/disposal/disposal.ts).
+ * Records the call `chosen` makes, where its code's kind lets it make it (§3.3), the code being
+ * the function checked, which settling a scope runs in again (wiring/body/body-scopes.ts); a
+ * function named as a value calls nothing yet. That it may make it at all, since only the runtime
+ * calls a `dispose` (§7), is checked once the body is (rules/disposal/disposal.ts).
  */
 export function recordChosen(context: BodyContext, chosen: Chosen): void {
-  const { site, application, instantiation, receiver, frame } = chosen;
+  const { site, application, instantiation, receiver } = chosen;
+  const frame = context.functions.current;
   // A function named as a value calls nothing yet (Rule 4: holding isn't calling).
   const call = namesFunctionValue(site)
     ? callMade(application, instantiation)

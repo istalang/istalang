@@ -117,12 +117,16 @@ export class BodyChecker implements BodyContext {
   constructor(checker: CheckerContext, module: ModuleId, kind: BodyKind) {
     this.checker = checker;
     this.module = module;
-    this.scopes = new BodyScopes(
-      (node, type) => {
+    this.scopes = new BodyScopes({
+      record: (node, type) => {
         this.#record(node, type);
       },
-      (expected) => collectionTarget(checker, expected) !== undefined,
-    );
+      decidesItems: (expected) => collectionTarget(checker, expected) !== undefined,
+      functionsHere: () => {
+        const { frames } = this.functions;
+        return (work) => this.functions.within(frames, work);
+      },
+    });
     const isFunction = kind.kind === 'function';
     this.#result = new ReturnScope(kind.declaredResult, isFunction);
     const root = rootScope(ownScopeOf(this.checker, kind), this.#result);
