@@ -49,7 +49,7 @@ src/
                         (expressions/parameters.ts: a name, a pattern, or both) read as written, the function a declaration's
                         fields read as, a variant's constructor (declarations/field-defaults.ts), a top-level function as what a host may
                         start reads it (declarations/starts.ts), calls and the deferred call `g f(args)` (expressions/calls.ts), what a template stands for: its text, or the call a tag makes
-                        (expressions/literals/templates.ts), the literal an indented value reads as once its form is known
+                        (expressions/literals/templates.ts), the literal an indented value's entries say it builds
                         (expressions/literals/indented-values.ts), operator precedence (expressions/operators.ts); a folder per construct
                         whose nodes have readings beside them (declarations/, statements/, types/, expressions/), types/type-matches.ts
                         reading a type `match`'s `infer` variables
@@ -296,8 +296,8 @@ src/
   editor/               editor support: its features, the protocol server, the server's client
     language-service/   what an editor asks of a project, with no protocol and no I/O: workspace.ts (the open texts,
                         and the program they make through the ProgramLoader seam), one module or folder per feature
-                        (outline/: symbols.ts, folding.ts; semantic-tokens/, which reads checking only for an indented
-                        map's bare keys (built-keys.ts); over types: hover.ts, inlay-hints.ts, signatures/, completion/,
+                        (outline/: symbols.ts, folding.ts; semantic-tokens/, from syntax alone; over types: hover.ts,
+                        inlay-hints.ts, signatures/, completion/,
                         navigation/), reading/ (what features read of a module at a spot: a tree's tokens, scanned again
                         once, brackets paired (tokens.ts), a module and its program's checker (checked-module.ts), the
                         name at a cursor, a namespace's module, docstrings), signatures/: how a function reads

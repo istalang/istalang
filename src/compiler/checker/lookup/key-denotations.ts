@@ -90,7 +90,7 @@ function keptParameterDenotations(
 /**
  * The field of `owner`, the struct a key is of, that the key `key` names; none for no such field.
  */
-export function keyedFieldDenotations(
+function keyedFieldDenotations(
   checker: CheckerContext,
   owner: Type | undefined,
   key: string,

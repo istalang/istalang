@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-11-11
-last_updated: 2026-11-11
+last_updated: 2026-11-13
 tags: [language, guide]
 ---
 
@@ -125,7 +125,7 @@ enum Decision:
     Expired
 ```
 
-- **Indented values.** After a `const`/`let`/assignment `=`, `return`, an entry's `:` or an item's `-`, a line ending there (or in `T:`, which names the type) opens a value on the deeper lines below: `key: value` entries build a struct or a `Map<String, V>`, `- value` items an array, chosen by the expected type. Nowhere else: `if c:`, `fn(x):` and the other headers keep statement bodies, and inside brackets an argument or element is written `T{…}`.
+- **Indented values.** After a `const`/`let`/assignment `=`, `return`, an entry's `:` or an item's `-`, a line ending there (or in `T:`, which names the struct built) opens a value on the deeper lines below: `name: value` entries build a struct, `"key": value` entries (keys quoted) a map, `- value` items an array, typed by the expected type. Nowhere else: `if c:`, `fn(x):` and the other headers keep statement bodies, and inside brackets an argument or element is written `T{…}`.
 - **Empty structs:** declared `struct Marker` (or `struct Marker {}`); constructed bare as `Marker` (`Marker{}` in an expression is a compile error).
 - **Optionals (`T?`):** `T | None`. Match with `case None:` then `case v:` (which narrows `v` to `T`), chain with `user?.name`, `a?->b`, `f?.(x)`, `xs?.[i]`, or fallback with `name ?? "anon"`.
 - **Result & Error:** `Result<T, E = Error>` has variants `Ok(value: T)` and `Err(error: E)`. `Error` requires **both** `message: String` and `code: String` (`trace: String = _trace()` is defaulted): `Err(Error{message: "unanswered", code: "unanswered"})`.

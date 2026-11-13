@@ -1,23 +1,21 @@
 /**
- * What an indented value reads as (§2): the brace or bracket literal it builds, made from its own
- * entries, so every later phase checks and lowers that literal and no rule of literals has a second
- * home. Which literal it builds is the type's to decide (the checker's), never the syntax's.
+ * What an indented value reads as (§2): the brace or bracket literal its entries say it builds,
+ * made from its own entries, so every later phase checks and lowers that literal and no rule of
+ * literals has a second home. Its entries alone decide, never the type it is built as.
  *
- * - As a struct: a `struct{…}`, `T{…}` or `new T{…}` of the entries a struct literal holds.
- * - As a map: `["key": value, …]`, a bare key read as the String it spells, so `LOG_LEVEL: 1` keys
- *   `"LOG_LEVEL"` and the shorthand `name` is `"name": name`.
- * - As an array: `[…]` of the items' values.
- *
- * Entries the literal can't hold are left out of it: the checker reports them
- * (expressions/literals/ indented-values.ts) and checks their values alone. Each literal is made
- * once per value and form and keeps the entries' own nodes, so what checking records of them,
- * lowering and tools read.
+ * - The first entry deciding a form decides it: an item, an array, `[…]` of the items' values; a
+ *   quoted key, a map, `["key": value, …]`; a name, a shorthand or a struct comprehension, a
+ *   struct, `T{…}`, `new T{…}` or `struct{…}`. A value of spreads alone, and any below `T:`, is a
+ *   struct.
+ * - Entries the literal can't hold are left out of it: the parser reports them
+ *   (parser/grammar/expressions/literals/indented-values.ts), and the checker checks their values
+ *   alone. Each literal is made once per value and keeps the entries' own nodes, so what checking
+ *   records of them, lowering and tools read.
  */
 
 import { memo } from '../../../../foundation/structures/memo.ts';
 import type {
   ArrayLiteral,
-  FieldInitializer,
   IndentedEntry,
   IndentedValue,
   MapEntry,
@@ -26,9 +24,8 @@ import type {
   Spread,
   StructLiteral,
 } from '../index.ts';
-import type { StringLiteral } from './literals.ts';
 
-/** What an indented value is built as. */
+/** What an indented value builds. */
 export type LiteralForm = 'struct' | 'map' | 'array';
 
 /** The literal an indented value reads as, by its form. */
@@ -38,54 +35,37 @@ interface LiteralsByForm {
   readonly array: ArrayLiteral;
 }
 
-/** The literal an indented value reads as, of its form. */
+/** The literal an indented value reads as. */
 export type BuiltLiteral = LiteralsByForm[LiteralForm];
 
-/** Whether `entry` is an item, `- value`, which only an array holds. */
-export function isItem(entry: IndentedEntry): boolean {
-  return entry.kind === 'IndentedItem';
-}
-
-/** Whether `entry` gives a key, which only a struct or a map holds: every entry but an item. */
-export function isKeyed(entry: IndentedEntry): boolean {
-  return entry.kind !== 'IndentedItem' && entry.kind !== 'Invalid';
-}
-
-/** The form a value whose type nothing decides builds (§2): items an array, a quoted key a map. */
-export function untypedForm(value: IndentedValue): LiteralForm {
-  if (value.entries.some(isItem) && !value.entries.some(isKeyed)) {
-    return 'array';
+/** What `value` builds: what its first deciding entry says, a struct below `T:`. */
+export function formOf(value: IndentedValue): LiteralForm {
+  if (value.type !== undefined) {
+    return 'struct';
   }
-  return value.entries.some((entry) => entry.kind === 'QuotedEntry') ? 'map' : 'struct';
+  const deciding = value.entries.find(
+    (entry) => entry.kind !== 'Spread' && entry.kind !== 'Invalid',
+  );
+  switch (deciding?.kind) {
+    case 'IndentedItem':
+      return 'array';
+    case 'QuotedEntry':
+      return 'map';
+    default:
+      return 'struct';
+  }
 }
 
-const literals = new WeakMap<IndentedValue, Map<LiteralForm, BuiltLiteral>>();
+const literals = new WeakMap<IndentedValue, BuiltLiteral>();
 
-/** The literal `value` reads as when built as `form`, made once per value and form. */
-export function literalOf<Form extends LiteralForm>(
-  value: IndentedValue,
-  form: Form,
-): LiteralsByForm[Form] {
-  const byForm = memo(literals, value, () => new Map<LiteralForm, BuiltLiteral>());
-  return memo(byForm, form, () => builders[form](value)) as LiteralsByForm[Form];
+/** The literal `value` reads as, made once per value. */
+export function literalOf(value: IndentedValue): BuiltLiteral {
+  return memo(literals, value, () => builders[formOf(value)](value));
 }
 
-const bareKeys = new WeakMap<FieldInitializer, StringLiteral>();
-
-/**
- * The String a map's bare key reads as (`LOG_LEVEL:` keys `"LOG_LEVEL"`), made once per entry, so
- * what checking records of it as a key (§3.1 Key types), tools read through the entry.
- */
-export function bareKeyOf(entry: FieldInitializer): StringLiteral {
-  return memo(bareKeys, entry, () => ({
-    kind: 'StringLiteral',
-    span: entry.name.span,
-    value: entry.name.text,
-  }));
-}
-
-/** The entries `value` holds that the literal of `form` leaves out, for the checker to report. */
-export function entriesLeftOut(value: IndentedValue, form: LiteralForm): readonly IndentedEntry[] {
+/** The entries `value` holds that its literal leaves out, for the parser to report. */
+export function entriesLeftOut(value: IndentedValue): readonly IndentedEntry[] {
+  const form = formOf(value);
   return value.entries.filter((entry) => entry.kind !== 'Invalid' && !holds[form](entry));
 }
 
@@ -103,9 +83,8 @@ function isStructItem(entry: IndentedEntry): entry is StructItem {
 
 const holds: Record<LiteralForm, (entry: IndentedEntry) => boolean> = {
   struct: isStructItem,
-  map: (entry) =>
-    entry.kind === 'FieldInitializer' || entry.kind === 'QuotedEntry' || entry.kind === 'Spread',
-  array: isItem,
+  map: (entry) => entry.kind === 'QuotedEntry' || entry.kind === 'Spread',
+  array: (entry) => entry.kind === 'IndentedItem',
 };
 
 const builders: { readonly [Form in LiteralForm]: (value: IndentedValue) => LiteralsByForm[Form] } =
@@ -125,10 +104,6 @@ const builders: { readonly [Form in LiteralForm]: (value: IndentedValue) => Lite
       span: value.span,
       entries: value.entries.flatMap((entry): readonly (MapEntry | Spread)[] => {
         switch (entry.kind) {
-          case 'FieldInitializer': {
-            const { name, span } = entry;
-            return [{ kind: 'MapEntry', span, key: bareKeyOf(entry), value: entry.value ?? name }];
-          }
           case 'QuotedEntry':
             return [{ kind: 'MapEntry', span: entry.span, key: entry.key, value: entry.value }];
           case 'Spread':

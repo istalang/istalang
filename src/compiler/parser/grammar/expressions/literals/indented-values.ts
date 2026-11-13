@@ -17,17 +17,25 @@
  *   whose `:` ends the item's line is told by its case, as a pattern's bare name is (naming.ts):
  *   `- Point:` names the value's type, `- nested:` is a key whose value is the block below. An
  *   item's expression can't itself start with `- `, which would read as a nested item on one line.
+ * - Its entries decide what it builds (syntax/expressions/literals/indented-values.ts), so an
+ *   entry that literal can't hold is reported here: items among keys, names among quoted ones.
  * - Nothing follows a value: entries after its `T:` on that line are reported, so are lines after
  *   its block by the block they stand in.
  */
 
 import { bindsInPattern } from '../../../../../foundation/language/naming.ts';
+import type { Span } from '../../../../../foundation/text/span.ts';
 import type {
   Expression,
   IndentedEntry,
   IndentedItem,
   IndentedValue,
 } from '../../../../syntax/expressions/index.ts';
+import {
+  entriesLeftOut,
+  formOf,
+  type LiteralForm,
+} from '../../../../syntax/expressions/literals/indented-values.ts';
 import type { StringLiteral } from '../../../../syntax/expressions/literals/literals.ts';
 import type { NamedType } from '../../../../syntax/types/index.ts';
 import { skipUntil } from '../../../cursor/recovery.ts';
@@ -100,12 +108,46 @@ function namedOpening(parser: Parser): Named | undefined {
 /** The block below an opening, of the type `named` gives, or of none. */
 function parseBlockValue(parser: Parser, opener: number, named: Named | undefined): IndentedValue {
   const { items, span } = parseBlockBelow(parser, entryRules, columnAbove(parser, opener));
-  const entries = checkedEntries(parser, items);
-  if (named === undefined) {
-    return { kind: 'IndentedValue', span, type: undefined, isNew: false, entries };
+  reportAfterComprehension(parser, items);
+  const value: IndentedValue =
+    named === undefined
+      ? { kind: 'IndentedValue', span, type: undefined, isNew: false, entries: items }
+      : {
+          kind: 'IndentedValue',
+          span: parser.spanFrom(named.start),
+          type: named.type,
+          isNew: named.isNew,
+          entries: items,
+        };
+  reportLeftOut(parser, value);
+  return value;
+}
+
+/** Reports each entry of `value` its literal can't hold (syntax/…/indented-values.ts). */
+function reportLeftOut(parser: Parser, value: IndentedValue): void {
+  const form = formOf(value);
+  for (const entry of entriesLeftOut(value)) {
+    parser.report(leftOutDiagnostic(entry, form, parser.textSpanOf(entry.span)));
   }
-  const { type, isNew, start } = named;
-  return { kind: 'IndentedValue', span: parser.spanFrom(start), type, isNew, entries };
+}
+
+function leftOutDiagnostic(entry: IndentedEntry, form: LiteralForm, span: Span) {
+  switch (entry.kind) {
+    case 'IndentedItem':
+      return parserDiagnostics.itemAmongKeys(span, form === 'map' ? 'map' : 'struct');
+    case 'QuotedEntry':
+      return form === 'array'
+        ? parserDiagnostics.keyAmongItems(span)
+        : parserDiagnostics.quotedKeyInStruct(span);
+    case 'StructComprehension':
+      return form === 'array'
+        ? parserDiagnostics.keyAmongItems(span)
+        : parserDiagnostics.comprehensionInMap(span);
+    default:
+      return form === 'array'
+        ? parserDiagnostics.keyAmongItems(span)
+        : parserDiagnostics.nameAmongQuotedKeys(span);
+  }
 }
 
 /**
@@ -118,15 +160,6 @@ function columnAbove(parser: Parser, opener: number): number {
     parser.indentationAt(opener),
     cursor.blockColumn ?? cursor.enclosingBlockColumn ?? 0,
   );
-}
-
-/** Entries, a struct comprehension's place in them reported as in a struct literal (§3.1). */
-function checkedEntries(
-  parser: Parser,
-  entries: readonly IndentedEntry[],
-): readonly IndentedEntry[] {
-  reportAfterComprehension(parser, entries);
-  return entries;
 }
 
 /** Entries nest through their values, so each descends a level (nesting.ts). */
@@ -254,12 +287,14 @@ function parseKeyedValue(parser: Parser): IndentedValue {
   const { start } = cursor.token.span;
   const column = parser.columnOf(cursor.token);
   const { items } = cursor.inBlock(column, () => parseLines(parser, entryRules));
-  const entries = checkedEntries(parser, items);
-  return {
+  reportAfterComprehension(parser, items);
+  const value: IndentedValue = {
     kind: 'IndentedValue',
     span: parser.spanFrom(start),
     type: undefined,
     isNew: false,
-    entries,
+    entries: items,
   };
+  reportLeftOut(parser, value);
+  return value;
 }

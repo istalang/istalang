@@ -4,7 +4,7 @@
  * field an item gives (struct-items.ts), so a value given by position counts; none for a literal
  * checking found no declared fields for. An indented value's entry (§2) is the same place, read
  * through the literal checking built it as: a struct's fields, or the keys a map's key type
- * spells, as names where they are names and quoted where not.
+ * spells, quoted.
  *
  * Right after its `{`, a struct literal building one field also takes that field's value without
  * its name (§3.1), so a value may stand there too, and what an expression starts with is offered
@@ -18,7 +18,6 @@
 import { itemField } from '../../../../compiler/checker/surface/struct-items.ts';
 import type { FieldMember, Type } from '../../../../compiler/checker/types/type/index.ts';
 import { membersOf } from '../../../../compiler/checker/types/type/index.ts';
-import { spellsName } from '../../../../compiler/scanner/characters.ts';
 import type {
   FieldItem,
   FieldsLiteral,
@@ -158,7 +157,10 @@ export function offerLiteralFields(cursor: Cursor, place: LiteralFieldPlace): re
   );
   const first = items.every((each) => each === item);
   if (built?.kind === 'MapLiteral') {
-    return mapKeys(body?.typeOf(built), others);
+    const keys = items.flatMap((each) =>
+      each !== item && each.kind === 'QuotedEntry' ? [each.key.value] : [],
+    );
+    return mapKeys(body?.typeOf(built), keys);
   }
   const fields =
     built === undefined || !isFieldsLiteral(built) ? [] : (body?.literalFieldsOf(built) ?? []);
@@ -171,25 +173,17 @@ function isFieldItem(item: FieldsLiteral['items'][number] | IndentedEntry): item
 }
 
 /**
- * The keys an indented map's key type spells (§2) that `others` don't give: each String literal
- * among its members, bare where it is a name, quoted where not.
+ * The keys an indented map's key type spells (§2) that its other entries don't give: each String
+ * literal among its members, quoted.
  */
-function mapKeys(
-  type: Type | undefined,
-  others: readonly (Identifier | undefined)[],
-): readonly Candidate[] {
+function mapKeys(type: Type | undefined, given: readonly string[]): readonly Candidate[] {
   const key = type?.kind === 'nominal' ? type.arguments[0] : undefined;
-  const given = new Set(others.map((name) => name?.text));
+  const taken = new Set(given);
   return (key === undefined ? [] : membersOf(key)).flatMap((member): readonly Candidate[] =>
-    member.kind === 'literal' && typeof member.value === 'string' && !given.has(member.value)
-      ? [{ name: keyText(member.value), subject: { kind: 'literal', type: member } }]
+    member.kind === 'literal' && typeof member.value === 'string' && !taken.has(member.value)
+      ? [{ name: JSON.stringify(member.value), subject: { kind: 'literal', type: member } }]
       : [],
   );
-}
-
-/** A key as an indented value writes it: bare where it is a name, else quoted (§2). */
-function keyText(key: string): string {
-  return spellsName(key) ? key : JSON.stringify(key);
 }
 
 /** What a literal's item may start with, as the literal's own braces and items say. */

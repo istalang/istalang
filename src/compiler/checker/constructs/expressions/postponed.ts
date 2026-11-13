@@ -23,6 +23,7 @@
  */
 
 import type { Expression, Lambda } from '../../../syntax/expressions/index.ts';
+import { literalOf } from '../../../syntax/expressions/literals/indented-values.ts';
 import type { BodyContext } from '../../contexts/body-context.ts';
 import { bodySite } from '../../contexts/use-site.ts';
 import {
@@ -47,7 +48,6 @@ import { namedFunctionsAccepted, recordedValue } from '../closures/function-valu
 import { checkLambda, lambdaAccepts, writtenInputs } from '../closures/lambdas.ts';
 import { memberAccepts, nameAccepts } from './access/names.ts';
 import { emptyArrayAdmits, emptyMapAdmits } from './collections/empty-collections.ts';
-import { indentedAccepts } from './literals/indented-values.ts';
 import { comprehensionOf } from './structs/struct-comprehensions.ts';
 import { variantCallAccepts } from './structs/variants.ts';
 
@@ -193,7 +193,7 @@ function ownAdmits(context: BodyContext, node: Expression): Admits | undefined {
     case 'Call':
       return variantCallAccepts(context, node);
     case 'IndentedValue':
-      return indentedAccepts(context, node);
+      return ownAdmits(context, literalOf(node));
     case 'StructLiteral':
       return node.type === undefined && comprehensionOf(node) !== undefined
         ? (expected) => builtFrom(expected) !== undefined

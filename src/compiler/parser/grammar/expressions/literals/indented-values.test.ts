@@ -1,8 +1,8 @@
 /**
  * Parsing indented values (proposal 5 §1): every opening token ('=', 'return', an entry's ':',
  * an item's '-'), anonymous and named 'T:' / 'new T:' forms, every entry and item shape,
- * alignment of '- key: value' siblings, one parse whatever the expected type, and the places and
- * forms the grammar refuses.
+ * alignment of '- key: value' siblings, one parse whatever the expected type, the entries a value's
+ * form leaves out, and the places and forms the grammar refuses.
  */
 
 import fc from 'fast-check';
@@ -115,7 +115,7 @@ describe('indented value openings (§1)', () => {
       ),
     ],
     [
-      'qualified names, generic types, Map, Array, and new T:',
+      'qualified names, generic types, and new T:',
       lines(
         'const a = m.Service:',
         '  name: "api"',
@@ -125,12 +125,6 @@ describe('indented value openings (§1)', () => {
         'const c = Pair<Int, String>:',
         '  first: 1',
         '  second: "ok"',
-        'const d = Map<String, Int>:',
-        '  a: 1',
-        '  "b": 2',
-        'const e = Array<Int>:',
-        '  - 10',
-        '  - 20',
         'const f = new Shared<Int>:',
         '  value: 42',
       ),
@@ -163,16 +157,23 @@ describe('indented value openings (§1)', () => {
 describe('entries, items, alignment and continuation (§1)', () => {
   it.each([
     [
-      'named keys, quoted keys, shorthand names, comma-separated entries on one line, and spreads',
+      'named keys, shorthand names, comma-separated entries on one line, and spreads',
       lines(
         'const api = Service:',
         '  ...base',
         '  name',
         '  host, port',
         '  times: 3, backoffMs: 200',
-        '  LOG_LEVEL: "debug"',
-        '  "x-region": "eu"',
-        "  'for': 1",
+      ),
+    ],
+    [
+      "a map's quoted keys, a reserved word and a screaming snake name among them, and spreads",
+      lines(
+        'const env: Map<String, String> =',
+        '  ...base',
+        '  "LOG_LEVEL": "debug"',
+        '  "x-region": "eu", "for": "x"',
+        "  'single': 'quoted'",
       ),
     ],
     [
@@ -217,10 +218,9 @@ describe('entries, items, alignment and continuation (§1)', () => {
         '    retry:',
         '      times: 3',
         '      backoffMs: 200',
-        '    "x-region": "eu"',
         '    enabled',
         '  - "id": "worker"',
-        '    port: 90',
+        '    "port": "90"',
         '  - name: "cron"',
       ),
     ],
@@ -268,14 +268,7 @@ describe('entries, items, alignment and continuation (§1)', () => {
 
 describe('one parse whatever the expected type (§1, note 11)', () => {
   it('parses a keyed block identically regardless of the expected type annotation', () => {
-    const body = lines(
-      '  ...base',
-      '  name: "api"',
-      '  "x-region": "eu"',
-      '  shorthand',
-      '  nested:',
-      '    count: 1',
-    );
+    const body = lines('  ...base', '  name: "api"', '  shorthand', '  nested:', '    count: 1');
     const untyped = initializerDump('const x =', body);
     expect(untyped.startsWith(':')).toBe(true);
     expect(initializerDump('const x: Service =', body)).toBe(untyped);
@@ -294,7 +287,7 @@ describe('one parse whatever the expected type (§1, note 11)', () => {
 
   it('parses generated indented blocks identically under any expected type annotation', () => {
     const entryArb = fc.oneof(
-      fc.constantFrom('a: 1', 'b: "x"', '"quoted": 2', 'short', '...base'),
+      fc.constantFrom('a: 1', 'b: "x"', 'short', '...base'),
       fc.constant('nested:\n    inner: 1'),
     );
     fc.assert(
@@ -363,6 +356,28 @@ describe('nowhere else and parser refusals (§1)', () => {
       ),
     ).toEqual(reportedOnce(parserDiagnostics.structComprehensionLast.code, '...base'));
   });
+
+  const { itemAmongKeys, keyAmongItems, quotedKeyInStruct } = parserDiagnostics;
+  const { nameAmongQuotedKeys, comprehensionInMap } = parserDiagnostics;
+  it.each([
+    ['an item among keys', 'const x =\n  a: 1\n  - 2', itemAmongKeys.code, '- 2'],
+    ['a key among items', 'const x =\n  - 1\n  a: 2', keyAmongItems.code, 'a: 2'],
+    ['a quoted key among names', 'const x =\n  a: 1\n  "b": 2', quotedKeyInStruct.code, '"b": 2'],
+    ['a quoted key below T:', 'const x = C:\n  "b": 2', quotedKeyInStruct.code, '"b": 2'],
+    ['an item below T:', 'const x = C:\n  - 2', itemAmongKeys.code, '- 2'],
+    ['a name among quoted keys', 'const x =\n  "a": 1\n  b: 2', nameAmongQuotedKeys.code, 'b: 2'],
+    [
+      'a struct comprehension among quoted keys',
+      'const x =\n  "a": 1\n  for k, v in ...r: [k]: v',
+      comprehensionInMap.code,
+      'for k, v in ...r: [k]: v',
+    ],
+  ])(
+    'reports %s, its first entry deciding what the value builds',
+    (_name, text, code, offending) => {
+      expect(reported('module', text)).toEqual(reportedOnce(code, offending));
+    },
+  );
 
   it('reports missing blocks, inconsistent dedents and unexpected indents', () => {
     expect(reported('module', lines('const a: Config =', 'const b = 1')).codes).toContain(

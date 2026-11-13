@@ -14,6 +14,7 @@ import {
 } from '../../../../../foundation/diagnostics/diagnostic.test-kit.ts';
 import { mainGives } from '../../../../../stdlib/prelude/prelude.test-kit.ts';
 import { stdProgramOf } from '../../../../binder/bind.test-kit.ts';
+import { parserDiagnostics } from '../../../../parser/diagnostics.ts';
 import { lines } from '../../../../parser/parse.test-kit.ts';
 import { idOf } from '../../../../program/program.test-kit.ts';
 import { programModule } from '../../../../program/program.ts';
@@ -61,7 +62,7 @@ describe('meaning by type: structs, variants, shapes, aliases and shared structs
       '    - 80',
       '    - 443',
       '  env:',
-      '    LOG_LEVEL: "debug"',
+      '    "LOG_LEVEL": "debug"',
       '    "x-region": "eu"',
       '  retry:',
       '    backoffMs: 500',
@@ -107,10 +108,14 @@ describe('meaning by type: structs, variants, shapes, aliases and shared structs
     ]);
   });
 
-  it('refuses a variant named before a block whatever its entries, items or quoted keys', () => {
-    for (const entry of ['- 42', '"value": 42']) {
+  it('refuses a variant named before a block whatever its entries, which build a struct below T:', () => {
+    const left = [parserDiagnostics.itemAmongKeys.code, parserDiagnostics.quotedKeyInStruct.code];
+    for (const [entry, leftOut] of [
+      ['- 42', left[0]],
+      ['"value": 42', left[1]],
+    ] as const) {
       const text = lines('fn f() -> Result<Int>:', '  return Ok:', `    ${entry}`);
-      expect(reported(text).codes).toEqual([checkerDiagnostics.variantInBraces.code]);
+      expect(reported(text).codes).toEqual([checkerDiagnostics.variantInBraces.code, leftOut]);
     }
   });
 
@@ -149,17 +154,15 @@ describe('meaning by type: structs, variants, shapes, aliases and shared structs
 });
 
 describe('meaning by type: maps, arrays, unions, untyped blocks and constants (ยง1)', () => {
-  it('builds a Map with bare keys (including screaming snake case), quoted reserved words, shorthands, spreads and duplicate keys where the later wins', async () => {
+  it('builds a Map of quoted keys (screaming snake case and reserved words among them), spreads and duplicate keys where the later wins', async () => {
     const body = lines(
-      'const host = "localhost"',
       'const base: Map<String, String> =',
-      '  LOG_LEVEL: "info", "for": "loop"',
-      'const env = Map<String, String>:',
+      '  "LOG_LEVEL": "info", "for": "loop"',
+      'const env: Map<String, String> =',
       '  ...base',
-      '  host',
-      '  LOG_LEVEL: "debug"',
+      '  "LOG_LEVEL": "debug"',
       '  "host": "prod.internal"',
-      '  dup: "first", "dup": "second"',
+      '  "dup": "first", "dup": "second"',
       '(env["LOG_LEVEL"], env["for"], env["host"], env["dup"], env.size())',
     );
     expect(await mainGives('(String, String, String, String, Int)', body)).toEqual([
@@ -180,11 +183,11 @@ describe('meaning by type: maps, arrays, unions, untyped blocks and constants (ย
     );
     const body = lines(
       'const m: Map<EnvKey, Int> =',
-      '  region: 1, "tier": 2',
+      '  "region": 1, "tier": 2',
       'const same: Map<EnvKey, Int> = ["region": 1, "tier": 2]',
       'const d: Dict =',
       '  entries:',
-      '    alpha: 10, "beta": 20',
+      '    "alpha": 10, "beta": 20',
       '(m == same, m.size(), d.entries["alpha"] + d.entries["beta"])',
     );
     expect(await mainGives('(Bool, Int, Int)', body, decls)).toEqual([true, 2, 30]);
@@ -246,11 +249,11 @@ describe('meaning by type: maps, arrays, unions, untyped blocks and constants (ย
     expect(await mainGives('(String, String, Bool)', body, decls)).toEqual(['eu', 'ap', true]);
   });
 
-  it('types an untyped indented value as a shape when all keys are bare, a Map<String, V> when any key is quoted, and an Array<T> when items', () => {
+  it('types an untyped indented value as a shape when its keys are names, a Map<String, V> when they are quoted, and an Array<T> when items', () => {
     expect(constantTypeText(lines('const target =', '  x: 1, y: "two"'))).toBe(
       'struct { x: Int, y: String }',
     );
-    expect(constantTypeText(lines('const target =', '  x: 1, "y": 2'))).toBe('Map<String, Int>');
+    expect(constantTypeText(lines('const target =', '  "x": 1, "y": 2'))).toBe('Map<String, Int>');
     expect(constantTypeText(lines('const target =', '  - 1', '  - 2'))).toBe('Array<Int>');
   });
 
@@ -273,30 +276,27 @@ describe('meaning by type: maps, arrays, unions, untyped blocks and constants (ย
 
 describe('indented value errors (ยง1)', () => {
   it.each([
-    ['items where a struct is built', lines('struct S { a: Int }', 'const s = S:', '  - 1')],
-    ['items where a shape is expected', lines('const s: { a: Int } =', '  - 1')],
-    ['items where a map is built', lines('const m: Map<String, Int> =', '  - 1')],
-    ['keys where an array is built', lines('const xs: Array<Int> =', '  a: 1')],
+    [
+      'items below T:, which builds a struct',
+      lines('struct S { a: Int }', 'const s = S:', '  - 1'),
+    ],
+    ['an array where a shape is expected', lines('const s: { a: Int } =', '  - 1')],
+    ['an array where a map is expected', lines('const m: Map<String, Int> =', '  - 1')],
+    ['a struct where an array is expected', lines('const xs: Array<Int> =', '  a: 1')],
+    ['a struct of names where a map is expected', lines('const m: Map<String, Int> =', '  a: 1')],
     ['items and keys mixed in one indented value', lines('const x =', '  a: 1', '  - 2')],
     [
       'a quoted key where a nominal struct is built',
       lines('struct S { name: String }', 'const s = S:', '  "name": "api"'),
     ],
-    [
-      'a quoted key where a shape is expected',
-      lines('const s: { name: String } =', '  "name": "api"'),
-    ],
-    [
-      'a bare key where the map key type no String literal fits',
-      lines('const m: Map<Int, String> =', '  a: "x"'),
-    ],
+    ['a map where a shape is expected', lines('const s: { name: String } =', '  "name": "api"')],
     [
       'a quoted key where the map key type no String literal fits',
       lines('const m: Map<Int, String> =', '  "1": "x"'),
     ],
     [
-      'a bare key that does not fit a String literal union key type',
-      lines('const m: Map<"a" | "b", Int> =', '  c: 1'),
+      'a key that does not fit a String literal union key type',
+      lines('const m: Map<"a" | "b", Int> =', '  "c": 1'),
     ],
     [
       'a single-field struct built positionally in an indented value',
@@ -377,7 +377,7 @@ describe('commutation property: indented values vs brace and bracket literals (ย
           braced: `["k1": ${first.braced}, "x-k2": ${sec.braced}]`,
           indented: (depth: number) => {
             const pad = ' '.repeat(depth);
-            return `\n${pad}k1: ${first.indented(depth + 2)}\n${pad}"x-k2": ${sec.indented(depth + 2)}`;
+            return `\n${pad}"k1": ${first.indented(depth + 2)}\n${pad}"x-k2": ${sec.indented(depth + 2)}`;
           },
         };
       }),

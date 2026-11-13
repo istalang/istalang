@@ -9,13 +9,11 @@ import { describe, expect, it } from 'vitest';
 import { textOf } from '../../foundation/text/span.ts';
 import { completionsAt } from './completion/index.ts';
 import { hoverAt } from './hover.ts';
-import { mainProgram, programAt, treeOf } from './language-service.test-kit.ts';
+import { programAt, treeOf } from './language-service.test-kit.ts';
 import { nameAt } from './navigation/declarations.ts';
 import { referencesAt } from './navigation/references.ts';
 import { renameEdits } from './navigation/rename.ts';
 import { foldingRangesOf } from './outline/folding.ts';
-import { checkedModule } from './reading/checked-module.ts';
-import { builtKeyTypesOf } from './semantic-tokens/built-keys.ts';
 import { semanticTokensOf } from './semantic-tokens/semantic-tokens.ts';
 
 function hover(...lines: readonly string[]) {
@@ -118,7 +116,7 @@ describe('an indented value reads as the literal it builds, for hover and naviga
     expect(indented?.code.join('\n')).toContain('Box<Int, String>');
   });
 
-  it("reaches a struct's field from the bare keys of an indented map keyed by its names", () => {
+  it("reaches a struct's field from the quoted keys of an indented map keyed by its names", () => {
     const at = (...value: readonly string[]) => {
       const { program, module, offset } = programAt(
         'struct Settings { ret‸ries: Int, region: Int }',
@@ -127,13 +125,13 @@ describe('an indented value reads as the literal it builds, for hover and naviga
       );
       return referencesAt(program, module, offset).length;
     };
-    expect(at('  return', '    retries: 1', '    region: 2')).toBe(
+    expect(at('  return', '    "retries": 1', '    "region": 2')).toBe(
       at('  return ["retries": 1, "region": 2]'),
     );
     expect(at('  return ["retries": 1, "region": 2]')).toBe(2);
   });
 
-  it("renames a struct's field with the bare keys of an indented value checking built as a map", () => {
+  it("renames a struct's field with the quoted keys of an indented map", () => {
     const renaming = (...value: readonly string[]) => {
       const { program, module, offset } = programAt(
         'struct Settings { ret‸ries: Int, region: Int }',
@@ -142,7 +140,7 @@ describe('an indented value reads as the literal it builds, for hover and naviga
       );
       return renameEdits(program, module, offset, 'attempts');
     };
-    const indented = renaming('  return', '    retries: 1', '    region: 2');
+    const indented = renaming('  return', '    "retries": 1', '    "region": 2');
     expect(indented?.kind).toBe('renamed');
     expect(indented?.kind === 'renamed' ? indented.edits : []).toHaveLength(2);
     expect(renaming('  return ["retries": 1, "region": 2]')?.kind).toBe('renamed');
@@ -200,15 +198,15 @@ describe('completion in indented values and after separating line breaks (notes 
     );
   });
 
-  it('offers the keys the key type of an indented map spells that no entry gives yet, quoted where no name', () => {
+  it('offers the keys the key type of an indented map spells that no entry gives yet, quoted', () => {
     expect(
       completedNames(
         'fn f() -> Map<"region" | "x-tier" | "zone", Int>:',
         '  return',
-        '    region: 1',
+        '    "region": 1',
         '    ‸',
       ),
-    ).toEqual(['"x-tier"', 'zone']);
+    ).toEqual(['"x-tier"', '"zone"']);
   });
 
   it('offers a leading spread and field shorthands at the first entry of an indented value', () => {
@@ -274,28 +272,6 @@ describe('signature help, folding and semantic tokens (notes 5, 9)', () => {
       ['first', 'property'],
       ['1', 'number'],
       ['second', 'property'],
-    ]);
-  });
-
-  it('highlights the bare keys of an indented map as Strings, and a shorthand as its variable', () => {
-    const { program, module, tree } = mainProgram(
-      [
-        'fn f(host: String) -> Map<String, String>:',
-        '  return',
-        '    LOG_LEVEL: "debug"',
-        '    host',
-      ].join('\n'),
-    );
-    const checked = checkedModule(program, module);
-    const keys = checked === undefined ? new Map() : builtKeyTypesOf(checked);
-    const kinds = semanticTokensOf(tree, keys).map(({ span, type }) => [
-      textOf(tree.source, span),
-      type,
-    ]);
-    expect(kinds).toContainEqual(['LOG_LEVEL', 'string']);
-    expect(kinds.filter(([text]) => text === 'host')).toEqual([
-      ['host', 'parameter'],
-      ['host', 'variable'],
     ]);
   });
 });

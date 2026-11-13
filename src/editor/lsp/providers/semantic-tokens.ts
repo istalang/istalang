@@ -9,8 +9,6 @@
 import { SemanticTokensBuilder } from 'vscode-languageserver/node';
 import { type LineMap, lineMapOf } from '../../../foundation/text/line-map.ts';
 import type { Span } from '../../../foundation/text/span.ts';
-import { checkedModule } from '../../language-service/reading/checked-module.ts';
-import { builtKeyTypesOf } from '../../language-service/semantic-tokens/built-keys.ts';
 import { semanticTokensOf } from '../../language-service/semantic-tokens/semantic-tokens.ts';
 import { semanticTypes } from '../../language-service/semantic-tokens/semantic-types.ts';
 import { moduleIdOfUri } from '../locations.ts';
@@ -32,9 +30,7 @@ export const semanticTokens: Provider = {
       const tree = workspace.treeOf(module);
       if (tree !== undefined) {
         const lines = lineMapOf(tree.source);
-        const checked = checkedModule(workspace.program, module);
-        const keys = checked === undefined ? undefined : builtKeyTypesOf(checked);
-        for (const { span, type } of semanticTokensOf(tree, keys)) {
+        for (const { span, type } of semanticTokensOf(tree)) {
           for (const piece of linesOf(lines, span)) {
             const { line, column } = lines.positionAt(piece.start);
             builder.push(line, column, piece.end - piece.start, typeIndex.get(type) ?? 0, 0);

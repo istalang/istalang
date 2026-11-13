@@ -210,6 +210,31 @@ export const parserDiagnostics = defineDiagnostics('parser', {
     message: () =>
       "An item's '-' is followed by a space, so a line starting '-1' holds no item: write '- -1' for the item −1 (§2).",
   },
+  itemAmongKeys: {
+    code: 2048,
+    message: (built: 'struct' | 'map') =>
+      `An item ('- value') stands where a ${built} is built, among keys: an indented value holds items or keys, never both (§2).`,
+  },
+  keyAmongItems: {
+    code: 2049,
+    message: () =>
+      "A key stands where an array is built, among items ('- value'): an indented value holds items or keys, never both (§2).",
+  },
+  quotedKeyInStruct: {
+    code: 2051,
+    message: () =>
+      'A quoted key stands where a struct is built, whose keys are its field names: write each name bare, or quote every key to build a map (§2).',
+  },
+  nameAmongQuotedKeys: {
+    code: 2052,
+    message: () =>
+      'A name stands where a map is built, among quoted keys: a map quotes every key (§2).',
+  },
+  comprehensionInMap: {
+    code: 2053,
+    message: () =>
+      "A struct comprehension gives a struct's fields, but a map is built here: build it with a comprehension in brackets (§2, §4).",
+  },
   fieldLoopCondition: {
     code: 2037,
     message: () =>

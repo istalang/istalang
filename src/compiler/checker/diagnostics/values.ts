@@ -103,35 +103,6 @@ export const valueTemplates = {
     message: (type: string, name: string, operator: string) =>
       `'${name}' is a field of the value behind the shared struct ${type}, not of its handle: read it as x${operator}${name} (§3.9).`,
   },
-  itemsInKeyedValue: {
-    code: 5223,
-    message: (built: 'struct' | 'map') =>
-      `An item ('- value') stands where a ${built} is built: its entries are 'key: value' lines (§2).`,
-  },
-  keysInArray: {
-    code: 5224,
-    message: () => "A key stands where an array is built: its entries are '- item' lines (§2).",
-  },
-  itemsAndKeys: {
-    code: 5225,
-    message: () =>
-      "An indented value holds items ('- value') or keys ('key: value'), never both: which would it build? (§2)",
-  },
-  quotedKeyInStruct: {
-    code: 5226,
-    message: () =>
-      'A quoted key stands where a struct is built, whose keys are its field names: write the name bare (§2).',
-  },
-  keysNotStrings: {
-    code: 5227,
-    message: (map: string) =>
-      `An indented value's keys are Strings, which ${map}'s keys can't be: write it as a bracket literal, '[k: v]' (§2).`,
-  },
-  comprehensionInMap: {
-    code: 5228,
-    message: () =>
-      "A struct comprehension gives a struct's fields, but a map is built here: build it with a comprehension in brackets (§2, §4).",
-  },
   passing: {
     code: 5215,
     message: (name: string, position: number, reference: boolean) =>

@@ -33,15 +33,15 @@ describe('Json as a recursive union: literals, matching and codecs (§3)', () =>
     const body = lines(
       'const inline: Json = ["name": "api", "tags": ["web", 1, 2.5, true, none], "emptyArr": [], "emptyMap": [:]]',
       'const indented: Json =',
-      '  name: "api"',
-      '  tags:',
+      '  "name": "api"',
+      '  "tags":',
       '    - "web"',
       '    - 1',
       '    - 2.5',
       '    - true',
       '    - none',
-      '  emptyArr: []',
-      '  emptyMap: [:]',
+      '  "emptyArr": []',
+      '  "emptyMap": [:]',
       'inline == indented and json.stringify(inline) == json.stringify(indented)',
     );
     expect(await mainGives('Bool', body, jsonImports)).toBe(true);

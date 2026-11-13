@@ -1,205 +1,34 @@
 /**
- * Indented values (§2): what a block builds is decided by the type it is built as, then the block
- * is checked as the brace or bracket literal it reads as
- * (syntax/expressions/literals/indented-values.ts), so every rule of literals keeps its one home
- * (structs/structs.ts, collections/collections.ts).
+ * Indented values (§2): a block is checked as the brace or bracket literal its entries say it
+ * builds (syntax/expressions/literals/indented-values.ts), typed as that literal is, so every rule
+ * of literals keeps its one home (structs/structs.ts, collections/collections.ts).
  *
- * - `T:` naming a struct, or an alias of a struct or a shape, builds a struct, `T{…}`; naming any
- *   other type, a map or an array of that type, as `[…]` built where `T` is expected. Naming a
- *   variant it is refused whatever its entries, naming the call, a variant being built only by its
- *   call (§3.11, structs/variants.ts).
- * - With no `T`, the expected type decides, as for `struct{…}` and `[…]`: a struct type builds a
- *   struct; a type a map literal builds, a map; an array type, an array. A union is built as the
- *   one member the value fits, which choosing found before (types/fitting/expected.ts). A value
- *   whose type nothing decides builds what its entries say: items an array, a quoted key a map,
- *   names alone a shape.
- * - Entries the literal can't hold are reported, each once, and their values checked alone, so
- *   tools still read them. A map built as an indented value has String keys, so a map whose key
- *   type no String literal fits is refused whole.
+ * - Entries the literal can't hold were reported by the parser; their values are checked alone, so
+ *   tools still read them.
  *
  * The literal checked is recorded with the body (`builtLiteralOf`), for lowering and tools.
  */
 
-import type { Entity } from '../../../../binder/entities.ts';
-import { isDeclaredStruct } from '../../../../syntax/declarations/index.ts';
 import type { IndentedEntry, IndentedValue } from '../../../../syntax/expressions/index.ts';
 import {
   entriesLeftOut,
-  isItem,
-  isKeyed,
-  type LiteralForm,
   literalOf,
-  untypedForm,
 } from '../../../../syntax/expressions/literals/indented-values.ts';
-import { lastName } from '../../../../syntax/tree/node.ts';
 import type { BodyContext } from '../../../contexts/body-context.ts';
-import { checkerDiagnostics } from '../../../diagnostics/index.ts';
-import type { Admits } from '../../../types/fitting/expected.ts';
-import { builtFrom, collectionTarget } from '../../../types/fitting/expected.ts';
 import type { Type } from '../../../types/type/index.ts';
-import { membersOf } from '../../../types/type/index.ts';
-import { errorType, literalType } from '../../../types/type/primitives.ts';
-import { typeText } from '../../../types/type/type-text.ts';
-import { aliasedShape } from '../structs/literal-types.ts';
-import { refuseVariantLiteral } from '../structs/variants.ts';
-
-/** What a value is built as, and the type its literal is checked against. */
-interface Building {
-  readonly form: LiteralForm;
-  readonly target: Type | undefined;
-}
 
 export function checkIndentedValue(
   context: BodyContext,
   node: IndentedValue,
   expected: Type | undefined,
 ): Type {
-  const head = node.type === undefined ? undefined : lastName(node.type.path);
-  const naming = head === undefined ? undefined : context.entityOf(head);
-  if (head !== undefined && (naming?.kind === 'variant' || naming?.kind === 'variants')) {
-    checkValuesAlone(context, node.entries);
-    return refuseVariantLiteral(context, node.span, head, { naming, expected });
-  }
-  const { form, target } = buildingOf(context, node, expected);
-  const fits = reportLeftOut(context, node, form) && keysFit(context, node, form, target);
-  if (!fits) {
-    checkValuesAlone(context, node.entries);
-    return errorType;
-  }
-  const literal = literalOf(node, form);
+  checkValuesAlone(context, entriesLeftOut(node));
+  const literal = literalOf(node);
   context.recordBuilt(node, literal);
-  return context.expression(literal, target);
+  return context.expression(literal, expected);
 }
 
-/** What `node` builds where `expected` is expected, and the type its literal is checked against. */
-function buildingOf(
-  context: BodyContext,
-  node: IndentedValue,
-  expected: Type | undefined,
-): Building {
-  if (node.type === undefined) {
-    return { form: anonymousForm(context, node, expected), target: expected };
-  }
-  const entity = context.entityOf(lastName(node.type.path));
-  if (entity === undefined || namesStruct(context, entity)) {
-    return { form: 'struct', target: expected };
-  }
-  const named = context.resolveType(node.type);
-  return { form: formOf(context, named) ?? 'struct', target: named };
-}
-
-/**
- * What `node`, naming no type, builds where `expected` is expected: what the type says, else its
- * entries.
- */
-function anonymousForm(
-  context: BodyContext,
-  node: IndentedValue,
-  expected: Type | undefined,
-): LiteralForm {
-  return formOf(context, builtFrom(expected)) ?? untypedForm(node);
-}
-
-/**
- * Whether a literal naming `entity` builds a struct: a declared struct, never an `Array` or a
- * `Map`, extern ones collection literals build, or an alias of a shape.
- */
-function namesStruct(context: BodyContext, entity: Entity): boolean {
-  if (entity.kind !== 'type') {
-    return false;
-  }
-  const { declaration } = entity;
-  return aliasedShape(context, declaration) !== undefined || isDeclaredStruct(declaration);
-}
-
-/**
- * What a value built as `type` is built as (§2): an array or a map of the types collection
- * literals build, a struct of a struct type, else a map of a type built through its `default()`;
- * undefined when `type` decides none.
- */
-function formOf(context: BodyContext, type: Type | undefined): LiteralForm | undefined {
-  const collection = collectionTarget(context.checker, type);
-  if (collection?.kind === 'array' || collection?.kind === 'map') {
-    return collection.kind;
-  }
-  if (type !== undefined && isStructType(context, type)) {
-    return 'struct';
-  }
-  return collection === undefined ? undefined : 'map';
-}
-
-/** Whether a literal builds a value of `type` as a struct: a shape, or a struct with fields. */
-function isStructType(context: BodyContext, type: Type): boolean {
-  return (
-    type.kind === 'anonymous' ||
-    (type.kind === 'nominal' && context.checker.fieldsOf(type) !== undefined)
-  );
-}
-
-/**
- * Reports the entries `form`'s literal can't hold, each once: items and keys mixed, once for the
- * value; whether none was.
- */
-function reportLeftOut(context: BodyContext, node: IndentedValue, form: LiteralForm): boolean {
-  const { entries } = node;
-  const firstItem = entries.find(isItem);
-  if (firstItem !== undefined && entries.some(isKeyed)) {
-    context.report(checkerDiagnostics.itemsAndKeys(firstItem.span));
-    return false;
-  }
-  const leftOut = entriesLeftOut(node, form);
-  for (const entry of leftOut) {
-    context.report(leftOutDiagnostic(entry, form));
-  }
-  return leftOut.length === 0;
-}
-
-function leftOutDiagnostic(entry: IndentedEntry, form: LiteralForm) {
-  const { span } = entry;
-  if (entry.kind === 'IndentedItem') {
-    return checkerDiagnostics.itemsInKeyedValue(span, form === 'map' ? 'map' : 'struct');
-  }
-  if (form === 'array') {
-    return checkerDiagnostics.keysInArray(span);
-  }
-  return entry.kind === 'QuotedEntry'
-    ? checkerDiagnostics.quotedKeyInStruct(span)
-    : checkerDiagnostics.comprehensionInMap(span);
-}
-
-/**
- * Whether a map built of `node` takes its String keys: a map whose key type no String literal fits
- * is reported, once for the value (§2).
- */
-function keysFit(
-  context: BodyContext,
-  node: IndentedValue,
-  form: LiteralForm,
-  target: Type | undefined,
-): boolean {
-  if (form !== 'map') {
-    return true;
-  }
-  const collection = collectionTarget(context.checker, target);
-  const key = collection?.kind === 'map' ? collection.arguments[0] : undefined;
-  if (key === undefined || takesStrings(context, key)) {
-    return true;
-  }
-  const at = node.type?.span ?? node.span;
-  context.report(checkerDiagnostics.keysNotStrings(at, typeText(builtFrom(target) ?? key)));
-  return false;
-}
-
-/** Whether some String literal fits `key`: one of its String literal types, or any String. */
-function takesStrings(context: BodyContext, key: Type): boolean {
-  return membersOf(key).some(
-    (member) =>
-      (member.kind === 'literal' && typeof member.value === 'string') ||
-      context.checker.fitOf(literalType(''), member) !== undefined,
-  );
-}
-
-/** Checks every value `entries` hold, for a value whose literal can't be checked. */
+/** Checks every value `entries` hold, which their value's literal leaves out. */
 function checkValuesAlone(context: BodyContext, entries: readonly IndentedEntry[]): void {
   for (const entry of entries) {
     switch (entry.kind) {
@@ -219,19 +48,4 @@ function checkValuesAlone(context: BodyContext, entries: readonly IndentedEntry[
         break;
     }
   }
-}
-
-/**
- * Which types `node` can be built as where a call or a union decides (../postponed.ts): those that
- * ask for a literal of a form, an array, a map or a struct, holding all its entries. A value naming
- * its type has that type.
- */
-export function indentedAccepts(context: BodyContext, node: IndentedValue): Admits | undefined {
-  if (node.type !== undefined) {
-    return undefined;
-  }
-  return (expected) => {
-    const form = formOf(context, builtFrom(expected));
-    return form !== undefined && entriesLeftOut(node, form).length === 0;
-  };
 }

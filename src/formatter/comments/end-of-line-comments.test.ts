@@ -44,7 +44,7 @@ const declarations: readonly ItemList[] = [
 /** Lists that stand at the top of a module or in a body. */
 const constants: readonly ItemList[] = [
   { header: 'const v = S:', item: (index) => `f${index}: ${index}` },
-  { header: 'const v = Array<Int>:', item: (index) => `- ${index}` },
+  { header: 'const v: Array<Int> =', item: (index) => `- ${index}` },
   { header: 'const v = [', item: (index) => `${index}`, footer: ']' },
 ];
 

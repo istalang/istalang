@@ -30,7 +30,7 @@ describe('formatting indented values as written (§1, note 4)', () => {
       '    - -1',
       '    - ...extraPorts',
       '  env:',
-      '    LOG_LEVEL: "debug"',
+      '    "LOG_LEVEL": "debug"',
       '    "x-region": "eu"',
       '  retry:',
       '    times: 3',
@@ -123,7 +123,7 @@ describe('formatting indented values as written (§1, note 4)', () => {
   it('preserves comments and blank lines inside indented values and reaches a fixpoint on generated inputs', () => {
     const entryArb = fc.constantFrom(
       '  # comment on entry\n  a: 1',
-      '  "x-key": "val"',
+      '  key: "val"',
       '  shorthand',
       '  ...spreadVal',
       '  nested:\n    # nested comment\n    inner: 42',

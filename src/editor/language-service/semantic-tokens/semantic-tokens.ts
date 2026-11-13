@@ -3,9 +3,8 @@
  * as, in source order.
  *
  * Keywords, literals, comments and operators are known from the token alone. A name takes its role
- * from the tree (name-types.ts), unless checking places it otherwise (built-keys.ts: an indented
- * map's keys are Strings); a contextual word (§2) the tree holds no name for is acting
- * as a keyword there, such as `new` before a struct literal. Brackets and separators have no kind:
+ * from the tree (name-types.ts); a contextual word (§2) the tree holds no name for is acting as a
+ * keyword there, such as `new` before a struct literal. Brackets and separators have no kind:
  * they are punctuation, which an editor's grammar colors already.
  *
  * A template is one token holding its values' tokens. Its quotes and text are a string, its values
@@ -41,16 +40,10 @@ const punctuation: ReadonlySet<string> = new Set([
   '.',
 ]);
 
-/**
- * Every token and comment of `tree` that has a kind, in source order; `checkedNames` are the kinds
- * checking gives names the tree can't place (built-keys.ts), where a checker answers.
- */
-export function semanticTokensOf(
-  tree: SyntaxTree,
-  checkedNames: ReadonlyMap<number, SemanticType> = new Map(),
-): readonly ClassifiedSpan[] {
+/** Every token and comment of `tree` that has a kind, in source order. */
+export function semanticTokensOf(tree: SyntaxTree): readonly ClassifiedSpan[] {
   const context = {
-    names: new Map([...nameTypesOf(tree), ...checkedNames]),
+    names: nameTypesOf(tree),
     angleBrackets: angleBracketsOf(tree),
     source: tree.source,
   };

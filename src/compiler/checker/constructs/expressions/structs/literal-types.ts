@@ -100,7 +100,7 @@ export function builtThrough(
  * The shape the alias `declaration` names, with its own type parameters, a recursive one's as it
  * unfolds (§3.17); undefined for any other declaration, or an alias of anything but a shape.
  */
-export function aliasedShape(
+function aliasedShape(
   context: BodyContext,
   declaration: TypeEntity['declaration'],
 ): AnonymousStructType | undefined {

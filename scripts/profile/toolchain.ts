@@ -22,7 +22,6 @@ import { completionsAt } from '../../src/editor/language-service/completion/inde
 import { inlayHintsIn } from '../../src/editor/language-service/inlay-hints.ts';
 import { referencesAt } from '../../src/editor/language-service/navigation/references.ts';
 import { checkedModule } from '../../src/editor/language-service/reading/checked-module.ts';
-import { builtKeyTypesOf } from '../../src/editor/language-service/semantic-tokens/built-keys.ts';
 import { semanticTokensOf } from '../../src/editor/language-service/semantic-tokens/semantic-tokens.ts';
 import { Workspace } from '../../src/editor/language-service/workspace.ts';
 import { formatSource } from '../../src/formatter/format.ts';
@@ -86,7 +85,7 @@ function measureOneScale(tests: string, scale: number): Record<string, number> {
   const cm = checkedModule(ws.program, scaledMod);
   const t0Sem = performance.now();
   if (cm !== undefined) {
-    semanticTokensOf(cm.tree, builtKeyTypesOf(cm));
+    semanticTokensOf(cm.tree);
   }
   const semTokMs = round(performance.now() - t0Sem);
   const t0Inlay = performance.now();
