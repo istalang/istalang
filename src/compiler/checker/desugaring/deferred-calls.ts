@@ -26,7 +26,6 @@
  *   function can capture.
  */
 
-import { variableEntity } from '../../binder/entities.ts';
 import type { Call, CallArgument, DeferredCall } from '../../syntax/expressions/calls.ts';
 import type { Expression, Lambda } from '../../syntax/expressions/index.ts';
 import { signedNumberOf } from '../../syntax/expressions/literals/numbers.ts';
@@ -46,11 +45,12 @@ import { spanBetween, startOf } from '../../syntax/tree/positions.ts';
 import { readsThroughNamespace } from '../constructs/expressions/access/member-access.ts';
 import { calleeRead, memberCalled } from '../constructs/expressions/calls.ts';
 import type { BodyContext } from '../contexts/body-context.ts';
-import { bound, synthesized } from '../contexts/synthesized.ts';
+import { synthesized } from '../contexts/synthesized.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { isPack } from '../types/type/function-types.ts';
 import { presentType } from '../types/unions/unions.ts';
 import { namedType } from '../types/written/named-types.ts';
+import { afterConstants, heldConstant } from './constants.ts';
 import type { Desugar } from './index.ts';
 
 /** The parts a deferred call's core is built of, as its wording reads them. */
@@ -70,18 +70,10 @@ export const deferredCalls: Desugar<DeferredCall> = {
     if (made === undefined) {
       return;
     }
-    const tail = built(building, 'function', {
-      kind: 'ExpressionStatement',
-      span: made.span,
-      expression: made,
-    } as const);
-    const statements = [...building.constants, tail];
-    const block = built(building, 'constant', { kind: 'Block', span: node.call.span, statements });
-    const given = built(building, 'constant', {
-      kind: 'BlockExpression',
-      span: node.call.span,
-      block,
-    } as const);
+    const given = afterConstants(building.constants, made, node.call.span, {
+      sugar: node,
+      role: 'constant',
+    });
     const taker = takerCallOf(node);
     return built(building, 'taker', {
       kind: 'Call',
@@ -228,29 +220,9 @@ function argumentHoisted(building: Building, argument: CallArgument): CallArgume
  */
 function constant(building: Building, value: Expression): Identifier {
   const { sugar, constants } = building;
-  const text = value.kind === 'Identifier' ? value.text : 'value';
-  const at = sugar.taker.span;
-  const name = built(building, 'constant', { kind: 'Identifier', span: at, text } as const);
-  const pattern = built(building, 'constant', {
-    kind: 'NamePattern',
-    span: at,
-    path: [name],
-    typeArguments: [],
-  } as const);
-  const declaration = built(building, 'constant', {
-    kind: 'VariableDeclaration',
-    span: value.span,
-    hold: undefined,
-    isMutable: false,
-    targets: [pattern],
-    type: undefined,
-    initializer: value,
-  } as const);
-  constants.push(declaration);
-  const entity = variableEntity(name, declaration);
-  bound(name, entity);
-  const read = built(building, 'later', { kind: 'Identifier', span: value.span, text } as const);
-  return bound(read, entity);
+  const held = heldConstant(value, sugar.taker.span, { sugar, role: 'constant' });
+  constants.push(held.declaration);
+  return held.read({ sugar, role: 'later' });
 }
 
 /**
