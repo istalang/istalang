@@ -111,7 +111,7 @@ export function isBareVariant({ subject }: Candidate): boolean {
 }
 
 function isVariantEntity({ kind }: Entity): boolean {
-  return kind === 'variant' || kind === 'variants';
+  return kind === 'variants';
 }
 
 const expectations = new WeakMap<Place, Type | undefined>();

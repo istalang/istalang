@@ -181,8 +181,7 @@ function mayRefer(checker: Checker, entity: Entity, type: Type | undefined): boo
     return true;
   }
   if (type.kind === 'union') {
-    const isVariant = entity.kind === 'variant' || entity.kind === 'variants';
-    return !isVariant && membersNamed(checker, entity, type.members).length > 0;
+    return entity.kind !== 'variants' && membersNamed(checker, entity, type.members).length > 0;
   }
   return type.kind === 'any' && downcastTargetOf(checker, entity, type).kind === 'type';
 }

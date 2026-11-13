@@ -24,6 +24,7 @@ import { typeText } from '../../../../compiler/checker/types/type/type-text.ts';
 import type { ModuleId } from '../../../../compiler/program/program.ts';
 import { isMethod } from '../../../../compiler/syntax/declarations/methods.ts';
 import { type Handlers, handlerOf } from '../../../../foundation/structures/kind-table.ts';
+import { unreachable } from '../../../../foundation/structures/unreachable.ts';
 import { docstringOf } from '../../reading/docstrings.ts';
 import { importedModule } from '../../reading/namespaces.ts';
 import { signatureOf } from '../../signatures/signatures.ts';
@@ -31,7 +32,6 @@ import type { CompletionKind, RankGroup } from './item.ts';
 import {
   annotationValue,
   calledOrNamed,
-  constructed,
   documented,
   functionGivenAsValue,
   type Presenting,
@@ -59,7 +59,7 @@ export function groupOf(checker: Checker, module: ModuleId, entity: Entity): Ran
   if (home !== module) {
     return 'imported';
   }
-  return entity.kind === 'variant' || checker.bindings.isTopLevel(entity) ? 'module' : 'local';
+  return checker.bindings.isTopLevel(entity) ? 'module' : 'local';
 }
 
 // biome-ignore-start lint/style/useNamingConvention: the keys are the tree's node kinds.
@@ -134,12 +134,8 @@ const entityItems: Handlers<Presenting, Entity, [name: string], Shown> = {
   },
   primitive: () => ({ kind: 'keyword', commit: goesOn }),
   self: () => ({ kind: 'typeParameter', commit: goesOn }),
-  variant: (presenting, { enum: declaration, variant }, name) => ({
-    kind: 'variant',
-    detail: declaration.name.text,
-    order: declaration.variants.indexOf(variant),
-    ...constructed(presenting, name, { hasFields: variant.fields.length > 0, enums: [] }),
-  }),
+  variant: () =>
+    unreachable('A variant is offered through its enum, never as a name visible on its own.'),
   variants: () => ({ kind: 'variant' }),
   namespace: ({ cursor: { checker } }, entity) => {
     const imported = importedModule(checker, entity);
