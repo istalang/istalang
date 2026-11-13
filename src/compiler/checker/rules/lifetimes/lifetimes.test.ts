@@ -262,4 +262,18 @@ describe('the lifetime rule', () => {
     );
     expect(findingsIn(source)).toEqual([]);
   });
+
+  it('relates only the parts a helper linked, so the other part is no cycle of its own', () => {
+    const source = inSubject(
+      [
+        'const a = new Node{lease: new Lease{n: 0}}',
+        'const b = new Node{lease: new Lease{n: 1}}',
+        'linkDuo(Duo{first: a, second: b})',
+        'b->lease = new Lease{n: 2}',
+        'b->next = a',
+      ].join('\n'),
+      ['struct Duo { first: Node, second: Node }', 'fn linkDuo(d: Duo): d.first->next = d.second'],
+    );
+    expect(findingsIn(source)).toEqual(['14:write']);
+  });
 });

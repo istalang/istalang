@@ -14,7 +14,7 @@
  */
 
 import type { ValueId } from '../../flow/flow-ir.ts';
-import { type Input, inputKey } from '../input.ts';
+import { type Input, inputKey, sameInput } from '../input.ts';
 import type { NodeId } from '../reach-state.ts';
 import {
   anyField,
@@ -86,7 +86,9 @@ function callReachOf(slots: readonly InputSlot[], seen: readonly FlowState[]): r
 
 /**
  * The pairs of what the summary names that `states` relate and the function's start didn't: each
- * input and part of one reaching another on a branch of its own, or itself.
+ * input and part of one reaching another on a branch of its own, or itself. An input reaching
+ * itself through parts whose effects name them says no more than those: only one whose parts it
+ * didn't read, or names whole (a recursive group's), comes to reach itself as a whole.
  */
 function effectsOf(
   analysis: BodyAnalysis,
@@ -112,7 +114,15 @@ function effectsOf(
       }
     }
   }
-  return [...effects.values()];
+  const relatedWithin = new Set(
+    [...effects.values()].flatMap(({ from, to }) =>
+      from.kind === 'path' && rootOf(from) === rootOf(to) ? [rootOf(from)] : [],
+    ),
+  );
+  return [...effects.values()].filter(
+    ({ from, to }) =>
+      !(from.kind !== 'path' && sameInput(from, to) && relatedWithin.has(rootOf(from))),
+  );
 }
 
 /** What `from` came to reach of `to` by `joined` that it didn't at `entry`, if anything. */
@@ -128,10 +138,14 @@ function effectOf(
       ? { from: from.input, to: from.input, inside: false, label: anyField }
       : undefined;
   }
-  const roots = [rootOf(from.input), rootOf(to.input)];
+  // Parts of one input start apart; inputs related as given relate their parts as given too.
+  const [fromRoot, toRoot] = [rootOf(from.input), rootOf(to.input)];
   if (
     !apart(from.input, to.input) ||
-    (roots[0] !== undefined && roots[1] !== undefined && related(entry, roots[0], roots[1]))
+    (fromRoot !== undefined &&
+      toRoot !== undefined &&
+      fromRoot !== toRoot &&
+      related(entry, fromRoot, toRoot))
   ) {
     return undefined;
   }
