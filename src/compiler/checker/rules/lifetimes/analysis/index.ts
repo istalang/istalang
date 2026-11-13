@@ -26,12 +26,13 @@ import { type ForwardRule, reachedBlocks, runForward } from '../../flow/solve.ts
 import { inputKey } from '../input.ts';
 import { type Allowed, type NodeId, ReachState } from '../reach-state.ts';
 import type { Summary } from '../summary.ts';
-import { type HandleReach, mayAlias, mayReach, mayShare } from '../type-reach.ts';
+import { mayAlias, mayReach, mayShare } from '../type-reach.ts';
 import { type AnalysisContext, BodyAnalysis, type Violation } from './body.ts';
 import { clonedState, type FlowState, joinedStates } from './flow-state.ts';
 import { isInputRooted } from './inputs.ts';
 import { Nodes } from './nodes.ts';
 import { runOperation } from './operations.ts';
+import { ReachPairs } from './reach-pairs.ts';
 import { type Ends, type Return, summarize } from './summarize.ts';
 
 export interface Analysis {
@@ -277,13 +278,12 @@ function entryState(analysis: BodyAnalysis): FlowState {
  * those (inputs.ts).
  */
 function allowedBy(nodes: Nodes): Allowed {
-  const both = (first: NodeId, second: NodeId, test: (a: HandleReach, b: HandleReach) => boolean) =>
-    test(nodes.reachOf(first), nodes.reachOf(second));
+  const pairs = new ReachPairs((node) => nodes.reachOf(node));
   const wholes = new Map<NodeId, boolean>();
   return {
-    reach: (from, to) => both(from, to, mayReach),
-    alias: (first, second) => both(first, second, mayAlias),
-    share: (first, second) => both(first, second, mayShare),
+    reach: (from, to) => pairs.allows(mayReach, from, to),
+    alias: (first, second) => pairs.allows(mayAlias, first, second),
+    share: (first, second) => pairs.allows(mayShare, first, second),
     whole: (node) =>
       memo(
         wholes,

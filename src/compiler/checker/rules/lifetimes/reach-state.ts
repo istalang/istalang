@@ -20,6 +20,9 @@
  *   (`clone`), and paths join by union.
  */
 
+import { NodeNumbering } from './node-numbering.ts';
+import { NodeRelation } from './node-relation.ts';
+
 export type NodeId = number;
 
 /**
@@ -41,36 +44,41 @@ const anything: Allowed = {
   whole: () => true,
 };
 
-type Pairs = Map<NodeId, Set<NodeId>>;
-
 export class ReachState {
-  readonly #reach: Pairs = new Map();
-  readonly #alias: Pairs = new Map();
-  readonly #share: Pairs = new Map();
-  readonly #wholes: Pairs = new Map();
+  readonly #numbering: NodeNumbering;
+  readonly #reach: NodeRelation;
+  readonly #alias: NodeRelation;
+  readonly #share: NodeRelation;
+  readonly #wholes: NodeRelation;
   readonly #escaped = new Set<NodeId>();
   readonly #leaked = new Set<NodeId>();
   readonly #live = new Set<NodeId>();
 
   readonly #allowed: Allowed;
 
-  constructor(allowed: Allowed = anything) {
+  /** A state relating nothing; its copies and joins share `numbering`, one per analysis. */
+  constructor(allowed: Allowed = anything, numbering = new NodeNumbering()) {
     this.#allowed = allowed;
+    this.#numbering = numbering;
+    this.#reach = new NodeRelation(numbering);
+    this.#alias = new NodeRelation(numbering);
+    this.#share = new NodeRelation(numbering);
+    this.#wholes = new NodeRelation(numbering);
   }
 
   clone(): ReachState {
-    const copy = new ReachState(this.#allowed);
+    const copy = new ReachState(this.#allowed, this.#numbering);
     copy.join(this);
     return copy;
   }
 
-  /** Joins `other` in; whether anything was added. */
+  /** Joins `other`, a state of the same analysis, in; whether anything was added. */
   join(other: ReachState): boolean {
     const before = this.size();
-    joined(this.#reach, other.#reach);
-    joined(this.#alias, other.#alias);
-    joined(this.#share, other.#share);
-    joined(this.#wholes, other.#wholes);
+    this.#reach.join(other.#reach);
+    this.#alias.join(other.#alias);
+    this.#share.join(other.#share);
+    this.#wholes.join(other.#wholes);
     for (const each of other.#escaped) {
       this.#escaped.add(each);
     }
@@ -86,10 +94,10 @@ export class ReachState {
   /** How many facts the state holds; it only grows along a path's joins. */
   size(): number {
     return (
-      countOf(this.#reach) +
-      countOf(this.#alias) +
-      countOf(this.#share) +
-      countOf(this.#wholes) +
+      this.#reach.size() +
+      this.#alias.size() +
+      this.#share.size() +
+      this.#wholes.size() +
       this.#escaped.size +
       this.#leaked.size +
       this.#live.size
@@ -118,15 +126,15 @@ export class ReachState {
   }
 
   reaches(from: NodeId, to: NodeId): boolean {
-    return this.#reach.get(from)?.has(to) ?? false;
+    return this.#reach.has(from, to);
   }
 
   aliases(first: NodeId, second: NodeId): boolean {
-    return first === second || (this.#alias.get(first)?.has(second) ?? false);
+    return first === second || this.#alias.has(first, second);
   }
 
   shares(first: NodeId, second: NodeId): boolean {
-    return first === second || (this.#share.get(first)?.has(second) ?? false);
+    return first === second || this.#share.has(first, second);
   }
 
   /**
@@ -138,7 +146,7 @@ export class ReachState {
     return (
       this.aliases(value, whole) ||
       this.reaches(value, whole) ||
-      [whole, ...this.aliasesOf(whole)].some((each) => this.#wholes.get(value)?.has(each)) ||
+      [whole, ...this.aliasesOf(whole)].some((each) => this.#wholes.has(value, each)) ||
       (this.shares(value, whole) && !this.reaches(whole, value))
     );
   }
@@ -147,7 +155,7 @@ export class ReachState {
   addWhole(part: NodeId, whole: NodeId): void {
     for (const each of [whole, ...this.aliasesOf(whole)]) {
       if (each !== part && this.#allowed.whole(each)) {
-        added(this.#wholes, part, each);
+        this.#wholes.add(part, each);
       }
       this.#carry(part, each);
     }
@@ -155,13 +163,7 @@ export class ReachState {
 
   /** `node` comes to reach or hold `other`: what that was read out of, `node` holds some of. */
   #carry(node: NodeId, other: NodeId): void {
-    if (node !== other) {
-      for (const each of this.#wholes.get(other) ?? []) {
-        if (each !== node) {
-          added(this.#wholes, node, each);
-        }
-      }
-    }
+    this.#wholes.addAllOf(node, other);
   }
 
   /** Whether `value` may reach or be what `holder` holds directly: writing it in closes a cycle. */
@@ -171,26 +173,23 @@ export class ReachState {
 
   /** The nodes `node` may reach. */
   reachedFrom(node: NodeId): readonly NodeId[] {
-    return [...(this.#reach.get(node) ?? [])];
+    return this.#reach.targets(node);
   }
 
   /** The nodes `node` may alias. */
   aliasesOf(node: NodeId): readonly NodeId[] {
-    return [...(this.#alias.get(node) ?? [])];
+    return this.#alias.targets(node);
   }
 
   /** The nodes `node` may share with. */
   sharesOf(node: NodeId): readonly NodeId[] {
-    return [...(this.#share.get(node) ?? [])];
+    return this.#share.targets(node);
   }
 
   /** Ends `node`'s value: it relates to nothing, and is no longer live. */
   kill(node: NodeId): void {
-    for (const pairs of [this.#reach, this.#alias, this.#share, this.#wholes]) {
-      pairs.delete(node);
-      for (const related of pairs.values()) {
-        related.delete(node);
-      }
+    for (const relation of [this.#reach, this.#alias, this.#share, this.#wholes]) {
+      relation.delete(node);
     }
     this.#escaped.delete(node);
     this.#leaked.delete(node);
@@ -205,7 +204,7 @@ export class ReachState {
 
   addReach(from: NodeId, to: NodeId): void {
     if ((from !== to || this.#live.has(from)) && this.#allowed.reach(from, to)) {
-      added(this.#reach, from, to);
+      this.#reach.add(from, to);
       this.addShare(from, to);
       this.#carry(from, to);
     }
@@ -213,8 +212,8 @@ export class ReachState {
 
   addAlias(first: NodeId, second: NodeId): void {
     if (first !== second && this.#allowed.alias(first, second)) {
-      added(this.#alias, first, second);
-      added(this.#alias, second, first);
+      this.#alias.add(first, second);
+      this.#alias.add(second, first);
       this.addShare(first, second);
       this.#carry(first, second);
       this.#carry(second, first);
@@ -223,8 +222,8 @@ export class ReachState {
 
   addShare(first: NodeId, second: NodeId): void {
     if (first !== second && this.#allowed.share(first, second)) {
-      added(this.#share, first, second);
-      added(this.#share, second, first);
+      this.#share.add(first, second);
+      this.#share.add(second, first);
     }
   }
 
@@ -385,34 +384,4 @@ export class ReachState {
       this.#escaped.add(node);
     }
   }
-}
-
-function joined(into: Pairs, from: Pairs): void {
-  for (const [node, related] of from) {
-    const existing = into.get(node);
-    if (existing === undefined) {
-      into.set(node, new Set(related));
-    } else {
-      for (const each of related) {
-        existing.add(each);
-      }
-    }
-  }
-}
-
-function added(pairs: Pairs, from: NodeId, to: NodeId): void {
-  const existing = pairs.get(from);
-  if (existing === undefined) {
-    pairs.set(from, new Set([to]));
-  } else {
-    existing.add(to);
-  }
-}
-
-function countOf(pairs: Pairs): number {
-  let count = 0;
-  for (const related of pairs.values()) {
-    count += related.size;
-  }
-  return count;
 }

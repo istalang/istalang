@@ -22,6 +22,7 @@
  *   at all, so the operations making it relate it as they would any other.
  */
 
+import { memo } from '../../../../../foundation/structures/memo.ts';
 import type { VariableEntity } from '../../../../binder/entities.ts';
 import type { Type } from '../../../types/type/index.ts';
 import type { FlowFunction, Operation, Part, ValueId } from '../../flow/flow-ir.ts';
@@ -88,6 +89,8 @@ export class Nodes {
   readonly #pathNodes = new Map<NodeId, PathNode>();
   readonly #pathsByRoot = new Map<NodeId, NodeId[]>();
   readonly #relevance = new Map<NodeId, boolean>();
+  /** Each node's reach by its type, which never changes: the analysis asks it of every pair. */
+  readonly #reaches = new Map<NodeId, HandleReach>();
   readonly #lastUses: ReadonlyMap<Operation, readonly ValueId[]>;
   readonly #assigned: ReadonlySet<ValueId>;
 
@@ -302,8 +305,10 @@ export class Nodes {
   }
 
   reachOf(node: NodeId): HandleReach {
-    const type = this.typeOf(node);
-    return type === undefined ? anyReach : this.#facts.reachOf(type);
+    return memo(this.#reaches, node, () => {
+      const type = this.typeOf(node);
+      return type === undefined ? anyReach : this.#facts.reachOf(type);
+    });
   }
 
   /** The temporaries whose last use `operation` is. */

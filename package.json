@@ -66,6 +66,7 @@
     "prettier": "3.9.10",
     "re2js": "2.9.0",
     "temporal-polyfill": "1.0.6",
+    "typedfastbitset": "0.8.0",
     "vscode-languageserver": "10.1.2",
     "vscode-languageserver-protocol": "3.18.4",
     "zod": "4.6.7"
