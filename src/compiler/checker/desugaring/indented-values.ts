@@ -47,10 +47,7 @@ const builders: {
 } = {
   struct: ({ span, type, isNew, entries }) => {
     const items = entries.filter(isStructItem);
-    if (type === undefined) {
-      return { kind: 'StructLiteral', span, type, items };
-    }
-    return isNew
+    return type !== undefined && isNew
       ? { kind: 'NewStructLiteral', span, type, items }
       : { kind: 'StructLiteral', span, type, items };
   },
