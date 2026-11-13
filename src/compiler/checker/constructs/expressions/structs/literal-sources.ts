@@ -88,12 +88,12 @@ export function sourcesOf({
   const own = [...fields.entries()].filter(([index]) => comprehended?.indices.has(index) !== true);
   for (const [index, { name: field }] of own) {
     const value = given.get(index);
-    const spreadIndex = spread?.names.indexOf(field) ?? -1;
+
     const call = defaulted[index];
     if (value !== undefined) {
       sources.push({ field, kind: 'value', value });
-    } else if (spread !== undefined && spreadIndex >= 0) {
-      sources.push({ field, kind: 'spread', from: spread.from, index: spreadIndex });
+    } else if (spread?.names.includes(field) === true) {
+      sources.push({ field, kind: 'spread', from: spread.from });
     } else if (spread === undefined && call !== undefined) {
       sources.push({ field, kind: 'default', call });
     } else {

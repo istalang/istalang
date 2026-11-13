@@ -29,6 +29,7 @@ import { emitCall } from '../../../calls/emit-call.ts';
 import type { FunctionContext } from '../../../context.ts';
 import { construct, structValue } from '../../../values/struct-values.ts';
 import { fieldsVisited, valueInFieldScope } from '../../loops/field-passes.ts';
+import { readPartAlong } from '../../parts/part-paths.ts';
 
 /**
  * The value `node` builds: its struct, a shared struct's in a new cell, built where it stands, or
@@ -128,9 +129,11 @@ function fieldOf(
   { node, values }: EvaluatedLiteral,
   source: Extract<FieldSource, { readonly kind: 'value' | 'spread' }>,
 ): Register {
-  return source.kind === 'value'
-    ? registerOf(values, source.value)
-    : context.code.field(registerOf(values, source.from), source.index, node.span);
+  if (source.kind === 'value') {
+    return registerOf(values, source.value);
+  }
+  const step = { kind: 'field', of: context.typeOf(source.from), name: source.field } as const;
+  return readPartAlong(context, registerOf(values, source.from), [step], node.span);
 }
 
 /** A struct without fields, written bare (§3.1). */

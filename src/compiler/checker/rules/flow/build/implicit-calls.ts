@@ -8,6 +8,9 @@
 
 import type { NodeOf } from '../../../../syntax/tree/node.ts';
 import type { ImplicitRole, ResolvedCall } from '../../../surface/resolved-call.ts';
+import { callSubstitution } from '../../../surface/witness-closing.ts';
+import { substitute } from '../../../types/parts/substitution.ts';
+import type { Type } from '../../../types/type/index.ts';
 import type { Argument, ValueId } from '../flow-ir.ts';
 import type { FlowBuilder } from './flow-builder.ts';
 
@@ -36,7 +39,7 @@ function emitCall(
   builder: FlowBuilder,
   call: ResolvedCall | undefined,
   role: ImplicitRole | undefined,
-  { site, passed, into = builder.temporary(site, undefined) }: CallSite,
+  { site, passed, into = builder.temporary(site, call && resultOf(builder, call)) }: CallSite,
 ): ValueId {
   const arguments_ = passed.map(asArgument);
   if (call === undefined) {
@@ -48,6 +51,11 @@ function emitCall(
     builder.emit({ op: 'call', site, into, call, role, arguments: arguments_ });
   }
   return into;
+}
+
+/** What calling `call` gives, its function's result as the call instantiates it. */
+function resultOf({ inputs: { checker } }: FlowBuilder, call: ResolvedCall): Type {
+  return substitute(checker.resultOf(call.function), callSubstitution(call), checker.typeRules);
 }
 
 function asArgument(passed: ValueId | Argument): Argument {

@@ -17,6 +17,7 @@
  * A construct giving a value gives it through a temporary each path copies its value into.
  */
 
+import { wellKnown } from '../../../../../foundation/language/well-known/index.ts';
 import {
   type ComparisonLink,
   comparisonLinkOf,
@@ -38,6 +39,7 @@ import { binaryOperators } from '../../../../syntax/expressions/operators.ts';
 import { casesOf, selectCasesOf } from '../../../../syntax/expressions/readings.ts';
 import type { Block } from '../../../../syntax/statements/index.ts';
 import type { SyntaxNode } from '../../../../syntax/tree/index.ts';
+import { awaitedOf, wellKnownArguments } from '../../../types/type/well-known.ts';
 import type { BlockId, ValueId } from '../flow-ir.ts';
 import type { FlowBuilder } from './flow-builder.ts';
 import { implicitCall, resolvedCall } from './implicit-calls.ts';
@@ -209,7 +211,10 @@ export function propagate(builder: FlowBuilder, node: Propagate): ValueId {
   const operand = builder.expression(node.operand);
   const [failed, ok] = builder.branch(2) as [BlockId, BlockId];
   builder.resumeIn(failed);
-  const error = builder.temporary(node, undefined);
+  const result = builder.valueOf(operand).type;
+  const [, errorOf] =
+    (result && wellKnownArguments(builder.inputs.checker, wellKnown.result, result)) ?? [];
+  const error = builder.temporary(node, errorOf);
   builder.emit({ op: 'read', site: node, into: error, from: operand, part: { kind: 'inside' } });
   builder.end({ kind: 'return', value: error, site: node });
   builder.resumeIn(ok);
@@ -242,8 +247,11 @@ export function awaitFlow(builder: FlowBuilder, node: Await): ValueId {
 
 /** What `future` gave, once it has settled, read at `site`. */
 function givenBy(builder: FlowBuilder, site: Await | SelectCase, future: ValueId): ValueId {
+  const awaited = builder.valueOf(future).type;
   const given =
-    site.kind === 'Await' ? builder.temporaryOf(site) : builder.temporary(site, undefined);
+    site.kind === 'Await'
+      ? builder.temporaryOf(site)
+      : builder.temporary(site, awaited && awaitedOf(builder.inputs.checker, awaited)?.value);
   builder.emit({ op: 'read', site, into: given, from: future, part: { kind: 'given' } });
   return given;
 }

@@ -20,6 +20,7 @@ import type {
 } from '../../../../syntax/expressions/index.ts';
 import type { Identifier } from '../../../../syntax/tree/node.ts';
 import type { CoreExpression, Sugar } from '../../../surface/checked-body.ts';
+import { unitType } from '../../../types/type/primitives.ts';
 import type { FlowFunction, Part, ValueId } from '../flow-ir.ts';
 import { callFlow } from './calls.ts';
 import { stepTarget } from './chains.ts';
@@ -251,7 +252,8 @@ export const expressionFlows: Handlers<FlowBuilder, CoreExpression, [], ValueId>
   Is: isFlow,
   Range: range,
   TemplateLiteral: template,
-  BlockExpression: (builder, node) => builder.block(node.block) ?? constant(builder, node),
+  BlockExpression: (builder, node) =>
+    builder.block(node.block) ?? constant(builder, node, unitType),
   If: ifFlow,
   Match: matchFlow,
   Select: selectFlow,

@@ -154,6 +154,24 @@ describe('the lifetime rule', () => {
     expect(findingsIn(source)).toEqual(['13:call']);
   });
 
+  it("reads a spread's field as the field it names", () => {
+    const source = inSubject(
+      [
+        'const a = new Node{lease: new Lease{n: 1}}',
+        'const b = new Node{lease: new Lease{n: 2}}',
+        'linkSpread(Pair{a, b})',
+        'linkSpread(Pair{a, b: a})',
+      ].join('\n'),
+      [
+        'struct Pair { a: Node, b: Node }',
+        'fn linkSpread(p: Pair):',
+        '  const q = Pair{...p}',
+        '  q.a->next = p.b',
+      ],
+    );
+    expect(findingsIn(source)).toEqual(['15:call']);
+  });
+
   it('keeps a link directed: what is written gains nothing of what it is written into', () => {
     const source = inSubject(
       [

@@ -101,7 +101,7 @@ export function futuresOf(checker: Pick<Checker, 'wellKnownType'>): Futures {
 }
 
 /** `Array<T>`, what an array literal or comprehension builds; the error type without a prelude. */
-export function arrayOf(checker: CheckerContext, element: Type): Type {
+export function arrayOf(checker: Pick<Checker, 'wellKnownType'>, element: Type): Type {
   return wellKnownOf(checker, wellKnown.array, [element]);
 }
 

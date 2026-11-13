@@ -14,6 +14,7 @@ import type { VariableEntity } from '../../../../binder/entities.ts';
 import type { ModuleId } from '../../../../program/program.ts';
 import type { FunctionDeclaration } from '../../../../syntax/declarations/index.ts';
 import type { Expression } from '../../../../syntax/expressions/index.ts';
+import { placePath } from '../../../../syntax/expressions/places.ts';
 import type { Block, Statement } from '../../../../syntax/statements/index.ts';
 import type { SyntaxNode } from '../../../../syntax/tree/index.ts';
 import type { Identifier, Invalid, NodeOf } from '../../../../syntax/tree/node.ts';
@@ -38,7 +39,10 @@ import { Scopes } from './scopes.ts';
  * apart; and the body as checked.
  */
 export interface FlowInputs {
-  readonly checker: Pick<CheckerContext, 'bindings' | 'parametersOf'>;
+  readonly checker: Pick<
+    CheckerContext,
+    'bindings' | 'parametersOf' | 'resultOf' | 'fieldsOf' | 'typeRules' | 'wellKnownType'
+  >;
   readonly module: ModuleId;
   readonly localBodyOf: (declaration: FunctionDeclaration) => Block | undefined;
   readonly body: CheckedBody;
@@ -240,7 +244,8 @@ export class FlowBuilder {
 
   /**
    * The value `place` holds now, read: a variable copied out of at its name, then the part its
-   * path reaches.
+   * path reaches, each read of the type of the expression it ends at, its place's last parts
+   * being the last levels of the place its site names (places.ts).
    */
   valueAt(place: Place): ValueId {
     let value = place.root;
@@ -249,8 +254,10 @@ export class FlowBuilder {
       value = this.temporary(site, this.valueOf(place.root).type);
       this.emit({ op: 'copy', site, into: value, from: place.root, fit: undefined });
     }
-    for (const part of place.path) {
-      const read = this.temporary(place.site, undefined);
+    const { root, steps } = placePath(place.site);
+    const levels = [root, ...steps].slice(-place.path.length);
+    for (const [index, part] of place.path.entries()) {
+      const read = this.temporary(place.site, this.#body.typeOf(levels[index] as Expression));
       this.emit({ op: 'read', site: place.site, into: read, from: value, part });
       value = read;
     }

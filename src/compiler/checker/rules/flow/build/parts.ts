@@ -25,6 +25,7 @@ import type {
   TargetOwner,
 } from '../../../surface/checked-pattern.ts';
 import type { Type } from '../../../types/type/index.ts';
+import { boolType, intType, tupleElements } from '../../../types/type/primitives.ts';
 import type { BlockId, ValueId } from '../flow-ir.ts';
 import type { FlowBuilder } from './flow-builder.ts';
 import { implicitCall } from './implicit-calls.ts';
@@ -87,25 +88,60 @@ interface Matching {
   readonly pattern: NodeOf<string>;
 }
 
-/** The part of `from` that `path` reaches, read step by step at `site`. */
+/**
+ * The part of `from` that `path` reaches, read step by step at `site`, the last of `type` if
+ * given: an array's through the call its site makes, any other step a `read` of `partTypeAt`.
+ */
 export function readAlong(
   builder: FlowBuilder,
   from: ValueId,
   path: readonly PartStep[],
-  { site, type }: { readonly site: NodeOf<string>; readonly type?: Type },
+  { site, type }: { readonly site: NodeOf<string>; readonly type?: Type | undefined },
 ): ValueId {
   let part = from;
   for (const [index, step] of path.entries()) {
-    const read = builder.temporary(site, index === path.length - 1 ? type : undefined);
-    if (typeof step !== 'object' || !isArrayStep(step)) {
-      builder.emit({ op: 'read', site, into: read, from: part, part: { kind: 'step', step } });
+    if (typeof step === 'object' && isArrayStep(step)) {
+      const offsets = offsetsOf(step).map(() => constant(builder, step.site, intType));
+      part = implicitCall(builder, step.kind, { site: step.site, passed: [part, ...offsets] });
     } else {
-      const offsets = offsetsOf(step).map(() => constant(builder, step.site));
-      implicitCall(builder, step.kind, { site: step.site, passed: [part, ...offsets], into: read });
+      const last = index === path.length - 1 ? type : undefined;
+      const within = builder.valueOf(part).type;
+      const read = builder.temporary(site, last ?? partTypeAt(builder, path, index, within));
+      builder.emit({ op: 'read', site, into: read, from: part, part: { kind: 'step', step } });
+      part = read;
     }
-    part = read;
   }
   return part;
+}
+
+/**
+ * The type of the part `path`'s step at `index` reaches from a value of type `within`, where the
+ * steps say it: a tuple element's, a field's, a member's or a struct rest's, or else the type the
+ * step after it reads from. A variant's field, by position, is the one its step doesn't say.
+ */
+function partTypeAt(
+  builder: FlowBuilder,
+  path: readonly PartStep[],
+  index: number,
+  within: Type | undefined,
+): Type | undefined {
+  const step = path[index];
+  if (typeof step === 'object' && step.kind === 'field') {
+    return builder.inputs.checker.fieldsOf(step.of)?.find(({ name }) => name === step.name)?.type;
+  }
+  if (typeof step === 'object' && (step.kind === 'member' || step.kind === 'fieldRest')) {
+    return step.kind === 'member' ? step.member : step.to;
+  }
+  const element = typeof step === 'number' && within ? tupleElements(within)?.[step] : undefined;
+  return element ?? enclosingTypeOf(path[index + 1]);
+}
+
+/** The type `step` reads from, where it says it: a field's struct, a member's union. */
+function enclosingTypeOf(step: PartStep | undefined): Type | undefined {
+  if (typeof step !== 'object' || (step.kind !== 'field' && step.kind !== 'member')) {
+    return undefined;
+  }
+  return step.kind === 'field' ? step.of : step.union;
 }
 
 /** Whether `step` reads an array through a call: its length, an item, or the items between. */
@@ -155,12 +191,13 @@ function testPart(builder: FlowBuilder, test: PatternTest, matching: Matching): 
     return;
   }
   const site = test.kind === 'compare' ? test.site : pattern;
-  const part = readAlong(builder, subject, test.path, { site });
-  const holds = builder.temporary(site, undefined);
+  const tested = test.kind === 'member' ? test.union : undefined;
+  const part = readAlong(builder, subject, test.path, { site, type: tested });
   if (test.kind === 'compare') {
     const passed = [part, patternValueOf(builder, test.value, site)];
-    implicitCall(builder, 'compare', { site: test.site, passed, into: holds });
+    implicitCall(builder, 'compare', { site: test.site, passed });
   } else {
+    const holds = builder.temporary(site, boolType);
     const operands =
       test.kind === 'equal' ? [part, patternValueOf(builder, test.value, site)] : [part];
     builder.emit({ op: 'compute', site, into: holds, operands });
@@ -184,7 +221,7 @@ function patternValueOf(builder: FlowBuilder, value: PatternValue, site: NodeOf<
     case 'constant':
       return builder.expression(value.name);
     case 'int':
-      return constant(builder, site);
+      return constant(builder, site, intType);
     default: {
       const unhandled: never = value;
       return unhandled;
@@ -192,9 +229,9 @@ function patternValueOf(builder: FlowBuilder, value: PatternValue, site: NodeOf<
   }
 }
 
-/** A value the language makes at `site` with no parts: a literal, an offset. */
-export function constant(builder: FlowBuilder, site: NodeOf<string>): ValueId {
-  const value = builder.temporary(site, undefined);
+/** A value of `type` the language makes at `site` with no parts: a literal, an offset. */
+export function constant(builder: FlowBuilder, site: NodeOf<string>, type: Type): ValueId {
+  const value = builder.temporary(site, type);
   builder.emit({ op: 'compute', site, into: value, operands: [] });
   return value;
 }
@@ -206,11 +243,11 @@ function bind(
   value: ValueId,
   lifetime: Lifetime,
 ): void {
-  for (const { name, path } of bindings) {
+  for (const { name, path, type } of bindings) {
     const entity = builder.entityOf(name);
     if (entity !== undefined) {
       const variable = builder.variable(entity);
-      const part = readAlong(builder, value, path, { site: name });
+      const part = readAlong(builder, value, path, { site: name, type });
       builder.emit({ op: 'copy', site: name, into: variable, from: part, fit: undefined });
       builder.scopes.declare(variable, lifetime);
     }

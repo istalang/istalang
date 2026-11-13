@@ -43,7 +43,8 @@ export type BlockId = number;
  * What a value is: a variable the body declares (a parameter, a name a pattern or a loop binds, a
  * local function), named by its declaring name and living in a cell when checking says so; a
  * top-level constant, extern constant or context constant; or a temporary, the value of `site`.
- * A type is undefined where checking recorded none, in code it found a mistake in.
+ * A type is undefined where checking recorded none, in code it found a mistake in, and for a
+ * variant's field a pattern reads by position, whose variant its step doesn't say (`PartStep`).
  */
 export type FlowValue =
   | {

@@ -310,13 +310,16 @@ class Computation {
     return new Computation(scope, this.#computing, substitution).of(value);
   }
 
-  /** The field at `index` of a spread value, which must itself compute to a struct. */
-  #spreadField(source: { readonly from: Expression; readonly index: number }): Outcome {
+  /** The field a spread value gives, which must itself compute to a struct. */
+  #spreadField(source: { readonly from: Expression; readonly field: string }): Outcome {
     const whole = this.of(source.from);
     if (whole.kind !== 'computed') {
       return whole;
     }
-    const field = whole.form.kind === 'struct' ? whole.form.fields[source.index] : undefined;
+    const { form } = whole;
+    const fields = form.kind === 'struct' ? this.#scope.checker.fieldsOf(form.type) : undefined;
+    const index = fields?.findIndex(({ name }) => name === source.field) ?? -1;
+    const field = form.kind === 'struct' ? form.fields[index] : undefined;
     return field === undefined ? unknown : computed(field);
   }
 

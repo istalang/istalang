@@ -119,7 +119,7 @@ export interface Capture {
 
 /**
  * Where a struct literal's field, named `field`, gets its value (§3.1): an expression of the
- * literal, the field of that position in its leading spread's value, or its default, which `call`,
+ * literal, the field of that name in its leading spread's value, or its default, which `call`,
  * of the function the fields read as, computes from the fields before it as it starts
  * (syntax/declarations/field-defaults.ts). A literal's sources come in declaration order, the order
  * evaluation follows; its value takes its type's layout by the fields' names (`laidOut`). A struct
@@ -129,7 +129,7 @@ export interface Capture {
 export type FieldSource =
   | ({ readonly field: string } & (
       | { readonly kind: 'value'; readonly value: Expression }
-      | { readonly kind: 'spread'; readonly from: Expression; readonly index: number }
+      | { readonly kind: 'spread'; readonly from: Expression }
       | { readonly kind: 'default'; readonly call: FunctionCall }
     ))
   | { readonly kind: 'comprehension'; readonly comprehension: StructComprehension };
@@ -184,12 +184,13 @@ export type Iteration = For | Comprehension | Spread;
 export type CollectionForm = 'array' | 'map' | 'declared';
 
 /**
- * How an iteration runs (§3.10): through the cursor its `iterate` call gives, of `item`s, or, for
+ * How an iteration over `item`s runs (§3.10): through the cursor its `iterate` call gives, or, for
  * a spread of the collection its literal builds, an array or a `Map`, copied whole.
  */
-export type IterationForm =
-  | { readonly kind: 'cursor'; readonly item: Type }
-  | { readonly kind: 'copied' };
+export interface IterationForm {
+  readonly kind: 'cursor' | 'copied';
+  readonly item: Type;
+}
 
 /** A field loop's pass as checked: its key and value, and the body as the pass reads it. */
 export interface FieldPass extends FieldPassType {

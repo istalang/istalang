@@ -162,7 +162,7 @@ export function itemsOf(context: BodyContext, spread: Spread, type: Type, item?:
   if (element === undefined || (fit !== undefined && !isExact(fit))) {
     return iteratedItem(context, spread, spread.expression, type) ?? errorType;
   }
-  context.iterations.record(spread, { kind: 'copied' });
+  context.iterations.record(spread, { kind: 'copied', item: element });
   return element;
 }
 

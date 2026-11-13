@@ -13,6 +13,7 @@
 import type { Comprehension, Spread } from '../../../../syntax/expressions/index.ts';
 import type { For, LabelledScope } from '../../../../syntax/statements/index.ts';
 import type { OverFields } from '../../../../syntax/statements/readings.ts';
+import { tupleType } from '../../../types/type/primitives.ts';
 import type { BlockId, ValueId } from '../flow-ir.ts';
 import type { FlowBuilder } from './flow-builder.ts';
 import { implicitCall } from './implicit-calls.ts';
@@ -41,11 +42,12 @@ export function itemLoop(
   const isCopied = form?.kind === 'copied';
   const source = isCopied ? iterable : cursorOf(builder, node, iterable);
   loop(builder, scope, (top) => {
-    const item = builder.temporary(node, form?.kind === 'cursor' ? form.item : undefined);
+    const item = builder.temporary(node, form?.item);
     if (isCopied) {
       builder.emit({ op: 'read', site: node, into: item, from: source, part: { kind: 'item' } });
     } else {
-      const step = builder.temporary(node, undefined);
+      const cursor = builder.valueOf(source).type;
+      const step = builder.temporary(node, cursor?.kind === 'function' ? cursor.result : undefined);
       builder.emit({ op: 'callValue', site: node, into: step, callee: source, arguments: [] });
       builder.emit({ op: 'read', site: node, into: item, from: step, part: { kind: 'item' } });
     }
@@ -91,7 +93,7 @@ export function fieldLoop(
       builder.resumeIn(starts[index] as BlockId);
       builder.inView(each.body, () =>
         builder.scopes.inScope(node, () => {
-          const key = constant(builder, header);
+          const key = constant(builder, header, each.key);
           const value = builder.temporary(header, each.value);
           builder.emit({
             op: 'read',
@@ -100,7 +102,7 @@ export function fieldLoop(
             from: subject,
             part: { kind: 'keyed' },
           });
-          const field = builder.temporary(header, undefined);
+          const field = builder.temporary(header, tupleType([each.key, each.value]));
           builder.emit({
             op: 'make',
             site: header,

@@ -163,7 +163,7 @@ export function settleMapSpread(
   }
   const fit = checker.fitOf(pair, target);
   if (fit !== undefined && isExact(fit)) {
-    context.iterations.record(spread, { kind: 'copied' });
+    context.iterations.record(spread, { kind: 'copied', item: pair });
   } else {
     iteratedItem(context, spread, spread.expression, context.typeOf(spread.expression));
   }

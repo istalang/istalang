@@ -30,11 +30,19 @@ import { isTagged, taggedCall } from '../../../../syntax/expressions/literals/te
 import { itemValue } from '../../../../syntax/expressions/readings.ts';
 import type { Invalid } from '../../../../syntax/tree/node.ts';
 import type { FieldSource } from '../../../surface/checked-body.ts';
+import {
+  errorType,
+  intType,
+  noneType,
+  stringType,
+  tupleElements,
+} from '../../../types/type/primitives.ts';
+import { arrayOf } from '../../../types/type/well-known.ts';
 import type { Argument, ValueId } from '../flow-ir.ts';
 import type { FlowBuilder } from './flow-builder.ts';
 import { implicitCall, resolvedCall } from './implicit-calls.ts';
 import { fieldLoop, itemLoop, targetsLoop } from './loops.ts';
-import { constant } from './parts.ts';
+import { constant, readAlong } from './parts.ts';
 
 /**
  * A struct literal (§3.1), as lowering builds it (lowering/constructs/expressions/structs/
@@ -93,19 +101,15 @@ function fieldOf(
     return values.get(source.value) ?? builder.expression(source.value);
   }
   const whole = values.get(source.from) ?? builder.expression(source.from);
-  const field = builder.temporary(source.from, undefined);
-  const step = { kind: 'step', step: source.index } as const;
-  builder.emit({ op: 'read', site: source.from, into: field, from: whole, part: step });
-  return field;
+  const of = builder.body.typeOf(source.from) ?? errorType;
+  const step = { kind: 'field', of, name: source.field } as const;
+  return readAlong(builder, whole, [step], { site: source.from });
 }
 
 /** The fields a struct comprehension gives, one per pass. */
 function structComprehension(builder: FlowBuilder, node: StructComprehension): readonly ValueId[] {
   const values: ValueId[] = [];
-  fieldLoop(builder, node, undefined, () => {
-    builder.expression(node.key);
-    values.push(builder.expression(node.value));
-  });
+  fieldLoop(builder, node, undefined, () => values.push(builder.expression(node.value)));
   return values;
 }
 
@@ -145,14 +149,12 @@ export function spreadValue(builder: FlowBuilder, spread: Spread, isPack: boolea
   if (isPack || builder.body.iterationOf(spread)?.kind === 'copied') {
     return builder.expression(spread.expression);
   }
-  const array = builder.temporary(spread, undefined);
-  builder.emit({
-    op: 'make',
-    site: spread,
-    into: array,
-    made: { kind: 'array' },
-    parts: [itemOf(builder, spread)],
-  });
+  const items = itemOf(builder, spread);
+  const array = builder.temporary(
+    spread,
+    arrayOf(builder.inputs.checker, builder.valueOf(items).type ?? errorType),
+  );
+  builder.emit({ op: 'make', site: spread, into: array, made: { kind: 'array' }, parts: [items] });
   return array;
 }
 
@@ -161,7 +163,10 @@ function itemOf(builder: FlowBuilder, element: Expression | Spread): ValueId {
   if (element.kind !== 'Spread') {
     return builder.expression(element);
   }
-  const items = builder.temporary(element, undefined);
+  const items = builder.temporary(
+    element,
+    builder.body.expectedOf(element) ?? builder.body.iterationOf(element)?.item,
+  );
   const iterable = builder.expression(element.expression);
   itemLoop(builder, element, iterable, {
     pass: (item) => {
@@ -194,7 +199,8 @@ function declaredLiteral(
       itemLoop(builder, entry, iterable, {
         pass: (item) => {
           const [key, value] = [0, 1].map((position) => {
-            const part = builder.temporary(entry, undefined);
+            const pair = builder.valueOf(item).type;
+            const part = builder.temporary(entry, pair && tupleElements(pair)?.[position]);
             const step = { kind: 'step', step: position } as const;
             builder.emit({ op: 'read', site: entry, into: part, from: item, part: step });
             return part;
@@ -241,10 +247,12 @@ function appendTo(builder: FlowBuilder, node: Expression, result: ValueId, item:
 }
 
 export function range(builder: FlowBuilder, node: Range): ValueId {
-  const start = node.start === undefined ? constant(builder, node) : builder.expression(node.start);
+  const start =
+    node.start === undefined ? constant(builder, node, noneType) : builder.expression(node.start);
   const written = node.end === undefined ? undefined : builder.expression(node.end);
-  const step = node.step === undefined ? constant(builder, node) : builder.expression(node.step);
-  let end = written ?? constant(builder, node);
+  const step =
+    node.step === undefined ? constant(builder, node, intType) : builder.expression(node.step);
+  let end = written ?? constant(builder, node, noneType);
   if (written !== undefined && node.isInclusive) {
     end = implicitCall(builder, 'inclusiveEnd', { site: node, passed: [written, step] });
   }
@@ -264,17 +272,17 @@ export function template(builder: FlowBuilder, node: TemplateLiteral): ValueId {
     return builder.expression(taggedCall(node));
   }
   if (node.values.length === 0) {
-    return constant(builder, node);
+    return constant(builder, node, stringType);
   }
   const texts = node.values.map((value) =>
     implicitCall(builder, 'interpolate', { site: value, passed: [builder.expression(value)] }),
   );
-  const joined = builder.temporary(node, undefined);
+  const joined = builder.temporary(node, arrayOf(builder.inputs.checker, stringType));
   builder.emit({ op: 'make', site: node, into: joined, made: { kind: 'array' }, parts: texts });
   const into = builder.temporaryOf(node);
   return implicitCall(builder, 'join', {
     site: node,
-    passed: [joined, constant(builder, node)],
+    passed: [joined, constant(builder, node, stringType)],
     into,
   });
 }

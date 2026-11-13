@@ -57,7 +57,7 @@ function spreadArgument(
     const type = spreadArgumentType(context, argument, known);
     return { node: expression, passing: 'value', type, isSpread: true };
   }
-  context.iterations.record(argument, { kind: 'copied' });
+  context.iterations.record(argument, { kind: 'copied', item: items });
   return { node: expression, passing: 'value', type: items, isSpread: true };
 }
 
