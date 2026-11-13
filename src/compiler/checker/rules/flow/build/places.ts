@@ -27,10 +27,10 @@ interface EnteredPlace {
 /** Enters the place `node` names, its root and keys computed now. */
 export function enterPlace(builder: FlowBuilder, node: Expression): EnteredPlace {
   const { root, steps } = placePath(node);
-  let place = rootPlace(builder, root, node);
+  let place = rootPlace(builder, root);
   const leaves: (() => void)[] = [];
   for (const step of steps) {
-    const { place: next, leave } = stepInto(builder, place, step, node);
+    const { place: next, leave } = stepInto(builder, place, step);
     place = next;
     leaves.push(leave);
   }
@@ -38,24 +38,19 @@ export function enterPlace(builder: FlowBuilder, node: Expression): EnteredPlace
 }
 
 /**
- * `place` stepped into by `step`, in the place `node` names: a part of it, or an element its
+ * `place` stepped into by `step`, the place it then names: a part of it, or an element its
  * container's `index` reads, written back once done with.
  */
-function stepInto(
-  builder: FlowBuilder,
-  place: Place,
-  step: PlaceStep,
-  node: Expression,
-): EnteredPlace {
+function stepInto(builder: FlowBuilder, place: Place, step: PlaceStep): EnteredPlace {
   const stays = () => undefined;
   if (step.kind === 'TupleElement') {
-    return { place: within(place, { kind: 'step', step: step.element }), leave: stays };
+    return { place: within(place, { kind: 'step', step: step.element }, step), leave: stays };
   }
   const key = step.kind === 'Index' ? builder.expression(step.index) : undefined;
   const read = builder.body.fieldReadOf(step);
   if (key === undefined || read !== undefined) {
     const part: Part = read === undefined ? { kind: 'keyed' } : partOfField(read);
-    return { place: within(place, part), leave: stays };
+    return { place: within(place, part, step), leave: stays };
   }
   const element = builder.temporaryOf(step);
   resolvedCall(builder, builder.body.resolved.get(step), {
@@ -64,7 +59,7 @@ function stepInto(
     into: element,
   });
   return {
-    place: { root: element, path: [], site: node, name: undefined },
+    place: { root: element, path: [], site: step, name: undefined },
     leave: () => writeElement(builder, step as Index, { container: place, key, element }),
   };
 }
@@ -115,21 +110,22 @@ export function enterAssigned(builder: FlowBuilder, target: Expression): Assigne
 }
 
 /** The place `root` names: a variable (or a global), what is behind a handle, or a value. */
-function rootPlace(builder: FlowBuilder, root: Expression, node: Expression): Place {
+function rootPlace(builder: FlowBuilder, root: Expression): Place {
   const entity = root.kind === 'Identifier' ? builder.entityOf(root) : undefined;
   if (entity !== undefined) {
     const named = builder.named(entity, builder.body.typeOf(root));
-    return { root: named, path: [], site: node, name: root as Identifier };
+    return { root: named, path: [], site: root, name: root as Identifier };
   }
   if (root.kind === 'Dereference') {
     const handle = builder.expression(root.operand);
-    return { root: handle, path: [{ kind: 'behind' }], site: node, name: undefined };
+    return { root: handle, path: [{ kind: 'behind' }], site: root, name: undefined };
   }
-  return { root: builder.expression(root), path: [], site: node, name: undefined };
+  return { root: builder.expression(root), path: [], site: root, name: undefined };
 }
 
-function within(place: Place, part: Part): Place {
-  return { ...place, path: [...place.path, part] };
+/** `place` stepped into its `part`, the place `site` names. */
+function within(place: Place, part: Part, site: Expression): Place {
+  return { ...place, path: [...place.path, part], site };
 }
 
 /** The part a field read reaches: a field by name or position, or one a key names. */

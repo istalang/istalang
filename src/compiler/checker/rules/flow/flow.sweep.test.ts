@@ -3,7 +3,7 @@
  * corpus program and spec example, each expression checking typed has a value at its node, or is
  * part of a place the flow writes or passes by `&`; and each call the body makes, written or
  * implicit, is a call of the flow, or a function it names as a value; and a program checking
- * accepts runs no code of unknown value. Its every body is swept: functions', defaults', and
+ * accepts runs no code of unknown value and computes no value of no type. Its every body is swept: functions', defaults', and
  * constants' initializers. Two calls checking records are never made: the `index` of an element an
  * assignment writes with `setIndex` alone (build/places.ts), and an array pattern's item or rest no
  * test or binding reads, as a wildcard's.
@@ -28,7 +28,7 @@ import { spanIn } from '../../../syntax/tree/positions.ts';
 import { type Checker, checkProgram, type SignatureParameter } from '../../check.ts';
 import { type CheckedBody, checkedChildrenOf } from '../../surface/checked-body.ts';
 import type { CheckedPattern, PartStep } from '../../surface/checked-pattern.ts';
-import type { FlowFunction, Operation, Place } from '../../surface/flow-ir.ts';
+import type { FlowFunction, FlowValue, Operation, Place } from '../../surface/flow-ir.ts';
 import type { MadeCall, ResolvedCall } from '../../surface/resolved-call.ts';
 import { flowOf } from './build/index.ts';
 
@@ -51,6 +51,13 @@ interface Held {
   readonly written: Set<unknown>;
   /** Where code checking found a mistake in runs, which a program it accepts has none of. */
   readonly unknown: SyntaxNode[];
+  /** Values of no type, which a program checking accepts has none of. */
+  readonly untyped: FlowValue[];
+}
+
+/** Where `value` stands: a temporary's node, a variable's or a global's declaring name. */
+function siteOf(value: FlowValue): SyntaxNode {
+  return value.kind === 'temporary' ? (value.site as SyntaxNode) : value.entity.name;
 }
 
 /** What `flow` and the flows it makes hold, added to `held`. */
@@ -58,6 +65,9 @@ function heldBy(flow: FlowFunction, held: Held): Held {
   for (const value of flow.values) {
     if (value.kind === 'temporary') {
       held.nodes.add(value.site);
+    }
+    if (value.type === undefined) {
+      held.untyped.push(value);
     }
   }
   for (const { operations } of flow.blocks) {
@@ -190,7 +200,13 @@ function missedBy(
   },
 ): readonly string[] {
   const { local, textOf } = context;
-  const held: Held = { nodes: new Set(), calls: new Set(), written: new Set(), unknown: [] };
+  const held: Held = {
+    nodes: new Set(),
+    calls: new Set(),
+    written: new Set(),
+    unknown: [],
+    untyped: [],
+  };
   for (const flow of flows) {
     heldBy(flow, held);
   }
@@ -214,6 +230,7 @@ function missedBy(
   }
   if (context.clean) {
     missing.push(...held.unknown.map((site) => `an unknown value at ${textOf(site)}`));
+    missing.push(...held.untyped.map((value) => `an untyped value at ${textOf(siteOf(value))}`));
   }
   return missing;
 }

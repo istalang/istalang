@@ -103,7 +103,7 @@ function fieldOf(
   const whole = values.get(source.from) ?? builder.expression(source.from);
   const of = builder.body.typeOf(source.from) ?? errorType;
   const step = { kind: 'field', of, name: source.field } as const;
-  return readAlong(builder, whole, [step], { site: source.from });
+  return readAlong(builder, whole, [step], source.from);
 }
 
 /** The fields a struct comprehension gives, one per pass. */

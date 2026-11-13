@@ -90,7 +90,7 @@ function encodedOutcome(builder: FlowBuilder, node: Call): void {
 
 /**
  * The function value a value call calls: the one inside an optional for `f?.()`, the field read
- * from `x` for `x.f(…)`, else its callee's value.
+ * from `x` for `x.f(…)`, of its field's type, else its callee's value.
  */
 function calleeValue(builder: FlowBuilder, node: Call): ValueId {
   const callee = calledName(node);
@@ -102,7 +102,7 @@ function calleeValue(builder: FlowBuilder, node: Call): ValueId {
     return builder.expression(callee);
   }
   const target = stepTarget(builder, node, callee.target);
-  const value = builder.temporaryOf(callee);
+  const value = builder.temporary(callee, builder.body.fieldGivenBy(callee.member)?.type);
   builder.emit({ op: 'read', site: callee, into: value, from: target, part: partOfField(read) });
   return value;
 }

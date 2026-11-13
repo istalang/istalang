@@ -84,7 +84,7 @@ export function instantiationBy(
     assigned: (part) => instantiatedPart(part, substitution, rules),
     function: (checked) => instantiatedFunction(checked, substitution, rules),
     pattern: (checked) => instantiatedPattern(checked, substitution, rules),
-    iteration: (form) => (form.kind === 'cursor' ? { ...form, item: concrete(form.item) } : form),
+    iteration: (form) => ({ ...form, item: concrete(form.item) }),
     chain: (link) => ({ base: concrete(link.base), carried: concrete(link.carried) }),
     pass: ({ visits, key, value, body }) => ({
       visits,
@@ -236,7 +236,10 @@ function instantiatedStep(step: PartStep, substitution: Substitution, rules: Typ
     case 'field':
     case 'fieldRest':
       return instantiatedStructStep(step, substitution, rules);
+    case 'variantField':
+      return { ...step, type: substitute(step.type, substitution, rules) };
     case 'downcast':
+      return { ...step, to: substitute(step.to, substitution, rules) };
     case 'length':
     case 'item':
     case 'rest':

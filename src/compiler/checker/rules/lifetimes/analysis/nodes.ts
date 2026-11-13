@@ -218,8 +218,8 @@ export class Nodes {
       return part.kind;
     }
     const { step } = part;
-    if (typeof step === 'number') {
-      return `#${step}`;
+    if (typeof step === 'number' || step.kind === 'variantField') {
+      return `#${typeof step === 'number' ? step : step.index}`;
     }
     if (step.kind === 'field') {
       return `.${step.name}`;

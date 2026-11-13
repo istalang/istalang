@@ -246,7 +246,10 @@ function boundArgument(argument: BoundPatternArgument) {
 
 /** The part of a variant's value of `part` its `index`-th field, `field`, holds. */
 function fieldPart(part: ValuePart, field: FieldMember, index: number): ValuePart {
-  return { type: field.type, path: [...part.path, index] };
+  return {
+    type: field.type,
+    path: [...part.path, { kind: 'variantField', index, type: field.type }],
+  };
 }
 
 /** A field of a call pattern's variant, and what its arguments give it. */

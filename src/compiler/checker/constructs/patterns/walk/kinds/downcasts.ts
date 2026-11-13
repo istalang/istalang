@@ -45,7 +45,7 @@ export function downcastOf(
     ? to
     : {
         test: { kind: 'downcast', path, from, to },
-        part: { type: to, path: [...path, { kind: 'downcast' }] },
+        part: { type: to, path: [...path, { kind: 'downcast', to }] },
       };
 }
 

@@ -71,7 +71,7 @@ function assignment(builder: FlowBuilder, node: Assignment): void {
   }
   for (const part of parts) {
     const place = enterAssigned(builder, part.target);
-    const given = readAlong(builder, value, part.path, { site: part.target, type: part.type });
+    const given = readAlong(builder, value, part.path, part.target);
     place.write(fitted(builder, part, given));
   }
 }

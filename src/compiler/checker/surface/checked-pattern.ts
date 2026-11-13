@@ -37,10 +37,12 @@ export type TargetOwner =
 /**
  * A step from a value to one of its parts (§3.11, §3.15): a struct's field by its name
  * (`StructStep`), whose position each struct type, as an instantiation makes it, decides (§3.1
- * "Field order"); a tuple's element or a variant's field by position; the value of `member` a part
+ * "Field order"); a tuple's element by position; the field at `index` of the variant a test before
+ * it found, of `type`; the value of `member` a part
  * of `union` holds, past a member test, which an instantiation may leave as the part itself, where
  * the union collapsed into one type, or inside the `any` member that took it whole (§2, §3.5;
- * lowering derives which); the value a part of an `any` type holds, past a downcast (§3.10); or
+ * lowering derives which); the value of type `to` a part of an `any` type holds, past a downcast
+ * (§3.10); or
  * what an array pattern reads of an array, through the prelude calls the checker made at `site`:
  * its length, the item `offset` from its start, or from its end when negative, and the items
  * between the first `before` and the last `after`. A target never reads an array, since its length
@@ -49,7 +51,8 @@ export type TargetOwner =
 export type PartStep =
   | number
   | { readonly kind: 'member'; readonly union: Type; readonly member: Type }
-  | { readonly kind: 'downcast' }
+  | { readonly kind: 'variantField'; readonly index: number; readonly type: Type }
+  | { readonly kind: 'downcast'; readonly to: Type }
   | ArrayStep
   | StructStep;
 

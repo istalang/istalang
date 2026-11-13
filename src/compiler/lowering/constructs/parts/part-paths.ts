@@ -47,6 +47,7 @@ function isBuilding(step: PartStep): step is BuildingStep {
     typeof step !== 'number' &&
     step.kind !== 'member' &&
     step.kind !== 'downcast' &&
+    step.kind !== 'variantField' &&
     step.kind !== 'field'
   );
 }
@@ -85,6 +86,8 @@ function positionsOf(
   switch (step.kind) {
     case 'downcast':
       return [0];
+    case 'variantField':
+      return [step.index];
     case 'field': {
       const position = (context.checker.fieldsOf(step.of) ?? []).findIndex(
         (field) => field.name === step.name,

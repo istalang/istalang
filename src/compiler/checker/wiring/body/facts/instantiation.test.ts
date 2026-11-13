@@ -182,7 +182,9 @@ function typedTablesAt(body: CheckedBody, node: SyntaxNode): readonly unknown[] 
     node.kind === 'VariableDeclaration' || node.kind === 'For' || node.kind === 'SelectCase'
       ? body.targetsOf(node)
       : undefined,
-    node.kind === 'For' || node.kind === 'Comprehension' ? body.iterationOf(node) : undefined,
+    node.kind === 'For' || node.kind === 'Comprehension' || node.kind === 'Spread'
+      ? body.iterationOf(node)
+      : undefined,
     node.kind === 'Assignment' ? body.assignedOf(node) : undefined,
   ];
 }
