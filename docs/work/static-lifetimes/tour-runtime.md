@@ -457,7 +457,6 @@ heap kind a live variant, and a restore would have had to rebuild the values ins
   holds. A holder the counts don't see (a JS structure keeping a value) would break that.
 - **Carriers are executions off the heap.** `DisposalRuns` uses id −1 and `RunCalls` id −2; their
   frames hold values.
-- **`LiveExecution.disposing` is never set true,** but it is in the snapshot schema.
 - **A mock records its calls' arguments** (`mock.calls`), so it holds every handle it was called
   with, except resources, which it records as their host values. The analysis counts a mock as
   holding anything (design.md §6.3).

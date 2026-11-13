@@ -7,9 +7,9 @@
  * spells, as names where they are names and quoted where not.
  *
  * Right after its `{`, a struct literal building one field also takes that field's value without
- * its name (§3.1), so a value may stand there too, and the visible names are offered beside the
- * field when completion is invoked, bare variants aside, as no enum is expected of a name there;
- * typing the `{` asks for fields alone. Braces after a variant's name build nothing, a variant
+ * its name (§3.1), so a value may stand there too, and what an expression starts with is offered
+ * beside the field when completion is invoked (grammar/expression.ts); typing the `{` asks for
+ * fields alone. Braces after a variant's name build nothing, a variant
  * being built by its call (§3.11), so they offer no field. A visible variable named like a field
  * not given yet is offered too, as the shorthand writing both (`Pair{first}`); the leading spread
  * only where it may stand, as the first item.
@@ -39,9 +39,7 @@ import { indentationAt, lineStartAt } from '../../../../foundation/text/line-map
 import type { Candidate } from '../candidate.ts';
 import type { Cursor } from '../cursor.ts';
 import { visibleNames } from '../visible.ts';
-import { operandNames } from './grammar/expression.ts';
-import { surroundingsOf } from './grammar/surroundings.ts';
-import { operandWordsIn, wordCandidates } from './grammar/words.ts';
+import { expressionCandidates } from './grammar/expression.ts';
 
 /**
  * Where a field's name is written in a struct literal: right after the literal's own
@@ -149,10 +147,8 @@ function isFieldsLiteral(node: SyntaxNode | undefined): node is FieldsLiteral {
   return node?.kind === 'StructLiteral' || node?.kind === 'NewStructLiteral';
 }
 
-export function offerLiteralFields(
-  cursor: Cursor,
-  { literal, item, opens }: LiteralFieldPlace,
-): readonly Candidate[] {
+export function offerLiteralFields(cursor: Cursor, place: LiteralFieldPlace): readonly Candidate[] {
+  const { literal, item, opens } = place;
   const { checker, module } = cursor;
   const body = checker.lookup.bodyHolding(module, literal);
   const built = literal.kind === 'IndentedValue' ? body?.builtLiteralOf(literal) : literal;
@@ -167,7 +163,7 @@ export function offerLiteralFields(
   const fields =
     built === undefined || !isFieldsLiteral(built) ? [] : (body?.literalFieldsOf(built) ?? []);
   const startsItems = first && (opens || literal.kind === 'IndentedValue');
-  return literalItems(cursor, { fields, others, opens, startsItems });
+  return literalItems(cursor, place, { fields, others, startsItems });
 }
 
 function isFieldItem(item: FieldsLiteral['items'][number] | IndentedEntry): item is FieldItem {
@@ -202,8 +198,6 @@ interface LiteralItemSlot {
   readonly fields: readonly FieldMember[];
   /** The name each of its other items gives its field by; undefined for one given by position. */
   readonly others: readonly (Identifier | undefined)[];
-  /** Whether the item follows the literal's `{` rather than a `,`. */
-  readonly opens: boolean;
   /** Whether it is the first item, where the leading spread may stand. */
   readonly startsItems: boolean;
 }
@@ -216,7 +210,8 @@ interface LiteralItemSlot {
  */
 function literalItems(
   cursor: Cursor,
-  { fields, others, opens, startsItems }: LiteralItemSlot,
+  place: LiteralFieldPlace,
+  { fields, others, startsItems }: LiteralItemSlot,
 ): readonly Candidate[] {
   const variables = visibleNames(cursor, (entity) => entity.kind === 'variable');
   const given = new Set(others.map((named) => fields[itemField(named, fields)]));
@@ -226,17 +221,11 @@ function literalItems(
       ...variables.filter((variable) => variable.name === field.name),
       { name: field.name, subject: { kind: 'field', field } },
     ]);
-  const takesValue = opens && fields.length === 1 && cursor.trigger === undefined;
-  const values = takesValue ? operandStarts(cursor) : [];
+  const takesValue = place.opens && fields.length === 1 && cursor.trigger === undefined;
+  const values = takesValue ? expressionCandidates(cursor, place) : [];
   const spreads = startsItems && fields.length > 0;
   return [...offered, ...(spreads ? [spread] : []), ...values];
 }
 
 /** The leading spread, `...value`, which only the first item may be (§3.1). */
 const spread: Candidate = { name: '...', subject: { kind: 'keyword' } };
-
-/** What an operand starts with at `cursor`: the value a one-field struct literal takes unnamed. */
-function operandStarts(cursor: Cursor): readonly Candidate[] {
-  const surroundings = surroundingsOf(cursor.tree, nodesAt(cursor.tree, cursor.offset));
-  return [...operandNames(cursor), ...wordCandidates(operandWordsIn(surroundings))];
-}
