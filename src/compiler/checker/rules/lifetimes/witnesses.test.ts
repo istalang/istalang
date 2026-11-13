@@ -120,6 +120,89 @@ describe('witnesses checked where they escape', () => {
   });
 });
 
+describe('requirement calls whose witnesses only an instantiation names', () => {
+  const bad = [
+    'shared struct Node:',
+    '  lease: Lease',
+    '  next: Node? = none',
+    'struct Good:',
+    '  n: Int',
+    'trait Bad:',
+    '  fn tie(self: Self, other: Node)',
+    'fn tie(self: Node, other: Node):',
+    '  self->next = other',
+    'fn tie(self: Good, other: Node): ()',
+  ];
+
+  it('finds a call on a struct constraint field, where the generic function is called', () => {
+    const source = program(
+      ...bad,
+      'struct Holder:',
+      '  f: Node',
+      'fn actField<S is struct { f is Bad }>(s: S, other: Node):',
+      '  s.f.tie(other)',
+      'ista fn subject():',
+      '  const n = new Node{lease: new Lease{n: 1}}',
+      '  actField(Holder{f: n}, n)',
+    );
+    expect(findingsIn(source)).not.toEqual([]);
+  });
+
+  it('finds a call on an associated type, where the generic function is called', () => {
+    const source = program(
+      ...bad,
+      'trait HasData:',
+      '  type Data is Bad',
+      'struct Source:',
+      '  type Data = Node',
+      'fn actAssoc<T is HasData>(x: T.Data, other: Node):',
+      '  x.tie(other)',
+      'ista fn subject():',
+      '  const n = new Node{lease: new Lease{n: 1}}',
+      '  actAssoc<Source>(n, n)',
+    );
+    expect(findingsIn(source)).not.toEqual([]);
+  });
+
+  it('finds a call on a union holding a type parameter, its known member at once', () => {
+    const source = program(
+      ...bad,
+      'fn actUnion<T is Bad>(x: Node | T, other: Node):',
+      '  x.tie(other)',
+      'ista fn subject():',
+      '  const n = new Node{lease: new Lease{n: 1}}',
+      '  actUnion<Good>(n, n)',
+    );
+    expect(findingsIn(source)).not.toEqual([]);
+  });
+
+  it('finds a generic call whose type argument is a union meeting the trait member by member', () => {
+    const source = program(
+      ...bad,
+      'fn act<T is Bad>(x: T, other: Node):',
+      '  x.tie(other)',
+      'ista fn subject():',
+      '  const n = new Node{lease: new Lease{n: 1}}',
+      '  const x: Node | Good = n',
+      '  act(x, n)',
+    );
+    expect(findingsIn(source)).not.toEqual([]);
+  });
+
+  it('finds a generic value put into an any where the call makes it a union', () => {
+    const source = program(
+      ...bad,
+      'fn erase<T is Bad>(x: T) -> any Bad:',
+      '  x',
+      'ista fn subject():',
+      '  const n = new Node{lease: new Lease{n: 1}}',
+      '  const x: Node | Good = n',
+      '  erase(x).tie(n)',
+    );
+    expect(findingsIn(source)).not.toEqual([]);
+  });
+});
+
 describe('parts and handles related soundly', () => {
   it('finds two parts of one input of different handle types linked in a recursive function', () => {
     const source = program(

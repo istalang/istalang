@@ -19,7 +19,6 @@
  *   it gives back (design.md §5.6).
  */
 
-import { functionCallsWithin } from '../../../surface/resolved-call.ts';
 import type { Type } from '../../../types/type/index.ts';
 import type { Operation } from '../../flow/flow-ir.ts';
 import { copiedTypes } from '../dispatch.ts';
@@ -29,7 +28,13 @@ import type { NodeId } from '../reach-state.ts';
 import type { Summary } from '../summary.ts';
 import { type At, closureBindings, functionBindings, nodesGiven } from './bindings.ts';
 import { type BodyAnalysis, placeHolds } from './body.ts';
-import { applySummary, checkWitnesses, putIntoAny, unknownCall } from './calls.ts';
+import {
+  applySummary,
+  checkEscapingCalls,
+  putIntoAny,
+  requiredEscaping,
+  unknownCall,
+} from './calls.ts';
 import { dispatchedCall } from './dispatched.ts';
 import { type FlowState, materialize } from './flow-state.ts';
 import { giveValue, withDefaults } from './given.ts';
@@ -100,7 +105,7 @@ const handlers: { readonly [Kind in Operation['op']]: Handler<Kind> } = {
       return;
     }
     if (made.kind === 'function') {
-      checkWitnesses(at, functionCallsWithin(made.call), operation.site, 'closure');
+      checkEscapingCalls(at, [made.call], operation.site, 'closure');
     }
     if (!analysis.nodes.isRelevant(into)) {
       return;
@@ -125,6 +130,9 @@ const handlers: { readonly [Kind in Operation['op']]: Handler<Kind> } = {
       if (witnesses === undefined) {
         // Code this body can't see; the witnesses a call gives are checked by types (calls.ts).
         unknownCall(at, into, nodesGiven(at, args));
+        if (analysis.recording) {
+          requiredEscaping(at, call, site);
+        }
       } else {
         dispatchedCall(at, operation, call, witnesses);
       }

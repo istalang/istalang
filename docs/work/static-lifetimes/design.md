@@ -294,6 +294,10 @@ What C3 settled about requirements and defaults:
     passes them on to its own callers. A closure's go to the function making it.
   - A destructuring assignment converts each part it takes, and a write into a field a key naming
     several gives converts into any of them: each checks what it puts into an `any`.
+  - A requirement call whose witnesses the body can't name, on a computed type or a union holding a
+    type not known yet, carries what putting its value into the trait's `any` would: each member's
+    witness is checked or lifted alike. A union goes in member by member, wherever a conversion is
+    checked, and a union a generic call gives a type parameter brings each member's witness.
   - The witnesses a function puts into an `any` count among its callees, so one calling back into
     it is analysed in one group with it.
   - A call on a union's trait, or on a computed type an instantiation made known, runs each

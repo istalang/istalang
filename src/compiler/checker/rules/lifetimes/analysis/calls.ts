@@ -13,8 +13,13 @@
 
 import type { FunctionDeclaration } from '../../../../syntax/declarations/index.ts';
 import type { NodeOf } from '../../../../syntax/tree/node.ts';
-import { type FunctionCall, witnessCallsOf } from '../../../surface/resolved-call.ts';
-import type { Type } from '../../../types/type/index.ts';
+import type {
+  FunctionCall,
+  RequirementCall,
+  ResolvedCall,
+  Witnesses,
+} from '../../../surface/resolved-call.ts';
+import { membersOf, type Type } from '../../../types/type/index.ts';
 import type { ValueId } from '../../flow/flow-ir.ts';
 import { instantiated } from '../composition.ts';
 import { escapingCycles, typesBreak } from '../escaping.ts';
@@ -61,7 +66,7 @@ export function applySummary(at: At, made: CallMade, summary: Summary, bindings:
     analysis.violate('instance', made.site, substituted, made.callee);
   }
   if (made.call !== undefined) {
-    checkWitnesses(at, witnessCallsOf(made.call.witnesses), made.site);
+    checkEscapingCalls(at, witnessesIn(made.call.witnesses), made.site);
   }
   for (const { to, member } of summary.conversions) {
     const into = substitutedAt(at, made, to);
@@ -269,7 +274,7 @@ function written(at: At, holder: Bound, value: NodeId, inside: boolean): void {
  * named as a value (`closure`). Each one's writes are checked for any values of its parameters'
  * types, its summary as it instantiates it (design.md §5.4).
  */
-export function checkWitnesses(
+function checkWitnesses(
   { analysis }: At,
   witnesses: readonly FunctionCall[],
   site: NodeOf<string>,
@@ -296,13 +301,59 @@ export function checkWitnesses(
  * the witnesses it puts in, so each is checked here; where only an instantiation names them,
  * each call instantiating this function checks them (design.md §5.4).
  */
-export function putIntoAny(at: At, conversion: Conversion, site: NodeOf<string>): void {
-  const witnesses = at.analysis.context.witnessesPutIn(conversion);
-  if (witnesses === undefined) {
-    at.analysis.liftConversion(conversion);
-  } else {
-    checkWitnesses(at, witnesses, site);
+export function putIntoAny(at: At, { to, member }: Conversion, site: NodeOf<string>): void {
+  // A union goes in member by member, each with a witness of its own.
+  for (const each of membersOf(member)) {
+    const conversion = { to, member: each };
+    const witnesses = at.analysis.context.witnessesPutIn(conversion);
+    if (witnesses === undefined) {
+      at.analysis.liftConversion(conversion);
+    } else {
+      checkWitnesses(at, witnesses, site);
+    }
   }
+}
+
+/**
+ * The calls code this body doesn't see may make, with values it doesn't see (design.md §5.4): each
+ * function's writes checked by types, and those of the witnesses it is given; a requirement call's
+ * as its values put into its trait's `any` would be (`requiredEscaping`).
+ */
+export function checkEscapingCalls(
+  at: At,
+  calls: readonly ResolvedCall[],
+  site: NodeOf<string>,
+  kind: 'witness' | 'closure' = 'witness',
+): void {
+  for (const call of calls) {
+    if (call.kind === 'function') {
+      checkWitnesses(at, [call], site, kind);
+      checkEscapingCalls(at, witnessesIn(call.witnesses), site);
+    } else {
+      requiredEscaping(at, call, site);
+    }
+  }
+}
+
+/**
+ * A requirement call whose witnesses this body can't name: on a union holding a type not known
+ * yet, or on a computed type, each member's witness runs on values nobody here sees, as if put
+ * into the trait's `any`. A call through an `any` was checked where its values went in, and a
+ * type parameter's by the call instantiating it, which gives its witnesses.
+ */
+export function requiredEscaping(
+  at: At,
+  { requirement }: RequirementCall,
+  site: NodeOf<string>,
+): void {
+  if (requirement.kind !== 'constraint') {
+    putIntoAny(at, { to: requirement.through, member: requirement.on }, site);
+  }
+}
+
+/** Every call `witnesses` holds, for each constraint of each type parameter. */
+function witnessesIn(witnesses: Witnesses): readonly ResolvedCall[] {
+  return [...witnesses.values()].flat(2);
 }
 
 /**

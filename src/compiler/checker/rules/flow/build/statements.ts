@@ -85,13 +85,15 @@ function compound(builder: FlowBuilder, node: Assignment, only: AssignedPart): v
   const current = place.read();
   const value = builder.expression(node.value);
   const call = builder.body.resolved.get(node);
-  const result = resolvedCall(builder, call, { site: node, passed: [current, value] });
+  const into = builder.temporary(node, only.type);
+  const result = resolvedCall(builder, call, { site: node, passed: [current, value], into });
   place.write(fitted(builder, only, result));
 }
 
 /**
  * `value`, a part of an assignment's value, converted as checking fitted it to its place: into a
- * field a key naming several gives, of the type of the place the key names.
+ * field a key naming several gives, of the type of the place the key names, which is what the
+ * fits are read against; a target inside a destructuring pattern has no type of its own.
  */
 function fitted(builder: FlowBuilder, part: AssignedPart, value: ValueId): ValueId {
   const type = part.fit === 'intoKeyedField' ? builder.body.typeOf(part.target) : part.type;
