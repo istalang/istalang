@@ -14,7 +14,6 @@
 
 import type { Diagnostic } from '../../../../foundation/diagnostics/diagnostic.ts';
 import { declaredFunctionName } from '../../../syntax/declarations/field-defaults.ts';
-import { typeParametersOf } from '../../../syntax/declarations/index.ts';
 import type { AnchoredSpan } from '../../../syntax/tree/positions.ts';
 import type { BodyContext, FunctionFrame } from '../../contexts/body-context.ts';
 import type { CheckerContext } from '../../contexts/context.ts';
@@ -28,8 +27,9 @@ import {
   instantiatingTypesOf,
   type ResolvedCall,
 } from '../../surface/resolved-call.ts';
+import { callSubstitution } from '../../surface/witness-closing.ts';
 import { sameType } from '../../types/identity/identity.ts';
-import { type Substitution, substitute, substitutionFor } from '../../types/parts/substitution.ts';
+import { substitute } from '../../types/parts/substitution.ts';
 import {
   isSimpleMark,
   kindAdmits,
@@ -52,10 +52,7 @@ function kindOfCall(checker: CheckerContext, call: ResolvedCall): Type {
   if (kind.kind === 'literal') {
     return kind;
   }
-  const own = substitutionFor(typeParametersOf(call.function.typeParameters), call.typeArguments);
-  const through: Substitution =
-    call.kind === 'requirement' ? new Map([...call.substitution, ...own]) : own;
-  return substitute(kind, through, checker.typeRules);
+  return substitute(kind, callSubstitution(call), checker.typeRules);
 }
 
 /**

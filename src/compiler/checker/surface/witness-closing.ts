@@ -62,6 +62,15 @@ export function substitutionOf(
   );
 }
 
+/**
+ * How `call` instantiates its function's signature: its type arguments, and a requirement's `Self`
+ * and trait type parameters too.
+ */
+export function callSubstitution(call: ResolvedCall): Substitution {
+  const own = substitutionOf({ declaration: call.function, typeArguments: call.typeArguments });
+  return call.kind === 'requirement' ? new Map([...call.substitution, ...own]) : own;
+}
+
 /** How calls are closed inside `instance`; inside none, nothing is substituted. */
 export function closingIn(instance: FunctionInstance | undefined): Closing {
   return instance === undefined
