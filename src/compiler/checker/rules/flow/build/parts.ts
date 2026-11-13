@@ -28,7 +28,13 @@ import type {
 } from '../../../surface/checked-pattern.ts';
 import type { BlockId, BranchTest, ValueId } from '../../../surface/flow-ir.ts';
 import type { Type } from '../../../types/type/index.ts';
-import { boolType, intType, literalType, tupleElements } from '../../../types/type/primitives.ts';
+import {
+  boolType,
+  errorType,
+  intType,
+  literalType,
+  tupleElements,
+} from '../../../types/type/primitives.ts';
 import type { FlowBuilder } from './flow-builder.ts';
 import { implicitCall } from './implicit-calls.ts';
 
@@ -114,6 +120,11 @@ export function readAlong(
     }
   }
   return part;
+}
+
+/** The step to the one field of a variant holding a value of `type`: an `Ok`'s, a `Next`'s. */
+export function payload(type: Type | undefined): PartStep {
+  return { kind: 'variantField', index: 0, type: type ?? errorType };
 }
 
 /** The type of the part `step` reaches in a value of type `within`. */

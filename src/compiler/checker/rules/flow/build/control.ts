@@ -42,11 +42,11 @@ import type { SyntaxNode } from '../../../../syntax/tree/index.ts';
 import { unitForm } from '../../../surface/constant-form.ts';
 import type { BlockId, ValueId } from '../../../surface/flow-ir.ts';
 import type { Type } from '../../../types/type/index.ts';
-import { boolType, errorType } from '../../../types/type/primitives.ts';
+import { boolType } from '../../../types/type/primitives.ts';
 import { awaitedOf, wellKnownArguments } from '../../../types/type/well-known.ts';
 import type { FlowBuilder } from './flow-builder.ts';
 import { implicitCall, resolvedCall } from './implicit-calls.ts';
-import { bindTargets, matchPattern } from './parts.ts';
+import { bindTargets, matchPattern, payload, readAlong } from './parts.ts';
 import { madeVariant, variantTest } from './variants.ts';
 
 export function ifFlow(builder: FlowBuilder, node: If): ValueId {
@@ -273,7 +273,7 @@ export function propagate(builder: FlowBuilder, node: Propagate): ValueId {
   const test = variantTest(builder, operand, resultVariants.ok);
   const [ok, failed] = builder.branch(test) as [BlockId, BlockId];
   builder.resumeIn(failed);
-  const passed = variantField(builder, node, operand, error);
+  const passed = readAlong(builder, operand, [payload(error)], node);
   const [, returned] = argumentsOf(builder.result);
   const converted = builder.temporary(node, returned);
   const fit = error && returned && checker.fitOf(error, returned);
@@ -282,21 +282,7 @@ export function propagate(builder: FlowBuilder, node: Propagate): ValueId {
   const value = madeVariant(builder, err, [converted]);
   builder.end({ kind: 'return', value, site: node });
   builder.resumeIn(ok);
-  return variantField(builder, node, operand, builder.body.typeOf(node));
-}
-
-/** The one field of the variant `value` holds, of `type`, read at `site`. */
-function variantField(
-  builder: FlowBuilder,
-  site: Propagate,
-  value: ValueId,
-  type: Type | undefined,
-): ValueId {
-  const into = builder.temporary(site, type);
-  const step = { kind: 'variantField', index: 0, type: type ?? errorType } as const;
-  const part = { kind: 'step', step } as const;
-  builder.emit({ op: 'read', site, into, from: value, part });
-  return into;
+  return readAlong(builder, operand, [payload(builder.body.typeOf(node))], node);
 }
 
 /** `a ?? b`: the value inside `a`, or else `b`'s value, evaluated only then. */

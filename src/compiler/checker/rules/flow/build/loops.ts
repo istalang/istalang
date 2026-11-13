@@ -17,10 +17,10 @@ import type { Comprehension, Spread } from '../../../../syntax/expressions/index
 import type { For, LabelledScope } from '../../../../syntax/statements/index.ts';
 import type { OverFields } from '../../../../syntax/statements/readings.ts';
 import type { BlockId, ValueId } from '../../../surface/flow-ir.ts';
-import { errorType, tupleType } from '../../../types/type/primitives.ts';
+import { tupleType } from '../../../types/type/primitives.ts';
 import type { FlowBuilder } from './flow-builder.ts';
 import { implicitCall } from './implicit-calls.ts';
-import { bindTargets } from './parts.ts';
+import { bindTargets, payload, readAlong } from './parts.ts';
 import { variantTest } from './variants.ts';
 
 /** A loop's passes: the scope its exits name, if any, and what each pass runs. */
@@ -43,7 +43,6 @@ export function itemLoop(
   { scope, pass }: Passes<(item: ValueId) => void>,
 ): void {
   const form = builder.body.iterationOf(node);
-  const item = builder.temporary(node, form?.item);
   const cursor = implicitCall(builder, 'iterate', { site: node, passed: [iterable] });
   loop(builder, scope, (top) => {
     const { type } = builder.valueOf(cursor);
@@ -51,19 +50,11 @@ export function itemLoop(
     builder.emit({ op: 'callValue', site: node, into: step, callee: cursor, arguments: [] });
     const test = variantTest(builder, step, stepVariants.next);
     const [next, done] = builder.branch(test) as [BlockId, BlockId];
-    const given = { kind: 'variantField', index: 0, type: form?.item ?? errorType } as const;
     return {
       exit: done,
       passes: () => {
         builder.resumeIn(next);
-        builder.emit({
-          op: 'read',
-          site: node,
-          into: item,
-          from: step,
-          part: { kind: 'step', step: given },
-        });
-        pass(item);
+        pass(readAlong(builder, step, [payload(form?.item)], node));
         builder.end({ kind: 'goto', to: top });
       },
     };
