@@ -19,10 +19,9 @@
  *   it gives back (design.md §5.6).
  */
 
-import type { FunctionCall, RequirementCall } from '../../../surface/resolved-call.ts';
+import type { FunctionCall } from '../../../surface/resolved-call.ts';
 import type { Type } from '../../../types/type/index.ts';
 import type { Operation } from '../../flow/flow-ir.ts';
-import { boundBy, joinedSummaries } from '../composition.ts';
 import { escapingCycles } from '../escaping.ts';
 import { type Input, inputKey } from '../input.ts';
 import type { NodeId } from '../reach-state.ts';
@@ -30,6 +29,7 @@ import type { Summary } from '../summary.ts';
 import { type At, closureBindings, functionBindings, nodesGiven } from './bindings.ts';
 import { type BodyAnalysis, placeHolds } from './body.ts';
 import { applySummary, unknownCall } from './calls.ts';
+import { dispatchedCall } from './dispatched.ts';
 import { type FlowState, materialize } from './flow-state.ts';
 import { giveValue, withDefaults } from './given.ts';
 import { readKindOf } from './nodes.ts';
@@ -169,30 +169,6 @@ const handlers: { readonly [Kind in Operation['op']]: Handler<Kind> } = {
     }
   },
 };
-
-/**
- * A call through an `any` value (design.md §5.4): what each of the witnesses it may run does,
- * over the required function's parameters, joined, applied as one call's.
- */
-function dispatchedCall(
-  at: At,
-  operation: Of<'call'>,
-  call: RequirementCall,
-  witnesses: readonly FunctionCall[],
-): void {
-  const { into, site, arguments: args } = operation;
-  const { context } = at.analysis;
-  const summaries = witnesses.flatMap((witness) => {
-    const summary = context.calleeSummary(witness);
-    return summary === undefined
-      ? []
-      : [boundBy(summary, witness.binding, (type) => context.substitute(type, witness))];
-  });
-  const isAsync = witnesses.some((witness) => witness.function.qualifiers.async !== undefined);
-  const made = { site, into, callee: undefined, call: undefined, isAsync };
-  const bindings = withDefaults(at, operation, functionBindings(at, call, args));
-  applySummary(at, made, joinedSummaries(summaries), bindings);
-}
 
 /**
  * `cursor`, a native `iterate`'s, holds what it was given to iterate, which the calls of it read
