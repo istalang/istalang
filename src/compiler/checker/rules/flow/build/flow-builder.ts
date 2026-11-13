@@ -148,11 +148,6 @@ export class FlowBuilder {
     return this.#constructs.functionBlock(this, node);
   }
 
-  /** A builder of a function nested in this one, rooted at `root`, returning `result`. */
-  nested(root: SyntaxNode, result: Type | undefined): FlowBuilder {
-    return new FlowBuilder({ ...this.inputs, body: this.#body }, root, this.#constructs, result);
-  }
-
   /** The body's facts, as the pass being built reads them. */
   get body(): CheckedBody {
     return this.#body;

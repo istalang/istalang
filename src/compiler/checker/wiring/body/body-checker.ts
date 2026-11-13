@@ -71,7 +71,7 @@ import { blockTail } from '../../rules/agreement.ts';
 import { recordOutcomeCodecs } from '../../rules/boundary/outcome-codecs.ts';
 import { checkDisposeUses } from '../../rules/disposal/disposal.ts';
 import { checkDropped } from '../../rules/disposal/dropped.ts';
-import { type FlowRoot, flowOf } from '../../rules/flow/build/index.ts';
+import type { FlowRoot } from '../../rules/flow/build/index.ts';
 import { FlowDecisions } from '../../rules/flow/flow-decisions.ts';
 import { freshLiteralOf } from '../../rules/placeholders.ts';
 import { checkTestingCalls } from '../../rules/testing.ts';
@@ -201,16 +201,16 @@ export class BodyChecker implements BodyContext {
     const calls = this.calls.entries();
     checkDisposeUses(this, calls, checkTestingCalls(this, calls));
     recordOutcomeCodecs(this, calls);
-    const body = checkedAt({ records: this.#records, units: this, result }, this.#passes.root);
     const inputs = {
       checker: this.checker,
       module: this.module,
       localBodyOf: (declaration: FunctionDeclaration) =>
         this.checker.inputs.bodyOf(this.module, declaration),
-      body,
     };
-    for (const { root, parameters } of roots) {
-      checkDropped(this, flowOf(inputs, root, parameters));
+    const recorded = { records: this.#records, units: this, result, flows: { inputs, roots } };
+    const body = checkedAt(recorded, this.#passes.root);
+    for (const { root } of roots) {
+      checkDropped(this, body.flowOf(root));
     }
     return body;
   }

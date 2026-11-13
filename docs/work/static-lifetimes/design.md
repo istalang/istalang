@@ -548,7 +548,7 @@ The design follows the expansion graph's pattern (`rules/expansion/functions.ts`
   one table for natives, fields functions and bodies alike, compared by inputs, labels and pairs
   only, so an edit that keeps its effects stops there, and its reports, the only entry that reads
   positions. Relevance is an entry per type. A body's flow is read off its checked body, which
-  checking built it for (`flowsBuiltFor`); an entry earns its place only by cutting work off.
+  checking built it for (`CheckedBody.flowOf`); an entry earns its place only by cutting work off.
 - **What a caller reads of a callee** is its summary alone, never its body: whether a function has
   a body is read off its declaration, so an edit inside a callee's body that keeps its summary
   analyses no caller again (C4).

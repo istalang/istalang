@@ -38,7 +38,6 @@ import { type FunctionCall, functionCallsWithin } from '../../surface/resolved-c
 import { callSubstitution } from '../../surface/witness-closing.ts';
 import { substitute } from '../../types/parts/substitution.ts';
 import type { Type } from '../../types/type/index.ts';
-import { flowsBuiltFor } from '../flow/build/index.ts';
 import type { AnalysisContext } from './analysis/body.ts';
 import { type Analysis, analyze } from './analysis/index.ts';
 import { Declared, defaultsFlows, defaultsFound, withDefaults } from './declared.ts';
@@ -312,10 +311,11 @@ export class Lifetimes {
     });
   }
 
-  /** The flow of `declaration`'s body, if it has one: its body's only root's, as checking built it. */
+  /** The flow of `declaration`'s body, if it has one, as checking built it. */
   #flowOf(declaration: FunctionDeclaration): FlowFunction | undefined {
-    const body = this.#checker.bodyOf(declaration);
-    return body === undefined ? undefined : flowsBuiltFor(body).values().next().value;
+    const checker = this.#checker;
+    const block = checker.inputs.bodyOf(checker.moduleOf(declaration), declaration);
+    return block === undefined ? undefined : checker.bodyOf(declaration)?.flowOf(block);
   }
 
   /** What `call`'s function does: a group member's guess, or its summary. */

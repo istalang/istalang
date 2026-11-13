@@ -110,8 +110,8 @@ The node kinds are in `src/compiler/syntax/expressions/index.ts` and `syntax/sta
     as a temporary of its scope. A `return` releases everything; a temporary ends with its
     statement and an assignment ends what its variable held, with no operation.
   - `unknown` is code checking found a mistake in: its operands run, its value is unknown.
-- **The builder** is `rules/flow/build/`: `flowOf(inputs, root, parameters)`, memoized on the
-  `CheckedBody`, reading only the body's facts, `bindings`, `parametersOf` and, through
+- **The builder** is `rules/flow/build/`: `flowsOf`, which gives each `CheckedBody` view its
+  `flowOf(root)` and `nestedFlowOf(node)`, built once, reading only the body's facts, `bindings`, `parametersOf` and, through
   `FlowInputs.localBodyOf`, local functions' bodies, which the tree holds apart. `index.ts` builds every expression alike: a `Never` operand stops the path
   (`stopsAt`), the outermost link of an optional chain opens it (`chains.ts`), its value is a
   temporary of its node, and a fitted value is copied into one of the expected type with its
@@ -397,7 +397,7 @@ declare only `extern shared struct`s.
   through the callee's body input, which changes with every edit inside it (now
   `hasBody` reads the declaration), and the module's walk for noted constraint checks crossed the
   std bodies the rule's summaries reach (now run before the rule, `module-checks.ts`).
-- **And entries that cut nothing off:** a flow is read off its checked body (`flowsBuiltFor`), not
+- **And entries that cut nothing off:** a flow is read off its checked body (`CheckedBody.flowOf`), not
   kept in an entry of its own; natives', fields functions' and bodies' summaries are one table; a
   function writing no default makes no defaults entry (`Parameters.defaultsOf`, `Declared`).
 - **Per-closure entries don't pay:** lambdas aren't segments of their own

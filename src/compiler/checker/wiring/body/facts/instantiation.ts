@@ -10,6 +10,7 @@
 
 import { memo } from '../../../../../foundation/structures/memo.ts';
 import type { Checker } from '../../../check.ts';
+import type { FlowSource } from '../../../rules/flow/build/index.ts';
 import type {
   AssignedPart,
   ChainLink,
@@ -66,6 +67,8 @@ export interface Instantiation {
    * of the fields a struct constraint leaves unnamed, once they are all known, one pass per field.
    */
   readonly passes: (pass: FieldPass) => readonly FieldPass[];
+  /** What a body's flows are built from: its roots' parameters substituted. */
+  readonly flows: (source: FlowSource) => FlowSource;
 }
 
 /** The instantiation `substitution` makes, for reading a body checked once (§3.5). */
@@ -91,6 +94,16 @@ export function instantiationBy(
     pattern: (checked) => instantiatedPattern(checked, substitution, rules),
     iteration: (form) => ({ ...form, item: concrete(form.item) }),
     chain: (link) => ({ base: concrete(link.base), carried: concrete(link.carried) }),
+    flows: ({ inputs, roots }) => ({
+      inputs,
+      roots: roots.map(({ root, parameters }) => ({
+        root,
+        parameters: parameters.map((parameter) => ({
+          ...parameter,
+          type: concrete(parameter.type),
+        })),
+      })),
+    }),
     passes: (pass) => {
       const known = knownFields(pass, substitution, rules);
       return known === undefined

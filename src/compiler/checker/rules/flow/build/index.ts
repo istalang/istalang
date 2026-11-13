@@ -1,7 +1,7 @@
 /**
- * Building a checked body's flow (../../../surface/flow-ir.ts), memoized on the body it derives
- * from: a body checked again is a new body, with a new flow, and one taken over keeps its own. Body
- * checking builds every root's, so readers find them by body (`flowsBuiltFor`).
+ * Building a checked body's flows (../../../surface/flow-ir.ts): each body view (`CheckedBody`, an
+ * instantiation's or a pass's) builds its roots' and its nested functions' the first time each is
+ * asked for (`flowsOf`), and keeps them; a body checked again is a new body, with new flows.
  *
  * Every expression is built the same way here, whatever its kind:
  * - An operation that meets a value of type `Never` runs the operands before it and stops (§2);
@@ -21,13 +21,14 @@
  */
 
 import { handlerOf } from '../../../../../foundation/structures/kind-table.ts';
+import { memo } from '../../../../../foundation/structures/memo.ts';
 import { unreachable } from '../../../../../foundation/structures/unreachable.ts';
 import type { Expression } from '../../../../syntax/expressions/index.ts';
 import type { Block, Statement } from '../../../../syntax/statements/index.ts';
 import { tailExpressionOf } from '../../../../syntax/statements/readings.ts';
 import type { SyntaxNode } from '../../../../syntax/tree/index.ts';
 import type { SignatureParameter } from '../../../check.ts';
-import { type CheckedBody, isSugar } from '../../../surface/checked-body.ts';
+import { type CheckedBody, isSugar, type NestedFunction } from '../../../surface/checked-body.ts';
 import type { FlowFunction, ValueId } from '../../../surface/flow-ir.ts';
 import { closeChain, openChain } from './chains.ts';
 import { coreFlow, expressionFlows, unitAt } from './expressions.ts';
@@ -35,46 +36,65 @@ import { type Constructs, FlowBuilder, type FlowInputs } from './flow-builder.ts
 import { bindParameters } from './parts.ts';
 import { statementFlows } from './statements.ts';
 
-const flows = new WeakMap<CheckedBody, Map<SyntaxNode, FlowFunction>>();
+/** What a body's flows are built from beside the body: what building reads, and its roots. */
+export interface FlowSource {
+  readonly inputs: Omit<FlowInputs, 'body'>;
+  readonly roots: readonly FlowRoot[];
+}
 
-/** What a body's flow starts from: a function's block or a value, and the parameters it sees. */
+/** A root a body was checked from: a function's block or a value, and the parameters it sees. */
 export interface FlowRoot {
   readonly root: Block | Expression;
   readonly parameters: readonly SignatureParameter[];
 }
 
 /**
- * The flow of `root` in `inputs.body`: a function's body block, taking `parameters`, a default's
- * value, or a constant's initializer.
+ * The flows of the body `bodyOf` gives, built from `source`: each root's (a function's body block,
+ * a default's value, a constant's initializer) and each nested function's, the first time asked.
  */
-export function flowOf(
-  inputs: FlowInputs,
-  root: Block | Expression,
-  parameters: readonly SignatureParameter[] = [],
-): FlowFunction {
-  let ofBody = flows.get(inputs.body);
-  if (ofBody === undefined) {
-    ofBody = new Map();
-    flows.set(inputs.body, ofBody);
-  }
-  const known = ofBody.get(root);
-  if (known !== undefined) {
-    return known;
-  }
-  const builder = new FlowBuilder(inputs, root, constructs);
-  bindParameters(builder, parameters);
-  const value = root.kind === 'Block' ? builder.functionBlock(root) : builder.expression(root);
-  const flow = builder.finished(value);
-  ofBody.set(root, flow);
-  return flow;
+export function flowsOf(
+  source: FlowSource,
+  bodyOf: () => CheckedBody,
+): Pick<CheckedBody, 'flowOf' | 'nestedFlowOf'> {
+  // A lambda may be both: a constant's initializer, and the function it makes.
+  const ofRoots = new Map<SyntaxNode, FlowFunction>();
+  const ofNested = new Map<NestedFunction, FlowFunction>();
+  const inputs = (): FlowInputs => ({ ...source.inputs, body: bodyOf() });
+  return {
+    flowOf: (root) =>
+      memo(ofRoots, root, () => {
+        const { parameters } =
+          source.roots.find((each) => each.root === root) ??
+          unreachable(`No body was checked from the ${root.kind} at ${root.span.from}.`);
+        const builder = new FlowBuilder(inputs(), root, constructs);
+        bindParameters(builder, parameters);
+        const value =
+          root.kind === 'Block' ? builder.functionBlock(root) : builder.expression(root);
+        return builder.finished(value);
+      }),
+    nestedFlowOf: (node) => memo(ofNested, node, () => nestedFlow(inputs(), node)),
+  };
 }
 
 /**
- * The flows built for `body`, by root: body checking builds one for each root it checks
- * (wiring/body/body-checker.ts), so a reader finds them here without the inputs building takes.
+ * The flow of `node`, a lambda or local function of `inputs.body` (§3.14): the values it captures,
+ * its own name as the closure it runs as, its parameters, and its body.
  */
-export function flowsBuiltFor(body: CheckedBody): ReadonlyMap<SyntaxNode, FlowFunction> {
-  return flows.get(body) ?? unreachable('A body was finished without building its flows.');
+function nestedFlow(inputs: FlowInputs, node: NestedFunction): FlowFunction {
+  const checked = inputs.body.functionOf(node);
+  const builder = new FlowBuilder(inputs, node, constructs, checked?.result);
+  for (const { entity, type } of checked?.captures ?? []) {
+    builder.captured(entity, type);
+  }
+  if (node.name !== undefined) {
+    builder.ownName(node.name, checked?.type);
+  }
+  bindParameters(builder, checked?.parameters ?? []);
+  if (node.kind === 'Lambda') {
+    return builder.finished(builder.expression(node.body));
+  }
+  const block = inputs.localBodyOf(node);
+  return builder.finished(block === undefined ? undefined : builder.functionBlock(block));
 }
 
 /** `node`'s value as computed, a temporary of its own node. */

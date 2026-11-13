@@ -21,7 +21,6 @@ import type { VariableDeclaration } from '../../../syntax/statements/index.ts';
 import type { CheckerContext } from '../../contexts/context.ts';
 import type { FlowFunction } from '../../surface/flow-ir.ts';
 import { isDisposeFunction } from '../disposal/disposal.ts';
-import { flowsBuiltFor } from '../flow/build/index.ts';
 import type { AnalysisContext } from './analysis/body.ts';
 import { type Analysis, analyze } from './analysis/index.ts';
 import { joinedSummaries } from './composition.ts';
@@ -64,14 +63,11 @@ export function defaultsFlows(
   if (defaults === undefined) {
     return [];
   }
-  const built = flowsBuiltFor(defaults);
-  return declaration.parameters.flatMap((parameter, index) => {
-    const flow =
-      parameter.kind === 'Parameter' && parameter.defaultValue !== undefined
-        ? built.get(parameter.defaultValue)
-        : undefined;
-    return flow === undefined ? [] : [{ index, flow }];
-  });
+  return declaration.parameters.flatMap((parameter, index) =>
+    parameter.kind === 'Parameter' && parameter.defaultValue !== undefined
+      ? [{ index, flow: defaults.flowOf(parameter.defaultValue) }]
+      : [],
+  );
 }
 
 /** The flow of a constant's initializer, a context constant's or a top-level one's. */
@@ -83,7 +79,7 @@ function constantFlow(
     declaration.kind === 'ContextConstantDeclaration'
       ? checker.contextConstants.bodyOf(declaration)
       : checker.constantBodyOf(declaration);
-  return body === undefined ? undefined : flowsBuiltFor(body).get(declaration.initializer);
+  return body?.flowOf(declaration.initializer);
 }
 
 /**

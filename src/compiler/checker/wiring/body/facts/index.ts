@@ -13,6 +13,7 @@ import { constructedVariant } from '../../../../syntax/declarations/field-defaul
 import type { NodeOf } from '../../../../syntax/tree/node.ts';
 import type { Pass, PassRecords } from '../../../contexts/passes.ts';
 import type { PassAnswers } from '../../../lookup/pass-views.ts';
+import { type FlowSource, flowsOf } from '../../../rules/flow/build/index.ts';
 import type { BodyFacts, CheckedBody } from '../../../surface/checked-body.ts';
 import {
   type JoinedBody,
@@ -334,11 +335,17 @@ const toolNames: readonly ToolName[] = [
 /** The CheckedBody of what was checked as `pass` sees it. */
 export function checkedAt(recorded: RecordedBody, pass: Pass): CheckedBody {
   const bodyAt = (inner: Pass) => checkedAt(recorded, inner);
-  return bodyOf((name) => bodyFacts[name].at(recorded, pass, bodyAt));
+  return bodyOf((name) => bodyFacts[name].at(recorded, pass, bodyAt), recorded.flows);
 }
 
-/** The body whose every fact `factOf` answers, its views read through the same table. */
-function bodyOf(factOf: <Name extends FactName>(name: Name) => BodyFacts[Name]): CheckedBody {
+/**
+ * The body whose every fact `factOf` answers, its views read through the same table, its flows
+ * built from `flows`.
+ */
+function bodyOf(
+  factOf: <Name extends FactName>(name: Name) => BodyFacts[Name],
+  flows: FlowSource,
+): CheckedBody {
   const answered: Partial<Record<FactName, unknown>> = {};
   for (const name of factNames) {
     answered[name] = factOf(name);
@@ -349,9 +356,10 @@ function bodyOf(factOf: <Name extends FactName>(name: Name) => BodyFacts[Name]):
     ...facts,
     instantiated: (substitution, checker) => {
       const by = instantiationBy(substitution, checker);
-      return bodyOf((name) => bodyFacts[name].instantiated(facts[name], by));
+      return bodyOf((name) => bodyFacts[name].instantiated(facts[name], by), by.flows(flows));
     },
     joinedWith: (others, rules) => joinedOf([body, ...others], rules),
+    ...flowsOf(flows, () => body),
   };
   return body;
 }

@@ -27,12 +27,11 @@ import type { Block } from '../../../syntax/statements/index.ts';
 import { tailExpressionOf } from '../../../syntax/statements/readings.ts';
 import { bodyOf, type SyntaxNode, type SyntaxTree } from '../../../syntax/tree/index.ts';
 import { spanIn } from '../../../syntax/tree/positions.ts';
-import { type Checker, checkProgram, type SignatureParameter } from '../../check.ts';
+import { type Checker, checkProgram } from '../../check.ts';
 import { type CheckedBody, checkedChildrenOf, isSugar } from '../../surface/checked-body.ts';
 import type { CheckedPattern, PartStep } from '../../surface/checked-pattern.ts';
 import type { FlowFunction, FlowValue, Operation, Place } from '../../surface/flow-ir.ts';
 import type { MadeCall, ResolvedCall } from '../../surface/resolved-call.ts';
-import { flowOf } from './build/index.ts';
 
 const programs = [
   ...runPrograms.map(({ name, text }) => ({ name, text })),
@@ -260,15 +259,12 @@ function missedBy(
 }
 
 /**
- * A body checking checked, and the roots its flows start at, each with the parameters it takes:
- * a function's block, each of its defaults, a constant's initializer.
+ * A body checking checked, and the roots its flows start at: a function's block, each of its
+ * defaults, a constant's initializer.
  */
 interface Rooted {
   readonly body: CheckedBody;
-  readonly roots: readonly {
-    readonly root: Block | Expression;
-    readonly parameters: readonly SignatureParameter[];
-  }[];
+  readonly roots: readonly (Block | Expression)[];
 }
 
 /**
@@ -279,26 +275,19 @@ function rootsOf(checker: Checker, tree: SyntaxTree): readonly Rooted[] {
   const functions = functionsOf(tree.root).flatMap((declaration): Rooted[] => {
     const body = checker.bodyOf(declaration);
     const block = bodyOf(tree, declaration);
-    const parameters = checker.parametersOf(declaration);
-    const own =
-      body === undefined || block === undefined
-        ? []
-        : [{ body, roots: [{ root: block, parameters }] }];
+    const own = body === undefined || block === undefined ? [] : [{ body, roots: [block] }];
     const defaults = checker.defaultsOf(declaration);
     const values = defaultValuesOf(declaration.parameters);
-    const given = values.map((root) => ({ root, parameters: [] }));
-    return [...own, ...(defaults === undefined ? [] : [{ body: defaults, roots: given }])];
+    return [...own, ...(defaults === undefined ? [] : [{ body: defaults, roots: values }])];
   });
   const constants = tree.root.items.flatMap((item): Rooted[] => {
     if (item.kind === 'VariableDeclaration') {
       const body = checker.constantBodyOf(item);
-      return body === undefined
-        ? []
-        : [{ body, roots: [{ root: item.initializer, parameters: [] }] }];
+      return body === undefined ? [] : [{ body, roots: [item.initializer] }];
     }
     if (item.kind === 'ContextConstantDeclaration') {
       const body = checker.contextConstants.bodyOf(item);
-      return [{ body, roots: [{ root: item.initializer, parameters: [] }] }];
+      return [{ body, roots: [item.initializer] }];
     }
     return [];
   });
@@ -326,10 +315,8 @@ describe("a body's flow", () => {
     };
     const clean = !diagnoseModule(program, module).diagnostics.some(isError);
     const missing = rootsOf(checker, tree).flatMap(({ body, roots }) => {
-      const inputs = { checker, module, localBodyOf: local, body };
-      const flows = roots.map(({ root, parameters }) => flowOf(inputs, root, parameters));
-      const nodes = roots.map(({ root }) => root);
-      return missedBy(flows, { body, roots: nodes }, { local, textOf, clean });
+      const flows = roots.map((root) => body.flowOf(root));
+      return missedBy(flows, { body, roots }, { local, textOf, clean });
     });
     expect(missing).toEqual([]);
   });

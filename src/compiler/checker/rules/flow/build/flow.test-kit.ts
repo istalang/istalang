@@ -9,7 +9,6 @@ import { bodyOf } from '../../../../syntax/tree/index.ts';
 import { inFunction } from '../../../check.test-kit.ts';
 import { checkProgram } from '../../../check.ts';
 import type { FlowFunction } from '../../../surface/flow-ir.ts';
-import { flowOf } from './index.ts';
 
 /** The flow of `subject`, the function `body` is written in, after `declarations`. */
 export function subjectFlow(body: string, declarations: readonly string[] = []): FlowFunction {
@@ -26,6 +25,5 @@ export function subjectFlow(body: string, declarations: readonly string[] = []):
   if (subject === undefined || checked === undefined || block === undefined) {
     throw new Error('The subject was never checked.');
   }
-  const inputs = { checker, module, localBodyOf: () => undefined, body: checked };
-  return flowOf(inputs, block, checker.parametersOf(subject));
+  return checked.flowOf(block);
 }

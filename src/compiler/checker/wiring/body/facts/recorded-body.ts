@@ -1,6 +1,7 @@
 /**
  * What checking a body recorded, as its facts are read from it (index.ts): the body's own records
- * (body-records.ts), the units that keep records of their own constructs, and what it produces.
+ * (body-records.ts), the units that keep records of their own constructs, what it produces, and
+ * the roots it was checked from.
  * The body checker is all of its units (body-checker.ts).
  */
 
@@ -17,6 +18,7 @@ import type { VariableScope } from '../../../constructs/statements/variables.ts'
 import type { Desugarings } from '../../../desugaring/index.ts';
 import type { ImplicitCalls } from '../../../resolution/applying/implicit.ts';
 import type { CallRecords } from '../../../resolution/calls/call-records.ts';
+import type { FlowSource } from '../../../rules/flow/build/index.ts';
 import type { FlowDecisions } from '../../../rules/flow/flow-decisions.ts';
 import type { Type } from '../../../types/type/index.ts';
 import type { bodyRecords } from '../body-records.ts';
@@ -46,4 +48,6 @@ export interface RecordedBody {
   readonly records: BodyRecords;
   readonly units: BodyUnits;
   readonly result: Type;
+  /** What its flows are built from: the roots it was checked from. */
+  readonly flows: FlowSource;
 }

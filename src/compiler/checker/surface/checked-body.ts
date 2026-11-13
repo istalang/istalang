@@ -44,6 +44,7 @@ import type { TypeRules } from '../types/type/type-rules.ts';
 import type { FieldRead, FieldReading } from './checked-field.ts';
 import type { CheckedPattern, TargetBinding, TargetOwner, TargetStep } from './checked-pattern.ts';
 import type { JoinedBody } from './denotation.ts';
+import type { FlowFunction } from './flow-ir.ts';
 import type {
   FunctionCall,
   ImplicitRole,
@@ -344,4 +345,11 @@ export interface CheckedBody extends BodyFacts {
    * as tools read the node (lookup/pass-views.ts); with none, the body alone, as tools read it.
    */
   readonly joinedWith: (others: readonly CheckedBody[], rules: TypeRules) => JoinedBody;
+  /**
+   * The flow of `root` (flow-ir.ts), one the body was checked from: a function's block, a
+   * default's value, a constant's initializer; as this view reads the body, built once.
+   */
+  readonly flowOf: (root: Block | Expression) => FlowFunction;
+  /** The flow of a lambda or local function of the body (§3.14), as this view reads it. */
+  readonly nestedFlowOf: (node: NestedFunction) => FlowFunction;
 }

@@ -25,7 +25,7 @@ import type { Block, Return } from '../../../../syntax/statements/index.ts';
 import type { Identifier } from '../../../../syntax/tree/node.ts';
 import type { CoreExpression, Sugar } from '../../../surface/checked-body.ts';
 import { literalForm, unitForm } from '../../../surface/constant-form.ts';
-import type { FlowFunction, Part, ValueId } from '../../../surface/flow-ir.ts';
+import type { Part, ValueId } from '../../../surface/flow-ir.ts';
 import { unitType } from '../../../types/type/primitives.ts';
 import { callFlow } from './calls.ts';
 import { stepTarget } from './chains.ts';
@@ -48,7 +48,6 @@ import {
   mapLiteral,
   structLiteral,
 } from './literals.ts';
-import { bindParameters } from './parts.ts';
 import { partOfField } from './places.ts';
 import { madeVariant } from './variants.ts';
 
@@ -153,39 +152,16 @@ function index(builder: FlowBuilder, node: Index): ValueId {
  * variables' values here.
  */
 export function closureOf(builder: FlowBuilder, node: Lambda | FunctionDeclaration): ValueId {
-  const checked = builder.body.functionOf(node);
-  const captures = checked?.captures ?? [];
-  const nested = builder.nested(node, checked?.result);
-  for (const { entity, type } of captures) {
-    nested.captured(entity, type);
-  }
-  if (node.name !== undefined) {
-    nested.ownName(node.name, checked?.type);
-  }
-  bindParameters(nested, checked?.parameters ?? []);
-  const flow: FlowFunction = nested.finished(bodyValue(builder, nested, node));
-  const into = builder.temporary(node, checked?.type);
+  const captures = builder.body.functionOf(node)?.captures ?? [];
+  const into = builder.temporary(node, builder.body.functionOf(node)?.type);
   builder.emit({
     op: 'make',
     site: node,
     into,
-    made: { kind: 'closure', function: flow },
+    made: { kind: 'closure', function: builder.body.nestedFlowOf(node) },
     parts: captures.map(({ entity }) => builder.variable(entity)),
   });
   return into;
-}
-
-/** What a nested function's body gives, built into `nested`. */
-function bodyValue(
-  builder: FlowBuilder,
-  nested: FlowBuilder,
-  node: Lambda | FunctionDeclaration,
-): ValueId | undefined {
-  if (node.kind === 'Lambda') {
-    return nested.expression(node.body);
-  }
-  const block = builder.inputs.localBodyOf(node);
-  return block === undefined ? undefined : nested.functionBlock(block);
 }
 
 // biome-ignore-start lint/style/useNamingConvention: the keys are the tree's node kinds.
