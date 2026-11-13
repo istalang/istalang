@@ -269,8 +269,8 @@ src/
     lifetimes/          holders and disposal (§7): holder-writes.ts (the one seam every holder write reports to, a register,
                         a heap object or a running call's future, and what the heap made and lost), counts.ts (each counted object's
                         holders, every composite value a node counted once per holder; a zero confirmed at the step's end),
-                        in-place.ts (values written in place where this instance copied them for writing and one holder holds them,
-                        else copied once: paths, a native's `&` argument, an array or map grown in its own register),
+                        in-place.ts (values written in place where this instance made them and one holder holds them, else copied
+                        once: paths, a native's `&` argument, an array or map grown in its own register),
                         holders.ts (what the live frames reach: held, which only a commit and a live run's drop walk, a cruiser rule),
                         disposal.ts (each kind's disposal), collector.ts (rounds of what reached zero, newest first, a disposal's call on the run stack),
                         oracle.test-kit.ts (static lifetimes' oracle, a `HeapCheck`: no cycle reaching a disposable; every test runtime, `ista run` and `ista test` in the CLI's tests check it; its own tests compile cyclic programs through `compile.test-kit.ts`'s `textDespiteCycles`, which it stops)

@@ -22,7 +22,7 @@ and model: [design.md](design.md) §3 and §9. Phases: [plan.md](plan.md). Paths
 | `scheduler/instance/heap.ts` `Heap` | objects by id, a list per kind, 11 derived `indexes`; `holds` = holdings plus index edges (`#indexedHolds`, `#awaited`); `#write`, every change reported to the seam, index edges included (R2); ids are serials (`made`); `keepOnly` | R1, R2, R3, R4 |
 | `lifetimes/holder-writes.ts` `HolderWrites` | the one seam every holder write reports to (R2), and what the heap made and lost (R3); it counts (`counts.ts`), confirms zeroes at the step's end (`takeZeroes`), logs what was let go of for the oracle, and keeps the losers flag | R2, R3 |
 | `lifetimes/counts.ts` `Counts`, `countedIn` | each counted object's holders, every composite counted once per holder (R5); zero candidates | R3, R5 |
-| `lifetimes/in-place.ts` `InPlace` | values written in place: a node this instance copied for writing, held once; any other copied once at its first write; paths opened from their holder down | R5 |
+| `lifetimes/in-place.ts` `InPlace` | values written in place: a node this instance made (built or copied for writing), held once; any other copied once at its first write; paths opened from their holder down; a native's changes bound to its place | R5 |
 | `interpreter/registers.ts` | the only register writer, reporting each write (`FrameHeap.changed`); `raw-registers.ts` is its raw write | R2 |
 | `interpreter/machine.ts` | `newFrame`, `releaseFrame` (ascending registers), `currentClosure` | R2, R3 |
 | `scheduler/instance/index.ts` `Instance` | `frameHeap`; the constructor every start and restore goes through, where the counts are built; `persisted`/`#kept` (the walk, and a check that no zero went uncollected); `dropUnheld`, once the heap doubled (R4); `continueFrom`; `stop` | R3, R4 |
@@ -412,24 +412,34 @@ heap kind a live variant, and a restore would have had to rebuild the values ins
 
 - **Counts tell uniqueness** (`lifetimes/in-place.ts`, `InPlace`, the instance's
   `HolderWrites.values`, reached as `FrameHeap.values`):
-  - a node this instance copied for writing (`#own`), held once, is changed in place;
+  - a node this instance made (`#own`: what an instruction builds, `made`, and every copy for
+    writing), held once, is changed in place;
   - any other node is copied once at its first write, and the copy is this instance's own: a
     constant, a restored value, one a native or the host made, or one held twice.
 - **Where it writes:**
   - a store and a write through `&` or a cell (`registers.ts` `storeAt`, `writeReference`):
     `withPart` opens the path from its holder's value down, copying from the first shared node;
   - the `&self` natives (`push`, `pop`, `reverse`, both `setIndex`, a map's `setIndex` and
-    `delete`): `context.change(position, inserted, change)` opens their argument's place and hands
-    the native `ValueChanges` (`registers.ts` `changeReference`), the one place natives write;
+    `delete`): `context.changes(position)` gives the `ValueChanges` bound to their argument's
+    place (`registers.ts` `changesAt`), each change naming what it puts in, the one way natives
+    write;
   - `array`/`map` building from the value their own register holds (`[...dst, item]`: a
     comprehension, a spread through a cursor, a map spread), and `keep`'s list.
 - **A value going in that is a node of the path** (`xs.push(xs)`, `s.f = s`) is read without a
   holder, so the path is copied from that node down.
 - **Derived data:** a node changed forgets its `summaries` entry and hash; a map setting an entry
   keeps its table (`setEntryInPlace`), and `mapOf` builds each map so (P8).
-- **Every holder of a value is reported** (registers, heap objects, the run stack); crossings and
-  a mock's records rebuild every value (`replacingParts`), and a commit reads its text back, so no
-  holder outside the counts sees an own value.
+- **Every holder that keeps a value is reported** (registers, heap objects, the run stack), or keeps
+  a copy: crossings, a spawn's call (`leavingCall`) and a mock's records rebuild every value
+  (`replacingParts`), the root's outcome is copied as it becomes known (`root-outcome.ts`
+  `copiedOut`), and a commit reads its text back.
+- **Hand-overs:** a return (`returns.ts` `landPopped`) and a slot's value into its future hold the
+  value meanwhile (`HolderWrites.handOver`), so a value held once doesn't pass through zero. A
+  waiter's decision still goes from its wait to its register through zero (`ReadyQueue.next`):
+  it leaves the wait inside `Waits.end`.
+- **A block's value** a variable holds, an outer one's too, is moved out before the block's end
+  runs a disposal or a `defer`'s call (lowering `scopes.ts` `valueInBlock`), which before R5 read
+  the variable after them.
 - **Tests:** `in-place.test.ts` (random writes over counted registers against immutable values,
   every start frozen) and `shared-values.test.ts` (a Definition's constants and one snapshot's
   values frozen, two restores of it ending as the instance that committed it).

@@ -645,24 +645,32 @@ keep what it holds. That is why building a collection one item at a time was qua
 P2, P8).
 
 **Counting tells** (`runtime/lifetimes/in-place.ts`, R5).
-- **In place:** a node this instance copied for writing, held once (count 1), is changed in place.
+- **In place:** a node this instance made, built by its instructions or copied for writing, held
+  once (count 1), is changed in place.
 - **Copied once:** any other node, one something else holds (`const b = a` and then `a.push(x)`),
   a constant, a restored value, or one a native or the host made, is copied at its first write.
   The copy is this instance's own from then on, and holds its parts (+1 each) from its first hold.
+- **Every holder that keeps a value is counted, or keeps a copy:** a value crossing to another
+  instance is rebuilt as it leaves (a call into a context, a spawn's call, a mock's record), and an
+  instance's outcome is copied as it becomes known, since its instance's disposals still run.
 - **Copying a value into another holder** costs one increment on its node, never one per part.
 - **A path** (`s.items.push(x)`, `s.f = v`, a native's `&` argument) is opened from its holder's
   value down: the first node on it that is shared is copied with every node below it.
 - **A value going in that is a node of the path itself** (`xs.push(xs)`) is read without a holder,
   so the path is copied from that node down: a value never holds itself.
 
-**Never written in place**, since none is a copy this instance made for writing:
+**Never written in place**, since none is a value this instance made:
 - constants (`definition.constants`, shared by every instance);
 - values a restore shares with another instance or with its snapshot;
 - values a native or the host made.
 
 **Derived data** keyed by a value's identity is forgotten as it changes (`summaries`, `#hashes`);
-a map setting an entry keeps its table up to date, and `mapOf` builds a map that way, so a map
-literal or a JSON object of n keys is built in O(n) too.
+a map setting an entry keeps its table up to date, a map copied keeps a copy of its table, and
+`mapOf` builds a map that way, so a map literal or a JSON object of n keys is built in O(n) too.
+
+**A value handed from one holder to another** (a return into its caller or future, a slot's
+value into its future) is held meanwhile, so one held once never passes through zero, letting go
+of its parts to hold them again.
 
 ## 10. Code the rule rejects
 
