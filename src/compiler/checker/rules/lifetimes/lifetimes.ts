@@ -41,8 +41,8 @@ import { flowsBuiltFor } from '../flow/build/index.ts';
 import type { FlowFunction } from '../flow/flow-ir.ts';
 import type { AnalysisContext, Violation } from './analysis/body.ts';
 import { type Analysis, analyze } from './analysis/index.ts';
-import { constantFlow, Declared, defaultsFlows, defaultsFound, withDefaults } from './declared.ts';
-import { Dispatch } from './dispatch.ts';
+import { Declared, defaultsFlows, defaultsFound, withDefaults } from './declared.ts';
+import { convertedWitnesses, witnessesConvertedIn, witnessesOf } from './dispatch.ts';
 import { typeFactsOf } from './facts.ts';
 import type { FindingDeclaration, LifetimeFinding } from './finding.ts';
 import {
@@ -77,7 +77,6 @@ export class Lifetimes {
   readonly #defaultResults: EntryTable<CheckerNote, FunctionDeclaration, DefaultResults>;
   readonly #context: AnalysisContext;
   readonly #declared: Declared;
-  readonly #dispatch: Dispatch;
   readonly #reports: EntryTable<CheckerNote, FindingDeclaration, void, ModuleId>;
 
   constructor(checker: CheckerContext) {
@@ -119,7 +118,6 @@ export class Lifetimes {
       analysisOf: (declaration) => this.#analysisOf(declaration),
       hasBody,
     });
-    this.#dispatch = new Dispatch(checker, (module) => this.#flowsOf(module));
     this.#reports = checker.entries.table({
       name: 'lifetime reports',
       compute: (declaration: FindingDeclaration, module: ModuleId) =>
@@ -137,7 +135,8 @@ export class Lifetimes {
       defaultResult: (declaration, index) => this.#defaultResult(declaration, index, undefined),
       substitute: (type, call) => substitutedIn(checker, type, call),
       readsWhatItIterates: (iterate) => checker.isStd(checker.moduleOf(iterate)),
-      witnessesOf: (call) => this.#dispatch.witnessesOf(call),
+      witnessesOf: (call) => witnessesOf(checker, call),
+      convertedWitnesses: (from, fit) => convertedWitnesses(checker, from, fit),
     };
   }
 
@@ -196,19 +195,28 @@ export class Lifetimes {
     return functionsOf({ items }).filter(hasCode);
   }
 
-  /** The functions with code `caller`'s body and defaults call, witnesses included. */
+  /**
+   * The functions with code `caller`'s body and defaults call, witnesses included, and those of
+   * what they put into an `any`, whose checks read their summaries.
+   */
   #calleesOf(caller: FunctionDeclaration): readonly FunctionDeclaration[] {
+    const checker = this.#checker;
     const calls = [
-      ...((hasBody(caller) ? this.#checker.bodyOf(caller)?.madeCalls() : undefined) ?? []),
-      ...(this.#checker.defaultsOf(caller)?.madeCalls() ?? []),
+      ...((hasBody(caller) ? checker.bodyOf(caller)?.madeCalls() : undefined) ?? []),
+      ...(checker.defaultsOf(caller)?.madeCalls() ?? []),
+    ];
+    const flows = [
+      ...(hasBody(caller) ? [this.#flowOf(caller)] : []).filter((flow) => flow !== undefined),
+      ...defaultsFlows(checker, caller).map(({ flow }) => flow),
     ];
     const callees = new Set(
-      calls.flatMap(({ call }) =>
-        [
+      [
+        ...calls.flatMap(({ call }) => [
           ...functionCallsWithin(call),
-          ...(call.kind === 'requirement' ? (this.#dispatch.witnessesOf(call) ?? []) : []),
-        ].map((each) => each.function),
-      ),
+          ...(call.kind === 'requirement' ? (witnessesOf(checker, call) ?? []) : []),
+        ]),
+        ...flows.flatMap((flow) => witnessesConvertedIn(checker, flow)),
+      ].map((each) => each.function),
     );
     return [...callees].filter(hasCode);
   }
@@ -314,23 +322,6 @@ export class Lifetimes {
   #flowOf(declaration: FunctionDeclaration): FlowFunction | undefined {
     const body = this.#checker.bodyOf(declaration);
     return body === undefined ? undefined : flowsBuiltFor(body).values().next().value;
-  }
-
-  /** Every flow `module`'s bodies have: its functions', their defaults', its context constants'. */
-  #flowsOf(module: ModuleId): readonly FlowFunction[] {
-    const items = this.#checker.inputs.itemsOf(module);
-    const functions = functionsOf({ items });
-    return [
-      ...functions.flatMap((declaration) =>
-        hasBody(declaration) ? (this.#flowOf(declaration) ?? []) : [],
-      ),
-      ...functions.flatMap((declaration) =>
-        defaultsFlows(this.#checker, declaration).map(({ flow }) => flow),
-      ),
-      ...constantsOf(items).flatMap(
-        (declaration) => constantFlow(this.#checker, declaration) ?? [],
-      ),
-    ];
   }
 
   /** What `call`'s function does: a group member's guess, or its summary. */

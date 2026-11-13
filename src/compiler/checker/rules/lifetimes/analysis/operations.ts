@@ -28,7 +28,7 @@ import type { NodeId } from '../reach-state.ts';
 import type { Summary } from '../summary.ts';
 import { type At, closureBindings, functionBindings, nodesGiven } from './bindings.ts';
 import { type BodyAnalysis, placeHolds } from './body.ts';
-import { applySummary, unknownCall } from './calls.ts';
+import { applySummary, checkWitnesses, unknownCall } from './calls.ts';
 import { dispatchedCall } from './dispatched.ts';
 import { type FlowState, materialize } from './flow-state.ts';
 import { giveValue, withDefaults } from './given.ts';
@@ -43,6 +43,7 @@ const handlers: { readonly [Kind in Operation['op']]: Handler<Kind> } = {
   compute: (at, { into }) => fresh(at, into),
   unknown: (at, { into }) => fresh(at, into),
   copy: (at, operation) => {
+    convertedIntoAny(at, operation);
     if (!at.analysis.nodes.isRelevant(operation.into)) {
       return;
     }
@@ -169,6 +170,18 @@ const handlers: { readonly [Kind in Operation['op']]: Handler<Kind> } = {
     }
   },
 };
+
+/**
+ * A value put into an `any`: code nobody sees may call its witnesses, with any values of their
+ * parameters' types, so each is checked where the value is put in (dispatch.ts).
+ */
+function convertedIntoAny(at: At, { from, fit, site }: Of<'copy'>): void {
+  const { analysis } = at;
+  const type = analysis.nodes.flow.values[from]?.type;
+  if (analysis.recording && fit !== undefined && type !== undefined) {
+    checkWitnesses(at, analysis.context.convertedWitnesses(type, fit), site);
+  }
+}
 
 /**
  * `cursor`, a native `iterate`'s, holds what it was given to iterate, which the calls of it read

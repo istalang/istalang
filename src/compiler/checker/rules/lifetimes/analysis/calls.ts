@@ -54,7 +54,7 @@ export function applySummary(at: At, made: CallMade, summary: Summary, bindings:
     analysis.violate('instance', made.site, substituted, made.callee);
   }
   if (made.call !== undefined) {
-    checkWitnesses(at, made.call, made.site);
+    checkWitnesses(at, witnessCallsOf(made.call.witnesses), made.site);
   }
   applyEffects(at, summary, bound);
   const places = [...bindings.values()].flatMap(({ owner }) => ownedBy(owner));
@@ -251,13 +251,17 @@ function written(at: At, holder: Bound, value: NodeId, inside: boolean): void {
 }
 
 /**
- * The witnesses `call` gives its callee are run by it with values the caller doesn't see, as code
- * its body can't see: each one's writes are checked for any values of its parameters' types
- * (design.md §5.4).
+ * `witnesses`, run with values the caller doesn't see by code its body can't see: the callee a
+ * generic call gives them to, or code calling through an `any` they were put into. Each one's
+ * writes are checked for any values of its parameters' types (design.md §5.4).
  */
-function checkWitnesses({ analysis }: At, call: FunctionCall, site: NodeOf<string>): void {
+export function checkWitnesses(
+  { analysis }: At,
+  witnesses: readonly FunctionCall[],
+  site: NodeOf<string>,
+): void {
   const { context } = analysis;
-  for (const witness of witnessCallsOf(call.witnesses)) {
+  for (const witness of witnesses) {
     const summary = context.calleeSummary(witness) ?? { requirements: [], always: [] };
     const parameters = context.parametersOf(witness.function);
     const substituted = (type: Type) => context.substitute(type, witness);

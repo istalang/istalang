@@ -20,6 +20,7 @@ import type { FunctionDeclaration } from '../../../../syntax/declarations/index.
 import type { NodeOf } from '../../../../syntax/tree/node.ts';
 import type { SignatureParameter } from '../../../check.ts';
 import type { FunctionCall, RequirementCall } from '../../../surface/resolved-call.ts';
+import type { Fit } from '../../../types/fitting/fit/index.ts';
 import type { Type } from '../../../types/type/index.ts';
 import type { FlowFunction, ValueId } from '../../flow/flow-ir.ts';
 import { cycleRelevance } from '../escaping.ts';
@@ -55,6 +56,8 @@ export interface AnalysisContext {
    * where this body can't see them, which it calls as code nobody sees.
    */
   readonly witnessesOf: (call: RequirementCall) => readonly FunctionCall[] | undefined;
+  /** The witnesses a copy converting a value of `from` as `fit` says puts into an `any`. */
+  readonly convertedWitnesses: (from: Type, fit: Fit) => readonly FunctionCall[];
 
   /** What the default of `declaration`'s parameter at `index` relates to, of those before it. */
   readonly defaultResult: (declaration: FunctionDeclaration, index: number) => GivenValue;

@@ -268,27 +268,27 @@ What C3 settled about requirements and defaults:
     arguments (commit `45610cbf`: `rules/lifetimes/symbolic.ts`, `analysis/symbolic-calls.ts`).
     Review found it missed the witness's result and effects, and how they change the rest of the
     body. The exact form is analysing each instantiation's body (findings.md).
-- **A call through an `any T` value** dispatches on the value's own type, which is one of the
-  types the program converts into `any T` (decided 2026-11-12):
-  - an entry per module gathers the conversions into `any` in its bodies, and an entry per trait
-    unions their witnesses across the program's modules, cutting off where an edit converts
-    nothing new;
-  - at a dispatch site the call is a call of each of those witnesses with the site's arguments,
-    whose requirements the caller checks in its own state, as any callee's.
-  So a witness that writes one argument into another is checked where the arguments are known.
-  Checking at the conversion instead would take them as any values of their types, and it
-  rejected FormBuilder's drawing.
+- **A call through an `any T` value** is code the body doesn't see, judged by types like a call of
+  an unknown function value (decided 2026-11-13). Its witnesses are checked where a value goes into
+  an `any` instead: code nobody sees may call any of them, with any values of their parameters'
+  types, so each one's writes are checked by types there, as a generic call's witnesses are.
+  - Joining at each call site the witnesses of every type the program converts (2026-11-12) put
+    each witness into the recursive group of every function calling through its trait, and
+    checking FormBuilder took minutes. Since FormBuilder's rewrite, its drawing checks clean
+    judged at the conversion too.
+  - Which values a program puts into an `any` is then nobody's to gather: an edit putting another
+    value in changes only the function putting it in.
   - The conversions are read as the checker fits each copy, by the pairs of parts lowering
     rebuilds a value by (`types/fitting/part-pairs.ts`). So a value put in part by part, into a
     shape, as a function's parameter the other way round, as its result made a future, or into a
     union holding an `any`, counts too. A union goes in member by member. A value of another `any`
-    goes in as what went into that one.
-  - A value of a type not known yet goes in only in a generic body, whose instantiations the
-    dispatch doesn't follow: a trait some module puts one into is open, and a call through its
-    `any` is code the body doesn't see. The witnesses the instantiating call gives are checked by
-    types, as above.
+    puts in no witness: what went into that one was checked as it went in.
+  - A value of a type not known yet goes in only in a generic body: the witnesses the
+    instantiating call gives are checked by types, as above.
+  - The witnesses a function puts into an `any` count among its callees, so one calling back into
+    it is analysed in one group with it.
   - A call on a union's trait, or on a computed type an instantiation made known, runs each
-    member's witness, as a dispatch does.
+    member's witness, joined and applied as one call's.
 - **A call of a function value:**
   - If the IR shows which closure it is (made in this body, or passed straight to a call), that
     closure's summary applies.
@@ -755,8 +755,8 @@ These go into `test/corpus/lifetimes/`, each with the codes expected.
   conservative, and what it over-rejects has a workaround (§5.6, §5.7, `findings.md`). FormBuilder
   stays `it.fails` until its rewrite.
 - The warm edit's budget is 3.2 ms over the rule off for the 2,098-line module (§8).
-- A call through `any` is checked at its dispatch site, against every type the program converts
-  into it (§5.4).
+- A call through `any` is code the body doesn't see; its witnesses are checked where values go into
+  an `any` (§5.4, 2026-11-13, replacing the dispatch-site join of 2026-11-12).
 - The oracle gives a running execution's future no edge to it (§9.2).
 
 ## References

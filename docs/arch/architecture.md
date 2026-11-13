@@ -160,7 +160,8 @@ src/
                                                                  composition.ts summaries bound and joined, reach-state.ts the reach at
                                                                  one point, on rows of bits (node-relation.ts), analysis/ one body's
                                                                  reach over the flow IR (reach-pairs.ts: the pairs its types allow),
-                                                                 declared.ts defaults, context constants and `dispose`, dispatch.ts calls through `any`,
+                                                                 declared.ts defaults, context constants and `dispose`, dispatch.ts what a call on a union runs
+                                                                 and the witnesses a copy puts into an `any`,
                                                                  reports.ts the diagnostics),
                                                                  expansion/ (generics needing endlessly many instantiations), kinds/ (the data rule: what a
                                                                  function's signature holds of a kind, and every value its checked body
