@@ -326,13 +326,18 @@ function callEntity(
       return checkVariantCall(context, call, callee, entity);
     case 'type':
     case 'primitive': {
+      // A trait names no type, so nothing converts into it (§3.10): it can't be called.
       const owner = namedType(context, callee);
-      return owner === undefined ? errorType : callStatic(context, call, owner, conversionFunction);
+      if (owner !== undefined) {
+        return callStatic(context, call, owner, conversionFunction);
+      }
+      break;
     }
     default:
-      context.report(checkerDiagnostics.notCallable(callee.span, name));
-      return errorType;
+      break;
   }
+  context.report(checkerDiagnostics.notCallable(callee.span, name));
+  return errorType;
 }
 
 /** A static call of `name` through the type `owner` (§3.7), a conversion being one (§3.10). */
