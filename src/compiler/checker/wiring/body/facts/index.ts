@@ -1,10 +1,11 @@
 /**
  * The facts a checked body answers (surface/checked-body.ts `BodyFacts`), each one entry of
  * `bodyFacts`: how it is read as a pass checked it, from what checking recorded (recorded-body.ts);
- * how an instantiation reads it, from the parts its answers are made of (instantiation.ts); and how
- * the passes of the field loops around a node join it, for tools (pass-joins.ts). The body and its
- * views are derived from the table, so a fact added to the contract fails to typecheck until its
- * entry says all three, and no view passes a fact through unread.
+ * how an instantiation reads it, from the parts its answers are made of (instantiation.ts); and, for
+ * a fact tools read (surface/denotation.ts `JoinedBody`), how the passes of the field loops around
+ * a node join it (pass-joins.ts). The body and its views are derived from the table, so a fact
+ * added to the contract fails to typecheck until its entry says how each view reads it, and no
+ * view passes a fact through unread.
  */
 
 import { sameItems } from '../../../../../foundation/structures/equality.ts';
@@ -12,7 +13,12 @@ import { constructedVariant } from '../../../../syntax/declarations/field-defaul
 import type { Pass } from '../../../contexts/passes.ts';
 import type { PassAnswers } from '../../../lookup/pass-views.ts';
 import type { BodyFacts, CheckedBody } from '../../../surface/checked-body.ts';
-import { type JoinedBody, type ListedFacts, listedFacts } from '../../../surface/denotation.ts';
+import {
+  type JoinedBody,
+  joinedFacts,
+  type ListedFacts,
+  listedFacts,
+} from '../../../surface/denotation.ts';
 import type { ResolvedCall } from '../../../surface/resolved-call.ts';
 import { exactFit } from '../../../types/fitting/fit/index.ts';
 import { sameType } from '../../../types/identity/identity.ts';
@@ -22,28 +28,32 @@ import {
   everyDistinct,
   everyListed,
   firstFound,
-  firstListed,
   firstPass,
   firstRecorded,
-  inEveryPass,
   typesJoined,
 } from './pass-joins.ts';
 import type { RecordedBody } from './recorded-body.ts';
 
 /**
  * How a body answers one fact: read as `pass` checked it, from what it recorded (`bodyAt` reads
- * the passes nested in it); read through an instantiation; and read across the passes of the field
- * loops around a node, as tools read it.
+ * the passes nested in it); and read through an instantiation.
  */
-interface BodyFact<Fact, Joined> {
+interface BodyFact<Fact> {
   readonly at: (recorded: RecordedBody, pass: Pass, bodyAt: (pass: Pass) => CheckedBody) => Fact;
   readonly instantiated: (fact: Fact, by: Instantiation) => Fact;
+}
+
+/** How tools read a fact across the passes of the field loops around a node. */
+interface JoinedFact<Fact, Joined> {
   readonly joined: (answers: PassAnswers<Fact>, rules: TypeRules) => Joined;
 }
 
 type FactName = keyof BodyFacts;
 
 type ListedName = keyof typeof listedFacts;
+
+/** A fact tools read (`JoinedBody`): joined as it is, or listed. */
+type ToolName = (typeof joinedFacts)[number] | ListedName;
 
 /**
  * What a fact is across passes: as a pass answers it, or the list tools read (check.ts
@@ -53,8 +63,15 @@ type AcrossPasses<Name extends FactName> = Name extends ListedName
   ? ListedFacts[(typeof listedFacts)[Name]]
   : BodyFacts[Name];
 
-/** How a body answers each fact of the contract: an entry per `BodyFacts` member, none missing. */
-const bodyFacts: { readonly [Name in FactName]: BodyFact<BodyFacts[Name], AcrossPasses<Name>> } = {
+/** How a body answers one fact, and how tools read it across passes if they do. */
+type FactEntry<Name extends FactName> = BodyFact<BodyFacts[Name]> &
+  (Name extends ToolName ? JoinedFact<BodyFacts[Name], AcrossPasses<Name>> : unknown);
+
+/**
+ * How a body answers each fact of the contract: an entry per `BodyFacts` member, none missing, and
+ * a join for exactly the facts tools read.
+ */
+const bodyFacts: { readonly [Name in FactName]: FactEntry<Name> } = {
   typeOf: {
     at:
       ({ records }, pass) =>
@@ -91,7 +108,6 @@ const bodyFacts: { readonly [Name in FactName]: BodyFact<BodyFacts[Name], Across
       (call) =>
         units.deferrals.of(call, pass),
     instantiated: (deferredFunctionOf, by) => readThrough(deferredFunctionOf, by.concrete),
-    joined: typesJoined,
   },
   madeCalls: {
     at:
@@ -110,7 +126,6 @@ const bodyFacts: { readonly [Name in FactName]: BodyFact<BodyFacts[Name], Across
       (node, role) =>
         units.implicit.of(node, role, pass),
     instantiated: asChecked,
-    joined: (answers) => everyDistinct(answers, sameCallee),
   },
   collectionFormOf: {
     at:
@@ -118,7 +133,6 @@ const bodyFacts: { readonly [Name in FactName]: BodyFact<BodyFacts[Name], Across
       (literal) =>
         units.collections.of(literal, pass),
     instantiated: asChecked,
-    joined: firstPass,
   },
   iterationOf: {
     at:
@@ -126,7 +140,6 @@ const bodyFacts: { readonly [Name in FactName]: BodyFact<BodyFacts[Name], Across
       (iteration) =>
         units.iterations.formOf(iteration, pass),
     instantiated: (iterationOf, by) => readThrough(iterationOf, by.iteration),
-    joined: firstPass,
   },
   fitAt: {
     at:
@@ -134,7 +147,6 @@ const bodyFacts: { readonly [Name in FactName]: BodyFact<BodyFacts[Name], Across
       (site) =>
         records.fits.get(site, pass) ?? exactFit,
     instantiated: (fitAt, by) => (site) => by.fit(fitAt(site)),
-    joined: firstPass,
   },
   targetsOf: {
     at:
@@ -142,7 +154,6 @@ const bodyFacts: { readonly [Name in FactName]: BodyFact<BodyFacts[Name], Across
       (owner) =>
         units.variables.targetsOf(owner, pass),
     instantiated: (targetsOf, by) => (owner) => targetsOf(owner).map(by.target),
-    joined: firstListed,
   },
   assignedOf: {
     at:
@@ -150,7 +161,6 @@ const bodyFacts: { readonly [Name in FactName]: BodyFact<BodyFacts[Name], Across
       (assignment) =>
         units.variables.assignedOf(assignment, pass),
     instantiated: (assignedOf, by) => (assignment) => assignedOf(assignment).map(by.assigned),
-    joined: firstListed,
   },
   inCell: {
     at:
@@ -158,7 +168,6 @@ const bodyFacts: { readonly [Name in FactName]: BodyFact<BodyFacts[Name], Across
       (name) =>
         units.variables.inCell(name),
     instantiated: asChecked,
-    joined: firstPass,
   },
   functionOf: {
     at:
@@ -174,7 +183,6 @@ const bodyFacts: { readonly [Name in FactName]: BodyFact<BodyFacts[Name], Across
       (literal) =>
         units.literals.sourcesOf(literal, pass),
     instantiated: asChecked,
-    joined: firstFound,
   },
   literalFieldsOf: {
     at:
@@ -270,7 +278,6 @@ const bodyFacts: { readonly [Name in FactName]: BodyFact<BodyFacts[Name], Across
           body: bodyAt(inner),
         })),
     instantiated: (passesOf, by) => (header) => passesOf(header).map(by.pass),
-    joined: everyListed,
   },
   isRuledOut: {
     at:
@@ -278,7 +285,6 @@ const bodyFacts: { readonly [Name in FactName]: BodyFact<BodyFacts[Name], Across
       (block) =>
         units.decisions.isRuledOut(block, pass),
     instantiated: asChecked,
-    joined: inEveryPass,
   },
   stopsAt: {
     at:
@@ -286,7 +292,6 @@ const bodyFacts: { readonly [Name in FactName]: BodyFact<BodyFacts[Name], Across
       (operation) =>
         units.decisions.stopsAt(operation, pass),
     instantiated: asChecked,
-    joined: firstFound,
   },
   decidedOf: {
     at:
@@ -294,16 +299,22 @@ const bodyFacts: { readonly [Name in FactName]: BodyFact<BodyFacts[Name], Across
       (condition) =>
         units.decisions.decidedAt(condition, pass),
     instantiated: asChecked,
-    joined: firstFound,
   },
   result: {
     at: ({ result }) => result,
     instantiated: (result, by) => by.concrete(result),
-    joined: firstPass,
   },
 };
 
 const factNames = Object.keys(bodyFacts) as readonly FactName[];
+
+const joins: { readonly [Name in ToolName]: JoinedFact<BodyFacts[Name], AcrossPasses<Name>> } =
+  bodyFacts;
+
+const toolNames: readonly ToolName[] = [
+  ...joinedFacts,
+  ...(Object.keys(listedFacts) as ListedName[]),
+];
 
 /** The CheckedBody of what was checked as `pass` sees it. */
 export function checkedAt(recorded: RecordedBody, pass: Pass): CheckedBody {
@@ -334,7 +345,7 @@ function bodyOf(factOf: <Name extends FactName>(name: Name) => BodyFacts[Name]):
 function joinedOf(bodies: PassAnswers<CheckedBody>, rules: TypeRules): JoinedBody {
   const [first, ...others] = bodies;
   const answered: Partial<Record<keyof JoinedBody, unknown>> = {};
-  for (const name of factNames) {
+  for (const name of toolNames) {
     const joined = joinedFact(name, [first[name], ...others.map((each) => each[name])], rules);
     answered[isListed(name) ? listedFacts[name] : name] = joined;
   }
@@ -342,15 +353,15 @@ function joinedOf(bodies: PassAnswers<CheckedBody>, rules: TypeRules): JoinedBod
   return answered as JoinedBody;
 }
 
-function joinedFact<Name extends FactName>(
+function joinedFact<Name extends ToolName>(
   name: Name,
   answers: PassAnswers<BodyFacts[Name]>,
   rules: TypeRules,
 ): AcrossPasses<Name> {
-  return bodyFacts[name].joined(answers, rules);
+  return joins[name].joined(answers, rules);
 }
 
-function isListed(name: FactName): name is ListedName {
+function isListed(name: ToolName): name is ListedName {
   return Object.hasOwn(listedFacts, name);
 }
 

@@ -52,14 +52,6 @@ export function firstFound<Args extends unknown[], Value>(
   };
 }
 
-/** A list by node: the first pass's that isn't empty. */
-export function firstListed<Args extends unknown[], Item>(
-  answers: PassAnswers<(...args: Args) => readonly Item[]>,
-): (...args: Args) => readonly Item[] {
-  return (...args) =>
-    answers.map((answer) => answer(...args)).find((each) => each.length > 0) ?? [];
-}
-
 /** A list by node: every pass's items, each once, in the order checked. */
 export function everyListed<Args extends unknown[], Item>(
   answers: PassAnswers<(...args: Args) => readonly Item[]>,
@@ -77,15 +69,6 @@ export function everyDistinct<Args extends unknown[], Value>(
       answers.flatMap((answer) => answer(...args) ?? []),
       same,
     );
-}
-
-/**
- * Whether a node holds in every pass, as a branch is ruled out only where every pass rules it out.
- */
-export function inEveryPass<Args extends unknown[]>(
-  answers: PassAnswers<(...args: Args) => boolean>,
-): (...args: Args) => boolean {
-  return (...args) => answers.every((answer) => answer(...args));
 }
 
 /** Records by node: the first pass's that has one, and held where any pass has one. */

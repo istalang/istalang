@@ -30,12 +30,12 @@ import type {
 import type { Lambda, MemberAccess } from '../../syntax/expressions/index.ts';
 import type { StringLiteral } from '../../syntax/expressions/literals/literals.ts';
 import type { SyntaxNode } from '../../syntax/tree/index.ts';
-import type { Identifier, NodeOf } from '../../syntax/tree/node.ts';
+import type { Identifier } from '../../syntax/tree/node.ts';
 import type { TypeNode } from '../../syntax/types/index.ts';
 import type { VariantMember } from '../check.ts';
 import type { Constraint, FieldMember, Type } from '../types/type/index.ts';
 import type { BodyFacts, CheckedFunction } from './checked-body.ts';
-import type { ImplicitRole, ResolvedCall, ResolvedSite } from './resolved-call.ts';
+import type { ResolvedCall, ResolvedSite } from './resolved-call.ts';
 
 /** What names a type: a declared one, a primitive, or `Self` inside a trait. */
 type TypeNaming = Extract<Entity, { readonly kind: 'type' | 'primitive' | 'self' }>;
@@ -117,9 +117,27 @@ export interface LookupQueries {
  */
 export const listedFacts = {
   resolved: 'callsAt',
-  implicitCallOf: 'implicitCallsOf',
   functionOf: 'functionsOf',
 } as const satisfies Partial<Record<keyof BodyFacts, keyof ListedFacts>>;
+
+/** The facts a body answers that tools read as one across passes, as each pass answers them. */
+export const joinedFacts = [
+  'typeOf',
+  'expectedOf',
+  'valueCalls',
+  'madeCalls',
+  'literalFieldsOf',
+  'patternOf',
+  'chainOf',
+  'fieldReadOf',
+  'declaredTypeOf',
+  'fieldGivenBy',
+  'keyOwnerOf',
+  'builtLiteralOf',
+  'chosenVariantOf',
+  'candidatesAt',
+  'labels',
+] as const satisfies readonly (keyof BodyFacts)[];
 
 /**
  * What tools read of a call or a function across passes: each distinct one a pass checked, in pass
@@ -128,8 +146,6 @@ export const listedFacts = {
 export interface ListedFacts {
   /** The functions `site` calls, or names as a value: each one a pass resolved it to. */
   readonly callsAt: (site: ResolvedSite) => readonly ResolvedCall[];
-  /** The calls the language makes for `node` in `role` (`implicitCallOf`): each one a pass made. */
-  readonly implicitCallsOf: (node: NodeOf<string>, role: ImplicitRole) => readonly ResolvedCall[];
   /** A lambda or local function as each pass checked it: one for each type it was checked as. */
   readonly functionsOf: (node: Lambda | FunctionDeclaration) => readonly CheckedFunction[];
 }
@@ -138,4 +154,4 @@ export interface ListedFacts {
  * A body as tools read it at a node: the passes of the field loops around the node read as one
  * (§4), each fact joined as its entry says (wiring/body/facts/), calls and functions listed.
  */
-export type JoinedBody = Omit<BodyFacts, keyof typeof listedFacts> & ListedFacts;
+export type JoinedBody = Pick<BodyFacts, (typeof joinedFacts)[number]> & ListedFacts;
