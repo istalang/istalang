@@ -20,12 +20,7 @@
 
 import type { Argument, Place } from '../../definition/instructions/places.ts';
 import type { Register, TypeId } from '../../definition/operands.ts';
-import {
-  type CompositeValue,
-  handleTarget,
-  handleTo,
-  type Value,
-} from '../../definition/values/values.ts';
+import { handleTarget, handleTo, type Value } from '../../definition/values/values.ts';
 import { unreachable } from '../../foundation/structures/unreachable.ts';
 import type { ValueChanges } from '../lifetimes/in-place.ts';
 import { heldIn } from '../snapshot/holdings.ts';
@@ -158,24 +153,15 @@ function writeReference(heap: FrameHeap, reference: Reference, value: Value): vo
   );
 }
 
-/**
- * Makes `change`, which puts `inserted` in, to the value at the place a reference names, through
- * the instance's changes in place (lifetimes/in-place.ts); what `change` gives.
- */
-export function changeReference<Result>(
-  heap: FrameHeap,
-  reference: Reference,
-  inserted: readonly Value[],
-  change: (value: CompositeValue, changes: ValueChanges) => Result,
-): Result {
-  const { whole, result } = heap.values.changed(
-    heap.read(reference.cell),
-    reference.path,
-    inserted,
-    (node) => change(node, heap.values),
-  );
-  heap.write(reference.cell, whole);
-  return result;
+/** The changes made to the array or map at the place a reference names (lifetimes/in-place.ts). */
+export function changesAt(heap: FrameHeap, reference: Reference): ValueChanges {
+  return heap.values.changesAt({
+    read: () => heap.read(reference.cell),
+    path: reference.path,
+    write: (whole) => {
+      heap.write(reference.cell, whole);
+    },
+  });
 }
 
 /**

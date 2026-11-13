@@ -68,34 +68,26 @@ export const arrayNatives = (keys: NativeKeys): Natives<NativeContext> => ({
 /** The `&self` methods, changing the array through their context. */
 const changingNatives = (keys: NativeKeys): Natives<NativeContext> => ({
   [keys.of('push', referenceKey(array), item)]: ([, element], context) => {
-    const items = [element ?? null];
-    context.change(0, items, (xs, changes) => changes.push(xs, items));
+    context.changes(0).push([element ?? null]);
     return null;
   },
   [keys.of('pop', referenceKey(array))]: (_values, context) =>
-    resultOptional(
-      context,
-      context.change(0, [], (xs, changes) => changes.pop(xs)),
-    ),
+    resultOptional(context, context.changes(0).pop()),
   [keys.of('reverse', referenceKey(array))]: (_values, context) => {
-    context.change(0, [], (xs, changes) => changes.reverse(xs));
+    context.changes(0).reverse();
     return null;
   },
   [keys.of('setIndex', referenceKey(array), 'Int', item)]: ([xs, index, element], context) => {
     const position = checkedIndex(int(index), elementsOf(xs).length, what);
-    const items = [element ?? null];
-    context.change(0, items, (node, changes) => changes.splice(node, position, 1, items));
+    context.changes(0).splice(position, 1, [element ?? null]);
     return null;
   },
   [keys.of('setIndex', referenceKey(array), range, array)]: ([xs, span, replacement], context) => {
     const selection = selectionOf(rangeOf(context, span), elementsOf(xs).length, what);
-    const items = elementsOf(replacement);
-    const splices = splicesOf(selection, items);
-    context.change(0, items, (node, changes) => {
-      for (const splice of splices) {
-        changes.splice(node, splice.start, splice.count, splice.items);
-      }
-    });
+    const changes = context.changes(0);
+    for (const { start, count, items } of splicesOf(selection, elementsOf(replacement))) {
+      changes.splice(start, count, items);
+    }
     return null;
   },
 });

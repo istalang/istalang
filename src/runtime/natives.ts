@@ -22,7 +22,7 @@
 
 import type { FunctionId, TypeId } from '../definition/operands.ts';
 import type { TypeDefinition } from '../definition/tables/types.ts';
-import type { CompositeValue, Value } from '../definition/values/values.ts';
+import type { Value } from '../definition/values/values.ts';
 import type { Inspection, LogRecord, SpawnOptions } from './instance-state.ts';
 import type { ValueChanges } from './lifetimes/in-place.ts';
 import type { CallMaker } from './scheduler/run-contexts.ts';
@@ -51,15 +51,11 @@ export interface NativeContext {
    */
   readonly now: () => bigint;
   /**
-   * Makes `change` to the value of argument `position`, which the extern takes by `&` (§3.7),
-   * through `changes`: in place when nothing else holds it, else in a copy that takes its place
-   * (lifetimes/in-place.ts). `inserted` lists the values the change puts in. What `change` gives.
+   * The changes the native makes to the value of argument `position`, which the extern takes by `&`
+   * (§3.7): each in place when nothing else holds it, else in a copy that takes its place
+   * (lifetimes/in-place.ts).
    */
-  readonly change: <Result>(
-    position: number,
-    inserted: readonly Value[],
-    change: (value: CompositeValue, changes: ValueChanges) => Result,
-  ) => Result;
+  readonly changes: (position: number) => ValueChanges;
   /** Where every running frame is, innermost first, as an `Error`'s `trace` reads (§3.12). */
   readonly trace: () => string;
   /**

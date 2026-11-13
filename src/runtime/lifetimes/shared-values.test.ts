@@ -18,7 +18,7 @@ import { seedBytes, seedTextOf } from '../snapshot/random.ts';
 import { memoryStore } from '../store.ts';
 import { freezeValuesIn } from './in-place.test-kit.ts';
 
-/** A statement changing the program's variables after its await. */
+/** A statement changing the program's variables. */
 const change = fc.constantFrom(
   'xs.push(4)',
   'xs[0] = 9',
@@ -34,8 +34,13 @@ const change = fc.constantFrom(
   'ys.push(7)',
 );
 
-/** A program that builds its variables, awaits, then makes `changes`, giving a digest of them. */
-function program(changes: readonly string[]): string {
+const changes = fc.array(change, { maxLength: 6 });
+
+/**
+ * A program that builds its variables, makes `before`, awaits, then makes `after`, giving a digest
+ * of them: what it changed in place before its commit is restored as the commit keeps it.
+ */
+function program(before: readonly string[], after: readonly string[]): string {
   return compiledText(`
 import * as runtime from 'runtime'
 import * as time from 'time'
@@ -54,8 +59,9 @@ ista async fn _main() -> Int:
   ys = ys
   m = m
   box = box
+${before.map((each) => `  ${each}`).join('\n')}
   await time.delay(10ms)
-${changes.map((each) => `  ${each}`).join('\n')}
+${after.map((each) => `  ${each}`).join('\n')}
   let digest = 0
   for x in [...xs, -1, ...ys, -1, ...box.items, -1, box.n]:
     digest = (digest * 31 + x) % 1000003
@@ -90,8 +96,8 @@ function endings(text: string): readonly unknown[] {
 describe('values shared across instances', () => {
   it('are never written, so every instance restored from one snapshot ends alike', () => {
     fc.assert(
-      fc.property(fc.array(change, { maxLength: 8 }), (changes) => {
-        const [straight, ...restored] = endings(program(changes));
+      fc.property(changes, changes, (before, after) => {
+        const [straight, ...restored] = endings(program(before, after));
         expect(straight).toMatchObject({ kind: 'finished' });
         for (const each of restored) {
           expect(each).toEqual(straight);
@@ -99,5 +105,5 @@ describe('values shared across instances', () => {
       }),
       { numRuns: 30 },
     );
-  });
+  }, 60_000);
 });

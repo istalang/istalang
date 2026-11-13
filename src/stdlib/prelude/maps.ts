@@ -35,7 +35,7 @@ export const mapNatives = (keys: NativeKeys): Natives<NativeContext> => ({
   [keys.of('has', map, keyType)]: hasKey,
   [keys.of('includes', map, keyType)]: hasKey,
   [keys.of('delete', referenceKey(map), keyType)]: ([, k], context) =>
-    context.change(0, [], (m, changes) => changes.deleteEntry(m, k ?? null)),
+    context.changes(0).deleteEntry(k ?? null),
   [keys.of('keys', map)]: ([m]) => arrayOf(mapValueOf(m).entries.map(([k]) => k)),
   [keys.of('values', map)]: ([m]) => arrayOf(mapValueOf(m).entries.map(([, v]) => v)),
   [keys.of('entries', map)]: ([m]) => arrayOf(mapValueOf(m).entries.map(entryTuple)),
@@ -47,9 +47,7 @@ export const mapNatives = (keys: NativeKeys): Natives<NativeContext> => ({
     return found;
   },
   [keys.of('setIndex', referenceKey(map), keyType, valueType)]: ([, k, v], context) => {
-    const key = k ?? null;
-    const value = v ?? null;
-    context.change(0, [key, value], (m, changes) => changes.setEntry(m, key, value));
+    context.changes(0).setEntry(k ?? null, v ?? null);
     return null;
   },
   [keys.of('_entryAt', map, 'Int')]: ([m, position]) => {

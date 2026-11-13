@@ -9,6 +9,7 @@ import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { valueArbitrary } from '../../definition/values/values.test-kit.ts';
 import {
+  type CompositeValue,
   childValues,
   elementsOf,
   isComposite,
@@ -237,17 +238,24 @@ function run(step: Step, live: Registers, values: InPlace, model: Value[]): void
       if (!hasElement(at(model, step.from), 0)) {
         return;
       }
-      const { whole } = values.changed(at(live.values, step.from), [], [], values.pop);
-      live.write(step.from, whole);
+      values
+        .changesAt({
+          read: () => at(live.values, step.from),
+          path: [],
+          write: (whole) => {
+            live.write(step.from, whole);
+          },
+        })
+        .pop();
       model[step.from] = { kind: 'array', elements: elementsOf(at(model, step.from)).slice(0, -1) };
       return;
     }
     case 'pair': {
-      const pair = (registers: readonly Value[]): Value => ({
+      const pair = (registers: readonly Value[]): CompositeValue => ({
         kind: 'array',
         elements: [at(registers, step.into), at(registers, step.with)],
       });
-      live.write(step.into, pair(live.values));
+      live.write(step.into, values.made(pair(live.values)));
       model[step.into] = pair(model);
       return;
     }

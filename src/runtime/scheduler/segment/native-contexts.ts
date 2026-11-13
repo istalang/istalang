@@ -14,11 +14,10 @@
 
 import type { TypeId } from '../../../definition/operands.ts';
 import { errorOf, okOf } from '../../../definition/values/declared-values.ts';
-import { closureOf, handleTo, type Value } from '../../../definition/values/values.ts';
+import { handleTo, type Value } from '../../../definition/values/values.ts';
 import { unreachable } from '../../../foundation/structures/unreachable.ts';
 import type { NativeContexts, NativeResolver } from '../../natives.ts';
-import type { InstanceCall } from '../../snapshot/snapshot.ts';
-import { arriving, leaving } from '../instance/crossing.ts';
+import { arriving, leavingCall } from '../instance/crossing.ts';
 import { handleObject } from '../instance/heap.ts';
 import type { Instance } from '../instance/index.ts';
 import { panicCode } from '../instance/instance-ends.ts';
@@ -115,18 +114,6 @@ function awaitedFromContexts(
     contexts.release(id);
   });
   return future;
-}
-
-/** The call `closure`, a function taking nothing, makes, as it leaves `instance`. */
-function leavingCall(instance: Instance, closure: Value): InstanceCall {
-  const { function: called, captures } =
-    closureOf(closure) ??
-    unreachable('A context is called with no function; the checker forbids it.');
-  return {
-    function: called,
-    captures: captures.map((each) => leaving(instance, each)),
-    arguments: [],
-  };
 }
 
 /** Hears a call's end into `resolver`: `Ok` of what it gave, or `Err` of the context's panic. */

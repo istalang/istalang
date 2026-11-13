@@ -44,6 +44,7 @@ export const {
   mapOf,
   setEntryInPlace,
   deleteEntryInPlace,
+  copiedMap,
   forget: forgetDerived,
 } = new ValueSemantics(valueView);
 

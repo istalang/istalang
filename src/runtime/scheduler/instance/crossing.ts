@@ -4,18 +4,23 @@
  * except a host value a `dispose` made a resource, which crosses as its host's JSON: it leaves as
  * that JSON and arrives as the resource for it, the one the instance has already if any, so a handle
  * that crosses and comes back stays the same (§3.6). A mock records the values it is called with as
- * they would leave, its own instance's other handles kept (scheduler/testing/mocks.ts).
+ * they would leave, its own instance's other handles kept (scheduler/testing/mocks.ts). Every value
+ * crossing is rebuilt, so none is shared with the instance it left, which may change its own in
+ * place (runtime/lifetimes/in-place.ts).
  */
 
 import { isResourceType } from '../../../definition/tables/types.ts';
 import { replacingParts } from '../../../definition/values/replacing.ts';
 import {
+  closureOf,
   handleTarget,
   handleTo,
   samePayload,
   type Value,
 } from '../../../definition/values/values.ts';
+import { unreachable } from '../../../foundation/structures/unreachable.ts';
 import { Panic } from '../../natives.ts';
+import type { InstanceCall } from '../../snapshot/snapshot.ts';
 import type { Instance } from './index.ts';
 
 /**
@@ -50,6 +55,20 @@ export function hostValuesIn(
       ? { kind: 'extern', type: object.type, payload: object.payload }
       : other(part);
   });
+}
+
+/**
+ * The call `closure`, a function taking nothing, makes as it leaves `instance`: a context's or a
+ * spawned instance's, its captures leaving with it.
+ */
+export function leavingCall(instance: Instance, closure: Value): InstanceCall {
+  const { function: called, captures } =
+    closureOf(closure) ?? unreachable('A call leaves with no function; the checker forbids it.');
+  return {
+    function: called,
+    captures: captures.map((each) => leaving(instance, each)),
+    arguments: [],
+  };
 }
 
 /**

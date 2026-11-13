@@ -15,8 +15,9 @@
  * - The counts tell which values may change in place (`values`, in-place.ts): a node held once.
  */
 
+import type { Value } from '../../definition/values/values.ts';
 import type { LiveObject } from '../scheduler/instance/heap.ts';
-import type { Held } from '../snapshot/holdings.ts';
+import { type Held, nothingHeld } from '../snapshot/holdings.ts';
 import { Counts } from './counts.ts';
 import { InPlace } from './in-place.ts';
 
@@ -47,6 +48,20 @@ export class HolderWrites {
   /** A holder that held `was` holds `now`. */
   changed(was: Held, now: Held): void {
     this.#counts.changed(was, now);
+  }
+
+  /**
+   * Runs `move`, which hands `value` from one holder to another, holding it meanwhile: a value held
+   * once then never passes through zero, letting go of its parts only to hold them again.
+   */
+  handOver<Result>(value: Value, move: () => Result): Result {
+    const held: Held = { values: [value], holds: [] };
+    this.changed(nothingHeld, held);
+    try {
+      return move();
+    } finally {
+      this.changed(held, nothingHeld);
+    }
   }
 
   /** How many holders counted object `id` has; undefined for one not counted. */

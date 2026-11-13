@@ -76,9 +76,11 @@ export class Slots {
       return handleTo(future);
     }
     const { yielded, contents } = completed(slot.value, operation, value);
-    store(this.#heap, slot, slot.waiting, contents);
-    this.#serve(slot.id);
-    return this.#futures.createHandle({ kind: 'resolved', value: yielded });
+    return this.#holders.handOver(yielded, () => {
+      store(this.#heap, slot, slot.waiting, contents);
+      this.#serve(slot.id);
+      return this.#futures.createHandle({ kind: 'resolved', value: yielded });
+    });
   }
 
   /**

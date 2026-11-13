@@ -58,3 +58,11 @@ export function replacingParts(
   }
   return result;
 }
+
+/**
+ * A copy of `value` sharing none of its composites: what a holder no count sees keeps, since the
+ * runtime may change a value in place that only counted holders hold (runtime/lifetimes/in-place.ts).
+ */
+export function copied(value: Value): Value {
+  return replacingParts(value, () => undefined);
+}

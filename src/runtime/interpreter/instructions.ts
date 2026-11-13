@@ -6,9 +6,10 @@
  * Loading has already checked every index and every call's arity, so handlers trust what they
  * read.
  *
- * An array or map built from the one its own register holds, and more (`[...dst, item]`, what a
- * comprehension or a spread through a cursor appends per item), grows that one in place where
- * nothing else holds it (lifetimes/in-place.ts), as does a hold's list of what it keeps.
+ * What an instruction builds is the instance's own, which it may change in place while nothing else
+ * holds it (lifetimes/in-place.ts). An array or map built from the one its own register holds, and
+ * more (`[...dst, item]`, what a comprehension or a spread through a cursor appends per item), grows
+ * that one, as does a hold's list of what it keeps.
  */
 
 import type { Callee } from '../../definition/instructions/calls.ts';
@@ -16,6 +17,7 @@ import type { Instruction } from '../../definition/instructions/instruction.ts';
 import type { FunctionId, Register } from '../../definition/operands.ts';
 import { mapOf, valuesEqual } from '../../definition/values/equality.ts';
 import {
+  type CompositeValue,
   childValues,
   closureOf,
   elementsOf,
@@ -55,7 +57,7 @@ const handlers: Handlers<Machine, Instruction, [ActiveFrame], void> = {
     next(frame, instruction.dst, readRegister(frame, instruction.src));
   },
   tuple: (_machine, instruction, frame) => {
-    next(frame, instruction.dst, {
+    built(frame, instruction.dst, {
       kind: 'tuple',
       elements: instruction.elements.map((register) => readRegister(frame, register)),
     });
@@ -92,14 +94,14 @@ const handlers: Handlers<Machine, Instruction, [ActiveFrame], void> = {
     frame.pc += 1;
   },
   struct: (_machine, instruction, frame) => {
-    next(frame, instruction.dst, {
+    built(frame, instruction.dst, {
       kind: 'struct',
       type: instruction.type,
       fields: instruction.fields.map((register) => readRegister(frame, register)),
     });
   },
   variant: (_machine, instruction, frame) => {
-    next(frame, instruction.dst, {
+    built(frame, instruction.dst, {
       kind: 'variant',
       type: instruction.type,
       variant: instruction.variant,
@@ -171,13 +173,11 @@ const handlers: Handlers<Machine, Instruction, [ActiveFrame], void> = {
       const value = readRegister(frame, element.value);
       return element.kind === 'item' ? [value] : elementsOf(value);
     });
-    next(
-      frame,
-      dst,
-      grown
-        ? frame.heap.values.appended(readRegister(frame, dst), elements)
-        : { kind: 'array', elements },
-    );
+    if (grown) {
+      next(frame, dst, frame.heap.values.appended(readRegister(frame, dst), elements));
+    } else {
+      built(frame, dst, { kind: 'array', elements });
+    }
   },
   map: (_machine, instruction, frame) => {
     const { dst } = instruction;
@@ -191,11 +191,11 @@ const handlers: Handlers<Machine, Instruction, [ActiveFrame], void> = {
         return [...mapValueOf(readRegister(frame, entry.value)).entries];
       },
     );
-    next(
-      frame,
-      dst,
-      grown ? frame.heap.values.withEntries(readRegister(frame, dst), entries) : mapOf(entries),
-    );
+    if (grown) {
+      next(frame, dst, frame.heap.values.withEntries(readRegister(frame, dst), entries));
+    } else {
+      built(frame, dst, mapOf(entries));
+    }
   },
   closure: (_machine, instruction, frame) => {
     next(frame, instruction.dst, {
@@ -244,7 +244,7 @@ const handlers: Handlers<Machine, Instruction, [ActiveFrame], void> = {
       frame,
       into,
       frame.registers[into] === undefined
-        ? { kind: 'array', elements: kept }
+        ? frame.heap.values.made({ kind: 'array', elements: kept })
         : frame.heap.values.appended(readRegister(frame, into), kept),
     );
     frame.pc += 1;
@@ -285,6 +285,11 @@ export function runInstruction(
 function growsInPlace(frame: ActiveFrame, source: Register, dst: Register): boolean {
   const contents = frame.registers[dst];
   return source === dst && contents !== undefined && !isReference(contents);
+}
+
+/** Writes `value`, which the instruction built, to `dst`: the instance's own (lifetimes/in-place.ts). */
+function built(frame: ActiveFrame, dst: number, value: CompositeValue): void {
+  next(frame, dst, frame.heap.values.made(value));
 }
 
 /** Writes `value` to `dst` and moves on to the next instruction. */

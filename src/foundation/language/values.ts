@@ -15,7 +15,8 @@
  *   entry in the map it builds, and the runtime changes a value in place only when nothing else
  *   holds it (runtime/lifetimes/in-place.ts). A map's entries change through `setEntryInPlace`,
  *   which keeps its table, so building a map key by key hashes each key once, and through
- *   `deleteEntryInPlace`; `forget` drops what was derived from a value that changed otherwise.
+ *   `deleteEntryInPlace`; `copiedMap` copies a map with its table; `forget` drops what was derived
+ *   from a value that changed otherwise.
  * - Setting a key a map holds keeps its place; a new key goes last. So a map literal's later entry
  *   for an equal key replaces the earlier one's value, where the earlier one stood.
  * - Every walk keeps its own stack, so a value of any depth compares and hashes without exhausting
@@ -140,6 +141,19 @@ export class ValueSemantics<Value> {
     }
     this.forget(map);
     return (map.entries as (readonly [Value, Value])[]).splice(position, 1)[0];
+  };
+
+  /**
+   * A copy of `map` that may change in place: its entries, which are never changed but replaced,
+   * and a copy of its table, so copying a map hashes no key again.
+   */
+  readonly copiedMap = (map: MapOf<Value>): MapOf<Value> => {
+    const copy: MapOf<Value> = { kind: 'map', entries: [...map.entries] };
+    const table = this.#tables.get(map);
+    if (table !== undefined) {
+      this.#tables.set(copy, new Map([...table].map(([hash, bucket]) => [hash, [...bucket]])));
+    }
+    return copy;
   };
 
   /** Forgets `composite`'s hash, and a map's table, once it changed in place. */

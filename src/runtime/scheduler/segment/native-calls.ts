@@ -28,7 +28,7 @@ import {
   type Value,
 } from '../../../definition/values/values.ts';
 import { unreachable } from '../../../foundation/structures/unreachable.ts';
-import { changeReference, passedValues } from '../../interpreter/registers.ts';
+import { changesAt, passedValues } from '../../interpreter/registers.ts';
 import type {
   FullNativeContext,
   Native,
@@ -43,6 +43,7 @@ import type {
   NativeWaits,
 } from '../../natives.ts';
 import { isReference, type Reference, type RegisterContents } from '../../snapshot/objects.ts';
+import { leavingCall } from '../instance/crossing.ts';
 import { type Heap, handleObject } from '../instance/heap.ts';
 import type { Instance } from '../instance/index.ts';
 import type { Slots } from '../instance/slots.ts';
@@ -53,7 +54,7 @@ import { nativeContextsOf } from './native-contexts.ts';
 
 export class NativeCalls {
   readonly #instance: Instance;
-  readonly #segment: Omit<FullNativeContext, 'name' | 'resultType' | 'typeArguments' | 'change'>;
+  readonly #segment: Omit<FullNativeContext, 'name' | 'resultType' | 'typeArguments' | 'changes'>;
 
   /**
    * Calls within a segment of `instance`, where `now()` reads `now`, waiting as `waiting` says;
@@ -91,8 +92,7 @@ export class NativeCalls {
         name: entry.name,
         resultType: declared === undefined ? undefined : namedTypeOf(declared.result),
         typeArguments: declared?.typeArguments.map(namedTypeOf) ?? [],
-        change: (position, inserted, change) =>
-          changeReference(heap, referenceAt(contents, position), inserted, change),
+        changes: (position) => changesAt(heap, referenceAt(contents, position)),
       });
     const run =
       declared === undefined
@@ -238,7 +238,7 @@ function nativeInstancesOf(instance: Instance, waiting: Waiting): NativeInstance
       const closure =
         closureOf(entry) ??
         unreachable('An instance is spawned with no function; the checker forbids it.');
-      const call = { function: closure.function, captures: closure.captures, arguments: [] };
+      const call = leavingCall(instance, closure);
       const encoder = outcomeEncoderOf(instance.loaded.definition.types, type);
       return instanceHandle(type, instance.effects.spawn(call, options, encoder));
     },

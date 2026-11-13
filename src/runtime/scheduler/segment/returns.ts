@@ -15,6 +15,7 @@
 import { handleTo, type Value } from '../../../definition/values/values.ts';
 import type { ActiveFrame } from '../../interpreter/frames.ts';
 import { releaseFrame, resumeAfterCall } from '../../interpreter/machine.ts';
+import type { LiveExecution } from '../instance/heap.ts';
 import { type Instance, topFrame } from '../instance/index.ts';
 import { returnedValue } from './calls.ts';
 import type { SegmentCollection } from './collection.ts';
@@ -40,13 +41,35 @@ export function landReturn(
   frame: ActiveFrame,
   given: Value,
 ): DriveEnd | undefined {
-  const { instance, runStack, outcome, collection, runCalls } = seams;
+  const { instance, runStack, outcome } = seams;
   const returning = outcome.returning(frame, given);
   if (returning.kind === 'encode') {
     return undefined;
   }
   const value = returning.kind === 'return' ? returning.value : given;
   const execution = runStack.popFrame(frame);
+  return instance.holders.handOver(value, () =>
+    landPopped(seams, { frame, execution, value, awaits: returning.kind === 'await' }),
+  );
+}
+
+/** A return whose frame is off its execution's stack: what it gives, and whether the root awaits. */
+interface Popped {
+  readonly frame: ActiveFrame;
+  readonly execution: LiveExecution;
+  readonly value: Value;
+  readonly awaits: boolean;
+}
+
+/**
+ * Lands a return once its frame is off the run stack, the value held meanwhile (holder-writes.ts
+ * `handOver`), so releasing the frame doesn't take it through zero before its taker holds it.
+ */
+function landPopped(
+  seams: ReturnSeams,
+  { frame, execution, value, awaits }: Popped,
+): DriveEnd | undefined {
+  const { instance, runStack, outcome, collection, runCalls } = seams;
   releaseFrame(frame);
   if (collection.disposals.returned(execution, frame)) {
     return undefined;
@@ -71,7 +94,7 @@ export function landReturn(
     return 'returned';
   }
   const future = execution.resolves;
-  if (future === undefined && returning.kind === 'await') {
+  if (future === undefined && awaits) {
     instance.remove(execution);
     runStack.pop();
     waitsOn(seams, returned);

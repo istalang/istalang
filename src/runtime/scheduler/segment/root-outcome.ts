@@ -23,8 +23,12 @@
  *   (`arrival`).
  * - Once the encoder's frame returns, the root's frame returns the outcome it was returning, and
  *   the instance finishes with both: the outcome, which `result()` copies, and its JSON.
+ * - The outcome is a copy of what the root gave, made as it becomes known: no count sees it while
+ *   what the instance lets go of is disposed, code that may change its values in place
+ *   (runtime/lifetimes/in-place.ts).
  */
 
+import { copied } from '../../../definition/values/replacing.ts';
 import { handleTarget, type Value } from '../../../definition/values/values.ts';
 import { unreachable } from '../../../foundation/structures/unreachable.ts';
 import type { ActiveFrame } from '../../interpreter/frames.ts';
@@ -77,6 +81,14 @@ interface Known {
   readonly value: Value;
 }
 
+/**
+ * `known` as the outcome keeps it: a copy, since no count sees the outcome while what its instance
+ * lets go of is disposed, code that may change that instance's values in place (in-place.ts).
+ */
+function copiedOut(known: Known | undefined): Known | undefined {
+  return known === undefined ? undefined : { value: copied(known.value) };
+}
+
 export class RootOutcome {
   readonly #seams: RootOutcomeSeams;
   /** The outcome the root's last frame returns, once it is known. */
@@ -103,7 +115,7 @@ export class RootOutcome {
     if (!isRootReturn) {
       return { kind: 'return', value };
     }
-    this.#outcome ??= frame.code.mode === 'simple' ? this.#awaited(value) : { value };
+    this.#outcome ??= copiedOut(frame.code.mode === 'simple' ? this.#awaited(value) : { value });
     if (this.#outcome === undefined) {
       return { kind: 'await' };
     }
@@ -121,8 +133,8 @@ export class RootOutcome {
     if (callee.kind !== 'native') {
       unreachable(`Instance '${instance.name}' starts with code, which its root execution runs.`);
     }
-    this.#fromExtern = this.#awaited(
-      caller.natives.call(call.function, callee.native, call.arguments),
+    this.#fromExtern = copiedOut(
+      this.#awaited(caller.natives.call(call.function, callee.native, call.arguments)),
     );
   }
 
@@ -178,7 +190,7 @@ export class RootOutcome {
     if (resolved !== undefined) {
       instance.releaseRoot();
     }
-    return resolved;
+    return copiedOut(resolved);
   }
 
   /** Whether the encoder runs on top of the root's `frame` first, before it returns `outcome`. */
