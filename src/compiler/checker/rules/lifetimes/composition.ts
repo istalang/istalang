@@ -7,7 +7,7 @@
 import type { Binding } from '../../surface/resolved-call.ts';
 import type { Type } from '../../types/type/index.ts';
 import type { Input } from './input.ts';
-import { emptySummary, type GivenValue, mappedCycle, type Summary } from './summary.ts';
+import { type GivenValue, mappedCycle, type Summary, summaryOf } from './summary.ts';
 
 /**
  * `summary` over the inputs `binding` gives its parameters: each parameter the one its source
@@ -36,7 +36,7 @@ export function boundBy(
       const input = mapped(each.input);
       return input === undefined ? [] : [{ ...each, input }];
     });
-  return {
+  return summaryOf({
     ...summary,
     effects: summary.effects.flatMap((effect) => {
       const from = mapped(effect.from);
@@ -66,32 +66,26 @@ export function boundBy(
     leaks: inputs(summary.leaks),
     calls: inputs(summary.calls),
     access: inputs(summary.access),
-  };
+  });
 }
 
 /** What a call that may run any of `summaries`' functions does: what each may. */
 export function joinedSummaries(summaries: readonly Summary[]): Summary {
-  return summaries.reduce<Summary>(
-    (joined, each) => ({
-      effects: [...joined.effects, ...each.effects],
-      result: joinedValues(joined.result, each.result),
-      gives: joinedValues(joined.gives, each.gives),
-      requirements: [...joined.requirements, ...each.requirements],
-      always: [...joined.always, ...each.always],
-      callReach: [...joined.callReach, ...each.callReach],
-      leaks: [...joined.leaks, ...each.leaks],
-      unseen: joined.unseen || each.unseen,
-      calls: [...joined.calls, ...each.calls],
-      access: [...joined.access, ...each.access],
-    }),
-    emptySummary,
-  );
-}
-
-/** A value that may be either of two a call gives. */
-function joinedValues(first: GivenValue, second: GivenValue): GivenValue {
-  return {
-    relations: [...first.relations, ...second.relations],
-    reachesItself: first.reachesItself || second.reachesItself,
-  };
+  const all = <Item>(list: (summary: Summary) => readonly Item[]) => summaries.flatMap(list);
+  const value = (given: (summary: Summary) => GivenValue): GivenValue => ({
+    relations: all((summary) => given(summary).relations),
+    reachesItself: summaries.some((summary) => given(summary).reachesItself),
+  });
+  return summaryOf({
+    effects: all((summary) => summary.effects),
+    result: value((summary) => summary.result),
+    gives: value((summary) => summary.gives),
+    requirements: all((summary) => summary.requirements),
+    always: all((summary) => summary.always),
+    callReach: all((summary) => summary.callReach),
+    leaks: all((summary) => summary.leaks),
+    unseen: summaries.some((summary) => summary.unseen),
+    calls: all((summary) => summary.calls),
+    access: all((summary) => summary.access),
+  });
 }

@@ -22,6 +22,7 @@ import {
   type GivenValue,
   type ResultRelation,
   type Summary,
+  summaryOf,
 } from '../summary.ts';
 import type { BodyAnalysis } from './body.ts';
 import { type FlowState, type Given, joinedStates } from './flow-state.ts';
@@ -50,7 +51,7 @@ export function summarize(
   const { nodes } = analysis;
   const slots = nodes.inputs.filter((slot) => nodes.isRelevant(slot.node));
   const { result, gives } = resultsOf(analysis, ends.returns, slots, isAsync);
-  return {
+  return summaryOf({
     effects: effectsOf(analysis, entry, [...ends.returns.map(({ state }) => state), ...ends.seen]),
     result,
     gives,
@@ -61,7 +62,7 @@ export function summarize(
     unseen: analysis.unseen,
     calls: [...analysis.calls.values()],
     access: [...analysis.access.values()],
-  };
+  });
 }
 
 /**

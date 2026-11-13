@@ -27,7 +27,7 @@
  *   with no such argument, with anything its arguments are or hold.
  */
 
-import { sameItems } from '../../../../foundation/structures/equality.ts';
+import { distinctItems, sameItems } from '../../../../foundation/structures/equality.ts';
 import type { FunctionDeclaration } from '../../../syntax/declarations/index.ts';
 import type { CheckerContext } from '../../contexts/context.ts';
 import { typeChildren } from '../../types/parts/type-children.ts';
@@ -35,7 +35,7 @@ import { sameTypeSpelled } from '../../types/parts/type-parts.ts';
 import { isHandleType } from '../../types/properties/handles.ts';
 import type { Type } from '../../types/type/index.ts';
 import { awaitedOf } from '../../types/type/well-known.ts';
-import { type Input, sameInput } from './input.ts';
+import { type Input, inputKey, sameInput } from './input.ts';
 
 /** The fields a pair's path leaves its source through; any field, labels not being built. */
 export interface Label {
@@ -153,15 +153,33 @@ export const emptySummary: Summary = {
   access: [],
 };
 
-const sameEffects = sameItems<Effect>(
-  (first, second) =>
-    sameInput(first.from, second.from) &&
-    sameInput(first.to, second.to) &&
-    first.inside === second.inside,
-);
-const sameRelations = sameItems<ResultRelation>(
-  (first, second) => sameInput(first.input, second.input) && first.relation === second.relation,
-);
+const sameEffect = (first: Effect, second: Effect) =>
+  sameInput(first.from, second.from) &&
+  sameInput(first.to, second.to) &&
+  first.inside === second.inside;
+const sameRelation = (first: ResultRelation, second: ResultRelation) =>
+  sameInput(first.input, second.input) && first.relation === second.relation;
+const sameCycle = (first: TypedCycle, second: TypedCycle) =>
+  first.kind === second.kind &&
+  sameTypeSpelled(first.holder, second.holder) &&
+  sameTypeSpelled(first.deciding, second.deciding) &&
+  sameItems(sameTypeSpelled)(first.through, second.through) &&
+  sameItems(sameTypeSpelled)(first.sources, second.sources);
+const sameRequirement = (first: Requirement, second: Requirement) =>
+  first.kind === second.kind &&
+  first.lands === second.lands &&
+  sameInput(first.holder, second.holder) &&
+  sameInput(first.value, second.value) &&
+  sameTypeSpelled(first.holderType, second.holderType) &&
+  (first.valueType === undefined
+    ? second.valueType === undefined
+    : second.valueType !== undefined && sameTypeSpelled(first.valueType, second.valueType));
+
+const sameEffects = sameItems(sameEffect);
+const sameRelations = sameItems(sameRelation);
+const sameCycles = sameItems(sameCycle);
+const sameRequirements = sameItems(sameRequirement);
+const sameInputs = sameItems<Input>(sameInput);
 
 /** Whether two values a call gives say alike. */
 export function sameValue(first: GivenValue, second: GivenValue): boolean {
@@ -169,26 +187,44 @@ export function sameValue(first: GivenValue, second: GivenValue): boolean {
     first.reachesItself === second.reachesItself && sameRelations(first.relations, second.relations)
   );
 }
-const sameCycles = sameItems<TypedCycle>(
-  (first, second) =>
-    first.kind === second.kind &&
-    sameTypeSpelled(first.holder, second.holder) &&
-    sameTypeSpelled(first.deciding, second.deciding) &&
-    sameItems(sameTypeSpelled)(first.through, second.through) &&
-    sameItems(sameTypeSpelled)(first.sources, second.sources),
-);
-const sameRequirements = sameItems<Requirement>(
-  (first, second) =>
-    first.kind === second.kind &&
-    first.lands === second.lands &&
-    sameInput(first.holder, second.holder) &&
-    sameInput(first.value, second.value) &&
-    sameTypeSpelled(first.holderType, second.holderType) &&
-    (first.valueType === undefined
-      ? second.valueType === undefined
-      : second.valueType !== undefined && sameTypeSpelled(first.valueType, second.valueType)),
-);
-const sameInputs = sameItems<Input>(sameInput);
+
+/**
+ * `summary` with each list's repeats left out: the one form a summary is built in. Joining the
+ * summaries of the many witnesses a call through `any` may run repeats most of what each says,
+ * and every repeat would be applied again at every call.
+ */
+export function summaryOf(summary: Summary): Summary {
+  const inputs = (list: readonly Input[]) => distinctItems(list, sameInput, inputKey);
+  const value = ({ relations, reachesItself }: GivenValue): GivenValue => ({
+    relations: distinctItems(
+      relations,
+      sameRelation,
+      (relation) => `${inputKey(relation.input)} ${relation.relation}`,
+    ),
+    reachesItself,
+  });
+  return {
+    effects: distinctItems(
+      summary.effects,
+      sameEffect,
+      (effect) => `${inputKey(effect.from)} ${inputKey(effect.to)} ${effect.inside}`,
+    ),
+    result: value(summary.result),
+    gives: value(summary.gives),
+    requirements: distinctItems(
+      summary.requirements,
+      sameRequirement,
+      (requirement) =>
+        `${requirement.kind} ${requirement.lands} ${inputKey(requirement.holder)} ${inputKey(requirement.value)}`,
+    ),
+    always: distinctItems(summary.always, sameCycle, (cycle) => cycle.kind),
+    callReach: inputs(summary.callReach),
+    leaks: inputs(summary.leaks),
+    unseen: summary.unseen,
+    calls: inputs(summary.calls),
+    access: inputs(summary.access),
+  };
+}
 
 /** Whether two summaries say alike, so a caller's analysis may stop at an edit keeping it. */
 export function sameSummary(first: Summary, second: Summary): boolean {
@@ -229,7 +265,7 @@ export function nativeSummary(
     parameters.flatMap((_, index) =>
       relations.map((relation) => ({ input: parameter(index), relation })),
     );
-  return {
+  return summaryOf({
     ...emptySummary,
     effects: kept.flatMap(({ holder, kept: values }) =>
       values.map((value) => ({
@@ -259,7 +295,7 @@ export function nativeSummary(
       relations: awaited === undefined ? [] : givesOf(holding, anyOf(['aliases', 'reachedBy'])),
       reachesItself: false,
     },
-  };
+  });
 }
 
 /**
@@ -324,7 +360,7 @@ export function constructorSummary(
   checker: Pick<CheckerContext, 'parametersOf'>,
   fields: FunctionDeclaration,
 ): Summary {
-  return {
+  return summaryOf({
     ...emptySummary,
     result: {
       relations: checker.parametersOf(fields).map((_, index) => ({
@@ -333,7 +369,7 @@ export function constructorSummary(
       })),
       reachesItself: false,
     },
-  };
+  });
 }
 
 /**
