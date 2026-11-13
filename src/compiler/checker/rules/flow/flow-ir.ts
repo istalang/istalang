@@ -28,9 +28,9 @@ import type { VariableEntity } from '../../../binder/entities.ts';
 import type { Expression } from '../../../syntax/expressions/index.ts';
 import type { SyntaxNode } from '../../../syntax/tree/index.ts';
 import type { Identifier, NodeOf } from '../../../syntax/tree/node.ts';
+import type { WrittenFit } from '../../surface/checked-body.ts';
 import type { PartStep } from '../../surface/checked-pattern.ts';
 import type { ImplicitRole, ResolvedCall } from '../../surface/resolved-call.ts';
-import type { Fit } from '../../types/fitting/fit/index.ts';
 import type { Type } from '../../types/type/index.ts';
 
 /** A value of a flow function, by its position in `FlowFunction.values`. */
@@ -101,7 +101,8 @@ type Made =
  *   arithmetic, a comparison, a test.
  * - `make`: a value holding `parts` (`Made`).
  * - `copy`: `from` bound to `into`, converted as `fit` says where checking fitted it to `into`'s
- *   type.
+ *   type; into whichever field a key naming several gives (`intoKeyedField`), each field's own way,
+ *   `into` of the type of the place the key names.
  * - `read`: a part of `from`.
  * - `write`: `value` written into the part `place` reaches.
  * - `call`: a resolved call, written or implicit (`role`), its arguments by value or by `&`.
@@ -123,7 +124,7 @@ export type Operation = { readonly site: NodeOf<string> } & (
       readonly op: 'copy';
       readonly into: ValueId;
       readonly from: ValueId;
-      readonly fit: Fit | undefined;
+      readonly fit: WrittenFit | undefined;
     }
   | { readonly op: 'read'; readonly into: ValueId; readonly from: ValueId; readonly part: Part }
   | { readonly op: 'write'; readonly place: Place; readonly value: ValueId }

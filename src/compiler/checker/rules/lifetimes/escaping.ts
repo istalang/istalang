@@ -80,14 +80,14 @@ export function escapingCycles(
   const typed = (input: Input) =>
     input.kind === 'path' || input.kind === 'global' ? input.type : typeOf(input);
   // A write closes a cycle only where what is written, and the input it comes from, both may.
+  // The cycle closes through the handle written into, which the holder input may only reach.
   const breaking = summary.requirements.flatMap((requirement): readonly TypedCycle[] => {
-    const holder = typed(requirement.holder);
     const source = typed(requirement.value);
-    if (holder === undefined || source === undefined) {
+    if (source === undefined) {
       return [];
     }
     const cycle: TypedCycle = {
-      holder,
+      holder: requirement.holderType,
       through: [requirement.valueType ?? source],
       sources: [source],
       kind: requirement.kind,

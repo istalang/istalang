@@ -211,13 +211,24 @@ export class ReachState {
   }
 
   addAlias(first: NodeId, second: NodeId): void {
-    if (first !== second && this.#allowed.alias(first, second)) {
-      this.#alias.add(first, second);
-      this.#alias.add(second, first);
-      this.addShare(first, second);
-      this.#carry(first, second);
+    if (this.#aliased(first, second)) {
       this.#carry(second, first);
     }
+  }
+
+  /**
+   * `first` and `second` alias, and `first` holds some of what `second` was read out of, where
+   * their types let them alias; whether they did.
+   */
+  #aliased(first: NodeId, second: NodeId): boolean {
+    if (first === second || !this.#allowed.alias(first, second)) {
+      return false;
+    }
+    this.#alias.add(first, second);
+    this.#alias.add(second, first);
+    this.addShare(first, second);
+    this.#carry(first, second);
+    return true;
   }
 
   addShare(first: NodeId, second: NodeId): void {
@@ -250,8 +261,13 @@ export class ReachState {
   /** What `into` gets of `part`'s relations when it holds what `part` holds directly. */
   #contained(into: NodeId, part: NodeId, apart?: ReadonlySet<NodeId>): void {
     const kept = (each: NodeId) => apart?.has(each) !== true;
-    for (const each of this.aliasesOf(part).filter(kept)) {
-      this.addAlias(into, each);
+    // `into` takes what each alias was read out of before any alias takes `into`'s, so every alias
+    // gets the same, whatever order they come in.
+    const aliased = this.aliasesOf(part)
+      .filter(kept)
+      .filter((each) => this.#aliased(into, each));
+    for (const each of aliased) {
+      this.#carry(each, into);
     }
     for (const each of this.reachedFrom(part).filter(kept)) {
       this.addReach(into, each);
@@ -299,8 +315,9 @@ export class ReachState {
   readThrough(into: NodeId, from: NodeId, apart?: ReadonlySet<NodeId>): void {
     const kept = (each: NodeId) => each !== into && apart?.has(each) !== true;
     const reached = this.reachedFrom(from).filter(kept);
-    const sharing = [...this.#live].filter((each) => kept(each) && this.shares(each, from));
     const shared = this.sharesOf(from).filter(kept);
+    // Share holds only between live values, and both ways.
+    const sharing = [from, ...shared].filter((each) => kept(each) && this.#live.has(each));
     this.addReach(from, into);
     this.addWhole(into, from);
     for (const each of reached) {

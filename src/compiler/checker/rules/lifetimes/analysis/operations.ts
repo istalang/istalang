@@ -19,16 +19,17 @@
  *   it gives back (design.md §5.6).
  */
 
-import type { FunctionCall } from '../../../surface/resolved-call.ts';
+import { functionCallsWithin } from '../../../surface/resolved-call.ts';
 import type { Type } from '../../../types/type/index.ts';
 import type { Operation } from '../../flow/flow-ir.ts';
+import { copiedTypes } from '../dispatch.ts';
 import { escapingCycles } from '../escaping.ts';
 import { type Input, inputKey } from '../input.ts';
 import type { NodeId } from '../reach-state.ts';
 import type { Summary } from '../summary.ts';
 import { type At, closureBindings, functionBindings, nodesGiven } from './bindings.ts';
 import { type BodyAnalysis, placeHolds } from './body.ts';
-import { applySummary, checkWitnesses, unknownCall } from './calls.ts';
+import { applySummary, checkWitnesses, putIntoAny, unknownCall } from './calls.ts';
 import { dispatchedCall } from './dispatched.ts';
 import { type FlowState, materialize } from './flow-state.ts';
 import { giveValue, withDefaults } from './given.ts';
@@ -98,12 +99,8 @@ const handlers: { readonly [Kind in Operation['op']]: Handler<Kind> } = {
       madeClosure(at, operation);
       return;
     }
-    const named =
-      made.kind === 'function' && made.call.kind === 'function'
-        ? functionInputs(analysis, made.call)
-        : undefined;
-    if (named !== undefined) {
-      checkEscaping(at, operation.site, named, 'closure');
+    if (made.kind === 'function') {
+      checkWitnesses(at, functionCallsWithin(made.call), operation.site, 'closure');
     }
     if (!analysis.nodes.isRelevant(into)) {
       return;
@@ -175,11 +172,13 @@ const handlers: { readonly [Kind in Operation['op']]: Handler<Kind> } = {
  * A value put into an `any`: code nobody sees may call its witnesses, with any values of their
  * parameters' types, so each is checked where the value is put in (dispatch.ts).
  */
-function convertedIntoAny(at: At, { from, fit, site }: Of<'copy'>): void {
+function convertedIntoAny(at: At, operation: Of<'copy'>): void {
   const { analysis } = at;
-  const type = analysis.nodes.flow.values[from]?.type;
-  if (analysis.recording && fit !== undefined && type !== undefined) {
-    checkWitnesses(at, analysis.context.convertedWitnesses(type, fit), site);
+  const types = copiedTypes(analysis.nodes.flow, operation);
+  if (analysis.recording && types !== undefined) {
+    for (const conversion of analysis.context.conversionsOf(types)) {
+      putIntoAny(at, conversion, operation.site);
+    }
   }
 }
 
@@ -361,27 +360,17 @@ function madeClosure(at: At, operation: Of<'make'>): void {
     { summary: found.summary, typeOf: (input) => found.inputTypes.get(inputKey(input)) },
     'closure',
   );
+  if (analysis.recording) {
+    for (const conversion of found.summary.conversions) {
+      putIntoAny(at, conversion, site);
+    }
+  }
 }
 
 /** A function code nobody sees may call, with any values of its inputs' types. */
 interface Escaping {
   readonly summary: Summary;
   readonly typeOf: (input: Input) => Type | undefined;
-}
-
-/** A function named as a value, which captures nothing: what it does, its parameters' types. */
-function functionInputs(analysis: BodyAnalysis, call: FunctionCall): Escaping | undefined {
-  const { context } = analysis;
-  const summary = context.calleeSummary(call);
-  if (summary === undefined) {
-    return undefined;
-  }
-  const parameters = context.parametersOf(call.function);
-  const typeOf = (input: Input) => {
-    const type = input.kind === 'parameter' ? parameters[input.index]?.type : undefined;
-    return type === undefined ? undefined : context.substitute(type, call);
-  };
-  return { summary, typeOf };
 }
 
 /**

@@ -16,10 +16,17 @@ import type { NodeOf } from '../../../../syntax/tree/node.ts';
 import { type FunctionCall, witnessCallsOf } from '../../../surface/resolved-call.ts';
 import type { Type } from '../../../types/type/index.ts';
 import type { ValueId } from '../../flow/flow-ir.ts';
+import { instantiated } from '../composition.ts';
 import { escapingCycles, typesBreak } from '../escaping.ts';
 import { type Input, sameInput } from '../input.ts';
 import type { NodeId } from '../reach-state.ts';
-import { mappedCycle, type Requirement, type Summary } from '../summary.ts';
+import {
+  type Conversion,
+  emptySummary,
+  mappedCycle,
+  type Requirement,
+  type Summary,
+} from '../summary.ts';
 import {
   type At,
   type Bindings,
@@ -55,6 +62,12 @@ export function applySummary(at: At, made: CallMade, summary: Summary, bindings:
   }
   if (made.call !== undefined) {
     checkWitnesses(at, witnessCallsOf(made.call.witnesses), made.site);
+  }
+  for (const { to, member } of summary.conversions) {
+    const into = substitutedAt(at, made, to);
+    if (into.kind === 'any') {
+      putIntoAny(at, { to: into, member: substitutedAt(at, made, member) }, made.site);
+    }
   }
   applyEffects(at, summary, bound);
   const places = [...bindings.values()].flatMap(({ owner }) => ownedBy(owner));
@@ -252,37 +265,43 @@ function written(at: At, holder: Bound, value: NodeId, inside: boolean): void {
 
 /**
  * `witnesses`, run with values the caller doesn't see by code its body can't see: the callee a
- * generic call gives them to, or code calling through an `any` they were put into. Each one's
- * writes are checked for any values of its parameters' types (design.md §5.4).
+ * generic call gives them to, code calling through an `any` they were put into, or a function
+ * named as a value (`closure`). Each one's writes are checked for any values of its parameters'
+ * types, its summary as it instantiates it (design.md §5.4).
  */
 export function checkWitnesses(
   { analysis }: At,
   witnesses: readonly FunctionCall[],
   site: NodeOf<string>,
+  kind: 'witness' | 'closure' = 'witness',
 ): void {
   const { context } = analysis;
   for (const witness of witnesses) {
-    const summary = context.calleeSummary(witness) ?? { requirements: [], always: [] };
-    const parameters = context.parametersOf(witness.function);
+    const summary = context.calleeSummary(witness) ?? emptySummary;
     const substituted = (type: Type) => context.substitute(type, witness);
+    const parameters = context.parametersOf(witness.function);
     const typeOf = (input: Input) => {
       const type = input.kind === 'parameter' ? parameters[input.index]?.type : undefined;
       return type === undefined ? undefined : substituted(type);
     };
-    const cycles = escapingCycles(
-      context.facts,
-      {
-        requirements: summary.requirements.map((requirement) => ({
-          ...requirement,
-          holderType: substituted(requirement.holderType),
-        })),
-        always: summary.always.map((cycle) => mappedCycle(cycle, substituted)),
-      },
-      typeOf,
-    );
+    const cycles = escapingCycles(context.facts, instantiated(summary, substituted), typeOf);
     for (const cycle of cycles) {
-      analysis.violate('witness', site, cycle, witness.function);
+      analysis.violate(kind, site, cycle, witness.function);
     }
+  }
+}
+
+/**
+ * A value put into an `any` at `site`, or by a function called there: code nobody sees may call
+ * the witnesses it puts in, so each is checked here; where only an instantiation names them,
+ * each call instantiating this function checks them (design.md §5.4).
+ */
+export function putIntoAny(at: At, conversion: Conversion, site: NodeOf<string>): void {
+  const witnesses = at.analysis.context.witnessesPutIn(conversion);
+  if (witnesses === undefined) {
+    at.analysis.liftConversion(conversion);
+  } else {
+    checkWitnesses(at, witnesses, site);
   }
 }
 

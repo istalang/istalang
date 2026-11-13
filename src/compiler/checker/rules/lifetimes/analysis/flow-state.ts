@@ -14,6 +14,7 @@ import type { NodeId, ReachState } from '../reach-state.ts';
 import type { ResultRelation, Summary } from '../summary.ts';
 import { isInputRooted } from './inputs.ts';
 import type { Nodes } from './nodes.ts';
+import { relateByTypes } from './unseen.ts';
 
 /** A closure this body made: its function, what it does, and the nodes it captured. */
 export interface MadeClosure {
@@ -63,7 +64,9 @@ export function clonedState(state: FlowState): FlowState {
  * Reads the path `node` names into `state`, as reading it there would (`readThrough`,
  * `readPart`); a part of an input apart from its other parts, whose sharing its caller is required
  * to see to where a finding relies on it (inputs.ts). Where findings name inputs whole, in a
- * recursive group, no caller is required anything of its parts, so they stay related through it.
+ * recursive group, no caller is required anything of its parts: they stay related through it,
+ * and to each other as their types allow, since two parts of one value of different handle types
+ * can't alias through it, yet one may reach the other.
  */
 export function materialize(nodes: Nodes, state: FlowState, node: NodeId): boolean {
   const path = nodes.pathOf(node);
@@ -74,14 +77,19 @@ export function materialize(nodes: Nodes, state: FlowState, node: NodeId): boole
     return false;
   }
   state.reach.fresh(node);
-  const siblings =
-    nodes.inputParts && isInputRooted(nodes, path.root)
-      ? siblingsOf(nodes, state, node)
-      : undefined;
+  const inputRooted = isInputRooted(nodes, path.root);
+  const siblings = nodes.inputParts && inputRooted ? siblingsOf(nodes, state, node) : undefined;
   if (path.kind === 'through') {
     state.reach.readThrough(node, path.root, siblings);
   } else {
     state.reach.readPart(node, path.root, siblings);
+  }
+  if (!nodes.inputParts && inputRooted) {
+    for (const sibling of siblingsOf(nodes, state, node)) {
+      if (state.reach.isLive(sibling)) {
+        relateByTypes(state, [node, nodes.reachOf(node)], [sibling, nodes.reachOf(sibling)]);
+      }
+    }
   }
   return true;
 }

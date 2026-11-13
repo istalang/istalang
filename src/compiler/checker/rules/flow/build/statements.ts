@@ -71,7 +71,8 @@ function assignment(builder: FlowBuilder, node: Assignment): void {
   }
   for (const part of parts) {
     const place = enterAssigned(builder, part.target);
-    place.write(fitted(builder, part, readAlong(builder, value, part.path, part.target)));
+    const given = readAlong(builder, value, part.path, { site: part.target, type: part.type });
+    place.write(fitted(builder, part, given));
   }
 }
 
@@ -88,12 +89,13 @@ function compound(builder: FlowBuilder, node: Assignment, only: AssignedPart): v
   place.write(fitted(builder, only, result));
 }
 
-/** `value`, a part of an assignment's value, converted as checking fitted it to its place. */
+/**
+ * `value`, a part of an assignment's value, converted as checking fitted it to its place: into a
+ * field a key naming several gives, of the type of the place the key names.
+ */
 function fitted(builder: FlowBuilder, part: AssignedPart, value: ValueId): ValueId {
-  if (part.fit === 'intoKeyedField') {
-    return value;
-  }
-  const converted = builder.temporary(part.target, part.type);
+  const type = part.fit === 'intoKeyedField' ? builder.body.typeOf(part.target) : part.type;
+  const converted = builder.temporary(part.target, type);
   builder.emit({ op: 'copy', site: part.target, into: converted, from: value, fit: part.fit });
   return converted;
 }

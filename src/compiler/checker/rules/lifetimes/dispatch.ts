@@ -19,6 +19,7 @@
  */
 
 import type { CheckerContext } from '../../contexts/context.ts';
+import type { WrittenFit } from '../../surface/checked-body.ts';
 import {
   type FunctionCall,
   functionCallsWithin,
@@ -28,14 +29,9 @@ import type { Fit } from '../../types/fitting/fit/index.ts';
 import { type PartRules, partPairs } from '../../types/fitting/part-pairs.ts';
 import { UnfoldingPairs } from '../../types/identity/unfolding-pairs.ts';
 import { isKnown, mentionsError } from '../../types/parts/type-parts.ts';
-import { type AnyType, membersOf, type Type } from '../../types/type/index.ts';
-import type { FlowFunction } from '../flow/flow-ir.ts';
-
-/** A value put into an `any`: the `any` type, and the value's own type. */
-interface Conversion {
-  readonly to: AnyType;
-  readonly member: Type;
-}
+import { membersOf, type Type } from '../../types/type/index.ts';
+import type { FlowFunction, Operation } from '../flow/flow-ir.ts';
+import type { Conversion } from './summary.ts';
 
 type DispatchRules = PartRules & Pick<CheckerContext, 'traitObjects'>;
 
@@ -64,21 +60,39 @@ export function witnessesOf(
 }
 
 /**
- * The witnesses a copy of a value of `from`, converted as `fit` says, puts into an `any`, each with
- * the calls it makes of its own witnesses.
+ * What a copy of a value of `from` into a value of `into`, converted as `fit` says, puts into an
+ * `any`: into a field a key naming several gives, what it would put into any of them.
  */
-export function convertedWitnesses(
+export function conversionsOf(
+  rules: PartRules,
+  { from, into, fit }: { readonly from: Type; readonly into: Type; readonly fit: WrittenFit },
+): readonly Conversion[] {
+  const relating = new UnfoldingPairs();
+  const conversions =
+    fit === 'intoKeyedField'
+      ? membersOf(into).flatMap((field) => anyConversionsBetween(rules, from, field, relating))
+      : fitConversions(rules, from, fit, relating);
+  return conversions.filter(({ member }) => !mentionsError(member));
+}
+
+/**
+ * The witnesses `conversion` puts into its `any`, each with the calls it makes of its own
+ * witnesses; undefined where some can't be named here, a type parameter's or a computed type's,
+ * for each call instantiating the function to name. A value of another `any` puts in none.
+ */
+export function witnessesPutIn(
   rules: DispatchRules,
-  from: Type,
-  fit: Fit,
-): readonly FunctionCall[] {
-  return fitConversions(rules, from, fit, new UnfoldingPairs())
-    .filter(({ member }) => member.kind !== 'any' && hasWitnesses(member))
-    .flatMap(({ to, member }) =>
-      to.constraints.flatMap((_, index) =>
-        (rules.traitObjects.memberWitnesses(to, index, member) ?? []).flatMap(functionCallsWithin),
-      ),
-    );
+  { to, member }: Conversion,
+): readonly FunctionCall[] | undefined {
+  if (member.kind === 'any') {
+    return [];
+  }
+  const calls = to.constraints.flatMap((_, index) => [
+    ...(rules.traitObjects.memberWitnesses(to, index, member) ?? []),
+  ]);
+  const named =
+    calls.every((call) => call.kind === 'function') && (calls.length > 0 || isKnown(member));
+  return named ? calls.flatMap(functionCallsWithin) : undefined;
 }
 
 /** The witnesses `flow`'s copies put into an `any`, its nested functions' among them. */
@@ -91,12 +105,26 @@ export function witnessesConvertedIn(
       if (operation.op === 'make' && operation.made.kind === 'closure') {
         return witnessesConvertedIn(rules, operation.made.function);
       }
-      const from = operation.op === 'copy' ? flow.values[operation.from]?.type : undefined;
-      return operation.op !== 'copy' || operation.fit === undefined || from === undefined
+      const copied = operation.op === 'copy' ? copiedTypes(flow, operation) : undefined;
+      return copied === undefined
         ? []
-        : convertedWitnesses(rules, from, operation.fit);
+        : conversionsOf(rules, copied).flatMap(
+            (conversion) => witnessesPutIn(rules, conversion) ?? [],
+          );
     }),
   );
+}
+
+/** A copy's types and fit, where checking fitted it and both its values' types are known. */
+export function copiedTypes(
+  flow: FlowFunction,
+  { from, into, fit }: Extract<Operation, { op: 'copy' }>,
+): { readonly from: Type; readonly into: Type; readonly fit: WrittenFit } | undefined {
+  const fromType = flow.values[from]?.type;
+  const intoType = flow.values[into]?.type;
+  return fit === undefined || fromType === undefined || intoType === undefined
+    ? undefined
+    : { from: fromType, into: intoType, fit };
 }
 
 /**

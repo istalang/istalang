@@ -146,8 +146,10 @@ function closeOver(analysis: BodyAnalysis, state: FlowState, live: readonly Node
 }
 
 /**
- * Whether two handles may be one object: then neither can come to reach the other but through a
- * cycle, which none may pass through (design.md §1).
+ * Whether two handles are one object: an input as given and the variable of its parameter, which
+ * still holds it. Then neither can come to reach the other but through a cycle, which none may pass
+ * through (design.md §1). Two values that only may alias may be two objects, and are related as
+ * their types allow.
  */
 function oneHandle(
   analysis: BodyAnalysis,
@@ -155,7 +157,12 @@ function oneHandle(
   [first, second]: readonly [NodeId, NodeId],
 ): boolean {
   const types = [analysis.nodes.typeOf(first), analysis.nodes.typeOf(second)];
+  const given = analysis.nodes.inputs.some(
+    ({ node, value }) =>
+      (node === first && value === second) || (node === second && value === first),
+  );
   return (
+    given &&
     state.reach.aliases(first, second) &&
     types.every((type) => type !== undefined && isHandleType(type))
   );
@@ -163,7 +170,7 @@ function oneHandle(
 
 /** Relates two nodes as the declaration graph says values of their types may come to be. */
 export function relateByTypes(
-  state: FlowState,
+  state: Pick<FlowState, 'reach'>,
   [first, firstReach]: readonly [NodeId, HandleReach],
   [second, secondReach]: readonly [NodeId, HandleReach],
 ): void {

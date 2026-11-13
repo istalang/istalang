@@ -62,6 +62,7 @@ export function summarize(
     unseen: analysis.unseen,
     calls: [...analysis.calls.values()],
     access: [...analysis.access.values()],
+    conversions: [...analysis.conversions.values()],
   });
 }
 

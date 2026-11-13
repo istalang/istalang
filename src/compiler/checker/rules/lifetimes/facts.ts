@@ -9,6 +9,7 @@ import type { EntryTable } from '../../../../foundation/structures/entries/index
 import type { CheckerContext, CheckerNote } from '../../contexts/context.ts';
 import type { Type } from '../../types/type/index.ts';
 import type { AnalysisContext } from './analysis/body.ts';
+import { ReachPairs } from './analysis/reach-pairs.ts';
 import {
   type HandleReach,
   handleReachOf,
@@ -44,6 +45,7 @@ export function typeFactsOf(checker: CheckerContext): AnalysisContext['facts'] {
     cellOf: (type) => checker.cellOf(type),
     fieldNamesOf: (type) => declaredFieldNamesOf(checker, type),
     keyOf: typeKey,
+    pairs: new ReachPairs(),
   };
 }
 

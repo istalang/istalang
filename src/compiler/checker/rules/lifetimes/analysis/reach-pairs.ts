@@ -1,11 +1,11 @@
 /**
- * Which pairs of an analysis's nodes their types allow (design.md §5.5), answered once per pair of
- * the nodes' reaches. A function's nodes have few reaches among them, and the analysis asks the
- * pair of every two values a write relates, again at each pass over a loop, so each node is given
- * the number of its reach, and each test keeps its answers in a table by those numbers.
+ * Which pairs of reaches the declaration graph allows (design.md §5.5), each answered once for the
+ * whole program: what a pair answers depends on the two reaches alone, and the analysis asks the
+ * pair of every two values a write relates, again at each pass over a loop, in every body. Each
+ * reach gets a number, and each test keeps its answers in a table by those numbers; an analysis
+ * keeps each of its nodes' numbers (`allowedBy`).
  */
 
-import type { NodeId } from '../reach-state.ts';
 import type { HandleReach } from '../type-reach.ts';
 
 type PairTest = (first: HandleReach, second: HandleReach) => boolean;
@@ -15,47 +15,38 @@ const no = 1;
 const yes = 2;
 
 export class ReachPairs {
-  readonly #reachOf: (node: NodeId) => HandleReach;
   readonly #numbers = new Map<HandleReach, number>();
   readonly #reaches: HandleReach[] = [];
-  readonly #numberOf = new Map<NodeId, number>();
   readonly #answers = new Map<PairTest, Uint8Array>();
   #width = 8;
 
-  constructor(reachOf: (node: NodeId) => HandleReach) {
-    this.#reachOf = reachOf;
-  }
-
-  /** Whether `test` allows the reaches of `first` and `second`. */
-  allows(test: PairTest, first: NodeId, second: NodeId): boolean {
-    const row = this.#number(first);
-    const column = this.#number(second);
-    const answers = this.#answersOf(test);
-    const at = row * this.#width + column;
-    if (answers[at] === unknown) {
-      const allowed = test(this.#reaches[row] as HandleReach, this.#reaches[column] as HandleReach);
-      answers[at] = allowed ? yes : no;
-    }
-    return answers[at] === yes;
-  }
-
-  #number(node: NodeId): number {
-    const known = this.#numberOf.get(node);
+  /** `reach`'s number, given it now if it has none. */
+  numberOf(reach: HandleReach): number {
+    const known = this.#numbers.get(reach);
     if (known !== undefined) {
       return known;
     }
-    const reach = this.#reachOf(node);
-    let number = this.#numbers.get(reach);
-    if (number === undefined) {
-      number = this.#reaches.length;
-      this.#numbers.set(reach, number);
-      this.#reaches.push(reach);
-      if (number >= this.#width) {
-        this.#widen();
-      }
+    const number = this.#reaches.length;
+    this.#numbers.set(reach, number);
+    this.#reaches.push(reach);
+    if (number >= this.#width) {
+      this.#widen();
     }
-    this.#numberOf.set(node, number);
     return number;
+  }
+
+  /** Whether `test` allows the reaches numbered `first` and `second`. */
+  allows(test: PairTest, first: number, second: number): boolean {
+    const answers = this.#answersOf(test);
+    const at = first * this.#width + second;
+    if (answers[at] === unknown) {
+      const allowed = test(
+        this.#reaches[first] as HandleReach,
+        this.#reaches[second] as HandleReach,
+      );
+      answers[at] = allowed ? yes : no;
+    }
+    return answers[at] === yes;
   }
 
   #answersOf(test: PairTest): Uint8Array {

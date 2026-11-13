@@ -19,8 +19,8 @@
 import type { FunctionDeclaration } from '../../../../syntax/declarations/index.ts';
 import type { NodeOf } from '../../../../syntax/tree/node.ts';
 import type { SignatureParameter } from '../../../check.ts';
+import type { WrittenFit } from '../../../surface/checked-body.ts';
 import type { FunctionCall, RequirementCall } from '../../../surface/resolved-call.ts';
-import type { Fit } from '../../../types/fitting/fit/index.ts';
 import type { Type } from '../../../types/type/index.ts';
 import type { FlowFunction, ValueId } from '../../flow/flow-ir.ts';
 import { cycleRelevance } from '../escaping.ts';
@@ -29,6 +29,7 @@ import { type Input, type InputPair, inputKey } from '../input.ts';
 import type { NodeId } from '../reach-state.ts';
 import {
   anyField,
+  type Conversion,
   type GivenValue,
   type Requirement,
   type Summary,
@@ -39,11 +40,16 @@ import { cycleOf } from './cycles.ts';
 import type { FlowState } from './flow-state.ts';
 import { apart, candidatesIn } from './inputs.ts';
 import type { Nodes, TypeFacts } from './nodes.ts';
+import type { ReachPairs } from './reach-pairs.ts';
 import { runUnseen, type UnseenCall } from './unseen.ts';
 
 /** What an analysis reads beyond its body: types, and what the functions it calls do. */
 export interface AnalysisContext {
-  readonly facts: TypeFacts & { readonly keyOf: (type: Type) => string };
+  readonly facts: TypeFacts & {
+    readonly keyOf: (type: Type) => string;
+    /** The pairs of reaches the declaration graph allows, answered once for the program. */
+    readonly pairs: ReachPairs;
+  };
   /** What `call`'s function does; undefined where that is code nobody can see. */
   readonly calleeSummary: (call: FunctionCall) => Summary | undefined;
   readonly parametersOf: (declaration: FunctionDeclaration) => readonly SignatureParameter[];
@@ -56,8 +62,14 @@ export interface AnalysisContext {
    * where this body can't see them, which it calls as code nobody sees.
    */
   readonly witnessesOf: (call: RequirementCall) => readonly FunctionCall[] | undefined;
-  /** The witnesses a copy converting a value of `from` as `fit` says puts into an `any`. */
-  readonly convertedWitnesses: (from: Type, fit: Fit) => readonly FunctionCall[];
+  /** What a copy converting a value of `from` as `fit` says puts into an `any` (dispatch.ts). */
+  readonly conversionsOf: (copied: {
+    readonly from: Type;
+    readonly into: Type;
+    readonly fit: WrittenFit;
+  }) => readonly Conversion[];
+  /** The witnesses a conversion puts into its `any`; undefined where only an instantiation names them. */
+  readonly witnessesPutIn: (conversion: Conversion) => readonly FunctionCall[] | undefined;
 
   /** What the default of `declaration`'s parameter at `index` relates to, of those before it. */
   readonly defaultResult: (declaration: FunctionDeclaration, index: number) => GivenValue;
@@ -94,6 +106,8 @@ export class BodyAnalysis {
   readonly always = new Map<string, TypedCycle>();
   readonly leaks = new Map<string, Input>();
   readonly calls = new Map<string, Input>();
+  /** What it puts into an `any` whose witnesses only its instantiation names. */
+  readonly conversions = new Map<string, Conversion>();
   /** Analyses a nested function, its closure made at `site`, its findings joining this one's. */
   readonly analyzeNested: (flow: FlowFunction, site: NodeOf<string>) => NestedResult;
   /** Whether its callers are seen, so it may rely on what they are required to see to. */
@@ -379,6 +393,14 @@ export class BodyAnalysis {
       if (!this.always.has(key)) {
         this.always.set(key, cycle);
       }
+    }
+  }
+
+  /** Leaves `conversion`'s witnesses to each call instantiating this function to name and check. */
+  liftConversion(conversion: Conversion): void {
+    if (this.recording) {
+      const { keyOf } = this.context.facts;
+      this.conversions.set(`${keyOf(conversion.to)}|${keyOf(conversion.member)}`, conversion);
     }
   }
 

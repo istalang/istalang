@@ -24,6 +24,7 @@ import type {
   TargetBinding,
   TargetOwner,
 } from '../../../surface/checked-pattern.ts';
+import type { Type } from '../../../types/type/index.ts';
 import type { BlockId, ValueId } from '../flow-ir.ts';
 import type { FlowBuilder } from './flow-builder.ts';
 import { implicitCall } from './implicit-calls.ts';
@@ -91,11 +92,11 @@ export function readAlong(
   builder: FlowBuilder,
   from: ValueId,
   path: readonly PartStep[],
-  site: NodeOf<string>,
+  { site, type }: { readonly site: NodeOf<string>; readonly type?: Type },
 ): ValueId {
   let part = from;
-  for (const step of path) {
-    const read = builder.temporary(site, undefined);
+  for (const [index, step] of path.entries()) {
+    const read = builder.temporary(site, index === path.length - 1 ? type : undefined);
     if (typeof step !== 'object' || !isArrayStep(step)) {
       builder.emit({ op: 'read', site, into: read, from: part, part: { kind: 'step', step } });
     } else {
@@ -154,7 +155,7 @@ function testPart(builder: FlowBuilder, test: PatternTest, matching: Matching): 
     return;
   }
   const site = test.kind === 'compare' ? test.site : pattern;
-  const part = readAlong(builder, subject, test.path, site);
+  const part = readAlong(builder, subject, test.path, { site });
   const holds = builder.temporary(site, undefined);
   if (test.kind === 'compare') {
     const passed = [part, patternValueOf(builder, test.value, site)];
@@ -209,7 +210,7 @@ function bind(
     const entity = builder.entityOf(name);
     if (entity !== undefined) {
       const variable = builder.variable(entity);
-      const part = readAlong(builder, value, path, name);
+      const part = readAlong(builder, value, path, { site: name });
       builder.emit({ op: 'copy', site: name, into: variable, from: part, fit: undefined });
       builder.scopes.declare(variable, lifetime);
     }

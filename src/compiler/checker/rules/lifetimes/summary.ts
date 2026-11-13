@@ -33,7 +33,7 @@ import type { CheckerContext } from '../../contexts/context.ts';
 import { typeChildren } from '../../types/parts/type-children.ts';
 import { sameTypeSpelled } from '../../types/parts/type-parts.ts';
 import { isHandleType } from '../../types/properties/handles.ts';
-import type { Type } from '../../types/type/index.ts';
+import type { AnyType, Type } from '../../types/type/index.ts';
 import { awaitedOf } from '../../types/type/well-known.ts';
 import { type Input, inputKey, sameInput } from './input.ts';
 
@@ -120,6 +120,12 @@ export function mappedCycle(cycle: TypedCycle, map: (type: Type) => Type): Typed
   };
 }
 
+/** A value put into an `any`: the `any` type, and the value's own type. */
+export interface Conversion {
+  readonly to: AnyType;
+  readonly member: Type;
+}
+
 export interface Summary {
   readonly effects: readonly Effect[];
   readonly result: GivenValue;
@@ -137,6 +143,11 @@ export interface Summary {
   readonly calls: readonly Input[];
   /** The inputs the unseen code it runs may reach. */
   readonly access: readonly Input[];
+  /**
+   * What it puts into an `any` whose witnesses only its instantiation names: each call
+   * instantiating it checks them, or lifts them to its own callers (dispatch.ts).
+   */
+  readonly conversions: readonly Conversion[];
 }
 
 /** What a function summed up so far, before anything is known: it does nothing. */
@@ -151,6 +162,7 @@ export const emptySummary: Summary = {
   unseen: false,
   calls: [],
   access: [],
+  conversions: [],
 };
 
 const sameEffect = (first: Effect, second: Effect) =>
@@ -174,6 +186,9 @@ const sameRequirement = (first: Requirement, second: Requirement) =>
   (first.valueType === undefined
     ? second.valueType === undefined
     : second.valueType !== undefined && sameTypeSpelled(first.valueType, second.valueType));
+
+const sameConversion = (first: Conversion, second: Conversion) =>
+  sameTypeSpelled(first.to, second.to) && sameTypeSpelled(first.member, second.member);
 
 const sameEffects = sameItems(sameEffect);
 const sameRelations = sameItems(sameRelation);
@@ -223,6 +238,7 @@ export function summaryOf(summary: Summary): Summary {
     unseen: summary.unseen,
     calls: inputs(summary.calls),
     access: inputs(summary.access),
+    conversions: distinctItems(summary.conversions, sameConversion, ({ to }) => to.kind),
   };
 }
 
@@ -239,7 +255,8 @@ export function sameSummary(first: Summary, second: Summary): boolean {
       sameRequirements(first.requirements, second.requirements) &&
       sameCycles(first.always, second.always) &&
       sameInputs(first.callReach, second.callReach) &&
-      sameInputs(first.leaks, second.leaks))
+      sameInputs(first.leaks, second.leaks) &&
+      sameItems(sameConversion)(first.conversions, second.conversions))
   );
 }
 

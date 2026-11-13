@@ -32,7 +32,7 @@ import { clonedState, type FlowState, joinedStates } from './flow-state.ts';
 import { isInputRooted } from './inputs.ts';
 import { Nodes } from './nodes.ts';
 import { runOperation } from './operations.ts';
-import { ReachPairs } from './reach-pairs.ts';
+import type { ReachPairs } from './reach-pairs.ts';
 import { type Ends, type Return, summarize } from './summarize.ts';
 
 export interface Analysis {
@@ -242,7 +242,7 @@ function isAsyncSite(site: NodeOf<string>): boolean {
  */
 function entryState(analysis: BodyAnalysis): FlowState {
   const { nodes } = analysis;
-  const reach = new ReachState(allowedBy(nodes));
+  const reach = new ReachState(allowedBy(nodes, analysis.context.facts.pairs));
   const relevant = nodes.inputs.filter((slot) => nodes.isRelevant(slot.node));
   for (const slot of relevant) {
     reach.fresh(slot.node);
@@ -277,13 +277,14 @@ function entryState(analysis: BodyAnalysis): FlowState {
  * the function's inputs, and their parts, is followed back to them: findings are lifted only to
  * those (inputs.ts).
  */
-function allowedBy(nodes: Nodes): Allowed {
-  const pairs = new ReachPairs((node) => nodes.reachOf(node));
+function allowedBy(nodes: Nodes, pairs: ReachPairs): Allowed {
+  const numbers = new Map<NodeId, number>();
+  const numberOf = (node: NodeId) => memo(numbers, node, () => pairs.numberOf(nodes.reachOf(node)));
   const wholes = new Map<NodeId, boolean>();
   return {
-    reach: (from, to) => pairs.allows(mayReach, from, to),
-    alias: (first, second) => pairs.allows(mayAlias, first, second),
-    share: (first, second) => pairs.allows(mayShare, first, second),
+    reach: (from, to) => pairs.allows(mayReach, numberOf(from), numberOf(to)),
+    alias: (first, second) => pairs.allows(mayAlias, numberOf(first), numberOf(second)),
+    share: (first, second) => pairs.allows(mayShare, numberOf(first), numberOf(second)),
     whole: (node) =>
       memo(
         wholes,

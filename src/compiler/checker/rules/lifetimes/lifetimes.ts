@@ -42,7 +42,7 @@ import type { FlowFunction } from '../flow/flow-ir.ts';
 import type { AnalysisContext, Violation } from './analysis/body.ts';
 import { type Analysis, analyze } from './analysis/index.ts';
 import { Declared, defaultsFlows, defaultsFound, withDefaults } from './declared.ts';
-import { convertedWitnesses, witnessesConvertedIn, witnessesOf } from './dispatch.ts';
+import { conversionsOf, witnessesConvertedIn, witnessesOf, witnessesPutIn } from './dispatch.ts';
 import { typeFactsOf } from './facts.ts';
 import type { FindingDeclaration, LifetimeFinding } from './finding.ts';
 import {
@@ -136,7 +136,8 @@ export class Lifetimes {
       substitute: (type, call) => substitutedIn(checker, type, call),
       readsWhatItIterates: (iterate) => checker.isStd(checker.moduleOf(iterate)),
       witnessesOf: (call) => witnessesOf(checker, call),
-      convertedWitnesses: (from, fit) => convertedWitnesses(checker, from, fit),
+      conversionsOf: (copied) => conversionsOf(checker, copied),
+      witnessesPutIn: (conversion) => witnessesPutIn(checker, conversion),
     };
   }
 
