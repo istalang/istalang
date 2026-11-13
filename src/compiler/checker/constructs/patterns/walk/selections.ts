@@ -41,9 +41,10 @@ import {
   patternTypeOf,
   variantOwners,
 } from '../../../types/written/pattern-types.ts';
+import { downcastOf } from './kinds/downcasts.ts';
 import { literalTypeOf, memberTaken, selectsMember, unionPart } from './members.ts';
 import type { ValuePart } from './parts.ts';
-import { type PatternTests, ruledOutSelection, type Selection } from './pattern-tests.ts';
+import { ruledOutSelection, type Selection } from './pattern-tests.ts';
 
 /**
  * What `node`, a pattern that may fail and doesn't bind, selects of `part`: a selection, `refused`
@@ -51,7 +52,6 @@ import { type PatternTests, ruledOutSelection, type Selection } from './pattern-
  */
 export function selectionOf(
   context: BodyContext,
-  tests: PatternTests,
   node: Pattern | PatternPart,
   part: ValuePart,
 ): Selection | 'refused' | undefined {
@@ -61,7 +61,7 @@ export function selectionOf(
   }
   if (type.kind === 'any') {
     return isDowncasting(context, node, type)
-      ? downcastSelection(tests, node, { ...part, type })
+      ? downcastSelection(context, node, { ...part, type })
       : undefined;
   }
   const union = unionPart(part);
@@ -124,11 +124,11 @@ function isDowncasting(
  * exhaustiveness, since the types inside an `any` type are an open set.
  */
 function downcastSelection(
-  tests: PatternTests,
+  context: BodyContext,
   node: StructPattern | VariantCallPattern | NamePattern,
   part: ValuePart & { readonly type: AnyType },
 ): Selection | 'refused' {
-  const downcast = tests.downcast(node, part);
+  const downcast = downcastOf(context, node, part);
   if (downcast === 'ruledOut') {
     return ruledOutSelection(part);
   }

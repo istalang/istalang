@@ -7,9 +7,8 @@
  *   arrays, call patterns' arguments (walk/kinds/variant-calls.ts), or-patterns, and the parts each
  *   reaches (parts.ts). A tuple or struct is taken apart
  *   as an assignment's target is (taking.ts). What could fail to match (a literal, a comparison,
- *   a referring name, a variant, an array's length, a range) goes to `PatternTests`, which a
- *   `match` case or `is` provides. A target has none, so each such construct is refused there: a
- *   target must always match.
+ *   a referring name, a variant, an array's length, a range) is checked by its own kind (kinds/)
+ *   in a `match` case or `is`, and refused in a target, which must always match.
  * - A bare name binds when the binder made it a variable, as it does for every bare name of a
  *   target and for a camelCase one in a case (§3.11); otherwise it refers.
  * - Tests come out in the order lowering runs them: a variant is tested before its fields are read.
@@ -53,6 +52,9 @@ import { namesOwnType } from '../../../types/written/pattern-types.ts';
 import { anyShape, nothingShape, type Shape } from '../exhaustiveness/exhaustiveness.ts';
 import { partSelected, sameNames } from './kinds/alternatives.ts';
 import { takeArray } from './kinds/arrays.ts';
+import { comparison, literal } from './kinds/comparisons.ts';
+import { rangeLeaf } from './kinds/ranges.ts';
+import { reference } from './kinds/references.ts';
 import { isStructNotKnown, restBinding, takeFieldsByName } from './kinds/struct-fields.ts';
 import {
   calledVariant,
@@ -61,7 +63,7 @@ import {
   variantBraced,
 } from './kinds/variant-calls.ts';
 import type { ValuePart } from './parts.ts';
-import type { Leaf, PatternTests, Selection } from './pattern-tests.ts';
+import type { Leaf, Selection } from './pattern-tests.ts';
 import { literalPart, refuseTypeArguments, selectionOf } from './selections.ts';
 import { type Taking, takeApart, takeTargets } from './taking.ts';
 
@@ -72,14 +74,13 @@ export interface WalkedPattern {
   readonly shape: Shape | undefined;
 }
 
-/** Walks `pattern` over a value of `part`; without `tests`, as a target that must always match. */
+/** Walks `pattern`, a `match` case's or an `is`'s, which may fail to match, over a value of `part`. */
 export function walkPattern(
   context: BodyContext,
-  tests: PatternTests | undefined,
   pattern: Pattern,
   part: ValuePart,
 ): WalkedPattern {
-  const walk = newWalk(context, tests);
+  const walk = newWalk(context, true);
   const shape = walk.take(pattern, part);
   return { tests: walk.found, bindings: walk.bindings, shape };
 }
@@ -96,7 +97,7 @@ export function walkTargets(
   type: Type,
   typed?: StructPattern,
 ): readonly TargetBinding[] {
-  const walk = newWalk(context, undefined, typed);
+  const walk = newWalk(context, false, typed);
   takeTargets(walk, targets, { type, path: [] }, spanOf(targets));
   return walk.bindings.map(({ path, ...binding }) => ({
     ...binding,
@@ -110,7 +111,8 @@ export function walkTargets(
 
 /** A pattern's walk: what it found so far. */
 interface Walk extends Taking<Pattern | PatternPart> {
-  readonly tests: PatternTests | undefined;
+  /** Whether the pattern may fail to match: a case's or an `is`'s, never a target's. */
+  readonly refutable: boolean;
   /** The struct pattern whose written type arguments are its value's type's (`walkTargets`). */
   readonly typed: StructPattern | undefined;
   readonly found: PatternTest[];
@@ -127,14 +129,10 @@ interface Matched {
   readonly selected?: PatternTest | undefined;
 }
 
-function newWalk(
-  context: BodyContext,
-  tests: PatternTests | undefined,
-  typed?: StructPattern,
-): Walk {
+function newWalk(context: BodyContext, refutable: boolean, typed?: StructPattern): Walk {
   const walk: Walk = {
     context,
-    tests,
+    refutable,
     typed,
     found: [],
     bindings: [],
@@ -150,11 +148,11 @@ const patternHandlers: Handlers<Walk, Pattern | PatternPart, [ValuePart], Shape 
   Invalid: () => anyShape,
   OrPattern: (walk, node, part) => takeAlternatives(walk, node, part).shape,
   ArrayPattern: (walk, node, part) =>
-    walk.tests === undefined
-      ? refused(walk, node, part)
-      : takeArray(walk, walk.tests, { site: node, elements: node.elements }, part),
+    walk.refutable
+      ? takeArray(walk, { site: node, elements: node.elements }, part)
+      : refused(walk, node, part),
   RangePattern: (walk, node, part) =>
-    refutable(walk, node, part, (tests) => tests.range(node, part)),
+    tested(walk, node, part, () => rangeLeaf(walk.context, node, part)),
   RestPattern: (walk, node, part) => {
     if (node.target.kind === 'Identifier') {
       walk.bindings.push({ name: node.target, ...part });
@@ -171,10 +169,10 @@ const patternHandlers: Handlers<Walk, Pattern | PatternPart, [ValuePart], Shape 
     if (isMissingName(lastName(node.path))) {
       return;
     }
-    return refutable(walk, node, part, (tests) => tests.reference(node, part));
+    return tested(walk, node, part, () => reference(walk.context, node, part));
   },
   LiteralPattern: (walk, node, part) =>
-    refutable(walk, node, part, (tests) => tests.literal(node, part)),
+    tested(walk, node, part, () => literal(walk.context, node, part)),
   ParenthesizedPattern: () => unreachable('Parenthesized patterns are unwrapped before dispatch.'),
   AsPattern: (walk, node, part) => {
     const matched = takeMatched(walk, node.pattern, part);
@@ -185,9 +183,7 @@ const patternHandlers: Handlers<Walk, Pattern | PatternPart, [ValuePart], Shape 
     takeApart(walk, { kind: 'tuple', elements: node.elements, span: node.span }, part),
   StructPattern: (walk, node, part) => takeStruct(walk, node, part),
   VariantCallPattern: (walk, node, part) =>
-    walk.tests === undefined
-      ? refused(walk, node, part)
-      : takeVariantCall(walk, walk.tests, node, part),
+    walk.refutable ? takeVariantCall(walk, node, part) : refused(walk, node, part),
   NamedPatternArgument: (walk, item, part) => walk.take(item.pattern, part),
   OtherFieldsPattern: () => anyShape,
   BindFieldPattern: (walk, item, part) => {
@@ -196,7 +192,7 @@ const patternHandlers: Handlers<Walk, Pattern | PatternPart, [ValuePart], Shape 
   },
   NestedFieldPattern: (walk, item, part) => walk.take(item.pattern, part),
   CompareFieldPattern: (walk, item, part) =>
-    refutable(walk, item, part, (tests) => tests.comparison(item, part)),
+    tested(walk, item, part, () => comparison(walk.context, item, part)),
 };
 // biome-ignore-end lint/style/useNamingConvention: the keys are the tree's node kinds.
 
@@ -233,12 +229,12 @@ function refusedCall(
   if (node.kind !== 'VariantCallPattern' || calledVariant(walk.context, node) !== undefined) {
     return undefined;
   }
-  if (walk.tests === undefined) {
-    bindAt(walk, node, part, errorType);
-  } else {
+  if (walk.refutable) {
     for (const argument of node.arguments) {
       walk.take(argument, { type: errorType, path: part.path });
     }
+  } else {
+    bindAt(walk, node, part, errorType);
   }
   const entity = walk.context.entityOf(lastName(node.callee.path));
   const covers = entity !== undefined && namesOwnType(walk.context.checker, entity, part.type);
@@ -259,11 +255,11 @@ function refusedBraces(
     return undefined;
   }
   walk.context.report(checkerDiagnostics.variantInBracesPattern(node.span, braced.name));
-  if (walk.tests === undefined) {
+  if (!walk.refutable) {
     bindAt(walk, node, part, errorType);
     return { shape: anyShape, part };
   }
-  return { shape: takeVariantBraces(walk, walk.tests, braced, part), part };
+  return { shape: takeVariantBraces(walk, braced, part), part };
 }
 
 /**
@@ -280,9 +276,7 @@ function takeSelecting(walk: Walk, node: Pattern | PatternPart, part: ValuePart)
     return { shape: anyShape, part };
   }
   const selection =
-    walk.tests === undefined || isBinding
-      ? undefined
-      : selectionOf(walk.context, walk.tests, node, part);
+    walk.refutable && !isBinding ? selectionOf(walk.context, node, part) : undefined;
   if (selection === 'refused') {
     bindAt(walk, node, part, errorType);
     // A downcast is a guard however it goes, the types inside an `any` type being an open set.
@@ -336,10 +330,7 @@ function takeRuledOut(walk: Walk, node: Pattern | PatternPart, part: ValuePart):
  */
 function binds(walk: Walk, node: NamePattern): boolean {
   const [name, ...rest] = node.path;
-  return (
-    rest.length === 0 &&
-    (walk.tests === undefined || walk.context.entityOf(name)?.kind === 'variable')
-  );
+  return rest.length === 0 && (!walk.refutable || walk.context.entityOf(name)?.kind === 'variable');
 }
 
 /**
@@ -348,12 +339,11 @@ function binds(walk: Walk, node: NamePattern): boolean {
  * String as v`); else the part's own type.
  */
 function takeAlternatives(walk: Walk, node: OrPattern, part: ValuePart): Matched {
-  if (walk.tests === undefined) {
+  if (!walk.refutable) {
     return { shape: refused(walk, node, part), part };
   }
-  const { tests } = walk;
   const alternatives = node.alternatives.map((alternative) => {
-    const own = newWalk(walk.context, tests);
+    const own = newWalk(walk.context, true);
     const { shape, selected } = takeMatched(own, alternative, part);
     const bindings = own.bindings.map((binding) => ({
       ...binding,
@@ -412,17 +402,17 @@ function takeStruct(walk: Walk, node: StructPattern, part: ValuePart): Shape | u
   return shape;
 }
 
-/** A construct that could fail to match: tested where tests are given, refused in a target. */
-function refutable(
+/** A construct that could fail to match: tested in a pattern that may fail, refused in a target. */
+function tested(
   walk: Walk,
   node: Pattern | PatternPart,
   part: ValuePart,
-  check: (tests: PatternTests) => Leaf,
+  check: () => Leaf,
 ): Shape | undefined {
-  if (walk.tests === undefined) {
+  if (!walk.refutable) {
     return refused(walk, node, part);
   }
-  const leaf = check(walk.tests);
+  const leaf = check();
   walk.found.push(...leaf.tests);
   return leaf.shape;
 }
@@ -452,7 +442,7 @@ function bindAt(walk: Walk, node: Pattern | PatternPart, part: ValuePart, type: 
       if (entity?.kind === 'variable') {
         return [entity.name];
       }
-      return walk.tests === undefined ? [name] : [];
+      return walk.refutable ? [] : [name];
     }),
   );
   for (const name of names) {

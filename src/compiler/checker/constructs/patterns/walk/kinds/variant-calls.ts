@@ -56,9 +56,10 @@ import type { FieldMember, Type } from '../../../../types/type/index.ts';
 import { errorType } from '../../../../types/type/primitives.ts';
 import { anyShape, type Shape } from '../../exhaustiveness/exhaustiveness.ts';
 import type { ValuePart } from '../parts.ts';
-import type { ArrayItems, PatternTests, VariantPart } from '../pattern-tests.ts';
+import type { ArrayItems, VariantPart } from '../pattern-tests.ts';
 import { constructed } from '../taking.ts';
 import { type ItemTaking, takeArray } from './arrays.ts';
+import { namedVariant } from './named-variants.ts';
 
 /** A call pattern's argument that binds to a field: any but a last `...`. */
 
@@ -97,7 +98,6 @@ export function variantBraced(
  */
 export function takeVariantBraces(
   walk: ItemTaking,
-  tests: PatternTests,
   braced: VariantBraced,
   part: ValuePart,
 ): Shape | undefined {
@@ -107,7 +107,7 @@ export function takeVariantBraces(
     walk.take(item, errorPart);
   }
   const variant = declaresVariant(part.type, braced)
-    ? tests.variant(braced.type, braced.named, part)
+    ? namedVariant(walk.context, braced.type, braced.named, part)
     : undefined;
   if (variant === undefined) {
     return undefined;
@@ -170,7 +170,6 @@ interface BoundCall {
  */
 export function takeVariantCall(
   walk: ItemTaking,
-  tests: PatternTests,
   node: VariantCallPattern,
   part: ValuePart,
 ): Shape | undefined {
@@ -179,7 +178,7 @@ export function takeVariantCall(
     return unreachable('A call pattern naming no variant is refused before it is taken.');
   }
   const { given, refused } = callPatternArguments(node.arguments);
-  const variant = tests.variant(node.callee, naming, part);
+  const variant = namedVariant(walk.context, node.callee, naming, part);
   for (const argument of variant === undefined ? [...given, ...refused] : refused) {
     walk.take(argument, { type: errorType, path: part.path });
   }
@@ -204,7 +203,7 @@ export function takeVariantCall(
     );
   }
   const shapes = variant.fields.map((field, index) =>
-    takeField(walk, tests, { call, field, source: binding[index] }, fieldPart(part, field, index)),
+    takeField(walk, { call, field, source: binding[index] }, fieldPart(part, field, index)),
   );
   return constructed(variant.key, shapes);
 }
@@ -259,7 +258,6 @@ interface TakenField {
 /** The field `taken` names over `part`: its argument, the rest's items, or anything when left. */
 function takeField(
   walk: ItemTaking,
-  tests: PatternTests,
   { call, field, source }: TakenField,
   part: ValuePart,
 ): Shape | undefined {
@@ -281,7 +279,7 @@ function takeField(
         recordGiven(walk, item, field);
       }
       const items = { site: call.node, elements, isOpen: call.leavesOthers };
-      return takeRestItems(walk, tests, items, part);
+      return takeRestItems(walk, items, part);
     }
     default:
       return anyShape;
@@ -292,12 +290,7 @@ function takeField(
  * The rest field of `part` against the arguments it collects, `items` at their call pattern:
  * anything for none, a lone spread taking it whole, else its items as an array pattern's.
  */
-function takeRestItems(
-  walk: ItemTaking,
-  tests: PatternTests,
-  items: ArrayItems,
-  part: ValuePart,
-): Shape | undefined {
+function takeRestItems(walk: ItemTaking, items: ArrayItems, part: ValuePart): Shape | undefined {
   const [only] = items.elements;
   if (only === undefined) {
     return anyShape;
@@ -305,7 +298,7 @@ function takeRestItems(
   if (items.elements.length === 1 && only.kind === 'RestPattern') {
     return walk.take(only, part);
   }
-  return takeArray(walk, tests, items, part);
+  return takeArray(walk, items, part);
 }
 
 /**

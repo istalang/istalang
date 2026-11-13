@@ -1,8 +1,9 @@
 /**
  * The type a pattern naming a type tests a value for (§3.10, §3.11), the rules the checker's
- * patterns (constructs/patterns/matching.ts, constructs/patterns/walk/kinds/downcasts.ts,
- * constructs/patterns/walk/members.ts) and the editor's completion read alike, so what a pattern
- * may name and what it then tests can't drift apart.
+ * patterns (constructs/patterns/walk/kinds/references.ts,
+ * constructs/patterns/walk/kinds/downcasts.ts, constructs/patterns/walk/members.ts) and the
+ * editor's completion read alike, so what a pattern may name and what it then tests can't drift
+ * apart.
  *
  * - A pattern gives no type arguments, so it names a generic type only as a whole: against a value
  *   of that type it matches every instance, but against an `any` value, whose own type is one

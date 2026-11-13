@@ -1,27 +1,14 @@
 /**
- * What the walk asks of whoever checks a pattern that may fail (§3.11): each construct that could
- * fail to match, checked into the tests lowering runs and a shape for exhaustiveness. A `match`
- * case or `is` provides them (../matching.ts); a target has none, so the walk refuses those
- * constructs there (walk/index.ts).
+ * What checking a construct that could fail to match gives the walk of a pattern that may fail
+ * (§3.11): the tests lowering runs and a shape for exhaustiveness. A target has none, so the walk
+ * refuses those constructs there (walk/index.ts).
  */
 
-import type { VariantNaming } from '../../../../binder/entities.ts';
-import type {
-  CompareFieldPattern,
-  LiteralPattern,
-  NamePattern,
-  Pattern,
-  RangePattern,
-  RestPattern,
-  StructPattern,
-  VariantCallPattern,
-} from '../../../../syntax/patterns.ts';
-import type { NamedType } from '../../../../syntax/types/index.ts';
+import type { Pattern, RestPattern } from '../../../../syntax/patterns.ts';
 import { type ArraySite, neverTest, type PatternTest } from '../../../surface/checked-pattern.ts';
-import type { AnyType, FieldMember, Type } from '../../../types/type/index.ts';
+import type { FieldMember, Type } from '../../../types/type/index.ts';
 import { neverType } from '../../../types/type/primitives.ts';
 import { nothingShape, type Shape } from '../exhaustiveness/exhaustiveness.ts';
-import type { Downcast } from './kinds/downcasts.ts';
 import type { ValuePart } from './parts.ts';
 
 /** What a refutable construct gives the walk: its tests, and its shape (undefined: a guard). */
@@ -82,32 +69,4 @@ export function ruledOutSelection(part: ValuePart): Selection {
     decided: true,
     shapeOf: () => nothingShape,
   };
-}
-
-/** How the constructs that could fail to match are checked, where a pattern may fail. */
-export interface PatternTests {
-  /** `case 0:`, `case "cfo":`, `case none:`. */
-  readonly literal: (node: LiteralPattern, part: ValuePart) => Leaf;
-  /** `amount > 1000`, `ok == false`, on the part of the field. */
-  readonly comparison: (item: CompareFieldPattern, part: ValuePart) => Leaf;
-  /** A name that refers: a variant, a type, or a constant. */
-  readonly reference: (node: NamePattern, part: ValuePart) => Leaf;
-  /** The variant `naming` names at `callee`, a struct or call pattern's; undefined after a report. */
-  readonly variant: (
-    callee: NamedType,
-    naming: VariantNaming,
-    part: ValuePart,
-  ) => VariantPart | undefined;
-  /** The length test and item type of array items on the part; undefined after a report. */
-  readonly array: (items: ArrayItems, part: ValuePart) => ArrayPart | undefined;
-  /** `1..=5`, `..0` on an int part. */
-  readonly range: (node: RangePattern, part: ValuePart) => Leaf;
-  /**
-   * The downcast a struct pattern or referring name makes of an `any` part: `ruledOut` for a type
-   * never inside it; undefined for none.
-   */
-  readonly downcast: (
-    node: StructPattern | VariantCallPattern | NamePattern,
-    part: ValuePart & { readonly type: AnyType },
-  ) => Downcast | 'ruledOut' | undefined;
 }
