@@ -11,23 +11,12 @@
  */
 
 import { inclusiveRangeFunction } from '../../../foundation/language/well-known/implicit-calls.ts';
-import {
-  languageModules,
-  type WellKnownDeclaration,
-  wellKnown,
-} from '../../../foundation/language/well-known/index.ts';
-import { unreachable } from '../../../foundation/structures/unreachable.ts';
-import type { Call } from '../../syntax/expressions/calls.ts';
-import type {
-  Expression,
-  FieldInitializer,
-  Range,
-  StructLiteral,
-} from '../../syntax/expressions/index.ts';
+import { wellKnown } from '../../../foundation/language/well-known/index.ts';
+import type { Expression, Range } from '../../syntax/expressions/index.ts';
 import { endOf, startOf } from '../../syntax/tree/positions.ts';
-import type { BodyContext } from '../contexts/body-context.ts';
-import { bound, type Origin, synthesized } from '../contexts/synthesized.ts';
+import { type Origin, synthesized } from '../contexts/synthesized.ts';
 import { intType } from '../types/type/primitives.ts';
+import { callOf, preludeName } from './core-nodes.ts';
 import type { Desugar } from './index.ts';
 
 export const ranges: Desugar<Range> = {
@@ -38,57 +27,39 @@ export const ranges: Desugar<Range> = {
       }
     }
     const origin = { sugar: node, role: 'range' };
-    const start = node.start ?? none(origin, startOf(node.span));
-    const step =
-      node.step ??
-      synthesized(origin, { kind: 'IntegerLiteral', span: endOf(node.span), value: 1n } as const);
+    const { span } = node;
+    const start = node.start ?? none(origin, startOf(span));
+    const one = { kind: 'IntegerLiteral', span: endOf(span), value: 1n } as const;
+    const step = node.step ?? synthesized(origin, one);
     if (node.isInclusive && node.end !== undefined) {
-      return synthesized(origin, {
-        kind: 'Call',
-        span: node.span,
-        callee: preludeName(context, origin, {
-          module: languageModules.prelude,
-          name: inclusiveRangeFunction,
-        }),
-        isOptional: false,
-        arguments: [start, node.end, step],
-      } satisfies Call);
+      const inclusive = preludeName(context, origin, inclusiveRangeFunction, span);
+      return callOf(origin, span, inclusive, [start, node.end, step]);
     }
-    const end = node.end ?? none(origin, endOf(node.span));
+    const end = node.end ?? none(origin, endOf(span));
+    const range = [preludeName(context, origin, wellKnown.range.name, span)] as const;
+    const type = { kind: 'NamedType', span, path: range, typeArguments: [] } as const;
+    const fields = Object.entries({ start, end, step }).map(([name, value]) => {
+      const key = synthesized(origin, {
+        kind: 'Identifier',
+        span: value.span,
+        text: name,
+      } as const);
+      return synthesized(origin, {
+        kind: 'FieldInitializer',
+        span: value.span,
+        name: key,
+        value,
+      } as const);
+    });
     return synthesized(origin, {
       kind: 'StructLiteral',
-      span: node.span,
-      type: synthesized(origin, {
-        kind: 'NamedType',
-        span: node.span,
-        path: [preludeName(context, origin, wellKnown.range)],
-        typeArguments: [],
-      } as const),
-      items: [
-        field(origin, 'start', start),
-        field(origin, 'end', end),
-        field(origin, 'step', step),
-      ],
-    } satisfies StructLiteral);
+      span,
+      type: synthesized(origin, type),
+      items: fields,
+    } as const);
   },
   wording: {},
 };
-
-/** `name: value`, a field of the range built, at `value`. */
-function field(origin: Origin, name: string, value: Expression): FieldInitializer {
-  const { span } = value;
-  const key = synthesized(origin, { kind: 'Identifier', span, text: name } as const);
-  return synthesized(origin, { kind: 'FieldInitializer', span, name: key, value });
-}
-
-/** A name standing for `declaration`, bound to it. */
-function preludeName(context: BodyContext, origin: Origin, declaration: WellKnownDeclaration) {
-  const entity =
-    context.checker.wellKnownEntity(declaration) ??
-    unreachable(`The prelude declares '${declaration.name}'.`);
-  const name = { kind: 'Identifier', span: origin.sugar.span, text: declaration.name } as const;
-  return bound(synthesized(origin, name), entity);
-}
 
 /** `none`, an open side of a range, at `span`. */
 function none(origin: Origin, span: Range['span']): Expression {

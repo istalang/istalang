@@ -50,7 +50,7 @@ import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { isPack } from '../types/type/function-types.ts';
 import { presentType } from '../types/unions/unions.ts';
 import { namedType } from '../types/written/named-types.ts';
-import { afterConstants, heldConstant } from './constants.ts';
+import { afterConstants, heldConstant } from './core-nodes.ts';
 import type { Desugar } from './index.ts';
 
 /** The parts a deferred call's core is built of, as its wording reads them. */

@@ -16,7 +16,7 @@ import type { VariableDeclaration } from '../../syntax/statements/index.ts';
 import { spanAcross } from '../../syntax/tree/positions.ts';
 import { type Origin, synthesized } from '../contexts/synthesized.ts';
 import type { CoreExpression } from '../surface/checked-body.ts';
-import { afterConstants, type HeldConstant, heldConstant } from './constants.ts';
+import { afterConstants, type HeldConstant, heldConstant } from './core-nodes.ts';
 import type { Desugar } from './index.ts';
 
 /** A chain being desugared, and what its core's nodes are built as. */
