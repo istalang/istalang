@@ -21,8 +21,9 @@
  *
  * A deferred call's own call is made later, by the function its taker is given, of its callee's
  * kind (deferred-calls.ts), so what it gives is that function's, never the code writing it; what it
- * computes now is. One value per function is reported, the first its text holds: the mark it asks
- * for mends them all, or none does.
+ * computes now is: the walk takes a node's children where they run (`bodyChildrenOf`). One value
+ * per function is reported, the first its text holds: the mark it asks for mends them all, or none
+ * does.
  *
  * A type's kinds are read off its fields' written types (properties/value-kinds.ts), so a field
  * whose type its default gives holds no part whose kind the type arguments decide (§3.3).
@@ -44,7 +45,12 @@ import type { Expression } from '../../../syntax/expressions/index.ts';
 import { defaultValuesOf } from '../../../syntax/expressions/parameters.ts';
 import type { VariableDeclaration } from '../../../syntax/statements/index.ts';
 import { awaits } from '../../../syntax/tokens/modifiers.ts';
-import { fieldChildrenOf, type SyntaxNode } from '../../../syntax/tree/index.ts';
+import {
+  bodyChildrenOf,
+  fieldChildrenOf,
+  nestsFunction,
+  type SyntaxNode,
+} from '../../../syntax/tree/index.ts';
 import type { AnchoredSpan } from '../../../syntax/tree/positions.ts';
 import type { CheckerContext } from '../../contexts/context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
@@ -216,24 +222,23 @@ function judgingOf(checker: CheckerContext, module: ModuleId, body: CheckedBody)
   return { checker, module, body, calls };
 }
 
-function judge(judging: Judging, node: SyntaxNode, handler: Handler, now = true): void {
-  if (now) {
-    judgeNode(judging, node, handler);
-  }
+function judge(judging: Judging, node: SyntaxNode, handler: Handler): void {
+  judgeNode(judging, node, handler);
   const nested = nestedOf(judging, node);
   const inner = nested ?? handler;
   if (nested !== undefined) {
     judgeNested(judging, node as NestedFunction, nested);
   }
-  const later = laterOf(node);
-  for (const child of fieldChildrenOf(node)) {
-    judge(judging, child, inner, !later.has(child));
+  // A nested function's own nodes are judged by its handler; any other node's, where they run.
+  const children = nestsFunction(node) ? fieldChildrenOf(node) : bodyChildrenOf(node);
+  for (const child of children) {
+    judge(judging, child, inner);
   }
   if ('header' in node && node.header?.kind === 'FieldHeader') {
     for (const pass of judging.body.passesOf(node.header)) {
       const inPass = judgingOf(judging.checker, judging.module, pass.body);
-      for (const child of fieldChildrenOf(node)) {
-        judge(inPass, child, inner, !later.has(child));
+      for (const child of children) {
+        judge(inPass, child, inner);
       }
     }
   }
@@ -295,10 +300,10 @@ function judgeValue(judging: Judging, handler: Handler, at: AnchoredSpan, type: 
 
 /** The handler of the values `node` computes, where it is a nested function checked in the body. */
 function nestedOf(judging: Judging, node: SyntaxNode): Handler | undefined {
-  if (node.kind !== 'Lambda' && node.kind !== 'FunctionDeclaration') {
+  if (!nestsFunction(node)) {
     return undefined;
   }
-  const checked = judging.body.functionOf(node as NestedFunction);
+  const checked = judging.body.functionOf(node);
   return checked === undefined
     ? undefined
     : {
@@ -334,25 +339,5 @@ function judgeNested(judging: Judging, node: NestedFunction, handler: Handler): 
     node.kind === 'FunctionDeclaration' ? checker.inputs.bodyOf(module, node) : undefined;
   if (block !== undefined) {
     judge(judging, block, handler);
-  }
-}
-
-/** What no node but a deferred call makes later. */
-const noneLater: ReadonlySet<SyntaxNode> = new Set();
-
-/**
- * The nodes a deferred call `node` makes its call through later, its parentheses included, whose
- * values are the later function's; none for any other node.
- */
-function laterOf(node: SyntaxNode): ReadonlySet<SyntaxNode> {
-  if (node.kind !== 'DeferredCall') {
-    return noneLater;
-  }
-  const later = new Set<SyntaxNode>();
-  for (let call: Expression = node.call; ; call = call.expression) {
-    later.add(call);
-    if (call.kind !== 'Parenthesized') {
-      return later;
-    }
   }
 }
