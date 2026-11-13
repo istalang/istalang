@@ -26,8 +26,9 @@ Marks: **[L]** the lead read the code and confirmed it; **[n×]** n areas found 
 
 Each root cause below explains a family of the ranked findings; fixing the root removes the family.
 
-1. **No desugaring stage.** *(Deferred calls and `a!` reduced, B3; `??`, `?.`, `?->`, `?` have typing of their own and
-   stay core.)* Sugar is given meaning separately in the checker, the flow IR, lowering, the editor and the
+1. **No desugaring stage.** *(Now one: `checker/desugaring/`, a table the checker runs on reaching a sugar node, the core
+   recorded as `coreOf` for every later phase. Deferred calls and `a!` are in it; chained comparisons, templates and indented
+   values are queued; `??`, `?.`, `?->`, `?` have typing of their own and stay core.)* Sugar is given meaning separately in the checker, the flow IR, lowering, the editor and the
    formatter. A deferred call is ~50 sites in 22 files; `!`, `??`, `?.`, `?->`, `?` are each a checker handler, a flow
    handler and a lowering handler. The codebase already has the pattern that fixes it, used for a few constructs: a
    memoized core reading in `syntax/` (`taggedCall`, `fieldsFunctionOf`, `comparisonLinksOf`) or one record the checker
@@ -68,8 +69,9 @@ Each root cause below explains a family of the ranked findings; fixing the root 
   first removes the parallel construct tables; the second at least removes the parallel rules.
 
 ### 2. [high] Deferred calls carry their own machinery instead of reducing to a closure  **[3×: res, rules, spec]**
-- **Fixed** in the checker and flow IR (`9bbfc22c..2fe3f741`): the function is the lambda `deferredLambdaOf` reads, its mark a
-  lambda's (spec §3.3, §3.14, §7 changed). Lowering's own deferred path goes with B2b (finding 1).
+- **Fixed** (`9bbfc22c..d2d7c71f`): a deferred call is sugar, desugared once by `checker/desugaring/deferred-calls.ts` into
+  `g(…, given: { const v… = what runs now; fn(): f(v…) })`; its function's mark is a lambda's (spec §3.3, §3.14, §7). Every
+  phase after the checker reads the core (`coreOf`); the deferred-call code of the checker, flow IR and lowering is gone.
 - where: `checker/constructs/expressions/deferred-calls.ts` (`laterMarkOf` repeats `markMaking`'s join and `kindsHeld`
   report), `checker/resolution/calls/deferred-arguments.ts` (capture sendability beside `capturedSend`), `Deferrals` threaded
   into `resolve/index.ts`, `value-calls.ts`, `argument-fit.ts`, `data-kinds.ts`, `disposal.ts`; `rules/flow/build/calls.ts`;
@@ -302,6 +304,11 @@ that are test seams (unexporting would copy knowledge or drop property tests).
 - `rules/lifetimes/analysis/index.ts:isAsyncSite` re-implements `nestsFunction`; `disposal.ts:checkSelfStays` still walks the
   AST (reading `flowOf` would fix it).
 - Flow IR `??`/`!`, `?`, `?.` each hand-roll "branch on present, else …, read inside" (one `presentOr` builder; B2a).
+- `contexts/use-site.ts:bodySite` reports and notes constraints straight to the program checker, past `BodyContext.report`:
+  two reporting seams, so pass holding and sugar wording are skipped for `completeCall`/`instantiate`/`reportedFits`.
+- Inference: a type variable that met the error type settles to its other bounds, so a mistake inside a type
+  (`Future<?>`) can still cascade.
+- Fixed on the way: a trait called as a function was accepted silently and crashed lowering (`8a578aee`).
 
 ## Rejected proposals
 
