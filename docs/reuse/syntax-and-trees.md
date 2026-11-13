@@ -59,6 +59,7 @@ tags: [reuse, syntax, ast, scanner, parser, operators]
 - unwrap a `CallArgument`'s expression or find an out-of-order argument → `argumentValue`, `misplacedArgument` (`src/compiler/syntax/expressions/arguments.ts`)
 - inspect an optional chain step, or spell a link form's operator, optional or not → `chainStepOf`, `isOptionalStep`, `linkOperator`, `optionalOperatorOf` (`src/compiler/syntax/expressions/chains.ts`)
 - read a comparison as `ComparisonLink`s, a chain's (`a < b <= c`) or a single binary's, and a link's span → `comparisonLinksOf`, `comparisonLinkOf`, `linkSpan` (`src/compiler/syntax/expressions/comparisons.ts`)
+- read `a ?? b` or `a!` as one form, the operand and what stands in for its `none` (`??`'s right side, `!`'s panic, which the checker finds in the prelude) → `nullishOf` (`src/compiler/syntax/expressions/nullish.ts`)
 - check whether an expression is a place or decompose it into `{ root, steps }` → `isPlace`, `placePath` (`src/compiler/syntax/expressions/places.ts`)
 - get a constant template's text → `constantTextOf` (`src/compiler/syntax/expressions/literals/templates.ts`)
 - get the memoized `Call` node of a tagged template → `isTagged`, `taggedCall` (`src/compiler/syntax/expressions/literals/templates.ts`)
@@ -75,7 +76,7 @@ tags: [reuse, syntax, ast, scanner, parser, operators]
 
 ## One-way rules
 
-- Shared desugaring (`taggedCall`, `fieldsFunctionOf`, `comparisonLinksOf`, `placePath`, `destructuringOf`) lives in `src/compiler/syntax/`. A sugar is given its meaning once, as a memoized core reading there or one record the checker makes (`CheckedBody.builtLiteralOf`), and later phases handle the core form; never a handler per phase for it (deferred calls, `!`, `??`, `?.` are known per-phase copies, `docs/audit/dry-review-2026-11-13.md` root cause 1).
+- Shared desugaring (`taggedCall`, `fieldsFunctionOf`, `comparisonLinksOf`, `placePath`, `destructuringOf`, `nullishOf`) lives in `src/compiler/syntax/`. A sugar is given its meaning once, as a memoized core reading there or one record the checker makes (`CheckedBody.builtLiteralOf`), and later phases handle the core form; never a handler per phase for it (deferred calls are a known per-phase copy, `docs/audit/dry-review-2026-11-13.md` root cause 1). `??`, `?.`, `?->` and `?` are operators of their own typing, no sugar.
 - A declaration's members are read through `membersAsWritten`, and which names a node declares or which nodes lay out items one per line are syntax's to say once; editor and formatter kind lists of their own (`name-types.ts`, `outline/`, `placeholder.ts`, the formatter's `itemLists`) are known copies that miss newer kinds (finding 11).
 - A link reads through an optional when its node `isOptional` (member access, tuple element, index, call, `->`); its operator is spelled by `linkOperator`/`optionalOperatorOf` (`chains.ts`), never as a literal.
 - Node fields hold only nodes, node arrays, optional nodes/arrays, a span, a record of words (a function's `qualifiers`) or primitives, so `childrenOf` (`tree/index.ts`) derives traversal automatically: a child is an object with a `kind` and a `span` (`isNode`).

@@ -29,9 +29,9 @@ import {
   ifFlow,
   isFlow,
   matchFlow,
+  nullishFlow,
   propagate,
   selectFlow,
-  unwrap,
 } from './control.ts';
 import type { FlowBuilder } from './flow-builder.ts';
 import { resolvedCall } from './implicit-calls.ts';
@@ -224,7 +224,7 @@ export const expressionFlows: Handlers<FlowBuilder, Expression, [], ValueId> = {
   TupleElement: (builder, node) => readPart(builder, node, { kind: 'step', step: node.element }),
   Index: index,
   Propagate: propagate,
-  Unwrap: unwrap,
+  Unwrap: nullishFlow,
   Dereference: (builder, node) => {
     const handle = stepTarget(builder, node, node.operand);
     const into = builder.temporaryOf(node);

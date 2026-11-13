@@ -18,7 +18,7 @@ import { checkDereference } from './access/dereference.ts';
 import { checkIndex } from './access/indexing.ts';
 import { checkMemberAccess } from './access/member-access.ts';
 import { checkName } from './access/names.ts';
-import { checkUnwrap } from './access/optionals.ts';
+import { checkNullish } from './access/optionals.ts';
 import { checkCall } from './calls.ts';
 import { checkComprehension, checkFieldComprehension } from './collections/comprehensions.ts';
 import { checkArray, checkMap } from './collections/joining-literals.ts';
@@ -83,7 +83,7 @@ export const expressionHandlers: Handlers<BodyContext, Expression, [Type | undef
   Index: checkIndex,
   Propagate: checkPropagate,
   DeferredCall: checkDeferredCall,
-  Unwrap: checkUnwrap,
+  Unwrap: checkNullish,
   ChainedComparison: checkChainedComparison,
   TemplateLiteral: checkTemplate,
   Dereference: checkDereference,

@@ -6,8 +6,9 @@
  *   and every later branch when true. A branch is a scope its condition binds into, ended on both
  *   of its paths. `match` tests each case's pattern and guard in turn, a failing guard ending the
  *   case's scope.
- * - `and`, `or` and `??` run their right side only sometimes; `e?` returns `e`'s error, `e!` calls
- *   `panic` where `e` is none, and both go on with the value inside otherwise.
+ * - `and`, `or` and `??` run their right side only sometimes; `e?` returns `e`'s error, and `e!`,
+ *   read as `e ??` a panic, calls `panic` where `e` is none; both go on with the value inside
+ *   otherwise.
  * - `await` hands what it waits on to its `onAwait`, suspends, and gives what it settled with. A
  *   `select` evaluates every case's awaitable and hands each to its `onAwait`; an awaiting one
  *   suspends on them all, one that doesn't await never suspends (§8). Then one case's body runs,
@@ -34,6 +35,7 @@ import type {
   SelectCase,
   Unwrap,
 } from '../../../../syntax/expressions/index.ts';
+import { nullishOf } from '../../../../syntax/expressions/nullish.ts';
 import { binaryOperators } from '../../../../syntax/expressions/operators.ts';
 import { casesOf, selectCasesOf } from '../../../../syntax/expressions/readings.ts';
 import type { Block } from '../../../../syntax/statements/index.ts';
@@ -127,6 +129,9 @@ export function isFlow(builder: FlowBuilder, node: Is): ValueId {
 
 export function binaryFlow(builder: FlowBuilder, node: Binary): ValueId {
   const { kind } = binaryOperators[node.operator].meaning;
+  if (kind === 'coalesce') {
+    return nullishFlow(builder, node);
+  }
   const left = builder.expression(node.left);
   const result = builder.temporaryOf(node);
   const link = comparisonLinkOf(node);
@@ -139,21 +144,9 @@ export function binaryFlow(builder: FlowBuilder, node: Binary): ValueId {
     }
     return result;
   }
-  if (kind === 'logic' || kind === 'coalesce') {
-    const inside = kind === 'coalesce' ? builder.temporary(node.left, undefined) : left;
+  if (kind === 'logic') {
     builder.paths([
-      () => {
-        if (kind === 'coalesce') {
-          builder.emit({
-            op: 'read',
-            site: node,
-            into: inside,
-            from: left,
-            part: { kind: 'inside' },
-          });
-        }
-        builder.emit({ op: 'copy', site: node, into: result, from: inside, fit: undefined });
-      },
+      () => builder.emit({ op: 'copy', site: node, into: result, from: left, fit: undefined }),
       () => {
         const right = builder.expression(node.right);
         builder.emit({ op: 'copy', site: node, into: result, from: right, fit: undefined });
@@ -227,16 +220,28 @@ export function propagate(builder: FlowBuilder, node: Propagate): ValueId {
   return inside;
 }
 
-export function unwrap(builder: FlowBuilder, node: Unwrap): ValueId {
-  const operand = builder.expression(node.operand);
-  const [none, some] = builder.branch(2) as [BlockId, BlockId];
-  builder.resumeIn(none);
-  implicitCall(builder, 'panic', { site: node, passed: [constant(builder, node)] });
-  builder.end({ kind: 'stop' });
-  builder.resumeIn(some);
-  const inside = builder.temporaryOf(node);
-  builder.emit({ op: 'read', site: node, into: inside, from: operand, part: { kind: 'inside' } });
-  return inside;
+/**
+ * `a ?? b`, and `a!`, read as `a ??` a panic (`nullishOf`): the value inside `a`, or else what
+ * stands in for its none, `b`'s value, or a panic, after which nothing runs.
+ */
+export function nullishFlow(builder: FlowBuilder, node: Binary | Unwrap): ValueId {
+  const { operand, orElse } = nullishOf(node);
+  const whole = builder.expression(operand);
+  const result = builder.temporaryOf(node);
+  builder.paths([
+    () =>
+      builder.emit({ op: 'read', site: node, into: result, from: whole, part: { kind: 'inside' } }),
+    () => {
+      if (orElse.kind === 'panic') {
+        implicitCall(builder, 'panic', { site: node, passed: [constant(builder, node)] });
+        builder.end({ kind: 'stop' });
+        return;
+      }
+      const right = builder.expression(orElse.value);
+      builder.emit({ op: 'copy', site: node, into: result, from: right, fit: undefined });
+    },
+  ]);
+  return result;
 }
 
 export function awaitFlow(builder: FlowBuilder, node: Await): ValueId {
