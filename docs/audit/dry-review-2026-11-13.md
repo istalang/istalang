@@ -27,8 +27,10 @@ Marks: **[L]** the lead read the code and confirmed it; **[n×]** n areas found 
 Each root cause below explains a family of the ranked findings; fixing the root removes the family.
 
 1. **No desugaring stage.** *(Now one: `checker/desugaring/`, a table the checker runs on reaching a sugar node, the core
-   recorded as `coreOf` for every later phase. Deferred calls and `a!` are in it; chained comparisons, templates and indented
-   values are queued; `??`, `?.`, `?->`, `?` have typing of their own and stay core.)* Sugar is given meaning separately in the checker, the flow IR, lowering, the editor and the
+   recorded as `coreOf` for every later phase, core nodes built in `core-nodes.ts`. In it: deferred calls, `a!`, chained
+   comparisons, templates, ranges, indented values (`80c577da..16190a48`, −352 code; spec §2, §3.9 changed). Stay core:
+   `??`, `?.`, `?->`, `?` (own typing); `for`, compound assignment, `x is P`, operators, a non-`Map` map literal (desugaring
+   them grows code or loses `is` bindings).)* Sugar is given meaning separately in the checker, the flow IR, lowering, the editor and the
    formatter. A deferred call is ~50 sites in 22 files; `!`, `??`, `?.`, `?->`, `?` are each a checker handler, a flow
    handler and a lowering handler. The codebase already has the pattern that fixes it, used for a few constructs: a
    memoized core reading in `syntax/` (`taggedCall`, `fieldsFunctionOf`, `comparisonLinksOf`) or one record the checker
@@ -311,6 +313,7 @@ that are test seams (unexporting would copy knowledge or drop property tests).
   two reporting seams, so pass holding and sugar wording are skipped for `completeCall`/`instantiate`/`reportedFits`.
 - Inference: a type variable that met the error type settles to its other bounds, so a mistake inside a type
   (`Future<?>`) can still cascade.
+- Comments over 100 columns, which Biome doesn't check (`tsm wrap-comments`).
 - Lifetimes reports a false write cycle for names bound from an input's parts (`const a = p.a; const b = p.b; a->next = b`)
   while `p.a->next = p.b` is accepted.
 - Fixed on the way: a trait called as a function was accepted silently and crashed lowering (`8a578aee`).
