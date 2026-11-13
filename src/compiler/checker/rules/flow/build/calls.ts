@@ -14,6 +14,7 @@
 
 import { argumentValue } from '../../../../syntax/expressions/arguments.ts';
 import type { CallingNode, DeferredCall } from '../../../../syntax/expressions/calls.ts';
+import { deferredLambdaOf } from '../../../../syntax/expressions/deferred-functions.ts';
 import type { Expression } from '../../../../syntax/expressions/index.ts';
 import {
   calledName,
@@ -227,7 +228,8 @@ function closureMaking(
     later.capturedValue(builder.valueOf(value).type, node.call),
   );
   later.end({ kind: 'return', value: madeLater(later, call, captured), site: node.call });
-  const made = builder.temporary(node.call, builder.body.deferredFunctionOf(node.call));
+  const lambda = deferredLambdaOf(node);
+  const made = builder.temporary(node.call, lambda && builder.body.functionOf(lambda)?.type);
   const closure = { kind: 'closure', function: later.finished(undefined) } as const;
   builder.emit({ op: 'make', site: node.call, into: made, made: closure, parts: values });
   return made;

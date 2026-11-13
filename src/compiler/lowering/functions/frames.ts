@@ -19,6 +19,7 @@ import type { CodeMode } from '../../../definition/tables/functions.ts';
 import { unreachable } from '../../../foundation/structures/unreachable.ts';
 import type { Checker, SignatureParameter } from '../../checker/check.ts';
 import type {
+  Capture,
   CapturedVariable,
   CheckedBody,
   NestedFunction,
@@ -237,9 +238,22 @@ export function nestedFrame(
     header: startHeader ?? lowered.tables.nestedHeader(nested),
     mode: codeModeOf(awaits(node.qualifiers), type.mark),
     parameters,
-    captures,
+    captures: variablesCaptured(captures),
     function: node,
     result,
     self: node.name,
   };
+}
+
+/**
+ * What a lambda or local `fn` written in the code captures: variables only, since the function a
+ * deferred call gives, which captures what its call computed now, has an entry of its own
+ * (constructs/expressions/deferred-calls.ts).
+ */
+export function variablesCaptured(captures: readonly Capture[]): readonly CapturedVariable[] {
+  return captures.map((capture) =>
+    capture.kind === 'variable'
+      ? capture
+      : unreachable("A deferred call's function is lowered by an entry of its own."),
+  );
 }

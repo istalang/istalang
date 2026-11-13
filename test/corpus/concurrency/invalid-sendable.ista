@@ -1,10 +1,12 @@
-# error: 5101 at 11:20
-# error: 5101 at 13:25
-# error: 5001 at 17:35
-# error: 5001 at 18:8
+# error: 5101 at 13:20
+# error: 5101 at 15:25
+# error: 5001 at 19:35
+# error: 5001 at 20:8
+# error: 5644 at 28:14
 # A sendable function type (§3.14) holds code, which only `spawn` sends: it isn't Encodable, so
 # an extern's types may not contain one (§9); and a function value capturing a `let`, which is a
-# `Shared`, has a plain function type, which doesn't fit where a sendable one is expected.
+# `Shared`, has a plain function type, which doesn't fit where a sendable one is expected. One
+# capturing a value that isn't sendable is reported at that capture.
 
 struct Handler { run: sendable fn(Int) -> Int }
 
@@ -20,3 +22,7 @@ fn uses():
 
 fn sent(f: sendable fn() -> Int):
   _ = f
+
+fn capturesShared():
+  const log = new Shared{value: 1}
+  sent(fn(): log->value)

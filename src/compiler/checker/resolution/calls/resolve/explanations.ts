@@ -8,6 +8,7 @@
 import type { Diagnostic } from '../../../../../foundation/diagnostics/diagnostic.ts';
 import { primitiveOnceSpelled } from '../../../../../foundation/language/primitives.ts';
 import { unreachable } from '../../../../../foundation/structures/unreachable.ts';
+import { deferredCallOf } from '../../../../syntax/expressions/deferred-functions.ts';
 import { calledName } from '../../../../syntax/expressions/readings.ts';
 import type { AnchoredSpan } from '../../../../syntax/tree/positions.ts';
 import type { BodyContext } from '../../../contexts/body-context.ts';
@@ -19,7 +20,7 @@ import { typeText } from '../../../types/type/type-text.ts';
 import { argumentListText } from '../../applying/argument-fit.ts';
 import type { BindingFailure } from '../../choosing/binding.ts';
 import type { Inapplicability, Misfit } from '../../choosing/call-arguments.ts';
-import { explainedCaptures } from '../deferred-arguments.ts';
+import { explainedCaptures } from '../captured-sends.ts';
 import type { CallRequest, WrittenArgument } from './index.ts';
 
 /**
@@ -161,8 +162,9 @@ function packReport(
 
 /** Where the function a deferred call gives is given to is named: its taker's name. */
 function takerAt(request: ExplainedCall): AnchoredSpan {
-  const deferred = request.arguments.find((argument) => argument.deferred !== undefined)?.deferred;
-  return deferred === undefined ? request.site.span : calledName(deferred.node).span;
+  const given = request.arguments.find(({ isDeferred }) => isDeferred === true)?.node;
+  const deferred = given?.kind === 'Lambda' ? deferredCallOf(given) : undefined;
+  return deferred === undefined ? request.site.span : calledName(deferred).span;
 }
 
 /** Where the argument named `name` is written; the call, if none is. */
@@ -196,12 +198,12 @@ function explainMisfits(
 }
 
 /**
- * Why `argument` doesn't fit where `expected` is: a deferred call's function by what it captures,
- * where that is why (§3.14); else as its type misfits.
+ * Why `argument` doesn't fit where `expected` is: a closure by what it captures, where that is why
+ * (§3.14); else as its type misfits.
  */
 function explainMisfit(context: BodyContext, argument: WrittenArgument, expected: Type): void {
-  const { deferred, type, node } = argument;
-  if (deferred !== undefined && explainedCaptures(context, deferred, expected)) {
+  const { type, node } = argument;
+  if (explainedCaptures(context, node, expected)) {
     return;
   }
   if (type !== undefined && !isPlaceholder(type)) {

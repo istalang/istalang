@@ -46,7 +46,6 @@ import { ValueCalls } from '../../constructs/closures/value-calls.ts';
 import { FieldReads } from '../../constructs/expressions/access/member-access.ts';
 import { OptionalChains } from '../../constructs/expressions/access/optionals.ts';
 import { CollectionForms } from '../../constructs/expressions/collections/collections.ts';
-import { Deferrals } from '../../constructs/expressions/deferred-calls.ts';
 import { expressionHandlers } from '../../constructs/expressions/expressions.ts';
 import { memberBuilt, postponed, postponedAdmits } from '../../constructs/expressions/postponed.ts';
 import { StructLiterals } from '../../constructs/expressions/structs/literal-sources.ts';
@@ -105,7 +104,6 @@ export class BodyChecker implements BodyContext {
   readonly decisions = new FlowDecisions(this.#passes);
   readonly collections = new CollectionForms(this.#passes);
   readonly valueCalls = new ValueCalls(this.#passes);
-  readonly deferrals = new Deferrals(this.#passes);
   readonly iterations = new Iterations(this.#passes);
   readonly patterns = new CheckedPatterns(this.#passes);
   readonly chains = new OptionalChains(this.#passes);
@@ -276,20 +274,19 @@ export class BodyChecker implements BodyContext {
 
   #record(node: Expression, value: Type): Type {
     const type = this.chains.linked(this, node, unfolded(value));
-    this.#keep(this.#records.types, node, type, !this.deferrals.isMadeLater(node));
+    this.#keep(this.#records.types, node, type);
     return type;
   }
 
   /** Records that `expected` is what `site` is expected to be, solved once its scope is. */
   #expected(site: ValueSite, expected: Type): void {
-    this.#keep(this.#records.expected, site, expected, true);
+    this.#keep(this.#records.expected, site, expected);
   }
 
-  /** Keeps `type` for `key`, solved once its scope is, as the function handles it if `handled`. */
-  #keep<K>(table: Pick<PassTable<K, Type>, 'set'>, key: K, type: Type, handled: boolean): void {
+  /** Keeps `type` for `key`, solved once its scope is, as the function checked handles it. */
+  #keep<K>(table: Pick<PassTable<K, Type>, 'set'>, key: K, type: Type): void {
     const frame = this.functions.current;
-    const kept = (each: Type) =>
-      table.set(key, handled ? handledBy(this.checker, frame, each) : each);
+    const kept = (each: Type) => table.set(key, handledBy(this.checker, frame, each));
     kept(type);
     this.scopes.recorded(type, kept);
   }
@@ -321,14 +318,14 @@ export class BodyChecker implements BodyContext {
       return;
     }
     this.#expected(site, expected);
-    const fit = reportedFit(this, found, expected, at);
+    const fit = reportedFit(this, found, expected, { at, site });
     if (!isExact(fit)) {
       this.#records.fits.set(site, fit);
     }
   }
 
   fitWritten(found: Type, expected: Type, at: AnchoredSpan): Fit {
-    return reportedFit(this, found, expected, at);
+    return reportedFit(this, found, expected, { at });
   }
 
   block(node: Block, expected?: Type): Type {

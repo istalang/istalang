@@ -64,15 +64,33 @@ export interface CheckedFunction {
   /** What its body gives: its type's result, or the value of the future an async one's call gives. */
   readonly result: Type;
   readonly parameters: readonly SignatureParameter[];
-  readonly captures: readonly CapturedVariable[];
+  readonly captures: readonly Capture[];
 }
 
 /** A function nested in a body: a lambda, or a local `fn` (a `const` bound to one, §3.14). */
 export type NestedFunction = Lambda | FunctionDeclaration;
 
-/** A variable a closure captures, with its type. */
+/**
+ * What a closure captures, with its type: a variable, at where the function first uses it, or what
+ * a deferred call's function computed now (§3.14), at the operand computing it; variables first.
+ */
+export type Capture = CapturedVariable | ComputedCapture;
+
+/** A variable a closure captures. */
 export interface CapturedVariable {
+  readonly kind: 'variable';
   readonly entity: VariableEntity;
+  readonly type: Type;
+  readonly site: Identifier;
+}
+
+/**
+ * A value the function a deferred call gives captures, computed now by `site` (§3.14): an operand,
+ * or a spread argument, whose items it collected.
+ */
+export interface ComputedCapture {
+  readonly kind: 'computed';
+  readonly site: Expression | Spread;
   readonly type: Type;
 }
 
@@ -185,11 +203,6 @@ export interface BodyFacts {
    * its arguments fill the value's parameters.
    */
   readonly valueCalls: PassRecords<CallingNode, ValueCallMade>;
-  /**
-   * The type the function a deferred call gives its taker is given as, the parameter it fills,
-   * at the call it makes later (§3.14); undefined for any other expression.
-   */
-  readonly deferredFunctionOf: (call: Expression) => Type | undefined;
   /**
    * Every call the body makes, where it makes it: its call sites', the language's for constructs
    * with no call written (`implicitCallOf`), and the defaults its struct literals leave fields to;

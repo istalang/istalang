@@ -261,6 +261,18 @@ describe('the data rule beside layouts, passes and instantiations', () => {
     ).toEqual([]);
   });
 
+  it("gives a deferred call's function a lambda's mark, the code's around it where its taker's is open", () => {
+    const keep = [
+      'live fn liveThing(): ()',
+      'fn keep<M in Mark>(f: Fn<(), Unit, M>) -> Fn<(), Unit, M>: f',
+    ];
+    expect(codesOf(...keep, 'fn s(): _ = keep liveThing()')).toEqual([codes.kindsMeet.code]);
+    expect(codesOf(...keep, 'fn s(): _ = keep(fn(): liveThing())')).toEqual([
+      codes.unmarkedCalls.code,
+    ]);
+    expect(codesOf(...keep, 'live fn s(): _ = keep liveThing()')).toEqual([]);
+  });
+
   it('refuses a deferred call capturing a struct of a kind into a function of the other', () => {
     expect(
       codesOf(

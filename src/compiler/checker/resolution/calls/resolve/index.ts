@@ -43,7 +43,6 @@ import { callMade } from '../../choosing/calls-made.ts';
 import type { Candidate } from '../../choosing/candidates.ts';
 import type { Application } from '../../choosing/choice.ts';
 import { type Instantiation, settlingAt } from '../../conformance/conformance.ts';
-import type { DeferredArgument } from '../deferred-arguments.ts';
 import { changeReceiver, checkReferencedPlaces } from '../places.ts';
 import { explainNone } from './explanations.ts';
 import { expectWrittenArguments } from './written-expectations.ts';
@@ -53,8 +52,8 @@ import { expectWrittenArguments } from './written-expectations.ts';
  * constraint scope where the scope checks it once it knows what the call expects of it
  * (wiring/body/constraint-scope.ts); its name when named. A spread's node is what it spreads, its
  * type that of its items, which fit the rest parameter's element exactly: the items are copied or
- * iterated as they are (§3.3). The function a deferred call gives its taker (§3.14) stands at the
- * call it makes, and is made to fit where it is built, so it is never fitted as an argument.
+ * iterated as they are (§3.3). The function a deferred call gives its taker (§3.14) is a lambda
+ * argument the binding places itself.
  */
 export interface WrittenArgument {
   readonly node: Expression;
@@ -63,7 +62,8 @@ export interface WrittenArgument {
   readonly literal?: LiteralType | undefined;
   readonly name?: Identifier | undefined;
   readonly isSpread?: boolean | undefined;
-  readonly deferred?: DeferredArgument | undefined;
+  /** Whether it is the function a deferred call gives its taker (§3.14, choosing/binding.ts). */
+  readonly isDeferred?: boolean | undefined;
 }
 
 /** A call to resolve, as written. */
@@ -242,8 +242,7 @@ function completeResolved(
 
 /** A written argument as choosing sees it. */
 export function callArgumentOf(argument: WrittenArgument): CallArgument {
-  const { type, literal, passing, name, isSpread, deferred } = argument;
-  const isDeferred = deferred !== undefined;
+  const { type, literal, passing, name, isSpread, isDeferred } = argument;
   return {
     type,
     literal,
@@ -282,11 +281,9 @@ interface Chosen {
  */
 export function recordChosen(context: BodyContext, chosen: Chosen): void {
   const { site, application, instantiation, receiver, frame } = chosen;
-  // A function named as a value calls nothing yet, and a deferred call's later call is made by the
-  // function it gives, whose kind is its callee's (Rule 4: holding isn't calling).
-  const call =
-    namesFunctionValue(site) || context.deferrals.isDeferred(site)
-      ? callMade(application, instantiation)
-      : judgedCall(context, { at: site.span, frame, application, instantiation });
+  // A function named as a value calls nothing yet (Rule 4: holding isn't calling).
+  const call = namesFunctionValue(site)
+    ? callMade(application, instantiation)
+    : judgedCall(context, { at: site.span, frame, application, instantiation });
   context.calls.record(site, receiver === undefined ? call : { ...call, receiver });
 }

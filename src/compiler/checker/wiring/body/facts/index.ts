@@ -102,13 +102,6 @@ const bodyFacts: { readonly [Name in FactName]: FactEntry<Name> } = {
     instantiated: asChecked,
     joined: firstRecorded,
   },
-  deferredFunctionOf: {
-    at:
-      ({ units }, pass) =>
-      (call) =>
-        units.deferrals.of(call, pass),
-    instantiated: (deferredFunctionOf, by) => readThrough(deferredFunctionOf, by.concrete),
-  },
   madeCalls: {
     at:
       ({ units }) =>

@@ -82,7 +82,9 @@ describe('the call disposing() watches', () => {
     expect(call?.owner).toEqual({ kind: 'OwnCall', function: worker });
     expect(between.map((node) => node.kind)).toEqual(['FunctionDeclaration', 'Lambda']);
     for (const node of between) {
-      const captured = body?.functionOf(node)?.captures.map((capture) => capture.entity);
+      const captured = body
+        ?.functionOf(node)
+        ?.captures.map((capture) => (capture.kind === 'variable' ? capture.entity : undefined));
       expect(captured).toEqual([call]);
     }
   });

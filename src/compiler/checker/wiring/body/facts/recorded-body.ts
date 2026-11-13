@@ -9,7 +9,6 @@ import type { ValueCalls } from '../../../constructs/closures/value-calls.ts';
 import type { FieldReads } from '../../../constructs/expressions/access/member-access.ts';
 import type { OptionalChains } from '../../../constructs/expressions/access/optionals.ts';
 import type { CollectionForms } from '../../../constructs/expressions/collections/collections.ts';
-import type { Deferrals } from '../../../constructs/expressions/deferred-calls.ts';
 import type { StructLiterals } from '../../../constructs/expressions/structs/literal-sources.ts';
 import type { Iterations } from '../../../constructs/loops/iteration.ts';
 import type { CheckedPatterns } from '../../../constructs/patterns/matching.ts';
@@ -33,7 +32,6 @@ interface BodyUnits {
   readonly decisions: FlowDecisions;
   readonly collections: CollectionForms;
   readonly valueCalls: ValueCalls;
-  readonly deferrals: Deferrals;
   readonly iterations: Iterations;
   readonly patterns: CheckedPatterns;
   readonly chains: OptionalChains;

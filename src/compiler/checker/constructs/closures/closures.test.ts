@@ -61,7 +61,7 @@ describe('captures', () => {
           const lambdas = lambdasIn(program, f);
           const captured = lambdas.map((lambda) =>
             (body?.functionOf(lambda)?.captures ?? []).find(
-              ({ entity }) => entity.name.text === 'x',
+              (capture) => capture.kind === 'variable' && capture.entity.name.text === 'x',
             ),
           );
           expect(checker.diagnosticsOf(idOf('main.ista'))).toEqual([]);
@@ -69,7 +69,7 @@ describe('captures', () => {
             lambdas.map((_, index) => index + 1 > declared),
           );
           const innermost = captured.at(-1);
-          expect(innermost !== undefined && body?.inCell(innermost.entity.name)).toBe(true);
+          expect(innermost?.kind === 'variable' && body?.inCell(innermost.entity.name)).toBe(true);
         },
       ),
     );

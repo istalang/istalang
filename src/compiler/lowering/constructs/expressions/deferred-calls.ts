@@ -22,7 +22,7 @@ import type { CodeFunction } from '../../../../definition/tables/functions.ts';
 import { unreachable } from '../../../../foundation/structures/unreachable.ts';
 import { functionType, takesNothing } from '../../../checker/types/type/function-types.ts';
 import type { CallingNode, DeferredCall } from '../../../syntax/expressions/calls.ts';
-import type { Expression } from '../../../syntax/expressions/index.ts';
+import { deferredLambdaOf } from '../../../syntax/expressions/deferred-functions.ts';
 import { deferredOf } from '../../../syntax/expressions/readings.ts';
 import type { AnchoredSpan } from '../../../syntax/tree/positions.ts';
 import { type CallTarget, emitTo } from '../../calls/emit-call.ts';
@@ -74,14 +74,15 @@ function isMade(context: FunctionContext, node: DeferredCall): boolean {
 }
 
 /**
- * What `call`, written as `site`, computes now, evaluated in the order it runs, and the plan making
- * it later from those values.
+ * What `call`, the call `node` makes later, computes now, evaluated in the order it runs, and the
+ * plan making it later from those values, built as the parameter its function fills.
  */
 function computedNow(
   context: FunctionContext,
   call: CallingNode,
-  site: Expression,
+  node: DeferredCall,
 ): { readonly plan: DeferredPlan; readonly values: readonly Register[] } {
+  const site = node.call;
   const { target, arguments: given, givenAt } = preparedCall(context, call, 'byValue');
   const passes = given.map((argument) =>
     argument.kind === 'value'
@@ -89,7 +90,8 @@ function computedNow(
       : unreachable('A deferred call passes everything by value; the checker refuses references.'),
   );
   const gives = call.kind === 'DeferredCall' ? givenFunction(context, call) : undefined;
-  const givenAs = context.body.deferredFunctionOf(site);
+  const lambda = deferredLambdaOf(node);
+  const givenAs = lambda && context.body.expectedOf(lambda);
   const plan: DeferredPlan = {
     site,
     target: target.kind === 'value' ? { kind: 'captured' } : target,
@@ -108,7 +110,7 @@ function computedNow(
 /** What the function `node` gives computes now, and the plan making its call later. */
 function givenFunction(context: FunctionContext, node: DeferredCall) {
   const call = deferredOf(node) ?? unreachable('A deferred call of no call checked clean.');
-  return computedNow(context, call, node.call);
+  return computedNow(context, call, node);
 }
 
 /** A closure of the entry `entry`, capturing `values`, made at `span`. */

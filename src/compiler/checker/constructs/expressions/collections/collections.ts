@@ -166,18 +166,6 @@ export function itemsOf(context: BodyContext, spread: Spread, type: Type, item?:
   return element;
 }
 
-/**
- * What a checked spread argument passes, as a call collects it where it is written (§3.3): a
- * pack's value whole (§3.5), else an array of its items, an array's elements copied or what its
- * cursor gave, as its iteration was recorded; its expression's own type where it has no items.
- */
-export function collectedBy(context: BodyContext, spread: Spread): Type {
-  const type = context.typeOf(spread.expression);
-  const form = isPack(type) ? undefined : context.iterations.formOf(spread);
-  const item = form?.kind === 'cursor' ? form.item : form && arrayElement(context.checker, type);
-  return item === undefined ? type : arrayOf(context.checker, item);
-}
-
 export function producedValue(
   context: BodyContext,
   node: Expression,

@@ -21,6 +21,7 @@ import type {
   FieldsLiteral,
   IndentedValue,
   MapLiteral,
+  Spread,
 } from '../../syntax/expressions/index.ts';
 import type { BuiltLiteral } from '../../syntax/expressions/literals/indented-values.ts';
 import type { Pattern } from '../../syntax/patterns.ts';
@@ -44,6 +45,7 @@ import type {
   ChainLink,
   CheckedFunction,
   CollectionForm,
+  ComputedCapture,
   FieldGiver,
   FieldSource,
   Iteration,
@@ -186,7 +188,6 @@ export interface BodyContext extends CheckedModule {
   readonly implicit: ImplicitRecord;
   readonly collections: CollectionRecord;
   readonly valueCalls: ValueCallRecord;
-  readonly deferrals: DeferralRecord;
   readonly iterations: IterationRecord;
   readonly patterns: PatternRecord;
   readonly chains: Chains;
@@ -249,10 +250,42 @@ export interface Functions {
   readonly inside: <Result>(scope: FunctionFrame, check: () => Result) => Result;
   /** Notes that `entity` is used where `name` is written, capturing it where it must be. */
   readonly noteUse: (context: BodyContext, name: Identifier, entity: VariableEntity) => void;
+  /**
+   * Runs `check`, a part of `call` it computes now, where it runs: in the functions around the
+   * function a deferred call gives, where that function makes `call` later (§3.14); here otherwise.
+   */
+  readonly computedNow: <Result>(call: CallingNode, check: () => Result) => Result;
+  /**
+   * Notes what `call` computed now, `computed`, as captured by the function making it later, the
+   * one being checked; nothing for any other call.
+   */
+  readonly captureNow: (
+    context: BodyContext,
+    call: CallingNode,
+    computed: () => readonly ComputedCapture[],
+  ) => void;
+  /** Whether `call` is the one the function being checked, a deferred call's, makes later. */
+  readonly makesLater: (call: CallingNode) => boolean;
   /** The type of a local function or named lambda used by `name`, or the error after a report. */
   readonly typeOfFunction: (context: BodyContext, name: Identifier, entity: VariableEntity) => Type;
   readonly record: (node: NestedFunction, checked: CheckedFunction) => void;
   readonly checkedOf: (node: NestedFunction) => CheckedFunction | undefined;
+}
+
+/** A variable a function captures, and where it first uses it. */
+export interface CapturedUse {
+  readonly entity: VariableEntity;
+  readonly site: Identifier;
+}
+
+/**
+ * The call the function a deferred call gives makes later (§3.14), and the functions what that call
+ * computes now is checked in: those around the outermost deferred call it is part of, so in
+ * `a b c(x)` both functions capture `x`, computed once.
+ */
+export interface MadeLater {
+  readonly call: CallingNode;
+  readonly now: readonly FunctionFrame[];
 }
 
 /**
@@ -279,10 +312,19 @@ export interface FunctionFrame {
   readonly relyOnKind: () => void;
   readonly returns: Returns;
   readonly enclosing: Enclosing;
-  /** What the function captures, in the order first used. */
-  readonly captures: ReadonlyMap<Identifier, VariableEntity>;
-  /** Notes that the function captures `entity`. */
-  readonly capture: (entity: VariableEntity) => void;
+  /** The variables the function captures, by the name each declares, in the order first used. */
+  readonly captures: ReadonlyMap<Identifier, CapturedUse>;
+  /** Notes that the function captures `entity`, used where `site` is written. */
+  readonly capture: (entity: VariableEntity, site: Identifier) => void;
+  /**
+   * For the function a deferred call gives (§3.14), the call it makes later and where what that
+   * call computes now is checked; undefined for any other function.
+   */
+  readonly makesLater: MadeLater | undefined;
+  /** What the function captures that was computed now, by the operand computing it, in order. */
+  readonly computed: ReadonlyMap<Expression | Spread, Type>;
+  /** Notes that the function captures what `site` computed now, of `type`. */
+  readonly captureComputed: (site: Expression | Spread, type: Type) => void;
   /** Whether a `select` case watching this function's own call encloses what is checked (§7). */
   readonly inCleanup: boolean;
   /** Runs `check` inside a case that cleans up after this function's call is disposed. */
@@ -368,18 +410,6 @@ export interface ValueCallRecord {
   /** Records how `node`'s arguments fill the value's parameters, as judging them bound them. */
   readonly bind: (node: CallingNode, binding: Binding) => void;
   readonly has: (node: CallingNode) => boolean;
-}
-
-/**
- * What the function each deferred call gives is given as, the parameter it fills, at the call it
- * makes later (constructs/expressions/deferred-calls.ts, §3.14).
- */
-export interface DeferralRecord {
-  readonly record: (call: Expression, given: Type) => void;
-  /** Notes `call` as the call a deferred call makes later, which its code doesn't make (Rule 4). */
-  readonly defer: (call: object) => void;
-  /** Whether `call` is a call a deferred call makes later. */
-  readonly isDeferred: (call: object) => boolean;
 }
 
 /** How each iteration runs (constructs/loops/iteration.ts). */

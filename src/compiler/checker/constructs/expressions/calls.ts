@@ -32,7 +32,9 @@
  *
  * A deferred call calls its taker as a call calls its callee, with the function making its call
  * given after the arguments its parentheses write (deferred-calls.ts, §3.14), so every form of
- * callee above may take one, and its call is resolved and recorded at the deferred call.
+ * callee above may take one, and its call is resolved and recorded at the deferred call. The call
+ * that function makes later reads its callee's value and its arguments where the deferred call
+ * stands (`Functions.computedNow`), which is where they run.
  */
 
 import { staticName } from '../../../../foundation/language/static-names.ts';
@@ -106,12 +108,14 @@ export function checkCallMade(
   const misplaced = misplacedArgument(written);
   const typeArguments = callTypeArguments(node)?.map((argument) => context.resolveType(argument));
   const known = valueParameterTypes(value?.type, written, typeArguments);
-  const checked = written.map((argument, index) => {
-    if (argument === misplaced) {
-      return { ...writtenArgument(context, argument, undefined), type: errorType };
-    }
-    return writtenArgument(context, argument, known[index]);
-  });
+  const checked = context.functions.computedNow(node, () =>
+    written.map((argument, index) => {
+      if (argument === misplaced) {
+        return { ...writtenArgument(context, argument, undefined), type: errorType };
+      }
+      return writtenArgument(context, argument, known[index]);
+    }),
+  );
   const call: WrittenCall = {
     node,
     expected,
@@ -163,20 +167,22 @@ function calledBy(context: BodyContext, call: WrittenCall, value: CalledValue | 
  * which a method of the same name makes an error the call reports.
  */
 export function calledValue(context: BodyContext, node: CallingNode): CalledValue | undefined {
-  if (callsThroughOptional(node)) {
-    return { type: context.chains.target(context, node) };
-  }
-  const callee = calledName(node);
-  switch (callee.kind) {
-    case 'Identifier':
-      return context.entityOf(callee)?.kind === 'variable'
-        ? { type: context.expression(callee) }
-        : undefined;
-    case 'MemberAccess':
-      return receiverField(context, node, callee);
-    default:
-      return { type: context.settled(callee) };
-  }
+  return context.functions.computedNow(node, () => {
+    if (callsThroughOptional(node)) {
+      return { type: context.chains.target(context, node) };
+    }
+    const callee = calledName(node);
+    switch (callee.kind) {
+      case 'Identifier':
+        return context.entityOf(callee)?.kind === 'variable'
+          ? { type: context.expression(callee) }
+          : undefined;
+      case 'MemberAccess':
+        return receiverField(context, node, callee);
+      default:
+        return { type: context.settled(callee) };
+    }
+  });
 }
 
 /**

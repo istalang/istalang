@@ -10,6 +10,7 @@
  */
 
 import type { Handlers } from '../../../../../foundation/structures/kind-table.ts';
+import { unreachable } from '../../../../../foundation/structures/unreachable.ts';
 import type { FunctionDeclaration } from '../../../../syntax/declarations/index.ts';
 import type {
   Expression,
@@ -137,7 +138,12 @@ function index(builder: FlowBuilder, node: Index): ValueId {
  */
 export function closureOf(builder: FlowBuilder, node: Lambda | FunctionDeclaration): ValueId {
   const checked = builder.body.functionOf(node);
-  const captures = checked?.captures ?? [];
+  // A written function captures variables; the function a deferred call gives is built by it.
+  const captures = (checked?.captures ?? []).map((capture) =>
+    capture.kind === 'variable'
+      ? capture
+      : unreachable("A deferred call's function is built where the call is (calls.ts)."),
+  );
   const nested = builder.nested(node);
   for (const { entity, type } of captures) {
     nested.captured(entity, type);

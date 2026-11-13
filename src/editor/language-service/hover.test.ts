@@ -83,7 +83,7 @@ describe('hover', () => {
   it('shows the function a deferred call gives its taker to, and the call it defers (§3.14)', () => {
     const declared = [
       'fn shown(f: fn() -> Int, times: Int = 3) -> String: String(f())',
-      'fn shown(f: fn() -> String) -> String: f()',
+      'fn shown(f: fn() -> String, label: String) -> String: f() + label',
       'fn count(n: Int) -> Int: n',
       '',
     ];

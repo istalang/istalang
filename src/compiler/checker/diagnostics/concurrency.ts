@@ -42,7 +42,7 @@ export const concurrencyTemplates = {
   unsendableCapture: {
     code: 5644,
     message: (found: string) =>
-      `A sendable function is taken here, so what the deferred call computes now must be sendable, and ${found} isn't (§3.14).`,
+      `A sendable function is taken here, so what it captures must be sendable, and ${found} isn't (§3.14).`,
   },
   notDeferrable: {
     code: 5645,

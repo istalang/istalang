@@ -14,12 +14,14 @@
 
 import type { Diagnostic } from '../../../../foundation/diagnostics/diagnostic.ts';
 import { declaredFunctionName } from '../../../syntax/declarations/field-defaults.ts';
-import { type FunctionDeclaration, typeParametersOf } from '../../../syntax/declarations/index.ts';
+import { typeParametersOf } from '../../../syntax/declarations/index.ts';
+import { deferredCallOf } from '../../../syntax/expressions/deferred-functions.ts';
 import type { AnchoredSpan } from '../../../syntax/tree/positions.ts';
 import type { BodyContext, FunctionFrame } from '../../contexts/body-context.ts';
 import type { CheckerContext } from '../../contexts/context.ts';
 import type { UseSite } from '../../contexts/use-site.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
+import type { NestedFunction } from '../../surface/checked-body.ts';
 import {
   callsMadeWith,
   type FunctionCall,
@@ -176,8 +178,9 @@ export function checkCallKind(context: Pick<BodyContext, 'report'>, call: CallOf
   if (kindAdmits(caller, calleeKind, sameType)) {
     return;
   }
+  // The function a deferred call gives has no head to declare its mark in.
   context.report(
-    isSimpleMark(caller)
+    isSimpleMark(caller) && frame.makesLater === undefined
       ? checkerDiagnostics.unmarkedCalls(at, callerName(frame), kindText(calleeKind), callee)
       : checkerDiagnostics.kindsMeet(at, kindText(caller), kindText(calleeKind), callee),
   );
@@ -190,11 +193,13 @@ export function kindText(kind: Type): string {
 
 /** How a message names the function `frame` checks. */
 export function callerName(frame: FunctionFrame): string {
-  const own = frame.function;
-  if (own === undefined) {
-    return 'this code';
+  return frame.function === undefined ? 'this code' : functionName(frame.function);
+}
+
+/** How a message names a nested function: a lambda, the function a deferred call gives, or by name. */
+export function functionName(node: NestedFunction): string {
+  if (node.kind === 'FunctionDeclaration') {
+    return `'${declaredFunctionName(node)}'`;
   }
-  return own.kind === 'Lambda'
-    ? 'a lambda'
-    : `'${declaredFunctionName(own as FunctionDeclaration)}'`;
+  return deferredCallOf(node) === undefined ? 'a lambda' : 'a deferred call';
 }
