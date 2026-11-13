@@ -26,7 +26,8 @@ Marks: **[L]** the lead read the code and confirmed it; **[n×]** n areas found 
 
 Each root cause below explains a family of the ranked findings; fixing the root removes the family.
 
-1. **No desugaring stage.** Sugar is given meaning separately in the checker, the flow IR, lowering, the editor and the
+1. **No desugaring stage.** *(Deferred calls and `a!` reduced, B3; `??`, `?.`, `?->`, `?` have typing of their own and
+   stay core.)* Sugar is given meaning separately in the checker, the flow IR, lowering, the editor and the
    formatter. A deferred call is ~50 sites in 22 files; `!`, `??`, `?.`, `?->`, `?` are each a checker handler, a flow
    handler and a lowering handler. The codebase already has the pattern that fixes it, used for a few constructs: a
    memoized core reading in `syntax/` (`taggedCall`, `fieldsFunctionOf`, `comparisonLinksOf`) or one record the checker
@@ -67,6 +68,8 @@ Each root cause below explains a family of the ranked findings; fixing the root 
   first removes the parallel construct tables; the second at least removes the parallel rules.
 
 ### 2. [high] Deferred calls carry their own machinery instead of reducing to a closure  **[3×: res, rules, spec]**
+- **Fixed** in the checker and flow IR (`9bbfc22c..2fe3f741`): the function is the lambda `deferredLambdaOf` reads, its mark a
+  lambda's (spec §3.3, §3.14, §7 changed). Lowering's own deferred path goes with B2b (finding 1).
 - where: `checker/constructs/expressions/deferred-calls.ts` (`laterMarkOf` repeats `markMaking`'s join and `kindsHeld`
   report), `checker/resolution/calls/deferred-arguments.ts` (capture sendability beside `capturedSend`), `Deferrals` threaded
   into `resolve/index.ts`, `value-calls.ts`, `argument-fit.ts`, `data-kinds.ts`, `disposal.ts`; `rules/flow/build/calls.ts`;
@@ -294,6 +297,11 @@ that are test seams (unexporting would copy knowledge or drop property tests).
 - `checker/constructs/patterns/walk/index.ts` is ~465 lines, over the 400 limit.
 - `lowering/tables/type-table.ts`: `#roleOf(enumRoles, …)` on an `EnumDeclaration` can never match.
 - `definition/values/json-values.ts`: `plainOfJson`/`jsonOfPlain` expose their internal depth parameter.
+- An inapplicable overload's explanation shows uninferred type arguments as `Never` (`spawn<R>` reads `async fn() -> Never`);
+  `explainedCaptures` ignores the result to work around it.
+- `rules/lifetimes/analysis/index.ts:isAsyncSite` re-implements `nestsFunction`; `disposal.ts:checkSelfStays` still walks the
+  AST (reading `flowOf` would fix it).
+- Flow IR `??`/`!`, `?`, `?.` each hand-roll "branch on present, else …, read inside" (one `presentOr` builder; B2a).
 
 ## Rejected proposals
 
