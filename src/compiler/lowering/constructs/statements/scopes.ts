@@ -31,8 +31,9 @@ export function endScope(context: FunctionContext, scope: BlockScope, span: Anch
 /**
  * Lowers `lower`'s value in a block of its own; the register holding it once the block ends. The
  * end releases what the block's variables hold, after keeping what lasts until the function
- * returns, and the temporaries `lower` made, except the value, moved out first when it is one of
- * the block's variables.
+ * returns, and the temporaries `lower` made, except the value. A value a variable holds, the
+ * block's or an outer one's, is moved out first: the end may run code (a disposal, a `defer`'s
+ * call) changing that variable, and the block's value is what it held as the block gave it.
  */
 export function valueInBlock(
   context: FunctionContext,
@@ -44,7 +45,7 @@ export function valueInBlock(
   );
   const { result, registers } = lowered;
   let value = result;
-  if (scope.declared.includes(result)) {
+  if (context.variables.isVariable(result)) {
     value = context.code.allocate();
     context.code.emit({ kind: 'move', span, dst: value, src: result });
   }

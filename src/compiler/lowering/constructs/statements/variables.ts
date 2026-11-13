@@ -126,6 +126,11 @@ export class VariableRegisters {
     };
   }
 
+  /** Whether a variable lives in `register`, of any block. */
+  isVariable(register: Register): boolean {
+    return this.#variables.has(register);
+  }
+
   /** Those of `registers` no variable lives in and nothing released yet, now counted released. */
   temporariesAmong(registers: readonly Register[]): readonly Register[] {
     const temporaries = registers.filter(
