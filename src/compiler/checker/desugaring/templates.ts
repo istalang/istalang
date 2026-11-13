@@ -5,11 +5,12 @@
  *   function, method or function value, and its parameters decide what the values must be.
  * - A template without values or a tag is its text, a String literal.
  * - Any other is `join([texts and values, in order], "")`, each value written as text by
- *   `(value).toString()`, found as a method is: among the functions its top level sees and those
+ *   `(value).toString()`, a method call (§3.7): among the functions its top level sees and those
  *   its type's module, a type parameter's requirement, an `any Stringable` and a union's trait
  *   bring (§3.10, §6). An empty text is left out. `join` is the prelude's, whatever a local name
  *   shadows (§3.4).
- * - A value with no `toString` giving a String is worded as the template's mistake, at the value.
+ * - Each `toString` call is checked to give a String where it stands, so a value with no such
+ *   `toString` is worded as the template's mistake, at the value.
  */
 
 import { templateFunctions } from '../../../foundation/language/well-known/implicit-calls.ts';
@@ -21,13 +22,14 @@ import { endOf, spanAcross } from '../../syntax/tree/positions.ts';
 import type { BodyContext } from '../contexts/body-context.ts';
 import { synthesized } from '../contexts/synthesized.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
+import { stringType } from '../types/type/primitives.ts';
 import { typeText } from '../types/type/type-text.ts';
 import { callOf, preludeName, stringOf } from './core-nodes.ts';
 import type { Desugar, Reword } from './index.ts';
 
 /** How a value's text is worded when no `toString` writes it. */
 const notWritten: Reword<TemplateLiteral> = (context, diagnostic, { sugar, role }) => {
-  const value = role === 'tagged' ? undefined : valueAt(sugar, diagnostic.span);
+  const value = role === 'interpolate' ? valueAt(sugar, diagnostic.span) : undefined;
   return value === undefined
     ? diagnostic
     : checkerDiagnostics.notStringable(value.span, typeText(context.typeOf(value)));
@@ -65,15 +67,18 @@ function joined(context: BodyContext, node: TemplateLiteral): Call {
   const parts = node.texts.flatMap((text, index) => {
     const written = text.value === '' ? [] : [stringOf(origin, text.span, text.value)];
     const value = node.values[index];
-    return value === undefined ? written : [...written, writtenAsText(node, value)];
+    return value === undefined ? written : [...written, writtenAsText(context, node, value)];
   });
   const array = synthesized(origin, { kind: 'ArrayLiteral', span, elements: parts } as const);
   const join = preludeName(context, origin, templateFunctions.join, span);
   return callOf(origin, span, join, [array, stringOf(origin, endOf(span), '')]);
 }
 
-/** `(value).toString()`, at `value`; the parentheses end any chain `value` is. */
-function writtenAsText(node: TemplateLiteral, value: Expression): Call {
+/**
+ * `(value).toString()`, at `value`, checked to give a String where it stands; the parentheses end
+ * any chain `value` is.
+ */
+function writtenAsText(context: BodyContext, node: TemplateLiteral, value: Expression): Call {
   const origin = { sugar: node, role: 'interpolate' };
   const { span } = value;
   const target = synthesized(origin, { kind: 'Parenthesized', span, expression: value } as const);
@@ -85,7 +90,9 @@ function writtenAsText(node: TemplateLiteral, value: Expression): Call {
     isOptional: false,
     member: synthesized(origin, name),
   } as const;
-  return callOf(origin, span, synthesized(origin, access), []);
+  const call = callOf(origin, span, synthesized(origin, access), []);
+  context.sugars.operand(context, call, stringType);
+  return call;
 }
 
 /** The value of `template` written at `span`. */

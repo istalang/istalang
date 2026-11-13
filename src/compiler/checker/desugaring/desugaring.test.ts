@@ -45,4 +45,15 @@ describe('a sugar checked as its core', () => {
     );
     expect(converting.filter((site) => site !== 'IntegerLiteral')).toEqual(['Range']);
   });
+
+  it("words a template value's toString giving no String as the template's, at the value", () => {
+    const text = [
+      'struct Bad { x: Int }',
+      'fn toString(self: Bad) -> Int: self.x',
+      'fn f(b: Bad) -> String: `${b}`',
+    ];
+    expect(reported(text.join('\n'))).toEqual(
+      reportedOnce(checkerDiagnostics.notStringable.code, 'b'),
+    );
+  });
 });

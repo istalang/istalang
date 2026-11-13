@@ -102,8 +102,9 @@ export class Desugarings implements Sugars {
       this.#operands.set(node, type);
       return type;
     }
-    const type = context.expectSettled(node, expected);
-    // A value not fitting was reported, so the core reads it as one explained.
+    const type = this.#within(originOf(node), () => context.expectSettled(node, expected));
+    // A value not fitting was reported, in the words of what it was built for, so the core reads
+    // it as one explained.
     const fits = context.checker.fitOf(type, expected) !== undefined;
     this.#operands.set(node, fits ? type : errorType);
     return type;
