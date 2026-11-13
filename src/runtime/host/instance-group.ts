@@ -53,11 +53,6 @@ export class InstanceGroup {
     );
   }
 
-  /** Whether some instance of the group waits. */
-  waits(): boolean {
-    return [...this.#states.values()].some((state) => state.kind === 'waiting');
-  }
-
   /** The earliest time an instance of the group waits until; undefined when none waits on a timer. */
   earliestTimer(): bigint | undefined {
     let earliest: bigint | undefined;

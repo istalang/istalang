@@ -45,7 +45,6 @@ class Scene {
       id,
       resolves: undefined,
       frames: [],
-      disposing: false,
     }),
   );
   readonly ids = [

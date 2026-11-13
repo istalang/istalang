@@ -47,7 +47,6 @@ const broadcastWaiting: Snapshot = {
     {
       id: 0,
       kind: 'execution',
-      disposing: false,
       frames: [
         {
           function: broadcastFunctions.announce,
@@ -195,9 +194,8 @@ function objectsArbitrary(ids: readonly number[]): fc.Arbitrary<HeapObject[]> {
           {
             resolves: id,
             frames: fc.array(frame, { minLength: 1, maxLength: 3 }),
-            disposing: fc.boolean(),
           },
-          { requiredKeys: ['frames', 'disposing'] },
+          { requiredKeys: ['frames'] },
         )
         .map((parts) => ({ id: objectId, kind: 'execution' as const, ...parts })),
     );

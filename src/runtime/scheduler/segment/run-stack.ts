@@ -109,11 +109,6 @@ export class RunStack {
     return this.#executions.toReversed();
   }
 
-  /** The call futures of the executions running, which each holds while it runs (§7). */
-  callFutures(): readonly number[] {
-    return futuresOf(this.#executions).holds;
-  }
-
   /** Where every running frame is, innermost first (§3.12). */
   trace(definition: Definition): string {
     return traceOf(definition, this.#framesInnermostFirst());

@@ -146,15 +146,9 @@ export class World implements TestWorld {
     this.#record(testInstance, advance(this.#seams, test, { kind: 'invocation', invocation }));
     const driven = await drive({
       group: this.#group,
-      now: this.#clock.now,
+      clock: this.#clock,
       runNext: () => Promise.resolve(this.#step()),
       wake: (instance) => Promise.resolve(this.#advance(instance)),
-      wait: async (due) => {
-        if (due !== undefined) {
-          await this.#clock.until(due);
-        }
-        return false;
-      },
       ends: () => this.#ended() !== undefined,
       deadline: this.#deadline,
     });

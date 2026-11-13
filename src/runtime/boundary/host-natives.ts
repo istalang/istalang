@@ -42,7 +42,6 @@ import {
   Panic,
   type Resolvable,
   type WithFutures,
-  type WithResources,
 } from '../natives.ts';
 
 /** What a host extern is told about the call it runs. */
@@ -72,7 +71,7 @@ type HostExtern = (arguments_: readonly unknown[], call: HostCall) => unknown;
 /** A host's externs, by key: `purchase.chargeCard(String, Int)`, `purchase.approvalDeadline`. */
 export type HostExterns = Readonly<Record<string, HostExtern>>;
 
-type HostContext = NativeContext & WithFutures & WithResources;
+type HostContext = NativeContext & WithFutures;
 
 /** Fails the wait of each resolver its host let go of unresolved. */
 const dropped = new FinalizationRegistry<() => void>((fail) => {

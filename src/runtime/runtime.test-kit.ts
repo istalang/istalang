@@ -197,7 +197,7 @@ async function settleGroup(
   };
   await drive({
     group,
-    now: clock.now,
+    clock,
     runNext: async () => {
       const ready = group.ready();
       if (ready !== undefined) {
@@ -206,12 +206,6 @@ async function settleGroup(
       return ready !== undefined;
     },
     wake,
-    wait: async (due) => {
-      if (due !== undefined) {
-        await clock.until(due);
-      }
-      return false;
-    },
   });
   return new Map([...group.states].map(([name, state]) => [name, settledOf(state)]));
 }

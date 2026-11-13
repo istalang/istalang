@@ -282,7 +282,6 @@ export class Instance {
       id,
       resolves,
       frames: [frame],
-      disposing: false,
     }));
   }
 

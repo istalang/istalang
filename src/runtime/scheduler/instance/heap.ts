@@ -51,7 +51,6 @@ export interface LiveExecution {
   readonly resolves: number | undefined;
   /** The call stack, innermost frame last. */
   readonly frames: ActiveFrame[];
-  readonly disposing: boolean;
 }
 
 /** A heap object as the running instance holds it. */

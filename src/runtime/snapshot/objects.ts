@@ -247,8 +247,6 @@ export const heapObject = z.discriminatedUnion('kind', [
   defineObject('execution', {
     resolves: objectId.optional(),
     frames: z.array(frame).min(1),
-    /** Set once the call is disposed; its next await stops it (spec §7). */
-    disposing: z.boolean(),
   }),
 ]);
 

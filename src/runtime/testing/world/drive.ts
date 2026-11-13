@@ -11,20 +11,19 @@
  * run drives its contexts itself, inside its own loop (host/contexts.ts).
  */
 
+import type { Clock } from '../../clock.ts';
 import type { InstanceGroup } from '../../host/instance-group.ts';
 
 /** What driving a group asks of whoever drives it. */
 export interface Driving {
   /** Where each driven instance stands, as every advance is recorded. */
   readonly group: InstanceGroup;
-  /** Milliseconds since the Unix epoch. */
-  readonly now: () => bigint;
+  /** The clock timers fall due on, waited on for the earliest one. */
+  readonly clock: Clock;
   /** Runs one thing that can run now, recording its advance; whether there was one. */
   readonly runNext: () => Promise<boolean>;
   /** Wakes `instance`, whose timer is due, recording its advance. */
   readonly wake: (instance: string) => Promise<void>;
-  /** Waits until `due`, if any; whether something advanced an instance meanwhile, recording it. */
-  readonly wait: (due: bigint | undefined) => Promise<boolean>;
   /** Whether driving ends before the group settles, as a test does at its end. */
   readonly ends?: () => boolean;
   /** The latest time driving waits until. */
@@ -55,22 +54,19 @@ export async function drive(driving: Driving): Promise<Driven> {
  */
 async function waitForTimer({
   group,
-  now,
+  clock,
   wake,
-  wait,
   deadline,
 }: Driving): Promise<Driven | undefined> {
-  if (!group.waits()) {
+  const due = group.earliestTimer();
+  if (due === undefined) {
     return 'settled';
   }
-  const due = group.earliestTimer();
-  if (due !== undefined && deadline !== undefined && due > deadline) {
+  if (deadline !== undefined && due > deadline) {
     return 'late';
   }
-  if (!(await wait(due)) && due === undefined) {
-    return 'settled';
-  }
-  for (const instance of group.dueBy(now())) {
+  await clock.until(due);
+  for (const instance of group.dueBy(clock.now())) {
     // biome-ignore lint/performance/noAwaitInLoops: instances advance one at a time, each from its own last commit.
     await wake(instance);
   }
