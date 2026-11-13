@@ -75,7 +75,7 @@ export function defaultsFlows(
 }
 
 /** The flow of a constant's initializer, a context constant's or a top-level one's. */
-export function constantFlow(
+function constantFlow(
   checker: CheckerContext,
   declaration: ContextConstantDeclaration | VariableDeclaration,
 ): FlowFunction | undefined {
