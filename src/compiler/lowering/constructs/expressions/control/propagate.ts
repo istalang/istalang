@@ -12,8 +12,8 @@ import { unreachable } from '../../../../../foundation/structures/unreachable.ts
 import type { NominalType, Type } from '../../../../checker/types/type/index.ts';
 import type { Propagate } from '../../../../syntax/expressions/index.ts';
 import type { FunctionContext } from '../../../context.ts';
-import { buildVariant } from '../../../values/variant-values.ts';
-import { isEnum, payloadOf, payloadOr } from '../structs/variants.ts';
+import { buildVariant, payloadOf, payloadOr } from '../../../values/variant-values.ts';
+import { isEnum } from '../structs/variants.ts';
 
 export function lowerPropagate(context: FunctionContext, node: Propagate): Register {
   const operand = context.expression(node.operand);

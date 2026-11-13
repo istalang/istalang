@@ -15,7 +15,7 @@ import type { Comprehension, Expression } from '../../../syntax/expressions/inde
 import type { For } from '../../../syntax/statements/index.ts';
 import { emitCall, emitImplicitCall } from '../../calls/emit-call.ts';
 import type { FunctionContext } from '../../context.ts';
-import { payloadOr } from '../expressions/structs/variants.ts';
+import { payloadOr } from '../../values/variant-values.ts';
 import type { LoopTargets } from '../statements/loops.ts';
 import { endScope } from '../statements/scopes.ts';
 import { bindTargets } from '../statements/variables.ts';

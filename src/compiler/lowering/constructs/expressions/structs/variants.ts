@@ -5,16 +5,13 @@
 
 import type { Register } from '../../../../../definition/operands.ts';
 import { unreachable } from '../../../../../foundation/structures/unreachable.ts';
-import type { Checker } from '../../../../checker/check.ts';
 import { calledVariant } from '../../../../checker/surface/named-variants.ts';
 import type { NominalType, Type } from '../../../../checker/types/type/index.ts';
 import type { Call } from '../../../../syntax/expressions/calls.ts';
 import type { Expression } from '../../../../syntax/expressions/index.ts';
 import type { Identifier } from '../../../../syntax/tree/node.ts';
-import type { AnchoredSpan } from '../../../../syntax/tree/positions.ts';
-import type { CodeContext, FunctionContext } from '../../../context.ts';
-import type { Label } from '../../../functions/code-writer.ts';
-import { buildVariant, variantIndexOf } from '../../../values/variant-values.ts';
+import type { FunctionContext } from '../../../context.ts';
+import { buildVariant } from '../../../values/variant-values.ts';
 
 /** A variant without fields, named bare or qualified. */
 export function lowerFieldlessVariant(
@@ -40,68 +37,6 @@ export function fieldlessVariantCalled(context: FunctionContext, node: Call): st
   };
   const variant = calledVariant(names, node)?.variant;
   return variant?.fields.length === 0 ? variant.name.text : undefined;
-}
-
-/** The enum value in `register` tested for one of its variants, the `variant`-th. */
-interface VariantTest {
-  readonly register: Register;
-  readonly variant: number;
-}
-
-/** The value of the enum `type` in `register`, tested for its variant `name`. */
-function variantTestOf(
-  checker: Checker,
-  register: Register,
-  type: NominalType,
-  name: string,
-): VariantTest {
-  return { register, variant: variantIndexOf(checker, type, name) };
-}
-
-/** Jumps to `matched` when the value holds the variant tested, else to `otherwise`: a `switch`. */
-export function branchOnVariant(
-  context: CodeContext,
-  test: VariantTest,
-  labels: { readonly matched: Label; readonly otherwise: Label },
-  span: AnchoredSpan,
-): void {
-  const targets = Array.from({ length: test.variant + 1 }, (_, index) =>
-    index === test.variant ? labels.matched : labels.otherwise,
-  );
-  context.code.switch(test.register, targets, span, labels.otherwise);
-}
-
-/** The value an `Ok` or `Err` in `register` holds: its one field (§3.11, §3.12). */
-export function payloadOf(context: CodeContext, register: Register, span: AnchoredSpan): Register {
-  return context.code.field(register, 0, span);
-}
-
-/** A value of the enum `type` in `register`, tested for its variant `name`, which has one field. */
-interface VariantCase {
-  readonly register: Register;
-  readonly type: NominalType;
-  readonly name: string;
-}
-
-/**
- * Where `tested` holds its variant, continues with that variant's one field; else runs `otherwise`,
- * which writes what happens then and must leave the code: return, jump or panic.
- */
-export function payloadOr(
-  context: CodeContext,
-  tested: VariantCase,
-  otherwise: () => void,
-  span: AnchoredSpan,
-): Register {
-  const { code } = context;
-  const matched = code.newLabel();
-  const unmatched = code.newLabel();
-  const test = variantTestOf(context.checker, tested.register, tested.type, tested.name);
-  branchOnVariant(context, test, { matched, otherwise: unmatched }, span);
-  code.place(unmatched);
-  otherwise();
-  code.place(matched);
-  return payloadOf(context, tested.register, span);
 }
 
 /** Whether `type` is an enum's, whose literals are its variants'. */

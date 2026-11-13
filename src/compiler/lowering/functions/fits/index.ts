@@ -28,7 +28,6 @@ import { membersOf } from '../../../checker/types/type/index.ts';
 import { baseOf } from '../../../checker/types/unions/union-members.ts';
 import type { AnchoredSpan } from '../../../syntax/tree/positions.ts';
 import { emitCall } from '../../calls/emit-call.ts';
-import { tupleOf } from '../../constructs/expressions/literals/tuples.ts';
 import type { CodeContext, FunctionContext } from '../../context.ts';
 import { SynthesizedCode } from '../../synthesized/index.ts';
 import {
@@ -41,7 +40,7 @@ import {
 } from '../../tables/instances.ts';
 import { spelledType } from '../../tables/names.ts';
 import { convertedIntoAny } from '../../values/into-any.ts';
-import { rebuiltAs } from '../../values/struct-values.ts';
+import { rebuiltAs, tupleOf } from '../../values/struct-values.ts';
 import { asBase, intoUnion } from '../../values/unions.ts';
 import { builtKindOf, codeModeOf } from '../modes.ts';
 import { changesLayout, type Rebuilding, rebuilt } from './parts.ts';

@@ -14,14 +14,10 @@
 import type { Register } from '../../../../definition/operands.ts';
 import { type Comparison, isComparison } from '../../../syntax/expressions/comparisons.ts';
 import type { Binary, Unary } from '../../../syntax/expressions/index.ts';
-import {
-  binaryOperators,
-  type Relation,
-  unaryOperators,
-} from '../../../syntax/expressions/operators.ts';
-import type { AnchoredSpan } from '../../../syntax/tree/positions.ts';
+import { binaryOperators, unaryOperators } from '../../../syntax/expressions/operators.ts';
 import { emitCallAt, emitFunctionCall } from '../../calls/emit-call.ts';
-import type { CodeContext, FunctionContext } from '../../context.ts';
+import type { FunctionContext } from '../../context.ts';
+import { equal, negated, ordered } from '../../values/operators.ts';
 import { lowerNullish } from './access/optionals.ts';
 
 export function lowerBinary(context: FunctionContext, node: Binary): Register {
@@ -71,32 +67,6 @@ function compared(
   return ordered(context, span, call('compare', [left, right]), meaning.relation);
 }
 
-/** Whether `left` and `right` are `==`, or `!=` when `isNegated`. */
-export function equal(
-  context: CodeContext,
-  span: AnchoredSpan,
-  [left, right]: readonly [Register, Register],
-  isNegated = false,
-): Register {
-  const dst = context.code.equal(left, right, span);
-  return isNegated ? negated(context, dst, span) : dst;
-}
-
-/**
- * Whether `compare`'s int, in `comparison`, is in `relation`: what an ordering gives, whether an
- * operator or a pattern's field test (§3.11) compared.
- */
-export function ordered(
-  context: FunctionContext,
-  span: AnchoredSpan,
-  comparison: Register,
-  relation: Relation,
-): Register {
-  const dst = context.code.allocate();
-  context.code.emit({ kind: 'order', span, dst, comparison, relation });
-  return dst;
-}
-
 export function lowerUnary(context: FunctionContext, node: Unary): Register {
   const operand = context.expression(node.operand);
   return unaryOperators[node.operator].meaning.kind === 'negation'
@@ -106,12 +76,6 @@ export function lowerUnary(context: FunctionContext, node: Unary): Register {
 
 function operands(context: FunctionContext, node: Binary): [Register, Register] {
   return [context.expression(node.left), context.expression(node.right)];
-}
-
-function negated(context: CodeContext, src: Register, span: AnchoredSpan): Register {
-  const dst = context.code.allocate();
-  context.code.emit({ kind: 'not', span, dst, src });
-  return dst;
 }
 
 /** `a and b` is `b` when `a` is true, else `a`; `a or b` is `a` when `a` is true, else `b`. */

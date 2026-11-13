@@ -77,3 +77,17 @@ export function rebuiltAs(
   );
   return construct(context, to, named, span);
 }
+
+/** The tuple of `elements`' values: the unit constant of none (§3.15). */
+export function tupleOf(
+  context: CodeContext,
+  elements: readonly Register[],
+  span: AnchoredSpan,
+): Register {
+  if (elements.length === 0) {
+    return context.constant(null, span);
+  }
+  const dst = context.code.allocate();
+  context.code.emit({ kind: 'tuple', span, dst, elements: [...elements] });
+  return dst;
+}

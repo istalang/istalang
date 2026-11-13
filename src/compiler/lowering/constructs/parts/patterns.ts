@@ -37,9 +37,9 @@ import type { FunctionContext } from '../../context.ts';
 import type { Label } from '../../functions/code-writer.ts';
 import { constantValue, emitConstant } from '../../tables/constants.ts';
 import { branchOnHeld, laidOutAs, type TypedValue } from '../../values/holdings.ts';
+import { equal, ordered } from '../../values/operators.ts';
 import { outOfUnion } from '../../values/unions.ts';
-import { equal, ordered } from '../expressions/operators.ts';
-import { branchOnVariant } from '../expressions/structs/variants.ts';
+import { branchOnVariant } from '../../values/variant-values.ts';
 import { declareVariable } from '../statements/variables.ts';
 import { readPartAlong } from './part-paths.ts';
 
