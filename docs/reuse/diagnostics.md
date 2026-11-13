@@ -16,7 +16,7 @@ tags: [reuse, diagnostics, errors, testing]
 - look up a phase's 1000-code block → `codeBlocks`, `codeBlockSize`, `DiagnosticPhase` (`src/foundation/diagnostics/code-blocks.ts`)
 - test whether a `Diagnostic` is an error (stops compilation) vs a warning → `isError`, `Diagnostic`, `Severity` (`src/foundation/diagnostics/diagnostic.ts`)
 - list diagnostics in their one order: position, then code and message → `compareDiagnostics` (`src/foundation/diagnostics/diagnostic.ts`)
-- format one `Diagnostic` with `path:line:column` header, source line and caret → `renderDiagnostic`, or all of a module's in order → `renderDiagnostics` (`src/foundation/diagnostics/render.ts`)
+- format diagnostics with a `path:line:column` header, source line and caret, each related location as a note, every module's in order → `renderDiagnostics` (`src/foundation/diagnostics/render.ts`)
 - write all module diagnostics with an error and warning summary count → `reportDiagnostics` (`src/cli/report.ts`)
 - report command-line paths that name no file → `reportUnreadable` (`src/cli/report.ts`)
 - one module's diagnostics from every phase, sorted (an editor's document) → `diagnoseModule` (`src/compiler/compile.ts`); every module's → `diagnose`

@@ -15,33 +15,6 @@ import type { SourceText } from '../text/source-text.ts';
 import { type Span, textOf } from '../text/span.ts';
 import type { Diagnostic } from './diagnostic.ts';
 
-/**
- * A diagnostic as a header line plus a two-line excerpt of the source, then each related location
- * the same way, as a note, in the text `sourceOf` gives its module.
- */
-export function renderDiagnostic(source: SourceText, diagnostic: Diagnostic): string;
-export function renderDiagnostic<Module extends string>(
-  source: SourceText,
-  diagnostic: Diagnostic<Span, Module>,
-  sourceOf: (module: Module) => SourceText,
-): string;
-export function renderDiagnostic<Module extends string>(
-  source: SourceText,
-  diagnostic: Diagnostic<Span, Module>,
-  sourceOf?: (module: Module) => SourceText,
-): string {
-  const head = `${diagnostic.severity} ${diagnostic.code}: ${diagnostic.message}`;
-  return [
-    excerpt(source, diagnostic.span, head),
-    ...diagnostic.related.map((related) => {
-      if (sourceOf === undefined) {
-        return unreachable('A related location was rendered with no text for its module.');
-      }
-      return excerpt(sourceOf(related.module), related.span, `note: ${related.message}`);
-    }),
-  ].join('\n');
-}
-
 /** A module's text and what was reported in it. */
 export interface Diagnosed {
   readonly source: SourceText;
@@ -62,6 +35,24 @@ export function renderDiagnostics(
   return [...modules.values()].flatMap(({ source, diagnostics }) =>
     diagnostics.filter(keep).map((diagnostic) => renderDiagnostic(source, diagnostic, sourceOf)),
   );
+}
+
+/**
+ * A diagnostic as a header line plus a two-line excerpt of the source, then each related location
+ * the same way, as a note, in the text `sourceOf` gives its module.
+ */
+function renderDiagnostic(
+  source: SourceText,
+  diagnostic: Diagnostic<Span, string>,
+  sourceOf: (module: string) => SourceText,
+): string {
+  const head = `${diagnostic.severity} ${diagnostic.code}: ${diagnostic.message}`;
+  return [
+    excerpt(source, diagnostic.span, head),
+    ...diagnostic.related.map((related) =>
+      excerpt(sourceOf(related.module), related.span, `note: ${related.message}`),
+    ),
+  ].join('\n');
 }
 
 /** `head` after the `path:line:column` of `span`, then the line it starts on, underlined. */

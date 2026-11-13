@@ -180,8 +180,8 @@ The node kinds are in `src/compiler/syntax/expressions/index.ts` and `syntax/sta
     in its own module's tree; `ModuleChecks.diagnosticsOf` passes the program's.
 - **The LSP** sends them as `relatedInformation`, each at its module's URI
   (`src/editor/lsp/diagnostics.ts`).
-- **The CLI** prints each as a `note:` excerpt after its diagnostic (`renderDiagnostic`, and
-  `renderDiagnostics` over every diagnosed module, `src/foundation/diagnostics/render.ts`).
+- **The CLI** prints each as a `note:` excerpt after its diagnostic (`renderDiagnostics` over
+  every diagnosed module, `src/foundation/diagnostics/render.ts`).
 - **Codes:** `diagnostics/lifetimes.ts` holds block 5700–5799, and 5712 is the next free code.
   The cycles are 5720–5724 (`cycleTemplates`: a write, a call, an escaping function, a witness,
   a cycle a callee makes at a call's types),

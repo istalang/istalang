@@ -5,10 +5,11 @@
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
+import type { SourceText } from '../text/source-text.ts';
 import { createSourceText } from '../text/source-text.ts';
 import type { Span } from '../text/span.ts';
 import type { Diagnostic } from './diagnostic.ts';
-import { renderDiagnostic } from './render.ts';
+import { renderDiagnostics } from './render.ts';
 
 const header = /^dir\/a\.ista:\d+:\d+: error 2001: /u;
 const carets = /\^+$/u;
@@ -21,10 +22,25 @@ function rendered(text: string, start: number, end: number): string {
     span: { start, end },
     related: [],
   };
-  return renderDiagnostic(createSourceText('dir/a.ista', text), diagnostic);
+  return renderedIn({ a: createSourceText('dir/a.ista', text) }, diagnostic);
 }
 
-describe('renderDiagnostic', () => {
+/** `diagnostic`, reported in module `a` of `sources`, as `renderDiagnostics` renders it. */
+function renderedIn(
+  sources: Readonly<Record<string, SourceText>> & { readonly a: SourceText },
+  diagnostic: Diagnostic<Span, string>,
+): string {
+  const modules = new Map(
+    Object.entries(sources).map(([module, source]) => [
+      module,
+      { source, diagnostics: module === 'a' ? [diagnostic] : [] },
+    ]),
+  );
+  const [only] = renderDiagnostics(modules);
+  return only ?? '';
+}
+
+describe('renderDiagnostics', () => {
   it('heads with a 1-based path:line:column, then underlines the span on its line', () => {
     const text = 'fn f():\n    g(x, y)\n';
     const start = text.indexOf('x, y');
@@ -80,8 +96,7 @@ describe('renderDiagnostic', () => {
         { module: 'a', span: { start: 10, end: 11 }, message: 'and here' },
       ],
     };
-    const sources = { a: main, b: other };
-    expect(renderDiagnostic(main, diagnostic, (module) => sources[module]).split('\n')).toEqual([
+    expect(renderedIn({ a: main, b: other }, diagnostic).split('\n')).toEqual([
       'dir/a.ista:1:1: error 5720: A cycle.',
       ' 1 | a->next = a',
       '   | ^',
