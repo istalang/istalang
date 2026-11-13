@@ -51,9 +51,9 @@ Each root cause below explains a family of the ranked findings; fixing the root 
    `itemLists`, `laysOutLines`, `opensBody`), and already miss `AssociatedType`, `RequiredAssociatedType`, `MemberType`,
    `TypeMatch`, `IndentedValue` **[L]**. A checker `Type` is rebuilt from its parts by two parallel switches
    (`types/parts/type-children.ts:withTypeChildren`, `types/parts/type-parts.ts:mapParts`).
-6. **Natives where `.ista` would do, written twice.** ~58 std externs are TS natives though they are one-liners over
-   existing functions, and every native's signature is spelled twice: once in its `.ista` `extern` and again as a key in
-   its natives table (`keys.of('indexOf', 'String', 'String', 'Int')`) **[L]**.
+6. **Native signatures written twice.** Every native's signature is spelled twice: once in its `.ista` `extern` and again as
+   a key in its natives table (`keys.of('indexOf', 'String', 'String', 'Int')`) **[L]**. (The ~58 natives that are one-liners
+   over existing functions stay native, for speed: finding 7 is cancelled.)
 
 ## Ranked findings
 
@@ -108,7 +108,8 @@ Each root cause below explains a family of the ranked findings; fixing the root 
 - proposal: every passive per-node fact is a `PassTable` in `bodyRecords`, recorded through `BodyContext` and read in
   `facts/index.ts` as `records.<fact>.get(node, pass)`; wrapper classes stay only where they hold logic.
 
-### 7. [high] ~58 std natives belong in `.ista`  **[2×: std, spec]**
+### 7. [cancelled] ~58 std natives belong in `.ista`  **[2×: std, spec]**
+- **Cancelled:** these natives are native for speed; they stay.
 - Mixed-number overloads (31): `prelude` `add`/`subtract`/`multiply`/`divide`/`power`/`compare` over `(Int, Float)` and
   `(Float, Int)`, `divide(Int, Int)`, `remainder`, `bitNot`; `math.abs(Int)`, `math.sqrt(Int)`; 16 `decimal` overloads over
   `(Decimal, Int)`/`(Int, Decimal)`: one-liners over `Float.from` and `Decimal(x)`. Deletes `stdlib/numeric.ts` (`numeric`,
@@ -146,7 +147,7 @@ Each root cause below explains a family of the ranked findings; fixing the root 
   `extern`'s parameter types; `definition/extern-key.ts` builders exist for it.
 - proposal: derive std native keys from the declarations (the natives table names each extern by name and, for overloads, by
   the parameter list the `.ista` declares, checked once at load) so a signature is written once; host externs keep keys,
-  since a host can't read `.ista`. Shrinks with finding 7.
+  since a host can't read `.ista`.
 
 ### 11. [med] Hand-kept declaration and layout kind lists miss newer constructs  **[L][2×: edit, prs]**
 - where: root cause 5. Bugs today: `name-types.ts` highlights `AssociatedType`, `RequiredAssociatedType`, `MemberType`
@@ -269,6 +270,10 @@ Agent-verified; **[L]** the lead confirmed.
 
 ## Dead code (logical)
 
+**Fixed** (`5e17c4ab..fb7486c3`; −229 code lines). Kept on purpose: `mainOf` (a test-kit reuses the main-function rule),
+`ValueOnDisk` (the public runtime API's `.d.ts` needs it), exports `docs/reuse` names as contract parts, and test-only exports
+that are test seams (unexporting would copy knowledge or drop property tests).
+
 - `runtime/snapshot/objects.ts` `execution.disposing`: persisted, always `false`, never read **[L]**; `RunStack.callFutures`;
   `WithResources` in `host-natives.ts`; `Driving.wait` in `testing/world/drive.ts` always returns `false`.
 - `checker`: `JoinedBody.implicitCallsOf` (no caller) with `pass-joins.ts`'s `firstListed`/`inEveryPass`; diagnostic
@@ -283,6 +288,12 @@ Agent-verified; **[L]** the lead confirmed.
   `collections/collections.ts:261`.
 - Over 130 exported types and interfaces no module imports (per-area lists in `raw/*-findings.md`), and several exports only
   tests import.
+
+## Found while fixing
+
+- `checker/constructs/patterns/walk/index.ts` is ~465 lines, over the 400 limit.
+- `lowering/tables/type-table.ts`: `#roleOf(enumRoles, …)` on an `EnumDeclaration` can never match.
+- `definition/values/json-values.ts`: `plainOfJson`/`jsonOfPlain` expose their internal depth parameter.
 
 ## Rejected proposals
 
