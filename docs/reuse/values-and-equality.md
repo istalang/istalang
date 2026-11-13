@@ -3,8 +3,8 @@ description: building, narrowing and reading language values, structs, variants,
 owner: tech-lead
 status: active
 applies_to: istalang
-last_verified: 2026-11-12
-last_updated: 2026-11-12
+last_verified: 2026-11-13
+last_updated: 2026-11-13
 tags: [reuse, values, equality, maps, json, natives, runtime]
 ---
 
@@ -16,7 +16,7 @@ tags: [reuse, values, equality, maps, json, natives, runtime]
 - make a handle to a heap object → `handleTo` (`src/definition/values/values.ts`)
 - read or replace a composite's children or depth, or get the maximum persisted value depth → `childValues`, `withChildValues`, `handlesIn`, `depthOf`, `maximumDepth`, `samePayload` (`src/definition/values/values.ts`)
 - rebuild a value with some of its parts replaced, at any depth, on a stack of its own → `replacingParts` (`src/definition/values/replacing.ts`)
-- read or build a struct or variant `Value` by declared name → `fieldValueOf`, `structOf`, `variantOf`, `variantShape` (`src/definition/values/declared-values.ts`)
+- read or build a struct or variant `Value` by declared name → `fieldValueOf`, `structOf`, `variantOf` (`src/definition/values/declared-values.ts`)
 - build an optional (a union holding `None`, laid out as `unionLayout` says), a `Result` (`Ok`, `Err`) or `Error` `Value` → `optionalOf`, `okOf`, `errOf`, `errorOf`, `okTypeOf` (`src/definition/values/declared-values.ts`)
 - look up a field's `TypeReference`, a type argument, or a named `TypeId` → `fieldTypeOf`, `typeArgumentOf`, `namedType`, `namedTypeOf` (`src/definition/values/declared-values.ts`)
 - read primitive, optional `Int`, enum (by its variant's name, from a table) or extern native arguments, or build an array result → `given`, `int`, `float`, `text`, `optionalInt`, `variantEntry`, `externPayloadOf`, `textPayloadOf`, `arrayOf` (`src/stdlib/values/arguments.ts`)

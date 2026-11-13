@@ -1,0 +1,144 @@
+src/runtime/snapshot/snapshot.ts:51-62  ~  src/definition/instructions/data.ts:61-65
+src/runtime/snapshot/snapshot.ts:67-70  ~  src/runtime/snapshot/objects.ts:106-109
+src/runtime/snapshot/objects.ts:131-140  ~  src/definition/instructions/data.ts:81-85
+src/runtime/scheduler/segment/run-calls.ts:15-27  ~  src/runtime/scheduler/segment/disposal-runs.ts:41-52
+src/runtime/scheduler/segment/index.ts:73-77  ~  src/compiler/lowering/tables/tables.ts:71-75
+src/runtime/scheduler/segment/index.ts:73-77  ~  src/compiler/checker/surface/denotation.ts:47-51  ~  src/compiler/lowering/tables/tables.ts:71-75
+src/runtime/scheduler/segment/index.ts:74-77  ~  src/compiler/checker/surface/denotation.ts:48-51  ~  src/compiler/checker/surface/checked-annotation.ts:24-29  ~  src/compiler/checker/resolution/choosing/binding.ts:56-62  ~  src/compiler/lowering/tables/tables.ts:72-75  ~  src/compiler/lowering/tables/tables.ts:87-90  ~  src/compiler/lowering/tables/instances.ts:61-64
+src/runtime/scheduler/segment/index.ts:74-77  ~  src/compiler/checker/surface/denotation.ts:50-53  ~  src/compiler/checker/surface/checked-annotation.ts:24-29
+src/runtime/scheduler/instance/index.ts:57-68  ~  src/compiler/checker/wiring/body/facts/recorded-body.ts:27-36
+src/runtime/scheduler/instance/weak-side.ts:27-37  ~  src/runtime/scheduler/instance/waits/endings.ts:39-53  ~  src/compiler/lowering/synthesized/boundary/decoder.ts:31-40
+src/runtime/scheduler/instance/waits/endings.ts:39-53  ~  src/compiler/lowering/synthesized/boundary/decoder.ts:31-40
+src/runtime/scheduler/run-contexts.ts:30-44  ~  src/compiler/checker/wiring/body/facts/recorded-body.ts:37-48
+src/runtime/lifetimes/counts.ts:74-84  ~  src/compiler/checker/types/inference/variables.ts:97-107
+src/runtime/lifetimes/counts.ts:78-88  ~  src/compiler/checker/types/inference/variables.ts:101-111  ~  src/compiler/checker/constructs/statements/loops.ts:145-153
+src/runtime/lifetimes/counts.ts:78-88  ~  src/compiler/checker/constructs/declarations/aliases/index.ts:96-106
+src/runtime/lifetimes/counts.ts:131-142  ~  src/runtime/lifetimes/counts.ts:149-160
+src/runtime/natives.ts:239-254  ~  src/runtime/natives.ts:255-270
+src/foundation/structures/reachable.ts:15-20  ~  src/compiler/checker/rules/expansion/edges.ts:58-63
+src/foundation/language/values.ts:226-228  ~  src/definition/validation/references.ts:210-212
+src/definition/instructions/data.ts:33-38  ~  src/definition/instructions/data.ts:75-81
+src/definition/instructions/data.ts:99-107  ~  src/definition/instructions/suspension.ts:19-28
+src/definition/instructions/instruction.ts:44-46  ~  src/definition/instructions/instruction.ts:67-69
+src/definition/tables/types.ts:41-53  ~  src/definition/values/values.ts:82-95
+src/definition/tables/types.ts:41-51  ~  src/definition/values/values.ts:59-70  ~  src/definition/values/values.ts:85-96
+src/definition/values/values.ts:71-81  ~  src/definition/values/values.ts:105-115
+src/definition/extern-key.ts:25-28  ~  src/compiler/lowering/constructs/parts/places.ts:76-81
+src/stdlib/crypto/natives.ts:39-45  ~  src/stdlib/time/zones.ts:59-65
+src/stdlib/runtime/natives.ts:31-34  ~  src/stdlib/prelude/instance-natives.ts:17-20
+src/stdlib/values/results.ts:27-36  ~  src/stdlib/values/results.ts:47-56  ~  src/stdlib/values/results.ts:62-84
+src/stdlib/values/results.ts:31-37  ~  src/stdlib/values/results.ts:56-62
+src/stdlib/values/results.ts:47-56  ~  src/stdlib/values/results.ts:62-74
+src/stdlib/time/zones.ts:66-69  ~  src/stdlib/time/natives.ts:59-62
+src/compiler/binder/link/index.ts:110-117  ~  src/compiler/binder/link/index.ts:129-136
+src/compiler/binder/constructs/types.ts:64-69  ~  src/compiler/binder/constructs/expressions.ts:198-206
+src/compiler/checker/types/fitting/fit/index.ts:80-84  ~  src/compiler/checker/surface/checked-annotation.ts:19-27
+src/compiler/checker/types/fitting/fit/index.ts:81-86  ~  src/compiler/checker/resolution/choosing/binding.ts:56-66
+src/compiler/checker/types/fitting/fit/index.ts:82-86  ~  src/compiler/checker/resolution/choosing/binding.ts:58-66  ~  src/compiler/syntax/expressions/operators.ts:45-53
+src/compiler/checker/types/fitting/fit/index.ts:251-261  ~  src/compiler/checker/types/fitting/fit/index.ts:286-293
+src/compiler/checker/types/fitting/fit/index.ts:420-424  ~  src/compiler/checker/types/fitting/fit/index.ts:491-495
+src/compiler/checker/types/properties/finiteness.ts:93-106  ~  src/compiler/checker/rules/disposal/disposal.ts:68-81
+src/compiler/checker/types/inference/relate.ts:57-64  ~  src/compiler/checker/types/inference/equal.ts:36-44
+src/compiler/checker/types/inference/relate.ts:165-169  ~  src/compiler/checker/types/inference/equal.ts:129-133
+src/compiler/checker/types/inference/system-reading.ts:304-314  ~  src/compiler/checker/types/inference/system-reading.ts:332-342
+src/compiler/checker/types/inference/variables.ts:31-33  ~  src/compiler/compile.ts:53-55  ~  src/compiler/compile.ts:80-82
+src/compiler/checker/types/inference/variables.ts:31-33  ~  src/compiler/compile.ts:53-55
+src/compiler/checker/types/inference/variables.ts:101-111  ~  src/compiler/checker/constructs/statements/loops.ts:145-153
+src/compiler/checker/types/inference/system.ts:306-312  ~  src/compiler/checker/rules/flow/build/flow-builder.ts:132-138  ~  src/compiler/lowering/functions/index.ts:224-230
+src/compiler/checker/types/inference/system.ts:306-314  ~  src/compiler/checker/wiring/body/body-scopes.ts:170-178  ~  src/compiler/checker/rules/flow/build/flow-builder.ts:132-140  ~  src/compiler/lowering/functions/index.ts:224-232
+src/compiler/checker/types/inference/system.ts:306-317  ~  src/compiler/checker/wiring/body/body-scopes.ts:170-181
+src/compiler/checker/contexts/body-context.ts:187-203  ~  src/compiler/checker/wiring/body/facts/recorded-body.ts:34-45
+src/compiler/checker/surface/denotation.ts:48-52  ~  src/compiler/checker/resolution/choosing/binding.ts:56-64  ~  src/compiler/lowering/tables/tables.ts:72-76  ~  src/compiler/lowering/tables/tables.ts:87-91
+src/compiler/checker/surface/denotation.ts:48-52  ~  src/compiler/checker/resolution/choosing/binding.ts:56-64  ~  src/compiler/lowering/tables/tables.ts:72-76
+src/compiler/checker/surface/denotation.ts:48-52  ~  src/compiler/checker/surface/checked-annotation.ts:23-29  ~  src/compiler/checker/resolution/choosing/binding.ts:54-62  ~  src/compiler/lowering/tables/tables.ts:72-79
+src/compiler/checker/surface/denotation.ts:50-60  ~  src/compiler/checker/surface/checked-annotation.ts:24-32
+src/compiler/checker/surface/denotation.ts:51-61  ~  src/compiler/checker/surface/checked-annotation.ts:26-33  ~  src/compiler/checker/rules/lifetimes/analysis/places.ts:21-26
+src/compiler/checker/surface/checked-pattern.ts:185-194  ~  src/compiler/checker/rules/lifetimes/analysis/places.ts:20-25
+src/compiler/checker/surface/checked-field.ts:36-38  ~  src/compiler/checker/resolution/choosing/call-arguments.ts:69-73
+src/compiler/checker/surface/witness-closing.ts:123-125  ~  src/compiler/checker/surface/witness-closing.ts:145-147
+src/compiler/checker/wiring/body/body-scopes.ts:178-186  ~  src/compiler/lowering/functions/index.ts:221-229
+src/compiler/checker/wiring/body/facts/index.ts:62-69  ~  src/compiler/checker/wiring/body/facts/index.ts:231-238
+src/compiler/checker/wiring/body/facts/index.ts:62-69  ~  src/compiler/checker/wiring/body/facts/index.ts:215-222  ~  src/compiler/checker/wiring/body/facts/index.ts:231-238
+src/compiler/checker/wiring/program/program-type-rules.ts:107-110  ~  src/compiler/checker/wiring/program/program-type-rules.ts:190-194
+src/compiler/checker/resolution/calls/call-records.ts:14-22  ~  src/compiler/checker/constructs/expressions/structs/literal-sources.ts:25-33
+src/compiler/checker/resolution/calls/call-records.ts:37-44  ~  src/compiler/checker/constructs/expressions/structs/literal-sources.ts:34-41
+src/compiler/checker/resolution/type-matches/reduction-requirements.ts:87-93  ~  src/compiler/checker/constructs/declarations/functions/statics.ts:25-31  ~  src/compiler/checker/rules/expansion/types.ts:50-56
+src/compiler/checker/resolution/type-matches/reduction-requirements.ts:89-94  ~  src/compiler/checker/rules/expansion/types.ts:52-57
+src/compiler/checker/resolution/conformance/shortfalls.ts:196-204  ~  src/compiler/checker/resolution/conformance/shortfalls.ts:293-301
+src/compiler/checker/constructs/patterns/walk/pattern-tests.ts:84-94  ~  src/compiler/checker/rules/flow/build/flow-builder.ts:44-54
+src/compiler/checker/constructs/patterns/walk/members.ts:272-276  ~  src/editor/language-service/completion/places/patterns/matched-type.ts:185-189
+src/compiler/checker/constructs/patterns/matching.ts:89-97  ~  src/compiler/checker/constructs/expressions/access/member-access.ts:124-132  ~  src/compiler/checker/constructs/loops/iteration.ts:38-46
+src/compiler/checker/constructs/patterns/matching.ts:92-110  ~  src/compiler/checker/constructs/loops/iteration.ts:41-60
+src/compiler/checker/constructs/patterns/matching.ts:93-101  ~  src/compiler/checker/constructs/loops/iteration.ts:42-51  ~  src/compiler/checker/constructs/closures/functions.ts:103-111  ~  src/compiler/checker/rules/flow/flow-decisions.ts:38-46
+src/compiler/checker/constructs/patterns/matching.ts:100-113  ~  src/compiler/checker/constructs/expressions/deferred-calls.ts:91-99  ~  src/compiler/checker/constructs/loops/iteration.ts:50-63
+src/compiler/checker/constructs/patterns/exhaustiveness/shapes.ts:209-215  ~  src/compiler/checker/constructs/patterns/exhaustiveness/shapes.ts:224-230
+src/compiler/checker/constructs/declarations/layout/index.ts:68-74  ~  src/compiler/checker/rules/expansion/functions.ts:46-56
+src/compiler/checker/constructs/declarations/layout/index.ts:70-74  ~  src/compiler/checker/constructs/declarations/type-parameters.ts:60-68  ~  src/compiler/checker/rules/lifetimes/lifetimes.ts:71-75  ~  src/compiler/checker/rules/expansion/functions.ts:49-56
+src/compiler/checker/constructs/declarations/layout/index.ts:173-182  ~  src/compiler/checker/constructs/declarations/type-parameters.ts:122-130
+src/compiler/checker/constructs/declarations/constants.ts:82-91  ~  src/compiler/checker/rules/annotations.ts:85-90
+src/compiler/checker/constructs/declarations/type-parameters.ts:60-68  ~  src/compiler/checker/rules/lifetimes/lifetimes.ts:71-75  ~  src/compiler/checker/rules/expansion/functions.ts:49-56
+src/compiler/checker/constructs/declarations/functions/parameters.ts:96-103  ~  src/compiler/checker/rules/lifetimes/dispatch.ts:55-59
+src/compiler/checker/constructs/declarations/functions/parameters.ts:121-129  ~  src/compiler/checker/constructs/declarations/aliases/index.ts:73-81
+src/compiler/checker/constructs/declarations/functions/parameters.ts:123-129  ~  src/compiler/checker/constructs/declarations/aliases/alias-recursion.ts:79-85  ~  src/compiler/checker/constructs/declarations/aliases/index.ts:75-81
+src/compiler/checker/constructs/declarations/functions/parameters.ts:125-131  ~  src/compiler/checker/constructs/declarations/aliases/alias-recursion.ts:77-83
+src/compiler/checker/constructs/declarations/functions/signatures.ts:137-154  ~  src/compiler/checker/constructs/declarations/functions/signatures.ts:161-182
+src/compiler/checker/constructs/declarations/functions/statics.ts:24-31  ~  src/compiler/checker/rules/expansion/types.ts:50-56
+src/compiler/checker/constructs/declarations/aliases/alias-recursion.ts:72-78  ~  src/compiler/checker/constructs/declarations/aliases/index.ts:58-65
+src/compiler/checker/constructs/declarations/aliases/index.ts:62-67  ~  src/compiler/checker/constructs/declarations/aliases/recursive-bodies.ts:50-55
+src/compiler/checker/constructs/statements/variables.ts:123-130  ~  src/compiler/checker/constructs/expressions/structs/literal-sources.ts:30-37
+src/compiler/checker/constructs/expressions/access/optionals.ts:50-56  ~  src/compiler/checker/rules/flow/flow-decisions.ts:16-22
+src/compiler/checker/constructs/expressions/access/member-access.ts:65-68  ~  src/compiler/checker/constructs/expressions/literals/tuples.ts:49-52
+src/compiler/checker/constructs/expressions/collections/collections.ts:138-150  ~  src/compiler/checker/constructs/expressions/collections/literals.ts:234-247
+src/compiler/checker/constructs/closures/functions.ts:103-110  ~  src/compiler/checker/rules/flow/flow-decisions.ts:38-45
+src/compiler/checker/rules/lifetimes/analysis/flow-state.ts:97-102  ~  src/compiler/checker/rules/lifetimes/dispatch.ts:153-158
+src/compiler/checker/rules/lifetimes/lifetimes.ts:80-86  ~  src/compiler/checker/rules/expansion/functions.ts:54-61
+src/compiler/checker/rules/lifetimes/lifetimes.ts:153-163  ~  src/compiler/checker/rules/expansion/functions.ts:80-90
+src/compiler/checker/rules/flow/flow-ir.ts:115-120  ~  src/compiler/lowering/constructs/parts/places.ts:78-83
+src/compiler/checker/rules/flow/build/calls.ts:194-207  ~  src/compiler/lowering/constructs/expressions/calls.ts:161-171
+src/compiler/checker/rules/flow/build/statements.ts:53-57  ~  src/compiler/lowering/constructs/statements/variables.ts:219-223
+src/compiler/checker/rules/flow/build/statements.ts:111-115  ~  src/compiler/checker/rules/flow/build/control.ts:97-101
+src/compiler/checker/rules/flow/build/parts.ts:171-175  ~  src/compiler/checker/rules/flow/build/control.ts:185-189
+src/compiler/checker/rules/flow/build/flow-builder.ts:123-134  ~  src/compiler/parser/parser.ts:128-141
+src/compiler/checker/rules/flow/build/flow-builder.ts:132-138  ~  src/compiler/lowering/functions/index.ts:224-230
+src/compiler/checker/rules/flow/build/literals.ts:73-79  ~  src/compiler/lowering/constructs/expressions/structs/structs.ts:90-96
+src/compiler/checker/rules/flow/build/literals.ts:109-115  ~  src/compiler/lowering/constructs/expressions/collections/collections.ts:74-80
+src/compiler/checker/rules/flow/build/literals.ts:120-127  ~  src/compiler/lowering/constructs/expressions/collections/collections.ts:105-112
+src/compiler/checker/rules/flow/build/literals.ts:210-215  ~  src/compiler/checker/rules/flow/build/literals.ts:225-230
+src/compiler/checker/rules/flow/build/expressions.ts:71-73  ~  src/compiler/checker/rules/flow/build/expressions.ts:216-218
+src/compiler/checker/rules/flow/build/index.ts:97-101  ~  src/compiler/lowering/constructs/statements/statements.ts:80-84
+src/compiler/compile.ts:36-48  ~  src/editor/language-service/semantic-tokens/name-types.ts:123-130
+src/compiler/compile.ts:53-55  ~  src/compiler/compile.ts:80-82
+src/compiler/lowering/tables/tables.ts:277-283  ~  src/compiler/lowering/tables/tables.ts:301-307
+src/compiler/lowering/tables/tables.ts:296-305  ~  src/compiler/lowering/tables/tables.ts:312-324
+src/compiler/lowering/tables/tables.ts:317-330  ~  src/compiler/lowering/tables/tables.ts:332-342
+src/compiler/lowering/tables/type-table.ts:213-217  ~  src/compiler/lowering/tables/type-table.ts:254-258
+src/compiler/lowering/values/optionals.ts:85-100  ~  src/compiler/lowering/constructs/expressions/structs/variants.ts:79-94
+src/compiler/lowering/values/optionals.ts:140-143  ~  src/compiler/lowering/constructs/parts/patterns.ts:108-111
+src/compiler/lowering/values/unions.ts:140-143  ~  src/compiler/lowering/values/unions.ts:242-245
+src/compiler/lowering/values/unions.ts:155-160  ~  src/compiler/lowering/values/unions.ts:250-255
+src/compiler/lowering/lower.ts:164-178  ~  src/compiler/lowering/lower.ts:192-205
+src/compiler/lowering/constructs/expressions/deferred-calls.ts:111-123  ~  src/compiler/lowering/functions/fits/index.ts:172-184
+src/compiler/lowering/functions/code-writer.ts:76-82  ~  src/compiler/lowering/functions/code-writer.ts:213-219
+src/compiler/lowering/functions/code-writer.ts:115-126  ~  src/compiler/lowering/functions/code-writer.ts:146-161
+src/compiler/lowering/functions/fits/index.ts:240-252  ~  src/compiler/lowering/functions/fits/index.ts:265-280
+src/compiler/parser/grammar/declarations/type-matches.ts:31-34  ~  src/compiler/parser/grammar/expressions/branches.ts:61-64
+src/compiler/parser/grammar/declarations/type-declarations.ts:145-147  ~  src/compiler/parser/grammar/declarations/type-parameters.ts:44-47
+src/compiler/parser/grammar/declarations/externs.ts:24-26  ~  src/compiler/parser/grammar/parts/constraints.ts:55-57
+src/compiler/parser/grammar/types.ts:125-133  ~  src/compiler/parser/grammar/patterns.ts:417-425
+src/compiler/parser/grammar/types.ts:224-227  ~  src/compiler/parser/grammar/patterns.ts:413-416
+src/compiler/parser/grammar/statements/simple.ts:31-36  ~  src/compiler/parser/grammar/expressions/branches.ts:55-60
+src/compiler/parser/grammar/statements/simple.ts:46-49  ~  src/compiler/parser/grammar/parts/spreads.ts:17-20
+src/compiler/parser/grammar/expressions/atoms.ts:13-16  ~  src/compiler/parser/grammar/patterns.ts:414-417
+src/compiler/parser/grammar/expressions/postfix.ts:159-164  ~  src/compiler/parser/grammar/patterns.ts:308-313
+src/compiler/parser/grammar/expressions/literals/struct-literals.ts:44-53  ~  src/compiler/parser/grammar/expressions/literals/struct-literals.ts:59-65
+src/compiler/parser/grammar/parts/blocks.ts:36-42  ~  src/compiler/parser/grammar/parts/structs.ts:180-185
+src/compiler/parser/grammar/patterns.ts:162-164  ~  src/compiler/parser/grammar/patterns.ts:267-269
+src/compiler/parser/layout/index.ts:82-87  ~  src/compiler/parser/layout/index.ts:141-146
+src/compiler/syntax/types/index.ts:40-51  ~  src/compiler/syntax/expressions/index.ts:337-348
+src/compiler/syntax/types/index.ts:195-212  ~  src/compiler/syntax/expressions/index.ts:321-331
+src/compiler/syntax/types/index.ts:71-87  ~  src/compiler/syntax/declarations/index.ts:238-257
+src/compiler/syntax/expressions/operators.ts:81-84  ~  src/compiler/syntax/expressions/operators.ts:96-99
+src/compiler/syntax/expressions/index.ts:54-91  ~  src/compiler/syntax/expressions/index.ts:203-274
+src/compiler/syntax/expressions/index.ts:55-75  ~  src/compiler/syntax/expressions/index.ts:204-220  ~  src/compiler/syntax/expressions/index.ts:221-234
+src/editor/language-service/navigation/declarations.ts:68-80  ~  src/editor/language-service/navigation/declarations.ts:91-98
+src/editor/language-service/completion/presentation/present.ts:101-106  ~  src/editor/language-service/completion/presentation/present.ts:137-142

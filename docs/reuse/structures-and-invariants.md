@@ -3,8 +3,8 @@ description: memoization, kind tables, explicit stacks, cycle components and bro
 owner: tech-lead
 status: active
 applies_to: istalang
-last_verified: 2026-11-12
-last_updated: 2026-11-09
+last_verified: 2026-11-13
+last_updated: 2026-11-13
 tags: [reuse, structures, memo, kind-table, invariants]
 ---
 
@@ -34,3 +34,5 @@ tags: [reuse, structures, memo, kind-table, invariants]
 - A group is filled in place (`addToGroup`, `Map.groupBy`), never copied to append one item (`[...group, item]`), which makes filling it quadratic; only a persistent update, whose old map keeps its group, copies it.
 - Recursive walks over unbounded values or heap graphs use an explicit stack (`pushAll`, `stronglyConnected`), never the JS call stack.
 - Broken invariant → `unreachable`; invalid host call/text → `Refusal` / `FormatError`; language runtime failure → `Panic` or `Result`.
+- Comparing collections, grouping, bisecting, ordering or caching uses the unit here (`sameItems`, `addToGroup`, `lastIndexAtMost`, `compareOrdered`, `memo`), never a loop of your own; `docs/audit/dry-review-2026-11-13.md` finding 19 lists the copies to replace.
+- A partial table over node kinds is a `Handlers`-like table in `kind-table.ts`, never `{ [K in Kind]?: … }` with a cast at each site (six in `editor/`, finding 11).

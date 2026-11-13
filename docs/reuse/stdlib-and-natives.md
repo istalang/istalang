@@ -3,8 +3,8 @@ description: std modules, native keys/capabilities, sequence positions, ranges, 
 owner: tech-lead
 status: active
 applies_to: istalang
-last_verified: 2026-11-12
-last_updated: 2026-11-12
+last_verified: 2026-11-13
+last_updated: 2026-11-13
 tags: [reuse, stdlib, natives, ranges, positions, time, decimal]
 ---
 
@@ -13,7 +13,7 @@ tags: [reuse, stdlib, natives, ranges, positions, time, decimal]
 ## Units
 
 - register a std module or build its extern keys → `stdModule`, `nativeKeysOf`, `knownTypeKey`, `NativeKeys` (`src/stdlib/std-module.ts`)
-- load std modules in the compiler, with sources laid over the shipped ones in tests → `stdlibLoader`, `stdRoles`, `preludeModule`, `StdSources`; a std module's shipped text by its `std:` id → `stdSourceOf`; the names an import may give a std module by → `importableStdModules` (`src/stdlib/stdlib-loader.ts`)
+- load std modules in the compiler, with sources laid over the shipped ones in tests → `stdlibLoader`, `stdRoles`, `StdSources`; a std module's shipped text by its `std:` id → `stdSourceOf`; the names an import may give a std module by → `importableStdModules` (`src/stdlib/stdlib-loader.ts`)
 - list every std module's source by name, or name a std module → `stdModuleSources`, `StdModuleName` (`src/stdlib/std-sources.ts`)
 - get the combined std natives table or the list of std module records → `stdNatives` (`src/stdlib/natives.ts`), `stdModules` (`src/stdlib/std-modules.ts`)
 - type a native function/table by the capabilities it uses, or throw a language panic → `Native`, `Natives`, `NativeContext`, `Panic` (`src/runtime/natives.ts`)
@@ -25,11 +25,9 @@ tags: [reuse, stdlib, natives, ranges, positions, time, decimal]
 - map `math.Rounding` variants to float rounding functions → `roundingType`, `floatRoundings` (`src/stdlib/math/rounding.ts`)
 - map `math.Rounding` variants to decimal.js rounding modes → `decimalRoundings` (`src/stdlib/decimal/arithmetic.ts`)
 - validate or compute sequence indices, `at(i)`, or `slice(start, end)` → `checkedIndex`, `atPosition`, `sliceBounds`, `sliced` (`src/stdlib/positions.ts`)
-- select or replace sequence items by a prelude `Range` → `selectionOf`, `selected`, `replaced` (`src/stdlib/positions.ts`)
+- select or replace sequence items by a prelude `Range` → `selectionOf`, `selected`, `splicesOf` (`src/stdlib/positions.ts`)
 - read a prelude `Range`, require both ends, count steps, or test membership → `rangeOf`, `bounded`, `countOf`, `reaches`, `textOf` (`src/stdlib/ranges.ts`)
-- format or parse primitive values (`Int`, `Float`, `Bool`) as text → `primitiveText`, `readPrimitive` (`src/stdlib/prelude/text-forms.ts`)
 - format or parse ISO 8601 `Time` and `Duration` texts → `timeText`, `readTime`, `durationText`, `readDuration` (`src/stdlib/time/iso.ts`)
-- draw a uniform random `bigint` below a bound from a 32-byte draw source → `uniformBelow` (`src/stdlib/random/natives.ts`)
 - implement `Encodable`/`Decodable` in `.ista` for a `Stringable`/`Parsable` type → `json.encodeText`, `json.decodeText` (`src/stdlib/json/json.ista`)
 - wrap a disposable host resource as a `Revertible<T>` in `.ista` → `Revertible.holding` (`src/stdlib/inbox/inbox.ista`)
 - declare `.ista` test suites, cases, groups or setups → `@Suite`, `test`, `group`, `skip`, `only`, `setups` (`src/stdlib/testing/testing.ista`)
@@ -40,10 +38,11 @@ tags: [reuse, stdlib, natives, ranges, positions, time, decimal]
 ## One-way rules
 
 - Every std module is listed once in `src/stdlib/std-sources.ts`; `stdlibLoader` reads it without natives (a cruiser rule), and `stdModules`, then `stdNatives`, attach the natives by name.
-- Methods taking a function value (`map`, `filter`, `sort`, `futures.retry`) are written in `.ista`, never in TS natives (`docs/arch/architecture.md`).
+- A std function that can be written over existing functions and the language's operators is `.ista`, never a native (AGENTS.md, Reduce): methods taking a function value (`map`, `filter`, `sort`, `futures.retry`, `docs/arch/architecture.md`), overloads converting one operand (`Float.from`, `Decimal(x)`), defaults, and helpers over other externs. A native is for what `.ista` can't reach: host and JavaScript APIs (Unicode, regex, crypto, decimal arithmetic), the runtime's seams. About 58 natives break this today (`docs/audit/dry-review-2026-11-13.md`, finding 7), `numeric`'s four overloads among them; never add one more.
+- A std native's key restates its `.ista` extern's signature (finding 10): change both in one commit, and prefer moving the function to `.ista` to keeping a pair in sync.
 - Extern types needing canonical equality (`decimal.Decimal`, `time.Zone`) keep their canonical string as the extern payload (`docs/arch/architecture.md`).
 - External input failures (`parse`, `crypto.decode`, `json.parse`) return `Result`; broken preconditions throw `Panic`; broken invariants call `unreachable`.
-- A native keeps no language value past its call outside the instance: it returns it, writes it through `NativeContext.write`, or stores it through a capability (`NativeSlots`, `NativeFutures`, `NativeWaits`, `NativeWeakSide`, `NativeTesting`), never in a closure or module state. Lifetimes read holders from registers and heap objects alone (`src/runtime/lifetimes/`).
+- A native keeps no language value past its call outside the instance: it returns it, changes a value it takes by `&` through `NativeContext.changes`, or stores it through a capability (`NativeSlots`, `NativeFutures`, `NativeWaits`, `NativeWeakSide`, `NativeTesting`), never in a closure or module state. Lifetimes read holders from registers and heap objects alone (`src/runtime/lifetimes/`).
 
 ## Recipes
 

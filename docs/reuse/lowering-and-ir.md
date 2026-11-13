@@ -3,8 +3,8 @@ description: lowering to Definition IR, interned tables, function instances, cal
 owner: tech-lead
 status: active
 applies_to: istalang
-last_verified: 2026-11-12
-last_updated: 2026-11-12
+last_verified: 2026-11-13
+last_updated: 2026-11-13
 tags: [reuse, lowering, definition, ir, instructions]
 ---
 
@@ -17,7 +17,8 @@ tags: [reuse, lowering, definition, ir, instructions]
 - intern concrete `Definition` type entries → `TypeTable` (`src/compiler/lowering/tables/type-table.ts`)
 - lower a function instance or nested function body → `instanceLowering`, `nestedLowering` (`src/compiler/lowering/functions/index.ts`); the entry of a function with no body of its own, built from its parameters once its prologue computed them (a struct's or variant's fields, a host extern's wrapper, a native extern's defaults) → `builtLowering`, `FunctionLowering.lowerBuilt`, and its entries `structEntry`, `constructorEntry`, `hostExternEntry`, `externDefaultsEntry` (`src/compiler/lowering/functions/built-entries.ts`); what an instance's own entry is made of, decided once for lowering and the tables → `ownEntryOf` (`src/compiler/lowering/tables/own-entries.ts`)
 - build the `LoweredFunction` for an instance or nested entry → `loweredInstance`, `loweredNested`; an instance's defaults as its prologue reads them → `defaultsReading` (`src/compiler/lowering/functions/frames.ts`)
-- lay out the `Frame` for an instance, a built or a nested entry → `instanceFrame`, `builtFrame`, `nestedFrame` (`src/compiler/lowering/functions/frames.ts`)
+- lay out the `Frame` for an instance, a built or a nested entry → `instanceFrame`, `builtFrame`, `nestedFrame` (`src/compiler/lowering/functions/frames.ts`); a context constant's accessor → `accessorLowering` (`functions/index.ts`), `accessorFrame` (`functions/frames.ts`); the body a function's lowering lowers → `writtenBodyOf` (`functions/bodies.ts`)
+- a register with the type of what it holds → `TypedValue` (`src/compiler/lowering/values/holdings.ts`); never another `{ register, type }` shape (`TypedRegister`, `ValueOf`, `UnionValue` are known copies, `docs/audit/dry-review-2026-11-13.md` finding 17)
 - declare a frame's parameters, running its prologue: each parameter a call leaves out computed from its default, read through `EntryContext.inDefaults`, then the `body` marker → `declareFrame` (`src/compiler/lowering/functions/frame-variables.ts`); never compute a default in a caller
 - close a `ResolvedCall` against an instantiation's substitution/witnesses, as far as it goes (a requirement on an `any` value or on another function's type parameters stays open) → `closedInside`, `closingIn`, `closedFunctionCall`; a function with its type arguments and witnesses → `FunctionInstance`, `substitutionOf` (`src/compiler/checker/surface/witness-closing.ts`), given the checker as a `Closer` (its type rules, and the witnesses a requirement on a computed type takes once known); what a closed call targets in lowering, an entry or a dispatch → `closeCall`, `closeCallWithin` (`src/compiler/lowering/calls/closed-calls.ts`)
 - close a `FunctionCall` or a trait witness call → `closeFunctionCall`, `closeWitness` (`src/compiler/lowering/calls/closed-calls.ts`)
@@ -42,7 +43,7 @@ tags: [reuse, lowering, definition, ir, instructions]
 - lower pattern tests and bindings jumping to a failure label → `lowerMatching` (`src/compiler/lowering/constructs/parts/patterns.ts`)
 - build an enum variant by its declared name → `buildVariant`, or what a variant's constructor builds of its parameters → `buildConstructed` (`src/compiler/lowering/values/variant-values.ts`), whether a type is an enum's → `isEnum` (`src/compiler/lowering/constructs/expressions/structs/variants.ts`); in synthesized code, `SynthesizedCode.variant`
 - branch on an enum variant, or read variant field 0 → `branchOnVariant`, `payloadOf` (`src/compiler/lowering/constructs/expressions/structs/variants.ts`); carry on with a variant's one field where a value holds it, else run what leaves → `payloadOr`
-- build `none` or put a value into `T?`, or read a `T?` where it isn't `none` → `noneOf`, `someOf`, `presentOrJump`, `presentOr` (`src/compiler/lowering/values/optionals.ts`)
+- build `none` or put a value into `T?`, or read a `T?` where it isn't `none` → `noneOf`, `someOf`, `presentOr` (`src/compiler/lowering/values/optionals.ts`)
 - put a value into a union, take one out as a member or a narrower union (or, where an instantiation collapsed it, as literals merged into its base, or out of the `any` type that took its members whole), write a union of literals as its base, write something per member's value → `intoUnion`, `outOfUnion`, `asBase`, `oneValueIn`, `eachMember` (`src/compiler/lowering/values/unions.ts`)
 - where a value of one type sits in a value of another as an instantiation made both (its own variant, its literal's base's, or inside the `any` type that took it whole; a recursive type laid out as what it unfolds to, `laidOutAs`), and testing for it → `holdingOf`, `heldPositions`, `heldIn`, `branchOnHeld`, `jumpIfHeld`, `heldInAny`, `laidOutAs` (`src/compiler/lowering/values/holdings.ts`); never patch a layout an instantiation changed; a union's variants in order and the one holding a member → `TypeTable.unionMembers`, `unionVariant`; never build a union's variant by hand
 - convert a value, a union's member by member, into an `any` variant → `convertedIntoAny` (`src/compiler/lowering/values/into-any.ts`); dispatch a required function over an `any` value's or a union's members, converting through the instantiation a member meets → `dispatchEntry`, keyed by its `Dispatch` (`src/compiler/lowering/synthesized/trait-objects.ts`)
@@ -65,6 +66,8 @@ tags: [reuse, lowering, definition, ir, instructions]
 ## One-way rules
 
 - Emit every `call` through `emitCall` / `emitFunctionCall`, every loop through `emitLoop`, and every value conversion through `FunctionContext.fitted`.
+- The order a body runs in and what it releases where are decided twice today: by the flow IR (`checker/rules/flow/build/`) and by lowering (`constructs/`). A change to either for a construct changes the other in the same commit, until lowering reads the flow IR (audit finding 1).
+- A function converted to another function type is a closure of one `wrapping` conversion entry (`wrappingEntry`, `DefinitionTables.conversionIndex`); never an entry kind of its own for one form of it (`AsyncFit` is a known copy, finding 9).
 - Lower every checked body through `instanceLowering`, `nestedLowering` or, for a context constant's initializer, `accessorLowering` (`functions/index.ts`), and syntaxless code through `SynthesizedCode`.
 - Lower std code a program needs only once it reaches a function, as the job server once it reaches `runtime.delegate`, from `lowerReached` (`lower.ts`), naming it in the Definition as `main` is, never from code every program reaches.
 - Never recognize a `Definition` type by name string at runtime; use `TypeDefinition.role` (`hasRole`, `isResourceType` in `src/definition/tables/types.ts`).

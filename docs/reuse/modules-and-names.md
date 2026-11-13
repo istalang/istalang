@@ -3,8 +3,8 @@ description: well-known declarations, static/qualified/extern names, module load
 owner: tech-lead
 status: active
 applies_to: istalang
-last_verified: 2026-11-11
-last_updated: 2026-11-11
+last_verified: 2026-11-13
+last_updated: 2026-11-13
 tags: [reuse, language, modules, program, binder, names]
 ---
 
@@ -18,7 +18,7 @@ tags: [reuse, language, modules, program, binder, names]
 - spell a module-qualified declaration name `module.name` (`prelude.Future`) → `qualifiedName` (`src/foundation/language/well-known/index.ts`)
 - spell a checked declaration's module-qualified name or extern/startable key → `qualifiedNameOf`, `keyOf`, `spelledType` (`src/compiler/lowering/tables/names.ts`)
 - build an extern key (`prelude.add(Int, Float)`) from a signature or native table → `externKey`, `nativeKey`, `keyTypeText` (`src/definition/extern-key.ts`)
-- build type descriptors for `nativeKey` → `namedKey`, `primitiveKey`, `functionKey`, `tupleKey`, `parameterKey` (`src/definition/extern-key.ts`)
+- build type descriptors for `nativeKey` → `namedKey`, `functionKey`, `tupleKey`, `parameterKey` (a primitive by its name) (`src/definition/extern-key.ts`)
 - mark a `nativeKey` parameter as `&` reference or `...` rest → `referenceKey`, `restKey` (`src/definition/extern-key.ts`)
 - look up a language-role module (`prelude`, `time`, `json`, `lifetimes`, `testing`), the `std:` scheme, or a well-known declaration (`wellKnown.holds`, `wellKnown.keeps` among them) → `languageModules`, `stdScheme`, `wellKnown` (`src/foundation/language/well-known/index.ts`)
 - look up well-known variant and field names (a union's layout, `Result`, a cursor's `Step`) → `unionLayout`, `resultVariants`, `resultFields`, `stepVariants` (`src/foundation/language/well-known/variants.ts`); `Json` is a union, whose members json-values.ts finds by what each variant holds
@@ -45,15 +45,15 @@ tags: [reuse, language, modules, program, binder, names]
 - tell what the grammar admits at a cursor (a type, a declared name, a pattern, a call's argument, a member…) → `placeAt`, `Place` (`src/editor/language-service/completion/place.ts`), which reads all but members and literal fields from a parse with a placeholder name there (`parsedPlaceAt`, `placeholder.ts`)
 - offer the names visible at a cursor, alone or with every keyword, as completion candidates → `visibleNames`, `visibleCandidates` (`src/editor/language-service/completion/visible.ts`)
 - offer what an expression may start with at a completion place: the names that are values and the words an operand starts with in the body around it → `expressionCandidates` (`src/editor/language-service/completion/places/grammar/expression.ts`)
-- ask the checker about a node of completion's placeholder parse (one ending before the cursor) → `checkedTwinOf` (`src/editor/language-service/completion/places/patterns/matched-type.ts`)
-- the type a `case`, `is` or parameter pattern being written matches, or the fields its struct pattern names → `matchedTypeOf`, `fieldsMatchedBy` (`src/editor/language-service/completion/places/patterns/matched-type.ts`)
+- ask the checker about a node of completion's placeholder parse (one ending before the cursor) → a tentative check, as `expectedTypeAt` (`src/editor/language-service/completion/expected.ts`) makes one
+- the type a `case`, `is` or parameter pattern being written matches, or the fields its struct pattern names → `matchedTypeOf`, `fieldsMatchedBy` (`src/editor/language-service/completion/places/patterns/matched-type.ts`); a second pattern walk the checker should record instead: extend the checker's pattern walk, never this (`docs/audit/dry-review-2026-11-13.md` finding 3)
 - offer the module paths an import's path may go on with, one segment at a time, from the importer or the project root → `modulePathsAt` (`src/editor/language-service/completion/places/imports/module-paths.ts`)
 - tell whether a type may annotate (§3.16: a struct, not a shared or extern one) → `canAnnotate`; where a function stands for its annotations, extern or not → `functionPlace` (`src/compiler/checker/surface/checked-annotation.ts`)
 - what the std's externs hold and keep (§3.16): a value of an extern type one level down → `Checker.externHeldOf`; an extern function's parameters, by position → `Checker.keepsOf`, its unknown names reported by `checkKeeps` (`src/compiler/checker/rules/lifetimes/externs.ts`)
 - tell a declaration that takes type parameters, which its annotations see → `isGenericDeclaration`, `GenericDeclaration` (`src/compiler/syntax/declarations/index.ts`)
-- turn completion candidates into items, or an item into an LSP item → `present` (`src/editor/language-service/completion/presentation/present.ts`), `completionItem` (`src/editor/lsp/providers/completion.ts`)
+- turn completion candidates into items, or an item into an LSP item → `present` (`src/editor/language-service/completion/presentation/present.ts`)
 - the type expected where a cursor writes a value, and the variants that may be written bare there → `expectedTypeAt`, `expectedVariants`, `isBareVariant` (`src/editor/language-service/completion/expected.ts`)
-- read a checked body at a node as tools do, the passes of the field loops around it read as one (§4) → `checker.lookup.bodyHolding`, a `JoinedBody` (`src/compiler/checker/surface/denotation.ts`): its types joined, and every pass's call or lambda listed (`callsAt`, `implicitCallsOf`, `functionsOf`); never a pass's single call, which lowering alone reads
+- read a checked body at a node as tools do, the passes of the field loops around it read as one (§4) → `checker.lookup.bodyHolding`, a `JoinedBody` (`src/compiler/checker/surface/denotation.ts`): its types joined, and every pass's call or lambda listed (`callsAt`, `functionsOf`); never a pass's single call, which lowering alone reads
 - the type expected of a value in a checked body → `CheckedBody.expectedOf`; whether a type fits another → `Checker.fitOf` (`src/compiler/checker/check.ts`)
 - check an edit tried out without cutting the program's incremental history → `checkProgram(program, { previous, tentative: true })`
 - the docstring of what a name denotes → `docstringOf` (`src/editor/language-service/reading/docstrings.ts`)

@@ -3,8 +3,8 @@ description: phase test kits, fast-check arbitraries, spec-example extractors, c
 owner: tech-lead
 status: active
 applies_to: istalang
-last_verified: 2026-11-11
-last_updated: 2026-11-12
+last_verified: 2026-11-13
+last_updated: 2026-11-13
 tags: [reuse, testing, test-kit, arbitraries, fast-check, corpus]
 ---
 
@@ -31,7 +31,6 @@ tags: [reuse, testing, test-kit, arbitraries, fast-check, corpus]
 - read a signature help answer's active signature and parameter → `activeOf` (`src/editor/lsp/providers/signature-help.test-kit.ts`)
 - ask a language server for definitions or references by position, against the corpus project loaded apart → `definitionsAt`, `referencesAt`, `namesOf`, `positionOf` (`src/editor/lsp/providers/navigation/navigation.test-kit.ts`)
 - write a navigation test over in-memory modules, finding names as written and applying rename edits → `navigable`, `placeOf`, `edited` (`src/editor/language-service/navigation/navigation.test-kit.ts`)
-- parse a few lines as a module for a language-service feature's test → `treeOf` (`src/editor/language-service/language-service.test-kit.ts`)
 - parse a few lines as a module for a language-service feature's test, or check them beside the std modules with a cursor marked `‸` → `treeOf`, `programAt` (`src/editor/language-service/language-service.test-kit.ts`)
 - probe many edits of one program, each made and checked after it as an editor does, so only the edit is checked → `editedMainProgram` (`src/editor/language-service/language-service.test-kit.ts`)
 - state what a language server must answer over the corpus, from the corpus project loaded apart, and its open documents there → `corpusProgram`, `programDocuments`, `ProgramDocument` (`src/editor/lsp/corpus-client.test-kit.ts`)
@@ -47,7 +46,8 @@ tags: [reuse, testing, test-kit, arbitraries, fast-check, corpus]
 - check a rule across every std module at once → `everyStdModule` (`src/stdlib/std-modules.test-kit.ts`)
 - compile in-memory sources to a `Definition` or its text (the text checked after the std modules, once per file) → `compiledDefinition`, `compiledText`, `diagnosedAt` (`src/compiler/compile.test-kit.ts`)
 - create a test `Runtime` with manual clock and store, its heaps checked by the static-lifetimes oracle unless told otherwise (`heapCheck`) → `testRuntime`, `recordingStore`, `testSeed` (`src/runtime/runtime.test-kit.ts`), `ManualClock` (`src/runtime/clock.ts`)
-- check a run's heaps against static lifetimes' oracle (no cycle reaching a disposable): throwing at the first → `acyclicOracle`; for a program C3 rejects, expecting one → `cyclicOracle`; for a corpus program or std module by name → `oracleFor`, `Oracle` (`src/runtime/lifetimes/oracle.test-kit.ts`)
+- check a run's heaps against static lifetimes' oracle (no cycle reaching a disposable) after every instruction, or what the oracle's graph says an object holds → `oracle`, `countedHolds` (`src/runtime/lifetimes/oracle.test-kit.ts`); check that each native's call adds only edges its extern's `@Keeps` names → `nativeAudit`, `withNativeAudit`, `NativeAudit`, `NativeKeeps` (`src/runtime/lifetimes/native-audit.test-kit.ts`)
+- list every std extern function under the key lowering gives it, with what its parameters keep → `stdExterns`, `stdNativeKeeps` (`src/stdlib/std-externs.test-kit.ts`)
 - advance a test `Runtime` instance and its spawns until settled, awaited → `settleAll`, `runToEnd`, `startToEnd` (`src/runtime/runtime.test-kit.ts`)
 - start a program's ista function by name directly as a root instance, for a test of the instance engine (a host starts only live code; its outcome is the raw value, nothing encoding it) → `TestRuntime.startInstance` (`src/runtime/runtime.test-kit.ts`)
 - make `Futures` alone in a unit test, their decisions and answers ignored → `futuresOn`; with the `Waits` they decide, the callbacks their resolvers call recorded → `recordingFutures` (`src/runtime/scheduler/instance/futures.test-kit.ts`)

@@ -3,8 +3,8 @@ description: SourceText, UTF-16 spans, line/column maps, code points and time un
 owner: tech-lead
 status: active
 applies_to: istalang
-last_verified: 2026-10-28
-last_updated: 2026-11-05
+last_verified: 2026-11-13
+last_updated: 2026-11-13
 tags: [reuse, text, spans, positions, code-points]
 ---
 

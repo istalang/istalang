@@ -3,8 +3,8 @@ description: diagnostic model, per-phase catalogs, code blocks, rendering and te
 owner: tech-lead
 status: active
 applies_to: istalang
-last_verified: 2026-11-12
-last_updated: 2026-11-12
+last_verified: 2026-11-13
+last_updated: 2026-11-13
 tags: [reuse, diagnostics, errors, testing]
 ---
 
@@ -16,7 +16,7 @@ tags: [reuse, diagnostics, errors, testing]
 - look up a phase's 1000-code block → `codeBlocks`, `codeBlockSize`, `DiagnosticPhase` (`src/foundation/diagnostics/code-blocks.ts`)
 - test whether a `Diagnostic` is an error (stops compilation) vs a warning → `isError`, `Diagnostic`, `Severity` (`src/foundation/diagnostics/diagnostic.ts`)
 - list diagnostics in their one order: position, then code and message → `compareDiagnostics` (`src/foundation/diagnostics/diagnostic.ts`)
-- format one `Diagnostic` with `path:line:column` header, source line and caret → `renderDiagnostic` (`src/foundation/diagnostics/render.ts`)
+- format one `Diagnostic` with `path:line:column` header, source line and caret → `renderDiagnostic`, or all of a module's in order → `renderDiagnostics` (`src/foundation/diagnostics/render.ts`)
 - write all module diagnostics with an error and warning summary count → `reportDiagnostics` (`src/cli/report.ts`)
 - report command-line paths that name no file → `reportUnreadable` (`src/cli/report.ts`)
 - one module's diagnostics from every phase, sorted (an editor's document) → `diagnoseModule` (`src/compiler/compile.ts`); every module's → `diagnose`
