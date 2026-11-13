@@ -227,14 +227,13 @@ export function propagate(builder: FlowBuilder, node: Propagate): ValueId {
 function nullishFlow(builder: FlowBuilder, node: Binary): ValueId {
   const whole = builder.expression(node.left);
   const result = builder.temporaryOf(node);
-  builder.paths([
-    () =>
-      builder.emit({ op: 'read', site: node, into: result, from: whole, part: { kind: 'inside' } }),
-    () => {
-      const right = builder.expression(node.right);
-      builder.emit({ op: 'copy', site: node, into: result, from: right, fit: undefined });
-    },
-  ]);
+  const join = builder.newBlock();
+  builder.presentOr(whole, { site: node, into: result }, () => {
+    const right = builder.expression(node.right);
+    builder.emit({ op: 'copy', site: node, into: result, from: right, fit: undefined });
+    builder.end({ kind: 'goto', to: join });
+  });
+  builder.continueIn(join);
   return result;
 }
 

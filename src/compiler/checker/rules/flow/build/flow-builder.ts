@@ -313,6 +313,22 @@ export class FlowBuilder {
     this.#current = block;
   }
 
+  /**
+   * The value inside the optional `whole`, read into `into` at `site` where `whole` holds one; where
+   * it is `none`, `absent` runs from a branch of its own, which goes on elsewhere or ends (§4).
+   */
+  presentOr(
+    whole: ValueId,
+    { site, into }: { readonly site: Expression; readonly into: ValueId },
+    absent: () => void,
+  ): void {
+    const [present, none] = this.branch(2) as [BlockId, BlockId];
+    this.resumeIn(none);
+    absent();
+    this.resumeIn(present);
+    this.emit({ op: 'read', site, into, from: whole, part: { kind: 'inside' } });
+  }
+
   /** Runs each of `paths` from a branch of its own, then goes on where they all meet. */
   paths(paths: readonly (() => void)[]): void {
     const starts = this.branch(paths.length);

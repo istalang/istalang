@@ -74,13 +74,11 @@ export function stepTarget(builder: FlowBuilder, link: Expression, target: Expre
   if (!isOptionalStep(step)) {
     return builder.fit(target, value);
   }
-  const [none, some] = builder.branch(2) as [number, number];
-  builder.resumeIn(none);
-  builder.emit({ op: 'compute', site: link, into: chain.result, operands: [] });
-  builder.end({ kind: 'goto', to: chain.end });
-  builder.resumeIn(some);
   const inside = builder.temporary(target, chained.base);
-  builder.emit({ op: 'read', site: target, into: inside, from: value, part: { kind: 'inside' } });
+  builder.presentOr(value, { site: target, into: inside }, () => {
+    builder.emit({ op: 'compute', site: link, into: chain.result, operands: [] });
+    builder.end({ kind: 'goto', to: chain.end });
+  });
   return builder.fit(target, inside);
 }
 
