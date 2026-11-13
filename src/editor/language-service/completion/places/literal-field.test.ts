@@ -89,4 +89,21 @@ describe('field completion offers exactly what a literal may set', () => {
     expect(fieldsOffered('fn t(v: Int):', '  let b = Box{(v), ‸}', '  0')).toEqual([]);
     expect(fieldsOffered('fn t(v: Int):', '  let b = Box{‸}', '  0')).toEqual(['value']);
   });
+
+  it("offers a one-field struct's unnamed value as an operand's start: no statement's word", () => {
+    const { program, module, offset } = programAt(
+      'struct Box:',
+      '  value: Int',
+      'fn t(v: Int):',
+      '  let b = Box{‸}',
+      '  0',
+    );
+    const words = completionsAt(program, module, offset)
+      .filter(({ kind }) => kind === 'keyword')
+      .map(({ name }) => name);
+    expect(words).toEqual(expect.arrayContaining(['if', 'true', 'none']));
+    expect(words).not.toEqual(expect.arrayContaining(['return']));
+    expect(words).not.toEqual(expect.arrayContaining(['import']));
+    expect(words).not.toEqual(expect.arrayContaining(['let']));
+  });
 });

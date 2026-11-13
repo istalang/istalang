@@ -24,7 +24,7 @@ import { wellKnown } from '../../../../foundation/language/well-known/index.ts';
 import type { Candidate } from '../candidate.ts';
 import type { Cursor } from '../cursor.ts';
 import type { ParsedPlace } from '../placeholder.ts';
-import { visibleCandidates } from '../visible.ts';
+import { visibleNames } from '../visible.ts';
 
 type AnnotationPlace = Extract<ParsedPlace, { readonly kind: 'annotation' }>;
 type PlaceholderParse = AnnotationPlace['parsed'];
@@ -58,11 +58,7 @@ function annotationNames(cursor: Cursor, parsed: PlaceholderParse): readonly Can
     holder?.kind === 'Block' ? holder.statements.find((each) => each === item) : undefined;
   const takes = statement === undefined ? 'struct' : waypointOrStruct(statement);
   const waypoint = cursor.checker.wellKnownEntity(wellKnown.waypoint);
-  return visibleCandidates(cursor).filter(({ subject }) => {
-    if (subject.kind !== 'entity') {
-      return false;
-    }
-    const { entity } = subject;
+  return visibleNames(cursor, (entity) => {
     if (takes === 'struct') {
       return entity.kind === 'namespace' || isAnnotation(entity);
     }

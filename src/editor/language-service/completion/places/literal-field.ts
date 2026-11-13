@@ -38,8 +38,10 @@ import { spanIn } from '../../../../compiler/syntax/tree/positions.ts';
 import { indentationAt, lineStartAt } from '../../../../foundation/text/line-map.ts';
 import type { Candidate } from '../candidate.ts';
 import type { Cursor } from '../cursor.ts';
-import { isBareVariant } from '../expected.ts';
-import { visibleCandidates } from '../visible.ts';
+import { visibleNames } from '../visible.ts';
+import { operandNames } from './grammar/expression.ts';
+import { surroundingsOf } from './grammar/surroundings.ts';
+import { operandWordsIn, wordCandidates } from './grammar/words.ts';
 
 /**
  * Where a field's name is written in a struct literal: right after the literal's own
@@ -216,16 +218,16 @@ function literalItems(
   cursor: Cursor,
   { fields, others, opens, startsItems }: LiteralItemSlot,
 ): readonly Candidate[] {
-  const visible = visibleCandidates(cursor);
+  const variables = visibleNames(cursor, (entity) => entity.kind === 'variable');
   const given = new Set(others.map((named) => fields[itemField(named, fields)]));
   const offered = fields
     .filter((field) => !given.has(field))
     .flatMap((field): readonly Candidate[] => [
-      ...shorthandFor(visible, field.name),
+      ...variables.filter((variable) => variable.name === field.name),
       { name: field.name, subject: { kind: 'field', field } },
     ]);
   const takesValue = opens && fields.length === 1 && cursor.trigger === undefined;
-  const values = takesValue ? visible.filter((candidate) => !isBareVariant(candidate)) : [];
+  const values = takesValue ? operandStarts(cursor) : [];
   const spreads = startsItems && fields.length > 0;
   return [...offered, ...(spreads ? [spread] : []), ...values];
 }
@@ -233,12 +235,8 @@ function literalItems(
 /** The leading spread, `...value`, which only the first item may be (§3.1). */
 const spread: Candidate = { name: '...', subject: { kind: 'keyword' } };
 
-/** A variable named like the field `name`, which writes the field as shorthand, `Pair{first}`. */
-function shorthandFor(visible: readonly Candidate[], name: string): readonly Candidate[] {
-  return visible.filter(
-    (candidate) =>
-      candidate.name === name &&
-      candidate.subject.kind === 'entity' &&
-      candidate.subject.entity.kind === 'variable',
-  );
+/** What an operand starts with at `cursor`: the value a one-field struct literal takes unnamed. */
+function operandStarts(cursor: Cursor): readonly Candidate[] {
+  const surroundings = surroundingsOf(cursor.tree, nodesAt(cursor.tree, cursor.offset));
+  return [...operandNames(cursor), ...wordCandidates(operandWordsIn(surroundings))];
 }
