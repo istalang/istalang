@@ -76,7 +76,7 @@ export interface FieldPassStep {
  * What the keys of the field loops `passes` are lowered in stand for: each field's name, as its
  * literal type, which the pass of the fields a struct constraint leaves unnamed needs (§4).
  */
-export function passBindings(passes: readonly FieldPassStep[] = []): Substitution {
+function passBindings(passes: readonly FieldPassStep[] = []): Substitution {
   return new Map(passes.map(({ header, field }) => [header, literalType(field)] as const));
 }
 

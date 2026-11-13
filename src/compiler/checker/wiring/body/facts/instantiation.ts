@@ -39,9 +39,11 @@ import {
   substituteAny,
   substituteKept,
 } from '../../../types/parts/substitution.ts';
+import { keyName } from '../../../types/traits/struct-keys.ts';
 import { unfolded } from '../../../types/type/computed-types.ts';
-import type { FieldMember, Type } from '../../../types/type/index.ts';
+import type { FieldMember, ParameterKey, Type } from '../../../types/type/index.ts';
 import { membersOf } from '../../../types/type/index.ts';
+import { isPrimitive, literalType } from '../../../types/type/primitives.ts';
 import type { TypeRules } from '../../../types/type/type-rules.ts';
 
 /** One instantiation: each kind of part a body records, as it reads it. */
@@ -59,8 +61,11 @@ export interface Instantiation {
   readonly pattern: (checked: CheckedPattern) => CheckedPattern;
   readonly iteration: (form: IterationForm) => IterationForm;
   readonly chain: (link: ChainLink) => ChainLink;
-  /** A field loop's pass: its key and value substituted, and its body read the same way. */
-  readonly pass: (pass: FieldPass) => FieldPass;
+  /**
+   * A field loop's pass: its key and value substituted, and its body read the same way; the pass
+   * of the fields a struct constraint leaves unnamed, once they are all known, one pass per field.
+   */
+  readonly passes: (pass: FieldPass) => readonly FieldPass[];
 }
 
 /** The instantiation `substitution` makes, for reading a body checked once (§3.5). */
@@ -86,13 +91,57 @@ export function instantiationBy(
     pattern: (checked) => instantiatedPattern(checked, substitution, rules),
     iteration: (form) => ({ ...form, item: concrete(form.item) }),
     chain: (link) => ({ base: concrete(link.base), carried: concrete(link.carried) }),
-    pass: ({ visits, key, value, body }) => ({
-      visits,
-      key: substitute(key, substitution, rules),
-      value: substitute(value, substitution, rules),
-      body: body.instantiated(substitution, checker),
-    }),
+    passes: (pass) => {
+      const known = knownFields(pass, substitution, rules);
+      return known === undefined
+        ? [instantiatedPass(pass, substitution, checker)]
+        : known.names.map((name) =>
+            instantiatedPass(
+              { ...pass, visits: { kind: 'field', name } },
+              new Map([...substitution, [known.key, literalType(name)]]),
+              checker,
+            ),
+          );
+    },
   };
+}
+
+/** `pass` read through `substitution`: its key, value and body. */
+function instantiatedPass(
+  { visits, key, value, body }: FieldPass,
+  substitution: Substitution,
+  checker: Pick<Checker, 'fieldsOf' | 'typeRules'>,
+): FieldPass {
+  const rules = checker.typeRules;
+  return {
+    visits,
+    key: substitute(key, substitution, rules),
+    value: substitute(value, substitution, rules),
+    body: body.instantiated(substitution, checker),
+  };
+}
+
+/**
+ * The names of the fields the pass of the others ranges over once `substitution` knows them all
+ * (§4), and the key standing for each; undefined for any other pass, or while some are unknown.
+ */
+function knownFields(
+  { visits, key }: FieldPass,
+  substitution: Substitution,
+  rules: TypeRules,
+): { readonly names: readonly string[]; readonly key: ParameterKey } | undefined {
+  if (visits.kind !== 'others' || key.kind !== 'parameter') {
+    return undefined;
+  }
+  const ranged = substitute(key, substitution, rules);
+  const members =
+    ranged.kind === 'parameter' && ranged.within !== undefined ? membersOf(ranged.within) : [];
+  const names = members.flatMap((member) =>
+    isPrimitive(member, 'Never') ? [] : [keyName(member)],
+  );
+  return members.length > 0 && names.every((name): name is string => name !== undefined)
+    ? { names, key: key.declaration }
+    : undefined;
 }
 
 /** A part an assignment writes, its path, type and fit substituted. */

@@ -27,12 +27,7 @@ import { markType } from '../../checker/types/type/primitives.ts';
 import type { ContextConstantDeclaration } from '../../syntax/declarations/index.ts';
 import { awaits } from '../../syntax/tokens/modifiers.ts';
 import type { Identifier } from '../../syntax/tree/node.ts';
-import {
-  type BodyOwner,
-  type FieldPassStep,
-  type NestedInstance,
-  passBindings,
-} from '../tables/instances.ts';
+import type { BodyOwner, FieldPassStep, NestedInstance } from '../tables/instances.ts';
 import type { DefinitionTables, EntryHeader } from '../tables/tables.ts';
 import { codeModeOf } from './modes.ts';
 
@@ -110,24 +105,19 @@ export function loweredNested(lowering: Lowering, owner: BodyOwner): LoweredFunc
   if (body === undefined) {
     unreachable('A nested function has no checked body holding it.');
   }
-  const passed = (owner.passes ?? []).reduce((outer, step) => passBody(checker, outer, step), body);
+  const passed = (owner.passes ?? []).reduce(passBody, body);
   return { ...lowering, owner, body: passed };
 }
 
 /**
- * `body` as the pass `step` names reads it (§4): the field's own pass, or the pass of the fields a
- * struct constraint leaves unnamed, read with its key standing for the field.
+ * `body` as the pass `step` names reads it (§4): an instantiated body has one pass per field of the
+ * struct it runs over, its own.
  */
-export function passBody(checker: Checker, body: CheckedBody, step: FieldPassStep): CheckedBody {
-  const passes = body.passesOf(step.header);
-  const own = passes.find(({ visits }) => visits.kind === 'field' && visits.name === step.field);
-  if (own !== undefined) {
-    return own.body;
-  }
-  const others =
-    passes.find((pass) => pass.visits.kind === 'others') ??
-    unreachable(`No pass of a field loop reads the field '${step.field}'.`);
-  return others.body.instantiated(passBindings([step]), checker);
+export function passBody(body: CheckedBody, step: FieldPassStep): CheckedBody {
+  const own = body
+    .passesOf(step.header)
+    .find(({ visits }) => visits.kind === 'field' && visits.name === step.field);
+  return own?.body ?? unreachable(`No pass of a field loop reads the field '${step.field}'.`);
 }
 
 /** The body `owner` is, read through its substitution; undefined for a function with none. */

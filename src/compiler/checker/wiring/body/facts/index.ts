@@ -267,7 +267,7 @@ const bodyFacts: { readonly [Name in FactName]: FactEntry<Name> } = {
           ...each,
           body: bodyAt(inner),
         })),
-    instantiated: (passesOf, by) => (header) => passesOf(header).map(by.pass),
+    instantiated: (passesOf, by) => (header) => passesOf(header).flatMap(by.passes),
   },
   isRuledOut: {
     at:

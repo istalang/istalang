@@ -310,7 +310,8 @@ export interface BodyFacts {
   /**
    * The passes the field loop `header` heads was checked in (§4), in the order checked: one per
    * field of a known struct, or one per field a struct constraint names and one for the others
-   * (passes.ts). Each pass reads the body as that pass checked it.
+   * (passes.ts), which an instantiation knowing them reads as one per field. Each pass reads the
+   * body as that pass checked it.
    */
   readonly passesOf: (header: FieldHeader) => readonly FieldPass[];
   /**

@@ -201,7 +201,7 @@ class FunctionLowering implements EntryContext {
     return this.#readingAs(
       {
         owner: { ...owner, passes: [...(owner.passes ?? []), step] },
-        body: passBody(this.checker, this.body, step),
+        body: passBody(this.body, step),
       },
       lower,
     );
