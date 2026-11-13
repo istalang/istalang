@@ -11,9 +11,8 @@
  */
 
 import { wellKnown } from '../../../../foundation/language/well-known/index.ts';
-import type { CallingNode } from '../../../syntax/expressions/calls.ts';
 import type { BodyContext } from '../../contexts/body-context.ts';
-import type { ResolvedCall, ResolvedSite } from '../../surface/resolved-call.ts';
+import { isCalling, type ResolvedCall, type ResolvedSite } from '../../surface/resolved-call.ts';
 import { wellKnownArguments } from '../../types/type/well-known.ts';
 
 /** Records the codec writing the outcome of each instance one of `calls`, a body's, starts. */
@@ -31,9 +30,4 @@ export function recordOutcomeCodecs(
       context.implicit.record(site, 'encodeOutcome', codec);
     }
   }
-}
-
-/** Whether `site` calls what it resolves to, as a written or a deferred call does. */
-function isCalling(site: ResolvedSite): site is CallingNode {
-  return site.kind === 'Call' || site.kind === 'DeferredCall';
 }

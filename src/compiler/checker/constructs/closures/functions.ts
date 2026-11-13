@@ -121,10 +121,6 @@ export class FunctionScopes implements Functions {
     }
   }
 
-  makesLater(call: CallingNode): boolean {
-    return this.current.makesLater?.call === call;
-  }
-
   typeOfFunction(context: BodyContext, name: Identifier, entity: VariableEntity): Type {
     const owner = localFunctionOf(entity);
     if (owner !== undefined && this.#untyped.has(owner)) {

@@ -57,7 +57,7 @@ import {
 import type { AnchoredSpan } from '../../../syntax/tree/positions.ts';
 import type { CheckerContext } from '../../contexts/context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
-import { functionName } from '../../resolution/applying/call-kinds.ts';
+import { functionName, hasHead } from '../../resolution/applying/call-kinds.ts';
 import type { CheckedBody, NestedFunction, ValueSite } from '../../surface/checked-body.ts';
 import {
   callsMadeWith,
@@ -313,7 +313,14 @@ function nestedOf(judging: Judging, node: SyntaxNode): Handler | undefined {
   const checked = judging.body.functionOf(node);
   return checked === undefined
     ? undefined
-    : { own: checked.type.mark, holder: functionName(node), reported: false, judged: new Set() };
+    : {
+        own: checked.type.mark,
+        holder: functionName(node),
+        // The function a deferred call gives has no head to declare a mark on.
+        remedy: hasHead(node) ? undefined : '',
+        reported: false,
+        judged: new Set(),
+      };
 }
 
 /**

@@ -264,8 +264,6 @@ export interface Functions {
     call: CallingNode,
     computed: () => readonly ComputedCapture[],
   ) => void;
-  /** Whether `call` is the one the function being checked, a deferred call's, makes later. */
-  readonly makesLater: (call: CallingNode) => boolean;
   /** The type of a local function or named lambda used by `name`, or the error after a report. */
   readonly typeOfFunction: (context: BodyContext, name: Identifier, entity: VariableEntity) => Type;
   readonly record: (node: NestedFunction, checked: CheckedFunction) => void;

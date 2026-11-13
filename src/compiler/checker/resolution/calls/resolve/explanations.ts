@@ -8,11 +8,11 @@
 import type { Diagnostic } from '../../../../../foundation/diagnostics/diagnostic.ts';
 import { primitiveOnceSpelled } from '../../../../../foundation/language/primitives.ts';
 import { unreachable } from '../../../../../foundation/structures/unreachable.ts';
-import { deferredCallOf } from '../../../../syntax/expressions/deferred-functions.ts';
 import { calledName } from '../../../../syntax/expressions/readings.ts';
 import type { AnchoredSpan } from '../../../../syntax/tree/positions.ts';
 import type { BodyContext } from '../../../contexts/body-context.ts';
 import { checkerDiagnostics } from '../../../diagnostics/index.ts';
+import { isCalling } from '../../../surface/resolved-call.ts';
 import { misfitOf } from '../../../types/fitting/fit/index.ts';
 import { isPlaceholder } from '../../../types/inference/variables.ts';
 import type { Type } from '../../../types/type/index.ts';
@@ -161,10 +161,8 @@ function packReport(
 }
 
 /** Where the function a deferred call gives is given to is named: its taker's name. */
-function takerAt(request: ExplainedCall): AnchoredSpan {
-  const given = request.arguments.find(({ isDeferred }) => isDeferred === true)?.node;
-  const deferred = given?.kind === 'Lambda' ? deferredCallOf(given) : undefined;
-  return deferred === undefined ? request.site.span : calledName(deferred).span;
+function takerAt({ site }: ExplainedCall): AnchoredSpan {
+  return isCalling(site) && site.kind === 'DeferredCall' ? calledName(site).span : site.span;
 }
 
 /** Where the argument named `name` is written; the call, if none is. */

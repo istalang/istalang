@@ -14,12 +14,14 @@
 
 import { argumentValue } from '../../../../syntax/expressions/arguments.ts';
 import type { CallingNode, DeferredCall } from '../../../../syntax/expressions/calls.ts';
-import { deferredLambdaOf } from '../../../../syntax/expressions/deferred-functions.ts';
+import {
+  deferredLambdaOf,
+  makesItsCall,
+} from '../../../../syntax/expressions/deferred-functions.ts';
 import type { Expression } from '../../../../syntax/expressions/index.ts';
 import {
   calledName,
   callsThroughOptional,
-  deferredOf,
   writtenArgumentsOf,
 } from '../../../../syntax/expressions/readings.ts';
 import type { SignatureParameter } from '../../../check.ts';
@@ -207,20 +209,8 @@ function parametersOf(
  * reported.
  */
 function deferredFunction(builder: FlowBuilder, node: DeferredCall): ValueId {
-  const call = deferredOf(node);
-  const lambda = deferredLambdaOf(node);
-  if (call === undefined || lambda === undefined || !isMade(builder, call)) {
-    return builder.expression(node.call);
-  }
-  return builder.expression(lambda);
-}
-
-/** Whether `call`, and each call it defers in turn, was recorded made (§2). */
-function isMade(builder: FlowBuilder, call: CallingNode): boolean {
   const { resolved, valueCalls } = builder.body;
-  if (!(resolved.has(call) || valueCalls.has(call))) {
-    return false;
-  }
-  const inner = call.kind === 'DeferredCall' ? deferredOf(call) : undefined;
-  return call.kind === 'Call' || (inner !== undefined && isMade(builder, inner));
+  const lambda = deferredLambdaOf(node);
+  const makes = makesItsCall(node, (call) => resolved.has(call) || valueCalls.has(call));
+  return builder.expression(lambda !== undefined && makes ? lambda : node.call);
 }

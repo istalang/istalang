@@ -126,6 +126,22 @@ describe('dropped variables', () => {
   });
 });
 
+describe("a deferred call's operands", () => {
+  it.each([
+    ['as written', 'fn(String)'],
+    ['past a mistake in its call', 'fn(Int)'],
+  ])('run where it stands, a drop in one reaching what follows, %s', (_case, taken) => {
+    const text = lines(
+      'fn later(cb: fn()): cb()',
+      `fn f(v: ${taken}):`,
+      '  const t = "a"',
+      '  later v({ drop t; "b" })',
+      '  _ = t',
+    );
+    expect(reported(text).codes).toContain(reports.droppedVariableUsed.code);
+  });
+});
+
 describe('the rules over a whole body', () => {
   const dropping = '{ const t = "a"; drop t; t.length() }';
   const unchanged = '{ let t = 1; t }';

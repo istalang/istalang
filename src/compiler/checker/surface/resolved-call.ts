@@ -5,6 +5,7 @@
  */
 
 import type { FunctionDeclaration, TypeParameter } from '../../syntax/declarations/index.ts';
+import type { CallingNode } from '../../syntax/expressions/calls.ts';
 import type { Expression } from '../../syntax/expressions/index.ts';
 import type { NodeOf } from '../../syntax/tree/node.ts';
 import type { Substitution } from '../types/parts/substitution.ts';
@@ -231,6 +232,11 @@ export type ResolvedSite = NodeOf<
   | 'MemberAccess'
   | 'TypeApplication'
 >;
+
+/** Whether `site` calls what it resolves to, as a written or a deferred call does. */
+export function isCalling(site: ResolvedSite): site is CallingNode {
+  return site.kind === 'Call' || site.kind === 'DeferredCall';
+}
 
 /** The sites a function named as a value is written as: `f`, `ns.f`, `T.f` or `f<Int>` (§3.14). */
 type FunctionValueSite = NodeOf<'Identifier' | 'MemberAccess' | 'TypeApplication'>;

@@ -33,6 +33,7 @@ import {
   type FunctionDeclaration,
   nestedFunctionSpan,
 } from '../../../syntax/declarations/index.ts';
+import { deferredCallOf } from '../../../syntax/expressions/deferred-functions.ts';
 import type { Lambda, Parameter } from '../../../syntax/expressions/index.ts';
 import { parameterSite, writtenByReference } from '../../../syntax/expressions/parameters.ts';
 import { unparenthesized } from '../../../syntax/expressions/readings.ts';
@@ -281,11 +282,11 @@ function checkLambdaAs(
     givenKind:
       givenKindOf(context, node.qualifiers, slots?.mark) ?? heldKindOf(context.checker, parameters),
     tail: (declared) => {
-      const later = context.functions.current.makesLater;
-      if (later !== undefined) {
+      const deferred = deferredCallOf(node);
+      if (deferred !== undefined) {
         // A deferred call's call is checked settled, as a callee is, so what it computed now is
         // known when it is captured (made-later.ts).
-        return producedBy(node.body, madeLater(context, later.call, context.settled(node.body)));
+        return producedBy(node.body, madeLater(context, deferred, context.settled(node.body)));
       }
       // A literal it gives while its result is open stays fresh, as a block's value does.
       const type = context.part(node.body, declared ?? hint);

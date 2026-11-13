@@ -21,8 +21,8 @@ import type { Register } from '../../../../definition/operands.ts';
 import type { CodeFunction } from '../../../../definition/tables/functions.ts';
 import { unreachable } from '../../../../foundation/structures/unreachable.ts';
 import { functionType, takesNothing } from '../../../checker/types/type/function-types.ts';
-import type { CallingNode, DeferredCall } from '../../../syntax/expressions/calls.ts';
-import { deferredLambdaOf } from '../../../syntax/expressions/deferred-functions.ts';
+import type { DeferredCall } from '../../../syntax/expressions/calls.ts';
+import { deferredLambdaOf, makesItsCall } from '../../../syntax/expressions/deferred-functions.ts';
 import { deferredOf } from '../../../syntax/expressions/readings.ts';
 import type { AnchoredSpan } from '../../../syntax/tree/positions.ts';
 import { type CallTarget, emitTo } from '../../calls/emit-call.ts';
@@ -53,43 +53,33 @@ function givenAtOf(givenAt: number | undefined): number {
 
 /** The function `node` gives its taker: a closure of its entry over what its call computes now. */
 function deferredFunction(context: FunctionContext, node: DeferredCall): Register {
-  if (!isMade(context, node)) {
+  const { resolved, valueCalls } = context.body;
+  if (!makesItsCall(node, (call) => resolved.has(call) || valueCalls.has(call))) {
     return context.expression(node.call);
   }
-  const { plan, values } = givenFunction(context, node);
+  const { plan, values } = computedNow(context, node);
   const { span } = node.call;
   const copies = values.map((value) => copied(context, value, span));
   return closure(context, context.deferredIndex(plan), copies, span);
 }
 
 /**
- * Whether every call `node` defers, in turn, was recorded made: one that stops before it is made,
- * its callee or receiver having no value, is recorded as neither resolved nor of a value (§2).
- */
-function isMade(context: FunctionContext, node: DeferredCall): boolean {
-  const call = deferredOf(node);
-  const { resolved, valueCalls } = context.body;
-  const made = call !== undefined && (resolved.has(call) || valueCalls.has(call));
-  return made && (call.kind === 'Call' || isMade(context, call));
-}
-
-/**
- * What `call`, the call `node` makes later, computes now, evaluated in the order it runs, and the
- * plan making it later from those values, built as the parameter its function fills.
+ * What the call `node` makes later computes now, evaluated in the order it runs, and the plan
+ * making it later from those values, built as the parameter its function fills.
  */
 function computedNow(
   context: FunctionContext,
-  call: CallingNode,
   node: DeferredCall,
 ): { readonly plan: DeferredPlan; readonly values: readonly Register[] } {
-  const site = node.call;
+  const call = deferredOf(node) ?? unreachable('A deferred call of no call checked clean.');
+  const site = call;
   const { target, arguments: given, givenAt } = preparedCall(context, call, 'byValue');
   const passes = given.map((argument) =>
     argument.kind === 'value'
       ? argument.register
       : unreachable('A deferred call passes everything by value; the checker refuses references.'),
   );
-  const gives = call.kind === 'DeferredCall' ? givenFunction(context, call) : undefined;
+  const gives = call.kind === 'DeferredCall' ? computedNow(context, call) : undefined;
   const lambda = deferredLambdaOf(node);
   const givenAs = lambda && context.body.expectedOf(lambda);
   const plan: DeferredPlan = {
@@ -105,12 +95,6 @@ function computedNow(
   };
   const callee = target.kind === 'value' ? [target.register] : [];
   return { plan, values: [...callee, ...passes, ...(gives?.values ?? [])] };
-}
-
-/** What the function `node` gives computes now, and the plan making its call later. */
-function givenFunction(context: FunctionContext, node: DeferredCall) {
-  const call = deferredOf(node) ?? unreachable('A deferred call of no call checked clean.');
-  return computedNow(context, call, node);
 }
 
 /** A closure of the entry `entry`, capturing `values`, made at `span`. */

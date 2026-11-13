@@ -178,9 +178,8 @@ export function checkCallKind(context: Pick<BodyContext, 'report'>, call: CallOf
   if (kindAdmits(caller, calleeKind, sameType)) {
     return;
   }
-  // The function a deferred call gives has no head to declare its mark in.
   context.report(
-    isSimpleMark(caller) && frame.makesLater === undefined
+    isSimpleMark(caller) && hasHead(frame.function)
       ? checkerDiagnostics.unmarkedCalls(at, callerName(frame), kindText(calleeKind), callee)
       : checkerDiagnostics.kindsMeet(at, kindText(caller), kindText(calleeKind), callee),
   );
@@ -194,6 +193,14 @@ export function kindText(kind: Type): string {
 /** How a message names the function `frame` checks. */
 export function callerName(frame: FunctionFrame): string {
   return frame.function === undefined ? 'this code' : functionName(frame.function);
+}
+
+/**
+ * Whether a mark can be declared on the head of `node`, a function checked: on any but the function
+ * a deferred call gives, which has none.
+ */
+export function hasHead(node: NestedFunction | undefined): boolean {
+  return node?.kind !== 'Lambda' || deferredCallOf(node) === undefined;
 }
 
 /** How a message names a nested function: a lambda, the function a deferred call gives, or by name. */

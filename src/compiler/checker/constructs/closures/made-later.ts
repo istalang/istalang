@@ -21,10 +21,11 @@
 
 import { unreachable } from '../../../../foundation/structures/unreachable.ts';
 import { argumentValue } from '../../../syntax/expressions/arguments.ts';
-import type { CallingNode } from '../../../syntax/expressions/calls.ts';
+import type { CallingNode, DeferredCall } from '../../../syntax/expressions/calls.ts';
 import {
   deferredCallOf,
   deferredLambdaOf,
+  makesItsCall,
 } from '../../../syntax/expressions/deferred-functions.ts';
 import type { Expression, Spread } from '../../../syntax/expressions/index.ts';
 import {
@@ -43,30 +44,32 @@ import { arrayElement, arrayOf } from '../../types/type/well-known.ts';
 import { calledValueType } from './value-calls.ts';
 
 /**
- * What `call`, of `type` as checked settled, gives the function making it later: `type`, what it
- * computed now captured; the error type after a refusal.
+ * What the call deferred call `node` makes later, of `type` as checked settled, gives the function
+ * making it: `type`, what it computed now captured wherever the function makes its call
+ * (`makesItsCall`), even past a mistake, so it runs where it is written; the error type after a
+ * refusal.
  */
-export function madeLater(context: BodyContext, call: CallingNode, type: Type): Type {
-  if (type.kind === 'error') {
-    return type;
-  }
-  if (context.calls.of(call) === undefined && !context.valueCalls.has(call)) {
-    return unmade(context, call, type);
-  }
-  if (refused(context, call)) {
-    return errorType;
+export function madeLater(context: BodyContext, node: DeferredCall, type: Type): Type {
+  const call = deferredOf(node) ?? unreachable('A deferred call reads as a lambda only of a call.');
+  if (!makesItsCall(node, (each) => isMade(context, each))) {
+    return type.kind === 'error' ? type : unmade(context, call, type);
   }
   context.functions.captureNow(context, call, () => computedNow(context, call));
-  return type;
+  return type.kind !== 'error' && refused(context, call) ? errorType : type;
+}
+
+/** Whether checking made `call`: resolved to a function, or a call of a function value. */
+function isMade(context: BodyContext, call: CallingNode): boolean {
+  return context.calls.of(call) !== undefined || context.valueCalls.has(call);
 }
 
 /**
- * What a call neither resolved nor of a function value gives: `type`, after a stop (§2); a variant
+ * What a call its deferred call's function doesn't make gives: `type`, after a stop (§2); a variant
  * without fields is a value, refused.
  */
 function unmade(context: BodyContext, call: CallingNode, type: Type): Type {
   const variant = call.kind === 'Call' ? calledVariant(context, call)?.variant : undefined;
-  if (variant === undefined) {
+  if (variant === undefined || variant.fields.length > 0) {
     return type;
   }
   const callee = `'${variant.name.text}'`;

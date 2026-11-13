@@ -285,6 +285,16 @@ describe('the data rule beside layouts, passes and instantiations', () => {
     ).toEqual([]);
   });
 
+  it("refuses a deferred call's function holding a kind as simple code, which no head can mark", () => {
+    const source = [
+      socket,
+      'fn touch<T>(x: T): ()',
+      'fn keep(f: fn() -> Unit): f()',
+      'live fn t(s: Socket): keep touch(s)',
+    ];
+    expect(codesOf(...source)).toEqual([codes.unmarkableHolds.code]);
+  });
+
   it('refuses a deferred call capturing a struct of a kind into a function of the other', () => {
     expect(
       codesOf(
