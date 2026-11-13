@@ -75,6 +75,7 @@ import type {
   ProgramInputs,
   RootGoals,
 } from '../../contexts/context.ts';
+import { withSynthesizedNames } from '../../desugaring/synthesized.ts';
 import { Lookup } from '../../lookup/lookup.ts';
 import { namedInModule } from '../../resolution/choosing/candidates.ts';
 import { rootSearches } from '../../resolution/conformance/conformance.ts';
@@ -178,7 +179,7 @@ export class ProgramChecker implements CheckerContext {
     this.program = program;
     this.entries = new Entries<CheckerNote>({ previous: previous?.entries, observe });
     const bindings = bindProgram(program);
-    this.bindings = recordedBindings(this.entries, bindings);
+    this.bindings = withSynthesizedNames(recordedBindings(this.entries, bindings));
     this.inputs = programInputs(this.entries, program, bindings);
     const declaring = declaringInputs(this.entries, program);
     ({ moduleOf: this.moduleOf, itemModuleOf: this.#itemModuleOf, isStd: this.isStd } = declaring);

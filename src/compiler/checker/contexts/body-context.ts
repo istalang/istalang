@@ -46,12 +46,14 @@ import type {
   CheckedFunction,
   CollectionForm,
   ComputedCapture,
+  CoreExpression,
   FieldGiver,
   FieldSource,
   Iteration,
   IterationForm,
   LabelResolution,
   NestedFunction,
+  Sugar,
   ValueSite,
 } from '../surface/checked-body.ts';
 import type { FieldRead, FieldReading } from '../surface/checked-field.ts';
@@ -157,6 +159,8 @@ export interface BodyContext extends CheckedModule {
    * (constructs/expressions/literals/indented-values.ts).
    */
   readonly recordBuilt: (value: IndentedValue, literal: BuiltLiteral) => void;
+  /** Records the core tree the sugar `sugar` is checked as (checker/desugaring/). */
+  readonly recordCore: (sugar: Sugar, core: CoreExpression) => void;
   /** Records the variant the bare name `name` chose (types/written/named-types.ts). */
   readonly recordVariant: (name: Identifier, variant: VariantEntity) => void;
   /** The variant the bare name `name` chose; undefined for one not checked yet or naming none. */

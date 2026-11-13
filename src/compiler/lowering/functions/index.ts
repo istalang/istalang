@@ -38,7 +38,7 @@ import { handlerOf } from '../../../foundation/structures/kind-table.ts';
 import { unreachable } from '../../../foundation/structures/unreachable.ts';
 import type { Entity } from '../../binder/entities.ts';
 import type { Checker } from '../../checker/check.ts';
-import type { CheckedBody, ValueSite } from '../../checker/surface/checked-body.ts';
+import { type CheckedBody, isSugar, type ValueSite } from '../../checker/surface/checked-body.ts';
 import type { FieldRead, FieldReading } from '../../checker/surface/checked-field.ts';
 import type { CheckedPattern } from '../../checker/surface/checked-pattern.ts';
 import type {
@@ -175,7 +175,7 @@ class FunctionLowering implements EntryContext {
   readonly variables = new VariableRegisters();
   readonly holds = new HoldScopes(this);
   readonly loops = new LoopStack();
-  readonly chains = new OptionalChains((node) => handlerOf(expressionHandlers, node)(this, node));
+  readonly chains = new OptionalChains((node) => this.#construct(node));
   #layout: readonly FrameSlot[] | undefined;
   /**
    * The body as the prologue or the pass of the field loops being lowered reads it, and what owns
@@ -327,10 +327,17 @@ class FunctionLowering implements EntryContext {
       return this.code.allocate();
     }
     const register =
-      this.body.chainOf(node) === undefined
-        ? handlerOf(expressionHandlers, node)(this, node)
-        : this.chains.lower(this, node);
+      this.body.chainOf(node) === undefined ? this.#construct(node) : this.chains.lower(this, node);
     return this.fitted(register, this.typeOf(node), this.body.fitAt(node), node);
+  }
+  /** `node`'s value, by its kind's handler; a sugar's, its core's (checker/desugaring/). */
+  #construct(node: Expression): Register {
+    if (isSugar(node)) {
+      return this.expression(
+        this.body.coreOf(node) ?? unreachable('A sugar is lowered as checked.'),
+      );
+    }
+    return handlerOf(expressionHandlers, node)(this, node);
   }
 
   fitted(value: Register, type: Type, fit: Fit, site: ValueSite): Register {

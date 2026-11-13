@@ -33,9 +33,7 @@ import type {
   Propagate,
   Select,
   SelectCase,
-  Unwrap,
 } from '../../../../syntax/expressions/index.ts';
-import { nullishOf } from '../../../../syntax/expressions/nullish.ts';
 import { binaryOperators } from '../../../../syntax/expressions/operators.ts';
 import { casesOf, selectCasesOf } from '../../../../syntax/expressions/readings.ts';
 import type { Block } from '../../../../syntax/statements/index.ts';
@@ -43,7 +41,7 @@ import type { SyntaxNode } from '../../../../syntax/tree/index.ts';
 import type { BlockId, ValueId } from '../flow-ir.ts';
 import type { FlowBuilder } from './flow-builder.ts';
 import { implicitCall, resolvedCall } from './implicit-calls.ts';
-import { bindTargets, constant, matchPattern } from './parts.ts';
+import { bindTargets, matchPattern } from './parts.ts';
 
 export function ifFlow(builder: FlowBuilder, node: If): ValueId {
   const given = { result: builder.temporaryOf(node), end: builder.newBlock() };
@@ -220,24 +218,15 @@ export function propagate(builder: FlowBuilder, node: Propagate): ValueId {
   return inside;
 }
 
-/**
- * `a ?? b`, and `a!`, read as `a ??` a panic (`nullishOf`): the value inside `a`, or else what
- * stands in for its none, `b`'s value, or a panic, after which nothing runs.
- */
-export function nullishFlow(builder: FlowBuilder, node: Binary | Unwrap): ValueId {
-  const { operand, orElse } = nullishOf(node);
-  const whole = builder.expression(operand);
+/** `a ?? b`: the value inside `a`, or else `b`'s value, evaluated only then. */
+function nullishFlow(builder: FlowBuilder, node: Binary): ValueId {
+  const whole = builder.expression(node.left);
   const result = builder.temporaryOf(node);
   builder.paths([
     () =>
       builder.emit({ op: 'read', site: node, into: result, from: whole, part: { kind: 'inside' } }),
     () => {
-      if (orElse.kind === 'panic') {
-        implicitCall(builder, 'panic', { site: node, passed: [constant(builder, node)] });
-        builder.end({ kind: 'stop' });
-        return;
-      }
-      const right = builder.expression(orElse.value);
+      const right = builder.expression(node.right);
       builder.emit({ op: 'copy', site: node, into: result, from: right, fit: undefined });
     },
   ]);

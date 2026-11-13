@@ -191,6 +191,10 @@ src/
                                                                  (templates, tuples, indented values, the literals of items, the member of a union a value
                                                                  is built as)
         statements/                                              one handler per statement kind, and blocks
+      desugaring/                                                a sugar checked as the core tree it means, built where it is written: one entry per sugar
+                                                                 kind (index.ts), a module per sugar (its core, its own refusals, its wording), the nodes
+                                                                 built and the names they bind (synthesized.ts); its layer stands between
+                                                                 constructs/closures and constructs/expressions
       lookup/                                                    what tools ask by position (denotation.ts): what a name denotes, the field a
                                                                  String literal names as a key (key-denotations.ts), the body holding a node,
                                                                  a written type's type, a type's members
@@ -227,7 +231,7 @@ src/
                                                                  a member meets; a call on a union through a trait dispatches over its members alike)
       constructs/                                                per-construct handlers, as the checker's constructs/: expressions/ (deferred calls,
                                                                  the function each gives its taker a closure of an entry of its own: deferred-calls.ts; by the checker's
-                                                                 families: structs/, collections/, control/, access/ (names, `??`, `!`), literals/),
+                                                                 families: structs/, collections/, control/, access/ (names, `??`), literals/),
                                                                  statements/, loops/ (the one loop of every iterating construct, and the passes over a
                                                                  struct's fields), parts/ (places and parts of values: what assignments write and `&` passes
                                                                  (places.ts); a value matched against a checked pattern, its tests then its bindings; the part
@@ -362,6 +366,7 @@ foundation/language · structures        beneath every layer; they import nothin
 
 Sugar is split by whether it has typing consequences:
 - **Resolved in the checker** (it affects types or diagnostics): a call's arguments are bound to its function's parameters, each one left out to its default, a call through a requirement to the required function's, which its witness's binding then maps onto its own (and an overload clash is an error); `T?` is `T | None`, and where a value is put into a union, as which member; operators, indexing, `for` and `T(x)` become resolved function calls; trait-constrained calls become requirement calls; compound index assignment requires a `let`; closure captures become cells (`_Cell<T>`).
+- **Desugared by the checker** (its core tree depends on types, `checker/desugaring/`): `a!` is `a ?? panic("Force-unwrapped none.")`. The core is checked where the sugar is written and recorded (`CheckedBody.coreOf`); flow, lowering, the rules and tools read it, and no later phase knows the sugar.
 - **Done mechanically in lowering**, following the checker's decisions: overload bodies (a prologue computing their defaults), conversions into unions, instantiation, capture structs, deferred calls' closures, `?.`/`??`/`is` as `match`, comprehensions as loops.
 
 Each phase returns its diagnostics as values; there is no global sink. Codes are unique, with one catalog per phase.

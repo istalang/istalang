@@ -9,6 +9,7 @@ import type { Handlers } from '../../../../foundation/structures/kind-table.ts';
 import type { Reference } from '../../../syntax/expressions/calls.ts';
 import type { Expression } from '../../../syntax/expressions/index.ts';
 import type { BodyContext } from '../../contexts/body-context.ts';
+import { checkSugar } from '../../desugaring/index.ts';
 import type { Type } from '../../types/type/index.ts';
 import { errorType, floatType } from '../../types/type/primitives.ts';
 import { literalOrBase } from '../../types/unions/unions.ts';
@@ -18,7 +19,6 @@ import { checkDereference } from './access/dereference.ts';
 import { checkIndex } from './access/indexing.ts';
 import { checkMemberAccess } from './access/member-access.ts';
 import { checkName } from './access/names.ts';
-import { checkNullish } from './access/optionals.ts';
 import { checkCall } from './calls.ts';
 import { checkComprehension, checkFieldComprehension } from './collections/comprehensions.ts';
 import { checkArray, checkMap } from './collections/joining-literals.ts';
@@ -83,7 +83,7 @@ export const expressionHandlers: Handlers<BodyContext, Expression, [Type | undef
   Index: checkIndex,
   Propagate: checkPropagate,
   DeferredCall: checkDeferredCall,
-  Unwrap: checkNullish,
+  Unwrap: checkSugar,
   ChainedComparison: checkChainedComparison,
   TemplateLiteral: checkTemplate,
   Dereference: checkDereference,

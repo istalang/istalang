@@ -286,12 +286,18 @@ describe('optional operators', () => {
     expect(spanTexts.at(-1)).toBe(spanText);
   });
 
-  it("refuses '!' on a value that isn't optional", () => {
+  it("refuses '!' on a value that isn't optional, naming the '!' written", () => {
     const lines = [...chained, '  const n = 1', '  n!'];
     expect(reported(lines.join('\n')).codes).toEqual([
       reports.needsOptional.code,
       reports.forceUnwrap.code,
     ]);
+    const { diagnostics } = diagnosedAt(
+      stdProgramOf({ 'main.ista': lines.join('\n') }),
+      'main.ista',
+    );
+    const refused = diagnostics.find(({ code }) => code === reports.needsOptional.code);
+    expect(refused?.message).toContain("'!'");
   });
 
   it.each([

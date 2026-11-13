@@ -39,4 +39,10 @@ describe("'!'", () => {
     expect(state).toMatchObject({ kind: 'panicked', message: 'Force-unwrapped none.' });
     expect(state.kind === 'panicked' ? state.trace : '').toMatch(unwrapFrame);
   });
+
+  it("panics through the prelude's panic, whatever a local one shadows (§3.4)", async () => {
+    const local = 'const panic = fn(message: String) -> Int: message.length()';
+    const state = await ended('Int', `${local}\n  const missing: Int? = none\n  missing! + 1`);
+    expect(state).toMatchObject({ kind: 'panicked', message: 'Force-unwrapped none.' });
+  });
 });

@@ -64,6 +64,7 @@ import type {
 import type { CheckerContext } from '../../contexts/context.ts';
 import type { FieldPassType, PassTable } from '../../contexts/passes.ts';
 import { Passes } from '../../contexts/passes.ts';
+import { Wordings } from '../../desugaring/index.ts';
 import { handledBy } from '../../resolution/applying/call-kinds.ts';
 import { ImplicitCalls } from '../../resolution/applying/implicit.ts';
 import { CallRecords } from '../../resolution/calls/call-records.ts';
@@ -76,7 +77,13 @@ import { FlowDecisions } from '../../rules/flow/flow-decisions.ts';
 import { freshLiteralOf } from '../../rules/placeholders.ts';
 import { checkTestingCalls } from '../../rules/testing.ts';
 import { statementPlace } from '../../surface/checked-annotation.ts';
-import type { CheckedBody, FieldGiver, ValueSite } from '../../surface/checked-body.ts';
+import type {
+  CheckedBody,
+  CoreExpression,
+  FieldGiver,
+  Sugar,
+  ValueSite,
+} from '../../surface/checked-body.ts';
 import { type Admits, collectionTarget } from '../../types/fitting/expected.ts';
 import { type Fit, isExact } from '../../types/fitting/fit/index.ts';
 import { unfolded } from '../../types/type/computed-types.ts';
@@ -110,6 +117,7 @@ export class BodyChecker implements BodyContext {
   readonly fieldReads = new FieldReads(this.#passes);
   readonly labels = new LabelTargets();
   readonly #records = bodyRecords(this.#passes);
+  readonly #wordings = new Wordings();
   /** The body's own result, which only the body's own function returns into. */
   readonly #result: ReturnScope;
   readonly scopes: BodyScopes;
@@ -212,14 +220,16 @@ export class BodyChecker implements BodyContext {
   }
 
   expression(node: Expression, given?: Type): Type {
-    const admits = postponedAdmits(this, node);
-    const type = this.scopes.checking(
-      node,
-      given,
-      (expected) => this.#checked(node, expected, admits),
-      admits !== undefined,
-    );
-    return this.#records.types.get(node) ?? type;
+    return this.#wordings.checking(node, () => {
+      const admits = postponedAdmits(this, node);
+      const type = this.scopes.checking(
+        node,
+        given,
+        (expected) => this.#checked(node, expected, admits),
+        admits !== undefined,
+      );
+      return this.#records.types.get(node) ?? type;
+    });
   }
 
   settled(node: Expression, expected?: Type): Type {
@@ -349,8 +359,9 @@ export class BodyChecker implements BodyContext {
     );
   }
   report(diagnostic: Diagnostic<AnchoredSpan>): void {
-    if (!this.#passes.hold(diagnostic)) {
-      this.checker.report(this.module, diagnostic);
+    const worded = this.#wordings.worded(this, diagnostic);
+    if (!this.#passes.hold(worded)) {
+      this.checker.report(this.module, worded);
     }
   }
 
@@ -401,6 +412,10 @@ export class BodyChecker implements BodyContext {
 
   recordBuilt(value: IndentedValue, literal: BuiltLiteral): void {
     this.#records.builtLiterals.set(value, literal);
+  }
+
+  recordCore(sugar: Sugar, core: CoreExpression): void {
+    this.#records.cores.set(sugar, core);
   }
 
   recordVariant(name: Identifier, variant: VariantEntity): void {

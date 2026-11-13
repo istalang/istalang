@@ -11,7 +11,7 @@ import type { BuiltLiteral } from '../../../syntax/expressions/literals/indented
 import type { StringLiteral } from '../../../syntax/expressions/literals/literals.ts';
 import type { Identifier } from '../../../syntax/tree/node.ts';
 import type { FieldPassType, Pass, Passes } from '../../contexts/passes.ts';
-import type { FieldGiver, ValueSite } from '../../surface/checked-body.ts';
+import type { CoreExpression, FieldGiver, Sugar, ValueSite } from '../../surface/checked-body.ts';
 import type { Fit } from '../../types/fitting/fit/index.ts';
 import type { FieldMember, Type } from '../../types/type/index.ts';
 
@@ -28,6 +28,7 @@ export function bodyRecords(passes: Passes) {
     givenFields: passes.table<FieldGiver, FieldMember>(),
     keyOwners: passes.table<StringLiteral, Type>(),
     builtLiterals: passes.table<IndentedValue, BuiltLiteral>(),
+    cores: passes.table<Sugar, CoreExpression>(),
     chosenVariants: passes.table<Identifier, VariantEntity>(),
     fits: passes.table<ValueSite, Fit>(),
     fieldPasses: passes.table<FieldHeader, readonly CheckedPass[]>(),

@@ -19,10 +19,10 @@ import type { Block, Statement } from '../../../../syntax/statements/index.ts';
 import { tailExpressionOf } from '../../../../syntax/statements/readings.ts';
 import type { SyntaxNode } from '../../../../syntax/tree/index.ts';
 import type { SignatureParameter } from '../../../check.ts';
-import type { CheckedBody } from '../../../surface/checked-body.ts';
+import { type CheckedBody, isSugar } from '../../../surface/checked-body.ts';
 import type { FlowFunction, ValueId } from '../flow-ir.ts';
 import { closeChain, openChain } from './chains.ts';
-import { expressionFlows } from './expressions.ts';
+import { coreFlow, expressionFlows } from './expressions.ts';
 import { type Constructs, FlowBuilder, type FlowInputs } from './flow-builder.ts';
 import { bindParameters } from './parts.ts';
 import { statementFlows } from './statements.ts';
@@ -88,7 +88,9 @@ function computed(builder: FlowBuilder, node: Expression): ValueId {
     return value;
   }
   const chain = openChain(builder, node);
-  const value = handlerOf(expressionFlows, node)(builder, node);
+  const value = isSugar(node)
+    ? coreFlow(builder, node)
+    : handlerOf(expressionFlows, node)(builder, node);
   return atSite(builder, node, closeChain(builder, node, chain, value));
 }
 

@@ -21,7 +21,7 @@ import type {
   TupleElement,
 } from '../../../../syntax/expressions/index.ts';
 import type { Identifier } from '../../../../syntax/tree/node.ts';
-import type { ComputedCapture } from '../../../surface/checked-body.ts';
+import type { ComputedCapture, CoreExpression, Sugar } from '../../../surface/checked-body.ts';
 import { isPack } from '../../../types/type/function-types.ts';
 import type { FlowFunction, Part, ValueId } from '../flow-ir.ts';
 import { callFlow } from './calls.ts';
@@ -33,7 +33,6 @@ import {
   ifFlow,
   isFlow,
   matchFlow,
-  nullishFlow,
   propagate,
   selectFlow,
 } from './control.ts';
@@ -64,6 +63,12 @@ function unknown(builder: FlowBuilder, node: Expression, operands: readonly Valu
   const into = builder.temporaryOf(node);
   builder.emit({ op: 'unknown', site: node, into, operands });
   return into;
+}
+
+/** A sugar's value: its core's, which checking checked in its place; none where it refused it. */
+export function coreFlow(builder: FlowBuilder, node: Sugar): ValueId {
+  const core = builder.body.coreOf(node);
+  return core === undefined ? unknown(builder, node) : builder.expression(core);
 }
 
 /**
@@ -187,7 +192,7 @@ function bodyValue(
 }
 
 // biome-ignore-start lint/style/useNamingConvention: the keys are the tree's node kinds.
-export const expressionFlows: Handlers<FlowBuilder, Expression, [], ValueId> = {
+export const expressionFlows: Handlers<FlowBuilder, CoreExpression, [], ValueId> = {
   Identifier: (builder, node) => named(builder, node, node),
   IntegerLiteral: computed,
   FloatLiteral: computed,
@@ -239,7 +244,6 @@ export const expressionFlows: Handlers<FlowBuilder, Expression, [], ValueId> = {
   TupleElement: (builder, node) => readPart(builder, node, { kind: 'step', step: node.element }),
   Index: index,
   Propagate: propagate,
-  Unwrap: nullishFlow,
   Dereference: (builder, node) => {
     const handle = stepTarget(builder, node, node.operand);
     const into = builder.temporaryOf(node);

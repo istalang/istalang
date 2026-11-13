@@ -55,6 +55,25 @@ import type {
 } from './resolved-call.ts';
 
 /**
+ * The kinds of node checking desugars (checker/desugaring/): a sugar is checked as the core tree it
+ * means where it is written, and every later phase reads that tree in its place (`coreOf`), never
+ * the sugar; tools reading a position and the formatter keep the written one.
+ */
+const sugarKinds = ['Unwrap'] as const;
+
+export type SugarKind = (typeof sugarKinds)[number];
+
+/** A written node checking desugars. */
+export type Sugar = Extract<Expression, { readonly kind: SugarKind }>;
+
+/** An expression of the core language: any but a sugar, which only checking reads. */
+export type CoreExpression = Exclude<Expression, Sugar>;
+
+export function isSugar(node: Expression): node is Sugar {
+  return (sugarKinds as readonly string[]).includes(node.kind);
+}
+
+/**
  * A lambda or local function as checked (§3.14): its type, what its body gives, its parameters as
  * checked, in order, a rest one a pack's (§3.5), and what it captures in the order first used.
  * Lowering makes it a function-table entry of its own.
@@ -268,6 +287,8 @@ export interface BodyFacts {
   readonly keyOwnerOf: (literal: StringLiteral) => Type | undefined;
   /** The literal an indented value was checked as (§2); undefined for one never checked as one. */
   readonly builtLiteralOf: (value: IndentedValue) => BuiltLiteral | undefined;
+  /** The core tree a sugar was checked as; undefined for one refused, reported. */
+  readonly coreOf: (sugar: Sugar) => CoreExpression | undefined;
   /** The variant a bare variant name chose by the type expected of it (§3.11). */
   readonly chosenVariantOf: (name: Identifier) => VariantEntity | undefined;
   /** The functions a call site chose among, in the order considered; none where nothing was. */

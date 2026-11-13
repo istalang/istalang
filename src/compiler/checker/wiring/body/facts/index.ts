@@ -241,6 +241,13 @@ const bodyFacts: { readonly [Name in FactName]: FactEntry<Name> } = {
     instantiated: asChecked,
     joined: firstFound,
   },
+  coreOf: {
+    at:
+      ({ records }, pass) =>
+      (sugar) =>
+        records.cores.get(sugar, pass),
+    instantiated: asChecked,
+  },
   chosenVariantOf: {
     at:
       ({ records }, pass) =>

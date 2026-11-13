@@ -1,5 +1,6 @@
 /**
- * The operators on optionals (§4): `a?.b`, `a?.m()`, `a?->b`, `a ?? b` and `a!`.
+ * The operators on optionals (§4): `a?.b`, `a?.m()`, `a?->b` and `a ?? b`; `a!` is `a ??` a panic
+ * (checker/desugaring/unwrap.ts), so a chain before it is unwrapped whole: `a?.b!` is `(a?.b)!`.
  *
  * - `?.` and `?->` (with `?.[` and `?.(`) start an optional chain. Every link after one (`.c`,
  *   `.0`, `[i]`, `.m()`, `->c`) works on the value inside, and the whole chain yields `none` as
@@ -10,30 +11,24 @@
  *   assigned to, and a method taking `&self` isn't called through it.
  * - `a ?? b` is the value inside `a`, else `b`, evaluated only then. `b` may be a `T`, giving a
  *   `T`, or a `T?`, giving a `T?`, so `a ?? b ?? c` reads left to right.
- * - `a!` is `a ??` a panic (syntax/expressions/nullish.ts): the value inside `a`, panicking on none
- *   through the prelude's `panic`. A chain before it is unwrapped whole: `a?.b!` is `(a?.b)!`. It is
- *   a warning wherever it is written, since `??`, `is` or `match` handles the none it would panic on.
- * - All three take a type that may hold `none` (`presentType`): an optional, or a type whose `any`
+ * - Both take a type that may hold `none` (`presentType`): an optional, or a type whose `any`
  *   member took `None` whole, such as `any Sendable`; anything else is reported.
  */
 
-import { panicFunction } from '../../../../../foundation/language/well-known/implicit-calls.ts';
 import { unreachable } from '../../../../../foundation/structures/unreachable.ts';
 import {
   type ChainStep,
   chainStepOf,
   isOptionalStep,
 } from '../../../../syntax/expressions/chains.ts';
-import type { Binary, Expression, Unwrap } from '../../../../syntax/expressions/index.ts';
-import { nullishOf } from '../../../../syntax/expressions/nullish.ts';
+import type { Binary, Expression } from '../../../../syntax/expressions/index.ts';
 import type { BodyContext, Chains } from '../../../contexts/body-context.ts';
 import type { Pass, Passes, PassTable } from '../../../contexts/passes.ts';
 import { checkerDiagnostics } from '../../../diagnostics/index.ts';
-import { preludeCall } from '../../../resolution/applying/implicit.ts';
 import { stoppedOperation } from '../../../resolution/calls/stopped-operations.ts';
 import type { ChainLink } from '../../../surface/checked-body.ts';
 import type { Type } from '../../../types/type/index.ts';
-import { errorType, isPrimitive, stringType } from '../../../types/type/primitives.ts';
+import { errorType, isPrimitive } from '../../../types/type/primitives.ts';
 import { typeText } from '../../../types/type/type-text.ts';
 import { optionalOf, presentType } from '../../../types/unions/unions.ts';
 
@@ -117,44 +112,29 @@ export class OptionalChains implements Chains {
 }
 
 /**
- * `a ?? b`, and `a!`, which reads as `a ??` a panic (`nullishOf`): the value inside the operand,
- * with what stands in for its `none` fitted to it, or to the operand's own optional type where only
- * that holds it; a panic stands in as `Never` does, warned of.
+ * `a ?? b`: the value inside `a`, with `b` fitted to it, or to `a`'s own optional type where only
+ * that holds it.
  */
-export function checkNullish(
-  context: BodyContext,
-  node: Binary | Unwrap,
-  expected: Type | undefined,
-): Type {
+export function checkNullish(context: BodyContext, node: Binary, expected: Type | undefined): Type {
   const { checker } = context;
-  const { operand, operator, orElse } = nullishOf(node);
   const whole = context.expression(
-    operand,
+    node.left,
     expected === undefined ? undefined : optionalOf(expected, checker.typeRules),
   );
-  if (orElse.kind === 'panic') {
-    context.report(checkerDiagnostics.forceUnwrap(node.span));
-  }
   const inner = presentType(whole, checker.typeRules);
   if (inner === undefined) {
-    if (orElse.kind === 'value') {
-      context.expression(orElse.value);
-    }
+    context.expression(node.right);
     return (
-      stoppedOperation(context, node, [{ node: operand, type: whole }]) ??
-      reportedNeedsOptional(context, operand, operator, whole)
+      stoppedOperation(context, node, [{ node: node.left, type: whole }]) ??
+      reportedNeedsOptional(context, node.left, node.operator, whole)
     );
   }
-  if (orElse.kind === 'panic') {
-    preludeCall(context, { node, role: 'panic', name: panicFunction, arguments: [stringType] });
-    return inner;
-  }
-  const right = context.expression(orElse.value, expected ?? inner);
+  const right = context.expression(node.right, expected ?? inner);
   if (checker.fitOf(right, inner) === undefined && checker.fitOf(right, whole) !== undefined) {
-    context.fit(right, whole, orElse.value);
+    context.fit(right, whole, node.right);
     return whole;
   }
-  context.fit(right, inner, orElse.value);
+  context.fit(right, inner, node.right);
   return inner;
 }
 

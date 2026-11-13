@@ -276,8 +276,6 @@ export type ImplicitRole =
   | 'length'
   | 'item'
   | 'rest'
-  /** The `panic` `x!` calls when `x` is none (§4). */
-  | 'panic'
   /** Writing an element of a place back, changed or whole, with `setIndex` (§3.9). */
   | 'write'
   /** The `default()` a map literal of a type other than `Map` starts from (§2). */

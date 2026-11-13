@@ -7,13 +7,13 @@
 import type { Register } from '../../../../definition/operands.ts';
 import type { Handlers } from '../../../../foundation/structures/kind-table.ts';
 import { unreachable } from '../../../../foundation/structures/unreachable.ts';
-import type { Expression, MemberAccess } from '../../../syntax/expressions/index.ts';
+import type { CoreExpression } from '../../../checker/surface/checked-body.ts';
+import type { MemberAccess } from '../../../syntax/expressions/index.ts';
 import type { FunctionContext } from '../../context.ts';
 import { noneOf } from '../../values/optionals.ts';
 import { neverLowered } from '../never-lowered.ts';
 import { lowerDereference } from '../parts/places.ts';
 import { lowerApplied, lowerNamed } from './access/names.ts';
-import { lowerUnwrap } from './access/optionals.ts';
 import { lowerCall } from './calls.ts';
 import { lowerLambda } from './closures.ts';
 import {
@@ -36,7 +36,7 @@ import { lowerBinary, lowerChainedComparison, lowerUnary } from './operators.ts'
 import { lowerFieldRead, lowerFieldsLiteral, readsField } from './structs/structs.ts';
 
 // biome-ignore-start lint/style/useNamingConvention: the keys are the tree's node kinds.
-export const expressionHandlers: Handlers<FunctionContext, Expression, [], Register> = {
+export const expressionHandlers: Handlers<FunctionContext, CoreExpression, [], Register> = {
   Identifier: lowerNamed,
   IntegerLiteral: (context, node) => context.constant(node.value, node.span),
   FloatLiteral: (context, node) => context.constant(node.value, node.span),
@@ -70,7 +70,6 @@ export const expressionHandlers: Handlers<FunctionContext, Expression, [], Regis
   Index: lowerIndex,
   Propagate: lowerPropagate,
   DeferredCall: lowerDeferredCall,
-  Unwrap: lowerUnwrap,
   ChainedComparison: lowerChainedComparison,
   TemplateLiteral: lowerTemplate,
   Dereference: lowerDereference,
