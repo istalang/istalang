@@ -76,13 +76,6 @@ export class FunctionScope implements FunctionFrame {
     this.#reliesOnKind = true;
   }
 
-  checkpoint(): () => void {
-    const relies = this.#reliesOnKind;
-    return () => {
-      this.#reliesOnKind = relies;
-    };
-  }
-
   get inCleanup(): boolean {
     return this.#cleanups > 0;
   }

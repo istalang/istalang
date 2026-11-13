@@ -51,6 +51,7 @@ import type {
   IterationForm,
   LabelResolution,
   NestedFunction,
+  Sugar,
   ValueSite,
 } from '../surface/checked-body.ts';
 import type { FieldRead, FieldReading } from '../surface/checked-field.ts';
@@ -82,12 +83,6 @@ export interface BodyContext extends CheckedModule {
   readonly settled: (node: Expression, expected?: Type) => Type;
   /** Checks `node` as `expect` does where no scope is current, as a condition is: its type, settled. */
   readonly expectSettled: (node: Expression, expected: Type) => Type;
-  /**
-   * Checks speculatively: what `check` records and reports is dropped once it returns, and so is
-   * whatever else of the body it changed, so the body reads as if it never ran; what it returns,
-   * read from its records, is kept.
-   */
-  readonly probe: <Result>(check: () => Result) => Result;
   /** The body's constraint scopes, and the one current (scopes.ts). */
   readonly scopes: Scopes;
   /**
@@ -109,8 +104,6 @@ export interface BodyContext extends CheckedModule {
   readonly typeOf: (node: Expression) => Type;
   /** The type `node` was checked to have; undefined for a node not checked yet. */
   readonly checkedTypeOf: (node: Expression) => Type | undefined;
-  /** What `site` was checked expecting; undefined where nothing was expected of it. */
-  readonly expectedOf: (site: ValueSite) => Type | undefined;
   /** Records that `expected` is what `site` will be expected to be, as a call being written says. */
   readonly expectAt: (site: Expression, expected: Type) => void;
   /** Checks `node` and, when a type is expected, reports when its type doesn't fit it. */
@@ -217,11 +210,6 @@ export interface CheckedPasses {
 /** A body's variables: types, uses, and what targets take (constructs/statements/variables.ts). */
 export interface Variables {
   readonly declare: (name: Identifier, type: Type) => void;
-  /**
-   * What the body notes of its variables across passes (which change, which live in a cell, which
-   * are references), kept by the function returned, which puts it back.
-   */
-  readonly checkpoint: () => () => void;
   readonly declareParameter: (
     parameter: Pick<SignatureParameter, 'node' | 'type' | 'reference'>,
   ) => void;
@@ -252,11 +240,13 @@ export interface LiteralSources {
 
 /** What checking keeps of the sugars a body desugars (checker/desugaring/index.ts). */
 export interface Sugars {
+  /** Checks `node` as the core tree it means where it stands, recording it (`coreOf`). */
+  readonly check: (context: BodyContext, node: Sugar, expected: Type | undefined) => Type;
   /**
-   * Checks `node`, a sugar's written operand, settled, guided by `guide`, before the core tree
-   * holding it: checking the core reads this type of it, checking it no more.
+   * Checks `node`, a sugar's written operand, settled, before the core tree holding it: checking
+   * the core reads this type of it, checking it no more.
    */
-  readonly operand: (context: BodyContext, node: Expression, guide: Type | undefined) => Type;
+  readonly operand: (context: BodyContext, node: Expression) => Type;
   /**
    * Records the core tree `node` is checked as: a sugar's, or the core call a written call a sugar
    * makes was rebuilt as.
@@ -314,8 +304,6 @@ export interface FunctionFrame {
   readonly reliesOnKind: boolean;
   /** Notes that its code depends on its kind. */
   readonly relyOnKind: () => void;
-  /** What `relyOnKind` noted so far, kept by the function returned, which puts it back. */
-  readonly checkpoint: () => () => void;
   readonly returns: Returns;
   readonly enclosing: Enclosing;
   /** The variables the function captures, by the name each declares, in the order first used. */

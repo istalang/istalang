@@ -64,14 +64,6 @@ const sugarKinds = ['DeferredCall', 'Unwrap'] as const;
 
 export type SugarKind = (typeof sugarKinds)[number];
 
-/** How messages name code written as a sugar, a function built for it among them. */
-// biome-ignore-start lint/style/useNamingConvention: the keys are the tree's node kinds.
-export const sugarNames: { readonly [Kind in SugarKind]: string } = {
-  DeferredCall: 'a deferred call',
-  Unwrap: "a '!'",
-};
-// biome-ignore-end lint/style/useNamingConvention: the keys are the tree's node kinds.
-
 /** A written node checking desugars. */
 export type Sugar = Extract<Expression, { readonly kind: SugarKind }>;
 

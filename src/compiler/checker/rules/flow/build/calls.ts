@@ -11,11 +11,7 @@
 import { argumentValue } from '../../../../syntax/expressions/arguments.ts';
 import type { Call } from '../../../../syntax/expressions/calls.ts';
 import type { Expression } from '../../../../syntax/expressions/index.ts';
-import {
-  calledName,
-  callsThroughOptional,
-  writtenArgumentsOf,
-} from '../../../../syntax/expressions/readings.ts';
+import { calledName, writtenArgumentsOf } from '../../../../syntax/expressions/readings.ts';
 import type { SignatureParameter } from '../../../check.ts';
 import { calledVariant } from '../../../surface/named-variants.ts';
 import {
@@ -98,7 +94,7 @@ function encodedOutcome(builder: FlowBuilder, node: Call): void {
  */
 function calleeValue(builder: FlowBuilder, node: Call): ValueId {
   const callee = calledName(node);
-  if (callsThroughOptional(node)) {
+  if (node.isOptional) {
     return stepTarget(builder, node, callee);
   }
   const read = callee.kind === 'MemberAccess' ? builder.body.fieldReadOf(callee) : undefined;

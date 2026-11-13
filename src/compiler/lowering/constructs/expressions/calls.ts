@@ -33,11 +33,7 @@ import type { RestSlot } from '../../../checker/types/type/function-types.ts';
 import { argumentValue } from '../../../syntax/expressions/arguments.ts';
 import type { Call } from '../../../syntax/expressions/calls.ts';
 import type { Expression } from '../../../syntax/expressions/index.ts';
-import {
-  calledName,
-  callsThroughOptional,
-  writtenArgumentsOf,
-} from '../../../syntax/expressions/readings.ts';
+import { calledName, writtenArgumentsOf } from '../../../syntax/expressions/readings.ts';
 import { type ClosedCall, calledParameters } from '../../calls/closed-calls.ts';
 import { type CallTarget, emitTo } from '../../calls/emit-call.ts';
 import { packElementsOf } from '../../calls/packs.ts';
@@ -125,7 +121,7 @@ function receiverOf(
  * read from `x` (a namespace's constant `ns.f(…)` is read as a name).
  */
 function valueCallee(context: FunctionContext, node: Call): Register {
-  if (callsThroughOptional(node)) {
+  if (node.isOptional) {
     return context.chains.target(context, node);
   }
   const callee = calledName(node);

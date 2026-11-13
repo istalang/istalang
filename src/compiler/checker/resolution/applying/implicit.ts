@@ -9,7 +9,7 @@
  *   so they are found like a written call's function: in scope, through argument-dependent lookup,
  *   and among the requirements of type parameters (§3.10, §3.13).
  * - Constructs backed by prelude-owned helpers (array patterns' `length`, `_patternItem`,
- *   `_patternRest` and `compare`, range patterns' `compare`, `x!`'s `panic`, `..=`'s
+ *   `_patternRest` and `compare`, range patterns' `compare`, `..=`'s
  *   `_inclusiveEnd`, and a template's `join`) go through `preludeCall`: the prelude is a
  *   toolchain invariant, so a missing or inapplicable prelude helper is `unreachable`.
  * - Every implicit call chooses, instantiates, fits wrappable operands and records under one rule:

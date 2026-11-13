@@ -1,6 +1,6 @@
 /**
  * Optionals in lowered code (§2, §4): `T?` is the union `T | None` (unions.ts), and this is the one
- * place that tests one for `none`, for `none` itself, `!`, `??`, optional chains and a range's
+ * place that tests one for `none`, for `none` itself, `??` (and so `!`), optional chains and a range's
  * left-out end.
  *
  * - `none` is the `None` member of the optional expected, or `null`, the one value of `None`, where

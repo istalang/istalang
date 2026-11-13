@@ -44,7 +44,6 @@ import type { Call } from '../../../syntax/expressions/calls.ts';
 import type { MemberAccess } from '../../../syntax/expressions/index.ts';
 import {
   calledName,
-  callsThroughOptional,
   callTypeArguments,
   writtenArgumentsOf,
 } from '../../../syntax/expressions/readings.ts';
@@ -54,12 +53,14 @@ import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import { resolveCall, type WrittenArgument } from '../../resolution/calls/resolve/index.ts';
 import { stoppedOperation } from '../../resolution/calls/stopped-operations.ts';
 import {
+  type Candidate,
   callableThrough,
   callCandidates,
   staticCandidates,
   staticTargetOf,
   topLevelCandidates,
 } from '../../resolution/choosing/candidates.ts';
+import type { FoundField } from '../../surface/checked-field.ts';
 import { fieldOf } from '../../types/traits/known-fields.ts';
 import type { Type } from '../../types/type/index.ts';
 import { errorType } from '../../types/type/primitives.ts';
@@ -114,7 +115,7 @@ function checkCallMade(
 function calledBy(context: BodyContext, call: WrittenCall, value: CalledValue | undefined): Type {
   const { node } = call;
   const callee = calledName(node);
-  if (callsThroughOptional(node)) {
+  if (node.isOptional) {
     return checkValueCall(context, call, callee, value?.type ?? errorType);
   }
   if (value !== undefined && value.receiver === undefined) {
@@ -143,47 +144,62 @@ function calledBy(context: BodyContext, call: WrittenCall, value: CalledValue | 
 }
 
 /**
- * What a call calls, when its type is known before its arguments: a variable, an expression other
- * than a name, or an optional call's target (§3.14), and a receiver's field (`receiverField`),
- * which a method of the same name makes an error the call reports.
+ * What a call reads before its arguments, by its callee: a function value (a variable, an
+ * expression other than a name, an optional call's target, §3.14), a member of a receiver, read
+ * first (§3.7), or nothing, for a function named: a missing name, a namespace's member, a type's
+ * static function, a function or a variant.
  */
-function calledValue(context: BodyContext, node: Call): CalledValue | undefined {
-  if (callsThroughOptional(node)) {
-    return { type: context.chains.target(context, node) };
+export type CalleeRead =
+  | { readonly kind: 'value' }
+  | { readonly kind: 'member'; readonly access: MemberAccess }
+  | { readonly kind: 'named' };
+
+export function calleeRead(context: BodyContext, node: Call): CalleeRead {
+  if (node.isOptional) {
+    return { kind: 'value' };
   }
   const callee = calledName(node);
   switch (callee.kind) {
     case 'Identifier':
-      return context.entityOf(callee)?.kind === 'variable'
-        ? { type: context.expression(callee) }
-        : undefined;
+      return { kind: context.entityOf(callee)?.kind === 'variable' ? 'value' : 'named' };
     case 'MemberAccess':
-      return receiverField(context, node, callee);
+      return isMissingName(callee.member) ||
+        readsThroughNamespace(context, callee) ||
+        context.entityOf(callee.member) !== undefined ||
+        namedType(context, callee.target) !== undefined
+        ? { kind: 'named' }
+        : { kind: 'member', access: callee };
     default:
-      return { type: context.settled(callee) };
+      return { kind: 'value' };
   }
 }
 
 /**
- * What `x.f(…)` reads of its receiver before its arguments: the receiver's type, read once here
- * for the call, and the type of the field `f` names, if any. Undefined where the callee names no
- * receiver's member: a missing name, a namespace's member, a type's static function.
+ * What a call calls, when its type is known before its arguments (`calleeRead`): a function
+ * value's type, or for `x.f(…)` the receiver's, read once here for the call, with the type of the
+ * field `f` names, if any, which a method of the same name makes an error the call reports.
  */
-function receiverField(
-  context: BodyContext,
-  node: Call,
-  callee: MemberAccess,
-): CalledValue | undefined {
-  if (
-    isMissingName(callee.member) ||
-    readsThroughNamespace(context, callee) ||
-    context.entityOf(callee.member) !== undefined ||
-    namedType(context, callee.target) !== undefined
-  ) {
-    return undefined;
+function calledValue(context: BodyContext, node: Call): CalledValue | undefined {
+  const read = calleeRead(context, node);
+  const callee = calledName(node);
+  switch (read.kind) {
+    case 'named':
+      return undefined;
+    case 'member': {
+      const receiver = context.chains.target(context, node);
+      return {
+        type: fieldOf(context.checker, receiver, read.access.member.text)?.member.type,
+        receiver,
+      };
+    }
+    default:
+      if (node.isOptional) {
+        return { type: context.chains.target(context, node) };
+      }
+      return {
+        type: callee.kind === 'Identifier' ? context.expression(callee) : context.settled(callee),
+      };
   }
-  const receiver = context.chains.target(context, node);
-  return { type: fieldOf(context.checker, receiver, callee.member.text)?.member.type, receiver };
 }
 
 /**
@@ -193,6 +209,25 @@ function receiverField(
 interface CalledValue {
   readonly type: Type | undefined;
   readonly receiver?: Type;
+}
+
+/**
+ * What `x.f(…)` may call by its member's `name`, given its receiver's type first and its
+ * arguments' after: the receiver's field of that name, a function value, and the methods of that
+ * name the types find (§3.7); a call naming both is ambiguous, one naming only the field calls its
+ * value (§3.14).
+ */
+export function memberCalled(
+  context: BodyContext,
+  name: string,
+  receiver: Type,
+  others: readonly (Type | undefined)[],
+): { readonly field: FoundField | undefined; readonly methods: readonly Candidate[] } {
+  const { checker } = context;
+  const methods = topLevelCandidates(checker, context.module, name, [receiver, ...others]).filter(
+    ({ declaration }) => isMethod(declaration),
+  );
+  return { field: fieldOf(checker, receiver, name), methods };
 }
 
 /**
@@ -213,14 +248,15 @@ function callMethod(
     return stopped;
   }
   const name = callee.member.text;
-  const field = fieldOf(checker, receiverType, name);
   const written = [
     { node: receiver, passing: 'receiver', type: receiverType } as const,
     ...call.written,
   ];
-  const types = written.map(({ type }) => type);
-  const methods = topLevelCandidates(checker, context.module, name, types).filter(
-    ({ declaration }) => isMethod(declaration),
+  const { field, methods } = memberCalled(
+    context,
+    name,
+    receiverType,
+    call.written.map(({ type }) => type),
   );
   if (field !== undefined && methods.length > 0) {
     context.report(

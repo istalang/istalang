@@ -231,12 +231,6 @@ export class BodyChecker implements BodyContext {
     return this.scopes.suspended(() => this.expression(node, expected));
   }
 
-  probe<Result>(check: () => Result): Result {
-    // What a probe changes beside its pass's records is put back too (passes.ts `probe`).
-    const restores = [this.variables.checkpoint(), this.functions.current.checkpoint()];
-    return this.#passes.probe(() => this.scopes.suspended(check), restores);
-  }
-
   expectSettled(node: Expression, expected: Type): Type {
     return this.scopes.suspended(() => this.expect(node, expected));
   }
@@ -312,10 +306,6 @@ export class BodyChecker implements BodyContext {
 
   checkedTypeOf(node: Expression): Type | undefined {
     return this.#records.types.get(node);
-  }
-
-  expectedOf(site: ValueSite): Type | undefined {
-    return this.#records.expected.get(site);
   }
 
   expectAt(site: Expression, expected: Type): void {

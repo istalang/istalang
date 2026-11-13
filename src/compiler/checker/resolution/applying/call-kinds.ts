@@ -21,7 +21,7 @@ import type { CheckerContext } from '../../contexts/context.ts';
 import { originOf } from '../../contexts/synthesized.ts';
 import type { UseSite } from '../../contexts/use-site.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
-import { type NestedFunction, sugarNames } from '../../surface/checked-body.ts';
+import type { NestedFunction } from '../../surface/checked-body.ts';
 import {
   callsMadeWith,
   type FunctionCall,
@@ -208,6 +208,5 @@ export function functionName(node: NestedFunction): string {
   if (node.kind === 'FunctionDeclaration') {
     return `'${declaredFunctionName(node)}'`;
   }
-  const sugar = originOf(node);
-  return sugar === undefined ? 'a lambda' : sugarNames[sugar.kind];
+  return originOf(node)?.named ?? 'a lambda';
 }

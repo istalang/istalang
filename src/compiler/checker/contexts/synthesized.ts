@@ -1,9 +1,10 @@
 /**
  * The nodes a desugaring builds (checker/desugaring/), which no text wrote.
  *
- * - Each knows the sugar it stands in for (`originOf`), so what checking reports while it checks
- *   one is worded for that sugar, and a function built has no head a message could ask to mark; a
- *   written operand inside it is no such node, so its own mistakes read as written.
+ * - Each knows what it stands for (`originOf`): the sugar, and its part in the sugar's core, so
+ *   what checking reports while it checks one is worded for that part; a written operand inside it
+ *   is no such node, so its own mistakes read as written. A function built has no head a message
+ *   could ask to mark, and is named as its sugar says.
  * - Each takes the span of the written code it stands for, so a report at it points there.
  * - A name one introduces is bound by the desugaring, to a declaration it chose (the prelude's
  *   `panic`, which a local one may shadow, §3.4) or a constant it declares; every phase reads it
@@ -15,17 +16,26 @@ import type { SyntaxNode } from '../../syntax/tree/index.ts';
 import type { Identifier } from '../../syntax/tree/node.ts';
 import type { Sugar } from '../surface/checked-body.ts';
 
-const origins = new WeakMap<SyntaxNode, Sugar>();
+/** What a node built for a sugar stands for. */
+export interface Origin {
+  readonly sugar: Sugar;
+  /** Its part in the sugar's core, which the sugar's wording reads. */
+  readonly role: string;
+  /** How messages name it, a function built having no name of its own. */
+  readonly named?: string;
+}
+
+const origins = new WeakMap<SyntaxNode, Origin>();
 const names = new WeakMap<Identifier, Entity>();
 
-/** `node`, built for `sugar`. */
-export function synthesized<Node extends SyntaxNode>(sugar: Sugar, node: Node): Node {
-  origins.set(node, sugar);
+/** `node`, built as `origin` says. */
+export function synthesized<Node extends SyntaxNode>(origin: Origin, node: Node): Node {
+  origins.set(node, origin);
   return node;
 }
 
-/** The sugar `node` was built for; undefined for a written node. */
-export function originOf(node: SyntaxNode): Sugar | undefined {
+/** What `node` was built for; undefined for a written node. */
+export function originOf(node: SyntaxNode): Origin | undefined {
   return origins.get(node);
 }
 

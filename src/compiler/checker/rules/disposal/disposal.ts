@@ -20,7 +20,7 @@
 import { disposeFunction } from '../../../../foundation/language/well-known/implicit-calls.ts';
 import type { FunctionDeclaration } from '../../../syntax/declarations/index.ts';
 import type { Parameter } from '../../../syntax/expressions/index.ts';
-import { callOfCallee, makerOf } from '../../../syntax/expressions/readings.ts';
+import { callOfCallee } from '../../../syntax/expressions/readings.ts';
 import { awaits } from '../../../syntax/tokens/modifiers.ts';
 import { fieldChildrenOf, nestsFunction, type SyntaxNode } from '../../../syntax/tree/index.ts';
 import type { NodeOf } from '../../../syntax/tree/node.ts';
@@ -265,9 +265,7 @@ function checkSelfStays(
     const [parent, ...around] = outer.filter((each) => each.kind !== 'Parenthesized');
     return (
       parent?.kind === 'Dereference' ||
-      (parent?.kind === 'Call' &&
-        parent.callee !== node &&
-        isExternCall(makerOf(parent, around))) ||
+      (parent?.kind === 'Call' && parent.callee !== node && isExternCall(parent)) ||
       (parent?.kind === 'MemberAccess' && isExternCall(callOfCallee(parent, around)))
     );
   };

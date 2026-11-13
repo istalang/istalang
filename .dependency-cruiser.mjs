@@ -146,9 +146,9 @@ const checkerLayers = [
   'constructs/loops', // iteration and a field loop's passes, for `for` and comprehensions
   'constructs/declarations',
   'constructs/closures',
-  'desugaring', // a sugar checked as the core tree it means, built where it is written
   'constructs/expressions',
   'constructs/statements',
+  'desugaring', // a sugar checked as the core tree it means, built where it is written
   'lookup', // what tools ask by position, read from what every layer beneath decided
 ];
 

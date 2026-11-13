@@ -51,7 +51,7 @@ export function isTakerShaped(expression: Expression): boolean {
 }
 
 /** A deferred call's taker where it is written as a call, `g(opts)` of `g(opts) f(x)`. */
-function takerCallOf(node: DeferredCall): Call | undefined {
+export function takerCallOf(node: DeferredCall): Call | undefined {
   return node.taker.kind === 'Call' ? node.taker : undefined;
 }
 
@@ -69,28 +69,17 @@ export function calledName(node: CallingNode): Expression {
 }
 
 /** The type arguments `node` gives the function it calls (`calledName`), if any. */
-export function callTypeArguments(node: CallingNode): readonly TypeNode[] | undefined {
-  if (node.kind === 'DeferredCall') {
-    return undefined;
-  }
+export function callTypeArguments(node: Call): readonly TypeNode[] | undefined {
   const { callee } = node;
   return callee.kind === 'TypeApplication' && !node.isOptional ? callee.typeArguments : undefined;
 }
 
 /**
- * The arguments `node` passes: those in its parentheses, a deferred call's taker's, none where the
- * taker is a path alone; then the function a call gives after them (`Call.given`), if any.
+ * The arguments `node` passes: those in its parentheses, then the function it gives after them
+ * (`Call.given`), if any.
  */
-export function writtenArgumentsOf(node: CallingNode): readonly CallArgument[] {
-  if (node.kind === 'DeferredCall') {
-    return takerCallOf(node)?.arguments ?? [];
-  }
+export function writtenArgumentsOf(node: Call): readonly CallArgument[] {
   return node.given === undefined ? node.arguments : [...node.arguments, node.given];
-}
-
-/** Whether `node` calls the function inside an optional, `f?.(…)` (§4); a taker never does. */
-export function callsThroughOptional(node: CallingNode): boolean {
-  return node.kind === 'Call' && node.isOptional;
 }
 
 /**

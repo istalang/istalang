@@ -77,8 +77,8 @@ src/
                         placeholder per name until linked, bound as its alias where renamed (`aliasOf`)
     checker/            check.ts is the entry and the surface later phases read
       contexts/                                                  the contexts a program and a body are checked in (context.ts, body-context.ts), a field loop's
-                                                                 passes and the probe, a pass dropped once checked (passes.ts), the nodes a desugaring
-                                                                 builds and the names they bind (synthesized.ts), where a check reports (use-site.ts), and what a construct
+                                                                 passes (passes.ts), the nodes a desugaring builds, what each stands for, and the
+                                                                 names they bind (synthesized.ts), where a check reports (use-site.ts), and what a construct
                                                                  asks of the constraint scopes a body's calls and literals infer in
                                                                  (scopes.ts; the scopes themselves, settled on every path, and the protocol
                                                                  placing each expression in them: wiring/body/; which expressions a scope
@@ -194,8 +194,8 @@ src/
         statements/                                              one handler per statement kind, and blocks
       desugaring/                                                a sugar checked as the core tree it means, built where it is written: one entry per sugar
                                                                  kind and what a body keeps of its sugars (index.ts), a module per sugar (its core, its
-                                                                 own refusals, its wording); its layer stands between constructs/closures and
-                                                                 constructs/expressions
+                                                                 own refusals, its wording); its layer stands above the constructs, which reach it
+                                                                 through a body's `sugars`
       lookup/                                                    what tools ask by position (denotation.ts): what a name denotes, the field a
                                                                  String literal names as a key (key-denotations.ts), the body holding a node,
                                                                  a written type's type, a type's members
@@ -366,7 +366,7 @@ foundation/language · structures        beneath every layer; they import nothin
 
 Sugar is split by whether it has typing consequences:
 - **Resolved in the checker** (it affects types or diagnostics): a call's arguments are bound to its function's parameters, each one left out to its default, a call through a requirement to the required function's, which its witness's binding then maps onto its own (and an overload clash is an error); `T?` is `T | None`, and where a value is put into a union, as which member; operators, indexing, `for` and `T(x)` become resolved function calls; trait-constrained calls become requirement calls; compound index assignment requires a `let`; closure captures become cells (`_Cell<T>`).
-- **Desugared by the checker** (its core tree depends on types, `checker/desugaring/`): `a!` is `a ?? panic("Force-unwrapped none.")`; a deferred call `g f(x)` is `g` called with, given after its arguments, `{ const v = x; fn(): f(v) }`, its operands typed by a probe of the call `f(x)` (a check that leaves nothing behind). The core is checked where the sugar is written and recorded (`CheckedBody.coreOf`); flow, lowering, the rules and tools read it, and no later phase knows the sugar.
+- **Desugared by the checker** (its core tree depends on types, `checker/desugaring/`): `a!` is `a ?? panic("Force-unwrapped none.")`; a deferred call `g f(x)` is `g` called with, given after its arguments, `{ const v = x; fn(): f(v) }`, a value computed now typed as a constant's is. The core is checked where the sugar is written and recorded (`CheckedBody.coreOf`); flow, lowering, the rules and tools read it, and no later phase knows the sugar.
 - **Done mechanically in lowering**, following the checker's decisions: overload bodies (a prologue computing their defaults), conversions into unions, instantiation, capture structs, `?.`/`??`/`is` as `match`, comprehensions as loops.
 
 Each phase returns its diagnostics as values; there is no global sink. Codes are unique, with one catalog per phase.

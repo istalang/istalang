@@ -9,7 +9,6 @@ import type { Handlers } from '../../../../foundation/structures/kind-table.ts';
 import type { Reference } from '../../../syntax/expressions/calls.ts';
 import type { Expression } from '../../../syntax/expressions/index.ts';
 import type { BodyContext } from '../../contexts/body-context.ts';
-import { checkSugar } from '../../desugaring/index.ts';
 import type { Type } from '../../types/type/index.ts';
 import { errorType, floatType } from '../../types/type/primitives.ts';
 import { literalOrBase } from '../../types/unions/unions.ts';
@@ -81,8 +80,8 @@ export const expressionHandlers: Handlers<BodyContext, Expression, [Type | undef
   Reference: misplacedReference,
   Index: checkIndex,
   Propagate: checkPropagate,
-  DeferredCall: checkSugar,
-  Unwrap: checkSugar,
+  DeferredCall: (context, node, expected) => context.sugars.check(context, node, expected),
+  Unwrap: (context, node, expected) => context.sugars.check(context, node, expected),
   ChainedComparison: checkChainedComparison,
   TemplateLiteral: checkTemplate,
   Dereference: checkDereference,

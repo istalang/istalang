@@ -23,6 +23,7 @@ const unwrappedNone = 'Force-unwrapped none.';
 
 export const unwraps: Desugar<Unwrap> = {
   core: (context, node) => {
+    const origin = { sugar: node, role: 'core' };
     context.report(checkerDiagnostics.forceUnwrap(node.span));
     const prelude = { module: languageModules.prelude, name: panicFunction };
     const panic =
@@ -32,13 +33,13 @@ export const unwraps: Desugar<Unwrap> = {
       kind: 'Call',
       span: node.span,
       callee: bound(
-        synthesized(node, { kind: 'Identifier', span: node.span, text: panicFunction }),
+        synthesized(origin, { kind: 'Identifier', span: node.span, text: panicFunction }),
         panic,
       ),
       isOptional: false,
-      arguments: [synthesized(node, message satisfies StringLiteral)],
+      arguments: [synthesized(origin, message satisfies StringLiteral)],
     };
-    const right = synthesized(node, call);
+    const right = synthesized(origin, call);
     const core: Binary = {
       kind: 'Binary',
       span: node.span,
@@ -46,14 +47,14 @@ export const unwraps: Desugar<Unwrap> = {
       operator: '??',
       right,
     };
-    return synthesized(node, core);
+    return synthesized(origin, core);
   },
   wording: {
-    [checkerDiagnostics.needsOptional.code]: (context, diagnostic, node) =>
+    [checkerDiagnostics.needsOptional.code]: (context, diagnostic, { sugar }) =>
       checkerDiagnostics.needsOptional(
         diagnostic.span,
         '!',
-        typeText(context.typeOf(node.operand)),
+        typeText(context.typeOf(sugar.operand)),
       ),
   },
 };
