@@ -20,6 +20,29 @@ function checkedMain(root: string) {
   return checked(projectProgram(root), join(root, 'main.ista'));
 }
 
+/**
+ * What `ista check` reports of `text` as `root`'s `main.ista`: checked in a project of its own, its
+ * related locations in that `main.ista` named as in `root`'s, where the server's document is.
+ */
+function checkedAs(root: string, text: string) {
+  const other = tempProject({ 'main.ista': text });
+  const [from, to] = [other, root].map((each) => uriOf(join(each, 'main.ista')));
+  return checkedMain(other).map((diagnostic) => ({
+    ...diagnostic,
+    ...(diagnostic.relatedInformation === undefined
+      ? {}
+      : {
+          relatedInformation: diagnostic.relatedInformation.map((information) => ({
+            ...information,
+            location: {
+              ...information.location,
+              uri: information.location.uri === from ? to : information.location.uri,
+            },
+          })),
+        }),
+  }));
+}
+
 describe('the diagnostics an open document gets', () => {
   it("follow each change, as ista check would report the changed file's", async () => {
     const root = tempProject({ 'main.ista': '' });
@@ -32,7 +55,7 @@ describe('the diagnostics an open document gets', () => {
       fc.asyncProperty(brokenText(corpusFiles.map(({ text }) => text)), async (text) => {
         const published = client.nextDiagnostics(uri);
         await client.change(uri, text);
-        expect(await published).toEqual(checkedMain(tempProject({ 'main.ista': text })));
+        expect(await published).toEqual(checkedAs(root, text));
       }),
       { numRuns: 25 },
     );
