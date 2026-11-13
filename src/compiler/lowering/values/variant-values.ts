@@ -35,14 +35,23 @@ export function buildVariant(
   span: AnchoredSpan,
   dst: Register = context.code.allocate(),
 ): Register {
-  context.code.emit({
-    kind: 'variant',
-    span,
-    dst,
-    type: context.tables.types.index(type),
-    variant: variantIndexOf(context.checker, type, name),
-    fields: [...fields],
-  });
+  const variant = variantIndexOf(context.checker, type, name);
+  return variantAt(context, { type, variant, fields }, span, dst);
+}
+
+/** Builds the `variant`-th variant of the enum `type`, of `fields`, in `dst`. */
+export function variantAt(
+  context: CodeContext,
+  {
+    type,
+    variant,
+    fields,
+  }: { readonly type: NominalType; readonly variant: number; readonly fields: readonly Register[] },
+  span: AnchoredSpan,
+  dst: Register = context.code.allocate(),
+): Register {
+  const entry = context.tables.types.index(type);
+  context.code.emit({ kind: 'variant', span, dst, type: entry, variant, fields: [...fields] });
   return dst;
 }
 

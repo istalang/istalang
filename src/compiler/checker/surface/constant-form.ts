@@ -73,7 +73,7 @@ export function typesIn(form: ConstantForm): readonly Type[] {
 }
 
 /** What a duration literal is (§2): a `time.Duration`, whose one field is its milliseconds. */
-export function durationForm(type: NominalType, milliseconds: bigint): ConstantForm {
+function durationForm(type: NominalType, milliseconds: bigint): ConstantForm {
   return { kind: 'struct', type, fields: [{ kind: 'primitive', value: milliseconds }] };
 }
 

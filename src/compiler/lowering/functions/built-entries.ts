@@ -5,7 +5,8 @@
  *
  * - A struct's fields read as a function's parameters (syntax/declarations/field-defaults.ts). Its
  *   entry builds the struct, a shared struct's in a new cell (§3.18), for a literal leaving a field
- *   out (constructs/expressions/structs/structs.ts); a literal giving every field builds in place.
+ *   out, which its flow calls as any call leaving parameters out; one giving every field builds in
+ *   place.
  * - A variant's constructor's entry builds the variant (§3.11), for a call leaving a field out and
  *   for what is handed an entry to call later, as a function value is (§3.14); a call giving every
  *   field builds it in place (values/variant-values.ts).
@@ -51,7 +52,7 @@ export function structEntry(lowering: Lowering, instance: FunctionInstance): Cod
         return [node.name.text, register] as const;
       }),
     );
-    return structValue(context, structTypeOf(built.result), named, span);
+    return structValue(context, structTypeOf(built.frame.result), named, span);
   });
 }
 

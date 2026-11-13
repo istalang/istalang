@@ -176,13 +176,13 @@ export function startEntry(
     return entry.lowerStart(edges, body);
   }
   const form = checker.constantOf(target)?.form;
-  if (form?.kind !== 'function' || form.lambda.body === undefined) {
+  if (form?.kind !== 'function') {
     unreachable('A startable constant holds no lambda.');
   }
   const owner = { kind: 'constant', declaration: target } as const;
   const self = constantValue(tables, form);
   return nestedLowering(lowering, { owner, node: form.lambda }, header).lowerStart(
     { ...edges, self },
-    form.lambda.body,
+    form.lambda,
   );
 }

@@ -8,16 +8,16 @@
  * - Reading puts each field's value, or the part of it a place reaches past the field, into the
  *   type the read gives: the union of the fields' types, or the one type of that part.
  * - Writing converts the value into each field's own type: the checker made sure it fits each
- *   (constructs/statements/assignments.ts), and how it converts is derived here from the types the
- *   instantiation made concrete, as a `?`'s error is (constructs/expressions/control/propagate.ts),
- *   so a key the instantiation left one name converts by the same rule (`fittedInto`).
+ *   (checker constructs/statements/assignments.ts), and how it converts is derived here from the
+ *   types the instantiation made concrete, so a key the instantiation left one name converts by the
+ *   same rule (`fittedInto`).
  * - A key of one name never switches: it reads as the name does (checked-field.ts).
  */
 
 import type { Register } from '../../../definition/operands.ts';
 import { unreachable } from '../../../foundation/structures/unreachable.ts';
 import type { FieldMember, Type } from '../../checker/types/type/index.ts';
-import type { Expression, Index } from '../../syntax/expressions/index.ts';
+import type { Expression } from '../../syntax/expressions/index.ts';
 import type { AnchoredSpan } from '../../syntax/tree/positions.ts';
 import type { FunctionContext } from '../context.ts';
 import { heldIn, type TypedValue } from './holdings.ts';
@@ -83,34 +83,6 @@ export function fittedInto(
       `A write at ${site.span.from} doesn't fit its field; the checker should have said so.`,
     );
   return context.fitted(value.register, value.type, fit, site);
-}
-
-/**
- * `s[k]` read by a key of `s`'s (§3.9), `container` holding `s` and `key` the key's value: the
- * field a key of one name names, at its position, or the one the key's value names.
- */
-export function lowerKeyRead(
-  context: FunctionContext,
-  container: Register,
-  key: Register,
-  node: Index,
-): Register {
-  const read = context.fieldReadOf(node);
-  const { span } = node;
-  switch (read.kind) {
-    case 'position':
-      return context.code.field(container, read.index, span);
-    case 'keyed': {
-      const keyed = { on: read.on, key: { register: key, type: context.typeOf(node.index) } };
-      const readAt = (field: FieldMember, position: number) => ({
-        register: context.code.field(container, position, span),
-        type: field.type,
-      });
-      return readKeyed(context, { keyed, result: context.typeOf(node) }, readAt, span);
-    }
-    default:
-      return unreachable(`A key reads no ${read.kind} field once instantiated.`);
-  }
 }
 
 /** Switches on `key`'s value, each member's case running `visit` for the field its name names. */

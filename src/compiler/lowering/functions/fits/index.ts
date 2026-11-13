@@ -19,13 +19,13 @@
 import type { FunctionId, Register } from '../../../../definition/operands.ts';
 import type { CodeFunction } from '../../../../definition/tables/functions.ts';
 import { unreachable } from '../../../../foundation/structures/unreachable.ts';
-import type { ValueSite } from '../../../checker/surface/checked-body.ts';
 import { type Fit, singleElement } from '../../../checker/types/fitting/fit/index.ts';
 import { resultFitBetween } from '../../../checker/types/fitting/part-pairs.ts';
 import { unfolded } from '../../../checker/types/type/computed-types.ts';
 import type { FunctionType, StructValueType, Type } from '../../../checker/types/type/index.ts';
 import { membersOf } from '../../../checker/types/type/index.ts';
 import { baseOf } from '../../../checker/types/unions/union-members.ts';
+import type { NodeOf } from '../../../syntax/tree/node.ts';
 import type { AnchoredSpan } from '../../../syntax/tree/positions.ts';
 import { emitCall } from '../../calls/emit-call.ts';
 import type { CodeContext, FunctionContext } from '../../context.ts';
@@ -54,7 +54,7 @@ interface TypedRegister {
 /** Where a value is fitted: the site the checker recorded the fit at, in a body of `owner`. */
 interface FittingSite {
   readonly owner: BodyOwner;
-  readonly site: ValueSite;
+  readonly site: NodeOf<string>;
 }
 
 /**

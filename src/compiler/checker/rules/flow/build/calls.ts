@@ -1,5 +1,5 @@
 /**
- * Calls (§3.3, §3.7, §3.14), as lowering makes them (lowering/constructs/expressions/calls.ts):
+ * Calls (§3.3, §3.7, §3.14):
  * arguments evaluated in the order written, a method's receiver first; one passed by `&` (written
  * `&x`, or a receiver whose `self` takes a reference) passes its place, and what an accessor read
  * for it is written back once the call returns. A call of a function value calls its callee's

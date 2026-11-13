@@ -1,8 +1,7 @@
 /**
  * Emitting calls: the ones checking resolved at a site, and the ones the language makes for a
  * construct with no call written (`ImplicitRole`, resolution/applying/implicit.ts), where the
- * construct makes them, with the arguments lowering passes them (lowering/calls/emit-call.ts
- * `emitImplicitCall`). One checking resolved no function for runs its arguments, a place passed
+ * construct makes them, with the arguments it passes them. One checking resolved no function for runs its arguments, a place passed
  * by `&` read where it stands (`valueAt`), and gives what is unknown.
  */
 

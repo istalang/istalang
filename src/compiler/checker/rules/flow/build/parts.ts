@@ -1,7 +1,6 @@
 /**
  * Taking values apart (§3.3, §3.11, §3.15): parameters, declarations' and loops' targets, and
- * patterns, read along the steps checking recorded (`targetsOf`, `patternOf`), as lowering reads
- * them (lowering/constructs/parts/part-paths.ts).
+ * patterns, read along the steps checking recorded (`targetsOf`, `patternOf`).
  *
  * - A step through an array (its length, an item, the items between) is the implicit call its
  *   site makes in that role; any other step is a `read` of the part.

@@ -18,7 +18,7 @@
  *   where it is declared.
  * - **Code no path reaches is kept,** in blocks nothing jumps to, so every construct the text holds
  *   is in the graph; code checking ruled out (§4) was never checked, and is left out.
- * - **Releases** are where lowering releases (lowering/constructs/statements/scopes.ts): a block
+ * - **Releases** are where the code releases, which lowering writes as said (lowering/flow/): a block
  *   releases its variables at its end and where an exit leaves it, keeping first what its `hold`s
  *   keep, which the scope a `hold` names releases where it ends; `drop` releases its variable; a
  *   statement releases its temporaries at its end, a header (a condition, a guard, a `match`'s

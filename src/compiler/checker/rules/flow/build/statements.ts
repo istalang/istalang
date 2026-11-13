@@ -1,6 +1,6 @@
 /**
- * What each kind of statement adds to a flow (index.ts), in a table exhaustive by kind, as lowering
- * runs it (lowering/constructs/statements/). A statement's annotations never run.
+ * What each kind of statement adds to a flow (index.ts), in a table exhaustive by kind. A
+ * statement's annotations never run.
  *
  * - A declaration runs its initializer, then binds its targets; a `hold`'s variables end with the
  *   scope it names (§7). A target with no name (`_`, a part of one) keeps the whole value as a

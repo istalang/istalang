@@ -12,9 +12,6 @@
  * the fields of the variant it builds in place (§3.11, values/variant-values.ts); one leaving a
  * field out runs the constructor's entry, which computes it.
  *
- * What a call calls (`CallTarget`) is a closed call or a function value in a register, and `emitTo`
- * calls either.
- *
  * This is the one place a rest parameter is made of what a call passes: an array of its items, a
  * spread's spliced in, or, for a pack, its items as single parameters and a spread's tuple as its
  * elements, as the instantiation flattens the pack (packs.ts).
@@ -25,12 +22,10 @@ import type { Argument } from '../../../definition/instructions/places.ts';
 import type { FunctionId, Register } from '../../../definition/operands.ts';
 import { unreachable } from '../../../foundation/structures/unreachable.ts';
 import type { SignatureParameter } from '../../checker/check.ts';
-import type { ImplicitRole, ResolvedSite } from '../../checker/surface/resolved-call.ts';
 import { substitute } from '../../checker/types/parts/substitution.ts';
 import { constructedVariant } from '../../syntax/declarations/field-defaults.ts';
-import type { NodeOf } from '../../syntax/tree/node.ts';
 import type { AnchoredSpan } from '../../syntax/tree/positions.ts';
-import type { CodeContext, FunctionContext } from '../context.ts';
+import type { CodeContext } from '../context.ts';
 import { buildConstructed } from '../values/variant-values.ts';
 import { type ClosedCall, calledParameters, substitutionOfCall } from './closed-calls.ts';
 import { packElementsOf } from './packs.ts';
@@ -206,50 +201,4 @@ function registerOf(argument: Register | Argument): Register {
 /** A register's whole value passed by `&`. */
 export function referenceTo(register: Register): Argument {
   return { kind: 'reference', place: { register, path: [] } };
-}
-
-/** Calls the function the checker resolved for `site` with values; the register of its result. */
-export function emitCallAt(
-  context: FunctionContext,
-  site: ResolvedSite,
-  argumentRegisters: readonly Register[],
-  dst: Register = context.code.allocate(),
-): Register {
-  return emitFunctionCall(
-    context,
-    { span: site.span, call: context.callAt(site), arguments: argumentRegisters },
-    dst,
-  );
-}
-
-/**
- * Calls the function the checker made for `node` in `role`, a call no source call stands for
- * (checker resolution/applying/implicit.ts); a register argument is passed by value. The register
- * of its result.
- */
-export function emitImplicitCall(
-  context: FunctionContext,
-  node: NodeOf<string>,
-  role: ImplicitRole,
-  argumentList: readonly (Register | Argument)[],
-): Register {
-  const made = context.implicitCallAt(node, role);
-  return emitFunctionCall(context, { span: node.span, call: made, arguments: argumentList });
-}
-
-/** What a call calls: the function the checker resolved, or the value of its callee (§3.14). */
-export type CallTarget =
-  | { readonly kind: 'function'; readonly call: ClosedCall }
-  | { readonly kind: 'value'; readonly register: Register };
-
-/** Calls `target` at `span`, passing `given` as a prepared call passes them. */
-export function emitTo(
-  context: CodeContext,
-  span: AnchoredSpan,
-  target: CallTarget,
-  given: readonly Argument[],
-): Register {
-  return target.kind === 'function'
-    ? emitFunctionCall(context, { span, call: target.call, arguments: given })
-    : emitCall(context, { span, callee: target, arguments: given });
 }

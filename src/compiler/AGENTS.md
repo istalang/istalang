@@ -24,7 +24,7 @@ One folder per phase. Phases share only contracts.
   - `lookup/`: what tools ask by position.
 
   A layer imports only those beneath it, and later phases import only `check.ts` and the models it names. A generic body is checked once. Every pattern, a target's or a `match` case's, goes through one walk (`constructs/patterns/walk/index.ts`). Construct modules recurse through the contexts in `contexts/`; `wiring/` wires them (`program/program-checker.ts`, `body/body-checker.ts`). What one kind of declaration needs is a unit in `constructs/declarations/` that `program-checker.ts` composes (constants, layouts), as a body's units are.
-- `lowering/`: `lower.ts` compiles what `main` reaches into a Definition, one function instance at a time (`tables/instances.ts`, `functions/`), with tables interned in `tables/`. Handlers live by construct in `constructs/` (`expressions/`, `statements/`, `loops/`, `parts/`), as in the checker, and recurse through `context.ts`; code with no syntax behind it is written in `synthesized/`. Pattern tests and bindings lower in `constructs/parts/patterns.ts`, optional chains from their last link (`values/optionals.ts`).
+- `lowering/`: `lower.ts` compiles what `main` reaches into a Definition, one function instance at a time (`tables/instances.ts`, `functions/`), with tables interned in `tables/`. A body is written from its flow (the checker's `CheckedBody.flowOf`): `flow/` maps each operation and exit to instructions, through `context.ts`; code with no syntax behind it is written in `synthesized/`.
 - `compile.ts`: the coordinator from a loaded Program onward. Only it knows the order of the phases after loading; apps ask it for results.
 
 A phase has:

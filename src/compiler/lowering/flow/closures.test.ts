@@ -6,10 +6,10 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import type { Definition } from '../../../../definition/definition.ts';
-import type { CodeFunction } from '../../../../definition/tables/functions.ts';
-import { stdProgramOf } from '../../../binder/bind.test-kit.ts';
-import { compiledDefinition } from '../../../compile.test-kit.ts';
+import type { Definition } from '../../../definition/definition.ts';
+import type { CodeFunction } from '../../../definition/tables/functions.ts';
+import { stdProgramOf } from '../../binder/bind.test-kit.ts';
+import { compiledDefinition } from '../../compile.test-kit.ts';
 
 function compiled(lines: readonly string[]): Definition {
   return compiledDefinition(stdProgramOf({ main: lines.join('\n') }), 'main');

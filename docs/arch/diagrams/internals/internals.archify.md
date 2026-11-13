@@ -24,8 +24,8 @@ They meet on **node identity**. The binder memoizes one `VariableEntity` per dec
 @source passes title="Passes and PassTable" path=src/compiler/checker/contexts/passes.ts lines=27:198
 @source targets title="declareTargets" path=src/compiler/checker/constructs/patterns/targets.ts lines=15:26
 @source bodychecker title="BodyChecker tables and #checkedAt" path=src/compiler/checker/wiring/body/body-checker.ts lines=91:400
-@source lowervars title="Lowering: registers by declaring Identifier" path=src/compiler/lowering/constructs/statements/variables.ts lines=161:206
-@source lowernames title="Lowering: a name read" path=src/compiler/lowering/constructs/expressions/access/names.ts lines=31:58
+@source lowervars title="Lowering: registers by declaring Identifier" path=src/compiler/lowering/flow/writer.ts lines=206:221
+@source lowernames title="Lowering: a global name read" path=src/compiler/lowering/flow/parts.ts lines=148:178
 @source passbody title="Lowering: reading a field pass's body" path=src/compiler/lowering/functions/frames.ts lines=97:116
 @source denotations title="Hover: a variable's declared type" path=src/compiler/checker/lookup/denotations/named.ts lines=97:117
 
@@ -114,7 +114,7 @@ The example is `let total = price * qty`, later read inside a lambda: `fn(): log
 | vs-input | entityOf | `useEntity` asks `Bindings.entityOf` through `recordedBindings`, so the answer joins the reads of the entry checking this body.[](source:inputs) | variable-flow | link |
 | vs-capture | noteUse | A frame captures the variable when its `reach` span does not enclose the declaring name's span; a captured `let` goes into `#inCell`.[](source:functions) | variable-flow | fns |
 | vs-type | typeOf | `variableType` asks `declaredOutsideBodies` first, then `VariableScope.typeOf(entity)`, which reads `#types` by `entity.name`. | variable-flow | vars |
-| vs-lower | registerOf | `declareVariable` makes a cell register when `inCell(decl name)`, and `lowerNamed` finds it by `entity.name`.[](source:lowervars) | variable-flow | low |
+| vs-lower | registerOf | the flow writer declares a variable's register on its first write, a cell when `inCell(decl name)`, by `entity.name`; a read of it at a name is that register.[](source:lowervars) | variable-flow | low |
 
 ## How does one node get a different type in each field-loop pass? {#pass-records}
 

@@ -1,5 +1,5 @@
 /**
- * Control (§4, §8), as lowering writes it (lowering/constructs/expressions/control/):
+ * Control (§4, §8):
  *
  * - `if`: each condition runs where the ones before failed, then its body or the next condition; a
  *   condition its operands' types decide (`decidedOf`) runs alone, ruling its body out when false
@@ -80,8 +80,8 @@ export function ifFlow(builder: FlowBuilder, node: If): ValueId {
 }
 
 /**
- * A scope entered through a condition that may not hold (§3.4, §7), as lowering writes it
- * (`lowerGuarded`): an `if`'s branch, a `while`'s pass, a guarded case.
+ * A scope entered through a condition that may not hold (§3.4, §7): an `if`'s branch, a `while`'s
+ * pass, a guarded case.
  */
 interface Guarded {
   readonly scope: SyntaxNode;

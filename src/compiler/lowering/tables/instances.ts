@@ -20,7 +20,6 @@
  */
 
 import type { Checker } from '../../checker/check.ts';
-import type { ValueSite } from '../../checker/surface/checked-body.ts';
 import { type FunctionInstance, substitutionOf } from '../../checker/surface/witness-closing.ts';
 import type { TypeKeys } from '../../checker/types/identity/type-keys.ts';
 import type { Substitution } from '../../checker/types/parts/substitution.ts';
@@ -39,6 +38,7 @@ import {
 } from '../../syntax/declarations/index.ts';
 import type { FieldHeader, Lambda } from '../../syntax/expressions/index.ts';
 import type { VariableDeclaration } from '../../syntax/statements/index.ts';
+import type { NodeOf } from '../../syntax/tree/node.ts';
 import type { AnchoredSpan } from '../../syntax/tree/positions.ts';
 import { qualifiedNameOf, spelledType } from './names.ts';
 
@@ -123,7 +123,7 @@ export function rootInstance(
  */
 export interface AsyncFit {
   readonly owner: BodyOwner;
-  readonly site: ValueSite;
+  readonly site: NodeOf<string>;
   readonly type: FunctionType;
   readonly made: FunctionType;
 }

@@ -7,7 +7,7 @@
  * - The entry takes the elements as parameters, and builds the pack's variable, the tuple, from
  *   them (functions/).
  * - A call passes a pack's arguments as single values, and a spread of a pack's value as its
- *   elements (emit-call.ts; constructs/expressions/calls.ts for a function value's call).
+ *   elements (emit-call.ts; ../flow/operations.ts for a function value's call).
  */
 
 import type { Register } from '../../../definition/operands.ts';
@@ -24,7 +24,7 @@ export function packElements(concrete: Type): readonly Type[] {
 
 /**
  * The elements of the pack's tuple in `tuple`, of the `type` an instantiation gives, each read by
- * position at `span`, as `t.0` reads one (constructs/expressions/literals/tuples.ts).
+ * position at `span`, as `t.0` reads one.
  */
 export function packElementsOf(
   context: CodeContext,

@@ -1,6 +1,6 @@
 /**
- * Optional chains (§4), as lowering builds them (lowering/values/optionals.ts `Chains`): `a?.b.c`
- * meets `none` at its `?.` and gives `none` without running the links after it.
+ * Optional chains (§4): `a?.b.c` meets `none` at its `?.` and gives `none` without running the
+ * links after it.
  *
  * - The outermost link opens the chain. A part of a link that is no step target (an argument, an
  *   index's key) is no part of the chain, and starts any chain of its own.

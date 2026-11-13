@@ -1,38 +1,30 @@
 /**
- * What lowering one function works through, as an interface, so the per-construct modules depend
- * on it and never on each other (the parser's and the checker's seam, again): expression and
- * statement handlers recurse through the context, and functions/ wires them.
+ * What lowering one entry works through, as an interface, so the modules writing its code depend
+ * on it and never on each other: functions/ composes it, and a flow is written through it
+ * (flow/writer.ts).
  *
- * Code is linear register code (docs/arch/definition.md, "Frames"). Every expression lowers to the
- * register that holds its value; a statement lowers to instructions alone. What lowering one body
- * keeps track of lives in per-concern units (the code written, variables' registers, hold scopes,
- * loops), so a feature adds a unit, not methods here.
+ * Code is linear register code (docs/arch/definition.md, "Frames"). What a body runs and releases
+ * is its flow's (checker surface/flow-ir.ts); what lowering one entry keeps track of beside it
+ * lives in per-concern units (the code written, variables' registers).
  */
 
 import type { FunctionId, Register } from '../../definition/operands.ts';
 import type { Value } from '../../definition/values/values.ts';
-import type { Entity } from '../binder/entities.ts';
 import type { Checker } from '../checker/check.ts';
-import type { CheckedBody, ValueSite } from '../checker/surface/checked-body.ts';
-import type { FieldRead, FieldReading } from '../checker/surface/checked-field.ts';
-import type { CheckedPattern } from '../checker/surface/checked-pattern.ts';
-import type { ImplicitRole, ResolvedCall, ResolvedSite } from '../checker/surface/resolved-call.ts';
+import type { CheckedBody } from '../checker/surface/checked-body.ts';
+import type { ResolvedCall } from '../checker/surface/resolved-call.ts';
 import type { Fit } from '../checker/types/fitting/fit/index.ts';
 import type { Type } from '../checker/types/type/index.ts';
 import type { ModuleId } from '../program/program.ts';
 import type { FunctionDeclaration } from '../syntax/declarations/index.ts';
-import type { Expression, FieldHeader, Lambda } from '../syntax/expressions/index.ts';
-import type { Pattern } from '../syntax/patterns.ts';
-import type { Block, Statement } from '../syntax/statements/index.ts';
-import type { Identifier, Invalid, NodeOf } from '../syntax/tree/node.ts';
+import type { Lambda } from '../syntax/expressions/index.ts';
+import type { NodeOf } from '../syntax/tree/node.ts';
 import type { AnchoredSpan } from '../syntax/tree/positions.ts';
 import type { ClosedCall } from './calls/closed-calls.ts';
-import type { HoldScopes } from './constructs/statements/holds.ts';
-import type { LoopStack } from './constructs/statements/loops.ts';
-import type { VariableRegisters } from './constructs/statements/variables.ts';
+import type { VariableRegisters } from './flow/variables.ts';
 import type { CodeWriter } from './functions/code-writer.ts';
+import type { FieldPassStep } from './tables/instances.ts';
 import type { DefinitionTables } from './tables/tables.ts';
-import type { OptionalChains } from './values/optionals.ts';
 
 /**
  * What writing code takes, with or without a checked body behind it: the code written, the tables
@@ -45,54 +37,28 @@ export interface FunctionContext {
   readonly checker: Checker;
   readonly tables: DefinitionTables;
   readonly module: ModuleId;
-  /** The body, as the passes of the field loops being lowered read it (§4). */
+  /** The body, as the passes of the field loops being written read it (§4). */
   readonly body: CheckedBody;
   /**
-   * What the entry being lowered produces, which a `?` returns an `Err` of (§3.12): a lambda's or
-   * local function's own, not its owner's.
-   */
-  readonly result: Type;
-  /** Lowers `node`; the register holding its value, converted as the checker found (§2). */
-  readonly expression: (node: Expression) => Register;
-  /**
    * `value`, of `type`, given at `site`, converted as `fit` says (§2, §3.10, §3.14): the one place
-   * a value the checker found converted is, whether an expression's, an assigned part's or a `Unit`
-   * with no expression.
+   * a value the checker found converted is.
    */
-  readonly fitted: (value: Register, type: Type, fit: Fit, site: ValueSite) => Register;
+  readonly fitted: (value: Register, type: Type, fit: Fit, site: NodeOf<string>) => Register;
   /**
-   * Runs `lower` reading the body as the pass of the field loop `header` heads that visits `field`
-   * reads it (§4), its calls closed and its nested functions keyed in that pass; what it gives.
+   * Runs `write` reading the body as the field loops' `passes`, outermost first, read it (§4), its
+   * calls closed and its nested functions keyed there; what it gives.
    */
-  readonly inFieldPass: <Lowered>(
-    header: FieldHeader,
-    field: string,
-    lower: () => Lowered,
-  ) => Lowered;
-  /** Lowers a block; the register holding its value (unit when it ends in a statement). */
-  readonly block: (node: Block) => Register;
-  readonly statement: (node: Statement | Invalid) => void;
-  readonly entityOf: (name: Identifier) => Entity | undefined;
-  /** The type the checker found for `node`; lowering reads only what was checked. */
-  readonly typeOf: (node: Expression) => Type;
-  /** How the checker found the field read `access` reaches its field. */
-  readonly fieldReadOf: (reading: FieldReading) => FieldRead;
-  /** A `match` case's or `is`'s pattern as checked. */
-  readonly patternOf: (pattern: Pattern) => CheckedPattern;
-  /** The call the checker resolved at `site`, closed here (calls/closed-calls.ts). */
-  readonly callAt: (site: ResolvedSite) => ClosedCall;
-  /** `call`, one the checker recorded with no site, closed here. */
+  readonly inFieldPasses: <Written>(
+    passes: readonly FieldPassStep[],
+    write: () => Written,
+  ) => Written;
+  /** `call`, as the checker resolved it, closed here (calls/closed-calls.ts). */
   readonly closed: (call: ResolvedCall) => ClosedCall;
-  /** The call the checker made for `node` in `role`, closed here. */
-  readonly implicitCallAt: (node: NodeOf<string>, role: ImplicitRole) => ClosedCall;
   /** The function-table entry of a lambda or local function in this body (§3.14). */
   readonly nestedIndex: (node: Lambda | FunctionDeclaration) => FunctionId;
   /** A fresh register holding the constant `value`. */
   readonly constant: (value: Value, span: AnchoredSpan) => Register;
-  /** The function's code: registers, instructions and labels. */
+  /** The entry's code: registers, instructions and labels. */
   readonly code: CodeWriter;
   readonly variables: VariableRegisters;
-  readonly holds: HoldScopes;
-  readonly loops: LoopStack;
-  readonly chains: OptionalChains;
 }

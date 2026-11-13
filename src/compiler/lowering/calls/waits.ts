@@ -18,14 +18,10 @@ import { rootInstance } from '../tables/instances.ts';
 import { emitCall } from './emit-call.ts';
 
 /** A case of a wait: hands its resolver, in `done`, to what it waits on. */
-export type WaitCase = (done: Register) => void;
+type WaitCase = (done: Register) => void;
 
 /** Opens a wait on `cases`, by position; the register of the wait. */
-export function openWait(
-  context: CodeContext,
-  cases: readonly WaitCase[],
-  span: AnchoredSpan,
-): Register {
+function openWait(context: CodeContext, cases: readonly WaitCase[], span: AnchoredSpan): Register {
   const { code } = context;
   const wait = code.wait(span);
   for (const [position, handOver] of cases.entries()) {
