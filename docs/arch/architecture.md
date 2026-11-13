@@ -156,8 +156,10 @@ src/
                                                                  by what a value holds, types/properties/held.ts, through the checker's `externHeldOf`; and
                                                                  static lifetimes, the cycles reaching a disposable it rejects, `checker.reachesDisposable`:
                                                                  lifetimes.ts the entries over functions and their SCC groups, type-reach.ts relevance and
-                                                                 the declaration graph, summary.ts summaries, composition.ts summaries
-                                                                 bound and joined, analysis/ one body's reach over the flow IR,
+                                                                 the declaration graph, summary.ts summaries (one form, `summaryOf`),
+                                                                 composition.ts summaries bound and joined, reach-state.ts the reach at
+                                                                 one point, on rows of bits (node-relation.ts), analysis/ one body's
+                                                                 reach over the flow IR (reach-pairs.ts: the pairs its types allow),
                                                                  declared.ts defaults, context constants and `dispose`, dispatch.ts calls through `any`,
                                                                  reports.ts the diagnostics),
                                                                  expansion/ (generics needing endlessly many instantiations), kinds/ (the data rule: what a
