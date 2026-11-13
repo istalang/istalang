@@ -64,7 +64,8 @@ Each root cause below explains a family of the ranked findings; fixing the root 
 ### 1. [high] The flow IR builder and lowering are two lowerings of every construct  **[L][2×: rules, lead]**
 - **In progress** (option A: lowering reads the flow IR). Done (`2128668b..2b81dee1`): every flow value typed (the punned
   `type: undefined` bug), spreads read by field name, one `presentOr`, one `callSubstitution`, the flow IR in the checker's
-  surface. Next: the IR made exact (A3–A7), then lowering built from it.
+  surface. The IR made exact (`83006244..4c62810b`): every branch says what it tests, every compute what it computes,
+  releases where lowering releases, field passes, `select` holds and literal spreads. Next: lowering built from it (B2b).
 - where: `checker/rules/flow/build/{calls,literals,statements,scopes,chains,control}.ts` vs
   `lowering/constructs/{expressions,statements,parts}/`; clone pairs in `raw/clones45.txt` (`flow/build/literals.ts:73-127`
   ~ `lowering/.../structs.ts:90-96`, `collections.ts:74-112`; `flow/build/calls.ts:194-207` ~ `lowering/.../calls.ts:161-171`).
@@ -316,6 +317,8 @@ that are test seams (unexporting would copy knowledge or drop property tests).
 - Comments over 100 columns, which Biome doesn't check (`tsm wrap-comments`).
 - Lifetimes reports a false write cycle for names bound from an input's parts (`const a = p.a; const b = p.b; a->next = b`)
   while `p.a->next = p.b` is accepted.
+- `runtime/lifetimes/shared-values.test.ts` is flaky: a seed can generate `xs.pop()` ×3 then `xs[0] = 9`, which rightly
+  panics.
 - Fixed on the way: a trait called as a function was accepted silently and crashed lowering (`8a578aee`).
 
 ## Rejected proposals
