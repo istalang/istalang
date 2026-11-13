@@ -35,7 +35,7 @@ import type { NodeOf } from '../../../syntax/tree/node.ts';
 import type { CheckerContext, CheckerNote } from '../../contexts/context.ts';
 import type { FlowFunction } from '../../surface/flow-ir.ts';
 import { type FunctionCall, functionCallsWithin } from '../../surface/resolved-call.ts';
-import { substitutionOf } from '../../surface/witness-closing.ts';
+import { callSubstitution } from '../../surface/witness-closing.ts';
 import { substitute } from '../../types/parts/substitution.ts';
 import type { Type } from '../../types/type/index.ts';
 import { flowsBuiltFor } from '../flow/build/index.ts';
@@ -358,11 +358,7 @@ export class Lifetimes {
 
 /** `type`, written in `call`'s function, as `call` instantiates it. */
 function substitutedIn(checker: CheckerContext, type: Type, call: FunctionCall): Type {
-  const substitution = substitutionOf({
-    declaration: call.function,
-    typeArguments: call.typeArguments,
-  });
-  return substitute(type, substitution, checker.typeRules);
+  return substitute(type, callSubstitution(call), checker.typeRules);
 }
 
 /** The constants of a module's `items`: its context constants and its top-level ones. */

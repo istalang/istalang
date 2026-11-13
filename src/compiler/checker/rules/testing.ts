@@ -24,7 +24,7 @@ import { languageModules, wellKnown } from '../../../foundation/language/well-kn
 import { testingFunctions } from '../../../foundation/language/well-known/testing.ts';
 import type { ModuleId } from '../../program/program.ts';
 import { constructedVariant } from '../../syntax/declarations/field-defaults.ts';
-import { type FunctionDeclaration, typeParametersOf } from '../../syntax/declarations/index.ts';
+import type { FunctionDeclaration } from '../../syntax/declarations/index.ts';
 import { argumentValue } from '../../syntax/expressions/arguments.ts';
 import type { Call } from '../../syntax/expressions/calls.ts';
 import type { Expression } from '../../syntax/expressions/index.ts';
@@ -44,7 +44,8 @@ import {
   type ResolvedCall,
   type ResolvedSite,
 } from '../surface/resolved-call.ts';
-import { substitute, substitutionFor } from '../types/parts/substitution.ts';
+import { callSubstitution } from '../surface/witness-closing.ts';
+import { substitute } from '../types/parts/substitution.ts';
 import { isHandleType } from '../types/properties/handles.ts';
 import { kindAdmits, kindOfFunction } from '../types/type/function-kinds.ts';
 import type { Type } from '../types/type/index.ts';
@@ -97,14 +98,10 @@ function checkTarget(context: BodyContext, site: Call, mock: FunctionCall): Expr
     return undefined;
   }
   const [taken] = context.checker.parametersOf(mock.function);
-  const substitution = substitutionFor(
-    typeParametersOf(mock.function.typeParameters),
-    mock.typeArguments,
-  );
   const expected =
     taken === undefined
       ? undefined
-      : substitute(taken.type, substitution, context.checker.typeRules);
+      : substitute(taken.type, callSubstitution(mock), context.checker.typeRules);
   const fit =
     expected === undefined ? undefined : context.checker.fitOf(context.typeOf(target), expected);
   if (fit?.conversion.kind === 'async') {

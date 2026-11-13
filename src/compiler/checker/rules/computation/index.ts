@@ -44,7 +44,12 @@ import type { CheckedConstant } from '../../check.ts';
 import type { CheckerContext } from '../../contexts/context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import type { CheckedBody, FieldSource } from '../../surface/checked-body.ts';
-import { type ConstantForm, durationForm, formSemantics } from '../../surface/constant-form.ts';
+import {
+  type ConstantForm,
+  durationForm,
+  formAt,
+  formSemantics,
+} from '../../surface/constant-form.ts';
 import type { FunctionCall } from '../../surface/resolved-call.ts';
 import { isExact } from '../../types/fitting/fit/index.ts';
 import { type Substitution, substitute, substitutionFor } from '../../types/parts/substitution.ts';
@@ -313,13 +318,11 @@ class Computation {
   /** The field a spread value gives, which must itself compute to a struct. */
   #spreadField(source: { readonly from: Expression; readonly field: string }): Outcome {
     const whole = this.of(source.from);
-    if (whole.kind !== 'computed') {
-      return whole;
+    if (whole.kind !== 'computed' || whole.form.kind !== 'struct') {
+      return whole.kind === 'computed' ? unknown : whole;
     }
-    const { form } = whole;
-    const fields = form.kind === 'struct' ? this.#scope.checker.fieldsOf(form.type) : undefined;
-    const index = fields?.findIndex(({ name }) => name === source.field) ?? -1;
-    const field = form.kind === 'struct' ? form.fields[index] : undefined;
+    const step = { kind: 'field', of: whole.form.type, name: source.field } as const;
+    const field = formAt(whole.form, [step], (type) => this.#scope.checker.fieldsOf(type));
     return field === undefined ? unknown : computed(field);
   }
 
