@@ -128,15 +128,20 @@ case in `test/cyclic-programs.ts`, and the soups now build the helper shapes tha
 C4 was to remove these with closures' captures and field labels; it is editor performance only,
 and the rule stays conservative (design.md §5.6, §5.7; decided 2026-11-12). Each has a workaround.
 
-- **FormBuilder's `run`** (`forms.ista`, `view.draw(Scope{data: before, ctx}, &out)`). The loop
-  awaits `out.waits`' closures, which the drawing's witnesses made (`peek`'s
-  `async fn(): task->value = await eval(sc)`), and they come back out of the array as unknown
-  function values reaching the scope and the tasks. That unseen code, and the suspends after it,
-  relate the model, the view, the context and the inboxes by types, since `M`, `C` and `any View`
-  may reach anything. Then the scope's data may reach the view's parts, and the dispatched
-  witnesses' requirements fail. Workaround: queue what is waited for as data (the task, its
-  `eval` and its scope) rather than closures, and await it in known code. `test/examples.test.ts`
-  marks FormBuilder `it.fails` until its rewrite.
+- **FormBuilder's `run`**, rewritten (2026-11-13); it checks clean, in minutes (tracker P52).
+  Its drawing collected handles and closures, and a task's run wrote back into the task holding
+  its future. Four more patterns it met, each with the workaround it took:
+  - **A value a `WeakRef` gives, used in a generic run** (`events.deref()` beside a cell of
+    `(Sc, T)`): the value relates to everything live by types, and a type parameter may hold it.
+    Workaround: the run notifies no one; the loop finds the runs going on through the view tree
+    (`View.runs`) and races them with `futures.first`.
+  - **One strong handle reached by several tasks' runs** (one inbox passed to each): the second
+    task's write is reported. Workaround: the same.
+  - **A future taken as an argument** (`_run(task, eval(sc))`): a future may hold anything.
+    Workaround: pass the `sendable` function and its argument, and call it in the run.
+  - **A plain closure, `any` value or inbox in a struct written every pass** (`Drawing`): every
+    handle written into it is checked against them. Workaround: values alone (flags, the pass's
+    number, the keys drawn), and routing through the view tree (`View.route`).
 - **`runtime.delegate`'s tests** (`src/stdlib/runtime/delegate.test.ts`, two programs). Each
   writes a delegated job's future into a context constant, `kept`, from a function it gives
   `rt.call`. That function escapes, so its requirement that `_jobs` not reach `kept` is checked by

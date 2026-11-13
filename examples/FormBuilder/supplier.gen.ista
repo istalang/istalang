@@ -604,7 +604,7 @@ ista fn supplierView(m: SupplierModel) -> any View<Scope<Group<SupplierModel>.Se
             widget: Prop.Fixed(FieldWidget.Autocomplete("Type a name"))
             label: Prop.Fixed("Account manager")
             checks: [forms.answered()]
-            options: Options.Search(
+            options: forms.search(
               from: async fn(sc, search): {
                 const ctx = struct{search, for k, v in ...sc.ctx: [k]: v}
                 const data = sc.data

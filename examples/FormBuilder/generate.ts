@@ -1004,7 +1004,7 @@ class ViewGen {
         .map((v) => `const ${v} = sc.${v}`)
         .join('\n')}\n${rowsBody}`;
       const head = awaits(body) ? 'async fn(sc, search)' : 'fn(sc, search)';
-      return this.call('Options.Search', [
+      return this.call('forms.search', [
         ['from', `${head}: {\n    ${indent(body, 4)}\n}`],
         ['resolve', this.prop(sc, { expr: o.resolve }, pend)],
         ['same', `fn(a, b): ${snapshot ? 'a.id == b.id' : 'a == b'}`],

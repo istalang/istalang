@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: examples/FormBuilder
 last_verified: 2026-11-05
-last_updated: 2026-11-11
+last_updated: 2026-11-13
 tags: [form-builder, specification, istalang]
 ---
 
@@ -351,7 +351,7 @@ Its rules:
 - **Options.**
   - Static options become `Options.Items`.
   - Options from rows become `Options.Rows`, where `from` is `[for row in <from>: Choice{value: <value>, label: <label>}]`.
-  - With a search widget they become `Options.Search`, whose `from` takes the typed text and widens `ctx` with `const ctx = struct{search, for k, v in ...sc.ctx: [k]: v}`.
+  - With a search widget they become `Options.Search`, built by `forms.search`, which makes the task its results run in. Their `from` takes the typed text and widens `ctx` with `const ctx = struct{search, for k, v in ...sc.ctx: [k]: v}`.
 - **Templates.** A message template becomes a template literal with each `${…}` wrapped in `forms.text(…)`. If the form translates it, it becomes ``forms.t(translations, ctx.user.lang, "<original>", `<rendered>`, [forms.text(arg0), …])``. A string literal that has a translation (a label, a section title) becomes such a call too.
 
 ## 6. The runtime
@@ -378,18 +378,17 @@ Every model node implements `FormNode`, with associated types `Data` and `Seen` 
 
 ### 6.2 The view
 
-Every view node implements `View<Sc>`, with `ista fn draw(sc, &out) -> Array<Node>`. Drawing never awaits, because each await of a live run ends a segment, which costs more than the drawing. It returns zero nodes when hidden, a `Loading` node while waiting, and otherwise its node, and it records in `out`:
-- inputs to route events to, by key;
-- lists to add rows to and remove rows from;
-- whether everything is valid;
-- which `Hidden`s were shown;
-- the runs the form waits for.
+Every view node implements `View<Sc>`:
+- `ista fn draw(sc, &out) -> Array<Node>`. Drawing never awaits, because each await of a live run ends a segment, which costs more than the drawing. It returns zero nodes when hidden, a `Loading` node while waiting, and otherwise its node. It marks each drawn `Hidden` shown, and records in `out` only values: whether everything is valid, whether a run goes on or the form waits for one, and the keys of the inputs, searches and lists it drew. So no pass writes a handle into `out`, and none closes a cycle (spec §7).
+- `ista fn route(event) -> Bool` applies an event meant for its key, or passes it on to its children, a variant only to its active case.
+- `ista fn runs(pass, waited) -> Array<Future>` gives the runs going on of the tasks drawing pass `pass` wanted, of tasks the form waits for alone when `waited`. Each pass is numbered, and stamps every task it wants.
 
 The view nodes are `FieldView`, `RepeatView`, `VariantView` (with `CaseView`s), `LayoutView`, `ScopedView` (which moves into another scope) and `DynamicView`.
 
-**Props.** `Prop<Sc, T>` is `Fixed`, `Computed` (a lambda) or `Awaited` (an async lambda with its pending behaviour and a `Task`).
-- **Pending `form`:** `peek()` returns the value its task kept for the current scope. For a new scope it queues the lambda's run in `out`, which the loop awaits before drawing again, so the whole form waits.
-- **Pending `node` / `hidden`:** `peek()` starts the lambda in its task when the scope it last ran with differs from the current one, and returns the task's value (`none` while running). The task sends `Resolved` to the events inbox when it finishes, which causes a redraw. Because the task re-runs only when its scope changes, a finished task never restarts on the redraw it caused. Sources cache, so re-running after a change is cheap.
+**Props.** `Prop<Sc, T>` is `Fixed`, `Computed` (a lambda) or `Awaited` (an async lambda with its pending behaviour and a `Task`). Its lambdas are `sendable`: they read the scope they are given and capture no handle, so a prop holds no code that could reach the view, its tasks or the drawing.
+- **A task** is for one scope at a time. When the scope changes it starts the lambda, unless its last run was for that scope, and a run for another scope stops. The run writes only a cell the task holds, the scope it ran for with its value, never the task itself, and tells no one it ended. Because the task re-runs only when its scope changes, a finished task never restarts on the redraw it caused. Sources cache, so re-running after a change is cheap.
+- **Pending `form`:** while its run goes on, `peek()` returns the value the task last ran for, and the drawing records that the form waits.
+- **Pending `node` / `hidden`:** while its run goes on, `peek()` returns `none`, and the drawing records that a run goes on.
 
 **Checks.**
 - `Check.Now` runs on every draw.
@@ -404,12 +403,12 @@ The view nodes are `FieldView`, `RepeatView`, `VariantView` (with `CaseView`s), 
 
 `forms.run(model, view, ctx, translations, events, views)`:
 
-1. **Draw.** Draw with scope `Scope{data: model.seen(), ctx}`. Await what the drawing queued, then draw again; and if drawing changed what `data` holds (a `Hidden` flipped, a computed value was written), draw again too, up to eight passes in all. That lets a `when` depend on another node's visibility. Exceeding the limit means the form's conditions cycle.
+1. **Draw.** Unshow the model's `Hidden`s, then draw with scope `Scope{data: model.seen(), ctx}`. Await the runs the form waits for that the pass wanted, then draw again; and if drawing changed what `data` holds (a `Hidden` flipped, a computed value was written), draw again too, up to eight passes in all. That lets a `when` depend on another node's visibility. Exceeding the limit means the form's conditions cycle.
 2. **Return.** If the form was submitted and the drawing is valid, return `model.read()`: the typed `Group<M>.Data`.
 3. **Send** the tree to the `views` inbox.
-4. **Wait** for the next event:
-   - `Set(key, value)` routes to the input registered under `key`, which parses the JSON value into its type.
-   - `Search(key, text)` stores the typed text. The field's options run again, as a queued run, whenever the text or the scope changed.
+4. **Wait** for the next event, or, while runs go on, for the first of the event and those runs (`futures.first`, then `Resolved`). An event whose key the last pass didn't draw is dropped. Otherwise:
+   - `Set(key, value)` routes, through the tree, to the field or variant drawn under `key`, which parses the JSON value into its type.
+   - `Search(key, text)` stores the typed text. The field's options run again, as a run the form waits for, whenever the text or the scope changed.
    - `AddRow` and `RemoveRow` change a list.
    - `Submit` marks the form submitted.
    - `Resolved` just redraws.
@@ -779,6 +778,7 @@ import (
   Orientation
   Gap
 ) from './forms'
+import * as runtime from 'runtime'
 import * as geo from './geo'
 import * as approvals from './approvals'
 import * as logic from './order'
@@ -827,7 +827,7 @@ fn orderModel() -> Group<OrderModel>: Group{
   }
 }
 
-fn orderView(m: OrderModel) -> any View<Scope<Group<OrderModel>.Seen, OrderCtx>>: LayoutView{
+ista fn orderView(m: OrderModel) -> any View<Scope<Group<OrderModel>.Seen, OrderCtx>>: LayoutView{
   key: "n1"
   parent: none
   widget: Prop.Fixed(
@@ -1000,7 +1000,12 @@ fn orderView(m: OrderModel) -> any View<Scope<Group<OrderModel>.Seen, OrderCtx>>
 
 # ═══════════ The entry point a workflow awaits ═══════════
 
-async fn orderForm(params: OrderParams, user: User, events: Inbox<FormEvent>, views: Inbox<Node>):
+ista async fn orderForm(
+  params: OrderParams
+  user: User
+  events: Inbox<FormEvent>
+  views: Inbox<Node>
+):
   const m = orderModel()
   await forms.run(m, orderView(m.fields), OrderCtx{params, user}, translations, events, views)
 ```

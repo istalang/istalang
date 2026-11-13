@@ -6,6 +6,7 @@
 
 import Inbox from 'inbox'
 import Decodable, Encodable from 'json'
+import * as futures from 'futures'
 import * as json from 'json'
 import * as regex from 'regex'
 import replaceAll from 'strings'
@@ -30,6 +31,7 @@ trait FormNode:
   fn seen(self: Self) -> Self.Seen
   fn read(self: Self) -> Result<Self.Data> # Err when something is unanswered
   fn load(self: Self, v: Self.Seen) -> Unit # fills from a value: default and computed rows
+  fn unshow(self: Self) -> Unit # every Hidden inside unshown, before a drawing pass marks them
 
 # One value. Shared: the model and every view writing it hold the same handle.
 shared struct Field<T>:
@@ -46,6 +48,7 @@ fn read<T>(self: Field<T>) -> Result<T>:
     case None: Err(Error{message: "unanswered", code: "unanswered"})
     case v: Ok(v)
 fn load<T>(self: Field<T>, v: T?) -> Unit: self->value = v
+fn unshow<T>(self: Field<T>) -> Unit: ()
 
 # Fields by name: an object in the data.
 struct Group<S is struct { [_] is FormNode }>:
@@ -61,11 +64,13 @@ fn seen<S is struct { [_] is FormNode }>(self: Group<S>) -> Group<S>.Seen: struc
 fn read<S is struct { [_] is FormNode }>(self: Group<S>) -> Result<Group<S>.Data>: Ok(struct{for f, node in ...self.fields: [f]: node.read()?})
 fn load<S is struct { [_] is FormNode }>(self: Group<S>, v: Group<S>.Seen) -> Unit:
   for f, node in ...self.fields: node.load(v[f])
+fn unshow<S is struct { [_] is FormNode }>(self: Group<S>) -> Unit:
+  for _, node in ...self.fields: node.unshow()
 
 # A repeat. R is the row's node: a Group, a single Field (a multiselect's choice), or a mounted form.
 shared struct List<R is FormNode>:
   rows: Array<ListRow<R>> = []
-  make: fn() -> R # a new row's nodes
+  make: sendable fn() -> R # a new row's nodes; it captures no handle, so a list holds no code
   count: Int = 0
   edited: Bool = false # rows added or removed by the user
   type Data = Array<R.Data>
@@ -83,6 +88,8 @@ fn read<R is FormNode>(self: List<R>) -> Result<Array<R.Data>>:
 fn load<R is FormNode>(self: List<R>, v: Array<R.Seen>) -> Unit:
   self->rows = []
   for x in v: self.add(none).node.load(x)
+fn unshow<R is FormNode>(self: List<R>) -> Unit:
+  for row in self->rows: row.node.unshow()
 fn add<R is FormNode>(self: List<R>, key: String?) -> ListRow<R>:
   self->count += 1
   const row = ListRow{key: key ?? `r${self->count}`, node: self->make()}
@@ -142,6 +149,8 @@ fn load<C is struct { [_] is FormNode }>(self: Variant<C>, v: Variant<C>.Seen) -
     match v.value[k]:
       case None: ()
       case x: g.load(x)
+fn unshow<C is struct { [_] is FormNode }>(self: Variant<C>) -> Unit:
+  for _, g in ...self.cases: g.unshow()
 
 # A node `when` can hide. Drawing sets `shown` when any view writing it is drawn.
 shared struct Hidden<N is FormNode>:
@@ -160,6 +169,9 @@ fn load<N is FormNode>(self: Hidden<N>, v: N.Seen?) -> Unit:
   match v:
     case None: ()
     case x: self->node.load(x)
+fn unshow<N is FormNode>(self: Hidden<N>) -> Unit:
+  self->shown = false
+  self->node.unshow()
 
 # A value kept out of the output (store "none"): expressions see it, validation checks it.
 shared struct Local<N is FormNode>:
@@ -172,6 +184,7 @@ fn read<N is FormNode>(self: Local<N>) -> Result<None>:
   self->node.read()?
   Ok(none)
 fn load<N is FormNode>(self: Local<N>, v: N.Seen) -> Unit: self->node.load(v)
+fn unshow<N is FormNode>(self: Local<N>) -> Unit: self->node.unshow()
 
 # A mounted dynamic form: data no expression outside it reads. Validated by its own runtime.
 shared struct Dynamic:
@@ -186,93 +199,128 @@ fn read(self: Dynamic) -> Result<String>:
     case None: Err(Error{message: "unanswered", code: "unanswered"})
     case v: Ok(v)
 fn load(self: Dynamic, v: None) -> Unit: ()
+fn unshow(self: Dynamic) -> Unit: ()
 
 struct FormSnapshot:
   id: String
   version: String
   module: String # a compiled form, loaded by the host
 
-# Lets drawing mark any Hidden as shown, whatever it wraps, and clear it before the next pass.
+# Lets drawing mark any Hidden as shown, whatever it wraps; the loop unshows the model's before
+# each pass (FormNode.unshow).
 trait Showable:
   fn show(self: Self)
-  fn hide(self: Self)
 fn show<N is FormNode>(self: Hidden<N>): self->shown = true
-fn hide<N is FormNode>(self: Hidden<N>): self->shown = false
 
 # ═════════════════════════ Props, scopes and tasks ═════════════════════════
 
 # A prop: a literal, a lambda over the scope, or an awaited lambda run as the node's pending says.
+# Its lambdas are sendable: they read the scope they are given and capture no handle, so a view's
+# props hold no code that could reach the view, its tasks or the drawing (§7).
 enum Prop<Sc, T>:
   Fixed(value: T)
-  Computed(eval: fn(Sc) -> T)
-  Awaited(pending: Pending, eval: ista async fn(Sc) -> T, task: Task<Sc, T>)
+  Computed(eval: sendable fn(Sc) -> T)
+  Awaited(pending: Pending, eval: sendable ista async fn(Sc) -> T, task: Task<Sc, T>)
 
 enum Pending:
   Form # the whole form waits: drawn again once it has its value
   Node # its own task: the node shows Loading
   Hidden # its own task: the node stays hidden
 
-ista fn awaited<Sc, T>(pending: Pending, eval: ista async fn(Sc) -> T) -> Prop<Sc, T>: Prop.Awaited(
-  pending: pending
-  eval: eval
-  task: new Task<Sc, T>{}
-)
+ista fn awaited<Sc, T>(pending: Pending, eval: sendable ista async fn(Sc) -> T) -> Prop<Sc, T>:
+  Prop.Awaited(pending: pending, eval: eval, task: new Task<Sc, T>{form: pending == Pending.Form})
 
-# An awaited expression's run, and its value. It runs again only when the scope it ran with changes,
+# An awaited expression's runs, and the last one's value. It runs again only when the scope changes,
 # so a finished task doesn't restart on the redraw it causes. Sources cache, so a rerun is cheap.
 shared struct Task<Sc, T>:
-  sc: Sc? = none
-  value: T? = none
-  done: Bool = false
+  form: Bool = false # the form waits for its runs
+  last: Shared<(Sc, T)?> = new Shared<(Sc, T)?>{value: none} # the scope a run ended for, and its value
+  wanted: Sc? = none # the scope the task is for now: its last run's, or its running one's
   running: Future<Unit, "ista">? = none # replacing it releases, and so stops, the old run
+  drawn: Int = 0 # the drawing pass that last wanted it
 
-# Declaring `dispose` is what makes a task disposable, and so something its run's `WeakRef` can
-# refer to: the run doesn't hold the task holding it, which would be a cycle (§7).
-ista fn dispose<Sc, T>(self: Task<Sc, T>): ()
+# What the task's last run gave, for whatever scope.
+ista fn lastValue<Sc, T>(self: Task<Sc, T>) -> T?:
+  match self->last->value:
+    case None: none
+    case (_, value): value
 
-# The value now, or none while pending. A Form prop keeps its value for the scope it ran with; for
-# a new scope it queues its run, which the loop awaits before drawing again (the form waits).
+# Whether the task's last run was for `sc`.
+ista fn has<Sc, T>(self: Task<Sc, T>, sc: Sc) -> Bool:
+  match self->last->value:
+    case None: false
+    case (s, _): s == sc
+
+# The task's value for `sc`: its last run's, or, while a run for `sc` goes on, the last value for
+# another scope when the form waits for it, else none.
+ista fn valueFor<Sc, T>(self: Task<Sc, T>, sc: Sc) -> T?:
+  if self.has(sc) or self->form: self.lastValue() else: none
+
+# Runs the task for `sc` unless it has or is running for it, and says in `out` what the pass waits
+# for. A run for another scope stops: replacing `running` releases it.
+ista fn _want<Sc, T>(task: Task<Sc, T>, sc: Sc, eval: sendable ista async fn(Sc) -> T, out: &Drawing) -> T?:
+  task->drawn = out.pass
+  if task->wanted != sc: {
+    task->wanted = sc
+    task->running = if task.has(sc): none else: _run(task->last, eval, sc)
+  }
+  if not task.has(sc):
+    if task->form: out.waiting = true
+    else: { out.running = true; out.valid = false }
+  task.valueFor(sc)
+
+# The run going on that pass `pass` wanted, if one is: of a task the form waits for alone when
+# `waited`.
+ista fn runs<Sc, T>(self: Task<Sc, T>, pass: Int, waited: Bool) -> Array<Future<Unit, "ista">>:
+  if self->drawn != pass or (waited and not self->form): return []
+  match self->wanted:
+    case None: []
+    case wanted:
+      if self.has(wanted): []
+      else:
+        match self->running:
+          case None: []
+          case run: [run]
+
+# The value now, or none while pending.
 ista fn peek<Sc, T>(self: Prop<Sc, T>, sc: Sc, out: &Drawing) -> T?:
   match self:
     case Fixed(value): value
     case Computed(eval): eval(sc)
-    case Awaited(Pending.Form, eval, task): {
-      if task->sc != sc:
-        out.waits.push(async fn(): {
-          task->value = await eval(sc)
-          task->sc = sc
-          task->done = true
-        })
-      task->value
-    }
-    case Awaited(_, eval, task): {
-      if task->sc != sc: {
-        task->sc = sc
-        task->value = none
-        task->done = false
-        task->running = _run(WeakRef(task), eval(sc), out.events)
-      }
-      if not task->done: out.valid = false
-      task->value
-    }
+    case Awaited(_, eval, task): _want(task, sc, eval, &out)
 
 ista fn evalNow<Sc, T>(self: Prop<Sc, T>, sc: Sc) -> T?:
   match self:
     case Fixed(value): value
     case Computed(eval): eval(sc)
-    case Awaited(_, _, task): task->value
+    case Awaited(_, _, task): task.valueFor(sc)
 
 ista fn isHiddenPending<Sc, T>(self: Prop<Sc, T>) -> Bool:
   match self:
     case Awaited(Pending.Hidden, ...): true
     case _: false
 
-ista async fn _run<Sc, T>(task: WeakRef<Task<Sc, T>>, call: Future<T, "ista">, events: Inbox<FormEvent>) -> Unit:
-  const value = await call
-  match task.deref():
-    case None: ()
-    case held: { held->value = value; held->done = true }
-  events.send(FormEvent.Resolved)
+# The runs going on of the props pass `pass` drew (Task.runs).
+ista fn _runs<Sc, T>(p: Prop<Sc, T>?, pass: Int, waited: Bool) -> Array<Future<Unit, "ista">>:
+  match p:
+    case Awaited(task: task, ...): task.runs(pass, waited)
+    case _: []
+
+# The runs going on in `views` that pass `pass` drew.
+ista fn _viewRuns<Sc>(views: Array<any View<Sc>>, pass: Int, waited: Bool) -> Array<Future<Unit, "ista">>:
+  let all: Array<Future<Unit, "ista">> = []
+  for v in views: all = [...all, ...v.runs(pass, waited)]
+  all
+
+# A task's run. It writes only the cell it ends into, never the task holding it, and tells no one
+# it ended: the loop waits for the runs going on (View.runs). So it holds nothing that holds it
+# (§7). It calls `eval` itself, rather than taking its call's future, which may hold anything.
+ista async fn _run<Sc, T>(
+  last: Shared<(Sc, T)?>
+  eval: sendable ista async fn(Sc) -> T
+  sc: Sc
+) -> Unit:
+  last->value = (sc, await eval(sc))
 
 # The scope of a form's top level. Inside repeats, variants and mounts, generated code defines
 # wider scopes ({ data, ctx, item }) and moves into them through a ScopedView.
@@ -284,10 +332,17 @@ struct Scope<D, C>:
 
 enum Check<Sc, T>:
   Now(test: ista fn(Sc, T?) -> String?) # an error message, or none; on every draw
-  Later(test: ista async fn(Sc) -> String?, pending: ista fn(Sc) -> String, task: Task<Sc, String?>)
+  Later(
+    test: sendable ista async fn(Sc) -> String?
+    pending: sendable fn(Sc) -> String
+    task: Task<Sc, String?>
+  )
   # a rule with `pending` (an approval): its own task once the user submits; submit waits
 
-ista fn later<Sc, T>(test: ista async fn(Sc) -> String?, pending: fn(Sc) -> String) -> Check<Sc, T>:
+ista fn later<Sc, T>(
+  test: sendable ista async fn(Sc) -> String?
+  pending: sendable fn(Sc) -> String
+) -> Check<Sc, T>:
   Check.Later(test: test, pending: pending, task: new Task<Sc, String?>{})
 
 enum Format:
@@ -443,11 +498,14 @@ fn t(
 # ═════════════════════════ The view: a static tree, built once ═════════════════════════
 
 # A view node in scope Sc. It draws zero nodes when hidden, a Loading node while waiting, and
-# records in `out` what the loop needs: errors, inputs to route events to, rows to add, and what the
-# form waits for. Drawing never awaits: each await of a live run ends a segment, which costs more
-# than the drawing.
+# records in `out` what the loop needs: whether everything is valid, the keys events may be routed
+# to, and whether a run goes on or the form waits for one. Drawing never awaits: each await of a
+# live run ends a segment, which costs more than the drawing.
 trait View<Sc>:
   ista fn draw(self: Self, sc: Sc, out: &Drawing) -> Array<Node>
+  ista fn route(self: Self, event: FormEvent) -> Bool # applies an event meant for its key
+  # The runs going on in it that pass `pass` drew: of tasks the form waits for alone when `waited`.
+  ista fn runs(self: Self, pass: Int, waited: Bool) -> Array<Future<Unit, "ista">>
 
 struct Item<Sc, T>:
   value: T
@@ -460,12 +518,20 @@ enum Options<Sc, T>:
   Items(items: Array<Item<Sc, T>>)
   Rows(from: Prop<Sc, Array<Choice<T>>>, resolve: Prop<Sc, Bool>)
   # The widget provides ctx.search: `from` takes the typed text. `same` tells whether two values
-  # are the same choice (a snapshot is a whole row, compared by id).
+  # are the same choice (a snapshot is a whole row, compared by id). The form waits for a search.
   Search(
-    from: ista async fn(Sc, String) -> Array<Choice<T>>
+    from: sendable ista async fn(Sc, String) -> Array<Choice<T>>
     resolve: Prop<Sc, Bool>
-    same: fn(T, T) -> Bool
+    same: sendable fn(T, T) -> Bool
+    found: Task<(Sc, String), Array<Choice<T>>>
   )
+
+ista fn search<Sc, T>(
+  from: sendable ista async fn(Sc, String) -> Array<Choice<T>>
+  resolve: Prop<Sc, Bool>
+  same: sendable fn(T, T) -> Bool
+) -> Options<Sc, T>:
+  Options.Search(from, resolve, same, found: new Task<(Sc, String), Array<Choice<T>>>{form: true})
 
 enum Recompute:
   RowsEdited
@@ -486,9 +552,6 @@ shared struct FieldView<Sc, T>:
   checks: Array<Check<Sc, T>> = []
   options: Options<Sc, T>? = none
   search: String = "" # the text typed into a search widget
-  searchedSc: Sc? = none # the scope and text `found` was fetched for
-  searchedText: String = ""
-  found: Array<Choice<T>> = []
 
 ista fn _check<Sc, T>(
   checks: Array<Check<Sc, T>>
@@ -511,18 +574,33 @@ ista fn _check<Sc, T>(
       }
       case Later(test, pending, task): {
         if out.submitted: {
-          if task->sc != sc: {
-            task->sc = sc
-            task->value = none
-            task->done = false
-            task->running = _run(WeakRef(task), test(sc), out.events)
-          }
-          if not task->done: { out.valid = false; waiting.push(pending(sc)) }
-          elif task->value is String as msg: { out.valid = false; errors.push(msg) }
+          match _want(task, sc, test, &out):
+            case None: if not task.has(sc): waiting.push(pending(sc))
+            case msg: { out.valid = false; errors.push(msg) }
         }
       }
   }
   (errors, waiting)
+
+ista fn _checkRuns<Sc, T>(checks: Array<Check<Sc, T>>, pass: Int, waited: Bool) -> Array<Future<Unit, "ista">>:
+  let all: Array<Future<Unit, "ista">> = []
+  for c in checks:
+    match c:
+      case Later(task: task, ...): all = [...all, ...task.runs(pass, waited)]
+      case _: ()
+  all
+
+ista fn _optionRuns<Sc, T>(options: Options<Sc, T>?, pass: Int, waited: Bool) -> Array<Future<Unit, "ista">>:
+  match options:
+    case None: []
+    case Items(items): {
+      let all: Array<Future<Unit, "ista">> = []
+      for it in items: all = [...all, ..._runs(it.label, pass, waited)]
+      all
+    }
+    case Options.Rows(from, resolve): [..._runs(from, pass, waited), ..._runs(resolve, pass, waited)]
+    case Search(resolve: resolve, found: found, ...):
+      [...found.runs(pass, waited), ..._runs(resolve, pass, waited)]
 
 ista fn draw<Sc, T is Encodable & Decodable>(
   self: FieldView<Sc, T>
@@ -539,10 +617,8 @@ ista fn draw<Sc, T is Encodable & Decodable>(
         case false: return []
         case true: ()
     }
-  out.markShown(self->hide)
-  match self->field:
-    case None: ()
-    case f: out.inputs[self->key] = f
+  _show(self->hide)
+  out.drawn[self->key] = true
   # 2. Computed and default values.
   match self->value:
     case None: ()
@@ -563,7 +639,7 @@ ista fn draw<Sc, T is Encodable & Decodable>(
             f.load(v)
           }
     }
-  # 3. Options, then checks; then the node. Inputs register for events by key.
+  # 3. Options, then checks; then the node.
   let opts: Array<Option> = []
   let resolveFail = false
   match self->options:
@@ -589,16 +665,10 @@ ista fn draw<Sc, T is Encodable & Decodable>(
               case _: ()
           }
         }
-        case Search(from: from, resolve: resolve, ...): {
-          out.searches[self->key] = self
-          const text = self->search
-          if self->searchedSc != sc or self->searchedText != text:
-            out.waits.push(async fn(): {
-              self->found = await from(sc, text)
-              self->searchedSc = sc
-              self->searchedText = text
-            })
-          for ch in self->found: opts.push(Option{value: json.stringify(ch.value), label: ch.label})
+        case Search(from: from, resolve: resolve, found: found, ...): {
+          const typed = (sc, self->search)
+          const rows = _want(found, typed, fn((s, text)): from(s, text), &out) ?? []
+          for ch in rows: opts.push(Option{value: json.stringify(ch.value), label: ch.label})
           if self->field?->value != none: {
             match resolve.peek(sc, &out):
               case false: resolveFail = true
@@ -644,6 +714,36 @@ ista fn draw<Sc, T is Encodable & Decodable>(
     )
   ]
 
+ista fn route<Sc, T is Encodable & Decodable>(self: FieldView<Sc, T>, event: FormEvent) -> Bool:
+  match event:
+    case Set(key, value) if key == self->key: {
+      match self->field:
+        case None: ()
+        case f: f.setJson(value)
+      true
+    }
+    case Search(key: key, text: text, ...) if key == self->key: { self->search = text; true }
+    case _: false
+
+ista fn runs<Sc, T is Encodable & Decodable>(self: FieldView<Sc, T>, pass: Int, waited: Bool) -> Array<Future<Unit, "ista">>:
+  [
+    ..._runs(self->parent, pass, waited)
+    ..._runs(self->when, pass, waited)
+    ..._runs(self->widget, pass, waited)
+    ..._runs(self->label, pass, waited)
+    ..._runs(self->help, pass, waited)
+    ..._runs(self->value, pass, waited)
+    ..._runs(self->default, pass, waited)
+    ..._checkRuns(self->checks, pass, waited)
+    ..._optionRuns(self->options, pass, waited)
+  ]
+
+# Marks a drawn Hidden shown; the loop unshows the model's Hiddens before each pass.
+ista fn _show(h: (any Showable)?):
+  match h:
+    case None: ()
+    case s: s.show()
+
 shared struct RepeatView<Sc, R is FormNode>:
   key: String
   parent: Prop<Sc, ParentUi>?
@@ -684,7 +784,7 @@ ista fn draw<Sc, R is FormNode>(
         case false: return []
         case true: ()
     }
-  out.markShown(self->hide)
+  _show(self->hide)
   match self->rows:
     case None: ()
     case rProp: {
@@ -733,7 +833,7 @@ ista fn draw<Sc, R is FormNode>(
     case Ok(d): d
     case Err(...): none
   const errors, _ = _check(self->checks, sc, dataVal, self->list->edited, &out)
-  if self->canAdd: out.lists[self->key] = self
+  if self->canAdd: out.drawn[self->key] = true
   [
     Node.Repeat(
       key: self->key
@@ -745,6 +845,33 @@ ista fn draw<Sc, R is FormNode>(
       errors: errors
     )
   ]
+
+ista fn route<Sc, R is FormNode>(self: RepeatView<Sc, R>, event: FormEvent) -> Bool:
+  match event:
+    case AddRow(key) if key == self->key and self->canAdd: { self.addRow(); true }
+    case RemoveRow(key, row) if key == self->key and self->canAdd: { self.removeRow(row); true }
+    case _: {
+      for row in self->list->rows:
+        match self->views.get(row.key):
+          case None: ()
+          case v: if v.route(event): return true
+      false
+    }
+
+ista fn runs<Sc, R is FormNode>(self: RepeatView<Sc, R>, pass: Int, waited: Bool) -> Array<Future<Unit, "ista">>:
+  let all = [
+    ..._runs(self->parent, pass, waited)
+    ..._runs(self->when, pass, waited)
+    ..._runs(self->widget, pass, waited)
+    ..._runs(self->label, pass, waited)
+    ..._checkRuns(self->checks, pass, waited)
+    ..._runs(self->rows, pass, waited)
+  ]
+  for row in self->list->rows:
+    match self->views.get(row.key):
+      case None: ()
+      case v: all = [...all, ...v.runs(pass, waited)]
+  all
 
 # A variant. Each case body is wrapped by the generated code in a ScopedView that adds the
 # variable bound to that case's fields.
@@ -779,7 +906,7 @@ ista fn draw<Sc, C is struct { [_] is FormNode }>(
         case false: return []
         case true: ()
     }
-  out.markShown(self.hide)
+  _show(self.hide)
   match self.tagValue:
     case None: ()
     case tv: self.variant.tag.load(tv.peek(sc, &out))
@@ -807,7 +934,7 @@ ista fn draw<Sc, C is struct { [_] is FormNode }>(
     case None: none
     case l: l.peek(sc, &out)
   const errors, _ = _check(self.checks, sc, (), self.variant.tag->touched, &out)
-  out.inputs[self.key] = self.variant
+  out.drawn[self.key] = true
   [
     Node.Variant(
       key: self.key
@@ -820,6 +947,30 @@ ista fn draw<Sc, C is struct { [_] is FormNode }>(
       errors: errors
     )
   ]
+
+ista fn route<Sc, C is struct { [_] is FormNode }>(self: VariantView<Sc, C>, event: FormEvent) -> Bool:
+  match event:
+    case Set(key, value) if key == self.key: { self.variant.setJson(value); true }
+    case _: {
+      const active: String? = match self.variant.tag.seen():
+        case None: none
+        case a: a
+      for k, c in ...self.cases: if active == k and c.body.route(event): return true
+      false
+    }
+
+ista fn runs<Sc, C is struct { [_] is FormNode }>(self: VariantView<Sc, C>, pass: Int, waited: Bool) -> Array<Future<Unit, "ista">>:
+  let all = [
+    ..._runs(self.parent, pass, waited)
+    ..._runs(self.when, pass, waited)
+    ..._runs(self.widget, pass, waited)
+    ..._runs(self.label, pass, waited)
+    ..._checkRuns(self.checks, pass, waited)
+    ..._runs(self.default, pass, waited)
+    ..._runs(self.tagValue, pass, waited)
+  ]
+  for _, c in ...self.cases: all = [...all, ..._runs(c.label, pass, waited), ...c.body.runs(pass, waited)]
+  all
 
 struct LayoutView<Sc>:
   key: String
@@ -866,6 +1017,20 @@ ista fn draw<Sc>(self: LayoutView<Sc>, sc: Sc, out: &Drawing) -> Array<Node>:
     )
   ]
 
+ista fn route<Sc>(self: LayoutView<Sc>, event: FormEvent) -> Bool:
+  for ch in self.children: if ch.route(event): return true
+  false
+
+ista fn runs<Sc>(self: LayoutView<Sc>, pass: Int, waited: Bool) -> Array<Future<Unit, "ista">>:
+  [
+    ..._runs(self.parent, pass, waited)
+    ..._runs(self.when, pass, waited)
+    ..._runs(self.widget, pass, waited)
+    ..._runs(self.label, pass, waited)
+    ..._checkRuns(self.checks, pass, waited)
+    ..._viewRuns(self.children, pass, waited)
+  ]
+
 # Moves drawing into a wider or different scope: a repeat row ({ data, ctx, item }), a variant
 # case ({ data, ctx, pay }), or a mounted form (its own data, and its params as ctx).
 struct ScopedView<Sc, Sc2>:
@@ -887,9 +1052,19 @@ ista fn draw<Sc, Sc2>(self: ScopedView<Sc, Sc2>, sc: Sc, out: &Drawing) -> Array
         case false: return []
         case true: ()
     }
-  out.markShown(self.hide)
+  _show(self.hide)
   const sc2 = (self.scope)(sc)
   self.view.draw(sc2, &out)
+
+ista fn route<Sc, Sc2>(self: ScopedView<Sc, Sc2>, event: FormEvent) -> Bool: self.view.route(event)
+
+ista fn runs<Sc, Sc2>(self: ScopedView<Sc, Sc2>, pass: Int, waited: Bool) -> Array<Future<Unit, "ista">>:
+  [
+    ..._runs(self.parent, pass, waited)
+    ..._runs(self.when, pass, waited)
+    ..._runs(self.label, pass, waited)
+    ...self.view.runs(pass, waited)
+  ]
 
 # A mounted form chosen at run time. The host loads its compiled module; its data stays opaque.
 shared struct DynamicView<Sc>:
@@ -911,7 +1086,7 @@ ista fn draw<Sc>(self: DynamicView<Sc>, sc: Sc, out: &Drawing) -> Array<Node>:
         case false: return []
         case true: ()
     }
-  out.markShown(self->hide)
+  _show(self->hide)
   const parent: ParentUi? = match self->parent:
     case None: none
     case p: p.peek(sc, &out)
@@ -922,6 +1097,16 @@ ista fn draw<Sc>(self: DynamicView<Sc>, sc: Sc, out: &Drawing) -> Array<Node>:
   match form:
     case None: []
     case snap: { self->value->form = snap; [Node.Mount(key: self->key, parent: parent, label: label, form: snap)] }
+
+ista fn route<Sc>(self: DynamicView<Sc>, event: FormEvent) -> Bool: false # its own runtime's
+
+ista fn runs<Sc>(self: DynamicView<Sc>, pass: Int, waited: Bool) -> Array<Future<Unit, "ista">>:
+  [
+    ..._runs(self->parent, pass, waited)
+    ..._runs(self->when, pass, waited)
+    ..._runs(self->label, pass, waited)
+    ..._runs(self->schema, pass, waited)
+  ]
 
 # ═════════════════════════ Widgets (generated from the widget registry) ═════════════════════════
 # One enum per node kind, one variant per widget, its ui props as fields.
@@ -1044,12 +1229,9 @@ enum FormEvent:
   AddRow(key: String)
   RemoveRow(key: String, row: String)
   Submit
-  Resolved # a task finished: draw again
+  Resolved # a run going on ended: draw again
 
-# Anything an event can be routed to, whatever its type.
-trait Settable:
-  fn setJson(self: Self, value: String)
-
+# What an event to a field or a variant's picker writes, JSON-encoded.
 fn setJson<T is Decodable>(self: Field<T>, value: String):
   self->touched = true
   self->edited = true
@@ -1064,15 +1246,6 @@ fn setJson<C is struct { [_] is FormNode }>(self: Variant<C>, value: String):
     if value == `"${k}"` or value == k: { self.tag->value = k; self.tag->parseError = none; return }
   self.tag->parseError = "Invalid option"
 
-trait Searchable:
-  ista fn setSearch(self: Self, text: String)
-
-ista fn setSearch<Sc, T>(self: FieldView<Sc, T>, text: String): self->search = text
-
-trait Rows:
-  ista fn addRow(self: Self)
-  ista fn removeRow(self: Self, key: String)
-
 struct User: # the person filling in the form; from the platform
   id: String
   name: String
@@ -1080,21 +1253,25 @@ struct User: # the person filling in the form; from the platform
   role: String
   today: Date # in the person's time zone
 
-# What one drawing pass collects.
+# What one drawing pass finds: values alone, so nothing a pass writes into it can close a cycle
+# (§7). The loop routes events through the view tree to the keys a pass drew (View.route), and finds
+# the runs it waits for through it (View.runs).
 struct Drawing:
-  events: Inbox<FormEvent>
+  pass: Int # numbers the pass, which stamps each task it wants (Task.drawn)
   submitted: Bool
-  inputs: Map<String, any Settable> = [:]
-  searches: Map<String, any Searchable> = [:]
-  lists: Map<String, any Rows> = [:]
   valid: Bool = true # no errors, nothing pending
-  shown: Array<any Showable> = [] # Hiddens drawn this pass
-  waits: Array<ista async fn() -> Unit> = [] # runs the form waits for before drawing again
+  running: Bool = false # a run goes on: draw again once it ends
+  waiting: Bool = false # the form waits for a run: draw again once it ends, showing nothing before
+  drawn: Map<String, Bool> = [:] # the keys of the inputs, searches and lists drawn
 
-ista fn markShown(self: &Drawing, h: (any Showable)?):
-  match h:
-    case None: ()
-    case s: { s.show(); self.shown.push(s) }
+# The key an event is routed to.
+fn _keyOf(event: FormEvent) -> String?:
+  match event:
+    case Set(key, ...): key
+    case Search(key: key, ...): key
+    case AddRow(key): key
+    case RemoveRow(key, ...): key
+    case _: none
 
 # Runs a form until a valid submit, and returns its data, typed Group<M>.Data.
 ista async fn run<M is struct { [_] is FormNode }, C>(
@@ -1106,21 +1283,21 @@ ista async fn run<M is struct { [_] is FormNode }, C>(
   views: Inbox<Node>
 ) -> Group<M>.Data:
   let submitted = false
-  let shown: Array<any Showable> = []
+  let pass = 0
   while true: {
     # Draw until visibility settles and nothing is waited for: a `when` may depend on another node's
-    # visibility, and what a drawing queued in `waits` is awaited before drawing again.
-    let out = Drawing{events, submitted}
+    # visibility, and the runs a drawing waits for are awaited before drawing again.
+    let out = Drawing{pass, submitted}
     let tree: Array<Node> = []
     let before = model.seen()
-    for _ in 0..8: { # five redraws for `when` chains, and rounds of waits
-      for h in shown: h.hide()
-      out = Drawing{events, submitted}
+    for _ in 0..8: { # redraws for `when` chains, and rounds of the runs the form waits for
+      pass += 1
+      model.unshow()
+      out = Drawing{pass, submitted}
       tree = view.draw(Scope{data: before, ctx}, &out)
-      shown = out.shown
-      for w in out.waits: await w()
+      if out.waiting: for run in view.runs(pass, true): await run
       const after = model.seen()
-      if out.waits.length() == 0 and after == before: break
+      if not out.waiting and after == before: break
       before = after
     }
     if submitted and out.valid:
@@ -1128,12 +1305,13 @@ ista async fn run<M is struct { [_] is FormNode }, C>(
         case Ok(d): return d
         case Err(...): ()
     views.send(tree[0])
-    match await events.receive():
+    const runs = if out.running: view.runs(pass, false) else: []
+    const event = if runs.length() == 0: await events.receive() else: await select:
+      case events.receive() as e: e
+      case futures.first(runs): FormEvent.Resolved
+    match event:
       case Submit: submitted = true
       case Resolved: ()
-      case Set(key, value): _ = out.inputs.get(key)?.setJson(value)
-      case Search(key: key, text: text, ...): _ = out.searches.get(key)?.setSearch(text)
-      case AddRow(key): _ = out.lists.get(key)?.addRow()
-      case RemoveRow(key, row): _ = out.lists.get(key)?.removeRow(row)
+      case other: if out.drawn.get(_keyOf(other) ?? "") == true: _ = view.route(other)
   }
   panic("unreachable")

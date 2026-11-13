@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: examples/FormBuilder
 last_verified: 2026-11-06
-last_updated: 2026-11-06
+last_updated: 2026-11-13
 tags: [form-builder, alignment, specification, compiler]
 ---
 
@@ -237,3 +237,9 @@ Validation of `examples/FormBuilder` (`forms.ista`, `order.ista`, `supplier.ista
 - **Assumption:** A function returning `Future<Group<M>.Data>` can end with a `while true:` loop that returns via `return d` inside the loop.
 - **Spec (`docs/spec.md` §4):** `while` is always a statement of type `Unit` (a bare `true` is not a type-decided condition), so a block ending in `while true:` has type `Unit`.
 - **Change:** Added `panic("unreachable")` (of type `Never`) after the `while true:` loop in `forms.run`.
+
+### 27. No disposable on a cycle (static lifetimes) — **Fixed**
+
+- **Assumption:** A drawing can collect handles (inputs, lists, shown `Hidden`s) and closures (the runs the form waits for), and a task's run can write back into the task holding its future.
+- **Spec (`docs/spec.md` §7):** No disposable may be reachable from a cycle, and the checker rejects a write that may close one. A plain closure, an `any` value and a future may hold anything, and a value a `WeakRef` gives may be anything, so the checker can't see these as acyclic.
+- **Change:** `Drawing` holds values alone: flags, the pass's number and the keys it drew. Events reach their fields through the view tree (`View.route`), the model unshows its `Hidden`s before each pass (`FormNode.unshow`), and the loop finds the runs going on through the tree (`View.runs`), racing them with `futures.first`. Props' lambdas, a list's `make` and a search's `from` are `sendable`. A task's run writes a cell the task holds, never the task, and notifies no one. `generate.ts` builds search options with `forms.search`, which makes their task.
