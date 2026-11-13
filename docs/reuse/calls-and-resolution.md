@@ -69,7 +69,7 @@ tags: [reuse, checker, calls, resolution, overloads, traits, witnesses]
 ## One-way rules
 
 - Every resolved call is built through `callMade` (`src/compiler/checker/resolution/choosing/calls-made.ts`).
-- Extensible protocol calls (`iterate`, `setIndex`, `compare`, `includes`, `toString`, `onAwait`) use `implicitCall`, or `applyImplicitCall` and `recordImplicitCall`; prelude-owned helpers use `preludeCall`.
+- Extensible protocol calls (`iterate`, `setIndex`, `compare`, `includes`, `onAwait`) use `implicitCall`, or `applyImplicitCall` and `recordImplicitCall`; prelude-owned helpers use `preludeCall`.
 - Silent resolution without a written call site uses `silentCall`, or `callWithTypes` when type arguments are given (`silent-choice.ts`).
 - Which argument fills which parameter, strict or partial (a call not chosen yet, a call pattern, signature help), has one home: `binding.ts` (`bindArguments`, `argumentSlotsOf`); never a mapper of your own. `argumentsReach` and `writtenParameter` are known copies (`docs/audit/dry-review-2026-11-13.md`, finding 4).
 - A call is chosen, fitted and completed through `applyCall`/`completeCall` (`applied-call.ts`), never a pipeline of its own; a function value's call is one with a single candidate (`value-calls.ts` is a known copy, finding 5).

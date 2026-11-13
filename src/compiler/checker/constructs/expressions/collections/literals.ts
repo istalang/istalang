@@ -1,7 +1,6 @@
 /**
  * Array and map literals of `Array` and `Map` (§2, §3.8), whose items agree as an `if`'s branches
- * do (collections.ts), a spread among them settled once they agree, and ranges, the prelude's
- * `Range` of ints:
+ * do (collections.ts), a spread among them settled once they agree:
  *
  * - An array literal's spread gives its items where the literal's items are expected, so each is
  *   wrapped into `T?` as an element would be (§2), the fit recorded on the spread; a spread whose

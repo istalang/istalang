@@ -48,8 +48,8 @@ src/
                         how targets (statements/targets.ts), places (expressions/places.ts), optional chains (expressions/chains.ts), struct items and parameters
                         (expressions/parameters.ts: a name, a pattern, or both) read as written, the function a declaration's
                         fields read as, a variant's constructor (declarations/field-defaults.ts), a top-level function as what a host may
-                        start reads it (declarations/starts.ts), calls and the deferred call `g f(args)` (expressions/calls.ts), what a template stands for: its text, or the call a tag makes
-                        (expressions/literals/templates.ts), the literal an indented value's entries say it builds
+                        start reads it (declarations/starts.ts), calls and the deferred call `g f(args)` (expressions/calls.ts), a template's text
+                        when it has no values or tag (expressions/literals/templates.ts), what an indented value's entries say it builds
                         (expressions/literals/indented-values.ts), operator precedence (expressions/operators.ts); a folder per construct
                         whose nodes have readings beside them (declarations/, statements/, types/, expressions/), types/type-matches.ts
                         reading a type `match`'s `infer` variables
