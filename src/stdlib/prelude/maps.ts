@@ -1,16 +1,11 @@
 /**
  * The prelude's natives for maps (§3.8, §3.9, §3.10): reading, `&self` methods and indexing. Keys
- * are found by the built-in `==` (definition/values/equality.ts), and a map is an immutable value,
- * so a method taking `&self` builds the changed map and writes it back through its context.
+ * are found by the built-in `==` (definition/values/equality.ts). A map is a value, so a method
+ * taking `&self` changes it through its context, in place only when nothing else holds it.
  */
 
 import { parameterKey, referenceKey } from '../../definition/extern-key.ts';
-import {
-  entryPosition,
-  entryValue,
-  withEntry,
-  withoutEntry,
-} from '../../definition/values/equality.ts';
+import { entryPosition, entryValue } from '../../definition/values/equality.ts';
 import { mapValueOf, type Value } from '../../definition/values/values.ts';
 import { wellKnown } from '../../foundation/language/well-known/index.ts';
 import { type Native, type NativeContext, type Natives, Panic } from '../../runtime/natives.ts';
@@ -39,12 +34,8 @@ export const mapNatives = (keys: NativeKeys): Natives<NativeContext> => ({
     resultOptional(context, entryValue(mapValueOf(m), k ?? null)),
   [keys.of('has', map, keyType)]: hasKey,
   [keys.of('includes', map, keyType)]: hasKey,
-  [keys.of('delete', referenceKey(map), keyType)]: ([m, k], context) => {
-    const before = mapValueOf(m);
-    const after = withoutEntry(before, k ?? null);
-    context.write(0, after);
-    return after !== before;
-  },
+  [keys.of('delete', referenceKey(map), keyType)]: ([, k], context) =>
+    context.change(0, [], (m, changes) => changes.deleteEntry(m, k ?? null)),
   [keys.of('keys', map)]: ([m]) => arrayOf(mapValueOf(m).entries.map(([k]) => k)),
   [keys.of('values', map)]: ([m]) => arrayOf(mapValueOf(m).entries.map(([, v]) => v)),
   [keys.of('entries', map)]: ([m]) => arrayOf(mapValueOf(m).entries.map(entryTuple)),
@@ -55,8 +46,10 @@ export const mapNatives = (keys: NativeKeys): Natives<NativeContext> => ({
     }
     return found;
   },
-  [keys.of('setIndex', referenceKey(map), keyType, valueType)]: ([m, k, v], context) => {
-    context.write(0, withEntry(mapValueOf(m), k ?? null, v ?? null));
+  [keys.of('setIndex', referenceKey(map), keyType, valueType)]: ([, k, v], context) => {
+    const key = k ?? null;
+    const value = v ?? null;
+    context.change(0, [key, value], (m, changes) => changes.setEntry(m, key, value));
     return null;
   },
   [keys.of('_entryAt', map, 'Int')]: ([m, position]) => {

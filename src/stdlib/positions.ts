@@ -96,17 +96,23 @@ export function selected<T>(items: readonly T[], selection: Selection): T[] {
   return selection.positions.map((position) => items[position] as T);
 }
 
+/** Replacing `count` items from `start` with `items`. */
+export interface Splice<T> {
+  readonly start: number;
+  readonly count: number;
+  readonly items: readonly T[];
+}
+
 /**
- * `items` with what `selection` selects replaced by `replacement`: a span by any number of items,
- * every step-th position by exactly as many as it selects, one each.
+ * The splices, in order, replacing what `selection` selects by `replacement`: a span by any number
+ * of items, every step-th position by exactly as many as it selects, one each.
  */
-export function replaced<T>(
-  items: readonly T[],
+export function splicesOf<T>(
   selection: Selection,
   replacement: readonly T[],
-): T[] {
+): readonly Splice<T>[] {
   if (selection.kind === 'span') {
-    return items.toSpliced(selection.start, selection.end - selection.start, ...replacement);
+    return [{ start: selection.start, count: selection.end - selection.start, items: replacement }];
   }
   const { positions } = selection;
   if (replacement.length !== positions.length) {
@@ -114,9 +120,9 @@ export function replaced<T>(
       `A stepped slice of ${positions.length} items can't be replaced by ${replacement.length}.`,
     );
   }
-  const changed = [...items];
-  for (const [index, position] of positions.entries()) {
-    changed[position] = replacement[index] as T;
-  }
-  return changed;
+  return positions.map((position, index) => ({
+    start: position,
+    count: 1,
+    items: [replacement[index] as T],
+  }));
 }

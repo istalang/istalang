@@ -1,8 +1,8 @@
 /**
  * Maps as values: whatever keys are set, in whatever order, a lookup finds exactly what `==` says
  * is the same key, a later set of an equal key replaces its value in place, and two maps are
- * equal when they hold equal values for equal keys, in any order. Building a map key by key
- * carries its hash table over, which must find what a table built from scratch finds.
+ * equal when they hold equal values for equal keys, in any order. Building a map key by key keeps
+ * its hash table as it goes, which must find what a table built from scratch finds.
  */
 
 import fc from 'fast-check';
@@ -10,13 +10,13 @@ import { describe, expect, it } from 'vitest';
 import { reverseKeys } from '../formats/codec.test-kit.ts';
 import { decodeJson, encodeJson } from '../formats/codec.ts';
 import {
+  deleteEntryInPlace,
   entryPosition,
   entryValue,
   type MapValue,
   mapOf,
+  setEntryInPlace,
   valuesEqual,
-  withEntry,
-  withoutEntry,
 } from './equality.ts';
 import { nested, valueArbitrary } from './values.test-kit.ts';
 import type { Value } from './values.ts';
@@ -67,14 +67,18 @@ describe('maps as values', () => {
     fc.assert(
       fc.property(entries, keys, valueArbitrary({ typed: true }), (pairs, key, value) => {
         const map = mapOf(pairs);
-        const set = withEntry(map, key, value);
+        const set = mapOf(pairs);
+        setEntryInPlace(set, key, value);
         const added = scanned(map, key) === undefined ? 1 : 0;
         const found = scanned(set, key);
         expect(found === undefined ? undefined : set.entries[found]?.[1]).toBe(
           found === undefined ? undefined : value,
         );
         expect(set.entries.length).toBe(map.entries.length + added);
-        expect(scanned(withoutEntry(set, key), key)).toBeUndefined();
+        expect(entryPosition(set, key)).toBe(found);
+        deleteEntryInPlace(set, key);
+        expect(scanned(set, key)).toBeUndefined();
+        expect(entryPosition(set, key)).toBeUndefined();
       }),
     );
   });

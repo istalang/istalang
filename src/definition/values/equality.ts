@@ -41,9 +41,10 @@ export const {
   equal: valuesEqual,
   entryPosition,
   entryValue,
-  withEntry,
-  withoutEntry,
   mapOf,
+  setEntryInPlace,
+  deleteEntryInPlace,
+  forget: forgetDerived,
 } = new ValueSemantics(valueView);
 
 /** Whether two composites agree on everything but their parts. */

@@ -65,20 +65,7 @@ export class Instance {
   /** Every holder write, of a register, a heap object or a running call's future, is reported here. */
   readonly holders: HolderWrites;
   /** The heap as its frames reach it (interpreter/machine.ts). */
-  readonly frameHeap: FrameHeap = {
-    read: (cell) => this.heap.of(cell, 'cell').value,
-    write: (cell, value) => {
-      this.heap.replace({ ...this.heap.of(cell, 'cell'), value });
-    },
-    create: (type, value) => this.heap.add((id) => ({ kind: 'cell', id, type, value })).id,
-    contextConstant: (name) => this.#constants.read(name),
-    makeContextConstant: (name, value) => {
-      this.#constants.make(name, value);
-    },
-    changed: (was, now) => {
-      this.holders.changed(was, now);
-    },
-  };
+  readonly frameHeap: FrameHeap;
   /**
    * The snapshot this instance was made from, or last committed, which its next commit changes only
    * where it ran.
@@ -96,6 +83,21 @@ export class Instance {
     this.#from = snapshot;
     this.effects = new SegmentEffects(() => this.#from);
     this.holders = new HolderWrites(countedIn(loaded.definition.types));
+    this.frameHeap = {
+      read: (cell) => this.heap.of(cell, 'cell').value,
+      write: (cell, value) => {
+        this.heap.replace({ ...this.heap.of(cell, 'cell'), value });
+      },
+      create: (type, value) => this.heap.add((id) => ({ kind: 'cell', id, type, value })).id,
+      contextConstant: (name) => this.#constants.read(name),
+      makeContextConstant: (name, value) => {
+        this.#constants.make(name, value);
+      },
+      changed: (was, now) => {
+        this.holders.changed(was, now);
+      },
+      values: this.holders.values,
+    };
     this.heap = new Heap(snapshot.objectsMade, this.holders);
     const objects = snapshot.objects.map((object) =>
       liveObject(loaded.definition, object, this.frameHeap),

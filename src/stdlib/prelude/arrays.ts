@@ -3,8 +3,9 @@
  * and what an array pattern reads.
  * Methods taking a function are the prelude's code (prelude.ista), since only code calls one.
  *
- * An array is an immutable value, so a method taking `&self` builds the changed array and writes
- * it back through its context (runtime/natives.ts). Elements compare with the built-in `==`.
+ * An array is a value, so a method taking `&self` changes it through its context
+ * (runtime/natives.ts), which changes it in place only when nothing else holds it. Elements compare
+ * with the built-in `==`.
  */
 
 import { parameterKey, referenceKey } from '../../definition/extern-key.ts';
@@ -12,7 +13,14 @@ import { valuesEqual } from '../../definition/values/equality.ts';
 import { elementsOf } from '../../definition/values/values.ts';
 import { wellKnown } from '../../foundation/language/well-known/index.ts';
 import type { NativeContext, Natives } from '../../runtime/natives.ts';
-import { atPosition, checkedIndex, replaced, selected, selectionOf, sliced } from '../positions.ts';
+import {
+  atPosition,
+  checkedIndex,
+  selected,
+  selectionOf,
+  sliced,
+  splicesOf,
+} from '../positions.ts';
 import { rangeOf } from '../ranges.ts';
 import { knownTypeKey, type NativeKeys } from '../std-module.ts';
 import { arrayOf, int, optionalInt, text } from '../values/arguments.ts';
@@ -30,15 +38,6 @@ export const arrayNatives = (keys: NativeKeys): Natives<NativeContext> => ({
     const position = atPosition(int(index), elements.length);
     return resultOptional(context, position === undefined ? undefined : elements[position]);
   },
-  [keys.of('push', referenceKey(array), item)]: ([xs, element], context) => {
-    context.write(0, arrayOf([...elementsOf(xs), element ?? null]));
-    return null;
-  },
-  [keys.of('pop', referenceKey(array))]: ([xs], context) => {
-    const elements = elementsOf(xs);
-    context.write(0, arrayOf(elements.slice(0, -1)));
-    return resultOptional(context, elements.at(-1));
-  },
   [keys.of('slice', array, 'Int', knownTypeKey(wellKnown.optional, 'Int'))]: (
     [xs, start, end],
     context,
@@ -47,10 +46,6 @@ export const arrayNatives = (keys: NativeKeys): Natives<NativeContext> => ({
     BigInt(elementsOf(xs).findIndex((each) => valuesEqual(each, element ?? null))),
   [keys.of('lastIndexOf', array, item)]: ([xs, element]) =>
     BigInt(elementsOf(xs).findLastIndex((each) => valuesEqual(each, element ?? null))),
-  [keys.of('reverse', referenceKey(array))]: ([xs], context) => {
-    context.write(0, arrayOf(elementsOf(xs).toReversed()));
-    return null;
-  },
   [keys.of('flat', knownTypeKey(wellKnown.array, array))]: ([xss]) =>
     arrayOf(elementsOf(xss).flatMap((inner) => elementsOf(inner))),
   [keys.of('includes', array, item)]: ([xs, element]) =>
@@ -65,20 +60,44 @@ export const arrayNatives = (keys: NativeKeys): Natives<NativeContext> => ({
     const elements = elementsOf(xs);
     return arrayOf(selected(elements, selectionOf(rangeOf(context, span), elements.length, what)));
   },
+  [keys.ofStatic(wellKnown.array.name, 'default')]: () => arrayOf([]),
+  ...changingNatives(keys),
+  ...patternNatives(keys),
+});
+
+/** The `&self` methods, changing the array through their context. */
+const changingNatives = (keys: NativeKeys): Natives<NativeContext> => ({
+  [keys.of('push', referenceKey(array), item)]: ([, element], context) => {
+    const items = [element ?? null];
+    context.change(0, items, (xs, changes) => changes.push(xs, items));
+    return null;
+  },
+  [keys.of('pop', referenceKey(array))]: (_values, context) =>
+    resultOptional(
+      context,
+      context.change(0, [], (xs, changes) => changes.pop(xs)),
+    ),
+  [keys.of('reverse', referenceKey(array))]: (_values, context) => {
+    context.change(0, [], (xs, changes) => changes.reverse(xs));
+    return null;
+  },
   [keys.of('setIndex', referenceKey(array), 'Int', item)]: ([xs, index, element], context) => {
-    const elements = elementsOf(xs);
-    const position = checkedIndex(int(index), elements.length, what);
-    context.write(0, arrayOf(elements.with(position, element ?? null)));
+    const position = checkedIndex(int(index), elementsOf(xs).length, what);
+    const items = [element ?? null];
+    context.change(0, items, (node, changes) => changes.splice(node, position, 1, items));
     return null;
   },
   [keys.of('setIndex', referenceKey(array), range, array)]: ([xs, span, replacement], context) => {
-    const elements = elementsOf(xs);
-    const selection = selectionOf(rangeOf(context, span), elements.length, what);
-    context.write(0, arrayOf(replaced(elements, selection, elementsOf(replacement))));
+    const selection = selectionOf(rangeOf(context, span), elementsOf(xs).length, what);
+    const items = elementsOf(replacement);
+    const splices = splicesOf(selection, items);
+    context.change(0, items, (node, changes) => {
+      for (const splice of splices) {
+        changes.splice(node, splice.start, splice.count, splice.items);
+      }
+    });
     return null;
   },
-  [keys.ofStatic(wellKnown.array.name, 'default')]: () => arrayOf([]),
-  ...patternNatives(keys),
 });
 
 /** What an array pattern reads once its length test passed (§3.11). */

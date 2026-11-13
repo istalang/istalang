@@ -10,13 +10,11 @@
  * - **Holders** are what R2's seam reports (holder-writes.ts): registers, heap objects' fields and
  *   index edges, and the running calls' futures. Each report gives what the holder held and holds
  *   now; holding the new before letting go of the old keeps a count from passing through zero.
- * - **A composite value is a node** once it holds a counted part, at any depth: its holders count
- *   it, and it counts as one holder of each of its parts. So copying a value into another holder
- *   is one increment, never one per handle inside. Whether a composite holds a counted part is
- *   decided at its first hold, since natives build values with no instance at hand, and kept for
- *   good, as a value never changes and neither does whether an object is counted. Values are
- *   shared by identity across instances (constants, restores), so the nodes are this instance's
- *   own, keyed by identity.
+ * - **Every composite value is a node** (design.md §9.6): its holders count it, and it counts as
+ *   one holder of each of its parts, from its first hold until its last holder lets go of it. So
+ *   copying a value into another holder is one increment, never one per part inside, and a node
+ *   held once is one an update may change in place (in-place.ts). Values are shared by identity
+ *   across instances (constants, restores), so the nodes are this instance's own, keyed by identity.
  * - **A zero is only a candidate** until the step's end (`takeZeroes`): several paths let go of
  *   something before they hold it again, such as a resolver replaced before its `onCancel` runs are
  *   readied, or a run removed before the call it starts holds its captures.
@@ -26,7 +24,6 @@ import type { TypeDefinition } from '../../definition/tables/types.ts';
 import {
   type CompositeValue,
   childValues,
-  handlesIn,
   isComposite,
   type Value,
 } from '../../definition/values/values.ts';
@@ -52,10 +49,8 @@ export function countedIn(types: readonly TypeDefinition[]): (object: LiveObject
 export class Counts {
   /** Each counted object's holders. */
   readonly #objects = new Map<number, number>();
-  /** Each counted composite's holders, while it has any. */
+  /** Each composite's holders, while it has any. */
   readonly #nodes = new WeakMap<CompositeValue, number>();
-  /** Whether each composite seen holds a counted part, at any depth. */
-  readonly #counted = new WeakMap<CompositeValue, boolean>();
   /** Counted objects that came to have no holder since the last `takeZeroes`. */
   readonly #zeroes = new Set<number>();
   /** Counted objects let go of since the last `takeLetGo`. */
@@ -82,6 +77,25 @@ export class Counts {
   /** How many holders counted object `id` has; undefined for one not counted. */
   holdersOf(id: number): number | undefined {
     return this.#objects.get(id);
+  }
+
+  /** How many holders composite `node` has; undefined while nothing holds it. */
+  holdersOfNode(node: CompositeValue): number | undefined {
+    return this.#nodes.get(node);
+  }
+
+  /** `node`, changed in place, came to hold `part`: one more holder of it, once `node` is held. */
+  partHeld(node: CompositeValue, part: Value): void {
+    if (this.#nodes.has(node)) {
+      this.#hold({ values: [part], holds: [] });
+    }
+  }
+
+  /** `node`, changed in place, let go of `part`: one holder fewer, once `node` is held. */
+  partReleased(node: CompositeValue, part: Value): void {
+    if (this.#nodes.has(node)) {
+      this.#release({ values: [part], holds: [] });
+    }
   }
 
   /** The counted objects that have no holder now, of those that came to have none since last time. */
@@ -130,9 +144,6 @@ export class Counts {
       this.#nodes.set(value, holders + 1);
       return [];
     }
-    if (!this.#holdsCounted(value)) {
-      return [];
-    }
     this.#nodes.set(value, 1);
     return childValues(value);
   }
@@ -178,34 +189,5 @@ export class Counts {
     if (holders === 1) {
       this.#zeroes.add(id);
     }
-  }
-
-  /** Whether `composite` holds a counted object, at any depth: decided once, parts first. */
-  #holdsCounted(composite: CompositeValue): boolean {
-    const known = this.#counted.get(composite);
-    if (known !== undefined) {
-      return known;
-    }
-    if (handlesIn(composite).length === 0) {
-      this.#counted.set(composite, false);
-      return false;
-    }
-    const pending = [composite];
-    for (let top = pending.at(-1); top !== undefined; top = pending.at(-1)) {
-      const parts = childValues(top).filter(isComposite);
-      const undecided = parts.filter((part) => part.kind !== 'handle' && !this.#counted.has(part));
-      if (this.#counted.has(top) || undecided.length === 0) {
-        pending.pop();
-        this.#counted.set(
-          top,
-          parts.some((part) =>
-            part.kind === 'handle' ? this.#objects.has(part.object) : this.#counted.get(part),
-          ),
-        );
-      } else {
-        pushAll(pending, undecided);
-      }
-    }
-    return this.#counted.get(composite) === true;
   }
 }

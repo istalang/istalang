@@ -9,6 +9,7 @@
 import type { FunctionId, TypeId } from '../../definition/operands.ts';
 import type { CodeFunction } from '../../definition/tables/functions.ts';
 import type { Value } from '../../definition/values/values.ts';
+import type { InPlace } from '../lifetimes/in-place.ts';
 import type { Held } from '../snapshot/holdings.ts';
 import type { RegisterContents } from '../snapshot/objects.ts';
 
@@ -29,6 +30,8 @@ export interface FrameHeap {
   readonly makeContextConstant: (name: string, value: Value) => void;
   /** Reports a register write: the register held `was` and holds `now` (registers.ts). */
   readonly changed: (was: Held, now: Held) => void;
+  /** Writes into values, in place where nothing else holds them (lifetimes/in-place.ts). */
+  readonly values: InPlace;
 }
 
 /**

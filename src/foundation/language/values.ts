@@ -8,10 +8,14 @@
  *   `0.0 == -0.0`. A composite compares its head (kind, type, variant, function or object), then
  *   its parts in order; a map compares by its entries, whose order is no part of its value.
  * - A map finds a key through a 32-bit hash of the key's structure, confirmed with `==`, so a
- *   lookup agrees with `==` exactly: a key holding a NaN is stored but never found again. Values
- *   never mutate once built, so each composite or map's hash and each map's hash table are derived
- *   once and kept in WeakMaps keyed by the object itself; a map built from another by setting one
- *   key takes the other's table over, so building a map key by key never hashes a key twice.
+ *   lookup agrees with `==` exactly: a key holding a NaN is stored but never found again. Each
+ *   composite or map's hash and each map's hash table are derived once and kept in WeakMaps keyed by
+ *   the object itself, each table its map's alone.
+ * - **Changed in place:** a value is immutable to everything but its builder: `mapOf` sets each
+ *   entry in the map it builds, and the runtime changes a value in place only when nothing else
+ *   holds it (runtime/lifetimes/in-place.ts). A map's entries change through `setEntryInPlace`,
+ *   which keeps its table, so building a map key by key hashes each key once, and through
+ *   `deleteEntryInPlace`; `forget` drops what was derived from a value that changed otherwise.
  * - Setting a key a map holds keeps its place; a new key goes last. So a map literal's later entry
  *   for an equal key replaces the earlier one's value, where the earlier one stood.
  * - Every walk keeps its own stack, so a value of any depth compares and hashes without exhausting
@@ -47,7 +51,7 @@ export interface ValueView<Value> {
  */
 export class ValueSemantics<Value> {
   readonly #view: ValueView<Value>;
-  readonly #tables = new WeakMap<MapOf<Value>, ReadonlyMap<number, readonly number[]>>();
+  readonly #tables = new WeakMap<MapOf<Value>, Map<number, number[]>>();
   readonly #hashes = new WeakMap<object, number>();
 
   constructor(view: ValueView<Value>) {
@@ -94,32 +98,64 @@ export class ValueSemantics<Value> {
     return position === undefined ? undefined : map.entries[position]?.[1];
   };
 
-  /** `map` with `key` set to `value`: a key it holds keeps its place, a new one goes last. */
-  readonly withEntry = (map: MapOf<Value>, key: Value, value: Value): MapOf<Value> => {
+  /**
+   * Sets `key` to `value` in `map` itself, which nothing else holds: a key it holds keeps its place,
+   * a new one goes last. The entry replaced, if any.
+   */
+  readonly setEntryInPlace = (
+    map: MapOf<Value>,
+    key: Value,
+    value: Value,
+  ): readonly [Value, Value] | undefined => {
     const position = this.entryPosition(map, key);
-    const entry = [key, value] as const;
-    const next: MapOf<Value> = {
-      kind: 'map',
-      entries: position === undefined ? [...map.entries, entry] : map.entries.with(position, entry),
-    };
-    this.#carryTable(map, next, key);
-    return next;
+    const entries = map.entries as (readonly [Value, Value])[];
+    this.#hashes.delete(map);
+    if (position !== undefined) {
+      const replaced = entries[position];
+      entries[position] = [key, value];
+      return replaced;
+    }
+    entries.push([key, value]);
+    const table = this.#tables.get(map);
+    if (table !== undefined) {
+      const hash = this.#hashOf(key);
+      const bucket = table.get(hash);
+      if (bucket === undefined) {
+        table.set(hash, [entries.length - 1]);
+      } else {
+        bucket.push(entries.length - 1);
+      }
+    }
+    return undefined;
   };
 
-  /** `map` without `key`'s entry. */
-  readonly withoutEntry = (map: MapOf<Value>, key: Value): MapOf<Value> => {
+  /** Deletes `key`'s entry from `map` itself, which nothing else holds; the entry, if any. */
+  readonly deleteEntryInPlace = (
+    map: MapOf<Value>,
+    key: Value,
+  ): readonly [Value, Value] | undefined => {
     const position = this.entryPosition(map, key);
-    return position === undefined
-      ? map
-      : { kind: 'map', entries: map.entries.toSpliced(position, 1) };
+    if (position === undefined) {
+      return undefined;
+    }
+    this.forget(map);
+    return (map.entries as (readonly [Value, Value])[]).splice(position, 1)[0];
+  };
+
+  /** Forgets `composite`'s hash, and a map's table, once it changed in place. */
+  readonly forget = (composite: object): void => {
+    this.#hashes.delete(composite);
+    this.#tables.delete(composite as MapOf<Value>);
   };
 
   /** A map of `entries` in order, a later entry of an equal key replacing the earlier's value. */
-  readonly mapOf = (entries: readonly (readonly [Value, Value])[]): MapOf<Value> =>
-    entries.reduce<MapOf<Value>>((map, [key, value]) => this.withEntry(map, key, value), {
-      kind: 'map',
-      entries: [],
-    });
+  readonly mapOf = (entries: readonly (readonly [Value, Value])[]): MapOf<Value> => {
+    const map: MapOf<Value> = { kind: 'map', entries: [] };
+    for (const [key, value] of entries) {
+      this.setEntryInPlace(map, key, value);
+    }
+    return map;
+  };
 
   /**
    * Runs `step`, pushing any follow-up steps or candidate search frame; false when it disagrees.
@@ -226,25 +262,6 @@ export class ValueSemantics<Value> {
     });
     this.#tables.set(map, table);
     return table;
-  }
-
-  /**
-   * Gives `next`, built from `map` by setting `key`, a table derived from `map`'s, if `map` has
-   * one: the same table when `key` replaced a value, else that table with `key` added at the end.
-   */
-  #carryTable(map: MapOf<Value>, next: MapOf<Value>, key: Value): void {
-    const table = this.#tables.get(map);
-    if (table === undefined) {
-      return;
-    }
-    if (next.entries.length === map.entries.length) {
-      this.#tables.set(next, table);
-      return;
-    }
-    const hash = this.#hashOf(key);
-    const extended = new Map(table);
-    extended.set(hash, [...(table.get(hash) ?? []), next.entries.length - 1]);
-    this.#tables.set(next, extended);
   }
 }
 

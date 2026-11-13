@@ -7,7 +7,8 @@
  * - a closure's capture of a `let` holds the cell the closure carries, a cell register too (§3.14);
  * - any other register holds its value.
  * A path holds field positions only (interpreter/parts.ts), so reading or writing a register never
- * runs code.
+ * runs code. Writing a part of a value writes in place where nothing else holds it
+ * (lifetimes/in-place.ts).
  *
  * Every write of a register is reported as a holder write (`FrameHeap.changed`): what it held and
  * what it holds now, whether it is written, emptied, filled as a frame starts or is restored, or
@@ -19,12 +20,18 @@
 
 import type { Argument, Place } from '../../definition/instructions/places.ts';
 import type { Register, TypeId } from '../../definition/operands.ts';
-import { handleTarget, handleTo, type Value } from '../../definition/values/values.ts';
+import {
+  type CompositeValue,
+  handleTarget,
+  handleTo,
+  type Value,
+} from '../../definition/values/values.ts';
 import { unreachable } from '../../foundation/structures/unreachable.ts';
+import type { ValueChanges } from '../lifetimes/in-place.ts';
 import { heldIn } from '../snapshot/holdings.ts';
 import { isReference, type Reference, type RegisterContents } from '../snapshot/objects.ts';
 import type { ActiveFrame, FrameHeap } from './frames.ts';
-import { partAt, withPart } from './parts.ts';
+import { partAt } from './parts.ts';
 import { setRegister } from './raw-registers.ts';
 
 /** The value in `register` of `frame`; loading checks indexes, so an empty one is a bug. */
@@ -102,7 +109,7 @@ export function storeAt(frame: ActiveFrame, place: Place, value: Value): void {
     return;
   }
   const whole = readRegister(frame, place.register);
-  writeRegister(frame, place.register, withPart(whole, place.path, value));
+  writeRegister(frame, place.register, frame.heap.values.withPart(whole, place.path, value));
 }
 
 /**
@@ -144,8 +151,31 @@ export function passedValues(heap: FrameHeap, contents: readonly RegisterContent
 }
 
 /** Writes `value` to the place a reference names. */
-export function writeReference(heap: FrameHeap, reference: Reference, value: Value): void {
-  heap.write(reference.cell, withPart(heap.read(reference.cell), reference.path, value));
+function writeReference(heap: FrameHeap, reference: Reference, value: Value): void {
+  heap.write(
+    reference.cell,
+    heap.values.withPart(heap.read(reference.cell), reference.path, value),
+  );
+}
+
+/**
+ * Makes `change`, which puts `inserted` in, to the value at the place a reference names, through
+ * the instance's changes in place (lifetimes/in-place.ts); what `change` gives.
+ */
+export function changeReference<Result>(
+  heap: FrameHeap,
+  reference: Reference,
+  inserted: readonly Value[],
+  change: (value: CompositeValue, changes: ValueChanges) => Result,
+): Result {
+  const { whole, result } = heap.values.changed(
+    heap.read(reference.cell),
+    reference.path,
+    inserted,
+    (node) => change(node, heap.values),
+  );
+  heap.write(reference.cell, whole);
+  return result;
 }
 
 /**

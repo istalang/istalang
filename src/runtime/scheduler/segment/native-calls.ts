@@ -28,7 +28,7 @@ import {
   type Value,
 } from '../../../definition/values/values.ts';
 import { unreachable } from '../../../foundation/structures/unreachable.ts';
-import { passedValues, writeReference } from '../../interpreter/registers.ts';
+import { changeReference, passedValues } from '../../interpreter/registers.ts';
 import type {
   FullNativeContext,
   Native,
@@ -53,7 +53,7 @@ import { nativeContextsOf } from './native-contexts.ts';
 
 export class NativeCalls {
   readonly #instance: Instance;
-  readonly #segment: Omit<FullNativeContext, 'name' | 'resultType' | 'typeArguments' | 'write'>;
+  readonly #segment: Omit<FullNativeContext, 'name' | 'resultType' | 'typeArguments' | 'change'>;
 
   /**
    * Calls within a segment of `instance`, where `now()` reads `now`, waiting as `waiting` says;
@@ -91,9 +91,8 @@ export class NativeCalls {
         name: entry.name,
         resultType: declared === undefined ? undefined : namedTypeOf(declared.result),
         typeArguments: declared?.typeArguments.map(namedTypeOf) ?? [],
-        write: (position, value) => {
-          writeReference(heap, referenceAt(contents, position), value);
-        },
+        change: (position, inserted, change) =>
+          changeReference(heap, referenceAt(contents, position), inserted, change),
       });
     const run =
       declared === undefined

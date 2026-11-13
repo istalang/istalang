@@ -12,15 +12,19 @@
  * - A decided `select`'s losers are noted apart (`noteLosersReleased`): until the collector takes
  *   the step's zeroes, a loser may still wait in a slot's queue (scheduler/instance/slots.ts).
  * - A commit keeps only what is held, so it forgets what was noted (`settled`).
+ * - The counts tell which values may change in place (`values`, in-place.ts): a node held once.
  */
 
 import type { LiveObject } from '../scheduler/instance/heap.ts';
 import type { Held } from '../snapshot/holdings.ts';
 import { Counts } from './counts.ts';
+import { InPlace } from './in-place.ts';
 
 export class HolderWrites {
   readonly #counted: (object: LiveObject) => boolean;
   readonly #counts = new Counts();
+  /** The instance's values changed in place where their counts allow (in-place.ts). */
+  readonly values = new InPlace(this.#counts);
   #losersReleased = false;
 
   /** Holder writes counting the objects `counted` says (counts.ts `countedIn`). */

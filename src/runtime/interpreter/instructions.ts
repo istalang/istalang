@@ -5,11 +5,15 @@
  *
  * Loading has already checked every index and every call's arity, so handlers trust what they
  * read.
+ *
+ * An array or map built from the one its own register holds, and more (`[...dst, item]`, what a
+ * comprehension or a spread through a cursor appends per item), grows that one in place where
+ * nothing else holds it (lifetimes/in-place.ts), as does a hold's list of what it keeps.
  */
 
 import type { Callee } from '../../definition/instructions/calls.ts';
 import type { Instruction } from '../../definition/instructions/instruction.ts';
-import type { FunctionId } from '../../definition/operands.ts';
+import type { FunctionId, Register } from '../../definition/operands.ts';
 import { mapOf, valuesEqual } from '../../definition/values/equality.ts';
 import {
   childValues,
@@ -160,22 +164,38 @@ const handlers: Handlers<Machine, Instruction, [ActiveFrame], void> = {
     machine.call(frame, callee, instruction.arguments, captures);
   },
   array: (_machine, instruction, frame) => {
-    next(frame, instruction.dst, {
-      kind: 'array',
-      elements: instruction.elements.flatMap((element) => {
-        const value = readRegister(frame, element.value);
-        return element.kind === 'item' ? [value] : elementsOf(value);
-      }),
+    const { dst } = instruction;
+    const [first, ...rest] = instruction.elements;
+    const grown = first?.kind === 'spread' && growsInPlace(frame, first.value, dst);
+    const elements = (grown ? rest : instruction.elements).flatMap((element) => {
+      const value = readRegister(frame, element.value);
+      return element.kind === 'item' ? [value] : elementsOf(value);
     });
+    next(
+      frame,
+      dst,
+      grown
+        ? frame.heap.values.appended(readRegister(frame, dst), elements)
+        : { kind: 'array', elements },
+    );
   },
   map: (_machine, instruction, frame) => {
-    const entries = instruction.entries.flatMap((entry): (readonly [Value, Value])[] => {
-      if (entry.kind === 'entry') {
-        return [[readRegister(frame, entry.key), readRegister(frame, entry.value)]];
-      }
-      return [...mapValueOf(readRegister(frame, entry.value)).entries];
-    });
-    next(frame, instruction.dst, mapOf(entries));
+    const { dst } = instruction;
+    const [first, ...rest] = instruction.entries;
+    const grown = first?.kind === 'spread' && growsInPlace(frame, first.value, dst);
+    const entries = (grown ? rest : instruction.entries).flatMap(
+      (entry): (readonly [Value, Value])[] => {
+        if (entry.kind === 'entry') {
+          return [[readRegister(frame, entry.key), readRegister(frame, entry.value)]];
+        }
+        return [...mapValueOf(readRegister(frame, entry.value)).entries];
+      },
+    );
+    next(
+      frame,
+      dst,
+      grown ? frame.heap.values.withEntries(readRegister(frame, dst), entries) : mapOf(entries),
+    );
   },
   closure: (_machine, instruction, frame) => {
     next(frame, instruction.dst, {
@@ -220,10 +240,13 @@ const handlers: Handlers<Machine, Instruction, [ActiveFrame], void> = {
       return contents === undefined || isReference(contents) ? [] : [contents];
     });
     const { into } = instruction;
-    const earlier =
-      frame.registers[into] === undefined ? [] : elementsOf(readRegister(frame, into));
-    // A new array rather than a push: a committed snapshot may share the old one.
-    writeRegister(frame, into, { kind: 'array', elements: [...earlier, ...kept] });
+    writeRegister(
+      frame,
+      into,
+      frame.registers[into] === undefined
+        ? { kind: 'array', elements: kept }
+        : frame.heap.values.appended(readRegister(frame, into), kept),
+    );
     frame.pc += 1;
   },
 };
@@ -253,6 +276,15 @@ export function runInstruction(
   instruction: Instruction,
 ): void {
   handlerOf(handlers, instruction)(machine, instruction, frame);
+}
+
+/**
+ * Whether a build spreading `source` first into `dst` grows the value in `dst` itself: one register,
+ * holding its value directly rather than through a reference.
+ */
+function growsInPlace(frame: ActiveFrame, source: Register, dst: Register): boolean {
+  const contents = frame.registers[dst];
+  return source === dst && contents !== undefined && !isReference(contents);
 }
 
 /** Writes `value` to `dst` and moves on to the next instruction. */

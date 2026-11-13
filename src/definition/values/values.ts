@@ -346,11 +346,15 @@ interface Summary {
 const noHandles: readonly number[] = [];
 
 /**
- * Each composite's summary, derived once, since a value never changes. A value's handles are
- * walked wherever it is held, counted and committed (runtime/lifetimes/), so a value walked before
- * is free: its parts are never listed again.
+ * Each composite's summary, derived once and kept until the runtime changes the composite in place
+ * (`forgetSummary`), so a value walked before is free: its parts are never listed again.
  */
 const summaries = new WeakMap<CompositeValue, Summary>();
+
+/** Forgets `composite`'s summary, once it changed in place (runtime/lifetimes/in-place.ts). */
+export function forgetSummary(composite: CompositeValue): void {
+  summaries.delete(composite);
+}
 
 function summaryOf(candidate: CompositeValue): Summary {
   const pending: CompositeValue[] = [candidate];

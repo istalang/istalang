@@ -7,7 +7,7 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { Panic } from '../runtime/natives.ts';
-import { atPosition, checkedIndex, replaced, selected, selectionOf } from './positions.ts';
+import { atPosition, checkedIndex, selected, selectionOf, splicesOf } from './positions.ts';
 import type { RangeValue } from './ranges.ts';
 
 /** What `run` gives, or that it panicked. */
@@ -81,13 +81,26 @@ describe('positions in sequences', () => {
         const range = { start: undefined, end: undefined, step };
         const replacement = Array.from({ length: count }, (_, index) => -index - 1);
         const selection = selectionOf(range, size, 'an array');
-        expect(outcomeOf(() => replaced(items, selection, replacement))).toEqual(
+        expect(outcomeOf(() => spliced(items, selection, replacement))).toEqual(
           replacedAsPython(items, range, replacement),
         );
       }),
     );
   });
 });
+
+/** `items` with the splices replacing `selection` by `replacement` made, as `setIndex` makes them. */
+function spliced(
+  items: readonly number[],
+  selection: ReturnType<typeof selectionOf>,
+  replacement: readonly number[],
+): number[] {
+  const changed = [...items];
+  for (const { start, count, items: inserted } of splicesOf(selection, replacement)) {
+    changed.splice(start, count, ...inserted);
+  }
+  return changed;
+}
 
 /** Whether `range`'s ends, defaulted by its step's direction, lie inside a sequence of `size`. */
 function isInside(range: RangeValue, size: number): boolean {
