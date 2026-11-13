@@ -3,14 +3,12 @@
  *
  * - A struct literal's fields come from their sources in declaration order (`sourcesOf`): a value,
  *   a field of its leading spread's value, read once, or a default, the call that computes it from
- *   the fields before it; `new` puts the struct behind a new handle. An indented value is the
- *   literal it builds.
- * - An array or `Map` holds its items, a spread's among them: a spread through a cursor gives each
- *   item it runs over, one copied whole gives its collection's. A literal of another declared type
+ *   the fields before it; `new` puts the struct behind a new handle.
+ * - An array or `Map` is made of its items or entries, a spread copied whole among them as the
+ *   collection whose items it holds; a spread through a cursor appends each item it runs over to
+ *   what was made before it, which what follows it extends. A literal of another declared type
  *   starts from its type's `default()` and inserts each entry with `setIndex`.
- * - A comprehension runs as a loop, each pass's value written into its result as an item.
- * - A template writes each value with its `toString` and joins its texts and those; a tagged one is
- *   the call it stands for.
+ * - A comprehension runs as a loop, each pass's value appended to its result.
  */
 
 import type {
@@ -109,27 +107,16 @@ export function arrayLiteral(builder: FlowBuilder, node: ArrayLiteral): ValueId 
   if (form === 'declared') {
     return declaredLiteral(builder, node, []);
   }
-  const into = builder.temporaryOf(node);
-  const parts = form === 'map' ? [] : node.elements.map((element) => itemOf(builder, element));
-  builder.emit({ op: 'make', site: node, into, made: { kind: form }, parts });
-  return into;
+  const elements = form === 'map' ? [] : node.elements;
+  return built(builder, { into: builder.temporaryOf(node), kind: form, site: node }, elements);
 }
 
 export function mapLiteral(builder: FlowBuilder, node: MapLiteral): ValueId {
   if (builder.body.collectionFormOf(node) === 'declared') {
     return declaredLiteral(builder, node, node.entries);
   }
-  const into = builder.temporaryOf(node);
-  const parts = node.entries.flatMap((entry) => {
-    if (entry.kind === 'Invalid') {
-      return [];
-    }
-    return entry.kind === 'Spread'
-      ? [itemOf(builder, entry)]
-      : [builder.expression(entry.key), builder.expression(entry.value)];
-  });
-  builder.emit({ op: 'make', site: node, into, made: { kind: 'map' }, parts });
-  return into;
+  const entries = node.entries.filter((entry) => entry.kind !== 'Invalid');
+  return built(builder, { into: builder.temporaryOf(node), kind: 'map', site: node }, entries);
 }
 
 /**
@@ -140,32 +127,68 @@ export function spreadValue(builder: FlowBuilder, spread: Spread, isPack: boolea
   if (isPack || builder.body.iterationOf(spread)?.kind === 'copied') {
     return builder.expression(spread.expression);
   }
-  const items = itemOf(builder, spread);
-  const array = builder.temporary(
-    spread,
-    arrayOf(builder.inputs.checker, builder.valueOf(items).type ?? errorType),
-  );
-  builder.emit({ op: 'make', site: spread, into: array, made: { kind: 'array' }, parts: [items] });
-  return array;
+  const item = builder.body.iterationOf(spread)?.item ?? errorType;
+  const into = builder.temporary(spread, arrayOf(builder.inputs.checker, item));
+  return built(builder, { into, kind: 'array', site: spread }, [spread]);
 }
 
-/** An element's value, or, for a spread, the items it gives. */
-function itemOf(builder: FlowBuilder, element: Expression | Spread): ValueId {
-  if (element.kind !== 'Spread') {
-    return builder.expression(element);
+/** The array or `Map` a literal builds into `into`, of `kind`, made at `site`. */
+interface Building {
+  readonly into: ValueId;
+  readonly kind: 'array' | 'map';
+  readonly site: Expression | Spread;
+}
+
+/**
+ * The array or `Map` `nodes` build in order, as lowering builds it: each item or entry written a
+ * part, a spread copied whole the collection whose items it holds; a spread through a cursor
+ * appends each item it gives, fitted as checking fitted it, to what the nodes before it built,
+ * which the nodes after it extend.
+ */
+function built(
+  builder: FlowBuilder,
+  { into, kind, site }: Building,
+  nodes: readonly (Expression | MapEntry | Spread)[],
+): ValueId {
+  let parts: ValueId[] = [];
+  let spreads: number[] = [];
+  const make = () => {
+    builder.emit({ op: 'make', site, into, made: { kind, spreads }, parts });
+    [parts, spreads] = [[into], [0]];
+  };
+  for (const node of nodes) {
+    if (node.kind === 'MapEntry') {
+      parts.push(builder.expression(node.key), builder.expression(node.value));
+    } else if (node.kind !== 'Spread') {
+      parts.push(builder.expression(node));
+    } else if (builder.body.iterationOf(node)?.kind === 'copied') {
+      spreads.push(parts.length);
+      parts.push(builder.expression(node.expression));
+    } else {
+      make();
+      itemLoop(builder, node, builder.expression(node.expression), {
+        pass: (item) => {
+          const fitted = builder.temporary(
+            node,
+            builder.body.expectedOf(node) ?? builder.valueOf(item).type,
+          );
+          builder.emit({
+            op: 'copy',
+            site: node,
+            into: fitted,
+            from: item,
+            fit: builder.body.fitAt(node),
+          });
+          appendTo(builder, node, into, fitted);
+        },
+      });
+    }
   }
-  const items = builder.temporary(
-    element,
-    builder.body.expectedOf(element) ?? builder.body.iterationOf(element)?.item,
-  );
-  const iterable = builder.expression(element.expression);
-  itemLoop(builder, element, iterable, {
-    pass: (item) => {
-      const fit = builder.body.fitAt(element);
-      builder.emit({ op: 'copy', site: element, into: items, from: item, fit });
-    },
-  });
-  return items;
+  // Nothing past a cursor's spread leaves the value as the cursor's appends left it.
+  if (parts.length > 1 || parts[0] !== into) {
+    make();
+  }
+  return into;
 }
 
 /** A collection of a declared type: its `default()`, each entry inserted with `setIndex`. */
@@ -209,7 +232,7 @@ function declaredLiteral(
 
 export function comprehension(builder: FlowBuilder, node: Comprehension): ValueId {
   const result = builder.temporaryOf(node);
-  builder.emit({ op: 'make', site: node, into: result, made: { kind: 'array' }, parts: [] });
+  builder.emit({ op: 'make', site: node, into: result, made: emptyArray, parts: [] });
   targetsLoop(builder, node, undefined, () => {
     const keep = () => appendTo(builder, node, result, builder.expression(node.body));
     if (node.condition === undefined) {
@@ -223,15 +246,24 @@ export function comprehension(builder: FlowBuilder, node: Comprehension): ValueI
 
 export function fieldComprehension(builder: FlowBuilder, node: FieldComprehension): ValueId {
   const result = builder.temporaryOf(node);
-  builder.emit({ op: 'make', site: node, into: result, made: { kind: 'array' }, parts: [] });
+  builder.emit({ op: 'make', site: node, into: result, made: emptyArray, parts: [] });
   fieldLoop(builder, node, undefined, () =>
     appendTo(builder, node, result, builder.expression(node.body)),
   );
   return result;
 }
 
-/** `item` written into `result`, a comprehension's array, as one of its items. */
-function appendTo(builder: FlowBuilder, node: Expression, result: ValueId, item: ValueId): void {
-  const place = { root: result, path: [{ kind: 'item' }] as const, site: node, name: undefined };
+/** An array that holds no collection's items, made of its parts alone. */
+const emptyArray = { kind: 'array', spreads: [] } as const;
+
+/** `item` appended to `result`, an array or a `Map` being built. */
+function appendTo(
+  builder: FlowBuilder,
+  node: Expression | Spread,
+  result: ValueId,
+  item: ValueId,
+): void {
+  const site = node.kind === 'Spread' ? node.expression : node;
+  const place = { root: result, path: [{ kind: 'item' }] as const, site, name: undefined };
   builder.emit({ op: 'write', site: node, place, value: item });
 }

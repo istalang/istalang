@@ -3,7 +3,7 @@
  *
  * - Over an iterable, through the cursor its `iterate` gives: the top calls the cursor and tests
  *   its step for `Next`, going on with the item it holds, or leaving past the loop on `Done`. A
- *   spread a literal copies whole runs no cursor: it gives an item its collection holds.
+ *   spread a literal copies whole runs no loop (literals.ts).
  * - Over a struct's fields: the subject once, then the top goes past the loop or to a pass of
  *   those `passesOf` gives, each read as checking checked that pass, with the header's key and value
  *   bound to the name of the field it visits and that field's value. Which comes next is left
@@ -44,11 +44,6 @@ export function itemLoop(
 ): void {
   const form = builder.body.iterationOf(node);
   const item = builder.temporary(node, form?.item);
-  if (form?.kind === 'copied') {
-    builder.emit({ op: 'read', site: node, into: item, from: iterable, part: { kind: 'item' } });
-    pass(item);
-    return;
-  }
   const cursor = implicitCall(builder, 'iterate', { site: node, passed: [iterable] });
   loop(builder, scope, (top) => {
     const { type } = builder.valueOf(cursor);

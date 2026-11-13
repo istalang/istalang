@@ -66,7 +66,7 @@ export type FlowValue =
  * (`PartStep`: a tuple element by position, a field by name, a variant's field, a union's member,
  * an array's items), the value behind a handle (`*x`, `x->f`), the value inside an optional where
  * it isn't `none` (§4), what a future gives once it has settled (§8), the field `key`, a key of
- * several names, names, or an item a copied collection or a comprehension's result holds.
+ * several names, names, or the next item of an array or `Map` being built, which a write appends.
  */
 export type Part =
   | { readonly kind: 'step'; readonly step: PartStep }
@@ -92,12 +92,14 @@ export type Argument =
 
 /**
  * What a `make` makes, of its parts in order: a struct (a literal's fields in declaration order),
- * a tuple, an array, a `Map`, a struct put behind a new handle (`new S{…}`), the `variant`-th
- * variant of the enum `type` (its fields in order), a closure of a nested function and the values
- * it captures, or a function named as a value, which `call` runs.
+ * a tuple, an array of its items, a `Map` of its entries' keys and values, either holding every
+ * item of the collections at `spreads` among them (§3.3), a struct put behind a new handle
+ * (`new S{…}`), the `variant`-th variant of the enum `type` (its fields in order), a closure of a
+ * nested function and the values it captures, or a function named as a value, which `call` runs.
  */
 type Made =
-  | { readonly kind: 'struct' | 'tuple' | 'array' | 'map' | 'handle' }
+  | { readonly kind: 'struct' | 'tuple' | 'handle' }
+  | { readonly kind: 'array' | 'map'; readonly spreads: readonly number[] }
   | { readonly kind: 'variant'; readonly type: Type; readonly variant: number }
   | { readonly kind: 'closure'; readonly function: FlowFunction }
   | { readonly kind: 'function'; readonly call: ResolvedCall };
@@ -125,7 +127,8 @@ export type Computation =
  *   type; into whichever field a key naming several gives (`intoKeyedField`), each field's own way,
  *   `into` of the type of the place the key names.
  * - `read`: a part of `from`.
- * - `write`: `value` written into the part `place` reaches.
+ * - `write`: `value` written into the part `place` reaches; into an array's or a `Map`'s `item`,
+ *   appended to it.
  * - `call`: a resolved call, written or implicit (`role`), its arguments by value or by `&`.
  * - `callValue`: a call of a function value.
  * - `suspend`: an `await` or an awaiting `select`, waiting until one of the futures it awaits
