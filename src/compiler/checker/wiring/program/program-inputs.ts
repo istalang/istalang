@@ -4,8 +4,8 @@
  * revision takes an entry over whenever what it read still answers alike, however much else changed
  * (docs/work/m6-m7/incremental-checking.md §1, §4).
  *
- * - A module is read in parts (its items, the modules its imports name, a function's body, its
- *   tree), never whole, so an entry depends only on the parts it used.
+ * - A module is read in parts (its items, the modules its imports name, a function's body, the
+ *   nodes holding a node, its tree), never whole, so an entry depends only on the parts it used.
  * - Every Bindings answer is an input too. Entities compare by identity, which holds across
  *   revisions for every node a revision's tree kept (binder/entities.ts); lists and maps compare
  *   item by item.
@@ -37,7 +37,13 @@ import {
   typeParametersOf,
 } from '../../../syntax/declarations/index.ts';
 import type { VariableDeclaration } from '../../../syntax/statements/index.ts';
-import { bodyOf, parentOf, type SyntaxTree } from '../../../syntax/tree/index.ts';
+import {
+  ancestorsOf,
+  bodyOf,
+  parentOf,
+  type SyntaxNode,
+  type SyntaxTree,
+} from '../../../syntax/tree/index.ts';
 import type { NodeOf } from '../../../syntax/tree/node.ts';
 import type { CheckerNote, ProgramInputs } from '../../contexts/context.ts';
 
@@ -75,6 +81,14 @@ export function programInputs(
       name: 'body of',
       read: (module: ModuleId, declaration: FunctionDeclaration) =>
         bodyOf(programModule(program, module).tree, declaration),
+    }),
+    holdersOf: entries.input({
+      name: 'holders of',
+      read: (module: ModuleId, node: SyntaxNode) => {
+        const path = ancestorsOf(programModule(program, module).tree, node);
+        return path.at(-1)?.kind === 'Module' ? path.slice(0, -1) : [];
+      },
+      equal: sameItems(),
     }),
     variantNamed: entries.input({
       name: 'variant named',

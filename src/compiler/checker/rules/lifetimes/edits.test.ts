@@ -82,6 +82,7 @@ describe('after an edit inside a callee', () => {
         `  ${body}`,
         'ista async fn worker() -> Int: 1',
         'ista fn caller() -> Future<Int, "ista">:',
+        '  transient let started: Array<Future<Int, "ista">> = []',
         '  _ = helper(3)',
         '  worker()',
         '',

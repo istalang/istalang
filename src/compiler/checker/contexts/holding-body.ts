@@ -12,7 +12,7 @@ import type { ModuleId } from '../../program/program.ts';
 import { type FieldsFunction, fieldsFunctionOf } from '../../syntax/declarations/field-defaults.ts';
 import { type FunctionDeclaration, isDefaultOf } from '../../syntax/declarations/index.ts';
 import type { Annotation } from '../../syntax/items.ts';
-import { ancestorsOf, type SyntaxNode } from '../../syntax/tree/index.ts';
+import type { SyntaxNode } from '../../syntax/tree/index.ts';
 import type { CheckedBody } from '../surface/checked-body.ts';
 import type { JoinedBody } from '../surface/denotation.ts';
 import type { CheckerContext } from './context.ts';
@@ -39,31 +39,24 @@ export function bodyHolding(
   module: ModuleId,
   node: SyntaxNode,
 ): JoinedBody | undefined {
-  const body = checkedBodyHolding(checker, module, node);
-  const path = ancestorsOf(checker.inputs.treeOf(module), node);
+  const path = checker.inputs.holdersOf(module, node);
+  const body = checkedBodyOn(checker, module, path);
   return body === undefined ? undefined : passesAround(body, path, checker.typeRules);
 }
 
 /**
- * The checked body holding `node` of `module`, as checked: a field loop around it read as the body
- * holding the loop; undefined outside every body.
+ * The checked body holding the innermost of `path`, a node of `module` and the nodes holding it up
+ * to its item, as checked: a field loop around it read as the body holding the loop.
  */
-function checkedBodyHolding(
+function checkedBodyOn(
   checker: BodyOwners,
   module: ModuleId,
-  node: SyntaxNode,
+  path: readonly SyntaxNode[],
 ): CheckedBody | undefined {
-  const path = ancestorsOf(checker.inputs.treeOf(module), node);
   const annotation = path.find((each): each is Annotation => each.kind === 'Annotation');
   return annotation === undefined
-    ? bodyInModule(checker, path)
+    ? bodyInItem(checker, path.toReversed())
     : checker.annotations.bodyOf(module, annotation);
-}
-
-/** The body holding the innermost of `path`, a node and the nodes holding it up to its module. */
-function bodyInModule(checker: BodyOwners, path: readonly SyntaxNode[]): CheckedBody | undefined {
-  const [root, ...inward] = path.toReversed();
-  return root?.kind === 'Module' ? bodyInItem(checker, inward) : undefined;
 }
 
 /** The body holding the innermost of `inward`, an item and the nodes inside it down to a node. */

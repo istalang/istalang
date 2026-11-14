@@ -27,7 +27,7 @@ import type {
   TypeParameter,
 } from '../../syntax/declarations/index.ts';
 import type { Block } from '../../syntax/statements/index.ts';
-import type { SyntaxTree } from '../../syntax/tree/index.ts';
+import type { SyntaxNode, SyntaxTree } from '../../syntax/tree/index.ts';
 import type { AnchoredSpan } from '../../syntax/tree/positions.ts';
 import type { TypeNode } from '../../syntax/types/index.ts';
 import type { Checker, VariantMember } from '../check.ts';
@@ -101,6 +101,11 @@ export interface ProgramInputs {
   readonly treeOf: (module: ModuleId) => SyntaxTree;
   /** The body of `declaration`, a function of `module`, read apart from the rest of its tree. */
   readonly bodyOf: (module: ModuleId, declaration: FunctionDeclaration) => Block | undefined;
+  /**
+   * The nodes holding `node` of `module`, from `node` out to its top-level item; none outside
+   * every item. An edit leaving that item alike keeps each, so they answer alike.
+   */
+  readonly holdersOf: (module: ModuleId, node: SyntaxNode) => readonly SyntaxNode[];
   /**
    * The first variant of the program named `name` (§3.11) declared by one of `enums`, in the
    * order the program lists its variants: what a bare name expecting those enums chooses.
