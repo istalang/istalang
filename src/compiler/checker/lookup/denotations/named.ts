@@ -18,12 +18,12 @@ import { parentOf, type SyntaxNode } from '../../../syntax/tree/index.ts';
 import type { Identifier } from '../../../syntax/tree/node.ts';
 import { declaredOutsideBodies } from '../../constructs/expressions/access/names.ts';
 import type { CheckerContext } from '../../contexts/context.ts';
+import { bodyHolding } from '../../contexts/holding-body.ts';
 import type { Denotation, JoinedBody } from '../../surface/denotation.ts';
 import type { FunctionNaming, ResolvedCall, ResolvedSite } from '../../surface/resolved-call.ts';
 import { nominalType, type Type } from '../../types/type/index.ts';
 import { entityType } from '../../types/written/named-types.ts';
 import { parameterType } from '../../types/written/resolve-type.ts';
-import { bodyHolding } from '../holders.ts';
 
 /** An identifier, where it stands, and the body holding it, if any. */
 export interface NameSite {

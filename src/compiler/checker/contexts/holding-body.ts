@@ -4,7 +4,8 @@
  * function a struct's or a variant's fields read as (their defaults), a top-level constant (its
  * initializer and targets), a context constant (its initializer), and an annotation, whose value is
  * checked on its own wherever it stands. A lambda or local function is checked in the body holding
- * it, so it owns none.
+ * it, so it owns none. Read at a node, the passes of the field loops around it read as one
+ * (pass-views.ts).
  */
 
 import type { ModuleId } from '../../program/program.ts';
@@ -13,13 +14,35 @@ import { type FunctionDeclaration, isDefaultOf } from '../../syntax/declarations
 import type { Annotation } from '../../syntax/items.ts';
 import { ancestorsOf, type SyntaxNode } from '../../syntax/tree/index.ts';
 import type { CheckedBody } from '../surface/checked-body.ts';
+import type { JoinedBody } from '../surface/denotation.ts';
 import type { CheckerContext } from './context.ts';
+import { passesAround } from './pass-views.ts';
 
 /** What finding a holding body reads of the checker. */
-export type BodyOwners = Pick<
+type BodyOwners = Pick<
   CheckerContext,
-  'inputs' | 'bodyOf' | 'defaultsOf' | 'constantBodyOf' | 'contextConstants' | 'annotations'
+  | 'inputs'
+  | 'bodyOf'
+  | 'defaultsOf'
+  | 'constantBodyOf'
+  | 'contextConstants'
+  | 'annotations'
+  | 'typeRules'
 >;
+
+/**
+ * The checked body holding `node` of `module`, as the passes of the field loops around it read
+ * it, joined (pass-views.ts); undefined outside every body.
+ */
+export function bodyHolding(
+  checker: BodyOwners,
+  module: ModuleId,
+  node: SyntaxNode,
+): JoinedBody | undefined {
+  const body = checkedBodyHolding(checker, module, node);
+  const path = ancestorsOf(checker.inputs.treeOf(module), node);
+  return body === undefined ? undefined : passesAround(body, path, checker.typeRules);
+}
 
 /**
  * The checked body holding `node` of `module`, as checked: a field loop around it read as the body

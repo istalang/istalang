@@ -29,6 +29,7 @@ import {
 import type { Identifier } from '../../syntax/tree/node.ts';
 import type { LiteralType } from '../../syntax/types/index.ts';
 import type { CheckerContext } from '../contexts/context.ts';
+import { bodyHolding } from '../contexts/holding-body.ts';
 import { functionPlace } from '../surface/checked-annotation.ts';
 import type { Denotation } from '../surface/denotation.ts';
 import { calledVariant } from '../surface/named-variants.ts';
@@ -38,7 +39,6 @@ import type { Type } from '../types/type/index.ts';
 import { membersOf } from '../types/type/index.ts';
 import { givenKeysOwner } from '../types/written/key-types.ts';
 import { parameterType } from '../types/written/resolve-type.ts';
-import { bodyHolding } from './holders.ts';
 
 /**
  * The field the String literal `literal` of `module` names as a key, or the parameter it names in a

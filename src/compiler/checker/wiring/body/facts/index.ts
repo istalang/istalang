@@ -9,8 +9,8 @@
  */
 
 import type { NodeOf } from '../../../../syntax/tree/node.ts';
+import type { PassAnswers } from '../../../contexts/pass-views.ts';
 import type { Pass, PassRecords } from '../../../contexts/passes.ts';
-import type { PassAnswers } from '../../../lookup/pass-views.ts';
 import { type FlowSource, flowsOf } from '../../../rules/flow/build/index.ts';
 import type { BodyFacts, CheckedBody } from '../../../surface/checked-body.ts';
 import {

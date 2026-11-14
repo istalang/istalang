@@ -348,7 +348,7 @@ export interface CheckedBody extends BodyFacts {
   ) => CheckedBody;
   /**
    * The body read as one with `others`, the other passes of the field loops around a node (§4),
-   * as tools read the node (lookup/pass-views.ts); with none, the body alone, as tools read it.
+   * as tools read the node (contexts/pass-views.ts); with none, the body alone, as tools read it.
    */
   readonly joinedWith: (others: readonly CheckedBody[], rules: TypeRules) => JoinedBody;
   /**

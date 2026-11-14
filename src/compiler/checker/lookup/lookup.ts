@@ -12,12 +12,13 @@ import type { SyntaxNode } from '../../syntax/tree/index.ts';
 import type { Identifier } from '../../syntax/tree/node.ts';
 import type { TypeNode } from '../../syntax/types/index.ts';
 import type { CheckerContext } from '../contexts/context.ts';
+import { bodyHolding } from '../contexts/holding-body.ts';
 import type { Denotation, JoinedBody, LookupQueries, TypeMembers } from '../surface/denotation.ts';
 import { isSimpleKindBound } from '../types/traits/data-kind.ts';
 import { knownConstraints } from '../types/traits/known-constraints.ts';
 import type { Constraint, Type } from '../types/type/index.ts';
 import { denotationsOf } from './denotations/index.ts';
-import { bodyHolding, itemHolding } from './holders.ts';
+import { itemHolding } from './holders.ts';
 import { keyDenotationsOf } from './key-denotations.ts';
 import { membersOf } from './members.ts';
 

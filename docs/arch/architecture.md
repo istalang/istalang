@@ -82,7 +82,9 @@ src/
                                                                  asks of the constraint scopes a body's calls and literals infer in
                                                                  (scopes.ts; the scopes themselves, settled on every path, and the protocol
                                                                  placing each expression in them: wiring/body/; which expressions a scope
-                                                                 postpones and what each can be a value of: constructs/expressions/postponed.ts)
+                                                                 postpones and what each can be a value of: constructs/expressions/postponed.ts),
+                                                                 and the body holding a node, the passes of the field loops around it read as
+                                                                 one (holding-body.ts, pass-views.ts)
       surface/                                                   the models the surface names, contracts like the root's: a body as checked
                                                                  (checked-body.ts), what calls resolved to (resolved-call.ts), a call closed inside one
                                                                  instantiation, its requirements made their witnesses (witness-closing.ts), patterns and targets as checked (checked-pattern.ts),
@@ -199,7 +201,7 @@ src/
                                                                  own refusals, its wording); its layer stands above the constructs, which reach it
                                                                  through a body's `sugars`
       lookup/                                                    what tools ask by position (denotation.ts): what a name denotes, the field a
-                                                                 String literal names as a key (key-denotations.ts), the body holding a node,
+                                                                 String literal names as a key (key-denotations.ts), the body holding a node (contexts/holding-body.ts),
                                                                  a written type's type, a type's members
       wiring/                                                    wiring one program (program/: its checker, what checking reads of its Program and Bindings, and
                                                                  the type rules it implements: program-type-rules.ts) and one body (body/: its checker, what it
