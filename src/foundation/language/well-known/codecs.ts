@@ -39,5 +39,14 @@ export const codecHelpers = {
 
 export type CodecHelper = (typeof codecHelpers)[keyof typeof codecHelpers];
 
-/** A json-module function the compiler calls: a derived codec or a helper. */
-export type CodecName = (typeof derivedCodecs)[keyof typeof derivedCodecs] | CodecHelper;
+/**
+ * The json module's function every value a host gets is written through (docs/arch/boundary.md):
+ * it keeps the JSON of a value written before, so the host gets the same object for it again.
+ */
+export const writeThrough = 'encode';
+
+/** A json-module function the compiler calls: a derived codec, a helper, or `writeThrough`. */
+export type CodecName =
+  | (typeof derivedCodecs)[keyof typeof derivedCodecs]
+  | CodecHelper
+  | typeof writeThrough;

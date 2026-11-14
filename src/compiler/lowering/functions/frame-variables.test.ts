@@ -28,7 +28,11 @@ const liveMain = /^at main\.main\.lambda@\S+ \(\S+\)$/u;
 const traces = {
   inFunction: [/^at main\.where \(\S+:1:23\)$/u, /^at main\._main \(\S+:5:3\)$/u, liveMain],
   shorter: [/^at main\.failing \(\S+:2:3\)$/u, /^at main\._main \(\S+:7:3\)$/u, liveMain],
-  encoder: [/^at main\.toJson \(\S+:3:37\)$/u, /^at main\.main \(\S+:6:32\)$/u],
+  encoder: [
+    /^at main\.toJson \(\S+:3:37\)$/u,
+    /^at json\.encode<main\.Money> \(std:json:\d+:\d+\)$/u,
+    /^at main\.main \(\S+:6:32\)$/u,
+  ],
   spawned: [
     /^at main\.failing \(\S+:2:3\)$/u,
     /^at main\._main\.lambda@\S+ \(\S+\)$/u,
@@ -87,7 +91,7 @@ describe('a trace through a call leaving defaults out', () => {
     );
   });
 
-  it('shows no frame but the encoder for one the runtime calls, above the root', async () => {
+  it('shows no frame but the encoder and json.encode for one the runtime calls, above the root', async () => {
     const encoding = [
       "import * as json from 'json'",
       'struct Money { cents: Int }',

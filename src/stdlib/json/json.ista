@@ -30,11 +30,13 @@ struct JsonSkip
 
 struct JsonBigInt
 
+# Every value written to JSON goes through `encode`, the codecs below and those the compiler
+# writes included, so a value written before gives the JSON it gave then (docs/arch/boundary.md).
 fn encode<T is Encodable>(value: T) -> Json: value.toJson()
 
 fn decode<T is Decodable>(json: Json) -> Result<T>: T.fromJson(json, "$")
 
-fn stringify<T is Encodable>(value: T) -> String: _write(value.toJson())
+fn stringify<T is Encodable>(value: T) -> String: _write(encode(value))
 
 fn parse<T is Decodable>(text: String) -> Result<T>:
   match _read(text):
@@ -98,18 +100,18 @@ fn toJson(self: Json) -> Json: self
 fn toJson(self: Never) -> Json: self
 
 fn toJson<T is Encodable>(self: Array<T>) -> Json:
-  const items: Array<Json> = [for each in self: each.toJson()]
+  const items: Array<Json> = [for each in self: encode(each)]
   items
 
 fn toJson<T is Encodable>(self: T?) -> Json:
   match self:
     case None: none
-    case value: value.toJson()
+    case value: encode(value)
 
 fn toJson<K is Stringable, V is Encodable>(self: Map<K, V>) -> Json:
   let fields: Map<String, Json> = [:]
   for key, each in self:
-    fields[key.toString()] = each.toJson()
+    fields[key.toString()] = encode(each)
   fields
 
 fn _encodeBigInt(value: Int) -> Json: String(value)

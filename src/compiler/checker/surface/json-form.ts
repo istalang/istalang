@@ -91,8 +91,9 @@ export interface JsonFormQueries {
   /** The form `type`'s derived codecs are written from, asked only of a type that has them. */
   readonly formOf: (type: Type) => DerivedForm;
   /**
-   * The codec writing or reading `type`, which may name type parameters, then met by their
-   * constraints; undefined when it has none. A disposable host type has one, to cross to its own
+   * The call writing or reading `type`, which may name type parameters, then met by their
+   * constraints; undefined when it has none. Writing is `json.encode<type>`, over the codec
+   * writing `type`; reading is that codec. A disposable host type has them, to cross to its own
    * host, though it isn't Encodable or Decodable.
    */
   readonly codecOf: (type: Type, direction: JsonDirection) => ResolvedCall | undefined;

@@ -302,7 +302,7 @@ describe('lowering', () => {
     });
     expect(instanceEncoders(compiledDefinition(program, 'main'))).toEqual([
       ['prelude.Shared', undefined],
-      ['String', 'json.toJson'],
+      ['String', 'json.encode<String>'],
     ]);
     const tests = stdProgramOf({
       'main.test.ista': [
@@ -317,7 +317,7 @@ describe('lowering', () => {
     const compiled = compileTests(tests);
     expect(compiled.kind === 'compiled' && instanceEncoders(compiled.definition)).toContainEqual([
       'Int',
-      'json.toJson',
+      'json.encode<Int>',
     ]);
   });
 

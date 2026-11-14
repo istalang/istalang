@@ -33,6 +33,7 @@ import {
   type CodecName,
   codecHelpers,
   derivedCodecs,
+  writeThrough,
 } from '../../../../foundation/language/well-known/codecs.ts';
 import type { EntryTable } from '../../../../foundation/structures/entries/index.ts';
 import { unreachable } from '../../../../foundation/structures/unreachable.ts';
@@ -169,8 +170,12 @@ export class JsonForms implements JsonCodecs {
     if (checker.inputs.role('json') === undefined) {
       return undefined;
     }
+    const site = hostSite(searchSite(checker));
+    if (direction === 'write') {
+      return this.#jsonCallAt(site, writeThrough, [type]);
+    }
     const constraint = wellKnownConstraint(checker, jsonTraits[direction]);
-    return witnessesFor(hostSite(searchSite(checker)), type, constraint)?.[0];
+    return witnessesFor(site, type, constraint)?.[0];
   }
 
   callOf(name: CodecHelper, typeArguments: readonly Type[]): FunctionCall {
@@ -305,15 +310,23 @@ export class JsonForms implements JsonCodecs {
    * a derived codec or a helper always applies, so failing is a bug in the toolchain.
    */
   #jsonCall(name: CodecName, typeArguments: readonly Type[]): FunctionCall {
+    return (
+      this.#jsonCallAt(searchSite(this.#seams.checker), name, typeArguments) ??
+      unreachable(`The json module's '${name}' doesn't take the types it was given.`)
+    );
+  }
+
+  /** The call to the json module's `name` with `typeArguments`, met at `site`; undefined if not. */
+  #jsonCallAt(
+    site: UseSite,
+    name: CodecName,
+    typeArguments: readonly Type[],
+  ): FunctionCall | undefined {
     const { checker } = this.#seams;
     const candidates = checker
       .languageFunctions('json', name)
       .map((declaration) => ({ declaration }));
-    const call = callWithTypes(checker, candidates, typeArguments);
-    if (call === undefined) {
-      unreachable(`The json module's '${name}' doesn't take the types it was given.`);
-    }
-    return call;
+    return callWithTypes(checker, candidates, typeArguments, site);
   }
 }
 

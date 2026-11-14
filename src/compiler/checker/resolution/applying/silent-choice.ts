@@ -15,7 +15,7 @@
 
 import { unreachable } from '../../../../foundation/structures/unreachable.ts';
 import type { CheckerContext } from '../../contexts/context.ts';
-import { searchSite } from '../../contexts/use-site.ts';
+import { searchSite, type UseSite } from '../../contexts/use-site.ts';
 import type { FunctionCall } from '../../surface/resolved-call.ts';
 import type { Type } from '../../types/type/index.ts';
 import type { CallArgument } from '../choosing/call-arguments.ts';
@@ -34,17 +34,20 @@ export function silentCall(
   callArguments: readonly CallArgument[],
 ): FunctionCall | undefined {
   const choice = choose(checker, candidates, callArguments);
-  return choice.kind === 'chosen' ? functionCallOf(checker, choice.application) : undefined;
+  return choice.kind === 'chosen'
+    ? functionCallOf(searchSite(checker), choice.application)
+    : undefined;
 }
 
 /**
- * The call to one of `candidates` with `typeArguments`; undefined when none takes them, several
- * do, or a constraint isn't met.
+ * The call to one of `candidates` with `typeArguments`, its constraints met as `site` meets them;
+ * undefined when none takes them, several do, or a constraint isn't met.
  */
 export function callWithTypes(
   checker: CheckerContext,
   candidates: readonly Candidate[],
   typeArguments: readonly Type[],
+  site: UseSite = searchSite(checker),
 ): FunctionCall | undefined {
   const written = typeArguments.length === 0 ? undefined : typeArguments;
   const byArity = Map.groupBy(
@@ -66,17 +69,12 @@ export function callWithTypes(
     }
   }
   const [only] = applications;
-  return applications.length === 1 && only !== undefined
-    ? functionCallOf(checker, only)
-    : undefined;
+  return applications.length === 1 && only !== undefined ? functionCallOf(site, only) : undefined;
 }
 
-/** The call `application` makes, instantiated; undefined when a constraint isn't met. */
-function functionCallOf(
-  checker: CheckerContext,
-  application: Application,
-): FunctionCall | undefined {
-  const instantiation = instantiate(searchSite(checker), application);
+/** The call `application` makes, instantiated at `site`; undefined when a constraint isn't met. */
+function functionCallOf(site: UseSite, application: Application): FunctionCall | undefined {
+  const instantiation = instantiate(site, application);
   if (instantiation === undefined) {
     return undefined;
   }
