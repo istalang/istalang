@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-11-11
-last_updated: 2026-11-14
+last_updated: 2026-11-15
 tags: [tracker]
 ---
 
@@ -37,7 +37,7 @@ tags: [tracker]
 
 ## Filed
 
-Open items only: an item is removed once it is resolved; git history keeps it. Each group numbers its own items and keeps counting up: the next ids are F34, P53, Q56, B93. Items filed before 2026-10-28 shared one `D` series; older docs and git history keep the closed `D` ids.
+Open items only: an item is removed once it is resolved; git history keeps it. Each group numbers its own items and keeps counting up: the next ids are F34, P53, Q56, B94. Items filed before 2026-10-28 shared one `D` series; older docs and git history keep the closed `D` ids.
 
 Size: easy (one short, local change), medium (several files or a design choice inside one layer), big (cross-layer, or a decision first). Depends on: what must happen first, or "none" when it can be done now.
 
@@ -209,3 +209,4 @@ Crashes, spec gaps, wrong or missing diagnostics, host-visible behaviour.
 | B90 | Warning 5009 ("never reassigned; declare it with const") fired on a `let` array pushed only inside a one-line `if` in a `for` in FormBuilder's `forms/views.ista` (branch computed-forms, C2), and the `const` it asks for then fails 5207. Not reproduced in isolation yet: reduce from that file first. | medium | none | computed C2 |
 | B91 | A variant constructor whose argument is typed by an associated type, `RowsFrom.Always(rows, self.rowKey)`, failed to fit a value of the identical printed type: "Expected (inert fn(R.Seen) -> String?)?, found (inert fn(R.Seen) -> String?)?". FormBuilder works around it by parameterizing `RowsFrom` by `S`. | medium | none | computed C2 |
 | B92 | In a generic instance whose type argument has a recursive computed associated type, `none` converted into `R.Seen?` arrives as a value: the wrong union member. Repro: `trait Node: type Seen`; `struct Many<R is Node>: make: fn(R.Seen?) -> R`; `fn first<R is Node>(self: Many<R>) -> R: (self.make)(none)`; `struct Group<S is struct { [_] is Node }>` with `type Seen = match S: case _: { [F in keyof S]: S[F].Seen }`; `struct M: a: Leaf, children: Many<Group<M>>`; then `Many<Group<M>>{make}.first()` hands `make` a value, not `none` (without the recursion it is `none`). A default `x: Group<CategoryModel>.Seen? = none` even lowers to an invalid Definition ("variant: type 314 takes 1 fields, not 0"). FormBuilder's mounted-form factories take no data to avoid it. | medium | none | computed C3 |
+| B93 | `src/runtime/lifetimes/shared-values.test.ts`'s property generates programs that panic on their own, so it fails on a valid runtime: seed -502705327 gives `xs.pop()` three times on `[1, 2, 3]`, then `xs[0] = 9` on the empty array ("Index 0 is out of range"), and the straight run isn't `finished`, though every restored run matches it. Fails the same on main. Generate only changes that can't panic, or compare endings whatever their kind. | low | none | stable-host-references |
