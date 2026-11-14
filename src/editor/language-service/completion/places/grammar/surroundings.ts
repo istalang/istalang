@@ -35,7 +35,8 @@ export interface Surroundings {
 export function surroundingsOf(tree: SyntaxTree, chain: readonly SyntaxNode[]): Surroundings {
   const block = chain.findLastIndex((node) => node.kind === 'Block');
   const statement = block === -1 ? undefined : chain[block + 1];
-  const leadsBody = statement !== undefined && leadsFunctionBody(tree, statement);
+  const leadsBody =
+    statement !== undefined && leadsFunctionBody(chain.slice(0, block + 2).toReversed());
   const scopes: LabelledScope[] = [];
   for (let index = chain.length - 2; index >= 0; index -= 1) {
     const node = chain[index];

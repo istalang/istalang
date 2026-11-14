@@ -6,7 +6,7 @@
 
 import type { Expression, FieldComprehension, StructComprehension } from '../expressions/index.ts';
 import { unparenthesized } from '../expressions/readings.ts';
-import { bodyOf, parentOf, type SyntaxNode, type SyntaxTree } from '../tree/index.ts';
+import type { SyntaxNode } from '../tree/index.ts';
 import type { Identifier, NodeOf } from '../tree/node.ts';
 import type { Block, Drop, FieldLoop } from './index.ts';
 
@@ -66,12 +66,12 @@ const overFieldsKinds: ReadonlySet<string> = new Set<OverFields['kind']>([
 ]);
 
 /**
- * Whether the statement `node` stands where a transient may (§3.4): in the block a declared function
- * or a lambda runs, every statement before it a transient declaration.
+ * Whether the statement first in `holders`, then the nodes holding it outward, stands where a
+ * transient may (§3.4): in the block a declared function or a lambda runs, every statement before
+ * it a transient declaration.
  */
-export function leadsFunctionBody(tree: SyntaxTree, node: SyntaxNode): boolean {
-  const block = parentOf(tree, node);
-  if (block?.kind !== 'Block' || !runsAsBody(tree, block)) {
+export function leadsFunctionBody([node, block, holder, outer]: readonly SyntaxNode[]): boolean {
+  if (node === undefined || block?.kind !== 'Block' || !runsAsBody(holder, outer)) {
     return false;
   }
   const statements: readonly SyntaxNode[] = block.statements;
@@ -79,12 +79,13 @@ export function leadsFunctionBody(tree: SyntaxTree, node: SyntaxNode): boolean {
   return before.every((each) => each.kind === 'VariableDeclaration' && each.isTransient);
 }
 
-/** Whether `block` is the body a function runs: a declared function's, or a lambda's braces. */
-function runsAsBody(tree: SyntaxTree, block: Block): boolean {
-  const holder = parentOf(tree, block);
+/**
+ * Whether a block `holder` holds, itself held by `outer`, is the body a function runs: a declared
+ * function's, the one block it holds, or a lambda's braces.
+ */
+function runsAsBody(holder: SyntaxNode | undefined, outer: SyntaxNode | undefined): boolean {
   if (holder?.kind === 'FunctionDeclaration') {
-    return bodyOf(tree, holder) === block;
+    return true;
   }
-  const lambda = holder?.kind === 'BlockExpression' ? parentOf(tree, holder) : undefined;
-  return lambda?.kind === 'Lambda' && lambda.body === holder;
+  return holder?.kind === 'BlockExpression' && outer?.kind === 'Lambda' && outer.body === holder;
 }

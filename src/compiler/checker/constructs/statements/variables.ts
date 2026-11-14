@@ -23,6 +23,7 @@ import type { VariableEntity } from '../../../binder/entities.ts';
 import { targetNames } from '../../../syntax/patterns.ts';
 import type { Assignment, VariableDeclaration } from '../../../syntax/statements/index.ts';
 import { leadsFunctionBody } from '../../../syntax/statements/readings.ts';
+import { ancestorsOf } from '../../../syntax/tree/index.ts';
 import type { Identifier } from '../../../syntax/tree/node.ts';
 import type { SignatureParameter } from '../../check.ts';
 import type { BodyContext, Variables } from '../../contexts/body-context.ts';
@@ -167,7 +168,8 @@ export function checkVariableDeclaration(context: BodyContext, node: VariableDec
 
 /** §3.4: a transient's place, and its one name, which lives in a cell. */
 function checkTransient(context: BodyContext, node: VariableDeclaration): void {
-  if (!leadsFunctionBody(context.checker.inputs.treeOf(context.module), node)) {
+  const tree = context.checker.inputs.treeOf(context.module);
+  if (!leadsFunctionBody(ancestorsOf(tree, node))) {
     context.report(checkerDiagnostics.transientPlace(node.span));
   }
   const [target, ...rest] = node.targets;
