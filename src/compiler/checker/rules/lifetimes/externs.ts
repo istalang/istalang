@@ -1,7 +1,7 @@
 /**
  * What the std's externs hold and keep (§3.16), which no code shows: `lifetimes`' `@Holds` on an
  * extern struct and `@Keeps` on an extern function, read here for every reader, what a value holds
- * (types/properties/held.ts) among them. Where either may stand is rules/annotations.ts's.
+ * (types/properties/held.ts) among them. Where either may stand is rules/annotations/'s.
  *
  * - `@Holds<X>` lists what a value holds as a tuple lists its elements: `X`'s elements, `()` none,
  *   or `X` alone where it is no tuple. Without it, a value holds its type arguments. Like a field's

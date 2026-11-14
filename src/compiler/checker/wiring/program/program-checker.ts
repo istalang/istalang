@@ -81,7 +81,7 @@ import { namedInModule } from '../../resolution/choosing/candidates.ts';
 import { rootSearches } from '../../resolution/conformance/conformance.ts';
 import { programRootGoals } from '../../resolution/conformance/root-goals.ts';
 import { traitObjectsOf } from '../../resolution/conformance/trait-objects.ts';
-import { Annotations } from '../../rules/annotations.ts';
+import { Annotations } from '../../rules/annotations/index.ts';
 import { JsonForms } from '../../rules/boundary/json-forms.ts';
 import { Expansion } from '../../rules/expansion/functions.ts';
 import { externHeldOf, keepsOf } from '../../rules/lifetimes/externs.ts';

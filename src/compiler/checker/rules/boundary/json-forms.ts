@@ -71,7 +71,7 @@ import type {
 import { typeText } from '../../types/type/type-text.ts';
 import { baseOf } from '../../types/unions/union-members.ts';
 import { optionalInner } from '../../types/unions/unions.ts';
-import type { Annotations } from '../annotations.ts';
+import type { Annotations } from '../annotations/index.ts';
 
 /**
  * Why a handle has no codec, a std one such as a slot or a shared struct alike: its values have an

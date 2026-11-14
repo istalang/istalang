@@ -24,50 +24,38 @@
  *   are declared, since the clash is in the declaration whether or not the type ever crosses.
  */
 
-import type { Diagnostic } from '../../../foundation/diagnostics/diagnostic.ts';
-import {
-  type WellKnownDeclaration,
-  wellKnown,
-} from '../../../foundation/language/well-known/index.ts';
-import type { EntryTable } from '../../../foundation/structures/entries/index.ts';
-import { sameItems } from '../../../foundation/structures/equality.ts';
-import type { ModuleId } from '../../program/program.ts';
-import type { Declaration, Field, FunctionDeclaration } from '../../syntax/declarations/index.ts';
-import type { Expression } from '../../syntax/expressions/index.ts';
-import type { Annotatable, Annotation } from '../../syntax/items.ts';
-import type { Statement } from '../../syntax/statements/index.ts';
-import type { Invalid, NodeOf } from '../../syntax/tree/node.ts';
-import type { AnchoredSpan } from '../../syntax/tree/positions.ts';
-import type { AnnotationChecks, CheckerContext, CheckerNote } from '../contexts/context.ts';
-import { checkerDiagnostics } from '../diagnostics/index.ts';
+import type { Diagnostic } from '../../../../foundation/diagnostics/diagnostic.ts';
+import type { EntryTable } from '../../../../foundation/structures/entries/index.ts';
+import { sameItems } from '../../../../foundation/structures/equality.ts';
+import type { ModuleId } from '../../../program/program.ts';
+import type {
+  Declaration,
+  Field,
+  FunctionDeclaration,
+} from '../../../syntax/declarations/index.ts';
+import type { Expression } from '../../../syntax/expressions/index.ts';
+import type { Annotatable, Annotation } from '../../../syntax/items.ts';
+import type { Statement } from '../../../syntax/statements/index.ts';
+import type { Invalid, NodeOf } from '../../../syntax/tree/node.ts';
+import type { AnchoredSpan } from '../../../syntax/tree/positions.ts';
+import type { AnnotationChecks, CheckerContext, CheckerNote } from '../../contexts/context.ts';
+import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import {
   type AnnotationPlace,
   type CheckedAnnotation,
   canAnnotate,
   functionPlace,
   statementPlace,
-} from '../surface/checked-annotation.ts';
-import type { CheckedBody } from '../surface/checked-body.ts';
-import { sameForm, typesIn } from '../surface/constant-form.ts';
-import { parametersIn, sameTypeSpelled } from '../types/parts/type-parts.ts';
-import type { FieldMember, Type } from '../types/type/index.ts';
-import { errorType } from '../types/type/primitives.ts';
-import { typeText } from '../types/type/type-text.ts';
-import { declaredFieldOf, type FieldOwner } from '../types/written/declared-fields.ts';
-import { computeConstant, refusalOf } from './computation/index.ts';
-
-/** The annotations the toolchain itself reads. */
-const known = {
-  jsonName: wellKnown.jsonName,
-  jsonSkip: wellKnown.jsonSkip,
-  jsonBigInt: wellKnown.jsonBigInt,
-  waypoint: wellKnown.waypoint,
-  suite: wellKnown.suite,
-  holds: wellKnown.holds,
-  keeps: wellKnown.keeps,
-} as const satisfies Record<string, WellKnownDeclaration>;
-
-type Known = keyof typeof known;
+} from '../../surface/checked-annotation.ts';
+import type { CheckedBody } from '../../surface/checked-body.ts';
+import { sameForm, typesIn } from '../../surface/constant-form.ts';
+import { parametersIn, sameTypeSpelled } from '../../types/parts/type-parts.ts';
+import type { FieldMember } from '../../types/type/index.ts';
+import { errorType } from '../../types/type/primitives.ts';
+import { typeText } from '../../types/type/type-text.ts';
+import { declaredFieldOf, type FieldOwner } from '../../types/written/declared-fields.ts';
+import { computeConstant, refusalOf } from '../computation/index.ts';
+import { type Known, known, type Placed, placements, placeText } from './placements.ts';
 
 /** What ProgramChecker gives the unit: how to check an annotation's value as a value of its own. */
 interface AnnotationSeams {
@@ -276,93 +264,6 @@ export class Annotations implements AnnotationChecks {
       checker.report(module, refusalOf(outcome, checkerDiagnostics.annotationNotConstant));
     }
     return outcome.kind === 'computed' ? { node, type, form: outcome.form } : undefined;
-  }
-}
-
-/** A place as its annotations' check reads it: a field's with the type it is declared with. */
-type Placed =
-  | Exclude<AnnotationPlace, { readonly kind: 'field' }>
-  | { readonly kind: 'field'; readonly type: Type };
-
-/** What a placement reads beyond the place: whether a type has a default, and where it stands. */
-interface PlaceFacts {
-  readonly isDefault: (type: Type) => boolean;
-  /** Whether the item is the std's. */
-  readonly isStd: boolean;
-}
-
-/**
- * Where each annotation means something: `'elsewhere'` when `place` is no place for it, a
- * diagnostic at its span when the place is right but the item can't take it, else nothing.
- * Annotations the toolchain doesn't read (`any`) mean something to tools on fields, functions and
- * struct declarations.
- */
-const placements: Record<
-  Known | 'any',
-  (
-    place: Placed,
-    facts: PlaceFacts,
-  ) => 'elsewhere' | ((at: AnchoredSpan) => Diagnostic<AnchoredSpan>) | undefined
-> = {
-  jsonName: (place) => (place.kind === 'field' ? undefined : 'elsewhere'),
-  jsonSkip: (place, { isDefault }) => {
-    if (place.kind !== 'field') {
-      return 'elsewhere';
-    }
-    return isDefault(place.type)
-      ? undefined
-      : (at) => checkerDiagnostics.skippedWithoutDefault(at, typeText(place.type));
-  },
-  jsonBigInt: (place) => {
-    if (place.kind !== 'field') {
-      return 'elsewhere';
-    }
-    return place.type.kind === 'primitive' && place.type.name === 'Int'
-      ? undefined
-      : (at) => checkerDiagnostics.bigIntNotInt(at, typeText(place.type));
-  },
-  waypoint: (place) => {
-    if (place.kind !== 'statement') {
-      return 'elsewhere';
-    }
-    return place.waits ? undefined : (at) => checkerDiagnostics.waypointWithoutWait(at);
-  },
-  suite: (place) => (place.kind === 'function' ? undefined : 'elsewhere'),
-  holds: (place, { isStd }) => {
-    if (place.kind !== 'struct') {
-      return 'elsewhere';
-    }
-    return place.isExtern && isStd ? undefined : (at) => checkerDiagnostics.holdsOutsideStd(at);
-  },
-  keeps: (place, { isStd }) => {
-    if (place.kind !== 'function') {
-      return 'elsewhere';
-    }
-    return place.isExtern && isStd ? undefined : (at) => checkerDiagnostics.keepsOutsideStd(at);
-  },
-  any: (place) =>
-    place.kind === 'field' || place.kind === 'function' || place.kind === 'struct'
-      ? undefined
-      : 'elsewhere',
-};
-
-/** How a diagnostic names `place`. */
-function placeText(place: Placed): string {
-  switch (place.kind) {
-    case 'field':
-      return 'a field';
-    case 'function':
-      return 'a function';
-    case 'struct':
-      return place.isExtern ? 'an extern struct' : 'a struct declaration';
-    case 'statement':
-      return 'a statement';
-    case 'other':
-      return place.description;
-    default: {
-      const unhandled: never = place;
-      return unhandled;
-    }
   }
 }
 
