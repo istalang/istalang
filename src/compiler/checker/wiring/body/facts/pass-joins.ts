@@ -12,9 +12,12 @@
  *   the same text, and what differs between them is their types.
  */
 
-import { distinctItems } from '../../../../../foundation/structures/equality.ts';
+import { distinctItems, sameItems } from '../../../../../foundation/structures/equality.ts';
+import { constructedVariant } from '../../../../syntax/declarations/field-defaults.ts';
 import type { PassRecords } from '../../../contexts/passes.ts';
 import type { PassAnswers } from '../../../lookup/pass-views.ts';
+import type { ResolvedCall } from '../../../surface/resolved-call.ts';
+import { sameType } from '../../../types/identity/identity.ts';
 import type { Type } from '../../../types/type/index.ts';
 import type { TypeRules } from '../../../types/type/type-rules.ts';
 import { unionOf } from '../../../types/unions/unions.ts';
@@ -85,3 +88,25 @@ export function firstRecorded<Key, Value>(
 export function firstPass<Answer>(answers: PassAnswers<Answer>): Answer {
   return answers[0];
 }
+
+/** The functions each pass resolved a node to, once each by what tools name them. */
+export function distinctCallees<Node>(answers: readonly PassRecords<Node, ResolvedCall>[]) {
+  return everyDistinct(
+    answers.map((records) => records.get),
+    sameCallee,
+  );
+}
+
+/**
+ * Whether two calls call one function: a call's target, as tools name it. A variant's constructor
+ * is named by the enum type it makes (§3.11), so its calls making two are two.
+ */
+function sameCallee(one: ResolvedCall, other: ResolvedCall): boolean {
+  return (
+    one.function === other.function &&
+    (constructedVariant(one.function) === undefined ||
+      sameTypes(one.typeArguments, other.typeArguments))
+  );
+}
+
+const sameTypes = sameItems(sameType);

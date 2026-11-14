@@ -50,7 +50,7 @@ export class StructLiterals implements LiteralSources {
   made(): readonly MadeCall[] {
     return this.#sources.entries().flatMap(([site, sources]) => {
       const defaulted = sources.find((source) => source.kind === 'default');
-      return defaulted === undefined ? [] : [{ site, call: defaulted.call }];
+      return defaulted === undefined ? [] : [{ kind: 'call', site, call: defaulted.call } as const];
     });
   }
 }

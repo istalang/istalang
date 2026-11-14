@@ -56,6 +56,7 @@ import type { FieldRead, FieldReading } from '../surface/checked-field.ts';
 import type { CheckedPattern, TargetBinding, TargetOwner } from '../surface/checked-pattern.ts';
 import type {
   Binding,
+  FunctionNaming,
   ImplicitRole,
   ResolvedCall,
   ResolvedSite,
@@ -347,6 +348,10 @@ export interface CallRecord {
   readonly record: (site: ResolvedSite, call: ResolvedCall) => void;
   /** The call recorded at `site`; undefined for one not checked yet or that couldn't be made. */
   readonly of: (site: ResolvedSite) => ResolvedCall | undefined;
+  /** Records the function `naming` names as a value (§3.14), which calls nothing yet. */
+  readonly recordValue: (naming: FunctionNaming, named: ResolvedCall) => void;
+  /** The function `naming` names as a value; undefined where it names none. */
+  readonly valueOf: (naming: FunctionNaming) => ResolvedCall | undefined;
   /** Records the functions the call at `site` chooses among (resolution/calls/resolve/index.ts). */
   readonly recordCandidates: (
     site: ResolvedSite,

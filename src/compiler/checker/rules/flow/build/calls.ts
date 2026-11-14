@@ -22,10 +22,10 @@ import {
 } from '../../../surface/resolved-call.ts';
 import { stepTarget } from './chains.ts';
 import type { FlowBuilder } from './flow-builder.ts';
-import { getterRead, readsGetter } from './getters.ts';
 import { implicitCall, resolvedCall, valueAt } from './implicit-calls.ts';
 import { spreadValue } from './literals.ts';
-import { enterPlace, leaveAll, partOfField } from './places.ts';
+import { memberValue } from './member-values.ts';
+import { enterPlace, leaveAll } from './places.ts';
 import { madeVariant } from './variants.ts';
 
 /** A call evaluated now: its arguments as passed, and how to write back what they copied in. */
@@ -106,17 +106,8 @@ function calleeValue(builder: FlowBuilder, node: Call): ValueId {
   if (callee.kind !== 'MemberAccess') {
     return builder.expression(callee);
   }
-  if (readsGetter(builder, callee)) {
-    return getterRead(builder, node, callee);
-  }
-  const read = builder.body.fieldReadOf(callee);
-  if (read === undefined) {
-    return builder.expression(callee);
-  }
-  const target = stepTarget(builder, node, callee.target);
-  const value = builder.temporary(callee, builder.body.fieldGivenBy(callee.member)?.type);
-  builder.emit({ op: 'read', site: callee, into: value, from: target, part: partOfField(read) });
-  return value;
+  const into = () => builder.temporary(callee, builder.body.fieldGivenBy(callee.member)?.type);
+  return memberValue(builder, { link: node, access: callee }, into) ?? builder.expression(callee);
 }
 
 /** `node`'s receiver and written arguments, as written: each by `&` where its parameter takes one. */

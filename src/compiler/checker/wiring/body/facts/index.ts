@@ -8,8 +8,6 @@
  * view passes a fact through unread.
  */
 
-import { sameItems } from '../../../../../foundation/structures/equality.ts';
-import { constructedVariant } from '../../../../syntax/declarations/field-defaults.ts';
 import type { NodeOf } from '../../../../syntax/tree/node.ts';
 import type { Pass, PassRecords } from '../../../contexts/passes.ts';
 import type { PassAnswers } from '../../../lookup/pass-views.ts';
@@ -21,12 +19,12 @@ import {
   type ListedFacts,
   listedFacts,
 } from '../../../surface/denotation.ts';
-import type { ResolvedCall } from '../../../surface/resolved-call.ts';
 import { exactFit } from '../../../types/fitting/fit/index.ts';
 import { sameType } from '../../../types/identity/identity.ts';
 import type { TypeRules } from '../../../types/type/type-rules.ts';
 import { type Instantiation, instantiationBy } from './instantiation.ts';
 import {
+  distinctCallees,
   everyDistinct,
   everyListed,
   firstFound,
@@ -91,11 +89,12 @@ const bodyFacts: { readonly [Name in FactName]: FactEntry<Name> } = {
   resolved: {
     at: (recorded, pass) => throughCore(recorded, pass, recorded.units.calls.at(pass)),
     instantiated: asChecked,
-    joined: (answers) =>
-      everyDistinct(
-        answers.map((records) => records.get),
-        sameCallee,
-      ),
+    joined: distinctCallees,
+  },
+  functionValues: {
+    at: (recorded, pass) => recorded.units.calls.valuesAt(pass),
+    instantiated: asChecked,
+    joined: distinctCallees,
   },
   valueCalls: {
     at: (recorded, pass) => throughCore(recorded, pass, recorded.units.valueCalls.at(pass)),
@@ -106,7 +105,10 @@ const bodyFacts: { readonly [Name in FactName]: FactEntry<Name> } = {
     at:
       ({ units }) =>
       () => [
-        ...units.calls.entries().map(([site, call]) => ({ site, call })),
+        ...units.calls.entries().map(([site, call]) => ({ kind: 'call', site, call }) as const),
+        ...units.calls
+          .valueEntries()
+          .map(([site, call]) => ({ kind: 'value', site, call }) as const),
         ...units.implicit.made(),
         ...units.literals.made(),
       ],
@@ -387,20 +389,6 @@ function joinedFact<Name extends ToolName>(
 function isListed(name: ToolName): name is ListedName {
   return Object.hasOwn(listedFacts, name);
 }
-
-/**
- * Whether two calls call one function: a call's target, as tools name it. A variant's constructor
- * is named by the enum type it makes (§3.11), so its calls making two are two.
- */
-function sameCallee(one: ResolvedCall, other: ResolvedCall): boolean {
-  return (
-    one.function === other.function &&
-    (constructedVariant(one.function) === undefined ||
-      sameTypes(one.typeArguments, other.typeArguments))
-  );
-}
-
-const sameTypes = sameItems(sameType);
 
 /** A fact by node with each answer read through `part`, the answer of none staying none. */
 function readThrough<Args extends unknown[], Answer>(

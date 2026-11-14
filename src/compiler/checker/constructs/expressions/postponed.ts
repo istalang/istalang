@@ -26,13 +26,13 @@ import type { Expression, Lambda } from '../../../syntax/expressions/index.ts';
 import type { BodyContext } from '../../contexts/body-context.ts';
 import { bodySite } from '../../contexts/use-site.ts';
 import {
-  type FunctionNaming,
   madeValue,
   namedFunctions,
   openedValue,
 } from '../../resolution/choosing/named-functions.ts';
 import { settlingAt } from '../../resolution/conformance/conformance.ts';
 import { placeholderOf } from '../../rules/placeholders.ts';
+import type { FunctionNaming } from '../../surface/resolved-call.ts';
 import type { Admits } from '../../types/fitting/expected.ts';
 import {
   builtFrom,

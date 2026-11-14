@@ -20,7 +20,7 @@ import { nodesUnder, type SyntaxNode, type SyntaxTree } from '../../syntax/tree/
 import type { Identifier } from '../../syntax/tree/node.ts';
 import type { TypeNode } from '../../syntax/types/index.ts';
 import { type Checker, checkProgram } from '../check.ts';
-import type { ResolvedSite } from '../surface/resolved-call.ts';
+import type { FunctionNaming, ResolvedSite } from '../surface/resolved-call.ts';
 
 export function checkedMain(text: string, imported: Readonly<Record<string, string>> = {}) {
   const program = stdProgramOf({ 'main.ista': text, ...imported });
@@ -89,6 +89,7 @@ export function answersAt(
     body?.patternOf(node as Pattern),
     body?.candidatesAt(node as ResolvedSite),
     body?.callsAt(node as ResolvedSite),
+    body?.functionValuesAt(node as FunctionNaming),
   ];
   if (node.kind === 'Identifier') {
     answers.push(

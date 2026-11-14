@@ -172,11 +172,13 @@ interface ComputedRequirement {
   readonly member: number;
 }
 
-/** A call a body makes, and the node it makes it at. */
-export interface MadeCall {
-  readonly site: NodeOf<string>;
-  readonly call: ResolvedCall;
-}
+/**
+ * A call a body makes, and the node it makes it at; or a function it names as a value, which a
+ * closure calls later, and the node naming it.
+ */
+export type MadeCall =
+  | { readonly kind: 'call'; readonly site: NodeOf<string>; readonly call: ResolvedCall }
+  | { readonly kind: 'value'; readonly site: FunctionNaming; readonly call: ResolvedCall };
 
 /**
  * Per type parameter of a generic callee: for each of its constraints, in order, the call each
@@ -216,55 +218,28 @@ export function instantiatingTypesOf(call: ResolvedCall): readonly Type[] {
 }
 
 /**
- * Nodes the checker resolves to a function: the nodes a call can be written as, a call, a deferred
- * call, read as the call to its taker it was checked as (§3.14, `BodyFacts.coreOf`), an operator
- * that calls a function (§3.9), indexing, which calls `index`, an assignment, whose compound
- * operator calls a function; and a function named as a value (§3.14), `f`, `ns.f` or `T.f`, or
- * given type arguments, `f<Int>`, for the function its closure runs, recorded at its name
- * (`functionValueSite`); and a member access reading a getter, `x.g`, the call `g(x)` (§3.1). A
- * call of a function value resolves to none (`CheckedBody.valueCalls`), and a call the language
- * makes is implicit (`ImplicitRole`).
+ * Nodes the checker resolves to the function they call: the nodes a call can be written as, a
+ * call, a deferred call, read as the call to its taker it was checked as (§3.14,
+ * `BodyFacts.coreOf`), an operator that calls a function (§3.9), indexing, which calls `index`, an
+ * assignment, whose compound operator calls a function, and a member access reading a getter,
+ * `x.g`, the call `g(x)` (§3.1). A function named as a value calls nothing where it stands
+ * (`FunctionNaming`); a call of a function value resolves to none (`CheckedBody.valueCalls`), and a
+ * call the language makes is implicit (`ImplicitRole`).
  */
 export type ResolvedSite = NodeOf<
-  | 'Call'
-  | 'DeferredCall'
-  | 'Binary'
-  | 'Unary'
-  | 'Assignment'
-  | 'Index'
-  | 'Identifier'
-  | 'MemberAccess'
-  | 'TypeApplication'
+  'Call' | 'DeferredCall' | 'Binary' | 'Unary' | 'Assignment' | 'Index' | 'MemberAccess'
 >;
 
 /** Whether `site` calls what it resolves to, as a call does. */
-export function isCalling(site: ResolvedSite): site is Call {
+export function isCalling(site: NodeOf<string>): site is Call {
   return site.kind === 'Call';
 }
 
 /**
- * The sites a function named as a value is recorded at (§3.14): its name, `f`, or the `f` of `ns.f`
- * and `T.f`, or its name given type arguments, `f<Int>`.
+ * What names functions as a value (§3.14), where the function it names is recorded: a name, `f`,
+ * plain or qualified, `ns.f` or `T.f`, maybe given type arguments, `f<Int>`.
  */
-type FunctionValueSite = NodeOf<'Identifier' | 'TypeApplication'>;
-
-/**
- * Whether `site` is where a function named as a value is recorded, which calls nothing where it
- * stands: a resolved one names a function.
- */
-export function namesFunctionValue(site: NodeOf<string>): site is FunctionValueSite {
-  return site.kind === 'Identifier' || site.kind === 'TypeApplication';
-}
-
-/**
- * Where a function `naming` names as a value is recorded: a qualified name's at its last name, so
- * a member access stands only for what its member reads (§3.14).
- */
-export function functionValueSite(
-  naming: Identifier | MemberAccess | TypeApplication,
-): FunctionValueSite {
-  return naming.kind === 'MemberAccess' ? naming.member : naming;
-}
+export type FunctionNaming = Identifier | MemberAccess | TypeApplication;
 
 /**
  * What a call the language makes for a construct, with no call written, does there

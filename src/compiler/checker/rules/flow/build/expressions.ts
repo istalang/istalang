@@ -40,7 +40,6 @@ import {
   unaryFlow,
 } from './control.ts';
 import type { FlowBuilder } from './flow-builder.ts';
-import { getterRead, readsGetter } from './getters.ts';
 import { resolvedCall } from './implicit-calls.ts';
 import {
   arrayLiteral,
@@ -49,6 +48,7 @@ import {
   mapLiteral,
   structLiteral,
 } from './literals.ts';
+import { memberValue } from './member-values.ts';
 import { partOfField } from './places.ts';
 import { madeVariant } from './variants.ts';
 
@@ -75,11 +75,11 @@ export function coreFlow(builder: FlowBuilder, node: Sugar): ValueId {
 
 /**
  * What `name` denotes, read as the value of `read` (the name, or a namespace's member qualifying
- * it): a function named as a value, recorded at its name, a variable of the body, a global, a
+ * it): a function named as a value, recorded at `read`, a variable of the body, a global, a
  * variant without fields, or a struct without fields.
  */
 function named(builder: FlowBuilder, name: Identifier, read: Identifier | MemberAccess): ValueId {
-  const call = builder.body.resolved.get(name);
+  const call = builder.body.functionValues.get(read);
   if (call !== undefined) {
     const into = builder.temporaryOf(read);
     builder.emit({ op: 'make', site: read, into, made: { kind: 'function', call }, parts: [] });
@@ -111,23 +111,19 @@ function bareStruct(builder: FlowBuilder, node: Expression): ValueId {
 /** `a.b`: a field read, a getter's call (§3.1), or what a namespace's or a type's member names. */
 function memberAccess(builder: FlowBuilder, node: MemberAccess): ValueId {
   const { checker, module } = builder.inputs;
-  const read = builder.body.fieldReadOf(node);
   const member = checker.bindings.entityOf(module, node.member);
-  const isNamed = member !== undefined || builder.body.resolved.has(node.member);
-  if (isNamed) {
+  if (member !== undefined || builder.body.functionValues.has(node)) {
     return named(builder, node.member, node);
   }
-  if (readsGetter(builder, node)) {
-    return getterRead(builder, node, node);
-  }
   // A member checking found no field for: its target runs all the same.
-  return read === undefined
-    ? unknown(builder, node, [builder.expression(node.target)])
-    : readPart(builder, node, partOfField(read));
+  return (
+    memberValue(builder, { link: node, access: node }, () => builder.temporaryOf(node)) ??
+    unknown(builder, node, [builder.expression(node.target)])
+  );
 }
 
 /** The part `part` of what `node`'s step works on. */
-function readPart(builder: FlowBuilder, node: MemberAccess | TupleElement, part: Part): ValueId {
+function readPart(builder: FlowBuilder, node: TupleElement, part: Part): ValueId {
   const target = stepTarget(builder, node, node.target);
   const into = builder.temporaryOf(node);
   builder.emit({ op: 'read', site: node, into, from: target, part });
@@ -193,7 +189,7 @@ export const expressionFlows: Handlers<FlowBuilder, CoreExpression, [], ValueId>
   Lambda: closureOf,
   Call: callFlow,
   TypeApplication: (builder, node) => {
-    const call = builder.body.resolved.get(node);
+    const call = builder.body.functionValues.get(node);
     const { target } = node;
     const name = target.kind === 'MemberAccess' ? target.member : target;
     const entity =

@@ -35,7 +35,7 @@ import type { TypeNode } from '../../syntax/types/index.ts';
 import type { VariantMember } from '../check.ts';
 import type { Constraint, FieldMember, Type } from '../types/type/index.ts';
 import type { BodyFacts, CheckedFunction } from './checked-body.ts';
-import type { ResolvedCall, ResolvedSite } from './resolved-call.ts';
+import type { FunctionNaming, ResolvedCall, ResolvedSite } from './resolved-call.ts';
 
 /** What names a type: a declared one, a primitive, or `Self` inside a trait. */
 type TypeNaming = Extract<Entity, { readonly kind: 'type' | 'primitive' | 'self' }>;
@@ -119,6 +119,7 @@ export interface LookupQueries {
  */
 export const listedFacts = {
   resolved: 'callsAt',
+  functionValues: 'functionValuesAt',
   functionOf: 'functionsOf',
 } as const satisfies Partial<Record<keyof BodyFacts, keyof ListedFacts>>;
 
@@ -146,8 +147,10 @@ export const joinedFacts = [
  * order.
  */
 export interface ListedFacts {
-  /** The functions `site` calls, or names as a value: each one a pass resolved it to. */
+  /** The functions `site` calls: each one a pass resolved it to. */
   readonly callsAt: (site: ResolvedSite) => readonly ResolvedCall[];
+  /** The functions `naming` names as a value: each one a pass resolved it to. */
+  readonly functionValuesAt: (naming: FunctionNaming) => readonly ResolvedCall[];
   /** A lambda or local function as each pass checked it: one for each type it was checked as. */
   readonly functionsOf: (node: Lambda | FunctionDeclaration) => readonly CheckedFunction[];
 }

@@ -34,11 +34,11 @@ import {
   fieldsFunctionOf,
 } from '../../../syntax/declarations/field-defaults.ts';
 import type { TypeParameter } from '../../../syntax/declarations/index.ts';
-import type { TypeApplication } from '../../../syntax/expressions/calls.ts';
 import type { MemberAccess } from '../../../syntax/expressions/index.ts';
 import type { Identifier } from '../../../syntax/tree/node.ts';
 import type { BodyContext } from '../../contexts/body-context.ts';
 import { searchSite, type UseSite } from '../../contexts/use-site.ts';
+import type { FunctionNaming } from '../../surface/resolved-call.ts';
 import type { Admits } from '../../types/fitting/expected.ts';
 import {
   enumsExpected,
@@ -73,9 +73,6 @@ export interface NamedFunctions {
   readonly candidates: (expected: Type | undefined) => readonly Candidate[];
   readonly written?: readonly Type[] | undefined;
 }
-
-/** What may name functions as a value: a name, plain or qualified, maybe given type arguments. */
-export type FunctionNaming = Identifier | MemberAccess | TypeApplication;
 
 /**
  * The functions `node` names, when it names functions: a top-level name, plain or through a

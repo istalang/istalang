@@ -47,6 +47,7 @@ import type { JoinedBody } from './denotation.ts';
 import type { FlowFunction } from './flow-ir.ts';
 import type {
   FunctionCall,
+  FunctionNaming,
   ImplicitRole,
   MadeCall,
   ResolvedCall,
@@ -227,8 +228,13 @@ export interface BodyFacts {
    * down to its check, or fitted to once checked; undefined where nothing is expected.
    */
   readonly expectedOf: (site: ValueSite) => Type | undefined;
-  /** The function each call site of this body calls, or each function value names. */
+  /** The function each call site of this body calls. */
   readonly resolved: PassRecords<ResolvedSite, ResolvedCall>;
+  /**
+   * The function each naming of one as a value names (§3.14), at the naming itself, `f`, `ns.f`,
+   * `T.f` or `f<Int>`: what its closure calls later, nothing where it stands.
+   */
+  readonly functionValues: PassRecords<FunctionNaming, ResolvedCall>;
   /**
    * The calls of function values, which call whatever their callee gives (§3.14), each with how
    * its arguments fill the value's parameters.
@@ -237,7 +243,7 @@ export interface BodyFacts {
   /**
    * Every call the body makes, where it makes it: its call sites', the language's for constructs
    * with no call written (`implicitCallOf`), and the defaults its struct literals leave fields to;
-   * and every function it names as a value, which a closure calls later (`namesFunctionValue`).
+   * and every function it names as a value, which a closure calls later (`functionValues`).
    */
   readonly madeCalls: () => readonly MadeCall[];
   /**

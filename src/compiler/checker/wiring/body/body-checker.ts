@@ -199,7 +199,8 @@ export class BodyChecker implements BodyContext {
   #finished(roots: readonly FlowRoot[], result: Type): CheckedBody {
     this.variables.warnUnchanged(this);
     const calls = this.calls.entries();
-    checkDisposeUses(this, calls, checkTestingCalls(this, calls));
+    const named = [...calls, ...this.calls.valueEntries()];
+    checkDisposeUses(this, named, checkTestingCalls(this, calls));
     recordOutcomeCodecs(this, calls);
     const inputs = {
       checker: this.checker,

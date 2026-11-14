@@ -56,7 +56,9 @@ export class ImplicitCalls implements ImplicitRecord {
   made(): readonly MadeCall[] {
     return this.#calls
       .entries()
-      .flatMap(([site, roles]) => [...roles.values()].map((call) => ({ site, call })));
+      .flatMap(([site, roles]) =>
+        [...roles.values()].map((call) => ({ kind: 'call', site, call }) as const),
+      );
   }
 }
 

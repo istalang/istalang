@@ -37,7 +37,7 @@ import {
 import { selfInference } from '../../resolution/choosing/receivers.ts';
 import { checkedChildrenOf } from '../../surface/checked-body.ts';
 import { isHostExtern, isHostType } from '../../surface/host-externs.ts';
-import type { ResolvedCall, ResolvedSite } from '../../surface/resolved-call.ts';
+import type { ResolvedCall } from '../../surface/resolved-call.ts';
 import { sameType } from '../../types/identity/identity.ts';
 import { substitute } from '../../types/parts/substitution.ts';
 import { isConfined } from '../../types/properties/handles.ts';
@@ -301,7 +301,7 @@ function checkSelfStays(
  */
 export function checkDisposeUses(
   context: BodyContext,
-  calls: Iterable<readonly [ResolvedSite, ResolvedCall]>,
+  calls: Iterable<readonly [NodeOf<string>, ResolvedCall]>,
   mockTargets: ReadonlySet<NodeOf<string>>,
 ): void {
   for (const [site, call] of calls) {

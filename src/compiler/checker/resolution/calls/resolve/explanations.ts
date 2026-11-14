@@ -12,7 +12,11 @@ import { calledName } from '../../../../syntax/expressions/readings.ts';
 import type { AnchoredSpan } from '../../../../syntax/tree/positions.ts';
 import type { BodyContext } from '../../../contexts/body-context.ts';
 import { checkerDiagnostics } from '../../../diagnostics/index.ts';
-import { isCalling } from '../../../surface/resolved-call.ts';
+import {
+  type FunctionNaming,
+  isCalling,
+  type ResolvedSite,
+} from '../../../surface/resolved-call.ts';
 import { misfitOf } from '../../../types/fitting/fit/index.ts';
 import { isPlaceholder } from '../../../types/inference/variables.ts';
 import type { Type } from '../../../types/type/index.ts';
@@ -110,7 +114,10 @@ export function explainNone(
 }
 
 /** A call as a report about it reads it: where, of what name, with what written. */
-type ExplainedCall = Pick<CallRequest, 'site' | 'name' | 'arguments' | 'typeArguments'>;
+/** A call explained, or a naming of a function as a value, which no function taking none fits. */
+type ExplainedCall = Pick<CallRequest, 'name' | 'arguments' | 'typeArguments'> & {
+  readonly site: ResolvedSite | FunctionNaming;
+};
 
 /** The report saying why a call's arguments can't fill its one function's parameters (§3.3). */
 function bindingReport(request: ExplainedCall, reason: BindingFailure): Diagnostic<AnchoredSpan> {

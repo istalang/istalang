@@ -30,7 +30,6 @@ import type { BodyContext } from '../../../contexts/body-context.ts';
 import { bodySite } from '../../../contexts/use-site.ts';
 import { checkerDiagnostics } from '../../../diagnostics/index.ts';
 import type { ResolvedSite } from '../../../surface/resolved-call.ts';
-import { namesFunctionValue } from '../../../surface/resolved-call.ts';
 import type { Inference } from '../../../types/inference/infer.ts';
 import { mentionsOnlyPlaceholders } from '../../../types/inference/variables.ts';
 import type { LiteralType, Type } from '../../../types/type/index.ts';
@@ -39,7 +38,6 @@ import { type CallApplication, chooseCall, completeCall } from '../../applying/a
 import { withSolvedTypes } from '../../applying/argument-fit.ts';
 import { judgedCall } from '../../applying/call-kinds.ts';
 import type { CallArgument, Passing } from '../../choosing/call-arguments.ts';
-import { callMade } from '../../choosing/calls-made.ts';
 import type { Candidate } from '../../choosing/candidates.ts';
 import type { Application } from '../../choosing/choice.ts';
 import { type Instantiation, settlingAt } from '../../conformance/conformance.ts';
@@ -259,7 +257,7 @@ export function appliedArgumentOf(
   return { ...callArgumentOf(argument), node: argument.node };
 }
 
-/** A chosen function, instantiated, at the site calling it or naming it as a value. */
+/** A chosen function, instantiated, at the site calling it. */
 interface Chosen {
   readonly site: ResolvedSite;
   readonly application: Application;
@@ -269,16 +267,13 @@ interface Chosen {
 
 /**
  * Records the call `chosen` makes, where its code's kind lets it make it (§3.3), the code being
- * the function checked, which settling a scope runs in again (wiring/body/body-scopes.ts); a
- * function named as a value calls nothing yet. That it may make it at all, since only the runtime
- * calls a `dispose` (§7), is checked once the body is (rules/disposal/disposal.ts).
+ * the function checked, which settling a scope runs in again (wiring/body/body-scopes.ts). That it
+ * may make it at all, since only the runtime calls a `dispose` (§7), is checked once the body is
+ * (rules/disposal/disposal.ts).
  */
-export function recordChosen(context: BodyContext, chosen: Chosen): void {
+function recordChosen(context: BodyContext, chosen: Chosen): void {
   const { site, application, instantiation, receiver } = chosen;
   const frame = context.functions.current;
-  // A function named as a value calls nothing yet (Rule 4: holding isn't calling).
-  const call = namesFunctionValue(site)
-    ? callMade(application, instantiation)
-    : judgedCall(context, { at: site.span, frame, application, instantiation });
+  const call = judgedCall(context, { at: site.span, frame, application, instantiation });
   context.calls.record(site, receiver === undefined ? call : { ...call, receiver });
 }

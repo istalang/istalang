@@ -19,7 +19,7 @@ import type { Identifier } from '../../../syntax/tree/node.ts';
 import { declaredOutsideBodies } from '../../constructs/expressions/access/names.ts';
 import type { CheckerContext } from '../../contexts/context.ts';
 import type { Denotation, JoinedBody } from '../../surface/denotation.ts';
-import type { ResolvedCall, ResolvedSite } from '../../surface/resolved-call.ts';
+import type { FunctionNaming, ResolvedCall, ResolvedSite } from '../../surface/resolved-call.ts';
 import { nominalType, type Type } from '../../types/type/index.ts';
 import { entityType } from '../../types/written/named-types.ts';
 import { parameterType } from '../../types/written/resolve-type.ts';
@@ -57,18 +57,19 @@ function fromEntity(site: NameSite, entity: Entity, type: Type | undefined): rea
       ];
     case 'functions':
       return (
-        calledAt(site, name, type) ?? entity.overloads.map((each) => functionDenotation(each, type))
+        namedValueAt(site, name, type) ??
+        entity.overloads.map((each) => functionDenotation(each, type))
       );
     case 'type':
     case 'primitive':
     case 'self':
       return [{ declared: { kind: 'type', entity }, type: type ?? entityType(checker, entity) }];
     case 'variant':
-      return calledAt(site, name, type) ?? [variantDenotation(entity, type)];
+      return namedValueAt(site, name, type) ?? [variantDenotation(entity, type)];
     case 'variants': {
       const chosen = body?.chosenVariantOf(name);
       const asValue = chosen === undefined ? [] : [variantDenotation(chosen, type)];
-      return calledAt(site, name, type) ?? asValue;
+      return namedValueAt(site, name, type) ?? asValue;
     }
     case 'namespace':
       return [{ declared: { kind: 'namespace', entity }, type: undefined }];
@@ -116,16 +117,32 @@ function declaredVariableType(site: NameSite, entity: VariableEntity): Type | un
 }
 
 /**
- * The functions the checker resolved `site` to, `call` or a function value of type `type`: one,
- * or in a field loop each one a pass resolved it to; undefined for none.
+ * The functions the checker resolved the call `call` to, of type `type`: one, or in a field loop
+ * each one a pass resolved it to; undefined for none.
  */
 export function calledAt(
   { body }: NameSite,
   call: ResolvedSite,
   type: Type | undefined,
 ): readonly Denotation[] | undefined {
-  const calls = body?.callsAt(call) ?? [];
-  return calls.length === 0 ? undefined : calls.map((each) => calledDenotation(each, type));
+  return denotationsOf(body?.callsAt(call) ?? [], type);
+}
+
+/** What `naming` names as a value, of `type`: undefined where it names no function. */
+export function namedValueAt(
+  { body }: NameSite,
+  naming: FunctionNaming,
+  type: Type | undefined,
+): readonly Denotation[] | undefined {
+  return denotationsOf(body?.functionValuesAt(naming) ?? [], type);
+}
+
+/** What each of `called` names, of `type`; undefined for none. */
+function denotationsOf(
+  called: readonly ResolvedCall[],
+  type: Type | undefined,
+): readonly Denotation[] | undefined {
+  return called.length === 0 ? undefined : called.map((each) => calledDenotation(each, type));
 }
 
 /**

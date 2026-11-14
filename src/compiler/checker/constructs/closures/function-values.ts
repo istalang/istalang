@@ -24,11 +24,10 @@ import type { BodyContext } from '../../contexts/body-context.ts';
 import { bodySite } from '../../contexts/use-site.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import { explain } from '../../resolution/calls/resolve/explanations.ts';
-import { recordChosen } from '../../resolution/calls/resolve/index.ts';
+import { callMade } from '../../resolution/choosing/calls-made.ts';
 import type { Application } from '../../resolution/choosing/choice.ts';
 import {
   chosenValue,
-  type FunctionNaming,
   functionsAccepted,
   instantiatedValue,
   type MadeValue,
@@ -36,7 +35,7 @@ import {
   namedFunctions,
   ownChoice,
 } from '../../resolution/choosing/named-functions.ts';
-import { functionValueSite } from '../../surface/resolved-call.ts';
+import type { FunctionNaming } from '../../surface/resolved-call.ts';
 import type { Admits } from '../../types/fitting/expected.ts';
 import { expectedFunction, writtenNominal } from '../../types/fitting/expected.ts';
 import { type FunctionType, isNominalEntity, type Type } from '../../types/type/index.ts';
@@ -81,11 +80,8 @@ export function recordedValue(
   if (made === undefined) {
     return errorType;
   }
-  recordChosen(context, {
-    site: functionValueSite(site),
-    application,
-    instantiation: made.instantiation,
-  });
+  // A function named as a value calls nothing yet (Rule 4: holding isn't calling).
+  context.calls.recordValue(site, callMade(application, made.instantiation));
   return made.type;
 }
 

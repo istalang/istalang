@@ -179,7 +179,7 @@ function instantiationsAt(
     return callInstantiations(checker, module, call);
   }
   const body = bodyHolding(checker, module, node);
-  const calls = body?.callsAt(node) ?? [];
+  const calls = body?.functionValuesAt(node) ?? [];
   const made = body?.typeOf(node);
   return calls.length === 0 && made !== undefined
     ? membersOf(made).flatMap(nominalMade)

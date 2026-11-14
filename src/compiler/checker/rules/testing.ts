@@ -39,8 +39,7 @@ import { type CheckedBody, childrenRunning } from '../surface/checked-body.ts';
 import { isHostType } from '../surface/host-externs.ts';
 import {
   type FunctionCall,
-  functionValueSite,
-  namesFunctionValue,
+  type FunctionNaming,
   passesAll,
   type ResolvedCall,
   type ResolvedSite,
@@ -82,13 +81,13 @@ export function checkTestingCalls(
   return targets;
 }
 
-/** Where the function `target` names as a value is recorded, if it names one (§3.14). */
-function valueSiteOf(target: Expression): ResolvedSite | undefined {
+/** `target`, where it may name a function as a value (§3.14). */
+function namingOf(target: Expression): FunctionNaming | undefined {
   switch (target.kind) {
     case 'Identifier':
     case 'MemberAccess':
     case 'TypeApplication':
-      return functionValueSite(target);
+      return target;
     default:
       return undefined;
   }
@@ -102,12 +101,12 @@ function checkTarget(
   context: BodyContext,
   site: Call,
   mock: FunctionCall,
-): ResolvedSite | undefined {
+): FunctionNaming | undefined {
   const [source] = mock.binding;
   const argument = source?.kind === 'argument' ? site.arguments[source.index] : undefined;
   const target = argument === undefined ? undefined : unparenthesized(argumentValue(argument));
-  const recorded = target === undefined ? undefined : valueSiteOf(target);
-  const named = recorded === undefined ? undefined : context.calls.of(recorded);
+  const recorded = target === undefined ? undefined : namingOf(target);
+  const named = recorded === undefined ? undefined : context.calls.valueOf(recorded);
   const names = named?.kind === 'function' && constructedVariant(named.function) === undefined;
   if (target === undefined || recorded === undefined || !names) {
     context.report(checkerDiagnostics.mockTarget((argument ?? site).span));
@@ -174,8 +173,8 @@ export function checkSuite(
     body
       .madeCalls()
       .filter(
-        ({ site, call }) =>
-          !namesFunctionValue(site) &&
+        ({ kind, call }) =>
+          kind === 'call' &&
           (call.function.isExtern || isHandleType(checker.resultOf(call.function))),
       )
       .map(({ site }) => site),

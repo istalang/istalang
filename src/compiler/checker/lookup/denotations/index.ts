@@ -27,14 +27,20 @@ import { type Identifier, lastName } from '../../../syntax/tree/node.ts';
 import type { NamedType } from '../../../syntax/types/index.ts';
 import type { CheckerContext } from '../../contexts/context.ts';
 import type { Denotation } from '../../surface/denotation.ts';
-import { functionValueSite } from '../../surface/resolved-call.ts';
 import { associatedDeclarationsOn } from '../../types/traits/known-constraints.ts';
 import type { FieldMember, Type } from '../../types/type/index.ts';
 import { membersOf } from '../../types/type/index.ts';
 import { declaredFieldOf } from '../../types/written/declared-fields.ts';
 import { namedType } from '../../types/written/named-types.ts';
 import { bodyHolding } from '../holders.ts';
-import { builtType, calledAt, functionDenotation, type NameSite, named } from './named.ts';
+import {
+  builtType,
+  calledAt,
+  functionDenotation,
+  type NameSite,
+  named,
+  namedValueAt,
+} from './named.ts';
 
 /** What `name` of `module` denotes (denotation.ts `denotationsOf`). */
 export function denotationsOf(
@@ -110,7 +116,7 @@ const chosenIn: Handlers<NameSite, NameHolder, [], readonly Denotation[] | undef
     // Type arguments written after the name make the value: a function the checker resolved, or
     // a struct without fields of that instance (§3.1).
     const type = site.body?.typeOf(node);
-    return calledAt(site, node, type) ?? named(site, type);
+    return namedValueAt(site, node, type) ?? named(site, type);
   },
   TemplateLiteral: (site, node) => (site.name === node.tag ? taggedAt(site, node) : undefined),
   DeclaredField: (site, node) => (site.name === node.name ? declaredField(site) : undefined),
@@ -180,7 +186,7 @@ function memberDenotations(site: NameSite, access: MemberAccess): readonly Denot
   const value = holder?.kind === 'TypeApplication' ? holder : access;
   const type = site.body?.typeOf(value);
   const associated = associatedNamed(site.checker, namedType(namingAt(site), access));
-  const valued = calledAt(site, functionValueSite(value), type);
+  const valued = namedValueAt(site, value, type);
   return valued ?? (associated.length > 0 ? associated : named(site, type));
 }
 

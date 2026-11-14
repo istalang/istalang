@@ -25,7 +25,6 @@ import {
 import type { Identifier } from '../../syntax/tree/node.ts';
 import { type Checker, checkProgram } from '../check.ts';
 import type { Denotation, JoinedBody } from '../surface/denotation.ts';
-import { functionValueSite } from '../surface/resolved-call.ts';
 import { sameType } from '../types/identity/identity.ts';
 import type { Type } from '../types/type/index.ts';
 import { membersOf } from '../types/type/index.ts';
@@ -95,7 +94,7 @@ function madeBy(
     const made = body.typeOf(call);
     return made === undefined ? undefined : membersOf(made);
   }
-  const valued = body.callsAt(functionValueSite(value)).length > 0 ? body.typeOf(value) : undefined;
+  const valued = body.functionValuesAt(value).length > 0 ? body.typeOf(value) : undefined;
   return valued === undefined
     ? undefined
     : membersOf(valued).flatMap((each) => (each.kind === 'function' ? [each.result] : []));
@@ -139,7 +138,15 @@ function chosenFor(
 ): readonly ((denotation: Denotation) => boolean)[] {
   const naming = namingAt(tree, name);
   const member = naming.named.kind === 'MemberAccess' ? naming.named : undefined;
-  const called = body.callsAt(naming.call ?? functionValueSite(naming.value));
+  // A member access names a function as a value, or reads a getter, the call made at it.
+  const { value } = naming;
+  const called =
+    naming.call === undefined
+      ? [
+          ...body.functionValuesAt(value),
+          ...(value.kind === 'MemberAccess' ? body.callsAt(value) : []),
+        ]
+      : body.callsAt(naming.call);
   const field = body.fieldGivenBy(name);
   const read = member === undefined ? undefined : body.fieldReadOf(member);
   const entity = checker.bindings.entityOf(module, name);
