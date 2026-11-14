@@ -1,0 +1,110 @@
+# Derived values with dynamic dependencies, for FormBuilder (docs/work/computed/design.md).
+#
+# - Pull, not push: a write marks no reader. A read brings what it reads up to date first, so a
+#   value nobody reads is never evaluated, and nothing holds a list of readers.
+# - One clock per graph: a node is up to date in a view when its `checked` tick is at or after the
+#   view's, and a read changed since its reader was checked when its `changed` tick is after the
+#   reader's `checked`. So each node is visited once per view, and evaluated only when what it
+#   read changed.
+# - The transient lives in one non-generic function, `_track`, which every read enters, so every
+#   `Computed<T>` shares one view and one current reader (proposal 13).
+# - Every value here is inert (proposal 14), so the graph may hold cycles: a computed's closures,
+#   its value and what it reads may all reach the computed again.
+
+# The nodes that read one another, on one clock.
+shared struct Graph:
+  now: Int = 0
+
+# One per source and computed; not generic, so one `_track` serves every `Computed<T>`.
+shared struct _Dependency:
+  graph: Graph
+  changed: Int = 0
+  checked: Int? = none
+  reads: Array<_Dependency> = []
+  active: Bool = false
+  refresh: inert fn() -> Bool # evaluates, keeps an unequal result, and says whether it kept one
+
+# A value only the driver sets, between views.
+struct Source<T is Inert>:
+  _dep: _Dependency
+  _cell: Shared<T>
+
+# A computed's cell once it evaluated, so that a `none` result is a value like any other.
+struct _Evaluated<T>:
+  value: T
+
+# A value derived by its evaluation from what that evaluation read.
+struct Computed<T is Inert>:
+  _dep: _Dependency
+  _cell: Shared<_Evaluated<T>?>
+
+# What an outermost read shares with every read beneath it.
+struct _View:
+  graph: Graph
+  tick: Int
+  reader: _Dependency?
+
+fn source<T is Inert>(self: Graph, value: T) -> Source<T>: Source{
+  _dep: new _Dependency{graph: self, refresh: _unchanged}
+  _cell: new Shared<T>{value}
+}
+
+fn computed<T is Inert>(self: Graph, eval: inert fn() -> T) -> Computed<T>:
+  const cell = new Shared<_Evaluated<T>?>{value: none}
+  fn refresh() -> Bool:
+    const next = _Evaluated{value: eval()}
+    if cell->value == next: return false
+    cell->value = next
+    true
+  Computed{_dep: new _Dependency{graph: self, refresh}, _cell: cell}
+
+# Sets the source between views; only a different value counts as a change.
+fn set<T is Inert>(self: Source<T>, value: T):
+  if self._cell->value != value:
+    self._cell->value = value
+    self._dep->changed = self._dep->graph._tick()
+
+fn read<T is Inert>(self: Source<T>) -> T:
+  _track(self._dep)
+  self._cell->value
+
+fn read<T is Inert>(self: Computed<T>) -> T:
+  _track(self._dep)
+  match self._cell->value:
+    case None: panic("A computed read itself in its first evaluation, before it had a value.")
+    case evaluated: evaluated.value
+
+# A source's evaluation: its value is set, never derived.
+fn _unchanged() -> Bool: false
+
+fn _tick(self: Graph) -> Int:
+  self->now += 1
+  self->now
+
+# Brings `dep` up to date in the current view, starting one if there is none, and records it in
+# the current reader. A node reached again while it is being brought up to date is recorded as it
+# is: a computed reading itself gets its previous value.
+fn _track(dep: _Dependency):
+  transient let view: _View? = none
+  const current = view ?? _View{graph: dep->graph, tick: dep->graph._tick(), reader: none}
+  if current.graph != dep->graph:
+    panic("A view reads one graph: another graph's ticks don't compare with its own.")
+  view = current
+  fn evaluate(node: _Dependency):
+    view = _View{graph: current.graph, tick: current.tick, reader: node}
+    node->reads = []
+    const kept = node->refresh()
+    view = current
+    if kept: node->changed = node->graph._tick()
+  fn bringUpToDate(node: _Dependency) -> Unit:
+    if node->active: return
+    if node->checked is Int as checked and checked >= current.tick: return
+    node->active = true
+    const stale = match node->checked:
+      case None: true
+      case checked: node->reads.some(fn(read): { bringUpToDate(read); read->changed > checked })
+    if stale: evaluate(node)
+    node->checked = node->graph->now
+    node->active = false
+  bringUpToDate(dep)
+  if current.reader is _Dependency as reader: reader->reads.push(dep)

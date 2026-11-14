@@ -1,7 +1,8 @@
 /**
- * The example projects (examples/) check with no error, as `ista check` run in each finds them:
- * they show the language as it stands, so a change to it that breaks one fails here rather than
- * leaving the example to rot.
+ * The example projects (examples/) check with no error, as `ista check` run in each finds them,
+ * and their suites pass under `ista test`, heaps checked by the oracle of static lifetimes: they
+ * show the language as it stands, so a change to it that breaks one fails here rather than leaving
+ * the example to rot.
  *
  * Each project is loaded once for the file. A program that adds a module to one is checked as an
  * editor checks an edit, taking over what checking the project found (check.ts `checkProgram`).
@@ -11,6 +12,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import { ista } from '../src/cli/cli.test-kit.ts';
 import { checkProgram } from '../src/compiler/checker/check.ts';
 import { compileProgram, diagnose } from '../src/compiler/compile.ts';
 import { moduleIdOf } from '../src/compiler/program/program.ts';
@@ -49,6 +51,11 @@ const clean = { unreadable: [], errors: [] };
 describe('the examples', () => {
   it.each(projects)('%s checks with no error', (name) => {
     expect(checked(name)).toEqual(clean);
+  });
+
+  it.each(projects)('%s passes its suites', async (name) => {
+    const run = await ista(`${examples}${name}`, 'test');
+    expect({ code: run.code, err: run.err }).toEqual({ code: 0, err: '' });
   });
 
   it('FormBuilder generated views write no view type arguments or scope aliases', () => {

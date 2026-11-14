@@ -34,7 +34,7 @@ shared struct Dependency:              # one per source and computed; not generi
     checked: Int? = none               # the tick it was last brought up to date at; none: never
     reads: Array<Dependency> = []      # what its last evaluation read, in order
     active: Bool = false               # being brought up to date or evaluated
-    refresh: inert fn(Dependency) -> Unit
+    refresh: inert fn() -> Bool        # evaluates, keeps an unequal result, says if it kept one
 
 fn source<T is Inert>(self: Graph, value: T) -> Source<T>
 fn computed<T is Inert>(self: Graph, eval: inert fn() -> T) -> Computed<T>
@@ -60,8 +60,9 @@ fn read<T is Inert>(self: Computed<T>) -> T            # and the same on a Sourc
   `changed`, so readers above don't re-evaluate.
 - **A computed reading itself,** directly or through others, gets its previous value: a node
   reached again while `active` is recorded but not brought up to date, and gives its value as it
-  is. Whatever read that old value was checked before the node's new `changed`, so the next view
-  re-evaluates it. During its first evaluation it has no previous value, so that read panics.
+  is. Whatever else read that old value was checked before the node's new `changed`, so the next
+  view re-evaluates it. The node itself was checked after it, since its value already holds the
+  one it read: a computed reading only itself re-evaluates no more until something else changes. During its first evaluation it has no previous value, so that read panics.
 - **`none` is a value:** a computed of `T?` may give `none`; "never evaluated" is
   `checked == none`, and the cell wraps `T` so it never needs `none` for it.
 - **Writes happen between views:** only the driver sets sources, never an evaluation. This is
