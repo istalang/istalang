@@ -56,6 +56,19 @@ describe('a getter in the editor', () => {
     expect(offered('fn f():', '  fn ‸', '  1')).not.toContain('get');
   });
 
+  it('is offered at the type it gives the value read, a generic one instantiated', () => {
+    const at = programAt(
+      'struct Box<T>:',
+      '  items: Array<T>',
+      'fn get first<T>(self: Box<T>) -> T?: self.items.at(0)',
+      'fn peek(b: Box<Int>) -> Int?: b.‸',
+    );
+    const offered = completionsAt(at.program, at.module, at.offset).filter(
+      (item) => item.name === 'first',
+    );
+    expect(offered.map(({ detail }) => detail)).toEqual(['Int?']);
+  });
+
   it('shows the function it is when hovered where it is read or called through', () => {
     const read = programAt(...person, 'fn greet(p: Person) -> String: p.fu‸ll');
     expect(hoverAt(read.program, read.module, read.offset)?.code).toEqual([

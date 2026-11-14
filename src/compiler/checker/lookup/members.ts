@@ -28,9 +28,10 @@ import {
   receiverMembers,
   staticCandidatesThrough,
 } from '../resolution/choosing/candidates.ts';
-import { takesAsSelf } from '../resolution/choosing/receivers.ts';
+import { selfInference, takesAsSelf } from '../resolution/choosing/receivers.ts';
 import { metThroughTraits } from '../resolution/conformance/trait-calls.ts';
-import type { TypeMembers } from '../surface/denotation.ts';
+import type { GetterMember, TypeMembers } from '../surface/denotation.ts';
+import { substitute } from '../types/parts/substitution.ts';
 import { requiredFields } from '../types/traits/constraints.ts';
 import {
   associatedDeclarationsOn,
@@ -64,7 +65,7 @@ export function membersOf(
     fields: fieldsOf(checker, type),
     variants: (type.kind === 'nominal' ? checker.variantsOf(type) : undefined) ?? [],
     methods: declarationsOf(methods),
-    getters: declarationsOf(getters),
+    getters: gettersOf(checker, type, getters),
     statics: staticsOf(checker, module, type),
     associatedTypes: associatedDeclarationsOn(checker, type),
   };
@@ -115,6 +116,24 @@ function receivedBy(
   const candidates = metThroughTraits(checker, receiverCandidates(checker, module, type));
   const callable = access === undefined ? candidates : callableThrough(checker, access, candidates);
   return callable.filter((candidate) => takesAsSelf(checker, candidate, type));
+}
+
+/** Each getter of `candidates` once, giving what its call on a value of `type` gives. */
+function gettersOf(
+  checker: CheckerContext,
+  type: Type,
+  candidates: readonly Candidate[],
+): readonly GetterMember[] {
+  const byDeclaration = new Map(candidates.map((each) => [each.declaration, each]));
+  return [...byDeclaration.values()].map((candidate) => {
+    const result = checker.resultOf(candidate.declaration);
+    const taken = selfInference(checker, candidate, type);
+    const read =
+      taken === undefined
+        ? result
+        : substitute(result, taken.inference.substitution(), checker.typeRules);
+    return { declaration: candidate.declaration, type: read };
+  });
 }
 
 /** The functions of `candidates`, each once. */

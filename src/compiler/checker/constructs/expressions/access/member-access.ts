@@ -29,7 +29,7 @@ import {
   topLevelCandidates,
 } from '../../../resolution/choosing/candidates.ts';
 import { namedFunctions } from '../../../resolution/choosing/named-functions.ts';
-import { takesAsSelf } from '../../../resolution/choosing/receivers.ts';
+import { selfInference, takesAsSelf } from '../../../resolution/choosing/receivers.ts';
 import { readGetter } from '../../../rules/getters.ts';
 import type { FieldRead, FieldReading, FoundField } from '../../../surface/checked-field.ts';
 import { fieldOf } from '../../../types/traits/known-fields.ts';
@@ -81,15 +81,24 @@ export function checkMemberAccess(
     context.report(clash);
     return errorType;
   }
-  const { field, getters, methods } = members;
+  const { field, getters, unmetGetters, methods } = members;
   if (field !== undefined) {
     recordFieldRead(context, node, field);
     return field.member.type;
   }
+  const getterRead = { link: node, access: node, receiver: type, expected };
   if (getters.length > 0) {
-    return readGetter(context, { link: node, access: node, receiver: type, getters, expected });
+    return readGetter(context, { ...getterRead, getters });
   }
-  context.report(noField(context, node, type, methods));
+  const missed = missExplained(context, node, type, methods);
+  // A getter whose constraints fail is reported as its call would be, where nothing else explains
+  // the read.
+  if (missed === undefined && unmetGetters.length > 0) {
+    return readGetter(context, { ...getterRead, getters: unmetGetters });
+  }
+  context.report(
+    missed ?? checkerDiagnostics.unknownField(node.member.span, typeText(type), node.member.text),
+  );
   return errorType;
 }
 
@@ -98,6 +107,11 @@ export interface NamedMembers {
   readonly field: FoundField | undefined;
   /** The getters of the name taking the receiver as `self`. */
   readonly getters: readonly Candidate[];
+  /**
+   * The getters of the name whose `self` takes the receiver though their constraints don't hold
+   * for it, no members of its type, which a read finding nothing else reports as their call would.
+   */
+  readonly unmetGetters: readonly Candidate[];
   /** The methods of the name the receiver's type finds, which a call chooses among. */
   readonly methods: readonly Candidate[];
 }
@@ -119,9 +133,16 @@ export function membersNamed(context: BodyContext, name: string, receiver: Type)
   const { checker, module } = context;
   const candidates = topLevelCandidates(checker, module, name, [receiver]);
   const { methods, getters } = receiverMembers(candidates);
+  const taking = Map.groupBy(getters, (getter) => {
+    if (takesAsSelf(checker, getter, receiver)) {
+      return 'met';
+    }
+    return selfInference(checker, getter, receiver) === undefined ? 'none' : 'unmet';
+  });
   return {
     field: fieldOf(checker, receiver, name),
-    getters: getters.filter((getter) => takesAsSelf(checker, getter, receiver)),
+    getters: taking.get('met') ?? [],
+    unmetGetters: taking.get('unmet') ?? [],
     methods,
   };
 }
@@ -246,16 +267,16 @@ export class FieldReads implements FieldReadRecord {
 }
 
 /**
- * Why `node` reads no field of `type`: it is behind the shared struct `type` is (`->`), or inside
- * the optional it is (`?.`, or `?->` for an optional shared struct), or `node` names one of
- * `methods`, read only by calling.
+ * Why `node` reads no field of `type`, where something explains it: it is behind the shared struct
+ * `type` is (`->`), or inside the optional it is (`?.`, or `?->` for an optional shared struct), or
+ * `node` names one of `methods`, read only by calling.
  */
-function noField(
+function missExplained(
   context: BodyContext,
   node: MemberAccess,
   type: Type,
   methods: readonly Candidate[],
-): Diagnostic<AnchoredSpan> {
+): Diagnostic<AnchoredSpan> | undefined {
   const { checker } = context;
   const { span, text: name } = node.member;
   const behind = (owner: Type) => {
@@ -272,7 +293,5 @@ function noField(
   if (inside !== undefined) {
     return inside;
   }
-  return methods.length > 0
-    ? checkerDiagnostics.methodValue(span, name)
-    : checkerDiagnostics.unknownField(span, typeText(type), name);
+  return methods.length > 0 ? checkerDiagnostics.methodValue(span, name) : undefined;
 }

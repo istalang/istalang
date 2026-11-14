@@ -208,7 +208,9 @@ function valueMembers(
   const { fields, getters, methods } = checker.lookup.membersOf(module, value, access);
   return [
     ...fields.map((field): Candidate => ({ name: field.name, subject: { kind: 'field', field } })),
-    ...onePerName(getters, (declaration) => ({ kind: 'getter', declaration })),
+    ...[...new Map(getters.map((getter) => [getter.declaration.name.text, getter]))].map(
+      ([name, getter]): Candidate => ({ name, subject: { kind: 'getter', getter } }),
+    ),
     ...functionsThrough('value', methods),
   ];
 }

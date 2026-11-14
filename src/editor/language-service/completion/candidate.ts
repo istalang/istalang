@@ -6,6 +6,7 @@
 
 import type { Entity } from '../../../compiler/binder/entities.ts';
 import type { SignatureParameter, VariantMember } from '../../../compiler/checker/check.ts';
+import type { GetterMember } from '../../../compiler/checker/surface/denotation.ts';
 import type { FieldMember, LiteralType, Type } from '../../../compiler/checker/types/type/index.ts';
 import type { FunctionDeclaration } from '../../../compiler/syntax/declarations/index.ts';
 
@@ -29,7 +30,7 @@ export type Subject =
   | { readonly kind: 'entity'; readonly entity: Entity }
   | { readonly kind: 'keyword' }
   | { readonly kind: 'field'; readonly field: FieldMember }
-  | { readonly kind: 'getter'; readonly declaration: FunctionDeclaration }
+  | { readonly kind: 'getter'; readonly getter: GetterMember }
   | {
       readonly kind: 'function';
       readonly declaration: FunctionDeclaration;

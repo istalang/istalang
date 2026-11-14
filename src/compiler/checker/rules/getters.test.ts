@@ -238,6 +238,54 @@ describe("what a getter's declaration asks of it", () => {
   });
 });
 
+describe('a getter whose constraints a receiver fails', () => {
+  it('reports them as its call does, not a missing field', () => {
+    const declarations = [
+      'struct Box<T>:\n  item: T',
+      'struct Plain:\n  n: Int',
+      'fn get label<T is Stringable>(self: Box<T>) -> String: self.item.toString()',
+    ].join('\n\n');
+    const box = 'Box{item: Plain{n: 1}}';
+    const read = reportedIn(declarations, `_ = ${box}.label`).codes;
+    expect(read).not.toContain(checkerDiagnostics.unknownField.code);
+    expect(read).toEqual(reportedIn(declarations, `_ = label(${box})`).codes);
+  });
+
+  it("is no member of the receiver's type, beside its field or method of the name", async () => {
+    const declarations = [
+      'trait Named:\n  fn named(self: Self) -> String',
+      'fn get label<T is Named>(self: T) -> String: self.named()',
+      'struct Plain:\n  label: String',
+      'struct Other:\n  n: Int',
+      'fn label(self: Other) -> String: "other"',
+    ].join('\n\n');
+    const body = '[Plain{label: "plain"}.label, Other{n: 1}.label()]';
+    expect(await mainGives('Array<String>', body, declarations)).toEqual(['plain', 'other']);
+  });
+
+  it('leaves a read explained otherwise to its own report: behind a handle, inside an optional, a method', () => {
+    const declarations = [
+      'trait Named:\n  fn named(self: Self) -> String',
+      'fn get label<T is Named>(self: T) -> String: self.named()',
+      'struct Plain:\n  label: String',
+      'shared struct Lease:\n  label: String',
+      'struct Other:\n  n: Int',
+      'fn label(self: Other) -> String: "other"',
+    ].join('\n\n');
+    const body = [
+      'const p: Plain? = Plain{label: "p"}',
+      '_ = p.label',
+      '_ = new Lease{label: "l"}.label',
+      '_ = Other{n: 1}.label',
+    ].join('\n');
+    expect(reportedIn(declarations, body).codes).toEqual([
+      checkerDiagnostics.insideOptional.code,
+      checkerDiagnostics.fieldBehindShared.code,
+      checkerDiagnostics.methodValue.code,
+    ]);
+  });
+});
+
 describe('one meaning per name', () => {
   it('reports a getter and a method of one name where a read or a call finds both', () => {
     const declarations = `${person}\n\nfn full(self: Person, n: Int) -> String: "x"`;
