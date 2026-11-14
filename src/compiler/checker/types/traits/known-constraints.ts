@@ -161,27 +161,23 @@ function fieldRule(checker: CheckerContext, type: Type): EntryRule {
 }
 
 /**
- * Every function the constraints on `on` require, named `name`: on a type parameter, on an `any`
- * type, where each is the function its value's own type meets it with (§3.10), or on a type
- * computed from types not known yet.
+ * Every function the constraints on `on` require: on a type parameter, on an `any` type, where
+ * each is the function its value's own type meets it with (§3.10), or on a type computed from
+ * types not known yet.
  */
-export function requirementsNamed(
+export function requirementsOn(
   checker: CheckerContext,
   on: TypeParameter | AnyType | ComputedType,
-  name: string,
 ): readonly Requirement[] {
   const type = on.kind === 'TypeParameter' ? parameterType(on) : on;
   return knownConstraints(checker, type).flatMap((constraint, constraintIndex) => {
     const substitution = constraintSubstitution(constraint, type);
-    return requiredFunctions(constraint.trait).flatMap((declaration, member) => {
-      if (declaration.name.text !== name) {
-        return [];
-      }
+    return requiredFunctions(constraint.trait).map((declaration, member) => {
       const origin: RequirementOrigin =
         on.kind === 'TypeParameter' || on.kind === 'any'
           ? { kind: 'constraint', on, constraint: constraintIndex, member }
           : { kind: 'computed', on, through: traitAsAny(constraint, on), member };
-      return [{ declaration, substitution, origin }];
+      return { declaration, substitution, origin };
     });
   });
 }

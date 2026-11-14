@@ -3,11 +3,11 @@
  * has them, a tuple's elements as fields named by position (`t.0`, §3.15), or the fields its
  * constraints require; the static functions a call through it may choose, and its methods.
  *
- * A method is found as a method call finds it (resolution/choosing/candidates.ts): by each name the
- * module sees at its top level, the type's own module exports, or its constraints require, with
- * that call's candidates kept where `self` takes a value of the type as a call's receiver
- * (resolution/choosing/applicability.ts), and the type parameters that decides meet their
- * constraints. The call's other arguments are aside, since completing a call needn't know them yet.
+ * Methods and statics are what a call may choose (resolution/choosing/candidates.ts, which lists
+ * them by the same sources it chooses from), a method kept where `self` takes a value of the type
+ * as a call's receiver (resolution/choosing/applicability.ts), and the type parameters that decides
+ * meet their constraints. The call's other arguments are aside, since completing a call needn't
+ * know them yet.
  *
  * Read through a member access, a method taking `&self` counts only where the access is a place,
  * as for a call (resolution/choosing/candidates.ts `callableThrough`).
@@ -17,26 +17,18 @@
  */
 
 import type { ModuleId } from '../../program/program.ts';
-import {
-  boundName,
-  declaredFunctions,
-  type FunctionDeclaration,
-  importedNames,
-} from '../../syntax/declarations/index.ts';
+import type { FunctionDeclaration } from '../../syntax/declarations/index.ts';
 import type { MemberAccess } from '../../syntax/expressions/index.ts';
 import type { CheckerContext } from '../contexts/context.ts';
 import {
   callableThrough,
-  modulesSeenFrom,
-  staticCandidates,
-  staticFunctionsAmong,
-  staticTargetOf,
-  topLevelCandidates,
+  receiverCandidates,
+  staticCandidatesThrough,
 } from '../resolution/choosing/candidates.ts';
 import { takesAsSelf } from '../resolution/choosing/receivers.ts';
 import { metThroughTraits } from '../resolution/conformance/trait-calls.ts';
 import type { TypeMembers } from '../surface/denotation.ts';
-import { requiredFields, requiredFunctions } from '../types/traits/constraints.ts';
+import { requiredFields } from '../types/traits/constraints.ts';
 import {
   associatedDeclarationsOn,
   knownConstraints,
@@ -101,27 +93,11 @@ function staticsOf(
   module: ModuleId,
   type: Type,
 ): readonly FunctionDeclaration[] {
-  const target = staticTargetOf(checker, type);
-  switch (target?.kind) {
-    case 'owner':
-      return staticFunctionsAmong(checker, modulesSeenFrom(checker, module), target);
-    case 'constrained': {
-      const names = knownConstraints(checker, type).flatMap(({ trait }) =>
-        requiredFunctions(trait).flatMap(({ owner, name }) =>
-          owner === undefined ? [] : name.text,
-        ),
-      );
-      return [
-        ...new Set(
-          names.flatMap((name) =>
-            staticCandidates(checker, module, target, name).map(({ declaration }) => declaration),
-          ),
-        ),
-      ];
-    }
-    default:
-      return [];
-  }
+  return [
+    ...new Set(
+      staticCandidatesThrough(checker, module, type).map(({ declaration }) => declaration),
+    ),
+  ];
 }
 
 /** The methods a call through a value of `type` may choose, and through `access` if given. */
@@ -131,37 +107,13 @@ function methodsOf(
   type: Type,
   access: MemberAccess | undefined,
 ): readonly FunctionDeclaration[] {
-  const found = new Set<FunctionDeclaration>();
-  for (const name of methodNames(checker, module, type)) {
-    const candidates = metThroughTraits(checker, topLevelCandidates(checker, module, name, [type]));
-    const callable =
-      access === undefined ? candidates : callableThrough(checker, access, candidates);
-    for (const candidate of callable) {
-      if (takesAsSelf(checker, candidate, type)) {
-        found.add(candidate.declaration);
-      }
-    }
-  }
-  return [...found];
-}
-
-/** The names a method of `type` may have, seen from `module`. */
-function methodNames(checker: CheckerContext, module: ModuleId, type: Type): ReadonlySet<string> {
-  const { bindings, inputs } = checker;
-  const target = staticTargetOf(checker, type);
-  const exporting = [
-    inputs.role('prelude'),
-    target?.kind === 'owner' ? target.module : undefined,
-  ].filter((each) => each !== undefined);
-  const items = inputs.itemsOf(module);
-  return new Set([
-    ...declaredFunctions({ items }).map(({ name }) => name.text),
-    ...items.flatMap((item) =>
-      item.kind === 'NamedImport' ? importedNames(item).map((each) => boundName(each).text) : [],
+  const candidates = metThroughTraits(checker, receiverCandidates(checker, module, type));
+  const callable = access === undefined ? candidates : callableThrough(checker, access, candidates);
+  return [
+    ...new Set(
+      callable
+        .filter((candidate) => takesAsSelf(checker, candidate, type))
+        .map(({ declaration }) => declaration),
     ),
-    ...exporting.flatMap((each) => [...bindings.exportsOf(each).keys()]),
-    ...knownConstraints(checker, type).flatMap(({ trait }) =>
-      requiredFunctions(trait).map(({ name }) => name.text),
-    ),
-  ]);
+  ];
 }

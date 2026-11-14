@@ -73,7 +73,7 @@ tags: [reuse, checker, calls, resolution, overloads, traits, witnesses]
 - Silent resolution without a written call site uses `silentCall`, or `callWithTypes` when type arguments are given (`silent-choice.ts`).
 - Which argument fills which parameter, strict or partial (a call not chosen yet, a call pattern, signature help), has one home: `binding.ts` (`bindArguments`, `argumentSlotsOf`); never a mapper of your own. `argumentsReach` and `writtenParameter` are known copies (`docs/audit/dry-review-2026-11-13.md`, finding 4).
 - A call is chosen, fitted and completed through `applyCall`/`completeCall` (`applied-call.ts`), never a pipeline of its own; a function value's call is one with a single candidate (`value-calls.ts` is a known copy, finding 5).
-- The methods and statics a name may mean on a type, for choosing and for listing alike, come from `candidates.ts`; never rebuild them from a module's items (`lookup/members.ts` is a known copy, finding 3).
+- The methods and statics a name may mean on a type, for choosing and for listing alike, come from `candidates.ts`: `topLevelCandidates` and `staticCandidates` by name, `receiverCandidates` and `staticCandidatesThrough` for every name at once, which choose each name from the same sources; never rebuild them from a module's items.
 - A sugar whose meaning is a call or a closure reduces to it once and reuses its rules (marks, sendability, captures); never a parallel check of its own: a deferred call is checked as the call to its taker given a closure over constants computed now (§3.14, `src/compiler/checker/desugaring/deferred-calls.ts`), its function checked as any lambda is.
 
 ## Recipes

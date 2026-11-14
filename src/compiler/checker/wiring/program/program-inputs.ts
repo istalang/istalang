@@ -117,6 +117,11 @@ export function recordedBindings(entries: Entries<CheckerNote>, bindings: Bindin
     }),
     ownCallOf: entries.input({ name: 'own call of', read: bindings.ownCallOf }),
     topLevelNamed: entries.input({ name: 'top-level named', read: bindings.topLevelNamed }),
+    topLevelNames: entries.input({
+      name: 'top-level names',
+      read: bindings.topLevelNames,
+      equal: sameList,
+    }),
     aliasOf: entries.input({ name: 'alias of', read: bindings.aliasOf }),
     diagnosticsOf: entries.input({
       name: 'binder diagnostics of',

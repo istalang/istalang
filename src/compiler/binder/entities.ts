@@ -283,6 +283,8 @@ export interface Bindings {
    * since nothing binds it in the tree.
    */
   readonly topLevelNamed: (module: ModuleId, name: string) => Entity | undefined;
+  /** Every name the top level of `module` sees, each denoting what `topLevelNamed` finds for it. */
+  readonly topLevelNames: (module: ModuleId) => readonly string[];
   /**
    * The alias of the renaming import (§3.13) through which `name` of `module` denotes its entity:
    * for the alias and each of its uses; undefined for any other name, the export's own name in the

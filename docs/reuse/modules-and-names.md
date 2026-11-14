@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-11-13
-last_updated: 2026-11-13
+last_updated: 2026-11-14
 tags: [reuse, language, modules, program, binder, names]
 ---
 
@@ -72,7 +72,7 @@ tags: [reuse, language, modules, program, binder, names]
 - find the module declaring any declaration, a local one included → `Checker.moduleOf` (`src/compiler/checker/wiring/program/program-inputs.ts`, `DeclaringModules`)
 - read a module's items, imports, roles or tree, or the bare variant an expected enum chooses, inside the checker → `CheckerContext.inputs` (`src/compiler/checker/wiring/program/program-inputs.ts`); whether a module is std → `Checker.isStd`
 - ask what an identifier denotes, the body holding a node, a written type's type or a type's members (tools, by position) → `Checker.lookup` (`src/compiler/checker/surface/denotation.ts`)
-- list bare variant candidates or look up a top-level/prelude name → `Bindings.candidatesOf`, `Bindings.topLevelNamed` (`src/compiler/binder/entities.ts`)
+- list bare variant candidates, look up a top-level/prelude name, or list every one → `Bindings.candidatesOf`, `Bindings.topLevelNamed`, `Bindings.topLevelNames` (`src/compiler/binder/entities.ts`)
 - find the hidden variable an async function holds its own call in, which its name before a `.` reads (§7) → `Bindings.ownCallOf` (`src/compiler/binder/entities.ts`)
 - check whether a `VariableEntity` is the own name of a local `fn` or named `Lambda` → `localFunctionOf` (`src/compiler/binder/entities.ts`)
 - tell an entity that is a type, as a name in a type must be, from the rest → `namesType` (`src/compiler/binder/entities.ts`)

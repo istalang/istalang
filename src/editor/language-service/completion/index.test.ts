@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest';
+import { stdProgramOf } from '../../../compiler/binder/bind.test-kit.ts';
+import { idOf } from '../../../compiler/program/program.test-kit.ts';
 import { programAt } from '../language-service.test-kit.ts';
 import { completionsAt } from './index.ts';
 
@@ -133,6 +135,23 @@ describe('completion', () => {
   it('offers a method taking `&self` only through a place', () => {
     expect(names('fn f() -> Int:', '  let xs = [1]', '  xs.‸', '  1')).toContain('push');
     expect(names('fn f() -> Int:', '  [1].‸', '  1')).not.toContain('push');
+  });
+
+  it('offers a union the methods of a trait another module declares and its members meet', () => {
+    const shapes = [
+      'trait Named:',
+      '  fn label(self: Self) -> String',
+      'struct A:',
+      '  a: Int',
+      'struct B:',
+      '  b: Int',
+      'fn label(self: A) -> String: "a"',
+      'fn label(self: B) -> String: "b"',
+    ].join('\n');
+    const main = 'import A, B from \'shapes\'\nfn f(x: A | B) -> String:\n  x.\n  ""\n';
+    const program = stdProgramOf({ main, shapes });
+    const offered = completionsAt(program, idOf('main'), main.indexOf('x.') + 2);
+    expect(offered.map(({ name }) => name)).toContain('label');
   });
 
   it("offers an async function's own call's members after its name, but none for main", () => {

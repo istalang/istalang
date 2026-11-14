@@ -123,19 +123,19 @@ export function membersRequirementOf(candidate: {
 }
 
 /**
- * The calls of `name` on `union` through `trait`: each function of that name it requires taking
- * `Self` first.
+ * The calls on `union` through `trait` of the names `named` takes: each function so named it
+ * requires taking `Self` first.
  */
 export function traitCallsOn(
   checker: CheckerContext,
   union: UnionType,
   trait: TraitDeclaration,
-  name: string,
+  named: (name: string) => boolean,
 ): readonly MembersCall[] {
   const { written, inferred } = traitAsCalled(checker, trait);
   const through: AnyType = { kind: 'any', constraints: [written] };
   return requiredFunctions(trait).flatMap((declaration, member) =>
-    declaration.name.text === name && takesSelfFirst(checker, written, declaration)
+    named(declaration.name.text) && takesSelfFirst(checker, written, declaration)
       ? [membersCall(checker.typeRules, union, through, { declaration, member, inferred })]
       : [],
   );

@@ -23,6 +23,10 @@
  * use site sees, so a type meets a trait with the same functions in every module that uses it: the
  * coherence Rust's orphan rule gives. A module declaring a trait declares its functions for types
  * whose modules can't, such as primitives, and no caller has to import them.
+ *
+ * A listing asks for every name at once (`receiverCandidates`, `staticCandidatesThrough`): each
+ * source gives what a lookup wants (`Wanted`), one name's functions or every one, so what a listing
+ * offers is what a call may choose.
  */
 
 import type { ModuleId } from '../../../program/program.ts';
@@ -36,7 +40,7 @@ import { isPlace } from '../../../syntax/expressions/places.ts';
 import type { CheckerContext } from '../../contexts/context.ts';
 import { anyTypesIn, computedTypesIn, parametersIn } from '../../types/parts/type-parts.ts';
 import type { Requirement } from '../../types/traits/constraints.ts';
-import { requirementsNamed } from '../../types/traits/known-constraints.ts';
+import { requirementsOn } from '../../types/traits/known-constraints.ts';
 import { type ComputedType, isComputed } from '../../types/type/computed-types.ts';
 import type { AnyType, Type } from '../../types/type/index.ts';
 import { type StaticOwner, staticOwnerOf } from '../../types/written/named-types.ts';
@@ -61,9 +65,19 @@ type StaticTarget =
     }
   | { readonly kind: 'constrained'; readonly on: TypeParameter | ComputedType };
 
+/** Which functions a lookup wants: those of one name, as a call's, or every one, as a listing's. */
+type Wanted = { readonly kind: 'named'; readonly name: string } | { readonly kind: 'every' };
+
+const everyFunction: Wanted = { kind: 'every' };
+
+/** Whether `wanted` takes a function named `name`. */
+function wants(wanted: Wanted): (name: string) => boolean {
+  return wanted.kind === 'every' ? () => true : (name) => name === wanted.name;
+}
+
 /**
  * The candidates of a call of `name` written in `module` without a namespace, as an operator's
- * and a method's are: the functions its top level sees, then ADL's.
+ * and a method's are.
  */
 export function topLevelCandidates(
   checker: CheckerContext,
@@ -71,26 +85,61 @@ export function topLevelCandidates(
   name: string,
   argumentTypes: readonly (Type | undefined)[],
 ): readonly Candidate[] {
-  return [
-    ...callCandidates(checker, namedInModule(checker, module, name), name, argumentTypes),
-    ...traitCallCandidates(checker, module, name, argumentTypes),
-  ];
+  return candidatesSeen(checker, module, { kind: 'named', name }, argumentTypes);
+}
+
+/** The candidates of every call through a receiver of `type` written in `module`, whatever its name. */
+export function receiverCandidates(
+  checker: CheckerContext,
+  module: ModuleId,
+  type: Type,
+): readonly Candidate[] {
+  return candidatesSeen(checker, module, everyFunction, [type]);
 }
 
 /**
- * The calls of `name` on a union, the first of `argumentTypes`, through the traits visible in
+ * The candidates `wanted` of a call written in `module` without a namespace: the functions its top
+ * level sees, then ADL's, then on a union its visible traits'.
+ */
+function candidatesSeen(
+  checker: CheckerContext,
+  module: ModuleId,
+  wanted: Wanted,
+  argumentTypes: readonly (Type | undefined)[],
+): readonly Candidate[] {
+  return [
+    ...candidatesWith(checker, seenAtTopLevel(checker, module, wanted), wanted, argumentTypes),
+    ...traitCallCandidates(checker, module, wanted, argumentTypes),
+  ];
+}
+
+/** The functions `wanted` that the top level of `module` sees. */
+function seenAtTopLevel(
+  checker: CheckerContext,
+  module: ModuleId,
+  wanted: Wanted,
+): readonly FunctionDeclaration[] {
+  return wanted.kind === 'named'
+    ? namedInModule(checker, module, wanted.name)
+    : checker.bindings
+        .topLevelNames(module)
+        .flatMap((name) => namedInModule(checker, module, name));
+}
+
+/**
+ * The calls `wanted` on a union, the first of `argumentTypes`, through the traits visible in
  * `module`; none for a call on anything else.
  */
 function traitCallCandidates(
   checker: CheckerContext,
   module: ModuleId,
-  name: string,
+  wanted: Wanted,
   argumentTypes: readonly (Type | undefined)[],
 ): readonly Candidate[] {
   const [receiver] = argumentTypes;
   return receiver?.kind === 'union'
     ? visibleTraits(checker, module).flatMap((trait) =>
-        traitCallsOn(checker, receiver, trait, name),
+        traitCallsOn(checker, receiver, trait, wants(wanted)),
       )
     : [];
 }
@@ -118,11 +167,21 @@ export function callCandidates(
   name: string,
   argumentTypes: readonly (Type | undefined)[],
 ): readonly Candidate[] {
+  return candidatesWith(checker, named, { kind: 'named', name }, argumentTypes);
+}
+
+/** The candidates `wanted`: `inScope`, then those the arguments bring. */
+function candidatesWith(
+  checker: CheckerContext,
+  inScope: readonly FunctionDeclaration[],
+  wanted: Wanted,
+  argumentTypes: readonly (Type | undefined)[],
+): readonly Candidate[] {
   const given = argumentTypes.filter((type) => type !== undefined);
-  const declarations = new Set([...named, ...argumentDependent(checker, name, given)]);
+  const declarations = new Set([...inScope, ...argumentDependent(checker, wanted, given)]);
   return [
     ...[...declarations].map((declaration) => ({ declaration })),
-    ...requirementCandidates(checker, name, given),
+    ...requirementCandidates(checker, wanted, given),
   ];
 }
 
@@ -158,11 +217,12 @@ export function staticCandidates(
   target: StaticTarget,
   name: string,
 ): readonly Candidate[] {
-  return staticCandidatesIn(checker, modulesSeenFrom(checker, module), target, name);
+  const modules = modulesSeenFrom(checker, module);
+  return staticCandidatesIn(checker, modules, target, { kind: 'named', name });
 }
 
 /** The modules whose declarations `module` sees: its own, those it imports, and the prelude. */
-export function modulesSeenFrom(
+function modulesSeenFrom(
   checker: Pick<CheckerContext, 'inputs'>,
   module: ModuleId,
 ): readonly ModuleId[] {
@@ -187,37 +247,52 @@ export function witnessCandidates(
   const name = required.name.text;
   const home = checker.moduleOf(required);
   if (required.owner === undefined) {
-    return callCandidates(checker, exportedFunctions(checker, home, name), name, parameterTypes);
+    const exported = exportedFunctions(checker, home, { kind: 'named', name });
+    return callCandidates(checker, exported, name, parameterTypes);
   }
   const target = staticTargetOf(checker, type);
   const declaring = parameterTypes.flatMap((each) => declaringModule(checker, each) ?? []);
   return target === undefined
     ? []
-    : staticCandidatesIn(checker, [home, ...declaring], target, name);
+    : staticCandidatesIn(checker, [home, ...declaring], target, { kind: 'named', name });
+}
+
+/** The candidates of every static call through `type`, seen from `module`, whatever its name. */
+export function staticCandidatesThrough(
+  checker: CheckerContext,
+  module: ModuleId,
+  type: Type,
+): readonly Candidate[] {
+  const target = staticTargetOf(checker, type);
+  return target === undefined
+    ? []
+    : staticCandidatesIn(checker, modulesSeenFrom(checker, module), target, everyFunction);
 }
 
 /**
- * The candidates of a static call of `name` through `target`: on a type, those declared in its own
- * module or one of `modules`.
+ * The candidates `wanted` of a static call through `target`: on a type, the static functions
+ * declared in its own module or one of `modules`; on a type known per instantiation, its
+ * constraints' static requirements.
  */
 function staticCandidatesIn(
   checker: CheckerContext,
   modules: readonly ModuleId[],
   target: StaticTarget,
-  name: string,
+  wanted: Wanted,
 ): readonly Candidate[] {
+  const named = wants(wanted);
   if (target.kind === 'constrained') {
-    return requirementsNamed(checker, target.on, name)
-      .filter((requirement) => requirement.declaration.owner !== undefined)
-      .map((requirement) => ({ declaration: requirement.declaration, requirement }));
+    return requirementsOn(checker, target.on)
+      .filter(({ declaration }) => declaration.owner !== undefined && named(declaration.name.text))
+      .map(requirementCandidate);
   }
   return staticFunctionsAmong(checker, modules, target)
-    .filter((declaration) => declaration.name.text === name)
+    .filter((declaration) => named(declaration.name.text))
     .map((declaration) => ({ declaration }));
 }
 
 /** The static functions on `target`'s type declared in its own module or one of `modules`. */
-export function staticFunctionsAmong(
+function staticFunctionsAmong(
   checker: Pick<CheckerContext, 'staticFunctionsIn'>,
   modules: readonly ModuleId[],
   target: Extract<StaticTarget, { readonly kind: 'owner' }>,
@@ -228,27 +303,30 @@ export function staticFunctionsAmong(
   );
 }
 
-/** The functions named `name` the modules declaring `argumentTypes` export (§3.13). */
+/** The functions `wanted` the modules declaring `argumentTypes` export (§3.13). */
 function argumentDependent(
   checker: CheckerContext,
-  name: string,
+  wanted: Wanted,
   argumentTypes: readonly Type[],
 ): readonly FunctionDeclaration[] {
   return argumentTypes.flatMap((argument) => {
     const module = declaringModule(checker, argument);
-    return module === undefined ? [] : exportedFunctions(checker, module, name);
+    return module === undefined ? [] : exportedFunctions(checker, module, wanted);
   });
 }
 
-/** The functions named `name` that `module` exports. */
+/** The functions `wanted` that `module` exports. */
 function exportedFunctions(
   checker: CheckerContext,
   module: ModuleId,
-  name: string,
+  wanted: Wanted,
 ): readonly FunctionDeclaration[] {
   const { bindings } = checker;
-  const entity = bindings.exportsOf(module).get(name);
-  return entity?.kind === 'functions' ? bindings.overloadsOf(entity) : [];
+  const exports = bindings.exportsOf(module);
+  const entities = wanted.kind === 'named' ? [exports.get(wanted.name)] : [...exports.values()];
+  return entities.flatMap((entity) =>
+    entity?.kind === 'functions' ? bindings.overloadsOf(entity) : [],
+  );
 }
 
 /**
@@ -273,16 +351,34 @@ function requirementHoldersIn(type: Type): readonly RequirementHolder[] {
 }
 
 /**
- * The functions named `name` that constraints require on the type parameters, `any` types and
- * computed types the arguments mention, in that order, each once (an `any` or computed type by its
- * key); static ones are called through their type instead.
+ * The functions `wanted` that constraints require on the type parameters, `any` types and computed
+ * types the arguments mention; static ones are called through their type instead.
  */
 function requirementCandidates(
   checker: CheckerContext,
-  name: string,
+  wanted: Wanted,
   argumentTypes: readonly Type[],
 ): readonly Candidate[] {
-  const holders = argumentTypes.flatMap(requirementHoldersIn);
+  const named = wants(wanted);
+  return requirementsMentioned(checker, argumentTypes)
+    .filter(({ declaration }) => declaration.owner === undefined && named(declaration.name.text))
+    .map(requirementCandidate);
+}
+
+/** The candidate a constraint's `requirement` provides. */
+function requirementCandidate(requirement: Requirement): Candidate {
+  return { declaration: requirement.declaration, requirement };
+}
+
+/**
+ * Every function the constraints require on the type parameters, `any` types and computed types
+ * `types` mention, in that order, each holder once (an `any` or computed type by its key).
+ */
+function requirementsMentioned(
+  checker: CheckerContext,
+  types: readonly Type[],
+): readonly Requirement[] {
+  const holders = types.flatMap(requirementHoldersIn);
   if (holders.length === 0) {
     // Most calls' arguments mention none; every call asks.
     return [];
@@ -299,10 +395,9 @@ function requirementCandidates(
       computed.set(checker.typeKeys.typeKey(holder), holder);
     }
   }
-  return [...parameters, ...anyTypes.values(), ...computed.values()]
-    .flatMap((holder) => requirementsNamed(checker, holder, name))
-    .filter((requirement) => requirement.declaration.owner === undefined)
-    .map((requirement) => ({ declaration: requirement.declaration, requirement }));
+  return [...parameters, ...anyTypes.values(), ...computed.values()].flatMap((holder) =>
+    requirementsOn(checker, holder),
+  );
 }
 
 /** What static calls through `type` look at; undefined for a type with no static functions. */

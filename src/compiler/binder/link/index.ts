@@ -80,6 +80,7 @@ export function link(program: Program, locals: ReadonlyMap<ModuleId, ModuleBindi
     candidatesOf: ({ name }) => linker.variantsNamed(name),
     ownCallOf: (module, node) => linker.local(module)?.ownCalls.get(node),
     topLevelNamed: (module, name) => linker.topLevelNamed(module, name),
+    topLevelNames: (module) => linker.topLevelNames(module),
     aliasOf: (module, name) => linker.aliasOf(module, name),
     diagnosticsOf: (module) => linker.diagnosticsOf(module),
   };
@@ -126,6 +127,12 @@ class Linker {
     const own = links?.local.topLevel.get(name)?.entity;
     const linked = links === undefined ? undefined : resolvedImport(links, own);
     return linked ?? this.#preludeFor(module)?.exports.get(name);
+  }
+
+  topLevelNames(module: ModuleId): readonly string[] {
+    const own = this.#links.get(module)?.local.topLevel.keys() ?? [];
+    const prelude = this.#preludeFor(module)?.exports.keys() ?? [];
+    return [...new Set([...own, ...prelude])];
   }
 
   moduleOf(entity: Entity): ModuleId | undefined {
