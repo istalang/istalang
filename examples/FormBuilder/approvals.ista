@@ -1,4 +1,4 @@
 # approvals.ista — external approval source for the order and supplier forms.
 
-extern live async fn ask(userId: String, totalQty: Int) -> Bool
-extern live async fn ask(ownerId: String, companyName: String) -> Bool
+extern fn ask(userId: String, totalQty: Int) -> Bool
+extern fn ask(ownerId: String, companyName: String) -> Bool

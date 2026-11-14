@@ -1,0 +1,454 @@
+# The view: what a form shows of its model, built once, each node a computed of its tree.
+#
+# - A view binds its scope when built: each expression is a closure over the scope's variables,
+#   so no view takes a scope parameter, and a mounted form, a repeat's row or a variant's case is
+#   built with its own scope by generated code, never moved into by a view of its own.
+# - A built node is a `View`: its drawn nodes and validity as one computed, and how it routes an
+#   event. Every kind builds to that one shape, so a parent holds its children without `any`.
+# - Visibility is a computed per place: a node's `when` and every ancestor's, read first, so a
+#   hidden node's expressions are never brought up to date (computed.ista), and a hidden data
+#   node is shown exactly when one of its writers is visible (`Shown`).
+# - Errors show once a node is touched or the form submitted; validity counts them all.
+# - A view binds what it says of its nodes (`derive`, `bind`, `Shown.add`) only where it says
+#   something, so a second writer leaves the first's binding alone.
+# - A repeat's row view is built as its row is made: the list hands it each new row (model.ista),
+#   so nothing reads a row before its view binds it. The views are kept by row, in a memo the
+#   repeat's evaluation prunes to the rows it shows.
+
+import Graph, Source, Computed from '../computed'
+import Encodable, Decodable from 'json'
+import * as json from 'json'
+import (
+  FormNode
+  Field
+  Entry
+  Derivation
+  List
+  ListRow
+  RowsFrom
+  Variant
+  Shown
+  Dynamic
+  FormSnapshot
+) from './model'
+import Check from './checks'
+import Node, Option, Row, FormEvent from './tree'
+import FieldWidget, RepeatWidget, VariantWidget, LayoutWidget, ParentUi from './tree'
+
+# Where a view is built: its form's graph and submit flag, and whether its parent is visible.
+struct Place:
+  graph: Graph
+  submitted: Source<Bool>
+  visible: Computed<Bool>
+
+# The place of a node `when` hides, writing the hidden data node `hide`.
+fn within(self: Place, when: (inert fn() -> Bool)?, hide: Shown?) -> Place:
+  const parent = self.visible
+  const visible = match when:
+    case None: parent
+    case shows: self.graph.computed(fn(): parent.read() and shows())
+  match hide:
+    case None: ()
+    case shown: shown.add(visible)
+  Place{graph: self.graph, submitted: self.submitted, visible}
+
+# A node's drawing: its nodes, none when hidden, and whether it and everything in it is valid.
+struct Drawn:
+  nodes: Array<Node>
+  valid: Bool
+
+# A built view node.
+struct View:
+  drawn: Computed<Drawn>
+  route: inert fn(FormEvent) -> Bool # applies an event meant for a key it shows, between views
+
+const _hidden = Drawn{nodes: [], valid: true}
+
+fn _maybe<X>(f: (inert fn() -> X)?) -> X?:
+  match f:
+    case None: none
+    case some: some()
+
+# Where a view says a field's value comes from: a computed value, else a default; none when it
+# says neither.
+fn _derivation<T>(computed: (inert fn() -> T?)?, initial: (inert fn() -> T?)?) -> Derivation<T>?:
+  match computed:
+    case None: {
+      match initial:
+        case None: none
+        case d: Derivation.Default(d)
+    }
+    case v: Derivation.Always(v)
+
+# Binds `derivation` into `field`, when the view says one.
+fn _bind<T is Inert>(field: Field<T>?, derivation: Derivation<T>?):
+  match (field, derivation):
+    case (Field<T> as f, Derivation<T> as d): f.derive(d)
+    case _: ()
+
+# The messages of `checks` failing on `v`.
+fn _failing<T>(checks: Array<Check<T>>, v: T?) -> Array<String>:
+  let errors: Array<String> = []
+  for check in checks:
+    match check(v):
+      case None: ()
+      case message: errors.push(message)
+  errors
+
+# What a node shows of its errors: all of them once touched or submitted, none before.
+fn _shown(errors: Array<String>, touched: Bool, at: Place) -> Array<String>:
+  if touched or at.submitted.read(): errors
+  else: []
+
+struct Item<T>:
+  value: T
+  label: inert fn() -> String # a static option
+
+struct Choice<T>:
+  value: T
+  label: String # an option from rows
+
+enum Options<T>:
+  Items(items: Array<Item<T>>)
+  Rows(from: inert fn() -> Array<Choice<T>>, resolve: inert fn() -> Bool)
+  Search(from: inert fn(String) -> Array<Choice<T>>, resolve: inert fn() -> Bool) # `from` takes the typed text, ctx.search
+
+enum Recompute:
+  RowsEdited
+  AnyEdit
+
+# A field, as shown. One FieldView per writer: two views may hold one Field.
+struct FieldView<T is Inert>:
+  key: String # n2; n6@r1 in a row; address/n2 in a mount
+  parent: (inert fn() -> ParentUi)? = none
+  when: (inert fn() -> Bool)? = none
+  field: Field<T>? = none # none: pathless, shows `value` only
+  hide: Shown? = none # the hidden node wrapping `field`, if `when` can hide it
+  widget: inert fn() -> FieldWidget
+  label: inert fn() -> String
+  help: (inert fn() -> String)? = none
+  value: (inert fn() -> T?)? = none # a computed value: read-only
+  default: (inert fn() -> T?)? = none # until the user edits the field
+  checks: Array<Check<T>> = []
+  options: Options<T>? = none
+
+fn build<T is Inert & Encodable & Decodable>(self: FieldView<T>, at: Place) -> View:
+  const here = at.within(self.when, self.hide)
+  _bind(self.field, _derivation(self.value, self.default))
+  # The text typed into a search widget, which its options read.
+  const typed: Source<String>? = match self.options:
+    case Search(...): here.graph.source("")
+    case _: none
+  fn draw() -> Drawn:
+    if not here.visible.read(): return _hidden
+    const current: T? = match self.field:
+      case None: _maybe(self.value) ?? none
+      case f: f.seen()
+    let options: Array<Option> = []
+    let errors = _failing(self.checks, current)
+    match self.field?.entry.read().parseError:
+      case None: ()
+      case parseError: errors.push(parseError)
+    const resolves: (inert fn() -> Bool)? = match self.options:
+      case None: none
+      case Items(items): {
+        options = [for it in items: Option{value: json.stringify(it.value), label: it.label()}]
+        none
+      }
+      case Options.Rows(from, resolve): {
+        options = [for ch in from(): Option{value: json.stringify(ch.value), label: ch.label}]
+        resolve
+      }
+      case Search(from, resolve): {
+        options = [
+          for ch in from(typed?.read() ?? ""): Option{
+            value: json.stringify(ch.value)
+            label: ch.label
+          }
+        ]
+        resolve
+      }
+    if current != none and _maybe(resolves) == false: errors.push("Invalid choice")
+    const encoded: String? = match current:
+      case None: none
+      case v: json.stringify(v)
+    Drawn{
+      nodes: [
+        Node.Field(
+          key: self.key
+          widget: self.widget()
+          parent: _maybe(self.parent)
+          label: self.label()
+          help: _maybe(self.help)
+          value: encoded
+          options: options
+          errors: _shown(errors, self.field?.entry.read().touched ?? false, here)
+          readOnly: self.value != none
+        )
+      ]
+      valid: errors.length() == 0
+    }
+  fn route(event: FormEvent) -> Bool:
+    match event:
+      case Set(key, value) if key == self.key: {
+        if here.visible.read() and self.value == none: _ = self.field?.setJson(value)
+        true
+      }
+      case Search(key, text) if key == self.key: {
+        if here.visible.read(): _ = typed?.set(text)
+        true
+      }
+      case _: false
+  View{drawn: here.graph.computed(draw), route}
+
+# A repeat: a list's rows, each with its own view.
+struct RepeatView<R is FormNode & Inert>:
+  key: String
+  parent: (inert fn() -> ParentUi)? = none
+  when: (inert fn() -> Bool)? = none
+  list: List<R>
+  hide: Shown? = none
+  widget: inert fn() -> RepeatWidget
+  label: (inert fn() -> String)? = none
+  checks: Array<Check<Array<R.Data>>> = []
+  canAdd: Bool = true # false: editableCount false, or computed rows
+  rows: (inert fn() -> Array<R.Seen>)? = none # a default, or computed rows
+  computedRows: Bool = false # rows always follow `rows`, read-only
+  rowKey: (inert fn(R.Seen) -> String?)? = none
+  recomputeUntil: Recompute = Recompute.AnyEdit
+  item: inert fn(R, String, Place) -> View # a row's view, from its node and key
+
+# A row and the view built for it.
+struct _RowView<R>:
+  row: ListRow<R>
+  view: View
+
+fn build<R is FormNode & Inert>(self: RepeatView<R>, at: Place) -> View:
+  const here = at.within(self.when, self.hide)
+  match self.rows:
+    case None: ()
+    case rows: {
+      const from: RowsFrom<R.Seen> = if self.computedRows: RowsFrom.Always(rows, self.rowKey)
+      else: RowsFrom.Default(rows, self.rowKey, follow: self.recomputeUntil == Recompute.RowsEdited)
+      self.list.derive(from)
+    }
+  const built = new Shared<Array<_RowView<R>>>{value: []}
+  self.list.bind(
+    fn(row): built->value.push(_RowView{row, view: (self.item)(row.node, row.key, here)})
+  )
+  # The views of the rows shown, each built as its row was made.
+  fn rowViews() -> Array<_RowView<R>>:
+    let views: Array<_RowView<R>> = []
+    for row in self.list.rows.read():
+      if built->value.filter(fn(b): b.row == row).at(0) is _RowView<R> as each: views.push(each)
+    built->value = views
+    views
+  fn draw() -> Drawn:
+    if not here.visible.read(): return _hidden
+    const views = rowViews()
+    let rows: Array<Row> = []
+    let valid = true
+    for each in views: {
+      const drawn = each.view.drawn.read()
+      valid = valid and drawn.valid
+      if drawn.nodes.at(0) is Node as first: rows.push(Row{key: each.row.key, node: first})
+    }
+    const keys = [for each in views: each.row.key]
+    const data: Array<R.Data>? = match self.list.read():
+      case Ok(d): d
+      case Err(...): none
+    const unique = [for i in 0..keys.length(): keys.indexOf(keys[i]) == i].every(fn(first): first)
+    const duplicates: Array<String> = if unique: [] else: ["Duplicate row keys"]
+    const errors = [..._failing(self.checks, data), ...duplicates]
+    Drawn{
+      nodes: [
+        Node.Repeat(
+          key: self.key
+          widget: self.widget()
+          parent: _maybe(self.parent)
+          label: _maybe(self.label)
+          rows: rows
+          canAdd: self.canAdd
+          errors: _shown(errors, self.list.entered.read().edited, here)
+        )
+      ]
+      valid: valid and errors.length() == 0
+    }
+  fn route(event: FormEvent) -> Bool:
+    match event:
+      case AddRow(key) if key == self.key: {
+        if self.canAdd and here.visible.read(): self.list.add()
+        true
+      }
+      case RemoveRow(key, row) if key == self.key: {
+        if self.canAdd and here.visible.read(): self.list.remove(row)
+        true
+      }
+      case _: built->value.some(fn(each): each.view.route(event))
+  View{drawn: here.graph.computed(draw), route}
+
+# A variant: a picker writing its tag, and the active case's view.
+struct VariantView<C is struct { [_] is FormNode & Inert }>:
+  key: String
+  parent: (inert fn() -> ParentUi)? = none
+  when: (inert fn() -> Bool)? = none
+  variant: Variant<C>
+  hide: Shown? = none
+  widget: inert fn() -> VariantWidget
+  label: (inert fn() -> String)? = none
+  checks: Array<Check<keyof C>> = [] # on the tag: answered() where its picker is the variant's
+  default: (inert fn() -> (keyof C)?)? = none # the initial case
+  tag: (inert fn() -> (keyof C)?)? = none # a computed tag
+  cases: { [K in keyof C]: CaseView }
+
+# A case: its label, and its body, built with the case's own scope.
+struct CaseView:
+  label: inert fn() -> String
+  body: inert fn(Place) -> View
+
+struct _CaseBuilt:
+  id: String
+  label: inert fn() -> String
+  view: View
+
+fn build<C is struct { [_] is FormNode & Inert }>(self: VariantView<C>, at: Place) -> View:
+  const here = at.within(self.when, self.hide)
+  const key = self.key
+  const parent = self.parent
+  const widget = self.widget
+  const label = self.label
+  const checks = self.checks
+  const computedTag = self.tag
+  const tag = self.variant.tag
+  _bind(tag, _derivation(computedTag, self.default))
+  fn active() -> String?: tag.seen()
+  let cases: Array<_CaseBuilt> = []
+  let ids: Array<(String, keyof C)> = []
+  for k, c in ...self.cases: {
+    const id: String = k
+    ids.push((id, k))
+    cases.push(
+      _CaseBuilt{id, label: c.label, view: c.body(here.within(fn(): active() == id, none))}
+    )
+  }
+  fn draw() -> Drawn:
+    if not here.visible.read(): return _hidden
+    const current = active()
+    let body: Node? = none
+    let valid = true
+    for c in cases:
+      if c.id == current: {
+        const drawn = c.view.drawn.read()
+        body = drawn.nodes.at(0)
+        valid = drawn.valid
+      }
+    const entry = tag.entry.read()
+    const parseError: Array<String> = match entry.parseError:
+      case None: []
+      case message: [message]
+    const errors = [..._failing(checks, tag.seen()), ...parseError]
+    Drawn{
+      nodes: [
+        Node.Variant(
+          key: key
+          widget: widget()
+          parent: _maybe(parent)
+          label: _maybe(label)
+          cases: [for c in cases: Option{value: c.id, label: c.label()}]
+          active: current
+          body: body
+          errors: _shown(errors, entry.touched, here)
+        )
+      ]
+      valid: valid and errors.length() == 0
+    }
+  fn route(event: FormEvent) -> Bool:
+    match event:
+      case Set(eventKey, value) if eventKey == key: {
+        if here.visible.read() and computedTag == none: _pick(tag, ids, value)
+        true
+      }
+      case _: cases.some(fn(c): c.id == active() and c.view.route(event))
+  View{drawn: here.graph.computed(draw), route}
+
+# What a variant's picker writes, its case id JSON-encoded, into the tag.
+fn _pick<K is Inert>(tag: Field<K>, ids: Array<(String, K)>, value: String):
+  for (id, k) in ids:
+    if value == `"${id}"` or value == id: {
+      tag.entry.set(Entry{value: k, edited: true, touched: true})
+      return
+    }
+  tag.entry.set(
+    Entry{value: tag.entry.read().value, edited: true, touched: true, parseError: "Invalid option"}
+  )
+
+# A layout: its children in place, and the rules it shows once submitted.
+struct LayoutView:
+  key: String
+  parent: (inert fn() -> ParentUi)? = none
+  when: (inert fn() -> Bool)? = none
+  widget: inert fn() -> LayoutWidget
+  label: (inert fn() -> String)? = none # control layouts only
+  checks: Array<Check<Unit>> = [] # rules; an `errors` layout shows only these
+  children: Array<inert fn(Place) -> View> = []
+
+fn build(self: LayoutView, at: Place) -> View:
+  const here = at.within(self.when, none)
+  const children = [for child in self.children: child(here)]
+  fn draw() -> Drawn:
+    if not here.visible.read(): return _hidden
+    let nodes: Array<Node> = []
+    let valid = true
+    for child in children: {
+      const drawn = child.drawn.read()
+      nodes = [...nodes, ...drawn.nodes]
+      valid = valid and drawn.valid
+    }
+    const errors = _failing(self.checks, ())
+    Drawn{
+      nodes: [
+        Node.Layout(
+          key: self.key
+          widget: self.widget()
+          parent: _maybe(self.parent)
+          label: _maybe(self.label)
+          errors: _shown(errors, false, here)
+          children: nodes
+        )
+      ]
+      valid: valid and errors.length() == 0
+    }
+  View{
+    drawn: here.graph.computed(draw)
+    route: fn(event): children.some(fn(child): child.route(event))
+  }
+
+# A mounted form chosen at run time. The host loads its compiled module; its data stays opaque,
+# and its own runtime routes its events.
+struct DynamicView:
+  key: String
+  parent: (inert fn() -> ParentUi)? = none
+  when: (inert fn() -> Bool)? = none
+  value: Dynamic
+  hide: Shown? = none
+  label: (inert fn() -> String)? = none
+  schema: inert fn() -> FormSnapshot?
+
+fn build(self: DynamicView, at: Place) -> View:
+  const here = at.within(self.when, self.hide)
+  fn draw() -> Drawn:
+    if not here.visible.read(): return _hidden
+    match self.schema():
+      case None: _hidden
+      case form: Drawn{
+        nodes: [
+          Node.Mount(
+            key: self.key
+            parent: _maybe(self.parent)
+            label: _maybe(self.label)
+            form: form
+          )
+        ]
+        valid: true
+      }
+  View{drawn: here.graph.computed(draw), route: fn(event): false}

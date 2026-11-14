@@ -12,7 +12,7 @@ tags: [form-builder, specification, istalang]
 
 This document specifies a form builder whose forms are data, edited by people in a drag-and-drop editor and by agents, and run as Istalang code. It covers the problem, the form schema, how a form becomes Istalang, the runtime that runs every form, and the language features the design relies on. It is written for the agent implementing Istalang, and doubles as an end-to-end test of the language's expressiveness: the two example forms exercise every part of the design, and §9 gives acceptance scenarios.
 
-**Status of the companion code.** The TypeScript files (`form-spec.ts`, `form-spec.test.ts`, `generate.ts`) compile under `tsc --strict`, the spec tests pass, and the generator produces the two `.gen.ista` files from the two `.form.json` files. The Istalang files (`forms.ista`, `*.gen.ista`, `order.ista`, `supplier.ista`) are checked against the Istalang compiler; see `ista-alignment.md` for the alignment report.
+**Status of the companion code.** The TypeScript files (`form-spec.ts`, `form-spec.test.ts`, `generate.ts`) compile under `tsc --strict`, the spec tests pass, and the generator produces the two `.gen.ista` files from the two `.form.json` files. The Istalang files (`computed.ista`, `forms/`, `*.gen.ista`, `order.ista`, `supplier.ista`) are checked against the Istalang compiler; see `ista-alignment.md` for the alignment report.
 
 | File | What it is |
 | --- | --- |
@@ -21,7 +21,10 @@ This document specifies a form builder whose forms are data, edited by people in
 | `form-spec.ts` | The form schema as TypeScript types (also in §4.8) |
 | `form-spec.test.ts` | Type tests: both example forms, and 14 forms that must be rejected |
 | `generate.ts` | The generator: form JSON → Istalang module |
-| `forms.ista` | The runtime: the `forms` Istalang module every form uses |
+| `computed.ista` | Derived values with dynamic dependencies, which the runtime is built on |
+| `forms/` | The runtime every form uses: its model, checks, views, tree, and the form with its two live functions |
+| `order.test.ista`, `forms/form.test.ista` | The runtime's scenarios, on the order form and on small forms of their own |
+| `order-demo.ista`, `order-demo.host.mjs` | The order form run through its live functions, with a scripted host |
 | `order.form.json`, `order.gen.ista`, `order.ista` | A small example: schema, generated module, hand-written logic (also in Appendix A) |
 | `supplier.form.json`, `supplier.gen.ista`, `supplier.ista` | A full example using every feature of the schema |
 
@@ -60,7 +63,7 @@ And they must be dependable:
  editor / agent ──► order.form.json ──► generate.ts ──► order.gen.ista ─┐
                                                                         ├─► compiled ─► run
                      order.ista (hand-written logic, optional) ─────────┤
-                     forms.ista (the runtime, written once) ────────────┘
+                     forms/ (the runtime, written once) ────────────────┘
 ```
 
 **The JSON is the source of truth**, typed in TypeScript (`form-spec.ts`) for editors and agents. The types catch structural mistakes. Expressions inside the JSON are Istalang, and the Istalang compiler checks them.
@@ -75,7 +78,7 @@ And they must be dependable:
 
 There is no generated control flow: no rendering, validation or event code.
 
-**The runtime (`forms`) is generic.** It holds the loop, drawing, validation, event routing, tasks for awaited expressions, and reading the result.
+**The runtime (`forms/`) is generic.** It holds the model, the view as computeds over it (`computed.ista`), validation, event routing, reading the result, and the two live functions that drive a form.
 
 **Types are computed, not generated.** Every model node declares two associated types:
 
@@ -84,10 +87,9 @@ There is no generated control flow: no rendering, validation or event code.
 
 They compose through the tree with mapped types, so `OrderData = Group<OrderModel>.Data` is the form's result type, written by nobody.
 
-**A form is an `async fn`.** A workflow writes `const order = await orderForm(params, user, events, views)` and receives `OrderData`. The form runs as an instance:
-1. It draws its view and sends the tree to the frontend through an inbox.
-2. It waits for the next event on another inbox.
-3. It repeats until a valid submit, then returns the data.
+**A form has two live entry points.** Everything else is simple code, usable alike in the browser and on the server:
+1. **The browser's**, `orderForm(params, user)`, serves the form: it shows its tree to the frontend, applies each event, and shows the tree again, until a valid submit, whose `OrderData` it gives its host.
+2. **The backend's**, `validateOrder(params, user, value)`, validates a whole value and gives `OrderData` or the errors by node key.
 
 ## 3. Architecture and lifecycle
 
@@ -95,15 +97,15 @@ They compose through the tree with mapped types, so `OrderData = Group<OrderMode
 
 **Compiling.** The generator emits the module. The Istalang compiler then compiles it together with `forms` and the form's `imports`. A running interpreter cannot load new modules, so every change produces a new program version.
 
-**Previewing.** The editor's preview restarts the form's instance on each new version and replays the events recorded so far, so the preview keeps what the user has typed.
+**Previewing.** The editor's preview restarts the form's browser function on each new version and replays the events recorded so far, so the preview keeps what the user has typed.
 
-**Running.** The form runs in the browser, in the TypeScript interpreter, inside a Web Worker. Events from the frontend go into the `events` inbox, and view trees come back through the `views` inbox.
-- **Rendering:** the frontend renders each tree with React, keyed by node key. The runtime gives a host the same frozen JavaScript object for a value it gave before, kept unchanged (spec §9, "Stable references"), so React's memoization works without a diffing pass.
+**Running.** The form runs in the browser, in the TypeScript interpreter, inside a Web Worker. The host starts the form's browser function once, as a live run, which holds the form for the whole session: the host starts a function with JSON arguments and disposes what it holds when it returns, so the form lives as long as the run. The run waits for each event on a host extern, `nextEvent`, and gives each tree to another, `show` (`forms/form.ista`).
+- **Rendering:** the frontend renders each tree with React, keyed by node key. The runtime gives a host the same frozen object for a value it gave before, kept unchanged (spec §9, "Stable references"), and the computed views keep an unchanged node's object, so a frontend drawing in the interpreter's JavaScript realm gets it again and React's memoization works without a diffing pass. No identity crosses a message channel.
 - **Drafts:** a partly filled form may be saved at any time; drafts are not validated.
 
-**Submitting.** The host records every event. On submit it sends the event log to the server, which runs the same form version and replays the log. Istalang is deterministic and sources record their results, so the replay reproduces the state; where a source answers differently, the server's result wins. A submission whose rules wait for an approval stays open in the server's durable instance until the approval arrives.
+**Submitting.** On a valid submit the browser function gives the form's data to its host and ends. The host sends it to the server, whose backend function validates the whole value against the same form version, as submitted, in one view: the server's result is authoritative, and no events are replayed.
 
-**Consuming.** A workflow awaits the form's entry point and gets its typed `Data`.
+**Consuming.** A workflow gets a submission's typed `Data` from the backend's validation, which it calls through `delegate`.
 
 **Versioning.** A form's version is computed on publish by comparing the output types:
 - **patch:** the output type is unchanged;
@@ -128,7 +130,7 @@ An **expression** (`Expr`) is an Istalang expression, pasted into the generated 
 | `row` | Inside options' `value` and `label`: the row being mapped. |
 | Imported modules | The `imports` aliases: hand-written logic and sources. |
 
-An expression may `await`; see §4.3.
+Everything an expression calls returns at once; see §4.3.
 
 A **prop** (`Prop<T>`) is anything that may be computed: a JSON literal, or `{ "expr": "…" }`. The generator emits a literal as an Istalang literal and pastes an expression into a lambda; both take the same path. Props include:
 - labels, help, and every widget ui prop;
@@ -151,21 +153,9 @@ Each segment becomes an Istalang field name, so it is a camelCase identifier.
 
 Several nodes may write one path; they share one value (§6.1).
 
-### 4.3 Waiting: `pending`
+### 4.3 Sources
 
-Sources are async functions the host injects. They cache their own results, so repeating a call is cheap. Any expression may `await` one, or anything else.
-
-A node's `pending` says how its expressions wait:
-
-| `pending` | Behaviour |
-| --- | --- |
-| `form` (default) | Awaited inline: the whole form waits, and the host shows it busy. |
-| `node` | Each awaited expression runs in its own task. The node shows a loading state, and the result arrives like a user's edit. |
-| `hidden` | Like `node`, but the node stays hidden until the result arrives. |
-
-A **rule with `pending`** waits differently. An approval should not run while the user types, so such a rule:
-1. starts in its own task once the user submits;
-2. blocks submission until it resolves, showing the pending text.
+Sources are simple extern functions the host implements: the browser's by asking the backend, the backend's by its own means, tests and examples by mocks. An expression calls one as it calls any function, and it returns at once, so nothing in a form waits: there is no loading state, and a rule runs whenever its node is shown, as every other check does.
 
 ### 4.4 Field types, presence, constraints, rules
 
@@ -356,68 +346,56 @@ Its rules:
 
 ## 6. The runtime
 
-`forms.ista` is the runtime; this section summarizes it.
+`forms/` is the runtime, on `computed.ista`; `docs/work/computed/design.md` gives its design. This section summarizes it.
 
 ### 6.1 The model
 
-Every model node implements `FormNode`, with associated types `Data` and `Seen` and methods `seen()`, `read() -> Result<Data>` and `load(Seen)`.
+Every model node implements `FormNode`, with associated types `Data` and `Seen` and methods `seen()`, `read() -> Result<Data>` and `load(Seen)`. Its values are pulled: each is a computed of the form's graph, read when an expression or the view reads it, and nothing writes while a view is read. Only events set sources, between views; validation loads a whole value before its one view.
 
 | Node | Data | Seen | Notes |
 | --- | --- | --- | --- |
-| `Field<T>` (shared) | `T` | `T?` | Holds the value, `touched`, `edited`, `parseError` |
+| `Field<T>` | `T` | `T?` | What the user entered (a source), and its value: entered, else a default until edited, or a computed value |
 | `Group<S>` | `{ [F in keyof S]: S[F].Data }` (via `type match`) | the same, with `Seen` | |
-| `List<R>` (shared) | `Array<R.Data>` | `Array<R.Seen>` | Rows created from `make`; `sync` matches rows from data by key |
+| `List<R>` | `Array<R.Data>` | `Array<R.Seen>` | The rows the user added or removed, else rows from data: a default, or computed rows, kept by `rowKey` |
 | `Variant<C>` | `{ tag: keyof C, value: { [K in keyof C]: C[K].Data? } }` | `{ tag: (keyof C)?, value: { [K in keyof C]: C[K].Seen? } }` | The tag is a `Field<keyof C>` |
-| `Hidden<N>` (shared) | `N.Data?` | `N.Seen?` | Drawing sets `shown` when any writer is drawn |
-| `Local<N>` (shared) | `None` | `N.Seen` | Kept out of the output |
-| `Dynamic` (shared) | `String` (JSON) | `None` | A mounted dynamic form's data, opaque |
+| `Hidden<N>` | `N.Data?` | `N.Seen?` | Shown while any view writing it is visible |
+| `Local<N>` | `None` | `N.Seen` | Kept out of the output |
+| `Dynamic` | `String` (JSON) | `None` | A mounted dynamic form's data, opaque |
 
-**Fields are shared structs.** The model and every view writing a path hold the same handle. That handle is all multiple writers and outside tag writers need: two `FieldView`s holding one `Field`.
+**Nodes are handles.** The model and every view writing a path hold the same sources and computeds. That is all multiple writers and outside tag writers need: two `FieldView`s holding one `Field`.
 
-**Constraints and `when`s live in the view, not the model.** The model's types determine `Seen`, and expressions take `Seen`. A lambda stored in the model would make the model's type depend on itself.
+**Constraints and `when`s live in the view, not the model.** The model's types determine `Seen`, and expressions read `Seen`, so an expression stored in the model would make the model's type depend on itself. What a view says of a node, a default, a computed value, rows from data, or that it writes a hidden node, is bound into the node once, when the view is built.
 
 ### 6.2 The view
 
-Every view node implements `View<Sc>`:
-- `ista fn draw(sc, &out) -> Array<Node>`. Drawing never awaits, because each await of a live run ends a segment, which costs more than the drawing. It returns zero nodes when hidden, a `Loading` node while waiting, and otherwise its node. It marks each drawn `Hidden` shown, and records in `out` only values: whether everything is valid, whether a run goes on or the form waits for one, and the keys of the inputs, searches and lists it drew. So no pass writes a handle into `out`, and none closes a cycle (spec §7).
-- `ista fn route(event) -> Bool` applies an event meant for its key, or passes it on to its children, a variant only to its active case.
-- `ista fn runs(pass, waited) -> Array<Future>` gives the runs going on of the tasks drawing pass `pass` wanted, of tasks the form waits for alone when `waited`. Each pass is numbered, and stamps every task it wants.
+The generated code describes each node with a struct, `FieldView`, `RepeatView`, `VariantView` (with `CaseView`s), `LayoutView` or `DynamicView`, and builds it at a `Place`: the form's graph and submit flag, and whether the parent is visible. A built node is a `View`: a computed of its drawn nodes and validity, and how it routes an event to a key it shows.
+- **Scopes are bound when built.** Every expression is a closure over the scope's variables: `data`, `ctx`, and the variables of enclosing repeats and variants. A scope variable is a generated struct whose getters read the model, so each read is tracked. A repeat's row, a variant's case and a mounted form are built with their own scope by generated code.
+- **Visibility is a computed per place:** a node's `when` and every ancestor's. A hidden node draws nothing and its expressions are never brought up to date.
+- **Each node evaluates at most once per view,** and only when something it read changed: an edit re-draws the nodes reading it, and the others keep their drawings, the same objects.
+- **Errors** show once a node is touched or the form submitted; validity counts them all.
 
-The view nodes are `FieldView`, `RepeatView`, `VariantView` (with `CaseView`s), `LayoutView`, `ScopedView` (which moves into another scope) and `DynamicView`.
+**Repeat rows.** A row is made holding the data it comes from, and its list hands it to the repeat at once, which builds its view: a row's defaults, computed values and hidden nodes are bound before anything can read it.
+- **Default rows:** made from data once, or followed while `recomputeUntil` is `RowsEdited`, until the user adds or removes a row. A list's default rows are the data it was made with, as a row's nested list is.
+- **Computed rows** follow their data, read-only.
+- **Keys:** with a `rowKey`, a row whose key stays keeps its node, and so its values; without one, a row is kept while its place and data stay.
+- **A variant's picker** reports an unanswered tag through `answered()` among the variant's checks, which take the tag, as a field's take its value.
 
-**Props.** `Prop<Sc, T>` is `Fixed`, `Computed` (a lambda) or `Awaited` (an async lambda with its pending behaviour and a `Task`). Its lambdas are `sendable`: they read the scope they are given and capture no handle, so a prop holds no code that could reach the view, its tasks or the drawing.
-- **A task** is for one scope at a time. When the scope changes it starts the lambda, unless its last run was for that scope, and a run for another scope stops. The run writes only a cell the task holds, the scope it ran for with its value, never the task itself, and tells no one it ended. Because the task re-runs only when its scope changes, a finished task never restarts on the redraw it caused. Sources cache, so re-running after a change is cheap.
-- **Pending `form`:** while its run goes on, `peek()` returns the value the task last ran for, and the drawing records that the form waits.
-- **Pending `node` / `hidden`:** while its run goes on, `peek()` returns `none`, and the drawing records that a run goes on.
+### 6.3 The two live functions
 
-**Checks.**
-- `Check.Now` runs on every draw.
-- `Check.Later` (a rule with `pending`) runs as a task once the form is submitted. The form isn't valid until it resolves, and its pending text is shown meanwhile.
-
-**Repeat rows.** A repeat builds each row's view once, when the row first appears, and keeps it by row key, so the view tree stays static per row.
-- **Default rows:** `RepeatView.rows` loads a default once, or re-runs a computed default until `recomputeUntil`.
-- **Computed rows** follow `rows` on every draw.
-- **Keys:** with a `rowKey`, rows are matched with `List.sync`, which keeps the nodes, and so the values, of rows whose key stays.
-
-### 6.3 The loop
-
-`forms.run(model, view, ctx, translations, events, views)`:
-
-1. **Draw.** Unshow the model's `Hidden`s, then draw with scope `Scope{data: model.seen(), ctx}`. Await the runs the form waits for that the pass wanted, then draw again; and if drawing changed what `data` holds (a `Hidden` flipped, a computed value was written), draw again too, up to eight passes in all. That lets a `when` depend on another node's visibility. Exceeding the limit means the form's conditions cycle.
-2. **Return.** If the form was submitted and the drawing is valid, return `model.read()`: the typed `Group<M>.Data`.
-3. **Send** the tree to the `views` inbox.
-4. **Wait** for the next event, or, while runs go on, for the first of the event and those runs (`futures.first`, then `Resolved`). An event whose key the last pass didn't draw is dropped. Otherwise:
-   - `Set(key, value)` routes, through the tree, to the field or variant drawn under `key`, which parses the JSON value into its type.
-   - `Search(key, text)` stores the typed text. The field's options run again, as a run the form waits for, whenever the text or the scope changed.
-   - `AddRow` and `RemoveRow` change a list.
-   - `Submit` marks the form submitted.
-   - `Resolved` just redraws.
+`forms/form.ista` gives each form, opened on a graph of its own, the steps both drivers share: `apply(event)` sets sources between views, and `result()` reads the tree and gives the data when valid, else the errors by node key.
+- **`serve`, the browser's:** shows the root's tree (`show`), awaits the next event (`nextEvent`), and applies it, until a submitted form is valid; then it gives the data.
+  - `Set(key, value)` routes to the field or variant shown under `key`, which parses the JSON value into its type.
+  - `Search(key, text)` stores the typed text, which the field's options read.
+  - `AddRow` and `RemoveRow` change a list.
+  - `Submit` marks the form submitted.
+  - An event to a key not shown changes nothing.
+- **`validate`, the backend's:** loads a whole value, marks the form submitted, and gives `result()`. Values for hidden nodes are dropped: hidden nodes don't exist.
 
 ### 6.4 What the frontend receives
 
 A `Node` tree:
-- `Layout`, `Field`, `Repeat` (with `Row`s), `Variant`, `Mount` and `Loading`;
-- each node has its key, its widget enum value with evaluated ui props, `ParentUi`, label, errors and pending texts;
+- `Layout`, `Field`, `Repeat` (with `Row`s), `Variant` and `Mount`;
+- each node has its key, its widget enum value with evaluated ui props, `ParentUi`, label and errors;
 - a field's value and options are JSON-encoded.
 
 The frontend draws it with a generic recursive component and sends events by key. It knows nothing about any particular form.
@@ -432,13 +410,14 @@ The frontend draws it with a generic recursive component and sends events by key
 | `Data` and `Seen` are computed types | The form's result type is derived from its definition, never written or generated separately |
 | Hidden nodes don't exist | Hidden values can't silently affect expressions, validation or output |
 | Output shape is free (`{ tag, value }` for variants) | Istalang owns the data; no external JSON contract constrains it |
-| One generic loop, redrawing the whole tree | Simpler than dependency tracking, and React plus the runtime's stable references make redraws cheap |
-| Server replays events on submit | One code path; the server's result is authoritative |
-| Awaited props re-run only when their scope changes | Sources cache, so no dependency declarations are needed and no redraw loop can occur |
+| Values and views are computeds, pulled | A node evaluates only when what it read changed, at most once per view; nothing writes during a view, so no redraw loop or pass limit exists |
+| Simple code, two live entry points | One core serves the browser and validates on the server |
+| The server validates the submitted value | No event log to replay; the server's result is authoritative |
+| Sources return at once | Nothing waits: no loading states, no tasks |
 
 ## 8. Language features the design relies on
 
-The design uses Istalang as the guide describes it: structs, enums, generics, traits with associated types, struct constraints, mapped struct types, field loops, `keyof`, literal unions, `any Trait`, shared structs, inboxes, async functions and durable awaits. It also relies on the following, which the guide doesn't show. Each is marked `ASSUMES` in `forms.py` or used by the generated code. Where a fallback exists, it is noted.
+The design uses Istalang as the guide describes it: structs, enums, generics, traits with associated types, struct constraints, mapped struct types, field loops, `keyof`, literal unions, shared structs and live functions. It also relies on the following, which the guide doesn't show, each used by `forms/` or the generated code. Where a fallback exists, it is noted.
 
 | # | Feature | Used for | Example | Fallback |
 | --- | --- | --- | --- | --- |
@@ -448,32 +427,31 @@ The design uses Istalang as the guide describes it: structs, enums, generics, tr
 | 4 | Indexed access on a type by a literal key | Nothing generated: case scopes are inferred (§5.3) | `Group<OrderPaymentCases["card"]>.Seen` | Generate a named alias per case |
 | 5 | Top-level type aliases, including generic ones | Row and case types | `type OrderItemsRow = Group<{ sku: Field<String>, qty: Field<Int> }>` | Associated types on a generated struct |
 | 6 | Constructing a value by an alias of an anonymous struct type | Nothing generated: scope functions build `struct{…}` (§5.3) | `OrderScope1{data: sc.data, ctx: sc.ctx, item: r1.seen()}` | An expected-type annotation on the lambda |
-| 7 | Async lambdas | Awaited props, pending rules, search options | `async fn({data, ctx}): await runtime.delegate geo.cities(…)` | None found |
-| 8 | Struct patterns as lambda parameters | Every pasted expression reads bare `data`, `ctx`, variables | `fn({data, ctx, item}): item.qty > 0` | `fn(s): { const data = s.data … }` |
-| 9 | Generic traits and `any Trait<P>` over generic structs | `any View<Sc>` children of mixed node types | `children: Array<any View<Sc>>` | None found: central to the design |
-| 10 | Async trait methods, and trait impls for generic structs | `View.draw` | `impl View<Sc> for FieldView<Sc, T>` | None found |
+| 7 | Transient variables (proposal 13) | One view and one current reader shared by every computed | `transient let view: _View? = none` | None found |
+| 8 | Getters (proposal 13) | Scope variables whose reads are tracked | `fn get country(self: OrderSeen) -> String?` | Read the model in each expression |
+| 9 | Inert function types (proposal 14) | Closures kept in the graph, which may hold cycles | `eval: inert fn() -> T` | None found: the graph's cycles need it |
+| 10 | Closures inferred inert | Every pasted expression is a closure over its scope | `fn(): data.country != none` | None needed if supported |
 | 11 | Spreading a struct into an anonymous struct literal | `ctx` widened with `search` | `{ ...sc.ctx, search }` | A generated ctx struct per search widget |
-| 12 | Structural `==` on structs and computed types | A task re-runs when its scope changes; the loop stops redrawing when `data` stops changing | `if task->sc != sc: …` | Compare JSON strings |
+| 12 | Structural `==` on structs and computed types | An equal result keeps the old object and stops the update | `if cell->value == next: …` | Compare JSON strings |
 | 13 | Parsing JSON into literal unions and computed types | Events set a tag; snapshots | `json.parse<"card" \| "wire">(v)` | Parse a string, then match |
 | 14 | Recursive types through generic containers | A def mounting itself | `struct CategoryModel: children: List<Group<CategoryModel>>` | None needed if supported |
 | 15 | Struct constraints satisfied by nested anonymous structs of generic nodes | `Group<{ a: Field<String>, b: Hidden<Field<Int>> }>` | `S is struct { [_] is FormNode }` | None found |
-| 16 | Implicit conversion of a shared struct to `any Trait` it implements | `hide: m.city` into `(any Showable)?` | | An explicit conversion call |
 | 17 | Empty struct declarations | Params of a def with none | `struct CategoryParams {}` | A `Unit` field |
 | 18 (nice to have) | Lambda parameter types inferred from the expected type | Shorter generated code | | Already spelled out |
 
 **The host must also provide:**
-- inboxes between the instance and the frontend;
-- injected async sources with caching;
+- the frontend's events and its trees, through the externs `nextEvent` and `show`;
+- the sources, as simple externs;
 - for dynamic refs, a way to run a separately compiled form and mount its view. A running interpreter can't load modules, so the host runs the mounted form as its own instance, and the parent stores its result JSON in a `Dynamic`.
 
 ## 9. Acceptance scenarios
 
-These exercise the order form (Appendix A) end to end. Run them in the interpreter with the sources mocked as given, sending events into `events`, and compare the views and the returned data.
+These exercise the order form (Appendix A) end to end. Run them in the interpreter with the sources mocked as given, applying events to the form, and compare the trees and the data. `order.test.ista` runs them on the simple core; `order-demo.ista` runs S5 and S8 through the two live functions, as their hosts start them.
 
 **Mocked sources** (`geo`, `approvals`):
 - `geo.countries("eu")` returns `[{id: "de", name: "Germany"}, {id: "kp", name: "North Korea"}]`.
-- `geo.cities("de")` resolves after one tick with `[{id: "ber", name: "Berlin"}]`.
-- `approvals.ask(…)` stays pending until the test resolves it.
+- `geo.cities("de")` returns `[{id: "ber", name: "Berlin"}]`.
+- `approvals.ask(…)` returns what the scenario says, `true` unless it says otherwise.
 
 Params: `{region: "eu"}`. User: `{id: "u1", name: "Ana", lang: "de", role: "buyer", today: "2026-11-05"}`.
 
@@ -486,9 +464,7 @@ Params: `{region: "eu"}`. User: `{id: "u1", name: "Ana", lang: "de", role: "buye
 - **Not present:** `n3` City (no country yet) and `n12` (total ≤ 100).
 - **Errors:** none shown (nothing touched, not submitted).
 
-**S2. Dependent loading.**
-1. `Set{key: "n2", value: "\"de\""}`: `n3` appears as a `Loading` node (`pending: "node"`).
-2. After the tick and `Resolved`: `n3` is a select with Berlin.
+**S2. Dependent options.** `Set{key: "n2", value: "\"de\""}`: `n3` appears, a select with Berlin. Before it, `geo.cities` was never called.
 
 **S3. A localized rule.** `Set{key: "n2", value: "\"kp\""}`: `n2` shows `Wir liefern nicht nach kp`, the German translation with `$0` filled with the argument's text.
 
@@ -505,16 +481,13 @@ Params: `{region: "eu"}`. User: `{id: "u1", name: "Ana", lang: "de", role: "buye
    ```
 2. Typing: the value has type `Group<OrderModel>.Data`, and assigning it to a variable annotated with the expected shape compiles.
 
-**S6. Approval blocks submission.**
-1. As S5, but with quantities totalling 600, and the note filled.
-2. On `Submit`: the tree shows `n1` waiting with "Waiting for approval of a large order", and the form doesn't return.
-3. Resolve `approvals.ask` with `true`: the form returns. With `false`: `n1` shows "The order was not approved", and the form waits for another submit.
+**S6. Approval blocks submission.** As S5, but with quantities totalling 600, and the note filled. With `approvals.ask` giving `false`, `Submit` shows "The order was not approved" on `n1`, and the form doesn't return; with `true`, it returns.
 
 **S7. Validation messages.**
 1. `Submit` on an empty form: every stored field shows "Required", and `n4` shows its minItems error.
 2. `Set n10 "12a4"`: `n10` shows the pattern error.
 
-**S8. Server replay.** Replay S5's event log on a fresh instance: the same `OrderData`.
+**S8. Server validation.** The backend's function, given S5's data as JSON, gives the same `OrderData`. Given a value whose note is filled while the total is at most 100, it gives the data without the note. Given an empty value, it gives the errors by node key: `n2` "Required" and `n4` its minItems error.
 
 The supplier form (`supplier.form.json`) is the full test. It compiles only if every feature in §4 and §8 works. Its coverage:
 
@@ -552,9 +525,7 @@ The supplier form (`supplier.form.json`) is the full test. It compiles only if e
 
 - **Dynamic refs:** the host protocol for running a mounted form as its own instance and embedding its view tree needs specifying.
 - **Recursion bounds:** recursion through refs is assumed to end because repeats start empty; the generator does not yet reject unbounded recursion.
-- **Bounded redraws:** the loop's limit of eight passes (for `when` chains and rounds of waits) is arbitrary.
-- **Re-running approvals:** an approval rule re-runs if the data changes after submit, because its task is keyed by the whole scope. That is intended (the approved data changed), but it means a fresh request.
-- **Snapshot comparison:** `Options.Search.same` compares snapshots by an `id` field. The generator assumes snapshot rows have one.
+- **Stable references:** the page gets new objects for every tree until proposal 15 lands.
 
 ---
 
@@ -736,48 +707,26 @@ The supplier form (`supplier.form.json`) is the full test. It compiles only if e
 # order.gen.ista — generated from order.form.json 1.4.0. Do not edit.
 #
 # The generated part of a form: per form and per local def, a model (one node per path), its
-# factory, and a view whose expressions are lambdas. forms.run does the rest.
+# factory, what its expressions see (structs whose getters read the model, so every read is
+# tracked), and a view whose expressions are closures over that scope. forms/ does the rest.
 # Expressions are pasted from the schema verbatim.
 
-import Inbox from 'inbox'
-import * as forms from './forms'
+import Graph from './computed'
+import * as checks from './forms/checks'
+import Field, Group, List, Variant, Hidden from './forms/model'
 import (
-  Field
-  Group
-  List
-  Variant
-  Hidden
-  Local
-  Dynamic
-  Scope
-  Prop
-  Pending
-  Check
-  Recompute
-) from './forms'
-import (
+  Place
+  View
   Options
-  Item
   Choice
-  Format
   FieldView
   RepeatView
   VariantView
   CaseView
   LayoutView
-) from './forms'
-import ScopedView, DynamicView, View, FormEvent, Node, User from './forms'
-import (
-  FieldWidget
-  RepeatWidget
-  VariantWidget
-  LayoutWidget
-  ParentUi
-  LabelStyle
-  Orientation
-  Gap
-) from './forms'
-import * as runtime from 'runtime'
+) from './forms/views'
+import FieldWidget, RepeatWidget, VariantWidget, LayoutWidget, ParentUi from './forms/tree'
+import Form, User, Problems from './forms/form'
 import * as geo from './geo'
 import * as approvals from './approvals'
 import * as logic from './order'
@@ -808,205 +757,219 @@ type OrderPaymentCases = {
   wire: Group<{ iban: Field<String> }>
 }
 
-fn orderModel() -> Group<OrderModel>: Group{
+fn orderModel(graph: Graph) -> Group<OrderModel>: Group{
   fields: OrderModel{
-    country: new Field<String>{}
-    city: new Hidden<Field<String>>{node: new Field<String>{}}
-    items: new List<OrderItemsRow>{
-      make: fn(): Group{fields: struct{sku: new Field<String>{}, qty: new Field<Int>{}}}
-    }
+    country: Field.make<String>(graph)
+    city: Hidden.make(graph, Field.make<String>(graph))
+    items: List.make(
+      graph
+      fn(x): Group{
+        fields: struct{sku: Field.make<String>(graph, x?.sku), qty: Field.make<Int>(graph, x?.qty)}
+      }
+    )
     payment: Variant{
-      tag: new Field<"card" | "wire">{}
+      tag: Field.make<"card" | "wire">(graph)
       cases: struct{
-        card: Group{fields: struct{last4: new Field<String>{}}}
-        wire: Group{fields: struct{iban: new Field<String>{}}}
+        card: Group{fields: struct{last4: Field.make<String>(graph)}}
+        wire: Group{fields: struct{iban: Field.make<String>(graph)}}
       }
     }
-    note: new Hidden<Field<String>>{node: new Field<String>{}}
+    note: Hidden.make(graph, Field.make<String>(graph))
   }
 }
 
-ista fn orderView(m: OrderModel) -> any View<Scope<Group<OrderModel>.Seen, OrderCtx>>: LayoutView{
-  key: "n1"
-  parent: none
-  widget: Prop.Fixed(
-    LayoutWidget.Section(title: "Order", description: none, collapsible: none, labels: none)
-  )
-  checks: [
-    forms.later(
-      async fn({data, ctx}): {
-        if logic.totalQty(data.items) <= 500 or await runtime.delegate approvals.ask(ctx.user.id, logic.totalQty(data.items)):
-          none
-        else: `The order was not approved`
-      }
-      fn({data, ctx}): `Waiting for approval of a large order`
+# What the form's expressions see as `data`.
+struct OrderSeen:
+  m: OrderModel
+
+fn get country(self: OrderSeen) -> String?: self.m.country.seen()
+fn get city(self: OrderSeen) -> String?: self.m.city.seen()
+fn get items(self: OrderSeen) -> List<OrderItemsRow>.Seen: self.m.items.seen()
+fn get payment(self: OrderSeen) -> Variant<OrderPaymentCases>.Seen: self.m.payment.seen()
+fn get note(self: OrderSeen) -> String?: self.m.note.seen()
+
+# What an `items` row's expressions see as `item`.
+struct OrderItemsRowSeen:
+  m: OrderItemsRow
+
+fn get sku(self: OrderItemsRowSeen) -> String?: self.m.fields.sku.seen()
+fn get qty(self: OrderItemsRowSeen) -> Int?: self.m.fields.qty.seen()
+
+# What the `card` case's expressions see as `p`.
+struct OrderPaymentCardSeen:
+  m: Group<{ last4: Field<String> }>
+
+fn get last4(self: OrderPaymentCardSeen) -> String?: self.m.fields.last4.seen()
+
+# What the `wire` case's expressions see as `p`.
+struct OrderPaymentWireSeen:
+  m: Group<{ iban: Field<String> }>
+
+fn get iban(self: OrderPaymentWireSeen) -> String?: self.m.fields.iban.seen()
+
+fn orderView(at: Place, m: OrderModel, ctx: OrderCtx) -> View:
+  const data = OrderSeen{m}
+  LayoutView{
+    key: "n1"
+    widget: fn(): LayoutWidget.Section(
+      title: "Order"
+      description: none
+      collapsible: none
+      labels: none
     )
-  ]
-  children: [
-    new FieldView{
-      key: "n2"
-      parent: none
-      field: m.country
-      widget: Prop.Fixed(FieldWidget.Select(none))
-      label: Prop.Fixed("Country")
-      checks: [
-        forms.answered()
-        forms.rule(
-          fn({data, ctx}): not logic.isBlocked(data.country)
-          fn({data, ctx}): forms.t(
-            translations
-            ctx.user.lang
-            "We don't ship to ${data.country}"
-            `We don't ship to ${forms.text(data.country)}`
-            [forms.text(data.country)]
-          )
-        )
-      ]
-      options: Options.Rows(
-        from: forms.awaited(Pending.Form, async fn({data, ctx}): [
-          for row in await runtime.delegate geo.countries(ctx.params.region): Choice{
-            value: (row.id)
-            label: (row.name)
-          }
-        ])
-        resolve: forms.awaited(
-          Pending.Form
-          async fn({data, ctx}): (await runtime.delegate geo.countries(ctx.params.region)).some(
-            fn(c): c.id == data.country
-          )
-        )
+    checks: [
+      checks.rule(
+        fn(): logic.totalQty(data.items) <=
+          500 or
+          approvals.ask(ctx.user.id, logic.totalQty(data.items))
+        fn(): `The order was not approved`
       )
-    }
-    new FieldView{
-      key: "n3"
-      parent: none
-      when: Prop.Computed(fn({data, ctx}): data.country != none)
-      field: m.city->node
-      hide: m.city
-      widget: Prop.Fixed(FieldWidget.Select(none))
-      label: Prop.Fixed("City")
-      checks: [forms.answered()]
-      options: Options.Rows(
-        from: forms.awaited(Pending.Node, async fn({data, ctx}): [
-          for row in await runtime.delegate geo.cities(data.country ?? ""): Choice{
-            value: (row.id)
-            label: (row.name)
-          }
-        ])
-        resolve: forms.awaited(
-          Pending.Node
-          async fn({data, ctx}): (await runtime.delegate geo.cities(data.country ?? "")).some(
-            fn(c): c.id == data.city
+    ]
+    children: [
+      fn(at): FieldView{
+        key: "n2"
+        field: m.country
+        widget: fn(): FieldWidget.Select(none)
+        label: fn(): "Country"
+        checks: [
+          checks.answered()
+          checks.rule(
+            fn(): not logic.isBlocked(data.country)
+            fn(): checks.t(
+              translations
+              ctx.user.lang
+              "We don't ship to ${data.country}"
+              `We don't ship to ${checks.text(data.country)}`
+              [checks.text(data.country)]
+            )
           )
-        )
-      )
-    }
-    new RepeatView{
-      key: "n4"
-      parent: none
-      list: m.items
-      widget: Prop.Fixed(RepeatWidget.Table(none))
-      label: Prop.Fixed("Items")
-      checks: [forms.minItems(Fixed(1))]
-      canAdd: true
-      item: fn(r1, row1): ScopedView{
-        scope: fn(sc): struct{data: sc.data, ctx: sc.ctx, item: r1.seen()}
-        view: LayoutView{
-          key: `n5@${row1}`
-          parent: none
-          widget: Prop.Fixed(LayoutWidget.Tablerow)
-          children: [
-            new FieldView{
-              key: `n6@${row1}`
-              parent: none
-              field: r1.fields.sku
-              widget: Prop.Fixed(FieldWidget.Input(none))
-              label: Prop.Fixed("SKU")
-              checks: [forms.answered(), forms.required(Fixed(true))]
-            }
-            new FieldView{
-              key: `n7@${row1}`
-              parent: Prop.Fixed(ParentUi.Tablerow(80))
-              field: r1.fields.qty
-              widget: Prop.Fixed(FieldWidget.Input(none))
-              label: Prop.Fixed("Qty")
-              checks: [forms.answered(), forms.min(Fixed(1))]
-            }
+        ]
+        options: Options.Rows(
+          from: fn(): [
+            for row in geo.countries(ctx.params.region): Choice{value: (row.id), label: (row.name)}
           ]
+          resolve: fn(): geo.countries(ctx.params.region).some(fn(c): c.id == data.country)
+        )
+      }.build(at)
+      fn(at): FieldView{
+        key: "n3"
+        when: fn(): data.country != none
+        field: m.city.node
+        hide: m.city.shown
+        widget: fn(): FieldWidget.Select(none)
+        label: fn(): "City"
+        checks: [checks.answered()]
+        options: Options.Rows(
+          from: fn(): [
+            for row in geo.cities(data.country ?? ""): Choice{value: (row.id), label: (row.name)}
+          ]
+          resolve: fn(): geo.cities(data.country ?? "").some(fn(c): c.id == data.city)
+        )
+      }.build(at)
+      fn(at): RepeatView{
+        key: "n4"
+        list: m.items
+        widget: fn(): RepeatWidget.Table(none)
+        label: fn(): "Items"
+        checks: [checks.minItems(fn(): 1)]
+        canAdd: true
+        item: fn(r1, row1, at): {
+          const item = OrderItemsRowSeen{m: r1}
+          LayoutView{
+            key: `n5@${row1}`
+            widget: fn(): LayoutWidget.Tablerow
+            children: [
+              fn(at): FieldView{
+                key: `n6@${row1}`
+                field: r1.fields.sku
+                widget: fn(): FieldWidget.Input(none)
+                label: fn(): "SKU"
+                checks: [checks.answered(), checks.required(fn(): true)]
+              }.build(at)
+              fn(at): FieldView{
+                key: `n7@${row1}`
+                parent: fn(): ParentUi.Tablerow(80)
+                field: r1.fields.qty
+                widget: fn(): FieldWidget.Input(none)
+                label: fn(): "Qty"
+                checks: [checks.answered(), checks.min(fn(): 1)]
+              }.build(at)
+            ]
+          }.build(at)
         }
-      }
-    }
-    new FieldView{
-      key: "n8"
-      parent: none
-      field: none
-      widget: Prop.Fixed(FieldWidget.Input(none))
-      label: Prop.Fixed("Total quantity")
-      value: Prop.Computed(fn({data, ctx}): logic.totalQty(data.items))
-      checks: []
-    }
-    VariantView{
-      key: "n9"
-      parent: none
-      variant: m.payment
-      widget: Prop.Fixed(VariantWidget.Inline)
-      label: Prop.Fixed("Payment")
-      cases: struct{
-        card: CaseView{
-          label: Prop.Fixed("Credit card")
-          body: ScopedView{
-            scope: fn(sc): struct{data: sc.data, ctx: sc.ctx, p: m.payment.cases.card.seen()}
-            view: new FieldView{
-              key: "n10"
-              parent: none
-              field: m.payment.cases.card.fields.last4
-              widget: Prop.Fixed(FieldWidget.Input(none))
-              label: Prop.Fixed("Last 4 digits")
-              checks: [forms.answered(), forms.pattern(Fixed("^[0-9]{4}$"))]
+      }.build(at)
+      fn(at): FieldView{
+        key: "n8"
+        widget: fn(): FieldWidget.Input(none)
+        label: fn(): "Total quantity"
+        value: fn(): logic.totalQty(data.items)
+      }.build(at)
+      fn(at): VariantView{
+        key: "n9"
+        variant: m.payment
+        widget: fn(): VariantWidget.Inline
+        label: fn(): "Payment"
+        checks: [checks.answered()]
+        cases: struct{
+          card: CaseView{
+            label: fn(): "Credit card"
+            body: fn(at): {
+              const p = OrderPaymentCardSeen{m: m.payment.cases.card}
+              FieldView{
+                key: "n10"
+                field: m.payment.cases.card.fields.last4
+                widget: fn(): FieldWidget.Input(none)
+                label: fn(): "Last 4 digits"
+                checks: [checks.answered(), checks.pattern(fn(): "^[0-9]{4}$")]
+              }.build(at)
+            }
+          }
+          wire: CaseView{
+            label: fn(): "Bank transfer"
+            body: fn(at): {
+              const p = OrderPaymentWireSeen{m: m.payment.cases.wire}
+              FieldView{
+                key: "n11"
+                field: m.payment.cases.wire.fields.iban
+                widget: fn(): FieldWidget.Input(none)
+                label: fn(): "IBAN"
+                checks: [checks.answered()]
+              }.build(at)
             }
           }
         }
-        wire: CaseView{
-          label: Prop.Fixed("Bank transfer")
-          body: ScopedView{
-            scope: fn(sc): struct{data: sc.data, ctx: sc.ctx, p: m.payment.cases.wire.seen()}
-            view: new FieldView{
-              key: "n11"
-              parent: none
-              field: m.payment.cases.wire.fields.iban
-              widget: Prop.Fixed(FieldWidget.Input(none))
-              label: Prop.Fixed("IBAN")
-              checks: [forms.answered()]
-            }
-          }
-        }
-      }
-    }
-    new FieldView{
-      key: "n12"
-      parent: none
-      when: Prop.Computed(fn({data, ctx}): logic.totalQty(data.items) > 100)
-      field: m.note->node
-      hide: m.note
-      widget: Prop.Computed(
-        fn({data, ctx}): FieldWidget.Textarea((if logic.totalQty(data.items) > 1000: 6 else: 3))
-      )
-      label: Prop.Fixed("Delivery note")
-      checks: [forms.answered()]
-    }
-  ]
-}
+      }.build(at)
+      fn(at): FieldView{
+        key: "n12"
+        when: fn(): logic.totalQty(data.items) > 100
+        field: m.note.node
+        hide: m.note.shown
+        widget: fn(): FieldWidget.Textarea((if logic.totalQty(data.items) > 1000: 6 else: 3))
+        label: fn(): "Delivery note"
+        checks: [checks.answered()]
+      }.build(at)
+    ]
+  }.build(at)
 
-# ═══════════ The entry point a workflow awaits ═══════════
+# The form on a graph of its own.
+fn openOrder(params: OrderParams, user: User) -> Form<OrderModel>:
+  const graph = new Graph{}
+  const model = orderModel(graph)
+  Form.open(graph, model, fn(at): orderView(at, model.fields, OrderCtx{params, user}))
 
-ista async fn orderForm(
+# ═══════════ The entry points its hosts start ═══════════
+
+# The browser's: serves the form until a valid submit, and gives its data.
+live async fn orderForm(params: OrderParams, user: User) -> Group<OrderModel>.Data:
+  await openOrder(params, user).serve()
+
+# The backend's: validates a whole value.
+live fn validateOrder(
   params: OrderParams
   user: User
-  events: Inbox<FormEvent>
-  views: Inbox<Node>
-):
-  const m = orderModel()
-  await forms.run(m, orderView(m.fields), OrderCtx{params, user}, translations, events, views)
+  value: Group<OrderModel>.Seen
+) -> Result<Group<OrderModel>.Data, Problems>:
+  openOrder(params, user).validate(value)
 ```
 
 ### A.3 `order.ista`, hand-written

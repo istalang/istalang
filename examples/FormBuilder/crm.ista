@@ -6,7 +6,7 @@ struct User:
 
 type Order = { note: String? }
 
-extern live async fn users(search: String) -> Array<User>
-extern live async fn user(id: String) -> User?
-extern live async fn creditLimit(vatId: String) -> Int?
-extern live async fn orders(vatId: String) -> Array<Order>
+extern fn users(search: String) -> Array<User>
+extern fn user(id: String) -> User?
+extern fn creditLimit(vatId: String) -> Int?
+extern fn orders(vatId: String) -> Array<Order>

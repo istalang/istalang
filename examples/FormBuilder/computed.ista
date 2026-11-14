@@ -50,7 +50,15 @@ fn source<T is Inert>(self: Graph, value: T) -> Source<T>: Source{
 }
 
 fn computed<T is Inert>(self: Graph, eval: inert fn() -> T) -> Computed<T>:
-  const cell = new Shared<_Evaluated<T>?>{value: none}
+  self._computed(eval, none)
+
+# A computed whose own read in its first evaluation gets `initial`, as a later one gets the value
+# before: a fold's seed.
+fn computed<T is Inert>(self: Graph, eval: inert fn() -> T, initial: T) -> Computed<T>:
+  self._computed(eval, _Evaluated{value: initial})
+
+fn _computed<T is Inert>(self: Graph, eval: inert fn() -> T, before: _Evaluated<T>?) -> Computed<T>:
+  const cell = new Shared<_Evaluated<T>?>{value: before}
   fn refresh() -> Bool:
     const next = _Evaluated{value: eval()}
     if cell->value == next: return false

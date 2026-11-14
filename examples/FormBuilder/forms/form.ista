@@ -1,0 +1,108 @@
+# A form built: its model and view on one graph, the events that change it, and the two live
+# functions that drive it, the browser's and the backend's (docs/work/computed/design.md).
+#
+# - Everything but the drivers is simple code: an event sets sources between views, and a view
+#   reads the tree. The drivers add only what live code must: the host's seam.
+# - The browser's driver holds the form for the whole session: the host starts it once with JSON
+#   arguments and disposes what it holds when it returns, so the graph lives as long as the run,
+#   which waits for each event on a host extern (an Inbox is ista, so live code takes none).
+# - The backend validates a whole value with one view of it: no replay of events.
+# - A form's errors by node key are read off its tree, which already holds what each node says
+#   once the form is submitted.
+
+import Graph, Source from '../computed'
+import FormNode, Group from './model'
+import Place, View from './views'
+import Node, FormEvent from './tree'
+
+# A form, built: its model, its view, and whether it was submitted.
+struct Form<M is struct { [_] is FormNode }>:
+  model: Group<M>
+  view: View
+  submitted: Source<Bool>
+
+# Errors by node key.
+type Problems = Map<String, Array<String>>
+
+fn Form.open<M is struct { [_] is FormNode }>(
+  graph: Graph
+  model: Group<M>
+  view: fn(Place) -> View
+) -> Form<M>:
+  const submitted = graph.source(false)
+  const at = Place{graph, submitted, visible: graph.computed(fn(): true)}
+  Form{model, view: view(at), submitted}
+
+# Applies a frontend's event, between views. An event to a key not shown changes nothing.
+fn apply<M is struct { [_] is FormNode }>(self: Form<M>, event: FormEvent):
+  match event:
+    case Submit: self.submitted.set(true)
+    case other: _ = self.view.route(other)
+
+# The form's data when it is valid; else its errors by node key.
+fn result<M is struct { [_] is FormNode }>(self: Form<M>) -> Result<Group<M>.Data, Problems>:
+  const drawn = self.view.drawn.read()
+  if not drawn.valid: return Err(problems(drawn.nodes))
+  match self.model.read():
+    case Ok(data): Ok(data)
+    case Err(...): Err(problems(drawn.nodes))
+
+# The errors each node in `nodes` shows, by its key.
+fn problems(nodes: Array<Node>) -> Problems:
+  let found: Problems = [:]
+  fn note(key: String, errors: Array<String>):
+    if errors.length() > 0: found[key] = errors
+  fn walk(node: Node) -> Unit:
+    match node:
+      case Layout(key: key, errors: errors, children: children, ...): {
+        note(key, errors)
+        for child in children: walk(child)
+      }
+      case Field(key: key, errors: errors, ...): note(key, errors)
+      case Repeat(key: key, errors: errors, rows: rows, ...): {
+        note(key, errors)
+        for row in rows: walk(row.node)
+      }
+      case Variant(key: key, errors: errors, body: body, ...): {
+        note(key, errors)
+        match body:
+          case None: ()
+          case shown: walk(shown)
+      }
+      case Mount(...): ()
+  for node in nodes: walk(node)
+  found
+
+# The host's seam for a form served in the browser: the frontend's next event, and the tree to draw.
+extern live async fn nextEvent() -> FormEvent
+extern live fn show(tree: Node)
+
+# The browser's: serves the form from the frontend's events, showing its tree after each, until a
+# valid submit, whose data it gives its host.
+live async fn serve<M is struct { [_] is FormNode }>(self: Form<M>) -> Group<M>.Data:
+  while true: {
+    if self.submitted.read():
+      match self.result():
+        case Ok(data): return data
+        case Err(...): ()
+    show(self.view.drawn.read().nodes[0])
+    self.apply(await nextEvent())
+  }
+  panic("unreachable")
+
+# The backend's: validates a whole value, as submitted, in one view.
+live fn validate<M is struct { [_] is FormNode }>(
+  self: Form<M>
+  value: Group<M>.Seen
+) -> Result<Group<M>.Data, Problems>:
+  self.model.load(value)
+  self.submitted.set(true)
+  self.result()
+
+# The person filling in the form; from the platform.
+struct User:
+  id: String
+  name: String
+  lang: String
+  role: String
+  today: String # ISO date, in the person's time zone

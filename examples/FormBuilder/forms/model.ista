@@ -1,0 +1,340 @@
+# A form's data: one node per path, holding its values (docs/work/computed/design.md).
+#
+# - Every value is pulled: a field's value, a hidden node's visibility and a list's rows are
+#   computeds of the graph, so nothing writes while a view is read. Only events set sources,
+#   between views, and validation loads a whole value before its one view.
+# - What a view says of a node (a default, a computed value, rows from data, who writes a hidden
+#   node) is bound into the node once, when the view is built (`derive`, `Shown.add`): an
+#   expression stored in the node would make the model's type depend on itself.
+# - Data is what a valid form gives; Seen what expressions see, none wherever something is
+#   unanswered or hidden. Both are computed through the tree, so no form declares its data type.
+
+import Graph, Source, Computed from '../computed'
+import Decodable from 'json'
+import * as json from 'json'
+
+type Date = String # ISO date
+type DateTime = String # RFC 3339
+type FileId = String # an upload's id; the bytes travel separately
+
+trait FormNode:
+  type Data
+  type Seen is Inert
+  fn seen(self: Self) -> Self.Seen
+  fn read(self: Self) -> Result<Self.Data> # Err when something is unanswered
+  fn load(self: Self, v: Self.Seen) -> Unit # fills it from a whole value, between views
+
+# What the user did to a field.
+struct Entry<T>:
+  value: T? = none
+  edited: Bool = false # entered by the user or loaded: a default no longer applies
+  touched: Bool = false
+  parseError: String? = none
+
+# Where a field's value comes from, as its view says.
+enum Derivation<T>:
+  Entered
+  Default(eval: inert fn() -> T?) # until the field is edited
+  Always(eval: inert fn() -> T?) # a computed value, read-only
+
+# One value. The model and every view writing it hold the same handles.
+struct Field<T is Inert>:
+  entry: Source<Entry<T>>
+  derivation: Shared<Derivation<T>>
+  value: Computed<T?>
+  type Data = T
+  type Seen = T?
+
+# A field holding `initial`, as a row made from data does; a computed value reading the field
+# itself starts from it.
+fn Field.make<T is Inert>(graph: Graph, initial: T? = none) -> Field<T>:
+  const entry = graph.source(Entry<T>{value: initial})
+  const derivation = new Shared<Derivation<T>>{value: Derivation.Entered}
+  Field{
+    entry
+    derivation
+    value: graph.computed(
+      fn(): {
+        match derivation->value:
+          case Entered: entry.read().value
+          case Derivation.Default(eval): {
+            const now = entry.read()
+            if now.edited: now.value
+            else: eval()
+          }
+          case Always(eval): eval()
+      }
+      initial
+    )
+  }
+
+fn seen<T is Inert>(self: Field<T>) -> T?: self.value.read()
+fn read<T is Inert>(self: Field<T>) -> Result<T>:
+  match self.value.read():
+    case None: Err(Error{message: "unanswered", code: "unanswered"})
+    case v: Ok(v)
+fn load<T is Inert>(self: Field<T>, v: T?) -> Unit:
+  self.entry.set(Entry{value: v, edited: v != none})
+
+# Binds where the value comes from; its view does, once, when built.
+fn derive<T is Inert>(self: Field<T>, derivation: Derivation<T>):
+  self.derivation->value = derivation
+
+# What an event to a field writes, JSON-encoded.
+fn setJson<T is Inert & Decodable>(self: Field<T>, value: String):
+  const before = self.entry.read()
+  match json.parse<T>(value):
+    case Ok(v): self.entry.set(Entry{value: v, edited: true, touched: true})
+    case Err(error):
+      self.entry.set(
+        Entry{value: before.value, edited: true, touched: true, parseError: error.message}
+      )
+
+# Fields by name: an object in the data.
+struct Group<S is struct { [_] is FormNode }>:
+  fields: S
+  type Data = match S:
+    case _: { [F in keyof S]: S[F].Data }
+  type Seen = match S:
+    case _: { [F in keyof S]: S[F].Seen }
+
+fn seen<S is struct { [_] is FormNode }>(self: Group<S>) -> Group<S>.Seen: struct{
+  for f, node in ...self.fields: [f]: node.seen()
+}
+fn read<S is struct { [_] is FormNode }>(self: Group<S>) -> Result<Group<S>.Data>:
+  Ok(struct{for f, node in ...self.fields: [f]: node.read()?})
+fn load<S is struct { [_] is FormNode }>(self: Group<S>, v: Group<S>.Seen) -> Unit:
+  for f, node in ...self.fields: node.load(v[f])
+
+# A repeat. R is the row's node: a Group, a single Field (a multiselect's choice), or a mounted form.
+#
+# Every row is made through `_row`, which holds the row's data from the start and hands the row to
+# its view at once: a row's defaults, computed values and hidden nodes are bound before anything
+# can read it, and nothing is set to fill it.
+struct List<R is FormNode & Inert>:
+  make: inert fn(R.Seen?) -> R # a row's nodes, holding the data it is made from
+  entered: Source<Rows<R>>
+  derivation: Shared<RowsFrom<R.Seen>>
+  binding: Shared<(inert fn(ListRow<R>) -> Unit)?>
+  rows: Computed<Array<ListRow<R>>>
+  type Data = Array<R.Data>
+  type Seen = Array<R.Seen>
+
+struct ListRow<R>:
+  key: String # r1, r2… as added or loaded; from rowKey; d1… or c1… as made from data without one
+  node: R
+
+# The rows the user added and removed, or a whole value loaded, once they replace those from data.
+struct Rows<R>:
+  rows: Array<ListRow<R>> = []
+  count: Int = 0
+  edited: Bool = false
+
+# Where a list's rows come from, as its view says: by default, the data it was made with.
+enum RowsFrom<S>:
+  # Rows from data until the user adds or removes one: made once, or followed while `follow`.
+  Default(eval: inert fn() -> Array<S>, key: (inert fn(S) -> String?)?, follow: Bool)
+  Always(eval: inert fn() -> Array<S>, key: (inert fn(S) -> String?)?) # read-only
+
+# A row made from data, with the data, so a row is made again only when what it stands for changed.
+struct _Made<R, S>:
+  data: S
+  row: ListRow<R>
+
+# A row with `data`, handed to its view as it is made.
+fn _row<R, S>(
+  make: inert fn(S?) -> R
+  binding: Shared<(inert fn(ListRow<R>) -> Unit)?>
+  key: String
+  data: S?
+) -> ListRow<R>:
+  const row = ListRow{key, node: make(data)}
+  match binding->value:
+    case None: ()
+    case bind: bind(row)
+  row
+
+fn List.make<R is FormNode & Inert>(
+  graph: Graph
+  make: inert fn(R.Seen?) -> R
+  initial: Array<R.Seen> = []
+) -> List<R>:
+  const entered = graph.source(Rows<R>{})
+  const derivation = new Shared<RowsFrom<R.Seen>>{
+    value: RowsFrom.Default(fn(): initial, none, follow: false)
+  }
+  const binding = new Shared<(inert fn(ListRow<R>) -> Unit)?>{value: none}
+  # The rows made from data: a memo the rows' evaluation fills, read by nothing else. A row is kept
+  # while its key and data stay, and with a rowKey, while its key does, values and all.
+  const made = new Shared<Array<_Made<R, R.Seen>>?>{value: none}
+  fn fromData(
+    data: Array<R.Seen>
+    key: (inert fn(R.Seen) -> String?)?
+    prefix: String
+    byKey: Bool
+  ) -> Array<ListRow<R>>:
+    const before = made->value ?? []
+    const rows = [
+      for i in 0..data.length(): {
+        const x = data[i]
+        const k = match key:
+          case None: `${prefix}${i + 1}`
+          case keyOf: keyOf(x) ?? ""
+        match before.filter(fn(m): m.row.key == k and (byKey or m.data == x)).at(0):
+          case None: _Made{data: x, row: _row(make, binding, k, x)}
+          case kept: kept
+      }
+    ]
+    made->value = rows
+    [for m in rows: m.row]
+  List{
+    make
+    entered
+    derivation
+    binding
+    rows: graph.computed(fn(): {
+      match derivation->value:
+        case Always(eval, key): fromData(eval(), key, "c", false)
+        case RowsFrom.Default(eval, key, follow): {
+          const user = entered.read()
+          if user.edited: user.rows
+          elif not follow and made->value is Array<_Made<R, R.Seen>> as seeded: [
+            for m in seeded: m.row
+          ]
+          else: fromData(eval(), key, "d", key != none)
+        }
+    })
+  }
+
+fn seen<R is FormNode & Inert>(self: List<R>) -> Array<R.Seen>: [
+  for row in self.rows.read(): row.node.seen()
+]
+fn read<R is FormNode & Inert>(self: List<R>) -> Result<Array<R.Data>>:
+  let out: Array<R.Data> = []
+  for row in self.rows.read(): out.push(row.node.read()?)
+  Ok(out)
+fn load<R is FormNode & Inert>(self: List<R>, v: Array<R.Seen>) -> Unit:
+  const rows = [
+    for i in 0..v.length(): {
+      const row = _row(self.make, self.binding, `r${i + 1}`, none)
+      row.node.load(v[i])
+      row
+    }
+  ]
+  self.entered.set(Rows{rows, count: rows.length(), edited: true})
+
+fn derive<R is FormNode & Inert>(self: List<R>, from: RowsFrom<R.Seen>):
+  self.derivation->value = from
+
+# Binds what the list's view does with each row as it is made; the view does, once, when built.
+fn bind<R is FormNode & Inert>(self: List<R>, each: inert fn(ListRow<R>) -> Unit):
+  self.binding->value = each
+
+# The user's edits, between views: from the rows shown, whatever they came from.
+fn add<R is FormNode & Inert>(self: List<R>):
+  const count = self.entered.read().count + 1
+  const row = _row(self.make, self.binding, `r${count}`, none)
+  self.entered.set(Rows{rows: [...self.rows.read(), row], count, edited: true})
+fn remove<R is FormNode & Inert>(self: List<R>, key: String):
+  self.entered.set(
+    Rows{
+      rows: self.rows.read().filter(fn(r): r.key != key)
+      count: self.entered.read().count
+      edited: true
+    }
+  )
+
+# A variant: every case's group node, and a tag naming the active case. The tag is a Field, so the
+# variant's picker, any other field, or a computed value can write it.
+struct Variant<C is struct { [_] is FormNode }>:
+  tag: Field<keyof C> # a literal union of the case ids
+  cases: C
+  type Data = { tag: keyof C, value: { [K in keyof C]: C[K].Data? } }
+  type Seen = { tag: (keyof C)?, value: { [K in keyof C]: C[K].Seen? } }
+
+fn seen<C is struct { [_] is FormNode }>(self: Variant<C>) -> Variant<C>.Seen:
+  const tag = self.tag.seen()
+  const active: String? = tag
+  struct{tag, value: struct{for k, g in ...self.cases: [k]: if active == k: g.seen() else: none}}
+fn read<C is struct { [_] is FormNode }>(self: Variant<C>) -> Result<Variant<C>.Data>:
+  const active = self.tag.read()?
+  const activeStr: String = active
+  Ok(
+    struct{
+      tag: active
+      value: struct{for k, g in ...self.cases: [k]: if activeStr == k: g.read()? else: none}
+    }
+  )
+fn load<C is struct { [_] is FormNode }>(self: Variant<C>, v: Variant<C>.Seen) -> Unit:
+  self.tag.load(v.tag)
+  for k, g in ...self.cases:
+    match v.value[k]:
+      case None: ()
+      case x: g.load(x)
+
+# Whether a node `when` can hide is shown: whether any view writing it is visible.
+struct Shown:
+  writers: Shared<Array<Computed<Bool>>>
+  any: Computed<Bool>
+
+fn Shown.make(graph: Graph) -> Shown:
+  const writers = new Shared<Array<Computed<Bool>>>{value: []}
+  Shown{writers, any: graph.computed(fn(): writers->value.some(fn(w): w.read()))}
+
+# A view writing the node, by its visibility; each does, once, when built.
+fn add(self: Shown, visible: Computed<Bool>): self.writers->value.push(visible)
+
+# A node `when` can hide: absent from Seen and Data while no view writing it is visible.
+struct Hidden<N is FormNode>:
+  node: N
+  shown: Shown
+  type Data = N.Data?
+  type Seen = N.Seen?
+
+fn Hidden.make<N is FormNode>(graph: Graph, node: N) -> Hidden<N>: Hidden{
+  node
+  shown: Shown.make(graph)
+}
+
+fn seen<N is FormNode>(self: Hidden<N>) -> N.Seen?:
+  if self.shown.any.read(): self.node.seen()
+  else: none
+fn read<N is FormNode>(self: Hidden<N>) -> Result<N.Data?>:
+  if self.shown.any.read(): Ok(self.node.read()?)
+  else: Ok(none)
+fn load<N is FormNode>(self: Hidden<N>, v: N.Seen?) -> Unit:
+  match v:
+    case None: ()
+    case x: self.node.load(x)
+
+# A value kept out of the output (store "none"): expressions see it, validation checks it.
+struct Local<N is FormNode>:
+  node: N
+  type Data = None
+  type Seen = N.Seen
+
+fn seen<N is FormNode>(self: Local<N>) -> N.Seen: self.node.seen()
+fn read<N is FormNode>(self: Local<N>) -> Result<None>:
+  self.node.read()?
+  Ok(none)
+fn load<N is FormNode>(self: Local<N>, v: N.Seen) -> Unit: self.node.load(v)
+
+# A mounted dynamic form: data no expression outside it reads. Validated by its own runtime.
+struct Dynamic:
+  value: Source<String?> # JSON
+  type Data = String
+  type Seen = None
+
+fn Dynamic.make(graph: Graph) -> Dynamic: Dynamic{value: graph.source<String?>(none)}
+
+fn seen(self: Dynamic) -> None: none
+fn read(self: Dynamic) -> Result<String>:
+  match self.value.read():
+    case None: Err(Error{message: "unanswered", code: "unanswered"})
+    case v: Ok(v)
+fn load(self: Dynamic, v: None) -> Unit: ()
+
+struct FormSnapshot:
+  id: String
+  version: String
+  module: String # a compiled form, loaded by the host

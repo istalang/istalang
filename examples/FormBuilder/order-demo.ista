@@ -1,0 +1,34 @@
+# The order form run as its hosts run it: the browser's driver serves the frontend's events until a
+# valid submit, a first one while the form is invalid changing nothing; then the backend validates
+# values received as JSON: the one served, an empty one, and one holding a hidden case's values.
+#
+#   ista run --host order-demo.host.mjs order-demo.ista
+
+import * as json from 'json'
+import Group from './forms/model'
+import User from './forms/form'
+import OrderModel, OrderParams, orderForm, validateOrder from './order.gen'
+
+live async fn main() -> String:
+  const params = OrderParams{region: "eu"}
+  const user = User{id: "u1", name: "Ann", lang: "en", role: "buyer", today: "2026-11-15"}
+  const served = await orderForm(params, user)
+  json.stringify([
+    validated(params, user, json.stringify(served))
+    validated(
+      params
+      user
+      `{"country":null,"city":null,"items":[],"payment":{"tag":null,"value":{"card":null,"wire":null}},"note":null}`
+    )
+    validated(
+      params
+      user
+      `{"country":"de","city":"ber","items":[{"sku":"s","qty":2}],"payment":{"tag":"card","value":{"card":{"last4":"1234"},"wire":{"iban":"DE00"}}},"note":"x"}`
+    )
+  ])
+
+# What the backend gives for `value`, received as JSON.
+live fn validated(params: OrderParams, user: User, value: String) -> String:
+  match json.parse<Group<OrderModel>.Seen>(value):
+    case Ok(received): json.stringify(validateOrder(params, user, received))
+    case Err(error): error.message

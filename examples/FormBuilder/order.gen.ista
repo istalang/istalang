@@ -1,48 +1,26 @@
 # order.gen.ista — generated from order.form.json 1.4.0. Do not edit.
 #
 # The generated part of a form: per form and per local def, a model (one node per path), its
-# factory, and a view whose expressions are lambdas. forms.run does the rest.
+# factory, what its expressions see (structs whose getters read the model, so every read is
+# tracked), and a view whose expressions are closures over that scope. forms/ does the rest.
 # Expressions are pasted from the schema verbatim.
 
-import Inbox from 'inbox'
-import * as forms from './forms'
+import Graph from './computed'
+import * as checks from './forms/checks'
+import Field, Group, List, Variant, Hidden from './forms/model'
 import (
-  Field
-  Group
-  List
-  Variant
-  Hidden
-  Local
-  Dynamic
-  Scope
-  Prop
-  Pending
-  Check
-  Recompute
-) from './forms'
-import (
+  Place
+  View
   Options
-  Item
   Choice
-  Format
   FieldView
   RepeatView
   VariantView
   CaseView
   LayoutView
-) from './forms'
-import ScopedView, DynamicView, View, FormEvent, Node, User from './forms'
-import (
-  FieldWidget
-  RepeatWidget
-  VariantWidget
-  LayoutWidget
-  ParentUi
-  LabelStyle
-  Orientation
-  Gap
-) from './forms'
-import * as runtime from 'runtime'
+) from './forms/views'
+import FieldWidget, RepeatWidget, VariantWidget, LayoutWidget, ParentUi from './forms/tree'
+import Form, User, Problems from './forms/form'
 import * as geo from './geo'
 import * as approvals from './approvals'
 import * as logic from './order'
@@ -73,202 +51,216 @@ type OrderPaymentCases = {
   wire: Group<{ iban: Field<String> }>
 }
 
-fn orderModel() -> Group<OrderModel>: Group{
+fn orderModel(graph: Graph) -> Group<OrderModel>: Group{
   fields: OrderModel{
-    country: new Field<String>{}
-    city: new Hidden<Field<String>>{node: new Field<String>{}}
-    items: new List<OrderItemsRow>{
-      make: fn(): Group{fields: struct{sku: new Field<String>{}, qty: new Field<Int>{}}}
-    }
+    country: Field.make<String>(graph)
+    city: Hidden.make(graph, Field.make<String>(graph))
+    items: List.make(
+      graph
+      fn(x): Group{
+        fields: struct{sku: Field.make<String>(graph, x?.sku), qty: Field.make<Int>(graph, x?.qty)}
+      }
+    )
     payment: Variant{
-      tag: new Field<"card" | "wire">{}
+      tag: Field.make<"card" | "wire">(graph)
       cases: struct{
-        card: Group{fields: struct{last4: new Field<String>{}}}
-        wire: Group{fields: struct{iban: new Field<String>{}}}
+        card: Group{fields: struct{last4: Field.make<String>(graph)}}
+        wire: Group{fields: struct{iban: Field.make<String>(graph)}}
       }
     }
-    note: new Hidden<Field<String>>{node: new Field<String>{}}
+    note: Hidden.make(graph, Field.make<String>(graph))
   }
 }
 
-ista fn orderView(m: OrderModel) -> any View<Scope<Group<OrderModel>.Seen, OrderCtx>>: LayoutView{
-  key: "n1"
-  parent: none
-  widget: Prop.Fixed(
-    LayoutWidget.Section(title: "Order", description: none, collapsible: none, labels: none)
-  )
-  checks: [
-    forms.later(
-      async fn({data, ctx}): {
-        if logic.totalQty(data.items) <= 500 or await runtime.delegate approvals.ask(ctx.user.id, logic.totalQty(data.items)):
-          none
-        else: `The order was not approved`
-      }
-      fn({data, ctx}): `Waiting for approval of a large order`
+# What the form's expressions see as `data`.
+struct OrderSeen:
+  m: OrderModel
+
+fn get country(self: OrderSeen) -> String?: self.m.country.seen()
+fn get city(self: OrderSeen) -> String?: self.m.city.seen()
+fn get items(self: OrderSeen) -> List<OrderItemsRow>.Seen: self.m.items.seen()
+fn get payment(self: OrderSeen) -> Variant<OrderPaymentCases>.Seen: self.m.payment.seen()
+fn get note(self: OrderSeen) -> String?: self.m.note.seen()
+
+# What an `items` row's expressions see as `item`.
+struct OrderItemsRowSeen:
+  m: OrderItemsRow
+
+fn get sku(self: OrderItemsRowSeen) -> String?: self.m.fields.sku.seen()
+fn get qty(self: OrderItemsRowSeen) -> Int?: self.m.fields.qty.seen()
+
+# What the `card` case's expressions see as `p`.
+struct OrderPaymentCardSeen:
+  m: Group<{ last4: Field<String> }>
+
+fn get last4(self: OrderPaymentCardSeen) -> String?: self.m.fields.last4.seen()
+
+# What the `wire` case's expressions see as `p`.
+struct OrderPaymentWireSeen:
+  m: Group<{ iban: Field<String> }>
+
+fn get iban(self: OrderPaymentWireSeen) -> String?: self.m.fields.iban.seen()
+
+fn orderView(at: Place, m: OrderModel, ctx: OrderCtx) -> View:
+  const data = OrderSeen{m}
+  LayoutView{
+    key: "n1"
+    widget: fn(): LayoutWidget.Section(
+      title: "Order"
+      description: none
+      collapsible: none
+      labels: none
     )
-  ]
-  children: [
-    new FieldView{
-      key: "n2"
-      parent: none
-      field: m.country
-      widget: Prop.Fixed(FieldWidget.Select(none))
-      label: Prop.Fixed("Country")
-      checks: [
-        forms.answered()
-        forms.rule(
-          fn({data, ctx}): not logic.isBlocked(data.country)
-          fn({data, ctx}): forms.t(
-            translations
-            ctx.user.lang
-            "We don't ship to ${data.country}"
-            `We don't ship to ${forms.text(data.country)}`
-            [forms.text(data.country)]
-          )
-        )
-      ]
-      options: Options.Rows(
-        from: forms.awaited(Pending.Form, async fn({data, ctx}): [
-          for row in await runtime.delegate geo.countries(ctx.params.region): Choice{
-            value: (row.id)
-            label: (row.name)
-          }
-        ])
-        resolve: forms.awaited(
-          Pending.Form
-          async fn({data, ctx}): (await runtime.delegate geo.countries(ctx.params.region)).some(
-            fn(c): c.id == data.country
-          )
-        )
+    checks: [
+      checks.rule(
+        fn(): logic.totalQty(data.items) <=
+          500 or
+          approvals.ask(ctx.user.id, logic.totalQty(data.items))
+        fn(): `The order was not approved`
       )
-    }
-    new FieldView{
-      key: "n3"
-      parent: none
-      when: Prop.Computed(fn({data, ctx}): data.country != none)
-      field: m.city->node
-      hide: m.city
-      widget: Prop.Fixed(FieldWidget.Select(none))
-      label: Prop.Fixed("City")
-      checks: [forms.answered()]
-      options: Options.Rows(
-        from: forms.awaited(Pending.Node, async fn({data, ctx}): [
-          for row in await runtime.delegate geo.cities(data.country ?? ""): Choice{
-            value: (row.id)
-            label: (row.name)
-          }
-        ])
-        resolve: forms.awaited(
-          Pending.Node
-          async fn({data, ctx}): (await runtime.delegate geo.cities(data.country ?? "")).some(
-            fn(c): c.id == data.city
+    ]
+    children: [
+      fn(at): FieldView{
+        key: "n2"
+        field: m.country
+        widget: fn(): FieldWidget.Select(none)
+        label: fn(): "Country"
+        checks: [
+          checks.answered()
+          checks.rule(
+            fn(): not logic.isBlocked(data.country)
+            fn(): checks.t(
+              translations
+              ctx.user.lang
+              "We don't ship to ${data.country}"
+              `We don't ship to ${checks.text(data.country)}`
+              [checks.text(data.country)]
+            )
           )
-        )
-      )
-    }
-    new RepeatView{
-      key: "n4"
-      parent: none
-      list: m.items
-      widget: Prop.Fixed(RepeatWidget.Table(none))
-      label: Prop.Fixed("Items")
-      checks: [forms.minItems(Fixed(1))]
-      canAdd: true
-      item: fn(r1, row1): ScopedView{
-        scope: fn(sc): struct{data: sc.data, ctx: sc.ctx, item: r1.seen()}
-        view: LayoutView{
-          key: `n5@${row1}`
-          parent: none
-          widget: Prop.Fixed(LayoutWidget.Tablerow)
-          children: [
-            new FieldView{
-              key: `n6@${row1}`
-              parent: none
-              field: r1.fields.sku
-              widget: Prop.Fixed(FieldWidget.Input(none))
-              label: Prop.Fixed("SKU")
-              checks: [forms.answered(), forms.required(Fixed(true))]
-            }
-            new FieldView{
-              key: `n7@${row1}`
-              parent: Prop.Fixed(ParentUi.Tablerow(80))
-              field: r1.fields.qty
-              widget: Prop.Fixed(FieldWidget.Input(none))
-              label: Prop.Fixed("Qty")
-              checks: [forms.answered(), forms.min(Fixed(1))]
-            }
+        ]
+        options: Options.Rows(
+          from: fn(): [
+            for row in geo.countries(ctx.params.region): Choice{value: (row.id), label: (row.name)}
           ]
+          resolve: fn(): geo.countries(ctx.params.region).some(fn(c): c.id == data.country)
+        )
+      }.build(at)
+      fn(at): FieldView{
+        key: "n3"
+        when: fn(): data.country != none
+        field: m.city.node
+        hide: m.city.shown
+        widget: fn(): FieldWidget.Select(none)
+        label: fn(): "City"
+        checks: [checks.answered()]
+        options: Options.Rows(
+          from: fn(): [
+            for row in geo.cities(data.country ?? ""): Choice{value: (row.id), label: (row.name)}
+          ]
+          resolve: fn(): geo.cities(data.country ?? "").some(fn(c): c.id == data.city)
+        )
+      }.build(at)
+      fn(at): RepeatView{
+        key: "n4"
+        list: m.items
+        widget: fn(): RepeatWidget.Table(none)
+        label: fn(): "Items"
+        checks: [checks.minItems(fn(): 1)]
+        canAdd: true
+        item: fn(r1, row1, at): {
+          const item = OrderItemsRowSeen{m: r1}
+          LayoutView{
+            key: `n5@${row1}`
+            widget: fn(): LayoutWidget.Tablerow
+            children: [
+              fn(at): FieldView{
+                key: `n6@${row1}`
+                field: r1.fields.sku
+                widget: fn(): FieldWidget.Input(none)
+                label: fn(): "SKU"
+                checks: [checks.answered(), checks.required(fn(): true)]
+              }.build(at)
+              fn(at): FieldView{
+                key: `n7@${row1}`
+                parent: fn(): ParentUi.Tablerow(80)
+                field: r1.fields.qty
+                widget: fn(): FieldWidget.Input(none)
+                label: fn(): "Qty"
+                checks: [checks.answered(), checks.min(fn(): 1)]
+              }.build(at)
+            ]
+          }.build(at)
         }
-      }
-    }
-    new FieldView{
-      key: "n8"
-      parent: none
-      field: none
-      widget: Prop.Fixed(FieldWidget.Input(none))
-      label: Prop.Fixed("Total quantity")
-      value: Prop.Computed(fn({data, ctx}): logic.totalQty(data.items))
-      checks: []
-    }
-    VariantView{
-      key: "n9"
-      parent: none
-      variant: m.payment
-      widget: Prop.Fixed(VariantWidget.Inline)
-      label: Prop.Fixed("Payment")
-      cases: struct{
-        card: CaseView{
-          label: Prop.Fixed("Credit card")
-          body: ScopedView{
-            scope: fn(sc): struct{data: sc.data, ctx: sc.ctx, p: m.payment.cases.card.seen()}
-            view: new FieldView{
-              key: "n10"
-              parent: none
-              field: m.payment.cases.card.fields.last4
-              widget: Prop.Fixed(FieldWidget.Input(none))
-              label: Prop.Fixed("Last 4 digits")
-              checks: [forms.answered(), forms.pattern(Fixed("^[0-9]{4}$"))]
+      }.build(at)
+      fn(at): FieldView{
+        key: "n8"
+        widget: fn(): FieldWidget.Input(none)
+        label: fn(): "Total quantity"
+        value: fn(): logic.totalQty(data.items)
+      }.build(at)
+      fn(at): VariantView{
+        key: "n9"
+        variant: m.payment
+        widget: fn(): VariantWidget.Inline
+        label: fn(): "Payment"
+        checks: [checks.answered()]
+        cases: struct{
+          card: CaseView{
+            label: fn(): "Credit card"
+            body: fn(at): {
+              const p = OrderPaymentCardSeen{m: m.payment.cases.card}
+              FieldView{
+                key: "n10"
+                field: m.payment.cases.card.fields.last4
+                widget: fn(): FieldWidget.Input(none)
+                label: fn(): "Last 4 digits"
+                checks: [checks.answered(), checks.pattern(fn(): "^[0-9]{4}$")]
+              }.build(at)
+            }
+          }
+          wire: CaseView{
+            label: fn(): "Bank transfer"
+            body: fn(at): {
+              const p = OrderPaymentWireSeen{m: m.payment.cases.wire}
+              FieldView{
+                key: "n11"
+                field: m.payment.cases.wire.fields.iban
+                widget: fn(): FieldWidget.Input(none)
+                label: fn(): "IBAN"
+                checks: [checks.answered()]
+              }.build(at)
             }
           }
         }
-        wire: CaseView{
-          label: Prop.Fixed("Bank transfer")
-          body: ScopedView{
-            scope: fn(sc): struct{data: sc.data, ctx: sc.ctx, p: m.payment.cases.wire.seen()}
-            view: new FieldView{
-              key: "n11"
-              parent: none
-              field: m.payment.cases.wire.fields.iban
-              widget: Prop.Fixed(FieldWidget.Input(none))
-              label: Prop.Fixed("IBAN")
-              checks: [forms.answered()]
-            }
-          }
-        }
-      }
-    }
-    new FieldView{
-      key: "n12"
-      parent: none
-      when: Prop.Computed(fn({data, ctx}): logic.totalQty(data.items) > 100)
-      field: m.note->node
-      hide: m.note
-      widget: Prop.Computed(
-        fn({data, ctx}): FieldWidget.Textarea((if logic.totalQty(data.items) > 1000: 6 else: 3))
-      )
-      label: Prop.Fixed("Delivery note")
-      checks: [forms.answered()]
-    }
-  ]
-}
+      }.build(at)
+      fn(at): FieldView{
+        key: "n12"
+        when: fn(): logic.totalQty(data.items) > 100
+        field: m.note.node
+        hide: m.note.shown
+        widget: fn(): FieldWidget.Textarea((if logic.totalQty(data.items) > 1000: 6 else: 3))
+        label: fn(): "Delivery note"
+        checks: [checks.answered()]
+      }.build(at)
+    ]
+  }.build(at)
 
-# ═══════════ The entry point a workflow awaits ═══════════
+# The form on a graph of its own.
+fn openOrder(params: OrderParams, user: User) -> Form<OrderModel>:
+  const graph = new Graph{}
+  const model = orderModel(graph)
+  Form.open(graph, model, fn(at): orderView(at, model.fields, OrderCtx{params, user}))
 
-ista async fn orderForm(
+# ═══════════ The entry points its hosts start ═══════════
+
+# The browser's: serves the form until a valid submit, and gives its data.
+live async fn orderForm(params: OrderParams, user: User) -> Group<OrderModel>.Data:
+  await openOrder(params, user).serve()
+
+# The backend's: validates a whole value.
+live fn validateOrder(
   params: OrderParams
   user: User
-  events: Inbox<FormEvent>
-  views: Inbox<Node>
-):
-  const m = orderModel()
-  await forms.run(m, orderView(m.fields), OrderCtx{params, user}, translations, events, views)
+  value: Group<OrderModel>.Seen
+) -> Result<Group<OrderModel>.Data, Problems>:
+  openOrder(params, user).validate(value)

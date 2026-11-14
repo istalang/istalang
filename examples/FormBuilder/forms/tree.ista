@@ -1,0 +1,122 @@
+# The tree the frontend draws, the widgets its nodes name (generated from the widget registry),
+# and the events it sends back.
+#
+# One enum per node kind, one variant per widget, its ui props as fields. A node is a value: the
+# frontend draws it with one generic recursive component and sends events by key, knowing nothing
+# of any particular form.
+
+import FormSnapshot from './model'
+
+enum LabelStyle:
+  Top
+  Start
+  Hidden
+
+enum Orientation:
+  Horizontal
+  Vertical
+
+enum Gap:
+  Sm
+  Md
+  Lg
+
+enum FieldWidget:
+  Input(placeholder: String?)
+  Textarea(rows: Int?)
+  Select(placeholder: String?)
+  Autocomplete(placeholder: String?) # provides ctx.search
+  Radio(orientation: Orientation?)
+  Segmented
+  Checkbox # draws its own label
+  Toggle # draws its own label
+  Datepicker
+  Upload(dropzone: Bool?)
+  Choice # drawn by its repeat
+  Raw # drawn by its repeat or control layout
+
+enum RepeatWidget:
+  Multiselect(placeholder: String?)
+  Checkboxes(orientation: Orientation?)
+  List(addLabel: String?, reorderable: Bool?)
+  Table(addLabel: String?)
+  Cards(addLabel: String?, title: String?)
+
+enum VariantWidget:
+  Inline # a case picker that writes the tag, and the case
+  Panel(title: String?) # the active case only
+
+enum LayoutWidget:
+  Section(title: String?, description: String?, collapsible: Bool?, labels: LabelStyle?)
+  Labeled(labels: LabelStyle?)
+  Money # a control: amount and currency as one input
+  Hstack(gap: Gap?, labels: LabelStyle?)
+  Wizard
+  Step(title: String, labels: LabelStyle?)
+  Tablerow
+  Markdown(markdown: String)
+  Errors
+  Divider
+
+# What a parent widget reads about a child (its ui.parent), by parent widget.
+enum ParentUi:
+  Section(span: Int?)
+  Hstack(grow: Float?)
+  Tablerow(width: Int?)
+
+struct Option:
+  value: String
+  label: String # value JSON-encoded
+
+enum Node:
+  Layout(
+    key: String
+    widget: LayoutWidget
+    parent: ParentUi?
+    label: String?
+    errors: Array<String>
+    children: Array<Node>
+  )
+  Field(
+    key: String
+    widget: FieldWidget
+    parent: ParentUi?
+    label: String
+    help: String?
+    value: String?
+    options: Array<Option>
+    errors: Array<String>
+    readOnly: Bool
+  )
+  Repeat(
+    key: String
+    widget: RepeatWidget
+    parent: ParentUi?
+    label: String?
+    rows: Array<Row>
+    canAdd: Bool
+    errors: Array<String>
+  )
+  Variant(
+    key: String
+    widget: VariantWidget
+    parent: ParentUi?
+    label: String?
+    cases: Array<Option>
+    active: String?
+    body: Node?
+    errors: Array<String>
+  )
+  Mount(key: String, parent: ParentUi?, label: String?, form: FormSnapshot) # a dynamic ref
+
+struct Row:
+  key: String
+  node: Node
+
+# What the frontend sends, by the key of the node it acts on.
+enum FormEvent:
+  Set(key: String, value: String) # value JSON; a key names its row: n6@r1
+  Search(key: String, text: String) # typed into a search widget
+  AddRow(key: String)
+  RemoveRow(key: String, row: String)
+  Submit

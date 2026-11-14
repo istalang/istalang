@@ -1,0 +1,162 @@
+# What a field's, a repeat's or a rule's checks say of a value: an error message, or none.
+#
+# A check is a plain function of the value, and its bounds are functions over the view's scope,
+# read when the check runs inside the node's evaluation: so a bound's reads are tracked with the
+# node's, and nothing here waits. The generator adds answered() to every stored field without a
+# default or computed value; required() is the schema's `required`: non-empty.
+
+import * as regex from 'regex'
+import replaceAll from 'strings'
+
+type Check<T> = inert fn(T?) -> String?
+
+enum Format:
+  Email
+  Uri
+  Uuid
+
+fn answered<T>() -> Check<T>:
+  fn(v): if v == none: "Required" else: none
+
+fn required(on: inert fn() -> Bool) -> Check<String>:
+  fn(v): {
+    if on() and (v == none or v == ""): "Required"
+    else: none
+  }
+
+fn someItems<T>(on: inert fn() -> Bool) -> Check<Array<T>>:
+  fn(v): {
+    match v:
+      case None:
+        if on(): "Required"
+        else: none
+      case items:
+        if on() and items.length() == 0: "Required"
+        else: none
+  }
+
+fn minLength(n: inert fn() -> Int) -> Check<String>:
+  fn(v): {
+    match v:
+      case None: none
+      case s: _atLeast(s.length(), n(), "Minimum length")
+  }
+
+fn maxLength(n: inert fn() -> Int) -> Check<String>:
+  fn(v): {
+    match v:
+      case None: none
+      case s: _atMost(s.length(), n(), "Maximum length")
+  }
+
+fn pattern(p: inert fn() -> String) -> Check<String>:
+  fn(v): {
+    match v:
+      case None: none
+      case s: {
+        match regex.Regex.parse(p()):
+          case Ok(re):
+            if re.test(s): none
+            else: "Invalid format"
+          case Err(...): "Invalid format"
+      }
+  }
+
+fn format(f: Format) -> Check<String>:
+  fn(v): {
+    match v:
+      case None: none
+      case s: {
+        const pat = match f:
+          case Email: "^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$"
+          case Uri: "^[a-zA-Z][a-zA-Z0-9+.-]*://"
+          case Uuid: "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+        if regex.Regex{pattern: pat}.test(s): none
+        else: "Invalid format"
+      }
+  }
+
+fn min<T is Comparable & Inert>(n: inert fn() -> T) -> Check<T>:
+  fn(v): {
+    match v:
+      case None: none
+      case val:
+        if val < n(): "Too small"
+        else: none
+  }
+
+fn max<T is Comparable & Inert>(n: inert fn() -> T) -> Check<T>:
+  fn(v): {
+    match v:
+      case None: none
+      case val:
+        if val > n(): "Too large"
+        else: none
+  }
+
+fn multipleOf(n: inert fn() -> Float) -> Check<Float>:
+  fn(v): {
+    match (v, n()):
+      case (Float as val, step) if step != 0.0: {
+        const q = val / step
+        if Float(Int(q)) == q: none
+        else: "Invalid step"
+      }
+      case _: none
+  }
+
+fn accept(types: Array<String>) -> Check<String>: fn(v): none
+fn maxBytes(n: Int) -> Check<String>: fn(v): none
+
+fn minItems<T>(n: inert fn() -> Int) -> Check<Array<T>>:
+  fn(v): {
+    match v:
+      case None: none
+      case items: _atLeast(items.length(), n(), "Minimum items")
+  }
+
+fn maxItems<T>(n: inert fn() -> Int) -> Check<Array<T>>:
+  fn(v): {
+    match v:
+      case None: none
+      case items: _atMost(items.length(), n(), "Maximum items")
+  }
+
+# The message for a size below its minimum, `bound`; none at or above it.
+fn _atLeast(size: Int, bound: Int, name: String) -> String?:
+  if size < bound: `${name} is ${bound}`
+  else: none
+
+# The message for a size above its maximum, `bound`; none at or below it.
+fn _atMost(size: Int, bound: Int, name: String) -> String?:
+  if size > bound: `${name} is ${bound}`
+  else: none
+
+# A rule: its message when `check` fails.
+fn rule<T>(check: inert fn() -> Bool, message: inert fn() -> String) -> Check<T>:
+  fn(v): {
+    if check(): none
+    else: message()
+  }
+
+# A Template in a language: its translation with $0…$n filled in, else the rendered original.
+fn t(
+  table: Map<String, Map<String, String>>
+  lang: String
+  original: String
+  rendered: String
+  args: Array<String>
+) -> String:
+  match table.get(original)?.get(lang):
+    case None: rendered
+    case tr: {
+      let out = tr
+      for i in 0..args.length(): out = out.replaceAll(`$${i}`, args[i])
+      out
+    }
+
+# Formats an optional or concrete value for message templates (${…}), where Seen values are T?.
+fn text<T is Stringable>(v: T?) -> String:
+  match v:
+    case None: ""
+    case x: String(x)

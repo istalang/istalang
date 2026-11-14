@@ -2,7 +2,8 @@
  * The example projects (examples/) check with no error, as `ista check` run in each finds them,
  * and their suites pass under `ista test`, heaps checked by the oracle of static lifetimes: they
  * show the language as it stands, so a change to it that breaks one fails here rather than leaving
- * the example to rot.
+ * the example to rot. FormBuilder's order form also runs through its live functions as their
+ * hosts start them (`ista run --host`): a suite's tests are ista code, which calls nothing live.
  *
  * Each project is loaded once for the file. A program that adds a module to one is checked as an
  * editor checks an edit, taking over what checking the project found (check.ts `checkProgram`).
@@ -84,5 +85,37 @@ describe('the examples', () => {
     });
     checkProgram(program, { previous });
     expect(compileProgram(program, mainId).kind).toBe('compiled');
+  });
+
+  it('FormBuilder serves and validates the order form through its live functions', async () => {
+    const run = await ista(
+      `${examples}FormBuilder`,
+      'run',
+      '--host',
+      'order-demo.host.mjs',
+      'order-demo.ista',
+    );
+    expect({ code: run.code, err: run.err }).toEqual({ code: 0, err: '' });
+    const [served, empty, hidden] = (JSON.parse(JSON.parse(run.out)) as string[]).map(
+      (text) => JSON.parse(text) as unknown,
+    );
+    expect(served).toEqual({
+      _type: 'Ok',
+      value: {
+        city: 'ber',
+        country: 'de',
+        items: [{ qty: 2, sku: 'sku-1' }],
+        note: null,
+        payment: { tag: 'card', value: { card: { last4: '1234' }, wire: null } },
+      },
+    });
+    expect(empty).toEqual({
+      _type: 'Err',
+      error: { n2: ['Required'], n4: ['Minimum items is 1'], n9: ['Required'] },
+    });
+    expect(hidden).toMatchObject({
+      _type: 'Ok',
+      value: { note: null, payment: { value: { card: { last4: '1234' }, wire: null } } },
+    });
   });
 });

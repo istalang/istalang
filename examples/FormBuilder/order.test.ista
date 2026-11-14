@@ -1,0 +1,173 @@
+# The order form on the computed runtime (docs/work/computed/plan.md, C2): what a view shows, what
+# an edit re-evaluates, and what validating a whole value gives. The live drivers wrap these steps;
+# test/examples.test.ts runs them as their hosts do.
+
+import Suite, Test, test, assertEq, mock from 'testing'
+import FormEvent, Node from './forms/tree'
+import Form, User, Problems from './forms/form'
+import Group from './forms/model'
+import * as geo from './geo'
+import * as approvals from './approvals'
+import OrderModel, OrderParams, openOrder from './order.gen'
+
+@Suite{"order"}
+fn orderSuite() -> Array<Test>: [
+  test("shows the fields whose `when` holds", showsVisible)
+  test("never runs a hidden field's expressions", hiddenNeverRuns)
+  test("an edit re-evaluates only the nodes reading it", editsStayLocal)
+  test("a view evaluates each node once", onceAView)
+  test("a valid submit gives the data", validSubmit)
+  test("a valid whole value gives its data, without hidden values", validValue)
+  test("an invalid whole value gives errors by node key", invalidValue)
+]
+
+const user = User{id: "u1", name: "Ann", lang: "en", role: "buyer", today: "2026-11-15"}
+
+fn open() -> Form<OrderModel>: openOrder(OrderParams{region: "eu"}, user)
+
+fn countries(region: String) -> Array<geo.Country>: [
+  geo.Country{id: "de", name: "Germany"}
+  geo.Country{id: "fr", name: "France"}
+]
+
+fn cities(country: String) -> Array<geo.City>:
+  if country == "de": [geo.City{id: "ber", name: "Berlin"}]
+  else: []
+
+fn approve(userId: String, totalQty: Int) -> Bool: true
+
+fn tree(form: Form<OrderModel>) -> Node: form.view.drawn.read().nodes[0]
+
+# The keys of the nodes `node` shows, depth first.
+fn keys(node: Node) -> Array<String>:
+  let found: Array<String> = []
+  fn walk(each: Node) -> Unit:
+    match each:
+      case Layout(key: key, children: children, ...): {
+        found.push(key)
+        for child in children: walk(child)
+      }
+      case Repeat(key: key, rows: rows, ...): {
+        found.push(key)
+        for row in rows: walk(row.node)
+      }
+      case Variant(key: key, body: body, ...): {
+        found.push(key)
+        match body:
+          case None: ()
+          case shown: walk(shown)
+      }
+      case Field(key: key, ...): found.push(key)
+      case Mount(key: key, ...): found.push(key)
+  walk(node)
+  found
+
+fn enter(self: Form<OrderModel>, key: String, json: String):
+  self.apply(FormEvent.Set(key: key, value: json))
+
+ista async fn showsVisible():
+  hold _ = mock(geo.countries, countries)
+  hold _ = mock(geo.cities, cities)
+  const form = open()
+  assertEq(keys(tree(form)), ["n1", "n2", "n4", "n8", "n9"])
+  form.enter("n2", "\"de\"")
+  assertEq(keys(tree(form)), ["n1", "n2", "n3", "n4", "n8", "n9"])
+
+ista async fn hiddenNeverRuns():
+  hold _ = mock(geo.countries, countries)
+  const citiesCalls = mock(geo.cities, cities)
+  const form = open()
+  _ = tree(form)
+  form.apply(FormEvent.AddRow("n4"))
+  _ = tree(form) # the frontend sends events only to the keys it was shown
+  form.enter("n7@r1", "50")
+  _ = tree(form)
+  assertEq(citiesCalls.calls().length(), 0)
+  form.enter("n2", "\"de\"")
+  _ = tree(form)
+  assertEq(citiesCalls.calls(), [("de",)])
+
+ista async fn editsStayLocal():
+  const countriesCalls = mock(geo.countries, countries)
+  const citiesCalls = mock(geo.cities, cities)
+  const form = open()
+  form.enter("n2", "\"de\"")
+  _ = tree(form)
+  const countriesBefore = countriesCalls.calls().length()
+  const citiesBefore = citiesCalls.calls().length()
+  form.apply(FormEvent.AddRow("n4"))
+  _ = tree(form) # the frontend sends events only to the keys it was shown
+  form.enter("n6@r1", "\"sku-1\"")
+  form.enter("n7@r1", "3")
+  _ = tree(form)
+  assertEq(countriesCalls.calls().length(), countriesBefore)
+  assertEq(citiesCalls.calls().length(), citiesBefore)
+
+ista async fn onceAView():
+  const countriesCalls = mock(geo.countries, countries)
+  const form = open()
+  _ = tree(form)
+  _ = tree(form)
+  assertEq(countriesCalls.calls().length(), 1) # `from` only: nothing to resolve yet, and no change
+
+ista async fn validSubmit():
+  hold _ = mock(geo.countries, countries)
+  hold _ = mock(geo.cities, cities)
+  hold _ = mock(approvals.ask, approve)
+  const form = open()
+  form.enter("n2", "\"de\"")
+  form.enter("n3", "\"ber\"")
+  form.apply(FormEvent.AddRow("n4"))
+  _ = tree(form) # the frontend sends events only to the keys it was shown
+  form.enter("n6@r1", "\"sku-1\"")
+  form.enter("n7@r1", "2")
+  form.enter("n9", "\"card\"")
+  form.enter("n10", "\"1234\"")
+  form.apply(FormEvent.Submit)
+  match form.result():
+    case Ok(data): {
+      assertEq(data.country, "de")
+      assertEq(data.items, [struct{sku: "sku-1", qty: 2}])
+      assertEq(data.note, none)
+    }
+    case Err(problems): assertEq(problems, [:])
+
+# What the backend's `validate` does, here in simple code: load, submit, read.
+fn validated(value: Group<OrderModel>.Seen) -> Result<Group<OrderModel>.Data, Problems>:
+  const form = open()
+  form.model.load(value)
+  form.apply(FormEvent.Submit)
+  form.result()
+
+ista async fn validValue():
+  hold _ = mock(geo.countries, countries)
+  hold _ = mock(geo.cities, cities)
+  hold _ = mock(approvals.ask, approve)
+  match validated(
+    struct{
+      country: "de"
+      city: "ber"
+      items: [struct{sku: "sku-1", qty: 2}]
+      payment: struct{tag: "card", value: struct{card: struct{last4: "1234"}, wire: none}}
+      note: "a note the hidden field drops"
+    }
+  ):
+    case Ok(data): { assertEq(data.city, "ber"); assertEq(data.note, none) }
+    case Err(problems): assertEq(problems, [:])
+
+ista async fn invalidValue():
+  hold _ = mock(geo.countries, countries)
+  hold _ = mock(geo.cities, cities)
+  hold _ = mock(approvals.ask, approve)
+  match validated(
+    struct{
+      country: none
+      city: none
+      items: []
+      payment: struct{tag: none, value: struct{card: none, wire: none}}
+      note: none
+    }
+  ):
+    case Ok(...): assertEq("valid", "invalid")
+    case Err(problems):
+      assertEq(problems, ["n2": ["Required"], "n4": ["Minimum items is 1"], "n9": ["Required"]])

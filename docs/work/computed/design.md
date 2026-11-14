@@ -62,7 +62,7 @@ fn read<T is Inert>(self: Computed<T>) -> T            # and the same on a Sourc
   reached again while `active` is recorded but not brought up to date, and gives its value as it
   is. Whatever else read that old value was checked before the node's new `changed`, so the next
   view re-evaluates it. The node itself was checked after it, since its value already holds the
-  one it read: a computed reading only itself re-evaluates no more until something else changes. During its first evaluation it has no previous value, so that read panics.
+  one it read: a computed reading only itself re-evaluates no more until something else changes. During its first evaluation it has no previous value, so that read panics, unless the computed was made with an initial value (`graph.computed(eval, initial)`), a fold's seed, which that read gets.
 - **`none` is a value:** a computed of `T?` may give `none`; "never evaluated" is
   `checked == none`, and the cell wraps `T` so it never needs `none` for it.
 - **Writes happen between views:** only the driver sets sources, never an evaluation. This is
@@ -133,6 +133,6 @@ fn creditLimitDefault(SupplierScope{data, ...}) -> Int: crm.creditLimit(data.com
 ## Where it lives
 
 - **`examples/FormBuilder/computed.ista`,** with `.ista` tests beside it.
-- **`examples/FormBuilder/`:** `forms.ista` rewritten; the sources made simple externs;
+- **`examples/FormBuilder/`:** `forms.ista` rewritten as `forms/`, a module per concern; the sources made simple externs;
   `generate.ts` emitting getters and expression functions, with `pending` gone from `form-spec.ts`;
   the forms' JSON; and its spec's §3, §4, §5, §6, §7 and §10.

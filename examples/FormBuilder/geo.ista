@@ -12,6 +12,6 @@ struct Region:
   code: String
   name: String
 
-extern live async fn countries(region: String) -> Array<Country>
-extern live async fn cities(country: String) -> Array<City>
-extern live async fn regions() -> Array<Region>
+extern fn countries(region: String) -> Array<Country>
+extern fn cities(country: String) -> Array<City>
+extern fn regions() -> Array<Region>

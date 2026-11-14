@@ -13,6 +13,7 @@ fn computedSuite() -> Array<Test>: [
   test("reads behind a flipped condition stay untouched", flippedCondition)
   test("a computed reading itself gets its previous value", readsItself)
   test("a cycle through another reads the previous value, then catches up", readsThroughAnother)
+  test("reading itself in its first evaluation gets the initial value given", readsItsInitial)
   test("reading itself in its first evaluation panics", async fn(): {
     assertEq(
       await expectPanic(readsItselfFirst)
@@ -165,3 +166,14 @@ ista async fn readsAnotherGraph() -> Int:
   const base = second.source(1)
   const copied = first.computed(fn(): base.read())
   copied.read()
+
+# A count of `base`'s changes, started at 10: its first evaluation reads the seed.
+fn readsItsInitial():
+  const graph = new Graph{}
+  const base = graph.source(1)
+  let me: Computed<Int>? = none
+  const count = graph.computed(fn(): { _ = base.read(); (me ?? panic("unset")).read() + 1 }, 10)
+  me = count
+  assertEq(count.read(), 11)
+  base.set(2)
+  assertEq(count.read(), 12)
