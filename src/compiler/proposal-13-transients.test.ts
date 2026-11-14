@@ -341,16 +341,35 @@ describe('transient variables: what checking refuses', () => {
     expect(codesOf(dropped)).toEqual([checkerDiagnostics.notDroppable.code]);
   });
 
-  it('is held by every async call future, so one kept in a transient is a cycle (§7)', () => {
-    const kept = lines(
-      'ista async fn worker(slot: Slot<Unit>):',
-      '  drop await slot.take()',
-      'ista fn launch(slot: Slot<Unit>):',
-      '  transient let running: Array<Future<Unit, "ista">> = []',
-      '  running.push(worker(slot))',
-    );
-    expect(codesOf(kept)).not.toEqual([]);
-  });
+  /** A lambda keeping in a transient the future of `worker`, which every async call holds. */
+  const keeper =
+    'ista fn(slot: Slot<Unit>): { transient let running: Array<Future<Unit, "ista">> = []; running.push(worker(slot)) }';
+  it.each([
+    [
+      'a function',
+      lines(
+        'ista fn launch(slot: Slot<Unit>):',
+        '  transient let running: Array<Future<Unit, "ista">> = []',
+        '  running.push(worker(slot))',
+      ),
+    ],
+    ['a lambda a constant holds', `const launch = ${keeper}`],
+    ['a lambda a context constant holds', `ista const launch = ${keeper}`],
+    [
+      'a lambda a parameter defaults to',
+      `ista fn launch(slot: Slot<Unit>, start: ista fn(Slot<Unit>) -> Unit = ${keeper}): start(slot)`,
+    ],
+    [
+      'a lambda a field defaults to',
+      lines('struct Launcher:', `  start: ista fn(Slot<Unit>) -> Unit = ${keeper}`),
+    ],
+  ])(
+    'is held by every async call future, so one kept in a transient of %s is a cycle (§7)',
+    (_where, keeps) => {
+      const worker = lines('ista async fn worker(slot: Slot<Unit>):', '  drop await slot.take()');
+      expect(codesOf(lines(worker, keeps))).toEqual([checkerDiagnostics.cycleCall.code]);
+    },
+  );
 
   // B86: a recursive group names its inputs whole, so a write behind a shared cell's value is
   // missed, as it is through an explicit `Shared` parameter.

@@ -50,11 +50,13 @@ import {
   type NamespaceEntity,
   namesType,
   type Qualifier,
+  type VariableEntity,
   type VariantEntity,
 } from '../entities.ts';
 import type { ModuleBindings } from '../module/bind-module.ts';
 import type { FreeName, QualifiedPath } from '../module/local-binder.ts';
 import { noOwnCall } from '../module/own-calls.ts';
+import type { LocalEntity } from '../module/scope.ts';
 import { undeclaredName } from '../naming.ts';
 import { type ModuleLinks, resolvedImport } from './module-links.ts';
 import { type AliasLookup, qualifierOf } from './qualifiers.ts';
@@ -66,6 +68,9 @@ import { checkTestImports, meetPrelude } from './top-level-rules.ts';
  * body keeps it, and everything the checker took over about it.
  */
 const unseenFunctions = new SequenceMemo<Module['items'][number], Map<string, FunctionsEntity>>();
+
+/** Per module's own bindings, the transients its scopes defined, which its tree alone decides. */
+const transients = new WeakMap<ModuleBindings, readonly VariableEntity[]>();
 
 /** Every module's own bindings (`locals`), linked across `program`. */
 export function link(program: Program, locals: ReadonlyMap<ModuleId, ModuleBindings>): Bindings {
@@ -81,6 +86,7 @@ export function link(program: Program, locals: ReadonlyMap<ModuleId, ModuleBindi
     ownCallOf: (module, node) => linker.local(module)?.ownCalls.get(node),
     topLevelNamed: (module, name) => linker.topLevelNamed(module, name),
     topLevelNames: (module) => linker.topLevelNames(module),
+    transientsOf: (module) => linker.transientsOf(module),
     aliasOf: (module, name) => linker.aliasOf(module, name),
     diagnosticsOf: (module) => linker.diagnosticsOf(module),
   };
@@ -133,6 +139,13 @@ class Linker {
     const own = this.#links.get(module)?.local.topLevel.keys() ?? [];
     const prelude = this.#preludeFor(module)?.exports.keys() ?? [];
     return [...new Set([...own, ...prelude])];
+  }
+
+  transientsOf(module: ModuleId): readonly VariableEntity[] {
+    const local = this.local(module);
+    return local === undefined
+      ? []
+      : memo(transients, local, () => [...local.defined].filter(isTransient));
   }
 
   moduleOf(entity: Entity): ModuleId | undefined {
@@ -415,4 +428,12 @@ class Linker {
 /** Whether the enum `declaration` declares an associated type named as `part` (§3.1). */
 function declaresAssociated(declaration: EnumDeclaration, part: Identifier): boolean {
   return declaration.associatedTypes.some((associated) => associated.name.text === part.text);
+}
+
+function isTransient(entity: LocalEntity): entity is VariableEntity {
+  return (
+    entity.kind === 'variable' &&
+    entity.owner.kind === 'VariableDeclaration' &&
+    entity.owner.isTransient
+  );
 }

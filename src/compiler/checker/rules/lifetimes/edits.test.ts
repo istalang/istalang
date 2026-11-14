@@ -20,15 +20,19 @@ const main = idOf('main.ista');
 
 /**
  * A checker of `program` made after `previous`: the functions whose analyses it computed again,
- * by name, the codes it reports, and whether a checker made afresh reports the same.
+ * by name, the modules whose transients it found again, the codes it reports, and whether a
+ * checker made afresh reports the same.
  */
 function checkedAfter(previous: ProgramChecker, program: Program) {
   const analysed: string[] = [];
+  const transientsFound: unknown[] = [];
   const checker = checkedApart(program, {
     previous,
     observe: (table, key) => {
       if (table === 'lifetime analyses') {
         analysed.push((key as FunctionDeclaration).name.text);
+      } else if (table === 'lifetime transients') {
+        transientsFound.push(key);
       }
     },
   });
@@ -37,6 +41,7 @@ function checkedAfter(previous: ProgramChecker, program: Program) {
   return {
     checker,
     analysed,
+    transientsFound,
     codes: diagnostics.map(({ code }) => code),
     asFresh: isDeepStrictEqual(diagnostics, fresh),
   };
@@ -70,7 +75,7 @@ describe('after an edit inside a callee', () => {
     });
   });
 
-  it('keeping its summary, analyses no async caller, whose futures hold every transient', () => {
+  it('keeping its summary and its transients, analyses no async caller, whose futures hold every transient', () => {
     const textOf = (body: string) =>
       [
         'ista fn helper(n: Int) -> Int:',
@@ -85,6 +90,7 @@ describe('after an edit inside a callee', () => {
     const second = stdProgramOf({ 'main.ista': textOf('n + n') }, first);
     expect(checkedAfter(checkedFirst(first), second)).toMatchObject({
       analysed: ['helper'],
+      transientsFound: [],
       asFresh: true,
     });
   });

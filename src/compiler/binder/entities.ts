@@ -285,6 +285,8 @@ export interface Bindings {
   readonly topLevelNamed: (module: ModuleId, name: string) => Entity | undefined;
   /** Every name the top level of `module` sees, each denoting what `topLevelNamed` finds for it. */
   readonly topLevelNames: (module: ModuleId) => readonly string[];
+  /** The transients `module` declares (§3.4), wherever the function bodies they lead stand. */
+  readonly transientsOf: (module: ModuleId) => readonly VariableEntity[];
   /**
    * The alias of the renaming import (§3.13) through which `name` of `module` denotes its entity:
    * for the alias and each of its uses; undefined for any other name, the export's own name in the

@@ -122,6 +122,11 @@ export function recordedBindings(entries: Entries<CheckerNote>, bindings: Bindin
       read: bindings.topLevelNames,
       equal: sameList,
     }),
+    transientsOf: entries.input({
+      name: 'transients of',
+      read: bindings.transientsOf,
+      equal: sameList,
+    }),
     aliasOf: entries.input({ name: 'alias of', read: bindings.aliasOf }),
     diagnosticsOf: entries.input({
       name: 'binder diagnostics of',
