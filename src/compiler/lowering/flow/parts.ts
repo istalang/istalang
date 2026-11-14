@@ -13,10 +13,10 @@
 
 import type { Register } from '../../../definition/operands.ts';
 import { unreachable } from '../../../foundation/structures/unreachable.ts';
-import type { FieldReading } from '../../checker/surface/checked-field.ts';
+import { structFieldOf } from '../../checker/surface/checked-field.ts';
 import type { PartStep } from '../../checker/surface/checked-pattern.ts';
 import type { Part, ValueId } from '../../checker/surface/flow-ir.ts';
-import type { Type } from '../../checker/types/type/index.ts';
+import type { FieldMember, Type } from '../../checker/types/type/index.ts';
 import type { NodeOf } from '../../syntax/tree/node.ts';
 import type { AnchoredSpan } from '../../syntax/tree/positions.ts';
 import { emitCall } from '../calls/emit-call.ts';
@@ -39,7 +39,14 @@ export function partRead(
   const value = writer.typed(from);
   switch (part.kind) {
     case 'step':
-      return stepRead(writer, value, part.step, site);
+      return stepRead(writer, value, part.step, span);
+    case 'dispatch': {
+      if (value.type.kind !== 'any') {
+        return unreachable(`A required field at ${span.from} is dispatched on no any value.`);
+      }
+      const callee = context.tables.anyFieldIndex(value.type, part.required);
+      return emitCall(context, { span, callee, arguments: [value.register] });
+    }
     case 'behind': {
       const dst = context.code.allocate();
       context.code.emit({ kind: 'readCell', span, dst, cell: value.register });
@@ -64,31 +71,21 @@ export function partRead(
   }
 }
 
-/** The part of `value` `step` reaches, read at `site` (checker surface/checked-pattern.ts). */
+/** The part of `value` `step` reaches, read at `span` (checker surface/checked-pattern.ts). */
 function stepRead(
   writer: FlowWriter,
   value: TypedValue,
   step: PartStep,
-  site: NodeOf<string>,
+  span: AnchoredSpan,
 ): Register {
   const { context } = writer;
   const { code } = context;
-  const { span } = site;
   if (typeof step === 'number') {
     return code.field(value.register, step, span);
   }
   switch (step.kind) {
-    case 'field': {
-      if (step.of.kind === 'any') {
-        const read = context.body.fieldReadOf(site as FieldReading);
-        if (read?.kind !== 'dispatch') {
-          return unreachable(`A field of an any value at ${span.from} is read by no dispatch.`);
-        }
-        const callee = context.tables.anyFieldIndex(read.on, read.required);
-        return emitCall(context, { span, callee, arguments: [value.register] });
-      }
-      return code.field(value.register, fieldPosition(writer, step.of, step.name), span);
-    }
+    case 'field':
+      return code.field(value.register, fieldOf(writer, step.of, step.name).read.index, span);
     case 'variantField':
       return code.field(value.register, step.index, span);
     case 'downcast':
@@ -110,12 +107,16 @@ function stepRead(
   }
 }
 
-/** Where the field `name` sits in the layout of the struct `type`. */
-export function fieldPosition(writer: FlowWriter, type: Type, name: string): number {
-  const position = (writer.context.checker.fieldsOf(type) ?? []).findIndex(
-    (field) => field.name === name,
-  );
-  return position < 0 ? unreachable(`'${name}' is no field of its struct.`) : position;
+/** The field `name` of the struct `type`, at its position in the layout the instantiation made. */
+export function fieldOf(
+  writer: FlowWriter,
+  type: Type,
+  name: string,
+): { readonly member: FieldMember; readonly read: { readonly index: number } } {
+  const found = structFieldOf(writer.context.checker, type, name);
+  return found?.read.kind === 'position'
+    ? { member: found.member, read: found.read }
+    : unreachable(`'${name}' is no field of its struct.`);
 }
 
 /** The field of `container` `key` names: one name's, or the one its value names, switching on it. */
@@ -133,7 +134,7 @@ function keyedRead(
   if (typeof name === 'string') {
     return context.code.field(
       container.register,
-      fieldPosition(writer, container.type, name),
+      fieldOf(writer, container.type, name).read.index,
       span,
     );
   }

@@ -103,6 +103,32 @@ describe("a body's flow", () => {
     expect(releasesOf(flow, 'h')).toEqual(['end', 'end']);
   });
 
+  it('releases what a `hold(name)` keeps before the scopes around it an exit leaves too', () => {
+    const flow = subjectFlow(
+      [
+        'outer: for i in 0..3:',
+        '  const x = "b"',
+        '  inner: for j in 0..3:',
+        '    if c:',
+        '      break outer',
+        '    hold(inner) const h = "a"',
+      ].join('\n'),
+    );
+    const named = (values: readonly ValueId[]) =>
+      values.flatMap((value) => {
+        const found = flow.values[value];
+        return found?.kind === 'variable' ? [found.entity.name.text] : [];
+      });
+    const inOrder = flow.blocks.map(({ operations }) =>
+      operations.flatMap((operation) =>
+        operation.op === 'release' ? named(operation.values) : [],
+      ),
+    );
+    const hFirst = inOrder.filter((names) => names.includes('h') && names.includes('x'));
+    // Where the inner loop ends, and where the `break` leaves both.
+    expect(hFirst.map((names) => names.indexOf('h') < names.indexOf('x'))).toEqual([true, true]);
+  });
+
   it("keeps what a `hold(name)` keeps where its variable's block ends", () => {
     const flow = subjectFlow(['outer:', '  if c:', '    hold(outer) const h = "a"'].join('\n'));
     const kept = operationsOf(flow, 'keep');

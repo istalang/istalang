@@ -11,8 +11,9 @@
  *   cell) is that value's, released with it; an operation giving no value releases them at once.
  * - **A flow returns** from the entry; a default's or an initializer's written inline gives its
  *   value instead (`FlowEnd`), where its root returns it, then goes on past it.
- * - **Each block is read as the passes of the field loops it is in read it** (§4), so its calls
- *   close and its nested functions are keyed there.
+ * - **Each block is written inside the passes of the field loops it is in** (§4), so its calls
+ *   close and its nested functions are keyed there. The flow says all else: the writer reads no
+ *   checked body.
  */
 
 import type { Register } from '../../../definition/operands.ts';
@@ -40,9 +41,7 @@ import { operationWriters } from './operations.ts';
 import { cellRegister } from './variables.ts';
 
 /** How a flow's root gives its value: by returning from the entry, or into a register. */
-export type FlowEnd =
-  | { readonly kind: 'return' }
-  | { readonly kind: 'into'; readonly into: Register };
+type FlowEnd = { readonly kind: 'return' } | { readonly kind: 'into'; readonly into: Register };
 
 /** A wait being opened: its register, and the futures handed to its cases so far. */
 interface OpenWait {
@@ -92,21 +91,7 @@ export class FlowWriter {
     this.flow = flow;
     this.end = end;
     this.#after = context.code.newLabel();
-    this.#layout = layoutOf(flow, (header, outer) =>
-      context.inFieldPasses(outer, () => {
-        const passes = context.body.passesOf(header);
-        const subject = context.body.typeOf(header.subject);
-        const names = (subject && context.checker.fieldsOf(subject)) ?? [];
-        const fields = passes.map(({ visits }) =>
-          visits.kind === 'field' ? visits.name : undefined,
-        );
-        const runs = names.flatMap(({ name }) => {
-          const run = fields.indexOf(name);
-          return run < 0 ? [] : [run];
-        });
-        return { fields, runs };
-      }),
-    );
+    this.#layout = layoutOf(flow);
     for (const { operations } of flow.blocks) {
       for (const operation of operations) {
         if (operation.op === 'keep') {

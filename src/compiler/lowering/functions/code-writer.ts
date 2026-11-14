@@ -24,7 +24,7 @@ export interface Label {
 }
 
 /** One case of a `select` being written: what it holds, its `as` register, its body. */
-export interface SelectCaseCode {
+interface SelectCaseCode {
   readonly holds: readonly Register[];
   readonly bind: Register | undefined;
   readonly target: Label;

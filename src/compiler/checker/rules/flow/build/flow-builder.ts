@@ -54,6 +54,11 @@ export interface FlowInputs {
   >;
   readonly module: ModuleId;
   readonly localBodyOf: (declaration: FunctionDeclaration) => Block | undefined;
+  /**
+   * A type a call gives, written in the body's own type parameters, as the instantiation the body
+   * is read through makes it; as it is, for a body read as checked.
+   */
+  readonly concrete: (type: Type) => Type;
   readonly body: CheckedBody;
 }
 
@@ -96,9 +101,9 @@ export class FlowBuilder {
     emit: (operation) => this.emit(operation),
     end: (exit) => this.end(exit),
     prepend: (block, operation) => this.#open(block).operations.unshift(operation),
-    goingTo: (to) => {
+    goOn: () => {
       const block = this.newBlock();
-      this.#open(block).exit = { kind: 'goto', to };
+      this.continueIn(block);
       return block;
     },
   });

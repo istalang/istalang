@@ -26,7 +26,7 @@ import type { Checker } from '../../checker/check.ts';
 import type { AnonymousStructType, NominalType, Type } from '../../checker/types/type/index.ts';
 import type { AnchoredSpan } from '../../syntax/tree/positions.ts';
 import type { ClosedCall } from '../calls/closed-calls.ts';
-import { emitCall, emitFunctionCall } from '../calls/emit-call.ts';
+import { emitCall, emitFunctionCall, referenceTo } from '../calls/emit-call.ts';
 import { awaitFuture } from '../calls/waits.ts';
 import type { CodeContext } from '../context.ts';
 import type { CellRegister } from '../flow/variables.ts';
@@ -126,7 +126,7 @@ export class SynthesizedCode implements CodeContext {
     const register = this.code.allocate();
     this.#cells.push({ register, type: this.tables.types.index(this.checker.cellOf(type)) });
     this.code.emit({ kind: 'move', span: this.span, dst: register, src: value });
-    return { kind: 'reference', place: { register, path: [] } };
+    return referenceTo(register);
   }
 
   /** Field `index` of the struct, variant or tuple in `value`. */

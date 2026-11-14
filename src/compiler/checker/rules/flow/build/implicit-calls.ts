@@ -55,8 +55,10 @@ function emitCall(
 }
 
 /** What calling `call` gives, its function's result as the call instantiates it. */
-function resultOf({ inputs: { checker } }: FlowBuilder, call: ResolvedCall): Type {
-  return substitute(checker.resultOf(call.function), callSubstitution(call), checker.typeRules);
+function resultOf({ inputs: { checker, concrete } }: FlowBuilder, call: ResolvedCall): Type {
+  return concrete(
+    substitute(checker.resultOf(call.function), callSubstitution(call), checker.typeRules),
+  );
 }
 
 function asArgument(passed: ValueId | Argument): Argument {

@@ -43,6 +43,29 @@ describe('an instantiated body', () => {
     expect(form?.kind === 'cursor' && typeText(form.item)).toBe('Int');
   });
 
+  it("types its flow's values as its instantiation makes them, what a call gives among them", () => {
+    const text = [
+      'fn first<T>(xs: Array<(T, Int)>) -> T?:',
+      '  match xs:',
+      '    case [(x, 1), ..._]: x',
+      '    case _: none',
+      '',
+    ].join('\n');
+    const program = stdProgramOf({ 'main.ista': text });
+    const checker = checkProgram(program);
+    const { tree } = programModule(program, idOf('main.ista'));
+    const first = tree.root.items[0] as FunctionDeclaration;
+    const written = bodyOf(tree, first);
+    const instance = checker
+      .bodyOf(first)
+      ?.instantiated(substitutionFor(first.typeParameters, [intType]), checker);
+    const flow = written === undefined ? undefined : instance?.flowOf(written);
+    const named = flow?.values.flatMap(({ type }) =>
+      type === undefined ? [] : parametersIn(type),
+    );
+    expect(named).toEqual([]);
+  });
+
   it("gives the names an or-pattern's alternatives bind the types of its instantiation", () => {
     const text = [
       'fn first<T>(xs: Array<T>) -> T?:',

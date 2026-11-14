@@ -47,7 +47,14 @@ export function itemLoop(
   loop(builder, scope, (top) => {
     const { type } = builder.valueOf(cursor);
     const step = builder.temporary(node, type?.kind === 'function' ? type.result : undefined);
-    builder.emit({ op: 'callValue', site: node, into: step, callee: cursor, arguments: [] });
+    const call = {
+      op: 'callValue',
+      into: step,
+      callee: cursor,
+      arguments: [],
+      spreads: [],
+    } as const;
+    builder.emit({ ...call, site: node });
     const test = variantTest(builder, step, stepVariants.next);
     const [next, done] = builder.branch(test) as [BlockId, BlockId];
     return {
@@ -81,19 +88,21 @@ export function targetsLoop(
 
 /**
  * Runs `pass` in each pass of the field loop `header` heads, read as that pass, its key and value
- * bound in a scope of its own; goes on past the loop.
+ * bound in a scope of its own, its key the name of the field it visits where it visits one; goes
+ * on past the loop. The field each pass visits, none for one over the fields not known yet.
  */
 export function fieldLoop(
   builder: FlowBuilder,
   node: OverFields,
   scope: LabelledScope | undefined,
   pass: () => void,
-): void {
+): readonly (string | undefined)[] {
   const { header } = node;
   const subject = builder.expression(header.subject);
   const passes = builder.body.passesOf(header);
+  const fields = passes.map(({ visits }) => (visits.kind === 'field' ? visits.name : undefined));
   loop(builder, scope, (top) => {
-    const test = { kind: 'fieldPass', header } as const;
+    const test = { kind: 'fieldPass', header, fields } as const;
     const [exit, ...starts] = builder.branch(test, passes.length + 1) as [BlockId, ...BlockId[]];
     return {
       exit,
@@ -103,7 +112,14 @@ export function fieldLoop(
           builder.inView(each.body, () =>
             builder.scopes.inScope(node, () => {
               const key = builder.temporary(header, each.key);
-              builder.compute(key, header, { kind: 'fieldKey', header });
+              const name = fields[index];
+              builder.compute(
+                key,
+                header,
+                name === undefined
+                  ? { kind: 'fieldKey', header }
+                  : { kind: 'constant', form: { kind: 'primitive', value: name } },
+              );
               const value = builder.temporary(header, each.value);
               const part = { kind: 'keyed', key } as const;
               builder.emit({ op: 'read', site: header, into: value, from: subject, part });
@@ -119,6 +135,7 @@ export function fieldLoop(
       },
     };
   });
+  return fields;
 }
 
 /** A loop's top, tested: where it goes past the loop, and how its passes are built from there. */

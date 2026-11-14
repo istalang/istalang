@@ -43,26 +43,7 @@ export function typeFactsOf(checker: CheckerContext): AnalysisContext['facts'] {
     reachOf: (type) => handles.get(typeKey(type), type),
     knownReachOf: (type) => knownHandles.get(typeKey(type), type),
     cellOf: (type) => checker.cellOf(type),
-    fieldNamesOf: (type) => declaredFieldNamesOf(checker, type),
     keyOf: typeKey,
     pairs: new ReachPairs(),
   };
-}
-
-/**
- * The names of a struct type's fields in the order it declares them, which a literal of it makes
- * its parts in (flow-ir.ts `Made`); undefined for a type whose fields only its instantiation knows.
- */
-function declaredFieldNamesOf(
-  checker: Pick<CheckerContext, 'declaredFieldsOf'>,
-  type: Type,
-): readonly string[] | undefined {
-  if (type.kind === 'anonymous') {
-    return type.fields.map(({ name }) => name);
-  }
-  const declaration = type.kind === 'nominal' ? type.entity.declaration : undefined;
-  return declaration?.kind === 'StructDeclaration' ||
-    declaration?.kind === 'SharedStructDeclaration'
-    ? checker.declaredFieldsOf(declaration).map(({ name }) => name)
-    : undefined;
 }

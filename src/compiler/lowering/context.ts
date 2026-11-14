@@ -37,7 +37,7 @@ export interface FunctionContext {
   readonly checker: Checker;
   readonly tables: DefinitionTables;
   readonly module: ModuleId;
-  /** The body, as the passes of the field loops being written read it (§4). */
+  /** The body the entry is written from: its flows, and what its prologue reads. */
   readonly body: CheckedBody;
   /**
    * `value`, of `type`, given at `site`, converted as `fit` says (§2, §3.10, §3.14): the one place
@@ -45,8 +45,8 @@ export interface FunctionContext {
    */
   readonly fitted: (value: Register, type: Type, fit: Fit, site: NodeOf<string>) => Register;
   /**
-   * Runs `write` reading the body as the field loops' `passes`, outermost first, read it (§4), its
-   * calls closed and its nested functions keyed there; what it gives.
+   * Runs `write` inside the field loops' `passes`, outermost first (§4): its calls closed with their
+   * keys bound and its nested functions keyed there; what it gives.
    */
   readonly inFieldPasses: <Written>(
     passes: readonly FieldPassStep[],

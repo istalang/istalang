@@ -42,6 +42,7 @@ import {
 } from '../../../types/parts/substitution.ts';
 import { keyName } from '../../../types/traits/struct-keys.ts';
 import { unfolded } from '../../../types/type/computed-types.ts';
+import { inFieldOrder } from '../../../types/type/field-order.ts';
 import type { FieldMember, ParameterKey, Type } from '../../../types/type/index.ts';
 import { membersOf } from '../../../types/type/index.ts';
 import { isPrimitive, literalType } from '../../../types/type/primitives.ts';
@@ -63,11 +64,12 @@ export interface Instantiation {
   readonly iteration: (form: IterationForm) => IterationForm;
   readonly chain: (link: ChainLink) => ChainLink;
   /**
-   * A field loop's pass: its key and value substituted, and its body read the same way; the pass
-   * of the fields a struct constraint leaves unnamed, once they are all known, one pass per field.
+   * A field loop's passes: each one's key and value substituted, and its body read the same way;
+   * the pass of the fields a struct constraint leaves unnamed, once they are all known, one pass per
+   * field, every pass then in field order (§3.1), as the loop runs them.
    */
-  readonly passes: (pass: FieldPass) => readonly FieldPass[];
-  /** What a body's flows are built from: its roots' parameters substituted. */
+  readonly passes: (passes: readonly FieldPass[]) => readonly FieldPass[];
+  /** What a body's flows are built from: its roots' parameters and its calls' results substituted. */
   readonly flows: (source: FlowSource) => FlowSource;
 }
 
@@ -95,7 +97,7 @@ export function instantiationBy(
     iteration: (form) => ({ ...form, item: concrete(form.item) }),
     chain: (link) => ({ base: concrete(link.base), carried: concrete(link.carried) }),
     flows: ({ inputs, roots }) => ({
-      inputs,
+      inputs: { ...inputs, concrete: (type) => concrete(inputs.concrete(type)) },
       roots: roots.map(({ root, parameters }) => ({
         root,
         parameters: parameters.map((parameter) => ({
@@ -104,17 +106,23 @@ export function instantiationBy(
         })),
       })),
     }),
-    passes: (pass) => {
-      const known = knownFields(pass, substitution, rules);
-      return known === undefined
-        ? [instantiatedPass(pass, substitution, checker)]
-        : known.names.map((name) =>
-            instantiatedPass(
-              { ...pass, visits: { kind: 'field', name } },
-              new Map([...substitution, [known.key, literalType(name)]]),
-              checker,
-            ),
-          );
+    passes: (passes) => {
+      const split = passes.flatMap((pass) => {
+        const known = knownFields(pass, substitution, rules);
+        return known === undefined
+          ? [instantiatedPass(pass, substitution, checker)]
+          : known.names.map((name) =>
+              instantiatedPass(
+                { ...pass, visits: { kind: 'field', name } },
+                new Map([...substitution, [known.key, literalType(name)]]),
+                checker,
+              ),
+            );
+      });
+      const named = split.flatMap((pass) =>
+        pass.visits.kind === 'field' ? [{ name: pass.visits.name, pass }] : [],
+      );
+      return named.length === split.length ? inFieldOrder(named).map(({ pass }) => pass) : split;
     },
   };
 }

@@ -113,7 +113,7 @@ export function loweredNested(lowering: Lowering, owner: BodyOwner): LoweredFunc
  * `body` as the pass `step` names reads it (§4): an instantiated body has one pass per field of the
  * struct it runs over, its own.
  */
-export function passBody(body: CheckedBody, step: FieldPassStep): CheckedBody {
+function passBody(body: CheckedBody, step: FieldPassStep): CheckedBody {
   const own = body
     .passesOf(step.header)
     .find(({ visits }) => visits.kind === 'field' && visits.name === step.field);

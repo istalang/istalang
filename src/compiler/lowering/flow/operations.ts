@@ -20,13 +20,9 @@ import type { Register } from '../../../definition/operands.ts';
 import { unreachable } from '../../../foundation/structures/unreachable.ts';
 import type { ConstantForm } from '../../checker/surface/constant-form.ts';
 import type { Argument, Operation } from '../../checker/surface/flow-ir.ts';
-import { argumentsInOrder } from '../../checker/surface/resolved-call.ts';
 import type { Type } from '../../checker/types/type/index.ts';
 import { isPrimitive } from '../../checker/types/type/primitives.ts';
-import type { CallingNode } from '../../syntax/expressions/calls.ts';
-import type { FieldHeader } from '../../syntax/expressions/index.ts';
 import type { SyntaxNode } from '../../syntax/tree/index.ts';
-import type { NodeOf } from '../../syntax/tree/node.ts';
 import type { AnchoredSpan } from '../../syntax/tree/positions.ts';
 import { emitCall, emitFunctionCall } from '../calls/emit-call.ts';
 import { packElementsOf } from '../calls/packs.ts';
@@ -96,7 +92,7 @@ function computed(
     case 'order':
       return ordered(context, span, first as Register, computation.relation);
     case 'fieldKey':
-      return context.constant(fieldOf(writer, computation.header), span);
+      return unreachable('An instantiation knows the field each of its passes visits.');
     default: {
       const unhandled: never = computation;
       return unhandled;
@@ -118,12 +114,6 @@ function constantOf(
     : context.constant(constantValue(context.tables, form), span);
 }
 
-/** The field the pass of the loop `header` heads, being written, visits. */
-function fieldOf(writer: FlowWriter, header: FieldHeader): string {
-  const visit = writer.passesHere().find((each) => each.header === header);
-  return visit?.field ?? unreachable(`A field key at ${header.span.from} is outside its loop.`);
-}
-
 function made(writer: FlowWriter, { into, made: what, parts, site }: Of<'make'>): Register {
   const { context } = writer;
   const { code } = context;
@@ -133,7 +123,7 @@ function made(writer: FlowWriter, { into, made: what, parts, site }: Of<'make'>)
   switch (what.kind) {
     case 'struct':
     case 'handle':
-      return structMade(writer, { type: writer.typeOf(into), site, registers });
+      return structMade(writer, writer.typeOf(into), { fields: what.fields, registers }, span);
     case 'tuple':
       return tupleOf(context, registers, span);
     case 'array': {
@@ -204,43 +194,24 @@ function mapEntries(registers: readonly Register[], spreads: readonly number[]) 
   return entries;
 }
 
-/**
- * A struct of `type` made of `registers`, at `site`: a literal's fields from its sources (§3.1), a
- * comprehension's the fields its passes visit, in their order; a bare struct none.
- */
+/** A struct of `type` made of `registers`, each the field `fields` names (§3.1). */
 function structMade(
   writer: FlowWriter,
+  type: Type,
   {
-    type,
-    site,
+    fields,
     registers,
-  }: {
-    readonly type: Type;
-    readonly site: NodeOf<string>;
-    readonly registers: readonly Register[];
-  },
+  }: { readonly fields: readonly (string | undefined)[]; readonly registers: readonly Register[] },
+  span: AnchoredSpan,
 ): Register {
-  const { body } = writer.context;
-  const sources =
-    site.kind === 'StructLiteral' || site.kind === 'NewStructLiteral'
-      ? (body.sourcesOf(site as never) ?? [])
-      : [];
-  const names = sources.flatMap((source) =>
-    source.kind === 'comprehension'
-      ? body
-          .passesOf(source.comprehension.header)
-          .map(({ visits }) => (visits.kind === 'field' ? visits.name : undefined))
-      : [source.field],
-  );
   const named = new Map(
-    names.flatMap((name, index) =>
+    fields.flatMap((name, index) =>
       name === undefined ? [] : [[name, registers[index] as Register] as const],
     ),
   );
-  if (type.kind !== 'nominal' && type.kind !== 'anonymous') {
-    return unreachable(`A struct of a ${type.kind} type is made.`);
-  }
-  return structValue(writer.context, type, named, site.span);
+  return type.kind === 'nominal' || type.kind === 'anonymous'
+    ? structValue(writer.context, type, named, span)
+    : unreachable(`A struct of a ${type.kind} type is made.`);
 }
 
 function copied(writer: FlowWriter, { into, from, fit, site }: Of<'copy'>): void {
@@ -312,28 +283,21 @@ function awaitedBy(
 
 function calledValue(
   writer: FlowWriter,
-  { into, callee, arguments: given, site }: Of<'callValue'>,
+  { into, callee, arguments: given, spreads, site }: Of<'callValue'>,
 ): void {
   const { context } = writer;
   const { span } = site;
-  // A function value's call is checked at the node calling it.
-  const binding = context.body.valueCalls.get(site as CallingNode)?.binding;
-  const spreads =
-    binding === undefined ? [] : argumentsInOrder(binding).map(({ isSpread }) => isSpread);
   const passed = passedArguments(writer, given, site);
-  const arguments_ = passed.arguments.flatMap((argument, index): DefinitionArgument[] =>
-    spreads[index] === true && argument.kind === 'value' && given[index]?.kind === 'value'
-      ? packElementsOf(context, argument.register, {
-          type: writer.typeOf(given[index].value),
-          span,
-        }).map((register) => ({ kind: 'value', register }))
-      : [argument],
-  );
-  const dst = emitCall(context, {
-    span,
-    callee: { kind: 'value', register: writer.registerOf(callee) },
-    arguments: arguments_,
+  const arguments_ = passed.arguments.flatMap((argument, index): DefinitionArgument[] => {
+    const value = given[index];
+    return spreads.includes(index) && argument.kind === 'value' && value?.kind === 'value'
+      ? packElementsOf(context, argument.register, { type: writer.typeOf(value.value), span }).map(
+          (register) => ({ kind: 'value', register }),
+        )
+      : [argument];
   });
+  const target = { kind: 'value', register: writer.registerOf(callee) } as const;
+  const dst = emitCall(context, { span, callee: target, arguments: arguments_ });
   passed.leave();
   writer.define(into, dst, span);
 }

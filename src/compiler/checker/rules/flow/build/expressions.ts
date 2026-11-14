@@ -103,7 +103,7 @@ function named(builder: FlowBuilder, name: Identifier, read: Identifier | Member
 /** A struct without fields written bare, with type arguments or not (§3.1): a value of its own. */
 function bareStruct(builder: FlowBuilder, node: Expression): ValueId {
   const into = builder.temporaryOf(node);
-  builder.emit({ op: 'make', site: node, into, made: { kind: 'struct' }, parts: [] });
+  builder.emit({ op: 'make', site: node, into, made: { kind: 'struct', fields: [] }, parts: [] });
   return into;
 }
 

@@ -5,7 +5,13 @@
  * run.
  */
 
-import type { BlockId, Exit, FlowFunction, Operation } from '../../surface/flow-ir.ts';
+import {
+  type BlockId,
+  type Exit,
+  type FlowFunction,
+  type Operation,
+  successorsOf,
+} from '../../surface/flow-ir.ts';
 
 /** What a forward rule decides: what reaches where paths meet, and what an operation does. */
 export interface ForwardRule<State> {
@@ -78,12 +84,4 @@ function reachesAnew<State>(
   }
   reaching[block] = later;
   return true;
-}
-
-/** The blocks `exit` goes on to. */
-function successorsOf(exit: Exit): readonly BlockId[] {
-  if (exit.kind === 'goto') {
-    return [exit.to];
-  }
-  return exit.kind === 'branch' ? exit.to : [];
 }

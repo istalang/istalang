@@ -21,7 +21,7 @@
  *   it gives back (design.md §5.6).
  */
 
-import type { Operation } from '../../../surface/flow-ir.ts';
+import type { Operation, Part } from '../../../surface/flow-ir.ts';
 import type { Type } from '../../../types/type/index.ts';
 import { copiedTypes } from '../dispatch.ts';
 import { escapingCycles } from '../escaping.ts';
@@ -305,7 +305,8 @@ function madeParts({ analysis, state }: At, { into, made, parts }: Of<'make'>): 
   if (type === undefined || (made.kind !== 'struct' && made.kind !== 'tuple')) {
     return;
   }
-  for (const [part, node] of analysis.nodes.madeParts(type, parts, made.kind)) {
+  const fields = made.kind === 'struct' ? made.fields : undefined;
+  for (const [part, node] of partsMade(type, parts, fields)) {
     const partType = analysis.nodes.typeOf(node);
     if (partType !== undefined && state.reach.isLive(node) && analysis.nodes.isRelevant(node)) {
       const path = analysis.nodes.path(into, part, 'part', partType);
@@ -313,6 +314,26 @@ function madeParts({ analysis, state }: At, { into, made, parts }: Of<'make'>): 
       state.reach.addAlias(path, into);
     }
   }
+}
+
+/**
+ * The parts a value made of `parts` (a struct of `type`, each the field `fields` names, or a tuple)
+ * has, each as a read names it: a field by its name.
+ */
+function partsMade(
+  type: Type,
+  parts: readonly NodeId[],
+  fields: readonly (string | undefined)[] | undefined,
+): readonly (readonly [Part, NodeId])[] {
+  return parts.flatMap((part, index): (readonly [Part, NodeId])[] => {
+    if (fields === undefined) {
+      return [[{ kind: 'step', step: index }, part]];
+    }
+    const name = fields[index];
+    return name === undefined
+      ? []
+      : [[{ kind: 'step', step: { kind: 'field', of: type, name } }, part]];
+  });
 }
 
 /** What `into` knows, a copy of `from`: the function it is, the value it settles with. */

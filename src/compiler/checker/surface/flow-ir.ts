@@ -35,6 +35,7 @@ import type { SyntaxNode } from '../../syntax/tree/index.ts';
 import type { Identifier, NodeOf } from '../../syntax/tree/node.ts';
 import type { Type } from '../types/type/index.ts';
 import type { WrittenFit } from './checked-body.ts';
+import type { RequiredField } from './checked-field.ts';
 import type { PartStep, TypeTest } from './checked-pattern.ts';
 import type { ConstantForm } from './constant-form.ts';
 import type { ImplicitRole, ResolvedCall } from './resolved-call.ts';
@@ -66,10 +67,12 @@ export type FlowValue =
  * (`PartStep`: a tuple element by position, a field by name, a variant's field, a union's member,
  * an array's items), the value behind a handle (`*x`, `x->f`), the value inside an optional where
  * it isn't `none` (§4), what a future gives once it has settled (§8), the field `key`, a key of
- * several names, names, or the next item of an array or `Map` being built, which a write appends.
+ * several names, names, the field a trait requires of an `any` value, read through its dispatch
+ * (§3.10), or the next item of an array or `Map` being built, which a write appends.
  */
 export type Part =
   | { readonly kind: 'step'; readonly step: PartStep }
+  | { readonly kind: 'dispatch'; readonly required: RequiredField }
   | { readonly kind: 'behind' }
   | { readonly kind: 'inside' }
   | { readonly kind: 'given' }
@@ -91,14 +94,16 @@ export type Argument =
   | { readonly kind: 'place'; readonly place: Place };
 
 /**
- * What a `make` makes, of its parts in order: a struct (a literal's fields in declaration order),
- * a tuple, an array of its items, a `Map` of its entries' keys and values, either holding every
- * item of the collections at `spreads` among them (§3.3), a struct put behind a new handle
- * (`new S{…}`), the `variant`-th variant of the enum `type` (its fields in order), a closure of a
- * nested function and the values it captures, or a function named as a value, which `call` runs.
+ * What a `make` makes, of its parts in order: a struct, each part the field `fields` names (a
+ * literal's in declaration order, then a comprehension's, one per pass, none for a pass visiting
+ * no field), put behind a new handle by `new S{…}`; a tuple; an array of its items, a `Map` of its
+ * entries' keys and values, either holding every item of the collections at `spreads` among them
+ * (§3.3); the `variant`-th variant of the enum `type` (its fields in order); a closure of a nested
+ * function and the values it captures; or a function named as a value, which `call` runs.
  */
 type Made =
-  | { readonly kind: 'struct' | 'tuple' | 'handle' }
+  | { readonly kind: 'struct' | 'handle'; readonly fields: readonly (string | undefined)[] }
+  | { readonly kind: 'tuple' }
   | { readonly kind: 'array' | 'map'; readonly spreads: readonly number[] }
   | { readonly kind: 'variant'; readonly type: Type; readonly variant: number }
   | { readonly kind: 'closure'; readonly function: FlowFunction }
@@ -107,8 +112,8 @@ type Made =
 /**
  * What a `compute` computes, of its operands: a constant (a literal, `Unit`, an offset, a condition
  * checking decided), the built-in `==` of two, `!=` `negated`, `not` of a `Bool`, whether a
- * `compare`'s result is in `relation`, or, in a pass of the field loop `header` heads (§4), the
- * name of the field it visits, one per field for a pass over several.
+ * `compare`'s result is in `relation`, or, in the pass of the field loop `header` heads over the
+ * fields not known yet (§4), the name of the field it visits, one per field.
  */
 export type Computation =
   | { readonly kind: 'constant'; readonly form: ConstantForm }
@@ -130,7 +135,8 @@ export type Computation =
  * - `write`: `value` written into the part `place` reaches; into an array's or a `Map`'s `item`,
  *   appended to it.
  * - `call`: a resolved call, written or implicit (`role`), its arguments by value or by `&`.
- * - `callValue`: a call of a function value.
+ * - `callValue`: a call of a function value, its arguments in its parameters' order, those at
+ *   `spreads` a pack's tuple spread as its elements (§3.5).
  * - `suspend`: an `await` or an awaiting `select`, waiting until one of the futures it awaits
  *   settles; what each gives is read from it (`given`).
  * - `keep`: what `values` hold, kept past the scope ending here until `until` ends (§7).
@@ -170,6 +176,7 @@ export type Operation = { readonly site: NodeOf<string> } & (
       readonly into: ValueId;
       readonly callee: ValueId;
       readonly arguments: readonly Argument[];
+      readonly spreads: readonly number[];
     }
   | { readonly op: 'suspend'; readonly awaited: readonly ValueId[] }
   | {
@@ -192,7 +199,9 @@ export type Operation = { readonly site: NodeOf<string> } & (
  * - `present`: whether an optional holds a value (§4), going to `[present, none]`.
  * - `is`: whether a value holds what `test` asks, going to `[holds, fails]`.
  * - `fieldPass`: the top of the field loop `header` heads (§4), going past the loop, then to each
- *   pass `passesOf(header)` gives, in its order; each pass runs once per field it visits.
+ *   pass `passesOf(header)` gives, in its order, the field each visits in `fields` (none for the
+ *   pass of the fields not known yet, or of no field); each pass runs once per field it visits,
+ *   an instantiation's in field order (§3.1).
  * - `select`: which of a `select`'s cases goes on (§8), going to each case's, then to its `else`;
  *   each case `holds` the temporaries its awaitable computed, which it releases where it loses,
  *   and the scope around the `select` releases where it doesn't.
@@ -201,7 +210,11 @@ export type Operation = { readonly site: NodeOf<string> } & (
 export type BranchTest =
   | { readonly kind: 'condition' | 'present'; readonly value: ValueId }
   | { readonly kind: 'is'; readonly value: ValueId; readonly test: TypeTest }
-  | { readonly kind: 'fieldPass'; readonly header: FieldHeader }
+  | {
+      readonly kind: 'fieldPass';
+      readonly header: FieldHeader;
+      readonly fields: readonly (string | undefined)[];
+    }
   | {
       readonly kind: 'select';
       readonly node: Select;
@@ -236,6 +249,14 @@ export interface FlowFunction {
   readonly self: ValueId | undefined;
   readonly values: readonly FlowValue[];
   readonly blocks: readonly FlowBlock[];
+}
+
+/** The blocks `exit` goes on to. */
+export function successorsOf(exit: Exit): readonly BlockId[] {
+  if (exit.kind === 'goto') {
+    return [exit.to];
+  }
+  return exit.kind === 'branch' ? exit.to : [];
 }
 
 /** The values `operation` reads: its operands, and the keys a part it reads or a place names. */

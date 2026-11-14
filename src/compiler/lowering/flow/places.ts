@@ -24,11 +24,12 @@ import type { Register } from '../../../definition/operands.ts';
 import { unreachable } from '../../../foundation/structures/unreachable.ts';
 import type { Argument, Operation, Part, Place, ValueId } from '../../checker/surface/flow-ir.ts';
 import type { Type } from '../../checker/types/type/index.ts';
-import { literalType, tupleElements } from '../../checker/types/type/primitives.ts';
+import { tupleElements } from '../../checker/types/type/primitives.ts';
 import type { NodeOf } from '../../syntax/tree/node.ts';
 import type { AnchoredSpan } from '../../syntax/tree/positions.ts';
+import { referenceTo } from '../calls/emit-call.ts';
 import { eachKeyedField, fittedInto, type KeyedField, writeKeyed } from '../values/keyed-fields.ts';
-import { fieldPosition } from './parts.ts';
+import { fieldOf } from './parts.ts';
 import { cellRegister } from './variables.ts';
 import type { FlowWriter } from './writer.ts';
 
@@ -144,7 +145,7 @@ export function passedArguments(
       src: readAt(writer, location, site.span),
     });
     leaves.push(() => writeAt(writer, location, cell, site.span));
-    return { kind: 'reference', place: { register: cell, path: [] } };
+    return referenceTo(cell);
   });
   const leave = () => {
     for (const each of leaves.toReversed()) {
@@ -166,10 +167,10 @@ function locate(writer: FlowWriter, { root, path }: Place): Located {
 /** `located`, then `part` into it: the value behind its handle, a field, an element of a tuple. */
 function stepped(writer: FlowWriter, { location, type }: Located, part: Part): Located {
   const { checker } = writer.context;
-  const field = (name: string) => ({
-    location: deeper(location, [fieldPosition(writer, type, name)]),
-    type: checker.typeRules.fieldType(type, literalType(name)),
-  });
+  const field = (name: string) => {
+    const { member, read } = fieldOf(writer, type, name);
+    return { location: deeper(location, [read.index]), type: member.type };
+  };
   switch (part.kind) {
     case 'behind':
       return location.kind === 'place' && location.place.path.length === 0

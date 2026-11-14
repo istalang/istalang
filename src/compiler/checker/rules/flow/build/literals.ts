@@ -46,33 +46,36 @@ export function structLiteral(builder: FlowBuilder, node: FieldsLiteral): ValueI
   const { values, comprehended } = evaluatedItems(builder, node);
   const sources = builder.body.sourcesOf(node);
   if (sources === undefined) {
-    const operands = [...values.values(), ...comprehended];
+    const operands = [...values.values(), ...comprehended.values];
     builder.emit({ op: 'unknown', site: node, into, operands });
     return into;
   }
   const parts: ValueId[] = [];
+  const fields: (string | undefined)[] = [];
   let defaults: FunctionCall | undefined;
   for (const source of sources) {
     if (source.kind === 'comprehension') {
-      parts.push(...comprehended);
+      parts.push(...comprehended.values);
+      fields.push(...comprehended.fields);
     } else if (source.kind === 'default') {
       defaults = source.call;
     } else {
       parts.push(fieldOf(builder, source, values));
+      fields.push(source.field);
     }
   }
   if (defaults !== undefined) {
     return resolvedCall(builder, defaults, { site: node, passed: parts, into });
   }
-  const made = node.kind === 'NewStructLiteral' ? 'handle' : 'struct';
-  builder.emit({ op: 'make', site: node, into, made: { kind: made }, parts });
+  const kind = node.kind === 'NewStructLiteral' ? 'handle' : 'struct';
+  builder.emit({ op: 'make', site: node, into, made: { kind, fields }, parts });
   return into;
 }
 
 /** A literal's items, evaluated in the order written: each value, and a comprehension's fields. */
 function evaluatedItems(builder: FlowBuilder, node: FieldsLiteral) {
   const values = new Map<Expression, ValueId>();
-  let comprehended: readonly ValueId[] = [];
+  let comprehended: Comprehended = { values: [], fields: [] };
   for (const item of node.items) {
     if (item.kind === 'StructComprehension') {
       comprehended = structComprehension(builder, item);
@@ -99,13 +102,19 @@ function fieldOf(
   return readAlong(builder, whole, [step], source.from);
 }
 
+/** What a struct comprehension gives: a value per pass, and the field each pass visits. */
+interface Comprehended {
+  readonly values: readonly ValueId[];
+  readonly fields: readonly (string | undefined)[];
+}
+
 /** The fields a struct comprehension gives, one per pass, each its own past the pass's end. */
-function structComprehension(builder: FlowBuilder, node: StructComprehension): readonly ValueId[] {
+function structComprehension(builder: FlowBuilder, node: StructComprehension): Comprehended {
   const values: ValueId[] = [];
-  fieldLoop(builder, node, undefined, () =>
+  const fields = fieldLoop(builder, node, undefined, () =>
     values.push(builder.owned(builder.expression(node.value), node)),
   );
-  return values;
+  return { values, fields };
 }
 
 export function arrayLiteral(builder: FlowBuilder, node: ArrayLiteral): ValueId {

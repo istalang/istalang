@@ -80,7 +80,6 @@ import {
   loweredInstance,
   loweredNested,
   nestedFrame,
-  passBody,
 } from './frames.ts';
 
 /** Decodes a start entry's JSON argument into its parameter's value. */
@@ -181,14 +180,9 @@ class FunctionLowering implements EntryContext {
     if (passes.length === 0) {
       return write();
     }
-    const { owner } = this.#reading;
-    return this.#readingAs(
-      {
-        owner: { ...owner, passes: [...(owner.passes ?? []), ...passes] },
-        body: passes.reduce(passBody, this.body),
-      },
-      write,
-    );
+    const { owner, body } = this.#reading;
+    const within = { ...owner, passes: [...(owner.passes ?? []), ...passes] };
+    return this.#readingAs({ owner: within, body }, write);
   }
 
   inDefaults<Lowered>(lower: () => Lowered): Lowered {

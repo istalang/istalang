@@ -206,6 +206,7 @@ export class BodyChecker implements BodyContext {
       module: this.module,
       localBodyOf: (declaration: FunctionDeclaration) =>
         this.checker.inputs.bodyOf(this.module, declaration),
+      concrete: (type: Type) => type,
     };
     const recorded = { records: this.#records, units: this, result, flows: { inputs, roots } };
     const body = checkedAt(recorded, this.#passes.root);

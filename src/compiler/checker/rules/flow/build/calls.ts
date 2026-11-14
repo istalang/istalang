@@ -39,8 +39,11 @@ export function callFlow(builder: FlowBuilder, node: Call): ValueId {
   if (builder.body.valueCalls.has(node)) {
     const callee = calleeValue(builder, node);
     const { arguments: passed, leave } = prepared(builder, node, undefined);
-    const ordered = inParameterOrder(builder, node, passed);
-    builder.emit({ op: 'callValue', site: node, into, callee, arguments: ordered });
+    const binding = builder.body.valueCalls.get(node)?.binding;
+    const order = binding === undefined ? undefined : argumentsInOrder(binding);
+    const ordered = order?.flatMap(({ index }) => passed[index] ?? []) ?? passed;
+    const spreads = order?.flatMap(({ isSpread }, index) => (isSpread ? [index] : [])) ?? [];
+    builder.emit({ op: 'callValue', site: node, into, callee, arguments: ordered, spreads });
     leave();
     return into;
   }
@@ -107,21 +110,6 @@ function calleeValue(builder: FlowBuilder, node: Call): ValueId {
   const value = builder.temporary(callee, builder.body.fieldGivenBy(callee.member)?.type);
   builder.emit({ op: 'read', site: callee, into: value, from: target, part: partOfField(read) });
   return value;
-}
-
-/**
- * The arguments a function value takes, `passed` as written, in its parameters' order as checking
- * bound them (`ValueCallMade`).
- */
-function inParameterOrder(
-  builder: FlowBuilder,
-  node: Call,
-  passed: readonly Argument[],
-): readonly Argument[] {
-  const binding = builder.body.valueCalls.get(node)?.binding;
-  return binding === undefined
-    ? passed
-    : argumentsInOrder(binding).flatMap(({ index }) => passed[index] ?? []);
 }
 
 /** `node`'s receiver and written arguments, as written: each by `&` where its parameter takes one. */

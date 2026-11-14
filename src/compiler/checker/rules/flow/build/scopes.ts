@@ -21,8 +21,8 @@ interface Releasing {
   readonly end: (exit: Exit) => void;
   /** Puts `operation` first in `block`, which nothing has been built in yet. */
   readonly prepend: (block: BlockId, operation: Operation) => void;
-  /** A new block going on to `to`, which nothing has been built in yet. */
-  readonly goingTo: (to: BlockId) => BlockId;
+  /** Goes on in a new block, jumping to it from the current one; the block. */
+  readonly goOn: () => BlockId;
 }
 
 /** Where what a `hold` keeps lasts until: a labelled scope's end, or the function's (§7). */
@@ -125,9 +125,10 @@ export class Scopes {
 
   /**
    * An exit from `scope`: ends every scope inside it that it leaves, then goes past it, where what
-   * `hold`s keep until it ends is released, or to its next pass, which keeps them. What a labelled
-   * scope inside it holds, which a `hold` built after the exit may add to, is released in a block
-   * the exit goes through, once that scope is built (`withExits`).
+   * `hold`s keep until it ends is released, or to its next pass, which keeps them. Each scope it
+   * leaves ends innermost first; what a labelled scope inside it holds, which a `hold` built after
+   * the exit may add to, is released in a block of its own the exit goes on in, once that scope is
+   * built (`withExits`).
    */
   exit(scope: LabelledScope | undefined, kind: 'break' | 'continue', site: SyntaxNode): void {
     const target = this.#exits.findLast((each) => each.scope === scope);
@@ -136,16 +137,14 @@ export class Scopes {
       this.#flow.end({ kind: 'stop' });
       return;
     }
-    const left = this.#scopes.slice(target.depth + 1).toReversed();
-    for (const each of left.filter(({ leaving }) => leaving === undefined)) {
-      this.#end(each, site);
+    for (const left of this.#scopes.slice(target.depth + 1).toReversed()) {
+      if (left.leaving === undefined) {
+        this.#end(left, site);
+      } else {
+        left.leaving.push(this.#flow.goOn());
+      }
     }
-    const holders = left.flatMap(({ leaving }) => (leaving === undefined ? [] : [leaving]));
-    const through = holders.length === 0 ? to : this.#flow.goingTo(to);
-    for (const leaving of holders) {
-      leaving.push(through);
-    }
-    this.#flow.end({ kind: 'goto', to: through });
+    this.#flow.end({ kind: 'goto', to });
   }
 
   /**

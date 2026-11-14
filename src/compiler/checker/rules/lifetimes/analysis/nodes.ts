@@ -42,8 +42,6 @@ export interface TypeFacts {
   readonly reachOf: (type: Type) => HandleReach;
   readonly knownReachOf: (type: Type) => HandleReach;
   readonly cellOf: (type: Type) => Type;
-  /** A struct type's fields' names, in declaration order; undefined for another type. */
-  readonly fieldNamesOf: (type: Type) => readonly string[] | undefined;
 }
 
 /**
@@ -216,10 +214,14 @@ export class Nodes {
 
   /**
    * What names a part, alike wherever it is read: a field by its name, which a member access, a
-   * pattern and a generic's struct constraint name alike, a tuple's element by position, any other
+   * pattern, a generic's struct constraint and an `any` value's dispatch name alike, a tuple's
+   * element by position, any other
    * part by its kind, and a step of its own kind (a union's member, an array pattern's) by itself.
    */
   partKey(part: Part): string {
+    if (part.kind === 'dispatch') {
+      return `.${part.required.field.name.text}`;
+    }
     if (part.kind !== 'step') {
       return part.kind;
     }
@@ -236,31 +238,6 @@ export class Nodes {
       this.#steps.set(step, id);
     }
     return `@${id}`;
-  }
-
-  /**
-   * The parts a value made of `parts` (a struct of `type`, in its fields' declaration order, or a
-   * tuple) has, each as a read names it: a field by its name.
-   */
-  madeParts(
-    type: Type,
-    parts: readonly NodeId[],
-    kind: 'struct' | 'tuple',
-  ): readonly (readonly [Part, NodeId])[] {
-    if (kind === 'tuple') {
-      return parts.map((part, index) => [{ kind: 'step', step: index }, part] as const);
-    }
-    const names = this.#facts.fieldNamesOf(type);
-    if (names === undefined || names.length !== parts.length) {
-      return [];
-    }
-    return parts.map(
-      (part, index) =>
-        [
-          { kind: 'step', step: { kind: 'field', of: type, name: names[index] as string } },
-          part,
-        ] as const,
-    );
   }
 
   /** The path `node` is, if it is one. */

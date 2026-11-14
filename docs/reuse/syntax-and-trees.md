@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-11-13
-last_updated: 2026-11-13
+last_updated: 2026-11-14
 tags: [reuse, syntax, ast, scanner, parser, operators]
 ---
 
@@ -98,10 +98,10 @@ tags: [reuse, syntax, ast, scanner, parser, operators]
 
 1. Declare the interface extending `NodeOf<'Kind'>` in `src/compiler/syntax/` and add it to its union in `src/compiler/syntax/tree/index.ts`.
 2. Parse it in `src/compiler/parser/` using `nested` (`nesting.ts`) and `parseEnclosed` / `parseDelimited` (`recovery.ts`).
-3. Add its handler to every exhaustive `Handlers` table across `binder/`, `checker/` (including `rules/flow/build/`'s `expressionFlows` and `statementFlows`), and `lowering/`.
+3. Add its handler to every exhaustive `Handlers` table across `binder/` and `checker/` (including `rules/flow/build/`'s `expressionFlows` and `statementFlows`, which lowering writes from).
 
 ### Add a sugar
 
-1. Add its kind to the sugar kinds (`SugarKind`, `src/compiler/checker/surface/checked-body.ts`): flow's and lowering's expression tables are over `CoreExpression`, so its handlers there no longer compile, and go.
+1. Add its kind to the sugar kinds (`SugarKind`, `src/compiler/checker/surface/checked-body.ts`): the flow's expression table is over `CoreExpression`, so its handler there no longer compiles, and goes.
 2. Give it an entry in the desugaring table (`src/compiler/checker/desugaring/index.ts`), a `Desugar`, and a module of its own beside it, holding everything of it: `core` builds the core tree from the node and what checking knows there, reusing the written operands and building the rest with `synthesized` and `bound`, each new node taking the span of the code it stands for; a mistake no core rule catches is refused there; `wording` rewords, by code, the core diagnostics it can cause.
 3. Map its checker handler to `context.sugars.check` (`expressionHandlers`); the binder and the formatter keep handling the written node.
