@@ -83,6 +83,8 @@ when its value changes.
   it read changed. Edits mark nothing.
 - **Equal results stop the update:** a result `==` to the old one keeps the old object and doesn't
   bump the version, so readers further up don't re-evaluate, and the host receives the same object.
+- **Open (tracker F33):** as written, `with` fails static lifetimes, since `refresh` is a plain
+  `fn` field; the design must change how `refresh` is held.
 - **No cycles in memory:** a `Dependency` holds only what it read, and `refresh` takes its own
   `Dependency` as a parameter instead of capturing it. So a computed holding a task's future passes
   the static-lifetimes rule (§7).

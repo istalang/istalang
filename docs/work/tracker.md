@@ -69,6 +69,7 @@ Language or toolchain features deferred by decision, not defects.
 | F30 | `runtime.jobKey()` (proposal 9, Jobs): the key of the job a live run runs, for the work it calls to deduplicate on, such as a payment API's idempotency key. It needs a value scoped to one live execution, which the language lacks; a job's key exists, its instance's name and its number (`runtime._Job`). | medium | proposal 9 | async-kinds DG 2026-11-11 |
 | F31 | A declaration-time check that a name on a type is one of a field, a getter or a method (proposal 13): today a clash is reported only where a use finds two (5505). | medium | proposal 13 | transients-getters plan |
 | F32 | Getters as trait requirements, so generic code reads a computed member through a bound (proposal 13 keeps requirements methods only). | medium | proposal 13 | transients-getters plan |
+| F33 | The computed design (`docs/work/computed/design.md`) fails static lifetimes as written, with or without transients: `Dependency.refresh` is a plain `fn` field, which type-reach takes as holding any handle, so writing a `Dependency` into any cell (a captured `let`, a `Shared`, a transient) is a possible cycle through a disposable (5721, 5722). Rework the design (how `refresh` is held) before implementing the library. | medium | none | transients-getters T1 |
 
 ### Performance (P)
 
