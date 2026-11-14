@@ -64,6 +64,15 @@ export type Miss = 'pending' | 'ended' | 'underOr' | 'fenced';
 
 type ScopedFunction = FunctionDeclaration | Lambda;
 
+/**
+ * The innermost function around a scope that is one of a set, and whether a transient's
+ * initializer stands between, which sees none of its variables (§3.4).
+ */
+export interface Enclosing {
+  readonly function: ScopedFunction;
+  readonly fenced: boolean;
+}
+
 /** A scope as binding had defined it at one moment. */
 export interface ScopeSnapshot {
   readonly scope: Scope;
@@ -136,11 +145,18 @@ export class Scope {
   }
 
   /** The innermost function this scope is inside that is one of `functions`. */
-  enclosingOf(functions: readonly ScopedFunction[]): ScopedFunction | undefined {
+  enclosingOf(functions: readonly ScopedFunction[]): Enclosing | undefined {
+    return this.#enclosingOf(functions, false);
+  }
+
+  #enclosingOf(functions: readonly ScopedFunction[], fenced: boolean): Enclosing | undefined {
     const own = this.#function;
-    return own !== undefined && functions.includes(own)
-      ? own
-      : this.#parent?.enclosingOf(functions);
+    if (own !== undefined && functions.includes(own)) {
+      return { function: own, fenced };
+    }
+    return this.#parent === undefined
+      ? undefined
+      : this.#parent.#enclosingOf(functions, fenced || this.#fenced);
   }
 
   lookup(name: string): LocalEntity | undefined {

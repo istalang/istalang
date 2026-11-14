@@ -59,6 +59,28 @@ describe('transient variables: what checking refuses', () => {
     expect(codesOf(readsCapture)).toContain(transientReads.code);
   });
 
+  it.each([
+    [
+      'a top-level',
+      lines('ista async fn worker() -> Int:', '  transient let done = worker.disposing()', '  0'),
+    ],
+    [
+      'a local',
+      lines(
+        'ista async fn outer() -> Int:',
+        '  ista async fn worker() -> Int:',
+        '    transient let done = worker.disposing()',
+        '    0',
+        '  await worker()',
+      ),
+    ],
+  ])(
+    "reads in its initializer no own call of %s function's, a variable of it (§7)",
+    (_where, text) => {
+      expect(codesOf(text)).toContain(transientReads.code);
+    },
+  );
+
   it('reads in its initializer what the module gives a name its variables hide', async () => {
     const declarations = lines(
       'const seed = 42',

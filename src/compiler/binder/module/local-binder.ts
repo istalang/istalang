@@ -24,7 +24,6 @@ import { type Convention, isUnnamed } from '../../../foundation/language/naming.
 import { memo, SequenceMemo } from '../../../foundation/structures/memo.ts';
 import { unreachable } from '../../../foundation/structures/unreachable.ts';
 import type { FunctionDeclaration, Module } from '../../syntax/declarations/index.ts';
-import { isMain } from '../../syntax/declarations/starts.ts';
 import type {
   Comprehension,
   Expression,
@@ -35,7 +34,6 @@ import type {
 import type { Annotatable } from '../../syntax/items.ts';
 import type { Pattern } from '../../syntax/patterns.ts';
 import type { Block, For, VariableDeclaration } from '../../syntax/statements/index.ts';
-import { awaits } from '../../syntax/tokens/modifiers.ts';
 import type { SyntaxNode, SyntaxTree } from '../../syntax/tree/index.ts';
 import { type Identifier, isMissingName, type QualifiedName } from '../../syntax/tree/node.ts';
 import type { AnchoredSpan } from '../../syntax/tree/positions.ts';
@@ -51,7 +49,7 @@ import {
   variableEntity,
 } from '../entities.ts';
 import { namingViolation } from '../naming.ts';
-import { functionsNamed, noOwnCall } from './own-calls.ts';
+import { functionsNamed, holdsOwnCall, noOwnCall } from './own-calls.ts';
 import type { LocalEntity, Miss, Scope, ScopeSnapshot } from './scope.ts';
 import { type Visibility, VisibilityNotes } from './visibility.ts';
 
@@ -254,12 +252,8 @@ export class LocalBinder {
       return;
     }
     const enclosing = scope.enclosingOf(functions);
-    if (
-      enclosing !== undefined &&
-      awaits(enclosing.qualifiers) &&
-      !(enclosing.kind === 'FunctionDeclaration' && isMain(enclosing))
-    ) {
-      this.record(name, this.#ownCallOf(enclosing));
+    if (enclosing !== undefined && !enclosing.fenced && holdsOwnCall(enclosing.function)) {
+      this.record(name, this.#ownCallOf(enclosing.function));
     } else {
       this.report(noOwnCall(name, enclosing));
     }
