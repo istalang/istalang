@@ -1,5 +1,5 @@
 ---
-description: proposal 13 of docs/proposals, two language additions — `transient let` variables, one value per outermost call shared by a function's nested calls, and getters, methods annotated `@Getter` and read as fields; their rules, lifetimes, lowering and spec edits; read before designing or implementing either, or code that needs recursion-scoped state or values computed from fields
+description: proposal 13 of docs/proposals, two language additions — `transient let` variables, one value per outermost call shared by a function's nested calls, and getters, `fn get name(self: T)`, methods read as fields; their rules, lifetimes, lowering and spec edits; read before designing or implementing either, or code that needs recursion-scoped state or values computed from fields
 owner: tech-lead
 status: active
 applies_to: istalang
@@ -85,16 +85,16 @@ struct Person:
     first: String
     last: String
 
-@Getter
-fn full(self: Person) -> String: `${self.first} ${self.last}`
+fn get full(self: Person) -> String: `${self.first} ${self.last}`
 
 const ada = Person{first: "Ada", last: "Lovelace"}
 ada.full                    # "Ada Lovelace", computed on every read; the call full(ada)
 ```
 
 **The rules:**
-- **A method annotated `@Getter`,** the prelude's field-less annotation (§3.16). It takes exactly
-  one parameter, `self`, by value. It is not async, and it may be generic.
+- **A method declared with `get`** after `fn`, a contextual word: `fn get name` is a getter, while
+  `fn get(`, `fn get<` and `fn get.` stay a function named `get`. It takes exactly one parameter,
+  `self`, by value. It is not async, and it may be generic.
 - **Read with `.`, as fields are:** `x.g` is the call `g(x)`, on any type, a shared struct's handle
   included (`lease.g`, as methods are called, §3.18); `x?.g` reads it in an optional chain.
   `x.g(…)` calls the value it gives, as for a field holding a function. Called as a plain function,
@@ -119,13 +119,13 @@ ada.full                    # "Ada Lovelace", computed on every read; the call f
   - no table: the value lives in frame registers and the cells they share, which snapshots already
     persist, and an execution keeps the transient cells visible where it started, one persisted
     field.
-- **Getters:** the prelude's `Getter` annotation, and resolving a member read with no stored field
-  to a getter, checked and recorded as the call; the IR doesn't change.
+- **Getters:** parsing `fn get name`, and resolving a member read with no stored field to a
+  getter, checked and recorded as the call; the IR doesn't change.
 
 **Spec edits:**
 - §3.1: getters replace "No getters or setters".
 - §3.4: `transient let` variables.
-- §3.16: `Getter` among the annotations the compiler reads.
+- §2: `get` among the contextual words.
 - §3.18: `.` on a handle reads its getters as it calls its methods.
 - §7: a transient value is held by the outermost call's frame.
 
@@ -135,8 +135,9 @@ ada.full                    # "Ada Lovelace", computed on every read; the call f
 - **Transients are orthogonal to marks and async.** Only the outermost call makes one; every call
   nested in it shares it, async calls included.
 - **`transient` modifies `let`,** as `hold` does, at the top of a function's body.
-- **Getters are methods annotated `@Getter`,** with no syntax of their own, read with `.` on every
-  type, shared structs' handles included.
+- **Getters are methods declared `fn get name`,** read with `.` on every type, shared structs'
+  handles included. An annotation was tried first (G2) and replaced (G3): what a read gives
+  belongs to the declaration's syntax, not to an annotation.
 - **No compile-time getter cycle check.** Following closures through the heap would need a
   program-wide analysis the compiler doesn't have, and it would flag every computed graph as a
   cycle, since every computed's refresh sits in one non-generic field. Computed cycles are caught

@@ -22,7 +22,7 @@ branch at the end.
 
 ```
 T1 ───────────────┐
-G1 ──▶ G2 ────────┴──▶ merge review
+G1 ──▶ G2 ────────┴──▶ merge review ──▶ G3
 ```
 
 ## Phases
@@ -63,6 +63,16 @@ conflicts, editor features, spec §3.1, §3.16 and §3.18, and `docs/reuse`.
 - A marked getter obeys the data rule at each read as its call would: unmarked code reading an
   `ista` getter is a compile error.
 - Completion lists getters as properties; hover, definition and rename reach the getter.
+
+**G3: getter syntax `fn get name` (behavioral), replacing `@Getter`.** Added after G2 at the
+human's request. The `Getter` annotation, its placement rules and its prelude struct go entirely;
+the getter mark is the declaration's syntax. Parser, formatter, VS Code grammar and its test,
+completion of `get`, semantic tokens, spec §2, §3.1 and §3.16, docs/reuse.
+- Every G2 getter test passes rewritten to `fn get`; no `@Getter` remains in code or docs.
+- `fn get(`, `fn get<`, `fn get.` and a lambda's `fn get:` keep their meaning; `fn get get(…)` is
+  a getter named `get`.
+- A getter head on a local function, a trait requirement or an extern refuses as `@Getter` did.
+- The formatter round-trips `fn get name<T>(self: X<T>) -> T: …` with marks.
 
 ## Out of scope
 

@@ -42,9 +42,9 @@ on and what each reuses; everything else is the implementer's.
 
 ## Getters (partition G)
 
-- **Annotation.** `struct Getter` (no fields) in the prelude, beside `Waypoint`, its name spelled
-  once in `foundation/language`'s well-known declarations. "Is a getter" is derived from a
-  function's annotations and memoized, never stored beside it.
+- **Syntax (G3, replacing G2's `@Getter`).** `get` is a contextual word after `fn`, a getter only
+  when an identifier follows it; `FunctionDeclaration` records it in one field of its own, and
+  "is a getter" reads that field. No annotation remains.
 - **Declaration checks.** A `@Getter` function takes exactly `self`, by value, and is not async;
   `@Getter` anywhere but a function is the existing wrong-place annotation error.
 - **Lookup.** The methods, getters and statics a name may mean on a type come from one enumeration
