@@ -1,7 +1,7 @@
 ---
 description: plan for proposal 14 (inert function types and the derived `Inert` trait) — process, the one phase and its acceptance criteria; read before forking or examining it
 owner: tech-lead
-status: active
+status: archived
 applies_to: istalang
 last_verified: 2026-11-14
 last_updated: 2026-11-14

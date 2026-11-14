@@ -30,12 +30,12 @@ tags: [tracker]
 | Proposal 9, native runtime (`docs/proposals/9-native-runtime.md`), beyond async-kinds CX's minimal slice | not planned: a plan of its own |
 | Static lifetimes (`docs/work/static-lifetimes/plan.md`) | in progress: C1, C2, R1, R2, C3, C4, R3, R4 and R5 done; C5 dropped |
 | Proposal 13, transients and getters (`docs/work/transients-getters/plan.md`) | done (merge re-review approved; B87, B88 left) |
-| Proposal 14, inert functions (`docs/work/inert-functions/plan.md`) | in progress: I1 |
+| Proposal 14, inert functions (`docs/work/inert-functions/plan.md`) | done (reviewer approved, QA passed; B89 left) |
 | M8 Packages | planned |
 
 ## Filed
 
-Open items only: an item is removed once it is resolved; git history keeps it. Each group numbers its own items and keeps counting up: the next ids are F34, P53, Q56, B89. Items filed before 2026-10-28 shared one `D` series; older docs and git history keep the closed `D` ids.
+Open items only: an item is removed once it is resolved; git history keeps it. Each group numbers its own items and keeps counting up: the next ids are F34, P53, Q56, B90. Items filed before 2026-10-28 shared one `D` series; older docs and git history keep the closed `D` ids.
 
 Size: easy (one short, local change), medium (several files or a design choice inside one layer), big (cross-layer, or a decision first). Depends on: what must happen first, or "none" when it can be done now.
 
@@ -69,7 +69,7 @@ Language or toolchain features deferred by decision, not defects.
 | F29 | Type patterns naming `Fn` (§3.11, §3.14): `case Fn as f` against `Int \| fn(Int) -> Int` should select the union's function members, as a generic type named bare selects its instances; it is refused (5422), since a type pattern selects only nominal members. | small | — | async-kinds F1 2026-11-10 |
 | F30 | `runtime.jobKey()` (proposal 9, Jobs): the key of the job a live run runs, for the work it calls to deduplicate on, such as a payment API's idempotency key. It needs a value scoped to one live execution, which the language lacks; a job's key exists, its instance's name and its number (`runtime._Job`). | medium | proposal 9 | async-kinds DG 2026-11-11 |
 | F31 | A declaration-time check that a name on a type is one of a field, a getter or a method (proposal 13): today a clash is reported only where a use finds two (5505). | medium | proposal 13 | transients-getters plan |
-| F33 | The computed design (`docs/work/computed/design.md`) fails static lifetimes as written, with or without transients: `Dependency.refresh` is a plain `fn` field, which type-reach takes as holding any handle, so writing a `Dependency` into any cell (a captured `let`, a `Shared`, a transient) is a possible cycle through a disposable (5721, 5722). Proposal 14's inert function types are the answer: type `refresh` and `eval` `inert fn`, with `Computed<T is Inert>` (proposal 14, "Its first user"), then implement the library. | medium | proposal 14 (inert functions) | transients-getters T1 |
+| F33 | The computed design (`docs/work/computed/design.md`) fails static lifetimes as written, with or without transients: `Dependency.refresh` is a plain `fn` field, which type-reach takes as holding any handle, so writing a `Dependency` into any cell (a captured `let`, a `Shared`, a transient) is a possible cycle through a disposable (5721, 5722). Proposal 14's inert function types are the answer: type `refresh` and `eval` `inert fn`, with `Computed<T is Inert>` (proposal 14, "Its first user"), then implement the library. | medium | none; can be done now | transients-getters T1 |
 
 ### Performance (P)
 
@@ -204,3 +204,4 @@ Crashes, spec gaps, wrong or missing diagnostics, host-visible behaviour.
 | B86 | Static lifetimes misses a cycle a recursive group closes behind a handle: `fn link(s: Shared<Node?>, x: Node, first: Bool)` writing `s->value = x`, recursing, then `p->next = x` for `s->value is Node as p`, passes, since a recursive group names its inputs whole, so the requirement becomes "x may not reach s" rather than "x may not reach what is behind s". The same holds through a transient (proposal 13 T1's QA test is `it.fails` with this id). | medium | none | transients-getters T1 |
 | B87 | Static lifetimes checks a generic body's call of a required function, or read of a required field, as a requirement call without the witness's own reach, so `fn settle<T is Homed>(t: T, n: Node): t.homeOf()->node = n` with `ista fn homeOf(self: Door) -> Box: homes` (`homes` an `ista const` that `n` holds) reports no cycle, where the concrete body reports 5721. Instantiating calls should check the witness as they check its constraint. | medium | none | transients-getters G3 |
 | B88 | A call written as another construct infers a generic result from its own arguments only: a member access (a getter), a binary, a unary and an index stand as `boundary` in the scope protocol (`scope-protocol.ts`), so `id(box.empty)` with a getter generic in its result alone fails (5301) where `id(empty(box))` checks. The standing of every call-shaped construct should be one decision, `joins` as a call's is. | medium | none | transients-getters merge review |
+| B89 | A local `fn` passed where an inert or sendable function is expected gets the plain fit error (two function types), not one report per capture beyond the expected sendability, which only lambdas get (`explainedCaptures`, `resolution/calls/captured-sends.ts`); proposal 14's example message names a local `fn`. | easy | none | inert-functions I1 |
