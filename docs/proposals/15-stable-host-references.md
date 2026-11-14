@@ -47,8 +47,8 @@ the host gets for an extern's argument or a run's outcome is frozen, and a part 
   across restarts.
 - **Codecs must be pure:** a type's `toJson` runs at most once per unchanged value in an
   instance, so one with effects would run fewer times than called. Derived and std codecs are pure
-  already. A mocked function is the exception (§10): while an instance sees a mock (its own or one
-  relayed from an ancestor), its encoding bypasses stage 1, so the mock sees every call.
+  already. Mocks exist only in a test world (§10), which keeps no stage-1 encodings, so a mocked
+  codec sees every call; identity is visible only to a JavaScript host anyway.
 
 ## Mechanism
 
@@ -97,7 +97,7 @@ codecs are std Istalang functions), then the runtime turns that into plain JavaS
   the witness resolved at the host site, where a disposable host type is `Encodable` (§9). Traces
   of a codec's panic gain the `json.encode` frame.
 - **Runtime:** the identity module (both caches, forgetting), the two natives (remember holds,
-  both bypass under a mock), freezing and caching in `plainOfJson`. Outcomes
+  none in a test world), freezing and caching in `plainOfJson`. Outcomes
   (`runtime/boundary/outbound.ts`) and extern arguments (`runtime/boundary/host-natives.ts`) both
   go through it.
 - **Checker, Definition format, snapshots:** none. The caches are weak and never persisted.
@@ -105,7 +105,7 @@ codecs are std Istalang functions), then the runtime turns that into plain JavaS
   subtree free, so a large tree sent again costs what changed.
 
 **Spec edits:**
-- §9: the rule, frozen values, purity of codecs and the mock exception.
+- §9: the rule, frozen values, purity of codecs and no stage-1 encodings in a test world.
 
 Docs: `docs/arch/boundary.md` (identity at the boundary), `docs/arch/definition.md` ("Values are
 immutable" holds for programs; the interpreter writes in place only where no one else could see
@@ -122,7 +122,7 @@ those nodes' previous objects, and React skips them.
 
 - **Identity of kept values only**, not interning of equal ones.
 - **Frozen objects** at the host.
-- **Codecs are pure** by rule, not by check; mocks bypass the caches.
+- **Codecs are pure** by rule, not by check; a test world keeps no stage-1 encodings, so mocks see every call.
 - **One runtime:** the host runs in the interpreter's JavaScript realm; no message-channel bridge.
 
 **Rejected:**

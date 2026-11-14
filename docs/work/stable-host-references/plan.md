@@ -28,7 +28,7 @@ caches sit on the in-place writer's soundness.
 encoder or its trace frames change.
 
 **Commit 2 (feat):** the identity module, the two natives behind `encode`'s body, `plainOfJson`
-frozen and cached, forgetting on every in-place change path, the mock bypass. Spec §9, boundary.md,
+frozen and cached, forgetting on every in-place change path, no stage 1 in a test world. Spec §9, boundary.md,
 definition.md, FormBuilder design §3/§8, `docs/reuse/` lines.
 
 Acceptance criteria (host = `ista run --host` module or the host API):
@@ -50,8 +50,8 @@ Acceptance criteria (host = `ista run --host` module or the host API):
   writes.
 - `Json` is refused exactly when the uncached walk refuses it (empty arrays and maps at the limit
   included), whether or not its parts were cached.
-- Under a mock held by the instance or relayed from an ancestor, every encoding calls the mock (the
-  testing suite's outcome-encoder mock test included); after it is released, caching resumes.
+- In a test world every codec call runs, so a mock (held or relayed from an ancestor) sees every
+  call, the testing suite's outcome-encoder mock test included.
 - Every in-place change path (maps' set and delete included) forgets the changed nodes' entries.
 - An array pushed after every send stays linear (no copy per send).
 - `npm run verify` green.
