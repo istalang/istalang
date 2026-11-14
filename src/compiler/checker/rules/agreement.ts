@@ -40,7 +40,7 @@ import {
   presentPart,
   withinOptional,
 } from '../types/unions/common-type.ts';
-import { sendableWidened, widened } from '../types/unions/widening.ts';
+import { plainFunctionsWidened, widened } from '../types/unions/widening.ts';
 
 /**
  * A type some part of a construct produced, where, and the node giving it: an expression, a bare
@@ -92,7 +92,7 @@ export function agreedType(
     expected === undefined
       ? joinedAgreement(produced, checker)
       : (orWidened(expected, types, checker, (type, { typeRules }) =>
-          sendableWidened(type, typeRules),
+          plainFunctionsWidened(type, typeRules),
         ) ?? expected);
   return {
     decided,

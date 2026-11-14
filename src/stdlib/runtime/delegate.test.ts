@@ -181,7 +181,9 @@ describe('delegate', () => {
       'ista async fn purchase(id: String) -> Int:',
       '  await runtime.delegate read(new Shared{value: 0})',
     );
-    expect(reported(unsendableJob).codes).toContain(checkerDiagnostics.unsendableCapture.code);
+    expect(reported(unsendableJob).codes).toContain(
+      checkerDiagnostics.captureBeyondSendability.code,
+    );
 
     const uncoded = lines(
       ...header,

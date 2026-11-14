@@ -150,6 +150,9 @@ function functionOf(
   });
 }
 
+/** `Sendability`'s chain (§3.14), each allowing the ones before it. */
+const sendabilityRank: Readonly<Record<Sendability, number>> = { sendable: 0, inert: 1, plain: 2 };
+
 const kinds = fc.record({
   isAsync: fc.boolean(),
   send: fc.constantFrom<Sendability>(...sendabilities),
@@ -170,7 +173,7 @@ describe('fitting a function where one giving a future is expected', () => {
       fc.property(pairs, ({ parameter, result, given, wanted, count }) => {
         const found = functionOf(parameter, result, given);
         const expected = wrapped(functionOf(parameter, result, wanted), count);
-        const sendableFits = given.send === 'sendable' || wanted.send === 'plain';
+        const sendableFits = sendabilityRank[given.send] <= sendabilityRank[wanted.send];
         const fits = sendableFits && (given.isAsync === wanted.isAsync || wanted.isAsync);
         expect(fitShape(fitOf(found, expected, fittingApart))).toEqual(
           fits
@@ -209,7 +212,7 @@ describe('fitting a function where one giving a future is expected', () => {
       fc.property(pairs, ({ parameter, result, given, wanted, count }) => {
         const found = functionOf(parameter, neverType, given);
         const expected = wrapped(functionOf(parameter, result, wanted), count);
-        const sendableFits = given.send === 'sendable' || wanted.send === 'plain';
+        const sendableFits = sendabilityRank[given.send] <= sendabilityRank[wanted.send];
         // A future of `Never` is one of any value; `Never` itself goes into one only made async.
         const fits = sendableFits && (given.isAsync === wanted.isAsync || wanted.isAsync);
         expect(fitShape(fitOf(found, expected, fittingApart))).toEqual(

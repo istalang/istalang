@@ -5,8 +5,9 @@
  * given (types/traits/sendability.ts, rules/boundary/json-forms.ts), so a new kind of type is one
  * case in each rule and nothing here or in conformance.
  *
- * - `Sendable` requires no function, so its rule is all there is to meeting it; so does
- *   `DataKind<K>`, whose rule reads `K` from the constraint.
+ * - `Sendable` and `Inert` require no function, so their rule is all there is to meeting them, the
+ *   one level a type's parts join to (types/traits/sendability.ts); so does `DataKind<K>`, whose
+ *   rule reads `K` from the constraint.
  * - `Encodable` and `Decodable` each imply Sendable, since JSON written and read back is a copy
  *   sent, except where values cross to the host, which a disposable host type does unsendable
  *   (use-site.ts). A type declaring no codec of its own is met by the one the compiler derives
@@ -22,7 +23,7 @@ import type { CheckerContext } from '../../contexts/context.ts';
 import type { UseSite } from '../../contexts/use-site.ts';
 import { type DerivedCodec, type JsonDirection, jsonTraits } from '../../surface/json-form.ts';
 import { lackedKind } from '../../types/traits/data-kind.ts';
-import { isSendable } from '../../types/traits/sendability.ts';
+import { isInert, isSendable } from '../../types/traits/sendability.ts';
 import type { Constraint, Type } from '../../types/type/index.ts';
 import { isWellKnownTrait } from '../../types/type/well-known.ts';
 
@@ -46,6 +47,11 @@ function unsendable(site: UseSite, type: Type): string | undefined {
   return isSendable(site.checker, type) ? undefined : 'every value inside it to be sendable';
 }
 
+/** What `type` lacks to be inert; undefined when it is. */
+function uninert(site: UseSite, type: Type): string | undefined {
+  return isInert(site.checker, type) ? undefined : 'every value inside it to reach no disposable';
+}
+
 /** The derivation of the trait a value crosses as JSON by in `direction`. */
 function codecDerivation(direction: JsonDirection): Derivation {
   return {
@@ -60,6 +66,7 @@ const derivations: ReadonlyMap<WellKnownDeclaration, Derivation> = new Map<
   Derivation
 >([
   [wellKnown.sendable, { lacking: unsendable }],
+  [wellKnown.inert, { lacking: uninert }],
   [
     wellKnown.dataKind,
     { lacking: (site, type, constraint) => lackedKind(site.checker, type, constraint) },

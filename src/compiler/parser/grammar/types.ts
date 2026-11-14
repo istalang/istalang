@@ -82,6 +82,7 @@ const typeParselets: Partial<Record<CursorKind, TypeParselet>> = {
  */
 const wordParselets = {
   sendable: parseModifiedFunctionType,
+  inert: parseModifiedFunctionType,
   live: parseModifiedFunctionType,
   ista: parseModifiedFunctionType,
   any: (parser) =>
@@ -233,7 +234,7 @@ function parseTupleType(parser: Parser): TypeNode {
   });
 }
 
-/** `fn(A) -> R`, `async fn(A) -> R`, each maybe `sendable`, at its head. */
+/** `fn(A) -> R`, `async fn(A) -> R`, each maybe `sendable` or `inert`, at its head. */
 function parseFunctionType(parser: Parser): TypeNode {
   const { cursor } = parser;
   const { start } = cursor.token.span;

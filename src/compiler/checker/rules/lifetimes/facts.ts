@@ -7,16 +7,11 @@
 
 import type { EntryTable } from '../../../../foundation/structures/entries/index.ts';
 import type { CheckerContext, CheckerNote } from '../../contexts/context.ts';
+import { type Relevance, relevanceOf } from '../../types/traits/sendability.ts';
 import type { Type } from '../../types/type/index.ts';
 import type { AnalysisContext } from './analysis/body.ts';
 import { ReachPairs } from './analysis/reach-pairs.ts';
-import {
-  type HandleReach,
-  handleReachOf,
-  type Relevance,
-  relevanceOf,
-  sameHandleReach,
-} from './type-reach.ts';
+import { type HandleReach, handleReachOf, sameHandleReach } from './type-reach.ts';
 
 /**
  * What the analysis reads of types, kept as entries per type: whether its values may reach a

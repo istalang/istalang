@@ -380,6 +380,11 @@ describe("a head's modifiers", () => {
     ['async M extern fn f<M in Mark>()', 'extern M async fn f<M in Mark>()'],
     ['shared extern struct H', 'extern shared struct H'],
     ['type F = ista async sendable fn(Int)', 'type F = sendable ista async fn(Int)'],
+    ['type F = async live inert fn(Int)', 'type F = inert live async fn(Int)'],
+    ['type F = inert live async fn(A) -> R', 'type F = inert live async fn(A) -> R'],
+    ['type F = sendable inert fn(Int)', 'type F = sendable fn(Int)'],
+    ['type F = inert sendable fn(Int)', 'type F = sendable fn(Int)'],
+    ['type F = sendable live inert fn(Int)', 'type F = sendable live fn(Int)'],
     ['const f = async fn(x): x', 'const f = async fn(x): x'],
   ])('print `%s` in their one order, once and for all', (text, ordered) => {
     expect(formatText(text)).toBe(`${ordered}\n`);

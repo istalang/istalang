@@ -20,9 +20,11 @@
  * - The function's own name, a local `fn`'s or a named lambda's, is declared before the body is
  *   checked when the result is known, so the body may call it; otherwise calling it is recursion
  *   needing a declared result (functions.ts).
- * - Its type is sendable when every capture is a copy of a sendable value: a captured `let` is a
- *   cell (§3.14), so a function capturing one isn't (§9). Inside its own body, its name has the
- *   plain type, since what it captures is known only once the body is checked.
+ * - Its `Send` is the least its captures allow (types/traits/sendability.ts): sendable when every
+ *   capture is a copy of a sendable value, inert when every one reaches no disposable. A captured
+ *   `let` counts as its cell (§3.14), so a function capturing one is inert at best (§9). Inside its
+ *   own body, its name has the plain type, since what it captures is known only once the body is
+ *   checked.
  * - The function a deferred call gives is such a lambda, over constants computed now
  *   (checker/desugaring/deferred-calls.ts).
  * - The type is recorded with the parameters and captures for lowering (`functionOf`).

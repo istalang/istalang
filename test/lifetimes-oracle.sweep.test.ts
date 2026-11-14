@@ -1,6 +1,7 @@
 /**
  * Static lifetimes is sound (docs/work/static-lifetimes/plan.md, C3): over soups of writes,
- * closures, async calls, inboxes and awaitables, a program the checker accepts never trips the
+ * closures (inert ones kept in a handle they capture among them, proposal 14), async calls, inboxes
+ * and awaitables, a program the checker accepts never trips the
  * oracle when it runs (runtime/lifetimes/oracle.test-kit.ts), and one it rejects is rejected for a
  * cycle alone, since every fragment checks otherwise.
  */
@@ -25,6 +26,10 @@ const declarations = [
   '  next: Node? = none',
   '  call: Future<Unit, "ista">? = none',
   '  hook: ista fn() -> Unit = fn(): ()',
+  '  watch: Watch? = none',
+  'shared struct Watch:',
+  '  n: Int = 0',
+  '  watchers: Array<inert fn() -> Unit> = []',
   'shared struct Parent { child: Child? = none, next: Parent? = none }',
   'fn dispose(self: Parent): ()',
   'shared struct Child { parent: Parent? = none }',
@@ -73,11 +78,12 @@ const mainStart = [
   '  const c = new Node{lease: new Lease{n: 2}}',
   '  const box = Inbox.create<Node>()',
   '  const keep = new Keeper{}',
+  '  const w = new Watch{}',
 ];
 
 /**
- * Statements over `a`, `b`, `c`, `box` and the keeper `keep`, each checking on its own but for a
- * cycle it closes.
+ * Statements over `a`, `b`, `c`, `box`, the keeper `keep` and the watch `w`, each checking on its
+ * own but for a cycle it closes.
  */
 const fragments = [
   'a->next = b',
@@ -116,6 +122,11 @@ const fragments = [
   'await Linking{first: b, second: a}',
   'drop linkThenWait(a, b)',
   'drop linkThenWait(b, a)',
+  'w->watchers = [...w->watchers, fn(): { w->n = w->n + 1; () }]',
+  'a->watch = w',
+  'b->watch = w',
+  'b->hook = ista fn(): { _ = w; () }',
+  'for watcher in w->watchers: watcher()',
 ];
 
 /** `body`'s statements run in `_main`, after the declarations, then a commit. */
@@ -135,6 +146,41 @@ describe('static lifetimes over fragment soups', () => {
     const program = stdProgramOf({ main: programOf([]) });
     checkedAfterStd(program);
     expect(diagnosedAt(program, 'main').diagnostics.filter(isError)).toEqual([]);
+  });
+
+  it('keeps the oracle invariant when inert closures in handles close cycles with disposables nearby', async () => {
+    const extra = [
+      'shared struct Emitter { listeners: Array<inert fn(Int) -> Unit> = [] }',
+      'fn on(self: Emitter, f: inert fn(Int) -> Unit):',
+      '  self->listeners = [...self->listeners, f]',
+      'shared struct Model { emitter: Emitter = new Emitter{}, count: Int = 0 }',
+      'fn wire(m: Model):',
+      '  let bonus = 1',
+      '  bonus = 2',
+      '  fn bump(n: Int):',
+      '    m->count += n + bonus',
+      '  m->emitter.on(bump)',
+      'fn fire(m: Model):',
+      '  for f in m->emitter->listeners: f(2)',
+    ];
+    const body = [
+      'const m = new Model{}',
+      'wire(m)',
+      'a->watch = w',
+      'w->watchers = [...w->watchers, fn(): fire(m)]',
+      'for watcher in w->watchers: watcher()',
+      'await runtime.commit()',
+      'drop a',
+      'for watcher in w->watchers: watcher()',
+    ];
+    const text = programOf(body, extra);
+    const program = stdProgramOf({ main: text });
+    checkedAfterStd(program);
+    expect(diagnosedAt(program, 'main').diagnostics.filter(isError)).toEqual([]);
+    expect(await startToEnd(testRuntime(), compiledText(text))).toEqual({
+      kind: 'finished',
+      outcome: '0',
+    });
   });
 
   it('never lets a program it accepts trip the oracle, and rejects only for cycles', async () => {

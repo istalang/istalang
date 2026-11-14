@@ -1,80 +1,21 @@
 /**
- * What a type's values may reach, read off declarations alone (design.md §5.1, §5.5): whether they
- * reach a disposable, and which handles they hold and may come to reach, the declaration graph
- * that stands in for code the analysis doesn't see.
+ * Which handles a type's values hold and may come to reach, read off declarations alone (design.md
+ * §5.1, §5.5): the declaration graph that stands in for code the analysis doesn't see. Whether
+ * they reach a disposable at all, relevance, is the one level Sendable and Inert read
+ * (types/traits/sendability.ts), which this asks of each part it walks.
  *
- * - **Relevance** is the most any type a value holds at any depth (`heldTypes`) says: a disposable
- *   says yes, and so does a plain function or an `any` value, which hold what they capture or
- *   dispatch to, which no type shows (`heldOfFunction`); a type parameter says it
- *   depends on its instantiation. A sendable type reaches nothing of its instance.
  * - **Handles at the grain of their declarations:** a value of a type holds some handles directly,
  *   not through another handle (`top`), and may reach others through their cells (`inner`). Type
  *   arguments are not told apart (`Slot<A>` and `Slot<B>` are one `Slot`), so the graph only ever
- *   says more than the types do, never less. What a function, a type parameter or an `any` value
- *   holds is any handle at all.
+ *   says more than the types do, never less. What a plain function, a type parameter or an `any`
+ *   value holds is any handle at all.
  */
 
 import type { CheckerContext } from '../../contexts/context.ts';
 import { isHandleType } from '../../types/properties/handles.ts';
-import { heldPartsOf, heldTypes } from '../../types/properties/held.ts';
-import { isDisposable } from '../../types/traits/disposable.ts';
-import { isSendable } from '../../types/traits/sendability.ts';
-import { isComputed } from '../../types/type/computed-types.ts';
-import { isSendableFunction } from '../../types/type/function-types.ts';
-import type { FunctionType, NominalEntity, NominalType, Type } from '../../types/type/index.ts';
-
-/** Whether values of a type may reach a disposable: never, always, or as instantiation decides. */
-export type Relevance = 'no' | 'depends' | 'yes';
-
-const order: Readonly<Record<Relevance, number>> = { no: 0, depends: 1, yes: 2 };
-
-/** Whether `first` says less than `second`. */
-export function lessRelevant(first: Relevance, second: Relevance): boolean {
-  return order[first] < order[second];
-}
-
-/** The more of two relevances. */
-export function moreRelevant(first: Relevance, second: Relevance): Relevance {
-  return order[first] >= order[second] ? first : second;
-}
-
-/** Whether values of `type` may reach a disposable, at any depth. */
-export function relevanceOf(checker: CheckerContext, type: Type): Relevance {
-  if (isSendable(checker, type)) {
-    return 'no';
-  }
-  return heldTypes(checker, type).reduce<Relevance>(
-    (most, part) => (most === 'yes' ? most : moreRelevant(most, ownRelevance(checker, part))),
-    'no',
-  );
-}
-
-/** What `type` itself says of reaching a disposable, apart from what it holds. */
-function ownRelevance(checker: CheckerContext, type: Type): Relevance {
-  if (isDisposable(checker, type)) {
-    return 'yes';
-  }
-  switch (type.kind) {
-    case 'function':
-      return heldOfFunction(type);
-    case 'any':
-      return isSendable(checker, type) ? 'no' : 'yes';
-    default:
-      // A type parameter, or a type computed from one (a type `match` not reduced yet): what an
-      // instantiation makes it decides.
-      return (type.kind === 'parameter' || isComputed(type)) && !isSendable(checker, type)
-        ? 'depends'
-        : 'no';
-  }
-}
-
-/**
- * The seam a refinement of what closures capture would take (design.md §5.6): what a plain
- * function value may hold, anything, since what it captures is no part of its type. A sendable one captures only sendable values.
- */
-function heldOfFunction(type: FunctionType): Relevance {
-  return isSendableFunction(type) ? 'no' : 'yes';
-}
+import { heldPartsOf } from '../../types/properties/held.ts';
+import { ownRelevance } from '../../types/traits/sendability.ts';
+import type { NominalEntity, NominalType, Type } from '../../types/type/index.ts';
 
 /** Handles by declaration, or any handle at all. */
 type Handles = 'any' | ReadonlySet<NominalEntity>;
@@ -82,8 +23,8 @@ type Handles = 'any' | ReadonlySet<NominalEntity>;
 /**
  * The handles a value of a type holds directly (`top`), and those it may reach through them
  * (`inner`); and whether it may hold a closure directly, or reach one. A closure is an object of
- * its own, which only another closure may be; what it captures is no part of its type, so it may
- * reach any handle at all (`heldOfFunction`).
+ * its own, which only another closure may be; what a plain one captures is no part of its type, so
+ * it may reach any handle at all, while an inert one reaches nothing that matters here.
  */
 export interface HandleReach {
   readonly top: Handles;
@@ -243,7 +184,7 @@ function topHandlesOf(checker: CheckerContext, type: Type, unknown: Unknown): To
       return false;
     }
     if (part.kind === 'function') {
-      closures ||= heldOfFunction(part) !== 'no';
+      closures ||= ownRelevance(checker, part) !== 'no';
       return false;
     }
     const own = ownRelevance(checker, part);

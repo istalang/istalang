@@ -39,10 +39,10 @@ export const concurrencyTemplates = {
     message: () =>
       "A deferred call computes what it passes now, and no reference can be captured, so it can't pass one by '&' (§3.14).",
   },
-  unsendableCapture: {
+  captureBeyondSendability: {
     code: 5644,
-    message: (found: string) =>
-      `A sendable function is taken here, so what it captures must be sendable, and ${found} isn't (§3.14).`,
+    message: (sendability: string, found: string) =>
+      `The function taken here is ${sendability}, so what it captures must be ${sendability}, and ${found} isn't (§3.14).`,
   },
   unmarkedCalls: {
     code: 5606,

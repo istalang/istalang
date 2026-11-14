@@ -5,8 +5,10 @@
  * capture or which handle it is; the function's mark; whether it awaits. Parsing, completion and
  * every printer read these tables, so a modifier is added here alone.
  *
- * - A group's words exclude each other: a head is `sendable` or not, `live`, `ista` or neither,
- *   `async` or not, one handle.
+ * - A group's words exclude each other: a head is `sendable`, `inert` or neither, `live`, `ista` or
+ *   neither, `async` or not, one handle. A word implying another of its group is the exception
+ *   (`implied`): `sendable` implies `inert` (§3.14), so a head writing both is `sendable`, and
+ *   prints so.
  * - `sendable` before `fn` is the function's sendability and before `struct` an extern struct's
  *   handle, `live` a function's mark or an extern struct's handle, and `shared` a handle or a
  *   shared struct's own word. The form tells them apart, so a word may stand in two groups no form
@@ -24,7 +26,7 @@ export const modifierGroups = {
   extern: ['extern'],
   handle: ['shared', 'sendable', 'live'],
   shared: ['shared'],
-  send: ['sendable'],
+  send: ['sendable', 'inert'],
   kind: ['live', 'ista'],
   async: ['async'],
 } as const satisfies Record<string, readonly (Keyword | ContextualWord)[]>;
@@ -62,6 +64,17 @@ export function awaits(qualifiers: FunctionQualifiers): boolean {
 }
 
 const groupOrder = Object.keys(modifierGroups) as readonly ModifierGroup[];
+
+/** The word each word of a group implies, which a head writing both means no more than it. */
+const implied: Readonly<Partial<Record<ModifierWord, ModifierWord>>> = { sendable: 'inert' };
+
+/** The one of two words of a group a head writing both means; undefined where they conflict. */
+export function strongerOf(first: ModifierWord, second: ModifierWord): ModifierWord | undefined {
+  if (implied[first] === second) {
+    return first;
+  }
+  return implied[second] === first ? second : undefined;
+}
 
 const modifierWordSet: ReadonlySet<string> = new Set(Object.values(modifierGroups).flat());
 

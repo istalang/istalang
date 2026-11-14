@@ -10,11 +10,11 @@
  *   reach the holder, so neither their types nor what they hold decide anything.
  */
 
+import { lessRelevant } from '../../../types/traits/sendability.ts';
 import type { Type } from '../../../types/type/index.ts';
 import { decidingType } from '../escaping.ts';
 import type { NodeId } from '../reach-state.ts';
 import type { TypedCycle } from '../summary.ts';
-import { lessRelevant } from '../type-reach.ts';
 import type { BodyAnalysis, Holder } from './body.ts';
 import type { FlowState } from './flow-state.ts';
 

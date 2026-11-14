@@ -41,11 +41,13 @@ import { errorType, sendType, tupleElements, tupleType } from './primitives.ts';
 
 export const plainSend: Type = sendType('plain');
 
+export const inertSend: Type = sendType('inert');
+
 export const sendableSend: Type = sendType('sendable');
 
-/** The `Send` slot a head's `qualifiers` write: `sendable`, or `plain` where they write none. */
+/** The `Send` slot a head's `qualifiers` write: the member they name, or `plain` for none. */
 export function sendOf(qualifiers: FunctionQualifiers): Type {
-  return qualifiers.send === undefined ? plainSend : sendableSend;
+  return qualifiers.send === undefined ? plainSend : sendType(qualifiers.send);
 }
 
 /** Which sendability the `Send` slot `send` holds; undefined for a variable. */
@@ -59,12 +61,14 @@ export function isSendableFunction(type: FunctionType): boolean {
 }
 
 /**
- * The modifiers a head of `type` writes, which its text and key print: `sendable`, and its mark
- * where it is one of the two kinds; a simple or variable mark, or a variable `Send`, writes none.
+ * The modifiers a head of `type` writes, which its text and key print: its sendability unless
+ * plain, and its mark where it is one of the two kinds; a simple or variable mark, or a variable
+ * `Send`, writes none.
  */
 export function modifiersOf({ send, mark }: FunctionType): Modifiers {
+  const sendability = sendabilityOf(send);
   return {
-    send: sendabilityOf(send) === 'sendable' ? 'sendable' : undefined,
+    send: sendability === 'plain' ? undefined : sendability,
     kind: persistenceOf(mark),
   };
 }

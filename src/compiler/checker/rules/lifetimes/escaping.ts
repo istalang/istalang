@@ -6,17 +6,11 @@
  * escapes, decided as any cycle is by the less relevant of its holder's and value's types.
  */
 
+import { lessRelevant, type Relevance } from '../../types/traits/sendability.ts';
 import type { Type } from '../../types/type/index.ts';
 import type { Input } from './input.ts';
 import type { Requirement, Summary, TypedCycle } from './summary.ts';
-import {
-  type HandleReach,
-  lessRelevant,
-  mayAlias,
-  mayReach,
-  mayShare,
-  type Relevance,
-} from './type-reach.ts';
+import { type HandleReach, mayAlias, mayReach, mayShare } from './type-reach.ts';
 
 /** What the check reads of types. */
 interface EscapingFacts {

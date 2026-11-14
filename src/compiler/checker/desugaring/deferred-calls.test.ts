@@ -281,7 +281,7 @@ describe('a deferred call', () => {
       '  0',
     ].join('\n');
     expect(reported(text)).toEqual(
-      reportedOnce(checkerDiagnostics.unsendableCapture.code, 'BadIter{n: 42}'),
+      reportedOnce(checkerDiagnostics.captureBeyondSendability.code, 'BadIter{n: 42}'),
     );
   });
 });

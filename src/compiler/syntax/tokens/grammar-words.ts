@@ -164,6 +164,7 @@ export const followers = {
   async: followersIn(headForms.function, 'async'),
   shared: followersIn(headForms.sharedStruct, 'shared'),
   sendable: followersIn(headForms.functionType, 'sendable'),
+  inert: followersIn(headForms.functionType, 'inert'),
   hold: ['let', 'const'],
   transient: ['let'],
   not: ['in'],

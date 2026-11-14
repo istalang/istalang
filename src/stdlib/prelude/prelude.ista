@@ -74,8 +74,9 @@ extern K fn Resolver.at<T, K in Persistence>(done: Resolver<(Int, T), K>, positi
 @Keeps{["self": ["callback"]]}
 extern K fn onCancel<T, K in Persistence>(self: Resolver<T, K>, callback: Fn<(), Unit, K>)
 
-# What a function's values may capture (§3.14): only sendable values, or any.
-type Sendability = "sendable" | "plain"
+# What a function's values may capture (§3.14): only sendable values, only inert ones, which reach
+# no disposable, or any. Each allows the one before it.
+type Sendability = "sendable" | "inert" | "plain"
 
 # The one function type (§3.14): `Args` is the tuple of its parameters, `(A,)` for one, a pack, or
 # items written `&T` for parameters taken by reference. Every other spelling is its sugar:
@@ -409,6 +410,8 @@ extern fn Bool.parse(text: String) -> Result<Bool>
 fn String.parse(text: String) -> Result<String>: Ok(text)
 
 trait Sendable
+
+trait Inert
 
 trait DataKind<K in Mark>
 

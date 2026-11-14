@@ -33,10 +33,11 @@ import {
   type ValueId,
   valuesReadBy,
 } from '../../../surface/flow-ir.ts';
+import type { Relevance } from '../../../types/traits/sendability.ts';
 import type { Type } from '../../../types/type/index.ts';
 import type { Input } from '../input.ts';
 import type { NodeId } from '../reach-state.ts';
-import { anyReach, type HandleReach, type Relevance } from '../type-reach.ts';
+import { anyReach, type HandleReach } from '../type-reach.ts';
 
 /** What the analysis reads of types: relevance, the handles a value may hold, a cell's type. */
 export interface TypeFacts {

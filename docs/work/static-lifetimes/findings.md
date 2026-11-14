@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-11-12
-last_updated: 2026-11-13
+last_updated: 2026-11-14
 tags: [lifetimes, checker, findings]
 ---
 
@@ -127,6 +127,8 @@ case in `test/cyclic-programs.ts`, and the soups now build the helper shapes tha
 
 C4 was to remove these with closures' captures and field labels; it is editor performance only,
 and the rule stays conservative (design.md §5.6, §5.7; decided 2026-11-12). Each has a workaround.
+Where a closure's captures reach no disposable, typing it `inert fn` (proposal 14) is the
+workaround for every pattern below that a plain closure causes: it reaches nothing.
 
 - **FormBuilder's `run`**, rewritten (2026-11-13); it checks clean, in minutes (tracker P52).
   Its drawing collected handles and closures, and a task's run wrote back into the task holding

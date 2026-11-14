@@ -16,6 +16,10 @@ const lease = [
   '  next: Node? = none',
 ].join('\n');
 
+/** What refuses a plain listener where an inert one is taken. */
+const refusedCapture =
+  /Expected inert (?:ista )?fn\(Int\) -> Unit, found (?:ista )?fn\(Int\) -> Unit/u;
+
 /** `body` as the body of `fn subject`, after the lease declarations and `declarations`. */
 function inSubject(body: string, declarations: readonly string[] = []): string {
   return [
@@ -165,6 +169,50 @@ describe('the lifetime rule', () => {
       '  next: Ring? = none',
     ]);
     expect(findingsIn(source)).toEqual([]);
+  });
+
+  describe('an observer whose listener captures its owner (proposal 14)', () => {
+    /**
+     * An emitter keeping listeners of `listener`, and a model holding `holds` that `wire` wires to
+     * a listener capturing it, `g` and `l`.
+     */
+    const observer = (listener: string, holds = 'tag: Int = 0', body = 'm->count += 1') =>
+      [
+        lease,
+        `shared struct Emitter { listeners: Array<${listener}> = [] }`,
+        `fn on(self: Emitter, f: ${listener}): self->listeners = [...self->listeners, f]`,
+        `shared struct Model { emitter: Emitter, count: Int = 0, ${holds} }`,
+        'ista fn wire(m: Model, g: fn(Int) -> Int, l: Lease):',
+        `  ista fn bump(n: Int): ${body}`,
+        '  m->emitter.on(bump)',
+      ].join('\n');
+
+    it('accepts it where listeners are inert, the cycle reaching no disposable', () => {
+      expect(findingsIn(observer('inert ista fn(Int) -> Unit'))).toEqual([]);
+    });
+
+    it('finds it (5721/5722) where listeners are plain or the model holds a Future', () => {
+      expect(findingsIn(observer('ista fn(Int) -> Unit'))).toEqual(['12:call']);
+      expect(
+        findingsIn(observer('ista fn(Int) -> Unit', 'pending: Future<Int, "ista">? = none')),
+      ).toEqual(['12:call']);
+      const direct = observer('ista fn(Int) -> Unit', 'tag: Int = 0', 'm->count += l->n').replace(
+        'm->emitter.on(bump)',
+        'm->emitter->listeners = [bump]',
+      );
+      expect(findingsIn(direct)).toEqual(['12:write']);
+    });
+
+    it.each([
+      ['the model holds a disposable', 'lease: Lease', 'm->count += 1'],
+      ['the model holds a Future', 'pending: Future<Int, "ista">? = none', 'm->count += 1'],
+      ['the listener captures a plain function', 'tag: Int = 0', 'm->count += g(n)'],
+      ['the listener captures a disposable', 'tag: Int = 0', 'm->count += l->n'],
+    ])('refuses an inert listener when %s', (_title, holds, body) => {
+      expect(() => findingsIn(observer('inert ista fn(Int) -> Unit', holds, body))).toThrow(
+        refusedCapture,
+      );
+    });
   });
 
   it('dispatches a call on an `any` type met by another `any` type without crashing', () => {

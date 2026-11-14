@@ -1,12 +1,15 @@
 /**
  * The two qualifier orders (proposal 8, Rule 4): `Mark`'s, `"simple"` below `"live"` and
- * `"ista"`, which are apart, and `Sendability`'s, `"sendable"` below `"plain"`. They order these two
- * types alone, not their members as subtypes, so fitting and inference read them here wherever a
- * mark or a `Send` is compared: a function type's slots, and a variable standing for one
- * (types/properties/qualifiers.ts), whose bounds agree and join by its order.
+ * `"ista"`, which are apart, and `Sendability`'s chain, `"sendable"` below `"inert"` below
+ * `"plain"`. They order these two types alone, not their members as subtypes, so fitting and
+ * inference read them here wherever a mark or a `Send` is compared: a function type's slots, and a
+ * variable standing for one (types/properties/qualifiers.ts), whose bounds agree and join by its
+ * order.
  *
  * A variable among the compared, a mark parameter fixed around the code (`K`), is a member apart
- * from every other but the bottom, which is below it; `Sendability`'s top is above it.
+ * from every other but the bottom, which is below it; `Sendability`'s top is above it. So a
+ * sendability variable and `"inert"` join only at `"plain"`, no member naming the greater of the
+ * two: conservative, as joining captures needs (traits/sendability.ts).
  */
 
 import { distinctItems } from '../../../../foundation/structures/equality.ts';
@@ -68,7 +71,10 @@ export const markOrder: QualifierOrder = {
   settlesLeast: true,
 };
 
-/** `Sendability`'s order: `"sendable"` below `"plain"`, a variable between them. */
+/**
+ * `Sendability`'s order: `"sendable"` below `"inert"` below `"plain"`, a variable between the ends
+ * and apart from `"inert"`.
+ */
 export const sendabilityOrder: QualifierOrder = {
   bottom: sendable,
   below: (lower, upper, same) =>

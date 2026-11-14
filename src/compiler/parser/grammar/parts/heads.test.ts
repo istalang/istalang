@@ -1,6 +1,7 @@
 /**
  * Heads (§2): a head's modifiers stack in any order, giving the tree their print order gives, in
- * every form; a repeated, conflicting or misplaced one costs one diagnostic naming it.
+ * every form; a repeated, conflicting or misplaced one costs one diagnostic naming it, and one
+ * implying another of its group (`sendable inert`) none, the tree holding the stronger.
  */
 
 import fc from 'fast-check';
@@ -118,10 +119,28 @@ describe('modifiers in any order', () => {
   });
 });
 
+describe('a modifier implying another of its group', () => {
+  it('is what a head writing both means, in either order, with no report', () => {
+    const sendable = dumpClean('type', 'sendable live fn(A)');
+    expect(dumpClean('type', 'sendable inert live fn(A)')).toBe(sendable);
+    expect(dumpClean('type', 'inert live sendable fn(A)')).toBe(sendable);
+  });
+
+  it('leaves the implied word a head of its own, and a name elsewhere', () => {
+    expect(dumpClean('type', 'inert live async fn(A)')).toBe(
+      '(FunctionType inert live async [(NamedType [A] [])] _)',
+    );
+    expect(dumpClean('module', 'fn f(inert: Int) -> Int: inert')).not.toContain('NOT CLEAN');
+  });
+});
+
 describe('a stray modifier', () => {
   it.each([
     ['type', 'async async fn(A)', repeatedModifier, 'async'],
     ['type', 'sendable sendable fn(A)', repeatedModifier, 'sendable'],
+    ['type', 'inert inert fn(A)', repeatedModifier, 'inert'],
+    ['type', 'sendable inert inert fn(A)', repeatedModifier, 'inert'],
+    ['type', 'inert sendable inert fn(A)', repeatedModifier, 'inert'],
     ['type', 'live ista fn(A)', conflictingModifiers, 'ista'],
     ['module', 'extern extern fn f()', repeatedModifier, 'extern'],
     ['module', 'extern shared sendable struct H', conflictingModifiers, 'sendable'],
@@ -137,6 +156,9 @@ describe('a stray modifier', () => {
     ['type', ['async', 'shared'], 'fn(A)', misplacedModifier],
     ['type', ['sendable', 'extern'], 'fn(A)', misplacedModifier],
     ['expression', ['async', 'sendable'], 'fn(x): x', misplacedModifier],
+    ['expression', ['inert'], 'fn(x): x', misplacedModifier],
+    ['module', ['inert'], 'fn f(): 1', misplacedModifier],
+    ['module', ['extern', 'inert'], 'struct H', misplacedModifier],
     ['expression', ['async', 'extern'], 'fn(x): x', misplacedModifier],
     ['module', ['async', 'sendable'], 'fn f(): 1', misplacedModifier],
     ['module', ['extern', 'sendable'], 'fn f()', misplacedModifier],

@@ -121,6 +121,7 @@ const contextualWords = [
   'type',
   'from',
   'sendable',
+  'inert',
   'shared',
   'live',
   'ista',

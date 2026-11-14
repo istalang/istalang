@@ -71,6 +71,8 @@ export const wellKnown = {
   time: { module: 'time', name: 'Time' },
   /** The marker trait of values that may leave an instance, derived rather than declared (§3.1). */
   sendable: { module: 'prelude', name: 'Sendable' },
+  /** The marker trait of values reaching no disposable at any depth, derived like Sendable (§3.10). */
+  inert: { module: 'prelude', name: 'Inert' },
   /** The derived trait of types whose kind is one of its argument's marks (proposal 8, Rule 3). */
   dataKind: { module: 'prelude', name: 'DataKind' },
   /** What an array literal or a comprehension builds (§2, §3.10). */
@@ -146,9 +148,9 @@ export type Mark = (typeof marks)[number];
 
 /**
  * What a function's values may capture (§3.14), the members of the prelude's `Sendability`: only
- * sendable values, or any (`plain`).
+ * sendable values, only inert ones (reaching no disposable), or any (`plain`).
  */
-export const sendabilities = ['sendable', 'plain'] as const;
+export const sendabilities = ['sendable', 'inert', 'plain'] as const;
 
 export type Sendability = (typeof sendabilities)[number];
 

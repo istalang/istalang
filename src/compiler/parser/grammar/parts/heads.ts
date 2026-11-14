@@ -11,7 +11,8 @@
  *   still reaches its construct, past the word tables, so its head reports the stray word as it
  *   does in any other order.
  * - Reading a head keeps the first of two words of a group and reports the second, and reports a
- *   word the head's form doesn't take. The head is read whole either way, so one stray modifier
+ *   word the head's form doesn't take. Where one of the two implies the other (`sendable inert`),
+ *   it keeps that one and reports nothing, so the tree holds what the head means. The head is read whole either way, so one stray modifier
  *   costs one diagnostic.
  * - A declared function's head may name its mark instead of writing `live` or `ista` (proposal 8,
  *   Rule 3): a mark parameter, `M fn`, or a path to one, `Self.Mode fn`, standing among its
@@ -27,6 +28,7 @@ import {
   type ModifierGroup,
   type Modifiers,
   type ModifierWord,
+  strongerOf,
 } from '../../../syntax/tokens/modifiers.ts';
 import type { Identifier } from '../../../syntax/tree/node.ts';
 import { type NamedType, namedTypeText } from '../../../syntax/types/index.ts';
@@ -95,9 +97,13 @@ export function parseFunctionHead(
   return readHead(parser, form, true);
 }
 
-/** A head as read so far: its modifiers by group, and the mark it names. */
+/**
+ * A head as read so far: its modifiers by group, the mark it names, and every word it wrote, which
+ * a group's word may stand for more than one of (`sendable` for `sendable inert`).
+ */
 interface HeadRead {
   readonly modifiers: Partial<Record<ModifierGroup, ModifierWord>>;
+  readonly written: Set<ModifierWord>;
   mark: NamedType | undefined;
 }
 
@@ -106,7 +112,7 @@ function readHead(
   form: HeadForm,
   withMark: boolean,
 ): { readonly modifiers: Modifiers; readonly mark: NamedType | undefined } {
-  const head: HeadRead = { modifiers: {}, mark: undefined };
+  const head: HeadRead = { modifiers: {}, written: new Set(), mark: undefined };
   for (;;) {
     const word = modifierAt(parser, 0);
     if (word !== undefined) {
@@ -124,20 +130,30 @@ function readHead(
 
 /** The modifier `word` at the cursor, kept in `head` unless it repeats or conflicts. */
 function readModifier(parser: Parser, form: HeadForm, word: ModifierWord, head: HeadRead): void {
-  const { modifiers, mark } = head;
+  const { modifiers, written, mark } = head;
   const { span } = parser.cursor.advance();
   const group = groupIn(form, word);
-  const held = group === undefined ? undefined : modifiers[group];
   if (group === undefined) {
     parser.report(parserDiagnostics.misplacedModifier(span, word, form.name));
-  } else if (held === word) {
+    return;
+  }
+  if (written.has(word)) {
     parser.report(parserDiagnostics.repeatedModifier(span, word));
-  } else if (group === 'kind' && mark !== undefined) {
+    return;
+  }
+  written.add(word);
+  const held = modifiers[group];
+  if (group === 'kind' && mark !== undefined) {
     parser.report(parserDiagnostics.conflictingModifiers(span, word, namedTypeText(mark)));
   } else if (held === undefined) {
     modifiers[group] = word;
   } else {
-    parser.report(parserDiagnostics.conflictingModifiers(span, word, held));
+    const meant = strongerOf(held, word);
+    if (meant === undefined) {
+      parser.report(parserDiagnostics.conflictingModifiers(span, word, held));
+    } else {
+      modifiers[group] = meant;
+    }
   }
 }
 

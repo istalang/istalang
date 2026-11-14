@@ -191,7 +191,7 @@ export interface FunctionType extends WrittenThrough {
    * or `"ista"`, or a variable. A simple one fits where either kind is expected (`kindAdmits`).
    */
   readonly mark: Type;
-  /** `Fn`'s `Send` (§3.14): `"sendable"` or `"plain"`, or a variable, ordered by `sendFits`. */
+  /** `Fn`'s `Send` (§3.14): a `Sendability` member or a variable, ordered by `sendFits`. */
   readonly send: Type;
   readonly parameters: readonly ParameterSlot[];
   readonly pack?: PackType | undefined;

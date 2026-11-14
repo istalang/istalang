@@ -157,7 +157,10 @@ A type **reaches a disposable** when:
 - it is a plain function type or a call future. Both hold what they capture or run, which types
   don't show, so that counts as anything (§5.6).
 
-A sendable function type reaches nothing. Relevance is memoized per type.
+A sendable or inert function type reaches nothing: it captures only inert values, which reach no
+disposable (proposal 14). A type reaches none exactly when it is `Inert`: relevance and the trait
+read one level per held part (`types/traits/sendability.ts`), so they can't disagree. Relevance is
+memoized per type.
 
 - A write whose holder's type reaches no disposable is skipped. Most bodies have none, and their
   summary is trivial.
@@ -359,7 +362,9 @@ A plain function value may hold anything in the declaration graph, so a write af
 that involves an escaped plain function is often reported. Refining "anything" into what closures
 of a fitting type actually capture was planned as C4 and is not built (decided 2026-11-12): the
 rule stays conservative, and a program it over-rejects has a workaround (`findings.md`, Accepted
-over-rejections). FormBuilder's `run`, which awaits closures its drawing collected, is one: it
+over-rejections). The declared answer is an inert function type (proposal 14): a library keeping
+callbacks in handles types them `inert fn`, whose values capture only inert values, checked where
+the closure is made, so they reach nothing and close no cycle the rule cares about. FormBuilder's `run`, which awaits closures its drawing collected, is one: it
 stays `it.fails` until its rewrite.
 
 ### 5.7 Fields: paths, no labels

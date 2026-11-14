@@ -103,6 +103,16 @@ describe('hover', () => {
     expect(hover(...local, '  nex‸t()')?.doc).toBe('One more.');
   });
 
+  it('shows an inferred inert closure as `inert fn`', () => {
+    const inertClosure = [
+      'shared struct Counter { count: Int = 0 }',
+      'fn f(c: Counter) -> Int:',
+      '  const bu‸mp = fn(n: Int): c->count + n',
+      '  bump(1)',
+    ];
+    expect(hover(...inertClosure)?.code).toEqual(['(variable) bump: inert fn(Int) -> Int']);
+  });
+
   it('shows an async function as declared', () => {
     expect(hover('ista async fn lat‸er() -> Int: 1')?.code).toEqual([
       'ista async fn later() -> Int',

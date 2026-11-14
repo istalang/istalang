@@ -42,8 +42,8 @@ interface ParenthesizedType extends NodeOf<'ParenthesizedType'> {
 }
 
 /**
- * `fn(A) -> R` or `async fn(A)`, either maybe `sendable` (§3.14); an absent return type means
- * unit.
+ * `fn(A) -> R` or `async fn(A)`, either maybe `sendable` or `inert` (§3.14); an absent return type
+ * means unit.
  */
 export interface FunctionType extends NodeOf<'FunctionType'> {
   readonly qualifiers: FunctionQualifiers;

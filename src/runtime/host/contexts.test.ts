@@ -66,7 +66,9 @@ describe('a context', () => {
       '  _ = rt.call("o/1") opened(rt)',
       '  1',
     );
-    expect(reported(unsendableArg).codes).toContain(checkerDiagnostics.unsendableCapture.code);
+    expect(reported(unsendableArg).codes).toContain(
+      checkerDiagnostics.captureBeyondSendability.code,
+    );
 
     const unsendableResult = lines(
       ...header,

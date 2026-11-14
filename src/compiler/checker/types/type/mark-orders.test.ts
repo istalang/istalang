@@ -20,7 +20,11 @@ const variable: Type = {
 
 const orders: readonly (readonly [string, QualifierOrder, readonly Type[]])[] = [
   ['Mark', markOrder, [markType('simple'), markType('live'), markType('ista'), variable]],
-  ['Sendability', sendabilityOrder, [sendType('sendable'), sendType('plain'), variable]],
+  [
+    'Sendability',
+    sendabilityOrder,
+    [sendType('sendable'), sendType('inert'), sendType('plain'), variable],
+  ],
 ];
 
 const implies = (premise: boolean, conclusion: boolean) => !premise || conclusion;

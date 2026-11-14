@@ -104,7 +104,8 @@ so it is inert itself, and writes into inert values close no cycle the rule care
   reach a disposable; an inert function captures only inert values". Converting into an `any` type
   bounded by `Inert` checks the value the same way.
 - **Orthogonal to marks.** `inert` concerns what a function captures, not what kind of code it
-  is. Every kinded value is disposable or holds one, so an inert function never captures one.
+  is, which the data rule checks on its own: an inert function may capture a value of a kind that
+  reaches no disposable, such as an `extern live struct` declaring no `dispose`, never a future.
 
 ## Lifetimes
 
