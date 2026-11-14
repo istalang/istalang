@@ -10,8 +10,7 @@ const person = `struct Person:
   first: String
   last: String
 
-@Getter
-fn full(self: Person) -> String: \`\${self.first} \${self.last}\``;
+fn get full(self: Person) -> String: \`\${self.first} \${self.last}\``;
 
 const ada = 'Person{first: "Ada", last: "Lovelace"}';
 
@@ -33,7 +32,7 @@ describe('reading a getter (§3.1)', () => {
   });
 
   it('chains through getters and optional chains', async () => {
-    const declarations = `${person}\n\nstruct Team:\n  lead: Person?\n\n@Getter\nfn leader(self: Team) -> Person?: self.lead`;
+    const declarations = `${person}\n\nstruct Team:\n  lead: Person?\n\nfn get leader(self: Team) -> Person?: self.lead`;
     const body = `const empty = Team{lead: none}\nconst fullTeam = Team{lead: ${ada}}\n[empty.leader?.full ?? "none", fullTeam.leader?.full ?? "none"]`;
     expect(await mainGives('Array<String>', body, declarations)).toEqual(['none', 'Ada Lovelace']);
   });
@@ -41,17 +40,13 @@ describe('reading a getter (§3.1)', () => {
   it('reads on primitives, enums, tuples and shapes', async () => {
     const declarations = [
       'enum Bit { Zero, One }',
-      '@Getter',
-      'fn doubled(self: Int) -> Int: self * 2',
-      '@Getter',
-      'fn flipped(self: Bit) -> Int:',
+      'fn get doubled(self: Int) -> Int: self * 2',
+      'fn get flipped(self: Bit) -> Int:',
       '  match self:',
       '    case Zero: 1',
       '    case One: 0',
-      '@Getter',
-      'fn swapped(self: (Int, Int)) -> Int: self.1 * 10 + self.0',
-      '@Getter',
-      'fn area(self: { w: Int, h: Int }) -> Int: self.w * self.h',
+      'fn get swapped(self: (Int, Int)) -> Int: self.1 * 10 + self.0',
+      'fn get area(self: { w: Int, h: Int }) -> Int: self.w * self.h',
     ].join('\n');
     const body = '[(7).doubled, Bit.Zero.flipped, (3, 4).swapped, struct{w: 5, h: 6}.area]';
     expect(await mainGives('Array<Int>', body, declarations)).toEqual([14, 1, 43, 30]);
@@ -64,7 +59,7 @@ describe('reading a getter (§3.1)', () => {
 
   it("reads with '.' on a shared struct's handle, as its methods are called", async () => {
     const lease =
-      'shared struct Lease:\n  renewals: Int = 0\n\n@Getter\nfn twice(self: Lease) -> Int: self->renewals * 2';
+      'shared struct Lease:\n  renewals: Int = 0\n\nfn get twice(self: Lease) -> Int: self->renewals * 2';
     const body = 'const l = new Lease{}\nl->renewals = 3\nl.twice';
     expect(await mainGives('Int', body, lease)).toBe(6);
   });
@@ -74,13 +69,11 @@ describe('reading a getter (§3.1)', () => {
       'struct A { n: Int }',
       'struct B { m: Int }',
       'struct Pixel { y: Int, x: Int }',
-      '@Getter',
-      'fn tag(self: A | B) -> Int:',
+      'fn get tag(self: A | B) -> Int:',
       '  match self:',
       '    case A{n}: n',
       '    case B{m}: m',
-      '@Getter',
-      'fn xCoord(self: { x: Int, y: Int }) -> Int: self.x',
+      'fn get xCoord(self: { x: Int, y: Int }) -> Int: self.x',
     ].join('\n');
     expect(
       await mainGives('Array<Int>', '[A{n: 7}.tag, Pixel{y: 10, x: 3}.xCoord]', tagged),
@@ -88,7 +81,7 @@ describe('reading a getter (§3.1)', () => {
   });
 
   it('takes type arguments its receiver leaves open from the type expected of it', async () => {
-    const box = 'struct Box:\n  n: Int\n\n@Getter\nfn empty<T>(self: Box) -> Array<T>: []';
+    const box = 'struct Box:\n  n: Int\n\nfn get empty<T>(self: Box) -> Array<T>: []';
     expect(await mainGives('Array<Int>', 'const e: Array<Int> = Box{n: 1}.empty\ne', box)).toEqual(
       [],
     );
@@ -96,15 +89,14 @@ describe('reading a getter (§3.1)', () => {
 
   it('takes its type arguments from its receiver', async () => {
     const box =
-      'struct Box<T>:\n  items: Array<T>\n\n@Getter\nfn first<T>(self: Box<T>) -> T?: self.items.at(0)';
+      'struct Box<T>:\n  items: Array<T>\n\nfn get first<T>(self: Box<T>) -> T?: self.items.at(0)';
     expect(await mainGives('Int?', 'Box{items: [4, 5]}.first', box)).toBe(4);
   });
 
   it('is found like a method, declared beside an imported type or in the importing module', async () => {
     const main = [
       "import Person from './people'",
-      '@Getter',
-      'fn initials(self: Person) -> String: `${self.first.at(0) ?? ""}${self.last.at(0) ?? ""}`',
+      'fn get initials(self: Person) -> String: `${self.first.at(0) ?? ""}${self.last.at(0) ?? ""}`',
       'live async fn main() -> Array<String>:',
       '  const p = Person{first: "Ada", last: "Lovelace"}',
       '  [p.full, p.initials]',
@@ -125,10 +117,8 @@ describe('reading a getter (§3.1)', () => {
       'struct Adder:',
       '  n: Int',
       '  log: Log',
-      '@Getter',
-      'fn add(self: Adder) -> fn(Int) -> Int: fn(x): x + self.n',
-      '@Getter',
-      'fn record(self: Adder) -> fn(Int) -> Unit:',
+      'fn get add(self: Adder) -> fn(Int) -> Int: fn(x): x + self.n',
+      'fn get record(self: Adder) -> fn(Int) -> Unit:',
       '  const log = self.log',
       '  const n = self.n',
       '  fn(x): {',
@@ -179,7 +169,7 @@ describe('a getter is never stored', () => {
     ]);
   });
 
-  it('meets neither a struct constraint nor a trait field requirement', () => {
+  it("meets no struct constraint, while it meets a trait's field requirement (§3.10)", () => {
     const declarations = [
       person,
       'trait HasFull:',
@@ -189,7 +179,6 @@ describe('a getter is never stored', () => {
     ].join('\n');
     expect(reportedIn(declarations, `_ = named(${ada})\n_ = titled(${ada})`).codes).toEqual([
       checkerDiagnostics.unmetStructConstraint.code,
-      checkerDiagnostics.notConforming.code,
     ]);
   });
 
@@ -205,8 +194,7 @@ describe('a getter is never stored', () => {
     const declarations = [
       person,
       'struct Box { count: Int }',
-      '@Getter',
-      'fn boxed(self: Person) -> Box: Box{count: 1}',
+      'fn get boxed(self: Person) -> Box: Box{count: 1}',
       'fn change(s: &String): s = "D"',
       'fn changeInt(n: &Int): n = 2',
     ].join('\n');
@@ -234,33 +222,19 @@ describe('a getter is never stored', () => {
   });
 });
 
-describe('what @Getter asks of its function', () => {
+describe("what a getter's declaration asks of it", () => {
   it('takes only self, by value, and is not async', () => {
     const shapes = [
-      'fn a(self: P, m: Int) -> Int: m',
-      'fn b(self: &P) -> Int: self.n',
-      'ista async fn c(self: P) -> Int: self.n',
-      'fn d() -> Int: 1',
-      'fn e(...self: Array<P>) -> Int: self.length()',
+      'fn get a(self: P, m: Int) -> Int: m',
+      'fn get b(self: &P) -> Int: self.n',
+      'ista async fn get c(self: P) -> Int: self.n',
+      'fn get d() -> Int: 1',
+      'fn get e(...self: Array<P>) -> Int: self.length()',
     ];
-    const declarations = ['struct P:\n  n: Int', ...shapes.map((shape) => `@Getter\n${shape}`)];
-    expect(reported(declarations.join('\n\n'))).toEqual({
+    expect(reported(['struct P:\n  n: Int', ...shapes].join('\n\n'))).toEqual({
       codes: shapes.map(() => checkerDiagnostics.getterShape.code),
       spanTexts: ['a', 'b', 'c', 'd', 'e'],
     });
-  });
-
-  it("is a module's own function: never a trait's requirement, a local function or a struct", () => {
-    const declarations = [
-      'trait Named:\n  @Getter\n  fn name(self: Self) -> String',
-      '@Getter\nstruct S:\n  n: Int',
-      'fn f() -> Int:\n  @Getter\n  fn local() -> Int: 1\n  local()',
-    ];
-    expect(reported(declarations.join('\n\n')).codes).toEqual([
-      checkerDiagnostics.misplacedAnnotation.code,
-      checkerDiagnostics.misplacedAnnotation.code,
-      checkerDiagnostics.misplacedAnnotation.code,
-    ]);
   });
 });
 
@@ -274,7 +248,7 @@ describe('one meaning per name', () => {
   });
 
   it('reports a field and a getter of one name where a use finds both', () => {
-    const declarations = `struct P:\n  tag: String\n\n@Getter\nfn tag<T>(self: T) -> String: "x"`;
+    const declarations = `struct P:\n  tag: String\n\nfn get tag<T>(self: T) -> String: "x"`;
     expect(reportedIn(declarations, '_ = P{tag: "a"}.tag')).toEqual({
       codes: [checkerDiagnostics.fieldOrGetter.code],
       spanTexts: ['tag'],
@@ -284,12 +258,12 @@ describe('one meaning per name', () => {
   it("leaves other types' members of the name alone", async () => {
     const declarations = [
       'struct Box:\n  items: Array<Int>',
-      '@Getter\nfn length(self: Box) -> Int: self.items.length()',
+      'fn get length(self: Box) -> Int: self.items.length()',
       'struct Glass:\n  water: Int',
       'fn full(self: Glass) -> Bool: self.water >= 100',
-      '@Getter\nfn full(self: Box) -> Bool: self.items.length() > 1',
+      'fn get full(self: Box) -> Bool: self.items.length() > 1',
       'struct Mapper:\n  factor: Int',
-      '@Getter\nfn map(self: Mapper) -> fn(Int) -> Int: fn(x): x * self.factor',
+      'fn get map(self: Mapper) -> fn(Int) -> Int: fn(x): x * self.factor',
     ];
     const body =
       'const box = Box{items: [1, 2]}\n[box.length, if Glass{water: 100}.full(): 1 else: 0, Mapper{factor: 3}.map(4)]';
@@ -302,7 +276,7 @@ describe('a getter is a call to every rule of calls', () => {
     const declarations = [
       "import Suite, Test, test from 'testing'",
       'shared struct Lease:\n  n: Int',
-      '@Getter\nfn lease(self: Int) -> Lease: new Lease{n: self}',
+      'fn get lease(self: Int) -> Lease: new Lease{n: self}',
       'ista async fn passes(): ()',
       '@Suite{"s"}\nfn tests() -> Array<Test>:\n  _ = 1.lease\n  [test("a", passes)]',
     ];
@@ -313,11 +287,12 @@ describe('a getter is a call to every rule of calls', () => {
     });
   });
 
-  it("is never the runtime's dispose", () => {
-    const declarations = 'shared struct Lease:\n  n: Int\n\n@Getter\nfn dispose(self: Lease): ()';
-    expect(reportedIn(declarations, 'const l = new Lease{n: 1}\n_ = l.dispose').codes).toEqual([
-      checkerDiagnostics.disposeCall.code,
-    ]);
+  it("is never the runtime's dispose, declared or read", () => {
+    const declarations = 'shared struct Lease:\n  n: Int\n\nfn get dispose(self: Lease): ()';
+    expect(reportedIn(declarations, 'const l = new Lease{n: 1}\n_ = l.dispose')).toEqual({
+      codes: [checkerDiagnostics.disposeGetter.code, checkerDiagnostics.disposeCall.code],
+      spanTexts: ['dispose', 'l.dispose'],
+    });
   });
 });
 
@@ -326,10 +301,8 @@ describe('a getter obeys the data rule (proposal 8)', () => {
     const declarations = [
       'struct P:',
       '  n: Int',
-      '@Getter',
-      'ista fn now(self: P) -> Int: self.n + 1',
-      '@Getter',
-      'ista fn slot(self: P) -> Slot<Int>: Slot.create()',
+      'ista fn get now(self: P) -> Int: self.n + 1',
+      'ista fn get slot(self: P) -> Slot<Int>: Slot.create()',
     ].join('\n');
     expect(reportedIn(declarations, '_ = P{n: 1}.now')).toEqual({
       codes: [checkerDiagnostics.unmarkedCalls.code],

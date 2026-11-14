@@ -9,6 +9,17 @@
 
 import { defineDiagnostics } from '../../foundation/diagnostics/catalog.ts';
 
+/** A function `get` can't make a getter (§3.1): a trait's requirement, an extern or a static. */
+export type MisplacedGetter = 'requirement' | 'extern' | 'static';
+
+const misplacedGetterTexts: Record<MisplacedGetter, string> = {
+  requirement:
+    "A trait requires a field, which a getter meets, never a getter: write 'name: Type' (§3.10).",
+  extern: "A getter's code is its own, read as a field: an extern function is never one (§3.1).",
+  static:
+    "A getter is read on a value, as a method: a static function is never one; write 'fn get name(self: T)' (§3.1).",
+};
+
 export const parserDiagnostics = defineDiagnostics('parser', {
   expected: {
     code: 2001,
@@ -264,6 +275,10 @@ export const parserDiagnostics = defineDiagnostics('parser', {
     code: 2080,
     message: (word: string) =>
       `Only 'ista' comes before a top-level 'const', not '${word}': 'ista const' holds one value per context (proposal 9).`,
+  },
+  misplacedGetter: {
+    code: 2081,
+    message: (function_: MisplacedGetter) => misplacedGetterTexts[function_],
   },
   positionalAfterNamed: {
     code: 2050,

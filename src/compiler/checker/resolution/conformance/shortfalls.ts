@@ -1,14 +1,13 @@
 /**
- * What a type lacks to meet a constraint beyond its functions, in words a diagnostic finishes ("it
- * needs …"): the fields and associated types a trait requires (§3.10), and the entries of a struct
- * constraint (§3.5). Each judgment is pure; whether a type meets a trait and which goals are active
- * on the search stack is the caller's to say (`Meets`, conformance.ts), so these rules sit beside
- * conformance without a cycle.
+ * What a type lacks to meet a constraint beyond its functions and fields, in words a diagnostic
+ * finishes ("it needs …"): the associated types a trait requires (§3.10), and the entries of a
+ * struct constraint (§3.5). Each judgment is pure; whether a type meets a trait and which goals
+ * are active on the search stack is the caller's to say (`Meets`, conformance.ts), so these rules
+ * sit beside conformance without a cycle.
  *
- * - A required field is met by a struct field of the same name and type, or through a constraint
- *   requiring it too. A required associated type is met by the type's own (§3.1), which meets the
- *   bound; a union or an `any` type has none, so it meets such a trait only for calls on its values
- *   (conformance.ts `callWitnessesFor`).
+ * - A required associated type is met by the type's own (§3.1), which meets the bound; a union or
+ *   an `any` type has none, so it meets such a trait only for calls on its values (conformance.ts
+ *   `callWitnessesFor`).
  * - Only a struct type meets a struct constraint: a struct declaration, not a shared or extern
  *   one, or a shape. Each named entry needs its field, of exactly its type or meeting its
  *   constraints; the others' entry holds for every field the constraint doesn't name. A concrete
@@ -29,14 +28,8 @@ import {
   substitute,
   substituteConstraint,
 } from '../../types/parts/substitution.ts';
-import {
-  constraintSubstitution,
-  requiredAssociatedTypes,
-  requiredFields,
-  requiredFieldType,
-} from '../../types/traits/constraints.ts';
+import { constraintSubstitution, requiredAssociatedTypes } from '../../types/traits/constraints.ts';
 import { rulesImply, structConstraintsOn } from '../../types/traits/known-constraints.ts';
-import { fieldOf } from '../../types/traits/known-fields.ts';
 import { isStructType } from '../../types/traits/struct-keys.ts';
 import { isOpaque, unfolded } from '../../types/type/computed-types.ts';
 import type { Constraint, Type } from '../../types/type/index.ts';
@@ -71,22 +64,6 @@ export interface Meets {
    * so.
    */
   readonly reportEndless: () => boolean;
-}
-
-/** The first field `constraint`'s trait requires that `type` lacks, said as it lacks it. */
-export function fieldShortfall(
-  checker: CheckerContext,
-  type: Type,
-  constraint: Constraint,
-): string | undefined {
-  for (const field of requiredFields(constraint.trait)) {
-    const fieldType = requiredFieldType(checker, constraint, field, type);
-    const found = fieldOf(checker, type, field.name.text);
-    if (found === undefined || !sameType(found.member.type, fieldType)) {
-      return `a field '${field.name.text}: ${typeText(fieldType)}'`;
-    }
-  }
-  return undefined;
 }
 
 /**

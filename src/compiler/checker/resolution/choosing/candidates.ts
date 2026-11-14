@@ -18,8 +18,9 @@
  * shape has no module (§3.13), so argument-dependent lookup finds nothing for it, and its static
  * functions are those the caller sees (§3.17).
  *
- * A witness of a trait's requirement (§3.10) is chosen among the functions declared beside the
- * types it takes, which argument-dependent lookup finds, or beside the trait, never among what the
+ * A witness of a trait's requirement (§3.10), and a getter meeting a field it requires, is chosen
+ * among the functions declared beside the types it takes, which argument-dependent lookup finds,
+ * or beside the trait, never among what the
  * use site sees, so a type meets a trait with the same functions in every module that uses it: the
  * coherence Rust's orphan rule gives. A module declaring a trait declares its functions for types
  * whose modules can't, such as primitives, and no caller has to import them.
@@ -213,16 +214,11 @@ export interface ReceiverMembers {
 }
 
 /** The methods and the getters among `candidates`; a function without `self` is neither. */
-export function receiverMembers(
-  checker: Pick<CheckerContext, 'annotations'>,
-  candidates: readonly Candidate[],
-): ReceiverMembers {
+export function receiverMembers(candidates: readonly Candidate[]): ReceiverMembers {
   const reached = candidates.filter(({ declaration }) => isMethod(declaration));
-  const isGetter = ({ declaration }: Candidate) =>
-    checker.annotations.getterOf(declaration) !== undefined;
   return {
-    methods: reached.filter((candidate) => !isGetter(candidate)),
-    getters: reached.filter(isGetter),
+    methods: reached.filter(({ declaration }) => !declaration.isGetter),
+    getters: reached.filter(({ declaration }) => declaration.isGetter),
   };
 }
 
@@ -273,14 +269,37 @@ export function witnessCandidates(
   const name = required.name.text;
   const home = checker.moduleOf(required);
   if (required.owner === undefined) {
-    const exported = exportedFunctions(checker, home, { kind: 'named', name });
-    return callCandidates(checker, exported, name, parameterTypes);
+    return besideTypesOrTrait(checker, home, name, parameterTypes);
   }
   const target = staticTargetOf(checker, type);
   const declaring = parameterTypes.flatMap((each) => declaringModule(checker, each) ?? []);
   return target === undefined
     ? []
     : staticCandidatesIn(checker, [home, ...declaring], target, { kind: 'named', name });
+}
+
+/**
+ * The candidates of a getter meeting the field `name` `trait` requires, for `type` (§3.10): the
+ * getters declared beside `type` or the trait, as a witness's are.
+ */
+export function fieldGetterCandidates(
+  checker: CheckerContext,
+  type: Type,
+  { trait, name }: { readonly trait: TraitDeclaration; readonly name: string },
+): readonly Candidate[] {
+  return receiverMembers(besideTypesOrTrait(checker, checker.moduleOf(trait), name, [type]))
+    .getters;
+}
+
+/** The functions `name` declared in `home`, a trait's module, or beside `parameterTypes`. */
+function besideTypesOrTrait(
+  checker: CheckerContext,
+  home: ModuleId,
+  name: string,
+  parameterTypes: readonly Type[],
+): readonly Candidate[] {
+  const exported = exportedFunctions(checker, home, { kind: 'named', name });
+  return callCandidates(checker, exported, name, parameterTypes);
 }
 
 /** The candidates of every static call through `type`, seen from `module`, whatever its name. */

@@ -86,13 +86,14 @@
           }
         },
         {
-          "comment": "Only `fn name(` and `fn name<` declare: `fn x: x > 0` is a lambda.",
-          "match": "\\b(fn)\\s+(?:([A-Za-z_][A-Za-z0-9_]*)(\\.))?([A-Za-z_][A-Za-z0-9_]*)(?=\\s*[(<])",
+          "comment": "Only `fn name(` and `fn name<` declare: `fn x: x > 0` is a lambda. `get` before a name makes a getter (spec §3.1): `fn get(` names a function `get`.",
+          "match": "\\b(fn)\\s+(?:(get)\\s+(?=[A-Za-z_]))?(?:([A-Za-z_][A-Za-z0-9_]*)(\\.))?([A-Za-z_][A-Za-z0-9_]*)(?=\\s*[(<])",
           "captures": {
             "1": { "name": "storage.type.function.ista" },
-            "2": { "name": "entity.name.type.ista" },
-            "3": { "name": "punctuation.accessor.ista" },
-            "4": { "name": "entity.name.function.ista" }
+            "2": { "name": "storage.modifier.ista" },
+            "3": { "name": "entity.name.type.ista" },
+            "4": { "name": "punctuation.accessor.ista" },
+            "5": { "name": "entity.name.function.ista" }
           }
         }
       ]

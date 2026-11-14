@@ -18,12 +18,7 @@ import type {
   FieldPass,
   IterationForm,
 } from '../../../surface/checked-body.ts';
-import {
-  type FieldRead,
-  keyedFieldRead,
-  namedFieldRead,
-  requiredFieldRead,
-} from '../../../surface/checked-field.ts';
+import { type FieldRead, keyedFieldRead, namedFieldRead } from '../../../surface/checked-field.ts';
 import type {
   CheckedPattern,
   PartStep,
@@ -38,6 +33,7 @@ import {
   type Substitution,
   substitute,
   substituteAny,
+  substituteConstraint,
   substituteKept,
 } from '../../../types/parts/substitution.ts';
 import { keyName } from '../../../types/traits/struct-keys.ts';
@@ -89,7 +85,7 @@ export function instantiationBy(
     concrete,
     fit: (fit) => substitutedFit(fit, substitution, rules),
     field: (field) => ({ ...field, type: concrete(field.type) }),
-    fieldRead: (read) => instantiatedRead(checker, read, concrete),
+    fieldRead: (read) => instantiatedRead(checker, read, { concrete, substitution }),
     target: (binding) => instantiatedTarget(binding, substitution, rules),
     assigned: (part) => instantiatedPart(part, substitution, rules),
     function: (checked) => instantiatedFunction(checked, substitution, rules),
@@ -379,18 +375,26 @@ function substitutedConversion(
   }
 }
 
-/** `read` as an instantiation reaches it, each type it reads through made `concrete`. */
+/**
+ * `read` as an instantiation reaches it, each type it reads through made `concrete`, a required
+ * field's constraint substituted alike.
+ */
 function instantiatedRead(
-  checker: Pick<Checker, 'fieldsOf'>,
+  checker: Pick<Checker, 'fieldsOf' | 'typeRules'>,
   read: FieldRead,
-  concrete: (type: Type) => Type,
+  { concrete, substitution }: Pick<Instantiation, 'concrete' | 'substitution'>,
 ): FieldRead {
   switch (read.kind) {
     case 'position':
       return { ...read, on: concrete(read.on) };
-    case 'dispatch':
-    case 'required':
-      return requiredFieldRead(checker, concrete(read.on), read.required);
+    case 'required': {
+      const constraint = substituteConstraint(
+        read.required.constraint,
+        substitution,
+        checker.typeRules,
+      );
+      return { ...read, on: concrete(read.on), required: { ...read.required, constraint } };
+    }
     case 'named':
       return namedFieldRead(checker, concrete(read.on), read.name);
     case 'keyed':

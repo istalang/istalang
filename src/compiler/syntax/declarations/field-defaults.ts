@@ -126,6 +126,7 @@ export function fieldsFunctionOf(
           span: owner.span,
           annotations: [],
           isExtern: false,
+          isGetter: false,
           qualifiers: unqualified,
           mark: undefined,
           owner: undefined,

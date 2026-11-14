@@ -228,6 +228,33 @@ describe('externs and functions', () => {
   });
 });
 
+describe('getters (§3.1)', () => {
+  it.each([
+    ['fn get full(self: P) -> Int: 1', '(FunctionDeclaration isGetter _ full '],
+    ['fn get get(self: P) -> Int: 1', '(FunctionDeclaration isGetter _ get '],
+    ['live fn get full<T>(self: P<T>) -> T: self.t', '(FunctionDeclaration isGetter live _ full '],
+    ['fn get(self: P) -> Int: 1', '(FunctionDeclaration _ get '],
+    ['fn get<T>(self: P<T>) -> T: self.t', '(FunctionDeclaration _ get '],
+    ['fn get.zero() -> get: get{}', '(FunctionDeclaration get zero '],
+    ['fn f():\n  const g = fn get: get > 0', '(Lambda _ [(Parameter get '],
+  ])('reads %s', (text, tree) => {
+    expect(dumpClean('module', text)).toContain(tree);
+  });
+
+  it.each([
+    ['trait T:\n  fn get size(self: Self) -> Int', parserDiagnostics.misplacedGetter, 'get'],
+    ['extern fn get size(self: Int) -> Int', parserDiagnostics.misplacedGetter, 'get'],
+    ['fn get Box.size(self: Box) -> Int: 1', parserDiagnostics.misplacedGetter, 'get'],
+    [
+      'fn f():\n  fn get g(self: Int) -> Int: 1',
+      parserDiagnostics.declarationInBlock,
+      'fn get g(self: Int) -> Int: 1',
+    ],
+  ])('reports a getter in %s once', (text, diagnostic, spanText) => {
+    expect(reported('module', text)).toEqual(reportedOnce(diagnostic.code, spanText));
+  });
+});
+
 describe('member type parameters (§3.5)', () => {
   it.each([
     ['fn describe<S in Status>(s: S): s', `[(TypeParameter _ S ${named('Status')} [] _)]`],

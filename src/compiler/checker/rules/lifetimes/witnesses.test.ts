@@ -240,3 +240,44 @@ describe('parts and handles related soundly', () => {
     expect(findingsIn(source)).not.toEqual([]);
   });
 });
+
+describe("a getter meeting a trait's field (§3.10), read where nobody names it", () => {
+  /**
+   * A pair whose generic `stored` getter writes its item into its box, which holds a lease: a cycle
+   * when run on a pair of a node holding that box, and none for other items.
+   */
+  const storing = [
+    'shared struct Box<T>:',
+    '  lease: Lease',
+    '  value: T? = none',
+    'shared struct Node:',
+    '  box: Box<Node>',
+    'struct Pair<T>:',
+    '  box: Box<T>',
+    '  item: T',
+    'trait Stores:',
+    '  stored: Int',
+    'fn get stored<T>(self: Pair<T>) -> Int:',
+    '  self.box->value = self.item',
+    '  1',
+    'fn readStored<P is Stores>(p: P) -> Int: p.stored',
+    'ista fn subject():',
+    '  const b = new Box<Node>{lease: new Lease{n: 1}}',
+    '  const p = Pair{box: b, item: new Node{box: b}}',
+  ];
+
+  it.each([
+    ['generic code', ['  _ = readStored(p)']],
+    ['an any value', ['  const s: any Stores = p', '  _ = s.stored']],
+  ])('is found where its value reaches %s', (_title, use) => {
+    expect(findingsIn(program(...storing, ...use))).not.toEqual([]);
+  });
+
+  it('finds nothing where the getter, as instantiated, closes no cycle', () => {
+    const source = program(
+      ...storing.slice(0, -2),
+      '  _ = readStored(Pair{box: new Box<Int>{lease: new Lease{n: 3}}, item: 1})',
+    );
+    expect(findingsIn(source)).toEqual([]);
+  });
+});

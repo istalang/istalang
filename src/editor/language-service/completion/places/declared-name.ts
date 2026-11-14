@@ -5,7 +5,7 @@
  * - A top-level function's name may first name the type a static is declared on (`fn Duration.
  *   zero()`, §3.7): whatever the checker's static functions may be declared on
  *   (types/written/named-types.ts), an alias of a shape among them (§3.17); a trait's function,
- *   `Self` (§3.10).
+ *   `Self` (§3.10). A module's own function may be a getter instead, `fn get full(…)` (§3.1).
  * - `extern` is followed by what an extern's head may go on with (syntax/tokens/modifiers.ts), or
  *   by the constant's name; a handle's word by `struct` (§3.6).
  * - A method's first parameter may be the receiver, `self`: a top-level or a trait's function,
@@ -56,7 +56,9 @@ export function offerDeclaredName(
       if (afterModifier !== undefined) {
         return wordCandidates(afterModifier);
       }
-      return namesOwner(declaring, name) ? staticOwners(cursor, holder) : [];
+      return namesOwner(declaring, name) && !declaring.isGetter
+        ? [...getterWord(declaring, holder), ...staticOwners(cursor, holder)]
+        : [];
     case 'ExternConstantDeclaration':
     case 'ExternStructDeclaration':
       return wordCandidates(afterModifier ?? []);
@@ -84,6 +86,13 @@ function namesOwner(declaration: FunctionDeclaration, name: SyntaxNode | undefin
   return (
     declaration.owner === name || (declaration.owner === undefined && declaration.name === name)
   );
+}
+
+/** `get`, which may stand first instead of a module's own function's name, making it a getter. */
+function getterWord(declaration: FunctionDeclaration, holder: SyntaxNode | undefined) {
+  return holder?.kind === 'Module' && !declaration.isExtern && declaration.owner === undefined
+    ? wordCandidates(['get'])
+    : [];
 }
 
 /**

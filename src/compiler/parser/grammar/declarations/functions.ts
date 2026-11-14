@@ -1,6 +1,12 @@
 /**
- * Function declarations (§3.3, §3.7, §3.10): top-level and local functions, static functions
- * declared on a type (`fn Duration.zero()`), trait requirements, and extern functions.
+ * Function declarations (§3.1, §3.3, §3.7, §3.10): top-level and local functions, getters
+ * (`fn get full(self: Person)`), static functions declared on a type (`fn Duration.zero()`), trait
+ * requirements, and extern functions.
+ *
+ * `get` makes a getter only before a name, since `fn get(`, `fn get<` and `fn get.` name a function
+ * `get`, and nothing else may follow a function's name. A trait requires a field instead, which a
+ * getter meets, an extern's code is the host's, and a static function is read on no value, so
+ * `get` on any of them is reported but kept; a local getter is a misplaced item (syntax/items.ts).
  *
  * The forms differ only in their body. A defined function needs one, a trait's requirement may
  * omit it, and an extern function must not have one: the host implements it. A body written on
@@ -12,11 +18,12 @@
  * (syntax/tree/positions.ts).
  */
 
+import type { Span } from '../../../../foundation/text/span.ts';
 import type { FunctionDeclaration } from '../../../syntax/declarations/index.ts';
 import type { Block } from '../../../syntax/statements/index.ts';
 import { headForms, qualifiersOf } from '../../../syntax/tokens/modifiers.ts';
 import type { Identifier } from '../../../syntax/tree/node.ts';
-import { parserDiagnostics } from '../../diagnostics.ts';
+import { type MisplacedGetter, parserDiagnostics } from '../../diagnostics.ts';
 import { parseDocstringBelow } from '../../layout/bodies.ts';
 import { documentedBy, type WithDocstring } from '../../layout/docstrings.ts';
 import type { Parser } from '../../parser.ts';
@@ -41,7 +48,12 @@ export function parseFunction(parser: Parser, place: FunctionPlace): FunctionDec
   );
   const isExtern = modifiers.extern !== undefined;
   const form = formOf(place, isExtern);
+  const getter = parseGetterWord(parser);
   const { owner, name } = parseFunctionName(parser);
+  const misplaced = getter === undefined ? undefined : misplacedGetterIn(form, owner);
+  if (getter !== undefined && misplaced !== undefined) {
+    parser.report(parserDiagnostics.misplacedGetter(getter, misplaced));
+  }
   const typeParameters = parseTypeParameters(parser);
   const hasParameters = cursor.at('(');
   const parameters = hasParameters ? parseParameters(parser) : missingParameters(parser);
@@ -58,6 +70,7 @@ export function parseFunction(parser: Parser, place: FunctionPlace): FunctionDec
     kind: 'FunctionDeclaration',
     span: parser.anchor({ start, end: Math.max(start, headerEnd) }),
     isExtern,
+    isGetter: getter !== undefined,
     qualifiers: qualifiersOf(modifiers),
     mark,
     owner,
@@ -83,6 +96,24 @@ function formOf(place: FunctionPlace, isExtern: boolean): FunctionForm {
 /** A module's or a block's function, defined or extern. */
 export function parseItemFunction(parser: Parser): FunctionDeclaration {
   return parseFunction(parser, 'item');
+}
+
+/** `get` before a name, making the function a getter (§3.1): where it is written, if it is. */
+function parseGetterWord(parser: Parser): Span | undefined {
+  return parser.atWord('get') && parser.cursor.kindAt(1) === 'identifier'
+    ? parser.cursor.advance().span
+    : undefined;
+}
+
+/** What a function of `form`, a static one where it has an `owner`, is when it can't be a getter. */
+function misplacedGetterIn(
+  form: FunctionForm,
+  owner: Identifier | undefined,
+): MisplacedGetter | undefined {
+  if (form !== 'defined') {
+    return form;
+  }
+  return owner === undefined ? undefined : 'static';
 }
 
 /** `name`, or `Type.name` for a static function. */

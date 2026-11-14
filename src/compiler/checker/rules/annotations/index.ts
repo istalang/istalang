@@ -12,9 +12,8 @@
  *   declaration to carry one (§3.16): the json module's on fields (`@JsonSkip` only on a field
  *   whose type, as declared, has a default to read back as, which JSON forms decide,
  *   rules/boundary/json-forms.ts; `@JsonBigInt` only on an `Int`), `@Waypoint` on a statement that
- *   waits, `@Suite` on a function (rules/testing.ts says which), `@Getter` on a module's own
- *   function, not a trait's requirement or a local one (rules/getters.ts says which), `lifetimes`'
- *   `@Holds` on an extern struct and `@Keeps` on an extern function, both of the std's only, since a host keeps no
+ *   waits, `@Suite` on a function (rules/testing.ts says which), `lifetimes`' `@Holds` on an extern
+ *   struct and `@Keeps` on an extern function, both of the std's only, since a host keeps no
  *   language values and other code shows what it holds (rules/lifetimes/externs.ts reads them), and
  *   any other struct on fields, functions and struct declarations, kept for tools. The same
  *   annotation twice on one item says nothing new, so it is an error.
@@ -56,14 +55,7 @@ import { errorType } from '../../types/type/primitives.ts';
 import { typeText } from '../../types/type/type-text.ts';
 import { declaredFieldOf, type FieldOwner } from '../../types/written/declared-fields.ts';
 import { computeConstant, refusalOf } from '../computation/index.ts';
-import {
-  type FunctionStanding,
-  type Known,
-  known,
-  type Placed,
-  placements,
-  placeText,
-} from './placements.ts';
+import { type Known, known, type Placed, placements, placeText } from './placements.ts';
 
 /** What ProgramChecker gives the unit: how to check an annotation's value as a value of its own. */
 interface AnnotationSeams {
@@ -144,20 +136,6 @@ export class Annotations implements AnnotationChecks {
     return this.#textOf(this.of(module, declaration, functionPlace(declaration)), 'suite');
   }
 
-  /**
-   * The `@Getter` making `declaration` a getter (§3.1), if it has one; one annotated nothing is
-   * known to have none without checking any annotation.
-   */
-  getterOf(declaration: FunctionDeclaration): CheckedAnnotation | undefined {
-    if ((declaration.annotations ?? []).length === 0) {
-      return undefined;
-    }
-    const module = this.#seams.checker.moduleOf(declaration);
-    return this.of(module, declaration, functionPlace(declaration)).find(
-      (annotation) => this.knownOf(annotation) === 'getter',
-    );
-  }
-
   /** The one string field of the annotation `name` among `annotations`, if it is there. */
   #textOf(annotations: readonly CheckedAnnotation[], name: Known): string | undefined {
     const found = annotations.find((annotation) => this.knownOf(annotation) === name);
@@ -196,7 +174,7 @@ export class Annotations implements AnnotationChecks {
     place: AnnotationPlace,
   ): readonly CheckedAnnotation[] {
     const found: CheckedAnnotation[] = [];
-    const placed = this.#placed(module, item, place);
+    const placed = place.kind === 'field' ? this.#fieldPlace(module, item) : place;
     if (placed === undefined) {
       return found;
     }
@@ -212,37 +190,6 @@ export class Annotations implements AnnotationChecks {
       }
     }
     return found;
-  }
-
-  /** Where `item` of `module`, standing at `place`, stands as its annotations' check reads it. */
-  #placed(
-    module: ModuleId,
-    item: Annotatable & NodeOf<string>,
-    place: AnnotationPlace,
-  ): Placed | undefined {
-    switch (place.kind) {
-      case 'field':
-        return this.#fieldPlace(module, item);
-      case 'function':
-        return { ...place, stands: this.#standing(module, item) };
-      default:
-        return place;
-    }
-  }
-
-  /**
-   * Where the function `node` of `module` stands: among the module's items, among a trait's
-   * requirements, or in a body, found among the module's items as a field's owner is.
-   */
-  #standing(module: ModuleId, node: NodeOf<string>): FunctionStanding {
-    const items = this.#seams.checker.inputs.itemsOf(module);
-    if (items.some((item) => item === node)) {
-      return 'module';
-    }
-    const inTrait = items.some(
-      (item) => item.kind === 'TraitDeclaration' && item.members.some((member) => member === node),
-    );
-    return inTrait ? 'trait' : 'body';
   }
 
   /**

@@ -10,30 +10,32 @@
  */
 
 import { unreachable } from '../../../foundation/structures/unreachable.ts';
-import type { TraitDeclaration } from '../../syntax/declarations/index.ts';
 import type { Index, MemberAccess } from '../../syntax/expressions/index.ts';
 import type { FieldDeclaration } from '../../syntax/types/index.ts';
 import type { Checker } from '../check.ts';
 import { isOpaque } from '../types/type/computed-types.ts';
-import type { AnyType, FieldMember, Type } from '../types/type/index.ts';
+import type { Constraint, FieldMember, Type } from '../types/type/index.ts';
+import type { ResolvedCall } from './resolved-call.ts';
 
-/** A field a trait requires (§3.10): the trait, and its field's declaration. */
+/**
+ * A field a trait requires (§3.10): the constraint requiring it, its trait with the arguments the
+ * read's type meets it at, and its field's declaration.
+ */
 export interface RequiredField {
-  readonly trait: TraitDeclaration;
+  readonly constraint: Constraint;
   readonly field: FieldDeclaration;
 }
 
 /**
  * How a read reaches its field: by its position in the struct `on` the value is, in its fields'
- * order, which lowering reads, the field's `name` naming it for what reads the field itself;
- * through the entry reading it from whichever member an `any` value holds; or, on a value of a
- * type known only per instantiation (a type parameter, or a type computed from one), as a trait
- * of its constraints requires it, which an `any` value may stand for, or as a struct constraint
- * names it, which only a struct meets (§3.5).
+ * order, which lowering reads, the field's `name` naming it for what reads the field itself; as
+ * a trait requires it of a value of `on`, an `any` type or a type known only per instantiation (a
+ * type parameter, or a type computed from one), whose own type meets it with a field it stores or
+ * a getter (§3.10), which lowering decides once it knows the type; or, on a type known only per
+ * instantiation, as a struct constraint names it, which only a struct meets (§3.5).
  */
 export type FieldRead =
   | { readonly kind: 'position'; readonly on: Type; readonly name: string; readonly index: number }
-  | { readonly kind: 'dispatch'; readonly on: AnyType; readonly required: RequiredField }
   | { readonly kind: 'required'; readonly on: Type; readonly required: RequiredField }
   | { readonly kind: 'named'; readonly on: Type; readonly name: string }
   | { readonly kind: 'keyed'; readonly on: Type; readonly key: Type };
@@ -55,18 +57,18 @@ export function keyedFieldRead(
     : { kind: 'keyed', on: type, key };
 }
 
-/** How a read of `required`'s field reaches it on a value of `type`, which meets the trait. */
-export function requiredFieldRead(
-  checker: Pick<Checker, 'fieldsOf'>,
-  type: Type,
-  required: RequiredField,
-): FieldRead {
-  if (type.kind === 'any') {
-    return { kind: 'dispatch', on: type, required };
-  }
-  return isOpaque(type)
-    ? { kind: 'required', on: type, required }
-    : namedFieldRead(checker, type, required.field.name.text);
+/**
+ * The getter among `witnesses`, those a type meets a constraint with, that meets `field`, which
+ * the constraint's trait requires and the type stores none of: they follow the functions', each
+ * named as the field it meets (§3.10).
+ */
+export function fieldGetterAmong(
+  witnesses: readonly ResolvedCall[],
+  field: FieldDeclaration,
+): ResolvedCall | undefined {
+  return witnesses.find(
+    (call) => call.function.isGetter && call.function.name.text === field.name.text,
+  );
 }
 
 /**

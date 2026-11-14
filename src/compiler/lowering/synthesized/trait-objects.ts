@@ -20,6 +20,7 @@
  *   what the function takes, and what it gives into what the call through `any` gives, as the
  *   checker fits them; a field it holds is read converted alike. A `&` never converts, and the
  *   variance it makes is none, so it is passed on as it is.
+ * - A field a member stores none of is read by calling the getter meeting it (§3.10).
  * - Every entry switching over an `any` type's variants is a closing entry (../tables/tables.ts):
  *   written once lowering reached every type converted so far, and again when it reaches another.
  */
@@ -29,7 +30,7 @@ import type { Register } from '../../../definition/operands.ts';
 import type { FunctionDefinition } from '../../../definition/tables/functions.ts';
 import { unreachable } from '../../../foundation/structures/unreachable.ts';
 import type { MemberConversion } from '../../checker/check.ts';
-import { type RequiredField, requiredFieldRead } from '../../checker/surface/checked-field.ts';
+import type { RequiredField } from '../../checker/surface/checked-field.ts';
 import { resultFitBetween } from '../../checker/types/fitting/part-pairs.ts';
 import { substitute } from '../../checker/types/parts/substitution.ts';
 import { kindOfFunction } from '../../checker/types/type/function-kinds.ts';
@@ -48,6 +49,7 @@ import { codeModeOf } from '../functions/modes.ts';
 import type { ConversionSite } from '../tables/instances.ts';
 import { spelledType } from '../tables/names.ts';
 import { convertedIntoAny } from '../values/into-any.ts';
+import { readRequiredField } from '../values/required-fields.ts';
 import { outOfUnion } from '../values/unions.ts';
 import { SynthesizedCode } from './index.ts';
 
@@ -149,14 +151,18 @@ export function anyConversionEntry(
   return code.entry(tables.headerAt(name, checker.moduleOf(first.trait), span), 'simple');
 }
 
-/** The entry reading `required`'s field, which a trait of `on` requires, from a value of `on`. */
+/**
+ * The entry reading `required`'s field, which a trait of `on` requires, from a value of `on`: each
+ * member's stored field, or its getter's call (§3.10).
+ */
 export function anyFieldEntry(
   lowering: Lowering,
   on: AnyType,
   required: RequiredField,
 ): FunctionDefinition {
   const { checker, tables } = lowering;
-  const { trait, field } = required;
+  const { trait } = required.constraint;
+  const { field } = required;
   const code = new SynthesizedCode(lowering, field.name.span, 1);
   const [value] = code.parameters;
   if (value === undefined) {
@@ -165,11 +171,9 @@ export function anyFieldEntry(
   const constraint = on.constraints.findIndex((each) => each.trait === trait);
   const at = { module: checker.moduleOf(trait), span: field.name.span };
   switchOverMembers(code, on, value, (type) => {
-    const read = requiredFieldRead(checker, type, required);
-    if (read.kind !== 'position') {
-      unreachable(`A member of ${spelledType(checker, on)} is no struct.`);
-    }
-    const held = code.field(code.field(value, 0), read.index);
+    const member = { register: code.field(value, 0), type };
+    const witnesses = () => checker.traitObjects.memberWitnesses(on, constraint, type);
+    const held = readRequiredField(code, { value: member, field }, witnesses, code.span);
     const types = checker.traitObjects.memberFieldTypes(on, constraint, type, field);
     code.return(
       types === undefined

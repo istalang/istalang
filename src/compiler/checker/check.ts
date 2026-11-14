@@ -42,6 +42,7 @@ import type { RestSlot } from './types/type/function-types.ts';
 import type {
   AnonymousStructType,
   AnyType,
+  Constraint,
   FieldMember,
   FunctionType,
   NominalType,
@@ -249,8 +250,9 @@ export function checkProgram(
 export interface TraitObjects {
   /**
    * The calls a value of `member` inside `type` is called through for its `constraint`-th
-   * constraint: what meets each function its trait requires, in the trait's order; undefined
-   * where `member` doesn't meet it, a mistake checking reports where the value goes in.
+   * constraint: what meets each function its trait requires, in the trait's order, then the
+   * getters meeting the fields it stores none of; undefined where `member` doesn't meet it, a
+   * mistake checking reports where the value goes in.
    */
   readonly memberWitnesses: (
     type: AnyType,
@@ -289,6 +291,15 @@ export interface TraitObjects {
     member: Type,
     field: FieldDeclaration,
   ) => MemberConversion<Type> | undefined;
+  /**
+   * The calls a value of `type` meets `constraint` with, as conformance found them once for the
+   * program (coherence, §3.10): its trait's functions', then the getters meeting the fields the
+   * type stores none of; undefined where it doesn't meet it.
+   */
+  readonly witnessesMeeting: (
+    type: Type,
+    constraint: Constraint,
+  ) => readonly ResolvedCall[] | undefined;
   /**
    * Whether a value of `type` may be inside `target`: it converts into it, or meets its traits at
    * instantiations none closer, as a value another `any` type took may.

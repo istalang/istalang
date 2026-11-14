@@ -125,6 +125,7 @@ export function traitObjectsOf(checker: CheckerContext): TraitObjects {
         on,
         call,
       ),
+    witnessesMeeting: (type, constraint) => witnessesFor(searchSite(checker), type, constraint),
     memberFieldTypes: (type, constraint, member, field) =>
       converting(memberConstraints(checker, { type, constraint, member }), (each) =>
         requiredFieldType(checker, each, field, member),

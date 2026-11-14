@@ -1,5 +1,5 @@
 /**
- * Getters (§3.1): a method annotated `@Getter`, read as a field is, `x.g`, which is the call `g(x)`.
+ * Getters (§3.1): a method declared `fn get name`, read as a field is, `x.g`, which is the call `g(x)`.
  *
  * - A read is resolved as a method call is, its receiver passed as its `self` and fitted to it, at
  *   the member access, which no function named as a value is recorded at (§3.14), so a recorded
@@ -9,8 +9,8 @@
  *   an optional chain is resolved in a scope of its own, as a call continuing one is.
  * - A getter takes nothing beyond `self`, by value, and isn't async, since a read passes it
  *   nothing else and gives a value, not a future. Only a module's own function is one, which the
- *   annotation's placement holds (rules/annotations.ts): a trait's requirement is called through
- *   its constraint, and a local function is no method.
+ *   parser holds: a trait requires a field instead, which a getter meets (§3.10), an extern's code
+ *   is the host's, and a local function is no method.
  */
 
 import type { ModuleId } from '../../program/program.ts';
@@ -53,7 +53,7 @@ export function readGetter(context: BodyContext, read: GetterRead): Type {
   return context.chains.continues(read.link) ? context.scopes.isolated(resolve) : resolve();
 }
 
-/** What `@Getter` asks of the function it marks, `node` of `module`. */
+/** What a getter's declaration asks of `node` of `module`. */
 export function checkGetter(
   checker: CheckerContext,
   module: ModuleId,

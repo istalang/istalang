@@ -16,8 +16,7 @@ const person = [
   '  first: String',
   '  last: String',
   '',
-  '@Getter',
-  'fn full(self: Person) -> String: self.first',
+  'fn get full(self: Person) -> String: self.first',
   '',
 ];
 
@@ -30,8 +29,7 @@ describe('a getter in the editor', () => {
     const shared = programAt(
       'shared struct Lease:',
       '  renewals: Int = 0',
-      '@Getter',
-      'fn twice(self: Lease) -> Int: self->renewals * 2',
+      'fn get twice(self: Lease) -> Int: self->renewals * 2',
       'fn check(l: Lease) -> Int: l.‸',
     );
     for (const [at, name, detail] of [
@@ -48,20 +46,29 @@ describe('a getter in the editor', () => {
     }
   });
 
+  it("offers `get` where a module's function's name begins, never an extern's or a local's", () => {
+    const offered = (...lines: string[]) => {
+      const at = programAt(...lines);
+      return completionsAt(at.program, at.module, at.offset).map(({ name }) => name);
+    };
+    expect(offered(...person, 'fn ‸')).toEqual(expect.arrayContaining(['get', 'Person']));
+    expect(offered('extern fn ‸')).not.toContain('get');
+    expect(offered('fn f():', '  fn ‸', '  1')).not.toContain('get');
+  });
+
   it('shows the function it is when hovered where it is read or called through', () => {
     const read = programAt(...person, 'fn greet(p: Person) -> String: p.fu‸ll');
     expect(hoverAt(read.program, read.module, read.offset)?.code).toEqual([
-      'fn full(self: Person) -> String',
+      'fn get full(self: Person) -> String',
     ]);
     const called = programAt(
       'struct Adder:',
       '  n: Int',
-      '@Getter',
-      'fn add(self: Adder) -> fn(Int) -> Int: fn(x): x + self.n',
+      'fn get add(self: Adder) -> fn(Int) -> Int: fn(x): x + self.n',
       'fn run(a: Adder) -> Int: a.ad‸d(3)',
     );
     expect(hoverAt(called.program, called.module, called.offset)?.code).toEqual([
-      'fn add(self: Adder) -> fn(Int) -> Int',
+      'fn get add(self: Adder) -> fn(Int) -> Int',
     ]);
   });
 
@@ -74,7 +81,7 @@ describe('a getter in the editor', () => {
     ]);
     const renaming = renameEdits(program, read.module, spanOfUse(program, read).start, 'whole');
     expect(renaming?.kind === 'renamed' && edited(program, renaming.edits).main).toBe(
-      `${person.join('\n').replace('fn full', 'fn whole')}${reader.replace('p.full', 'p.whole')}`,
+      `${person.join('\n').replace('fn get full', 'fn get whole')}${reader.replace('p.full', 'p.whole')}`,
     );
   });
 });

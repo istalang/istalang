@@ -120,7 +120,7 @@ function checkFunction(checker: CheckerContext, node: FunctionDeclaration): void
   if (checker.annotations.suiteTitleOf(module, node) !== undefined) {
     checkSuite(checker, module, node);
   }
-  if (checker.annotations.getterOf(node) !== undefined) {
+  if (node.isGetter) {
     checkGetter(checker, module, node);
   }
 }

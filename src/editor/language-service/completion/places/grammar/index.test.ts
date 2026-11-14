@@ -349,6 +349,8 @@ describe('completion where a name is declared', () => {
     ["a static function's first parameter", [...pair, 'fn Pair.zero(‸'], []],
     ["a static function's name, its type written", [...pair, 'fn Pair. ‸'], []],
     ["a trait's function's name", ['trait T:', '  fn ‸'], ['Self']],
+    ["a getter's name", ['fn get ‸'], []],
+    ["a getter's first parameter", ['fn get g(‸'], ['self']],
   ])('%s', (_title, lines, offered) => {
     expect(names(...lines)).toEqual(offered);
   });

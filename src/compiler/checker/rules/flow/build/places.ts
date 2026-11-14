@@ -198,12 +198,7 @@ export function partOfField(read: FieldRead, key?: ValueId): Part {
     case 'named':
       return { kind: 'step', step: { kind: 'field', of: read.on, name: read.name } };
     case 'required':
-      return {
-        kind: 'step',
-        step: { kind: 'field', of: read.on, name: read.required.field.name.text },
-      };
-    case 'dispatch':
-      return { kind: 'dispatch', required: read.required };
+      return { kind: 'required', on: read.on, required: read.required };
     case 'keyed':
       return key === undefined
         ? unreachable('A key of several names is read only by an index.')

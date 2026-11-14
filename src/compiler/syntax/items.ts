@@ -5,8 +5,8 @@
  * §3.13). The parser rejects an item in the wrong place, and the binder relies on the same answer,
  * so it is one function of the item. A module holds declarations and a block holds statements.
  * Functions and `const` values are both, with two exceptions:
- * - an extern or static function (`fn Duration.zero()`) declares something the whole program
- *   sees, so it stays at the top level
+ * - an extern, static (`fn Duration.zero()`) or getter (`fn get full(…)`, §3.1) function declares
+ *   something the whole program sees, so it stays at the top level
  * - a mutable or function-held variable lives in a function, so it stays in blocks.
  *
  * The same rule, read by the word an item starts with, says what a module's item may start with:
@@ -83,7 +83,7 @@ function placeOf(item: Item): Place {
     case 'TypeAliasDeclaration':
       return 'module';
     case 'FunctionDeclaration':
-      return item.isExtern || item.owner !== undefined ? 'module' : 'both';
+      return item.isExtern || item.isGetter || item.owner !== undefined ? 'module' : 'both';
     case 'VariableDeclaration':
       return item.isMutable || item.hold !== undefined ? 'block' : 'both';
     case 'ExpressionStatement':

@@ -152,7 +152,7 @@ src/
         calls/                                                   above the rest: a call in a body, its arguments checked against the chosen function,
                                                                  operators, the places a call or an assignment changes
       rules/                                                     semantic rules shared by constructs, one folder per feature: producers agreeing on a type,
-                                                                 annotations/, tests' rules (testing.ts) and getters' (getters.ts: what `@Getter` asks
+                                                                 annotations/, tests' rules (testing.ts) and getters' (getters.ts: what `fn get` asks
                                                                  of a function, its read resolved as a method call is) at its root; computation/ (compile-time computation),
                                                                  disposal/ (disposal, must-use, `drop`), boundary/ (what externs may take, derived JSON codecs),
                                                                  lifetimes/ (what the std's externs hold and keep: `lifetimes`' `@Holds` and `@Keeps`, read

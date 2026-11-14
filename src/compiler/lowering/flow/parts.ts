@@ -4,8 +4,9 @@
  * key names, and what a top-level, extern or context constant holds, read as it is stored: its
  * value, its extern's reader, its accessor.
  *
- * - A field of a struct is read at its position in the layout the instantiation made (§3.1); one of
- *   an `any` value through the dispatch its read was checked as (§3.10).
+ * - A field of a struct is read at its position in the layout the instantiation made (§3.1); one a
+ *   trait requires as the type the instance knows has it, its stored field or its getter's call,
+ *   and of an `any` value through the dispatch reading it so from each member (§3.10).
  * - A union's member is taken out as it is held (values/unions.ts), as is the value of a pattern's
  *   name narrowed from a union or an `any`.
  * - A field a key of several names names is read in each case of a switch on the key (§3.9).
@@ -24,6 +25,7 @@ import { constantValue } from '../tables/constants.ts';
 import type { TypedValue } from '../values/holdings.ts';
 import { readKeyed } from '../values/keyed-fields.ts';
 import { insideOptional } from '../values/optionals.ts';
+import { readRequiredField } from '../values/required-fields.ts';
 import { rebuiltAs } from '../values/struct-values.ts';
 import { outOfUnion } from '../values/unions.ts';
 import type { FlowWriter } from './writer.ts';
@@ -40,9 +42,12 @@ export function partRead(
   switch (part.kind) {
     case 'step':
       return stepRead(writer, value, part.step, span);
-    case 'dispatch': {
+    case 'required': {
+      const { constraint, field } = part.required;
       if (value.type.kind !== 'any') {
-        return unreachable(`A required field at ${span.from} is dispatched on no any value.`);
+        const witnesses = () =>
+          context.checker.traitObjects.witnessesMeeting(value.type, constraint);
+        return readRequiredField(context, { value, field }, witnesses, span);
       }
       const callee = context.tables.anyFieldIndex(value.type, part.required);
       return emitCall(context, { span, callee, arguments: [value.register] });

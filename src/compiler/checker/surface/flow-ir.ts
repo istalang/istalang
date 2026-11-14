@@ -68,12 +68,14 @@ export type FlowValue =
  * (`PartStep`: a tuple element by position, a field by name, a variant's field, a union's member,
  * an array's items), the value behind a handle (`*x`, `x->f`), the value inside an optional where
  * it isn't `none` (§4), what a future gives once it has settled (§8), the field `key`, a key of
- * several names, names, the field a trait requires of an `any` value, read through its dispatch
- * (§3.10), or the next item of an array or `Map` being built, which a write appends.
+ * several names, names, the field a trait requires of a value of `on`, whose own type meets it with
+ * a field it stores or a getter (§3.10): on an `any` value read through its dispatch, on a type
+ * known only per instantiation as each instantiation reads it; or the next item of an array or
+ * `Map` being built, which a write appends.
  */
 export type Part =
   | { readonly kind: 'step'; readonly step: PartStep }
-  | { readonly kind: 'dispatch'; readonly required: RequiredField }
+  | { readonly kind: 'required'; readonly on: Type; readonly required: RequiredField }
   | { readonly kind: 'behind' }
   | { readonly kind: 'inside' }
   | { readonly kind: 'given' }

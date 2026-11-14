@@ -214,6 +214,9 @@ export function checkDisposeDeclaration(
   const parameters = checker.parametersOf(declaration);
   const [self] = parameters;
   const returnsUnit = sameType(checker.resultOf(declaration), unitType);
+  if (declaration.isGetter) {
+    checker.report(module, checkerDiagnostics.disposeGetter(at));
+  }
   if (
     parameters.length !== 1 ||
     self === undefined ||

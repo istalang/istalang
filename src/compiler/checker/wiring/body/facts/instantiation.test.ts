@@ -142,7 +142,7 @@ describe('an instantiated body', () => {
     ]);
   });
 
-  it('resolves a field read through a type parameter for the type standing for it', () => {
+  it('keeps a field a trait requires as required, read on the type standing for the parameter', () => {
     const text = [
       'trait Sized:',
       '  size: Int',
@@ -168,8 +168,11 @@ describe('an instantiated body', () => {
         : undefined;
     };
     expect(access && body?.fieldReadOf(access)?.kind).toBe('required');
-    expect(readFor(0)).toMatchObject({ kind: 'position', name: 'size', index: 1 });
-    expect(readFor(1)?.kind).toBe('dispatch');
+    const onType = (index: number) => {
+      const read = readFor(index);
+      return read?.kind === 'required' ? read.on.kind : read?.kind;
+    };
+    expect([onType(0), onType(1)]).toEqual(['nominal', 'any']);
   });
 });
 

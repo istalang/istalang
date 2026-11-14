@@ -64,9 +64,17 @@ import { constraintText, typeText } from '../../../types/type/type-text.ts';
 import type { Variance } from '../../../types/variance/lattice.ts';
 import { parameterType } from '../../../types/written/resolve-type.ts';
 import { defaultArgument } from '../../../types/written/type-arguments.ts';
+import { fieldGetterCandidates } from '../../choosing/candidates.ts';
 import { signatureOf } from '../../choosing/choice.ts';
 import { meets } from '../conformance.ts';
-import { agreed, type Binding, bindingsOf, candidateBindings } from './witness-bindings.ts';
+import { fieldGetterSignature } from '../declared-witness.ts';
+import {
+  agreed,
+  type Binding,
+  bindingsAmong,
+  bindingsOf,
+  candidateBindings,
+} from './witness-bindings.ts';
 
 /**
  * The instantiation of `constraint`'s trait `found` meets in its place (the banner), searched: the
@@ -222,7 +230,8 @@ interface Sought {
 
 /**
  * The instantiations of the trait `found`'s witness candidates make, met or not: every combination
- * of what each requirement's candidates and each required field find, agreeing. One leaving a
+ * of what each requirement's candidates and each required field, stored or a getter's, find,
+ * agreeing. One leaving a
  * parameter neither found nor sought is none.
  */
 function instantiationsMet(
@@ -263,16 +272,21 @@ function instantiationsMet(
       }),
     ),
     ...requiredFields(trait).map((field) => {
-      const declared = substitute(
-        declaredFieldType(checker, trait, field),
-        self,
-        checker.typeRules,
-      );
-      const own = fieldOf(checker, found, field.name.text);
-      const pairs = own === undefined ? undefined : [[declared, own.member.type] as const];
-      return pairs === undefined
-        ? []
-        : bindingsOf(checker, { reported: open, unknown: open }, pairs);
+      const declared = (substitution: Substitution) =>
+        substitute(declaredFieldType(checker, trait, field), substitution, checker.typeRules);
+      const name = field.name.text;
+      const own = fieldOf(checker, found, name);
+      if (own !== undefined) {
+        const pairs = [[declared(self), own.member.type] as const];
+        return bindingsOf(checker, { reported: open, unknown: open }, pairs);
+      }
+      return bindingsAmong(checker, fieldGetterCandidates(checker, found, { trait, name }), {
+        required: fieldGetterSignature(found, () => declared(self)),
+        called: fieldGetterSignature(found, () => declared(called)),
+        open,
+        unsought,
+        free,
+      });
     }),
   ];
   const combined = findings.reduce<readonly Binding[]>(

@@ -22,6 +22,7 @@ import { programModule } from '../../../compiler/program/program.ts';
 import { declaredFunctionName } from '../../../compiler/syntax/declarations/field-defaults.ts';
 import {
   type FunctionDeclaration,
+  functionWords,
   typeParametersOf,
 } from '../../../compiler/syntax/declarations/index.ts';
 import { patternNamedType } from '../../../compiler/syntax/expressions/parameters.ts';
@@ -52,7 +53,7 @@ export function signatureOf(checker: Checker, declaration: FunctionDeclaration):
       qualifiers,
       declaration.mark === undefined ? undefined : namedTypeText(declaration.mark),
     ),
-    'fn ',
+    `${functionWords(declaration)} `,
     declaredFunctionName(declaration),
     generics.length === 0 ? '' : `<${generics.join(', ')}>`,
   ].join('');

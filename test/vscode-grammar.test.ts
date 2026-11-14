@@ -16,6 +16,7 @@ import { primitiveNames } from '../src/foundation/language/primitives.ts';
 const grammarShape = z.object({
   repository: z.object({
     modifier: z.object({ match: z.string() }),
+    declaration: z.object({ patterns: z.array(z.object({ match: z.string() })) }),
     keyword: z.object({ patterns: z.array(z.object({ match: z.string() })) }),
     type: z.object({ patterns: z.array(z.object({ name: z.string(), match: z.string() })) }),
   }),
@@ -83,4 +84,24 @@ it("highlights a head's contextual modifiers in any order, and the same words el
     'sendable',
     'ista',
   ]);
+});
+
+it("highlights `get` before a function's name as a getter's, and a function named `get` as a name", () => {
+  const declares = grammar.repository.declaration.patterns.map(
+    ({ match }) => new RegExp(match, 'u'),
+  );
+  /** The getter word and the function's name a declaration's head highlights. */
+  const head = (text: string) => {
+    const found = declares.map((pattern) => pattern.exec(text)).find((match) => match !== null);
+    return found === undefined ? undefined : { get: found[2], name: found[5] };
+  };
+  expect(head('fn get full(self: Person) -> String')).toEqual({ get: 'get', name: 'full' });
+  expect(head('fn get get(self: Box) -> Int')).toEqual({ get: 'get', name: 'get' });
+  expect(head('fn get<K, V>(self: Map<K, V>, key: K) -> V?')).toEqual({
+    get: undefined,
+    name: 'get',
+  });
+  expect(head('fn get(self: Box) -> Int')).toEqual({ get: undefined, name: 'get' });
+  expect(head('fn Box.get() -> Box')).toEqual({ get: undefined, name: 'get' });
+  expect(head('fn get: get > 0')).toBeUndefined();
 });

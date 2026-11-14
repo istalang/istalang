@@ -14,6 +14,7 @@ import {
   type DeclarationPart,
   type Documented,
   type FunctionDeclaration,
+  functionWords,
   type Module,
   membersAsWritten,
   type TypeParameters,
@@ -51,7 +52,7 @@ function functionDoc(printer: Printer, node: FunctionDeclaration): builders.Doc 
       ? modifiersText(modifiers)
       : printer.withComments(node.mark, [beforeMark, namedTypeText(node.mark), ' ', afterMark]);
   const header = [
-    'fn ',
+    `${functionWords(node)} `,
     node.owner === undefined ? '' : [printer.print(node.owner), '.'],
     named(printer, node.name, node.typeParameters),
     bracketed(printer, node, ['(', ')'], node.parameters),

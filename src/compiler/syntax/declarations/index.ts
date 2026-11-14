@@ -95,13 +95,15 @@ export function isGenericDeclaration(node: { readonly kind: string }): node is G
 
 /**
  * A function: top-level, local, a trait's requirement, or extern. `owner` is the type a static
- * function is declared on: `Duration` in `fn Duration.zero()`.
+ * function is declared on: `Duration` in `fn Duration.zero()`. A getter is declared `fn get name`
+ * (§3.1), read as a field.
  */
 export interface FunctionDeclaration
   extends NodeOf<'FunctionDeclaration'>,
     Annotatable,
     Documented {
   readonly isExtern: boolean;
+  readonly isGetter: boolean;
   readonly qualifiers: FunctionQualifiers;
   /**
    * The mark its head names instead of writing `live` or `ista` (proposal 8, Rule 3): a mark
@@ -113,6 +115,11 @@ export interface FunctionDeclaration
   readonly typeParameters: TypeParameters;
   readonly parameters: readonly (Parameter | Invalid)[];
   readonly returnType: TypeNode | undefined;
+}
+
+/** The words a function's head spells before its name: `fn`, or `fn get` for a getter (§3.1). */
+export function functionWords(declaration: Pick<FunctionDeclaration, 'isGetter'>): string {
+  return declaration.isGetter ? 'fn get' : 'fn';
 }
 
 /**

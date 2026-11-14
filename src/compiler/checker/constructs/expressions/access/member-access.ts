@@ -118,7 +118,7 @@ export function valuedMember({ field, getters }: NamedMembers): 'field' | 'gette
 export function membersNamed(context: BodyContext, name: string, receiver: Type): NamedMembers {
   const { checker, module } = context;
   const candidates = topLevelCandidates(checker, module, name, [receiver]);
-  const { methods, getters } = receiverMembers(checker, candidates);
+  const { methods, getters } = receiverMembers(candidates);
   return {
     field: fieldOf(checker, receiver, name),
     getters: getters.filter((getter) => takesAsSelf(checker, getter, receiver)),

@@ -23,6 +23,26 @@ describe('highlighting', () => {
     ]);
   });
 
+  it("shows a getter's `get` as a keyword, and a function named `get` as a method", () => {
+    expect(highlighted('fn get get(self: Box) -> Int: 1', 'fn get(self: Box) -> Int: 2')).toEqual([
+      ['fn', 'keyword'],
+      ['get', 'keyword'],
+      ['get', 'method'],
+      ['self', 'parameter'],
+      ['Box', 'type'],
+      ['->', 'operator'],
+      ['Int', 'type'],
+      ['1', 'number'],
+      ['fn', 'keyword'],
+      ['get', 'method'],
+      ['self', 'parameter'],
+      ['Box', 'type'],
+      ['->', 'operator'],
+      ['Int', 'type'],
+      ['2', 'number'],
+    ]);
+  });
+
   it('shows what a name declares, calls or reaches from the syntax around it', () => {
     expect(
       highlighted('@Note{"x"} @Skip', 'fn Box.make<T>(self: Box) -> m.T: self.open(m.f())'),

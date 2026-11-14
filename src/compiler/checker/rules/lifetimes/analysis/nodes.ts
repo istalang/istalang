@@ -216,14 +216,11 @@ export class Nodes {
 
   /**
    * What names a part, alike wherever it is read: a field by its name, which a member access, a
-   * pattern, a generic's struct constraint and an `any` value's dispatch name alike, a tuple's
-   * element by position, any other
+   * pattern and a generic's struct constraint name alike, a tuple's element by position, any other
    * part by its kind, and a step of its own kind (a union's member, an array pattern's) by itself.
+   * A field a trait requires is no part a path names: its read is a call (operations.ts).
    */
   partKey(part: Part): string {
-    if (part.kind === 'dispatch') {
-      return `.${part.required.field.name.text}`;
-    }
     if (part.kind !== 'step') {
       return part.kind;
     }

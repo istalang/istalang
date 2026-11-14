@@ -17,19 +17,33 @@ import { parameterType } from '../../../types/written/resolve-type.ts';
 import type { SignatureSlot } from '../../choosing/call-arguments.ts';
 import { type Candidate, witnessCandidates } from '../../choosing/candidates.ts';
 import { candidateSignature, type Signature } from '../../choosing/choice.ts';
+import type { RequiredSignature } from '../declared-witness.ts';
 
-/** What each witness candidate of a requirement finds its trait's open parameters to be. */
+/** What each witness candidate of a required function finds its trait's open parameters to be. */
 export function candidateBindings(
   checker: CheckerContext,
   found: Type,
-  requirement: Requirement,
+  requirement: Requirement & { readonly required: Signature },
 ): readonly Binding[] {
   const { required } = requirement;
   const parameterTypes = required.parameters.map((slot) => slot.type);
-  return witnessCandidates(checker, found, {
+  const candidates = witnessCandidates(checker, found, {
     required: required.declaration,
     parameterTypes,
-  }).flatMap((candidate) => candidateBinding(checker, candidate, requirement) ?? []);
+  });
+  return bindingsAmong(checker, candidates, requirement);
+}
+
+/**
+ * What each of `candidates`, witnesses of a requirement, finds its trait's open parameters to be:
+ * a required function's, or the getters of a field a type stores none of (§3.10).
+ */
+export function bindingsAmong(
+  checker: CheckerContext,
+  candidates: readonly Candidate[],
+  requirement: Requirement,
+): readonly Binding[] {
+  return candidates.flatMap((candidate) => candidateBinding(checker, candidate, requirement) ?? []);
 }
 
 /** What matching each declared type exactly against the given one finds the `open` ones to be. */
@@ -69,8 +83,8 @@ export function agreed(first: Binding, second: Binding): Binding | undefined {
  * witness is declared for one instantiation of it.
  */
 interface Requirement {
-  readonly required: Signature;
-  readonly called: Signature;
+  readonly required: RequiredSignature;
+  readonly called: RequiredSignature;
   readonly open: readonly TypeParameter[];
   readonly unsought: readonly ParameterKey[];
   readonly free: readonly ParameterKey[];

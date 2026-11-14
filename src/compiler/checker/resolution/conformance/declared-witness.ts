@@ -1,7 +1,9 @@
 /**
  * Finding the function declared to meet a trait's requirement for a type (§3.10): chosen among the
  * witness candidates (choosing/candidates.ts) by the required parameter types, taken exactly, so a
- * function taking the type only once wrapped into an optional is one for the optional. Conformance
+ * function taking the type only once wrapped into an optional is one for the optional. A field a
+ * trait requires and the type stores none of is met so by a getter, read as `fn get name(self:
+ * Self)` giving the field's type would be. Conformance
  * builds on it (conformance.ts); a derived codec or default may stand only where none is declared.
  *
  * A lone literal type's value is its base's (§2), so a parameter of a literal type taken by value
@@ -12,15 +14,24 @@
  */
 
 import type { CheckerContext } from '../../contexts/context.ts';
+import type { RequiredField } from '../../surface/checked-field.ts';
 import type { ResolvedCall } from '../../surface/resolved-call.ts';
 import { sameType } from '../../types/identity/identity.ts';
-import { constraintSubstitution, requiredFunctions } from '../../types/traits/constraints.ts';
-import { isMarkVariable, isSimpleMark } from '../../types/type/function-kinds.ts';
+import {
+  constraintSubstitution,
+  requiredFieldType,
+  requiredFunctions,
+} from '../../types/traits/constraints.ts';
+import { isMarkVariable, isSimpleMark, simpleMark } from '../../types/type/function-kinds.ts';
 import type { Constraint, Type } from '../../types/type/index.ts';
 import { baseOf } from '../../types/unions/union-members.ts';
 import { leastMarkMaking } from '../applying/call-kinds.ts';
 import type { CallArgument } from '../choosing/call-arguments.ts';
-import { type Candidate, witnessCandidates } from '../choosing/candidates.ts';
+import {
+  type Candidate,
+  fieldGetterCandidates,
+  witnessCandidates,
+} from '../choosing/candidates.ts';
 import {
   type Choice,
   candidateSignature,
@@ -60,6 +71,46 @@ export function chooseWitness(checker: CheckerContext, type: Type, required: Sig
 }
 
 /**
+ * What a witness is chosen and judged by: a required function's signature, or a required field's
+ * read as a getter's call (`fieldGetterSignature`), which has no declaration.
+ */
+export type RequiredSignature = Pick<
+  Signature,
+  'typeParameters' | 'parameters' | 'result' | 'kind'
+>;
+
+/**
+ * A field a trait requires read as the getter meeting it is called (§3.10): on `self`, by value,
+ * giving `fieldType`, an unmarked requirement, since any code reads a field.
+ */
+export function fieldGetterSignature(self: Type, fieldType: () => Type): RequiredSignature {
+  const receiver = { name: undefined, type: self, reference: false, isReceiver: true };
+  return {
+    typeParameters: [],
+    parameters: [{ ...receiver, hasDefault: false, rest: undefined }],
+    result: fieldType,
+    kind: () => simpleMark,
+  };
+}
+
+/**
+ * The getter declared to meet `required`'s field for `type`, which stores none of its name
+ * (§3.10): chosen among the getters beside `type` or the trait as a witness of its read is.
+ */
+export function chooseFieldGetter(
+  checker: CheckerContext,
+  type: Type,
+  { constraint, field }: RequiredField,
+): { readonly choice: Choice; readonly signature: RequiredSignature } {
+  const signature = fieldGetterSignature(type, () =>
+    requiredFieldType(checker, constraint, field, type),
+  );
+  const name = field.name.text;
+  const candidates = fieldGetterCandidates(checker, type, { trait: constraint.trait, name });
+  return { choice: chooseWitnessAmong(checker, type, candidates, signature), signature };
+}
+
+/**
  * `chooseWitness` among `candidates`, as a witness is chosen wherever they come from: only those
  * whose kind may meet the requirement's (`meetsRequirementKind`); one generic over its mark is
  * judged once its instantiation is chosen (conformance.ts).
@@ -68,7 +119,7 @@ export function chooseWitnessAmong(
   checker: CheckerContext,
   type: Type,
   given: readonly Candidate[],
-  required: Signature,
+  required: RequiredSignature,
 ): Choice {
   const candidates = given.filter((candidate) => {
     const kind = candidateSignature(checker, candidate).kind();
@@ -92,7 +143,7 @@ export function chooseWitnessAmong(
  */
 export function instanceMeetsKind(
   checker: CheckerContext,
-  required: Signature,
+  required: Pick<RequiredSignature, 'kind'>,
   call: ResolvedCall,
   self: Type,
 ): boolean {

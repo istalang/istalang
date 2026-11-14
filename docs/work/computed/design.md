@@ -108,10 +108,8 @@ runs. It emits each expression as a function of the scope:
 struct CompanySeen:
     m: CompanyModel
 
-@Getter
-fn employees(self: CompanySeen) -> Int?: self.m.employees.seen()
-@Getter
-fn size(self: CompanySeen) -> String?: self.m.size.seen()
+fn get employees(self: CompanySeen) -> Int?: self.m.employees.seen()
+fn get size(self: CompanySeen) -> String?: self.m.size.seen()
 
 fn companySizeWhen(SupplierScope{data, ...}) -> Bool: (data.company.employees ?? 0) >= 10
 ```

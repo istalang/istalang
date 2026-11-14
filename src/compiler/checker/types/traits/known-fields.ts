@@ -5,12 +5,7 @@
  */
 
 import type { CheckerContext } from '../../contexts/context.ts';
-import {
-  type FoundField,
-  namedFieldRead,
-  requiredFieldRead,
-  structFieldOf,
-} from '../../surface/checked-field.ts';
+import { type FoundField, namedFieldRead, structFieldOf } from '../../surface/checked-field.ts';
 import { unfolded } from '../type/computed-types.ts';
 import type { Type } from '../type/index.ts';
 import { literalType } from '../type/primitives.ts';
@@ -18,8 +13,8 @@ import { requiredFields, requiredFieldType } from './constraints.ts';
 import { knownConstraints, structConstraintsOn } from './known-constraints.ts';
 
 /**
- * The field `name` of `type`: a struct's, or, on a type known only per instantiation, one a trait
- * of its constraints requires or one its struct constraints name (§3.5, §3.10).
+ * The field `name` of `type`: a struct's, or, on a type known only per instantiation, one its
+ * struct constraints name, stored, else one a trait of its constraints requires (§3.5, §3.10).
  */
 export function fieldOf(
   checker: CheckerContext,
@@ -29,6 +24,16 @@ export function fieldOf(
   const type = unfolded(given);
   if (type.kind === 'nominal' || type.kind === 'anonymous') {
     return structFieldOf(checker, type, name);
+  }
+  // A struct constraint naming the field says the type stores it, which code may write.
+  const named = structConstraintsOn(checker, type).some((model) =>
+    model.named.some((entry) => entry.name === name),
+  );
+  if (named) {
+    return {
+      member: { name, type: checker.typeRules.fieldType(type, literalType(name)) },
+      read: namedFieldRead(checker, type, name),
+    };
   }
   for (const constraint of knownConstraints(checker, type)) {
     const field = requiredFields(constraint.trait).find((each) => each.name.text === name);
@@ -43,17 +48,9 @@ export function fieldOf(
             type: checker.resolveType(checker.moduleOf(constraint.trait), field.type),
           },
         },
-        read: requiredFieldRead(checker, type, { trait: constraint.trait, field }),
+        read: { kind: 'required', on: type, required: { constraint, field } },
       };
     }
   }
-  const named = structConstraintsOn(checker, type).some((model) =>
-    model.named.some((entry) => entry.name === name),
-  );
-  return named
-    ? {
-        member: { name, type: checker.typeRules.fieldType(type, literalType(name)) },
-        read: namedFieldRead(checker, type, name),
-      }
-    : undefined;
+  return undefined;
 }

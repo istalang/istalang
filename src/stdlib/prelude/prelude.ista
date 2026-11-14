@@ -480,6 +480,3 @@ trait Parsable:
 # Names the suspension point of the statement it annotates, for tests and operators (§10).
 struct Waypoint:
   label: String
-
-# Makes the method it annotates a getter, read as `x.name` and called as `name(x)` (§3.1).
-struct Getter

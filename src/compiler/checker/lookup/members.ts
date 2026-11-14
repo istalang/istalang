@@ -59,7 +59,7 @@ export function membersOf(
   if (type.kind === 'error') {
     return noMembers;
   }
-  const { methods, getters } = receiverMembers(checker, receivedBy(checker, module, type, access));
+  const { methods, getters } = receiverMembers(receivedBy(checker, module, type, access));
   return {
     fields: fieldsOf(checker, type),
     variants: (type.kind === 'nominal' ? checker.variantsOf(type) : undefined) ?? [],

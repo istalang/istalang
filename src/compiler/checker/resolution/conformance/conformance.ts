@@ -11,7 +11,10 @@
  *   (resolution/choosing/candidates.ts). Each is the function declared to meet it
  *   (declared-witness.ts), which must give the required result. The calls found are the witnesses
  *   the instantiation calls (check.ts).
- * - A required field or associated type, and a struct constraint's entries, are met as
+ * - A required field is met by a field of its name the type stores, of its type, or else by a
+ *   getter chosen as a witness is, as `fn get name(self: Self)` giving that type (§3.10), a
+ *   witness of the constraint after its functions', through which lowering reads the field once
+ *   it knows the type. A required associated type, and a struct constraint's entries, are met as
  *   shortfalls.ts judges them.
  * - A trait the compiler derives (derived-traits.ts) asks what its rule asks of every type first,
  *   and a required function no function is declared for is met by the witness it derives. On a
@@ -38,6 +41,7 @@ import type { FunctionDeclaration, TypeParameter } from '../../../syntax/declara
 import type { RootGoals } from '../../contexts/context.ts';
 import { silent, type UseSite } from '../../contexts/use-site.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
+import type { RequiredField } from '../../surface/checked-field.ts';
 import type { ResolvedCall, Witnesses } from '../../surface/resolved-call.ts';
 import { standsForMember } from '../../types/fitting/member-arguments.ts';
 import { sameType } from '../../types/identity/identity.ts';
@@ -56,16 +60,21 @@ import {
 } from '../../types/traits/constraints.ts';
 import type { Constraint, Type } from '../../types/type/index.ts';
 import { errorType } from '../../types/type/primitives.ts';
-import { typeText } from '../../types/type/type-text.ts';
 import { callMade } from '../choosing/calls-made.ts';
 import { type Application, type Choice, type Signature, signatureOf } from '../choosing/choice.ts';
 import { admitting } from './admits.ts';
-import { chooseWitness, chooseWitnessAmong, instanceMeetsKind } from './declared-witness.ts';
+import {
+  chooseFieldGetter,
+  chooseWitness,
+  chooseWitnessAmong,
+  instanceMeetsKind,
+  type RequiredSignature,
+} from './declared-witness.ts';
 import { type Derivation, derivationOf } from './derived-traits.ts';
 import { kindsSettledAt } from './kind-settling.ts';
+import { fieldGetters, lacks, type Meeting, meetingKey, metBy } from './meetings.ts';
 import {
   associatedShortfall,
-  fieldShortfall,
   type Meets,
   meetsStructConstraints,
   meetsStructModel,
@@ -77,7 +86,6 @@ import {
   deeper,
   endlessAt,
   type Failure,
-  goalKey,
   isFailure,
   maximumDepth,
   meetsWith,
@@ -242,8 +250,9 @@ export function conformWitnesses(
 }
 
 /**
- * The witness of every function `constraint` requires of `type`; one no function is declared for
- * is `unmet`'s, by default the one a derived trait derives, else reported missing.
+ * The witness of every function `constraint` requires of `type`, in the trait's order, then the
+ * getter meeting each field it requires that the type stores none of; a function none is declared
+ * for is `unmet`'s, by default the one a derived trait derives, else reported missing.
  */
 function conform(
   meeting: Meeting,
@@ -258,7 +267,6 @@ function conform(
   const derivation = derivationOf(checker, constraint.trait);
   const missing =
     derivation?.lacking(site, type, constraint) ??
-    fieldShortfall(checker, type, constraint) ??
     (meeting.onValues === true
       ? undefined
       : associatedShortfall(checker, type, constraint, silentMeets(site, search)));
@@ -267,26 +275,18 @@ function conform(
       ? lacks(meeting, missing)
       : endlessAt(site, search, type, constraint);
   }
-  return functionWitnesses(
+  const getters = fieldGetters(meeting, search, (required) =>
+    getterWitness(site, type, required, search),
+  );
+  if (isFailure(getters)) {
+    return getters;
+  }
+  const functions = functionWitnesses(
     meeting,
     search,
     unmet ?? undeclaredWitness(meeting, derivation, search),
   );
-}
-
-/**
- * A constraint being met by a type at a use site, `onValues` when only calls on its values need it.
- */
-interface Meeting {
-  readonly site: UseSite;
-  readonly type: Type;
-  readonly constraint: Constraint;
-  readonly onValues?: boolean;
-}
-
-/** The goal `meeting` is, as a search keeps it (`SearchGoals`). */
-function meetingKey({ site, type, constraint }: Meeting): string {
-  return goalKey(site.checker.typeKeys, type, constraint);
+  return isFailure(functions) ? functions : [...functions, ...getters];
 }
 
 /**
@@ -298,13 +298,6 @@ export function silentMeets(site: UseSite, search: Search = startSearch()): Meet
     const meeting = { site: silent(site), type, constraint };
     return search.goals.witnesses(meetingKey(meeting), () => conform(meeting, deeper(search)));
   });
-}
-
-/** Reports that the type lacks `missing` to meet the constraint. */
-function lacks({ site, type, constraint }: Meeting, missing: string): Failure {
-  const trait = constraint.trait.name.text;
-  site.report((at) => checkerDiagnostics.notConforming(at, typeText(type), trait, missing));
-  return 'failed';
 }
 
 /**
@@ -371,39 +364,30 @@ function functionWitnesses(
     const required = { declaration, substitution };
     const witness: WitnessOutcome =
       search.depth < maximumDepth ? witnessOf(site, type, required, search) : boundReached(search);
-    switch (witness.kind) {
-      case 'call':
-        witnesses.push(witness.call);
-        break;
-      case 'none': {
-        const met = unmet(declaration);
-        if (isFailure(met)) {
-          return met === 'endless' ? endlessAt(site, search, type, constraint) : met;
-        }
-        witnesses.push(met);
-        break;
-      }
-      case 'ambiguous':
-        return lacks(
-          meeting,
-          `a single '${declaration.name.text}' as ${meeting.constraint.trait.name.text} declares it`,
-        );
-      case 'wrongResult': {
-        const name = declaration.name.text;
-        const [wanted, given] = [typeText(witness.required), typeText(witness.given)];
-        return lacks(meeting, `'${name}' giving ${wanted}, where the one declared gives ${given}`);
-      }
-      case 'endless':
-        return endlessAt(site, search, type, constraint);
-      case 'failed':
-        return 'failed';
-      default: {
-        const unhandled: never = witness;
-        return unhandled;
-      }
+    const met = metBy(meeting, search, witness, {
+      name: declaration.name.text,
+      unmet: () => unmet(declaration),
+    });
+    if (isFailure(met)) {
+      return met;
     }
+    witnesses.push(met);
   }
   return witnesses;
+}
+
+/** The getter meeting `required`'s field for `type`, which stores none of its name (§3.10). */
+function getterWitness(
+  site: UseSite,
+  type: Type,
+  required: RequiredField,
+  search: Search,
+): WitnessOutcome {
+  if (search.depth >= maximumDepth) {
+    return boundReached(search);
+  }
+  const { choice, signature } = chooseFieldGetter(site.checker, type, required);
+  return witnessChosen(site, choice, { type, signature }, search);
 }
 
 interface RequiredFunction {
@@ -425,7 +409,7 @@ function witnessOf(
 function witnessChosen(
   site: UseSite,
   choice: Choice,
-  { type, signature }: { readonly type: Type; readonly signature: Signature },
+  { type, signature }: { readonly type: Type; readonly signature: RequiredSignature },
   search: Search,
 ): WitnessOutcome {
   if (choice.kind === 'none') {

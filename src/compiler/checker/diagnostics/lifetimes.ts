@@ -21,6 +21,11 @@ export const lifetimeTemplates = {
     message: () =>
       "'dispose' takes its value as its one parameter, returns Unit and can't be async (§7).",
   },
+  disposeGetter: {
+    code: 5712,
+    message: () =>
+      "'dispose' is the runtime's to call (§7), so it is never a getter, which code reads (§3.1).",
+  },
   disposeSelfEscapes: {
     code: 5702,
     message: (name: string) =>

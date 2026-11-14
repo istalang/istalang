@@ -6,7 +6,8 @@
  * - **A copy** relates its target as its source; assigning a captured `let` also writes its cell,
  *   a heap write like any (design.md §2), and declaring one makes the cell.
  * - **A read** of a variable's or path's part reads that path, so reading it again names one value
- *   (nodes.ts); a read of any other value reaches what it reaches.
+ *   (nodes.ts); a read of any other value reaches what it reaches. A field a trait requires is
+ *   read as the getter's call it may be (§3.10).
  * - **A closure** is analysed as its own function, once; it holds what it captures, which escapes,
  *   since the closure may be called by code nobody sees, and its requirements are checked for any
  *   values of its inputs' types where it is made (design.md §5.5). So are a function's named as a
@@ -22,6 +23,8 @@
  */
 
 import type { Operation, Part } from '../../../surface/flow-ir.ts';
+import { traitAsAny } from '../../../types/traits/constraints.ts';
+import { isComputed } from '../../../types/type/computed-types.ts';
 import type { Type } from '../../../types/type/index.ts';
 import { copiedTypes } from '../dispatch.ts';
 import { escapingCycles } from '../escaping.ts';
@@ -65,6 +68,10 @@ const handlers: { readonly [Kind in Operation['op']]: Handler<Kind> } = {
   read: (at, operation) => {
     const { analysis, state } = at;
     const { into, from, part } = operation;
+    if (part.kind === 'required') {
+      requiredRead(at, operation, part);
+      return;
+    }
     if (!analysis.nodes.isRelevant(into)) {
       return;
     }
@@ -273,6 +280,24 @@ function copied({ analysis, state }: At, { into, from }: Of<'copy'>): void {
     state.canon.set(into, named);
   }
   carry(state, into, from);
+}
+
+/**
+ * A read of a field a trait requires, which the value's own type may meet with a getter (§3.10):
+ * the call it may be, of code this body doesn't see, given the value read. The getters themselves
+ * are checked as the witnesses they are: by the call instantiating this function, where a value
+ * goes into an `any`, and here, as its value put into the trait's `any`, on a computed type, whose
+ * getter only an instantiation names (as `requiredEscaping` checks a call on one).
+ */
+function requiredRead(
+  at: At,
+  { into, from, site }: Of<'read'>,
+  { on, required }: Extract<Part, { readonly kind: 'required' }>,
+): void {
+  unknownCall(at, into, nodesGiven(at, [{ kind: 'value', value: from }]));
+  if (at.analysis.recording && isComputed(on)) {
+    putIntoAny(at, { to: traitAsAny(required.constraint, on), member: on }, site);
+  }
 }
 
 /** A part read: of the path a variable's or path's value names, else of the value read. */

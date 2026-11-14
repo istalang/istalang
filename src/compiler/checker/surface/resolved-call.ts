@@ -180,7 +180,9 @@ export interface MadeCall {
 
 /**
  * Per type parameter of a generic callee: for each of its constraints, in order, the call each
- * function of the constraint's trait resolves to, in the trait's order.
+ * function of the constraint's trait resolves to, in the trait's order, then the getter meeting
+ * each field the trait requires that the type stores none of (§3.10), which code reading the field
+ * calls for its caller as it calls the functions.
  */
 export type Witnesses = ReadonlyMap<TypeParameter, readonly (readonly ResolvedCall[])[]>;
 

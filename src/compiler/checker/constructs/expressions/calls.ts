@@ -279,7 +279,6 @@ function callMethod(
   // The other arguments' types find methods too (§3.13), which a member's meaning leaves aside.
   const others = call.written.map(({ type }) => type);
   const { methods } = receiverMembers(
-    checker,
     topLevelCandidates(checker, module, name, [receiverType, ...others]),
   );
   const candidates = callableThrough(checker, callee, methods);
