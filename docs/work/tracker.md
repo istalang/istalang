@@ -31,13 +31,13 @@ tags: [tracker]
 | Static lifetimes (`docs/work/static-lifetimes/plan.md`) | in progress: C1, C2, R1, R2, C3, C4, R3, R4 and R5 done; C5 dropped |
 | Proposal 13, transients and getters (`docs/work/transients-getters/plan.md`) | done (merge re-review approved; B87, B88 left) |
 | Proposal 14, inert functions (`docs/work/inert-functions/plan.md`) | done (reviewer approved, QA passed; B89 left) |
-| Computed, and FormBuilder on it (`docs/work/computed/plan.md`) | in progress: C1 done, C2 |
+| Computed, and FormBuilder on it (`docs/work/computed/plan.md`) | in progress: C1 merged, C2 done on `computed-forms`, C3 |
 | Proposal 15, stable host references (`docs/proposals/15-stable-host-references.md`) | approved, not planned; FormBuilder adopts it once done |
 | M8 Packages | planned |
 
 ## Filed
 
-Open items only: an item is removed once it is resolved; git history keeps it. Each group numbers its own items and keeps counting up: the next ids are F34, P53, Q56, B90. Items filed before 2026-10-28 shared one `D` series; older docs and git history keep the closed `D` ids.
+Open items only: an item is removed once it is resolved; git history keeps it. Each group numbers its own items and keeps counting up: the next ids are F34, P53, Q56, B92. Items filed before 2026-10-28 shared one `D` series; older docs and git history keep the closed `D` ids.
 
 Size: easy (one short, local change), medium (several files or a design choice inside one layer), big (cross-layer, or a decision first). Depends on: what must happen first, or "none" when it can be done now.
 
@@ -206,3 +206,5 @@ Crashes, spec gaps, wrong or missing diagnostics, host-visible behaviour.
 | B87 | Static lifetimes checks a generic body's call of a required function, or read of a required field, as a requirement call without the witness's own reach, so `fn settle<T is Homed>(t: T, n: Node): t.homeOf()->node = n` with `ista fn homeOf(self: Door) -> Box: homes` (`homes` an `ista const` that `n` holds) reports no cycle, where the concrete body reports 5721. Instantiating calls should check the witness as they check its constraint. | medium | none | transients-getters G3 |
 | B88 | A call written as another construct infers a generic result from its own arguments only: a member access (a getter), a binary, a unary and an index stand as `boundary` in the scope protocol (`scope-protocol.ts`), so `id(box.empty)` with a getter generic in its result alone fails (5301) where `id(empty(box))` checks. The standing of every call-shaped construct should be one decision, `joins` as a call's is. | medium | none | transients-getters merge review |
 | B89 | A local `fn` passed where an inert or sendable function is expected gets the plain fit error (two function types), not one report per capture beyond the expected sendability, which only lambdas get (`explainedCaptures`, `resolution/calls/captured-sends.ts`); proposal 14's example message names a local `fn`. | easy | none | inert-functions I1 |
+| B90 | Warning 5009 ("never reassigned; declare it with const") fired on a `let` array pushed only inside a one-line `if` in a `for` in FormBuilder's `forms/views.ista` (branch computed-forms, C2), and the `const` it asks for then fails 5207. Not reproduced in isolation yet: reduce from that file first. | medium | none | computed C2 |
+| B91 | A variant constructor whose argument is typed by an associated type, `RowsFrom.Always(rows, self.rowKey)`, failed to fit a value of the identical printed type: "Expected (inert fn(R.Seen) -> String?)?, found (inert fn(R.Seen) -> String?)?". FormBuilder works around it by parameterizing `RowsFrom` by `S`. | medium | none | computed C2 |
