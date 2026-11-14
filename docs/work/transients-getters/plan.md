@@ -1,7 +1,7 @@
 ---
 description: plan for proposal 13 (transient variables and getters) — process, partitions, phases and acceptance criteria; read before forking or examining any of its phases
 owner: tech-lead
-status: active
+status: archived
 applies_to: istalang
 last_verified: 2026-11-14
 last_updated: 2026-11-14
@@ -80,5 +80,5 @@ completion of `get`, semantic tokens, spec §2, §3.1 and §3.16, docs/reuse.
 ## Out of scope
 
 Filed in `docs/work/tracker.md`: a declaration-time "one meaning per name" check (F31, today it is
-reported where used); getters as trait requirements (F32). FormBuilder's generator cycle check
+reported where used). FormBuilder's generator cycle check
 belongs to the computed feature (`docs/work/computed/design.md`).
