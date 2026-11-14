@@ -1,5 +1,5 @@
 ---
-description: proposal 15 of docs/proposals, stable host references — a value the program gives a host again, unchanged, arrives as the same frozen JavaScript object at every depth, through identity caches on both encoding stages, and a bridge keeping that identity across a Worker's message channel; rules, mechanism, what it takes, spec edits and the decisions; read before designing or implementing it, or a host that relies on reference equality (React)
+description: proposal 15 of docs/proposals, stable host references — a value the program gives a host again, unchanged, arrives as the same frozen JavaScript object at every depth, through identity caches on both encoding stages; rules, mechanism, soundness against in-place writes, spec edits and the decisions; read before designing or implementing it, or a host that relies on reference equality (React)
 owner: tech-lead
 status: active
 applies_to: istalang
@@ -42,11 +42,13 @@ the host gets for an extern's argument or a run's outcome is frozen, and a part 
 - **Primitives are their own identity:** strings, integers (`bigint`), floats, booleans and
   `null`.
 - **Frozen:** a host can't change an object it may be given again.
-- **Within one runtime.** A value crossing between instances is rebuilt
-  (`scheduler/instance/crossing.ts`), so identity never spans instances, and neither does it span
-  restarts.
-- **Codecs must be pure:** a type's `toJson` runs at most once per unchanged value, so one with
-  effects would run fewer times than called. Derived and std codecs are pure already.
+- **Within one instance.** A value crossing between instances is rebuilt
+  (`scheduler/instance/crossing.ts`), so identity holds within one instance only, and never
+  across restarts.
+- **Codecs must be pure:** a type's `toJson` runs at most once per unchanged value in an
+  instance, so one with effects would run fewer times than called. Derived and std codecs are pure
+  already. A mocked function is the exception (§10): while an instance sees a mock (its own or one
+  relayed from an ancestor), its encoding bypasses stage 1, so the mock sees every call.
 
 ## Mechanism
 
@@ -57,66 +59,71 @@ codecs are std Istalang functions), then the runtime turns that into plain JavaS
 
 - **Values are shared by reference** in the interpreter: registers, moves, calls and returns pass
   the same object. So "kept" is already "the same object"; only the encoders build anew.
-- **Stage 1, value to `Json`:** lowering wraps each write-codec call on a composite value in a
-  lookup and a remember, two natives over a `WeakMap` from value object to its `Json` value. A
-  struct's derived codec calls its fields' codecs through the same wrapping, so an unchanged field
-  hits the cache even when its parent changed.
-- **Stage 2, `Json` to JavaScript:** `plainOfJson` keeps a `WeakMap` from `Json` value object to
-  the frozen plain object it made, so a cached `Json` value gives the same object again.
-- **In-place writes stay sound.** The interpreter writes a value in place only when this instance
-  made it and one holder holds it (`runtime/lifetimes/in-place.ts`). Two rules, in that one home:
-  - **A cached value is never written in place:** remembering it removes it from the instance's
-    own set, as for values a native made, so its first write copies.
-  - **A changed key is forgotten:** an in-place write forgets the cached `Json` of every node on the
-    written path, through the seam that already forgets their hashes and summaries
-    (`forgetDerivedOf`).
-- **One home:** both caches and both rules sit in one runtime module, which the boundary and the
-  in-place writer call; nothing else knows them.
-
-## Across a message channel
-
-A host running the interpreter in a Web Worker posts what it gets to the page, and the structured
-clone makes new objects again. The package gains a bridge for that hop, `istalang/bridge`:
-
-- **A sender and a receiver,** one pair per channel. The sender numbers each object it sends, sends
-  an object it sent before as its number, and a new one whole. The receiver keeps its objects by
-  number and rebuilds each message from them, frozen.
-- **Both keep what the latest message reached.** The channel is ordered, so each side computes
-  the same set after each message and drops the rest, with no acknowledgements.
-- **The sender's input is the runtime's output,** whose identity stage 2 keeps, so an unchanged
-  subtree is a number on the wire, and the page's object for it is the one it had.
+- **One write path, `json.encode<T>`.** Every encoding of a part goes through it: the write codec
+  lowering calls (`codec-calls.ts`: derived codecs' fields, extern arguments, outcomes) closes
+  `encode<T>` instead of the witness, and the std `Array`, `Map` and `T?` codecs call
+  `encode(each)`. The cache lives in `encode`'s body, Istalang over two natives (look up,
+  remember), so an unchanged element of a changed array hits it too. Caching at the call, not in
+  the codec, keeps it sound for a codec with defaulted parameters called directly with others.
+- **Stage 1, value to `Json`:** keyed by the value object and the closed `encode<T>` instance.
+  Coherence (§3.10) makes `T` decide the codec, and one object may be written by two codecs: a
+  conversion that keeps the layout (`Box<"a">` to `Box<String>`, tuples of them) shares the object
+  between two types. `T` is the type as lowering closes it, tuples included, never only a named
+  type entry. Scoped per instance, beside its counts: a codec may read a `context` constant, whose
+  value is per instance (§3.4), and a new Definition's codecs are new instances of `encode`. A miss
+  is its own case, never `none`, which is a `Json` value.
+- **Stage 2, `Json` to JavaScript:** `plainOfJson` keeps a weak map from the array or map inside a
+  `Json` (not the union's variant wrapping it, which each conversion to `Json` makes anew) to the
+  frozen plain object it made and its nesting height. The height is what the uncached walk would
+  check, so the nesting limit refuses exactly what it refused before.
+- **In-place writes stay sound** (`runtime/lifetimes/in-place.ts`), by two rules:
+  - **The cache is a holder.** Remembering holds the `Json` in the instance's counts, as every
+    holder that keeps a value is counted, so no part of a cached `Json` is ever written in place.
+  - **A changed node is forgotten.** Every node an in-place write changes forgets both its cache
+    entries, through the one function every change path calls with the summaries and hashes it
+    already forgets. A written value's ancestors are on its path, since a node held once has one
+    parent, so each is forgotten too.
+  - A key is not disowned when remembered: forgetting suffices, and disowning would copy a whole
+    array at its first push after every send.
+- **One home:** both caches and their forgetting are defined in one module, beside
+  `plainOfJson`; an instance keeps its stage 1 as it keeps its counts. The natives, the boundary
+  and the in-place writer call that module, and nothing else knows the caches.
 
 ## What it takes
 
-- **Runtime:** the identity module (both caches, the two in-place rules), the two natives, and
-  `plainOfJson`'s cache. Outcomes (`runtime/boundary/outbound.ts`) and extern arguments
-  (`runtime/boundary/host-natives.ts`) both go through it.
-- **Lowering:** the lookup and remember around write-codec calls on composites
-  (`lowering/synthesized/boundary/codec-calls.ts`).
-- **Package:** `istalang/bridge`, the sender and receiver, with no dependency on the rest.
+- **Std:** `json.encode`'s body over the two natives; the `Array`, `Map` and `T?` codecs and
+  `stringify` call `encode`.
+- **Lowering:** the write direction of `codecCall` closes `encode<T>` (well-known by name) over
+  the witness resolved at the host site, where a disposable host type is `Encodable` (§9). Traces
+  of a codec's panic gain the `json.encode` frame.
+- **Runtime:** the identity module (both caches, forgetting), the two natives (remember holds,
+  both bypass under a mock), freezing and caching in `plainOfJson`. Outcomes
+  (`runtime/boundary/outbound.ts`) and extern arguments (`runtime/boundary/host-natives.ts`) both
+  go through it.
 - **Checker, Definition format, snapshots:** none. The caches are weak and never persisted.
-- **Cost:** a weak-map lookup per composite encoded; a hit makes re-encoding an unchanged subtree
-  free, so a large tree sent again costs what changed.
+- **Cost:** a call and a weak-map lookup per part encoded; a hit makes re-encoding an unchanged
+  subtree free, so a large tree sent again costs what changed.
 
 **Spec edits:**
-- §9: the rule, frozen values, purity of codecs.
+- §9: the rule, frozen values, purity of codecs and the mock exception.
 
-Docs: `docs/arch/boundary.md` (identity at the boundary, the bridge), `docs/arch/definition.md`
-("Values are immutable" holds for programs; the interpreter writes in place only where no one else
-could see it, now including the host), and FormBuilder's spec §3 and §8.
+Docs: `docs/arch/boundary.md` (identity at the boundary), `docs/arch/definition.md` ("Values are
+immutable" holds for programs; the interpreter writes in place only where no one else could see
+it, now including the host), and FormBuilder's spec §3 and §8 (the identity comes from the
+runtime, with no bridge).
 
 ## Its first user
 
 FormBuilder (`docs/work/computed/design.md`): its browser function sends the whole tree after each
-event, and the computed views keep unchanged nodes' objects. With this proposal, the page gets
+event, and the computed views keep unchanged nodes' objects. With this proposal, the host gets
 those nodes' previous objects, and React skips them.
 
 ## Decisions (proposed, for the human)
 
 - **Identity of kept values only**, not interning of equal ones.
 - **Frozen objects** at the host.
-- **Codecs are pure** by rule, not by check.
-- **The bridge ships in the package**, so every Worker host gets the same protocol.
+- **Codecs are pure** by rule, not by check; mocks bypass the caches.
+- **One runtime:** the host runs in the interpreter's JavaScript realm; no message-channel bridge.
 
 **Rejected:**
 - **Interning (hash-consing) every value:** a hash per value built, in every program.
@@ -126,3 +133,9 @@ those nodes' previous objects, and React skips them.
   a protocol per library, and no help to any other host.
 - **Encoding natively, bypassing `toJson`:** codecs are traits a type may declare (§9); a native
   encoder would ignore declared ones.
+- **Wrapping each lowered codec call in the cache:** the std codecs' calls in Istalang source
+  would miss it, so a changed array would re-encode every element.
+- **Memoizing inside each codec:** a codec called directly with a non-default argument would hit
+  an entry made with the default.
+- **Stage 1 per Definition:** `context` constants, counts and mocks are per instance; a shared
+  cache would give one instance another's encoding.
