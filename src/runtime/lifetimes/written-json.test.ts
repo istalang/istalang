@@ -49,6 +49,17 @@ describe('the JSON an instance wrote a value as', () => {
     expect(writes.written.of(value, int)).toBeUndefined();
   });
 
+  it('leaves a value written as itself changeable in place, as `Json` is', () => {
+    const writes = instanceWrites();
+    const items = madeArray(writes, [1n]);
+    const json = writes.values.made({ kind: 'variant', type: 0, variant: 0, fields: [items] });
+    const register = held(writes, json);
+    writes.written.remember(json, int, json);
+    writes.changed(register, nothingHeld);
+    held(writes, items);
+    expect(writes.values.appended(items, [2n])).toBe(items);
+  });
+
   it('is forgotten for every value holding a part changed in place', () => {
     const writes = instanceWrites();
     const inner = madeArray(writes, [1n]);

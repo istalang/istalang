@@ -216,4 +216,59 @@ describe('one object given as two types', () => {
       ['as a literal', 'as a string'],
     ]);
   });
+
+  it('is written by each type its own codec inside tuples too', async () => {
+    const pairs: Showing = {
+      declarations: [
+        'struct Box<T> { value: T }',
+        'fn toJson(self: Box<"a">) -> Json: "as a literal"',
+        'fn toJson(self: Box<String>) -> Json: "as a string"',
+        'extern fn show(pairs: ((Box<"a">, Int), (Box<String>, Int)))',
+      ],
+      key: 'main.show(((main.Box<"a">, Int), (main.Box<String>, Int)))',
+    };
+    const seen = await shown(pairs, [
+      'const pair: (Box<"a">, Int) = (Box{value: "a"}, 1)',
+      'show((pair, pair))',
+      'show((pair, pair))',
+    ]);
+    const written = [
+      ['as a literal', 1n],
+      ['as a string', 1n],
+    ];
+    expect(seen).toEqual([written, written]);
+  });
+});
+
+describe('a value two instances give a host', () => {
+  it("is written by each instance's codec, reading its own context constant", async () => {
+    const program = compiledText(
+      [
+        "import Json from 'json'\nimport * as runtime from 'runtime'",
+        'ista const label: String = runtime.id()',
+        'struct Item { name: String }',
+        'ista fn toJson(self: Item) -> Json: label',
+        'const shared = Item{name: "a"}',
+        'extern fn show(item: Item)',
+        'live async fn main(): await runtime.run(runtime.id()) _main()',
+        'ista async fn _main():',
+        '  show(shared)',
+        '  show(shared)',
+      ].join('\n'),
+    );
+    const seen: unknown[] = [];
+    const host: HostExterns = {
+      'main.show(main.Item)': ([value]) => {
+        seen.push(value);
+        return null;
+      },
+    };
+    const test = testRuntime({ host });
+    const deployed = test.runtime.deploy(program);
+    await runToEnd(test, 'one', await deployed.start('one'));
+    await runToEnd(test, 'two', await deployed.start('two'));
+    expect(new Set(seen).size).toBe(2);
+    expect(seen[1]).toBe(seen[0]);
+    expect(seen[3]).toBe(seen[2]);
+  });
 });

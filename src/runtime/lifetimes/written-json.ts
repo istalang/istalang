@@ -10,7 +10,8 @@
  *   the instance's (§3.4). A test world keeps nothing (native-calls.ts), so a mock sees every call
  *   of the codec it replaces (§10).
  * - **A holder:** a `Json` kept is held in the instance's counts for good, so no part of it is
- *   ever changed in place (in-place.ts), which would change what it gives for another value.
+ *   ever changed in place (in-place.ts), which would change what it gives for another value. A
+ *   value written as itself, a `Json`, is not kept, so what it holds stays its own to change.
  * - **A value changed in place is forgotten** (`forget`), as its other derived data is: it is
  *   another value now, so its JSON is built again.
  */
@@ -37,9 +38,13 @@ export class WrittenJson {
     return isComposite(value) ? this.#byValue.get(value)?.get(textOf(type)) : undefined;
   }
 
-  /** Keeps `json` as what `value` was written as, a `type`. */
+  /**
+   * Keeps `json` as what `value` was written as, a `type`. A value written as itself (a `Json`)
+   * is not kept: writing it again costs nothing, and holding it would pin what it holds, so an
+   * array of `Json` given as `Json` would be copied at every change after.
+   */
   remember(value: Value, type: TypeReference, json: Value): void {
-    if (!isComposite(value)) {
+    if (!isComposite(value) || value === json) {
       return;
     }
     this.#hold(json);
