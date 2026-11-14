@@ -35,7 +35,8 @@ Each root cause below explains a family of the ranked findings; fixing the root 
    handler and a lowering handler. The codebase already has the pattern that fixes it, used for a few constructs: a
    memoized core reading in `syntax/` (`taggedCall`, `fieldsFunctionOf`, `comparisonLinksOf`) or one record the checker
    makes that every later phase reads (`builtLiteralOf` for indented values). It is not applied systematically.
-2. **Two lowerings of every body.** `checker/rules/flow/build/` (2.7K lines) turns each construct into operations: order
+2. **Two lowerings of every body.** *(Fixed `2128668b..52eaef3f`: lowering writes each body from its flow IR and reads no
+   checked body; `lowering/constructs/` deleted. B2a+B2b −897 code.)* `checker/rules/flow/build/` (2.7K lines) turns each construct into operations: order
    of evaluation, `Never` stops, optional chains, argument passing with `&` write-back, deferred calls' "computed now",
    releases. `lowering/constructs/` does the same again into instructions. `flow/build/scopes.ts`'s banner says it releases
    "as lowering releases it"; `flow/build/calls.ts:parametersOf` is `lowering/.../calls.ts:parametersByArgument` line for
@@ -62,10 +63,12 @@ Each root cause below explains a family of the ranked findings; fixing the root 
 ## Ranked findings
 
 ### 1. [high] The flow IR builder and lowering are two lowerings of every construct  **[L][2×: rules, lead]**
-- **In progress** (option A: lowering reads the flow IR). Done (`2128668b..2b81dee1`): every flow value typed (the punned
-  `type: undefined` bug), spreads read by field name, one `presentOr`, one `callSubstitution`, the flow IR in the checker's
-  surface. The IR made exact (`83006244..4c62810b`): every branch says what it tests, every compute what it computes,
-  releases where lowering releases, field passes, `select` holds and literal spreads. Next: lowering built from it (B2b).
+- **Fixed** (`2128668b..52eaef3f`, option A, −897 code): the flow IR made exact and typed (the punned `type: undefined` bug,
+  branch tests, computations, releases, field passes, `select` holds, spreads, struct parts' fields), lowering written from it
+  (`lowering/flow/`, one writer per operation and exit) and `lowering/constructs/` deleted. A struct literal leaving fields to
+  defaults is one call of its fields function; an instance's field loop is one pass per field. Fixed with it: a struct
+  comprehension's fields released early, an element's part written back stale, a hold scope left unreleased by an earlier
+  `break`, an instance's implicit-call results typed generically.
 - where: `checker/rules/flow/build/{calls,literals,statements,scopes,chains,control}.ts` vs
   `lowering/constructs/{expressions,statements,parts}/`; clone pairs in `raw/clones45.txt` (`flow/build/literals.ts:73-127`
   ~ `lowering/.../structs.ts:90-96`, `collections.ts:74-112`; `flow/build/calls.ts:194-207` ~ `lowering/.../calls.ts:161-171`).
@@ -319,6 +322,11 @@ that are test seams (unexporting would copy knowledge or drop property tests).
   while `p.a->next = p.b` is accepted.
 - `runtime/lifetimes/shared-values.test.ts` is flaky: a seed can generate `xs.pop()` ×3 then `xs[0] = 9`, which rightly
   panics.
+- `lowering/flow/writer.ts:waypointAt` finds a wait's `@Waypoint` by walking syntax ancestors: the last syntax read in
+  lowering; `suspend`/`select` could carry it.
+- A default's flow takes apart the patterns of the parameters before it again (extra moves in such prologues).
+- A labelled loop or block gets one extra goto block per exit leaving it even when no `hold` names it.
+- `docs/reuse` has 9 stale mentions predating B2b.
 - Fixed on the way: a trait called as a function was accepted silently and crashed lowering (`8a578aee`).
 
 ## Rejected proposals
