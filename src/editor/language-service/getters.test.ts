@@ -24,23 +24,48 @@ const person = [
 const reader = 'fn greet(p: Person) -> String: p.full\n';
 
 describe('a getter in the editor', () => {
-  it('is offered after a value as a field, of the type it gives', () => {
-    const { program, module, offset } = programAt(...person, 'fn greet(p: Person) -> String: p.‸');
-    const offered = completionsAt(program, module, offset).filter(({ name }) => name === 'full');
-    expect(offered.map(({ kind, detail }) => ({ kind, detail }))).toEqual([
-      { kind: 'field', detail: 'String' },
+  it('is offered after a value, an optional or a shared struct handle as a field, of the type it gives', () => {
+    const direct = programAt(...person, 'fn greet(p: Person) -> String: p.‸');
+    const optional = programAt(...person, 'fn greet(p: Person?) -> String?: p?.‸');
+    const shared = programAt(
+      'shared struct Lease:',
+      '  renewals: Int = 0',
+      '@Getter',
+      'fn twice(self: Lease) -> Int: self->renewals * 2',
+      'fn check(l: Lease) -> Int: l.‸',
+    );
+    for (const [at, name, detail] of [
+      [direct, 'full', 'String'],
+      [optional, 'full', 'String'],
+      [shared, 'twice', 'Int'],
+    ] as const) {
+      const offered = completionsAt(at.program, at.module, at.offset).filter(
+        (item) => item.name === name,
+      );
+      expect(offered.map(({ kind, detail: d }) => ({ kind, detail: d }))).toEqual([
+        { kind: 'field', detail },
+      ]);
+    }
+  });
+
+  it('shows the function it is when hovered where it is read or called through', () => {
+    const read = programAt(...person, 'fn greet(p: Person) -> String: p.fu‸ll');
+    expect(hoverAt(read.program, read.module, read.offset)?.code).toEqual([
+      'fn full(self: Person) -> String',
+    ]);
+    const called = programAt(
+      'struct Adder:',
+      '  n: Int',
+      '@Getter',
+      'fn add(self: Adder) -> fn(Int) -> Int: fn(x): x + self.n',
+      'fn run(a: Adder) -> Int: a.ad‸d(3)',
+    );
+    expect(hoverAt(called.program, called.module, called.offset)?.code).toEqual([
+      'fn add(self: Adder) -> fn(Int) -> Int',
     ]);
   });
 
-  it('shows the function it is when hovered where it is read', () => {
-    const { program, module, offset } = programAt(
-      ...person,
-      'fn greet(p: Person) -> String: p.fu‸ll',
-    );
-    expect(hoverAt(program, module, offset)?.code).toEqual(['fn full(self: Person) -> String']);
-  });
-
-  it('goes to its declaration from a read, and is renamed with its reads', () => {
+  it('goes to its declaration from a read or call, and is renamed with its reads', () => {
     const { program, named } = navigable({ main: `${person.join('\n')}${reader}` });
     const read = named('main', 'full', 1);
     const declared = nameAt(program, read.module, spanOfUse(program, read).start)?.declarations;

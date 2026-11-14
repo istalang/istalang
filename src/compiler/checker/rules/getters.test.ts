@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
+import { decodeJson } from '../../../definition/formats/codec.ts';
+import { startToEnd, testRuntime } from '../../../runtime/runtime.test-kit.ts';
 import { mainGives } from '../../../stdlib/prelude/prelude.test-kit.ts';
+import { compiledText } from '../../compile.test-kit.ts';
 import { reported, reportedAt } from '../check.test-kit.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 
@@ -23,8 +26,35 @@ describe('reading a getter (§3.1)', () => {
     expect(await mainGives('String', `${ada}.full`, person)).toBe('Ada Lovelace');
   });
 
-  it('is a function too, called on its receiver', async () => {
-    expect(await mainGives('String', `full(${ada})`, person)).toBe('Ada Lovelace');
+  it('is a function too, called on its receiver or passed as a value', async () => {
+    expect(
+      await mainGives('Array<String>', `[full(${ada}), [${ada}].map(full).at(0) ?? ""]`, person),
+    ).toEqual(['Ada Lovelace', 'Ada Lovelace']);
+  });
+
+  it('chains through getters and optional chains', async () => {
+    const declarations = `${person}\n\nstruct Team:\n  lead: Person?\n\n@Getter\nfn leader(self: Team) -> Person?: self.lead`;
+    const body = `const empty = Team{lead: none}\nconst fullTeam = Team{lead: ${ada}}\n[empty.leader?.full ?? "none", fullTeam.leader?.full ?? "none"]`;
+    expect(await mainGives('Array<String>', body, declarations)).toEqual(['none', 'Ada Lovelace']);
+  });
+
+  it('reads on primitives, enums, tuples and shapes', async () => {
+    const declarations = [
+      'enum Bit { Zero, One }',
+      '@Getter',
+      'fn doubled(self: Int) -> Int: self * 2',
+      '@Getter',
+      'fn flipped(self: Bit) -> Int:',
+      '  match self:',
+      '    case Zero: 1',
+      '    case One: 0',
+      '@Getter',
+      'fn swapped(self: (Int, Int)) -> Int: self.1 * 10 + self.0',
+      '@Getter',
+      'fn area(self: { w: Int, h: Int }) -> Int: self.w * self.h',
+    ].join('\n');
+    const body = '[(7).doubled, Bit.Zero.flipped, (3, 4).swapped, struct{w: 5, h: 6}.area]';
+    expect(await mainGives('Array<Int>', body, declarations)).toEqual([14, 1, 43, 30]);
   });
 
   it('reads inside an optional chain on the value inside', async () => {
@@ -40,9 +70,21 @@ describe('reading a getter (§3.1)', () => {
   });
 
   it('converts its receiver into what its self takes', async () => {
-    const tagged =
-      'struct A:\n  n: Int\n\nstruct B:\n  m: Int\n\n@Getter\nfn tag(self: A | B) -> Int:\n  match self:\n    case A{n}: n\n    case B{m}: m';
-    expect(await mainGives('Int', 'A{n: 7}.tag', tagged)).toBe(7);
+    const tagged = [
+      'struct A { n: Int }',
+      'struct B { m: Int }',
+      'struct Pixel { y: Int, x: Int }',
+      '@Getter',
+      'fn tag(self: A | B) -> Int:',
+      '  match self:',
+      '    case A{n}: n',
+      '    case B{m}: m',
+      '@Getter',
+      'fn xCoord(self: { x: Int, y: Int }) -> Int: self.x',
+    ].join('\n');
+    expect(
+      await mainGives('Array<Int>', '[A{n: 7}.tag, Pixel{y: 10, x: 3}.xCoord]', tagged),
+    ).toEqual([7, 3]);
   });
 
   it('takes type arguments its receiver leaves open from the type expected of it', async () => {
@@ -58,39 +100,96 @@ describe('reading a getter (§3.1)', () => {
     expect(await mainGives('Int?', 'Box{items: [4, 5]}.first', box)).toBe(4);
   });
 
-  it('is found like a method, declared beside an imported type', () => {
-    const program = `import Person from 'people.ista'\n\n@Getter\nfn initials(self: Person) -> String: \`\${self.first.at(0) ?? ""}\${self.last.at(0) ?? ""}\``;
-    expect(
-      reported(`${program}\n\nfn subject(p: Person) -> String: p.initials\n`, {
-        'people.ista': 'struct Person:\n  first: String\n  last: String\n',
-      }),
-    ).toEqual({ codes: [], spanTexts: [] });
+  it('is found like a method, declared beside an imported type or in the importing module', async () => {
+    const main = [
+      "import Person from './people'",
+      '@Getter',
+      'fn initials(self: Person) -> String: `${self.first.at(0) ?? ""}${self.last.at(0) ?? ""}`',
+      'live async fn main() -> Array<String>:',
+      '  const p = Person{first: "Ada", last: "Lovelace"}',
+      '  [p.full, p.initials]',
+    ].join('\n');
+    const state = await startToEnd(
+      testRuntime(),
+      compiledText(main, { './people': `${person}\n` }),
+    );
+    expect(state.kind === 'finished' && decodeJson(String(state.outcome))).toEqual([
+      'Ada Lovelace',
+      'AL',
+    ]);
   });
 
-  it('gives a function a call calls, read before the arguments', async () => {
-    const adder =
-      'struct Adder:\n  n: Int\n\n@Getter\nfn add(self: Adder) -> fn(Int) -> Int: fn(x): x + self.n';
-    expect(await mainGives('Int', 'Adder{n: 2}.add(3)', adder)).toBe(5);
+  it('gives a function a call calls, read before the arguments, also in an optional chain or defer', async () => {
+    const adder = [
+      'shared struct Log { sum: Int = 0 }',
+      'struct Adder:',
+      '  n: Int',
+      '  log: Log',
+      '@Getter',
+      'fn add(self: Adder) -> fn(Int) -> Int: fn(x): x + self.n',
+      '@Getter',
+      'fn record(self: Adder) -> fn(Int) -> Unit:',
+      '  const log = self.log',
+      '  const n = self.n',
+      '  fn(x): {',
+      '    log->sum += x + n',
+      '  }',
+    ].join('\n');
+    const body = [
+      'const log = new Log{}',
+      'const a = Adder{n: 2, log}',
+      'const someAdder: Adder? = a',
+      'const noneAdder: Adder? = none',
+      '{',
+      '  _ = defer a.record(10)',
+      '}',
+      '[a.add(3), someAdder?.add(4) ?? -1, noneAdder?.add(4) ?? -1, log->sum]',
+    ].join('\n');
+    expect(await mainGives('Array<Int>', body, adder)).toEqual([5, 6, -1, 12]);
   });
 });
 
 describe('a getter is never stored', () => {
-  it('is no part of equality, patterns or a spread', async () => {
-    const body = `const p = ${ada}\nconst Person{first, last} = p\nconst copy = Person{...p}\n[p == Person{first, last}, copy == p]`;
-    expect(await mainGives('Array<Bool>', body, person)).toEqual([true, true]);
+  it('is no part of equality, map hashing, patterns, a spread or a field loop', async () => {
+    const body = [
+      `const p = ${ada}`,
+      'const Person{first, last} = p',
+      'const copy = Person{...p}',
+      'const seen = [p: 1]',
+      'let keys: Array<String> = []',
+      'for k, _ in ...p:',
+      '  keys.push(k)',
+      '[p == Person{first, last}, copy == p, seen[Person{first, last}] == 1, keys == ["first", "last"]]',
+    ].join('\n');
+    expect(await mainGives('Array<Bool>', body, person)).toEqual([true, true, true, true]);
   });
 
-  it('is no part of its JSON', async () => {
+  it('is no part of its JSON when encoding or decoding', async () => {
     const declarations = `import * as json from 'json'\n${person}`;
-    expect(await mainGives('String', `json.stringify(${ada})`, declarations)).toBe(
+    const body = [
+      `const text = json.stringify(${ada})`,
+      'const back = match json.parse<Person>(text):',
+      '  case Ok(p): p.full',
+      '  case Err(_): ""',
+      '[text, back]',
+    ].join('\n');
+    expect(await mainGives('Array<String>', body, declarations)).toEqual([
       '{"first":"Ada","last":"Lovelace"}',
-    );
+      'Ada Lovelace',
+    ]);
   });
 
-  it('meets no struct constraint', () => {
-    const declarations = `${person}\n\nfn named<S is struct { full: String }>(s: S) -> String: s.full`;
-    expect(reportedIn(declarations, `_ = named(${ada})`).codes).toEqual([
+  it('meets neither a struct constraint nor a trait field requirement', () => {
+    const declarations = [
+      person,
+      'trait HasFull:',
+      '  full: String',
+      'fn named<S is struct { full: String }>(s: S) -> String: s.full',
+      'fn titled<T is HasFull>(t: T) -> String: t.full',
+    ].join('\n');
+    expect(reportedIn(declarations, `_ = named(${ada})\n_ = titled(${ada})`).codes).toEqual([
       checkerDiagnostics.unmetStructConstraint.code,
+      checkerDiagnostics.notConforming.code,
     ]);
   });
 
@@ -102,16 +201,35 @@ describe('a getter is never stored', () => {
     });
   });
 
-  it('is never assigned, referenced or given in a literal', () => {
-    const body = `let p = ${ada}\np = ${ada}\np.full = "C"\nchange(&p.full)\n_ = Person{first: "A", last: "B", full: "C"}`;
-    const changes = 'fn change(s: &String): s = "D"';
-    expect(reportedIn(`${person}\n\n${changes}`, body)).toEqual({
+  it('is never assigned, compound-assigned, mutated through a field, referenced or given in a literal', () => {
+    const declarations = [
+      person,
+      'struct Box { count: Int }',
+      '@Getter',
+      'fn boxed(self: Person) -> Box: Box{count: 1}',
+      'fn change(s: &String): s = "D"',
+      'fn changeInt(n: &Int): n = 2',
+    ].join('\n');
+    const body = [
+      `let p = ${ada}`,
+      `p = ${ada}`,
+      'p.full = "C"',
+      'p.full += "!"',
+      'p.boxed.count = 2',
+      'change(&p.full)',
+      'changeInt(&p.boxed.count)',
+      '_ = Person{first: "A", last: "B", full: "C"}',
+    ].join('\n');
+    expect(reportedIn(declarations, body)).toEqual({
       codes: [
+        checkerDiagnostics.getterNotPlace.code,
+        checkerDiagnostics.getterNotPlace.code,
+        checkerDiagnostics.getterNotPlace.code,
         checkerDiagnostics.getterNotPlace.code,
         checkerDiagnostics.getterNotPlace.code,
         checkerDiagnostics.unknownField.code,
       ],
-      spanTexts: ['full', 'full', 'full'],
+      spanTexts: ['full', 'full', 'boxed', 'full', 'boxed', 'full'],
     });
   });
 });
@@ -204,11 +322,23 @@ describe('a getter is a call to every rule of calls', () => {
 });
 
 describe('a getter obeys the data rule (proposal 8)', () => {
-  it('makes unmarked code reading an ista getter an error, as its call would', () => {
-    const declarations = 'struct P:\n  n: Int\n\n@Getter\nista fn now(self: P) -> Int: self.n';
+  it('makes unmarked code reading an ista getter or an ista-valued getter an error, while ista code reads it', async () => {
+    const declarations = [
+      'struct P:',
+      '  n: Int',
+      '@Getter',
+      'ista fn now(self: P) -> Int: self.n + 1',
+      '@Getter',
+      'ista fn slot(self: P) -> Slot<Int>: Slot.create()',
+    ].join('\n');
     expect(reportedIn(declarations, '_ = P{n: 1}.now')).toEqual({
       codes: [checkerDiagnostics.unmarkedCalls.code],
       spanTexts: ['P{n: 1}.now'],
     });
+    expect(reportedIn(declarations, 'drop P{n: 1}.slot')).toEqual({
+      codes: [checkerDiagnostics.unmarkedCalls.code, checkerDiagnostics.unmarkedHolds.code],
+      spanTexts: ['P{n: 1}.slot', 'P{n: 1}.slot'],
+    });
+    expect(await mainGives('Int', 'P{n: 4}.now', declarations)).toBe(5);
   });
 });
