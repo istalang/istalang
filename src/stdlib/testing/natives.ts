@@ -8,10 +8,10 @@
  */
 
 import { functionKey, type NativeParameter, parameterKey } from '../../definition/extern-key.ts';
+import { namedType } from '../../definition/values/declared-values.ts';
 import { instanceNameOf } from '../../definition/values/instance-handles.ts';
 import { closureOf, type Value } from '../../definition/values/values.ts';
 import { wellKnown } from '../../foundation/language/well-known/index.ts';
-import { unreachable } from '../../foundation/structures/unreachable.ts';
 import type { InstanceState } from '../../runtime/instance-state.ts';
 import {
   type NativeContext,
@@ -63,9 +63,7 @@ export const testingNatives = (keys: NativeKeys): Natives<Context> => {
       return resultVariant(context, stateVariants[state], {});
     },
     [keys.of('handle')]: (_, context) =>
-      context.testing.handle(
-        context.typeArguments[0] ?? unreachable(`${context.name} names no host type.`),
-      ),
+      context.testing.handle(namedType(context.typeArguments[0])),
   };
 };
 

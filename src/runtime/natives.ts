@@ -21,7 +21,7 @@
  */
 
 import type { FunctionId, TypeId } from '../definition/operands.ts';
-import type { TypeDefinition } from '../definition/tables/types.ts';
+import type { TypeDefinition, TypeReference } from '../definition/tables/types.ts';
 import type { Value } from '../definition/values/values.ts';
 import type { Inspection, LogRecord, SpawnOptions } from './instance-state.ts';
 import type { ValueChanges } from './lifetimes/in-place.ts';
@@ -37,8 +37,8 @@ export interface NativeContext {
    * undefined for any other result, and for a code entry a mock replaced.
    */
   readonly resultType: TypeId | undefined;
-  /** The type entry each of the extern's type arguments names, in order (`json.parse<T>`). */
-  readonly typeArguments: readonly (TypeId | undefined)[];
+  /** The extern's type arguments, in order (`json.parse<T>`), as the Definition refers to types. */
+  readonly typeArguments: readonly TypeReference[];
   /** The Definition's types, which the extern's types index, for building values of them. */
   readonly types: readonly TypeDefinition[];
   /** The instance whose code called the native, as its host names it (§9). */

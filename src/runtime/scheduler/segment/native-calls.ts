@@ -91,7 +91,7 @@ export class NativeCalls {
         ...this.#segment,
         name: entry.name,
         resultType: declared === undefined ? undefined : namedTypeOf(declared.result),
-        typeArguments: declared?.typeArguments.map(namedTypeOf) ?? [],
+        typeArguments: declared?.typeArguments ?? [],
         changes: (position) => changesAt(heap, referenceAt(contents, position)),
       });
     const run =

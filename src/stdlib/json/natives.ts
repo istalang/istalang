@@ -14,6 +14,7 @@
 
 import { parameterKey } from '../../definition/extern-key.ts';
 import { isResourceType } from '../../definition/tables/types.ts';
+import { namedType } from '../../definition/values/declared-values.ts';
 import {
   JsonError,
   jsonOfPlain,
@@ -25,7 +26,6 @@ import {
 import { handleTarget, type Value } from '../../definition/values/values.ts';
 import { codecHelpers } from '../../foundation/language/well-known/codecs.ts';
 import { wellKnown } from '../../foundation/language/well-known/index.ts';
-import { unreachable } from '../../foundation/structures/unreachable.ts';
 import type { NativeContext, Natives, WithResources } from '../../runtime/natives.ts';
 import { Refusal } from '../../runtime/refusal.ts';
 import { knownTypeKey, type NativeKeys } from '../std-module.ts';
@@ -60,7 +60,7 @@ export const jsonNatives = (keys: NativeKeys): Natives<NativeContext & WithResou
   [keys.of(codecHelpers.encodeHandle, parameterKey('T'))]: ([value], context) =>
     jsonOfPlain(hostPayloadOf(given(value), context), jsonTypeOf(context.types)),
   [keys.of(codecHelpers.decodeHandle, json, 'String')]: ([value], context) => {
-    const type = context.typeArguments[0] ?? unreachable(`${context.name} reads no host type.`);
+    const type = namedType(context.typeArguments[0]);
     const payload = plainOfJson(given(value), jsonTypeOf(context.types));
     return resultOk(
       context,
