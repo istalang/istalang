@@ -29,7 +29,7 @@ tags: [tracker]
 | Proposal 8, live and ista async (`docs/work/async-kinds/plan.md`; merge review closed every finding, Q52–Q55 left) | done |
 | Proposal 9, native runtime (`docs/proposals/9-native-runtime.md`), beyond async-kinds CX's minimal slice | not planned: a plan of its own |
 | Static lifetimes (`docs/work/static-lifetimes/plan.md`) | in progress: C1, C2, R1, R2, C3, C4, R3, R4 and R5 done; C5 dropped |
-| Proposal 13, transients and getters (`docs/work/transients-getters/plan.md`) | in progress: T1, G1 started |
+| Proposal 13, transients and getters (`docs/work/transients-getters/plan.md`) | in progress: G1 done; T1, G2 in flight |
 | M8 Packages | planned |
 
 ## Filed
@@ -199,3 +199,4 @@ Crashes, spec gaps, wrong or missing diagnostics, host-visible behaviour.
 | B82 | Spawning a root function as a value (`spawn(make)`) disposes a disposable outcome it returns with the function's own frame, in one round, newest first, so before the function's `defer`s, while a deferred spawn (`spawn make()`) keeps it in the call's future until the instance finishes: `['disposed out', 'defer']` against `['defer', 'disposed out']` (scheduler/segment/returns.ts `landReturn`, root-outcome.ts). Either the root's outcome is held until the instance finishes, or the spec says the two differ. `spawn.test.ts` has the case, `it.fails`. | small | none | static-lifetimes R3 QA 2026-11-13 |
 | B83 | An instance that finishes or ends stops every execution left (scheduler/segment/index.ts `#letGoOfTheRest`) before letting go of its context constants, so a call a context constant holds is stopped without its `disposing()` cleanup, and before later constants are disposed (spec §3.4, §7). Counting now tells which calls something still holds, so those can be left to the constants' release. `context-constants.test.ts` has the case, `it.fails`. | small | none | static-lifetimes R3 QA 2026-11-13 |
 | B84 | A test mocking a shared struct's `dispose` records the handle it is called with (`mock.calls`, scheduler/testing/mocks.ts), and the disposal then removes the object, so the mock holds a handle to nothing, which fails the next commit's closure check and `m.calls()`. What a mock records of a disposed object needs a form of its own, as a resource's host value has. `mocks.test.ts` has the case, `it.fails`. | small | none | static-lifetimes R3 QA 2026-11-13 |
+| B85 | `src/runtime/lifetimes/shared-values.test.ts` is flaky: its generator can pop `xs` empty and then write `xs[0..1]`, which panics in any build (counterexample `[["xs.pop()","xs.pop()","xs.pop()"],["xs[0..1] = [5, 6]"]]`). | easy | none | transients-getters G1 |
