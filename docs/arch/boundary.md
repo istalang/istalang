@@ -1,10 +1,10 @@
 ---
-description: the host boundary (spec §3.6, §9) — JSON codecs as traits and derived codecs, host externs and their futures, start entries, extern constants, the host API and the package's exports; read before changing externs, json, Stringable/Parsable, annotations, or how values reach a host
+description: the host boundary (spec §3.6, §9) — JSON codecs as traits and derived codecs, stable identity of what a host gets, host externs and their futures, start entries, extern constants, the host API and the package's exports; read before changing externs, json, Stringable/Parsable, annotations, or how values reach a host
 owner: tech-lead
 status: active
 applies_to: istalang
-last_verified: 2026-11-11
-last_updated: 2026-11-11
+last_verified: 2026-11-15
+last_updated: 2026-11-15
 tags: [boundary, json, externs, host, runtime, lowering]
 ---
 
@@ -61,6 +61,34 @@ path):
   bounded by `maximumDepth` on the text before it is parsed, written as canonical JSON,
   `definition/formats/codec.ts`), a float's finiteness. A `Json` value's member is found in its union's
   layout by what each variant holds, never by a variant's name.
+
+## Identity at the boundary
+
+A value given to a host again, unchanged, is the same frozen JavaScript object, at every depth
+(spec §9, proposal 15), so a host can skip work by reference equality. Values are shared by
+reference in the interpreter, so "kept" is already "the same object"; two caches keep the
+encoders from building anew:
+
+- **One write path.** Everything a host gets is written through `json.encode<T>`: lowering's write
+  call (`Checker.json.codecOf(type, 'write')`, closed at the host site, where a disposable host
+  type is `Encodable`) is `encode<T>` over the type's codec, and the `json` module's container
+  codecs call `encode` for each part. Caching at that call, not inside a codec, keeps a codec
+  with defaulted parameters called directly with others out of it.
+- **Stage 1, value to `Json`** (`runtime/lifetimes/written-json.ts`): `encode`'s body asks two
+  natives, `_written<T>` and `_remember<T>`, keyed by the value object and `T` (one object may be
+  written as two types whose codecs differ). Per instance, beside its counts, since a codec may read
+  a `context` constant; a test world keeps nothing, so a mock sees every call (`TestWorld.mocking`).
+  A miss is `_Written.Unknown`, never `none`, which is JSON.
+- **Stage 2, `Json` to JavaScript** (`plainOfJson`): each array and map inside a `Json`, not the
+  union variant wrapping it, which every conversion into `Json` makes anew, keeps the frozen
+  object it gave and its nesting height, so the nesting limit refuses exactly what a full walk
+  would.
+- **In-place writes stay sound** (`runtime/lifetimes/in-place.ts`): the stage-1 store is a holder,
+  holding each `Json` it keeps in the instance's counts for good, so no part of one is changed in
+  place; and every node an in-place write changes forgets both caches' entries with its other
+  derived data. A value's ancestors are on the written path, since a node held once has one
+  parent. A value written is not disowned: forgetting suffices, and a push after each send stays
+  in place.
 
 ## Externs a host implements
 

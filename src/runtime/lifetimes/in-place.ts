@@ -18,9 +18,10 @@
  *   (a native's argument, a store's value), so the path is copied from that node down: a value
  *   never holds itself, and what went in is the value as it was. Each change names what it puts
  *   in, so no caller can leave one out.
- * - **Derived data** keyed by a node's identity, its summary, its hash and a map's table, is
- *   forgotten as the node changes; a map setting an entry keeps its table up to date instead, and a
- *   map copied keeps a copy of it (foundation/language/values.ts).
+ * - **Derived data** keyed by a node's identity, its summary, its hash, a map's table and the JSON
+ *   written of it (written-json.ts, definition/values/json-values.ts), is forgotten as the node
+ *   changes; a map setting an entry keeps its table up to date instead, and a map copied keeps a
+ *   copy of it (foundation/language/values.ts).
  * - **Counts:** a held node holds and lets go of its parts as they change (`partHeld`,
  *   `partReleased`), holding the new before letting go of the old; a copy holds its parts from its
  *   first hold, as any value does.
@@ -32,6 +33,7 @@ import {
   forgetDerived,
   setEntryInPlace,
 } from '../../definition/values/equality.ts';
+import { forgetPlainOf } from '../../definition/values/json-values.ts';
 import {
   type CompositeValue,
   childValues,
@@ -44,6 +46,7 @@ import {
 } from '../../definition/values/values.ts';
 import { unreachable } from '../../foundation/structures/unreachable.ts';
 import { partAt } from '../interpreter/parts.ts';
+import type { WrittenJson } from './written-json.ts';
 
 /** What changing values in place reads of and tells the counts (counts.ts). */
 interface NodeCounts {
@@ -81,11 +84,14 @@ interface Opened {
 
 export class InPlace {
   readonly #counts: NodeCounts;
+  readonly #written: Pick<WrittenJson, 'forget'>;
   /** The nodes this instance made, built or copied for writing. */
   readonly #own = new WeakSet<CompositeValue>();
 
-  constructor(counts: NodeCounts) {
+  /** Changes counted by `counts`, forgetting what `written` keeps of a node changed. */
+  constructor(counts: NodeCounts, written: Pick<WrittenJson, 'forget'>) {
     this.#counts = counts;
+    this.#written = written;
   }
 
   /** `value`, which this instance's code just built: its own. */
@@ -134,7 +140,7 @@ export class InPlace {
     return {
       push: (items) => change(items, (node) => this.#push(node, items)),
       pop: () => change([], (node) => this.#pop(node)),
-      reverse: () => change([], reversed),
+      reverse: () => change([], (node) => this.#reverse(node)),
       splice: (start, count, items) =>
         change(items, (node) => this.#splice(node, start, count, items)),
       setEntry: (key, value) => change([key, value], (node) => this.#setEntry(node, key, value)),
@@ -163,7 +169,7 @@ export class InPlace {
       elements.push(item);
       this.#counts.partHeld(array, item);
     }
-    forgetDerivedOf(array);
+    this.#forgetDerivedOf(array);
   }
 
   #pop(array: CompositeValue): Value | undefined {
@@ -173,7 +179,7 @@ export class InPlace {
     }
     const last = elements.pop() as Value;
     this.#counts.partReleased(array, last);
-    forgetDerivedOf(array);
+    this.#forgetDerivedOf(array);
     return last;
   }
 
@@ -184,7 +190,7 @@ export class InPlace {
     for (const removed of mutableElements(array).splice(start, count, ...items)) {
       this.#counts.partReleased(array, removed);
     }
-    forgetDerivedOf(array);
+    this.#forgetDerivedOf(array);
   }
 
   #setEntry(map: CompositeValue, key: Value, value: Value): void {
@@ -193,7 +199,7 @@ export class InPlace {
     for (const part of setEntryInPlace(mapValueOf(map), key, value) ?? []) {
       this.#counts.partReleased(map, part);
     }
-    forgetSummary(map);
+    this.#forgetWholeOf(map);
   }
 
   #deleteEntry(map: CompositeValue, key: Value): boolean {
@@ -201,7 +207,7 @@ export class InPlace {
     for (const part of removed ?? []) {
       this.#counts.partReleased(map, part);
     }
-    forgetSummary(map);
+    this.#forgetWholeOf(map);
     return removed !== undefined;
   }
 
@@ -221,7 +227,7 @@ export class InPlace {
     const kept = shared === -1 ? nodes : nodes.slice(0, shared);
     // The node changed forgets what it must as it changes; those above it change with it.
     for (const node of kept.slice(0, nodes.length - 1)) {
-      forgetDerivedOf(node);
+      this.#forgetDerivedOf(node);
     }
     if (shared === -1) {
       return { whole, nodes };
@@ -251,7 +257,29 @@ export class InPlace {
     setChild(node, index, part);
     this.#counts.partHeld(node, part);
     this.#counts.partReleased(node, old);
-    forgetDerivedOf(node);
+    this.#forgetDerivedOf(node);
+  }
+
+  /** Reverses `array`, which holds what it held, so no count changes. */
+  #reverse(array: CompositeValue): void {
+    mutableElements(array).reverse();
+    this.#forgetDerivedOf(array);
+  }
+
+  /** Forgets what was derived from `node`, which changed in place. */
+  #forgetDerivedOf(node: CompositeValue): void {
+    this.#forgetWholeOf(node);
+    forgetDerived(node);
+  }
+
+  /**
+   * Forgets what was derived from `node` as a whole, which changed in place: its summary and the
+   * JSON written of it. A map that keeps its table up to date forgets only this.
+   */
+  #forgetWholeOf(node: CompositeValue): void {
+    forgetSummary(node);
+    forgetPlainOf(node);
+    this.#written.forget(node);
   }
 
   /** A copy of `node` this instance owns, holding its parts; a map's keeps a copy of its table. */
@@ -260,12 +288,6 @@ export class InPlace {
       node.kind === 'map' ? copiedMap(node) : withChildValues(node, childValues(node)),
     );
   }
-}
-
-/** Forgets what was derived from `node`, which changed in place. */
-function forgetDerivedOf(node: CompositeValue): void {
-  forgetSummary(node);
-  forgetDerived(node);
 }
 
 /** Puts `part` at field `index` of `node`, a position among its `childValues`. */
@@ -298,12 +320,6 @@ function setChild(node: CompositeValue, index: number, part: Value): void {
     default:
       unreachable(`A ${node.kind} has no parts to write.`);
   }
-}
-
-/** Reverses `array`, which holds what it held, so no count changes. */
-function reversed(array: CompositeValue): void {
-  mutableElements(array).reverse();
-  forgetDerivedOf(array);
 }
 
 function mutableElements(array: CompositeValue): Value[] {

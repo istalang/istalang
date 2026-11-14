@@ -17,7 +17,7 @@ import {
   jsonTypeIn,
   plainOfJson,
 } from './json-values.ts';
-import { maximumDepth } from './values.ts';
+import { maximumDepth, type Value } from './values.ts';
 
 /** A std container's extern entry, as the type table holds one. */
 function externEntry(name: string, typeArguments: TypeReference[]): TypeDefinition {
@@ -159,5 +159,75 @@ describe('Json values', () => {
     for (const plain of [Number.NaN, Number.POSITIVE_INFINITY, () => 1, Symbol('s')]) {
       expect(() => jsonOfPlain(plain, shape)).toThrow(JsonError);
     }
+  });
+});
+
+/** A `Json` array holding `items`, made anew. */
+function jsonArray(items: readonly Value[]): Value {
+  const elements: Value = { kind: 'array', elements: [...items] };
+  return { kind: 'variant', type: shape.type, variant: shape.variants.Array, fields: [elements] };
+}
+
+/** What `leaf` gives, inside `levels` arrays each made anew. */
+function nested(leaf: () => Value, levels: number): Value {
+  let json = leaf();
+  for (let level = 0; level < levels; level += 1) {
+    json = jsonArray([json]);
+  }
+  return json;
+}
+
+/** Whether `json` was given to a host as JavaScript, or refused for nesting too deeply. */
+function givenOrRefused(json: Value): 'given' | 'refused' {
+  try {
+    plainOfJson(json, shape);
+    return 'given';
+  } catch (error) {
+    if (error instanceof JsonError) {
+      return 'refused';
+    }
+    throw error;
+  }
+}
+
+describe('JavaScript given for a Json value', () => {
+  it('is frozen at every depth', () => {
+    const given = plainOfJson(jsonOfPlain({ a: [1, { b: [] }] }, shape), shape) as {
+      a: [unknown, { b: unknown }];
+    };
+    expect(Object.isFrozen(given)).toBe(true);
+    expect(Object.isFrozen(given.a)).toBe(true);
+    expect(Object.isFrozen(given.a[1])).toBe(true);
+    expect(Object.isFrozen(given.a[1].b)).toBe(true);
+  });
+
+  it('is the same object for an array or map met before, whatever Json wraps it', () => {
+    const items = jsonArray([jsonOfPlain({ a: 1 }, shape)]);
+    const again = { ...(items as object) } as Value;
+    expect(plainOfJson(again, shape)).toBe(plainOfJson(items, shape));
+    expect(plainOfJson(jsonArray([items]), shape)).not.toBe(plainOfJson(jsonArray([items]), shape));
+  });
+
+  it('is refused exactly where a walk of parts never met would refuse it', () => {
+    const leaves: readonly (() => Value)[] = [
+      () => jsonArray([]),
+      () => jsonOfPlain({}, shape),
+      () => jsonOfPlain(1, shape),
+      () => jsonOfPlain([1], shape),
+      () => jsonOfPlain({ a: [] }, shape),
+    ];
+    const outcomes = new Set<string>();
+    for (const leaf of leaves) {
+      for (const inner of [0, 2]) {
+        for (let outer = maximumDepth - 3; outer <= maximumDepth + 1; outer += 1) {
+          const met = nested(leaf, inner);
+          plainOfJson(met, shape);
+          const outcome = givenOrRefused(nested(() => met, outer));
+          expect(outcome).toBe(givenOrRefused(nested(() => nested(leaf, inner), outer)));
+          outcomes.add(outcome);
+        }
+      }
+    }
+    expect(outcomes).toEqual(new Set(['given', 'refused']));
   });
 });

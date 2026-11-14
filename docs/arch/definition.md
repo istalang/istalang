@@ -3,8 +3,8 @@ description: the Definition (compiled program) and snapshot formats — instruct
 owner: tech-lead
 status: active
 applies_to: istalang
-last_verified: 2026-11-11
-last_updated: 2026-11-14
+last_verified: 2026-11-15
+last_updated: 2026-11-15
 tags: [definition, ir, snapshot, runtime, lowering]
 ---
 
@@ -117,7 +117,7 @@ A persisted value nests at most `maximumDepth` (256) levels (spec §5), since th
 
 The built-in `==` and map keys are `foundation/language/values.ts`'s rules, shown the runtime's values by `definition/values/equality.ts` and compile time's constant forms by the checker, so the two can't disagree. Neither compares a value's instantiated type: two values compared are of one static type, and a value converted part by part keeps its own type id where its layout stays (spec §3.5), so a `Box<"s">` taken as a `Box<String>` equals one built as a `Box<String>`.
 
-Values are immutable. A `constant` instruction hands its register the pool's own value, and a bound program, its pool included, is shared by every instance a runtime runs, so nothing may write into a value in place: a write through a place (`store`, `setIndex`) builds the new value along its path, as value semantics (spec §3.1) has it anyway.
+Values are immutable to a program. A `constant` instruction hands its register the pool's own value, and a bound program, its pool included, is shared by every instance a runtime runs, so a write through a place (`store`, `setIndex`) builds the new value along its path, as value semantics (spec §3.1) has it, except where no one else could see the old one: a node the instance made and holds once, which it changes in place (`runtime/lifetimes/in-place.ts`). A host never sees one change: what it got is a frozen copy, and the JSON kept for it is forgotten as the node changes (docs/arch/boundary.md, "Identity at the boundary").
 
 ## Externs
 

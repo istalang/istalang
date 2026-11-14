@@ -71,7 +71,7 @@ describe('the runtime', () => {
     expect(() => load({})).toThrow(Refusal);
   });
 
-  it('gives an encoded outcome as JSON or its text, refusing one with no JSON', async () => {
+  it('gives an encoded outcome as JSON, the same frozen object at each read, or its text, refusing one with no JSON', async () => {
     const test = testRuntime();
     const program = test.runtime.deploy(
       compiledText(
@@ -80,6 +80,8 @@ describe('the runtime', () => {
     );
     const state = finished((await program.start('i')).state);
     expect(program.outcome(state)).toEqual([null, 12345678901234567890n]);
+    expect(program.outcome(state)).toBe(program.outcome(state));
+    expect(Object.isFrozen(program.outcome(state))).toBe(true);
     expect(program.outcomeText(state)).toBe('[null,12345678901234567890]');
     const unencoded = { kind: 'finished', outcome: 98n } as const;
     expect(() => program.outcome(unencoded)).toThrow(Refusal);

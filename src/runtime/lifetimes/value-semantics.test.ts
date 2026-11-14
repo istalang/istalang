@@ -64,6 +64,50 @@ ista async fn _main() -> Array<Int>:
     expect(result).toBe('[1,2,3,1,2,1,2,3,1,2,3,5,90,2,3,4,90,2,3,4,99]');
   });
 
+  it('writes each value as it is now, between changes in place, through the JSON kept of it', async () => {
+    const result = await outcomeOf(`
+import * as json from 'json'
+import Json from 'json'
+import * as runtime from 'runtime'
+
+struct Inner:
+  items: Array<Int>
+  tags: Map<String, Int>
+
+struct Outer:
+  left: Inner
+  right: Inner
+
+live async fn main() -> String: await runtime.run(runtime.id()) _main()
+ista async fn _main() -> String:
+  let o = Outer{left: Inner{items: [1], tags: ["a": 1]}, right: Inner{items: [], tags: [:]}}
+  const first = json.stringify(o)
+  o.left.items.push(2)
+  const second = json.stringify(o)
+  o.left.tags["b"] = 2
+  drop o.left.tags.delete("a")
+  const third = json.stringify(o)
+  const kept = o
+  o.right.items.push(3)
+  let written: Json = json.encode(kept.left)
+  match written:
+    case Map<String, Json> as fields:
+      let changed = fields
+      changed["items"] = "gone"
+      written = changed
+    case _: written = none
+  [first, second, third, json.stringify(kept), json.stringify(o), json.stringify(written)].join("|")
+`);
+    expect(String(JSON.parse(result)).split('|')).toEqual([
+      '{"left":{"items":[1],"tags":{"a":1}},"right":{"items":[],"tags":{}}}',
+      '{"left":{"items":[1,2],"tags":{"a":1}},"right":{"items":[],"tags":{}}}',
+      '{"left":{"items":[1,2],"tags":{"b":2}},"right":{"items":[],"tags":{}}}',
+      '{"left":{"items":[1,2],"tags":{"b":2}},"right":{"items":[],"tags":{}}}',
+      '{"left":{"items":[1,2],"tags":{"b":2}},"right":{"items":[3],"tags":{}}}',
+      '{"items":"gone","tags":{"b":2}}',
+    ]);
+  });
+
   it('keeps map keys and map equality intact when a key variable or nested map changes in place', async () => {
     const result = await outcomeOf(`
 import * as runtime from 'runtime'

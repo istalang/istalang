@@ -13,6 +13,8 @@
  *   the step's zeroes, a loser may still wait in a slot's queue (scheduler/instance/slots.ts).
  * - A commit keeps only what is held, so it forgets what was noted (`settled`).
  * - The counts tell which values may change in place (`values`, in-place.ts): a node held once.
+ * - What the instance wrote values as is kept here (`written`, written-json.ts), since what it
+ *   keeps is held in the counts and forgotten as a value changes in place.
  */
 
 import type { Value } from '../../definition/values/values.ts';
@@ -20,12 +22,17 @@ import type { LiveObject } from '../scheduler/instance/heap.ts';
 import { type Held, nothingHeld } from '../snapshot/holdings.ts';
 import { Counts } from './counts.ts';
 import { InPlace } from './in-place.ts';
+import { WrittenJson } from './written-json.ts';
 
 export class HolderWrites {
   readonly #counted: (object: LiveObject) => boolean;
   readonly #counts = new Counts();
+  /** The JSON the instance wrote values as, each held for good (written-json.ts). */
+  readonly written = new WrittenJson((json) => {
+    this.changed(nothingHeld, { values: [json], holds: [] });
+  });
   /** The instance's values changed in place where their counts allow (in-place.ts). */
-  readonly values = new InPlace(this.#counts);
+  readonly values = new InPlace(this.#counts, this.written);
   #losersReleased = false;
 
   /** Holder writes counting the objects `counted` says (counts.ts `countedIn`). */

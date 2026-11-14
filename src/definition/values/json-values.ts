@@ -20,6 +20,8 @@
  *   resolved by position, since the two readers of such text could disagree.
  * - `Json` nests no deeper than a persisted value may (`maximumDepth`), checked before either
  *   form is walked, so deep input is refused instead of overflowing the host's stack.
+ * - What a host gets is frozen, and an array or a map given before, unchanged, is the same object
+ *   again (spec §9, docs/arch/boundary.md): a host may skip work by reference equality.
  */
 
 import { qualifiedName, wellKnown } from '../../foundation/language/well-known/index.ts';
@@ -29,7 +31,14 @@ import { decodeJson, encodeJson, NestingError } from '../formats/codec.ts';
 import type { TypeId } from '../operands.ts';
 import { hasRole, type TypeDefinition, type TypeReference } from '../tables/types.ts';
 import { mapOf } from './equality.ts';
-import { elementsOf, isComposite, mapValueOf, maximumDepth, type Value } from './values.ts';
+import {
+  type CompositeValue,
+  elementsOf,
+  isComposite,
+  mapValueOf,
+  maximumDepth,
+  type Value,
+} from './values.ts';
 
 /** A member of `Json`, by what its values are. */
 type JsonMember = 'None' | 'Bool' | 'Int' | 'Float' | 'String' | 'Array' | 'Map';
@@ -125,38 +134,95 @@ function unreadMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
-/** `json` as the JavaScript value a host works with: `JSON.parse` of its text, integers as bigints. */
-export function plainOfJson(json: Value, shape: JsonType, depth = 0): unknown {
+/**
+ * `json` as the JavaScript value a host works with: `JSON.parse` of its text, integers as bigints,
+ * deeply frozen. An array or a map kept since it was last given is the same object again.
+ */
+export function plainOfJson(json: Value, shape: JsonType): unknown {
+  return plainAt(json, shape, 0).plain;
+}
+
+/** A `Json` value's plain JavaScript, and how many levels nest below it. */
+interface Plain {
+  readonly plain: unknown;
+  readonly height: number;
+}
+
+/**
+ * The plain JavaScript of each `Json` array and map, by the array or map itself: a conversion into
+ * `Json` wraps it anew, so the wrapping variant is no key. Forgotten as the array or map changes
+ * in place (`forgetPlainOf`).
+ */
+const plains = new WeakMap<CompositeValue, Plain>();
+
+/** Forgets the plain JavaScript made of `node`, which changed in place. */
+export function forgetPlainOf(node: CompositeValue): void {
+  plains.delete(node);
+}
+
+/**
+ * `json`, standing `depth` levels deep, as plain JavaScript. A part met before isn't walked again,
+ * so its height tells whether it nests too deeply where it stands now.
+ */
+function plainAt(json: Value, shape: JsonType, depth: number): Plain {
   const [member, value] = partsOf(json, shape, depth);
+  if (member !== 'Array' && member !== 'Map') {
+    return { plain: primitivePlain(member, value), height: 0 };
+  }
+  const node =
+    value !== undefined && isComposite(value)
+      ? value
+      : unreachable(`A Json ${member} holds no ${member.toLowerCase()}.`);
+  const known = plains.get(node);
+  if (known !== undefined) {
+    if (depth + known.height > maximumDepth) {
+      throw nestingError();
+    }
+    return known;
+  }
+  const made = member === 'Array' ? arrayPlain(node, shape, depth) : mapPlain(node, shape, depth);
+  plains.set(node, made);
+  return made;
+}
+
+function primitivePlain(member: JsonMember, value: Value | undefined): unknown {
   switch (member) {
     case 'None':
       return null;
-    case 'Bool':
-    case 'Int':
-    case 'String':
-      return value;
     case 'Float':
       return typeof value === 'number' && Number.isFinite(value) ? value : null;
-    case 'Array':
-      return elementsOf(value).map((item) => plainOfJson(item, shape, depth + 1));
-    case 'Map':
-      return Object.fromEntries(
-        mapValueOf(value).entries.map(([key, item]) => [
-          String(key),
-          plainOfJson(item, shape, depth + 1),
-        ]),
-      );
-    default: {
-      const unhandled: never = member;
-      return unhandled;
-    }
+    default:
+      return value;
   }
+}
+
+function arrayPlain(array: CompositeValue, shape: JsonType, depth: number): Plain {
+  const items = elementsOf(array).map((item) => plainAt(item, shape, depth + 1));
+  return {
+    plain: Object.freeze(items.map((item) => item.plain)),
+    height: heightAbove(items),
+  };
+}
+
+function mapPlain(map: CompositeValue, shape: JsonType, depth: number): Plain {
+  const entries = mapValueOf(map).entries.map(
+    ([key, item]) => [String(key), plainAt(item, shape, depth + 1)] as const,
+  );
+  return {
+    plain: Object.freeze(Object.fromEntries(entries.map(([key, item]) => [key, item.plain]))),
+    height: heightAbove(entries.map(([, item]) => item)),
+  };
+}
+
+/** The height of a `Json` array or map holding `parts`: none below an empty one. */
+function heightAbove(parts: readonly Plain[]): number {
+  return parts.length === 0 ? 0 : 1 + Math.max(...parts.map((part) => part.height));
 }
 
 /** The `Json` value a JavaScript value holds; a JsonError for one that JSON can't hold. */
 export function jsonOfPlain(plain: unknown, shape: JsonType, depth = 0): Value {
   if (depth > maximumDepth) {
-    throw new JsonError(`JSON nests deeper than ${maximumDepth} levels.`);
+    throw nestingError();
   }
   const of = (member: JsonMember, value?: Value): Value => ({
     kind: 'variant',
@@ -209,6 +275,10 @@ export function isJsonValue(
   );
 }
 
+function nestingError(): JsonError {
+  return new JsonError(`JSON nests deeper than ${maximumDepth} levels.`);
+}
+
 /** The member `json` is a value of, and that value: what walking it reads at each level. */
 function partsOf(
   json: Value,
@@ -216,7 +286,7 @@ function partsOf(
   depth: number,
 ): readonly [JsonMember, Value | undefined] {
   if (depth > maximumDepth) {
-    throw new JsonError(`JSON nests deeper than ${maximumDepth} levels.`);
+    throw nestingError();
   }
   if (!isJsonValue(json, shape)) {
     unreachable('Expected a Json value.');

@@ -22,6 +22,7 @@ import { nothingHeld } from '../snapshot/holdings.ts';
 import { Counts } from './counts.ts';
 import { frozen } from './in-place.test-kit.ts';
 import { InPlace } from './in-place.ts';
+import { WrittenJson } from './written-json.ts';
 
 /** The parts a field position reaches in `value`, as the `field` instruction reads them. */
 function fieldsOf(value: Value): readonly Value[] {
@@ -51,6 +52,11 @@ function modelWithPart(value: Value, path: readonly number[], part: Value): Valu
   return withChildValues(value, parts.with(index, modelWithPart(parts[index] ?? null, rest, part)));
 }
 
+/** Changes in place counted by `counts`, keeping no JSON written. */
+function inPlaceOver(counts: Counts): InPlace {
+  return new InPlace(counts, new WrittenJson(() => undefined));
+}
+
 const valueWithPath = valueArbitrary({ typed: true }).chain((value) =>
   fc.record({
     value: fc.constant(frozen(value)),
@@ -60,7 +66,7 @@ const valueWithPath = valueArbitrary({ typed: true }).chain((value) =>
 );
 
 describe('a write into a value not its own', () => {
-  const values = new InPlace(new Counts());
+  const values = inPlaceOver(new Counts());
 
   it('reads back the part written at a path', () => {
     fc.assert(
@@ -174,7 +180,7 @@ describe('writes in place over counted holders', () => {
     fc.assert(
       fc.property(fc.nat({ max: 4 }), fc.array(anyStep, { maxLength: 40 }), (size, steps) => {
         const counts = new Counts();
-        const values = new InPlace(counts);
+        const values = inPlaceOver(counts);
         const start = constantOf(size);
         const live = new Registers(counts, start);
         const model: Value[] = Array.from({ length: registerCount }, () => structuredClone(start));
@@ -189,7 +195,7 @@ describe('writes in place over counted holders', () => {
 
   it('change a value held once, which this instance copied for writing, in place', () => {
     const counts = new Counts();
-    const values = new InPlace(counts);
+    const values = inPlaceOver(counts);
     const live = new Registers(counts, constantOf(1));
     live.write(1, null);
     live.write(2, null);
@@ -202,7 +208,7 @@ describe('writes in place over counted holders', () => {
 
   it('copy a value it holds once it is held twice', () => {
     const counts = new Counts();
-    const values = new InPlace(counts);
+    const values = inPlaceOver(counts);
     const live = new Registers(counts, constantOf(1));
     live.write(0, values.appended(live.values[0] ?? null, [1n]));
     const own = live.values[0] ?? null;

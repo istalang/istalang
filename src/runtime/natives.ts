@@ -15,7 +15,7 @@
  * capabilities, one per part of the instance a native reaches: the futures the runtime creates
  * for an extern that returns one (§3.6), its waits and language resolvers and its slots (§6), its
  * weak references and its resources (§7), its random source and its log (§3.8), its instances and
- * a live run's contexts (§9), and what a test reaches (§10). Every capability has
+ * a live run's contexts (§9), what a test reaches (§10), and the JSON it wrote values as (§9). Every capability has
  * one shape, a member of the context, and the runtime builds them once per segment. A native
  * states the capabilities it uses and never holds the context beyond its call.
  */
@@ -239,6 +239,17 @@ export interface NativeLogs {
   readonly write: (entry: Omit<LogRecord, 'instance' | 'time'>) => void;
 }
 
+/**
+ * The JSON the running instance wrote values as (lifetimes/written-json.ts), which `json.encode`
+ * gives again for a value written as the same type and unchanged since. A test world keeps none.
+ */
+export interface NativeEncodings {
+  /** The `Json` `value` was written as, a `type`; undefined if it wasn't, or isn't kept. */
+  readonly of: (value: Value, type: TypeReference) => Value | undefined;
+  /** Keeps `json` as what `value` was written as, a `type`. */
+  readonly remember: (value: Value, type: TypeReference, json: Value) => void;
+}
+
 export interface WithFutures {
   readonly futures: NativeFutures;
 }
@@ -270,6 +281,9 @@ export interface WithTesting {
 export interface WithContexts {
   readonly contexts: NativeContexts;
 }
+export interface WithEncodings {
+  readonly encodings: NativeEncodings;
+}
 
 /** Every capability: what the runtime gives each native. */
 export type NativeCapabilities = WithFutures &
@@ -281,7 +295,8 @@ export type NativeCapabilities = WithFutures &
   WithLogs &
   WithInstances &
   WithTesting &
-  WithContexts;
+  WithContexts &
+  WithEncodings;
 
 export type FullNativeContext = NativeContext & NativeCapabilities;
 

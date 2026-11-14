@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: examples/FormBuilder
 last_verified: 2026-11-05
-last_updated: 2026-11-13
+last_updated: 2026-11-15
 tags: [form-builder, specification, istalang]
 ---
 
@@ -98,7 +98,7 @@ They compose through the tree with mapped types, so `OrderData = Group<OrderMode
 **Previewing.** The editor's preview restarts the form's instance on each new version and replays the events recorded so far, so the preview keeps what the user has typed.
 
 **Running.** The form runs in the browser, in the TypeScript interpreter, inside a Web Worker. Events from the frontend go into the `events` inbox, and view trees come back through the `views` inbox.
-- **Rendering:** the frontend renders each tree with React, keyed by node key. The interpreter's bridge returns the same JavaScript reference for a shared struct as long as it hasn't changed, so React's memoization works without a diffing pass.
+- **Rendering:** the frontend renders each tree with React, keyed by node key. The runtime gives a host the same frozen JavaScript object for a value it gave before, kept unchanged (spec §9, "Stable references"), so React's memoization works without a diffing pass.
 - **Drafts:** a partly filled form may be saved at any time; drafts are not validated.
 
 **Submitting.** The host records every event. On submit it sends the event log to the server, which runs the same form version and replays the log. Istalang is deterministic and sources record their results, so the replay reproduces the state; where a source answers differently, the server's result wins. A submission whose rules wait for an approval stays open in the server's durable instance until the approval arrives.
@@ -432,7 +432,7 @@ The frontend draws it with a generic recursive component and sends events by key
 | `Data` and `Seen` are computed types | The form's result type is derived from its definition, never written or generated separately |
 | Hidden nodes don't exist | Hidden values can't silently affect expressions, validation or output |
 | Output shape is free (`{ tag, value }` for variants) | Istalang owns the data; no external JSON contract constrains it |
-| One generic loop, redrawing the whole tree | Simpler than dependency tracking, and React plus the bridge's stable references make redraws cheap |
+| One generic loop, redrawing the whole tree | Simpler than dependency tracking, and React plus the runtime's stable references make redraws cheap |
 | Server replays events on submit | One code path; the server's result is authoritative |
 | Awaited props re-run only when their scope changes | Sources cache, so no dependency declarations are needed and no redraw loop can occur |
 
@@ -463,7 +463,6 @@ The design uses Istalang as the guide describes it: structs, enums, generics, tr
 
 **The host must also provide:**
 - inboxes between the instance and the frontend;
-- the bridge's stable references for unchanged shared structs;
 - injected async sources with caching;
 - for dynamic refs, a way to run a separately compiled form and mount its view. A running interpreter can't load modules, so the host runs the mounted form as its own instance, and the parent stores its result JSON in a `Dynamic`.
 

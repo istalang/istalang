@@ -38,6 +38,11 @@ export type MockAnswer =
   | { readonly kind: 'failed' };
 
 export interface TestWorld {
+  /**
+   * Whether a mock may replace a function here: only in a test (§10). Where one may, the JSON
+   * written of a value is never kept (lifetimes/written-json.ts), so a mock sees every call.
+   */
+  readonly mocking: boolean;
   /** The mock `holder` holds for `target`, as its last commit has it: the newest; none without. */
   readonly mockOf: (holder: string, target: FunctionId) => number | undefined;
   /**
@@ -66,6 +71,7 @@ function outsideTest(): never {
  * The world every runtime outside `ista test` runs in: no mocks held elsewhere, no test watches.
  */
 export const noTestWorld: TestWorld = {
+  mocking: false,
   mockOf: () => undefined,
   answer: () => unreachable('No mock is held outside a test world.'),
   watched: () => undefined,

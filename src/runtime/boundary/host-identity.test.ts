@@ -1,0 +1,219 @@
+/**
+ * A value given to a host again, unchanged, is the same JavaScript object, at every depth, and
+ * everything a host gets is frozen (§9; lifetimes/written-json.ts and json-values.ts `plainOfJson`):
+ * on programs the real compiler builds, seen by the host extern `main.show`.
+ */
+
+import { describe, expect, it } from 'vitest';
+import { compiledText } from '../../compiler/compile.test-kit.ts';
+import { runToEnd, testRuntime } from '../runtime.test-kit.ts';
+import type { HostExterns } from './host-natives.ts';
+
+/** A program's declarations, and the key of its extern `show(value: …)`, as its host binds it. */
+interface Showing {
+  readonly declarations: readonly string[];
+  readonly key: string;
+}
+
+/** What `show` got at each call, `_main`'s `body` running in an instance. */
+async function shown({ declarations, key }: Showing, body: readonly string[]): Promise<unknown[]> {
+  const program = compiledText(
+    [
+      "import Json from 'json'\nimport * as json from 'json'\nimport * as runtime from 'runtime'",
+      ...declarations,
+      'live async fn main(): await runtime.run(runtime.id()) _main()',
+      'ista async fn _main():',
+      ...body.map((line) => `  ${line}`),
+    ].join('\n'),
+  );
+  const seen: unknown[] = [];
+  const host: HostExterns = {
+    [key]: ([value]) => {
+      seen.push(value);
+      return null;
+    },
+  };
+  const test = testRuntime({ host });
+  const outcome = await runToEnd(test, 'i', await test.runtime.deploy(program).start('i'));
+  if (outcome.kind !== 'finished') {
+    throw new Error(`The program didn't finish: ${JSON.stringify(outcome)}`);
+  }
+  return seen;
+}
+
+/** The part of `plain`, a host's JavaScript, at `path`: object keys and array indexes. */
+function at(plain: unknown, ...path: readonly (string | number)[]): unknown {
+  return path.reduce<unknown>(
+    (part, step) => (part as Record<string | number, unknown> | undefined)?.[step],
+    plain,
+  );
+}
+
+const trees: Showing = {
+  declarations: [
+    'struct Item { name: String }',
+    'struct Tree { total: Int, items: Array<Item>, fixed: Array<Int> }',
+    'extern fn show(tree: Tree)',
+  ],
+  key: 'main.show(main.Tree)',
+};
+
+describe('a value given to a host again', () => {
+  it('is the same object when kept, at the top and at every depth', async () => {
+    const [first, second] = await shown(trees, [
+      'const kept = Tree{total: 1, items: [Item{name: "a"}], fixed: [1, 2]}',
+      'show(kept)',
+      'show(kept)',
+    ]);
+    expect(second).toBe(first);
+    expect(at(second, 'items', 0)).toBe(at(first, 'items', 0));
+  });
+
+  it('keeps the parts kept when the whole is rebuilt around them', async () => {
+    const [first, second] = await shown(trees, [
+      'const fixed = [1, 2, 3]',
+      'const items = [Item{name: "a"}]',
+      'show(Tree{total: 1, items, fixed})',
+      'show(Tree{total: 2, items, fixed})',
+    ]);
+    expect(second).not.toBe(first);
+    expect(at(second, 'fixed')).toBe(at(first, 'fixed'));
+    expect(at(second, 'items')).toBe(at(first, 'items'));
+  });
+
+  it('is a new object when rebuilt equal', async () => {
+    const [first, second] = await shown(trees, [
+      'show(Tree{total: 1, items: [], fixed: [1]})',
+      'show(Tree{total: 1, items: [], fixed: [1]})',
+    ]);
+    expect(second).toEqual(first);
+    expect(second).not.toBe(first);
+    expect(at(second, 'fixed')).not.toBe(at(first, 'fixed'));
+  });
+
+  it('keeps the unchanged elements of an array changed in place, the array new', async () => {
+    const [first, second, third] = await shown(trees, [
+      'let items = [Item{name: "a"}, Item{name: "b"}]',
+      'const fixed: Array<Int> = []',
+      'show(Tree{total: 0, items, fixed})',
+      'items.push(Item{name: "c"})',
+      'show(Tree{total: 0, items, fixed})',
+      'items[1] = Item{name: "B"}',
+      'show(Tree{total: 0, items, fixed})',
+    ]);
+    expect(at(second, 'items')).not.toBe(at(first, 'items'));
+    expect(at(second, 'items', 0)).toBe(at(first, 'items', 0));
+    expect(at(second, 'items', 1)).toBe(at(first, 'items', 1));
+    expect(at(third, 'items')).not.toBe(at(second, 'items'));
+    expect(at(third, 'items', 0)).toBe(at(first, 'items', 0));
+    expect(at(third, 'items', 1)).toEqual({ name: 'B' });
+    expect(at(third, 'items', 2)).toBe(at(second, 'items', 2));
+  });
+
+  it('is new for a field changed in place, and so is every value holding it', async () => {
+    const roots: Showing = {
+      declarations: [
+        'struct Leaf { n: Int }',
+        'struct Branch { leaf: Leaf, other: Leaf }',
+        'struct Root { branch: Branch, side: Array<Int> }',
+        'extern fn show(root: Root)',
+      ],
+      key: 'main.show(main.Root)',
+    };
+    const [first, second] = await shown(roots, [
+      'let root = Root{branch: Branch{leaf: Leaf{n: 1}, other: Leaf{n: 2}}, side: [1]}',
+      'show(root)',
+      'root.branch.leaf.n = 5',
+      'show(root)',
+    ]);
+    expect(second).not.toBe(first);
+    expect(at(second, 'branch')).not.toBe(at(first, 'branch'));
+    expect(at(second, 'branch', 'leaf')).toEqual({ n: 5n });
+    expect(at(second, 'branch', 'other')).toBe(at(first, 'branch', 'other'));
+    expect(at(second, 'side')).toBe(at(first, 'side'));
+  });
+
+  it('is new for a map changed in place by setting or deleting an entry', async () => {
+    const maps: Showing = {
+      declarations: ['extern fn show(map: Map<String, Array<Int>>)'],
+      key: 'main.show(prelude.Map<String, prelude.Array<Int>>)',
+    };
+    const [first, second, third] = await shown(maps, [
+      'let map = ["a": [1], "b": [2]]',
+      'show(map)',
+      'map["c"] = [3]',
+      'show(map)',
+      'drop map.delete("c")',
+      'show(map)',
+    ]);
+    expect(second).not.toBe(first);
+    expect(at(second, 'a')).toBe(at(first, 'a'));
+    expect(third).not.toBe(second);
+    expect(third).toEqual(first);
+    expect(at(third, 'b')).toBe(at(first, 'b'));
+  });
+
+  it('is unchanged when code changes the JSON it was written as', async () => {
+    const items: Showing = {
+      declarations: ['struct Item { name: String }', 'extern fn show(item: Item)'],
+      key: 'main.show(main.Item)',
+    };
+    const [first, second] = await shown(items, [
+      'const item = Item{name: "a"}',
+      'show(item)',
+      'let fields: Map<String, Json> = [:]',
+      'match json.encode(item):',
+      '  case Map<String, Json> as found: fields = found',
+      '  case _: fields = [:]',
+      'fields["name"] = "b"',
+      'show(item)',
+    ]);
+    expect(second).toEqual({ name: 'a' });
+    expect(second).toBe(first);
+  });
+
+  it('is the same object for a kept array of Json given as Json', async () => {
+    const jsons: Showing = {
+      declarations: ['extern fn show(json: Json)'],
+      key: 'main.show(json.Json)',
+    };
+    const [first, second] = await shown(jsons, [
+      'const items: Array<Json> = [1, "two", [3]]',
+      'show(items)',
+      'show(items)',
+    ]);
+    expect(second).toBe(first);
+  });
+
+  it('is frozen at every depth', async () => {
+    const [given] = await shown(trees, [
+      'show(Tree{total: 1, items: [Item{name: "a"}], fixed: [1]})',
+    ]);
+    for (const part of [given, at(given, 'items'), at(given, 'items', 0), at(given, 'fixed')]) {
+      expect(Object.isFrozen(part)).toBe(true);
+    }
+  });
+});
+
+describe('one object given as two types', () => {
+  it('is written by each type its own codec', async () => {
+    const boxes: Showing = {
+      declarations: [
+        'struct Box<T> { value: T }',
+        'fn toJson(self: Box<"a">) -> Json: "as a literal"',
+        'fn toJson(self: Box<String>) -> Json: "as a string"',
+        'extern fn show(boxes: (Box<"a">, Box<String>))',
+      ],
+      key: 'main.show((main.Box<"a">, main.Box<String>))',
+    };
+    const seen = await shown(boxes, [
+      'const box: Box<"a"> = Box{value: "a"}',
+      'show((box, box))',
+      'show((box, box))',
+    ]);
+    expect(seen).toEqual([
+      ['as a literal', 'as a string'],
+      ['as a literal', 'as a string'],
+    ]);
+  });
+});

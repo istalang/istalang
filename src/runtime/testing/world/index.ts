@@ -99,6 +99,7 @@ type Arrival = Answered & { readonly instance: string };
 const allowTest = (): void => undefined;
 
 export class World implements TestWorld {
+  readonly mocking = true;
   readonly #seams: SchedulerSeams;
   readonly #clock: Clock;
   readonly #loaded: LoadedDefinition;

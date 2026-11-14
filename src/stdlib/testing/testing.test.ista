@@ -186,6 +186,13 @@ fn mocks() -> Array<Test>: [
     assertEq(await (spawn cents()).result(), Ok(Cents{value: 5}))
     assertEq(m.calls(), [(Cents{value: 5}, 2)])
   })
+  test("sees every call of the codec it replaces, of a value written before too", fn(): {
+    const kept = Cents{value: 3}
+    assertEq(json.encode(kept), "6")
+    const m = mock(toJson, fn(self: Cents, scale: Int) -> json.Json: json.encodeText("mocked"))
+    assertEq([json.encode(kept), json.encode(kept)], ["mocked", "mocked"])
+    assertEq(m.calls(), [(kept, 2), (kept, 2)])
+  })
 ]
 
 @Suite{"testing › FakeClock"}

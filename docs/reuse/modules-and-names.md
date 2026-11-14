@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-11-13
-last_updated: 2026-11-14
+last_updated: 2026-11-15
 tags: [reuse, language, modules, program, binder, names]
 ---
 
@@ -22,7 +22,7 @@ tags: [reuse, language, modules, program, binder, names]
 - mark a `nativeKey` parameter as `&` reference or `...` rest → `referenceKey`, `restKey` (`src/definition/extern-key.ts`)
 - look up a language-role module (`prelude`, `time`, `json`, `lifetimes`, `testing`), the `std:` scheme, or a well-known declaration (`wellKnown.holds`, `wellKnown.keeps` among them) → `languageModules`, `stdScheme`, `wellKnown` (`src/foundation/language/well-known/index.ts`)
 - look up well-known variant and field names (a union's layout, `Result`, a cursor's `Step`) → `unionLayout`, `resultVariants`, `resultFields`, `stepVariants` (`src/foundation/language/well-known/variants.ts`); `Json` is a union, whose members json-values.ts finds by what each variant holds
-- look up well-known codec function names and helpers → `codecFunctions`, `derivedCodecs`, `codecHelpers` (`src/foundation/language/well-known/codecs.ts`)
+- look up well-known codec function names and helpers → `codecFunctions`, `derivedCodecs`, `codecHelpers`, `writeThrough` (`json.encode`, what lowering's write call is) (`src/foundation/language/well-known/codecs.ts`)
 - look up well-known testing function names, the test file suffix, or whether a path names a test module → `testingFunctions`, `testModuleSuffix`, `isTestModulePath` (`src/foundation/language/well-known/testing.ts`)
 - look up collection, template, pattern or await function names → `collectionFunctions`, `templateFunctions`, `arrayPatternFunctions`, `awaitFunction` (`src/foundation/language/well-known/implicit-calls.ts`); the prelude's `Resolver` → `wellKnown.resolver`
 - look up `dispose`, `from` or `main` function names, or `self`, the parameter making a function a method, or `Self`, the type meeting a trait → `disposeFunction`, `conversionFunction` (`src/foundation/language/well-known/implicit-calls.ts`), `entryFunction`, `receiverParameter`, `selfType` (`src/foundation/language/well-known/index.ts`)

@@ -33,6 +33,7 @@ import type {
   FullNativeContext,
   Native,
   NativeCapabilities,
+  NativeEncodings,
   NativeFutures,
   NativeInstances,
   NativeLogs,
@@ -148,8 +149,15 @@ function capabilitiesOf(instance: Instance, side: SegmentSide): NativeCapabiliti
     instances: nativeInstancesOf(instance, waiting),
     testing: nativeTestingOf(instance),
     contexts: nativeContextsOf(instance, waiting, side.trace),
+    encodings: instance.loaded.world.mocking ? keepingNone : instance.holders.written,
   };
 }
+
+/** Encodings where a mock may replace a codec: none kept, so every codec call runs (§10). */
+const keepingNone: NativeEncodings = {
+  of: () => undefined,
+  remember: () => undefined,
+};
 
 /** The instance's futures as natives make them (§3.6), in a segment `side` describes. */
 function nativeFuturesOf(instance: Instance, { waiting, trace }: SegmentSide): NativeFutures {

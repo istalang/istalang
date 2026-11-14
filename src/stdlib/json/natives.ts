@@ -10,9 +10,12 @@
  *   a `dispose` makes disposable keeps that JSON in a resource, made as the value arrives (§7).
  * - Text that isn't JSON is an `Err` saying why, never a panic: it comes from outside. The json
  *   module makes it the `Error` every failed read gives.
+ * - What `json.encode` wrote a value as is the instance's to keep (`encodings`), by the type it was
+ *   written as: the extern's one type argument.
  */
 
 import { parameterKey } from '../../definition/extern-key.ts';
+import type { TypeReference } from '../../definition/tables/types.ts';
 import { isResourceType } from '../../definition/tables/types.ts';
 import { namedType } from '../../definition/values/declared-values.ts';
 import {
@@ -26,11 +29,17 @@ import {
 import { handleTarget, type Value } from '../../definition/values/values.ts';
 import { codecHelpers } from '../../foundation/language/well-known/codecs.ts';
 import { wellKnown } from '../../foundation/language/well-known/index.ts';
-import type { NativeContext, Natives, WithResources } from '../../runtime/natives.ts';
+import { unreachable } from '../../foundation/structures/unreachable.ts';
+import type {
+  NativeContext,
+  Natives,
+  WithEncodings,
+  WithResources,
+} from '../../runtime/natives.ts';
 import { Refusal } from '../../runtime/refusal.ts';
 import { knownTypeKey, type NativeKeys } from '../std-module.ts';
 import { externPayloadOf, given, text } from '../values/arguments.ts';
-import { resultErr, resultOk } from '../values/results.ts';
+import { resultErr, resultOk, resultVariant } from '../values/results.ts';
 
 /** The JSON a host gave a value of one of its types: the value itself, or its resource's (§7). */
 function hostPayloadOf(value: Value, context: NativeContext & WithResources): unknown {
@@ -39,9 +48,26 @@ function hostPayloadOf(value: Value, context: NativeContext & WithResources): un
     : context.resources.payloadOf(value);
 }
 
+/** The type `json.encode`'s extern writes a value as: its one type argument. */
+function writtenAs(context: NativeContext): TypeReference {
+  return context.typeArguments[0] ?? unreachable(`${context.name} names no type written.`);
+}
+
 const json = knownTypeKey(wellKnown.json);
 
-export const jsonNatives = (keys: NativeKeys): Natives<NativeContext & WithResources> => ({
+export const jsonNatives = (
+  keys: NativeKeys,
+): Natives<NativeContext & WithResources & WithEncodings> => ({
+  [keys.of('_written', parameterKey('T'))]: ([value], context) => {
+    const written = context.encodings.of(given(value), writtenAs(context));
+    return written === undefined
+      ? resultVariant(context, 'Unknown', {})
+      : resultVariant(context, 'Known', { json: written });
+  },
+  [keys.of('_remember', parameterKey('T'), json)]: ([value, written], context) => {
+    context.encodings.remember(given(value), writtenAs(context), given(written));
+    return given(written);
+  },
   [keys.of('_write', json)]: ([value], context) =>
     jsonText(given(value), jsonTypeOf(context.types)),
   [keys.of('_read', 'String')]: ([source], context) => {

@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-11-13
-last_updated: 2026-11-13
+last_updated: 2026-11-15
 tags: [reuse, stdlib, natives, ranges, positions, time, decimal]
 ---
 
@@ -29,6 +29,7 @@ tags: [reuse, stdlib, natives, ranges, positions, time, decimal]
 - read a prelude `Range`, require both ends, count steps, or test membership → `rangeOf`, `bounded`, `countOf`, `reaches`, `textOf` (`src/stdlib/ranges.ts`)
 - format or parse ISO 8601 `Time` and `Duration` texts → `timeText`, `readTime`, `durationText`, `readDuration` (`src/stdlib/time/iso.ts`)
 - implement `Encodable`/`Decodable` in `.ista` for a `Stringable`/`Parsable` type → `json.encodeText`, `json.decodeText` (`src/stdlib/json/json.ista`)
+- write a part of a value as JSON inside a codec → `json.encode(part)`, never `part.toJson()`, so a host gets the same object for a part kept (`src/stdlib/json/json.ista`)
 - wrap a disposable host resource as a `Revertible<T>` in `.ista` → `Revertible.holding` (`src/stdlib/inbox/inbox.ista`)
 - declare `.ista` test suites, cases, groups or setups → `@Suite`, `test`, `group`, `skip`, `only`, `setups` (`src/stdlib/testing/testing.ista`)
 - assert conditions, equality or panics in `.ista` tests → `assert`, `assertEq`, `expectPanic` (`src/stdlib/testing/testing.ista`)
@@ -42,7 +43,7 @@ tags: [reuse, stdlib, natives, ranges, positions, time, decimal]
 - A std native's key restates its `.ista` extern's signature (`docs/audit/dry-review-2026-11-13.md`, finding 10): change both in one commit.
 - Extern types needing canonical equality (`decimal.Decimal`, `time.Zone`) keep their canonical string as the extern payload (`docs/arch/architecture.md`).
 - External input failures (`parse`, `crypto.decode`, `json.parse`) return `Result`; broken preconditions throw `Panic`; broken invariants call `unreachable`.
-- A native keeps no language value past its call outside the instance: it returns it, changes a value it takes by `&` through `NativeContext.changes`, or stores it through a capability (`NativeSlots`, `NativeFutures`, `NativeWaits`, `NativeWeakSide`, `NativeTesting`), never in a closure or module state. Lifetimes read holders from registers and heap objects alone (`src/runtime/lifetimes/`).
+- A native keeps no language value past its call outside the instance: it returns it, changes a value it takes by `&` through `NativeContext.changes`, or stores it through a capability (`NativeSlots`, `NativeFutures`, `NativeWaits`, `NativeWeakSide`, `NativeTesting`, `NativeEncodings`), never in a closure or module state. Lifetimes read holders from registers and heap objects alone (`src/runtime/lifetimes/`).
 
 ## Recipes
 
