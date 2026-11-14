@@ -1,5 +1,5 @@
 ---
-description: proposal 13 of docs/proposals, two language additions — `transient` variables, one value per execution shared by a function's nested calls, and getters, `fn get name(self: T) -> R`, read as fields, with a compile-time check that no getter reaches itself; their rules, lifetimes, lowering and spec edits; read before designing or implementing either, or code that needs recursion-scoped state or values computed from fields
+description: proposal 13 of docs/proposals, two language additions — `transient let` variables, one value per outermost call shared by a function's nested calls, and getters, methods annotated `@Getter` and read as fields; their rules, lifetimes, lowering and spec edits; read before designing or implementing either, or code that needs recursion-scoped state or values computed from fields
 owner: tech-lead
 status: active
 applies_to: istalang
@@ -22,12 +22,13 @@ Both come up in reactive code (computeds with dynamic dependencies, `docs/work/c
 which these two additions make writable as an ordinary library. Neither addition is specific to it.
 
 The human chose the design and the decisions at the end. Section numbers refer to `docs/spec.md`.
+The plan is `docs/work/transients-getters/plan.md`.
 
 ## Transient variables
 
 ```python
 fn paths(n: Int) -> Int:            # ways up n stairs, one or two at a time
-    transient memo: Map<Int, Int> = [:]
+    transient let memo: Map<Int, Int> = [:]
     if n <= 1: return 1
     if memo.has(n): return memo[n]
     const total = paths(n - 1) + paths(n - 2)
@@ -40,16 +41,22 @@ shares it, so the recursion is linear. The next top-level call starts with an em
 global state, and nothing is threaded through parameters.
 
 **The rules:**
-- **One value per execution.** The outermost active call of the function makes it from its
-  initializer. Every call nested inside it, directly or through other functions, sees the same
-  variable, and it ends when that outermost call returns.
-  - A `live async` call starts an execution of its own (§3.3), so its calls start fresh.
+- **A modifier of `let`,** as `hold` is: `transient let name[: T] = initializer`. Any function
+  may declare one, of any mark, async or not.
+- **At the top of a function's body,** before its other statements, so every call has it before
+  it calls anything, and its function's return is what ends it.
+- **One value per outermost call.** The outermost active call of the function makes it from its
+  initializer. Every call nested inside it, directly or through other functions, shares the same
+  variable.
+  - An async call nested in it is nested too: its execution keeps the transients visible where it
+    was called, even once the outermost call has returned. A spawned instance or a delegated job
+    runs in another instance, so it starts fresh.
 - **One per generic instance.** `f<Int>` and `f<String>` are separate functions (§3.5), each with
   its own. Code that must share one across instances routes through a non-generic function:
 
   ```python
   fn nested(callback: fn(Int) -> Unit):   # not generic, so every caller shares one depth
-      transient depth = 0
+      transient let depth = 0
       depth += 1
       _ = defer(fn(): depth -= 1)
       callback(depth)
@@ -62,11 +69,12 @@ global state, and nothing is threaded through parameters.
 
 - **Written like `let`:** assigned, written through `&`, and captured by closures as a cell
   (§3.14).
-- **It must have an initializer.** The initializer runs only at the outermost call, so it can't read
-  the function's parameters or locals. Its type may be left out, as a `let`'s may.
-- **Lifetimes:** the outermost call's frame holds the value, and nested frames share its cell. It is
-  released when that frame ends, like any variable of it (§7). In ista code it persists with that
-  frame.
+- **Its initializer runs only at the outermost call,** so it can't read the function's parameters
+  or locals; it may name the function's type parameters. Its type may be left out, as a `let`'s
+  may.
+- **Lifetimes:** the outermost call's frame holds the value, nested frames share its cell, and so do
+  the async calls nested in it. It is released when the last of them ends (§7). In ista code it
+  persists with them.
 
 ## Getters
 
@@ -75,66 +83,59 @@ struct Person:
     first: String
     last: String
 
-fn get full(self: Person) -> String: `${self.first} ${self.last}`
+@Getter
+fn full(self: Person) -> String: `${self.first} ${self.last}`
 
 const ada = Person{first: "Ada", last: "Lovelace"}
-ada.full                    # "Ada Lovelace", computed on every read
+ada.full                    # "Ada Lovelace", computed on every read; the call full(ada)
 ```
 
 **The rules:**
-- **Declared like a method,** with `get` before its name. It takes exactly one parameter, `self`,
-  by value. It is not async, and it may be generic.
-- **Read with `.`, as fields are.** On a shared struct it is read with `->`, as everything behind a
-  handle is: `x->name` is `(*x).name`, whether `name` is a field or a getter.
-- **One meaning per name:** on a type, a name is a field, a getter or a method, never two.
-- **Never stored:** a literal never sets a getter, and nothing assigns one. `==`, hashing, the JSON
-  codecs, struct patterns and `keyof` see the stored fields only, so `ada == Person{first: "Ada",
-  last: "Lovelace"}` holds.
+- **A method annotated `@Getter`,** the prelude's field-less annotation (§3.16). It takes exactly
+  one parameter, `self`, by value. It is not async, and it may be generic.
+- **Read with `.`, as fields are:** `x.g` is the call `g(x)`, on any type, a shared struct's handle
+  included (`lease.g`, as methods are called, §3.18); `x?.g` reads it in an optional chain.
+  `x.g(…)` calls the value it gives, as for a field holding a function. Called as a plain function,
+  `g(x)`, it is the method it is.
+- **One meaning per name:** on a type, a name is a field, a getter or a method, never two; a use
+  that finds two is a compile error, as a field and a method of one name are today.
+- **Never stored:** a literal never sets a getter, and nothing assigns one or takes its `&`. `==`,
+  hashing, the JSON codecs, struct patterns, `keyof`, spreads, field loops, shapes, struct
+  constraints and trait field requirements see the stored fields only, so `ada == Person{first:
+  "Ada", last: "Lovelace"}` holds.
 - **Found like methods,** by the type of `self`, so a module may declare getters for types it
-  imports.
-
-### No getter reaches itself
-
-A getter that can reach itself is a compile error, naming the path:
-
-```python
-struct Pair:
-    n: Int
-
-fn get a(self: Pair) -> Int: if self.n > 0: self.b else: 0
-fn get b(self: Pair) -> Int: self.a + 1
-# error: getter 'a' can reach itself: Pair.a → Pair.b → Pair.a
-```
-
-- **What it follows:** calls, trait calls resolved per instance (witness closing), and function
-  values. Closures, and the handles that hold them, are told apart by where they are made, so the
-  check follows a closure stored in a struct into the code it was made from.
-- **What it doesn't follow:** code it can't see into, such as a call through an `any` type.
-- **It is conservative:** it judges code, not values, so a branch never taken still counts. A
-  getter reaching the same getter on another value of its type counts too.
+  imports. A trait requirement is never a getter.
+- **No cycle check.** A getter that reaches itself is recursion, as a method's is.
 
 ## What it takes
 
-- **`transient`:**
-  - a contextual keyword before a variable declaration, like `hold`;
-  - one IR instruction, `transient dst, name`, which finds this execution's value or makes it, as
-    `contextConstant` does for context constants;
-  - a per-execution table in the runtime, which a restore rebuilds from the frames.
-- **Getters:** parsing `fn get`, resolving a member read to a field or a getter, and lowering the
-  read to a plain call, so the IR doesn't change.
-- **The check:** a checker rule on the flow IR, after witness closing, with closures and handles
-  told apart by where they are made.
+- **`transient let`:**
+  - a contextual word before `let`, parsed as `hold` is;
+  - one IR instruction, `transient dst, target`, which shares the cell of the nearest enclosing
+    call of the same function, or goes on to the initializer, whose write makes the cell as any
+    cell variable's first write does;
+  - no table: the value lives in frame registers and the cells they share, which snapshots already
+    persist, and an execution keeps the transient cells visible where it started, one persisted
+    field.
+- **Getters:** the prelude's `Getter` annotation, and resolving a member read with no stored field
+  to a getter, checked and recorded as the call; the IR doesn't change.
 
 **Spec edits:**
 - §3.1: getters replace "No getters or setters".
-- §3.4: `transient` variables.
-- §3.9 and §3.18: `->` reads behind the handle and then resolves the name as `.` does, so it may call
-  a getter.
+- §3.4: `transient let` variables.
+- §3.16: `Getter` among the annotations the compiler reads.
+- §3.18: `.` on a handle reads its getters as it calls its methods.
 - §7: a transient value is held by the outermost call's frame.
-- A new rule for the getter check.
 
 ## Decisions
 
 - **Transient values are one per generic instance.** Sharing goes through a non-generic function.
-- **Getters are read like fields:** with `.`, and with `->` on shared structs.
-- **A getter that can reach itself is a compile error** wherever its code is visible.
+- **Transients are orthogonal to marks and async.** Only the outermost call makes one; every call
+  nested in it shares it, async calls included.
+- **`transient` modifies `let`,** as `hold` does, at the top of a function's body.
+- **Getters are methods annotated `@Getter`,** with no syntax of their own, read with `.` on every
+  type, shared structs' handles included.
+- **No compile-time getter cycle check.** Following closures through the heap would need a
+  program-wide analysis the compiler doesn't have, and it would flag every computed graph as a
+  cycle, since every computed's refresh sits in one non-generic field. Computed cycles are caught
+  where their dependencies are known: at run time by the library, and in FormBuilder's generator.

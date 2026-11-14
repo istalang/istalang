@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-11-11
-last_updated: 2026-11-12
+last_updated: 2026-11-14
 tags: [tracker]
 ---
 
@@ -29,6 +29,7 @@ tags: [tracker]
 | Proposal 8, live and ista async (`docs/work/async-kinds/plan.md`; merge review closed every finding, Q52–Q55 left) | done |
 | Proposal 9, native runtime (`docs/proposals/9-native-runtime.md`), beyond async-kinds CX's minimal slice | not planned: a plan of its own |
 | Static lifetimes (`docs/work/static-lifetimes/plan.md`) | in progress: C1, C2, R1, R2, C3, C4, R3, R4 and R5 done; C5 dropped |
+| Proposal 13, transients and getters (`docs/work/transients-getters/plan.md`) | in progress: T1, G1 started |
 | M8 Packages | planned |
 
 ## Filed
@@ -66,6 +67,8 @@ Language or toolchain features deferred by decision, not defects.
 | F27 | View handles, so `gives`/`takes` apply to handles: a converted handle is a view converting each value as it leaves or enters, `==` comparing the underlying object. Candidates: `Future<gives T, K>`, `Instance<gives T>`, `WeakRef<gives T>`, proposal 8's `Resolver<takes T, K>`. Until then a marker on a handle is an error. | big | variance-inference V1 | variance-inference design 2026-11-08 |
 | F29 | Type patterns naming `Fn` (§3.11, §3.14): `case Fn as f` against `Int \| fn(Int) -> Int` should select the union's function members, as a generic type named bare selects its instances; it is refused (5422), since a type pattern selects only nominal members. | small | — | async-kinds F1 2026-11-10 |
 | F30 | `runtime.jobKey()` (proposal 9, Jobs): the key of the job a live run runs, for the work it calls to deduplicate on, such as a payment API's idempotency key. It needs a value scoped to one live execution, which the language lacks; a job's key exists, its instance's name and its number (`runtime._Job`). | medium | proposal 9 | async-kinds DG 2026-11-11 |
+| F31 | A declaration-time check that a name on a type is one of a field, a getter or a method (proposal 13): today a clash is reported only where a use finds two (5505). | medium | proposal 13 | transients-getters plan |
+| F32 | Getters as trait requirements, so generic code reads a computed member through a bound (proposal 13 keeps requirements methods only). | medium | proposal 13 | transients-getters plan |
 
 ### Performance (P)
 
