@@ -31,6 +31,8 @@ tags: [tracker]
 | Static lifetimes (`docs/work/static-lifetimes/plan.md`) | in progress: C1, C2, R1, R2, C3, C4, R3, R4 and R5 done; C5 dropped |
 | Proposal 13, transients and getters (`docs/work/transients-getters/plan.md`) | done (merge re-review approved; B87, B88 left) |
 | Proposal 14, inert functions (`docs/work/inert-functions/plan.md`) | done (reviewer approved, QA passed; B89 left) |
+| Computed, and FormBuilder on it (`docs/work/computed/plan.md`) | in progress: C1 |
+| Proposal 15, stable host references (`docs/proposals/15-stable-host-references.md`) | approved, not planned; FormBuilder adopts it once done |
 | M8 Packages | planned |
 
 ## Filed
@@ -69,7 +71,6 @@ Language or toolchain features deferred by decision, not defects.
 | F29 | Type patterns naming `Fn` (§3.11, §3.14): `case Fn as f` against `Int \| fn(Int) -> Int` should select the union's function members, as a generic type named bare selects its instances; it is refused (5422), since a type pattern selects only nominal members. | small | — | async-kinds F1 2026-11-10 |
 | F30 | `runtime.jobKey()` (proposal 9, Jobs): the key of the job a live run runs, for the work it calls to deduplicate on, such as a payment API's idempotency key. It needs a value scoped to one live execution, which the language lacks; a job's key exists, its instance's name and its number (`runtime._Job`). | medium | proposal 9 | async-kinds DG 2026-11-11 |
 | F31 | A declaration-time check that a name on a type is one of a field, a getter or a method (proposal 13): today a clash is reported only where a use finds two (5505). | medium | proposal 13 | transients-getters plan |
-| F33 | The computed design (`docs/work/computed/design.md`) fails static lifetimes as written, with or without transients: `Dependency.refresh` is a plain `fn` field, which type-reach takes as holding any handle, so writing a `Dependency` into any cell (a captured `let`, a `Shared`, a transient) is a possible cycle through a disposable (5721, 5722). Proposal 14's inert function types are the answer: type `refresh` and `eval` `inert fn`, with `Computed<T is Inert>` (proposal 14, "Its first user"), then implement the library. | medium | none; can be done now | transients-getters T1 |
 
 ### Performance (P)
 
