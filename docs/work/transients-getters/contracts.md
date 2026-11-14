@@ -59,6 +59,11 @@ on and what each reuses; everything else is the implementer's.
 - **Flow.** The flow builder emits a getter read as a `call` op with the receiver as argument 0,
   reusing the method-call path (`rules/flow/build/calls.ts`). Lowering, the data rule and
   lifetimes then see an ordinary call; none of them changes.
+- **Trait fields (G3).** A required field is met by the type's readable member of that name and
+  type, through the one conformance path (`fieldOf`, `resolution/conformance/`), extended rather
+  than paralleled. What a required-field read in generic code or through `any` becomes is decided
+  per instance, from the concrete member, when lowering closes it: a field read or the getter's
+  call. The checker records the requirement, never a pre-chosen read.
 - **Conflicts.** A use finding a field and a getter, or a getter and a method, of one name reports
   as `fieldOrMethod` (5505) does today, at the use.
 - **Editor.** Completion lists getters as properties; hover, definition, references and rename

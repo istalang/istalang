@@ -102,11 +102,15 @@ ada.full                    # "Ada Lovelace", computed on every read; the call f
 - **One meaning per name:** on a type, a name is a field, a getter or a method, never two; a use
   that finds two is a compile error, as a field and a method of one name are today.
 - **Never stored:** a literal never sets a getter, and nothing assigns one or takes its `&`. `==`,
-  hashing, the JSON codecs, struct patterns, `keyof`, spreads, field loops, shapes, struct
-  constraints and trait field requirements see the stored fields only, so `ada == Person{first:
-  "Ada", last: "Lovelace"}` holds.
+  hashing, the JSON codecs, struct patterns, `keyof`, spreads, field loops, shapes and struct
+  constraints, which generic code may write (§3.5), see the stored fields only, so
+  `ada == Person{first: "Ada", last: "Lovelace"}` holds.
 - **Found like methods,** by the type of `self`, so a module may declare getters for types it
-  imports. A trait requirement is never a getter.
+  imports.
+- **Meets a trait's field requirement,** which generic code and `any` values only read (§3.10): a
+  required field is a readable member of its name and type, a stored field or a getter, a shared
+  struct's handle meeting it through a getter. A trait therefore needs no getter requirement of its
+  own.
 - **No cycle check.** A getter that reaches itself is recursion, as a method's is.
 
 ## What it takes
@@ -126,6 +130,7 @@ ada.full                    # "Ada Lovelace", computed on every read; the call f
 - §3.1: getters replace "No getters or setters".
 - §3.4: `transient let` variables.
 - §2: `get` among the contextual words.
+- §3.10: a getter meets a field requirement.
 - §3.18: `.` on a handle reads its getters as it calls its methods.
 - §7: a transient value is held by the outermost call's frame.
 
@@ -138,6 +143,8 @@ ada.full                    # "Ada Lovelace", computed on every read; the call f
 - **Getters are methods declared `fn get name`,** read with `.` on every type, shared structs'
   handles included. An annotation was tried first (G2) and replaced (G3): what a read gives
   belongs to the declaration's syntax, not to an annotation.
+- **A getter meets a trait's field requirement,** which is read-only; struct constraints, which
+  generic code may write, take stored fields only.
 - **No compile-time getter cycle check.** Following closures through the heap would need a
   program-wide analysis the compiler doesn't have, and it would flag every computed graph as a
   cycle, since every computed's refresh sits in one non-generic field. Computed cycles are caught

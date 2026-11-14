@@ -64,8 +64,8 @@ conflicts, editor features, spec §3.1, §3.16 and §3.18, and `docs/reuse`.
   `ista` getter is a compile error.
 - Completion lists getters as properties; hover, definition and rename reach the getter.
 
-**G3: getter syntax `fn get name` (behavioral), replacing `@Getter`.** Added after G2 at the
-human's request. The `Getter` annotation, its placement rules and its prelude struct go entirely;
+**G3: getter syntax `fn get name`, replacing `@Getter`, and getters meeting trait field
+requirements (behavioral).** Added after G2 at the human's request. The `Getter` annotation, its placement rules and its prelude struct go entirely;
 the getter mark is the declaration's syntax. Parser, formatter, VS Code grammar and its test,
 completion of `get`, semantic tokens, spec §2, §3.1 and §3.16, docs/reuse.
 - Every G2 getter test passes rewritten to `fn get`; no `@Getter` remains in code or docs.
@@ -73,6 +73,9 @@ completion of `get`, semantic tokens, spec §2, §3.1 and §3.16, docs/reuse.
   a getter named `get`.
 - A getter head on a local function, a trait requirement or an extern refuses as `@Getter` did.
 - The formatter round-trips `fn get name<T>(self: X<T>) -> T: …` with marks.
+- A struct, or a shared struct's handle, meets `trait HasSize { size: Int }` through a getter:
+  generic code `T is HasSize` reads `x.size`, and an `any HasSize` built from it reads it too; a
+  struct constraint `T is struct { size: Int }` still refuses it. Spec §3.10.
 
 ## Out of scope
 
