@@ -24,7 +24,7 @@ import { meets } from '../../resolution/conformance/conformance.ts';
 import { isHostExtern } from '../../surface/host-externs.ts';
 import { type JsonDirection, jsonTraits } from '../../surface/json-form.ts';
 import { wellKnownConstraint } from '../../types/traits/constraints.ts';
-import { isSendable } from '../../types/traits/sendable.ts';
+import { isSendable } from '../../types/traits/sendability.ts';
 import type { Type } from '../../types/type/index.ts';
 import { typeText } from '../../types/type/type-text.ts';
 import { outcomeOf } from '../../types/type/well-known.ts';

@@ -43,7 +43,7 @@ Surveyed on `011d7712`. Paths are under `src/`, abbreviated.
   type-match patterns and lowering's fit parts. No qualifier order exists.
 - `Future` is known by entity (`wellKnown.future`), built by `futureOf`, read by
   `futureArgument`; declared `extern shared struct Future<T>`.
-- Sendability is a boolean switch (`types/traits/sendable.ts`), not memoized. `identityOf` is
+- Sendability is a boolean switch (`types/traits/sendability.ts`), not memoized. `identityOf` is
   file-private in `types/properties/handles.ts`; `extern ephemeral struct` already parses and is
   confined (`'process'`). A lambda's `isSendable` is inferred from its captures; nothing checks a
   capture against the expected type.

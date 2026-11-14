@@ -1,8 +1,9 @@
 /**
- * Which values are disposable (§7), and who disposes them. A type is disposable when a `dispose`
- * takes it as `self`: structural conformance to `Disposable` (§3.10), with no list kept anywhere
- * else. Only a value with an identity of its own can be, so only a shared struct (§3.18) or an
- * extern type, whose values are objects the runtime keeps.
+ * Who disposes a disposable value (§7). A type is disposable when a `dispose` takes it as `self`:
+ * structural conformance to `Disposable` (§3.10), with no list kept anywhere else; whether a type
+ * is reads what this finds (types/traits/disposable.ts). Only a value with an identity of its own
+ * can be, so only a shared struct (§3.18) or an extern type, whose values are objects the runtime
+ * keeps.
  *
  * - An extern `dispose` that a std module declares beside its type, as the prelude does for
  *   `Future` and `Slot`, is the runtime's to perform.
@@ -41,49 +42,12 @@ import type { ResolvedCall } from '../../surface/resolved-call.ts';
 import { sameType } from '../../types/identity/identity.ts';
 import { substitute } from '../../types/parts/substitution.ts';
 import { isConfined } from '../../types/properties/handles.ts';
-import { requiredFunctions } from '../../types/traits/constraints.ts';
-import { knownConstraints } from '../../types/traits/known-constraints.ts';
 import { isSimpleMark, kindOfFunction } from '../../types/type/function-kinds.ts';
 import type { NominalType, Type } from '../../types/type/index.ts';
 import { unitType } from '../../types/type/primitives.ts';
 import { typeText } from '../../types/type/type-text.ts';
 
 const none: Disposal = { kind: 'none' };
-
-/**
- * Whether values of `type` are disposable: a handle with a `dispose`, or a type parameter or an
- * `any` type whose constraints require one, as `Disposable` does, so every type meeting them has
- * one (§3.10).
- */
-export function isDisposable(checker: CheckerContext, type: Type): boolean {
-  switch (type.kind) {
-    case 'nominal':
-      return checker.disposalOf(type).kind !== 'none';
-    case 'parameter':
-    case 'associated':
-    case 'field':
-    case 'any':
-      return knownConstraints(checker, type).some(({ trait }) =>
-        requiredFunctions(trait).some(({ name }) => name.text === disposeFunction),
-      );
-    case 'primitive':
-    case 'literal':
-    case 'union':
-    case 'keys':
-    case 'mapped':
-    case 'match':
-    case 'recursive':
-    case 'anonymous':
-    case 'tuple':
-    case 'function':
-    case 'error':
-      return false;
-    default: {
-      const unhandled: never = type;
-      return unhandled;
-    }
-  }
-}
 
 /** How `type`, whose `dispose` candidates are `found` (`disposeCandidates`), is disposed. */
 export function disposalOf(

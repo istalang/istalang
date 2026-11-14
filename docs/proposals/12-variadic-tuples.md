@@ -435,7 +435,7 @@ instantiation, and TypeScript falls back to overloads.
 2. **The tuple constraint (structural, removes code).**
    - The constraint model (`type/struct-constraint.ts`, `traits/known-constraints.ts`) gains a
      tuple form.
-   - Derived traits of products both ways (`traits/sendable.ts`).
+   - Derived traits of products both ways (`traits/sendability.ts`).
    - `isPack` and its special cases go: three copies of "fills a pack", two `packOf`s, three
      derivations of a rest's kind.
    - Runs in parallel with 1.

@@ -63,7 +63,7 @@ independent of this plan and may run beside I2.
 
 | Surface | Owner | Consumers |
 |---|---|---|
-| Extern handle kind (syntax tree), `identityOf` in the `types` layer | V0 | V1, lowering, `sendable.ts`, `testing.ts`, `json-forms.ts`, `disposal.ts` |
+| Extern handle kind (syntax tree), `identityOf` in the `types` layer | V0 | V1, lowering, `sendability.ts`, `testing.ts`, `json-forms.ts`, `disposal.ts` |
 | `types/variance/variance.ts`: `type Variance = 'covariant' \| 'contravariant' \| 'invariant'`; `varianceOf(declaration: NominalDeclaration \| TypeAliasDeclaration \| TraitDeclaration): readonly Variance[]`, one per type parameter, memoized per declaration | V1 creates it; V2 adds the traits' | I1, I2 |
 | `types/fitting/fit/`: composition through variance; a nested fit recorded as from and to | V1 | I1, I2, lowering, `forms.ts` |
 | `types/unions/common-type.ts`: `commonType(types: readonly Type[]): Type \| undefined` | I0 | I1 (settling rule 3), `agreement.ts` |

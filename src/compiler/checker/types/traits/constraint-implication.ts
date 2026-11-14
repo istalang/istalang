@@ -1,10 +1,10 @@
 /**
- * What constraints imply of one another (§3.10): a type meeting some meets another when it is one of
- * them, or Sendable implied by one requiring it of every type meeting it (`Encodable`, `Decodable`),
- * or `DataKind<K>` implied by Sendable where `K` holds `"simple"`, no sendable value holding a kind,
- * or by a `DataKind` whose marks are all `K`'s (proposal 8, Rule 3). Traits declare no
- * supertraits, so this is all one implies of another. Apart from sendability (sendable.ts), which
- * reads what a type meets, so what reads what a type meets may ask it too.
+ * What constraints imply of one another (§3.10): a type meeting some meets another when it is one
+ * of them, or Sendable implied by one requiring it of every type meeting it (`Encodable`,
+ * `Decodable`), or `DataKind<K>` implied by Sendable where `K` holds `"simple"`, no sendable value
+ * holding a kind, or by a `DataKind` whose marks are all `K`'s (proposal 8, Rule 3). Traits declare
+ * no supertraits, so this is all one implies of another. Apart from sendability (sendability.ts),
+ * which reads what a type meets, so what reads what a type meets may ask it too.
  */
 
 import {

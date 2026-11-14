@@ -1,8 +1,8 @@
 /**
  * A value's data kind (proposal 8, Rule 2), in one home: the kinds the parts a value holds are of,
  * read on the walk over what a value holds (held.ts), as whether it may leave its instance is
- * (traits/sendable.ts). The data rule (rules/kinds/data-kinds.ts) holds every value code handles to
- * its code's mark.
+ * (traits/sendability.ts). The data rule (rules/kinds/data-kinds.ts) holds every value code handles
+ * to its code's mark.
  *
  * - A handle that stays in its process (`extern live struct`) is `live`; a value a `dispose` of a
  *   kind may take is of it, since releasing it calls that code (Rule 2's implicit calls), whatever

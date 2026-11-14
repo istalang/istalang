@@ -49,7 +49,7 @@ Rules:
 - One `identityOf(declaration)`, in the `types` layer so variance can read it, replaces every
   name-based or kind-based check:
   - `isHandle` in `rules/testing.ts`, which names `Slot`;
-  - sendability (`types/traits/sendable.ts`);
+  - sendability (`types/traits/sendability.ts`);
   - host forms (`rules/boundary/json-forms.ts`): an extern value crosses as a host form when its
     type arguments do, a `sendable` handle as its id whatever they are; an `extern shared struct`
     does only as a resource (with `dispose`);

@@ -139,7 +139,7 @@ Legend for classification (item 3 of brief):
 ### 1.16 `Sendable` and `Sendability` (`sendable fn`) — §3.1, §3.10, §3.14
 1. **What it is:** Compiler-derived marker trait `Sendable` for values that can cross instances (`spawn`) or the host boundary (via `Encodable`/`Decodable`), plus the `"sendable" < "plain"` qualifier order on function types (`Fn<Args, Result, Kind, Send>`).
 2. **Implementation footprint:** **12 files, 19 sites** (`wellKnown.sendable`, `Sendability`, `sendFits`, `capturedSend`, `isSendable`).
-   - `compiler/checker/types/traits/sendable.ts` (`isSendable`, `capturedSend`), `compiler/checker/resolution/conformance/derived-traits.ts`, `compiler/checker/types/traits/constraint-implication.ts`, `compiler/checker/rules/boundary/host-boundary.ts`, `compiler/checker/resolution/calls/deferred-arguments.ts`.
+   - `compiler/checker/types/traits/sendability.ts` (`isSendable`, `capturedSend`), `compiler/checker/resolution/conformance/derived-traits.ts`, `compiler/checker/types/traits/constraint-implication.ts`, `compiler/checker/rules/boundary/host-boundary.ts`, `compiler/checker/resolution/calls/deferred-arguments.ts`.
 3. **Classification:** **(c) Genuinely primitive** rule in the checker; erased at runtime.
 
 ---

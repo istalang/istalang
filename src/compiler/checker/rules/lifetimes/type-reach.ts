@@ -17,11 +17,11 @@
 import type { CheckerContext } from '../../contexts/context.ts';
 import { isHandleType } from '../../types/properties/handles.ts';
 import { heldPartsOf, heldTypes } from '../../types/properties/held.ts';
-import { isSendable } from '../../types/traits/sendable.ts';
+import { isDisposable } from '../../types/traits/disposable.ts';
+import { isSendable } from '../../types/traits/sendability.ts';
 import { isComputed } from '../../types/type/computed-types.ts';
 import { isSendableFunction } from '../../types/type/function-types.ts';
 import type { FunctionType, NominalEntity, NominalType, Type } from '../../types/type/index.ts';
-import { isDisposable } from '../disposal/disposal.ts';
 
 /** Whether values of a type may reach a disposable: never, always, or as instantiation decides. */
 export type Relevance = 'no' | 'depends' | 'yes';

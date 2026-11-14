@@ -49,7 +49,7 @@ import type { NestedFunction } from '../../surface/checked-body.ts';
 import type { Admits } from '../../types/fitting/expected.ts';
 import { expectedFunction } from '../../types/fitting/expected.ts';
 import { sameType } from '../../types/identity/identity.ts';
-import { capturedSend } from '../../types/traits/sendable.ts';
+import { capturedSend } from '../../types/traits/sendability.ts';
 import {
   isOneKind,
   kindAdmits,
@@ -67,6 +67,7 @@ import {
 } from '../../types/type/function-types.ts';
 import type { FunctionType, Type } from '../../types/type/index.ts';
 import { errorType, expectsError, neverType, unitType } from '../../types/type/primitives.ts';
+import { cellTypeOf } from '../../types/type/well-known.ts';
 import {
   checkPatternParameter,
   declaredBodyResult,
@@ -365,13 +366,14 @@ function checkNested(context: BodyContext, node: NestedFunction, header: NestedH
   // settles with the scope (wiring/body/constraint-scope.ts): it is recorded again then.
   const finished = (produces: Type): FunctionType => {
     const captures = capturesOf(context, scope);
-    const shared = captures.some((capture) => context.variables.isChangeable(capture.entity));
-    const send = shared
-      ? plainSend
-      : capturedSend(
-          context.checker,
-          captures.map((capture) => capture.type),
-        );
+    const send = capturedSend(
+      context.checker,
+      captures.map((capture) =>
+        context.variables.isChangeable(capture.entity)
+          ? cellTypeOf(context.checker, capture.type)
+          : capture.type,
+      ),
+    );
     const kind = nestedValueKind(node, header.givenKind, scope);
     const recorded = typeWith(produces, send, kind);
     if (name !== undefined) {

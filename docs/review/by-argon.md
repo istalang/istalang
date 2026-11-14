@@ -46,10 +46,10 @@ Spec: `docs/spec.md` · Architecture: `docs/arch/architecture.md` · Tracker: `d
   - **D87**: Passing `x$` or `x$.field` by `&` (`x$.push(v)`) remains on the checker frontier (`unwrapPart`) even though `lowering/constructs/parts/places.ts` already implements copy-in/write-back for `Unwrap`.
   - **D96**: `c$ = v` and `a, c$ = (1, 2)` lower through two different paths (the destructuring path emits an extra observable `unwrap` before `rewrap`).
 
-#### 1.4 Recursive Type-Graph Property Queries (`sendable.ts`, `json-forms/index.ts`, `struct-rules.ts`, `types/properties/held.ts`)
+#### 1.4 Recursive Type-Graph Property Queries (`sendability.ts`, `json-forms/index.ts`, `struct-rules.ts`, `types/properties/held.ts`)
 
 - **Current narrow scope:** Four separate modules walk composite and nominal `Type` graphs:
-  - `isSendable` (`src/compiler/checker/types/traits/sendable.ts`, tracking cycles via `Set<string>` of `typeKey`)
+  - `isSendable` (`src/compiler/checker/types/traits/sendability.ts`, tracking cycles via `Set<string>` of `typeKey`)
   - `JsonForms.problemOf` (`src/compiler/checker/rules/json-forms/index.ts`, tracking cycles via `Set<string>` of `typeKey`)
   - `checkFiniteFields` (`src/compiler/checker/constructs/declarations/layout/struct-rules.ts`, tracking cycles via `Set<StructDeclaration>`)
   - `heldType` (`src/compiler/checker/types/properties/held.ts`, taking no `CheckerContext`, keeping no cycle set, and **skipping declared `StructDeclaration` and `EnumDeclaration` fields**).

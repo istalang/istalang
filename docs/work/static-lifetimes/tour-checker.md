@@ -265,7 +265,7 @@ The node kinds are in `src/compiler/syntax/expressions/index.ts` and `syntax/sta
 - **`heldPartsOf`'s readers, audited:**
   - `held.ts` `heldType`/`heldTypes` and `rules/disposal/must-use.ts` read `Holds`: a
     `WeakRef<Future<…>>` may be lost, where a tuple of a future must be used.
-  - `types/traits/sendable.ts` reads it too; the std's `Holds` stand only on handles that stay in
+  - `types/traits/sendability.ts` reads it too; the std's `Holds` stand only on handles that stay in
     their instance, which never cross, and the one sendable handle, `Instance`, has none.
   - `types/properties/value-kinds.ts` reads every extern type argument, held or watched: a native may
     give back a watched argument's value (`deref`), which code then handles.
@@ -301,13 +301,13 @@ The node kinds are in `src/compiler/syntax/expressions/index.ts` and `syntax/sta
   - `extern sendable struct`s, with global identity.
 
   A plain `extern struct` (`Array`, `Map`, `Fn`) is a value.
-- **Disposables:** `isDisposable` (`rules/disposal/disposal.ts`) reads the memoized
+- **Disposables:** `isDisposable` (`types/traits/disposable.ts`) reads the memoized
   `checker.disposalOf` for a nominal type (`wiring/program/program-disposals.ts` memoizes
   `disposeCandidates`, `disposalOf`, `disposeKindsOf`). It also covers parameters, `associated` and
   `field` kinds, and an `any` whose constraints require a `dispose`.
   - A disposable host type is a confined handle (`extern shared` or `extern live struct`, spec
     §3.6), never a value.
-- **Pruning by declared type:** `isSendable` (`types/traits/sendable.ts`) and `isSendableFunction`
+- **Pruning by declared type:** `isSendable` (`types/traits/sendability.ts`) and `isSendableFunction`
   (`types/type/function-types.ts`), whose kinds are memoized in `wiring/program/program-kinds.ts`.
   A sendable value reaches no handle of the instance.
 - **Natives (C2):** `checker.keepsOf(extern)` gives what each parameter keeps, by position, and

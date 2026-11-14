@@ -14,7 +14,7 @@ Nothing new is built beside an existing unit. Every row extends the unit `docs/r
 
 ## The one predicate
 
-Today, three units classify a type's parts: `keepsInInstance` (`types/traits/sendable.ts`),
+Today, three units classify a type's parts: `keepsInInstance` (`types/traits/sendability.ts`),
 `ownRelevance` and `heldOfFunction` (`rules/lifetimes/type-reach.ts`), and `isDisposable`
 (`rules/disposal`). `isDisposable` sits above `types/traits` in the layers, which is why the split
 exists.

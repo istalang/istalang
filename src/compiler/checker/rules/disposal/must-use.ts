@@ -25,11 +25,11 @@ import type { NodeOf } from '../../../syntax/tree/node.ts';
 import type { BodyContext } from '../../contexts/body-context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import { heldType } from '../../types/properties/held.ts';
+import { isDisposable } from '../../types/traits/disposable.ts';
 import type { Type } from '../../types/type/index.ts';
 import { unitType } from '../../types/type/primitives.ts';
 import { typeText } from '../../types/type/type-text.ts';
 import { awaitedOf, wellKnownArguments } from '../../types/type/well-known.ts';
-import { isDisposable } from './disposal.ts';
 
 /** How a must-use value is used, besides being kept or dropped. */
 type Use = 'await' | 'match' | 'propagate' | 'hold';

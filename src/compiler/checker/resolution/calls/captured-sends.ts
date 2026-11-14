@@ -12,7 +12,7 @@ import { unparenthesized } from '../../../syntax/expressions/readings.ts';
 import { tailExpressionOf } from '../../../syntax/statements/readings.ts';
 import type { BodyContext } from '../../contexts/body-context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
-import { isSendable } from '../../types/traits/sendable.ts';
+import { isSendable } from '../../types/traits/sendability.ts';
 import { functionType, isSendableFunction } from '../../types/type/function-types.ts';
 import type { FunctionType, Type } from '../../types/type/index.ts';
 import { typeText } from '../../types/type/type-text.ts';
