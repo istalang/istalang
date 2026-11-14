@@ -6,7 +6,7 @@
 
 import { describe, expect, it } from 'vitest';
 import type { TypeReference } from '../../definition/tables/types.ts';
-import type { CompositeValue, Value } from '../../definition/values/values.ts';
+import { type CompositeValue, handleTo, type Value } from '../../definition/values/values.ts';
 import { type Held, nothingHeld } from '../snapshot/holdings.ts';
 import { HolderWrites } from './holder-writes.ts';
 
@@ -38,6 +38,16 @@ describe('the JSON an instance wrote a value as', () => {
     expect(writes.written.of(value, int)).toBe(json);
     expect(writes.written.of(value, text)).toBeUndefined();
     expect(writes.written.of(1n, int)).toBeUndefined();
+  });
+
+  it("is a handle's whichever handle names its object, until the object is gone", () => {
+    const writes = instanceWrites();
+    const json = madeArray(writes, []);
+    writes.written.remember(handleTo(7), int, json);
+    expect(writes.written.of(handleTo(7), int)).toBe(json);
+    expect(writes.written.of(handleTo(8), int)).toBeUndefined();
+    writes.gone(7);
+    expect(writes.written.of(handleTo(7), int)).toBeUndefined();
   });
 
   it('is forgotten as its value changes in place, which stays in place', () => {

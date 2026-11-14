@@ -92,13 +92,17 @@ describe('a value given to a host again', () => {
   });
 
   it('keeps the unchanged elements of an array changed in place, the array new', async () => {
-    const [first, second, third] = await shown(trees, [
+    const [first, second, third, fourth, fifth] = await shown(trees, [
       'let items = [Item{name: "a"}, Item{name: "b"}]',
       'const fixed: Array<Int> = []',
       'show(Tree{total: 0, items, fixed})',
       'items.push(Item{name: "c"})',
       'show(Tree{total: 0, items, fixed})',
       'items[1] = Item{name: "B"}',
+      'show(Tree{total: 0, items, fixed})',
+      'items[1..2] = [Item{name: "b2"}, Item{name: "b3"}]',
+      'show(Tree{total: 0, items, fixed})',
+      'items.reverse()',
       'show(Tree{total: 0, items, fixed})',
     ]);
     expect(at(second, 'items')).not.toBe(at(first, 'items'));
@@ -108,6 +112,12 @@ describe('a value given to a host again', () => {
     expect(at(third, 'items', 0)).toBe(at(first, 'items', 0));
     expect(at(third, 'items', 1)).toEqual({ name: 'B' });
     expect(at(third, 'items', 2)).toBe(at(second, 'items', 2));
+    expect(at(fourth, 'items')).not.toBe(at(third, 'items'));
+    expect(at(fourth, 'items', 0)).toBe(at(first, 'items', 0));
+    expect(at(fourth, 'items', 3)).toBe(at(second, 'items', 2));
+    expect(at(fifth, 'items')).not.toBe(at(fourth, 'items'));
+    expect(at(fifth, 'items', 0)).toBe(at(second, 'items', 2));
+    expect(at(fifth, 'items', 3)).toBe(at(first, 'items', 0));
   });
 
   it('is new for a field changed in place, and so is every value holding it', async () => {
@@ -172,17 +182,102 @@ describe('a value given to a host again', () => {
     expect(second).toBe(first);
   });
 
-  it('is the same object for a kept array of Json given as Json', async () => {
+  it('is the same object for a kept array or map of Json given as Json', async () => {
     const jsons: Showing = {
       declarations: ['extern fn show(json: Json)'],
       key: 'main.show(json.Json)',
     };
-    const [first, second] = await shown(jsons, [
+    const [firstArray, secondArray, firstMap, secondMap] = await shown(jsons, [
       'const items: Array<Json> = [1, "two", [3]]',
+      'const fields: Map<String, Json> = ["a": 1, "b": [2]]',
       'show(items)',
       'show(items)',
+      'show(fields)',
+      'show(fields)',
     ]);
-    expect(second).toBe(first);
+    expect(secondArray).toBe(firstArray);
+    expect(secondMap).toBe(firstMap);
+  });
+
+  it('is the same object when given to an extern and returned in the outcome, its codec running once', async () => {
+    const program = compiledText(
+      [
+        "import Json from 'json'",
+        'struct Item { name: String }',
+        'struct Tree { total: Int, items: Array<Item>, fixed: Array<Int> }',
+        'extern fn note()',
+        'fn toJson(self: Item) -> Json:',
+        '  note()',
+        '  ["name": self.name]',
+        'extern fn show(tree: Tree)',
+        'live async fn main() -> (Tree, Item):',
+        '  const item = Item{name: "a"}',
+        '  const kept = Tree{total: 1, items: [item], fixed: [1, 2]}',
+        '  show(kept)',
+        '  (kept, item)',
+      ].join('\n'),
+    );
+    const seen: unknown[] = [];
+    let encodedItems = 0;
+    const host: HostExterns = {
+      'main.note()': () => {
+        encodedItems += 1;
+        return null;
+      },
+      'main.show(main.Tree)': ([value]) => {
+        seen.push(value);
+        return null;
+      },
+    };
+    const test = testRuntime({ host });
+    const deployed = test.runtime.deploy(program);
+    const { state } = await deployed.start('i');
+    if (state.kind !== 'finished') {
+      throw new Error(`The program didn't finish: ${JSON.stringify(state)}`);
+    }
+    const outcome = deployed.outcome(state);
+    expect(at(outcome, 0)).toBe(seen[0]);
+    expect(at(outcome, 1)).toBe(at(seen[0], 'items', 0));
+    expect(encodedItems).toBe(1);
+  });
+
+  it('is the same object for a disposable host value kept, dereferenced from a WeakRef, and disposed', async () => {
+    const program = compiledText(
+      [
+        "import * as runtime from 'runtime'",
+        'extern shared struct Lease',
+        'extern fn open() -> Lease',
+        'extern fn show(leases: Array<Lease>, found: Lease?)',
+        'extern fn release(lease: Lease)',
+        'fn dispose(self: Lease): release(self)',
+        'live async fn main(): await runtime.run(runtime.id()) _main()',
+        'ista async fn _main():',
+        '  const lease = open()',
+        '  const weak = WeakRef(lease)',
+        '  const leases = [lease]',
+        '  show(leases, lease)',
+        '  show(leases, weak.deref())',
+      ].join('\n'),
+    );
+    const seen: unknown[] = [];
+    const released: unknown[] = [];
+    const host: HostExterns = {
+      'main.open()': () => ({ id: 'a', parts: [1, 2] }),
+      'main.show(prelude.Array<main.Lease>, prelude.Optional<main.Lease>)': ([leases, found]) => {
+        seen.push([leases, found]);
+        return null;
+      },
+      'main.release(main.Lease)': ([lease]) => {
+        released.push(lease);
+        return null;
+      },
+    };
+    const test = testRuntime({ host });
+    await runToEnd(test, 'i', await test.runtime.deploy(program).start('i'));
+    expect(at(seen[1], 0)).toBe(at(seen[0], 0));
+    expect(at(seen[0], 1)).toBe(at(seen[0], 0, 0));
+    expect(at(seen[1], 1)).toBe(at(seen[0], 1));
+    expect(released[0]).toBe(at(seen[0], 1));
   });
 
   it('is frozen at every depth', async () => {

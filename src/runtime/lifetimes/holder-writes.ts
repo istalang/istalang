@@ -50,6 +50,7 @@ export class HolderWrites {
   /** Object `id` is gone from the heap. */
   gone(id: number): void {
     this.#counts.gone(id);
+    this.written.forgetObject(id);
   }
 
   /** A holder that held `was` holds `now`. */

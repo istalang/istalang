@@ -25,7 +25,10 @@
  *   the instance finishes with both: the outcome, which `result()` copies, and its JSON.
  * - The outcome is a copy of what the root gave, made as it becomes known: no count sees it while
  *   what the instance lets go of is disposed, code that may change its values in place
- *   (runtime/lifetimes/in-place.ts).
+ *   (runtime/lifetimes/in-place.ts). The encoder on top of the root's last frame writes what the
+ *   root gave, which that frame holds until it returns, so a value the instance gave its host
+ *   before is the same object to the host again (spec §9, "Stable references"); an outcome no
+ *   frame returns is written from its copy, since nothing holds what arrived.
  */
 
 import { copied } from '../../../definition/values/replacing.ts';
@@ -115,12 +118,20 @@ export class RootOutcome {
     if (!isRootReturn) {
       return { kind: 'return', value };
     }
-    this.#outcome ??= copiedOut(frame.code.mode === 'simple' ? this.#awaited(value) : { value });
+    const given = this.#outcome === undefined ? this.#gives(frame, value) : undefined;
+    this.#outcome ??= copiedOut(given);
     if (this.#outcome === undefined) {
       return { kind: 'await' };
     }
     const outcome = this.#outcome.value;
-    return this.#encodes(frame, outcome) ? { kind: 'encode' } : { kind: 'return', value: outcome };
+    return this.#encodes(frame, outcome, given?.value ?? outcome)
+      ? { kind: 'encode' }
+      : { kind: 'return', value: outcome };
+  }
+
+  /** What the root's last `frame` gives as it returns `value`: a simple entry's future awaited. */
+  #gives(frame: ActiveFrame, value: Value): Known | undefined {
+    return frame.code.mode === 'simple' ? this.#awaited(value) : { value };
   }
 
   /**
@@ -191,10 +202,13 @@ export class RootOutcome {
     return copiedOut(resolved);
   }
 
-  /** Whether the encoder runs on top of the root's `frame` first, before it returns `outcome`. */
-  #encodes(frame: ActiveFrame, outcome: Value): boolean {
+  /**
+   * Whether the encoder runs on top of the root's `frame` first, writing `given`, before the frame
+   * returns `outcome`, its copy.
+   */
+  #encodes(frame: ActiveFrame, outcome: Value, given: Value): boolean {
     const { instance, runStack } = this.#seams;
-    const target = this.#encoded === undefined ? this.#encoderCall(outcome) : undefined;
+    const target = this.#encoded === undefined ? this.#encoderCall(given) : undefined;
     if (target?.kind === 'answered') {
       this.#encoded = target.value;
     }

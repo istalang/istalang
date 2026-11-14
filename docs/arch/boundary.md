@@ -76,7 +76,8 @@ encoders from building anew:
   with defaulted parameters called directly with others out of it.
 - **Stage 1, value to `Json`** (`runtime/lifetimes/written-json.ts`): `encode`'s body asks two
   natives, `_written<T>` and `_remember<T>`, keyed by the value object and `T` (one object may be
-  written as two types whose codecs differ). Per instance, beside its counts, since a codec may read
+  written as two types whose codecs differ), a handle by the object it names, as `==` compares it.
+  An outcome its root returns is written from what the root gave, not from its copy. Per instance, beside its counts, since a codec may read
   a `context` constant; a test world keeps nothing, so a mock sees every call (`TestWorld.mocking`).
   A miss is `_Written.Unknown`, never `none`, which is JSON.
 - **Stage 2, `Json` to JavaScript** (`plainOfJson`): each array and map inside a `Json`, not the

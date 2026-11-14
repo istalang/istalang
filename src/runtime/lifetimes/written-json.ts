@@ -5,7 +5,9 @@
  *
  * - **Keyed by the value object and the type it was written as:** one object may be written as
  *   two types whose codecs differ, as a conversion keeping the layout shares it between them.
- *   Only object values are kept: a primitive's JSON is its own identity anyway.
+ *   Only object values are kept: a primitive's JSON is its own identity anyway. A handle is the
+ *   object it names, as `==` compares it (§3.1), so a handle read anew, from a weak reference or
+ *   given to a `dispose`, is the value written before; it is forgotten once its object is gone.
  * - **One per instance,** beside its counts: a codec may read a `context` constant, whose value is
  *   the instance's (§3.4). A test world keeps nothing (native-calls.ts), so a mock sees every call
  *   of the codec it replaces (§10).
@@ -18,7 +20,12 @@
 
 import { encodeJson } from '../../definition/formats/codec.ts';
 import type { TypeReference } from '../../definition/tables/types.ts';
-import { type CompositeValue, isComposite, type Value } from '../../definition/values/values.ts';
+import {
+  type CompositeValue,
+  handleTarget,
+  isComposite,
+  type Value,
+} from '../../definition/values/values.ts';
 import { memo } from '../../foundation/structures/memo.ts';
 
 /** Each type reference's canonical text, which keys a value's JSON whichever entry refers. */
@@ -26,6 +33,8 @@ const typeTexts = new WeakMap<TypeReference, string>();
 
 export class WrittenJson {
   readonly #byValue = new WeakMap<CompositeValue, Map<string, Value>>();
+  /** What handles were written as, by the heap object each names. */
+  readonly #byObject = new Map<number, Map<string, Value>>();
   readonly #hold: (json: Value) => void;
 
   /** Kept JSON, held for good by `hold`. */
@@ -35,7 +44,12 @@ export class WrittenJson {
 
   /** The `Json` `value` was written as, a `type`, while unchanged; undefined if it wasn't. */
   of(value: Value, type: TypeReference): Value | undefined {
-    return isComposite(value) ? this.#byValue.get(value)?.get(textOf(type)) : undefined;
+    if (!isComposite(value)) {
+      return undefined;
+    }
+    const object = handleTarget(value);
+    const kept = object === undefined ? this.#byValue.get(value) : this.#byObject.get(object);
+    return kept?.get(textOf(type));
   }
 
   /**
@@ -48,12 +62,22 @@ export class WrittenJson {
       return;
     }
     this.#hold(json);
-    memo(this.#byValue, value, () => new Map<string, Value>()).set(textOf(type), json);
+    const object = handleTarget(value);
+    const kept =
+      object === undefined
+        ? memo(this.#byValue, value, () => new Map<string, Value>())
+        : memo(this.#byObject, object, () => new Map<string, Value>());
+    kept.set(textOf(type), json);
   }
 
   /** Forgets what `node`, which changed in place, was written as. */
   forget(node: CompositeValue): void {
     this.#byValue.delete(node);
+  }
+
+  /** Forgets what handles to heap object `id`, which is gone, were written as. */
+  forgetObject(id: number): void {
+    this.#byObject.delete(id);
   }
 }
 
