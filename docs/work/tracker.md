@@ -29,7 +29,7 @@ tags: [tracker]
 | Proposal 8, live and ista async (`docs/work/async-kinds/plan.md`; merge review closed every finding, Q52–Q55 left) | done |
 | Proposal 9, native runtime (`docs/proposals/9-native-runtime.md`), beyond async-kinds CX's minimal slice | not planned: a plan of its own |
 | Static lifetimes (`docs/work/static-lifetimes/plan.md`) | in progress: C1, C2, R1, R2, C3, C4, R3, R4 and R5 done; C5 dropped |
-| Proposal 13, transients and getters (`docs/work/transients-getters/plan.md`) | in progress: G1, G2 done; T1 in flight |
+| Proposal 13, transients and getters (`docs/work/transients-getters/plan.md`) | in progress: T1, G1, G2 done; merge review |
 | M8 Packages | planned |
 
 ## Filed

@@ -58,7 +58,9 @@ global state, and nothing is threaded through parameters.
   fn nested(callback: fn(Int) -> Unit):   # not generic, so every caller shares one depth
       transient let depth = 0
       depth += 1
-      _ = defer(fn(): depth -= 1)
+      fn leave():
+          depth -= 1
+      _ = defer leave()
       callback(depth)
 
   fn render<T>(node: Tree<T>) -> String:  # each instance of render reaches the same depth

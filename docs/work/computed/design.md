@@ -41,7 +41,9 @@ fn with(ctx: Dependency, callback: fn(Dependency?) -> Unit):
     transient let current: Dependency? = none
     const outer = current
     current = ctx
-    _ = defer(fn(): current = outer)
+    fn restore():
+        current = outer
+    _ = defer restore()
     callback(outer)
 
 fn update(dep: Dependency):            # brings dep up to date, evaluating it only if it is stale
