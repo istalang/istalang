@@ -29,7 +29,7 @@ tags: [tracker]
 | Proposal 8, live and ista async (`docs/work/async-kinds/plan.md`; merge review closed every finding, Q52–Q55 left) | done |
 | Proposal 9, native runtime (`docs/proposals/9-native-runtime.md`), beyond async-kinds CX's minimal slice | not planned: a plan of its own |
 | Static lifetimes (`docs/work/static-lifetimes/plan.md`) | in progress: C1, C2, R1, R2, C3, C4, R3, R4 and R5 done; C5 dropped |
-| Proposal 13, transients and getters (`docs/work/transients-getters/plan.md`) | in progress: T1, G1, G2 done; merge review, then G3 (`fn get` syntax) |
+| Proposal 13, transients and getters (`docs/work/transients-getters/plan.md`) | in progress: T1, G1, G2, G3 done; merge-review transient fixes, then re-review |
 | M8 Packages | planned |
 
 ## Filed
@@ -202,3 +202,4 @@ Crashes, spec gaps, wrong or missing diagnostics, host-visible behaviour.
 | B85 | `src/runtime/lifetimes/shared-values.test.ts` is flaky: its generator can pop `xs` empty and then write `xs[0..1]`, which panics in any build (counterexample `[["xs.pop()","xs.pop()","xs.pop()"],["xs[0..1] = [5, 6]"]]`). | easy | none | transients-getters G1 |
 | B86 | Static lifetimes misses a cycle a recursive group closes behind a handle: `fn link(s: Shared<Node?>, x: Node, first: Bool)` writing `s->value = x`, recursing, then `p->next = x` for `s->value is Node as p`, passes, since a recursive group names its inputs whole, so the requirement becomes "x may not reach s" rather than "x may not reach what is behind s". The same holds through a transient (proposal 13 T1's QA test is `it.fails` with this id). | medium | none | transients-getters T1 |
 | B87 | Static lifetimes checks a generic body's call of a required function, or read of a required field, as a requirement call without the witness's own reach, so `fn settle<T is Homed>(t: T, n: Node): t.homeOf()->node = n` with `ista fn homeOf(self: Door) -> Box: homes` (`homes` an `ista const` that `n` holds) reports no cycle, where the concrete body reports 5721. Instantiating calls should check the witness as they check its constraint. | medium | none | transients-getters G3 |
+| B88 | A call written as another construct infers a generic result from its own arguments only: a member access (a getter), a binary, a unary and an index stand as `boundary` in the scope protocol (`scope-protocol.ts`), so `id(box.empty)` with a getter generic in its result alone fails (5301) where `id(empty(box))` checks. The standing of every call-shaped construct should be one decision, `joins` as a call's is. | medium | none | transients-getters merge review |
