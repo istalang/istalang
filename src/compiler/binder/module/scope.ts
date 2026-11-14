@@ -11,6 +11,11 @@
  * - `pending`: a later statement of an enclosing block declares the name (used before declaration)
  * - `ended`: a nested block that has ended declared it
  * - `underOr`: one side of an `or` bound it, so it isn't known to have matched (§3.11)
+ * - `fenced`: it is a variable of the function a transient's initializer stands in (§3.4)
+ *
+ * A fenced scope, a transient's initializer's, sees past itself the types of the functions around
+ * it but none of their variables: the initializer runs at the outermost call alone, so a name its
+ * function's variable would hide means what the module gives it.
  *
  * During local binding, a named import is a placeholder: which entity it names is known only once
  * the program is linked.
@@ -55,7 +60,7 @@ export function importPlaceholder(
 
 export type LocalEntity = Entity | ImportPlaceholder;
 
-export type Miss = 'pending' | 'ended' | 'underOr';
+export type Miss = 'pending' | 'ended' | 'underOr' | 'fenced';
 
 type ScopedFunction = FunctionDeclaration | Lambda;
 
@@ -83,11 +88,21 @@ export class Scope {
   readonly #isBlock: boolean;
   /** The function whose body this scope holds. */
   readonly #function: ScopedFunction | undefined;
+  /** Whether lookups past this scope skip the variables of the functions around it. */
+  readonly #fenced: boolean;
+  /** Whether a function's names are defined here: anything but the universe and the module. */
+  readonly #isLocal: boolean;
 
-  private constructor(parent: Scope | undefined, isBlock: boolean, node?: ScopedFunction) {
+  private constructor(
+    parent: Scope | undefined,
+    isBlock: boolean,
+    { node, fenced = false }: { readonly node?: ScopedFunction; readonly fenced?: boolean } = {},
+  ) {
     this.#parent = parent;
     this.#isBlock = isBlock;
     this.#function = node;
+    this.#fenced = fenced;
+    this.#isLocal = parent !== undefined && parent.#parent !== undefined;
     this.#definitions =
       parent === undefined ? { entities: new Set(), count: 0 } : parent.#definitions;
   }
@@ -112,7 +127,12 @@ export class Scope {
    * runs before the body starts (§3.3).
    */
   static ofBody(parent: Scope, node: ScopedFunction): Scope {
-    return new Scope(parent, false, node);
+    return new Scope(parent, false, { node });
+  }
+
+  /** A scope for a transient's initializer (§3.4), fenced from its function's variables. */
+  static fenced(parent: Scope): Scope {
+    return new Scope(parent, false, { fenced: true });
   }
 
   /** The innermost function this scope is inside that is one of `functions`. */
@@ -124,12 +144,39 @@ export class Scope {
   }
 
   lookup(name: string): LocalEntity | undefined {
-    return this.#defined.get(name) ?? this.#parent?.lookup(name);
+    return this.#lookup(name, false);
+  }
+
+  #lookup(name: string, fenced: boolean): LocalEntity | undefined {
+    const own = this.#defined.get(name);
+    if (own !== undefined && !this.#hides(own, fenced)) {
+      return own;
+    }
+    return this.#parent === undefined
+      ? undefined
+      : this.#parent.#lookup(name, fenced || this.#fenced);
   }
 
   /** Why `name` resolves to nothing here, when some enclosing scope knows. */
   explainMiss(name: string): Miss | undefined {
-    return this.#misses.get(name) ?? this.#parent?.explainMiss(name);
+    return this.#explainMiss(name, false);
+  }
+
+  #explainMiss(name: string, fenced: boolean): Miss | undefined {
+    const own = this.#defined.get(name);
+    if ((own !== undefined && this.#hides(own, fenced)) || (fenced && this.#misses.has(name))) {
+      return 'fenced';
+    }
+    const missed = this.#misses.get(name);
+    if (missed !== undefined || this.#parent === undefined) {
+      return missed;
+    }
+    return this.#parent.#explainMiss(name, fenced || this.#fenced);
+  }
+
+  /** Whether a lookup past a fence skips `entity`, defined here: a function's variable. */
+  #hides(entity: LocalEntity, fenced: boolean): boolean {
+    return fenced && this.#isLocal && entity.kind === 'variable';
   }
 
   /** Defines `name`; false when this scope already defines it. */
@@ -158,12 +205,15 @@ export class Scope {
   /** What a lookup in `snapshot` found for each name: an inner definition hides an outer one. */
   static visibleIn({ scope, at }: ScopeSnapshot): ReadonlyMap<string, LocalEntity> {
     const visible = new Map<string, LocalEntity>();
+    let fenced = false;
     for (let current: Scope | undefined = scope; current; current = current.#parent) {
       for (const [name, entity] of current.#defined) {
-        if (!visible.has(name) && (current.#numbers.get(name) ?? 0) <= at) {
+        const shown = !(visible.has(name) || current.#hides(entity, fenced));
+        if (shown && (current.#numbers.get(name) ?? 0) <= at) {
           visible.set(name, entity);
         }
       }
+      fenced ||= current.#fenced;
     }
     return visible;
   }

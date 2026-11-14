@@ -130,10 +130,18 @@ const makeContextConstant = defineInstruction('makeContextConstant', {
   value: register,
 });
 
+/**
+ * dst, a cell register of a transient (spec §3.4), = the cell of the nearest call this one is
+ * nested in that runs the same function and holds one, and a jump to `target`; where none does, on
+ * to the initializer, whose write makes the cell as any cell register's first write does.
+ */
+const transient = defineInstruction('transient', { dst: register, target: label });
+
 export const dataInstructions = [
   constant,
   contextConstant,
   makeContextConstant,
+  transient,
   move,
   tuple,
   struct,

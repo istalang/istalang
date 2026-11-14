@@ -52,6 +52,7 @@ const statementWordPlaces = {
   while: 'block',
   drop: 'block',
   hold: 'block',
+  transient: 'block',
 } as const satisfies Record<StatementWord, Exclude<Place, 'module'>>;
 
 /** What a module's item may start with (§3, §3.13). */

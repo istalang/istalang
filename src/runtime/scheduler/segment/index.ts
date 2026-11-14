@@ -30,7 +30,7 @@
  */
 
 import type { Argument } from '../../../definition/instructions/places.ts';
-import type { FunctionId } from '../../../definition/operands.ts';
+import type { FunctionId, Register } from '../../../definition/operands.ts';
 import { handleTo, type Value } from '../../../definition/values/values.ts';
 import { unreachable } from '../../../foundation/structures/unreachable.ts';
 import type { ActiveFrame } from '../../interpreter/frames.ts';
@@ -47,6 +47,7 @@ import type { InstanceCall, Invocation } from '../../snapshot/snapshot.ts';
 import type { LiveExecution, LiveObjectOf } from '../instance/heap.ts';
 import { type Instance, topFrame } from '../instance/index.ts';
 import type { ReadyToRun } from '../instance/ready.ts';
+import { sharedTransient } from '../instance/transients.ts';
 import { startAnswer } from '../testing/mocks.ts';
 import type { MockCall } from '../testing/test-world.ts';
 import { istaWaiting, type LiveWaiting, type Waiting } from '../waiting.ts';
@@ -254,7 +255,11 @@ class SegmentRunner implements Machine {
     if (runsAsExecution(entry)) {
       const future = this.#instance.futures.create({ kind: 'call' });
       this.#runStack.push(
-        this.#instance.startExecution(entry, target.contents, target.captures, future),
+        this.#instance.startExecution(entry, target.contents, {
+          captures: target.captures,
+          resolves: future,
+          caller: this.#runStack.current(),
+        }),
       );
       return;
     }
@@ -303,6 +308,10 @@ class SegmentRunner implements Machine {
 
   currentCall(): Value {
     return this.#instance.weak.reference(handleTo(this.#runStack.current().id));
+  }
+
+  sharedTransient(frame: ActiveFrame, register: Register): number | undefined {
+    return sharedTransient(this.#runStack.current(), frame, register);
   }
 
   /** The instance finished with `outcome`, everything else it held disposed. */

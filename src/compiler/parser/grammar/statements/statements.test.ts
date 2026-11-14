@@ -196,6 +196,12 @@ describe('labels, `hold` and compound assignments', () => {
       '(LabelledBlock batch (Block [(VariableDeclaration (Hold batch) [(WildcardPattern)] _ x)]))',
     ],
     ['hold(x)', '(ExpressionStatement (Call hold [x]))'],
+    [
+      'transient let memo: Map<Int, Int> = [:]',
+      '(VariableDeclaration _ isTransient isMutable [(NamePattern [memo] [])] (NamedType [Map] [(NamedType [Int] []) (NamedType [Int] [])]) (MapLiteral []))',
+    ],
+    ['transient = 1', '(Assignment [transient] = 1)'],
+    ['transient(x)', '(ExpressionStatement (Call transient [x]))'],
     ['x **= 2', '(Assignment [x] **= 2)'],
     ['x >>= 1', '(Assignment [x] >>= 1)'],
   ])('parses %s', (text, tree) => {
@@ -218,4 +224,11 @@ describe('labels, `hold` and compound assignments', () => {
   it('no longer reads `fn let`, the older spelling of `hold let`', () => {
     expect(reported('statement', 'fn let x = 1').codes).not.toEqual([]);
   });
+
+  it.each([['transient const x = 1'], ['hold transient let x = 1']])(
+    'reads `transient` as a modifier before `let` alone: %s',
+    (text) => {
+      expect(reported('module', lines('fn f():', `  ${text}`)).codes).not.toEqual([]);
+    },
+  );
 });

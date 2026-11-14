@@ -117,6 +117,48 @@ describe('the lifetime rule', () => {
     expect(findingsIn(source)).toEqual(['10:write']);
   });
 
+  it.each([
+    [
+      'accepts a closure holding a disposable, but not the cell, written into',
+      ['const l = new Lease{n: 1}', 'f = fn: l->n'],
+      [],
+    ],
+    [
+      'finds a closure holding a disposable written into',
+      ['const l = new Lease{n: 1}', 'f = fn: l->n + f()'],
+      ['10:write'],
+    ],
+  ])('%s a captured `let` and a transient alike (§3.4)', (_title, body, found) => {
+    const sourceOf = (declared: string) =>
+      inSubject([`${declared} f: fn() -> Int = fn: 0`, ...body, '_ = f()'].join('\n'));
+    expect(findingsIn(sourceOf('let'))).toEqual(found);
+    expect(findingsIn(sourceOf('transient let'))).toEqual(found);
+  });
+
+  it('accepts a reader held in a transient while a callback runs, restored by a defer', () => {
+    const source = [
+      lease,
+      'shared struct Reader:',
+      '  reads: Array<Int> = []',
+      'fn with(ctx: Reader, callback: fn(Reader?) -> Unit):',
+      '  transient let current: Reader? = none',
+      '  const outer = current',
+      '  current = ctx',
+      '  _ = defer(fn(): {',
+      '    current = outer',
+      '  })',
+      '  callback(outer)',
+    ].join('\n');
+    expect(findingsIn(source)).toEqual([]);
+  });
+
+  it('finds the value a transient holds, which outer calls share, written into itself', () => {
+    const source = inSubject(
+      ['transient let node = new Node{lease: new Lease{n: 1}}', 'node->next = node'].join('\n'),
+    );
+    expect(findingsIn(source)).toEqual(['9:write']);
+  });
+
   it('accepts a cycle that reaches no disposable', () => {
     const source = inSubject(['const r = new Ring{}', 'r->next = r'].join('\n'), [
       'shared struct Ring:',

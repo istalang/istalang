@@ -19,6 +19,7 @@ export class RunCalls {
     id: -2,
     resolves: undefined,
     frames: [],
+    transients: [],
   };
 
   /** Calls made on the segment's `runStack`, which drives the carrier as any driver. */

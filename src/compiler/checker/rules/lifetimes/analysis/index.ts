@@ -31,7 +31,7 @@ import { mayAlias, mayReach, mayShare } from '../type-reach.ts';
 import { type AnalysisContext, BodyAnalysis } from './body.ts';
 import { clonedState, type FlowState, joinedStates } from './flow-state.ts';
 import { isInputRooted } from './inputs.ts';
-import { Nodes } from './nodes.ts';
+import { type InputSlot, Nodes } from './nodes.ts';
 import { runOperation } from './operations.ts';
 import type { ReachPairs } from './reach-pairs.ts';
 import { type Ends, type Return, summarize } from './summarize.ts';
@@ -239,7 +239,8 @@ function isAsyncSite(site: NodeOf<string>): boolean {
 /**
  * The state the function starts in: each input as given, reachable from its callers, related to
  * nothing but what holds it (a cell its value, its own closure what it captured), and each
- * variable that starts as one a copy of it.
+ * variable that starts as one a copy of it. A variable's cell holds what the variable starts as:
+ * what the function captured, or a transient's own value, as the calls it is nested in left it.
  */
 function entryState(analysis: BodyAnalysis): FlowState {
   const { nodes } = analysis;
@@ -250,14 +251,8 @@ function entryState(analysis: BodyAnalysis): FlowState {
     reach.markEscaped(slot.node);
   }
   for (const slot of relevant) {
-    if (slot.input.kind === 'cell') {
-      const { index } = slot.input;
-      const content = relevant.find(
-        ({ input }) => input.kind === 'capture' && input.index === index,
-      );
-      if (content !== undefined) {
-        reach.hold(slot.node, content.node);
-      }
+    if (nodes.isCellNode(slot.node)) {
+      holdContent(nodes, reach, { cell: slot, inputs: relevant });
     } else {
       reach.copy(slot.value, slot.node);
     }
@@ -271,6 +266,37 @@ function entryState(analysis: BodyAnalysis): FlowState {
     }
   }
   return { reach, canon: new Map(), callees: new Map(), gives: new Map() };
+}
+
+/** `cell`, an input at a variable's cell, holding what the variable starts as. */
+function holdContent(
+  nodes: Nodes,
+  reach: ReachState,
+  { cell, inputs }: { readonly cell: InputSlot; readonly inputs: readonly InputSlot[] },
+): void {
+  const captured = inputs.find(
+    ({ input, value }) => input.kind === 'capture' && value === cell.value,
+  );
+  const content = captured?.node ?? givenContent(nodes, reach, cell);
+  if (content !== undefined) {
+    reach.hold(cell.node, content);
+  }
+}
+
+/**
+ * What a cell no capture fills holds as given, a transient's: the part behind the global its cell
+ * is, as the calls it is nested in left it, which its variable starts as.
+ */
+function givenContent(nodes: Nodes, reach: ReachState, slot: InputSlot): NodeId | undefined {
+  const type = nodes.typeOf(slot.value);
+  if (type === undefined) {
+    return undefined;
+  }
+  const content = nodes.path(slot.node, { kind: 'behind' }, 'through', type);
+  reach.fresh(content);
+  reach.markEscaped(content);
+  reach.copy(slot.value, content);
+  return content;
 }
 
 /**

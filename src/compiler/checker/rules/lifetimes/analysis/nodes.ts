@@ -10,7 +10,8 @@
  * - **Inputs** are what the function was called with (../summary.ts), kept apart from the variables
  *   that start as them, which code may assign; a captured `let`'s cell is its own input. The
  *   globals it names, and what a watching handle may give (`watched`), are inputs from where it
- *   first names them on.
+ *   first names them on. A transient's cell is the global it is (§3.4), which every call of the
+ *   function nested in another shares, as all code naming a global does.
  * - **Nodes it makes:** a watched value as a call gives it (`watchedValue`), and what a default a
  *   call leaves out gives, each a value of the call alone.
  * - **Paths** are the parts reads name from a variable, interned by root and part, so reading
@@ -28,6 +29,7 @@ import {
   type FlowFunction,
   type Operation,
   type Part,
+  transientsOf,
   type ValueId,
   valuesReadBy,
 } from '../../../surface/flow-ir.ts';
@@ -104,7 +106,7 @@ export class Nodes {
     this.#facts = facts;
     this.#size = flow.values.length;
     this.#inputs = [...inputSlots(flow, this.#size, facts.cellOf)];
-    this.#owned = this.#inputs.filter((slot) => slot.input.kind !== 'cell').length;
+    this.#owned = this.#inputs.filter((slot) => !this.isCellNode(slot.node)).length;
     this.#lastUses = lastUsesOf(flow);
     this.#assigned = new Set(
       flow.blocks.flatMap(({ operations }) =>
@@ -300,7 +302,10 @@ export class Nodes {
   }
 }
 
-/** The function's inputs, a captured `let`'s cell typed as the cell it is (`cellOf`). */
+/**
+ * The function's inputs, a captured `let`'s cell and a transient's typed as the cells they are
+ * (`cellOf`), each at its variable's cell node.
+ */
 function inputSlots(
   flow: FlowFunction,
   size: number,
@@ -332,20 +337,21 @@ function inputSlots(
     }
   });
   const own = slots.map((each, index) => ({ ...each, node: 2 * size + index }));
-  const cells = flow.captures.flatMap((value, index) => {
+  const cellSlot = (value: ValueId, input: (entity: VariableEntity, type: Type) => Input) => {
     const found = flow.values[value];
-    return found?.kind === 'variable' && found.inCell && found.type !== undefined
-      ? [
-          {
-            input: { kind: 'cell', index } as const,
-            value,
-            type: cellOf(found.type),
-            node: size + value,
-          },
-        ]
-      : [];
-  });
-  return [...own, ...cells];
+    if (found?.kind !== 'variable' || !found.inCell || found.type === undefined) {
+      return [];
+    }
+    const type = cellOf(found.type);
+    return [{ input: input(found.entity, type), value, type, node: size + value }];
+  };
+  const cells = flow.captures.flatMap((value, index) =>
+    cellSlot(value, () => ({ kind: 'cell', index })),
+  );
+  const transients = transientsOf(flow).flatMap((value) =>
+    cellSlot(value, (entity, type) => ({ kind: 'global', entity, type })),
+  );
+  return [...own, ...cells, ...transients];
 }
 
 /** For each operation, the temporaries used last there, of those used only in their own block. */

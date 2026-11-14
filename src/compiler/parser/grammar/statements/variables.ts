@@ -1,7 +1,8 @@
 /**
- * Variable declarations (§3.4, §3.15): `let`, `const`, their destructuring forms, and the forms
- * whose holdings last until the function ends or a named loop or block does (§7): `hold let`,
- * `hold const`, `hold _ = expr`, which means `hold const _ = expr`, and `hold(name) …`.
+ * Variable declarations (§3.4, §3.15): `let`, `const`, their destructuring forms, the forms whose
+ * holdings last until the function ends or a named loop or block does (§7): `hold let`,
+ * `hold const`, `hold _ = expr`, which means `hold const _ = expr`, and `hold(name) …`, and
+ * `transient let`. Each modifier is read by its word, then the declaration as a plain one.
  *
  * An initializer is always required. A missing one is reported and stands as a Missing node.
  */
@@ -12,10 +13,26 @@ import type { Parser } from '../../parser.ts';
 import { parseTargets } from '../parts/names.ts';
 import { followsModifier } from '../word-parselets.ts';
 
+/** What a modifier before `let` or `const` makes of the declaration. */
+type Modified = Pick<VariableDeclaration, 'hold' | 'isTransient'>;
+
+const unmodified: Modified = { hold: undefined, isTransient: false };
+
 /** `let …` or `const …`, starting at the keyword. */
 export function parseVariable(parser: Parser): VariableDeclaration {
   const { start } = parser.cursor.token.span;
-  return parseVariableAfter(parser, start, undefined);
+  return parseVariableAfter(parser, start, unmodified);
+}
+
+/** Whether the `transient` at the cursor starts a transient variable: `transient let`. */
+export function atTransient(parser: Parser): boolean {
+  return followsModifier(parser, 'transient');
+}
+
+/** `transient let …`, starting at `transient`. */
+export function parseTransientVariable(parser: Parser): VariableDeclaration {
+  const { start } = parser.cursor.advance().span;
+  return parseVariableAfter(parser, start, { ...unmodified, isTransient: true });
 }
 
 /** Whether a held variable's declaration starts `ahead` tokens on: `let`, `const`, or `_ =`. */
@@ -49,13 +66,13 @@ export function parseHeldVariable(parser: Parser): VariableDeclaration {
     parser.expect(')');
   }
   const hold: Hold = { kind: 'Hold', span: parser.spanFrom(start), label };
-  return parseVariableAfter(parser, start, hold);
+  return parseVariableAfter(parser, start, { ...unmodified, hold });
 }
 
 function parseVariableAfter(
   parser: Parser,
   start: number,
-  hold: Hold | undefined,
+  modified: Modified,
 ): VariableDeclaration {
   const { cursor } = parser;
   const isMutable = cursor.eat('let') !== undefined;
@@ -69,7 +86,7 @@ function parseVariableAfter(
   return {
     kind: 'VariableDeclaration',
     span,
-    hold,
+    ...modified,
     isMutable,
     targets,
     type,

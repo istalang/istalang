@@ -43,7 +43,10 @@ export function startAnswering(
   instance.futures.answer(future, call.caller);
   const callable = instance.loaded.functions.callee(call.function);
   if (callable.kind === 'code') {
-    return instance.startExecution(callable, call.arguments, call.captures, future);
+    return instance.startExecution(callable, call.arguments, {
+      captures: call.captures,
+      resolves: future,
+    });
   }
   instance.futures.resolve(future, natives.call(call.function, callable.native, call.arguments));
   return undefined;

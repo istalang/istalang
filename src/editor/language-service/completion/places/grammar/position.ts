@@ -239,8 +239,8 @@ function isModifier(text: string): text is Modifier {
 
 /**
  * Where each modifier is one: `async` anywhere; a kind, `live` or `ista`, starting an item or an
- * operand, read as a type or after another modifier; `shared` starting a module's item; `hold` starting a
- * block's item; `sendable` read as a type; `not` after an operand, only spaces and tabs between,
+ * operand, read as a type or after another modifier; `shared` starting a module's item; `hold` and
+ * `transient` starting a block's item; `sendable` read as a type; `not` after an operand, only spaces and tabs between,
  * starting `not in`: a line break or a template's `${` between starts an operand instead.
  */
 const standsAsModifier: Readonly<Record<Modifier, (tree: SyntaxTree, word: Token) => boolean>> = {
@@ -249,6 +249,7 @@ const standsAsModifier: Readonly<Record<Modifier, (tree: SyntaxTree, word: Token
   async: () => true,
   shared: (tree, word) => startsItemOf('Module', tree, word),
   hold: (tree, word) => startsItemOf('Block', tree, word),
+  transient: (tree, word) => startsItemOf('Block', tree, word),
   sendable: (tree, word) => readAsType(tree, word),
   not: (tree, word) => {
     const operand = tokenBefore(tree, word);

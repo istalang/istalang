@@ -55,6 +55,7 @@ import {
   hasCode,
   sameGroupAnalyses,
 } from './groups.ts';
+import { type Input, sameInput } from './input.ts';
 import { diagnosticOf } from './reports.ts';
 import {
   constructorSummary,
@@ -66,6 +67,7 @@ import {
   sameValue,
   unrelatedValue,
 } from './summary.ts';
+import { transientsIn } from './transients.ts';
 
 export class Lifetimes {
   readonly #checker: CheckerContext;
@@ -77,9 +79,16 @@ export class Lifetimes {
   readonly #context: AnalysisContext;
   readonly #declared: Declared;
   readonly #reports: EntryTable<CheckerNote, FindingDeclaration, void, ModuleId>;
+  readonly #transients: EntryTable<CheckerNote, ModuleId, readonly Input[]>;
 
   constructor(checker: CheckerContext) {
     this.#checker = checker;
+    this.#transients = checker.entries.table({
+      name: 'lifetime transients',
+      compute: (module: ModuleId) =>
+        transientsIn(checker, module, (type) => this.reachesDisposable(type)),
+      equal: sameItems(sameInput),
+    });
     this.#callees = checker.entries.table({
       name: 'lifetime callees',
       compute: (caller: FunctionDeclaration) => this.#calleesOf(caller),
@@ -137,6 +146,7 @@ export class Lifetimes {
       witnessesOf: (call) => witnessesOf(checker, call),
       conversionsOf: (copied) => conversionsOf(checker, copied),
       witnessesPutIn: (conversion) => witnessesPutIn(checker, conversion),
+      transients: () => checker.inputs.modules().flatMap((module) => this.#transients.get(module)),
     };
   }
 

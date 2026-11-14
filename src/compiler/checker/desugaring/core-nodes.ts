@@ -45,6 +45,7 @@ export function heldConstant(value: Expression, at: AnchoredSpan, origin: Origin
     kind: 'VariableDeclaration',
     span: value.span,
     hold: undefined,
+    isTransient: false,
     isMutable: false,
     targets: [pattern],
     type: undefined,

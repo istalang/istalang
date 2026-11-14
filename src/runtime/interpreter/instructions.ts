@@ -21,6 +21,7 @@ import {
   childValues,
   closureOf,
   elementsOf,
+  handleTo,
   isComposite,
   mapValueOf,
   type Value,
@@ -34,6 +35,7 @@ import {
   capturedContents,
   clearRegister,
   newCell,
+  placeContents,
   readCell,
   readRegister,
   storeAt,
@@ -92,6 +94,15 @@ const handlers: Handlers<Machine, Instruction, [ActiveFrame], void> = {
   makeContextConstant: (_machine, instruction, frame) => {
     frame.heap.makeContextConstant(instruction.name, readRegister(frame, instruction.value));
     frame.pc += 1;
+  },
+  transient: (machine, instruction, frame) => {
+    const cell = machine.sharedTransient(frame, instruction.dst);
+    if (cell === undefined) {
+      frame.pc += 1;
+    } else {
+      placeContents(frame, instruction.dst, handleTo(cell));
+      frame.pc = instruction.target;
+    }
   },
   struct: (_machine, instruction, frame) => {
     built(frame, instruction.dst, {

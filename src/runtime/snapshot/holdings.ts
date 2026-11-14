@@ -115,9 +115,12 @@ const kinds: Handlers<undefined, HeapObject, [], Holding> = {
   resolver: (_context, { state }) => (state.kind === 'pending' ? pendingResolver(state) : empty),
   run: (_context, run) => ({ ...empty, values: [...run.captures, ...run.arguments] }),
   contextConstant: (_context, constant) => ({ ...empty, values: [constant.value] }),
-  execution: (_context, { frames, resolves }) => ({
+  execution: (_context, { frames, resolves, transients = [] }) => ({
     values: frames.flatMap((frame) => frameValues(holdingFrame(frame))),
-    holds: frames.flatMap((frame) => frameCells(holdingFrame(frame))),
+    holds: [
+      ...frames.flatMap((frame) => frameCells(holdingFrame(frame))),
+      ...transients.map(({ cell }) => cell),
+    ],
     watches: present(resolves),
   }),
 };

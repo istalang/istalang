@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-11-13
-last_updated: 2026-11-13
+last_updated: 2026-11-14
 tags: [reuse, runtime, snapshot, persistence, scheduler, lifetimes, host]
 ---
 
@@ -31,6 +31,7 @@ tags: [reuse, runtime, snapshot, persistence, scheduler, lifetimes, host]
 - manage indexed heap objects or unwrap a handle's object id → `Heap`, `handleObject`; the objects written into since last asked → `Heap.takeWritten` (`src/runtime/scheduler/instance/heap.ts`)
 - check an instance's heap as it changes, a test's seam a host never sets → `HeapCheck`, `LoadedDefinition.heapCheck` (`src/runtime/scheduler/loaded-definition.ts`), given through `RuntimeSeams`, `TestRunOptions` or `CliEnvironment`
 - read, make or let go of an instance's context constants (spec §3.4) → `ContextConstants` (`src/runtime/scheduler/instance/context-constants.ts`)
+- find the transient cell a call shares from a call it is nested in, or the transients' cells an execution started from a caller keeps (spec §3.4) → `sharedTransient`, `transientsSeenFrom` (`src/runtime/scheduler/instance/transients.ts`); a code entry's transient registers → `transientRegistersOf` (`src/definition/tables/functions.ts`)
 - format stack traces or `module:line:column` locations from a `Definition`'s `lineStarts` → `traceOf`, `locationOf`; the trace a default asks for, the innermost frame left out while in its prologue → `callerTraceOf` (`src/runtime/interpreter/trace.ts`)
 - start a call on any call path (a written call, a function value's, a disposal's, an encoder's, a resolver's callback), a mock replacing its target asked first → `startCall` (`src/runtime/scheduler/segment/calls.ts`); a callback's run as a driver of its own, on an off-heap carrier → `RunCalls` (`src/runtime/scheduler/segment/run-calls.ts`); a call leaving parameters out to a mocked code entry runs the target's prologue as a plain frame and hands over at its `body` marker, the replacement taking that frame's place → `handOver` (`calls.ts`, `SegmentRunner.handOver`), never a second mock path; which mock a call reaches without recording it, and the call made to it → `reachedMock`, `mockedCall` (`src/runtime/scheduler/testing/mocks.ts`)
 - convert V8 limit `RangeError`s to `Panic` or guard depth → `panicOf`, `requireDepth`, `requireFrameDepth` (`src/runtime/scheduler/segment/limits.ts`)

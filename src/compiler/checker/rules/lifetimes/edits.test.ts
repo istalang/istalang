@@ -70,6 +70,25 @@ describe('after an edit inside a callee', () => {
     });
   });
 
+  it('keeping its summary, analyses no async caller, whose futures hold every transient', () => {
+    const textOf = (body: string) =>
+      [
+        'ista fn helper(n: Int) -> Int:',
+        `  ${body}`,
+        'ista async fn worker() -> Int: 1',
+        'ista fn caller() -> Future<Int, "ista">:',
+        '  _ = helper(3)',
+        '  worker()',
+        '',
+      ].join('\n');
+    const first = stdProgramOf({ 'main.ista': textOf('n + 1') });
+    const second = stdProgramOf({ 'main.ista': textOf('n + n') }, first);
+    expect(checkedAfter(checkedFirst(first), second)).toMatchObject({
+      analysed: ['helper'],
+      asFresh: true,
+    });
+  });
+
   it('changing what it calls, or with defaults, still analyses only the callee', () => {
     const textOf = (body: string) =>
       [

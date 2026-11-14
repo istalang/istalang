@@ -45,6 +45,7 @@ export class DisposalRuns {
     id: -1,
     resolves: undefined,
     frames: [],
+    transients: [],
   };
 
   constructor(seams: DisposalRunSeams) {

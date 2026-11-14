@@ -54,6 +54,11 @@ export interface Machine {
   /** A handle to the weak reference to the running async call, for `worker.disposing()` (§7). */
   readonly currentCall: () => Value;
   /**
+   * The cell of the transient in `frame`'s `register` that a call it is nested in shares, of the
+   * same function (spec §3.4); undefined where none has one.
+   */
+  readonly sharedTransient: (frame: ActiveFrame, register: Register) => number | undefined;
+  /**
    * Hands the call `frame` runs over to the mock replacing it, `frame` having run its prologue to
    * compute what the call left out (frames.ts `FrameEntry`): the replacement takes its place.
    */

@@ -156,11 +156,9 @@ export class RootOutcome {
     if (target.kind === 'answered') {
       return { kind: 'finished', outcome: { outcome, encoded: target.value } };
     }
-    const root = this.#seams.instance.startExecution(
-      target.entry,
-      target.contents,
-      target.captures,
-    );
+    const root = this.#seams.instance.startExecution(target.entry, target.contents, {
+      captures: target.captures,
+    });
     this.#encoding = { root: undefined, outcome, encoder: topFrame(root) };
     return { kind: 'encode', root };
   }

@@ -128,6 +128,7 @@ const contextualWords = [
   'takes',
   'new',
   'hold',
+  'transient',
   'by',
   'any',
   'keyof',

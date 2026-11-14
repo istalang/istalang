@@ -10,6 +10,8 @@
  * - A field loop's top goes to its first pass; a `select` is the instruction choosing among its
  *   cases, each holding what its awaitable computed, its binding given what its future gave, or to
  *   its `else` alone where it has no case.
+ * - `transient` is the instruction sharing a transient's cell from a call this one is nested in,
+ *   going on to its initializer where none shares one (§3.4).
  */
 
 import { unreachable } from '../../../foundation/structures/unreachable.ts';
@@ -109,6 +111,12 @@ const testWriters: {
     code.withWaypoint(writer.waypointAt(node), () =>
       code.select(wait.wait, written, otherwise, node.span),
     );
+  },
+  transient: (writer, { variable }, to) => {
+    const [shared, unmade] = to as [BlockId, BlockId];
+    const { span } = writer.flow.root;
+    writer.context.code.transient(writer.registerOf(variable), writer.labelOf(shared), span);
+    writer.goTo(unmade, span);
   },
   unknown: ({ flow }) =>
     unreachable(`A test checking found a mistake in at ${flow.root.span.from} is lowered.`),

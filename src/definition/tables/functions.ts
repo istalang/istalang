@@ -9,8 +9,9 @@
  *
  * Register layout of a code frame: the parameters first, then the closure's captures, then
  * locals and temporaries. A reference parameter's register is bound to the caller's place, and a
- * register listed in `cells` holds a shared cell (a variable passed by `&`, or a `let` captured
- * by a closure, spec §3.14). Reads and writes of both go through to what they refer to.
+ * register listed in `cells` holds a shared cell (a variable passed by `&`, a `let` captured
+ * by a closure, spec §3.14, or a transient, §3.4). Reads and writes of both go through to what they
+ * refer to.
  *
  * Defaults are part of the function (§3.3): a code entry computes each parameter its call leaves
  * out in its prologue (../instructions/prologue.ts), so its parameters say which a call may leave
@@ -23,7 +24,7 @@ import { z } from 'zod';
 import { marks } from '../../foundation/language/well-known/index.ts';
 import { memo } from '../../foundation/structures/memo.ts';
 import { instruction } from '../instructions/instruction.ts';
-import { count, moduleId, register, span, typeId } from '../operands.ts';
+import { count, moduleId, type Register, register, span, typeId } from '../operands.ts';
 import { value } from '../values/values.ts';
 import { typeReference } from './types.ts';
 
@@ -121,6 +122,18 @@ export function bodyStart(entry: CodeFunction): number {
       0,
       entry.instructions.findIndex((each) => each.kind === 'body'),
     ),
+  );
+}
+
+const transientRegisters = new WeakMap<CodeFunction, readonly Register[]>();
+
+/**
+ * The registers of `entry`'s transients (spec §3.4), the cells its `transient` instructions share.
+ * Memoized, the entry being immutable.
+ */
+export function transientRegistersOf(entry: CodeFunction): readonly Register[] {
+  return memo(transientRegisters, entry, () =>
+    entry.instructions.flatMap((each) => (each.kind === 'transient' ? [each.dst] : [])),
   );
 }
 

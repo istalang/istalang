@@ -203,6 +203,15 @@ describe('completion asks what encloses a position', () => {
       [],
     ],
     ["a function's body", ['fn f():', '  let x = ‸', '  1'], ['select', 'new'], ['await']],
+    ["a function body's top", ['fn f():', '  ‸', '  1'], ['transient'], []],
+    [
+      "a lambda body's top, after a transient",
+      ['fn f():', '  const g = fn(): {', '    transient let a = 0', '    ‸', '  }', '  1'],
+      ['transient'],
+      [],
+    ],
+    ['a statement after another', ['fn f():', '  const a = 1', '  ‸', '  1'], [], ['transient']],
+    ['a nested block', ['fn f(c: Bool):', '  if c:', '    ‸', '  1'], [], ['transient']],
     [
       'a statement an annotation above opens',
       ['ista async fn f():', '  @Waypoint{"step"}', '  ‸', '  1'],

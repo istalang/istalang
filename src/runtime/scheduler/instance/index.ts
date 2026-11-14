@@ -49,10 +49,22 @@ import { liveObject, restoreRegisters, storedObject } from './live-objects.ts';
 import { ReadyQueue, type ReadyToRun } from './ready.ts';
 import { SegmentEffects } from './segment-effects.ts';
 import { Slots } from './slots.ts';
+import { transientsSeenFrom } from './transients.ts';
 import { Waits } from './waits/index.ts';
 import { WeakSide } from './weak-side.ts';
 
 type InstanceStatus = Snapshot['status'];
+
+/**
+ * How an execution starts beside its function and arguments: a closure's `captures` after them, the
+ * future an async call's execution `resolves` on return, and the execution of the call starting it,
+ * whose transients' cells it keeps (spec §3.4).
+ */
+interface ExecutionStart {
+  readonly captures?: readonly Value[];
+  readonly resolves?: number;
+  readonly caller?: LiveExecution;
+}
 
 export class Instance {
   readonly loaded: LoadedDefinition;
@@ -153,7 +165,7 @@ export class Instance {
     const instance = new Instance(loaded, snapshot);
     const callee = loaded.functions.callee(call.function);
     if (callee.kind === 'code') {
-      instance.startExecution(callee, call.arguments, call.captures);
+      instance.startExecution(callee, call.arguments, { captures: call.captures });
     }
     return instance;
   }
@@ -196,7 +208,7 @@ export class Instance {
     const roots = rootKinds.flatMap((kind) => this.heap.objectsOf(kind));
     const held = heldFrom(this.heap, {
       frames: roots.flatMap((root) => (root.kind === 'execution' ? root.frames : [])),
-      objects: roots.flatMap((root) => (root.kind === 'execution' ? [] : [root.id])),
+      objects: roots.map((root) => root.id),
     });
     const disposability = { heap: this.heap, types: this.loaded.definition.types };
     const kept: LiveObject[] = [];
@@ -267,14 +279,12 @@ export class Instance {
 
   /**
    * A new execution about to run function `entry` with `contents` in its parameters, those a call
-   * left out empty, and a closure's `captures` after them; an async call's execution `resolves` its
-   * future on return.
+   * left out empty, as `started` says.
    */
   startExecution(
     entry: FrameEntry,
     contents: readonly Passed[],
-    captures: readonly Value[] = [],
-    resolves?: number,
+    { captures = [], resolves, caller }: ExecutionStart = {},
   ): LiveExecution {
     const frame = newFrame(entry, contents, this.frameHeap, captures);
     return this.heap.add((id) => ({
@@ -282,6 +292,7 @@ export class Instance {
       id,
       resolves,
       frames: [frame],
+      transients: transientsSeenFrom(caller),
     }));
   }
 

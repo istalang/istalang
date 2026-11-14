@@ -4,7 +4,7 @@ owner: tech-lead
 status: proposed
 applies_to: istalang
 last_verified: 2026-11-12
-last_updated: 2026-11-13
+last_updated: 2026-11-14
 tags: [design, lifetimes, disposal, checker, flow, runtime, refcount, lsp]
 ---
 
@@ -195,7 +195,7 @@ Paths join by union, and loops iterate to a fixpoint (the domain is finite per b
 ### 5.3 Across calls: bottom-up summaries with requirements
 
 Each function gets a summary over its **inputs**: parameters, captures, the context constants it
-reads, and its result. Summaries hold no positions or nodes, so editing a body without changing its
+reads, the cells of its transients (spec §3.4), which are globals as constants are, and its result. Summaries hold no positions or nodes, so editing a body without changing its
 effects cuts off (§8).
 
 - **Effects:** the reach pairs a call may add among its inputs and the parts of them it reads
@@ -207,6 +207,8 @@ effects cuts off (§8).
   requires `¬(q ⇝ p)`. Each requirement carries the holder's type, so it applies only where the
   instantiated type reaches a disposable.
 - **Call reach** (async functions only): what the call may come to reach. This covers:
+  - every transient of the program, since its execution keeps those visible where it started, a
+    constant over-approximation (`given.ts`);
   - what its frames hold at any `await`, including what it awaits (§3), with liveness from the IR;
   - its result;
   - what it receives through its inputs' slots.

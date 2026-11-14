@@ -117,6 +117,6 @@ function capture(context: BodyContext, name: Identifier, entity: VariableEntity)
   if (context.variables.isReference(entity)) {
     context.report(checkerDiagnostics.capturedReference(name.span, name.text));
   } else if (context.variables.isChangeable(entity)) {
-    context.variables.noteCaptured(entity);
+    context.variables.noteInCell(entity);
   }
 }

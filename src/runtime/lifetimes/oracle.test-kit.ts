@@ -112,10 +112,13 @@ export function countedHolds(
   running: ReadonlySet<number> = new Set(),
 ): readonly number[] {
   if (object.kind === 'execution') {
-    return object.frames.flatMap((frame) => [
-      ...frameCells(frame),
-      ...frameValues(frame).flatMap(handlesIn),
-    ]);
+    return [
+      ...object.frames.flatMap((frame) => [
+        ...frameCells(frame),
+        ...frameValues(frame).flatMap(handlesIn),
+      ]),
+      ...idsHeld(heap.held(object)),
+    ];
   }
   if (object.kind === 'wait') {
     return [...idsHeld(heldBy(object)), ...awaitedFutures(heap, object)];

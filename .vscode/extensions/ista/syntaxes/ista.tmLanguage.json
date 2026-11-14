@@ -147,6 +147,11 @@
           }
         },
         {
+          "comment": "`transient` before the `let` it modifies (§3.4).",
+          "match": "^\\s*(transient)(?=\\s+let\\b)",
+          "captures": { "1": { "name": "storage.modifier.ista" } }
+        },
+        {
           "comment": "A label: before `for` or `while`, or ending its line before an indented block.",
           "match": "^\\s*([A-Za-z_][A-Za-z0-9_]*)\\s*(:)(?=\\s*(?:for\\b|while\\b|#|$))",
           "captures": {

@@ -32,6 +32,8 @@ export interface Scope {
   readonly types: readonly TypeDefinition[];
   readonly signatures: readonly FunctionDefinition[];
   readonly registers: number;
+  /** The registers the body lists as cells. */
+  readonly cells: readonly number[];
   readonly labels: number;
   readonly async: boolean;
 }
@@ -111,6 +113,10 @@ const generators: { readonly [Kind in InstructionKind]: Generator<Kind> } = {
   contextConstant: (s) =>
     fc.record({ dst: index(s.registers), name: fc.string(), target: index(s.labels) }),
   makeContextConstant: (s) => fc.record({ name: fc.string(), value: index(s.registers) }),
+  transient: (s) =>
+    s.cells.length === 0
+      ? undefined
+      : fc.record({ dst: fc.constantFrom(...s.cells), target: index(s.labels) }),
   writeCell: (s) => fc.record({ cell: index(s.registers), value: index(s.registers) }),
   array: (s) =>
     fc.record({

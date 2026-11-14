@@ -32,6 +32,7 @@ export function liveObject(
     ...object,
     resolves: object.resolves,
     frames: object.frames.map((frame) => liveFrame(definition, frame, heap)),
+    transients: object.transients ?? [],
   };
 }
 
@@ -69,10 +70,11 @@ export function storedObject(object: LiveObject): HeapObject {
   if (object.kind !== 'execution') {
     return object;
   }
-  const { resolves, ...rest } = object;
+  const { resolves, transients, ...rest } = object;
   return {
     ...rest,
     ...(resolves === undefined ? {} : { resolves }),
+    ...(transients.length === 0 ? {} : { transients: [...transients] }),
     frames: object.frames.map((frame) => ({
       function: frame.function,
       pc: frame.pc,

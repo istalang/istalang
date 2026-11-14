@@ -305,6 +305,7 @@ class Linker {
       pending: binderDiagnostics.usedBeforeDeclaration,
       ended: binderDiagnostics.blockEnded,
       underOr: binderDiagnostics.boundUnderOr,
+      fenced: binderDiagnostics.transientReads,
     } as const;
     links.diagnostics.push(
       miss === undefined

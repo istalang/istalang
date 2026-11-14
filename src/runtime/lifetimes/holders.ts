@@ -9,8 +9,8 @@
  * - Every object holds what its kind's entry says (snapshot/holdings.ts) and what the heap's indexes
  *   add (`Heap.held`), as its writes report for counting, and a frame what the one frame rule there
  *   says; a slot's queue and a weak reference hold nothing, so neither does a `disposed()` watch,
- *   which holds only its weak reference. An execution's frames hold for it: their registers report
- *   their own writes.
+ *   which holds only its weak reference. An execution's frames hold for it, their registers
+ *   reporting their own writes, beside the transients' cells it keeps itself (spec §3.4).
  * - The walk reads what each frame and object holds once, for both the objects it reaches and how
  *   deep the deepest value among them nests, which is what a commit checks against `maximumDepth`
  *   (spec §5): a commit walks the live state once.
@@ -35,7 +35,7 @@ interface Roots {
 
 /** What a walk from the roots found. */
 interface Held {
-  /** Every object reached, the roots given as objects among them; executions aside. */
+  /** Every object reached, the roots given as objects among them. */
   readonly objects: ReadonlySet<number>;
   /** How deep the deepest value the roots and held objects hold nests. */
   readonly depth: number;

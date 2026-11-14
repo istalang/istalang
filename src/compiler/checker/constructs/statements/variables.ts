@@ -10,14 +10,19 @@
  * - A parameter is declared with its checked signature, so whether it is a reference is known from
  *   one source, its written `&` or the expected function type's (constructs/closures/lambdas.ts).
  * - What lowering needs is recorded: each declaration's bindings, each assignment's parts, and
- *   which variables live in a cell, being passed by `&` or shared with a closure. A type, a binding
- *   and a part are recorded per pass of a field loop (passes.ts); whether a variable changes or
- *   lives in a cell holds for every pass.
+ *   which variables live in a cell, being passed by `&`, shared with a closure or transient. A
+ *   type, a binding and a part are recorded per pass of a field loop (passes.ts); whether a
+ *   variable changes or lives in a cell holds for every pass.
+ * - A transient (§3.4) is one name, leading its function's body, so every call has it before it
+ *   calls anything; the binder keeps its initializer from its function's variables. One never
+ *   changed is no `const` in disguise: it still shares the outermost call's value, so it isn't
+ *   warned about.
  */
 
 import type { VariableEntity } from '../../../binder/entities.ts';
 import { targetNames } from '../../../syntax/patterns.ts';
 import type { Assignment, VariableDeclaration } from '../../../syntax/statements/index.ts';
+import { leadsFunctionBody } from '../../../syntax/statements/readings.ts';
 import type { Identifier } from '../../../syntax/tree/node.ts';
 import type { SignatureParameter } from '../../check.ts';
 import type { BodyContext, Variables } from '../../contexts/body-context.ts';
@@ -103,11 +108,7 @@ export class VariableScope implements Variables {
     this.#changed.add(variable.name);
   }
 
-  noteReferenced(variable: VariableEntity): void {
-    this.#inCell.add(variable.name);
-  }
-
-  noteCaptured(variable: VariableEntity): void {
+  noteInCell(variable: VariableEntity): void {
     this.#inCell.add(variable.name);
   }
 
@@ -140,7 +141,8 @@ export class VariableScope implements Variables {
     for (const name of declared) {
       const entity = context.entityOf(name);
       const owner = entity?.kind === 'variable' ? entity.owner : undefined;
-      if (owner?.kind === 'VariableDeclaration' && owner.isMutable && !this.#changed.has(name)) {
+      const warned = owner?.kind === 'VariableDeclaration' && owner.isMutable && !owner.isTransient;
+      if (warned && !this.#changed.has(name)) {
         const othersChange = owner.targets
           .flatMap(targetNames)
           .some((other) => this.#changed.has(other));
@@ -158,4 +160,22 @@ export function checkVariableDeclaration(context: BodyContext, node: VariableDec
   const initial = context.expect(node.initializer, declared);
   const held = declared ?? (node.isMutable ? widened(initial, context.checker.typeRules) : initial);
   declareTargets(context, node, held);
+  if (node.isTransient) {
+    checkTransient(context, node);
+  }
+}
+
+/** §3.4: a transient's place, and its one name, which lives in a cell. */
+function checkTransient(context: BodyContext, node: VariableDeclaration): void {
+  if (!leadsFunctionBody(context.checker.inputs.treeOf(context.module), node)) {
+    context.report(checkerDiagnostics.transientPlace(node.span));
+  }
+  const [target, ...rest] = node.targets;
+  const [name, ...qualified] = target?.kind === 'NamePattern' ? target.path : [];
+  const entity = name === undefined ? undefined : context.entityOf(name);
+  if (entity?.kind !== 'variable' || qualified.length > 0 || rest.length > 0) {
+    context.report(checkerDiagnostics.transientTarget(node.span));
+  } else {
+    context.variables.noteInCell(entity);
+  }
 }

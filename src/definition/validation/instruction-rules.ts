@@ -80,6 +80,10 @@ const rules: Handlers<Tables, Instruction, [CodeFunction], string | undefined> =
   readCell: none,
   contextConstant: none,
   makeContextConstant: none,
+  transient: (_tables, i, owner) =>
+    owner.cells.some((cell) => cell.register === i.dst)
+      ? undefined
+      : `register ${i.dst} is no cell, so no call can share it.`,
   writeCell: none,
   array: none,
   map: none,

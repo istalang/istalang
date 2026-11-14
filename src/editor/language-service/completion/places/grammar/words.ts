@@ -27,10 +27,12 @@ const waits: Need = ({ body }) => body === 'async';
 
 const inLoop: Need = ({ scopes }) => scopes.some(({ kind }) => kind !== 'LabelledBlock');
 
+const leadsBody: Need = (surroundings) => surroundings.leadsBody;
+
 /**
  * The words offered only where the code around gives them meaning: `select` waits (§8) and `new`
  * makes a shared struct, whose cell lives in an instance (§3.18); `await` waits in an async body
- * (§7); `break` and `continue` end a loop's turn (§4).
+ * (§7); `break` and `continue` end a loop's turn (§4); `transient` leads a function's body (§3.4).
  */
 export const wordNeeds: Readonly<Partial<Record<Word, Need>>> = {
   select: runsInInstance,
@@ -38,6 +40,7 @@ export const wordNeeds: Readonly<Partial<Record<Word, Need>>> = {
   await: waits,
   break: inLoop,
   continue: inLoop,
+  transient: leadsBody,
 };
 
 /** What an operand starts with, in the code `surroundings` give. */

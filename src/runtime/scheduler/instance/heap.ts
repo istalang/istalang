@@ -33,7 +33,7 @@ import {
   isHeldFromRoot,
   nothingHeld,
 } from '../../snapshot/holdings.ts';
-import type { HeapObject } from '../../snapshot/objects.ts';
+import type { HeapObject, TransientCell } from '../../snapshot/objects.ts';
 import {
   type Indexes,
   type IndexKey,
@@ -51,6 +51,8 @@ export interface LiveExecution {
   readonly resolves: number | undefined;
   /** The call stack, innermost frame last. */
   readonly frames: ActiveFrame[];
+  /** The transients' cells visible where it started (spec §3.4), kept for its life. */
+  readonly transients: readonly TransientCell[];
 }
 
 /** A heap object as the running instance holds it. */
@@ -281,12 +283,12 @@ export class Heap {
 
   /**
    * What `object` holds (`holds`), its values and the ids it holds directly, as its writes report
-   * it; an execution, nothing of its own: its frames' registers report their writes themselves
-   * (interpreter/registers.ts).
+   * it; an execution, the transients' cells it keeps, its frames' registers reporting their writes
+   * themselves (interpreter/registers.ts).
    */
   held(object: LiveObject): Held {
     if (object.kind === 'execution') {
-      return nothingHeld;
+      return { values: [], holds: object.transients.map(({ cell }) => cell) };
     }
     const held = heldBy(object);
     const indexed = this.#indexedHolds(object);

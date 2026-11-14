@@ -52,6 +52,7 @@ const version99Refused = /version 99 is not supported/u;
 const version7Refused = /version 7 is not supported/u;
 
 const mismatch = expect.objectContaining({ reason: 'snapshotMismatch' });
+const keepsStrangeTransient = /keeps a transient of register 0/u;
 
 const executionIds = (snapshot: Snapshot) =>
   snapshot.objects.flatMap((object) => (object.kind === 'execution' ? [object.id] : []));
@@ -240,6 +241,19 @@ describe('reading an instance back', () => {
       ...adding(snapshot, [{ kind: 'resource', id: 1000, type: 0, payload: null }]),
     }));
     await expect(test.runtime.wake('i')).rejects.toThrow(mismatch);
+  });
+
+  it('refuses an execution keeping a transient of a register no transient of its function has', async () => {
+    const test = waitingInstance();
+    storeChanged(test, (snapshot) => ({
+      ...snapshot,
+      objects: snapshot.objects.map((object) =>
+        object.kind === 'execution'
+          ? { ...object, transients: [{ function: frameEntry(snapshot), register: 0, cell: 1 }] }
+          : object,
+      ),
+    }));
+    await expect(test.runtime.wake('i')).rejects.toThrow(keepsStrangeTransient);
   });
 
   it('refuses a ready execution that is not at an await', async () => {

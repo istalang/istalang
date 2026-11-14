@@ -36,7 +36,9 @@ interface ExpressionStatement extends NodeOf<'ExpressionStatement'>, Annotatable
 /**
  * `let x = 1`, `const a, b = pair`, and with a `hold` the `hold let`, `hold const` and `hold _`
  * forms, whose holdings last until the enclosing function ends, or the loop, block or function
- * `hold` names (§3.4, §7). `hold _` means `hold const _`, so it is stored that way.
+ * `hold` names (§3.4, §7). `hold _` means `hold const _`, so it is stored that way. `transient let`
+ * declares a variable the outermost call of its function makes and the calls nested in it share
+ * (§3.4); the grammar lets it modify a `let` alone, never with a `hold`.
  *
  * Each target is a pattern (§3.15): a name, `_`, or a tuple or struct pattern destructuring the
  * value, nested at will. Several targets destructure a tuple, as if parenthesized. A target must
@@ -44,6 +46,7 @@ interface ExpressionStatement extends NodeOf<'ExpressionStatement'>, Annotatable
  */
 export interface VariableDeclaration extends NodeOf<'VariableDeclaration'>, Annotatable {
   readonly hold: Hold | undefined;
+  readonly isTransient: boolean;
   readonly isMutable: boolean;
   /** Several targets destructure a tuple; `_` is an unnamed one. */
   readonly targets: readonly Pattern[];

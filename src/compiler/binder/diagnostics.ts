@@ -101,4 +101,9 @@ export const binderDiagnostics = defineDiagnostics('binder', {
     message: (name: string) =>
       `'${name}' is no module's namespace or enum, so no name follows its '.'.`,
   },
+  transientReads: {
+    code: 4021,
+    message: (name: string) =>
+      `A transient's initializer runs at the outermost call alone, so it can't read '${name}', a variable of its function (§3.4).`,
+  },
 });

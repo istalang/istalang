@@ -24,7 +24,8 @@ type CallOperation = Extract<Operation, { readonly op: 'call' }>;
 /**
  * The call's result, related to what it was given as the summary says; to what owns each place it
  * was given by `&`, which it may keep, as a future an async call it makes does; an async call's
- * future to what its call may come to reach; and, for a future, what it settles with.
+ * future to what its call may come to reach, and to every transient global, since its execution
+ * keeps those visible where it started (§3.4); and, for a future, what it settles with.
  */
 export function giveResult(
   at: At,
@@ -51,7 +52,9 @@ export function giveResult(
     relate(at, into, { node, relation: 'reaches' });
   }
   // An async call's frames hold what it was given while it waits, a place's owner among it.
-  for (const input of made.isAsync ? summary.callReach : []) {
+  for (const input of made.isAsync
+    ? [...summary.callReach, ...analysis.context.transients()]
+    : []) {
     const { nodes, owner } = bound(input);
     for (const node of [...nodes, ...ownedBy(owner)]) {
       relate(at, into, { node, relation: 'reaches' });

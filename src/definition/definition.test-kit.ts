@@ -164,7 +164,7 @@ function signature(sizes: Sizes): fc.Arbitrary<FunctionDefinition> {
 
 /** A code entry's body, ending in `return` so it never runs off its end. */
 function body(
-  scope: Omit<Scope, 'labels'>,
+  scope: Omit<Scope, 'labels' | 'cells'>,
   entry: FunctionDefinition,
 ): fc.Arbitrary<FunctionDefinition> {
   if (entry.kind !== 'code') {
@@ -184,11 +184,12 @@ function body(
           { maxLength: 2 },
         );
   const prologue = prologueOf(entry);
-  return fc.integer({ min: 1, max: 8 }).chain((written) => {
+  return fc.tuple(fc.integer({ min: 1, max: 8 }), cellsOfFrame).chain(([written, cells]) => {
     const labels = prologue.length + written;
     const inScope = {
       ...scope,
       registers: entry.registers,
+      cells: cells.map((cell) => cell.register),
       labels,
       async: entry.mode !== 'simple',
     };
@@ -199,9 +200,8 @@ function body(
           maxLength: written - 1,
         }),
         last: fc.record({ span, value: index(entry.registers) }),
-        cells: cellsOfFrame,
       })
-      .map(({ instructions, last, cells }) => ({
+      .map(({ instructions, last }) => ({
         ...entry,
         cells,
         instructions: [...prologue, ...instructions, { kind: 'return' as const, ...last }],

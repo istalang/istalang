@@ -217,10 +217,12 @@ export interface Variables {
   readonly typeOf: (variable: VariableEntity) => Type;
   /** Notes that `variable` was reassigned, or changed in part. */
   readonly noteChanged: (variable: VariableEntity) => void;
-  /** Notes that `variable` is passed by `&`, so it needs storage a reference can reach. */
-  readonly noteReferenced: (variable: VariableEntity) => void;
-  /** Notes that a closure captures `variable`, a `let`, so both share its storage (§3.14). */
-  readonly noteCaptured: (variable: VariableEntity) => void;
+  /**
+   * Notes that `variable` lives in a cell: passed by `&`, which needs storage a reference can reach,
+   * a `let` a closure captures, sharing its storage (§3.14), or a transient, which the calls nested
+   * in its function share (§3.4).
+   */
+  readonly noteInCell: (variable: VariableEntity) => void;
   readonly recordTargets: (owner: TargetOwner, bindings: readonly TargetBinding[]) => void;
   readonly recordAssigned: (assignment: Assignment, parts: readonly AssignedPart[]) => void;
 }

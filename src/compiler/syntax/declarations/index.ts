@@ -360,6 +360,7 @@ export type ImportDeclaration = NamedImport | NamespaceImport;
 export type ConstantDeclaration = VariableDeclaration & {
   readonly isMutable: false;
   readonly hold: undefined;
+  readonly isTransient: false;
 };
 
 export type Declaration =

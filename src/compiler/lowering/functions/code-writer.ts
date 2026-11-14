@@ -111,15 +111,7 @@ export class CodeWriter {
   }
 
   jump(target: Label, span: AnchoredSpan): void {
-    const instruction: Extract<WrittenInstruction, { kind: 'jump' }> = {
-      kind: 'jump',
-      span,
-      target: 0,
-    };
-    this.emit(instruction);
-    this.#refer(target, (position) => {
-      instruction.target = position;
-    });
+    this.#emitJumping({ kind: 'jump', span, target: 0 }, target);
   }
 
   branch(condition: Register, whenTrue: Label, whenFalse: Label, span: AnchoredSpan): void {
@@ -141,16 +133,7 @@ export class CodeWriter {
 
   /** Jumps to `target` when the call gave parameter `parameter`, skipping its default (§3.3). */
   given(parameter: Register, target: Label, span: AnchoredSpan): void {
-    const instruction: Extract<WrittenInstruction, { kind: 'given' }> = {
-      kind: 'given',
-      span,
-      parameter,
-      target: 0,
-    };
-    this.emit(instruction);
-    this.#refer(target, (position) => {
-      instruction.target = position;
-    });
+    this.#emitJumping({ kind: 'given', span, parameter, target: 0 }, target);
   }
 
   /**
@@ -158,13 +141,19 @@ export class CodeWriter {
    * it has made one; while it hasn't, goes on to make it (§3.4).
    */
   contextConstant(dst: Register, name: string, target: Label, span: AnchoredSpan): void {
-    const instruction: Extract<WrittenInstruction, { kind: 'contextConstant' }> = {
-      kind: 'contextConstant',
-      span,
-      dst,
-      name,
-      target: 0,
-    };
+    this.#emitJumping({ kind: 'contextConstant', span, dst, name, target: 0 }, target);
+  }
+
+  /**
+   * Shares into `dst`, a transient's cell register, the cell of a call this one is nested in, of the
+   * same function, and jumps to `target`; where none has one, goes on to make it (§3.4).
+   */
+  transient(dst: Register, target: Label, span: AnchoredSpan): void {
+    this.#emitJumping({ kind: 'transient', span, dst, target: 0 }, target);
+  }
+
+  /** Emits `instruction`, whose `target` becomes where `target` is placed. */
+  #emitJumping(instruction: Extract<WrittenInstruction, { target: number }>, target: Label): void {
     this.emit(instruction);
     this.#refer(target, (position) => {
       instruction.target = position;

@@ -67,6 +67,7 @@ export const statementPrinters: Printers<StatementKind> = {
   VariableDeclaration: (printer, node) =>
     annotated(printer, node, [
       node.hold === undefined ? '' : [printer.print(node.hold), ' '],
+      node.isTransient ? 'transient ' : '',
       declarationKeyword(node),
       join(
         ', ',

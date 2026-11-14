@@ -418,7 +418,7 @@ function requireChangeable(
   }
   context.variables.noteChanged(entity);
   if (passedByReference) {
-    context.variables.noteReferenced(entity);
+    context.variables.noteInCell(entity);
   }
   return true;
 }

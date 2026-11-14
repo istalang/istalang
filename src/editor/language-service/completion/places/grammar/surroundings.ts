@@ -1,7 +1,7 @@
 /**
- * What encloses a position, read from the nodes holding the placeholder: the body it runs in and
- * the scopes a label may name around it. Both stop at the innermost function, since a `break`,
- * an `await` or a `hold` can't reach past one.
+ * What encloses a position, read from the nodes holding the placeholder: the body it runs in, the
+ * scopes a label may name around it, and whether a transient may stand there (§3.4). All stop at the
+ * innermost function, since a `break`, an `await` or a `hold` can't reach past one.
  *
  * A function's header (its parameters' defaults) is code that runs but never waits: the callee
  * computes a default before its body starts (§3.3), as what builds a struct or a variant computes
@@ -11,6 +11,7 @@
 
 import { isDefaultOf } from '../../../../../compiler/syntax/declarations/index.ts';
 import type { LabelledScope } from '../../../../../compiler/syntax/statements/index.ts';
+import { leadsFunctionBody } from '../../../../../compiler/syntax/statements/readings.ts';
 import { awaits } from '../../../../../compiler/syntax/tokens/modifiers.ts';
 import {
   bodyOf,
@@ -26,10 +27,15 @@ export interface Surroundings {
   readonly body: 'none' | 'sync' | 'async';
   /** The loops and labelled blocks holding the position in that body, innermost first. */
   readonly scopes: readonly LabelledScope[];
+  /** Whether the statement holding the position leads its function's body, as a transient does. */
+  readonly leadsBody: boolean;
 }
 
 /** What encloses the innermost of `chain`, the nodes from `tree`'s root down to the position. */
 export function surroundingsOf(tree: SyntaxTree, chain: readonly SyntaxNode[]): Surroundings {
+  const block = chain.findLastIndex((node) => node.kind === 'Block');
+  const statement = block === -1 ? undefined : chain[block + 1];
+  const leadsBody = statement !== undefined && leadsFunctionBody(tree, statement);
   const scopes: LabelledScope[] = [];
   for (let index = chain.length - 2; index >= 0; index -= 1) {
     const node = chain[index];
@@ -39,17 +45,19 @@ export function surroundingsOf(tree: SyntaxTree, chain: readonly SyntaxNode[]): 
         return {
           body: bodyKind(bodyOf(tree, node) === child, awaits(node.qualifiers)),
           scopes,
+          leadsBody,
         };
       case 'Lambda':
         return {
           body: bodyKind(node.body === child, awaits(node.qualifiers)),
           scopes,
+          leadsBody,
         };
       case 'ContextConstantDeclaration':
-        return { body: 'sync', scopes };
+        return { body: 'sync', scopes, leadsBody };
       case 'DeclaredField':
         if (isDefaultOf(node, child)) {
-          return { body: 'sync', scopes };
+          return { body: 'sync', scopes, leadsBody };
         }
         break;
       case 'For':
@@ -64,7 +72,7 @@ export function surroundingsOf(tree: SyntaxTree, chain: readonly SyntaxNode[]): 
         break;
     }
   }
-  return { body: 'none', scopes };
+  return { body: 'none', scopes, leadsBody };
 }
 
 /** A function's code: its body waits where the function is async, its header never. */

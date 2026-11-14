@@ -74,6 +74,7 @@ export const statementWords = [
   'while',
   'drop',
   'hold',
+  'transient',
 ] as const satisfies readonly Word[];
 
 export type StatementWord = (typeof statementWords)[number];
@@ -154,7 +155,8 @@ export type PatternWord = (typeof patternWords)[number];
 /**
  * The words that alone may follow each modifier where it stands as one: a head's next modifier or
  * keyword in print order (./modifiers.ts), as in `async fn`, `shared struct` and `sendable async fn`
- * in a type; `hold let`; and `not in` (../expressions/operators.ts) after an operand.
+ * in a type; `hold let` and `transient let`; and `not in` (../expressions/operators.ts) after an
+ * operand.
  */
 export const followers = {
   live: followersIn(headForms.function, 'live'),
@@ -163,6 +165,7 @@ export const followers = {
   shared: followersIn(headForms.sharedStruct, 'shared'),
   sendable: followersIn(headForms.functionType, 'sendable'),
   hold: ['let', 'const'],
+  transient: ['let'],
   not: ['in'],
 } as const satisfies Partial<Record<Word, readonly Word[]>>;
 

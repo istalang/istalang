@@ -146,6 +146,15 @@ export const checkerDiagnostics = defineDiagnostics('checker', {
     message: () =>
       "This value's field defaults build a value needing those defaults again, so it would never be finished.",
   },
+  transientPlace: {
+    code: 5029,
+    message: () =>
+      "A 'transient let' stands at the top of a function's body, before its other statements (§3.4).",
+  },
+  transientTarget: {
+    code: 5030,
+    message: () => "A 'transient let' declares one name (§3.4).",
+  },
   ...genericTemplates,
   ...varianceTemplates,
   ...valueTemplates,

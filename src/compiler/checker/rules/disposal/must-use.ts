@@ -78,6 +78,9 @@ function undroppable(context: BodyContext, entity: VariableEntity): string | und
   if (context.variables.isReference(entity)) {
     return "it is a reference parameter, whose value is its caller's";
   }
+  if (entity.owner.kind === 'VariableDeclaration' && entity.owner.isTransient) {
+    return 'it is transient, so the calls it is nested in share it';
+  }
   return undefined;
 }
 

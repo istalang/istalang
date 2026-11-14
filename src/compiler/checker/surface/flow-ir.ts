@@ -27,6 +27,7 @@
  *   it held, with no operation of its own.
  */
 
+import { memo } from '../../../foundation/structures/memo.ts';
 import type { VariableEntity } from '../../binder/entities.ts';
 import type { Expression, FieldHeader, Select } from '../../syntax/expressions/index.ts';
 import type { Relation } from '../../syntax/expressions/operators.ts';
@@ -205,6 +206,10 @@ export type Operation = { readonly site: NodeOf<string> } & (
  * - `select`: which of a `select`'s cases goes on (§8), going to each case's, then to its `else`;
  *   each case `holds` the temporaries its awaitable computed, which it releases where it loses,
  *   and the scope around the `select` releases where it doesn't.
+ * - `transient`: whether a call this one is nested in, of the same function, shares its transient
+ *   `variable` (§3.4), going to `[shared, unmade]`: where it does, `variable` holds that call's
+ *   value, which no operation of this function wrote; where it doesn't, the declaration's
+ *   initializer makes it.
  * - `unknown`: a test checking found a mistake in, which may go either way.
  */
 export type BranchTest =
@@ -220,6 +225,7 @@ export type BranchTest =
       readonly node: Select;
       readonly holds: readonly (readonly ValueId[])[];
     }
+  | { readonly kind: 'transient'; readonly variable: ValueId }
   | { readonly kind: 'unknown' };
 
 /**
@@ -249,6 +255,17 @@ export interface FlowFunction {
   readonly self: ValueId | undefined;
   readonly values: readonly FlowValue[];
   readonly blocks: readonly FlowBlock[];
+}
+
+const transientVariables = new WeakMap<FlowFunction, readonly ValueId[]>();
+
+/** The transients `flow` declares (§3.4): the variables its `transient` branches test. */
+export function transientsOf(flow: FlowFunction): readonly ValueId[] {
+  return memo(transientVariables, flow, () =>
+    flow.blocks.flatMap(({ exit }) =>
+      exit.kind === 'branch' && exit.test.kind === 'transient' ? [exit.test.variable] : [],
+    ),
+  );
 }
 
 /** The blocks `exit` goes on to. */

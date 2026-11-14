@@ -6,8 +6,8 @@
  * - A function's head (`fn`, `async fn`, ../parts/heads.ts) starts a local function when a name
  *   follows its `fn` (`fn name…`), or else a lambda expression (`fn(x): …`, `fn x: …`).
  * - A name starts a held variable when it is the word `hold` before one (`hold let`,
- *   `hold(outer) _ =`), a label when `:` follows it (loops.ts), and else an expression, a call
- *   of a function named `hold` included.
+ *   `hold(outer) _ =`), a transient one when it is `transient` before `let`, a label when `:`
+ *   follows it (loops.ts), and else an expression, a call of a function named `hold` included.
  * Declarations only the top level allows are not statements; a block rejects them
  * (grammar/parts/blocks.ts).
  *
@@ -31,7 +31,13 @@ import { headAhead } from '../parts/heads.ts';
 import { type StartParselets, type WordParselets, wordParseletAt } from '../word-parselets.ts';
 import { atLabel, parseFor, parseLabelled, parseWhile } from './loops.ts';
 import { parseBreak, parseContinue, parseDrop, parseReturn } from './simple.ts';
-import { atHold, parseHeldVariable, parseVariable } from './variables.ts';
+import {
+  atHold,
+  atTransient,
+  parseHeldVariable,
+  parseTransientVariable,
+  parseVariable,
+} from './variables.ts';
 
 type StatementParselet = (parser: Parser) => Statement | Invalid;
 
@@ -52,6 +58,7 @@ const statementParselets: Partial<Record<CursorKind, StatementParselet>> = {
 /** Each contextual word's statement, or undefined, with nothing consumed, where it is a name. */
 const wordParselets = {
   hold: (parser) => (atHold(parser) ? parseHeldVariable(parser) : undefined),
+  transient: (parser) => (atTransient(parser) ? parseTransientVariable(parser) : undefined),
   live: parseLocalFunction,
   ista: parseLocalFunction,
 } satisfies WordParselets<StatementWord, (parser: Parser) => Statement | undefined>;

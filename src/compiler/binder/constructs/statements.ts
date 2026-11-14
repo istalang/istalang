@@ -30,7 +30,7 @@ const statementHandlers: Handlers<LocalBinder, Statement, [Scope], void> = {
   ExpressionStatement: (binder, node, scope) =>
     binder.walk.expression(binder, node.expression, scope),
   VariableDeclaration: (binder, node, scope) => {
-    bindVariableValue(binder, node, scope);
+    bindVariableValue(binder, node, node.isTransient ? fencedScope(binder, node, scope) : scope);
     bindTargets(binder, node, scope, scope);
   },
   FunctionDeclaration: (binder, node, scope) => {
@@ -107,6 +107,13 @@ export function bindBlock(binder: LocalBinder, block: Block, parent: Scope): voi
 export function spanThrough(binder: LocalBinder, item: SyntaxNode): AnchoredSpan {
   const body = item.kind === 'FunctionDeclaration' ? bodyOf(binder.tree, item) : undefined;
   return body?.span ?? item.span;
+}
+
+/** The scope a transient's type and initializer are bound in (§3.4), which tools see there too. */
+function fencedScope(binder: LocalBinder, node: VariableDeclaration, scope: Scope): Scope {
+  const fenced = Scope.fenced(scope);
+  binder.enter(node.initializer, fenced);
+  return fenced;
 }
 
 /** A variable's or a context constant's type and initializer, bound before its names exist. */

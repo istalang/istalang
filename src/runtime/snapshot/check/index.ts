@@ -18,6 +18,7 @@
  * - its outcome's encoder, when it has one, is an entry that can encode one, and a finished
  *   instance's JSON of its outcome is a `Json` value (§9)
  * - a cell is of a shared struct's type entry or a `_Cell<T>`'s, and a resource of an extern type
+ * - a transient's cell an execution keeps is a cell, of a code function's transient register (§3.4)
  * - every value held anywhere names types and functions the Definition has, and agrees with them,
  *   by the same check the Definition's own constants pass (definition/validation/references.ts)
  */
@@ -26,14 +27,14 @@ import type { Definition } from '../../../definition/definition.ts';
 import { waits } from '../../../definition/instructions/flow.ts';
 import type { Instruction } from '../../../definition/instructions/instruction.ts';
 import type { FunctionId } from '../../../definition/operands.ts';
-import { encoderProblem } from '../../../definition/tables/functions.ts';
+import { encoderProblem, transientRegistersOf } from '../../../definition/tables/functions.ts';
 import { isCellType } from '../../../definition/tables/types.ts';
 import { valueProblems } from '../../../definition/validation/references.ts';
 import { isJsonValue, jsonTypeIn } from '../../../definition/values/json-values.ts';
 import { type Handlers, handlerOf } from '../../../foundation/structures/kind-table.ts';
 import { Refusal } from '../../refusal.ts';
 import { valuesIn } from '../holdings.ts';
-import type { Frame, HeapObject } from '../objects.ts';
+import type { Frame, HeapObject, TransientCell } from '../objects.ts';
 import type { InstanceCall, Snapshot } from '../snapshot.ts';
 import { calledBackProblems, callProblems, shapeOf } from './calls.ts';
 import { waitProblems } from './waits.ts';
@@ -44,6 +45,7 @@ export function checkSnapshot(definition: Definition, snapshot: Snapshot): void 
     ...snapshot.objects.flatMap((object) => objectProblems(definition, object)),
     ...waitProblems(definition, snapshot),
     ...callFutureProblems(snapshot),
+    ...transientCellProblems(snapshot),
     ...contextConstantProblems(snapshot),
     ...startingCallProblems(definition, snapshot.status),
     ...encoderProblems(definition, snapshot.encoder),
@@ -67,11 +69,12 @@ function objectProblems(definition: Definition, object: HeapObject): readonly st
 /** What is wrong with each kind of object against the Definition, besides its values. */
 const kindProblems: Handlers<Definition, HeapObject, [], readonly string[]> = {
   execution: (definition, execution) =>
-    execution.frames.flatMap((frame, index) =>
-      frameProblems(definition, frame, index === execution.frames.length - 1 ? waits : isCall).map(
-        (problem) => `execution ${execution.id}: ${problem}`,
+    [
+      ...execution.frames.flatMap((frame, index) =>
+        frameProblems(definition, frame, index === execution.frames.length - 1 ? waits : isCall),
       ),
-    ),
+      ...(execution.transients ?? []).flatMap((kept) => transientProblems(definition, kept)),
+    ].map((problem) => `execution ${execution.id}: ${problem}`),
   cell: (definition, cell) =>
     isCellType(definition.types, cell.type) ? [] : [`cell ${cell.id} is not of a cell type`],
   resource: (definition, resource) =>
@@ -92,6 +95,22 @@ const kindProblems: Handlers<Definition, HeapObject, [], readonly string[]> = {
   future: () => [],
   weakRef: () => [],
 };
+
+/** Each transient's cell an execution keeps is a cell of the snapshot (spec §3.4). */
+function transientCellProblems(snapshot: Snapshot): readonly string[] {
+  const cells = new Set(
+    snapshot.objects.flatMap((object) => (object.kind === 'cell' ? [object.id] : [])),
+  );
+  return snapshot.objects.flatMap((object) =>
+    object.kind === 'execution'
+      ? (object.transients ?? []).flatMap(({ cell }) =>
+          cells.has(cell)
+            ? []
+            : [`execution ${object.id} keeps object ${cell} as a transient's cell`],
+        )
+      : [],
+  );
+}
 
 /** Each context constant has one value in an instance at most (spec §3.4). */
 function contextConstantProblems(snapshot: Snapshot): readonly string[] {
@@ -194,6 +213,13 @@ function outcomeProblems(definition: Definition, status: Snapshot['status']): re
 const isCall = (instruction: Instruction): boolean => instruction.kind === 'call';
 
 /** A frame's problems; `standsAt` says which instructions it may stand at. */
+function transientProblems(definition: Definition, kept: TransientCell): readonly string[] {
+  const code = definition.functions[kept.function];
+  return code?.kind === 'code' && transientRegistersOf(code).includes(kept.register)
+    ? []
+    : [`it keeps a transient of register ${kept.register}, no transient of ${kept.function}`];
+}
+
 function frameProblems(
   definition: Definition,
   frame: Frame,

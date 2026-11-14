@@ -69,6 +69,15 @@ const frame = z.strictObject({
 
 export type Frame = z.output<typeof frame>;
 
+/**
+ * A transient's cell an execution keeps from where it started (spec §3.4): the cell object `cell`
+ * that `register` of a frame running `function` held, which the execution's calls of that function
+ * share.
+ */
+const transientCell = z.strictObject({ function: functionId, register, cell: objectId });
+
+export type TransientCell = z.output<typeof transientCell>;
+
 const futureState = z.discriminatedUnion('kind', [
   z.strictObject({ kind: z.literal('resolved'), value }),
   /** The result of an async call, resolved when the execution that names it returns. */
@@ -242,11 +251,13 @@ export const heapObject = z.discriminatedUnion('kind', [
   defineObject('contextConstant', { key: z.string(), value }),
   /**
    * An execution: a call stack, innermost frame last. An async call's execution names the future
-   * its return resolves (spec §3.3); the root, the instance's own, names none.
+   * its return resolves (spec §3.3); the root, the instance's own, names none. It keeps the
+   * transients' cells visible where it started (spec §3.4), none for most.
    */
   defineObject('execution', {
     resolves: objectId.optional(),
     frames: z.array(frame).min(1),
+    transients: z.array(transientCell).min(1).optional(),
   }),
 ]);
 

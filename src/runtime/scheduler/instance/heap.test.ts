@@ -78,6 +78,7 @@ const madeArbitrary: fc.Arbitrary<Made> = fc.oneof(
         id: object,
         resolves: resolves === undefined ? undefined : among(existing, resolves),
         frames: [],
+        transients: [],
       }),
   ),
   reference.map(

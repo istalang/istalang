@@ -5,7 +5,8 @@
  * - A declaration runs its initializer, then binds its targets; a `hold`'s variables end with the
  *   scope it names (§7). A target with no name (`_`, a part of one) keeps the whole value as a
  *   variable with no name would, until its scope or `hold` ends. A local `fn` is a closure made
- *   where it is declared.
+ *   where it is declared. A transient (§3.4) runs its initializer only where no call it is nested
+ *   in shares it, releasing the initializer's temporaries there.
  * - An assignment runs its value, then, for each part of it, enters its place and writes it there,
  *   left to right (§3.15), converted as checking fitted it; `_ = v` keeps `v` until its block ends.
  *   A compound one reads its place first and writes what its operator's call gives.
@@ -26,7 +27,7 @@ import type {
 import { droppedName } from '../../../../syntax/statements/readings.ts';
 import { hasUnnamedTarget } from '../../../../syntax/statements/targets.ts';
 import type { AssignedPart } from '../../../surface/checked-body.ts';
-import type { ValueId } from '../../../surface/flow-ir.ts';
+import type { BlockId, ValueId } from '../../../surface/flow-ir.ts';
 import { guarded } from './control.ts';
 import { closureOf, unitAt } from './expressions.ts';
 import type { FlowBuilder } from './flow-builder.ts';
@@ -36,6 +37,11 @@ import { bindTargets, type Lifetime, readAlong } from './parts.ts';
 import { enterAssigned } from './places.ts';
 
 function declaration(builder: FlowBuilder, node: VariableDeclaration): void {
+  const variable = node.isTransient ? transientVariable(builder, node) : undefined;
+  if (variable !== undefined) {
+    transient(builder, node, variable);
+    return;
+  }
   const value = builder.expression(node.initializer);
   const lifetime: Lifetime =
     node.hold === undefined ? undefined : (builder.body.labels.heldUntil(node.hold) ?? 'function');
@@ -43,6 +49,25 @@ function declaration(builder: FlowBuilder, node: VariableDeclaration): void {
     keep(builder, node, value, lifetime);
   }
   bindTargets(builder, node, value, lifetime);
+}
+
+/** The variable a transient declares, its one name's; undefined where checking found none. */
+function transientVariable(builder: FlowBuilder, node: VariableDeclaration): ValueId | undefined {
+  const [binding, ...rest] = builder.body.targetsOf(node);
+  const entity =
+    binding === undefined || rest.length > 0 ? undefined : builder.entityOf(binding.name);
+  return entity === undefined ? undefined : builder.variable(entity);
+}
+
+/** A transient's `variable`, shared from a call it is nested in, or made by its initializer. */
+function transient(builder: FlowBuilder, node: VariableDeclaration, variable: ValueId): void {
+  const [shared, unmade] = builder.branch({ kind: 'transient', variable }) as [BlockId, BlockId];
+  builder.resumeIn(unmade);
+  const { temporaries } = builder.temporariesIn(() =>
+    bindTargets(builder, node, builder.expression(node.initializer), undefined),
+  );
+  builder.scopes.release(builder.scopes.claim(temporaries), node);
+  builder.continueIn(shared);
 }
 
 /** `value`, kept as a variable with no name keeps it (§7), until `lifetime` ends. */
