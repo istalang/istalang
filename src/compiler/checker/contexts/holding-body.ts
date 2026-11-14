@@ -48,7 +48,7 @@ export function bodyHolding(
  * The checked body holding `node` of `module`, as checked: a field loop around it read as the body
  * holding the loop; undefined outside every body.
  */
-export function checkedBodyHolding(
+function checkedBodyHolding(
   checker: BodyOwners,
   module: ModuleId,
   node: SyntaxNode,

@@ -129,6 +129,19 @@ describe('transient variables: what checking refuses', () => {
       'a lambda a field defaults to',
       lines('struct Launcher:', `  start: ista fn(Slot<Unit>) -> Unit = ${keeper}`),
     ],
+    [
+      'a local function in a field loop',
+      lines(
+        'struct Box:',
+        '  a: Int',
+        'ista fn launch(slot: Slot<Unit>, box: Box):',
+        '  for _, _ in ...box:',
+        '    ista fn inner():',
+        '      transient let running: Array<Future<Unit, "ista">> = []',
+        '      running.push(worker(slot))',
+        '    inner()',
+      ),
+    ],
   ])(
     'is held by every async call future, so one kept in a transient of %s is a cycle (§7)',
     (_where, keeps) => {
