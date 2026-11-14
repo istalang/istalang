@@ -31,7 +31,7 @@ tags: [tracker]
 | Static lifetimes (`docs/work/static-lifetimes/plan.md`) | in progress: C1, C2, R1, R2, C3, C4, R3, R4 and R5 done; C5 dropped |
 | Proposal 13, transients and getters (`docs/work/transients-getters/plan.md`) | done (merge re-review approved; B87, B88 left) |
 | Proposal 14, inert functions (`docs/work/inert-functions/plan.md`) | done (reviewer approved, QA passed; B89 left) |
-| Computed, and FormBuilder on it (`docs/work/computed/plan.md`) | in progress: C1 |
+| Computed, and FormBuilder on it (`docs/work/computed/plan.md`) | in progress: C1 done, C2 |
 | Proposal 15, stable host references (`docs/proposals/15-stable-host-references.md`) | approved, not planned; FormBuilder adopts it once done |
 | M8 Packages | planned |
 
