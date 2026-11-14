@@ -36,6 +36,7 @@ import {
   namedFunctions,
   ownChoice,
 } from '../../resolution/choosing/named-functions.ts';
+import { functionValueSite } from '../../surface/resolved-call.ts';
 import type { Admits } from '../../types/fitting/expected.ts';
 import { expectedFunction, writtenNominal } from '../../types/fitting/expected.ts';
 import { type FunctionType, isNominalEntity, type Type } from '../../types/type/index.ts';
@@ -80,7 +81,11 @@ export function recordedValue(
   if (made === undefined) {
     return errorType;
   }
-  recordChosen(context, { site, application, instantiation: made.instantiation });
+  recordChosen(context, {
+    site: functionValueSite(site),
+    application,
+    instantiation: made.instantiation,
+  });
   return made.type;
 }
 

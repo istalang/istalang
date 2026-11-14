@@ -294,7 +294,7 @@ function checkSelfStays(
 
 /**
  * Reports each of `calls`, a checked body's, that calls `dispose` or names it as a value, except
- * as one of `mockTargets`, the targets of the body's mocks (§7, §10).
+ * at one of `mockTargets`, where the body's mocks' targets are recorded (§7, §10).
  */
 export function checkDisposeUses(
   context: BodyContext,

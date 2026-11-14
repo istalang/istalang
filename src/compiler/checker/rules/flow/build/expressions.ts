@@ -74,11 +74,11 @@ export function coreFlow(builder: FlowBuilder, node: Sugar): ValueId {
 
 /**
  * What `name` denotes, read as the value of `read` (the name, or a namespace's member qualifying
- * it): a function named as a value, a variable of the body, a global, a variant without fields,
- * or a struct without fields.
+ * it): a function named as a value, recorded at its name, a variable of the body, a global, a
+ * variant without fields, or a struct without fields.
  */
 function named(builder: FlowBuilder, name: Identifier, read: Identifier | MemberAccess): ValueId {
-  const call = builder.body.resolved.get(read);
+  const call = builder.body.resolved.get(name);
   if (call !== undefined) {
     const into = builder.temporaryOf(read);
     builder.emit({ op: 'make', site: read, into, made: { kind: 'function', call }, parts: [] });
@@ -112,7 +112,7 @@ function memberAccess(builder: FlowBuilder, node: MemberAccess): ValueId {
   const { checker, module } = builder.inputs;
   const read = builder.body.fieldReadOf(node);
   const member = checker.bindings.entityOf(module, node.member);
-  const isNamed = member !== undefined || builder.body.resolved.has(node);
+  const isNamed = member !== undefined || builder.body.resolved.has(node.member);
   if (isNamed) {
     return named(builder, node.member, node);
   }

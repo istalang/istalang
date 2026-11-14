@@ -5,9 +5,9 @@
  */
 
 import type { FunctionDeclaration, TypeParameter } from '../../syntax/declarations/index.ts';
-import type { Call } from '../../syntax/expressions/calls.ts';
-import type { Expression } from '../../syntax/expressions/index.ts';
-import type { NodeOf } from '../../syntax/tree/node.ts';
+import type { Call, TypeApplication } from '../../syntax/expressions/calls.ts';
+import type { Expression, MemberAccess } from '../../syntax/expressions/index.ts';
+import type { Identifier, NodeOf } from '../../syntax/tree/node.ts';
 import type { Substitution } from '../types/parts/substitution.ts';
 import type { AnyType, Type } from '../types/type/index.ts';
 
@@ -218,9 +218,9 @@ export function instantiatingTypesOf(call: ResolvedCall): readonly Type[] {
  * call, read as the call to its taker it was checked as (§3.14, `BodyFacts.coreOf`), an operator
  * that calls a function (§3.9), indexing, which calls `index`, an assignment, whose compound
  * operator calls a function; and a function named as a value (§3.14), `f`, `ns.f` or `T.f`, or
- * given type arguments, `f<Int>`, for the function its closure runs. A call of a function value
- * resolves to none (`CheckedBody.valueCalls`), and a call the language makes is implicit
- * (`ImplicitRole`).
+ * given type arguments, `f<Int>`, for the function its closure runs, recorded at its name
+ * (`functionValueSite`). A call of a function value resolves to none (`CheckedBody.valueCalls`),
+ * and a call the language makes is implicit (`ImplicitRole`).
  */
 export type ResolvedSite = NodeOf<
   | 'Call'
@@ -239,17 +239,28 @@ export function isCalling(site: ResolvedSite): site is Call {
   return site.kind === 'Call';
 }
 
-/** The sites a function named as a value is written as: `f`, `ns.f`, `T.f` or `f<Int>` (§3.14). */
-type FunctionValueSite = NodeOf<'Identifier' | 'MemberAccess' | 'TypeApplication'>;
+/**
+ * The sites a function named as a value is recorded at (§3.14): its name, `f`, or the `f` of `ns.f`
+ * and `T.f`, or its name given type arguments, `f<Int>`.
+ */
+type FunctionValueSite = NodeOf<'Identifier' | 'TypeApplication'>;
 
 /**
- * Whether `site` is written as a function named as a value is, which calls nothing where it
+ * Whether `site` is where a function named as a value is recorded, which calls nothing where it
  * stands: a resolved one names a function.
  */
 export function namesFunctionValue(site: NodeOf<string>): site is FunctionValueSite {
-  return (
-    site.kind === 'Identifier' || site.kind === 'MemberAccess' || site.kind === 'TypeApplication'
-  );
+  return site.kind === 'Identifier' || site.kind === 'TypeApplication';
+}
+
+/**
+ * Where a function `naming` names as a value is recorded: a qualified name's at its last name, so
+ * a member access stands only for what its member reads (§3.14).
+ */
+export function functionValueSite(
+  naming: Identifier | MemberAccess | TypeApplication,
+): FunctionValueSite {
+  return naming.kind === 'MemberAccess' ? naming.member : naming;
 }
 
 /**

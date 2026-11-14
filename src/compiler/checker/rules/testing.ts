@@ -39,6 +39,7 @@ import { type CheckedBody, childrenRunning } from '../surface/checked-body.ts';
 import { isHostType } from '../surface/host-externs.ts';
 import {
   type FunctionCall,
+  functionValueSite,
   namesFunctionValue,
   passesAll,
   type ResolvedCall,
@@ -54,7 +55,10 @@ import { markType } from '../types/type/primitives.ts';
 import { typeText } from '../types/type/type-text.ts';
 import { arrayElement } from '../types/type/well-known.ts';
 
-/** Checks each of `calls`, a body's, that calls `mock` or `handle`; the mocks' targets. */
+/**
+ * Checks each of `calls`, a body's, that calls `mock` or `handle`; where the mocks' targets are
+ * recorded.
+ */
 export function checkTestingCalls(
   context: BodyContext,
   calls: Iterable<readonly [ResolvedSite, ResolvedCall]>,
@@ -78,18 +82,34 @@ export function checkTestingCalls(
   return targets;
 }
 
+/** Where the function `target` names as a value is recorded, if it names one (§3.14). */
+function valueSiteOf(target: Expression): ResolvedSite | undefined {
+  switch (target.kind) {
+    case 'Identifier':
+    case 'MemberAccess':
+    case 'TypeApplication':
+      return functionValueSite(target);
+    default:
+      return undefined;
+  }
+}
+
 /**
- * The target of the mock `site` makes, `mock`'s first parameter as its binding passes it, if it
- * names a function the mock keeps as it is; else reports why it doesn't.
+ * Where the target of the mock `site` makes, `mock`'s first parameter as its binding passes it,
+ * is recorded, if it names a function the mock keeps as it is; else reports why it doesn't.
  */
-function checkTarget(context: BodyContext, site: Call, mock: FunctionCall): Expression | undefined {
+function checkTarget(
+  context: BodyContext,
+  site: Call,
+  mock: FunctionCall,
+): ResolvedSite | undefined {
   const [source] = mock.binding;
   const argument = source?.kind === 'argument' ? site.arguments[source.index] : undefined;
   const target = argument === undefined ? undefined : unparenthesized(argumentValue(argument));
-  const named =
-    target !== undefined && namesFunctionValue(target) ? context.calls.of(target) : undefined;
+  const recorded = target === undefined ? undefined : valueSiteOf(target);
+  const named = recorded === undefined ? undefined : context.calls.of(recorded);
   const names = named?.kind === 'function' && constructedVariant(named.function) === undefined;
-  if (target === undefined || !names) {
+  if (target === undefined || recorded === undefined || !names) {
     context.report(checkerDiagnostics.mockTarget((argument ?? site).span));
     return undefined;
   }
@@ -108,7 +128,7 @@ function checkTarget(context: BodyContext, site: Call, mock: FunctionCall): Expr
     context.report(checkerDiagnostics.mockMadeAsync(site.span));
     return undefined;
   }
-  return target;
+  return recorded;
 }
 
 /** `handle` makes a value of `made`, which must be a host type. */

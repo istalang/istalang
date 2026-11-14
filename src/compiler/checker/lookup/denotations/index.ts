@@ -27,6 +27,7 @@ import { type Identifier, lastName } from '../../../syntax/tree/node.ts';
 import type { NamedType } from '../../../syntax/types/index.ts';
 import type { CheckerContext } from '../../contexts/context.ts';
 import type { Denotation } from '../../surface/denotation.ts';
+import { functionValueSite } from '../../surface/resolved-call.ts';
 import { associatedDeclarationsOn } from '../../types/traits/known-constraints.ts';
 import type { FieldMember, Type } from '../../types/type/index.ts';
 import { membersOf } from '../../types/type/index.ts';
@@ -172,7 +173,8 @@ function memberDenotations(site: NameSite, access: MemberAccess): readonly Denot
   const value = holder?.kind === 'TypeApplication' ? holder : access;
   const type = site.body?.typeOf(value);
   const associated = associatedNamed(site.checker, namedType(namingAt(site), access));
-  return calledAt(site, value, type) ?? (associated.length > 0 ? associated : named(site, type));
+  const valued = calledAt(site, functionValueSite(value), type);
+  return valued ?? (associated.length > 0 ? associated : named(site, type));
 }
 
 /** What naming a type in value position reads where `site` stands. */
