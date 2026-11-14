@@ -32,7 +32,7 @@ tags: [tracker]
 | Proposal 13, transients and getters (`docs/work/transients-getters/plan.md`) | done (merge re-review approved; B87, B88 left) |
 | Proposal 14, inert functions (`docs/work/inert-functions/plan.md`) | done (reviewer approved, QA passed; B89 left) |
 | Computed, and FormBuilder on it (`docs/work/computed/plan.md`) | in progress: C1 merged, C2 done on `computed-forms`, C3 |
-| Proposal 15, stable host references (`docs/proposals/15-stable-host-references.md`) | approved, not planned; FormBuilder adopts it once done |
+| Proposal 15, stable host references (`docs/work/stable-host-references/plan.md`) | done (reviewer approved, QA passed; FormBuilder may rely on it) |
 | M8 Packages | planned |
 
 ## Filed

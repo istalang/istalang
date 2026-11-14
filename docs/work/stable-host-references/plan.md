@@ -1,7 +1,7 @@
 ---
 description: plan for proposal 15, stable host references (identity caches on both encoding stages, one write path through json.encode) — process, the one phase and its acceptance criteria; read before forking or examining it
 owner: tech-lead
-status: active
+status: archived
 applies_to: istalang
 last_verified: 2026-11-15
 last_updated: 2026-11-15
