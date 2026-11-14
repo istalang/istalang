@@ -30,6 +30,7 @@ tags: [tracker]
 | Proposal 9, native runtime (`docs/proposals/9-native-runtime.md`), beyond async-kinds CX's minimal slice | not planned: a plan of its own |
 | Static lifetimes (`docs/work/static-lifetimes/plan.md`) | in progress: C1, C2, R1, R2, C3, C4, R3, R4 and R5 done; C5 dropped |
 | Proposal 13, transients and getters (`docs/work/transients-getters/plan.md`) | done (merge re-review approved; B87, B88 left) |
+| Proposal 14, inert functions (`docs/work/inert-functions/plan.md`) | in progress: I1 |
 | M8 Packages | planned |
 
 ## Filed
