@@ -18,7 +18,8 @@ export interface Candidate {
 
 /**
  * What a candidate names: a binder entity (a visible name, a module's export), a keyword, a field,
- * a function reached through a value (a method) or a type (a static), a variant reached through
+ * a getter, read as a field is (§3.1), a function reached through a value (a method) or a type (a
+ * static), a variant reached through
  * its enum, of type `enum`, a literal of a literal type expected, such as a key naming a field
  * (§3.1), a parameter a call's argument names, a field a call pattern's argument names (§3.11),
  * or what an import's path names: a module, or a folder holding modules; or the label of a loop or
@@ -28,6 +29,7 @@ export type Subject =
   | { readonly kind: 'entity'; readonly entity: Entity }
   | { readonly kind: 'keyword' }
   | { readonly kind: 'field'; readonly field: FieldMember }
+  | { readonly kind: 'getter'; readonly declaration: FunctionDeclaration }
   | {
       readonly kind: 'function';
       readonly declaration: FunctionDeclaration;

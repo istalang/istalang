@@ -1,7 +1,8 @@
 /**
  * What a value of a type has, by name, as a module sees it: its fields and variants as its layout
  * has them, a tuple's elements as fields named by position (`t.0`, §3.15), or the fields its
- * constraints require; the static functions a call through it may choose, and its methods.
+ * constraints require; the static functions a call through it may choose, its methods, and its
+ * getters, read as fields are (§3.1).
  *
  * Methods and statics are what a call may choose (resolution/choosing/candidates.ts, which lists
  * them by the same sources it chooses from), a method kept where `self` takes a value of the type
@@ -21,8 +22,10 @@ import type { FunctionDeclaration } from '../../syntax/declarations/index.ts';
 import type { MemberAccess } from '../../syntax/expressions/index.ts';
 import type { CheckerContext } from '../contexts/context.ts';
 import {
+  type Candidate,
   callableThrough,
   receiverCandidates,
+  receiverMembers,
   staticCandidatesThrough,
 } from '../resolution/choosing/candidates.ts';
 import { takesAsSelf } from '../resolution/choosing/receivers.ts';
@@ -42,6 +45,7 @@ const noMembers: TypeMembers = {
   fields: [],
   variants: [],
   methods: [],
+  getters: [],
   statics: [],
   associatedTypes: [],
 };
@@ -55,10 +59,12 @@ export function membersOf(
   if (type.kind === 'error') {
     return noMembers;
   }
+  const { methods, getters } = receiverMembers(checker, receivedBy(checker, module, type, access));
   return {
     fields: fieldsOf(checker, type),
     variants: (type.kind === 'nominal' ? checker.variantsOf(type) : undefined) ?? [],
-    methods: methodsOf(checker, module, type, access),
+    methods: declarationsOf(methods),
+    getters: declarationsOf(getters),
     statics: staticsOf(checker, module, type),
     associatedTypes: associatedDeclarationsOn(checker, type),
   };
@@ -93,27 +99,25 @@ function staticsOf(
   module: ModuleId,
   type: Type,
 ): readonly FunctionDeclaration[] {
-  return [
-    ...new Set(
-      staticCandidatesThrough(checker, module, type).map(({ declaration }) => declaration),
-    ),
-  ];
+  return declarationsOf(staticCandidatesThrough(checker, module, type));
 }
 
-/** The methods a call through a value of `type` may choose, and through `access` if given. */
-function methodsOf(
+/**
+ * The functions taking a value of `type` as `self` that a member of it may mean, and through
+ * `access` if given.
+ */
+function receivedBy(
   checker: CheckerContext,
   module: ModuleId,
   type: Type,
   access: MemberAccess | undefined,
-): readonly FunctionDeclaration[] {
+): readonly Candidate[] {
   const candidates = metThroughTraits(checker, receiverCandidates(checker, module, type));
   const callable = access === undefined ? candidates : callableThrough(checker, access, candidates);
-  return [
-    ...new Set(
-      callable
-        .filter((candidate) => takesAsSelf(checker, candidate, type))
-        .map(({ declaration }) => declaration),
-    ),
-  ];
+  return callable.filter((candidate) => takesAsSelf(checker, candidate, type));
+}
+
+/** The functions of `candidates`, each once. */
+function declarationsOf(candidates: readonly Candidate[]): readonly FunctionDeclaration[] {
+  return [...new Set(candidates.map(({ declaration }) => declaration))];
 }

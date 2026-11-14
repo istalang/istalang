@@ -103,6 +103,21 @@ export const valueTemplates = {
     message: (type: string, name: string, operator: string) =>
       `'${name}' is a field of the value behind the shared struct ${type}, not of its handle: read it as x${operator}${name} (§3.9).`,
   },
+  getterShape: {
+    code: 5223,
+    message: (name: string) =>
+      `Getter '${name}' must take exactly one parameter, 'self', by value, and not be async: reading it as a field gives it nothing else (§3.1).`,
+  },
+  fieldOrGetter: {
+    code: 5224,
+    message: (type: string, name: string) =>
+      `${type} has both a field and a getter named '${name}': a name on a type is a field, a getter or a method, never two (§3.1).`,
+  },
+  getterNotPlace: {
+    code: 5225,
+    message: (name: string) =>
+      `'${name}' is a getter, computed on every read: it can't be assigned or passed by '&' (§3.1).`,
+  },
   passing: {
     code: 5215,
     message: (name: string, position: number, reference: boolean) =>

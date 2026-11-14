@@ -155,11 +155,18 @@ function fieldDenotation(field: FieldMember | undefined): readonly Denotation[] 
   return field === undefined ? [] : [{ declared: { kind: 'field', field }, type: field.type }];
 }
 
-/** A member: a field read, a method, a static function or a namespace's, or a qualified part. */
+/**
+ * A member: a field read, a getter read (§3.1), a method, a static function or a namespace's, or a
+ * qualified part.
+ */
 function memberDenotations(site: NameSite, access: MemberAccess): readonly Denotation[] {
   const read = fieldNamed(site);
   if (read.length > 0) {
     return read;
+  }
+  const getter = calledAt(site, access, undefined);
+  if (getter !== undefined) {
+    return getter;
   }
   const [, holder] = site.holders;
   const call = callOfCallee(access, site.holders.slice(1));

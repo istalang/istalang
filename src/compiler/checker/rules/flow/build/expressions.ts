@@ -40,6 +40,7 @@ import {
   unaryFlow,
 } from './control.ts';
 import type { FlowBuilder } from './flow-builder.ts';
+import { getterRead, readsGetter } from './getters.ts';
 import { resolvedCall } from './implicit-calls.ts';
 import {
   arrayLiteral,
@@ -107,7 +108,7 @@ function bareStruct(builder: FlowBuilder, node: Expression): ValueId {
   return into;
 }
 
-/** `a.b`: a field read, or what a namespace's or a type's member names. */
+/** `a.b`: a field read, a getter's call (§3.1), or what a namespace's or a type's member names. */
 function memberAccess(builder: FlowBuilder, node: MemberAccess): ValueId {
   const { checker, module } = builder.inputs;
   const read = builder.body.fieldReadOf(node);
@@ -115,6 +116,9 @@ function memberAccess(builder: FlowBuilder, node: MemberAccess): ValueId {
   const isNamed = member !== undefined || builder.body.resolved.has(node.member);
   if (isNamed) {
     return named(builder, node.member, node);
+  }
+  if (readsGetter(builder, node)) {
+    return getterRead(builder, node, node);
   }
   // A member checking found no field for: its target runs all the same.
   return read === undefined

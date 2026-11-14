@@ -27,6 +27,9 @@
  * A listing asks for every name at once (`receiverCandidates`, `staticCandidatesThrough`): each
  * source gives what a lookup wants (`Wanted`), one name's functions or every one, so what a listing
  * offers is what a call may choose.
+ *
+ * Through a receiver, a function is reached as a method, called `x.f(…)`, or as a getter, read
+ * `x.f` (§3.1, §3.7): `receiverMembers` tells them apart once, for reading, calling and listing.
  */
 
 import type { ModuleId } from '../../../program/program.ts';
@@ -35,6 +38,7 @@ import type {
   TraitDeclaration,
   TypeParameter,
 } from '../../../syntax/declarations/index.ts';
+import { isMethod } from '../../../syntax/declarations/methods.ts';
 import type { MemberAccess } from '../../../syntax/expressions/index.ts';
 import { isPlace } from '../../../syntax/expressions/places.ts';
 import type { CheckerContext } from '../../contexts/context.ts';
@@ -198,6 +202,28 @@ export function callableThrough(
   return isPlace(callee)
     ? methods
     : methods.filter(({ declaration }) => checker.parametersOf(declaration)[0]?.reference !== true);
+}
+
+/** The functions a receiver reaches among some candidates, by how it reaches them. */
+export interface ReceiverMembers {
+  /** Called on the receiver, `x.f(…)` (§3.7). */
+  readonly methods: readonly Candidate[];
+  /** Read on the receiver as fields are, `x.f` (§3.1). */
+  readonly getters: readonly Candidate[];
+}
+
+/** The methods and the getters among `candidates`; a function without `self` is neither. */
+export function receiverMembers(
+  checker: Pick<CheckerContext, 'annotations'>,
+  candidates: readonly Candidate[],
+): ReceiverMembers {
+  const reached = candidates.filter(({ declaration }) => isMethod(declaration));
+  const isGetter = ({ declaration }: Candidate) =>
+    checker.annotations.getterOf(declaration) !== undefined;
+  return {
+    methods: reached.filter((candidate) => !isGetter(candidate)),
+    getters: reached.filter(isGetter),
+  };
 }
 
 /** The functions a top-level name denotes in `module`, the prelude's joined (§3.9, §3.13). */

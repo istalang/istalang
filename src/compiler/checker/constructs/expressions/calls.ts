@@ -16,10 +16,11 @@
  *   lookup), with the receiver as its first argument (§3.7). Which overload the receiver's type
  *   picks decides whether `self` is a reference, and only then must the receiver be a place that
  *   may change.
- * - a function value: a variable, a field of the receiver, or any other expression of a function
- *   type (constructs/closures/value-calls.ts), or of an optional one, called as `f?.(…)`, a link of
- *   an optional chain (access/optionals.ts). `x.f()` naming both a field and a method of `x`'s type
- *   is ambiguous, so it is reported; `(x.f)()` calls the field.
+ * - a function value: a variable, a field of the receiver or what its getter gives (§3.1), or any
+ *   other expression of a function type (constructs/closures/value-calls.ts), or of an optional
+ *   one, called as `f?.(…)`, a link of an optional chain (access/optionals.ts). `x.f()` naming both
+ *   a field or a getter and a method of `x`'s type is ambiguous, so it is reported; `(x.f)()` calls
+ *   what the field holds or the getter gives.
  * - `worker.disposing()`, a method of the call an async function's own name is before a `.`
  *   (constructs/closures/own-calls.ts).
  *
@@ -35,10 +36,11 @@
  * a call (checker/desugaring/deferred-calls.ts, §3.14), so every form of callee above may take one.
  */
 
+import type { Diagnostic } from '../../../../foundation/diagnostics/diagnostic.ts';
 import { staticName } from '../../../../foundation/language/static-names.ts';
 import { conversionFunction } from '../../../../foundation/language/well-known/implicit-calls.ts';
+import { unreachable } from '../../../../foundation/structures/unreachable.ts';
 import type { Entity } from '../../../binder/entities.ts';
-import { isMethod } from '../../../syntax/declarations/methods.ts';
 import { misplacedArgument } from '../../../syntax/expressions/arguments.ts';
 import type { Call } from '../../../syntax/expressions/calls.ts';
 import type { MemberAccess } from '../../../syntax/expressions/index.ts';
@@ -48,27 +50,34 @@ import {
   writtenArgumentsOf,
 } from '../../../syntax/expressions/readings.ts';
 import { type Identifier, isMissingName } from '../../../syntax/tree/node.ts';
+import type { AnchoredSpan } from '../../../syntax/tree/positions.ts';
 import type { BodyContext } from '../../contexts/body-context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import { resolveCall, type WrittenArgument } from '../../resolution/calls/resolve/index.ts';
-import { stoppedOperation } from '../../resolution/calls/stopped-operations.ts';
+import { stoppedOperation, stops } from '../../resolution/calls/stopped-operations.ts';
 import {
-  type Candidate,
   callableThrough,
   callCandidates,
+  receiverMembers,
   staticCandidates,
   staticTargetOf,
   topLevelCandidates,
 } from '../../resolution/choosing/candidates.ts';
-import type { FoundField } from '../../surface/checked-field.ts';
-import { fieldOf } from '../../types/traits/known-fields.ts';
+import { readGetter } from '../../rules/getters.ts';
 import type { Type } from '../../types/type/index.ts';
 import { errorType } from '../../types/type/primitives.ts';
 import { typeText } from '../../types/type/type-text.ts';
 import { insideOptional } from '../../types/unions/inside-optional.ts';
 import { namedType } from '../../types/written/named-types.ts';
 import { checkValueCall, valueParameterTypes } from '../closures/value-calls.ts';
-import { readsNothing, readsThroughNamespace, recordFieldRead } from './access/member-access.ts';
+import {
+  callClash,
+  membersNamed,
+  type NamedMembers,
+  readsNothing,
+  readsThroughNamespace,
+  recordFieldRead,
+} from './access/member-access.ts';
 import { writtenArgument } from './call-arguments.ts';
 import { checkVariantCall } from './structs/variants.ts';
 
@@ -118,7 +127,7 @@ function calledBy(context: BodyContext, call: WrittenCall, value: CalledValue | 
   if (node.isOptional) {
     return checkValueCall(context, call, callee, value?.type ?? errorType);
   }
-  if (value !== undefined && value.receiver === undefined) {
+  if (value !== undefined && value.member === undefined) {
     return checkValueCall(context, call, callee, value.type ?? errorType);
   }
   switch (callee.kind) {
@@ -135,7 +144,7 @@ function calledBy(context: BodyContext, call: WrittenCall, value: CalledValue | 
       }
       const owner = namedType(context, callee.target);
       return owner === undefined
-        ? callMethod(context, call, callee, value?.receiver)
+        ? callMethod(context, call, callee, value)
         : callStatic(context, call, owner, callee.member.text);
     }
     default:
@@ -176,8 +185,10 @@ export function calleeRead(context: BodyContext, node: Call): CalleeRead {
 
 /**
  * What a call calls, when its type is known before its arguments (`calleeRead`): a function
- * value's type, or for `x.f(…)` the receiver's, read once here for the call, with the type of the
- * field `f` names, if any, which a method of the same name makes an error the call reports.
+ * value's type, or for `x.f(…)` the receiver's, read once here for the call, with what `f` means
+ * on it and the type of the value its field holds or its getter gives, the getter read now as a
+ * field is (§3.1), unless the receiver stops the call or `f` means two things, which the call
+ * reports.
  */
 function calledValue(context: BodyContext, node: Call): CalledValue | undefined {
   const read = calleeRead(context, node);
@@ -186,10 +197,17 @@ function calledValue(context: BodyContext, node: Call): CalledValue | undefined 
     case 'named':
       return undefined;
     case 'member': {
+      const { access } = read;
       const receiver = context.chains.target(context, node);
+      const members = membersNamed(context, access.member.text, receiver);
+      const clash = callClash(context, access.member, receiver, members);
+      const { field, getters } = members;
+      const readsGetter =
+        !stops(receiver) && clash === undefined && field === undefined && getters.length > 0;
+      const getter = { link: node, access, receiver, getters, expected: undefined };
       return {
-        type: fieldOf(context.checker, receiver, read.access.member.text)?.member.type,
-        receiver,
+        type: readsGetter ? readGetter(context, getter) : field?.member.type,
+        member: { receiver, members, clash },
       };
     }
     default:
@@ -203,71 +221,67 @@ function calledValue(context: BodyContext, node: Call): CalledValue | undefined 
 }
 
 /**
- * The type of what a call calls, when it is known before its arguments, and for `x.f(…)` the
- * receiver's type, read then.
+ * The type of what a call calls, when it is known before its arguments, and for `x.f(…)` what was
+ * read then of its member.
  */
 interface CalledValue {
   readonly type: Type | undefined;
-  readonly receiver?: Type;
+  readonly member?: MemberRead;
 }
 
-/**
- * What `x.f(…)` may call by its member's `name`, given its receiver's type first and its
- * arguments' after: the receiver's field of that name, a function value, and the methods of that
- * name the types find (§3.7); a call naming both is ambiguous, one naming only the field calls its
- * value (§3.14).
- */
-export function memberCalled(
-  context: BodyContext,
-  name: string,
-  receiver: Type,
-  others: readonly (Type | undefined)[],
-): { readonly field: FoundField | undefined; readonly methods: readonly Candidate[] } {
-  const { checker } = context;
-  const methods = topLevelCandidates(checker, context.module, name, [receiver, ...others]).filter(
-    ({ declaration }) => isMethod(declaration),
-  );
-  return { field: fieldOf(checker, receiver, name), methods };
+/** What `x.f(…)` reads before its arguments: the receiver's type, what `f` means on it, and why two. */
+interface MemberRead {
+  readonly receiver: Type;
+  readonly members: NamedMembers;
+  readonly clash: Diagnostic<AnchoredSpan> | undefined;
 }
 
 /**
  * `x.f(…)`: `f` called with `x` as its `self` (§3.7); also as a link of an optional chain, which
- * calls it on the value inside and never through `&self` (access/optionals.ts).
+ * calls it on the value inside and never through `&self` (access/optionals.ts). A field or a getter
+ * of that name gives a function value to call instead (§3.14), read before the arguments
+ * (`calledValue`); either beside a method of that name is ambiguous.
  */
 function callMethod(
   context: BodyContext,
   call: WrittenCall,
   callee: MemberAccess,
-  read: Type | undefined,
+  read: CalledValue | undefined,
 ): Type {
-  const { checker, chains } = context;
+  const { checker, module } = context;
   const receiver = callee.target;
-  const receiverType = read ?? chains.target(context, call.node);
+  const {
+    receiver: receiverType,
+    members,
+    clash,
+  } = read?.member ?? unreachable('A method call reads its member before its arguments.');
   const stopped = stoppedOperation(context, call.node, [{ node: receiver, type: receiverType }]);
   if (stopped !== undefined) {
     return stopped;
+  }
+  if (clash !== undefined) {
+    context.report(clash);
+    return errorType;
+  }
+  const { field, getters } = members;
+  if (field !== undefined) {
+    recordFieldRead(context, callee, field);
+    return checkValueCall(context, call, callee, field.member.type);
+  }
+  if (getters.length > 0) {
+    return checkValueCall(context, call, callee, read?.type ?? errorType);
   }
   const name = callee.member.text;
   const written = [
     { node: receiver, passing: 'receiver', type: receiverType } as const,
     ...call.written,
   ];
-  const { field, methods } = memberCalled(
-    context,
-    name,
-    receiverType,
-    call.written.map(({ type }) => type),
+  // The other arguments' types find methods too (§3.13), which a member's meaning leaves aside.
+  const others = call.written.map(({ type }) => type);
+  const { methods } = receiverMembers(
+    checker,
+    topLevelCandidates(checker, module, name, [receiverType, ...others]),
   );
-  if (field !== undefined && methods.length > 0) {
-    context.report(
-      checkerDiagnostics.fieldOrMethod(callee.member.span, typeText(receiverType), name),
-    );
-    return errorType;
-  }
-  if (field !== undefined) {
-    recordFieldRead(context, callee, field);
-    return checkValueCall(context, call, callee, field.member.type);
-  }
   const candidates = callableThrough(checker, callee, methods);
   if (candidates.length === 0) {
     context.report(

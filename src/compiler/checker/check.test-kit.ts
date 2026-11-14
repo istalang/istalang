@@ -1,7 +1,7 @@
 /**
- * Checking a module as tests write it: `main.ista` beside the std modules, its diagnostics read
- * as codes over the text they explain, and a statement placed in a function with a few parameters
- * to use. The std modules are checked once per test file (compile.test-kit.ts `checkedAfterStd`),
+ * Checking a module as tests write it: `main.ista`, or another of several, beside the std modules,
+ * its diagnostics read as codes over the text they explain, and a statement placed in a function
+ * with a few parameters to use. The std modules are checked once per test file (compile.test-kit.ts `checkedAfterStd`),
  * since checking a module reads the bodies of the std functions it calls (static lifetimes'
  * summaries).
  */
@@ -15,9 +15,14 @@ import { type CheckerOptions, ProgramChecker } from './wiring/program/program-ch
 
 /** Everything reported for `text` as module `main.ista`, beside the std modules and `others`. */
 export function reported(text: string, others: Readonly<Record<string, string>> = {}) {
-  const program = stdProgramOf({ 'main.ista': text, ...others });
+  return reportedAt('main.ista', { 'main.ista': text, ...others });
+}
+
+/** Everything reported for module `key` of `files`, beside the std modules. */
+export function reportedAt(key: string, files: Readonly<Record<string, string>>) {
+  const program = stdProgramOf(files);
   checkedAfterStd(program);
-  const { source, diagnostics } = diagnosedAt(program, 'main.ista');
+  const { source, diagnostics } = diagnosedAt(program, key);
   return reportedIn(source, diagnostics);
 }
 

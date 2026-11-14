@@ -33,8 +33,8 @@ export const closureTemplates = {
   },
   fieldOrMethod: {
     code: 5505,
-    message: (type: string, name: string) =>
-      `${type} has both a field and a method named '${name}': write (x.${name})(…) to call the field.`,
+    message: (type: string, name: string, valued: 'field' | 'getter') =>
+      `${type} has both a ${valued} and a method named '${name}': write (x.${name})(…) to call ${valued === 'field' ? 'the field' : 'what the getter gives'}.`,
   },
   notFunction: {
     code: 5506,

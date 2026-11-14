@@ -70,6 +70,8 @@ export interface TypeMembers {
    * Functions taking it as `self`, among those its module sees and those beside the type (§3.13).
    */
   readonly methods: readonly FunctionDeclaration[];
+  /** Getters taking it as `self`, read as fields are, found as its methods are (§3.1). */
+  readonly getters: readonly FunctionDeclaration[];
   /** Functions declared on the type, `fn Type.name`, that its module sees (§3.7). */
   readonly statics: readonly FunctionDeclaration[];
   /** What declares each associated type it has (§3.1): its own, or its traits' requirements. */

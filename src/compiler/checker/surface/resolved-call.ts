@@ -219,8 +219,9 @@ export function instantiatingTypesOf(call: ResolvedCall): readonly Type[] {
  * that calls a function (§3.9), indexing, which calls `index`, an assignment, whose compound
  * operator calls a function; and a function named as a value (§3.14), `f`, `ns.f` or `T.f`, or
  * given type arguments, `f<Int>`, for the function its closure runs, recorded at its name
- * (`functionValueSite`). A call of a function value resolves to none (`CheckedBody.valueCalls`),
- * and a call the language makes is implicit (`ImplicitRole`).
+ * (`functionValueSite`); and a member access reading a getter, `x.g`, the call `g(x)` (§3.1). A
+ * call of a function value resolves to none (`CheckedBody.valueCalls`), and a call the language
+ * makes is implicit (`ImplicitRole`).
  */
 export type ResolvedSite = NodeOf<
   | 'Call'

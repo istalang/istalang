@@ -94,6 +94,8 @@ export const wellKnown = {
   parsable: { module: 'prelude', name: 'Parsable' },
   /** Names an `await` or `select` statement's suspension point (§10). */
   waypoint: { module: 'prelude', name: 'Waypoint' },
+  /** Makes a method a getter, read as a field is (§3.1). */
+  getter: { module: 'prelude', name: 'Getter' },
   /** JSON as a value: what the codecs turn typed values into and back from (§9). */
   json: { module: 'json', name: 'Json' },
   /**

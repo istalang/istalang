@@ -12,10 +12,10 @@
  * - A value computed now is typed by what it is, as a constant's value is. An argument computing
  *   nothing, the same value made now or later (a literal, a lambda, a name of a function, variant or
  *   type, a literal of such parts), stays in the call, which types it as any call does.
- * - Whether `x.f(…)` reads a field value or calls a method is decided by `x`'s type, checked first,
- *   as any call decides it (constructs/expressions/calls.ts): the field `x.f` is computed now, else
- *   `x`. What a link of an optional chain computes now holds the chain's optional, so the link made
- *   later reads through it.
+ * - Whether `x.f(…)` reads a value, a field's or a getter's, or calls a method is decided by `x`'s
+ *   type, checked first, as any call decides it (constructs/expressions/calls.ts): the value `x.f`
+ *   is computed now, else `x`. What a link of an optional chain computes now holds the chain's
+ *   optional, so the link made later reads through it.
  * - A constant's name stands at the taker, and each function, which covers no text, where its call
  *   starts, so a function captures every constant and the code around it none: captures are found
  *   by where names are declared (constructs/closures/functions.ts).
@@ -42,8 +42,13 @@ import { unqualified } from '../../syntax/tokens/modifiers.ts';
 import type { SyntaxNode } from '../../syntax/tree/index.ts';
 import type { Identifier } from '../../syntax/tree/node.ts';
 import { spanBetween, startOf } from '../../syntax/tree/positions.ts';
-import { readsThroughNamespace } from '../constructs/expressions/access/member-access.ts';
-import { calleeRead, memberCalled } from '../constructs/expressions/calls.ts';
+import {
+  callClash,
+  membersNamed,
+  readsThroughNamespace,
+  valuedMember,
+} from '../constructs/expressions/access/member-access.ts';
+import { calleeRead } from '../constructs/expressions/calls.ts';
 import type { BodyContext } from '../contexts/body-context.ts';
 import { synthesized } from '../contexts/synthesized.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
@@ -163,8 +168,9 @@ function hoisted(building: Building, call: Call): (given: Expression | undefined
     const looked = chained
       ? (presentType(receiver, context.checker.typeRules) ?? receiver)
       : receiver;
-    const { field, methods } = memberCalled(context, access.member.text, looked, []);
-    if (field !== undefined && methods.length === 0) {
+    const members = membersNamed(context, access.member.text, looked);
+    const clash = callClash(context, access.member, looked, members);
+    if (valuedMember(members) !== undefined && clash === undefined) {
       callee = constant(building, call.callee);
       isOptional ||= chained;
     } else {

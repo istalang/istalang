@@ -21,16 +21,24 @@ export const known = {
   jsonBigInt: wellKnown.jsonBigInt,
   waypoint: wellKnown.waypoint,
   suite: wellKnown.suite,
+  getter: wellKnown.getter,
   holds: wellKnown.holds,
   keeps: wellKnown.keeps,
 } as const satisfies Record<string, WellKnownDeclaration>;
 
 export type Known = keyof typeof known;
 
-/** A place as its annotations' check reads it: a field's with the type it is declared with. */
+/** Where a function stands: among its module's items, a trait's requirements, or in a body. */
+export type FunctionStanding = 'module' | 'trait' | 'body';
+
+/**
+ * A place as its annotations' check reads it: a field's with the type it is declared with, a
+ * function's with where it stands.
+ */
 export type Placed =
-  | Exclude<AnnotationPlace, { readonly kind: 'field' }>
-  | { readonly kind: 'field'; readonly type: Type };
+  | Exclude<AnnotationPlace, { readonly kind: 'field' | 'function' }>
+  | { readonly kind: 'field'; readonly type: Type }
+  | { readonly kind: 'function'; readonly isExtern: boolean; readonly stands: FunctionStanding };
 
 /** What a placement reads beyond the place: whether a type has a default, and where it stands. */
 export interface PlaceFacts {
@@ -76,6 +84,8 @@ export const placements: Record<
     return place.waits ? undefined : (at) => checkerDiagnostics.waypointWithoutWait(at);
   },
   suite: (place) => (place.kind === 'function' ? undefined : 'elsewhere'),
+  getter: (place) =>
+    place.kind === 'function' && place.stands === 'module' ? undefined : 'elsewhere',
   holds: (place, { isStd }) => {
     if (place.kind !== 'struct') {
       return 'elsewhere';
@@ -94,13 +104,20 @@ export const placements: Record<
       : 'elsewhere',
 };
 
+/** How a diagnostic names a function's place, by where it stands. */
+const functionPlaceTexts: Record<FunctionStanding, string> = {
+  module: 'a function',
+  trait: "a trait's requirement",
+  body: 'a local function',
+};
+
 /** How a diagnostic names `place`. */
 export function placeText(place: Placed): string {
   switch (place.kind) {
     case 'field':
       return 'a field';
     case 'function':
-      return 'a function';
+      return functionPlaceTexts[place.stands];
     case 'struct':
       return place.isExtern ? 'an extern struct' : 'a struct declaration';
     case 'statement':

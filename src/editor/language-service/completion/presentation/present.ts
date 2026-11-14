@@ -109,6 +109,15 @@ const presenters: Handlers<Presenting, Subject, [name: string], Shown> = {
         : {}),
     };
   },
+  getter: ({ cursor: { checker } }, { declaration }) => {
+    const result = checker.resultOf(declaration);
+    return {
+      kind: 'field',
+      detail: typeText(result),
+      ...documented(docstringOf(checker, { kind: 'function', declaration })),
+      gives: [result],
+    };
+  },
   function: (presenting, { declaration, through }, name) => {
     const { checker } = presenting.cursor;
     return {

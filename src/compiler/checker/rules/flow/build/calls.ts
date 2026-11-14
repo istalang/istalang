@@ -22,6 +22,7 @@ import {
 } from '../../../surface/resolved-call.ts';
 import { stepTarget } from './chains.ts';
 import type { FlowBuilder } from './flow-builder.ts';
+import { getterRead, readsGetter } from './getters.ts';
 import { implicitCall, resolvedCall, valueAt } from './implicit-calls.ts';
 import { spreadValue } from './literals.ts';
 import { enterPlace, leaveAll, partOfField } from './places.ts';
@@ -95,15 +96,21 @@ function encodedOutcome(builder: FlowBuilder, node: Call): void {
 
 /**
  * The function value a value call calls: the one inside an optional for `f?.()`, the field read
- * from `x` for `x.f(…)`, of its field's type, else its callee's value.
+ * from `x` for `x.f(…)`, of its field's type, or what its getter gives, else its callee's value.
  */
 function calleeValue(builder: FlowBuilder, node: Call): ValueId {
   const callee = calledName(node);
   if (node.isOptional) {
     return stepTarget(builder, node, callee);
   }
-  const read = callee.kind === 'MemberAccess' ? builder.body.fieldReadOf(callee) : undefined;
-  if (callee.kind !== 'MemberAccess' || read === undefined) {
+  if (callee.kind !== 'MemberAccess') {
+    return builder.expression(callee);
+  }
+  if (readsGetter(builder, callee)) {
+    return getterRead(builder, node, callee);
+  }
+  const read = builder.body.fieldReadOf(callee);
+  if (read === undefined) {
     return builder.expression(callee);
   }
   const target = stepTarget(builder, node, callee.target);

@@ -40,7 +40,7 @@ tags: [reuse, testing, test-kit, arbitraries, fast-check, corpus]
 - build a `Program` with the prelude or all std modules (cached) → `preludeProgramOf`, `stdProgramOf`, `boundReport` (`src/compiler/binder/bind.test-kit.ts`)
 - inspect bound entities by name occurrence in source order → `namesIn`, `entityOfName`, `declaringName` (`src/compiler/binder/bind.test-kit.ts`)
 - sweep every name the binder resolved over the corpus and std modules → `boundCorpus`, `resolvedNames` (`src/compiler/binder/bind.test-kit.ts`)
-- check a `main.ista` snippet with all std modules or wrap statements in a function → `reported`, `inFunction` (`src/compiler/checker/check.test-kit.ts`)
+- check a `main.ista` snippet with all std modules, or any module of several such as a test module (`reportedAt`), or wrap statements in a function → `reported`, `reportedAt`, `inFunction` (`src/compiler/checker/check.test-kit.ts`)
 - check many small `stdProgramOf` programs, each checker taking over the std modules' results checked once per file → `checkedAfterStd` (`src/compiler/compile.test-kit.ts`)
 - ask a checked `main.ista` by names as written, ask every query a tool may ask of a node, or compare two checkers' answers at every node of a module → `checkedMain`, `answersAt`, `spelledAnswers` (`src/compiler/checker/lookup/lookup.test-kit.ts`)
 - check a rule across every std module at once → `everyStdModule` (`src/stdlib/std-modules.test-kit.ts`)

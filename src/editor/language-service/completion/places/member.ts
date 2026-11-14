@@ -1,10 +1,10 @@
 /**
  * A member's place: after a member's operator (`.`, `?.`, `->`, `?->`), what the value before it
- * has: its fields, and the methods and statics a call through it may choose (checker
- * lookup/members.ts); after a namespace, what its module exports; after a type, its statics and
- * variants. A qualified name offers only what its place takes: in a type, or before braces, a
- * namespace's types and a type's associated types; naming what a pattern matches, a namespace's
- * types and a type's variants.
+ * has: its fields and getters (§3.1), and the methods and statics a call through it may choose
+ * (checker lookup/members.ts); after a namespace, what its module exports; after a type, its
+ * statics and variants. A qualified name offers only what its place takes: in a type, or before
+ * braces, a namespace's types and a type's associated types; naming what a pattern matches, a
+ * namespace's types and a type's variants.
  *
  * Only a member can follow a `.` or `?.`, so where none can stand there, as after a name on a line
  * of its own at the top level, the place is still a member's and nothing is offered: never the
@@ -41,7 +41,7 @@ import type { Identifier } from '../../../../compiler/syntax/tree/node.ts';
 import { spanIn } from '../../../../compiler/syntax/tree/positions.ts';
 import type { NamedType, TypeNode } from '../../../../compiler/syntax/types/index.ts';
 import { importedModule } from '../../reading/namespaces.ts';
-import type { Candidate } from '../candidate.ts';
+import type { Candidate, Subject } from '../candidate.ts';
 import { type Cursor, touchingBefore } from '../cursor.ts';
 
 /**
@@ -205,9 +205,10 @@ function valueMembers(
   if (value === undefined) {
     return [];
   }
-  const { fields, methods } = checker.lookup.membersOf(module, value, access);
+  const { fields, getters, methods } = checker.lookup.membersOf(module, value, access);
   return [
     ...fields.map((field): Candidate => ({ name: field.name, subject: { kind: 'field', field } })),
+    ...onePerName(getters, (declaration) => ({ kind: 'getter', declaration })),
     ...functionsThrough('value', methods),
   ];
 }
@@ -222,14 +223,19 @@ function linkOf(tree: SyntaxTree, access: MemberAccess): Expression {
   return call !== undefined && chainStepOf(call)?.target === access.target ? call : access;
 }
 
-/** One candidate per name, overloads alike, naming one of them. */
+/** The methods or statics of `functions`, reached through a value or a type. */
 function functionsThrough(
   through: 'value' | 'type',
   functions: readonly FunctionDeclaration[],
 ): readonly Candidate[] {
+  return onePerName(functions, (declaration) => ({ kind: 'function', declaration, through }));
+}
+
+/** One candidate per name, overloads alike, naming one of them as `subjectOf` makes it. */
+function onePerName(
+  functions: readonly FunctionDeclaration[],
+  subjectOf: (declaration: FunctionDeclaration) => Subject,
+): readonly Candidate[] {
   const byName = new Map(functions.map((each) => [each.name.text, each]));
-  return [...byName].map(([name, declaration]) => ({
-    name,
-    subject: { kind: 'function', declaration, through },
-  }));
+  return [...byName].map(([name, declaration]) => ({ name, subject: subjectOf(declaration) }));
 }

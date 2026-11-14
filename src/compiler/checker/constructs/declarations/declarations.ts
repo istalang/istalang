@@ -42,6 +42,7 @@ import type { CheckerContext } from '../../contexts/context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import { checkHostBoundary, crossesToHost } from '../../rules/boundary/host-boundary.ts';
 import { checkDisposeDeclaration, isDisposeFunction } from '../../rules/disposal/disposal.ts';
+import { checkGetter } from '../../rules/getters.ts';
 import {
   checkConstantKinds,
   checkDataKinds,
@@ -118,6 +119,9 @@ function checkFunction(checker: CheckerContext, node: FunctionDeclaration): void
   }
   if (checker.annotations.suiteTitleOf(module, node) !== undefined) {
     checkSuite(checker, module, node);
+  }
+  if (checker.annotations.getterOf(node) !== undefined) {
+    checkGetter(checker, module, node);
   }
 }
 

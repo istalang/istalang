@@ -6,10 +6,11 @@
  *   (syntax `isPlace`, by which the parser reports a target or `&` argument that is none). A field
  *   a trait requires, read through an `any` value or a type parameter, which may be an `any` type,
  *   is no place: its value's own type, which holds the field, is known only when the program runs
- *   (§3.14). Its root decides: a `let` may change, and so may a reference parameter, which changes
- *   the caller's place. A by-value parameter is as if declared `const` (§3.3), and a `const`,
- *   top-level or local, is deeply immutable, so no part of either may change; neither may a
- *   pattern's or loop's binding or an extern constant (§3.6).
+ *   (§3.14); nor is a getter, whose value is computed on each read (§3.1). Its root decides: a
+ *   `let` may change, and so may a reference parameter, which changes the caller's place. A
+ *   by-value parameter is as if declared `const` (§3.3), and a `const`, top-level or local, is
+ *   deeply immutable, so no part of either may change; neither may a pattern's or loop's binding
+ *   or an extern constant (§3.6).
  * - A change counts as the root `let` being changed, so it isn't warned about as never reassigned.
  *   A reference marks its root as referenced, which lowering gives storage a reference can reach,
  *   and so does an element written, since its `setIndex` takes the container by `&`.
@@ -74,6 +75,13 @@ export function checkChangedPlace(context: BodyContext, node: Expression, use: P
  */
 function changePlace(context: BodyContext, node: Expression, use: PlaceUse): boolean {
   const { root, steps } = placePath(node);
+  const getter = steps.find(
+    (step) => step.kind === 'MemberAccess' && context.calls.of(step) !== undefined,
+  );
+  if (getter?.kind === 'MemberAccess') {
+    context.report(checkerDiagnostics.getterNotPlace(getter.member.span, getter.member.text));
+    return false;
+  }
   const throughTrait = steps.find(
     (step) =>
       step.kind === 'MemberAccess' &&

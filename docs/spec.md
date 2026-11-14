@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-11-11
-last_updated: 2026-11-13
+last_updated: 2026-11-14
 tags: [language, spec]
 ---
 
@@ -466,7 +466,23 @@ fn moved() -> Settings:
 
 **Shared structs.** `shared struct Inbox<T>: …` declares a struct whose values are handles to one cell holding its fields, built with `new` and read through with `->` (§3.18).
 
-**No getters or setters.** Reading or assigning a field never runs code; a value computed from fields is a method, such as `order.total()`. This keeps structs plain data under value semantics.
+**Getters.** A value computed from fields may read as a field: a method annotated `@Getter`, the prelude's annotation without fields (§3.16), is read with `.`, and `x.g` is the call `g(x)`, made on every read.
+
+```python
+struct Person:
+    first: String
+    last: String
+
+@Getter
+fn full(self: Person) -> String: `${self.first} ${self.last}`
+
+fn greeting(p: Person) -> String: `Dear ${p.full}`   # Person{first: "Ada", last: "Lovelace"} gives "Dear Ada Lovelace"
+```
+
+- **What it is.** A method of a module's own, taking exactly one parameter, `self`, by value, and not `async`; it may be generic, and of any mark (§3.3), which each read is judged by as its call would be. A trait's requirement or a local function is never one.
+- **Read as a field.** `x.g` reads it on any type, a shared struct's handle among them, as that type's methods are called (§3.18), and `x?.g` on the value inside an optional (§4). `x.g(…)` calls the function it gives, as for a field holding one, and called as a plain function, `g(x)`, it is the method it is. It is found as methods are, by the type of `self`, so a module may declare getters for types it imports (§3.13).
+- **One meaning per name.** On a type, a name is a field, a getter or a method, never two: a use finding a getter beside a field or a method of its name, among those taking its receiver, is a compile error, as a call finding a field and a method is (§3.7).
+- **Never stored.** Reading or assigning a field never runs code, and a getter is no field: a literal never gives one, nothing assigns one or passes it by `&`, and `==`, hashing, the JSON codecs, struct patterns, `keyof`, spreads, field loops, shapes, struct constraints and a trait's field requirements see the stored fields only. This keeps structs plain data under value semantics.
 
 **Value semantics.** Structs, arrays and maps are values. They are copied structurally, field by field, when assigned, passed to a function, returned or sent. A by-value parameter is immutable (§3.3). The only ways a function can change data its caller holds are an explicit reference (§3.7) and a handle, such as a `Shared` value (§3.8). A **handle** is a value of a type its declaration makes one, never its name: every shared struct (§3.18), such as `Shared<T>`, `Inbox<T>` and `Revertible<T>`, and every extern struct declared `shared`, `sendable` or `live` (§3.6), such as `Slot<T>`, `Future<T, K>`, `WeakRef<T>` and `Instance<T>`. Copying one copies the handle, not the state behind it, and `==` compares handles by identity.
 
@@ -799,7 +815,7 @@ extern ista fn disposed<T is Disposable>(self: WeakRef<T>) -> Future<Unit, "ista
 extern ista fn result<T is Sendable>(self: Instance<T>) -> Future<Result<T>, "ista">   # its first end (§9)
 ```
 
-The prelude also contains `type Optional<T> = T?`, whose static functions are every optional's (§3.17), `Result`, `Step` (§3.10), `Error`, the built-in traits (§3.10, including `Disposable`, `Stringable` and `Parsable`, which `Int`, `Float`, `Bool` and `String` satisfy), the `Waypoint` annotation (§10), `panic`, `ista fn spawn<R>(f: sendable ista async fn() -> R) -> Instance<R>`, which starts a new instance running `f` (§9), and `M fn defer<M in Mark>(f: Fn<(), Unit, M>) -> Deferred<M>`, a shared struct whose `M fn dispose` calls `f` (§7).
+The prelude also contains `type Optional<T> = T?`, whose static functions are every optional's (§3.17), `Result`, `Step` (§3.10), `Error`, the built-in traits (§3.10, including `Disposable`, `Stringable` and `Parsable`, which `Int`, `Float`, `Bool` and `String` satisfy), the `Waypoint` and `Getter` annotations (§10, §3.1), `panic`, `ista fn spawn<R>(f: sendable ista async fn() -> R) -> Instance<R>`, which starts a new instance running `f` (§9), and `M fn defer<M in Mark>(f: Fn<(), Unit, M>) -> Deferred<M>`, a shared struct whose `M fn dispose` calls `f` (§7).
 
 The **standard library** is a set of modules, imported explicitly, for example `import * as time from 'time'`. Pure modules are plain code in the language; runtime-backed ones declare externs the runtime implements. Nothing in it reaches a file system, shell, environment, network or reflection: a workflow affects the outside world only through externs its operator provides.
 
@@ -1313,10 +1329,10 @@ struct GithubUser:
     cache: Map<String, Int> @JsonSkip
 ```
 
-- **Annotations are ordinary structs.** Any struct can be used as one, so libraries and tools declare their own. The `json` module declares `JsonName` (a single `String` field), `JsonSkip` and `JsonBigInt` (no fields), and the prelude declares `Waypoint` (a single `String` field).
+- **Annotations are ordinary structs.** Any struct can be used as one, so libraries and tools declare their own. The `json` module declares `JsonName` (a single `String` field), `JsonSkip` and `JsonBigInt` (no fields), and the prelude declares `Waypoint` (a single `String` field) and `Getter` (no fields).
 - **Short forms come from the struct rules (§3.1):** a single-field struct takes its value without a field name, as in `@JsonName{"user_id"}`, and a struct without fields is written bare, as in `@JsonSkip`.
 - **Checked at compile time.** An unknown annotation, a misspelled field or a wrong value type is a compile error. Annotation values must be computable at compile time, the same rule as top-level `const`. A declaration's annotations are written in the scope of its type parameters, as a field's are in its struct's, and their values are computed once for the declaration, whatever its instance. So a struct declaration's may name its type parameters (`@Holds<T>` on `Slot<T>`), while a field's and a function's, which every instance carries, name none of them: `@Tag<T>` on a field of `Box<T>` is a compile error.
-- **Where.** `JsonName`, `JsonSkip` and `JsonBigInt` apply to fields of struct declarations and enum variants (§9 says which fields), `@Suite` to functions (§10), and `@Waypoint` to a statement that awaits or selects (§10). The `lifetimes` module's `Holds` applies to an extern struct and `Keeps` to an extern function, both of the std's only (§3.8): a host keeps no language values (§9), and any other code shows what its values hold and keep; `Keeps` names the function's parameters, as `@Keeps{["self": ["value"]]}` on the prelude's `put` says that a slot keeps the value put in it. Any other struct may annotate fields, functions and struct declarations, extern ones included, for tools to read, and statements take only `@Waypoint`. A field of an anonymous struct type, a shape (§3.1), takes none, since no declaration carries it: a field needing `@JsonName` lives in a struct. Using an annotation anywhere else, or the same one twice on one item, is a compile error.
+- **Where.** `JsonName`, `JsonSkip` and `JsonBigInt` apply to fields of struct declarations and enum variants (§9 says which fields), `@Suite` and `@Getter` to functions (§10, §3.1), and `@Waypoint` to a statement that awaits or selects (§10). The `lifetimes` module's `Holds` applies to an extern struct and `Keeps` to an extern function, both of the std's only (§3.8): a host keeps no language values (§9), and any other code shows what its values hold and keep; `Keeps` names the function's parameters, as `@Keeps{["self": ["value"]]}` on the prelude's `put` says that a slot keeps the value put in it. Any other struct may annotate fields, functions and struct declarations, extern ones included, for tools to read, and statements take only `@Waypoint`. A field of an anonymous struct type, a shape (§3.1), takes none, since no declaration carries it: a field needing `@JsonName` lives in a struct. Using an annotation anywhere else, or the same one twice on one item, is a compile error.
 - **Read by the toolchain.** The boundary conversion, the `json` module and the test runner read annotations, and the compiler reads `lifetimes`' (§7). There is no user-facing reflection in v0.1; a field loop (§4) is resolved at compile time and reaches only a struct's fields.
 
 ### 3.17 Type aliases
@@ -1377,7 +1393,7 @@ fn renew(self: Lease):
 ```
 
 - **Built with `new`.** `new Lease{name: "db"}` makes a new cell holding the fields, from a literal like any struct's (§3.1): defaults, shorthand and a leading spread, which takes the value behind another (`new Lease{...*other}`). Only a shared struct is built with `new`, and only with `new`; either way round, the other is a compile error.
-- **Read through, never with `.`.** `x->field` reads or writes a field, and `*x` the whole value, the shape of the fields (§3.1, §3.9), which any value of that shape writes or spreads into `new Lease{…}`. The fields are that value's, not the handle's, so `x.field` is a compile error, a struct pattern doesn't take a shared struct apart, and a shared struct never meets a trait's field requirement (§3.10). Methods are called with `.`, as on any type: `lease.renew()`.
+- **Read through, never with `.`.** `x->field` reads or writes a field, and `*x` the whole value, the shape of the fields (§3.1, §3.9), which any value of that shape writes or spreads into `new Lease{…}`. The fields are that value's, not the handle's, so `x.field` is a compile error, a struct pattern doesn't take a shared struct apart, and a shared struct never meets a trait's field requirement (§3.10). Methods are called with `.`, as on any type: `lease.renew()`, and getters are read so (§3.1).
 - **Identity.** Copying a shared struct copies the handle, not the cell, and `==` compares handles by identity (§3.1). A shared struct is never sendable, so it stays in its instance, and has no JSON form (§9). It is invariant in every type parameter (§3.5): a `Shared<Int>` is no `Shared<Int?>`, since its fields are read and written through every copy. Its fields may hold the shared struct itself, since what they hold is a handle: `shared struct Node { next: Node? }`.
 - **Its own module.** A shared struct is a nominal type of the module declaring it, so argument-dependent lookup finds that module's functions for it (§3.13), and a diagnostic names it as declared.
 - **Disposal.** A shared struct has an identity, so a `dispose` declared beside it makes it disposable (§7), which is how a module makes a resource of its own.

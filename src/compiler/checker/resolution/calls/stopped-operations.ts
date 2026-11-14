@@ -25,6 +25,11 @@ export interface StoppingOperand {
   readonly type: Type;
 }
 
+/** Whether an operand of `type` stops an operation: it has no value, or an explained mistake. */
+export function stops(type: Type): boolean {
+  return type.kind === 'error' || isPrimitive(type, 'Never');
+}
+
 /**
  * What `operation` gives when one of its `operands`, in evaluation order, stops it: `Never` after
  * one with no value, recording the operands that run, or the error type after an explained one;
@@ -35,9 +40,7 @@ export function stoppedOperation(
   operation: Expression | Assignment,
   operands: readonly StoppingOperand[],
 ): Type | undefined {
-  const index = operands.findIndex(
-    ({ type }) => type.kind === 'error' || isPrimitive(type, 'Never'),
-  );
+  const index = operands.findIndex(({ type }) => stops(type));
   const stopping = operands[index];
   if (stopping === undefined) {
     return undefined;
