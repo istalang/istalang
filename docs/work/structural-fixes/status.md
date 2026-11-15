@@ -76,3 +76,6 @@ tags: [structural-fixes, status]
   Q31/P25/B30 and Q47 proved bigger than local; their rows carry the findings, for the E plan. For later work:
   a Diagnostic has a required `arguments` field (tools read `<factory>.argumentsOf`, never prose); binder lists walk
   through `binder.eachItem`.
+- B's merge-review follow-up merged (ff to `e7e5c906`): QA pass, review approve (3rd round). B105 closed; P53, B107
+  filed. `CheckerContext.typingDefaults` and `EntryTable.anyRunning` added. The call rule still skips a requirement
+  forwarded as a witness (judging it broke 5606). Next: `sfmr-liki` re-reviews the follow-up, then verify on main.
