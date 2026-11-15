@@ -23,7 +23,7 @@ import type { Register, TypeId } from '../../definition/operands.ts';
 import { partAt } from '../../definition/values/parts.ts';
 import { handleTarget, handleTo, type Value } from '../../definition/values/values.ts';
 import { unreachable } from '../../foundation/structures/unreachable.ts';
-import type { ValueChanges } from '../lifetimes/in-place.ts';
+import type { ValueChanges } from '../natives.ts';
 import { heldIn } from '../snapshot/holdings.ts';
 import { isReference, type Reference, type RegisterContents } from '../snapshot/objects.ts';
 import type { ActiveFrame, FrameHeap } from './frames.ts';

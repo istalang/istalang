@@ -24,7 +24,6 @@ import type { FunctionId, TypeId } from '../definition/operands.ts';
 import type { TypeDefinition, TypeReference } from '../definition/tables/types.ts';
 import type { Value } from '../definition/values/values.ts';
 import type { Inspection, LogRecord, SpawnOptions } from './instance-state.ts';
-import type { ValueChanges } from './lifetimes/in-place.ts';
 import type { CallMaker } from './scheduler/run-contexts.ts';
 import type { TestWatch } from './snapshot/objects.ts';
 
@@ -324,4 +323,18 @@ export class Panic extends Error {
     super(message, options);
     this.trace = options?.trace;
   }
+}
+
+/** The changes a native makes to the array or map it takes by `&`, as `NativeContext.changes` gives them. */
+export interface ValueChanges {
+  readonly push: (items: readonly Value[]) => void;
+  /** Removes the last element; it, or undefined for an empty array. */
+  readonly pop: () => Value | undefined;
+  readonly reverse: () => void;
+  /** Replaces `count` elements from `start` with `items`. */
+  readonly splice: (start: number, count: number, items: readonly Value[]) => void;
+  /** Sets `key` to `value`: a key the map holds keeps its place, a new one goes last. */
+  readonly setEntry: (key: Value, value: Value) => void;
+  /** Deletes `key`'s entry; whether the map had one. */
+  readonly deleteEntry: (key: Value) => boolean;
 }

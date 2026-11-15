@@ -46,6 +46,7 @@ import {
   withChildValues,
 } from '../../definition/values/values.ts';
 import { unreachable } from '../../foundation/structures/unreachable.ts';
+import type { ValueChanges } from '../natives.ts';
 import type { WrittenJson } from './written-json.ts';
 
 /** What changing values in place reads of and tells the counts (counts.ts). */
@@ -60,20 +61,6 @@ interface Place {
   readonly read: () => Value;
   readonly path: readonly number[];
   readonly write: (whole: Value) => void;
-}
-
-/** The changes a native makes to the array or map it takes by `&` (runtime/natives.ts). */
-export interface ValueChanges {
-  readonly push: (items: readonly Value[]) => void;
-  /** Removes the last element; it, or undefined for an empty array. */
-  readonly pop: () => Value | undefined;
-  readonly reverse: () => void;
-  /** Replaces `count` elements from `start` with `items`. */
-  readonly splice: (start: number, count: number, items: readonly Value[]) => void;
-  /** Sets `key` to `value`: a key the map holds keeps its place, a new one goes last. */
-  readonly setEntry: (key: Value, value: Value) => void;
-  /** Deletes `key`'s entry; whether the map had one. */
-  readonly deleteEntry: (key: Value) => boolean;
 }
 
 /** A path opened for writing: the whole value its holder is to take, and the nodes along it. */
