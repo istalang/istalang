@@ -10,9 +10,9 @@
 
 import type { ActiveFrame } from '../../interpreter/frames.ts';
 import { Collector } from '../../lifetimes/collector.ts';
+import { panicOf } from '../../natives.ts';
 import type { LiveExecution } from '../instance/heap.ts';
 import { type DisposalRunSeams, DisposalRuns } from './disposal-runs.ts';
-import { panicOf } from './limits.ts';
 
 /** What a segment's collecting reads: its instance, its run stack, the caller of its calls. */
 type CollectionSeams = Omit<DisposalRunSeams, 'returned' | 'abandoned'>;

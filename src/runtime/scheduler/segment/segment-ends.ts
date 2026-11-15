@@ -8,9 +8,10 @@
  */
 
 import { depthOf } from '../../../definition/values/values.ts';
+import { panicOf } from '../../natives.ts';
 import type { HeapObject } from '../../snapshot/objects.ts';
 import type { Instance } from '../instance/index.ts';
-import { panicOf, requireDepth } from './limits.ts';
+import { requireDepth } from './limits.ts';
 import type { Outcome } from './root-outcome.ts';
 
 export type SegmentEnd =

@@ -338,3 +338,24 @@ export interface ValueChanges {
   /** Deletes `key`'s entry; whether the map had one. */
   readonly deleteEntry: (key: Value) => boolean;
 }
+
+/** The panic `error` stands for: a Panic itself, or one for a limit the program ran into. */
+export function panicOf(error: unknown): Panic | undefined {
+  if (error instanceof Panic) {
+    return error;
+  }
+  const limit = error instanceof RangeError ? limits.get(error.message) : undefined;
+  return limit === undefined ? undefined : new Panic(limit, { cause: error });
+}
+
+/**
+ * What each limit's RangeError says, as V8 words it, and what the panic says instead: a string, an
+ * array or an integer larger than JavaScript can hold is a limit, not a bug (§3.12). The engine
+ * says so only with a RangeError and its message, so the messages are matched here, the one place
+ * every runtime reads them; any other RangeError is a bug and propagates.
+ */
+const limits = new Map([
+  ['Invalid string length', 'The string would be longer than the runtime can hold.'],
+  ['Invalid array length', 'The array would be longer than the runtime can hold.'],
+  ['Maximum BigInt size exceeded', 'The integer would be larger than the runtime can hold.'],
+]);
