@@ -79,3 +79,6 @@ tags: [structural-fixes, status]
 - B's merge-review follow-up merged (ff to `e7e5c906`): QA pass, review approve (3rd round). B105 closed; P53, B107
   filed. `CheckerContext.typingDefaults` and `EntryTable.anyRunning` added. The call rule still skips a requirement
   forwarded as a witness (judging it broke 5606). Next: `sfmr-liki` re-reviews the follow-up, then verify on main.
+- Merge re-review (`sfmr-liki`): approve, no findings. `npm run verify` on main green (390 files). Structural-fixes
+  A–D complete. Open: the E plan (B99–B103, B87, B106, B107, P53, Q6, Q30, Q31/P25/B30, Q47, F31); B's agents
+  and worktree await the human's go to close; `together` in `type-text.ts` not yet filed (asked the human).
