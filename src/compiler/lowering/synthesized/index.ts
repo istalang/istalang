@@ -158,6 +158,10 @@ export class SynthesizedCode implements CodeContext {
   entry(header: EntryHeader, mode: CodeMode, references: readonly boolean[] = []): CodeFunction {
     const { registers, counted, instructions } = this.code.finish(
       this.tables.treeAt(header.module),
+      {
+        inputs: this.parameters.length + this.captures.length,
+        cells: this.#cells.map(({ register }) => register),
+      },
     );
     return {
       kind: 'code',

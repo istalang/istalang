@@ -312,7 +312,11 @@ class FunctionLowering implements EntryContext {
   #entry(parameters: readonly EntryParameter[]): CodeFunction {
     const { header, mode, captures } = this.frame;
     const { tree } = programModule(this.checker.program, this.module);
-    const { registers, counted, instructions } = this.code.finish(tree);
+    const cells = [...this.variables.cells];
+    const { registers, counted, instructions } = this.code.finish(tree, {
+      inputs: parameters.length + captures.length,
+      cells: cells.map(({ register }) => register),
+    });
     return {
       kind: 'code',
       ...header,
@@ -320,7 +324,7 @@ class FunctionLowering implements EntryContext {
       parameters: parameters.map(({ reference, hasDefault }) => ({ reference, hasDefault })),
       captures: captures.length,
       registers,
-      cells: [...this.variables.cells],
+      cells,
       counted,
       instructions,
     };

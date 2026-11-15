@@ -17,6 +17,7 @@ import type { Register } from '../../../definition/operands.ts';
 import { addToGroup } from '../../../foundation/structures/groups.ts';
 import { unreachable } from '../../../foundation/structures/unreachable.ts';
 import { type AnchoredSpan, type SegmentBases, spanIn } from '../../syntax/tree/positions.ts';
+import { plainRegisters, type TypedOnly } from './plain-registers.ts';
 
 /** A place in the code, known once the code before it has been written. */
 export interface Label {
@@ -55,8 +56,11 @@ export class CodeWriter {
   readonly #patches = new Map<number, ((position: number) => void)[]>();
   #registers = 0;
   #labels = 0;
-  /** The registers found to hold only what reaches no disposable (`holdsPlain`). */
-  readonly #plain = new Set<Register>();
+  /**
+   * The registers types say hold only what reaches no disposable (`holdsPlain`), or all of them
+   * (`holdsOnlyPlain`).
+   */
+  #plain: Set<Register> | 'all' = new Set();
 
   /** A fresh register. */
   allocate(): Register {
@@ -84,7 +88,14 @@ export class CodeWriter {
    * counted, so a register whose values lowering can't name stays safe.
    */
   holdsPlain(register: Register): void {
-    this.#plain.add(register);
+    if (this.#plain !== 'all') {
+      this.#plain.add(register);
+    }
+  }
+
+  /** Notes that every register, allocated or to be, holds only values reaching no disposable. */
+  holdsOnlyPlain(): void {
+    this.#plain = 'all';
   }
 
   emit(instruction: WrittenInstruction): void {
@@ -268,10 +279,11 @@ export class CodeWriter {
   }
 
   /**
-   * The code written, at text positions in `tree`, the module of the entry it is for. Throws when a
-   * jump names a label nothing placed, a bug in lowering.
+   * The code written, at text positions in `tree`, the module of the entry it is for, `typedOnly`
+   * naming the registers only types say are plain (plain-registers.ts). Throws when a jump names a
+   * label nothing placed, a bug in lowering.
    */
-  finish(tree: SegmentBases): WrittenCode {
+  finish(tree: SegmentBases, typedOnly: TypedOnly): WrittenCode {
     if (this.#patches.size > 0) {
       const labels = [...this.#patches.keys()].join(', ');
       unreachable(`Labels ${labels} are jumped to but never placed.`);
@@ -281,9 +293,15 @@ export class CodeWriter {
     const instructions = this.#instructions.map(
       ({ span, ...written }) => ({ ...written, span: spanIn(tree, span) }) as Instruction,
     );
-    const counted = Array.from({ length: this.#registers }, (_, register) => register).filter(
-      (register) => !this.#plain.has(register),
-    );
+    const typed = this.#plain;
+    const plain =
+      typed === 'all' ? 'all' : plainRegisters(instructions, this.#registers, typedOnly, typed);
+    const counted =
+      plain === 'all'
+        ? []
+        : Array.from({ length: this.#registers }, (_, register) => register).filter(
+            (register) => !plain.has(register),
+          );
     return { registers: this.#registers, counted, instructions };
   }
 

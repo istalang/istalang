@@ -90,7 +90,7 @@ function write(script: readonly Step[]) {
   for (let label = 0; label < labelCount; label += 1) {
     place(label);
   }
-  return { code: code.finish(handMadeBases), positions, jumps, switches };
+  return { code: code.finish(handMadeBases, { inputs: 0, cells: [] }), positions, jumps, switches };
 }
 
 describe('CodeWriter', () => {
@@ -128,6 +128,6 @@ describe('CodeWriter', () => {
   it('refuses code with a label jumped to but never placed', () => {
     const code = new CodeWriter();
     code.jump(code.newLabel(), span);
-    expect(() => code.finish(handMadeBases)).toThrow(neverPlaced);
+    expect(() => code.finish(handMadeBases, { inputs: 0, cells: [] })).toThrow(neverPlaced);
   });
 });

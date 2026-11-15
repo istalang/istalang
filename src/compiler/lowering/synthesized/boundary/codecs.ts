@@ -51,6 +51,10 @@ export function derivedCodecEntry(lowering: CodecLowering, direction: JsonDirect
   const { declaration } = instance;
   const parameters = checker.parametersOf(declaration).length;
   const code = new SynthesizedCode(lowering, declaration.name.span, parameters);
+  // A codec holds only parts of what it codes, and JSON.
+  if (!checker.reachesDisposable(type)) {
+    code.code.holdsOnlyPlain();
+  }
   const result = substitute(
     checker.resultOf(declaration),
     substitutionOf(instance),
