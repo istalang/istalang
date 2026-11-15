@@ -1,6 +1,7 @@
 /**
- * The catalog helper: typed factories, codes readable without making a diagnostic, and codes
- * rejected when they are duplicated or fall outside their phase's block.
+ * The catalog helper: typed factories, codes readable without making a diagnostic, arguments read
+ * back from one made, and codes rejected when they are duplicated or fall outside their phase's
+ * block.
  */
 
 import { describe, expect, it } from 'vitest';
@@ -20,10 +21,20 @@ describe('defineDiagnostics', () => {
       severity: 'error',
       message: "Unknown name 'x'.",
       span,
+      arguments: ['x'],
       related: [],
     });
     expect(catalog.unusedLet(span).severity).toBe('warning');
     expect(catalog.unknownName.code).toBe(2901);
+  });
+
+  it('reads the arguments back only from a diagnostic its own factory made', () => {
+    const catalog = defineDiagnostics('parser', {
+      unknownName: { code: 2901, message: (name: string) => `Unknown name '${name}'.` },
+      unusedLet: { code: 2902, message: () => 'Unused let.' },
+    });
+    expect(catalog.unknownName.argumentsOf(catalog.unknownName(span, 'x'))).toEqual(['x']);
+    expect(catalog.unknownName.argumentsOf(catalog.unusedLet(span))).toBeUndefined();
   });
 
   it('rejects a code declared twice', () => {

@@ -14,6 +14,10 @@
  * path. Unlike its own span, one may stand in another module, so it carries that module's id, typed
  * by the phase that names modules (`Module`). Typed without one, a diagnostic has none: every phase
  * makes those, and only the checker relates places. A reader of any takes `Diagnostic<Span, string>`.
+ *
+ * A diagnostic keeps the arguments its message was made from, so a tool acting on one (a rewrite, a
+ * quick fix) reads them typed through the factory that made it (catalog.ts `argumentsOf`), never
+ * from the message's wording, which may change.
  */
 
 import { compareOrdered } from '../language/order.ts';
@@ -26,6 +30,8 @@ export interface Diagnostic<Where = Span, Module extends string = never> {
   readonly severity: Severity;
   readonly message: string;
   readonly span: Where;
+  /** What its message was made from, read through its factory's `argumentsOf`. */
+  readonly arguments: readonly unknown[];
   /** Other places that explain it, in the order a reader follows them. */
   readonly related: readonly RelatedLocation<Where, Module>[];
 }

@@ -5,7 +5,8 @@
  * checks again, since a mark makes its callers need one, until no error asks for more.
  *
  * - The checker decides which functions need which kind, so the pass holds no rule of its own: it
- *   reads the errors' one shape, which the call, wait and signature rules share.
+ *   reads the errors of the call, wait and signature rules that ask for a mark, by their codes, and
+ *   the kind each names, from the arguments it was made with, never from its wording.
  * - A lambda given no kind runs in its function's, so an error inside one marks that function; a
  *   function already of a kind is never marked again, and a lambda its position gives a kind of
  *   its own keeps its errors for a person to read.
@@ -13,6 +14,7 @@
  *   program can't be judged, so what it would need is left to whoever reads the remaining errors.
  */
 
+import { checkerDiagnostics } from '../../../../src/compiler/checker/diagnostics/index.ts';
 import { diagnoseModule } from '../../../../src/compiler/compile.ts';
 import {
   buildProgram,
@@ -23,13 +25,23 @@ import {
 import type { FunctionDeclaration } from '../../../../src/compiler/syntax/declarations/index.ts';
 import { bodyOf, nodesUnder } from '../../../../src/compiler/syntax/tree/index.ts';
 import { spanIn } from '../../../../src/compiler/syntax/tree/positions.ts';
+import type { Diagnostic } from '../../../../src/foundation/diagnostics/diagnostic.ts';
+import { persistences } from '../../../../src/foundation/language/well-known/index.ts';
 import { isTestModulePath } from '../../../../src/foundation/language/well-known/testing.ts';
+import type { Span } from '../../../../src/foundation/text/span.ts';
 import { stdlibLoader, stdRoles } from '../../../../src/stdlib/stdlib-loader.ts';
 import { applyEdits } from '../../edits.ts';
 import { type IstaSource, insertion, type Pass, type Rewrite, readIsta } from '../../pass.ts';
 
-/** How an error asks for a mark: the kind it names, after "declare it '". */
-const asksForMark = /declare it '(?<kind>live|ista) /u;
+/** The errors asking the function holding them for a mark, each naming the kind second. */
+const askingForMark = [
+  checkerDiagnostics.unmarkedCalls,
+  checkerDiagnostics.unmarkedWaits,
+  checkerDiagnostics.unmarkedHolds,
+];
+
+/** The kinds a mark writes; an error naming another (a mark parameter's) asks for none. */
+const markKinds: ReadonlySet<string> = new Set(persistences);
 
 /** The offset an embedded source's label ends with, which its path doesn't. */
 const embeddedAt = /:\d+$/u;
@@ -89,9 +101,10 @@ function askedMarks(source: IstaSource, path: string): Marks {
     (node): node is FunctionDeclaration => node.kind === 'FunctionDeclaration',
   );
   const asked = new Map<number, string>();
-  for (const { span, message } of diagnostics) {
-    const kind = asksForMark.exec(message)?.groups?.kind;
-    const holder = kind === undefined ? undefined : innermostAt(source, functions, span.start);
+  for (const diagnostic of diagnostics) {
+    const kind = askedKind(diagnostic);
+    const holder =
+      kind === undefined ? undefined : innermostAt(source, functions, diagnostic.span.start);
     // A function of a kind, written or named (`M fn`), holds the error elsewhere: in a lambda of a
     // kind of its own, or where its named mark meets another.
     const unmarked =
@@ -102,6 +115,14 @@ function askedMarks(source: IstaSource, path: string): Marks {
     }
   }
   return asked;
+}
+
+/** The kind `diagnostic` asks the function holding it to be declared with, if it asks for one. */
+function askedKind(diagnostic: Diagnostic<Span, string>): string | undefined {
+  const kind = askingForMark
+    .map((asking) => asking.argumentsOf(diagnostic)?.[1])
+    .find((named) => named !== undefined);
+  return kind !== undefined && markKinds.has(kind) ? kind : undefined;
 }
 
 const mainModule = { id: moduleIdOf(new URL('memory:main')), name: 'main', label: 'main' };

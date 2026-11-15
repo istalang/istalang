@@ -17,6 +17,7 @@ describe('diagnosticIn', () => {
       severity: 'error',
       message: 'A cycle.',
       span: { segment: own, from: 1, to: 2 },
+      arguments: [],
       related: [
         { module: 'b', span: { segment: other, from: 0, to: 3 }, message: 'written here' },
         { module: 'a', span: { segment: own, from: 4, to: 5 }, message: 'and here' },
@@ -27,6 +28,7 @@ describe('diagnosticIn', () => {
       severity: 'error',
       message: 'A cycle.',
       span: { start: 101, end: 102 },
+      arguments: [],
       related: [
         { module: 'b', span: { start: 7, end: 10 }, message: 'written here' },
         { module: 'a', span: { start: 104, end: 105 }, message: 'and here' },

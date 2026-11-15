@@ -22,12 +22,17 @@ interface DiagnosticTemplate {
   readonly message: (...args: never[]) => string;
 }
 
-/** Makes a diagnostic at a span of either kind; `code` identifies it without making one. */
+/**
+ * Makes a diagnostic at a span of either kind; `code` identifies it without making one, and
+ * `argumentsOf` reads back what one it made was made from.
+ */
 type DiagnosticFactory<Args extends readonly unknown[]> = (<Where>(
   span: Where,
   ...args: Args
 ) => Diagnostic<Where>) & {
   readonly code: number;
+  /** The arguments `diagnostic` was made with, if this factory made it. */
+  readonly argumentsOf: (diagnostic: Diagnostic<unknown, string>) => Args | undefined;
 };
 
 type Catalog<Templates extends Record<string, DiagnosticTemplate>> = {
@@ -55,9 +60,12 @@ export function defineDiagnostics<const Templates extends Record<string, Diagnos
       severity: template.severity ?? 'error',
       message: template.message(...args),
       span,
+      arguments: args,
       related: [],
     });
-    factories[name] = Object.assign(make, { code: template.code });
+    const argumentsOf = (diagnostic: Diagnostic<unknown, string>): never[] | undefined =>
+      diagnostic.code === template.code ? (diagnostic.arguments as never[]) : undefined;
+    factories[name] = Object.assign(make, { code: template.code, argumentsOf });
   }
   return factories as Catalog<Templates>;
 }

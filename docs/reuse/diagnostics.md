@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-11-13
-last_updated: 2026-11-13
+last_updated: 2026-11-15
 tags: [reuse, diagnostics, errors, testing]
 ---
 
@@ -13,6 +13,7 @@ tags: [reuse, diagnostics, errors, testing]
 ## Units
 
 - declare a phase's diagnostic catalog with typed message factories and code checks → `defineDiagnostics` (`src/foundation/diagnostics/catalog.ts`)
+- read what a diagnostic's message was made from, typed, in a tool acting on it (a rewrite, a quick fix), never parsing its wording → `<factory>.argumentsOf(diagnostic)` (`src/foundation/diagnostics/catalog.ts`)
 - look up a phase's 1000-code block → `codeBlocks`, `codeBlockSize`, `DiagnosticPhase` (`src/foundation/diagnostics/code-blocks.ts`)
 - test whether a `Diagnostic` is an error (stops compilation) vs a warning → `isError`, `Diagnostic`, `Severity` (`src/foundation/diagnostics/diagnostic.ts`)
 - list diagnostics in their one order: position, then code and message → `compareDiagnostics` (`src/foundation/diagnostics/diagnostic.ts`)

@@ -20,6 +20,7 @@ function rendered(text: string, start: number, end: number): string {
     severity: 'error',
     message: 'Something is wrong.',
     span: { start, end },
+    arguments: [],
     related: [],
   };
   return renderedIn({ a: createSourceText('dir/a.ista', text) }, diagnostic);
@@ -91,6 +92,7 @@ describe('renderDiagnostics', () => {
       severity: 'error',
       message: 'A cycle.',
       span: { start: 0, end: 1 },
+      arguments: [],
       related: [
         { module: 'b', span: { start: 13, end: 14 }, message: 'written here' },
         { module: 'a', span: { start: 10, end: 11 }, message: 'and here' },
