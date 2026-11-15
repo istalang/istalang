@@ -44,7 +44,7 @@ import { membersOf } from '../type/index.ts';
 import { literalOrBase, unionOf } from '../unions/unions.ts';
 import { fixingToward } from './fixing-toward.ts';
 import type { Matching, MatchKind, Written } from './matching.ts';
-import { type Settling, type SettlingOf, settlesFreely } from './settle.ts';
+import { hasBounds, type Settling, type SettlingOf, settlesFreely } from './settle.ts';
 import { CallSystem } from './system.ts';
 import {
   expectationOf,
@@ -326,6 +326,16 @@ export class Inference {
   /** Fixes what only a default decides of `types`, open, to it (`CallSystem.fixDefaults`). */
   fixDefaults(types: readonly Type[], settlingOf: SettlingOf): boolean {
     return this.#system.fixDefaults(types, settlingOf);
+  }
+
+  /**
+   * Whether every variable `type`, open, mentions is bounded already, so settling it needs no
+   * default: what a call's arguments gave it, not what may still reach it.
+   */
+  isBoundedIn(type: Type): boolean {
+    return [...openIn(type, this.#system.reading)].every((variable) =>
+      hasBounds(this.#system.boundsOf(variable)),
+    );
   }
 
   /** Settles and fixes each variable `type`, open, mentions, as `settlingOf` says (settle.ts). */

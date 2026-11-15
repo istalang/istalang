@@ -39,7 +39,8 @@ import type {
 } from '../../types/fitting/met-instantiation.ts';
 import { sameConstraint, sameType } from '../../types/identity/identity.ts';
 import { typeKeys } from '../../types/identity/type-keys.ts';
-import { sameTypeSpelled } from '../../types/parts/type-parts.ts';
+import { mentionsAnyVariable } from '../../types/inference/variables.ts';
+import { mentionsError, sameTypeSpelled } from '../../types/parts/type-parts.ts';
 import {
   declaredFieldType,
   requiredFields,
@@ -49,7 +50,7 @@ import {
 import { associatedTypeOf, type Expansion } from '../../types/traits/known-constraints.ts';
 import { associatedMemberUnion } from '../../types/traits/member-bounds.ts';
 import { fieldTypeOf, isKeyWithin, keysOf, mappedTypeOf } from '../../types/traits/struct-keys.ts';
-import { unfolded } from '../../types/type/computed-types.ts';
+import { isOpaque, unfolded } from '../../types/type/computed-types.ts';
 import { functionType } from '../../types/type/function-types.ts';
 import type { AnonymousStructType, AnyType, Constraint, Type } from '../../types/type/index.ts';
 import { errorType } from '../../types/type/primitives.ts';
@@ -125,12 +126,11 @@ export function programTypeRules(
         target,
         member,
       }),
-    associatedType: (of, name) =>
+    ...computedReductions(checker, (of, name) =>
       associating.length === 0 && reductions.isIdle()
         ? associatedTypes.get(`${typeKeys.spelledKey(of)}.${name}`, { of, name })
         : associatedTypeOf(checker, of, name, associating),
-    fieldType: (of, key) => fieldTypeOf(checker, unfolded(of), key),
-    keysOf: (of, without) => keysOf(checker, unfolded(of), without),
+    ),
     mappedType: (parts, outer) => mappedTypeOf(checker, parts, outer),
     // A type `match` closes what its reduction reaches again into a recursive type (§3.17), so an
     // associated type expanded around it, reached inside, is no cycle of expansions.
@@ -160,6 +160,49 @@ export function programTypeRules(
     memberUnionOf: (type) => memberUnionOf(checker, type),
   };
   return { typeRules, fitting };
+}
+
+/**
+ * What an associated type (by `associatedType`), a field's type and a struct's keys reduce to, each
+ * left open while what it is computed from holds a call's variables still to be found
+ * (`openWhileUnsolved`).
+ */
+function computedReductions(
+  checker: CheckerContext,
+  associatedType: TypeRules['associatedType'],
+): Pick<TypeRules, 'associatedType' | 'fieldType' | 'keysOf'> {
+  return {
+    associatedType: (of, name) =>
+      openWhileUnsolved([of], { kind: 'associated', of, name }, associatedType(of, name)),
+    fieldType: (of, key) =>
+      openWhileUnsolved(
+        [of, key],
+        { kind: 'field', of, key },
+        fieldTypeOf(checker, unfolded(of), key),
+      ),
+    keysOf: (of, without) =>
+      openWhileUnsolved(
+        [of],
+        { kind: 'keys', of, without },
+        keysOf(checker, unfolded(of), without),
+      ),
+  };
+}
+
+/**
+ * `reduced`, a computed type's reduction; but `open`, the type unreduced, where it is the error type
+ * only because what it is computed from (`inputs`) is a type not known yet holding a call's
+ * variables still to be found (types/inference/variables.ts): a signature checked against its
+ * constraints, opened with some of its parameters given, reduces once the rest are found, as
+ * `Outer[K].Inner.Scope` does once `K` is. A known type holding them, `Array<T>`, has no keys
+ * whatever `T` is found to be.
+ */
+function openWhileUnsolved(inputs: readonly Type[], open: Type, reduced: Type): Type {
+  const unsolved =
+    reduced.kind === 'error' &&
+    inputs.some((input) => isOpaque(input) && mentionsAnyVariable(input)) &&
+    !inputs.some((input) => mentionsError(input));
+  return unsolved ? open : reduced;
 }
 
 /** The union `type` stands for one member of (`Fitting.memberUnionOf`). */

@@ -18,6 +18,12 @@
  *   what its fields reach, any other itself), settled then. Each ready one goes first; where none
  *   is, one waiting on no other, then the first to join. What it then is, its placeholder is taken
  *   as.
+ * - A member whose result is computed from its variables (`N.Scope`, `S[K]`) has what decides it
+ *   fixed as it joins, so what takes its value relates to the type it reduces to: inference never
+ *   looks through a computed type, so only what the member is given bounds those variables, and
+ *   related unreduced it would go into whichever member of a union it is tried against first. The
+ *   placeholders giving them that are ready are judged first, as a lambda passed to it; one still
+ *   waiting, or a variable nothing bounds yet, which only a default would settle, leaves it open.
  * - Settling judges every placeholder, those joining while that runs included, then solves every
  *   variable together, writes each record that waited, solved, and completes each member in the
  *   order they joined, what it was given before it. One pass writes every record.
@@ -27,6 +33,7 @@ import type { PostponedMember, ScopeMember } from '../../contexts/scopes.ts';
 import { builtFrom, expectedFunction } from '../../types/fitting/expected.ts';
 import { Inference } from '../../types/inference/infer.ts';
 import type { SettlingOf } from '../../types/inference/settle.ts';
+import { computedTypesIn } from '../../types/parts/type-parts.ts';
 import { formDecidedBy, isComputed } from '../../types/type/computed-types.ts';
 import type { Type } from '../../types/type/index.ts';
 import { membersOf } from '../../types/type/index.ts';
@@ -41,6 +48,7 @@ export class ConstraintScope {
   #root: Inference | undefined;
   readonly #members: ScopeMember[] = [];
   readonly #postponed: PostponedMember[] = [];
+  readonly #judged = new Set<PostponedMember>();
   /** What waits for the scope to be solved: records written open, reports of calls not made. */
   readonly #waiting: ((solved: (type: Type) => Type) => void)[] = [];
 
@@ -64,10 +72,11 @@ export class ConstraintScope {
     }
   }
 
-  /** Joins `member`, its inference committed to the scope. */
-  join(member: ScopeMember): void {
+  /** Joins `member`, its inference committed to the scope: its type, as what takes it reads it. */
+  join(member: ScopeMember): Type {
     this.commit(member.inference);
     this.#members.push(member);
+    return this.#reducedFirst(member.type);
   }
 
   /** Joins `member`, a placeholder its inference infers, committed to the scope. */
@@ -125,12 +134,8 @@ export class ConstraintScope {
    * join.
    */
   #judgeAll(): void {
-    const judged = new Set<PostponedMember>();
     for (;;) {
-      const waiting = this.#postponed.filter((member) => !judged.has(member));
-      if (waiting.length === 0) {
-        return;
-      }
+      const waiting = this.#unjudged();
       const next =
         this.#readyOf(waiting) ??
         waiting.find((member) => !this.#waitsOn(member, waiting)) ??
@@ -138,9 +143,13 @@ export class ConstraintScope {
       if (next === undefined) {
         return;
       }
-      judged.add(next);
       this.#judge(next);
     }
+  }
+
+  /** The placeholders not judged yet. */
+  #unjudged(): readonly PostponedMember[] {
+    return this.#postponed.filter((member) => !this.#judged.has(member));
   }
 
   /**
@@ -161,6 +170,7 @@ export class ConstraintScope {
 
   /** Checks `member` with what is known of what is expected of it, its placeholder taken as that. */
   #judge(member: PostponedMember): void {
+    this.#judged.add(member);
     const root = this.#root;
     const expectation = this.#expectationOf(member);
     const waited = waitedOnBy(expectation);
@@ -226,6 +236,43 @@ export class ConstraintScope {
     const isOpen = (part: Type) => this.#root?.mentionsVariables(part) === true;
     const taking = membersOf(expectation).filter((each) => member.admits(each, isOpen));
     return taking.length === 1 ? taking[0] : expectation;
+  }
+
+  /**
+   * `type`, a member's, with what decides each type computed from the scope's variables in it fixed
+   * first (`formDecidedBy`), as the banner says: what takes `index(d, "city")` takes the `String?`
+   * it reduces to, `T?` then giving `T` a `String`.
+   */
+  #reducedFirst(type: Type): Type {
+    const root = this.#root;
+    const computed = computedTypesIn(type).filter((part) => root?.mentionsVariables(part));
+    if (root === undefined || computed.length === 0) {
+      return type;
+    }
+    for (const part of computed) {
+      const waited = formDecidedBy(part);
+      this.#judgeGiving(waited);
+      const gifts = this.#unjudged().map((other) => this.#givenBy(other));
+      if (root.isBoundedIn(waited) && !root.waitsOn(waited, gifts)) {
+        root.fixIn(waited, this.#settlingOf());
+      }
+    }
+    return root.fixedIn(type);
+  }
+
+  /** Judges each ready placeholder whose judging gives what `waited` waits on, until none is. */
+  #judgeGiving(waited: Type): void {
+    const root = this.#root;
+    const gives = (member: PostponedMember) =>
+      root?.waitsOn(waited, [this.#givenBy(member)]) === true;
+    for (;;) {
+      const waiting = this.#unjudged();
+      const next = waiting.find((member) => gives(member) && this.#isReady(member, waiting));
+      if (next === undefined) {
+        return;
+      }
+      this.#judge(next);
+    }
   }
 
   /** How each variable of the scope settles, as the member it stands for settles it. */

@@ -101,6 +101,19 @@ function keyedIndexOf(
 }
 
 /**
+ * Whether `candidate` can serve `x[k]` (§3.9): it takes the container and the key, both by value,
+ * as the brackets pass them.
+ */
+export function readsByIndex(checker: CheckerContext, candidate: Candidate): boolean {
+  const { parameters } = signatureOf(
+    checker,
+    candidate.declaration,
+    candidate.requirement?.substitution,
+  );
+  return takesReceiverAndKey(parameters);
+}
+
+/**
  * Whether a read passing a receiver and a key, both by value, fills `parameters`, as `x["k"]` does:
  * neither taken by `&` nor collected by a rest, and every later parameter left to its default.
  */

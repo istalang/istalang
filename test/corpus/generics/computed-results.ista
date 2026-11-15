@@ -1,0 +1,60 @@
+# outcome: "x|Berlin|5|Ada|Ada|Ada|ACME|-|in"
+# A call whose result is computed from its own type parameters (§3.5) — an associated type, a
+# field's type, a keyed `index`'s `S[K].Scope`, `S[K].Inner.Scope` with `S` given by its receiver
+# — gives what takes it the type that result reduces to, so a generic call it is passed to infers
+# from it: `text(scopeOf(…))` gives `T` a `String`.
+
+trait Node:
+  type Scope
+  fn scope(self: Self) -> Self.Scope
+
+struct Field<T>:
+  value: T?
+  type Scope = T?
+
+fn scope<T>(self: Field<T>) -> T?: self.value
+
+struct Reads<S is struct { [_] is Node }>:
+  m: S
+
+fn index<S is struct { [_] is Node }, K in keyof S>(self: Reads<S>, key: K) -> S[K].Scope:
+  self.m[key].scope()
+
+fn scopeOf<N is Node>(node: N) -> N.Scope: node.scope()
+
+fn fieldOf<S is struct { [_] is Stringable }, K in keyof S>(record: S, key: K) -> S[K]: record[key]
+
+fn text<T is Stringable>(value: T?) -> String:
+  match value:
+    case none: "-"
+    case v: `${v}`
+
+trait Wrapper:
+  type Inner is Node
+  fn inner(self: Self) -> Self.Inner
+
+struct Wrap:
+  field: Field<String>
+  type Inner = Field<String>
+
+fn inner(self: Wrap) -> Field<String>: self.field
+
+fn innerScope<S is struct { [_] is Wrapper }, K in keyof S>(self: S, key: K) -> S[K].Inner.Scope:
+  self[key].inner().scope()
+
+struct Place { city: String, zip: Int }
+struct Wrapped { a: Wrap }
+struct Person { name: Field<String>, company: Field<String> }
+
+import * as runtime from 'runtime'
+live async fn main() -> String: await runtime.run(runtime.id()) _main()
+ista async fn _main() -> String:
+  const place = Place{city: "Berlin", zip: 5}
+  const d = Reads{m: Person{name: Field{value: "Ada"}, company: Field{value: "ACME"}}}
+  const some: Reads<Person>? = d
+  const maybe: Reads<Person>? = none
+  const parts = [text(scopeOf(Field{value: "x"})), text(fieldOf(place, "city")),
+    text(fieldOf(place, "zip")), text(index(d, "name")), text(d["name"]), text(d.name),
+    text(some?.company), text(maybe?.name),
+    text(Wrapped{a: Wrap{field: Field{value: "in"}}}.innerScope("a"))]
+  parts.join("|")

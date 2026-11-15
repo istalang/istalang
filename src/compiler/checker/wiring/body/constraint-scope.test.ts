@@ -192,6 +192,45 @@ describe('a lambda judged in a scope', () => {
   });
 });
 
+describe('a member whose result is computed from its own variables', () => {
+  const computing = [
+    'trait Node:\n  type Scope\n  fn scope(self: Self) -> Self.Scope',
+    'struct Field<T>:\n  value: T?\n  type Scope = T?',
+    'fn scope<T>(self: Field<T>) -> T?: self.value',
+    'fn scopeOf<N is Node>(node: N) -> N.Scope: node.scope()',
+    'fn text<T is Stringable>(value: T?) -> String: ""',
+  ];
+
+  it('gives what takes it the type it reduces to, however its variables were bounded', () => {
+    const arguments_ = [
+      'scopeOf(Field{value: "x"})',
+      'scopeOf(id(Field{value: "x"}))',
+      'scopeOf(Field{value: id("x")})',
+      'id(scopeOf(Field{value: "x"}))',
+    ];
+    for (const argument of arguments_) {
+      expect(reportedAfter(...computing, `fn f() -> String: text(${argument})`)).toEqual(
+        reportedNothing,
+      );
+    }
+  });
+
+  it('waits for a postponed argument that gives its variables before fixing them', () => {
+    const postponed = [
+      ...computing,
+      'fn withNode<N is Node>(f: fn() -> N) -> N.Scope: f().scope()',
+      'fn mapNode<T, N is Node>(x: T, f: fn(T) -> N) -> N.Scope: f(x).scope()',
+      'fn withDefault<N is Node = Field<Int>>(f: fn(String) -> N) -> N.Scope: f("a").scope()',
+      'fn f1() -> String?: withNode(fn(): Field{value: "x"})',
+      'fn f2() -> String?: mapNode("x", fn(s: String): Field{value: s})',
+      'fn f3() -> String?: withDefault(fn s: Field{value: s})',
+      'fn f4() -> String: text(mapNode("x", fn s: Field{value: s}))',
+      'fn f5() -> String: text(withNode(fn(): Field{value: "x"}))',
+    ];
+    expect(reportedAfter(...postponed)).toEqual(reportedNothing);
+  });
+});
+
 describe('a placeholder', () => {
   it('is judged once no other one still gives its inputs, each in turn', () => {
     expect(

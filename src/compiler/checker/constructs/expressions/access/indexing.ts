@@ -1,14 +1,16 @@
 /**
- * Indexing and slicing (§3.9): `x[k]` calls `index(x, k)`, found like an operator's function, so
- * any type with an `index` can be indexed, and slicing is indexing with a `Range`. Writing an
- * element is the rule of places (resolution/calls/places.ts). An index can be a link of an optional
- * chain (constructs/expressions/access/optionals.ts), as in `a?.items[0]`.
+ * Indexing and slicing (§3.9): `x[k]` calls `index(x, k)`, found like an operator's function and
+ * chosen as the method call `x.index(k)` is, `x` giving its type parameters exactly (§3.5), as the
+ * keyed read `x.k` is (rules/getters.ts), among the `index` functions taking both by value, as the
+ * brackets pass them; so any type with an `index` can be indexed, and slicing is indexing with a
+ * `Range`. Writing an element is the rule of places (resolution/calls/places.ts). An index can be
+ * a link of an optional chain (constructs/expressions/access/optionals.ts), as in `a?.items[0]`.
  *
  * A struct is indexed by its keys first (§3.1, §3.9): `s[k]` with `k` within `keyof S` reads the
  * field `k` names, typed `S[K]`, before any `index`. Where `S` declares no `index` of its own, the
  * brackets expect a key, so a literal there is one (`s["region"]`); where it does, a key is what
- * a key's type makes one, and anything else calls `index`, chosen as its call is: a literal key
- * has its literal type where `index` takes one, as `K in keyof S` does.
+ * a key's type makes one, and anything else calls `index`: a literal key has its literal type
+ * where `index` takes one, as `K in keyof S` does.
  */
 
 import { collectionFunctions } from '../../../../../foundation/language/well-known/implicit-calls.ts';
@@ -18,6 +20,7 @@ import type { BodyContext } from '../../../contexts/body-context.ts';
 import { resolveCall } from '../../../resolution/calls/resolve/index.ts';
 import { stoppedOperation } from '../../../resolution/calls/stopped-operations.ts';
 import { topLevelCandidates } from '../../../resolution/choosing/candidates.ts';
+import { readsByIndex } from '../../../resolution/choosing/keyed-indexes.ts';
 import { takesAsSelf } from '../../../resolution/choosing/receivers.ts';
 import { keyedFieldRead } from '../../../surface/checked-field.ts';
 import type { Type } from '../../../types/type/index.ts';
@@ -60,9 +63,9 @@ export function checkIndex(context: BodyContext, node: Index, expected: Type | u
       candidates: topLevelCandidates(context.checker, context.module, collectionFunctions.index, [
         container,
         key,
-      ]),
+      ]).filter((candidate) => readsByIndex(context.checker, candidate)),
       arguments: [
-        { node: node.target, type: container, passing: 'value' },
+        { node: node.target, type: container, passing: 'receiver' },
         { node: node.index, type: key, passing: 'value', literal },
       ],
       typeArguments: undefined,

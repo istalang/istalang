@@ -363,3 +363,31 @@ describe('a getter obeys the data rule (proposal 8)', () => {
     expect(await mainGives('Int', 'P{n: 4}.now', declarations)).toBe(5);
   });
 });
+
+describe('an index taking &self (§3.7, §3.9)', () => {
+  it('is rejected by [] and keyed reads rather than failing in lowering', () => {
+    const declarations = [
+      'struct Box { v: Int }',
+      'fn index(self: &Box, i: Int) -> Int: self.v + i',
+      'fn index<K in "a">(self: &Box, k: K) -> Int: self.v',
+    ].join('\n');
+    expect(reportedIn(declarations, 'let b = Box{v: 1}\n_ = b[0]').codes.length).toBeGreaterThan(0);
+    expect(reportedIn(declarations, 'let b = Box{v: 1}\n_ = b.a').codes.length).toBeGreaterThan(0);
+  });
+});
+
+describe('a keyed read chooses as a method call (§3.5, §3.7, §3.9)', () => {
+  it('gives its receiver type parameters exactly rather than widening a covariant receiver', () => {
+    const declarations = [
+      'struct Scope<gives T> { v: T }',
+      'fn index<T, K in "check" | "other">(self: Scope<T>, key: K) -> fn(T) -> Bool:',
+      '  fn(x: T) -> Bool: x == self.v',
+    ].join('\n');
+    expect(
+      reportedIn(declarations, 'const s = Scope{v: 1}\nconst f: fn(Int?) -> Bool = s.check'),
+    ).toEqual({
+      codes: [checkerDiagnostics.typeMismatch.code],
+      spanTexts: ['s.check'],
+    });
+  });
+});

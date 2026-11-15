@@ -46,30 +46,28 @@ export function readGetter(
   read: CalledRead,
   getters: readonly Candidate[],
 ): Type {
-  const self: WrittenArgument = {
-    node: read.access.target,
-    passing: 'receiver',
-    type: read.receiver,
-  };
-  return readByCall(context, read, getters, [self]);
+  return readByCall(context, read, getters, [selfOf(read)]);
 }
 
 /**
- * The value `read.access` reads by calling one of `indexes`, keyed, as `x["k"]` calls it (§3.9):
- * its receiver passed as the `[]` operator passes its container, then its name as the key. Not as a
- * method's receiver, whose exactly given type parameters open a result such as `S[K].Scope` before
- * the key is bound (B108).
+ * The value `read.access` reads by calling one of `indexes`, keyed, as `x["k"]` calls it (§3.9): a
+ * method call on its receiver, as a getter's read is, its name the key.
  */
 export function readKeyed(
   context: BodyContext,
   read: CalledRead,
   indexes: readonly Candidate[],
 ): Type {
-  const { target, member } = read.access;
+  const { member } = read.access;
   return readByCall(context, read, indexes, [
-    { node: target, passing: 'value', type: read.receiver },
+    selfOf(read),
     { node: member, passing: 'value', type: literalType(member.text) },
   ]);
+}
+
+/** The receiver of `read`, passed as a method's `self`. */
+function selfOf(read: CalledRead): WrittenArgument {
+  return { node: read.access.target, passing: 'receiver', type: read.receiver };
 }
 
 function readByCall(

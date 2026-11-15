@@ -8,6 +8,7 @@ import { describe, expect, it } from 'vitest';
 import { reportedNothing } from '../../../../foundation/diagnostics/diagnostic.test-kit.ts';
 import { mainGives } from '../../../../stdlib/prelude/prelude.test-kit.ts';
 import { reported } from '../../check.test-kit.ts';
+import { checkerDiagnostics } from '../../diagnostics/index.ts';
 
 const declarations = [
   'struct S { a: Int, b: String }',
@@ -95,5 +96,14 @@ describe('a call written as another construct', () => {
       '  const f: Array<Int> = b + b',
     ].join('\n');
     expect(reported(text)).toEqual(reportedNothing);
+  });
+
+  it('does not treat a non-struct type holding open variables as a struct with unknown keys', () => {
+    const text = [
+      declarations,
+      'fn takeArr<T>(xs: Array<T>) -> Int: 0',
+      'fn g(s: S) -> Int: takeArr(struct{for k, v in ...s: [k]: v})',
+    ].join('\n');
+    expect(reported(text).codes).not.toContain(checkerDiagnostics.comprehendedFields.code);
   });
 });

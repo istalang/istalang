@@ -127,8 +127,7 @@ export class BodyScopes implements Scopes {
   join(member: ScopeMember): Type {
     const bound = this.#bound(member);
     if (this.#current !== undefined) {
-      this.#current.join(bound);
-      return member.type;
+      return this.#current.join(bound);
     }
     let completed = member.type;
     const complete = () => {
