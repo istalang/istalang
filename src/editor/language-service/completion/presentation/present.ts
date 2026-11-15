@@ -109,7 +109,7 @@ const presenters: Handlers<Presenting, Subject, [name: string], Shown> = {
         : {}),
     };
   },
-  getter: ({ cursor: { checker } }, { getter: { declaration, type } }) => ({
+  read: ({ cursor: { checker } }, { read: { declaration, type } }) => ({
     kind: 'field',
     detail: typeText(type),
     ...documented(docstringOf(checker, { kind: 'function', declaration })),

@@ -193,6 +193,7 @@ fn sum<T is Monoid>(xs: Array<T>) -> T:
 
 - **Traits & `any Trait`.** Traits constrain type parameters (`T is Sendable & Comparable`), and `any Trait` types heterogeneous values (`Array<any View<Sc>>`, `(any Showable)?`) when the trait is object-safe (every required function takes `Self` first, uses `Self` nowhere else, and is not static). Conformance is structural like Go and TypeScript (**never** Rust's `impl Trait for Type:`): declare top-level functions beside the type or the trait.
 - **Operators are functions.** `a + b` calls `add`, `<`/`>`/`<=`/`>=` call `compare`, `x[k]` calls `index`, `x[k] = v` calls `setIndex`, `for x in c` calls `iterate`, `x in c` calls `includes`, and `T(x)` calls `T.from`. `==` and `!=` are built in (structural on values, identity on handles) and cannot be overloaded.
+- **Keyed members.** An `index` whose key is a member parameter of String literals (`K in keyof S`) serves member syntax: `x.k`, where `x`'s type has no member `k`, is `x["k"]`, each key read with its own type (`scope.company.size`). Read only; a name served by both a member and the index is an error.
 - **Packs & member parameters.** `<...A>` is a tuple pack (`fn(...args: A) -> R`); `<K in U>` stands for a single member of union `U` per instantiation (`struct Entry<S is struct, K in keyof S>`). When every member of `U` is a literal type, `K` is also a value: `fn describe<S in Status>() -> String: S`.
 
 **Computed types and field loops (§3.1, §3.5, §3.17, §4):**

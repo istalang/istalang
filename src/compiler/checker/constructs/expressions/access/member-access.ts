@@ -4,12 +4,14 @@
  * - Reading `s.f` gives the field's type, substituted for the struct's type arguments; through a
  *   type parameter, a field a constraint requires (§3.10). What else the name may mean is the
  *   receiver's (resolution/choosing/member-meaning.ts): a member that isn't a field may be a
- *   getter, read by calling it (rules/getters.ts); one that is neither is reported as unknown here,
- *   or, when it is a field of the value behind a handle, as to be read with `->` (§3.9); a call of
- *   one is a method call (../calls.ts). How each read reaches its field is recorded for lowering
+ *   getter, read by calling it (rules/getters.ts), and a name no member has a key of a keyed
+ *   `index`, read as `x["k"]` (§3.9); one that is none is reported as unknown here, listing the
+ *   keys where keyed indexes take the receiver, or, when it is a field of the value behind a
+ *   handle, as to be read with `->` (§3.9); a call of one is a method call (../calls.ts). How each read reaches its field is recorded for lowering
  *   (`FieldReads`, checked-field.ts). A name on a type means one member (§3.1): a use finding a
  *   getter beside a field, or beside a method taking the receiver, is reported where it is used
- *   (`readClash`, `callClash`), the getters and methods counted being those taking the receiver.
+ *   (`readClash`, `callClash`), the getters and methods counted being those taking the receiver,
+ *   and so is any member beside a keyed index taking the name.
  * - A member qualified by a namespace or a type is what it names there: a variant, a function as
  *   a value, a constant; a type's member naming nothing is no static function of it. One cut
  *   short or not exported was reported already, so it reads as nothing (`readsNothing`).
@@ -24,9 +26,14 @@ import type { BodyContext, FieldReadRecord } from '../../../contexts/body-contex
 import type { Pass, Passes, PassTable } from '../../../contexts/passes.ts';
 import { checkerDiagnostics } from '../../../diagnostics/index.ts';
 import { stoppedOperation } from '../../../resolution/calls/stopped-operations.ts';
+import {
+  candidatesOf,
+  keyedIndexes,
+  keyNamesOf,
+} from '../../../resolution/choosing/keyed-indexes.ts';
 import { membersNamed, type NamedMembers } from '../../../resolution/choosing/member-meaning.ts';
 import { namedFunctions } from '../../../resolution/choosing/named-functions.ts';
-import { readGetter } from '../../../rules/getters.ts';
+import { readGetter, readKeyed } from '../../../rules/getters.ts';
 import type { FieldRead, FieldReading, FoundField } from '../../../surface/checked-field.ts';
 import { fieldOf } from '../../../types/traits/known-fields.ts';
 import type { Type } from '../../../types/type/index.ts';
@@ -77,59 +84,111 @@ export function checkMemberAccess(
     context.report(clash);
     return errorType;
   }
-  const { field, getters, methods } = members;
+  const { field, getters, methods, keyed } = members;
   if (field !== undefined) {
     recordFieldRead(context, node, field);
     return field.member.type;
   }
-  const getterRead = { link: node, access: node, receiver: type, expected };
+  const read = { link: node, access: node, receiver: type, expected };
   if (getters.met.length > 0) {
-    return readGetter(context, { ...getterRead, getters: getters.met });
+    return readGetter(context, read, getters.met);
+  }
+  if (keyed.length > 0) {
+    return readKeyed(context, read, candidatesOf(keyed));
   }
   const isMethod = methods.met.length + methods.unmet.length > 0;
   const missed = missExplained(context, node, type, isMethod);
   // A getter whose constraints fail is reported as its call would be, where nothing else explains
   // the read.
   if (missed === undefined && getters.unmet.length > 0) {
-    return readGetter(context, { ...getterRead, getters: getters.unmet });
+    return readGetter(context, read, getters.unmet);
   }
   context.report(
-    missed ?? checkerDiagnostics.unknownField(node.member.span, typeText(type), node.member.text),
+    missed ??
+      keyMissed(context, node.member, type) ??
+      checkerDiagnostics.unknownField(node.member.span, typeText(type), node.member.text),
   );
   return errorType;
 }
 
-/** What gives `x.name` a value to read: the field, else a getter; none for methods alone. */
-export function valuedMember({ field, getters }: NamedMembers): 'field' | 'getter' | undefined {
+/**
+ * What gives `x.name` a value to read: the field, else a getter, else a keyed index; none for
+ * methods alone.
+ */
+export function valuedMember({
+  field,
+  getters,
+  keyed,
+}: NamedMembers): 'field' | 'getter' | 'keyed' | undefined {
   if (field !== undefined) {
     return 'field';
   }
-  return getters.met.length > 0 ? 'getter' : undefined;
+  if (getters.met.length > 0) {
+    return 'getter';
+  }
+  return keyed.length > 0 ? 'keyed' : undefined;
+}
+
+/** What `x.name` names among the members of its receiver: a field, a getter or a method taking it. */
+function memberKind({
+  field,
+  getters,
+  methods,
+}: NamedMembers): 'field' | 'getter' | 'method' | undefined {
+  if (field !== undefined) {
+    return 'field';
+  }
+  if (getters.met.length > 0) {
+    return 'getter';
+  }
+  return methods.met.length > 0 ? 'method' : undefined;
 }
 
 /**
- * Why reading `x.name` means two things on its receiver (§3.1): a field and a getter, or a getter
- * beside a method taking the receiver; a read reads a field whatever methods share its name.
+ * Why reading `x.name` means two things on its receiver (§3.1): a field and a getter, any member
+ * and a keyed index taking the name, or a getter beside a method taking the receiver; a read reads
+ * a field whatever methods share its name.
  */
 function readClash(
   name: Identifier,
   receiver: Type,
   members: NamedMembers,
 ): Diagnostic<AnchoredSpan> | undefined {
-  const clash = fieldBesideGetter(name, receiver, members);
+  const clash =
+    fieldBesideGetter(name, receiver, members) ?? keyedBesideMember(name, receiver, members);
   return clash ?? (members.field === undefined ? besideMethod(name, receiver, members) : undefined);
 }
 
 /**
- * Why calling `x.name(…)` means two things on its receiver: a field and a getter, or either beside
- * a method taking the receiver, which the call could call as well (§3.1, §3.7).
+ * Why calling `x.name(…)` means two things on its receiver: a field and a getter, any member and a
+ * keyed index taking the name, or a field or a getter beside a method taking the receiver, which
+ * the call could call as well (§3.1, §3.7).
  */
 export function callClash(
   name: Identifier,
   receiver: Type,
   members: NamedMembers,
 ): Diagnostic<AnchoredSpan> | undefined {
-  return fieldBesideGetter(name, receiver, members) ?? besideMethod(name, receiver, members);
+  return (
+    fieldBesideGetter(name, receiver, members) ??
+    keyedBesideMember(name, receiver, members) ??
+    besideMethod(name, receiver, members)
+  );
+}
+
+/** Why a keyed index taking `name` stands beside a member of the name (§3.1, §3.9). */
+function keyedBesideMember(
+  name: Identifier,
+  receiver: Type,
+  members: NamedMembers,
+): Diagnostic<AnchoredSpan> | undefined {
+  if (members.keyed.length === 0) {
+    return undefined;
+  }
+  const member = memberKind(members);
+  return member === undefined
+    ? undefined
+    : checkerDiagnostics.keyedOrMember(name.span, typeText(receiver), name.text, member);
 }
 
 function fieldBesideGetter(
@@ -142,14 +201,17 @@ function fieldBesideGetter(
     : undefined;
 }
 
-/** Why the value `members` give `x.name` stands beside a method of the name taking the receiver. */
+/**
+ * Why the field or getter `members` give `x.name` stands beside a method of the name taking the
+ * receiver; a keyed index beside one is `keyedBesideMember`'s.
+ */
 function besideMethod(
   name: Identifier,
   receiver: Type,
   members: NamedMembers,
 ): Diagnostic<AnchoredSpan> | undefined {
   const valued = valuedMember(members);
-  const beside = valued !== undefined && members.methods.met.length > 0;
+  const beside = valued !== undefined && valued !== 'keyed' && members.methods.met.length > 0;
   return beside
     ? checkerDiagnostics.fieldOrMethod(name.span, typeText(receiver), name.text, valued)
     : undefined;
@@ -244,4 +306,21 @@ function missExplained(
     return inside;
   }
   return isMethod ? checkerDiagnostics.methodValue(span, name) : undefined;
+}
+
+/**
+ * Why `name` names nothing on `receiver` where keyed indexes take it (§3.9): none takes the name,
+ * so the keys they take are listed; undefined where none takes it.
+ */
+export function keyMissed(
+  context: BodyContext,
+  name: Identifier,
+  receiver: Type,
+): Diagnostic<AnchoredSpan> | undefined {
+  const indexes = keyedIndexes(context.checker, context.module, receiver);
+  if (indexes.length === 0) {
+    return undefined;
+  }
+  const keys = [...new Set(indexes.flatMap(keyNamesOf))];
+  return checkerDiagnostics.unknownKey(name.span, typeText(receiver), name.text, keys);
 }

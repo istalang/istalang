@@ -3,7 +3,7 @@
  * its `self` takes the value as a call's receiver (applicability.ts), and the type parameters that
  * decides meet their constraints. What a member's name means asks it of a type's methods and getters
  * (member-meaning.ts), and indexing whether a struct declares an `index` of its own, which its keys
- * then give way to (§3.9).
+ * then give way to (§3.9), and which keys an `index` serves as members (keyed-indexes.ts).
  *
  * A probe: it chooses nothing and reports nothing, so asking leaves no trace.
  */
@@ -46,6 +46,21 @@ export function selfTaking(
     return undefined;
   }
   return meetsWhereFound(checker, taken.typeParameters, taken.inference) ? 'met' : 'unmet';
+}
+
+/**
+ * What `candidate`'s type parameters are where its `self` takes a value of `type` as a call's
+ * receiver with their constraints met; undefined where it takes none so.
+ */
+export function metSelfInference(
+  checker: CheckerContext,
+  candidate: Candidate,
+  type: Type,
+): Inference | undefined {
+  const taken = selfInference(checker, candidate, type);
+  return taken !== undefined && meetsWhereFound(checker, taken.typeParameters, taken.inference)
+    ? taken.inference
+    : undefined;
 }
 
 /**

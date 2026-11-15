@@ -7,11 +7,13 @@
  * A struct is indexed by its keys first (§3.1, §3.9): `s[k]` with `k` within `keyof S` reads the
  * field `k` names, typed `S[K]`, before any `index`. Where `S` declares no `index` of its own, the
  * brackets expect a key, so a literal there is one (`s["region"]`); where it does, a key is what
- * a key's type makes one, and anything else calls `index`.
+ * a key's type makes one, and anything else calls `index`, chosen as its call is: a literal key
+ * has its literal type where `index` takes one, as `K in keyof S` does.
  */
 
 import { collectionFunctions } from '../../../../../foundation/language/well-known/implicit-calls.ts';
 import type { Index } from '../../../../syntax/expressions/index.ts';
+import { unparenthesized } from '../../../../syntax/expressions/readings.ts';
 import type { BodyContext } from '../../../contexts/body-context.ts';
 import { resolveCall } from '../../../resolution/calls/resolve/index.ts';
 import { stoppedOperation } from '../../../resolution/calls/stopped-operations.ts';
@@ -21,6 +23,7 @@ import { keyedFieldRead } from '../../../surface/checked-field.ts';
 import type { Type } from '../../../types/type/index.ts';
 import { errorType } from '../../../types/type/primitives.ts';
 import { insideOptional } from '../../../types/unions/inside-optional.ts';
+import { writtenLiteral } from '../../../types/unions/unions.ts';
 
 export function checkIndex(context: BodyContext, node: Index, expected: Type | undefined): Type {
   const container = context.chains.target(context, node);
@@ -49,6 +52,7 @@ export function checkIndex(context: BodyContext, node: Index, expected: Type | u
     context.fit(key, keys, node.index);
     return errorType;
   }
+  const literal = writtenLiteral(unparenthesized(node.index));
   const resolve = () =>
     resolveCall(context, {
       site: node,
@@ -59,7 +63,7 @@ export function checkIndex(context: BodyContext, node: Index, expected: Type | u
       ]),
       arguments: [
         { node: node.target, type: container, passing: 'value' },
-        { node: node.index, type: key, passing: 'value' },
+        { node: node.index, type: key, passing: 'value', literal },
       ],
       typeArguments: undefined,
       expected,

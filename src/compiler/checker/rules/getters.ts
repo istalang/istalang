@@ -11,6 +11,11 @@
  *   nothing else and gives a value, not a future. Only a module's own function is one, which the
  *   parser holds: a trait requires a field instead, which a getter meets (§3.10), an extern's code
  *   is the host's, and a local function is no method.
+ * - A keyed read (§3.9), `x.k` through an `index` whose key is a member parameter, is read alike:
+ *   the call `index(x, "k")`, its key the member's name, typed as its literal type: a name, which
+ *   nothing checks as an expression. Only a key the index serves is read so
+ *   (resolution/choosing/keyed-indexes.ts). Each key is its own instantiation, so
+ *   each read has its own type.
  */
 
 import type { ModuleId } from '../../program/program.ts';
@@ -21,30 +26,66 @@ import { awaits } from '../../syntax/tokens/modifiers.ts';
 import type { BodyContext } from '../contexts/body-context.ts';
 import type { CheckerContext } from '../contexts/context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
-import { resolveCall } from '../resolution/calls/resolve/index.ts';
+import { resolveCall, type WrittenArgument } from '../resolution/calls/resolve/index.ts';
 import type { Candidate } from '../resolution/choosing/candidates.ts';
 import type { Type } from '../types/type/index.ts';
+import { literalType } from '../types/type/primitives.ts';
 
-/** A getter's read: what reads it, the receiver's type, its getters, and the type expected of it. */
-interface GetterRead {
+/** A member read that calls: what reads it, the receiver's type, and the type expected of it. */
+export interface CalledRead {
   /** The access, or the call of what it gives, whose chain decides the read's scope. */
   readonly link: Expression;
   readonly access: MemberAccess;
   readonly receiver: Type;
-  readonly getters: readonly Candidate[];
   readonly expected: Type | undefined;
 }
 
-/** The value `read.access` reads by calling one of its getters on its receiver. */
-export function readGetter(context: BodyContext, read: GetterRead): Type {
-  const { access, receiver, getters, expected } = read;
+/** The value `read.access` reads by calling one of `getters` on its receiver, as its `self`. */
+export function readGetter(
+  context: BodyContext,
+  read: CalledRead,
+  getters: readonly Candidate[],
+): Type {
+  const self: WrittenArgument = {
+    node: read.access.target,
+    passing: 'receiver',
+    type: read.receiver,
+  };
+  return readByCall(context, read, getters, [self]);
+}
+
+/**
+ * The value `read.access` reads by calling one of `indexes`, keyed, as `x["k"]` calls it (§3.9):
+ * its receiver passed as the `[]` operator passes its container, then its name as the key. Not as a
+ * method's receiver, whose exactly given type parameters open a result such as `S[K].Scope` before
+ * the key is bound (B108).
+ */
+export function readKeyed(
+  context: BodyContext,
+  read: CalledRead,
+  indexes: readonly Candidate[],
+): Type {
+  const { target, member } = read.access;
+  return readByCall(context, read, indexes, [
+    { node: target, passing: 'value', type: read.receiver },
+    { node: member, passing: 'value', type: literalType(member.text) },
+  ]);
+}
+
+function readByCall(
+  context: BodyContext,
+  read: CalledRead,
+  candidates: readonly Candidate[],
+  arguments_: readonly WrittenArgument[],
+): Type {
+  const { access, expected } = read;
   const resolve = () =>
     resolveCall(context, {
       site: access,
       recorded: access,
       name: access.member.text,
-      candidates: getters,
-      arguments: [{ node: access.target, passing: 'receiver', type: receiver }],
+      candidates,
+      arguments: arguments_,
       typeArguments: undefined,
       expected,
       form: 'call',

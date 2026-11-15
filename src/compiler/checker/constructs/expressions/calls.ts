@@ -16,9 +16,9 @@
  *   lookup), with the receiver as its first argument (§3.7). Which overload the receiver's type
  *   picks decides whether `self` is a reference, and only then must the receiver be a place that
  *   may change.
- * - a function value: a variable, a field of the receiver or what its getter gives (§3.1), or any
- *   other expression of a function type (constructs/closures/value-calls.ts), or of an optional
- *   one, called as `f?.(…)`, a link of an optional chain (access/optionals.ts). `x.f()` naming both
+ * - a function value: a variable, a field of the receiver or what its getter or keyed index gives
+ *   (§3.1, §3.9), or any other expression of a function type (constructs/closures/value-calls.ts),
+ *   or of an optional one, called as `f?.(…)`, a link of an optional chain (access/optionals.ts). `x.f()` naming both
  *   a field or a getter and a method of `x`'s type is ambiguous, so it is reported; `(x.f)()` calls
  *   what the field holds or the getter gives.
  * - `worker.disposing()`, a method of the call an async function's own name is before a `.`
@@ -61,12 +61,13 @@ import {
   staticCandidates,
   staticTargetOf,
 } from '../../resolution/choosing/candidates.ts';
+import { candidatesOf } from '../../resolution/choosing/keyed-indexes.ts';
 import {
   membersNamed,
   methodsNamed,
   type NamedMembers,
 } from '../../resolution/choosing/member-meaning.ts';
-import { readGetter } from '../../rules/getters.ts';
+import { type CalledRead, readGetter, readKeyed } from '../../rules/getters.ts';
 import type { Type } from '../../types/type/index.ts';
 import { errorType, isPrimitive, neverType } from '../../types/type/primitives.ts';
 import { typeText } from '../../types/type/type-text.ts';
@@ -75,6 +76,7 @@ import { namedType } from '../../types/written/named-types.ts';
 import { checkValueCall, valueParameterTypes } from '../closures/value-calls.ts';
 import {
   callClash,
+  keyMissed,
   readsNothing,
   readsThroughNamespace,
   recordFieldRead,
@@ -203,12 +205,10 @@ function calledValue(context: BodyContext, node: Call): CalledValue | undefined 
       const receiver = context.chains.target(context, node);
       const members = membersNamed(context.checker, context.module, access.member.text, receiver);
       const clash = callClash(access.member, receiver, members);
-      const { field, getters } = members;
-      const readsGetter =
-        !stops(receiver) && clash === undefined && field === undefined && getters.met.length > 0;
-      const getter = { link: node, access, receiver, getters: getters.met, expected: undefined };
+      const reading = { link: node, access, receiver, expected: undefined };
+      const reads = stops(receiver) || clash !== undefined ? undefined : valuedMember(members);
       return {
-        type: readsGetter ? readGetter(context, getter) : field?.member.type,
+        type: calledMemberType(context, reading, members, reads),
         member: { receiver, members, clash },
       };
     }
@@ -219,6 +219,28 @@ function calledValue(context: BodyContext, node: Call): CalledValue | undefined 
       return {
         type: callee.kind === 'Identifier' ? context.expression(callee) : context.settled(callee),
       };
+  }
+}
+
+/**
+ * The type of what `x.f(…)` calls where `f` gives a value (`reads`): its field's, or what its getter
+ * or keyed index gives, read now as a field is (§3.1, §3.9); undefined where nothing is read. A keyed
+ * read is settled first, in a scope of its own, as `x["k"](…)`'s callee is: each key's function
+ * type, `S[K]`, is known only once the read's own type parameters are.
+ */
+function calledMemberType(
+  context: BodyContext,
+  read: CalledRead,
+  { field, getters, keyed }: NamedMembers,
+  reads: ReturnType<typeof valuedMember>,
+): Type | undefined {
+  switch (reads) {
+    case 'getter':
+      return readGetter(context, read, getters.met);
+    case 'keyed':
+      return context.scopes.isolated(() => readKeyed(context, read, candidatesOf(keyed)));
+    default:
+      return field?.member.type;
   }
 }
 
@@ -289,6 +311,7 @@ function callMethod(
       methods.length > 0
         ? checkerDiagnostics.receiverNotPlace(receiver.span, name)
         : (insideReceiver() ??
+            keyMissed(context, callee.member, receiverType) ??
             checkerDiagnostics.noMember(callee.member.span, typeText(receiverType), name)),
     );
     return errorType;

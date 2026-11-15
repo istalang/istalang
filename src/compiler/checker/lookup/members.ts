@@ -1,8 +1,8 @@
 /**
  * What a value of a type has, by name, as a module sees it: its fields and variants as its layout
  * has them, a tuple's elements as fields named by position (`t.0`, §3.15), or the fields its
- * constraints require; the static functions a call through it may choose, its methods, and its
- * getters, read as fields are (§3.1).
+ * constraints require; the static functions a call through it may choose, its methods, its
+ * getters, and its keyed indexes' keys, read as fields are (§3.1, §3.9).
  *
  * Methods and getters are what a member's name means through a value of the type
  * (resolution/choosing/member-meaning.ts), the one answer a read and a call give, each kept where
@@ -26,9 +26,10 @@ import {
   callableThrough,
   staticCandidatesThrough,
 } from '../resolution/choosing/candidates.ts';
+import { keyedReadType, keyNamesOf } from '../resolution/choosing/keyed-indexes.ts';
 import { everyMember } from '../resolution/choosing/member-meaning.ts';
 import { selfInference } from '../resolution/choosing/receivers.ts';
-import type { GetterMember, TypeMembers } from '../surface/denotation.ts';
+import type { ReadMember, TypeMembers } from '../surface/denotation.ts';
 import { substitute } from '../types/parts/substitution.ts';
 import { requiredFields } from '../types/traits/constraints.ts';
 import {
@@ -45,6 +46,7 @@ const noMembers: TypeMembers = {
   variants: [],
   methods: [],
   getters: [],
+  keys: [],
   statics: [],
   associatedTypes: [],
 };
@@ -58,7 +60,7 @@ export function membersOf(
   if (type.kind === 'error') {
     return noMembers;
   }
-  const { methods, getters } = everyMember(checker, module, type);
+  const { methods, getters, keyed } = everyMember(checker, module, type);
   const callable = (candidates: readonly Candidate[]) =>
     access === undefined ? candidates : callableThrough(checker, access, candidates);
   return {
@@ -66,6 +68,13 @@ export function membersOf(
     variants: (type.kind === 'nominal' ? checker.variantsOf(type) : undefined) ?? [],
     methods: declarationsOf(callable(methods.met)),
     getters: gettersOf(checker, type, callable(getters.met)),
+    keys: keyed.flatMap((each) =>
+      keyNamesOf(each).map((name) => ({
+        name,
+        declaration: each.candidate.declaration,
+        type: keyedReadType(checker, each, name),
+      })),
+    ),
     statics: staticsOf(checker, module, type),
     associatedTypes: associatedDeclarationsOn(checker, type),
   };
@@ -108,7 +117,7 @@ function gettersOf(
   checker: CheckerContext,
   type: Type,
   candidates: readonly Candidate[],
-): readonly GetterMember[] {
+): readonly ReadMember[] {
   const byDeclaration = new Map(candidates.map((each) => [each.declaration, each]));
   return [...byDeclaration.values()].map((candidate) => {
     const result = checker.resultOf(candidate.declaration);
@@ -117,7 +126,11 @@ function gettersOf(
       taken === undefined
         ? result
         : substitute(result, taken.inference.substitution(), checker.typeRules);
-    return { declaration: candidate.declaration, type: read };
+    return {
+      name: candidate.declaration.name.text,
+      declaration: candidate.declaration,
+      type: read,
+    };
   });
 }
 

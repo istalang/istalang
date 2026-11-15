@@ -62,8 +62,12 @@ export interface Denotation {
   readonly type: Type | undefined;
 }
 
-/** A getter a value is read through (§3.1), and the type it gives read on that value. */
-export interface GetterMember {
+/**
+ * A member a value is read through by calling a function, as a field is read: a getter (§3.1), or a
+ * key of a keyed index (§3.9). Its name, the function, and the type it gives read on that value.
+ */
+export interface ReadMember {
+  readonly name: string;
   readonly declaration: FunctionDeclaration;
   readonly type: Type;
 }
@@ -77,7 +81,9 @@ export interface TypeMembers {
    */
   readonly methods: readonly FunctionDeclaration[];
   /** Getters taking it as `self`, read as fields are, found as its methods are (§3.1). */
-  readonly getters: readonly GetterMember[];
+  readonly getters: readonly ReadMember[];
+  /** The keys its keyed indexes take, read as fields are (§3.9). */
+  readonly keys: readonly ReadMember[];
   /** Functions declared on the type, `fn Type.name`, that its module sees (§3.7). */
   readonly statics: readonly FunctionDeclaration[];
   /** What declares each associated type it has (§3.1): its own, or its traits' requirements. */

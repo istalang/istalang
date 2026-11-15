@@ -138,7 +138,8 @@ src/
                                                                  (known-constraints.ts)
       resolution/                                                what a call or a name may mean:
         choosing/                                                candidates and ADL, how arguments bind, choice among overloads, the calls a construct makes
-                                                                 (calls-made.ts), what a member's name means through a receiver (member-meaning.ts)
+                                                                 (calls-made.ts), what a member's name means through a receiver (member-meaning.ts),
+                                                                 the keyed indexes member syntax reads through (keyed-indexes.ts)
         conformance/                                             how a call's mark and sendability parameters settle where no bound does, to the least of their
                                                                  order, the callee's own mark at most its caller's (kind-settling.ts, the one place),
                                                                  witnesses and why there is none, the traits the compiler derives (derived-traits.ts: one

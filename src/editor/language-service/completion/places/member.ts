@@ -205,11 +205,11 @@ function valueMembers(
   if (value === undefined) {
     return [];
   }
-  const { fields, getters, methods } = checker.lookup.membersOf(module, value, access);
+  const { fields, getters, keys, methods } = checker.lookup.membersOf(module, value, access);
   return [
     ...fields.map((field): Candidate => ({ name: field.name, subject: { kind: 'field', field } })),
-    ...[...new Map(getters.map((getter) => [getter.declaration.name.text, getter]))].map(
-      ([name, getter]): Candidate => ({ name, subject: { kind: 'getter', getter } }),
+    ...[...new Map([...getters, ...keys].map((read) => [read.name, read])).values()].map(
+      (read): Candidate => ({ name: read.name, subject: { kind: 'read', read } }),
     ),
     ...functionsThrough('value', methods),
   ];

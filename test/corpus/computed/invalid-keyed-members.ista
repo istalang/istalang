@@ -1,0 +1,47 @@
+# error: 5001 at 38:3
+# error: 5001 at 41:21
+# error: 5227 at 42:9
+# error: 5227 at 43:17
+# error: 5227 at 44:9
+# error: 5013 at 46:9
+# error: 5228 at 47:5
+# Keyed members (§3.9): each key reads with its own type; a name no key or member serves lists the
+# keys (a name a member and a keyed index both serve is rules/getters.test.ts's); a map's `index`
+# takes any String, so its members keep their meaning; a keyed read is no place.
+
+trait Node:
+  type Scope
+  fn scope(self: Self) -> Self.Scope
+
+struct Field<T>:
+  value: T?
+  type Scope = T?
+
+fn scope<T>(self: Field<T>) -> T?: self.value
+
+struct Group<S is struct { [_] is Node }>:
+  fields: S
+  type Scope = Reads<S>
+
+fn scope<S is struct { [_] is Node }>(self: Group<S>) -> Reads<S>: Reads{m: self.fields}
+
+struct Reads<S is struct { [_] is Node }>:
+  m: S
+
+fn index<S is struct { [_] is Node }, K in keyof S>(self: Reads<S>, key: K) -> S[K].Scope:
+  self.m[key].scope()
+
+struct Company { size: Field<Int>, name: Field<String> }
+struct Supplier { city: Field<String>, company: Group<Company> }
+
+fn wrongInGeneric<S is struct { size: Field<Int>, [_] is Node }>(scope: Reads<S>) -> String:
+  scope.size
+
+fn main(d: Reads<Supplier>, m: Map<String, Int>) -> Unit:
+  const city: Int = d.city
+  _ = d.citty
+  _ = d.company.sise
+  _ = d.citty()
+  _ = m.size()
+  _ = m.foo
+  d.city = "Paris"

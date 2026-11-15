@@ -118,6 +118,21 @@ export const valueTemplates = {
     message: (name: string) =>
       `'${name}' is a getter, computed on every read: it can't be assigned or passed by '&' (§3.1).`,
   },
+  keyedNotPlace: {
+    code: 5228,
+    message: (name: string) =>
+      `'${name}' is a key read through an index, not a field: it can't be assigned or passed by '&' (§3.9).`,
+  },
+  keyedOrMember: {
+    code: 5226,
+    message: (type: string, name: string, member: 'field' | 'getter' | 'method') =>
+      `${type} has a ${member} named '${name}', and its index takes '${name}' as a key: a name on a type means one thing (§3.1); write x["${name}"] to read the key.`,
+  },
+  unknownKey: {
+    code: 5227,
+    message: (type: string, name: string, keys: readonly string[]) =>
+      `${type} has no member '${name}', and its index takes no such key${keys.length === 0 ? '' : `: it takes ${keys.join(', ')}`}.`,
+  },
   passing: {
     code: 5215,
     message: (name: string, position: number, reference: boolean) =>

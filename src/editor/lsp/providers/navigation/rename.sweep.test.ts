@@ -22,6 +22,7 @@ import {
 import { parentOf } from '../../../../compiler/syntax/tree/index.ts';
 import { spanIn } from '../../../../compiler/syntax/tree/positions.ts';
 import { isError } from '../../../../foundation/diagnostics/diagnostic.ts';
+import { collectionFunctions } from '../../../../foundation/language/well-known/implicit-calls.ts';
 import { lineMapOf } from '../../../../foundation/text/line-map.ts';
 import type { NamePlace } from '../../../language-service/navigation/declarations.ts';
 import {
@@ -44,6 +45,27 @@ beforeAll(async () => {
 });
 
 /**
+ * The names keyed reads spell (§3.9), by module: `d.city` denotes the `index` it calls alone, so
+ * renaming the field its key names leaves the read behind. TODO(F36): rename reaches keyed reads.
+ */
+const keyedReadNames = new Set(
+  [...corpusProgram.modules].flatMap(([module, { tree }]) =>
+    isStdModule(corpusProgram, module)
+      ? []
+      : namesOf(tree).flatMap((name) => {
+          const at = nameAt(corpusProgram, module, spanIn(tree, name.span).start);
+          const callsIndex = at?.declarations.some(
+            ({ declared }) =>
+              declared.kind === 'function' &&
+              declared.declaration.name.text === collectionFunctions.index &&
+              spelledName(name) !== collectionFunctions.index,
+          );
+          return callsIndex === true ? [`${module} ${spelledName(name)}`] : [];
+        }),
+  ),
+);
+
+/**
  * Every name of the corpus project's modules that check clean and declares what it may rename. In
  * a module with errors, a name meant for a declaration may not resolve to it, so renaming the
  * declaration leaves it, and its diagnostic, behind.
@@ -55,7 +77,8 @@ const renamable: readonly NamePlace[] = [...corpusProgram.modules].flatMap(([mod
     : namesOf(tree).flatMap((name) => {
         const renaming = renamingAt(corpusProgram, module, spanIn(tree, name.span).start);
         const use = { module, name };
-        return renaming?.kind === 'renamable' && isSamePlace(renaming.target.at, use) ? [use] : [];
+        const declares = renaming?.kind === 'renamable' && isSamePlace(renaming.target.at, use);
+        return declares && !keyedReadNames.has(`${module} ${spelledName(name)}`) ? [use] : [];
       }),
 );
 

@@ -6,7 +6,8 @@
  *   (syntax `isPlace`, by which the parser reports a target or `&` argument that is none). A field
  *   a trait requires, read through an `any` value or a type parameter, which may be an `any` type,
  *   is no place: its value's own type, which holds the field, is known only when the program runs
- *   (§3.14); nor is a getter, whose value is computed on each read (§3.1). Its root decides: a
+ *   (§3.14); nor is a getter, whose value is computed on each read (§3.1), nor a keyed read, a call
+ *   of `index` (§3.9). Its root decides: a
  *   `let` may change, and so may a reference parameter, which changes the caller's place. A
  *   by-value parameter is as if declared `const` (§3.3), and a `const`, top-level or local, is
  *   deeply immutable, so no part of either may change; neither may a pattern's or loop's binding
@@ -76,11 +77,17 @@ export function checkChangedPlace(context: BodyContext, node: Expression, use: P
  */
 function changePlace(context: BodyContext, node: Expression, use: PlaceUse): boolean {
   const { root, steps } = placePath(node);
-  const getter = steps.find(
+  const read = steps.find(
     (step) => step.kind === 'MemberAccess' && context.calls.of(step) !== undefined,
   );
-  if (getter?.kind === 'MemberAccess') {
-    context.report(checkerDiagnostics.getterNotPlace(getter.member.span, getter.member.text));
+  if (read?.kind === 'MemberAccess') {
+    const { span, text } = read.member;
+    const isGetter = context.calls.of(read)?.function.isGetter === true;
+    context.report(
+      isGetter
+        ? checkerDiagnostics.getterNotPlace(span, text)
+        : checkerDiagnostics.keyedNotPlace(span, text),
+    );
     return false;
   }
   const throughTrait = steps.find(
