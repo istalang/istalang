@@ -1,7 +1,7 @@
 ---
 description: plan for B92 — make the type table's spelling of a recursive type a function of its key, so union variant order is stable; process, one phase, acceptance criteria. Read before forking or examining it
 owner: tech-lead
-status: active
+status: done
 applies_to: compiler/lowering/tables
 last_verified: 2026-11-15
 last_updated: 2026-11-15
