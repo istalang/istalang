@@ -45,10 +45,8 @@ import { weakNatives } from './weak-natives.ts';
 
 export const preludeNatives = (
   keys: NativeKeys,
-): Natives<NativeContext & WithSlots & WithWaits & WithWeakSide & WithInstances> => ({
+): Natives<NativeContext & WithWaits & WithWeakSide> => ({
   ...arrayNatives(keys),
-  ...instanceNatives(keys),
-  ...slotNatives(keys),
   ...waitNatives(keys),
   ...mapNatives(keys),
   ...rangeNatives(keys),
@@ -63,6 +61,14 @@ export const preludeNatives = (
     throw new Panic(text(message));
   },
   [keys.of('_trace')]: (_, context) => context.callerTrace(),
+});
+
+/** The prelude's natives of slots and instances, ista's (proposal 8, Rule 6): the interpreter's alone. */
+export const preludeInterpreterNatives = (
+  keys: NativeKeys,
+): Natives<NativeContext & WithSlots & WithInstances> => ({
+  ...instanceNatives(keys),
+  ...slotNatives(keys),
 });
 
 /** The operators and conversions over `Int` and `Float` (§2, §3.9, §3.10). */

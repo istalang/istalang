@@ -10,3 +10,8 @@ import { stdModules } from './std-modules.ts';
 export const stdNatives: Natives = Object.fromEntries(
   stdModules.flatMap((module) => Object.entries(module.natives)),
 );
+
+/** The keys of the std natives that reach instances, contexts, slots or tests: the interpreter's alone. */
+export const interpreterNativeKeys: ReadonlySet<string> = new Set(
+  stdModules.flatMap((module) => module.interpreterKeys),
+);

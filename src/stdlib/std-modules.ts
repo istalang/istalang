@@ -6,37 +6,38 @@
  */
 
 import { languageModules } from '../foundation/language/well-known/index.ts';
-import type { Natives } from '../runtime/natives.ts';
 import { cryptoNatives } from './crypto/natives.ts';
 import { decimalNatives } from './decimal/natives.ts';
 import { jsonNatives } from './json/natives.ts';
 import { logNatives } from './log/natives.ts';
 import { mathNatives } from './math/natives.ts';
-import { preludeNatives } from './prelude/natives.ts';
+import { preludeInterpreterNatives, preludeNatives } from './prelude/natives.ts';
 import { randomNatives } from './random/natives.ts';
 import { regexNatives } from './regex/natives.ts';
-import { runtimeNatives } from './runtime/natives.ts';
-import { type NativeKeys, nativeKeysOf, type StdModule, stdModule } from './std-module.ts';
+import { runtimeInterpreterNatives, runtimeNatives } from './runtime/natives.ts';
+import { type ModuleNatives, nativeKeysOf, type StdModule, stdModule } from './std-module.ts';
 import { type StdModuleName, stdModuleSources } from './std-sources.ts';
 import { stringsNatives } from './strings/natives.ts';
 import { testingNatives } from './testing/natives.ts';
 import { timeNatives } from './time/natives.ts';
 
 /** The natives of each std module that declares externs, from the keys of its name. */
-const nativesOf: Partial<Record<StdModuleName, (keys: NativeKeys) => Natives>> = {
-  [languageModules.prelude]: preludeNatives,
-  [languageModules.time]: timeNatives,
-  [languageModules.json]: jsonNatives,
-  runtime: runtimeNatives,
-  strings: stringsNatives,
-  regex: regexNatives,
-  math: mathNatives,
+const nativesOf: Partial<Record<StdModuleName, ModuleNatives>> = {
+  [languageModules.prelude]: { everywhere: preludeNatives, interpreter: preludeInterpreterNatives },
+  [languageModules.time]: { everywhere: timeNatives },
+  [languageModules.json]: { everywhere: jsonNatives },
+  runtime: { everywhere: runtimeNatives, interpreter: runtimeInterpreterNatives },
+  strings: { everywhere: stringsNatives },
+  regex: { everywhere: regexNatives },
+  math: { everywhere: mathNatives },
   // `decimal` rounds in `math`'s modes, so its natives are keyed by `math`'s keys too.
-  decimal: (keys) => decimalNatives(keys, nativeKeysOf('math' satisfies StdModuleName)),
-  random: randomNatives,
-  log: logNatives,
-  crypto: cryptoNatives,
-  [languageModules.testing]: testingNatives,
+  decimal: {
+    everywhere: (keys) => decimalNatives(keys, nativeKeysOf('math' satisfies StdModuleName)),
+  },
+  random: { everywhere: randomNatives },
+  log: { everywhere: logNatives },
+  crypto: { everywhere: cryptoNatives },
+  [languageModules.testing]: { interpreter: testingNatives },
 };
 
 const natives = new Map(Object.entries(nativesOf));

@@ -22,20 +22,24 @@ import { futureKey, type NativeKeys } from '../std-module.ts';
 import { given, int, text } from '../values/arguments.ts';
 import { declaredResult, resultOptional, resultTypeArgument } from '../values/results.ts';
 
-export const runtimeNatives = (
-  keys: NativeKeys,
-): Natives<NativeContext & WithFutures & WithInstances & WithContexts> => ({
+export const runtimeNatives = (keys: NativeKeys): Natives<NativeContext & WithFutures> => ({
   [keys.of('id')]: (_arguments, context) => context.instance,
   [keys.of('version')]: (_arguments, context) => context.version,
   [keys.of('commit')]: (_arguments, context) => context.futures.resolved(null),
-  [keys.of('_isolated', functionKey([], futureKey(parameterKey('T'), 'ista'), 'ista'))]: (
-    [entry],
-    context,
-  ) => context.instances.spawn(given(entry), declaredResult(context), { terminatesOnPanic: true }),
   [keys.of('_raise', namedKey('prelude.Error'))]: ([error], context) => {
     const field = (name: string) => text(fieldValueOf(context.types, error, name));
     throw new Panic(field('message'), { trace: field('trace') });
   },
+});
+
+/** The natives reaching instances and the contexts of a live run: the interpreter's alone. */
+export const runtimeInterpreterNatives = (
+  keys: NativeKeys,
+): Natives<NativeContext & WithFutures & WithInstances & WithContexts> => ({
+  [keys.of('_isolated', functionKey([], futureKey(parameterKey('T'), 'ista'), 'ista'))]: (
+    [entry],
+    context,
+  ) => context.instances.spawn(given(entry), declaredResult(context), { terminatesOnPanic: true }),
   [keys.of('hostStore')]: (_arguments, context) =>
     context.contexts.hostStore(declaredResult(context)),
   [keys.ofStatic('_Runtime', 'open', keys.type('Store'))]: ([store], context) =>
