@@ -6,7 +6,7 @@
  * - A waiter opens a wait and makes a resolver per case, which each case's `onAwait` registers on a
  *   future or resolves. The first resolver to resolve decides the wait, once; the others pending
  *   then are cancelled, their `onCancel` callbacks readied, what they awaited given up on.
- * - Futures resolved together decide in their settle order (settle-order.ts).
+ * - Futures resolved together decide in their settle order (runtime/settle-order.ts).
  * - What is registered on a future and a wait's cases are found by lookup here, as the interpreter's
  *   heap indexes them, so a future, a wait and a resolver each know only what they are.
  * - A `Resolver.of` callback, or an `onCancel` one, is readied as a call of its own (`called`).
@@ -14,9 +14,9 @@
 
 import type { Value } from '../../definition/values/values.ts';
 import { Panic } from '../../runtime/natives.ts';
+import { type RankedTarget, settleOrder } from '../../runtime/settle-order.ts';
 import type { Future } from './future.ts';
 import { Resolver } from './resolver.ts';
-import { settleOrder } from './settle-order.ts';
 import type { Decision, Wait } from './wait.ts';
 
 /** What waits reach outside themselves. */
@@ -123,13 +123,11 @@ export class Waits {
       future.settled = { value };
       const registered = this.#registered.get(future) ?? [];
       this.#registered.delete(future);
-      return registered.map((resolver) => ({
-        resolver,
-        future,
-        order: resolver.on.indexOf(future),
-      }));
+      return registered
+        .filter((resolver) => resolver.state === 'pending')
+        .map((resolver) => ({ resolver, future, order: resolver.on.indexOf(future) }));
     });
-    for (const { resolver, future } of settleOrder(registrations)) {
+    for (const { resolver, future } of settleOrder(registrations, rankedTarget)) {
       if (
         resolver.state === 'pending' &&
         !this.#take(resolver, (future.settled as { readonly value: Value }).value)
@@ -239,4 +237,17 @@ export function positionedResolver(done: Resolver, position: bigint): Resolver {
   const resolver = new Resolver({ kind: 'at', done, position });
   done.positions.push(resolver);
   return resolver;
+}
+
+/** What `resolver` decides, as the settle order ranks it. */
+function rankedTarget(resolver: Resolver): RankedTarget<Resolver> {
+  const { target } = resolver;
+  switch (target.kind) {
+    case 'case':
+      return { kind: 'case', waiter: target.wait.waiter, position: target.position };
+    case 'at':
+      return target;
+    default:
+      return { kind: 'callback', made: resolver.object };
+  }
 }

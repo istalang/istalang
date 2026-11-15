@@ -356,16 +356,16 @@ export default {
       to: { path: '^src/runtime/interpreter/raw-registers\\.ts$' },
     },
     {
-      // Compiled JavaScript runs on the runtime's seams (natives, clock, refusals, random draws, what
-      // an instance logs, the host boundary), never on the interpreter it is diffed against, so it
-      // bundles for a browser.
+      // Compiled JavaScript runs on the runtime's seams (natives, clock, refusals, random draws,
+      // settle order, what an instance logs, the host boundary), never on the interpreter it is
+      // diffed against, so it bundles for a browser.
       name: 'live-imports-interpreter',
       severity: 'error',
       from: { path: '^src/live/' },
       to: {
         path: '^src/runtime/',
         pathNot:
-          '^src/runtime/((natives|clock|refusal|instance-state|random-draws)\\.ts|boundary/)',
+          '^src/runtime/((natives|clock|refusal|instance-state|random-draws|settle-order)\\.ts|boundary/)',
       },
     },
     {

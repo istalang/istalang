@@ -65,7 +65,7 @@ import {
   type Wait,
   waiterOf,
 } from './resolvers.ts';
-import { settleOrder } from './settle-order.ts';
+import { heapSettleOrder } from './settle-order.ts';
 
 /** What waits reach outside themselves. */
 interface WaitSeams extends EndingSeams {
@@ -209,7 +209,7 @@ export class Waits {
    * something earlier decided first, a resolver taking nothing then, is cancelled.
    */
   settle(resolved: ReadonlySet<number>, settled: (future: number) => Settled): void {
-    for (const registration of settleOrder(this.#heap, resolved)) {
+    for (const registration of heapSettleOrder(this.#heap, resolved)) {
       const resolver = this.#heap.of(registration.resolver.id, 'resolver');
       if (isPending(resolver) && !this.#take(resolver, settled(registration.future).value)) {
         this.#endings.lose(resolver, { kind: 'cancelled' });
