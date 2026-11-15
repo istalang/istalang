@@ -7,7 +7,8 @@
  * (§3.17), as the programmer wrote it; any other shape reads as its fields, never as a key. A
  * recursive type reads as the alias it was written through, else as its node's label. A function
  * type reads as its head would write it, `sendable live fn(Int) -> Bool`, or as `Fn<(T,), U, M>`
- * where its mark or sendability is a variable no head's word spells.
+ * where its mark or sendability is a variable no head's word spells. Types one message spells
+ * together tell apart distinct type parameters of one name (`typeTextsTogether`).
  */
 
 import { selfType } from '../../../../foundation/language/well-known/index.ts';
@@ -16,6 +17,7 @@ import type { RestPattern } from '../../../syntax/patterns.ts';
 import { modifiersText } from '../../../syntax/tokens/modifiers.ts';
 import { folded } from '../identity/folding.ts';
 import { holdsRecursion } from '../parts/type-children.ts';
+import { parametersIn } from '../parts/type-parts.ts';
 import type { AliasUse } from './alias-uses.ts';
 import { type MappedParts, type RecursiveType, unfoldRecursive } from './computed-types.ts';
 import { modifiersOf } from './function-types.ts';
@@ -25,6 +27,7 @@ import {
   type FunctionType,
   type NominalType,
   nominalType,
+  type ParameterKey,
   type ParameterSlot,
   type Type,
   type TypeParameterType,
@@ -35,6 +38,29 @@ import { isPrimitive, literalText } from './primitives.ts';
 
 /** The unlabelled recursive types being printed as their bodies, each `…` where reached again. */
 const printing = new Set<RecursiveType>();
+
+/** The names of the parameters reading alike in the types spelled together (`typeTextsTogether`). */
+let primed: ReadonlyMap<ParameterKey, string> = new Map();
+
+/**
+ * `types` spelled for one message, each as `typeText` spells it, but for distinct type parameters
+ * among them of one name (a declaration's, as written): each after the first to appear is primed (`T'`, `T''`), as no name is
+ * written so, and the message tells them apart, a call's parameter from its caller's of the name.
+ */
+export function typeTextsTogether(types: readonly Type[]): readonly string[] {
+  const declared = new Set(types.flatMap(parametersIn).filter(isTypeParameter));
+  const byName = Map.groupBy(declared, (parameter) => parameter.name.text);
+  primed = new Map(
+    [...byName].flatMap(([name, parameters]) =>
+      parameters.slice(1).map((parameter, index) => [parameter, `${name}${"'".repeat(index + 1)}`]),
+    ),
+  );
+  try {
+    return types.map(typeText);
+  } finally {
+    primed = new Map();
+  }
+}
 
 /** A recursive type no alias wrote, read as its body, itself `…` inside it. */
 function unlabelledText(type: RecursiveType): string {
@@ -294,8 +320,12 @@ export function parameterText(type: TypeParameterType): string {
     case 'Placeholder':
       return '_';
     default:
-      return boundName(declaration);
+      return primed.get(declaration) ?? boundName(declaration);
   }
+}
+
+function isTypeParameter(parameter: ParameterKey): parameter is TypeParameter {
+  return parameter.kind === 'TypeParameter';
 }
 
 /**

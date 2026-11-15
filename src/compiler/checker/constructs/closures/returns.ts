@@ -33,6 +33,7 @@ import {
 } from '../../rules/agreement.ts';
 import { openAgreement } from '../../rules/open-agreement.ts';
 import { misfitOf } from '../../types/fitting/fit/index.ts';
+import { Inference } from '../../types/inference/infer.ts';
 import type { Type } from '../../types/type/index.ts';
 import { unitType } from '../../types/type/primitives.ts';
 import { typeText } from '../../types/type/type-text.ts';
@@ -171,10 +172,10 @@ export class ReturnScope implements Returns {
    */
   #settled(context: BodyContext, tail: Produced, declared: Type): Type {
     const produced = this.#orFuture === undefined ? [tail] : [...this.#returned, tail];
-    const fitsEach = (type: Type) =>
-      produced.every((each) => context.checker.fitOf(each.type, type) !== undefined);
     const result =
-      this.#orFuture !== undefined && !fitsEach(declared) && fitsEach(this.#orFuture)
+      this.#orFuture !== undefined &&
+      !fitsEach(context, produced, declared) &&
+      fitsEach(context, produced, this.#orFuture)
         ? this.#orFuture
         : declared;
     for (const each of produced) {
@@ -182,6 +183,26 @@ export class ReturnScope implements Returns {
     }
     return result;
   }
+}
+
+/**
+ * Whether every one of `produced` fits `type`. Where the constraint scope still holds one (a call
+ * whose mark it infers), as the scope's system may bind it: probed in a copy of that system, which
+ * is committed to the scope when every one fits, so what the scope settles agrees with the choice,
+ * and left behind when one doesn't.
+ */
+function fitsEach(context: BodyContext, produced: readonly Produced[], type: Type): boolean {
+  const { checker, scopes } = context;
+  const scope = scopes.root;
+  if (scope === undefined || !produced.some((each) => scopes.holds(each.type))) {
+    return produced.every((each) => checker.fitOf(each.type, type) !== undefined);
+  }
+  const probe = new Inference([], checker.fitting, undefined, { copying: scope });
+  const fits = produced.every((each) => probe.match(type, each.type));
+  if (fits) {
+    probe.commitTo(scope);
+  }
+  return fits;
 }
 
 /**

@@ -129,3 +129,13 @@ describe('typeText', () => {
     expect(x && typeText(x.type)).toBe('Optional<Int>');
   });
 });
+
+describe('messages', () => {
+  it('tell apart two type parameters of one name', () => {
+    const messages = messagesOf([
+      'fn need<T>(f: fn(T) -> Int) -> T: need(f)',
+      'fn use<T>(f: fn(T) -> String) -> Int: need(f)',
+    ]);
+    expect(messages).toEqual(["Expected fn(T) -> Int, found fn(T') -> String."]);
+  });
+});

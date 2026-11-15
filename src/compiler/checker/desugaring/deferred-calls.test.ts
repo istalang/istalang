@@ -306,3 +306,15 @@ describe('a deferred call naming its function with type arguments', () => {
     expect(await outcomeOf(text)).toBe(47);
   });
 });
+
+describe("a deferred call's function generic over its mark", () => {
+  it("takes the mark its taker's parameter gives, as its call written whole does", () => {
+    const text = [
+      'K async fn work<K in Persistence>(x: Int) -> Int: x',
+      'fn queueUp(f: ista async fn() -> Int) -> Unit: ()',
+      'fn main2() -> Unit:',
+      '  queueUp work(1)',
+    ].join('\n');
+    expect(reported(text).codes).toEqual([]);
+  });
+});

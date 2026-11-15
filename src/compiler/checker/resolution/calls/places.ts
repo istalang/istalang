@@ -57,11 +57,12 @@ type PlaceUse = 'assigned' | 'referenced';
 
 /**
  * Checks `node` as a place that will change; its type, read as the place's value, so lowering
- * finds every part of it typed. A variable assigned as a whole is the assignment's own rule
- * (constructs/statements/assignments.ts).
+ * finds every part of it typed. A place has its own type, which nothing around it infers, so it is
+ * read settled, and what its rules ask of its parts (a getter's read, an element's key) is known.
+ * A variable assigned as a whole is the assignment's own rule (constructs/statements/assignments.ts).
  */
 export function checkChangedPlace(context: BodyContext, node: Expression, use: PlaceUse): Type {
-  const type = context.expression(node);
+  const type = context.settled(node);
   if (type.kind === 'error') {
     return type;
   }

@@ -18,6 +18,10 @@
  *   postponed.
  * - An `if` with no `else` gives nothing: its branches' values are dropped, so they settle on their
  *   own, as a statement's do.
+ * - A member access, which may read a getter, stands as a call does, whatever it resolves to, since
+ *   its standing is read before it is resolved: a plain field read opens a scope nothing joins. An
+ *   operator or an index reads its operands settled where it is checked (equality, `in`, a key), so
+ *   it stays a boundary.
  * - A sugar takes no place of its own: its core, checked in its place, stands as its own kind does
  *   (checker/desugaring/), so one in parentheses joins.
  */
@@ -70,6 +74,7 @@ function collectionStanding(
 // biome-ignore-start lint/style/useNamingConvention: the keys are the tree's node kinds.
 const standings: Handlers<ScopeHolding, CoreExpression, [Type | undefined], Standing> = {
   Call: opens,
+  MemberAccess: opens,
   StructLiteral: opens,
   NewStructLiteral: opens,
   Tuple: opens,
@@ -82,7 +87,6 @@ const standings: Handlers<ScopeHolding, CoreExpression, [Type | undefined], Stan
   Select: opens,
   BlockExpression: opens,
   Identifier: boundary,
-  MemberAccess: boundary,
   TypeApplication: boundary,
   Lambda: boundary,
   IntegerLiteral: boundary,
@@ -94,8 +98,8 @@ const standings: Handlers<ScopeHolding, CoreExpression, [Type | undefined], Stan
   Binary: boundary,
   Unary: boundary,
   Is: boundary,
-  TupleElement: boundary,
   Index: boundary,
+  TupleElement: boundary,
   Reference: boundary,
   Dereference: boundary,
   Propagate: boundary,

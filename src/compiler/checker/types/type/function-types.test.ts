@@ -222,3 +222,15 @@ ista fn main(g: ista async fn() -> Int):
     ).toEqual(reportedNothing);
   });
 });
+
+describe('a pack inferred from a function type taking none', () => {
+  it('takes its parameters as their tuple, whichever side the pack is on', () => {
+    const text = [
+      'fn logged<...A, R>(f: Fn<A, R>) -> Fn<A, R>: f',
+      'fn takesLive(f: fn(Int) -> Int) -> Int: f(1)',
+      'fn area(n: Int) -> Int: n * n',
+      'fn main2() -> Int: takesLive(logged(area))',
+    ].join('\n');
+    expect(reported(text)).toEqual(reportedNothing);
+  });
+});

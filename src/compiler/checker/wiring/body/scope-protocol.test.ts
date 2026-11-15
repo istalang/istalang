@@ -65,3 +65,19 @@ describe("a field loop's passes", () => {
     expect(await mainGives('String', body, declarations)).toBe('int str');
   });
 });
+
+describe('a call written as another construct', () => {
+  it("takes the type expected of it, as a call does, to infer its function's result", () => {
+    const text = [
+      'struct Box:',
+      '  n: Int',
+      'fn get empty<T>(self: Box) -> Array<T>: []',
+      'fn id<T>(x: T) -> T: x',
+      'fn main2() -> Unit:',
+      '  const b = Box{n: 1}',
+      '  const a: Array<Int> = id(empty(b))',
+      '  const c: Array<Int> = id(b.empty)',
+    ].join('\n');
+    expect(reported(text)).toEqual(reportedNothing);
+  });
+});

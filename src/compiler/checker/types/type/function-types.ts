@@ -177,8 +177,8 @@ type ParameterRelation = (declared: Type, given: Type, byReference: boolean) => 
  * Whether two function types take the same parameters, each by value or by `&` alike, and give the
  * same result, their types compared by `parts`: exactly (`sameType`), or as inference matches a
  * declared type against a given one. Whether each is sendable is the caller's to compare.
- * A declared pack takes the given type's parameters past the declared ones, as their tuple, or the
- * given type's own pack when none are left (§3.5).
+ * A pack on either side takes the other's parameters past its own fixed ones, as their tuple, or
+ * the other's own pack when none are left (§3.5).
  */
 function sameShape(
   declared: FunctionType,
@@ -187,10 +187,11 @@ function sameShape(
   results: ((declared: Type, given: Type) => boolean) | undefined = (declaredResult, givenResult) =>
     parts(declaredResult, givenResult, false),
 ): boolean {
-  const fixed = declared.parameters.length;
+  const packsGiven = declared.pack === undefined && given.pack !== undefined;
+  const fixed = (packsGiven ? given : declared).parameters.length;
   const samePrefix =
-    given.parameters.length >= fixed &&
-    declared.parameters.every((parameter, index) => {
+    Math.min(declared.parameters.length, given.parameters.length) >= fixed &&
+    declared.parameters.slice(0, fixed).every((parameter, index) => {
       const other = given.parameters[index];
       return (
         other !== undefined &&
@@ -198,21 +199,28 @@ function sameShape(
         parts(parameter.type, other.type, parameter.reference)
       );
     });
-  if (!samePrefix) {
-    return false;
-  }
-  if (declared.pack === undefined) {
-    return (
-      given.parameters.length === fixed &&
-      given.pack === undefined &&
-      results(declared.result, given.result)
-    );
-  }
-  const rest = restOf(given, fixed);
   return (
-    rest !== undefined &&
-    parts(declared.pack, rest, false) &&
-    results(declared.result, given.result)
+    samePrefix && sameRest(declared, given, fixed, parts) && results(declared.result, given.result)
+  );
+}
+
+/**
+ * Whether the parameters past `fixed` match: none on either side, or a pack taking the other side's
+ * rest (`restOf`).
+ */
+function sameRest(
+  declared: FunctionType,
+  given: FunctionType,
+  fixed: number,
+  parts: ParameterRelation,
+): boolean {
+  if (declared.pack === undefined && given.pack === undefined) {
+    return declared.parameters.length === fixed && given.parameters.length === fixed;
+  }
+  const declaredRest = restOf(declared, fixed);
+  const givenRest = restOf(given, fixed);
+  return (
+    declaredRest !== undefined && givenRest !== undefined && parts(declaredRest, givenRest, false)
   );
 }
 

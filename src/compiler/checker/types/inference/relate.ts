@@ -216,8 +216,13 @@ function relatedByParts(expected: Type, found: Type, relating: Relating): boolea
   if (found.kind === 'union') {
     return found.members.every((member) => relating.constrain(member, expected));
   }
-  if (isComputed(expected)) {
-    return mentionsVariable(expected, relating) || sameType(expected, found);
+  // A function's parameters relate the other way round, so the variable may stand on either side.
+  if (isComputed(expected) || isComputed(found)) {
+    return (
+      mentionsVariable(expected, relating) ||
+      mentionsVariable(found, relating) ||
+      sameType(expected, found)
+    );
   }
   if (expected.kind === 'any') {
     // Anything else converts, through what it may meet, by the traits' variance (`convertsIntoAny`).

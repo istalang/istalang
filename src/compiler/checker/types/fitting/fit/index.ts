@@ -60,7 +60,7 @@ import { membersOf } from '../../type/index.ts';
 import type { QualifierParameter } from '../../type/mark-orders.ts';
 import { isPrimitive } from '../../type/primitives.ts';
 import type { TypeRules } from '../../type/type-rules.ts';
-import { typeText } from '../../type/type-text.ts';
+import { typeTextsTogether } from '../../type/type-text.ts';
 import { absorbingMember, baseOf } from '../../unions/union-members.ts';
 import { hasMember, literalsBase } from '../../unions/unions.ts';
 import type { Variance } from '../../variance/lattice.ts';
@@ -512,7 +512,9 @@ export function misfitOf(
   found: Type,
   expected: Type,
 ): Diagnostic<AnchoredSpan> {
+  // Read in the message's order, expected first.
+  const [expectedText = '', foundText = ''] = typeTextsTogether([expected, found]);
   return intoSeveral(found, expected, fitting)
-    ? checkerDiagnostics.severalConversions(at, typeText(found), typeText(expected))
-    : checkerDiagnostics.typeMismatch(at, typeText(expected), typeText(found));
+    ? checkerDiagnostics.severalConversions(at, foundText, expectedText)
+    : checkerDiagnostics.typeMismatch(at, expectedText, foundText);
 }

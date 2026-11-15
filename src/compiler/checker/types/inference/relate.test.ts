@@ -198,3 +198,22 @@ describe('a conversion into an `any` type while inferring', () => {
     );
   });
 });
+
+describe('an associated type in a parameter of a function type', () => {
+  it('relates as the very same type, whichever side holds the variable', () => {
+    expect(
+      codesAfter(
+        'trait Node:',
+        '  type Seen',
+        'enum From<R is Node>:',
+        '  Fn(key: fn(R.Seen) -> String?)',
+        'enum Gen<R>:',
+        '  G(key: fn(R) -> String?)',
+        'fn b<Q is Node>(key: fn(Q.Seen) -> String?) -> From<Q>:',
+        '  From.Fn(key)',
+        'fn g<Q>(key: fn(Q) -> String?) -> Gen<Q>:',
+        '  Gen.G(key)',
+      ),
+    ).toEqual([]);
+  });
+});
