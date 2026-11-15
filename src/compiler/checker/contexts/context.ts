@@ -206,7 +206,10 @@ export interface CheckerContext extends Omit<Checker, 'program'> {
    * The union after `in` on a member parameter, which it stands for one member of, resolved where
    * it is declared (§3.5); undefined for any other parameter.
    */
-  readonly memberUnionOf: (parameter: TypeParameter) => Type | undefined;
+  readonly memberUnionOf: (
+    parameter: TypeParameter,
+    resolve?: (node: TypeNode) => Type,
+  ) => Type | undefined;
   /**
    * The distinct kinds what a value of `type` holds is of (§3.3; types/properties/value-kinds.ts),
    * read once per type however many signatures hold it.

@@ -326,8 +326,8 @@ export class ProgramChecker implements CheckerContext {
     return this.#typeParameters.associatedBoundsOf(requirement);
   }
 
-  memberUnionOf(parameter: TypeParameter): Type | undefined {
-    return memberUnionOf(this, standingFor(parameter));
+  memberUnionOf(parameter: TypeParameter, resolve?: (node: TypeNode) => Type): Type | undefined {
+    return memberUnionOf(this, standingFor(parameter), resolve);
   }
 
   constrainLater(module: ModuleId, check: ConstraintCheck): void {

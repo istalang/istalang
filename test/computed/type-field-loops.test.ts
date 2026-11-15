@@ -160,6 +160,51 @@ describe('a loop over a type, nested and degenerate', () => {
     expect(codesOf(...nodes, ...orderLike, 'fn f(): _ = OrderLike[Int].make(1)')).toEqual([5161]);
   });
 
+  it('checks type constraints and reductions on written types in every pass, not only the first', () => {
+    expect(
+      codesOf(
+        ...nodes,
+        'struct Wrap<N is Node> { n: N }',
+        'struct Mixed { a: Leaf, b: Int }',
+        'fn f():',
+        '  for K in keyof Mixed:',
+        '    const w: Wrap<Mixed[K]>? = none',
+        '    _ = w',
+      ),
+    ).toEqual([5101]);
+    expect(
+      codesOf(
+        'struct OnlyA<A in "a"> {}',
+        'struct Pair { a: Int, b: Int }',
+        'fn f():',
+        '  for K in keyof Pair:',
+        '    const x: OnlyA<K>? = none',
+        '    _ = x',
+      ),
+    ).toEqual([5131]);
+  });
+
+  it('resolves nested function return types and mapped types in each pass', async () => {
+    const declarations = [
+      'struct Inner { x: Int }',
+      'struct Outer { b: Inner, a: Inner }',
+      'struct Pair { b: String, a: Int }',
+    ];
+    const lines = [
+      'const p = Pair{b: "hi", a: 3}',
+      'let out: Array<String> = []',
+      'for K in keyof Pair:',
+      '  fn keep(x: Pair[K]) -> Pair[K]: x',
+      '  const id = fn(x: Pair[K]) -> Pair[K]: keep(x)',
+      '  out.push(`${id(p[K])}`)',
+      'for K in keyof Outer:',
+      '  const m: { [F in keyof Outer[K]]: Int } = struct{x: 1}',
+      '  out.push(`${m.x}`)',
+      'out.join(",")',
+    ];
+    expect(await runText(lines, declarations)).toBe('3,hi,1,1');
+  });
+
   it("parses one key before 'keyof' and 'keyof' alone, and a value's header as before", () => {
     const loop = (header: string) => [...orderLike, 'fn f():', `  for ${header}: _ = 1`];
     expect(codesOf(...loop('K, V in keyof OrderLike'))).toEqual([2054]);
@@ -216,18 +261,59 @@ describe('a loop over a type in an editor', () => {
       '    if K == "a": _ = ‸K',
     ];
     expect(hoverCodeAt(...narrowed)).toEqual(['(type) "a"']);
+    const staticCall = [
+      'struct Leaf { value: Int }',
+      'fn Leaf.count() -> Int: 1',
+      'struct Tag { text: String }',
+      'fn Tag.count() -> Int: 2',
+      'struct P { a: Leaf, b: Tag }',
+      'fn f() -> { a: Int, b: Int }:',
+      '  struct{for K in keyof P: [K]: P[K].count()}',
+    ];
+    expect(
+      hoverCodeAt(...staticCall.slice(0, -1), '  struct{for K in keyof P: [‸K]: P[K].count()}'),
+    ).toEqual(['(type) "a" | "b"']);
+    expect(
+      hoverCodeAt(...staticCall.slice(0, -1), '  struct{for K in keyof P: [K]: P[‸K].count()}'),
+    ).toEqual(['(type) "a" | "b"']);
+    expect(
+      hoverCodeAt(...staticCall.slice(0, -1), '  struct{for K in keyof P: [K]: P‸[K].count()}'),
+    ).toEqual(['Leaf | Tag']);
+    const constrained = [
+      'trait Shown { fn shown(self: Self) -> String }',
+      'fn f<S is struct { id: Int, [_] is Shown }>(s: S):',
+      '  for ‸K in keyof S:',
+      '    const x: S[K] = s[K]',
+      '    _ = x',
+    ];
+    expect(hoverCodeAt(...constrained)).toEqual(['(type) "id" | K']);
+    expect(
+      hoverCodeAt(
+        'trait Shown { fn shown(self: Self) -> String }',
+        'fn f<S is struct { id: Int, [_] is Shown }>(s: S):',
+        '  for K in keyof S:',
+        '    const x: S‸[K] = s[K]',
+        '    _ = x',
+      ),
+    ).toEqual(['Int | S[K]']);
   });
 });
 
 describe('a member parameter over literal types', () => {
-  it('reads as its value', async () => {
+  it('reads as its value, including keyof S on a generic type or function', async () => {
     const declarations = [
       'type Status = "active" | "closed"',
       'fn describe<S in Status>() -> String: S',
+      'fn code<N in 200 | 404>() -> Int: N',
+      'struct Point { x: Int, y: Int }',
+      'struct Entry<S is struct, K in keyof S> { value: S[K] }',
+      'fn key<S is struct, K in keyof S>(self: Entry<S, K>) -> K: K',
     ];
-    expect(await runText(['`${describe<"active">()},${describe<"closed">()}`'], declarations)).toBe(
-      'active,closed',
-    );
+    const body = [
+      'const e = Entry<Point, "x">{value: 42}',
+      '`${describe<"active">()},${describe<"closed">()},${code<200>()},${e.key()}=${e.value}`',
+    ];
+    expect(await runText(body, declarations)).toBe('active,closed,200,x=42');
   });
 
   it('over String is no value', () => {

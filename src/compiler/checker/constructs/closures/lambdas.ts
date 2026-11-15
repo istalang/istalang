@@ -276,7 +276,7 @@ function checkLambdaAs(
   const declaredResult =
     node.returnType === undefined
       ? given
-      : declaredBodyResult(context.checker, context.module, node);
+      : declaredBodyResult(context.checker, node, (written) => context.resolveType(written));
   const parameters = nestedParameters(context, node.parameters, slots);
   return checkNested(context, node, {
     name: node.name,
@@ -310,7 +310,9 @@ export function checkLocalFunction(context: BodyContext, node: FunctionDeclarati
     checkNested(context, node, {
       name: node.name,
       parameters: nestedParameters(context, node.parameters, undefined),
-      declaredResult: declaredBodyResult(context.checker, context.module, node),
+      declaredResult: declaredBodyResult(context.checker, node, (written) =>
+        context.resolveType(written),
+      ),
       reach: nestedFunctionSpan(node, body),
       // A local `fn`'s mark is its head's, as a declared function's is (Rule 2).
       givenKind: kindOfFunction(context.checker, node),

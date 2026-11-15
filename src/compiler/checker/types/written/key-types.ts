@@ -84,7 +84,7 @@ export function structWritten(
   for (const extra of more) {
     reportWritten(written, checkerDiagnostics.severalMappedEntries(extra.span));
   }
-  const keys = mappedKeysWritten(written, entry);
+  const keys = mappedKeysWritten(written, entry, resolve);
   if (keys.kind === 'error') {
     return keys;
   }
@@ -95,9 +95,14 @@ export function structWritten(
 }
 
 /** A mapped entry's keys, each reported that names no field; the error type after a report. */
-function mappedKeysWritten(written: Written, entry: MappedField): Type {
-  const { checker } = written;
-  const keys = checker.memberUnionOf(entry.parameter) ?? errorType;
+function mappedKeysWritten(
+  written: Written,
+  entry: MappedField,
+  resolve: (node: TypeNode) => Type,
+): Type {
+  const { checker, pass } = written;
+  const keys =
+    checker.memberUnionOf(entry.parameter, pass === undefined ? undefined : resolve) ?? errorType;
   if (keys.kind === 'error') {
     return keys;
   }

@@ -145,9 +145,11 @@ function calledBy(context: BodyContext, call: WrittenCall, value: CalledValue | 
         return callEntity(context, call, callee, entity);
       }
       const owner = namedType(context, callee.target);
-      return owner === undefined
-        ? callMethod(context, call, callee, value)
-        : callStatic(context, call, owner, callee.member.text);
+      if (owner === undefined) {
+        return callMethod(context, call, callee, value);
+      }
+      recordIndexedOwner(context, callee.target, owner);
+      return callStatic(context, call, owner, callee.member.text);
     }
     default:
       return checkValueCall(context, call, callee);
@@ -375,6 +377,17 @@ function callStatic(context: BodyContext, call: WrittenCall, owner: Type, name: 
     return errorType;
   }
   return resolve(context, call, staticName(typeText(owner), name), candidates);
+}
+
+/**
+ * A static call's owner written `S[K]` (§3.10): the field type it names and its key's type, as the
+ * pass being checked reads them, recorded for tools as a written type's are.
+ */
+function recordIndexedOwner(context: BodyContext, target: Expression, owner: Type): void {
+  if (target.kind === 'Index') {
+    context.recordType(target, owner);
+    context.recordType(target.index, namedType(context, target.index) ?? errorType);
+  }
 }
 
 /**

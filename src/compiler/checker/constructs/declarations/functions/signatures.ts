@@ -277,7 +277,7 @@ export function declaredResultOf(
   declaration: FunctionDeclaration,
 ): Type | undefined {
   if (!isFieldsFunction(declaration)) {
-    return declaredBodyResult(checker, module, declaration);
+    return declaredBodyResult(checker, declaration, (node) => checker.resolveType(module, node));
   }
   const { fieldsOwner } = declaration;
   const owner = 'struct' in fieldsOwner ? fieldsOwner.struct : fieldsOwner.enumeration;
@@ -292,13 +292,13 @@ export function declaredResultOf(
  */
 export function declaredBodyResult(
   checker: CheckerContext,
-  module: ModuleId,
   declaration: Pick<FunctionDeclaration, 'qualifiers' | 'returnType'>,
+  resolve: (node: TypeNode) => Type,
 ): Type | undefined {
   if (declaration.returnType === undefined) {
     return undefined;
   }
-  const declared = checker.resolveType(module, declaration.returnType);
+  const declared = resolve(declaration.returnType);
   return awaits(declaration.qualifiers)
     ? (awaitedOf(checker, declared)?.value ?? declared)
     : declared;

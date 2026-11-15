@@ -332,7 +332,10 @@ function judgeNested(judging: Judging, node: NestedFunction, handler: Handler): 
   const { checker, module } = judging;
   const written =
     awaits(node.qualifiers) && node.returnType !== undefined
-      ? [checker.resolveType(module, node.returnType)]
+      ? [
+          judging.body.writtenTypeOf(node.returnType) ??
+            checker.resolveType(module, node.returnType),
+        ]
       : [];
   judgeValues(judging, handler, node.span, [
     ...checked.type.parameters.map((slot) => slot.type),

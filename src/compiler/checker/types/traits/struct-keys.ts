@@ -26,7 +26,7 @@ import type { Expression } from '../../../syntax/expressions/index.ts';
 import { unparenthesized } from '../../../syntax/expressions/readings.ts';
 import type { Pattern } from '../../../syntax/patterns.ts';
 import { parentOf } from '../../../syntax/tree/index.ts';
-import type { StructType } from '../../../syntax/types/index.ts';
+import type { StructType, TypeNode } from '../../../syntax/types/index.ts';
 import type { BodyContext } from '../../contexts/body-context.ts';
 import type { CheckerContext } from '../../contexts/context.ts';
 import { typeKeys } from '../identity/type-keys.ts';
@@ -139,16 +139,22 @@ function mappedKeys(checker: CheckerContext, holding: StructType, union: Type): 
  * declared (§3.5); a mapped entry's less the names its braces give fields (`mappedKeys`).
  * Undefined for any other parameter; the error type where it names a member parameter, one type
  * with no members to choose from (`namesMemberParameter`), so nothing follows it round a cycle.
+ * Its union is resolved as `resolve` says: where it is written, or in a pass binding a loop's key.
  */
-export function memberUnionOf(checker: CheckerContext, parameter: TypeParameter): Type | undefined {
+export function memberUnionOf(
+  checker: CheckerContext,
+  parameter: TypeParameter,
+  resolve: (node: TypeNode) => Type = (node) =>
+    checker.resolveType(checker.moduleOf(parameter), node),
+): Type | undefined {
   if (parameter.memberOf === undefined) {
     return undefined;
   }
-  if (namesMemberParameter(checker, parameter)) {
+  const union = resolve(parameter.memberOf);
+  if (namesOneType(union)) {
     return errorType;
   }
   const module = checker.moduleOf(parameter);
-  const union = checker.resolveType(module, parameter.memberOf);
   const tree = checker.inputs.treeOf(module);
   const entry = parentOf(tree, parameter);
   const holding = entry?.kind === 'MappedField' ? parentOf(tree, entry) : undefined;

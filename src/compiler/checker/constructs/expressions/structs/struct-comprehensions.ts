@@ -68,6 +68,8 @@ function comprehensionPasses<Given>(
     checkedFieldPasses(context, node.header),
     (pass) => {
       const { visits } = pass;
+      // The brackets name the pass's key, as its header does.
+      context.recordType(node.key, pass.key);
       if (visits.kind === 'none') {
         context.expression(node.value);
         given.push(undefined);

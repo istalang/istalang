@@ -21,7 +21,6 @@ import type {
   TraitDeclaration,
   TypeParameter,
 } from '../../../syntax/declarations/index.ts';
-import type { AnchoredSpan } from '../../../syntax/tree/positions.ts';
 import type {
   CheckerContext,
   CheckerNote,
@@ -143,34 +142,28 @@ export class TypeParameters {
    * read, including any noted while running them, each once per site and what it checks.
    */
   checkNoted(module: ModuleId): void {
-    const done = new Map<AnchoredSpan, Set<Checked>>();
+    const done = new Set<string>();
     for (
       let pending = this.#noted(module, done);
       pending.length > 0;
       pending = this.#noted(module, done)
     ) {
       for (const note of pending) {
-        const checked = done.get(note.check.at) ?? new Set();
-        if (!checked.has(checkedBy(note.check))) {
-          checked.add(checkedBy(note.check));
-          done.set(note.check.at, checked);
-          this.#checks.get(checkKey(note), note);
+        const key = checkKey(note);
+        if (!done.has(key)) {
+          done.add(key);
+          this.#checks.get(key, note);
         }
       }
     }
   }
 
   /** The checks noted for `module` among what the entry computing now reached, not yet `done`. */
-  #noted(
-    module: ModuleId,
-    done: ReadonlyMap<AnchoredSpan, ReadonlySet<Checked>>,
-  ): readonly ConstraintNote[] {
+  #noted(module: ModuleId, done: ReadonlySet<string>): readonly ConstraintNote[] {
     return this.#checker.entries
       .notesReached()
       .flatMap((note) =>
-        note.kind === 'constraint' &&
-        note.module === module &&
-        done.get(note.check.at)?.has(checkedBy(note.check)) !== true
+        note.kind === 'constraint' && note.module === module && !done.has(checkKey(note))
           ? [note]
           : [],
       );
