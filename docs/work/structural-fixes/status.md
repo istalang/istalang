@@ -35,7 +35,7 @@ tags: [structural-fixes, status]
   when A merges.
 - Phase A running: agent `sfa-tizo`, worktree `.claude/worktrees/sf-a-type-identity`, branch `sf-a-type-identity`
   from `45b09009`; idle sub armed.
-- Still alive: `b92-neni` (B92, done), its reviewer and QA, and `sfrv-suri`. Ask the human before stopping them.
+- B92's agents, worktree and branch are closed. Still alive: `sfrv-suri` (plan reviewer). Ask the human before stopping it.
 
 ## Next, on approval
 
