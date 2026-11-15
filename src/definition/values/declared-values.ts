@@ -146,10 +146,9 @@ export function optionalOf(
   if (isComposite(value) && value.kind === 'variant' && value.type === type) {
     return value;
   }
-  const others = enumVariants(types, type).filter(({ name }) => name !== unionLayout.noneVariant);
-  const [only] = others;
-  if (others.length === 1 && only !== undefined) {
-    return variantOf(types, type, only.name, { [unionLayout.valueField]: value });
+  const only = onlyMemberVariant(types, type);
+  if (only !== undefined) {
+    return variantOf(types, type, only, { [unionLayout.valueField]: value });
   }
   if (!isComposite(value) || value.kind !== 'variant') {
     unreachable(`A value of several members isn't one of type ${type}.`);
@@ -164,11 +163,16 @@ export function optionalOf(
  * member's entry, the type of its variant's one field.
  */
 export function optionalInnerOf(types: readonly TypeDefinition[], type: TypeId): TypeId {
+  const only = onlyMemberVariant(types, type) ?? unreachable(`Type ${type} holds several members.`);
+  return namedType(variantFieldType(types, type, only, unionLayout.valueField));
+}
+
+/** The name of optional entry `type`'s one variant besides `None`; undefined where it has several. */
+function onlyMemberVariant(types: readonly TypeDefinition[], type: TypeId): string | undefined {
   const [only, ...more] = enumVariants(types, type).filter(
     ({ name }) => name !== unionLayout.noneVariant,
   );
-  const field = more.length === 0 ? only?.fields[0] : undefined;
-  return namedType(field?.type);
+  return more.length === 0 ? only?.name : undefined;
 }
 
 /** The value optional `optional` holds, read by its declared variant; undefined for `none`. */

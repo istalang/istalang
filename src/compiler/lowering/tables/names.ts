@@ -3,9 +3,9 @@
  * (`LocatedModule.name`), so traces and messages depend neither on where a module's file lives nor
  * on where the toolchain runs (docs/arch/definition.md, "Types and locations").
  *
- * - Names are of declarations: a generic type's entries are told apart by the type arguments the
- *   Definition records beside the name. A function instance's name also spells its type arguments
- *   by their table keys (instances.ts), for traces to read; definition.md, "Names", has the rule.
+ * - Names are labels for traces, identifying nothing: a declared type's entry is named by its
+ *   declaration, with its type arguments beside it, and a function instance's name spells its type
+ *   arguments by their table keys (instances.ts); definition.md, "Names", has the rule.
  * - A type's table key is its key (types/identity/type-keys.ts) with each identity spelled by its
  *   qualified name in place of a number, from the same structural walk: canonical, injective over
  *   keys, and a function of the type alone, never of an alias it was written through or of what

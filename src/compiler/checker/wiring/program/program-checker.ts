@@ -40,7 +40,6 @@ import type {
   EnumDeclaration,
   FunctionDeclaration,
   RequiredAssociatedType,
-  TypeAliasDeclaration,
   TypeParameter,
 } from '../../../syntax/declarations/index.ts';
 import type { VariableDeclaration } from '../../../syntax/statements/index.ts';
@@ -349,10 +348,6 @@ export class ProgramChecker implements CheckerContext {
 
   aliasedType(alias: AliasDeclaration): Type {
     return this.#aliases.aliasedType(alias);
-  }
-
-  aliasArgumentsFor(alias: TypeAliasDeclaration, type: Type): readonly Type[] | undefined {
-    return this.#aliases.argumentsFor(alias, type);
   }
 
   resultOf(declaration: FunctionDeclaration): Type {

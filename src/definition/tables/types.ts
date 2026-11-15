@@ -11,10 +11,12 @@
  * - extern types, and how an instantiation is disposed
  *
  * Every entry is fully instantiated: `Pair<Int, String>` and `Pair<Int, Int>` are two entries,
- * and a reference never contains a type parameter. An entry is identified by its module-qualified
- * declared `name` and its `arguments`, so the runtime recognizes `time.Time` or `prelude.Optional`
- * whatever they are instantiated with. A shape (an anonymous struct type) has no name: it has one
- * entry however many places write it, its fields in name order (spec §3.1).
+ * and a reference never contains a type parameter. An entry is identified by its index: its `name`
+ * and `arguments` are labels for traces, a declared type's its module-qualified declaration and
+ * type arguments, any other's its type's table key (docs/arch/definition.md, "Types and
+ * locations"), and the runtime recognizes a type by its `role`, never its name. A shape (an
+ * anonymous struct type) has no name: it has one entry however many places write it, its fields
+ * in name order (spec §3.1).
  *
  * A recursive alias whose values are tuples or functions (spec §3.17, `type Step = fn(Int) ->
  * Step`) has an entry of its own, which stands for the type it unfolds to: a reference holding it
@@ -87,7 +89,10 @@ const field = z.strictObject({
   annotations: z.array(value),
 });
 
-/** The module-qualified declared name, `time.Duration`, and the instantiation's type arguments. */
+/**
+ * An entry's label: a declared type's module-qualified name, `time.Duration`, and the
+ * instantiation's type arguments; any other's table key, with none.
+ */
 const identity = { name: z.string(), arguments: z.array(typeReference) };
 
 const struct = z.strictObject({

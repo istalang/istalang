@@ -22,7 +22,6 @@ import type {
   ContextConstantDeclaration,
   Declaration,
   FunctionDeclaration,
-  TypeAliasDeclaration,
   TypeParameter,
 } from '../syntax/declarations/index.ts';
 import type { Parameter } from '../syntax/expressions/index.ts';
@@ -201,13 +200,6 @@ export interface Checker {
   readonly aliasedType: (alias: AliasDeclaration) => Type;
   /** The kind of a function's code (§3.3; types/type/function-kinds.ts). */
   readonly kindOf: (declaration: FunctionDeclaration) => Type;
-  /**
-   * The arguments `alias` is given where it names `type`; undefined where it names no such type.
-   */
-  readonly aliasArgumentsFor: (
-    alias: TypeAliasDeclaration,
-    type: Type,
-  ) => readonly Type[] | undefined;
   /**
    * Whether values of `type` may reach a disposable (rules/lifetimes/): what the runtime counts
    * (design.md §9.1).
