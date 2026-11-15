@@ -1,0 +1,24 @@
+# outcome: "2 at 1 | true"
+# Timers come due in the order of their instants, whichever was made first (§6): the earlier one
+# wins a race of `futures.first` and of `select`, even when the later one was made before it.
+
+import * as futures from 'futures'
+import * as time from 'time'
+
+live async fn after(wait: time.Duration, value: Int) -> Int:
+  await time.delay(wait)
+  value
+
+live async fn raced() -> String:
+  const slow = after(6ms, 1)
+  const fast = after(2ms, 2)
+  const (position, value) = await futures.first([slow, fast])
+  String(value) + " at " + String(position)
+
+live async fn selected() -> Bool:
+  const later = time.delay(5ms)
+  await select:
+    case later: false
+    case time.delay(1ms): true
+
+live async fn main() -> String: await raced() + " | " + String(await selected())

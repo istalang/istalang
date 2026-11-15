@@ -1,0 +1,13 @@
+# outcome: 33
+# A function's transients are one cell each (§3.4): the outermost call makes every one of them, and
+# the calls nested in it share each, apart from the others.
+
+fn counted<T>(item: T, rest: Array<T>) -> Int:
+  transient let seen: Array<T> = []
+  transient let steps = 0
+  seen.push(item)
+  steps += 1
+  for next in rest: _ = counted(next, [])
+  seen.length() * 10 + steps
+
+live async fn main() -> Int: counted("a", ["b", "c"])

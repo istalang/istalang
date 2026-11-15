@@ -7,8 +7,8 @@
  * - A panic shows its message and innermost frame: after an `await` a compiled trace holds only
  *   the frames since the execution resumed (tracker F35).
  * - The corpus starts each program's work as ista code in a context (`runtime.run`), which stays on
- *   the interpreter, so `asLive` starts it as live code instead; one whose work then doesn't check
- *   as live code needs the interpreter.
+ *   the interpreter, so `asLive` starts it as live code instead, its ista functions and futures
+ *   marked live; one that then doesn't check as live code needs the interpreter.
  */
 
 import { mkdtempSync, writeFileSync } from 'node:fs';
@@ -57,14 +57,22 @@ export function recording(externs: HostExterns): RecordingHost {
   };
 }
 
-/** How the corpus starts a program's work in a context, and declares it as ista code. */
+/** How the corpus starts a program's work in a context. */
 const inContext = /await runtime\.run\(runtime\.id\(\)\) _main\(\)/u;
-const istaMain = /^ista async fn _main\(/mu;
+/** A function's mark, or a future's kind, saying it is ista code. */
+const istaMark = /\bista(?=\s+(?:async\s+)?fn\b)/gu;
+const istaKind = /"ista"/gu;
 const ending = /\.ista$/u;
 
-/** `text`, a corpus program, with its work started as live code rather than in a context. */
+/**
+ * `text`, a corpus program, with its work started as live code rather than in a context, and every
+ * function and future it marks ista marked live; what then still needs ista code doesn't check.
+ */
 export function asLive(text: string): string {
-  return text.replace(inContext, 'await _main()').replace(istaMain, 'live async fn _main(');
+  return text
+    .replace(inContext, 'await _main()')
+    .replace(istaMark, 'live')
+    .replace(istaKind, '"live"');
 }
 
 /** The Definition of the module `text` at `path` in `directory`, or the first error it reports. */

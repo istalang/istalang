@@ -32,12 +32,21 @@ const formBuilder = fileURLToPath(new URL('../../examples/FormBuilder/', import.
 // Compiling the supplier form costs seconds, and the interpreter runs it slowly.
 const formBuilderRun = 60_000;
 
+/** Why a program disposing what it holds runs differently until disposal lands. */
+const disposal = 'a disposal runs once disposal lands (js-codegen P2)';
+
 /**
  * Programs compiled JavaScript runs differently, and why; each still does, or it leaves this list.
  */
 const differences: ReadonlyMap<string, string> = new Map([
-  ['holders/block-tail.ista', 'a declared dispose runs once disposal lands (js-codegen P2)'],
-  ['holders/dispose.ista', 'a declared dispose runs once disposal lands (js-codegen P2)'],
+  ['holders/bindings.ista', disposal],
+  ['holders/block-tail.ista', disposal],
+  ['holders/defer.ista', disposal],
+  ['holders/dispose.ista', disposal],
+  ['holders/exits.ista', disposal],
+  ['holders/function-holdings.ista', disposal],
+  ['holders/hold-scopes.ista', disposal],
+  ['holders/lifetimes.ista', disposal],
   ['run/recursion.ista', 'it recurses 100,000 calls deep, past the JavaScript stack'],
 ]);
 
