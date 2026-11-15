@@ -5,8 +5,9 @@
  * - An extern's context is made once per run: its name, its declared result and type arguments, and
  *   the run's capabilities. An extern taking a `&` argument gets its place's changes per call.
  * - An extern constant's native runs once per run, and every later read gives what it gave (§3.6).
- * - Instances, contexts and testing are the interpreter's: a native reaching one panics, naming it.
- *   Weak references see nothing disposed, and `disposed()` never resolves: disposal is P2's.
+ * - Instances, contexts, slots and testing are the interpreter's, ista's (proposal 8, Rule 6): the
+ *   checker keeps live code from them, and a native reaching one panics, naming it.
+ * - Weak references see nothing disposed, and `disposed()` never resolves: disposal is P2's.
  * - Encodings are kept by no one here, as by a test world, so `json.encode` writes afresh.
  */
 
@@ -26,7 +27,6 @@ import { Panic } from '../runtime/natives.ts';
 import { drawOf } from '../runtime/random-draws.ts';
 import type { ExternShape, LiveFunction } from './program-tables.ts';
 import type { Run } from './run.ts';
-import { Slot } from './slots/slot.ts';
 import { newObject } from './values/cell.ts';
 import { Place } from './values/place.ts';
 import { Future } from './waits/future.ts';
@@ -94,10 +94,10 @@ function runCapabilities(run: Run): NativeCapabilities {
     },
     waits: waitsOf(run),
     slots: {
-      create: () => new Slot(),
-      put: (slot, value) => run.slots.operate(objectOf(slot, Slot), 'put', value),
-      take: (slot) => run.slots.operate(objectOf(slot, Slot), 'take'),
-      read: (slot) => run.slots.operate(objectOf(slot, Slot), 'read'),
+      create: interpreterOnly('Slots'),
+      put: interpreterOnly('Slots'),
+      take: interpreterOnly('Slots'),
+      read: interpreterOnly('Slots'),
     },
     weak: weakSide(),
     resources: resources(),
@@ -177,12 +177,15 @@ function resources(): NativeResources {
 
 /**
  * A live future its host resolves, and its resolver (proposal 8, Rule 9): resolving it only queues
- * the value, applied in a turn of its own (arrivals.ts). Failing it panics the run with the trace
- * of where its future was made.
+ * the value, applied in a turn of its own (arrivals.ts). Failing it, or misusing it, panics the run
+ * with the trace of where its future was made, as the interpreter's does (runtime/scheduler/
+ * live-resolvers.ts): a host's call stack holds none of the program's frames.
  */
 function resolvable(run: Run): Resolvable {
   const future = new Future();
   const made = new Error('made');
+  const whereMade = (panic: Panic): Panic =>
+    new Panic(panic.message, { trace: run.traces.of(made.stack) });
   let state: NativeResolver['state'] = 'pending';
   const resolver: NativeResolver = {
     get state() {
@@ -199,11 +202,10 @@ function resolvable(run: Run): Resolvable {
     fail: (panic) => {
       if (state === 'pending') {
         state = 'resolved';
-        const trace = run.traces.of(made.stack);
-        run.arrivals.arrive(() => run.fail(new Panic(panic.message, { trace })));
+        run.arrivals.arrive(() => run.fail(whereMade(panic)));
       }
     },
-    panic: (panic) => run.fail(panic),
+    panic: (panic) => run.fail(whereMade(panic)),
     onCancel: () => undefined,
   };
   return { future, resolver };

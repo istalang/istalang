@@ -20,11 +20,11 @@ export const suspensionEmitters: Emitters<typeof suspensionInstructions> = {
   wait: (scope, i) => scope.write(i.dst, 'run.wait()'),
   resolver: (scope, i) => scope.write(i.dst, `run.resolver(${scope.read(i.wait)}, ${i.position})`),
   await: (scope, i) =>
-    `${waited(`t = await r${i.wait}.decided;`)} r${i.wait} = undefined; ${scope.write(i.dst, 't.value')}`,
+    `${waited(`t = await run.stopped(r${i.wait});`)} r${i.wait} = undefined; ${scope.write(i.dst, 't.value')}`,
   select: (scope, i) => {
     const decision =
       i.otherwise === undefined
-        ? waited(`t = await r${i.wait}.decided;`)
+        ? waited(`t = await run.stopped(r${i.wait});`)
         : `t = run.selection(r${i.wait}); if (t === undefined) { r${i.wait} = undefined; ${jump(i.otherwise)} }`;
     return `${decision} r${i.wait} = undefined; switch (t.position) { ${cases(scope, i)} }`;
   },

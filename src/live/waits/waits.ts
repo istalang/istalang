@@ -5,7 +5,8 @@
  *
  * - A waiter opens a wait and makes a resolver per case, which each case's `onAwait` registers on a
  *   future or resolves. The first resolver to resolve decides the wait, once; the others pending
- *   then are cancelled, their `onCancel` callbacks readied, what they awaited given up on.
+ *   then are cancelled, their `onCancel` callbacks readied. Slots, which a losing case gives up
+ *   on, are ista data (proposal 8, Rule 6), which no compiled code reaches.
  * - Futures resolved together decide in their settle order (runtime/settle-order.ts).
  * - What is registered on a future and a wait's cases are found by lookup here, as the interpreter's
  *   heap indexes them, so a future, a wait and a resolver each know only what they are.
@@ -23,8 +24,6 @@ import type { Decision, Wait } from './wait.ts';
 export interface WaitSeams {
   /** Readies a call of the function value `callback` with `argumentValues`. */
   readonly called: (callback: Value, argumentValues: readonly Value[]) => void;
-  /** A resolver now waits on `future`, served now if it can be (../slots/slots.ts). */
-  readonly awaited: (future: Future) => void;
 }
 
 type Ending = 'lost' | 'withdrawn';
@@ -47,11 +46,6 @@ export class Waits {
     return resolver;
   }
 
-  /** Whether a resolver still pending waits on `future`. */
-  awaited(future: Future): boolean {
-    return (this.#registered.get(future) ?? []).some((resolver) => resolver.state === 'pending');
-  }
-
   /** Has `callback` called once `done` is cancelled: at once if it was, never once it resolved. */
   onCancel(done: Resolver, callback: Value): void {
     if (done.state === 'pending') {
@@ -67,7 +61,6 @@ export class Waits {
    */
   register(done: Resolver, future: Future): void {
     if (done.state !== 'pending') {
-      future.giveUp();
       return;
     }
     if (future.settled !== undefined) {
@@ -77,7 +70,6 @@ export class Waits {
     const { target } = done.root;
     if (target.kind === 'case' && target.wait.decision !== undefined) {
       this.#lose(done, 'cancelled');
-      future.giveUp();
       return;
     }
     if (!done.on.includes(future)) {
@@ -89,7 +81,6 @@ export class Waits {
         registered.push(done);
       }
     }
-    this.#seams.awaited(future);
   }
 
   /**
@@ -138,6 +129,18 @@ export class Waits {
   }
 
   /**
+   * `wait`'s waiter stopped at it, every case known: how it is decided, once it is. A resolver made
+   * after it was decided, by a later case's `onAwait`, loses now, readied after the waiter as the
+   * interpreter readies the waiter first.
+   */
+  stopped(wait: Wait): Promise<Decision> {
+    if (wait.decision !== undefined) {
+      queueMicrotask(() => this.#cancelLosers(wait));
+    }
+    return wait.decided;
+  }
+
+  /**
    * Ends the wait of a `select` that doesn't wait (§8): its decision, once a case decided it; else
    * it goes to `otherwise`, having awaited nothing, its resolvers withdrawn.
    */
@@ -181,7 +184,7 @@ export class Waits {
 
   /**
    * Ends `resolver`, if pending, as `state` says without deciding anything: its `onCancel` readied,
-   * what it awaited given up on once it lost, its pending `Resolver.at` ones ending as it did.
+   * its pending `Resolver.at` ones ending as it did.
    */
   #end(resolver: Resolver, state: 'resolved' | 'cancelled', ending: Ending): void {
     if (resolver.state !== 'pending') {
@@ -190,11 +193,6 @@ export class Waits {
     resolver.state = state;
     for (const callback of resolver.onCancel) {
       this.#seams.called(callback, []);
-    }
-    if (ending === 'lost') {
-      for (const future of resolver.on) {
-        future.giveUp();
-      }
     }
     this.#cancelPositions(resolver, ending);
   }

@@ -88,7 +88,7 @@ export class EntryScope {
       case 'cell':
         return `${name} = wcell(${name}, ${value});`;
       case 'transient':
-        return `if (${name} === undefined) { ${name} = cellOf(${value}); run.share(${this.index}, ${name}); } else ${name}.v = ${value};`;
+        return `if (${name} === undefined) { ${name} = cellOf(${value}); run.share(${this.index}, ${register}, ${name}); } else ${name}.v = ${value};`;
       case 'reference':
         return `${name}.write(${value});`;
       default:

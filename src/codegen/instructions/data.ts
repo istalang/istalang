@@ -23,7 +23,7 @@ export const dataEmitters: Emitters<typeof dataInstructions> = {
   makeContextConstant: (scope, i) =>
     `run.makeContextConstant(${JSON.stringify(i.name)}, ${scope.read(i.value)});`,
   transient: (scope, i) =>
-    `if ((t = run.transient(${scope.index})) !== undefined) { r${i.dst} = t; ${jump(i.target)} }`,
+    `if ((t = run.transient(${scope.index}, ${i.dst})) !== undefined) { r${i.dst} = t; ${jump(i.target)} }`,
   move: (scope, i) => scope.write(i.dst, scope.read(i.src)),
   tuple: (scope, i) =>
     scope.write(i.dst, `{kind: 'tuple', elements: [${reads(scope, i.elements)}]}`),

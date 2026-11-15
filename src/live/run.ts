@@ -24,7 +24,6 @@ import { type Natives, Panic, panicOf } from '../runtime/natives.ts';
 import { Arrivals } from './arrivals.ts';
 import { boundExtern } from './natives-context.ts';
 import type { ExternShape, LiveFunction, ProgramTables } from './program-tables.ts';
-import { Slots } from './slots/slots.ts';
 import { Traces } from './traces.ts';
 import { type Cell, newObject } from './values/cell.ts';
 import { helpers } from './values/helpers.ts';
@@ -36,6 +35,7 @@ import { Waits } from './waits/waits.ts';
 /** A transient's cell, seen by the calls nested in the one that made it (spec §3.4). */
 interface Scope {
   readonly entry: number;
+  readonly register: number;
   readonly cell: Cell;
   readonly next: Scope | undefined;
 }
@@ -73,7 +73,6 @@ export class Run {
   at: At = { execution: newObject(), call: undefined, scope: undefined };
   readonly seams: RunSeams;
   readonly waits: Waits;
-  readonly slots: Slots;
   readonly arrivals: Arrivals;
   readonly traces: Traces;
   readonly logs: LogRecord[] = [];
@@ -93,10 +92,15 @@ export class Run {
       called: (callback, argumentValues) => {
         queueMicrotask(() => this.#callback(callback, argumentValues));
       },
-      awaited: (future) => this.slots.awaited(future),
     });
-    this.slots = new Slots(this.waits);
-    this.arrivals = new Arrivals(seams.clock);
+    this.arrivals = new Arrivals(seams.clock, {
+      next: () =>
+        [...this.#timers.keys()].reduce<bigint | undefined>(
+          (earliest, at) => (earliest === undefined || at < earliest ? at : earliest),
+          undefined,
+        ),
+      resolveDue: () => this.#resolveDue(),
+    });
     this.traces = new Traces(seams.program);
     this.functions = seams.program.code(this, helpers);
   }
@@ -144,6 +148,11 @@ export class Run {
     return new Wait(this.at.execution);
   }
 
+  /** The running execution stops at `wait`: how it is decided, once it is. */
+  stopped(wait: Wait): Promise<Decision> {
+    return this.waits.stopped(wait);
+  }
+
   /** A new resolver of `wait`'s case `position`. */
   resolver(wait: Wait, position: number): Resolver {
     return this.waits.resolver(wait, position);
@@ -165,18 +174,18 @@ export class Run {
     this.#contextConstants.set(name, value);
   }
 
-  /** The cell of entry `entry`'s transient the running execution sees, if any. */
-  transient(entry: number): Cell | undefined {
+  /** The cell of entry `entry`'s transient in `register` the running execution sees, if any. */
+  transient(entry: number, register: number): Cell | undefined {
     let { scope } = this.at;
-    while (scope !== undefined && scope.entry !== entry) {
+    while (scope !== undefined && (scope.entry !== entry || scope.register !== register)) {
       ({ next: scope } = scope);
     }
     return scope?.cell;
   }
 
-  /** `cell`, entry `entry`'s new transient, is seen by the calls nested in this one. */
-  share(entry: number, cell: Cell): void {
-    this.at = { ...this.at, scope: { entry, cell, next: this.at.scope } };
+  /** `cell`, entry `entry`'s new transient in `register`, is seen by the calls nested in this one. */
+  share(entry: number, register: number, cell: Cell): void {
+    this.at = { ...this.at, scope: { entry, register, cell, next: this.at.scope } };
   }
 
   /** A future that resolves at `at`, in milliseconds since the Unix epoch, with the others due then. */
@@ -188,7 +197,7 @@ export class Run {
     } else {
       due.push(future);
     }
-    this.arrivals.at(at, () => this.#resolveDue());
+    this.arrivals.timersChanged();
     return future;
   }
 
@@ -234,6 +243,9 @@ export class Run {
 
   /** Encodes the root's outcome `value` and ends the run with it. */
   #finish(value: Value): void {
+    if (this.ended) {
+      return;
+    }
     const root = this.#root ?? unreachable('The run finished before it started.');
     this.#end({ kind: 'finished', encoded: this.#call(root.encoder, [value]) as Value });
   }
