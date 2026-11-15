@@ -62,6 +62,11 @@ export function literalType(value: LiteralValue): LiteralType {
   return { kind: 'literal', value };
 }
 
+/** A literal type's value as source writes it, a string's quoted as JSON (§2). */
+export function literalText(value: LiteralValue): string {
+  return typeof value === 'string' ? JSON.stringify(value) : String(value);
+}
+
 /** The mark `mark` (proposal 8, Rule 2) as a type: its `Mark` member, a literal. */
 export function markType(mark: Mark): Type {
   return literalType(mark);

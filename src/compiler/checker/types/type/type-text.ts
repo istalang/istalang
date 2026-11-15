@@ -31,7 +31,7 @@ import {
   type UnionType,
 } from './index.ts';
 import { sameMark } from './mark-orders.ts';
-import { isPrimitive } from './primitives.ts';
+import { isPrimitive, literalText } from './primitives.ts';
 
 /** The unlabelled recursive types being printed as their bodies, each `…` where reached again. */
 const printing = new Set<RecursiveType>();
@@ -112,7 +112,7 @@ export function typeText(given: Type): string {
     case 'any':
       return `any ${type.constraints.map(constraintText).join(' & ')}`;
     case 'literal':
-      return typeof type.value === 'string' ? JSON.stringify(type.value) : String(type.value);
+      return literalText(type.value);
     case 'union':
       return unionText(type);
     case 'associated':

@@ -261,7 +261,7 @@ export class TermGraph {
     const bodies = order.map((term) => {
       const type = this.typeOf(term);
       if (type.kind === 'union') {
-        return `|<${this.#canonicalParts(term).map(spelled).join(',')}>`;
+        return unionKeyOf(this.#canonicalParts(term).map(spelled));
       }
       return this.#spelled(term, spelled);
     });
@@ -403,6 +403,11 @@ export class TermGraph {
       return part === undefined ? this.#source.leafKey(child) : spellPart(this.resolved(part));
     });
   }
+}
+
+/** A union's key, its members' keys in the order given: one grammar, inside a term graph or not. */
+export function unionKeyOf(memberKeys: readonly string[]): string {
+  return `|<${memberKeys.join(',')}>`;
 }
 
 /**
