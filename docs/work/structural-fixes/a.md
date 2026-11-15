@@ -43,7 +43,7 @@ attribute matrix, the consumers, what is persisted) and `research/plan-review.md
   `satisfies Record<Exclude<ExternRole, 'shared'>, WellKnownDeclaration>` (lines ~114-118).
 - `definition/tables/types.ts` `externRole` (~line 139). `runtime/.../json-values.ts` `memberHolding` matches
   `prelude.Array`/`prelude.Map` by name.
-- `definition/validation/references.ts`: where to reject duplicate variant names and duplicate extern keys.
+- `definition/validation/references.ts`: where to reject duplicate variant names.
 - `instances.ts` `instanceName`/`conversionName` and `synthesized/trait-objects.ts` names use `spelledType` for
   traces only.
 - Persisted and frozen: extern and start keys (`keyOf` → `externKey`) and `declaredType`
@@ -65,7 +65,8 @@ Commit the structural change first, then the behaviour.
   start keys and `declaredType`. It stops reading `typeText`: move the literal formatting into it,
   byte-identical.
 - Add `array`/`map` extern roles. `type-table.ts` emits them, and `json-values.ts` recognizes the types by role.
-- Definition validation rejects duplicate variant names in one enum, and duplicate extern keys.
+- Definition validation rejects duplicate variant names in one enum. A test over the std extern declarations
+  holds their keys distinct; a Definition can't, since each instance of a generic extern repeats its key.
 - Update the banners of `type-keys.ts`, `names.ts` and `type-table.ts`; `docs/arch/definition.md` ("Recursive
   types", the union row, "Names", entry identity: name plus arguments is a label, so say so or make it true);
   the `docs/reuse/` lines for any unit added, moved or removed; and `architecture.md` where it names these
@@ -83,8 +84,8 @@ Commit the structural change first, then the behaviour.
 3. Extern keys and `declaredType` are byte-identical across the stdlib and `examples/`. Prove it with a test
    that compares the before and after key sets.
 4. B65: a program compiled alone and the same program inside a bigger program give equal Definition texts.
-5. Hand-built Definitions with duplicate variant names, or two functions with one extern key, are rejected by
-   validation. No runtime code recognizes a type by its name.
+5. Hand-built Definitions with duplicate variant names are rejected by validation. A test fails if two std
+   extern declarations share a key. No runtime code recognizes a type by its name.
 6. `spelledType` is memoized per key.
 
 Out of scope: hash-consing (P32/P33), F18's display, `TypeReference`'s layout.

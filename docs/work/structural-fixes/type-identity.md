@@ -31,7 +31,9 @@ tags: [structural-fixes, type-identity, type-table, extern-key]
   spelled from its table key too, but nothing identifies an entry by it.
 - No consumer decides by a label. The runtime matches variants by their identity field, and recognizes
   well-known types by role (`json-values.ts`).
-- Definition validation rejects two functions with one extern key. definition.md states what identifies an
+- Every std extern declaration has its own extern key, held by a test over the declarations. A Definition can't
+  check it: each instance of a generic extern is its own entry with the declaration's key, and only std externs
+  can take function types. definition.md states what identifies an
   entry and what is only a label.
 
 ## Phase

@@ -40,13 +40,14 @@ the asymmetry in the unit that owns it. Evidence: `findings.md`, `research/`.
 **A. Type identity (`a.md`, `type-identity.md`).** The checker's structural walk becomes the only one. With
 identities spelled as qualified names, it gives the table key. That key orders and names union variants and
 names entries, with no aliases. Extern keys become a frozen projection. Validation rejects duplicate variant
-names and extern keys. Array and Map are recognized by role. Covers B94, B65, P35, the union-parenthesis
+names; a test holds std extern keys distinct. Array and Map are recognized by role. Covers B94, B65, P35, the union-parenthesis
 collision and the runtime variant mix-up.
 1. Property: distinct `typeKey` ⇒ distinct table key.
 2. The repros pass, B92's included.
 3. Extern keys and `declaredType` stay byte-identical.
 4. B65: a program's Definition is the same alone as inside a bigger program.
-5. Duplicates are rejected, and no runtime code recognizes a type by name.
+5. Duplicate variant names are rejected by validation, a test holds every std extern declaration's key
+   distinct, and no runtime code recognizes a type by name.
 
 **B. Per-field layout, one expansion reach (`b.md`).** A field's type is resolved per field, so a default that
 reads a known field closes no declaration-wide cycle. One reach per generic declaration (every field's type,
