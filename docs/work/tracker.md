@@ -33,13 +33,13 @@ tags: [tracker]
 | Proposal 14, inert functions (`docs/work/inert-functions/plan.md`) | done (reviewer approved, QA passed; B89 left) |
 | Computed, and FormBuilder on it (`docs/work/computed/plan.md`) | done (merge review approved) |
 | Proposal 15, stable host references (`docs/work/stable-host-references/plan.md`) | done (reviewer approved, QA passed; FormBuilder may rely on it) |
-| Proposal 16, key-named functions (`docs/proposals/16-key-named-functions.md`) | proposed: awaiting approval; FormBuilder's scopes move into the engine |
-| Proposal 17, field loops over a type (`docs/proposals/17-type-field-loops.md`) | proposed: awaiting approval; FormBuilder's model factories move into the engine |
+| Proposal 16, keyed members (`docs/proposals/16-keyed-members.md`; plan `docs/work/keyed-members-type-loops/`) | approved (rewritten on `index`), planned; FormBuilder's scopes move into the engine |
+| Proposal 17, field loops over a type (`docs/proposals/17-type-field-loops.md`; plan `docs/work/keyed-members-type-loops/`) | approved, planned; FormBuilder's model factories move into the engine |
 | M8 Packages | planned |
 
 ## Filed
 
-Open items only: an item is removed once it is resolved; git history keeps it. Each group numbers its own items and keeps counting up: the next ids are F36, P53, Q58, B98. Items filed before 2026-10-28 shared one `D` series; older docs and git history keep the closed `D` ids.
+Open items only: an item is removed once it is resolved; git history keeps it. Each group numbers its own items and keeps counting up: the next ids are F37, P53, Q58, B99. Items filed before 2026-10-28 shared one `D` series; older docs and git history keep the closed `D` ids.
 
 Size: easy (one short, local change), medium (several files or a design choice inside one layer), big (cross-layer, or a decision first). Depends on: what must happen first, or "none" when it can be done now.
 
@@ -75,6 +75,7 @@ Language or toolchain features deferred by decision, not defects.
 | F31 | A declaration-time check that a name on a type is one of a field, a getter or a method (proposal 13): today a clash is reported only where a use finds two (5505). | medium | proposal 13 | transients-getters plan |
 | F34 | Source maps for the JS backend's module (docs/work/js-codegen/design.md), so a debugger steps through Istalang source: derived from the module's line → span table, which panic traces already read. | medium | js-codegen P1 | js-codegen review 2026-11-15 |
 | F35 | Full async panic traces in the JS backend: after an `await`, a trace holds only the frames since the call resumed, read off the JavaScript stack. A full trace needs a caller link on every live async call, paid on the hot path. | medium | js-codegen P1 | js-codegen review 2026-11-15 |
+| F36 | A keyed read (`d.city`, proposal 16) denotes its `index` call alone. Go-to-definition and rename could also reach the field its key names, as a String key does (`lookup/key-denotations.ts`), once the denotation contract says how the call and the field share one name (hover, `declarationsOf`, `lookup.sweep.test.ts`). | medium | proposal 16 | keyed-members-type-loops plan review 2026-11-15 |
 
 ### Performance (P)
 
@@ -198,3 +199,4 @@ Crashes, spec gaps, wrong or missing diagnostics, host-visible behaviour.
 | B90 | Warning 5009 ("never reassigned; declare it with const") fired on a `let` array pushed only inside a one-line `if` in a `for` in FormBuilder's `forms/views.ista` (branch computed-forms, C2), and the `const` it asks for then fails 5207. Not reproduced in isolation yet: reduce from that file first. | medium | none | computed C2 |
 | B91 | A variant constructor whose argument is typed by an associated type, `RowsFrom.Always(rows, self.rowKey)`, failed to fit a value of the identical printed type: "Expected (inert fn(R.Seen) -> String?)?, found (inert fn(R.Seen) -> String?)?". FormBuilder works around it by parameterizing `RowsFrom` by `S`. Plan: `docs/work/structural-fixes/` phase D. | medium | none | computed C2 |
 | B93 | `src/runtime/lifetimes/shared-values.test.ts`'s property generates programs that panic on their own, so it fails on a valid runtime: seed -502705327 gives `xs.pop()` three times on `[1, 2, 3]`, then `xs[0] = 9` on the empty array ("Index 0 is out of range"), and the straight run isn't `finished`, though every restored run matches it. Fails the same on main. Generate only changes that can't panic, or compare endings whatever their kind. | low | none | stable-host-references |
+| B98 | The `[]` operator doesn't bind a member parameter from a literal key, though §3.9 makes `x[k]` the call `index(x, k)`: with `fn index<S is struct { [_] is Node }, K in keyof S>(self: Scope<S>, key: K) -> S[K].Scope`, `index(d, "country")` checks while `d["country"]` reports 5016 ("'[]' isn't defined for Scope<Model> and String"), the key widened to `String` before choosing. The operator should choose as its call does. Plan: `docs/work/keyed-members-type-loops/` (proposal 16 through `index`). | medium | none | keyed-members-type-loops review 2026-11-15 |
