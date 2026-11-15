@@ -1,7 +1,7 @@
 /**
  * A wait of a run of compiled code (proposal 8, Rule 5): decided once, by the first of its cases'
- * resolvers to resolve. Its waiter stops at it awaiting the promise `stop` gives, which settles
- * when the run's ready queue reaches the waiter (../ready.ts).
+ * resolvers to resolve. Its waiter stops at it, and is resumed as the run's ready queue reaches it
+ * (../ready.ts).
  */
 
 import type { Value } from '../../definition/values/values.ts';
@@ -31,11 +31,9 @@ export class Wait {
     return this.#resume !== undefined;
   }
 
-  /** Its waiter stops at it: how it is decided, once its waiter resumes. */
-  stop(): Promise<Decision> {
-    const { promise, resolve } = Promise.withResolvers<Decision>();
-    this.#resume = resolve;
-    return promise;
+  /** Its waiter stops at it, `resume` resuming it with how it was decided. */
+  stop(resume: (decision: Decision) => void): void {
+    this.#resume = resume;
   }
 
   /** Resumes its waiter, stopped at it, as it was decided. */

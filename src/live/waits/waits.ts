@@ -131,16 +131,15 @@ export class Waits {
   }
 
   /**
-   * `wait`'s waiter stopped at it, every case known: how it is decided, once the waiter resumes.
-   * Decided already, the waiter is ready now, and a resolver made after the decision, by a later
+   * `wait`'s waiter stopped at it, every case known: `resume` resumes it with how the wait is
+   * decided, once it is. Decided already, the waiter is ready now, and a resolver made after the decision, by a later
    * case's `onAwait`, loses, its `onCancel` readied after the waiter.
    */
-  stopped(wait: Wait): Promise<Decision> {
-    const resumed = wait.stop();
+  stopped(wait: Wait, resume: (decision: Decision) => void): void {
+    wait.stop(resume);
     if (wait.decision !== undefined) {
       this.#ready(wait);
     }
-    return resumed;
   }
 
   /**

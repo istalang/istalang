@@ -4,7 +4,9 @@
  *
  * - **Executions:** the root, each live async call and each readied callback runs as an execution
  *   of its own, and `at` says which runs now: its waits are ordered by its creation, and it sees the
- *   transients its caller saw. Compiled code sets it as an execution begins and resumes.
+ *   transients its caller saw. An async call's body is a generator the run drives (`call`), setting
+ *   `at` as it begins and resumes, so stopping and resuming it never waits on JavaScript's own
+ *   scheduling.
  * - **Readied work,** waiters whose wait was decided and calls resolvers readied (`Resolver.of`
  *   and `onCancel` callbacks), runs from the run's ready queue (ready.ts), one at a time in the
  *   order it became ready, as the interpreter's does.
@@ -48,6 +50,12 @@ export interface At {
   readonly call: Future | undefined;
   readonly scope: Scope | undefined;
 }
+
+/**
+ * An async call's body: a generator that stops at each wait it yields, and is resumed with how the
+ * wait was decided.
+ */
+export type Body = Generator<Wait, void, Decision | undefined>;
 
 /** How a run ended: its root's outcome, encoded as JSON, or a panic. */
 export type RunEnd =
@@ -132,11 +140,12 @@ export class Run {
     return boundExtern(this, this.seams.program.functions[index] as ExternShape);
   }
 
-  /** The async call of `call`, a new execution, begins; the execution that called it. */
-  begin(call: Future): At {
-    const caller = this.at;
-    this.at = { execution: call.object, call, scope: caller.scope };
-    return caller;
+  /**
+   * Runs `body`, the async call of `call`, a new execution, up to its first stop: an async callee
+   * runs eagerly inside its caller, which then runs on as itself.
+   */
+  call(call: Future, body: Body): void {
+    this.#resume(body, { execution: call.object, call, scope: this.at.scope }, undefined);
   }
 
   /** Resolves `future` with `value`, as an async call returns. */
@@ -150,11 +159,6 @@ export class Run {
   /** A new wait of the running execution. */
   wait(): Wait {
     return new Wait(this.at.execution);
-  }
-
-  /** The running execution stops at `wait`: how it is decided, once it is. */
-  stopped(wait: Wait): Promise<Decision> {
-    return this.waits.stopped(wait);
   }
 
   /** A new resolver of `wait`'s case `position`. */
@@ -222,6 +226,30 @@ export class Run {
       message: panic.message,
       trace: panic.trace ?? this.traces.of(stack),
     });
+  }
+
+  /**
+   * Resumes `body`, execution `at`, with `decision`, to its next stop or its end: stopped at a wait,
+   * it resumes once the wait is decided, as what it then sees, unless the run ended meanwhile.
+   */
+  #resume(body: Body, at: At, decision: Decision | undefined): void {
+    const caller = this.at;
+    this.at = at;
+    try {
+      const next = body.next(decision);
+      if (!next.done) {
+        const stoppedAt = this.at;
+        this.waits.stopped(next.value, (decided) => {
+          if (!this.ended) {
+            this.#resume(body, stoppedAt, decided);
+          }
+        });
+      }
+    } catch (error) {
+      this.fail(error);
+    } finally {
+      this.at = caller;
+    }
   }
 
   /** Calls the function value `callback` with `argumentValues`, an execution of its own. */

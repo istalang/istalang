@@ -50,8 +50,11 @@ each extern to its native with its context (result type, type arguments), holds 
 code entry, and exports one function per start (Host API).
 
 **Functions:**
-- **Kinds:** a simple entry is a JS function. A live async entry is an `async` function that
-  settles its own future. Every `await` yields, a settled future's too, as the interpreter's do.
+- **Kinds:** a simple entry is a JS function. A live async entry is a function giving its future,
+  whose body is a generator the run drives: it yields each wait, and settles the future as it
+  returns. Every `await` yields, a settled future's too, as the interpreter's do. The run resumes,
+  stops (`return()`) or runs a cleanup in a suspended call synchronously, inside the step disposing
+  it (spec §7), which an `async` function can't.
 - **Registers:**
   - registers are locals;
   - a cell register holds a cell, made by its first write;
@@ -119,9 +122,9 @@ it alone holds its value's top node.
 ## Runtime library (`istalang/live`)
 
 - **Waits:**
-  - a waiting call sleeps on a promise its wait resolves;
-  - waits decided together wake in the interpreter's order, kept by the library's own ready
-    queue: microtasks alone can't keep it;
+  - a waiting call is resumed by the run once its wait is decided;
+  - waits decided together wake in the interpreter's order: the ready queue drains in one
+    synchronous pass, each item running to its next stop;
   - `select` decides by position;
   - no segments, heap ids, snapshots or commits.
 - **Natives:**

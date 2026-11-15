@@ -1,17 +1,18 @@
 /**
  * One code entry as JavaScript (docs/work/js-codegen/design.md, "Functions"): a simple entry is a
- * function returning its value; a live async one is a function giving a new future, whose `async`
- * body runs eagerly until its first wait and settles that future as it returns.
+ * function returning its value; a live async one is a function giving a new future, whose body, a
+ * generator the run drives, runs eagerly until its first wait and settles that future as it
+ * returns.
  *
  * - Parameters are the function's own, after the closure it runs; a parameter left out arrives
  *   `undefined`. Captures follow, read off the closure, then the locals.
  * - Jumps become a `for (;;) switch (pc)` with one case per label; an entry with no label is
  *   straight-line code. Every instruction is one line, the cases' labels written on theirs, so a
  *   line of the module names one instruction: `firstInstruction` is the line of the first.
- * - An async body that throws fails the run, a panic or a bug in the toolchain.
- * - Which execution runs is tracked (`run.at`), for its waits and transients: an async function's
- *   caller runs on as itself once the body first waits, and a simple function sharing transients
- *   restores the execution it entered in.
+ * - An async body that throws fails the run, a panic or a bug in the toolchain (live/run.ts).
+ * - Which execution runs is tracked (`run.at`), for its waits and transients: the run sets it as an
+ *   async body begins and resumes, and a simple function sharing transients restores the execution
+ *   it entered in.
  */
 
 import type { Instruction } from '../definition/instructions/instruction.ts';
@@ -44,7 +45,7 @@ export function emitCodeEntry(scope: EntryScope): EmittedEntry {
   const { entry, index } = scope;
   const parameters = ['cl', ...entry.parameters.map((_, register) => `r${register}`)].join(', ');
   const lines = scope.async
-    ? [asyncHead(scope, parameters), `async function b${index}(fut, ${parameters}) { try {`]
+    ? [asyncHead(scope, parameters), `function* b${index}(fut, ${parameters}) {`]
     : [`function f${index}(${parameters}) {`];
   lines.push(...locals(scope));
   const labels = new Set(
@@ -62,17 +63,14 @@ export function emitCodeEntry(scope: EntryScope): EmittedEntry {
   if (branches) {
     lines.push('default: throw noInstruction(pc);', '}');
   }
-  lines.push(scope.async ? '} catch (error) { run.fail(error); } }' : '}');
+  lines.push('}');
   return { lines, firstInstruction };
 }
 
-/**
- * The function an async entry is called as: it gives a new future, its body settling it, and its
- * caller runs on as itself once the body first waits.
- */
+/** The function an async entry is called as: it gives a new future, its body settling it. */
 function asyncHead(scope: EntryScope, parameters: string): string {
   const { index } = scope;
-  return `function f${index}(${parameters}) { const fut = newFuture(), caller = run.begin(fut); b${index}(fut, ${parameters}); run.at = caller; return fut; }`;
+  return `function f${index}(${parameters}) { const fut = newFuture(); run.call(fut, b${index}(fut, ${parameters})); return fut; }`;
 }
 
 /** The statements declaring an entry's registers beyond its parameters, and its working locals. */
@@ -92,7 +90,7 @@ function locals(scope: EntryScope): string[] {
     { length: entry.registers - first - entry.captures },
     (_, offset) => `r${first + entry.captures + offset}`,
   );
-  const working = ['pc = 0', 't', ...(scope.async ? ['at'] : [])];
+  const working = ['pc = 0', 't'];
   declared.push(`let ${[...rest, ...working].join(', ')};`);
   if (scope.restoresExecution) {
     declared.push('const entered = run.at;');
