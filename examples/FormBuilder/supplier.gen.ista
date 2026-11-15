@@ -1,11 +1,12 @@
 # supplier.gen.ista — generated from supplier.form.json 2.0.0. Do not edit.
 #
 # The generated part of a form: per form and per local def, a model (one node per path), its
-# factory, and a view whose expressions are lambdas. forms.run does the rest.
+# factory, what its expressions see (structs whose getters read the model, so every read is
+# tracked), and a view whose expressions are closures over that scope. forms/ does the rest.
 # Expressions are pasted from the schema verbatim.
 
-import Inbox from 'inbox'
-import * as forms from './forms'
+import Graph from './computed'
+import * as checks from './forms/checks'
 import (
   Field
   Group
@@ -14,24 +15,24 @@ import (
   Hidden
   Local
   Dynamic
-  Scope
-  Prop
-  Pending
-  Check
-  Recompute
-) from './forms'
+  Date
+  DateTime
+  FileId
+) from './forms/model'
 import (
+  Place
+  View
   Options
   Item
   Choice
-  Format
+  Recompute
   FieldView
   RepeatView
   VariantView
   CaseView
   LayoutView
-) from './forms'
-import ScopedView, DynamicView, View, FormEvent, Node, User from './forms'
+  DynamicView
+) from './forms/views'
 import (
   FieldWidget
   RepeatWidget
@@ -41,21 +42,20 @@ import (
   LabelStyle
   Orientation
   Gap
-) from './forms'
-import * as runtime from 'runtime'
+) from './forms/tree'
+import Form, User, Problems from './forms/form'
 import * as geo from './geo'
 import * as crm from './crm'
 import * as approvals from './approvals'
 import * as formsCatalog from './forms-catalog'
 import * as logic from './supplier'
-import * as contactCard from './catalog/contact-card@^1' # exports Model, Params, Ctx, model(), view()
+import * as contactCard from './catalog/contact-card@^1'
 
 const translations: Map<String, Map<String, String>> = [
   "Company": ["de": "Unternehmen", "fr": "Entreprise"]
   "Only ${data.company.employees} employees allowed for a ${data.company.size} company": [
     "de": "Nur $0 Mitarbeitende für ein Unternehmen der Größe $1 erlaubt"
   ]
-  "Waiting for approval by ${ctx.params.owner.name}": ["de": "Warten auf Freigabe durch $0"]
 ]
 
 # ═══════════ def "#address" ═══════════
@@ -64,74 +64,81 @@ struct AddressParams:
   country: String
 
 struct AddressCtx:
-  params: AddressParams
   user: User
+  paramsFrom: inert fn() -> AddressParams
+
+# Its params as its mount gives them, read when an expression reads them.
+fn get params(self: AddressCtx) -> AddressParams: (self.paramsFrom)()
 
 struct AddressModel:
   street: Field<String>
   zip: Field<String>
   city: Field<String>
 
-fn addressModel() -> Group<AddressModel>: Group{
+fn addressModel(graph: Graph, x: Group<AddressModel>.Seen? = none) -> Group<AddressModel>: Group{
   fields: AddressModel{
-    street: new Field<String>{}
-    zip: new Field<String>{}
-    city: new Field<String>{}
+    street: Field.make<String>(graph, x?.street)
+    zip: Field.make<String>(graph, x?.zip)
+    city: Field.make<String>(graph, x?.city)
   }
 }
 
-ista fn addressView(
+# What the def's expressions see as `data`.
+struct AddressSeen:
   m: AddressModel
-  k: String
-) -> any View<Scope<Group<AddressModel>.Seen, AddressCtx>>: LayoutView{
-  key: `${k}/n1`
-  parent: none
-  widget: Prop.Fixed(LayoutWidget.Labeled(LabelStyle.Top))
-  children: [
-    new FieldView{
-      key: `${k}/n2`
-      parent: none
-      field: m.street
-      widget: Prop.Fixed(FieldWidget.Input(none))
-      label: Prop.Fixed("Street")
-      checks: [forms.answered(), forms.required(Fixed(true)), forms.maxLength(Fixed(120))]
-    }
-    LayoutView{
-      key: `${k}/n3`
-      parent: none
-      widget: Prop.Fixed(LayoutWidget.Hstack(gap: Gap.Sm, labels: none))
-      children: [
-        new FieldView{
-          key: `${k}/n4`
-          parent: Prop.Fixed(ParentUi.Hstack(1.0))
-          field: m.zip
-          widget: Prop.Fixed(FieldWidget.Input(none))
-          label: Prop.Fixed("ZIP")
-          checks: [
-            forms.answered()
-            forms.pattern(Prop.Computed(fn({data, ctx}): logic.zipPattern(ctx.params.country)))
-          ]
-        }
-        new FieldView{
-          key: `${k}/n5`
-          parent: Prop.Fixed(ParentUi.Hstack(3.0))
-          field: m.city
-          widget: Prop.Fixed(FieldWidget.Input(none))
-          label: Prop.Fixed("City")
-          checks: [forms.answered()]
-        }
-      ]
-    }
-  ]
-}
+
+fn get street(self: AddressSeen) -> String?: self.m.street.seen()
+fn get zip(self: AddressSeen) -> String?: self.m.zip.seen()
+fn get city(self: AddressSeen) -> String?: self.m.city.seen()
+
+fn addressView(at: Place, m: AddressModel, ctx: AddressCtx, k: String) -> View:
+  const data = AddressSeen{m}
+  LayoutView{
+    key: `${k}/n1`
+    widget: fn(): LayoutWidget.Labeled(LabelStyle.Top)
+    children: [
+      fn(at): FieldView{
+        key: `${k}/n2`
+        field: m.street
+        widget: fn(): FieldWidget.Input(none)
+        label: fn(): "Street"
+        checks: [checks.required(fn(): true), checks.maxLength(fn(): 120)]
+      }.build(at)
+      fn(at): LayoutView{
+        key: `${k}/n3`
+        widget: fn(): LayoutWidget.Hstack(gap: Gap.Sm, labels: none)
+        children: [
+          fn(at): FieldView{
+            key: `${k}/n4`
+            parent: fn(): ParentUi.Hstack(1.0)
+            field: m.zip
+            widget: fn(): FieldWidget.Input(none)
+            label: fn(): "ZIP"
+            checks: [checks.answered(), checks.pattern(fn(): logic.zipPattern(ctx.params.country))]
+          }.build(at)
+          fn(at): FieldView{
+            key: `${k}/n5`
+            parent: fn(): ParentUi.Hstack(3.0)
+            field: m.city
+            widget: fn(): FieldWidget.Input(none)
+            label: fn(): "City"
+            checks: [checks.answered()]
+          }.build(at)
+        ]
+      }.build(at)
+    ]
+  }.build(at)
 
 # ═══════════ def "#category" ═══════════
 
 struct CategoryParams
 
 struct CategoryCtx:
-  params: CategoryParams
   user: User
+  paramsFrom: inert fn() -> CategoryParams
+
+# Its params as its mount gives them, read when an expression reads them.
+fn get params(self: CategoryCtx) -> CategoryParams: (self.paramsFrom)()
 
 struct CategoryModel:
   name: Field<String>
@@ -139,54 +146,53 @@ struct CategoryModel:
 
 type CategoryChildrenRow = Group<CategoryModel>
 
-fn categoryModel() -> Group<CategoryModel>: Group{
+fn categoryModel(graph: Graph) -> Group<CategoryModel>: Group{
   fields: CategoryModel{
-    name: new Field<String>{}
-    children: new List<CategoryChildrenRow>{make: fn(): categoryModel()}
+    name: Field.make<String>(graph)
+    children: List.make(graph, fn(x): categoryModel(graph))
   }
 }
 
-ista fn categoryView(
+# What the def's expressions see as `data`.
+struct CategorySeen:
   m: CategoryModel
-  k: String
-) -> any View<Scope<Group<CategoryModel>.Seen, CategoryCtx>>: LayoutView{
-  key: `${k}/n1`
-  parent: none
-  widget: Prop.Fixed(
-    LayoutWidget.Section(title: none, description: none, collapsible: none, labels: none)
-  )
-  children: [
-    new FieldView{
-      key: `${k}/n2`
-      parent: none
-      field: m.name
-      widget: Prop.Fixed(FieldWidget.Input(none))
-      label: Prop.Fixed("Category")
-      checks: [forms.answered()]
-    }
-    new RepeatView{
-      key: `${k}/n3`
-      parent: none
-      list: m.children
-      widget: Prop.Fixed(RepeatWidget.List(addLabel: "Add subcategory", reorderable: none))
-      label: Prop.Fixed("Subcategories")
-      checks: []
-      canAdd: true
-      item: fn(r1, row1): ScopedView{
-        scope: fn(sc): struct{data: sc.data, ctx: sc.ctx, child: r1.seen()}
-        view: ScopedView{
-          key: `${k}/n4@${row1}`
-          parent: none
-          scope: fn({data, ctx, child}): Scope{
-            data: r1.seen()
-            ctx: CategoryCtx{params: CategoryParams, user: ctx.user}
-          }
-          view: categoryView(r1.fields, `${k}/n4@${row1}`)
-        }
-      }
-    }
-  ]
-}
+
+fn get name(self: CategorySeen) -> String?: self.m.name.seen()
+fn get children(self: CategorySeen) -> List<CategoryChildrenRow>.Seen: self.m.children.seen()
+
+fn categoryView(at: Place, m: CategoryModel, ctx: CategoryCtx, k: String) -> View:
+  const data = CategorySeen{m}
+  LayoutView{
+    key: `${k}/n1`
+    widget: fn(): LayoutWidget.Section(
+      title: none
+      description: none
+      collapsible: none
+      labels: none
+    )
+    children: [
+      fn(at): FieldView{
+        key: `${k}/n2`
+        field: m.name
+        widget: fn(): FieldWidget.Input(none)
+        label: fn(): "Category"
+        checks: [checks.answered()]
+      }.build(at)
+      fn(at): RepeatView{
+        key: `${k}/n3`
+        list: m.children
+        widget: fn(): RepeatWidget.List(addLabel: "Add subcategory", reorderable: none)
+        label: fn(): "Subcategories"
+        canAdd: true
+        item: fn(r1, row1, at): categoryView(
+          at
+          r1.fields
+          CategoryCtx{user: ctx.user, paramsFrom: fn(): CategoryParams}
+          `${k}/n4@${row1}`
+        )
+      }.build(at)
+    ]
+  }.build(at)
 
 # ═══════════ form "supplier" ═══════════
 
@@ -210,20 +216,20 @@ struct SupplierModel:
     legalForm: Field<"llc" | "plc" | "sole">
     capital: Hidden<Field<Float>>
     employees: Field<Int>
-    founded: Field<forms.Date>
-    logo: Field<forms.FileId>
+    founded: Field<Date>
+    logo: Field<FileId>
     country: Field<String>
     address: Hidden<Group<AddressModel>>
     city: Hidden<Field<String>>
   }>
   confirmEmail: Local<Field<String>>
   manager: Field<crm.User>
-  creditLimit: Hidden<Field<Int>>
+  creditLimit: Field<Int>
   prices: List<SupplierPricesRow>
   contacts: List<SupplierContactsRow>
   certifications: List<SupplierCertificationsRow>
   categories: List<SupplierCategoriesRow>
-  history: Hidden<List<SupplierHistoryRow>>
+  history: List<SupplierHistoryRow>
   payment: Variant<SupplierPaymentCases>
   delivery: Variant<SupplierDeliveryCases>
   extraForm: Field<formsCatalog.Entry>
@@ -255,949 +261,884 @@ type SupplierPaymentCases = {
 }
 type SupplierDeliveryCases = {
   standard: Group<{ window: Field<"am" | "pm"> }>
-  express: Group<{ at: Field<forms.DateTime> }>
+  express: Group<{ at: Field<DateTime> }>
 }
 
-fn supplierModel() -> Group<SupplierModel>: Group{
+fn supplierModel(graph: Graph) -> Group<SupplierModel>: Group{
   fields: SupplierModel{
     company: Group{
       fields: struct{
-        name: new Field<String>{}
-        vatId: new Field<String>{}
-        email: new Field<String>{}
-        description: new Field<String>{}
-        size: new Field<"small" | "medium" | "large">{}
-        legalForm: new Field<"llc" | "plc" | "sole">{}
-        capital: new Hidden<Field<Float>>{node: new Field<Float>{}}
-        employees: new Field<Int>{}
-        founded: new Field<forms.Date>{}
-        logo: new Field<forms.FileId>{}
-        country: new Field<String>{}
-        address: new Hidden<Group<AddressModel>>{node: addressModel()}
-        city: new Hidden<Field<String>>{node: new Field<String>{}}
+        name: Field.make<String>(graph)
+        vatId: Field.make<String>(graph)
+        email: Field.make<String>(graph)
+        description: Field.make<String>(graph)
+        size: Field.make<"small" | "medium" | "large">(graph)
+        legalForm: Field.make<"llc" | "plc" | "sole">(graph)
+        capital: Hidden.make(graph, Field.make<Float>(graph))
+        employees: Field.make<Int>(graph)
+        founded: Field.make<Date>(graph)
+        logo: Field.make<FileId>(graph)
+        country: Field.make<String>(graph)
+        address: Hidden.make(graph, addressModel(graph))
+        city: Hidden.make(graph, Field.make<String>(graph))
       }
     }
-    confirmEmail: new Local<Field<String>>{node: new Field<String>{}}
-    manager: new Field<crm.User>{}
-    creditLimit: new Hidden<Field<Int>>{node: new Field<Int>{}}
-    prices: new List<SupplierPricesRow>{
-      make: fn(): Group{
+    confirmEmail: Local{node: Field.make<String>(graph)}
+    manager: Field.make<crm.User>(graph)
+    creditLimit: Field.make<Int>(graph)
+    prices: List.make(
+      graph
+      fn(x): Group{
         fields: struct{
-          sku: new Field<String>{}
-          name: new Field<String>{}
-          amount: new Field<Float>{}
-          regions: new List<SupplierPricesRegionsRow>{make: fn(): new Field<String>{}}
+          sku: Field.make<String>(graph, x?.sku)
+          name: Field.make<String>(graph, x?.name)
+          amount: Field.make<Float>(graph, x?.amount)
+          regions: List.make(graph, fn(x): Field.make<String>(graph, x), x?.regions ?? [])
         }
       }
-    }
-    contacts: new List<SupplierContactsRow>{
-      make: fn(): Group{
+    )
+    contacts: List.make(
+      graph
+      fn(x): Group{
         fields: struct{
-          name: new Field<String>{}
-          email: new Field<String>{}
-          primary: new Field<Bool>{}
-          card: contactCard.model()
+          name: Field.make<String>(graph, x?.name)
+          email: Field.make<String>(graph, x?.email)
+          primary: Field.make<Bool>(graph, x?.primary)
+          card: contactCard.model(graph, x?.card)
         }
       }
-    }
-    certifications: new List<SupplierCertificationsRow>{
-      make: fn(): new Field<"iso9001" | "iso14001">{}
-    }
-    categories: new List<SupplierCategoriesRow>{make: fn(): categoryModel()}
-    history: new Hidden<List<SupplierHistoryRow>>{
-      node: new List<SupplierHistoryRow>{
-        make: fn(): Group{fields: struct{note: new Field<String>{}}}
-      }
-    }
+    )
+    certifications: List.make(graph, fn(x): Field.make<"iso9001" | "iso14001">(graph, x))
+    categories: List.make(graph, fn(x): categoryModel(graph))
+    history: List.make(
+      graph
+      fn(x): Group{fields: struct{note: Field.make<String>(graph, x?.note)}}
+    )
     payment: Variant{
-      tag: new Field<"card" | "wire" | "invoice">{}
+      tag: Field.make<"card" | "wire" | "invoice">(graph)
       cases: struct{
-        card: Group{fields: struct{holder: new Field<String>{}, last4: new Field<String>{}}}
+        card: Group{
+          fields: struct{holder: Field.make<String>(graph), last4: Field.make<String>(graph)}
+        }
         wire: Group{
           fields: struct{
             deposit: Group{
-              fields: struct{amount: new Field<Float>{}, currency: new Field<"EUR" | "USD">{}}
+              fields: struct{
+                amount: Field.make<Float>(graph)
+                currency: Field.make<"EUR" | "USD">(graph)
+              }
             }
           }
         }
-        invoice: Group{fields: struct{terms: new Field<Int>{}}}
+        invoice: Group{fields: struct{terms: Field.make<Int>(graph)}}
       }
     }
     delivery: Variant{
-      tag: new Field<"standard" | "express">{}
+      tag: Field.make<"standard" | "express">(graph)
       cases: struct{
-        standard: Group{fields: struct{window: new Field<"am" | "pm">{}}}
-        express: Group{fields: struct{at: new Field<forms.DateTime>{}}}
+        standard: Group{fields: struct{window: Field.make<"am" | "pm">(graph)}}
+        express: Group{fields: struct{at: Field.make<DateTime>(graph)}}
       }
     }
-    extraForm: new Field<formsCatalog.Entry>{}
-    extra: new Hidden<Dynamic>{node: new Dynamic{}}
-    score: new Field<Int>{}
-    notes: new Field<String>{}
-    agree: new Field<Bool>{}
+    extraForm: Field.make<formsCatalog.Entry>(graph)
+    extra: Hidden.make(graph, Dynamic.make(graph))
+    score: Field.make<Int>(graph)
+    notes: Field.make<String>(graph)
+    agree: Field.make<Bool>(graph)
   }
 }
 
-ista fn supplierView(m: SupplierModel) -> any View<Scope<Group<SupplierModel>.Seen, SupplierCtx>>:
+# What the form's expressions see as `data`.
+struct SupplierSeen:
+  m: SupplierModel
+
+fn get company(self: SupplierSeen) -> SupplierCompanySeen: SupplierCompanySeen{m: self.m.company}
+fn get confirmEmail(self: SupplierSeen) -> String?: self.m.confirmEmail.seen()
+fn get manager(self: SupplierSeen) -> crm.User?: self.m.manager.seen()
+fn get creditLimit(self: SupplierSeen) -> Int?: self.m.creditLimit.seen()
+fn get prices(self: SupplierSeen) -> List<SupplierPricesRow>.Seen: self.m.prices.seen()
+fn get contacts(self: SupplierSeen) -> List<SupplierContactsRow>.Seen: self.m.contacts.seen()
+fn get certifications(self: SupplierSeen) -> List<SupplierCertificationsRow>.Seen:
+  self.m.certifications.seen()
+fn get categories(self: SupplierSeen) -> List<SupplierCategoriesRow>.Seen: self.m.categories.seen()
+fn get history(self: SupplierSeen) -> List<SupplierHistoryRow>.Seen: self.m.history.seen()
+fn get payment(self: SupplierSeen) -> Variant<SupplierPaymentCases>.Seen: self.m.payment.seen()
+fn get delivery(self: SupplierSeen) -> Variant<SupplierDeliveryCases>.Seen: self.m.delivery.seen()
+fn get extraForm(self: SupplierSeen) -> formsCatalog.Entry?: self.m.extraForm.seen()
+fn get extra(self: SupplierSeen) -> Hidden<Dynamic>.Seen: self.m.extra.seen()
+fn get score(self: SupplierSeen) -> Int?: self.m.score.seen()
+fn get notes(self: SupplierSeen) -> String?: self.m.notes.seen()
+fn get agree(self: SupplierSeen) -> Bool?: self.m.agree.seen()
+
+# What expressions see as `data.company`.
+struct SupplierCompanySeen:
+  m: Group<{
+    name: Field<String>
+    vatId: Field<String>
+    email: Field<String>
+    description: Field<String>
+    size: Field<"small" | "medium" | "large">
+    legalForm: Field<"llc" | "plc" | "sole">
+    capital: Hidden<Field<Float>>
+    employees: Field<Int>
+    founded: Field<Date>
+    logo: Field<FileId>
+    country: Field<String>
+    address: Hidden<Group<AddressModel>>
+    city: Hidden<Field<String>>
+  }>
+
+fn get name(self: SupplierCompanySeen) -> String?: self.m.fields.name.seen()
+fn get vatId(self: SupplierCompanySeen) -> String?: self.m.fields.vatId.seen()
+fn get email(self: SupplierCompanySeen) -> String?: self.m.fields.email.seen()
+fn get description(self: SupplierCompanySeen) -> String?: self.m.fields.description.seen()
+fn get size(self: SupplierCompanySeen) -> ("small" | "medium" | "large")?: self.m.fields.size.seen()
+fn get legalForm(self: SupplierCompanySeen) -> ("llc" | "plc" | "sole")?:
+  self.m.fields.legalForm.seen()
+fn get capital(self: SupplierCompanySeen) -> Float?: self.m.fields.capital.seen()
+fn get employees(self: SupplierCompanySeen) -> Int?: self.m.fields.employees.seen()
+fn get founded(self: SupplierCompanySeen) -> Date?: self.m.fields.founded.seen()
+fn get logo(self: SupplierCompanySeen) -> FileId?: self.m.fields.logo.seen()
+fn get country(self: SupplierCompanySeen) -> String?: self.m.fields.country.seen()
+fn get address(self: SupplierCompanySeen) -> Hidden<Group<AddressModel>>.Seen:
+  self.m.fields.address.seen()
+fn get city(self: SupplierCompanySeen) -> String?: self.m.fields.city.seen()
+
+# What a `prices` row's expressions see as `price`.
+struct SupplierPricesRowSeen:
+  m: SupplierPricesRow
+
+fn get sku(self: SupplierPricesRowSeen) -> String?: self.m.fields.sku.seen()
+fn get name(self: SupplierPricesRowSeen) -> String?: self.m.fields.name.seen()
+fn get amount(self: SupplierPricesRowSeen) -> Float?: self.m.fields.amount.seen()
+fn get regions(self: SupplierPricesRowSeen) -> List<SupplierPricesRegionsRow>.Seen:
+  self.m.fields.regions.seen()
+
+# What a `contacts` row's expressions see as `contact`.
+struct SupplierContactsRowSeen:
+  m: SupplierContactsRow
+
+fn get name(self: SupplierContactsRowSeen) -> String?: self.m.fields.name.seen()
+fn get email(self: SupplierContactsRowSeen) -> String?: self.m.fields.email.seen()
+fn get primary(self: SupplierContactsRowSeen) -> Bool?: self.m.fields.primary.seen()
+fn get card(self: SupplierContactsRowSeen) -> Group<contactCard.Model>.Seen:
+  self.m.fields.card.seen()
+
+# What a `history` row's expressions see as `h`.
+struct SupplierHistoryRowSeen:
+  m: SupplierHistoryRow
+
+fn get note(self: SupplierHistoryRowSeen) -> String?: self.m.fields.note.seen()
+
+# What the `card` case's expressions see as `pay`.
+struct SupplierPaymentCardSeen:
+  m: Group<{ holder: Field<String>, last4: Field<String> }>
+
+fn get holder(self: SupplierPaymentCardSeen) -> String?: self.m.fields.holder.seen()
+fn get last4(self: SupplierPaymentCardSeen) -> String?: self.m.fields.last4.seen()
+
+# What the `wire` case's expressions see as `pay`.
+struct SupplierPaymentWireSeen:
+  m: Group<{ deposit: Group<{ amount: Field<Float>, currency: Field<"EUR" | "USD"> }> }>
+
+fn get deposit(self: SupplierPaymentWireSeen) -> SupplierPaymentWireDepositSeen:
+  SupplierPaymentWireDepositSeen{m: self.m.fields.deposit}
+
+# What expressions see as `pay.deposit`.
+struct SupplierPaymentWireDepositSeen:
+  m: Group<{ amount: Field<Float>, currency: Field<"EUR" | "USD"> }>
+
+fn get amount(self: SupplierPaymentWireDepositSeen) -> Float?: self.m.fields.amount.seen()
+fn get currency(self: SupplierPaymentWireDepositSeen) -> ("EUR" | "USD")?:
+  self.m.fields.currency.seen()
+
+# What the `invoice` case's expressions see as `pay`.
+struct SupplierPaymentInvoiceSeen:
+  m: Group<{ terms: Field<Int> }>
+
+fn get terms(self: SupplierPaymentInvoiceSeen) -> Int?: self.m.fields.terms.seen()
+
+# What the `standard` case's expressions see as `d`.
+struct SupplierDeliveryStandardSeen:
+  m: Group<{ window: Field<"am" | "pm"> }>
+
+fn get window(self: SupplierDeliveryStandardSeen) -> ("am" | "pm")?: self.m.fields.window.seen()
+
+# What the `express` case's expressions see as `d`.
+struct SupplierDeliveryExpressSeen:
+  m: Group<{ at: Field<DateTime> }>
+
+fn get at(self: SupplierDeliveryExpressSeen) -> DateTime?: self.m.fields.at.seen()
+
+fn supplierView(at: Place, m: SupplierModel, ctx: SupplierCtx) -> View:
+  const data = SupplierSeen{m}
   LayoutView{
     key: "n1"
-    parent: none
-    widget: Prop.Fixed(LayoutWidget.Wizard)
+    widget: fn(): LayoutWidget.Wizard
     children: [
-      LayoutView{
+      fn(at): LayoutView{
         key: "n2"
-        parent: none
-        widget: Prop.Computed(
-          fn({data, ctx}): LayoutWidget.Step(
-            title: forms.t(translations, ctx.user.lang, "Company", "Company", [])
-            labels: LabelStyle.Start
-          )
+        widget: fn(): LayoutWidget.Step(
+          title: checks.t(translations, ctx.user.lang, "Company", "Company", [])
+          labels: LabelStyle.Start
         )
         children: [
-          LayoutView{
+          fn(at): LayoutView{
             key: "n3"
-            parent: none
-            widget: Prop.Computed(
-              fn({data, ctx}): LayoutWidget.Markdown(
-                (`Welcome, **${ctx.user.name}**. Tier: ${ctx.params.tier}.`)
-              )
+            widget: fn(): LayoutWidget.Markdown(
+              (`Welcome, **${ctx.user.name}**. Tier: ${ctx.params.tier}.`)
             )
-            children: []
-          }
-          LayoutView{
+          }.build(at)
+          fn(at): LayoutView{
             key: "n4"
-            parent: none
-            widget: Prop.Computed(
-              fn({data, ctx}): LayoutWidget.Section(
-                title: forms.t(translations, ctx.user.lang, "Company", "Company", [])
-                description: "Legal details"
-                collapsible: false
-                labels: none
-              )
+            widget: fn(): LayoutWidget.Section(
+              title: checks.t(translations, ctx.user.lang, "Company", "Company", [])
+              description: "Legal details"
+              collapsible: false
+              labels: none
             )
             children: [
-              LayoutView{
+              fn(at): LayoutView{
                 key: "n5"
-                parent: none
-                widget: Prop.Fixed(LayoutWidget.Hstack(gap: Gap.Md, labels: none))
+                widget: fn(): LayoutWidget.Hstack(gap: Gap.Md, labels: none)
                 children: [
-                  new FieldView{
+                  fn(at): FieldView{
                     key: "n6"
-                    parent: Prop.Fixed(ParentUi.Hstack(2.0))
+                    parent: fn(): ParentUi.Hstack(2.0)
                     field: m.company.fields.name
-                    widget: Prop.Fixed(FieldWidget.Input("ACME Ltd."))
-                    label: Prop.Fixed("Name")
-                    help: Prop.Fixed("As registered")
+                    widget: fn(): FieldWidget.Input("ACME Ltd.")
+                    label: fn(): "Name"
+                    help: fn(): "As registered"
                     checks: [
-                      forms.answered()
-                      forms.required(Fixed(true))
-                      forms.minLength(Fixed(2))
-                      forms.maxLength(Fixed(100))
+                      checks.required(fn(): true)
+                      checks.minLength(fn(): 2)
+                      checks.maxLength(fn(): 100)
                     ]
-                  }
-                  new FieldView{
+                  }.build(at)
+                  fn(at): FieldView{
                     key: "n7"
-                    parent: Prop.Fixed(ParentUi.Hstack(1.0))
+                    parent: fn(): ParentUi.Hstack(1.0)
                     field: m.company.fields.vatId
-                    widget: Prop.Fixed(FieldWidget.Input(none))
-                    label: Prop.Fixed("VAT ID")
-                    checks: [forms.answered(), forms.pattern(Fixed("^[A-Z]{2}[0-9]{6,12}$"))]
-                  }
+                    widget: fn(): FieldWidget.Input(none)
+                    label: fn(): "VAT ID"
+                    checks: [checks.answered(), checks.pattern(fn(): "^[A-Z]{2}[0-9]{6,12}$")]
+                  }.build(at)
                 ]
-              }
-              new FieldView{
+              }.build(at)
+              fn(at): FieldView{
                 key: "n8"
-                parent: none
                 field: m.company.fields.email
-                widget: Prop.Fixed(FieldWidget.Input(none))
-                label: Prop.Fixed("Email")
-                checks: [forms.answered(), forms.format(Format.Email)]
-              }
-              new FieldView{
+                widget: fn(): FieldWidget.Input(none)
+                label: fn(): "Email"
+                checks: [checks.answered(), checks.format(checks.Format.Email)]
+              }.build(at)
+              fn(at): FieldView{
                 key: "n9"
-                parent: none
-                field: m.confirmEmail->node
-                widget: Prop.Fixed(FieldWidget.Input(none))
-                label: Prop.Fixed("Confirm email")
+                field: m.confirmEmail.node
+                widget: fn(): FieldWidget.Input(none)
+                label: fn(): "Confirm email"
                 checks: [
-                  forms.answered()
-                  forms.rule(
-                    fn({data, ctx}): data.confirmEmail == data.company.email
-                    fn({data, ctx}): `The emails differ`
+                  checks.answered()
+                  checks.rule(
+                    fn(): data.confirmEmail == data.company.email
+                    fn(): `The emails differ`
                   )
                 ]
-              }
-              new FieldView{
+              }.build(at)
+              fn(at): FieldView{
                 key: "n10"
-                parent: none
                 field: m.company.fields.description
-                widget: Prop.Computed(
-                  fn({data, ctx}): FieldWidget.Textarea((if ctx.params.tier == "gold": 8 else: 4))
-                )
-                label: Prop.Fixed("Description")
-                default: Prop.Fixed("")
-                checks: [forms.maxLength(Fixed(2000))]
-              }
-              new FieldView{
+                widget: fn(): FieldWidget.Textarea((if ctx.params.tier == "gold": 8 else: 4))
+                label: fn(): "Description"
+                default: fn(): ""
+                checks: [checks.maxLength(fn(): 2000)]
+              }.build(at)
+              fn(at): FieldView{
                 key: "n11"
-                parent: none
                 field: m.company.fields.size
-                widget: Prop.Fixed(FieldWidget.Select(none))
-                label: Prop.Fixed("Size")
-                default: Prop.Fixed("small")
-                checks: []
+                widget: fn(): FieldWidget.Select(none)
+                label: fn(): "Size"
+                default: fn(): "small"
                 options: Options.Items([
-                  Item{value: "small", label: Prop.Fixed("Small")}
-                  Item{value: "medium", label: Prop.Fixed("Medium")}
+                  Item{value: "small", label: fn(): "Small"}
+                  Item{value: "medium", label: fn(): "Medium"}
                   Item{
                     value: "large"
-                    label: Prop.Computed(
-                      fn({data, ctx}): if ctx.params.tier == "gold": "Large (priority)"
-                      else: "Large"
-                    )
+                    label: fn(): if ctx.params.tier == "gold": "Large (priority)" else: "Large"
                   }
                 ])
-              }
-              new FieldView{
+              }.build(at)
+              fn(at): FieldView{
                 key: "n12"
-                parent: none
                 field: m.company.fields.legalForm
-                widget: Prop.Fixed(FieldWidget.Radio(Orientation.Horizontal))
-                label: Prop.Fixed("Legal form")
-                checks: [forms.answered()]
+                widget: fn(): FieldWidget.Radio(Orientation.Horizontal)
+                label: fn(): "Legal form"
+                checks: [checks.answered()]
                 options: Options.Items([
-                  Item{value: "llc", label: Prop.Fixed("LLC")}
-                  Item{value: "plc", label: Prop.Fixed("PLC")}
-                  Item{value: "sole", label: Prop.Fixed("Sole trader")}
+                  Item{value: "llc", label: fn(): "LLC"}
+                  Item{value: "plc", label: fn(): "PLC"}
+                  Item{value: "sole", label: fn(): "Sole trader"}
                 ])
-              }
-              new FieldView{
+              }.build(at)
+              fn(at): FieldView{
                 key: "n13"
-                parent: none
-                when: Prop.Computed(fn({data, ctx}): data.company.legalForm != "sole")
-                field: m.company.fields.capital->node
-                hide: m.company.fields.capital
-                widget: Prop.Fixed(FieldWidget.Input(none))
-                label: Prop.Fixed("Share capital")
-                checks: [forms.answered(), forms.min(Fixed(0.0)), forms.multipleOf(Fixed(1000.0))]
-              }
-              new FieldView{
+                when: fn(): data.company.legalForm != "sole"
+                field: m.company.fields.capital.node
+                hide: m.company.fields.capital.shown
+                widget: fn(): FieldWidget.Input(none)
+                label: fn(): "Share capital"
+                checks: [checks.answered(), checks.min(fn(): 0.0), checks.multipleOf(fn(): 1000.0)]
+              }.build(at)
+              fn(at): FieldView{
                 key: "n14"
-                parent: none
                 field: m.company.fields.employees
-                widget: Prop.Fixed(FieldWidget.Input(none))
-                label: Prop.Fixed("Employees")
+                widget: fn(): FieldWidget.Input(none)
+                label: fn(): "Employees"
                 checks: [
-                  forms.answered()
-                  forms.min(Fixed(1))
-                  forms.max(
-                    Prop.Computed(
-                      fn({data, ctx}): if data.company.size == "small": 50
-                      elif data.company.size == "medium": 250
-                      else: 100000
-                    )
+                  checks.answered()
+                  checks.min(fn(): 1)
+                  checks.max(
+                    fn(): if data.company.size == "small": 50
+                    elif data.company.size == "medium": 250
+                    else: 100000
                   )
-                  forms.rule(
-                    fn({data, ctx}): data.company.size !=
-                      "small" or
-                      (data.company.employees ?? 0) <= 50
-                    fn({data, ctx}): forms.t(
+                  checks.rule(
+                    fn(): data.company.size != "small" or (data.company.employees ?? 0) <= 50
+                    fn(): checks.t(
                       translations
                       ctx.user.lang
                       "Only ${data.company.employees} employees allowed for a ${data.company.size} company"
-                      `Only ${forms.text(data.company.employees)} employees allowed for a ${forms.text(data.company.size)} company`
-                      [forms.text(data.company.employees), forms.text(data.company.size)]
+                      `Only ${checks.text(data.company.employees)} employees allowed for a ${checks.text(data.company.size)} company`
+                      [checks.text(data.company.employees), checks.text(data.company.size)]
                     )
                   )
                 ]
-              }
-              new FieldView{
+              }.build(at)
+              fn(at): FieldView{
                 key: "n15"
-                parent: none
                 field: m.company.fields.founded
-                widget: Prop.Fixed(FieldWidget.Datepicker)
-                label: Prop.Fixed("Founded")
+                widget: fn(): FieldWidget.Datepicker
+                label: fn(): "Founded"
                 checks: [
-                  forms.answered()
-                  forms.min(Fixed("1800-01-01"))
-                  forms.max(Prop.Computed(fn({data, ctx}): ctx.user.today))
+                  checks.answered()
+                  checks.min(fn(): "1800-01-01")
+                  checks.max(fn(): ctx.user.today)
                 ]
-              }
-              new FieldView{
+              }.build(at)
+              fn(at): FieldView{
                 key: "n16"
-                parent: none
                 field: m.company.fields.logo
-                widget: Prop.Fixed(FieldWidget.Upload(true))
-                label: Prop.Fixed("Logo")
+                widget: fn(): FieldWidget.Upload(true)
+                label: fn(): "Logo"
                 checks: [
-                  forms.answered()
-                  forms.accept(["image/png", "image/svg+xml"])
-                  forms.maxBytes(1048576)
+                  checks.answered()
+                  checks.accept(["image/png", "image/svg+xml"])
+                  checks.maxBytes(1048576)
                 ]
-              }
-              new FieldView{
+              }.build(at)
+              fn(at): FieldView{
                 key: "n17"
-                parent: none
                 field: m.company.fields.country
-                widget: Prop.Fixed(FieldWidget.Select(none))
-                label: Prop.Fixed("Country")
-                checks: [forms.answered()]
+                widget: fn(): FieldWidget.Select(none)
+                label: fn(): "Country"
+                checks: [checks.answered()]
                 options: Options.Rows(
-                  from: forms.awaited(Pending.Form, async fn({data, ctx}): [
-                    for row in await runtime.delegate geo.countries(ctx.params.region): Choice{
+                  from: fn(): [
+                    for row in geo.countries(ctx.params.region): Choice{
                       value: (row.id)
                       label: (row.name)
                     }
-                  ])
-                  resolve: forms.awaited(
-                    Pending.Form
-                    async fn({data, ctx}): (
-                      await runtime.delegate geo.countries(ctx.params.region)
-                    ).some(fn(c): c.id == data.company.country)
+                  ]
+                  resolve: fn(): geo.countries(ctx.params.region).some(
+                    fn(c): c.id == data.company.country
                   )
                 )
-              }
-              ScopedView{
-                key: "n18"
-                parent: none
-                when: Prop.Computed(fn({data, ctx}): data.company.country != none)
-                hide: m.company.fields.address
-                label: Prop.Fixed("Address")
-                scope: fn({data, ctx}): Scope{
-                  data: m.company.fields.address->node.seen()
-                  ctx: AddressCtx{
-                    params: AddressParams{country: (data.company.country ?? "")}
-                    user: ctx.user
-                  }
+              }.build(at)
+              fn(at): addressView(
+                at.within(fn(): data.company.country != none, m.company.fields.address.shown)
+                m.company.fields.address.node.fields
+                AddressCtx{
+                  user: ctx.user
+                  paramsFrom: fn(): AddressParams{country: (data.company.country ?? "")}
                 }
-                view: addressView(m.company.fields.address->node.fields, "n18")
-              }
-              new FieldView{
+                "n18"
+              )
+              fn(at): FieldView{
                 key: "n19"
-                parent: none
-                when: Prop.Computed(fn({data, ctx}): data.company.country != none)
-                field: m.company.fields.city->node
-                hide: m.company.fields.city
-                widget: Prop.Fixed(FieldWidget.Select(none))
-                label: Prop.Fixed("Main city")
-                checks: [forms.answered()]
+                when: fn(): data.company.country != none
+                field: m.company.fields.city.node
+                hide: m.company.fields.city.shown
+                widget: fn(): FieldWidget.Select(none)
+                label: fn(): "Main city"
+                checks: [checks.answered()]
                 options: Options.Rows(
-                  from: forms.awaited(Pending.Node, async fn({data, ctx}): [
-                    for row in await runtime.delegate geo.cities(
-                      data.company.country ?? ""
-                    ): Choice{value: (row.id), label: (row.name)}
-                  ])
-                  resolve: forms.awaited(
-                    Pending.Node
-                    async fn({data, ctx}): (
-                      await runtime.delegate geo.cities(data.company.country ?? "")
-                    ).some(fn(c): c.id == data.company.city)
+                  from: fn(): [
+                    for row in geo.cities(data.company.country ?? ""): Choice{
+                      value: (row.id)
+                      label: (row.name)
+                    }
+                  ]
+                  resolve: fn(): geo.cities(data.company.country ?? "").some(
+                    fn(c): c.id == data.company.city
                   )
                 )
-              }
+              }.build(at)
             ]
-          }
-          new FieldView{
+          }.build(at)
+          fn(at): FieldView{
             key: "n20"
-            parent: none
             field: m.manager
-            widget: Prop.Fixed(FieldWidget.Autocomplete("Type a name"))
-            label: Prop.Fixed("Account manager")
-            checks: [forms.answered()]
-            options: forms.search(
-              from: async fn(sc, search): {
-                const ctx = struct{search, for k, v in ...sc.ctx: [k]: v}
-                const data = sc.data
-                [
-                  for row in await runtime.delegate crm.users(ctx.search): Choice{
-                    value: row
-                    label: (row.name)
-                  }
-                ]
+            widget: fn(): FieldWidget.Autocomplete("Type a name")
+            label: fn(): "Account manager"
+            checks: [checks.answered()]
+            options: Options.Search(
+              from: fn(search): {
+                const ctx = struct{search, params: ctx.params, user: ctx.user}
+                [for row in crm.users(ctx.search): Choice{value: row, label: (row.name)}]
               }
-              resolve: forms.awaited(
-                Pending.Form
-                async fn({data, ctx}): (await runtime.delegate crm.user(data.manager?.id ?? "")) !=
-                  none
-              )
-              same: fn(a, b): a.id == b.id
+              resolve: fn(): crm.user(data.manager?.id ?? "") != none
             )
-          }
-          new FieldView{
+          }.build(at)
+          fn(at): FieldView{
             key: "n21"
-            parent: none
-            field: m.creditLimit->node
-            hide: m.creditLimit
-            widget: Prop.Fixed(FieldWidget.Input(none))
-            label: Prop.Fixed("Credit limit")
-            default: forms.awaited(
-              Pending.Hidden
-              async fn({data, ctx}): (
-                await runtime.delegate crm.creditLimit(data.company.vatId ?? "")
-              ) ??
-                0
-            )
-            checks: []
-          }
+            field: m.creditLimit
+            widget: fn(): FieldWidget.Input(none)
+            label: fn(): "Credit limit"
+            default: fn(): crm.creditLimit(data.company.vatId ?? "") ?? 0
+          }.build(at)
         ]
-      }
-      LayoutView{
+      }.build(at)
+      fn(at): LayoutView{
         key: "n22"
-        parent: none
-        widget: Prop.Fixed(LayoutWidget.Step(title: "Catalog", labels: none))
+        widget: fn(): LayoutWidget.Step(title: "Catalog", labels: none)
         children: [
-          new RepeatView{
+          fn(at): RepeatView{
             key: "n23"
-            parent: none
             list: m.prices
-            widget: Prop.Fixed(RepeatWidget.Table(none))
-            label: Prop.Fixed("Prices")
-            checks: []
+            widget: fn(): RepeatWidget.Table(none)
+            label: fn(): "Prices"
             canAdd: false
-            rows: Prop.Computed(fn({data, ctx}): [
+            rows: fn(): [
               for p in ctx.params.products: struct{
                 sku: p.sku
                 name: p.name
                 amount: none
                 regions: []
               }
-            ])
-            rowKey: fn(seen): { const price = seen; price.sku }
+            ]
+            rowKey: fn(price): price.sku
             recomputeUntil: Recompute.RowsEdited
-            item: fn(r1, row1): ScopedView{
-              scope: fn(sc): struct{data: sc.data, ctx: sc.ctx, price: r1.seen()}
-              view: LayoutView{
+            item: fn(r1, row1, at): {
+              const price = SupplierPricesRowSeen{m: r1}
+              LayoutView{
                 key: `n24@${row1}`
-                parent: none
-                widget: Prop.Fixed(LayoutWidget.Tablerow)
+                widget: fn(): LayoutWidget.Tablerow
                 children: [
-                  new FieldView{
+                  fn(at): FieldView{
                     key: `n25@${row1}`
-                    parent: none
                     field: r1.fields.sku
-                    widget: Prop.Fixed(FieldWidget.Input(none))
-                    label: Prop.Fixed("SKU")
-                    value: Prop.Computed(fn({data, ctx, price}): price.sku ?? "")
-                    checks: []
-                  }
-                  new FieldView{
+                    widget: fn(): FieldWidget.Input(none)
+                    label: fn(): "SKU"
+                    value: fn(): price.sku ?? ""
+                  }.build(at)
+                  fn(at): FieldView{
                     key: `n26@${row1}`
-                    parent: Prop.Fixed(ParentUi.Tablerow(240))
+                    parent: fn(): ParentUi.Tablerow(240)
                     field: r1.fields.name
-                    widget: Prop.Fixed(FieldWidget.Input(none))
-                    label: Prop.Fixed("Product")
-                    default: Prop.Fixed("")
-                    checks: []
-                  }
-                  new FieldView{
+                    widget: fn(): FieldWidget.Input(none)
+                    label: fn(): "Product"
+                    default: fn(): ""
+                  }.build(at)
+                  fn(at): FieldView{
                     key: `n27@${row1}`
-                    parent: Prop.Fixed(ParentUi.Tablerow(100))
+                    parent: fn(): ParentUi.Tablerow(100)
                     field: r1.fields.amount
-                    widget: Prop.Fixed(FieldWidget.Input(none))
-                    label: Prop.Fixed("Price")
-                    checks: [forms.answered(), forms.min(Fixed(0.0))]
-                  }
-                  new RepeatView{
+                    widget: fn(): FieldWidget.Input(none)
+                    label: fn(): "Price"
+                    checks: [checks.answered(), checks.min(fn(): 0.0)]
+                  }.build(at)
+                  fn(at): RepeatView{
                     key: `n28@${row1}`
-                    parent: none
                     list: r1.fields.regions
-                    widget: Prop.Fixed(RepeatWidget.Multiselect(none))
-                    label: Prop.Fixed("Regions")
-                    checks: [forms.someItems(Fixed(true))]
+                    widget: fn(): RepeatWidget.Multiselect(none)
+                    label: fn(): "Regions"
+                    checks: [checks.someItems(fn(): true)]
                     canAdd: true
-                    item: fn(r2, row2): ScopedView{
-                      scope: fn(sc): struct{
-                        data: sc.data
-                        ctx: sc.ctx
-                        price: sc.price
-                        region: r2.seen()
-                      }
-                      view: new FieldView{
-                        key: `n29@${row1}@${row2}`
-                        parent: none
-                        field: r2
-                        widget: Prop.Fixed(FieldWidget.Choice)
-                        label: Prop.Fixed("Region")
-                        checks: [forms.answered()]
-                        options: Options.Rows(
-                          from: forms.awaited(Pending.Form, async fn({data, ctx, price, region}): [
-                            for row in await runtime.delegate geo.regions(): Choice{
-                              value: (row.code)
-                              label: (row.name)
-                            }
-                          ])
-                          resolve: forms.awaited(
-                            Pending.Form
-                            async fn({data, ctx, price, region}): (
-                              await runtime.delegate geo.regions()
-                            ).some(fn(r): r.code == region)
-                          )
-                        )
-                      }
-                    }
-                  }
+                    item: fn(r2, row2, at): FieldView{
+                      key: `n29@${row1}@${row2}`
+                      field: r2
+                      widget: fn(): FieldWidget.Choice
+                      label: fn(): "Region"
+                      checks: [checks.answered()]
+                      options: Options.Rows(
+                        from: fn(): [
+                          for row in geo.regions(): Choice{value: (row.code), label: (row.name)}
+                        ]
+                        resolve: fn(): {
+                          const region = r2.seen()
+                          geo.regions().some(fn(r): r.code == region)
+                        }
+                      )
+                    }.build(at)
+                  }.build(at)
                 ]
-              }
+              }.build(at)
             }
-          }
-          new RepeatView{
+          }.build(at)
+          fn(at): RepeatView{
             key: "n30"
-            parent: none
             list: m.contacts
-            widget: Prop.Fixed(RepeatWidget.List(addLabel: "Add contact", reorderable: true))
-            label: Prop.Fixed("Contacts")
+            widget: fn(): RepeatWidget.List(addLabel: "Add contact", reorderable: true)
+            label: fn(): "Contacts"
             checks: [
-              forms.minItems(Fixed(1))
-              forms.maxItems(
-                Prop.Computed(fn({data, ctx}): if ctx.params.tier == "gold": 10 else: 3)
-              )
+              checks.minItems(fn(): 1)
+              checks.maxItems(fn(): if ctx.params.tier == "gold": 10 else: 3)
             ]
             canAdd: true
-            item: fn(r1, row1): ScopedView{
-              scope: fn(sc): struct{data: sc.data, ctx: sc.ctx, contact: r1.seen()}
-              view: LayoutView{
+            item: fn(r1, row1, at): {
+              const contact = SupplierContactsRowSeen{m: r1}
+              LayoutView{
                 key: `n31@${row1}`
-                parent: none
-                widget: Prop.Fixed(
-                  LayoutWidget.Section(
-                    title: none
-                    description: none
-                    collapsible: none
-                    labels: none
-                  )
+                widget: fn(): LayoutWidget.Section(
+                  title: none
+                  description: none
+                  collapsible: none
+                  labels: none
                 )
                 children: [
-                  new FieldView{
+                  fn(at): FieldView{
                     key: `n32@${row1}`
-                    parent: Prop.Fixed(ParentUi.Section(1))
+                    parent: fn(): ParentUi.Section(1)
                     field: r1.fields.name
-                    widget: Prop.Fixed(FieldWidget.Input(none))
-                    label: Prop.Fixed("Name")
-                    checks: [forms.answered()]
-                  }
-                  new FieldView{
+                    widget: fn(): FieldWidget.Input(none)
+                    label: fn(): "Name"
+                    checks: [checks.answered()]
+                  }.build(at)
+                  fn(at): FieldView{
                     key: `n33@${row1}`
-                    parent: Prop.Fixed(ParentUi.Section(1))
+                    parent: fn(): ParentUi.Section(1)
                     field: r1.fields.email
-                    widget: Prop.Fixed(FieldWidget.Input(none))
-                    label: Prop.Fixed("Email")
-                    checks: [forms.answered(), forms.format(Format.Email)]
-                  }
-                  new FieldView{
+                    widget: fn(): FieldWidget.Input(none)
+                    label: fn(): "Email"
+                    checks: [checks.answered(), checks.format(checks.Format.Email)]
+                  }.build(at)
+                  fn(at): FieldView{
                     key: `n34@${row1}`
-                    parent: none
                     field: r1.fields.primary
-                    widget: Prop.Fixed(FieldWidget.Toggle)
-                    label: Prop.Fixed("Primary contact")
-                    default: Prop.Fixed(false)
-                    checks: []
-                  }
-                  ScopedView{
-                    key: `n35@${row1}`
-                    parent: none
-                    scope: fn({data, ctx, contact}): Scope{
-                      data: r1.fields.card.seen()
-                      ctx: contactCard.Ctx{
-                        params: contactCard.Params{name: (contact.name ?? "")}
-                        user: ctx.user
-                      }
+                    widget: fn(): FieldWidget.Toggle
+                    label: fn(): "Primary contact"
+                    default: fn(): false
+                  }.build(at)
+                  fn(at): contactCard.view(
+                    at
+                    r1.fields.card.fields
+                    contactCard.Ctx{
+                      user: ctx.user
+                      paramsFrom: fn(): contactCard.Params{name: (contact.name ?? "")}
                     }
-                    view: contactCard.view(r1.fields.card.fields, `n35@${row1}`)
-                  }
+                    `n35@${row1}`
+                  )
                 ]
-              }
+              }.build(at)
             }
-          }
-          new RepeatView{
+          }.build(at)
+          fn(at): RepeatView{
             key: "n36"
-            parent: none
             list: m.certifications
-            widget: Prop.Fixed(RepeatWidget.Checkboxes(Orientation.Vertical))
-            label: Prop.Fixed("Certifications")
-            checks: []
+            widget: fn(): RepeatWidget.Checkboxes(Orientation.Vertical)
+            label: fn(): "Certifications"
             canAdd: true
-            item: fn(r1, row1): ScopedView{
-              scope: fn(sc): struct{data: sc.data, ctx: sc.ctx, cert: r1.seen()}
-              view: new FieldView{
-                key: `n37@${row1}`
-                parent: none
-                field: r1
-                widget: Prop.Fixed(FieldWidget.Choice)
-                label: Prop.Fixed("Certification")
-                checks: [forms.answered()]
-                options: Options.Items([
-                  Item{value: "iso9001", label: Prop.Fixed("ISO 9001")}
-                  Item{value: "iso14001", label: Prop.Fixed("ISO 14001")}
-                ])
-              }
-            }
-          }
-          new RepeatView{
+            item: fn(r1, row1, at): FieldView{
+              key: `n37@${row1}`
+              field: r1
+              widget: fn(): FieldWidget.Choice
+              label: fn(): "Certification"
+              checks: [checks.answered()]
+              options: Options.Items([
+                Item{value: "iso9001", label: fn(): "ISO 9001"}
+                Item{value: "iso14001", label: fn(): "ISO 14001"}
+              ])
+            }.build(at)
+          }.build(at)
+          fn(at): RepeatView{
             key: "n38"
-            parent: none
             list: m.categories
-            widget: Prop.Fixed(RepeatWidget.Cards(addLabel: "Add category", title: "Category"))
-            label: Prop.Fixed("Categories")
-            checks: []
+            widget: fn(): RepeatWidget.Cards(addLabel: "Add category", title: "Category")
+            label: fn(): "Categories"
             canAdd: true
-            item: fn(r1, row1): ScopedView{
-              scope: fn(sc): struct{data: sc.data, ctx: sc.ctx, cat: r1.seen()}
-              view: ScopedView{
-                key: `n39@${row1}`
-                parent: none
-                scope: fn({data, ctx, cat}): Scope{
-                  data: r1.seen()
-                  ctx: CategoryCtx{params: CategoryParams, user: ctx.user}
-                }
-                view: categoryView(r1.fields, `n39@${row1}`)
-              }
-            }
-          }
-          new RepeatView{
-            key: "n40"
-            parent: none
-            list: m.history->node
-            hide: m.history
-            widget: Prop.Fixed(RepeatWidget.List(addLabel: none, reorderable: none))
-            label: Prop.Fixed("Previous orders")
-            checks: []
-            canAdd: false
-            rows: forms.awaited(
-              Pending.Hidden
-              async fn({data, ctx}): await runtime.delegate crm.orders(data.company.vatId ?? "")
+            item: fn(r1, row1, at): categoryView(
+              at
+              r1.fields
+              CategoryCtx{user: ctx.user, paramsFrom: fn(): CategoryParams}
+              `n39@${row1}`
             )
+          }.build(at)
+          fn(at): RepeatView{
+            key: "n40"
+            list: m.history
+            widget: fn(): RepeatWidget.List(addLabel: none, reorderable: none)
+            label: fn(): "Previous orders"
+            canAdd: false
+            rows: fn(): crm.orders(data.company.vatId ?? "")
             computedRows: true
-            item: fn(r1, row1): ScopedView{
-              scope: fn(sc): struct{data: sc.data, ctx: sc.ctx, h: r1.seen()}
-              view: new FieldView{
+            item: fn(r1, row1, at): {
+              const h = SupplierHistoryRowSeen{m: r1}
+              FieldView{
                 key: `n41@${row1}`
-                parent: none
                 field: r1.fields.note
-                widget: Prop.Fixed(FieldWidget.Input(none))
-                label: Prop.Fixed("Order")
-                value: Prop.Computed(fn({data, ctx, h}): h.note ?? "")
-                checks: []
-              }
+                widget: fn(): FieldWidget.Input(none)
+                label: fn(): "Order"
+                value: fn(): h.note ?? ""
+              }.build(at)
             }
-          }
+          }.build(at)
         ]
-      }
-      LayoutView{
+      }.build(at)
+      fn(at): LayoutView{
         key: "n42"
-        parent: none
-        widget: Prop.Fixed(LayoutWidget.Step(title: "Payment", labels: none))
+        widget: fn(): LayoutWidget.Step(title: "Payment", labels: none)
         children: [
-          new FieldView{
+          fn(at): FieldView{
             key: "n43"
-            parent: none
             field: m.payment.tag
-            widget: Prop.Fixed(FieldWidget.Segmented)
-            label: Prop.Fixed("Method")
-            checks: [forms.answered()]
+            widget: fn(): FieldWidget.Segmented
+            label: fn(): "Method"
+            checks: [checks.answered()]
             options: Options.Items([
-              Item{value: "card", label: Prop.Fixed("Card")}
-              Item{value: "wire", label: Prop.Fixed("Wire")}
-              Item{value: "invoice", label: Prop.Fixed("Invoice")}
+              Item{value: "card", label: fn(): "Card"}
+              Item{value: "wire", label: fn(): "Wire"}
+              Item{value: "invoice", label: fn(): "Invoice"}
             ])
-          }
-          VariantView{
+          }.build(at)
+          fn(at): VariantView{
             key: "n44"
-            parent: none
             variant: m.payment
-            widget: Prop.Fixed(VariantWidget.Panel("Details"))
-            label: Prop.Fixed("Payment details")
+            widget: fn(): VariantWidget.Panel("Details")
+            label: fn(): "Payment details"
             cases: struct{
               card: CaseView{
-                label: Prop.Fixed("Card")
-                body: ScopedView{
-                  scope: fn(sc): struct{
-                    data: sc.data
-                    ctx: sc.ctx
-                    pay: m.payment.cases.card.seen()
-                  }
-                  view: LayoutView{
+                label: fn(): "Card"
+                body: fn(at): {
+                  const pay = SupplierPaymentCardSeen{m: m.payment.cases.card}
+                  LayoutView{
                     key: "n45"
-                    parent: none
-                    widget: Prop.Fixed(
-                      LayoutWidget.Section(
-                        title: none
-                        description: none
-                        collapsible: none
-                        labels: none
-                      )
+                    widget: fn(): LayoutWidget.Section(
+                      title: none
+                      description: none
+                      collapsible: none
+                      labels: none
                     )
                     children: [
-                      new FieldView{
+                      fn(at): FieldView{
                         key: "n46"
-                        parent: none
                         field: m.payment.cases.card.fields.holder
-                        widget: Prop.Fixed(FieldWidget.Input(none))
-                        label: Prop.Fixed("Card holder")
-                        checks: [forms.answered()]
-                      }
-                      new FieldView{
+                        widget: fn(): FieldWidget.Input(none)
+                        label: fn(): "Card holder"
+                        checks: [checks.answered()]
+                      }.build(at)
+                      fn(at): FieldView{
                         key: "n47"
-                        parent: none
                         field: m.payment.cases.card.fields.last4
-                        widget: Prop.Fixed(FieldWidget.Input(none))
-                        label: Prop.Fixed("Last 4 digits")
-                        checks: [forms.answered(), forms.pattern(Fixed("^[0-9]{4}$"))]
-                      }
+                        widget: fn(): FieldWidget.Input(none)
+                        label: fn(): "Last 4 digits"
+                        checks: [checks.answered(), checks.pattern(fn(): "^[0-9]{4}$")]
+                      }.build(at)
                     ]
-                  }
+                  }.build(at)
                 }
               }
               wire: CaseView{
-                label: Prop.Fixed("Wire")
-                body: ScopedView{
-                  scope: fn(sc): struct{
-                    data: sc.data
-                    ctx: sc.ctx
-                    pay: m.payment.cases.wire.seen()
-                  }
-                  view: LayoutView{
+                label: fn(): "Wire"
+                body: fn(at): {
+                  const pay = SupplierPaymentWireSeen{m: m.payment.cases.wire}
+                  LayoutView{
                     key: "n48"
-                    parent: none
-                    widget: Prop.Fixed(LayoutWidget.Money)
-                    label: Prop.Fixed("Deposit")
+                    widget: fn(): LayoutWidget.Money
+                    label: fn(): "Deposit"
                     children: [
-                      new FieldView{
+                      fn(at): FieldView{
                         key: "n49"
-                        parent: none
                         field: m.payment.cases.wire.fields.deposit.fields.amount
-                        widget: Prop.Fixed(FieldWidget.Raw)
-                        label: Prop.Fixed("Amount")
-                        checks: [forms.answered(), forms.min(Fixed(0.0))]
-                      }
-                      new FieldView{
+                        widget: fn(): FieldWidget.Raw
+                        label: fn(): "Amount"
+                        checks: [checks.answered(), checks.min(fn(): 0.0)]
+                      }.build(at)
+                      fn(at): FieldView{
                         key: "n50"
-                        parent: none
                         field: m.payment.cases.wire.fields.deposit.fields.currency
-                        widget: Prop.Fixed(FieldWidget.Choice)
-                        label: Prop.Fixed("Currency")
-                        checks: [forms.answered()]
+                        widget: fn(): FieldWidget.Choice
+                        label: fn(): "Currency"
+                        checks: [checks.answered()]
                         options: Options.Items([
-                          Item{value: "EUR", label: Prop.Fixed("€")}
-                          Item{value: "USD", label: Prop.Fixed("$")}
+                          Item{value: "EUR", label: fn(): "€"}
+                          Item{value: "USD", label: fn(): "$"}
                         ])
-                      }
+                      }.build(at)
                     ]
-                  }
+                  }.build(at)
                 }
               }
               invoice: CaseView{
-                label: Prop.Fixed("Invoice")
-                body: ScopedView{
-                  scope: fn(sc): struct{
-                    data: sc.data
-                    ctx: sc.ctx
-                    pay: m.payment.cases.invoice.seen()
-                  }
-                  view: new FieldView{
+                label: fn(): "Invoice"
+                body: fn(at): {
+                  const pay = SupplierPaymentInvoiceSeen{m: m.payment.cases.invoice}
+                  FieldView{
                     key: "n51"
-                    parent: none
                     field: m.payment.cases.invoice.fields.terms
-                    widget: Prop.Fixed(FieldWidget.Input(none))
-                    label: Prop.Fixed("Payment terms (days)")
-                    default: Prop.Fixed(30)
-                    checks: [forms.min(Fixed(7)), forms.max(Fixed(90))]
-                  }
+                    widget: fn(): FieldWidget.Input(none)
+                    label: fn(): "Payment terms (days)"
+                    default: fn(): 30
+                    checks: [checks.min(fn(): 7), checks.max(fn(): 90)]
+                  }.build(at)
                 }
               }
             }
-          }
-          VariantView{
+          }.build(at)
+          fn(at): VariantView{
             key: "n52"
-            parent: none
             variant: m.delivery
-            widget: Prop.Fixed(VariantWidget.Inline)
-            label: Prop.Fixed("Delivery")
-            default: Prop.Fixed("standard")
+            widget: fn(): VariantWidget.Inline
+            label: fn(): "Delivery"
+            default: fn(): "standard"
             cases: struct{
               standard: CaseView{
-                label: Prop.Fixed("Standard")
-                body: ScopedView{
-                  scope: fn(sc): struct{
-                    data: sc.data
-                    ctx: sc.ctx
-                    d: m.delivery.cases.standard.seen()
-                  }
-                  view: new FieldView{
+                label: fn(): "Standard"
+                body: fn(at): {
+                  const d = SupplierDeliveryStandardSeen{m: m.delivery.cases.standard}
+                  FieldView{
                     key: "n53"
-                    parent: none
                     field: m.delivery.cases.standard.fields.window
-                    widget: Prop.Fixed(FieldWidget.Select(none))
-                    label: Prop.Fixed("Time window")
-                    checks: [forms.answered()]
+                    widget: fn(): FieldWidget.Select(none)
+                    label: fn(): "Time window"
+                    checks: [checks.answered()]
                     options: Options.Items([
-                      Item{value: "am", label: Prop.Fixed("Morning")}
-                      Item{value: "pm", label: Prop.Fixed("Afternoon")}
+                      Item{value: "am", label: fn(): "Morning"}
+                      Item{value: "pm", label: fn(): "Afternoon"}
                     ])
-                  }
+                  }.build(at)
                 }
               }
               express: CaseView{
-                label: Prop.Fixed("Express")
-                body: ScopedView{
-                  scope: fn(sc): struct{
-                    data: sc.data
-                    ctx: sc.ctx
-                    d: m.delivery.cases.express.seen()
-                  }
-                  view: new FieldView{
+                label: fn(): "Express"
+                body: fn(at): {
+                  const d = SupplierDeliveryExpressSeen{m: m.delivery.cases.express}
+                  FieldView{
                     key: "n54"
-                    parent: none
                     field: m.delivery.cases.express.fields.at
-                    widget: Prop.Fixed(FieldWidget.Datepicker)
-                    label: Prop.Fixed("Deliver at")
-                    checks: [forms.answered()]
-                  }
+                    widget: fn(): FieldWidget.Datepicker
+                    label: fn(): "Deliver at"
+                    checks: [checks.answered()]
+                  }.build(at)
                 }
               }
             }
-          }
-          new FieldView{
+          }.build(at)
+          fn(at): FieldView{
             key: "n55"
-            parent: none
             field: m.extraForm
-            widget: Prop.Fixed(FieldWidget.Select(none))
-            label: Prop.Fixed("Additional questionnaire")
-            checks: [forms.answered()]
+            widget: fn(): FieldWidget.Select(none)
+            label: fn(): "Additional questionnaire"
+            checks: [checks.answered()]
             options: Options.Rows(
-              from: forms.awaited(Pending.Form, async fn({data, ctx}): [
-                for row in await runtime.delegate formsCatalog.list(ctx.params.region): Choice{
+              from: fn(): [
+                for row in formsCatalog.list(ctx.params.region): Choice{
                   value: row
                   label: (row.title)
                 }
-              ])
-              resolve: forms.awaited(
-                Pending.Form
-                async fn({data, ctx}): (
-                  await runtime.delegate formsCatalog.get(data.extraForm?.id ?? "")
-                ) !=
-                  none
-              )
+              ]
+              resolve: fn(): formsCatalog.get(data.extraForm?.id ?? "") != none
             )
-          }
-          new DynamicView{
+          }.build(at)
+          fn(at): DynamicView{
             key: "n56"
-            parent: none
-            when: Prop.Computed(fn({data, ctx}): data.extraForm != none)
-            value: m.extra->node
-            hide: m.extra
-            label: Prop.Fixed("Questionnaire")
-            schema: Prop.Computed(fn({data, ctx}): data.extraForm?.schema)
-          }
+            when: fn(): data.extraForm != none
+            value: m.extra.node
+            hide: m.extra.shown
+            label: fn(): "Questionnaire"
+            schema: fn(): data.extraForm?.schema
+          }.build(at)
         ]
-      }
-      LayoutView{
+      }.build(at)
+      fn(at): LayoutView{
         key: "n57"
-        parent: none
-        widget: Prop.Fixed(LayoutWidget.Step(title: "Review", labels: none))
+        widget: fn(): LayoutWidget.Step(title: "Review", labels: none)
         children: [
-          LayoutView{
+          fn(at): LayoutView{
             key: "n58"
-            parent: none
-            widget: Prop.Computed(
-              fn({data, ctx}): LayoutWidget.Markdown(
-                (`Supplier **${data.company.name ?? "?"}**, ${data.prices.length()} prices.`)
-              )
+            widget: fn(): LayoutWidget.Markdown(
+              (`Supplier **${data.company.name ?? "?"}**, ${data.prices.length()} prices.`)
             )
-            children: []
-          }
-          new FieldView{
+          }.build(at)
+          fn(at): FieldView{
             key: "n59"
-            parent: none
-            field: none
-            widget: Prop.Fixed(FieldWidget.Input(none))
-            label: Prop.Fixed("Catalog value")
-            value: Prop.Computed(fn({data, ctx}): logic.catalogValue(data.prices))
-            checks: []
-          }
-          new FieldView{
+            widget: fn(): FieldWidget.Input(none)
+            label: fn(): "Catalog value"
+            value: fn(): logic.catalogValue(data.prices)
+          }.build(at)
+          fn(at): FieldView{
             key: "n60"
-            parent: none
             field: m.score
-            widget: Prop.Fixed(FieldWidget.Input(none))
-            label: Prop.Fixed("Risk score")
-            value: Prop.Computed(
-              fn({data, ctx}): logic.score(
-                data.company.employees ?? 0
-                data.certifications.length()
-              )
-            )
-            checks: []
-          }
-          new FieldView{
+            widget: fn(): FieldWidget.Input(none)
+            label: fn(): "Risk score"
+            value: fn(): logic.score(data.company.employees ?? 0, data.certifications.length())
+          }.build(at)
+          fn(at): FieldView{
             key: "n61"
-            parent: none
             field: m.notes
-            widget: Prop.Fixed(FieldWidget.Textarea(none))
-            label: Prop.Computed(
-              fn({data, ctx}): if ctx.params.tier == "gold": "Notes for your account manager"
-              else: "Notes"
-            )
-            default: Prop.Fixed("")
-            checks: [forms.required(Prop.Computed(fn({data, ctx}): (data.score ?? 0) > 70))]
-          }
-          new FieldView{
+            widget: fn(): FieldWidget.Textarea(none)
+            label: fn(): if ctx.params.tier == "gold": "Notes for your account manager"
+            else: "Notes"
+            default: fn(): ""
+            checks: [checks.required(fn(): (data.score ?? 0) > 70)]
+          }.build(at)
+          fn(at): FieldView{
             key: "n62"
-            parent: none
             field: m.agree
-            widget: Prop.Fixed(FieldWidget.Checkbox)
-            label: Prop.Fixed("I accept the terms")
+            widget: fn(): FieldWidget.Checkbox
+            label: fn(): "I accept the terms"
             checks: [
-              forms.answered()
-              forms.rule(
-                fn({data, ctx}): data.agree == true
-                fn({data, ctx}): `Please accept the terms`
-              )
+              checks.answered()
+              checks.rule(fn(): data.agree == true, fn(): `Please accept the terms`)
             ]
-          }
-          LayoutView{
-            key: "n63"
-            parent: none
-            widget: Prop.Fixed(LayoutWidget.Divider)
-            children: []
-          }
-          LayoutView{
+          }.build(at)
+          fn(at): LayoutView{key: "n63", widget: fn(): LayoutWidget.Divider}.build(at)
+          fn(at): LayoutView{
             key: "n64"
-            parent: none
-            widget: Prop.Fixed(LayoutWidget.Errors)
+            widget: fn(): LayoutWidget.Errors
             checks: [
-              forms.rule(
-                fn({data, ctx}): data.contacts.some(fn(c): c.primary == true)
-                fn({data, ctx}): `Mark one contact as primary`
+              checks.rule(
+                fn(): data.contacts.some(fn(c): c.primary == true)
+                fn(): `Mark one contact as primary`
               )
-              forms.later(
-                async fn({data, ctx}): {
-                  if (data.score ?? 0) < 80 or await runtime.delegate approvals.ask(ctx.params.owner.id, data.company.name ?? ""):
-                    none
-                  else: `The supplier was not approved`
-                }
-                fn({data, ctx}): forms.t(
-                  translations
-                  ctx.user.lang
-                  "Waiting for approval by ${ctx.params.owner.name}"
-                  `Waiting for approval by ${forms.text(ctx.params.owner.name)}`
-                  [forms.text(ctx.params.owner.name)]
-                )
+              checks.rule(
+                fn(): (data.score ?? 0) <
+                  80 or
+                  approvals.ask(ctx.params.owner.id, data.company.name ?? "")
+                fn(): `The supplier was not approved`
               )
             ]
-            children: []
-          }
+          }.build(at)
         ]
-      }
+      }.build(at)
     ]
-  }
+  }.build(at)
 
-# ═══════════ The entry point a workflow awaits ═══════════
+# The form on a graph of its own.
+fn openSupplier(params: SupplierParams, user: User) -> Form<SupplierModel>:
+  const graph = new Graph{}
+  const model = supplierModel(graph)
+  Form.open(graph, model, fn(at): supplierView(at, model.fields, SupplierCtx{params, user}))
 
-ista async fn supplierForm(
+# ═══════════ The entry points its hosts start ═══════════
+
+# The browser's: serves the form until a valid submit, and gives the value to submit.
+live async fn supplierForm(params: SupplierParams, user: User) -> Group<SupplierModel>.Seen:
+  await openSupplier(params, user).serve()
+
+# The backend's: validates a whole value.
+live fn validateSupplier(
   params: SupplierParams
   user: User
-  events: Inbox<FormEvent>
-  views: Inbox<Node>
-):
-  const m = supplierModel()
-  await forms.run(m, supplierView(m.fields), SupplierCtx{params, user}, translations, events, views)
+  value: Group<SupplierModel>.Seen
+) -> Result<Group<SupplierModel>.Data, Problems>:
+  openSupplier(params, user).validate(value)

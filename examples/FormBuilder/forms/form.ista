@@ -1,8 +1,9 @@
-# A form built: its model and view on one graph, the events that change it, and the two live
-# functions that drive it, the browser's and the backend's (docs/work/computed/design.md).
+# A form built: its model and view on one graph, the events that change it, and what drives it,
+# the browser's and the backend's (docs/work/computed/design.md).
 #
-# - Everything but the drivers is simple code: an event sets sources between views, and a view
-#   reads the tree. The drivers add only what live code must: the host's seam.
+# - Everything but the browser's driver is simple code: an event sets sources between views, and a
+#   view reads the tree. The driver adds only what live code must: the host's seam. The backend's
+#   validation is simple too, so a form's live entry points and its tests alike call it.
 # - The browser's driver holds the form for the whole session: the host starts it once with JSON
 #   arguments and disposes what it holds when it returns, so the graph lives as long as the run,
 #   which waits for each event on a host extern (an Inbox is ista, so live code takes none).
@@ -50,27 +51,9 @@ fn result<M is struct { [_] is FormNode }>(self: Form<M>) -> Result<Group<M>.Dat
 # The errors each node in `nodes` shows, by its key.
 fn problems(nodes: Array<Node>) -> Problems:
   let found: Problems = [:]
-  fn note(key: String, errors: Array<String>):
-    if errors.length() > 0: found[key] = errors
-  fn walk(node: Node) -> Unit:
-    match node:
-      case Layout(key: key, errors: errors, children: children, ...): {
-        note(key, errors)
-        for child in children: walk(child)
-      }
-      case Field(key: key, errors: errors, ...): note(key, errors)
-      case Repeat(key: key, errors: errors, rows: rows, ...): {
-        note(key, errors)
-        for row in rows: walk(row.node)
-      }
-      case Variant(key: key, errors: errors, body: body, ...): {
-        note(key, errors)
-        match body:
-          case None: ()
-          case shown: walk(shown)
-      }
-      case Mount(...): ()
-  for node in nodes: walk(node)
+  for node in nodes:
+    for each in node.shown():
+      if each.errors().length() > 0: found[each.key()] = each.errors()
   found
 
 # The host's seam for a form served in the browser: the frontend's next event, and the tree to draw.
@@ -78,20 +61,21 @@ extern live async fn nextEvent() -> FormEvent
 extern live fn show(tree: Node)
 
 # The browser's: serves the form from the frontend's events, showing its tree after each, until a
-# valid submit, whose data it gives its host.
-live async fn serve<M is struct { [_] is FormNode }>(self: Form<M>) -> Group<M>.Data:
+# valid submit, whose whole value it gives its host to submit: what the backend validates, local
+# values included, which the data leaves out.
+live async fn serve<M is struct { [_] is FormNode }>(self: Form<M>) -> Group<M>.Seen:
   while true: {
     if self.submitted.read():
       match self.result():
-        case Ok(data): return data
+        case Ok(...): return self.model.seen()
         case Err(...): ()
     show(self.view.drawn.read().nodes[0])
     self.apply(await nextEvent())
   }
   panic("unreachable")
 
-# The backend's: validates a whole value, as submitted, in one view.
-live fn validate<M is struct { [_] is FormNode }>(
+# What the backend does: validates a whole value, as submitted, in one view.
+fn validate<M is struct { [_] is FormNode }>(
   self: Form<M>
   value: Group<M>.Seen
 ) -> Result<Group<M>.Data, Problems>:

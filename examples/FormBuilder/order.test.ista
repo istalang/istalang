@@ -4,11 +4,12 @@
 
 import Suite, Test, test, assertEq, mock from 'testing'
 import FormEvent, Node from './forms/tree'
-import Form, User, Problems from './forms/form'
+import Form, User, validate from './forms/form'
 import Group from './forms/model'
 import * as geo from './geo'
 import * as approvals from './approvals'
-import OrderModel, OrderParams, openOrder from './order.gen'
+import Graph from './computed'
+import OrderModel, OrderParams, openOrder, orderModel from './order.gen'
 
 @Suite{"order"}
 fn orderSuite() -> Array<Test>: [
@@ -39,28 +40,7 @@ fn approve(userId: String, totalQty: Int) -> Bool: true
 fn tree(form: Form<OrderModel>) -> Node: form.view.drawn.read().nodes[0]
 
 # The keys of the nodes `node` shows, depth first.
-fn keys(node: Node) -> Array<String>:
-  let found: Array<String> = []
-  fn walk(each: Node) -> Unit:
-    match each:
-      case Layout(key: key, children: children, ...): {
-        found.push(key)
-        for child in children: walk(child)
-      }
-      case Repeat(key: key, rows: rows, ...): {
-        found.push(key)
-        for row in rows: walk(row.node)
-      }
-      case Variant(key: key, body: body, ...): {
-        found.push(key)
-        match body:
-          case None: ()
-          case shown: walk(shown)
-      }
-      case Field(key: key, ...): found.push(key)
-      case Mount(key: key, ...): found.push(key)
-  walk(node)
-  found
+fn keys(node: Node) -> Array<String>: [for each in node.shown(): each.key()]
 
 fn enter(self: Form<OrderModel>, key: String, json: String):
   self.apply(FormEvent.Set(key: key, value: json))
@@ -132,18 +112,11 @@ ista async fn validSubmit():
     }
     case Err(problems): assertEq(problems, [:])
 
-# What the backend's `validate` does, here in simple code: load, submit, read.
-fn validated(value: Group<OrderModel>.Seen) -> Result<Group<OrderModel>.Data, Problems>:
-  const form = open()
-  form.model.load(value)
-  form.apply(FormEvent.Submit)
-  form.result()
-
 ista async fn validValue():
   hold _ = mock(geo.countries, countries)
   hold _ = mock(geo.cities, cities)
   hold _ = mock(approvals.ask, approve)
-  match validated(
+  match open().validate(
     struct{
       country: "de"
       city: "ber"
@@ -159,15 +132,7 @@ ista async fn invalidValue():
   hold _ = mock(geo.countries, countries)
   hold _ = mock(geo.cities, cities)
   hold _ = mock(approvals.ask, approve)
-  match validated(
-    struct{
-      country: none
-      city: none
-      items: []
-      payment: struct{tag: none, value: struct{card: none, wire: none}}
-      note: none
-    }
-  ):
+  match open().validate(orderModel(new Graph{}).seen()):
     case Ok(...): assertEq("valid", "invalid")
     case Err(problems):
       assertEq(problems, ["n2": ["Required"], "n4": ["Minimum items is 1"], "n9": ["Required"]])

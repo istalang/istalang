@@ -1,33 +1,45 @@
-# contact-card@^1.ista — catalog form mounted by supplier.form.json.
+# contact-card@^1.ista — catalog form mounted by supplier.form.json, in the shape the generator
+# gives a local def: a model made on its mount's graph, and a view built at its mount's place.
 
-import Field, Group, Prop, FieldView, LayoutView, View, User from '../forms'
-import FieldWidget, LayoutWidget from '../forms'
-import * as forms from '../forms'
+import Graph from '../computed'
+import * as checks from '../forms/checks'
+import Field, Group from '../forms/model'
+import Place, View, FieldView, LayoutView from '../forms/views'
+import FieldWidget, LayoutWidget from '../forms/tree'
+import User from '../forms/form'
 
 struct Params:
   name: String
 
 struct Ctx:
-  params: Params
   user: User
+  paramsFrom: inert fn() -> Params
+
+# Its params as its mount gives them, read when an expression reads them.
+fn get params(self: Ctx) -> Params: (self.paramsFrom)()
 
 struct Model:
   phone: Field<String>
 
-fn model() -> Group<Model>: Group{fields: Model{phone: new Field<String>{}}}
-
-ista fn view(m: Model, k: String) -> any View<forms.Scope<Group<Model>.Seen, Ctx>>: LayoutView{
-  key: `${k}/n1`
-  parent: none
-  widget: Prop.Fixed(LayoutWidget.Section(title: none, description: none, collapsible: none, labels: none))
-  children: [
-    new FieldView{
-      key: `${k}/n2`
-      parent: none
-      field: m.phone
-      widget: Prop.Fixed(FieldWidget.Input(none))
-      label: Prop.Fixed("Phone")
-      checks: [forms.answered()]
-    }
-  ]
+fn model(graph: Graph, x: Group<Model>.Seen? = none) -> Group<Model>: Group{
+  fields: Model{phone: Field.make<String>(graph, x?.phone)}
 }
+
+fn view(at: Place, m: Model, ctx: Ctx, k: String) -> View: LayoutView{
+  key: `${k}/n1`
+  widget: fn(): LayoutWidget.Section(
+    title: none
+    description: none
+    collapsible: none
+    labels: none
+  )
+  children: [
+    fn(at): FieldView{
+      key: `${k}/n2`
+      field: m.phone
+      widget: fn(): FieldWidget.Input(none)
+      label: fn(): "Phone"
+      checks: [checks.answered()]
+    }.build(at)
+  ]
+}.build(at)

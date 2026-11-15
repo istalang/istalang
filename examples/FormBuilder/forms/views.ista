@@ -423,8 +423,9 @@ fn build(self: LayoutView, at: Place) -> View:
     route: fn(event): children.some(fn(child): child.route(event))
   }
 
-# A mounted form chosen at run time. The host loads its compiled module; its data stays opaque,
-# and its own runtime routes its events.
+# A mounted form chosen at run time. The host runs its compiled module as an instance of its own,
+# which validates its data, and sends that data, JSON, as a Set to the mount's key; until then the
+# mount is unanswered.
 struct DynamicView:
   key: String
   parent: (inert fn() -> ParentUi)? = none
@@ -440,15 +441,26 @@ fn build(self: DynamicView, at: Place) -> View:
     if not here.visible.read(): return _hidden
     match self.schema():
       case None: _hidden
-      case form: Drawn{
-        nodes: [
-          Node.Mount(
-            key: self.key
-            parent: _maybe(self.parent)
-            label: _maybe(self.label)
-            form: form
-          )
-        ]
-        valid: true
+      case form: {
+        const errors: Array<String> = if self.value.value.read() == none: ["Required"] else: []
+        Drawn{
+          nodes: [
+            Node.Mount(
+              key: self.key
+              parent: _maybe(self.parent)
+              label: _maybe(self.label)
+              form: form
+              errors: _shown(errors, false, here)
+            )
+          ]
+          valid: errors.length() == 0
+        }
       }
-  View{drawn: here.graph.computed(draw), route: fn(event): false}
+  fn route(event: FormEvent) -> Bool:
+    match event:
+      case Set(key, value) if key == self.key: {
+        if here.visible.read(): self.value.value.set(value)
+        true
+      }
+      case _: false
+  View{drawn: here.graph.computed(draw), route}

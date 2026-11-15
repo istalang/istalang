@@ -2,7 +2,6 @@
   "id": "order",
   "version": "1.4.0",
   "imports": {
-    "runtime": "runtime",
     "geo": "./geo",
     "approvals": "./approvals",
     "logic": "./order"
@@ -24,9 +23,8 @@
     "constraints": {
       "rules": [
         {
-          "check": "logic.totalQty(data.items) <= 500 or await runtime.delegate approvals.ask(ctx.user.id, logic.totalQty(data.items))",
-          "message": "The order was not approved",
-          "pending": "Waiting for approval of a large order"
+          "check": "logic.totalQty(data.items) <= 500 or approvals.ask(ctx.user.id, logic.totalQty(data.items))",
+          "message": "The order was not approved"
         }
       ]
     },
@@ -38,10 +36,10 @@
         "widget": "select",
         "label": "Country",
         "options": {
-          "from": "await runtime.delegate geo.countries(ctx.params.region)",
+          "from": "geo.countries(ctx.params.region)",
           "value": "row.id",
           "label": "row.name",
-          "resolve": "(await runtime.delegate geo.countries(ctx.params.region)).some(fn c: c.id == data.country)"
+          "resolve": "geo.countries(ctx.params.region).some(fn c: c.id == data.country)"
         },
         "constraints": {
           "rules": [
@@ -59,12 +57,11 @@
         "widget": "select",
         "label": "City",
         "when": "data.country != none",
-        "pending": "node",
         "options": {
-          "from": "await runtime.delegate geo.cities(data.country ?? \"\")",
+          "from": "geo.cities(data.country ?? \"\")",
           "value": "row.id",
           "label": "row.name",
-          "resolve": "(await runtime.delegate geo.cities(data.country ?? \"\")).some(fn c: c.id == data.city)"
+          "resolve": "geo.cities(data.country ?? \"\").some(fn c: c.id == data.city)"
         }
       },
       {

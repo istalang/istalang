@@ -178,7 +178,7 @@ fn orderView(at: Place, m: OrderModel, ctx: OrderCtx) -> View:
                 field: r1.fields.sku
                 widget: fn(): FieldWidget.Input(none)
                 label: fn(): "SKU"
-                checks: [checks.answered(), checks.required(fn(): true)]
+                checks: [checks.required(fn(): true)]
               }.build(at)
               fn(at): FieldView{
                 key: `n7@${row1}`
@@ -253,8 +253,8 @@ fn openOrder(params: OrderParams, user: User) -> Form<OrderModel>:
 
 # ═══════════ The entry points its hosts start ═══════════
 
-# The browser's: serves the form until a valid submit, and gives its data.
-live async fn orderForm(params: OrderParams, user: User) -> Group<OrderModel>.Data:
+# The browser's: serves the form until a valid submit, and gives the value to submit.
+live async fn orderForm(params: OrderParams, user: User) -> Group<OrderModel>.Seen:
   await openOrder(params, user).serve()
 
 # The backend's: validates a whole value.

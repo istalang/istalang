@@ -45,10 +45,10 @@ struct Field<T is Inert>:
   type Data = T
   type Seen = T?
 
-# A field holding `initial`, as a row made from data does; a computed value reading the field
-# itself starts from it.
+# A field holding `initial`, as a row made from data does: given, as a loaded value is, so a
+# default doesn't replace it; a computed value reading the field itself starts from it.
 fn Field.make<T is Inert>(graph: Graph, initial: T? = none) -> Field<T>:
-  const entry = graph.source(Entry<T>{value: initial})
+  const entry = graph.source(Entry<T>{value: initial, edited: initial != none})
   const derivation = new Shared<Derivation<T>>{value: Derivation.Entered}
   Field{
     entry
@@ -319,20 +319,21 @@ fn read<N is FormNode>(self: Local<N>) -> Result<None>:
   Ok(none)
 fn load<N is FormNode>(self: Local<N>, v: N.Seen) -> Unit: self.node.load(v)
 
-# A mounted dynamic form: data no expression outside it reads. Validated by its own runtime.
+# A mounted dynamic form: its data, JSON its own runtime validates, opaque to this form. Seen holds
+# it too, so a whole value received by the backend carries it and decodes.
 struct Dynamic:
   value: Source<String?> # JSON
   type Data = String
-  type Seen = None
+  type Seen = String?
 
 fn Dynamic.make(graph: Graph) -> Dynamic: Dynamic{value: graph.source<String?>(none)}
 
-fn seen(self: Dynamic) -> None: none
+fn seen(self: Dynamic) -> String?: self.value.read()
 fn read(self: Dynamic) -> Result<String>:
   match self.value.read():
     case None: Err(Error{message: "unanswered", code: "unanswered"})
     case v: Ok(v)
-fn load(self: Dynamic, v: None) -> Unit: ()
+fn load(self: Dynamic, v: String?) -> Unit: self.value.set(v)
 
 struct FormSnapshot:
   id: String

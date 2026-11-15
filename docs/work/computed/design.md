@@ -3,8 +3,8 @@ description: design of FormBuilder's `computed` module — a graph of sources an
 owner: tech-lead
 status: active
 applies_to: istalang
-last_verified: 2026-11-14
-last_updated: 2026-11-14
+last_verified: 2026-11-15
+last_updated: 2026-11-15
 tags: [design, computed, reactive, forms]
 ---
 
@@ -80,21 +80,20 @@ fn read<T is Inert>(self: Computed<T>) -> T            # and the same on a Sourc
   drops it when it returns. The host holds nothing but the JSON it is sent.
 - **The same object inside the interpreter:** values are immutable and shared (spec §3.1; the
   Definition's values), so a cached result read again is the very object, never a copy.
-- **Not at the host:** every value crossing to a host is JSON, encoded by the extern's wrapper at
-  each call (`docs/arch/boundary.md`), and the Worker's message to the page is cloned again. The
-  page gets new objects for every tree. The FormBuilder spec's claim that the bridge keeps a shared
-  struct's JavaScript reference (§3, §8) describes no existing feature. This work sends new
-  objects; stable references come with proposal 15 (`docs/proposals/15-stable-host-references.md`).
+- **The same object at the host:** the runtime gives a host the same frozen object for a value it
+  gave before, kept unchanged (proposal 15, spec §9), so a node a view keeps reaches a host in the
+  interpreter's JavaScript realm as the object it had. No identity crosses a message channel: a
+  Worker's message to the page copies it.
 
 ## FormBuilder on computeds
 
 **Expressions are simple.** The generator emits the scope's data as getters, so an expression's
-reads are tracked as it runs, and each expression as an unmarked function of the scope:
+reads are tracked as it runs, and each expression as a closure over its scope:
 
 ```python
-fn get employees(self: CompanySeen) -> Int?: self.m.employees.seen()
-fn companySizeWhen(SupplierScope{data, ...}) -> Bool: (data.company.employees ?? 0) >= 10
-fn creditLimitDefault(SupplierScope{data, ...}) -> Int: crm.creditLimit(data.company.vatId ?? "") ?? 0
+fn get employees(self: SupplierCompanySeen) -> Int?: self.m.fields.employees.seen()
+when: fn(): data.company.legalForm != "sole"
+default: fn(): crm.creditLimit(data.company.vatId ?? "") ?? 0
 ```
 
 - **Everything an expression calls returns at once.** Sources are unmarked `extern fn`s the host
@@ -114,12 +113,18 @@ fn creditLimitDefault(SupplierScope{data, ...}) -> Int: crm.creditLimit(data.com
   once, so views take no `Sc` parameter and there is no `ScopedView` or `any View<Sc>`. A view node
   is a `Computed<Node>` with its validity, everything it holds is inert, and the root gives the
   tree and whether the form is valid. One `Graph` per form.
+- **Mounts:** a static ref calls its form's view at the mount's place with that form's scope. The
+  mounted form reads its params through a getter calling a closure over the mount's scope, so its
+  expressions track what the mount's read; until tracker B92 is fixed, a recursive def is made
+  empty. A dynamic ref's data, JSON its host's run of it validates, comes back as a `Set` to the
+  mount's key.
 - **Removed:** the `0..8` loop, `unshow()`, `Drawing`, `View.runs`, `Task`, `Check.Later` and every
   `ista` mark.
 
 **Two live functions:**
 - **The browser's** serves a form from the frontend's events: for each, set its source, read the
-  root, send the tree; a valid submit sends the form's value to its host and returns. The host
+  root, send the tree; a valid submit gives its host the form's whole value, local values
+  included, which the backend validates, and returns. The host
   starts a function with JSON arguments and disposes what it holds when it returns, so the graph
   lives as long as this loop. An `Inbox` is ista, so events and trees cross through host externs
   instead: a `live async` one giving the next event, and a `live` one taking a tree. Tests mock

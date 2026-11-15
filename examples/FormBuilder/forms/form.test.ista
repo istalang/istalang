@@ -30,6 +30,7 @@ fn formsSuite() -> Array<Test>: [
   test("a default case applies until one is picked", defaultCase)
   test("search options follow the typed text", searchOptions)
   test("a row read before it is shown has its view's bindings", rowsBoundAsMade)
+  test("a row made from data keeps it over a default", rowDataOverDefault)
   test("a computed row field reading itself starts from its row's data", rowReadsItself)
   test("a second writer saying nothing keeps the first's default", secondWriter)
 ]
@@ -248,10 +249,20 @@ ista async fn rowsBoundAsMade():
   const m = model(graph)
   const form = open(m, graph, [
     fn(at): input("count", m.count).build(at)
-    rowsOf(m, false, fn(row, key): FieldView{...plainQty(row, key), default: fn(): 99})
+    rowsOf(m, false, fn(row, key): FieldView{...plainQty(row, key), value: fn(): 99})
   ])
   form.enter("count", "2")
   assertEq(qtys(m), [99, 99]) # read before any view of the repeat
+
+ista async fn rowDataOverDefault():
+  const graph = new Graph{}
+  const m = model(graph)
+  const form = open(m, graph, [
+    fn(at): input("count", m.count).build(at)
+    rowsOf(m, false, fn(row, key): FieldView{...plainQty(row, key), default: fn(): 99})
+  ])
+  form.enter("count", "2")
+  assertEq(qtys(m), [0, 1]) # given by the row's data, as a loaded value is
 
 ista async fn rowReadsItself():
   const graph = new Graph{}

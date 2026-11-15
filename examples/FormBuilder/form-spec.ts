@@ -13,8 +13,8 @@
 //     an expression yields rows of an unknown type; `value` and `label` map each row right there.
 //   - Types of data, of `data` in expressions, and of the output are generated Istalang types.
 //     This file types only the JSON: which nodes, widgets and props fit together.
-//   - Anything an expression awaits is resolved by the runtime. `pending` only says how the
-//     generated code waits: inline, blocking the form, or in a separate task.
+//   - Everything an expression calls returns at once: sources are functions the host
+//     implements, so nothing waits and no node says how to.
 // The end of this file says what each part becomes.
 
 // ═══════════ Expressions and props ═══════════
@@ -25,7 +25,7 @@
  *    the variables bound by enclosing repeats and variants (`as`)
  *    row     inside options' value and label: the row being mapped
  *    the modules in `imports`: hand-written logic and the sources the host injects.
- *  It may `await`; `pending` says what shows meanwhile. */
+ *  Everything it calls returns at once. */
 type Expr = string;
 
 /** A literal, or an expression. */
@@ -34,13 +34,6 @@ type Prop<T> = T | { expr: Expr };
 /** Text with ${…} Istalang interpolations. Becomes an Istalang template, and its literal text is
  *  the localization key. \${ is a literal "${". */
 type Template = string;
-
-/** How a node's expressions wait, when they await.
- *    form    pasted inline: the whole form waits, and the host shows it busy (the default)
- *    node    each runs in its own task: the node shows loading, and the result arrives as an
- *            event, like a user's edit
- *    hidden  like node, but the node stays hidden until then */
-type Pending = 'form' | 'node' | 'hidden';
 
 /** A name: a camelCase identifier. Becomes an Istalang name. */
 type Ident = `${Letter}${string}`;
@@ -124,13 +117,11 @@ type OptionableType = {
   [T in FieldType]: FieldTypes[T]['optionable'] extends true ? T : never;
 }[FieldType];
 
-/** Without `pending`: checked inline, on every render.
- *  With it: a check that waits (an approval). It runs in its own task once the user submits,
- *  and submit waits for it, showing the pending text. */
+/** Checked whenever what it reads changes; its message shows once the node is touched or the
+ *  form submitted. */
 interface Rule {
   check: Expr;
   message: Template;
-  pending?: Template;
 }
 interface Rules {
   rules?: readonly Rule[];
@@ -147,7 +138,7 @@ interface ItemsConstraints extends Rules {
 interface StaticOptions<T extends OptionableType> {
   items: readonly { value: Literal<T>; label: Prop<string> }[];
 }
-/** Options from rows: `from` yields them (it may await a source), `value` and `label` map each,
+/** Options from rows: `from` yields them (it may call a source), `value` and `label` map each,
  *  with `row` in scope, and `resolve` checks the submitted value. rowType, an Istalang type
  *  name, is needed only to store the picked row (store "snapshot"): the field then holds the
  *  row itself, and `value` only identifies it. With a widget that provides `search`,
@@ -339,7 +330,6 @@ interface NodeBase {
   /** A hidden node doesn't exist: not drawn, validated, stored, or seen by expressions.
    *  A `when` sees the values of nodes before it in the tree. */
   when?: Expr;
-  pending?: Pending;
 }
 
 type Store = 'value' | 'none' | 'snapshot';
@@ -431,16 +421,19 @@ type VariantData = { store?: 'value' | 'none' } & (
 
 // ── ref ──
 /** Mounts a form: a sealed black box. A static ref names a catalog form or a local def and passes
- *  params; a dynamic ref mounts the form an expression yields. */
+ *  params; the mounted form draws itself. A dynamic ref mounts the form an expression yields, under
+ *  its label. */
 type RefNode = NodeBase & {
   node: 'ref';
   path: Path;
-  label?: Prop<string>;
-  store?: 'value' | 'none';
-  constraints?: Rules;
 } & (
-    | { form: FormRef; params?: { readonly [name: string]: Prop<unknown> }; schema?: never }
-    | { schema: Expr; form?: never; params?: never }
+    | {
+        form: FormRef;
+        params?: { readonly [name: string]: Prop<unknown> };
+        schema?: never;
+        label?: never;
+      }
+    | { schema: Expr; label?: Prop<string>; form?: never; params?: never }
   );
 
 type FormRef = `catalog:${string}@${string}` | `#${string}`;

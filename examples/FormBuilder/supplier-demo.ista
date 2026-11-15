@@ -1,0 +1,42 @@
+# The supplier form run as its hosts run it: the browser's driver serves a scripted session that
+# fills every step until a valid submit; then the backend validates values received as JSON: the
+# one served, a fresh model's, with nothing answered, and the served one holding a capital the
+# sole trader's form hides.
+#
+#   ista run --host supplier-demo.host.mjs supplier-demo.ista
+
+import * as json from 'json'
+import replaceAll from 'strings'
+import Group from './forms/model'
+import User from './forms/form'
+import * as crm from './crm'
+import Graph from './computed'
+import (
+  SupplierModel
+  SupplierParams
+  supplierForm
+  supplierModel
+  validateSupplier
+) from './supplier.gen'
+
+live async fn main() -> String:
+  const params = SupplierParams{
+    region: "eu"
+    tier: "gold"
+    products: [struct{sku: "p1", name: "Widget"}, struct{sku: "p2", name: "Gadget"}]
+    owner: crm.User{id: "o1", name: "Olga"}
+  }
+  const user = User{id: "u1", name: "Ann", lang: "de", role: "buyer", today: "2026-11-15"}
+  const served = json.stringify(await supplierForm(params, user))
+  json.stringify([
+    served
+    validated(params, user, served)
+    validated(params, user, json.stringify(supplierModel(new Graph{}).seen()))
+    validated(params, user, served.replaceAll(`"capital":null`, `"capital":5000.0`))
+  ])
+
+# What the backend gives for `value`, received as JSON.
+live fn validated(params: SupplierParams, user: User, value: String) -> String:
+  match json.parse<Group<SupplierModel>.Seen>(value):
+    case Ok(received): json.stringify(validateSupplier(params, user, received))
+    case Err(error): error.message

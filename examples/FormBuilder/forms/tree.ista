@@ -107,11 +107,44 @@ enum Node:
     body: Node?
     errors: Array<String>
   )
-  Mount(key: String, parent: ParentUi?, label: String?, form: FormSnapshot) # a dynamic ref
+  Mount(
+    key: String
+    parent: ParentUi?
+    label: String?
+    form: FormSnapshot
+    errors: Array<String>
+  ) # a dynamic ref: the host runs the form it names, and sends its data back as a Set
 
 struct Row:
   key: String
   node: Node
+
+# The key of the node.
+fn key(self: Node) -> String:
+  match self:
+    case Layout(key: key, ...): key
+    case Field(key: key, ...): key
+    case Repeat(key: key, ...): key
+    case Variant(key: key, ...): key
+    case Mount(key: key, ...): key
+
+# The errors the node shows.
+fn errors(self: Node) -> Array<String>:
+  match self:
+    case Layout(errors: errors, ...): errors
+    case Field(errors: errors, ...): errors
+    case Repeat(errors: errors, ...): errors
+    case Variant(errors: errors, ...): errors
+    case Mount(errors: errors, ...): errors
+
+# The node and every node it shows, depth first: a layout's children, a repeat's rows' nodes and a
+# variant's active case.
+fn shown(self: Node) -> Array<Node>:
+  match self:
+    case Layout(children: children, ...): [self, ...children.flatMap(fn(child): child.shown())]
+    case Repeat(rows: rows, ...): [self, ...rows.flatMap(fn(row): row.node.shown())]
+    case Variant(body: body, ...): [self, ...(body?.shown() ?? [])]
+    case _: [self]
 
 # What the frontend sends, by the key of the node it acts on.
 enum FormEvent:

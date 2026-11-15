@@ -26,9 +26,8 @@ const order = {
       rules: [
         {
           check:
-            'logic.totalQty(data.items) <= 500 or await approvals.ask(ctx.user.id, logic.totalQty(data.items))',
+            'logic.totalQty(data.items) <= 500 or approvals.ask(ctx.user.id, logic.totalQty(data.items))',
           message: 'The order was not approved',
-          pending: 'Waiting for approval of a large order',
         },
       ],
     },
@@ -40,10 +39,10 @@ const order = {
         widget: 'select',
         label: 'Country',
         options: {
-          from: 'await geo.countries(ctx.params.region)',
+          from: 'geo.countries(ctx.params.region)',
           value: 'row.id',
           label: 'row.name',
-          resolve: '(await geo.countries(ctx.params.region)).some(fn c: c.id == data.country)',
+          resolve: 'geo.countries(ctx.params.region).some(fn c: c.id == data.country)',
         },
         constraints: {
           rules: [
@@ -61,12 +60,11 @@ const order = {
         widget: 'select',
         label: 'City',
         when: 'data.country != none',
-        pending: 'node',
         options: {
-          from: 'await geo.cities(data.country ?? "")',
+          from: 'geo.cities(data.country ?? "")',
           value: 'row.id',
           label: 'row.name',
-          resolve: '(await geo.cities(data.country ?? "")).some(fn c: c.id == data.city)',
+          resolve: 'geo.cities(data.country ?? "").some(fn c: c.id == data.city)',
         },
       },
       {
@@ -194,7 +192,6 @@ const supplier = {
     'Only ${data.company.employees} employees allowed for a ${data.company.size} company': {
       de: 'Nur $0 Mitarbeitende für ein Unternehmen der Größe $1 erlaubt',
     },
-    'Waiting for approval by ${ctx.params.owner.name}': { de: 'Warten auf Freigabe durch $0' },
   },
   defs: {
     address: {
@@ -426,18 +423,17 @@ const supplier = {
                 widget: 'select',
                 label: 'Country',
                 options: {
-                  from: 'await geo.countries(ctx.params.region)',
+                  from: 'geo.countries(ctx.params.region)',
                   value: 'row.id',
                   label: 'row.name',
                   resolve:
-                    '(await geo.countries(ctx.params.region)).some(fn c: c.id == data.company.country)',
+                    'geo.countries(ctx.params.region).some(fn c: c.id == data.company.country)',
                 },
               },
               {
                 node: 'ref',
                 form: '#address',
                 path: 'data.company.address',
-                label: 'Address',
                 when: 'data.company.country != none',
                 params: { country: { expr: 'data.company.country ?? ""' } },
               },
@@ -448,13 +444,12 @@ const supplier = {
                 widget: 'select',
                 label: 'Main city',
                 when: 'data.company.country != none',
-                pending: 'node',
                 options: {
-                  from: 'await geo.cities(data.company.country ?? "")',
+                  from: 'geo.cities(data.company.country ?? "")',
                   value: 'row.id',
                   label: 'row.name',
                   resolve:
-                    '(await geo.cities(data.company.country ?? "")).some(fn c: c.id == data.company.city)',
+                    'geo.cities(data.company.country ?? "").some(fn c: c.id == data.company.city)',
                 },
               },
             ],
@@ -468,11 +463,11 @@ const supplier = {
             store: 'snapshot',
             ui: { placeholder: 'Type a name' },
             options: {
-              from: 'await crm.users(ctx.search)',
+              from: 'crm.users(ctx.search)',
               value: 'row.id',
               label: 'row.name',
               rowType: 'crm.User',
-              resolve: '(await crm.user(data.manager?.id ?? "")) != none',
+              resolve: 'crm.user(data.manager?.id ?? "") != none',
             },
           },
           {
@@ -481,8 +476,7 @@ const supplier = {
             type: 'integer',
             widget: 'input',
             label: 'Credit limit',
-            pending: 'hidden',
-            default: { expr: '(await crm.creditLimit(data.company.vatId ?? "")) ?? 0' },
+            default: { expr: 'crm.creditLimit(data.company.vatId ?? "") ?? 0' },
           },
         ],
       },
@@ -547,10 +541,10 @@ const supplier = {
                     widget: 'choice',
                     label: 'Region',
                     options: {
-                      from: 'await geo.regions()',
+                      from: 'geo.regions()',
                       value: 'row.code',
                       label: 'row.name',
-                      resolve: '(await geo.regions()).some(fn r: r.code == region)',
+                      resolve: 'geo.regions().some(fn r: r.code == region)',
                     },
                   },
                 },
@@ -642,8 +636,7 @@ const supplier = {
             as: 'h',
             widget: 'list',
             label: 'Previous orders',
-            pending: 'hidden',
-            computed: 'await crm.orders(data.company.vatId ?? "")',
+            computed: 'crm.orders(data.company.vatId ?? "")',
             item: {
               node: 'field',
               path: 'h.note',
@@ -797,11 +790,11 @@ const supplier = {
             label: 'Additional questionnaire',
             store: 'snapshot',
             options: {
-              from: 'await formsCatalog.list(ctx.params.region)',
+              from: 'formsCatalog.list(ctx.params.region)',
               value: 'row.id',
               label: 'row.title',
               rowType: 'formsCatalog.Entry',
-              resolve: '(await formsCatalog.get(data.extraForm?.id ?? "")) != none',
+              resolve: 'formsCatalog.get(data.extraForm?.id ?? "") != none',
             },
           },
           {
@@ -875,9 +868,8 @@ const supplier = {
                 },
                 {
                   check:
-                    '(data.score ?? 0) < 80 or await approvals.ask(ctx.params.owner.id, data.company.name ?? "")',
+                    '(data.score ?? 0) < 80 or approvals.ask(ctx.params.owner.id, data.company.name ?? "")',
                   message: 'The supplier was not approved',
-                  pending: 'Waiting for approval by ${ctx.params.owner.name}',
                 },
               ],
             },
@@ -902,7 +894,6 @@ node({
   label: 'A',
   default: { expr: 'ctx.params.count' },
 });
-// @ts-expect-error default and computed are exclusive
 node({
   node: 'field',
   path: 'data.a',
@@ -910,63 +901,55 @@ node({
   widget: 'input',
   label: 'A',
   default: 'x',
+  // @ts-expect-error default and computed are exclusive
   computed: "'y'",
 });
 // @ts-expect-error a pathless field must be computed
 node({ node: 'field', type: 'text', widget: 'input', label: 'A' });
 // @ts-expect-error paths are rooted at data or a variable, never at "."
 node({ node: 'field', path: '.a', type: 'text', widget: 'input', label: 'A' });
-// @ts-expect-error row options need resolve
 node({
   node: 'field',
   path: 'data.a',
   type: 'text',
   widget: 'select',
   label: 'A',
+  // @ts-expect-error row options need resolve
   options: { from: 'x', value: 'row.id', label: 'row.name' },
 });
-// @ts-expect-error snapshot needs an options widget
 node({
   node: 'field',
   path: 'data.a',
   type: 'text',
   widget: 'input',
   label: 'A',
+  // @ts-expect-error snapshot needs an options widget
   store: 'snapshot',
 });
-// @ts-expect-error pending is form, node or hidden
-node({
-  node: 'field',
-  path: 'data.a',
-  type: 'text',
-  widget: 'input',
-  label: 'A',
-  pending: 'global',
-});
-// @ts-expect-error ui props are typed per widget, literal or expression
 node({
   node: 'field',
   path: 'data.a',
   type: 'text',
   widget: 'textarea',
   label: 'A',
+  // @ts-expect-error ui props are typed per widget, literal or expression
   ui: { rows: '3' },
 });
-// @ts-expect-error ui.parent needs a parent that reads it
 node({
   node: 'field',
   path: 'data.a',
   type: 'text',
   widget: 'input',
   label: 'A',
+  // @ts-expect-error ui.parent needs a parent that reads it
   ui: { parent: { width: 1 } },
 });
-// @ts-expect-error a table's item is a tablerow
 node({
   node: 'repeat',
   path: 'data.r',
   as: 'r',
   widget: 'table',
+  // @ts-expect-error a table's item is a tablerow
   item: { node: 'layout', widget: 'section', children: [] },
 });
 // @ts-expect-error a fixed row count needs a default
@@ -980,13 +963,15 @@ node({
 });
 // @ts-expect-error a control layout needs a label
 node({ node: 'layout', widget: 'money', children: [] });
-// @ts-expect-error constraint bounds are props of the bound's type
+// @ts-expect-error a static ref draws itself and takes no label
+node({ node: 'ref', form: '#address', path: 'data.a', label: 'A' });
 node({
   node: 'field',
   path: 'data.a',
   type: 'integer',
   widget: 'input',
   label: 'A',
+  // @ts-expect-error constraint bounds are props of the bound's type
   constraints: { max: '10' },
 });
 // constraint bounds may come from data
