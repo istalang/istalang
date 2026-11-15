@@ -7,7 +7,8 @@
 import { describe, expect, it } from 'vitest';
 import { subsetDefinition } from '../../../test/definitions/subset.ts';
 import type { CodeFunction } from '../../definition/tables/functions.ts';
-import { callerTraceOf, traceOf } from './trace.ts';
+import { callerTraceText, traceText } from '../../definition/traces.ts';
+import { tracedFrame } from './trace.ts';
 
 /** The subset's code entries, by name. */
 function codeNamed(name: string): CodeFunction {
@@ -40,8 +41,8 @@ const withoutPrologue = { code: codeNamed('main.main'), pc: 0 };
 describe("a default's caller trace", () => {
   it('leaves out the innermost frame while it is in its prologue, and only that one', () => {
     const frames = [inPrologue, inPrologue, withoutPrologue];
-    expect(callerTraceOf(subsetDefinition, frames)).toBe(
-      traceOf(subsetDefinition, frames.slice(1)),
+    expect(callerTraceText(subsetDefinition, frames.map(tracedFrame))).toBe(
+      traceText(subsetDefinition, frames.slice(1).map(tracedFrame)),
     );
   });
 
@@ -50,7 +51,8 @@ describe("a default's caller trace", () => {
       [inBody, inPrologue, withoutPrologue],
       [withoutPrologue, inPrologue],
     ]) {
-      expect(callerTraceOf(subsetDefinition, frames)).toBe(traceOf(subsetDefinition, frames));
+      const traced = frames.map(tracedFrame);
+      expect(callerTraceText(subsetDefinition, traced)).toBe(traceText(subsetDefinition, traced));
     }
   });
 });

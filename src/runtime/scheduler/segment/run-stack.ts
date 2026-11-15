@@ -10,9 +10,10 @@
  */
 
 import type { Definition } from '../../../definition/definition.ts';
+import { callerTraceText, traceText } from '../../../definition/traces.ts';
 import { unreachable } from '../../../foundation/structures/unreachable.ts';
 import type { ActiveFrame } from '../../interpreter/frames.ts';
-import { callerTraceOf, traceOf } from '../../interpreter/trace.ts';
+import { tracedFrame } from '../../interpreter/trace.ts';
 import type { HolderWrites } from '../../lifetimes/holder-writes.ts';
 import type { Held } from '../../snapshot/holdings.ts';
 import type { LiveExecution } from '../instance/heap.ts';
@@ -111,12 +112,12 @@ export class RunStack {
 
   /** Where every running frame is, innermost first (§3.12). */
   trace(definition: Definition): string {
-    return traceOf(definition, this.#framesInnermostFirst());
+    return traceText(definition, this.#framesInnermostFirst().map(tracedFrame));
   }
 
-  /** The trace of the code the running default gives its value to (`callerTraceOf`). */
+  /** The trace of the code the running default gives its value to (`callerTraceText`). */
   callerTrace(definition: Definition): string {
-    return callerTraceOf(definition, this.#framesInnermostFirst());
+    return callerTraceText(definition, this.#framesInnermostFirst().map(tracedFrame));
   }
 
   /** The running frames, innermost first; once the driver has stopped at its await, its own. */

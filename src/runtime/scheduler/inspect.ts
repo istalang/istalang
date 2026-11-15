@@ -7,9 +7,9 @@
  */
 
 import type { Definition } from '../../definition/definition.ts';
+import { locationOf } from '../../definition/traces.ts';
 import { unreachable } from '../../foundation/structures/unreachable.ts';
 import type { Inspection, InstanceState, WaitingPoint } from '../instance-state.ts';
-import { locationOf } from '../interpreter/trace.ts';
 import type { Frame } from '../snapshot/objects.ts';
 import type { Snapshot } from '../snapshot/snapshot.ts';
 

@@ -1,0 +1,49 @@
+/**
+ * Where frames are, as people read it (§3.12): one line per frame, innermost first, naming the
+ * function and the source location it stands at. Every runtime prints traces here, whatever it
+ * keeps of a frame, so a trace reads the same on the interpreter and on compiled JavaScript.
+ *
+ * A runtime has no source text, so a location comes from an offset and its module's line starts
+ * (docs/arch/definition.md, "Types and locations"); lines and columns count from 1, as editors show
+ * them.
+ */
+
+import { positionIn } from '../foundation/text/line-map.ts';
+import type { Tables } from './tables/index.ts';
+
+/** What a trace reads of a frame: its function, where it stands, and whether in its prologue. */
+export interface TracedFrame {
+  readonly name: string;
+  readonly module: number;
+  /** The offset in its module's source of the instruction it is at. */
+  readonly offset: number;
+  /** Whether it is computing a default, before its body begins (§3.3). */
+  readonly inPrologue: boolean;
+}
+
+/** What locating an offset reads of a program: its modules' line starts. */
+type Located = Pick<Tables, 'modules'>;
+
+/** The trace of `frames`, innermost first. */
+export function traceText(program: Located, frames: readonly TracedFrame[]): string {
+  return frames
+    .map((frame) => `at ${frame.name} (${locationOf(program, frame.module, frame.offset)})`)
+    .join('\n');
+}
+
+/**
+ * The trace of the code a default gives its value to (§3.1, §3.12): `frames` without the innermost
+ * while it computes a default in its prologue, so the call or literal leaving the default out is
+ * the trace's first frame; any other innermost frame is kept.
+ */
+export function callerTraceText(program: Located, frames: readonly TracedFrame[]): string {
+  const [innermost, ...callers] = frames;
+  return traceText(program, innermost?.inPrologue === true ? callers : frames);
+}
+
+/** `module:line:column` of an offset in a module's source. */
+export function locationOf(program: Located, module: number, offset: number): string {
+  const { id, lineStarts } = program.modules[module] ?? { id: '?', lineStarts: [0] };
+  const { line, column } = positionIn(lineStarts, offset);
+  return `${id}:${line + 1}:${column + 1}`;
+}

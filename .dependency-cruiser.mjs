@@ -11,8 +11,8 @@
  * npm packages may be imported anywhere: a library is a dependency like a lower layer. Node's
  * built-ins only where listed below; the compiler and runtime reach the file system, processes and
  * the clock through seams (architecture, Seams). `definition/` may use `crypto` alone, for content
- * hashes: hashing is computation, not I/O. The runtime may use `foundation/text/` for the same
- * reason: it turns a Definition's line starts into positions with the line map's own search.
+ * hashes: hashing is computation, not I/O. `definition/` and the runtime may use `foundation/text/` for the same
+ * reason: a trace turns a Definition's line starts into positions with the line map's own search.
  *
  * Inside the parser, grammar categories reach one another only through the parsing context, and
  * the shared parts they all use import no category (src/compiler/parser/parser.ts). Inside the
@@ -119,7 +119,7 @@ const layers = {
   // The VS Code client, bundled on its own into the extension (.vscode/extensions/ista): of the
   // server it shares only the protocol's request, so no server code reaches the bundle.
   'editor/vscode-client': ['editor/lsp/std-source-request'],
-  definition: [],
+  definition: ['foundation/text'],
   runtime: ['definition', 'foundation/text'],
 };
 
