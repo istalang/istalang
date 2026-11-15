@@ -21,10 +21,8 @@
 
 import { randomBytes, randomUUID } from 'node:crypto';
 import { resolve } from 'node:path';
-import { compileProgram, diagnose } from '../../compiler/compile.ts';
 import { definitionFormat } from '../../definition/definition.ts';
 import { FormatError } from '../../definition/formats/format.ts';
-import { loadProject } from '../../project/project.ts';
 import { realTime } from '../../runtime/clock.ts';
 import { createRuntime, type Runtime } from '../../runtime/host/index.ts';
 import type { DeployedProgram, HostReports } from '../../runtime/host/programs.ts';
@@ -39,10 +37,10 @@ import {
   type ExitCode,
   exitCodes,
 } from '../command.ts';
+import { compiledEntry } from '../compile-entry.ts';
 import { directoryStore } from '../directory-store.ts';
 import { loadHostModule } from '../host-module.ts';
 import { logLine } from '../log-lines.ts';
-import { reportDiagnostics, reportUnreadable } from '../report.ts';
 
 interface RunOptions {
   readonly store?: string;
@@ -131,37 +129,20 @@ function errorStreamReports(environment: CliEnvironment): RunReports {
 
 async function start(session: Session, entry: string, options: RunOptions): Promise<ExitCode> {
   const { runtime, environment } = session;
-  const { program, unreadable } = loadProject(environment.cwd, [entry]);
-  const [root] = program.roots;
-  if (unreadable.length > 0 || root === undefined) {
-    reportUnreadable([entry], environment.writeError);
-    return exitCodes.couldNotRun;
+  const compiled = compiledEntry(environment, entry);
+  if ('exit' in compiled) {
+    return compiled.exit;
   }
-  reportDiagnostics(diagnose(program), environment.writeError);
-  const compilation = compileProgram(program, root);
-  switch (compilation.kind) {
-    case 'failed':
-      return exitCodes.problems;
-    case 'noMain':
-      environment.writeError(`ista: ${entry} declares no 'live async fn main()'.\n`);
-      return exitCodes.problems;
-    case 'compiled': {
-      const { text } = definitionFormat.write(compilation.definition);
-      const outcome = await unlessRefused(environment, async () => {
-        const deployed = runtime.deploy(text);
-        const name = randomUUID();
-        if (options.store !== undefined) {
-          environment.writeError(`ista: run ${name}\n`);
-        }
-        return finish(session, deployed, await untilIdle(session, deployed.start(name)));
-      });
-      return outcome ?? exitCodes.problems;
+  const { text } = definitionFormat.write(compiled.definition);
+  const outcome = await unlessRefused(environment, async () => {
+    const deployed = runtime.deploy(text);
+    const name = randomUUID();
+    if (options.store !== undefined) {
+      environment.writeError(`ista: run ${name}\n`);
     }
-    default: {
-      const unhandled: never = compilation;
-      return unhandled;
-    }
-  }
+    return finish(session, deployed, await untilIdle(session, deployed.start(name)));
+  });
+  return outcome ?? exitCodes.problems;
 }
 
 /**
