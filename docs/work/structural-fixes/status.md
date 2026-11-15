@@ -81,4 +81,4 @@ tags: [structural-fixes, status]
   forwarded as a witness (judging it broke 5606). Next: `sfmr-liki` re-reviews the follow-up, then verify on main.
 - Merge re-review (`sfmr-liki`): approve, no findings. `npm run verify` on main green (390 files). Structural-fixes
   A–D complete. Open: the E plan (B99–B103, B87, B106, B107, P53, Q6, Q30, Q31/P25/B30, Q47, F31); B's agents
-  and worktree closed; `together` in `type-text.ts` filed as Q58. E plan: `docs/work/structural-fixes-e/`.
+  and worktree closed; `together` in `type-text.ts` filed as Q58. The E plan is deferred: the human will research and plan it later.
