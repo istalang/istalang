@@ -114,6 +114,13 @@ const bodyFacts: { readonly [Name in FactName]: FactEntry<Name> } = {
     instantiated: asChecked,
     joined: firstPass,
   },
+  madeTypes: {
+    at:
+      ({ records }) =>
+      () =>
+        records.types.entries().map(([site, type]) => ({ site, type })),
+    instantiated: asChecked,
+  },
   implicitCallOf: {
     at:
       ({ units }, pass) =>

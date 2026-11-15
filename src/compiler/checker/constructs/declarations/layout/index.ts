@@ -101,8 +101,9 @@ export class Layouts {
       ),
       cyclic: { standIn: (declaration) => this.#variantsOf(declaration, () => undefined) },
     });
-    this.#expansion = new TypeExpansion(checker, (declaration, field) =>
-      this.#typedAlone(declaration, field).type,
+    this.#expansion = new TypeExpansion(
+      checker,
+      (declaration, field) => this.#typedAlone(declaration, field).type,
     );
   }
 
@@ -270,7 +271,10 @@ export class Layouts {
 function fieldsHolding(
   declaration: FieldedDeclaration,
   field: DeclaredField,
-): { readonly fields: readonly (Field | Invalid)[]; readonly defaults: FunctionDeclaration | undefined } {
+): {
+  readonly fields: readonly (Field | Invalid)[];
+  readonly defaults: FunctionDeclaration | undefined;
+} {
   if (declaration.kind !== 'EnumDeclaration') {
     return { fields: declaration.fields, defaults: fieldsFunctionOf(declaration) };
   }

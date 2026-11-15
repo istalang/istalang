@@ -2,13 +2,15 @@
  * Generic functions that would need endlessly many instantiations (§3.5): `f<T>` calling
  * `f<Array<T>>` never stops making new ones.
  *
- * The expansion graph (edges.ts) takes its edges from calls here: a call inside
- * generic `F` to generic `G` gives `G`'s type parameters arguments built from `F`'s, and an
- * expanding edge on a cycle is reported at the call that makes it. Every call a function's code
- * makes counts: its
- * body's and its parameters' defaults', the calls the language makes for a construct, the defaults
- * a struct literal leaves fields to, and the calls a witness makes. The functions a struct's
- * fields read as (§3.1) are nodes too, so a cycle through a field's default is one like any.
+ * The expansion graph (edges.ts) takes its edges from calls here: a call inside generic `F` to
+ * generic `G` gives `G`'s type parameters arguments built from `F`'s, and an expanding edge on a
+ * cycle is reported at the call that makes it. Every call a function's code reaches counts
+ * (surface/reach.ts): its body's and its parameters' defaults', the calls the language makes for a
+ * construct, the defaults a struct literal leaves fields to, the calls a witness makes, and the
+ * `dispose` of a type it makes. The functions a struct's fields read as (§3.1) are nodes too, so a
+ * cycle through a field's default is one like any; so are the generic functions a trait requires:
+ * a requirement call leads to the requirement, and where a call chooses a witness, conformance
+ * leads from the requirement to it, its type parameters taking the requirement's own.
  *
  * Checking stays lazy. A module's diagnostics follow edges only from its own generic functions,
  * so only the bodies those edges reach are checked. Every cycle through one of the module's calls
@@ -29,7 +31,9 @@ import type { NodeOf } from '../../../syntax/tree/node.ts';
 import type { CheckerContext, CheckerNote } from '../../contexts/context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import { reachedCalls } from '../../surface/reach.ts';
-import type { ParameterKey } from '../../types/type/index.ts';
+import type { ResolvedCall } from '../../surface/resolved-call.ts';
+import { requiredFunctions } from '../../types/traits/constraints.ts';
+import type { ParameterKey, Type } from '../../types/type/index.ts';
 import { type ArgumentEdge, argumentEdges, endlessEdgesFrom } from './edges.ts';
 
 /** An edge of the graph, made by a call in `caller`'s code to `callee`, wherever it stands. */
@@ -94,10 +98,23 @@ export class Expansion {
 
   /**
    * Whether `callee` is a node of the graph: a generic function its module declares at the top
-   * level or reads its fields as, not a trait's member or a local function.
+   * level or reads its fields as, or a generic function a trait requires, which conformance leads
+   * on to its witnesses; not a local function.
    */
   #isNode(callee: FunctionDeclaration): boolean {
-    return isGeneric(callee) && this.#ownGeneric(this.#checker.moduleOf(callee)).has(callee);
+    if (!isGeneric(callee)) {
+      return false;
+    }
+    const module = this.#checker.moduleOf(callee);
+    return this.#ownGeneric(module).has(callee) || this.#required(module).has(callee);
+  }
+
+  /** The functions the traits `module` declares require. */
+  #required(module: ModuleId): ReadonlySet<FunctionDeclaration> {
+    const items = this.#checker.inputs.itemsOf(module);
+    return new Set(
+      items.flatMap((item) => (item.kind === 'TraitDeclaration' ? requiredFunctions(item) : [])),
+    );
   }
 
   /** Reports `caller`'s calls that make one of its module's expanding edges, each call once. */
@@ -122,15 +139,47 @@ function isGeneric(declaration: FunctionDeclaration): boolean {
   return declaration.typeParameters.length > 0;
 }
 
-/** Every edge `caller`'s code makes, at its call. */
+/**
+ * Every edge `caller`'s code makes, at its call: to each function it reaches, a requirement among
+ * them, and from each requirement whose witness a call chooses to the witness (`metEdges`).
+ */
 function sitedEdges(checker: CheckerContext, caller: FunctionDeclaration): readonly SitedEdge[] {
-  const own = new Set<ParameterKey>(typeParametersOf(caller.typeParameters));
   return reachedCalls(checker, caller).flatMap(({ site, call }) =>
-    argumentEdges(own, call.function.typeParameters, call.typeArguments).map((edge) => ({
-      ...edge,
-      caller,
-      callee: call.function,
-      site,
-    })),
+    [...usedBy(caller, call.function, call.typeArguments), ...metEdges(checker, call)].map(
+      (edge) => ({ ...edge, site }),
+    ),
+  );
+}
+
+/** The edges `caller` makes using `callee` with `typeArguments`, from its own type parameters. */
+function usedBy(
+  caller: FunctionDeclaration,
+  callee: FunctionDeclaration,
+  typeArguments: readonly Type[],
+): readonly Edge[] {
+  const own = new Set<ParameterKey>(typeParametersOf(caller.typeParameters));
+  return argumentEdges(own, callee.typeParameters, typeArguments).map((edge) => ({
+    ...edge,
+    caller,
+    callee,
+  }));
+}
+
+/**
+ * The edges conformance adds where `call` chooses the witnesses of its callee's constraints: from
+ * each generic function a constraint's trait requires to the witness meeting it, whose type
+ * arguments are built from the requirement's own (§3.10). A requirement call names the
+ * requirement, so a cycle through a witness runs through the requirement it meets.
+ */
+function metEdges(checker: CheckerContext, call: ResolvedCall): readonly Edge[] {
+  return [...call.witnesses].flatMap(([parameter, met]) =>
+    checker.constraintsOf(parameter).flatMap(({ trait }, index) =>
+      requiredFunctions(trait).flatMap((required, member) => {
+        const witness = met[index]?.[member];
+        return witness === undefined
+          ? []
+          : usedBy(required, witness.function, witness.typeArguments);
+      }),
+    ),
   );
 }

@@ -74,7 +74,9 @@ export function growingEdgesFrom<Node, Edge extends ArgumentEdge>(
   targetOf: (edge: Edge) => Node | undefined,
 ): readonly Edge[] {
   const { cyclic, componentOf } = cyclicEdgesFrom(roots, edgesOf, targetOf);
-  const growing = new Set(cyclic.filter((edge) => edge.expanding).map(({ from }) => componentOf(from)));
+  const growing = new Set(
+    cyclic.filter((edge) => edge.expanding).map(({ from }) => componentOf(from)),
+  );
   return cyclic.filter(({ from }) => growing.has(componentOf(from)));
 }
 

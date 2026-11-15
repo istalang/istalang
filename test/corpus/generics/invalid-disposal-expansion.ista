@@ -1,0 +1,22 @@
+# error: 5111 at 12:16
+# error: 5111 at 16:3
+# The `dispose` of a type a function makes runs as code of every instantiation making it (§7), so
+# it counts towards endless instantiation as a call does (§3.5): a generic `dispose` holding a
+# value whose type grows its own argument, or calling what makes one, is reported where each
+# value is made.
+
+shared struct Lease<T>:
+  v: T
+
+fn dispose<T>(self: Lease<T>) -> Unit:
+  const more = wrapped(self->v)
+  drop more
+
+fn wrapped<T>(v: T) -> Lease<Array<T>>:
+  new Lease<Array<T>>{v: [v]}
+
+import * as runtime from 'runtime'
+live async fn main() -> Int: await runtime.run(runtime.id()) _main()
+ista async fn _main() -> Int:
+  const lease = new Lease<Int>{v: 1}
+  1
