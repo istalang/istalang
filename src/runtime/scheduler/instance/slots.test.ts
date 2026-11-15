@@ -8,8 +8,7 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import type { Value } from '../../../definition/values/values.ts';
-import { countedIn } from '../../lifetimes/counts.ts';
-import { HolderWrites } from '../../lifetimes/holder-writes.ts';
+import { countedIn, HolderWrites } from '../../lifetimes/holder-writes.ts';
 import { futuresOn } from './futures.test-kit.ts';
 import { testHeap } from './heap.test-kit.ts';
 import { handleObject } from './heap.ts';

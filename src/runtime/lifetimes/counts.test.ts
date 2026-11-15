@@ -17,8 +17,8 @@ import {
 } from '../../definition/values/values.ts';
 import { testHeap } from '../scheduler/instance/heap.test-kit.ts';
 import { type Held, nothingHeld } from '../snapshot/holdings.ts';
-import { Counts, countedIn } from './counts.ts';
-import { HolderWrites } from './holder-writes.ts';
+import { Counts } from './counts.ts';
+import { countedIn, HolderWrites } from './holder-writes.ts';
 
 /** The objects counted; handles to 4 and 5 name objects that aren't. */
 const counted = [0, 1, 2, 3];

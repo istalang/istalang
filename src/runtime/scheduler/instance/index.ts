@@ -31,9 +31,8 @@ import type { ActiveFrame, FrameEntry, FrameHeap } from '../../interpreter/frame
 import { newFrame, releaseFrame } from '../../interpreter/machine.ts';
 import type { Passed } from '../../interpreter/registers.ts';
 import { type Decision, releaseLosers, resume } from '../../interpreter/suspension.ts';
-import { countedIn } from '../../lifetimes/counts.ts';
 import { isDisposable } from '../../lifetimes/disposal.ts';
-import { HolderWrites } from '../../lifetimes/holder-writes.ts';
+import { countedIn, HolderWrites } from '../../lifetimes/holder-writes.ts';
 import { heldFrom } from '../../lifetimes/holders.ts';
 import { isRoot, rootKinds } from '../../snapshot/holdings.ts';
 import type { HeapObject } from '../../snapshot/objects.ts';

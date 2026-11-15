@@ -85,7 +85,7 @@ Since R1, each registration holds one way, as its chain's root says (`isHeldFrom
 
 Since R3 (below), counts decide.
 
-- **What is counted** (`counts.ts` `countedIn`): every non-root object but weak references, a cell
+- **What is counted** (`holder-writes.ts` `countedIn`): every non-root object but weak references, a cell
   or resource only when its type entry is `counted` or declares a disposal. A composite value
   holding a counted object, at any depth, is a node: counted once per holder, and holding each of
   its parts once, decided at its first hold.

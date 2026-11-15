@@ -18,8 +18,8 @@ import { handleObject, type LiveObject } from '../scheduler/instance/heap.ts';
 import { WeakSide } from '../scheduler/instance/weak-side.ts';
 import { type Held, nothingHeld } from '../snapshot/holdings.ts';
 import { Collector } from './collector.ts';
-import { countedIn } from './counts.ts';
-import { HolderWrites } from './holder-writes.ts';
+import { type DisposalContext, heapCollected } from './disposal.ts';
+import { countedIn, HolderWrites } from './holder-writes.ts';
 import { counterType, leaseType, testTypes } from './lifetimes.test-kit.ts';
 
 /** Each object a cell: a lease or a plain one, holding some of the objects made before it. */
@@ -51,22 +51,26 @@ function disposalOrder(made: readonly Made[]): readonly number[] {
   const holders = new HolderWrites(countedIn(testTypes));
   const heap = testHeap(objects, holders);
   const disposed: number[] = [];
-  const collector = new Collector({
+  const context: DisposalContext = {
     heap,
     types: testTypes,
-    holders,
     stop: () => undefined,
     cleanupCase: () => undefined,
     weak: new WeakSide(heap, futuresOn(heap)),
     disposed: () => undefined,
     cancel: () => undefined,
-    run: (run) => {
-      if (run.kind === 'call' && run.arguments[0] !== undefined) {
-        disposed.push(handleObject(run.arguments[0]));
-      }
-      return true;
-    },
-  });
+  };
+  const collector = new Collector(
+    heapCollected(context, {
+      takeZeroes: () => holders.takeZeroes(),
+      run: (run) => {
+        if (run.kind === 'call' && run.arguments[0] !== undefined) {
+          disposed.push(handleObject(run.arguments[0]));
+        }
+        return true;
+      },
+    }),
+  );
   const register: Held = { values: unheldIn(made).map(handleTo), holds: [] };
   holders.changed(nothingHeld, register);
   holders.takeZeroes();

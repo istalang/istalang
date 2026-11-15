@@ -18,11 +18,12 @@
  *   forgotten as a value changes in place.
  */
 
+import type { TypeDefinition } from '../../definition/tables/types.ts';
 import type { Value } from '../../definition/values/values.ts';
 import { WrittenJson } from '../../definition/values/written-json.ts';
 import type { LiveObject } from '../scheduler/instance/heap.ts';
-import { type Held, nothingHeld } from '../snapshot/holdings.ts';
-import { Counts } from './counts.ts';
+import { type Held, isRoot, nothingHeld } from '../snapshot/holdings.ts';
+import { Counts, countsHoldersOf } from './counts.ts';
 import { InPlace } from './in-place.ts';
 
 export class HolderWrites {
@@ -39,7 +40,7 @@ export class HolderWrites {
   readonly values = new InPlace(this.#counts, this.written);
   #losersReleased = false;
 
-  /** Holder writes counting the objects `counted` says (counts.ts `countedIn`). */
+  /** Holder writes counting the objects `counted` says (`countedIn`). */
   constructor(counted: (object: LiveObject) => boolean) {
     this.#counted = counted;
   }
@@ -113,4 +114,16 @@ export class HolderWrites {
     this.#losersReleased = false;
     this.#counts.takeLetGo();
   }
+}
+
+/** Whether the runtime counts `object`'s holders, given the Definition's `types`. */
+export function countedIn(types: readonly TypeDefinition[]): (object: LiveObject) => boolean {
+  return (object) => {
+    if (isRoot(object) || object.kind === 'weakRef') {
+      return false;
+    }
+    return object.kind !== 'cell' && object.kind !== 'resource'
+      ? true
+      : countsHoldersOf(types, object.type);
+  };
 }

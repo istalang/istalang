@@ -3,8 +3,7 @@
  * each object it holds, and none after the last.
  */
 
-import { countedIn } from '../../lifetimes/counts.ts';
-import { HolderWrites } from '../../lifetimes/holder-writes.ts';
+import { countedIn, HolderWrites } from '../../lifetimes/holder-writes.ts';
 import { Heap, type LiveObject } from './heap.ts';
 
 /** A heap holding `objects`, in id order, reporting its writes to `holders`. */

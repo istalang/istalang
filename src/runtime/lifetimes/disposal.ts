@@ -44,6 +44,7 @@ import { Panic } from '../natives.ts';
 import type { Heap, LiveExecution, LiveObject, LiveObjectOf } from '../scheduler/instance/heap.ts';
 import type { WeakSide } from '../scheduler/instance/weak-side.ts';
 import type { FutureState } from '../snapshot/objects.ts';
+import type { Collected } from './collector.ts';
 
 /** A call a disposal makes: a declared `dispose`, with the disposed value as its argument. */
 export interface DisposalCall {
@@ -217,6 +218,29 @@ function isAwaited(heap: Heap, id: number): boolean {
  */
 export function dispose(context: DisposalContext, object: LiveObject): DisposalRun | undefined {
   return disposalFor(object).dispose(context);
+}
+
+/** An instance's heap as its collector disposes it (collector.ts): each object as its kind says. */
+export function heapCollected(
+  context: DisposalContext,
+  seams: {
+    /** The counted objects that came to have no holder since last asked. */
+    readonly takeZeroes: () => readonly number[];
+    /** Starts `run`: true when it has finished already (a native), false while it runs as code. */
+    readonly run: (run: DisposalRun) => boolean;
+  },
+): Collected<DisposalRun> {
+  const { heap, weak } = context;
+  return {
+    ...seams,
+    has: (id) => heap.has(id),
+    isDisposable: (id) => isDisposable(context, heap.objectOf(id)),
+    dispose: (id) => dispose(context, heap.objectOf(id)),
+    remove: (id) => {
+      heap.remove(id);
+      weak.disposed(id);
+    },
+  };
 }
 
 /**

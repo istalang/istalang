@@ -10,6 +10,7 @@
 
 import type { ActiveFrame } from '../../interpreter/frames.ts';
 import { Collector } from '../../lifetimes/collector.ts';
+import { type DisposalContext, type DisposalRun, heapCollected } from '../../lifetimes/disposal.ts';
 import { panicOf } from '../../natives.ts';
 import type { LiveExecution } from '../instance/heap.ts';
 import { type DisposalRunSeams, DisposalRuns } from './disposal-runs.ts';
@@ -19,7 +20,7 @@ type CollectionSeams = Omit<DisposalRunSeams, 'returned' | 'abandoned'>;
 
 export class SegmentCollection {
   readonly #seams: CollectionSeams;
-  readonly #collector: Collector;
+  readonly #collector: Collector<DisposalRun>;
   /** The code disposals run, on the segment's run stack. */
   readonly disposals: DisposalRuns;
 
@@ -35,9 +36,8 @@ export class SegmentCollection {
         this.#collector.abandoned();
       },
     });
-    this.#collector = new Collector({
+    const context: DisposalContext = {
       heap: instance.heap,
-      holders: instance.holders,
       types: instance.loaded.definition.types,
       stop: (execution) => {
         instance.stop(execution);
@@ -50,8 +50,13 @@ export class SegmentCollection {
       cancel: (resolver) => {
         instance.waits.cancel(resolver);
       },
-      run: (run) => this.disposals.start(run),
-    });
+    };
+    this.#collector = new Collector(
+      heapCollected(context, {
+        takeZeroes: () => instance.holders.takeZeroes(),
+        run: (run) => this.disposals.start(run),
+      }),
+    );
   }
 
   /**

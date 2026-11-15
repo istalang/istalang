@@ -10,8 +10,7 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { handleTo } from '../../../definition/values/values.ts';
-import { countedIn } from '../../lifetimes/counts.ts';
-import { HolderWrites } from '../../lifetimes/holder-writes.ts';
+import { countedIn, HolderWrites } from '../../lifetimes/holder-writes.ts';
 import { type Held, idsHeld } from '../../snapshot/holdings.ts';
 import type { FutureState } from '../../snapshot/objects.ts';
 import { testHeap } from './heap.test-kit.ts';

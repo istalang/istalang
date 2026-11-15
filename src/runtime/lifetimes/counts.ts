@@ -5,8 +5,9 @@
  *
  * - **What is counted:** every disposable, every other object that may hold one (a future, a
  *   slot, a wait, a resolver, a mock), and a cell or resource whose type entry is `counted` or
- *   declares a disposal (`countedIn`). Roots are kept for their own sake, and a weak reference
- *   holds nothing, so neither is counted.
+ *   declares a disposal (`countsHoldersOf`). Roots are kept for their own sake, and a weak
+ *   reference holds nothing, so neither is counted. Both runtimes count this way: the
+ *   interpreter's heap (holder-writes.ts) and a run of compiled code (live/lifetimes/).
  * - **Holders** are what R2's seam reports (holder-writes.ts): registers, heap objects' fields and
  *   index edges, and the running calls' futures. Each report gives what the holder held and holds
  *   now; holding the new before letting go of the old keeps a count from passing through zero.
@@ -29,21 +30,12 @@ import {
 } from '../../definition/values/values.ts';
 import { pushAll } from '../../foundation/structures/stack.ts';
 import { unreachable } from '../../foundation/structures/unreachable.ts';
-import type { LiveObject } from '../scheduler/instance/heap.ts';
-import { type Held, isRoot } from '../snapshot/holdings.ts';
+import type { Held } from '../snapshot/holdings.ts';
 
-/** Whether the runtime counts `object`'s holders, given the Definition's `types`. */
-export function countedIn(types: readonly TypeDefinition[]): (object: LiveObject) => boolean {
-  return (object) => {
-    if (isRoot(object) || object.kind === 'weakRef') {
-      return false;
-    }
-    if (object.kind !== 'cell' && object.kind !== 'resource') {
-      return true;
-    }
-    const entry = types[object.type];
-    return entry?.kind === 'extern' && (entry.counted || entry.disposal.kind !== 'none');
-  };
+/** Whether the holders of a cell or resource of type entry `type` are counted. */
+export function countsHoldersOf(types: readonly TypeDefinition[], type: number): boolean {
+  const entry = types[type];
+  return entry?.kind === 'extern' && (entry.counted || entry.disposal.kind !== 'none');
 }
 
 export class Counts {

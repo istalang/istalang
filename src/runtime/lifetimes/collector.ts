@@ -38,14 +38,28 @@
  */
 
 import { unreachable } from '../../foundation/structures/unreachable.ts';
-import { type DisposalContext, type DisposalRun, dispose, isDisposable } from './disposal.ts';
-import type { HolderWrites } from './holder-writes.ts';
 
-interface CollectorSeams extends DisposalContext {
-  /** Where every holder write is reported and counted. */
-  readonly holders: HolderWrites;
-  /** Starts `run`: true when it has finished already (a native), false while it runs as code. */
-  readonly run: (run: DisposalRun) => boolean;
+/**
+ * The objects a collector disposes, by id, as one runtime keeps them: the interpreter's heap
+ * (disposal.ts `heapCollected`), or a run of compiled code's (live/lifetimes/). `Run` is the code a
+ * disposal runs.
+ */
+export interface Collected<Run> {
+  /** The counted objects that came to have no holder since last asked (counts.ts `takeZeroes`). */
+  readonly takeZeroes: () => readonly number[];
+  /** Whether object `id` is still there. */
+  readonly has: (id: number) => boolean;
+  /** Whether object `id` reaching zero holders runs its disposal, rather than only leaving. */
+  readonly isDisposable: (id: number) => boolean;
+  /** Disposes object `id` its own way: the code to run, for a disposal that runs code. */
+  readonly dispose: (id: number) => Run | undefined;
+  /** Starts `run`: true when it has finished already, false while it runs as code. */
+  readonly run: (run: Run) => boolean;
+  /**
+   * Object `id` is gone, disposed or not: it lets go of what it held, and its weak reference's
+   * watches resolve.
+   */
+  readonly remove: (id: number) => void;
 }
 
 /**
@@ -60,8 +74,8 @@ interface Round {
   readonly next: number[];
 }
 
-export class Collector {
-  readonly #seams: CollectorSeams;
+export class Collector<Run> {
+  readonly #seams: Collected<Run>;
   readonly #rounds: Round[] = [];
   /** The object being disposed before any code of its disposal runs: one that panics leaves it. */
   #making: number | undefined;
@@ -72,7 +86,7 @@ export class Collector {
    */
   readonly #released = new Set<number>();
 
-  constructor(seams: CollectorSeams) {
+  constructor(seams: Collected<Run>) {
     this.#seams = seams;
   }
 
@@ -162,12 +176,11 @@ export class Collector {
   }
 
   #dispose(round: Round, id: number): void {
-    const { heap } = this.#seams;
-    if (!heap.has(id)) {
+    if (!this.#seams.has(id)) {
       return;
     }
     this.#making = id;
-    const run = dispose(this.#seams, heap.objectOf(id));
+    const run = this.#seams.dispose(id);
     if (run === undefined) {
       this.#making = undefined;
       this.#gone(round, id);
@@ -193,12 +206,11 @@ export class Collector {
   }
 
   /**
-   * Takes object `id` out of the heap, which lets go of what it held, and tells its weak reference,
-   * whose watches resolve, whether it was disposed or did nothing when it lost its last holder.
+   * Object `id` is gone, which lets go of what it held and resolves its weak reference's watches,
+   * whether it was disposed or did nothing when it lost its last holder.
    */
   #remove(id: number): void {
-    this.#seams.heap.remove(id);
-    this.#seams.weak.disposed(id);
+    this.#seams.remove(id);
     this.#released.delete(id);
   }
 
@@ -216,8 +228,8 @@ export class Collector {
    * what it held, as its disposal does nothing. Each is `released` by an abandoned disposal or not.
    */
   #zeroDisposables(released: boolean): readonly number[] {
-    const { heap, holders } = this.#seams;
-    let zeroes = holders.takeZeroes();
+    const { takeZeroes, isDisposable } = this.#seams;
+    let zeroes = takeZeroes();
     if (zeroes.length === 0) {
       return [];
     }
@@ -227,9 +239,9 @@ export class Collector {
       ),
     );
     const disposables: number[] = [];
-    for (; zeroes.length > 0; zeroes = holders.takeZeroes()) {
+    for (; zeroes.length > 0; zeroes = takeZeroes()) {
       for (const id of zeroes.filter((zero) => !waiting.has(zero))) {
-        if (isDisposable(this.#seams, heap.objectOf(id))) {
+        if (isDisposable(id)) {
           disposables.push(id);
           if (released) {
             this.#released.add(id);

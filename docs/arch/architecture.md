@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-11-15
-last_updated: 2026-11-15
+last_updated: 2026-11-16
 tags: [architecture, compiler, runtime, tooling]
 ---
 
@@ -291,7 +291,7 @@ src/
                         in-place.ts (values written in place where this instance made them and one holder holds them, else copied
                         once: paths, a native's `&` argument, an array or map grown in its own register),
                         holders.ts (what the live frames reach: held, which only a commit and a live run's drop walk, a cruiser rule),
-                        disposal.ts (each kind's disposal), collector.ts (rounds of what reached zero, newest first, a disposal's call on the run stack),
+                        disposal.ts (each kind's disposal), collector.ts (rounds of what reached zero, newest first, over either runtime's objects, a disposal's call on the run stack),
                         oracle.test-kit.ts (static lifetimes' oracle, a `HeapCheck`: no cycle reaching a disposable; every test runtime, `ista run` and `ista test` in the CLI's tests check it; its own tests compile cyclic programs through `compile.test-kit.ts`'s `textDespiteCycles`, which it stops)
                         native-audit.test-kit.ts (static lifetimes' native audit, `HeapCheck.native`: every edge a native's call adds to what an argument holds is one its extern keeps, by the std's `@Keeps` or `&`; the corpus and std suites' sweeps run it)
     testing/            running a test Definition (§10): world/ (one test's fresh runtime in memory: its instances, the mocks they reach, its watches, timers on the caller's clock; drive.ts, the loop driving a group of instances on a test's clock; test-host.ts, the externs no mock replaces), run-tests.ts (listing each suite, then each test in a world of its own)
