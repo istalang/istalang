@@ -280,11 +280,16 @@ describe('a pattern place', () => {
   });
 
   it('reads the member a struct or tuple pattern selects of a union', () => {
-    const optionals = [...decision, 'fn f(x: (Int, Decision)?, d: Decision?) -> Int:'];
+    const optionals = [
+      ...decision,
+      'fn f(x: (Int, Decision)?, d: Decision?, p: { first: Int, second: Int }?) -> Int:',
+    ];
     expect(labelsAt(...optionals, '  match x:', '    case (_, ‸')).toContain('Approved');
     expect(labelsAt(...optionals, '  if d is Rejected(‸')).toEqual(
       expect.arrayContaining(['by:', 'reason:']),
     );
+    expect(labelsAt(...optionals, '  match p:', '    case struct{‸')).toEqual(['first', 'second']);
+    expect(labelsAt(...optionals, '  match p:', '    case struct{first, ‸')).toEqual(['second']);
   });
 
   it('marks the variants unguarded cases take whole as covered', () => {
@@ -380,6 +385,10 @@ describe('a pattern place', () => {
     const struct = ['struct Pair:', '  first: Int', '  second: Int', '', 'fn f(p: Pair) -> Int:'];
     expect(labelsAt(...struct, '  match p:', '    case Pair{first, ‸')).toEqual(['second']);
     expect(labelsAt(...struct, '  match p:', '    case struct{‸')).toEqual(['first', 'second']);
+    // A parameter's pattern is completed before its function has a body.
+    const bodiless = programAt(...struct.slice(0, 3), 'fn g(Pair{‸})');
+    const offered = completionsAt(bodiless.program, bodiless.module, bodiless.offset);
+    expect(offered.map(({ name }) => name)).toEqual(['first', 'second']);
   });
 
   it("offers no fields in braces naming what the matched value can't be, nor a variant's", () => {
