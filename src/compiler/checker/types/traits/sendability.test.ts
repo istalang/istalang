@@ -183,6 +183,38 @@ describe('a closure where an inert function is taken', () => {
       'drop takeInert(bump)',
     ];
     expect(reported(inMain(body))).toEqual(reportedOnce(captureBeyondSendability.code, 'l'));
+    const multi = lines(
+      declarations,
+      'fn size<T>(t: T) -> Int: 1',
+      'ista fn main<T>(f: Future<Int, "ista">, g: fn(Int) -> Int, t: T):',
+      '  ista fn bump(n: Int) -> Int:',
+      '    _ = f',
+      '    g(n) + size(t)',
+      '  drop takeInertIsta(bump)',
+    );
+    expect(reported(multi)).toEqual({
+      codes: [
+        captureBeyondSendability.code,
+        captureBeyondSendability.code,
+        captureBeyondSendability.code,
+      ],
+      spanTexts: ['f', 'g', 't'],
+    });
+    const sendableBody = [
+      'const m = new Model{}',
+      'fn bump(n: Int) -> Int: n + m->count',
+      'drop takeSendable(bump)',
+    ];
+    expect(reported(inMain(sendableBody))).toEqual(
+      reportedOnce(captureBeyondSendability.code, 'm'),
+    );
+    const assigned = [
+      'const l = new Lease{}',
+      'fn bump(n: Int) -> Int: n + l->n',
+      'const kept: inert fn(Int) -> Int = bump',
+      'drop kept(1)',
+    ];
+    expect(reported(inMain(assigned))).toEqual(reportedOnce(captureBeyondSendability.code, 'l'));
   });
 
   it('names the sendability taken in its message', () => {

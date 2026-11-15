@@ -32,6 +32,8 @@ describe('kind-marks', () => {
       'ista async fn x() -> Int: 1\nasync fn main():\n  const g = fn(): x()\n  _ = g()',
       'ista async fn x() -> Int: 1\nista async fn main():\n  const g = fn(): x()\n  _ = g()',
     ],
+    ['fn f(s: Slot<Int>): ()', 'ista fn f(s: Slot<Int>): ()'],
+    ['fn f<M in Mark>(g: Fn<(), Unit, M>): g()', 'fn f<M in Mark>(g: Fn<(), Unit, M>): g()'],
   ])('%j becomes %j', (before, after) => {
     expect(rewritten(before)).toBe(after);
   });

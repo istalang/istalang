@@ -286,6 +286,37 @@ describe('resolvers', () => {
     });
   });
 
+  it('releases losing case holdings in a non-blocking select and when resuming on disposing()', async () => {
+    const nonBlockingAndDisposing = compiledText(
+      [
+        "import Inbox from 'inbox'",
+        "import * as runtime from 'runtime'",
+        'ista async fn worker(a: Slot<Int>, log: Inbox<String>):',
+        '  await select:',
+        '    case (log.sendRevertible("other"), a.take()).1:',
+        '      ()',
+        '    case worker.disposing():',
+        '      log.send(String(log.pending().length()))',
+        'live async fn main() -> (Int, Array<String>): await runtime.run(runtime.id()) _main()\nista async fn _main() -> (Int, Array<String>):',
+        '  const a = Slot.create<Int>()',
+        '  const log = Inbox.create<String>()',
+        '  const nonBlocking = select:',
+        '    case (log.sendRevertible("lost"), a.take()).1:',
+        '      1',
+        '    else:',
+        '      log.pending().length()',
+        '  if true:',
+        '    const w = worker(a, log)',
+        '    await runtime.commit()',
+        '  (nonBlocking, [await log.receive()])',
+      ].join('\n'),
+    );
+    expect(await startToEnd(testRuntime(), nonBlockingAndDisposing)).toEqual({
+      kind: 'finished',
+      outcome: '[0,["0"]]',
+    });
+  });
+
   it('cancels a losing case resolver when its Resolver.at is resolved or tried after an earlier case decided the wait in onAwait', async () => {
     const losingAt = compiledText(
       [

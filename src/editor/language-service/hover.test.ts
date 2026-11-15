@@ -291,4 +291,18 @@ describe('hover', () => {
   it('shows nothing where nothing has a type', () => {
     expect(hover('fn f() -> Int:', '  le‸t x = 1', '  x')).toBeUndefined();
   });
+
+  it('shows the declaration an annotation names even where the parser rejected the annotation', () => {
+    const tag = 'struct Tag { label: String }';
+    expect(hover(tag, 'fn f<S is struct { @Ta‸g{"a"} n: Int }>(s: S): ()')?.code).toEqual([
+      '(type) Tag',
+    ]);
+    expect(hover(tag, 'const xs: Array<Int> =', '  @Tag{la‸bel: "a"}', '  - 1')?.code).toEqual([
+      '(field) label: String',
+    ]);
+    expect(hover(tag, 'type Out<T> = match T:', '  @Ta‸g{"a"}', '  case _: Int')?.code).toEqual([
+      '(type) Tag',
+    ]);
+    expect(hover(tag, 'extern struct Handle:', '  @Ta‸g{"a"}')?.code).toEqual(['(type) Tag']);
+  });
 });
