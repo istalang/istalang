@@ -146,10 +146,10 @@ struct CategoryModel:
 
 type CategoryChildrenRow = Group<CategoryModel>
 
-fn categoryModel(graph: Graph) -> Group<CategoryModel>: Group{
+fn categoryModel(graph: Graph, x: Group<CategoryModel>.Seen? = none) -> Group<CategoryModel>: Group{
   fields: CategoryModel{
-    name: Field.make<String>(graph)
-    children: List.make(graph, fn(x): categoryModel(graph))
+    name: Field.make<String>(graph, x?.name)
+    children: List.make(graph, fn(x): categoryModel(graph, x), x?.children ?? [])
   }
 }
 
@@ -309,7 +309,7 @@ fn supplierModel(graph: Graph) -> Group<SupplierModel>: Group{
       }
     )
     certifications: List.make(graph, fn(x): Field.make<"iso9001" | "iso14001">(graph, x))
-    categories: List.make(graph, fn(x): categoryModel(graph))
+    categories: List.make(graph, fn(x): categoryModel(graph, x))
     history: List.make(
       graph
       fn(x): Group{fields: struct{note: Field.make<String>(graph, x?.note)}}

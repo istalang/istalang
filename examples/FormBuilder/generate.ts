@@ -274,7 +274,7 @@ type MNode =
       w: Writers;
       tagWritten: boolean;
     }
-  | { k: 'mount'; type: string; make: string; def?: string; w: Writers }
+  | { k: 'mount'; type: string; make: string; w: Writers }
   | { k: 'dynamic'; w: Writers };
 interface Writers {
   all: number;
@@ -506,37 +506,11 @@ function mountNode(n: AnyNode, doc: FormDocument): MNode {
   if (ref.startsWith('#')) {
     const d = ref.slice(1);
     if (!doc.defs?.[d]) throw new Error(`unknown def ${ref}`);
-    return {
-      k: 'mount',
-      type: `Group<${pascal(d)}Model>`,
-      make: `${camel(d)}Model`,
-      def: d,
-      w: writers(),
-    };
+    return { k: 'mount', type: `Group<${pascal(d)}Model>`, make: `${camel(d)}Model`, w: writers() };
   }
   const alias = catalogAlias(ref);
   return { k: 'mount', type: `Group<${alias}.Model>`, make: `${alias}.model`, w: writers() };
 }
-// ── TODO(B92): delete this function, and its two uses, once B92 is fixed ──
-// An optional of a recursive def's Seen lowers wrong (tracker B92), its factory's data parameter
-// as anywhere, so a recursive def's factory takes no data, and its mounts and rows give it none.
-// Its uses: the mount case of `factory`, and the def factory in `unitSection`.
-function unseeded(doc: FormDocument): ReadonlySet<string> {
-  const mounts = (n: AnyNode): string[] => [
-    ...(n.node === 'ref' && typeof n.form === 'string' && n.form.startsWith('#')
-      ? [n.form.slice(1)]
-      : []),
-    ...(n.children ?? []).flatMap(mounts),
-    ...(n.item ? mounts(n.item) : []),
-    ...Object.values<any>(n.cases ?? {}).flatMap((c) => mounts(c.body)),
-  ];
-  const reaches = (from: string, to: string, seen = new Set<string>()): boolean =>
-    mounts(doc.defs![from]!.root).some(
-      (d) => d === to || (!seen.has(d) && reaches(d, to, seen.add(d))),
-    );
-  return new Set(Object.keys(doc.defs ?? {}).filter((d) => reaches(d, d)));
-}
-
 const catalogAlias = (ref: string) => camel(ref.replace(/^catalog:/u, '').replace(/@.*$/u, ''));
 const catalogPath = (ref: string) => './catalog/' + ref.replace(/^catalog:/u, '');
 
@@ -673,9 +647,7 @@ class UnitGen {
         );
       }
       case 'mount':
-        return hide(
-          `${n.make}(graph${n.def !== undefined && unseeded(this.doc).has(n.def) ? '' : from})`,
-        );
+        return hide(`${n.make}(graph${from})`);
       case 'dynamic':
         return hide('Dynamic.make(graph)');
     }
@@ -1209,10 +1181,9 @@ function unitSection(u: Unit, doc: FormDocument, uses: Uses): string {
     : `struct ${P}Ctx:\n  user: User\n  paramsFrom: inert fn() -> ${P}Params\n\n` +
       `# Its params as its mount gives them, read when an expression reads them.\n` +
       `fn get params(self: ${P}Ctx) -> ${P}Params: (self.paramsFrom)()`;
-  const factory =
-    u.isForm || unseeded(doc).has(u.name)
-      ? `fn ${c}Model(graph: Graph) -> Group<${P}Model>: Group{fields: ${g.groupLiteral(u.model, 'data', undefined, `${P}Model`)}}`
-      : `fn ${c}Model(graph: Graph, x: Group<${P}Model>.Seen? = none) -> Group<${P}Model>: Group{fields: ${g.groupLiteral(u.model, 'data', 'x', `${P}Model`)}}`;
+  const factory = u.isForm
+    ? `fn ${c}Model(graph: Graph) -> Group<${P}Model>: Group{fields: ${g.groupLiteral(u.model, 'data', undefined, `${P}Model`)}}`
+    : `fn ${c}Model(graph: Graph, x: Group<${P}Model>.Seen? = none) -> Group<${P}Model>: Group{fields: ${g.groupLiteral(u.model, 'data', 'x', `${P}Model`)}}`;
 
   g.seenStruct(
     `${P}Seen`,

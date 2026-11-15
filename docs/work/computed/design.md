@@ -115,9 +115,8 @@ default: fn(): crm.creditLimit(data.company.vatId ?? "") ?? 0
   tree and whether the form is valid. One `Graph` per form.
 - **Mounts:** a static ref calls its form's view at the mount's place with that form's scope. The
   mounted form reads its params through a getter calling a closure over the mount's scope, so its
-  expressions track what the mount's read; until tracker B92 is fixed, a recursive def is made
-  empty. A dynamic ref's data, JSON its host's run of it validates, comes back as a `Set` to the
-  mount's key.
+  expressions track what the mount's read. A dynamic ref's data, JSON its host's run of it
+  validates, comes back as a `Set` to the mount's key.
 - **Removed:** the `0..8` loop, `unshow()`, `Drawing`, `View.runs`, `Task`, `Check.Later` and every
   `ista` mark.
 

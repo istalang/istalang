@@ -11,7 +11,13 @@ import * as crm from './crm'
 import * as approvals from './approvals'
 import * as formsCatalog from './forms-catalog'
 import Graph from './computed'
-import SupplierModel, SupplierParams, openSupplier, supplierModel from './supplier.gen'
+import (
+  SupplierModel
+  SupplierParams
+  SupplierCategoriesRow
+  openSupplier
+  supplierModel
+) from './supplier.gen'
 
 @Suite{"supplier"}
 fn supplierSuite() -> Array<Test>: [
@@ -34,6 +40,7 @@ fn supplierSuite() -> Array<Test>: [
   test("an empty whole value gives errors by node key", emptyValue)
   test("a whole value's rows are made from it, keyed as the browser keys them", loadedRows)
   test("a repeat's checks count its rows, whatever the rows hold", repeatCounts)
+  test("a whole value's rows of the recursive def are made from it", recursiveValue)
 ]
 
 const user = User{id: "u1", name: "Ann", lang: "de", role: "buyer", today: "2026-11-15"}
@@ -330,6 +337,18 @@ ista async fn loadedRows():
   match open().validate(unpriced):
     case Ok(...): assertEq("valid", "invalid")
     case Err(problems): assertEq(problems, ["n27@p1": ["Required"]])
+
+ista async fn recursiveValue():
+  hold _ = mocked()
+  const categories: Array<SupplierCategoriesRow.Seen> = [
+    struct{name: "Bolts", children: [struct{name: "M3", children: []}]}
+  ]
+  match open().validate(struct{...complete(), categories}):
+    case Ok(data):
+      assertEq([for c in data.categories: (c.name, [for child in c.children: child.name])], [
+        ("Bolts", ["M3"])
+      ])
+    case Err(problems): assertEq(problems, [:])
 
 ista async fn repeatCounts():
   hold _ = mocked()
