@@ -176,6 +176,15 @@ describe('a closure where an inert function is taken', () => {
     expect(reported(inMain(body)).codes).toEqual([]);
   });
 
+  it('reports a local function capturing beyond the sendability taken as a lambda is', () => {
+    const body = [
+      'const l = new Lease{}',
+      'fn bump(n: Int) -> Int: n + l->n',
+      'drop takeInert(bump)',
+    ];
+    expect(reported(inMain(body))).toEqual(reportedOnce(captureBeyondSendability.code, 'l'));
+  });
+
   it('names the sendability taken in its message', () => {
     const { checker, module } = checkedMain(
       inMain(['const l = new Lease{}', 'drop takeInert(fn(n): n + l->n)']),

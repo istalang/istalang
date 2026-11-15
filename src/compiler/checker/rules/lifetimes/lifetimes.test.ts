@@ -16,9 +16,8 @@ const lease = [
   '  next: Node? = none',
 ].join('\n');
 
-/** What refuses a plain listener where an inert one is taken. */
-const refusedCapture =
-  /Expected inert (?:ista )?fn\(Int\) -> Unit, found (?:ista )?fn\(Int\) -> Unit/u;
+/** What refuses a plain listener where an inert one is taken: a capture inertness doesn't allow. */
+const refusedCapture = /The function taken here is inert, so what it captures must be inert/u;
 
 /** `body` as the body of `fn subject`, after the lease declarations and `declarations`. */
 function inSubject(body: string, declarations: readonly string[] = []): string {
