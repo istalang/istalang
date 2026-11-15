@@ -104,6 +104,11 @@ export class VariableScope implements Variables {
     return this.#types.get(name, pass);
   }
 
+  /** Every name this body declares, with the type it was declared with, in every pass. */
+  declaredTypes(): readonly (readonly [Identifier, Type])[] {
+    return this.#types.entries();
+  }
+
   noteChanged(variable: VariableEntity): void {
     this.#changed.add(variable.name);
   }

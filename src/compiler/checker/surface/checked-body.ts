@@ -221,9 +221,9 @@ export interface LabelResolution {
   readonly isHoldScope: (scope: LabelledScope) => boolean;
 }
 
-/** An expression a body types, and the type it has there, as checked. */
+/** A node a body types, and the type it has there, as checked. */
 interface MadeType {
-  readonly site: Expression;
+  readonly site: NodeOf<string>;
   readonly type: Type;
 }
 
@@ -258,7 +258,10 @@ export interface BodyFacts {
    * and every function it names as a value, which a closure calls later (`functionValues`).
    */
   readonly madeCalls: () => readonly MadeCall[];
-  /** Every expression the body types, nested functions' included, with its type, in every pass. */
+  /**
+   * Every type the body's values have, nested functions' included, in every pass: each expression's,
+   * the type each value is expected to have where it is used, and each name's it declares.
+   */
   readonly madeTypes: () => readonly MadeType[];
   /**
    * A call the language makes for the construct `node`, in `role`, with no call written for it
