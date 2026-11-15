@@ -34,6 +34,7 @@ import {
   setEntryInPlace,
 } from '../../definition/values/equality.ts';
 import { forgetPlainOf } from '../../definition/values/json-values.ts';
+import { partAt } from '../../definition/values/parts.ts';
 import {
   type CompositeValue,
   childValues,
@@ -45,7 +46,6 @@ import {
   withChildValues,
 } from '../../definition/values/values.ts';
 import { unreachable } from '../../foundation/structures/unreachable.ts';
-import { partAt } from '../interpreter/parts.ts';
 import type { WrittenJson } from './written-json.ts';
 
 /** What changing values in place reads of and tells the counts (counts.ts). */

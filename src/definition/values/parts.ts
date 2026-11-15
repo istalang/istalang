@@ -3,16 +3,11 @@
  * reference or a `store` reads and writes inside a variable's value.
  *
  * A field position is a position among a value's `childValues`, exactly as `field` reads it and
- * as a write puts a part back (lifetimes/in-place.ts), so reading and writing can't disagree.
+ * as a write puts a part back (runtime/lifetimes/in-place.ts), so reading and writing can't disagree.
  */
 
-import {
-  type CompositeValue,
-  childValues,
-  isComposite,
-  type Value,
-} from '../../definition/values/values.ts';
 import { unreachable } from '../../foundation/structures/unreachable.ts';
+import { type CompositeValue, childValues, isComposite, type Value } from './values.ts';
 
 /** The part of `value` at `path`. */
 export function partAt(value: Value, path: readonly number[]): Value {

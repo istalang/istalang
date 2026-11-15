@@ -7,6 +7,7 @@
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
+import { partAt } from '../../definition/values/parts.ts';
 import { valueArbitrary } from '../../definition/values/values.test-kit.ts';
 import {
   type CompositeValue,
@@ -17,7 +18,6 @@ import {
   withChildValues,
 } from '../../definition/values/values.ts';
 import { Unreachable } from '../../foundation/structures/unreachable.ts';
-import { partAt } from '../interpreter/parts.ts';
 import { nothingHeld } from '../snapshot/holdings.ts';
 import { Counts } from './counts.ts';
 import { frozen } from './in-place.test-kit.ts';
