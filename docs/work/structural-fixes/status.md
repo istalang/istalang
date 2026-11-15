@@ -72,3 +72,7 @@ tags: [structural-fixes, status]
   `reach.ts` with `ReductionRequirements` (B102/B103); module-global `together` in `type-text.ts`. The reuse-doc
   `calledValueType` finding was wrong (`value-calls.ts` exists). Operators' row renumbered B98 → B106 (another
   workstream took B98).
+- E small merged (ff to `5f1a852e`): Q49, Q48, Q36, B89 closed; QA pass, review approve. Q30, Q6, F31 (spec decision),
+  Q31/P25/B30 and Q47 proved bigger than local; their rows carry the findings, for the E plan. For later work:
+  a Diagnostic has a required `arguments` field (tools read `<factory>.argumentsOf`, never prose); binder lists walk
+  through `binder.eachItem`.
