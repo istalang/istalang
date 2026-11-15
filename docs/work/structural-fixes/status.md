@@ -29,7 +29,12 @@ tags: [structural-fixes, status]
   - C's unit moved to `resolution/choosing/`.
   - D rewritten to four exact asymmetries, now in wave 1.
 - suri re-reviewed the revision: approve, with no findings (appended to `research/plan-review.md`).
-- It awaits the human's approval of D1–D4. It is not committed.
+- The human approved D1–D4; the docs are committed (`45b09009`). The human asked to begin phase A alone; B, C
+  and D wait for the human's go.
+- Step 0 done: tracker hygiene committed. New A rows: Q56, Q57, B95, B96, B97. Close them, with B94, B65 and P35,
+  when A merges.
+- Phase A running: agent `sfa-tizo`, worktree `.claude/worktrees/sf-a-type-identity`, branch `sf-a-type-identity`
+  from `45b09009`; idle sub armed.
 - Still alive: `b92-neni` (B92, done), its reviewer and QA, and `sfrv-suri`. Ask the human before stopping them.
 
 ## Next, on approval
