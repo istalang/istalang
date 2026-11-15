@@ -44,7 +44,7 @@ names; a test holds std extern keys distinct. Array and Map are recognized by ro
 collision and the runtime variant mix-up.
 1. Property: distinct `typeKey` ⇒ distinct table key.
 2. The repros pass, B92's included.
-3. Extern keys and `declaredType` stay byte-identical.
+3. Extern keys and `declaredType` stay byte-identical, except a recursive type no alias names, once spelled by `typeText` and now by its table key (one key: FormBuilder's `validateSupplier` start key).
 4. B65: a program's Definition is the same alone as inside a bigger program.
 5. Duplicate variant names are rejected by validation, a test holds every std extern declaration's key
    distinct, and no runtime code recognizes a type by name.

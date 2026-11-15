@@ -22,7 +22,8 @@ tags: [structural-fixes, type-identity, type-table, extern-key]
 - There is one structural walk: `structureKeyOf`, parameterized by how an identity is spelled. Recursion goes
   through `canonicalKey` with the same walk, which also writes the unions. No other `Type`→key switch remains
   except the extern projection and `TypeTable.reference` (layout).
-- The extern projection doesn't read `typeText`. Its bytes stay identical for everything it spells today.
+- The extern projection doesn't read `typeText`. Its bytes stay identical for everything it spells
+  today, except a recursive type no alias names, which it spells by the table key instead of `typeText`.
 
 ## Rules
 

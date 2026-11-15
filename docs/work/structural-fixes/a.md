@@ -81,7 +81,7 @@ Commit the structural change first, then the behaviour.
    and literals.
 2. The two `(true, true)` repros give `(true, true)`. The `Array<BU|BF>` repro gives `("BU", "BF")`. B92's
    cases in `recursive-names.test.ts` still order alike.
-3. Extern keys and `declaredType` are byte-identical across the stdlib and `examples/`. Prove it with a test
+3. Extern keys and `declaredType` are byte-identical across the stdlib and `examples/`, except a recursive type no alias names, once spelled by `typeText` and now by its table key (one key: FormBuilder's `validateSupplier` start key). Prove it with a test
    that compares the before and after key sets.
 4. B65: a program compiled alone and the same program inside a bigger program give equal Definition texts.
 5. Hand-built Definitions with duplicate variant names are rejected by validation. A test fails if two std
