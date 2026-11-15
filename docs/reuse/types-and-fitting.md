@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-11-13
-last_updated: 2026-11-14
+last_updated: 2026-11-15
 tags: [reuse, checker, types, fitting, variance, patterns, flow]
 ---
 
@@ -36,7 +36,7 @@ tags: [reuse, checker, types, fitting, variance, patterns, flow]
 - show a function as an editor does, its signature with where each parameter stands in it → `signatureOf`, `functionTypeSignature` (`src/editor/language-service/signatures/signatures.ts`)
 - give a type the spelling it was written through, an alias, an associated type, or a struct's keys (`keyof S` reduced keeps `{kind: 'keys', of}`, which tools read to tell a key's struct) → `aliasedAs` (`src/compiler/checker/types/type/alias-uses.ts`); `substitute` keeps it, `widened` drops it where it widens
 - tell a handle from a value by its declaration, never its name (§2, §3.6): whether a type's values are handles → `isHandleType`, a declaration's → `isHandleDeclaration`; whether its handles stay in their instance or process, never sendable and the only kind a `dispose` may make disposable → `isConfined`; in the process alone (`extern live struct`) → `staysInProcess` (`src/compiler/checker/types/properties/handles.ts`). A shared struct and an `extern shared struct` (`Slot`, `Future`, `Resolver`, `_Cell`, `WeakRef`) are instance handles; `Instance<T>` (`extern sendable struct`) is a global one
-- get a canonical key for a `Type` or numeric identity for an object → `typeKeys.typeKey`, `typeKeys.identityOf` (`src/compiler/checker/types/identity/type-keys.ts`)
+- get a canonical key for a `Type` or numeric identity for an object → `typeKeys.typeKey`, `typeKeys.identityOf` (`src/compiler/checker/types/identity/type-keys.ts`); spell a type holding recursion canonically, from its minimized term graph, with your own spelling of leaves and of each term's structure (the type table's names, where a key's numbers mustn't go) → `canonicalKey` (`src/compiler/checker/types/identity/recursive-terms.ts`)
 - keep a program-wide checker result (cached, cycle-aware, its diagnostics kept with it) → `checker.entries.table()` (`EntryTable`, `src/foundation/structures/entries/index.ts`); report through `checker.report`, inside an entry
 - read a module's diagnostics, or check one top-level item whole before reading what checking decided in it → `checker.diagnosticsOf`, `checker.checkItem` (`src/compiler/checker/constructs/declarations/module-checks.ts`)
 - guard a recursive walk over a type's parts (`Sendable`, JSON codecs, `heldType`) against cycles → `TypeCycle` (`src/compiler/checker/types/properties/type-cycle.ts`); never a visited set of your own (a walk that must end at a declaration whatever its arguments, as finiteness does, keys by declaration instead: `types/properties/finiteness.ts`)

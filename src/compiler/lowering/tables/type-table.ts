@@ -12,9 +12,12 @@
  * - A recursive type (§3.17) is the entry of what it unfolds to, the same key, whose layout refers
  *   back to it; one unfolding to a tuple or a function type, which have no entry of their own, has
  *   an alias entry, numbered first for the same reason, as has the type written out (`folded`).
- *   Equal recursive types share one entry, named by the preferred alias (names.ts).
+ *   Equal recursive types share one entry, named by the preferred alias, else by their structure
+ *   (names.ts).
  * - A union (§2) is an enum, one variant per member, in the order of their spelled names, which
- *   no numbering of identities changes: a member's value is the variant's one field, and a member
+ *   no numbering of identities changes, and which spell a type by its key alone, never by the alias
+ *   it was written through, so every union of one key orders its variants alike, as its entry was
+ *   laid out: a member's value is the variant's one field, and a member
  *   with one value only, a literal type or `None`, is a variant without fields, its tag. A literal
  *   type on its own is its base: its one value needs no tag.
  * - An `any` type (§3.10) is an enum the program closes: one variant per type a value of it is

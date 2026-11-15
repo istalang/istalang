@@ -2,7 +2,8 @@
  * The term graph of types holding recursion (§3.17), minimized: what equi-recursive identity is
  * decided on. Closing a group of alias bodies (recursive-types.ts) and keying a type holding a
  * recursive type (type-keys.ts) both build one here, so a recursive type's graph and its key agree
- * by construction.
+ * by construction; the type table spells one no alias names from it too, by names where a key has
+ * identities' numbers (lowering/tables/names.ts).
  *
  * - A term is a type holding recursion: a placeholder (a group alias's own use, standing for its
  *   body), a node of a recursive type's graph, reached through that type, or a type built from

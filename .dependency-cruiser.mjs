@@ -194,6 +194,12 @@ const checkerSurface = [
   'types/identity/recursive-types.ts',
   'types/identity/folding.ts',
   'types/identity/type-keys.ts',
+  // A recursive type's minimized graph spelled canonically: the type table's name of one no alias
+  // names, by names where its key has identities' numbers.
+  'types/identity/recursive-terms.ts',
+  // Whether a type holds recursion and what it is built from: where the type table looks for a
+  // cycle no alias breaks.
+  'types/parts/type-children.ts',
   'types/type/type-text.ts',
   'types/type/well-known.ts',
 ];
