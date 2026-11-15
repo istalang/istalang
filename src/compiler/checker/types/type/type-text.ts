@@ -17,7 +17,6 @@ import type { RestPattern } from '../../../syntax/patterns.ts';
 import { modifiersText } from '../../../syntax/tokens/modifiers.ts';
 import { folded } from '../identity/folding.ts';
 import { holdsRecursion } from '../parts/type-children.ts';
-import { parametersIn } from '../parts/type-parts.ts';
 import type { AliasUse } from './alias-uses.ts';
 import { type MappedParts, type RecursiveType, unfoldRecursive } from './computed-types.ts';
 import { modifiersOf } from './function-types.ts';
@@ -27,7 +26,6 @@ import {
   type FunctionType,
   type NominalType,
   nominalType,
-  type ParameterKey,
   type ParameterSlot,
   type Type,
   type TypeParameterType,
@@ -39,26 +37,23 @@ import { isPrimitive, literalText } from './primitives.ts';
 /** The unlabelled recursive types being printed as their bodies, each `…` where reached again. */
 const printing = new Set<RecursiveType>();
 
-/** The names of the parameters reading alike in the types spelled together (`typeTextsTogether`). */
-let primed: ReadonlyMap<ParameterKey, string> = new Map();
+/**
+ * The distinct type parameters of each name printed so far in the types spelled together, in the
+ * order they first print (`typeTextsTogether`); undefined while a type is spelled alone.
+ */
+let together: Map<string, TypeParameter[]> | undefined;
 
 /**
  * `types` spelled for one message, each as `typeText` spells it, but for distinct type parameters
- * among them of one name (a declaration's, as written): each after the first to appear is primed (`T'`, `T''`), as no name is
- * written so, and the message tells them apart, a call's parameter from its caller's of the name.
+ * of one name among what they print: each after the first to print is primed (`T'`, `T''`), as no
+ * name is written so, and the message tells them apart, a call's parameter from its caller's.
  */
 export function typeTextsTogether(types: readonly Type[]): readonly string[] {
-  const declared = new Set(types.flatMap(parametersIn).filter(isTypeParameter));
-  const byName = Map.groupBy(declared, (parameter) => parameter.name.text);
-  primed = new Map(
-    [...byName].flatMap(([name, parameters]) =>
-      parameters.slice(1).map((parameter, index) => [parameter, `${name}${"'".repeat(index + 1)}`]),
-    ),
-  );
+  together = new Map();
   try {
     return types.map(typeText);
   } finally {
-    primed = new Map();
+    together = undefined;
   }
 }
 
@@ -320,12 +315,27 @@ export function parameterText(type: TypeParameterType): string {
     case 'Placeholder':
       return '_';
     default:
-      return primed.get(declaration) ?? boundName(declaration);
+      return declaration.kind === 'TypeParameter'
+        ? `${boundName(declaration)}${primesOf(declaration)}`
+        : boundName(declaration);
   }
 }
 
-function isTypeParameter(parameter: ParameterKey): parameter is TypeParameter {
-  return parameter.kind === 'TypeParameter';
+/**
+ * The primes telling `parameter` apart from the distinct parameters of its name printed before it
+ * in the types spelled together: none for the first, `'` for the second, and so on.
+ */
+function primesOf(parameter: TypeParameter): string {
+  if (together === undefined) {
+    return '';
+  }
+  const name = parameter.name.text;
+  const printed = together.get(name) ?? [];
+  const before = printed.indexOf(parameter);
+  if (before < 0) {
+    together.set(name, [...printed, parameter]);
+  }
+  return "'".repeat(before < 0 ? printed.length : before);
 }
 
 /**

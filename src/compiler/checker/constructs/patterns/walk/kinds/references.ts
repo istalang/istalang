@@ -12,9 +12,9 @@ import { lastName } from '../../../../../syntax/tree/node.ts';
 import type { BodyContext } from '../../../../contexts/body-context.ts';
 import { checkerDiagnostics } from '../../../../diagnostics/index.ts';
 import type { PatternTest } from '../../../../surface/checked-pattern.ts';
+import { typeMismatchOf } from '../../../../types/fitting/fit/index.ts';
 import { sameType } from '../../../../types/identity/identity.ts';
 import { unitType } from '../../../../types/type/primitives.ts';
-import { typeText } from '../../../../types/type/type-text.ts';
 import { comparable } from '../../../../types/unions/equality.ts';
 import { namesOwnType, patternTypeOf } from '../../../../types/written/pattern-types.ts';
 import { anyShape } from '../../exhaustiveness/exhaustiveness.ts';
@@ -44,9 +44,7 @@ export function reference(context: BodyContext, node: NamePattern, part: ValuePa
     return failed;
   }
   if (!comparable(constant.type, part.type)) {
-    context.report(
-      checkerDiagnostics.typeMismatch(node.span, typeText(part.type), typeText(constant.type)),
-    );
+    context.report(typeMismatchOf(node.span, part.type, constant.type));
   }
   const test: PatternTest = {
     kind: 'equal',

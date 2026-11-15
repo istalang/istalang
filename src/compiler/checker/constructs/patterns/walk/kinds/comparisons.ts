@@ -20,6 +20,7 @@ import type { BodyContext } from '../../../../contexts/body-context.ts';
 import { checkerDiagnostics } from '../../../../diagnostics/index.ts';
 import { implicitOperatorCall } from '../../../../resolution/applying/implicit.ts';
 import type { PatternTest } from '../../../../surface/checked-pattern.ts';
+import { typeMismatchOf } from '../../../../types/fitting/fit/index.ts';
 import { isPrimitive, noneType } from '../../../../types/type/primitives.ts';
 import { typeText } from '../../../../types/type/type-text.ts';
 import { decidedEquality, fitEqualSides, isKnown } from '../../../../types/unions/equality.ts';
@@ -51,9 +52,7 @@ export function literal(context: BodyContext, node: LiteralPattern, part: ValueP
     return ruledOutLeaf;
   }
   if (!compare) {
-    context.report(
-      checkerDiagnostics.typeMismatch(node.span, typeText(part.type), typeText(compared.type)),
-    );
+    context.report(typeMismatchOf(node.span, part.type, compared.type));
   }
   return { tests: [equalTest(part, value, false)], shape: valueShape(context, value, part) };
 }

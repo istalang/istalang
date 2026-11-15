@@ -30,13 +30,13 @@ import { typeParametersOf } from '../../../../../syntax/declarations/index.ts';
 import type { FieldsLiteral } from '../../../../../syntax/expressions/index.ts';
 import type { BodyContext } from '../../../../contexts/body-context.ts';
 import { checkerDiagnostics } from '../../../../diagnostics/index.ts';
+import { typeMismatchOf } from '../../../../types/fitting/fit/index.ts';
 import { completeInference, settlingOf } from '../../../../types/inference/complete.ts';
 import { Inference } from '../../../../types/inference/infer.ts';
 import { type Settling, settlesFreely } from '../../../../types/inference/settle.ts';
 import { type Substitution, substitute } from '../../../../types/parts/substitution.ts';
 import type { ParameterKey, Type } from '../../../../types/type/index.ts';
 import { errorType } from '../../../../types/type/primitives.ts';
-import { typeText } from '../../../../types/type/type-text.ts';
 import { givenKeysOwner } from '../../../../types/written/key-types.ts';
 import { parameterType } from '../../../../types/written/resolve-type.ts';
 import { constrainArguments } from '../../../../types/written/type-arguments.ts';
@@ -257,7 +257,7 @@ function complete(
   if (completion.kind === 'open' && expected !== undefined) {
     const found = inference.solution();
     const given = shape.typeOf(parameters.map((parameter) => found.get(parameter) ?? errorType));
-    context.report(checkerDiagnostics.typeMismatch(node.span, typeText(expected), typeText(given)));
+    context.report(typeMismatchOf(node.span, expected, given));
     return undefined;
   }
   if (completion.kind === 'open') {

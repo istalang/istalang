@@ -33,7 +33,7 @@ export function checkIndex(context: BodyContext, node: Index, expected: Type | u
   const keys = rules.keysOf(container, []);
   const byKey = keys.kind !== 'error';
   const indexed = byKey && declaresIndex(context, container);
-  const key = context.expression(node.index, byKey && !indexed ? keys : undefined);
+  const key = context.settled(node.index, byKey && !indexed ? keys : undefined);
   const stoppedByKey = stoppedOperation(context, node, [
     ...operands,
     { node: node.index, type: key },
@@ -49,22 +49,25 @@ export function checkIndex(context: BodyContext, node: Index, expected: Type | u
     context.fit(key, keys, node.index);
     return errorType;
   }
-  return resolveCall(context, {
-    site: node,
-    name: '[]',
-    candidates: topLevelCandidates(context.checker, context.module, collectionFunctions.index, [
-      container,
-      key,
-    ]),
-    arguments: [
-      { node: node.target, type: container, passing: 'value' },
-      { node: node.index, type: key, passing: 'value' },
-    ],
-    typeArguments: undefined,
-    expected,
-    form: 'operator',
-    hint: () => insideOptional(node.target.span, container, '['),
-  });
+  const resolve = () =>
+    resolveCall(context, {
+      site: node,
+      name: '[]',
+      candidates: topLevelCandidates(context.checker, context.module, collectionFunctions.index, [
+        container,
+        key,
+      ]),
+      arguments: [
+        { node: node.target, type: container, passing: 'value' },
+        { node: node.index, type: key, passing: 'value' },
+      ],
+      typeArguments: undefined,
+      expected,
+      form: 'operator',
+      hint: () => insideOptional(node.target.span, container, '['),
+    });
+  // A link continuing an optional chain is called in a scope of its own, as a call continuing one is.
+  return context.chains.continues(node) ? context.scopes.isolated(resolve) : resolve();
 }
 
 /** Whether a struct type declares an `index` taking its value, which a key gives way to (§3.9). */

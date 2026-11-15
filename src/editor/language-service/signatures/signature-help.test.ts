@@ -141,12 +141,16 @@ describe('signature help', () => {
   it('shows the type of a function value a field holds or a getter gives (B51)', () => {
     const declarations = [
       'struct O:',
-      '  f: fn(Int) -> Int',
+      '  f: fn(Int, Bool) -> Int',
       'fn get g(self: O) -> fn(String) -> Int: fn(s: String): 0',
     ];
-    expect(help(...declarations, 'fn main(o: O) -> Int: o.f(‸1)')).toEqual({
-      label: 'fn(Int) -> Int',
+    expect(help(...declarations, 'fn main(o: O) -> Int: o.f(‸1, true)')).toEqual({
+      label: 'fn(Int, Bool) -> Int',
       parameter: 'Int',
+    });
+    expect(help(...declarations, 'fn main(o: O) -> Int: o.f(1, ‸true)')).toEqual({
+      label: 'fn(Int, Bool) -> Int',
+      parameter: 'Bool',
     });
     expect(help(...declarations, 'fn main(o: O) -> Int: o.g(‸"s")')).toEqual({
       label: 'fn(String) -> Int',

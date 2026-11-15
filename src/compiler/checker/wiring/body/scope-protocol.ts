@@ -18,10 +18,11 @@
  *   postponed.
  * - An `if` with no `else` gives nothing: its branches' values are dropped, so they settle on their
  *   own, as a statement's do.
- * - A member access, which may read a getter, stands as a call does, whatever it resolves to, since
- *   its standing is read before it is resolved: a plain field read opens a scope nothing joins. An
- *   operator or an index reads its operands settled where it is checked (equality, `in`, a key), so
- *   it stays a boundary.
+ * - A member access, which may read a getter, and an index stand as a call does, whatever they
+ *   resolve to, since standing is read before resolving: a plain field read opens a scope nothing
+ *   joins, and an index reads its key settled. An operator stays a boundary: its operands would
+ *   join a call that can't be chosen while a generic one among them is open (`add(twice(x), x)`,
+ *   5380), which its operands settling first avoids.
  * - A sugar takes no place of its own: its core, checked in its place, stands as its own kind does
  *   (checker/desugaring/), so one in parentheses joins.
  */
@@ -75,6 +76,7 @@ function collectionStanding(
 const standings: Handlers<ScopeHolding, CoreExpression, [Type | undefined], Standing> = {
   Call: opens,
   MemberAccess: opens,
+  Index: opens,
   StructLiteral: opens,
   NewStructLiteral: opens,
   Tuple: opens,
@@ -98,7 +100,6 @@ const standings: Handlers<ScopeHolding, CoreExpression, [Type | undefined], Stan
   Binary: boundary,
   Unary: boundary,
   Is: boundary,
-  Index: boundary,
   TupleElement: boundary,
   Reference: boundary,
   Dereference: boundary,

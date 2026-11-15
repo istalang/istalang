@@ -227,9 +227,14 @@ describe('a pack inferred from a function type taking none', () => {
   it('takes its parameters as their tuple, whichever side the pack is on', () => {
     const text = [
       'fn logged<...A, R>(f: Fn<A, R>) -> Fn<A, R>: f',
+      'fn takesZero(f: fn() -> Int) -> Int: f()',
       'fn takesLive(f: fn(Int) -> Int) -> Int: f(1)',
+      'fn takesTwo(f: fn(Int, String) -> Int) -> Int: f(1, "a")',
+      'fn zero() -> Int: 0',
       'fn area(n: Int) -> Int: n * n',
-      'fn main2() -> Int: takesLive(logged(area))',
+      'fn combine(n: Int, s: String) -> Int: n',
+      'fn main2() -> Int:',
+      '  takesZero(logged(zero)) + takesLive(logged(area)) + takesLive(logged(fn(n): n + 1)) + takesTwo(logged(combine))',
     ].join('\n');
     expect(reported(text)).toEqual(reportedNothing);
   });

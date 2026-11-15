@@ -16,4 +16,18 @@ describe('a member no method of the name takes the receiver of', () => {
       spanTexts: ['filter', 'filter'],
     });
   });
+
+  it("reports a method taking the receiver read as a value, and no clash with another type's method", () => {
+    const text = [
+      'struct Holder:',
+      '  filter: fn(Int) -> Bool',
+      'fn run(h: Holder, xs: Array<Int>) -> Bool:',
+      '  const f = xs.filter',
+      '  h.filter(1)',
+    ].join('\n');
+    expect(reported(text)).toEqual({
+      codes: [checkerDiagnostics.methodValue.code],
+      spanTexts: ['filter'],
+    });
+  });
 });

@@ -512,9 +512,19 @@ export function misfitOf(
   found: Type,
   expected: Type,
 ): Diagnostic<AnchoredSpan> {
-  // Read in the message's order, expected first.
+  if (!intoSeveral(found, expected, fitting)) {
+    return typeMismatchOf(at, expected, found);
+  }
+  const [foundText = '', expectedText = ''] = typeTextsTogether([found, expected]);
+  return checkerDiagnostics.severalConversions(at, foundText, expectedText);
+}
+
+/** That `found` is no `expected` at `at`, the two spelled together, so they never read alike. */
+export function typeMismatchOf(
+  at: AnchoredSpan,
+  expected: Type,
+  found: Type,
+): Diagnostic<AnchoredSpan> {
   const [expectedText = '', foundText = ''] = typeTextsTogether([expected, found]);
-  return intoSeveral(found, expected, fitting)
-    ? checkerDiagnostics.severalConversions(at, foundText, expectedText)
-    : checkerDiagnostics.typeMismatch(at, expectedText, foundText);
+  return checkerDiagnostics.typeMismatch(at, expectedText, foundText);
 }

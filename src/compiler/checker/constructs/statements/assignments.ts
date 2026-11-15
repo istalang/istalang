@@ -146,7 +146,11 @@ function checkCompound(
   ];
   const result =
     stoppedOperation(context, node, operands) ??
-    resolveOperator(context, node, binaryApplied(compoundOperator(operator)), operands);
+    resolveOperator(context, {
+      site: node,
+      operator: binaryApplied(compoundOperator(operator)),
+      operands,
+    });
   const fit = writtenFit(context, target, { type: result, place, at: node.value.span });
   context.variables.recordAssigned(node, [{ target, path: [], type: result, fit }]);
 }

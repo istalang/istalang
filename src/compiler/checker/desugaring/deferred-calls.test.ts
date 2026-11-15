@@ -312,8 +312,11 @@ describe("a deferred call's function generic over its mark", () => {
     const text = [
       'K async fn work<K in Persistence>(x: Int) -> Int: x',
       'fn queueUp(f: ista async fn() -> Int) -> Unit: ()',
+      'fn queueLive(f: live async fn() -> Int) -> Unit: ()',
       'fn main2() -> Unit:',
       '  queueUp work(1)',
+      '  queueLive work(2)',
+      '  queueUp(fn(): work(3))',
     ].join('\n');
     expect(reported(text).codes).toEqual([]);
   });

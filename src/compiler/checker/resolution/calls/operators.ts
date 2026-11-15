@@ -54,15 +54,21 @@ export interface Operand {
   readonly type: Type;
 }
 
+/** An operator applied: where, what it applies, to which operands, and what it is expected to give. */
+export interface OperatorCall {
+  readonly site: ResolvedSite;
+  readonly operator: AppliedOperator;
+  readonly operands: readonly Operand[];
+  readonly expected?: Type | undefined;
+}
+
 /**
- * Resolves `operator` applied to `operands` at `site`, recording the call; its result type, or
- * the error type after reporting that no single function takes those operands.
+ * Resolves `call`, recording it, its result advised by the type expected of it as a call's is; its
+ * result type, or the error type after reporting that no single function takes its operands.
  */
 export function resolveOperator(
   context: BodyContext,
-  site: ResolvedSite,
-  operator: AppliedOperator,
-  operands: readonly Operand[],
+  { site, operator, operands, expected }: OperatorCall,
 ): Type {
   const types = operands.map(({ type }) => type);
   return resolveCall(context, {
@@ -71,7 +77,7 @@ export function resolveOperator(
     candidates: topLevelCandidates(context.checker, context.module, operator.function, types),
     arguments: operands.map((operand) => ({ ...operand, passing: 'value' })),
     typeArguments: undefined,
-    expected: undefined,
+    expected,
     form: 'operator',
   });
 }

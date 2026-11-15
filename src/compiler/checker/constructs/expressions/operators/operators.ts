@@ -14,6 +14,7 @@
  *   (constructs/expressions/operators/decided-conditions.ts).
  * - `and`, `or` and `not` take and give `Bool`; they short-circuit, so they are never calls.
  * - `??` works on optionals (access/optionals.ts).
+ * - An operator that calls a function gives it the type expected of its result, as a call does.
  */
 
 import { unreachable } from '../../../../../foundation/structures/unreachable.ts';
@@ -62,7 +63,12 @@ export function checkBinary(context: BodyContext, node: Binary, expected: Type |
   const operands = operandsOf(context, node);
   return (
     stoppedOperation(context, node, operands) ??
-    resolveOperator(context, node, applied(operator, meaning), operands)
+    resolveOperator(context, {
+      site: node,
+      operator: applied(operator, meaning),
+      operands,
+      expected,
+    })
   );
 }
 
@@ -74,7 +80,12 @@ export function checkUnary(context: BodyContext, node: Unary, expected?: Type): 
   const operands = [{ node: node.operand, type: context.expression(node.operand) }];
   const type =
     stoppedOperation(context, node, operands) ??
-    resolveOperator(context, node, unaryApplied(node.operator), operands);
+    resolveOperator(context, {
+      site: node,
+      operator: unaryApplied(node.operator),
+      operands,
+      expected,
+    });
   const written = writtenLiteral(node);
   return written === undefined
     ? type

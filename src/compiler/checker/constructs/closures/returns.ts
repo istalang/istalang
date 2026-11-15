@@ -172,37 +172,52 @@ export class ReturnScope implements Returns {
    */
   #settled(context: BodyContext, tail: Produced, declared: Type): Type {
     const produced = this.#orFuture === undefined ? [tail] : [...this.#returned, tail];
-    const result =
-      this.#orFuture !== undefined &&
-      !fitsEach(context, produced, declared) &&
-      fitsEach(context, produced, this.#orFuture)
-        ? this.#orFuture
-        : declared;
+    const result = this.#futureProduced(context, produced, declared) ?? declared;
     for (const each of produced) {
       fitProduced(context, each, result);
     }
     return result;
   }
+
+  /**
+   * The future of `declared` that `produced` give instead (§3.14), where every one fits it and not
+   * every one fits `declared`, what that fit binds kept; undefined where they give `declared`.
+   */
+  #futureProduced(
+    context: BodyContext,
+    produced: readonly Produced[],
+    declared: Type,
+  ): Type | undefined {
+    const future = this.#orFuture;
+    if (future === undefined || fitOfEach(context, produced, declared) !== undefined) {
+      return undefined;
+    }
+    const intoFuture = fitOfEach(context, produced, future);
+    intoFuture?.keep();
+    return intoFuture === undefined ? undefined : future;
+  }
 }
 
 /**
- * Whether every one of `produced` fits `type`. Where the constraint scope still holds one (a call
- * whose mark it infers), as the scope's system may bind it: probed in a copy of that system, which
- * is committed to the scope when every one fits, so what the scope settles agrees with the choice,
- * and left behind when one doesn't.
+ * How every one of `produced` fits `type`, to keep once chosen; undefined where one doesn't. Where
+ * the constraint scope still holds one (a call whose mark it infers), it fits as the scope's system
+ * may bind it: probed in a copy of that system, which keeping commits to the scope, so what the
+ * scope settles agrees with the choice. The scope is left as it was until then.
  */
-function fitsEach(context: BodyContext, produced: readonly Produced[], type: Type): boolean {
+function fitOfEach(
+  context: BodyContext,
+  produced: readonly Produced[],
+  type: Type,
+): { readonly keep: () => void } | undefined {
   const { checker, scopes } = context;
   const scope = scopes.root;
   if (scope === undefined || !produced.some((each) => scopes.holds(each.type))) {
-    return produced.every((each) => checker.fitOf(each.type, type) !== undefined);
+    const fits = produced.every((each) => checker.fitOf(each.type, type) !== undefined);
+    return fits ? { keep: () => undefined } : undefined;
   }
   const probe = new Inference([], checker.fitting, undefined, { copying: scope });
   const fits = produced.every((each) => probe.match(type, each.type));
-  if (fits) {
-    probe.commitTo(scope);
-  }
-  return fits;
+  return fits ? { keep: () => probe.commitTo(scope) } : undefined;
 }
 
 /**

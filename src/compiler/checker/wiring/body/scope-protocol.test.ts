@@ -72,11 +72,27 @@ describe('a call written as another construct', () => {
       'struct Box:',
       '  n: Int',
       'fn get empty<T>(self: Box) -> Array<T>: []',
+      'fn index<T>(self: Box, i: Int) -> Array<T>: []',
       'fn id<T>(x: T) -> T: x',
       'fn main2() -> Unit:',
       '  const b = Box{n: 1}',
       '  const a: Array<Int> = id(empty(b))',
       '  const c: Array<Int> = id(b.empty)',
+      '  const d: Array<Int> = id(b[0])',
+    ].join('\n');
+    expect(reported(text)).toEqual(reportedNothing);
+  });
+
+  it("gives an operator's function the type expected of its result, as a call's", () => {
+    const text = [
+      'struct Box:',
+      '  n: Int',
+      'fn negate<T>(self: Box) -> Array<T>: []',
+      'fn add<T>(left: Box, right: Box) -> Array<T>: []',
+      'fn main2() -> Unit:',
+      '  const b = Box{n: 1}',
+      '  const e: Array<Int> = -b',
+      '  const f: Array<Int> = b + b',
     ].join('\n');
     expect(reported(text)).toEqual(reportedNothing);
   });

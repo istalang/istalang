@@ -135,7 +135,7 @@ function functionFitsByParts(
     given.kind === 'error' || declared.kind === 'error' || relation.ordered(order, given, declared);
   const marks = by(markOrder);
   const sends = by(sendabilityOrder);
-  if (expected.pack !== undefined) {
+  if (expected.pack !== undefined || found.pack !== undefined) {
     return functionFits(expected, found, { parts: same, marks, sends });
   }
   return functionFits(expected, found, {
