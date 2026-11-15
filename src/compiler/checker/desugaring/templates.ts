@@ -55,6 +55,7 @@ export const templates: Desugar<TemplateLiteral> = {
   },
   wording: {
     [checkerDiagnostics.noMatchingOverload.code]: notWritten,
+    [checkerDiagnostics.noMember.code]: notWritten,
     [checkerDiagnostics.insideOptional.code]: notWritten,
     [checkerDiagnostics.typeMismatch.code]: notWritten,
   },

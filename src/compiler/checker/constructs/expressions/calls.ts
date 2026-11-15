@@ -283,11 +283,13 @@ function callMethod(
   const { met, unmet } = methodsNamed(checker, module, name, [receiverType, ...others]);
   const methods = [...met, ...unmet];
   const candidates = callableThrough(checker, callee, methods);
+  const insideReceiver = () => insideOptional(receiver.span, receiverType, '.');
   if (candidates.length === 0) {
     context.report(
       methods.length > 0
         ? checkerDiagnostics.receiverNotPlace(receiver.span, name)
-        : checkerDiagnostics.noMember(callee.member.span, typeText(receiverType), name),
+        : (insideReceiver() ??
+            checkerDiagnostics.noMember(callee.member.span, typeText(receiverType), name)),
     );
     return errorType;
   }
@@ -301,7 +303,7 @@ function callMethod(
     expected: call.expected,
     form: 'call',
     receiver,
-    hint: () => insideOptional(receiver.span, receiverType, '.'),
+    hint: insideReceiver,
   });
 }
 
