@@ -39,7 +39,7 @@ tags: [tracker]
 
 ## Filed
 
-Open items only: an item is removed once it is resolved; git history keeps it. Each group numbers its own items and keeps counting up: the next ids are F37, P54, Q58, B108. Items filed before 2026-10-28 shared one `D` series; older docs and git history keep the closed `D` ids.
+Open items only: an item is removed once it is resolved; git history keeps it. Each group numbers its own items and keeps counting up: the next ids are F37, P54, Q59, B108. Items filed before 2026-10-28 shared one `D` series; older docs and git history keep the closed `D` ids.
 
 Size: easy (one short, local change), medium (several files or a design choice inside one layer), big (cross-layer, or a decision first). Depends on: what must happen first, or "none" when it can be done now.
 
@@ -147,6 +147,7 @@ DRY, double standards, cohesion, layering, dead or misplaced code.
 | Q53 | A runtime serves delegated jobs through three natives standing in for state proposal 9's runtime keeps itself: `_served` (the keys of its instances), `_jobServer` and `_jobCall` (its own calls, which leave an instance's panic to the host) in `runtime.ista`. Proposal 9's runtime replaces them, with P48. | medium | proposal 9 | async-kinds DG 2026-11-11 |
 | Q54 | `docs/work/linker/js-interpreter.md`'s Durable Objects hosting is built on `Runtime.fill` and `settle`, gone since async-kinds: a host now starts `live async fn main` as a live run that drives its contexts, and host futures are live. Redesign the hosting around live runs and contexts, or archive the section. | small | — | async-kinds merge review 2026-11-11 |
 | Q55 | Nothing holds `docs/reuse/`'s `→ symbol (path)` citations, or inline signatures in the spec's prose, to the code: fences are compiled, but a split file or a renamed export leaves a citation stale until a review finds it (the async-kinds merge review found a dozen). A test resolving each cited symbol in its cited file, with `tsm`, would. | small | none; can be done now | async-kinds merge review 2026-11-11 |
+| Q58 | `typeTextsTogether` (`checker/types/type/type-text.ts`) sets a module-global `let together` that silently changes what `typeText` and the exported `parameterText` print while it runs, and `primesOf` copies the array on each append instead of `addToGroup` (`docs/reuse/structures-and-invariants.md`). Pass the printing context explicitly. | small | none | structural-fixes merge review 2026-11-15 |
 
 ### Behaviour and correctness (B)
 
