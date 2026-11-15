@@ -13,10 +13,14 @@ import { isMethod } from '../../../syntax/declarations/methods.ts';
 import type { CheckerContext } from '../../contexts/context.ts';
 import { searchSite } from '../../contexts/use-site.ts';
 import type { Inference } from '../../types/inference/infer.ts';
-import { substituteConstraint } from '../../types/parts/substitution.ts';
-import { parametersIn } from '../../types/parts/type-parts.ts';
 import type { ParameterKey, Type } from '../../types/type/index.ts';
-import { meets } from '../conformance/conformance.ts';
+import {
+  boundParameters,
+  boundWitnesses,
+  parameterBounds,
+} from '../conformance/parameter-bounds.ts';
+import { rootGoalsAt } from '../conformance/root-goals.ts';
+import { isFailure } from '../conformance/witness-outcomes.ts';
 import { takenBy } from './applicability.ts';
 import { bindArguments } from './binding.ts';
 import type { Candidate } from './candidates.ts';
@@ -96,8 +100,8 @@ export function selfInference(
 }
 
 /**
- * Whether the type parameters `inference` found meet their constraints. A parameter still open, or
- * a constraint mentioning one, waits for the arguments that decide it.
+ * Whether the type parameters `inference` found meet their bounds (conformance/parameter-bounds.ts).
+ * A parameter still open, or one whose bounds mention one, waits for the arguments that decide it.
  */
 function meetsWhereFound(
   checker: CheckerContext,
@@ -110,12 +114,13 @@ function meetsWhereFound(
     inference.isUnknown(parameter) && inference.boundOf(parameter) === undefined;
   return parameters.every((parameter) => {
     const found = inference.boundOf(parameter);
+    if (found === undefined) {
+      return true;
+    }
+    const bounds = parameterBounds(checker, parameter, substitution);
     return (
-      found === undefined ||
-      checker.constraintsOf(parameter).every((constraint) => {
-        const mapped = substituteConstraint(constraint, substitution, checker.typeRules);
-        return mapped.arguments.flatMap(parametersIn).some(isOpen) || meets(site, found, mapped);
-      })
+      boundParameters(bounds).some(isOpen) ||
+      !isFailure(boundWitnesses(site, found, bounds, rootGoalsAt(site)))
     );
   });
 }

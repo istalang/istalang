@@ -16,7 +16,7 @@
  *   constraints imply it (`entailed`).
  */
 
-import type { RequiredAssociatedType, TypeParameter } from '../../../syntax/declarations/index.ts';
+import type { RequiredAssociatedType } from '../../../syntax/declarations/index.ts';
 import type { CheckerContext } from '../../contexts/context.ts';
 import type { UseSite } from '../../contexts/use-site.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
@@ -363,29 +363,6 @@ function structEntailed(
       others: '',
     }) === undefined
   );
-}
-
-/**
- * Whether `argument` meets the struct constraint `model`, reporting at its site when it doesn't.
- */
-type StructJudge = (argument: Type, model: StructConstraintModel) => boolean;
-
-/**
- * Whether `argument`, given for `parameter` with the others in `substitution`, meets the struct
- * constraints on it, each judged by `judge`, which reports at `site` what it lacks.
- */
-export function meetsStructConstraints(
-  site: UseSite,
-  parameter: TypeParameter,
-  { argument, substitution }: { readonly argument: Type; readonly substitution: Substitution },
-  judge: StructJudge,
-): boolean {
-  const { checker } = site;
-  return checker
-    .structConstraintsOf(parameter)
-    .every((model) =>
-      judge(argument, substituteStructConstraint(model, substitution, checker.typeRules)),
-    );
 }
 
 /** Whether `argument` meets the struct constraint `model`, reporting at `site` what it lacks. */

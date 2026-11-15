@@ -10,7 +10,6 @@
 import type { TypeParameter } from '../../../syntax/declarations/index.ts';
 import type { UseSite } from '../../contexts/use-site.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
-import { type Substitution, substitute } from '../parts/substitution.ts';
 import { isSimpleMark, kindHolderName, standsForOneKind } from '../type/function-kinds.ts';
 import type { Type } from '../type/index.ts';
 import { membersOf } from '../type/index.ts';
@@ -34,8 +33,9 @@ export function isOneMember(
 }
 
 /**
- * Whether `argument` may stand for `parameter`, its union read with the arguments `substitution`
- * gives the parameters before it; reports at `site` when it can't. Any other parameter takes it.
+ * Whether `argument` may stand for `parameter`, one member of `union`, its member union read with
+ * the arguments given the other parameters; reports at `site` when it can't. A parameter with no
+ * member union takes any.
  * A mark parameter is a member parameter as any (proposal 8, Rule 3): `K in "live"` takes no
  * `"ista"`. The bottom given where one of the two kinds is needed is simple code calling what needs
  * a kind, which a mark on that code mends, and is told so.
@@ -44,14 +44,12 @@ export function standsForMember(
   site: UseSite,
   parameter: TypeParameter,
   argument: Type,
-  substitution: Substitution,
+  union: Type | undefined,
 ): boolean {
   const { checker } = site;
-  const written = checker.memberUnionOf(parameter);
-  if (argument.kind === 'error' || written === undefined) {
+  if (argument.kind === 'error' || union === undefined) {
     return true;
   }
-  const union = substitute(written, substitution, checker.typeRules);
   if (isOneMember(union, argument, checker.fitting.memberUnionOf)) {
     return true;
   }

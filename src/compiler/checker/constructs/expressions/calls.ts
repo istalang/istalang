@@ -43,7 +43,7 @@ import { unreachable } from '../../../../foundation/structures/unreachable.ts';
 import type { Entity } from '../../../binder/entities.ts';
 import { misplacedArgument } from '../../../syntax/expressions/arguments.ts';
 import type { Call } from '../../../syntax/expressions/calls.ts';
-import type { Expression, MemberAccess } from '../../../syntax/expressions/index.ts';
+import type { MemberAccess } from '../../../syntax/expressions/index.ts';
 import {
   calledName,
   callTypeArguments,
@@ -69,7 +69,7 @@ import {
 } from '../../resolution/choosing/member-meaning.ts';
 import { type CalledRead, readGetter, readKeyed } from '../../rules/getters.ts';
 import type { Type } from '../../types/type/index.ts';
-import { errorType, isPrimitive, neverType } from '../../types/type/primitives.ts';
+import { errorType } from '../../types/type/primitives.ts';
 import { typeText } from '../../types/type/type-text.ts';
 import { insideOptional } from '../../types/unions/inside-optional.ts';
 import { namedType } from '../../types/written/named-types.ts';
@@ -77,6 +77,7 @@ import { checkValueCall, valueParameterTypes } from '../closures/value-calls.ts'
 import {
   callClash,
   keyMissed,
+  missedStatic,
   readsNothing,
   readsThroughNamespace,
   recordFieldRead,
@@ -224,9 +225,7 @@ function calledValue(context: BodyContext, node: Call): CalledValue | undefined 
 
 /**
  * The type of what `x.f(…)` calls where `f` gives a value (`reads`): its field's, or what its getter
- * or keyed index gives, read now as a field is (§3.1, §3.9); undefined where nothing is read. A keyed
- * read is settled first, in a scope of its own, as `x["k"](…)`'s callee is: each key's function
- * type, `S[K]`, is known only once the read's own type parameters are.
+ * or keyed index gives, read now as a field is (§3.1, §3.9); undefined where nothing is read.
  */
 function calledMemberType(
   context: BodyContext,
@@ -238,7 +237,7 @@ function calledMemberType(
     case 'getter':
       return readGetter(context, read, getters.met);
     case 'keyed':
-      return context.scopes.isolated(() => readKeyed(context, read, candidatesOf(keyed)));
+      return readKeyed(context, read, candidatesOf(keyed));
     default:
       return field?.member.type;
   }
@@ -382,38 +381,15 @@ function callEntity(
 /** A static call of `name` through the type `owner` (§3.7), a conversion being one (§3.10). */
 function callStatic(context: BodyContext, call: WrittenCall, owner: Type, name: string): Type {
   const { checker, module } = context;
-  if (isPrimitive(owner, 'Never')) {
-    // Through the field type of a loop's pass over no field, which never runs (§4).
-    context.decisions.stopAt(call.node, []);
-    return neverType;
-  }
   const target = staticTargetOf(checker, owner);
   const candidates = target === undefined ? [] : staticCandidates(checker, module, target, name);
   if (candidates.length === 0) {
-    if (owner.kind === 'error') {
-      reportNoField(context, calledName(call.node));
-    } else {
-      context.report(checkerDiagnostics.noStaticFunction(call.node.span, typeText(owner), name));
-    }
-    return errorType;
+    const callee = calledName(call.node);
+    const written = callee.kind === 'MemberAccess' ? callee.target : callee;
+    const missed = { node: call.node, written, name, at: call.node.span };
+    return missedStatic(context, missed, owner);
   }
   return resolve(context, call, staticName(typeText(owner), name), candidates);
-}
-
-/**
- * A static call through a type indexed by a key naming none of its fields, `S[Int].make()`
- * (§3.10), reported at the key; nothing for any other owner in error, already reported.
- */
-function reportNoField(context: BodyContext, callee: Expression): void {
-  const indexed = callee.kind === 'MemberAccess' ? callee.target : undefined;
-  if (indexed?.kind !== 'Index') {
-    return;
-  }
-  const owner = namedType(context, indexed.target);
-  const key = namedType(context, indexed.index);
-  if (owner !== undefined && key !== undefined && owner.kind !== 'error' && key.kind !== 'error') {
-    context.report(checkerDiagnostics.notKeyOf(indexed.index.span, typeText(key), typeText(owner)));
-  }
 }
 
 function resolve(

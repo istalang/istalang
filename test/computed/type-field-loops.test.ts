@@ -171,8 +171,21 @@ describe('a loop over a type, nested and degenerate', () => {
     ).toEqual([]);
   });
 
-  it('reports a static call through a key naming no field, once, at the key', () => {
+  it('reports a static member through a key naming no field, called or not, once, at the key', () => {
     expect(codesOf(...nodes, ...orderLike, 'fn f(): _ = OrderLike[Int].make(1)')).toEqual([5161]);
+    expect(codesOf(...nodes, ...orderLike, 'fn f(): _ = OrderLike[Int].make')).toEqual([5161]);
+  });
+
+  it('reads a static member uncalled through a pass over no field as it calls one', () => {
+    expect(
+      codesOf(
+        ...nodes,
+        'struct Empty {}',
+        'fn f():',
+        '  for K in keyof Empty:',
+        '    _ = Empty[K].make',
+      ),
+    ).toEqual([]);
   });
 
   it('checks type constraints and reductions on written types in every pass, not only the first', () => {
@@ -311,6 +324,20 @@ describe('a loop over a type in an editor', () => {
         '    _ = x',
       ),
     ).toEqual(['Int | S[K]']);
+    const associated = [
+      'struct Count { n: Int }',
+      'fn Count.zero() -> Count: Count{n: 0}',
+      'struct Label { t: String }',
+      'fn Label.zero() -> Label: Label{t: ""}',
+      'struct A:',
+      '  type Data = Count',
+      'struct B:',
+      '  type Data = Label',
+      'struct P { a: A, b: B }',
+      'fn f() -> { a: Count, b: Label }:',
+      '  struct{for K in keyof P: [K]: P[K].‸Data.zero()}',
+    ];
+    expect(hoverCodeAt(...associated)).toEqual(['A.Data | B.Data']);
   });
 });
 

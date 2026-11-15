@@ -5,7 +5,8 @@
  *   (types/inference/settle.ts), the call's expected type among it once the caller has given it
  *   (`Inference.expect`); one still open can't be inferred. Settling asks which types a parameter
  *   admits (`admitsAt`).
- * - Every type argument must meet its parameter's constraints. A type meets a trait with the same
+ * - Every type argument must meet its parameter's bounds, judged as parameter-bounds.ts judges
+ *   them wherever an argument is given. A type meets a trait with the same
  *   functions wherever it is met: those the trait requires must be declared beside the types they
  *   take or beside the trait, or be a requirement of a type parameter's own constraints
  *   (resolution/choosing/candidates.ts). Each is the function declared to meet it
@@ -46,15 +47,10 @@ import { silent, type UseSite } from '../../contexts/use-site.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import type { RequiredField } from '../../surface/checked-field.ts';
 import type { ResolvedCall, Witnesses } from '../../surface/resolved-call.ts';
-import { standsForMember } from '../../types/fitting/member-arguments.ts';
 import { sameType } from '../../types/identity/identity.ts';
 import { type Completion, completeInference, settlingOf } from '../../types/inference/complete.ts';
 import type { Settling } from '../../types/inference/settle.ts';
-import {
-  type Substitution,
-  substitute,
-  substituteConstraint,
-} from '../../types/parts/substitution.ts';
+import { type Substitution, substitute } from '../../types/parts/substitution.ts';
 import { mentionsError } from '../../types/parts/type-parts.ts';
 import {
   constraintSubstitution,
@@ -76,13 +72,9 @@ import {
 import { type Derivation, derivationOf } from './derived-traits.ts';
 import { kindsSettledAt } from './kind-settling.ts';
 import { fieldGetters, lacks, type Meeting, meetingKey, metBy } from './meetings.ts';
+import { boundWitnesses, parameterBounds } from './parameter-bounds.ts';
 import { type ArgumentGoals, rootGoalsAt } from './root-goals.ts';
-import {
-  associatedShortfall,
-  type Meets,
-  meetsStructConstraints,
-  meetsStructModel,
-} from './shortfalls.ts';
+import { associatedShortfall, type Meets, meetsStructModel } from './shortfalls.ts';
 import { type MembersMeeting, membersCall, membersShortfall } from './union-traits.ts';
 import {
   boundReached,
@@ -149,6 +141,7 @@ function searchGoalsAt(site: UseSite, search: Search): ArgumentGoals {
       return search.goals.witnessesReported(meetingKey(meeting), () => conform(meeting, search));
     },
     structMet: (type, model) => meetsStructModel(site, type, model, silentMeets(site, search)),
+    unmet: () => (search.endless === undefined ? 'failed' : 'endless'),
   };
 }
 
@@ -166,23 +159,10 @@ function witnessesOf(
   const witnesses = new Map<TypeParameter, readonly (readonly ResolvedCall[])[]>();
   for (const [index, parameter] of parameters.entries()) {
     const argument = typeArguments[index] ?? errorType;
-    const given = { argument, substitution };
-    if (
-      !(
-        standsForMember(site, parameter, argument, substitution) &&
-        meetsStructConstraints(site, parameter, given, goals.structMet)
-      )
-    ) {
-      return search?.endless === undefined ? 'failed' : 'endless';
-    }
-    const met: (readonly ResolvedCall[])[] = [];
-    for (const constraint of site.checker.constraintsOf(parameter)) {
-      const mapped = substituteConstraint(constraint, substitution, site.checker.typeRules);
-      const witnessesOfConstraint = goals.witnesses(argument, mapped);
-      if (isFailure(witnessesOfConstraint)) {
-        return witnessesOfConstraint;
-      }
-      met.push(witnessesOfConstraint);
+    const bounds = parameterBounds(site.checker, parameter, substitution);
+    const met = boundWitnesses(site, argument, bounds, goals);
+    if (isFailure(met)) {
+      return met;
     }
     witnesses.set(parameter, met);
   }

@@ -50,6 +50,34 @@ describe('a keyed read (§3.9)', () => {
     });
   });
 
+  it("serves only a receiver meeting its self's struct constraints and member bounds", () => {
+    const declarations = [
+      'trait Node:',
+      '  fn size(self: Self) -> Int',
+      'struct Leaf:',
+      '  n: Int',
+      'fn size(self: Leaf) -> Int: self.n',
+      'struct Tree:',
+      '  leaf: Leaf',
+      'struct Other:',
+      '  name: String',
+      'fn index<S is struct { [_] is Node }, K in keyof S>(self: S, key: K) -> Int: 1',
+      'fn index<S in "x" | "y", K in "k">(self: S, key: K) -> Int: 2',
+    ].join('\n');
+    const body = [
+      'const o = Other{name: "a"}',
+      '_ = o.name',
+      '_ = o["name"]',
+      '_ = o.k',
+      'const t = Tree{leaf: Leaf{n: 1}}',
+      '_ = t.leaf',
+    ];
+    expect(reported(`${declarations}\n\n${inFunction(body.join('\n'))}`)).toEqual({
+      codes: [checkerDiagnostics.unknownField.code, checkerDiagnostics.keyedOrMember.code],
+      spanTexts: ['k', 'leaf'],
+    });
+  });
+
   it("misses list the keys, none for an empty struct's, after a getter whose constraints fail", () => {
     const declarations = [
       'struct Empty',

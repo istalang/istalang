@@ -19,7 +19,7 @@
 
 import type { Diagnostic } from '../../../../../foundation/diagnostics/diagnostic.ts';
 import { linkOperator } from '../../../../syntax/expressions/chains.ts';
-import type { Expression, MemberAccess } from '../../../../syntax/expressions/index.ts';
+import type { Expression, Index, MemberAccess } from '../../../../syntax/expressions/index.ts';
 import { type Identifier, isMissingName } from '../../../../syntax/tree/node.ts';
 import type { AnchoredSpan } from '../../../../syntax/tree/positions.ts';
 import type { BodyContext, FieldReadRecord } from '../../../contexts/body-context.ts';
@@ -37,7 +37,7 @@ import { readGetter, readKeyed } from '../../../rules/getters.ts';
 import type { FieldRead, FieldReading, FoundField } from '../../../surface/checked-field.ts';
 import { fieldOf } from '../../../types/traits/known-fields.ts';
 import type { Type } from '../../../types/type/index.ts';
-import { errorType } from '../../../types/type/primitives.ts';
+import { errorType, isPrimitive, neverType } from '../../../types/type/primitives.ts';
 import { typeText } from '../../../types/type/type-text.ts';
 import { insideOptional } from '../../../types/unions/inside-optional.ts';
 import { optionalInner } from '../../../types/unions/unions.ts';
@@ -68,10 +68,8 @@ export function checkMemberAccess(
   }
   const owner = node.isOptional ? undefined : namedType(context, node.target);
   if (owner !== undefined) {
-    context.report(
-      checkerDiagnostics.noStaticFunction(node.member.span, typeText(owner), node.member.text),
-    );
-    return errorType;
+    const missed = { node, written: node.target, name: node.member.text, at: node.member.span };
+    return missedStatic(context, missed, owner);
   }
   const type = context.chains.target(context, node);
   const stopped = stoppedOperation(context, node, [{ node: node.target, type }]);
@@ -215,6 +213,44 @@ function besideMethod(
   return beside
     ? checkerDiagnostics.fieldOrMethod(name.span, typeText(receiver), name.text, valued)
     : undefined;
+}
+
+/**
+ * A static member `name` no function of `owner`, the type `written` names in value position, is
+ * (§3.7), read or called alike: through a pass over no field (§4), `Never`, `node` stops, as that pass never
+ * runs; through a type indexed by a key naming no field of it, `S[Int].make` (§3.10), it is
+ * reported at the key; through any other owner in error, nothing more; else as no static function
+ * of the name, `at`.
+ */
+export function missedStatic(
+  context: BodyContext,
+  missed: {
+    readonly node: Expression;
+    readonly written: Expression;
+    readonly name: string;
+    readonly at: AnchoredSpan;
+  },
+  owner: Type,
+): Type {
+  if (isPrimitive(owner, 'Never')) {
+    context.decisions.stopAt(missed.node, []);
+    return neverType;
+  }
+  if (owner.kind !== 'error') {
+    context.report(checkerDiagnostics.noStaticFunction(missed.at, typeText(owner), missed.name));
+  } else if (missed.written.kind === 'Index') {
+    reportNotKeyOf(context, missed.written);
+  }
+  return errorType;
+}
+
+/** A type indexed by a key naming none of its fields, reported at the key. */
+function reportNotKeyOf(context: BodyContext, indexed: Index): void {
+  const owner = namedType(context, indexed.target);
+  const key = namedType(context, indexed.index);
+  if (owner !== undefined && key !== undefined && owner.kind !== 'error' && key.kind !== 'error') {
+    context.report(checkerDiagnostics.notKeyOf(indexed.index.span, typeText(key), typeText(owner)));
+  }
 }
 
 /**

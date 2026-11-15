@@ -61,6 +61,8 @@ export function programRootGoals(checker: CheckerContext, searches: RootGoals): 
 export interface ArgumentGoals {
   readonly witnesses: (type: Type, constraint: Constraint) => readonly ResolvedCall[] | Failure;
   readonly structMet: (type: Type, model: StructConstraintModel) => boolean;
+  /** What a bound with no witness, a member union or struct constraint, fails as when unmet. */
+  readonly unmet: () => Failure;
 }
 
 /** A call's instantiation's goals, asked at `site` of its program's root goals. */
@@ -70,6 +72,7 @@ export function rootGoalsAt(site: UseSite): ArgumentGoals {
     witnesses: (type, constraint) =>
       rootGoals.witnesses(site, { type, constraint, onValues: false }) ?? 'failed',
     structMet: (type, model) => rootGoals.structMet(site, { type, model }),
+    unmet: () => 'failed',
   };
 }
 

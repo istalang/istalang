@@ -124,7 +124,8 @@ src/
         written/                                                 written types resolved: the type a name names in a value's place
                                                                  (named-types.ts) or a pattern (pattern-types.ts), key types, type
                                                                  arguments, and type `match`es resolved, given, placed and unfolded
-                                                                 (type-match.ts, written-matches.ts)
+                                                                 (type-match.ts, written-matches.ts); where a type is written, a type
+                                                                 loop's pass among it (written.ts)
         properties/                                              what a type holds or reaches: finite values, held values, the cycle guard, handles read off declarations,
                                                                  a value's data kind, in one home (value-kinds.ts), an associated type's read through the checker from its bounds (traits/data-kind.ts), what a type parameter qualifies functions by,
                                                                  known by what its union holds (qualifiers.ts)
@@ -145,7 +146,9 @@ src/
                                                                  witnesses and why there is none, the traits the compiler derives (derived-traits.ts: one
                                                                  table), unions meeting traits through their members, the instantiation a type meets in an
                                                                  `any` constraint's place through its trait's variance, and every one it may meet, which
-                                                                 inference relates through (met-instantiations/index.ts)
+                                                                 inference relates through (met-instantiations/index.ts); a type
+                                                                 argument judged against every bound on its parameter, wherever one is
+                                                                 given (parameter-bounds.ts, the one place)
         type-matches/                                            a type `match`'s use reduced and its cases matched, and the type `match`es and associated
                                                                  types an instantiation reaches, checked to name a type whose values end where it is written
         applying/                                                a chosen call applied: every call chosen, instantiated and fitted in one place
@@ -207,9 +210,10 @@ src/
                                                                  a written type's type, a type's members
       wiring/                                                    wiring one program (program/: its checker, what checking reads of its Program and Bindings, and
                                                                  the type rules it implements: program-type-rules.ts) and one body (body/: its checker, what it
-                                                                 records of its nodes, per pass, its constraint scopes and the scope protocol, one
-                                                                 entry per kind of expression (scope-protocol.ts), and facts/: each fact a CheckedBody
-                                                                 answers, read per pass, instantiated and joined); it imports every layer, and no
+                                                                 records of its nodes, per pass, the types it writes (written-types.ts), its
+                                                                 constraint scopes and the scope protocol, one entry per kind of expression
+                                                                 (scope-protocol.ts), and facts/: each fact a CheckedBody answers, read per pass,
+                                                                 instantiated, and joined for tools (joined-body.ts)); it imports every layer, and no
                                                                  layer imports it
     lowering/           checked program → Definition; lower.ts is the entry, context.ts one function's context. Desugaring the checker and lowering share is derived in syntax/; the rest lives here
       functions/                                                 writing one function: its composition (index.ts), frames and the variables an entry declares,

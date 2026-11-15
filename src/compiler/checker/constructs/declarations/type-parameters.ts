@@ -29,17 +29,15 @@ import type {
   Instantiable,
 } from '../../contexts/context.ts';
 import { useSite } from '../../contexts/use-site.ts';
-import { meets } from '../../resolution/conformance/conformance.ts';
-import { meetsStructConstraints } from '../../resolution/conformance/shortfalls.ts';
+import { boundWitnesses, parameterBounds } from '../../resolution/conformance/parameter-bounds.ts';
+import { rootGoalsAt } from '../../resolution/conformance/root-goals.ts';
 import { impliedConstraints } from '../../resolution/type-matches/implied-constraints.ts';
 import {
   failureDiagnostic,
   ReductionRequirements,
 } from '../../resolution/type-matches/reduction-requirements.ts';
-import { standsForMember } from '../../types/fitting/member-arguments.ts';
 import { sameType } from '../../types/identity/identity.ts';
 import { typeKeys } from '../../types/identity/type-keys.ts';
-import { substituteConstraint } from '../../types/parts/substitution.ts';
 import { sameConstraintSpelled } from '../../types/parts/type-parts.ts';
 import { resolveConstraint } from '../../types/traits/constraints.ts';
 import { withKindBound } from '../../types/traits/data-kind.ts';
@@ -183,20 +181,8 @@ export class TypeParameters {
     if (argument === undefined) {
       return;
     }
-    standsForMember(site, parameter, argument, typeArguments);
-    meetsStructConstraints(
-      site,
-      parameter,
-      { argument, substitution: typeArguments },
-      (type, model) => this.#checker.rootGoals.structMet(site, { type, model }),
-    );
-    for (const constraint of this.constraintsOf(parameter)) {
-      meets(
-        site,
-        argument,
-        substituteConstraint(constraint, typeArguments, this.#checker.typeRules),
-      );
-    }
+    const bounds = parameterBounds(this.#checker, parameter, typeArguments);
+    boundWitnesses(site, argument, bounds, rootGoalsAt(site));
   }
 }
 

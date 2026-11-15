@@ -7,8 +7,8 @@
 
 import { sameItems } from '../../../../foundation/structures/equality.ts';
 import { type Substitution, substitute, substituteConstraint } from '../parts/substitution.ts';
-import { sameConstraintSpelled, sameTypeSpelled } from '../parts/type-parts.ts';
-import type { Constraint, Type } from './index.ts';
+import { parametersIn, sameConstraintSpelled, sameTypeSpelled } from '../parts/type-parts.ts';
+import type { Constraint, ParameterKey, Type } from './index.ts';
 import type { TypeRules } from './type-rules.ts';
 import { constraintText, typeText } from './type-text.ts';
 
@@ -65,6 +65,23 @@ export function substituteStructConstraint(
     named: model.named.map((entry) => ({ name: entry.name, rule: rule(entry.rule) })),
     others: model.others === undefined ? undefined : rule(model.others),
   };
+}
+
+/** The type parameters `model` mentions, in every entry's types and constraints. */
+export function parametersInStructConstraint(
+  model: StructConstraintModel,
+): readonly ParameterKey[] {
+  const rule = (each: EntryRule): readonly ParameterKey[] =>
+    each.kind === 'type'
+      ? parametersIn(each.type)
+      : [
+          ...each.traits.flatMap((trait) => trait.arguments.flatMap(parametersIn)),
+          ...each.structs.flatMap(parametersInStructConstraint),
+        ];
+  return [
+    ...model.named.flatMap((entry) => rule(entry.rule)),
+    ...(model.others === undefined ? [] : rule(model.others)),
+  ];
 }
 
 /** Whether two struct constraints are alike in every part, as a taken-over result must be. */

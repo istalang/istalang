@@ -32,7 +32,6 @@ import { associatedDeclarationsOn } from '../../types/traits/known-constraints.t
 import type { FieldMember, Type } from '../../types/type/index.ts';
 import { membersOf } from '../../types/type/index.ts';
 import { declaredFieldOf } from '../../types/written/declared-fields.ts';
-import { namedType } from '../../types/written/named-types.ts';
 import {
   builtType,
   calledAt,
@@ -185,19 +184,9 @@ function memberDenotations(site: NameSite, access: MemberAccess): readonly Denot
   // Type arguments written after the access make the value, a function the checker resolved.
   const value = holder?.kind === 'TypeApplication' ? holder : access;
   const type = site.body?.typeOf(value);
-  const associated = associatedNamed(site.checker, namedType(namingAt(site), access));
+  const associated = associatedNamed(site.checker, site.body?.writtenTypeOf(access));
   const valued = namedValueAt(site, value, type);
   return valued ?? (associated.length > 0 ? associated : named(site, type));
-}
-
-/** What naming a type in value position reads where `site` stands. */
-function namingAt({ checker, module }: NameSite) {
-  return {
-    checker,
-    entityOf: (name: Identifier) => checker.bindings.entityOf(module, name),
-    inPass: (type: Type) => type,
-    recordWritten: () => undefined,
-  };
 }
 
 /**

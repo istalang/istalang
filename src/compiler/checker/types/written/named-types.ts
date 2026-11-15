@@ -176,7 +176,11 @@ function associatedNamed(context: Naming, access: MemberAccess): Type | undefine
     return undefined;
   }
   const associated = context.checker.typeRules.associatedType(owner, access.member.text);
-  return associated.kind === 'error' ? undefined : associated;
+  if (associated.kind === 'error') {
+    return undefined;
+  }
+  context.recordWritten(access, associated);
+  return associated;
 }
 
 /** The identifier naming what `node` names: itself, or the member of a qualified name. */
