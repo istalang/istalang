@@ -74,8 +74,7 @@ And they must be dependable:
 
 - a **model**: a struct with one node per path, which holds the values;
 - the model's **factory**;
-- what its **expressions see**: structs whose getters read the model, so every read is tracked;
-- a **view**: a static tree of view nodes, with every expression a closure over its scope.
+- a **view**: a static tree of view nodes, with every expression a closure over its scope, each scope variable a node's scope, which reads a group field by field, so every read is tracked.
 
 There is no generated control flow: no rendering, validation or event code.
 
@@ -327,7 +326,7 @@ Its rules:
 
 - **Closures.** Every expression is pasted into a closure over its scope, `fn(): <expr>`, and a literal prop becomes `fn(): <literal>`. The checker infers each closure's type from where it sits, so no generated code names a view's type.
 - **Widgets.** The widget and its ui props become one closure: `fn(): FieldWidget.Select(none)`.
-- **Scopes.** `data` is a struct whose getters read the model (`OrderSeen`), and so is a nested group. A repeat's row binds its variable to its row's struct (`const item = OrderItemsRowSeen{m: r1}`), and a variant's case to its case's (`const p = OrderPaymentCardSeen{m: m.payment.cases.card}`). A row of a single field binds its variable inside each closure that names it, read off the row as the closure runs (`const region = r2.seen()`).
+- **Scopes.** Every scope variable is a node's scope (`forms/model.ista`): `data` is the model's (`const data = Group{fields: m}.scope()`), a repeat's row binds its variable to its row's (`const item = r1.scope()`), and a variant's case to its case's (`const p = m.payment.cases.card.scope()`). A group's scope is a `GroupScope`, which reads each of its nodes by name through its keyed `index` (proposal 16): `data.company.size` reads that field alone, so every read is tracked. A list's and a variant's scope is its whole value. A row of a single field binds its variable inside each closure that names it, read off the row as the closure runs (`const region = r2.scope()`).
 - **Mounts.** A mount calls its form's view at its own place, with that form's scope: `addressView(at.within(when, hide), m.company.fields.address.node.fields, AddressCtx{user: ctx.user, paramsFrom: fn(): AddressParams{country: (…)}}, "n18")`. The mounted form's expressions read its params when they run, and so whatever the mount's expressions read. A def's factory takes the data it is made from, as a row does.
 - **Keys.** Nodes are numbered in tree order: `n1`, `n2`… A key inside a repeat row adds the row's key (`n6@r1`; nested rows `n9@r1@r2`), and inside a mounted def its mount's key (`n18/n2`). Keys are stable within a version.
 - **Checks.**
@@ -698,8 +697,8 @@ The supplier form (`supplier.form.json`) is the full test. It compiles only if e
 # order.gen.ista — generated from order.form.json 1.4.0. Do not edit.
 #
 # The generated part of a form: per form and per local def, a model (one node per path), its
-# factory, what its expressions see (structs whose getters read the model, so every read is
-# tracked), and a view whose expressions are closures over that scope. forms/ does the rest.
+# factory, and a view whose expressions are closures over what they see: each node's scope, a
+# group's read field by field, so every read is tracked. forms/ does the rest.
 # Expressions are pasted from the schema verbatim.
 
 import Graph from './computed'
@@ -769,37 +768,8 @@ fn orderModel(graph: Graph) -> Group<OrderModel>: Group{
   }
 }
 
-# What the form's expressions see as `data`.
-struct OrderSeen:
-  m: OrderModel
-
-fn get country(self: OrderSeen) -> String?: self.m.country.seen()
-fn get city(self: OrderSeen) -> String?: self.m.city.seen()
-fn get items(self: OrderSeen) -> List<OrderItemsRow>.Seen: self.m.items.seen()
-fn get payment(self: OrderSeen) -> Variant<OrderPaymentCases>.Seen: self.m.payment.seen()
-fn get note(self: OrderSeen) -> String?: self.m.note.seen()
-
-# What an `items` row's expressions see as `item`.
-struct OrderItemsRowSeen:
-  m: OrderItemsRow
-
-fn get sku(self: OrderItemsRowSeen) -> String?: self.m.fields.sku.seen()
-fn get qty(self: OrderItemsRowSeen) -> Int?: self.m.fields.qty.seen()
-
-# What the `card` case's expressions see as `p`.
-struct OrderPaymentCardSeen:
-  m: Group<{ last4: Field<String> }>
-
-fn get last4(self: OrderPaymentCardSeen) -> String?: self.m.fields.last4.seen()
-
-# What the `wire` case's expressions see as `p`.
-struct OrderPaymentWireSeen:
-  m: Group<{ iban: Field<String> }>
-
-fn get iban(self: OrderPaymentWireSeen) -> String?: self.m.fields.iban.seen()
-
 fn orderView(at: Place, m: OrderModel, ctx: OrderCtx) -> View:
-  const data = OrderSeen{m}
+  const data = Group{fields: m}.scope()
   LayoutView{
     key: "n1"
     widget: fn(): LayoutWidget.Section(
@@ -865,7 +835,7 @@ fn orderView(at: Place, m: OrderModel, ctx: OrderCtx) -> View:
         checks: [checks.minItems(fn(): 1)]
         canAdd: true
         item: fn(r1, row1, at): {
-          const item = OrderItemsRowSeen{m: r1}
+          const item = r1.scope()
           LayoutView{
             key: `n5@${row1}`
             widget: fn(): LayoutWidget.Tablerow
@@ -905,7 +875,7 @@ fn orderView(at: Place, m: OrderModel, ctx: OrderCtx) -> View:
           card: CaseView{
             label: fn(): "Credit card"
             body: fn(at): {
-              const p = OrderPaymentCardSeen{m: m.payment.cases.card}
+              const p = m.payment.cases.card.scope()
               FieldView{
                 key: "n10"
                 field: m.payment.cases.card.fields.last4
@@ -918,7 +888,7 @@ fn orderView(at: Place, m: OrderModel, ctx: OrderCtx) -> View:
           wire: CaseView{
             label: fn(): "Bank transfer"
             body: fn(at): {
-              const p = OrderPaymentWireSeen{m: m.payment.cases.wire}
+              const p = m.payment.cases.wire.scope()
               FieldView{
                 key: "n11"
                 field: m.payment.cases.wire.fields.iban

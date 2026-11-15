@@ -1,8 +1,8 @@
 # order.gen.ista — generated from order.form.json 1.4.0. Do not edit.
 #
 # The generated part of a form: per form and per local def, a model (one node per path), its
-# factory, what its expressions see (structs whose getters read the model, so every read is
-# tracked), and a view whose expressions are closures over that scope. forms/ does the rest.
+# factory, and a view whose expressions are closures over what they see: each node's scope, a
+# group's read field by field, so every read is tracked. forms/ does the rest.
 # Expressions are pasted from the schema verbatim.
 
 import Graph from './computed'
@@ -72,37 +72,8 @@ fn orderModel(graph: Graph) -> Group<OrderModel>: Group{
   }
 }
 
-# What the form's expressions see as `data`.
-struct OrderSeen:
-  m: OrderModel
-
-fn get country(self: OrderSeen) -> String?: self.m.country.seen()
-fn get city(self: OrderSeen) -> String?: self.m.city.seen()
-fn get items(self: OrderSeen) -> List<OrderItemsRow>.Seen: self.m.items.seen()
-fn get payment(self: OrderSeen) -> Variant<OrderPaymentCases>.Seen: self.m.payment.seen()
-fn get note(self: OrderSeen) -> String?: self.m.note.seen()
-
-# What an `items` row's expressions see as `item`.
-struct OrderItemsRowSeen:
-  m: OrderItemsRow
-
-fn get sku(self: OrderItemsRowSeen) -> String?: self.m.fields.sku.seen()
-fn get qty(self: OrderItemsRowSeen) -> Int?: self.m.fields.qty.seen()
-
-# What the `card` case's expressions see as `p`.
-struct OrderPaymentCardSeen:
-  m: Group<{ last4: Field<String> }>
-
-fn get last4(self: OrderPaymentCardSeen) -> String?: self.m.fields.last4.seen()
-
-# What the `wire` case's expressions see as `p`.
-struct OrderPaymentWireSeen:
-  m: Group<{ iban: Field<String> }>
-
-fn get iban(self: OrderPaymentWireSeen) -> String?: self.m.fields.iban.seen()
-
 fn orderView(at: Place, m: OrderModel, ctx: OrderCtx) -> View:
-  const data = OrderSeen{m}
+  const data = Group{fields: m}.scope()
   LayoutView{
     key: "n1"
     widget: fn(): LayoutWidget.Section(
@@ -168,7 +139,7 @@ fn orderView(at: Place, m: OrderModel, ctx: OrderCtx) -> View:
         checks: [checks.minItems(fn(): 1)]
         canAdd: true
         item: fn(r1, row1, at): {
-          const item = OrderItemsRowSeen{m: r1}
+          const item = r1.scope()
           LayoutView{
             key: `n5@${row1}`
             widget: fn(): LayoutWidget.Tablerow
@@ -208,7 +179,7 @@ fn orderView(at: Place, m: OrderModel, ctx: OrderCtx) -> View:
           card: CaseView{
             label: fn(): "Credit card"
             body: fn(at): {
-              const p = OrderPaymentCardSeen{m: m.payment.cases.card}
+              const p = m.payment.cases.card.scope()
               FieldView{
                 key: "n10"
                 field: m.payment.cases.card.fields.last4
@@ -221,7 +192,7 @@ fn orderView(at: Place, m: OrderModel, ctx: OrderCtx) -> View:
           wire: CaseView{
             label: fn(): "Bank transfer"
             body: fn(at): {
-              const p = OrderPaymentWireSeen{m: m.payment.cases.wire}
+              const p = m.payment.cases.wire.scope()
               FieldView{
                 key: "n11"
                 field: m.payment.cases.wire.fields.iban

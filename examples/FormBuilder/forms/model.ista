@@ -6,8 +6,10 @@
 # - What a view says of a node (a default, a computed value, rows from data, who writes a hidden
 #   node) is bound into the node once, when the view is built (`derive`, `Shown.add`): an
 #   expression stored in the node would make the model's type depend on itself.
-# - Data is what a valid form gives; Seen what expressions see, none wherever something is
-#   unanswered or hidden. Both are computed through the tree, so no form declares its data type.
+# - Data is what a valid form gives; Seen its whole value as expressions see it, none wherever
+#   something is unanswered or hidden. Both are computed through the tree, so no form declares its
+#   data type. Scope is what an expression's read of a node gives: a group's is its GroupScope,
+#   read field by field, so a computed reruns only when a field it read changes.
 
 import Graph, Source, Computed from '../computed'
 import Decodable from 'json'
@@ -20,7 +22,9 @@ type FileId = String # an upload's id; the bytes travel separately
 trait FormNode:
   type Data
   type Seen is Inert
+  type Scope
   fn seen(self: Self) -> Self.Seen
+  fn scope(self: Self) -> Self.Scope
   fn read(self: Self) -> Result<Self.Data> # Err when something is unanswered
   fn load(self: Self, v: Self.Seen) -> Unit # fills it from a whole value, between views
 
@@ -44,6 +48,7 @@ struct Field<T is Inert>:
   value: Computed<T?>
   type Data = T
   type Seen = T?
+  type Scope = Field<T>.Seen
 
 # A field holding `initial`, as a row made from data does: given, as a loaded value is, so a
 # default doesn't replace it; a computed value reading the field itself starts from it.
@@ -69,6 +74,7 @@ fn Field.make<T is Inert>(graph: Graph, initial: T? = none) -> Field<T>:
   }
 
 fn seen<T is Inert>(self: Field<T>) -> T?: self.value.read()
+fn scope<T is Inert>(self: Field<T>) -> T?: self.seen()
 fn read<T is Inert>(self: Field<T>) -> Result<T>:
   match self.value.read():
     case None: Err(Error{message: "unanswered", code: "unanswered"})
@@ -97,14 +103,27 @@ struct Group<S is struct { [_] is FormNode }>:
     case _: { [F in keyof S]: S[F].Data }
   type Seen = match S:
     case _: { [F in keyof S]: S[F].Seen }
+  type Scope = GroupScope<S>
 
 fn seen<S is struct { [_] is FormNode }>(self: Group<S>) -> Group<S>.Seen: struct{
   for f, node in ...self.fields: [f]: node.seen()
+}
+fn scope<S is struct { [_] is FormNode }>(self: Group<S>) -> GroupScope<S>: GroupScope{
+  _m: self.fields
 }
 fn read<S is struct { [_] is FormNode }>(self: Group<S>) -> Result<Group<S>.Data>:
   Ok(struct{for f, node in ...self.fields: [f]: node.read()?})
 fn load<S is struct { [_] is FormNode }>(self: Group<S>, v: Group<S>.Seen) -> Unit:
   for f, node in ...self.fields: node.load(v[f])
+
+# What an expression reads of a group: each node by its name, `data.company.size`, read through
+# the keyed `index` (§3.9), so each read is tracked alone. A scope is no value: nothing compares,
+# passes or encodes one, and no whole-value read is given until an expression needs one.
+struct GroupScope<S is struct { [_] is FormNode }>:
+  _m: S
+
+fn index<S is struct { [_] is FormNode }, K in keyof S>(self: GroupScope<S>, key: K) -> S[K].Scope:
+  self._m[key].scope()
 
 # A repeat. R is the row's node: a Group, a single Field (a multiselect's choice), or a mounted form.
 #
@@ -119,6 +138,7 @@ struct List<R is FormNode & Inert>:
   rows: Computed<Array<ListRow<R>>>
   type Data = Array<R.Data>
   type Seen = Array<R.Seen>
+  type Scope = List<R>.Seen # read whole; a row's view has its row's scope
 
 struct ListRow<R>:
   key: String # r1, r2… as added or loaded; from rowKey; d1… or c1… as made from data without one
@@ -219,6 +239,7 @@ fn List.make<R is FormNode & Inert>(
 fn seen<R is FormNode & Inert>(self: List<R>) -> Array<R.Seen>: [
   for row in self.rows.read(): row.node.seen()
 ]
+fn scope<R is FormNode & Inert>(self: List<R>) -> Array<R.Seen>: self.seen()
 fn read<R is FormNode & Inert>(self: List<R>) -> Result<Array<R.Data>>:
   let out: Array<R.Data> = []
   for row in self.rows.read(): out.push(row.node.read()?)
@@ -264,11 +285,13 @@ struct Variant<C is struct { [_] is FormNode }>:
   cases: C
   type Data = { tag: keyof C, value: { [K in keyof C]: C[K].Data? } }
   type Seen = { tag: (keyof C)?, value: { [K in keyof C]: C[K].Seen? } }
+  type Scope = Variant<C>.Seen # read whole
 
 fn seen<C is struct { [_] is FormNode }>(self: Variant<C>) -> Variant<C>.Seen:
   const tag = self.tag.seen()
   const active: String? = tag
   struct{tag, value: struct{for k, g in ...self.cases: [k]: if active == k: g.seen() else: none}}
+fn scope<C is struct { [_] is FormNode }>(self: Variant<C>) -> Variant<C>.Seen: self.seen()
 fn read<C is struct { [_] is FormNode }>(self: Variant<C>) -> Result<Variant<C>.Data>:
   const active = self.tag.read()?
   const activeStr: String = active
@@ -303,6 +326,7 @@ struct Hidden<N is FormNode>:
   shown: Shown
   type Data = N.Data?
   type Seen = N.Seen?
+  type Scope = N.Scope?
 
 fn Hidden.make<N is FormNode>(graph: Graph, node: N) -> Hidden<N>: Hidden{
   node
@@ -311,6 +335,9 @@ fn Hidden.make<N is FormNode>(graph: Graph, node: N) -> Hidden<N>: Hidden{
 
 fn seen<N is FormNode>(self: Hidden<N>) -> N.Seen?:
   if self.shown.any.read(): self.node.seen()
+  else: none
+fn scope<N is FormNode>(self: Hidden<N>) -> N.Scope?:
+  if self.shown.any.read(): self.node.scope()
   else: none
 fn read<N is FormNode>(self: Hidden<N>) -> Result<N.Data?>:
   if self.shown.any.read(): Ok(self.node.read()?)
@@ -325,8 +352,10 @@ struct Local<N is FormNode>:
   node: N
   type Data = None
   type Seen = N.Seen
+  type Scope = N.Scope
 
 fn seen<N is FormNode>(self: Local<N>) -> N.Seen: self.node.seen()
+fn scope<N is FormNode>(self: Local<N>) -> N.Scope: self.node.scope()
 fn read<N is FormNode>(self: Local<N>) -> Result<None>:
   self.node.read()?
   Ok(none)
@@ -338,10 +367,12 @@ struct Dynamic:
   value: Source<String?> # JSON
   type Data = String
   type Seen = String?
+  type Scope = Dynamic.Seen
 
 fn Dynamic.make(graph: Graph) -> Dynamic: Dynamic{value: graph.source<String?>(none)}
 
 fn seen(self: Dynamic) -> String?: self.value.read()
+fn scope(self: Dynamic) -> String?: self.seen()
 fn read(self: Dynamic) -> Result<String>:
   match self.value.read():
     case None: Err(Error{message: "unanswered", code: "unanswered"})

@@ -1,8 +1,8 @@
 # supplier.gen.ista — generated from supplier.form.json 2.0.0. Do not edit.
 #
 # The generated part of a form: per form and per local def, a model (one node per path), its
-# factory, what its expressions see (structs whose getters read the model, so every read is
-# tracked), and a view whose expressions are closures over that scope. forms/ does the rest.
+# factory, and a view whose expressions are closures over what they see: each node's scope, a
+# group's read field by field, so every read is tracked. forms/ does the rest.
 # Expressions are pasted from the schema verbatim.
 
 import Graph from './computed'
@@ -83,16 +83,8 @@ fn addressModel(graph: Graph, x: Group<AddressModel>.Seen? = none) -> Group<Addr
   }
 }
 
-# What the def's expressions see as `data`.
-struct AddressSeen:
-  m: AddressModel
-
-fn get street(self: AddressSeen) -> String?: self.m.street.seen()
-fn get zip(self: AddressSeen) -> String?: self.m.zip.seen()
-fn get city(self: AddressSeen) -> String?: self.m.city.seen()
-
 fn addressView(at: Place, m: AddressModel, ctx: AddressCtx, k: String) -> View:
-  const data = AddressSeen{m}
+  const data = Group{fields: m}.scope()
   LayoutView{
     key: `${k}/n1`
     widget: fn(): LayoutWidget.Labeled(LabelStyle.Top)
@@ -153,15 +145,8 @@ fn categoryModel(graph: Graph, x: Group<CategoryModel>.Seen? = none) -> Group<Ca
   }
 }
 
-# What the def's expressions see as `data`.
-struct CategorySeen:
-  m: CategoryModel
-
-fn get name(self: CategorySeen) -> String?: self.m.name.seen()
-fn get children(self: CategorySeen) -> List<CategoryChildrenRow>.Seen: self.m.children.seen()
-
 fn categoryView(at: Place, m: CategoryModel, ctx: CategoryCtx, k: String) -> View:
-  const data = CategorySeen{m}
+  const data = Group{fields: m}.scope()
   LayoutView{
     key: `${k}/n1`
     widget: fn(): LayoutWidget.Section(
@@ -348,130 +333,8 @@ fn supplierModel(graph: Graph) -> Group<SupplierModel>: Group{
   }
 }
 
-# What the form's expressions see as `data`.
-struct SupplierSeen:
-  m: SupplierModel
-
-fn get company(self: SupplierSeen) -> SupplierCompanySeen: SupplierCompanySeen{m: self.m.company}
-fn get confirmEmail(self: SupplierSeen) -> String?: self.m.confirmEmail.seen()
-fn get manager(self: SupplierSeen) -> crm.User?: self.m.manager.seen()
-fn get creditLimit(self: SupplierSeen) -> Int?: self.m.creditLimit.seen()
-fn get prices(self: SupplierSeen) -> List<SupplierPricesRow>.Seen: self.m.prices.seen()
-fn get contacts(self: SupplierSeen) -> List<SupplierContactsRow>.Seen: self.m.contacts.seen()
-fn get certifications(self: SupplierSeen) -> List<SupplierCertificationsRow>.Seen:
-  self.m.certifications.seen()
-fn get categories(self: SupplierSeen) -> List<SupplierCategoriesRow>.Seen: self.m.categories.seen()
-fn get history(self: SupplierSeen) -> List<SupplierHistoryRow>.Seen: self.m.history.seen()
-fn get payment(self: SupplierSeen) -> Variant<SupplierPaymentCases>.Seen: self.m.payment.seen()
-fn get delivery(self: SupplierSeen) -> Variant<SupplierDeliveryCases>.Seen: self.m.delivery.seen()
-fn get extraForm(self: SupplierSeen) -> formsCatalog.Entry?: self.m.extraForm.seen()
-fn get extra(self: SupplierSeen) -> Hidden<Dynamic>.Seen: self.m.extra.seen()
-fn get score(self: SupplierSeen) -> Int?: self.m.score.seen()
-fn get notes(self: SupplierSeen) -> String?: self.m.notes.seen()
-fn get agree(self: SupplierSeen) -> Bool?: self.m.agree.seen()
-
-# What expressions see as `data.company`.
-struct SupplierCompanySeen:
-  m: Group<{
-    name: Field<String>
-    vatId: Field<String>
-    email: Field<String>
-    description: Field<String>
-    size: Field<"small" | "medium" | "large">
-    legalForm: Field<"llc" | "plc" | "sole">
-    capital: Hidden<Field<Float>>
-    employees: Field<Int>
-    founded: Field<Date>
-    logo: Field<FileId>
-    country: Field<String>
-    address: Hidden<Group<AddressModel>>
-    city: Hidden<Field<String>>
-  }>
-
-fn get name(self: SupplierCompanySeen) -> String?: self.m.fields.name.seen()
-fn get vatId(self: SupplierCompanySeen) -> String?: self.m.fields.vatId.seen()
-fn get email(self: SupplierCompanySeen) -> String?: self.m.fields.email.seen()
-fn get description(self: SupplierCompanySeen) -> String?: self.m.fields.description.seen()
-fn get size(self: SupplierCompanySeen) -> ("small" | "medium" | "large")?: self.m.fields.size.seen()
-fn get legalForm(self: SupplierCompanySeen) -> ("llc" | "plc" | "sole")?:
-  self.m.fields.legalForm.seen()
-fn get capital(self: SupplierCompanySeen) -> Float?: self.m.fields.capital.seen()
-fn get employees(self: SupplierCompanySeen) -> Int?: self.m.fields.employees.seen()
-fn get founded(self: SupplierCompanySeen) -> Date?: self.m.fields.founded.seen()
-fn get logo(self: SupplierCompanySeen) -> FileId?: self.m.fields.logo.seen()
-fn get country(self: SupplierCompanySeen) -> String?: self.m.fields.country.seen()
-fn get address(self: SupplierCompanySeen) -> Hidden<Group<AddressModel>>.Seen:
-  self.m.fields.address.seen()
-fn get city(self: SupplierCompanySeen) -> String?: self.m.fields.city.seen()
-
-# What a `prices` row's expressions see as `price`.
-struct SupplierPricesRowSeen:
-  m: SupplierPricesRow
-
-fn get sku(self: SupplierPricesRowSeen) -> String?: self.m.fields.sku.seen()
-fn get name(self: SupplierPricesRowSeen) -> String?: self.m.fields.name.seen()
-fn get amount(self: SupplierPricesRowSeen) -> Float?: self.m.fields.amount.seen()
-fn get regions(self: SupplierPricesRowSeen) -> List<SupplierPricesRegionsRow>.Seen:
-  self.m.fields.regions.seen()
-
-# What a `contacts` row's expressions see as `contact`.
-struct SupplierContactsRowSeen:
-  m: SupplierContactsRow
-
-fn get name(self: SupplierContactsRowSeen) -> String?: self.m.fields.name.seen()
-fn get email(self: SupplierContactsRowSeen) -> String?: self.m.fields.email.seen()
-fn get primary(self: SupplierContactsRowSeen) -> Bool?: self.m.fields.primary.seen()
-fn get card(self: SupplierContactsRowSeen) -> Group<contactCard.Model>.Seen:
-  self.m.fields.card.seen()
-
-# What a `history` row's expressions see as `h`.
-struct SupplierHistoryRowSeen:
-  m: SupplierHistoryRow
-
-fn get note(self: SupplierHistoryRowSeen) -> String?: self.m.fields.note.seen()
-
-# What the `card` case's expressions see as `pay`.
-struct SupplierPaymentCardSeen:
-  m: Group<{ holder: Field<String>, last4: Field<String> }>
-
-fn get holder(self: SupplierPaymentCardSeen) -> String?: self.m.fields.holder.seen()
-fn get last4(self: SupplierPaymentCardSeen) -> String?: self.m.fields.last4.seen()
-
-# What the `wire` case's expressions see as `pay`.
-struct SupplierPaymentWireSeen:
-  m: Group<{ deposit: Group<{ amount: Field<Float>, currency: Field<"EUR" | "USD"> }> }>
-
-fn get deposit(self: SupplierPaymentWireSeen) -> SupplierPaymentWireDepositSeen:
-  SupplierPaymentWireDepositSeen{m: self.m.fields.deposit}
-
-# What expressions see as `pay.deposit`.
-struct SupplierPaymentWireDepositSeen:
-  m: Group<{ amount: Field<Float>, currency: Field<"EUR" | "USD"> }>
-
-fn get amount(self: SupplierPaymentWireDepositSeen) -> Float?: self.m.fields.amount.seen()
-fn get currency(self: SupplierPaymentWireDepositSeen) -> ("EUR" | "USD")?:
-  self.m.fields.currency.seen()
-
-# What the `invoice` case's expressions see as `pay`.
-struct SupplierPaymentInvoiceSeen:
-  m: Group<{ terms: Field<Int> }>
-
-fn get terms(self: SupplierPaymentInvoiceSeen) -> Int?: self.m.fields.terms.seen()
-
-# What the `standard` case's expressions see as `d`.
-struct SupplierDeliveryStandardSeen:
-  m: Group<{ window: Field<"am" | "pm"> }>
-
-fn get window(self: SupplierDeliveryStandardSeen) -> ("am" | "pm")?: self.m.fields.window.seen()
-
-# What the `express` case's expressions see as `d`.
-struct SupplierDeliveryExpressSeen:
-  m: Group<{ at: Field<DateTime> }>
-
-fn get at(self: SupplierDeliveryExpressSeen) -> DateTime?: self.m.fields.at.seen()
-
 fn supplierView(at: Place, m: SupplierModel, ctx: SupplierCtx) -> View:
-  const data = SupplierSeen{m}
+  const data = Group{fields: m}.scope()
   LayoutView{
     key: "n1"
     widget: fn(): LayoutWidget.Wizard
@@ -729,7 +592,7 @@ fn supplierView(at: Place, m: SupplierModel, ctx: SupplierCtx) -> View:
             rowKey: fn(price): price.sku
             recomputeUntil: Recompute.RowsEdited
             item: fn(r1, row1, at): {
-              const price = SupplierPricesRowSeen{m: r1}
+              const price = r1.scope()
               LayoutView{
                 key: `n24@${row1}`
                 widget: fn(): LayoutWidget.Tablerow
@@ -775,7 +638,7 @@ fn supplierView(at: Place, m: SupplierModel, ctx: SupplierCtx) -> View:
                           for row in geo.regions(): Choice{value: (row.code), label: (row.name)}
                         ]
                         resolve: fn(): {
-                          const region = r2.seen()
+                          const region = r2.scope()
                           geo.regions().some(fn(r): r.code == region)
                         }
                       )
@@ -796,7 +659,7 @@ fn supplierView(at: Place, m: SupplierModel, ctx: SupplierCtx) -> View:
             ]
             canAdd: true
             item: fn(r1, row1, at): {
-              const contact = SupplierContactsRowSeen{m: r1}
+              const contact = r1.scope()
               LayoutView{
                 key: `n31@${row1}`
                 widget: fn(): LayoutWidget.Section(
@@ -882,7 +745,7 @@ fn supplierView(at: Place, m: SupplierModel, ctx: SupplierCtx) -> View:
             rows: fn(): crm.orders(data.company.vatId ?? "")
             computedRows: true
             item: fn(r1, row1, at): {
-              const h = SupplierHistoryRowSeen{m: r1}
+              const h = r1.scope()
               FieldView{
                 key: `n41@${row1}`
                 field: r1.fields.note
@@ -919,7 +782,7 @@ fn supplierView(at: Place, m: SupplierModel, ctx: SupplierCtx) -> View:
               card: CaseView{
                 label: fn(): "Card"
                 body: fn(at): {
-                  const pay = SupplierPaymentCardSeen{m: m.payment.cases.card}
+                  const pay = m.payment.cases.card.scope()
                   LayoutView{
                     key: "n45"
                     widget: fn(): LayoutWidget.Section(
@@ -950,7 +813,7 @@ fn supplierView(at: Place, m: SupplierModel, ctx: SupplierCtx) -> View:
               wire: CaseView{
                 label: fn(): "Wire"
                 body: fn(at): {
-                  const pay = SupplierPaymentWireSeen{m: m.payment.cases.wire}
+                  const pay = m.payment.cases.wire.scope()
                   LayoutView{
                     key: "n48"
                     widget: fn(): LayoutWidget.Money
@@ -981,7 +844,7 @@ fn supplierView(at: Place, m: SupplierModel, ctx: SupplierCtx) -> View:
               invoice: CaseView{
                 label: fn(): "Invoice"
                 body: fn(at): {
-                  const pay = SupplierPaymentInvoiceSeen{m: m.payment.cases.invoice}
+                  const pay = m.payment.cases.invoice.scope()
                   FieldView{
                     key: "n51"
                     field: m.payment.cases.invoice.fields.terms
@@ -1004,7 +867,7 @@ fn supplierView(at: Place, m: SupplierModel, ctx: SupplierCtx) -> View:
               standard: CaseView{
                 label: fn(): "Standard"
                 body: fn(at): {
-                  const d = SupplierDeliveryStandardSeen{m: m.delivery.cases.standard}
+                  const d = m.delivery.cases.standard.scope()
                   FieldView{
                     key: "n53"
                     field: m.delivery.cases.standard.fields.window
@@ -1021,7 +884,7 @@ fn supplierView(at: Place, m: SupplierModel, ctx: SupplierCtx) -> View:
               express: CaseView{
                 label: fn(): "Express"
                 body: fn(at): {
-                  const d = SupplierDeliveryExpressSeen{m: m.delivery.cases.express}
+                  const d = m.delivery.cases.express.scope()
                   FieldView{
                     key: "n54"
                     field: m.delivery.cases.express.fields.at

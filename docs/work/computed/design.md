@@ -87,11 +87,12 @@ fn read<T is Inert>(self: Computed<T>) -> T            # and the same on a Sourc
 
 ## FormBuilder on computeds
 
-**Expressions are simple.** The generator emits the scope's data as getters, so an expression's
-reads are tracked as it runs, and each expression as a closure over its scope:
+**Expressions are simple.** An expression reads a group through its scope, field by field, so its
+reads are tracked as it runs, and each expression is a closure over its scope:
 
 ```python
-fn get employees(self: SupplierCompanySeen) -> Int?: self.m.fields.employees.seen()
+fn index<S is struct { [_] is FormNode }, K in keyof S>(self: GroupScope<S>, key: K) -> S[K].Scope:
+    self._m[key].scope()
 when: fn(): data.company.legalForm != "sole"
 default: fn(): crm.creditLimit(data.company.vatId ?? "") ?? 0
 ```
@@ -102,10 +103,12 @@ default: fn(): crm.creditLimit(data.company.vatId ?? "") ?? 0
 - **No `pending`:** nothing waits, so the schema's `pending`, the `Loading` node and rules run
   after submit are gone (spec §4.3). The supplier form's approval rule becomes an ordinary rule
   calling a simple extern.
-- **Scopes:** scope variables (`data`, a nested group, a repeat's or variant's binding, a mounted
-  form's params) are generated structs with getters, so reads are tracked field by field. A node's
-  `Seen` stays the plain shape, which shape conversions, `load`, `rowKey` and hand-written
-  functions take; getters don't convert (proposal 13).
+- **Scopes:** a scope variable (`data`, a nested group, a repeat's or variant's binding) is a
+  node's `scope()`: a group's is its `GroupScope`, read field by field through its keyed `index`
+  (proposal 16), so reads are tracked field by field; a list's or variant's is its whole value. A
+  mounted form's params are a generated getter on its ctx. A node's `Seen` stays the plain shape,
+  which shape conversions, `load`, `rowKey` and hand-written functions take; a scope is no value
+  and converts into none.
 - **The model pulls:** every derived model value is a computed, never a write during a view: a
   field's value (entered, else its default or computed expression), a `Hidden`'s `shown` (any of
   its writers visible), and computed rows and tags. Only events set sources.

@@ -8,8 +8,9 @@
 // Output, per form and per local def (docs/work/computed/design.md):
 //   a params struct and a ctx struct;
 //   a model struct (one node per path) and its factory on a graph;
-//   what its expressions see: structs whose getters read the model, so every read is tracked;
-//   a view function building the view at a place, every expression a closure over that scope;
+//   a view function building the view at a place, every expression a closure over what it sees:
+//   each scope variable a node's scope (forms/model.ista), a group's read field by field through
+//   its keyed `index`, so every read is tracked;
 //   for the form, its opening on a graph of its own and the entry points its hosts start.
 // The Istalang formatter lays the text out, so the generated module is canonical.
 //
@@ -181,8 +182,6 @@ const indent = (s: string, n: number) =>
     .map((l, i) => (i === 0 ? l : ' '.repeat(n) + l))
     .join('\n');
 const istaString = (s: string) => JSON.stringify(s);
-const article = (word: string) => (/^[aeiou]/iu.test(word) ? 'an' : 'a');
-const lastSegment = (path: string) => path.slice(path.lastIndexOf('.') + 1);
 
 /** A variant built by its call: a single field by position, several by name. */
 const variantCall = (name: string, fields: [string, string][]): string =>
@@ -544,8 +543,6 @@ class UnitGen {
   u: Unit;
   doc: FormDocument;
   uses: Uses;
-  /** What the unit's expressions see: one struct per scope, in the order the view reaches it. */
-  seen: string[] = [];
   constructor(u: Unit, doc: FormDocument, uses: Uses) {
     this.u = u;
     this.doc = doc;
@@ -659,49 +656,6 @@ class UnitGen {
           `${k}: ${this.factory(f, `${canon}.${k}`, data === undefined ? undefined : `${data}?.${k}`)}`,
       )
       .join(', ')}}`;
-  }
-
-  // ── what expressions see ──
-
-  /**
-   * The struct a scope variable is: getters reading a group's nodes. `holds` is its node's type,
-   * the model struct for `data`, a `Group` for any other; a nested group is a struct of its own.
-   */
-  seenStruct(
-    name: string,
-    holds: string,
-    g: MNode & { k: 'group' },
-    canon: string,
-    comment: string,
-    spelled: string,
-  ) {
-    const base = holds === `${this.P}Model` ? 'self.m' : 'self.m.fields';
-    const nested: (() => void)[] = [];
-    const getters = [...g.fields].map(([k, f]) => {
-      const at = `${canon}.${k}`;
-      if (f.k === 'group') {
-        const inner = this.named(at, 'Seen');
-        nested.push(() =>
-          this.seenStruct(
-            inner,
-            `Group<${this.structType(f, at, [])}>`,
-            f,
-            at,
-            `What expressions see as \`${spelled}.${k}\`.`,
-            `${spelled}.${k}`,
-          ),
-        );
-        return `fn get ${k}(self: ${name}) -> ${inner}: ${inner}{m: ${base}.${k}}`;
-      }
-      const type =
-        f.k === 'field' ? this.optional(this.fieldType(f)) : `${this.modelType(f, at)}.Seen`;
-      return `fn get ${k}(self: ${name}) -> ${type}: ${base}.${k}.seen()`;
-    });
-    this.seen.push(`# ${comment}\nstruct ${name}:\n  m: ${holds}\n\n${getters.join('\n')}`);
-    for (const each of nested) each();
-  }
-  optional(t: string): string {
-    return t.includes(' | ') ? `(${t})?` : `${t}?`;
   }
 
   // ── the view ──
@@ -957,22 +911,13 @@ class UnitGen {
         if (l.row!.k === 'mount') {
           itemFn = `fn(${r}, ${rowVar}, at): ${this.mount(item, sc, rowKeysIn, `${r}.fields`)}`;
         } else if (l.row!.k === 'field') {
-          const inner: Scope = { lazy: new Map(sc.lazy).set(n.as, `${r}.seen()`) };
+          const inner: Scope = { lazy: new Map(sc.lazy).set(n.as, `${r}.scope()`) };
           const innerEnv = new Map(env).set(n.as, { node: l.row!, expr: r, canon });
           itemFn = `fn(${r}, ${rowVar}, at): ${this.view(item, inner, innerEnv, root, rowKeysIn, n.widget)}`;
         } else {
-          const rowSeen = `${this.rowName(canon)}Seen`;
-          this.seenStruct(
-            rowSeen,
-            this.rowName(canon),
-            l.row as MNode & { k: 'group' },
-            canon,
-            `What ${article(lastSegment(n.path))} \`${lastSegment(n.path)}\` row's expressions see as \`${n.as}\`.`,
-            n.as,
-          );
           const innerEnv = new Map(env).set(n.as, { node: l.row!, expr: r, canon });
           const body = this.view(item, sc, innerEnv, root, rowKeysIn, n.widget);
-          itemFn = `fn(${r}, ${rowVar}, at): {\n  const ${n.as} = ${rowSeen}{m: ${r}}\n  ${indent(body, 2)}\n}`;
+          itemFn = `fn(${r}, ${rowVar}, at): {\n  const ${n.as} = ${r}.scope()\n  ${indent(body, 2)}\n}`;
         }
         const editable = n.editableCount !== false && n.computed === undefined;
         const rows = n.computed === undefined ? n.default : { expr: n.computed };
@@ -1003,15 +948,6 @@ class UnitGen {
         const cases = Object.entries<any>(n.cases).map(([id, c]) => {
           const caseGroup = v.cases.get(id)!;
           const caseExpr = `${vexpr}.cases.${id}`;
-          const caseSeen = this.named(`${canon}.${id}`, 'Seen');
-          this.seenStruct(
-            caseSeen,
-            `Group<${this.structType(caseGroup, `${canon}.${id}`, [])}>`,
-            caseGroup,
-            `${canon}.${id}`,
-            `What the \`${id}\` case's expressions see as \`${n.as}\`.`,
-            n.as,
-          );
           const innerEnv = new Map(env).set(n.as, {
             node: caseGroup,
             expr: caseExpr,
@@ -1019,7 +955,7 @@ class UnitGen {
           });
           const body = this.view(c.body, sc, innerEnv, root, rowKeys, n.widget);
           this.uses.name('CaseView');
-          return `${id}: CaseView{label: ${this.prop(sc, c.label)}, body: fn(at): {\n  const ${n.as} = ${caseSeen}{m: ${caseExpr}}\n  ${indent(body, 2)}\n}}`;
+          return `${id}: CaseView{label: ${this.prop(sc, c.label)}, body: fn(at): {\n  const ${n.as} = ${caseExpr}.scope()\n  ${indent(body, 2)}\n}}`;
         });
         // The variant's own picker answers its tag, unless a default, a computed tag or a field does.
         const picker = n.default === undefined && n.computed === undefined && !v.tagWritten;
@@ -1154,8 +1090,8 @@ export function generate(doc: FormDocument, sourceName: string): string {
   const header = `# ${doc.id}.gen.ista — generated from ${sourceName} ${doc.version}. Do not edit.
 #
 # The generated part of a form: per form and per local def, a model (one node per path), its
-# factory, what its expressions see (structs whose getters read the model, so every read is
-# tracked), and a view whose expressions are closures over that scope. forms/ does the rest.
+# factory, and a view whose expressions are closures over what they see: each node's scope, a
+# group's read field by field, so every read is tracked. forms/ does the rest.
 # Expressions are pasted from the schema verbatim.`;
   const text = [header, imports.join('\n'), translations, ...sections]
     .filter((part) => part !== undefined)
@@ -1166,7 +1102,7 @@ export function generate(doc: FormDocument, sourceName: string): string {
   return formatted;
 }
 
-/** A unit's declarations: params, ctx, model and factory, what its expressions see, its view. */
+/** A unit's declarations: params, ctx, model and factory, and its view. */
 function unitSection(u: Unit, doc: FormDocument, uses: Uses): string {
   const g = new UnitGen(u, doc, uses);
   const P = pascal(u.name),
@@ -1185,19 +1121,11 @@ function unitSection(u: Unit, doc: FormDocument, uses: Uses): string {
     ? `fn ${c}Model(graph: Graph) -> Group<${P}Model>: Group{fields: ${g.groupLiteral(u.model, 'data', undefined, `${P}Model`)}}`
     : `fn ${c}Model(graph: Graph, x: Group<${P}Model>.Seen? = none) -> Group<${P}Model>: Group{fields: ${g.groupLiteral(u.model, 'data', 'x', `${P}Model`)}}`;
 
-  g.seenStruct(
-    `${P}Seen`,
-    `${P}Model`,
-    u.model,
-    'data',
-    `What the ${u.isForm ? 'form' : 'def'}'s expressions see as \`data\`.`,
-    'data',
-  );
   const body = g.view(u.def.root, { lazy: new Map() }, new Map(), 'm', []);
   const sig = u.isForm
     ? `fn ${c}View(at: Place, m: ${P}Model, ctx: ${P}Ctx) -> View:`
     : `fn ${c}View(at: Place, m: ${P}Model, ctx: ${P}Ctx, k: String) -> View:`;
-  const view = `${sig}\n  const data = ${P}Seen{m}\n  ${indent(body, 2)}`;
+  const view = `${sig}\n  const data = Group{fields: m}.scope()\n  ${indent(body, 2)}`;
 
   const parts = [
     `# ═══════════ ${u.isForm ? `form "${doc.id}"` : `def "#${u.name}"`} ═══════════`,
@@ -1206,7 +1134,6 @@ function unitSection(u: Unit, doc: FormDocument, uses: Uses): string {
     `struct ${P}Model:\n${modelFields.join('\n')}`,
     aliases.length ? aliases.join('\n') : undefined,
     factory,
-    ...g.seen,
     view,
   ];
   if (u.isForm) {

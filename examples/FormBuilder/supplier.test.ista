@@ -30,6 +30,7 @@ fn supplierSuite() -> Array<Test>: [
   test("a search widget's options follow the typed text, and store the row", search)
   test("rows from params keep their keys, values and computed fields", defaultRows)
   test("a repeat's rows each mount the catalog form, with its own params", catalogRows)
+  test("an expression reads a group field by field, each read tracked alone", scopedReads)
   test("cards mount the recursive def", recursiveDef)
   test("computed rows follow their source, read-only", computedRows)
   test("an outside field writes a variant's tag", outsideTag)
@@ -256,6 +257,41 @@ ista async fn catalogRows():
   form.enter("n32@r1", "\"Ada\"")
   assertEq(form.model.fields.contacts.seen()[0].card.phone, "+49 30 1234")
   assertEq(form.model.fields.contacts.seen()[0].name, "Ada")
+
+fn scopedReads():
+  const graph = new Graph{}
+  const model = supplierModel(graph)
+  model.fields.contacts.load([
+    struct{name: "Ada", email: none, primary: none, card: struct{phone: "+49 30 1234"}}
+  ])
+  const row = model.fields.contacts.rows.read()[0].node
+  const contact = row.scope()
+  const runs = new Shared<Int>{value: 0}
+  const phone = graph.computed(fn(): { runs->value += 1; contact.card.phone })
+  assertEq(phone.read(), "+49 30 1234")
+  row.fields.name.load("Eve")
+  assertEq(phone.read(), "+49 30 1234")
+  assertEq(runs->value, 1)
+  row.fields.card.fields.phone.load("+49 30 9")
+  assertEq(phone.read(), "+49 30 9")
+  assertEq(runs->value, 2)
+  const data = model.scope()
+  const address = model.fields.company.fields.address
+  const visible = graph.source(false)
+  address.shown.add(graph.computed(fn(): visible.read()))
+  address.node.load(struct{street: none, zip: none, city: "Berlin"})
+  assertEq(data.company.address?.city, none) # hidden while no view shows it
+  visible.set(true)
+  const cityRuns = new Shared<Int>{value: 0}
+  const city = graph.computed(fn(): { cityRuns->value += 1; data.company.address?.city })
+  assertEq(city.read(), "Berlin")
+  address.node.fields.street.load("Main 1")
+  assertEq(city.read(), "Berlin")
+  assertEq(cityRuns->value, 1)
+  address.node.fields.city.load("Munich")
+  assertEq(city.read(), "Munich")
+  assertEq(cityRuns->value, 2)
+  assertEq(data.company.name, none)
 
 ista async fn recursiveDef():
   hold _ = mocked()
