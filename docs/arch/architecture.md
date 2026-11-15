@@ -246,7 +246,8 @@ src/
                         the function table, types, and the calls `ista test` makes of the testing module's runner:
                         test-runner.ts), operands and extern keys; values/ (persisted values, read through their declarations,
                         JSON as values, their `==` and map keys, instance handles, a value rebuilt with parts replaced:
-                        replacing.ts); formats/ (the canonical JSON
+                        replacing.ts, parts of values along paths: parts.ts, the JSON each value was written as, which
+                        `json.encode` gives again on every runtime: written-json.ts); trace text (traces.ts); formats/ (the canonical JSON
                         codec and the versioned envelope every persisted text goes through); validation/ (what
                         load checks beyond the shapes, from references.ts: every index inside its table (ranges.ts), every
                         entry the body names, `main`, the job server, the starts and a test's runner and suites, code its caller may
@@ -264,7 +265,7 @@ src/
                         (stored-instances.ts); programs.ts (Definition texts bound once per hash, and
                         a start of live or simple code as a live run); contexts.ts (the contexts a live run's runtimes reach, driven inside
                         its loop as a group of instances (instance-group.ts))
-    interpreter/        the instruction table, and reading parts of values along paths (parts.ts); registers.ts, the only
+    interpreter/        the instruction table; registers.ts, the only
                         register writer, reporting each write as a holder write (raw-registers.ts, its raw write, imported by no
                         other module: a cruiser rule)
     snapshot/           objects.ts (heap objects and frames as stored), holdings.ts (what each object kind holds and watches, and the one rule for a frame, live or stored), snapshot.ts (the persisted instance), check/ (a snapshot against its Definition, its waits and resolvers in waits.ts, and in calls.ts the one rule for calls made from outside any frame: an instance's starting call, a run's, a resolver's callback's),
@@ -285,8 +286,6 @@ src/
                         holders, every composite value a node counted once per holder; a zero confirmed at the step's end),
                         in-place.ts (values written in place where this instance made them and one holder holds them, else copied
                         once: paths, a native's `&` argument, an array or map grown in its own register),
-                        written-json.ts (the JSON the instance wrote each value as, by type, which `json.encode` gives again:
-                        a holder of what it keeps, forgotten as a value changes in place; docs/arch/boundary.md),
                         holders.ts (what the live frames reach: held, which only a commit and a live run's drop walk, a cruiser rule),
                         disposal.ts (each kind's disposal), collector.ts (rounds of what reached zero, newest first, a disposal's call on the run stack),
                         oracle.test-kit.ts (static lifetimes' oracle, a `HeapCheck`: no cycle reaching a disposable; every test runtime, `ista run` and `ista test` in the CLI's tests check it; its own tests compile cyclic programs through `compile.test-kit.ts`'s `textDespiteCycles`, which it stops)
@@ -320,7 +319,7 @@ src/
                         (the project files ModuleLoader, and a module's id from its file and back), errno.ts (system errors)
   packages/             ista.json, minimal version selection, lockfile, vendor, verify, vendor loader
   codegen/              a Definition as one JavaScript ES module (docs/work/js-codegen/design.md): emit.ts (the entry; refuses ista code), code-entry.ts (one code entry: a function, or an async one settling its future; jumps as a `for (;;) switch (pc)`, one line per instruction), entry-scope.ts (how each register is held), instructions/ (one emitter table per instruction family), literal.ts (constants and tables as literals); differential.sweep.test.ts holds it to the interpreter over the corpus and FormBuilder
-  live/                 the runtime library of compiled code, the `istalang/live` entry (program.ts: a host starts a program by key with its externs and JSON arguments), program-tables.ts (what a compiled module hands it), run.ts (one run: executions, readied calls, its end), natives-context.ts (each extern bound to its native and context), arrivals.ts (a host's answers and due timers, one per turn), traces.ts (frames read off the JavaScript stack), values/ (cells, places, the helpers instructions call), waits/ (the interpreter's rules for futures, waits and resolvers, over objects; slots are ista data, which compiled code never reaches). It reaches the runtime's seams alone, never the interpreter (a cruiser rule), so it bundles for a browser
+  live/                 the runtime library of compiled code, the `istalang/live` entry (program.ts: a host starts a program by key with its externs and JSON arguments), program-tables.ts (what a compiled module hands it), run.ts (one run: executions, readied calls, its end), ready.ts (what it has ready, run one at a time in the interpreter's order), natives-context.ts (each extern bound to its native and context), arrivals.ts (a host's answers and due timers, one per turn), traces.ts (frames read off the JavaScript stack), values/ (cells, places, the helpers instructions call), waits/ (the interpreter's rules for futures, waits and resolvers, over objects; slots are ista data, which compiled code never reaches). It reaches the runtime's seams alone, never the interpreter (a cruiser rule), so it bundles for a browser
   cli/                  main.ts executable, cli.ts root, command.ts (the command seam), compile-entry.ts (the program a command runs or builds), directory-store.ts (the InstanceStore of --store), host-module.ts (the host externs of --host), report.ts (diagnostics output), log-lines.ts (a log record as one line of JSON), commands/ (build, check, fmt, lsp, run, test)
 test/corpus/            shared .ista corpus (spec examples, valid/invalid cases) used by every phase
 ```
