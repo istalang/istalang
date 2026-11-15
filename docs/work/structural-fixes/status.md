@@ -33,8 +33,12 @@ tags: [structural-fixes, status]
   and D wait for the human's go.
 - Step 0 done: tracker hygiene committed. New A rows: Q56, Q57, B95, B96, B97. Close them, with B94, B65 and P35,
   when A merges.
-- Phase A running: agent `sfa-tizo`, worktree `.claude/worktrees/sf-a-type-identity`, branch `sf-a-type-identity`
-  from `45b09009`; idle sub armed.
+- Phase A merged (ff to `26b157fb`): QA pass, review approve (2nd pass). Deviations, all approved and in the plan:
+  extern-key uniqueness is a std test; FormBuilder's `validateSupplier` start key spells its unnamed recursive
+  type by the table key. Its tracker rows are closed. For later phases: Definition names use the table-key grammar
+  (`#main.Money<>`, `|<Int,None>`); union entries have `arguments: []`, so read a `T?`'s member with
+  `optionalInnerOf`; `keyOf` lives in `lowering/tables/extern-keys.ts`; C may conflict trivially in `check.ts`,
+  `program-checker.ts`, `aliases/index.ts` and `.dependency-cruiser.mjs`.
 - B92's agents, worktree and branch are closed. Still alive: `sfrv-suri` (plan reviewer). Ask the human before stopping it.
 
 ## Next, on approval
