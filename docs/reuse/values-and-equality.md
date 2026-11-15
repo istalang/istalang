@@ -37,7 +37,7 @@ tags: [reuse, values, equality, maps, json, natives, runtime]
 - order two `bigint`s or UTF-16 `string`s → `compareOrdered` (`src/foundation/language/order.ts`)
 - find the `json.Json` type entry, the variant each of its union's members is (found by what the variant holds), or test if a `Value` is `Json` → `jsonTypeIn`, `jsonTypeOf`, `isJsonValue` (`src/definition/values/json-values.ts`)
 - convert between `json.Json` values, JSON text, and host JS values → `jsonText`, `jsonOfText`, `plainOfJson` (deeply frozen, the same object for an array or map it met before; `forgetPlainOf` as one changes in place), `jsonOfPlain` (`src/definition/values/json-values.ts`)
-- give the `Json` an instance wrote a value as before, per type, held for good and forgotten as the value changes in place → `WrittenJson` (`src/runtime/lifetimes/written-json.ts`), reached by natives as `NativeEncodings` (`src/runtime/natives.ts`)
+- give the `Json` an instance wrote a value as before, per type, held for good and forgotten as the value changes in place → `WrittenJson` (`src/definition/values/written-json.ts`), reached by natives as `NativeEncodings` (`src/runtime/natives.ts`)
 
 ## One-way rules
 

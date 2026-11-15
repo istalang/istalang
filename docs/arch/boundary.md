@@ -74,7 +74,7 @@ encoders from building anew:
   type is `Encodable`) is `encode<T>` over the type's codec, and the `json` module's container
   codecs call `encode` for each part. Caching at that call, not inside a codec, keeps a codec
   with defaulted parameters called directly with others out of it.
-- **Stage 1, value to `Json`** (`runtime/lifetimes/written-json.ts`): `encode`'s body asks two
+- **Stage 1, value to `Json`** (`definition/values/written-json.ts`): `encode`'s body asks two
   natives, `_written<T>` and `_remember<T>`, keyed by the value object and `T` (one object may be
   written as two types whose codecs differ), a handle by the object it names, as `==` compares it.
   An outcome its root returns is written from what the root gave, not from its copy. Per instance, beside its counts, since a codec may read

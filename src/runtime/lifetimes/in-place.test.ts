@@ -17,12 +17,12 @@ import {
   type Value,
   withChildValues,
 } from '../../definition/values/values.ts';
+import { WrittenJson } from '../../definition/values/written-json.ts';
 import { Unreachable } from '../../foundation/structures/unreachable.ts';
 import { nothingHeld } from '../snapshot/holdings.ts';
 import { Counts } from './counts.ts';
 import { frozen } from './in-place.test-kit.ts';
 import { InPlace } from './in-place.ts';
-import { WrittenJson } from './written-json.ts';
 
 /** The parts a field position reaches in `value`, as the `field` instruction reads them. */
 function fieldsOf(value: Value): readonly Value[] {

@@ -1,32 +1,28 @@
 /**
- * What an instance wrote each value as (proposal 15, stage 1): `json.encode<T>` gives the same
- * `Json` again for a value written before as a `T` and unchanged since, so a host gets the same
- * object for it (stage 2: definition/values/json-values.ts `plainOfJson`).
+ * What an instance, or a run of compiled code, wrote each value as (proposal 15, stage 1):
+ * `json.encode<T>` gives the same `Json` again for a value written before as a `T` and unchanged
+ * since, so a host gets the same object for it (stage 2: json-values.ts `plainOfJson`).
  *
  * - **Keyed by the value object and the type it was written as:** one object may be written as
  *   two types whose codecs differ, as a conversion keeping the layout shares it between them.
  *   Only object values are kept: a primitive's JSON is its own identity anyway. A handle is the
  *   object it names, as `==` compares it (§3.1), so a handle read anew, from a weak reference or
  *   given to a `dispose`, is the value written before; it is forgotten once its object is gone.
- * - **One per instance,** beside its counts: a codec may read a `context` constant, whose value is
- *   the instance's (§3.4). A test world keeps nothing (native-calls.ts), so a mock sees every call
- *   of the codec it replaces (§10).
- * - **A holder:** a `Json` kept is held in the instance's counts for good, so no part of it is
- *   ever changed in place (in-place.ts), which would change what it gives for another value. A
- *   value written as itself, a `Json`, is not kept, so what it holds stays its own to change.
+ * - **One per instance or run:** a codec may read a `context` constant, whose value is the
+ *   instance's (§3.4). A test world keeps nothing (runtime/scheduler/segment/native-calls.ts), so a
+ *   mock sees every call of the codec it replaces (§10).
+ * - **A holder:** a `Json` kept is held for good (`hold`, the interpreter's counts), so no part of
+ *   it is ever changed in place (runtime/lifetimes/in-place.ts), which would change what it gives
+ *   for another value. A value written as itself, a `Json`, is not kept, so what it holds stays its own
+ *   to change.
  * - **A value changed in place is forgotten** (`forget`), as its other derived data is: it is
  *   another value now, so its JSON is built again.
  */
 
-import { encodeJson } from '../../definition/formats/codec.ts';
-import type { TypeReference } from '../../definition/tables/types.ts';
-import {
-  type CompositeValue,
-  handleTarget,
-  isComposite,
-  type Value,
-} from '../../definition/values/values.ts';
 import { memo } from '../../foundation/structures/memo.ts';
+import { encodeJson } from '../formats/codec.ts';
+import type { TypeReference } from '../tables/types.ts';
+import { type CompositeValue, handleTarget, isComposite, type Value } from './values.ts';
 
 /** Each type reference's canonical text, which keys a value's JSON whichever entry refers. */
 const typeTexts = new WeakMap<TypeReference, string>();

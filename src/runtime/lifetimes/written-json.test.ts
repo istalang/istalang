@@ -1,7 +1,7 @@
 /**
- * The JSON an instance wrote values as, against its changes in place (written-json.ts,
- * in-place.ts): a value changed in place is written again, still changed in place, and no part of
- * a JSON kept is ever changed in place.
+ * The JSON an instance wrote values as, against its changes in place
+ * (../../definition/values/written-json.ts, in-place.ts): a value changed in place is written
+ * again, still changed in place, and no part of a JSON kept is ever changed in place.
  */
 
 import { describe, expect, it } from 'vitest';

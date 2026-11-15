@@ -19,9 +19,9 @@
  *   never holds itself, and what went in is the value as it was. Each change names what it puts
  *   in, so no caller can leave one out.
  * - **Derived data** keyed by a node's identity, its summary, its hash, a map's table and the JSON
- *   written of it (written-json.ts, definition/values/json-values.ts), is forgotten as the node
- *   changes; a map setting an entry keeps its table up to date instead, and a map copied keeps a
- *   copy of it (foundation/language/values.ts).
+ *   written of it (../../definition/values/written-json.ts, definition/values/json-values.ts), is
+ *   forgotten as the node changes; a map setting an entry keeps its table up to date instead, and a
+ *   map copied keeps a copy of it (foundation/language/values.ts).
  * - **Counts:** a held node holds and lets go of its parts as they change (`partHeld`,
  *   `partReleased`), holding the new before letting go of the old; a copy holds its parts from its
  *   first hold, as any value does.
@@ -45,9 +45,9 @@ import {
   type Value,
   withChildValues,
 } from '../../definition/values/values.ts';
+import type { WrittenJson } from '../../definition/values/written-json.ts';
 import { unreachable } from '../../foundation/structures/unreachable.ts';
 import type { ValueChanges } from '../natives.ts';
-import type { WrittenJson } from './written-json.ts';
 
 /** What changing values in place reads of and tells the counts (counts.ts). */
 interface NodeCounts {
