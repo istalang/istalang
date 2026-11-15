@@ -12,12 +12,15 @@
  *   outcome (§9), for every value its code types, its signature's, and every type a call
  *   instantiates its callee at, at any depth of what such a value holds. Only a type naming the
  *   function's own type parameters is made anew per instantiation; any other is the same in all.
+ *   One held type is one entry, however many values hold it.
  * - An instance a callee makes whose outcome no codec writes for the callee's own type parameters
  *   is encoded by the codec its instantiation finds, so the call giving the type arguments reaches
- *   it, as that call instantiates it.
+ *   it, as that call instantiates it: only a call whose type arguments name the function's own
+ *   type parameters makes it anew per instantiation, so only such a call reads its callee's code.
  */
 
 import { wellKnown } from '../../../foundation/language/well-known/index.ts';
+import { memo } from '../../../foundation/structures/memo.ts';
 import { type FunctionDeclaration, typeParametersOf } from '../../syntax/declarations/index.ts';
 import type { NodeOf } from '../../syntax/tree/node.ts';
 import type { Checker } from '../check.ts';
@@ -62,25 +65,36 @@ export function reachedCalls(
   checker: ReachSeams,
   declaration: FunctionDeclaration,
 ): readonly ReachedCall[] {
+  const own = new Set<ParameterKey>(typeParametersOf(declaration.typeParameters));
   const written = [checker.bodyOf(declaration), checker.defaultsOf(declaration)]
     .flatMap((body) => body?.madeCalls() ?? [])
     .flatMap(({ site, call }) => callsMadeWith(call).map((each) => ({ site, call: each })));
+  const left = new Map<FunctionDeclaration, readonly Type[]>();
+  const leftBy = (call: ResolvedCall): readonly Type[] => {
+    const renewed = call.kind === 'function' && call.typeArguments.some((type) => names(type, own));
+    if (!renewed) {
+      return [];
+    }
+    const substitution = substitutionFor(call.function.typeParameters, call.typeArguments);
+    return memo(left, call.function, () => instancesLeftBy(checker, call.function)).map((type) =>
+      substitute(type, substitution, checker.typeRules),
+    );
+  };
   const made = [
-    ...typesMadeBy(checker, declaration),
     ...written.flatMap(({ site, call }) =>
-      [...instantiatingTypesOf(call), ...instancesLeftBy(checker, call)].map((type) => ({
-        site,
-        type,
-      })),
+      [...instantiatingTypesOf(call), ...leftBy(call)].map((type) => ({ site, type })),
     ),
+    ...typesMadeBy(checker, declaration),
   ];
-  const own = new Set<ParameterKey>(typeParametersOf(declaration.typeParameters));
-  // One type, however many nodes make it, is one entry: reached at the first node making it.
+  // One held type, however many nodes make it, is one entry: reached at the first node making it,
+  // a call instantiating it before a value typed by it.
   const first = new Map<string, MadeType>();
-  for (const each of made) {
-    const key = checker.typeKeys.typeKey(each.type);
-    if (!first.has(key) && names(each.type, own)) {
-      first.set(key, each);
+  for (const { site, type } of made) {
+    for (const held of heldTypes(checker, type)) {
+      const key = checker.typeKeys.typeKey(held);
+      if (!first.has(key) && names(held, own)) {
+        first.set(key, { site, type: held });
+      }
     }
   }
   const entries = [...first.values()].flatMap(({ type, site }) =>
@@ -102,17 +116,12 @@ function typesMadeBy(checker: ReachSeams, declaration: FunctionDeclaration): rea
 }
 
 /**
- * The instances `call`'s callee makes whose outcome no codec writes for its own type parameters,
- * as `call` instantiates them: lowering finds an instance's codec where an instantiation makes its
- * outcome known (§9), so the code giving the type arguments reaches it.
+ * The instances `callee` makes whose outcome no codec writes for its own type parameters: lowering
+ * finds an instance's codec where an instantiation makes its outcome known (§9), so the code giving
+ * the type arguments reaches it.
  */
-function instancesLeftBy(checker: ReachSeams, call: ResolvedCall): readonly Type[] {
-  const callee = call.function;
+function instancesLeftBy(checker: ReachSeams, callee: FunctionDeclaration): readonly Type[] {
   const parameters = new Set<ParameterKey>(typeParametersOf(callee.typeParameters));
-  if (call.kind !== 'function' || parameters.size === 0) {
-    return [];
-  }
-  const substitution = substitutionFor(callee.typeParameters, call.typeArguments);
   return typesMadeBy(checker, callee)
     .flatMap(({ type }) => heldTypes(checker, type))
     .filter((part) => {
@@ -122,29 +131,26 @@ function instancesLeftBy(checker: ReachSeams, call: ResolvedCall): readonly Type
         names(outcome, parameters) &&
         checker.json.codecOf(outcome, 'write') === undefined
       );
-    })
-    .map((part) => substitute(part, substitution, checker.typeRules));
+    });
 }
 
 /**
- * The calls the type entries of what a value of `type` holds run: a `dispose` run as code (§7),
- * and the codec writing an instance's outcome for its host (§9).
+ * The calls the type entries of a held `type` run: a `dispose` run as code (§7), and the codec
+ * writing an instance's outcome for its host (§9).
  */
 function entryCallsOf(checker: ReachSeams, type: Type): readonly ResolvedCall[] {
-  return heldTypes(checker, type).flatMap((part) => {
-    const outcome = outcomeOf(checker, part);
-    const codec = outcome === undefined ? undefined : checker.json.codecOf(outcome, 'write');
-    if (part.kind !== 'nominal') {
-      return [];
-    }
-    const { kind } = part.entity.declaration;
-    const disposed = kind === 'SharedStructDeclaration' || kind === 'ExternStructDeclaration';
-    const disposal = disposed ? checker.disposalOf(part) : undefined;
-    return [
-      ...(disposal?.kind === 'function' ? [disposal.call] : []),
-      ...(codec === undefined ? [] : [codec]),
-    ];
-  });
+  if (type.kind !== 'nominal') {
+    return [];
+  }
+  const outcome = outcomeOf(checker, type);
+  const codec = outcome === undefined ? undefined : checker.json.codecOf(outcome, 'write');
+  const { kind } = type.entity.declaration;
+  const disposed = kind === 'SharedStructDeclaration' || kind === 'ExternStructDeclaration';
+  const disposal = disposed ? checker.disposalOf(type) : undefined;
+  return [
+    ...(disposal?.kind === 'function' ? [disposal.call] : []),
+    ...(codec === undefined ? [] : [codec]),
+  ];
 }
 
 /** The outcome of an instance of `type`, an `Instance<T>`'s `T`; undefined for another type. */
