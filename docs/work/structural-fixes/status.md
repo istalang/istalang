@@ -42,8 +42,11 @@ tags: [structural-fixes, status]
   stand as calls; operators wait on B98 (a call with a requirement candidate can't be chosen while an argument
   is an open generic call). The human approved that plan change. P14 judged (the re-parse stays);
   B64 is not C's (row updated). C+D's agents, worktree and branch are closed.
-- Phase B running: worktree `.claude/worktrees/sf-b-layout-expansion` from main; idle sub armed. Then the merge
-  review over A–D and `npm run verify` on main.
+- Phase B merged (ff to `3c3154d5`): QA pass (3rd round), review approve with debt. Rows closed: B70, B18, B81, B1,
+  B52. Filed for the E plan: B99–B103, B105 (per-default typing, `->`/pattern reads, requirement propagation);
+  B104 a flaky completion property. Data kinds still reads `callsMadeWith`, not the reach (needs per-site marks).
+  B's agents and worktree await the human's go to close.
+- Merge review over A–D (`45b09009..3c3154d5`) and `npm run verify` on main: running.
 - B92's agents, worktree and branch are closed. Still alive: `sfrv-suri` (plan reviewer). Ask the human before stopping it.
 
 ## Next, on approval
