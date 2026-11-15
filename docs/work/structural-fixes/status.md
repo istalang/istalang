@@ -38,7 +38,7 @@ tags: [structural-fixes, status]
   type by the table key. Its tracker rows are closed. For later phases: Definition names use the table-key grammar
   (`#main.Money<>`, `|<Int,None>`); union entries have `arguments: []`, so read a `T?`'s member with
   `optionalInnerOf`; `keyOf` lives in `lowering/tables/extern-keys.ts`. A's agents, worktree and branch are closed.
-- C and D: one session, worktree `.claude/worktrees/sf-cd-members-inference` from `20ae9aef`, C then D, one
+- C and D: one session, worktree `.claude/worktrees/sf-cd-members-inference` from `20ae9aef`, any order, one
   examination over both. B waits for the human's go.
 - B92's agents, worktree and branch are closed. Still alive: `sfrv-suri` (plan reviewer). Ask the human before stopping it.
 

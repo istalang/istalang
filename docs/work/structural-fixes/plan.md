@@ -31,7 +31,7 @@ the asymmetry in the unit that owns it. Evidence: `findings.md`, `research/`.
   diagnostics, or inference.
 - **One wave of four** (no shared files): A, B, C, D. The tech-lead ff-merges each once its reviewer approves.
   By the human's call, A ran first, and C and D run as one session on one branch (`sf-cd-members-inference`),
-  C then D, with one examination over both.
+  in whatever order needs the least rework, with one examination over both.
 - **Merge review:** one over all four merged, then `npm run verify` on main.
 - **Step 0 (tech-lead, on approval):** tracker hygiene. Delete the stale rows and merge the duplicates in
   `findings.md`, correct B94, file the new A findings under this plan, and add its traced mechanism to B87.
