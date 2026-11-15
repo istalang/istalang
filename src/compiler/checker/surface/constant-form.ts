@@ -93,6 +93,11 @@ export function literalForm(literal: Literal, type: Type | undefined): ConstantF
   }
 }
 
+/** The one value a literal type holds (§2); undefined for any other type. */
+export function literalTypeForm(type: Type): ConstantForm | undefined {
+  return type.kind === 'literal' ? { kind: 'primitive', value: type.value } : undefined;
+}
+
 /** The one value of `Unit` and of `None`. */
 export const unitForm: ConstantForm = { kind: 'primitive', value: null };
 

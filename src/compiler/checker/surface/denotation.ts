@@ -132,6 +132,7 @@ export const listedFacts = {
 /** The facts a body answers that tools read as one across passes, as each pass answers them. */
 export const joinedFacts = [
   'typeOf',
+  'writtenTypeOf',
   'expectedOf',
   'valueCalls',
   'madeCalls',

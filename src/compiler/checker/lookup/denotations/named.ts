@@ -6,6 +6,7 @@
 
 import {
   type Entity,
+  type TypeEntity,
   typeEntity,
   type VariableEntity,
   type VariantEntity,
@@ -14,6 +15,7 @@ import {
 import type { ModuleId } from '../../../program/program.ts';
 import { constructedVariant } from '../../../syntax/declarations/field-defaults.ts';
 import { type FunctionDeclaration, typeParametersOf } from '../../../syntax/declarations/index.ts';
+import { isOverFields } from '../../../syntax/statements/readings.ts';
 import { parentOf, type SyntaxNode } from '../../../syntax/tree/index.ts';
 import type { Identifier } from '../../../syntax/tree/node.ts';
 import { declaredOutsideBodies } from '../../constructs/expressions/access/names.ts';
@@ -45,6 +47,21 @@ export function named(site: NameSite, type = site.body?.typeOf(site.name)): read
   return entity === undefined ? [] : fromEntity(site, entity, type);
 }
 
+/**
+ * What the key a loop over a type's keys declares stands for (§4): every pass's key, joined, as
+ * the passes record it at its name; undefined for any other type.
+ */
+function loopKeyType({ checker, module }: NameSite, entity: TypeEntity): Type | undefined {
+  const { declaration } = entity;
+  if (declaration.kind !== 'TypeParameter') {
+    return undefined;
+  }
+  const holder = parentOf(checker.inputs.treeOf(module), declaration);
+  return holder !== undefined && isOverFields(holder)
+    ? bodyHolding(checker, module, declaration.name)?.typeOf(declaration.name)
+    : undefined;
+}
+
 function fromEntity(site: NameSite, entity: Entity, type: Type | undefined): readonly Denotation[] {
   const { checker, name, body } = site;
   switch (entity.kind) {
@@ -61,6 +78,12 @@ function fromEntity(site: NameSite, entity: Entity, type: Type | undefined): rea
         entity.overloads.map((each) => functionDenotation(each, type))
       );
     case 'type':
+      return [
+        {
+          declared: { kind: 'type', entity },
+          type: loopKeyType(site, entity) ?? type ?? entityType(checker, entity),
+        },
+      ];
     case 'primitive':
     case 'self':
       return [{ declared: { kind: 'type', entity }, type: type ?? entityType(checker, entity) }];

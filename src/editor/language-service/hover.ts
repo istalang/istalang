@@ -237,8 +237,10 @@ function nameHover(
  */
 function typeAt({ checker, module }: CheckedModule, node: SyntaxNode): Type | undefined {
   const { lookup } = checker;
+  const body = lookup.bodyHolding(module, node);
   return (
-    lookup.bodyHolding(module, node)?.typeOf(node as Expression) ??
+    body?.typeOf(node as Expression) ??
+    body?.writtenTypeOf(node as TypeNode) ??
     lookup.typeOfNode(module, node as TypeNode)
   );
 }

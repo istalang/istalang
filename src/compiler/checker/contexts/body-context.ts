@@ -17,7 +17,7 @@ import type { Call } from '../../syntax/expressions/calls.ts';
 import type {
   ArrayLiteral,
   Expression,
-  FieldHeader,
+  FieldLoopHeader,
   FieldsLiteral,
   MapLiteral,
 } from '../../syntax/expressions/index.ts';
@@ -140,8 +140,13 @@ export interface BodyContext extends CheckedModule {
    * its literal type where what it goes into holds one once the scope settles, else its base (§2).
    */
   readonly part: (node: Expression, expected?: Type) => Type;
-  /** The type `node` denotes in this body's module. */
+  /** The type `node` denotes in this body's module, as the pass being checked reads it. */
   readonly resolveType: (node: TypeNode) => Type;
+  /**
+   * `type` as the pass being checked reads it: each key a loop over a type's keys around it
+   * declares bound to the pass's (contexts/passes.ts).
+   */
+  readonly inPass: (type: Type) => Type;
   /** What `name` denotes, a query: for a name only asked about, declared, or checked elsewhere. */
   readonly entityOf: (name: Identifier) => Entity | undefined;
   /**
@@ -176,10 +181,12 @@ export interface BodyContext extends CheckedModule {
   /**
    * Runs `check` once per pass of the field loop `header` heads (§4), each pass's records of nodes
    * kept apart (passes.ts), so the body reads as each pass checked it; what is decided of every
-   * pass together is then recorded back in each (`CheckedPasses`).
+   * pass together is then recorded back in each (`CheckedPasses`). Each pass checks the same text
+   * again, so what it checks settles before the pass exits: a scope it joined would settle once
+   * every pass had left, writing into none of them.
    */
   readonly fieldPasses: (
-    header: FieldHeader,
+    header: FieldLoopHeader,
     passes: readonly FieldPassType[],
     check: (pass: FieldPassType) => void,
   ) => CheckedPasses;

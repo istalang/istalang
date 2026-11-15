@@ -18,7 +18,7 @@
  */
 
 import type { FunctionDeclaration } from '../declarations/index.ts';
-import type { Expression, FieldHeader } from '../expressions/index.ts';
+import type { Expression, FieldLoopHeader } from '../expressions/index.ts';
 import type { AssignmentOperator } from '../expressions/operators.ts';
 import type { Annotatable } from '../items.ts';
 import type { Pattern } from '../patterns.ts';
@@ -101,7 +101,7 @@ export interface For extends NodeOf<'For'>, Annotatable {
  */
 export interface FieldLoop extends NodeOf<'FieldLoop'>, Annotatable {
   readonly label: Identifier | undefined;
-  readonly header: FieldHeader;
+  readonly header: FieldLoopHeader;
   readonly body: Block;
 }
 

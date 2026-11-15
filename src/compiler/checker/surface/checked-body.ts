@@ -14,7 +14,7 @@ import type {
   ArrayLiteral,
   Comprehension,
   Expression,
-  FieldHeader,
+  FieldLoopHeader,
   FieldsLiteral,
   Lambda,
   MapLiteral,
@@ -35,6 +35,7 @@ import type {
 } from '../../syntax/statements/index.ts';
 import { fieldChildrenOf, nestsFunction, type SyntaxNode } from '../../syntax/tree/index.ts';
 import type { Identifier, NodeOf } from '../../syntax/tree/node.ts';
+import type { TypeNode } from '../../syntax/types/index.ts';
 import type { Checker, SignatureParameter } from '../check.ts';
 import type { FieldPassType, PassRecords } from '../contexts/passes.ts';
 import type { Fit } from '../types/fitting/fit/index.ts';
@@ -236,6 +237,11 @@ export interface BodyFacts {
   /** The type of an expression of this body; undefined for one never checked. */
   readonly typeOf: (expression: Expression) => Type | undefined;
   /**
+   * The type a type written in this body denotes, as the pass reads it: in a loop over a type's
+   * keys, each pass's key bound (§4); undefined for one the body never resolved.
+   */
+  readonly writtenTypeOf: (node: TypeNode) => Type | undefined;
+  /**
    * The type expected of the value `site` gives, where its context expects one (§2, §3.11): passed
    * down to its check, or fitted to once checked; undefined where nothing is expected.
    */
@@ -347,7 +353,7 @@ export interface BodyFacts {
    * (passes.ts), which an instantiation knowing them reads as one per field. Each pass reads the
    * body as that pass checked it.
    */
-  readonly passesOf: (header: FieldHeader) => readonly FieldPass[];
+  readonly passesOf: (header: FieldLoopHeader) => readonly FieldPass[];
   /**
    * Whether `body`, a branch or a case, never runs: a condition its operands' types decide rules
    * it out (§4), so nothing of it was checked and nothing is lowered.

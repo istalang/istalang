@@ -13,9 +13,10 @@
  */
 
 import { stepVariants } from '../../../../../foundation/language/well-known/variants.ts';
-import type { Comprehension, Spread } from '../../../../syntax/expressions/index.ts';
+import type { Comprehension, FieldHeader, Spread } from '../../../../syntax/expressions/index.ts';
 import type { For, LabelledScope } from '../../../../syntax/statements/index.ts';
 import type { OverFields } from '../../../../syntax/statements/readings.ts';
+import type { FieldPass } from '../../../surface/checked-body.ts';
 import type { BlockId, ValueId } from '../../../surface/flow-ir.ts';
 import { tupleType } from '../../../types/type/primitives.ts';
 import type { FlowBuilder } from './flow-builder.ts';
@@ -87,9 +88,9 @@ export function targetsLoop(
 }
 
 /**
- * Runs `pass` in each pass of the field loop `header` heads, read as that pass, its key and value
- * bound in a scope of its own, its key the name of the field it visits where it visits one; goes
- * on past the loop. The field each pass visits, none for one over the fields not known yet.
+ * Runs `pass` in each pass of the field loop `header` heads, read as that pass, in a scope of its
+ * own, its header's targets bound (`fieldsBinding`); goes on past the loop. The field each pass
+ * visits, none for one over the fields not known yet.
  */
 export function fieldLoop(
   builder: FlowBuilder,
@@ -98,7 +99,7 @@ export function fieldLoop(
   pass: () => void,
 ): readonly (string | undefined)[] {
   const { header } = node;
-  const subject = builder.expression(header.subject);
+  const bind = header.kind === 'FieldHeader' ? fieldsBinding(builder, header) : undefined;
   const passes = builder.body.passesOf(header);
   const fields = passes.map(({ visits }) => (visits.kind === 'field' ? visits.name : undefined));
   loop(builder, scope, (top) => {
@@ -111,22 +112,7 @@ export function fieldLoop(
           builder.resumeIn(starts[index] as BlockId);
           builder.inView(each.body, () =>
             builder.scopes.inScope(node, () => {
-              const key = builder.temporary(header, each.key);
-              const name = fields[index];
-              builder.compute(
-                key,
-                header,
-                name === undefined
-                  ? { kind: 'fieldKey', header }
-                  : { kind: 'constant', form: { kind: 'primitive', value: name } },
-              );
-              const value = builder.temporary(header, each.value);
-              const part = { kind: 'keyed', key } as const;
-              builder.emit({ op: 'read', site: header, into: value, from: subject, part });
-              const field = builder.temporary(header, tupleType([each.key, each.value]));
-              const made = { kind: 'tuple' } as const;
-              builder.emit({ op: 'make', site: header, into: field, made, parts: [key, value] });
-              bindTargets(builder, header, field);
+              bind?.(each, fields[index]);
               pass();
             }),
           );
@@ -136,6 +122,36 @@ export function fieldLoop(
     };
   });
   return fields;
+}
+
+/**
+ * How a pass over a value's fields binds `header`'s targets: to the pair of its key, the name of the
+ * field it visits, and that field's value, read from the subject, which is read once, before the
+ * loop. A loop over a type's keys reads no value: its key is a type, read where it is named as a
+ * value (expressions.ts).
+ */
+function fieldsBinding(
+  builder: FlowBuilder,
+  header: FieldHeader,
+): (pass: FieldPass, name: string | undefined) => void {
+  const subject = builder.expression(header.subject);
+  return (each, name) => {
+    const key = builder.temporary(header, each.key);
+    builder.compute(
+      key,
+      header,
+      name === undefined
+        ? { kind: 'typeValue' }
+        : { kind: 'constant', form: { kind: 'primitive', value: name } },
+    );
+    const value = builder.temporary(header, each.value);
+    const part = { kind: 'keyed', key } as const;
+    builder.emit({ op: 'read', site: header, into: value, from: subject, part });
+    const field = builder.temporary(header, tupleType([each.key, each.value]));
+    const made = { kind: 'tuple' } as const;
+    builder.emit({ op: 'make', site: header, into: field, made, parts: [key, value] });
+    bindTargets(builder, header, field);
+  };
 }
 
 /** A loop's top, tested: where it goes past the loop, and how its passes are built from there. */

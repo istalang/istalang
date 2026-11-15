@@ -1,0 +1,47 @@
+# outcome: "model:7,7,tag7|names:city,company|kinds:active,closed"
+# Field loops over a type (proposal 17, §4): a struct comprehension builds a nested model from its
+# type alone, `S[K].make` calling each field's own static function, a constraint naming a field
+# resolving it per pass; an array comprehension reads each key as its value; and a member parameter
+# over literal types reads as its value (§3.5).
+
+import * as runtime from 'runtime'
+
+trait Node:
+  fn Self.make(seed: Int) -> Self
+
+struct Leaf:
+  value: Int
+
+fn Leaf.make(seed: Int) -> Leaf: Leaf{value: seed}
+
+struct Tag:
+  text: String
+
+fn Tag.make(seed: Int) -> Tag: Tag{text: `tag${seed}`}
+
+struct Group<S is struct { [_] is Node }>:
+  fields: S
+
+fn Group.make<S is struct { [_] is Node }>(seed: Int) -> Group<S>:
+  Group{fields: struct{for K in keyof S: [K]: S[K].make(seed)}}
+
+fn tagged<S is struct { id: Tag, [_] is Node }>(seed: Int) -> S:
+  struct{for K in keyof S: [K]: S[K].make(seed)}
+
+fn names<S is struct { [_] is Node }>() -> String: [for K in keyof S: K].join(",")
+
+type Status = "active" | "closed"
+
+fn describe<S in Status>() -> String: S
+
+struct Company { id: Tag, size: Leaf }
+
+struct Supplier { city: Leaf, company: Group<Company> }
+
+live async fn main() -> String: await runtime.run(runtime.id()) _main()
+
+ista async fn _main() -> String:
+  const model: Group<Supplier> = Group.make(7)
+  const company: Company = tagged(7)
+  const built = `${model.fields.city.value},${model.fields.company.fields.size.value},${company.id.text}`
+  `model:${built}|names:${names<Supplier>()}|kinds:${describe<"active">()},${describe<"closed">()}`

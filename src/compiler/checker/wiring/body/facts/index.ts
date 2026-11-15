@@ -9,7 +9,7 @@
  */
 
 import { memo } from '../../../../../foundation/structures/memo.ts';
-import type { FieldHeader } from '../../../../syntax/expressions/index.ts';
+import type { FieldLoopHeader } from '../../../../syntax/expressions/index.ts';
 import type { Pass } from '../../../contexts/passes.ts';
 import { type FlowSource, flowsOf } from '../../../rules/flow/build/index.ts';
 import type { BodyFacts, CheckedBody, FieldPass } from '../../../surface/checked-body.ts';
@@ -60,6 +60,14 @@ const bodyFacts: { readonly [Name in FactName]: FactEntry<Name> } = {
       recorded.records.types.get(expression, pass) ??
       recorded.records.types.get(coreAt(recorded, pass, expression), pass),
     instantiated: (typeOf, by) => readThrough(typeOf, by.concrete),
+    joined: typesJoined,
+  },
+  writtenTypeOf: {
+    at:
+      ({ records }, pass) =>
+      (node) =>
+        records.writtenTypes.get(node, pass),
+    instantiated: (writtenTypeOf, by) => readThrough(writtenTypeOf, by.concrete),
     joined: typesJoined,
   },
   expectedOf: {
@@ -281,7 +289,7 @@ const bodyFacts: { readonly [Name in FactName]: FactEntry<Name> } = {
           body: bodyAt(inner),
         })),
     instantiated: (passesOf, by) => {
-      const passes = new WeakMap<FieldHeader, readonly FieldPass[]>();
+      const passes = new WeakMap<FieldLoopHeader, readonly FieldPass[]>();
       return (header) => memo(passes, header, () => by.passes(passesOf(header)));
     },
   },

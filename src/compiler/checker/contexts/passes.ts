@@ -16,22 +16,32 @@
  * - Each pass checks the same text, so what passes report waits for the loop's passes to be checked
  *   (`hold`), then a diagnostic several made is reported once, and a case no value reaches only
  *   when no pass reaches it (`settled`).
+ * - A loop over a type's keys declares its key as a type (§3.5), which each pass binds to its own
+ *   (`keyBinding`): the body's types are resolved once for the whole program, so the body reads
+ *   each through the bindings of the passes it is in (`Pass.binds`).
  */
 
 import type { Diagnostic } from '../../../foundation/diagnostics/diagnostic.ts';
 import { memo } from '../../../foundation/structures/memo.ts';
+import type { FieldLoopHeader } from '../../syntax/expressions/index.ts';
 import type { AnchoredSpan } from '../../syntax/tree/positions.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
+import { type Substitution, substitute } from '../types/parts/substitution.ts';
 import type { Type } from '../types/type/index.ts';
+import type { TypeRules } from '../types/type/type-rules.ts';
 
-/** One checking of a field loop's body, inside `outer`; the body itself has none. */
+/**
+ * One checking of a field loop's body, inside `outer`; the body itself has none. What it and the
+ * passes around it bind (`binds`).
+ */
 export interface Pass {
   readonly outer: Pass | undefined;
+  readonly binds: Substitution;
 }
 
 /** The passes of one body: the root, and the one being checked. */
 export class Passes {
-  readonly root: Pass = { outer: undefined };
+  readonly root: Pass = { outer: undefined, binds: new Map() };
   #current: Pass = this.root;
   readonly #held = new Map<Pass, Diagnostic<AnchoredSpan>[]>();
 
@@ -39,10 +49,22 @@ export class Passes {
     return this.#current;
   }
 
-  /** Runs `check` as a new pass inside the current one; that pass, whose records it made. */
-  check(check: () => void): Pass {
+  /** `type` as the pass being checked reads it: what it and the passes around it bind, bound. */
+  bound(type: Type, rules: TypeRules): Type {
+    const { binds } = this.#current;
+    return binds.size === 0 ? type : substitute(type, binds, rules);
+  }
+
+  /**
+   * Runs `check` as a new pass inside the current one, binding what `binds` binds; that pass, whose
+   * records it made.
+   */
+  check(check: () => void, binds: Substitution): Pass {
     const outer = this.#current;
-    const pass = { outer };
+    const pass = {
+      outer,
+      binds: binds.size === 0 ? outer.binds : new Map([...outer.binds, ...binds]),
+    };
     this.#current = pass;
     try {
       check();
@@ -53,19 +75,23 @@ export class Passes {
   }
 
   /**
-   * Checks each of `items` in a pass of its own (`check`), then reports what the passes settle on;
-   * each item comes back with its pass, and `inEach` runs back in each pass what is decided of all
-   * of them together, reporting what that settles on in turn.
+   * Checks each of `items` in a pass of its own (`check`), binding what `binds` says it binds, then
+   * reports what the passes settle on; each item comes back with its pass, and `inEach` runs back in
+   * each pass what is decided of all of them together, reporting what that settles on in turn.
    */
   checkEach<Item>(
     items: readonly Item[],
     check: (item: Item) => void,
     report: (diagnostic: Diagnostic<AnchoredSpan>) => void,
+    binds: (item: Item) => Substitution,
   ): {
     readonly checked: readonly (Item & { readonly pass: Pass })[];
     readonly inEach: (run: (item: Item, index: number) => void) => void;
   } {
-    const checked = items.map((item) => ({ ...item, pass: this.check(() => check(item)) }));
+    const checked = items.map((item) => ({
+      ...item,
+      pass: this.check(() => check(item), binds(item)),
+    }));
     const settle = () => {
       for (const diagnostic of this.settled(checked.map(({ pass }) => pass))) {
         report(diagnostic);
@@ -216,4 +242,12 @@ export interface FieldPassType {
   readonly visits: PassVisits;
   readonly key: Type;
   readonly value: Type;
+}
+
+/**
+ * What a pass of the loop `header` heads binds: over a type's keys, the key it declares to the
+ * pass's (§4); over a value's fields nothing, its key a variable.
+ */
+export function keyBinding(header: FieldLoopHeader, pass: FieldPassType): Substitution {
+  return header.kind === 'TypeParameter' ? new Map([[header, pass.key]]) : new Map();
 }

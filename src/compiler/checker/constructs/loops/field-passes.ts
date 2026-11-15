@@ -1,12 +1,17 @@
 /**
  * Running over a struct's fields (§4): a field loop, an array comprehension and a struct
- * comprehension each check their subject once, then what their header heads once per pass over its
- * fields (types/traits/struct-keys.ts `fieldPassesOver`), the header's key and value taking apart
- * the pair of the pass's key and value. A subject with no fields to visit is reported, and what the
- * header heads checked once with nothing known of them, so each mistake in it is still found.
+ * comprehension each check what their header heads once per pass over the fields it visits
+ * (`fieldPassesOver`). Over a value's fields, its subject is checked once, and the header's key and
+ * value take apart the pair of the pass's key and value; over a type's keys, the key the header
+ * declares stands for the pass's (contexts/passes.ts `keyBinding`). A subject with no fields to
+ * visit is reported, and what the header heads checked once with nothing known of them, so each
+ * mistake in it is still found.
  */
 
-import type { FieldHeader } from '../../../syntax/expressions/index.ts';
+import { unreachable } from '../../../../foundation/structures/unreachable.ts';
+import type { TypeParameter } from '../../../syntax/declarations/index.ts';
+import type { FieldHeader, FieldLoopHeader } from '../../../syntax/expressions/index.ts';
+import type { TypeNode } from '../../../syntax/types/index.ts';
 import type { BodyContext, CheckedPasses } from '../../contexts/body-context.ts';
 import type { CheckerContext } from '../../contexts/context.ts';
 import type { FieldPassType } from '../../contexts/passes.ts';
@@ -18,36 +23,84 @@ import { typeText } from '../../types/type/type-text.ts';
 import { unionOf } from '../../types/unions/unions.ts';
 import { declareTargets } from '../patterns/targets.ts';
 
-/** The passes over the fields of `header`'s subject, which this checks. */
+/** The passes over the fields `header` visits, which this checks. */
 export function checkedFieldPasses(
   context: BodyContext,
-  header: FieldHeader,
+  header: FieldLoopHeader,
 ): readonly FieldPassType[] {
-  // Its passes read its subject's fields at once, so it is read settled, never open in a scope.
+  const passes =
+    header.kind === 'TypeParameter' ? typePasses(context, header) : valuePasses(context, header);
+  return passes ?? [{ visits: { kind: 'none' }, key: errorType, value: errorType }];
+}
+
+/**
+ * The passes over the fields of `header`'s subject, reported when it has none. Its passes read its
+ * fields at once, so it is read settled, never open in a scope.
+ */
+function valuePasses(
+  context: BodyContext,
+  header: FieldHeader,
+): readonly FieldPassType[] | undefined {
   const subject = context.settled(header.subject);
   const passes = fieldPassesOver(context.checker, subject, header);
   if (passes === undefined && subject.kind !== 'error') {
     context.report(checkerDiagnostics.fieldLoopSubject(header.subject.span, typeText(subject)));
   }
-  return passes ?? [{ visits: { kind: 'none' }, key: errorType, value: errorType }];
+  return passes;
 }
 
-/** Runs `each` once per pass of `passes`, `header`'s key and value bound to the pass's. */
+/**
+ * The passes over the keys of the type `header`'s `keyof` names, whose resolution reports a type
+ * with none.
+ */
+function typePasses(
+  context: BodyContext,
+  header: TypeParameter,
+): readonly FieldPassType[] | undefined {
+  const { keys, owner } = keyofOf(header);
+  return context.resolveType(keys).kind === 'error'
+    ? undefined
+    : fieldPassesOver(context.checker, context.resolveType(owner), header);
+}
+
+/** The `keyof S` a loop over a type's keys runs over, and its `S` (syntax `FieldLoopHeader`). */
+function keyofOf(header: TypeParameter): { readonly keys: TypeNode; readonly owner: TypeNode } {
+  const keys = header.memberOf;
+  return keys?.kind === 'KeyofType'
+    ? { keys, owner: keys.owner }
+    : unreachable("A loop over a type's keys runs over its 'keyof'.");
+}
+
+/** The type whose fields `header` visits, as the pass being checked reads it. */
+export function visitedType(context: BodyContext, header: FieldLoopHeader): Type {
+  return header.kind === 'TypeParameter'
+    ? context.resolveType(keyofOf(header).owner)
+    : context.typeOf(header.subject);
+}
+
+/**
+ * Runs `each` once per pass of `passes`, `header`'s key bound to the pass's: over a value's fields,
+ * its key and value; over a type's keys, the key it declares, as its name records for tools.
+ */
 export function inFieldPasses(
   context: BodyContext,
-  header: FieldHeader,
+  header: FieldLoopHeader,
   passes: readonly FieldPassType[],
   each: (pass: FieldPassType) => void,
 ): CheckedPasses {
   return context.fieldPasses(header, passes, (pass) => {
-    declareTargets(context, header, tupleType([pass.key, pass.value]));
+    if (header.kind === 'FieldHeader') {
+      declareTargets(context, header, tupleType([pass.key, pass.value]));
+    } else {
+      context.recordType(header.name, pass.key);
+    }
     each(pass);
   });
 }
 
 /**
- * The passes a field loop's body is checked in over a value of `subject` (§4): one per key a
- * literal names, its value that field's type; and, for the keys not known yet, one pass whose key
+ * The passes a field loop's body is checked in over a value of `subject`, or its keys (§4): one
+ * per key a literal names, its value that field's type; and, for the keys not known yet, one pass whose key
  * is a member parameter keyed by `header` ranging over them, its value the field that key names;
  * a struct with no field, or a subject with no value (§2), one pass visiting none (`noFieldPass`).
  * Undefined when `subject` has no keys.
@@ -55,7 +108,7 @@ export function inFieldPasses(
 function fieldPassesOver(
   checker: CheckerContext,
   subject: Type,
-  header: FieldHeader,
+  header: FieldLoopHeader,
 ): readonly FieldPassType[] | undefined {
   if (isPrimitive(subject, 'Never')) {
     return [noFieldPass];

@@ -246,6 +246,10 @@ export const parserDiagnostics = defineDiagnostics('parser', {
     message: () =>
       "A struct comprehension gives a struct's fields, but a map is built here: build it with a comprehension in brackets (§2, §4).",
   },
+  typeLoopKey: {
+    code: 2054,
+    message: () => "A loop over a type's keys declares one key, a name: `for K in keyof S` (§4).",
+  },
   fieldLoopCondition: {
     code: 2037,
     message: () =>

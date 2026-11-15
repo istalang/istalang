@@ -183,7 +183,6 @@ export const expressionPrinters: Printers<ExpressionKind> = {
   MapEntry: (printer, node) => [printer.print(node.key), ': ', printer.print(node.value)],
   Spread: (printer, node) => ['...', printer.print(node.expression)],
   FieldHeader: (printer, node) => [
-    'for ',
     printer.print(node.key),
     ', ',
     printer.print(node.value),
@@ -216,6 +215,7 @@ export const expressionPrinters: Printers<ExpressionKind> = {
       indent([
         printer.dangling(node),
         softline,
+        'for ',
         printer.print(node.header),
         ': ',
         printer.print(node.body),
@@ -224,6 +224,7 @@ export const expressionPrinters: Printers<ExpressionKind> = {
       ']',
     ]),
   StructComprehension: (printer, node) => [
+    'for ',
     printer.print(node.header),
     ': [',
     printer.print(node.key),

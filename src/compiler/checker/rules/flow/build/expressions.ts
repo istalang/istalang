@@ -5,8 +5,8 @@
  *
  * - A literal is the constant it writes (`literalForm`).
  * - A name is a copy out of its variable, a global's value, a function named as a value, a variant
- *   without fields, or a struct without fields written bare (§3.1), its type arguments given or
- *   not.
+ *   without fields, a struct without fields written bare (§3.1), its type arguments given or not,
+ *   or a member parameter over literal types, the value its type holds once instantiated (§3.5).
  * - A field read is a `read` of its part; `*x` and `x->` read what is behind the handle.
  * - A lambda is a closure made of what it captures, of a function built of its own.
  */
@@ -76,7 +76,8 @@ export function coreFlow(builder: FlowBuilder, node: Sugar): ValueId {
 /**
  * What `name` denotes, read as the value of `read` (the name, or a namespace's member qualifying
  * it): a function named as a value, recorded at `read`, a variable of the body, a global, a
- * variant without fields, or a struct without fields.
+ * variant without fields, or a type that holds one value: a member parameter over literal types,
+ * the literal an instantiation makes it (§3.5), or a struct without fields.
  */
 function named(builder: FlowBuilder, name: Identifier, read: Identifier | MemberAccess): ValueId {
   const call = builder.body.functionValues.get(read);
@@ -86,6 +87,9 @@ function named(builder: FlowBuilder, name: Identifier, read: Identifier | Member
     return into;
   }
   const entity = builder.inputs.checker.bindings.entityOf(builder.inputs.module, name);
+  if (entity?.kind === 'type' && entity.declaration.kind === 'TypeParameter') {
+    return builder.compute(builder.temporaryOf(read), read, { kind: 'typeValue' });
+  }
   if (entity?.kind === 'type') {
     return bareStruct(builder, read);
   }

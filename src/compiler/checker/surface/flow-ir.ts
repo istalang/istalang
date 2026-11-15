@@ -29,7 +29,7 @@
 
 import { memo } from '../../../foundation/structures/memo.ts';
 import type { VariableEntity } from '../../binder/entities.ts';
-import type { Expression, FieldHeader, Select } from '../../syntax/expressions/index.ts';
+import type { Expression, FieldLoopHeader, Select } from '../../syntax/expressions/index.ts';
 import type { Relation } from '../../syntax/expressions/operators.ts';
 import type { LabelledScope } from '../../syntax/statements/index.ts';
 import type { SyntaxNode } from '../../syntax/tree/index.ts';
@@ -115,15 +115,16 @@ type Made =
 /**
  * What a `compute` computes, of its operands: a constant (a literal, `Unit`, an offset, a condition
  * checking decided), the built-in `==` of two, `!=` `negated`, `not` of a `Bool`, whether a
- * `compare`'s result is in `relation`, or, in the pass of the field loop `header` heads over the
- * fields not known yet (§4), the name of the field it visits, one per field.
+ * `compare`'s result is in `relation`, or the one value its type holds (`typeValue`): a member
+ * parameter over literal types, one literal per instantiation (§3.5), named as a value, or a field
+ * loop's key in its pass over the fields not known yet, the name of each field it visits (§4).
  */
 export type Computation =
   | { readonly kind: 'constant'; readonly form: ConstantForm }
   | { readonly kind: 'equal'; readonly negated: boolean }
   | { readonly kind: 'not' }
   | { readonly kind: 'order'; readonly relation: Relation }
-  | { readonly kind: 'fieldKey'; readonly header: FieldHeader };
+  | { readonly kind: 'typeValue' };
 
 /**
  * An operation, at the node it runs for.
@@ -219,7 +220,7 @@ export type BranchTest =
   | { readonly kind: 'is'; readonly value: ValueId; readonly test: TypeTest }
   | {
       readonly kind: 'fieldPass';
-      readonly header: FieldHeader;
+      readonly header: FieldLoopHeader;
       readonly fields: readonly (string | undefined)[];
     }
   | {

@@ -25,6 +25,7 @@ import type {
 import type { For, While } from '../../syntax/statements/index.ts';
 import type { OverFields } from '../../syntax/statements/readings.ts';
 import { type AnchoredSpan, endOf } from '../../syntax/tree/positions.ts';
+import { typeEntity } from '../entities.ts';
 import type { LocalBinder } from './local-binder.ts';
 import { Scope } from './scope.ts';
 
@@ -134,10 +135,21 @@ export function underLoop(
 
 /**
  * A construct over a struct's fields (§4): its header's subject outside, its key and value fresh
- * for `body`, from the subject on to the construct's end, as a `for`'s variables are.
+ * for `body`, from the subject on to the construct's end, as a `for`'s variables are. Over a type's
+ * keys, the type outside, and the key a type fresh for `body`, as a mapped entry's parameter is.
  */
 export function underFields(binder: LocalBinder, node: OverFields, scope: Scope, body: Body): void {
   const { header } = node;
+  if (header.kind === 'TypeParameter') {
+    if (header.memberOf !== undefined) {
+      binder.walk.type(binder, header.memberOf, scope);
+    }
+    const define = (variables: Scope) => {
+      binder.declare(variables, header.name, typeEntity(header), { convention: 'type' });
+    };
+    underBindings(binder, node, scope, { define, body });
+    return;
+  }
   binder.walk.expression(binder, header.subject, scope);
   const define = (variables: Scope) => {
     for (const target of [header.key, header.value]) {
@@ -157,7 +169,7 @@ function bindingsStartOf(node: Binding): AnchoredSpan {
     case 'FieldLoop':
     case 'FieldComprehension':
     case 'StructComprehension':
-      return endOf(node.header.subject.span);
+      return endOf((node.header.kind === 'TypeParameter' ? node.header : node.header.subject).span);
     default:
       return endOf(node.iterable.span);
   }

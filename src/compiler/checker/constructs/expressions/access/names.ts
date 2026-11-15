@@ -2,9 +2,11 @@
  * A name used as a value (§3.4): what it means comes from the binder, and its type from where it
  * was declared. A variant's type comes from its enum (structs/variants.ts). Types, primitives and
  * namespaces are not values; a type in value position is how a static function or a conversion is
- * called, which the call checks before it gets here. The one type that is a value is a struct
- * without fields, written bare (§3.1), which takes its type arguments from the expected type, or
- * from those written after it (../../closures/function-values.ts).
+ * called, which the call checks before it gets here. The types that are values hold one value
+ * each: a struct without fields, written bare (§3.1), which takes its type arguments from the
+ * expected type, or from those written after it (../../closures/function-values.ts); and a member
+ * parameter over literal types (§3.5), one literal per instantiation, a loop's key over a type's
+ * keys among them (§4).
  */
 
 import { type Entity, localFunctionOf, type VariableEntity } from '../../../../binder/entities.ts';
@@ -22,6 +24,7 @@ import { expectedNominal } from '../../../types/fitting/expected.ts';
 import { isNominalEntity, membersOf, type Type } from '../../../types/type/index.ts';
 import { errorType, markType } from '../../../types/type/primitives.ts';
 import { fieldlessStructOf } from '../../../types/written/named-types.ts';
+import { parameterType } from '../../../types/written/resolve-type.ts';
 import { checkFunctionValue, namedFunctionsAccepted } from '../../closures/function-values.ts';
 import {
   checkVariantValue,
@@ -105,12 +108,15 @@ export function entityValueType(
     case 'variants':
       return checkVariantValue(context, node, entity, expected);
     default: {
-      const bare =
-        entity === undefined ? undefined : bareStructValue(context, node, entity, expected);
-      if (bare === undefined) {
+      const value =
+        entity === undefined
+          ? undefined
+          : (memberParameterValue(context, entity) ??
+            bareStructValue(context, node, entity, expected));
+      if (value === undefined) {
         context.report(checkerDiagnostics.notValue(node.span, node.text));
       }
-      return bare ?? errorType;
+      return value ?? errorType;
     }
   }
 }
@@ -163,6 +169,25 @@ export function declaredOutsideBodies(
   return owner.kind === 'VariableDeclaration' && module !== undefined
     ? checker.constantNamed(module, variable.name)?.type
     : undefined;
+}
+
+/**
+ * The type of the value a member parameter is where a body names it (§3.5): itself, as the pass
+ * being checked reads it, when each of its members is a literal, of one value; undefined for any
+ * other entity, or a member parameter one of whose members holds more values, such as `String`.
+ */
+function memberParameterValue(context: BodyContext, entity: Entity): Type | undefined {
+  if (
+    entity.kind !== 'type' ||
+    entity.declaration.kind !== 'TypeParameter' ||
+    entity.declaration.memberOf === undefined
+  ) {
+    return undefined;
+  }
+  const type = context.inPass(parameterType(entity.declaration));
+  const union = type.kind === 'literal' ? type : context.checker.fitting.memberUnionOf(type);
+  const isOneValue = (member: Type) => member.kind === 'literal' || member.kind === 'keys';
+  return union !== undefined && membersOf(union).every(isOneValue) ? type : undefined;
 }
 
 /**

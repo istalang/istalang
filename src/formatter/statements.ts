@@ -115,6 +115,7 @@ export const statementPrinters: Printers<StatementKind> = {
       node,
       group([
         label(printer, node.label),
+        'for ',
         printer.print(node.header),
         ':',
         body(printer, node.body),

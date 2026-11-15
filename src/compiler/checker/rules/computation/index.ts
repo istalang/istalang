@@ -49,6 +49,7 @@ import {
   formAt,
   formSemantics,
   literalForm,
+  literalTypeForm,
   unitForm,
 } from '../../surface/constant-form.ts';
 import type { FunctionCall } from '../../surface/resolved-call.ts';
@@ -413,11 +414,16 @@ class Computation {
   }
 
   /**
-   * A struct without fields named bare, qualified or not, with type arguments or not (§3.1); any
-   * other name that isn't a constant is refused.
+   * A type named as a value, the one it holds: a struct without fields named bare, qualified or
+   * not, with type arguments or not (§3.1), or a member parameter over literal types, the literal
+   * the instantiation computing it makes it (§3.5); any other name that isn't a constant is refused.
    */
   #bareStruct(node: Identifier | MemberAccess | TypeApplication): Outcome {
     const type = this.#scope.checked.typeOf(node);
+    const literal = type === undefined ? undefined : literalTypeForm(type);
+    if (literal !== undefined) {
+      return computed(literal);
+    }
     return type?.kind === 'nominal' && this.#scope.checker.fieldsOf(type)?.length === 0
       ? computed({ kind: 'struct', type, fields: [] })
       : refused(node);

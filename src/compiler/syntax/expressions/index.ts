@@ -18,6 +18,7 @@
  * was written.
  */
 
+import type { TypeParameter } from '../declarations/index.ts';
 import type { Pattern } from '../patterns.ts';
 import type { Block } from '../statements/index.ts';
 import type { FunctionQualifiers } from '../tokens/modifiers.ts';
@@ -68,11 +69,18 @@ export interface FieldHeader extends NodeOf<'FieldHeader'> {
 }
 
 /**
+ * What a field loop and both comprehensions run over (§4): a value's fields (`FieldHeader`), or a
+ * type's keys, `for K in keyof S`, whose header is the member parameter it declares (§3.5), its
+ * union always `keyof` of a type.
+ */
+export type FieldLoopHeader = FieldHeader | TypeParameter;
+
+/**
  * `[for k, v in ...x: e]`: an array of `e`'s value for each field of `x`, in name order (§4), as
  * the element written out once per field.
  */
 export interface FieldComprehension extends NodeOf<'FieldComprehension'> {
-  readonly header: FieldHeader;
+  readonly header: FieldLoopHeader;
   readonly body: Expression;
 }
 
@@ -81,7 +89,7 @@ export interface FieldComprehension extends NodeOf<'FieldComprehension'> {
  * the loop's key the brackets hold, of `e`'s value in that field's pass (§3.1, §4).
  */
 export interface StructComprehension extends NodeOf<'StructComprehension'> {
-  readonly header: FieldHeader;
+  readonly header: FieldLoopHeader;
   readonly key: Identifier;
   readonly value: Expression;
 }

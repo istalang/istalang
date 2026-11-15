@@ -31,7 +31,7 @@ import type {
   StructDeclaration,
   Variant,
 } from '../../../syntax/declarations/index.ts';
-import type { Expression, MemberAccess } from '../../../syntax/expressions/index.ts';
+import type { Expression, Index, MemberAccess } from '../../../syntax/expressions/index.ts';
 import type { Identifier } from '../../../syntax/tree/node.ts';
 import type { AnchoredSpan } from '../../../syntax/tree/positions.ts';
 import type { Checker } from '../../check.ts';
@@ -115,10 +115,14 @@ export function declaredOwnerOf(
     : staticOwnerOf(entityType(checker, checker.bindings.entityOf(module, declaration.owner)));
 }
 
-/** What naming a type in value position reads: the checker, and what the binder says a name is. */
+/**
+ * What naming a type in value position reads: the checker, what the binder says a name is, and a
+ * type as the pass being checked reads it, each loop's key over a type's keys bound (§4).
+ */
 interface Naming {
   readonly checker: CheckerContext;
   readonly entityOf: (name: Identifier) => Entity | undefined;
+  readonly inPass: (type: Type) => Type;
 }
 
 /** Where a bare variant is chosen: the module's, which reports and records the variant chosen. */
@@ -131,12 +135,31 @@ interface VariantChoosing extends CheckedModule {
  * of a conversion; undefined when `node` names no type.
  */
 export function namedType(context: Naming, node: Expression): Type | undefined {
+  if (node.kind === 'Index') {
+    return indexedNamed(context, node);
+  }
   const name = nameNodeOf(node);
   const entity = name === undefined ? undefined : context.entityOf(name);
   if (entity === undefined && node.kind === 'MemberAccess' && !node.isOptional) {
     return associatedNamed(context, node);
   }
-  return entityType(context.checker, entity);
+  const type = entityType(context.checker, entity);
+  return type === undefined ? undefined : context.inPass(type);
+}
+
+/**
+ * The type of the field a type indexed by a key names, `S[K]` (§3.10): written before `.`, a type
+ * indexed by a type names a type, never an index into a value; undefined for any other index, or a
+ * key that names no field of it.
+ */
+function indexedNamed(context: Naming, node: Index): Type | undefined {
+  const owner = node.isOptional ? undefined : namedType(context, node.target);
+  const key = owner === undefined ? undefined : namedType(context, node.index);
+  const field =
+    owner === undefined || key === undefined
+      ? undefined
+      : context.checker.typeRules.fieldType(owner, key);
+  return field?.kind === 'error' ? undefined : field;
 }
 
 /**

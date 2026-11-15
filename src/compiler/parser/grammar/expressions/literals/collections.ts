@@ -22,7 +22,7 @@ import { type AnchoredSpan, endOf } from '../../../../syntax/tree/positions.ts';
 import { parseCommaSeparated, parseList } from '../../../cursor/recovery.ts';
 import { parserDiagnostics } from '../../../diagnostics.ts';
 import type { Parser } from '../../../parser.ts';
-import { parseFieldHeaderAfter } from '../../parts/field-headers.ts';
+import { atFieldLoopSource, parseFieldLoopHeaderAfter } from '../../parts/field-headers.ts';
 import { parseTargets } from '../../parts/names.ts';
 import { parseSpread, spreadOpener } from '../../parts/spreads.ts';
 
@@ -117,8 +117,8 @@ function parseComprehension(parser: Parser): ComprehensionParts {
   const { start } = parser.cursor.advance().span;
   const targets = parseTargets(parser);
   parser.expect('in');
-  if (parser.cursor.at('...')) {
-    const header = parseFieldHeaderAfter(parser, start, targets);
+  if (atFieldLoopSource(parser)) {
+    const header = parseFieldLoopHeaderAfter(parser, start, targets);
     parser.expect(':');
     return { header, body: parser.expression() };
   }

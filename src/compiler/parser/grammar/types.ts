@@ -183,7 +183,7 @@ function parseIndexedType(parser: Parser, owner: TypeNode): TypeNode {
 }
 
 /** `keyof S`, at `keyof`: the type after it binds tighter than `|` (the banner). */
-function parseKeyofType(parser: Parser): TypeNode {
+export function parseKeyofType(parser: Parser): TypeNode {
   const { start } = parser.cursor.advance().span;
   const owner = parseTypeAt(parser, 'postfix');
   return { kind: 'KeyofType', span: parser.spanFrom(start), owner };

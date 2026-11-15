@@ -6,6 +6,7 @@
  * fields, checked nothing, so its nodes are read as the body around it reads them.
  */
 
+import type { FieldLoopHeader } from '../../syntax/expressions/index.ts';
 import { isOverFields, passedParts } from '../../syntax/statements/readings.ts';
 import type { SyntaxNode } from '../../syntax/tree/index.ts';
 import type { CheckedBody } from '../surface/checked-body.ts';
@@ -34,8 +35,7 @@ export function passesAround(
       const part = child === each.header ? outward[index + 2] : undefined;
       const passed =
         passedParts(each).some((passedPart) => passedPart === child) ||
-        part === each.header.key ||
-        part === each.header.value;
+        (part !== undefined && headerBinds(each.header, part));
       const [pass, ...more] = passed
         ? bodies.flatMap((outer) => outer.passesOf(each.header).map((inner) => inner.body))
         : [];
@@ -44,4 +44,11 @@ export function passesAround(
     [body],
   );
   return first.joinedWith(others, rules);
+}
+
+/** Whether `part` of `header` is what each pass binds: a value's key or value, or a type's key. */
+function headerBinds(header: FieldLoopHeader, part: SyntaxNode): boolean {
+  return header.kind === 'TypeParameter'
+    ? part === header.name
+    : part === header.key || part === header.value;
 }

@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-11-11
-last_updated: 2026-11-13
+last_updated: 2026-11-15
 tags: [language, guide]
 ---
 
@@ -193,13 +193,13 @@ fn sum<T is Monoid>(xs: Array<T>) -> T:
 
 - **Traits & `any Trait`.** Traits constrain type parameters (`T is Sendable & Comparable`), and `any Trait` types heterogeneous values (`Array<any View<Sc>>`, `(any Showable)?`) when the trait is object-safe (every required function takes `Self` first, uses `Self` nowhere else, and is not static). Conformance is structural like Go and TypeScript (**never** Rust's `impl Trait for Type:`): declare top-level functions beside the type or the trait.
 - **Operators are functions.** `a + b` calls `add`, `<`/`>`/`<=`/`>=` call `compare`, `x[k]` calls `index`, `x[k] = v` calls `setIndex`, `for x in c` calls `iterate`, `x in c` calls `includes`, and `T(x)` calls `T.from`. `==` and `!=` are built in (structural on values, identity on handles) and cannot be overloaded.
-- **Packs & member parameters.** `<...A>` is a tuple pack (`fn(...args: A) -> R`); `<K in U>` stands for a single member of union `U` per instantiation (`struct Entry<S is struct, K in keyof S>`).
+- **Packs & member parameters.** `<...A>` is a tuple pack (`fn(...args: A) -> R`); `<K in U>` stands for a single member of union `U` per instantiation (`struct Entry<S is struct, K in keyof S>`). When every member of `U` is a literal type, `K` is also a value: `fn describe<S in Status>() -> String: S`.
 
 **Computed types and field loops (§3.1, §3.5, §3.17, §4):**
 - **Associated types:** `type Data = T` inside a `struct` or `enum`, required in a trait with `type Data`, read as `N.Data`.
 - **Struct constraints:** `S is struct { title: String, [_] is FormNode }` (met by nominal `struct`s and anonymous shapes, not `shared` or `extern` structs).
 - **Mapped struct types:** `{ [F in keyof S]: S[F].Data }` (a structural shape with one field per key of `S`; named fields alongside `[F in …]` override/skip those keys).
-- **Field loops & comprehensions:** `for f, node in ...s:` (or `...*s` on a shared struct) checks and runs once per field in name order; `[for f, v in ...s: …]` builds an array; `struct{id, for f, v in ...s: [f]: g(v)}` builds a struct field by field.
+- **Field loops & comprehensions:** `for f, node in ...s:` (or `...*s` on a shared struct) checks and runs once per field in name order; `[for f, v in ...s: …]` builds an array; `struct{id, for f, v in ...s: [f]: g(v)}` builds a struct field by field. Over a type with no value, `for K in keyof S:`: `K` is each key, a type and its value, and `S[K].make()` calls the field type's static function, so `struct{for K in keyof S: [K]: S[K].make()}` builds an `S` from its type alone.
 - **`keyof S`, `s[k]`, and `type match`:** `keyof S` is the union of `S`'s field names as string literal types; `S[K]` is the field type (or union of field types), and `s[k]` reads/writes it. `type Out<D> = match D:` computes a type by pattern matching, its cases one per line below it (`case Field<infer T>: T`, then `case _: D`).
 
 ```python

@@ -1,8 +1,9 @@
 /**
  * Struct comprehensions (§3.1, §4): `struct{id, for k, v in ...x: [k]: e}` gives each field of `x`
  * a field of its own, of `e`'s value as that field's pass checks it
- * (constructs/loops/field-passes.ts), after the fields the literal names. The literal gives every
- * field itself, so it has no spread and leaves no field to a default.
+ * (constructs/loops/field-passes.ts), after the fields the literal names; `struct{for K in keyof
+ * S: [K]: e}` gives each field of the type `S` one. The literal gives every field itself, so it has
+ * no spread and leaves no field to a default.
  *
  * - Its type is the expected one, a struct type with exactly the named fields and `x`'s, a
  *   declaration's (literal-fields/index.ts) or a type whose fields aren't all known yet, such as a
@@ -35,7 +36,7 @@ import type { FieldMember, Type } from '../../../types/type/index.ts';
 import { literalType } from '../../../types/type/primitives.ts';
 import { typeText } from '../../../types/type/type-text.ts';
 import { unionOf } from '../../../types/unions/unions.ts';
-import { checkedFieldPasses, inFieldPasses } from '../../loops/field-passes.ts';
+import { checkedFieldPasses, inFieldPasses, visitedType } from '../../loops/field-passes.ts';
 import type { LiteralGiven } from './literal-sources.ts';
 
 /** The struct comprehension ending `node`'s items, if it has one. */
@@ -83,7 +84,7 @@ function comprehensionPasses<Given>(
  * take: reported, its value checked with nothing expected.
  */
 function fieldsUnknown(context: BodyContext, node: StructComprehension): undefined {
-  const subject = typeText(context.typeOf(node.header.subject));
+  const subject = typeText(visitedType(context, node.header));
   context.report(checkerDiagnostics.comprehendedFieldsUnknown(node.key.span, subject));
   context.expression(node.value);
 }
@@ -279,7 +280,7 @@ export function checkOpaqueComprehended(
     }
     context.expect(comprehension.value, rules.fieldType(expected, pass.key));
   });
-  const subject = context.typeOf(comprehension.header.subject);
+  const subject = visitedType(context, comprehension.header);
   if (subject.kind !== 'error' && !givesKeysOf(context, named.keys, subject, expected)) {
     context.report(checkerDiagnostics.comprehendedFields(node.span, typeText(expected)));
   } else if (fits) {

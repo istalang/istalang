@@ -18,7 +18,7 @@
 import type { Argument as DefinitionArgument } from '../../../definition/instructions/places.ts';
 import type { Register } from '../../../definition/operands.ts';
 import { unreachable } from '../../../foundation/structures/unreachable.ts';
-import type { ConstantForm } from '../../checker/surface/constant-form.ts';
+import { type ConstantForm, literalTypeForm } from '../../checker/surface/constant-form.ts';
 import type { Argument, Operation } from '../../checker/surface/flow-ir.ts';
 import type { Type } from '../../checker/types/type/index.ts';
 import { isPrimitive } from '../../checker/types/type/primitives.ts';
@@ -91,8 +91,13 @@ function computed(
       return negated(context, first as Register, span);
     case 'order':
       return ordered(context, span, first as Register, computation.relation);
-    case 'fieldKey':
-      return unreachable('An instantiation knows the field each of its passes visits.');
+    case 'typeValue': {
+      const type = writer.typeOf(into);
+      const form = literalTypeForm(type);
+      return form === undefined
+        ? unreachable(`An instantiation makes ${type.kind} a literal type.`)
+        : constantOf(writer, form, type, span);
+    }
     default: {
       const unhandled: never = computation;
       return unhandled;

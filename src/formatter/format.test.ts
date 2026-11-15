@@ -112,6 +112,8 @@ describe('comprehensions over fields (§3.1, §4)', () => {
     const text = lines(
       'fn f<S is struct>(s: S) -> { [F in keyof S]: S[F] }:',
       '  const keys = [for k, _ in ...s: k]',
+      '  const names = [for K in keyof S: K]',
+      '  struct{for K in keyof S: [K]: S[K].make(s[K])}',
       '  struct{for k, v in ...s: [k]: v}',
     );
     expect(formatText(text)).toBe(text);
@@ -133,6 +135,7 @@ describe('field loops (§4)', () => {
       'fn f<S is struct>(s: S, shared: Box):',
       '  outer: for key, (first, _) in ...s:',
       '    for _, value in ...*shared: continue outer',
+      '  for K in keyof S: break',
     );
     expect(formatText(text)).toBe(text);
     const { actual, expected } = roundTripOf(text);

@@ -6,9 +6,10 @@
  */
 
 import type { VariantEntity } from '../../../binder/entities.ts';
-import type { Expression, FieldHeader } from '../../../syntax/expressions/index.ts';
+import type { Expression, FieldLoopHeader } from '../../../syntax/expressions/index.ts';
 import type { StringLiteral } from '../../../syntax/expressions/literals/literals.ts';
 import type { Identifier } from '../../../syntax/tree/node.ts';
+import type { TypeNode } from '../../../syntax/types/index.ts';
 import type { FieldPassType, Pass, Passes } from '../../contexts/passes.ts';
 import type { FieldGiver, ValueSite } from '../../surface/checked-body.ts';
 import type { Fit } from '../../types/fitting/fit/index.ts';
@@ -23,11 +24,12 @@ interface CheckedPass extends FieldPassType {
 export function bodyRecords(passes: Passes) {
   return {
     types: passes.table<Expression, Type>(),
+    writtenTypes: passes.table<TypeNode, Type>(),
     expected: passes.table<ValueSite, Type>(),
     givenFields: passes.table<FieldGiver, FieldMember>(),
     keyOwners: passes.table<StringLiteral, Type>(),
     chosenVariants: passes.table<Identifier, VariantEntity>(),
     fits: passes.table<ValueSite, Fit>(),
-    fieldPasses: passes.table<FieldHeader, readonly CheckedPass[]>(),
+    fieldPasses: passes.table<FieldLoopHeader, readonly CheckedPass[]>(),
   };
 }

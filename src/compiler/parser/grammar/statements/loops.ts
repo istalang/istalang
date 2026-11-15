@@ -1,6 +1,7 @@
 /**
  * Loops (§4): `for x in xs: …`, whose targets destructure as a declaration's do, a field loop
- * `for key, value in ...x: …`, which the `...` before its subject tells apart, and `while c: …`,
+ * `for key, value in ...x: …` or `for K in keyof S: …`, which what follows `in` tells apart
+ * (parts/field-headers.ts), and `while c: …`,
  * each maybe after a label, `outer: for …`, which `break outer` and `continue outer` name. All
  * are statements of type unit, so they are not expressions.
  *
@@ -15,7 +16,7 @@ import type { Identifier, Invalid } from '../../../syntax/tree/node.ts';
 import { parserDiagnostics } from '../../diagnostics.ts';
 import type { Parser } from '../../parser.ts';
 import { parseHeaderBody } from '../parts/blocks.ts';
-import { parseFieldHeaderAfter } from '../parts/field-headers.ts';
+import { atFieldLoopSource, parseFieldLoopHeaderAfter } from '../parts/field-headers.ts';
 import { parseTargets } from '../parts/names.ts';
 
 export function parseFor(parser: Parser): For | FieldLoop {
@@ -65,8 +66,8 @@ function parseForAfter(
   parser.cursor.advance();
   const targets = parseTargets(parser);
   parser.expect('in');
-  if (parser.cursor.at('...')) {
-    const header = parseFieldHeaderAfter(parser, start, targets);
+  if (atFieldLoopSource(parser)) {
+    const header = parseFieldLoopHeaderAfter(parser, start, targets);
     const body = parseHeaderBody(parser, start);
     return { kind: 'FieldLoop', span: parser.spanFrom(start), label, header, body };
   }

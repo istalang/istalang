@@ -192,7 +192,11 @@ function memberDenotations(site: NameSite, access: MemberAccess): readonly Denot
 
 /** What naming a type in value position reads where `site` stands. */
 function namingAt({ checker, module }: NameSite) {
-  return { checker, entityOf: (name: Identifier) => checker.bindings.entityOf(module, name) };
+  return {
+    checker,
+    entityOf: (name: Identifier) => checker.bindings.entityOf(module, name),
+    inPass: (type: Type) => type,
+  };
 }
 
 /**
@@ -328,7 +332,9 @@ function writtenTypeName(
 ): readonly Denotation[] {
   const literal = literalNaming(holder, node);
   const type =
-    literal === undefined ? site.checker.resolvedTypeOf(node) : site.body?.typeOf(literal);
+    literal === undefined
+      ? (site.body?.writtenTypeOf(node) ?? site.checker.resolvedTypeOf(node))
+      : site.body?.typeOf(literal);
   const bound = named(site, type);
   return bound.length > 0 ? bound : associatedNamed(site.checker, type);
 }

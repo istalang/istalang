@@ -29,7 +29,7 @@ import { unreachable } from '../../../../foundation/structures/unreachable.ts';
 import type { Entity, VariantEntity } from '../../../binder/entities.ts';
 import type { ModuleId } from '../../../program/program.ts';
 import type { FunctionDeclaration } from '../../../syntax/declarations/index.ts';
-import type { Expression, FieldHeader } from '../../../syntax/expressions/index.ts';
+import type { Expression, FieldLoopHeader } from '../../../syntax/expressions/index.ts';
 import { unparenthesized } from '../../../syntax/expressions/readings.ts';
 import type { Block, Statement, VariableDeclaration } from '../../../syntax/statements/index.ts';
 import type { Identifier, Invalid } from '../../../syntax/tree/node.ts';
@@ -62,7 +62,7 @@ import type {
 } from '../../contexts/body-context.ts';
 import type { CheckerContext } from '../../contexts/context.ts';
 import type { FieldPassType, PassTable } from '../../contexts/passes.ts';
-import { Passes } from '../../contexts/passes.ts';
+import { keyBinding, Passes } from '../../contexts/passes.ts';
 import { Desugarings } from '../../desugaring/index.ts';
 import { handledBy } from '../../resolution/applying/call-kinds.ts';
 import { ImplicitCalls } from '../../resolution/applying/implicit.ts';
@@ -115,6 +115,7 @@ export class BodyChecker implements BodyContext {
   readonly fieldReads = new FieldReads(this.#passes);
   readonly labels = new LabelTargets();
   readonly #records = bodyRecords(this.#passes);
+  readonly inPass = (type: Type): Type => this.#passes.bound(type, this.checker.typeRules);
   readonly sugars = new Desugarings(this.#passes);
   /** The body's own result, which only the body's own function returns into. */
   readonly #result: ReturnScope;
@@ -374,7 +375,9 @@ export class BodyChecker implements BodyContext {
   }
 
   resolveType(node: TypeNode): Type {
-    return this.checker.resolveType(this.module, node);
+    const type = this.inPass(this.checker.resolveType(this.module, node));
+    this.#records.writtenTypes.set(node, type);
+    return type;
   }
 
   entityOf(name: Identifier): Entity | undefined {
@@ -390,16 +393,15 @@ export class BodyChecker implements BodyContext {
   }
 
   fieldPasses(
-    header: FieldHeader,
+    header: FieldLoopHeader,
     passes: readonly FieldPassType[],
     check: (pass: FieldPassType) => void,
   ): CheckedPasses {
-    // Each pass checks the same text again, so what it checks settles before the pass exits: a
-    // scope it joined would settle once every pass had left, writing into none of them.
     const { checked, inEach } = this.#passes.checkEach(
       passes,
       (pass) => this.scopes.suspended(() => check(pass)),
       (diagnostic) => this.report(diagnostic),
+      (pass) => keyBinding(header, pass),
     );
     this.#records.fieldPasses.set(header, checked);
     return {

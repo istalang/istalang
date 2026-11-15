@@ -20,14 +20,13 @@ import type {
   StructComprehension,
   StructLiteral,
 } from '../../../../syntax/expressions/index.ts';
-import { lastName } from '../../../../syntax/tree/node.ts';
 import type { AnchoredSpan } from '../../../../syntax/tree/positions.ts';
 import type { NamedType } from '../../../../syntax/types/index.ts';
 import { parseDelimited } from '../../../cursor/recovery.ts';
 import { parserDiagnostics } from '../../../diagnostics.ts';
 import { atPostfix, breakSeparatesItems } from '../../../layout/item-breaks.ts';
 import type { Parser } from '../../../parser.ts';
-import { parseFieldHeaderAfter } from '../../parts/field-headers.ts';
+import { fieldLoopKeyName, parseFieldLoopHeaderAfter } from '../../parts/field-headers.ts';
 import { parseTargets } from '../../parts/names.ts';
 import { parseSpread, spreadOpener } from '../../parts/spreads.ts';
 import { afterStructKeyword } from '../../parts/structs.ts';
@@ -125,15 +124,14 @@ export function parseStructComprehension(parser: Parser): StructComprehension {
   const { start } = parser.cursor.advance().span;
   const targets = parseTargets(parser);
   parser.expect('in');
-  const header = parseFieldHeaderAfter(parser, start, targets);
+  const header = parseFieldLoopHeaderAfter(parser, start, targets);
   parser.expect(':');
   parser.expect('[');
   const key = parser.identifier("the loop's key");
   parser.expect(']');
   parser.expect(':');
   const value = parser.expression();
-  const named = header.key.kind === 'NamePattern' ? lastName(header.key.path).text : undefined;
-  if (named !== key.text) {
+  if (fieldLoopKeyName(header) !== key.text) {
     parser.report(parserDiagnostics.structComprehensionKey(parser.textSpanOf(key.span)));
   }
   return { kind: 'StructComprehension', span: parser.spanFrom(start), header, key, value };

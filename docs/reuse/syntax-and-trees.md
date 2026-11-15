@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-11-13
-last_updated: 2026-11-14
+last_updated: 2026-11-15
 tags: [reuse, syntax, ast, scanner, parser, operators]
 ---
 
@@ -47,6 +47,7 @@ tags: [reuse, syntax, ast, scanner, parser, operators]
 - strip outer parentheses from a `TypeNode` before asking its kind → `unparenthesizedType` (`src/compiler/syntax/types/index.ts`)
 - check whether a node writes a type, a function type's rest included, never by a list of kinds of your own → `isWrittenType` (`src/compiler/syntax/types/index.ts`)
 - read a `QualifiedName` from an `Identifier` or non-optional `MemberAccess` chain → `qualifiedPath` (`src/compiler/syntax/expressions/readings.ts`)
+- parse a field loop's header, `...x` or `keyof S`, after a `for`'s targets, as a loop and both comprehensions share it → `atFieldLoopSource`, `parseFieldLoopHeaderAfter`, and the name a struct comprehension's brackets must repeat → `fieldLoopKeyName` (`src/compiler/parser/grammar/parts/field-headers.ts`)
 - read what a call or a deferred call (`CallingNode`, `src/compiler/syntax/expressions/calls.ts`) calls by name, the type arguments and the arguments a call passes, or find the node making the call a node is the callee of among its holders, through type arguments after it or a deferred call's taker → `calledName`, `callTypeArguments`, `writtenArgumentsOf`, `callOfCallee`, `makerOf`; the call a deferred call defers, its taker written as a call, whether an operand has a taker's shape → `deferredOf`, `takerCallOf`, `isTakerShaped` (`src/compiler/syntax/expressions/readings.ts`); the function a call gives after its arguments, which `writtenArgumentsOf` lists last → `Call.given`; an expression's type arguments stand only on a `TypeApplication` (`f<Int>`), a call's callee among them, never on the `Call`, and an optional call's `TypeApplication` callee is a value, its type arguments no call's
 - read the value or field name of a struct literal's `FieldItem` → `itemValue`, `itemName` (`src/compiler/syntax/expressions/readings.ts`)
 - read what an indented value (spec §2) builds off its entries, the entries that form holds, or those it can't hold, which the parser reports → `formOf`, `isStructItem`, `isMapItem`, `isArrayItem`, `entriesLeftOut` (`src/compiler/syntax/expressions/literals/indented-values.ts`)

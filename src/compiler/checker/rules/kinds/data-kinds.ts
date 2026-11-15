@@ -43,6 +43,7 @@ import {
 import type { Expression } from '../../../syntax/expressions/index.ts';
 import { defaultValuesOf } from '../../../syntax/expressions/parameters.ts';
 import type { VariableDeclaration } from '../../../syntax/statements/index.ts';
+import { isOverFields } from '../../../syntax/statements/readings.ts';
 import { awaits } from '../../../syntax/tokens/modifiers.ts';
 import { fieldChildrenOf, nestsFunction, type SyntaxNode } from '../../../syntax/tree/index.ts';
 import type { AnchoredSpan } from '../../../syntax/tree/positions.ts';
@@ -236,7 +237,7 @@ function judge(judging: Judging, node: SyntaxNode, handler: Handler): void {
   for (const child of children) {
     judge(judging, child, inner);
   }
-  if ('header' in node && node.header?.kind === 'FieldHeader') {
+  if (isOverFields(node)) {
     for (const pass of judging.body.passesOf(node.header)) {
       const inPass = judgingOf(judging.checker, judging.module, pass.body);
       for (const child of children) {

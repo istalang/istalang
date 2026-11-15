@@ -34,7 +34,7 @@ import {
   type FunctionDeclaration,
   typeParametersOf,
 } from '../../syntax/declarations/index.ts';
-import type { FieldHeader, Lambda } from '../../syntax/expressions/index.ts';
+import type { FieldLoopHeader, Lambda } from '../../syntax/expressions/index.ts';
 import type { VariableDeclaration } from '../../syntax/statements/index.ts';
 import type { NodeOf } from '../../syntax/tree/node.ts';
 import type { AnchoredSpan } from '../../syntax/tree/positions.ts';
@@ -66,7 +66,7 @@ export function ownerInstance(owner: BodyOwner): FunctionInstance | undefined {
 
 /** A pass of a field loop a body is lowered in (§4): the loop's header, and the field it visits. */
 export interface FieldPassStep {
-  readonly header: FieldHeader;
+  readonly header: FieldLoopHeader;
   readonly field: string;
 }
 
