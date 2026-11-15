@@ -3,8 +3,8 @@ description: the design of the JavaScript backend for live and simple code — o
 owner: tech-lead
 status: active
 applies_to: istalang
-last_verified: 2026-11-15
-last_updated: 2026-11-15
+last_verified: 2026-11-16
+last_updated: 2026-11-16
 tags: [design, codegen, javascript, runtime, browser, lifetimes, lowering]
 ---
 
@@ -51,7 +51,7 @@ code entry, and exports one function per start (Host API).
 
 **Functions:**
 - **Kinds:** a simple entry is a JS function. A live async entry is an `async` function that
-  settles its own future, so awaiting a future that has already settled never yields.
+  settles its own future. Every `await` yields, a settled future's too, as the interpreter's do.
 - **Registers:**
   - registers are locals;
   - a cell register holds a cell, made by its first write;
@@ -60,7 +60,9 @@ code entry, and exports one function per start (Host API).
 - **Arguments:** a parameter left out arrives `undefined`, which the prologue's `given` tests.
 - **Control flow:** jumps become a `for (;;) switch (pc)` with one case per label, and code between
   labels is straight-line. Every instruction is one JS line.
-- **Calls:** a direct call is a JS call. A function value's call goes through its closure.
+- **Calls:** a direct call is a JS call. A function value's call goes through its closure. Calls
+  nest on the JavaScript stack, so recursion deeper than it allows (~10k calls) panics, where the
+  interpreter's frames go on.
 
 **Values keep the Definition's shapes:** bigint `Int`, tagged composites, the language's maps. So
 `valuesEqual`, `mapOf`, the std natives and the JSON boundary are reused unchanged. Values are
@@ -77,12 +79,14 @@ it alone holds its value's top node.
   first step). Everything below the top node, and every other value, is copied along the path.
 - **For natives:** a `&` argument tells its native's `changes` whether its place is the sole holder,
   so building a collection item by item stays linear without counting plain data.
+- **JSON kept by identity:** a value changed in place is first forgotten by `WrittenJson`, as the
+  interpreter's in-place writes do.
 
 ## Lifetimes and disposal (spec §7)
 
 - **What is counted:** what `lifetimes/counts.ts` counts today:
   - disposables;
-  - objects that may hold one (futures, slots, waits, resolvers);
+  - objects that may hold one (futures, waits, resolvers);
   - cells and resources of counted types;
   - composite values in counted registers, each a node that counts its holders and holds its parts.
 
@@ -95,7 +99,7 @@ it alone holds its value's top node.
     - builds and captures from counted registers;
     - cell writes of counted types.
   - **The runtime library,** for what its own objects hold: a future's registrations, a wait's
-    resolvers, a slot's queue.
+    resolvers.
 - **Disposal at the release point:** every instruction that let go of something is followed by
   `if (zeroes.length) collect()`. `dispose` is synchronous (spec), so a collection runs whole before
   the next instruction:
@@ -116,17 +120,19 @@ it alone holds its value's top node.
 
 - **Waits:**
   - a waiting call sleeps on a promise its wait resolves;
-  - waits decided together wake in the interpreter's order, and JavaScript's microtasks keep it;
+  - waits decided together wake in the interpreter's order, kept by the library's own ready
+    queue: microtasks alone can't keep it;
   - `select` decides by position;
   - no segments, heap ids, snapshots or commits.
 - **Natives:**
-  - the capabilities live code reaches are implemented here: futures, waits, slots, timers, weak
-    side, resources, random and logs;
-  - instances, contexts and testing are absent, so a program needing them fails to build, naming
-    the extern;
+  - the capabilities live code reaches are implemented here: futures, waits, timers, weak side,
+    resources, random and logs;
+  - slots are ista data; std modules mark the natives only the interpreter runs (instances,
+    contexts, slots, testing), and a program reaching one fails to build, naming it;
   - the std natives and `runtime/boundary` are reused unchanged.
 - **Traces:** the module carries a line → span table. A panic's trace is read off the JavaScript
-  stack, so nothing is paid on the hot path. After an `await`, the stack holds only the frames
+  stack, located against a site the module records at load since loaders move lines, so nothing is
+  paid on the hot path. After an `await`, the stack holds only the frames
   since it resumed, and so does the trace.
 - **Host API:** each start's export takes the host's externs as today's `HostExterns` (JSON in,
   JSON or a promise of it out) and the start's JSON arguments.
@@ -135,9 +141,8 @@ it alone holds its value's top node.
 
 - **`src/codegen/`:** the emitter; `emit/` holds one emitter per instruction family, a typed table
   over the kinds.
-- **`src/live/`:** the runtime library. It imports only `definition/values`, `foundation`, the
-  `stdlib` natives and `runtime/boundary`, so it bundles for a browser. Both folders need entries in
-  `.dependency-cruiser.mjs`.
+- **`src/live/`:** the runtime library. It reaches only the runtime's seams and no Node built-in
+  (dependency-cruiser), so it bundles for a browser.
 - **`compiler/lowering/`:** `counted`.
 - **`cli/commands/build.ts`:** `ista build <entry> --out <file>`.
 - **Verification:** a differential runner runs every live corpus program and spec example on both
