@@ -19,12 +19,11 @@
 
 import type { Register } from '../../../definition/operands.ts';
 import type { SignatureParameter } from '../../checker/check.ts';
-import { substitute } from '../../checker/types/parts/substitution.ts';
 import type { Type } from '../../checker/types/type/index.ts';
 import type { Identifier } from '../../syntax/tree/node.ts';
 import { packElements } from '../calls/packs.ts';
 import type { FunctionContext } from '../context.ts';
-import { cellRegister, holdsType } from '../flow/variables.ts';
+import { cellRegister, concreteType, holdsType } from '../flow/variables.ts';
 import { writeFlow } from '../flow/writer.ts';
 import type { BodyOwner } from '../tables/instances.ts';
 import { tupleOf } from '../values/struct-values.ts';
@@ -62,7 +61,9 @@ export function frameSlots(context: EntryContext): readonly FrameSlot[] {
   return context.frame.parameters.map((parameter) => ({
     parameter,
     elements:
-      parameter.rest?.kind === 'pack' ? packElements(concrete(context, parameter.type)) : undefined,
+      parameter.rest?.kind === 'pack'
+        ? packElements(concreteType(context, parameter.type))
+        : undefined,
   }));
 }
 
@@ -96,7 +97,7 @@ export function declareFrame(
     return [{ register, reference, hasDefault: mayBeLeftOut(parameter) }];
   });
   for (const { entity, type } of context.frame.captures) {
-    const captured = concrete(context, type);
+    const captured = concreteType(context, type);
     let register: Register;
     if (context.body.inCell(entity.name)) {
       register = cellRegister(context, captured);
@@ -223,9 +224,4 @@ export function declareFilled(
   const register = context.code.allocate();
   context.variables.declare(name, register);
   context.code.emit(fill(register));
-}
-
-/** `type` as the entry's body reads it: its type parameters substituted. */
-function concrete(context: EntryContext, type: Type): Type {
-  return substitute(type, context.body.substitution, context.checker.typeRules);
 }

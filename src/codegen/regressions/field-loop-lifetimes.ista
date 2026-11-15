@@ -1,0 +1,20 @@
+# outcome: 0
+# A field loop's variable takes each field's type in its pass (§4), a lease's in one and an `Int`'s in
+# another: what it holds in the lease's pass is counted, and disposed once the loop is done with it.
+
+import * as log from 'log'
+
+shared struct Lease { id: Int }
+
+fn dispose(self: Lease): log.info("disposed " + String(self->id))
+
+struct Pair { a: Int, b: Lease }
+
+fn walk(pair: Pair):
+  for key, value in ...pair:
+    log.info("visit " + key)
+
+live async fn main() -> Int:
+  walk(Pair{a: 1, b: new Lease{id: 7}})
+  log.info("after walk")
+  0

@@ -84,6 +84,8 @@ export class FlowWriter {
   #wait: OpenWait | undefined;
   #block: BlockId = 0;
   #next: BlockId | undefined;
+  /** Whether the block being written is in a field loop's passes (§4). */
+  #inPasses = false;
   readonly #after: Label;
 
   constructor(context: FunctionContext, flow: FlowFunction, end: FlowEnd) {
@@ -109,7 +111,9 @@ export class FlowWriter {
       this.#block = block;
       this.#next = order[position + 1];
       this.context.code.place(this.labelOf(block));
-      this.context.inFieldPasses(this.#layout.passesOf(block), () =>
+      const passes = this.#layout.passesOf(block);
+      this.#inPasses = passes.length > 0;
+      this.context.inFieldPasses(passes, () =>
         this.#writeBlock(this.flow.blocks[block] as FlowBlock),
       );
     }
@@ -172,9 +176,19 @@ export class FlowWriter {
     this.#registers.set(value, register);
     this.#held.add(register);
     const bound = this.valueOf(value);
-    if (bound.type !== undefined && !(bound.kind === 'variable' && bound.inCell)) {
+    if (bound.type !== undefined && this.#typesItsRegister(bound)) {
       holdsType(this.context, register, bound.type);
     }
+  }
+
+  /**
+   * Whether `value`'s type says what its register holds: not a cell's (`cellRegister` says it), nor
+   * a variable's in a field loop's pass, where one register holds each pass's field but the flow
+   * types the variable as one pass reads it (§4); what is written there says instead
+   * (functions/plain-registers.ts).
+   */
+  #typesItsRegister(value: FlowValue): boolean {
+    return value.kind !== 'variable' || !(value.inCell || this.#inPasses);
   }
 
   /** `value` given `produced`: its own register, or moved into the one it has. */
@@ -203,7 +217,7 @@ export class FlowWriter {
       const register = value.inCell
         ? cellRegister(this.context, type)
         : this.context.code.allocate();
-      if (!value.inCell) {
+      if (this.#typesItsRegister(value)) {
         holdsType(this.context, register, type);
       }
       variables.declare(name, register);

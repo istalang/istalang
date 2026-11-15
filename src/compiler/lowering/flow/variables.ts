@@ -11,9 +11,10 @@
 
 import type { Register, TypeId } from '../../../definition/operands.ts';
 import { unreachable } from '../../../foundation/structures/unreachable.ts';
+import { substitute } from '../../checker/types/parts/substitution.ts';
 import type { Type } from '../../checker/types/type/index.ts';
 import type { Identifier } from '../../syntax/tree/node.ts';
-import type { CodeContext } from '../context.ts';
+import type { FunctionContext } from '../context.ts';
 
 /** A register holding a cell, and the `_Cell<T>` type entry it is created as. */
 export interface CellRegister {
@@ -58,10 +59,7 @@ export class VariableRegisters {
 }
 
 /** A fresh register listed as a cell holding a `type`, created as its `_Cell<T>` entry. */
-export function cellRegister(
-  context: CodeContext & { readonly variables: VariableRegisters },
-  type: Type,
-): Register {
+export function cellRegister(context: FunctionContext, type: Type): Register {
   const register = context.code.allocate();
   const cellType = context.checker.cellOf(type);
   context.variables.addCell({ register, type: context.tables.types.index(cellType) });
@@ -70,11 +68,19 @@ export function cellRegister(
 }
 
 /**
- * Notes that `register` holds values of `type`, concrete as the entry reads it: none reaching a
- * disposable when the type reaches none (CodeWriter `holdsPlain`).
+ * Notes that `register` holds values of `type`, read as the entry reads it where it is written, in
+ * the pass of a field loop it is in (§4): plain when no type it holds reaches a disposable
+ * (CodeWriter `holdsPlain`, `holdsCounted`).
  */
-export function holdsType(context: CodeContext, register: Register, type: Type): void {
-  if (!context.checker.reachesDisposable(type)) {
+export function holdsType(context: FunctionContext, register: Register, type: Type): void {
+  if (context.checker.reachesDisposable(concreteType(context, type))) {
+    context.code.holdsCounted(register);
+  } else {
     context.code.holdsPlain(register);
   }
+}
+
+/** `type` as the entry's body reads it now: its type parameters and field loops' keys substituted. */
+export function concreteType(context: FunctionContext, type: Type): Type {
+  return substitute(type, context.body.substitution, context.checker.typeRules);
 }

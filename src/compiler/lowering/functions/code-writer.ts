@@ -61,6 +61,11 @@ export class CodeWriter {
    * (`holdsOnlyPlain`).
    */
   #plain: Set<Register> | 'all' = new Set();
+  /**
+   * The registers some binding gives a type that may reach a disposable (`holdsCounted`): a field
+   * loop's passes may bind one register to values of several types (§4), so no type makes it plain.
+   */
+  readonly #typedCounted = new Set<Register>();
 
   /** A fresh register. */
   allocate(): Register {
@@ -94,6 +99,11 @@ export class CodeWriter {
   }
 
   /** Notes that every register, allocated or to be, holds only values reaching no disposable. */
+  /** Notes that `register` may hold values reaching a disposable, as one of their types says. */
+  holdsCounted(register: Register): void {
+    this.#typedCounted.add(register);
+  }
+
   holdsOnlyPlain(): void {
     this.#plain = 'all';
   }
@@ -295,7 +305,14 @@ export class CodeWriter {
     );
     const typed = this.#plain;
     const plain =
-      typed === 'all' ? 'all' : plainRegisters(instructions, this.#registers, typedOnly, typed);
+      typed === 'all'
+        ? 'all'
+        : plainRegisters(
+            instructions,
+            this.#registers,
+            typedOnly,
+            new Set([...typed].filter((register) => !this.#typedCounted.has(register))),
+          );
     const counted =
       plain === 'all'
         ? []
