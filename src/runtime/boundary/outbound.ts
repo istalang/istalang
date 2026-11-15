@@ -18,14 +18,20 @@ import type { Value } from '../../definition/values/values.ts';
 import type { Finished } from '../instance-state.ts';
 import { Refusal } from '../refusal.ts';
 
+/** What encoding an outcome reads of a finished run, on any runtime: what its encoder gave. */
+type Outcome = Pick<Finished, 'encoded'>;
+
+/** What encoding an outcome reads of a program: its types. */
+type Typed = Pick<Definition, 'types'>;
+
 /** A finished instance's encoded outcome as the JavaScript JSON a host works with (bigint integers). */
-export function outcomeJson(finished: Finished, definition: Definition): unknown {
+export function outcomeJson(finished: Outcome, definition: Typed): unknown {
   const { encoded, shape } = encodedOf(finished, definition);
   return plainOfJson(encoded, shape);
 }
 
 /** A finished instance's encoded outcome as the JSON text §9 writes. */
-export function outcomeText(finished: Finished, definition: Definition): string {
+export function outcomeText(finished: Outcome, definition: Typed): string {
   const { encoded, shape } = encodedOf(finished, definition);
   return jsonText(encoded, shape);
 }
@@ -35,8 +41,8 @@ export function outcomeText(finished: Finished, definition: Definition): string 
  * when it isn't this program's `Json`, the outcome of another program's instance.
  */
 function encodedOf(
-  { encoded }: Finished,
-  definition: Definition,
+  { encoded }: Outcome,
+  definition: Typed,
 ): { readonly encoded: Value; readonly shape: JsonType } {
   if (encoded === undefined) {
     throw new Refusal('noJsonForm', 'This outcome has no JSON: no codec writes its type.');
