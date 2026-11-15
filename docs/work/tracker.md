@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-11-11
-last_updated: 2026-11-15
+last_updated: 2026-11-16
 tags: [tracker]
 ---
 
@@ -39,7 +39,7 @@ tags: [tracker]
 
 ## Filed
 
-Open items only: an item is removed once it is resolved; git history keeps it. Each group numbers its own items and keeps counting up: the next ids are F38, P54, Q59, B112. Items filed before 2026-10-28 shared one `D` series; older docs and git history keep the closed `D` ids.
+Open items only: an item is removed once it is resolved; git history keeps it. Each group numbers its own items and keeps counting up: the next ids are F38, P54, Q59, B113. Items filed before 2026-10-28 shared one `D` series; older docs and git history keep the closed `D` ids.
 
 Size: easy (one short, local change), medium (several files or a design choice inside one layer), big (cross-layer, or a decision first). Depends on: what must happen first, or "none" when it can be done now.
 
@@ -195,3 +195,4 @@ Crashes, spec gaps, wrong or missing diagnostics, host-visible behaviour.
 | B107 | A field cut by the expansion rule reads as the error type, which then fails Encodable with 5101 beside the 5125 (`json.stringify(B<Int>{a: none})` with B18's `B`/`A`): a follow-on diagnostic the error type should silence. | small | none | structural-fixes B merge review 2026-11-15 |
 | B110 | A field of a known struct read by a key not known yet meets nothing its fields meet: `fn f<K in keyof Holder>(h: Holder, k: K) -> Holder[K].Inner.Scope`, every field of `Holder` a `Wrapper` whose `Inner` is a `Node`, reports 5132 ("has no associated type 'Scope'"), and `keyof Outer[K]` 5160. `entryRules` (`types/traits/known-constraints.ts`) reads only struct constraints, so a known struct's own fields ask nothing; `associatedDeclarationsOn` reads them one level only (`keyedFieldTypes`). The same reductions over a call's still-open key stay unreduced until it is found (P16b), so only a rigid key reaches it. | small | none | keyed-members-type-loops P16b 2026-11-15 |
 | B111 | A call whose result is computed from a type parameter only what takes it bounds, or only its default decides, is related unreduced: `text(emptyScope())` for `fn emptyScope<N is Node = Field<Int>>() -> N.Scope` reports 5100, and `id(emptyPair())` expected as `(Field<String>?, String?)` for `-> (N?, N.Scope)` doesn't give `N` the `Field<String>` its `N?` part takes. A computed part fixes its variables as it joins only where its arguments bound them (`ConstraintScope`); standing as a placeholder judged once they settle would cover both. | small | none | keyed-members-type-loops P16b 2026-11-15 |
+| B112 | Checking records no type for the value a `select` case gives when it awaits a program's own awaitable (a struct with an `onAwait`): `case Cold{value: 4} as v` reports "an untyped value at SelectCase" in the flow sweep (`rules/flow/flow.sweep.test.ts`), alike when the awaitable is bound to a `const` first; an `await` of it is typed. The programs that need it run as compiled JavaScript's regressions (`src/codegen/regressions/`), out of the corpus until this is fixed. | small | none | js-codegen P1 2026-11-16 |

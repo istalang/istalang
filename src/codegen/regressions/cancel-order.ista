@@ -41,9 +41,11 @@ live async fn main() -> String:
   const kept: Shared<Array<Resolver<Int, "live">>> = new Shared{value: []}
   _ = waiting(events, gate)
   _ = resolving(gate, kept)
+  const cold = Cold{value: 4}
+  const keep = Keep{events, kept}
   const won = await select:
-    case Cold{value: 4} as value: value
-    case Keep{events, kept} as value: value
+    case cold as value: value
+    case keep as value: value
   events->value.push("won " + String(won))
   await time.delay(1ms)
   events->value.join(", ")

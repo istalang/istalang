@@ -22,8 +22,10 @@ live fn onAwait(self: Keep, done: Resolver<Int, "live">):
 live async fn main() -> Int:
   const cancelled = new Shared{value: 0}
   const kept: Shared<Array<Resolver<Int, "live">>> = new Shared{value: []}
+  const cold = Cold{value: 4}
+  const keep = Keep{cancelled, kept}
   const won = await select:
-    case Cold{value: 4} as v: v * 100
-    case Keep{cancelled, kept} as v: v
+    case cold as v: v * 100
+    case keep as v: v
   await time.delay(1ms)
   won + cancelled->value

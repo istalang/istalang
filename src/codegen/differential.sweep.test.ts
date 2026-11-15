@@ -5,10 +5,10 @@
  * interpreter, and one compiled JavaScript runs differently is named with why.
  */
 
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it, vi } from 'vitest';
-import { corpusDirectory, runPrograms } from '../../test/corpus/programs.ts';
+import { corpusDirectory, runProgramOf, runPrograms } from '../../test/corpus/programs.ts';
 import { specExamples } from '../../test/corpus/spec-examples.ts';
 import { loadHostModule } from '../cli/host-module.ts';
 import type { Definition } from '../definition/definition.ts';
@@ -29,6 +29,13 @@ const checkError = /^error \d+/u;
 const declaresMain = /^live async fn main\(/mu;
 
 const formBuilder = fileURLToPath(new URL('../../examples/FormBuilder/', import.meta.url));
+
+/**
+ * Programs, in the corpus's format, that compiled JavaScript once ran differently: kept here, not in
+ * the corpus, when what they need trips a check every corpus program is held to (a `select` over a
+ * program's own awaitables records untyped flow facts, tracker B112).
+ */
+const regressions = fileURLToPath(new URL('./regressions/', import.meta.url));
 // Compiling the supplier form costs seconds, and the interpreter runs it slowly.
 const formBuilderRun = 60_000;
 
@@ -95,6 +102,24 @@ describe('compiled JavaScript runs each spec example declaring main as the inter
         );
       });
     }
+  }
+});
+
+describe('compiled JavaScript runs what it once ran differently as the interpreter does', () => {
+  for (const name of readdirSync(regressions)) {
+    const program = runProgramOf({ name, text: readFileSync(`${regressions}${name}`, 'utf8') });
+    it(`${name}, as it states`, async () => {
+      const compiled =
+        program === undefined ? undefined : compiledAt(regressions, name, program.text);
+      if (program === undefined || compiled === undefined || 'problem' in compiled) {
+        throw new Error(`${name} states no outcome, or doesn't compile.`);
+      }
+      const shown = await shownByInterpreter(compiled.definition);
+      expect(shown.ended).toBe(
+        program.expects === 'outcome' ? program.expected : `panic: ${program.expected}`,
+      );
+      expect(await shownByJavaScript(await javaScriptOf(compiled.definition))).toEqual(shown);
+    });
   }
 });
 

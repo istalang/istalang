@@ -62,13 +62,18 @@ export const corpusFiles: readonly CorpusFile[] = readdirSync(corpusDirectory, {
 
 const programs = corpusFiles.filter(({ name }) => !moduleCorpora.has(name.split('/')[0] ?? ''));
 
-export const runPrograms: readonly RunProgram[] = programs.flatMap(({ name, text }) => {
+export const runPrograms: readonly RunProgram[] = programs.flatMap(
+  (file) => runProgramOf(file) ?? [],
+);
+
+/** `file` as a program stating what running it must give, by its first line; none without one. */
+export function runProgramOf({ name, text }: CorpusFile): RunProgram | undefined {
   const { expects, expected } = outcome.exec(text.split('\n')[0] ?? '')?.groups ?? {};
   if (expects !== 'outcome' && expects !== 'panic') {
-    return [];
+    return undefined;
   }
-  return [{ name, text, expects, expected: expected ?? '' }];
-});
+  return { name, text, expects, expected: expected ?? '' };
+}
 
 export const invalidPrograms: readonly InvalidProgram[] = programs.flatMap(({ name, text }) => {
   const errors = headerOf(text).flatMap((line) => {
