@@ -390,7 +390,9 @@ export class Instance {
    */
   resumeOn(execution: LiveExecution, decision: Decision): void {
     this.#endWait(execution);
-    resume(topFrame(execution), decision);
+    const frame = topFrame(execution);
+    releaseLosers(frame, decision.position);
+    resume(frame, decision);
   }
 
   /** Ends `execution`'s wait, if it waits: the wait goes, and it is no longer ready. */

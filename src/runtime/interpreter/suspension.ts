@@ -7,12 +7,12 @@
  *   the case it was decided at already, or to `otherwise`. Ending a wait takes it out of its
  *   register: the wait goes then, so nothing notes it let go of.
  * - The cases a `select` lost let go of what their expressions created (spec §8, "Losers are
- *   released") once the winner is decided, which for a blocking one is before it resumes. A losing
- *   case's resolver still to resume a disposed call on its `disposing()` watch holds that watch
- *   itself, its wait holding it (§7; scheduler/instance/waits/index.ts), so its registers go too.
- * - Entering the winning case lets go of every other case's holdings left, binds its value for
- *   `as`, and jumps to its body. The winner's holdings stay in their registers, for the enclosing
- *   block to release.
+ *   released") once, where the winner is decided: for a blocking one before it resumes, for one
+ *   that doesn't wait as it ends, and for a disposed call as it resumes on its `disposing()` case.
+ *   A losing case's resolver still to resume a disposed call on that watch holds the watch itself,
+ *   its wait holding it (§7; scheduler/instance/waits/index.ts), so its registers go too.
+ * - Entering the winning case binds its value for `as` and jumps to its body. The winner's holdings
+ *   stay in their registers, for the enclosing block to release.
  */
 
 import { waitRegister } from '../../definition/instructions/flow.ts';
@@ -60,10 +60,10 @@ export function takeWait(frame: ActiveFrame): number | undefined {
 }
 
 /**
- * Lets go of what every case lost by the blocking `select` `frame` waits at created, as its wait is
- * decided at `winner`. Whether it let go of anything.
+ * Lets go of what every case lost by the `select` `frame` stands at created, as it is decided at
+ * `winner` (undefined: at `otherwise`, every case lost). Whether it let go of anything.
  */
-export function releaseLosers(frame: ActiveFrame, winner: number): boolean {
+export function releaseLosers(frame: ActiveFrame, winner: number | undefined): boolean {
   const instruction = frame.code.instructions[frame.pc];
   if (instruction?.kind !== 'select') {
     return false;
@@ -77,16 +77,8 @@ export function releaseLosers(frame: ActiveFrame, winner: number): boolean {
   return released;
 }
 
-/**
- * Continues `frame` at the case of `select` that won, or at `otherwise` when none did, releasing
- * the holdings of every case that lost.
- */
+/** Continues `frame` at the case of `select` that won, or at `otherwise` when none did. */
 export function enterCase(frame: ActiveFrame, select: Select, winner: Decision | undefined): void {
-  for (const [position, selectCase] of select.cases.entries()) {
-    if (position !== winner?.position) {
-      releaseCase(frame, selectCase);
-    }
-  }
   const chosen = winner === undefined ? undefined : select.cases[winner.position];
   if (chosen === undefined) {
     if (select.otherwise === undefined) {

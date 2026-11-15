@@ -42,7 +42,7 @@ import {
   writeCell,
   writeRegister,
 } from './registers.ts';
-import { enterCase } from './suspension.ts';
+import { enterCase, releaseLosers } from './suspension.ts';
 
 const relations = {
   less: (comparison: bigint) => comparison < 0n,
@@ -237,7 +237,9 @@ const handlers: Handlers<Machine, Instruction, [ActiveFrame], void> = {
       machine.wait();
       return;
     }
-    enterCase(frame, instruction, machine.endWait());
+    const decision = machine.endWait();
+    releaseLosers(frame, decision?.position);
+    enterCase(frame, instruction, decision);
   },
   release: (_machine, instruction, frame) => {
     for (const register of instruction.registers) {
