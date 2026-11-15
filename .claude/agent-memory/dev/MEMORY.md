@@ -8,3 +8,5 @@
 - [Build on constructs](feedback_build-on-constructs.md) — features in Istalang over existing constructs, no new builtins; read docs/reuse; verify scouts
 - [Examine when finished](feedback_examine-when-finished.md) — fork bumi/teri examiners once the whole unfinished phase is done, not per commit
 - [Worktree base](project_worktree-base.md) — `-w` worktrees start at old b390cfe8; reset forks to main first
+- [hcom send pitfalls](reference_hcom-send.md) — send reports via --file (backticks get mangled); ack needs --reply-to
+- [Simplicity first](feedback_simplicity-first.md) — simplification is #1; drop caching/per-module/optimizations unless spec-forced or measured

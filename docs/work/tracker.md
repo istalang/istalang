@@ -33,11 +33,13 @@ tags: [tracker]
 | Proposal 14, inert functions (`docs/work/inert-functions/plan.md`) | done (reviewer approved, QA passed; B89 left) |
 | Computed, and FormBuilder on it (`docs/work/computed/plan.md`) | done (merge review approved) |
 | Proposal 15, stable host references (`docs/work/stable-host-references/plan.md`) | done (reviewer approved, QA passed; FormBuilder may rely on it) |
+| Proposal 16, key-named functions (`docs/proposals/16-key-named-functions.md`) | proposed: awaiting approval; FormBuilder's scopes move into the engine |
+| Proposal 17, field loops over a type (`docs/proposals/17-type-field-loops.md`) | proposed: awaiting approval; FormBuilder's model factories move into the engine |
 | M8 Packages | planned |
 
 ## Filed
 
-Open items only: an item is removed once it is resolved; git history keeps it. Each group numbers its own items and keeps counting up: the next ids are F34, P53, Q56, B95. Items filed before 2026-10-28 shared one `D` series; older docs and git history keep the closed `D` ids.
+Open items only: an item is removed once it is resolved; git history keeps it. Each group numbers its own items and keeps counting up: the next ids are F36, P53, Q56, B95. Items filed before 2026-10-28 shared one `D` series; older docs and git history keep the closed `D` ids.
 
 Size: easy (one short, local change), medium (several files or a design choice inside one layer), big (cross-layer, or a decision first). Depends on: what must happen first, or "none" when it can be done now.
 
@@ -71,6 +73,8 @@ Language or toolchain features deferred by decision, not defects.
 | F29 | Type patterns naming `Fn` (§3.11, §3.14): `case Fn as f` against `Int \| fn(Int) -> Int` should select the union's function members, as a generic type named bare selects its instances; it is refused (5422), since a type pattern selects only nominal members. | small | — | async-kinds F1 2026-11-10 |
 | F30 | `runtime.jobKey()` (proposal 9, Jobs): the key of the job a live run runs, for the work it calls to deduplicate on, such as a payment API's idempotency key. It needs a value scoped to one live execution, which the language lacks; a job's key exists, its instance's name and its number (`runtime._Job`). | medium | proposal 9 | async-kinds DG 2026-11-11 |
 | F31 | A declaration-time check that a name on a type is one of a field, a getter or a method (proposal 13): today a clash is reported only where a use finds two (5505). | medium | proposal 13 | transients-getters plan |
+| F34 | Source maps for the JS backend's module (docs/work/js-codegen/design.md), so a debugger steps through Istalang source: derived from the module's line → span table, which panic traces already read. | medium | js-codegen P1 | js-codegen review 2026-11-15 |
+| F35 | Full async panic traces in the JS backend: after an `await`, a trace holds only the frames since the call resumed, read off the JavaScript stack. A full trace needs a caller link on every live async call, paid on the hot path. | medium | js-codegen P1 | js-codegen review 2026-11-15 |
 
 ### Performance (P)
 
