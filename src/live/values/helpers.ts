@@ -4,15 +4,8 @@
  */
 
 import { mapOf, valuesEqual } from '../../definition/values/equality.ts';
-import { withPartAt } from '../../definition/values/parts.ts';
-import {
-  childValues,
-  elementsOf,
-  isComposite,
-  mapValueOf,
-  type Value,
-} from '../../definition/values/values.ts';
-import { unreachable } from '../../foundation/structures/unreachable.ts';
+import { fieldAt, withPartAt } from '../../definition/values/parts.ts';
+import { elementsOf, isComposite, mapValueOf, type Value } from '../../definition/values/values.ts';
 import { Future } from '../waits/future.ts';
 import { Cell } from './cell.ts';
 import { Place } from './place.ts';
@@ -39,14 +32,6 @@ function placeIn(cell: Cell, path: readonly number[]): Place {
 /** A new future: an async call's, which its body settles. */
 function newFuture(): Future {
   return new Future();
-}
-
-/** Field `index` of `value`: a tuple element, a struct field, or a field of an enum's variant. */
-function field(value: Value, index: number): Value {
-  if (!isComposite(value)) {
-    return unreachable(`A ${typeof value} has no field ${index}.`);
-  }
-  return childValues(value)[index] as Value;
 }
 
 /** Built-in structural `==`, identical values equal at once. */
@@ -76,7 +61,7 @@ export const helpers = {
   placeIn,
   newFuture,
   withPart: withPartAt,
-  field,
+  field: fieldAt,
   eq,
   mapOf,
   mapValueOf,

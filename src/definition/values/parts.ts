@@ -17,7 +17,7 @@ import {
 
 /** The part of `value` at `path`. */
 export function partAt(value: Value, path: readonly number[]): Value {
-  return path.reduce(childAt, value);
+  return path.reduce(fieldAt, value);
 }
 
 /**
@@ -36,12 +36,12 @@ function withPartFrom(value: Value, path: readonly number[], from: number, part:
   }
   const composite = compositeAt(value, index);
   const children = [...childValues(composite)];
-  children[index] = withPartFrom(childAt(composite, index), path, from + 1, part);
+  children[index] = withPartFrom(fieldAt(composite, index), path, from + 1, part);
   return withChildValues(composite, children);
 }
 
-/** Field `index` of `value`. */
-function childAt(value: Value, index: number): Value {
+/** Field `index` of `value`: a tuple element, a struct field, or a field of an enum's variant. */
+export function fieldAt(value: Value, index: number): Value {
   const parts = childValues(compositeAt(value, index));
   if (index >= parts.length) {
     unreachable(`No field ${index}; loading and checking rule this out.`);

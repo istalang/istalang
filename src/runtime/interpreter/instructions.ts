@@ -16,9 +16,9 @@ import type { Callee } from '../../definition/instructions/calls.ts';
 import type { Instruction } from '../../definition/instructions/instruction.ts';
 import type { FunctionId, Register } from '../../definition/operands.ts';
 import { mapOf, valuesEqual } from '../../definition/values/equality.ts';
+import { fieldAt } from '../../definition/values/parts.ts';
 import {
   type CompositeValue,
-  childValues,
   closureOf,
   elementsOf,
   handleTo,
@@ -120,12 +120,7 @@ const handlers: Handlers<Machine, Instruction, [ActiveFrame], void> = {
     });
   },
   field: (_machine, instruction, frame) => {
-    const composite = readRegister(frame, instruction.src);
-    const value = isComposite(composite) ? childValues(composite)[instruction.index] : undefined;
-    if (value === undefined) {
-      unreachable(`No field ${instruction.index} at pc ${frame.pc}.`);
-    }
-    next(frame, instruction.dst, value);
+    next(frame, instruction.dst, fieldAt(readRegister(frame, instruction.src), instruction.index));
   },
   equal: (_machine, instruction, frame) => {
     const left = readRegister(frame, instruction.left);
