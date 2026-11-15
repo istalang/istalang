@@ -30,7 +30,6 @@ import type {
   DeclaredField,
   DeclaredStruct,
   EnumDeclaration,
-  Field,
   FunctionDeclaration,
   Variant,
 } from '../../../../syntax/declarations/index.ts';
@@ -57,9 +56,9 @@ import { errorType } from '../../../types/type/primitives.ts';
 import type { TypeRules } from '../../../types/type/type-rules.ts';
 import { declaredField, validFields } from '../../../types/written/declared-fields.ts';
 
-/** Whether two lists of fields name, type and declare their fields alike, in order. */
-const sameFields = sameItems<FieldMember>(
-  (first, second) =>
+/** Whether two fields are named, typed and declared alike. */
+function sameField(first: FieldMember, second: FieldMember): boolean {
+  return (
     first.name === second.name &&
     sameTypeSpelled(first.type, second.type) &&
     (first.declared === second.declared ||
@@ -67,13 +66,23 @@ const sameFields = sameItems<FieldMember>(
         second.declared !== undefined &&
         first.declared.node === second.declared.node &&
         first.declared.module === second.declared.module &&
-        sameTypeSpelled(first.declared.type, second.declared.type))),
-);
+        sameTypeSpelled(first.declared.type, second.declared.type)))
+  );
+}
+
+/** Whether two lists of fields name, type and declare their fields alike, in order. */
+const sameFields = sameItems<FieldMember>(sameField);
 
 export class Layouts {
   readonly #checker: CheckerContext;
   readonly #fields: EntryTable<CheckerNote, DeclaredStruct, readonly FieldMember[]>;
   readonly #variants: EntryTable<CheckerNote, EnumDeclaration, readonly VariantMember[]>;
+  /**
+   * Each field typed alone, before the expansion rule may cut it: a written type resolved, or the
+   * type its default gives. Reached again while its default is checked, it reads as the error
+   * type; the cycle is reported at the defaults (functions/parameters.ts).
+   */
+  readonly #typed: EntryTable<CheckerNote, DeclaredField, FieldMember, FieldedDeclaration>;
   readonly #expansion: TypeExpansion;
   /** Each struct's declared fields in name order, keyed by the declared list they sort. */
   readonly #laidOut = new WeakMap<readonly FieldMember[], readonly FieldMember[]>();
@@ -85,25 +94,29 @@ export class Layouts {
     // type; the cycle is reported at the defaults (functions/parameters.ts).
     this.#fields = checker.entries.table({
       name: 'declared fields',
-      compute: (declaration) =>
-        this.#fieldsOf(declaration, declaration.fields, fieldsFunctionOf(declaration)),
+      compute: (declaration) => this.#fieldsOf(declaration, declaration.fields, 'typed'),
       equal: sameFields,
       cyclic: {
-        standIn: (declaration) => this.#fieldsOf(declaration, declaration.fields, undefined),
+        standIn: (declaration) => this.#fieldsOf(declaration, declaration.fields, 'standing'),
       },
     });
     this.#variants = checker.entries.table({
       name: 'declared variants',
-      compute: (declaration) =>
-        this.#variantsOf(declaration, (variant) => fieldsFunctionOf(declaration, variant)),
+      compute: (declaration) => this.#variantsOf(declaration, 'typed'),
       equal: sameItems(
         (first, second) => first.name === second.name && sameFields(first.fields, second.fields),
       ),
-      cyclic: { standIn: (declaration) => this.#variantsOf(declaration, () => undefined) },
+      cyclic: { standIn: (declaration) => this.#variantsOf(declaration, 'standing') },
+    });
+    this.#typed = checker.entries.table({
+      name: 'declared field',
+      compute: (field, declaration) => this.#typedAlone(declaration, field, 'typed'),
+      equal: sameField,
+      cyclic: { standIn: (field, declaration) => this.#typedAlone(declaration, field, 'standing') },
     });
     this.#expansion = new TypeExpansion(
       checker,
-      (declaration, field) => this.#typedAlone(declaration, field).type,
+      (declaration, field) => this.#typed.get(field, declaration).type,
     );
   }
 
@@ -145,15 +158,16 @@ export class Layouts {
       return undefined;
     }
     const { declaration } = type.entity;
-    const fields = validFields(declaration.fields);
-    const defaults = fieldsFunctionOf(declaration);
-    return positioned(
-      fields.map((field) => ({ name: field.name.text, field })),
-      name,
-      ({ field }) => {
-        const member = this.#declaredField(declaration, field, fields.indexOf(field), defaults);
-        return substitutedField(member, substitutionOf(type), this.#checker.typeRules);
-      },
+    const named = validFields(declaration.fields).map((field) => ({
+      name: field.name.text,
+      field,
+    }));
+    return positioned(named, name, ({ field }) =>
+      substitutedField(
+        this.#declaredField(declaration, field, 'typed'),
+        substitutionOf(type),
+        this.#checker.typeRules,
+      ),
     );
   }
 
@@ -215,64 +229,70 @@ export class Layouts {
     return this.#variants.get(declaration);
   }
 
-  /** `declaration`'s variants, each variant's fields typed by the defaults `defaultsOf` gives. */
-  #variantsOf(
-    declaration: EnumDeclaration,
-    defaultsOf: (variant: Variant) => FunctionDeclaration | undefined,
-  ): readonly VariantMember[] {
+  /** `declaration`'s variants, each with its fields, as `#fieldsOf` types them. */
+  #variantsOf(declaration: EnumDeclaration, typing: Typing): readonly VariantMember[] {
     return declaration.variants.flatMap((variant) =>
       variant.kind === 'Variant'
-        ? [
-            {
-              name: variant.name.text,
-              fields: this.#fieldsOf(declaration, variant.fields, defaultsOf(variant)),
-            },
-          ]
+        ? [{ name: variant.name.text, fields: this.#fieldsOf(declaration, variant.fields, typing) }]
         : [],
     );
   }
 
-  /** `fields` of `declaration`, as declared, typed by `defaults` where a default gives the type. */
+  /** `fields` of `declaration`, as declared, each typed alone (`#declaredField`). */
   #fieldsOf(
     declaration: FieldedDeclaration,
-    fields: readonly (Field | Invalid)[],
-    defaults: FunctionDeclaration | undefined,
+    fields: readonly (DeclaredField | Invalid)[],
+    typing: Typing,
   ): readonly FieldMember[] {
-    return validFields(fields).map((field, index) =>
-      this.#declaredField(declaration, field, index, defaults),
-    );
+    return validFields(fields).map((field) => this.#declaredField(declaration, field, typing));
   }
 
   /**
-   * `field`, the `index`-th of `declaration`'s valid fields (or a variant's), typed alone; one that
-   * would make its declaration's instantiation endless reads as an error.
+   * `field` of `declaration`, typed alone; one that would make its declaration's instantiation
+   * endless reads as an error. Standing for a layout reached again, a field its default types reads
+   * as an error, so no default is checked.
    */
   #declaredField(
     declaration: FieldedDeclaration,
-    field: Field,
-    index: number,
-    defaults: FunctionDeclaration | undefined,
+    field: DeclaredField,
+    typing: Typing,
   ): FieldMember {
-    const module = this.#checker.moduleOf(declaration);
-    const member = declaredField(this.#checker, module, { field, index }, { defaults });
+    if (typing === 'standing' && field.type === undefined) {
+      return this.#typedAlone(declaration, field, typing);
+    }
+    const member = this.#typed.get(field, declaration);
     return this.#expansion.isEndless(declaration, field) ? { ...member, type: errorType } : member;
   }
 
-  /** `field` of `declaration`, typed as declared, before the expansion rule may cut it. */
-  #typedAlone(declaration: FieldedDeclaration, field: DeclaredField): FieldMember {
+  /**
+   * `field` of `declaration`, typed as declared, before the expansion rule may cut it; standing, a
+   * field its default types reads as an error.
+   */
+  #typedAlone(declaration: FieldedDeclaration, field: DeclaredField, typing: Typing): FieldMember {
     const { fields, defaults } = fieldsHolding(declaration, field);
     const module = this.#checker.moduleOf(declaration);
     const index = validFields(fields).indexOf(field);
-    return declaredField(this.#checker, module, { field, index }, { defaults });
+    return declaredField(
+      this.#checker,
+      module,
+      { field, index },
+      { defaults: typing === 'typed' ? defaults : undefined },
+    );
   }
 }
+
+/**
+ * How a layout types its fields: as declared, or standing for a layout reached again while its
+ * defaults are checked.
+ */
+type Typing = 'typed' | 'standing';
 
 /** The fields of `declaration` holding `field`, a struct's or a variant's, and their defaults. */
 function fieldsHolding(
   declaration: FieldedDeclaration,
   field: DeclaredField,
 ): {
-  readonly fields: readonly (Field | Invalid)[];
+  readonly fields: readonly (DeclaredField | Invalid)[];
   readonly defaults: FunctionDeclaration | undefined;
 } {
   if (declaration.kind !== 'EnumDeclaration') {

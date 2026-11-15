@@ -77,8 +77,10 @@ export function declaredFields(
 }
 
 /** The fields among `fields` the parser made whole, in declaration order. */
-export function validFields(fields: readonly (Field | Invalid)[]): readonly Field[] {
-  return fields.filter((field) => field.kind !== 'Invalid');
+export function validFields<Written extends Field>(
+  fields: readonly (Written | Invalid)[],
+): readonly Written[] {
+  return fields.filter((field): field is Written => field.kind !== 'Invalid');
 }
 
 /** A field, and its position among its declaration's valid fields, its default's parameter's. */
