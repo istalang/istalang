@@ -12,8 +12,7 @@ import type { CheckerContext } from '../../contexts/context.ts';
 import type { FieldPassType } from '../../contexts/passes.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import { fieldTypeOf, keyName, keysOf } from '../../types/traits/struct-keys.ts';
-import type { Type } from '../../types/type/index.ts';
-import { membersOf } from '../../types/type/index.ts';
+import { keyParameter, membersOf, type Type } from '../../types/type/index.ts';
 import { errorType, isPrimitive, neverType, tupleType } from '../../types/type/primitives.ts';
 import { typeText } from '../../types/type/type-text.ts';
 import { unionOf } from '../../types/unions/unions.ts';
@@ -85,8 +84,7 @@ function fieldPassesOver(
   if (others.length === 0) {
     return named;
   }
-  const within = unionOf(others, checker.typeRules);
-  const key: Type = { kind: 'parameter', declaration: header, within };
+  const key = keyParameter(header, unionOf(others, checker.typeRules));
   return [...named, { visits: { kind: 'others' }, key, value: fieldTypeOf(checker, subject, key) }];
 }
 

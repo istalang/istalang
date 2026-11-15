@@ -20,16 +20,14 @@
  */
 
 import type { Checker } from '../../checker/check.ts';
-import { type FunctionInstance, substitutionOf } from '../../checker/surface/witness-closing.ts';
+import type { FunctionInstance } from '../../checker/surface/witness-closing.ts';
 import type { TypeKeys } from '../../checker/types/identity/type-keys.ts';
-import type { Substitution } from '../../checker/types/parts/substitution.ts';
 import {
   isMarkParameter,
   type QualifierLookup,
   simpleMark,
 } from '../../checker/types/type/function-kinds.ts';
 import type { FunctionType, Type } from '../../checker/types/type/index.ts';
-import { literalType } from '../../checker/types/type/primitives.ts';
 import type { ModuleId } from '../../program/program.ts';
 import {
   type ContextConstantDeclaration,
@@ -72,14 +70,6 @@ export interface FieldPassStep {
   readonly field: string;
 }
 
-/**
- * What the keys of the field loops `passes` are lowered in stand for: each field's name, as its
- * literal type, which the pass of the fields a struct constraint leaves unnamed needs (§4).
- */
-function passBindings(passes: readonly FieldPassStep[] = []): Substitution {
-  return new Map(passes.map(({ header, field }) => [header, literalType(field)] as const));
-}
-
 /** The declaration `owner` is: its function's, or the constant's. */
 export function ownerDeclaration(
   owner: BodyOwner,
@@ -87,16 +77,6 @@ export function ownerDeclaration(
   return owner.kind === 'constant' || owner.kind === 'contextConstant'
     ? owner.declaration
     : owner.instance.declaration;
-}
-
-/**
- * How `owner` maps type parameters: its instance's arguments, a constant none; and the keys of
- * the field loops it is lowered inside (`passBindings`).
- */
-export function ownerSubstitution(owner: BodyOwner): Substitution {
-  const instance = ownerInstance(owner);
-  const own = instance === undefined ? new Map() : substitutionOf(instance);
-  return new Map([...own, ...passBindings(owner.passes)]);
 }
 
 /**

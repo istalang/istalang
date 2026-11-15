@@ -246,6 +246,14 @@ export interface TypeParameterType extends WrittenThrough {
 }
 
 /**
+ * The key `declaration` binds, one of `keys` (§3.1, §4): a mapped entry's, a rest's, a struct
+ * constraint's other field, or the key of a field loop's pass over the fields not known yet.
+ */
+export function keyParameter(declaration: ParameterKey, keys: Type): TypeParameterType {
+  return { kind: 'parameter', declaration, within: keys };
+}
+
+/**
  * Whether `type`, written after `in`, names among its members one standing for one type already
  * rather than listing members to choose from (§3.5, §3.10): a member parameter, or an associated
  * type, opaque. A member bound naming one is a mistake, and bounds nothing, so nothing follows it

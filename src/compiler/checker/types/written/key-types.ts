@@ -25,7 +25,7 @@ import type { CheckerContext } from '../../contexts/context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import type { Fitting } from '../fitting/fit/index.ts';
 import { type Substitution, substitute } from '../parts/substitution.ts';
-import { membersOf, type ParameterKey, shapeType, type Type } from '../type/index.ts';
+import { keyParameter, membersOf, type ParameterKey, shapeType, type Type } from '../type/index.ts';
 import { errorType } from '../type/primitives.ts';
 import { typeText } from '../type/type-text.ts';
 import { declaredFields } from './declared-fields.ts';
@@ -95,9 +95,7 @@ export function structWritten(
     return keys;
   }
   const { parameter } = entry;
-  const ranging = new Map<ParameterKey, Type>([
-    [parameter, { kind: 'parameter', declaration: parameter, within: keys }],
-  ]);
+  const ranging = new Map<ParameterKey, Type>([[parameter, keyParameter(parameter, keys)]]);
   const value = substitute(resolve(entry.type), ranging, checker.typeRules);
   return checker.typeRules.mappedType({ origin: node, named, parameter, keys, value });
 }

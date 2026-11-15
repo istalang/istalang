@@ -26,7 +26,7 @@ import { packElements } from '../calls/packs.ts';
 import type { FunctionContext } from '../context.ts';
 import { cellRegister } from '../flow/variables.ts';
 import { writeFlow } from '../flow/writer.ts';
-import { type BodyOwner, ownerSubstitution } from '../tables/instances.ts';
+import type { BodyOwner } from '../tables/instances.ts';
 import { tupleOf } from '../values/struct-values.ts';
 import type { WrittenInstruction } from './code-writer.ts';
 import type { Frame } from './frames.ts';
@@ -216,7 +216,7 @@ export function declareFilled(
   context.code.emit(fill(register));
 }
 
-/** `type` as the entry's owner sees it: its type parameters substituted. */
+/** `type` as the entry's body reads it: its type parameters substituted. */
 function concrete(context: EntryContext, type: Type): Type {
-  return substitute(type, ownerSubstitution(context.owner), context.checker.typeRules);
+  return substitute(type, context.body.substitution, context.checker.typeRules);
 }

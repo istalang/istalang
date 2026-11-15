@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-11-13
-last_updated: 2026-11-14
+last_updated: 2026-11-15
 tags: [reuse, lowering, definition, ir, instructions]
 ---
 
@@ -31,7 +31,7 @@ tags: [reuse, lowering, definition, ir, instructions]
 - read a part of a value as a flow's `read` does (a step, behind a handle, inside an optional, a keyed field) → `partRead` (`src/compiler/lowering/flow/parts.ts`); a field a trait requires, on a value whose type lowering knows, an instance's or an `any` member's: its stored field, else its getter's call (§3.10) → `readRequiredField` (`src/compiler/lowering/values/required-fields.ts`); write a flow's `Place`, or pass it by `&` (copied in and out where it is no variable's) → `writePlace`, `passedArguments` (`src/compiler/lowering/flow/places.ts`)
 - emit a direct or closed `call` instruction → `emitCall`, `emitFunctionCall`, `referenceTo` (`src/compiler/lowering/calls/emit-call.ts`)
 - the mode of an entry lowering writes, from its function's kind, or the kind an entry built as a function of a type waits in → `codeModeOf`, `builtKindOf` (`src/compiler/lowering/functions/modes.ts`)
-- write code inside a field loop's pass (§4): calls closed with its key bound, nested functions keyed per pass, a nested function's body read as that pass checked it → `FunctionContext.inFieldPasses` (`src/compiler/lowering/context.ts`), `loweredNested` (`src/compiler/lowering/functions/frames.ts`), `BodyOwner.passes` and `ownerSubstitution` (`src/compiler/lowering/tables/instances.ts`); an instantiated body has one pass per field, in field order (`instantiationBy`, `src/compiler/checker/wiring/body/facts/instantiation.ts`)
+- write code inside a field loop's pass (§4): the body read as that pass checked it, so its calls close and its types concretize through the pass's `CheckedBody.substitution` (its key bound), nested functions keyed per pass → `FunctionContext.inFieldPasses` (`src/compiler/lowering/context.ts`), `loweredNested` and `passedBody` (`src/compiler/lowering/functions/frames.ts`), `BodyOwner.passes` (`src/compiler/lowering/tables/instances.ts`); an instantiated body has one pass per field, in field order, its key bound in its substitution: the one home of unrolling (`instantiationBy`, `src/compiler/checker/wiring/body/facts/instantiation.ts`)
 - read or write the field a key of several names names, or a part past it, switching on its tag → `readKeyed`, `writeKeyed`, `eachKeyedField`, and convert a value written there into the concrete field, also where an instantiation left the key one name (an `AssignedPart` whose `WrittenFit` is `'intoKeyedField'`) → `fittedInto` (`src/compiler/lowering/values/keyed-fields.ts`); run code per member of a union value → `onEachMember`, or into one register → `eachMember` (`src/compiler/lowering/values/unions.ts`)
 - read one field of a value, or its part along field and element positions → `CodeWriter.field`, `CodeWriter.readPath` (`src/compiler/lowering/functions/code-writer.ts`); compare two registers with the built-in `equal` → `CodeWriter.equal`, or `equal` (`values/operators.ts`) for `!=` too
 - a variable's register, any flow of the entry writing it → `VariableRegisters.registerOf`; allocate a cell → `cellRegister` (`src/compiler/lowering/flow/variables.ts`)

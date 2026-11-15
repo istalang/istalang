@@ -48,6 +48,46 @@ function comprehensionSource(comprehension: StructComprehension): FieldSource {
   return { kind: 'comprehension', comprehension };
 }
 
+/** A pass that visits fields: one named, or those not known yet. */
+type Visiting = Exclude<FieldPassType['visits'], { readonly kind: 'none' }>;
+
+/**
+ * Checks `node`'s value once per pass over its header's fields (constructs/loops/field-passes.ts):
+ * alone in a pass visiting none, else as `each` does, which gives what that pass gives its literal.
+ */
+function comprehensionPasses<Given>(
+  context: BodyContext,
+  node: StructComprehension,
+  each: (visits: Visiting, pass: FieldPassType) => Given | undefined,
+): { readonly passes: CheckedPasses; readonly given: readonly (Given | undefined)[] } {
+  const given: (Given | undefined)[] = [];
+  const passes = inFieldPasses(
+    context,
+    node.header,
+    checkedFieldPasses(context, node.header),
+    (pass) => {
+      const { visits } = pass;
+      if (visits.kind === 'none') {
+        context.expression(node.value);
+        given.push(undefined);
+      } else {
+        given.push(each(visits, pass));
+      }
+    },
+  );
+  return { passes, given };
+}
+
+/**
+ * The pass of the fields a struct constraint leaves unnamed, which a literal of known fields can't
+ * take: reported, its value checked with nothing expected.
+ */
+function fieldsUnknown(context: BodyContext, node: StructComprehension): undefined {
+  const subject = typeText(context.typeOf(node.header.subject));
+  context.report(checkerDiagnostics.comprehendedFieldsUnknown(node.key.span, subject));
+  context.expression(node.value);
+}
+
 /** What a literal builds, as its comprehension's fields are checked against it. */
 interface ComprehensionTarget {
   /** Its fields, as declared, and the name of the literal, for reports. */
@@ -90,12 +130,10 @@ export function checkComprehended(
   if (node === undefined) {
     return undefined;
   }
-  const given: (ComprehendedField | undefined)[] = [];
-  const passes = inFieldPasses(
-    context,
-    node.header,
-    checkedFieldPasses(context, node.header),
-    (pass) => given.push(comprehendedField(context, node, target, pass)),
+  const { passes, given } = comprehensionPasses(context, node, (visits) =>
+    visits.kind === 'field'
+      ? comprehendedField(context, node, target, visits.name)
+      : fieldsUnknown(context, node),
   );
   return { node, passes, given };
 }
@@ -104,35 +142,26 @@ function comprehendedField(
   context: BodyContext,
   node: StructComprehension,
   { fields, name, inference, isGiven }: ComprehensionTarget,
-  pass: FieldPassType,
+  field: string,
 ): ComprehendedField | undefined {
-  const { visits } = pass;
-  const index =
-    visits.kind === 'field' ? fields.findIndex((each) => each.name === visits.name) : -1;
-  const field = fields[index];
-  if (visits.kind !== 'field' || field === undefined || isGiven(index)) {
-    const subject = context.typeOf(node.header.subject);
-    if (visits.kind === 'others') {
-      context.report(
-        checkerDiagnostics.comprehendedFieldsUnknown(node.key.span, typeText(subject)),
-      );
-    } else if (visits.kind === 'field') {
-      context.report(
-        field === undefined
-          ? checkerDiagnostics.unknownField(node.key.span, name, visits.name)
-          : checkerDiagnostics.repeatedField(node.key.span, visits.name),
-      );
-    }
+  const index = fields.findIndex((each) => each.name === field);
+  const declared = fields[index];
+  if (declared === undefined || isGiven(index)) {
+    context.report(
+      declared === undefined
+        ? checkerDiagnostics.unknownField(node.key.span, name, field)
+        : checkerDiagnostics.repeatedField(node.key.span, field),
+    );
     context.expression(node.value);
     return undefined;
   }
-  const declared = inference.settledIn(field.type);
-  const isKnown = parametersIn(declared).every((parameter) => !inference.isUnknown(parameter));
-  const type = context.expression(node.value, isKnown ? declared : undefined);
+  const settled = inference.settledIn(declared.type);
+  const isKnown = parametersIn(settled).every((parameter) => !inference.isUnknown(parameter));
+  const type = context.expression(node.value, isKnown ? settled : undefined);
   if (!isKnown) {
-    inference.match(field.type, type);
+    inference.match(declared.type, type);
   }
-  return { index, type, declared: field.type };
+  return { index, type, declared: declared.type };
 }
 
 /** Fits each pass's value to its field, `substitution` giving the literal's type arguments. */
@@ -188,33 +217,31 @@ export function freshComprehended(
   if (node === undefined) {
     return { fields: [], sources: [] };
   }
-  const fields: (FieldMember | undefined)[] = [];
-  inFieldPasses(context, node.header, checkedFieldPasses(context, node.header), (pass) => {
-    const type = context.expression(node.value);
-    const { visits } = pass;
+  let fits = true;
+  const { given } = comprehensionPasses(context, node, (visits): FieldMember | undefined => {
     if (visits.kind === 'others') {
-      const subject = typeText(context.typeOf(node.header.subject));
-      context.report(checkerDiagnostics.comprehendedFieldsUnknown(node.key.span, subject));
-      fields.push(undefined);
-    } else if (visits.kind === 'field') {
-      const given = named.has(visits.name);
-      if (given) {
-        context.report(checkerDiagnostics.repeatedField(node.key.span, visits.name));
-      }
-      fields.push(given ? undefined : { name: visits.name, type });
+      fits = false;
+      return fieldsUnknown(context, node);
     }
+    const type = context.expression(node.value);
+    if (named.has(visits.name)) {
+      context.report(checkerDiagnostics.repeatedField(node.key.span, visits.name));
+      fits = false;
+      return undefined;
+    }
+    return { name: visits.name, type };
   });
-  return fields.every((field) => field !== undefined)
-    ? { fields, sources: [comprehensionSource(node)] }
-    : undefined;
+  const fields = given.filter((field) => field !== undefined);
+  return fits ? { fields, sources: [comprehensionSource(node)] } : undefined;
 }
 
 /**
  * Checks a comprehension's value in each pass with nothing expected, its literal's type unknown.
  */
 export function checkComprehensionAlone(context: BodyContext, node: StructComprehension): void {
-  const passes = checkedFieldPasses(context, node.header);
-  inFieldPasses(context, node.header, passes, () => context.expression(node.value));
+  comprehensionPasses(context, node, () => {
+    context.expression(node.value);
+  });
 }
 
 /** Whether `named` keys and those of `subject`, a comprehension's, are exactly `target`'s. */
@@ -242,13 +269,7 @@ export function checkOpaqueComprehended(
   const { typeRules: rules } = context.checker;
   const named = checkNamedOf(context, node, expected);
   let { fits } = named;
-  const passes = checkedFieldPasses(context, comprehension.header);
-  inFieldPasses(context, comprehension.header, passes, (pass) => {
-    const { visits } = pass;
-    if (visits.kind === 'none') {
-      context.expression(comprehension.value);
-      return;
-    }
+  comprehensionPasses(context, comprehension, (visits, pass) => {
     if (
       visits.kind === 'field' &&
       named.keys.some((key) => sameType(key, literalType(visits.name)))

@@ -13,6 +13,7 @@
 
 import { unreachable } from '../../../foundation/structures/unreachable.ts';
 import type { Checker, SignatureParameter } from '../../checker/check.ts';
+import type { CheckedBody } from '../../checker/surface/checked-body.ts';
 import type {
   Binding,
   FunctionCall,
@@ -33,17 +34,20 @@ import { type Substitution, substitute } from '../../checker/types/parts/substit
 import type { AnyType, Type } from '../../checker/types/type/index.ts';
 import { typeText } from '../../checker/types/type/type-text.ts';
 import type { FunctionDeclaration } from '../../syntax/declarations/index.ts';
-import { type BodyOwner, ownerInstance, ownerSubstitution } from '../tables/instances.ts';
+import { type BodyOwner, ownerInstance } from '../tables/instances.ts';
 
-/** `resolved`, a call made inside the body `within` owns, closed there as `program` says. */
+/**
+ * `resolved`, a call made inside `body`, which `owner` owns, closed there as `program` says: its
+ * types read through the body's substitution, its witnesses the owner's instance's.
+ */
 export function closeCallWithin(
   resolved: ResolvedCall,
-  within: BodyOwner,
+  { body, owner }: { readonly body: CheckedBody; readonly owner: BodyOwner },
   program: Closer,
 ): ClosedCall {
   const closing: Closing = {
-    substitution: ownerSubstitution(within),
-    witnesses: ownerInstance(within)?.witnesses ?? new Map(),
+    substitution: body.substitution,
+    witnesses: ownerInstance(owner)?.witnesses ?? new Map(),
   };
   return closedCall(closedInside(resolved, closing, program));
 }

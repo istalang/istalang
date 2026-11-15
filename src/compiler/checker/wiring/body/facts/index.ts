@@ -8,10 +8,12 @@
  * view passes a fact through unread.
  */
 
+import { memo } from '../../../../../foundation/structures/memo.ts';
+import type { FieldHeader } from '../../../../syntax/expressions/index.ts';
 import type { PassAnswers } from '../../../contexts/pass-views.ts';
 import type { Pass } from '../../../contexts/passes.ts';
 import { type FlowSource, flowsOf } from '../../../rules/flow/build/index.ts';
-import type { BodyFacts, CheckedBody } from '../../../surface/checked-body.ts';
+import type { BodyFacts, CheckedBody, FieldPass } from '../../../surface/checked-body.ts';
 import {
   type JoinedBody,
   joinedFacts,
@@ -20,6 +22,7 @@ import {
 } from '../../../surface/denotation.ts';
 import { exactFit } from '../../../types/fitting/fit/index.ts';
 import { sameType } from '../../../types/identity/identity.ts';
+import type { Substitution } from '../../../types/parts/substitution.ts';
 import type { TypeRules } from '../../../types/type/type-rules.ts';
 import { type Instantiation, instantiationBy } from './instantiation.ts';
 import {
@@ -296,7 +299,10 @@ const bodyFacts: { readonly [Name in FactName]: FactEntry<Name> } = {
           ...each,
           body: bodyAt(inner),
         })),
-    instantiated: (passesOf, by) => (header) => by.passes(passesOf(header)),
+    instantiated: (passesOf, by) => {
+      const passes = new WeakMap<FieldHeader, readonly FieldPass[]>();
+      return (header) => memo(passes, header, () => by.passes(passesOf(header)));
+    },
   },
   isRuledOut: {
     at:
@@ -338,16 +344,17 @@ const toolNames: readonly ToolName[] = [
 /** The CheckedBody of what was checked as `pass` sees it. */
 export function checkedAt(recorded: RecordedBody, pass: Pass): CheckedBody {
   const bodyAt = (inner: Pass) => checkedAt(recorded, inner);
-  return bodyOf((name) => bodyFacts[name].at(recorded, pass, bodyAt), recorded.flows);
+  return bodyOf((name) => bodyFacts[name].at(recorded, pass, bodyAt), recorded.flows, new Map());
 }
 
 /**
- * The body whose every fact `factOf` answers, its views read through the same table, its flows
- * built from `flows`.
+ * The body whose every fact `factOf` answers, read through `substitution`, its views read through
+ * the same table, its flows built from `flows`.
  */
 function bodyOf(
   factOf: <Name extends FactName>(name: Name) => BodyFacts[Name],
   flows: FlowSource,
+  substitution: Substitution,
 ): CheckedBody {
   const answered: Partial<Record<FactName, unknown>> = {};
   for (const name of factNames) {
@@ -357,9 +364,14 @@ function bodyOf(
   const facts = answered as BodyFacts;
   const body: CheckedBody = {
     ...facts,
-    instantiated: (substitution, checker) => {
-      const by = instantiationBy(substitution, checker);
-      return bodyOf((name) => bodyFacts[name].instantiated(facts[name], by), by.flows(flows));
+    substitution,
+    instantiated: (by, checker) => {
+      const instantiation = instantiationBy(by, checker);
+      return bodyOf(
+        (name) => bodyFacts[name].instantiated(facts[name], instantiation),
+        instantiation.flows(flows),
+        by,
+      );
     },
     joinedWith: (others, rules) => joinedOf([body, ...others], rules),
     ...flowsOf(flows, () => body),

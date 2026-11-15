@@ -366,6 +366,11 @@ export interface BodyFacts {
 /** A checked body: its facts, and the views of it every fact is read through alike. */
 export interface CheckedBody extends BodyFacts {
   /**
+   * What the body is read through (§3.5, §4): an instantiation's type arguments, and in a pass over
+   * a field it names, the loop's key as that field's; none for the body as checked.
+   */
+  readonly substitution: Substitution;
+  /**
    * The body as one instantiation reads it (§3.5): checked once, generically, it records types of
    * its type parameters, each substituted here (wiring/body/facts/instantiation.ts).
    */

@@ -105,8 +105,12 @@ export function loweredNested(lowering: Lowering, owner: BodyOwner): LoweredFunc
   if (body === undefined) {
     unreachable('A nested function has no checked body holding it.');
   }
-  const passed = (owner.passes ?? []).reduce(passBody, body);
-  return { ...lowering, owner, body: passed };
+  return { ...lowering, owner, body: passedBody(body, owner.passes ?? []) };
+}
+
+/** `body` as the passes `steps` name read it, outermost first (§4). */
+export function passedBody(body: CheckedBody, steps: readonly FieldPassStep[]): CheckedBody {
+  return steps.reduce(passBody, body);
 }
 
 /**

@@ -41,7 +41,7 @@ import { aliasedAs } from '../type/alias-uses.ts';
 import { type ComputedType, isMatchAlias, isOpaque } from '../type/computed-types.ts';
 import { inFieldOrder } from '../type/field-order.ts';
 import type { AnyType, Constraint, Type } from '../type/index.ts';
-import { membersOf } from '../type/index.ts';
+import { keyParameter, membersOf } from '../type/index.ts';
 import { errorType, isPrimitive, literalType } from '../type/primitives.ts';
 import {
   type EntryRule,
@@ -143,8 +143,11 @@ function mappedStructConstraint(
     return { named, others: undefined };
   }
   const { parameter } = type;
-  const oneOther: Type = { kind: 'parameter', declaration: parameter, within: otherKeys };
-  const value = substitute(type.value, new Map([[parameter, oneOther]]), rules);
+  const value = substitute(
+    type.value,
+    new Map([[parameter, keyParameter(parameter, otherKeys)]]),
+    rules,
+  );
   const varies = parametersIn(value).includes(parameter) && !isOpaque(value);
   return { named, others: varies ? undefined : fieldRule(checker, value) };
 }

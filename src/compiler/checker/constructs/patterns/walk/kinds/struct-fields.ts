@@ -18,7 +18,7 @@ import type { Identifier } from '../../../../../syntax/tree/node.ts';
 import type { BodyContext } from '../../../../contexts/body-context.ts';
 import { checkerDiagnostics } from '../../../../diagnostics/index.ts';
 import type { PartBinding } from '../../../../surface/checked-pattern.ts';
-import type { Type, TypeParameterType } from '../../../../types/type/index.ts';
+import { keyParameter, type Type } from '../../../../types/type/index.ts';
 import { literalType } from '../../../../types/type/primitives.ts';
 import type { TypeRules } from '../../../../types/type/type-rules.ts';
 import { typeText } from '../../../../types/type/type-text.ts';
@@ -101,7 +101,6 @@ function restType(rules: TypeRules, of: Type, named: readonly string[], rest: Re
   if (keys.kind === 'error') {
     return keys;
   }
-  const key: TypeParameterType = { kind: 'parameter', declaration: rest, within: keys };
-  const value = rules.fieldType(of, key);
+  const value = rules.fieldType(of, keyParameter(rest, keys));
   return rules.mappedType({ origin: rest, named: [], parameter: rest, keys, value });
 }
