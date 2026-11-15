@@ -28,7 +28,7 @@ import { type FunctionDeclaration, typeParametersOf } from '../../../syntax/decl
 import type { NodeOf } from '../../../syntax/tree/node.ts';
 import type { CheckerContext, CheckerNote } from '../../contexts/context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
-import { functionCallsWithin } from '../../surface/resolved-call.ts';
+import { reachedCalls } from '../../surface/reach.ts';
 import type { ParameterKey } from '../../types/type/index.ts';
 import { type ArgumentEdge, argumentEdges, endlessEdgesFrom } from './edges.ts';
 
@@ -125,16 +125,12 @@ function isGeneric(declaration: FunctionDeclaration): boolean {
 /** Every edge `caller`'s code makes, at its call. */
 function sitedEdges(checker: CheckerContext, caller: FunctionDeclaration): readonly SitedEdge[] {
   const own = new Set<ParameterKey>(typeParametersOf(caller.typeParameters));
-  const bodies = [checker.bodyOf(caller), checker.defaultsOf(caller)];
-  const calls = bodies.flatMap((body) => body?.madeCalls() ?? []);
-  return calls.flatMap(({ site, call }) =>
-    functionCallsWithin(call).flatMap((each) =>
-      argumentEdges(own, each.function.typeParameters, each.typeArguments).map((edge) => ({
-        ...edge,
-        caller,
-        callee: each.function,
-        site,
-      })),
-    ),
+  return reachedCalls(checker, caller).flatMap(({ site, call }) =>
+    argumentEdges(own, call.function.typeParameters, call.typeArguments).map((edge) => ({
+      ...edge,
+      caller,
+      callee: call.function,
+      site,
+    })),
   );
 }
