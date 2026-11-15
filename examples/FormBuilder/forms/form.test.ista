@@ -4,7 +4,7 @@
 
 import Suite, Test, test, assertEq from 'testing'
 import Graph from '../computed'
-import Field, Group, List, Variant, Hidden from './model'
+import Field, Group, List, Variant, Hidden, Local, Dynamic from './model'
 import (
   Place
   View
@@ -33,6 +33,7 @@ fn formsSuite() -> Array<Test>: [
   test("a row made from data keeps it over a default", rowDataOverDefault)
   test("a computed row field reading itself starts from its row's data", rowReadsItself)
   test("a second writer saying nothing keeps the first's default", secondWriter)
+  test("making a model from data populates every node kind and its scope", madeFromData)
 ]
 
 type Row = Group<{ id: Field<String>, qty: Field<Int> }>
@@ -45,24 +46,7 @@ struct Model:
   rows: List<Row>
   pick: Variant<{ a: Group<{ x: Field<String> }>, b: Group<{ y: Field<String> }> }>
 
-fn model(graph: Graph) -> Model:
-  const row = fn(x: Row.Seen?): Group{
-    fields: struct{id: Field.make<String>(graph, x?.id), qty: Field.make<Int>(graph, x?.qty)}
-  }
-  Model{
-    count: Field.make<Int>(graph)
-    size: Field.make<String>(graph)
-    score: Field.make<Int>(graph)
-    extra: Hidden.make(graph, Field.make<String>(graph))
-    rows: List.make(graph, row)
-    pick: Variant{
-      tag: Field.make<"a" | "b">(graph)
-      cases: struct{
-        a: Group{fields: struct{x: Field.make<String>(graph)}}
-        b: Group{fields: struct{y: Field.make<String>(graph)}}
-      }
-    }
-  }
+fn model(graph: Graph) -> Model: Group.make<Model>(graph, none).fields
 
 # A form of `m` showing `children` in one layout.
 fn open(m: Model, graph: Graph, children: Array<inert fn(Place) -> View>) -> Form<Model>:
@@ -291,3 +275,39 @@ ista async fn secondWriter():
   ])
   _ = form.shown()
   assertEq(m.size.seen(), "S")
+
+struct AllKinds:
+  field: Field<String>
+  local: Local<Field<Int>>
+  hidden: Hidden<Group<{ nested: Field<String> }>>
+  list: List<Field<String>>
+  variant: Variant<{ a: Field<String>, b: Field<Int> }>
+  dynamic: Dynamic
+
+fn madeFromData():
+  const graph = new Graph{}
+  const m = Group.make<AllKinds>(
+    graph
+    struct{
+      field: "hi"
+      local: 42
+      hidden: struct{nested: "secret"}
+      list: ["x", "y"]
+      variant: struct{tag: "b", value: struct{a: "ignored", b: 7}}
+      dynamic: "{\"ok\":true}"
+    }
+  )
+  const visible = graph.source(false)
+  m.fields.hidden.shown.add(graph.computed(fn(): visible.read()))
+  const s = m.scope()
+  assertEq(s.field, "hi")
+  assertEq(s.local, 42)
+  assertEq(s.hidden?.nested, none)
+  visible.set(true)
+  assertEq(s.hidden?.nested, "secret")
+  assertEq(s.list, ["x", "y"])
+  assertEq(s.variant.tag, "b")
+  assertEq(s.variant.value.a, none)
+  assertEq(s.variant.value.b, 7)
+  assertEq(s.dynamic, "{\"ok\":true}")
+  assertEq(m.fields.variant.cases.a.seen(), "ignored")

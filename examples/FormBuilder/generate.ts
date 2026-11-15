@@ -7,7 +7,7 @@
 //
 // Output, per form and per local def (docs/work/computed/design.md):
 //   a params struct and a ctx struct;
-//   a model struct (one node per path) and its factory on a graph;
+//   a model struct (one node per path), which forms/ makes on a graph from its type;
 //   a view function building the view at a place, every expression a closure over what it sees:
 //   each scope variable a node's scope (forms/model.ista), a group's read field by field through
 //   its keyed `index`, so every read is tracked;
@@ -273,7 +273,7 @@ type MNode =
       w: Writers;
       tagWritten: boolean;
     }
-  | { k: 'mount'; type: string; make: string; w: Writers }
+  | { k: 'mount'; type: string; w: Writers }
   | { k: 'dynamic'; w: Writers };
 interface Writers {
   all: number;
@@ -505,10 +505,10 @@ function mountNode(n: AnyNode, doc: FormDocument): MNode {
   if (ref.startsWith('#')) {
     const d = ref.slice(1);
     if (!doc.defs?.[d]) throw new Error(`unknown def ${ref}`);
-    return { k: 'mount', type: `Group<${pascal(d)}Model>`, make: `${camel(d)}Model`, w: writers() };
+    return { k: 'mount', type: `Group<${pascal(d)}Model>`, w: writers() };
   }
   const alias = catalogAlias(ref);
-  return { k: 'mount', type: `Group<${alias}.Model>`, make: `${alias}.model`, w: writers() };
+  return { k: 'mount', type: `Group<${alias}.Model>`, w: writers() };
 }
 const catalogAlias = (ref: string) => camel(ref.replace(/^catalog:/u, '').replace(/@.*$/u, ''));
 const catalogPath = (ref: string) => './catalog/' + ref.replace(/^catalog:/u, '');
@@ -607,55 +607,6 @@ class UnitGen {
   /** The name of a type generated for the node at `canon`: the unit's, then its path's. */
   named(canon: string, suffix: string): string {
     return `${this.P}${pascal(canon.replace(/^data\./u, ''))}${suffix}`;
-  }
-
-  /** The expression making a model node on `graph`, from `data`, what it is made from, if any. */
-  factory(n: MNode, canon: string, data?: string): string {
-    const from = data === undefined ? '' : `, ${data}`;
-    const hide = (x: string) => (isHidden(n) ? `Hidden.make(graph, ${x})` : x);
-    switch (n.k) {
-      case 'field': {
-        const field = `Field.make<${this.fieldType(n)}>(graph${from})`;
-        return hide(n.local ? `Local{node: ${field}}` : field);
-      }
-      case 'group':
-        return `Group{fields: ${this.groupLiteral(n, canon, data)}}`;
-      case 'list': {
-        const row =
-          n.row!.k === 'group'
-            ? `Group{fields: ${this.groupLiteral(n.row!, canon, 'x')}}`
-            : this.factory(n.row!, canon, 'x');
-        return hide(
-          `List.make(graph, fn(x): ${row}${data === undefined ? '' : `, ${data} ?? []`})`,
-        );
-      }
-      case 'variant': {
-        const tagType = [...n.cases.keys()].map(istaString).join(' | ');
-        const tagFrom = data === undefined ? '' : `, ${data}?.tag`;
-        const cases = [...n.cases]
-          .map(
-            ([id, g]) =>
-              `${id}: Group{fields: ${this.groupLiteral(g, `${canon}.${id}`, data === undefined ? undefined : `${data}?.value.${id}`)}}`,
-          )
-          .join(', ');
-        this.uses.name('Field');
-        return hide(
-          `Variant{tag: Field.make<${tagType}>(graph${tagFrom}), cases: struct{${cases}}}`,
-        );
-      }
-      case 'mount':
-        return hide(`${n.make}(graph${from})`);
-      case 'dynamic':
-        return hide('Dynamic.make(graph)');
-    }
-  }
-  groupLiteral(g: MNode & { k: 'group' }, canon: string, data?: string, name = 'struct'): string {
-    return `${name}{${[...g.fields]
-      .map(
-        ([k, f]) =>
-          `${k}: ${this.factory(f, `${canon}.${k}`, data === undefined ? undefined : `${data}?.${k}`)}`,
-      )
-      .join(', ')}}`;
   }
 
   // ── the view ──
@@ -1089,9 +1040,9 @@ export function generate(doc: FormDocument, sourceName: string): string {
 
   const header = `# ${doc.id}.gen.ista — generated from ${sourceName} ${doc.version}. Do not edit.
 #
-# The generated part of a form: per form and per local def, a model (one node per path), its
-# factory, and a view whose expressions are closures over what they see: each node's scope, a
-# group's read field by field, so every read is tracked. forms/ does the rest.
+# The generated part of a form: per form and per local def, a model (one node per path), made
+# from its type, and a view whose expressions are closures over what they see: each node's scope,
+# a group's read field by field, so every read is tracked. forms/ does the rest.
 # Expressions are pasted from the schema verbatim.`;
   const text = [header, imports.join('\n'), translations, ...sections]
     .filter((part) => part !== undefined)
@@ -1102,7 +1053,7 @@ export function generate(doc: FormDocument, sourceName: string): string {
   return formatted;
 }
 
-/** A unit's declarations: params, ctx, model and factory, and its view. */
+/** A unit's declarations: params, ctx, model, and its view. */
 function unitSection(u: Unit, doc: FormDocument, uses: Uses): string {
   const g = new UnitGen(u, doc, uses);
   const P = pascal(u.name),
@@ -1117,10 +1068,6 @@ function unitSection(u: Unit, doc: FormDocument, uses: Uses): string {
     : `struct ${P}Ctx:\n  user: User\n  paramsFrom: inert fn() -> ${P}Params\n\n` +
       `# Its params as its mount gives them, read when an expression reads them.\n` +
       `fn get params(self: ${P}Ctx) -> ${P}Params: (self.paramsFrom)()`;
-  const factory = u.isForm
-    ? `fn ${c}Model(graph: Graph) -> Group<${P}Model>: Group{fields: ${g.groupLiteral(u.model, 'data', undefined, `${P}Model`)}}`
-    : `fn ${c}Model(graph: Graph, x: Group<${P}Model>.Seen? = none) -> Group<${P}Model>: Group{fields: ${g.groupLiteral(u.model, 'data', 'x', `${P}Model`)}}`;
-
   const body = g.view(u.def.root, { lazy: new Map() }, new Map(), 'm', []);
   const sig = u.isForm
     ? `fn ${c}View(at: Place, m: ${P}Model, ctx: ${P}Ctx) -> View:`
@@ -1133,14 +1080,13 @@ function unitSection(u: Unit, doc: FormDocument, uses: Uses): string {
     ctx,
     `struct ${P}Model:\n${modelFields.join('\n')}`,
     aliases.length ? aliases.join('\n') : undefined,
-    factory,
     view,
   ];
   if (u.isForm) {
     uses.name('Form');
     uses.name('Problems');
     parts.push(
-      `# The form on a graph of its own.\nfn open${P}(params: ${P}Params, user: User) -> Form<${P}Model>:\n  const graph = new Graph{}\n  const model = ${c}Model(graph)\n  Form.open(graph, model, fn(at): ${c}View(at, model.fields, ${P}Ctx{params, user}))`,
+      `# The form on a graph of its own.\nfn open${P}(params: ${P}Params, user: User) -> Form<${P}Model>:\n  const graph = new Graph{}\n  const model = Group.make<${P}Model>(graph, none)\n  Form.open(graph, model, fn(at): ${c}View(at, model.fields, ${P}Ctx{params, user}))`,
     );
   }
   return parts.filter((part) => part !== undefined).join('\n\n');

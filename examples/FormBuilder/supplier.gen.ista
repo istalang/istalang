@@ -1,8 +1,8 @@
 # supplier.gen.ista — generated from supplier.form.json 2.0.0. Do not edit.
 #
-# The generated part of a form: per form and per local def, a model (one node per path), its
-# factory, and a view whose expressions are closures over what they see: each node's scope, a
-# group's read field by field, so every read is tracked. forms/ does the rest.
+# The generated part of a form: per form and per local def, a model (one node per path), made
+# from its type, and a view whose expressions are closures over what they see: each node's scope,
+# a group's read field by field, so every read is tracked. forms/ does the rest.
 # Expressions are pasted from the schema verbatim.
 
 import Graph from './computed'
@@ -75,14 +75,6 @@ struct AddressModel:
   zip: Field<String>
   city: Field<String>
 
-fn addressModel(graph: Graph, x: Group<AddressModel>.Seen? = none) -> Group<AddressModel>: Group{
-  fields: AddressModel{
-    street: Field.make<String>(graph, x?.street)
-    zip: Field.make<String>(graph, x?.zip)
-    city: Field.make<String>(graph, x?.city)
-  }
-}
-
 fn addressView(at: Place, m: AddressModel, ctx: AddressCtx, k: String) -> View:
   const data = Group{fields: m}.scope()
   LayoutView{
@@ -137,13 +129,6 @@ struct CategoryModel:
   children: List<CategoryChildrenRow>
 
 type CategoryChildrenRow = Group<CategoryModel>
-
-fn categoryModel(graph: Graph, x: Group<CategoryModel>.Seen? = none) -> Group<CategoryModel>: Group{
-  fields: CategoryModel{
-    name: Field.make<String>(graph, x?.name)
-    children: List.make(graph, fn(x): categoryModel(graph, x), x?.children ?? [])
-  }
-}
 
 fn categoryView(at: Place, m: CategoryModel, ctx: CategoryCtx, k: String) -> View:
   const data = Group{fields: m}.scope()
@@ -247,90 +232,6 @@ type SupplierPaymentCases = {
 type SupplierDeliveryCases = {
   standard: Group<{ window: Field<"am" | "pm"> }>
   express: Group<{ at: Field<DateTime> }>
-}
-
-fn supplierModel(graph: Graph) -> Group<SupplierModel>: Group{
-  fields: SupplierModel{
-    company: Group{
-      fields: struct{
-        name: Field.make<String>(graph)
-        vatId: Field.make<String>(graph)
-        email: Field.make<String>(graph)
-        description: Field.make<String>(graph)
-        size: Field.make<"small" | "medium" | "large">(graph)
-        legalForm: Field.make<"llc" | "plc" | "sole">(graph)
-        capital: Hidden.make(graph, Field.make<Float>(graph))
-        employees: Field.make<Int>(graph)
-        founded: Field.make<Date>(graph)
-        logo: Field.make<FileId>(graph)
-        country: Field.make<String>(graph)
-        address: Hidden.make(graph, addressModel(graph))
-        city: Hidden.make(graph, Field.make<String>(graph))
-      }
-    }
-    confirmEmail: Local{node: Field.make<String>(graph)}
-    manager: Field.make<crm.User>(graph)
-    creditLimit: Field.make<Int>(graph)
-    prices: List.make(
-      graph
-      fn(x): Group{
-        fields: struct{
-          sku: Field.make<String>(graph, x?.sku)
-          name: Field.make<String>(graph, x?.name)
-          amount: Field.make<Float>(graph, x?.amount)
-          regions: List.make(graph, fn(x): Field.make<String>(graph, x), x?.regions ?? [])
-        }
-      }
-    )
-    contacts: List.make(
-      graph
-      fn(x): Group{
-        fields: struct{
-          name: Field.make<String>(graph, x?.name)
-          email: Field.make<String>(graph, x?.email)
-          primary: Field.make<Bool>(graph, x?.primary)
-          card: contactCard.model(graph, x?.card)
-        }
-      }
-    )
-    certifications: List.make(graph, fn(x): Field.make<"iso9001" | "iso14001">(graph, x))
-    categories: List.make(graph, fn(x): categoryModel(graph, x))
-    history: List.make(
-      graph
-      fn(x): Group{fields: struct{note: Field.make<String>(graph, x?.note)}}
-    )
-    payment: Variant{
-      tag: Field.make<"card" | "wire" | "invoice">(graph)
-      cases: struct{
-        card: Group{
-          fields: struct{holder: Field.make<String>(graph), last4: Field.make<String>(graph)}
-        }
-        wire: Group{
-          fields: struct{
-            deposit: Group{
-              fields: struct{
-                amount: Field.make<Float>(graph)
-                currency: Field.make<"EUR" | "USD">(graph)
-              }
-            }
-          }
-        }
-        invoice: Group{fields: struct{terms: Field.make<Int>(graph)}}
-      }
-    }
-    delivery: Variant{
-      tag: Field.make<"standard" | "express">(graph)
-      cases: struct{
-        standard: Group{fields: struct{window: Field.make<"am" | "pm">(graph)}}
-        express: Group{fields: struct{at: Field.make<DateTime>(graph)}}
-      }
-    }
-    extraForm: Field.make<formsCatalog.Entry>(graph)
-    extra: Hidden.make(graph, Dynamic.make(graph))
-    score: Field.make<Int>(graph)
-    notes: Field.make<String>(graph)
-    agree: Field.make<Bool>(graph)
-  }
 }
 
 fn supplierView(at: Place, m: SupplierModel, ctx: SupplierCtx) -> View:
@@ -989,7 +890,7 @@ fn supplierView(at: Place, m: SupplierModel, ctx: SupplierCtx) -> View:
 # The form on a graph of its own.
 fn openSupplier(params: SupplierParams, user: User) -> Form<SupplierModel>:
   const graph = new Graph{}
-  const model = supplierModel(graph)
+  const model = Group.make<SupplierModel>(graph, none)
   Form.open(graph, model, fn(at): supplierView(at, model.fields, SupplierCtx{params, user}))
 
 # ═══════════ The entry points its hosts start ═══════════

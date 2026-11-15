@@ -1,9 +1,9 @@
 # contact-card@^1.ista — catalog form mounted by supplier.form.json, in the shape the generator
-# gives a local def: a model made on its mount's graph, and a view built at its mount's place.
+# gives a local def: a model, made from its type on its mount's graph, and a view built at its
+# mount's place.
 
-import Graph from '../computed'
 import * as checks from '../forms/checks'
-import Field, Group from '../forms/model'
+import Field from '../forms/model'
 import Place, View, FieldView, LayoutView from '../forms/views'
 import FieldWidget, LayoutWidget from '../forms/tree'
 import User from '../forms/form'
@@ -21,25 +21,22 @@ fn get params(self: Ctx) -> Params: (self.paramsFrom)()
 struct Model:
   phone: Field<String>
 
-fn model(graph: Graph, x: Group<Model>.Seen? = none) -> Group<Model>: Group{
-  fields: Model{phone: Field.make<String>(graph, x?.phone)}
-}
-
-fn view(at: Place, m: Model, ctx: Ctx, k: String) -> View: LayoutView{
-  key: `${k}/n1`
-  widget: fn(): LayoutWidget.Section(
-    title: none
-    description: none
-    collapsible: none
-    labels: none
-  )
-  children: [
-    fn(at): FieldView{
-      key: `${k}/n2`
-      field: m.phone
-      widget: fn(): FieldWidget.Input(none)
-      label: fn(): "Phone"
-      checks: [checks.answered()]
-    }.build(at)
-  ]
-}.build(at)
+fn view(at: Place, m: Model, ctx: Ctx, k: String) -> View:
+  LayoutView{
+    key: `${k}/n1`
+    widget: fn(): LayoutWidget.Section(
+      title: none
+      description: none
+      collapsible: none
+      labels: none
+    )
+    children: [
+      fn(at): FieldView{
+        key: `${k}/n2`
+        field: m.phone
+        widget: fn(): FieldWidget.Input(none)
+        label: fn(): "Phone"
+        checks: [checks.answered()]
+      }.build(at)
+    ]
+  }.build(at)

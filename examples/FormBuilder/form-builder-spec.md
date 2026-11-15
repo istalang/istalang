@@ -72,20 +72,20 @@ And they must be dependable:
 
 **A form's generated module is declarative.** For the form, and for each local def, it holds:
 
-- a **model**: a struct with one node per path, which holds the values;
-- the model's **factory**;
+- a **model**: a struct with one node per path, which holds the values, and which `forms/` makes from its type;
 - a **view**: a static tree of view nodes, with every expression a closure over its scope, each scope variable a node's scope, which reads a group field by field, so every read is tracked.
 
 There is no generated control flow: no rendering, validation or event code.
 
 **The runtime (`forms/`) is generic.** It holds the model, the view as computeds over it (`computed.ista`), validation, event routing, reading the result, and the two live functions that drive a form.
 
-**Types are computed, not generated.** Every model node declares two associated types:
+**Types are computed, not generated.** Every model node declares three associated types:
 
 - `Data`: what a submission holds;
-- `Seen`: what expressions see, where anything unanswered or hidden is `none`.
+- `Seen`: its whole value, where anything unanswered or hidden is `none`;
+- `Scope`: what an expression's read of it gives, a group's read field by field.
 
-They compose through the tree with mapped types, so `OrderData = Group<OrderModel>.Data` is the form's result type, written by nobody.
+They compose through the tree with mapped types, so `OrderData = Group<OrderModel>.Data` is the form's result type, written by nobody. Every node is also made from its type, `fn Self.make(graph: Graph, data: Self.Seen?) -> Self`: a group makes each field by its type with a field loop over its type (proposal 17), so `Group.make<OrderModel>(graph, none)` makes the whole model, and a row's nodes are made holding the row's data.
 
 **A form has two live entry points.** Everything else is simple code, usable alike in the browser and on the server:
 1. **The browser's**, `orderForm(params, user)`, serves the form: it shows its tree to the frontend, applies each event, and shows the tree again, until a valid submit, whose whole value it gives its host to submit.
@@ -282,12 +282,10 @@ For the form and for each local def `d`, the generator emits:
 | Params and ctx structs | `struct OrderParams: region: String`, `struct OrderCtx { params: OrderParams, user: User }`; a def's ctx gives its params through a getter reading what its mount says, `fn get params(self: AddressCtx) -> AddressParams` |
 | The model struct: one node per top-level path | `struct OrderModel { country: Field<String>, city: Hidden<Field<String>>, items: List<OrderItemsRow>, … }` |
 | Aliases for row and case types | `type OrderItemsRow = Group<{ sku: Field<String>, qty: Field<Int> }>` |
-| The factory, on a graph | `fn orderModel(graph: Graph) -> Group<OrderModel>`; a row's nodes are made holding the row's data |
-| What expressions see, per scope | `struct OrderSeen: m: OrderModel` with `fn get country(self: OrderSeen) -> String?`; one per row, case and nested group |
 | The view, built at a place | `fn orderView(at: Place, m: OrderModel, ctx: OrderCtx) -> View`; for a def, `fn addressView(at, m, ctx, k: String)`, with `k` prefixing its keys |
-| For the form only, its opening and entry points | `fn openOrder(params, user) -> Form<OrderModel>`; `live async fn orderForm(params, user)`, giving the value to submit, and `live fn validateOrder(params, user, value)` |
+| For the form only, its opening and entry points | `fn openOrder(params, user) -> Form<OrderModel>`, making its model from its type; `live async fn orderForm(params, user)`, giving the value to submit, and `live fn validateOrder(params, user, value)` |
 
-It also emits the `imports` (of the runtime, only what it uses), an import per catalog form (`import * as contactCard from './catalog/contact-card@^1'`; a catalog form is a module in the shape a local def is generated in, exporting `Model`, `Params`, `Ctx`, `model()` and `view()`), and the localization table. The Istalang formatter lays the module out, so `node generate.ts order.form.json > order.gen.ista` reproduces the module checked in.
+It also emits the `imports` (of the runtime, only what it uses), an import per catalog form (`import * as contactCard from './catalog/contact-card@^1'`; a catalog form is a module in the shape a local def is generated in, exporting `Model`, `Params`, `Ctx` and `view()`), and the localization table. The Istalang formatter lays the module out, so `node generate.ts order.form.json > order.gen.ista` reproduces the module checked in.
 
 ### 5.2 Deriving the model
 
@@ -327,7 +325,7 @@ Its rules:
 - **Closures.** Every expression is pasted into a closure over its scope, `fn(): <expr>`, and a literal prop becomes `fn(): <literal>`. The checker infers each closure's type from where it sits, so no generated code names a view's type.
 - **Widgets.** The widget and its ui props become one closure: `fn(): FieldWidget.Select(none)`.
 - **Scopes.** Every scope variable is a node's scope (`forms/model.ista`): `data` is the model's (`const data = Group{fields: m}.scope()`), a repeat's row binds its variable to its row's (`const item = r1.scope()`), and a variant's case to its case's (`const p = m.payment.cases.card.scope()`). A group's scope is a `GroupScope`, which reads each of its nodes by name through its keyed `index` (proposal 16): `data.company.size` reads that field alone, so every read is tracked. A list's and a variant's scope is its whole value. A row of a single field binds its variable inside each closure that names it, read off the row as the closure runs (`const region = r2.scope()`).
-- **Mounts.** A mount calls its form's view at its own place, with that form's scope: `addressView(at.within(when, hide), m.company.fields.address.node.fields, AddressCtx{user: ctx.user, paramsFrom: fn(): AddressParams{country: (…)}}, "n18")`. The mounted form's expressions read its params when they run, and so whatever the mount's expressions read. A def's factory takes the data it is made from, as a row does.
+- **Mounts.** A mount calls its form's view at its own place, with that form's scope: `addressView(at.within(when, hide), m.company.fields.address.node.fields, AddressCtx{user: ctx.user, paramsFrom: fn(): AddressParams{country: (…)}}, "n18")`. The mounted form's expressions read its params when they run, and so whatever the mount's expressions read. A def's model is made from its type holding the data it is made from, as a row's is.
 - **Keys.** Nodes are numbered in tree order: `n1`, `n2`… A key inside a repeat row adds the row's key (`n6@r1`; nested rows `n9@r1@r2`), and inside a mounted def its mount's key (`n18/n2`). Keys are stable within a version.
 - **Checks.**
   - Every stored field without a default or computed value gets `checks.answered()`, unless it is `required: true`, which says that too.
@@ -346,7 +344,7 @@ Its rules:
 
 ### 6.1 The model
 
-Every model node implements `FormNode`, with associated types `Data` and `Seen` and methods `seen()`, `read() -> Result<Data>` and `load(Seen)`. Its values are pulled: each is a computed of the form's graph, read when an expression or the view reads it, and nothing writes while a view is read. Only events set sources, between views; validation loads a whole value before its one view.
+Every model node implements `FormNode`, with associated types `Data`, `Seen` and `Scope`, a static `make(graph, data)` making it from its type, and methods `seen()`, `scope()`, `read() -> Result<Data>` and `load(Seen)`. Its values are pulled: each is a computed of the form's graph, read when an expression or the view reads it, and nothing writes while a view is read. Only events set sources, between views; validation loads a whole value before its one view.
 
 | Node | Data | Seen | Notes |
 | --- | --- | --- | --- |
@@ -365,7 +363,7 @@ Every model node implements `FormNode`, with associated types `Data` and `Seen` 
 ### 6.2 The view
 
 The generated code describes each node with a struct, `FieldView`, `RepeatView`, `VariantView` (with `CaseView`s), `LayoutView` or `DynamicView`, and builds it at a `Place`: the form's graph and submit flag, and whether the parent is visible. A built node is a `View`: a computed of its drawn nodes and validity, and how it routes an event to a key it shows.
-- **Scopes are bound when built.** Every expression is a closure over the scope's variables: `data`, `ctx`, and the variables of enclosing repeats and variants. A scope variable is a generated struct whose getters read the model, so each read is tracked. A repeat's row, a variant's case and a mounted form are built with their own scope by generated code.
+- **Scopes are bound when built.** Every expression is a closure over the scope's variables: `data`, `ctx`, and the variables of enclosing repeats and variants. A scope variable is a node's scope (§5.3): a group's reads each field by name through its keyed `index`, so each read is tracked. A repeat's row, a variant's case and a mounted form are built with their own scope by generated code.
 - **Visibility is a computed per place:** a node's `when` and every ancestor's. A hidden node draws nothing and its expressions are never brought up to date.
 - **Each node evaluates at most once per view,** and only when something it read changed: an edit re-draws the nodes reading it, and the others keep their drawings, the same objects.
 - **Errors** show once a node is touched or the form submitted; validity counts them all.
@@ -423,7 +421,7 @@ The design uses Istalang as the guide describes it: structs, enums, generics, tr
 | 3 | Reading a struct field with a union-typed key value | `Variant.read()` | `self.cases[k]` where `k: keyof C` | A field loop with `if f == k` |
 | 4 | Top-level type aliases, including generic ones | Row and case types | `type OrderItemsRow = Group<{ sku: Field<String>, qty: Field<Int> }>` | Associated types on a generated struct |
 | 5 | Transient variables (proposal 13) | One view and one current reader shared by every computed | `transient let view: _View? = none` | None found |
-| 6 | Getters (proposal 13) | Scope variables whose reads are tracked | `fn get country(self: OrderSeen) -> String?` | Read the model in each expression |
+| 6 | Getters (proposal 13) | A def's params, read as its mount gives them | `fn get params(self: AddressCtx) -> AddressParams` | Read the mount's params in each expression |
 | 7 | Inert function types (proposal 14) | Closures kept in the graph, which may hold cycles | `eval: inert fn() -> T` | None found: the graph's cycles need it |
 | 8 | Closures inferred inert | Every pasted expression is a closure over its scope | `fn(): data.country != none` | None needed if supported |
 | 9 | Structural `==` on structs and computed types | An equal result keeps the old object and stops the update | `if cell->value == next: …` | Compare JSON strings |
@@ -432,6 +430,8 @@ The design uses Istalang as the guide describes it: structs, enums, generics, tr
 | 12 | Struct constraints satisfied by nested anonymous structs of generic nodes | `Group<{ a: Field<String>, b: Hidden<Field<Int>> }>` | `S is struct { [_] is FormNode }` | None found |
 | 13 | Empty struct declarations | Params of a def with none | `struct CategoryParams {}` | A `Unit` field |
 | 14 | Closure parameter types inferred from the expected type | Every generated closure | `item: fn(r1, row1, at): …` | Spell each one out |
+| 15 | Keyed members (proposal 16) | Scope variables read field by field, each read tracked | `data.company.size` through `fn index<S, K in keyof S>(self: GroupScope<S>, key: K) -> S[K].Scope` | A generated getter per field |
+| 16 | Field loops over a type (proposal 17) | Making a model from its type | `struct{for K in keyof S: [K]: S[K].make(graph, data?.[K])}` | A generated factory per model |
 
 **The host must also provide:**
 - the frontend's events and its trees, through the externs `nextEvent` and `show`;
@@ -696,9 +696,9 @@ The supplier form (`supplier.form.json`) is the full test. It compiles only if e
 ```python
 # order.gen.ista — generated from order.form.json 1.4.0. Do not edit.
 #
-# The generated part of a form: per form and per local def, a model (one node per path), its
-# factory, and a view whose expressions are closures over what they see: each node's scope, a
-# group's read field by field, so every read is tracked. forms/ does the rest.
+# The generated part of a form: per form and per local def, a model (one node per path), made
+# from its type, and a view whose expressions are closures over what they see: each node's scope,
+# a group's read field by field, so every read is tracked. forms/ does the rest.
 # Expressions are pasted from the schema verbatim.
 
 import Graph from './computed'
@@ -745,27 +745,6 @@ type OrderItemsRow = Group<{ sku: Field<String>, qty: Field<Int> }>
 type OrderPaymentCases = {
   card: Group<{ last4: Field<String> }>
   wire: Group<{ iban: Field<String> }>
-}
-
-fn orderModel(graph: Graph) -> Group<OrderModel>: Group{
-  fields: OrderModel{
-    country: Field.make<String>(graph)
-    city: Hidden.make(graph, Field.make<String>(graph))
-    items: List.make(
-      graph
-      fn(x): Group{
-        fields: struct{sku: Field.make<String>(graph, x?.sku), qty: Field.make<Int>(graph, x?.qty)}
-      }
-    )
-    payment: Variant{
-      tag: Field.make<"card" | "wire">(graph)
-      cases: struct{
-        card: Group{fields: struct{last4: Field.make<String>(graph)}}
-        wire: Group{fields: struct{iban: Field.make<String>(graph)}}
-      }
-    }
-    note: Hidden.make(graph, Field.make<String>(graph))
-  }
 }
 
 fn orderView(at: Place, m: OrderModel, ctx: OrderCtx) -> View:
@@ -915,7 +894,7 @@ fn orderView(at: Place, m: OrderModel, ctx: OrderCtx) -> View:
 # The form on a graph of its own.
 fn openOrder(params: OrderParams, user: User) -> Form<OrderModel>:
   const graph = new Graph{}
-  const model = orderModel(graph)
+  const model = Group.make<OrderModel>(graph, none)
   Form.open(graph, model, fn(at): orderView(at, model.fields, OrderCtx{params, user}))
 
 # ═══════════ The entry points its hosts start ═══════════

@@ -10,6 +10,8 @@
 #   something is unanswered or hidden. Both are computed through the tree, so no form declares its
 #   data type. Scope is what an expression's read of a node gives: a group's is its GroupScope,
 #   read field by field, so a computed reruns only when a field it read changes.
+# - Every node is made from its type (`make`), holding the data it is made from, if any: a group
+#   makes its fields by their types (proposal 17), so no form declares how its model is made.
 
 import Graph, Source, Computed from '../computed'
 import Decodable from 'json'
@@ -23,6 +25,7 @@ trait FormNode:
   type Data
   type Seen is Inert
   type Scope
+  fn Self.make(graph: Graph, data: Self.Seen?) -> Self
   fn seen(self: Self) -> Self.Seen
   fn scope(self: Self) -> Self.Scope
   fn read(self: Self) -> Result<Self.Data> # Err when something is unanswered
@@ -50,10 +53,10 @@ struct Field<T is Inert>:
   type Seen = T?
   type Scope = Field<T>.Seen
 
-# A field holding `initial`, as a row made from data does: given, as a loaded value is, so a
-# default doesn't replace it; a computed value reading the field itself starts from it.
-fn Field.make<T is Inert>(graph: Graph, initial: T? = none) -> Field<T>:
-  const entry = graph.source(Entry<T>{value: initial, edited: initial != none})
+# A field holding `data`, as a row made from data does: given, as a loaded value is, so a default
+# doesn't replace it; a computed value reading the field itself starts from it.
+fn Field.make<T is Inert>(graph: Graph, data: T?) -> Field<T>:
+  const entry = graph.source(Entry<T>{value: data, edited: data != none})
   const derivation = new Shared<Derivation<T>>{value: Derivation.Entered}
   Field{
     entry
@@ -69,7 +72,7 @@ fn Field.make<T is Inert>(graph: Graph, initial: T? = none) -> Field<T>:
           }
           case Always(eval): eval()
       }
-      initial
+      data
     )
   }
 
@@ -105,6 +108,9 @@ struct Group<S is struct { [_] is FormNode }>:
     case _: { [F in keyof S]: S[F].Seen }
   type Scope = GroupScope<S>
 
+fn Group.make<S is struct { [_] is FormNode }>(graph: Graph, data: Group<S>.Seen?) -> Group<S>:
+  Group{fields: struct{for K in keyof S: [K]: S[K].make(graph, data?.[K])}}
+
 fn seen<S is struct { [_] is FormNode }>(self: Group<S>) -> Group<S>.Seen: struct{
   for f, node in ...self.fields: [f]: node.seen()
 }
@@ -127,11 +133,11 @@ fn index<S is struct { [_] is FormNode }, K in keyof S>(self: GroupScope<S>, key
 
 # A repeat. R is the row's node: a Group, a single Field (a multiselect's choice), or a mounted form.
 #
-# Every row is made through `_row`, which holds the row's data from the start and hands the row to
-# its view at once: a row's defaults, computed values and hidden nodes are bound before anything
-# can read it, and nothing is set to fill it.
+# Every row is made through `_row`, which makes it from its type holding the row's data from the
+# start, and hands the row to its view at once: a row's defaults, computed values and hidden nodes
+# are bound before anything can read it, and nothing is set to fill it.
 struct List<R is FormNode & Inert>:
-  make: inert fn(R.Seen?) -> R # a row's nodes, holding the data it is made from
+  graph: Graph # its rows are made on
   entered: Source<Rows<R>>
   derivation: Shared<RowsFrom<R.Seen>>
   binding: Shared<(inert fn(ListRow<R>) -> Unit)?>
@@ -174,51 +180,47 @@ fn _keyOf<S>(from: RowsFrom<S>) -> (inert fn(S) -> String?)?:
     case RowsFrom.Always(key: key, ...): key
 
 # A row with `data`, handed to its view as it is made.
-fn _row<R, S>(
-  make: inert fn(S?) -> R
+fn _row<R is FormNode & Inert>(
+  graph: Graph
   binding: Shared<(inert fn(ListRow<R>) -> Unit)?>
   key: String
-  data: S?
+  data: R.Seen?
 ) -> ListRow<R>:
-  const row = ListRow{key, node: make(data)}
+  const row = ListRow{key, node: R.make(graph, data)}
   match binding->value:
     case None: ()
     case bind: bind(row)
   row
 
-fn List.make<R is FormNode & Inert>(
-  graph: Graph
-  make: inert fn(R.Seen?) -> R
-  initial: Array<R.Seen> = []
-) -> List<R>:
+fn List.make<R is FormNode & Inert>(graph: Graph, data: Array<R.Seen>?) -> List<R>:
   const entered = graph.source(Rows<R>{})
   const derivation = new Shared<RowsFrom<R.Seen>>{
-    value: RowsFrom.Default(fn(): initial, none, follow: false)
+    value: RowsFrom.Default(fn(): data ?? [], none, follow: false)
   }
   const binding = new Shared<(inert fn(ListRow<R>) -> Unit)?>{value: none}
   # The rows made from data: a memo the rows' evaluation fills, read by nothing else. A row is kept
   # while its key and data stay, and with a rowKey, while its key does, values and all.
   const made = new Shared<Array<_Made<R, R.Seen>>?>{value: none}
   fn fromData(
-    data: Array<R.Seen>
+    values: Array<R.Seen>
     key: (inert fn(R.Seen) -> String?)?
     prefix: String
     byKey: Bool
   ) -> Array<ListRow<R>>:
     const before = made->value ?? []
     const rows = [
-      for i in 0..data.length(): {
-        const x = data[i]
+      for i in 0..values.length(): {
+        const x = values[i]
         const k = _rowKey(key, x, prefix, i)
         match before.filter(fn(m): m.row.key == k and (byKey or m.data == x)).at(0):
-          case None: _Made{data: x, row: _row(make, binding, k, x)}
+          case None: _Made{data: x, row: _row(graph, binding, k, x)}
           case kept: kept
       }
     ]
     made->value = rows
     [for m in rows: m.row]
   List{
-    make
+    graph
     entered
     derivation
     binding
@@ -244,13 +246,13 @@ fn read<R is FormNode & Inert>(self: List<R>) -> Result<Array<R.Data>>:
   let out: Array<R.Data> = []
   for row in self.rows.read(): out.push(row.node.read()?)
   Ok(out)
-# Rows made from the value, as rows from data are, keyed alike, and given what their nodes can't
-# be made holding (a dynamic mount's data).
+# Rows made from the value, as rows from data are, keyed alike, then loaded: a loaded value is the
+# user's, so a list in a row holds its part of it as entered rows, not as rows from data.
 fn load<R is FormNode & Inert>(self: List<R>, v: Array<R.Seen>) -> Unit:
   const key = _keyOf(self.derivation->value)
   const rows = [
     for i in 0..v.length(): {
-      const row = _row(self.make, self.binding, _rowKey(key, v[i], "r", i), v[i])
+      const row = _row(self.graph, self.binding, _rowKey(key, v[i], "r", i), v[i])
       row.node.load(v[i])
       row
     }
@@ -267,7 +269,7 @@ fn bind<R is FormNode & Inert>(self: List<R>, each: inert fn(ListRow<R>) -> Unit
 # The user's edits, between views: from the rows shown, whatever they came from.
 fn add<R is FormNode & Inert>(self: List<R>):
   const count = self.entered.read().count + 1
-  const row = _row(self.make, self.binding, `r${count}`, none)
+  const row = _row(self.graph, self.binding, `r${count}`, none)
   self.entered.set(Rows{rows: [...self.rows.read(), row], count, edited: true})
 fn remove<R is FormNode & Inert>(self: List<R>, key: String):
   self.entered.set(
@@ -286,6 +288,14 @@ struct Variant<C is struct { [_] is FormNode }>:
   type Data = { tag: keyof C, value: { [K in keyof C]: C[K].Data? } }
   type Seen = { tag: (keyof C)?, value: { [K in keyof C]: C[K].Seen? } }
   type Scope = Variant<C>.Seen # read whole
+
+fn Variant.make<C is struct { [_] is FormNode }>(
+  graph: Graph
+  data: Variant<C>.Seen?
+) -> Variant<C>: Variant{
+  tag: Field.make(graph, data?.tag)
+  cases: struct{for K in keyof C: [K]: C[K].make(graph, data?.value[K])}
+}
 
 fn seen<C is struct { [_] is FormNode }>(self: Variant<C>) -> Variant<C>.Seen:
   const tag = self.tag.seen()
@@ -328,8 +338,8 @@ struct Hidden<N is FormNode>:
   type Seen = N.Seen?
   type Scope = N.Scope?
 
-fn Hidden.make<N is FormNode>(graph: Graph, node: N) -> Hidden<N>: Hidden{
-  node
+fn Hidden.make<N is FormNode>(graph: Graph, data: N.Seen?) -> Hidden<N>: Hidden{
+  node: N.make(graph, data)
   shown: Shown.make(graph)
 }
 
@@ -354,6 +364,10 @@ struct Local<N is FormNode>:
   type Seen = N.Seen
   type Scope = N.Scope
 
+fn Local.make<N is FormNode>(graph: Graph, data: N.Seen?) -> Local<N>: Local{
+  node: N.make(graph, data)
+}
+
 fn seen<N is FormNode>(self: Local<N>) -> N.Seen: self.node.seen()
 fn scope<N is FormNode>(self: Local<N>) -> N.Scope: self.node.scope()
 fn read<N is FormNode>(self: Local<N>) -> Result<None>:
@@ -369,7 +383,7 @@ struct Dynamic:
   type Seen = String?
   type Scope = Dynamic.Seen
 
-fn Dynamic.make(graph: Graph) -> Dynamic: Dynamic{value: graph.source<String?>(none)}
+fn Dynamic.make(graph: Graph, data: String?) -> Dynamic: Dynamic{value: graph.source(data)}
 
 fn seen(self: Dynamic) -> String?: self.value.read()
 fn scope(self: Dynamic) -> String?: self.seen()

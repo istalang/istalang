@@ -11,13 +11,7 @@ import Group from './forms/model'
 import User from './forms/form'
 import * as crm from './crm'
 import Graph from './computed'
-import (
-  SupplierModel
-  SupplierParams
-  supplierForm
-  supplierModel
-  validateSupplier
-) from './supplier.gen'
+import (SupplierModel, SupplierParams, supplierForm, validateSupplier) from './supplier.gen'
 
 live async fn main() -> String:
   const params = SupplierParams{
@@ -31,7 +25,7 @@ live async fn main() -> String:
   json.stringify([
     served
     validated(params, user, served)
-    validated(params, user, json.stringify(supplierModel(new Graph{}).seen()))
+    validated(params, user, json.stringify(Group.make<SupplierModel>(new Graph{}, none).seen()))
     validated(params, user, served.replaceAll(`"capital":null`, `"capital":5000.0`))
   ])
 

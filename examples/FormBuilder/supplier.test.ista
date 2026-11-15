@@ -11,13 +11,7 @@ import * as crm from './crm'
 import * as approvals from './approvals'
 import * as formsCatalog from './forms-catalog'
 import Graph from './computed'
-import (
-  SupplierModel
-  SupplierParams
-  SupplierCategoriesRow
-  openSupplier
-  supplierModel
-) from './supplier.gen'
+import (SupplierModel, SupplierParams, SupplierCategoriesRow, openSupplier) from './supplier.gen'
 
 @Suite{"supplier"}
 fn supplierSuite() -> Array<Test>: [
@@ -260,7 +254,7 @@ ista async fn catalogRows():
 
 fn scopedReads():
   const graph = new Graph{}
-  const model = supplierModel(graph)
+  const model = Group.make<SupplierModel>(graph, none)
   model.fields.contacts.load([
     struct{name: "Ada", email: none, primary: none, card: struct{phone: "+49 30 1234"}}
   ])
@@ -399,7 +393,7 @@ ista async fn repeatCounts():
 
 ista async fn emptyValue():
   hold _ = mocked()
-  match open().validate(supplierModel(new Graph{}).seen()):
+  match open().validate(Group.make<SupplierModel>(new Graph{}, none).seen()):
     case Ok(...): assertEq("valid", "invalid")
     case Err(problems): {
       assertEq(problems["n6"], ["Required"])

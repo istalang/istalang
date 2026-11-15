@@ -1,8 +1,8 @@
 # order.gen.ista — generated from order.form.json 1.4.0. Do not edit.
 #
-# The generated part of a form: per form and per local def, a model (one node per path), its
-# factory, and a view whose expressions are closures over what they see: each node's scope, a
-# group's read field by field, so every read is tracked. forms/ does the rest.
+# The generated part of a form: per form and per local def, a model (one node per path), made
+# from its type, and a view whose expressions are closures over what they see: each node's scope,
+# a group's read field by field, so every read is tracked. forms/ does the rest.
 # Expressions are pasted from the schema verbatim.
 
 import Graph from './computed'
@@ -49,27 +49,6 @@ type OrderItemsRow = Group<{ sku: Field<String>, qty: Field<Int> }>
 type OrderPaymentCases = {
   card: Group<{ last4: Field<String> }>
   wire: Group<{ iban: Field<String> }>
-}
-
-fn orderModel(graph: Graph) -> Group<OrderModel>: Group{
-  fields: OrderModel{
-    country: Field.make<String>(graph)
-    city: Hidden.make(graph, Field.make<String>(graph))
-    items: List.make(
-      graph
-      fn(x): Group{
-        fields: struct{sku: Field.make<String>(graph, x?.sku), qty: Field.make<Int>(graph, x?.qty)}
-      }
-    )
-    payment: Variant{
-      tag: Field.make<"card" | "wire">(graph)
-      cases: struct{
-        card: Group{fields: struct{last4: Field.make<String>(graph)}}
-        wire: Group{fields: struct{iban: Field.make<String>(graph)}}
-      }
-    }
-    note: Hidden.make(graph, Field.make<String>(graph))
-  }
 }
 
 fn orderView(at: Place, m: OrderModel, ctx: OrderCtx) -> View:
@@ -219,7 +198,7 @@ fn orderView(at: Place, m: OrderModel, ctx: OrderCtx) -> View:
 # The form on a graph of its own.
 fn openOrder(params: OrderParams, user: User) -> Form<OrderModel>:
   const graph = new Graph{}
-  const model = orderModel(graph)
+  const model = Group.make<OrderModel>(graph, none)
   Form.open(graph, model, fn(at): orderView(at, model.fields, OrderCtx{params, user}))
 
 # ═══════════ The entry points its hosts start ═══════════

@@ -141,5 +141,5 @@ default: fn(): crm.creditLimit(data.company.vatId ?? "") ?? 0
 
 - **`examples/FormBuilder/computed.ista`,** with `.ista` tests beside it.
 - **`examples/FormBuilder/`:** `forms.ista` rewritten as `forms/`, a module per concern; the sources made simple externs;
-  `generate.ts` emitting getters and expression functions, with `pending` gone from `form-spec.ts`;
+  `generate.ts` emitting the model types and the view's expression closures, with `pending` gone from `form-spec.ts`;
   the forms' JSON; and its spec's §3, §4, §5, §6, §7 and §10.

@@ -183,7 +183,7 @@ async function profileFormBuilderTools(outDir: string | undefined, fbDir: string
     });
     checker2.diagnosticsOf(supId);
   });
-  const refOffset = supOrig.indexOf('addressModel') + refNameOffset;
+  const refOffset = supOrig.indexOf('addressView') + refNameOffset;
   const fbRefsProf = await withCpuProfile(outDir, 'formbuilder-refs', () => {
     const { program } = loadProject(fbDir, fbSources);
     referencesAt(program, supId, refOffset);

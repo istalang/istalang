@@ -9,7 +9,7 @@ import Group from './forms/model'
 import * as geo from './geo'
 import * as approvals from './approvals'
 import Graph from './computed'
-import OrderModel, OrderParams, openOrder, orderModel from './order.gen'
+import OrderModel, OrderParams, openOrder from './order.gen'
 
 @Suite{"order"}
 fn orderSuite() -> Array<Test>: [
@@ -136,7 +136,7 @@ ista async fn invalidValue():
   hold _ = mock(geo.countries, countries)
   hold _ = mock(geo.cities, cities)
   hold _ = mock(approvals.ask, approve)
-  match open().validate(orderModel(new Graph{}).seen()):
+  match open().validate(Group.make<OrderModel>(new Graph{}, none).seen()):
     case Ok(...): assertEq("valid", "invalid")
     case Err(problems):
       assertEq(problems, ["n2": ["Required"], "n4": ["Minimum items is 1"], "n9": ["Required"]])
