@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-11-13
-last_updated: 2026-11-14
+last_updated: 2026-11-15
 tags: [reuse, runtime, snapshot, persistence, scheduler, lifetimes, host]
 ---
 
@@ -36,6 +36,8 @@ tags: [reuse, runtime, snapshot, persistence, scheduler, lifetimes, host]
 - start a call on any call path (a written call, a function value's, a disposal's, an encoder's, a resolver's callback), a mock replacing its target asked first → `startCall` (`src/runtime/scheduler/segment/calls.ts`); a callback's run as a driver of its own, on an off-heap carrier → `RunCalls` (`src/runtime/scheduler/segment/run-calls.ts`); a call leaving parameters out to a mocked code entry runs the target's prologue as a plain frame and hands over at its `body` marker, the replacement taking that frame's place → `handOver` (`calls.ts`, `SegmentRunner.handOver`), never a second mock path; which mock a call reaches without recording it, and the call made to it → `reachedMock`, `mockedCall` (`src/runtime/scheduler/testing/mocks.ts`)
 - convert V8 limit `RangeError`s to `Panic`, in any runtime → `panicOf` (`src/runtime/natives.ts`); guard a segment's depth → `requireDepth`, `requireFrameDepth` (`src/runtime/scheduler/segment/limits.ts`)
 - find what a host starts by key and read its JSON arguments, refusing what doesn't fit, in any runtime → `startOf`, `jsonIn` (`src/runtime/boundary/starts.ts`)
+- run a program's live and simple code as JavaScript, in a browser or Node: compile a Definition to an ES module → `emitProgram` (`src/codegen/emit.ts`); start the module's program by key with a host's externs → `program(…).start` (`src/live/program.ts`, the `istalang/live` entry)
+- a place passed by `&` in compiled code, every write and native change of it going through one class → `Place` (`src/live/values/place.ts`); futures, waits and resolvers in compiled code, by the interpreter's rules → `Waits` (`src/live/waits/waits.ts`), `settleOrder` (`src/live/waits/settle-order.ts`)
 - draw deterministic HMAC-SHA-256 random bytes from a 32-byte seed, on any runtime, or check a host's seed → `seedBytes`, `drawOf`, `seedOf` (`src/runtime/random-draws.ts`); encode or decode an instance's seed as its snapshot keeps it → `seedTextOf`, `seedFrom`, `seedBytesOf` (`src/runtime/snapshot/random.ts`)
 - hash, HMAC or hex-encode bytes, in Node or a browser → @noble/hashes (`sha256`, `hmac`, `bytesToHex`, as `src/definition/formats/codec.ts` and `src/stdlib/crypto/natives.ts` use them), never `node:crypto`
 - build spawned instance names `<parent>/<n>` or list ancestors → `spawnedName`, `ancestorsOf`, `spawnedSeparator` (`src/runtime/scheduler/instance/instance-names.ts`)

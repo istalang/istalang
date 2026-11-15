@@ -254,11 +254,11 @@ src/
                         instruction set; an entry's prologue, computing what a call leaves out before the body mark:
                         prologue.ts)
   runtime/
-    natives.ts          the Natives seam, the context a native is called with, and the Panic it throws
+    natives.ts          the Natives seam, the context a native is called with, the Panic it throws, and `panicOf`, the engine's limits as panics for every runtime
     store.ts            the InstanceStore seam, and a store in memory
     instance-state.ts   where an instance stands after the runtime advanced it
     refusal.ts          the runtime refusing what a host asked of it, as opposed to failing
-    clock.ts            the Clock seam, and a manual clock
+    clock.ts            the Clock seam, real time (`realTime`, for a process or a browser), and a manual clock
     host/               public host API (index.ts): createRuntime(seams) → deploy, then wake, retry and terminate as promises, each instance's
                         calls one after another (instance-calls.ts), one the runtime doesn't hold read back from the store and checked
                         (stored-instances.ts); programs.ts (Definition texts bound once per hash, and
@@ -319,7 +319,9 @@ src/
   project/              a project on disk: project.ts (sources, the loaders and roles a program is built with), file-loader.ts
                         (the project files ModuleLoader, and a module's id from its file and back), errno.ts (system errors)
   packages/             ista.json, minimal version selection, lockfile, vendor, verify, vendor loader
-  cli/                  main.ts executable, cli.ts root, command.ts (the command seam), directory-store.ts (the InstanceStore of --store), host-module.ts (the host externs of --host), report.ts (diagnostics output), clock.ts (the one clock), log-lines.ts (a log record as one line of JSON), commands/ (check, fmt, lsp, run, test)
+  codegen/              a Definition as one JavaScript ES module (docs/work/js-codegen/design.md): emit.ts (the entry; refuses ista code), code-entry.ts (one code entry: a function, or an async one settling its future; jumps as a `for (;;) switch (pc)`, one line per instruction), entry-scope.ts (how each register is held), instructions/ (one emitter table per instruction family), literal.ts (constants and tables as literals); differential.sweep.test.ts holds it to the interpreter over the corpus and FormBuilder
+  live/                 the runtime library of compiled code, the `istalang/live` entry (program.ts: a host starts a program by key with its externs and JSON arguments), program-tables.ts (what a compiled module hands it), run.ts (one run: executions, readied calls, its end), natives-context.ts (each extern bound to its native and context), arrivals.ts (a host's answers and due timers, one per turn), traces.ts (frames read off the JavaScript stack), values/ (cells, places, the helpers instructions call), waits/ and slots/ (the interpreter's rules for futures, waits, resolvers and slots, over objects). It reaches the runtime's seams alone, never the interpreter (a cruiser rule), so it bundles for a browser
+  cli/                  main.ts executable, cli.ts root, command.ts (the command seam), compile-entry.ts (the program a command runs or builds), directory-store.ts (the InstanceStore of --store), host-module.ts (the host externs of --host), report.ts (diagnostics output), log-lines.ts (a log record as one line of JSON), commands/ (build, check, fmt, lsp, run, test)
 test/corpus/            shared .ista corpus (spec examples, valid/invalid cases) used by every phase
 ```
 
@@ -334,9 +336,10 @@ editor/lsp                              the language server, a composition root 
 editor/language-service · formatter     tooling, with packages; language-service imports no Node built-in
 project                                 a project on disk: its sources and the loaders reading them
 compiler/compile ─▶ lowering ─▶ checker ─▶ binder ─▶ program ─▶ parser · scanner ─▶ syntax
+codegen ─▶ live ─▶ runtime seams · stdlib    compiled JavaScript: live reaches natives, clock, refusals and boundary, never the interpreter
 runtime ─▶ definition ◀─ lowering       runtime never imports compiler/
 stdlib ─▶ program (loader seam) · runtime native seam · definition values (==, map keys: definition/values/equality.ts)
-foundation/text · diagnostics           vocabularies every phase uses; the runtime may use text/ for positions
+foundation/text · diagnostics           vocabularies every phase uses; definition/ and the runtime may use text/ for positions
 foundation/language · structures        beneath every layer; they import nothing
 ```
 

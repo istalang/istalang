@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-11-13
-last_updated: 2026-11-13
+last_updated: 2026-11-15
 tags: [reuse, testing, test-kit, arbitraries, fast-check, corpus]
 ---
 
@@ -57,6 +57,7 @@ tags: [reuse, testing, test-kit, arbitraries, fast-check, corpus]
 - run the `ista` CLI in-process without spawning a child process → `runCli` (`src/cli/cli.ts`), `exitCodes`, `CliEnvironment` (`src/cli/command.ts`); with a test's environment, the heaps it runs checked by the oracle → `ista`, or by one of the test's → `istaChecked` (`src/cli/cli.test-kit.ts`)
 - generate random token/fragment soup or randomly mutated valid programs → `soupOf` (`test/soup.ts`), `brokenText` (`test/broken.ts`)
 - generate random `Value`s or deeply nested values → `valueArbitrary`, `nested` (`src/definition/values/values.test-kit.ts`)
+- run one program on the interpreter and as compiled JavaScript and compare what each showed (outcome or panic, logs, host calls), a corpus program's work started as live code → `compiledAt`, `asLive`, `compiledToJavaScript`, `shownByInterpreter`, `shownByJavaScript`, `recording` (`src/codegen/differential.test-kit.ts`)
 - generate canonical JSON values or non-canonical JSON texts → `exactJson`, `reverseKeys`, `looseText` (`src/definition/formats/codec.test-kit.ts`)
 - generate random load-valid `Instruction`s → `instruction` (`src/definition/instructions/instruction.test-kit.ts`)
 - generate random load-valid `Definition`s or edit the subset fixture → `definitionArbitrary`, `editedSubset` (`src/definition/definition.test-kit.ts`)

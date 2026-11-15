@@ -109,6 +109,7 @@ const layers = {
     'foundation/diagnostics',
     'compiler/program',
     'compiler/compile',
+    'codegen',
     'stdlib',
     'definition',
     'runtime',
@@ -121,6 +122,9 @@ const layers = {
   'editor/vscode-client': ['editor/lsp/std-source-request'],
   definition: ['foundation/text'],
   runtime: ['definition', 'foundation/text'],
+  // The runtime library of compiled JavaScript: it reaches the runtime's seams alone (below).
+  live: ['foundation/text', 'definition', 'runtime', 'stdlib'],
+  codegen: ['definition', 'live'],
 };
 
 /**
@@ -237,6 +241,31 @@ const bodyModel = [...checkerModel, 'types/inference'];
  */
 const nodeLayers = ['cli', 'editor/lsp', 'project', 'editor/vscode-client'];
 
+/** Node's built-ins a module might reach, which no browser has. */
+const nodeBuiltins = [
+  'fs',
+  'path',
+  'os',
+  'url',
+  'crypto',
+  'child_process',
+  'process',
+  'stream',
+  'timers',
+  'util',
+  'buffer',
+  'events',
+  'worker_threads',
+  'module',
+  'net',
+  'http',
+  'https',
+  'zlib',
+  'readline',
+  'v8',
+  'vm',
+];
+
 /** A layer is a folder (`compiler/program`) or a single module (`compiler/compile` is compile.ts). */
 const layerPath = (names) => `^src/(${names.join('|')})(/|\\.ts$)`;
 
@@ -325,6 +354,27 @@ export default {
       severity: 'error',
       from: { path: '^src/', pathNot: '^src/runtime/interpreter/registers\\.ts$' },
       to: { path: '^src/runtime/interpreter/raw-registers\\.ts$' },
+    },
+    {
+      // Compiled JavaScript runs on the runtime's seams (natives, clock, refusals, random draws, what
+      // an instance logs, the host boundary), never on the interpreter it is diffed against, so it
+      // bundles for a browser.
+      name: 'live-imports-interpreter',
+      severity: 'error',
+      from: { path: '^src/live/' },
+      to: {
+        path: '^src/runtime/',
+        pathNot:
+          '^src/runtime/((natives|clock|refusal|instance-state|random-draws)\\.ts|boundary/)',
+      },
+    },
+    {
+      // Compiled JavaScript runs in a browser too, so nothing its runtime library reaches, however
+      // far, is one of Node's built-ins.
+      name: 'live-reaches-node',
+      severity: 'error',
+      from: { path: '^src/live/' },
+      to: { path: `^(node:)?(${nodeBuiltins.join('|')})(/|$)`, reachable: true },
     },
     {
       name: 'checker-internals-imported',

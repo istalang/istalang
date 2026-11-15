@@ -49,6 +49,8 @@ Top-level folders are toolchain features. Their layers and contracts are in `doc
 - `compiler/`: the phases (`compiler/AGENTS.md`).
 - `stdlib/`: the std modules, one folder each (`<name>/<name>.ista` beside its `natives.ts`, keyed as lowering keys the externs), each listed once in `std-sources.ts`, which the loader reads; `std-modules.ts` attaches each module's natives, and the natives table derives from it.
 - `definition/`: the compiled program, the contract between lowering and the runtime (`docs/arch/definition.md`). Like `compiler/syntax/`, its modules are imported directly. Every persisted format goes through `formats/format.ts` and `formats/codec.ts`.
+- `codegen/`: a Definition as one JavaScript ES module (`emit.ts`), live and simple code only; `differential.sweep.test.ts` holds it to the interpreter.
+- `live/`: the runtime library of compiled code, the `istalang/live` entry (`program.ts`): a host starts a compiled program by key. It reaches only the runtime's seams (`natives.ts`, `clock.ts`, `refusal.ts`, `instance-state.ts`, `random-draws.ts`, `boundary/`) and no Node built-in, so it bundles for a browser.
 - `runtime/`: the interpreter. `host/index.ts` is its API (deploy a Definition's text and start its live code; wake, inspect, retry and terminate instances), `natives.ts` and `store.ts` its seams, `scheduler/` segments and commits, `interpreter/` the instruction table, `boundary/` host externs and what crosses to the host (`docs/arch/boundary.md`), and `snapshot/` the persisted instance format.
 - `project/`: a project on disk, for every app: `project.ts` finds sources and picks the loaders and roles, `file-loader.ts` loads project files by import path.
 - `formatter/`: a syntax tree to its canonical text; `format.ts` is its entry and the `istalang/formatter` API, with one printer table per family of constructs and comments placed on nodes (`comments/comment-placement.ts`).
@@ -56,7 +58,7 @@ Top-level folders are toolchain features. Their layers and contracts are in `doc
   - `language-service/`: what an editor asks of a project, with no protocol and no I/O: the workspace (open texts and the program they make, `workspace.ts`), one module or folder per feature, and what features read of a module at a spot (`reading/`).
   - `lsp/`: the language server over vscode-languageserver; `server.ts` composes it, `providers/` holds one provider per request (the navigation ones in `providers/navigation/`, the outline ones in `providers/outline/`), and `ista lsp` runs it.
   - `vscode-client/`: the VS Code extension's client of `ista lsp`: `extension.ts` activates it and serves the `std:` documents, `server-command.ts` picks the `ista lsp` process a workspace runs. It imports of the server only `editor/lsp/std-source-request.ts`.
-- `cli/`: the `ista` app. `cli.ts` is its composition root, `host-module.ts` loads the host externs of `run --host`, `report.ts` renders diagnostics, and `commands/` holds one module per subcommand.
+- `cli/`: the `ista` app. `cli.ts` is its composition root, `compile-entry.ts` compiles the program `run` and `build` take, `host-module.ts` loads the host externs of `run --host`, `report.ts` renders diagnostics, and `commands/` holds one module per subcommand.
 
 Use a phase or feature folder only through its entry module. Upward imports and import cycles fail lint. Layers are an allow-list in `.dependency-cruiser.mjs`: a new folder can import nothing until you list it there.
 

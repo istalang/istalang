@@ -12,6 +12,7 @@
     "src/runtime/host/index.ts",
     "src/stdlib/natives.ts",
     "src/formatter/format.ts",
+    "src/live/program.ts",
     "src/stdlib/ista-source.d.ts"
   ]
 }

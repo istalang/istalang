@@ -25,6 +25,10 @@
     "./formatter": {
       "types": "./dist/formatter/format.d.ts",
       "default": "./dist/formatter/format.js"
+    },
+    "./live": {
+      "types": "./dist/live/program.d.ts",
+      "default": "./dist/live/program.js"
     }
   },
   "scripts": {

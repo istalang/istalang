@@ -25,6 +25,7 @@ export default defineConfig([
       'src/runtime/host/index.ts',
       'src/stdlib/natives.ts',
       'src/formatter/format.ts',
+      'src/live/program.ts',
     ],
     root: 'src',
     outDir: 'dist',
