@@ -10,15 +10,9 @@
 import { type Handlers, handlerOf } from '../../../foundation/structures/kind-table.ts';
 import { argumentValue } from '../../syntax/expressions/arguments.ts';
 import type { CallArgument } from '../../syntax/expressions/calls.ts';
-import type {
-  Expression,
-  FieldsLiteral,
-  IndentedValue,
-  MatchCase,
-  SelectCase,
-} from '../../syntax/expressions/index.ts';
-import { casesOf, qualifiedPath, selectCasesOf } from '../../syntax/expressions/readings.ts';
-import type { Identifier, Invalid } from '../../syntax/tree/node.ts';
+import type { Expression, FieldsLiteral, IndentedValue } from '../../syntax/expressions/index.ts';
+import { qualifiedPath } from '../../syntax/expressions/readings.ts';
+import type { Identifier } from '../../syntax/tree/node.ts';
 import {
   bindConditionValue,
   underBindings,
@@ -145,8 +139,7 @@ const expressionHandlers: Handlers<LocalBinder, Expression, [Scope], void> = {
   },
   Match: (binder, node, scope) => {
     bindExpression(binder, node.subject, scope);
-    bindRejectedAnnotations(binder, node.cases, scope);
-    for (const matchCase of casesOf(node)) {
+    binder.eachItem(node.cases, scope, (matchCase) => {
       underBindings(binder, matchCase, scope, {
         define: (bindings) =>
           binder.walk.pattern(binder, matchCase.pattern, scope, { into: bindings }),
@@ -155,11 +148,10 @@ const expressionHandlers: Handlers<LocalBinder, Expression, [Scope], void> = {
             binder.walk.block(binder, matchCase.body, flow),
           ),
       });
-    }
+    });
   },
   Select: (binder, node, scope) => {
-    bindRejectedAnnotations(binder, node.cases, scope);
-    for (const selectCase of selectCasesOf(node)) {
+    binder.eachItem(node.cases, scope, (selectCase) => {
       bindExpression(binder, selectCase.future, scope);
       const name = selectCase.binding;
       const define = (bindings: Scope) => {
@@ -171,29 +163,13 @@ const expressionHandlers: Handlers<LocalBinder, Expression, [Scope], void> = {
         define,
         body: (bindings) => binder.walk.block(binder, selectCase.body, bindings),
       });
-    }
+    });
     if (node.elseClause !== undefined) {
       binder.walk.block(binder, node.elseClause.body, scope);
     }
   },
 };
 // biome-ignore-end lint/style/useNamingConvention: the keys are the tree's node kinds.
-
-/**
- * Binds the annotations held by the Invalid items among a body's cases, where the parser takes
- * none (§3.16): their values are still struct values written in the body's scope.
- */
-function bindRejectedAnnotations(
-  binder: LocalBinder,
-  items: readonly (MatchCase | SelectCase | Invalid)[],
-  scope: Scope,
-): void {
-  for (const item of items) {
-    if (item.kind === 'Invalid') {
-      binder.annotations(item, scope);
-    }
-  }
-}
 
 export function bindExpression(binder: LocalBinder, node: Expression, scope: Scope): void {
   binder.enter(node, scope);

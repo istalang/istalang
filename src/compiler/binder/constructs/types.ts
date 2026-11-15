@@ -105,20 +105,14 @@ function bindTypeCase(binder: LocalBinder, node: TypeCase, scope: Scope): void {
   bindType(binder, node.type, inner);
 }
 
-/**
- * An anonymous struct type's entries: its fields, then its mapped entries, each in its own scope.
- */
+/** An anonymous struct type's entries: its fields, and its mapped entries, each in its own scope. */
 function bindStructType(binder: LocalBinder, node: StructType, scope: Scope): void {
-  bindFields(
-    binder,
-    node.fields.filter((field) => field.kind !== 'MappedField'),
-    scope,
+  checkFieldNames(binder, node.fields);
+  binder.eachItem(node.fields, scope, (field) =>
+    field.kind === 'MappedField'
+      ? bindMappedField(binder, field, scope)
+      : bindFieldType(binder, field, scope),
   );
-  for (const field of node.fields) {
-    if (field.kind === 'MappedField') {
-      bindMappedField(binder, field, scope);
-    }
-  }
 }
 
 /** `[F in U]: T`: `U` in the type's scope, `T` where `F` names the parameter (the banner). */
@@ -131,7 +125,6 @@ function bindMappedField(binder: LocalBinder, node: MappedField, scope: Scope): 
   binder.declare(inner, parameter.name, typeEntity(parameter), { convention: 'type' });
   binder.enter(node, inner);
   bindType(binder, node.type, inner);
-  binder.annotations(node, scope);
 }
 
 /**
@@ -173,21 +166,34 @@ function bindStructConstraint(
   }
 }
 
-/** A field list of a struct, variant, anonymous struct or trait: names checked, types bound. */
+/** A field list of a struct, a variant or an extern struct: names checked, types bound. */
 export function bindFields(
   binder: LocalBinder,
   fields: readonly (Field | Invalid)[],
   scope: Scope,
 ): void {
-  const declared = fields.filter((field) => field.kind !== 'Invalid');
+  checkFieldNames(binder, fields);
+  binder.eachItem(fields, scope, (field) => bindFieldType(binder, field, scope));
+}
+
+/** Checks the names of the fields among a list's `members`, which live in their own namespace. */
+export function checkFieldNames(
+  binder: LocalBinder,
+  members: readonly { readonly kind: string }[],
+): void {
   binder.checkMemberNames(
-    declared.map((field) => field.name),
+    members.flatMap((member) => (isField(member) ? [member.name] : [])),
     'value',
   );
-  for (const field of fields) {
-    if (field.kind !== 'Invalid' && field.type !== undefined) {
-      bindType(binder, field.type, scope);
-    }
-    binder.annotations(field, scope);
+}
+
+/** Binds the type `field` is written with, if any. */
+export function bindFieldType(binder: LocalBinder, field: Field, scope: Scope): void {
+  if (field.type !== undefined) {
+    bindType(binder, field.type, scope);
   }
+}
+
+function isField(member: { readonly kind: string }): member is Field {
+  return member.kind === 'FieldDeclaration' || member.kind === 'DeclaredField';
 }

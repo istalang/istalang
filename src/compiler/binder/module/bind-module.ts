@@ -42,13 +42,7 @@ export function bindModule(tree: SyntaxTree): ModuleBindings {
     const binder = new LocalBinder(walk, tree);
     const { scope, ...moduleScope } = defineModuleScope(binder, tree.root, universe());
     const topLevel = scope.snapshot();
-    for (const item of tree.root.items) {
-      if (item.kind === 'Invalid') {
-        binder.annotations(item, scope);
-      } else {
-        bindDeclaration(binder, item, scope);
-      }
-    }
+    binder.eachItem(tree.root.items, scope, (item) => bindDeclaration(binder, item, scope));
     return { ...moduleScope, ...binder.result(topLevel) };
   });
 }

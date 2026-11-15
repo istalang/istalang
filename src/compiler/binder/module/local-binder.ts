@@ -23,7 +23,11 @@ import type { Diagnostic } from '../../../foundation/diagnostics/diagnostic.ts';
 import { type Convention, isUnnamed } from '../../../foundation/language/naming.ts';
 import { memo, SequenceMemo } from '../../../foundation/structures/memo.ts';
 import { unreachable } from '../../../foundation/structures/unreachable.ts';
-import type { FunctionDeclaration, Module } from '../../syntax/declarations/index.ts';
+import {
+  type FunctionDeclaration,
+  isGenericDeclaration,
+  type Module,
+} from '../../syntax/declarations/index.ts';
 import type {
   Comprehension,
   Expression,
@@ -35,7 +39,12 @@ import type { Annotatable } from '../../syntax/items.ts';
 import type { Pattern } from '../../syntax/patterns.ts';
 import type { Block, For, VariableDeclaration } from '../../syntax/statements/index.ts';
 import type { SyntaxNode, SyntaxTree } from '../../syntax/tree/index.ts';
-import { type Identifier, isMissingName, type QualifiedName } from '../../syntax/tree/node.ts';
+import {
+  type Identifier,
+  type Invalid,
+  isMissingName,
+  type QualifiedName,
+} from '../../syntax/tree/node.ts';
 import type { AnchoredSpan } from '../../syntax/tree/positions.ts';
 import type { NamedType, TypeNode } from '../../syntax/types/index.ts';
 import { binderDiagnostics } from '../diagnostics.ts';
@@ -115,6 +124,10 @@ export interface LocalResult {
 
 /** Per module, by its items, the entity of each bare name that may be any variant so named. */
 const variantsByModule = new SequenceMemo<Module['items'][number], Map<string, VariantsEntity>>();
+
+function isInvalid(node: SyntaxNode): node is Invalid {
+  return node.kind === 'Invalid';
+}
 
 /** The handler of a kind whose nodes hold no names. */
 export const holdsNoNames = (): void => undefined;
@@ -311,6 +324,27 @@ export class LocalBinder {
   annotations(item: Annotatable, scope: Scope): void {
     for (const annotation of item.annotations ?? []) {
       this.walk.expression(this, annotation.value, scope);
+    }
+  }
+
+  /**
+   * Walks a list's `items` in order: binds each one's annotations in `scope`, but a generic
+   * declaration's, which its type parameters' scope binds (constructs/declarations.ts), then hands
+   * it to `bind`, but an Invalid one, which holds only the annotations the parser rejected there,
+   * still struct values written in `scope` that every tool walking the tree meets (§3.16).
+   */
+  eachItem<Item extends SyntaxNode & Annotatable>(
+    items: readonly (Item | Invalid)[],
+    scope: Scope,
+    bind: (item: Item) => void,
+  ): void {
+    for (const item of items) {
+      if (!isGenericDeclaration(item)) {
+        this.annotations(item, scope);
+      }
+      if (!isInvalid(item)) {
+        bind(item);
+      }
     }
   }
 

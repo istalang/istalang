@@ -32,7 +32,6 @@ import {
   type EnumDeclaration,
   type ExternStructDeclaration,
   type FunctionDeclaration,
-  isGenericDeclaration,
   type TraitDeclaration,
   type TypeAliasDeclaration,
   type TypeParameters,
@@ -48,7 +47,13 @@ import { selfEntity, typeEntity, variableEntity } from '../entities.ts';
 import { holdsNoNames, type LocalBinder } from '../module/local-binder.ts';
 import { Scope } from '../module/scope.ts';
 import { bindTargets, bindVariableValue, spanThrough } from './statements.ts';
-import { bindAliasBody, bindConstraints, bindFields } from './types.ts';
+import {
+  bindAliasBody,
+  bindConstraints,
+  bindFields,
+  bindFieldType,
+  checkFieldNames,
+} from './types.ts';
 
 export function bindFunction(
   binder: LocalBinder,
@@ -218,27 +223,20 @@ const declarationHandlers: Handlers<LocalBinder, Declaration, [Scope], void> = {
 // biome-ignore-end lint/style/useNamingConvention: the keys are the tree's node kinds.
 
 /**
- * Binds what is inside a top-level declaration, whose name the module scope already defines: a
- * generic one's annotations in its type parameters' scope, which binding it makes, any other's in
- * the module's.
+ * Binds what is inside a top-level declaration, whose name the module scope already defines; a
+ * generic one's annotations too, in its type parameters' scope, which binding it makes.
  */
 export function bindDeclaration(binder: LocalBinder, node: Declaration, scope: Scope): void {
-  if (!isGenericDeclaration(node)) {
-    binder.annotations(node, scope);
-  }
   handlerOf(declarationHandlers, node)(binder, node, scope);
 }
 
 function bindEnum(binder: LocalBinder, node: EnumDeclaration, scope: Scope): void {
   const inner = typeParameterScope(binder, node, scope);
   bindAssociatedTypes(binder, node, inner);
-  for (const variant of node.variants) {
-    binder.annotations(variant, inner);
-    if (variant.kind === 'Variant') {
-      bindFields(binder, variant.fields, inner);
-      bindFieldDefaults(binder, variant, fieldsFunctionOf(node, variant), inner);
-    }
-  }
+  binder.eachItem(node.variants, inner, (variant) => {
+    bindFields(binder, variant.fields, inner);
+    bindFieldDefaults(binder, variant, fieldsFunctionOf(node, variant), inner);
+  });
 }
 
 function bindTrait(binder: LocalBinder, node: TraitDeclaration, scope: Scope): void {
@@ -247,31 +245,32 @@ function bindTrait(binder: LocalBinder, node: TraitDeclaration, scope: Scope): v
   defineTypeParameters(binder, node.typeParameters, inner);
   binder.annotations(node, inner);
   binder.enter(node, inner);
-  const fields = node.members.filter(
-    (member) => member.kind === 'FieldDeclaration' || member.kind === 'Invalid',
-  );
-  bindFields(binder, fields, inner);
-  const associated = node.members.filter((member) => member.kind === 'RequiredAssociatedType');
+  checkFieldNames(binder, node.members);
   binder.checkMemberNames(
-    associated.map((member) => member.name),
+    node.members.flatMap((member) =>
+      member.kind === 'RequiredAssociatedType' ? [member.name] : [],
+    ),
     'type',
   );
-  for (const member of associated) {
-    // A requirement is reached through `Self` or a parameter, never by its bare name, so it is
-    // recorded as its name's entity, the tree's own, without standing in a scope.
-    binder.record(member.name, typeEntity(member));
-    binder.annotations(member, inner);
-    if (member.memberOf !== undefined) {
-      binder.walk.type(binder, member.memberOf, inner);
+  binder.eachItem(node.members, inner, (member) => {
+    switch (member.kind) {
+      case 'FieldDeclaration':
+        bindFieldType(binder, member, inner);
+        return;
+      case 'RequiredAssociatedType':
+        // A requirement is reached through `Self` or a parameter, never by its bare name, so it is
+        // recorded as its name's entity, the tree's own, without standing in a scope.
+        binder.record(member.name, typeEntity(member));
+        if (member.memberOf !== undefined) {
+          binder.walk.type(binder, member.memberOf, inner);
+        }
+        bindConstraints(binder, member.constraints, inner);
+        return;
+      default:
+        binder.checkConvention(member.name, 'value');
+        bindFunction(binder, member, inner);
     }
-    bindConstraints(binder, member.constraints, inner);
-  }
-  for (const member of node.members) {
-    if (member.kind === 'FunctionDeclaration') {
-      binder.checkConvention(member.name, 'value');
-      bindFunction(binder, member, inner);
-    }
-  }
+  });
   const last = node.members.at(-1);
   binder.enter(node, inner, endOf(last === undefined ? node.span : spanThrough(binder, last)));
 }

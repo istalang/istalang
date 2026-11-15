@@ -12,7 +12,7 @@
  */
 
 import { type Handlers, handlerOf } from '../../../foundation/structures/kind-table.ts';
-import { type FunctionDeclaration, isGenericDeclaration } from '../../syntax/declarations/index.ts';
+import type { FunctionDeclaration } from '../../syntax/declarations/index.ts';
 import type { Expression } from '../../syntax/expressions/index.ts';
 import { unparenthesized } from '../../syntax/expressions/readings.ts';
 import { targetNames } from '../../syntax/patterns.ts';
@@ -90,16 +90,10 @@ export function bindBlock(binder: LocalBinder, block: Block, parent: Scope): voi
     }
   }
   binder.enter(block, scope);
-  for (const statement of block.statements) {
-    // A local function binds its own annotations, in its type parameters' scope (declarations.ts).
-    if (!isGenericDeclaration(statement)) {
-      binder.annotations(statement, scope);
-    }
-    if (statement.kind !== 'Invalid') {
-      handlerOf(statementHandlers, statement)(binder, statement, scope);
-      binder.enter(block, scope, endOf(spanThrough(binder, statement)));
-    }
-  }
+  binder.eachItem(block.statements, scope, (statement) => {
+    handlerOf(statementHandlers, statement)(binder, statement, scope);
+    binder.enter(block, scope, endOf(spanThrough(binder, statement)));
+  });
   scope.end();
 }
 
