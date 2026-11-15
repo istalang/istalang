@@ -32,7 +32,7 @@ import { place } from './places.ts';
 /** dst = constants[constant]. */
 const constant = defineInstruction('constant', { dst: register, constant: constantId });
 
-/** dst = src, adding a holder to every disposable inside the value (spec §7). */
+/** dst = src. */
 const move = defineInstruction('move', { dst: register, src: register });
 
 const tuple = defineInstruction('tuple', { dst: register, elements: z.array(register) });
