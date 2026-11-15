@@ -179,6 +179,7 @@ describe('table keys', () => {
     const callsAfterFirstTree = spy.mock.calls.length;
     expect(tableKey(checker, unfoldedTree ?? unreachable('Written.'))).toBe(firstTree);
     expect(spy).toHaveBeenCalledTimes(callsAfterFirstTree);
+    spy.mockRestore();
   });
 });
 
