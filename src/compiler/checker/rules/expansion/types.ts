@@ -65,8 +65,11 @@ export class TypeExpansion {
    * checked reaches them again, which its parameters report (functions/parameters.ts).
    */
   readonly #defaultedEdges: EntryTable<CheckerNote, FieldedDeclaration, readonly FieldEdge[]>;
-  /** The fields typed by their defaults each declaration cuts: the second stratum. */
-  readonly #cut: EntryTable<CheckerNote, FieldedDeclaration, ReadonlySet<DeclaredField>>;
+  /**
+   * Whether a field typed by its default is cut: the second stratum. Each field walks from its own
+   * edges, so whether it lies on a cycle reads no default but those on the cycles it may close.
+   */
+  readonly #cut: EntryTable<CheckerNote, DeclaredField, boolean, FieldedDeclaration>;
 
   constructor(checker: ExpansionSeams, defaultedType: DefaultedType) {
     this.#checker = checker;
@@ -98,16 +101,9 @@ export class TypeExpansion {
       cyclic: { standIn: () => [] },
     });
     this.#cut = checker.entries.table({
-      name: 'cut defaulted fields',
-      compute: (declaration) =>
-        this.#reported(
-          declaration,
-          growingEdgesFrom([declaration], (each) => this.#strataEdges(each), reachedBy).filter(
-            ({ field }) => field.type === undefined,
-          ),
-        ),
-      equal: sameMembers,
-      cyclic: { standIn: () => new Set() },
+      name: 'cut defaulted field',
+      compute: (field, declaration) => this.#cutField(declaration, field),
+      cyclic: { standIn: () => false },
     });
   }
 
@@ -116,12 +112,21 @@ export class TypeExpansion {
     if (field.kind !== 'DeclaredField') {
       return false;
     }
-    if (field.type !== undefined) {
-      return this.#endless.get(declaration).has(field);
+    return field.type === undefined
+      ? this.#cut.get(field, declaration)
+      : this.#endless.get(declaration).has(field);
+  }
+
+  /** Whether `field`, typed by its default, lies on a cycle that grows; reported once if so. */
+  #cutField(declaration: FieldedDeclaration, field: DeclaredField): boolean {
+    const own = this.#edgesOf(declaration, [field], () => this.#defaultedType(declaration, field));
+    const edgesOf = (node: FieldedDeclaration | DeclaredField) =>
+      node.kind === 'DeclaredField' ? own : this.#strataEdges(node);
+    const cut = growingEdgesFrom([field], edgesOf, reachedBy).some((edge) => edge.field === field);
+    if (cut) {
+      this.#reported(declaration, own);
     }
-    // A field whose type names no generic type lies on no cycle: its cut walks no other's defaults.
-    const named = this.#defaultedEdges.get(declaration).some((edge) => edge.field === field);
-    return named && this.#cut.get(declaration).has(field);
+    return cut;
   }
 
   /** The edges the second stratum reads: what the first leaves, and the defaulted fields'. */
