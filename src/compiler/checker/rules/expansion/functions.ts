@@ -7,7 +7,7 @@
  * cycle is reported at the call that makes it. Every call a function's code reaches counts
  * (surface/reach.ts): its body's and its parameters' defaults', the calls the language makes for a
  * construct, the defaults a struct literal leaves fields to, the calls a witness makes, and the
- * `dispose` of a type it makes. The functions a struct's fields read as (§3.1) are nodes too, so a
+ * calls the type entries of the types it makes run. The functions a struct's fields read as (§3.1) are nodes too, so a
  * cycle through a field's default is one like any; so are the generic functions a trait requires:
  * a requirement call leads to the requirement, and where a call chooses a witness, conformance
  * leads from the requirement to it, its type parameters taking the requirement's own.
