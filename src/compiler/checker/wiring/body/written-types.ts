@@ -3,15 +3,18 @@
  * over a type's keys, a written type is the program's, resolved once; inside them, each pass binds
  * the loop's key (contexts/passes.ts), so a written type is resolved afresh in each pass, from its
  * leaves up, its mistakes reported in the pass, and each node it is built of recorded for the pass
- * (types/written/written.ts), which tools read joined (`CheckedBody.writtenTypeOf`).
+ * (types/written/written.ts), which tools read joined (`CheckedBody.writtenTypeOf`). A type named
+ * in an expression, where no value is read, is recorded here too, never as a value's type.
  */
 
 import type { Diagnostic } from '../../../../foundation/diagnostics/diagnostic.ts';
 import type { ModuleId } from '../../../program/program.ts';
+import type { Expression } from '../../../syntax/expressions/index.ts';
 import type { AnchoredSpan } from '../../../syntax/tree/positions.ts';
 import type { TypeNode } from '../../../syntax/types/index.ts';
 import type { CheckerContext } from '../../contexts/context.ts';
 import type { Pass, Passes, PassTable } from '../../contexts/passes.ts';
+import type { WrittenType } from '../../surface/checked-body.ts';
 import type { Type } from '../../types/type/index.ts';
 import { resolveInPass } from '../../types/written/resolve-type.ts';
 
@@ -24,7 +27,7 @@ interface Resolving {
 
 export class WrittenTypes {
   readonly #passes: Passes;
-  readonly #types: PassTable<TypeNode, Type>;
+  readonly #types: PassTable<WrittenType, Type>;
 
   constructor(passes: Passes) {
     this.#passes = passes;
@@ -43,8 +46,13 @@ export class WrittenTypes {
     return resolved;
   }
 
+  /** Records `type` as what `node`, a type named in an expression, denotes in this pass. */
+  record(node: Expression, type: Type): void {
+    this.#types.set(node, type);
+  }
+
   /** The type `node` denoted where `pass` resolved it. */
-  of(node: TypeNode, pass?: Pass): Type | undefined {
+  of(node: WrittenType, pass?: Pass): Type | undefined {
     return this.#types.get(node, pass);
   }
 }

@@ -123,6 +123,8 @@ interface Naming {
   readonly checker: CheckerContext;
   readonly entityOf: (name: Identifier) => Entity | undefined;
   readonly inPass: (type: Type) => Type;
+  /** Records what a type named in an expression denotes, for tools (`recordWritten`). */
+  readonly recordWritten: (node: Expression, type: Type) => void;
 }
 
 /** Where a bare variant is chosen: the module's, which reports and records the variant chosen. */
@@ -155,9 +157,13 @@ export function namedType(context: Naming, node: Expression): Type | undefined {
 function indexedNamed(context: Naming, node: Index): Type | undefined {
   const owner = node.isOptional ? undefined : namedType(context, node.target);
   const key = owner === undefined ? undefined : namedType(context, node.index);
-  return owner === undefined || key === undefined
-    ? undefined
-    : context.checker.typeRules.fieldType(owner, key);
+  if (owner === undefined || key === undefined) {
+    return undefined;
+  }
+  const field = context.checker.typeRules.fieldType(owner, key);
+  context.recordWritten(node.index, key);
+  context.recordWritten(node, field);
+  return field;
 }
 
 /**

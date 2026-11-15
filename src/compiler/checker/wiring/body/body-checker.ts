@@ -117,6 +117,7 @@ export class BodyChecker implements BodyContext {
   readonly labels = new LabelTargets();
   readonly #records = bodyRecords(this.#passes);
   readonly writtenTypes = new WrittenTypes(this.#passes);
+  readonly recordWritten = (node: Expression, type: Type) => this.writtenTypes.record(node, type);
   readonly inPass = (type: Type): Type => this.#passes.bound(type, this.checker.typeRules);
   readonly sugars = new Desugarings(this.#passes);
   /** The body's own result, which only the body's own function returns into. */

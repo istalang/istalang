@@ -240,7 +240,7 @@ export interface BodyFacts {
    * The type a type written in this body denotes, as the pass reads it: in a loop over a type's
    * keys, each pass's key bound (§4); undefined for one the body never resolved.
    */
-  readonly writtenTypeOf: (node: TypeNode) => Type | undefined;
+  readonly writtenTypeOf: (node: WrittenType) => Type | undefined;
   /**
    * The type expected of the value `site` gives, where its context expects one (§2, §3.11): passed
    * down to its check, or fitted to once checked; undefined where nothing is expected.
@@ -368,6 +368,12 @@ export interface BodyFacts {
   /** What the body produces: `T` for an async function returning `Future<T>`. */
   readonly result: Type;
 }
+
+/**
+ * A type a body writes: a type node, or an expression naming a type where no value is read, a
+ * loop's key over a type's keys (§4) or a type indexed by one before `.` (§3.10).
+ */
+export type WrittenType = TypeNode | Expression;
 
 /** A checked body: its facts, and the views of it every fact is read through alike. */
 export interface CheckedBody extends BodyFacts {

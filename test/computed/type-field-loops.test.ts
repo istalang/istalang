@@ -156,6 +156,21 @@ describe('a loop over a type, nested and degenerate', () => {
     ).toEqual([]);
   });
 
+  it('reads S[K] before `.` as a type, holding no value of it', () => {
+    expect(
+      codesOf(
+        'extern live struct Socket',
+        'fn Socket.defaultPort() -> Int: 80',
+        'struct P { s: Socket }',
+        'fn f() -> Int:',
+        '  let port = 0',
+        '  for K in keyof P:',
+        '    port = P[K].defaultPort()',
+        '  port',
+      ),
+    ).toEqual([]);
+  });
+
   it('reports a static call through a key naming no field, once, at the key', () => {
     expect(codesOf(...nodes, ...orderLike, 'fn f(): _ = OrderLike[Int].make(1)')).toEqual([5161]);
   });

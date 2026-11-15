@@ -196,6 +196,7 @@ function namingAt({ checker, module }: NameSite) {
     checker,
     entityOf: (name: Identifier) => checker.bindings.entityOf(module, name),
     inPass: (type: Type) => type,
+    recordWritten: () => undefined,
   };
 }
 

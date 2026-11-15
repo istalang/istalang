@@ -39,7 +39,10 @@ export interface NameSite {
  * What the binder says `site`'s name denotes, refined by what the checker chose there; `type` is
  * what the name has there, by default its own as an expression.
  */
-export function named(site: NameSite, type = site.body?.typeOf(site.name)): readonly Denotation[] {
+export function named(
+  site: NameSite,
+  type = site.body?.typeOf(site.name) ?? site.body?.writtenTypeOf(site.name),
+): readonly Denotation[] {
   const { checker, module, name } = site;
   const entity = checker.bindings.entityOf(module, name);
   return entity === undefined ? [] : fromEntity(site, entity, type);

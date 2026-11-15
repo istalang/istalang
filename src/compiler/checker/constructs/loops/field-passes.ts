@@ -85,7 +85,7 @@ export function inFieldPasses(
     if (header.kind === 'FieldHeader') {
       declareTargets(context, header, tupleType([pass.key, pass.value]));
     } else {
-      context.recordType(header.name, pass.key);
+      context.recordWritten(header.name, pass.key);
     }
     each(pass);
   });

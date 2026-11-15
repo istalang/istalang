@@ -147,6 +147,11 @@ export interface BodyContext extends CheckedModule {
    * declares bound to the pass's (contexts/passes.ts).
    */
   readonly inPass: (type: Type) => Type;
+  /**
+   * Records `type` as what `node`, an expression naming a type where no value is read, denotes in
+   * the pass being checked (wiring/body/written-types.ts), never as a value's type.
+   */
+  readonly recordWritten: (node: Expression, type: Type) => void;
   /** What `name` denotes, a query: for a name only asked about, declared, or checked elsewhere. */
   readonly entityOf: (name: Identifier) => Entity | undefined;
   /**
