@@ -141,6 +141,18 @@ struct _Made<R, S>:
   data: S
   row: ListRow<R>
 
+# A row's key: its rowKey's, else `prefix` and its place.
+fn _rowKey<S>(key: (inert fn(S) -> String?)?, x: S, prefix: String, i: Int) -> String:
+  match key:
+    case None: `${prefix}${i + 1}`
+    case keyOf: keyOf(x) ?? ""
+
+# The rowKey the list's view keys its rows by, if it gives one.
+fn _keyOf<S>(from: RowsFrom<S>) -> (inert fn(S) -> String?)?:
+  match from:
+    case RowsFrom.Default(key: key, ...): key
+    case RowsFrom.Always(key: key, ...): key
+
 # A row with `data`, handed to its view as it is made.
 fn _row<R, S>(
   make: inert fn(S?) -> R
@@ -177,9 +189,7 @@ fn List.make<R is FormNode & Inert>(
     const rows = [
       for i in 0..data.length(): {
         const x = data[i]
-        const k = match key:
-          case None: `${prefix}${i + 1}`
-          case keyOf: keyOf(x) ?? ""
+        const k = _rowKey(key, x, prefix, i)
         match before.filter(fn(m): m.row.key == k and (byKey or m.data == x)).at(0):
           case None: _Made{data: x, row: _row(make, binding, k, x)}
           case kept: kept
@@ -213,10 +223,13 @@ fn read<R is FormNode & Inert>(self: List<R>) -> Result<Array<R.Data>>:
   let out: Array<R.Data> = []
   for row in self.rows.read(): out.push(row.node.read()?)
   Ok(out)
+# Rows made from the value, as rows from data are, keyed alike, and given what their nodes can't
+# be made holding (a dynamic mount's data).
 fn load<R is FormNode & Inert>(self: List<R>, v: Array<R.Seen>) -> Unit:
+  const key = _keyOf(self.derivation->value)
   const rows = [
     for i in 0..v.length(): {
-      const row = _row(self.make, self.binding, `r${i + 1}`, none)
+      const row = _row(self.make, self.binding, _rowKey(key, v[i], "r", i), v[i])
       row.node.load(v[i])
       row
     }

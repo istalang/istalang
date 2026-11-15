@@ -3,7 +3,7 @@
 # test/examples.test.ts runs them as their hosts do.
 
 import Suite, Test, test, assertEq, mock from 'testing'
-import FormEvent, Node from './forms/tree'
+import FormEvent, Node, FieldWidget from './forms/tree'
 import Form, User, validate from './forms/form'
 import Group from './forms/model'
 import * as geo from './geo'
@@ -20,6 +20,10 @@ fn orderSuite() -> Array<Test>: [
   test("a valid submit gives the data", validSubmit)
   test("a valid whole value gives its data, without hidden values", validValue)
   test("an invalid whole value gives errors by node key", invalidValue)
+  test("S3: a rule's message in the user's language", localizedRule)
+  test("S4: rows add up, and a note shows past a total", rowsAndConditions)
+  test("S6: an approval refused blocks the submit", approvalBlocks)
+  test("S7: a pattern's error", patternError)
 ]
 
 const user = User{id: "u1", name: "Ann", lang: "en", role: "buyer", today: "2026-11-15"}
@@ -136,3 +140,72 @@ ista async fn invalidValue():
     case Ok(...): assertEq("valid", "invalid")
     case Err(problems):
       assertEq(problems, ["n2": ["Required"], "n4": ["Minimum items is 1"], "n9": ["Required"]])
+
+# What node `key` shows: its errors, and its widget's text rows if a textarea, from `node`'s tree.
+fn errorsAt(node: Node, key: String) -> Array<String>?:
+  node.shown().find(fn(each): each.key() == key)?.errors()
+
+fn fieldValue(node: Node, key: String) -> String?:
+  match node.shown().find(fn(each): each.key() == key):
+    case Field(value: value, ...): value
+    case _: none
+
+fn noteRows(node: Node) -> Int?:
+  match node.shown().find(fn(each): each.key() == "n12"):
+    case Field(widget: FieldWidget.Textarea(rows), ...): rows
+    case _: none
+
+fn rows(self: Form<OrderModel>, quantities: Array<Int>):
+  for i in 0..quantities.length(): {
+    self.apply(FormEvent.AddRow("n4"))
+    _ = tree(self) # the frontend sends events only to the keys it was shown
+    self.enter(`n6@r${i + 1}`, `"S${i + 1}"`)
+    self.enter(`n7@r${i + 1}`, `${quantities[i]}`)
+  }
+
+ista async fn localizedRule():
+  hold _ = mock(geo.countries, kpToo)
+  hold _ = mock(geo.cities, cities)
+  const form = openOrder(OrderParams{region: "eu"}, User{...user, lang: "de"})
+  form.enter("n2", "\"kp\"")
+  assertEq(errorsAt(tree(form), "n2"), ["Wir liefern nicht nach kp"])
+
+fn kpToo(region: String) -> Array<geo.Country>: [
+  geo.Country{id: "de", name: "Germany"}
+  geo.Country{id: "kp", name: "North Korea"}
+]
+
+ista async fn rowsAndConditions():
+  hold _ = mock(geo.countries, countries)
+  const form = open()
+  form.rows([60, 50])
+  assertEq(fieldValue(tree(form), "n8"), "110")
+  assertEq(noteRows(tree(form)), 3)
+  form.apply(FormEvent.RemoveRow(key: "n4", row: "r2"))
+  assertEq(fieldValue(tree(form), "n8"), "60")
+  assertEq(keys(tree(form)).includes("n12"), false)
+
+ista async fn approvalBlocks():
+  hold _ = mock(geo.countries, countries)
+  hold _ = mock(geo.cities, cities)
+  const asked = mock(approvals.ask, refuse)
+  const form = open()
+  form.enter("n2", "\"de\"")
+  form.enter("n3", "\"ber\"")
+  form.rows([300, 300])
+  form.enter("n12", "\"leave at the door\"")
+  form.enter("n9", "\"card\"")
+  form.enter("n10", "\"1234\"")
+  form.apply(FormEvent.Submit)
+  assertEq(errorsAt(tree(form), "n1"), ["The order was not approved"])
+  assertEq(form.result() is Ok(...), false)
+  assertEq(asked.calls(), [("u1", 600)])
+
+fn refuse(userId: String, totalQty: Int) -> Bool: false
+
+ista async fn patternError():
+  hold _ = mock(geo.countries, countries)
+  const form = open()
+  form.enter("n9", "\"card\"")
+  form.enter("n10", "\"12a4\"")
+  assertEq(errorsAt(tree(form), "n10"), ["Invalid format"])

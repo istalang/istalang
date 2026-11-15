@@ -375,6 +375,7 @@ The generated code describes each node with a struct, `FieldView`, `RepeatView`,
 - **Default rows:** made from data once, or followed while `recomputeUntil` is `RowsEdited`, until the user adds or removes a row. A list's default rows are the data it was made with, as a row's nested list is.
 - **Computed rows** follow their data, read-only.
 - **Keys:** with a `rowKey`, a row whose key stays keeps its node, and so its values; without one, a row is kept while its place and data stay.
+- **A repeat's checks count its rows:** they see the rows' keys, so what a row holds, answered or not, neither hides nor fakes a `minItems`, `maxItems` or `required` error.
 - **A variant's picker** reports an unanswered tag through `answered()` among the variant's checks, which take the tag, as a field's take its value.
 
 ### 6.3 The two live functions
@@ -386,7 +387,7 @@ The generated code describes each node with a struct, `FieldView`, `RepeatView`,
   - `AddRow` and `RemoveRow` change a list.
   - `Submit` marks the form submitted.
   - An event to a key not shown changes nothing.
-- **`validate`, the backend's:** loads a whole value, marks the form submitted, and gives `result()`. Values for hidden nodes are dropped: hidden nodes don't exist.
+- **`validate`, the backend's:** loads a whole value, marks the form submitted, and gives `result()`. A list's rows are made from the value as rows from data are, and keyed alike, so the backend's error keys are the browser's. Values for hidden nodes are dropped: hidden nodes don't exist.
 
 ### 6.4 What the frontend receives
 

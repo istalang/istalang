@@ -162,6 +162,10 @@ describe('the examples', () => {
         company: { capital: null, city: 'ber', address: { street: 'Main 1' } },
         contacts: [{ name: 'Ada', primary: true, card: { phone: '+49 30 1234' } }],
         creditLimit: 5000,
+        prices: [
+          { sku: 'p1', amount: 1.5 },
+          { sku: 'p2', amount: 2.5 },
+        ],
         payment: { tag: 'card', value: { card: { holder: 'Ann', last4: '1234' } } },
         delivery: { tag: 'standard', value: { standard: { window: 'am' }, express: null } },
         score: 60,

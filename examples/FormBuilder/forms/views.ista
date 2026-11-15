@@ -210,7 +210,7 @@ struct RepeatView<R is FormNode & Inert>:
   hide: Shown? = none
   widget: inert fn() -> RepeatWidget
   label: (inert fn() -> String)? = none
-  checks: Array<Check<Array<R.Data>>> = []
+  checks: Array<Check<Array<String>>> = [] # on its rows' keys: how many rows it has
   canAdd: Bool = true # false: editableCount false, or computed rows
   rows: (inert fn() -> Array<R.Seen>)? = none # a default, or computed rows
   computedRows: Bool = false # rows always follow `rows`, read-only
@@ -254,12 +254,9 @@ fn build<R is FormNode & Inert>(self: RepeatView<R>, at: Place) -> View:
       if drawn.nodes.at(0) is Node as first: rows.push(Row{key: each.row.key, node: first})
     }
     const keys = [for each in views: each.row.key]
-    const data: Array<R.Data>? = match self.list.read():
-      case Ok(d): d
-      case Err(...): none
     const unique = [for i in 0..keys.length(): keys.indexOf(keys[i]) == i].every(fn(first): first)
     const duplicates: Array<String> = if unique: [] else: ["Duplicate row keys"]
-    const errors = [..._failing(self.checks, data), ...duplicates]
+    const errors = [..._failing(self.checks, keys), ...duplicates]
     Drawn{
       nodes: [
         Node.Repeat(
@@ -284,7 +281,7 @@ fn build<R is FormNode & Inert>(self: RepeatView<R>, at: Place) -> View:
         if self.canAdd and here.visible.read(): self.list.remove(row)
         true
       }
-      case _: built->value.some(fn(each): each.view.route(event))
+      case _: here.visible.read() and rowViews().some(fn(each): each.view.route(event))
   View{drawn: here.graph.computed(draw), route}
 
 # A variant: a picker writing its tag, and the active case's view.

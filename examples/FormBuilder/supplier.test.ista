@@ -32,6 +32,8 @@ fn supplierSuite() -> Array<Test>: [
   test("the errors layout shows its rules once submitted", errorsLayout)
   test("a valid whole value gives its data, without hidden values", validValue)
   test("an empty whole value gives errors by node key", emptyValue)
+  test("a whole value's rows are made from it, keyed as the browser keys them", loadedRows)
+  test("a repeat's checks count its rows, whatever the rows hold", repeatCounts)
 ]
 
 const user = User{id: "u1", name: "Ann", lang: "de", role: "buyer", today: "2026-11-15"}
@@ -312,10 +314,33 @@ ista async fn validValue():
     case Ok(data): {
       assertEq(data.company.capital, none) # sole trader: hidden
       assertEq(data.company.address?.zip, "10115")
+      assertEq([for p in data.prices: p.sku], ["p1", "p2"])
       assertEq(data.prices[1].amount, 2.0)
       assertEq(data.contacts[0].card.phone, "+49 30 1234")
     }
     case Err(problems): assertEq(problems, [:])
+
+ista async fn loadedRows():
+  hold _ = mocked()
+  const value = complete()
+  const unpriced = struct{
+    ...value
+    prices: [struct{sku: "p1", name: "Widget", amount: none, regions: ["eu"]}, value.prices[1]]
+  }
+  match open().validate(unpriced):
+    case Ok(...): assertEq("valid", "invalid")
+    case Err(problems): assertEq(problems, ["n27@p1": ["Required"]])
+
+ista async fn repeatCounts():
+  hold _ = mocked()
+  const form = open()
+  form.add("n28@p1")
+  form.add("n30")
+  form.apply(FormEvent.Submit)
+  assertEq(errors(form, "n28@p1"), []) # one region, not yet chosen
+  assertEq(errors(form, "n29@p1@r1"), ["Required"])
+  assertEq(errors(form, "n30"), []) # one contact, not yet filled in
+  assertEq(errors(form, "n32@r1"), ["Required"])
 
 ista async fn emptyValue():
   hold _ = mocked()
