@@ -40,8 +40,10 @@ tags: [structural-fixes, status]
   `optionalInnerOf`; `keyOf` lives in `lowering/tables/extern-keys.ts`. A's agents, worktree and branch are closed.
 - C and D merged (ff to `f20904e9`): QA pass, review approve (2nd rounds). B88 split: member access and index
   stand as calls; operators wait on B98 (a call with a requirement candidate can't be chosen while an argument
-  is an open generic call). The human's approval of that plan change is pending. P14 judged (the re-parse stays);
-  B64 is not C's (row updated). B waits for the human's go.
+  is an open generic call). The human approved that plan change. P14 judged (the re-parse stays);
+  B64 is not C's (row updated). C+D's agents, worktree and branch are closed.
+- Phase B running: worktree `.claude/worktrees/sf-b-layout-expansion` from main; idle sub armed. Then the merge
+  review over A–D and `npm run verify` on main.
 - B92's agents, worktree and branch are closed. Still alive: `sfrv-suri` (plan reviewer). Ask the human before stopping it.
 
 ## Next, on approval
