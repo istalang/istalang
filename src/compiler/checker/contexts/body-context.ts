@@ -105,6 +105,11 @@ export interface BodyContext extends CheckedModule {
   readonly checkedTypeOf: (node: Expression) => Type | undefined;
   /** Records that `expected` is what `site` will be expected to be, as a call being written says. */
   readonly expectAt: (site: Expression, expected: Type) => void;
+  /**
+   * Records `type` as what `node` gives, read as a part of another construct rather than checked on
+   * its own: a method call's callee, the value its field holds or its getter gives.
+   */
+  readonly recordType: (node: Expression, type: Type) => void;
   /** Checks `node` and, when a type is expected, reports when its type doesn't fit it. */
   readonly expect: (node: Expression, expected: Type | undefined) => Type;
   /**

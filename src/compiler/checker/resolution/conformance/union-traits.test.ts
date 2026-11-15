@@ -12,7 +12,7 @@ import { diagnosedAt } from '../../../compile.test-kit.ts';
 import { reported } from '../../check.test-kit.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 
-const { notConforming, noMatchingOverload, severalTraits } = checkerDiagnostics;
+const { notConforming, noMember, severalTraits } = checkerDiagnostics;
 
 const named = [
   'trait Named:',
@@ -96,9 +96,7 @@ describe('a call on a union', () => {
   });
 
   it('finds nothing when no visible trait the union meets requires the function', () => {
-    expect(codesAfterNamed('fn f(x: Email | Fax) -> String: x.name()')).toEqual([
-      noMatchingOverload.code,
-    ]);
+    expect(codesAfterNamed('fn f(x: Email | Fax) -> String: x.name()')).toEqual([noMember.code]);
     const hidden = [
       'trait Hidden:',
       '  fn hidden(self: Self) -> Int',
@@ -111,7 +109,7 @@ describe('a call on a union', () => {
     expect(
       reported(main.join('\n'), others).codes,
       'a trait in a module the caller never imports is not visible',
-    ).toEqual([checkerDiagnostics.noMember.code]);
+    ).toEqual([noMember.code]);
   });
 
   it('reports several visible traits the union meets that require the function', () => {

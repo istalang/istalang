@@ -44,7 +44,6 @@ import type { Identifier } from '../../syntax/tree/node.ts';
 import { spanBetween, startOf } from '../../syntax/tree/positions.ts';
 import {
   callClash,
-  membersNamed,
   readsThroughNamespace,
   valuedMember,
 } from '../constructs/expressions/access/member-access.ts';
@@ -52,6 +51,7 @@ import { calleeRead } from '../constructs/expressions/calls.ts';
 import type { BodyContext } from '../contexts/body-context.ts';
 import { synthesized } from '../contexts/synthesized.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
+import { membersNamed } from '../resolution/choosing/member-meaning.ts';
 import { isPack } from '../types/type/function-types.ts';
 import { presentType } from '../types/unions/unions.ts';
 import { namedType } from '../types/written/named-types.ts';
@@ -168,8 +168,8 @@ function hoisted(building: Building, call: Call): (given: Expression | undefined
     const looked = chained
       ? (presentType(receiver, context.checker.typeRules) ?? receiver)
       : receiver;
-    const members = membersNamed(context, access.member.text, looked);
-    const clash = callClash(context, access.member, looked, members);
+    const members = membersNamed(context.checker, context.module, access.member.text, looked);
+    const clash = callClash(access.member, looked, members);
     if (valuedMember(members) !== undefined && clash === undefined) {
       callee = constant(building, call.callee);
       isOptional ||= chained;

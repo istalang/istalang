@@ -58,11 +58,14 @@ import { stoppedOperation, stops } from '../../resolution/calls/stopped-operatio
 import {
   callableThrough,
   callCandidates,
-  receiverMembers,
   staticCandidates,
   staticTargetOf,
-  topLevelCandidates,
 } from '../../resolution/choosing/candidates.ts';
+import {
+  membersNamed,
+  methodsNamed,
+  type NamedMembers,
+} from '../../resolution/choosing/member-meaning.ts';
 import { readGetter } from '../../rules/getters.ts';
 import type { Type } from '../../types/type/index.ts';
 import { errorType } from '../../types/type/primitives.ts';
@@ -72,11 +75,10 @@ import { namedType } from '../../types/written/named-types.ts';
 import { checkValueCall, valueParameterTypes } from '../closures/value-calls.ts';
 import {
   callClash,
-  membersNamed,
-  type NamedMembers,
   readsNothing,
   readsThroughNamespace,
   recordFieldRead,
+  valuedMember,
 } from './access/member-access.ts';
 import { writtenArgument } from './call-arguments.ts';
 import { checkVariantCall } from './structs/variants.ts';
@@ -199,12 +201,12 @@ function calledValue(context: BodyContext, node: Call): CalledValue | undefined 
     case 'member': {
       const { access } = read;
       const receiver = context.chains.target(context, node);
-      const members = membersNamed(context, access.member.text, receiver);
-      const clash = callClash(context, access.member, receiver, members);
+      const members = membersNamed(context.checker, context.module, access.member.text, receiver);
+      const clash = callClash(access.member, receiver, members);
       const { field, getters } = members;
       const readsGetter =
-        !stops(receiver) && clash === undefined && field === undefined && getters.length > 0;
-      const getter = { link: node, access, receiver, getters, expected: undefined };
+        !stops(receiver) && clash === undefined && field === undefined && getters.met.length > 0;
+      const getter = { link: node, access, receiver, getters: getters.met, expected: undefined };
       return {
         type: readsGetter ? readGetter(context, getter) : field?.member.type,
         member: { receiver, members, clash },
@@ -263,13 +265,13 @@ function callMethod(
     context.report(clash);
     return errorType;
   }
-  const { field, getters } = members;
-  if (field !== undefined) {
-    recordFieldRead(context, callee, field);
-    return checkValueCall(context, call, callee, field.member.type);
-  }
-  if (getters.length > 0) {
-    return checkValueCall(context, call, callee, read?.type ?? errorType);
+  if (valuedMember(members) !== undefined) {
+    if (members.field !== undefined) {
+      recordFieldRead(context, callee, members.field);
+    }
+    const value = read?.type ?? errorType;
+    context.recordType(callee, value);
+    return checkValueCall(context, call, callee, value);
   }
   const name = callee.member.text;
   const written = [
@@ -278,9 +280,8 @@ function callMethod(
   ];
   // The other arguments' types find methods too (§3.13), which a member's meaning leaves aside.
   const others = call.written.map(({ type }) => type);
-  const { methods } = receiverMembers(
-    topLevelCandidates(checker, module, name, [receiverType, ...others]),
-  );
+  const { met, unmet } = methodsNamed(checker, module, name, [receiverType, ...others]);
+  const methods = [...met, ...unmet];
   const candidates = callableThrough(checker, callee, methods);
   if (candidates.length === 0) {
     context.report(

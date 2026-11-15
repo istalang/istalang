@@ -1,8 +1,9 @@
 /**
  * Whether a function takes a value as its receiver (§3.7, §3.10), whatever else its call is given:
  * its `self` takes the value as a call's receiver (applicability.ts), and the type parameters that
- * decides meet their constraints. Completion asks it of a type's methods, and indexing whether a
- * struct declares an `index` of its own, which its keys then give way to (§3.9).
+ * decides meet their constraints. What a member's name means asks it of a type's methods and getters
+ * (member-meaning.ts), and indexing whether a struct declares an `index` of its own, which its keys
+ * then give way to (§3.9).
  *
  * A probe: it chooses nothing and reports nothing, so asking leaves no trace.
  */
@@ -27,8 +28,24 @@ import { signatureOf } from './choice.ts';
  * meet their constraints.
  */
 export function takesAsSelf(checker: CheckerContext, candidate: Candidate, type: Type): boolean {
+  return selfTaking(checker, candidate, type) === 'met';
+}
+
+/**
+ * How `candidate`'s `self` takes a value of `type` as a call's receiver, its other arguments aside:
+ * with the type parameters that decides meeting their constraints (`met`), or not (`unmet`);
+ * undefined where it takes none.
+ */
+export function selfTaking(
+  checker: CheckerContext,
+  candidate: Candidate,
+  type: Type,
+): 'met' | 'unmet' | undefined {
   const taken = selfInference(checker, candidate, type);
-  return taken !== undefined && meetsWhereFound(checker, taken.typeParameters, taken.inference);
+  if (taken === undefined) {
+    return undefined;
+  }
+  return meetsWhereFound(checker, taken.typeParameters, taken.inference) ? 'met' : 'unmet';
 }
 
 /**

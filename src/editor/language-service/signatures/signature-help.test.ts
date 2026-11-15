@@ -138,6 +138,22 @@ describe('signature help', () => {
     });
   });
 
+  it('shows the type of a function value a field holds or a getter gives (B51)', () => {
+    const declarations = [
+      'struct O:',
+      '  f: fn(Int) -> Int',
+      'fn get g(self: O) -> fn(String) -> Int: fn(s: String): 0',
+    ];
+    expect(help(...declarations, 'fn main(o: O) -> Int: o.f(‸1)')).toEqual({
+      label: 'fn(Int) -> Int',
+      parameter: 'Int',
+    });
+    expect(help(...declarations, 'fn main(o: O) -> Int: o.g(‸"s")')).toEqual({
+      label: 'fn(String) -> Int',
+      parameter: 'String',
+    });
+  });
+
   it("offers nothing outside a call's parentheses", () => {
     const add = 'fn add(a: Int, b: Int) -> Int: a + b';
     expect(help(add, 'fn f() -> Int: add(1, 2)‸')).toBeUndefined();

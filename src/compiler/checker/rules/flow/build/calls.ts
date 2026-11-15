@@ -106,7 +106,7 @@ function calleeValue(builder: FlowBuilder, node: Call): ValueId {
   if (callee.kind !== 'MemberAccess') {
     return builder.expression(callee);
   }
-  const into = () => builder.temporary(callee, builder.body.fieldGivenBy(callee.member)?.type);
+  const into = () => builder.temporary(callee, builder.body.typeOf(callee));
   return memberValue(builder, { link: node, access: callee }, into) ?? builder.expression(callee);
 }
 

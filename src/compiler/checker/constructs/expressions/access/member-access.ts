@@ -2,7 +2,8 @@
  * Reading a member of a value (§3.1): `s.f`, or a name qualified by a type or a namespace.
  *
  * - Reading `s.f` gives the field's type, substituted for the struct's type arguments; through a
- *   type parameter, a field a constraint requires (§3.10). A member that isn't a field may be a
+ *   type parameter, a field a constraint requires (§3.10). What else the name may mean is the
+ *   receiver's (resolution/choosing/member-meaning.ts): a member that isn't a field may be a
  *   getter, read by calling it (rules/getters.ts); one that is neither is reported as unknown here,
  *   or, when it is a field of the value behind a handle, as to be read with `->` (§3.9); a call of
  *   one is a method call (../calls.ts). How each read reaches its field is recorded for lowering
@@ -23,13 +24,8 @@ import type { BodyContext, FieldReadRecord } from '../../../contexts/body-contex
 import type { Pass, Passes, PassTable } from '../../../contexts/passes.ts';
 import { checkerDiagnostics } from '../../../diagnostics/index.ts';
 import { stoppedOperation } from '../../../resolution/calls/stopped-operations.ts';
-import {
-  type Candidate,
-  receiverMembers,
-  topLevelCandidates,
-} from '../../../resolution/choosing/candidates.ts';
+import { membersNamed, type NamedMembers } from '../../../resolution/choosing/member-meaning.ts';
 import { namedFunctions } from '../../../resolution/choosing/named-functions.ts';
-import { selfInference, takesAsSelf } from '../../../resolution/choosing/receivers.ts';
 import { readGetter } from '../../../rules/getters.ts';
 import type { FieldRead, FieldReading, FoundField } from '../../../surface/checked-field.ts';
 import { fieldOf } from '../../../types/traits/known-fields.ts';
@@ -75,26 +71,27 @@ export function checkMemberAccess(
   if (stopped !== undefined) {
     return stopped;
   }
-  const members = membersNamed(context, node.member.text, type);
-  const clash = readClash(context, node.member, type, members);
+  const members = membersNamed(context.checker, context.module, node.member.text, type);
+  const clash = readClash(node.member, type, members);
   if (clash !== undefined) {
     context.report(clash);
     return errorType;
   }
-  const { field, getters, unmetGetters, methods } = members;
+  const { field, getters, methods } = members;
   if (field !== undefined) {
     recordFieldRead(context, node, field);
     return field.member.type;
   }
   const getterRead = { link: node, access: node, receiver: type, expected };
-  if (getters.length > 0) {
-    return readGetter(context, { ...getterRead, getters });
+  if (getters.met.length > 0) {
+    return readGetter(context, { ...getterRead, getters: getters.met });
   }
-  const missed = missExplained(context, node, type, methods);
+  const isMethod = methods.met.length + methods.unmet.length > 0;
+  const missed = missExplained(context, node, type, isMethod);
   // A getter whose constraints fail is reported as its call would be, where nothing else explains
   // the read.
-  if (missed === undefined && unmetGetters.length > 0) {
-    return readGetter(context, { ...getterRead, getters: unmetGetters });
+  if (missed === undefined && getters.unmet.length > 0) {
+    return readGetter(context, { ...getterRead, getters: getters.unmet });
   }
   context.report(
     missed ?? checkerDiagnostics.unknownField(node.member.span, typeText(type), node.member.text),
@@ -102,49 +99,12 @@ export function checkMemberAccess(
   return errorType;
 }
 
-/** What a member's name may mean through a receiver (§3.1, §3.7). */
-export interface NamedMembers {
-  readonly field: FoundField | undefined;
-  /** The getters of the name taking the receiver as `self`. */
-  readonly getters: readonly Candidate[];
-  /**
-   * The getters of the name whose `self` takes the receiver though their constraints don't hold
-   * for it, no members of its type, which a read finding nothing else reports as their call would.
-   */
-  readonly unmetGetters: readonly Candidate[];
-  /** The methods of the name the receiver's type finds, which a call chooses among. */
-  readonly methods: readonly Candidate[];
-}
-
 /** What gives `x.name` a value to read: the field, else a getter; none for methods alone. */
 export function valuedMember({ field, getters }: NamedMembers): 'field' | 'getter' | undefined {
   if (field !== undefined) {
     return 'field';
   }
-  return getters.length > 0 ? 'getter' : undefined;
-}
-
-/**
- * What `x.name` may mean on a receiver of type `receiver`: its field of that name, and the getters
- * and methods of that name its type finds (§3.7), as a member of the type, whatever a call's other
- * arguments find.
- */
-export function membersNamed(context: BodyContext, name: string, receiver: Type): NamedMembers {
-  const { checker, module } = context;
-  const candidates = topLevelCandidates(checker, module, name, [receiver]);
-  const { methods, getters } = receiverMembers(candidates);
-  const taking = Map.groupBy(getters, (getter) => {
-    if (takesAsSelf(checker, getter, receiver)) {
-      return 'met';
-    }
-    return selfInference(checker, getter, receiver) === undefined ? 'none' : 'unmet';
-  });
-  return {
-    field: fieldOf(checker, receiver, name),
-    getters: taking.get('met') ?? [],
-    unmetGetters: taking.get('unmet') ?? [],
-    methods,
-  };
+  return getters.met.length > 0 ? 'getter' : undefined;
 }
 
 /**
@@ -152,16 +112,12 @@ export function membersNamed(context: BodyContext, name: string, receiver: Type)
  * beside a method taking the receiver; a read reads a field whatever methods share its name.
  */
 function readClash(
-  context: BodyContext,
   name: Identifier,
   receiver: Type,
   members: NamedMembers,
 ): Diagnostic<AnchoredSpan> | undefined {
   const clash = fieldBesideGetter(name, receiver, members);
-  return (
-    clash ??
-    (members.field === undefined ? besideMethod(context, name, receiver, members) : undefined)
-  );
+  return clash ?? (members.field === undefined ? besideMethod(name, receiver, members) : undefined);
 }
 
 /**
@@ -169,14 +125,11 @@ function readClash(
  * a method taking the receiver, which the call could call as well (§3.1, §3.7).
  */
 export function callClash(
-  context: BodyContext,
   name: Identifier,
   receiver: Type,
   members: NamedMembers,
 ): Diagnostic<AnchoredSpan> | undefined {
-  return (
-    fieldBesideGetter(name, receiver, members) ?? besideMethod(context, name, receiver, members)
-  );
+  return fieldBesideGetter(name, receiver, members) ?? besideMethod(name, receiver, members);
 }
 
 function fieldBesideGetter(
@@ -184,22 +137,19 @@ function fieldBesideGetter(
   receiver: Type,
   { field, getters }: NamedMembers,
 ): Diagnostic<AnchoredSpan> | undefined {
-  return field !== undefined && getters.length > 0
+  return field !== undefined && getters.met.length > 0
     ? checkerDiagnostics.fieldOrGetter(name.span, typeText(receiver), name.text)
     : undefined;
 }
 
 /** Why the value `members` give `x.name` stands beside a method of the name taking the receiver. */
 function besideMethod(
-  context: BodyContext,
   name: Identifier,
   receiver: Type,
   members: NamedMembers,
 ): Diagnostic<AnchoredSpan> | undefined {
   const valued = valuedMember(members);
-  const beside =
-    valued !== undefined &&
-    members.methods.some((method) => takesAsSelf(context.checker, method, receiver));
+  const beside = valued !== undefined && members.methods.met.length > 0;
   return beside
     ? checkerDiagnostics.fieldOrMethod(name.span, typeText(receiver), name.text, valued)
     : undefined;
@@ -269,13 +219,13 @@ export class FieldReads implements FieldReadRecord {
 /**
  * Why `node` reads no field of `type`, where something explains it: it is behind the shared struct
  * `type` is (`->`), or inside the optional it is (`?.`, or `?->` for an optional shared struct), or
- * `node` names one of `methods`, read only by calling.
+ * `node` names a method taking it (`isMethod`), read only by calling.
  */
 function missExplained(
   context: BodyContext,
   node: MemberAccess,
   type: Type,
-  methods: readonly Candidate[],
+  isMethod: boolean,
 ): Diagnostic<AnchoredSpan> | undefined {
   const { checker } = context;
   const { span, text: name } = node.member;
@@ -293,5 +243,5 @@ function missExplained(
   if (inside !== undefined) {
     return inside;
   }
-  return methods.length > 0 ? checkerDiagnostics.methodValue(span, name) : undefined;
+  return isMethod ? checkerDiagnostics.methodValue(span, name) : undefined;
 }

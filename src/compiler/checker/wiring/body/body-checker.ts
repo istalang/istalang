@@ -323,6 +323,10 @@ export class BodyChecker implements BodyContext {
     this.#expected(site, expected);
   }
 
+  recordType(node: Expression, type: Type): void {
+    this.#keep(this.#records.types, node, type);
+  }
+
   expect(node: Expression, expected: Type | undefined): Type {
     const type = this.expression(node, expected);
     if (expected !== undefined) {

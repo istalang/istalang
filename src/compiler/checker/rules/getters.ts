@@ -5,7 +5,7 @@
  *   the member access, which no function named as a value is recorded at (§3.14), so a recorded
  *   member access is a call wherever it is read; nothing past the checker knows getters exist.
  * - Its candidates are the receiver's getters of that name, those taking it as `self`, found as its
- *   methods are (constructs/expressions/access/member-access.ts `membersNamed`). A read continuing
+ *   methods are (resolution/choosing/member-meaning.ts `membersNamed`). A read continuing
  *   an optional chain is resolved in a scope of its own, as a call continuing one is.
  * - A getter takes nothing beyond `self`, by value, and isn't async, since a read passes it
  *   nothing else and gives a value, not a future. Only a module's own function is one, which the

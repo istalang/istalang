@@ -301,7 +301,7 @@ describe('optional operators', () => {
   });
 
   it.each([
-    ['right after the ?.', 'outer?.reset()', 'outer'],
+    ['right after the ?.', 'outer?.inner?.reset()', 'outer?.inner'],
     ['on a later link', 'plain?.inner.reset()', 'plain?.inner'],
   ])("refuses a '&self' method through a chain, %s, as no place", (_case, call, receiver) => {
     const lines = ['fn reset(self: &Inner): self.code = 0', ...chained, `  ${call}`];

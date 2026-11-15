@@ -141,10 +141,8 @@ describe("a method's receiver", () => {
     expect(errorsOf('drop xs.holdsItem(none)')).toEqual([checkerDiagnostics.typeMismatch.code]);
   });
 
-  it('refuses a wider argument among overloads alike', () => {
-    expect(errorsOf('drop xs.includes(none)')).toEqual([
-      checkerDiagnostics.noMatchingOverload.code,
-    ]);
+  it('refuses a wider argument, its overloads those taking the receiver', () => {
+    expect(errorsOf('drop xs.includes(none)')).toEqual([checkerDiagnostics.typeMismatch.code]);
   });
 });
 
