@@ -43,6 +43,7 @@ import {
   type Resolvable,
   type WithFutures,
 } from '../natives.ts';
+import { Refusal } from '../refusal.ts';
 
 /** What a host extern is told about the call it runs. */
 export interface HostCall {
@@ -78,8 +79,24 @@ const dropped = new FinalizationRegistry<() => void>((fail) => {
   fail();
 });
 
+/**
+ * `natives`, the runtime's own, with the externs `host` implements beside them, which every runtime
+ * binds a program's externs to; a Refusal for a key `natives` has, such as `time.now()`, which the
+ * host would replace.
+ */
+export function withHost(natives: Natives, host: HostExterns): Natives {
+  const shadowed = Object.keys(host).filter((key) => Object.hasOwn(natives, key));
+  if (shadowed.length > 0) {
+    throw new Refusal(
+      'reservedName',
+      `The runtime implements ${shadowed.join(', ')} itself, so a host can't.`,
+    );
+  }
+  return { ...natives, ...hostNatives(host) };
+}
+
 /** `host` as natives, by the same keys. */
-export function hostNatives(host: HostExterns): Natives<HostContext> {
+function hostNatives(host: HostExterns): Natives<HostContext> {
   return Object.fromEntries(Object.entries(host).map(([key, extern]) => [key, hostNative(extern)]));
 }
 

@@ -24,6 +24,7 @@ import type { FunctionId, TypeId } from '../definition/operands.ts';
 import type { TypeDefinition, TypeReference } from '../definition/tables/types.ts';
 import type { Value } from '../definition/values/values.ts';
 import type { Inspection, LogRecord, SpawnOptions } from './instance-state.ts';
+import { Refusal } from './refusal.ts';
 import type { CallMaker } from './scheduler/run-contexts.ts';
 import type { TestWatch } from './snapshot/objects.ts';
 
@@ -310,6 +311,25 @@ export type Native<Context = FullNativeContext> = (
 
 /** A table of natives needing `Context`, by key. */
 export type Natives<Context = FullNativeContext> = Readonly<Record<string, Native<Context>>>;
+
+/**
+ * Refuses a program whose externs `natives` doesn't all implement, naming those it lacks, before
+ * anything of it runs: every runtime binds a program so.
+ */
+export function requireNatives(
+  functions: readonly (
+    | { readonly kind: 'code' }
+    | { readonly kind: 'extern'; readonly key: string }
+  )[],
+  natives: Natives,
+): void {
+  const missing = functions.flatMap((entry) =>
+    entry.kind === 'extern' && natives[entry.key] === undefined ? [entry.key] : [],
+  );
+  if (missing.length > 0) {
+    throw new Refusal('missingNatives', `No native implements ${missing.join(', ')}.`);
+  }
+}
 
 /**
  * Thrown by a native to panic the instance (§3.12), where its code stands, or at `trace` for a

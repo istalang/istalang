@@ -12,7 +12,7 @@ import { definitionFormat } from '../definition/definition.ts';
 import type { Value } from '../definition/values/values.ts';
 import { unreachable } from '../foundation/structures/unreachable.ts';
 import { stdNatives } from '../stdlib/natives.ts';
-import { type HostExterns, hostNatives } from './boundary/host-natives.ts';
+import { type HostExterns, withHost } from './boundary/host-natives.ts';
 import { ManualClock } from './clock.ts';
 import { createRuntime, type Runtime } from './host/index.ts';
 import { InstanceGroup } from './host/instance-group.ts';
@@ -125,7 +125,7 @@ export function testRuntime({
       },
     };
   };
-  const natives = { ...nativesGiven, ...hostNatives(host) };
+  const natives = withHost(nativesGiven, host);
   return {
     runtime: { ...inner, deploy },
     store,

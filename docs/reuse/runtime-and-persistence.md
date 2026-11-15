@@ -58,7 +58,7 @@ tags: [reuse, runtime, snapshot, persistence, scheduler, lifetimes, host]
 - start a segment with a call from outside the instance, a mock's from another instance or an invocation into a context, its answer filling the caller's future → `startAnswering`, `startInvocation` (`src/runtime/scheduler/segment/answering.ts`); copy values leaving or arriving at an instance → `leaving`, `arriving` (`src/runtime/scheduler/instance/crossing.ts`)
 - list every instance a store holds → `InstanceStore.instances` (`src/runtime/store.ts`)
 - read another instance's last committed snapshot or end `Result` from the store → `storedSnapshot`, `storedEnds` (`src/runtime/scheduler/instance/instance-ends.ts`)
-- adapt host extern functions to runtime natives → `hostNatives` (`src/runtime/boundary/host-natives.ts`)
+- bind a program to the runtime's natives with a host's externs beside them, refusing a host extern the runtime implements, in any runtime → `withHost` (`src/runtime/boundary/host-natives.ts`); refuse a program whose externs no native implements → `requireNatives` (`src/runtime/natives.ts`)
 - check host extern signatures across deploys → `recordExternSignatures` (`src/runtime/boundary/extern-signatures.ts`)
 - format a finished instance's encoded outcome as host JSON or JSON text → `outcomeJson`, `outcomeText` (`src/runtime/boundary/outbound.ts`)
 - create a `Runtime` or catch a host refusal → `createRuntime` (`src/runtime/host/index.ts`), `Refusal` (`src/runtime/refusal.ts`)

@@ -12,14 +12,13 @@
  */
 
 import { unreachable } from '../foundation/structures/unreachable.ts';
-import { type HostExterns, hostNatives } from '../runtime/boundary/host-natives.ts';
+import { type HostExterns, withHost } from '../runtime/boundary/host-natives.ts';
 import { outcomeJson, outcomeText } from '../runtime/boundary/outbound.ts';
 import { jsonIn, startOf } from '../runtime/boundary/starts.ts';
 import { type Clock, realTime } from '../runtime/clock.ts';
 import type { LogRecord } from '../runtime/instance-state.ts';
-import type { Natives } from '../runtime/natives.ts';
+import { type Natives, requireNatives } from '../runtime/natives.ts';
 import { seedBytes, seedOf } from '../runtime/random-draws.ts';
-import { Refusal } from '../runtime/refusal.ts';
 import { stdNatives } from '../stdlib/natives.ts';
 import { type LiveProgramTables, Run, type RunEnd } from './run.ts';
 
@@ -75,20 +74,8 @@ export function program(tables: LiveProgramTables): LiveProgram {
 
 /** The std's natives and the host's, which must implement every extern `tables` declares. */
 function nativesOf(tables: LiveProgramTables, host: HostExterns): Natives {
-  const shadowed = Object.keys(host).filter((key) => Object.hasOwn(stdNatives, key));
-  if (shadowed.length > 0) {
-    throw new Refusal(
-      'reservedName',
-      `The runtime implements ${shadowed.join(', ')} itself, so a host can't.`,
-    );
-  }
-  const natives: Natives = { ...stdNatives, ...hostNatives(host) };
-  const missing = tables.functions.flatMap((entry) =>
-    entry.kind === 'extern' && natives[entry.key] === undefined ? [entry.key] : [],
-  );
-  if (missing.length > 0) {
-    throw new Refusal('missingNatives', `No native implements ${missing.join(', ')}.`);
-  }
+  const natives = withHost(stdNatives, host);
+  requireNatives(tables.functions, natives);
   return natives;
 }
 

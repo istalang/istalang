@@ -36,6 +36,7 @@
  */
 
 import { recordExternSignatures } from '../boundary/extern-signatures.ts';
+import { withHost } from '../boundary/host-natives.ts';
 import type { Advanced, Inspection } from '../instance-state.ts';
 import { Refusal } from '../refusal.ts';
 import { inspection, stateOf } from '../scheduler/inspect.ts';
@@ -86,14 +87,8 @@ export interface Runtime {
   readonly terminate: (instance: string) => Promise<Advanced>;
 }
 
-export function createRuntime(seams: RuntimeSeams): Runtime {
-  const shadowed = Object.keys(seams.host ?? {}).filter((key) => Object.hasOwn(seams.natives, key));
-  if (shadowed.length > 0) {
-    throw new Refusal(
-      'reservedName',
-      `The runtime implements ${shadowed.join(', ')} itself, so a host can't.`,
-    );
-  }
+export function createRuntime(given: RuntimeSeams): Runtime {
+  const seams = { ...given, natives: withHost(given.natives, given.host ?? {}) };
   const scheduling: SchedulerSeams = { store: seams.store, now: seams.clock.now };
   const held = heldInstances(scheduling);
   const calls = new InstanceCalls();

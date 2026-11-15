@@ -11,8 +11,7 @@ import type { Definition } from '../../definition/definition.ts';
 import type { FunctionId } from '../../definition/operands.ts';
 import type { CodeFunction } from '../../definition/tables/functions.ts';
 import { unreachable } from '../../foundation/structures/unreachable.ts';
-import type { Native, Natives } from '../natives.ts';
-import { Refusal } from '../refusal.ts';
+import { type Native, type Natives, requireNatives } from '../natives.ts';
 
 /** What a call runs: a code entry, or a native. */
 type Callable =
@@ -23,21 +22,16 @@ export class FunctionTable {
   readonly #entries: readonly Callable[];
 
   constructor(definition: Definition, natives: Natives) {
-    const missing: string[] = [];
-    this.#entries = definition.functions.map((entry, index): Callable => {
-      if (entry.kind === 'code') {
-        return { kind: 'code', function: index, code: entry };
-      }
-      const native = natives[entry.key];
-      if (native === undefined) {
-        missing.push(entry.key);
-        return { kind: 'native', native: () => null };
-      }
-      return { kind: 'native', native };
-    });
-    if (missing.length > 0) {
-      throw new Refusal('missingNatives', `No native implements ${missing.join(', ')}.`);
-    }
+    requireNatives(definition.functions, natives);
+    this.#entries = definition.functions.map(
+      (entry, index): Callable =>
+        entry.kind === 'code'
+          ? { kind: 'code', function: index, code: entry }
+          : {
+              kind: 'native',
+              native: natives[entry.key] ?? unreachable(`No native ${entry.key}.`),
+            },
+    );
   }
 
   /** What a call to entry `index` runs now. */

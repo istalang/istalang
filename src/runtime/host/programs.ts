@@ -10,7 +10,7 @@
 
 import { type Definition, definitionFormat } from '../../definition/definition.ts';
 import { memo } from '../../foundation/structures/memo.ts';
-import { type HostExterns, hostNatives } from '../boundary/host-natives.ts';
+import type { HostExterns } from '../boundary/host-natives.ts';
 import { outcomeJson, outcomeText } from '../boundary/outbound.ts';
 import { jsonIn, startOf } from '../boundary/starts.ts';
 import type { Clock } from '../clock.ts';
@@ -57,12 +57,7 @@ export function programBinder(seams: BindingSeams) {
 
 /** `definition`, bound to its natives and able to start its instances. */
 function boundProgram(seams: BindingSeams, definition: Definition, hash: string): BoundProgram {
-  const loaded = loadDefinition(
-    definition,
-    hash,
-    { ...seams.natives, ...hostNatives(seams.host ?? {}) },
-    { heapCheck: seams.heapCheck },
-  );
+  const loaded = loadDefinition(definition, hash, seams.natives, { heapCheck: seams.heapCheck });
   const program: BoundProgram = {
     ...loaded,
     starts: definition.starts.map(({ key }) => key),
@@ -99,10 +94,7 @@ export interface BoundProgram extends DeployedProgram, LoadedDefinition {}
  * how to advance an instance, and the host's calls on each instance, one after another.
  */
 interface BindingSeams
-  extends Pick<
-    RuntimeSeams,
-    'natives' | 'host' | 'seed' | 'store' | 'clock' | 'reports' | 'heapCheck'
-  > {
+  extends Pick<RuntimeSeams, 'natives' | 'seed' | 'store' | 'clock' | 'reports' | 'heapCheck'> {
   /** The instance `instance` as the runtime holds it, or reads it from the store; none for none. */
   readonly residentOf: (instance: string) => Resident<BoundProgram> | undefined;
   readonly advance: (resident: Resident<BoundProgram>, first?: AdvanceFirst) => Advance;
