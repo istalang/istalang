@@ -211,7 +211,9 @@ const declarationHandlers: Handlers<LocalBinder, Declaration, [Scope], void> = {
   StructDeclaration: bindStruct,
   SharedStructDeclaration: bindStruct,
   ExternStructDeclaration: (binder, node, scope) => {
-    bindAssociatedTypes(binder, node, typeParameterScope(binder, node, scope));
+    const inner = typeParameterScope(binder, node, scope);
+    bindAssociatedTypes(binder, node, inner);
+    bindFields(binder, node.fields, inner);
   },
   TypeAliasDeclaration: (binder, node, scope) =>
     bindAliasBody(binder, node.type, typeParameterScope(binder, node, scope)),

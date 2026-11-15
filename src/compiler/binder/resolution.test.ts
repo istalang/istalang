@@ -347,3 +347,18 @@ describe("an imported function's name before a '.'", () => {
     expect(boundReport(files)).toEqual(reportedOnce(4016, 'helper'));
   });
 });
+
+describe('an annotation the parser rejected', () => {
+  it.each([
+    ['in a block', 'fn f():\n  @Nope\n'],
+    ['among match cases', 'fn f(n: Int) -> Int:\n  match n:\n    @Nope\n    case _: 1\n'],
+    ['among an indented value entries', 'const xs: Array<Int> =\n  @Nope\n  - 1\n'],
+    ['among a struct constraint entries', 'fn f<S is struct { @Nope a: Int }>(s: S): ()\n'],
+    ['among type match cases', 'type Out<T> = match T:\n  @Nope\n  case _: Int\n'],
+    ['as a type case body', 'type Out<T> = match T:\n  case Int:\n    @Nope\n  case _: Int\n'],
+    ['in an extern struct body', 'extern struct Handle:\n  @Nope\n'],
+    ['among trait members', 'trait Sized:\n  @Nope\n'],
+  ])('is bound where it stands, %s', (_where, source) => {
+    expect(boundReport({ 'main.ista': source })).toEqual(reportedOnce(4000, 'Nope'));
+  });
+});

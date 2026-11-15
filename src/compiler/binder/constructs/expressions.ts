@@ -10,7 +10,12 @@
 import { type Handlers, handlerOf } from '../../../foundation/structures/kind-table.ts';
 import { argumentValue } from '../../syntax/expressions/arguments.ts';
 import type { CallArgument } from '../../syntax/expressions/calls.ts';
-import type { Expression, FieldsLiteral, IndentedValue } from '../../syntax/expressions/index.ts';
+import type {
+  Expression,
+  FieldsLiteral,
+  IndentedEntry,
+  IndentedValue,
+} from '../../syntax/expressions/index.ts';
 import { qualifiedPath } from '../../syntax/expressions/readings.ts';
 import type { Identifier } from '../../syntax/tree/node.ts';
 import {
@@ -20,7 +25,7 @@ import {
   underFields,
   underLoop,
 } from '../module/flow.ts';
-import { holdsNoNames, type LocalBinder, type Role } from '../module/local-binder.ts';
+import { bindRejected, holdsNoNames, type LocalBinder, type Role } from '../module/local-binder.ts';
 import type { Scope } from '../module/scope.ts';
 
 /**
@@ -48,7 +53,9 @@ function bindLiteral(binder: LocalBinder, node: FieldsLiteral | IndentedValue, s
   if (node.type !== undefined) {
     binder.constructedType(node.type, scope);
   }
-  for (const item of node.kind === 'IndentedValue' ? node.entries : node.items) {
+  const items: readonly (IndentedEntry | FieldsLiteral['items'][number])[] =
+    node.kind === 'IndentedValue' ? node.entries : node.items;
+  binder.eachItem(items, scope, (item) => {
     if (item.kind === 'FieldInitializer') {
       // The shorthand `Pair{first}` reads the variable named like the field.
       bindFieldValue(binder, item.name, item.value, scope);
@@ -57,10 +64,10 @@ function bindLiteral(binder: LocalBinder, node: FieldsLiteral | IndentedValue, s
         bindExpression(binder, item.key, variables);
         bindExpression(binder, item.value, variables);
       });
-    } else if (item.kind !== 'Invalid') {
+    } else {
       bindAll(binder, [item.kind === 'Spread' ? item : item.value], scope);
     }
-  }
+  });
 }
 
 // biome-ignore-start lint/style/useNamingConvention: the keys are the tree's node kinds.
@@ -73,17 +80,12 @@ const expressionHandlers: Handlers<LocalBinder, Expression, [Scope], void> = {
   BooleanLiteral: holdsNoNames,
   NoneLiteral: holdsNoNames,
   Missing: holdsNoNames,
-  Invalid: holdsNoNames,
+  Invalid: bindRejected,
   ArrayLiteral: (binder, node, scope) => bindAll(binder, node.elements, scope),
-  MapLiteral: (binder, node, scope) => {
-    for (const entry of node.entries) {
-      if (entry.kind === 'MapEntry') {
-        bindAll(binder, [entry.key, entry.value], scope);
-      } else if (entry.kind === 'Spread') {
-        bindAll(binder, [entry], scope);
-      }
-    }
-  },
+  MapLiteral: (binder, node, scope) =>
+    binder.eachItem(node.entries, scope, (entry) =>
+      bindAll(binder, entry.kind === 'MapEntry' ? [entry.key, entry.value] : [entry], scope),
+    ),
   Tuple: (binder, node, scope) => bindAll(binder, node.elements, scope),
   Parenthesized: (binder, node, scope) => bindExpression(binder, node.expression, scope),
   Reference: (binder, node, scope) => bindExpression(binder, node.expression, scope),

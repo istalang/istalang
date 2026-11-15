@@ -133,6 +133,14 @@ function isInvalid(node: SyntaxNode): node is Invalid {
 export const holdsNoNames = (): void => undefined;
 
 /**
+ * The handler of an Invalid node standing where one node goes: it holds only the annotations the
+ * parser rejected there, bound where it stands (§3.16).
+ */
+export const bindRejected = (binder: LocalBinder, node: Invalid, scope: Scope): void => {
+  binder.annotations(node, scope);
+};
+
+/**
  * A declaration whose targets are patterns, owning every name they bind (§3.15): a parameter
  * owns its pattern's names (§3.3).
  */

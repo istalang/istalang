@@ -25,7 +25,7 @@ import type {
 } from '../../syntax/types/index.ts';
 import { inferTypesIn } from '../../syntax/types/type-matches.ts';
 import { typeEntity } from '../entities.ts';
-import { holdsNoNames, type LocalBinder } from '../module/local-binder.ts';
+import { bindRejected, holdsNoNames, type LocalBinder } from '../module/local-binder.ts';
 import { Scope } from '../module/scope.ts';
 
 // biome-ignore-start lint/style/useNamingConvention: the keys are the tree's node kinds.
@@ -57,7 +57,7 @@ const typeHandlers: Handlers<LocalBinder, TypeNode, [Scope], void> = {
   KeyofType: (binder, node, scope) => bindType(binder, node.owner, scope),
   InferType: (binder, node, scope) => bindConstraints(binder, node.parameter.constraints, scope),
   Missing: holdsNoNames,
-  Invalid: holdsNoNames,
+  Invalid: bindRejected,
 };
 // biome-ignore-end lint/style/useNamingConvention: the keys are the tree's node kinds.
 
@@ -82,11 +82,7 @@ export function bindAliasBody(binder: LocalBinder, node: AliasBody, scope: Scope
   }
   binder.enter(node, scope);
   bindType(binder, node.subject, scope);
-  for (const each of node.cases) {
-    if (each.kind === 'TypeCase') {
-      bindTypeCase(binder, each, scope);
-    }
-  }
+  binder.eachItem(node.cases, scope, (each) => bindTypeCase(binder, each, scope));
 }
 
 /** `case P: T`, in a scope of its own declaring the `infer` variables `P` writes (the banner). */
@@ -152,18 +148,19 @@ function bindStructConstraint(
   scope: Scope,
 ): void {
   binder.enter(constraint, scope);
-  const entries = constraint.entries.filter((entry) => entry.kind !== 'Invalid');
   binder.checkMemberNames(
-    entries.flatMap(({ field }) => (field.kind === 'Identifier' ? [field] : [])),
+    constraint.entries.flatMap((entry) =>
+      entry.kind !== 'Invalid' && entry.field.kind === 'Identifier' ? [entry.field] : [],
+    ),
     'value',
   );
-  for (const entry of entries) {
+  binder.eachItem(constraint.entries, scope, (entry) => {
     if (entry.kind === 'FieldTypeEntry') {
       bindType(binder, entry.type, scope);
     } else {
       bindConstraints(binder, entry.constraints, scope);
     }
-  }
+  });
 }
 
 /** A field list of a struct, a variant or an extern struct: names checked, types bound. */
