@@ -56,6 +56,15 @@ function kindOfCall(checker: CheckerContext, call: ResolvedCall): Type {
 }
 
 /**
+ * The calls code making `call` makes whose functions `call` chooses: itself, and the functions among
+ * its witnesses (`callsMadeWith`). A requirement among them is a witness of the caller's own
+ * constraints, judged as the function its caller's caller chooses for it.
+ */
+function callsChosenBy(call: ResolvedCall): readonly ResolvedCall[] {
+  return callsMadeWith(call).filter((each) => each === call || each.kind === 'function');
+}
+
+/**
  * The call `application` makes, as `instantiation` settles it, judged by the call rule where `at`
  * makes it in `frame`: the one seam every call the checker records goes through, written or made
  * for a construct (an operator's function, `iterate`, `toString`).
@@ -70,7 +79,7 @@ export function judgedCall(
   },
 ): ResolvedCall {
   const call = callMade(made.application, made.instantiation);
-  for (const each of callsMadeWith(call)) {
+  for (const each of callsChosenBy(call)) {
     checkCallKind(context, {
       at: made.at,
       frame: made.frame,
@@ -111,7 +120,7 @@ export function markMaking(
       least = joined;
     }
   };
-  for (const each of callsMadeWith(made.call)) {
+  for (const each of callsChosenBy(made.call)) {
     const calleeKind = kindOfCall(checker, each);
     const callee = `'${declaredFunctionName(each.function)}'`;
     allow(calleeKind, (at, mark) =>

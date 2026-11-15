@@ -188,22 +188,22 @@ export type MadeCall =
  */
 export type Witnesses = ReadonlyMap<TypeParameter, readonly (readonly ResolvedCall[])[]>;
 
-/** A call of a declared function, and every such call its witnesses make, nested ones included. */
-export function functionCallsWithin(call: ResolvedCall): readonly FunctionCall[] {
-  return call.kind === 'function' ? [call, ...witnessCallsOf(call.witnesses)] : [];
-}
-
-/** Every call of a declared function `witnesses` make, nested ones included. */
-export function witnessCallsOf(witnesses: Witnesses): readonly FunctionCall[] {
-  return [...witnesses.values()].flat(2).flatMap(functionCallsWithin);
-}
-
 /**
  * `call` and every call its witnesses make, at any depth: what code making `call` makes, since a
  * generic callee calls its constraints' witnesses for its caller (proposal 8, Rule 3).
  */
 export function callsMadeWith(call: ResolvedCall): readonly ResolvedCall[] {
-  return [call, ...witnessCallsOf(call.witnesses)];
+  return [call, ...[...call.witnesses.values()].flat(2).flatMap(callsMadeWith)];
+}
+
+/** The calls of declared functions among those code making `call` makes (`callsMadeWith`). */
+export function functionCallsWithin(call: ResolvedCall): readonly FunctionCall[] {
+  return callsMadeWith(call).filter((each) => each.kind === 'function');
+}
+
+/** Every call of a declared function `witnesses` make, nested ones included. */
+export function witnessCallsOf(witnesses: Witnesses): readonly FunctionCall[] {
+  return [...witnesses.values()].flat(2).flatMap(functionCallsWithin);
 }
 
 /**
