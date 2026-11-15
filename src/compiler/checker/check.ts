@@ -50,6 +50,12 @@ import type {
 import type { TypeRules } from './types/type/type-rules.ts';
 import { type CheckerOptions, ProgramChecker } from './wiring/program/program-checker.ts';
 
+/** A field of a struct type, as the type has it, and its position in the type's layout (§3.1). */
+export interface LaidOutField {
+  readonly member: FieldMember;
+  readonly index: number;
+}
+
 /** A variant of an enum type, its fields substituted for the type's arguments. */
 export interface VariantMember {
   readonly name: string;
@@ -127,6 +133,11 @@ export interface Checker {
    * undefined for another type.
    */
   readonly fieldsOf: (type: Type) => readonly FieldMember[] | undefined;
+  /**
+   * The field `name` of a struct type, declared or anonymous, as `fieldsOf` gives it, and its
+   * position; undefined for another type, or one with no such field.
+   */
+  readonly fieldNamed: (type: Type, name: string) => LaidOutField | undefined;
   /**
    * The variants of an enum type, substituted for its type arguments; undefined for another type.
    */

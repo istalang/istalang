@@ -48,7 +48,7 @@ export type FieldReading = MemberAccess | Index;
  * when the key is one name; by the key's value, when it may be several or isn't known yet.
  */
 export function keyedFieldRead(
-  checker: Pick<Checker, 'fieldsOf'>,
+  checker: Pick<Checker, 'fieldNamed'>,
   type: Type,
   key: Type,
 ): FieldRead {
@@ -76,7 +76,7 @@ export function fieldGetterAmong(
  * known only per instantiation, by position on a struct.
  */
 export function namedFieldRead(
-  checker: Pick<Checker, 'fieldsOf'>,
+  checker: Pick<Checker, 'fieldNamed'>,
   type: Type,
   name: string,
 ): FieldRead {
@@ -98,14 +98,12 @@ export interface FoundField {
 
 /** The field `name` of `type` when it is a struct, declared or anonymous; else undefined. */
 export function structFieldOf(
-  checker: Pick<Checker, 'fieldsOf'>,
+  checker: Pick<Checker, 'fieldNamed'>,
   type: Type,
   name: string,
 ): FoundField | undefined {
-  const fields = checker.fieldsOf(type) ?? [];
-  const index = fields.findIndex((candidate) => candidate.name === name);
-  const field = fields[index];
-  return field === undefined
+  const found = checker.fieldNamed(type, name);
+  return found === undefined
     ? undefined
-    : { member: field, read: { kind: 'position', on: type, name, index } };
+    : { member: found.member, read: { kind: 'position', on: type, name, index: found.index } };
 }

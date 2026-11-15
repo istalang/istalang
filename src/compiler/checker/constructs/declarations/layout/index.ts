@@ -32,7 +32,7 @@ import type {
   Variant,
 } from '../../../../syntax/declarations/index.ts';
 import type { Invalid } from '../../../../syntax/tree/node.ts';
-import type { VariantMember } from '../../../check.ts';
+import type { LaidOutField, VariantMember } from '../../../check.ts';
 import type { CheckerContext, CheckerNote } from '../../../contexts/context.ts';
 import { type FieldedDeclaration, TypeExpansion } from '../../../rules/expansion/types.ts';
 import {
@@ -122,6 +122,14 @@ export class Layouts {
     const declared = this.declaredFieldsOf(declaration);
     const laidOut = memo(this.#laidOut, declared, () => inFieldOrder(declared));
     return instantiated(laidOut, substitutionOf(type), this.#checker.typeRules);
+  }
+
+  /** The field `name` of a struct type, as `fieldsOf` gives it, and its position. */
+  fieldNamed(type: Type, name: string): LaidOutField | undefined {
+    const fields = this.fieldsOf(type) ?? [];
+    const index = fields.findIndex((field) => field.name === name);
+    const member = fields[index];
+    return member === undefined ? undefined : { member, index };
   }
 
   /**

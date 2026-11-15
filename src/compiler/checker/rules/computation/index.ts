@@ -63,6 +63,7 @@ interface ComputationScope {
   readonly checker: Pick<
     CheckerContext,
     | 'fieldsOf'
+    | 'fieldNamed'
     | 'parametersOf'
     | 'defaultsOf'
     | 'moduleOf'

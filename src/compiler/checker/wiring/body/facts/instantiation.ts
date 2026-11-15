@@ -47,7 +47,7 @@ import type { TypeRules } from '../../../types/type/type-rules.ts';
 /** One instantiation: each kind of part a body records, as it reads it. */
 export interface Instantiation {
   readonly substitution: Substitution;
-  readonly checker: Pick<Checker, 'fieldsOf' | 'typeRules'>;
+  readonly checker: Pick<Checker, 'fieldNamed' | 'typeRules'>;
   /** A type as substituted, a recursive one unfolded (§3.17): what an expression is read as. */
   readonly concrete: (type: Type) => Type;
   readonly fit: (fit: Fit) => Fit;
@@ -72,7 +72,7 @@ export interface Instantiation {
 /** The instantiation `substitution` makes, for reading a body checked once (§3.5). */
 export function instantiationBy(
   substitution: Substitution,
-  checker: Pick<Checker, 'fieldsOf' | 'typeRules'>,
+  checker: Pick<Checker, 'fieldNamed' | 'typeRules'>,
 ): Instantiation {
   const rules = checker.typeRules;
   // A body reads one type at many nodes, and lowering reads each node's again and again.
@@ -127,7 +127,7 @@ export function instantiationBy(
 function instantiatedPass(
   { visits, key, value, body }: FieldPass,
   substitution: Substitution,
-  checker: Pick<Checker, 'fieldsOf' | 'typeRules'>,
+  checker: Pick<Checker, 'fieldNamed' | 'typeRules'>,
 ): FieldPass {
   const rules = checker.typeRules;
   return {
@@ -380,7 +380,7 @@ function substitutedConversion(
  * field's constraint substituted alike.
  */
 function instantiatedRead(
-  checker: Pick<Checker, 'fieldsOf' | 'typeRules'>,
+  checker: Pick<Checker, 'fieldNamed' | 'typeRules'>,
   read: FieldRead,
   { concrete, substitution }: Pick<Instantiation, 'concrete' | 'substitution'>,
 ): FieldRead {

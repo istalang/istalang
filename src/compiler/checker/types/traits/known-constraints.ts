@@ -271,10 +271,10 @@ function keyedFieldTypes(
   if (isOpaque(of) || !isOpaque(key)) {
     return undefined;
   }
-  const fields = checker.fieldsOf(of);
-  const types = keyMembers(checker, key).map(
-    (member) =>
-      fields?.find((field) => member.kind === 'literal' && field.name === member.value)?.type,
+  const types = keyMembers(checker, key).map((member) =>
+    member.kind === 'literal' && typeof member.value === 'string'
+      ? checker.fieldNamed(of, member.value)?.member.type
+      : undefined,
   );
   return types.every((type) => type !== undefined) ? types : undefined;
 }

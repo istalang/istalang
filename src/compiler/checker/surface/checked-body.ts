@@ -360,7 +360,7 @@ export interface CheckedBody extends BodyFacts {
    */
   readonly instantiated: (
     substitution: Substitution,
-    checker: Pick<Checker, 'fieldsOf' | 'typeRules'>,
+    checker: Pick<Checker, 'fieldNamed' | 'typeRules'>,
   ) => CheckedBody;
   /**
    * The body read as one with `others`, the other passes of the field loops around a node (§4),

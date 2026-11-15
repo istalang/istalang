@@ -49,6 +49,7 @@ import type { AnchoredSpan } from '../../../syntax/tree/positions.ts';
 import type { TypeNode } from '../../../syntax/types/index.ts';
 import type {
   CheckedConstant,
+  LaidOutField,
   SignatureParameter,
   TraitObjects,
   VariantMember,
@@ -372,6 +373,10 @@ export class ProgramChecker implements CheckerContext {
 
   fieldsOf(type: Type): readonly FieldMember[] | undefined {
     return this.#layouts.fieldsOf(type);
+  }
+
+  fieldNamed(type: Type, name: string): LaidOutField | undefined {
+    return this.#layouts.fieldNamed(type, name);
   }
 
   variantsOf(type: NominalType): readonly VariantMember[] | undefined {

@@ -232,7 +232,7 @@ export function fieldTypeOf(checker: CheckerContext, of: Type, key: Type): Type 
 /** The type of the field `name` names in `of`, as `fieldTypeOf` says. */
 function namedFieldType(checker: CheckerContext, of: Type, name: string): Type {
   if (isStructType(of)) {
-    return checker.fieldsOf(of)?.find((field) => field.name === name)?.type ?? errorType;
+    return checker.fieldNamed(of, name)?.member.type ?? errorType;
   }
   if (of.kind === 'mapped') {
     const field = of.named.find((each) => each.name === name);

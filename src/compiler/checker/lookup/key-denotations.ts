@@ -95,8 +95,7 @@ function keyedFieldDenotations(
   owner: Type | undefined,
   key: string,
 ): readonly Denotation[] {
-  const field =
-    owner === undefined ? undefined : checker.fieldsOf(owner)?.find((each) => each.name === key);
+  const field = owner === undefined ? undefined : checker.fieldNamed(owner, key)?.member;
   return field === undefined ? [] : [{ declared: { kind: 'field', field }, type: field.type }];
 }
 
