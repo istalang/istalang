@@ -212,6 +212,15 @@ export function isCellType(types: readonly TypeDefinition[], type: number): bool
   return hasRole(types, type, 'shared') || hasRole(types, type, 'cell');
 }
 
+/** How a value of type entry `type` of `types` is disposed: an extern type's disposal, else none. */
+export function disposalOf(
+  types: readonly TypeDefinition[],
+  type: number,
+): z.output<typeof disposal> {
+  const entry = types[type];
+  return entry?.kind === 'extern' ? entry.disposal : { kind: 'none' };
+}
+
 /** Whether type entry `type` of `types` has `role`, an extern type's or an enum's. */
 export function hasRole(
   types: readonly TypeDefinition[],

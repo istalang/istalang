@@ -21,7 +21,7 @@
  *   readied, or a run removed before the call it starts holds its captures.
  */
 
-import type { TypeDefinition } from '../../definition/tables/types.ts';
+import { disposalOf, type TypeDefinition } from '../../definition/tables/types.ts';
 import {
   type CompositeValue,
   childValues,
@@ -35,10 +35,16 @@ import type { Held } from '../snapshot/holdings.ts';
 /** Whether the holders of a cell or resource of type entry `type` are counted. */
 export function countsHoldersOf(types: readonly TypeDefinition[], type: number): boolean {
   const entry = types[type];
-  return entry?.kind === 'extern' && (entry.counted || entry.disposal.kind !== 'none');
+  return entry?.kind === 'extern' && (entry.counted || disposalOf(types, type).kind !== 'none');
 }
 
 export class Counts {
+  /**
+   * Whether a composite value is counted as a node: the interpreter counts every one, whose counts
+   * also say which may change in place (in-place.ts); a run of compiled code only those reaching a
+   * counted object, the rest holding nothing a count decides.
+   */
+  readonly #countsNode: (node: CompositeValue) => boolean;
   /** Each counted object's holders. */
   readonly #objects = new Map<number, number>();
   /** Each composite's holders, while it has any. */
@@ -47,6 +53,11 @@ export class Counts {
   readonly #zeroes = new Set<number>();
   /** Counted objects let go of since the last `takeLetGo`. */
   readonly #letGo: number[] = [];
+
+  /** Counts that count a composite value as a node where `countsNode` says, every one by default. */
+  constructor(countsNode: (node: CompositeValue) => boolean = () => true) {
+    this.#countsNode = countsNode;
+  }
 
   /** Counted object `id` was made, held by nothing yet. */
   made(id: number): void {
@@ -64,6 +75,25 @@ export class Counts {
   changed(was: Held, now: Held): void {
     this.#hold(now);
     this.#release(was);
+  }
+
+  /** A holder came to hold `value`; a value with nothing to count costs nothing. */
+  holdValue(value: Value): void {
+    if (isComposite(value)) {
+      this.#hold({ values: [value], holds: [] });
+    }
+  }
+
+  /** A holder let go of `value`. */
+  releaseValue(value: Value): void {
+    if (isComposite(value)) {
+      this.#release({ values: [value], holds: [] });
+    }
+  }
+
+  /** Whether a counted object came to have no holder since the zeroes were last taken. */
+  get zeroed(): boolean {
+    return this.#zeroes.size > 0;
   }
 
   /** How many holders counted object `id` has; undefined for one not counted. */
@@ -131,6 +161,9 @@ export class Counts {
       this.#holdObject(value.object);
       return [];
     }
+    if (!this.#countsNode(value)) {
+      return [];
+    }
     const holders = this.#nodes.get(value);
     if (holders !== undefined) {
       this.#nodes.set(value, holders + 1);
@@ -147,6 +180,9 @@ export class Counts {
     }
     if (value.kind === 'handle') {
       this.#releaseObject(value.object);
+      return [];
+    }
+    if (!this.#countsNode(value)) {
       return [];
     }
     const holders = this.#nodes.get(value);

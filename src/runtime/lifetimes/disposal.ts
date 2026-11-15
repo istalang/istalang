@@ -37,7 +37,7 @@
  */
 
 import type { FunctionId } from '../../definition/operands.ts';
-import type { TypeDefinition } from '../../definition/tables/types.ts';
+import { disposalOf, type TypeDefinition } from '../../definition/tables/types.ts';
 import { handleTo, type Value } from '../../definition/values/values.ts';
 import { type Handlers, handlerOf } from '../../foundation/structures/kind-table.ts';
 import { Panic } from '../natives.ts';
@@ -216,7 +216,7 @@ function isAwaited(heap: Heap, id: number): boolean {
  * Disposes `object` its own way: the code to run, for a disposal that runs code. The object itself
  * is removed by the caller, once that code has finished.
  */
-export function dispose(context: DisposalContext, object: LiveObject): DisposalRun | undefined {
+function dispose(context: DisposalContext, object: LiveObject): DisposalRun | undefined {
   return disposalFor(object).dispose(context);
 }
 
@@ -277,9 +277,4 @@ function disposeCall(context: DisposalContext, execution: LiveExecution): Cleanu
   }
   context.stop(execution);
   return undefined;
-}
-
-function disposalOf(types: readonly TypeDefinition[], type: number) {
-  const entry = types[type];
-  return entry?.kind === 'extern' ? entry.disposal : { kind: 'none' as const };
 }
