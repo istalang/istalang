@@ -62,3 +62,7 @@ tags: [structural-fixes, status]
 4. ff-merge each after its reviewer approves, rebasing the others in turn. Then run the merge review over all
    four, and `npm run verify` on main.
 5. Write the plan for E and B87 (`findings.md` §E). Update this file at every step.
+- Verify on main green (one load timeout, passes alone). Merge review: `sfmr-liki`, running.
+- E small items (Q6, Q49, Q30, Q36, Q48, B89, F31, Q31/P25/B30, Q47), by the human's call: one `expert` agent `sfe-pavi`,
+  worktree `.claude/worktrees/sf-e-small` from `9ed34d4a`, implementer-notes process, examiners at the end.
+  The larger E groups (B99–B105, B87, B98) still need a plan.
