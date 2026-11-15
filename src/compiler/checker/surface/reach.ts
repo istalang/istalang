@@ -23,7 +23,7 @@ import type { ParameterKey, Type } from '../types/type/index.ts';
 import { callsMadeWith, instantiatingTypesOf, type ResolvedCall } from './resolved-call.ts';
 
 /** A call a function's code reaches, and the node making it. */
-export interface ReachedCall {
+interface ReachedCall {
   readonly site: NodeOf<string>;
   readonly call: ResolvedCall;
 }
