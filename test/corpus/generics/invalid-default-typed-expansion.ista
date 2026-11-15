@@ -1,5 +1,5 @@
-# error: 5125 at 16:3
-# error: 5125 at 22:3
+# error: 5125 at 17:3
+# error: 5125 at 23:3
 # A field typed by its default counts towards endless instantiation as a written one does (§3.5),
 # once its default is checked: its type may name a generic type whose fields name its own again
 # with a type argument built from its parameter. A cycle that grows only through such a field is
@@ -10,6 +10,7 @@ struct Phantom<T>:
   n: Int
 
 struct Back<U>:
+  n = 1
   a: Ahead<(U,)>?
 
 struct Ahead<T>:

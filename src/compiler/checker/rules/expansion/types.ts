@@ -116,8 +116,12 @@ export class TypeExpansion {
     if (field.kind !== 'DeclaredField') {
       return false;
     }
-    const cut = field.type === undefined ? this.#cut : this.#endless;
-    return cut.get(declaration).has(field);
+    if (field.type !== undefined) {
+      return this.#endless.get(declaration).has(field);
+    }
+    // A field whose type names no generic type lies on no cycle: its cut walks no other's defaults.
+    const named = this.#defaultedEdges.get(declaration).some((edge) => edge.field === field);
+    return named && this.#cut.get(declaration).has(field);
   }
 
   /** The edges the second stratum reads: what the first leaves, and the defaulted fields'. */
