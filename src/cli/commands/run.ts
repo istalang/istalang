@@ -27,8 +27,8 @@ import { realTime } from '../../runtime/clock.ts';
 import { createRuntime, type Runtime } from '../../runtime/host/index.ts';
 import type { DeployedProgram, HostReports } from '../../runtime/host/programs.ts';
 import type { Advanced } from '../../runtime/instance-state.ts';
+import { seedBytes } from '../../runtime/random-draws.ts';
 import { Refusal } from '../../runtime/refusal.ts';
-import { seedBytes } from '../../runtime/snapshot/random.ts';
 import { type InstanceStore, memoryStore } from '../../runtime/store.ts';
 import { stdNatives } from '../../stdlib/natives.ts';
 import {

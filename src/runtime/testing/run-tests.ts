@@ -15,7 +15,8 @@
  *   report as it ends.
  */
 
-import { createHash } from 'node:crypto';
+import { sha256 } from '@noble/hashes/sha2.js';
+import { utf8ToBytes } from '@noble/hashes/utils.js';
 import { type Definition, definitionFormat } from '../../definition/definition.ts';
 import { listingArguments, runningArguments } from '../../definition/tables/test-runner.ts';
 import { fieldValueOf } from '../../definition/values/declared-values.ts';
@@ -77,7 +78,7 @@ export async function* runTests(
   const tests = definition.tests ?? unreachable('This Definition was not built to run tests.');
   const run: RunInWorld = (call, title) => {
     const deadline = options.clock.now() + options.timeout;
-    const seed = seedFrom(createHash('sha256').update(title).digest());
+    const seed = seedFrom(sha256(utf8ToBytes(title)));
     return new World({ ...options, definition, hash, seed, deadline }).run(call);
   };
   const listings: Listing[] = [];

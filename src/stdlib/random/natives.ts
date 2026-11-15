@@ -9,6 +9,7 @@
  * try is likelier than not to land below `n`.
  */
 
+import { bytesToHex } from '@noble/hashes/utils.js';
 import { wellKnown } from '../../foundation/language/well-known/index.ts';
 import { type NativeContext, type Natives, Panic, type WithRandom } from '../../runtime/natives.ts';
 import { bounded, countOf, rangeOf, textOf } from '../ranges.ts';
@@ -71,7 +72,7 @@ function drawn(count: number, draw: () => Uint8Array): Uint8Array {
 
 /** The unsigned integer `bytes` hold, most significant first. */
 function integerOf(bytes: Uint8Array): bigint {
-  return BigInt(`0x${Buffer.from(bytes).toString('hex')}`);
+  return BigInt(`0x${bytesToHex(bytes)}`);
 }
 
 /** The version 4 UUID made from `draw`'s first bytes, its version and variant bits set. */
@@ -79,7 +80,8 @@ function uuidOf(draw: Uint8Array): string {
   const bytes = Uint8Array.from(draw.subarray(0, uuid.bytes));
   bytes[uuid.versionByte] = uuid.version + ((bytes[uuid.versionByte] ?? 0) % uuid.afterVersion);
   bytes[uuid.variantByte] = uuid.variant + ((bytes[uuid.variantByte] ?? 0) % uuid.afterVariant);
-  return Buffer.from(bytes)
-    .toString('hex')
-    .replace(uuid.layout, '$<timeLow>-$<timeMid>-$<timeHigh>-$<clock>-$<node>');
+  return bytesToHex(bytes).replace(
+    uuid.layout,
+    '$<timeLow>-$<timeMid>-$<timeHigh>-$<clock>-$<node>',
+  );
 }

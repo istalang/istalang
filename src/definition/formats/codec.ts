@@ -15,7 +15,8 @@
  *   floats (values/values.ts); this layer stays type-agnostic.
  */
 
-import { createHash } from 'node:crypto';
+import { sha256 } from '@noble/hashes/sha2.js';
+import { bytesToHex, utf8ToBytes } from '@noble/hashes/utils.js';
 import { parse } from 'lossless-json';
 import { z } from 'zod';
 import { compareOrdered } from '../../foundation/language/order.ts';
@@ -113,7 +114,7 @@ export function jsonDepth(value: unknown): number {
 
 /** The SHA-256 of a canonical text, as lowercase hex: the identity a store keys content by. */
 export function contentHash(text: string): string {
-  return createHash('sha256').update(text).digest('hex');
+  return bytesToHex(sha256(utf8ToBytes(text)));
 }
 
 function decodeNumber(text: string): number | bigint {

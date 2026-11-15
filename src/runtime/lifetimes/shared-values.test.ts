@@ -11,10 +11,11 @@ import { describe, expect, it } from 'vitest';
 import { compiledText } from '../../compiler/compile.test-kit.ts';
 import { definitionFormat } from '../../definition/definition.ts';
 import { stdNatives } from '../../stdlib/natives.ts';
+import { seedBytes } from '../random-draws.ts';
 import { loadDefinition } from '../scheduler/loaded-definition.ts';
 import { Resident } from '../scheduler/resident.ts';
 import { advance, unstarted } from '../scheduler/wake.ts';
-import { seedBytes, seedTextOf } from '../snapshot/random.ts';
+import { seedTextOf } from '../snapshot/random.ts';
 import { memoryStore } from '../store.ts';
 import { freezeValuesIn } from './in-place.test-kit.ts';
 

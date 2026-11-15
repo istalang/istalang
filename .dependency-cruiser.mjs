@@ -10,9 +10,9 @@
  *
  * npm packages may be imported anywhere: a library is a dependency like a lower layer. Node's
  * built-ins only where listed below; the compiler and runtime reach the file system, processes and
- * the clock through seams (architecture, Seams). `definition/` may use `crypto` alone, for content
- * hashes: hashing is computation, not I/O. `definition/` and the runtime may use `foundation/text/` for the same
- * reason: a trace turns a Definition's line starts into positions with the line map's own search.
+ * the clock through seams (architecture, Seams). Hashing is computation, not I/O, so it runs on
+ * @noble/hashes, an npm package. `definition/` and the runtime may use `foundation/text/`: a trace
+ * turns a Definition's line starts into positions with the line map's own search.
  *
  * Inside the parser, grammar categories reach one another only through the parsing context, and
  * the shared parts they all use import no category (src/compiler/parser/parser.ts). Inside the
@@ -348,11 +348,6 @@ export default {
       // devDependencies; the package's own code, which runs from node_modules, may import none.
       from: { path: layerPath(['editor/vscode-client']) },
       to: { dependencyTypes: ['npm-dev'] },
-    },
-    {
-      // Hashing is computation, not I/O: content hashes, random draws and the `crypto` module.
-      from: { path: layerPath(['definition', 'runtime', 'stdlib']) },
-      to: { dependencyTypes: ['core'], path: '^(node:)?crypto$' },
     },
   ],
   allowedSeverity: 'error',

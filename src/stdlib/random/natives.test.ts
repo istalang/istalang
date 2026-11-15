@@ -6,14 +6,15 @@
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { drawOf, seedBytes, seedTextOf } from '../../runtime/snapshot/random.ts';
+import { drawOf, seedBytes } from '../../runtime/random-draws.ts';
+import { seedBytesOf, seedTextOf } from '../../runtime/snapshot/random.ts';
 import { uniformBelow } from './natives.ts';
 
 /** Draws from the source seeded with `seed`, counting from the first. */
 function drawsFrom(seed: string): () => Uint8Array {
   let index = 0;
   return () => {
-    const draw = drawOf(seed, index);
+    const draw = drawOf(seedBytesOf(seed), index);
     index += 1;
     return draw;
   };

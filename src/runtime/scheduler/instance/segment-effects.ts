@@ -13,7 +13,8 @@
 import type { FunctionId } from '../../../definition/operands.ts';
 import type { Value } from '../../../definition/values/values.ts';
 import type { LogRecord, SpawnOptions } from '../../instance-state.ts';
-import { drawOf, seedFrom } from '../../snapshot/random.ts';
+import { drawOf } from '../../random-draws.ts';
+import { seedBytesOf, seedFrom } from '../../snapshot/random.ts';
 import type { InstanceCall, Snapshot } from '../../snapshot/snapshot.ts';
 import type { Answered } from './futures.ts';
 import { spawnedName } from './instance-names.ts';
@@ -85,7 +86,7 @@ export class SegmentEffects {
     const { seed, draws } = this.#committed().random;
     const index = draws + this.#draws;
     this.#draws += 1;
-    return drawOf(seed, index);
+    return drawOf(seedBytesOf(seed), index);
   }
 
   /** Records `record`, which reaches the host once this segment commits (§3.8 `log`). */

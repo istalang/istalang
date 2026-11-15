@@ -26,7 +26,6 @@
  *   for the next open.
  */
 
-import { randomUUID } from 'node:crypto';
 import { memo } from '../../foundation/structures/memo.ts';
 import type { InstanceState } from '../instance-state.ts';
 import { storedSnapshot } from '../scheduler/instance/instance-ends.ts';
@@ -136,7 +135,7 @@ export class Contexts<Program extends LoadedDefinition> implements RunContexts {
       listener.panicked({ message: 'The runtime was disposed before the call.', trace: '' });
       return;
     }
-    const token = randomUUID();
+    const token = crypto.randomUUID();
     this.#waiting.set(token, { key, future, listener, maker });
     this.#pending.push({ key, call, token });
   }

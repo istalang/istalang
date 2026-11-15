@@ -20,11 +20,12 @@ import type { DeployedProgram, HostReports } from './host/programs.ts';
 import type { Advanced, InstanceState, StartOptions } from './instance-state.ts';
 import { oracle } from './lifetimes/oracle.test-kit.ts';
 import type { FullNativeContext, Natives } from './natives.ts';
+import { seedBytes } from './random-draws.ts';
 import { Refusal } from './refusal.ts';
 import { type HeapCheck, loadDefinition } from './scheduler/loaded-definition.ts';
 import { Resident } from './scheduler/resident.ts';
 import { advance, unstarted } from './scheduler/wake.ts';
-import { seedBytes, seedTextOf } from './snapshot/random.ts';
+import { seedTextOf } from './snapshot/random.ts';
 import { type InstanceStore, memoryStore } from './store.ts';
 import { drive } from './testing/world/drive.ts';
 
