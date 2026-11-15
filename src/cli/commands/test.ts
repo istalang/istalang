@@ -17,9 +17,9 @@ import { compileTests, diagnose } from '../../compiler/compile.ts';
 import { definitionFormat } from '../../definition/definition.ts';
 import { testModuleSuffix } from '../../foundation/language/well-known/testing.ts';
 import { findSources, loadProject } from '../../project/project.ts';
+import { realTime } from '../../runtime/clock.ts';
 import { runTests, type TestReport } from '../../runtime/testing/run-tests.ts';
 import { stdNatives } from '../../stdlib/natives.ts';
-import { clock } from '../clock.ts';
 import {
   type CliEnvironment,
   type CommandDefinition,
@@ -89,7 +89,7 @@ async function test(
   const counts = { passed: 0, failed: 0, skipped: 0 };
   for await (const report of runTests(text, {
     natives: stdNatives,
-    clock,
+    clock: realTime,
     timeout,
     heapCheck: environment.heapCheck,
     ...(options.filter === undefined ? {} : { filter: options.filter }),

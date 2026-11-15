@@ -1,7 +1,7 @@
 /**
  * Time as a host keeps it (§5, §10): what a segment's start reads, and what the runtime waits on
  * until a timer is due. The runtime holds no timers of its own, so every wait is on the clock the
- * host gives: real time in a process (cli/clock.ts), or a manual clock, which jumps to whatever
+ * host gives: real time (`realTime`), in a process or a browser, or a manual clock, which jumps to whatever
  * time it is waited until, so a run on it takes no real time.
  *
  * A wait can be called off, as one racing something that may wake its waiter first is: a far timer
@@ -14,6 +14,27 @@ export interface Clock {
   /** Settles once `now` reads `at` or later, or at once when `cancelled` aborts. */
   readonly until: (at: bigint, cancelled?: AbortSignal) => Promise<void>;
 }
+
+/** Real time: the system clock, and the event loop's timers to wait on it. */
+export const realTime: Clock = {
+  now: () => BigInt(Date.now()),
+  until: (at, cancelled) =>
+    new Promise((resolve) => {
+      if (cancelled?.aborted === true) {
+        resolve();
+        return;
+      }
+      const timer = setTimeout(resolve, Math.max(0, Number(at - BigInt(Date.now()))));
+      cancelled?.addEventListener(
+        'abort',
+        () => {
+          clearTimeout(timer);
+          resolve();
+        },
+        { once: true },
+      );
+    }),
+};
 
 /** A clock that reads the time it was set to, and moves on to what it is waited until. */
 export class ManualClock implements Clock {

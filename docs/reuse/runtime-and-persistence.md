@@ -34,7 +34,8 @@ tags: [reuse, runtime, snapshot, persistence, scheduler, lifetimes, host]
 - find the transient cell a call shares from a call it is nested in, or the transients' cells an execution started from a caller keeps (spec §3.4) → `sharedTransient`, `transientsSeenFrom` (`src/runtime/scheduler/instance/transients.ts`); a code entry's transient registers → `transientRegistersOf` (`src/definition/tables/functions.ts`)
 - format stack traces or `module:line:column` locations from a program's module `lineStarts`, whatever a runtime keeps of a frame → `traceText`, `locationOf`; the trace a default asks for, the innermost frame left out while in its prologue → `callerTraceText` (`src/definition/traces.ts`); an interpreter frame as a trace reads it → `tracedFrame` (`src/runtime/interpreter/trace.ts`)
 - start a call on any call path (a written call, a function value's, a disposal's, an encoder's, a resolver's callback), a mock replacing its target asked first → `startCall` (`src/runtime/scheduler/segment/calls.ts`); a callback's run as a driver of its own, on an off-heap carrier → `RunCalls` (`src/runtime/scheduler/segment/run-calls.ts`); a call leaving parameters out to a mocked code entry runs the target's prologue as a plain frame and hands over at its `body` marker, the replacement taking that frame's place → `handOver` (`calls.ts`, `SegmentRunner.handOver`), never a second mock path; which mock a call reaches without recording it, and the call made to it → `reachedMock`, `mockedCall` (`src/runtime/scheduler/testing/mocks.ts`)
-- convert V8 limit `RangeError`s to `Panic` or guard depth → `panicOf`, `requireDepth`, `requireFrameDepth` (`src/runtime/scheduler/segment/limits.ts`)
+- convert V8 limit `RangeError`s to `Panic`, in any runtime → `panicOf` (`src/runtime/natives.ts`); guard a segment's depth → `requireDepth`, `requireFrameDepth` (`src/runtime/scheduler/segment/limits.ts`)
+- find what a host starts by key and read its JSON arguments, refusing what doesn't fit, in any runtime → `startOf`, `jsonIn` (`src/runtime/boundary/starts.ts`)
 - encode/decode 32-byte instance random seeds, and draw deterministic HMAC-SHA-256 random bytes from one for a segment → `seedBytes`, `seedTextOf`, `seedFrom`, `drawOf` (`src/runtime/snapshot/random.ts`)
 - build spawned instance names `<parent>/<n>` or list ancestors → `spawnedName`, `ancestorsOf`, `spawnedSeparator` (`src/runtime/scheduler/instance/instance-names.ts`)
 - inspect an instance's committed state and waiting points → `inspection` (`src/runtime/scheduler/inspect.ts`), `hasEnded` (`src/runtime/instance-state.ts`)
@@ -64,7 +65,7 @@ tags: [reuse, runtime, snapshot, persistence, scheduler, lifetimes, host]
 - store Definitions and snapshots in memory → `memoryStore`, `InstanceStore` (`src/runtime/store.ts`)
 - store Definitions and snapshots atomically in a directory → `directoryStore` (`src/cli/directory-store.ts`)
 - load a `--host` JS module or format a `LogRecord` as JSON → `loadHostModule` (`src/cli/host-module.ts`), `logLine` (`src/cli/log-lines.ts`)
-- read or wait on the CLI's real-time clock, or check for an OS `errno` error → `clock` (`src/cli/clock.ts`), `isSystemError` (`src/project/errno.ts`)
+- read or wait on real time, in a process or a browser → `realTime` (`src/runtime/clock.ts`); check for an OS `errno` error → `isSystemError` (`src/project/errno.ts`)
 - run a test `Definition`'s suites or a single test's `World` → `runTests` (`src/runtime/testing/run-tests.ts`), `World` (`src/runtime/testing/world/index.ts`)
 - build or check the arguments of the testing runner's `_list`/`_run` calls → `listingArguments`, `runningArguments`, `runnerArity` (`src/definition/tables/test-runner.ts`)
 

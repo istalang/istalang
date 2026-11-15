@@ -25,6 +25,7 @@ import { compileProgram, diagnose } from '../../compiler/compile.ts';
 import { definitionFormat } from '../../definition/definition.ts';
 import { FormatError } from '../../definition/formats/format.ts';
 import { loadProject } from '../../project/project.ts';
+import { realTime } from '../../runtime/clock.ts';
 import { createRuntime, type Runtime } from '../../runtime/host/index.ts';
 import type { DeployedProgram, HostReports } from '../../runtime/host/programs.ts';
 import type { Advanced } from '../../runtime/instance-state.ts';
@@ -32,7 +33,6 @@ import { Refusal } from '../../runtime/refusal.ts';
 import { seedBytes } from '../../runtime/snapshot/random.ts';
 import { type InstanceStore, memoryStore } from '../../runtime/store.ts';
 import { stdNatives } from '../../stdlib/natives.ts';
-import { clock } from '../clock.ts';
 import {
   type CliEnvironment,
   type CommandDefinition,
@@ -87,7 +87,7 @@ async function run(
   const runtime = createRuntime({
     natives: stdNatives,
     store,
-    clock,
+    clock: realTime,
     seed: () => randomBytes(seedBytes),
     reports,
     heapCheck: environment.heapCheck,
