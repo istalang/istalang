@@ -33,8 +33,6 @@ tags: [tracker]
 | Proposal 14, inert functions (`docs/work/inert-functions/plan.md`) | done (reviewer approved, QA passed; B89 left) |
 | Computed, and FormBuilder on it (`docs/work/computed/plan.md`) | done (merge review approved) |
 | Proposal 15, stable host references (`docs/work/stable-host-references/plan.md`) | done (reviewer approved, QA passed; FormBuilder may rely on it) |
-| Proposal 16, keyed members (`docs/proposals/16-keyed-members.md`; plan `docs/work/keyed-members-type-loops/`) | approved (rewritten on `index`), planned; FormBuilder's scopes move into the engine |
-| Proposal 17, field loops over a type (`docs/proposals/17-type-field-loops.md`; plan `docs/work/keyed-members-type-loops/`) | approved, planned; FormBuilder's model factories move into the engine |
 | M8 Packages | planned |
 
 ## Filed

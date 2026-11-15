@@ -26,7 +26,7 @@ Paths are under `src/compiler/checker/` unless they start otherwise. Probes ran 
    - It contradicted itself on lookup order.
    - It named a struct `Seen<S>`, beside FormNode's `type Seen`.
 
-   The rewrite on `index` (D2, `docs/proposals/16-keyed-members.md`) resolves them. It keeps String
+   The rewrite on `index` (D2, `docs/proposals/done/16-keyed-members.md`) resolves them. It keeps String
    keys only and names the struct `GroupScope<S>`: inside a node's body, a bare `Scope` names its
    associated type.
 4. **17's `S{for …}` is a feature it doesn't list.** A literal naming a type parameter is refused
@@ -69,7 +69,7 @@ Paths are under `src/compiler/checker/` unless they start otherwise. Probes ran 
   parameter declared by the loop.
 
 **D2. Proposal 16 through the `index` operator, not key-named functions.** Taken: 16 is rewritten
-on it (`docs/proposals/16-keyed-members.md`).
+on it (`docs/proposals/done/16-keyed-members.md`).
 - **Rule** (a row in §3.9's operator table): `x.k`, where `x`'s type has no member `k`, is
   `x["k"]`. It applies through an `index` whose key is a member parameter of String literals, so
   `Map<String, V>` is unaffected.

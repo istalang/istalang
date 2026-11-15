@@ -1,5 +1,5 @@
 /**
- * Field loops over a type (docs/proposals/17-type-field-loops.md, spec §4): `for K in keyof S` runs
+ * Field loops over a type (docs/proposals/done/17-type-field-loops.md, spec §4): `for K in keyof S` runs
  * once per field of `S` with no value to read, `K` a member parameter the loop declares, read as
  * its key's value; static functions are called through `S[K]`; and every member parameter over
  * literal types reads as its value (§3.5).
