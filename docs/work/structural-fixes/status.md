@@ -39,7 +39,7 @@ tags: [structural-fixes, status]
   (`#main.Money<>`, `|<Int,None>`); union entries have `arguments: []`, so read a `T?`'s member with
   `optionalInnerOf`; `keyOf` lives in `lowering/tables/extern-keys.ts`. A's agents, worktree and branch are closed.
 - C and D merged (ff to `f20904e9`): QA pass, review approve (2nd rounds). B88 split: member access and index
-  stand as calls; operators wait on B98 (a call with a requirement candidate can't be chosen while an argument
+  stand as calls; operators wait on B106 (a call with a requirement candidate can't be chosen while an argument
   is an open generic call). The human approved that plan change. P14 judged (the re-parse stays);
   B64 is not C's (row updated). C+D's agents, worktree and branch are closed.
 - Phase B merged (ff to `3c3154d5`): QA pass (3rd round), review approve with debt. Rows closed: B70, B18, B81, B1,
@@ -65,4 +65,10 @@ tags: [structural-fixes, status]
 - Verify on main green (one load timeout, passes alone). Merge review: `sfmr-liki`, running.
 - E small items (Q6, Q49, Q30, Q36, Q48, B89, F31, Q31/P25/B30, Q47), by the human's call: one `expert` agent `sfe-pavi`,
   worktree `.claude/worktrees/sf-e-small` from `9ed34d4a`, implementer-notes process, examiners at the end.
-  The larger E groups (B99–B105, B87, B98) still need a plan.
+  The larger E groups (B99–B105, B87, B106) still need a plan.
+- Merge review (`sfmr-liki`): changes required. B's findings (false 5112 from re-entrant expansion in layout = B105;
+  `callsMadeWith` drops requirement witnesses; duplicate 5111; reach rechecks callee/std bodies uncached) plus all
+  architecture.md nits went to `sfb-tude` on its branch; then `sfmr-liki` re-reviews. Debt for the E plan: unify
+  `reach.ts` with `ReductionRequirements` (B102/B103); module-global `together` in `type-text.ts`. The reuse-doc
+  `calledValueType` finding was wrong (`value-calls.ts` exists). Operators' row renumbered B98 → B106 (another
+  workstream took B98).

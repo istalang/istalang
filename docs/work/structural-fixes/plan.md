@@ -68,7 +68,7 @@ callee's type and the facts the editor reads. Covers B22, B51, Q40, P14 (judged)
 4. Completion's expectations are unchanged except B22/B51.
 
 **D. Inference asymmetries (`d.md`).**
-- A member access and an index get the call's standing (B88). Operators wait on B98: a call with a requirement
+- A member access and an index get the call's standing (B88). Operators wait on B106: a call with a requirement
   candidate can't yet be chosen while an argument is an open generic call.
 - `sameShape` treats packs symmetrically (B68).
 - A return settles after its mark is solved (B69).
