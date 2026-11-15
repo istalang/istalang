@@ -7,9 +7,10 @@
  */
 
 import fc from 'fast-check';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { resolveWrittenTypes } from '../../../../test/written-types.test-kit.ts';
 import { definitionFormat } from '../../../definition/definition.ts';
+import { unreachable } from '../../../foundation/structures/unreachable.ts';
 import { mainGives } from '../../../stdlib/prelude/prelude.test-kit.ts';
 import { stdProgramOf } from '../../binder/bind.test-kit.ts';
 import { compiledDefinition } from '../../compile.test-kit.ts';
@@ -18,13 +19,25 @@ import { tableKey } from './names.ts';
 /** Declarations the written types below name. */
 const declarations = [
   'struct Box<T>:\n  v: T',
+  'trait Peer<T = Self>:\n  fn peer(self: Self) -> Int',
   'type Tree = Int | Array<Tree>',
   'type Calls = Int | Array<fn(&Calls) -> Int>',
   'type Plain = Int | Array<fn(Calls) -> Int>',
 ];
 
 /** A type written alone, needing no parentheses around it. */
-const leaf = fc.constantFrom('Int', 'String', 'None', '"a"', '1', 'Tree', 'Calls', 'Plain');
+const leaf = fc.constantFrom(
+  'Int',
+  'String',
+  'None',
+  '"a"',
+  '1',
+  'any Peer',
+  'any Peer<Int>',
+  'Tree',
+  'Calls',
+  'Plain',
+);
 
 /** A type's structure, its function types' `&`, sendability and kind left to `render`. */
 type Skeleton =
@@ -65,8 +78,24 @@ const skeleton: fc.Arbitrary<Skeleton> = fc.letrec<{ type: Skeleton }>((tie) => 
   ),
 })).type;
 
-const sends = ['', 'sendable ', 'inert '];
-const marks = ['', 'live ', 'ista '];
+const sends = ['plain', 'sendable', 'inert'] as const;
+const marks = ['simple', 'live', 'ista'] as const;
+
+/** A function type written either by its head or as `Fn<Args, Result, Kind, Send>`. */
+function renderFunction(
+  slots: readonly string[],
+  result: string,
+  choose: (count: number) => number,
+): string {
+  const send = sends[choose(sends.length)] ?? 'plain';
+  const mark = marks[choose(marks.length)] ?? 'simple';
+  if (choose(2) === 1) {
+    const packTuple = `(${slots.join(', ')}${slots.length === 1 ? ',' : ''})`;
+    return `Fn<${packTuple}, ${result}, "${mark}", "${send}">`;
+  }
+  const head = `${send === 'plain' ? '' : `${send} `}${mark === 'simple' ? '' : `${mark} `}fn`;
+  return `${head}(${slots.join(', ')}) -> (${result})`;
+}
 
 /**
  * `shape` written, each attribute it leaves open taken in turn from `choices`, and each type
@@ -92,11 +121,10 @@ function render(shape: Skeleton, choices: readonly number[]): string {
       case 'union':
         return each.members.map((member) => `(${write(member)})`).join(' | ');
       case 'function': {
-        const head = `${sends[choose(sends.length)]}${marks[choose(marks.length)]}fn`;
         const slots = each.parameters.map(
           (parameter) => `${choose(2) === 1 ? '&' : ''}${write(parameter)}`,
         );
-        return `${head}(${slots.join(', ')}) -> (${write(each.result)})`;
+        return renderFunction(slots, write(each.result), choose);
       }
       default: {
         const unhandled: never = each;
@@ -134,6 +162,24 @@ describe('table keys', () => {
       { numRuns: 40 },
     );
   }, 60_000);
+
+  it('memoizes the table key per type key', () => {
+    const { checker, types, diagnosticCodes } = resolveWrittenTypes(
+      ['Int | String', 'String | Int', 'Tree', 'Int | Array<Tree>'],
+      declarations,
+    );
+    expect(diagnosticCodes).toEqual([]);
+    const spy = vi.spyOn(checker.typeKeys, 'keyWith');
+    const [unionA, unionB, foldedTree, unfoldedTree] = types;
+    const firstUnion = tableKey(checker, unionA ?? unreachable('Written.'));
+    const callsAfterFirstUnion = spy.mock.calls.length;
+    expect(tableKey(checker, unionB ?? unreachable('Written.'))).toBe(firstUnion);
+    expect(spy).toHaveBeenCalledTimes(callsAfterFirstUnion);
+    const firstTree = tableKey(checker, foldedTree ?? unreachable('Written.'));
+    const callsAfterFirstTree = spy.mock.calls.length;
+    expect(tableKey(checker, unfoldedTree ?? unreachable('Written.'))).toBe(firstTree);
+    expect(spy).toHaveBeenCalledTimes(callsAfterFirstTree);
+  });
 });
 
 /** A function type `P` and `R`, which differs from it in `difference`, both in one union. */
