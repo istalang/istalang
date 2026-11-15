@@ -1,0 +1,29 @@
+# error: 5125 at 16:3
+# error: 5125 at 22:3
+# A field typed by its default counts towards endless instantiation as a written one does (§3.5),
+# once its default is checked: its type may name a generic type whose fields name its own again
+# with a type argument built from its parameter. A cycle that grows only through such a field is
+# cut at it, whichever field on the cycle grows the argument, so the field's type, never a written
+# one's, waits on its default.
+
+struct Phantom<T>:
+  n: Int
+
+struct Back<U>:
+  a: Ahead<(U,)>?
+
+struct Ahead<T>:
+  b = Back<T>{a: none}
+
+struct Box<U>:
+  item: U
+  w: Wrap<U>
+struct Wrap<T>:
+  x = Phantom<Box<(T,)>>{n: 1}
+
+import * as runtime from 'runtime'
+live async fn main() -> Int: await runtime.run(runtime.id()) _main()
+ista async fn _main() -> Int:
+  const back = Back<Int>{a: none}
+  const box = Box<(Int,)>{item: (1,), w: Wrap<(Int,)>{}}
+  1

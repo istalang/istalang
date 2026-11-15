@@ -60,9 +60,36 @@ export function endlessEdgesFrom<Node, Edge extends ArgumentEdge>(
   edgesOf: (node: Node) => readonly Edge[],
   targetOf: (edge: Edge) => Node | undefined,
 ): readonly Edge[] {
+  const { cyclic } = cyclicEdgesFrom(roots, edgesOf, targetOf);
+  return cyclic.filter((edge) => edge.expanding);
+}
+
+/**
+ * The edges on a cycle that grows, among those `endlessEdgesFrom` reads: every edge of a component
+ * holding an expanding edge, any of which an endless walk may take.
+ */
+export function growingEdgesFrom<Node, Edge extends ArgumentEdge>(
+  roots: Iterable<Node>,
+  edgesOf: (node: Node) => readonly Edge[],
+  targetOf: (edge: Edge) => Node | undefined,
+): readonly Edge[] {
+  const { cyclic, componentOf } = cyclicEdgesFrom(roots, edgesOf, targetOf);
+  const growing = new Set(cyclic.filter((edge) => edge.expanding).map(({ from }) => componentOf(from)));
+  return cyclic.filter(({ from }) => growing.has(componentOf(from)));
+}
+
+/** The edges on a cycle among those reached from `roots`, and each node's component. */
+function cyclicEdgesFrom<Node, Edge extends ArgumentEdge>(
+  roots: Iterable<Node>,
+  edgesOf: (node: Node) => readonly Edge[],
+  targetOf: (edge: Edge) => Node | undefined,
+) {
   const edges = edgesReachedFrom(roots, edgesOf, targetOf);
   const componentOf = stronglyConnected(edges);
-  return edges.filter((edge) => edge.expanding && componentOf(edge.from) === componentOf(edge.to));
+  return {
+    cyclic: edges.filter((edge) => componentOf(edge.from) === componentOf(edge.to)),
+    componentOf,
+  };
 }
 
 /** Whether `argument` is the parameter `from` itself, rather than a type built around it. */

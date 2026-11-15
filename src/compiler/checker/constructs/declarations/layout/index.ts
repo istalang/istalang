@@ -27,6 +27,7 @@ import { sameItems } from '../../../../../foundation/structures/equality.ts';
 import { memo } from '../../../../../foundation/structures/memo.ts';
 import { fieldsFunctionOf } from '../../../../syntax/declarations/field-defaults.ts';
 import type {
+  DeclaredField,
   DeclaredStruct,
   EnumDeclaration,
   Field,
@@ -100,7 +101,9 @@ export class Layouts {
       ),
       cyclic: { standIn: (declaration) => this.#variantsOf(declaration, () => undefined) },
     });
-    this.#expansion = new TypeExpansion(checker);
+    this.#expansion = new TypeExpansion(checker, (declaration, field) =>
+      this.#typedAlone(declaration, field).type,
+    );
   }
 
   /**
@@ -251,9 +254,33 @@ export class Layouts {
   ): FieldMember {
     const module = this.#checker.moduleOf(declaration);
     const member = declaredField(this.#checker, module, { field, index }, { defaults });
-    const endless: ReadonlySet<Field> = this.#expansion.endlessFieldsOf(declaration);
-    return endless.has(field) ? { ...member, type: errorType } : member;
+    return this.#expansion.isEndless(declaration, field) ? { ...member, type: errorType } : member;
   }
+
+  /** `field` of `declaration`, typed as declared, before the expansion rule may cut it. */
+  #typedAlone(declaration: FieldedDeclaration, field: DeclaredField): FieldMember {
+    const { fields, defaults } = fieldsHolding(declaration, field);
+    const module = this.#checker.moduleOf(declaration);
+    const index = validFields(fields).indexOf(field);
+    return declaredField(this.#checker, module, { field, index }, { defaults });
+  }
+}
+
+/** The fields of `declaration` holding `field`, a struct's or a variant's, and their defaults. */
+function fieldsHolding(
+  declaration: FieldedDeclaration,
+  field: DeclaredField,
+): { readonly fields: readonly (Field | Invalid)[]; readonly defaults: FunctionDeclaration | undefined } {
+  if (declaration.kind !== 'EnumDeclaration') {
+    return { fields: declaration.fields, defaults: fieldsFunctionOf(declaration) };
+  }
+  const variant = declaration.variants.find(
+    (each): each is Variant => each.kind === 'Variant' && each.fields.includes(field),
+  );
+  return {
+    fields: variant?.fields ?? [],
+    defaults: variant === undefined ? undefined : fieldsFunctionOf(declaration, variant),
+  };
 }
 
 /** The member `name` names among `named`, in field order, made by `member`, and its position. */
