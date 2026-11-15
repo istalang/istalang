@@ -71,12 +71,34 @@ export function declaredFields(
   fields: readonly (Field | Invalid)[],
   { defaults, resolve = (node) => checker.resolveType(module, node) }: FieldResolution = {},
 ): readonly FieldMember[] {
-  const declared = fields.filter((field) => field.kind !== 'Invalid');
-  return declared.map((field, index) => {
-    const type =
-      field.type === undefined ? defaultedType(checker, index, defaults) : resolve(field.type);
-    return { name: field.name.text, type, declared: { node: field, module, type } };
-  });
+  return validFields(fields).map((field, index) =>
+    declaredField(checker, module, { field, index }, { defaults, resolve }),
+  );
+}
+
+/** The fields among `fields` the parser made whole, in declaration order. */
+export function validFields(fields: readonly (Field | Invalid)[]): readonly Field[] {
+  return fields.filter((field) => field.kind !== 'Invalid');
+}
+
+/** A field, and its position among its declaration's valid fields, its default's parameter's. */
+interface PositionedField {
+  readonly field: Field;
+  readonly index: number;
+}
+
+/**
+ * A field typed as `declaredFields` types it, alone: a written type needs no default checked.
+ */
+export function declaredField(
+  checker: CheckerContext,
+  module: ModuleId,
+  { field, index }: PositionedField,
+  { defaults, resolve = (node) => checker.resolveType(module, node) }: FieldResolution = {},
+): FieldMember {
+  const type =
+    field.type === undefined ? defaultedType(checker, index, defaults) : resolve(field.type);
+  return { name: field.name.text, type, declared: { node: field, module, type } };
 }
 
 /**

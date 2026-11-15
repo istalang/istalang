@@ -7,10 +7,12 @@
  * no fields of the struct type itself, so `x.f` and patterns never see them, and `*x` reads them as
  * the shape of those fields (§3.18), the same type as any shape of them.
  *
- * - As declared (`declaredFieldsOf`): field types resolved in the declaring module, once per
- *   declaration, in declaration order, which only evaluation follows: a literal's sources and the
- *   defaults, each seeing the fields before it. A field that would make the type's instantiation
- *   endless reads as the error type (rules/expansion/types.ts).
+ * - As declared (`declaredFieldsOf`): field types resolved in the declaring module, in declaration
+ *   order, which only evaluation follows: a literal's sources and the defaults, each seeing the
+ *   fields before it. Each field is typed alone: a written type needs no default checked, so a
+ *   default reading a field by name (`fieldNamed`) reaches that field only, and closes no cycle
+ *   through the others. A field that would make the type's instantiation endless reads as the
+ *   error type (rules/expansion/types.ts).
  * - As laid out (`fieldsOf`): in name order, as every struct's fields are, nominal or shape (§3.1
  *   "Field order", `inFieldOrder`), so positions, the Definition's entry, patterns, codecs and a
  *   struct's conversion into its shape all follow one order.
@@ -52,7 +54,7 @@ import {
 } from '../../../types/type/index.ts';
 import { errorType } from '../../../types/type/primitives.ts';
 import type { TypeRules } from '../../../types/type/type-rules.ts';
-import { declaredFields } from '../../../types/written/declared-fields.ts';
+import { declaredField, validFields } from '../../../types/written/declared-fields.ts';
 
 /** Whether two lists of fields name, type and declare their fields alike, in order. */
 const sameFields = sameItems<FieldMember>(
@@ -124,12 +126,31 @@ export class Layouts {
     return instantiated(laidOut, substitutionOf(type), this.#checker.typeRules);
   }
 
-  /** The field `name` of a struct type, as `fieldsOf` gives it, and its position. */
+  /**
+   * The field `name` of a struct type, as `fieldsOf` gives it, and its position. Only that field is
+   * typed, so a default reading a field whose type is written, or typed already, reaches no other.
+   */
   fieldNamed(type: Type, name: string): LaidOutField | undefined {
-    const fields = this.fieldsOf(type) ?? [];
-    const index = fields.findIndex((field) => field.name === name);
-    const member = fields[index];
-    return member === undefined ? undefined : { member, index };
+    if (type.kind === 'recursive') {
+      return this.fieldNamed(unfolded(type), name);
+    }
+    if (type.kind === 'anonymous') {
+      return positioned(type.fields, name, (field) => field);
+    }
+    if (type.kind !== 'nominal' || type.entity.declaration.kind !== 'StructDeclaration') {
+      return undefined;
+    }
+    const { declaration } = type.entity;
+    const fields = validFields(declaration.fields);
+    const defaults = fieldsFunctionOf(declaration);
+    return positioned(
+      fields.map((field) => ({ name: field.name.text, field })),
+      name,
+      ({ field }) => {
+        const member = this.#declaredField(declaration, field, fields.indexOf(field), defaults);
+        return substitutedField(member, substitutionOf(type), this.#checker.typeRules);
+      },
+    );
   }
 
   /**
@@ -213,19 +234,38 @@ export class Layouts {
     fields: readonly (Field | Invalid)[],
     defaults: FunctionDeclaration | undefined,
   ): readonly FieldMember[] {
-    const module = this.#checker.moduleOf(declaration);
-    return this.#ended(declaration, declaredFields(this.#checker, module, fields, { defaults }));
-  }
-
-  /** `fields` of `declaration`, each that would make its instantiation endless read as an error. */
-  #ended(declaration: FieldedDeclaration, fields: readonly FieldMember[]): readonly FieldMember[] {
-    const endless: ReadonlySet<Field> = this.#expansion.endlessFieldsOf(declaration);
-    return fields.map((field) =>
-      field.declared !== undefined && endless.has(field.declared.node)
-        ? { ...field, type: errorType }
-        : field,
+    return validFields(fields).map((field, index) =>
+      this.#declaredField(declaration, field, index, defaults),
     );
   }
+
+  /**
+   * `field`, the `index`-th of `declaration`'s valid fields (or a variant's), typed alone; one that
+   * would make its declaration's instantiation endless reads as an error.
+   */
+  #declaredField(
+    declaration: FieldedDeclaration,
+    field: Field,
+    index: number,
+    defaults: FunctionDeclaration | undefined,
+  ): FieldMember {
+    const module = this.#checker.moduleOf(declaration);
+    const member = declaredField(this.#checker, module, { field, index }, { defaults });
+    const endless: ReadonlySet<Field> = this.#expansion.endlessFieldsOf(declaration);
+    return endless.has(field) ? { ...member, type: errorType } : member;
+  }
+}
+
+/** The member `name` names among `named`, in field order, made by `member`, and its position. */
+function positioned<Named extends { readonly name: string }>(
+  named: readonly Named[],
+  name: string,
+  member: (found: Named) => FieldMember,
+): LaidOutField | undefined {
+  const laidOut = inFieldOrder(named);
+  const index = laidOut.findIndex((each) => each.name === name);
+  const found = laidOut[index];
+  return found === undefined ? undefined : { member: member(found), index };
 }
 
 /** The type arguments of `type`, by the type parameters of its declaration. */
@@ -238,5 +278,13 @@ function instantiated(
   substitution: Substitution,
   rules: TypeRules,
 ): readonly FieldMember[] {
-  return fields.map((field) => ({ ...field, type: substitute(field.type, substitution, rules) }));
+  return fields.map((field) => substitutedField(field, substitution, rules));
+}
+
+function substitutedField(
+  field: FieldMember,
+  substitution: Substitution,
+  rules: TypeRules,
+): FieldMember {
+  return { ...field, type: substitute(field.type, substitution, rules) };
 }
