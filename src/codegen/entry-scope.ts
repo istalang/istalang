@@ -12,8 +12,8 @@
  * - A counted register (definition/tables/functions.ts `counted`) reports its writes to the run's
  *   lifetimes (`lt`, live/lifetimes/): it holds what it is written and lets go of what it held. A
  *   cell's writes report themselves (live/values/cell.ts), and a reference holds nothing.
- * - Returning holds the value given back while every counted register lets go and what that let go
- *   of is collected (§7), then lets go of it for its taker to hold.
+ * - Returning holds the value given back while every counted register lets go, then lets go of it
+ *   for its taker to hold, which collects.
  */
 
 import type { Place } from '../definition/instructions/places.ts';
@@ -42,6 +42,11 @@ export class EntryScope {
   readonly restoresExecution: boolean;
   /** The registers it counts, references aside, which its return and its stop let go of. */
   readonly counted: readonly Register[];
+  /**
+   * Whether its instructions may let go of something counted: through a counted register, or one
+   * of its references, a place in a counted cell its caller holds.
+   */
+  readonly collects: boolean;
   readonly #holdings: readonly Holding[];
   readonly #countedSet: ReadonlySet<Register>;
   readonly #cellTypes: ReadonlyMap<Register, number>;
@@ -54,6 +59,7 @@ export class EntryScope {
     this.restoresExecution = !this.async && transientRegistersOf(entry).length > 0;
     this.#holdings = holdingsOf(entry);
     this.counted = entry.counted.filter((register) => this.holding(register) !== 'reference');
+    this.collects = entry.counted.length > 0;
     this.#countedSet = new Set(this.counted);
     this.#cellTypes = new Map(entry.cells.map(({ register, type }) => [register, type]));
   }
@@ -61,22 +67,6 @@ export class EntryScope {
   /** Whether `register` is counted. */
   isCounted(register: Register): boolean {
     return this.#countedSet.has(register);
-  }
-
-  /**
-   * Whether what decides the wait in `register` reaches nothing counted: every register an `await`
-   * or a `select` of it takes the value into is uncounted.
-   */
-  waitsPlain(register: Register): boolean {
-    return this.entry.instructions.every((instruction) => {
-      if (instruction.kind === 'await' && instruction.wait === register) {
-        return !this.isCounted(instruction.dst);
-      }
-      if (instruction.kind === 'select' && instruction.wait === register) {
-        return instruction.cases.every(({ bind }) => bind === undefined || !this.isCounted(bind));
-      }
-      return true;
-    });
   }
 
   /** The cell entry `register`'s cell is made as. */
@@ -98,19 +88,20 @@ export class EntryScope {
   }
 
   /**
-   * The statements returning the value in `register`: an async function settles its future. What
-   * the counted registers held is let go of and collected first, the value held meanwhile.
+   * The statements returning the value in `register`: an async function settles its future. Every
+   * counted register lets go first, the value held meanwhile; what that let go of is collected where
+   * the return lands, once its caller holds the value (§7).
    */
   returned(register: Register): string {
     const value = this.read(register);
     const restore = this.restoresExecution ? ' run.at = entered;' : '';
-    const back = this.async ? `run.settle(fut, t, ${!this.isCounted(register)}); ` : '';
+    const back = this.async ? 'run.settle(fut, t); ' : '';
     const give = this.async ? 'return;' : 'return t;';
     if (this.counted.length === 0) {
       return `t = ${value}; ${back}${restore} ${give}`;
     }
     const releases = this.counted.map((each) => this.emptied(each)).join(' ');
-    return `t = ${value}; lt.hold(t); ${releases} ${collected} ${back}lt.release(t);${restore} ${give}`;
+    return `t = ${value}; lt.hold(t); ${releases} ${back}lt.release(t);${restore} ${give}`;
   }
 
   /** How `register` holds what it holds. */

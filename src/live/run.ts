@@ -35,30 +35,15 @@ import { LiveWeakSide } from './lifetimes/weak-side.ts';
 import { boundExtern } from './natives-context.ts';
 import type { ExternShape, LiveFunction, ProgramTables } from './program-tables.ts';
 import { Ready } from './ready.ts';
+import { type At, sharing, transientIn } from './running.ts';
 import { Timers } from './timers.ts';
 import { Traces } from './traces.ts';
 import { Cell, newObject } from './values/cell.ts';
 import { helpers } from './values/helpers.ts';
 import { Resource } from './values/resource.ts';
 import { Future, type FutureOrigin } from './waits/future.ts';
-import type { Resolver } from './waits/resolver.ts';
-import { type Decision, Wait } from './waits/wait.ts';
+import { Wait } from './waits/wait.ts';
 import { Waits } from './waits/waits.ts';
-
-/** A transient's cell, seen by the calls nested in the one that made it (spec §3.4). */
-interface Scope {
-  readonly entry: number;
-  readonly register: number;
-  readonly cell: Cell;
-  readonly next: Scope | undefined;
-}
-
-/** Which execution runs: its creation, its call's future (none for a callback's), what it sees. */
-export interface At {
-  readonly execution: number;
-  readonly call: Future | undefined;
-  readonly scope: Scope | undefined;
-}
 
 /** How a run ended: its root's outcome, encoded as JSON, or a panic. */
 export type RunEnd =
@@ -118,6 +103,7 @@ export class Run {
       touched: (object) => {
         this.lifetimes.touch(object);
       },
+      watchesCall: (call, future) => this.weak.watchesCall(call, future),
     });
     this.weak = new LiveWeakSide({
       watchFuture: () => this.future('watch'),
@@ -153,16 +139,9 @@ export class Run {
   start(entry: number, argumentValues: readonly Value[], encoder: number): void {
     this.#onItsOwn(() => {
       const outcome = this.#call(entry, argumentValues);
-      if (outcome instanceof Future) {
-        this.lifetimes.hold(outcome);
-        this.#root = { future: outcome, encoder };
-        if (outcome.settled !== undefined) {
-          this.#finish(outcome.settled.value);
-        }
-      } else {
-        this.#root = { future: this.future('given'), encoder };
-        this.#finish(outcome as Value);
-      }
+      const future = outcome instanceof Future ? outcome : this.resolvedFuture(outcome as Value);
+      this.lifetimes.hold(future);
+      this.#root = { future, encoder };
     });
   }
 
@@ -186,13 +165,19 @@ export class Run {
     return this.weak.reference(this.at.call ?? unreachable('Only an async call reads its call.'));
   }
 
-  /** Resolves `future` with `value`, as an async call returns; `plain` when it reaches nothing counted. */
-  settle(future: Future, value: Value, plain: boolean): void {
-    future.plain = plain;
-    this.waits.resolveTogether([[future, value]]);
-    if (future === this.#root?.future) {
-      this.#finish(value);
+  /**
+   * Resolves `future` with `value`, as an async call returns; a call returning from its cleanup,
+   * disposed, settles nothing, what it gives disposed as its variables are (§7).
+   */
+  settle(future: Future, value: Value): void {
+    if (!this.#executions.cleaning(future)) {
+      this.waits.resolveTogether([[future, value]]);
     }
+  }
+
+  /** The call of future `call` returned or was stopped, so it can no longer be disposed. */
+  callEnded(call: Future): void {
+    this.weak.returned(call);
   }
 
   /** A new future, filled as `origin` says. */
@@ -239,19 +224,9 @@ export class Run {
       : resource;
   }
 
-  /** A new wait of the running execution, `plain` when what decides it reaches nothing counted. */
-  wait(plain: boolean): Wait {
-    return this.lifetimes.made(new Wait(this.at.execution, this.at.call, plain));
-  }
-
-  /** A new resolver of `wait`'s case `position`. */
-  resolver(wait: Wait, position: number): Resolver {
-    return this.waits.resolver(wait, position);
-  }
-
-  /** How `wait`, a `select`'s that doesn't wait, was decided; none when it wasn't, withdrawn. */
-  selection(wait: Wait): Decision | undefined {
-    return this.waits.endNonBlocking(wait);
+  /** A new wait of the running execution. */
+  wait(): Wait {
+    return this.lifetimes.made(new Wait(this.at.execution, this.at.call));
   }
 
   contextConstant(name: string): Value | undefined {
@@ -269,16 +244,12 @@ export class Run {
 
   /** The cell of entry `entry`'s transient in `register` the running execution sees, if any. */
   transient(entry: number, register: number): Cell | undefined {
-    let { scope } = this.at;
-    while (scope !== undefined && (scope.entry !== entry || scope.register !== register)) {
-      ({ next: scope } = scope);
-    }
-    return scope?.cell;
+    return transientIn(this.at, entry, register);
   }
 
   /** `cell`, entry `entry`'s new transient in `register`, is seen by the calls nested in this one. */
   share(entry: number, register: number, cell: Cell): void {
-    this.at = { ...this.at, scope: { entry, register, cell, next: this.at.scope } };
+    this.at = sharing(this.at, entry, register, cell);
   }
 
   /** A future that resolves at `at`, in milliseconds since the Unix epoch, with the others due then. */
@@ -310,16 +281,23 @@ export class Run {
 
   /**
    * Runs `work`, which the run runs on its own rather than compiled code calling it, then collects
-   * what it let go of; what it threw ends the run.
+   * what it let go of, and finishes once its root returned; what it threw ends the run.
    */
   #onItsOwn(work: () => void): void {
     try {
       work();
-      if (this.lifetimes.due) {
-        this.lifetimes.collect();
+      if (!this.#finishedOnceReturned()) {
+        this.#collected();
       }
     } catch (error) {
       this.fail(error);
+    }
+  }
+
+  /** Disposes what lost its last holder, if anything may have. */
+  #collected(): void {
+    if (this.lifetimes.due) {
+      this.lifetimes.collect();
     }
   }
 
@@ -329,13 +307,18 @@ export class Run {
     for (const value of held) {
       this.lifetimes.hold(value);
     }
-    this.#ready.add(() =>
-      this.#onItsOwn(() => {
-        this.#callback(callback, argumentValues);
-        for (const value of held) {
-          this.lifetimes.release(value);
-        }
-      }),
+    const letGo = (): void => {
+      for (const value of held) {
+        this.lifetimes.release(value);
+      }
+    };
+    this.#ready.add(
+      () =>
+        this.#onItsOwn(() => {
+          this.#callback(callback, argumentValues);
+          letGo();
+        }),
+      letGo,
     );
   }
 
@@ -358,13 +341,38 @@ export class Run {
     return (this.functions[entry] as LiveFunction)(null, ...argumentValues);
   }
 
-  /** Encodes the root's outcome `value` and ends the run with it. */
-  #finish(value: Value): void {
-    if (this.ended) {
-      return;
+  /**
+   * Once the root's call returned, encodes its outcome, lets go of everything the run still holds,
+   * what the root's own return let go of among it, as the interpreter does as an instance finishes
+   * (§3.12, §7), and ends the run; whether it did.
+   */
+  #finishedOnceReturned(): boolean {
+    const root = this.#root;
+    const settled = root?.future.settled;
+    if (root === undefined || settled === undefined || this.ended) {
+      return false;
     }
-    const root = this.#root ?? unreachable('The run finished before it started.');
-    this.#end({ kind: 'finished', encoded: this.#call(root.encoder, [value]) as Value });
+    // The interpreter encodes before the root's frame lets go, so nothing is disposed in between.
+    const encoded = this.lifetimes.deferring(() => this.#call(root.encoder, [settled.value]));
+    this.#letGoOfTheRest(root.future);
+    this.#end({ kind: 'finished', encoded: encoded as Value });
+    return true;
+  }
+
+  /**
+   * Lets go of what the run holds once its root returned: what it readied but never ran, its root's
+   * future, any call still suspended, and its context constants last (§3.4), collecting after each.
+   */
+  #letGoOfTheRest(root: Future): void {
+    this.#ready.close();
+    this.lifetimes.release(root);
+    this.#collected();
+    this.#executions.stopSuspended();
+    this.#collected();
+    for (const value of [...this.#contextConstants.values()].toReversed()) {
+      this.lifetimes.release(value);
+      this.#collected();
+    }
   }
 
   /** Resolves the timers due by the clock, each instant's together, the earliest first. */

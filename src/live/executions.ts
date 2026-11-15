@@ -30,6 +30,8 @@ export interface Execution<At> {
   at: At;
   /** The wait it is stopped at, while it is. */
   waiting: Wait | undefined;
+  /** Whether it runs its cleanup, disposed. */
+  cleaning: boolean;
 }
 
 /** What driving calls reaches of the run (run.ts). */
@@ -40,18 +42,16 @@ export interface ExecutionSeams<At> {
   readonly waits: {
     /** Stops at `wait` until `resume` is called with how it was decided. */
     readonly stopped: (wait: Wait, resume: (decision: Decision) => void) => void;
+    /** The waiter of `wait` moves on from it, resumed or stopped: its pending cases lose (§8). */
+    readonly ended: (wait: Wait) => void;
   };
   readonly lifetimes: {
     /** A holder came to hold, or let go of, `call`. */
     readonly hold: (call: Future) => void;
     readonly release: (call: Future) => void;
   };
-  readonly weak: {
-    /** The call of future `call` returned. */
-    readonly returned: (call: Future) => void;
-  };
-  /** Ends the run with what a body threw: a panic, or a bug in the toolchain. */
-  readonly fail: (error: unknown) => void;
+  /** The call of future `call` returned or was stopped, so it can no longer be disposed. */
+  readonly callEnded: (call: Future) => void;
 }
 
 export class Executions<At> {
@@ -65,7 +65,7 @@ export class Executions<At> {
 
   /** Runs `body`, the async call of `call`, seeing `at`, up to its first wait. */
   call(call: Future, body: Body, at: At): void {
-    const execution: Execution<At> = { call, body, at, waiting: undefined };
+    const execution: Execution<At> = { call, body, at, waiting: undefined, cleaning: false };
     this.#calls.set(call, execution);
     this.#resume(execution, undefined);
   }
@@ -77,23 +77,42 @@ export class Executions<At> {
 
   /** Stops the suspended `execution` where it waits, letting go of what its frame holds. */
   stop(execution: Execution<At>): void {
+    this.#moveOn(execution);
     this.#end(execution);
     this.#within(execution, () => {
       execution.body.return();
     });
   }
 
+  /** Stops every call still suspended, oldest first, as the run lets go of what it held. */
+  stopSuspended(): void {
+    for (const execution of [...this.#calls.values()]) {
+      if (execution.waiting !== undefined) {
+        this.stop(execution);
+      }
+    }
+  }
+
+  /** Whether the call of future `call` runs its cleanup, disposed. */
+  cleaning(call: Future): boolean {
+    return this.#calls.get(call)?.cleaning === true;
+  }
+
   /** Runs the cleanup of the disposed `execution`, resuming at case `position`, then stops it. */
   cleanup(execution: Execution<At>, position: number): void {
+    execution.cleaning = true;
     this.#resume(execution, { position, value: null });
     if (this.#calls.has(execution.call)) {
       this.stop(execution);
     }
   }
 
-  /** Resumes `execution` with `decision`, to its next wait, or its end. */
+  /**
+   * Resumes `execution` with `decision`, to its next wait, or its end. What its body throws, a
+   * panic or a bug, goes on through its caller, which stops there too, up to what the run runs.
+   */
   #resume(execution: Execution<At>, decision: Decision | undefined): void {
-    execution.waiting = undefined;
+    this.#moveOn(execution);
     this.#seams.lifetimes.hold(execution.call);
     try {
       this.#within(execution, () => {
@@ -112,10 +131,17 @@ export class Executions<At> {
           }
         });
       });
-    } catch (error) {
-      this.#seams.fail(error);
     } finally {
       this.#seams.lifetimes.release(execution.call);
+    }
+  }
+
+  /** `execution` moves on from the wait it stopped at, if any. */
+  #moveOn(execution: Execution<At>): void {
+    const { waiting } = execution;
+    execution.waiting = undefined;
+    if (waiting !== undefined) {
+      this.#seams.waits.ended(waiting);
     }
   }
 
@@ -134,6 +160,6 @@ export class Executions<At> {
   #end(execution: Execution<At>): void {
     execution.waiting = undefined;
     this.#calls.delete(execution.call);
-    this.#seams.weak.returned(execution.call);
+    this.#seams.callEnded(execution.call);
   }
 }

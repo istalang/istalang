@@ -63,6 +63,10 @@ export function runLifetimes<At>(parts: RunParts<At>): RunLifetimes<At> {
       } else {
         executions.cleanup(disposal.execution, disposal.position);
       }
+      // What the code's return let go of goes in a round of its own, before what it disposed does.
+      if (lifetimes.due) {
+        lifetimes.collect();
+      }
     },
     gone: (object) => {
       weak.disposed(object);

@@ -21,16 +21,14 @@ export class Wait {
   readonly waiter: number;
   /** Its waiter's call future, for a waiter that is an async call. */
   readonly call: Future | undefined;
-  /** Whether the value deciding it reaches nothing counted, as its waiter knows: it holds none. */
-  readonly plain: boolean;
+
   decision: Decision | undefined;
   /** Resumes its waiter, once it stopped at it. */
   #resume: ((decision: Decision) => void) | undefined;
 
-  constructor(waiter: number, call: Future | undefined, plain: boolean) {
+  constructor(waiter: number, call: Future | undefined) {
     this.waiter = waiter;
     this.call = call;
-    this.plain = plain;
   }
 
   /** Whether its waiter stopped at it. */

@@ -33,6 +33,8 @@ export interface WaitSeams {
   readonly made: (resolver: Resolver) => Resolver;
   /** `object`'s state changed. */
   readonly touched: (object: Future | Wait | Resolver) => void;
+  /** Whether `future` is a `disposing()` watch on the call of future `call` (§7). */
+  readonly watchesCall: (call: Future, future: Future) => boolean;
 }
 
 type Ending = 'lost' | 'withdrawn';
@@ -69,6 +71,13 @@ export class Waits {
     done.positions.push(resolver);
     this.#seams.touched(done);
     return resolver;
+  }
+
+  /** The waiter of `wait` moves on from it, resumed or stopped: its pending cases lose (§8). */
+  ended(wait: Wait): void {
+    for (const resolver of this.#casesOf(wait)) {
+      this.#end(resolver, 'cancelled', 'lost');
+    }
   }
 
   /** The resolvers registered on `future`, in the order they were. */
@@ -109,7 +118,11 @@ export class Waits {
       return;
     }
     const { target } = done.root;
-    if (target.kind === 'case' && target.wait.decision !== undefined) {
+    if (
+      target.kind === 'case' &&
+      target.wait.decision !== undefined &&
+      !this.#keeps(target.wait, future)
+    ) {
       this.#lose(done, 'cancelled');
       return;
     }
@@ -232,9 +245,33 @@ export class Waits {
 
   /** Cancels the resolvers still pending of `wait`, decided: losers, given up on. */
   #cancelLosers(wait: Wait): void {
-    for (const resolver of this.#casesOf(wait)) {
-      this.#end(resolver, 'cancelled', 'lost');
+    for (const resolver of this.#casesOf(wait).filter(({ state }) => state === 'pending')) {
+      const kept = resolver.on.filter((future) => this.#keeps(wait, future));
+      if (kept.length === 0) {
+        this.#end(resolver, 'cancelled', 'lost');
+      } else {
+        this.#keepOnly(resolver, kept);
+      }
     }
+  }
+
+  /**
+   * Whether a case resolver of `wait`, decided, stays registered on `future`: its waiter's own
+   * call's `disposing()` watch, as a disposal still resumes the call on it until the waiter moves on
+   * (§7).
+   */
+  #keeps(wait: Wait, future: Future): boolean {
+    return wait.call !== undefined && this.#seams.watchesCall(wait.call, future);
+  }
+
+  /** `resolver` stays registered on `kept` alone, giving up the rest of what it awaited. */
+  #keepOnly(resolver: Resolver, kept: readonly Future[]): void {
+    for (const future of resolver.on.filter((each) => !kept.includes(each))) {
+      const registered = this.#registered.get(future);
+      registered?.splice(registered.indexOf(resolver), 1);
+    }
+    resolver.on.splice(0, resolver.on.length, ...kept);
+    this.#seams.touched(resolver);
   }
 
   /**

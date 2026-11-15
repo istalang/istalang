@@ -94,10 +94,7 @@ export function emitCodeEntry(scope: EntryScope): EmittedEntry {
 
 /** Whether `instruction` is followed by collecting what it let go of. */
 function collects(scope: EntryScope, instruction: Instruction): boolean {
-  return (
-    instruction.kind === 'call' ||
-    (scope.counted.length > 0 && !collectsNothing.has(instruction.kind))
-  );
+  return instruction.kind === 'call' || (scope.collects && !collectsNothing.has(instruction.kind));
 }
 
 /** The function an async entry is called as: it gives a new future, its body settling it. */

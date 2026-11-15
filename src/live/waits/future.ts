@@ -21,8 +21,6 @@ export class Future {
   readonly object = newObject();
   readonly origin: FutureOrigin;
   settled: { readonly value: Value } | undefined;
-  /** Whether its value reaches nothing counted, as the code settling it knows: it holds none of it. */
-  plain = false;
 
   constructor(origin: FutureOrigin) {
     this.origin = origin;

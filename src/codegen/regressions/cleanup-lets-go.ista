@@ -1,0 +1,34 @@
+# outcome: 0
+# A disposed call's cleanup runs inside its disposal (§7): what it lets go of, its variables as it
+# returns or stops at its next await and what it returns, which settles nothing, is disposed before
+# its call is gone, and so before what was let go of with it, which is older.
+
+import * as log from 'log'
+import * as time from 'time'
+
+shared struct Lease { id: Int }
+
+fn dispose(self: Lease): log.info("disposed " + String(self->id))
+
+live async fn returning() -> Lease:
+  const inner = new Lease{id: 2}
+  await select:
+    case returning.disposing():
+      return new Lease{id: 3}
+
+live async fn waiting() -> Lease:
+  const inner = new Lease{id: 4}
+  await select:
+    case waiting.disposing():
+      await time.delay(1h)
+      new Lease{id: 5}
+
+live async fn main() -> Int:
+  if true:
+    const older = new Lease{id: 0}
+    const call = returning()
+  if true:
+    const older = new Lease{id: 1}
+    const call = waiting()
+  log.info("after both")
+  0

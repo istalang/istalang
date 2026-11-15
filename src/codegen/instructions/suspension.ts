@@ -17,15 +17,16 @@ import type { Emitters } from './emitters.ts';
 type Select = Parameters<Emitters<typeof suspensionInstructions>['select']>[1];
 
 export const suspensionEmitters: Emitters<typeof suspensionInstructions> = {
-  wait: (scope, i) => scope.write(i.dst, `run.wait(${scope.waitsPlain(i.dst)})`),
-  resolver: (scope, i) => scope.write(i.dst, `run.resolver(${scope.read(i.wait)}, ${i.position})`),
+  wait: (scope, i) => scope.write(i.dst, 'run.wait()'),
+  resolver: (scope, i) =>
+    scope.write(i.dst, `run.waits.resolver(${scope.read(i.wait)}, ${i.position})`),
   await: (scope, i) =>
     `t = yield r${i.wait}; ${scope.emptied(i.wait)} ${scope.write(i.dst, 't.value')}`,
   select: (scope, i) => {
     const decision =
       i.otherwise === undefined
         ? `t = yield r${i.wait};`
-        : `t = run.selection(r${i.wait}); if (t === undefined) { ${scope.emptied(i.wait)} ${collected} ${jump(i.otherwise)} }`;
+        : `t = run.waits.endNonBlocking(r${i.wait}); if (t === undefined) { ${scope.emptied(i.wait)} ${collected} ${jump(i.otherwise)} }`;
     return `${decision} ${scope.emptied(i.wait)} switch (t.position) { ${cases(scope, i)} }`;
   },
 };

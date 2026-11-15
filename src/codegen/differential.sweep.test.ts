@@ -33,7 +33,8 @@ const formBuilder = fileURLToPath(new URL('../../examples/FormBuilder/', import.
 /**
  * Programs, in the corpus's format, that compiled JavaScript once ran differently: kept here, not in
  * the corpus, when what they need trips a check every corpus program is held to (a `select` over a
- * program's own awaitables records untyped flow facts, tracker B112).
+ * program's own awaitables records untyped flow facts, tracker B112; a log record, which `ista run`
+ * prints where a corpus program prints nothing but its outcome).
  */
 const regressions = fileURLToPath(new URL('./regressions/', import.meta.url));
 // Compiling the supplier form costs seconds, and the interpreter runs it slowly.

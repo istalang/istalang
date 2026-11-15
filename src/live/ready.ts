@@ -9,12 +9,20 @@
  *   before anything else reaches the run (arrivals.ts).
  */
 
-export class Ready {
-  readonly #queue: (() => void)[] = [];
+/** A piece of readied work, and what lets go of what it holds if it never runs. */
+interface Item {
+  readonly run: () => void;
+  readonly drop: () => void;
+}
 
-  /** Readies `item`, run after everything readied before it. */
-  add(item: () => void): void {
-    this.#queue.push(item);
+export class Ready {
+  readonly #queue: Item[] = [];
+  /** The item running, which closing leaves to finish. */
+  #running: Item | undefined;
+
+  /** Readies `run`, run after everything readied before it; `drop` lets go of it if it never runs. */
+  add(run: () => void, drop: () => void = () => undefined): void {
+    this.#queue.push({ run, drop });
     if (this.#queue.length === 1) {
       queueMicrotask(this.#drain);
     }
@@ -25,14 +33,27 @@ export class Ready {
     this.#queue.length = 0;
   }
 
+  /** Runs nothing more, letting go of what it readied, as the run lets go of what it held. */
+  close(): void {
+    for (const item of this.#queue.splice(0)) {
+      if (item !== this.#running) {
+        item.drop();
+      }
+    }
+  }
+
   /**
    * Runs every item readied, those readied meanwhile included, in order. Each stays queued while it
    * runs, so what it readies waits for this pass rather than starting another.
    */
   readonly #drain = (): void => {
-    while (this.#queue.length > 0) {
-      this.#queue[0]?.();
-      this.#queue.shift();
+    for (let [item] = this.#queue; item !== undefined; [item] = this.#queue) {
+      this.#running = item;
+      item.run();
+      this.#running = undefined;
+      if (this.#queue[0] === item) {
+        this.#queue.shift();
+      }
     }
   };
 }

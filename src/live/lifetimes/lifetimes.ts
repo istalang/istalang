@@ -58,6 +58,8 @@ export class Lifetimes<Run> {
   /** The runtime's own objects whose state changed since their holdings were last reported. */
   readonly #touched = new Set<Counted>();
   readonly #collector: Collector<Run>;
+  /** How many `deferring` calls run: none may collect meanwhile. */
+  #deferring = 0;
 
   constructor(seams: LifetimeSeams<Run>) {
     this.#seams = seams;
@@ -79,9 +81,19 @@ export class Lifetimes<Run> {
     });
   }
 
-  /** Whether something may have lost its last holder since the run last collected. */
+  /** Whether something may have lost its last holder since the run last collected, and may be now. */
   get due(): boolean {
-    return this.#touched.size > 0 || this.#counts.zeroed;
+    return this.#deferring === 0 && (this.#touched.size > 0 || this.#counts.zeroed);
+  }
+
+  /** Runs `work` collecting nothing meanwhile: what it lets go of is collected with what follows. */
+  deferring<Result>(work: () => Result): Result {
+    this.#deferring += 1;
+    try {
+      return work();
+    } finally {
+      this.#deferring -= 1;
+    }
   }
 
   /** A holder came to hold `value`, if any. */

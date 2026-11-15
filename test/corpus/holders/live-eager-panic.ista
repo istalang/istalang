@@ -1,0 +1,14 @@
+# panic: inner boom
+# A panic in an async call's eager part, before its first await, ends the run right there (§3.12):
+# its caller goes no further, and nothing the call held is disposed, so no record is logged.
+
+import * as log from 'log'
+
+live async fn inner() -> Int:
+  _ = defer(fn(): log.info("inner's defer ran"))
+  panic("inner boom")
+
+live async fn main() -> Int:
+  const pending = inner()
+  log.info("its caller went on")
+  await pending

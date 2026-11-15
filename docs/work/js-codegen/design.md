@@ -111,18 +111,25 @@ it alone holds its value's top node.
   - **The runtime library,** for what its own objects hold: a future's value and registrations, a
     wait's value and cases, a resolver's callbacks and targets, as the interpreter's holdings say
     them. Their state changes mark them touched; what they hold is reconciled with what was last
-    reported before anything reads the counts. A call's result or a wait's value its code knows
-    reaches nothing counted (`plain`) is held by nothing that counts.
+    reported before anything reads the counts.
   - **The run,** for a readied callback's closure and arguments, a context constant's value, the
     root's future, and a running call's own future.
-- **Disposal at the release point:** every call, and in an entry counting anything every
-  instruction but control flow, is followed by `if (lt.due) lt.collect()`. `dispose` is synchronous
-  (spec), so a collection runs whole before the next instruction: a declared `dispose` runs as
-  code inside its round, its own instructions collecting rounds of their own on top.
+- **Disposal at the release point:** every call, and in an entry counting anything (a reference
+  included) every instruction but control flow, is followed by `if (lt.due) lt.collect()`. A
+  `return` collects nothing itself: what it let go of is collected where it lands, once its caller
+  holds the value. `dispose` is synchronous (spec), so a collection runs whole before the next
+  instruction: a declared `dispose` runs as code inside its round, what it let go of collected in
+  a round on top before what it disposed is gone.
 - **Stopping a call:** a running call holds its own future, so only a suspended call can be
   stopped: `return()` on its generator runs the `finally` that lets go of its counted registers. A
   call waiting on its own `disposing()` resumes at that case inside the disposal, and is stopped at
-  its next await.
+  its next await; a `return` from its cleanup settles nothing. Its case on that watch stays pending
+  when another case decides the wait, until the call moves on, so the disposal still finds it.
+- **The run's end:** once the root's call returned, its outcome is encoded, collecting nothing
+  meanwhile, then the run lets go of what it readied but never ran, the root's future, any call
+  still suspended and its context constants, collecting after each, as an instance finishes.
+- **Panics:** a panic unwinds through compiled code, its callers included, to what the run runs
+  on its own, which ends the run there; nothing collects on the way.
 - **Also kept:** weak references and their watches; a host's `onCancel` once its future is disposed
   unresolved; a decided `select` releases its losers.
 

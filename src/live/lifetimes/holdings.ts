@@ -7,8 +7,6 @@
  * - A future holds its value once settled, and the pending resolvers of a callback's chain
  *   registered on it: only its futures can resolve those.
  * - A wait holds its value once decided, and those of its case resolvers still awaited.
- * - A value its code knows reaches nothing counted (`plain`: a call's result, a wait's) is held
- *   by nothing that counts: holding it would only cost its walk.
  * - A pending resolver holds its callbacks, and a `Resolver.at` one the resolver it decides. One of
  *   a wait case's chain, held from the wait down, holds the futures it is registered on and the
  *   awaited `Resolver.at` ones deciding it.
@@ -45,7 +43,7 @@ export function heldBy(indexes: WaitIndexes, object: Counted): Held {
   }
   if (object instanceof Future) {
     return {
-      values: object.plain ? [] : settledValue(object.settled),
+      values: settledValue(object.settled),
       holds: ids(
         indexes
           .registeredOn(object)
@@ -58,7 +56,7 @@ export function heldBy(indexes: WaitIndexes, object: Counted): Held {
   }
   if (object instanceof Wait) {
     return {
-      values: object.plain ? [] : settledValue(object.decision),
+      values: settledValue(object.decision),
       holds: ids(awaited(indexes.casesOf(object))),
     };
   }
