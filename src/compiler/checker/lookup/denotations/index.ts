@@ -24,7 +24,7 @@ import { callOfCallee, makerOf } from '../../../syntax/expressions/readings.ts';
 import type { Hold } from '../../../syntax/statements/index.ts';
 import { ancestorsOf, nestsFunction, type SyntaxNode } from '../../../syntax/tree/index.ts';
 import { type Identifier, lastName } from '../../../syntax/tree/node.ts';
-import type { NamedType } from '../../../syntax/types/index.ts';
+import type { NamedType, TypeNode } from '../../../syntax/types/index.ts';
 import type { CheckerContext } from '../../contexts/context.ts';
 import { bodyHolding } from '../../contexts/holding-body.ts';
 import type { Denotation } from '../../surface/denotation.ts';
@@ -123,9 +123,7 @@ const chosenIn: Handlers<NameSite, NameHolder, [], readonly Denotation[] | undef
   NamedType: (site, node) =>
     site.name === lastName(node.path) ? writtenTypeName(site, node, site.holders[1]) : undefined,
   MemberType: (site, node) =>
-    site.name === node.name
-      ? associatedNamed(site.checker, site.checker.resolvedTypeOf(node))
-      : undefined,
+    site.name === node.name ? associatedNamed(site.checker, writtenTypeAt(site, node)) : undefined,
   // An item's, a static's or a trait's function: a local function's name is a variable's.
   FunctionDeclaration: (site, node) =>
     site.name === node.name && site.body === undefined
@@ -191,13 +189,16 @@ function memberDenotations(site: NameSite, access: MemberAccess): readonly Denot
 
 /**
  * The associated type `type` is (§3.1): opaque, or a known type's own, written through it, with
- * what declares it: its type's own, or every requirement of it among the traits it meets; none
- * for any other type.
+ * what declares it: its type's own, or every requirement of it among the traits it meets; in a
+ * field loop's body, where a name joins what each pass named (§4), each pass's; none for any other
+ * type.
  */
 function associatedNamed(checker: CheckerContext, type: Type | undefined): readonly Denotation[] {
   const spelled = type?.kind === 'associated' ? type : type?.alias;
   if (spelled?.kind !== 'associated') {
-    return [];
+    return type?.kind === 'union'
+      ? type.members.flatMap((member) => associatedNamed(checker, member))
+      : [];
   }
   return associatedDeclarationsOn(checker, spelled.of)
     .filter((declaration) => declaration.name.text === spelled.name)
@@ -321,12 +322,14 @@ function writtenTypeName(
   holder: SyntaxNode | undefined,
 ): readonly Denotation[] {
   const literal = literalNaming(holder, node);
-  const type =
-    literal === undefined
-      ? (site.body?.writtenTypeOf(node) ?? site.checker.resolvedTypeOf(node))
-      : site.body?.typeOf(literal);
+  const type = literal === undefined ? writtenTypeAt(site, node) : site.body?.typeOf(literal);
   const bound = named(site, type);
   return bound.length > 0 ? bound : associatedNamed(site.checker, type);
+}
+
+/** What the type written at `node` resolved to where `site` stands, each pass's in a loop's body. */
+function writtenTypeAt(site: NameSite, node: TypeNode): Type | undefined {
+  return site.body?.writtenTypeOf(node) ?? site.checker.resolvedTypeOf(node);
 }
 
 /** What a tagged template's tag denotes: the function the call it was checked as resolved to. */

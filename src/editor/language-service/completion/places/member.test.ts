@@ -223,6 +223,19 @@ describe('member completion offers only what resolves there', () => {
       '  p?.address.‸',
       '  1',
     ],
+    [
+      'a receiver not meeting generic self struct constraints or member bounds',
+      'trait Wrapper:',
+      '  fn wrap(self: Self) -> Int',
+      'struct Plain:',
+      '  value: Int',
+      'fn inner<S is struct { [_] is Wrapper }>(self: S) -> Int: 0',
+      'fn get tagged<S is struct { [_] is Wrapper }>(self: S) -> Int: 0',
+      'fn picked<S in "a" | "b">(self: S) -> String: self',
+      'fn f(p: Plain) -> Int:',
+      '  p.‸',
+      '  1',
+    ],
   ])('after %s', (_, ...lines) => {
     expect(unresolvedOffers(cursorSite(...lines))).toEqual([]);
   });

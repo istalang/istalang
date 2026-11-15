@@ -8,7 +8,7 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { codesOf, hoverCodeAt, runMain } from '../written-types.test-kit.ts';
-import { generatedFieldsArbitrary } from './computed.test-kit.ts';
+import { declaredPlacesAt, generatedFieldsArbitrary } from './computed.test-kit.ts';
 
 /** Runs `lines` as `main`'s body, giving a String, after `declarations`. */
 async function runText(
@@ -337,7 +337,33 @@ describe('a loop over a type in an editor', () => {
       'fn f() -> { a: Count, b: Label }:',
       '  struct{for K in keyof P: [K]: P[K].‸Data.zero()}',
     ];
-    expect(hoverCodeAt(...associated)).toEqual(['A.Data | B.Data']);
+    expect(hoverCodeAt(...associated)).toEqual(['(type) A.Data = Count', '(type) B.Data = Label']);
+    expect(declaredPlacesAt(...associated)).toEqual(['main:145', 'main:175']);
+    const constrainedAssociated = (cursor: string) => [
+      'trait HasData:',
+      '  type Data is Default',
+      'struct A:',
+      '  type Data = Int',
+      'fn f<S is struct { a: A, [_] is HasData }>():',
+      '  for K in keyof S:',
+      `    ${cursor}`,
+    ];
+    expect(hoverCodeAt(...constrainedAssociated('_ = S[K].‸Data.default()'))).toEqual([
+      '(type) A.Data = Int',
+      '(type) S[K].Data is Default',
+    ]);
+    expect(declaredPlacesAt(...constrainedAssociated('_ = S[K].Da‸ta.default()'))).toEqual([
+      'main:55',
+      'main:22',
+    ]);
+    expect(
+      hoverCodeAt(...constrainedAssociated('const x: S[K].‸Data = S[K].Data.default()\n    _ = x')),
+    ).toEqual(['(type) A.Data = Int', '(type) S[K].Data is Default']);
+    expect(
+      declaredPlacesAt(
+        ...constrainedAssociated('const x: S[K].Da‸ta = S[K].Data.default()\n    _ = x'),
+      ),
+    ).toEqual(['main:55', 'main:22']);
   });
 });
 
