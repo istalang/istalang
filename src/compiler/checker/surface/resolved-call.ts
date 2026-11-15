@@ -269,10 +269,4 @@ export type ImplicitRole =
   /** The `default()` a map literal of a type other than `Map` starts from (§2). */
   | 'default'
   /** Assigning an entry of such a map literal with `setIndex`. */
-  | 'insert'
-  /**
-   * The codec writing what a new instance gives, which encodes its outcome for the host (§9), at
-   * an extern starting one (rules/boundary/outcome-codecs.ts); recorded only when a codec writes
-   * it, so it counts in the body's expansion. Lowering reads it from the `Instance<R>` type entry.
-   */
-  | 'encodeOutcome';
+  | 'insert';

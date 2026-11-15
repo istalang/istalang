@@ -22,7 +22,7 @@ import {
 } from '../../../surface/resolved-call.ts';
 import { stepTarget } from './chains.ts';
 import type { FlowBuilder } from './flow-builder.ts';
-import { implicitCall, resolvedCall, valueAt } from './implicit-calls.ts';
+import { resolvedCall, valueAt } from './implicit-calls.ts';
 import { spreadValue } from './literals.ts';
 import { memberValue } from './member-values.ts';
 import { enterPlace, leaveAll } from './places.ts';
@@ -55,7 +55,6 @@ export function callFlow(builder: FlowBuilder, node: Call): ValueId {
   const { arguments: passed, leave } = prepared(builder, node, call);
   resolvedCall(builder, call, { site: node, passed, into });
   leave();
-  encodedOutcome(builder, node);
   return into;
 }
 
@@ -82,16 +81,6 @@ function unresolved(builder: FlowBuilder, node: Call, into: ValueId): ValueId {
   );
   builder.emit({ op: 'unknown', site: node, into, operands: [callee, ...operands] });
   return into;
-}
-
-/**
- * The codec writing the outcome of the instance an extern call starts (§9), which the started
- * instance runs on what it gives, where checking recorded one.
- */
-function encodedOutcome(builder: FlowBuilder, node: Call): void {
-  if (builder.body.implicitCallOf(node, 'encodeOutcome') !== undefined) {
-    implicitCall(builder, 'encodeOutcome', { site: node, passed: [] });
-  }
 }
 
 /**

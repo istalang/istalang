@@ -246,9 +246,6 @@ function called(
 ): void {
   const { context } = writer;
   const { span } = site;
-  if (role === 'encodeOutcome') {
-    return;
-  }
   const passed = passedArguments(writer, given, site);
   const [future] = given;
   // A case hands its resolver to what it waits on, which keeps it if it is to decide the wait.

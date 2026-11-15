@@ -68,7 +68,6 @@ import { handledBy } from '../../resolution/applying/call-kinds.ts';
 import { ImplicitCalls } from '../../resolution/applying/implicit.ts';
 import { CallRecords } from '../../resolution/calls/call-records.ts';
 import { blockTail } from '../../rules/agreement.ts';
-import { recordOutcomeCodecs } from '../../rules/boundary/outcome-codecs.ts';
 import { checkDisposeUses } from '../../rules/disposal/disposal.ts';
 import { checkDropped } from '../../rules/disposal/dropped.ts';
 import type { FlowRoot } from '../../rules/flow/build/index.ts';
@@ -201,7 +200,6 @@ export class BodyChecker implements BodyContext {
     const calls = this.calls.entries();
     const named = [...calls, ...this.calls.valueEntries()];
     checkDisposeUses(this, named, checkTestingCalls(this, calls));
-    recordOutcomeCodecs(this, calls);
     const inputs = {
       checker: this.checker,
       module: this.module,

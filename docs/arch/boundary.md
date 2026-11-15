@@ -157,9 +157,8 @@ finished instance keeps both, the outcome for `result()` and its JSON for the ho
 instance's encoder is its `Instance<T>` type entry's, the codec writing `T`
 (`lowering/tables/type-table.ts`), which every spawning native reads from the type it gives
 (`runtime/natives.ts`, `NativeInstances.spawn`), `spawn`'s, `runtime.isolate`'s and
-`testing.spawnCrashingEveryAwait`'s alike; where the native is called, the checker records the
-codec as an implicit call, found once in a generic body against its constraints, so its calls count
-in the body's expansion (§3.5, `checker/rules/boundary/outcome-codecs.ts`). `main` is started through its own; what a host reads of an outcome is JSON by the declared result,
+`testing.spawnCrashingEveryAwait`'s alike; the expansion rule counts that codec's calls wherever
+code makes an `Instance<T>` type (§3.5, `checker/surface/reach.ts`). `main` is started through its own; what a host reads of an outcome is JSON by the declared result,
 as JavaScript values (`outcome`) like everything else it exchanges, or as text (`outcomeText`),
 which `ista run` prints (`runtime/boundary/outbound.ts`).
 
