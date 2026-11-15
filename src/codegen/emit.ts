@@ -5,7 +5,8 @@
  * - The module default-exports the runtime library's program over its tables (live/program-tables.ts):
  *   constants as literals, built once at load and shared by every run, and its code as a factory
  *   binding the externs, `x<n>`, and the code entries, `f<n>`, to one run.
- * - Ista code stays on the interpreter, so a Definition holding any is refused, naming it.
+ * - Ista code stays on the interpreter, and so do the natives reaching instances, contexts, slots
+ *   or tests (stdlib/natives.ts): a Definition holding either is refused, naming it.
  * - Emitting is one pass over the IR, cheap beside checking and lowering, so nothing is cached.
  */
 
@@ -14,6 +15,7 @@ import { contentHash } from '../definition/formats/codec.ts';
 import { bodyStart, type CodeFunction } from '../definition/tables/functions.ts';
 import type { CodeShape, ExternShape } from '../live/program-tables.ts';
 import { helpers } from '../live/values/helpers.ts';
+import { interpreterNativeKeys } from '../stdlib/natives.ts';
 import { emitCodeEntry } from './code-entry.ts';
 import { EntryScope, type ProgramScope } from './entry-scope.ts';
 import { literal } from './literal.ts';
@@ -30,14 +32,22 @@ export type Emitted =
 
 /** `definition` as an ES module. */
 export function emitProgram(definition: Definition, options: EmitOptions): Emitted {
-  const ista = definition.functions.find((entry) => entry.kind === 'code' && entry.mode === 'ista');
-  if (ista !== undefined) {
-    return {
-      kind: 'refused',
-      problem: `${ista.name} is ista code, which runs on the interpreter (ista run)`,
-    };
+  const problem = definition.functions.map(interpreterOnly).find((each) => each !== undefined);
+  return problem === undefined
+    ? { kind: 'emitted', text: moduleText(definition, options) }
+    : { kind: 'refused', problem };
+}
+
+/** Why `entry` runs on the interpreter alone: it is ista code, or a native only it has. */
+function interpreterOnly(entry: Definition['functions'][number]): string | undefined {
+  if (entry.kind === 'code') {
+    return entry.mode === 'ista'
+      ? `${entry.name} is ista code, which runs on the interpreter (ista run)`
+      : undefined;
   }
-  return { kind: 'emitted', text: moduleText(definition, options) };
+  return interpreterNativeKeys.has(entry.key)
+    ? `${entry.key} reaches what only the interpreter has (ista run)`
+    : undefined;
 }
 
 function moduleText(definition: Definition, options: EmitOptions): string {

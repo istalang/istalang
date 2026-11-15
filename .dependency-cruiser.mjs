@@ -124,7 +124,7 @@ const layers = {
   runtime: ['definition', 'foundation/text'],
   // The runtime library of compiled JavaScript: it reaches the runtime's seams alone (below).
   live: ['foundation/text', 'definition', 'runtime', 'stdlib'],
-  codegen: ['definition', 'live'],
+  codegen: ['definition', 'live', 'stdlib'],
 };
 
 /**

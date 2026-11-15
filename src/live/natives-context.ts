@@ -8,11 +8,13 @@
  * - Instances, contexts, slots and testing are the interpreter's, ista's (proposal 8, Rule 6): the
  *   checker keeps live code from them, and a native reaching one panics, naming it.
  * - Weak references see nothing disposed, and `disposed()` never resolves: disposal is P2's.
- * - Encodings are kept by no one here, as by a test world, so `json.encode` writes afresh.
+ * - What each value was written as is kept, as an instance keeps it, so a host is given the same
+ *   object for a value given again unchanged, and a codec runs once for it (spec §9).
  */
 
 import { namedTypeOf } from '../definition/values/declared-values.ts';
 import type { Value } from '../definition/values/values.ts';
+import { WrittenJson } from '../definition/values/written-json.ts';
 import { unreachable } from '../foundation/structures/unreachable.ts';
 import type {
   FullNativeContext,
@@ -127,7 +129,8 @@ function runCapabilities(run: Run): NativeCapabilities {
       watch: interpreterOnly('Tests'),
       handle: interpreterOnly('Tests'),
     },
-    encodings: { of: () => undefined, remember: () => undefined },
+    // Compiled code changes no value in place, so nothing kept is held or forgotten.
+    encodings: new WrittenJson(() => undefined),
   };
 }
 

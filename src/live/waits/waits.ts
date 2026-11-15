@@ -24,6 +24,8 @@ import type { Decision, Wait } from './wait.ts';
 export interface WaitSeams {
   /** Readies a call of the function value `callback` with `argumentValues`. */
   readonly called: (callback: Value, argumentValues: readonly Value[]) => void;
+  /** Readies a waiter, `resume` resuming it. */
+  readonly resumed: (resume: () => void) => void;
 }
 
 type Ending = 'lost' | 'withdrawn';
@@ -129,15 +131,16 @@ export class Waits {
   }
 
   /**
-   * `wait`'s waiter stopped at it, every case known: how it is decided, once it is. A resolver made
-   * after it was decided, by a later case's `onAwait`, loses now, readied after the waiter as the
-   * interpreter readies the waiter first.
+   * `wait`'s waiter stopped at it, every case known: how it is decided, once the waiter resumes.
+   * Decided already, the waiter is ready now, and a resolver made after the decision, by a later
+   * case's `onAwait`, loses, its `onCancel` readied after the waiter.
    */
   stopped(wait: Wait): Promise<Decision> {
+    const resumed = wait.stop();
     if (wait.decision !== undefined) {
-      queueMicrotask(() => this.#cancelLosers(wait));
+      this.#ready(wait);
     }
-    return wait.decided;
+    return resumed;
   }
 
   /**
@@ -171,7 +174,17 @@ export class Waits {
   }
 
   #decide(wait: Wait, decision: Decision): void {
-    wait.decide(decision);
+    wait.decision = decision;
+    if (wait.stopped) {
+      this.#ready(wait);
+    } else {
+      this.#cancelLosers(wait);
+    }
+  }
+
+  /** Readies `wait`'s waiter, stopped at it and decided, then cancels its losers. */
+  #ready(wait: Wait): void {
+    this.#seams.resumed(() => wait.resume());
     this.#cancelLosers(wait);
   }
 

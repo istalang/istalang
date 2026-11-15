@@ -17,6 +17,7 @@ import { ista } from '../cli.test-kit.ts';
 const importsLibrary = /^import \{ program \} from "istalang\/live";/u;
 const panicked = /^panic: /u;
 const namesIsta = /main\.work is ista code, which runs on the interpreter/u;
+const namesHostStore = /runtime\.hostStore\(\) reaches what only the interpreter has/u;
 const reportsError = /error/u;
 
 // Inside the package, so its module imports `istalang/live` as an installed package's would.
@@ -82,6 +83,18 @@ describe('ista build', () => {
     const run = await ista(root, 'build', 'main.ista', '--out', out);
     expect(run).toMatchObject({ code: 1, out: '' });
     expect(run.err).toMatch(namesIsta);
+    expect(existsSync(out)).toBe(false);
+  });
+
+  it('refuses a program reaching what only the interpreter has, naming the extern', async () => {
+    const root = project({
+      'main.ista':
+        "import * as runtime from 'runtime'\nimport Runtime from 'runtime'\nlive async fn main(): _ = await Runtime.open(runtime.hostStore())\n",
+    });
+    const out = output();
+    const run = await ista(root, 'build', 'main.ista', '--out', out);
+    expect(run).toMatchObject({ code: 1, out: '' });
+    expect(run.err).toMatch(namesHostStore);
     expect(existsSync(out)).toBe(false);
   });
 

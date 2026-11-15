@@ -8,7 +8,8 @@
  *   fit refuses it before anything runs: an unknown key, the wrong number of arguments, JSON that
  *   doesn't fit, an extern no native implements, or a host extern the std implements itself.
  * - It settles at the run's end with how it ended: its outcome as JSON a host works with and as
- *   text, or its panic and trace, and the records it logged. A bug in the toolchain rejects it.
+ *   text, or its panic and trace, and the records it logged. An outcome JSON can't hold (§9), or a
+ *   bug in the toolchain, rejects it.
  */
 
 import { unreachable } from '../foundation/structures/unreachable.ts';
@@ -63,7 +64,13 @@ export function program(tables: LiveProgramTables): LiveProgram {
           clock: start.clock ?? realTime,
           name: start.name ?? 'run',
           seed: seedOf(start.seed ?? crypto.getRandomValues(new Uint8Array(seedBytes))),
-          ended: (end) => resolve(endedOf(tables, end, run.logs)),
+          ended: (end) => {
+            try {
+              resolve(endedOf(tables, end, run.logs));
+            } catch (error) {
+              reject(error);
+            }
+          },
           broke: reject,
         });
         run.start(entry, values, encoder ?? unreachable('Every start has an encoder.'));

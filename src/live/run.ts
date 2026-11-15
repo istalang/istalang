@@ -5,8 +5,9 @@
  * - **Executions:** the root, each live async call and each readied callback runs as an execution
  *   of its own, and `at` says which runs now: its waits are ordered by its creation, and it sees the
  *   transients its caller saw. Compiled code sets it as an execution begins and resumes.
- * - **Readied calls** (`Resolver.of` callbacks, `onCancel` ones) run as microtasks, after whatever
- *   was readied before, as the interpreter's ready queue runs them.
+ * - **Readied work,** waiters whose wait was decided and calls resolvers readied (`Resolver.of`
+ *   and `onCancel` callbacks), runs from the run's ready queue (ready.ts), one at a time in the
+ *   order it became ready, as the interpreter's does.
  * - **Its end:** its root's return, encoded as the start's encoder says (§9), or a panic, a limit
  *   the engine ran into included (`panicOf`). Nothing runs after it: a resumed execution returns,
  *   and nothing more arrives. Anything else thrown is a bug in the toolchain, which fails the run's
@@ -24,6 +25,7 @@ import { type Natives, Panic, panicOf } from '../runtime/natives.ts';
 import { Arrivals } from './arrivals.ts';
 import { boundExtern } from './natives-context.ts';
 import type { ExternShape, LiveFunction, ProgramTables } from './program-tables.ts';
+import { Ready } from './ready.ts';
 import { Traces } from './traces.ts';
 import { type Cell, newObject } from './values/cell.ts';
 import { helpers } from './values/helpers.ts';
@@ -79,6 +81,7 @@ export class Run {
   readonly functions: readonly LiveFunction[];
   #root: { readonly future: Future; readonly encoder: number } | undefined;
   readonly #contextConstants = new Map<string, Value>();
+  readonly #ready = new Ready();
   readonly #timers = new Map<bigint, Future[]>();
 
   /** Whether the run stopped: nothing of it runs any more. */
@@ -90,8 +93,9 @@ export class Run {
     this.seams = seams;
     this.waits = new Waits({
       called: (callback, argumentValues) => {
-        queueMicrotask(() => this.#callback(callback, argumentValues));
+        this.#ready.add(() => this.#callback(callback, argumentValues));
       },
+      resumed: (resume) => this.#ready.add(resume),
     });
     this.arrivals = new Arrivals(seams.clock, {
       next: () =>
@@ -270,6 +274,7 @@ export class Run {
 
   #stop(why: 'ended' | 'broken'): void {
     this.#stopped = why;
+    this.#ready.stop();
     this.arrivals.stop();
   }
 }

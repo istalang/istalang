@@ -1,6 +1,7 @@
 /**
  * A host starts a compiled program as it starts one on the interpreter: what doesn't fit refuses the
- * start before anything runs, with the interpreter's reasons (runtime/refusal.ts).
+ * start before anything runs, with the interpreter's reasons (runtime/refusal.ts), an outcome JSON
+ * can't hold rejects it, and a value given again unchanged reaches the host as the same object.
  */
 
 import { describe, expect, it } from 'vitest';
@@ -15,10 +16,10 @@ const source = [
   'live async fn twice(n: Int) -> Int: n * 2',
 ].join('\n');
 
-/** The program above, compiled to JavaScript. */
-async function compiled(): Promise<LiveProgram> {
-  const root = project({ 'main.ista': source });
-  const definition = compiledAt(root, 'main.ista', source);
+/** `text`, the program above by default, compiled to JavaScript. */
+async function compiled(text = source): Promise<LiveProgram> {
+  const root = project({ 'main.ista': text });
+  const definition = compiledAt(root, 'main.ista', text);
   if ('problem' in definition) {
     throw new Error(definition.problem);
   }
@@ -71,5 +72,52 @@ describe('starting a compiled program', () => {
     expect(refusedWith(program, { function: key, arguments: [Symbol('no')], externs: ask })).toBe(
       'unfitJson',
     );
+  });
+
+  it("rejects a start whose outcome JSON can't hold, as the interpreter does", async () => {
+    const program = await compiled(
+      [
+        "import Json from 'json'",
+        'live async fn main() -> Json:',
+        '  let nested: Json = 1',
+        '  for _ in 0..300: nested = [nested]',
+        '  nested',
+      ].join('\n'),
+    );
+    await expect(program.start()).rejects.toThrow('JSON nests deeper than 256 levels.');
+  });
+
+  it('gives a host the same object for a value given again unchanged, its codec run once', async () => {
+    const program = await compiled(
+      [
+        "import Json from 'json'",
+        'struct Item:',
+        '  name: String',
+        'extern fn noted()',
+        'fn toJson(self: Item) -> Json:',
+        '  noted()',
+        '  ["name": self.name]',
+        'extern fn show(items: Array<Item>)',
+        'live async fn main():',
+        '  const items = [Item{name: "a"}]',
+        '  show(items)',
+        '  show(items)',
+      ].join('\n'),
+    );
+    const shown: unknown[] = [];
+    let noted = 0;
+    await program.start({
+      externs: {
+        'main.noted()': () => {
+          noted += 1;
+          return null;
+        },
+        'main.show(prelude.Array<main.Item>)': ([items]) => {
+          shown.push(items);
+          return null;
+        },
+      },
+    });
+    expect({ same: shown[0] === shown[1], noted }).toEqual({ same: true, noted: 1 });
   });
 });

@@ -1,9 +1,7 @@
 /**
  * A wait of a run of compiled code (proposal 8, Rule 5): decided once, by the first of its cases'
- * resolvers to resolve. Its waiter awaits its `decided` promise, settled as it is decided, so
- * JavaScript resumes the waiter once it stopped at the wait and the wait is decided, after whatever
- * was readied before, as the interpreter's ready queue does: at its stop when decided before, at its
- * decision after.
+ * resolvers to resolve. Its waiter stops at it awaiting the promise `stop` gives, which settles
+ * when the run's ready queue reaches the waiter (../ready.ts).
  */
 
 import type { Value } from '../../definition/values/values.ts';
@@ -21,19 +19,29 @@ export class Wait {
   /** Its waiter's creation, which orders waits decided together. */
   readonly waiter: number;
   decision: Decision | undefined;
-  readonly decided: Promise<Decision>;
-  readonly #settle: (decision: Decision) => void;
+  /** Resumes its waiter, once it stopped at it. */
+  #resume: ((decision: Decision) => void) | undefined;
 
   constructor(waiter: number) {
     this.waiter = waiter;
-    const { promise, resolve } = Promise.withResolvers<Decision>();
-    this.decided = promise;
-    this.#settle = resolve;
   }
 
-  /** Decides it as `decision` says. */
-  decide(decision: Decision): void {
-    this.decision = decision;
-    this.#settle(decision);
+  /** Whether its waiter stopped at it. */
+  get stopped(): boolean {
+    return this.#resume !== undefined;
+  }
+
+  /** Its waiter stops at it: how it is decided, once its waiter resumes. */
+  stop(): Promise<Decision> {
+    const { promise, resolve } = Promise.withResolvers<Decision>();
+    this.#resume = resolve;
+    return promise;
+  }
+
+  /** Resumes its waiter, stopped at it, as it was decided. */
+  resume(): void {
+    if (this.decision !== undefined) {
+      this.#resume?.(this.decision);
+    }
   }
 }
