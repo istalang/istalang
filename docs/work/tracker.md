@@ -76,6 +76,7 @@ Language or toolchain features deferred by decision, not defects.
 | F34 | Source maps for the JS backend's module (docs/work/js-codegen/design.md), so a debugger steps through Istalang source: derived from the module's line → span table, which panic traces already read. | medium | js-codegen P1 | js-codegen review 2026-11-15 |
 | F35 | Full async panic traces in the JS backend: after an `await`, a trace holds only the frames since the call resumed, read off the JavaScript stack. A full trace needs a caller link on every live async call, paid on the hot path. | medium | js-codegen P1 | js-codegen review 2026-11-15 |
 | F36 | A keyed read (`d.city`, proposal 16) denotes its `index` call alone. Go-to-definition and rename could also reach the field its key names, as a String key does (`lookup/key-denotations.ts`), once the denotation contract says how the call and the field share one name (hover, `declarationsOf`, `lookup.sweep.test.ts`). | medium | proposal 16 | keyed-members-type-loops plan review 2026-11-15 |
+| F37 | A type indexed by a key written before `.` (`S[K].make()`, proposal 17) records no type of its own, so hover on it shows the call's, and completion after `S[K].` offers no static functions; a written `S[K]` hovers each pass's field type. Record it where the call reads it as a static owner (`namedType`), and offer statics through it as through a type parameter (`completion/places/member.ts`). | low | proposal 17 | keyed-members-type-loops P17 review 2026-11-15 |
 
 ### Performance (P)
 
