@@ -391,53 +391,54 @@ function collect(u: Unit, doc: FormDocument) {
         return;
       }
       case 'repeat': {
-        let list: MNode;
+        // The structural pass makes the list; the fields pass finds it.
+        const make = (): MNode => ({ k: 'list', row: null, w: writers() });
+        const { node: list, canon } = resolve(
+          u,
+          n.path,
+          env,
+          phase === 'struct' ? make : undefined,
+        );
+        if (list.k !== 'list') throw new Error(`${u.name}: "${n.path}" is not a repeat`);
         if (phase === 'struct') {
-          const r = resolve(u, n.path, env, () => ({ k: 'list', row: null, w: writers() }));
-          list = r.node;
-          if (list.k !== 'list') throw new Error(`${u.name}: "${n.path}" is not a repeat`);
           list.w.all++;
           if (h) list.w.hideable++;
-        } else list = resolve(u, n.path, env).node;
-        const l = list as MNode & { k: 'list' };
+        }
         // The row: a group, a single field (an item whose path is the variable), or a mounted form.
         const item = n.item as AnyNode;
-        if (!l.row) {
+        if (!list.row) {
           const single = item.node === 'field' && item.path === n.as;
           const mount = item.node === 'ref' && item.path === n.as;
-          l.row = single
+          list.row = single
             ? { k: 'field', type: '', local: false, w: writers() }
             : mount
               ? mountNode(item, doc)
               : group();
         }
-        const canon = resolve(u, n.path, env).canon;
-        const inner = new Map(env).set(n.as, { node: l.row, canon });
-        if (l.row.k !== 'mount') walk(item, inner, false, phase);
+        const inner = new Map(env).set(n.as, { node: list.row, canon });
+        if (list.row.k !== 'mount') walk(item, inner, false, phase);
         return;
       }
       case 'variant': {
-        let v: MNode;
+        // The structural pass makes the variant and its cases; the fields pass finds them.
+        const make = (): MNode => ({
+          k: 'variant',
+          tag: n.tag,
+          cases: new Map(),
+          w: writers(),
+          tagWritten: false,
+        });
+        const { node: v, canon } = resolve(u, n.path, env, phase === 'struct' ? make : undefined);
+        if (v.k !== 'variant') throw new Error(`${u.name}: "${n.path}" is not a variant`);
         if (phase === 'struct') {
-          const r = resolve(u, n.path, env, () => ({
-            k: 'variant',
-            tag: n.tag,
-            cases: new Map(),
-            w: writers(),
-            tagWritten: false,
-          }));
-          v = r.node;
-          if (v.k !== 'variant') throw new Error(`${u.name}: "${n.path}" is not a variant`);
           v.w.all++;
           if (h) v.w.hideable++;
           for (const id of Object.keys(n.cases)) if (!v.cases.has(id)) v.cases.set(id, group());
-        } else v = resolve(u, n.path, env).node;
-        const vv = v as MNode & { k: 'variant' };
-        const canon = resolve(u, n.path, env).canon;
+        }
         for (const [id, c] of Object.entries<any>(n.cases))
           walk(
             c.body,
-            new Map(env).set(n.as, { node: vv.cases.get(id)!, canon: `${canon}.${id}` }),
+            new Map(env).set(n.as, { node: v.cases.get(id)!, canon: `${canon}.${id}` }),
             false,
             phase,
           );

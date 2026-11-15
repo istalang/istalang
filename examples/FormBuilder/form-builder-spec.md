@@ -17,7 +17,7 @@ This document specifies a form builder whose forms are data, edited by people in
 | File | What it is |
 | --- | --- |
 | `form-builder-spec.md` | This document |
-| `ista-alignment.md` | Alignment of the prototype with the Istalang specification and compiler |
+| `ista-alignment.md` | Archived: alignment of the first runtime with the Istalang specification and compiler |
 | `form-spec.ts` | The form schema as TypeScript types (also in §4.8) |
 | `form-spec.test.ts` | Type tests: both example forms, and 14 forms that must be rejected |
 | `generate.ts` | The generator: form JSON → Istalang module |
@@ -421,17 +421,17 @@ The design uses Istalang as the guide describes it: structs, enums, generics, tr
 | 1 | Mapped struct literal: build a value field by field | `Group.seen()`, `read()` | `{ for f, node in ...self.fields: [f]: node.seen() }` | None found: needed to stay generic |
 | 2 | A mapped type indexed by the union of its keys yields a union | `Variant<C>.Data` | `{ [K in keyof C]: { case: K, value: … } }[keyof C]` | A struct `{ case: keyof C, value: { [K in keyof C]: …? } }` |
 | 3 | Reading a struct field with a union-typed key value | `Variant.read()` | `self.cases[k]` where `k: keyof C` | A field loop with `if f == k` |
-| 5 | Top-level type aliases, including generic ones | Row and case types | `type OrderItemsRow = Group<{ sku: Field<String>, qty: Field<Int> }>` | Associated types on a generated struct |
-| 7 | Transient variables (proposal 13) | One view and one current reader shared by every computed | `transient let view: _View? = none` | None found |
-| 8 | Getters (proposal 13) | Scope variables whose reads are tracked | `fn get country(self: OrderSeen) -> String?` | Read the model in each expression |
-| 9 | Inert function types (proposal 14) | Closures kept in the graph, which may hold cycles | `eval: inert fn() -> T` | None found: the graph's cycles need it |
-| 10 | Closures inferred inert | Every pasted expression is a closure over its scope | `fn(): data.country != none` | None needed if supported |
-| 12 | Structural `==` on structs and computed types | An equal result keeps the old object and stops the update | `if cell->value == next: …` | Compare JSON strings |
-| 13 | Parsing JSON into literal unions and computed types | Events set a tag; snapshots | `json.parse<"card" \| "wire">(v)` | Parse a string, then match |
-| 14 | Recursive types through generic containers | A def mounting itself | `struct CategoryModel: children: List<Group<CategoryModel>>` | None needed if supported |
-| 15 | Struct constraints satisfied by nested anonymous structs of generic nodes | `Group<{ a: Field<String>, b: Hidden<Field<Int>> }>` | `S is struct { [_] is FormNode }` | None found |
-| 17 | Empty struct declarations | Params of a def with none | `struct CategoryParams {}` | A `Unit` field |
-| 18 | Closure parameter types inferred from the expected type | Every generated closure | `item: fn(r1, row1, at): …` | Spell each one out |
+| 4 | Top-level type aliases, including generic ones | Row and case types | `type OrderItemsRow = Group<{ sku: Field<String>, qty: Field<Int> }>` | Associated types on a generated struct |
+| 5 | Transient variables (proposal 13) | One view and one current reader shared by every computed | `transient let view: _View? = none` | None found |
+| 6 | Getters (proposal 13) | Scope variables whose reads are tracked | `fn get country(self: OrderSeen) -> String?` | Read the model in each expression |
+| 7 | Inert function types (proposal 14) | Closures kept in the graph, which may hold cycles | `eval: inert fn() -> T` | None found: the graph's cycles need it |
+| 8 | Closures inferred inert | Every pasted expression is a closure over its scope | `fn(): data.country != none` | None needed if supported |
+| 9 | Structural `==` on structs and computed types | An equal result keeps the old object and stops the update | `if cell->value == next: …` | Compare JSON strings |
+| 10 | Parsing JSON into literal unions and computed types | Events set a tag; snapshots | `json.parse<"card" \| "wire">(v)` | Parse a string, then match |
+| 11 | Recursive types through generic containers | A def mounting itself | `struct CategoryModel: children: List<Group<CategoryModel>>` | None needed if supported |
+| 12 | Struct constraints satisfied by nested anonymous structs of generic nodes | `Group<{ a: Field<String>, b: Hidden<Field<Int>> }>` | `S is struct { [_] is FormNode }` | None found |
+| 13 | Empty struct declarations | Params of a def with none | `struct CategoryParams {}` | A `Unit` field |
+| 14 | Closure parameter types inferred from the expected type | Every generated closure | `item: fn(r1, row1, at): …` | Spell each one out |
 
 **The host must also provide:**
 - the frontend's events and its trees, through the externs `nextEvent` and `show`;

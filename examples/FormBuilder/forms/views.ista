@@ -401,7 +401,7 @@ fn build(self: LayoutView, at: Place) -> View:
     let valid = true
     for child in children: {
       const drawn = child.drawn.read()
-      nodes = [...nodes, ...drawn.nodes]
+      for node in drawn.nodes: nodes.push(node)
       valid = valid and drawn.valid
     }
     const errors = _failing(self.checks, ())

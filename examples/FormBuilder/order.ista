@@ -1,4 +1,4 @@
-# order.py — hand-written logic, called from the form's expressions. Edited by people.
+# order.ista — hand-written logic, called from the form's expressions. Edited by people.
 # Istalang.
 
 fn isBlocked(country: String?) -> Bool: country == "kp" or country == "ir"

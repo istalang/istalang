@@ -1,4 +1,4 @@
-# supplier.py — hand-written logic, called from the supplier form's expressions. Istalang.
+# supplier.ista — hand-written logic, called from the supplier form's expressions. Istalang.
 
 fn zipPattern(country: String) -> String:
   match country:

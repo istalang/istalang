@@ -8,20 +8,16 @@
  * generated modules checked in, so they never drift from it, and its schema's types pass the
  * type tests beside them.
  *
- * Each project is loaded once for the file. A program that adds a module to one is checked as an
- * editor checks an edit, taking over what checking the project found (check.ts `checkProgram`).
+ * Each project is loaded once for the file.
  */
 
 import { spawnSync } from 'node:child_process';
 import { readdirSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
 import { execPath } from 'node:process';
-import { fileURLToPath, pathToFileURL } from 'node:url';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { ista } from '../src/cli/cli.test-kit.ts';
-import { checkProgram } from '../src/compiler/checker/check.ts';
-import { compileProgram, diagnose } from '../src/compiler/compile.ts';
-import { moduleIdOf } from '../src/compiler/program/program.ts';
+import { diagnose } from '../src/compiler/compile.ts';
 import { isError } from '../src/foundation/diagnostics/diagnostic.ts';
 import { renderDiagnostics } from '../src/foundation/diagnostics/render.ts';
 import { memo } from '../src/foundation/structures/memo.ts';
@@ -33,9 +29,6 @@ const tsc = fileURLToPath(new URL('../node_modules/typescript/bin/tsc', import.m
 // Compiling FormBuilder's forms, the supplier form above all, costs seconds a run, and the oracle
 // of static lifetimes checks every heap it runs: a run takes several times a test's 7 s.
 const formBuilderRun = 60_000;
-const generatedViews =
-  /\b(?:LayoutView|FieldView|RepeatView|VariantView|CaseView|ScopedView|DynamicView)</u;
-const scopeAliases = /^type \w*Scope\d*\b/mu;
 
 const projects = readdirSync(examples, { withFileTypes: true })
   .filter((entry) => entry.isDirectory())
@@ -72,34 +65,6 @@ describe('the examples', () => {
     },
     formBuilderRun,
   );
-
-  it('FormBuilder generated views write no view type arguments or scope aliases', () => {
-    for (const file of ['order.gen.ista', 'supplier.gen.ista', 'catalog/contact-card@^1.ista']) {
-      const text = readFileSync(`${examples}FormBuilder/${file}`, 'utf8');
-      expect(text).not.toMatch(generatedViews);
-      expect(text).not.toMatch(scopeAliases);
-    }
-  });
-
-  it('FormBuilder generated views compile', () => {
-    const root = formBuilder;
-    const mainId = moduleIdOf(pathToFileURL(join(root, 'main-entry.ista')));
-    const mainText = [
-      "import * as sup from './supplier.gen'",
-      "import * as ord from './order.gen'\nimport * as runtime from 'runtime'",
-      'live async fn main() -> Int: await runtime.run(runtime.id()) _main()\nista async fn _main() -> Int:',
-      '  const _f1 = sup.supplierForm',
-      '  const _f2 = ord.orderForm',
-      '  0',
-    ].join('\n');
-    const previous = exampleProject('FormBuilder').program;
-    const { program } = loadProject(root, findProjectSources(root), {
-      buffers: [{ id: mainId, name: 'main-entry', label: 'main-entry.ista', read: () => mainText }],
-      previous,
-    });
-    checkProgram(program, { previous });
-    expect(compileProgram(program, mainId).kind).toBe('compiled');
-  });
 
   it('FormBuilder schema types (form-spec.ts and form-spec.test.ts) pass tsc --strict', () => {
     const run = spawnSync(

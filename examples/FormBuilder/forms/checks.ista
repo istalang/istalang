@@ -25,15 +25,7 @@ fn required(on: inert fn() -> Bool) -> Check<String>:
   }
 
 fn someItems<T>(on: inert fn() -> Bool) -> Check<Array<T>>:
-  fn(v): {
-    match v:
-      case None:
-        if on(): "Required"
-        else: none
-      case items:
-        if on() and items.length() == 0: "Required"
-        else: none
-  }
+  fn(v): if on() and (v?.length() ?? 0) == 0: "Required" else: none
 
 fn minLength(n: inert fn() -> Int) -> Check<String>:
   fn(v): {

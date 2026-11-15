@@ -1,7 +1,7 @@
 ---
-description: alignment of the FormBuilder prototype with the Istalang specification and compiler — assumptions validated, fixes, rewrites, and proposed language changes
+description: archived — alignment of the FormBuilder prototype's first runtime (forms.ista, before the computed one) with the Istalang specification and compiler; read only for that history
 owner: tech-lead
-status: active
+status: archived
 applies_to: examples/FormBuilder
 last_verified: 2026-11-06
 last_updated: 2026-11-13
@@ -9,6 +9,8 @@ tags: [form-builder, alignment, specification, compiler]
 ---
 
 # Form Builder — Istalang Alignment Report
+
+**Archived.** This report validated the first runtime, `forms.ista`, which the computed runtime (`forms/`, `docs/work/computed/design.md`) replaced; its references to `forms.ista`, tasks, `ScopedView` and the spec's §8 numbering are to that version.
 
 Validation of `examples/FormBuilder` (`forms.ista`, `order.ista`, `supplier.ista`, `generate.ts`, `order.form.json`, `supplier.form.json`, `order.gen.ista`, `supplier.gen.ista`, and `form-builder-spec.md`) against the Istalang specification (`docs/spec.md`) and compiler (`ista check`).
 
