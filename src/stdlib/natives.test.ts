@@ -1,6 +1,7 @@
 /**
  * The std natives table against the std modules' sources: every extern a program can call has a
- * native under the key lowering gives its declaration, and no native is left over.
+ * native under the key lowering gives its declaration, a key no other declaration has, and no
+ * native is left over.
  */
 
 import { describe, expect, it } from 'vitest';
@@ -67,6 +68,13 @@ describe('std natives', () => {
       withoutNative.has(`${module}.${declaration.name.text}`) ? [] : [key],
     );
     expect(new Set(Object.keys(stdNatives))).toEqual(new Set(callable));
+  });
+
+  it('bind each extern declaration by a key of its own', () => {
+    // A key is lossy (`&` and sendability inside a function type), and a Definition has an entry
+    // per instance, so only here, by declaration, can two externs sharing one native be caught.
+    const keys = std.externs.map(({ key }) => key);
+    expect(keys.filter((key, index) => keys.indexOf(key) !== index)).toEqual([]);
   });
 
   it("keep only what the holder's type holds, as its @Holds says (§3.16)", () => {

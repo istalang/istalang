@@ -295,7 +295,7 @@ describe('what takes a call’s value, choosing inside its result', () => {
   it('is the parameter of a call it is passed to, as much as an expected type', () => {
     const main = mainOf('takeArr(pair(1, 2))');
     const { functions } = compiledDefinition(stdProgramOf({ main }), 'main');
-    expect(instantiationsOf('pair', main)).toEqual(['main.pair<prelude.Optional<Int>>']);
+    expect(instantiationsOf('pair', main)).toEqual(['main.pair<|<Int,None>>']);
     expect(functions.some((entry) => entry.name.includes(' as '))).toBe(false);
     expect(reportedErrors(mainOf('takeBox(makeBox(1))'))).toEqual([]);
   });

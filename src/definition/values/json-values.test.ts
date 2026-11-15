@@ -19,14 +19,19 @@ import {
 } from './json-values.ts';
 import { maximumDepth, type Value } from './values.ts';
 
-/** A std container's extern entry, as the type table holds one. */
-function externEntry(name: string, typeArguments: TypeReference[]): TypeDefinition {
+/** A std container's extern entry, as the type table holds one, its role what JSON reads. */
+function externEntry(
+  role: 'array' | 'map',
+  name: string,
+  typeArguments: TypeReference[],
+): TypeDefinition {
   return {
     kind: 'extern',
     name,
     arguments: typeArguments,
     disposal: { kind: 'none' },
     counted: false,
+    role,
   };
 }
 
@@ -37,8 +42,8 @@ function memberVariant(name: string, type: TypeReference) {
 
 /**
  * Where a program's types hold `Json`, as lowering lays out the json module's union: a variant per
- * member in the order of their spelled names, `None` holding nothing, and the array and map
- * entries its members name.
+ * member, `None` holding nothing, and the array and map entries its members name, known by their
+ * roles.
  */
 const shape: JsonType = (() => {
   const primitive = (name: 'Bool' | 'Int' | 'Float' | 'String') =>
@@ -60,8 +65,8 @@ const shape: JsonType = (() => {
       ],
       role: 'json',
     },
-    externEntry('prelude.Array', [json]),
-    externEntry('prelude.Map', [primitive('String'), json]),
+    externEntry('array', 'prelude.Array', [json]),
+    externEntry('map', 'prelude.Map', [primitive('String'), json]),
   ]);
   if (found === undefined) {
     throw new Error('No Json type in the table.');

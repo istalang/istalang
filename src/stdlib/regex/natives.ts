@@ -18,6 +18,7 @@ import {
   fieldTypeOf,
   fieldValueOf,
   namedType,
+  optionalInnerOf,
   optionalOf,
   structOf,
   typeArgumentOf,
@@ -30,6 +31,7 @@ import { type NativeContext, type Natives, Panic } from '../../runtime/natives.t
 import type { NativeKeys } from '../std-module.ts';
 import { arrayOf, text } from '../values/arguments.ts';
 import {
+  declaredResult,
   okStruct,
   parseFailure,
   resultOk,
@@ -61,7 +63,8 @@ export const regexNatives = (keys: NativeKeys): Natives<NativeContext> => {
     [keys.of('find', regex, 'String')]: ([pattern, s], context) => {
       const whole = text(s);
       const [found] = programOf(context, pattern).matchAll(whole);
-      const build = matchBuilder(context.types, resultTypeArgument(context, 0), whole);
+      const match = optionalInnerOf(context.types, declaredResult(context));
+      const build = matchBuilder(context.types, match, whole);
       return resultOptional(context, found === undefined ? undefined : build(found));
     },
     [keys.of('findAll', regex, 'String')]: ([pattern, s], context) => {

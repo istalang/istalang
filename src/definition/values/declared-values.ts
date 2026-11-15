@@ -159,6 +159,18 @@ export function optionalOf(
   return { ...value, type, variant };
 }
 
+/**
+ * What a value of the optional entry `type`, a union of `None` and one other member, holds: that
+ * member's entry, the type of its variant's one field.
+ */
+export function optionalInnerOf(types: readonly TypeDefinition[], type: TypeId): TypeId {
+  const [only, ...more] = enumVariants(types, type).filter(
+    ({ name }) => name !== unionLayout.noneVariant,
+  );
+  const field = more.length === 0 ? only?.fields[0] : undefined;
+  return namedType(field?.type);
+}
+
 /** The value optional `optional` holds, read by its declared variant; undefined for `none`. */
 export function optionalValueOf(
   types: readonly TypeDefinition[],

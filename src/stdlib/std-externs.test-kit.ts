@@ -5,7 +5,7 @@
  */
 
 import type { Checker } from '../compiler/checker/check.ts';
-import { keyOf } from '../compiler/lowering/tables/names.ts';
+import { keyOf } from '../compiler/lowering/tables/extern-keys.ts';
 import {
   declaredFunctions,
   type FunctionDeclaration,

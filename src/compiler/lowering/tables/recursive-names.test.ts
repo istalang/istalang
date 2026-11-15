@@ -1,20 +1,19 @@
 /**
  * A type holding recursion in a compiled program is spelled by its structure, never by the alias
  * or representation lowering met it through (§3.17, docs/arch/definition.md): its entry is named
- * for its preferred alias, of every alias of the program naming that type, a generic one given its
- * arguments included, a std module's first, then by module path, then by name; one no alias names,
- * such as a computed associated type, is spelled from its structure. So a union holding it orders
- * its variants alike however it was written, and each value, `none` among them, is its own
- * variant through every spelling.
+ * by its table key, whichever aliases name it, a computed associated type no alias names among
+ * them. So a union holding it orders its variants alike however it was written, and each value,
+ * `none` among them, is its own variant through every spelling.
  */
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { resolveWrittenTypes } from '../../../../test/written-types.test-kit.ts';
+import { unreachable } from '../../../foundation/structures/unreachable.ts';
 import { mainGives } from '../../../stdlib/prelude/prelude.test-kit.ts';
 import { stdProgramOf } from '../../binder/bind.test-kit.ts';
 import { compiledDefinition } from '../../compile.test-kit.ts';
-import { spelledType } from './names.ts';
+import { tableKey } from './names.ts';
 
 const modules = {
   'a.ista': 'type FormTree<T> = T | Array<FormTree<T>>',
@@ -22,7 +21,7 @@ const modules = {
 };
 
 /** The type entries' names of a program whose `main` calls `first`, then `second`. */
-function entryNames(first: string, second: string): readonly (string | undefined)[] {
+function entryNames(first: string, second: string): readonly string[] {
   const main = [
     "import FormTree from 'a.ista'",
     "import CrmTree from 'b.ista'\nimport * as runtime from 'runtime'",
@@ -31,15 +30,19 @@ function entryNames(first: string, second: string): readonly (string | undefined
     'live async fn main() -> Int: await runtime.run(runtime.id()) _main()\nista async fn _main() -> Int:',
     `  return ${first}([1, [2]]) + ${second}([3])`,
   ].join('\n');
-  return compiledDefinition(stdProgramOf({ 'main.ista': main, ...modules }), 'main.ista')
-    .types.map((entry) => entry.name)
-    .filter((name) => name?.endsWith('Tree') === true);
+  return compiledDefinition(stdProgramOf({ 'main.ista': main, ...modules }), 'main.ista').types.map(
+    (entry) => entry.name ?? '',
+  );
 }
 
 describe("a generic recursive alias's instantiation in a compiled program", () => {
-  it('names its entry for the preferred alias, whichever lowering meets first', () => {
-    expect(entryNames('fromForm', 'fromCrm')).toEqual(['a.ista.FormTree']);
-    expect(entryNames('fromCrm', 'fromForm')).toEqual(['a.ista.FormTree']);
+  it('is one entry, named by its structure whichever alias lowering meets first', () => {
+    const declarations = ['type Tree<T> = T | Array<Tree<T>>'];
+    const { checker, types } = resolveWrittenTypes(['Tree<Int>'], declarations);
+    const tree = tableKey(checker, types[0] ?? unreachable('A type was written.'));
+    const names = entryNames('fromForm', 'fromCrm');
+    expect(names.filter((name) => name === tree)).toHaveLength(1);
+    expect(entryNames('fromCrm', 'fromForm')).toEqual(names);
   });
 });
 
@@ -123,7 +126,7 @@ describe('a union holding a recursive type no alias names', () => {
         ];
         const { checker, types } = resolveWrittenTypes(written, [declarations]);
         const [viaAlias, viaGroup, viaMatch, optAlias, optGroup, optMatch] = types.map((type) =>
-          spelledType(checker, type),
+          tableKey(checker, type),
         );
         expect(viaAlias).toBe(viaGroup);
         expect(viaMatch).toBe(viaGroup);
@@ -221,7 +224,7 @@ describe('one union holding recursion, written two ways', () => {
       [realiased, ['Json', 'MyJson?']],
     ] as const) {
       const { checker, types } = resolveWrittenTypes(written, [declarations]);
-      const [first, second] = types.map((type) => spelledType(checker, type));
+      const [first, second] = types.map((type) => tableKey(checker, type));
       expect(first).toBe(second);
     }
   });

@@ -24,7 +24,6 @@
  *   again (spec §9, docs/arch/boundary.md): a host may skip work by reference equality.
  */
 
-import { qualifiedName, wellKnown } from '../../foundation/language/well-known/index.ts';
 import { memo } from '../../foundation/structures/memo.ts';
 import { unreachable } from '../../foundation/structures/unreachable.ts';
 import { decodeJson, encodeJson, NestingError } from '../formats/codec.ts';
@@ -91,15 +90,13 @@ function memberHolding(
         return reference.name;
       }
       return reference.name === 'String' ? 'String' : unreachable('Json holds no such primitive.');
-    case 'named': {
-      const name = types[reference.type]?.name;
-      if (name === qualifiedName(wellKnown.array)) {
+    case 'named':
+      if (hasRole(types, reference.type, 'array')) {
         return 'Array';
       }
-      return name === qualifiedName(wellKnown.map)
+      return hasRole(types, reference.type, 'map')
         ? 'Map'
         : unreachable('Json holds no such type.');
-    }
     default:
       return unreachable('Json holds no structural type.');
   }

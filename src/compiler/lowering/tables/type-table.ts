@@ -1,6 +1,7 @@
 /**
  * The type table of a Definition (docs/arch/definition.md): one entry per distinct type, keyed as
- * the checker keys it (types/identity/type-keys.ts).
+ * the checker keys it (types/identity/type-keys.ts). A declared type's entry is named by its
+ * declaration, any other by its table key (names.ts), which names nothing by an alias.
  *
  * - An entry is numbered before its layout is computed, so a recursive type refers to itself
  *   through the table (§3.1).
@@ -12,14 +13,12 @@
  * - A recursive type (§3.17) is the entry of what it unfolds to, the same key, whose layout refers
  *   back to it; one unfolding to a tuple or a function type, which have no entry of their own, has
  *   an alias entry, numbered first for the same reason, as has the type written out (`folded`).
- *   Equal recursive types share one entry, named by the preferred alias, else by their structure
- *   (names.ts).
- * - A union (§2) is an enum, one variant per member, in the order of their spelled names, which
- *   no numbering of identities changes, and which spell a type by its key alone, never by the alias
- *   it was written through, so every union of one key orders its variants alike, as its entry was
- *   laid out: a member's value is the variant's one field, and a member
- *   with one value only, a literal type or `None`, is a variant without fields, its tag. A literal
- *   type on its own is its base: its one value needs no tag.
+ * - A union (§2) is an enum, one variant per member, ordered and named by their table keys, which
+ *   tell every two members apart and spell a type by its key alone, never by the alias it was
+ *   written through, so every union of one key orders its variants alike, as its entry was laid
+ *   out, and the runtime finds a member's variant by its name: a member's value is the variant's
+ *   one field, and a member with one value only, a literal type or `None`, is a variant without
+ *   fields, its tag. A literal type on its own is its base: its one value needs no tag.
  * - An `any` type (§3.10) is an enum the program closes: one variant per type a value of it is
  *   converted from, each holding that value as its one field. A variant is added the first time
  *   lowering converts from its type, so a variant's index never changes once code names it;
@@ -64,7 +63,7 @@ import { hasOneValue } from '../../checker/types/unions/unions.ts';
 import type { FunctionDeclaration } from '../../syntax/declarations/index.ts';
 import { type ClosedCall, closeFunctionCall } from '../calls/closed-calls.ts';
 import { foundCodecCall } from '../synthesized/boundary/codec-calls.ts';
-import { qualifiedNameOf, recursiveName, spelledType, unionName } from './names.ts';
+import { qualifiedNameOf, tableKey } from './names.ts';
 
 /** What a type entry refers to outside the type table. */
 interface TypeTableSeams {
@@ -108,10 +107,13 @@ function anyEnum(entry: AnyEntry): TypeDefinition {
 }
 
 /**
- * The std type each role of an extern type entry is (definition/tables/types.ts); a shared struct's
- * role comes from its declaration's kind instead (§3.18).
+ * The std type each role of an extern type entry is (definition/tables/types.ts), so the runtime
+ * recognizes none by its name; a shared struct's role comes from its declaration's kind instead
+ * (§3.18).
  */
 const externRoles = {
+  array: wellKnown.array,
+  map: wellKnown.map,
   cell: wellKnown.cell,
   future: wellKnown.future,
   instance: wellKnown.instance,
@@ -199,17 +201,14 @@ export class TypeTable {
 
   /** The members of the union `type` in the order of its enum's variants. */
   unionMembers(type: UnionType): readonly Type[] {
-    const spelled = type.members.map((member) => ({
-      member,
-      name: spelledType(this.#checker, member),
-    }));
-    return spelled.sort((a, b) => compareOrdered(a.name, b.name)).map(({ member }) => member);
+    const keyed = type.members.map((member) => ({ member, key: tableKey(this.#checker, member) }));
+    return keyed.sort((a, b) => compareOrdered(a.key, b.key)).map(({ member }) => member);
   }
 
   /** The variant of the union `type`'s enum holding a value of `member`, one of its members. */
   unionVariant(type: UnionType, member: Type): number {
     const index = this.unionMembers(type).findIndex((each) => sameType(each, member));
-    return index >= 0 ? index : unreachable(`${spelledType(this.#checker, member)} is no member.`);
+    return index >= 0 ? index : unreachable(`${tableKey(this.#checker, member)} is no member.`);
   }
 
   /** The index of the enum standing for the `any` type `type`, with the variants it has so far. */
@@ -219,7 +218,7 @@ export class TypeTable {
     if (known !== undefined) {
       return known;
     }
-    const entry: AnyEntry = { kind: 'any', name: spelledType(this.#checker, type), members: [] };
+    const entry: AnyEntry = { kind: 'any', name: tableKey(this.#checker, type), members: [] };
     const index = this.#entries.push(entry) - 1;
     this.#indexes.set(key, index);
     return index;
@@ -234,7 +233,7 @@ export class TypeTable {
     if (found >= 0) {
       return found;
     }
-    const name = spelledType(this.#checker, member);
+    const name = tableKey(this.#checker, member);
     return members.push({ type: member, name, reference: this.reference(member) }) - 1;
   }
 
@@ -246,7 +245,7 @@ export class TypeTable {
   #anyEntry(type: AnyType): AnyEntry {
     const entry = this.#entries[this.anyIndex(type)];
     if (entry?.kind !== 'any') {
-      unreachable(`${spelledType(this.#checker, type)} has an entry of another kind.`);
+      unreachable(`${tableKey(this.#checker, type)} has an entry of another kind.`);
     }
     return entry;
   }
@@ -277,11 +276,10 @@ export class TypeTable {
     const index = this.#entries.length;
     this.#indexes.set(key, index);
     this.#entries.push({ kind: 'struct', name: '', arguments: [], fields: [] });
-    const named = recursiveName(this.#checker, type);
     this.#entries[index] = {
       kind: 'alias',
-      name: named.name,
-      arguments: named.arguments.map((argument) => this.reference(argument)),
+      name: tableKey(this.#checker, type),
+      arguments: [],
       type: this.reference(unfolded),
     };
     return index;
@@ -351,13 +349,11 @@ export class TypeTable {
   /** A union's enum: a variant per member, its value in the one field, a one-value member none. */
   #unionLayout(type: UnionType): TypeDefinition {
     const variants = this.unionMembers(type).map((member) => ({
-      name: spelledType(this.#checker, member),
+      name: tableKey(this.#checker, member),
       fields: hasOneValue(member)
         ? []
         : [{ name: memberValueField, type: this.reference(member), annotations: [] }],
     }));
-    const named = unionName(this.#checker, type);
-    const typeArguments = named.arguments.map((argument) => this.reference(argument));
     // The `json` role is the type `json.Json` is, by key, whatever alias wrote it.
     const checker = this.#checker;
     const json = checker.wellKnownEntity(enumRoles.json);
@@ -368,8 +364,8 @@ export class TypeTable {
         checker.typeKeys.typeKey(type);
     return {
       kind: 'enum',
-      name: named.name,
-      arguments: typeArguments,
+      name: tableKey(checker, type),
+      arguments: [],
       variants,
       ...(isJson ? { role: 'json' as const } : {}),
     };

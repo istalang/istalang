@@ -47,7 +47,7 @@ import type { CodeContext } from '../context.ts';
 import { fittedIn } from '../functions/fits/index.ts';
 import { codeModeOf } from '../functions/modes.ts';
 import type { ConversionSite } from '../tables/instances.ts';
-import { spelledType } from '../tables/names.ts';
+import { tableKey } from '../tables/names.ts';
 import { convertedIntoAny } from '../values/into-any.ts';
 import { readRequiredField } from '../values/required-fields.ts';
 import { outOfUnion } from '../values/unions.ts';
@@ -84,7 +84,7 @@ export function dispatchEntry(lowering: Lowering, dispatch: Dispatch): FunctionD
     const witness = checker.traitObjects.memberWitnesses(through, constraint, type)?.[member];
     if (witness === undefined) {
       unreachable(
-        `${spelledType(checker, type)} meets ${spelledType(checker, through)} without '${required.name.text}'.`,
+        `${tableKey(checker, type)} meets ${tableKey(checker, through)} without '${required.name.text}'.`,
       );
     }
     const signatures = checker.traitObjects.memberSignatures(through, constraint, type, dispatch);
@@ -103,8 +103,8 @@ export function dispatchEntry(lowering: Lowering, dispatch: Dispatch): FunctionD
     const given = givesFuture ? code.await(call, resultOfCall(checker, closed)) : call;
     code.return(signatures === undefined ? given : convertedResult(code, given, signatures, at));
   });
-  const generic = dispatch.typeArguments.map((type) => spelledType(checker, type));
-  const name = `${spelledType(checker, on)}.${required.name.text}${generic.length === 0 ? '' : `<${generic.join(', ')}>`}`;
+  const generic = dispatch.typeArguments.map((type) => tableKey(checker, type));
+  const name = `${tableKey(checker, on)}.${required.name.text}${generic.length === 0 ? '' : `<${generic.join(', ')}>`}`;
   const header = tables.headerAt(name, checker.moduleOf(required), required.name.span);
   return code.entry(header, codeModeOf(givesFuture, kindOfDispatch), references);
 }
@@ -147,7 +147,7 @@ export function anyConversionEntry(
   switchOverMembers(code, from, value, (type) => {
     code.return(convertedIntoAny(code, { value: code.field(value, 0), from: type, to }, span));
   });
-  const name = `${spelledType(checker, from)} as ${spelledType(checker, to)}`;
+  const name = `${tableKey(checker, from)} as ${tableKey(checker, to)}`;
   return code.entry(tables.headerAt(name, checker.moduleOf(first.trait), span), 'simple');
 }
 
@@ -181,7 +181,7 @@ export function anyFieldEntry(
         : fittedIn(code, { value: held, type: types.met }, types.called, at),
     );
   });
-  const name = `${spelledType(checker, on)}.${field.name.text}`;
+  const name = `${tableKey(checker, on)}.${field.name.text}`;
   return code.entry(tables.headerAt(name, checker.moduleOf(trait), field.name.span), 'simple');
 }
 

@@ -389,10 +389,10 @@ describe('a recursive type in a compiled program (docs/arch/definition.md)', () 
     '  return size(f)',
   );
 
-  it('names one entry for equal recursive types by the preferred alias, whichever was written', () => {
+  it('names one entry for equal recursive types by their structure, whichever alias was written', () => {
     const names = entryNames(program, { 'a.ista': 'type Tree = Int | Array<Tree>' });
-    expect(names.filter((name) => name === 'a.ista.Tree')).toHaveLength(1);
-    expect(names.filter((name) => name?.endsWith('Forest') === true)).toEqual([]);
+    expect(names.filter((name) => name === '~[|<Int,~1>;#prelude.Array<~0>]')).toHaveLength(1);
+    expect(names.filter((name) => name?.includes('Tree') || name?.includes('Forest'))).toEqual([]);
   });
 
   it('keeps every entry when an alias of the same type is added in another module', () => {

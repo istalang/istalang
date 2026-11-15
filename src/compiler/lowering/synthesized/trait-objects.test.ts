@@ -52,8 +52,8 @@ describe('lowering trait objects', () => {
       '  const sms: any Named = late()',
       '  (email.name(), sms.name())',
     ]);
-    expect(variantsOf(definition, 'any main.Named')).toEqual(['main.Email', 'main.Sms']);
-    expect(switchTargets(definition, 'any main.Named.name')).toBe(2);
+    expect(variantsOf(definition, 'any{main.Named<>}')).toEqual(['#main.Email<>', '#main.Sms<>']);
+    expect(switchTargets(definition, 'any{main.Named<>}.name')).toBe(2);
   });
 
   it("dispatches a call on a union over the union's members, and converts it member by member", () => {
@@ -63,8 +63,8 @@ describe('lowering trait objects', () => {
       '  const named: any Named = contact',
       '  (contact.name(), named.name())',
     ]);
-    expect(switchTargets(definition, 'main.Email | main.Sms.name')).toBe(2);
-    expect(variantsOf(definition, 'any main.Named')).toEqual(['main.Email', 'main.Sms']);
+    expect(switchTargets(definition, '|<#main.Email<>,#main.Sms<>>.name')).toBe(2);
+    expect(variantsOf(definition, 'any{main.Named<>}')).toEqual(['#main.Email<>', '#main.Sms<>']);
   });
 
   it('runs a mixed Array<any T> the same with every segment re-run from its snapshot', async () => {

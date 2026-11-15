@@ -7,7 +7,11 @@
  *   constraints are a set. A string can carry that identity only as a number. The numbers are the
  *   module's, so an object keys alike in every checker and in every revision of a program; lowering
  *   keys its function-table entries through the same unit. No number ever reaches lowering's
- *   output: it only finds entries by these keys.
+ *   output: it finds entries by these keys, and persists their table keys, this key with each
+ *   identity spelled by a qualified name in place of its number (lowering/tables/names.ts).
+ * - Every key, a table key too, is spelled by one structural walk (`structureKeyOf`), how an
+ *   identity is spelled passed in (`IdentitySpelling`), so an attribute a type gains is keyed once
+ *   for both.
  * - A shape (§3.1) is its field names and their keys, in name order, as the type keeps its fields:
  *   `{x:Int,y:Int}` however it was written. The key is the canonical text itself, never a digest,
  *   since a collision would make two types one without any error.
@@ -95,12 +99,12 @@ export interface TypeKeys {
   /** The key of `type`'s own structure, each type it is built from spelled by `partKey`. */
   readonly structureKey: (type: Type, partKey: (part: Type) => string) => string;
   /**
-   * The key of `type` with each identity it names spelled by `identities`, each type it is built
+   * The key of `type` with each identity it names spelled by `spelling`, each type it is built
    * from that holds no recursion keyed by `partKey`: canonical where it holds recursion.
    */
   readonly keyWith: (
     type: Type,
-    identities: IdentitySpelling,
+    spelling: IdentitySpelling,
     partKey: (part: Type) => string,
   ) => string;
   /** The key of `type` with everything it is spelled with (the banner). */
@@ -121,14 +125,16 @@ export interface IdentitySpelling {
   /** The trait an `any` type's constraint names. */
   readonly trait: (trait: TraitDeclaration) => string;
   /**
-   * A type only a checker meets, never an instantiated one: a type parameter, a mapped struct type
-   * not reduced yet or a use of a type `match` alias, its parts keyed by `key`.
+   * A type parameter, its parts keyed by `key`; of an instantiated type, only the `Self` an `any`
+   * type's constraint names.
    */
-  readonly unresolved: (type: UnresolvedType, key: (part: Type) => string) => string;
+  readonly parameter: (type: TypeParameterType, key: (part: Type) => string) => string;
+  /**
+   * A type only a checker meets, which an instantiation reduces: a mapped struct type not reduced
+   * yet, or a use of a type `match` alias, its parts keyed by `key`.
+   */
+  readonly unreduced: (type: MappedType | MatchType, key: (part: Type) => string) => string;
 }
-
-/** A type an instantiation substitutes or reduces, so lowering never meets one. */
-type UnresolvedType = TypeParameterType | MappedType | MatchType;
 
 function identityOf(object: object): number {
   return memo(identities, object, () => {
@@ -151,19 +157,17 @@ function ownKeyOf(type: Type): string {
 /** `type`'s key, `positions` keying type parameters: canonical where it holds recursion. */
 function keyAt(type: Type, positions: ReadonlyMap<ParameterKey, number> | undefined): string {
   if (positions === undefined) {
-    return holdsRecursion(type) ? keptCanonicalKey(type) : keyWith(type, numberedIdentities, ownKeyOf);
+    return holdsRecursion(type)
+      ? keptCanonicalKey(type)
+      : keyWith(type, numberedIdentities, ownKeyOf);
   }
   return keyWith(type, numberedAt(positions), (each) => typeKey(each, positions));
 }
 
 /** `TypeKeys.keyWith`: a type holding recursion from its term graph built afresh. */
-function keyWith(
-  type: Type,
-  identities: IdentitySpelling,
-  partKey: (part: Type) => string,
-): string {
+function keyWith(type: Type, spelling: IdentitySpelling, partKey: (part: Type) => string): string {
   const spell = (each: Type, eachPart: (part: Type) => string) =>
-    structureKeyOf(each, identities, eachPart);
+    structureKeyOf(each, spelling, eachPart);
   return holdsRecursion(type) ? canonicalKey(type, partKey, spell) : spell(type, partKey);
 }
 
@@ -197,11 +201,11 @@ function preKeyOf(type: Type): { readonly preKey: string; readonly graph?: Recur
 
 /**
  * `type`'s key by its kind and parts, each part keyed by `key`, each identity it names spelled by
- * `identities`: the one structural walk of a type every key is spelled by.
+ * `spelling`: the one structural walk of a type every key is spelled by.
  */
 function structureKeyOf(
   type: Type,
-  identities: IdentitySpelling,
+  spelling: IdentitySpelling,
   key: (each: Type) => string,
 ): string {
   switch (type.kind) {
@@ -210,11 +214,12 @@ function structureKeyOf(
     case 'error':
       return '?';
     case 'parameter':
+      return spelling.parameter(type, key);
     case 'mapped':
     case 'match':
-      return identities.unresolved(type, key);
+      return spelling.unreduced(type, key);
     case 'nominal':
-      return `#${identities.entity(type.entity)}<${type.arguments.map(key).join(',')}>`;
+      return `#${spelling.entity(type.entity)}<${type.arguments.map(key).join(',')}>`;
     case 'anonymous':
       return shapeKeyOf(type, key);
     case 'recursive':
@@ -226,7 +231,7 @@ function structureKeyOf(
     case 'any': {
       const constraints = type.constraints.map(
         ({ trait, arguments: typeArguments }) =>
-          `${identities.trait(trait)}<${typeArguments.map(key).join(',')}>`,
+          `${spelling.trait(trait)}<${typeArguments.map(key).join(',')}>`,
       );
       return `any{${constraints.sort().join('&')}}`;
     }
@@ -252,20 +257,9 @@ function numberedAt(positions: ReadonlyMap<ParameterKey, number> | undefined): I
   return {
     entity: (entity) => String(identityOf(entity)),
     trait: (trait) => String(identityOf(trait)),
-    unresolved: (type, key) => {
-      switch (type.kind) {
-        case 'parameter':
-          return parameterKeyOf(type, positions, key);
-        case 'mapped':
-          return mappedKeyOf(type, positions);
-        case 'match':
-          return useKeyOf(type, key);
-        default: {
-          const unhandled: never = type;
-          return unhandled;
-        }
-      }
-    },
+    parameter: (type, key) => parameterKeyOf(type, positions, key),
+    unreduced: (type, key) =>
+      type.kind === 'mapped' ? mappedKeyOf(type, positions) : useKeyOf(type, key),
   };
 }
 

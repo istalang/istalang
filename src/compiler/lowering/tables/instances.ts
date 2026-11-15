@@ -40,7 +40,7 @@ import type { FieldHeader, Lambda } from '../../syntax/expressions/index.ts';
 import type { VariableDeclaration } from '../../syntax/statements/index.ts';
 import type { NodeOf } from '../../syntax/tree/node.ts';
 import type { AnchoredSpan } from '../../syntax/tree/positions.ts';
-import { qualifiedNameOf, spelledType } from './names.ts';
+import { qualifiedNameOf, tableKey } from './names.ts';
 
 /** A lambda or local function inside one instance of the top-level function holding it. */
 export interface NestedInstance {
@@ -159,9 +159,9 @@ export function conversionKey(keys: TypeKeys, entry: ConversionEntry): string {
   return `${entry.kind}:${keys.typeKey(entry.from)}->${keys.typeKey(entry.to)}`;
 }
 
-/** A conversion's name: both types, as written. */
+/** A conversion's name: both types' table keys. */
 export function conversionName(checker: Checker, entry: ConversionEntry): string {
-  return `${spelledType(checker, entry.from)} as ${spelledType(checker, entry.to)}`;
+  return `${tableKey(checker, entry.from)} as ${tableKey(checker, entry.to)}`;
 }
 
 /** The key of a nested function's entry: its owner's, then its node's identity. */
@@ -214,13 +214,13 @@ export function instanceKey(keys: TypeKeys, instance: FunctionInstance): string 
 
 /**
  * An instance's name in the Definition (definition.md, "Names"): the declaration's, with its type
- * arguments spelled as keys spell them.
+ * arguments' table keys.
  */
 export function instanceName(checker: Checker, instance: FunctionInstance): string {
   const { declaration, typeArguments } = instance;
   const generic =
     typeArguments.length === 0
       ? ''
-      : `<${typeArguments.map((type) => spelledType(checker, type)).join(', ')}>`;
+      : `<${typeArguments.map((type) => tableKey(checker, type)).join(', ')}>`;
   return `${qualifiedNameOf(checker, declaration)}${generic}`;
 }

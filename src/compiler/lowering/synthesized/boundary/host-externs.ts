@@ -35,7 +35,8 @@ import type { AnchoredSpan } from '../../../syntax/tree/positions.ts';
 import { emitCall, emitFunctionCall } from '../../calls/emit-call.ts';
 import { awaitFuture } from '../../calls/waits.ts';
 import type { CodeContext } from '../../context.ts';
-import { keyOf, qualifiedNameOf, spelledType } from '../../tables/names.ts';
+import { declaredTypeOf, keyOf } from '../../tables/extern-keys.ts';
+import { qualifiedNameOf } from '../../tables/names.ts';
 import type { DefinitionTables, HostExternDeclaration } from '../../tables/tables.ts';
 import { SynthesizedCode } from '../index.ts';
 import { codecCall } from './codec-calls.ts';
@@ -111,7 +112,7 @@ export function hostNativeEntry(
   return {
     ...native.header,
     key: keyOf(checker, declaration, checker.parametersOf(declaration)),
-    declaredType: spelledType(checker, result),
+    declaredType: declaredTypeOf(checker, result),
     constant: false,
     parameters: native.jsons(checker.parametersOf(declaration).length),
     result: native.given(awaitedOf(checker, result)),
@@ -129,7 +130,7 @@ export function constantNativeEntry(
   return {
     ...native.header,
     key: qualifiedNameOf(checker, declaration),
-    declaredType: spelledType(checker, type),
+    declaredType: declaredTypeOf(checker, type),
     constant: true,
     parameters: [],
     result: native.given(undefined),

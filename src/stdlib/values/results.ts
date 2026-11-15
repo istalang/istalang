@@ -75,7 +75,7 @@ export function resultError(context: NativeContext, message: string, code: strin
   return errorOf(context.types, declaredResult(context), { message, code, trace: context.trace() });
 }
 
-/** Type argument `position` of the extern's declared result: the `T` of an `Array<T>` or a `T?`. */
+/** Type argument `position` of the extern's declared result, a declared type: `T` of `Array<T>`. */
 export function resultTypeArgument(context: NativeContext, position: number): TypeId {
   return typeArgumentOf(context.types, declaredResult(context), position);
 }

@@ -11,6 +11,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { corpusDirectory, runPrograms } from '../../../../test/corpus/programs.ts';
 import type { Definition } from '../../../definition/definition.ts';
+import { compareOrdered } from '../../../foundation/language/order.ts';
 import { loadProject } from '../../../project/project.ts';
 import { stdExterns } from '../../../stdlib/std-externs.test-kit.ts';
 import { compileProgram } from '../../compile.ts';
@@ -29,7 +30,9 @@ function definitionOf(root: string, entry: string): Definition | undefined {
 function persistedSpellings(definition: Definition): readonly string[] {
   const externs = definition.functions.flatMap((entry) =>
     entry.kind === 'extern'
-      ? [`extern ${entry.key}${entry.declaredType === undefined ? '' : ` -> ${entry.declaredType}`}`]
+      ? [
+          `extern ${entry.key}${entry.declaredType === undefined ? '' : ` -> ${entry.declaredType}`}`,
+        ]
       : [],
   );
   return [...externs, ...definition.starts.map(({ key }) => `start ${key}`)];
@@ -57,6 +60,8 @@ describe('persisted keys', () => {
       ...stdExterns().externs.map(({ key }) => `extern ${key}`),
       ...definitions.flatMap(persistedSpellings),
     ]);
-    await expect(`${[...spelled].sort().join('\n')}\n`).toMatchFileSnapshot('extern-keys.txt');
+    await expect(`${[...spelled].sort(compareOrdered).join('\n')}\n`).toMatchFileSnapshot(
+      'extern-keys.txt',
+    );
   }, 120_000);
 });

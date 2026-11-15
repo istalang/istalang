@@ -38,7 +38,7 @@ import {
   conversionName,
   ownerDeclaration,
 } from '../../tables/instances.ts';
-import { spelledType } from '../../tables/names.ts';
+import { tableKey } from '../../tables/names.ts';
 import { convertedIntoAny } from '../../values/into-any.ts';
 import { rebuiltAs, tupleOf } from '../../values/struct-values.ts';
 import { asBase, intoUnion } from '../../values/unions.ts';
@@ -235,7 +235,7 @@ function rebuildingIn(code: SynthesizedCode, how: Applying): Rebuilding {
 function fitBetween(context: Pick<CodeContext, 'checker'>, from: Type, to: Type): Fit {
   return (
     context.checker.fitOf(from, to) ??
-    unreachable(`A part converted into ${spelledType(context.checker, to)} fits it.`)
+    unreachable(`A part converted into ${tableKey(context.checker, to)} fits it.`)
   );
 }
 

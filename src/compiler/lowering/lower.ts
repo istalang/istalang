@@ -40,8 +40,9 @@ import {
 } from './synthesized/boundary/host-externs.ts';
 import { listStart, startableOf, startables, startEntry } from './synthesized/boundary/starts.ts';
 import { anyConversionEntry, anyFieldEntry, dispatchEntry } from './synthesized/trait-objects.ts';
+import { keyOf } from './tables/extern-keys.ts';
 import { rootInstance } from './tables/instances.ts';
-import { keyOf, qualifiedNameOf } from './tables/names.ts';
+import { qualifiedNameOf } from './tables/names.ts';
 import { ownEntryOf } from './tables/own-entries.ts';
 import { type ClosingEntry, DefinitionTables, type PendingEntry } from './tables/tables.ts';
 

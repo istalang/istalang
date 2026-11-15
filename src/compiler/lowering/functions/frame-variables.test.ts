@@ -30,7 +30,7 @@ const traces = {
   shorter: [/^at main\.failing \(\S+:2:3\)$/u, /^at main\._main \(\S+:7:3\)$/u, liveMain],
   encoder: [
     /^at main\.toJson \(\S+:3:37\)$/u,
-    /^at json\.encode<main\.Money> \(std:json:\d+:\d+\)$/u,
+    /^at json\.encode<#main\.Money<>> \(std:json:\d+:\d+\)$/u,
     /^at main\.main \(\S+:6:32\)$/u,
   ],
   spawned: [

@@ -3,7 +3,8 @@
  * - every index lands inside its table (ranges.ts)
  * - every entry its body names is code its caller, a host or the runtime, may call, taking what
  *   it is given (entries.ts)
- * - every construction agrees with the type it names
+ * - every construction agrees with the type it names, and no two variants of one enum share a
+ *   name, which the runtime finds a variant by
  * - every call to a known function passes its parameters' number and kind (value or `&`), and
  *   every closure carries its function's captures
  * - code never runs off its end, and only code running as an execution waits
@@ -51,6 +52,9 @@ export function checkReferences(tables: Tables, refinement: z.RefinementCtx): vo
   });
   tables.types.forEach((type, index) => {
     checkType(context, type, ['types', index]);
+    if (type.kind === 'enum') {
+      checkVariantNames(context, type.variants, ['types', index, 'variants']);
+    }
   });
   tables.functions.forEach((entry, index) => {
     checkFunction(context, entry, ['functions', index]);
@@ -106,6 +110,24 @@ function checkType(context: Context, type: TypeDefinition, path: Path): void {
       });
     });
   }
+}
+
+/**
+ * The runtime finds a variant by its name (definition/values/declared-values.ts), a union's member
+ * by its table key, so no two variants of one enum share one.
+ */
+function checkVariantNames(
+  context: Context,
+  variants: readonly { readonly name: string }[],
+  path: Path,
+): void {
+  const named = new Set<string>();
+  variants.forEach(({ name }, index) => {
+    if (named.has(name)) {
+      context.report([...path, index, 'name'], `Two variants are named ${JSON.stringify(name)}.`);
+    }
+    named.add(name);
+  });
 }
 
 function checkFunction(context: Context, entry: FunctionDefinition, path: Path): void {

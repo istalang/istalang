@@ -20,7 +20,7 @@ import { compileProgram, compileTests, diagnose } from '../compile.ts';
 import { idOf } from '../program/program.test-kit.ts';
 import type { Program } from '../program/program.ts';
 import { declaredFunctions } from '../syntax/declarations/index.ts';
-import { keyOf } from './tables/names.ts';
+import { keyOf } from './tables/extern-keys.ts';
 
 const specModules = specExamples
   .filter((example) => example.form === 'module')
@@ -52,7 +52,7 @@ function instanceEncoders({ types, functions }: Definition): readonly (string | 
 }
 
 describe('function-table names', () => {
-  it("spell an instance's type arguments as keys do, one entry per instance", () => {
+  it("spell an instance's type arguments by their table keys, one entry per instance", () => {
     const program = stdProgramOf({
       main: [
         "import * as a from 'a'",
@@ -67,9 +67,9 @@ describe('function-table names', () => {
     const names = compiledDefinition(program, 'main').functions.map(({ name }) => name);
     expect(names).toEqual(
       expect.arrayContaining([
-        'main.show<a.Money>',
-        'main.show<b.Money>',
-        'main.show<prelude.Optional<Int>>',
+        'main.show<#a.Money<>>',
+        'main.show<#b.Money<>>',
+        'main.show<|<Int,None>>',
       ]),
     );
     expect(names.filter((name) => name.includes('/'))).toEqual([]);
@@ -163,14 +163,14 @@ describe('lowering', () => {
       ['struct', 'main.Box'],
       ['extern', 'prelude.Array'],
       ['extern', 'prelude.Slot'],
-      ['enum', 'prelude.Optional'],
+      ['enum', '|<Int,None>'],
     ]);
     const disposals = boxTypes.flatMap((type) =>
-      type.kind === 'extern' ? [[type.name, type.disposal.kind]] : [],
+      type.kind === 'extern' ? [[type.name, type.disposal.kind, type.role]] : [],
     );
     expect(disposals).toEqual([
-      ['prelude.Array', 'none'],
-      ['prelude.Slot', 'runtime'],
+      ['prelude.Array', 'none', 'array'],
+      ['prelude.Slot', 'runtime', undefined],
     ]);
   });
 
@@ -330,12 +330,12 @@ describe('lowering', () => {
       ].join('\n'),
     });
     const enums = compiledDefinition(program, 'main').types.flatMap((type) =>
-      type.kind === 'enum' ? [[type.name, type.role]] : [],
+      type.kind === 'enum' ? [type] : [],
     );
-    expect(enums).toContainEqual(['json.Json', 'json']);
-    expect(enums.filter(([name]) => name !== 'json.Json').map(([, role]) => role)).not.toContain(
-      'json',
-    );
+    const json = enums.filter((type) => type.role === 'json');
+    expect(json.map((type) => type.variants.map(({ name }) => name).slice(0, 5))).toEqual([
+      ['Bool', 'Float', 'Int', 'None', 'String'],
+    ]);
   });
 
   it('gives each shape one unnamed entry, shared by every place writing it (§3.1)', () => {

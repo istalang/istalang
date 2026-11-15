@@ -114,6 +114,7 @@ export const broadcastDefinition: Definition = {
       arguments: [string],
       disposal: { kind: 'none' },
       counted: false,
+      role: 'array',
     },
     {
       kind: 'extern',

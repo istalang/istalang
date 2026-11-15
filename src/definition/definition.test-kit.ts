@@ -25,12 +25,7 @@ import {
   encoderProblem,
   type FunctionDefinition,
 } from './tables/functions.ts';
-import {
-  type ExternRole,
-  hasRole,
-  type TypeDefinition,
-  type TypeReference,
-} from './tables/types.ts';
+import { externRole, hasRole, type TypeDefinition, type TypeReference } from './tables/types.ts';
 import { valueArbitrary } from './values/values.test-kit.ts';
 
 function typeReference(types: number): fc.Arbitrary<TypeReference> {
@@ -77,9 +72,10 @@ function typeDefinition(sizes: Sizes): fc.Arbitrary<TypeDefinition> {
       .record({
         name: fc.string(),
         arguments: typeArguments,
-        variants: fc.array(fc.record({ name: fc.string(), fields }), {
+        variants: fc.uniqueArray(fc.record({ name: fc.string(), fields }), {
           minLength: 1,
           maxLength: 3,
+          selector: (variant) => variant.name,
         }),
       })
       .map((parts) => ({ kind: 'enum' as const, ...parts })),
@@ -93,7 +89,7 @@ function typeDefinition(sizes: Sizes): fc.Arbitrary<TypeDefinition> {
           index(sizes.functions).map((fn) => ({ kind: 'function' as const, function: fn })),
         ),
         counted: fc.boolean(),
-        role: fc.option(fc.constantFrom<ExternRole>('shared', 'cell', 'future', 'instance'), {
+        role: fc.option(fc.constantFrom(...externRole.options), {
           nil: undefined,
         }),
       })

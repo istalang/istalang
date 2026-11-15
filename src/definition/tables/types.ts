@@ -129,14 +129,15 @@ const disposal = z.discriminatedUnion('kind', [
 ]);
 
 /**
- * What the runtime makes of an extern type's values: a `shared` type is every shared struct's,
- * whose values are handles to the cells `newCell` makes (spec §3.18); a `cell` type is every
- * `_Cell<T>`, the one a variable passed by `&` or captured lives in (§3.7, §3.14), as a code entry
- * lists in its `cells`; a `future` type is every `Future<T>`, which a host's extern returning one
- * gives back pending (§9); an `instance` type is every `Instance<T>`, which `spawn` gives, holding
- * the new instance's name (§9). Any other extern type has none.
+ * What the runtime makes of an extern type's values: an `array` type is every `Array<T>`, a `map`
+ * type every `Map<K, V>`, which JSON reads and writes as its own (§9); a `shared` type is every
+ * shared struct's, whose values are handles to the cells `newCell` makes (spec §3.18); a `cell`
+ * type is every `_Cell<T>`, the one a variable passed by `&` or captured lives in (§3.7, §3.14), as
+ * a code entry lists in its `cells`; a `future` type is every `Future<T>`, which a host's extern
+ * returning one gives back pending (§9); an `instance` type is every `Instance<T>`, which `spawn`
+ * gives, holding the new instance's name (§9). Any other extern type has none.
  */
-const externRole = z.enum(['shared', 'cell', 'future', 'instance']);
+export const externRole = z.enum(['array', 'map', 'shared', 'cell', 'future', 'instance']);
 
 /** A type the runtime or host implements, such as `prelude.Array<Int>` or a host `Queue<T>`. */
 const external = z.strictObject({
