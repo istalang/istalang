@@ -8,9 +8,8 @@
  * view passes a fact through unread.
  */
 
-import type { NodeOf } from '../../../../syntax/tree/node.ts';
 import type { PassAnswers } from '../../../contexts/pass-views.ts';
-import type { Pass, PassRecords } from '../../../contexts/passes.ts';
+import type { Pass } from '../../../contexts/passes.ts';
 import { type FlowSource, flowsOf } from '../../../rules/flow/build/index.ts';
 import type { BodyFacts, CheckedBody } from '../../../surface/checked-body.ts';
 import {
@@ -32,7 +31,7 @@ import {
   firstRecorded,
   typesJoined,
 } from './pass-joins.ts';
-import type { RecordedBody } from './recorded-body.ts';
+import { coreAt, type RecordedBody, throughCore } from './recorded-body.ts';
 
 /**
  * How a body answers one fact: read as `pass` checked it, from what it recorded (`bodyAt` reads
@@ -314,31 +313,6 @@ const bodyFacts: { readonly [Name in FactName]: FactEntry<Name> } = {
     instantiated: (result, by) => by.concrete(result),
   },
 };
-
-/**
- * `site`, or what a desugaring rebuilt it as (checker/desugaring/), whose records answer for it: a
- * deferred call's call to its taker, and a call it makes later as rebuilt.
- */
-function coreAt<Key extends NodeOf<string>>(
-  { units }: RecordedBody,
-  pass: Pass,
-  site: NodeOf<string>,
-): Key {
-  // A site's core is a call, a site of the same records.
-  return (units.sugars.coreOf(site, pass) ?? site) as Key;
-}
-
-/** `records`, which a written node a desugaring rebuilt reads at its core (`coreAt`). */
-function throughCore<Written extends NodeOf<string>, Key extends Written, Record>(
-  recorded: RecordedBody,
-  pass: Pass,
-  records: PassRecords<Key, Record>,
-): PassRecords<Written, Record> {
-  return {
-    get: (site) => records.get(coreAt(recorded, pass, site)),
-    has: (site) => records.has(coreAt(recorded, pass, site)),
-  };
-}
 
 const factNames = Object.keys(bodyFacts) as readonly FactName[];
 
