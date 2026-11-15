@@ -13,20 +13,37 @@ import { checkProgram } from '../../check.ts';
 import { typeText } from '../../types/type/type-text.ts';
 import type { ProgramChecker } from '../../wiring/program/program-checker.ts';
 
-/**
- * A program converting a `Box<Int>` into `any Shows` at `sites` sites, met through a generic
- * witness.
- */
-function converting(sites: number, shown: string): string {
-  return [
-    'trait Shows { fn show(self: Self) -> String }',
-    'struct Box<T> { value: T }',
-    'fn show<W is Shows>(self: Box<W>) -> String: self.value.show()',
-    'fn show(self: Int) -> String: "i"',
-    'fn take(x: any Shows): ()',
-    ...Array.from({ length: sites }, (_, site) => `ista fn f${site}(b: Box<${shown}>): take(b)`),
-  ].join('\n');
+/** How a program's sites ask a goal over `given`: what they ask through, then each site. */
+interface Asker {
+  readonly declared: (given: string) => string;
+  readonly site: (index: number, given: string) => string;
 }
+
+/** A program of `prelude` whose `sites` sites ask a goal over `given` as `asker` does. */
+function asking(prelude: readonly string[], asker: Asker, sites: number, given: string): string {
+  const each = Array.from({ length: sites }, (_, index) => asker.site(index, given));
+  return [...prelude, asker.declared(given), ...each].join('\n');
+}
+
+/** `Box<W>` meets `Shows` through a generic witness, whose own parameter is `W`. */
+const shows = [
+  'trait Shows { fn show(self: Self) -> String }',
+  'struct Box<T> { value: T }',
+  'fn show<W is Shows>(self: Box<W>) -> String: self.value.show()',
+  'fn show(self: Int) -> String: "i"',
+];
+
+/** Sites asking whether `Box<given>` meets `Shows`: converting one to `any Shows`, or a call. */
+const showsAskers: Record<string, Asker> = {
+  'sites ask it': {
+    declared: () => 'fn take(x: any Shows): ()',
+    site: (index, shown) => `ista fn f${index}(b: Box<${shown}>): take(b)`,
+  },
+  'calls instantiate a function with it': {
+    declared: () => 'fn shown<V is Shows>(v: V) -> String: v.show()',
+    site: (index, shown) => `fn f${index}(b: Box<${shown}>): shown(b)`,
+  },
+};
 
 /** How often checking `source` asks the constraints of the witness's own parameter `W`. */
 function witnessSearches(source: string): number {
@@ -36,17 +53,19 @@ function witnessSearches(source: string): number {
   return constraintsOf.mock.calls.filter(([parameter]) => parameter.name.text === 'W').length;
 }
 
-/**
- * A program writing `Holder<P>` at `sites` sites, each noting a check of `Holder`'s struct
- * constraint.
- */
-function holding(sites: number, needed: string): string {
-  return [
-    'struct P { x: Int, y: Int }',
-    `struct Holder<S is struct { ${needed}: Int }> { s: S }`,
-    ...Array.from({ length: sites }, (_, site) => `fn f${site}(h: Holder<P>): ()`),
-  ].join('\n');
-}
+const points = ['struct P { x: Int, y: Int }'];
+
+/** Sites asking whether `P` meets `struct { given: Int }`: writing a type, or a call. */
+const structAskers: Record<string, Asker> = {
+  'sites ask it': {
+    declared: (needed) => `struct Holder<S is struct { ${needed}: Int }> { s: S }`,
+    site: (index) => `fn f${index}(h: Holder<P>): ()`,
+  },
+  'calls instantiate a function with it': {
+    declared: (needed) => `fn need<S is struct { ${needed}: Int }>(s: S): ()`,
+    site: (index) => `fn f${index}(p: P): need(p)`,
+  },
+};
 
 /** How often checking `source` reads the fields of `P`. */
 function fieldReads(source: string): number {
@@ -56,32 +75,39 @@ function fieldReads(source: string): number {
   return fieldsOf.mock.calls.filter(([type]) => typeText(type) === 'P').length;
 }
 
+/** The starts of what checking `source` reports in `main.ista`. */
+function reportedStarts(source: string): readonly number[] {
+  const checker = checkProgram(stdProgramOf({ 'main.ista': source }));
+  return checker.diagnosticsOf(idOf('main.ista')).map(({ span }) => span.start);
+}
+
 describe('a struct goal asked at the root', () => {
-  it('is judged once however many sites ask it', () => {
-    const once = fieldReads(holding(1, 'x'));
+  const askers = Object.entries(structAskers);
+
+  it.each(askers)('is judged once however many %s', (_, asker) => {
+    const once = fieldReads(asking(points, asker, 1, 'x'));
     expect(once).toBeGreaterThan(0);
-    expect(fieldReads(holding(4, 'x'))).toBe(once);
+    expect(fieldReads(asking(points, asker, 4, 'x'))).toBe(once);
   });
 
-  it('is reported unmet at every site asking it', () => {
-    const checker = checkProgram(stdProgramOf({ 'main.ista': holding(3, 'z') }));
-    const unmet = checker.diagnosticsOf(idOf('main.ista'));
-    expect(new Set(unmet.map(({ span }) => span.start)).size).toBe(3);
+  it.each(askers)('is reported unmet wherever %s', (_, asker) => {
+    expect(new Set(reportedStarts(asking(points, asker, 3, 'z'))).size).toBe(3);
   });
 });
 
 describe('a trait goal asked at the root', () => {
-  it('is searched once however many sites ask it', () => {
-    const once = witnessSearches(converting(1, 'Int'));
+  const askers = Object.entries(showsAskers);
+
+  it.each(askers)('is searched once however many %s', (_, asker) => {
+    const once = witnessSearches(asking(shows, asker, 1, 'Int'));
     expect(once).toBeGreaterThan(0);
-    expect(witnessSearches(converting(4, 'Int'))).toBe(once);
+    expect(witnessSearches(asking(shows, asker, 4, 'Int'))).toBe(once);
   });
 
-  it('is reported unmet at every site asking it', () => {
-    const checker = checkProgram(stdProgramOf({ 'main.ista': converting(3, 'Bool') }));
-    const unmet = checker.diagnosticsOf(idOf('main.ista'));
-    expect(unmet.map(({ code }) => code)).toHaveLength(3);
-    expect(new Set(unmet.map(({ span }) => span.start)).size).toBe(3);
+  it.each(askers)('is reported unmet wherever %s', (_, asker) => {
+    const starts = reportedStarts(asking(shows, asker, 3, 'Bool'));
+    expect(starts).toHaveLength(3);
+    expect(new Set(starts).size).toBe(3);
   });
 });
 

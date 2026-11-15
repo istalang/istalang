@@ -1,8 +1,9 @@
 /**
  * Goals asked at the root of a witness search (conformance.ts), kept program-wide: a type meets a
  * trait, or a struct constraint, the same wherever it is asked (§3.10), so one search answers
- * every site asking: lowering's trait objects, conversions, noted constraint checks, the host
- * boundary and codecs ask one goal at many sites.
+ * every site asking: calls instantiated with the same type arguments (`rootGoalsAt`), lowering's
+ * trait objects, conversions, noted constraint checks, the host boundary and codecs ask one goal
+ * at many sites.
  *
  * - A goal is an entry (structures/entries), so what its search read is logged once and every
  *   site asking reads the goal, which a later revision takes over or searches again as any entry.
@@ -30,8 +31,10 @@ import type {
   TraitGoal,
 } from '../../contexts/context.ts';
 import { searchSite, type UseSite } from '../../contexts/use-site.ts';
-import type { Type } from '../../types/type/index.ts';
-import { goalKey } from './witness-outcomes.ts';
+import type { ResolvedCall } from '../../surface/resolved-call.ts';
+import type { Constraint, Type } from '../../types/type/index.ts';
+import type { StructConstraintModel } from '../../types/type/struct-constraint.ts';
+import { type Failure, goalKey } from './witness-outcomes.ts';
 
 /** The root goals of `checker`'s program, each kept from what `searches` finds for it. */
 export function programRootGoals(checker: CheckerContext, searches: RootGoals): RootGoals {
@@ -51,6 +54,22 @@ export function programRootGoals(checker: CheckerContext, searches: RootGoals): 
   return {
     witnesses: (site, goal) => traits.found(site, goal),
     structMet: (site, goal) => structs.found(site, goal),
+  };
+}
+
+/** How an instantiation asks the goals its type arguments must meet, reporting at its site. */
+export interface ArgumentGoals {
+  readonly witnesses: (type: Type, constraint: Constraint) => readonly ResolvedCall[] | Failure;
+  readonly structMet: (type: Type, model: StructConstraintModel) => boolean;
+}
+
+/** A call's instantiation's goals, asked at `site` of its program's root goals. */
+export function rootGoalsAt(site: UseSite): ArgumentGoals {
+  const { rootGoals } = site.checker;
+  return {
+    witnesses: (type, constraint) =>
+      rootGoals.witnesses(site, { type, constraint, onValues: false }) ?? 'failed',
+    structMet: (type, model) => rootGoals.structMet(site, { type, model }),
   };
 }
 

@@ -24,7 +24,10 @@
  *   `(union, constraint)` goal already active counts as met (`silentMeets`). A search judges each
  *   goal once (witness-outcomes.ts `SearchGoals`), finding a failure again where its site reports.
  * - A goal asked at the root, a trait's or a struct constraint's, is searched once per program
- *   (`rootSearches`, kept by root-goals.ts), each site asking making its reports again.
+ *   (`rootSearches`, kept by root-goals.ts), each site asking making its reports again. A call's
+ *   instantiation asks its type arguments' goals there too (`rootGoalsAt`), so every call made with
+ *   the same arguments shares one search; a witness's asks them within the search it is nested in
+ *   (`searchGoalsAt`), whose active goals it must see.
  * - A requirement with type parameters of its own is met by a function generic in the same way:
  *   resolving the call with those parameters as opaque types infers the candidate's own.
  * - The required result is what the witness must give exactly, so a type parameter no argument
@@ -73,6 +76,7 @@ import {
 import { type Derivation, derivationOf } from './derived-traits.ts';
 import { kindsSettledAt } from './kind-settling.ts';
 import { fieldGetters, lacks, type Meeting, meetingKey, metBy } from './meetings.ts';
+import { type ArgumentGoals, rootGoalsAt } from './root-goals.ts';
 import {
   associatedShortfall,
   type Meets,
@@ -106,7 +110,7 @@ export interface Instantiation {
  * `match`es and its witnesses' noted to reduce. Undefined after reporting why it can't be.
  */
 export function instantiate(site: UseSite, application: Application): Instantiation | undefined {
-  const instantiation = instantiateAt(site, application, startSearch());
+  const instantiation = instantiateAt(site, application);
   if (isFailure(instantiation)) {
     return undefined;
   }
@@ -115,11 +119,11 @@ export function instantiate(site: UseSite, application: Application): Instantiat
   return instantiation;
 }
 
-/** `instantiate`, within `search`. */
+/** `instantiate`, within the `search` a witness's instantiation is nested in, if any. */
 function instantiateAt(
   site: UseSite,
   application: Application,
-  search: Search,
+  search?: Search,
 ): Instantiation | Failure {
   const { checker } = site;
   const { signature, inference } = application;
@@ -137,31 +141,44 @@ function instantiateAt(
   return isFailure(witnesses) ? witnesses : { typeArguments, substitution, witnesses };
 }
 
-/** The witnesses of every constraint on `parameters`, given their arguments. */
+/** A witness's goals, asked within the `search` it is nested in. */
+function searchGoalsAt(site: UseSite, search: Search): ArgumentGoals {
+  return {
+    witnesses: (type, constraint) => {
+      const meeting = { site, type, constraint };
+      return search.goals.witnessesReported(meetingKey(meeting), () => conform(meeting, search));
+    },
+    structMet: (type, model) => meetsStructModel(site, type, model, silentMeets(site, search)),
+  };
+}
+
+/**
+ * The witnesses of every constraint on `parameters`, given their arguments, asked of the root goals
+ * unless within a witness's `search`.
+ */
 function witnessesOf(
   site: UseSite,
   parameters: readonly TypeParameter[],
   { typeArguments, substitution }: Extract<Completion, { kind: 'complete' }>,
-  search: Search,
+  search?: Search,
 ): Witnesses | Failure {
+  const goals = search === undefined ? rootGoalsAt(site) : searchGoalsAt(site, search);
   const witnesses = new Map<TypeParameter, readonly (readonly ResolvedCall[])[]>();
   for (const [index, parameter] of parameters.entries()) {
     const argument = typeArguments[index] ?? errorType;
     const given = { argument, substitution };
-    const struct = () =>
-      meetsStructConstraints(site, parameter, given, (type, model) =>
-        meetsStructModel(site, type, model, silentMeets(site, search)),
-      );
-    if (!(standsForMember(site, parameter, argument, substitution) && struct())) {
-      return search.endless === undefined ? 'failed' : 'endless';
+    if (
+      !(
+        standsForMember(site, parameter, argument, substitution) &&
+        meetsStructConstraints(site, parameter, given, goals.structMet)
+      )
+    ) {
+      return search?.endless === undefined ? 'failed' : 'endless';
     }
     const met: (readonly ResolvedCall[])[] = [];
     for (const constraint of site.checker.constraintsOf(parameter)) {
       const mapped = substituteConstraint(constraint, substitution, site.checker.typeRules);
-      const meeting = { site, type: argument, constraint: mapped };
-      const witnessesOfConstraint = search.goals.witnessesReported(meetingKey(meeting), () =>
-        conform(meeting, search),
-      );
+      const witnessesOfConstraint = goals.witnesses(argument, mapped);
       if (isFailure(witnessesOfConstraint)) {
         return witnessesOfConstraint;
       }
