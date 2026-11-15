@@ -59,7 +59,20 @@ export function takeApart<Target, Step extends PartStep>(
     return constructed(tupleKey, shapes);
   }
   const fields = structParts(taking.context, destructuring.type, part.type, destructuring.span);
-  const shapes = takeFields(taking, destructuring.items, fields, part);
+  return takeStructFields(taking, destructuring.items, fields, part);
+}
+
+/**
+ * Takes a struct value of `part` apart into `items`, each taking the field of `fields` it names, the
+ * struct's (parts.ts `structParts`); unknown fields give no shape, a guard.
+ */
+export function takeStructFields<Target, Step extends PartStep>(
+  taking: Taking<Target, Step | FieldStep>,
+  items: readonly FieldTarget<Target>[],
+  fields: readonly FieldMember[] | undefined,
+  part: ValuePart<Step | FieldStep>,
+): Shape | undefined {
+  const shapes = takeFields(taking, items, fields, part);
   return fields === undefined ? undefined : constructed(structKey, shapes);
 }
 

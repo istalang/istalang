@@ -186,6 +186,7 @@ export function takeVariantCall(
   if (variant === undefined) {
     return anyShape;
   }
+  walk.context.patterns.recordFields(node, variant.fields);
   walk.found.push(variant.test);
   const leavesOthers = node.arguments.some(({ kind }) => kind === 'OtherFieldsPattern');
   // Past an argument the parser refused, no field is missing: it may have meant to give it.

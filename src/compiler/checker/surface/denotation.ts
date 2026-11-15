@@ -137,6 +137,8 @@ export const joinedFacts = [
   'madeCalls',
   'literalFieldsOf',
   'patternOf',
+  'matchedTypeOf',
+  'patternFieldsOf',
   'chainOf',
   'fieldReadOf',
   'declaredTypeOf',

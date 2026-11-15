@@ -21,7 +21,7 @@ import type {
   FieldsLiteral,
   MapLiteral,
 } from '../../syntax/expressions/index.ts';
-import type { Pattern } from '../../syntax/patterns.ts';
+import type { Pattern, PatternPart } from '../../syntax/patterns.ts';
 import type {
   Assignment,
   Block,
@@ -53,7 +53,12 @@ import type {
   ValueSite,
 } from '../surface/checked-body.ts';
 import type { FieldRead, FieldReading } from '../surface/checked-field.ts';
-import type { CheckedPattern, TargetBinding, TargetOwner } from '../surface/checked-pattern.ts';
+import type {
+  CheckedPattern,
+  FieldsPattern,
+  TargetBinding,
+  TargetOwner,
+} from '../surface/checked-pattern.ts';
 import type {
   Binding,
   FunctionNaming,
@@ -424,9 +429,14 @@ export interface FieldReadRecord {
   readonly of: (reading: FieldReading) => FieldRead | undefined;
 }
 
-/** Each pattern's tests and bindings (constructs/patterns/matching.ts). */
+/**
+ * Each pattern's tests and bindings, the type each pattern and part was matched against, and the
+ * fields a struct or call pattern names (constructs/patterns/matching.ts).
+ */
 export interface PatternRecord {
   readonly record: (pattern: Pattern, checked: CheckedPattern) => void;
+  readonly recordMatched: (node: Pattern | PatternPart, type: Type) => void;
+  readonly recordFields: (pattern: FieldsPattern, fields: readonly FieldMember[]) => void;
 }
 
 /** The links of optional chains (constructs/expressions/access/optionals.ts). */

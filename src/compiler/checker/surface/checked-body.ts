@@ -22,7 +22,7 @@ import type {
   StructComprehension,
 } from '../../syntax/expressions/index.ts';
 import type { StringLiteral } from '../../syntax/expressions/literals/literals.ts';
-import type { Pattern, PatternArgument } from '../../syntax/patterns.ts';
+import type { Pattern, PatternArgument, PatternPart } from '../../syntax/patterns.ts';
 import type {
   Assignment,
   Block,
@@ -42,7 +42,13 @@ import type { Substitution } from '../types/parts/substitution.ts';
 import type { FieldMember, FunctionType, Type } from '../types/type/index.ts';
 import type { TypeRules } from '../types/type/type-rules.ts';
 import type { FieldRead, FieldReading } from './checked-field.ts';
-import type { CheckedPattern, TargetBinding, TargetOwner, TargetStep } from './checked-pattern.ts';
+import type {
+  CheckedPattern,
+  FieldsPattern,
+  TargetBinding,
+  TargetOwner,
+  TargetStep,
+} from './checked-pattern.ts';
 import type { JoinedBody } from './denotation.ts';
 import type { FlowFunction } from './flow-ir.ts';
 import type {
@@ -284,6 +290,16 @@ export interface BodyFacts {
   readonly literalFieldsOf: (literal: FieldsLiteral) => readonly FieldMember[] | undefined;
   /** A `match` case's or `is`'s pattern as checked (§3.11); undefined for one never checked. */
   readonly patternOf: (pattern: Pattern) => CheckedPattern | undefined;
+  /**
+   * The type of the value a pattern or a part of one is matched against, whole where earlier cases
+   * left only some of a union's members (§3.11); undefined for one never walked.
+   */
+  readonly matchedTypeOf: (node: Pattern | PatternPart) => Type | undefined;
+  /**
+   * The fields a struct pattern's items or a call pattern's arguments may name: its struct's or its
+   * variant's; undefined where the pattern names none (§3.11).
+   */
+  readonly patternFieldsOf: (pattern: FieldsPattern) => readonly FieldMember[] | undefined;
   /** A link of an optional chain (§4), such as `a?.b` or the `.c` of `a?.b.c`; else undefined. */
   readonly chainOf: (link: Expression) => ChainLink | undefined;
   /**

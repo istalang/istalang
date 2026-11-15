@@ -23,6 +23,9 @@
  *   `typed`).
  * - A shape is undefined when the pattern acts as a guard for exhaustiveness: it compares by more
  *   than `==` against a literal or variant, tests one field twice, or is a range (§3.11).
+ * - What tools read of a pattern being written is recorded as the walk takes it (../matching.ts):
+ *   the type each pattern and part is matched against, and the fields a struct or call pattern
+ *   names, so no tool walks a pattern again.
  */
 
 import { type Handlers, handlerOf } from '../../../../../foundation/structures/kind-table.ts';
@@ -46,7 +49,7 @@ import {
   type PatternTest,
   type TargetBinding,
 } from '../../../surface/checked-pattern.ts';
-import type { Type } from '../../../types/type/index.ts';
+import type { FieldMember, Type } from '../../../types/type/index.ts';
 import { errorType, isPrimitive, neverType } from '../../../types/type/primitives.ts';
 import { namesOwnType } from '../../../types/written/pattern-types.ts';
 import { anyShape, nothingShape, type Shape } from '../exhaustiveness/exhaustiveness.ts';
@@ -62,10 +65,10 @@ import {
   takeVariantCall,
   variantBraced,
 } from './kinds/variant-calls.ts';
-import type { ValuePart } from './parts.ts';
+import { structParts, type ValuePart } from './parts.ts';
 import type { Leaf, Selection } from './pattern-tests.ts';
 import { literalPart, refuseTypeArguments, selectionOf } from './selections.ts';
-import { type Taking, takeApart, takeTargets } from './taking.ts';
+import { type Taking, takeApart, takeStructFields, takeTargets } from './taking.ts';
 
 /** A pattern as walked. */
 export interface WalkedPattern {
@@ -204,6 +207,7 @@ const patternHandlers: Handlers<Walk, Pattern | PatternPart, [ValuePart], Shape 
 function takeMatched(walk: Walk, written: Pattern | PatternPart, part: ValuePart): Matched {
   const node =
     written.kind === 'ParenthesizedPattern' ? unparenthesizedPattern(written.pattern) : written;
+  walk.context.patterns.recordMatched(node, part.narrowedFrom ?? part.type);
   if (node.kind === 'OrPattern') {
     return takeAlternatives(walk, node, part);
   }
@@ -394,12 +398,25 @@ function takeStruct(walk: Walk, node: StructPattern, part: ValuePart): Shape | u
   const shape =
     node.type === undefined && isStructNotKnown(walk.context, part.type)
       ? takeFieldsByName(walk, items, part)
-      : takeApart(walk, { kind: 'struct', type: node.type, items, span: node.span }, part);
+      : takeStructFields(walk, items, namedFields(walk, node, part), part);
   const rest = restBinding(walk.context.checker.typeRules, node, part);
   if (rest !== undefined) {
     walk.bindings.push(rest);
   }
   return shape;
+}
+
+/** The fields of the struct `node` takes apart, recorded for what tools offer (`structParts`). */
+function namedFields(
+  walk: Walk,
+  node: StructPattern,
+  part: ValuePart,
+): readonly FieldMember[] | undefined {
+  const fields = structParts(walk.context, node.type, part.type, node.span);
+  if (fields !== undefined) {
+    walk.context.patterns.recordFields(node, fields);
+  }
+  return fields;
 }
 
 /** A construct that could fail to match: tested in a pattern that may fail, refused in a target. */

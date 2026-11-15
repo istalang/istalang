@@ -4,29 +4,57 @@
  * (walk/kinds/); this module declares what they bind and keeps what lowering reads of them.
  */
 
-import type { Pattern } from '../../../syntax/patterns.ts';
+import type { Pattern, PatternPart } from '../../../syntax/patterns.ts';
 import type { BodyContext, PatternRecord } from '../../contexts/body-context.ts';
 import type { Pass, Passes, PassTable } from '../../contexts/passes.ts';
-import { type CheckedPattern, namesBound } from '../../surface/checked-pattern.ts';
+import {
+  type CheckedPattern,
+  type FieldsPattern,
+  namesBound,
+} from '../../surface/checked-pattern.ts';
 import { unfolded } from '../../types/type/computed-types.ts';
-import type { Type } from '../../types/type/index.ts';
+import type { FieldMember, Type } from '../../types/type/index.ts';
 import { subjectPart } from './exhaustiveness/remaining.ts';
 import { type WalkedPattern, walkPattern } from './walk/index.ts';
 
-/** The patterns of one body as checked, for lowering. */
+/**
+ * The patterns of one body as checked: for lowering, and what tools read of a pattern being
+ * written, the type each pattern and part was matched against and the fields a struct or call
+ * pattern names.
+ */
 export class CheckedPatterns implements PatternRecord {
   readonly #patterns: PassTable<Pattern, CheckedPattern>;
+  readonly #matched: PassTable<Pattern | PatternPart, Type>;
+  readonly #fields: PassTable<FieldsPattern, readonly FieldMember[]>;
 
   constructor(passes: Passes) {
     this.#patterns = passes.table();
+    this.#matched = passes.table();
+    this.#fields = passes.table();
   }
 
   record(pattern: Pattern, checked: CheckedPattern): void {
     this.#patterns.set(pattern, checked);
   }
 
+  recordMatched(node: Pattern | PatternPart, type: Type): void {
+    this.#matched.set(node, type);
+  }
+
+  recordFields(pattern: FieldsPattern, fields: readonly FieldMember[]): void {
+    this.#fields.set(pattern, fields);
+  }
+
   patternOf(pattern: Pattern, pass?: Pass): CheckedPattern | undefined {
     return this.#patterns.get(pattern, pass);
+  }
+
+  matchedTypeOf(node: Pattern | PatternPart, pass?: Pass): Type | undefined {
+    return this.#matched.get(node, pass);
+  }
+
+  fieldsOf(pattern: FieldsPattern, pass?: Pass): readonly FieldMember[] | undefined {
+    return this.#fields.get(pattern, pass);
   }
 }
 

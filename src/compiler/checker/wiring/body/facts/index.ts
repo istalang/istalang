@@ -195,6 +195,22 @@ const bodyFacts: { readonly [Name in FactName]: FactEntry<Name> } = {
     instantiated: (patternOf, by) => readThrough(patternOf, by.pattern),
     joined: firstFound,
   },
+  matchedTypeOf: {
+    at:
+      ({ units }, pass) =>
+      (node) =>
+        units.patterns.matchedTypeOf(node, pass),
+    instantiated: (matchedTypeOf, by) => readThrough(matchedTypeOf, by.concrete),
+    joined: typesJoined,
+  },
+  patternFieldsOf: {
+    at:
+      ({ units }, pass) =>
+      (pattern) =>
+        units.patterns.fieldsOf(pattern, pass),
+    instantiated: (fieldsOf, by) => readThrough(fieldsOf, (fields) => fields.map(by.field)),
+    joined: firstFound,
+  },
   chainOf: {
     at:
       ({ units }, pass) =>

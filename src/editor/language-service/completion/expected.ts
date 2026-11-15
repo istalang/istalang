@@ -3,20 +3,16 @@
  * alone admits bare variants, those of the enum expected.
  *
  * - The checker stays the one home of expectations: a place read from the placeholder parse
- *   (placeholder.ts) expects what the checker expects of the placeholder name, once the module
- *   holding it is checked. So a field's value, an annotated declaration, a `return`, a comparison,
- *   an element or a spread each expect what the language says, with no rule repeated here.
- * - That checker takes over from the program's (incremental checking), so a request checks about
- *   the item holding the cursor; it is tentative, so the program's checker keeps what it took over
- *   from, for the next edit's. The module's imports are kept: the placeholder parse keeps the
- *   nodes of every segment it left alike, the imports' among them. A name already written parses
- *   alike with or without the placeholder, so the program's own checker answers for it, unchecked
- *   again.
+ *   (placeholder.ts) expects what the checker of that parse (placeholder-check.ts) expects of the
+ *   placeholder name. So a field's value, an annotated declaration, a `return`, a comparison, an
+ *   element or a spread each expect what the language says, with no rule repeated here. A name
+ *   already written parses alike with or without the placeholder, so the program's own checker
+ *   answers for it, unchecked again.
  * - A place is asked once per request, however many providers ask (memoized by the place).
  */
 
 import type { Entity } from '../../../compiler/binder/entities.ts';
-import { type Checker, checkProgram, type VariantMember } from '../../../compiler/checker/check.ts';
+import type { Checker, VariantMember } from '../../../compiler/checker/check.ts';
 import {
   enumsExpected,
   plainResultExpected,
@@ -26,7 +22,6 @@ import type { Type } from '../../../compiler/checker/types/type/index.ts';
 import { membersOf } from '../../../compiler/checker/types/type/index.ts';
 import { typeText } from '../../../compiler/checker/types/type/type-text.ts';
 import { futuresOf } from '../../../compiler/checker/types/type/well-known.ts';
-import type { ModuleId, Program } from '../../../compiler/program/program.ts';
 import type { Expression } from '../../../compiler/syntax/expressions/index.ts';
 import { literalNaming } from '../../../compiler/syntax/expressions/literals/built-types.ts';
 import { nodesAt, type SyntaxNode, type SyntaxTree } from '../../../compiler/syntax/tree/index.ts';
@@ -39,6 +34,7 @@ import type { Candidate } from './candidate.ts';
 import type { Cursor } from './cursor.ts';
 import type { Place } from './place.ts';
 import type { ParsedPlace } from './placeholder.ts';
+import { placeholderChecker } from './placeholder-check.ts';
 import { holderIn } from './places/grammar/chain.ts';
 import type { MemberPlace } from './places/member.ts';
 import { matchedTypeOf, patternStartedBy } from './places/patterns/matched-type.ts';
@@ -215,22 +211,11 @@ function writtenName({ name, tree, offset }: Cursor): Identifier | undefined {
 
 /** What the checker expects of `value`, `tree` checked in place of the cursor's module's. */
 function expectedOfPlaceholder(
-  { checker, module }: Cursor,
+  cursor: Cursor,
   tree: SyntaxTree,
   value: Expression,
 ): Type | undefined {
-  const { program } = checker;
-  const tried = checkProgram(withTree(program, module, tree), {
-    previous: program,
-    tentative: true,
-  });
-  return tried.lookup.bodyHolding(module, value)?.expectedOf(value);
-}
-
-/** `program` with `module` read as `tree`, its imports as they were. */
-function withTree(program: Program, module: ModuleId, tree: SyntaxTree): Program {
-  const loaded = program.modules.get(module);
-  return loaded === undefined
-    ? program
-    : { ...program, modules: new Map(program.modules).set(module, { ...loaded, tree }) };
+  return placeholderChecker(cursor, tree)
+    .lookup.bodyHolding(cursor.module, value)
+    ?.expectedOf(value);
 }

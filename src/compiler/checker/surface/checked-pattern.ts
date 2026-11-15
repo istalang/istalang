@@ -16,6 +16,7 @@ import type {
   ArrayPattern,
   CompareFieldPattern,
   LiteralPattern,
+  StructPattern,
   VariantCallPattern,
 } from '../../syntax/patterns.ts';
 import type { For, VariableDeclaration } from '../../syntax/statements/index.ts';
@@ -82,6 +83,12 @@ export type TargetStep = number | StructStep;
  * call pattern whose arguments past its variant's fixed fields match the rest field's (§3.11).
  */
 export type ArraySite = ArrayPattern | VariantCallPattern;
+
+/**
+ * A pattern naming fields of what it takes apart: a struct pattern's items, a struct's or a shape's
+ * fields, or a call pattern's arguments, its variant's.
+ */
+export type FieldsPattern = StructPattern | VariantCallPattern;
 
 /** A step an array pattern takes through a prelude call (`PartStep`). */
 export type ArrayStep =
