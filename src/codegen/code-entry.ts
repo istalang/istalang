@@ -13,17 +13,33 @@
  * - Which execution runs is tracked (`run.at`), for its waits and transients: the run sets it as an
  *   async body begins and resumes, and a simple function sharing transients restores the execution
  *   it entered in.
+ * - Lifetimes (spec §7): a counted parameter or capture is held as the frame begins; after each
+ *   instruction that may have let go of something (any call, and in an entry that counts anything,
+ *   anything but control flow), what lost its last holder is collected, before the next runs. An
+ *   async body's `finally` lets go of what its counted registers still hold, which is what a call
+ *   stopped where it waits lets go of (live/executions.ts).
  */
 
 import type { Instruction } from '../definition/instructions/instruction.ts';
 import { operandsOf } from '../definition/instructions/instruction.ts';
 import { type Handlers, handlerOf } from '../foundation/structures/kind-table.ts';
-import type { EntryScope } from './entry-scope.ts';
+import { collected, type EntryScope } from './entry-scope.ts';
 import { callEmitters } from './instructions/calls.ts';
 import { controlEmitters, prologueEmitters } from './instructions/control.ts';
 import { dataEmitters } from './instructions/data.ts';
 import { lifetimeEmitters } from './instructions/lifetimes.ts';
 import { suspensionEmitters } from './instructions/suspension.ts';
+
+/** Instructions that let go of nothing, or collect themselves (`select`, `return`). */
+const collectsNothing: ReadonlySet<Instruction['kind']> = new Set([
+  'jump',
+  'branch',
+  'switch',
+  'given',
+  'body',
+  'return',
+  'select',
+]);
 
 const emitters: Handlers<EntryScope, Instruction, [], string> = {
   ...dataEmitters,
@@ -48,6 +64,10 @@ export function emitCodeEntry(scope: EntryScope): EmittedEntry {
     ? [asyncHead(scope, parameters), `function* b${index}(fut, ${parameters}) {`]
     : [`function f${index}(${parameters}) {`];
   lines.push(...locals(scope));
+  const stoppable = scope.async && scope.counted.length > 0;
+  if (stoppable) {
+    lines.push('try {');
+  }
   const labels = new Set(
     entry.instructions.flatMap((instruction) => operandsOf(instruction).labels),
   );
@@ -57,20 +77,33 @@ export function emitCodeEntry(scope: EntryScope): EmittedEntry {
   }
   const firstInstruction = lines.length;
   for (const [at, instruction] of entry.instructions.entries()) {
-    const line = handlerOf(emitters, instruction)(scope, instruction);
+    const statement = handlerOf(emitters, instruction)(scope, instruction);
+    const line = collects(scope, instruction) ? `${statement} ${collected}` : statement;
     lines.push(branches && (at === 0 || labels.has(at)) ? `case ${at}: ${line}` : line);
   }
   if (branches) {
     lines.push('default: throw noInstruction(pc);', '}');
   }
+  if (stoppable) {
+    const releases = scope.counted.map((register) => `lt.release(r${register});`);
+    lines.push(`} finally { ${releases.join(' ')} }`);
+  }
   lines.push('}');
   return { lines, firstInstruction };
+}
+
+/** Whether `instruction` is followed by collecting what it let go of. */
+function collects(scope: EntryScope, instruction: Instruction): boolean {
+  return (
+    instruction.kind === 'call' ||
+    (scope.counted.length > 0 && !collectsNothing.has(instruction.kind))
+  );
 }
 
 /** The function an async entry is called as: it gives a new future, its body settling it. */
 function asyncHead(scope: EntryScope, parameters: string): string {
   const { index } = scope;
-  return `function f${index}(${parameters}) { const fut = newFuture(); run.call(fut, b${index}(fut, ${parameters})); return fut; }`;
+  return `function f${index}(${parameters}) { const fut = run.future('call'); run.call(fut, b${index}(fut, ${parameters})); return fut; }`;
 }
 
 /** The statements declaring an entry's registers beyond its parameters, and its working locals. */
@@ -79,12 +112,20 @@ function locals(scope: EntryScope): string[] {
   const declared: string[] = [];
   for (const [register, parameter] of entry.parameters.entries()) {
     if (!parameter.reference && scope.holding(register) !== 'value') {
-      declared.push(`if (r${register} !== undefined) r${register} = cellOf(r${register});`);
+      declared.push(
+        `if (r${register} !== undefined) r${register} = run.cellWrite(undefined, ${scope.cellType(register)}, r${register});`,
+      );
+    } else if (scope.isCounted(register)) {
+      declared.push(`lt.hold(r${register});`);
     }
   }
   const first = entry.parameters.length;
   for (let capture = 0; capture < entry.captures; capture += 1) {
-    declared.push(`let r${first + capture} = cl.captures[${capture}];`);
+    const register = first + capture;
+    declared.push(`let r${register} = cl.captures[${capture}];`);
+    if (scope.isCounted(register)) {
+      declared.push(`lt.hold(r${register});`);
+    }
   }
   const rest = Array.from(
     { length: entry.registers - first - entry.captures },

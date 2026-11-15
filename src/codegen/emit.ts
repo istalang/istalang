@@ -23,6 +23,11 @@ import { literal } from './literal.ts';
 export interface EmitOptions {
   /** The module specifier the program imports the runtime library by: `istalang/live`. */
   readonly runtime: string;
+  /**
+   * Whether every write of a register the entry doesn't count checks that what it writes reaches
+   * nothing counted: tests hold lowering's `counted` to what runs (definition/tables/functions.ts).
+   */
+  readonly checksCounted?: boolean;
 }
 
 /** A program's module text, or why it can't run as JavaScript. */
@@ -54,6 +59,7 @@ function moduleText(definition: Definition, options: EmitOptions): string {
   const { functions } = definition;
   const program: ProgramScope = {
     functionName: (index) => (functions[index]?.kind === 'code' ? `f${index}` : `x${index}`),
+    checksCounted: options.checksCounted === true,
   };
   const lines = [
     `import { program } from ${JSON.stringify(options.runtime)};`,
@@ -62,6 +68,7 @@ function moduleText(definition: Definition, options: EmitOptions): string {
     `const C = ${literal(definition.constants)};`,
     'export default program({',
     `code: (run, { ${Object.keys(helpers).join(', ')} }) => {`,
+    'const lt = run.lifetimes;',
   ];
   const shapes: (CodeShape | ExternShape)[] = [];
   for (const [index, entry] of functions.entries()) {

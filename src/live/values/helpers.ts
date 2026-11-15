@@ -6,32 +6,12 @@
 import { mapOf, valuesEqual } from '../../definition/values/equality.ts';
 import { fieldAt, withPartAt } from '../../definition/values/parts.ts';
 import { elementsOf, isComposite, mapValueOf, type Value } from '../../definition/values/values.ts';
-import { Future } from '../waits/future.ts';
-import { Cell } from './cell.ts';
+import type { Cell } from './cell.ts';
 import { Place } from './place.ts';
-
-/** A new cell holding `value`. */
-function cellOf(value: Value): Cell {
-  return new Cell(value);
-}
-
-/** `cell` holding `value`, made by its first write. */
-function wcell(cell: Cell | undefined, value: Value): Cell {
-  if (cell === undefined) {
-    return new Cell(value);
-  }
-  cell.v = value;
-  return cell;
-}
 
 /** The place at `path` in `cell`'s value. */
 function placeIn(cell: Cell, path: readonly number[]): Place {
   return new Place(cell, path);
-}
-
-/** A new future: an async call's, which its body settles. */
-function newFuture(): Future {
-  return new Future();
 }
 
 /** Built-in structural `==`, identical values equal at once. */
@@ -56,10 +36,7 @@ function noInstruction(pc: number): Error {
 }
 
 export const helpers = {
-  cellOf,
-  wcell,
   placeIn,
-  newFuture,
   withPart: withPartAt,
   field: fieldAt,
   eq,

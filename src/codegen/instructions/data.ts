@@ -22,8 +22,10 @@ export const dataEmitters: Emitters<typeof dataInstructions> = {
     `if ((t = run.contextConstant(${JSON.stringify(i.name)})) !== undefined) { ${scope.write(i.dst, 't')} ${jump(i.target)} }`,
   makeContextConstant: (scope, i) =>
     `run.makeContextConstant(${JSON.stringify(i.name)}, ${scope.read(i.value)});`,
-  transient: (scope, i) =>
-    `if ((t = run.transient(${scope.index}, ${i.dst})) !== undefined) { r${i.dst} = t; ${jump(i.target)} }`,
+  transient: (scope, i) => {
+    const seen = scope.isCounted(i.dst) ? `lt.swap(r${i.dst}, t)` : 't';
+    return `if ((t = run.transient(${scope.index}, ${i.dst})) !== undefined) { r${i.dst} = ${seen}; ${jump(i.target)} }`;
+  },
   move: (scope, i) => scope.write(i.dst, scope.read(i.src)),
   tuple: (scope, i) =>
     scope.write(i.dst, `{kind: 'tuple', elements: [${reads(scope, i.elements)}]}`),
@@ -36,7 +38,7 @@ export const dataEmitters: Emitters<typeof dataInstructions> = {
     ),
   field: (scope, i) => scope.write(i.dst, `field(${scope.read(i.src)}, ${i.index})`),
   store: (scope, i) => scope.store(i.place, scope.read(i.value)),
-  newCell: (scope, i) => scope.write(i.dst, `cellOf(${scope.read(i.value)})`),
+  newCell: (scope, i) => scope.write(i.dst, `run.cell(${i.type}, ${scope.read(i.value)})`),
   readCell: (scope, i) => scope.write(i.dst, `${scope.read(i.cell)}.v`),
   writeCell: (scope, i) => `${scope.read(i.cell)}.v = ${scope.read(i.value)};`,
   array: (scope, i) => {

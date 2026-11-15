@@ -5,27 +5,28 @@
  * every execution ready before it (spec §6).
  *
  * - Ending a wait takes it out of its register.
- * - A decided `select` empties the registers of the cases it lost (spec §8) and binds its winner's
- *   value; one with `otherwise` that finds its wait undecided withdraws it and goes there.
+ * - A decided `select` empties the registers of the cases it lost (spec §8), letting go of what
+ *   they held, binds its winner's value and collects; one with `otherwise` that finds its wait
+ *   undecided withdraws it and goes there.
  */
 
 import type { suspensionInstructions } from '../../definition/instructions/suspension.ts';
-import { type EntryScope, jump } from '../entry-scope.ts';
+import { collected, type EntryScope, jump } from '../entry-scope.ts';
 import type { Emitters } from './emitters.ts';
 
 type Select = Parameters<Emitters<typeof suspensionInstructions>['select']>[1];
 
 export const suspensionEmitters: Emitters<typeof suspensionInstructions> = {
-  wait: (scope, i) => scope.write(i.dst, 'run.wait()'),
+  wait: (scope, i) => scope.write(i.dst, `run.wait(${scope.waitsPlain(i.dst)})`),
   resolver: (scope, i) => scope.write(i.dst, `run.resolver(${scope.read(i.wait)}, ${i.position})`),
   await: (scope, i) =>
-    `t = yield r${i.wait}; r${i.wait} = undefined; ${scope.write(i.dst, 't.value')}`,
+    `t = yield r${i.wait}; ${scope.emptied(i.wait)} ${scope.write(i.dst, 't.value')}`,
   select: (scope, i) => {
     const decision =
       i.otherwise === undefined
         ? `t = yield r${i.wait};`
-        : `t = run.selection(r${i.wait}); if (t === undefined) { r${i.wait} = undefined; ${jump(i.otherwise)} }`;
-    return `${decision} r${i.wait} = undefined; switch (t.position) { ${cases(scope, i)} }`;
+        : `t = run.selection(r${i.wait}); if (t === undefined) { ${scope.emptied(i.wait)} ${collected} ${jump(i.otherwise)} }`;
+    return `${decision} ${scope.emptied(i.wait)} switch (t.position) { ${cases(scope, i)} }`;
   },
 };
 
@@ -36,9 +37,9 @@ function cases(scope: EntryScope, select: Select): string {
       const losers = select.cases
         .filter((_, other) => other !== position)
         .flatMap((loser) => loser.holds)
-        .map((register) => `r${register} = undefined;`);
+        .map((register) => scope.emptied(register));
       const bind = winner.bind === undefined ? '' : scope.write(winner.bind, 't.value');
-      return `case ${position}: ${losers.join(' ')} ${bind} ${jump(winner.target)}`;
+      return `case ${position}: ${losers.join(' ')} ${bind} ${collected} ${jump(winner.target)}`;
     })
     .join(' ');
 }

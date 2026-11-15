@@ -39,9 +39,12 @@ istalang/live: the runtime library, prebuilt with the toolchain, imported by eve
 
 ## What lowering adds
 
-- **`counted`** on every code entry: the registers that may hold what reaches a disposable, by the
-  same `reachesDisposable` the type table's `counted` flag reads. It is safe, not exact: a register
-  lowering can't type (an operation's extra, synthesized code) is counted.
+- **`counted`** on every code entry: the registers that may hold what reaches a disposable. A
+  register is plain by the type of the values lowering binds it to (the same `reachesDisposable`
+  the type table's `counted` flag reads), or, beyond types, when every write builds its value only
+  from plain registers (`plainRegisters`); a derived codec of a plain type is plain throughout. It
+  is safe, not exact: what neither says is counted. Tests run compiled code checking every write of
+  an uncounted register (`checksCounted`).
 - The Definition's format version goes up by one. The interpreter ignores `counted`.
 
 ## Generated code
@@ -88,37 +91,40 @@ it alone holds its value's top node.
 
 ## Lifetimes and disposal (spec §7)
 
-- **What is counted:** what `lifetimes/counts.ts` counts today:
+- **One core:** both runtimes count with `runtime/lifetimes/counts.ts` and order disposals with
+  `runtime/lifetimes/collector.ts`, which reaches either runtime's objects through seams
+  (`Collected`). The runtime library's `live/lifetimes/` gives it a run's objects.
+- **What is counted:**
   - disposables;
   - objects that may hold one (futures, waits, resolvers);
   - cells and resources of counted types;
-  - composite values in counted registers, each a node that counts its holders and holds its parts.
+  - composite values held by counted holders that reach a counted object, each a node that counts
+    its holders and holds its parts. Whether a value reaches one is memoized by identity, values
+    never changing, so plain data costs one look per new value and is never counted.
 
   Everything else is left to the JS GC. The checker's rule (no cycle through anything that reaches
   a disposable) means no cycle collector.
 - **Where counts change:**
-  - **Emitted code:**
-    - writes of counted registers (hold the new value, then let go of the old);
-    - `release`, and `return` for every counted register;
-    - builds and captures from counted registers;
-    - cell writes of counted types.
-  - **The runtime library,** for what its own objects hold: a future's registrations, a wait's
-    resolvers.
-- **Disposal at the release point:** every instruction that let go of something is followed by
-  `if (zeroes.length) collect()`. `dispose` is synchronous (spec), so a collection runs whole before
-  the next instruction:
-  - rounds go newest first, as `lifetimes/collector.ts` orders them;
-  - a declared `dispose` runs as code;
-  - each kind does what `lifetimes/disposal.ts` says.
-
-  The interpreter's collector is bound to its heap and snapshots, so the runtime library has its
-  own; the differential runner holds the two to one behavior.
+  - **Emitted code:** writes of counted registers (hold the new value, then let go of the old),
+    counted parameters and captures as a frame begins, `release`, and `return`, which holds the
+    value given back while every counted register lets go. A counted cell reports its own writes.
+  - **The runtime library,** for what its own objects hold: a future's value and registrations, a
+    wait's value and cases, a resolver's callbacks and targets, as the interpreter's holdings say
+    them. Their state changes mark them touched; what they hold is reconciled with what was last
+    reported before anything reads the counts. A call's result or a wait's value its code knows
+    reaches nothing counted (`plain`) is held by nothing that counts.
+  - **The run,** for a readied callback's closure and arguments, a context constant's value, the
+    root's future, and a running call's own future.
+- **Disposal at the release point:** every call, and in an entry counting anything every
+  instruction but control flow, is followed by `if (lt.due) lt.collect()`. `dispose` is synchronous
+  (spec), so a collection runs whole before the next instruction: a declared `dispose` runs as
+  code inside its round, its own instructions collecting rounds of their own on top.
 - **Stopping a call:** a running call holds its own future, so only a suspended call can be
-  stopped. Its await wakes with a stop: the function lets go of its counted registers and returns,
-  settling nothing. A call woken through `disposing()` resumes at that case and stops at its next
-  await.
-- **Also kept:** weak references and their `disposed()` watches; a decided `select` releases its
-  losers.
+  stopped: `return()` on its generator runs the `finally` that lets go of its counted registers. A
+  call waiting on its own `disposing()` resumes at that case inside the disposal, and is stopped at
+  its next await.
+- **Also kept:** weak references and their watches; a host's `onCancel` once its future is disposed
+  unresolved; a decided `select` releases its losers.
 
 ## Runtime library (`istalang/live`)
 

@@ -4,12 +4,14 @@
  *
  * - **Executions:** the root, each live async call and each readied callback runs as an execution
  *   of its own, and `at` says which runs now: its waits are ordered by its creation, and it sees the
- *   transients its caller saw. An async call's body is a generator the run drives (`call`), setting
- *   `at` as it begins and resumes, so stopping and resuming it never waits on JavaScript's own
- *   scheduling.
+ *   transients its caller saw. An async call's body is a generator the run drives
+ *   (executions.ts).
  * - **Readied work,** waiters whose wait was decided and calls resolvers readied (`Resolver.of`
  *   and `onCancel` callbacks), runs from the run's ready queue (ready.ts), one at a time in the
  *   order it became ready, as the interpreter's does.
+ * - **Lifetimes:** the run makes every counted object (lifetimes/), and collects what lost its last
+ *   holder after each piece of work it runs on its own: a readied one, a host's answer, timers
+ *   coming due. Compiled code collects after its own instructions.
  * - **Its end:** its root's return, encoded as the start's encoder says (§9), or a panic, a limit
  *   the engine ran into included (`panicOf`). Nothing runs after it: a resumed execution returns,
  *   and nothing more arrives. Anything else thrown is a bug in the toolchain, which fails the run's
@@ -23,15 +25,22 @@ import { closureOf } from '../definition/values/values.ts';
 import { unreachable } from '../foundation/structures/unreachable.ts';
 import type { Clock } from '../runtime/clock.ts';
 import type { LogRecord } from '../runtime/instance-state.ts';
+import { countsHoldersOf } from '../runtime/lifetimes/counts.ts';
 import { type Natives, Panic, panicOf } from '../runtime/natives.ts';
 import { Arrivals } from './arrivals.ts';
+import { type Body, Executions } from './executions.ts';
+import type { Counted } from './lifetimes/holdings.ts';
+import { type RunLifetimes, runLifetimes } from './lifetimes/run-lifetimes.ts';
+import { LiveWeakSide } from './lifetimes/weak-side.ts';
 import { boundExtern } from './natives-context.ts';
 import type { ExternShape, LiveFunction, ProgramTables } from './program-tables.ts';
 import { Ready } from './ready.ts';
+import { Timers } from './timers.ts';
 import { Traces } from './traces.ts';
-import { type Cell, newObject } from './values/cell.ts';
+import { Cell, newObject } from './values/cell.ts';
 import { helpers } from './values/helpers.ts';
-import { Future } from './waits/future.ts';
+import { Resource } from './values/resource.ts';
+import { Future, type FutureOrigin } from './waits/future.ts';
 import type { Resolver } from './waits/resolver.ts';
 import { type Decision, Wait } from './waits/wait.ts';
 import { Waits } from './waits/waits.ts';
@@ -50,12 +59,6 @@ export interface At {
   readonly call: Future | undefined;
   readonly scope: Scope | undefined;
 }
-
-/**
- * An async call's body: a generator that stops at each wait it yields, and is resumed with how the
- * wait was decided.
- */
-export type Body = Generator<Wait, void, Decision | undefined>;
 
 /** How a run ended: its root's outcome, encoded as JSON, or a panic. */
 export type RunEnd =
@@ -83,14 +86,19 @@ export class Run {
   at: At = { execution: newObject(), call: undefined, scope: undefined };
   readonly seams: RunSeams;
   readonly waits: Waits;
+  readonly weak: LiveWeakSide;
+  readonly lifetimes: RunLifetimes<At>;
   readonly arrivals: Arrivals;
   readonly traces: Traces;
   readonly logs: LogRecord[] = [];
   readonly functions: readonly LiveFunction[];
+  readonly #executions: Executions<At>;
   #root: { readonly future: Future; readonly encoder: number } | undefined;
   readonly #contextConstants = new Map<string, Value>();
   readonly #ready = new Ready();
-  readonly #timers = new Map<bigint, Future[]>();
+  readonly #timers = new Timers();
+  /** What tells each pending host future's host it was disposed unresolved. */
+  readonly #hostDisposals = new Map<Future, () => void>();
 
   /** Whether the run stopped: nothing of it runs any more. */
   get ended(): boolean {
@@ -101,17 +109,41 @@ export class Run {
     this.seams = seams;
     this.waits = new Waits({
       called: (callback, argumentValues) => {
-        this.#ready.add(() => this.#callback(callback, argumentValues));
+        this.#readyCallback(callback, argumentValues);
       },
-      resumed: (resume) => this.#ready.add(resume),
+      resumed: (resume) => {
+        this.#ready.add(() => this.#onItsOwn(resume));
+      },
+      made: (resolver) => this.lifetimes.made(resolver),
+      touched: (object) => {
+        this.lifetimes.touch(object);
+      },
+    });
+    this.weak = new LiveWeakSide({
+      watchFuture: () => this.future('watch'),
+      resolvedFuture: () => this.resolvedFuture(null),
+      resolveTogether: (futures) => this.#resolveWithNothing(futures),
+      holdersOf: (object) => this.lifetimes.holdersOf(object),
+    });
+    this.#executions = new Executions<At>(this);
+    this.lifetimes = runLifetimes({
+      types: seams.program.types,
+      waits: this.waits,
+      executions: this.#executions,
+      weak: this.weak,
+      functions: () => this.functions,
+      hostDisposed: (future) => {
+        this.#hostDisposals.get(future)?.();
+      },
+      gone: (object) => {
+        this.#gone(object);
+      },
     });
     this.arrivals = new Arrivals(seams.clock, {
-      next: () =>
-        [...this.#timers.keys()].reduce<bigint | undefined>(
-          (earliest, at) => (earliest === undefined || at < earliest ? at : earliest),
-          undefined,
-        ),
-      resolveDue: () => this.#resolveDue(),
+      next: () => this.#timers.next(),
+      resolveDue: () => {
+        this.#onItsOwn(() => this.#resolveDue());
+      },
     });
     this.traces = new Traces(seams.program);
     this.functions = seams.program.code(this, helpers);
@@ -119,20 +151,24 @@ export class Run {
 
   /** Calls `entry` with `argumentValues` as the run's root, its outcome encoded by `encoder`. */
   start(entry: number, argumentValues: readonly Value[], encoder: number): void {
-    try {
+    this.#onItsOwn(() => {
       const outcome = this.#call(entry, argumentValues);
       if (outcome instanceof Future) {
+        this.lifetimes.hold(outcome);
         this.#root = { future: outcome, encoder };
         if (outcome.settled !== undefined) {
           this.#finish(outcome.settled.value);
         }
       } else {
-        this.#root = { future: new Future(), encoder };
+        this.#root = { future: this.future('given'), encoder };
         this.#finish(outcome as Value);
       }
-    } catch (error) {
-      this.fail(error);
-    }
+    });
+  }
+
+  /** Applies `event`, something reaching the run from outside, in a turn of its own. */
+  arrive(event: () => void): void {
+    this.arrivals.arrive(() => this.#onItsOwn(event));
   }
 
   /** The function bound to extern entry `index`. */
@@ -140,25 +176,72 @@ export class Run {
     return boundExtern(this, this.seams.program.functions[index] as ExternShape);
   }
 
-  /**
-   * Runs `body`, the async call of `call`, a new execution, up to its first stop: an async callee
-   * runs eagerly inside its caller, which then runs on as itself.
-   */
+  /** Runs `body`, the async call of `call`, a new execution, up to its first wait. */
   call(call: Future, body: Body): void {
-    this.#resume(body, { execution: call.object, call, scope: this.at.scope }, undefined);
+    this.#executions.call(call, body, { execution: call.object, call, scope: this.at.scope });
   }
 
-  /** Resolves `future` with `value`, as an async call returns. */
-  settle(future: Future, value: Value): void {
+  /** The weak reference to the running call (`currentCall`), which `disposing()` watches. */
+  currentCall(): Value {
+    return this.weak.reference(this.at.call ?? unreachable('Only an async call reads its call.'));
+  }
+
+  /** Resolves `future` with `value`, as an async call returns; `plain` when it reaches nothing counted. */
+  settle(future: Future, value: Value, plain: boolean): void {
+    future.plain = plain;
     this.waits.resolveTogether([[future, value]]);
     if (future === this.#root?.future) {
       this.#finish(value);
     }
   }
 
-  /** A new wait of the running execution. */
-  wait(): Wait {
-    return new Wait(this.at.execution);
+  /** A new future, filled as `origin` says. */
+  future(origin: FutureOrigin): Future {
+    return this.lifetimes.made(new Future(origin));
+  }
+
+  /** A new future, resolved with `value`. */
+  resolvedFuture(value: Value): Future {
+    const future = this.future('given');
+    this.waits.resolveTogether([[future, value]]);
+    return future;
+  }
+
+  /** A pending future a host resolves, `disposed` telling the host once it is disposed. */
+  hostFuture(disposed: () => void): Future {
+    const future = this.future('host');
+    this.#hostDisposals.set(future, disposed);
+    return future;
+  }
+
+  /** A new cell of entry `type` holding `value`, counted as its type entry says. */
+  cell(type: number, value: Value): Cell {
+    const { lifetimes } = this;
+    return countsHoldersOf(this.seams.program.types, type)
+      ? lifetimes.madeCell(new Cell(type, value, lifetimes))
+      : new Cell(type, value);
+  }
+
+  /** A register holding `cell`, a cell of entry `type`, writes `value`: the cell, made by its first. */
+  cellWrite(cell: Cell | undefined, type: number, value: Value): Cell {
+    if (cell === undefined) {
+      return this.lifetimes.swap(undefined, this.cell(type, value));
+    }
+    cell.v = value;
+    return cell;
+  }
+
+  /** A new resource of the host type entry `type`, holding `payload`. */
+  resource(type: number, payload: unknown): Resource {
+    const resource = new Resource(type, payload);
+    return countsHoldersOf(this.seams.program.types, type)
+      ? this.lifetimes.made(resource)
+      : resource;
+  }
+
+  /** A new wait of the running execution, `plain` when what decides it reaches nothing counted. */
+  wait(plain: boolean): Wait {
+    return this.lifetimes.made(new Wait(this.at.execution, this.at.call, plain));
   }
 
   /** A new resolver of `wait`'s case `position`. */
@@ -175,10 +258,12 @@ export class Run {
     return this.#contextConstants.get(name);
   }
 
+  /** Makes context constant `name`, which the run holds for its whole life. */
   makeContextConstant(name: string, value: Value): void {
     if (this.#contextConstants.has(name)) {
       throw new Panic(`The context constant '${name}' is read while it is being made.`);
     }
+    this.lifetimes.hold(value);
     this.#contextConstants.set(name, value);
   }
 
@@ -198,13 +283,8 @@ export class Run {
 
   /** A future that resolves at `at`, in milliseconds since the Unix epoch, with the others due then. */
   timer(at: bigint): Future {
-    const future = new Future();
-    const due = this.#timers.get(at);
-    if (due === undefined) {
-      this.#timers.set(at, [future]);
-    } else {
-      due.push(future);
-    }
+    const future = this.future('timer');
+    this.#timers.add(at, future);
     this.arrivals.timersChanged();
     return future;
   }
@@ -229,27 +309,34 @@ export class Run {
   }
 
   /**
-   * Resumes `body`, execution `at`, with `decision`, to its next stop or its end: stopped at a wait,
-   * it resumes once the wait is decided, as what it then sees, unless the run ended meanwhile.
+   * Runs `work`, which the run runs on its own rather than compiled code calling it, then collects
+   * what it let go of; what it threw ends the run.
    */
-  #resume(body: Body, at: At, decision: Decision | undefined): void {
-    const caller = this.at;
-    this.at = at;
+  #onItsOwn(work: () => void): void {
     try {
-      const next = body.next(decision);
-      if (!next.done) {
-        const stoppedAt = this.at;
-        this.waits.stopped(next.value, (decided) => {
-          if (!this.ended) {
-            this.#resume(body, stoppedAt, decided);
-          }
-        });
+      work();
+      if (this.lifetimes.due) {
+        this.lifetimes.collect();
       }
     } catch (error) {
       this.fail(error);
-    } finally {
-      this.at = caller;
     }
+  }
+
+  /** Readies a call of the function value `callback`, which holds what it calls with meanwhile. */
+  #readyCallback(callback: Value, argumentValues: readonly Value[]): void {
+    const held = [callback, ...argumentValues];
+    for (const value of held) {
+      this.lifetimes.hold(value);
+    }
+    this.#ready.add(() =>
+      this.#onItsOwn(() => {
+        this.#callback(callback, argumentValues);
+        for (const value of held) {
+          this.lifetimes.release(value);
+        }
+      }),
+    );
   }
 
   /** Calls the function value `callback` with `argumentValues`, an execution of its own. */
@@ -262,8 +349,6 @@ export class Run {
     try {
       const closure = closureOf(callback) ?? unreachable('A callback is a function value.');
       (this.functions[closure.function] as LiveFunction)(closure, ...argumentValues);
-    } catch (error) {
-      this.fail(error);
     } finally {
       this.at = caller;
     }
@@ -284,14 +369,25 @@ export class Run {
 
   /** Resolves the timers due by the clock, each instant's together, the earliest first. */
   #resolveDue(): void {
-    const now = this.seams.clock.now();
-    const due = [...this.#timers.keys()]
-      .filter((at) => at <= now)
-      .toSorted((a, b) => (a < b ? -1 : 1));
-    for (const at of due) {
-      const futures = this.#timers.get(at) ?? [];
-      this.#timers.delete(at);
-      this.waits.resolveTogether(futures.map((future) => [future, null] as const));
+    for (const futures of this.#timers.takeDue(this.seams.clock.now())) {
+      this.#resolveWithNothing(futures);
+    }
+  }
+
+  /** Resolves `futures` together, each with nothing: timers come due, watches of what is gone. */
+  #resolveWithNothing(futures: readonly Future[]): void {
+    this.waits.resolveTogether(futures.map((future) => [future, null] as const));
+  }
+
+  /** `object` is gone: a timer nothing awaits no longer wakes the run, a host's no longer tells. */
+  #gone(object: Counted): void {
+    if (!(object instanceof Future)) {
+      return;
+    }
+    this.#hostDisposals.delete(object);
+    if (object.origin === 'timer') {
+      this.#timers.remove(object);
+      this.arrivals.timersChanged();
     }
   }
 

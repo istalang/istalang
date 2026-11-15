@@ -9,6 +9,11 @@
  *   instructions never ask how a register is held.
  * - A transient's cell becomes visible to the calls nested in this one as it is made
  *   (`run.share`), which is why its first write differs from any other cell register's.
+ * - A counted register (definition/tables/functions.ts `counted`) reports its writes to the run's
+ *   lifetimes (`lt`, live/lifetimes/): it holds what it is written and lets go of what it held. A
+ *   cell's writes report themselves (live/values/cell.ts), and a reference holds nothing.
+ * - Returning holds the value given back while every counted register lets go and what that let go
+ *   of is collected (§7), then lets go of it for its taker to hold.
  */
 
 import type { Place } from '../definition/instructions/places.ts';
@@ -23,6 +28,8 @@ type Holding = 'value' | 'cell' | 'transient' | 'reference';
 export interface ProgramScope {
   /** The JavaScript function a direct call of entry `index` calls. */
   readonly functionName: (index: FunctionId) => string;
+  /** Whether a write of an uncounted register checks it writes nothing counted (emit.ts). */
+  readonly checksCounted: boolean;
 }
 
 export class EntryScope {
@@ -33,7 +40,11 @@ export class EntryScope {
   readonly async: boolean;
   /** Whether the entry shares transients, so it restores the execution it entered in as it returns. */
   readonly restoresExecution: boolean;
+  /** The registers it counts, references aside, which its return and its stop let go of. */
+  readonly counted: readonly Register[];
   readonly #holdings: readonly Holding[];
+  readonly #countedSet: ReadonlySet<Register>;
+  readonly #cellTypes: ReadonlyMap<Register, number>;
 
   constructor(index: FunctionId, entry: CodeFunction, program: ProgramScope) {
     this.index = index;
@@ -42,6 +53,43 @@ export class EntryScope {
     this.async = entry.mode !== 'simple';
     this.restoresExecution = !this.async && transientRegistersOf(entry).length > 0;
     this.#holdings = holdingsOf(entry);
+    this.counted = entry.counted.filter((register) => this.holding(register) !== 'reference');
+    this.#countedSet = new Set(this.counted);
+    this.#cellTypes = new Map(entry.cells.map(({ register, type }) => [register, type]));
+  }
+
+  /** Whether `register` is counted. */
+  isCounted(register: Register): boolean {
+    return this.#countedSet.has(register);
+  }
+
+  /**
+   * Whether what decides the wait in `register` reaches nothing counted: every register an `await`
+   * or a `select` of it takes the value into is uncounted.
+   */
+  waitsPlain(register: Register): boolean {
+    return this.entry.instructions.every((instruction) => {
+      if (instruction.kind === 'await' && instruction.wait === register) {
+        return !this.isCounted(instruction.dst);
+      }
+      if (instruction.kind === 'select' && instruction.wait === register) {
+        return instruction.cases.every(({ bind }) => bind === undefined || !this.isCounted(bind));
+      }
+      return true;
+    });
+  }
+
+  /** The cell entry `register`'s cell is made as. */
+  cellType(register: Register): number {
+    return this.#cellTypes.get(register) ?? unreachable(`Register ${register} holds no cell.`);
+  }
+
+  /** The statement emptying `register`, letting go of what it held if it is counted. */
+  emptied(register: Register): string {
+    const name = `r${register}`;
+    return this.isCounted(register)
+      ? `lt.release(${name}); ${name} = undefined;`
+      : `${name} = undefined;`;
   }
 
   /** The JavaScript function a direct call of entry `index` calls. */
@@ -49,14 +97,20 @@ export class EntryScope {
     return this.program.functionName(index);
   }
 
-  /** The statements returning `value`, an expression: an async function settles its future. */
-  returned(value: string): string {
-    if (this.async) {
-      return `run.settle(fut, ${value}); return;`;
+  /**
+   * The statements returning the value in `register`: an async function settles its future. What
+   * the counted registers held is let go of and collected first, the value held meanwhile.
+   */
+  returned(register: Register): string {
+    const value = this.read(register);
+    const restore = this.restoresExecution ? ' run.at = entered;' : '';
+    const back = this.async ? `run.settle(fut, t, ${!this.isCounted(register)}); ` : '';
+    const give = this.async ? 'return;' : 'return t;';
+    if (this.counted.length === 0) {
+      return `t = ${value}; ${back}${restore} ${give}`;
     }
-    return this.restoresExecution
-      ? `t = ${value}; run.at = entered; return t;`
-      : `return ${value};`;
+    const releases = this.counted.map((each) => this.emptied(each)).join(' ');
+    return `t = ${value}; lt.hold(t); ${releases} ${collected} ${back}lt.release(t);${restore} ${give}`;
   }
 
   /** How `register` holds what it holds. */
@@ -84,11 +138,16 @@ export class EntryScope {
     const name = `r${register}`;
     switch (this.holding(register)) {
       case 'value':
-        return `${name} = ${value};`;
+        if (this.isCounted(register)) {
+          return `${name} = lt.swap(${name}, ${value});`;
+        }
+        return this.program.checksCounted
+          ? `${name} = lt.uncounted(${value});`
+          : `${name} = ${value};`;
       case 'cell':
-        return `${name} = wcell(${name}, ${value});`;
+        return `${name} = run.cellWrite(${name}, ${this.cellType(register)}, ${value});`;
       case 'transient':
-        return `if (${name} === undefined) { ${name} = cellOf(${value}); run.share(${this.index}, ${register}, ${name}); } else ${name}.v = ${value};`;
+        return `if (${name} === undefined) { ${name} = run.cellWrite(undefined, ${this.cellType(register)}, ${value}); run.share(${this.index}, ${register}, ${name}); } else ${name}.v = ${value};`;
       case 'reference':
         return `${name}.write(${value});`;
       default:
@@ -116,7 +175,7 @@ export class EntryScope {
     const steps = JSON.stringify(path);
     switch (this.holding(register)) {
       case 'value':
-        return `${name} = withPart(${name}, ${steps}, ${value});`;
+        return this.write(register, `withPart(${name}, ${steps}, ${value})`);
       case 'reference':
         return `${name}.writeAt(${steps}, ${value});`;
       default:
@@ -148,6 +207,9 @@ function holdingsOf(entry: CodeFunction): Holding[] {
   }
   return holdings;
 }
+
+/** The statement collecting what lost its last holder, once something may have (§7). */
+export const collected = 'if (lt.due) lt.collect();';
 
 /** The statements going on at `label`. */
 export function jump(label: Label): string {

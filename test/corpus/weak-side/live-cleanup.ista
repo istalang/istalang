@@ -1,0 +1,30 @@
+# outcome: "worker started, dropping it, cleaned up, deferred ran, dropped"
+# A live call disposed while it waits on its own `disposing()` runs its cleanup inside the disposal
+# (§7): it resumes at that case before the code that dropped it goes on, and stops at its next
+# await, still inside the disposal, its variables released, so its defer runs then too.
+
+import * as time from 'time'
+
+fn note(log: Shared<Array<String>>, text: String):
+  log->value.push(text)
+
+live async fn worker(log: Shared<Array<String>>):
+  _ = defer(fn(): note(log, "deferred ran"))
+  note(log, "worker started")
+  await select:
+    case time.delay(1h):
+      note(log, "woke")
+    case worker.disposing():
+      note(log, "cleaned up")
+  await time.delay(1ms)
+  note(log, "never here")
+
+live async fn main() -> String:
+  const empty: Array<String> = []
+  const log = new Shared{value: empty}
+  const running = worker(log)
+  await time.delay(1ms)
+  note(log, "dropping it")
+  drop running
+  note(log, "dropped")
+  log->value.join(", ")

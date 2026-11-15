@@ -11,6 +11,9 @@
  * - What is registered on a future and a wait's cases are found by lookup here, as the interpreter's
  *   heap indexes them, so a future, a wait and a resolver each know only what they are.
  * - A `Resolver.of` callback, or an `onCancel` one, is readied as a call of its own (`called`).
+ * - Every change of a future's, a wait's or a resolver's state is told to the run's lifetimes
+ *   (`touched`), since what it holds follows from it (live/lifetimes/holdings.ts), and a resolver
+ *   is made there.
  */
 
 import type { Value } from '../../definition/values/values.ts';
@@ -26,6 +29,10 @@ export interface WaitSeams {
   readonly called: (callback: Value, argumentValues: readonly Value[]) => void;
   /** Readies a waiter, `resume` resuming it. */
   readonly resumed: (resume: () => void) => void;
+  /** `resolver` was made, held by nothing yet. */
+  readonly made: (resolver: Resolver) => Resolver;
+  /** `object`'s state changed. */
+  readonly touched: (object: Future | Wait | Resolver) => void;
 }
 
 type Ending = 'lost' | 'withdrawn';
@@ -43,15 +50,47 @@ export class Waits {
 
   /** A new resolver of `wait`'s case `position`. */
   resolver(wait: Wait, position: number): Resolver {
-    const resolver = new Resolver({ kind: 'case', wait, position });
+    const resolver = this.#seams.made(new Resolver({ kind: 'case', wait, position }));
     this.#casesOf(wait).push(resolver);
     return resolver;
+  }
+
+  /** A new resolver calling `callback` with its value (`Resolver.of`). */
+  callback(callback: Value): Resolver {
+    return this.#seams.made(new Resolver({ kind: 'callback', callback }));
+  }
+
+  /** A new resolver deciding `done` with `(position, value)` (`Resolver.at`), pending while it is. */
+  at(done: Resolver, position: bigint): Resolver {
+    if (done.state !== 'pending') {
+      return this.#seams.made(new Resolver({ kind: 'at', done, position }, 'cancelled'));
+    }
+    const resolver = this.#seams.made(new Resolver({ kind: 'at', done, position }));
+    done.positions.push(resolver);
+    this.#seams.touched(done);
+    return resolver;
+  }
+
+  /** The resolvers registered on `future`, in the order they were. */
+  registeredOn(future: Future): readonly Resolver[] {
+    return this.#registered.get(future) ?? [];
+  }
+
+  /** `wait`'s cases' resolvers. */
+  casesOf(wait: Wait): readonly Resolver[] {
+    return this.#cases.get(wait) ?? [];
+  }
+
+  /** Cancels the pending `resolver`, readying its `onCancel` callbacks (proposal 8, Rule 5). */
+  cancel(resolver: Resolver): void {
+    this.#end(resolver, 'cancelled', 'lost');
   }
 
   /** Has `callback` called once `done` is cancelled: at once if it was, never once it resolved. */
   onCancel(done: Resolver, callback: Value): void {
     if (done.state === 'pending') {
       done.onCancel.push(callback);
+      this.#seams.touched(done);
     } else if (done.state === 'cancelled') {
       this.#seams.called(callback, []);
     }
@@ -76,6 +115,7 @@ export class Waits {
     }
     if (!done.on.includes(future)) {
       done.on.push(future);
+      this.#seams.touched(done);
       const registered = this.#registered.get(future);
       if (registered === undefined) {
         this.#registered.set(future, [done]);
@@ -114,6 +154,7 @@ export class Waits {
   resolveTogether(resolutions: readonly (readonly [Future, Value])[]): void {
     const registrations = resolutions.flatMap(([future, value]) => {
       future.settled = { value };
+      this.#seams.touched(future);
       const registered = this.#registered.get(future) ?? [];
       this.#registered.delete(future);
       return registered
@@ -160,6 +201,7 @@ export class Waits {
       return false;
     }
     resolver.state = 'resolved';
+    this.#seams.touched(resolver);
     const { target } = resolver;
     if (target.kind === 'at') {
       this.#take(target.done, { kind: 'tuple', elements: [target.position, value] });
@@ -174,6 +216,7 @@ export class Waits {
 
   #decide(wait: Wait, decision: Decision): void {
     wait.decision = decision;
+    this.#seams.touched(wait);
     if (wait.stopped) {
       this.#ready(wait);
     } else {
@@ -203,6 +246,7 @@ export class Waits {
       return;
     }
     resolver.state = state;
+    this.#seams.touched(resolver);
     for (const callback of resolver.onCancel) {
       this.#seams.called(callback, []);
     }
@@ -232,21 +276,6 @@ export class Waits {
     }
     return cases;
   }
-}
-
-/** A new resolver calling `callback` with its value (`Resolver.of`). */
-export function callbackResolver(callback: Value): Resolver {
-  return new Resolver({ kind: 'callback', callback });
-}
-
-/** A new resolver deciding `done` with `(position, value)` (`Resolver.at`), pending while it is. */
-export function positionedResolver(done: Resolver, position: bigint): Resolver {
-  if (done.state !== 'pending') {
-    return new Resolver({ kind: 'at', done, position }, 'cancelled');
-  }
-  const resolver = new Resolver({ kind: 'at', done, position });
-  done.positions.push(resolver);
-  return resolver;
 }
 
 /** What `resolver` decides, as the settle order ranks it. */

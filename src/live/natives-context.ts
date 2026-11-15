@@ -7,7 +7,8 @@
  * - An extern constant's native runs once per run, and every later read gives what it gave (§3.6).
  * - Instances, contexts, slots and testing are the interpreter's, ista's (proposal 8, Rule 6): the
  *   checker keeps live code from them, and a native reaching one panics, naming it.
- * - Weak references see nothing disposed, and `disposed()` never resolves: disposal is P2's.
+ * - Futures, resolvers, resources and weak references are the run's (run.ts), counted as their
+ *   kinds say (lifetimes/).
  * - What each value was written as is kept, as an instance keeps it, so a host is given the same
  *   object for a value given again unchanged, and a codec runs once for it (spec §9).
  */
@@ -20,20 +21,17 @@ import type {
   FullNativeContext,
   NativeCapabilities,
   NativeResolver,
-  NativeResources,
   NativeWaits,
-  NativeWeakSide,
   Resolvable,
 } from '../runtime/natives.ts';
 import { Panic } from '../runtime/natives.ts';
 import { drawOf } from '../runtime/random-draws.ts';
 import type { ExternShape, LiveFunction } from './program-tables.ts';
 import type { Run } from './run.ts';
-import { newObject } from './values/cell.ts';
 import { Place } from './values/place.ts';
+import { Resource } from './values/resource.ts';
 import { Future } from './waits/future.ts';
 import { Resolver } from './waits/resolver.ts';
-import { callbackResolver, positionedResolver } from './waits/waits.ts';
 
 /** The function extern `entry` runs as in `run`: its native, called with its context. */
 export function boundExtern(run: Run, entry: ExternShape): LiveFunction {
@@ -86,11 +84,7 @@ function runCapabilities(run: Run): NativeCapabilities {
   let draws = 0;
   return {
     futures: {
-      resolved: (value) => {
-        const future = new Future();
-        future.settled = { value };
-        return future;
-      },
+      resolved: (value) => run.resolvedFuture(value),
       timer: (at) => run.timer(at),
       resolvable: () => resolvable(run),
     },
@@ -101,8 +95,11 @@ function runCapabilities(run: Run): NativeCapabilities {
       take: interpreterOnly('Slots'),
       read: interpreterOnly('Slots'),
     },
-    weak: weakSide(),
-    resources: resources(),
+    weak: run.weak,
+    resources: {
+      create: (type, payload) => run.resource(type, payload),
+      payloadOf: (handle) => objectOf(handle, Resource).payload,
+    },
     random: {
       draw: () => {
         draws += 1;
@@ -139,57 +136,42 @@ function waitsOf({ waits }: Run): NativeWaits {
     onAwait: (future, done) => waits.register(objectOf(done, Resolver), objectOf(future, Future)),
     resolve: (done, value) => waits.resolve(objectOf(done, Resolver), value),
     tryResolve: (done, value) => waits.tryResolve(objectOf(done, Resolver), value),
-    callback: (callback) => callbackResolver(callback),
-    at: (done, position) => positionedResolver(objectOf(done, Resolver), position),
+    callback: (callback) => waits.callback(callback),
+    at: (done, position) => waits.at(objectOf(done, Resolver), position),
     onCancel: (done, callback) => waits.onCancel(objectOf(done, Resolver), callback),
   };
 }
 
-/** Weak references, one per referent, each referring to it while nothing disposes it (P2). */
-function weakSide(): NativeWeakSide {
-  const references = new WeakMap<object, Value>();
-  const targets = new WeakMap<object, Value>();
-  return {
-    reference: (referent) => {
-      const known = references.get(referent as object);
-      if (known !== undefined) {
-        return known;
-      }
-      const weak: Value = { kind: 'handle', object: newObject() };
-      references.set(referent as object, weak);
-      targets.set(weak as object, referent);
-      return weak;
-    },
-    target: (weak) => targets.get(weak as object),
-    watch: () => new Future(),
-  };
-}
-
-/** Resources, each a handle to what its host's JSON holds. */
-function resources(): NativeResources {
-  const payloads = new WeakMap<object, unknown>();
-  return {
-    create: (_type, payload) => {
-      const resource: Value = { kind: 'handle', object: newObject() };
-      payloads.set(resource as object, payload);
-      return resource;
-    },
-    payloadOf: (handle) => payloads.get(handle as object),
-  };
-}
-
 /**
- * A live future its host resolves, and its resolver (proposal 8, Rule 9): resolving it only queues
- * the value, applied in a turn of its own (arrivals.ts). Failing it, or misusing it, panics the run
- * with the trace of where its future was made, as the interpreter's does (runtime/scheduler/
- * live-resolvers.ts): a host's call stack holds none of the program's frames.
+ * A live future its host resolves, and its resolver (proposal 8, Rules 5 and 9): resolving it only
+ * queues the value, applied in a turn of its own (arrivals.ts). Failing it, or misusing it, panics
+ * the run with the trace of where its future was made, as the interpreter's does (runtime/
+ * scheduler/live-resolvers.ts): a host's call stack holds none of the program's frames. Once its
+ * future is disposed unresolved, it is cancelled: each `onCancel` callback is called once, at once,
+ * and one that throws panics the run.
  */
 function resolvable(run: Run): Resolvable {
-  const future = new Future();
   const made = new Error('made');
   const whereMade = (panic: Panic): Panic =>
     new Panic(panic.message, { trace: run.traces.of(made.stack) });
   let state: NativeResolver['state'] = 'pending';
+  const cancels: (() => void)[] = [];
+  const cancelling = (callback: () => void): void => {
+    try {
+      callback();
+    } catch (error) {
+      const why = error instanceof Error ? error.message : String(error);
+      run.fail(whereMade(new Panic(`A host's onCancel threw: ${why}`)));
+    }
+  };
+  const future = run.hostFuture(() => {
+    if (state === 'pending') {
+      state = 'cancelled';
+      for (const callback of cancels.splice(0)) {
+        cancelling(callback);
+      }
+    }
+  });
   const resolver: NativeResolver = {
     get state() {
       return state;
@@ -199,17 +181,23 @@ function resolvable(run: Run): Resolvable {
         return false;
       }
       state = 'resolved';
-      run.arrivals.arrive(() => run.waits.resolveTogether([[future, value]]));
+      run.arrive(() => run.waits.resolveTogether([[future, value]]));
       return true;
     },
     fail: (panic) => {
       if (state === 'pending') {
         state = 'resolved';
-        run.arrivals.arrive(() => run.fail(whereMade(panic)));
+        run.arrive(() => run.fail(whereMade(panic)));
       }
     },
     panic: (panic) => run.fail(whereMade(panic)),
-    onCancel: () => undefined,
+    onCancel: (callback) => {
+      if (state === 'cancelled') {
+        cancelling(callback);
+      } else if (state === 'pending') {
+        cancels.push(callback);
+      }
+    },
   };
   return { future, resolver };
 }

@@ -19,7 +19,7 @@ export const callEmitters: Emitters<typeof callInstructions> = {
         : `(t = ${scope.read(i.callee.register)}, F[t.function](t${passed}))`;
     return i.dst === undefined ? `${call};` : scope.write(i.dst, call);
   },
-  currentCall: (scope, i) => scope.write(i.dst, 'run.at.call'),
+  currentCall: (scope, i) => scope.write(i.dst, 'run.currentCall()'),
 };
 
 function argumentOf(scope: EntryScope, argument: Argument): string {

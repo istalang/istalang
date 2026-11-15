@@ -18,7 +18,7 @@ export const controlEmitters: Emitters<typeof controlInstructions> = {
     const otherwise = i.otherwise === undefined ? 'throw noVariant(t);' : jump(i.otherwise);
     return `switch ((t = ${scope.read(i.value)}).variant) { ${cases.join(' ')} default: ${otherwise} }`;
   },
-  return: (scope, i) => scope.returned(scope.read(i.value)),
+  return: (scope, i) => scope.returned(i.value),
 };
 
 export const prologueEmitters: Emitters<typeof prologueInstructions> = {

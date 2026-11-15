@@ -1,0 +1,26 @@
+# outcome: "same, held, closed a, gone, closed b"
+# A weak reference holds nothing (§7): there is one per referent, `deref()` gives it while
+# something holds it and none once its last holder let go of it, which disposed it at once.
+
+shared struct Lease:
+  name: String
+  log: Shared<Array<String>>
+
+fn dispose(self: Lease):
+  note(self->log, "closed " + self->name)
+
+fn note(log: Shared<Array<String>>, text: String):
+  log->value.push(text)
+
+live async fn main() -> String:
+  const empty: Array<String> = []
+  const log = new Shared{value: empty}
+  const a = new Lease{name: "a", log}
+  const b = new Lease{name: "b", log}
+  const weak = WeakRef.from(a)
+  note(log, if weak == WeakRef.from(a): "same" else: "different")
+  note(log, if weak.deref() is none: "gone" else: "held")
+  drop a
+  note(log, if weak.deref() is none: "gone" else: "held")
+  drop b
+  log->value.join(", ")

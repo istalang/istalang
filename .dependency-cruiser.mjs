@@ -357,15 +357,16 @@ export default {
     },
     {
       // Compiled JavaScript runs on the runtime's seams (natives, clock, refusals, random draws,
-      // settle order, what an instance logs, the host boundary), never on the interpreter it is
-      // diffed against, so it bundles for a browser.
+      // settle order, what an instance logs, the host boundary) and its lifetimes' core (counts and
+      // the collector, over either runtime's objects), never on the interpreter it is diffed
+      // against, so it bundles for a browser.
       name: 'live-imports-interpreter',
       severity: 'error',
       from: { path: '^src/live/' },
       to: {
         path: '^src/runtime/',
         pathNot:
-          '^src/runtime/((natives|clock|refusal|instance-state|random-draws|settle-order)\\.ts|boundary/)',
+          '^src/runtime/((natives|clock|refusal|instance-state|random-draws|settle-order|lifetimes/(counts|collector))\\.ts|boundary/)',
       },
     },
     {

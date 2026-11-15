@@ -6,6 +6,7 @@
 
 import type { Value } from '../../definition/values/values.ts';
 import { newObject } from '../values/cell.ts';
+import type { Future } from './future.ts';
 
 /** How a wait was decided: the case that won, by position (an `await`'s is 0), and its value. */
 export interface Decision {
@@ -18,12 +19,18 @@ export class Wait {
   readonly object = newObject();
   /** Its waiter's creation, which orders waits decided together. */
   readonly waiter: number;
+  /** Its waiter's call future, for a waiter that is an async call. */
+  readonly call: Future | undefined;
+  /** Whether the value deciding it reaches nothing counted, as its waiter knows: it holds none. */
+  readonly plain: boolean;
   decision: Decision | undefined;
   /** Resumes its waiter, once it stopped at it. */
   #resume: ((decision: Decision) => void) | undefined;
 
-  constructor(waiter: number) {
+  constructor(waiter: number, call: Future | undefined, plain: boolean) {
     this.waiter = waiter;
+    this.call = call;
+    this.plain = plain;
   }
 
   /** Whether its waiter stopped at it. */

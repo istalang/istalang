@@ -125,7 +125,7 @@ let modules = 0;
 
 /** `definition` compiled to JavaScript and loaded; a problem when it can't run as JavaScript. */
 export async function compiledToJavaScript(definition: Definition): Promise<LiveProgram | string> {
-  const result = emitProgram(definition, { runtime: runtimeLibrary });
+  const result = emitProgram(definition, { runtime: runtimeLibrary, checksCounted: true });
   if (result.kind === 'refused') {
     return result.problem;
   }
