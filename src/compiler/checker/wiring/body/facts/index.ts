@@ -10,21 +10,20 @@
 
 import { memo } from '../../../../../foundation/structures/memo.ts';
 import type { FieldHeader } from '../../../../syntax/expressions/index.ts';
-import type { PassAnswers } from '../../../contexts/pass-views.ts';
 import type { Pass } from '../../../contexts/passes.ts';
 import { type FlowSource, flowsOf } from '../../../rules/flow/build/index.ts';
 import type { BodyFacts, CheckedBody, FieldPass } from '../../../surface/checked-body.ts';
-import {
-  type JoinedBody,
-  joinedFacts,
-  type ListedFacts,
-  listedFacts,
-} from '../../../surface/denotation.ts';
 import { exactFit } from '../../../types/fitting/fit/index.ts';
 import { sameType } from '../../../types/identity/identity.ts';
 import type { Substitution } from '../../../types/parts/substitution.ts';
-import type { TypeRules } from '../../../types/type/type-rules.ts';
 import { type Instantiation, instantiationBy } from './instantiation.ts';
+import {
+  type AcrossPasses,
+  type JoinedFact,
+  type Joins,
+  joinedOf,
+  type ToolName,
+} from './joined-body.ts';
 import {
   distinctCallees,
   everyDistinct,
@@ -45,25 +44,7 @@ interface BodyFact<Fact> {
   readonly instantiated: (fact: Fact, by: Instantiation) => Fact;
 }
 
-/** How tools read a fact across the passes of the field loops around a node. */
-interface JoinedFact<Fact, Joined> {
-  readonly joined: (answers: PassAnswers<Fact>, rules: TypeRules) => Joined;
-}
-
 type FactName = keyof BodyFacts;
-
-type ListedName = keyof typeof listedFacts;
-
-/** A fact tools read (`JoinedBody`): joined as it is, or listed. */
-type ToolName = (typeof joinedFacts)[number] | ListedName;
-
-/**
- * What a fact is across passes: as a pass answers it, or the list tools read (check.ts
- * `ListedFacts`).
- */
-type AcrossPasses<Name extends FactName> = Name extends ListedName
-  ? ListedFacts[(typeof listedFacts)[Name]]
-  : BodyFacts[Name];
 
 /** How a body answers one fact, and how tools read it across passes if they do. */
 type FactEntry<Name extends FactName> = BodyFact<BodyFacts[Name]> &
@@ -333,13 +314,7 @@ const bodyFacts: { readonly [Name in FactName]: FactEntry<Name> } = {
 
 const factNames = Object.keys(bodyFacts) as readonly FactName[];
 
-const joins: { readonly [Name in ToolName]: JoinedFact<BodyFacts[Name], AcrossPasses<Name>> } =
-  bodyFacts;
-
-const toolNames: readonly ToolName[] = [
-  ...joinedFacts,
-  ...(Object.keys(listedFacts) as ListedName[]),
-];
+const joins: Joins = bodyFacts;
 
 /** The CheckedBody of what was checked as `pass` sees it. */
 export function checkedAt(recorded: RecordedBody, pass: Pass): CheckedBody {
@@ -373,34 +348,10 @@ function bodyOf(
         by,
       );
     },
-    joinedWith: (others, rules) => joinedOf([body, ...others], rules),
+    joinedWith: (others, rules) => joinedOf([body, ...others], rules, joins),
     ...flowsOf(flows, () => body),
   };
   return body;
-}
-
-/** `bodies`, the passes of one text, read as one: each fact joined as its entry says. */
-function joinedOf(bodies: PassAnswers<CheckedBody>, rules: TypeRules): JoinedBody {
-  const [first, ...others] = bodies;
-  const answered: Partial<Record<keyof JoinedBody, unknown>> = {};
-  for (const name of toolNames) {
-    const joined = joinedFact(name, [first[name], ...others.map((each) => each[name])], rules);
-    answered[isListed(name) ? listedFacts[name] : name] = joined;
-  }
-  // Each fact was joined by its own entry, under the name tools read it by, so the record is whole.
-  return answered as JoinedBody;
-}
-
-function joinedFact<Name extends ToolName>(
-  name: Name,
-  answers: PassAnswers<BodyFacts[Name]>,
-  rules: TypeRules,
-): AcrossPasses<Name> {
-  return joins[name].joined(answers, rules);
-}
-
-function isListed(name: ToolName): name is ListedName {
-  return Object.hasOwn(listedFacts, name);
 }
 
 /** A fact by node with each answer read through `part`, the answer of none staying none. */
