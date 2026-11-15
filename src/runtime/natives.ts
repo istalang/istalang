@@ -378,4 +378,6 @@ const limits = new Map([
   ['Invalid string length', 'The string would be longer than the runtime can hold.'],
   ['Invalid array length', 'The array would be longer than the runtime can hold.'],
   ['Maximum BigInt size exceeded', 'The integer would be larger than the runtime can hold.'],
+  // Compiled JavaScript calls on the JavaScript stack, so recursion past it is a limit there.
+  ['Maximum call stack size exceeded', 'A call nests deeper than the JavaScript stack allows.'],
 ]);

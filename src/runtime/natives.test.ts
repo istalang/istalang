@@ -29,6 +29,13 @@ describe('panicOf', () => {
       () => 2n ** (2n ** 40n),
       'The integer would be larger than the runtime can hold.',
     ],
+    [
+      'the stack',
+      function nested(): unknown {
+        return nested();
+      },
+      'A call nests deeper than the JavaScript stack allows.',
+    ],
   ])('turns the engine refusing %s into a panic saying so', (_, build, message) => {
     expect(panicOf(thrown(build))?.message).toBe(message);
   });

@@ -67,9 +67,6 @@ export interface RunSeams {
   readonly broke: (error: unknown) => void;
 }
 
-/** What the engine says when the JavaScript stack overflows. */
-const stackOverflow = 'Maximum call stack size exceeded';
-
 export class Run {
   /** Why the run stopped, once it has: its end, or a bug. */
   #stopped: 'ended' | 'broken' | undefined;
@@ -200,7 +197,7 @@ export class Run {
     if (this.ended) {
       return;
     }
-    const panic = panicOf(error) ?? overflowOf(error);
+    const panic = panicOf(error);
     if (panic === undefined) {
       this.#stop('broken');
       this.seams.broke(error);
@@ -263,11 +260,4 @@ export class Run {
     this.#stopped = why;
     this.arrivals.stop();
   }
-}
-
-/** The panic for the JavaScript stack overflowing: recursion deeper than compiled code can run. */
-function overflowOf(error: unknown): Panic | undefined {
-  return error instanceof RangeError && error.message === stackOverflow
-    ? new Panic('A call nests deeper than the JavaScript stack allows.', { cause: error })
-    : undefined;
 }
