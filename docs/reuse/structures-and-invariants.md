@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-11-13
-last_updated: 2026-11-13
+last_updated: 2026-11-15
 tags: [reuse, structures, memo, kind-table, invariants]
 ---
 
@@ -16,7 +16,7 @@ tags: [reuse, structures, memo, kind-table, invariants]
 - compute and cache a derived value once per key (including `undefined`) → `memo`, `MemoCache` (`src/foundation/structures/memo.ts`)
 - cache a value derived from a sequence of objects (a module's items, a list of overloads), kept while they are → `SequenceMemo` (`src/foundation/structures/memo.ts`)
 - cache what is derived from an owner that changes in place (an inference system), once per revision the owner names, every member of a cycle answering a stand-in whichever was asked first (as `Entries`) → `RevisionMemo` (`src/foundation/structures/revision-memo.ts`)
-- compute results once per key, each recording what it read and the notes it made, with cycles answered by a stand-in whichever member was asked first, and taken over by a later revision whose reads answer alike → `Entries`, `EntryTable` (`table`), `input`, `release`, `RevisionOptions` (`src/foundation/structures/entries/index.ts`)
+- compute results once per key, each recording what it read and the notes it made, with cycles answered by a stand-in whichever member was asked first, and taken over by a later revision whose reads answer alike → `Entries`, `EntryTable` (`table`), `input`, `release`, `RevisionOptions` (`src/foundation/structures/entries/index.ts`); a table answering a reach itself rather than entering a cycle asks first whether one entry or any is running → `EntryTable.running`, `EntryTable.anyRunning`
 - compare results item by item, entry by entry, member by member or property by property → `sameItems`, `sameEntries`, `sameMembers`, `sameProperties`, `Equality` (`src/foundation/structures/equality.ts`)
 - leave out the items of a list equal to one before them, by a given equality, bucketed by a key equal items share when the list is long → `distinctItems` (`src/foundation/structures/equality.ts`)
 - push an active item onto a work stack for the duration of a callback and pop in `finally` → `withPushed` (`src/foundation/structures/stack.ts`)
