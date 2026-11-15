@@ -15,12 +15,13 @@ import { patternHead } from '../../../../../compiler/syntax/patterns.ts';
 import { extentIn, nodesUnder } from '../../../../../compiler/syntax/tree/index.ts';
 import { type Diagnostic, isError } from '../../../../../foundation/diagnostics/diagnostic.ts';
 import type { Span } from '../../../../../foundation/text/span.ts';
-import { editedMainProgram, mainProgram, programAt } from '../../../language-service.test-kit.ts';
+import { editedMainProgram, mainProgram } from '../../../language-service.test-kit.ts';
 import { checkedModule } from '../../../reading/checked-module.ts';
 import type { Candidate } from '../../candidate.ts';
 import { cursorAt } from '../../cursor.ts';
 import { completionsAt } from '../../index.ts';
 import { placeAt } from '../../place.ts';
+import { decision, labelsAt } from './pattern.test-kit.ts';
 import { offerPattern } from './pattern.ts';
 
 /** Where a pattern stands in a corpus program's text. */
@@ -184,19 +185,6 @@ describe('pattern completion offers what fits the matched value', () => {
     );
   }, 60_000);
 });
-
-const decision = [
-  'enum Decision:',
-  '  Approved(by: String)',
-  '  Rejected(by: String, reason: String)',
-  '  Expired',
-  '',
-];
-
-function labelsAt(...lines: readonly string[]): readonly string[] {
-  const { program, module, offset } = programAt(...lines, '  0');
-  return completionsAt(program, module, offset).map(({ name }) => name);
-}
 
 describe('a pattern place', () => {
   it('offers a guard or a binding of the whole after a whole pattern, a space between', () => {
@@ -379,49 +367,5 @@ describe('a pattern place', () => {
     expect(labelsAt(...aliased, ...onItem)).toEqual(['n']);
     const onAny = ['fn f(x: any Stringable) -> Int:', '  match x:', '    case MyItem{‸'];
     expect(labelsAt(...aliased, ...onAny)).toEqual(['n']);
-  });
-
-  it("offers a struct's fields, but those its pattern names, in its braces", () => {
-    const struct = ['struct Pair:', '  first: Int', '  second: Int', '', 'fn f(p: Pair) -> Int:'];
-    expect(labelsAt(...struct, '  match p:', '    case Pair{first, ‸')).toEqual(['second']);
-    expect(labelsAt(...struct, '  match p:', '    case struct{‸')).toEqual(['first', 'second']);
-    // A parameter's pattern is completed before its function has a body.
-    const bodiless = programAt(...struct.slice(0, 3), 'fn g(Pair{‸})');
-    const offered = completionsAt(bodiless.program, bodiless.module, bodiless.offset);
-    expect(offered.map(({ name }) => name)).toEqual(['first', 'second']);
-  });
-
-  it("offers no fields in braces naming what the matched value can't be, nor a variant's", () => {
-    const struct = [
-      'struct Pair:',
-      '  first: Int',
-      '  second: Int',
-      '',
-      'enum Color { Red, Green }',
-    ];
-    const cases = [...struct, ...decision, 'fn f(p: Pair, d: Decision) -> Int:'];
-    expect(labelsAt(...cases, '  match p:', '    case Wrong{‸')).toEqual([]);
-    expect(labelsAt(...cases, '  match p:', '    case Approved{‸')).toEqual([]);
-    expect(labelsAt(...cases, '  match d:', '    case Color.Rejected{‸')).toEqual([]);
-    expect(labelsAt(...cases, '  match d:', '    case Decision.Rejected{‸')).toEqual([]);
-    expect(labelsAt(...cases, '  match (1, d, 2):', '    case (1, Rejected{‸')).toEqual([]);
-    expect(labelsAt(...cases, '  match p:', '    case Pair{‸')).toEqual(['first', 'second']);
-  });
-
-  it("offers a downcast's fields against an `any` value, where it may downcast", () => {
-    const named = [
-      'trait HasId:',
-      '  id: String',
-      '',
-      'struct User { id: String, name: String }',
-      'struct Box<T> { id: String, value: T }',
-      ...decision,
-      'fn f(x: any HasId) -> Int:',
-      '  match x:',
-    ];
-    expect(labelsAt(...named, '    case User{‸')).toEqual(['id', 'name']);
-    expect(labelsAt(...named, '    case struct{‸')).toEqual([]);
-    expect(labelsAt(...named, '    case Box{‸')).toEqual([]);
-    expect(labelsAt(...named, '    case Rejected{‸')).toEqual([]);
   });
 });
