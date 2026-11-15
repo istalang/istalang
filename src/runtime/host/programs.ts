@@ -9,12 +9,10 @@
  */
 
 import { type Definition, definitionFormat } from '../../definition/definition.ts';
-import type { FunctionId } from '../../definition/operands.ts';
-import { JsonError, jsonOfPlain, jsonTypeOf } from '../../definition/values/json-values.ts';
-import type { Value } from '../../definition/values/values.ts';
 import { memo } from '../../foundation/structures/memo.ts';
 import { type HostExterns, hostNatives } from '../boundary/host-natives.ts';
 import { outcomeJson, outcomeText } from '../boundary/outbound.ts';
+import { jsonIn, startOf } from '../boundary/starts.ts';
 import type { Clock } from '../clock.ts';
 import type {
   Advanced,
@@ -24,7 +22,6 @@ import type {
   StartOptions,
 } from '../instance-state.ts';
 import type { Natives } from '../natives.ts';
-import { Refusal } from '../refusal.ts';
 import { runLive } from '../scheduler/live-run.ts';
 import {
   type HeapCheck,
@@ -86,57 +83,6 @@ function boundProgram(seams: BindingSeams, definition: Definition, hash: string)
     },
   };
   return program;
-}
-
-/**
- * The entry `key` names, `main`'s without one, with the encoder its listing in `starts` gives its
- * outcome; a Refusal unless it takes `count` arguments.
- */
-function startOf(definition: Definition, key: string | undefined, count: number): StartCall {
-  const { entry, encoder } = listedStart(definition, key);
-  const code = entry === undefined ? undefined : definition.functions[entry];
-  const what = key === undefined ? "'main'" : `'${key}'`;
-  if (entry === undefined || code === undefined) {
-    throw new Refusal('notStartable', `The program has no ${what} a host can start.`);
-  }
-  const takes = code.parameters.length;
-  if (takes !== count) {
-    throw new Refusal('notStartable', `${what} takes ${takes} arguments, not ${count}.`);
-  }
-  return { entry, encoder };
-}
-
-/** The entry `key` names, `main`'s without one, and its encoder; undefined for what none has. */
-function listedStart(
-  definition: Definition,
-  key: string | undefined,
-): { readonly entry: FunctionId | undefined; readonly encoder: FunctionId | undefined } {
-  const listed = definition.starts.find((start) =>
-    key === undefined ? start.function === definition.main : start.key === key,
-  );
-  return {
-    entry: key === undefined ? definition.main : listed?.function,
-    encoder: listed?.encoder,
-  };
-}
-
-/** What a host starts: the entry, and the encoder of its outcome when it has one. */
-interface StartCall {
-  readonly entry: FunctionId;
-  readonly encoder: FunctionId | undefined;
-}
-
-/** JSON a host gave, as the `Json` value it holds; a Refusal for what JSON can't hold. */
-function jsonIn(definition: Definition, json: unknown): Value {
-  try {
-    return jsonOfPlain(json, jsonTypeOf(definition.types));
-  } catch (error) {
-    if (error instanceof JsonError) {
-      // biome-ignore lint/style/useErrorCause: a Refusal takes its reason first, so the cause is third.
-      throw new Refusal('unfitJson', error.message, { cause: error });
-    }
-    throw error;
-  }
 }
 
 /** A Definition text bound to its program, with the canonical text the store keeps. */
