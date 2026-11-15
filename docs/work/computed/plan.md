@@ -1,10 +1,10 @@
 ---
 description: plan for FormBuilder's `computed` module and FormBuilder rebuilt on it (simple core, browser and backend live functions, nothing async in expressions) — process, three phases and their acceptance criteria; read before forking or examining it
 owner: tech-lead
-status: active
+status: archived
 applies_to: istalang
 last_verified: 2026-11-14
-last_updated: 2026-11-14
+last_updated: 2026-11-15
 tags: [plan, computed, reactive, forms]
 ---
 
