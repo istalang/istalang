@@ -140,12 +140,12 @@ class Computation {
       case 'Identifier': {
         const constant = this.#scope.valueNamed(node);
         if (constant === undefined) {
-          return this.#bareStruct(node);
+          return this.#namedTypeValue(node);
         }
         return constant.form === undefined ? unknown : computed(constant.form);
       }
       case 'TypeApplication':
-        return this.#bareStruct(node);
+        return this.#namedTypeValue(node);
       case 'MemberAccess':
         return this.#qualified(node);
       case 'StructLiteral':
@@ -408,7 +408,7 @@ class Computation {
     }
     const constant = this.#scope.valueNamed(node.member);
     if (constant === undefined) {
-      return this.#bareStruct(node);
+      return this.#namedTypeValue(node);
     }
     return constant.form === undefined ? unknown : computed(constant.form);
   }
@@ -418,7 +418,7 @@ class Computation {
    * not, with type arguments or not (§3.1), or a member parameter over literal types, the literal
    * the instantiation computing it makes it (§3.5); any other name that isn't a constant is refused.
    */
-  #bareStruct(node: Identifier | MemberAccess | TypeApplication): Outcome {
+  #namedTypeValue(node: Identifier | MemberAccess | TypeApplication): Outcome {
     const type = this.#scope.checked.typeOf(node);
     const literal = type === undefined ? undefined : literalTypeForm(type);
     if (literal !== undefined) {

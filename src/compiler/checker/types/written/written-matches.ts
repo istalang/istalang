@@ -13,25 +13,18 @@
  */
 
 import type { Entity } from '../../../binder/entities.ts';
-import type { ModuleId } from '../../../program/program.ts';
 import type { AliasDeclaration, TypeAliasDeclaration } from '../../../syntax/declarations/index.ts';
 import type { SyntaxNode } from '../../../syntax/tree/index.ts';
 import type { Identifier } from '../../../syntax/tree/node.ts';
 import type { InferType, NamedType } from '../../../syntax/types/index.ts';
 import { matchPlaceOf } from '../../../syntax/types/type-matches.ts';
-import type { CheckerContext } from '../../contexts/context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import { aliasedAs } from '../type/alias-uses.ts';
 import { ownAssociatedType } from '../type/computed-types.ts';
 import type { NominalDeclaration, Type } from '../type/index.ts';
 import { errorType } from '../type/primitives.ts';
 import { matchUse, structCaseOf } from './type-match.ts';
-
-/** Where a type is written: the checker resolving it, and its module. */
-interface Written {
-  readonly checker: CheckerContext;
-  readonly module: ModuleId;
-}
+import { reportWritten, type Written } from './written.ts';
 
 /**
  * The unreduced use `node` writes of a type `match` alias inside a type `match`, given the
@@ -119,7 +112,7 @@ export function inferWritten(written: Written, node: InferType): Type {
   if (inCasePattern(written, node)) {
     return { kind: 'parameter', declaration: node.parameter };
   }
-  written.checker.report(written.module, checkerDiagnostics.inferOutsideCase(node.span));
+  reportWritten(written, checkerDiagnostics.inferOutsideCase(node.span));
   return errorType;
 }
 

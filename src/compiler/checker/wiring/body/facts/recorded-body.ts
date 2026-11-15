@@ -24,12 +24,14 @@ import type { FlowSource } from '../../../rules/flow/build/index.ts';
 import type { FlowDecisions } from '../../../rules/flow/flow-decisions.ts';
 import type { Type } from '../../../types/type/index.ts';
 import type { bodyRecords } from '../body-records.ts';
+import type { WrittenTypes } from '../written-types.ts';
 
 type BodyRecords = ReturnType<typeof bodyRecords>;
 
 /** The units of a body whose records its CheckedBody reads beside its own. */
 interface BodyUnits {
   readonly variables: VariableScope;
+  readonly writtenTypes: WrittenTypes;
   readonly functions: FunctionScopes;
   readonly literals: StructLiterals;
   readonly implicit: ImplicitCalls;

@@ -250,6 +250,11 @@ export const parserDiagnostics = defineDiagnostics('parser', {
     code: 2054,
     message: () => "A loop over a type's keys declares one key, a name: `for K in keyof S` (§4).",
   },
+  typeLoopKeys: {
+    code: 2055,
+    message: () =>
+      "A loop over a type's keys runs over `keyof` of one type alone: `for K in keyof S` (§4).",
+  },
   fieldLoopCondition: {
     code: 2037,
     message: () =>

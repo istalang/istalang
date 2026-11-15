@@ -303,15 +303,23 @@ export function mappedTypeOf(
 
 /**
  * The struct the value of `value` is a key of, as checked: its type a struct's keys, or a member
- * parameter within them, or a field loop's key, a name of the struct it runs over (§4); else
+ * parameter within them, or a field loop's key, a name of the struct it runs over (§4), or a
+ * member parameter `K in keyof S` named as a value, a loop's over a type's keys among them; else
  * undefined. A String literal compared with it is a key of that struct too (§3.1).
  */
 export function keyOwnerOfValue(
-  context: Pick<BodyContext, 'checker' | 'entityOf' | 'typeOf'>,
+  context: Pick<BodyContext, 'checker' | 'entityOf' | 'typeOf' | 'resolveType'>,
   value: Expression,
 ): Type | undefined {
   const bare = unparenthesized(value);
   const entity = bare.kind === 'Identifier' ? context.entityOf(bare) : undefined;
+  const keys =
+    entity?.kind === 'type' && entity.declaration.kind === 'TypeParameter'
+      ? entity.declaration.memberOf
+      : undefined;
+  if (keys?.kind === 'KeyofType') {
+    return context.resolveType(keys.owner);
+  }
   if (entity?.kind === 'variable' && entity.owner.kind === 'FieldHeader') {
     const { key, subject } = entity.owner;
     const inKey =

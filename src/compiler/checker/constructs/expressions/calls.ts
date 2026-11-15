@@ -43,7 +43,7 @@ import { unreachable } from '../../../../foundation/structures/unreachable.ts';
 import type { Entity } from '../../../binder/entities.ts';
 import { misplacedArgument } from '../../../syntax/expressions/arguments.ts';
 import type { Call } from '../../../syntax/expressions/calls.ts';
-import type { MemberAccess } from '../../../syntax/expressions/index.ts';
+import type { Expression, MemberAccess } from '../../../syntax/expressions/index.ts';
 import {
   calledName,
   callTypeArguments,
@@ -68,7 +68,7 @@ import {
 } from '../../resolution/choosing/member-meaning.ts';
 import { readGetter } from '../../rules/getters.ts';
 import type { Type } from '../../types/type/index.ts';
-import { errorType } from '../../types/type/primitives.ts';
+import { errorType, isPrimitive, neverType } from '../../types/type/primitives.ts';
 import { typeText } from '../../types/type/type-text.ts';
 import { insideOptional } from '../../types/unions/inside-optional.ts';
 import { namedType } from '../../types/written/named-types.ts';
@@ -359,15 +359,38 @@ function callEntity(
 /** A static call of `name` through the type `owner` (§3.7), a conversion being one (§3.10). */
 function callStatic(context: BodyContext, call: WrittenCall, owner: Type, name: string): Type {
   const { checker, module } = context;
+  if (isPrimitive(owner, 'Never')) {
+    // Through the field type of a loop's pass over no field, which never runs (§4).
+    context.decisions.stopAt(call.node, []);
+    return neverType;
+  }
   const target = staticTargetOf(checker, owner);
   const candidates = target === undefined ? [] : staticCandidates(checker, module, target, name);
   if (candidates.length === 0) {
-    if (owner.kind !== 'error') {
+    if (owner.kind === 'error') {
+      reportNoField(context, calledName(call.node));
+    } else {
       context.report(checkerDiagnostics.noStaticFunction(call.node.span, typeText(owner), name));
     }
     return errorType;
   }
   return resolve(context, call, staticName(typeText(owner), name), candidates);
+}
+
+/**
+ * A static call through a type indexed by a key naming none of its fields, `S[Int].make()`
+ * (§3.10), reported at the key; nothing for any other owner in error, already reported.
+ */
+function reportNoField(context: BodyContext, callee: Expression): void {
+  const indexed = callee.kind === 'MemberAccess' ? callee.target : undefined;
+  if (indexed?.kind !== 'Index') {
+    return;
+  }
+  const owner = namedType(context, indexed.target);
+  const key = namedType(context, indexed.index);
+  if (owner !== undefined && key !== undefined && owner.kind !== 'error' && key.kind !== 'error') {
+    context.report(checkerDiagnostics.notKeyOf(indexed.index.span, typeText(key), typeText(owner)));
+  }
 }
 
 function resolve(

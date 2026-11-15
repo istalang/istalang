@@ -149,17 +149,15 @@ export function namedType(context: Naming, node: Expression): Type | undefined {
 
 /**
  * The type of the field a type indexed by a key names, `S[K]` (§3.10): written before `.`, a type
- * indexed by a type names a type, never an index into a value; undefined for any other index, or a
- * key that names no field of it.
+ * indexed by a type names a type, never an index into a value, the error type for a key naming no
+ * field of it; undefined for any other index.
  */
 function indexedNamed(context: Naming, node: Index): Type | undefined {
   const owner = node.isOptional ? undefined : namedType(context, node.target);
   const key = owner === undefined ? undefined : namedType(context, node.index);
-  const field =
-    owner === undefined || key === undefined
-      ? undefined
-      : context.checker.typeRules.fieldType(owner, key);
-  return field?.kind === 'error' ? undefined : field;
+  return owner === undefined || key === undefined
+    ? undefined
+    : context.checker.typeRules.fieldType(owner, key);
 }
 
 /**

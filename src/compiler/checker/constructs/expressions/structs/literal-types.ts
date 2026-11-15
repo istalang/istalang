@@ -55,7 +55,7 @@ function knownArguments(
   }
   const written = typeNode.typeArguments.map((argument) => context.resolveType(argument));
   const list = { at: typeNode.span, declaration: owner, types: written };
-  return typeArgumentsFor(context.checker, context.module, list);
+  return typeArgumentsFor(context, list);
 }
 
 /**

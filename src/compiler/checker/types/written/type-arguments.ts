@@ -23,6 +23,7 @@ import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import { substitute, substitutionFor } from '../parts/substitution.ts';
 import type { ParameterKey, Type } from '../type/index.ts';
 import { errorType } from '../type/primitives.ts';
+import { reportWritten, type Written } from './written.ts';
 
 /**
  * Type arguments given a generic declaration at `at`; `self` is what a trait's `Self` stands for.
@@ -39,16 +40,16 @@ interface ArgumentList {
  * defaults of the ones left out. Undefined after reporting that too few or too many were written.
  */
 export function typeArgumentsFor(
-  checker: CheckerContext,
-  module: ModuleId,
+  where: Written,
   { at, declaration, types: written, self }: ArgumentList,
 ): readonly Type[] | undefined {
+  const { checker } = where;
   const parameters = typeParametersOf(declaration.typeParameters);
   const required = parameters.filter((parameter) => parameter.defaultType === undefined).length;
   if (written.length < required || written.length > parameters.length) {
     const expected = written.length < required ? required : parameters.length;
-    checker.report(
-      module,
+    reportWritten(
+      where,
       checkerDiagnostics.typeArgumentCount(at, declaration.name.text, expected, written.length),
     );
     return undefined;

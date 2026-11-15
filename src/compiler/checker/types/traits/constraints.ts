@@ -125,12 +125,15 @@ export function resolveConstraint(
   const trait = entity.declaration;
   const self = selfOf(trait);
   const written = node.typeArguments.map(argumentType);
-  const typeArguments = typeArgumentsFor(checker, module, {
-    at: node.span,
-    declaration: trait,
-    types: written,
-    self,
-  });
+  const typeArguments = typeArgumentsFor(
+    { checker, module },
+    {
+      at: node.span,
+      declaration: trait,
+      types: written,
+      self,
+    },
+  );
   return typeArguments === undefined ? undefined : { trait, arguments: typeArguments };
 }
 

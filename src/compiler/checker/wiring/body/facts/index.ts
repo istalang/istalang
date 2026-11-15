@@ -64,9 +64,9 @@ const bodyFacts: { readonly [Name in FactName]: FactEntry<Name> } = {
   },
   writtenTypeOf: {
     at:
-      ({ records }, pass) =>
+      ({ units }, pass) =>
       (node) =>
-        records.writtenTypes.get(node, pass),
+        units.writtenTypes.of(node, pass),
     instantiated: (writtenTypeOf, by) => readThrough(writtenTypeOf, by.concrete),
     joined: typesJoined,
   },

@@ -206,7 +206,7 @@ export function writtenNominal(
 ): Type {
   const { checker, module } = context;
   const list = { at, declaration: entity.declaration, types: written };
-  const typeArguments = typeArgumentsFor(checker, module, list);
+  const typeArguments = typeArgumentsFor({ checker, module }, list);
   if (typeArguments === undefined) {
     return errorType;
   }

@@ -42,7 +42,10 @@ export class Lookup implements LookupQueries {
   }
 
   typeOfNode(module: ModuleId, node: TypeNode): Type | undefined {
-    return this.#itemChecked(module, node).resolvedTypeOf(node);
+    return (
+      this.bodyHolding(module, node)?.writtenTypeOf(node) ??
+      this.#itemChecked(module, node).resolvedTypeOf(node)
+    );
   }
 
   membersOf(module: ModuleId, type: Type, access?: MemberAccess): TypeMembers {

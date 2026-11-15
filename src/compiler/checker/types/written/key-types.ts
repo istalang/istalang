@@ -12,7 +12,6 @@
  */
 
 import { followsConvention, isUnnamed } from '../../../../foundation/language/naming.ts';
-import type { ModuleId } from '../../../program/program.ts';
 import { isKeyword } from '../../../syntax/tokens/index.ts';
 import type { AnchoredSpan } from '../../../syntax/tree/positions.ts';
 import type {
@@ -29,18 +28,13 @@ import { keyParameter, membersOf, type ParameterKey, shapeType, type Type } from
 import { errorType } from '../type/primitives.ts';
 import { typeText } from '../type/type-text.ts';
 import { declaredFields } from './declared-fields.ts';
-
-/** Where a type is written: the checker resolving it, and its module. */
-interface Written {
-  readonly checker: CheckerContext;
-  readonly module: ModuleId;
-}
+import { reportWritten, type Written } from './written.ts';
 
 /** `keyof S` (§3.1): the union of `S`'s keys; the error type, reported, for no struct type. */
-export function keysWritten({ checker, module }: Written, node: TypeNode, owner: Type): Type {
-  const keys = checker.typeRules.keysOf(owner, []);
+export function keysWritten(written: Written, node: TypeNode, owner: Type): Type {
+  const keys = written.checker.typeRules.keysOf(owner, []);
   if (keys.kind === 'error' && owner.kind !== 'error') {
-    checker.report(module, checkerDiagnostics.noStructKeys(node.span, typeText(owner)));
+    reportWritten(written, checkerDiagnostics.noStructKeys(node.span, typeText(owner)));
   }
   return keys;
 }
@@ -50,12 +44,12 @@ export function keysWritten({ checker, module }: Written, node: TypeNode, owner:
  * type, reported, when `S` has no keys or `K` isn't one of them.
  */
 export function fieldWritten(written: Written, node: IndexedType, owner: Type, key: Type): Type {
-  const { checker, module } = written;
+  const { checker } = written;
   const keys = keysWritten(written, node.owner, owner);
   const type = checker.typeRules.fieldType(owner, key);
   if (type.kind === 'error' && keys.kind !== 'error' && key.kind !== 'error') {
-    checker.report(
-      module,
+    reportWritten(
+      written,
       checkerDiagnostics.notKeyOf(node.key.span, typeText(key), typeText(owner)),
     );
   }
@@ -74,7 +68,7 @@ export function structWritten(
   const { checker, module } = written;
   for (const field of node.fields) {
     for (const annotation of field.annotations ?? []) {
-      checker.report(module, checkerDiagnostics.shapeFieldAnnotation(annotation.span));
+      reportWritten(written, checkerDiagnostics.shapeFieldAnnotation(annotation.span));
     }
   }
   const named = declaredFields(
@@ -88,7 +82,7 @@ export function structWritten(
     return shapeType(node, named);
   }
   for (const extra of more) {
-    checker.report(module, checkerDiagnostics.severalMappedEntries(extra.span));
+    reportWritten(written, checkerDiagnostics.severalMappedEntries(extra.span));
   }
   const keys = mappedKeysWritten(written, entry);
   if (keys.kind === 'error') {
@@ -101,7 +95,8 @@ export function structWritten(
 }
 
 /** A mapped entry's keys, each reported that names no field; the error type after a report. */
-function mappedKeysWritten({ checker, module }: Written, entry: MappedField): Type {
+function mappedKeysWritten(written: Written, entry: MappedField): Type {
+  const { checker } = written;
   const keys = checker.memberUnionOf(entry.parameter) ?? errorType;
   if (keys.kind === 'error') {
     return keys;
@@ -111,12 +106,12 @@ function mappedKeysWritten({ checker, module }: Written, entry: MappedField): Ty
     key.kind === 'literal' && typeof key.value === 'string' ? [key.value] : [],
   );
   if (!membersOf(keys).every((key) => isKey(checker, key))) {
-    checker.report(module, checkerDiagnostics.mappedKeysNotNames(at, typeText(keys)));
+    reportWritten(written, checkerDiagnostics.mappedKeysNotNames(at, typeText(keys)));
     return errorType;
   }
   const misnamed = names.find((name) => !isFieldName(name));
   if (misnamed !== undefined) {
-    checker.report(module, checkerDiagnostics.mappedFieldName(at, misnamed));
+    reportWritten(written, checkerDiagnostics.mappedFieldName(at, misnamed));
     return errorType;
   }
   return keys;

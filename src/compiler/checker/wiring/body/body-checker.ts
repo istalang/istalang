@@ -93,6 +93,7 @@ import { bodyRecords } from './body-records.ts';
 import { BodyScopes, closed } from './body-scopes.ts';
 import { checkedAt } from './facts/index.ts';
 import { reportedFit } from './reported-fits.ts';
+import { WrittenTypes } from './written-types.ts';
 
 export class BodyChecker implements BodyContext {
   readonly checker: CheckerContext;
@@ -115,6 +116,7 @@ export class BodyChecker implements BodyContext {
   readonly fieldReads = new FieldReads(this.#passes);
   readonly labels = new LabelTargets();
   readonly #records = bodyRecords(this.#passes);
+  readonly writtenTypes = new WrittenTypes(this.#passes);
   readonly inPass = (type: Type): Type => this.#passes.bound(type, this.checker.typeRules);
   readonly sugars = new Desugarings(this.#passes);
   /** The body's own result, which only the body's own function returns into. */
@@ -375,9 +377,7 @@ export class BodyChecker implements BodyContext {
   }
 
   resolveType(node: TypeNode): Type {
-    const type = this.inPass(this.checker.resolveType(this.module, node));
-    this.#records.writtenTypes.set(node, type);
-    return type;
+    return this.writtenTypes.resolved(this, node);
   }
 
   entityOf(name: Identifier): Entity | undefined {

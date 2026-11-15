@@ -8,10 +8,8 @@
  * mistake in it is still found.
  */
 
-import { unreachable } from '../../../../foundation/structures/unreachable.ts';
 import type { TypeParameter } from '../../../syntax/declarations/index.ts';
 import type { FieldHeader, FieldLoopHeader } from '../../../syntax/expressions/index.ts';
-import type { TypeNode } from '../../../syntax/types/index.ts';
 import type { BodyContext, CheckedPasses } from '../../contexts/body-context.ts';
 import type { CheckerContext } from '../../contexts/context.ts';
 import type { FieldPassType } from '../../contexts/passes.ts';
@@ -57,25 +55,20 @@ function typePasses(
   context: BodyContext,
   header: TypeParameter,
 ): readonly FieldPassType[] | undefined {
-  const { keys, owner } = keyofOf(header);
-  return context.resolveType(keys).kind === 'error'
-    ? undefined
-    : fieldPassesOver(context.checker, context.resolveType(owner), header);
-}
-
-/** The `keyof S` a loop over a type's keys runs over, and its `S` (syntax `FieldLoopHeader`). */
-function keyofOf(header: TypeParameter): { readonly keys: TypeNode; readonly owner: TypeNode } {
   const keys = header.memberOf;
-  return keys?.kind === 'KeyofType'
-    ? { keys, owner: keys.owner }
-    : unreachable("A loop over a type's keys runs over its 'keyof'.");
+  return keys?.kind !== 'KeyofType' || context.resolveType(keys).kind === 'error'
+    ? undefined
+    : fieldPassesOver(context.checker, context.resolveType(keys.owner), header);
 }
 
 /** The type whose fields `header` visits, as the pass being checked reads it. */
 export function visitedType(context: BodyContext, header: FieldLoopHeader): Type {
-  return header.kind === 'TypeParameter'
-    ? context.resolveType(keyofOf(header).owner)
-    : context.typeOf(header.subject);
+  if (header.kind === 'FieldHeader') {
+    return context.typeOf(header.subject);
+  }
+  return header.memberOf?.kind === 'KeyofType'
+    ? context.resolveType(header.memberOf.owner)
+    : errorType;
 }
 
 /**

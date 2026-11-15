@@ -126,6 +126,50 @@ describe('a loop over a type is a field loop', () => {
   });
 });
 
+describe('a loop over a type, nested and degenerate', () => {
+  it("resolves what a pass writes with that pass's key: a nested loop over a field's type", async () => {
+    const declarations = [
+      'struct First { x: Int }',
+      'struct Second { z: Int, y: String }',
+      'struct Outer { b: Second, a: First }',
+    ];
+    const lines = [
+      'let names: Array<String> = []',
+      'for K in keyof Outer:',
+      '  for J in keyof Outer[K]:',
+      '    names.push(`${K}.${J}`)',
+      'names.join(",")',
+    ];
+    expect(await runText(lines, declarations)).toBe('a.x,b.y,b.z');
+  });
+
+  it('runs over a struct with no field as code that never runs, reporting nothing', () => {
+    expect(
+      codesOf(
+        ...nodes,
+        'struct Empty {}',
+        'fn f(seed: Int):',
+        '  for K in keyof Empty:',
+        '    const key: String = K',
+        '    _ = (key, Empty[K].make(seed))',
+      ),
+    ).toEqual([]);
+  });
+
+  it('reports a static call through a key naming no field, once, at the key', () => {
+    expect(codesOf(...nodes, ...orderLike, 'fn f(): _ = OrderLike[Int].make(1)')).toEqual([5161]);
+  });
+
+  it("parses one key before 'keyof' and 'keyof' alone, and a value's header as before", () => {
+    const loop = (header: string) => [...orderLike, 'fn f():', `  for ${header}: _ = 1`];
+    expect(codesOf(...loop('K, V in keyof OrderLike'))).toEqual([2054]);
+    expect(codesOf(...loop('K in keyof OrderLike | "x"'))).toEqual([2055]);
+    expect(codesOf('fn f(s: { a: Int }) -> { a: Int }: struct{for k, v in s: [k]: v}')).toEqual([
+      2001,
+    ]);
+  });
+});
+
 describe('the commute law of a loop over a type', () => {
   it('agrees: generic and instantiated, over the concrete struct, and written out by hand', async () => {
     await fc.assert(
@@ -165,6 +209,13 @@ describe('a loop over a type in an editor', () => {
     ];
     expect(hoverCodeAt(...loop('P[‸K]'))).toEqual(['(type) "a" | "b"']);
     expect(hoverCodeAt(...loop('P‸[K]'))).toEqual(['Int | String']);
+    const narrowed = [
+      'struct P { b: String, a: Int }',
+      'fn f():',
+      '  for K in keyof P:',
+      '    if K == "a": _ = ‸K',
+    ];
+    expect(hoverCodeAt(...narrowed)).toEqual(['(type) "a"']);
   });
 });
 

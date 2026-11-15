@@ -18,6 +18,7 @@ import type { BodyContext } from '../../../contexts/body-context.ts';
 import type { CheckerContext } from '../../../contexts/context.ts';
 import { checkerDiagnostics } from '../../../diagnostics/index.ts';
 import { checkCallKind } from '../../../resolution/applying/call-kinds.ts';
+import { stops } from '../../../resolution/calls/stopped-operations.ts';
 import { namedFunctions } from '../../../resolution/choosing/named-functions.ts';
 import type { Admits } from '../../../types/fitting/expected.ts';
 import { expectedNominal } from '../../../types/fitting/expected.ts';
@@ -185,6 +186,10 @@ function memberParameterValue(context: BodyContext, entity: Entity): Type | unde
     return undefined;
   }
   const type = context.inPass(parameterType(entity.declaration));
+  if (stops(type)) {
+    // A loop's key over no field, or over a type already reported (§4): no value to be wrong about.
+    return type;
+  }
   const union = type.kind === 'literal' ? type : context.checker.fitting.memberUnionOf(type);
   const isOneValue = (member: Type) => member.kind === 'literal' || member.kind === 'keys';
   return union !== undefined && membersOf(union).every(isOneValue) ? type : undefined;

@@ -112,7 +112,7 @@ export function fieldLoop(
           builder.resumeIn(starts[index] as BlockId);
           builder.inView(each.body, () =>
             builder.scopes.inScope(node, () => {
-              bind?.(each, fields[index]);
+              bind?.(each);
               pass();
             }),
           );
@@ -125,25 +125,15 @@ export function fieldLoop(
 }
 
 /**
- * How a pass over a value's fields binds `header`'s targets: to the pair of its key, the name of the
- * field it visits, and that field's value, read from the subject, which is read once, before the
- * loop. A loop over a type's keys reads no value: its key is a type, read where it is named as a
- * value (expressions.ts).
+ * How a pass over a value's fields binds `header`'s targets: to the pair of its key, the one value
+ * of its key's type, the name of the field it visits, and that field's value, read from the
+ * subject, which is read once, before the loop. A loop over a type's keys reads no value: its key
+ * is a type, read where it is named as a value (expressions.ts).
  */
-function fieldsBinding(
-  builder: FlowBuilder,
-  header: FieldHeader,
-): (pass: FieldPass, name: string | undefined) => void {
+function fieldsBinding(builder: FlowBuilder, header: FieldHeader): (pass: FieldPass) => void {
   const subject = builder.expression(header.subject);
-  return (each, name) => {
-    const key = builder.temporary(header, each.key);
-    builder.compute(
-      key,
-      header,
-      name === undefined
-        ? { kind: 'typeValue' }
-        : { kind: 'constant', form: { kind: 'primitive', value: name } },
-    );
+  return (each) => {
+    const key = builder.compute(builder.temporary(header, each.key), header, { kind: 'typeValue' });
     const value = builder.temporary(header, each.value);
     const part = { kind: 'keyed', key } as const;
     builder.emit({ op: 'read', site: header, into: value, from: subject, part });

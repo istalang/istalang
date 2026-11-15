@@ -15,7 +15,6 @@ import type { Pattern } from '../../../syntax/patterns.ts';
 import type { Identifier } from '../../../syntax/tree/node.ts';
 import { parserDiagnostics } from '../../diagnostics.ts';
 import type { Parser } from '../../parser.ts';
-import { parseKeyofType } from '../types.ts';
 
 /** Whether a field loop's header goes on after `in`: at its `...` or its `keyof`. */
 export function atFieldLoopSource(parser: Parser): boolean {
@@ -28,9 +27,9 @@ export function parseFieldLoopHeaderAfter(
   start: number,
   targets: readonly Pattern[],
 ): FieldLoopHeader {
-  return parser.cursor.at('...')
-    ? parseFieldsHeader(parser, start, targets)
-    : parseKeysHeader(parser, targets);
+  return parser.atWord('keyof')
+    ? parseKeysHeader(parser, targets)
+    : parseFieldsHeader(parser, start, targets);
 }
 
 /**
@@ -50,11 +49,7 @@ function refuseCondition(parser: Parser): void {
  * hold.
  */
 export function fieldLoopKeyName(header: FieldLoopHeader): string | undefined {
-  if (header.kind === 'TypeParameter') {
-    return header.name.text;
-  }
-  const { key } = header;
-  return key.kind === 'NamePattern' ? key.path.at(-1)?.text : undefined;
+  return header.kind === 'TypeParameter' ? header.name.text : plainName(header.key)?.text;
 }
 
 /**
@@ -91,24 +86,33 @@ function parseFieldsHeader(
 
 /**
  * `keyof S`, after one target, its key's name: the member parameter `K in keyof S`. Any other
- * targets are reported, and the key then has no name, so nothing after the parser reports it again.
+ * targets are reported, a missing one already was, and the key then has no name, so nothing after
+ * the parser reports it again.
  */
 function parseKeysHeader(parser: Parser, targets: readonly Pattern[]): TypeParameter {
-  const [target] = targets;
-  const written = targets.length === 1 && target !== undefined ? plainName(target) : undefined;
-  const at = target?.span ?? parser.placeholder().span;
-  if (written === undefined) {
-    parser.report(parserDiagnostics.typeLoopKey(parser.textSpanOf(at)));
+  const [first] = targets;
+  const written = targets.length === 1 && first !== undefined ? plainName(first) : undefined;
+  const at = first?.span ?? parser.placeholder().span;
+  const last = targets.at(-1);
+  if (
+    written === undefined &&
+    first !== undefined &&
+    last !== undefined &&
+    first.kind !== 'Missing'
+  ) {
+    const { end } = parser.textSpanOf(last.span);
+    parser.report(parserDiagnostics.typeLoopKey({ start: parser.startOf(first), end }));
   }
   const name: Identifier = written ?? {
     kind: 'Identifier',
     span: { ...at, to: at.from },
     text: '',
   };
-  const memberOf = parseKeyofType(parser);
-  const span = parser.spanFrom(
-    target === undefined ? parser.startOf(memberOf) : parser.startOf(target),
-  );
+  const memberOf = parser.type();
+  if (memberOf.kind !== 'KeyofType') {
+    parser.report(parserDiagnostics.typeLoopKeys(parser.textSpanOf(memberOf.span)));
+  }
+  const span = parser.spanFrom(parser.startOf(first ?? memberOf));
   refuseCondition(parser);
   return {
     kind: 'TypeParameter',

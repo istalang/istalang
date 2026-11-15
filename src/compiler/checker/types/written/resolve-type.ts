@@ -50,7 +50,7 @@ import {
 } from '../../../syntax/types/index.ts';
 import type { CheckerContext } from '../../contexts/context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
-import { substitutionFor } from '../parts/substitution.ts';
+import { substitute, substitutionFor } from '../parts/substitution.ts';
 import { aliasedAs } from '../type/alias-uses.ts';
 import { ownAssociatedType } from '../type/computed-types.ts';
 import { isSimpleMark, simpleMark, writtenKindOf } from '../type/function-kinds.ts';
@@ -69,6 +69,7 @@ import { fieldWritten, keysWritten, structWritten } from './key-types.ts';
 import { namedPathOf } from './named-paths.ts';
 import { constrainArguments, noteConstraints, typeArgumentsFor } from './type-arguments.ts';
 import { aliasInstance } from './type-match.ts';
+import { type PassResolution, reportWritten, type Written } from './written.ts';
 import {
   asWrittenInMatch,
   inCasePattern,
@@ -77,9 +78,7 @@ import {
   unreducedUse,
 } from './written-matches.ts';
 
-interface Resolution {
-  readonly checker: CheckerContext;
-  readonly module: ModuleId;
+interface Resolution extends Written {
   /** The group whose bodies are closing, its uses placeholders; undefined anywhere else. */
   readonly closing?: ClosingGroup | undefined;
 }
@@ -133,6 +132,19 @@ export function resolveTypeNode(checker: CheckerContext, module: ModuleId, node:
 }
 
 /**
+ * The type `node` denotes in `pass` of the loops over a type's keys around it (written.ts): each
+ * node it is built of resolved afresh, from its leaves up, with their keys bound.
+ */
+export function resolveInPass(
+  checker: CheckerContext,
+  module: ModuleId,
+  node: TypeNode,
+  pass: PassResolution,
+): Type {
+  return resolve({ checker, module, pass }, node);
+}
+
+/**
  * The type `node`, part of a body of `group`, closes from (the banner): each use of the group's
  * aliases a placeholder standing for that alias.
  */
@@ -151,7 +163,13 @@ export function parameterType(declaration: ParameterKey): Type {
 }
 
 function resolve(resolution: Resolution, node: TypeNode): Type {
-  const { checker, module, closing } = resolution;
+  const { checker, module, closing, pass } = resolution;
+  if (pass !== undefined) {
+    const resolved = handlerOf(typeHandlers, node)(resolution, node);
+    const type = substitute(resolved, pass.binds, checker.typeRules);
+    pass.record(node, type);
+    return type;
+  }
   return closing?.writesUse(node) === true
     ? handlerOf(typeHandlers, node)(resolution, node)
     : checker.resolveType(module, node);
@@ -162,14 +180,14 @@ function writtenFunctionType(resolution: Resolution, node: FunctionTypeNode): Ty
   const rests = node.parameters.filter((parameter) => parameter.kind === 'RestType');
   const last = node.parameters.at(-1);
   for (const rest of rests.filter((each) => each !== last)) {
-    resolution.checker.report(resolution.module, checkerDiagnostics.packNotLast(rest.span));
+    reportWritten(resolution, checkerDiagnostics.packNotLast(rest.span));
   }
   const rest = last?.kind === 'RestType' ? last : undefined;
   const written = node.returnType === undefined ? unitType : resolve(resolution, node.returnType);
   // An unmarked function type is simple (proposal 8, Rule 4), but its future must be of a kind.
   const kind = writtenKindOf(node.qualifiers) ?? simpleMark;
   if (awaits(node.qualifiers) && isSimpleMark(kind)) {
-    resolution.checker.report(resolution.module, checkerDiagnostics.unkindedFuture(node.span));
+    reportWritten(resolution, checkerDiagnostics.unkindedFuture(node.span));
   }
   return functionType({
     send: sendOf(node.qualifiers),
@@ -185,12 +203,11 @@ function writtenFunctionType(resolution: Resolution, node: FunctionTypeNode): Ty
 
 /** The pack a function type's rest names (§3.5); the error type, reported, for anything else. */
 function packOf(resolution: Resolution, rest: RestType): PackType {
-  const { checker, module } = resolution;
   const type = resolve(resolution, rest.type);
   if (type.kind === 'error' || isPack(type)) {
     return type;
   }
-  checker.report(module, checkerDiagnostics.restNotPack(rest.span, typeText(type)));
+  reportWritten(resolution, checkerDiagnostics.restNotPack(rest.span, typeText(type)));
   return errorType;
 }
 
@@ -231,7 +248,7 @@ function namedType(resolution: Resolution, node: NamedType): Type {
     typeOfEntity(checker, entity, argumentsFor, byReference),
   );
   if (type === undefined) {
-    checker.report(module, checkerDiagnostics.notType(node.span, name.text));
+    reportWritten(resolution, checkerDiagnostics.notType(node.span, name.text));
     return errorType;
   }
   if (isFnType(checker, entity)) {
@@ -242,8 +259,8 @@ function namedType(resolution: Resolution, node: NamedType): Type {
     node.typeArguments.length > 0 &&
     (members.length > 0 || entity.kind !== 'type' || entity.declaration.kind === 'AssociatedType')
   ) {
-    checker.report(
-      module,
+    reportWritten(
+      resolution,
       checkerDiagnostics.typeArgumentCount(node.span, last.text, 0, node.typeArguments.length),
     );
   }
@@ -252,7 +269,7 @@ function namedType(resolution: Resolution, node: NamedType): Type {
 
 /** The associated type `name` names on `owner` (§3.1), reported when it has none. */
 function associatedAt(resolution: Resolution, owner: Type, name: Identifier): Type {
-  const { checker, module } = resolution;
+  const { checker } = resolution;
   const unreduced = unreducedAssociated(resolution, owner, name);
   if (unreduced !== undefined) {
     return unreduced;
@@ -263,8 +280,8 @@ function associatedAt(resolution: Resolution, owner: Type, name: Identifier): Ty
       ? ownAssociatedType(owner, name.text) !== undefined
       : type.kind !== 'error';
   if (!declared && owner.kind !== 'error' && !isMissingName(name)) {
-    checker.report(
-      module,
+    reportWritten(
+      resolution,
       checkerDiagnostics.noAssociatedType(name.span, typeText(owner), name.text),
     );
   }
@@ -350,7 +367,7 @@ function argumentsOf(
   const { checker, module } = resolution;
   const written = node.typeArguments.map((argument) => resolve(resolution, argument));
   const list = { at: node.span, declaration, types: written };
-  const typeArguments = typeArgumentsFor(checker, module, list);
+  const typeArguments = typeArgumentsFor(resolution, list);
   if (typeArguments === undefined) {
     return undefined;
   }
@@ -383,10 +400,7 @@ function checkFnArguments(resolution: Resolution, node: NamedType, type: Type): 
   }
   const given = resolve(resolution, args);
   if (given.kind !== 'error') {
-    resolution.checker.report(
-      resolution.module,
-      checkerDiagnostics.fnArgumentsNotTuple(args.span, typeText(given)),
-    );
+    reportWritten(resolution, checkerDiagnostics.fnArgumentsNotTuple(args.span, typeText(given)));
   }
 }
 
@@ -428,7 +442,7 @@ function referent(resolution: Resolution, node: ReferenceType): Type {
       unparenthesizedType(args) === holder &&
       isFnType(checker, namedPathOf(checker.bindings, module, named).entity);
     if (!isFnItem) {
-      checker.report(module, checkerDiagnostics.misplacedReferenceItem(node.span));
+      reportWritten(resolution, checkerDiagnostics.misplacedReferenceItem(node.span));
     }
   }
   return resolve(resolution, node.referent);
