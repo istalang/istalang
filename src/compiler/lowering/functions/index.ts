@@ -312,7 +312,7 @@ class FunctionLowering implements EntryContext {
   #entry(parameters: readonly EntryParameter[]): CodeFunction {
     const { header, mode, captures } = this.frame;
     const { tree } = programModule(this.checker.program, this.module);
-    const { registers, instructions } = this.code.finish(tree);
+    const { registers, counted, instructions } = this.code.finish(tree);
     return {
       kind: 'code',
       ...header,
@@ -321,6 +321,7 @@ class FunctionLowering implements EntryContext {
       captures: captures.length,
       registers,
       cells: [...this.variables.cells],
+      counted,
       instructions,
     };
   }

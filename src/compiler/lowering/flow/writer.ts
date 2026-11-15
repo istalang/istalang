@@ -38,7 +38,7 @@ import type { TypedValue } from '../values/holdings.ts';
 import { exitWriters } from './exits.ts';
 import { type FlowLayout, layoutOf, type PassVisit } from './layout.ts';
 import { operationWriters } from './operations.ts';
-import { cellRegister } from './variables.ts';
+import { cellRegister, holdsType } from './variables.ts';
 
 /** How a flow's root gives its value: by returning from the entry, or into a register. */
 type FlowEnd = { readonly kind: 'return' } | { readonly kind: 'into'; readonly into: Register };
@@ -167,10 +167,14 @@ export class FlowWriter {
     return register;
   }
 
-  /** Makes `register` `value`'s. */
+  /** Makes `register` `value`'s, holding values of its type alone, or its cell (`cellRegister`). */
   bind(value: ValueId, register: Register): void {
     this.#registers.set(value, register);
     this.#held.add(register);
+    const bound = this.valueOf(value);
+    if (bound.type !== undefined && !(bound.kind === 'variable' && bound.inCell)) {
+      holdsType(this.context, register, bound.type);
+    }
   }
 
   /** `value` given `produced`: its own register, or moved into the one it has. */
@@ -199,6 +203,9 @@ export class FlowWriter {
       const register = value.inCell
         ? cellRegister(this.context, type)
         : this.context.code.allocate();
+      if (!value.inCell) {
+        holdsType(this.context, register, type);
+      }
       variables.declare(name, register);
     }
     return variables.registerOf(name);

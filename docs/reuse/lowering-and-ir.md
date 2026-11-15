@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-11-13
-last_updated: 2026-11-15
+last_updated: 2026-11-16
 tags: [reuse, lowering, definition, ir, instructions]
 ---
 
@@ -35,7 +35,7 @@ tags: [reuse, lowering, definition, ir, instructions]
 - write code inside a field loop's pass (§4): the body read as that pass checked it, so its calls close and its types concretize through the pass's `CheckedBody.substitution` (its key bound), nested functions keyed per pass → `FunctionContext.inFieldPasses` (`src/compiler/lowering/context.ts`), `loweredNested` and `passedBody` (`src/compiler/lowering/functions/frames.ts`), `BodyOwner.passes` (`src/compiler/lowering/tables/instances.ts`); an instantiated body has one pass per field, in field order, its key bound in its substitution: the one home of unrolling (`instantiationBy`, `src/compiler/checker/wiring/body/facts/instantiation.ts`)
 - read or write the field a key of several names names, or a part past it, switching on its tag → `readKeyed`, `writeKeyed`, `eachKeyedField`, and convert a value written there into the concrete field, also where an instantiation left the key one name (an `AssignedPart` whose `WrittenFit` is `'intoKeyedField'`) → `fittedInto` (`src/compiler/lowering/values/keyed-fields.ts`); run code per member of a union value → `onEachMember`, or into one register → `eachMember` (`src/compiler/lowering/values/unions.ts`)
 - read one field of a value, or its part along field and element positions → `CodeWriter.field`, `CodeWriter.readPath` (`src/compiler/lowering/functions/code-writer.ts`); compare two registers with the built-in `equal` → `CodeWriter.equal`, or `equal` (`values/operators.ts`) for `!=` too
-- a variable's register, any flow of the entry writing it → `VariableRegisters.registerOf`; allocate a cell → `cellRegister` (`src/compiler/lowering/flow/variables.ts`)
+- a variable's register, any flow of the entry writing it → `VariableRegisters.registerOf`; allocate a cell → `cellRegister`; note that a register holds values of a type, uncounted when it reaches no disposable → `holdsType` (`src/compiler/lowering/flow/variables.ts`), over `CodeWriter.holdsPlain`
 - read how a field access reaches its field → `CheckedBody.fieldReadOf` (`src/compiler/checker/surface/checked-body.ts`)
 - build an enum variant by its declared name → `buildVariant`, by its position → `variantAt`, or what a variant's constructor builds of its parameters → `buildConstructed` (`src/compiler/lowering/values/variant-values.ts`); in synthesized code, `SynthesizedCode.variant`
 - branch on an enum variant, or read variant field 0 → `branchOnVariant`, `payloadOf` (`src/compiler/lowering/values/variant-values.ts`); carry on with a variant's one field where a value holds it, else run what leaves → `payloadOr`

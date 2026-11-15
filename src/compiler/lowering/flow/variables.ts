@@ -63,7 +63,18 @@ export function cellRegister(
   type: Type,
 ): Register {
   const register = context.code.allocate();
-  const cell = context.tables.types.index(context.checker.cellOf(type));
-  context.variables.addCell({ register, type: cell });
+  const cellType = context.checker.cellOf(type);
+  context.variables.addCell({ register, type: context.tables.types.index(cellType) });
+  holdsType(context, register, cellType);
   return register;
+}
+
+/**
+ * Notes that `register` holds values of `type`, concrete as the entry reads it: none reaching a
+ * disposable when the type reaches none (CodeWriter `holdsPlain`).
+ */
+export function holdsType(context: CodeContext, register: Register, type: Type): void {
+  if (!context.checker.reachesDisposable(type)) {
+    context.code.holdsPlain(register);
+  }
 }

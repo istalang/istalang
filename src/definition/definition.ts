@@ -20,4 +20,4 @@ const definition = tables.superRefine(checkReferences);
 
 export type Definition = z.output<typeof definition>;
 
-export const definitionFormat = defineFormat('istalang-definition', 1, definition);
+export const definitionFormat = defineFormat('istalang-definition', 2, definition);

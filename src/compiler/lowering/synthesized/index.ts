@@ -156,7 +156,9 @@ export class SynthesizedCode implements CodeContext {
    * The finished entry, named and placed by `header`; `references` says which parameters are `&`.
    */
   entry(header: EntryHeader, mode: CodeMode, references: readonly boolean[] = []): CodeFunction {
-    const { registers, instructions } = this.code.finish(this.tables.treeAt(header.module));
+    const { registers, counted, instructions } = this.code.finish(
+      this.tables.treeAt(header.module),
+    );
     return {
       kind: 'code',
       ...header,
@@ -168,6 +170,7 @@ export class SynthesizedCode implements CodeContext {
       captures: this.captures.length,
       registers,
       cells: [...this.#cells],
+      counted,
       instructions,
     };
   }

@@ -218,6 +218,7 @@ export const broadcastDefinition: Definition = {
       annotations: [],
       registers: 7,
       cells: [],
+      counted: [],
       instructions: [
         { kind: 'call', span: noSpan, dst: 1, callee: functionCallee(now), arguments: [] },
         { kind: 'field', span: noSpan, dst: 2, src: 1, index: 0 },
@@ -249,6 +250,7 @@ export const broadcastDefinition: Definition = {
       annotations: [],
       registers: 18,
       cells: [],
+      counted: [],
       instructions: [
         { kind: 'move', span: loop, dst: 3, src: 1 },
         { kind: 'call', span: loop, dst: 4, callee: functionCallee(length), arguments: [v(3)] },

@@ -39,8 +39,9 @@ istalang/live: the runtime library, prebuilt with the toolchain, imported by eve
 
 ## What lowering adds
 
-- **`counted`** on every code entry: the registers whose type reaches a disposable, by the same
-  `reachesDisposable` the type table's `counted` flag reads.
+- **`counted`** on every code entry: the registers that may hold what reaches a disposable, by the
+  same `reachesDisposable` the type table's `counted` flag reads. It is safe, not exact: a register
+  lowering can't type (an operation's extra, synthesized code) is counted.
 - The Definition's format version goes up by one. The interpreter ignores `counted`.
 
 ## Generated code

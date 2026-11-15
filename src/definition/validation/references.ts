@@ -160,6 +160,7 @@ function checkCode(context: Context, entry: CodeFunction, path: Path): void {
       context.report(at, `Type ${cell.type} is not a cell type.`);
     }
   });
+  inRange(context, { registers: entry.counted }, [...path, 'counted'], frame);
   const last = entry.instructions.at(-1);
   if (last !== undefined && !terminates(last)) {
     context.report(

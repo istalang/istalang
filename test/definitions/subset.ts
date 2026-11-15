@@ -88,6 +88,7 @@ export const subsetDefinition: Definition = {
       annotations: [],
       registers: 10,
       cells: [],
+      counted: [],
       instructions: [
         { kind: 'constant', span: at('2'), dst: 1, constant: two },
         {
@@ -150,6 +151,7 @@ export const subsetDefinition: Definition = {
       annotations: [],
       registers: 11,
       cells: [],
+      counted: [],
       instructions: [
         { kind: 'constant', span: at('let total = 0'), dst: 0, constant: zero },
         { kind: 'constant', span: at('let i = 0'), dst: 1, constant: zero },

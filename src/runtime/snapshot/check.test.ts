@@ -47,7 +47,7 @@ function storeChanged(
   test.store.writeSnapshot('i', snapshotFormat.write(change(test.snapshot)).text);
 }
 
-const versionAtEnd = /"version":1\}$/u;
+const versionAtEnd = /"version":\d+\}$/u;
 const version99Refused = /version 99 is not supported/u;
 const version7Refused = /version 7 is not supported/u;
 

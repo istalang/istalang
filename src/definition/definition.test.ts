@@ -96,9 +96,9 @@ describe('definition format', () => {
     [
       'an unknown version',
       editedSubset((json) => {
-        json.version = 2;
+        json.version = definitionFormat.version + 1;
       }),
-      'version 2 is not supported; this reader knows version 1',
+      `version ${definitionFormat.version + 1} is not supported; this reader knows version ${definitionFormat.version}`,
     ],
   ])('refuses %s', (_case, text, problem) => {
     expect(refusalOf(definitionFormat, text)).toContain(problem);

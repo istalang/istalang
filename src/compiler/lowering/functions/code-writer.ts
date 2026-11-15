@@ -37,9 +37,13 @@ export type WrittenInstruction = Instruction extends infer Each
     : never
   : never;
 
-/** A function's code as written: how many registers its frame needs, and its instructions. */
+/**
+ * A function's code as written: how many registers its frame needs, which of them may hold what
+ * reaches a disposable, and its instructions.
+ */
 interface WrittenCode {
   readonly registers: number;
+  readonly counted: Register[];
   readonly instructions: Instruction[];
 }
 
@@ -51,6 +55,8 @@ export class CodeWriter {
   readonly #patches = new Map<number, ((position: number) => void)[]>();
   #registers = 0;
   #labels = 0;
+  /** The registers found to hold only what reaches no disposable (`holdsPlain`). */
+  readonly #plain = new Set<Register>();
 
   /** A fresh register. */
   allocate(): Register {
@@ -70,6 +76,15 @@ export class CodeWriter {
       result,
       registers: Array.from({ length: this.#registers - first }, (_, offset) => first + offset),
     };
+  }
+
+  /**
+   * Notes that `register` holds only values reaching no disposable (spec §7), as their types say:
+   * a runtime counting holders per register needn't count it. A register nothing says this of is
+   * counted, so a register whose values lowering can't name stays safe.
+   */
+  holdsPlain(register: Register): void {
+    this.#plain.add(register);
   }
 
   emit(instruction: WrittenInstruction): void {
@@ -266,7 +281,10 @@ export class CodeWriter {
     const instructions = this.#instructions.map(
       ({ span, ...written }) => ({ ...written, span: spanIn(tree, span) }) as Instruction,
     );
-    return { registers: this.#registers, instructions };
+    const counted = Array.from({ length: this.#registers }, (_, register) => register).filter(
+      (register) => !this.#plain.has(register),
+    );
+    return { registers: this.#registers, counted, instructions };
   }
 
   #waypointField(): { readonly waypoint?: string } {

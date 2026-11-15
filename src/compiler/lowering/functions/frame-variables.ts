@@ -24,7 +24,7 @@ import type { Type } from '../../checker/types/type/index.ts';
 import type { Identifier } from '../../syntax/tree/node.ts';
 import { packElements } from '../calls/packs.ts';
 import type { FunctionContext } from '../context.ts';
-import { cellRegister } from '../flow/variables.ts';
+import { cellRegister, holdsType } from '../flow/variables.ts';
 import { writeFlow } from '../flow/writer.ts';
 import type { BodyOwner } from '../tables/instances.ts';
 import { tupleOf } from '../values/struct-values.ts';
@@ -78,7 +78,11 @@ export function declareFrame(
   const values: Register[] = [];
   const listed = slots.flatMap(({ parameter, elements: types }, position) => {
     if (types !== undefined) {
-      const elements = types.map(() => context.code.allocate());
+      const elements = types.map((type) => {
+        const element = context.code.allocate();
+        holdsType(context, element, type);
+        return element;
+      });
       packs.push({ position, elements });
       return elements.map((element) => ({
         register: element,
@@ -92,9 +96,14 @@ export function declareFrame(
     return [{ register, reference, hasDefault: mayBeLeftOut(parameter) }];
   });
   for (const { entity, type } of context.frame.captures) {
-    const register = context.body.inCell(entity.name)
-      ? cellRegister(context, concrete(context, type))
-      : context.code.allocate();
+    const captured = concrete(context, type);
+    let register: Register;
+    if (context.body.inCell(entity.name)) {
+      register = cellRegister(context, captured);
+    } else {
+      register = context.code.allocate();
+      holdsType(context, register, captured);
+    }
     context.variables.declare(entity.name, register);
   }
   enterParameters(context, slots, values);

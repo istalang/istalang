@@ -131,14 +131,19 @@ function signature(sizes: Sizes): fc.Arbitrary<FunctionDefinition> {
         }),
         captures: fc.nat({ max: 2 }),
         extra: fc.integer({ min: 1, max: 6 }),
+        countedOf: fc.func(fc.boolean()),
       })
-      .map(({ extra, ...parts }) => ({
-        kind: 'code' as const,
-        ...parts,
-        registers: parts.parameters.length + parts.captures + extra,
-        cells: [],
-        instructions: [],
-      })),
+      .map(({ extra, countedOf, ...parts }) => {
+        const registers = parts.parameters.length + parts.captures + extra;
+        return {
+          kind: 'code' as const,
+          ...parts,
+          registers,
+          cells: [],
+          counted: Array.from({ length: registers }, (_, register) => register).filter(countedOf),
+          instructions: [],
+        };
+      }),
     fc
       .record({
         ...common,
