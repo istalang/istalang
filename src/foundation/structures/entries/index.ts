@@ -55,6 +55,8 @@ export interface EntryTable<Note, Key, Value, Context = void> {
    * for it now reaches it running, which answers its table's stand-in.
    */
   readonly running: (key: Key) => boolean;
+  /** Whether any of this table's entries is running: among those computing now, outermost first. */
+  readonly anyRunning: () => boolean;
   /** The notes of `key`'s entry and of every entry it read, transitively. */
   readonly notesFrom: (key: Key) => readonly Note[];
 }
@@ -111,6 +113,7 @@ export class Entries<Note> {
         return entry === undefined ? undefined : (this.#read(entry) as Value);
       },
       running: (key) => table.entries.get(key)?.running === true,
+      anyRunning: () => this.#running.some((entry) => entry.table === table),
       notesFrom: (key) => {
         const entry = table.entries.get(key);
         return entry === undefined

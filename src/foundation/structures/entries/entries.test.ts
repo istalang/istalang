@@ -329,6 +329,26 @@ describe('entries', () => {
     expect(first.outer.running(0)).toBe(false);
   });
 
+  it("say whether any of a table's entries is running, whichever key", () => {
+    const entries = new Entries<string>();
+    const seen: boolean[] = [];
+    const outer: EntryTable<string, number, number> = entries.table<number, number>({
+      name: 'outer',
+      compute: (key) => inner.get(key + 1),
+    });
+    const inner: EntryTable<string, number, number> = entries.table<number, number>({
+      name: 'inner',
+      compute: (key) => {
+        seen.push(outer.anyRunning(), inner.anyRunning());
+        return key;
+      },
+    });
+    inner.get(5);
+    outer.get(0);
+    expect(seen).toEqual([false, true, true, true]);
+    expect(outer.anyRunning()).toBe(false);
+  });
+
   it('answer nothing for a key never asked for', () => {
     const table = new Entries<string>().table<number, number>({
       name: 'unasked',

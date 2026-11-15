@@ -14,6 +14,15 @@
  * - A field typed by its default has its type once the default is checked, which may read written
  *   fields' layouts. With its edges added to what the first stratum leaves, it is cut when it lies
  *   on a cycle that grows, whichever field on the cycle expands: the cycle ends at it.
+ *
+ * Checking a default reads layouts, which ask for cuts, and a cut's walk checks the defaults it
+ * meets, which may read a layout still open on the way to it. So a cut of the second stratum is
+ * decided only outside defaults being checked to type what they give (`typingDefaults`) and other
+ * cuts' walks, over the whole graph, checking every default on it: whether a field is cut, and what
+ * is reported, never depends on what was asked first. Inside them, a field reads as cut when the
+ * fields whose defaults are checked already make a growing cycle through it, which the whole graph
+ * makes too; else as it is, though it may be cut once decided. A walk over types checks the fields
+ * it reads, so it goes round a growing cycle at most once before the cycle is cut.
  */
 
 import type { EntryTable } from '../../../../foundation/structures/entries/index.ts';
@@ -33,7 +42,7 @@ import {
 import type { CheckerContext, CheckerNote } from '../../contexts/context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import { nominalsIn } from '../../types/parts/type-parts.ts';
-import type { ParameterKey, Type } from '../../types/type/index.ts';
+import type { FieldMember, ParameterKey, Type } from '../../types/type/index.ts';
 import { type ArgumentEdge, argumentEdges, endlessEdgesFrom, growingEdgesFrom } from './edges.ts';
 
 /** A declaration with fields of its own: a struct's, shared or not, or an enum's variants'. */
@@ -46,34 +55,51 @@ interface FieldEdge extends ArgumentEdge {
   readonly reached: FieldedDeclaration;
 }
 
-type ExpansionSeams = Pick<CheckerContext, 'entries' | 'resolveType' | 'moduleOf' | 'report'>;
+type ExpansionSeams = Pick<
+  CheckerContext,
+  'entries' | 'resolveType' | 'moduleOf' | 'report' | 'typingDefaults'
+>;
 
-/** The type a field typed by its default takes from it, checking the default (layout/index.ts). */
-type DefaultedType = (declaration: FieldedDeclaration, field: DeclaredField) => Type;
+/**
+ * Each field typed alone, before it may be cut, a default checked to type its field
+ * (layout/index.ts); running while that default is checked.
+ */
+type FieldTypes = Pick<
+  EntryTable<CheckerNote, DeclaredField, FieldMember, FieldedDeclaration>,
+  'get' | 'computed' | 'running'
+>;
+
+/** How a walk of the second stratum reads the edges of a field typed by its default. */
+type DefaultedEdges = (
+  field: DeclaredField,
+  declaration: FieldedDeclaration,
+) => readonly FieldEdge[];
 
 const sameEdges = sameItems<FieldEdge>(sameProperties);
 
 export class TypeExpansion {
   readonly #checker: ExpansionSeams;
-  readonly #defaultedType: DefaultedType;
+  readonly #fieldTypes: FieldTypes;
   /** Each declaration's edges from the fields whose types are written. */
   readonly #writtenEdges: EntryTable<CheckerNote, FieldedDeclaration, readonly FieldEdge[]>;
   /** The written fields each declaration cuts: the first stratum. */
   readonly #endless: EntryTable<CheckerNote, FieldedDeclaration, ReadonlySet<DeclaredField>>;
-  /**
-   * Each declaration's edges from the fields typed by their defaults; none while a default being
-   * checked reaches them again, which its parameters report (functions/parameters.ts).
-   */
-  readonly #defaultedEdges: EntryTable<CheckerNote, FieldedDeclaration, readonly FieldEdge[]>;
+  /** The edges of each field typed by its default, once the default is checked. */
+  readonly #defaultedEdges: EntryTable<
+    CheckerNote,
+    DeclaredField,
+    readonly FieldEdge[],
+    FieldedDeclaration
+  >;
   /**
    * Whether a field typed by its default is cut: the second stratum. Each field walks from its own
-   * edges, so whether it lies on a cycle reads no default but those on the cycles it may close.
+   * edges.
    */
   readonly #cut: EntryTable<CheckerNote, DeclaredField, boolean, FieldedDeclaration>;
 
-  constructor(checker: ExpansionSeams, defaultedType: DefaultedType) {
+  constructor(checker: ExpansionSeams, fieldTypes: FieldTypes) {
     this.#checker = checker;
-    this.#defaultedType = defaultedType;
+    this.#fieldTypes = fieldTypes;
     this.#writtenEdges = checker.entries.table({
       name: 'field edges',
       compute: (declaration) =>
@@ -93,49 +119,68 @@ export class TypeExpansion {
     });
     this.#defaultedEdges = checker.entries.table({
       name: 'defaulted field edges',
-      compute: (declaration) =>
-        this.#edgesOf(declaration, defaultedFieldsOf(declaration), (field) =>
-          this.#defaultedType(declaration, field),
-        ),
+      compute: (field, declaration) =>
+        this.#edgesOf(declaration, [field], () => fieldTypes.get(field, declaration).type),
       equal: sameEdges,
-      cyclic: { standIn: () => [] },
     });
     this.#cut = checker.entries.table({
       name: 'cut defaulted field',
       compute: (field, declaration) => this.#cutField(declaration, field),
-      cyclic: { standIn: () => false },
     });
   }
 
-  /** Whether `field` of `declaration` is cut from the graph, which reports it once. */
+  /**
+   * Whether `field` of `declaration` is cut from the graph, which reports it once; while defaults
+   * are checked or a cut walks, whether the defaults checked already cut a field typed by its own.
+   */
   isEndless(declaration: FieldedDeclaration, field: Field): boolean {
     if (field.kind !== 'DeclaredField') {
       return false;
     }
-    return field.type === undefined
-      ? this.#cut.get(field, declaration)
-      : this.#endless.get(declaration).has(field);
+    if (field.type !== undefined) {
+      return this.#endless.get(declaration).has(field);
+    }
+    if (this.#checker.typingDefaults() || this.#cut.anyRunning()) {
+      const checked: DefaultedEdges = (each, owner) => this.#checkedEdges(each, owner);
+      return this.#grows(field, checked(field, declaration), checked);
+    }
+    return this.#cut.get(field, declaration);
   }
 
   /** Whether `field`, typed by its default, lies on a cycle that grows; reported once if so. */
   #cutField(declaration: FieldedDeclaration, field: DeclaredField): boolean {
-    const own = this.#edgesOf(declaration, [field], () => this.#defaultedType(declaration, field));
-    const edgesOf = (node: FieldedDeclaration | DeclaredField) =>
-      node.kind === 'DeclaredField' ? own : this.#strataEdges(node);
-    const cut = growingEdgesFrom([field], edgesOf, reachedBy).some((edge) => edge.field === field);
+    const own = this.#defaultedEdges.get(field, declaration);
+    const cut = this.#grows(field, own, (each, owner) => this.#defaultedEdges.get(each, owner));
     if (cut) {
       this.#reported(declaration, own);
     }
     return cut;
   }
 
+  /**
+   * Whether `field`, making the edges `own`, lies on a cycle that grows among what the first
+   * stratum leaves and the edges `defaulted` reads.
+   */
+  #grows(field: DeclaredField, own: readonly FieldEdge[], defaulted: DefaultedEdges): boolean {
+    const edgesOf = (node: FieldedDeclaration | DeclaredField) =>
+      node.kind === 'DeclaredField' ? own : this.#strataEdges(node, defaulted);
+    return growingEdgesFrom([field], edgesOf, reachedBy).some((edge) => edge.field === field);
+  }
+
   /** The edges the second stratum reads: what the first leaves, and the defaulted fields'. */
-  #strataEdges(declaration: FieldedDeclaration): readonly FieldEdge[] {
+  #strataEdges(declaration: FieldedDeclaration, defaulted: DefaultedEdges): readonly FieldEdge[] {
     const endless = this.#endless.get(declaration);
     return [
       ...this.#writtenEdges.get(declaration).filter(({ field }) => !endless.has(field)),
-      ...this.#defaultedEdges.get(declaration),
+      ...defaultedFieldsOf(declaration).flatMap((field) => defaulted(field, declaration)),
     ];
+  }
+
+  /** The edges of `field` if its default is checked already, checking none; else none. */
+  #checkedEdges(field: DeclaredField, declaration: FieldedDeclaration): readonly FieldEdge[] {
+    const checked =
+      !this.#fieldTypes.running(field) && this.#fieldTypes.computed(field) !== undefined;
+    return checked ? this.#defaultedEdges.get(field, declaration) : [];
   }
 
   /** The fields of `declaration` among `edges`, each reported. */

@@ -302,6 +302,8 @@ export class ProgramChecker implements CheckerContext {
     return this.#parameters.parametersOf(declaration);
   }
 
+  readonly typingDefaults = (): boolean => this.#parameters.typingDefaults();
+
   defaultsOf(declaration: FunctionDeclaration): CheckedBody | undefined {
     return this.#parameters.defaultsOf(declaration);
   }

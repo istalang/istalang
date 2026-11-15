@@ -1,10 +1,16 @@
-# error: 5125 at 18:3
 # error: 5125 at 24:3
+# error: 5125 at 30:3
+# error: 5125 at 36:3
+# error: 5125 at 39:3
+# error: 5125 at 42:3
+# error: 5125 at 44:3
+# error: 5125 at 50:3
 # A field typed by its default counts towards endless instantiation as a written one does (§3.5),
 # once its default is checked: its type may name a generic type whose fields name its own again
 # with a type argument built from its parameter. A cycle that grows only through such a field is
 # cut at it, whichever field on the cycle grows the argument, so the field's type, never a written
-# one's, waits on its default.
+# one's, waits on its default; a cycle through several such fields is cut at each. A default
+# whose code walks a value of such a type meets it cut.
 
 struct Phantom<T>:
   n: Int
@@ -22,6 +28,30 @@ struct Box<U>:
   w: Wrap<U>
 struct Wrap<T>:
   x = Phantom<Box<(T,)>>{n: 1}
+
+struct Rooted<T>:
+  k: Int
+  b: Behind<T>?
+struct Behind<U>:
+  p = Rooted<U>{k: 1, b: none}
+  a: Before<(U,)>?
+struct Before<T>:
+  b = Behind<T>{a: none}
+
+struct Built<T>:
+  f = build<T>()
+struct Building<U>:
+  g = Built<U>{}
+fn build<T>() -> Building<(T,)>?: none
+
+struct Spun<U>:
+  a: Spinning<(U,)>?
+struct Spinning<T>:
+  b = Spun<T>{a: none}
+struct Held:
+  s = keep(Spun<Int>{a: none})
+fn keep<S is Sendable>(x: S) -> S: x
+fn holding(s = keep(Spun<Int>{a: none})) -> Int: 1
 
 import * as runtime from 'runtime'
 live async fn main() -> Int: await runtime.run(runtime.id()) _main()

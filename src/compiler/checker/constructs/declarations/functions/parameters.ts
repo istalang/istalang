@@ -141,6 +141,11 @@ export class Parameters {
     return this.#types.get(declaration);
   }
 
+  /** Whether a function's defaults are being checked to type its parameters. */
+  typingDefaults(): boolean {
+    return this.#together.anyRunning();
+  }
+
   /**
    * The checked defaults of `declaration`; none, without an entry, where it writes none. Those
    * its types wait on are reached through its types, so a cycle through them always reaches the

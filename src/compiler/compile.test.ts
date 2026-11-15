@@ -104,6 +104,35 @@ describe('diagnostics, whatever order modules are asked in', () => {
   });
 });
 
+describe('a cycle growing through defaults of two modules', () => {
+  const files = {
+    built: [
+      "import Building from 'building'",
+      'struct Built<T>:',
+      '  f = build<T>()',
+      'fn build<T>() -> Building<(T,)>?: none',
+    ].join('\n'),
+    building: [
+      "import Built from 'built'",
+      'struct Building<U>:',
+      '  g = making<U>()',
+      'fn making<U>() -> Built<U>?: none',
+    ].join('\n'),
+  };
+  const codesIn = (key: string, diagnostics: readonly { readonly code: number }[] | undefined) =>
+    [key, diagnostics?.map(({ code }) => code)] as const;
+
+  it('is reported at each field, whichever module is diagnosed, alone or with the other', () => {
+    const expanding = [checkerDiagnostics.expandingType.code];
+    const whole = diagnose(stdProgramOf(files));
+    for (const key of ['built', 'building']) {
+      const alone = diagnoseModule(stdProgramOf(files), idOf(key)).diagnostics;
+      expect(codesIn(key, alone)).toEqual([key, expanding]);
+      expect(codesIn(key, whole.get(idOf(key))?.diagnostics)).toEqual([key, expanding]);
+    }
+  });
+});
+
 describe('one module diagnosed alone', () => {
   it.each(invalidPrograms)('reports in $name what diagnosing every module does', ({ text }) => {
     const main = idOf('main.ista');

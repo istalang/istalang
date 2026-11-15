@@ -12,7 +12,8 @@
  *   fields before it. Each field is typed alone: a written type needs no default checked, so a
  *   default reading a field by name (`fieldNamed`) reaches that field only, and closes no cycle
  *   through the others. A field that would make the type's instantiation endless reads as the
- *   error type (rules/expansion/types.ts).
+ *   error type (rules/expansion/types.ts), cut as a layout is read, never inside its entry: the
+ *   cut's walk may check a default reading this layout, which then finds it closed.
  * - As laid out (`fieldsOf`): in name order, as every struct's fields are, nominal or shape (§3.1
  *   "Field order", `inFieldOrder`), so positions, the Definition's entry, patterns, codecs and a
  *   struct's conversion into its shape all follow one order.
@@ -94,10 +95,10 @@ export class Layouts {
     // type; the cycle is reported at the defaults (functions/parameters.ts).
     this.#fields = checker.entries.table({
       name: 'declared fields',
-      compute: (declaration) => this.#fieldsOf(declaration, declaration.fields, 'typed'),
+      compute: (declaration) => this.#typedFields(declaration, declaration.fields, 'typed'),
       equal: sameFields,
       cyclic: {
-        standIn: (declaration) => this.#fieldsOf(declaration, declaration.fields, 'standing'),
+        standIn: (declaration) => this.#typedFields(declaration, declaration.fields, 'standing'),
       },
     });
     this.#variants = checker.entries.table({
@@ -114,10 +115,7 @@ export class Layouts {
       equal: sameField,
       cyclic: { standIn: (field, declaration) => this.#typedAlone(declaration, field, 'standing') },
     });
-    this.#expansion = new TypeExpansion(
-      checker,
-      (declaration, field) => this.#typed.get(field, declaration).type,
-    );
+    this.#expansion = new TypeExpansion(checker, this.#typed);
   }
 
   /**
@@ -138,9 +136,9 @@ export class Layouts {
     if (declaration.kind !== 'StructDeclaration') {
       return undefined;
     }
-    const declared = this.declaredFieldsOf(declaration);
-    const laidOut = memo(this.#laidOut, declared, () => inFieldOrder(declared));
-    return instantiated(laidOut, substitutionOf(type), this.#checker.typeRules);
+    const typed = this.#fields.get(declaration);
+    const laidOut = memo(this.#laidOut, typed, () => inFieldOrder(typed));
+    return this.#instantiated(declaration, laidOut, substitutionOf(type));
   }
 
   /**
@@ -164,7 +162,7 @@ export class Layouts {
     }));
     return positioned(named, name, ({ field }) =>
       substitutedField(
-        this.#declaredField(declaration, field, 'typed'),
+        this.#cut(declaration, this.#typed.get(field, declaration)),
         substitutionOf(type),
         this.#checker.typeRules,
       ),
@@ -183,10 +181,10 @@ export class Layouts {
     if (declaration.kind !== 'SharedStructDeclaration') {
       return undefined;
     }
-    const fields = instantiated(
-      this.declaredFieldsOf(declaration),
+    const fields = this.#instantiated(
+      declaration,
+      this.#fields.get(declaration),
       substitutionOf(type),
-      this.#checker.typeRules,
     );
     return shapeType(declaration, fields);
   }
@@ -214,54 +212,70 @@ export class Layouts {
       return undefined;
     }
     const substitution = substitutionOf(type);
-    return this.declaredVariantsOf(declaration).map((variant) => ({
+    return this.#variants.get(declaration).map((variant) => ({
       name: variant.name,
-      fields: instantiated(variant.fields, substitution, this.#checker.typeRules),
+      fields: this.#instantiated(declaration, variant.fields, substitution),
     }));
   }
 
   /** A struct's fields as declared, in declaration order, the order evaluation follows. */
   declaredFieldsOf(declaration: DeclaredStruct): readonly FieldMember[] {
-    return this.#fields.get(declaration);
+    return this.#fields.get(declaration).map((member) => this.#cut(declaration, member));
   }
 
   declaredVariantsOf(declaration: EnumDeclaration): readonly VariantMember[] {
-    return this.#variants.get(declaration);
+    return this.#variants.get(declaration).map((variant) => ({
+      name: variant.name,
+      fields: variant.fields.map((member) => this.#cut(declaration, member)),
+    }));
   }
 
-  /** `declaration`'s variants, each with its fields, as `#fieldsOf` types them. */
+  /** `declaration`'s variants, each with its fields, as `#typedFields` types them. */
   #variantsOf(declaration: EnumDeclaration, typing: Typing): readonly VariantMember[] {
     return declaration.variants.flatMap((variant) =>
       variant.kind === 'Variant'
-        ? [{ name: variant.name.text, fields: this.#fieldsOf(declaration, variant.fields, typing) }]
+        ? [
+            {
+              name: variant.name.text,
+              fields: this.#typedFields(declaration, variant.fields, typing),
+            },
+          ]
         : [],
     );
   }
 
-  /** `fields` of `declaration`, as declared, each typed alone (`#declaredField`). */
-  #fieldsOf(
+  /**
+   * `fields` of `declaration`, as declared, each typed alone. Standing for a layout reached again,
+   * a field its default types reads as an error, so no default is checked.
+   */
+  #typedFields(
     declaration: FieldedDeclaration,
     fields: readonly (DeclaredField | Invalid)[],
     typing: Typing,
   ): readonly FieldMember[] {
-    return validFields(fields).map((field) => this.#declaredField(declaration, field, typing));
+    return validFields(fields).map((field) =>
+      typing === 'standing' && field.type === undefined
+        ? this.#typedAlone(declaration, field, typing)
+        : this.#typed.get(field, declaration),
+    );
   }
 
-  /**
-   * `field` of `declaration`, typed alone; one that would make its declaration's instantiation
-   * endless reads as an error. Standing for a layout reached again, a field its default types reads
-   * as an error, so no default is checked.
-   */
-  #declaredField(
+  /** `fields` of `declaration`, each cut or not (`#cut`), substituted by `substitution`. */
+  #instantiated(
     declaration: FieldedDeclaration,
-    field: DeclaredField,
-    typing: Typing,
-  ): FieldMember {
-    if (typing === 'standing' && field.type === undefined) {
-      return this.#typedAlone(declaration, field, typing);
-    }
-    const member = this.#typed.get(field, declaration);
-    return this.#expansion.isEndless(declaration, field) ? { ...member, type: errorType } : member;
+    fields: readonly FieldMember[],
+    substitution: Substitution,
+  ): readonly FieldMember[] {
+    return fields.map((member) =>
+      substitutedField(this.#cut(declaration, member), substitution, this.#checker.typeRules),
+    );
+  }
+
+  /** `member` of `declaration`, as the error type if it would make the instantiation endless. */
+  #cut(declaration: FieldedDeclaration, member: FieldMember): FieldMember {
+    const field = member.declared?.node;
+    const endless = field !== undefined && this.#expansion.isEndless(declaration, field);
+    return endless ? { ...member, type: errorType } : member;
   }
 
   /**
@@ -322,14 +336,6 @@ function positioned<Named extends { readonly name: string }>(
 /** The type arguments of `type`, by the type parameters of its declaration. */
 function substitutionOf(type: NominalType): Substitution {
   return substitutionFor(type.entity.declaration.typeParameters, type.arguments);
-}
-
-function instantiated(
-  fields: readonly FieldMember[],
-  substitution: Substitution,
-  rules: TypeRules,
-): readonly FieldMember[] {
-  return fields.map((field) => substitutedField(field, substitution, rules));
 }
 
 function substitutedField(

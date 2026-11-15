@@ -173,6 +173,11 @@ export interface CheckerContext extends Omit<Checker, 'program'> {
   ) => Type;
   /** A struct declaration's fields, types as declared (not substituted). */
   readonly declaredFieldsOf: (declaration: DeclaredStruct) => readonly FieldMember[];
+  /**
+   * Whether a function's defaults are being checked to type its parameters, as a field typed by its
+   * default is (constructs/declarations/functions/parameters.ts).
+   */
+  readonly typingDefaults: () => boolean;
   /** An enum declaration's variants, types as declared (not substituted). */
   readonly declaredVariantsOf: (declaration: EnumDeclaration) => readonly VariantMember[];
   /** How types cross as JSON, with what meeting `Encodable` and `Decodable` asks (§9). */
