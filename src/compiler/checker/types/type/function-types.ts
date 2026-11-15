@@ -187,18 +187,15 @@ function sameShape(
   results: ((declared: Type, given: Type) => boolean) | undefined = (declaredResult, givenResult) =>
     parts(declaredResult, givenResult, false),
 ): boolean {
-  const packsGiven = declared.pack === undefined && given.pack !== undefined;
-  const fixed = (packsGiven ? given : declared).parameters.length;
-  const samePrefix =
-    Math.min(declared.parameters.length, given.parameters.length) >= fixed &&
-    declared.parameters.slice(0, fixed).every((parameter, index) => {
-      const other = given.parameters[index];
-      return (
-        other !== undefined &&
-        parameter.reference === other.reference &&
-        parts(parameter.type, other.type, parameter.reference)
-      );
-    });
+  const fixed = Math.min(declared.parameters.length, given.parameters.length);
+  const samePrefix = declared.parameters.slice(0, fixed).every((parameter, index) => {
+    const other = given.parameters[index];
+    return (
+      other !== undefined &&
+      parameter.reference === other.reference &&
+      parts(parameter.type, other.type, parameter.reference)
+    );
+  });
   return (
     samePrefix && sameRest(declared, given, fixed, parts) && results(declared.result, given.result)
   );
