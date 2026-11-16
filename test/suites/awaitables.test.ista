@@ -2,7 +2,7 @@
 # decides, a decided wait's other resolvers, `tryResolve`, `Resolver.at` positions and `onCancel`.
 # Each rule is its own function, and its test asserts what the old runtime's unit test did.
 
-import Suite, Test, test, assertEq from 'testing'
+import Suite, Test, test, assertEq, expectPanic from 'testing'
 import * as runtime from 'runtime'
 import * as futures from 'futures'
 import * as time from 'time'
@@ -307,6 +307,22 @@ ista async fn onCancelAlready() -> Int:
   await runtime.commit()
   seen->value
 
+struct ResolvedTwice:
+  type Mode = "ista"
+
+ista fn onAwait(self: ResolvedTwice, done: Resolver<Int, "ista">):
+  done.resolve(1)
+  done.resolve(2)
+
+struct LetGo:
+  took: Took
+  type Mode = "ista"
+
+ista fn onAwait(self: LetGo, done: Resolver<Int, "ista">):
+  _ = self.took
+
+const droppedResolver = "A resolver was let go of unresolved, so the wait it was to decide never can. An awaitable keeps the work it starts alive by registering its resolver, or a Resolver.at of it, on that work; to map a value, await it in an async fn."
+
 @Suite{"awaitables"}
 fn suite() -> Array<Test>: [
   test("an awaitable starts its work only once it is awaited", async fn(): assertEq(await coldStart(), 17))
@@ -318,6 +334,8 @@ fn suite() -> Array<Test>: [
   test("a resolver does nothing once another case decided its wait, kept or not", async fn(): assertEq(await decidedResolver(), 30))
   test("a later losing case resolver is cancelled before its case holdings are released when an earlier case resolved in onAwait", async fn(): assertEq(await losingResolverCancelled(), 3))
   test("tryResolve gives false on a later case resolver once an earlier case decided the wait in onAwait", async fn(): assertEq(await tryResolveDecided(), 30))
+  test("a resolver resolved twice panics", async fn(): assertEq(await expectPanic(async fn(): await ResolvedTwice), "A resolver was resolved twice."))
+  test("a wait's resolver let go of unresolved, never registered, panics", async fn(): assertEq(await expectPanic(async fn(): await LetGo{took: new Took{first: false, second: false}}), droppedResolver))
   test("tryResolve says whether it took the value", async fn(): assertEq(await tryResolveTook(), 410))
   test("a WeakRef to a resolved or cancelled resolver clears once it is let go of, without breaking a commit", async fn(): assertEq(await weakResolver(), 42))
   test("a Resolver.at made for a resolver no longer pending is cancelled at once", async fn(): assertEq(await positionAfterDecision(), 78))

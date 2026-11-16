@@ -422,6 +422,8 @@
       "✓ awaitables › a resolver does nothing once another case decided its wait, kept or not",
       "✓ awaitables › a later losing case resolver is cancelled before its case holdings are released when an earlier case resolved in onAwait",
       "✓ awaitables › tryResolve gives false on a later case resolver once an earlier case decided the wait in onAwait",
+      "✓ awaitables › a resolver resolved twice panics",
+      "✓ awaitables › a wait's resolver let go of unresolved, never registered, panics",
       "✓ awaitables › tryResolve says whether it took the value",
       "✓ awaitables › a WeakRef to a resolved or cancelled resolver clears once it is let go of, without breaking a commit",
       "✓ awaitables › a Resolver.at made for a resolver no longer pending is cancelled at once",
@@ -462,7 +464,7 @@
       "✓ waits › a wait decides at its first case in order when several timers resolve together",
       "✓ waits › a wait decides at its first case in order when several disposal watches resolve together",
       "✓ waits › waiters readied together by their timers run in execution creation order",
-      "53 passed, 0 failed, 0 skipped."
+      "55 passed, 0 failed, 0 skipped."
     ]
   }
 }

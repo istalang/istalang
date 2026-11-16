@@ -1,10 +1,4 @@
 {
-  "awaitables/let-go-unresolved.ista": {
-    "frame": "at awaitables/let-go-unresolved._main (awaitables/let-go-unresolved.ista:22:15)"
-  },
-  "awaitables/resolved-twice.ista": {
-    "frame": "at awaitables/resolved-twice.onAwait (awaitables/resolved-twice.ista:16:3)"
-  },
   "collections/panic-index.ista": {
     "frame": "at collections/panic-index._main (collections/panic-index.ista:8:3)"
   },
