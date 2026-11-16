@@ -76,8 +76,8 @@ export interface Frame {
 export interface Waiting {
   readonly callback: Value;
   readonly rank: readonly bigint[];
-  /** Whether the resolver the callback resolves may still decide anything. */
-  readonly pending: Value;
+  /** What the resolver the callback resolves stands for (prelude.ista `_standing`). */
+  readonly standing: Value;
 }
 
 export class Future extends RunObject {
@@ -85,8 +85,8 @@ export class Future extends RunObject {
   value: Value = null;
   /** The closures called with its value once it settles, in the order they were added. */
   callbacks: Waiting[] = [];
-  /** Whether anything ever waited on it: one nothing that may decide waits on any more is given up on. */
-  awaited = false;
+  /** Whether a case waiting on it lost: one nothing waits on any more is then given up on (§8). */
+  lost = false;
   /** What runs each time something comes to wait on it. */
   readonly onAwaited: Value[] = [];
   /** What of the run itself waits on it: a call into a context waits on its invocation's. */

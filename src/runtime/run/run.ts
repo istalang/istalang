@@ -379,6 +379,19 @@ export class Run {
     this.#ready.push({ kind: 'resume', execution, decision });
   }
 
+  /** The resume `unpark` readied for `execution`, taken back out of the ready queue. */
+  #unready(execution: Execution): Ready | undefined {
+    const at = this.#ready.findIndex(
+      (ready) => ready.kind === 'resume' && ready.execution === execution,
+    );
+    return at < 0 ? undefined : this.#ready.splice(at, 1)[0];
+  }
+
+  /** Takes back the resume readied for `execution`, which goes on without parking. */
+  stayRunning(execution: Execution): void {
+    this.#unready(execution);
+  }
+
   /** Readies a call of `closure` with `passed`. */
   enqueue(closure: Value, passed: readonly Value[]): void {
     this.#ready.push({ kind: 'call', closure, arguments: passed });
@@ -401,9 +414,9 @@ export class Run {
       }
       future.settled = true;
       future.value = value;
-      for (const { callback, rank, pending } of future.callbacks.splice(0)) {
+      for (const { callback, rank, standing } of future.callbacks.splice(0)) {
         waiting.push({ callback, rank, value });
-        this.lifetimes.letGo(pending);
+        this.lifetimes.letGo(standing);
       }
       this.lifetimes.letGo(...future.onAwaited.splice(0));
     }
@@ -637,10 +650,7 @@ export class Run {
     if (!execution.parked) {
       return;
     }
-    const at = this.#ready.findIndex(
-      (ready) => ready.kind === 'resume' && ready.execution === execution,
-    );
-    const ready = at < 0 ? undefined : this.#ready.splice(at, 1)[0];
+    const ready = this.#unready(execution);
     this.#resume(execution, ready?.kind === 'resume' ? ready.decision : STOP);
   }
 
@@ -677,7 +687,7 @@ export class Run {
       }
       const callbacks = object.callbacks
         .splice(0)
-        .flatMap(({ callback, pending }) => [callback, pending]);
+        .flatMap(({ callback, standing }) => [callback, standing]);
       const held = [...callbacks, ...object.onAwaited.splice(0)];
       return object.settled ? [object.value, ...held] : held;
     }

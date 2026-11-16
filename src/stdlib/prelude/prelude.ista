@@ -49,8 +49,8 @@ K fn onAwait<T, K in Persistence>(self: Future<T, K>, done: Resolver<T, K>):
     done.resolve(_valueOf(self))
   else:
     fn arrived(value: T): done.resolve(value)
-    fn pending() -> Bool: _pending(done)
-    _onSettled(self, arrived, done->rank, pending)
+    fn standing() -> Int: _standing(done)
+    _onSettled(self, arrived, done->rank, standing)
 
 # One wait's one-shot resolver (Rule 5). A second `resolve` panics, and `tryResolve` says whether it
 # decided the wait, for races; once another case decided it, neither decides anything. One let go of
@@ -62,19 +62,23 @@ K fn onAwait<T, K in Persistence>(self: Future<T, K>, done: Resolver<T, K>):
 shared struct Resolver<T, K in Persistence>:
   decide: Fn<(T,), Bool, K>
   rank: Array<Int>
-  # 0 pending, 1 resolved, 2 cancelled
+  # 0 pending, 1 resolved, 2 cancelled, 3 withdrawn: cancelled by a `select` that didn't wait
   state: Int = 0
   cancels: Array<Fn<(), Unit, K>> = []
   registered: Bool = false
   # A case's: whether its wait still waits. An at-resolver's: marks the resolver it decides registered.
   waited: Fn<(), Bool, K>? = none
   onRegistered: Fn<(), Unit, K>? = none
-  # An at-resolver's: whether the resolver it decides is still pending.
-  deciding: Fn<(), Bool, K>? = none
+  # An at-resolver's: what the resolver it decides stands for (`_standing`).
+  deciding: Fn<(), Int, K>? = none
 
-# Whether `resolver` may still decide something: pending, and so is what it decides.
-K fn _pending<T, K in Persistence>(resolver: Resolver<T, K>) -> Bool:
-  resolver->state == 0 and (resolver->deciding?.() ?? true)
+# What `resolver` stands for to a future it is registered on: 0 while it may still decide, 1 once it
+# lost, decided otherwise or let go of, 2 once withdrawn by a `select` that didn't wait, which gives
+# up on nothing (§8). A resolver deciding another stands for what that one does while pending.
+K fn _standing<T, K in Persistence>(resolver: Resolver<T, K>) -> Int:
+  if resolver->state == 3: return 2
+  if resolver->state != 0: return 1
+  resolver->deciding?.() ?? 0
 
 # Notes that `resolver` is registered on what it waits on, which keeps it alive.
 K fn _registered<T, K in Persistence>(resolver: Resolver<T, K>):
@@ -114,7 +118,7 @@ K fn Resolver.of<T, K in Persistence>(callback: Fn<(T,), Unit, K>) -> Resolver<T
 K fn Resolver.at<T, K in Persistence>(done: Resolver<(Int, T), K>, position: Int) -> Resolver<T, K>:
   fn decided(value: T) -> Bool: done.tryResolve((position, value))
   fn registered(): _registered(done)
-  fn deciding() -> Bool: _pending(done)
+  fn deciding() -> Int: _standing(done)
   new Resolver<T, K>{
     decide: decided,
     rank: [...done->rank, position],
@@ -126,7 +130,7 @@ K fn Resolver.at<T, K in Persistence>(done: Resolver<(Int, T), K>, position: Int
 # without it, or a future it is registered on was disposed. It runs as a `Resolver.of` callback
 # does, and at once when `self` was cancelled already; never once `self` resolved.
 K fn onCancel<T, K in Persistence>(self: Resolver<T, K>, callback: Fn<(), Unit, K>):
-  if self->state == 2: _later(callback)
+  if self->state >= 2: _later(callback)
   if self->state == 0: self->cancels.push(callback)
 
 K fn dispose<T, K in Persistence>(self: Resolver<T, K>):
@@ -137,10 +141,11 @@ K fn dispose<T, K in Persistence>(self: Resolver<T, K>):
     )
   _cancel(self)
 
-# Cancels `resolver`, still pending, running its `onCancel` callbacks.
-K fn _cancel<T, K in Persistence>(resolver: Resolver<T, K>):
+# Cancels `resolver`, still pending, running its `onCancel` callbacks; `withdrawn` by a `select` that
+# didn't wait.
+K fn _cancel<T, K in Persistence>(resolver: Resolver<T, K>, withdrawn: Bool = false):
   if resolver->state == 0:
-    resolver->state = 2
+    resolver->state = if withdrawn: 3 else: 2
     const callbacks = resolver->cancels
     resolver->cancels = []
     for callback in callbacks: _later(callback)
@@ -151,7 +156,8 @@ K fn _cancel<T, K in Persistence>(resolver: Resolver<T, K>):
 shared struct _Wait<K in Persistence>:
   call: _Call
   decided: Int = -1
-  cancels: Array<Fn<(), Unit, K>> = []
+  # each takes whether its resolver is withdrawn
+  cancels: Array<Fn<(Bool,), Unit, K>> = []
 
 K fn _wait<K in Persistence>(call: _Call) -> _Wait<K>: new _Wait<K>{call}
 
@@ -167,38 +173,41 @@ K fn _caseResolver<T, K in Persistence>(wait: _Wait<K>, position: Int, into: Sha
     for index in 0..cancels.length():
       if index != position:
         const cancel = cancels[index]
-        cancel()
+        cancel(false)
     _unpark(wait->call, position)
     true
   fn waited() -> Bool: wait->decided == -1
   const resolver = new Resolver<T, K>{decide, rank: [0, _idOf(wait->call), position], waited}
   const weak = WeakRef(resolver)
-  fn cancel():
-    if weak.deref() is Resolver<T, K> as pending: _cancel(pending)
+  fn cancel(withdrawn: Bool):
+    if weak.deref() is Resolver<T, K> as pending: _cancel(pending, withdrawn)
   wait->cancels.push(cancel)
   resolver
 
-# The position `wait` was decided for already, as a `select` with an `else` asks (§8); -1 where no
-# case decided it, every case then cancelled.
+# The position `wait` was decided for already, as a `select` with an `else` asks (§8), its call going
+# on without parking; -1 where no case decided it, every case then withdrawn.
 K fn _decided<K in Persistence>(wait: _Wait<K>) -> Int:
-  if wait->decided >= 0: return wait->decided
+  if wait->decided >= 0:
+    _stayRunning(wait->call)
+    return wait->decided
   wait->decided = -2
   const cancels = wait->cancels
   wait->cancels = []
-  for cancel in cancels: cancel()
+  for cancel in cancels: cancel(true)
   -1
 
 # The run's primitives the futures above stand on (ir-first design, decision 6).
 extern K fn _settled<T, K in Persistence>(future: Future<T, K>) -> Bool
 extern K fn _valueOf<T, K in Persistence>(future: Future<T, K>) -> T
-# `callback` waits on `future` at `rank` while `pending` says its resolver may still decide: one
-# that can't is dropped, and a future only such ones wait on, once awaited, is given up on.
-@Keeps{["future": ["callback", "pending"]]}
+# `callback` waits on `future` at `rank` while its resolver may still decide, as `standing` says
+# (`_standing`): one that can't is dropped, and a future such ones waited on, one of them having
+# lost, and nothing waits on now is given up on.
+@Keeps{["future": ["callback", "standing"]]}
 extern K fn _onSettled<T, K in Persistence>(
   future: Future<T, K>,
   callback: Fn<(T,), Unit, K>,
   rank: Array<Int>,
-  pending: Fn<(), Bool, K>,
+  standing: Fn<(), Int, K>,
 )
 extern K fn _givenUp<T, K in Persistence>(future: Future<T, K>) -> Bool
 # `callback` runs each time something comes to wait on `future`.
@@ -210,6 +219,7 @@ extern K fn _settle<T, K in Persistence>(future: Future<T, K>, value: T)
 extern K fn _settleAll<T, K in Persistence>(futures: Array<Future<T, K>>, value: T)
 extern K fn _later<K in Persistence>(callback: Fn<(), Unit, K>)
 extern fn _unpark(call: _Call, position: Int)
+extern fn _stayRunning(call: _Call)
 extern fn _idOf(call: _Call) -> Int
 extern fn _made() -> Int
 

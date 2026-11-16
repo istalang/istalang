@@ -4,11 +4,14 @@
  * of the run is reachable from Istalang.
  *
  * - A future keeps the callbacks waiting on it with their rank (prelude.ista `Resolver`), and the
- *   run calls them in rank order as it settles (`Run.settle`). Each comes with what says whether
- *   its resolver may still decide anything: one that can't is dropped as another comes, and a
- *   future awaited only by such ones is given up on, which a slot passes over (§6, §8).
+ *   run calls them in rank order as it settles (`Run.settle`). Each comes with what says what its
+ *   resolver stands for: one that can't decide any more is dropped as another comes or is asked
+ *   about, and a future one of those lost on, with nothing waiting on it, is given up on, which a
+ *   slot passes over (§6, §8). A withdrawn one, a `select`'s that didn't wait, gives up on nothing.
  * - `_later` readies a call of its own, as a `Resolver.of` callback and an `onCancel` run (§8).
- * - `_unpark` readies a parked call to resume with its wait's decided position.
+ * - `_unpark` readies a parked call to resume with its wait's decided position; a wait decided
+ *   before its call parks readies it all the same, as awaiting still yields (§6), unless the call
+ *   goes on without parking (`_stayRunning`), as a `select` that doesn't wait does.
  */
 
 import type { Native, Natives } from '../natives.ts';
@@ -23,27 +26,28 @@ export function runNatives(run: Run): Natives {
   /** `waited`'s callbacks whose resolvers may still decide, letting go of the others. */
   const live = (waited: Future): Waiting[] =>
     waited.callbacks.filter((waiting) => {
-      const pending = run.callValue(waiting.pending, []) === true;
-      if (!pending) {
-        run.lifetimes.letGo(waiting.callback, waiting.pending);
+      const standing = run.callValue(waiting.standing, []);
+      if (standing !== 0n) {
+        waited.lost ||= standing === 1n;
+        run.lifetimes.letGo(waiting.callback, waiting.standing);
       }
-      return pending;
+      return standing === 0n;
     });
   const natives: Record<string, Native> = {
     'prelude._settled(prelude.Future<T, K>)': ([given]) => future(given).settled,
     'prelude._valueOf(prelude.Future<T, K>)': ([given]) => future(given).value,
-    'prelude._onSettled(prelude.Future<T, K>, fn(T) -> Unit, prelude.Array<Int>, fn() -> Bool)': ([
+    'prelude._onSettled(prelude.Future<T, K>, fn(T) -> Unit, prelude.Array<Int>, fn() -> Int)': ([
       given,
       callback,
       rank,
-      pending,
+      standing,
     ]) => {
       const waited = future(given);
       run.lifetimes.hold(callback);
-      run.lifetimes.hold(pending);
+      run.lifetimes.hold(standing);
       const ranks = (rank as { readonly elements: readonly bigint[] }).elements;
-      waited.awaited = true;
-      waited.callbacks = [...live(waited), { callback: callback ?? null, rank: ranks, pending: pending ?? null }];
+      const added = { callback: callback ?? null, rank: ranks, standing: standing ?? null };
+      waited.callbacks = [...live(waited), added];
       for (const awaited of [...waited.onAwaited]) {
         run.lifetimes.letGo(run.callValue(awaited, []) as Value);
       }
@@ -52,7 +56,7 @@ export function runNatives(run: Run): Natives {
     'prelude._givenUp(prelude.Future<T, K>)': ([given]) => {
       const waited = future(given);
       waited.callbacks = live(waited);
-      return waited.awaited && !waited.settled && waited.callbacks.length === 0;
+      return waited.lost && !waited.settled && waited.callbacks.length === 0;
     },
     'prelude._onAwaited(prelude.Future<T, K>, fn() -> Unit)': ([given, callback]) => {
       run.lifetimes.hold(callback);
@@ -80,6 +84,10 @@ export function runNatives(run: Run): Natives {
     },
     'prelude._unpark(prelude._Call, Int)': ([call, position]) => {
       run.unpark(call as unknown as Execution, position ?? null);
+      return null;
+    },
+    'prelude._stayRunning(prelude._Call)': ([call]) => {
+      run.stayRunning(call as unknown as Execution);
       return null;
     },
     'prelude._idOf(prelude._Call)': ([call]) => BigInt((call as unknown as Execution).object),
