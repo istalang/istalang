@@ -66,7 +66,7 @@ path):
 
 A value given to a host again, unchanged, is the same frozen JavaScript object, at every depth
 (spec §9, proposal 15), so a host can skip work by reference equality. Values are shared by
-reference in the interpreter, so "kept" is already "the same object"; two caches keep the
+reference in the run, so "kept" is already "the same object"; two caches keep the
 encoders from building anew:
 
 - **One write path.** Everything a host gets is written through `json.encode<T>`: lowering's write
@@ -173,57 +173,25 @@ instances are contexts, named by the program's keys, and the instances they spaw
 
 The host API (`runtime/host/index.ts`) is asynchronous: every call that runs code (`start`,
 `wake`, `retry`, `terminate`) gives a promise, and a refusal rejects it, so a host awaits the same
-way whatever the code waits on. The others (`deploy`, `programOf`, `inspect`, `outcome`,
-`outcomeText`) answer at once.
+way whatever the code waits on. The others (`deploy`, `programOf`, `inspect`, `outcomeText`)
+answer at once. How the instances run is docs/arch/runtime.md's.
 
-- **Residency.** A runtime keeps each active instance in memory between calls
-  (`scheduler/resident.ts`): its next segment runs on the instance its last segment committed,
-  never restored from the store, and every commit is still written through the store before the
-  instance goes on (§5). Running on is the same as restoring: a commit drops what it didn't persist
-  and the heap counts on from the highest id kept. An instance that ended or panicked leaves memory;
-  a panic's segment, and the run `crashEveryAwait` discards, never become the instance that runs on.
-- **The store's one driver.** While a runtime runs, it is its store's only driver: it doesn't
-  re-read an instance it holds, so a store changed under it is seen only by a runtime started after
-  (a restart, §5), which reads every instance from the store and checks it against its Definition.
-- **One call at a time per instance.** Calls on one instance run one after another
-  (`runtime/host/instance-calls.ts`): each starts once the one before it settled, and sees what it
-  committed. A host extern calling the runtime for its own instance therefore waits for the segment
-  calling it to commit, instead of running halfway through it.
-- **Live runs.** A host starts live or simple code only (`runtime/host/programs.ts`), refusing an
-  `ista` entry (`notStartable`), and runs it outside any instance, in memory, to its end
-  (`runtime/scheduler/live-run.ts`): `start` settles with its outcome or panic, and nothing of the
-  run reaches the store, so a restart ends it. It runs segment after
-  segment as an instance does, with no commit between: what nothing holds is let go of and due
-  timers resolve after each, and its `now()` reads the clock. Its waits ride the host's event loop:
-  its timers on the runtime's `Clock`, and its host futures on the host's promises, a settled one
-  resuming it before a manual clock may jump to a timer. Its name is what `runtime.id()` reads, and
-  no other call waits for it or reaches it.
-- **Contexts.** A live run drives the contexts its runtimes reach (`runtime/host/contexts.ts`,
-  behind `scheduler/run-contexts.ts`) in its own loop: between two of its segments, what can run
-  in them runs, their due timers woken, and with nothing ready it waits for the earliest timer of
-  either. A context is an instance named by its key, made with the run's start options and seed;
-  a call into one is an invocation, the first step of an advance (`scheduler/wake.ts`), named by a
-  token unique to the process, whose answer the context's commit carries to the live future. A
-  call starts even once its runtime is disposed or the run ended. Opening a runtime while none is
-  open resumes every instance in the store that hasn't ended (`InstanceStore.instances`); a
-  runtime is a resource whose disposal the runtime performs, telling the run's contexts through
-  its disposal notice (`scheduler/instance/disposal-notices.ts`). The earliest runtime still open
-  hears the names of the instances whose jobs it serves (`RunContexts.served`): every one the run
-  drives on its own program, since the loop serving them, Istalang in `stdlib/runtime`, calls its
-  program's functions into each; a wait for them is a wait on the contexts, as a call is. The run ends waiting on nothing
-  when no timer and no host future outside its calls can wake it or its contexts. Their advances
-  show to the runtime's observers, so a host call made on a context meanwhile (a retry) pokes the
-  run; what their own advances report reaches the host through
-  `HostReports`: log records, and a panic no call of the program's waits to hear; the job loop's
-  calls (`CallMaker` `jobs`) never hear one, so an instance's panic reaches the host though the
-  loop serving it waits on it.
-- **One driver loop.** A group of instances is driven with `drive` (`runtime/testing/world/drive.ts`):
-  run what can run, wait for the earliest timer, wake what is due, until nothing can wake them. What
-  differs between drivers is passed in: what can run now, how to wait (on a `Clock`,
-  `runtime/clock.ts`), when to end and a deadline. A test's world (`runtime/testing/world/`)
-  drives its instances with it, delivering its answers and resolving its own waits first, and so
-  do the instance engine's tests (`runtime/runtime.test-kit.ts`); a live run drives its contexts
-  inside its own loop (Contexts, above).
+- **Residency.** A runtime keeps each instance it runs in memory (`host/durable-world.ts`,
+  `Resident`): its next segment runs on the instance its last segment committed, and every commit
+  is written to the store before its effects leave it (§5). An instance the runtime doesn't hold is
+  read from the store with the Definition its snapshot names.
+- **The store's one driver.** While a runtime runs, it is its store's only driver: a store changed
+  under it is seen only by a runtime opened after (a restart, §5).
+- **Live runs.** A host starts live or simple code only (`host/programs.ts`), refusing an `ista`
+  entry (`notStartable`), and runs it outside any instance, in memory: `start` settles the moment
+  its root call's outcome settles, and nothing of the run reaches the store. Its waits ride the
+  host's event loop: its timers on the runtime's `Clock`, its host futures on the host's promises.
+  Its name is what `runtime.id()` reads.
+- **Contexts.** A live run drives the instances it reaches in its own loop: a call into a context
+  is a segment of the context, whose answer its commit carries to the live future; spawned instances
+  run as far as they can, and keep running after the live run finished until nothing is ready. What
+  they report reaches the host through `HostReports`: log records, and a panic no call waits to
+  hear.
 
 ## Packages
 
