@@ -81,7 +81,7 @@ const operandTable: Handlers<undefined, Instruction, [], Partial<Operands>> = {
     read: [i.value],
     labels: [...i.targets, ...(i.otherwise === undefined ? [] : [i.otherwise])],
   }),
-  return: (_, i) => ({ read: [i.value] }),
+  return: (_, i) => ({ read: [i.value, ...i.releasing] }),
   unreachable: () => ({}),
   call: (_, i) => ({
     written: i.dst === undefined ? [] : [i.dst],

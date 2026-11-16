@@ -77,7 +77,7 @@ const effects: Handlers<CodeFunction, Instruction, [], Partial<Effect>> = {
   jump: () => ({}),
   branch: () => ({}),
   switch: () => ({}),
-  return: (_, i) => ({ moved: [i.value] }),
+  return: (_, i) => ({ moved: [i.value], letGo: i.releasing }),
   unreachable: () => ({}),
   call: (_, i) => ({ owned: i.dst === undefined ? none : [i.dst] }),
   currentCall: (_, i) => ({ borrowed: [i.dst] }),

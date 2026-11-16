@@ -4,7 +4,7 @@ owner: toolchain
 status: active
 applies_to: src/codegen
 last_verified: 2026-11-16
-last_updated: 2026-11-16
+last_updated: 2026-11-17
 tags: [codegen, backend, frames, javascript]
 ---
 
@@ -36,8 +36,9 @@ what each instruction says and nothing else.
 
 A register's type gives its lifetime (`definition/tables/types.ts`, `lifetimeOf`): **counted**
 registers get `hold` and `letGo`, **heap** ones `share` where a value gains a holder, **plain** ones
-nothing. A `letGo` of several registers is one batched call; a moved counted operand is emptied
-(`cleared`), so a register never holds what it gave away. `newCell` passes its `dispose` entry, run
+nothing. A `letGo` of several registers is one batched call, as is a `return`'s `releasing`, with
+its value too in a frame stopping as its call is disposed (`return STOPPED`); a moved counted operand
+is emptied (`cleared`), so a register never holds what it gave away. `newCell` passes its `dispose` entry, run
 as the cell loses its last holder.
 
 ## Primitives, places and calls

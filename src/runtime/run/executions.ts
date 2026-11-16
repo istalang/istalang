@@ -140,13 +140,9 @@ export class Executions {
       execution.ended = true;
       this.#live.delete(execution);
       lifetimes.letGo(...execution.given, ...execution.transients.held());
-      if (result === STOPPED || result === undefined) {
-        return;
-      }
-      // A call stopping as it is disposed returns into no future: what it returns is let go of.
-      if (frame.stopping) {
-        lifetimes.letGo(result as Value);
-      } else {
+      // A call stopping as it is disposed returns into no future (its `return` lets go of what it
+      // gives with the rest).
+      if (result !== STOPPED && result !== undefined) {
         settle(execution.future, result as Value);
       }
     } finally {

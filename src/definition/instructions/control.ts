@@ -29,10 +29,15 @@ const switchVariant = defineInstruction('switch', {
 });
 
 /**
- * Ends the call, giving `value`, moved out. Every other register owning something has been let go
- * by then (./lifetimes.ts): `return` itself lets go of nothing.
+ * Ends the call, giving `value`, moved out, and letting go of `releasing`, every other register
+ * still owning something (./lifetimes.ts), as one exit's let-gos: what loses its last holder there
+ * is disposed together, newest first (§7). A call stopping as it is disposed returns into no
+ * future, so `value` is let go of with them.
  */
-const returnValue = defineInstruction('return', { value: register });
+const returnValue = defineInstruction('return', {
+  value: register,
+  releasing: z.array(register),
+});
 
 /** Where no path goes on: past a call giving `Never` (§3.1), such as a `panic`. */
 const unreachable = defineInstruction('unreachable', {});

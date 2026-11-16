@@ -59,7 +59,8 @@ to the rule: an instance starts code of its own kind alone.
 Lowering places every hold and let-go (`functions/code-writer.ts`: `take` moves a single-use
 register and copies a pinned or borrowed one; a temporary several paths give gets one owned
 register; a back edge lets go of the loop's temporaries; a hold list is made anew per scope run).
-A backend only acts on them, by lifetime class (docs/arch/codegen.md); the run counts counted
+A `return` states what it lets go of (`releasing`), its exit's let-gos one batch, which a call
+stopping as it is disposed lets go of its value with. A backend only acts on them, by lifetime class (docs/arch/codegen.md); the run counts counted
 values and disposes what loses its last holder in rounds, newest first (docs/arch/runtime.md).
 
 ## Places

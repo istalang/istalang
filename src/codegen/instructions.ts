@@ -255,7 +255,19 @@ const emitters: Handlers<EntryScope, Instruction, [], string> = {
     const otherwise = i.otherwise ?? i.targets.at(-1) ?? 0;
     return `pc = ${literal(i.targets)}[${register(i.value)}.variant] ?? ${otherwise}; continue;`;
   },
-  return: (scope, i) => `${transientEnds(scope)}return ${register(i.value)};`,
+  return: (scope, i) => {
+    const counted = i.releasing.filter((each) => lifetime(scope, each) === 'counted').map(register);
+    const value = register(i.value);
+    const released = (also: readonly string[]) =>
+      counted.length + also.length === 0 ? '' : `letGo(${[...counted, ...also].join(', ')}); `;
+    const returned = `${released([])}${transientEnds(scope)}return ${value};`;
+    if (!scope.onFrames) {
+      return returned;
+    }
+    // A call stopping as it is disposed returns into no future: its value goes with the exit's.
+    const stopping = `${released(lifetime(scope, i.value) === 'counted' ? [value] : [])}${transientEnds(scope)}return STOPPED;`;
+    return `if (frame.stopping) { ${stopping} } ${returned}`;
+  },
   unreachable: () => 'throw unreachableHere();',
   call: (scope, i) => {
     const passed = argumentsOf(i);

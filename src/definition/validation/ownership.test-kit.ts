@@ -6,7 +6,7 @@
  */
 
 import type { Definition } from '../definition.ts';
-import { successorsOf } from '../instructions/instruction.ts';
+import { type Instruction, successorsOf } from '../instructions/instruction.ts';
 import type { Register } from '../operands.ts';
 import type { CodeFunction } from '../tables/functions.ts';
 import { ownershipIssues, owningBefore } from './ownership.ts';
@@ -20,8 +20,8 @@ export function leakingMutants(definition: Definition): readonly CodeFunction[] 
     const owning = owningBefore(code);
     const registers = new Set(
       code.instructions.flatMap((instruction, pc) =>
-        instruction.kind === 'letGo' && endsFrom(code, pc)
-          ? instruction.registers.filter((register) => owning[pc]?.has(register) === true)
+        endsFrom(code, pc)
+          ? releasedBy(instruction).filter((register) => owning[pc]?.has(register) === true)
           : [],
       ),
     );
@@ -46,14 +46,32 @@ function endsFrom(code: CodeFunction, pc: number): boolean {
   return false;
 }
 
+/** The registers `instruction` lets go of: a `letGo`'s, or a `return`'s releasing. */
+function releasedBy(instruction: Instruction): readonly Register[] {
+  switch (instruction.kind) {
+    case 'letGo':
+      return instruction.registers;
+    case 'return':
+      return instruction.releasing;
+    default:
+      return [];
+  }
+}
+
 /** `code` with `register` taken out of every let-go. */
 function withoutLetGo(code: CodeFunction, register: Register): CodeFunction {
+  const kept = (registers: readonly Register[]) => registers.filter((each) => each !== register);
   return {
     ...code,
-    instructions: code.instructions.map((instruction) =>
-      instruction.kind === 'letGo'
-        ? { ...instruction, registers: instruction.registers.filter((each) => each !== register) }
-        : instruction,
-    ),
+    instructions: code.instructions.map((instruction) => {
+      switch (instruction.kind) {
+        case 'letGo':
+          return { ...instruction, registers: kept(instruction.registers) };
+        case 'return':
+          return { ...instruction, releasing: kept(instruction.releasing) };
+        default:
+          return instruction;
+      }
+    }),
   };
 }

@@ -151,12 +151,17 @@ export class CodeWriter {
 
   /** Lets go of what `registers` own; borrowed ones and transients' cells own nothing. */
   letGo(registers: readonly Register[], span: AnchoredSpan): void {
-    const owning = [...new Set(registers)].filter(
-      (register) => !(this.isBorrowed(register) || this.#transients.has(register)),
-    );
+    const owning = this.#owningOf(registers);
     if (owning.length > 0) {
       this.emit({ kind: 'letGo', span, registers: owning });
     }
+  }
+
+  /** Of `registers`, once each, those a let-go lets go of: none borrowed or a transient's. */
+  #owningOf(registers: readonly Register[]): Register[] {
+    return [...new Set(registers)].filter(
+      (register) => !(this.isBorrowed(register) || this.#transients.has(register)),
+    );
   }
 
   /** A constant of the table, in a fresh register of `type`. */
@@ -348,8 +353,12 @@ export class CodeWriter {
       );
     if (this.#returns && this.#result !== undefined) {
       this.place(this.#epilogue);
-      this.letGo(owning(), span);
-      this.emit({ kind: 'return', span, value: this.#result });
+      this.emit({
+        kind: 'return',
+        span,
+        value: this.#result,
+        releasing: this.#owningOf(owning()),
+      });
     }
     if (this.#parks) {
       this.place(this.#stopEpilogue);
