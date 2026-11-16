@@ -88,6 +88,21 @@ describe('ISO 8601 times', () => {
       texts.map((text) => oracleRead(text, readTime, timeText, 'time')),
     );
   });
+
+  it('read an instant a Date holds, whatever its offset moves its wall clock to', async () => {
+    const texts = [
+      '+275760-09-13T01:00:00.000+01:00',
+      '-271821-04-19T23:00:00.000-01:00',
+      '+275760-09-13T00:00:00.000-01:00',
+      '-271821-04-20T00:00:00.000+01:00',
+    ];
+    expect(await istalang(texts.map((text) => `read<Time>("${text}")`))).toEqual([
+      'ok +275760-09-13T00:00:00.000Z',
+      'ok -271821-04-20T00:00:00.000Z',
+      "parse: '+275760-09-13T00:00:00.000-01:00' is not an ISO 8601 time.",
+      "parse: '-271821-04-20T00:00:00.000+01:00' is not an ISO 8601 time.",
+    ]);
+  });
 });
 
 describe('ISO 8601 durations', () => {
@@ -118,20 +133,18 @@ describe('ISO 8601 durations', () => {
   });
 
   it('write hours at most, read days, and refuse calendar units and finer than milliseconds', async () => {
-    const texts = ['PT1H30M', 'PT120H', 'PT0.25S', 'PT1M1.001S', 'PT0S', '-PT1S', 'P1D', 'P1DT1H'];
-    const refused = [
+    const texts = [
+      'PT1H30M',
+      'PT120H',
+      'PT0.25S',
       'PT0,5S',
-      '',
-      'P',
-      'PT',
-      'P1Y',
-      'P1M',
-      'P1W',
-      'PT0.0001S',
-      'P1DT',
-      'PT1H1H',
-      '1H',
+      'PT1M1.001S',
+      'PT0S',
+      '-PT1S',
+      'P1D',
+      'P1DT1H',
     ];
+    const refused = ['', 'P', 'PT', 'P1Y', 'P1M', 'P1W', 'PT0.0001S', 'P1DT', 'PT1H1H', '1H'];
     const each = [...texts, ...refused];
     expect(await istalang(each.map((text) => `read<Duration>("${text}")`))).toEqual(
       each.map((text) => oracleRead(text, readDuration, durationText, 'duration')),

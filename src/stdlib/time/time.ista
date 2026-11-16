@@ -239,9 +239,11 @@ fn _timeMilliseconds(chars: Array<String>) -> Int?:
     at += 1 + digits
   const clock = hour * _millisecondsPerHour + minute * _millisecondsPerMinute + second * 1000
   const local = _civilDays(year, month, day) * _millisecondsPerDay + clock + milliseconds
-  if local < -_maximumTime or local > _maximumTime: return none
   match _zoneOffset(chars, at):
-    case Int as offset: local - offset
+    case Int as offset:
+      const instant = local - offset
+      if instant < -_maximumTime or instant > _maximumTime: none
+      else: instant
     case None: none
 
 # How far ahead of UTC the zone ending `chars` at `at` is, in milliseconds: `Z`, or a sign and an
