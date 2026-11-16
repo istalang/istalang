@@ -87,25 +87,6 @@ export interface NativeFutures {
   readonly filling: (future: Value) => HostFilling;
 }
 
-/**
- * The running instance's waits (proposal 8, Rule 5): the resolvers `await` and `select` hand an
- * awaitable's `onAwait`, which a future registers and code resolves.
- */
-export interface NativeWaits {
-  /** Resolves the resolver `done` as the future `future` resolves: at once when it has (`onAwait`). */
-  readonly onAwait: (future: Value, done: Value) => void;
-  /** Resolves `done` with `value`: nothing once it is cancelled, a panic once it resolved. */
-  readonly resolve: (done: Value, value: Value) => void;
-  /** Resolves `done` with `value` if it is pending; whether it took `value`. */
-  readonly tryResolve: (done: Value, value: Value) => boolean;
-  /** A new resolver calling the function value `callback` with its value (`Resolver.of`). */
-  readonly callback: (callback: Value) => Value;
-  /** A new resolver deciding `done` with `(position, value)` (`Resolver.at`). */
-  readonly at: (done: Value, position: bigint) => Value;
-  /** Has the function value `callback` called once `done` is cancelled. */
-  readonly onCancel: (done: Value, callback: Value) => void;
-}
-
 /** Whether a resolver waits for its value, took one or failed, or lost its future first. */
 /**
  * How a host fills the future its extern gives: once, with its value, which arrives as a turn of
@@ -266,9 +247,6 @@ export interface NativeEncodings {
 export interface WithFutures {
   readonly futures: NativeFutures;
 }
-export interface WithWaits {
-  readonly waits: NativeWaits;
-}
 export interface WithWeakSide {
   readonly weak: NativeWeakSide;
 }
@@ -297,7 +275,6 @@ export interface WithEncodings {
 
 /** Every capability: what the runtime gives each native. */
 export type NativeCapabilities = WithFutures &
-  WithWaits &
   WithWeakSide &
   WithResources &
   WithRandom &

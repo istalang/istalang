@@ -28,7 +28,7 @@ type Persistence = "live" | "ista"
 # once and then calls, in the settle order, what waits on it (ir-first design, decision 6). It holds
 # its value and what waits on it, as a callback's chain is held from its futures up (spec §7); a
 # call's future also holds its call, which belongs to the language.
-@Holds<(T, Resolver<T, K>)>
+@Holds<(T, Fn<(T,), Unit, K>, Fn<(), Int, K>, Fn<(), Unit, K>)>
 extern shared struct Future<T, K in Persistence>:
   type Mode = K
 

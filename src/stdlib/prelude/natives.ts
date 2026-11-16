@@ -26,7 +26,6 @@ import {
   type Natives,
   Panic,
   type WithInstances,
-  type WithWaits,
   type WithWeakSide,
 } from '../../runtime/natives.ts';
 import { divisionByZero, numeric } from '../numeric.ts';
@@ -38,14 +37,12 @@ import { mapNatives } from './maps.ts';
 import { rangeNatives } from './range-natives.ts';
 import { stringNatives } from './strings.ts';
 import { textFormNatives } from './text-forms.ts';
-import { waitNatives } from './wait-natives.ts';
 import { weakNatives } from './weak-natives.ts';
 
 export const preludeNatives = (
   keys: NativeKeys,
-): Natives<NativeContext & WithWaits & WithWeakSide> => ({
+): Natives<NativeContext & WithWeakSide> => ({
   ...arrayNatives(keys),
-  ...waitNatives(keys),
   ...mapNatives(keys),
   ...rangeNatives(keys),
   ...stringNatives(keys),

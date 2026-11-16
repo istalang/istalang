@@ -146,14 +146,6 @@ function contextOf(
       timer: (at) => run.timer(at) as unknown as Value,
       filling: (future) => run.filling(future as unknown as Future),
     },
-    waits: {
-      onAwait: unavailable('waits'),
-      resolve: unavailable('waits'),
-      tryResolve: unavailable('waits'),
-      callback: unavailable('waits'),
-      at: unavailable('waits'),
-      onCancel: unavailable('waits'),
-    },
     weak: {
       reference: (referent) =>
         run.weakReference(referent as unknown as RunObject) as unknown as Value,

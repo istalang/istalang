@@ -16,8 +16,9 @@ import type { Register } from '../../../definition/operands.ts';
 import { unreachable } from '../../../foundation/structures/unreachable.ts';
 import { structFieldOf } from '../../checker/surface/checked-field.ts';
 import type { PartStep } from '../../checker/surface/checked-pattern.ts';
-import { variantNamedIn } from '../../checker/surface/named-variants.ts';
 import type { Part, ValueId } from '../../checker/surface/flow-ir.ts';
+import { variantNamedIn } from '../../checker/surface/named-variants.ts';
+import { unfolded } from '../../checker/types/type/computed-types.ts';
 import type { FieldMember, Type } from '../../checker/types/type/index.ts';
 import { tupleElements } from '../../checker/types/type/primitives.ts';
 import { baseOf } from '../../checker/types/unions/union-members.ts';
@@ -98,7 +99,9 @@ function stepRead(
   const { code, tables, checker } = context;
   const typed = (type: Type) => tables.types.reference(concreteType(context, type));
   if (typeof step === 'number') {
-    const element = tupleElements(value.type)?.[step] ?? unreachable(`No element ${step}.`);
+    // A recursive alias's value is read as the tuple it unfolds to (§3.17).
+    const element =
+      tupleElements(unfolded(value.type))?.[step] ?? unreachable(`No element ${step}.`);
     return code.tupleItem(value.register, step, typed(element), span);
   }
   switch (step.kind) {
