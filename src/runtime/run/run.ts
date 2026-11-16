@@ -315,7 +315,12 @@ export class Run {
       return this.start(index, passed, closure);
     }
     const run = this.#entries[index] as (...given: unknown[]) => unknown;
-    return entry?.kind === 'code' ? run(...passed, closure) : run(...passed);
+    if (entry?.kind !== 'code') {
+      return run(...passed);
+    }
+    // A call leaving parameters out passes them absent, which the prologue computes (§3.3).
+    const leftOut = Array.from({ length: entry.parameters.length - passed.length });
+    return run(...passed, ...leftOut, closure);
   }
 
   /** Starts async entry `index` with `passed`: runs it until it parks or returns; its future. */

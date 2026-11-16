@@ -182,10 +182,10 @@ function locate(writer: FlowWriter, { root, path }: Place, span: AnchoredSpan): 
   const register = writer.registerOf(root);
   const value = writer.valueOf(root);
   const rootKind =
-    value.kind === 'variable' && value.inCell
-      ? 'cell'
-      : code.typeOf(register).kind === 'reference'
-        ? 'reference'
+    code.typeOf(register).kind === 'reference'
+      ? 'reference'
+      : value.kind === 'variable' && value.inCell
+        ? 'cell'
         : 'register';
   const start: Located = {
     location: { kind: 'place', place: { root: { kind: rootKind, register }, path: [] }, behind: false },

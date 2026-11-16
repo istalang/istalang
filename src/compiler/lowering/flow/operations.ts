@@ -290,11 +290,8 @@ function copied(writer: FlowWriter, operation: Of<'copy'>): void {
     writer.valueOf(into).kind === 'temporary'
   ) {
     const register = writer.registerOf(from);
-    const through: 'cell' | 'reference' | undefined = source.inCell
-      ? 'cell'
-      : code.typeOf(register).kind === 'reference'
-        ? 'reference'
-        : undefined;
+    const through: 'cell' | 'reference' | undefined =
+      code.typeOf(register).kind === 'reference' ? 'reference' : source.inCell ? 'cell' : undefined;
     if (through === undefined) {
       writer.alias(into, register);
     } else {

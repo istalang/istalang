@@ -128,6 +128,9 @@ export class FlowWriter {
 
   write(): void {
     const { order } = this.#layout;
+    for (const [value, until] of this.#kept) {
+      this.listOf(until, this.typeOf(value));
+    }
     for (const [position, block] of order.entries()) {
       this.#block = block;
       this.#next = order[position + 1];
@@ -241,13 +244,13 @@ export class FlowWriter {
     if (register === produced) {
       return;
     }
-    if (flowValue.inCell) {
-      this.writeCell(register, produced, span, operation !== undefined && this.declaring.has(operation));
-      return;
-    }
     if (code.typeOf(register).kind === 'reference') {
       const place: Place = { root: { kind: 'reference', register }, path: [] };
       code.emit({ kind: 'store', span, place, value: code.take(produced, span) });
+      return;
+    }
+    if (flowValue.inCell) {
+      this.writeCell(register, produced, span, operation !== undefined && this.declaring.has(operation));
       return;
     }
     code.letGo([register], span);
@@ -307,9 +310,16 @@ export class FlowWriter {
     return [...new Set(registers)];
   }
 
-  /** Lets go of `registers`, if there are any. */
+  /**
+   * Lets go of `registers`, if there are any; a list of what `hold`s keep, let go of where its
+   * scope ends, is made anew, empty, for the scope's next run.
+   */
   release(registers: readonly Register[], span: AnchoredSpan): void {
-    this.context.code.letGo(registers, span);
+    const { code } = this.context;
+    code.letGo(registers, span);
+    for (const list of registers.filter((register) => this.#isList(register))) {
+      code.emit({ kind: 'array', span, dst: list, elements: [] });
+    }
   }
 
   /** The array what `hold`s keep of `type` until `until` ends is kept in (§7). */
@@ -328,6 +338,7 @@ export class FlowWriter {
     );
     code.pin(list);
     lists.set(key, list);
+    code.emit({ kind: 'array', span: this.flow.root.span, dst: list, elements: [] });
     return list;
   }
 
