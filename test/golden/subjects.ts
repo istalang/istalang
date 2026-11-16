@@ -153,7 +153,12 @@ function suiteSubjects(): SuiteSubject[] {
       }),
     ),
     { kind: 'suite', name: 'examples/FormBuilder', project: { directory: formBuilder }, paths: [] },
-    { kind: 'suite', name: 'test/suites', project: { directory: `${root}test/suites/` }, paths: [] },
+    {
+      kind: 'suite',
+      name: 'test/suites',
+      project: { directory: `${root}test/suites/` },
+      paths: [],
+    },
     {
       kind: 'suite',
       name: 'test/spec-suites/purchase.test.ista',
