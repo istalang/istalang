@@ -13,3 +13,4 @@
 - [Brief review first](feedback_brief-review-first.md) — merge review lands → brief human (size, importance) before acting
 - [Plan review after approval](feedback_plan-review-after-approval.md) — spawn a plan reviewer only after the human approves the drafted plan
 - [IR first](project_ir-first.md) — everything lowered to IR, all backends alike, no interpreter-only features; greenfield refactor plans
+- [Few big phases](feedback_few-big-phases.md) — rewrites: one late-tested phase over many small ones keeping deleted code green
