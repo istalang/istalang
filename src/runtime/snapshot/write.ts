@@ -5,6 +5,7 @@
  *
  * - A value deeper than `maximumDepth` can't be persisted (§5): writing it fails with
  *   `TooDeep`, which the instance panics with, at the await that would have committed it.
+ * - A finished instance's outcome is written as any value is, a disposable one naming its object.
  * - A weak reference names its target only while the target lives, which it does only while
  *   something written holds it, so its target is written then anyway.
  */
@@ -66,6 +67,7 @@ export function snapshotOf(run: Run, written: Written): Snapshot {
   const instance: Instance = run.instance;
   const snapshot = {
     ...written,
+    status: statusOf(written.status, persisted),
     instance: instance.name,
     serial: state.serial,
     seed: bytesToHex(run.seed),
@@ -95,6 +97,19 @@ export function snapshotOf(run: Run, written: Written): Snapshot {
     objects: [...objects.values()]
       .filter((each): each is PersistedObject => each !== undefined)
       .toSorted((first, second) => first.id - second.id),
+  };
+}
+
+/** `status` as a snapshot writes it: a finished one's outcome with its objects named by id. */
+function statusOf(status: PersistedStatus, persisted: Naming['persisted']): PersistedStatus {
+  if (status.kind !== 'finished') {
+    return status;
+  }
+  const { outcome, encoded } = status;
+  return {
+    kind: 'finished',
+    outcome: persisted(outcome),
+    ...(encoded === undefined ? {} : { encoded: persisted(encoded) }),
   };
 }
 
