@@ -1,7 +1,4 @@
 {
-  "awaitables/dropped-after-decision.ista": {
-    "frame": "at awaitables/dropped-after-decision._main (awaitables/dropped-after-decision.ista:24:5)"
-  },
   "collections/panic-index.ista": {
     "frame": "at collections/panic-index._main (collections/panic-index.ista:8:3)"
   },
