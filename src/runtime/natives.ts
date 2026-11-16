@@ -232,8 +232,9 @@ export interface NativeLogs {
 }
 
 /**
- * The JSON the running instance wrote values as (lifetimes/written-json.ts), which `json.encode`
- * gives again for a value written as the same type and unchanged since. A test world keeps none.
+ * The JSON the running instance wrote values as (definition/values/written-json.ts), which
+ * `json.encode` gives again for a value written as the same type and unchanged since. A test world
+ * keeps none.
  */
 export interface NativeEncodings {
   /** The `Json` `value` was written as, a `type`; undefined if it wasn't, or isn't kept. */

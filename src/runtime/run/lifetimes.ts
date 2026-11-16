@@ -13,7 +13,9 @@
  *   never shared. A shared value is copied, its parts then shared or held by the copy too.
  * - **Plain** values are neither: `hold` and `letGo` pass over anything that isn't an object.
  * - A value changed in place forgets what was derived from it (its hash, its map's table, its
- *   summary), so derived data stays keyed by values that never change under it.
+ *   summary, the JSON written of it and the host's object of that JSON), so derived data stays
+ *   keyed by values that never change under it. The JSON the run wrote values as is kept here
+ *   (`written`), each held for good: shared, so no part of it changes in place.
  * - A native builds its result around values it borrowed, where compiled code moves each part in:
  *   its taker `adopt`s it, a composite of counted type it built holding each of its parts in turn.
  */
@@ -24,6 +26,7 @@ import {
   type TypeReference,
 } from '../../definition/tables/types.ts';
 import { copiedMap, forgetDerived } from '../../definition/values/equality.ts';
+import { forgetPlainOf } from '../../definition/values/json-values.ts';
 import {
   type CompositeValue,
   childValues,
@@ -31,6 +34,7 @@ import {
   isComposite,
   type Value,
 } from '../../definition/values/values.ts';
+import { WrittenJson } from '../../definition/values/written-json.ts';
 import type { Step } from './objects/reference.ts';
 import { RunObject } from './objects/run-object.ts';
 
@@ -47,6 +51,8 @@ function isNode(value: Value | undefined): value is CompositeValue {
 export class Lifetimes {
   readonly #counts = new WeakMap<object, number>();
   readonly #shared = new WeakSet<object>();
+  /** What the run wrote values as (written-json.ts), each `Json` held for good. */
+  readonly written = new WrittenJson((json) => this.share(json));
   readonly #dispose: Disposer;
   readonly #types: readonly TypeDefinition[];
   /** The objects that lost their last holder, waiting for the round collecting them. */
@@ -170,6 +176,8 @@ export class Lifetimes {
     if (this.isUnique(node)) {
       forgetDerived(node);
       forgetSummary(node);
+      forgetPlainOf(node);
+      this.written.forget(node);
       return node;
     }
     const copy = copiedNode(node);

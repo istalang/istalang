@@ -10,6 +10,8 @@
  *   std's Istalang makes the `Result` code reads.
  * - The test world (inspection, watches) is the world's, in a test only; mocks are the run's own.
  */
+ * - What `json.encode` wrote values as is the run's (lifetimes.ts `written`), but a test world's,
+ *   which keeps none (§10).
 
 import { outcomeEncoderOf } from '../../definition/tables/types.ts';
 import type { Value } from '../../definition/values/values.ts';
@@ -20,6 +22,7 @@ import type {
   NativeCapabilities,
   NativeContexts,
   WithFutures,
+  NativeEncodings,
   WithTesting,
   WithWeakSide,
 } from '../natives.ts';
@@ -62,11 +65,14 @@ export function capabilitiesOf(run: Run, seams: CapabilitySeams): NativeCapabili
     },
     testing: testingOf(run),
     contexts: contextsOf(run),
-    encodings: { of: () => undefined, remember: () => undefined },
+    encodings: run.world.testing === undefined ? run.lifetimes.written : keepingNone,
   };
 }
 
 /** What a test's code asks of its world (§10); a native asking outside a test is a bug. */
+/** The encodings of a run in a test world, which keeps none, so a mock sees every codec call. */
+const keepingNone: NativeEncodings = { of: () => undefined, remember: () => undefined };
+
 function testingOf(run: Run): WithTesting['testing'] {
   const testWorld = (): TestingWorld =>
     run.world.testing ?? unreachable('A native asked for the test world, which only a test has.');

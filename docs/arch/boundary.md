@@ -76,19 +76,19 @@ encoders from building anew:
   with defaulted parameters called directly with others out of it.
 - **Stage 1, value to `Json`** (`definition/values/written-json.ts`): `encode`'s body asks two
   natives, `_written<T>` and `_remember<T>`, keyed by the value object and `T` (one object may be
-  written as two types whose codecs differ), a handle by the object it names, as `==` compares it.
-  An outcome its root returns is written from what the root gave, not from its copy. It is kept
-  per instance (`WrittenJson`), since a codec may read a `context` constant; the run binds no keeper
-  yet (`run/natives.ts`, `encodings`), so stage 1 writes anew each time.
+  written as two types whose codecs differ); a handle is the run object it names. An outcome its
+  root returns is written from what the root gave, not from its copy. It is kept per run, so per
+  instance (`Lifetimes.written`, bound as the natives' `encodings` in `run/capabilities.ts`), since
+  a codec may read a `context` constant; a test world keeps none, so a mock sees every codec call.
   A miss is `_Written.Unknown`, never `none`, which is JSON.
 - **Stage 2, `Json` to JavaScript** (`plainOfJson`): each array and map inside a `Json`, not the
   union variant wrapping it, which every conversion into `Json` makes anew, keeps the frozen
   object it gave and its nesting height, so the nesting limit refuses exactly what a full walk
   would.
-- **In-place writes stay sound** (`runtime/lifetimes/in-place.ts`): the stage-1 store is a holder,
-  holding each `Json` it keeps in the instance's counts for good, so no part of one is changed in
-  place; and every node an in-place write changes forgets both caches' entries with its other
-  derived data. A value's ancestors are on the written path, since a node held once has one
+- **In-place writes stay sound** (`runtime/run/lifetimes.ts`): the stage-1 store is a holder,
+  sharing each `Json` it keeps for good, so no part of one is changed in place; and every node an
+  in-place write changes (`Lifetimes.owned`) forgets both caches' entries with its other derived
+  data. A value's ancestors are on the written path, since a node held once has one
   parent. A value written is not disowned: forgetting suffices, and a push after each send stays
   in place.
 

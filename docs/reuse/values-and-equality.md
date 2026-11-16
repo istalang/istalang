@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-11-13
-last_updated: 2026-11-15
+last_updated: 2026-11-16
 tags: [reuse, values, equality, maps, json, natives, runtime]
 ---
 
@@ -37,14 +37,14 @@ tags: [reuse, values, equality, maps, json, natives, runtime]
 - order two `bigint`s or UTF-16 `string`s → `compareOrdered` (`src/foundation/language/order.ts`)
 - find the `json.Json` type entry, the variant each of its union's members is (found by what the variant holds), or test if a `Value` is `Json` → `jsonTypeIn`, `jsonTypeOf`, `isJsonValue` (`src/definition/values/json-values.ts`)
 - convert between `json.Json` values, JSON text, and host JS values → `jsonText`, `jsonOfText`, `plainOfJson` (deeply frozen, the same object for an array or map it met before; `forgetPlainOf` as one changes in place), `jsonOfPlain` (`src/definition/values/json-values.ts`)
-- give the `Json` an instance wrote a value as before, per type, held for good and forgotten as the value changes in place → `WrittenJson` (`src/definition/values/written-json.ts`), reached by natives as `NativeEncodings` (`src/runtime/natives.ts`)
+- give the `Json` an instance wrote a value as before, per type, held for good and forgotten as the value changes in place → `WrittenJson` (`src/definition/values/written-json.ts`), a run's as `Lifetimes.written`, reached by natives as `NativeEncodings` (`src/runtime/natives.ts`)
 
 ## One-way rules
 
 - Build and read structs, variants, `Optional`, `Result` and `Error` by declared name (`declared-values.ts`, `values/arguments.ts`, `values/results.ts`), never by positional index.
 - Narrow closures with `closureOf` and handles with `handleTarget`, and make handles with `handleTo` (`src/definition/values/values.ts`), never with ad-hoc `isComposite(v) && v.kind === ...` checks or `{ kind: 'handle', … }` literals.
-- Values are immutable to everything but `InPlace` (`src/runtime/lifetimes/in-place.ts`) and `mapOf`'s own build: never mutate `fields`, `elements`, `entries` or `captures` elsewhere; write through the instance's `InPlace`, or rebuild with `withChildValues`.
-- Data keyed by a node's identity (summaries, hashes, maps' tables, the JSON written of it) is forgotten by `InPlace` as the node changes, every change path through its one `#forgetWholeOf`: a new cache keyed by a composite joins it there, and a cache keeping values holds them in the instance's counts (`WrittenJson`).
+- Values are immutable to everything but `Lifetimes.owned` (`src/runtime/run/lifetimes.ts`) and `mapOf`'s own build: never mutate `fields`, `elements`, `entries` or `captures` elsewhere; write what `owned` gives, or rebuild with `withChildValues`.
+- Data keyed by a node's identity (summaries, hashes, maps' tables, the JSON written of it, the host's object of it) is forgotten by `Lifetimes.owned` as it gives a node to change in place: a new cache keyed by a composite joins it there, and a cache keeping values holds them for good (`WrittenJson`, which shares them).
 - A composite is shared by identity: a copy, a part a rebuild kept, a constant every instance reads, and a value in a snapshot restored twice in memory can be one object. Data keyed by a composite's identity (a `WeakMap`, as `values.ts`'s summaries) describes the value wherever it is; what describes one place or one instance's use of it is kept per instance, never on the value.
 - Handles compare and hash by the object id they name (`equality.ts`): `==` on handles is identity, never their objects' contents.
 - Built-in `==` and map hashing live in `ValueSemantics` (`src/foundation/language/values.ts`), shared by `definition/values/equality.ts` and `checker/surface/constant-form.ts`. A head compares no instantiated type id: a value converted part by part keeps its own where its layout stays (§3.5).

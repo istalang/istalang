@@ -5,16 +5,14 @@
  *
  * - **Keyed by the value object and the type it was written as:** one object may be written as
  *   two types whose codecs differ, as a conversion keeping the layout shares it between them.
- *   Only object values are kept: a primitive's JSON is its own identity anyway. A handle is the
- *   object it names, as `==` compares it (§3.1), so a handle read anew, from a weak reference or
- *   given to a `dispose`, is the value written before; it is forgotten once its object is gone.
+ *   Only object values are kept: a primitive's JSON is its own identity anyway. A handle is the run
+ *   object it names, read anew from a weak reference or given to a `dispose` as the same object.
  * - **One per instance or run:** a codec may read a `context` constant, whose value is the
- *   instance's (§3.4). A test world keeps nothing (runtime/scheduler/segment/native-calls.ts), so a
- *   mock sees every call of the codec it replaces (§10).
- * - **A holder:** a `Json` kept is held for good (`hold`, the interpreter's counts), so no part of
- *   it is ever changed in place (runtime/lifetimes/in-place.ts), which would change what it gives
- *   for another value. A value written as itself, a `Json`, is not kept, so what it holds stays its own
- *   to change.
+ *   instance's (§3.4). A test world keeps none, so a mock sees every call of the codec it replaces
+ *   (§10).
+ * - **A holder:** a `Json` kept is held for good (`hold`), so no part of it is ever changed in
+ *   place, which would change what it gives for another value. A value written as itself, a
+ *   `Json`, is not kept, so what it holds stays its own to change.
  * - **A value changed in place is forgotten** (`forget`), as its other derived data is: it is
  *   another value now, so its JSON is built again.
  */
@@ -22,15 +20,13 @@
 import { memo } from '../../foundation/structures/memo.ts';
 import { encodeJson } from '../formats/codec.ts';
 import type { TypeReference } from '../tables/types.ts';
-import { type CompositeValue, handleTarget, isComposite, type Value } from './values.ts';
+import { type CompositeValue, isComposite, type Value } from './values.ts';
 
 /** Each type reference's canonical text, which keys a value's JSON whichever entry refers. */
 const typeTexts = new WeakMap<TypeReference, string>();
 
 export class WrittenJson {
   readonly #byValue = new WeakMap<CompositeValue, Map<string, Value>>();
-  /** What handles were written as, by the heap object each names. */
-  readonly #byObject = new Map<number, Map<string, Value>>();
   readonly #hold: (json: Value) => void;
 
   /** Kept JSON, held for good by `hold`. */
@@ -40,12 +36,7 @@ export class WrittenJson {
 
   /** The `Json` `value` was written as, a `type`, while unchanged; undefined if it wasn't. */
   of(value: Value, type: TypeReference): Value | undefined {
-    if (!isComposite(value)) {
-      return undefined;
-    }
-    const object = handleTarget(value);
-    const kept = object === undefined ? this.#byValue.get(value) : this.#byObject.get(object);
-    return kept?.get(textOf(type));
+    return isComposite(value) ? this.#byValue.get(value)?.get(textOf(type)) : undefined;
   }
 
   /**
@@ -58,22 +49,12 @@ export class WrittenJson {
       return;
     }
     this.#hold(json);
-    const object = handleTarget(value);
-    const kept =
-      object === undefined
-        ? memo(this.#byValue, value, () => new Map<string, Value>())
-        : memo(this.#byObject, object, () => new Map<string, Value>());
-    kept.set(textOf(type), json);
+    memo(this.#byValue, value, () => new Map<string, Value>()).set(textOf(type), json);
   }
 
   /** Forgets what `node`, which changed in place, was written as. */
   forget(node: CompositeValue): void {
     this.#byValue.delete(node);
-  }
-
-  /** Forgets what handles to heap object `id`, which is gone, were written as. */
-  forgetObject(id: number): void {
-    this.#byObject.delete(id);
   }
 }
 
