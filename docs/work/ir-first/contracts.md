@@ -38,8 +38,7 @@ tags: [plan, rewrite, goldens, contracts]
 
 ## L and R1
 
-- **L owns** the checker features and every std module's Istalang and natives, except the runtime
-  services below. It leaves behavior unchanged on the old pipeline.
+- **L owns** every std module's Istalang and natives, except the runtime services below. It leaves behavior unchanged on the old pipeline.
 - **R1 owns** the runtime services in Istalang (futures, resolvers, waits, `select`, slots, timers,
-  watches, weak references, the mock registry), the native contract, and the natives L leaves,
+  watches, weak references, the mock registry), derived JSON codecs, the native contract, and the natives L leaves,
   ported after L merges.

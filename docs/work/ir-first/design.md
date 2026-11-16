@@ -1,5 +1,5 @@
 ---
-description: the target architecture of the IR-first rewrite — every program, ista code included, lowered to one typed IR with lifetimes explicit, compiled (JS now, LLVM later) and run by one run, runtime services and codecs written in Istalang, the interpreter replaced by golden outputs; decisions, invariants, verification; read before planning, building or reviewing any ir-first phase, or touching lowering, the IR, the run or codegen
+description: the target architecture of the IR-first rewrite — every program, ista code included, lowered to one typed IR with lifetimes explicit, compiled (JS now, LLVM later) and run by one run, runtime services written in Istalang, derived JSON codecs synthesized by lowering behind one seam, the interpreter replaced by golden outputs; decisions, invariants, verification; read before planning, building or reviewing any ir-first phase, or touching lowering, the IR, the run or codegen
 owner: tech-lead
 status: active
 applies_to: istalang
@@ -15,7 +15,7 @@ and a compiler backend only executes primitives:
 - every program, ista code included, becomes one typed IR;
 - JavaScript is the one backend now, and LLVM later compiles the same IR;
 - one run drives compiled code: persistence, contexts, instances, jobs and tests included;
-- runtime services and JSON codecs are Istalang.
+- runtime services are Istalang; derived JSON codecs are IR that lowering synthesizes.
 
 The interpreter is replaced by golden outputs captured from it, then deleted. Nothing has users,
 so nothing stays compatible. Where new code differs throughout, it is written new, not migrated.
@@ -41,9 +41,9 @@ target. Migrating that shape costs more than writing the right one.
 
 | Layer | Holds | Written |
 |---|---|---|
-| Lowering | Every decision: holds and let-gos, in place, copies at crossings, start wrappers, mock checks, collect points, stop landings, codec calls | TS, once |
+| Lowering | Every decision: holds and let-gos, in place, copies at crossings, start wrappers, mock checks, collect points, stop landings, derived JSON codecs (one module) | TS, once |
 | IR (the Definition) | Typed registers; reach facts on every type; explicit cells and references; tuple, struct and variant fields apart; flavors as variants; lifetime instructions; spill sets per suspension; extern capabilities, keeps and holds | the contract |
-| Std in Istalang | Futures, resolvers, waits, slots, timer grouping, `disposed()`/`disposing()` watches, settle order, the mock registry, every JSON encoder and decoder, about 95 former natives | Istalang |
+| Std in Istalang | Futures, resolvers, waits, slots, timer grouping, `disposed()`/`disposing()` watches, settle order, the mock registry, about 95 former natives | Istalang |
 | Run | One: ready queue, park and unpark of executions, segments and commits, snapshots (root walk, object ids), contexts, instances, jobs, effects (clock, random draws, logs), counts and the collector, one host binding | TS for JS; ported once for LLVM |
 | Codegen | One ES module per program. Simple entries are plain functions; async entries are resumable functions over frame records. Primitive operations are inline JS | TS |
 | Natives | About 85 primitives (Int, Float, String, Array, Map, JSON text, effects, regex/crypto/tz libraries) taking and giving primitives | per backend |
@@ -102,7 +102,12 @@ target. Migrating that shape costs more than writing the right one.
    - **Capabilities:** declared per extern in the IR and checked when natives are bound.
    - **Primitive operations** (`Int` `+`, comparisons, …) compile to inline JS, so they run as fast
      as hand-written JS over the same representation.
-9. **One host binding** `{natives, externs, clock, seed, store}` serves `ista run`, `ista test`,
+9. **Derived JSON codecs are synthesized IR.** Writing them in Istalang needs tuple loops,
+   per-pass variant and tuple construction, literal enumeration, an extern-type constraint and a §9
+   change: more language than the code it deletes. Lowering emits each type's codec as ordinary IR
+   from one module, whose only inputs are the checker's codec requirements and whose only output is
+   IR functions, so a later language-features plan replaces that module alone.
+10. **One host binding** `{natives, externs, clock, seed, store}` serves `ista run`, `ista test`,
    `ista build` and embedding hosts alike.
 
 ## Spec amendments
@@ -113,8 +118,6 @@ target. Migrating that shape costs more than writing the right one.
 - **`select` losers:** resolvers still cancel at the decision, so a value reaching a losing take's
   slot right after the winner's stays there; only the losers' holdings are let go when the winner
   resumes, which lowering emits at each case's target.
-- **JSON codecs:** field loops expose field annotations (`@JsonName`, `@JsonSkip`), and enums get a
-  variant loop (§3.16), so every encoder and decoder is Istalang.
 
 ## Invariants
 
