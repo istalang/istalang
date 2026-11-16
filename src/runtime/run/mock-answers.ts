@@ -30,6 +30,31 @@ export interface HeldMock {
   readonly mock: MockObject;
 }
 
+/**
+ * The newest mock of entry `index` held by an instance `caller` was spawned from, the nearest
+ * holding one, each read through `runOf` by its name; undefined where none does.
+ */
+export function heldAbove(
+  caller: Run,
+  index: number,
+  runOf: (name: string) => Run | undefined,
+): HeldMock | undefined {
+  for (let name = parentOf(caller.instance.name); name !== undefined; name = parentOf(name)) {
+    const holder = runOf(name);
+    const mock = holder?.mocking.held.of(index);
+    if (holder !== undefined && mock !== undefined) {
+      return { holder, mock };
+    }
+  }
+  return undefined;
+}
+
+/** The instance `name` was spawned from, named before its last `/`; none for one spawned by none. */
+function parentOf(name: string): string | undefined {
+  const at = name.lastIndexOf('/');
+  return at < 0 ? undefined : name.slice(0, at);
+}
+
 /** What `held` answers `caller`'s call with `passed`, of type `type`, made the caller's own. */
 export function answerOfMock(
   caller: Run,

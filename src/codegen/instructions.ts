@@ -321,6 +321,12 @@ export function parkResumeOf(scope: EntryScope, park: InstructionOf<'park'>): nu
   return scope.entry.instructions.length + scope.entry.instructions.indexOf(park);
 }
 
+/** The `park` of `entry` a frame standing at `pc` resumes from; undefined where none does. */
+export function parkAt(entry: CodeFunction, pc: number): InstructionOf<'park'> | undefined {
+  const park = entry.instructions[pc - entry.instructions.length];
+  return park?.kind === 'park' ? park : undefined;
+}
+
 /** `instruction` of the entry `scope` emits, as a line. */
 export function emitInstruction(scope: EntryScope, instruction: Instruction): string {
   return handlerOf(emitters, instruction)(scope, instruction);

@@ -4,6 +4,7 @@
  * a commit that fails names the await it would have committed at.
  */
 
+import { parkAt } from '../../codegen/instructions.ts';
 import type { Definition } from '../../definition/definition.ts';
 import { locationOf } from '../../definition/traces.ts';
 import type { WaitingPoint } from '../instance-state.ts';
@@ -21,14 +22,14 @@ export function parkedAt(
   if (entry?.kind !== 'code') {
     return undefined;
   }
-  const park = entry.instructions[pc - entry.instructions.length];
-  return park?.kind === 'park'
-    ? {
+  const park = parkAt(entry, pc);
+  return park === undefined
+    ? undefined
+    : {
         function: entry.name,
         waypoint: park.waypoint,
         location: locationOf(definition, entry.module, park.span.start),
-      }
-    : undefined;
+      };
 }
 
 /** Where each of `resident`'s parked executions waits, as it last committed. */

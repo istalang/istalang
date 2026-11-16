@@ -28,7 +28,7 @@ import {
   type InvocationEnd,
   instanceEnding,
 } from '../run/instances.ts';
-import type { HeldMock } from '../run/mock-answers.ts';
+import { type HeldMock, heldAbove } from '../run/mock-answers.ts';
 import type { Future } from '../run/objects/future.ts';
 import { Run } from '../run/run.ts';
 import type { Spawning, TestingWorld, World } from '../run/world.ts';
@@ -40,6 +40,7 @@ import { OpenRuntimes } from './open-runtimes.ts';
 import type { HostReports } from './programs.ts';
 import {
   type CallInto,
+  firstArrived,
   invoking,
   Resident,
   type ResidentMade,
@@ -163,16 +164,8 @@ export class DurableWorld implements World {
     context.feed(invoking(sent, answered), this.seams.clock.now(), replay);
   }
 
-  readonly heldMock = (caller: Run, index: number): HeldMock | undefined => {
-    for (let name = parentOf(caller.instance.name); name !== undefined; name = parentOf(name)) {
-      const holder = this.residents.get(name)?.run;
-      const mock = holder?.mocking.held.of(index);
-      if (holder !== undefined && mock !== undefined) {
-        return { holder, mock };
-      }
-    }
-    return undefined;
-  };
+  readonly heldMock = (caller: Run, index: number): HeldMock | undefined =>
+    heldAbove(caller, index, (name) => this.residents.get(name)?.run);
 
   readonly watchEnd = (watcher: Run, name: string, future: Future): void => {
     const watched = this.residents.get(name) ?? this.load(name);
@@ -387,26 +380,4 @@ export class DurableWorld implements World {
       unreachable(`The run of ${run.instance.name} belongs to no world.`)
     );
   }
-}
-
-/** The instance `name` was spawned from, named before its last `/`; none for one spawned by none. */
-function parentOf(name: string): string | undefined {
-  const at = name.lastIndexOf('/');
-  return at < 0 ? undefined : name.slice(0, at);
-}
-
-/**
- * Which of `residents` runs next: the one whose waiting turn arrived first among every run's, so
- * what settles first runs first, whichever instance waits on it (§6); else the first made.
- */
-function firstArrived(residents: ReadonlySet<Resident>): Resident | undefined {
-  let first: Resident | undefined;
-  for (const resident of residents) {
-    const at = resident.run.arrivals.first;
-    const firstAt = first?.run.arrivals.first;
-    if (first === undefined || (at !== undefined && (firstAt === undefined || at < firstAt))) {
-      first = resident;
-    }
-  }
-  return first;
 }

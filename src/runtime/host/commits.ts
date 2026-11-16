@@ -156,17 +156,8 @@ function letOut(resident: Resident, reports: HostReports | undefined): void {
 
 /** Runs `resident`'s segment again on the instance as it last committed, from the same inputs. */
 function rerun(resident: Resident, seams: CommitSeams): void {
-  const { inputs, answers } = resident;
-  resident.effects = [];
-  resident.logs = [];
-  resident.endings = [];
-  resident.spawned = [];
-  const replaced = resident.run;
-  resident.run = seams.freshRun(resident);
-  if (resident.text !== undefined) {
-    restore(resident.run, snapshotFormat.read(resident.text), answers);
-  }
-  replaced.arrivals.succeededBy(resident.run.arrivals);
+  const { inputs } = resident;
+  backToLastCommit(resident, seams);
   for (const input of inputs) {
     input(resident.run);
   }
@@ -175,6 +166,24 @@ function rerun(resident: Resident, seams: CommitSeams): void {
   for (let busy = true; busy && !atCommit(run); ) {
     busy = run.takeArrivals(undefined, true) || run.drain(undefined, true);
   }
+}
+
+/**
+ * `resident` as it last committed, read back into a fresh run that takes over what arrives from now
+ * on: what its segment did never happened, and nothing of it leaves.
+ */
+function backToLastCommit(resident: Resident, seams: CommitSeams): void {
+  resident.inputs = [];
+  resident.effects = [];
+  resident.logs = [];
+  resident.endings = [];
+  resident.spawned = [];
+  const replaced = resident.run;
+  resident.run = seams.freshRun(resident);
+  if (resident.text !== undefined) {
+    restore(resident.run, snapshotFormat.read(resident.text), resident.answers);
+  }
+  replaced.arrivals.succeededBy(resident.run.arrivals);
 }
 
 /**

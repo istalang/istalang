@@ -176,3 +176,19 @@ function endOf(status: PersistedStatus): InstanceEnd | undefined {
     }
   }
 }
+
+/**
+ * Which of `residents` runs next: the one whose waiting turn arrived first among every run's, so
+ * what settles first runs first, whichever instance waits on it (§6); else the first made.
+ */
+export function firstArrived(residents: ReadonlySet<Resident>): Resident | undefined {
+  let first: Resident | undefined;
+  for (const resident of residents) {
+    const at = resident.run.arrivals.first;
+    const firstAt = first?.run.arrivals.first;
+    if (first === undefined || (at !== undefined && (firstAt === undefined || at < firstAt))) {
+      first = resident;
+    }
+  }
+  return first;
+}

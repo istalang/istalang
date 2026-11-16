@@ -3,7 +3,7 @@ description: canonical JSON codecs, versioned JSON and avsc formats, the Definit
 owner: tech-lead
 status: active
 applies_to: istalang
-last_verified: 2026-11-16
+last_verified: 2026-11-17
 last_updated: 2026-11-17
 tags: [reuse, runtime, snapshot, persistence, lifetimes, host]
 ---
@@ -22,11 +22,11 @@ How the run works: docs/arch/runtime.md.
 - read or write an instance's snapshot → `snapshotFormat`, `Snapshot` (`src/runtime/snapshot/format.ts`); write one from a run → `snapshotOf`, `TooDeep` (`snapshot/write.ts`); read one back into a fresh run → `restore`, `rootInvocation` (`snapshot/restore.ts`)
 - a run of one instance: calls, starts, parks, the ready queue, settling futures, timers, host fillings, its random draws → `Run` (`src/runtime/run/run.ts`); what a snapshot keeps of it beside its objects → `Run.persisted`, `Run.restored`
 - act on a run's object from outside it, in whichever run of its instance the turn lands in, the turn kept as an input a segment run again applies again → `Run.arrive`, `Run.onArrivalTaken`, `Run.succeededBy`
-- the run's objects: cells, resources, futures, executions with frame records, weak references, mocks, references → `src/runtime/run/objects.ts`
-- the mocks an instance holds, newest winning → `Mocks` (`src/runtime/run/mocks.ts`); answer a call with a mock held by the caller or an instance it was spawned from → `answerOfMock`, `HeldMock` (`src/runtime/run/mock-answers.ts`)
+- the run's objects: cells, resources, futures, executions with frame records, weak references, mocks, references → `src/runtime/run/objects/`
+- the mocks an instance holds, newest winning → `Mocks` (`src/runtime/run/mocks.ts`); answer a call with a mock held by the caller or an instance it was spawned from → `answerOfMock`, `HeldMock`; find the nearest one held up the spawn chain → `heldAbove` (`src/runtime/run/mock-answers.ts`)
 - count holders, mark shared heap values, dispose in rounds newest first, write a path in place where unique from its root down (`opened`), keep what a native stores in a collection by its item type (`keepItems`), adopt a native's result by type, count restored holders again, collect a disposed call's cleanup apart → `Lifetimes` (`src/runtime/run/lifetimes.ts`)
 - an instance, its end and how that end crosses to a waiter as a plain ending, a call its finishing instance left unanswered included → `Instance`, `instanceEnding`, `InvocationEnd` (`src/runtime/run/instances.ts`); its context constants, read, made and let go of last as it ends → `ContextConstants` (`src/runtime/run/context-constants.ts`); finish a run as its instance ends → `Run.finish`
-- what one run asks of the instances beside it: call into a context, spawn, watch an end, the mock a parent holds, a test's capabilities → `World`, `Spawning`, `TestingWorld` (`src/runtime/run/world.ts`); the one implementation, with residents, segments, commits, crash reruns and panics → `DurableWorld`, `Resident`, `endOf`, `parkedAt` (`src/runtime/host/durable-world.ts`)
+- what one run asks of the instances beside it: call into a context, spawn, watch an end, the mock a parent holds, a test's capabilities → `World`, `Spawning`, `TestingWorld` (`src/runtime/run/world.ts`); the one implementation, with residents, segments, commits, crash reruns and panics → `DurableWorld` (`src/runtime/host/durable-world.ts`), `Resident` (`src/runtime/host/resident.ts`); where a parked frame waits → `parkedAt` (`src/runtime/host/waiting.ts`), the `park` its pc resumes from → `parkAt` (`src/codegen/instructions.ts`)
 - the run's own primitives the prelude's futures, waits and slots stand on → `runNatives` (`src/runtime/run/run-natives.ts`)
 - bind a program's natives to a run with their capabilities, refusing a missing native → `bindNatives`, `NativeBinding` (`src/runtime/run/natives.ts`)
 - turn a JavaScript stack into the program's trace, or a span into `module:line:column` → `Traces` (`src/runtime/run/traces.ts`), `locationOf`, `traceText` (`src/definition/traces.ts`)
