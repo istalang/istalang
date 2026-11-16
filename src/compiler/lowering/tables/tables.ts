@@ -35,6 +35,7 @@ import type { SyntaxTree } from '../../syntax/tree/index.ts';
 import { type AnchoredSpan, spanIn } from '../../syntax/tree/positions.ts';
 import { type ClosedCall, type Dispatch, leavesOut } from '../calls/closed-calls.ts';
 import { nestedSpanOf } from '../functions/bodies.ts';
+import { withLoadsPastWrites } from '../functions/loads-past-writes.ts';
 import { laidOutAs } from '../values/holdings.ts';
 import { annotationValues } from './constants.ts';
 import {
@@ -406,7 +407,7 @@ export class DefinitionTables {
     return {
       modules: this.#modules,
       types: [...this.types.entries],
-      functions,
+      functions: withLoadsPastWrites(functions),
       constants: this.#constants,
       starts: this.#starts,
       purpose,

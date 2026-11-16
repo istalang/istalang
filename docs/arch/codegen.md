@@ -47,7 +47,8 @@ as the cell loses its last holder.
   primitive-ops.ts`) compile to inline JavaScript over the run's representation; an extern lowering
   maps to a primitive (`primitiveOfExtern`) is never a call.
 - Places (`load`, `store`, `reference`) go through the run, which writes along a path in place where
-  the value is unique (`Lifetimes.withPart`).
+  the value is unique (`Lifetimes.withPart`); a borrowing `load` marked `readPastWrites` shares what
+  it read, so a later write copies it.
 - A call of a known entry is a direct call; a call of a function value goes through `callValue`; an
   async callee starts an execution and gives its future (`Run.start`).
 - `currentCall` is the frame's execution in async code and `currentExecution()` in simple code.

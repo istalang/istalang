@@ -65,7 +65,7 @@ values and disposes what loses its last holder in rounds, newest first (docs/arc
 
 ## Places
 
-A place is a root, a register, a cell (a variable a closure captures or a `&` passes, a shared struct's state) or a reference a `&` parameter holds, and a path of tuple, field and variant steps. `load` reads a place (into a borrowed register, a borrow), `store` writes one, changing in place where the value is unique, and `reference` makes the `&` argument a call passes; following a path never runs code.
+A place is a root, a register, a cell (a variable a closure captures or a `&` passes, a shared struct's state) or a reference a `&` parameter holds, and a path of tuple, field and variant steps. `load` reads a place (into a borrowed register, a borrow; one read past a call or store that may write that place in place keeps the value as read, `readPastWrites`, which lowering decides over the whole function table, `functions/loads-past-writes.ts`), `store` writes one, changing in place where the value is unique, and `reference` makes the `&` argument a call passes; following a path never runs code.
 
 An indexed element is no step of a place, so every element read and write is a call: `index` and `setIndex(&container, key, value)`, as the checker resolved them for its container.
 
