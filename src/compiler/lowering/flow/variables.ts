@@ -90,7 +90,8 @@ function variableWritten(flow: FlowFunction, operation: Operation): ValueId | un
 /**
  * The writes of `flow` making a variable living in a cell anew: those no path reaching makes it
  * before, since the function began or its scope last ended. A variable the function binds as it
- * begins, a parameter, a capture or its own name, is made then.
+ * begins, a parameter, a capture or its own name, is made then; a transient a call it is nested in
+ * shares, where the test finding it goes (§3.4).
  */
 export function declaringWrites(flow: FlowFunction): ReadonlySet<Operation> {
   const inCell = (value: ValueId) => {
@@ -120,9 +121,14 @@ export function declaringWrites(flow: FlowFunction): ReadonlySet<Operation> {
         made.add(written);
       }
     }
+    const shared =
+      exit.kind === 'branch' && exit.test.kind === 'transient'
+        ? { block: exit.to[0], variable: exit.test.variable }
+        : undefined;
     for (const next of successorsOf(exit)) {
+      const out = next === shared?.block ? new Set([...made, shared.variable]) : made;
       const known = states.get(next);
-      const merged = known === undefined ? made : new Set([...known].filter((v) => made.has(v)));
+      const merged = known === undefined ? out : new Set([...known].filter((v) => out.has(v)));
       if (known === undefined || merged.size !== known.size) {
         states.set(next, merged);
         pending.push(next);

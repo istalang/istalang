@@ -224,8 +224,12 @@ const emitters: Handlers<EntryScope, Instruction, [], string> = {
   },
   reference: (_, i) =>
     `${register(i.dst)} = reference(${rootOf(i.place)}, ${pathOf(i.place)});`,
-  transient: (scope, i) =>
-    `${register(i.dst)} = transient(${transientKey(scope, i.dst)}); if (${register(i.dst)} !== undefined) { ${goTo(i.target)} }`,
+  // A call sharing a transient shares it on too, so each call's `return` unshares its own.
+  transient: (scope, i) => {
+    const key = transientKey(scope, i.dst);
+    const cell = register(i.dst);
+    return `${cell} = transient(${key}); if (${cell} !== undefined) { shareTransient(${key}, ${cell}); ${goTo(i.target)} }`;
+  },
   contextConstant: (scope, i) =>
     `${register(i.dst)} = contextConstant(${literal(i.name)}); if (${register(i.dst)} !== undefined) {${held(scope, i.dst)} ${goTo(i.target)} }`,
   makeContextConstant: (_, i) => `makeContextConstant(${literal(i.name)}, ${register(i.value)});`,
@@ -278,7 +282,7 @@ function transientKey(scope: EntryScope, dst: Register): string {
   return literal(`${scope.index}:${dst}`);
 }
 
-/** Before a `return`: the transients this call made stop being shared with calls nested later. */
+/** Before a `return`: the transients this call shared stop being shared with calls nested later. */
 function transientEnds(scope: EntryScope): string {
   return scope.entry.instructions
     .flatMap((each) =>
