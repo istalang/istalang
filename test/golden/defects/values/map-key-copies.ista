@@ -1,0 +1,28 @@
+# outcome: [1,0,10,20,30,1,2,3,4,10,20,30,40]
+# A map keeps the key and value it was given (§2): changing the key's variable or the value's array
+# in place afterwards changes neither, so an equal fresh key finds the entry and the changed one
+# doesn't.
+
+import * as runtime from 'runtime'
+
+struct Key:
+  parts: Array<Int>
+
+live async fn main() -> Array<Int>: await runtime.run(runtime.id()) _main()
+ista async fn _main() -> Array<Int>:
+  let k = Key{parts: [1, 2]}
+  k.parts.push(3)
+  let m: Map<Key, Array<Int>> = [:]
+  let v = [10, 20]
+  v.push(30)
+  m[k] = v
+  k.parts.push(4)
+  v.push(40)
+  const originalKey = Key{parts: [1, 2, 3]}
+  [
+    if originalKey in m: 1 else: 0,
+    if k in m: 1 else: 0,
+    ...m[originalKey],
+    ...k.parts,
+    ...v,
+  ]

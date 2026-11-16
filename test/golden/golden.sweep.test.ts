@@ -8,14 +8,18 @@
  * - `GOLDEN=update` records what each subject shows instead of checking it, except the `amended`
  *   group's, written by hand to spec amendments. A pipeline predating them must show something
  *   else than they state, so a program of theirs that stops compiling still fails.
+ * - The `defects` group's programs are expected red the same way, each still showing something else
+ *   than it states, so a fix turns its check red until the program moves into the corpus. A
+ *   toolchain invariant breaking on one is something else shown; a diagnostic is still a failure.
  */
 
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import process from 'node:process';
 import { afterAll, describe, expect, it } from 'vitest';
+import { Unreachable } from '../../src/foundation/structures/unreachable.ts';
 import { type Ending, withoutEmpty } from './observation.ts';
 import { observeProgram, observeScenario, observeSuite, runsAmendments } from './pipeline.ts';
-import { type ProgramSubject, type Subject, subjectGroups } from './subjects.ts';
+import { defectsGroup, type ProgramSubject, type Subject, subjectGroups } from './subjects.ts';
 
 /** A golden: what running its subject showed beyond what its source states. */
 type Golden = Readonly<Record<string, unknown>>;
@@ -43,12 +47,12 @@ for (const [group, subjects] of subjectGroups) {
     });
 
     const handWritten = group === amendedGroup;
-    if (handWritten && !runsAmendments) {
+    if (group === defectsGroup || (handWritten && !runsAmendments)) {
       for (const subject of subjects) {
         it(
-          `${subject.name} shows what the amendment changes`,
+          `${subject.name} still shows something else than it states`,
           async () => {
-            const { stated, shown } = await runOf(subject);
+            const { stated, shown } = await runOrBreak(subject);
             expect(shown).not.toEqual(stated);
           },
           subjectTimeout,
@@ -125,6 +129,18 @@ async function runOf(subject: Subject): Promise<Run> {
   const [shown, rest] =
     'panic' in ending ? [{ panic: ending.panic }, { frame: ending.frame }] : [ending, {}];
   return { golden: withoutEmpty({ ...rest, logs, hostCalls }), stated, shown };
+}
+
+/** What running `subject` showed, or the toolchain invariant its run broke. */
+async function runOrBreak(subject: Subject): Promise<Run> {
+  try {
+    return await runOf(subject);
+  } catch (error) {
+    if (error instanceof Unreachable && subject.kind === 'program') {
+      return { golden: {}, stated: statedEnding(subject), shown: { panic: error.message } };
+    }
+    throw error;
+  }
 }
 
 /** The ending `subject`'s first line states, if it states one. */

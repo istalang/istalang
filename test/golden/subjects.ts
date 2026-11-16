@@ -7,6 +7,9 @@
  * - `amended`: programs written by hand to a spec amendment the interpreter predates
  *   (docs/work/ir-first/design.md, "Spec amendments"), stating their results as the corpus does;
  *   their goldens are written by hand too.
+ * - `defects`: corpus programs, by construct, stating what a test of the old pipeline asserted
+ *   (docs/work/ir-first/coverage.md) and the current pipeline doesn't show yet, each a reported
+ *   defect; fixed, one moves to `test/corpus` under the same path.
  * - `spec-examples`: the examples of the spec and guide that are whole programs, checking clean
  *   alone and declaring a `main` a host starts, keyed by document, section and place in it, since
  *   lines move with every edit. An example that isn't one is the checker's to test.
@@ -56,6 +59,7 @@ export type Subject = ProgramSubject | SuiteSubject | ScenarioSubject;
 const root = fileURLToPath(new URL('../../', import.meta.url));
 const regressions = `${root}test/regressions/`;
 const amended = fileURLToPath(new URL('./amended/', import.meta.url));
+const defects = fileURLToPath(new URL('./defects/', import.meta.url));
 const formBuilder = `${root}examples/FormBuilder/`;
 const stdlib = `${root}src/stdlib/`;
 
@@ -73,9 +77,9 @@ function corpusSubjects(): ProgramSubject[] {
   }));
 }
 
-/** The programs in `directory`, each stating its outcome or panic on its first line. */
+/** The programs under `directory`, each stating its outcome or panic on its first line. */
 function statingSubjects(directory: string): ProgramSubject[] {
-  return readdirSync(directory)
+  return readdirSync(directory, { recursive: true, encoding: 'utf8' })
     .filter((name) => name.endsWith('.ista'))
     .toSorted()
     .map((name) => {
@@ -127,7 +131,8 @@ function formBuilderSubjects(): ProgramSubject[] {
 
 /**
  * Every std module's suites, one subject per module, as `ista test` runs them, since a module's
- * test modules may share helpers that hold no suite; FormBuilder's; and spec §10's suite against
+ * test modules may share helpers that hold no suite; FormBuilder's; the runtime's rules by area
+ * (`test/suites`); and spec §10's suite against
  * spec §12.1's purchase approval, written beside it when it runs.
  */
 function suiteSubjects(): SuiteSubject[] {
@@ -148,6 +153,7 @@ function suiteSubjects(): SuiteSubject[] {
       }),
     ),
     { kind: 'suite', name: 'examples/FormBuilder', project: { directory: formBuilder }, paths: [] },
+    { kind: 'suite', name: 'test/suites', project: { directory: `${root}test/suites/` }, paths: [] },
     {
       kind: 'suite',
       name: 'test/spec-suites/purchase.test.ista',
@@ -162,6 +168,9 @@ function suiteSubjects(): SuiteSubject[] {
   ];
 }
 
+/** The group of programs stating what the pipeline doesn't show yet, each a reported defect. */
+export const defectsGroup = 'defects';
+
 /** Every subject, by the group whose golden file records it. */
 export const subjectGroups: ReadonlyMap<string, readonly Subject[]> = new Map<
   string,
@@ -170,6 +179,7 @@ export const subjectGroups: ReadonlyMap<string, readonly Subject[]> = new Map<
   ['corpus', corpusSubjects()],
   ['regressions', statingSubjects(regressions)],
   ['amended', statingSubjects(amended)],
+  [defectsGroup, statingSubjects(defects)],
   ['spec-examples', specExampleSubjects()],
   ['form-builder', formBuilderSubjects()],
   ['suites', suiteSubjects()],

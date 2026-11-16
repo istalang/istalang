@@ -14,13 +14,15 @@ import { describe, expect, it } from 'vitest';
 import { type EmittedProgram, emitProgram } from '../../src/codegen/emit.ts';
 import type { Definition } from '../../src/definition/definition.ts';
 import { observeProgram } from './pipeline.ts';
-import { type ProgramSubject, subjectGroups } from './subjects.ts';
+import { defectsGroup, type ProgramSubject, subjectGroups } from './subjects.ts';
 
 /** A subject run past a unit test's time: the supplier demo compiles for seconds. */
 const subjectTimeout = 120_000;
 
-const programs = [...subjectGroups.values()]
-  .flat()
+/** Every program held to what it states: a defect's run shows something else already. */
+const programs = [...subjectGroups]
+  .filter(([group]) => group !== defectsGroup)
+  .flatMap(([, subjects]) => subjects)
   .filter((subject): subject is ProgramSubject => subject.kind === 'program');
 
 /** The runs read back into a second build: none would leave the property unexercised. */

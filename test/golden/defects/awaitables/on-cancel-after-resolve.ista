@@ -1,0 +1,31 @@
+# outcome: 10
+# A resolver's `onCancel` never runs once it decided anything (§6): the call `onAwait` started and
+# registered it on resolves it, and committing after cancels nothing.
+
+import * as futures from 'futures'
+import * as runtime from 'runtime'
+import * as time from 'time'
+
+shared struct Seen:
+  value: Int
+K fn see<K in Persistence>(seen: Seen, value: Int): seen->value = value
+ista async fn later(value: Int) -> Int:
+  await runtime.commit()
+  value
+shared struct Kept:
+  resolver: Resolver<Int, "ista">? = none
+struct Watched:
+  seen: Seen
+  kept: Kept
+  type Mode = "ista"
+ista fn onAwait(self: Watched, done: Resolver<Int, "ista">):
+  const seen = self.seen
+  done.onCancel(fn(): see(seen, -1))
+  self.kept->resolver = done
+  later(1).onAwait(done)
+live async fn main() -> Int: await runtime.run(runtime.id()) _main()
+ista async fn _main() -> Int:
+  const seen = new Seen{value: 0}
+  const got = await Watched{seen, kept: new Kept{}}
+  await runtime.commit()
+  got * 10 + seen->value

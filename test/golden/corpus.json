@@ -1,4 +1,10 @@
 {
+  "awaitables/let-go-unresolved.ista": {
+    "frame": "at awaitables/let-go-unresolved._main (awaitables/let-go-unresolved.ista:22:15)"
+  },
+  "awaitables/resolved-twice.ista": {
+    "frame": "at awaitables/resolved-twice.onAwait (awaitables/resolved-twice.ista:16:3)"
+  },
   "collections/panic-index.ista": {
     "frame": "at collections/panic-index._main (collections/panic-index.ista:8:3)"
   },
@@ -22,6 +28,9 @@
   },
   "collections/panic-zero-step.ista": {
     "frame": "at collections/panic-zero-step._main (collections/panic-zero-step.ista:8:3)"
+  },
+  "contexts/constant-reads-itself.ista": {
+    "frame": "at contexts/constant-reads-itself.looped (contexts/constant-reads-itself.ista:17:1)"
   },
   "holders/live-eager-panic.ista": {
     "frame": "at holders/live-eager-panic.inner (holders/live-eager-panic.ista:9:3)"

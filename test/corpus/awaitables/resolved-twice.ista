@@ -1,0 +1,23 @@
+# panic: A resolver was resolved twice.
+# A resolver is one-shot (§7): a second `resolve` panics.
+
+import * as runtime from 'runtime'
+
+shared struct Took:
+  first: Bool
+  second: Bool
+
+struct Twice:
+  took: Took
+  type Mode = "ista"
+
+ista fn onAwait(self: Twice, done: Resolver<Int, "ista">):
+  done.resolve(1)
+  done.resolve(2)
+
+live async fn main() -> Int: await runtime.run(runtime.id()) _main()
+
+ista async fn _main() -> Int:
+  const took = new Took{first: false, second: false}
+  const got = await Twice{took: took}
+  got * 100 + (if took->first: 10 else: 0) + (if took->second: 1 else: 0)

@@ -1,0 +1,29 @@
+# outcome: "none"
+# A weak reference's `deref()` gives none once the last holder has released its referent (§7),
+# also from a `dispose` running in the same round, so no disposal brings a released value back.
+
+import * as runtime from 'runtime'
+
+shared struct Lease:
+  name: String
+
+fn dispose(self: Lease): ()
+
+shared struct Grabber:
+  w: WeakRef<Lease>
+  box: Shared<Lease?>
+
+fn dispose(self: Grabber):
+  self->box->value = self->w.deref()
+
+live async fn main() -> String: await runtime.run(runtime.id()) _main()
+
+ista async fn _main() -> String:
+  const box = new Shared<Lease?>{value: none}
+  if true:
+    const y = new Lease{name: "y"}
+    const g = new Grabber{w: WeakRef(y), box}
+  await runtime.commit()
+  match box->value:
+    case None: "none"
+    case l: l->name

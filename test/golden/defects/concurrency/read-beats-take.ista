@@ -1,0 +1,21 @@
+# outcome: 4242
+# A value's reads are served before its take and resolve as one event (§6), so a `select` whose read
+# case wins cancels its take case before the take is served: the value stays in the slot.
+
+import * as runtime from 'runtime'
+
+ista async fn fill(s: Slot<Int>):
+  await runtime.commit()
+  _ = s.put(42)
+live async fn main() -> Int: await runtime.run(runtime.id()) _main()
+ista async fn _main() -> Int:
+  const s = Slot.create<Int>()
+  const filling = fill(s)
+  const got = await select:
+    case s.read() as x:
+      x
+    case s.take() as y:
+      y
+  const left = await s.take()
+  await filling
+  got * 100 + left

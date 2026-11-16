@@ -1,0 +1,91 @@
+# Values stay values under changes in place (spec §2): copies, messages, call arguments, spawned
+# instances' arguments and the JSON written of a value never see a later change to another holder.
+# Each rule is its own function, and its test asserts what the old runtime's unit test did.
+
+import Suite, Test, test, assertEq from 'testing'
+import * as json from 'json'
+import Json from 'json'
+import * as runtime from 'runtime'
+import Inbox from 'inbox'
+
+struct Inner:
+  items: Array<Int>
+  tags: Map<String, Int>
+
+struct Outer:
+  left: Inner
+  right: Inner
+
+ista async fn jsonBetweenWrites() -> String:
+  let o = Outer{left: Inner{items: [1], tags: ["a": 1]}, right: Inner{items: [], tags: [:]}}
+  const first = json.stringify(o)
+  o.left.items.push(2)
+  const second = json.stringify(o)
+  o.left.tags["b"] = 2
+  drop o.left.tags.delete("a")
+  const third = json.stringify(o)
+  const kept = o
+  o.right.items.push(3)
+  let written: Json = json.encode(kept.left)
+  match written:
+    case Map<String, Json> as fields:
+      let changed = fields
+      changed["items"] = "gone"
+      written = changed
+    case _: written = none
+  [first, second, third, json.stringify(kept), json.stringify(o), json.stringify(written)].join("|")
+
+ista async fn give(xs: Array<Int>) -> Array<Int>:
+  xs
+
+ista async fn sentCopies() -> Array<Int>:
+  const box = Inbox.create<Array<Int>>()
+  let xs = [1, 2]
+  xs.push(3)
+  box.send(xs)
+  xs.push(4)
+  const f = give(xs)
+  xs.push(5)
+  const received = await box.receive()
+  const fromFuture1 = await f
+  const fromFuture2 = await f
+  [...received, ...fromFuture1, ...fromFuture2, ...xs]
+
+fn unwrap(r: Result<Array<Int>>) -> Array<Int>:
+  match r:
+    case Ok(xs): xs
+    case Err(_): []
+
+ista async fn echo(xs: Array<Int>) -> Array<Int>:
+  xs
+
+ista async fn spawnCopies() -> Array<Int>:
+  let xs = [10, 20]
+  xs.push(30)
+  const spawned = spawn echo(xs)
+  const isolated = runtime.isolate echo(xs)
+  xs.push(400)
+  xs[0] = 999
+  const a = unwrap(await spawned.result())
+  const b = unwrap(await isolated)
+  [...a, ...b, ...xs]
+
+ista async fn blockValueAfterDefer() -> Array<Int>:
+  let xs = [10, 20]
+  xs.push(30)
+  const before = {
+    _ = defer(fn(): {
+      xs.push(999)
+      xs[0] = 888
+    })
+    xs
+  }
+  [...before, ...xs]
+
+@Suite{"aliasing"}
+fn suite() -> Array<Test>: [
+  test("json.stringify writes each value as it is now, between changes in place, through the JSON kept of it", async fn(): assertEq(await jsonBetweenWrites(), '{"left":{"items":[1],"tags":{"a":1}},"right":{"items":[],"tags":{}}}|{"left":{"items":[1,2],"tags":{"a":1}},"right":{"items":[],"tags":{}}}|{"left":{"items":[1,2],"tags":{"b":2}},"right":{"items":[],"tags":{}}}|{"left":{"items":[1,2],"tags":{"b":2}},"right":{"items":[],"tags":{}}}|{"left":{"items":[1,2],"tags":{"b":2}},"right":{"items":[3],"tags":{}}}|{"items":"gone","tags":{"b":2}}'))
+  test("values sent through slots, inboxes and resolved futures stay as sent when the sender changes its own", async fn(): assertEq(await sentCopies(), [1, 2, 3, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 5]))
+  test("values given to spawn and runtime.isolate stay as given when the caller changes its own before awaiting", async fn(): assertEq(await spawnCopies(), [10, 20, 30, 10, 20, 30, 999, 20, 30, 400]))
+  test("a block expression value stays as computed when a defer changes the outer variable at block exit", async fn(): assertEq(await blockValueAfterDefer(), [10, 20, 30, 888, 20, 30, 999]))
+]

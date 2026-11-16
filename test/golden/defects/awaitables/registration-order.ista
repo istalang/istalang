@@ -1,0 +1,27 @@
+# outcome: [7,7]
+# One resolver registered on several futures that resolve together is decided by the one registered
+# earliest (§6), whichever order the awaitable lists them in.
+
+import * as runtime from 'runtime'
+
+struct RaceReads:
+  first: Future<Int, "ista">
+  second: Future<Int, "ista">
+  type Mode = "ista"
+ista fn onAwait(self: RaceReads, done: Resolver<Int, "ista">):
+  self.first.onAwait(done)
+  self.second.onAwait(done)
+ista async fn fill(s: Slot<Int>):
+  await runtime.commit()
+  _ = s.put(7)
+live async fn main() -> (Int, Int): await runtime.run(runtime.id()) _main()
+ista async fn _main() -> (Int, Int):
+  const s = Slot.create<Int>()
+  const t = Slot.create<Int>()
+  const r1 = s.read()
+  const r2 = t.read()
+  _ = fill(s)
+  _ = fill(t)
+  const firstWon = await RaceReads{first: r1, second: r2}
+  const secondWon = await RaceReads{first: r2, second: r1}
+  (firstWon, secondWon)

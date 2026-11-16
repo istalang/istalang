@@ -1,0 +1,22 @@
+# panic: The context constant 'contexts/constant-read-while-made.sneaky' is read while it is being made.
+# A context constant read while it is being made panics (§3.4): its initializer reading it once,
+# through a flag it clears, doesn't make it twice.
+
+import * as runtime from 'runtime'
+
+shared struct Count:
+  value: Int
+ista const made = new Count{value: 0}
+ista const count = _counted()
+ista fn _counted() -> Count:
+  made->value = made->value + 1
+  new Count{value: 0}
+ista fn bump() -> Int:
+  count->value = count->value + 10
+  count->value
+shared struct Flag:
+  first: Bool
+ista const flag = new Flag{first: true}
+ista const sneaky: Int = if flag->first: { flag->first = false; sneaky + 1 } else: 10
+live async fn main() -> Int: await runtime.run("a") _read()
+ista fn _read() -> Int: sneaky

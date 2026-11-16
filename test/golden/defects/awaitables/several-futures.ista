@@ -1,0 +1,24 @@
+# outcome: 2
+# Several futures may register one resolver, the first to resolve deciding it (§6); resolving it
+# after does nothing.
+
+import * as runtime from 'runtime'
+
+struct Delegated:
+  inner: Future<Int, "ista">
+  type Mode = "ista"
+ista fn onAwait(self: Delegated, done: Resolver<Int, "ista">): self.inner.onAwait(done)
+ista async fn later(value: Int) -> Int:
+  await runtime.commit()
+  value
+struct TwoFutures:
+  first: Future<Int, "ista">
+  second: Future<Int, "ista">
+  type Mode = "ista"
+ista fn onAwait(self: TwoFutures, done: Resolver<Int, "ista">):
+  self.first.onAwait(done)
+  self.second.onAwait(done)
+ista async fn now(value: Int) -> Int: value
+live async fn main() -> Int: await runtime.run(runtime.id()) _main()
+ista async fn _main() -> Int:
+  await TwoFutures{first: later(1), second: now(2)}

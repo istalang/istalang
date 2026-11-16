@@ -1,0 +1,25 @@
+# outcome: 17
+# An awaitable keeps the work it starts alive by registering its resolver on it (§6, §7): a call
+# `onAwait` starts and registers the wait's resolver on runs to its end and decides the wait.
+
+import * as runtime from 'runtime'
+
+shared struct Starts:
+  count: Int
+ista async fn work(starts: Starts, value: Int) -> Int:
+  starts->count = starts->count + 1
+  await runtime.commit()
+  value
+struct ColdWork:
+  starts: Starts
+  value: Int
+  type Mode = "ista"
+ista fn onAwait(self: ColdWork, done: Resolver<Int, "ista">):
+  work(self.starts, self.value).onAwait(done)
+live async fn main() -> Int: await runtime.run(runtime.id()) _main()
+ista async fn _main() -> Int:
+  const starts = new Starts{count: 0}
+  const job = ColdWork{starts: starts, value: 7}
+  const before = starts->count
+  const got = await job
+  before * 100 + starts->count * 10 + got

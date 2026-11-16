@@ -1,0 +1,29 @@
+# Disposal order (spec §7): values losing their last holder together are disposed last made first,
+# each holder before what it holds. Each rule is its own function, and its test asserts what the old
+# runtime's unit test did.
+
+import Suite, Test, test, assertEq from 'testing'
+import * as runtime from 'runtime'
+
+shared struct Lease:
+  name: String
+  log: Shared<Array<String>>
+  child: Lease? = none
+
+fn dispose(self: Lease):
+  self->log->value.push("disposed " + self->name)
+
+ista async fn disposalRounds() -> String:
+  const log = new Shared<Array<String>>{value: []}
+  if true:
+    const l0 = new Lease{name: "0", log}
+    const l1 = new Lease{name: "1", log}
+    const l2 = new Lease{name: "2", log, child: l0}
+    drop l0
+  await runtime.commit()
+  log->value.join(", ")
+
+@Suite{"disposal"}
+fn suite() -> Array<Test>: [
+  test("the current round finishes before what a disposal in that round held is disposed", async fn(): assertEq(await disposalRounds(), "disposed 2, disposed 1, disposed 0"))
+]

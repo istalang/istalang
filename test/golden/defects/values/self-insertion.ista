@@ -1,0 +1,30 @@
+# outcome: [10,10,20,30,40,30,40,4,3,2,1,99,1,1]
+# A write reads its right side before changing anything (§2, §3.7): a slice assigned from its own
+# array, a reversed span from itself, and a struct pushed into its own array through overlapping
+# references each see the value as it was.
+
+import * as runtime from 'runtime'
+
+struct Node:
+  items: Array<Node>
+  tag: Int
+
+struct Holder:
+  a: Node
+
+fn selfPush(items: &Array<Node>, a: &Node):
+  items.push(a)
+  a.tag = 99
+
+live async fn main() -> Array<Int>: await runtime.run(runtime.id()) _main()
+ista async fn _main() -> Array<Int>:
+  let xs = [10, 20, 30]
+  xs.push(40)
+  xs[1..2] = xs
+  let rev = [1, 2, 3]
+  rev.push(4)
+  rev[.. by -1] = rev
+  let h = Holder{a: Node{items: [], tag: 1}}
+  h.a.items.push(Node{items: [], tag: 0})
+  selfPush(&h.a.items, &h.a)
+  [...xs, ...rev, h.a.tag, h.a.items[1].tag, h.a.items[1].items.length()]

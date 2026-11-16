@@ -1,0 +1,32 @@
+# outcome: [10,20,30]
+# An instance's outcome is the value its root returned (§9): the disposal of a context constant
+# changing that value as the instance exits changes nothing of it.
+
+import * as runtime from 'runtime'
+
+fn unwrap(r: Result<Array<Int>>) -> Array<Int>:
+  match r:
+    case Ok(xs): xs
+    case Err(_): []
+
+shared struct Hook:
+  onExit: Shared<ista fn() -> Unit>
+
+ista fn dispose(self: Hook):
+  (self->onExit->value)()
+
+ista const hook = new Hook{onExit: new Shared<ista fn() -> Unit>{value: ista fn(): ()}}
+
+ista async fn childWithConstHook() -> Array<Int>:
+  let xs = [10, 20]
+  xs.push(30)
+  hook->onExit->value = ista fn(): {
+    xs.push(999)
+    xs[0] = 888
+  }
+  await runtime.commit()
+  xs
+
+live async fn main() -> Array<Int>: await runtime.run(runtime.id()) _main()
+ista async fn _main() -> Array<Int>:
+  unwrap(await (spawn childWithConstHook()).result())

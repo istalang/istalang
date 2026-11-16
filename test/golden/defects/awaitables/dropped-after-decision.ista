@@ -1,0 +1,24 @@
+# panic: A resolver was let go of unresolved, so the wait it was to decide never can. An awaitable keeps the work it starts alive by registering its resolver, or a Resolver.at of it, on that work; to map a value, await it in an async fn.
+# A wait's resolver let go of unresolved, never registered, panics (§6, §7), even when an earlier
+# case resolved its own resolver in `onAwait`: the wait hasn't begun, so nothing cancelled it.
+
+import * as runtime from 'runtime'
+
+shared struct Starts:
+  count: Int
+struct Cold:
+  starts: Starts
+  value: Int
+  type Mode = "ista"
+ista fn onAwait(self: Cold, done: Resolver<Int, "ista">):
+  self.starts->count = self.starts->count + 1
+  done.resolve(self.value)
+struct Dropped:
+  type Mode = "ista"
+ista fn onAwait(self: Dropped, done: Resolver<Int, "ista">): ()
+live async fn main() -> Int: await runtime.run(runtime.id()) _main()
+ista async fn _main() -> Int:
+  const starts = new Starts{count: 0}
+  await select:
+    case Cold{starts: starts, value: 1} as v: v
+    case Dropped as v: v

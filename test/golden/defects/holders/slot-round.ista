@@ -1,0 +1,47 @@
+# outcome: "disposed inside, disposed first | disposed inside, disposed first | disposed inside, disposed first"
+# A slot dies with the values in it (§6), so what it holds is disposed in the slot's own round,
+# before what was created earlier (§7), whether no weak reference, a named one or an unnamed one
+# refers to the slot: a weak reference holds nothing.
+
+import * as runtime from 'runtime'
+
+shared struct Lease:
+  name: String
+  log: Shared<Array<String>>
+
+fn dispose(self: Lease):
+  self->log->value.push("disposed " + self->name)
+
+ista async fn unwatched() -> String:
+  const log = new Shared<Array<String>>{value: []}
+  if true:
+    const first = new Lease{name: "first", log}
+    const s = Slot.create<Lease>()
+    drop s.put(new Lease{name: "inside", log})
+    await runtime.commit()
+  log->value.join(", ")
+
+ista async fn watchedByName() -> String:
+  const log = new Shared<Array<String>>{value: []}
+  if true:
+    const first = new Lease{name: "first", log}
+    const s = Slot.create<Lease>()
+    drop s.put(new Lease{name: "inside", log})
+    const w = WeakRef(s)
+    await runtime.commit()
+  log->value.join(", ")
+
+ista async fn watchedUnnamed() -> String:
+  const log = new Shared<Array<String>>{value: []}
+  if true:
+    const first = new Lease{name: "first", log}
+    const s = Slot.create<Lease>()
+    drop s.put(new Lease{name: "inside", log})
+    _ = WeakRef(s)
+    await runtime.commit()
+  log->value.join(", ")
+
+live async fn main() -> String: await runtime.run(runtime.id()) _main()
+
+ista async fn _main() -> String:
+  [await unwatched(), await watchedByName(), await watchedUnnamed()].join(" | ")

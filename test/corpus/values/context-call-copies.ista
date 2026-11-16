@@ -1,0 +1,50 @@
+# outcome: [1,2,3,10,20,30,7,8,9]
+# A value crossing a context call is a copy both ways (§9): neither the caller changing what it
+# passed nor the context changing its state afterwards changes what the other side got.
+
+import * as runtime from 'runtime'
+
+ista const state = new Shared<Array<Int>>{value: [10, 20]}
+
+fn unwrap(r: Result<Array<Int>>) -> Array<Int>:
+  match r:
+    case Ok(xs): xs
+    case Err(_): []
+
+ista async fn echo(xs: Array<Int>) -> Array<Int>:
+  xs
+
+ista fn readState() -> Array<Int>:
+  state->value.push(30)
+  state->value
+
+ista fn mutateState():
+  state->value.push(400)
+  state->value[0] = 999
+
+ista fn saveState(xs: Array<Int>):
+  state->value = xs
+
+ista fn currentState() -> Array<Int>:
+  state->value
+
+live async fn main() -> Array<Int>:
+  const rt = await runtime.Runtime.open(runtime.hostStore())
+  let callerXs = [1, 2]
+  callerXs.push(3)
+  const pendingCall = rt.call("ctx") echo(callerXs)
+  callerXs.push(40)
+  callerXs[0] = 90
+  const echoed = unwrap(await pendingCall)
+
+  const firstRead = unwrap(await rt.call("ctx") readState())
+  _ = await rt.call("ctx") mutateState()
+
+  let sent = [7, 8]
+  sent.push(9)
+  _ = await rt.call("ctx") saveState(sent)
+  sent.push(70)
+  sent[0] = 99
+  const savedInCtx = unwrap(await rt.call("ctx") currentState())
+
+  [...echoed, ...firstRead, ...savedInCtx]

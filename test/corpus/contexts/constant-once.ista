@@ -1,0 +1,24 @@
+# outcome: [2001,30,10]
+# A context constant is made once per context, at its first read, and kept across commits (§3.4).
+
+import * as runtime from 'runtime'
+
+shared struct Count:
+  value: Int
+ista const made = new Count{value: 0}
+ista const count = _counted()
+ista fn _counted() -> Count:
+  made->value = made->value + 1
+  new Count{value: 0}
+ista fn bump() -> Int:
+  count->value = count->value + 10
+  count->value
+live async fn main() -> (Int, Int, Int):
+  const first = await runtime.run("a") _twice()
+  const again = await runtime.run("a") bump()
+  const other = await runtime.run("b") bump()
+  (first, again, other)
+ista async fn _twice() -> Int:
+  _ = bump()
+  await runtime.commit()
+  bump() * 100 + made->value

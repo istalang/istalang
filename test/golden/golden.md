@@ -23,6 +23,7 @@ A subject's source keeps what it states, and its golden holds only the rest:
 | `corpus` | `test/corpus` programs with a `# outcome:`/`# panic:` header | outcome, panic message | panic frame, logs, host calls |
 | `regressions` | `src/codegen/regressions/` | the same | the same |
 | `amended` | `amended/`, written by hand to the spec amendments | the same | the same, by hand |
+| `defects` | `defects/<construct>/`, what a test of the old pipeline asserted and this one doesn't show yet | the same | nothing: expected red |
 | `spec-examples` | spec and guide examples that are whole programs declaring `main` | nothing | everything |
 | `form-builder` | FormBuilder's demos with their hosts | nothing | everything: the views are host calls |
 | `suites` | `.test.ista` modules, a std module's together, FormBuilder's, and `test/spec-suites` beside its spec code | their assertions | what `ista test` prints of a passing run |
@@ -31,6 +32,11 @@ A subject's source keeps what it states, and its golden holds only the rest:
 A group is one file, `<group>.json`, keyed by subject; a subject with nothing more to record has no
 entry. Keys follow the source's path, except spec examples: `document § section #n`, since lines
 move with every edit.
+
+A `defects` program states the old assertion (`docs/work/ir-first/coverage.md`) and is checked to
+show something else, a toolchain invariant breaking on it included; a diagnostic still fails it.
+Once fixed, it fails that check, and moves to `test/corpus` under the same path with its golden
+recorded.
 
 ## What a run shows
 
