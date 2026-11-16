@@ -15,3 +15,4 @@
 - [IR first](project_ir-first.md) — everything lowered to IR, all backends alike, no interpreter-only features; greenfield refactor plans
 - [Few big phases](feedback_few-big-phases.md) — rewrites: one late-tested phase over many small ones keeping deleted code green
 - [Vitest projects](project_vitest-projects.md) — golden/sweeps run only under `--project slow`; mixed paths silently skip them
+- [Suites over corpus](feedback_suites-over-corpus.md) — ported rules as .test.ista cases by area; corpus program only for whole-program rules
