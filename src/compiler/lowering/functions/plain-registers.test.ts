@@ -1,7 +1,8 @@
 /**
  * Which registers hold only what reaches no disposable (plain-registers.ts): those types say, and
  * those every write builds from plain ones; what a call, a wait or the caller gives, and a cell, are
- * plain by type alone, and a register any write makes from a counted one is counted. Over random
+ * plain by type alone, and a register any write makes from a counted one is counted, a write through
+ * a reference `behind` fills counting its handle. Over random
  * code run again and again, as a loop's body is, no register found plain ever holds what a call or
  * a parameter gave.
  */
@@ -65,10 +66,11 @@ describe('plain registers', () => {
       { kind: 'move', span, dst: 1, src: 0 },
       { kind: 'move', span, dst: 2, src: 0 },
       call(3),
-      { kind: 'writeCell', span, cell: 1, value: 3 },
+      { kind: 'behind', span, dst: 4, handle: 1 },
+      { kind: 'move', span, dst: 4, src: 3 },
       { kind: 'store', span, place: { register: 2, path: [0] }, value: 3 },
     ];
-    expect(plainOf(instructions, 4)).toEqual([0]);
+    expect(plainOf(instructions, 5)).toEqual([0]);
   });
 
   it('holds a parameter, a capture or a cell plain only when its type says so', () => {
@@ -107,8 +109,8 @@ const code = fc.array(
       .record({ dst: written, cell: register })
       .map(({ dst, cell }): Instruction => ({ kind: 'readCell', span, dst, cell })),
     fc
-      .record({ cell: written, value: register })
-      .map(({ cell, value }): Instruction => ({ kind: 'writeCell', span, cell, value })),
+      .record({ dst: written, handle: register })
+      .map(({ dst, handle }): Instruction => ({ kind: 'behind', span, dst, handle })),
     fc.record({ target: written, value: register }).map(
       ({ target, value }): Instruction => ({
         kind: 'store',
@@ -129,10 +131,17 @@ const code = fc.array(
 function tainted(instructions: readonly Instruction[], passes: number): ReadonlySet<number> {
   const taint = Array.from({ length: frame }, (_, each) => each < inputs);
   const ever = new Set(taint.flatMap((is, each) => (is ? [each] : [])));
+  // A register `behind` filled is the place behind its handle: a write to it is one of the handle's.
+  const behindOf = new Map<number, number>();
   const write = (dst: number, value: boolean): void => {
     taint[dst] = value;
+    const handle = behindOf.get(dst);
     if (value) {
       ever.add(dst);
+      if (handle !== undefined) {
+        taint[handle] = true;
+        ever.add(handle);
+      }
     }
   };
   for (let pass = 0; pass < passes; pass += 1) {
@@ -154,11 +163,9 @@ function tainted(instructions: readonly Instruction[], passes: number): Readonly
             instruction.elements.some((each) => taint[each] === true),
           );
           break;
-        case 'writeCell':
-          write(
-            instruction.cell,
-            taint[instruction.cell] === true || taint[instruction.value] === true,
-          );
+        case 'behind':
+          behindOf.set(instruction.dst, instruction.handle);
+          write(instruction.dst, taint[instruction.handle] === true);
           break;
         case 'store':
           write(

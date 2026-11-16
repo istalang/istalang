@@ -74,8 +74,12 @@ const newCell = defineInstruction('newCell', { dst: register, type: typeId, valu
 /** dst = the value in the cell the handle in `cell` names: `*x` (spec §3.9). */
 const readCell = defineInstruction('readCell', { dst: register, cell: register });
 
-/** Writes `value` to the cell the handle in `cell` names, for every copy of it: `*x = v`. */
-const writeCell = defineInstruction('writeCell', { cell: register, value: register });
+/**
+ * dst = a reference to the value in the cell the handle in `handle` names, the place `*x` (spec
+ * §3.7, §3.18): written through for every copy of the handle, as `*x = v` and `x->f = v` are, and
+ * passed by `&` to a native, which changes it only as it returns.
+ */
+const behind = defineInstruction('behind', { dst: register, handle: register });
 
 /** `[a, ...xs, b]`, a spread copying another array's elements. */
 const array = defineInstruction('array', { dst: register, elements: z.array(item) });
@@ -150,7 +154,7 @@ export const dataInstructions = [
   store,
   newCell,
   readCell,
-  writeCell,
+  behind,
   array,
   map,
   closure,

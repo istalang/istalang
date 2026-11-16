@@ -6,13 +6,15 @@
  * - A Definition place is a register plus field positions into its value; writing one with a path
  *   is a `store`, building the new value along it, as values are immutable. A register holding a
  *   cell or a reference is read and written through it by the runtime.
- * - What is behind a handle (§3.18) is read with `readCell` and written with `writeCell`: a part of
- *   it is written into its value as it stands then, which is written back.
+ * - A place behind a handle (§3.18) is reached through the reference `behind` gives as the place is
+ *   entered: a write goes into the cell's value as it stands then, and a native taking it by `&`
+ *   changes it there, which a native does only as it returns.
  * - A field a key of several names reaches is the one the key's value names: a switch on it, each
  *   case reaching its field and the positions past it, the value converted into that field's own
  *   type (`intoKeyedField`), as it is where an instantiation left the key one name.
- * - A place passed by `&` that is no variable's, or is behind a handle, is copied into a cell of its
- *   own and written back once the call returns (copy-in/copy-out).
+ * - A place passed by `&` that is no variable's, or is behind a handle and passed to code, is copied
+ *   into a cell of its own and written back once the call returns (copy-in/copy-out, §3.7): code
+ *   could read the handle's value meanwhile, which still holds the old one.
  * - Appending an item to an array or a `Map` being built builds the next value from the last.
  */
 
@@ -34,12 +36,12 @@ import { cellRegister } from './variables.ts';
 import type { FlowWriter } from './writer.ts';
 
 /**
- * Where a place is: a Definition place; positions into the value behind the handle in `cell`; or
- * positions past the field of `within` a key's value names.
+ * Where a place is: a Definition place, into a register's value (`place`) or through the reference
+ * to the value behind a handle (`behind`); or positions past the field of `within` a key's value
+ * names.
  */
 type Location =
-  | { readonly kind: 'place'; readonly place: DefinitionPlace }
-  | { readonly kind: 'behind'; readonly cell: Register; readonly path: readonly number[] }
+  | { readonly kind: 'place' | 'behind'; readonly place: DefinitionPlace }
   | {
       readonly kind: 'keyed';
       readonly within: Location;
@@ -63,7 +65,7 @@ export function writePlace(
     appended(writer, place.root, writer.registerOf(value), span);
     return;
   }
-  const { location } = locate(writer, place);
+  const { location } = locate(writer, place, span);
   const source = writer.keyed.get(value);
   if (source === undefined) {
     writeAt(writer, location, writer.registerOf(value), span);
@@ -116,26 +118,28 @@ function appended(writer: FlowWriter, root: ValueId, item: Register, span: Ancho
 }
 
 /**
- * The arguments `given` passes at `site`: a value as it is, a place by `&`, copied into a cell
- * where it is no variable's; and what writes those copies back, the last first, once the call
- * returns.
+ * The arguments `given` passes at `site` to a native or to code: a value as it is, a place by `&`,
+ * copied into a cell where it is no variable's, or behind a handle and passed to code; and what
+ * writes those copies back, the last first, once the call returns.
  */
 export function passedArguments(
   writer: FlowWriter,
   given: readonly Argument[],
-  site: NodeOf<string>,
+  { site, native }: { readonly site: NodeOf<string>; readonly native: boolean },
 ): { readonly arguments: readonly DefinitionArgument[]; readonly leave: () => void } {
   const leaves: (() => void)[] = [];
   const passed = given.map((argument): DefinitionArgument => {
     if (argument.kind === 'value') {
       return { kind: 'value', register: writer.registerOf(argument.value) };
     }
-    const { location, type } = locate(writer, argument.place);
-    if (location.kind === 'place' && writer.valueOf(argument.place.root).kind === 'variable') {
-      return { kind: 'reference', place: location.place };
-    }
+    const { location, type } = locate(writer, argument.place, site.span);
     if (location.kind === 'keyed') {
       return unreachable(`A key of several fields at ${site.span.from} is passed by '&'.`);
+    }
+    const asItIs =
+      location.kind === 'behind' ? native : writer.valueOf(argument.place.root).kind === 'variable';
+    if (asItIs) {
+      return { kind: 'reference', place: location.place };
     }
     const cell = cellRegister(writer.context, type);
     writer.context.code.emit({
@@ -155,30 +159,39 @@ export function passedArguments(
   return { arguments: passed, leave };
 }
 
-/** Locates `place`: its root's register, then each part into it. */
-function locate(writer: FlowWriter, { root, path }: Place): Located {
+/** Locates `place`, entered at `span`: its root's register, then each part into it. */
+function locate(writer: FlowWriter, { root, path }: Place, span: AnchoredSpan): Located {
   const start: Located = {
     location: { kind: 'place', place: { register: writer.registerOf(root), path: [] } },
     type: writer.typeOf(root),
   };
-  return path.reduce((located, part) => stepped(writer, located, part), start);
+  return path.reduce((located, part) => stepped(writer, located, part, span), start);
 }
 
 /** `located`, then `part` into it: the value behind its handle, a field, an element of a tuple. */
-function stepped(writer: FlowWriter, { location, type }: Located, part: Part): Located {
-  const { checker } = writer.context;
+function stepped(
+  writer: FlowWriter,
+  { location, type }: Located,
+  part: Part,
+  span: AnchoredSpan,
+): Located {
+  const { checker, code } = writer.context;
   const field = (name: string) => {
     const { member, read } = fieldOf(writer, type, name);
     return { location: deeper(location, [read.index]), type: member.type };
   };
   switch (part.kind) {
-    case 'behind':
-      return location.kind === 'place' && location.place.path.length === 0
-        ? {
-            location: { kind: 'behind', cell: location.place.register, path: [] },
-            type: checker.sharedValueOf(type) ?? unreachable('A handle holds no shape.'),
-          }
-        : unreachable('A handle is the root of the place behind it.');
+    case 'behind': {
+      if (location.kind !== 'place' || location.place.path.length > 0) {
+        return unreachable('A handle is the root of the place behind it.');
+      }
+      const reference = code.allocate();
+      code.emit({ kind: 'behind', span, dst: reference, handle: location.place.register });
+      return {
+        location: { kind: 'behind', place: { register: reference, path: [] } },
+        type: checker.sharedValueOf(type) ?? unreachable('A handle holds no shape.'),
+      };
+    }
     case 'keyed': {
       const key = writer.typed(part.key);
       return key.type.kind === 'literal' && typeof key.type.value === 'string'
@@ -206,11 +219,11 @@ function stepped(writer: FlowWriter, { location, type }: Located, part: Part): L
 /** `location` field `positions` deeper. */
 function deeper(location: Location, positions: readonly number[]): Location {
   switch (location.kind) {
-    case 'place': {
+    case 'place':
+    case 'behind': {
       const path = [...location.place.path, ...positions];
       return { ...location, place: { ...location.place, path } };
     }
-    case 'behind':
     case 'keyed':
       return { ...location, path: [...location.path, ...positions] };
     default: {
@@ -222,22 +235,10 @@ function deeper(location: Location, positions: readonly number[]): Location {
 
 /** Reads the value at `location` as it stands now. */
 function readAt(writer: FlowWriter, location: Location, span: AnchoredSpan): Register {
-  const { code } = writer.context;
-  switch (location.kind) {
-    case 'place':
-      return code.readPath(location.place.register, location.place.path, span);
-    case 'behind': {
-      const value = code.allocate();
-      code.emit({ kind: 'readCell', span, dst: value, cell: location.cell });
-      return code.readPath(value, location.path, span);
-    }
-    case 'keyed':
-      return unreachable('A field a key of several names names is read by the flow, not here.');
-    default: {
-      const unhandled: never = location;
-      return unhandled;
-    }
+  if (location.kind === 'keyed') {
+    return unreachable('A field a key of several names names is read by the flow, not here.');
   }
+  return writer.context.code.readPath(location.place.register, location.place.path, span);
 }
 
 /** Writes `value` at `location`: behind a handle, into its value as it stands now. */
@@ -247,20 +248,12 @@ function writeAt(
   value: Register,
   span: AnchoredSpan,
 ): void {
-  const { code } = writer.context;
-  if (location.kind === 'place') {
-    stored(writer, location.place, value, span);
-  } else if (location.kind === 'keyed') {
+  if (location.kind === 'keyed') {
     eachKeyedField(writer.context, location.keyed, span, (_, position) =>
       writeAt(writer, deeper(location.within, [position, ...location.path]), value, span),
     );
-  } else if (location.path.length === 0) {
-    code.emit({ kind: 'writeCell', span, cell: location.cell, value });
   } else {
-    const whole = code.allocate();
-    code.emit({ kind: 'readCell', span, dst: whole, cell: location.cell });
-    stored(writer, { register: whole, path: [...location.path] }, value, span);
-    code.emit({ kind: 'writeCell', span, cell: location.cell, value: whole });
+    stored(writer, location.place, value, span);
   }
 }
 

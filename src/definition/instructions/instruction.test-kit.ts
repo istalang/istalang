@@ -117,7 +117,7 @@ const generators: { readonly [Kind in InstructionKind]: Generator<Kind> } = {
     s.cells.length === 0
       ? undefined
       : fc.record({ dst: fc.constantFrom(...s.cells), target: index(s.labels) }),
-  writeCell: (s) => fc.record({ cell: index(s.registers), value: index(s.registers) }),
+  behind: (s) => fc.record({ dst: index(s.registers), handle: index(s.registers) }),
   array: (s) =>
     fc.record({
       dst: index(s.registers),

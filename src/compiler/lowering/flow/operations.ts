@@ -29,6 +29,7 @@ import { packElementsOf } from '../calls/packs.ts';
 import { awaitWait } from '../calls/waits.ts';
 import { nestedSpanOf } from '../functions/bodies.ts';
 import { constantValue } from '../tables/constants.ts';
+import { ownEntryOf } from '../tables/own-entries.ts';
 import { equal, negated, ordered } from '../values/operators.ts';
 import { noneOf } from '../values/optionals.ts';
 import { structValue, tupleOf } from '../values/struct-values.ts';
@@ -251,14 +252,17 @@ function called(
 ): void {
   const { context } = writer;
   const { span } = site;
-  const passed = passedArguments(writer, given, site);
+  const closed = context.closed(call);
+  const native =
+    closed.kind !== 'dispatch' && ownEntryOf(context.checker, closed.instance).kind === 'native';
+  const passed = passedArguments(writer, given, { site, native });
   const [future] = given;
   // A case hands its resolver to what it waits on, which keeps it if it is to decide the wait.
   const done = role === 'onAwait' ? awaitedBy(writer, future, span) : undefined;
   const arguments_ = done === undefined ? passed.arguments : [...passed.arguments, done];
   const dst = emitFunctionCall(context, {
     span,
-    call: context.closed(call),
+    call: closed,
     arguments: arguments_,
   });
   passed.leave();
@@ -289,7 +293,7 @@ function calledValue(
 ): void {
   const { context } = writer;
   const { span } = site;
-  const passed = passedArguments(writer, given, site);
+  const passed = passedArguments(writer, given, { site, native: false });
   const arguments_ = passed.arguments.flatMap((argument, index): DefinitionArgument[] => {
     const value = given[index];
     return spreads.includes(index) && argument.kind === 'value' && value?.kind === 'value'

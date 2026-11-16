@@ -40,7 +40,7 @@ export const dataEmitters: Emitters<typeof dataInstructions> = {
   store: (scope, i) => scope.store(i.place, scope.read(i.value)),
   newCell: (scope, i) => scope.write(i.dst, `run.cell(${i.type}, ${scope.read(i.value)})`),
   readCell: (scope, i) => scope.write(i.dst, `${scope.read(i.cell)}.v`),
-  writeCell: (scope, i) => `${scope.read(i.cell)}.v = ${scope.read(i.value)};`,
+  behind: (scope, i) => `r${i.dst} = placeIn(${scope.read(i.handle)}, []);`,
   array: (scope, i) => {
     const elements = i.elements.map((element) =>
       element.kind === 'item'

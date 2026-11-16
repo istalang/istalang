@@ -5,8 +5,9 @@
  *
  * - A register is a JavaScript local `r<n>`. A cell register (a variable passed by `&`, captured
  *   by a closure, or a transient) holds a `Cell`, made by its first write; a reference parameter
- *   holds the caller's place as a `Place`. Reads and writes of both go through to what they hold, so
- *   instructions never ask how a register is held.
+ *   holds the caller's place as a `Place`, and a register `behind` fills the place behind a handle.
+ *   Reads and writes of both go through to what they hold, so instructions never ask how a register
+ *   is held.
  * - A transient's cell becomes visible to the calls nested in this one as it is made
  *   (`run.share`), which is why its first write differs from any other cell register's.
  * - A counted register (definition/tables/functions.ts `counted`) reports its writes to the run's
@@ -194,6 +195,11 @@ function holdingsOf(entry: CodeFunction): Holding[] {
   for (const [index, parameter] of entry.parameters.entries()) {
     if (parameter.reference) {
       holdings[index] = 'reference';
+    }
+  }
+  for (const instruction of entry.instructions) {
+    if (instruction.kind === 'behind') {
+      holdings[instruction.dst] = 'reference';
     }
   }
   return holdings;

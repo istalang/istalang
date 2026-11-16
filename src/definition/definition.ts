@@ -20,4 +20,7 @@ const definition = tables.superRefine(checkReferences);
 
 export type Definition = z.output<typeof definition>;
 
-export const definitionFormat = defineFormat('istalang-definition', 2, definition);
+/** The format's version: 2 lists each entry's counted registers, 3 writes behind a handle by `behind`. */
+const version = 3;
+
+export const definitionFormat = defineFormat('istalang-definition', version, definition);

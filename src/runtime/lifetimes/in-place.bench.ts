@@ -1,9 +1,9 @@
 /**
  * Building a collection one item at a time (docs/work/tracker.md, P2), measured with `npm run bench`
  * and kept out of `npm run verify`, as the scheduler's is (scheduler/wake.bench.ts): a
- * comprehension, map inserts and a spread through a cursor, each at two sizes. Changing a value in
- * place where nothing else holds it (in-place.ts) makes each linear, so the larger size takes about
- * twice the smaller's time.
+ * comprehension, map inserts, a spread through a cursor and pushes through a shared struct's handle,
+ * each at two sizes. Changing a value in place where nothing else holds it (in-place.ts) makes each
+ * linear, so the larger size takes about twice the smaller's time.
  */
 
 import { test as it } from 'vitest';
@@ -32,9 +32,19 @@ const workloads = {
     m[i] = i
   m.size()`,
   'spread of a range': (n: number) => `  [...0..${n}].length()`,
+  'pushes through a handle': (n: number) => `  let items: Array<Int> = []
+  const shared = new Shared{value: items}
+  for i in 0..${n}:
+    shared->value.push(i)
+  shared->value.length()`,
 } as const;
 
-const sizes = { comprehension: 20_000, 'map inserts': 5000, 'spread of a range': 20_000 } as const;
+const sizes = {
+  comprehension: 20_000,
+  'map inserts': 5000,
+  'spread of a range': 20_000,
+  'pushes through a handle': 5000,
+} as const;
 
 for (const [name, body] of Object.entries(workloads)) {
   const size = sizes[name as keyof typeof sizes];

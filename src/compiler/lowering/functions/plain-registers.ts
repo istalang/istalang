@@ -43,8 +43,9 @@ const writes: Handlers<undefined, Instruction, [], readonly Write[]> = {
   store: (_, i) => madeOf(i.place.register, [i.place.register, i.value]),
   newCell: (_, i) => opaque(i.dst),
   readCell: (_, i) => madeOf(i.dst, [i.cell]),
-  // What is behind the handle is part of the handle's register's value, as a store's part is.
-  writeCell: (_, i) => madeOf(i.cell, [i.cell, i.value]),
+  // What is behind the handle is part of the handle's register's value, as a store's part is: a
+  // write through the reference is one of the handle's.
+  behind: (_, i) => [...madeOf(i.dst, [i.handle]), ...madeOf(i.handle, [i.handle, i.dst])],
   array: (_, i) =>
     madeOf(
       i.dst,

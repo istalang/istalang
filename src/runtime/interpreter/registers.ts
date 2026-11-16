@@ -3,7 +3,8 @@
  * are, so reading and writing one is the same call whatever it holds:
  * - a register the function lists in `cells` holds a handle to a cell in the instance's heap, a
  *   variable that is passed by `&`; the cell is made by the first write, and holds the value;
- * - a reference parameter's register holds a reference: a cell and a path into its value (§3.7);
+ * - a reference parameter's register, and one `behind` fills, holds a reference: a cell and a path
+ *   into its value (§3.7);
  * - a closure's capture of a `let` holds the cell the closure carries, a cell register too (§3.14);
  * - any other register holds its value.
  * A path holds field positions only (interpreter/parts.ts), so reading or writing a register never
@@ -67,9 +68,9 @@ export function readCell(frame: ActiveFrame, register: Register): Value {
   return frame.heap.read(cellOf(readRegister(frame, register)));
 }
 
-/** Writes `value` to the cell the handle in `register` names, for every copy of the handle. */
-export function writeCell(frame: ActiveFrame, register: Register, value: Value): void {
-  frame.heap.write(cellOf(readRegister(frame, register)), value);
+/** A reference to the value in the cell the handle in `register` names: the place `*x` (§3.18). */
+export function referenceBehind(frame: ActiveFrame, register: Register): Reference {
+  return { kind: 'reference', cell: cellOf(readRegister(frame, register)), path: [] };
 }
 
 /** Empties `register`, letting go of what it held: a cell register, its cell. */
@@ -78,8 +79,8 @@ export function clearRegister(frame: ActiveFrame, register: Register): void {
 }
 
 /**
- * Puts `contents` in `register` as they stand, making no cell: a reference parameter's reference, a
- * closure's capture as the closure carries it, or a restored frame's register.
+ * Puts `contents` in `register` as they stand, making no cell: a reference parameter's reference or
+ * one `behind` makes, a closure's capture as the closure carries it, or a restored frame's register.
  */
 export function placeContents(
   frame: ActiveFrame,

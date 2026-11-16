@@ -84,7 +84,7 @@ const rules: Handlers<Tables, Instruction, [CodeFunction], string | undefined> =
     owner.cells.some((cell) => cell.register === i.dst)
       ? undefined
       : `register ${i.dst} is no cell, so no call can share it.`,
-  writeCell: none,
+  behind: none,
   array: none,
   map: none,
   closure: (tables, i) => closureProblem(tables, i.function, i.captures.length),

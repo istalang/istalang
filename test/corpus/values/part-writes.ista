@@ -1,8 +1,9 @@
-# outcome: "10 1|10 1|7 5|10 1|10 1 1|1 5"
+# outcome: "10 1|10 1|7 5|9 0|10 1|10 1 1|1 5"
 # Writing a part of a value reached through a handle or an element (§3.7, §3.9) changes that part
 # of the value as it is when the write happens, so whatever changed another part meanwhile stays
 # changed: the right side of a compound assignment, the call a part is passed to by `&`, or
-# another execution while an `await` waits.
+# another execution while an `await` waits. A part passed by `&` to code is a copy: until the call
+# returns, the handle still holds the old value.
 
 import * as time from 'time'
 import * as runtime from 'runtime'
@@ -41,6 +42,15 @@ fn referenced() -> String:
   const c = new Counter{a: 0, b: 0}
   setBoth(&c->a, c)
   show(c->a, c->b)
+
+fn writeThenRead(x: &Int, c: Counter) -> Int:
+  x = 9
+  c->a
+
+fn copied() -> String:
+  const c = new Counter{a: 0, b: 0}
+  const seen = writeThenRead(&c->a, c)
+  show(c->a, seen)
 
 fn element() -> String:
   let xs = [P{a: 0, b: 0}]
@@ -82,4 +92,4 @@ fn show(a: Int, b: Int) -> String:
 
 live async fn main() -> String: await runtime.run(runtime.id()) _main()
 ista async fn _main() -> String:
-  [compound(), desugared(), referenced(), element(), nested(), await awaited()].join("|")
+  [compound(), desugared(), referenced(), copied(), element(), nested(), await awaited()].join("|")

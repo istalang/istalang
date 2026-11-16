@@ -36,15 +36,15 @@ import { count, functionId, label, objectId, register, typeId } from '../../defi
 import { integer, type Value, value } from '../../definition/values/values.ts';
 
 /**
- * What a reference parameter's register holds: a cell and field positions into its value, the
- * live form of a place (definition/instructions/places.ts). It exists only in registers;
- * references are never values (spec §3.7).
+ * What a reference parameter's register, or one `behind` fills, holds: a cell and field positions
+ * into its value, the live form of a place (definition/instructions/places.ts). It exists only in
+ * registers; references are never values (spec §3.7).
  */
 const reference = z.strictObject({ kind: z.literal('reference'), cell: objectId, path: fieldPath });
 
 export type Reference = z.output<typeof reference>;
 
-/** What a register holds: a value, or for a reference parameter, a reference. */
+/** What a register holds: a value, or a reference (a reference parameter's, or `behind`'s). */
 export type RegisterContents = Value | Reference;
 
 /** Whether a register holds a reference rather than a value. */

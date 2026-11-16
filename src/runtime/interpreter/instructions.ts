@@ -38,8 +38,8 @@ import {
   placeContents,
   readCell,
   readRegister,
+  referenceBehind,
   storeAt,
-  writeCell,
   writeRegister,
 } from './registers.ts';
 import { enterCase, releaseLosers } from './suspension.ts';
@@ -78,8 +78,8 @@ const handlers: Handlers<Machine, Instruction, [ActiveFrame], void> = {
   readCell: (_machine, instruction, frame) => {
     next(frame, instruction.dst, readCell(frame, instruction.cell));
   },
-  writeCell: (_machine, instruction, frame) => {
-    writeCell(frame, instruction.cell, readRegister(frame, instruction.value));
+  behind: (_machine, instruction, frame) => {
+    placeContents(frame, instruction.dst, referenceBehind(frame, instruction.handle));
     frame.pc += 1;
   },
   contextConstant: (_machine, instruction, frame) => {
