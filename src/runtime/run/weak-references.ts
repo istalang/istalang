@@ -1,7 +1,8 @@
 /**
  * Weak references (§7): each disposable has at most one, made the first time it is asked for, which
  * holds nothing. Its referent's disposal clears it, and settles its `disposed()` future if one was
- * asked for.
+ * asked for; it refers to none from the moment the last holder lets go, though the disposal may be
+ * yet to come in its round, so no `dispose` brings a released value back.
  */
 
 import type { RunObject } from './objects/run-object.ts';
@@ -36,4 +37,10 @@ export class WeakReferences {
     }
     return weak;
   }
+}
+
+/** What `weak` refers to while something holds it. */
+export function referentOf(weak: WeakReference): RunObject | undefined {
+  const { target } = weak;
+  return target !== undefined && target.count > 0 ? target : undefined;
 }

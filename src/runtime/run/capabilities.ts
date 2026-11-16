@@ -34,6 +34,7 @@ import { Resource } from './objects/resource.ts';
 import type { RunObject } from './objects/run-object.ts';
 import type { WeakReference } from './objects/weak-reference.ts';
 import type { Run } from './run.ts';
+import { referentOf } from './weak-references.ts';
 import type { TestingWorld } from './world.ts';
 
 /** What the run's capabilities read of the host: its clock and where logs go. */
@@ -106,7 +107,7 @@ function weakSideOf(run: Run): WithWeakSide['weak'] {
       run.weakReferences.of(referent as unknown as RunObject, () =>
         run.newId(),
       ) as unknown as Value,
-    target: (weak) => (weak as unknown as WeakReference).target as unknown as Value | undefined,
+    target: (weak) => referentOf(weak as unknown as WeakReference) as unknown as Value | undefined,
     watch: (watched) =>
       (watched instanceof Execution
         ? run.executions.disposingOf(watched)
