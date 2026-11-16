@@ -90,9 +90,14 @@ deploy keying the text it was given. Measured from the sources under Node's type
 | Program | Build | Functions | Definition | Compile | Write | Deploy |
 |---|---|---|---|---|---|---|
 | minimal `runtime.run(id) _main()` | before (`ac95388a`) | 161 | 491 KB | 79 ms | 29 ms | 52 ms |
-| | after | 119 | 296 KB | 73 ms | 15 ms | 18 ms |
+| | after (`b90898c5`) | 119 | 296 KB | 73 ms | 15 ms | 18 ms |
+| | with the await defects fixed (`1044ff5c`) | 131 | 312 KB | 79 ms | 15 ms | 19 ms |
 | delegate test's `purchase` | before | 616 | 1,925 KB | 200 ms | 101 ms | 188 ms |
 | | after | 444 | 1,171 KB | 139 ms | 49 ms | 64 ms |
+| | with the await defects fixed | 467 | 1,206 KB | 139 ms | 51 ms | 66 ms |
+
+FormBuilder at `1044ff5c`, a supplier form change, compiled, at a load average of 8: mean 1.10 ms,
+p75 0.84 ms, min 0.74 ms, p99 7.3 ms, within R1's range above and under R0's 1.77 ms gate.
 
 R0 compiled the minimal program to 25 functions, its futures being native. `npx vitest run --project
 quick`: 140 s before, 125 s after, both at a load average near 38, each with checker tests timing out
