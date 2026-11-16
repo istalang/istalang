@@ -43,6 +43,7 @@ trait Awaitable<T>:
   Self.Mode fn onAwait(self: Self, done: Resolver<T, Self.Mode>)
 
 # A future resolves `done` at once when it has settled, else as it settles.
+@Keeps{["self": ["done"]]}
 K fn onAwait<T, K in Persistence>(self: Future<T, K>, done: Resolver<T, K>):
   _registered(done)
   if _settled(self):
@@ -74,6 +75,7 @@ K fn _registered<T, K in Persistence>(resolver: Resolver<T, K>):
   resolver->registered = true
   drop resolver->onRegistered?.()
 
+@Keeps{[:]}
 K fn resolve<T, K in Persistence>(self: Resolver<T, K>, value: T):
   if self->state == 1: panic("A resolver was resolved twice.")
   if self->state == 0:
@@ -81,6 +83,7 @@ K fn resolve<T, K in Persistence>(self: Resolver<T, K>, value: T):
     const decide = self->decide
     drop decide(value)
 
+@Keeps{[:]}
 K fn tryResolve<T, K in Persistence>(self: Resolver<T, K>, value: T) -> Bool:
   if self->state != 0: return false
   self->state = 1

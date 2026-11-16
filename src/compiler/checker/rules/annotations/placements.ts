@@ -86,7 +86,7 @@ export const placements: Record<
     if (place.kind !== 'function') {
       return 'elsewhere';
     }
-    return place.isExtern && isStd ? undefined : (at) => checkerDiagnostics.keepsOutsideStd(at);
+    return isStd ? undefined : (at) => checkerDiagnostics.keepsOutsideStd(at);
   },
   any: (place) =>
     place.kind === 'field' || place.kind === 'function' || place.kind === 'struct'

@@ -42,6 +42,7 @@ import type { AnalysisContext } from './analysis/body.ts';
 import { type Analysis, analyze } from './analysis/index.ts';
 import { Declared, defaultsFlows, defaultsFound, withDefaults } from './declared.ts';
 import { conversionsOf, witnessesConvertedIn, witnessesOf, witnessesPutIn } from './dispatch.ts';
+import { summarizedByDeclaration } from './externs.ts';
 import { typeFactsOf } from './facts.ts';
 import type { FindingDeclaration, Violation } from './finding.ts';
 import {
@@ -221,7 +222,12 @@ export class Lifetimes {
         ...flows.flatMap((flow) => witnessesConvertedIn(checker, flow)),
       ].map((each) => each.function),
     );
-    return [...callees].filter(hasCode);
+    return [...callees].filter((callee) => this.#analyzedForCallers(callee));
+  }
+
+  /** Whether `declaration`'s callers read its body's analysis, rather than its declaration. */
+  #analyzedForCallers(declaration: FunctionDeclaration): boolean {
+    return hasCode(declaration) && !summarizedByDeclaration(this.#checker, declaration);
   }
 
   /** The members of `declaration`'s recursive group, in the call graph it reaches. */
@@ -353,14 +359,14 @@ export class Lifetimes {
    * each with what its defaults do, since a call may run any of them.
    */
   #summaryOf(declaration: FunctionDeclaration): Summary {
-    return hasCode(declaration)
+    return this.#analyzedForCallers(declaration)
       ? this.#analysisOf(declaration).summary
       : this.#bodilessSummary(declaration);
   }
 
-  /** What a native or a fields function does, but for its defaults. */
+  /** What a native, a function declaring what it keeps or a fields function does, but for its defaults. */
   #bodilessSummary(declaration: FunctionDeclaration): Summary {
-    return declaration.isExtern
+    return summarizedByDeclaration(this.#checker, declaration)
       ? nativeSummary(this.#checker, declaration)
       : constructorSummary(this.#checker, declaration);
   }

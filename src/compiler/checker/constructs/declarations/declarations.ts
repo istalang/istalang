@@ -115,8 +115,8 @@ function checkFunction(checker: CheckerContext, node: FunctionDeclaration): void
   if (node.isExtern) {
     checkHostBoundary(checker, module, node);
     refusePatterns(checker, module, node, 'an extern function');
-    checkKeeps(checker, node);
   }
+  checkKeeps(checker, node);
   if (checker.annotations.suiteTitleOf(module, node) !== undefined) {
     checkSuite(checker, module, node);
   }

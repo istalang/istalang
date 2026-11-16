@@ -9,6 +9,9 @@
  *   hold meets finitely many types.
  * - `@Keeps` names parameters, each reported where it names none of the function's. Without it, a
  *   parameter taken by `&` keeps every other: writing through it may store any of them (§3.7).
+ *   On a std function with a body it stands for the body, which calls code the analysis can't
+ *   follow: the prelude's resolvers decide through the closures they hold, the case chain an
+ *   `await` models (design.md §3), so their callers read them as natives.
  * - Both are read by parameter and type position, never by name, so a later phase reads what a
  *   call's arguments keep without spelling the names again.
  */
@@ -105,6 +108,11 @@ export function checkKeeps(checker: Reader, declaration: FunctionDeclaration): v
       );
     }
   }
+}
+
+/** Whether `declaration`'s callers read what it does off its declaration: a native, or `@Keeps`'s. */
+export function summarizedByDeclaration(checker: Reader, declaration: FunctionDeclaration): boolean {
+  return declaration.isExtern || annotationNamed(checker, declaration, 'keeps') !== undefined;
 }
 
 /** The position of each of `declaration`'s parameters, by its name. */

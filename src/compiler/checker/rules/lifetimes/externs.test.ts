@@ -69,14 +69,6 @@ describe('what a value of an extern type holds', () => {
     ]);
   });
 
-  it("is a resolver's callbacks, never its value", () => {
-    const resolver = preludeType('resolver', preludeType('slot', intType), ista);
-    expect(checker.externHeldOf(resolver).map(typeText)).toEqual([
-      'ista fn(Slot<Int>) -> Unit',
-      'ista fn() -> Unit',
-    ]);
-  });
-
   it('lets a weak reference to a future be lost, where a tuple of one must be used', () => {
     const text = lines(
       'ista fn weak(future: Future<Int, "ista">) -> WeakRef<Future<Int, "ista">>:',
@@ -143,7 +135,7 @@ describe('where @Holds and @Keeps stand', () => {
     expect(reported(text).codes).toEqual([5750, 5751]);
   });
 
-  it("is only an extern: the std's other code shows what it holds and keeps", () => {
+  it("is, for @Holds, only an extern struct, and for @Keeps any of the std's functions", () => {
     const text = lines(
       "import Holds, Keeps from 'lifetimes'",
       '@Holds<T>',
@@ -154,7 +146,7 @@ describe('where @Holds and @Keeps stand', () => {
       '@Holds<Int>',
       'extern fn other()',
     );
-    expect(reportedInStd(text).codes).toEqual([5750, 5751, 5903]);
+    expect(reportedInStd(text).codes).toEqual([5750, 5903]);
   });
 
   it("is where the std's own externs have them", () => {

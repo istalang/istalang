@@ -81,7 +81,7 @@ export const lifetimeTemplates = {
   keepsOutsideStd: {
     code: 5751,
     message: () =>
-      "'@Keeps' stands only on an extern function of the std: any other function shows what it keeps, and a host's keep no language values (§3.16).",
+      "'@Keeps' stands only on a function of the std: any other function shows what it keeps, and a host's keep no language values (§3.16).",
   },
   keepsUnknownParameter: {
     code: 5752,
