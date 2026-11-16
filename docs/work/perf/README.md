@@ -3,8 +3,8 @@ description: how to profile the toolchain — which script under scripts/profile
 owner: tech-lead
 status: active
 applies_to: istalang
-last_verified: 2026-11-06
-last_updated: 2026-11-06
+last_verified: 2026-11-17
+last_updated: 2026-11-17
 tags: [performance, profiling, tooling]
 ---
 
@@ -14,7 +14,8 @@ The tools are in `scripts/profile/`; each file's banner gives its usage. They al
 
 | Question | Run |
 |---|---|
-| How long does a cold compile take, phase by phase (load, bind, check, lower)? | `npm run profile:cold -- <dir> [runs] [fb\|std-tests]`: one fresh process per run, no cache |
+| How long does a cold build take, phase by phase (load, bind, check, lower, write, then deploy and start, or run the tests)? | `npm run profile:cold -- <dir> [runs] [minimal\|fb\|std-tests]`: one fresh process per run, no cache |
+| Where does the test suite's CPU go, by file and phase? | `npm run profile:suite -- [vitest options]`: a profile per test file in `.vitest/profiles/`, read with `profile:analyze -- .vitest/profiles '*'` |
 | Where does a whole check spend its time, on which inputs? | `npm run profile:check -- <dir> cpu [workload…]` (form builder cold and warm, std tests, every std module, decimal tests ×16, corpus) |
 | How many times is a function really called? | the same with `count`: exact counts from V8's precise coverage, joined into `profile:analyze`'s report |
 | What is the GC's share spent on? | the same with `alloc`, then `npm run profile:allocations -- <dir> <workload>` |

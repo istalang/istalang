@@ -44,6 +44,7 @@
     "profile:check": "npm run build && node --import ./scripts/profile/from-dist.ts scripts/profile/check-workloads.ts",
     "profile:analyze": "node scripts/profile/analyze.ts",
     "profile:allocations": "node scripts/profile/allocations.ts",
+    "profile:suite": "vitest run --project quick --config scripts/profile/suite-profile.config.ts",
     "verify": "npm run typecheck && npm run lint && npm run knip && npm run test:full && npm run build && npm run test:std",
     "bench": "vitest bench --run --reporter=verbose",
     "knip": "knip",
