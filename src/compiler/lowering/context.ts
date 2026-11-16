@@ -20,6 +20,7 @@ import type { FunctionDeclaration } from '../syntax/declarations/index.ts';
 import type { Lambda } from '../syntax/expressions/index.ts';
 import type { NodeOf } from '../syntax/tree/node.ts';
 import type { AnchoredSpan } from '../syntax/tree/positions.ts';
+import type { Substitution } from '../checker/types/parts/substitution.ts';
 import type { ClosedCall } from './calls/closed-calls.ts';
 import type { WaitingMode } from './calls/waits.ts';
 import type { VariableRegisters } from './flow/variables.ts';
@@ -62,6 +63,11 @@ export interface FunctionContext {
   readonly nestedIndex: (node: Lambda | FunctionDeclaration) => FunctionId;
   /** A fresh register of `type` owning the constant `value`. */
   readonly constant: (value: Value, type: Type, span: AnchoredSpan) => Register;
+  /**
+   * How the entry's types read its type parameters: its body's, the field loops it is in included,
+   * or, for an entry with no body, its instance's (§3.5).
+   */
+  readonly substitution: () => Substitution;
   /** The kind of the entry's code, which only waits as live or ista code (proposal 8, Rule 2). */
   readonly waitingMode: () => WaitingMode;
   /** The entry's code: registers, instructions and labels. */

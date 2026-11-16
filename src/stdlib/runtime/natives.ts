@@ -17,7 +17,7 @@ import {
   type WithFutures,
   type WithInstances,
 } from '../../runtime/natives.ts';
-import type { CallMaker } from '../../runtime/scheduler/run-contexts.ts';
+import type { CallMaker } from '../../runtime/natives.ts';
 import { futureKey, type NativeKeys } from '../std-module.ts';
 import { given, int, text } from '../values/arguments.ts';
 import { declaredResult, resultOptional, resultTypeArgument } from '../values/results.ts';

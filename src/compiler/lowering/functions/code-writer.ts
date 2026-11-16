@@ -84,6 +84,11 @@ export class CodeWriter {
     return this.#registers.length - 1;
   }
 
+  /** How many registers are allocated so far. */
+  get registerCount(): number {
+    return this.#registers.length;
+  }
+
   typeOf(register: Register): TypeReference {
     return this.#registers[register]?.type ?? unreachable(`No register ${register}.`);
   }

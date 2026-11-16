@@ -1,0 +1,124 @@
+/**
+ * The run's objects (ir-first design, decision 6): what a handle refers to, each with an identity
+ * from its run's serial, so a newer object has the greater id and disposal rounds go newest first.
+ *
+ * - A **cell** holds one value: a variable passed by `&` or captured (§3.7, §3.14), a transient's
+ *   (§3.4), or the struct behind a shared struct's handle (§3.18).
+ * - A **resource** is a host type's value with a `dispose` (§7, §9).
+ * - A **future** is what an async call, a timer or a host gives (§3.3); it settles once, and calls
+ *   the callbacks waiting on it then.
+ * - An **execution** runs one async call on its frame record (docs/arch/codegen.md): its handle is
+ *   the call's (`_Call`, §7).
+ * - A **weak reference** refers to a disposable without holding it (§7).
+ * - A **reference** is no object: a cell and a path into its value, as a `&` parameter takes it.
+ *
+ * Every object compares by identity as a handle does (definition/values/equality.ts): its `kind`
+ * is `handle` and its `object` its id. `count` is its holders' count, kept only for what reaches a
+ * disposable (lifetimes.ts).
+ */
+
+import type { Value } from '../../definition/values/values.ts';
+
+/** A step into a value: its tuple's `elements` or its struct's or variant's `fields`, at a position. */
+export type Step = readonly [part: 'elements' | 'fields', position: number];
+
+/** What every object of a run has: its identity, and its holders' count when counted. */
+export abstract class RunObject {
+  readonly kind = 'handle';
+  readonly object: number;
+  count = 0;
+
+  constructor(id: number) {
+    this.object = id;
+  }
+}
+
+export class Cell extends RunObject {
+  value: Value;
+  /** Whether what it holds is counted: its type reaches a disposable. */
+  readonly counted: boolean;
+  /** The entry of the `dispose` a shared struct's handle declares (§7), run as it is let go of. */
+  readonly dispose: number | undefined;
+
+  constructor(id: number, value: Value, counted: boolean, dispose?: number) {
+    super(id);
+    this.value = value;
+    this.counted = counted;
+    this.dispose = dispose;
+  }
+}
+
+export class Resource extends RunObject {
+  readonly type: number;
+  readonly payload: unknown;
+  disposed = false;
+
+  constructor(id: number, type: number, payload: unknown) {
+    super(id);
+    this.type = type;
+    this.payload = payload;
+  }
+}
+
+/** A frame record (definition/instructions/suspension.ts): an async entry's, parked or running. */
+export interface Frame {
+  readonly function: number;
+  pc: number;
+  registers: (Value | undefined)[];
+  readonly closure: Value | undefined;
+  decision: Value | undefined;
+  readonly execution: Execution;
+  stopping: boolean;
+}
+
+/** A closure waiting on a future, and where it decides among what settles together (spec §8). */
+export interface Waiting {
+  readonly callback: Value;
+  readonly rank: readonly bigint[];
+}
+
+export class Future extends RunObject {
+  settled = false;
+  value: Value = null;
+  /** The closures called with its value once it settles, in the order they were added. */
+  readonly callbacks: Waiting[] = [];
+  /** The execution it is the future of, for an async call's. */
+  readonly execution: Execution | undefined;
+
+  constructor(id: number, execution?: Execution) {
+    super(id);
+    this.execution = execution;
+  }
+}
+
+export class Execution extends RunObject {
+  frame!: Frame;
+  readonly future: Future;
+  /** Whether it has returned or stopped. */
+  ended = false;
+
+  constructor(id: number, futureId: number) {
+    super(id);
+    this.future = new Future(futureId, this);
+  }
+}
+
+export class WeakReference extends RunObject {
+  target: RunObject | undefined;
+
+  constructor(id: number, target: RunObject) {
+    super(id);
+    this.target = target;
+  }
+}
+
+/** A `&` parameter's value: the place in `cell`'s value at `path`. */
+export class Reference {
+  readonly cell: Cell;
+  readonly path: readonly Step[];
+
+  constructor(cell: Cell, path: readonly Step[]) {
+    this.cell = cell;
+    this.path = path;
+  }
+}

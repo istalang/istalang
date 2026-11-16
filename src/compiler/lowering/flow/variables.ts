@@ -50,9 +50,9 @@ export class VariableRegisters {
   }
 }
 
-/** `type` as the entry's body reads it now: its type parameters and field loops' keys substituted. */
+/** `type` as the entry reads it now: its type parameters and field loops' keys substituted. */
 export function concreteType(context: FunctionContext, type: Type): Type {
-  return substitute(type, context.body.substitution, context.checker.typeRules);
+  return substitute(type, context.substitution(), context.checker.typeRules);
 }
 
 /** The register the variable `value` of `type` lives in, allocated on its first use. */

@@ -36,6 +36,8 @@ import type { ResolvedCall } from '../../checker/surface/resolved-call.ts';
 import type { FunctionInstance } from '../../checker/surface/witness-closing.ts';
 import type { Fit } from '../../checker/types/fitting/fit/index.ts';
 import type { Type } from '../../checker/types/type/index.ts';
+import { substitutionOf } from '../../checker/surface/witness-closing.ts';
+import { noSubstitution, type Substitution } from '../../checker/types/parts/substitution.ts';
 import type { WaitingMode } from '../calls/waits.ts';
 import { type ModuleId, programModule } from '../../program/program.ts';
 import type {
@@ -156,6 +158,16 @@ class FunctionLowering implements EntryContext {
     this.#reading = { owner, body };
     this.frame = frame;
     this.code = new CodeWriter(tables.types.reference(frame.result));
+  }
+
+  substitution(): Substitution {
+    const { body, owner } = this.#reading;
+    if (body !== undefined) {
+      return body.substitution;
+    }
+    return owner.kind === 'function' || owner.kind === 'defaults'
+      ? substitutionOf(owner.instance)
+      : noSubstitution;
   }
 
   waitingMode(): WaitingMode {

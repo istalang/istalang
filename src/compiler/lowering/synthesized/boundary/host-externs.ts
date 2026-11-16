@@ -152,7 +152,7 @@ export function constantNativeEntry(
  * `Json`, what crosses to a host. It is a recursive alias (§3.17), so it is the type its entity
  * names, not a nominal one.
  */
-function jsonOf(checker: Checker): Type {
+export function jsonOf(checker: Checker): Type {
   const jsonType = entityType(checker, checker.wellKnownEntity(wellKnown.json));
   if (jsonType === undefined) {
     unreachable('A host extern was lowered in a program without the json module.');

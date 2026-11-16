@@ -33,7 +33,7 @@ interface Effect {
 
 const none: readonly Register[] = [];
 
-const effects: Handlers<undefined, Instruction, [], Partial<Effect>> = {
+const effects: Handlers<CodeFunction, Instruction, [], Partial<Effect>> = {
   constant: (_, i) => ({ owned: [i.dst] }),
   move: (_, i) => ({ moved: [i.src], owned: [i.dst] }),
   copy: (_, i) => ({ owned: [i.dst] }),
@@ -58,7 +58,7 @@ const effects: Handlers<undefined, Instruction, [], Partial<Effect>> = {
   order: (_, i) => ({ owned: [i.dst] }),
   primitive: (_, i) => ({ owned: [i.dst] }),
   newCell: (_, i) => ({ moved: [i.value], owned: [i.dst] }),
-  load: (_, i) => ({ owned: [i.dst] }),
+  load: (code, i) => (code.registers[i.dst]?.borrowed === true ? { borrowed: [i.dst] } : { owned: [i.dst] }),
   store: (_, i) => ({ moved: [i.value] }),
   reference: (_, i) => ({ borrowed: [i.dst] }),
   transient: (_, i) => ({ borrowed: [i.dst] }),
@@ -78,8 +78,8 @@ const effects: Handlers<undefined, Instruction, [], Partial<Effect>> = {
   letGo: (_, i) => ({ letGo: i.registers }),
 };
 
-function effectOf(subject: Instruction): Effect {
-  const found = handlerOf(effects, subject)(undefined, subject);
+function effectOf(code: CodeFunction, subject: Instruction): Effect {
+  const found = handlerOf(effects, subject)(code, subject);
   return {
     moved: found.moved ?? none,
     owned: found.owned ?? none,
@@ -124,7 +124,8 @@ export function ownershipIssues(code: CodeFunction): readonly string[] {
   const tracked = (register: Register) => !exempt.has(register);
   const states: (State[] | undefined)[] = code.instructions.map(() => undefined);
   states[0] = code.registers.map(() => 'empty');
-  const issues = new Set<string>();
+  // An instruction is judged on its last visit, at the state the analysis settles on for it.
+  const issuesAt = new Map<number, string[]>();
   const pending = [0];
   while (pending.length > 0) {
     const pc = pending.pop() ?? 0;
@@ -134,8 +135,10 @@ export function ownershipIssues(code: CodeFunction): readonly string[] {
       continue;
     }
     const after = [...before];
-    const issue = (message: string) => issues.add(`at ${String(pc)} (${subject.kind}): ${message}`);
-    const effect = effectOf(subject);
+    const found: string[] = [];
+    issuesAt.set(pc, found);
+    const issue = (message: string) => found.push(`at ${String(pc)} (${subject.kind}): ${message}`);
+    const effect = effectOf(code, subject);
     for (const register of operandsOf(subject).read) {
       if (tracked(register) && after[register] === 'empty' && !effect.letGo.includes(register)) {
         issue(`reads register ${String(register)}, empty on every path.`);
@@ -186,5 +189,7 @@ export function ownershipIssues(code: CodeFunction): readonly string[] {
       }
     }
   }
-  return [...issues];
+  return [...issuesAt.entries()]
+    .toSorted(([first], [second]) => first - second)
+    .flatMap(([, found]) => found);
 }

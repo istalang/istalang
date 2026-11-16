@@ -18,6 +18,10 @@
  */
 
 import type { Argument, Callee } from '../../../definition/instructions/calls.ts';
+import {
+  type PrimitiveOp,
+  primitiveOfExtern,
+} from '../../../definition/instructions/primitive-ops.ts';
 import type { FunctionId, Register } from '../../../definition/operands.ts';
 import type { TypeReference } from '../../../definition/tables/types.ts';
 import { unreachable } from '../../../foundation/structures/unreachable.ts';
@@ -25,7 +29,9 @@ import type { SignatureParameter } from '../../checker/check.ts';
 import { substitute } from '../../checker/types/parts/substitution.ts';
 import { constructedVariant } from '../../syntax/declarations/field-defaults.ts';
 import type { AnchoredSpan } from '../../syntax/tree/positions.ts';
+import type { FunctionInstance } from '../../checker/surface/witness-closing.ts';
 import type { CodeContext } from '../context.ts';
+import { keyOf } from '../tables/extern-keys.ts';
 import { buildConstructed } from '../values/variant-values.ts';
 import {
   type ClosedCall,
@@ -95,10 +101,35 @@ export function emitFunctionCall(
     const fields = parameters.map(registerOf);
     return buildConstructed(context, { instance, fields }, span, dst);
   }
+  const op = leftOut ? undefined : primitiveOf(context, instance);
+  if (op !== undefined) {
+    const written = dst ?? context.code.allocate(result);
+    context.code.emit({
+      kind: 'primitive',
+      span,
+      dst: written,
+      op,
+      operands: parameters.map(registerOf),
+    });
+    return written;
+  }
   const callee = leftOut
     ? context.tables.leavingOutIndex(instance)
     : context.tables.functionIndex(instance);
   return emitCall(context, { span, callee, arguments: parameters }, result, dst);
+}
+
+/**
+ * The primitive operation `instance` stands for, a prelude operator's extern every backend runs
+ * inline (definition/instructions/primitive-ops.ts); undefined for any other function.
+ */
+function primitiveOf(context: CodeContext, instance: FunctionInstance): PrimitiveOp | undefined {
+  const { checker } = context;
+  const { declaration } = instance;
+  if (!declaration.isExtern || !checker.isStd(checker.moduleOf(declaration))) {
+    return undefined;
+  }
+  return primitiveOfExtern[keyOf(checker, declaration, checker.parametersOf(declaration))];
 }
 
 /** A parameter a call leaves out, which the callee computes from its default (§3.3). */

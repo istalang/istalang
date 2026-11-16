@@ -72,12 +72,16 @@ export class FlowWriter {
   readonly #aliases = new Set<ValueId>();
   readonly #extras = new Map<ValueId, readonly Register[]>();
   readonly #labels = new Map<BlockId, Label>();
+  /** How many registers the entry had where each block written so far began. */
+  readonly #started = new Map<BlockId, number>();
   /** Where what each held variable holds is kept until (§7). */
   readonly #kept = new Map<ValueId, LabelledScope | 'function'>();
   /** The arrays what `hold`s keep is kept in, by scope and type. */
   readonly #lists = new Map<LabelledScope | 'function', Map<string, Register>>();
   /** How often each value is read: one read more than once is copied where it is taken. */
   readonly #reads = new Map<ValueId, number>();
+  /** How many operations give each value: one several paths give shares one register. */
+  readonly #writes = new Map<ValueId, number>();
   /** The writes of a variable living in a cell that make its cell (variables.ts). */
   readonly declaring: ReadonlySet<Operation>;
   /** A value converted into the field a key of several names names, by the value it converts. */
@@ -105,8 +109,12 @@ export class FlowWriter {
             this.#kept.set(value, operation.until);
           }
         }
-        for (const value of valuesReadBy(operation)) {
+        const reads = operation.op === 'release' || operation.op === 'keep' ? [] : valuesReadBy(operation);
+        for (const value of reads) {
           this.#reads.set(value, (this.#reads.get(value) ?? 0) + 1);
+        }
+        if ('into' in operation) {
+          this.#writes.set(operation.into, (this.#writes.get(operation.into) ?? 0) + 1);
         }
       }
       const tested = exit.kind === 'branch' && 'value' in exit.test ? [exit.test.value] : [];
@@ -123,6 +131,7 @@ export class FlowWriter {
       this.#block = block;
       this.#next = order[position + 1];
       this.context.code.place(this.labelOf(block));
+      this.#started.set(block, this.context.code.registerCount);
       this.context.inFieldPasses(this.#layout.passesOf(block), () =>
         this.#writeBlock(this.flow.blocks[block] as FlowBlock),
       );
@@ -224,7 +233,7 @@ export class FlowWriter {
     const flowValue = this.valueOf(value);
     const { code } = this.context;
     if (flowValue.kind !== 'variable') {
-      this.bind(value, this.#isValues(produced) ? code.copy(produced, span) : produced);
+      this.#defineTemporary(value, produced, span);
       return;
     }
     const register = this.registerOf(value);
@@ -236,6 +245,28 @@ export class FlowWriter {
       return;
     }
     code.letGo([register], span);
+    code.emit({ kind: 'move', span, dst: register, src: code.take(produced, span) });
+  }
+
+  /**
+   * A temporary given `produced`: its own register where nothing else is in it; else a register of
+   * its own `produced` is moved or copied into, the one register of a value several paths give.
+   */
+  #defineTemporary(value: ValueId, produced: Register, span: AnchoredSpan): void {
+    const { code } = this.context;
+    const known = this.#registers.get(value);
+    if (known === produced) {
+      return;
+    }
+    const shared = (this.#writes.get(value) ?? 0) > 1;
+    if (known === undefined && !shared && !this.#isValues(produced)) {
+      this.bind(value, produced);
+      return;
+    }
+    const register = known ?? code.allocate(code.typeOf(produced));
+    if (known === undefined) {
+      this.bind(value, register);
+    }
     code.emit({ kind: 'move', span, dst: register, src: code.take(produced, span) });
   }
 
@@ -336,13 +367,38 @@ export class FlowWriter {
     return label;
   }
 
-  /** Goes on to `block`: the next pass where it is a field loop's top, unless written next. */
+  /**
+   * Goes on to `block`: the next pass where it is a field loop's top, unless written next. Going
+   * back to a block written already closes a loop, whose next turn starts with none of this turn's
+   * temporaries, so they are let go of first: overwriting a register ends nothing.
+   */
   goTo(block: BlockId, span: AnchoredSpan): void {
     const visit = this.passesHere().find(({ top }) => top === block);
     const target = visit?.next ?? block;
+    const started = this.#started.get(target);
+    if (started !== undefined) {
+      const { code, variables } = this.context;
+      const turns = Array.from({ length: code.registerCount - started }, (_, at) => started + at);
+      code.letGo(
+        turns.filter((register) => !variables.isVariable(register) && !this.#isList(register)),
+        span,
+      );
+    }
     if (target !== this.#next) {
       this.context.code.jump(this.labelOf(target), span);
     }
+  }
+
+  /** Whether `register` keeps what `hold`s keep. */
+  #isList(register: Register): boolean {
+    for (const lists of this.#lists.values()) {
+      for (const list of lists.values()) {
+        if (list === register) {
+          return true;
+        }
+      }
+    }
+    return false;
   }
 
   /** Where the field loop whose top is being written goes first. */

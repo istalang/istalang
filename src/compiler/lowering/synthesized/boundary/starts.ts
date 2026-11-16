@@ -41,6 +41,7 @@ import { keyOf } from '../../tables/extern-keys.ts';
 import { rootInstance } from '../../tables/instances.ts';
 import type { DefinitionTables, StartTarget } from '../../tables/tables.ts';
 import { codecCall } from './codec-calls.ts';
+import { jsonOf } from './host-externs.ts';
 import { emitInbound, inboundOf } from './inbound.ts';
 
 /** A function a host may start: what it is, the key it goes by, and its signature. */
@@ -156,7 +157,7 @@ export function startEntry(
 ): CodeFunction {
   const { checker, tables } = lowering;
   const { target, parameters, key, outcome, awaits } = startable;
-  const json = checker.wellKnownType(wellKnown.json) ?? unreachable('A start needs the json module.');
+  const json = jsonOf(checker);
   const header = tables.declarationHeader(target);
   const code = new SynthesizedCode(lowering, startSpanOf(target), {
     parameters: parameters.map(() => tables.types.reference(json)),

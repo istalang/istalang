@@ -26,53 +26,153 @@ extern shared struct WeakRef<T is Disposable>
 # its `Mode`.
 type Mark = "simple" | "live" | "ista"
 type Persistence = "live" | "ista"
-# A future holds its value and the resolvers registered on it, as a callback's chain is held from
-# its futures up (spec §7); a call's future also holds its call, which belongs to the language.
+# A future (§3.3) is what an async call, a timer or a host gives: the run's object, which settles
+# once and then calls, in the settle order, what waits on it (ir-first design, decision 6). It holds
+# its value and what waits on it, as a callback's chain is held from its futures up (spec §7); a
+# call's future also holds its call, which belongs to the language.
 @Holds<(T, Resolver<T, K>)>
 extern shared struct Future<T, K in Persistence>:
   type Mode = K
 
-# What `await x` and a `select`'s case wait on (proposal 8, Rule 5): the runtime makes `done`, a
-# resolver for that one wait, and calls `x.onAwait(done)`, which can't itself wait; the waiting code
-# resumes with what `done` is resolved with, waiting in `Mode`, its code's kind. A type meets it
+# What `await x` and a `select`'s case wait on (proposal 8, Rule 5): the waiting code makes `done`,
+# a resolver for that one wait, and calls `x.onAwait(done)`, which can't itself wait; the waiting
+# code resumes with what `done` is resolved with, waiting in `Mode`, its code's kind. A type meets it
 # with a `Mode` of its own, so its work starts only once it is awaited.
 trait Awaitable<T>:
   type Mode in Persistence
   Self.Mode fn onAwait(self: Self, done: Resolver<T, Self.Mode>)
 
-# A future is the runtime's awaitable: it resolves `done` at once when it has resolved, else when it
-# does.
-@Keeps{["self": ["done"]]}
-extern K fn onAwait<T, K in Persistence>(self: Future<T, K>, done: Resolver<T, K>)
+# A future resolves `done` at once when it has settled, else as it settles.
+K fn onAwait<T, K in Persistence>(self: Future<T, K>, done: Resolver<T, K>):
+  if _settled(self):
+    done.resolve(_valueOf(self))
+  else:
+    fn arrived(value: T): done.resolve(value)
+    _onSettled(self, arrived, done->rank)
 
 # One wait's one-shot resolver (Rule 5). A second `resolve` panics, and `tryResolve` says whether it
 # decided the wait, for races; once another case decided it, neither decides anything. One let go of
-# unresolved panics: an awaitable misused it. It holds what it calls, its callback and its `onCancel`
-# callbacks, and an at-resolver the resolver it decides, which they cover, holding anything; never
-# the futures it is registered on. Naming that resolver, a `Resolver<(Int, T), K>`, would make the
-# endless instances §3.5 forbids.
-@Holds<(Fn<(T,), Unit, K>, Fn<(), Unit, K>)>
-extern shared struct Resolver<T, K in Persistence>
-extern K fn resolve<T, K in Persistence>(self: Resolver<T, K>, value: T)
-extern K fn tryResolve<T, K in Persistence>(self: Resolver<T, K>, value: T) -> Bool
+# unresolved panics: an awaitable misused it. It holds what it calls, its decision and its `onCancel`
+# callbacks, never the futures it is registered on. Its rank is where it decides among what settles
+# together (spec §8): a case's by its waiter and position, an at-resolver's by the resolver it
+# decides and its position, a callback's after every case, by when it was made.
+shared struct Resolver<T, K in Persistence>:
+  decide: Fn<(T,), Bool, K>
+  rank: Array<Int>
+  # 0 pending, 1 resolved, 2 cancelled
+  state: Int = 0
+  cancels: Array<Fn<(), Unit, K>> = []
+
+K fn resolve<T, K in Persistence>(self: Resolver<T, K>, value: T):
+  if self->state == 1: panic("A resolver was resolved twice.")
+  if self->state == 0:
+    self->state = 1
+    const decide = self->decide
+    drop decide(value)
+
+K fn tryResolve<T, K in Persistence>(self: Resolver<T, K>, value: T) -> Bool:
+  if self->state != 0: return false
+  self->state = 1
+  const decide = self->decide
+  decide(value)
 
 # A resolver deciding no wait, calling `callback` with its value instead: code hands one to an
 # awaitable's `onAwait` to wait on it without `await`. The callback runs as a call of its own once
 # the value arrives, so in ista code in a segment of its own, and whatever it decides is decided only
 # then: a `select` case resolving through one decides later than the value arrived, and a value it
 # took, such as a slot's, is lost when another case wins first.
-extern K fn Resolver.of<T, K in Persistence>(callback: Fn<(T,), Unit, K>) -> Resolver<T, K>
+K fn Resolver.of<T, K in Persistence>(callback: Fn<(T,), Unit, K>) -> Resolver<T, K>:
+  fn later(value: T) -> Bool:
+    fn called(): callback(value)
+    _later(called)
+    true
+  new Resolver<T, K>{decide: later, rank: [1, _made()]}
 
 # A resolver deciding `done` with `(position, value)` as it is resolved, in the same step: pending
 # while `done` is, so an awaitable racing several through one each, as `futures.first` does,
 # decides as a `select` case does and takes nothing once `done` is decided.
-extern K fn Resolver.at<T, K in Persistence>(done: Resolver<(Int, T), K>, position: Int) -> Resolver<T, K>
+K fn Resolver.at<T, K in Persistence>(done: Resolver<(Int, T), K>, position: Int) -> Resolver<T, K>:
+  fn decided(value: T) -> Bool: done.tryResolve((position, value))
+  new Resolver<T, K>{decide: decided, rank: [...done->rank, position]}
 
 # Has `callback` called once `self` is cancelled: another case decided its wait, its waiter moved on
 # without it, or a future it is registered on was disposed. It runs as a `Resolver.of` callback
 # does, and at once when `self` was cancelled already; never once `self` resolved.
-@Keeps{["self": ["callback"]]}
-extern K fn onCancel<T, K in Persistence>(self: Resolver<T, K>, callback: Fn<(), Unit, K>)
+K fn onCancel<T, K in Persistence>(self: Resolver<T, K>, callback: Fn<(), Unit, K>):
+  if self->state == 2: _later(callback)
+  if self->state == 0: self->cancels.push(callback)
+
+K fn dispose<T, K in Persistence>(self: Resolver<T, K>):
+  if self->state == 0:
+    panic("A resolver was let go of unresolved: an awaitable dropped what it was to resolve.")
+
+# Cancels `resolver`, still pending, running its `onCancel` callbacks.
+K fn _cancel<T, K in Persistence>(resolver: Resolver<T, K>):
+  if resolver->state == 0:
+    resolver->state = 2
+    const callbacks = resolver->cancels
+    resolver->cancels = []
+    for callback in callbacks: _later(callback)
+
+# One `await`'s or `select`'s wait (Rule 5): the call parked on it, the position it was decided for
+# (-1 while it is pending, -2 once given up), and what cancels each case's resolver, which it
+# reaches weakly, so a resolver an awaitable dropped is still let go of.
+shared struct _Wait<K in Persistence>:
+  call: _Call
+  decided: Int = -1
+  cancels: Array<Fn<(), Unit, K>> = []
+
+K fn _wait<K in Persistence>(call: _Call) -> _Wait<K>: new _Wait<K>{call}
+
+# The resolver of `wait`'s case at `position`: resolved first among its wait's, it puts its value
+# into `into`, cancels the other cases' resolvers and unparks the waiting call with its position.
+K fn _caseResolver<T, K in Persistence>(wait: _Wait<K>, position: Int, into: Shared<T?>) -> Resolver<T, K>:
+  fn decide(value: T) -> Bool:
+    if wait->decided != -1: return false
+    wait->decided = position
+    into->value = value
+    const cancels = wait->cancels
+    wait->cancels = []
+    for index in 0..cancels.length():
+      if index != position:
+        const cancel = cancels[index]
+        cancel()
+    _unpark(wait->call, position)
+    true
+  const resolver = new Resolver<T, K>{decide, rank: [0, _idOf(wait->call), position]}
+  const weak = WeakRef(resolver)
+  fn cancel():
+    if weak.deref() is Resolver<T, K> as pending: _cancel(pending)
+  wait->cancels.push(cancel)
+  resolver
+
+# The position `wait` was decided for already, as a `select` with an `else` asks (§8); -1 where no
+# case decided it, every case then cancelled.
+K fn _decided<K in Persistence>(wait: _Wait<K>) -> Int:
+  if wait->decided >= 0: return wait->decided
+  wait->decided = -2
+  const cancels = wait->cancels
+  wait->cancels = []
+  for cancel in cancels: cancel()
+  -1
+
+# A pending future and what settles it, which a host extern's native is given to fill (§9).
+K fn _filled<T, K in Persistence>() -> (Future<T, K>, Fn<(T,), Unit, K>):
+  const future = _pendingFuture<T, K>()
+  fn fill(value: T): _settle(future, value)
+  (future, fill)
+
+# The run's primitives the futures above stand on (ir-first design, decision 6).
+extern K fn _settled<T, K in Persistence>(future: Future<T, K>) -> Bool
+extern K fn _valueOf<T, K in Persistence>(future: Future<T, K>) -> T
+@Keeps{["future": ["callback"]]}
+extern K fn _onSettled<T, K in Persistence>(future: Future<T, K>, callback: Fn<(T,), Unit, K>, rank: Array<Int>)
+extern K fn _pendingFuture<T, K in Persistence>() -> Future<T, K>
+extern K fn _settle<T, K in Persistence>(future: Future<T, K>, value: T)
+extern K fn _later<K in Persistence>(callback: Fn<(), Unit, K>)
+extern fn _unpark(call: _Call, position: Int)
+extern fn _idOf(call: _Call) -> Int
+extern fn _made() -> Int
 
 # What a function's values may capture (§3.14): only sendable values, only inert ones, which reach
 # no disposable, or any. Each allows the one before it.
@@ -118,12 +218,11 @@ shared struct Shared<T>:
 # which the runtime makes, reads and writes as it does a shared struct's.
 extern shared struct _Cell<T>
 
-# Disposal (§7): the runtime disposes a future, a resolver and a slot once nothing holds them.
+# Disposal (§7): the runtime disposes a future and a slot once nothing holds them.
 # Declaring their `dispose` is what makes them Disposable (§3.10), and what tells the compiler the
 # runtime does it. A slot's is ista, so a slot is ista data, which only ista code handles (proposal
 # 8, Rule 6).
 extern K fn dispose<T, K in Persistence>(self: Future<T, K>)
-extern K fn dispose<T, K in Persistence>(self: Resolver<T, K>)
 extern ista fn dispose<T>(self: Slot<T>)
 
 # What `defer` gives (§7): a disposable whose release calls `run`, so `_ = defer log(x)` computes

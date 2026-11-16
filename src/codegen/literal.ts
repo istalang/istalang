@@ -1,13 +1,13 @@
 /**
  * JavaScript source for the data a program carries: its constants and the tables its runtime reads
- * (docs/work/js-codegen/design.md, "Generated code").
+ * (docs/arch/codegen.md).
  *
  * - Values as they are in memory (definition/values/values.ts): an `Int` a bigint literal, a
  *   `Float` a number, NaN, the infinities and -0 included, which JSON can't spell. Composites and
  *   the tables are object and array literals, so loading a program runs no decoder.
  * - Strings and keys are quoted as JSON quotes them, so no key needs to be an identifier, with the
  *   line and paragraph separators escaped too: JavaScript counts them as line breaks, which would
- *   move every line after and so the instruction each line names (codegen/code-entry.ts).
+ *   move every line after and so the instruction each line names (entry.ts).
  */
 
 /** `data`, a value or a table built of JSON, bigints and numbers, as a JavaScript expression. */

@@ -63,7 +63,7 @@ export const testingNatives = (keys: NativeKeys): Natives<Context> => {
       return resultVariant(context, stateVariants[state], {});
     },
     [keys.of('handle')]: (_, context) =>
-      context.testing.handle(namedType(context.typeArguments[0])),
+      context.testing.handle(namedType(context.signature.result)),
   };
 };
 

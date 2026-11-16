@@ -25,8 +25,14 @@ import type { TypeDefinition, TypeReference } from '../definition/tables/types.t
 import type { Value } from '../definition/values/values.ts';
 import type { Inspection, LogRecord, SpawnOptions } from './instance-state.ts';
 import { Refusal } from './refusal.ts';
-import type { CallMaker } from './scheduler/run-contexts.ts';
-import type { TestWatch } from './snapshot/objects.ts';
+
+/** Whose code a context call runs: the program's own, or the job server's (§5). */
+export type CallMaker = 'program' | 'jobs';
+
+/** What a test waits for of an instance (§10): its being idle, or its reaching a waypoint. */
+export type TestWatch =
+  | { readonly kind: 'idle' }
+  | { readonly kind: 'waypoint'; readonly label: string };
 
 /** Base context every native gets: the call, and the segment it runs in. */
 export interface NativeContext {
@@ -37,8 +43,14 @@ export interface NativeContext {
    * undefined for any other result, and for a code entry a mock replaced.
    */
   readonly resultType: TypeId | undefined;
-  /** The extern's type arguments, in order (`json.parse<T>`), as the Definition refers to types. */
-  readonly typeArguments: readonly TypeReference[];
+  /**
+   * The extern's signature as its instance has it: what each parameter and its result are, so a
+   * native of a generic extern knows which instance it runs for (`json._written<T>`).
+   */
+  readonly signature: {
+    readonly parameters: readonly TypeReference[];
+    readonly result: TypeReference;
+  };
   /** The Definition's types, which the extern's types index, for building values of them. */
   readonly types: readonly TypeDefinition[];
   /** The instance whose code called the native, as its host names it (§9). */
@@ -378,6 +390,6 @@ const limits = new Map([
   ['Invalid string length', 'The string would be longer than the runtime can hold.'],
   ['Invalid array length', 'The array would be longer than the runtime can hold.'],
   ['Maximum BigInt size exceeded', 'The integer would be larger than the runtime can hold.'],
-  // Compiled JavaScript calls on the JavaScript stack, so recursion past it is a limit there.
-  ['Maximum call stack size exceeded', 'A call nests deeper than the JavaScript stack allows.'],
+  // Compiled code calls on the host's stack: recursion past it is the language's limit (§5).
+  ['Maximum call stack size exceeded', 'A call nests deeper than the runtime allows.'],
 ]);

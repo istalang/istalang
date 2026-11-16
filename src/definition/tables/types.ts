@@ -191,6 +191,44 @@ export function reachesDisposable(
   }
 }
 
+/**
+ * How a backend keeps holders of values of `reference` (ir-first design, decision 5): `counted`,
+ * each holder counted, as what reaches a disposable is; `heap`, an allocation shared between
+ * holders, whose holders a backend counts to free it or to change it in place when unique; `plain`,
+ * a scalar or a handle reaching no disposable, whose holders nothing counts.
+ */
+export function lifetimeOf(
+  types: readonly TypeDefinition[],
+  reference: TypeReference,
+): 'counted' | 'heap' | 'plain' {
+  if (reachesDisposable(types, reference)) {
+    return 'counted';
+  }
+  switch (reference.kind) {
+    case 'primitive':
+    case 'reference':
+      return 'plain';
+    case 'tuple':
+    case 'function':
+      return 'heap';
+    case 'named': {
+      const entry = types[reference.type];
+      if (entry === undefined || !entry.heap) {
+        return 'plain';
+      }
+      return entry.kind === 'extern' && entry.role !== 'array' && entry.role !== 'map'
+        ? 'plain'
+        : entry.kind === 'shared'
+          ? 'plain'
+          : 'heap';
+    }
+    default: {
+      const unhandled: never = reference;
+      return unhandled;
+    }
+  }
+}
+
 /** Whether type entry `type` of `types` has `role`, an extern type's or an enum's. */
 export function hasRole(
   types: readonly TypeDefinition[],
@@ -199,6 +237,16 @@ export function hasRole(
 ): boolean {
   const entry = types[type];
   return (entry?.kind === 'extern' || entry?.kind === 'enum') && entry.role === role;
+}
+
+/**
+ * Whether a value of the extern type entry `type` of `types` is a resource object behind a handle
+ * (§7): a host's type declaring a `dispose`, so its values have an identity of their own. Any other
+ * host type's values are its host's JSON, as plain as an int.
+ */
+export function isResourceType(types: readonly TypeDefinition[], type: number): boolean {
+  const entry = types[type];
+  return entry?.kind === 'extern' && entry.role === undefined && entry.dispose !== undefined;
 }
 
 /** The `dispose` a value of type entry `type` of `types` runs when it loses its last holder. */

@@ -48,9 +48,11 @@ function hostPayloadOf(value: Value, context: NativeContext & WithResources): un
     : context.resources.payloadOf(value);
 }
 
-/** The type `json.encode`'s extern writes a value as: its one type argument. */
+/** The type `json.encode`'s extern writes a value as: its value parameter's, `T`. */
 function writtenAs(context: NativeContext): TypeReference {
-  return context.typeArguments[0] ?? unreachable(`${context.name} names no type written.`);
+  return (
+    context.signature.parameters[0] ?? unreachable(`${context.name} names no type written.`)
+  );
 }
 
 const json = knownTypeKey(wellKnown.json);
@@ -86,7 +88,7 @@ export const jsonNatives = (
   [keys.of(codecHelpers.encodeHandle, parameterKey('T'))]: ([value], context) =>
     jsonOfPlain(hostPayloadOf(given(value), context), jsonTypeOf(context.types)),
   [keys.of(codecHelpers.decodeHandle, json, 'String')]: ([value], context) => {
-    const type = namedType(context.typeArguments[0]);
+    const type = namedType(resultArgument(context));
     const payload = plainOfJson(given(value), jsonTypeOf(context.types));
     return resultOk(
       context,
@@ -96,3 +98,9 @@ export const jsonNatives = (
     );
   },
 });
+
+/** The `T` of the `Result<T>` a native gives: its result type entry's one type argument. */
+function resultArgument(context: NativeContext): TypeReference | undefined {
+  const result = context.signature.result;
+  return result.kind === 'named' ? context.types[result.type]?.arguments[0] : undefined;
+}

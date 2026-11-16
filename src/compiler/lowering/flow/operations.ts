@@ -107,8 +107,10 @@ export const operationWriters: {
     );
   },
   release: (writer, { values, site }) => writer.release(writer.registersEnding(values), site.span),
-  unknown: ({ flow }) =>
-    unreachable(`Code checking found a mistake in at ${flow.root.span.from} is lowered.`),
+  unknown: ({ flow, context }, { site }) =>
+    unreachable(
+      `Code checking found a mistake in, a ${site.kind} at ${site.span.from} of module ${context.module} in ${(context as unknown as { frame?: { header?: { name?: string } } }).frame?.header?.name}, is lowered.`,
+    ),
 };
 
 function computed(
