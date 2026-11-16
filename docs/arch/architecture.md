@@ -280,7 +280,8 @@ src/
                         write.ts (a root walk; a value too deep to persist refused), restore.ts (objects made then filled,
                         holders counted again)
     boundary/           values crossing to the host: host-natives.ts (host externs, against JSON, as natives, and the filling
-                        of a host's futures), starts.ts (a start by key, its arguments from JSON)
+                        of a host's futures), starts.ts (a start by key, its arguments from JSON),
+                        extern-signatures.ts (one name, one type across deploys)
   stdlib/               std-sources.ts: the one list of std modules, each name with its embedded source, where a module's name is spelled unless the language names it by role; stdlib-loader.ts: the std ModuleLoader (simple name → source) and the roles, read from the list alone, so compiling imports no native (a cruiser rule); std-modules.ts: each module with its natives (std-module.ts: natives built from keys bound to the name, which key its functions and its own types); natives.ts: every std native in one table, derived from the list; values/arguments.ts: the values natives read; values/results.ts: what they return, built as the declared result says; positions.ts: what an index, a range, `at` and `slice` select of an array or a string; prelude/ and one folder per std module: <module>.ista + natives.ts when it has any (keys built by definition/extern-key.ts, as lowering's are; the prelude's waits in prelude/wait-natives.ts)
   formatter/            SyntaxTree → canonical text (format.ts, the `istalang/formatter` entry): one printer table per family of
                         constructs, comments/ (the comments printed, and the node each prints with: comment-placement.ts),

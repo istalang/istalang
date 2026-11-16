@@ -100,7 +100,8 @@ its instance is numbered by, so its native sees only JSON:
 - The wrapper encodes each argument, calls the native entry, and reads the result
   (`synthesized/boundary/inbound.ts`): a result that doesn't decode panics the instance (`_hostResult`).
 - The native entry keeps the declared key (`purchase.chargeCard(String, Int)`), so a host binds by
-  the signature it was written against, and carries its `declaredType` (the result).
+  the signature it was written against, and carries its `declaredType` (the result), which the
+  runtime holds the host to across deploys (`runtime/boundary/extern-signatures.ts`).
 - A host's extern is unmarked or live (the checker refuses one marked `ista` or generic over its
   mark, 5913): only the runtime fills an ista future, so ista code reaches a host's live extern
   through a job (`runtime.delegate`, spec §5). One returning a future is `live async`: its wrapper

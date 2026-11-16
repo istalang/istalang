@@ -3,7 +3,8 @@
  * start, and wake, inspect, retry and terminate the instances its code reaches.
  *
  * - A Definition arrives as its persisted text, the form the store keeps; deploying reads and
- *   validates it, emits its code once per hash, and writes it to the store once.
+ *   validates it, emits its code once per hash, and writes it to the store once. Each deploy holds
+ *   the host's externs to the types the store recorded (§3.6, boundary/extern-signatures.ts).
  * - Instances are the world's (durable-world.ts): each committed to the store at every segment's
  *   end, so a runtime opened over the same store goes on where an earlier one committed (§5). One
  *   the world doesn't hold is read from the store with the Definition its snapshot names.
@@ -11,6 +12,7 @@
  */
 
 import { memo } from '../../foundation/structures/memo.ts';
+import { recordExternSignatures } from '../boundary/extern-signatures.ts';
 import { type HostExterns, withHost } from '../boundary/host-natives.ts';
 import type { Clock } from '../clock.ts';
 import type { Natives } from '../natives.ts';
@@ -58,5 +60,10 @@ export function createRuntime(seams: RuntimeSeams): Runtime {
     { ...seams, natives: withHost(seams.natives, seams.host ?? {}) },
     bind,
   );
-  return { deploy: (text) => deployed(world, bound(text)), ...instanceCalls(world) };
+  const deploy = (text: string): DeployedProgram => {
+    const program = bound(text);
+    recordExternSignatures(seams.store, program.definition);
+    return deployed(world, program);
+  };
+  return { deploy, ...instanceCalls(world) };
 }
