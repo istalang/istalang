@@ -282,6 +282,9 @@ function registerOf(register: PersistedRegister, { object, restored }: Reading):
 export function rootInvocation(run: Run, encoder: number | undefined): Invocation {
   return {
     answer: (end) => {
+      if (end.kind === 'unanswered') {
+        unreachable("An instance's root call waits on no end, its own being the instance's.");
+      }
       run.instance.ended(
         end.kind === 'returned' ? finished(run, end.value, end.holder, encoder) : end,
       );

@@ -24,7 +24,7 @@ export type InstanceEnd =
 
 /** What waits on an instance's end, told how it ended; whether its panic is heard there (§9). */
 export interface EndWatcher {
-  readonly answer: (end: InstanceEnd) => void;
+  readonly answer: (end: InvocationEnd) => void;
   readonly hears: boolean;
 }
 
@@ -62,8 +62,11 @@ export class Instance {
     }
     this.end = end;
     this.heard = this.endWatchers.some(({ hears }) => hears);
+    // A call still waiting as its instance finishes is answered by nothing it gave (§9).
+    const told: InvocationEnd =
+      end.kind === 'finished' ? { kind: 'unanswered', instance: this.name } : end;
     for (const watcher of this.endWatchers.splice(0)) {
-      watcher.answer(end);
+      watcher.answer(told);
     }
   }
 }
@@ -82,6 +85,8 @@ export function instanceEnding(end: InvocationEnd): Value {
       return tuple([end.outcome], '', '');
     case 'returned':
       return tuple([end.value], '', '');
+    case 'unanswered':
+      return tuple([], `The context '${end.instance}' has ended.`, '');
     default:
       return tuple([], end.message, end.trace);
   }
@@ -89,8 +94,10 @@ export function instanceEnding(end: InvocationEnd): Value {
 
 /**
  * How an invocation in an instance ended: what it gave, with what holds it (its call's future, or
- * the value itself where a plain call gave it at once), or how its instance ended.
+ * the value itself where a plain call gave it at once); unanswered, its instance `instance` having
+ * finished first; or how its instance ended otherwise.
  */
 export type InvocationEnd =
   | InstanceEnd
-  | { readonly kind: 'returned'; readonly value: Value; readonly holder: Value };
+  | { readonly kind: 'returned'; readonly value: Value; readonly holder: Value }
+  | { readonly kind: 'unanswered'; readonly instance: string };
