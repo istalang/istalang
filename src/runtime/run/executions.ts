@@ -21,6 +21,7 @@ import type { Lifetimes } from './lifetimes.ts';
 import { Execution, type Frame } from './objects/execution.ts';
 import { Future } from './objects/future.ts';
 import type { ReadyQueue } from './ready-queue.ts';
+import type { TransientScope } from './transient-scope.ts';
 
 /** What a parked frame's resumable function returns. */
 export const PARKED = Symbol('parked');
@@ -39,6 +40,8 @@ export interface ExecutionSeams {
   readonly entry: (index: number) => (frame: Frame) => unknown;
   readonly newId: () => number;
   readonly settle: (future: Future, value: Value) => void;
+  /** The transients' scope of an execution starting now, holding the cells visible here (§3.4). */
+  readonly startedTransients: () => TransientScope;
   /** What `run` gives; a panic in a durable instance ends the instance, and gives nothing. */
   readonly guarded: <Result>(run: () => Result) => Result | undefined;
 }
@@ -65,10 +68,11 @@ export class Executions {
 
   /**
    * Starts async entry `index` with `passed`: runs it until it parks or returns; its future. Its
-   * frame outlives the caller's step, so it holds what it was given until it ends.
+   * frame outlives the caller's step, so it holds what it was given, and the transients' cells
+   * visible here, until it ends.
    */
   start(index: number, passed: readonly Value[], closure: Value | undefined): Future {
-    const { definition, instance, lifetimes, newId } = this.#seams;
+    const { definition, instance, lifetimes, newId, startedTransients } = this.#seams;
     const entry = definition.functions[index] as CodeFunction;
     const execution = new Execution(newId(), newId(), instance);
     passed.forEach((value, at) => {
@@ -79,6 +83,7 @@ export class Executions {
     });
     lifetimes.hold(closure);
     execution.given = [...passed, closure ?? null];
+    execution.transients = startedTransients();
     this.#live.add(execution);
     const registers: (Value | undefined)[] = Array.from({ length: entry.registers.length });
     passed.forEach((value, at) => {
@@ -124,7 +129,7 @@ export class Executions {
       }
       execution.ended = true;
       this.#live.delete(execution);
-      lifetimes.letGo(...execution.given);
+      lifetimes.letGo(...execution.given, ...execution.transients.held());
       if (result === STOPPED || result === undefined) {
         return;
       }

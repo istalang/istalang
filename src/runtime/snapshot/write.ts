@@ -162,9 +162,10 @@ function objectOf(object: RunObject, { named, persisted }: Naming): PersistedObj
   throw new Error(`A run object of no kind a snapshot knows, ${id}, is written.`);
 }
 
-/** `execution`, its frame record and what it was given, as a snapshot writes it. */
+/** `execution`, its frame record, what it was given and what it keeps, as a snapshot writes it. */
 function executionOf(execution: Execution, { named, persisted }: Naming): PersistedObject {
   const { frame } = execution;
+  const { kept } = execution.transients;
   return {
     kind: 'execution',
     id: execution.object,
@@ -176,6 +177,11 @@ function executionOf(execution: Execution, { named, persisted }: Naming): Persis
     parked: execution.parked,
     given: execution.given.map((given) => registerOf(given, { named, persisted })),
     ...(execution.disposing === undefined ? {} : { disposing: named(execution.disposing) }),
+    ...(kept.length === 0
+      ? {}
+      : {
+          transients: kept.map(({ cell, ...transient }) => ({ ...transient, cell: named(cell) })),
+        }),
   };
 }
 

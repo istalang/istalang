@@ -9,7 +9,7 @@
  *   holder it is read under.
  */
 
-import type { CodeFunction } from '../../definition/tables/functions.ts';
+import { type CodeFunction, transientRegistersOf } from '../../definition/tables/functions.ts';
 import { lifetimeOf } from '../../definition/tables/types.ts';
 import { replacingParts } from '../../definition/values/replacing.ts';
 import type { Value } from '../../definition/values/values.ts';
@@ -18,7 +18,7 @@ import { unreachable } from '../../foundation/structures/unreachable.ts';
 import type { InstanceEnd } from '../run/instances.ts';
 import type { Invocation } from '../run/invocations.ts';
 import { Cell } from '../run/objects/cell.ts';
-import { Execution } from '../run/objects/execution.ts';
+import { Execution, type Frame } from '../run/objects/execution.ts';
 import { Future } from '../run/objects/future.ts';
 import { MockObject } from '../run/objects/mock-object.ts';
 import { Reference, type Step } from '../run/objects/reference.ts';
@@ -26,6 +26,7 @@ import { Resource } from '../run/objects/resource.ts';
 import type { RunObject } from '../run/objects/run-object.ts';
 import { WeakReference } from '../run/objects/weak-reference.ts';
 import type { Run } from '../run/run.ts';
+import { TransientScope } from '../run/transient-scope.ts';
 import type { PersistedObject, PersistedRegister, Snapshot } from './format.ts';
 
 /**
@@ -193,7 +194,10 @@ const fillers: Handlers<{ readonly run: Run } & Reading, PersistedObject, [], vo
   },
 };
 
-/** Fills a persisted execution: its frame, what it was given, each counted register held. */
+/**
+ * Fills a persisted execution: its frame, what it was given, the transients' cells it keeps, each
+ * counted register held.
+ */
 function filledExecution(
   { run, ...reading }: { readonly run: Run } & Reading,
   persisted: Extract<PersistedObject, { readonly kind: 'execution' }>,
@@ -212,6 +216,7 @@ function filledExecution(
   };
   execution.parked = persisted.parked;
   execution.given = persisted.given.map((given) => registerOf(given, reading) ?? null);
+  execution.transients = transientsOf(entry, execution.frame, persisted, object);
   if (persisted.disposing !== undefined) {
     execution.disposing = object(persisted.disposing) as Future;
   }
@@ -228,6 +233,35 @@ function filledExecution(
   for (const given of execution.given) {
     run.lifetimes.adoptRestored(given);
   }
+  for (const { cell } of execution.transients.kept) {
+    if (cell.counted) {
+      run.lifetimes.hold(cell);
+    }
+  }
+}
+
+/**
+ * The transients' scope of a persisted execution: the cells it kept, then its frame's own shares,
+ * which its transient registers hold (run/transients.ts).
+ */
+function transientsOf(
+  entry: CodeFunction,
+  frame: Frame,
+  persisted: Extract<PersistedObject, { readonly kind: 'execution' }>,
+  object: (id: number) => RunObject,
+): TransientScope {
+  const kept = (persisted.transients ?? []).map(({ cell, ...transient }) => ({
+    ...transient,
+    cell: object(cell) as Cell,
+  }));
+  const scope = new TransientScope(kept);
+  for (const register of transientRegistersOf(entry)) {
+    const cell = frame.registers[register];
+    if (cell instanceof Cell) {
+      scope.share(frame.function, register, cell);
+    }
+  }
+  return scope;
 }
 
 /** A frame's register as a snapshot gave it back. */

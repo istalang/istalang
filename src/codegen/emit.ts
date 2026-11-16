@@ -47,7 +47,7 @@ const helpers = [
     ],
   ],
   ['rt.places', ['load', 'storeRegister', 'storeCell', 'storeReference', 'reference']],
-  ['rt.transients', ['transient', 'shareTransient', 'unshareTransient']],
+  ['rt.transients', ['sharedTransient', 'shareTransient', 'unshareTransient']],
   ['rt.executions', ['current: currentExecution']],
   ['rt.mocking', ['mocked']],
   ['rt.signals', ['parked: PARKED', 'stopped: STOPPED', 'stop: STOP', 'notMocked: NOT_MOCKED']],

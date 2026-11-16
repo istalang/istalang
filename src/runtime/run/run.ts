@@ -72,7 +72,7 @@ export class Run {
   readonly lifetimes: Lifetimes;
   readonly places: Places;
   readonly builders: ValueBuilders;
-  readonly transients = new Transients();
+  readonly transients = new Transients(this);
   readonly queue = new ReadyQueue();
   readonly timers = new Timers();
   readonly arrivals = new Arrivals();
@@ -139,6 +139,7 @@ export class Run {
       entry: (index) => this.#entries[index] as (frame: Frame) => unknown,
       newId: () => this.newId(),
       settle: (future, value) => this.settle(future, value),
+      startedTransients: () => this.transients.started(),
       guarded: (run) => this.#guarded(run),
     });
     this.#natives = bindNatives(this, {

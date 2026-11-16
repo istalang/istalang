@@ -223,7 +223,7 @@ const emitters: Handlers<EntryScope, Instruction, [], string> = {
     const dispose = type?.kind === 'named' ? disposeOf(scope.types, type.type) : undefined;
     const made_ = `${register(i.dst)} = cell(${register(i.value)}, ${counted}${dispose === undefined ? '' : `, ${dispose}`});${cleared(scope, [i.value])}`;
     return shared
-      ? `${made_} shareTransient(${transientKey(scope, i.dst)}, ${register(i.dst)});`
+      ? `${made_} shareTransient(${scope.index}, ${i.dst}, ${register(i.dst)});`
       : made_;
   },
   load: (scope, i) => {
@@ -244,11 +244,8 @@ const emitters: Handlers<EntryScope, Instruction, [], string> = {
   },
   reference: (_, i) => `${register(i.dst)} = reference(${rootOf(i.place)}, ${pathOf(i.place)});`,
   // A call sharing a transient shares it on too, so each call's `return` unshares its own.
-  transient: (scope, i) => {
-    const key = transientKey(scope, i.dst);
-    const cell = register(i.dst);
-    return `${cell} = transient(${key}); if (${cell} !== undefined) { shareTransient(${key}, ${cell}); ${goTo(i.target)} }`;
-  },
+  transient: (scope, i) =>
+    `${register(i.dst)} = sharedTransient(${scope.index}, ${i.dst}); if (${register(i.dst)} !== undefined) { ${goTo(i.target)} }`,
   contextConstant: (scope, i) =>
     `${register(i.dst)} = contextConstant(${literal(i.name)}); if (${register(i.dst)} !== undefined) {${held(scope, i.dst)} ${goTo(i.target)} }`,
   makeContextConstant: (_, i) => `makeContextConstant(${literal(i.name)}, ${register(i.value)});`,
@@ -258,12 +255,7 @@ const emitters: Handlers<EntryScope, Instruction, [], string> = {
     const otherwise = i.otherwise ?? i.targets.at(-1) ?? 0;
     return `pc = ${literal(i.targets)}[${register(i.value)}.variant] ?? ${otherwise}; continue;`;
   },
-  return: (scope, i) => {
-    const ended = transientEnds(scope);
-    return scope.onFrames
-      ? `${ended}return ${register(i.value)};`
-      : `${ended}return ${register(i.value)};`;
-  },
+  return: (scope, i) => `${transientEnds(scope)}return ${register(i.value)};`,
   unreachable: () => 'throw unreachableHere();',
   call: (scope, i) => {
     const passed = argumentsOf(i);
@@ -296,17 +288,12 @@ const emitters: Handlers<EntryScope, Instruction, [], string> = {
   },
 };
 
-/** The key a transient's cell is shared by: its function and register. */
-function transientKey(scope: EntryScope, dst: Register): string {
-  return literal(`${scope.index}:${dst}`);
-}
-
 /** Before a `return`: the transients this call shared stop being shared with calls nested later. */
 function transientEnds(scope: EntryScope): string {
   return scope.entry.instructions
     .flatMap((each) =>
       each.kind === 'transient'
-        ? [`unshareTransient(${transientKey(scope, each.dst)}, ${register(each.dst)}); `]
+        ? [`unshareTransient(${scope.index}, ${each.dst}, ${register(each.dst)}); `]
         : [],
     )
     .join('');

@@ -17,7 +17,13 @@
 import { z } from 'zod';
 import { contentHashText } from '../../definition/formats/codec.ts';
 import { defineFormat } from '../../definition/formats/format.ts';
-import { count, functionId, objectId, typeId } from '../../definition/operands.ts';
+import {
+  count,
+  functionId,
+  objectId,
+  register as registerIndex,
+  typeId,
+} from '../../definition/operands.ts';
 import { integer, value } from '../../definition/values/values.ts';
 
 const step = z.tuple([z.enum(['elements', 'fields']), count]);
@@ -59,6 +65,10 @@ const object = z.discriminatedUnion('kind', [
     parked: z.boolean(),
     given: z.array(register),
     disposing: objectId.optional(),
+    /** The transients' cells visible where it started (§3.4), which it keeps. */
+    transients: z
+      .array(z.strictObject({ function: functionId, register: registerIndex, cell: objectId }))
+      .optional(),
   }),
   z.strictObject({
     kind: z.literal('weakReference'),

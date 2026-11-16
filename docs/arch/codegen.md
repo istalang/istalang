@@ -52,8 +52,11 @@ as the cell loses its last holder.
 - `currentCall` is the frame's execution in async code and `currentExecution()` in simple code.
 - `mocked` asks the run (`Run.mocked`), and writes its register only with an answer, never with
   the run's marker of none (`NOT_MOCKED`).
-- A transient's cell is shared by `function:register`; each call sharing one shares it on, so each
-  call's `return` unshares its own (spec §3.4).
+- A transient's cell is shared by function and register in the running execution's scope
+  (`run/transients.ts`): a call finding one shares it on (`sharedTransient`), one making it shares
+  its own (`shareTransient`), and each call's `return` takes back and lets go of its own share
+  (`unshareTransient`, spec §3.4). An async call keeps the cells visible where it started until it
+  ends, its stop included.
 
 ## Traces
 
