@@ -77,7 +77,12 @@ export async function startLive(
       passed.map((each) => jsonIn(definition, each)),
     );
     const outcome = await settled(run, binding.clock, given);
-    return { end: outcome === undefined ? { kind: 'unsettled' } : finished(definition, outcome), logs };
+    if (outcome === undefined) {
+      return { end: { kind: 'unsettled' }, logs };
+    }
+    const end = finished(definition, outcome);
+    run.finish([given as Value]);
+    return { end, logs };
   } catch (error) {
     const { message, trace } = run.panicOf(error);
     return { end: { kind: 'panicked', message, trace }, logs };
@@ -89,9 +94,10 @@ async function settled(run: Run, clock: Clock, given: unknown): Promise<Value | 
   if (!(given instanceof Future)) {
     return given as Value;
   }
+  const done = () => given.settled;
   for (;;) {
-    run.drain();
-    run.takeArrivals();
+    run.drain(done);
+    run.takeArrivals(done);
     if (given.settled) {
       return given.value;
     }

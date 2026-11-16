@@ -69,6 +69,8 @@ export class Run {
   readonly #traces: Traces;
   readonly #natives: (index: number) => Entry;
   readonly #ready: Ready[] = [];
+  /** The executions started and not yet ended. */
+  readonly #live = new Set<Execution>();
   /** The execution whose call is being disposed now, its `disposing()` future settling. */
   #disposingNow: Execution | undefined;
   #objects = 0;
@@ -340,6 +342,7 @@ export class Run {
     });
     this.lifetimes.hold(closure);
     execution.given = [...passed, closure ?? null];
+    this.#live.add(execution);
     const registers: (Value | undefined)[] = Array.from({ length: entry.registers.length });
     passed.forEach((value, at) => {
       registers[at] = value;
@@ -555,15 +558,18 @@ export class Run {
   }
 
   /** Runs what arrived from outside the run, one turn at a time, each draining what it readied. */
-  takeArrivals(): void {
+  takeArrivals(done: () => boolean = () => false): void {
     for (let turn = this.#arrivals.shift(); turn !== undefined; turn = this.#arrivals.shift()) {
       turn();
-      this.drain();
+      this.drain(done);
+      if (done()) {
+        return;
+      }
     }
   }
 
-  /** Runs the ready queue until it is empty. */
-  drain(): void {
+  /** Runs the ready queue until it is empty, or until `done` says the run is done. */
+  drain(done: () => boolean = () => false): void {
     for (let next = this.#ready.shift(); next !== undefined; next = this.#ready.shift()) {
       if (next.kind === 'resume') {
         this.#resume(next.execution, next.decision);
@@ -571,9 +577,30 @@ export class Run {
         this.#invoked(next);
       } else {
         const result = this.callValue(next.closure, next.arguments);
-        this.lifetimes.letGo(result as Value);
+        this.lifetimes.letGo(result as Value, next.closure, ...next.arguments);
+      }
+      if (done()) {
+        return;
       }
     }
+  }
+
+  /**
+   * Finishes the run once its outcome is encoded (§7): what is readied never runs, what it was to
+   * be called with let go of, every call still suspended stops, and `held` is let go of, the
+   * outcome's holder; all together, newest first.
+   */
+  finish(held: readonly Value[]): void {
+    const readied = this.#ready
+      .splice(0)
+      .flatMap((ready) => (ready.kind === 'call' ? [ready.closure, ...ready.arguments] : []));
+    this.lifetimes.apart(() => {
+      this.lifetimes.letGo(...held, ...readied);
+      const suspended = [...this.#live].sort((first, second) => second.object - first.object);
+      for (const execution of suspended) {
+        this.#stop(execution);
+      }
+    });
   }
 
   /** Runs an invocation readied by `invoke`, its instance's panic ending it. */
@@ -636,6 +663,7 @@ export class Run {
         return;
       }
       execution.ended = true;
+      this.#live.delete(execution);
       this.lifetimes.letGo(...execution.given);
       if (result === STOPPED || result === undefined) {
         return;
