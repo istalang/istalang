@@ -27,7 +27,12 @@ import { constructedVariant } from '../../syntax/declarations/field-defaults.ts'
 import type { AnchoredSpan } from '../../syntax/tree/positions.ts';
 import type { CodeContext } from '../context.ts';
 import { buildConstructed } from '../values/variant-values.ts';
-import { type ClosedCall, calledParameters, substitutionOfCall } from './closed-calls.ts';
+import {
+  type ClosedCall,
+  calledParameters,
+  resultOfCall,
+  substitutionOfCall,
+} from './closed-calls.ts';
 import { packElementsOf } from './packs.ts';
 
 /** A call to write: where it is written, what it calls, and its arguments. */
@@ -74,10 +79,11 @@ interface FunctionCallToEmit {
 export function emitFunctionCall(
   context: CodeContext,
   toEmit: FunctionCallToEmit,
-  result: TypeReference,
+  given?: TypeReference,
   dst?: Register,
 ): Register {
   const { span, call } = toEmit;
+  const result = given ?? context.tables.types.reference(resultOfCall(context.checker, call));
   const parameters = boundParameters(context, toEmit);
   if (call.kind === 'dispatch') {
     const callee = context.tables.dispatchIndex(call.dispatch);

@@ -170,7 +170,11 @@ function partsConverted(
     return closureOf(context, entry, [typed.value], tables.types.reference(to), how.span);
   }
   const entry = tables.conversionIndex({ kind: 'converting', from: typed.type, to, at: how.at });
-  return emitCall(context, { span: how.span, callee: entry, arguments: [typed.value] });
+  return emitCall(
+    context,
+    { span: how.span, callee: entry, arguments: [typed.value] },
+    tables.types.reference(to),
+  );
 }
 
 /** A closure of `entry`, of `type`, capturing `captures`. */
@@ -270,7 +274,11 @@ export function convertingEntry(
 ): CodeFunction {
   const { checker, tables } = lowering;
   const { from, to, at } = entry;
-  const code = new SynthesizedCode(lowering, at.span, 1);
+  const code = new SynthesizedCode(lowering, at.span, {
+    parameters: [tables.types.reference(from)],
+    result: tables.types.reference(to),
+    mode: 'simple',
+  });
   const [value] = code.parameters;
   if (value === undefined) {
     unreachable('A conversion takes the value it converts.');
@@ -282,7 +290,7 @@ export function convertingEntry(
       ? rebuilt(code, { register: value, type: from }, to, rebuildingIn(code, how))
       : appliedFit(code, { value, type: from }, fit, how);
   code.return(result);
-  return code.entry(tables.headerAt(conversionName(checker, entry), at.module, at.span), 'simple');
+  return code.entry(tables.headerAt(conversionName(checker, entry), at.module, at.span));
 }
 
 /**
@@ -298,8 +306,17 @@ export function wrappingEntry(
 ): CodeFunction {
   const { checker, tables } = lowering;
   const { from, to, at } = entry;
-  const references = to.parameters.map((parameter) => parameter.reference);
-  const code = new SynthesizedCode(lowering, at.span, references.length, 1);
+  const resultFit = resultFitBetween(checker, from, to);
+  const async = resultFit.kind !== 'value';
+  const code = new SynthesizedCode(lowering, at.span, {
+    parameters: to.parameters.map((parameter) => {
+      const type = tables.types.reference(parameter.type);
+      return parameter.reference ? { kind: 'reference', to: type } : type;
+    }),
+    captures: [tables.types.reference(from)],
+    result: tables.types.reference(async ? resultFit.into : to.result),
+    mode: codeModeOf(async, builtKindOf(checker, entry.to)),
+  });
   const [original] = code.captures;
   if (original === undefined) {
     unreachable('A wrapped function captures the function it calls.');
@@ -308,19 +325,19 @@ export function wrappingEntry(
     const taken = to.parameters[index];
     const own = from.parameters[index];
     if (taken === undefined || own === undefined || taken.reference) {
-      return code.passedOn(index, references);
+      return code.passedOn(index);
     }
     const register = fittedIn(code, { value: parameter, type: taken.type }, own.type, at);
     return { kind: 'value' as const, register };
   });
-  const called = emitCall(code, {
-    span: at.span,
-    callee: { kind: 'value', register: original },
-    arguments: passed,
-  });
-  const mode = codeModeOf(returnedAs(code, called, entry, at), builtKindOf(checker, entry.to));
+  const called = emitCall(
+    code,
+    { span: at.span, callee: { kind: 'value', register: original }, arguments: passed },
+    tables.types.reference(from.result),
+  );
+  returnedAs(code, called, entry, at);
   const header = tables.headerAt(conversionName(checker, entry), at.module, at.span);
-  return code.entry(header, mode, references);
+  return code.entry(header);
 }
 
 /**
@@ -334,15 +351,14 @@ function returnedAs(
   called: Register,
   { from, to }: { readonly from: FunctionType; readonly to: FunctionType },
   at: ConversionSite,
-): boolean {
+): void {
   const result = resultFitBetween(code.checker, from, to);
   if (result.kind === 'value') {
     code.return(fittedIn(code, { value: called, type: from.result }, to.result, at));
-    return false;
+    return;
   }
   const value = result.kind === 'awaited' ? code.await(called, from.result) : called;
   code.return(fittedIn(code, { value, type: result.value }, result.into, at));
-  return true;
 }
 
 /** `type`, whose value the checker converted into a shape, so a nominal struct. */
@@ -379,18 +395,30 @@ export function asyncFitEntry(
   context: Pick<CodeContext, 'checker' | 'tables'>,
   fit: AsyncFit,
 ): CodeFunction {
-  const references = fit.type.parameters.map((parameter) => parameter.reference);
-  const code = new SynthesizedCode(context, fit.site.span, references.length, 1);
+  const { tables } = context;
+  const result = tables.types.reference(fit.type.result);
+  const code = new SynthesizedCode(context, fit.site.span, {
+    parameters: fit.type.parameters.map((parameter) => {
+      const type = tables.types.reference(parameter.type);
+      return parameter.reference ? { kind: 'reference', to: type } : type;
+    }),
+    captures: [tables.types.reference(fit.type)],
+    result,
+    mode: codeModeOf(true, builtKindOf(context.checker, fit.made)),
+  });
   const [plain] = code.captures;
   if (plain === undefined) {
     unreachable('An async fit captures the function it calls.');
   }
-  const result = emitCall(code, {
-    span: code.span,
-    callee: { kind: 'value', register: plain },
-    arguments: code.parameters.map((_, index) => code.passedOn(index, references)),
-  });
-  code.return(result);
-  const mode = codeModeOf(true, builtKindOf(context.checker, fit.made));
-  return code.entry(context.tables.asyncFitHeader(fit), mode, references);
+  const called = emitCall(
+    code,
+    {
+      span: code.span,
+      callee: { kind: 'value', register: plain },
+      arguments: code.parameters.map((_, index) => code.passedOn(index)),
+    },
+    result,
+  );
+  code.return(called);
+  return code.entry(tables.asyncFitHeader(fit));
 }

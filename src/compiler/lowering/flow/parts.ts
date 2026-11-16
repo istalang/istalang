@@ -52,9 +52,10 @@ export function partRead(
       if (value.type.kind !== 'any') {
         const witnesses = () =>
           context.checker.traitObjects.witnessesMeeting(value.type, constraint);
-        return readRequiredField(context, { value, field }, witnesses, span);
+        const result = writer.typeOf(into);
+        return readRequiredField(context, { value, field, result }, witnesses, span);
       }
-      const callee = context.tables.anyFieldIndex(value.type, part.required);
+      const callee = context.tables.anyFieldIndex(value.type, part.required, writer.typeOf(into));
       return emitCall(context, { span, callee, arguments: [value.register] }, resultType());
     }
     case 'behind': {

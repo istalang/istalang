@@ -54,6 +54,12 @@ export const awaitFunction = 'onAwait';
  * shared value and decides the wait for the case's position; and, for a `select` with an `else`,
  * the position a wait was decided for at once, or -1, the wait then given up.
  */
+/**
+ * What a host extern's wrapper calls for a future its host fills (§9): a pending future of the
+ * prelude's, and the callback resolving it, which the host's native is given.
+ */
+export const hostFutureFunction = '_filled';
+
 export const waitFunctions = {
   wait: '_wait',
   caseResolver: '_caseResolver',

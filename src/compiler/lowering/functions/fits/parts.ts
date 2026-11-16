@@ -220,11 +220,11 @@ function rebuiltNominal(
   const { checker } = context;
   const items = wellKnownArguments(checker, wellKnown.array, value.type);
   if (items !== undefined) {
-    return mappedWith(context, value, { from: items, to: to.arguments }, how);
+    return mappedWith(context, value, { from: items, to }, how);
   }
   const entries = wellKnownArguments(checker, wellKnown.map, value.type);
   if (entries !== undefined) {
-    return mappedWith(context, value, { from: entries, to: to.arguments }, how);
+    return mappedWith(context, value, { from: entries, to }, how);
   }
   if (checker.fieldsOf(value.type) !== undefined) {
     return rebuiltStruct(context, value, to, how);
@@ -243,22 +243,27 @@ function rebuiltNominal(
 function mappedWith(
   context: CodeContext,
   value: ValueOf<NominalType>,
-  { from, to }: { readonly from: readonly Type[]; readonly to: readonly Type[] },
+  { from, to: target }: { readonly from: readonly Type[]; readonly to: NominalType },
   how: Rebuilding,
 ): Register {
+  const to = target.arguments;
   const isMap = from.length === 2;
   const name = isMap ? partConversionFunctions.values : partConversionFunctions.items;
   const declaration =
     context.checker.languageFunctions('prelude', name)[0] ??
     unreachable(`The prelude declares no '${name}'.`);
   const item = from.at(-1) ?? unreachable('A collection has an item type.');
-  const target = to.at(-1) ?? unreachable('A collection has an item type.');
-  const instance = rootInstance(context.checker, declaration, [...from, target]);
-  return emitCall(context, {
-    span: how.span,
-    callee: context.tables.functionIndex(instance),
-    arguments: [value.register, how.converter(item, target)],
-  });
+  const last = to.at(-1) ?? unreachable('A collection has an item type.');
+  const instance = rootInstance(context.checker, declaration, [...from, last]);
+  return emitCall(
+    context,
+    {
+      span: how.span,
+      callee: context.tables.functionIndex(instance),
+      arguments: [value.register, how.converter(item, last)],
+    },
+    context.tables.types.reference(target),
+  );
 }
 
 /** An enum's value as one of `to`, the same enum: each variant's fields converted (§3.11). */

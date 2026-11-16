@@ -25,7 +25,7 @@
  *   written once lowering reached every type converted so far, and again when it reaches another.
  */
 
-import type { Argument } from '../../../definition/instructions/places.ts';
+import type { Argument } from '../../../definition/instructions/calls.ts';
 import type { Register } from '../../../definition/operands.ts';
 import type { FunctionDefinition } from '../../../definition/tables/functions.ts';
 import { unreachable } from '../../../foundation/structures/unreachable.ts';
@@ -36,6 +36,7 @@ import { substitute } from '../../checker/types/parts/substitution.ts';
 import { kindOfFunction } from '../../checker/types/type/function-kinds.ts';
 import type { AnyType, FunctionType, Type } from '../../checker/types/type/index.ts';
 import { awaitedOf } from '../../checker/types/type/well-known.ts';
+import { baseOf } from '../../checker/types/unions/union-members.ts';
 import { hasOneValue } from '../../checker/types/unions/unions.ts';
 import {
   closeWitness,
@@ -65,22 +66,27 @@ export function dispatchEntry(lowering: Lowering, dispatch: Dispatch): FunctionD
   const { on, through, constraint, member, required } = dispatch;
   const parameters = checker.parametersOf(required);
   const references = parameters.map((parameter) => parameter.reference);
-  const code = new SynthesizedCode(lowering, required.name.span, references.length);
+  const substitution = dispatchSubstitution(checker, dispatch);
+  const concrete = (type: Type) => substitute(type, substitution, checker.typeRules);
+  // What a member gives converts as what its future gives, so a future is awaited, whatever the
+  // head.
+  const awaited = awaitedOf(checker, checker.resultOf(required));
+  const givesFuture = awaited !== undefined;
+  const kindOfDispatch = concrete(awaited?.mode ?? kindOfFunction(checker, required));
+  const code = new SynthesizedCode(lowering, required.name.span, {
+    parameters: parameters.map((parameter, index) => {
+      const type = tables.types.reference(index === 0 ? on : concrete(parameter.type));
+      return parameter.reference ? { kind: 'reference', to: type } : type;
+    }),
+    result: tables.types.reference(concrete(awaited?.value ?? checker.resultOf(required))),
+    mode: codeModeOf(givesFuture, kindOfDispatch),
+  });
   const [receiver] = code.parameters;
   if (receiver === undefined) {
     unreachable(`'${required.name.text}' is called through any without its receiver.`);
   }
   const at = { module: checker.moduleOf(required), span: required.name.span };
-  // What a member gives converts as what its future gives, so a future is awaited, whatever the
-  // head.
-  const awaited = awaitedOf(checker, checker.resultOf(required));
-  const givesFuture = awaited !== undefined;
-  const kindOfDispatch = substitute(
-    awaited?.mode ?? kindOfFunction(checker, required),
-    dispatchSubstitution(checker, dispatch),
-    checker.typeRules,
-  );
-  switchOverMembers(code, on, receiver, (type) => {
+  switchOverMembers(code, on, receiver, (type, variant) => {
     const witness = checker.traitObjects.memberWitnesses(through, constraint, type)?.[member];
     if (witness === undefined) {
       unreachable(
@@ -92,12 +98,12 @@ export function dispatchEntry(lowering: Lowering, dispatch: Dispatch): FunctionD
       const called = signatures?.called.parameters[index + 1];
       const met = signatures?.met.parameters[index + 1];
       if (called === undefined || met === undefined || called.reference) {
-        return code.passedOn(index + 1, references);
+        return code.passedOn(index + 1);
       }
       const register = fittedIn(code, { value, type: called.type }, met.type, at);
       return { kind: 'value' as const, register };
     });
-    const self = memberReceiver(code, receiver, { on, type, references });
+    const self = memberReceiver(code, receiver, { on, type, variant, references });
     const closed = closeWitness(witness, dispatch, checker);
     const call = code.call(closed, [self, ...passed]);
     const given = givesFuture ? code.await(call, resultOfCall(checker, closed)) : call;
@@ -106,7 +112,7 @@ export function dispatchEntry(lowering: Lowering, dispatch: Dispatch): FunctionD
   const generic = dispatch.typeArguments.map((type) => tableKey(checker, type));
   const name = `${tableKey(checker, on)}.${required.name.text}${generic.length === 0 ? '' : `<${generic.join(', ')}>`}`;
   const header = tables.headerAt(name, checker.moduleOf(required), required.name.span);
-  return code.entry(header, codeModeOf(givesFuture, kindOfDispatch), references);
+  return code.entry(header);
 }
 
 /**
@@ -139,16 +145,21 @@ export function anyConversionEntry(
     unreachable('An any type takes at least one trait.');
   }
   const { span } = first.trait.name;
-  const code = new SynthesizedCode(lowering, span, 1);
+  const code = new SynthesizedCode(lowering, span, {
+    parameters: [tables.types.reference(from)],
+    result: tables.types.reference(to),
+    mode: 'simple',
+  });
   const [value] = code.parameters;
   if (value === undefined) {
     unreachable('A conversion takes the value it converts.');
   }
-  switchOverMembers(code, from, value, (type) => {
-    code.return(convertedIntoAny(code, { value: code.field(value, 0), from: type, to }, span));
+  switchOverMembers(code, from, value, (type, variant) => {
+    const held = code.variantField(value, variant, 0, baseOf(type));
+    code.return(convertedIntoAny(code, { value: held, from: type, to }, span));
   });
   const name = `${tableKey(checker, from)} as ${tableKey(checker, to)}`;
-  return code.entry(tables.headerAt(name, checker.moduleOf(first.trait), span), 'simple');
+  return code.entry(tables.headerAt(name, checker.moduleOf(first.trait), span));
 }
 
 /**
@@ -157,24 +168,28 @@ export function anyConversionEntry(
  */
 export function anyFieldEntry(
   lowering: Lowering,
-  on: AnyType,
-  required: RequiredField,
+  { on, required, result }: { readonly on: AnyType; readonly required: RequiredField; readonly result: Type },
 ): FunctionDefinition {
   const { checker, tables } = lowering;
   const { trait } = required.constraint;
   const { field } = required;
-  const code = new SynthesizedCode(lowering, field.name.span, 1);
+  const code = new SynthesizedCode(lowering, field.name.span, {
+    parameters: [tables.types.reference(on)],
+    result: tables.types.reference(result),
+    mode: 'simple',
+  });
   const [value] = code.parameters;
   if (value === undefined) {
     unreachable('A field read takes the value it reads.');
   }
   const constraint = on.constraints.findIndex((each) => each.trait === trait);
   const at = { module: checker.moduleOf(trait), span: field.name.span };
-  switchOverMembers(code, on, value, (type) => {
-    const member = { register: code.field(value, 0), type };
+  switchOverMembers(code, on, value, (type, variant) => {
+    const member = { register: code.variantField(value, variant, 0, baseOf(type)), type };
     const witnesses = () => checker.traitObjects.memberWitnesses(on, constraint, type);
-    const held = readRequiredField(code, { value: member, field }, witnesses, code.span);
     const types = checker.traitObjects.memberFieldTypes(on, constraint, type, field);
+    const read = { value: member, field, result: types?.met ?? result };
+    const held = readRequiredField(code, read, witnesses, code.span);
     code.return(
       types === undefined
         ? held
@@ -182,7 +197,7 @@ export function anyFieldEntry(
     );
   });
   const name = `${tableKey(checker, on)}.${field.name.text}`;
-  return code.entry(tables.headerAt(name, checker.moduleOf(trait), field.name.span), 'simple');
+  return code.entry(tables.headerAt(name, checker.moduleOf(trait), field.name.span));
 }
 
 /**
@@ -196,8 +211,14 @@ function memberReceiver(
   {
     on,
     type,
+    variant,
     references,
-  }: { readonly on: Type; readonly type: Type; readonly references: readonly boolean[] },
+  }: {
+    readonly on: Type;
+    readonly type: Type;
+    readonly variant: number;
+    readonly references: readonly boolean[];
+  },
 ): Register | Argument {
   const byReference = references[0] === true;
   if (on.kind === 'union' && hasOneValue(type)) {
@@ -205,9 +226,12 @@ function memberReceiver(
     return byReference ? code.inCell(value, type) : value;
   }
   if (on.kind !== 'any' && on.kind !== 'union') {
-    return code.passedOn(0, references);
+    return code.passedOn(0);
   }
-  return byReference ? code.passedOn(0, references, [0]) : code.field(receiver, 0);
+  const held = baseOf(type);
+  return byReference
+    ? code.passedOn(0, [{ kind: 'variant', variant, field: 0 }], held)
+    : code.variantField(receiver, variant, 0, held);
 }
 
 /**
@@ -219,11 +243,11 @@ function switchOverMembers(
   code: SynthesizedCode,
   on: Type,
   value: Register,
-  write: (type: Type) => void,
+  write: (type: Type, variant: number) => void,
 ): void {
   const { types } = code.tables;
   if (on.kind !== 'any' && on.kind !== 'union') {
-    write(on);
+    write(on, 0);
     return;
   }
   const members = on.kind === 'any' ? types.anyMembers(on) : types.unionMembers(on);
@@ -233,8 +257,8 @@ function switchOverMembers(
     cases.map(({ label }) => label),
     code.span,
   );
-  for (const { type, label } of cases) {
+  for (const [variant, { type, label }] of cases.entries()) {
     code.code.place(label);
-    write(type);
+    write(type, variant);
   }
 }

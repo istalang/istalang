@@ -36,6 +36,7 @@ import type { ResolvedCall } from '../../checker/surface/resolved-call.ts';
 import type { FunctionInstance } from '../../checker/surface/witness-closing.ts';
 import type { Fit } from '../../checker/types/fitting/fit/index.ts';
 import type { Type } from '../../checker/types/type/index.ts';
+import type { WaitingMode } from '../calls/waits.ts';
 import { type ModuleId, programModule } from '../../program/program.ts';
 import type {
   ContextConstantDeclaration,
@@ -60,7 +61,6 @@ import type { DefinitionTables, EntryHeader } from '../tables/tables.ts';
 import { CodeWriter } from './code-writer.ts';
 import { fittedValue } from './fits/index.ts';
 import {
-  declareArgument,
   declareFilled,
   declareFrame,
   declareOwnCall,
@@ -82,18 +82,6 @@ import {
   nestedFrame,
   passedBody,
 } from './frames.ts';
-
-/** Decodes a start entry's JSON argument into its parameter's value. */
-type StartParameterDecoder = (context: CodeContext, json: Register, span: AnchoredSpan) => Register;
-
-/**
- * The JSON at a start entry's edges: how each argument is read from `Json`, a mismatch failing the
- * host's start, and the value a named lambda's own name stands for there.
- */
-export interface StartEdges {
-  readonly parameters: readonly StartParameterDecoder[];
-  readonly self: Value | undefined;
-}
 
 /** The lowering of `instance`'s entry; undefined for an instance with no body, an extern. */
 export function instanceLowering(
@@ -151,7 +139,7 @@ class FunctionLowering implements EntryContext {
   readonly tables: DefinitionTables;
   readonly module: ModuleId;
   readonly frame: Frame;
-  readonly code = new CodeWriter();
+  readonly code: CodeWriter;
   readonly variables = new VariableRegisters();
   #layout: readonly FrameSlot[] | undefined;
   /**
@@ -167,6 +155,12 @@ class FunctionLowering implements EntryContext {
     this.module = checker.moduleOf(ownerDeclaration(owner));
     this.#reading = { owner, body };
     this.frame = frame;
+    this.code = new CodeWriter(tables.types.reference(frame.result));
+  }
+
+  waitingMode(): WaitingMode {
+    const { mode } = this.frame;
+    return mode === 'simple' ? unreachable(`Simple code waits in ${this.frame.header.name}.`) : mode;
   }
 
   get body(): CheckedBody {
@@ -217,11 +211,11 @@ class FunctionLowering implements EntryContext {
    * of its parameters, which it returns.
    */
   lowerBuilt(
-    build: (context: FunctionContext, parameters: readonly EntryParameter[]) => Register,
+    build: (context: FunctionContext, parameters: readonly Register[]) => Register,
   ): CodeFunction {
-    const { listed } = declareFrame(this, this.#slots());
-    const value = build(this, listed);
-    this.code.emit({ kind: 'return', span: this.frame.function.span, value });
+    const { listed, values } = declareFrame(this, this.#slots());
+    const value = build(this, values);
+    this.code.return(value, this.frame.function.span);
     return this.#entry(listed);
   }
 
@@ -233,14 +227,14 @@ class FunctionLowering implements EntryContext {
   lowerAccessor(declaration: ContextConstantDeclaration, name: string): CodeFunction {
     const { listed } = declareFrame(this, this.#slots());
     const { span } = declaration;
-    const value = this.code.allocate();
+    const value = this.code.allocate(this.tables.types.reference(this.frame.result));
     const made = this.code.newLabel();
     this.code.contextConstant(value, name, made, span);
     const flow = this.body.flowOf(declaration.initializer);
     writeFlow(this, flow, { parameters: [], end: { kind: 'into', into: value } });
     this.code.emit({ kind: 'makeContextConstant', span, name, value });
     this.code.place(made);
-    this.code.emit({ kind: 'return', span, value });
+    this.code.return(value, span);
     return this.#entry(listed);
   }
 
@@ -248,39 +242,6 @@ class FunctionLowering implements EntryContext {
   lowerNested(node: Lambda | FunctionDeclaration): CodeFunction {
     const { listed, values } = declareFrame(this, this.#slots());
     this.#write(node, values);
-    return this.#entry(listed);
-  }
-
-  /**
-   * The start entry of a function whose root is `root` (its body block, or a lambda), with
-   * `edges`.
-   */
-  lowerStart(edges: StartEdges, root: Block | Lambda): CodeFunction {
-    const { span } = root;
-    const arguments_ = this.frame.parameters.map(() => this.code.allocate());
-    const listed = arguments_.map((register) => ({
-      register,
-      reference: false,
-      hasDefault: false,
-    }));
-    const values = this.frame.parameters.map((parameter, index) => {
-      const decode = edges.parameters[index];
-      const json = arguments_[index];
-      if (decode === undefined || json === undefined) {
-        unreachable(`No edge for argument ${index} of a start entry.`);
-      }
-      const value = decode(this, json, span);
-      const register = declareArgument(this, parameter);
-      this.code.emit({ kind: 'move', span, dst: register, src: value });
-      return register;
-    });
-    const { self } = this.frame;
-    if (self !== undefined && edges.self !== undefined) {
-      const src = this.constant(edges.self, self.span);
-      declareFilled(this, self, (dst) => ({ kind: 'move', span: self.span, dst, src }));
-    }
-    declareOwnCall(this);
-    this.#write(root, values);
     return this.#entry(listed);
   }
 
@@ -312,25 +273,19 @@ class FunctionLowering implements EntryContext {
   #entry(parameters: readonly EntryParameter[]): CodeFunction {
     const { header, mode, captures } = this.frame;
     const { tree } = programModule(this.checker.program, this.module);
-    const cells = [...this.variables.cells];
-    const { registers, counted, instructions } = this.code.finish(tree, {
-      inputs: parameters.length + captures.length,
-      cells: cells.map(({ register }) => register),
-    });
+    const { registers, instructions } = this.code.finish(tree, this.frame.function.span);
     return {
       kind: 'code',
       ...header,
       mode,
-      parameters: parameters.map(({ reference, hasDefault }) => ({ reference, hasDefault })),
+      parameters: parameters.map(({ hasDefault }) => ({ hasDefault })),
       captures: captures.length,
       registers,
-      cells,
-      counted,
       instructions,
     };
   }
 
-  constant(value: Value, span: AnchoredSpan): Register {
-    return emitConstant(this, value, span);
+  constant(value: Value, type: Type, span: AnchoredSpan): Register {
+    return emitConstant(this, value, type, span);
   }
 }

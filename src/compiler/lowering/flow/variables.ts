@@ -32,10 +32,17 @@ import type { FunctionContext } from '../context.ts';
 /** The register each variable of one entry lives in, by its declaring name and type. */
 export class VariableRegisters {
   readonly #registers = new Map<Identifier, Map<string, Register>>();
+  readonly #variables = new Set<Register>();
 
   declare(declaring: Identifier, typeKey: string, register: Register): void {
     const byType = this.#registers.get(declaring) ?? new Map<string, Register>();
     this.#registers.set(declaring, byType.set(typeKey, register));
+    this.#variables.add(register);
+  }
+
+  /** Whether a variable lives in `register`. */
+  isVariable(register: Register): boolean {
+    return this.#variables.has(register);
   }
 
   registerOf(declaring: Identifier, typeKey: string): Register | undefined {

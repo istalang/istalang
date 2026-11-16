@@ -15,6 +15,7 @@ import {
 import type { Checker } from '../../../checker/check.ts';
 import type { FunctionInstance } from '../../../checker/surface/witness-closing.ts';
 import type { Type } from '../../../checker/types/type/index.ts';
+import { stringType } from '../../../checker/types/type/primitives.ts';
 import type { AnchoredSpan } from '../../../syntax/tree/positions.ts';
 import { type ClosedCall, closeCall } from '../../calls/closed-calls.ts';
 import { emitFunctionCall } from '../../calls/emit-call.ts';
@@ -64,7 +65,7 @@ export function emitInbound(
   inbound: Inbound,
   span: AnchoredSpan,
 ): Register {
-  const path = context.constant(inbound.path, span);
+  const path = context.constant(inbound.path, stringType, span);
   const call = (target: ClosedCall, values: readonly Register[]) =>
     emitFunctionCall(context, { span, call: target, arguments: values });
   return call(inbound.accept, [call(inbound.decode, [json, path])]);

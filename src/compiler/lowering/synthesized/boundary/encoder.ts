@@ -19,7 +19,7 @@ import {
 } from '../../../checker/surface/json-form.ts';
 import { unfolded } from '../../../checker/types/type/computed-types.ts';
 import type { Type, UnionType } from '../../../checker/types/type/index.ts';
-import { isPrimitive } from '../../../checker/types/type/primitives.ts';
+import { isPrimitive, stringType } from '../../../checker/types/type/primitives.ts';
 import { arrayElement, wellKnownArguments } from '../../../checker/types/type/well-known.ts';
 import { baseOf } from '../../../checker/types/unions/union-members.ts';
 import { closeCall } from '../../calls/closed-calls.ts';
@@ -52,13 +52,15 @@ export class Encoder {
         return;
       }
       case 'record':
-        code.return(this.#object(form.fields, (index) => code.field(value, index), []));
+        code.return(
+          this.#object(form.fields, (index, field) => code.structField(value, index, field.type), []),
+        );
         return;
       case 'tuple': {
         const items = form.type.elements.map((element, index) =>
-          code.call(this.#codec(element), [code.field(value, index)]),
+          code.call(this.#codec(element), [code.tupleItem(value, index, element)]),
         );
-        code.return(this.#list(code.array(items)));
+        code.return(this.#list(items));
         return;
       }
       case 'enum':
@@ -83,7 +85,7 @@ export class Encoder {
     const write = (literal: TypedValue) =>
       code.call(this.#codec(baseOf(literal.type)), [literal.register]);
     return type.kind === 'union'
-      ? eachMember(code, { register: value, type }, code.span, write)
+      ? eachMember(code, { register: value, type }, { result: this.#json, span: code.span }, write)
       : write({ register: value, type });
   }
 
@@ -103,12 +105,12 @@ export class Encoder {
         code.code.place(label);
         const tag = this.#member(
           (member) => isPrimitive(member, 'String'),
-          code.constant(variant.name),
+          code.constant(variant.name, stringType),
         );
+        const read = (position: number, field: JsonField) =>
+          code.variantField(value, index, position, field.type);
         code.return(
-          this.#object(variant.fields, (field) => code.field(value, field), [
-            [code.constant(variantTagKey), tag],
-          ]),
+          this.#object(variant.fields, read, [[code.constant(variantTagKey, stringType), tag]]),
         );
       }
     }
@@ -117,7 +119,7 @@ export class Encoder {
   /** The `Json.Object` of `fields`, each written by its codec, after `before`. */
   #object(
     fields: readonly JsonField[],
-    read: (index: number) => Register,
+    read: (index: number, field: JsonField) => Register,
     before: readonly (readonly [Register, Register])[],
   ): Register {
     const code = this.#code;
@@ -131,25 +133,29 @@ export class Encoder {
           field.codec === undefined
             ? this.#codec(field.type)
             : closeCall(field.codec.write, undefined, code.checker);
-        return [[code.constant(field.key), code.call(encode, [read(index)])]];
+        return [[code.constant(field.key, stringType), code.call(encode, [read(index, field)])]];
       }),
     ];
     const { checker } = code;
-    return this.#member(
-      (member) => wellKnownArguments(checker, wellKnown.map, member) !== undefined,
-      code.map(entries),
-    );
+    const isObject = (member: Type) => wellKnownArguments(checker, wellKnown.map, member) !== undefined;
+    return this.#member(isObject, code.map(entries, this.#memberType(isObject)));
   }
 
-  /** The `Json` of `items`, an array of `Json`. */
-  #list(items: Register): Register {
+  /** The `Json` of `items`, each a `Json`. */
+  #list(items: readonly Register[]): Register {
     const { checker } = this.#code;
-    return this.#member((member) => arrayElement(checker, member) !== undefined, items);
+    const isList = (member: Type) => arrayElement(checker, member) !== undefined;
+    return this.#member(isList, this.#code.array(items, this.#memberType(isList)));
+  }
+
+  /** The member of `Json` that `isMember` picks. */
+  #memberType(isMember: (member: Type) => boolean): Type {
+    return this.#json.members.find(isMember) ?? unreachable('Json has no such member.');
   }
 
   /** `value`, of the member of `Json` that `isMember` picks, as a `Json`. */
   #member(isMember: (member: Type) => boolean, value: Register): Register {
-    const member = this.#json.members.find(isMember) ?? unreachable('Json has no such member.');
+    const member = this.#memberType(isMember);
     return intoUnion(this.#code, { register: value, type: member }, this.#json, this.#code.span);
   }
 }

@@ -9,13 +9,14 @@
  *   whose parameters can be read from JSON and whose outcome written. Its kind is its head's, a
  *   lambda's the checker's, so ista code, which a host never starts, gets no entry.
  *   Anything else simply isn't startable.
- * - A start entry is the function's own body taking each argument as `Json` and decoding it, so
- *   JSON that doesn't fit fails the host's start and nothing runs. The run is therefore one
- *   execution of the function, as any other is, and its traces and waits are the function's own.
- *   What it returns is encoded as every outcome is, by the runtime as it returns.
+ * - A start entry wraps the function (ir-first design, decision 7): it takes each argument as
+ *   `Json` and decodes it, so JSON that doesn't fit fails the host's start before the function
+ *   runs; it calls the function, awaits what an async one gives, and gives the outcome encoded as
+ *   `Json`, letting go of it then. The runtime runs a start as any call.
  */
 
-import type { FunctionId } from '../../../../definition/operands.ts';
+import type { Register } from '../../../../definition/operands.ts';
+import { wellKnown } from '../../../../foundation/language/well-known/index.ts';
 import type { CodeFunction } from '../../../../definition/tables/functions.ts';
 import { isStartable, type StartShape } from '../../../../foundation/language/starts.ts';
 import { unreachable } from '../../../../foundation/structures/unreachable.ts';
@@ -23,6 +24,7 @@ import type { Checker } from '../../../checker/check.ts';
 import { persistenceOf } from '../../../checker/types/type/function-kinds.ts';
 import { isSendableFunction } from '../../../checker/types/type/function-types.ts';
 import type { FunctionType, Type } from '../../../checker/types/type/index.ts';
+import { literalType } from '../../../checker/types/type/primitives.ts';
 import { outcomeOf } from '../../../checker/types/type/well-known.ts';
 import type {
   ConstantDeclaration,
@@ -32,8 +34,8 @@ import type {
 import { startShapeOf } from '../../../syntax/declarations/starts.ts';
 import { awaits } from '../../../syntax/tokens/modifiers.ts';
 import type { Invalid } from '../../../syntax/tree/node.ts';
-import { writtenBodyOf } from '../../functions/bodies.ts';
-import { instanceLowering, nestedLowering, type StartEdges } from '../../functions/index.ts';
+import { emitCall } from '../../calls/emit-call.ts';
+import { SynthesizedCode } from '../index.ts';
 import { constantValue } from '../../tables/constants.ts';
 import { keyOf } from '../../tables/extern-keys.ts';
 import { rootInstance } from '../../tables/instances.ts';
@@ -48,6 +50,8 @@ interface Startable {
   readonly parameters: readonly Type[];
   /** What it gives: `T` for an async function returning `Future<T>`. */
   readonly outcome: Type;
+  /** Whether it is async, giving a future of its outcome. */
+  readonly awaits: boolean;
 }
 
 /** Every function of the program's own modules a host may start, in module and source order. */
@@ -88,6 +92,7 @@ function functionStartable(
         key: keyOf(checker, declaration, parameters),
         parameters: parameters.map(({ type }) => type),
         outcome,
+        awaits: awaits(declaration.qualifiers),
       });
 }
 
@@ -121,6 +126,7 @@ function lambdaStartable(
     key: keyOf(checker, declaration, signature.parameters),
     parameters: signature.parameters.map(({ type: each }) => each),
     outcome: shape.awaits ? outcomeOf(checker, signature.result) : signature.result,
+    awaits: shape.awaits,
   });
 }
 
@@ -134,55 +140,72 @@ function crossing(checker: Checker, startable: Startable): Startable | undefined
     : undefined;
 }
 
-/**
- * Lists `startable` among what a host may start, with the codec encoding its outcome; the index of
- * its start entry.
- */
+/** Lists `startable` among what a host may start; the key it goes by. */
 export function listStart(
   lowering: { readonly checker: Checker; readonly tables: DefinitionTables },
   startable: Startable,
-): FunctionId {
-  const { checker, tables } = lowering;
-  const encoder = tables.callIndex(codecCall(checker, undefined, startable.outcome, 'write'));
-  return tables.startIndex(startable.target, startable.key, encoder);
+): string {
+  lowering.tables.startIndex(startable.target, startable.key);
+  return startable.key;
 }
 
-/**
- * The start entry of `startable`: its own body, taking its arguments as JSON (functions/).
- */
+/** The start entry of `startable`, wrapping it (the banner). */
 export function startEntry(
   lowering: { readonly checker: Checker; readonly tables: DefinitionTables },
   startable: Startable,
 ): CodeFunction {
   const { checker, tables } = lowering;
-  const { target, parameters, key } = startable;
-  const edges: StartEdges = {
-    parameters: parameters.map((type, index) => {
-      const inbound = inboundOf(checker, undefined, type, {
-        from: 'input',
-        path: `${key} argument ${index + 1}`,
-      });
-      return (context, json, span) => emitInbound(context, json, inbound, span);
-    }),
-    self: undefined,
-  };
+  const { target, parameters, key, outcome, awaits } = startable;
+  const json = checker.wellKnownType(wellKnown.json) ?? unreachable('A start needs the json module.');
   const header = tables.declarationHeader(target);
+  const code = new SynthesizedCode(lowering, startSpanOf(target), {
+    parameters: parameters.map(() => tables.types.reference(json)),
+    result: tables.types.reference(json),
+    mode: awaits ? 'live' : 'simple',
+  });
+  const values = parameters.map((type, index) => {
+    const inbound = inboundOf(checker, undefined, type, {
+      from: 'input',
+      path: `${key} argument ${index + 1}`,
+    });
+    const given = code.parameters[index] ?? unreachable(`No argument ${index} of a start.`);
+    return emitInbound(code, given, inbound, code.span);
+  });
+  const future = checker.wellKnownType(wellKnown.future, [outcome, literalType('live')]);
+  const given = awaits ? (future ?? unreachable('The prelude has futures.')) : outcome;
+  const called = calledTarget(code, target, { values, given });
+  const value = awaits ? code.await(called, given) : called;
+  code.return(code.call(codecCall(checker, undefined, outcome, 'write'), [value], json));
+  return code.entry(header);
+}
+
+/** Calls `target` with `values`, giving a value of `given`: a function, or a constant's lambda. */
+function calledTarget(
+  code: SynthesizedCode,
+  target: StartTarget,
+  { values, given }: { readonly values: readonly Register[]; readonly given: Type },
+): Register {
+  const { checker, tables } = code;
   if (target.kind === 'FunctionDeclaration') {
-    const entry = instanceLowering(lowering, rootInstance(checker, target), header);
-    const body = writtenBodyOf(checker.program, checker.moduleOf(target), target);
-    if (entry === undefined || body === undefined) {
-      unreachable('A startable function has no body.');
-    }
-    return entry.lowerStart(edges, body);
+    return code.call(tables.functionIndex(rootInstance(checker, target)), values, given);
   }
-  const form = checker.constantOf(target)?.form;
-  if (form?.kind !== 'function') {
-    unreachable('A startable constant holds no lambda.');
+  const constant = checker.constantOf(target);
+  if (constant?.form?.kind !== 'function' || constant.type === undefined) {
+    return unreachable('A startable constant holds no lambda.');
   }
-  const owner = { kind: 'constant', declaration: target } as const;
-  const self = constantValue(tables, form);
-  return nestedLowering(lowering, { owner, node: form.lambda }, header).lowerStart(
-    { ...edges, self },
-    form.lambda,
+  const closure = code.constant(constantValue(tables, constant.form), constant.type);
+  return emitCall(
+    code,
+    {
+      span: code.span,
+      callee: { kind: 'value', register: closure },
+      arguments: values,
+    },
+    tables.types.reference(given),
   );
+}
+
+/** Where a start points: its function's or its constant's name. */
+function startSpanOf(target: StartTarget) {
+  return target.kind === 'FunctionDeclaration' ? target.name.span : target.span;
 }

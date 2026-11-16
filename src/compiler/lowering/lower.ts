@@ -57,11 +57,16 @@ export function lower(checker: Checker, main: FunctionDeclaration): Definition {
     unreachable("'main' can't be started; the checker should have said why.");
   }
   const lowering = { checker, tables };
-  const mainIndex = listStart(lowering, started);
+  const mainKey = listStart(lowering, started);
   for (const startable of startables(checker)) {
     listStart(lowering, startable);
   }
-  return tables.finish(mainIndex, lowerReached(checker, tables));
+  const jobServer = lowerReached(checker, tables);
+  return tables.finish({
+    kind: 'program',
+    main: mainKey,
+    ...(jobServer === undefined ? {} : { jobServer }),
+  });
 }
 
 /** A `@Suite` function (§10), with the title its annotation gives. */
@@ -81,12 +86,14 @@ export function lowerTests(checker: Checker, suites: readonly Suite[]): Definiti
   const runner = (name: string) =>
     checker.languageFunctions(languageModules.testing, name)[0] ??
     unreachable(`The testing module declares no '${name}'.`);
-  const tests = {
+  const purpose = {
+    kind: 'tests',
     list: indexOf(runner(testingFunctions.list)),
     run: indexOf(runner(testingFunctions.run)),
     suites: suites.map(({ title, declaration }) => ({ title, function: indexOf(declaration) })),
-  };
-  return { ...tables.finish(undefined, lowerReached(checker, tables)), tests };
+  } as const;
+  lowerReached(checker, tables);
+  return tables.finish(purpose);
 }
 
 /**
@@ -157,7 +164,7 @@ function pendingEntry(
     case 'anyConversion':
       return anyConversionEntry(lowering, pending.from, pending.to);
     case 'anyField':
-      return anyFieldEntry(lowering, pending.on, pending.required);
+      return anyFieldEntry(lowering, pending);
     case 'asyncFit':
       return asyncFitEntry(lowering, pending.fit);
     case 'converting':
@@ -222,13 +229,16 @@ function nativeEntry(lowering: Lowering, instance: FunctionInstance): FunctionDe
     ...tables.entryHeader(instance),
     key: keyOf(checker, declaration, parameters),
     constant: false,
-    parameters: parameters.map((parameter) => ({
-      type: tables.types.reference(substitute(parameter.type, substitution, checker.typeRules)),
-      reference: parameter.reference,
-    })),
+    parameters: parameters.map((parameter) => {
+      const type = tables.types.reference(
+        substitute(parameter.type, substitution, checker.typeRules),
+      );
+      return { type: parameter.reference ? { kind: 'reference', to: type } : type };
+    }),
     result: tables.types.reference(
       substitute(checker.resultOf(declaration), substitution, checker.typeRules),
     ),
-    typeArguments: instance.typeArguments.map((type) => tables.types.reference(type)),
+    capabilities: [],
+    keeps: [],
   };
 }

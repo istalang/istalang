@@ -31,10 +31,8 @@ import type {
 import { valuesReadBy } from '../../checker/surface/flow-ir.ts';
 import type { Type } from '../../checker/types/type/index.ts';
 import { programModule } from '../../program/program.ts';
-import type { Statement } from '../../syntax/statements/index.ts';
-import type { LabelledScope } from '../../syntax/statements/index.ts';
-import { ancestorsOf } from '../../syntax/tree/ancestors.ts';
-import type { SyntaxNode } from '../../syntax/tree/index.ts';
+import type { LabelledScope, Statement } from '../../syntax/statements/index.ts';
+import { ancestorsOf, type SyntaxNode } from '../../syntax/tree/index.ts';
 import type { NodeOf } from '../../syntax/tree/node.ts';
 import type { AnchoredSpan } from '../../syntax/tree/positions.ts';
 import type { OpenWait } from '../calls/waits.ts';

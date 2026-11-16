@@ -13,6 +13,7 @@ import type { Register } from '../../../definition/operands.ts';
 import { unreachable } from '../../../foundation/structures/unreachable.ts';
 import { fieldGetterAmong, structFieldOf } from '../../checker/surface/checked-field.ts';
 import type { ResolvedCall } from '../../checker/surface/resolved-call.ts';
+import type { Type } from '../../checker/types/type/index.ts';
 import type { AnchoredSpan } from '../../syntax/tree/positions.ts';
 import type { FieldDeclaration } from '../../syntax/types/index.ts';
 import { closeCall } from '../calls/closed-calls.ts';
@@ -26,7 +27,11 @@ import type { TypedValue } from './holdings.ts';
  */
 export function readRequiredField(
   context: CodeContext,
-  { value, field }: { readonly value: TypedValue; readonly field: FieldDeclaration },
+  {
+    value,
+    field,
+    result,
+  }: { readonly value: TypedValue; readonly field: FieldDeclaration; readonly result: Type },
   witnesses: () => readonly ResolvedCall[] | undefined,
   span: AnchoredSpan,
 ): Register {
@@ -41,5 +46,6 @@ export function readRequiredField(
     fieldGetterAmong(witnesses() ?? [], field) ??
     unreachable(`A type meeting a trait requiring '${field.name.text}' has no field or getter.`);
   const call = closeCall(getter, undefined, checker);
-  return emitFunctionCall(context, { span, call, arguments: [register] });
+  const reference = context.tables.types.reference(result);
+  return emitFunctionCall(context, { span, call, arguments: [register] }, reference);
 }

@@ -16,6 +16,8 @@
  * - A failure names its path from the extern's qualified name: `purchase.chargeCard.receipt`.
  */
 
+import { hostFutureFunction } from '../../../../foundation/language/well-known/implicit-calls.ts';
+import type { TypeReference } from '../../../../definition/tables/types.ts';
 import type { FunctionId, Register } from '../../../../definition/operands.ts';
 import type { CodeFunction, FunctionDefinition } from '../../../../definition/tables/functions.ts';
 import { wellKnown } from '../../../../foundation/language/well-known/index.ts';
@@ -39,6 +41,7 @@ import { declaredTypeOf, keyOf } from '../../tables/extern-keys.ts';
 import { qualifiedNameOf } from '../../tables/names.ts';
 import type { DefinitionTables, HostExternDeclaration } from '../../tables/tables.ts';
 import { SynthesizedCode } from '../index.ts';
+import { rootInstance } from '../../tables/instances.ts';
 import { codecCall } from './codec-calls.ts';
 import { emitInbound, inboundOf } from './inbound.ts';
 
@@ -87,15 +90,19 @@ export function hostConstantEntry(
   type: Type,
 ): CodeFunction {
   const { checker, tables } = lowering;
-  const code = new SynthesizedCode(lowering, declaration.name.span, 0);
-  const native = code.call(tables.constantNativeIndex(declaration, type), []);
+  const code = new SynthesizedCode(lowering, declaration.name.span, {
+    parameters: [],
+    result: tables.types.reference(type),
+    mode: 'simple',
+  });
+  const native = code.call(tables.constantNativeIndex(declaration, type), [], jsonOf(checker));
   const header = tables.declarationHeader(declaration);
   const inbound = inboundOf(checker, undefined, type, {
     from: 'result',
     path: header.name,
   });
   code.return(emitInbound(code, native, inbound, code.span));
-  return code.entry(header, 'simple');
+  return code.entry(header);
 }
 
 /**
@@ -109,13 +116,17 @@ export function hostNativeEntry(
   const { checker } = lowering;
   const native = nativeParts(lowering, declaration);
   const result = checker.resultOf(declaration);
+  const awaited = awaitedOf(checker, result);
   return {
     ...native.header,
     key: keyOf(checker, declaration, checker.parametersOf(declaration)),
-    declaredType: declaredTypeOf(checker, result),
+    host: { declaredType: declaredTypeOf(checker, result) },
     constant: false,
-    parameters: native.jsons(checker.parametersOf(declaration).length),
-    result: native.given(awaitedOf(checker, result)),
+    parameters: [
+      ...native.jsons(checker.parametersOf(declaration).length),
+      ...(awaited === undefined ? [] : [{ type: native.filling(awaited) }]),
+    ],
+    result: awaited === undefined ? native.json : { kind: 'primitive', name: 'Unit' },
   };
 }
 
@@ -130,10 +141,10 @@ export function constantNativeEntry(
   return {
     ...native.header,
     key: qualifiedNameOf(checker, declaration),
-    declaredType: declaredTypeOf(checker, type),
+    host: { declaredType: declaredTypeOf(checker, type) },
     constant: true,
     parameters: [],
-    result: native.given(undefined),
+    result: native.json,
   };
 }
 
@@ -158,19 +169,18 @@ function nativeParts(lowering: Lowering, declaration: HostExternDeclaration) {
     header: {
       kind: 'extern' as const,
       ...tables.declarationHeader(declaration),
-      typeArguments: [],
+      capabilities: ['host' as const],
+      keeps: [],
     },
+    json,
     /** `count` parameters, each JSON. */
-    jsons: (count: number) =>
-      Array.from({ length: count }, () => ({ type: json, reference: false })),
-    /**
-     * What the native gives: JSON, or, where the extern gives a future (`awaited`), a future of its
-     * kind the host fills with JSON.
-     */
-    given: (awaited: AwaitedType | undefined) =>
-      awaited === undefined
-        ? json
-        : tables.types.reference(futureOf(checker, jsonType, awaited.mode)),
+    jsons: (count: number) => Array.from({ length: count }, () => ({ type: json })),
+    /** The callback filling the future of `awaited`'s kind the extern gives, with JSON. */
+    filling: (_: AwaitedType): TypeReference => ({
+      kind: 'function',
+      parameters: [json],
+      result: { kind: 'primitive', name: 'Unit' },
+    }),
   };
 }
 
@@ -184,8 +194,9 @@ export function writeHostCall(
   parameters: readonly Register[],
   span: AnchoredSpan,
 ): Register {
-  const { checker } = context;
+  const { checker, tables, code } = context;
   const { within, awaited, path } = call;
+  const json = jsonOf(checker);
   const encoded = call.parameters.map((type, index) =>
     emitFunctionCall(context, {
       span,
@@ -193,15 +204,41 @@ export function writeHostCall(
       arguments: [parameters[index] ?? unreachable(`No parameter ${index}.`)],
     }),
   );
-  const native = emitCall(context, { span, callee: call.native, arguments: encoded });
   if (awaited === undefined) {
+    const native = emitCall(
+      context,
+      { span, callee: call.native, arguments: encoded },
+      tables.types.reference(json),
+    );
     const inbound = inboundOf(checker, within, call.result, { from: 'result', path });
     return emitInbound(context, native, inbound, span);
   }
+  const futureType = futureOf(checker, json, awaited.mode);
+  const [declaration] = checker.languageFunctions('prelude', hostFutureFunction);
+  if (declaration === undefined) {
+    return unreachable(`The prelude declares no '${hostFutureFunction}'.`);
+  }
+  const instance = rootInstance(checker, declaration, [json, awaited.mode]);
+  const unit = { kind: 'primitive', name: 'Unit' } as const;
+  const filling: TypeReference = {
+    kind: 'function',
+    parameters: [tables.types.reference(json)],
+    result: unit,
+  };
+  const future = tables.types.reference(futureType);
+  const pair = emitCall(
+    context,
+    { span, callee: tables.functionIndex(instance), arguments: [] },
+    { kind: 'tuple', elements: [future, filling] },
+  );
+  const callback = code.tupleItem(pair, 1, filling, span);
+  code.letGo(
+    [emitCall(context, { span, callee: call.native, arguments: [...encoded, callback] }, unit)],
+    span,
+  );
   const filled = awaitFuture(
     context,
-    native,
-    futureOf(checker, jsonOf(checker), awaited.mode),
+    { future: code.tupleItem(pair, 0, future, span), type: futureType, mode: context.waitingMode() },
     span,
   );
   return emitInbound(

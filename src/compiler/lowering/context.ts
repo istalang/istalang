@@ -21,6 +21,7 @@ import type { Lambda } from '../syntax/expressions/index.ts';
 import type { NodeOf } from '../syntax/tree/node.ts';
 import type { AnchoredSpan } from '../syntax/tree/positions.ts';
 import type { ClosedCall } from './calls/closed-calls.ts';
+import type { WaitingMode } from './calls/waits.ts';
 import type { VariableRegisters } from './flow/variables.ts';
 import type { CodeWriter } from './functions/code-writer.ts';
 import type { FieldPassStep } from './tables/instances.ts';
@@ -31,7 +32,10 @@ import type { DefinitionTables } from './tables/tables.ts';
  * it names, and the checker it asks about types. Code lowering writes with no syntax behind it
  * (synthesized/boundary/) works through this alone, as do the helpers both kinds share.
  */
-export type CodeContext = Pick<FunctionContext, 'checker' | 'tables' | 'code' | 'constant'>;
+export type CodeContext = Pick<
+  FunctionContext,
+  'checker' | 'tables' | 'code' | 'constant' | 'waitingMode'
+>;
 
 export interface FunctionContext {
   readonly checker: Checker;
@@ -56,8 +60,10 @@ export interface FunctionContext {
   readonly closed: (call: ResolvedCall) => ClosedCall;
   /** The function-table entry of a lambda or local function in this body (§3.14). */
   readonly nestedIndex: (node: Lambda | FunctionDeclaration) => FunctionId;
-  /** A fresh register holding the constant `value`. */
-  readonly constant: (value: Value, span: AnchoredSpan) => Register;
+  /** A fresh register of `type` owning the constant `value`. */
+  readonly constant: (value: Value, type: Type, span: AnchoredSpan) => Register;
+  /** The kind of the entry's code, which only waits as live or ista code (proposal 8, Rule 2). */
+  readonly waitingMode: () => WaitingMode;
   /** The entry's code: registers, instructions and labels. */
   readonly code: CodeWriter;
   readonly variables: VariableRegisters;

@@ -31,7 +31,7 @@ function persistedSpellings(definition: Definition): readonly string[] {
   const externs = definition.functions.flatMap((entry) =>
     entry.kind === 'extern'
       ? [
-          `extern ${entry.key}${entry.declaredType === undefined ? '' : ` -> ${entry.declaredType}`}`,
+          `extern ${entry.key}${entry.host?.declaredType === undefined ? '' : ` -> ${entry.host.declaredType}`}`,
         ]
       : [],
   );

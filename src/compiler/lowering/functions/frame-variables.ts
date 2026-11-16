@@ -1,29 +1,31 @@
 /**
  * The variables an entry declares before its body runs, in its frame's layout order (frames.ts;
- * docs/arch/definition.md, "Frames"): the parameters, each in a register of its own and a pack's
- * elements in one each (packs.ts), then the captures; then, in order, each parameter the call left
- * out computed from its default (§3.3), then a nested function's own name and an async function's
- * own call, then each pack's tuple. A pattern's names are its flow's to take apart. A start entry,
- * whose arguments arrive as JSON, declares its parameters through the same functions, so a
- * parameter's variable has one writer.
+ * docs/arch/definition.md, "Functions"): the parameters, each in a register of its own and a
+ * pack's elements in one each (packs.ts), then the captures; then, in order, each parameter the
+ * call may leave out, computed from its default (§3.3) where it did, then a nested function's own
+ * name and an async function's own call, then each pack's tuple. A pattern's names are its flow's
+ * to take apart.
  *
- * Computing what the call left out is the entry's prologue (definition/instructions/prologue.ts):
- * defaults are part of the function, computed at the start of each call that leaves them out, in
- * the function's scope and before its body, never waiting. A default is its flow, as the function's
- * defaults were checked apart from its body (`inDefaults`), written inline: it sees the parameters
- * before it, the names their patterns bind among them. An array's rest parameter a function value
- * of a shorter type leaves out is empty (§3.14). Each default's temporaries end with it, as a
- * statement's do. The body begins after the prologue, before anything the body runs, so an async
- * function's own call is the body's (§7), and a mock takes a call over there (§10).
+ * - **Parameters and captures are borrowed** (§3.3: a by-value parameter is immutable): the call
+ *   and the closure hold them. A `&` parameter's register holds a reference to the caller's place.
+ * - **A parameter a call may leave out** is the callee's own (the prologue): its variable owns a
+ *   copy of what the call gave, or the value its default computes, so it is owned on every path.
+ * - Defaults are part of the function, computed at the start of each call leaving them out, in the
+ *   function's scope and before its body, never waiting. A default is its flow, as the defaults
+ *   were checked apart from the body (`inDefaults`), written inline: it sees the parameters before
+ *   it. An array's rest parameter a function value of a shorter type leaves out is empty (§3.14).
+ *   Each default's temporaries end with it, as a statement's do.
  */
 
 import type { Register } from '../../../definition/operands.ts';
+import { wellKnown } from '../../../foundation/language/well-known/index.ts';
+import { unreachable } from '../../../foundation/structures/unreachable.ts';
 import type { SignatureParameter } from '../../checker/check.ts';
 import type { Type } from '../../checker/types/type/index.ts';
 import type { Identifier } from '../../syntax/tree/node.ts';
 import { packElements } from '../calls/packs.ts';
 import type { FunctionContext } from '../context.ts';
-import { cellRegister, concreteType, holdsType } from '../flow/variables.ts';
+import { concreteType } from '../flow/variables.ts';
 import { writeFlow } from '../flow/writer.ts';
 import type { BodyOwner } from '../tables/instances.ts';
 import { tupleOf } from '../values/struct-values.ts';
@@ -34,9 +36,7 @@ import type { Frame } from './frames.ts';
 export interface EntryContext extends FunctionContext {
   readonly frame: Frame;
   readonly owner: BodyOwner;
-  /**
-   * Runs `lower` reading the function's defaults, as checked apart from its body; what it gives.
-   */
+  /** Runs `lower` reading the function's defaults, as checked apart from its body; what it gives. */
   readonly inDefaults: <Lowered>(lower: () => Lowered) => Lowered;
 }
 
@@ -46,13 +46,9 @@ export interface FrameSlot {
   readonly elements: readonly Type[] | undefined;
 }
 
-/**
- * A parameter of the entry as the Definition lists it, a pack's elements one each: its register,
- * whether it takes a reference, and whether a call may leave it out, the prologue computing it.
- */
+/** A parameter of the entry as the Definition lists it: whether a call may leave it out. */
 export interface EntryParameter {
   readonly register: Register;
-  readonly reference: boolean;
   readonly hasDefault: boolean;
 }
 
@@ -69,59 +65,53 @@ export function frameSlots(context: EntryContext): readonly FrameSlot[] {
 
 /**
  * Declares the frame's variables, `slots` being its parameters, running its prologue: the
- * parameters as the Definition lists them, and the register of each, a pack's its tuple.
+ * parameters as the Definition lists them, and the register each variable has, a pack's its tuple.
  */
 export function declareFrame(
   context: EntryContext,
   slots: readonly FrameSlot[],
 ): { readonly listed: readonly EntryParameter[]; readonly values: readonly Register[] } {
+  const { code, tables } = context;
   const packs: { readonly position: number; readonly elements: Register[] }[] = [];
-  const values: Register[] = [];
+  const arguments_: (Register | undefined)[] = [];
   const listed = slots.flatMap(({ parameter, elements: types }, position) => {
     if (types !== undefined) {
-      const elements = types.map((type) => {
-        const element = context.code.allocate();
-        holdsType(context, element, type);
-        return element;
-      });
+      const elements = types.map((type) => code.borrow(tables.types.reference(type)));
       packs.push({ position, elements });
-      return elements.map((element) => ({
-        register: element,
-        reference: false,
-        hasDefault: false,
-      }));
+      return elements.map((register) => ({ register, hasDefault: false }));
     }
-    const register = declareArgument(context, parameter);
-    values[position] = register;
-    const { reference } = parameter;
-    return [{ register, reference, hasDefault: mayBeLeftOut(parameter) }];
+    const register = code.borrow(parameterType(context, parameter));
+    arguments_[position] = register;
+    return [{ register, hasDefault: mayBeLeftOut(parameter) }];
   });
   for (const { entity, type } of context.frame.captures) {
     const captured = concreteType(context, type);
-    let register: Register;
-    if (context.body.inCell(entity.name)) {
-      register = cellRegister(context, captured);
-    } else {
-      register = context.code.allocate();
-      holdsType(context, register, captured);
-    }
-    context.variables.declare(entity.name, register);
+    const stored = context.body.inCell(entity.name) ? context.checker.cellOf(captured) : captured;
+    const register = code.borrow(tables.types.reference(stored));
+    context.variables.declare(entity.name, typeKey(context, captured), register);
   }
-  enterParameters(context, slots, values);
+  const values = enterParameters(context, slots, arguments_);
   const { self } = context.frame;
   if (self !== undefined) {
-    declareFilled(context, self, (dst) => ({ kind: 'currentClosure', span: self.span, dst }));
+    const type =
+      context.body.declaredTypeOf(self) ?? unreachable(`'${self.text}' was never checked.`);
+    declareFilled(context, self, type, (dst) => ({ kind: 'currentClosure', span: self.span, dst }));
   }
   declareOwnCall(context);
   for (const { position, elements } of packs) {
     const { parameter } = slots[position] as FrameSlot;
     const { span } = parameter.node;
     const tuple = tupleOf(context, elements, span);
-    const register = declareArgument(context, parameter);
-    context.code.emit({ kind: 'move', span, dst: register, src: tuple });
-    values[position] = register;
+    declareVariable(context, parameter, tuple);
+    values[position] = tuple;
   }
   return { listed, values };
+}
+
+/** The type of the register `parameter`'s argument arrives in: a reference for a `&` parameter. */
+function parameterType(context: EntryContext, parameter: SignatureParameter) {
+  const reference = context.tables.types.reference(concreteType(context, parameter.type));
+  return parameter.reference ? ({ kind: 'reference', to: reference } as const) : reference;
 }
 
 /**
@@ -136,67 +126,79 @@ function mayBeLeftOut(parameter: SignatureParameter): boolean {
 }
 
 /**
- * Computes, in order, each parameter of `slots` a call may leave out where the call did, each
- * default seeing the parameters before it, in `values`; then, after a prologue, marks where the
- * body begins.
+ * Declares each parameter of `slots` but a pack's, in order: its argument as it arrived, or, where
+ * a call may leave it out, the value it owns, the call's copied or its default computed, each
+ * default seeing the parameters before it. The register of each.
  */
 function enterParameters(
   context: EntryContext,
   slots: readonly FrameSlot[],
-  values: readonly Register[],
-): void {
+  arguments_: readonly (Register | undefined)[],
+): Register[] {
+  const values: Register[] = [];
   for (const [position, { parameter }] of slots.entries()) {
-    const register = values[position];
-    if (register !== undefined && mayBeLeftOut(parameter)) {
-      computeLeftOut(context, parameter, { register, before: values.slice(0, position) });
+    const argument = arguments_[position];
+    if (argument === undefined) {
+      continue;
     }
+    const value = mayBeLeftOut(parameter)
+      ? computeLeftOut(context, parameter, { argument, before: values.slice(0, position) })
+      : argument;
+    declareVariable(context, parameter, value);
+    values[position] = value;
   }
-  if (slots.some(({ parameter }) => mayBeLeftOut(parameter))) {
-    context.code.emit({ kind: 'body', span: context.frame.function.span });
-  }
+  return values;
 }
 
 /**
- * Computes `parameter` into its `register` when the call left it out, from its default's flow, its
- * parameters those `before` it (flow/writer.ts); then releases what that left.
+ * The register owning `parameter`'s value: a copy of `argument` where the call gave it, else what
+ * its default's flow computes, its parameters those `before` it (flow/writer.ts), whose temporaries
+ * are let go of then.
  */
 function computeLeftOut(
   context: EntryContext,
   parameter: SignatureParameter,
-  { register, before }: { readonly register: Register; readonly before: readonly Register[] },
-): void {
+  { argument, before }: { readonly argument: Register; readonly before: readonly Register[] },
+): Register {
+  const { code, tables } = context;
   const { defaultValue, span } = parameter.node;
-  const given = context.code.newLabel();
-  context.code.given(register, given, span);
-  const { registers } = context.code.allocating(() => {
+  const type = concreteType(context, parameter.type);
+  const owned = code.allocate(tables.types.reference(type));
+  const given = code.newLabel();
+  const done = code.newLabel();
+  code.given(argument, given, span);
+  const { registers } = code.allocating(() => {
     if (defaultValue === undefined) {
-      context.code.emit({ kind: 'array', span, dst: register, elements: [] });
+      code.emit({ kind: 'array', span, dst: owned, elements: [] });
       return;
     }
     context.inDefaults(() => {
-      const end = { kind: 'into', into: register } as const;
+      const end = { kind: 'into', into: owned } as const;
       writeFlow(context, context.body.flowOf(defaultValue), { parameters: before, end });
     });
   });
-  const ended = registers.filter((each) => !context.variables.isVariable(each));
-  if (ended.length > 0) {
-    context.code.emit({ kind: 'release', span, registers: ended });
-  }
-  context.code.place(given);
+  code.letGo(
+    registers.filter((each) => !context.variables.isVariable(each)),
+    span,
+  );
+  code.jump(done, span);
+  code.place(given);
+  code.emit({ kind: 'copy', span, dst: owned, src: argument });
+  code.place(done);
+  return owned;
 }
 
-/**
- * A register for `parameter`'s argument: its name's variable, or, for a pattern alone, one with
- * no name, which its flow takes apart. A parameter is never a cell: a value one is immutable, and a
- * reference one holds the caller's reference (docs/arch/definition.md, "Frames").
- */
-export function declareArgument(context: FunctionContext, parameter: SignatureParameter): Register {
-  const register = context.code.allocate();
+/** Makes `register` the variable `parameter`'s name declares, if it has one. */
+function declareVariable(
+  context: FunctionContext,
+  parameter: SignatureParameter,
+  register: Register,
+): void {
   const { name } = parameter.node;
   if (name !== undefined) {
-    context.variables.declare(name, register);
+    context.code.pin(register);
+    context.variables.declare(name, typeKey(context, concreteType(context, parameter.type)), register);
   }
-  return register;
 }
 
 /**
@@ -211,17 +213,24 @@ export function declareOwnCall(context: EntryContext): void {
       ? undefined
       : context.checker.bindings.ownCallOf(context.module, owner);
   if (call !== undefined) {
-    declareFilled(context, call.name, (dst) => ({ kind: 'currentCall', span: owner.span, dst }));
+    const type =
+      context.checker.wellKnownType(wellKnown.call) ?? unreachable('The prelude has no calls.');
+    declareFilled(context, call.name, type, (dst) => ({ kind: 'currentCall', span: owner.span, dst }));
   }
 }
 
-/** Declares `name` in a register of its own, written by the instruction `fill` makes. */
+/** Declares `name`, of `type`, in a borrowed register of its own, which `fill` writes. */
 export function declareFilled(
   context: FunctionContext,
   name: Identifier,
+  type: Type,
   fill: (dst: Register) => WrittenInstruction,
 ): void {
-  const register = context.code.allocate();
-  context.variables.declare(name, register);
+  const register = context.code.borrow(context.tables.types.reference(type));
+  context.variables.declare(name, typeKey(context, type), register);
   context.code.emit(fill(register));
+}
+
+function typeKey(context: FunctionContext, type: Type): string {
+  return context.checker.typeKeys.typeKey(type);
 }

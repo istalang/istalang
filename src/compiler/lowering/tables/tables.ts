@@ -13,7 +13,7 @@ import { z } from 'zod';
 import { encodeJson } from '../../../definition/formats/codec.ts';
 import type { FunctionId } from '../../../definition/operands.ts';
 import type { FunctionDefinition } from '../../../definition/tables/functions.ts';
-import type { Tables } from '../../../definition/tables/index.ts';
+import type { Purpose, Tables } from '../../../definition/tables/index.ts';
 import { type Value, value } from '../../../definition/values/values.ts';
 import { memo } from '../../../foundation/structures/memo.ts';
 import { unreachable } from '../../../foundation/structures/unreachable.ts';
@@ -94,7 +94,12 @@ export type PendingEntry =
 export type ClosingEntry =
   | { readonly kind: 'dispatch'; readonly dispatch: Dispatch }
   | { readonly kind: 'anyConversion'; readonly from: AnyType; readonly to: AnyType }
-  | { readonly kind: 'anyField'; readonly on: AnyType; readonly required: RequiredField };
+  | {
+      readonly kind: 'anyField';
+      readonly on: AnyType;
+      readonly required: RequiredField;
+      readonly result: Type;
+    };
 
 /** An extern a host implements: a function, or a constant. */
 export type HostExternDeclaration = FunctionDeclaration | ExternConstantDeclaration;
@@ -259,9 +264,10 @@ export class DefinitionTables {
   }
 
   /** The index of the entry reading a field a trait of `on` requires from an `on` value. */
-  anyFieldIndex(on: AnyType, required: RequiredField): FunctionId {
+  /** The index of the entry reading `required`, of `result`, from a value of `on` (§3.10). */
+  anyFieldIndex(on: AnyType, required: RequiredField, result: Type): FunctionId {
     const key = `field:${this.#checker.typeKeys.typeKey(on)}.${required.field.name.text}`;
-    return this.#closingIndex(key, { kind: 'anyField', on, required });
+    return this.#closingIndex(key, { kind: 'anyField', on, required, result });
   }
 
   /** The index `instance` is called by; it is lowered later, from the worklist. */
@@ -325,17 +331,14 @@ export class DefinitionTables {
     return this.#entryIndex(key, { kind: 'externConstant', declaration, type });
   }
 
-  /**
-   * The index of the entry a host starts `target` through, listed under `key` with the `encoder` of
-   * its outcome (§9).
-   */
-  startIndex(target: StartTarget, key: string, encoder: FunctionId): FunctionId {
+  /** The index of the entry a host starts `target` through, listed under `key` (§9). */
+  startIndex(target: StartTarget, key: string): FunctionId {
     const index = this.#entryIndex(`start:${this.#checker.typeKeys.identityOf(target)}`, {
       kind: 'start',
       target,
     });
     if (!this.#starts.some((start) => start.function === index)) {
-      this.#starts.push({ key, function: index, encoder });
+      this.#starts.push({ key, function: index });
     }
     return index;
   }
@@ -389,8 +392,8 @@ export class DefinitionTables {
     this.#functions[index] = entry;
   }
 
-  /** The finished tables, every referenced function lowered. */
-  finish(main: FunctionId | undefined, jobServer: FunctionId | undefined): Tables {
+  /** The finished tables, every referenced function lowered, for `purpose`. */
+  finish(purpose: Purpose): Tables {
     const functions = this.#functions.map((entry, index) => {
       if (entry === undefined) {
         unreachable(`Function ${index} was referenced but never lowered.`);
@@ -403,8 +406,7 @@ export class DefinitionTables {
       functions,
       constants: this.#constants,
       starts: this.#starts,
-      ...(main === undefined ? {} : { main }),
-      ...(jobServer === undefined ? {} : { jobServer }),
+      purpose,
     };
   }
 }

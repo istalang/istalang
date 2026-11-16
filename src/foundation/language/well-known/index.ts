@@ -65,8 +65,6 @@ export const wellKnown = {
   shared: { module: 'prelude', name: 'Shared' },
   /** One `await`'s or `select`'s wait, which its cases' resolvers decide (proposal 8, Rule 5). */
   wait: { module: 'prelude', name: '_Wait' },
-  /** An async call's handle: the execution running it (§7). */
-  call: { module: 'prelude', name: '_Call' },
   /** What a function that can fail returns, and what `?` takes apart (§3.12). */
   result: { module: 'prelude', name: 'Result' },
   /** What a cursor gives each call: the next item, or the end (§3.10). */

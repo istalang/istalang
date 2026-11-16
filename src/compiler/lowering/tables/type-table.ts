@@ -90,6 +90,7 @@ const memberValueField = unionLayout.valueField;
 interface AnyEntry {
   readonly kind: 'any';
   readonly name: string;
+  readonly disposable: boolean;
   readonly members: {
     readonly type: Type;
     readonly name: string;
@@ -97,13 +98,30 @@ interface AnyEntry {
   }[];
 }
 
+/** What an entry stands as while its layout, which may refer back to it, is computed. */
+const placeholder: TypeDefinition = {
+  kind: 'struct',
+  name: '',
+  arguments: [],
+  fields: [],
+  disposable: false,
+  heap: true,
+};
+
 /** The enum entry `entry` stands for: one variant per member, holding its value. */
 function anyEnum(entry: AnyEntry): TypeDefinition {
   const variants = entry.members.map(({ name, reference }) => ({
     name,
     fields: [{ name: memberValueField, type: reference, annotations: [] }],
   }));
-  return { kind: 'enum', name: entry.name, arguments: [], variants };
+  return {
+    kind: 'enum',
+    name: entry.name,
+    arguments: [],
+    variants,
+    disposable: entry.disposable,
+    heap: true,
+  };
 }
 
 /**
@@ -115,9 +133,10 @@ const externRoles = {
   array: wellKnown.array,
   map: wellKnown.map,
   cell: wellKnown.cell,
-  future: wellKnown.future,
+  weakRef: wellKnown.weakRef,
   instance: wellKnown.instance,
-} as const satisfies Record<Exclude<ExternRole, 'shared'>, WellKnownDeclaration>;
+  call: wellKnown.call,
+} as const satisfies Record<ExternRole, WellKnownDeclaration>;
 
 /**
  * The std type each role of an enum entry is (definition/tables/types.ts): `json.Json`, a recursive
@@ -218,7 +237,12 @@ export class TypeTable {
     if (known !== undefined) {
       return known;
     }
-    const entry: AnyEntry = { kind: 'any', name: tableKey(this.#checker, type), members: [] };
+    const entry: AnyEntry = {
+      kind: 'any',
+      name: tableKey(this.#checker, type),
+      disposable: this.#checker.reachesDisposable(type),
+      members: [],
+    };
     const index = this.#entries.push(entry) - 1;
     this.#indexes.set(key, index);
     return index;
@@ -261,7 +285,7 @@ export class TypeTable {
     }
     const index = this.#entries.length;
     this.#indexes.set(key, index);
-    this.#entries.push({ kind: 'struct', name: '', arguments: [], fields: [] });
+    this.#entries.push(placeholder);
     this.#entries[index] = this.#layout(type);
     return index;
   }
@@ -275,20 +299,22 @@ export class TypeTable {
     }
     const index = this.#entries.length;
     this.#indexes.set(key, index);
-    this.#entries.push({ kind: 'struct', name: '', arguments: [], fields: [] });
+    this.#entries.push(placeholder);
     this.#entries[index] = {
       kind: 'alias',
       name: tableKey(this.#checker, type),
       arguments: [],
       type: this.reference(unfolded),
+      ...this.#facts(type),
     };
     return index;
   }
 
-  /** The entry describing `type`: its fields, its variants, or how an extern type is disposed. */
+  /** The entry describing `type`: its fields, its variants, or what implements it. */
   #layout(type: EntryType): TypeDefinition {
+    const facts = this.#facts(type);
     if (type.kind === 'anonymous') {
-      return { kind: 'struct', name: '', arguments: [], fields: this.#fields(type.fields) };
+      return { kind: 'struct', name: '', arguments: [], fields: this.#fields(type.fields), ...facts };
     }
     if (type.kind === 'union') {
       return this.#unionLayout(type);
@@ -296,47 +322,64 @@ export class TypeTable {
     const { declaration } = type.entity;
     const name = qualifiedNameOf(this.#checker, declaration);
     const typeArguments = type.arguments.map((argument) => this.reference(argument));
+    const dispose = this.#dispose(type);
+    const disposing: { readonly dispose?: FunctionId } = dispose === undefined ? {} : { dispose };
     switch (declaration.kind) {
-      case 'SharedStructDeclaration':
+      case 'SharedStructDeclaration': {
+        const value = this.#checker.sharedValueOf(type);
+        const role = this.#roleOf(externRoles, declaration);
+        if (value === undefined || role !== undefined) {
+          return {
+            kind: 'extern',
+            name,
+            arguments: typeArguments,
+            ...(role === undefined ? {} : { role }),
+            ...disposing,
+            ...facts,
+          };
+        }
         return {
-          kind: 'extern',
+          kind: 'shared',
           name,
           arguments: typeArguments,
-          disposal: this.#disposal(this.#checker.disposalOf(type)),
-          counted: this.#checker.reachesDisposable(type),
-          role: 'shared',
+          value: this.#typeEntry(value as EntryType),
+          ...disposing,
+          ...facts,
         };
+      }
       case 'StructDeclaration':
         return {
           kind: 'struct',
           name,
           arguments: typeArguments,
           fields: this.#fields(this.#checker.fieldsOf(type) ?? []),
+          ...facts,
         };
       case 'EnumDeclaration': {
         const role = this.#roleOf(enumRoles, declaration);
+        const variants = (this.#checker.variantsOf(type) ?? []).map((variant) => ({
+          name: variant.name,
+          fields: this.#fields(variant.fields),
+        }));
         return {
           kind: 'enum',
           name,
           arguments: typeArguments,
-          variants: (this.#checker.variantsOf(type) ?? []).map((variant) => ({
-            name: variant.name,
-            fields: this.#fields(variant.fields),
-          })),
+          variants,
           ...(role === undefined ? {} : { role }),
+          ...facts,
+          heap: variants.some((variant) => variant.fields.length > 0),
         };
       }
       case 'ExternStructDeclaration': {
         const role = this.#roleOf(externRoles, declaration);
-        const encoder = role === 'instance' ? this.#outcomeEncoder(type) : undefined;
         return {
           kind: 'extern',
           name,
           arguments: typeArguments,
-          disposal: this.#disposal(this.#checker.disposalOf(type)),
-          counted: this.#checker.reachesDisposable(type),
           ...(role === undefined ? {} : { role }),
-          ...(encoder === undefined ? {} : { encoder }),
+          ...disposing,
+          ...facts,
         };
       }
       default: {
@@ -368,6 +411,8 @@ export class TypeTable {
       arguments: [],
       variants,
       ...(isJson ? { role: 'json' as const } : {}),
+      disposable: checker.reachesDisposable(type),
+      heap: variants.some((variant) => variant.fields.length > 0),
     };
   }
 
@@ -382,33 +427,17 @@ export class TypeTable {
     });
   }
 
-  /**
-   * The entry encoding the outcome of an instance spawned as `instance`, an `Instance<T>`, for its
-   * host: the codec writing `T`, when one does (§9). Every spawning native reads it from the type
-   * entry its result names, so none needs the codec passed.
-   */
-  #outcomeEncoder(instance: NominalType): FunctionId | undefined {
-    const [outcome] = instance.arguments;
-    const codec =
-      outcome === undefined
-        ? undefined
-        : foundCodecCall(this.#checker, undefined, outcome, 'write');
-    return codec === undefined ? undefined : this.#seams.callIndex(codec);
+  /** What every entry states: whether its values may reach a disposable, and are allocations. */
+  #facts(type: Type): { readonly disposable: boolean; readonly heap: boolean } {
+    return { disposable: this.#checker.reachesDisposable(type), heap: true };
   }
 
-  /**
-   * A type entry's disposal: a declared `dispose` is the entry of its instance (§7), and one a host
-   * implements names its native too (synthesized/boundary/host-externs.ts).
-   */
-  #disposal(disposal: Disposal): Extract<TypeDefinition, { kind: 'extern' }>['disposal'] {
-    if (disposal.kind !== 'function') {
-      return { kind: disposal.kind };
-    }
-    const instance = closeFunctionCall(disposal.call, undefined, this.#checker);
-    const entry = { kind: 'function', function: this.#seams.functionIndex(instance) } as const;
-    return isHostExtern(this.#checker, instance.declaration)
-      ? { ...entry, host: this.#seams.hostNativeIndex(instance.declaration) }
-      : entry;
+  /** The entry of the `dispose` a value of `type` runs as it loses its last holder (§7). */
+  #dispose(type: NominalType): FunctionId | undefined {
+    const disposal: Disposal = this.#checker.disposalOf(type);
+    return disposal.kind === 'function'
+      ? this.#seams.functionIndex(closeFunctionCall(disposal.call, undefined, this.#checker))
+      : undefined;
   }
 
   #fields(fields: readonly FieldMember[]) {

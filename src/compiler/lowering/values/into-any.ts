@@ -23,11 +23,11 @@ export function convertedIntoAny(
   if (from.kind === 'any') {
     return sameType(from, to)
       ? value
-      : emitCall(context, {
-          span,
-          callee: tables.anyConversionIndex(from, to),
-          arguments: [value],
-        });
+      : emitCall(
+          context,
+          { span, callee: tables.anyConversionIndex(from, to), arguments: [value] },
+          tables.types.reference(to),
+        );
   }
   if (from.kind === 'union') {
     return eachMember(context, { register: value, type: from }, { result: to, span }, (member) =>

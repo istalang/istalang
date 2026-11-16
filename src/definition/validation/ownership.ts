@@ -14,8 +14,7 @@
  *   moves out.
  */
 
-import type { Handlers } from '../../foundation/structures/handlers.ts';
-import { handlerOf } from '../../foundation/structures/handlers.ts';
+import { type Handlers, handlerOf } from '../../foundation/structures/kind-table.ts';
 import { type Instruction, operandsOf } from '../instructions/instruction.ts';
 import type { Register } from '../operands.ts';
 import type { CodeFunction } from '../tables/functions.ts';

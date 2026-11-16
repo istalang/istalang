@@ -281,12 +281,18 @@ function copied(writer: FlowWriter, operation: Of<'copy'>): void {
     writer.valueOf(into).kind === 'temporary'
   ) {
     const register = writer.registerOf(from);
-    if (source.inCell) {
-      const read = code.borrow(writer.context.tables.types.reference(writer.typeOf(from)));
-      code.emit({ kind: 'load', span, dst: read, place: { root: { kind: 'cell', register }, path: [] } });
-      writer.alias(into, read);
-    } else {
+    const through: 'cell' | 'reference' | undefined = source.inCell
+      ? 'cell'
+      : code.typeOf(register).kind === 'reference'
+        ? 'reference'
+        : undefined;
+    if (through === undefined) {
       writer.alias(into, register);
+    } else {
+      const read = code.borrow(writer.context.tables.types.reference(writer.typeOf(from)));
+      const place = { root: { kind: through, register }, path: [] };
+      code.emit({ kind: 'load', span, dst: read, place });
+      writer.alias(into, read);
     }
   } else if (fit === 'intoKeyedField') {
     writer.keyed.set(into, from);

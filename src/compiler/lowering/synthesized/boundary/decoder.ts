@@ -21,6 +21,7 @@ import {
   variantTagKey,
 } from '../../../checker/surface/json-form.ts';
 import type { LiteralType, NominalType, Type } from '../../../checker/types/type/index.ts';
+import { intType, stringType } from '../../../checker/types/type/primitives.ts';
 import { typeText } from '../../../checker/types/type/type-text.ts';
 import { type ClosedCall, closeCall } from '../../calls/closed-calls.ts';
 import { literalValue, oneValueIn } from '../../values/unions.ts';
@@ -57,12 +58,12 @@ export class Decoder {
       }
       case 'tuple': {
         const { elements } = form.type;
-        const count = code.constant(BigInt(elements.length));
+        const count = code.constant(BigInt(elements.length), intType);
         const items = this.#passed(
           code.call(this.#helper(codecHelpers.elements), [json, path, count]),
         );
         const values = elements.map((element, index) => {
-          const position = code.constant(BigInt(index));
+          const position = code.constant(BigInt(index), intType);
           const item = code.call(this.#helper(codecHelpers.element), [items, position]);
           const at = code.call(this.#helper(codecHelpers.elementPath), [path, position]);
           return this.#passed(code.call(this.#codec(element), [item, at]));
@@ -93,12 +94,13 @@ export class Decoder {
     const code = this.#code;
     const { type } = form;
     const fields = this.#passed(code.call(this.#helper(codecHelpers.fields), [json, path]));
-    const key = code.constant(variantTagKey);
+    const key = code.constant(variantTagKey, stringType);
     const tag = this.#passed(code.call(this.#helper(codecHelpers.tag), [fields, key, path]));
     for (const variant of form.variants) {
       const matched = code.code.newLabel();
       const next = code.code.newLabel();
-      code.code.branch(code.equal(tag, code.constant(variant.name)), matched, next, code.span);
+      const name = code.constant(variant.name, stringType);
+      code.code.branch(code.equal(tag, name), matched, next, code.span);
       code.code.place(matched);
       code.return(
         this.#ok(
@@ -133,7 +135,7 @@ export class Decoder {
       for (const literal of group.literals) {
         const matched = code.code.newLabel();
         const other = code.code.newLabel();
-        const equal = code.equal(value, code.constant(literalValue(literal)));
+        const equal = code.equal(value, code.constant(literalValue(literal), literal));
         code.code.branch(equal, matched, other, code.span);
         code.code.place(matched);
         code.return(
@@ -145,7 +147,10 @@ export class Decoder {
       code.code.place(next);
     }
     code.code.place(none);
-    const spelled = code.constant(literalsText(groups.flatMap(({ literals }) => literals)));
+    const spelled = code.constant(
+      literalsText(groups.flatMap(({ literals }) => literals)),
+      stringType,
+    );
     code.return(code.call(this.#helper(codecHelpers.notAmong, [type]), [json, path, spelled]));
   }
 
@@ -169,7 +174,7 @@ export class Decoder {
     if (field.skipped !== undefined) {
       return code.call(closeCall(field.skipped, undefined, code.checker), []);
     }
-    const key = code.constant(field.key);
+    const key = code.constant(field.key, stringType);
     const at = code.call(this.#helper(codecHelpers.fieldPath), [path, key]);
     const json = field.optional
       ? code.call(this.#helper(codecHelpers.optionalField), [object, key])

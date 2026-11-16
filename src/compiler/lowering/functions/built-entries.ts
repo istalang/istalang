@@ -33,7 +33,7 @@ import { builtLowering } from './index.ts';
 export function constructorEntry(lowering: Lowering, instance: FunctionInstance): CodeFunction {
   const { span } = instance.declaration.name;
   return builtLowering(lowering, instance).lowerBuilt((context, fields) =>
-    buildConstructed(context, { instance, fields: fields.map(({ register }) => register) }, span),
+    buildConstructed(context, { instance, fields }, span),
   );
 }
 
@@ -45,7 +45,7 @@ export function structEntry(lowering: Lowering, instance: FunctionInstance): Cod
   return built.lowerBuilt((context, parameters) => {
     const named = new Map(
       fields.map(({ node }, index) => {
-        const register = parameters[index]?.register;
+        const register = parameters[index];
         if (node.name === undefined || register === undefined) {
           return unreachable("A struct's field has no name, or no parameter.");
         }
@@ -61,12 +61,7 @@ export function hostExternEntry(lowering: Lowering, instance: FunctionInstance):
   const { span } = instance.declaration.name;
   const call = hostCallOf(lowering, instance);
   return builtLowering(lowering, instance, call.awaited?.value).lowerBuilt((context, parameters) =>
-    writeHostCall(
-      context,
-      call,
-      parameters.map(({ register }) => register),
-      span,
-    ),
+    writeHostCall(context, call, parameters, span),
   );
 }
 
@@ -77,14 +72,10 @@ export function hostExternEntry(lowering: Lowering, instance: FunctionInstance):
 export function externDefaultsEntry(lowering: Lowering, instance: FunctionInstance): CodeFunction {
   const { tables } = lowering;
   const { span } = instance.declaration.name;
-  return builtLowering(lowering, instance).lowerBuilt((context, parameters) =>
-    emitCall(context, {
-      span,
-      callee: tables.functionIndex(instance),
-      arguments: parameters.map(({ register, reference }) =>
-        reference ? referenceTo(register) : register,
-      ),
-    }),
+  const built = builtLowering(lowering, instance);
+  const result = tables.types.reference(built.frame.result);
+  return built.lowerBuilt((context, parameters) =>
+    emitCall(context, { span, callee: tables.functionIndex(instance), arguments: parameters }, result),
   );
 }
 

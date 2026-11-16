@@ -109,9 +109,10 @@ const shared = z.strictObject({
 /**
  * What the runtime makes of an extern type's values: every `Array<T>`, every `Map<K, V>`, every
  * `_Cell<T>` (a variable passed by `&` or captured, §3.7, §3.14, or a transient, §3.4), every
- * weak reference (§7), and every `Instance<T>` `spawn` gives, holding the instance's name (§9).
+ * weak reference (§7), every `Instance<T>` `spawn` gives, holding the instance's name (§9), and
+ * the handle of an async call, the execution running it (§7).
  */
-export const externRole = z.enum(['array', 'map', 'cell', 'weakRef', 'instance']);
+export const externRole = z.enum(['array', 'map', 'cell', 'weakRef', 'instance', 'call']);
 
 export type ExternRole = z.output<typeof externRole>;
 

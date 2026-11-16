@@ -49,17 +49,16 @@ export function derivedCodecEntry(lowering: CodecLowering, direction: JsonDirect
     unreachable('A derived codec instance has no type argument.');
   }
   const { declaration } = instance;
-  const parameters = checker.parametersOf(declaration).length;
-  const code = new SynthesizedCode(lowering, declaration.name.span, parameters);
-  // A codec holds only parts of what it codes, and JSON.
-  if (!checker.reachesDisposable(type)) {
-    code.code.holdsOnlyPlain();
-  }
-  const result = substitute(
-    checker.resultOf(declaration),
-    substitutionOf(instance),
-    checker.typeRules,
-  );
+  const substitution = substitutionOf(instance);
+  const concrete = (each: Type) => substitute(each, substitution, checker.typeRules);
+  const result = concrete(checker.resultOf(declaration));
+  const code = new SynthesizedCode(lowering, declaration.name.span, {
+    parameters: checker
+      .parametersOf(declaration)
+      .map((parameter) => tables.types.reference(concrete(parameter.type))),
+    result: tables.types.reference(result),
+    mode: 'simple',
+  });
   bodyWriters[direction](code, result, checker.json.formOf(type));
-  return code.entry(tables.entryHeader(instance), 'simple');
+  return code.entry(tables.entryHeader(instance));
 }
