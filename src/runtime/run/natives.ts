@@ -30,7 +30,8 @@ import {
 import type { CompositeValue, Value } from '../../definition/values/values.ts';
 import { errorOf, okOf } from '../../definition/values/declared-values.ts';
 import type { TypeDefinition } from '../../definition/tables/types.ts';
-import { Instance, type InstanceEnd } from './instances.ts';
+import type { Instance, InstanceEnd } from './instances.ts';
+import type { World } from './world.ts';
 import {
   Execution,
   Future,
@@ -39,9 +40,6 @@ import {
   type RunObject,
   type WeakReference,
 } from './objects.ts';
-
-/** The instances spawned so far, by name, whose ends `result()` waits for. */
-const spawnedInstances = new Map<string, Instance>();
 
 /** What an instance's end answers a wait on it of `Result` entry `result` with (§9). */
 function answerOf(types: readonly TypeDefinition[], result: number, end: InstanceEnd): Value {
@@ -56,8 +54,10 @@ export interface NativeBinding {
   readonly natives: Natives;
   readonly clock: Clock;
   readonly seed: Uint8Array;
-  /** The instance the run is, as its host names it (§9). */
-  readonly instance: string;
+  /** The instance the run is (§9). */
+  readonly instance: Instance;
+  /** The instances beside it. */
+  readonly world: World;
   readonly log: (record: LogRecord) => void;
 }
 
@@ -176,31 +176,14 @@ function contextOf(
     random,
     logs: {
       write: (record) =>
-        binding.log({ instance: binding.instance, time: binding.clock.now(), ...record }),
+        binding.log({ instance: run.instance.name, time: binding.clock.now(), ...record }),
     },
     instances: {
-      spawn: (closure, type) => {
-        const parent = run.instance;
-        parent.spawned += 1;
-        const child = new Instance(`${parent.name}/${parent.spawned}`, true);
-        run.lifetimes.hold(closure);
-        run.invoke(child, closure, (end) => {
-          run.lifetimes.letGo(closure);
-          child.ended(end.kind === 'returned' ? { kind: 'finished', outcome: end.value } : end);
-        });
-        spawnedInstances.set(child.name, child);
-        return { kind: 'extern', type, payload: child.name } as Value;
-      },
+      spawn: (closure, type) =>
+        ({ kind: 'extern', type, payload: run.world.spawn(run, closure) }) as Value,
       ended: (name, result) => {
         const future = new Future(run.newId());
-        const child = spawnedInstances.get(name);
-        const settle = (end: InstanceEnd) =>
-          run.settle(future, answerOf(types, result, end));
-        if (child?.end !== undefined) {
-          settle(child.end);
-        } else {
-          child?.endWatchers.push(settle);
-        }
+        run.world.watchEnd(run, name, (end) => run.settle(future, answerOf(types, result, end)));
         return future as unknown as Value;
       },
     },
@@ -217,14 +200,10 @@ function contextOf(
         new Resource(run.newId(), type, { store }) as unknown as Value,
       call: (_runtime, { key, call, result }) => {
         const future = new Future(run.newId());
-        run.lifetimes.hold(call);
-        run.invoke(run.contextOf(key), call, (end) => {
-          run.lifetimes.letGo(call);
+        run.world.call(run, key, call, (end) => {
           run.settle(
             future,
-            end.kind === 'returned'
-              ? okOf(types, result, end.value)
-              : answerOf(types, result, end),
+            end.kind === 'returned' ? okOf(types, result, end.value) : answerOf(types, result, end),
           );
         });
         return future as unknown as Value;

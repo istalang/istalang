@@ -36,7 +36,8 @@ import {
   WeakReference,
 } from './objects.ts';
 import * as primitives from './primitives.ts';
-import { Instance, type InstanceEnd } from './instances.ts';
+import type { Instance } from './instances.ts';
+import type { InvocationEnd, World } from './world.ts';
 import { Traces } from './traces.ts';
 
 /** What a parked frame's resumable function returns. */
@@ -56,9 +57,8 @@ type Ready =
   | { readonly kind: 'call'; readonly closure: Value; readonly arguments: readonly Value[] }
   | {
       readonly kind: 'invoke';
-      readonly instance: Instance;
       readonly closure: Value;
-      readonly answer: (end: InstanceEnd | { readonly kind: 'returned'; readonly value: Value }) => void;
+      readonly answer: (end: InvocationEnd) => void;
     };
 
 export class Run {
@@ -84,15 +84,15 @@ export class Run {
   #hostWork = 0;
   /** The execution running now, whose code a native or `currentCall` reads. */
   #running: Execution | undefined;
-  /** The live run a host started, which every other instance it drives runs beside. */
-  readonly root: Instance;
-  readonly #contexts = new Map<string, Instance>();
-  /** The instance an invocation is starting in, while its first call runs. */
-  #invoking: Instance | undefined;
+  /** The instance this run is: every execution of it is the instance's. */
+  readonly instance: Instance;
+  /** The instances beside it, which it reaches only through the world. */
+  readonly world: World;
 
   constructor(definition: Definition, program: EmittedProgram, binding: NativeBinding) {
     this.definition = definition;
-    this.root = new Instance(binding.instance, false);
+    this.instance = binding.instance;
+    this.world = binding.world;
     this.lifetimes = new Lifetimes((object) => this.#disposed(object), definition.types);
     this.constants = definition.constants;
     for (const constant of this.constants) {
@@ -278,32 +278,12 @@ export class Run {
     this.instance.contextConstants.set(name, value);
   };
 
-  /** The instance the running code is of. */
-  get instance(): Instance {
-    return this.#running?.instance ?? this.#invoking ?? this.root;
-  }
-
-  /** The context named `key`, made by the first call into it (§9). */
-  contextOf(key: string): Instance {
-    const known = this.#contexts.get(key);
-    if (known !== undefined) {
-      return known;
-    }
-    const made = new Instance(key, true);
-    this.#contexts.set(key, made);
-    return made;
-  }
-
   /**
-   * Readies an invocation of `closure` in `instance`: its function run as an execution of the
-   * instance, `answer` told what it gave, or the instance's end if it panicked or had ended.
+   * Readies an invocation of `closure` in this run's instance: its function run as an execution of
+   * it, `answer` told what it gave, or the instance's end if it panicked or had ended.
    */
-  invoke(
-    instance: Instance,
-    closure: Value,
-    answer: (end: InstanceEnd | { readonly kind: 'returned'; readonly value: Value }) => void,
-  ): void {
-    this.#ready.push({ kind: 'invoke', instance, closure, answer });
+  invoke(closure: Value, answer: (end: InvocationEnd) => void): void {
+    this.#ready.push({ kind: 'invoke', closure, answer });
   }
 
   /** Calls the function value `callee` with `passed`, as its entry is called. */
@@ -557,24 +537,35 @@ export class Run {
         });
   }
 
-  /** Runs what arrived from outside the run, one turn at a time, each draining what it readied. */
-  takeArrivals(done: () => boolean = () => false): void {
+  /**
+   * Runs what arrived from outside the run, one turn at a time, each draining what it readied;
+   * whether there was any.
+   */
+  takeArrivals(done: () => boolean = () => false): boolean {
+    let took = false;
     for (let turn = this.#arrivals.shift(); turn !== undefined; turn = this.#arrivals.shift()) {
+      took = true;
       turn();
       this.drain(done);
       if (done()) {
-        return;
+        break;
       }
     }
+    return took;
   }
 
-  /** Runs the ready queue until it is empty, or until `done` says the run is done. */
-  drain(done: () => boolean = () => false): void {
+  /**
+   * Runs the ready queue until it is empty, or until `done` says the run is done; whether it ran
+   * anything.
+   */
+  drain(done: () => boolean = () => false): boolean {
+    let ran = false;
     while (!done()) {
       const next = this.#ready.shift();
       if (next === undefined) {
-        return;
+        break;
       }
+      ran = true;
       if (next.kind === 'resume') {
         this.#resume(next.execution, next.decision);
       } else if (next.kind === 'invoke') {
@@ -584,6 +575,7 @@ export class Run {
         this.lifetimes.letGo(result as Value, next.closure, ...next.arguments);
       }
     }
+    return ran;
   }
 
   /**
@@ -605,49 +597,44 @@ export class Run {
   }
 
   /** Runs an invocation readied by `invoke`, its instance's panic ending it. */
-  #invoked({ instance, closure, answer }: Extract<Ready, { kind: 'invoke' }>): void {
+  #invoked({ closure, answer }: Extract<Ready, { kind: 'invoke' }>): void {
+    const { instance } = this;
     if (instance.end !== undefined) {
       answer(instance.end);
       return;
     }
     instance.endWatchers.push(answer);
-    const outer = this.#invoking;
-    this.#invoking = instance;
-    try {
-      const future = this.#guarded(instance, () => this.callValue(closure, [])) as Future | undefined;
-      const returned = (value: Value) => {
-        const at = instance.endWatchers.indexOf(answer);
-        if (at >= 0) {
-          instance.endWatchers.splice(at, 1);
-        }
-        answer({ kind: 'returned', value });
-      };
-      if (future?.settled === true) {
-        returned(future.value);
-      } else {
-        future?.listeners.push(returned);
+    const future = this.#guarded(() => this.callValue(closure, [])) as Future | undefined;
+    const returned = (value: Value) => {
+      const at = instance.endWatchers.indexOf(answer);
+      if (at >= 0) {
+        instance.endWatchers.splice(at, 1);
       }
-    } finally {
-      this.#invoking = outer;
+      answer({ kind: 'returned', value });
+    };
+    if (future?.settled === true) {
+      returned(future.value);
+    } else {
+      future?.listeners.push(returned);
     }
   }
 
-  /** What `run` gives, in `instance`, whose panic it ends, the root's propagating to the host. */
-  #guarded<Result>(instance: Instance, run: () => Result): Result | undefined {
-    if (instance === this.root) {
+  /** What `run` gives; an ista instance's panic ends it, the live run's propagates to the host. */
+  #guarded<Result>(run: () => Result): Result | undefined {
+    if (!this.instance.durable) {
       return run();
     }
     try {
       return run();
     } catch (error) {
       const { message, trace } = this.panicOf(error);
-      instance.ended({ kind: 'panicked', message, trace });
+      this.instance.ended({ kind: 'panicked', message, trace });
       return undefined;
     }
   }
 
   #resume(execution: Execution, decision: unknown): void {
-    if (execution.ended || execution.instance.end !== undefined) {
+    if (execution.ended || this.instance.end !== undefined) {
       return;
     }
     const outer = this.#running;
@@ -656,7 +643,7 @@ export class Run {
     frame.decision = decision as Value;
     execution.parked = false;
     try {
-      const result = this.#guarded(execution.instance, () =>
+      const result = this.#guarded(() =>
         (this.#entries[frame.function] as (given: Frame) => unknown)(frame),
       );
       if (result === PARKED) {

@@ -21,7 +21,7 @@ import type { Clock } from './clock.ts';
 import type { LogRecord } from './instance-state.ts';
 import type { Natives } from './natives.ts';
 import { Future } from './run/objects.ts';
-import { Run } from './run/run.ts';
+import { MemoryWorld } from './run/world.ts';
 
 /** What every start of a program is bound to: the natives, the host's externs, a clock, a seed. */
 export interface HostBinding {
@@ -60,23 +60,20 @@ export async function startLive(
   const passed = start.arguments ?? [];
   const started = startOf(definition, start.key, passed.length);
   const logs: LogRecord[] = [];
-  const run = new Run(
-    definition,
-    memo(emitted, definition, () => emitProgram(definition)),
-    {
-      natives: withHost(binding.natives, binding.externs ?? {}),
-      clock: binding.clock,
-      seed: binding.seed,
-      instance: start.instance ?? 'run',
-      log: (record) => logs.push(record),
-    },
-  );
+  const world = new MemoryWorld(definition, memo(emitted, definition, () => emitProgram(definition)), {
+    natives: withHost(binding.natives, binding.externs ?? {}),
+    clock: binding.clock,
+    seed: binding.seed,
+    instance: start.instance ?? 'run',
+    log: (record) => logs.push(record),
+  });
+  const run = world.root;
   try {
     const given = run.call(
       started.function,
       passed.map((each) => jsonIn(definition, each)),
     );
-    const outcome = await settled(run, binding.clock, given);
+    const outcome = await settled(world, binding.clock, given);
     if (outcome === undefined) {
       return { end: { kind: 'unsettled' }, logs };
     }
@@ -90,27 +87,26 @@ export async function startLive(
 }
 
 /** The outcome `given` gives: at once from simple code, else once its future settles, if it does. */
-async function settled(run: Run, clock: Clock, given: unknown): Promise<Value | undefined> {
+async function settled(world: MemoryWorld, clock: Clock, given: unknown): Promise<Value | undefined> {
   if (!(given instanceof Future)) {
     return given as Value;
   }
   const done = () => given.settled;
   for (;;) {
-    run.drain(done);
-    run.takeArrivals(done);
+    world.drain(done);
     if (given.settled) {
       return given.value;
     }
-    const timer = run.nextTimer();
-    if (run.awaitsHost) {
+    const timer = world.nextTimer();
+    if (world.awaitsHost) {
       // biome-ignore lint/performance/noAwaitInLoops: each turn waits on what the last one left.
-      await (timer === undefined ? run.arrival() : Promise.race([run.arrival(), clock.until(timer)]));
+      await (timer === undefined ? world.arrival() : Promise.race([world.arrival(), clock.until(timer)]));
     } else if (timer === undefined) {
       return undefined;
     } else {
       await clock.until(timer);
     }
-    run.fireDue(clock.now());
+    world.fireDue(clock.now());
   }
 }
 
