@@ -1,10 +1,9 @@
 /**
  * Control flow inside one function.
  *
- * `if`, `while`, `for`, `match`, `and`/`or`, `?.`, `??` and `?` all lower to these jumps; a
- * branching expression writes its value to a result register the lowering chose (spec §4).
- * Leaving a block early (`break`, `continue`) is a `release` followed by a `jump`, so the
- * jump itself never disposes anything.
+ * `if`, `while`, `for`, `match`, `and`/`or`, `?.`, `??` and `?` lower to jumps and branches; a
+ * branching expression writes its value to a register the lowering chose. Jumping never lets go of
+ * anything: leaving a block early is a `letGo` before the jump (./lifetimes.ts).
  */
 
 import { z } from 'zod';
@@ -20,8 +19,8 @@ const branch = defineInstruction('branch', {
 });
 
 /**
- * Jumps by the variant index of an enum value: `targets[i]` handles variant i, and `otherwise`
- * every variant past the targets, so a test for one variant needn't know how many there are.
+ * Jumps by the variant of an enum value: `targets[i]` handles variant i, `otherwise` every variant
+ * past the targets, so a test for one variant needn't list the rest.
  */
 const switchVariant = defineInstruction('switch', {
   value: register,
@@ -30,8 +29,8 @@ const switchVariant = defineInstruction('switch', {
 });
 
 /**
- * Ends the function. Every register still holding something is released, in reverse creation
- * order of what each one disposes (spec §7). An async function resolves its call's future.
+ * Ends the call, giving `value`, moved out. Every other register owning something has been let go
+ * by then (./lifetimes.ts): `return` itself lets go of nothing.
  */
 const returnValue = defineInstruction('return', { value: register });
 

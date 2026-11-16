@@ -1,19 +1,16 @@
 /**
- * Instructions that build, read and write values.
+ * Instructions that build and read values.
  *
- * Only what can't be an ordinary call is an instruction:
- * - construction of the built-in shapes (tuple, struct, variant, array, map, closure)
- * - field access and writes through places
- * - the operators the spec makes non-overloadable (§3.9): structural `==`, `not`, and `*` and
- *   `*x = v`, which read and write the cell behind a shared struct's handle, which `new` makes
- * - turning `compare`'s result into a boolean, since all four comparisons go through one
- *   `compare` (spec §3.9)
- * Arithmetic, indexing, conversions and iteration are calls to resolved functions, which
- * for primitives are prelude externs.
- *
- * Writing a register that holds a cell (a variable passed by `&` or captured by a closure) or a
- * reference parameter goes through it; the function's metadata says which registers those are
- * (../tables/functions.ts).
+ * - **Ownership is in the instruction** (docs/arch/definition.md, "Holders"). `move` hands a value
+ *   on, emptying its source; `copy` makes another holder of it. Construction moves its parts in, so
+ *   a part kept elsewhere is copied first. A read of a part borrows it into a borrowed register,
+ *   holding nothing, valid while the value it was read from stays unchanged in its register.
+ * - **One instruction per meaning.** A tuple's element, a struct's field and a variant's field are
+ *   read apart; a variant's field is read where its variant is known (after a `switch`).
+ * - Only what can't be an ordinary call is an instruction: construction of the built-in shapes, the
+ *   operators the spec makes non-overloadable (§3.9: structural `==`, `not`), the primitive
+ *   operations (./primitive-ops.ts) and turning a comparison's result into a `Bool`. Everything
+ *   else is a call of a resolved function.
  */
 
 import { z } from 'zod';
@@ -21,23 +18,25 @@ import {
   constantId,
   fieldIndex,
   functionId,
-  label,
   register,
   typeId,
   variantIndex,
 } from '../operands.ts';
 import { defineInstruction } from './define-instruction.ts';
-import { place } from './places.ts';
+import { primitiveOp } from './primitive-ops.ts';
 
-/** dst = constants[constant]. */
+/** A constant of the Definition's table, owned by `dst`. */
 const constant = defineInstruction('constant', { dst: register, constant: constantId });
 
-/** dst = src. */
+/** Hands `src`'s value on to `dst`, emptying `src`. */
 const move = defineInstruction('move', { dst: register, src: register });
+
+/** Makes `dst` another holder of `src`'s value. */
+const copy = defineInstruction('copy', { dst: register, src: register });
 
 const tuple = defineInstruction('tuple', { dst: register, elements: z.array(register) });
 
-/** Fields in the type's declaration order; the lowering resolves shorthand, positional and spread forms. */
+/** A struct of entry `type`, its fields in its entry's order. */
 const struct = defineInstruction('struct', {
   dst: register,
   type: typeId,
@@ -51,115 +50,87 @@ const variant = defineInstruction('variant', {
   fields: z.array(register),
 });
 
-/** Reads a tuple element, a struct field, or a field of an enum value's current variant. */
-const field = defineInstruction('field', { dst: register, src: register, index: fieldIndex });
-
-/** Writes a place with a non-empty path: `p.x = v`, `xs[i] = v`, `a[k].b = v`. */
-const store = defineInstruction('store', {
-  place: place.refine((target) => target.path.length > 0, 'A store path is never empty; use move.'),
-  value: register,
+/**
+ * An array of `elements` in order; a spread's every item, each copied, its register kept (§3.3).
+ */
+const array = defineInstruction('array', {
+  dst: register,
+  elements: z.array(z.strictObject({ value: register, spread: z.boolean() })),
 });
 
-const item = z.discriminatedUnion('kind', [
-  z.strictObject({ kind: z.literal('item'), value: register }),
-  z.strictObject({ kind: z.literal('spread'), value: register }),
-]);
-
-/**
- * dst = a handle to a new cell of the shared struct entry `type`, holding `value`: `new X{…}`
- * (spec §3.18).
- */
-const newCell = defineInstruction('newCell', { dst: register, type: typeId, value: register });
-
-/** dst = the value in the cell the handle in `cell` names: `*x` (spec §3.9). */
-const readCell = defineInstruction('readCell', { dst: register, cell: register });
-
-/**
- * dst = a reference to the value in the cell the handle in `handle` names, the place `*x` (spec
- * §3.7, §3.18): written through for every copy of the handle, as `*x = v` and `x->f = v` are, and
- * passed by `&` to a native, which changes it only as it returns.
- */
-const behind = defineInstruction('behind', { dst: register, handle: register });
-
-/** `[a, ...xs, b]`, a spread copying another array's elements. */
-const array = defineInstruction('array', { dst: register, elements: z.array(item) });
-
-const entry = z.discriminatedUnion('kind', [
+const mapEntry = z.discriminatedUnion('kind', [
   z.strictObject({ kind: z.literal('entry'), key: register, value: register }),
   z.strictObject({ kind: z.literal('spread'), value: register }),
 ]);
 
-/**
- * `[k: v, ...m]` for a Map, a spread copying another map's entries; literals of other indexable
- * types lower to `default` and `setIndex` calls.
- */
-const map = defineInstruction('map', { dst: register, entries: z.array(entry) });
+/** A `Map` of its entries in order, a later key replacing an earlier; a spread as `array`'s. */
+const map = defineInstruction('map', { dst: register, entries: z.array(mapEntry) });
 
-/** A function value. A top-level function used as a value is a closure with no captures. */
+/** A closure of `function` carrying `captures` (§3.14). */
 const closure = defineInstruction('closure', {
   dst: register,
   function: functionId,
   captures: z.array(register),
 });
 
-/** The closure the current frame runs, so a named lambda or local `fn` can refer to itself. */
+/** The closure the running code entry runs as, borrowed: a local `fn`'s own name (§3.14). */
 const currentClosure = defineInstruction('currentClosure', { dst: register });
 
-/** Built-in structural equality: values by structure, handles by identity. */
+const tupleItem = defineInstruction('tupleItem', {
+  dst: register,
+  src: register,
+  index: fieldIndex,
+});
+
+const structField = defineInstruction('structField', {
+  dst: register,
+  src: register,
+  field: fieldIndex,
+});
+
+/** A field of `src`, which holds variant `variant` of its enum. */
+const variantField = defineInstruction('variantField', {
+  dst: register,
+  src: register,
+  variant: variantIndex,
+  field: fieldIndex,
+});
+
+/** The built-in structural `==` (§3.9). */
 const equal = defineInstruction('equal', { dst: register, left: register, right: register });
 
 const not = defineInstruction('not', { dst: register, src: register });
 
-/** Turns the int that `compare` returned into the boolean an operator asked for. */
+/** Whether a comparison's `Int` result (negative, zero, positive) stands in `relation`. */
 const order = defineInstruction('order', {
   dst: register,
   comparison: register,
-  relation: z.enum(['less', 'lessOrEqual', 'greater', 'greaterOrEqual']),
+  relation: z.enum(['<', '<=', '>', '>=']),
 });
 
-/**
- * dst = the instance's value of the context constant `name`, its qualified name (spec §3.4), and a
- * jump to `target`, once the instance has made one; while it hasn't, on to make it, as `given` goes
- * on to compute a default.
- */
-const contextConstant = defineInstruction('contextConstant', {
+/** A primitive operation of a backend's own (./primitive-ops.ts). */
+const primitive = defineInstruction('primitive', {
   dst: register,
-  name: z.string(),
-  target: label,
+  op: primitiveOp,
+  operands: z.array(register),
 });
-
-/** Makes `value` the instance's value of the context constant `name`, kept from now on. */
-const makeContextConstant = defineInstruction('makeContextConstant', {
-  name: z.string(),
-  value: register,
-});
-
-/**
- * dst, a cell register of a transient (spec §3.4), = the cell of the nearest call this one is
- * nested in that runs the same function and holds one, and a jump to `target`; where none does, on
- * to the initializer, whose write makes the cell as any cell register's first write does.
- */
-const transient = defineInstruction('transient', { dst: register, target: label });
 
 export const dataInstructions = [
   constant,
-  contextConstant,
-  makeContextConstant,
-  transient,
   move,
+  copy,
   tuple,
   struct,
   variant,
-  field,
-  store,
-  newCell,
-  readCell,
-  behind,
   array,
   map,
   closure,
   currentClosure,
+  tupleItem,
+  structField,
+  variantField,
   equal,
   not,
   order,
+  primitive,
 ] as const;

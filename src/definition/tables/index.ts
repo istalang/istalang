@@ -1,10 +1,16 @@
 /**
  * The tables a Definition is made of, as shapes only. ../definition.ts adds the checks that span
- * tables (../validation/references.ts), which need this shape without depending back on it.
+ * tables (../validation/), which need this shape without depending back on it.
  *
- * A module carries its line starts because the runtime never sees source text or the compiler,
- * yet it must turn spans into locations: for `Error.trace` (spec §3.12), a panic's trace,
- * `waitingAt()` (spec §10) and the operator's view.
+ * - A module carries its line starts: the runtime never sees source text, yet turns spans into
+ *   locations for `Error.trace` (§3.12), a panic's trace, `waitingAt()` (§10) and the operator.
+ * - **A start** is what a host may start by key (§9): a code entry lowering wrote around the
+ *   function, which decodes the arguments from JSON, calls it, awaits what an async one gives, and
+ *   gives its outcome as JSON (docs/arch/boundary.md), so the runtime runs a start as any call.
+ * - **What the program is for** is one of two shapes: a program, with the start a host starts
+ *   naming none (`main`'s) and the loop serving the jobs of the instances it drives (§5) when it
+ *   delegates; or a test build (§10), with every `@Suite` and the testing module's code listing a
+ *   suite's tests and running one.
  */
 
 import { z } from 'zod';
@@ -20,40 +26,33 @@ const sourceModule = z.strictObject({
   lineStarts: z.array(offset).min(1),
 });
 
+const start = z.strictObject({ key: z.string(), function: functionId });
+
+const program = z.strictObject({
+  kind: z.literal('program'),
+  /** The key of the start a host starts naming none: `main`'s, when the program has one. */
+  main: z.string().optional(),
+  jobServer: functionId.optional(),
+});
+
+const tests = z.strictObject({
+  kind: z.literal('tests'),
+  list: functionId,
+  run: functionId,
+  suites: z.array(z.strictObject({ title: z.string(), function: functionId })),
+});
+
+export const purpose = z.discriminatedUnion('kind', [program, tests]);
+
+export type Purpose = z.output<typeof purpose>;
+
 export const tables = z.strictObject({
   modules: z.array(sourceModule),
   types: z.array(typeDefinition),
   functions: z.array(functionDefinition),
   constants: z.array(value),
-  /**
-   * The default start: `main`'s entry in `starts`, what a host starts without naming a function;
-   * absent in a Definition built only to run tests.
-   */
-  main: functionId.optional(),
-  /**
-   * The loop serving the jobs of the instances a runtime drives (§5, stdlib/runtime), which
-   * `Runtime.open` starts: present when the program delegates, which a program with no jobs never
-   * does.
-   */
-  jobServer: functionId.optional(),
-  /**
-   * What a host may start (§9), by the key it names each by: the code entry that takes the
-   * arguments as JSON and runs the function, and the entry encoding its outcome as JSON, which the
-   * runtime calls as it returns (docs/arch/boundary.md).
-   */
-  starts: z.array(z.strictObject({ key: z.string(), function: functionId, encoder: functionId })),
-  /**
-   * In a Definition built to run tests (§10): every `@Suite` function with its title, and the
-   * testing module's code that lists a suite's tests and runs one of them, which `ista test` starts
-   * each test's instance with.
-   */
-  tests: z
-    .strictObject({
-      list: functionId,
-      run: functionId,
-      suites: z.array(z.strictObject({ title: z.string(), function: functionId })),
-    })
-    .optional(),
+  starts: z.array(start),
+  purpose,
 });
 
 export type Tables = z.output<typeof tables>;

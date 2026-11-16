@@ -1,18 +1,22 @@
 /**
- * Calls, and the contexts calls create.
+ * Calls, and what a code entry knows of the call running it.
  *
- * Every call targets a function-table entry, directly or through a function value. Externs are
- * entries too (../tables/functions.ts), so there is one call path, where a mock replaces a function whatever
- * it is, and one place extern results are seen (spec §10).
- *
- * Calling an async function starts a new execution right away and gives `dst` its future (spec
- * §3.3); the instruction is the same, since the callee's entry says whether it is async.
+ * - **One call path.** Every call targets a function-table entry, directly or through a function
+ *   value, externs included (../tables/functions.ts): mocks, traces and extern results are seen in
+ *   one place.
+ * - **Arguments are borrowed.** The callee holds none of them unless it copies one; a `&` argument
+ *   is a reference register (./places.ts). A parameter the call leaves out is `omitted`, which the
+ *   callee's prologue computes.
+ * - **An async callee starts an execution** of its own right away, and `dst` owns the future it
+ *   gives (§3.3); the instruction is the same, the callee's entry saying which it is.
+ * - **Mocks** (§10) are asked only in a Definition built to run tests: `mocked` stands where a
+ *   mockable function's body begins, past its prologue, and hands the call over to the newest mock
+ *   held for it, if any (docs/arch/definition.md, "Mocks").
  */
 
 import { z } from 'zod';
-import { functionId, register } from '../operands.ts';
+import { functionId, label, register } from '../operands.ts';
 import { defineInstruction } from './define-instruction.ts';
-import { argument } from './places.ts';
 
 const callee = z.discriminatedUnion('kind', [
   z.strictObject({ kind: z.literal('function'), function: functionId }),
@@ -21,17 +25,31 @@ const callee = z.discriminatedUnion('kind', [
 
 export type Callee = z.output<typeof callee>;
 
-/** Without `dst`, the result is discarded; the checker only allows that for a non-must-use result. */
+const argument = z.discriminatedUnion('kind', [
+  z.strictObject({ kind: z.literal('value'), register }),
+  z.strictObject({ kind: z.literal('omitted') }),
+]);
+
+export type Argument = z.output<typeof argument>;
+
+/** Without `dst`, the result is let go of at once; the checker allows that only for `Unit`. */
 const call = defineInstruction('call', {
   dst: register.optional(),
   callee,
   arguments: z.array(argument),
 });
 
-/**
- * A handle to the async call this frame belongs to, taken once at a function's entry so that
- * `worker.disposing()` reaches the enclosing call from any nested function (spec §7).
- */
+/** The running execution's call, borrowed: the handle `disposing()` watches (§7). */
 const currentCall = defineInstruction('currentCall', { dst: register });
 
-export const callInstructions = [call, currentCall] as const;
+/** Jumps to `target` when the call gave `parameter`; else on to compute its default. */
+const given = defineInstruction('given', { parameter: register, target: label });
+
+/**
+ * Where a mock held for the running function exists (§10), the newest's result for every parameter,
+ * defaults computed, in `dst`, and a jump to `landing`, which lets go of what the frame owns and
+ * returns it; else on to the body.
+ */
+const mocked = defineInstruction('mocked', { dst: register, landing: label });
+
+export const callInstructions = [call, currentCall, given, mocked] as const;

@@ -1,36 +1,20 @@
 /**
- * The types a Definition carries, and why it carries so few.
+ * The type table, and the types every register states (docs/arch/definition.md, "Types").
  *
- * The code is untyped: operators, indexing and conversions are already resolved calls, and
- * generics are compiled once per concrete set of type arguments (docs/arch/definition.md,
- * Decisions), so no instruction needs a type to run. Types are kept only where a value's shape
- * must be known without code:
- * - field and variant names and order, for construction, the host boundary, `json` and messages
- * - annotations on fields (`@JsonName`, `@JsonSkip`)
- * - the declared parameter and result types of externs, which drive the boundary conversion
- * - extern types, and how an instantiation is disposed
- *
- * Every entry is fully instantiated: `Pair<Int, String>` and `Pair<Int, Int>` are two entries,
- * and a reference never contains a type parameter. An entry is identified by its index: its `name`
- * and `arguments` are labels for traces, a declared type's its module-qualified declaration and
- * type arguments, any other's its type's table key (docs/arch/definition.md, "Types and
- * locations"), and the runtime recognizes a type by its `role`, never its name. A shape (an
- * anonymous struct type) has no name: it has one entry however many places write it, its fields
- * in name order (spec §3.1).
- *
- * A recursive alias whose values are tuples or functions (spec §3.17, `type Step = fn(Int) ->
- * Step`) has an entry of its own, which stands for the type it unfolds to: a reference holding it
- * would otherwise never end. Any other recursive alias is the entry of what it unfolds to, a
- * union's enum, a shape's struct or a declared type's, whose layout refers back to it.
- *
- * Only extern entries can be disposable (spec §7), and each says how: not at all, by the runtime
- * itself (futures, slots), or by calling a declared `dispose`, as `fn dispose(self: Lease)` makes a
- * handle `Lease` disposable (§3.18), and the prelude's `Deferred` and the inbox module's every
- * `Revertible<T>`.
- *
- * Where the runtime must know what an extern type's or an enum's values are beyond what its
- * natives do with them, the entry says so by its `role`, which lowering sets from the checker's
- * entities: no rule of the runtime depends on how a std module spells a name.
+ * - **Typed code.** Every register has a type (../tables/functions.ts), so a backend lays values out
+ *   and counts holders from the code alone; generics are compiled once per concrete set of type
+ *   arguments, so no reference names a type parameter.
+ * - **Reach facts on every entry.** `disposable` says a value of the entry may reach a disposable
+ *   (the checker's `reachesDisposable`): only such values are counted to dispose them (§7), and no
+ *   cycle passes through one. `heap` says a value is an allocation a backend counts to free it
+ *   (LLVM) or to change it in place when unique: anything but a scalar.
+ * - **One kind per meaning.** A struct, an enum, a shared struct (a handle to a cell holding its
+ *   struct, §3.18), an extern type the runtime or a host implements, and a recursive alias that
+ *   unfolds to a structural type (§3.17, `type Step = fn(Int) -> Step`), which a reference holding
+ *   it would otherwise never end.
+ * - **Labels, not identity.** An entry is its index; `name` and `arguments` serve traces and
+ *   messages. A role marks what the runtime must know of an entry beyond its natives, set by
+ *   lowering from the checker's entities, never from a std spelling.
  */
 
 import { z } from 'zod';
@@ -59,12 +43,108 @@ const functionType = z.strictObject({
   },
 });
 
-/** A use of a type: a primitive, an entry in the Definition's type table, or a structural type. */
-export const typeReference = z.discriminatedUnion('kind', [primitive, named, tuple, functionType]);
+/** A `&` parameter's register: a reference to a place of type `to` (§3.7). */
+const reference = z.strictObject({
+  kind: z.literal('reference'),
+  get to() {
+    return typeReference;
+  },
+});
+
+/** A use of a type: a primitive, a table entry, a structural type, or a reference to a place. */
+export const typeReference = z.discriminatedUnion('kind', [
+  primitive,
+  named,
+  tuple,
+  functionType,
+  reference,
+]);
 
 export type TypeReference = z.output<typeof typeReference>;
 
-/** The type-table entries a reference names, at any depth. */
+const field = z.strictObject({
+  name: z.string(),
+  type: typeReference,
+  /** Annotation values in source order, each a struct value of the annotation's type. */
+  annotations: z.array(value),
+});
+
+export type Field = z.output<typeof field>;
+
+/** What every entry states: its label, and its reach facts. */
+const common = {
+  /** A declared type's module-qualified name, `time.Duration`; any other's table key. */
+  name: z.string(),
+  arguments: z.array(typeReference),
+  disposable: z.boolean(),
+  heap: z.boolean(),
+};
+
+const struct = z.strictObject({ kind: z.literal('struct'), ...common, fields: z.array(field) });
+
+/**
+ * What the runtime makes of an enum's values: a `json` enum is the json module's `Json`, JSON held
+ * as a value, which the host boundary moves across (§9).
+ */
+const enumRole = z.enum(['json']);
+
+export type EnumRole = z.output<typeof enumRole>;
+
+const enumeration = z.strictObject({
+  kind: z.literal('enum'),
+  ...common,
+  variants: z.array(z.strictObject({ name: z.string(), fields: z.array(field) })),
+  role: enumRole.optional(),
+});
+
+/** A shared struct's handle (§3.18): a cell holding a value of the struct entry `value`. */
+const shared = z.strictObject({
+  kind: z.literal('shared'),
+  ...common,
+  value: typeId,
+  /** The declared `dispose`, run when the handle loses its last holder (§7). */
+  dispose: functionId.optional(),
+});
+
+/**
+ * What the runtime makes of an extern type's values: every `Array<T>`, every `Map<K, V>`, every
+ * `_Cell<T>` (a variable passed by `&` or captured, §3.7, §3.14, or a transient, §3.4), every
+ * weak reference (§7), and every `Instance<T>` `spawn` gives, holding the instance's name (§9).
+ */
+export const externRole = z.enum(['array', 'map', 'cell', 'weakRef', 'instance']);
+
+export type ExternRole = z.output<typeof externRole>;
+
+/**
+ * A type the runtime or a host implements: a role's, or a host's, whose values are its JSON, or
+ * resource objects when it declares a `dispose` (§7, §9).
+ */
+const external = z.strictObject({
+  kind: z.literal('extern'),
+  ...common,
+  role: externRole.optional(),
+  dispose: functionId.optional(),
+});
+
+const recursiveAlias = z.strictObject({
+  kind: z.literal('alias'),
+  ...common,
+  get type() {
+    return typeReference;
+  },
+});
+
+export const typeDefinition = z.discriminatedUnion('kind', [
+  struct,
+  enumeration,
+  shared,
+  external,
+  recursiveAlias,
+]);
+
+export type TypeDefinition = z.output<typeof typeDefinition>;
+
+/** The type-table entries `reference` names, at any depth. */
 export function typesIn(reference: TypeReference): readonly number[] {
   switch (reference.kind) {
     case 'primitive':
@@ -75,6 +155,8 @@ export function typesIn(reference: TypeReference): readonly number[] {
       return reference.elements.flatMap(typesIn);
     case 'function':
       return [...reference.parameters, reference.result].flatMap(typesIn);
+    case 'reference':
+      return typesIn(reference.to);
     default: {
       const unhandled: never = reference;
       return unhandled;
@@ -82,143 +164,30 @@ export function typesIn(reference: TypeReference): readonly number[] {
   }
 }
 
-const field = z.strictObject({
-  name: z.string(),
-  type: typeReference,
-  /** Annotation values in source order, each a struct value of the annotation's type. */
-  annotations: z.array(value),
-});
-
 /**
- * An entry's label: a declared type's module-qualified name, `time.Duration`, and the
- * instantiation's type arguments; any other's table key, with none.
+ * Whether a value of `reference` may reach a disposable: a function value may, its type not saying
+ * what it captured (§7), and a reference reaches what its place holds.
  */
-const identity = { name: z.string(), arguments: z.array(typeReference) };
-
-const struct = z.strictObject({
-  kind: z.literal('struct'),
-  /** Absent for an anonymous struct. */
-  name: z.string().optional(),
-  arguments: identity.arguments,
-  fields: z.array(field),
-});
-
-/**
- * What the runtime makes of an enum's values: a `json` enum is the json module's `Json`, JSON held
- * as a value, which the json natives and the host boundary move across (spec §9). Any other enum
- * has none.
- */
-const enumRole = z.enum(['json']);
-
-const enumeration = z.strictObject({
-  kind: z.literal('enum'),
-  ...identity,
-  variants: z.array(z.strictObject({ name: z.string(), fields: z.array(field) })),
-  role: enumRole.optional(),
-});
-
-export type EnumRole = z.output<typeof enumRole>;
-
-const disposal = z.discriminatedUnion('kind', [
-  z.strictObject({ kind: z.literal('none') }),
-  z.strictObject({ kind: z.literal('runtime') }),
-  z.strictObject({
-    kind: z.literal('function'),
-    function: functionId,
-    /**
-     * For a `dispose` a host implements, the native entry its wrapper calls, so whatever stands in
-     * for the host, as a test does (spec §10), knows which native releases a host value.
-     */
-    host: functionId.optional(),
-  }),
-]);
-
-/**
- * What the runtime makes of an extern type's values: an `array` type is every `Array<T>`, a `map`
- * type every `Map<K, V>`, which JSON reads and writes as its own (§9); a `shared` type is every
- * shared struct's, whose values are handles to the cells `newCell` makes (spec §3.18); a `cell`
- * type is every `_Cell<T>`, the one a variable passed by `&` or captured lives in (§3.7, §3.14), as
- * a code entry lists in its `cells`; a `future` type is every `Future<T>`, which a host's extern
- * returning one gives back pending (§9); an `instance` type is every `Instance<T>`, which `spawn`
- * gives, holding the new instance's name (§9). Any other extern type has none.
- */
-export const externRole = z.enum(['array', 'map', 'shared', 'cell', 'future', 'instance']);
-
-/** A type the runtime or host implements, such as `prelude.Array<Int>` or a host `Queue<T>`. */
-const external = z.strictObject({
-  kind: z.literal('extern'),
-  ...identity,
-  disposal,
-  /**
-   * Whether the runtime counts this type's handles: values of it may reach a disposable, so no
-   * cycle passes through them (static lifetimes, spec §7), and a count decides when one loses its
-   * last holder. The checker decides it (`reachesDisposable`); the runtime only reads it.
-   */
-  counted: z.boolean(),
-  role: externRole.optional(),
-  /**
-   * An `instance` type's, `Instance<T>`'s, when a codec writes `T`: that codec's entry, which
-   * encodes the outcome of every instance spawned as one for its host (§9), whichever native spawns
-   * it.
-   */
-  encoder: functionId.optional(),
-});
-
-export type ExternRole = z.output<typeof externRole>;
-
-/** A recursive alias that unfolds to a structural type: `type` is that type, which refers to it. */
-const recursiveAlias = z.strictObject({
-  kind: z.literal('alias'),
-  ...identity,
-  get type() {
-    return typeReference;
-  },
-});
-
-export const typeDefinition = z.discriminatedUnion('kind', [
-  struct,
-  enumeration,
-  external,
-  recursiveAlias,
-]);
-
-export type TypeDefinition = z.output<typeof typeDefinition>;
-
-/**
- * Whether a value of the host type entry `type` of `types` is a resource object behind a handle
- * (§7): a `dispose` makes it disposable, so its values have an identity of their own, unless it is
- * a shared struct's, whose values are cells. Any other host type's values are its host's JSON, as
- * plain as an int.
- */
-export function isResourceType(types: readonly TypeDefinition[], type: number): boolean {
-  const entry = types[type];
-  return entry?.kind === 'extern' && entry.disposal.kind === 'function' && entry.role !== 'shared';
-}
-
-/**
- * The entry encoding the outcome of an instance spawned as the `Instance<T>` type entry `type` of
- * `types` (§9); undefined when no codec writes `T`.
- */
-export function outcomeEncoderOf(
+export function reachesDisposable(
   types: readonly TypeDefinition[],
-  type: number,
-): number | undefined {
-  const entry = types[type];
-  return entry?.kind === 'extern' ? entry.encoder : undefined;
-}
-
-/** Whether a cell may have the type entry `type` of `types`: a shared struct's or a variable's. */
-export function isCellType(types: readonly TypeDefinition[], type: number): boolean {
-  return hasRole(types, type, 'shared') || hasRole(types, type, 'cell');
-}
-
-/** How a value of type entry `type` of `types` is disposed: an extern type's disposal, else none. */
-export function disposalOf(
-  types: readonly TypeDefinition[],
-  type: number,
-): z.output<typeof disposal> {
-  const entry = types[type];
-  return entry?.kind === 'extern' ? entry.disposal : { kind: 'none' };
+  reference: TypeReference,
+): boolean {
+  switch (reference.kind) {
+    case 'primitive':
+      return false;
+    case 'named':
+      return types[reference.type]?.disposable === true;
+    case 'tuple':
+      return reference.elements.some((element) => reachesDisposable(types, element));
+    case 'function':
+      return true;
+    case 'reference':
+      return reachesDisposable(types, reference.to);
+    default: {
+      const unhandled: never = reference;
+      return unhandled;
+    }
+  }
 }
 
 /** Whether type entry `type` of `types` has `role`, an extern type's or an enum's. */
@@ -229,4 +198,10 @@ export function hasRole(
 ): boolean {
   const entry = types[type];
   return (entry?.kind === 'extern' || entry?.kind === 'enum') && entry.role === role;
+}
+
+/** The `dispose` a value of type entry `type` of `types` runs when it loses its last holder. */
+export function disposeOf(types: readonly TypeDefinition[], type: number): number | undefined {
+  const entry = types[type];
+  return entry?.kind === 'shared' || entry?.kind === 'extern' ? entry.dispose : undefined;
 }

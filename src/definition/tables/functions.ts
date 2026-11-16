@@ -1,103 +1,111 @@
 /**
- * The function table: every function the program can call, by index.
+ * The function table: every function the program can call, by index (docs/arch/definition.md,
+ * "Functions").
  *
- * An entry is code or an extern binding. Calls never distinguish the two (instructions/calls.ts),
- * so mocking, tracing and recording treat host functions and program functions alike. The two
- * shapes are kept apart so that each states only what applies to it: an extern has no frame,
- * captures or mode (it returns a future instead), and its parameters carry types. Either kind
- * may take a parameter by `&`: the prelude's mutating externs, such as `push` and `setIndex`, do.
- *
- * Register layout of a code frame: the parameters first, then the closure's captures, then
- * locals and temporaries. A reference parameter's register is bound to the caller's place, and a
- * register listed in `cells` holds a shared cell (a variable passed by `&`, a `let` captured
- * by a closure, spec §3.14, or a transient, §3.4). Reads and writes of both go through to what they
- * refer to.
- *
- * Defaults are part of the function (§3.3): a code entry computes each parameter its call leaves
- * out in its prologue (../instructions/prologue.ts), so its parameters say which a call may leave
- * out, a direct call passing those as omitted and a function value's or the runtime's call passing
- * fewer arguments. An extern computes nothing, so a call leaving its defaults out calls a code
- * entry that computes them, then the extern.
+ * - **Code or extern.** Calls never tell the two apart (../instructions/calls.ts), so mocks,
+ *   traces and records treat host functions and program functions alike. Each kind states only
+ *   what applies to it.
+ * - **Typed registers.** A code entry lists every register's type: its parameters first, then the
+ *   closure's captures, then the rest. A register either owns what it holds or borrows it
+ *   (`borrowed`): a parameter, and a part read out of a value another register owns, are borrowed,
+ *   so a backend counts no holder for them and no code lets go of them (../instructions/
+ *   lifetimes.ts).
+ * - **Modes** (proposal 8, Rule 2). A simple entry runs on its caller's execution, never waiting; a
+ *   live or ista one runs as an execution of its own, waiting at `park`. Live code waits in memory
+ *   and never commits; ista code runs in an instance, every wait committing.
+ * - **Defaults are the callee's** (§3.3): a code entry computes each parameter its call left out in
+ *   its prologue (`given`), so a call passes those as omitted. An extern computes nothing, so a call
+ *   leaving out its defaults calls a code entry computing them, then the extern.
+ * - **An extern states what binding needs:** the capabilities its native uses, checked when natives
+ *   are bound, and what each of its calls makes its arguments hold (`keeps`, §3.16), so a backend
+ *   counts the holders a native adds without reading it.
  */
 
 import { z } from 'zod';
-import { marks } from '../../foundation/language/well-known/index.ts';
 import { memo } from '../../foundation/structures/memo.ts';
 import { instruction } from '../instructions/instruction.ts';
-import { count, moduleId, type Register, register, span, typeId } from '../operands.ts';
+import { moduleId, type Register, span } from '../operands.ts';
 import { value } from '../values/values.ts';
 import { typeReference } from './types.ts';
 
 const common = {
   /** Qualified and instantiated, `inbox.send<Verdict>`: for traces, waypoints and messages. */
   name: z.string(),
-  /** Index into the Definition's modules. */
   module: moduleId,
   span,
   /** Annotation values in source order, such as `@Suite`. */
   annotations: z.array(value),
 };
 
-/**
- * A register that holds a cell, and the `_Cell<T>` entry the cell is created as, so its
- * disposability is known wherever the runtime creates it (definition/tables/types.ts).
- */
-const cell = z.strictObject({ register, type: typeId });
-
-/**
- * A code entry's kind (proposal 8, Rule 2): a simple one runs as a frame on its caller's execution,
- * never waiting; a `live` or `ista` one runs as an execution of its own, given a future. Live code
- * waits in memory and never commits; ista code runs in an instance, every wait committing.
- */
-export const codeMode = z.enum(marks);
+export const codeMode = z.enum(['simple', 'live', 'ista']);
 
 export type CodeMode = z.output<typeof codeMode>;
+
+const registerEntry = z.strictObject({
+  type: typeReference,
+  /** Whether the register borrows its values: it holds none of them (§7). */
+  borrowed: z.boolean(),
+});
+
+export type RegisterEntry = z.output<typeof registerEntry>;
 
 const code = z.strictObject({
   kind: z.literal('code'),
   ...common,
   mode: codeMode,
   /**
-   * Each parameter: whether it takes a reference, and whether a call may leave it out, absent until
-   * the prologue computes it: one with a default, or a rest parameter, whose default is empty.
+   * Whether a call may leave each parameter out, absent until the prologue computes it: one with a
+   * default, or a rest parameter, whose default is empty. A `&` parameter's register is typed as a
+   * reference.
    */
-  parameters: z.array(z.strictObject({ reference: z.boolean(), hasDefault: z.boolean() })),
+  parameters: z.array(z.strictObject({ hasDefault: z.boolean() })),
   /** How many captured values a closure of this function carries. */
-  captures: count,
-  /** The frame size. */
-  registers: count,
-  cells: z.array(cell),
-  /**
-   * The registers that may hold what reaches a disposable (spec §7), ascending: every register but
-   * those whose values' types lowering found reach none. A runtime counting holders per register
-   * counts these alone (docs/work/js-codegen/design.md); the interpreter counts every register.
-   */
-  counted: z.array(register),
+  captures: z.int().nonnegative(),
+  registers: z.array(registerEntry),
   instructions: z.array(instruction).min(1),
 });
 
 /**
- * A host or runtime function, bound by `key` to an entry in the runtime's natives table; an
- * extern constant is one with `constant` set and no parameters. The key is the module and the
- * declared signature, `time.at(Time)`, so overloads get distinct keys while every instantiation of
- * a generic extern shares one native (docs/arch/definition.md, "Externs"). The types are the
- * instantiation's, for the boundary conversion; `typeArguments` serve natives that need them at
- * runtime, such as `json.parse<T>`.
+ * What a native may use beyond its arguments, which a backend binding it must provide: the clock,
+ * random draws, log records, the run's primitives (executions, timers, host futures), the instance
+ * and its contexts, a host's externs, and the test world.
+ */
+export const capability = z.enum([
+  'clock',
+  'random',
+  'logs',
+  'run',
+  'instance',
+  'contexts',
+  'host',
+  'testing',
+]);
+
+export type Capability = z.output<typeof capability>;
+
+/**
+ * A host or runtime function, bound by `key` to a native: the module and declared signature,
+ * `time.at(Time)`, so overloads get distinct keys while every instantiation of a generic extern
+ * shares one native (docs/arch/definition.md, "Externs"). An extern constant has no parameters.
  */
 const external = z.strictObject({
   kind: z.literal('extern'),
   ...common,
   key: z.string(),
+  constant: z.boolean(),
+  parameters: z.array(z.strictObject({ type: typeReference })),
+  result: typeReference,
+  capabilities: z.array(capability),
+  /**
+   * For each `&` parameter, by position, the parameters whose values it keeps once the call
+   * returns (§3.16, `@Keeps`): a `&` parameter keeps every other one unless the extern says less.
+   */
+  keeps: z.array(z.strictObject({ parameter: z.int(), kept: z.array(z.int()) })),
   /**
    * For an extern a host implements, the type the host provides as declared, spelled as keys spell
-   * types: a function's result, a constant's type. The key spells the rest, so the runtime holds
-   * the host to both across deploys (§3.6).
+   * types: a function's result, a constant's type. The runtime holds the host to it (§3.6).
    */
-  declaredType: z.string().optional(),
-  constant: z.boolean(),
-  parameters: z.array(z.strictObject({ type: typeReference, reference: z.boolean() })),
-  result: typeReference,
-  typeArguments: z.array(typeReference),
+  host: z.strictObject({ declaredType: z.string() }).optional(),
 });
 
 export const functionDefinition = z.discriminatedUnion('kind', [code, external]);
@@ -106,29 +114,16 @@ export type FunctionDefinition = z.output<typeof functionDefinition>;
 
 export type CodeFunction = Extract<FunctionDefinition, { kind: 'code' }>;
 
-/** Whether parameter `index` of `entry` takes a reference. */
-export function takesReference(entry: FunctionDefinition, index: number): boolean {
-  return entry.parameters[index]?.reference === true;
-}
+export type ExternFunction = Extract<FunctionDefinition, { kind: 'extern' }>;
 
 /** Whether a call may leave parameter `index` of `entry` out: only a code entry computes one. */
 export function mayLeaveOut(entry: FunctionDefinition, index: number): boolean {
   return entry.kind === 'code' && entry.parameters[index]?.hasDefault === true;
 }
 
-const bodyStarts = new WeakMap<CodeFunction, number>();
-
-/**
- * Where `entry`'s body begins: at its `body` marker, past its prologue, or at its start without one
- * (../instructions/prologue.ts). Memoized, the entry being immutable.
- */
-export function bodyStart(entry: CodeFunction): number {
-  return memo(bodyStarts, entry, () =>
-    Math.max(
-      0,
-      entry.instructions.findIndex((each) => each.kind === 'body'),
-    ),
-  );
+/** Whether a call of `entry` gives its value at once: an extern's does, as simple code's does. */
+export function returnsAtOnce(entry: FunctionDefinition): boolean {
+  return entry.kind !== 'code' || entry.mode === 'simple';
 }
 
 const transientRegisters = new WeakMap<CodeFunction, readonly Register[]>();
@@ -141,39 +136,4 @@ export function transientRegistersOf(entry: CodeFunction): readonly Register[] {
   return memo(transientRegisters, entry, () =>
     entry.instructions.flatMap((each) => (each.kind === 'transient' ? [each.dst] : [])),
   );
-}
-
-/**
- * Whether a call of `entry` gives its value at once, as a callback's or an encoder's must: an
- * extern's call does, its future being a value, and code running as no execution of its own.
- */
-export function returnsAtOnce(entry: FunctionDefinition): boolean {
-  return entry.kind !== 'code' || entry.mode === 'simple';
-}
-
-/** Whether a call passing `given` arguments fits `entry`, leaving out only what its code computes. */
-export function takesArguments(entry: FunctionDefinition, given: number): boolean {
-  return (
-    given <= entry.parameters.length &&
-    entry.parameters.every((_, index) => index < given || mayLeaveOut(entry, index))
-  );
-}
-
-/** How many captured values a closure of `entry` carries; an extern captures nothing. */
-export function capturesOf(entry: FunctionDefinition): number {
-  return entry.kind === 'code' ? entry.captures : 0;
-}
-
-/**
- * Why `entry` can't encode an instance's outcome as JSON for its host (§9), which the runtime calls
- * as the instance's root returns; undefined when it can.
- */
-export function encoderProblem(entry: FunctionDefinition): string | undefined {
-  const takesOneValue =
-    entry.parameters.length > 0 &&
-    !takesReference(entry, 0) &&
-    entry.parameters.every((_, index) => index === 0 || mayLeaveOut(entry, index));
-  return takesOneValue && returnsAtOnce(entry) && capturesOf(entry) === 0
-    ? undefined
-    : `${entry.name} can't encode an outcome: an encoder takes one value and gives its JSON at once`;
 }

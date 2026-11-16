@@ -1,26 +1,26 @@
 /**
- * A Definition: the whole compiled program, the contract between lowering and the runtime.
+ * A Definition: the whole compiled program, the contract between lowering and every backend
+ * (docs/arch/definition.md).
  *
  * It is a flat set of tables (modules, types, functions, constants) that refer to each other by
- * index. A deploy writes it once; the InstanceStore keeps it by content hash, and every instance
- * refers to that hash for its whole life (docs/arch/architecture.md, InstanceStore).
+ * index. A deploy writes it once; the store keeps it by content hash, and every instance refers to
+ * that hash for its whole life.
  *
- * Validation covers more than shapes: every index must land inside its table, and every
- * construction must match its type (validation/references.ts). The interpreter can then trust what
- * it reads, and a hand-edited or corrupted Definition is refused at load, never midway through an
- * instance.
+ * Validation covers more than shapes (./validation/): every index lands in its table, every
+ * instruction's registers have the types it needs, and every owned register is let go of exactly
+ * once on every path (the ownership verifier). A backend then trusts what it reads, and a
+ * hand-edited or corrupted Definition is refused at load, never midway through an instance.
  */
 
 import type { z } from 'zod';
 import { defineFormat } from './formats/format.ts';
 import { tables } from './tables/index.ts';
-import { checkReferences } from './validation/references.ts';
+import { validate } from './validation/index.ts';
 
-const definition = tables.superRefine(checkReferences);
+const definition = tables.superRefine(validate);
 
 export type Definition = z.output<typeof definition>;
 
-/** The format's version: 2 lists each entry's counted registers, 3 writes behind a handle by `behind`. */
-const version = 3;
+const version = 4;
 
 export const definitionFormat = defineFormat('istalang-definition', version, definition);

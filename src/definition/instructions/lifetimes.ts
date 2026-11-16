@@ -1,33 +1,24 @@
 /**
- * Releasing what registers hold (spec §3.4, §7).
+ * Letting go (spec §3.4, §7; docs/arch/definition.md, "Holders").
  *
- * The lowering decides every release point, so the runtime never infers scopes:
- * - a block's end, on every exit path (fall-through, `break`, `continue`)
- * - a statement's end, for its temporaries
- * - `drop x`
- * Releasing empties the registers; whatever lost its last holder is disposed, in reverse
- * creation order. `return` releases every register.
+ * Lowering decides every point a register lets go of what it owns: a block's end on every exit
+ * path, a statement's end for its temporaries, `drop x`, overwriting a variable, a `return` for
+ * everything still owned, a `park`'s stop landing, a `select`'s losing cases where the winner
+ * resumes. Holding is the other half: `copy` makes a holder, a construction or `store` moves one in
+ * (./data.ts, ./places.ts), and a borrowed register holds nothing.
  *
- * `hold let`, `hold const` and `hold _` keep their holdings until a scope around their block ends:
- * the function, or the loop or block `hold(name)` names (spec §3.4), even from a loop body that
- * runs many times. A register can't hold one value per iteration, so the block's end moves them
- * into a list (`keep`, then `release`): the value of a hidden variable of that scope, released
- * when the scope ends, as any of its variables is. One mechanism serves every scope, the
- * function's included, so a frame holds nothing beside its registers.
+ * Letting go empties each register; letting go of an empty one does nothing. What lost its last
+ * holder is disposed then, values losing it together newest first.
+ *
+ * `hold let`, `hold const` and `hold _` keep their values until a scope around them ends (§3.4),
+ * even from a loop body: each is copied into an array of its own type, a variable of that scope
+ * let go of where the scope ends.
  */
 
 import { z } from 'zod';
 import { register } from '../operands.ts';
 import { defineInstruction } from './define-instruction.ts';
 
-const registers = z.array(register).min(1);
+const letGo = defineInstruction('letGo', { registers: z.array(register).min(1) });
 
-const release = defineInstruction('release', { registers });
-
-/**
- * Adds the registers' values to the array in `into`, starting one when `into` is empty: holders
- * until the scope `into` belongs to releases it. Only `keep` writes `into`, and nothing reads it.
- */
-const keep = defineInstruction('keep', { registers, into: register });
-
-export const lifetimeInstructions = [release, keep] as const;
+export const lifetimeInstructions = [letGo] as const;
