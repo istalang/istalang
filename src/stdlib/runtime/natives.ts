@@ -8,6 +8,7 @@
 
 import { functionKey, namedKey, parameterKey } from '../../definition/extern-key.ts';
 import { fieldValueOf } from '../../definition/values/declared-values.ts';
+import type { CallMaker } from '../../runtime/natives.ts';
 import {
   type Native,
   type NativeContext,
@@ -17,10 +18,9 @@ import {
   type WithFutures,
   type WithInstances,
 } from '../../runtime/natives.ts';
-import type { CallMaker } from '../../runtime/natives.ts';
 import { futureKey, type NativeKeys } from '../std-module.ts';
-import { given, int, text } from '../values/arguments.ts';
-import { declaredResult, resultOptional, resultTypeArgument } from '../values/results.ts';
+import { arrayOf, given, int, text } from '../values/arguments.ts';
+import { declaredResult, resultTypeArgument } from '../values/results.ts';
 
 export const runtimeNatives = (keys: NativeKeys): Natives<NativeContext & WithFutures> => ({
   [keys.of('id')]: (_arguments, context) => context.instance,
@@ -49,7 +49,7 @@ export const runtimeInterpreterNatives = (
   [keys.of('_served', keys.type('_Runtime'), 'Int')]: ([runtime, known], context) =>
     context.contexts.served(given(runtime), Number(int(known))),
   [keys.of('_jobServer')]: (_arguments, context) =>
-    resultOptional(context, context.contexts.jobServer()),
+    arrayOf([context.contexts.jobServer()].filter((server) => server !== undefined)),
 });
 
 /** The key of `name`, a call into a context of a runtime: the program's, or its job loop's. */

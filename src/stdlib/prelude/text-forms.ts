@@ -14,8 +14,7 @@ import type { Value } from '../../definition/values/values.ts';
 import type { PrimitiveName } from '../../foundation/language/primitives.ts';
 import type { Native, NativeContext, Natives } from '../../runtime/natives.ts';
 import type { NativeKeys } from '../std-module.ts';
-import { text } from '../values/arguments.ts';
-import { parseResult } from '../values/results.ts';
+import { arrayOf, text } from '../values/arguments.ts';
 
 const wholeDigits = /^-?\d+$/u;
 const intSyntax = /^[+-]?\d+$/u;
@@ -59,18 +58,11 @@ export const textFormNatives = (keys: NativeKeys): Natives<NativeContext> => ({
   ),
   ...Object.fromEntries(
     (Object.keys(readers) as ParsedPrimitive[]).map((type) => [
-      keys.ofStatic(type, 'parse', 'String'),
-      (([source], context) =>
-        parseResult(
-          context,
-          text(source),
-          articled(type),
-          readPrimitive(type, text(source)),
-        )) satisfies Native<NativeContext>,
+      keys.ofStatic(type, '_read', 'String'),
+      (([source]) => {
+        const read = readPrimitive(type, text(source));
+        return arrayOf(read === undefined ? [] : [read]);
+      }) satisfies Native<NativeContext>,
     ]),
   ),
 });
-
-function articled(type: ParsedPrimitive): string {
-  return type === 'Int' ? 'an Int' : `a ${type}`;
-}

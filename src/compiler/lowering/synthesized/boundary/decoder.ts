@@ -47,7 +47,7 @@ export class Decoder {
     switch (form.kind) {
       case 'host': {
         const decode = this.#helper(codecHelpers.decodeHandle, [form.type]);
-        code.return(code.call(decode, [json, path]));
+        code.return(this.#ok(code.call(decode, [json, path])));
         return;
       }
       case 'record': {

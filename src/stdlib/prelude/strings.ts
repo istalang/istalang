@@ -14,25 +14,16 @@ import {
   codePointsAt,
 } from '../../foundation/text/code-points.ts';
 import type { NativeContext, Natives } from '../../runtime/natives.ts';
-import { atPosition, checkedIndex, selectionOf } from '../positions.ts';
+import { checkedIndex, selectionOf } from '../positions.ts';
 import { rangeOf } from '../ranges.ts';
 import { knownTypeKey, type NativeKeys } from '../std-module.ts';
 import { int, text } from '../values/arguments.ts';
-import { resultOptional } from '../values/results.ts';
 
 const range = knownTypeKey(wellKnown.range);
 const what = 'a string';
 
 export const stringNatives = (keys: NativeKeys): Natives<NativeContext> => ({
   [keys.of('length', 'String')]: ([s]) => BigInt(codePointCount(text(s))),
-  [keys.of('at', 'String', 'Int')]: ([s, index], context) => {
-    const whole = text(s);
-    const position = atPosition(int(index), codePointCount(whole));
-    return resultOptional(
-      context,
-      position === undefined ? undefined : codePointAtPosition(whole, position),
-    );
-  },
   [keys.of('includes', 'String', 'String')]: ([s, search]) => text(s).includes(text(search)),
   [keys.of('index', 'String', 'Int')]: ([s, index]) => {
     const whole = text(s);
@@ -45,17 +36,10 @@ export const stringNatives = (keys: NativeKeys): Natives<NativeContext> => ({
       ? codePointSlice(whole, selection.start, selection.end)
       : selection.positions.map(codePointsAt(whole)).join('');
   },
-  [keys.of('_characterAt', 'String', 'Int')]: ([s, offset], context) => {
-    const whole = text(s);
+  [keys.of('_characterAt', 'String', 'Int')]: ([s, offset]) => {
     const start = Number(int(offset));
-    const point = whole.codePointAt(start);
-    if (point === undefined) {
-      return resultOptional(context, undefined);
-    }
-    const character = String.fromCodePoint(point);
-    return resultOptional(context, {
-      kind: 'tuple',
-      elements: [character, BigInt(start + character.length)],
-    });
+    const point = text(s).codePointAt(start);
+    const character = point === undefined ? '' : String.fromCodePoint(point);
+    return { kind: 'tuple', elements: [character, BigInt(start + character.length)] };
   },
 });

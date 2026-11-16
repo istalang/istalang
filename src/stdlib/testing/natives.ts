@@ -12,7 +12,6 @@ import { namedType } from '../../definition/values/declared-values.ts';
 import { instanceNameOf } from '../../definition/values/instance-handles.ts';
 import { closureOf, type Value } from '../../definition/values/values.ts';
 import { wellKnown } from '../../foundation/language/well-known/index.ts';
-import type { InstanceState } from '../../runtime/instance-state.ts';
 import {
   type NativeContext,
   type Natives,
@@ -22,18 +21,9 @@ import {
 } from '../../runtime/natives.ts';
 import { futureKey, knownTypeKey, type NativeKeys } from '../std-module.ts';
 import { arrayOf, given, text } from '../values/arguments.ts';
-import { declaredResult, resultVariant } from '../values/results.ts';
+import { declaredResult } from '../values/results.ts';
 
 type Context = NativeContext & WithInstances & WithTesting;
-
-/** The variant of `InstanceState` (testing.ista) each state a test can see reads as. */
-const stateVariants: Record<InstanceState['kind'], string> = {
-  ready: 'Running',
-  waiting: 'Waiting',
-  panicked: 'Panicked',
-  finished: 'Finished',
-  terminated: 'Terminated',
-};
 
 export const testingNatives = (keys: NativeKeys): Natives<Context> => {
   const ofInstance = (name: string, ...rest: readonly NativeParameter[]) =>
@@ -58,10 +48,8 @@ export const testingNatives = (keys: NativeKeys): Natives<Context> => {
           ({ waypoint, location }) => waypoint ?? location,
         ),
       ),
-    [ofInstance('state')]: ([handle], context) => {
-      const state = context.testing.inspect(instanceNameOf(handle))?.state.kind ?? 'ready';
-      return resultVariant(context, stateVariants[state], {});
-    },
+    [ofInstance('_stateName')]: ([handle], context) =>
+      context.testing.inspect(instanceNameOf(handle))?.state.kind ?? 'ready',
     [keys.of('handle')]: (_, context) =>
       context.testing.handle(namedType(context.signature.result)),
   };

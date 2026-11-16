@@ -103,7 +103,12 @@ struct DateTime:
   millisecond: Int = 0
 
 # Reads an IANA name in any case; a fixed offset, such as `+01:00`, is no IANA zone.
-extern fn Zone.parse(id: String) -> Result<Zone>
+fn Zone.parse(id: String) -> Result<Zone>:
+  const read = Zone._read(id)
+  if read.length() == 1: Ok(read[0]) else: Err(Error.unparsed(id, "an IANA time zone"))
+
+# The zone `id` names, if it names one.
+extern fn Zone._read(id: String) -> Array<Zone>
 
 # The canonical id: `Europe/Berlin`.
 extern fn toString(self: Zone) -> String
@@ -116,7 +121,12 @@ fn Zone.fromJson(value: json.Json, path: String) -> Result<Zone>: json.decodeTex
 # there is one.
 extern fn toString(self: DateTime) -> String
 
-extern fn DateTime.parse(text: String) -> Result<DateTime>
+fn DateTime.parse(text: String) -> Result<DateTime>:
+  const read = DateTime._read(text)
+  if read.length() == 1: Ok(read[0]) else: Err(Error.unparsed(text, "an ISO 8601 date and time"))
+
+# The date and time `text` writes, if it writes one.
+extern fn DateTime._read(text: String) -> Array<DateTime>
 
 fn toJson(self: DateTime) -> json.Json: json.encodeText(self)
 

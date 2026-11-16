@@ -13,10 +13,10 @@ import { hmac } from '@noble/hashes/hmac.js';
 import { sha1 } from '@noble/hashes/legacy.js';
 import { sha256, sha384, sha512 } from '@noble/hashes/sha2.js';
 import { bytesToHex, hexToBytes, utf8ToBytes } from '@noble/hashes/utils.js';
+import type { Value } from '../../definition/values/values.ts';
 import type { NativeContext, Natives } from '../../runtime/natives.ts';
 import type { NativeKeys } from '../std-module.ts';
 import { text, variantEntry } from '../values/arguments.ts';
-import { resultError, resultOk } from '../values/results.ts';
 
 /** An encoding of bytes as text: its name, and both ways; `decode` gives none for what it can't read. */
 interface Encoding {
@@ -71,9 +71,6 @@ const encodings: Readonly<Record<'Hex' | 'Base64' | 'Base64Url', Encoding>> = {
 };
 // biome-ignore-end lint/style/useNamingConvention: the keys are the enums' variant names.
 
-/** The code of every `Error` `decode` returns. */
-const decodeErrorCode = 'decode';
-
 // biome-ignore lint/style/useNamingConvention: the option's name is TextDecoder's.
 const strictUtf8 = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true });
 
@@ -111,23 +108,24 @@ export const cryptoNatives = (keys: NativeKeys): Natives<NativeContext> => {
       equalInConstantTime(utf8ToBytes(text(a)), utf8ToBytes(text(b))),
     [keys.of('encode', 'String', encodingType)]: ([source, encoding], context) =>
       variantEntry(context, encoding, encodings).encode(utf8ToBytes(text(source))),
-    [keys.of('decode', 'String', encodingType)]: ([source, encoding], context) => {
+    [keys.of('_decoded', 'String', encodingType)]: ([source, encoding], context) => {
       const { name, encode, decode } = variantEntry(context, encoding, encodings);
       const encoded = text(source);
       const bytes = decode(encoded);
       const canonical = name === 'hex' ? encoded.toLowerCase() : encoded;
       if (bytes === undefined || encode(bytes) !== canonical) {
-        return resultError(context, `'${encoded}' is not ${name} text.`, decodeErrorCode);
+        return pair('', `'${encoded}' is not ${name} text.`);
       }
       try {
-        return resultOk(context, strictUtf8.decode(bytes));
+        return pair(strictUtf8.decode(bytes), '');
       } catch {
-        return resultError(
-          context,
-          `'${encoded}' decodes to bytes that aren't UTF-8.`,
-          decodeErrorCode,
-        );
+        return pair('', `'${encoded}' decodes to bytes that aren't UTF-8.`);
       }
     },
   };
 };
+
+/** A decoding's text and what is wrong with it, `''` where nothing is. */
+function pair(decoded: string, problem: string): Value {
+  return { kind: 'tuple', elements: [decoded, problem] };
+}

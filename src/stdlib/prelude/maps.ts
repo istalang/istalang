@@ -14,7 +14,6 @@ import { type NativeContext, type Natives, Panic } from '../../runtime/natives.t
 import { checkedIndex } from '../positions.ts';
 import { knownTypeKey, type NativeKeys } from '../std-module.ts';
 import { int } from '../values/arguments.ts';
-import { resultOptional } from '../values/results.ts';
 
 const keyType = parameterKey('K');
 const valueType = parameterKey('V');
@@ -28,8 +27,12 @@ const entryTuple = ([key, value]: readonly [Value, Value]): Value => ({
 
 export const mapNatives = (keys: NativeKeys): Natives<NativeContext> => ({
   [keys.of('size', map)]: ([m]) => BigInt(mapValueOf(m).entries.length),
-  [keys.of('get', map, keyType)]: ([m, k], context) =>
-    resultOptional(context, entryValue(mapValueOf(m), k ?? null)),
+  [keys.of('_find', map, keyType)]: ([m, k]) =>
+    BigInt(entryPosition(mapValueOf(m), k ?? null) ?? -1),
+  [keys.of('_valueAt', map, 'Int')]: ([m, position]) => {
+    const { entries } = mapValueOf(m);
+    return (entries[checkedIndex(int(position), entries.length, 'a map')] ?? [null, null])[1];
+  },
   [keys.of('has', map, keyType)]: ([m, k]) => entryPosition(mapValueOf(m), k ?? null) !== undefined,
   [keys.of('delete', referenceKey(map), keyType)]: ([, k], context) =>
     context.changes(0).deleteEntry(k ?? null),

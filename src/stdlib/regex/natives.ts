@@ -14,30 +14,15 @@ import { LRUCache } from 'lru-cache';
 import { RE2JS, RE2JSException } from 're2js';
 import type { TypeId } from '../../definition/operands.ts';
 import type { TypeDefinition } from '../../definition/tables/types.ts';
-import {
-  fieldTypeOf,
-  fieldValueOf,
-  namedType,
-  optionalInnerOf,
-  optionalOf,
-  structOf,
-  typeArgumentOf,
-} from '../../definition/values/declared-values.ts';
+import { fieldValueOf, structOf } from '../../definition/values/declared-values.ts';
 import { mapOf } from '../../definition/values/equality.ts';
 import type { Value } from '../../definition/values/values.ts';
 import { memo } from '../../foundation/structures/memo.ts';
 import { codePointPositions } from '../../foundation/text/code-points.ts';
 import { type NativeContext, type Natives, Panic } from '../../runtime/natives.ts';
 import type { NativeKeys } from '../std-module.ts';
-import { arrayOf, text } from '../values/arguments.ts';
-import {
-  declaredResult,
-  okStruct,
-  parseFailure,
-  resultOk,
-  resultOptional,
-  resultTypeArgument,
-} from '../values/results.ts';
+import { arrayOf, int, text } from '../values/arguments.ts';
+import { resultTypeArgument } from '../values/results.ts';
 import { split } from './split.ts';
 
 const regexTypeName = 'Regex';
@@ -51,26 +36,24 @@ const compiled = new LRUCache<string, RE2JS | string>({ max: 256 });
 export const regexNatives = (keys: NativeKeys): Natives<NativeContext> => {
   const regex = keys.type(regexTypeName);
   return {
-    [keys.ofStatic(regexTypeName, 'parse', 'String')]: ([source], context) => {
-      const pattern = text(source);
-      const program = compile(pattern);
-      return typeof program === 'string'
-        ? parseFailure(context, invalidPattern(pattern, program))
-        : resultOk(context, okStruct(context, { pattern }));
+    [keys.ofStatic(regexTypeName, '_problem', 'String')]: ([source]) => {
+      const program = compile(text(source));
+      return typeof program === 'string' ? program : '';
     },
     [keys.of('test', regex, 'String')]: ([pattern, s], context) =>
       programOf(context, pattern).test(text(s)),
-    [keys.of('find', regex, 'String')]: ([pattern, s], context) => {
+    [keys.of('_found', regex, 'String', 'Int')]: ([pattern, s, count], context) => {
       const whole = text(s);
-      const [found] = programOf(context, pattern).matchAll(whole);
-      const match = optionalInnerOf(context.types, declaredResult(context));
-      const build = matchBuilder(context.types, match, whole);
-      return resultOptional(context, found === undefined ? undefined : build(found));
-    },
-    [keys.of('findAll', regex, 'String')]: ([pattern, s], context) => {
-      const whole = text(s);
-      const build = matchBuilder(context.types, resultTypeArgument(context, 0), whole);
-      return arrayOf([...programOf(context, pattern).matchAll(whole)].map(build));
+      const build = foundBuilder(context.types, resultTypeArgument(context, 0), whole);
+      const limit = int(count) < 0n ? Number.POSITIVE_INFINITY : Number(int(count));
+      const taken: Value[] = [];
+      for (const match of programOf(context, pattern).matchAll(whole)) {
+        if (taken.length >= limit) {
+          break;
+        }
+        taken.push(build(match));
+      }
+      return arrayOf(taken);
     },
     [keys.of('replace', regex, 'String', 'String')]: ([pattern, s, replacement], context) =>
       programOf(context, pattern).matcher(text(s)).replaceFirst(text(replacement)),
@@ -111,23 +94,22 @@ function programOf(context: Pick<NativeContext, 'types'>, regex: Value | undefin
   return program;
 }
 
-/** Builds each `Match` (type entry `match`) found in `whole`, given in the order they occur. */
-function matchBuilder(
+/** Builds each `_Found` (type entry `found`) in `whole`, given in the order they occur. */
+function foundBuilder(
   types: readonly TypeDefinition[],
-  match: TypeId,
+  found: TypeId,
   whole: string,
-): (found: RegExpMatchArray) => Value {
-  const capture = typeArgumentOf(types, namedType(fieldTypeOf(types, match, 'captures')), 0);
+): (match: RegExpMatchArray) => Value {
   const position = codePointPositions(whole);
-  return (found) => {
-    const [matched = '', ...groups] = found;
-    const named = Object.entries(found.groups ?? {}).filter(
+  return (match) => {
+    const [matched = '', ...groups] = match;
+    const named = Object.entries(match.groups ?? {}).filter(
       (entry): entry is [string, string] => entry[1] !== undefined,
     );
-    return structOf(types, match, {
+    return structOf(types, found, {
       text: matched,
-      index: BigInt(position(found.index ?? 0)),
-      captures: arrayOf(groups.map((group) => optionalOf(types, capture, group))),
+      index: BigInt(position(match.index ?? 0)),
+      captures: arrayOf(groups.map((group) => arrayOf(group === undefined ? [] : [group]))),
       named: mapOf(named),
     });
   };

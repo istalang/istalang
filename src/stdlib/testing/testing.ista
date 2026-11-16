@@ -114,7 +114,17 @@ extern ista fn idle<R>(self: Instance<R>) -> Future<Unit, "ista">
 extern ista fn reaches<R>(self: Instance<R>, label: String) -> Future<Unit, "ista">
 # The waypoint of every wait of the instance, or its source location where it has none.
 extern fn waitingAt<R>(self: Instance<R>) -> Array<String>
-extern fn state<R>(self: Instance<R>) -> InstanceState
+fn state<R>(self: Instance<R>) -> InstanceState:
+  match self._stateName():
+    case "waiting": Waiting
+    case "panicked": Panicked
+    case "finished": Finished
+    case "terminated": Terminated
+    case _: Running
+
+# How the runtime names where an instance stands: `ready`, `waiting`, `panicked`, `finished` or
+# `terminated`.
+extern fn _stateName<R>(self: Instance<R>) -> String
 
 # A value of extern type `T` equal to no other, for mocks that must return one (§10).
 extern fn handle<T>() -> T

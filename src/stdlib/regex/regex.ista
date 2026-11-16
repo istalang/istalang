@@ -18,7 +18,13 @@ struct Match:
   captures: Array<String?>
   named: Map<String, String>
 
-extern fn Regex.parse(text: String) -> Result<Regex>
+fn Regex.parse(text: String) -> Result<Regex>:
+  const problem = Regex._problem(text)
+  if problem == "": Ok(Regex{pattern: text})
+  else: Err(Error.unparsed(text, "a regular expression (" + problem + ")"))
+
+# What is wrong with `text` as a pattern; `""` for a valid one.
+extern fn Regex._problem(text: String) -> String
 
 fn toString(self: Regex) -> String: self.pattern
 
@@ -28,8 +34,30 @@ fn Regex.fromJson(value: json.Json, path: String) -> Result<Regex>: json.decodeT
 
 # Whether the regex matches anywhere in `s`.
 extern fn test(self: Regex, s: String) -> Bool
-extern fn find(self: Regex, s: String) -> Match?
-extern fn findAll(self: Regex, s: String) -> Array<Match>
+fn find(self: Regex, s: String) -> Match?:
+  const found = self._found(s, 1)
+  if found.length() == 0: none else: _match(found[0])
+
+fn findAll(self: Regex, s: String) -> Array<Match>: [for found in self._found(s, -1): _match(found)]
+
+# A match as the engine gives it, each capture in an array of its own, empty where its group took
+# no part.
+struct _Found:
+  text: String
+  index: Int
+  captures: Array<Array<String>>
+  named: Map<String, String>
+
+fn _match(found: _Found) -> Match:
+  Match{
+    text: found.text,
+    index: found.index,
+    captures: [for each in found.captures: if each.length() == 1: each[0] else: none],
+    named: found.named,
+  }
+
+# The first `count` matches in `s`, in the order they occur; every one for a negative `count`.
+extern fn _found(self: Regex, s: String, count: Int) -> Array<_Found>
 
 # `replacement` expands `$1`, `$<name>`, `$&` and `$$` as JavaScript's does.
 extern fn replace(self: Regex, s: String, replacement: String) -> String

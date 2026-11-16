@@ -66,7 +66,8 @@ shared struct Runtime:
 
 live async fn Runtime.open(store: Store) -> Runtime:
   const host = await _Runtime.open(store)
-  new Runtime{_host: host, _serving: _jobServer()?.(host)}
+  const servers = _jobServer()
+  new Runtime{_host: host, _serving: if servers.length() == 1: servers[0](host) else: none}
 
 # Stops serving jobs first, so the loop never calls into a runtime that has stopped; the host's
 # runtime, released next, stops the rest.
@@ -84,7 +85,7 @@ extern live async fn _served(runtime: _Runtime, known: Int) -> Array<String>
 
 # The program's job server, `_serve`, which lowering adds to a program that delegates; none in one
 # that doesn't, which has no jobs to serve.
-extern live fn _jobServer() -> _JobServer?
+extern live fn _jobServer() -> Array<_JobServer>
 
 type _JobServer = live async fn(_Runtime) -> Unit
 

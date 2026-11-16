@@ -35,17 +35,12 @@ struct JsonBigInt
 # gets the same object for it again (docs/arch/boundary.md). Codecs are pure (§9), so running one
 # again would give equal JSON anyway.
 fn encode<T is Encodable>(value: T) -> Json:
-  match _written(value):
-    case Known(json): json
-    case Unknown: _remember(value, value.toJson())
+  const written = _written(value)
+  if written.length() == 1: written[0] else: _remember(value, value.toJson())
 
 # What the instance wrote `value` as before, as a `T`: each is an extern per type, since one value
-# may be written as two types whose codecs differ. A miss is a variant of its own: `none` is JSON.
-enum _Written:
-  Known(json: Json)
-  Unknown
-
-extern fn _written<T>(value: T) -> _Written
+# may be written as two types whose codecs differ. A miss holds nothing: `none` is JSON.
+extern fn _written<T>(value: T) -> Array<Json>
 
 # Keeps `json` as what `value` was written as, a `T`; `json` itself.
 extern fn _remember<T>(value: T, json: Json) -> Json
@@ -55,9 +50,8 @@ fn decode<T is Decodable>(json: Json) -> Result<T>: T.fromJson(json, "$")
 fn stringify<T is Encodable>(value: T) -> String: _write(encode(value))
 
 fn parse<T is Decodable>(text: String) -> Result<T>:
-  match _read(text):
-    case Ok(value): T.fromJson(value, "$")
-    case Err(error): Err(_error(error))
+  const read, problem = _read(text)
+  if read.length() == 1: T.fromJson(read[0], "$") else: Err(_error(problem))
 
 # The codecs of a type that crosses as the text its toString writes, read back through its parse,
 # such as `Time` and `Duration`: a type declares its own as one call to each.
@@ -93,7 +87,8 @@ extern fn _refuse(message: String) -> Never
 # JSON text: written as JavaScript's JSON.stringify writes it, and read with integers kept exact.
 extern fn _write(json: Json) -> String
 
-extern fn _read(text: String) -> Result<Json, String>
+# The JSON `text` writes, and what is wrong with it, `""` where nothing is.
+extern fn _read(text: String) -> (Array<Json>, String)
 
 # Writing. A float JSON can't hold, NaN or an infinity, is written as null, as JavaScript does; an
 # object's keys are sorted when it is written, so equal values give the same JSON.
@@ -192,7 +187,7 @@ fn _decodeBigInt(json: Json, path: String) -> Result<Int>:
     case String as value: _parsed(Int.parse(value), path)
     case _: _mismatch(json, path, "an integer")
 
-extern fn _decodeHandle<T>(json: Json, path: String) -> Result<T>
+extern fn _decodeHandle<T>(json: Json, path: String) -> T
 
 # The parts derived codecs of structs, enums, tuples and literals are made of.
 fn _fields(json: Json, path: String) -> Result<Map<String, Json>>:

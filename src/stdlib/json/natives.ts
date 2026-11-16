@@ -38,8 +38,7 @@ import type {
 } from '../../runtime/natives.ts';
 import { Refusal } from '../../runtime/refusal.ts';
 import { knownTypeKey, type NativeKeys } from '../std-module.ts';
-import { externPayloadOf, given, text } from '../values/arguments.ts';
-import { resultErr, resultOk, resultVariant } from '../values/results.ts';
+import { arrayOf, externPayloadOf, given, text } from '../values/arguments.ts';
 
 /** The JSON a host gave a value of one of its types: the value itself, or its resource's (§7). */
 function hostPayloadOf(value: Value, context: NativeContext & WithResources): unknown {
@@ -50,9 +49,7 @@ function hostPayloadOf(value: Value, context: NativeContext & WithResources): un
 
 /** The type `json.encode`'s extern writes a value as: its value parameter's, `T`. */
 function writtenAs(context: NativeContext): TypeReference {
-  return (
-    context.signature.parameters[0] ?? unreachable(`${context.name} names no type written.`)
-  );
+  return context.signature.parameters[0] ?? unreachable(`${context.name} names no type written.`);
 }
 
 const json = knownTypeKey(wellKnown.json);
@@ -62,9 +59,7 @@ export const jsonNatives = (
 ): Natives<NativeContext & WithResources & WithEncodings> => ({
   [keys.of('_written', parameterKey('T'))]: ([value], context) => {
     const written = context.encodings.of(given(value), writtenAs(context));
-    return written === undefined
-      ? resultVariant(context, 'Unknown', {})
-      : resultVariant(context, 'Known', { json: written });
+    return arrayOf(written === undefined ? [] : [written]);
   },
   [keys.of('_remember', parameterKey('T'), json)]: ([value, written], context) => {
     context.encodings.remember(given(value), writtenAs(context), given(written));
@@ -74,12 +69,13 @@ export const jsonNatives = (
     jsonText(given(value), jsonTypeOf(context.types)),
   [keys.of('_read', 'String')]: ([source], context) => {
     try {
-      return resultOk(context, jsonOfText(text(source), jsonTypeOf(context.types)));
+      const read = jsonOfText(text(source), jsonTypeOf(context.types));
+      return { kind: 'tuple', elements: [arrayOf([read]), ''] };
     } catch (error) {
       if (!(error instanceof JsonError)) {
         throw error;
       }
-      return resultErr(context, `Not JSON: ${error.message}`);
+      return { kind: 'tuple', elements: [arrayOf([]), `Not JSON: ${error.message}`] };
     }
   },
   [keys.of('_refuse', 'String')]: ([message]) => {
@@ -88,19 +84,10 @@ export const jsonNatives = (
   [keys.of(codecHelpers.encodeHandle, parameterKey('T'))]: ([value], context) =>
     jsonOfPlain(hostPayloadOf(given(value), context), jsonTypeOf(context.types)),
   [keys.of(codecHelpers.decodeHandle, json, 'String')]: ([value], context) => {
-    const type = namedType(resultArgument(context));
+    const type = namedType(context.signature.result);
     const payload = plainOfJson(given(value), jsonTypeOf(context.types));
-    return resultOk(
-      context,
-      isResourceType(context.types, type)
-        ? context.resources.create(type, payload)
-        : { kind: 'extern', type, payload },
-    );
+    return isResourceType(context.types, type)
+      ? context.resources.create(type, payload)
+      : { kind: 'extern', type, payload };
   },
 });
-
-/** The `T` of the `Result<T>` a native gives: its result type entry's one type argument. */
-function resultArgument(context: NativeContext): TypeReference | undefined {
-  const result = context.signature.result;
-  return result.kind === 'named' ? context.types[result.type]?.arguments[0] : undefined;
-}

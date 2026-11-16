@@ -21,8 +21,8 @@ import type { Value } from '../../definition/values/values.ts';
 import { wellKnown } from '../../foundation/language/well-known/index.ts';
 import { type NativeContext, type Natives, Panic } from '../../runtime/natives.ts';
 import { knownTypeKey, type NativeKeys } from '../std-module.ts';
-import { int, text, textPayloadOf } from '../values/arguments.ts';
-import { okExtern, okStruct, parseResult, resultExtern, resultStruct } from '../values/results.ts';
+import { arrayOf, int, text, textPayloadOf } from '../values/arguments.ts';
+import { itemExtern, itemStruct, resultExtern, resultStruct } from '../values/results.ts';
 import { millisecondsOf, resultMilliseconds } from './fields.ts';
 
 const timeType = knownTypeKey(wellKnown.time);
@@ -63,18 +63,16 @@ export const zoneNatives = (keys: NativeKeys): Natives<NativeContext> => {
   const dateTimeType = keys.type('DateTime');
   return {
     [keys.of('utc')]: (_, context) => resultExtern(context, utcId),
-    [keys.ofStatic('Zone', 'parse', 'String')]: ([source], context) => {
+    [keys.ofStatic('Zone', '_read', 'String')]: ([source], context) => {
       const id = canonicalZone(text(source));
-      const zone = id === undefined ? undefined : okExtern(context, id);
-      return parseResult(context, text(source), 'an IANA time zone', zone);
+      return arrayOf(id === undefined ? [] : [itemExtern(context, id)]);
     },
     [keys.of('toString', zoneType)]: ([zone]) => textPayloadOf(zone),
     [keys.of('toString', dateTimeType)]: ([dateTime], context) =>
       plainOf(context, dateTime).toString(),
-    [keys.ofStatic('DateTime', 'parse', 'String')]: ([source], context) => {
+    [keys.ofStatic('DateTime', '_read', 'String')]: ([source], context) => {
       const read = readPlain(text(source));
-      const dateTime = read === undefined ? undefined : okStruct(context, fieldsOf(read));
-      return parseResult(context, text(source), 'an ISO 8601 date and time', dateTime);
+      return arrayOf(read === undefined ? [] : [itemStruct(context, fieldsOf(read))]);
     },
     [keys.of('weekday', dateTimeType)]: ([dateTime], context) =>
       BigInt(plainOf(context, dateTime).dayOfWeek),

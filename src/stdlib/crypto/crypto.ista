@@ -31,4 +31,9 @@ extern fn encode(text: String, encoding: Encoding) -> String
 
 # Fails on text that isn't the encoding's canonical form (hex in either case), or whose bytes
 # aren't UTF-8.
-extern fn decode(text: String, encoding: Encoding) -> Result<String>
+fn decode(text: String, encoding: Encoding) -> Result<String>:
+  const decoded, problem = _decoded(text, encoding)
+  if problem == "": Ok(decoded) else: Err(Error{message: problem, code: "decode"})
+
+# The text `text` decodes to, and what is wrong with it, `""` where nothing is.
+extern fn _decoded(text: String, encoding: Encoding) -> (String, String)

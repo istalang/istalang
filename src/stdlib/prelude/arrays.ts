@@ -12,6 +12,7 @@
 import { parameterKey, referenceKey } from '../../definition/extern-key.ts';
 import { elementsOf } from '../../definition/values/values.ts';
 import { wellKnown } from '../../foundation/language/well-known/index.ts';
+import { unreachable } from '../../foundation/structures/unreachable.ts';
 import type { NativeContext, Natives } from '../../runtime/natives.ts';
 import {
   atPosition,
@@ -24,7 +25,6 @@ import {
 import { rangeOf } from '../ranges.ts';
 import { knownTypeKey, type NativeKeys } from '../std-module.ts';
 import { arrayOf, int, optionalInt } from '../values/arguments.ts';
-import { resultOptional } from '../values/results.ts';
 
 const item = parameterKey('T');
 const array = knownTypeKey(wellKnown.array, item);
@@ -33,11 +33,6 @@ const what = 'an array';
 
 export const arrayNatives = (keys: NativeKeys): Natives<NativeContext> => ({
   [keys.of('length', array)]: ([xs]) => BigInt(elementsOf(xs).length),
-  [keys.of('at', array, 'Int')]: ([xs, index], context) => {
-    const elements = elementsOf(xs);
-    const position = atPosition(int(index), elements.length);
-    return resultOptional(context, position === undefined ? undefined : elements[position]);
-  },
   [keys.of('slice', array, 'Int', knownTypeKey(wellKnown.optional, 'Int'))]: (
     [xs, start, end],
     context,
@@ -51,6 +46,8 @@ export const arrayNatives = (keys: NativeKeys): Natives<NativeContext> => ({
     return arrayOf(selected(elements, selectionOf(rangeOf(context, span), elements.length, what)));
   },
   [keys.ofStatic(wellKnown.array.name, 'default')]: () => arrayOf([]),
+  [keys.of('_positionOf', 'Int', 'Int')]: ([index, length]) =>
+    BigInt(atPosition(int(index), Number(int(length))) ?? -1),
   ...changingNatives(keys),
   ...patternNatives(keys),
 });
@@ -61,8 +58,10 @@ const changingNatives = (keys: NativeKeys): Natives<NativeContext> => ({
     context.changes(0).push([element ?? null]);
     return null;
   },
-  [keys.of('pop', referenceKey(array))]: (_values, context) =>
-    resultOptional(context, context.changes(0).pop()),
+  [keys.of('_popLast', referenceKey(array))]: (_values, context) => {
+    const popped = context.changes(0).pop();
+    return popped === undefined ? unreachable('An empty array is popped.') : popped;
+  },
   [keys.of('setIndex', referenceKey(array), 'Int', item)]: ([xs, index, element], context) => {
     const position = checkedIndex(int(index), elementsOf(xs).length, what);
     context.changes(0).splice(position, 1, [element ?? null]);

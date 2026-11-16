@@ -8,10 +8,10 @@
 import { parameterKey } from '../../definition/extern-key.ts';
 import { conversionFunction } from '../../foundation/language/well-known/implicit-calls.ts';
 import { wellKnown } from '../../foundation/language/well-known/index.ts';
+import { unreachable } from '../../foundation/structures/unreachable.ts';
 import type { NativeContext, Natives, WithWeakSide } from '../../runtime/natives.ts';
 import { knownTypeKey, type NativeKeys } from '../std-module.ts';
 import { given } from '../values/arguments.ts';
-import { resultOptional } from '../values/results.ts';
 
 const referent = parameterKey('T');
 const weakRef = knownTypeKey(wellKnown.weakRef, referent);
@@ -19,8 +19,9 @@ const weakRef = knownTypeKey(wellKnown.weakRef, referent);
 export const weakNatives = (keys: NativeKeys): Natives<NativeContext & WithWeakSide> => ({
   [keys.ofStatic(wellKnown.weakRef.name, conversionFunction, referent)]: ([value], context) =>
     context.weak.reference(given(value)),
-  [keys.of('deref', weakRef)]: ([weak], context) =>
-    resultOptional(context, context.weak.target(given(weak))),
+  [keys.of('_held', weakRef)]: ([weak], context) => context.weak.target(given(weak)) !== undefined,
+  [keys.of('_referent', weakRef)]: ([weak], context) =>
+    context.weak.target(given(weak)) ?? unreachable('A weak reference no one holds is read.'),
   [keys.of('disposed', weakRef)]: ([weak], context) => context.weak.watch(given(weak)),
   [keys.of('disposing', knownTypeKey(wellKnown.call))]: ([call], context) =>
     context.weak.watch(given(call)),
