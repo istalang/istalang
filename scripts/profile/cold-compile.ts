@@ -1,9 +1,13 @@
 /**
- * The compiler end to end and cold: load (scan, parse), bind, check every module, lower; each run in
- * its own process, so no run is warmed by another and nothing is cached. A run imports the modules
- * first and starts the profiler after, so a profile holds the compiler's work only, not loading it.
- * - `fb`: the form builder, compiled from its synthetic entry (`compileProgram`).
- * - `std-tests`: every std test module, compiled for running (`compileTests`).
+ * The toolchain end to end and cold: load (scan, parse), bind, check every module, lower, write the
+ * Definition's text, then what a host does with it: deploy (read, validate, emit) and start, or run
+ * the tests. Each run is in its own process, so no run is warmed by another and nothing is cached. A
+ * run imports the modules first and starts the profiler after, so a profile holds the toolchain's
+ * work only, not loading it.
+ * - `minimal`: one module whose `main` opens a runtime and returns, compiled, deployed and run.
+ * - `fb`: the form builder, compiled from its synthetic entry (`compileProgram`) and deployed; its
+ *   start needs a host's externs, so it isn't started.
+ * - `std-tests`: every std test module, compiled for running (`compileTests`) and run.
  * Each run writes `cold-<workload>-<run>.cpuprofile`, which analyze.ts merges with a glob
  * (`cold-fb-*`); the parent prints each phase's mean over the runs.
  *
@@ -11,29 +15,95 @@
  */
 
 import { execFileSync } from 'node:child_process';
+import { randomBytes } from 'node:crypto';
 import { mkdirSync } from 'node:fs';
 import process from 'node:process';
 import { bindProgram } from '../../src/compiler/binder/bind.ts';
 import { compileProgram, compileTests, diagnose } from '../../src/compiler/compile.ts';
 import type { Program } from '../../src/compiler/program/program.ts';
+import { type Definition, definitionFormat } from '../../src/definition/definition.ts';
+import { realTime } from '../../src/runtime/clock.ts';
+import { createRuntime } from '../../src/runtime/host/index.ts';
+import { memoryStore } from '../../src/runtime/store.ts';
+import { runTests } from '../../src/runtime/testing/run-tests.ts';
+import { stdNatives } from '../../src/stdlib/natives.ts';
 import { round, withCpuProfile } from './cpu-profile.ts';
-import { formBuilderProgram, stdTestsProgram } from './inputs.ts';
+import { formBuilderProgram, programOf, stdTestsProgram } from './inputs.ts';
 
-/** A program loaded (its modules scanned and parsed), and how to lower what it runs. */
+/** Ends the phase running since the last lap, naming it. */
+type Lap = (phase: string) => void;
+
+/** A program loaded (its modules scanned and parsed), how to lower it, and what a host does next. */
 interface Loaded {
   readonly program: Program;
-  /** Lowers the program once it is checked; the kind of the compilation's outcome. */
-  readonly lower: () => string;
+  /** Lowers the program once it is checked: the compilation's outcome. */
+  readonly lower: () => { readonly kind: string; readonly definition?: Definition };
+  /** What a host does with the Definition's text, lapping each phase. */
+  readonly host: (text: string, lap: Lap) => Promise<void>;
 }
 
+const minimalMain = [
+  "import * as runtime from 'runtime'",
+  'live async fn main() -> Int: await runtime.run(runtime.id()) _main()',
+  'ista async fn _main() -> Int: 0',
+].join('\n');
+
+const testTimeoutMs = 5000n;
+
+/** An instance seed's length, random-draws.ts `seedBytes`, which the build doesn't export. */
+const seedLength = 32;
+
+const runtimeOf = () =>
+  createRuntime({
+    natives: stdNatives,
+    store: memoryStore(),
+    clock: realTime,
+    seed: () => randomBytes(seedLength),
+  });
+
 const workloads = {
+  minimal: () => {
+    const program = programOf('main', minimalMain, false);
+    const [mainId] = program.roots;
+    if (mainId === undefined) {
+      throw new Error('The minimal program has no root.');
+    }
+    return {
+      program,
+      lower: () => compileProgram(program, mainId),
+      host: async (text, lap) => {
+        const deployed = runtimeOf().deploy(text);
+        lap('deploy');
+        await deployed.start('main');
+        lap('start');
+      },
+    };
+  },
   fb: () => {
     const { program, mainId } = formBuilderProgram();
-    return { program, lower: () => compileProgram(program, mainId).kind };
+    return {
+      program,
+      lower: () => compileProgram(program, mainId),
+      host: (text, lap) => {
+        runtimeOf().deploy(text);
+        lap('deploy');
+        return Promise.resolve();
+      },
+    };
   },
   'std-tests': () => {
     const program = stdTestsProgram();
-    return { program, lower: () => compileTests(program).kind };
+    return {
+      program,
+      lower: () => compileTests(program),
+      host: async (text, lap) => {
+        const options = { natives: stdNatives, clock: realTime, timeout: testTimeoutMs };
+        for await (const _ of runTests(text, options)) {
+          // Only the run's time is measured, not its reports.
+        }
+        lap('run');
+      },
+    };
   },
 } satisfies Record<string, () => Loaded>;
 
@@ -50,22 +120,27 @@ interface RunResult {
 /** One cold compile of `name` in this process, its phases timed, profiled into `outDir`. */
 async function runChild(outDir: string, name: WorkloadName, run: string): Promise<RunResult> {
   const phases: Record<string, number> = {};
-  const profiled = await withCpuProfile(outDir, `cold-${name}-${run}`, () => {
+  const profiled = await withCpuProfile(outDir, `cold-${name}-${run}`, async () => {
     let start = performance.now();
     const lap = (phase: string) => {
       const now = performance.now();
       phases[phase] = round(now - start);
       start = now;
     };
-    const { program, lower } = workloads[name]();
+    const { program, lower, host }: Loaded = workloads[name]();
     lap('load');
     bindProgram(program);
     lap('bind');
     diagnose(program);
     lap('check');
-    const outcome = lower();
+    const { kind, definition } = lower();
     lap('lower');
-    return outcome;
+    if (definition !== undefined) {
+      const { text } = definitionFormat.write(definition);
+      lap('write');
+      await host(text, lap);
+    }
+    return kind;
   });
   return { outcome: profiled.result, phases };
 }
