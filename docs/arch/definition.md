@@ -46,7 +46,9 @@ encodes it; the text is canonical JSON in a version envelope, keyed by its conte
   the frame holds and ends with `stopped`. Lowering emits `_parking(wait)` before it and the cases'
   landings after it (docs/arch/runtime.md, waits).
 - `currentCall`, `given`, `transient`, `contextConstant`/`makeContextConstant` and, in test builds,
-  `mocked` are the other control instructions a frame needs.
+  `mocked` are the other control instructions a frame needs. `mocked {dst, arguments, landing}`
+  stands past the prologue: where a mock answers the call with `arguments`, every parameter's value,
+  its answer lands in `dst` and the entry returns it from `landing` (docs/arch/runtime.md, mocks).
 
 ## Holders
 

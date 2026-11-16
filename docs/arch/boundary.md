@@ -77,8 +77,9 @@ encoders from building anew:
 - **Stage 1, value to `Json`** (`definition/values/written-json.ts`): `encode`'s body asks two
   natives, `_written<T>` and `_remember<T>`, keyed by the value object and `T` (one object may be
   written as two types whose codecs differ), a handle by the object it names, as `==` compares it.
-  An outcome its root returns is written from what the root gave, not from its copy. Per instance, beside its counts, since a codec may read
-  a `context` constant; a test world keeps nothing, so a mock sees every call (`TestWorld.mocking`).
+  An outcome its root returns is written from what the root gave, not from its copy. It is kept
+  per instance (`WrittenJson`), since a codec may read a `context` constant; the run binds no keeper
+  yet (`run/natives.ts`, `encodings`), so stage 1 writes anew each time.
   A miss is `_Written.Unknown`, never `none`, which is JSON.
 - **Stage 2, `Json` to JavaScript** (`plainOfJson`): each array and map inside a `Json`, not the
   union variant wrapping it, which every conversion into `Json` makes anew, keeps the frozen
@@ -153,9 +154,10 @@ two entries (`lowering/synthesized/boundary/starts.ts`):
   meanwhile runs, and what `main` held was disposed as it returned.
 
 A start is live or simple code, its head's mark (spec §3.3): ista code runs only in an instance, a
-context live code calls, so `main` is `live async fn main()`. A spawned instance's outcome is kept as
-its value; a host reads it as JSON text where it is a primitive (`host/programs.ts`,
-`outcomeText`). What a host reads of a start's outcome is its encoded JSON, as JavaScript values or
+context live code calls, so `main` is `live async fn main()`. A spawned instance whose outcome's type a codec
+writes encodes it as it finishes (its `Instance<T>` entry's `encoder`, docs/arch/runtime.md), and a
+host reads that JSON as text (`host/programs.ts`, `outcomeText`); any other outcome reads as a
+primitive's text. What a host reads of a start's outcome is its encoded JSON, as JavaScript values or
 as text, which `ista run` prints.
 
 The host API (`runtime/host/index.ts`, `createRuntime`) deploys a Definition text (`deploy`),

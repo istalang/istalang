@@ -1,5 +1,5 @@
 ---
-description: how the run executes compiled code — one Run per instance, the World they meet through, segments and commits, snapshots, the host runtime (start, wake, retry, terminate, inspect), holders and disposal; read before changing src/runtime, the snapshot format, or the prelude's futures, resolvers, waits and slots
+description: how the run executes compiled code — one Run per instance, the World they meet through, arrivals, segments and commits, seeds, outcome encoders, mocks, snapshots, the host runtime (start, wake, retry, terminate, inspect), holders and disposal; read before changing src/runtime, the snapshot format, or the prelude's futures, resolvers, waits and slots
 owner: toolchain
 status: active
 applies_to: src/runtime, src/stdlib/prelude (async section)
@@ -21,9 +21,14 @@ interpreter; a live run is a run that never commits.
   instance holds is ever another's. A run's `instance` names it and says whether it is durable
   (ista) or the live run a host started.
 - Runs meet only through a `World` (`run/world.ts`): a call into a context, a spawn, a wait on an
-  instance's end. What crosses is a sendable value, deep-copied (`copied`), so no composite is
-  counted by two runs; every answer arrives in the waiting run as a turn of its own (`Run.arrive`),
-  never inside another run's step.
+  instance's end, each given the future it settles. What crosses is a sendable value, deep-copied
+  (`copied`), so no composite is counted by two runs.
+- **Arrivals.** Whatever reaches a run from outside (an answer, an end, a host's filling, a mock's
+  answer from another instance) arrives as a turn of its own (`Run.arrive(object, turn)`), never
+  inside another run's step. The turn names the object it acts on, and acts on it in whichever run
+  of the instance it lands in: once a rerun replaced the run (below, `Run.succeededBy`), on the object
+  of the same id its snapshot read back. The world advances instances in the order their oldest
+  waiting turns arrived across runs (`Run.firstArrival`), so what settles first runs first (spec §6).
 - The one `World` is `host/durable-world.ts`. `startLive` (`runtime/program.ts`) runs over it with a
   memory store that ends with the start; the host runtime runs over the host's store.
 
@@ -35,7 +40,9 @@ settle once and call their callbacks in rank order, park and unpark of an execut
 `disposing()` priority resume. Everything above them is Istalang in the prelude:
 
 - **Futures** are run objects; `onAwait` registers a callback with a rank and a `standing` probe
-  (`_standing`: pending, lost, or withdrawn).
+  (`_standing`: pending, lost, or withdrawn). What settling a set of futures settles in turn (a
+  future following another, as a mock's answer does) settles together after it
+  (`Run.settleTogether`).
 - **Resolvers** are shared structs (`decide`, `rank`, `state`, `cancels`, ...). `resolve` panics on
   a second resolve; one resolved to no effect (state 4) stays cancellable.
 - **Waits** (`_Wait`): `_caseResolver` decides the wait and unparks the call; `_parking`, emitted
@@ -50,6 +57,11 @@ settle once and call their callbacks in rank order, park and unpark of an execut
 - **Instance ends** cross as a plain `(Array<R>, String, String)` ending; `Instance.result()` and
   `runtime._call` are Istalang wrappers making the `Result`. No native builds an optional, a
   `Result` or an enum: natives speak primitives (decision 8; `stdlib/values/results.ts`).
+- **Outcome encoders.** An `Instance<T>` type entry carries `encoder`, the entry of `T`'s codec
+  writing it, where one does (lowering's type table). An instance spawned as one calls it, in the
+  instance, as its root returns (`rootInvocation`), so it ends `finished` with its outcome and that
+  outcome's JSON (`encoded`), or panics if encoding panics. `outcomeText` writes `encoded` as JSON
+  text, and a plain outcome's text where there is none.
 
 `@Keeps` stands on a std function with a body when its body calls code the lifetime analysis can't
 follow (closures held in a resolver; a slot's queue read back through weak references): callers read
@@ -77,9 +89,17 @@ it as a native, with exactly the summary its extern predecessor had (spec §3.16
   leaves it: answers to callers, the instances it spawned (made only now, so a discarded segment
   spawns nothing), its end told to watchers, its log records (to the host's reports, or to the
   `Advanced` of a host call advancing it).
+- **Inputs.** What starts a segment and every turn it takes as it runs is an input of it
+  (`Run.onArrivalTaken` into `Resident.inputs`), which a segment run again applies again.
 - **Crash at every await** (spec §10): before committing, the segment runs again from the same
-  inputs on the instance as it last committed, and that run commits; the first run's effects never
-  leave. Answers of calls running across the rerun come from the last commit (`Resident.answers`).
+  inputs on the instance as it last committed, read back into a fresh run that takes the instance
+  over (`Run.succeededBy`: what arrives later lands there), and stops at its first park, as the first
+  run did; that run commits and the first run's effects never leave. Answers of calls running across
+  the rerun come from the last commit (`Resident.answers`).
+- **Random source** (spec §3.8 `random`): each instance has a seed of its own, the host's `seed`
+  for a context, a draw of its parent's for a spawned instance (drawn as it spawns, so a rerun
+  spawns it alike), a test's from its title. Its snapshot keeps the seed and the draws made, so a
+  segment run again draws the same values.
 - **A panic** commits the instance as it stood before the failed segment, with the panic, the time
   the segment started and the call it was starting, if any (`replay`). A panic no caller hears is
   reported to the host (`HostReports.panicked`).
@@ -87,13 +107,32 @@ it as a native, with exactly the summary its extern predecessor had (spec §3.16
   await that would commit it, named by the call that parked last.
 - Extern constants are read once per instance and kept as its context constants (spec §3.6).
 
+## Mocks (`run/mocks.ts`, `run/mock-answers.ts`)
+
+In a Definition built to run tests (spec §10):
+
+- A mock is a run object (`MockObject`: target entry, replacement, the calls it took) its instance
+  holds while anything holds its handle (`Run.mocks`); the newest held for a target wins, and letting
+  one go brings back the one before.
+- A call reaches the mock its instance holds, else the nearest one an instance it was spawned from
+  holds (`World.heldMock`). A code entry asks at its `mocked` instruction, past its prologue, with
+  every parameter's value; a native is asked as its extern is called. The function an invocation
+  starts with is never mocked.
+- The holder records the call and runs the replacement, as a call of its own when it holds the mock
+  for another instance (`Run.asCall`). A host value crosses as its host's JSON and arrives as the
+  caller's resource, which the caller alone disposes; other values pass as they are within one
+  instance, and only sendable ones cross between two, copied. An async replacement's future is
+  followed by one of the caller's, which the holder lets go of once it settles or once the caller
+  lets go of its own, so a mocked receive losing a `select` takes nothing.
+
 ## Snapshots (`snapshot/`)
 
 - `format.ts`: the persisted shape. Objects by id (cells, futures, executions, weak references,
-  resources); values as trees with run objects as handles; frames as data (function, pc, registers,
-  where a register may hold a `&` reference); live executions, timers, watches of other instances'
-  ends, the ready queue, the running invocations (the spawned one `root`), context constants, the
-  serial, draws, spawned count, options and status.
+  resources, mocks); values as trees with run objects as handles; frames as data (function, pc,
+  registers, where a register may hold a `&` reference); live executions, timers, watches of other
+  instances' ends, the ready queue, the running invocations (the spawned one `root`), context
+  constants, the serial, the seed and draws, spawned count, the outcome's encoder, options and
+  status (a finished one with its outcome and, where encoded, its JSON).
 - `write.ts`: a root walk from what the instance keeps. Holders are not written.
 - `restore.ts`: objects made first, then filled; every holder counted again as the writing run
   counted it (`Lifetimes.adoptRestored`): a composite comes back held by one holder, so value
@@ -113,5 +152,6 @@ it as a native, with exactly the summary its extern predecessor had (spec §3.16
   instances it reached go on as far as they can without waiting.
 - `retry` restores a panicked instance as it stood before its failed segment and runs it again at
   the time it first started, replaying the call it was starting; `terminate` disposes what it held
-  then and commits it holding nothing; `inspect` reads the last commit: state, and where each
-  parked execution waits (`parkedAt`: function, waypoint, source location).
+  then and commits it holding nothing; `inspect` reads the last commit: state (a finished one with
+  its outcome's JSON, where encoded), and where each parked execution waits (`parkedAt`: function,
+  waypoint, source location).

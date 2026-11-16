@@ -74,4 +74,4 @@ tags: [reuse, lowering, definition, ir, instructions]
 1. Define the schema with `defineInstruction` in `src/definition/instructions/` (`data.ts`, `calls.ts`, `control.ts`, `prologue.ts`, `suspension.ts`, or `lifetimes.ts`).
 2. Add its handler to `operandsOf` (`instruction.ts`), `flow.ts`, and `instructionProblem` (`src/definition/validation/instruction-rules.ts`).
 3. Add its arbitrary to `src/definition/instructions/instruction.test-kit.ts`.
-4. Add its handler to `src/runtime/interpreter/instructions.ts` and snapshot holding/check rules if it waits or holds registers (`src/runtime/snapshot/`).
+4. Add its emitter to `src/codegen/instructions.ts` (docs/arch/codegen.md), and snapshot rules if it waits or holds registers (`src/runtime/snapshot/`).

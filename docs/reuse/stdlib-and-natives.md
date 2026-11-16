@@ -12,7 +12,7 @@ tags: [reuse, stdlib, natives, ranges, positions, time, decimal]
 
 ## Units
 
-- register a std module or build its extern keys → `stdModule`, `nativeKeysOf`, `knownTypeKey`, `NativeKeys` (`src/stdlib/std-module.ts`); a native reaching instances, contexts, slots or tests goes in its module's `interpreter` natives, so compiled JavaScript refuses a program calling it → `interpreterNativeKeys` (`src/stdlib/natives.ts`)
+- register a std module or build its extern keys → `stdModule`, `nativeKeysOf`, `knownTypeKey`, `NativeKeys` (`src/stdlib/std-module.ts`)
 - load std modules in the compiler, with sources laid over the shipped ones in tests → `stdlibLoader`, `stdRoles`, `StdSources`; a std module's shipped text by its `std:` id → `stdSourceOf`; the names an import may give a std module by → `importableStdModules` (`src/stdlib/stdlib-loader.ts`)
 - list every std module's source by name, or name a std module → `stdModuleSources`, `StdModuleName` (`src/stdlib/std-sources.ts`)
 - get the combined std natives table or the list of std module records → `stdNatives` (`src/stdlib/natives.ts`), `stdModules` (`src/stdlib/std-modules.ts`)

@@ -50,6 +50,8 @@ as the cell loses its last holder.
 - A call of a known entry is a direct call; a call of a function value goes through `callValue`; an
   async callee starts an execution and gives its future (`Run.start`).
 - `currentCall` is the frame's execution in async code and `currentExecution()` in simple code.
+- `mocked` asks the run (`Run.mocked`), and writes its register only with an answer, never with
+  the run's marker of none (`NOT_MOCKED`).
 - A transient's cell is shared by `function:register`; each call sharing one shares it on, so each
   call's `return` unshares its own (spec §3.4).
 
