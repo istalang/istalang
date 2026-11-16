@@ -241,6 +241,19 @@ export class Lifetimes {
     return own;
   }
 
+  /**
+   * Another holder of each of `items`, which a native puts into a collection of `type`: each kept
+   * by its own type (`keep`), an array's element type, a map's key and value types in turn.
+   */
+  keepItems(items: readonly Value[], type: TypeReference): void {
+    items.forEach((item, at) => {
+      const itemType = itemTypeOf(this.#types, type, at);
+      if (itemType !== undefined) {
+        this.keep(item, itemType);
+      }
+    });
+  }
+
   /** Lets go of `value` into `zeros`: a counted composite losing its last holder lets go of its parts. */
   #release(first: Value | undefined, zeros: RunObject[]): void {
     const pending: (Value | undefined)[] = [first];

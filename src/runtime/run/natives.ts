@@ -13,9 +13,10 @@
  */
 
 import type { ExternFunction } from '../../definition/tables/functions.ts';
-import { lifetimeOf } from '../../definition/tables/types.ts';
+import { lifetimeOf, type TypeReference } from '../../definition/tables/types.ts';
 import { deleteEntryInPlace, setEntryInPlace } from '../../definition/values/equality.ts';
 import type { CompositeValue, Value } from '../../definition/values/values.ts';
+import { unreachable } from '../../foundation/structures/unreachable.ts';
 import type { Clock } from '../clock.ts';
 import type { LogRecord } from '../instance-state.ts';
 import {
@@ -120,10 +121,11 @@ function contextOf(
     now: () => binding.clock.now(),
     changes: (position) => {
       const parameter = entry.parameters[position]?.type;
-      const counted =
-        parameter?.kind === 'reference' &&
-        lifetimeOf(run.definition.types, parameter.to) === 'counted';
-      return changesOf(run, passed()[position] as unknown as Reference, counted);
+      const collection = parameter?.kind === 'reference' ? parameter.to : undefined;
+      if (collection === undefined) {
+        return unreachable(`${entry.name} changes parameter ${position}, which is no reference.`);
+      }
+      return changesOf(run, passed()[position] as unknown as Reference, collection);
     },
     trace: () => run.traces.here(),
     callerTrace: () => run.traces.callerHere(),
@@ -131,24 +133,21 @@ function contextOf(
 }
 
 /**
- * The changes a native makes through `reference` to the array or map at its place: the value made
- * unique there first, every value on the way to it too; items it adds held, and those it removes let
- * go of, when `counted`.
+ * The changes a native makes through `reference` to the array or map of `type` at its place: every
+ * value on the way to it made its own first (`Lifetimes.opened`); items it adds kept by their own
+ * types before it changes, so one read from the very place it changes (`xs.push(xs)`) is the value
+ * as it was; those it removes let go of, when counted.
  */
-function changesOf(run: Run, reference: Reference, counted: boolean): ValueChanges {
+function changesOf(run: Run, reference: Reference, type: TypeReference): ValueChanges {
+  const counted = lifetimeOf(run.definition.types, type) === 'counted';
   const unique = (): CompositeValue => {
     const { cell, path } = reference;
-    const current = deref(reference);
-    const own = run.lifetimes.owned(current as CompositeValue);
-    cell.value = path.length === 0 ? own : run.lifetimes.withPart(cell.value, path, own, false);
-    return own;
+    const { root, node } = run.lifetimes.opened(cell.value, path);
+    cell.value = root;
+    return node;
   };
   const kept = (items: readonly Value[]) => {
-    for (const item of items) {
-      if (counted) {
-        run.lifetimes.hold(item);
-      }
-    }
+    run.lifetimes.keepItems(items, type);
   };
   const released = (items: readonly (Value | undefined)[]) => {
     for (const item of items) {
