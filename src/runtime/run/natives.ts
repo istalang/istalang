@@ -160,12 +160,6 @@ function contextOf(
       at: unavailable('waits'),
       onCancel: unavailable('waits'),
     },
-    slots: {
-      create: unavailable('slots'),
-      put: unavailable('slots'),
-      take: unavailable('slots'),
-      read: unavailable('slots'),
-    },
     weak: {
       reference: (referent) =>
         run.weakReference(referent as unknown as RunObject) as unknown as Value,

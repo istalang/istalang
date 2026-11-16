@@ -76,13 +76,19 @@ export interface Frame {
 export interface Waiting {
   readonly callback: Value;
   readonly rank: readonly bigint[];
+  /** Whether the resolver the callback resolves may still decide anything. */
+  readonly pending: Value;
 }
 
 export class Future extends RunObject {
   settled = false;
   value: Value = null;
   /** The closures called with its value once it settles, in the order they were added. */
-  readonly callbacks: Waiting[] = [];
+  callbacks: Waiting[] = [];
+  /** Whether anything ever waited on it: one nothing that may decide waits on any more is given up on. */
+  awaited = false;
+  /** What runs each time something comes to wait on it. */
+  readonly onAwaited: Value[] = [];
   /** What of the run itself waits on it: a call into a context waits on its invocation's. */
   readonly listeners: ((value: Value) => void)[] = [];
   /** What the run does if it is disposed before it settles: a host's cancel (§9). */

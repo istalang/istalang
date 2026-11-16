@@ -16,6 +16,7 @@
  * only futures, through the prelude's.
  */
 
+import type { Place } from '../../../definition/instructions/places.ts';
 import type { Register } from '../../../definition/operands.ts';
 import {
   awaitFunction,
@@ -127,10 +128,10 @@ export function caseValue(
   const decided = open.cases[position] ?? unreachable(`A wait has no case ${position}.`);
   const optional = optionalOf(decided.type, checker.typeRules);
   const held = code.allocate(tables.types.reference(optional));
-  const place = {
+  const place: Place = {
     root: { kind: 'cell', register: decided.shared },
     path: [{ kind: 'field', field: 0 }],
-  } as const;
+  };
   code.emit({ kind: 'load', span, dst: held, place });
   code.emit({ kind: 'store', span, place, value: noneOf(context, optional, span) });
   return insideOptional(context, { register: held, type: optional, to: decided.type }, span);

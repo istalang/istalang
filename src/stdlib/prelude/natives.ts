@@ -26,7 +26,6 @@ import {
   type Natives,
   Panic,
   type WithInstances,
-  type WithSlots,
   type WithWaits,
   type WithWeakSide,
 } from '../../runtime/natives.ts';
@@ -37,7 +36,6 @@ import { arrayNatives } from './arrays.ts';
 import { instanceNatives } from './instance-natives.ts';
 import { mapNatives } from './maps.ts';
 import { rangeNatives } from './range-natives.ts';
-import { slotNatives } from './slot-natives.ts';
 import { stringNatives } from './strings.ts';
 import { textFormNatives } from './text-forms.ts';
 import { waitNatives } from './wait-natives.ts';
@@ -66,9 +64,8 @@ export const preludeNatives = (
 /** The prelude's natives of slots and instances, ista's (proposal 8, Rule 6): the interpreter's alone. */
 export const preludeInterpreterNatives = (
   keys: NativeKeys,
-): Natives<NativeContext & WithSlots & WithInstances> => ({
+): Natives<NativeContext & WithInstances> => ({
   ...instanceNatives(keys),
-  ...slotNatives(keys),
 });
 
 /** The operators and conversions over `Int` and `Float` (§2, §3.9, §3.10). */

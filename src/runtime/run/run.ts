@@ -401,9 +401,11 @@ export class Run {
       }
       future.settled = true;
       future.value = value;
-      for (const { callback, rank } of future.callbacks.splice(0)) {
+      for (const { callback, rank, pending } of future.callbacks.splice(0)) {
         waiting.push({ callback, rank, value });
+        this.lifetimes.letGo(pending);
       }
+      this.lifetimes.letGo(...future.onAwaited.splice(0));
     }
     const ordered = waiting.toSorted((first, second) => compareRanks(first.rank, second.rank));
     for (const { callback, value } of ordered) {
@@ -673,8 +675,11 @@ export class Run {
       if (object.execution !== undefined) {
         this.#stop(object.execution);
       }
-      const callbacks = object.callbacks.splice(0).map(({ callback }) => callback);
-      return object.settled ? [object.value, ...callbacks] : callbacks;
+      const callbacks = object.callbacks
+        .splice(0)
+        .flatMap(({ callback, pending }) => [callback, pending]);
+      const held = [...callbacks, ...object.onAwaited.splice(0)];
+      return object.settled ? [object.value, ...held] : held;
     }
     if (object instanceof Resource) {
       object.disposed = true;

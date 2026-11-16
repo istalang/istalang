@@ -141,18 +141,6 @@ export interface Resolvable {
   readonly resolver: NativeResolver;
 }
 
-/** The running instance's slots (§6): `put`, `take` and `read` return a handle to its future. */
-export interface NativeSlots {
-  /** A new, empty slot. */
-  readonly create: () => Value;
-  /** The future of putting `value` into `slot`. */
-  readonly put: (slot: Value, value: Value) => Value;
-  /** The future of taking `slot`'s value, which empties it. */
-  readonly take: (slot: Value) => Value;
-  /** The future of reading `slot`'s value, which leaves it full. */
-  readonly read: (slot: Value) => Value;
-}
-
 /**
  * The running instance's weak references (§7). A referent is a handle to a disposable, and each
  * has one weak reference, which holds nothing.
@@ -281,9 +269,6 @@ export interface WithFutures {
 export interface WithWaits {
   readonly waits: NativeWaits;
 }
-export interface WithSlots {
-  readonly slots: NativeSlots;
-}
 export interface WithWeakSide {
   readonly weak: NativeWeakSide;
 }
@@ -313,7 +298,6 @@ export interface WithEncodings {
 /** Every capability: what the runtime gives each native. */
 export type NativeCapabilities = WithFutures &
   WithWaits &
-  WithSlots &
   WithWeakSide &
   WithResources &
   WithRandom &

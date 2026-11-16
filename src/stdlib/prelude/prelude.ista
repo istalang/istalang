@@ -15,7 +15,6 @@ import Holds, Keeps from 'lifetimes'
 extern struct Array<gives T>
 extern struct Map<K, gives V>
 @Holds<T>
-extern shared struct Slot<T>
 # A weak reference holds nothing of its referent, which `deref` gives back.
 @Holds<()>
 extern shared struct WeakRef<T is Disposable>
@@ -50,7 +49,8 @@ K fn onAwait<T, K in Persistence>(self: Future<T, K>, done: Resolver<T, K>):
     done.resolve(_valueOf(self))
   else:
     fn arrived(value: T): done.resolve(value)
-    _onSettled(self, arrived, done->rank)
+    fn pending() -> Bool: _pending(done)
+    _onSettled(self, arrived, done->rank, pending)
 
 # One wait's one-shot resolver (Rule 5). A second `resolve` panics, and `tryResolve` says whether it
 # decided the wait, for races; once another case decided it, neither decides anything. One let go of
@@ -69,6 +69,12 @@ shared struct Resolver<T, K in Persistence>:
   # A case's: whether its wait still waits. An at-resolver's: marks the resolver it decides registered.
   waited: Fn<(), Bool, K>? = none
   onRegistered: Fn<(), Unit, K>? = none
+  # An at-resolver's: whether the resolver it decides is still pending.
+  deciding: Fn<(), Bool, K>? = none
+
+# Whether `resolver` may still decide something: pending, and so is what it decides.
+K fn _pending<T, K in Persistence>(resolver: Resolver<T, K>) -> Bool:
+  resolver->state == 0 and (resolver->deciding?.() ?? true)
 
 # Notes that `resolver` is registered on what it waits on, which keeps it alive.
 K fn _registered<T, K in Persistence>(resolver: Resolver<T, K>):
@@ -108,7 +114,13 @@ K fn Resolver.of<T, K in Persistence>(callback: Fn<(T,), Unit, K>) -> Resolver<T
 K fn Resolver.at<T, K in Persistence>(done: Resolver<(Int, T), K>, position: Int) -> Resolver<T, K>:
   fn decided(value: T) -> Bool: done.tryResolve((position, value))
   fn registered(): _registered(done)
-  new Resolver<T, K>{decide: decided, rank: [...done->rank, position], onRegistered: registered}
+  fn deciding() -> Bool: _pending(done)
+  new Resolver<T, K>{
+    decide: decided,
+    rank: [...done->rank, position],
+    onRegistered: registered,
+    deciding,
+  }
 
 # Has `callback` called once `self` is cancelled: another case decided its wait, its waiter moved on
 # without it, or a future it is registered on was disposed. It runs as a `Resolver.of` callback
@@ -179,10 +191,23 @@ K fn _decided<K in Persistence>(wait: _Wait<K>) -> Int:
 # The run's primitives the futures above stand on (ir-first design, decision 6).
 extern K fn _settled<T, K in Persistence>(future: Future<T, K>) -> Bool
 extern K fn _valueOf<T, K in Persistence>(future: Future<T, K>) -> T
+# `callback` waits on `future` at `rank` while `pending` says its resolver may still decide: one
+# that can't is dropped, and a future only such ones wait on, once awaited, is given up on.
+@Keeps{["future": ["callback", "pending"]]}
+extern K fn _onSettled<T, K in Persistence>(
+  future: Future<T, K>,
+  callback: Fn<(T,), Unit, K>,
+  rank: Array<Int>,
+  pending: Fn<(), Bool, K>,
+)
+extern K fn _givenUp<T, K in Persistence>(future: Future<T, K>) -> Bool
+# `callback` runs each time something comes to wait on `future`.
 @Keeps{["future": ["callback"]]}
-extern K fn _onSettled<T, K in Persistence>(future: Future<T, K>, callback: Fn<(T,), Unit, K>, rank: Array<Int>)
+extern K fn _onAwaited<T, K in Persistence>(future: Future<T, K>, callback: Fn<(), Unit, K>)
 extern K fn _pendingFuture<T, K in Persistence>() -> Future<T, K>
 extern K fn _settle<T, K in Persistence>(future: Future<T, K>, value: T)
+# Settles each of `futures` with `value`, as one event.
+extern K fn _settleAll<T, K in Persistence>(futures: Array<Future<T, K>>, value: T)
 extern K fn _later<K in Persistence>(callback: Fn<(), Unit, K>)
 extern fn _unpark(call: _Call, position: Int)
 extern fn _idOf(call: _Call) -> Int
@@ -207,11 +232,123 @@ extern ista fn result<T is Sendable>(self: Instance<T>) -> Future<Result<T>, "is
 # a deferred call (§3.14), copies `req` into it now and calls `purchase` there, async or not.
 extern ista fn spawn<R>(f: sendable ista async fn() -> R) -> Instance<R>
 
-extern ista fn Slot.create<T>() -> Slot<T>
-@Keeps{["self": ["value"]]}
-extern ista fn put<T>(self: Slot<T>, value: T) -> Future<Unit, "ista">
-extern ista fn take<T>(self: Slot<T>) -> Future<T, "ista">
-extern ista fn read<T>(self: Slot<T>) -> Future<T, "ista">
+# A slot (§6), empty or full: full, its one value is its contents' one item, so a value of any type,
+# `none` among them, fills it. Its waiting operations are one queue, longest waiter first, which
+# holds each one's future weakly: an operation its holders let go of leaves the queue, as an inbox's
+# retracted message does. An operation that can complete when it is called completes then, its
+# future settled, and a full slot never has a read or take waiting that it would serve, nor an empty
+# one such a put, so completing at once never jumps a waiter.
+shared struct Slot<T>:
+  contents: Array<T> = []
+  waiting: Array<_SlotOperation<T>> = []
+
+enum _SlotOperation<T>:
+  Put(future: WeakRef<Future<Unit, "ista">>, value: T)
+  Take(future: WeakRef<Future<T, "ista">>)
+  Read(future: WeakRef<Future<T, "ista">>)
+
+ista fn Slot.create<T>() -> Slot<T>: new Slot<T>{}
+
+# Fills the slot once it is empty.
+ista fn put<T>(self: Slot<T>, value: T) -> Future<Unit, "ista">:
+  const future = _pendingFuture<Unit, "ista">()
+  if self->contents.length() == 0:
+    self->contents = [value]
+    _settle(future, ())
+    _serve(self)
+  else:
+    self->waiting.push(Put(WeakRef(future), value))
+    _servedWhenAwaited(self, future)
+  future
+
+# Empties the slot once it is full, giving its value.
+ista fn take<T>(self: Slot<T>) -> Future<T, "ista">:
+  const future = _pendingFuture<T, "ista">()
+  if self->contents.length() == 1:
+    const value = self->contents[0]
+    self->contents = []
+    _settle(future, value)
+    _serve(self)
+  else:
+    self->waiting.push(Take(WeakRef(future)))
+    _servedWhenAwaited(self, future)
+  future
+
+# Gives the slot's value once it is full, leaving it there.
+ista fn read<T>(self: Slot<T>) -> Future<T, "ista">:
+  const future = _pendingFuture<T, "ista">()
+  if self->contents.length() == 1:
+    _settle(future, self->contents[0])
+  else:
+    self->waiting.push(Read(WeakRef(future)))
+    _servedWhenAwaited(self, future)
+  future
+
+# An operation given up on is passed over; awaited again, it is served where it stands.
+ista fn _servedWhenAwaited<T, U>(slot: Slot<T>, future: Future<U, "ista">):
+  fn served(): _serve(slot)
+  _onAwaited(future, served)
+
+# Serves `slot`'s queue from its head, one event after another, as far as it can.
+ista fn _serve<T>(slot: Slot<T>):
+  let serving = true
+  while serving: serving = _servedOnce(slot)
+
+# Serves the next event of `slot`'s queue, if its head can be served: while it is full, the reads
+# at the head yield its value together, with the take after them, which empties it; while it is
+# empty, the put at the head fills it. An operation no longer held is dropped, one given up on, every
+# case awaiting it lost, passed over (§8).
+ista fn _servedOnce<T>(slot: Slot<T>) -> Bool:
+  const waiting = slot->waiting
+  const full = slot->contents.length() == 1
+  let readers: Array<Future<T, "ista">> = []
+  let kept: Array<_SlotOperation<T>> = []
+  for index in 0..waiting.length():
+    const operation = waiting[index]
+    match operation:
+      case Read(weak):
+        if _waiting(weak) is Future<T, "ista"> as future:
+          if not full: return _readersServed(slot, readers, [...kept, ...waiting.slice(index)])
+          readers.push(future)
+        elif _held(weak): kept.push(operation)
+      case Take(weak):
+        if _waiting(weak) is Future<T, "ista"> as future:
+          if not full: return _readersServed(slot, readers, [...kept, ...waiting.slice(index)])
+          const value = slot->contents[0]
+          slot->contents = []
+          slot->waiting = [...kept, ...waiting.slice(index + 1)]
+          _settleAll([...readers, future], value)
+          return true
+        elif _held(weak): kept.push(operation)
+      case Put(weak, value):
+        if _waiting(weak) is Future<Unit, "ista"> as future:
+          if full: return _readersServed(slot, readers, [...kept, ...waiting.slice(index)])
+          slot->contents = [value]
+          slot->waiting = [...kept, ...waiting.slice(index + 1)]
+          _settle(future, ())
+          return true
+        elif _held(weak): kept.push(operation)
+  _readersServed(slot, readers, kept)
+
+# Settles `readers` with `slot`'s value as one event, `waiting` then its queue; whether there were any.
+ista fn _readersServed<T>(
+  slot: Slot<T>,
+  readers: Array<Future<T, "ista">>,
+  waiting: Array<_SlotOperation<T>>,
+) -> Bool:
+  slot->waiting = waiting
+  if readers.length() == 0: return false
+  _settleAll(readers, slot->contents[0])
+  true
+
+# The future `weak` reaches, while something holds it and a case may still take what it gives.
+ista fn _waiting<U>(weak: WeakRef<Future<U, "ista">>) -> Future<U, "ista">?:
+  if weak.deref() is Future<U, "ista"> as future:
+    if not _givenUp(future): return future
+  none
+
+# Whether something holds the future `weak` reaches.
+ista fn _held<U>(weak: WeakRef<Future<U, "ista">>) -> Bool: weak.deref() is Future<U, "ista">
 
 # Weak references (§7): `WeakRef(x)` is the one weak reference to `x`, which holds nothing.
 extern fn WeakRef.from<T is Disposable>(value: T) -> WeakRef<T>
@@ -237,7 +374,7 @@ extern shared struct _Cell<T>
 # runtime does it. A slot's is ista, so a slot is ista data, which only ista code handles (proposal
 # 8, Rule 6).
 extern K fn dispose<T, K in Persistence>(self: Future<T, K>)
-extern ista fn dispose<T>(self: Slot<T>)
+ista fn dispose<T>(self: Slot<T>): ()
 
 # What `defer` gives (§7): a disposable whose release calls `run`, so `_ = defer log(x)` computes
 # `x` now and logs when the block ends, and `hold _ = defer log(x)` when the function does. Its
