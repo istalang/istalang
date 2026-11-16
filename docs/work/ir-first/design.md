@@ -69,6 +69,11 @@ target. Migrating that shape costs more than writing the right one.
    - **Spilling:** registers are spilled by register layout, following IR emptiness.
    - **Proposal 10's named schema** can replace that layout later as an IR fact, with codegen
      unchanged.
+   - **Simple calls use the host stack,** so recursion depth is limited (the spec's floor). The IR
+     states calls only, never a calling convention. Each backend has one predicate choosing which
+     functions run on frame records (async entries today), and one unit turning the host's stack
+     overflow into the recursion panic. Moving recursive cycles, or every function, onto frame
+     records changes that predicate alone, in JS or LLVM.
 4. **Typed IR.**
    - **Registers:** typed, with one register per pass in field loops.
    - **Types:** every type entry states `disposable` (the checker's `reachesDisposable`) and `heap`.
