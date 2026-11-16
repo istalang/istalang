@@ -125,8 +125,12 @@ export class DefinitionTables {
   readonly #writtenFor = new Map<FunctionId, number>();
   readonly #starts: Tables['starts'][number][] = [];
 
-  constructor(checker: Checker) {
+  /** Whether the Definition runs tests, whose functions a mock may replace (§10). */
+  readonly mocking: boolean;
+
+  constructor(checker: Checker, { mocking }: { readonly mocking: boolean }) {
     this.#checker = checker;
+    this.mocking = mocking;
     this.types = new TypeTable(checker, {
       functionIndex: (instance) => this.functionIndex(instance),
       callIndex: (call) => this.callIndex(call),

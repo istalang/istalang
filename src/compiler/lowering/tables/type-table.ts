@@ -373,12 +373,14 @@ export class TypeTable {
       }
       case 'ExternStructDeclaration': {
         const role = this.#roleOf(externRoles, declaration);
+        const encoder = role === 'instance' ? this.#outcomeEncoder(type) : undefined;
         return {
           kind: 'extern',
           name,
           arguments: typeArguments,
           ...(role === undefined ? {} : { role }),
           ...disposing,
+          ...(encoder === undefined ? {} : { encoder }),
           ...facts,
         };
       }
@@ -387,6 +389,14 @@ export class TypeTable {
         return unhandled;
       }
     }
+  }
+
+  /** The entry encoding the outcome of an instance of `instance`, `Instance<T>`: `T`'s codec's. */
+  #outcomeEncoder(instance: NominalType): FunctionId | undefined {
+    const [outcome] = instance.arguments;
+    const codec =
+      outcome === undefined ? undefined : foundCodecCall(this.#checker, undefined, outcome, 'write');
+    return codec === undefined ? undefined : this.#seams.callIndex(codec);
   }
 
   /** A union's enum: a variant per member, its value in the one field, a one-value member none. */

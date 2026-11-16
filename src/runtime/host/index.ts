@@ -125,12 +125,14 @@ export function createRuntime(seams: RuntimeSeams): Runtime {
       const { message, trace } = panicked(resident);
       return Promise.resolve(advanced(resident, () => world.terminate(resident, { message, trace })));
     },
-    inspect: (instance) => {
-      const resident = residentOf(instance);
-      return { state: stateOf(resident), waitingAt: waitingAt(resident) };
-    },
+    inspect: (instance) => inspectionOf(residentOf(instance)),
     programOf: (instance) => deployed(world, residentOf(instance).program),
   };
+}
+
+/** Where `resident` stands, and where each of its executions waits, as it last committed. */
+export function inspectionOf(resident: Resident): Inspection {
+  return { state: stateOf(resident), waitingAt: waitingAt(resident) };
 }
 
 /** Where `resident` stands, as a host reads it. */
@@ -141,7 +143,7 @@ function stateOf(resident: Resident): InstanceState {
   const { status, run } = resident;
   switch (status.kind) {
     case 'finished':
-      return { kind: 'finished', outcome: status.outcome };
+      return { kind: 'finished', outcome: status.outcome, encoded: status.encoded };
     case 'panicked':
     case 'terminated':
       return { kind: status.kind, message: status.message, trace: status.trace };

@@ -10,6 +10,8 @@
  * - An **execution** runs one async call on its frame record (docs/arch/codegen.md): its handle is
  *   the call's (`_Call`, §7).
  * - A **weak reference** refers to a disposable without holding it (§7).
+ * - A **mock** replaces its target's calls while it is held, in a Definition built to run tests
+ *   (§10, mocks.ts).
  * - A **reference** is no object: a cell and a path into its value, as a `&` parameter takes it.
  *
  * Every object compares by identity as a handle does (definition/values/equality.ts): its `kind`
@@ -137,6 +139,21 @@ export class WeakReference extends RunObject {
 }
 
 /** A `&` parameter's value: the place in `cell`'s value at `path`. */
+/** A mock's handle (testing.ista `Mock<F>`): its target, its replacement and the calls it took. */
+export class MockObject extends RunObject {
+  readonly target: number;
+  /** Set once, as it is made or as its snapshot is read back. */
+  replacement: Value;
+  /** Each call's arguments, a tuple per call, oldest first. */
+  readonly calls: Value[] = [];
+
+  constructor(id: number, target: number, replacement: Value) {
+    super(id);
+    this.target = target;
+    this.replacement = replacement;
+  }
+}
+
 export class Reference {
   readonly cell: Cell;
   readonly path: readonly Step[];

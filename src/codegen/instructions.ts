@@ -14,7 +14,7 @@
  *   record (async today) saves its registers to it at a `park` and returns.
  */
 
-import type { InstructionOf, Instruction } from '../definition/instructions/instruction.ts';
+import type { Instruction, InstructionOf } from '../definition/instructions/instruction.ts';
 import type { Place } from '../definition/instructions/places.ts';
 import type { Register } from '../definition/operands.ts';
 import type { CodeFunction, FunctionDefinition } from '../definition/tables/functions.ts';
@@ -203,7 +203,9 @@ const emitters: Handlers<EntryScope, Instruction, [], string> = {
     const type = scope.entry.registers[i.dst]?.type;
     const dispose = type?.kind === 'named' ? disposeOf(scope.types, type.type) : undefined;
     const made_ = `${register(i.dst)} = cell(${register(i.value)}, ${counted}${dispose === undefined ? '' : `, ${dispose}`});${cleared(scope, [i.value])}`;
-    return shared ? `${made_} shareTransient(${transientKey(scope, i.dst)}, ${register(i.dst)});` : made_;
+    return shared
+      ? `${made_} shareTransient(${transientKey(scope, i.dst)}, ${register(i.dst)});`
+      : made_;
   },
   load: (scope, i) => {
     const borrowed = scope.entry.registers[i.dst]?.borrowed === true;
@@ -222,8 +224,7 @@ const emitters: Handlers<EntryScope, Instruction, [], string> = {
       ? `${register(i.place.root.register)} = ${written};${done}`
       : `${written};${done}`;
   },
-  reference: (_, i) =>
-    `${register(i.dst)} = reference(${rootOf(i.place)}, ${pathOf(i.place)});`,
+  reference: (_, i) => `${register(i.dst)} = reference(${rootOf(i.place)}, ${pathOf(i.place)});`,
   // A call sharing a transient shares it on too, so each call's `return` unshares its own.
   transient: (scope, i) => {
     const key = transientKey(scope, i.dst);
@@ -234,8 +235,7 @@ const emitters: Handlers<EntryScope, Instruction, [], string> = {
     `${register(i.dst)} = contextConstant(${literal(i.name)}); if (${register(i.dst)} !== undefined) {${held(scope, i.dst)} ${goTo(i.target)} }`,
   makeContextConstant: (_, i) => `makeContextConstant(${literal(i.name)}, ${register(i.value)});`,
   jump: (_, i) => goTo(i.target),
-  branch: (_, i) =>
-    `pc = ${register(i.condition)} ? ${i.whenTrue} : ${i.whenFalse}; continue;`,
+  branch: (_, i) => `pc = ${register(i.condition)} ? ${i.whenTrue} : ${i.whenFalse}; continue;`,
   switch: (_, i) => {
     const otherwise = i.otherwise ?? i.targets.at(-1) ?? 0;
     return `pc = ${literal(i.targets)}[${register(i.value)}.variant] ?? ${otherwise}; continue;`;
@@ -262,8 +262,9 @@ const emitters: Handlers<EntryScope, Instruction, [], string> = {
     `${register(i.dst)} = ${scope.onFrames ? 'frame.execution' : 'currentExecution()'};`,
   given: (_, i) => `if (${register(i.parameter)} !== undefined) { ${goTo(i.target)} }`,
   mocked: (scope, i) => {
-    const parameters = scope.entry.parameters.map((_, index) => register(index)).join(', ');
-    return `${register(i.dst)} = mocked(${scope.index}, [${parameters}]); if (${register(i.dst)} !== NOT_MOCKED) { ${goTo(i.landing)} }`;
+    const passed = i.arguments.map(register).join(', ');
+    // The register holds an answer only where a mock gives one, never the marker of none.
+    return `{ const answer = mocked(${scope.index}, [${passed}]); if (answer !== NOT_MOCKED) { ${register(i.dst)} = answer; ${goTo(i.landing)} } }`;
   },
   park: (scope, i) => {
     const saved = scope.entry.registers.map((_, index) => register(index)).join(', ');

@@ -29,7 +29,7 @@ import {
 import { logLine } from '../log-lines.ts';
 import { reportDiagnostics, reportUnreadable } from '../report.ts';
 
-interface TestOptions {
+export interface TestOptions {
   readonly filter?: string;
   readonly timeout: string;
 }
@@ -54,14 +54,15 @@ export const defineTestCommand: CommandDefinition = (cli, { environment, exitWit
     .option('--filter <text>', 'run only the tests whose full title contains this')
     .option('--timeout <ms>', 'how long one test may run', defaultTimeout)
     .action(async (paths: string[], options: TestOptions) => {
-      exitWith(await test(paths, options, environment));
+      exitWith(await testModules(paths, options, environment));
     });
 };
 
-async function test(
+/** Runs the tests of the test modules `paths` name, as `ista test` does; its exit code. */
+export async function testModules(
   paths: readonly string[],
   options: TestOptions,
-  environment: CliEnvironment,
+  environment: Pick<CliEnvironment, 'cwd' | 'write' | 'writeError'>,
 ): Promise<ExitCode> {
   const timeout = milliseconds.test(options.timeout) ? BigInt(options.timeout) : undefined;
   if (timeout === undefined || timeout === 0n) {
@@ -91,7 +92,6 @@ async function test(
     natives: stdNatives,
     clock: realTime,
     timeout,
-    heapCheck: environment.heapCheck,
     ...(options.filter === undefined ? {} : { filter: options.filter }),
   })) {
     counts[report.outcome.kind] += 1;

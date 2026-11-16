@@ -14,21 +14,27 @@
  * - A panic is a thrown `Panic`, or a host limit `panicOf` names; its trace is read off the stack.
  */
 
+import type { EmittedProgram } from '../../codegen/emit.ts';
 import type { Definition } from '../../definition/definition.ts';
 import type { CodeFunction } from '../../definition/tables/functions.ts';
-import { lifetimeOf } from '../../definition/tables/types.ts';
+import type { TypeReference } from '../../definition/tables/types.ts';
+import { disposeOf, lifetimeOf } from '../../definition/tables/types.ts';
 import { mapOf, valuesEqual } from '../../definition/values/equality.ts';
 import type { Value } from '../../definition/values/values.ts';
-import type { EmittedProgram } from '../../codegen/emit.ts';
+import { unreachable } from '../../foundation/structures/unreachable.ts';
 import { type HostFilling, panicOf } from '../natives.ts';
-import { bindNatives, type NativeBinding } from './natives.ts';
-import { runNatives } from './run-natives.ts';
+import { drawOf } from '../random-draws.ts';
+import { type Instance, type InvocationEnd, instanceEnding } from './instances.ts';
 import { Lifetimes } from './lifetimes.ts';
+import { answerOfMock } from './mock-answers.ts';
+import { Mocks } from './mocks.ts';
+import { bindNatives, type NativeBinding } from './natives.ts';
 import {
   Cell,
   Execution,
   type Frame,
   Future,
+  MockObject,
   Reference,
   Resource,
   type RunObject,
@@ -36,9 +42,9 @@ import {
   WeakReference,
 } from './objects.ts';
 import * as primitives from './primitives.ts';
-import { type Instance, type InvocationEnd, instanceEnding } from './instances.ts';
-import type { World } from './world.ts';
+import { runNatives } from './run-natives.ts';
 import { Traces } from './traces.ts';
+import type { World } from './world.ts';
 
 /** What a parked frame's resumable function returns. */
 const PARKED = Symbol('parked');
@@ -58,6 +64,7 @@ type Ready =
   | {
       readonly kind: 'invoke';
       readonly closure: Value;
+      readonly arguments: readonly Value[];
       readonly invocation: Invocation;
     };
 
@@ -106,7 +113,9 @@ export class Run {
   readonly #transients = new Map<string, Cell[]>();
   readonly #weakReferences = new WeakMap<RunObject, WeakReference>();
   #timers: { readonly at: bigint; readonly future: Future }[] = [];
-  readonly #arrivals: (() => void)[] = [];
+  readonly #arrivals: { readonly turn: () => void; readonly order: number }[] = [];
+  /** How many turns arrived at any run, which orders arrivals across runs (`firstArrival`). */
+  static #arrived = 0;
   #wake: (() => void) | undefined;
   /** How many host fillings are still pending. */
   #hostWork = 0;
@@ -116,11 +125,25 @@ export class Run {
   readonly instance: Instance;
   /** The instances beside it, which it reaches only through the world. */
   readonly world: World;
+  /** The secret seed of the instance's random source (§3.8 `random`), which its snapshot keeps. */
+  readonly seed: Uint8Array;
+  /** The mocks the instance holds, in a Definition built to run tests (§10). */
+  readonly mocks = new Mocks();
+  /** The host values this instance holds, by their payloads, each one object while held. */
+  readonly #resources = new Map<unknown, Resource>();
+  /**
+   * The entry an invocation starts with while it starts: a mock replaces calls of its target, never
+   * the function an instance or a context's call starts with (§10).
+   */
+  #starting: number | undefined;
+  /** What the listeners of the futures settling now settle, together once they all have. */
+  #following: (readonly [Future, Value])[] | undefined;
 
   constructor(definition: Definition, program: EmittedProgram, binding: NativeBinding) {
     this.definition = definition;
     this.instance = binding.instance;
     this.world = binding.world;
+    this.seed = binding.seed;
     this.lifetimes = new Lifetimes((object) => this.#disposed(object), definition.types);
     this.constants = definition.constants;
     for (const constant of this.constants) {
@@ -130,9 +153,10 @@ export class Run {
       ...binding,
       natives: { ...binding.natives, ...runNatives(this) },
     });
-    const made = new Function('rt', program.body) as (
-      rt: Run,
-    ) => { readonly site: Error; readonly entries: readonly Entry[] };
+    const made = new Function('rt', program.body) as (rt: Run) => {
+      readonly site: Error;
+      readonly entries: readonly Entry[];
+    };
     const { site, entries } = made(this);
     this.#entries = entries;
     this.#traces = new Traces(definition, program.lines, site);
@@ -209,7 +233,11 @@ export class Run {
   }
 
   /** The value at `path` in the place a root of `kind` in `root` reaches. */
-  readonly load = (kind: 'register' | 'cell' | 'reference', root: Value, path: readonly Step[]): Value => {
+  readonly load = (
+    kind: 'register' | 'cell' | 'reference',
+    root: Value,
+    path: readonly Step[],
+  ): Value => {
     let value = this.#rootValue(kind, root);
     for (const [part, position] of path) {
       value = ((value as unknown as Record<string, Value[]>)[part] ?? [])[position] ?? null;
@@ -310,8 +338,12 @@ export class Run {
    * Readies an invocation of `closure` in this run's instance: its function run as an execution of
    * it, `answer` told what it gave, or the instance's end if it panicked or had ended.
    */
-  invoke(closure: Value, answer: (end: InvocationEnd) => void, root = false): void {
-    this.#ready.push({ kind: 'invoke', closure, invocation: { answer, root } });
+  invoke(
+    closure: Value,
+    answer: (end: InvocationEnd) => void,
+    { root = false, passed = [] }: { readonly root?: boolean; readonly passed?: readonly Value[] } = {},
+  ): void {
+    this.#ready.push({ kind: 'invoke', closure, arguments: passed, invocation: { answer, root } });
   }
 
   /** Calls the function value `callee` with `passed`, as its entry is called. */
@@ -339,7 +371,11 @@ export class Run {
    * Starts async entry `index` with `passed`: runs it until it parks or returns; its future. Its
    * frame outlives the caller's step, so it holds what it was given until it ends.
    */
-  readonly start = (index: number, passed: readonly Value[], closure: Value | undefined): Future => {
+  readonly start = (
+    index: number,
+    passed: readonly Value[],
+    closure: Value | undefined,
+  ): Future => {
     const entry = this.definition.functions[index] as CodeFunction;
     const execution = new Execution(this.newId(), this.newId(), this.instance);
     passed.forEach((value, at) => {
@@ -374,9 +410,89 @@ export class Run {
     return future;
   };
 
-  readonly mocked = (): typeof NOT_MOCKED => NOT_MOCKED;
+  /**
+   * What the mock the call of entry `index` with `passed` reaches answers, held here or by an
+   * instance this one was spawned from (§10); `NOT_MOCKED` where none is held.
+   */
+  readonly mocked = (index: number, passed: readonly Value[]): unknown => {
+    if (this.#starting === index) {
+      this.#starting = undefined;
+      return NOT_MOCKED;
+    }
+    const mock = this.mocks.of(index);
+    const held = mock === undefined ? this.world.heldMock?.(this, index) : { holder: this, mock };
+    return held === undefined
+      ? NOT_MOCKED
+      : answerOfMock(this, held, passed, this.#resultType(index));
+  };
+
+  /** What entry `index` gives: an extern's result, or what a mock of a code entry answers. */
+  #resultType(index: number): TypeReference {
+    const entry = this.definition.functions[index];
+    if (entry?.kind === 'extern') {
+      return entry.result;
+    }
+    const mocked = entry?.instructions.find((each) => each.kind === 'mocked');
+    const type = mocked === undefined ? undefined : entry?.registers[mocked.dst]?.type;
+    return type ?? unreachable(`Entry ${String(index)} answers no mock.`);
+  }
+
+  /** Records the call of `mock`'s target with `passed`, then runs its replacement with them. */
+  answer(mock: MockObject, passed: readonly Value[]): unknown {
+    const entry = this.definition.functions[mock.target];
+    const types =
+      entry?.kind === 'code'
+        ? entry.registers.slice(0, entry.parameters.length).map(({ type }) => type)
+        : (entry?.parameters.map(({ type }) => type) ?? []);
+    // A call of a function of none is a `Unit`, the empty tuple's one value (§10 `calls()`).
+    const call: Value = passed.length === 0 ? null : { kind: 'tuple', elements: [...passed] };
+    this.lifetimes.adopt(call, { kind: 'tuple', elements: types });
+    mock.calls.push(call);
+    return this.callValue(mock.replacement, passed);
+  }
+
+  /**
+   * The host value of the extern type entry `type` holding `payload`, which this instance got from
+   * a call and so owns (§7, §9): one object per payload while it is held, so it compares equal to
+   * itself as it comes back.
+   */
+  resource(type: number, payload: unknown): Resource {
+    const known = this.#resources.get(payload);
+    if (known !== undefined) {
+      return known;
+    }
+    const made = new Resource(this.newId(), type, payload);
+    this.#resources.set(payload, made);
+    return made;
+  }
+
+  /** Holds `mock`, read back from a snapshot, as it was held when written. */
+  restoredMock(mock: MockObject): void {
+    this.mocks.hold(mock);
+  }
+
+  /** Knows `resource`, read back from a snapshot, as the one host value for its payload. */
+  restoredResource(resource: Resource): void {
+    if (!resource.disposed) {
+      this.#resources.set(resource.payload, resource);
+    }
+  }
+
+  /** Holds a mock replacing entry `target` with `replacement` (§10); its handle. */
+  mock(target: number, replacement: Value): MockObject {
+    const mock = new MockObject(this.newId(), target, replacement);
+    this.lifetimes.hold(replacement);
+    this.mocks.hold(mock);
+    return mock;
+  }
 
   readonly unreachableHere = (): Error => new Error('Control reached code no path reaches.');
+
+  /** The instance's next random draw (§3.8 `random`): a segment run again draws the same ones (§5). */
+  draw(): Uint8Array {
+    this.instance.draws += 1;
+    return drawOf(this.seed, this.instance.draws - 1);
+  }
 
   /** The native bound to extern `index`. */
   native(index: number): Entry {
@@ -397,6 +513,22 @@ export class Run {
 
   /** The execution whose code runs now, as simple code nested in it reads its call (§7). */
   readonly currentExecution = (): Execution | undefined => this.#running;
+
+  /**
+   * What `run` gives, run as a call of its own: code the run calls outside every execution (a
+   * readied callback, another instance's mock answered here) still has a call, which a wait it
+   * makes names (`currentCall`), though it never parks. Its panic ends an ista instance, which
+   * gives nothing.
+   */
+  asCall<Result>(run: () => Result): Result | undefined {
+    const outer = this.#running;
+    this.#running = new Execution(this.newId(), this.newId(), this.instance);
+    try {
+      return this.#guarded(run);
+    } finally {
+      this.#running = outer;
+    }
+  }
 
   /**
    * Readies `execution` to resume with `decision`, the position its wait was decided for: decided
@@ -535,10 +667,20 @@ export class Run {
 
   /**
    * Settles each future with its value, which it holds, calling every callback waiting on any of
-   * them at once, in the settle order (spec §8): by rank, then as they were added.
+   * them at once, in the settle order (spec §8): by rank, then as they were added. What its
+   * listeners settle in the run settles together after them, as futures following these do (a
+   * mock's answer, mock-answers.ts).
    */
   settleTogether(settling: readonly (readonly [Future, Value])[]): void {
-    const waiting: { readonly callback: Value; readonly rank: readonly bigint[]; readonly value: Value }[] = [];
+    if (this.#following !== undefined) {
+      this.#following.push(...settling);
+      return;
+    }
+    const waiting: {
+      readonly callback: Value;
+      readonly rank: readonly bigint[];
+      readonly value: Value;
+    }[] = [];
     for (const [future, value] of settling) {
       if (future.settled) {
         continue;
@@ -557,10 +699,19 @@ export class Run {
       this.lifetimes.letGo(result as Value);
       this.lifetimes.letGo(callback);
     }
-    for (const [future, value] of settling) {
-      for (const listener of future.listeners.splice(0)) {
-        listener(value);
+    const following: (readonly [Future, Value])[] = [];
+    this.#following = following;
+    try {
+      for (const [future, value] of settling) {
+        for (const listener of future.listeners.splice(0)) {
+          listener(value);
+        }
       }
+    } finally {
+      this.#following = undefined;
+    }
+    if (following.length > 0) {
+      this.settleTogether(following);
     }
   }
 
@@ -639,10 +790,19 @@ export class Run {
 
   /** Readies `turn`, arriving from outside the run, and wakes what waits for an arrival. */
   arrive(turn: () => void): void {
-    this.#arrivals.push(turn);
+    this.#arrivals.push({ turn, order: Run.#arrived });
+    Run.#arrived += 1;
     const wake = this.#wake;
     this.#wake = undefined;
     wake?.();
+  }
+
+  /**
+   * Where the oldest turn waiting to run arrived among every run's arrivals, so a world runs runs
+   * in the order their turns arrived; undefined with none waiting.
+   */
+  get firstArrival(): number | undefined {
+    return this.#arrivals[0]?.order;
   }
 
   /** Settles once something arrives from outside the run, at once if something has. */
@@ -660,7 +820,8 @@ export class Run {
    */
   takeArrivals(done: () => boolean = () => false, untilParked = false): boolean {
     let took = false;
-    for (let turn = this.#arrivals.shift(); turn !== undefined; turn = this.#arrivals.shift()) {
+    for (let next = this.#arrivals.shift(); next !== undefined; next = this.#arrivals.shift()) {
+      const { turn } = next;
       took = true;
       turn();
       this.drain(done, untilParked);
@@ -688,7 +849,7 @@ export class Run {
       } else if (next.kind === 'invoke') {
         this.#invoked(next);
       } else {
-        const result = this.callValue(next.closure, next.arguments);
+        const result = this.asCall(() => this.callValue(next.closure, next.arguments));
         this.lifetimes.letGo(result as Value, next.closure, ...next.arguments);
       }
     }
@@ -714,7 +875,7 @@ export class Run {
   }
 
   /** Runs an invocation readied by `invoke`, its instance's panic ending it. */
-  #invoked({ closure, invocation }: Extract<Ready, { kind: 'invoke' }>): void {
+  #invoked({ closure, arguments: passed, invocation }: Extract<Ready, { kind: 'invoke' }>): void {
     const { instance } = this;
     if (instance.end !== undefined) {
       invocation.answer(instance.end);
@@ -723,12 +884,25 @@ export class Run {
     if (!invocation.root) {
       instance.endWatchers.push(invocation.answer);
     }
-    const given = this.#guarded(() => this.callValue(closure, []));
+    const given = this.#guarded(() => this.#started(closure, passed));
     if (given instanceof Future) {
       this.attachInvocation(given, invocation);
     } else if (instance.end === undefined) {
       // A plain function's call gives its value at once (§9).
       this.#answered(invocation, given as Value);
+    }
+  }
+
+  /**
+   * What `closure`'s function gives, started as an invocation: a mock replaces calls of its target,
+   * never the function an instance or a context's call starts with (§10).
+   */
+  #started(closure: Value, passed: readonly Value[]): unknown {
+    this.#starting = (closure as { readonly function: number }).function;
+    try {
+      return this.callValue(closure, passed);
+    } finally {
+      this.#starting = undefined;
     }
   }
 
@@ -898,6 +1072,16 @@ export class Run {
     }
     if (object instanceof Resource) {
       object.disposed = true;
+      this.#resources.delete(object.payload);
+      // A host's value: its host releases it through the type's `dispose` (§7, §9).
+      const dispose = disposeOf(this.definition.types, object.type);
+      if (dispose !== undefined) {
+        this.lifetimes.letGo(this.call(dispose, [object as unknown as Value]) as Value);
+      }
+    }
+    if (object instanceof MockObject) {
+      this.mocks.release(object);
+      return [object.replacement, ...object.calls];
     }
     return [];
   }
@@ -923,7 +1107,6 @@ export class Run {
   callerTrace(): string {
     return this.#traces.callerOf(new Error().stack);
   }
-
 }
 
 /** Ranks in order: element by element, a rank before the longer ranks it begins. */

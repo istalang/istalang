@@ -15,6 +15,7 @@
  *   again (§3.12) and a termination disposes what it held then (§7).
  */
 
+import { bytesToHex, hexToBytes } from '@noble/hashes/utils.js';
 import type { Definition } from '../../definition/definition.ts';
 import { locationOf } from '../../definition/traces.ts';
 import { copied } from '../../definition/values/replacing.ts';
@@ -23,10 +24,12 @@ import type { EmittedProgram } from '../../codegen/emit.ts';
 import type { Clock } from '../clock.ts';
 import type { LogRecord, StartOptions } from '../instance-state.ts';
 import type { Natives } from '../natives.ts';
+import { seedBytes } from '../random-draws.ts';
 import type { InstanceStore } from '../store.ts';
 import { Instance, type InstanceEnd, type InvocationEnd } from '../run/instances.ts';
+import type { HeldMock } from '../run/mock-answers.ts';
 import { type Invocation, Run } from '../run/run.ts';
-import type { World } from '../run/world.ts';
+import type { Spawning, TestingWorld, World } from '../run/world.ts';
 import { type PersistedStatus, type Snapshot, snapshotFormat } from '../snapshot/format.ts';
 import { restore, rootInvocation } from '../snapshot/restore.ts';
 import { snapshotOf, TooDeep } from '../snapshot/write.ts';
@@ -46,6 +49,8 @@ export interface WorldSeams {
   readonly clock: Clock;
   readonly seed: () => Uint8Array;
   readonly reports?: HostReports;
+  /** What a test's code asks of the world, when the world runs a test (§10). */
+  readonly testing?: TestingWorld;
 }
 
 type Input = (run: Run) => void;
@@ -54,7 +59,11 @@ type Input = (run: Run) => void;
 export class Resident {
   readonly name: string;
   readonly program: WorldProgram;
+  /** The seed of its random source: a host's for one it starts, a draw of its parent's for one spawned. */
+  readonly seed: Uint8Array;
   crashEveryAwait: boolean;
+  /** The entry encoding its outcome, a spawned instance's whose type a codec writes (§9). */
+  encoder: number | undefined;
   status: PersistedStatus = { kind: 'active' };
   run: Run;
   /** The snapshot it last committed, if it ever did. */
@@ -78,9 +87,14 @@ export class Resident {
   /** The instances it spawned in the segment committing next. */
   spawned: string[] = [];
 
-  constructor(name: string, program: WorldProgram, run: Run, crashEveryAwait: boolean) {
+  constructor(
+    { name, program, seed }: { readonly name: string; readonly program: WorldProgram; readonly seed: Uint8Array },
+    run: Run,
+    crashEveryAwait: boolean,
+  ) {
     this.name = name;
     this.program = program;
+    this.seed = seed;
     this.run = run;
     this.crashEveryAwait = crashEveryAwait;
   }
@@ -101,9 +115,14 @@ export class DurableWorld implements World {
   /** What waits on the end of an instance spawned but not yet made, its parent's segment uncommitted. */
   readonly #awaitingSpawn = new Map<string, ((end: InstanceEnd) => void)[]>();
 
+  readonly testing?: TestingWorld;
+
   constructor(seams: WorldSeams, bind: (hash: string) => WorldProgram) {
     this.seams = seams;
     this.#bind = bind;
+    if (seams.testing !== undefined) {
+      this.testing = seams.testing;
+    }
   }
 
   /** A live run of `program`, named `name`, which a host's start drives (§9). */
@@ -120,6 +139,7 @@ export class DurableWorld implements World {
       log,
       instance: new Instance(name, false),
       world: this,
+      version: program.hash,
     });
     this.#live.set(run, program);
     this.#options.set(run, options);
@@ -132,15 +152,19 @@ export class DurableWorld implements World {
     this.#options.delete(run);
   }
 
-  readonly spawn = (parent: Run, closure: Value): string => {
+  readonly spawn = (parent: Run, closure: Value, { options, encoder }: Spawning): string => {
     parent.instance.spawned += 1;
     const name = `${parent.instance.name}/${parent.instance.spawned}`;
     const sent = copied(closure);
     const owner = this.#residentOfRun(parent);
+    // Drawn as it spawns, in the parent's segment, so a segment run again spawns it alike (§5).
+    const seed = parent.draw().subarray(0, seedBytes);
     const started = () => {
-      const child = this.#made(name, this.#programOf(parent), owner?.crashEveryAwait ?? false);
+      const crashEveryAwait = options.crashEveryAwait ?? owner?.crashEveryAwait ?? false;
+      const child = this.#made({ name, program: this.#programOf(parent), seed }, crashEveryAwait);
       child.endWatchers.push(...(this.#awaitingSpawn.get(name) ?? []));
       this.#awaitingSpawn.delete(name);
+      child.encoder = encoder;
       child.unstarted = true;
       child.replay = sent;
       owner?.spawned.push(name);
@@ -154,17 +178,49 @@ export class DurableWorld implements World {
     return name;
   };
 
-  readonly call = (caller: Run, key: string, closure: Value, answer: (end: InvocationEnd) => void): void => {
+  readonly call = (
+    caller: Run,
+    key: string,
+    closure: Value,
+    answer: (end: InvocationEnd) => void,
+  ): void => {
+    this.invokeIn(caller, key, { closure, passed: [] }, answer);
+  };
+
+  /** Runs `closure` with `passed` in the context `key` (§9); `answer` is told, in `caller`, how it ended. */
+  invokeIn(
+    caller: Run,
+    key: string,
+    { closure, passed }: { readonly closure: Value; readonly passed: readonly Value[] },
+    answer: (end: InvocationEnd) => void,
+  ): void {
     const crashEveryAwait = this.#options.get(caller)?.crashEveryAwait ?? false;
     const context =
-      this.residents.get(key) ?? this.load(key) ?? this.#made(key, this.#programOf(caller), crashEveryAwait);
+      this.residents.get(key) ??
+      this.load(key) ??
+      this.#made({ name: key, program: this.#programOf(caller), seed: this.seams.seed() }, crashEveryAwait);
     const sent = copied(closure);
     this.feed(context, (run) =>
-      run.invoke(copied(sent), (end) => {
-        const crossed = end.kind === 'returned' ? { ...end, value: copied(end.value) } : end;
-        context.effects.push(() => caller.arrive(() => answer(crossed)));
-      }),
+      run.invoke(
+        copied(sent),
+        (end) => {
+          const crossed = end.kind === 'returned' ? { ...end, value: copied(end.value) } : end;
+          context.effects.push(() => caller.arrive(() => answer(crossed)));
+        },
+        { passed: passed.map(copied) },
+      ),
     );
+  }
+
+  readonly heldMock = (caller: Run, index: number): HeldMock | undefined => {
+    for (let name = parentOf(caller.instance.name); name !== undefined; name = parentOf(name)) {
+      const holder = this.residents.get(name)?.run;
+      const mock = holder?.mocks.of(index);
+      if (holder !== undefined && mock !== undefined) {
+        return { holder, mock };
+      }
+    }
+    return undefined;
   };
 
   readonly watchEnd = (watcher: Run, name: string, watch: (end: InstanceEnd) => void): void => {
@@ -190,8 +246,12 @@ export class DurableWorld implements World {
       return undefined;
     }
     const snapshot = snapshotFormat.read(text);
-    const resident = this.#made(name, this.#bind(snapshot.definition), snapshot.crashEveryAwait);
+    const resident = this.#made(
+      { name, program: this.#bind(snapshot.definition), seed: hexToBytes(snapshot.seed) },
+      snapshot.crashEveryAwait,
+    );
     resident.text = text;
+    resident.encoder = snapshot.encoder;
     this.#restoreInto(resident, snapshot);
     return resident;
   }
@@ -212,8 +272,10 @@ export class DurableWorld implements World {
         busy = run.takeArrivals(done) || busy;
         busy = run.drain(done) || busy;
       }
-      for (const resident of [...this.residents.values()]) {
-        busy = this.#advanced(resident) || busy;
+      const unvisited = new Set(this.residents.values());
+      for (let next = firstArrived(unvisited); next !== undefined; next = firstArrived(unvisited)) {
+        unvisited.delete(next);
+        busy = this.#advanced(next) || busy;
       }
     }
   }
@@ -295,7 +357,7 @@ export class DurableWorld implements World {
       end === undefined
         ? { kind: 'active' }
         : end.kind === 'finished'
-          ? { kind: 'finished', outcome: end.outcome }
+          ? { kind: 'finished', outcome: end.outcome, ...(end.encoded === undefined ? {} : { encoded: end.encoded }) }
           : { kind: 'panicked', message: end.message, trace: end.trace, segmentStartedAt: segment.startedAt };
     let text: string;
     try {
@@ -324,11 +386,11 @@ export class DurableWorld implements World {
 
   /** The text committing `resident` with `status`: a panicked one as it stood before the segment. */
   #written(resident: Resident, status: PersistedStatus): string {
-    const written = { definition: resident.program.hash, status, crashEveryAwait: resident.crashEveryAwait };
+    const written = { definition: resident.program.hash, status, crashEveryAwait: resident.crashEveryAwait, ...encoderOf(resident) };
     if (status.kind !== 'panicked') {
       return snapshotFormat.write(snapshotOf(resident.run, written)).text;
     }
-    const before = resident.text === undefined ? emptySnapshot(resident.name) : snapshotFormat.read(resident.text);
+    const before = resident.text === undefined ? emptySnapshot(resident) : snapshotFormat.read(resident.text);
     const replay = before.status.kind === 'active' && resident.text !== undefined ? undefined : resident.replay;
     return snapshotFormat.write({ ...before, ...written, status: { ...status, ...(replay === undefined ? {} : { replay }) } as never }).text;
   }
@@ -369,8 +431,10 @@ export class DurableWorld implements World {
     for (const input of inputs) {
       input(resident.run);
     }
-    for (let busy = true; busy; ) {
-      busy = resident.run.takeArrivals() || resident.run.drain();
+    // It stops where the first run stopped, at its first park, so the two run the same segment.
+    const { run } = resident;
+    for (let busy = true; busy && !run.parkedSinceCommit; ) {
+      busy = run.takeArrivals(undefined, true) || run.drain(undefined, true);
     }
   }
 
@@ -383,8 +447,8 @@ export class DurableWorld implements World {
 
   /** Starts in `run` the call `resident` was spawned to run: its instance ends with what it gave. */
   spawned(resident: Resident, run: Run, closure: Value): void {
-    const { answer } = rootInvocation(run);
-    run.invoke(closure, answer, true);
+    const { answer } = rootInvocation(run, resident.encoder);
+    run.invoke(closure, answer, { root: true });
     resident.replay = closure;
   }
 
@@ -409,16 +473,19 @@ export class DurableWorld implements World {
     run.finish([...run.instance.contextConstants.values()]);
     run.instance.contextConstants.clear();
     resident.status = { kind: 'terminated', ...panic };
-    const written = { definition: resident.program.hash, status: resident.status, crashEveryAwait: resident.crashEveryAwait };
-    resident.text = snapshotFormat.write({ ...emptySnapshot(resident.name), ...written }).text;
+    const written = { definition: resident.program.hash, status: resident.status, crashEveryAwait: resident.crashEveryAwait, ...encoderOf(resident) };
+    resident.text = snapshotFormat.write({ ...emptySnapshot(resident), ...written }).text;
     this.seams.store.writeSnapshot(resident.name, resident.text);
     this.#letOut(resident);
   }
 
-  #made(name: string, program: WorldProgram, crashEveryAwait: boolean): Resident {
-    const resident = new Resident(name, program, undefined as never, crashEveryAwait);
-    resident.run = this.#runOf(name, resident);
-    this.residents.set(name, resident);
+  #made(
+    made: { readonly name: string; readonly program: WorldProgram; readonly seed: Uint8Array },
+    crashEveryAwait: boolean,
+  ): Resident {
+    const resident = new Resident(made, undefined as never, crashEveryAwait);
+    resident.run = this.#runOf(made.name, resident);
+    this.residents.set(made.name, resident);
     return resident;
   }
 
@@ -428,10 +495,11 @@ export class DurableWorld implements World {
     return new Run(program.definition, program.emitted, {
       natives: this.seams.natives,
       clock: { now: () => resident.startedAt, until: this.seams.clock.until },
-      seed: this.seams.seed(),
+      seed: resident.seed,
       log: (record) => resident.logs.push(record),
       instance: new Instance(name, true),
       world: this,
+      version: program.hash,
     });
   }
 
@@ -448,11 +516,38 @@ export class DurableWorld implements World {
   }
 }
 
+/** The instance `name` was spawned from, named before its last `/`; none for one spawned by none. */
+function parentOf(name: string): string | undefined {
+  const at = name.lastIndexOf('/');
+  return at < 0 ? undefined : name.slice(0, at);
+}
+
+/**
+ * Which of `residents` runs next: the one whose waiting turn arrived first among every run's, so
+ * what settles first runs first, whichever instance waits on it (§6); else the first made.
+ */
+function firstArrived(residents: ReadonlySet<Resident>): Resident | undefined {
+  let first: Resident | undefined;
+  for (const resident of residents) {
+    const at = resident.run.firstArrival;
+    const firstAt = first?.run.firstArrival;
+    if (first === undefined || (at !== undefined && (firstAt === undefined || at < firstAt))) {
+      first = resident;
+    }
+  }
+  return first;
+}
+
+/** What a snapshot of `resident` keeps of its outcome's encoder. */
+function encoderOf({ encoder }: Resident): { readonly encoder?: number } {
+  return encoder === undefined ? {} : { encoder };
+}
+
 /** How an instance in `status` ended; undefined while it runs. */
 export function endOf(status: PersistedStatus): InstanceEnd | undefined {
   switch (status.kind) {
     case 'finished':
-      return { kind: 'finished', outcome: status.outcome };
+      return { kind: 'finished', outcome: status.outcome, ...(status.encoded === undefined ? {} : { encoded: status.encoded }) };
     case 'panicked':
     case 'terminated':
       return { kind: 'panicked', message: status.message, trace: status.trace };
@@ -462,12 +557,13 @@ export function endOf(status: PersistedStatus): InstanceEnd | undefined {
 }
 
 /** A snapshot of an instance that never committed: nothing in it yet. */
-function emptySnapshot(instance: string): Snapshot {
+function emptySnapshot({ name, seed }: Resident): Snapshot {
   return {
     definition: '0'.repeat(64),
-    instance,
+    instance: name,
     status: { kind: 'active' },
     serial: 0,
+    seed: bytesToHex(seed),
     draws: 0,
     spawned: 0,
     crashEveryAwait: false,

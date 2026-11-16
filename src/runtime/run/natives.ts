@@ -12,7 +12,11 @@
  *   resources, and the program's types.
  */
 
-import { drawOf } from '../random-draws.ts';
+import type { ExternFunction } from '../../definition/tables/functions.ts';
+import { outcomeEncoderOf, type TypeDefinition } from '../../definition/tables/types.ts';
+import { errorOf, okOf } from '../../definition/values/declared-values.ts';
+import { deleteEntryInPlace, setEntryInPlace } from '../../definition/values/equality.ts';
+import type { CompositeValue, Value } from '../../definition/values/values.ts';
 import type { Clock } from '../clock.ts';
 import type { LogRecord } from '../instance-state.ts';
 import {
@@ -22,26 +26,18 @@ import {
   requireNatives,
   type ValueChanges,
 } from '../natives.ts';
-import type { ExternFunction } from '../../definition/tables/functions.ts';
-import {
-  deleteEntryInPlace,
-  setEntryInPlace,
-} from '../../definition/values/equality.ts';
-import type { CompositeValue, Value } from '../../definition/values/values.ts';
-import { errorOf, okOf } from '../../definition/values/declared-values.ts';
-import type { TypeDefinition } from '../../definition/tables/types.ts';
 import { type Instance, instanceEnding } from './instances.ts';
-import type { World } from './world.ts';
 import {
   Execution,
   Future,
+  type MockObject,
   Reference,
   Resource,
   type RunObject,
   type WeakReference,
 } from './objects.ts';
-
 import type { Run } from './run.ts';
+import type { World } from './world.ts';
 
 /** What binding natives takes: the natives table, the clock, the seed, and where logs go. */
 export interface NativeBinding {
@@ -53,6 +49,8 @@ export interface NativeBinding {
   /** The instances beside it. */
   readonly world: World;
   readonly log: (record: LogRecord) => void;
+  /** The program's version, its Definition's content hash, which `runtime.version()` gives (§9). */
+  readonly version: string;
 }
 
 type Entry = (...parameters: never[]) => unknown;
@@ -61,23 +59,24 @@ type Entry = (...parameters: never[]) => unknown;
 export function bindNatives(run: Run, binding: NativeBinding): (index: number) => Entry {
   const { functions } = run.definition;
   requireNatives(functions, binding.natives);
-  const random = {
-    draw: () => {
-      const { instance } = run;
-      instance.draws += 1;
-      return drawOf(binding.seed, instance.draws - 1);
-    },
-  };
+  const random = { draw: () => run.draw() };
   return (index) => {
     const entry = functions[index] as ExternFunction;
     const native = binding.natives[entry.key] as Native;
     let current: readonly Value[] = [];
     const context = contextOf(run, entry, { binding, random, passed: () => current });
-  
+
     const references = entry.parameters.flatMap((parameter, at) =>
       parameter.type.kind === 'reference' ? [at] : [],
     );
+    const mocking = run.definition.purpose.kind === 'tests';
     return ((...given: Value[]) => {
+      if (mocking) {
+        const answer = run.mocked(index, given);
+        if (answer !== run.NOT_MOCKED) {
+          return answer;
+        }
+      }
       const outer = current;
       current = given;
       // A native reads what a `&` argument refers to, and changes it through `changes`.
@@ -127,7 +126,7 @@ function contextOf(
     get instance() {
       return run.instance.name;
     },
-    version: '',
+    version: binding.version,
     now: () => binding.clock.now(),
     changes: (position) => {
       const parameter = entry.parameters[position]?.type;
@@ -165,16 +164,19 @@ function contextOf(
         binding.log({ instance: run.instance.name, time: binding.clock.now(), ...record }),
     },
     instances: {
-      spawn: (closure, type) =>
-        ({ kind: 'extern', type, payload: run.world.spawn(run, closure) }) as Value,
+      spawn: (closure, type, options) => {
+        const encoder = outcomeEncoderOf(types, type);
+        return { kind: 'extern', type, payload: run.world.spawn(run, closure, { options, encoder }) } as Value;
+      },
       ended: (name) => run.watchEnd(name) as unknown as Value,
     },
     testing: {
-      mock: unavailable('the test world'),
-      calls: unavailable('the test world'),
-      inspect: unavailable('the test world'),
-      watch: unavailable('the test world'),
-      handle: unavailable('the test world'),
+      mock: (target, replacement) => run.mock(target, replacement) as unknown as Value,
+      calls: (mock) => (mock as unknown as MockObject).calls,
+      inspect: (instance) => run.world.testing?.inspect(instance),
+      watch: (instance, until) =>
+        (run.world.testing ?? unavailable('the test world')()).watch(run, instance, until),
+      handle: (type) => (run.world.testing ?? unavailable('the test world')()).handle(type),
     },
     contexts: {
       hostStore: (type) => ({ kind: 'extern', type, payload: 'host' }) as Value,
@@ -250,4 +252,3 @@ export function changesOf(run: Run, reference: Reference, counted: boolean): Val
     },
   };
 }
-

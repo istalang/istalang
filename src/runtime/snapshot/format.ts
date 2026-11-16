@@ -73,6 +73,13 @@ const object = z.discriminatedUnion('kind', [
     payload: z.json(),
     disposed: z.boolean(),
   }),
+  z.strictObject({
+    kind: z.literal('mock'),
+    id: objectId,
+    target: functionId,
+    replacement: value,
+    calls: z.array(value),
+  }),
 ]);
 
 export type PersistedObject = z.output<typeof object>;
@@ -88,7 +95,7 @@ const status = z.discriminatedUnion('kind', [
     /** The call its failed segment was starting, before it ever committed, which a retry runs. */
     replay: value.optional(),
   }),
-  z.strictObject({ kind: z.literal('finished'), outcome: value }),
+  z.strictObject({ kind: z.literal('finished'), outcome: value, encoded: value.optional() }),
   z.strictObject({ kind: z.literal('terminated'), message: z.string(), trace: z.string() }),
 ]);
 
@@ -100,9 +107,13 @@ const body = z.strictObject({
   status,
   /** The id the instance's next object takes. */
   serial: count,
+  /** The secret seed of its random source (§3.8 `random`), and how many draws it made. */
+  seed: z.string().regex(/^[0-9a-f]{64}$/u),
   draws: count,
   spawned: count,
   crashEveryAwait: z.boolean(),
+  /** The entry encoding the outcome of a spawned instance, when a codec writes it (§9). */
+  encoder: functionId.optional(),
   objects: z.array(object),
   /** The executions that haven't ended, in the order they started. */
   live: z.array(objectId),

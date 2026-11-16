@@ -13,12 +13,14 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { vi } from 'vitest';
+import { testModules } from '../../src/cli/commands/test.ts';
 import { loadHostModule } from '../../src/cli/host-module.ts';
 import { compileProgram, diagnose } from '../../src/compiler/compile.ts';
 import { moduleIdOf } from '../../src/compiler/program/program.ts';
 import type { Definition } from '../../src/definition/definition.ts';
 import { definitionFormat } from '../../src/definition/definition.ts';
 import { isError } from '../../src/foundation/diagnostics/diagnostic.ts';
+import { tempProject } from '../../src/project/project.test-kit.ts';
 import { loadProject } from '../../src/project/project.ts';
 import type { HostExterns } from '../../src/runtime/boundary/host-natives.ts';
 import { ManualClock } from '../../src/runtime/clock.ts';
@@ -156,11 +158,30 @@ export async function observeProgram(
  * The lines `ista test` prints for the test modules `paths` in `project`, every module under it
  * without any; throws when the run doesn't pass, whose output is no result to record.
  */
-export function observeSuite(
-  _project: SuiteProject,
-  _paths: readonly string[],
+export async function observeSuite(
+  project: SuiteProject,
+  paths: readonly string[],
 ): Promise<readonly string[]> {
-  return Promise.reject(new Error('ista test runs on the new pipeline later in R1.'));
+  const directory = 'files' in project ? tempProject(project.files) : project.directory;
+  let out = '';
+  let err = '';
+  const code = await testModules(
+    paths,
+    { timeout: '5000' },
+    {
+      cwd: directory,
+      write: (text) => {
+        out += text;
+      },
+      writeError: (text) => {
+        err += text;
+      },
+    },
+  );
+  if (code !== 0 || err !== '') {
+    throw new Error(`ista test exited ${String(code)}:\n${out}${err}`);
+  }
+  return out.trimEnd().split('\n');
 }
 
 /** What each step of `scenario` showed, in order (scenarios.ts). */

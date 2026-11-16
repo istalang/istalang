@@ -29,16 +29,17 @@
 import type { FunctionId, Register } from '../../../definition/operands.ts';
 import type { CodeFunction } from '../../../definition/tables/functions.ts';
 import type { Value } from '../../../definition/values/values.ts';
+import { wellKnown } from '../../../foundation/language/well-known/index.ts';
 import { unreachable } from '../../../foundation/structures/unreachable.ts';
 import type { Checker } from '../../checker/check.ts';
 import type { CheckedBody } from '../../checker/surface/checked-body.ts';
 import type { ResolvedCall } from '../../checker/surface/resolved-call.ts';
 import type { FunctionInstance } from '../../checker/surface/witness-closing.ts';
-import type { Fit } from '../../checker/types/fitting/fit/index.ts';
-import type { Type } from '../../checker/types/type/index.ts';
 import { substitutionOf } from '../../checker/surface/witness-closing.ts';
+import type { Fit } from '../../checker/types/fitting/fit/index.ts';
 import { noSubstitution, type Substitution } from '../../checker/types/parts/substitution.ts';
-import type { WaitingMode } from '../calls/waits.ts';
+import type { Type } from '../../checker/types/type/index.ts';
+import { literalType } from '../../checker/types/type/primitives.ts';
 import { type ModuleId, programModule } from '../../program/program.ts';
 import type {
   ContextConstantDeclaration,
@@ -49,6 +50,8 @@ import type { Block } from '../../syntax/statements/index.ts';
 import type { NodeOf } from '../../syntax/tree/node.ts';
 import type { AnchoredSpan } from '../../syntax/tree/positions.ts';
 import { type ClosedCall, closeCallWithin } from '../calls/closed-calls.ts';
+import type { WaitingMode } from '../calls/waits.ts';
+import { awaitFuture } from '../calls/waits.ts';
 import type { CodeContext, FunctionContext } from '../context.ts';
 import { VariableRegisters } from '../flow/variables.ts';
 import { writeFlow } from '../flow/writer.ts';
@@ -172,7 +175,9 @@ class FunctionLowering implements EntryContext {
 
   waitingMode(): WaitingMode {
     const { mode } = this.frame;
-    return mode === 'simple' ? unreachable(`Simple code waits in ${this.frame.header.name}.`) : mode;
+    return mode === 'simple'
+      ? unreachable(`Simple code waits in ${this.frame.header.name}.`)
+      : mode;
   }
 
   get body(): CheckedBody {
@@ -214,8 +219,31 @@ class FunctionLowering implements EntryContext {
   /** The code entry for a function instance, whose body is `block`. */
   lower(block: Block): CodeFunction {
     const { listed, values } = declareFrame(this, this.#slots());
+    if (this.tables.mocking) {
+      this.#mockable(block.span, values);
+    }
     this.#write(block, values);
     return this.#entry(listed);
+  }
+
+  /**
+   * Hands a call to the mock held for the function, past its prologue, so its replacement takes
+   * every parameter (§10): an async function's replacement gives a future, awaited for the value.
+   */
+  #mockable(span: AnchoredSpan, passed: readonly Register[]): void {
+    const { mode, result } = this.frame;
+    if (mode === 'simple') {
+      const given = this.tables.types.reference(result);
+      this.code.mocked(span, { passed, given }, (answer) => answer);
+      return;
+    }
+    const future =
+      this.checker.wellKnownType(wellKnown.future, [result, literalType(mode)]) ??
+      unreachable('The prelude has futures.');
+    const given = this.tables.types.reference(future);
+    this.code.mocked(span, { passed, given }, (answer) =>
+      awaitFuture(this, { future: answer, type: future, mode }, span),
+    );
   }
 
   /**
@@ -224,8 +252,12 @@ class FunctionLowering implements EntryContext {
    */
   lowerBuilt(
     build: (context: FunctionContext, parameters: readonly Register[]) => Register,
+    { mockable }: { readonly mockable: boolean } = { mockable: false },
   ): CodeFunction {
     const { listed, values } = declareFrame(this, this.#slots());
+    if (mockable && this.tables.mocking) {
+      this.#mockable(this.frame.function.span, values);
+    }
     const value = build(this, values);
     this.code.return(value, this.frame.function.span);
     return this.#entry(listed);

@@ -17,7 +17,7 @@ import type { Future } from './objects.ts';
 
 /** An instance's state: running, or ended with what it gave or the panic that ended it. */
 export type InstanceEnd =
-  | { readonly kind: 'finished'; readonly outcome: Value }
+  | { readonly kind: 'finished'; readonly outcome: Value; readonly encoded?: Value }
   | { readonly kind: 'panicked'; readonly message: string; readonly trace: string };
 
 export class Instance {

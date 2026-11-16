@@ -125,6 +125,11 @@ const external = z.strictObject({
   ...common,
   role: externRole.optional(),
   dispose: functionId.optional(),
+  /**
+   * An `Instance<T>` entry's, when a codec writes `T`: the entry encoding the outcome of every
+   * instance spawned as one (§9), whichever native spawns it.
+   */
+  encoder: functionId.optional(),
 });
 
 const recursiveAlias = z.strictObject({
@@ -237,6 +242,18 @@ export function hasRole(
 ): boolean {
   const entry = types[type];
   return (entry?.kind === 'extern' || entry?.kind === 'enum') && entry.role === role;
+}
+
+/**
+ * The entry encoding the outcome of an instance spawned as the `Instance<T>` type entry `type` of
+ * `types` (§9); undefined when no codec writes `T`.
+ */
+export function outcomeEncoderOf(
+  types: readonly TypeDefinition[],
+  type: number,
+): number | undefined {
+  const entry = types[type];
+  return entry?.kind === 'extern' ? entry.encoder : undefined;
 }
 
 /**

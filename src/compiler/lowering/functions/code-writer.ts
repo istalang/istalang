@@ -152,7 +152,7 @@ export class CodeWriter {
   /** Lets go of what `registers` own; borrowed ones and transients' cells own nothing. */
   letGo(registers: readonly Register[], span: AnchoredSpan): void {
     const owning = [...new Set(registers)].filter(
-      (register) => !this.isBorrowed(register) && !this.#transients.has(register),
+      (register) => !(this.isBorrowed(register) || this.#transients.has(register)),
     );
     if (owning.length > 0) {
       this.emit({ kind: 'letGo', span, registers: owning });
@@ -259,17 +259,23 @@ export class CodeWriter {
   }
 
   /**
-   * Where a mock is held for the entry (§10), its result for the parameters in a fresh register
-   * returned through the epilogue; else on to the body.
+   * Where a mock is held for the entry (§10): what its replacement gives for the parameters, of
+   * `given`, in a fresh register, which `answered` makes the entry's result, returned through the
+   * epilogue; else on to the body.
    */
-  mocked(span: AnchoredSpan): void {
-    const dst = this.allocate(this.#resultType);
+  mocked(
+    span: AnchoredSpan,
+    { passed, given }: { readonly passed: readonly Register[]; readonly given: TypeReference },
+    answered: (dst: Register) => Register,
+  ): void {
+    const dst = this.allocate(given);
     const landing = this.newLabel();
     const body = this.newLabel();
     const instruction: Extract<WrittenInstruction, { kind: 'mocked' }> = {
       kind: 'mocked',
       span,
       dst,
+      arguments: [...passed],
       landing: 0,
     };
     this.emit(instruction);
@@ -278,7 +284,7 @@ export class CodeWriter {
     });
     this.jump(body, span);
     this.place(landing);
-    this.return(dst, span);
+    this.return(answered(dst), span);
     this.place(body);
   }
 
@@ -348,10 +354,7 @@ export class CodeWriter {
     }
     if (this.#parks) {
       this.place(this.#stopEpilogue);
-      this.letGo(
-        this.#result === undefined ? owning() : [...owning(), this.#result],
-        span,
-      );
+      this.letGo(this.#result === undefined ? owning() : [...owning(), this.#result], span);
       this.emit({ kind: 'stopped', span });
     }
     if (this.#patches.size > 0) {

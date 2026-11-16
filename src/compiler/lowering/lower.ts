@@ -57,7 +57,7 @@ import { type ClosingEntry, DefinitionTables, type PendingEntry } from './tables
  * started through its start entry, as a host starts any of the others.
  */
 export function lower(checker: Checker, main: FunctionDeclaration): Definition {
-  const tables = new DefinitionTables(checker);
+  const tables = new DefinitionTables(checker, { mocking: false });
   const started = startableOf(checker, main);
   if (started === undefined) {
     unreachable("'main' can't be started; the checker should have said why.");
@@ -86,7 +86,7 @@ interface Suite {
  * listing and running of their tests reach, which every test's instance starts from.
  */
 export function lowerTests(checker: Checker, suites: readonly Suite[]): Definition {
-  const tables = new DefinitionTables(checker);
+  const tables = new DefinitionTables(checker, { mocking: true });
   const indexOf = (declaration: FunctionDeclaration) =>
     tables.functionIndex(rootInstance(checker, declaration));
   const runner = (name: string) =>

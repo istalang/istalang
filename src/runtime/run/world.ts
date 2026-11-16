@@ -7,14 +7,18 @@
  * (`Run.arrive`), never inside another run's step.
  */
 
+import type { TypeId } from '../../definition/operands.ts';
 import type { Value } from '../../definition/values/values.ts';
+import type { Inspection, SpawnOptions } from '../instance-state.ts';
+import type { TestWatch } from '../natives.ts';
 import type { InstanceEnd, InvocationEnd } from './instances.ts';
+import type { HeldMock } from './mock-answers.ts';
 import type { Run } from './run.ts';
 
 /** What one run asks of the instances beside it. */
 export interface World {
   /** Starts `closure` as a new instance `parent` spawned (§9); the new instance's name. */
-  readonly spawn: (parent: Run, closure: Value) => string;
+  readonly spawn: (parent: Run, closure: Value, spawning: Spawning) => string;
   /** Runs `closure` in the context `key` (§9); `answer` is told, in `caller`, how it ended. */
   readonly call: (
     caller: Run,
@@ -24,4 +28,27 @@ export interface World {
   ) => void;
   /** Tells `watch`, in `watcher`, how the instance `name` ended, once it has. */
   readonly watchEnd: (watcher: Run, name: string, watch: (end: InstanceEnd) => void) => void;
+  /**
+   * The newest mock of entry `index` held by an instance `caller` was spawned from, the nearest
+   * holding one (§10); undefined where none does.
+   */
+  readonly heldMock?: (caller: Run, index: number) => HeldMock | undefined;
+  /** What a test asks of the instances beside it (§10); a world running no test has none. */
+  readonly testing?: TestingWorld;
+}
+
+/** How an instance is spawned: its options, and the entry encoding its outcome, if a codec does. */
+export interface Spawning {
+  readonly options: SpawnOptions;
+  readonly encoder: number | undefined;
+}
+
+/** What a test's code asks of its world (§10, testing.ista). */
+export interface TestingWorld {
+  /** Where the instance `name` stands and waits; undefined before it exists. */
+  readonly inspect: (name: string) => Inspection | undefined;
+  /** A future, in `watcher`, that settles once the instance `name` is idle or at a waypoint. */
+  readonly watch: (watcher: Run, name: string, until: TestWatch) => Value;
+  /** A value of the host type entry `type` equal to no other. */
+  readonly handle: (type: TypeId) => Value;
 }

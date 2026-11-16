@@ -12,6 +12,8 @@
  * - Reading a register that is empty on every path reads nothing.
  * - `return` and `stopped` end the call: nothing may still own anything there but what `return`
  *   moves out.
+ * - A write that jumps when it finds a value (`contextConstant`, `mocked`) owns it only where it
+ *   jumps to; going on, it found none, and the register stays as it was.
  */
 
 import { type Handlers, handlerOf } from '../../foundation/structures/kind-table.ts';
@@ -27,6 +29,8 @@ type State = 'empty' | 'owning' | 'maybe';
 interface Effect {
   readonly moved: readonly Register[];
   readonly owned: readonly Register[];
+  /** What it writes owning only where it jumps to. */
+  readonly ownedWhereJumping: readonly Register[];
   readonly borrowed: readonly Register[];
   readonly letGo: readonly Register[];
 }
@@ -58,11 +62,12 @@ const effects: Handlers<CodeFunction, Instruction, [], Partial<Effect>> = {
   order: (_, i) => ({ owned: [i.dst] }),
   primitive: (_, i) => ({ owned: [i.dst] }),
   newCell: (_, i) => ({ moved: [i.value], owned: [i.dst] }),
-  load: (code, i) => (code.registers[i.dst]?.borrowed === true ? { borrowed: [i.dst] } : { owned: [i.dst] }),
+  load: (code, i) =>
+    code.registers[i.dst]?.borrowed === true ? { borrowed: [i.dst] } : { owned: [i.dst] },
   store: (_, i) => ({ moved: [i.value] }),
   reference: (_, i) => ({ borrowed: [i.dst] }),
   transient: (_, i) => ({ borrowed: [i.dst] }),
-  contextConstant: (_, i) => ({ owned: [i.dst] }),
+  contextConstant: (_, i) => ({ ownedWhereJumping: [i.dst] }),
   makeContextConstant: () => ({}),
   jump: () => ({}),
   branch: () => ({}),
@@ -72,7 +77,7 @@ const effects: Handlers<CodeFunction, Instruction, [], Partial<Effect>> = {
   call: (_, i) => ({ owned: i.dst === undefined ? none : [i.dst] }),
   currentCall: (_, i) => ({ borrowed: [i.dst] }),
   given: () => ({}),
-  mocked: (_, i) => ({ owned: [i.dst] }),
+  mocked: (_, i) => ({ ownedWhereJumping: [i.dst] }),
   park: (_, i) => ({ owned: [i.dst] }),
   stopped: () => ({}),
   letGo: (_, i) => ({ letGo: i.registers }),
@@ -83,6 +88,7 @@ function effectOf(code: CodeFunction, subject: Instruction): Effect {
   return {
     moved: found.moved ?? none,
     owned: found.owned ?? none,
+    ownedWhereJumping: found.ownedWhereJumping ?? none,
     borrowed: found.borrowed ?? none,
     letGo: found.letGo ?? none,
   };
@@ -168,6 +174,13 @@ export function ownershipIssues(code: CodeFunction): readonly string[] {
         after[register] = 'owning';
       }
     }
+    const jumped = [...after];
+    for (const register of effect.ownedWhereJumping.filter(tracked)) {
+      if (after[register] !== 'empty') {
+        issue(`overwrites what register ${String(register)} owns.`);
+      }
+      jumped[register] = 'owning';
+    }
     for (const register of effect.borrowed) {
       if (tracked(register)) {
         issue(`borrows into owning register ${String(register)}.`);
@@ -181,8 +194,12 @@ export function ownershipIssues(code: CodeFunction): readonly string[] {
       });
     }
     for (const next of successorsOf(code, pc)) {
+      const arriving = next === pc + 1 ? after : jumped;
       const known = states[next];
-      const merged = known === undefined ? after : known.map((state, r) => joined(state, after[r] ?? 'empty'));
+      const merged =
+        known === undefined
+          ? arriving
+          : known.map((state, r) => joined(state, arriving[r] ?? 'empty'));
       if (known === undefined || merged.some((state, r) => state !== known[r])) {
         states[next] = merged;
         pending.push(next);

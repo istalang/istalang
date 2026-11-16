@@ -18,12 +18,14 @@ import {
   Cell,
   Execution,
   Future,
+  MockObject,
   Reference,
   Resource,
   type RunObject,
   type Step,
   WeakReference,
 } from '../run/objects.ts';
+import type { InstanceEnd } from '../run/instances.ts';
 import type { Invocation, Run } from '../run/run.ts';
 import type { PersistedObject, PersistedRegister, Snapshot } from './format.ts';
 
@@ -76,7 +78,7 @@ export function restore(
       return { call, arguments: passed };
     }),
     invocations: snapshot.invocations.flatMap(({ future, root }) => {
-      const invocation = root ? rootInvocation(run) : answers.get(future);
+      const invocation = root ? rootInvocation(run, snapshot.encoder) : answers.get(future);
       return invocation === undefined ? [] : [{ future: object(future) as Future, invocation }];
     }),
   });
@@ -108,6 +110,9 @@ function made(run: Run, persisted: PersistedObject, objects: Map<number, RunObje
       objects.set(persisted.id, resource);
       return;
     }
+    case 'mock':
+      objects.set(persisted.id, new MockObject(persisted.id, persisted.target, null));
+      return;
     default: {
       const unhandled: never = persisted;
       return unhandled;
@@ -191,7 +196,18 @@ function filled(run: Run, persisted: PersistedObject, { object, restored }: Read
       return;
     }
     case 'resource':
+      run.restoredResource(object(persisted.id) as Resource);
       return;
+    case 'mock': {
+      const mock = object(persisted.id) as MockObject;
+      mock.replacement = restored(persisted.replacement);
+      mock.calls.push(...persisted.calls.map(restored));
+      for (const held of [mock.replacement, ...mock.calls]) {
+        lifetimes.adoptRestored(held);
+      }
+      run.restoredMock(mock);
+      return;
+    }
     default: {
       const unhandled: never = persisted;
       return unhandled;
@@ -212,11 +228,26 @@ function registerOf(register: PersistedRegister, { object, restored }: Reading):
 }
 
 /** The invocation of an instance's spawned call: its return finishes the instance (§9). */
-export function rootInvocation(run: Run): Invocation {
+export function rootInvocation(run: Run, encoder: number | undefined): Invocation {
   return {
     answer: (end) => {
-      run.instance.ended(end.kind === 'returned' ? { kind: 'finished', outcome: end.value } : end);
+      run.instance.ended(end.kind === 'returned' ? finished(run, end.value, encoder) : end);
     },
     root: true,
   };
+}
+
+/**
+ * How `run`'s instance ends, its root call having returned `outcome`: finished, its outcome encoded
+ * by `encoder` in the instance (§9), as a mock replacing it answers; panicked if encoding panics.
+ */
+function finished(run: Run, outcome: Value, encoder: number | undefined): InstanceEnd {
+  if (encoder === undefined) {
+    return { kind: 'finished', outcome };
+  }
+  try {
+    return { kind: 'finished', outcome, encoded: run.call(encoder, [outcome]) as Value };
+  } catch (error) {
+    return { kind: 'panicked', ...run.panicOf(error) };
+  }
 }

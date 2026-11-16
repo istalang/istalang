@@ -85,15 +85,13 @@ const operandTable: Handlers<undefined, Instruction, [], Partial<Operands>> = {
     written: i.dst === undefined ? [] : [i.dst],
     read: [
       ...(i.callee.kind === 'value' ? [i.callee.register] : []),
-      ...i.arguments.flatMap((argument) =>
-        argument.kind === 'value' ? [argument.register] : [],
-      ),
+      ...i.arguments.flatMap((argument) => (argument.kind === 'value' ? [argument.register] : [])),
     ],
     functions: i.callee.kind === 'function' ? [i.callee.function] : [],
   }),
   currentCall: (_, i) => ({ written: [i.dst] }),
   given: (_, i) => ({ read: [i.parameter], labels: [i.target] }),
-  mocked: (_, i) => ({ written: [i.dst], labels: [i.landing] }),
+  mocked: (_, i) => ({ read: i.arguments, written: [i.dst], labels: [i.landing] }),
   park: (_, i) => ({ written: [i.dst], labels: [i.stop] }),
   stopped: () => ({}),
   letGo: (_, i) => ({ read: i.registers }),

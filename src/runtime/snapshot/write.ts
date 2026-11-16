@@ -9,6 +9,7 @@
  *   something written holds it, so its target is written then anyway.
  */
 
+import { bytesToHex } from '@noble/hashes/utils.js';
 import { replacingParts } from '../../definition/values/replacing.ts';
 import { depthOf, maximumDepth, type Value } from '../../definition/values/values.ts';
 import type { Instance } from '../run/instances.ts';
@@ -16,6 +17,7 @@ import {
   Cell,
   Execution,
   Future,
+  MockObject,
   Reference,
   Resource,
   RunObject,
@@ -66,6 +68,7 @@ export function snapshotOf(run: Run, written: Written): Snapshot {
     ...written,
     instance: instance.name,
     serial: state.serial,
+    seed: bytesToHex(run.seed),
     draws: instance.draws,
     spawned: instance.spawned,
     live: state.live.map(named),
@@ -128,19 +131,7 @@ function objectOf(object: RunObject, { named, persisted }: Naming): PersistedObj
     };
   }
   if (object instanceof Execution) {
-    const { frame } = object;
-    return {
-      kind: 'execution',
-      id,
-      future: named(object.future),
-      function: frame.function,
-      pc: frame.pc,
-      registers: frame.registers.map((register) => registerOf(register, { named, persisted })),
-      ...(frame.closure === undefined ? {} : { closure: persisted(frame.closure) }),
-      parked: object.parked,
-      given: object.given.map((given) => registerOf(given, { named, persisted })),
-      ...(object.disposing === undefined ? {} : { disposing: named(object.disposing) }),
-    };
+    return executionOf(object, { named, persisted });
   }
   if (object instanceof WeakReference) {
     return {
@@ -159,7 +150,33 @@ function objectOf(object: RunObject, { named, persisted }: Naming): PersistedObj
       disposed: object.disposed,
     };
   }
+  if (object instanceof MockObject) {
+    return {
+      kind: 'mock',
+      id,
+      target: object.target,
+      replacement: persisted(object.replacement),
+      calls: object.calls.map(persisted),
+    };
+  }
   throw new Error(`A run object of no kind a snapshot knows, ${id}, is written.`);
+}
+
+/** `execution`, its frame record and what it was given, as a snapshot writes it. */
+function executionOf(execution: Execution, { named, persisted }: Naming): PersistedObject {
+  const { frame } = execution;
+  return {
+    kind: 'execution',
+    id: execution.object,
+    future: named(execution.future),
+    function: frame.function,
+    pc: frame.pc,
+    registers: frame.registers.map((register) => registerOf(register, { named, persisted })),
+    ...(frame.closure === undefined ? {} : { closure: persisted(frame.closure) }),
+    parked: execution.parked,
+    given: execution.given.map((given) => registerOf(given, { named, persisted })),
+    ...(execution.disposing === undefined ? {} : { disposing: named(execution.disposing) }),
+  };
 }
 
 /** What a frame's register holds, as a snapshot writes it. */

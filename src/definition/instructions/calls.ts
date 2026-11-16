@@ -46,10 +46,14 @@ const currentCall = defineInstruction('currentCall', { dst: register });
 const given = defineInstruction('given', { parameter: register, target: label });
 
 /**
- * Where a mock held for the running function exists (§10), the newest's result for every parameter,
- * defaults computed, in `dst`, and a jump to `landing`, which lets go of what the frame owns and
- * returns it; else on to the body.
+ * Where a mock held for the running function exists (§10), the newest's result for `arguments`,
+ * every parameter's value once the prologue computed its default, in `dst`, and a jump to
+ * `landing`, which lets go of what the frame owns and returns it; else on to the body.
  */
-const mocked = defineInstruction('mocked', { dst: register, landing: label });
+const mocked = defineInstruction('mocked', {
+  dst: register,
+  arguments: z.array(register),
+  landing: label,
+});
 
 export const callInstructions = [call, currentCall, given, mocked] as const;
