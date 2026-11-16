@@ -5,7 +5,6 @@
  * mapped data type is the shape written by hand.
  */
 
-import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { compareWrittenTypes, runMain } from '../written-types.test-kit.ts';
 import { sameComputedType } from './computed.test-kit.ts';
@@ -30,20 +29,18 @@ const argumentsAndValues = [
 ] as const;
 
 describe('a type match under instantiation', () => {
-  it('gives what the substituted program gives', async () => {
-    await fc.assert(
-      fc.asyncProperty(fc.constantFrom(...argumentsAndValues), async ({ written, value }) => {
-        const result = `Unwrap<${written}>`;
-        const generic = await runMain(result, `kept<${written}>(${value})`, declarations);
-        const substituted = await runMain(result, `direct(${value})`, [
-          ...declarations,
-          `fn direct(x: ${result}) -> ${result}: x`,
-        ]);
-        expect(generic).toEqual(substituted);
-      }),
-      { numRuns: 20 },
-    );
-  });
+  it.each(argumentsAndValues)(
+    'gives what the substituted program gives, instantiated with $written',
+    async ({ written, value }) => {
+      const result = `Unwrap<${written}>`;
+      const generic = await runMain(result, `kept<${written}>(${value})`, declarations);
+      const substituted = await runMain(result, `direct(${value})`, [
+        ...declarations,
+        `fn direct(x: ${result}) -> ${result}: x`,
+      ]);
+      expect(generic).toEqual(substituted);
+    },
+  );
 
   it('reduces a form schema to the shape written by hand', () => {
     const schema = [
