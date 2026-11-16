@@ -89,7 +89,7 @@ export class Run {
   constructor(definition: Definition, program: EmittedProgram, binding: NativeBinding) {
     this.definition = definition;
     this.root = new Instance(binding.instance, false);
-    this.lifetimes = new Lifetimes((object) => this.#disposed(object));
+    this.lifetimes = new Lifetimes((object) => this.#disposed(object), definition.types);
     this.constants = definition.constants;
     for (const constant of this.constants) {
       this.lifetimes.share(constant);

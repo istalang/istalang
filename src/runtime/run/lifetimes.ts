@@ -13,8 +13,15 @@
  * - **Plain** values are neither: `hold` and `letGo` pass over anything that isn't an object.
  * - A value changed in place forgets what was derived from it (its hash, its map's table, its
  *   summary), so derived data stays keyed by values that never change under it.
+ * - A native builds its result around values it borrowed, where compiled code moves each part in:
+ *   its taker `adopt`s it, a composite of counted type it built holding each of its parts in turn.
  */
 
+import {
+  lifetimeOf,
+  type TypeDefinition,
+  type TypeReference,
+} from '../../definition/tables/types.ts';
 import { copiedMap, forgetDerived } from '../../definition/values/equality.ts';
 import {
   childValues,
@@ -39,11 +46,13 @@ export class Lifetimes {
   readonly #counts = new WeakMap<object, number>();
   readonly #shared = new WeakSet<object>();
   readonly #dispose: Disposer;
+  readonly #types: readonly TypeDefinition[];
   /** The objects that lost their last holder, waiting for the round collecting them. */
   #zeros: RunObject[] | undefined;
 
-  constructor(dispose: Disposer) {
+  constructor(dispose: Disposer, types: readonly TypeDefinition[]) {
     this.#dispose = dispose;
+    this.#types = types;
   }
 
   /** Another holder of `value`. */
@@ -54,6 +63,27 @@ export class Lifetimes {
       this.#counts.set(value, (this.#counts.get(value) ?? 0) + 1);
     }
   };
+
+  /**
+   * Another holder of `value`, of `type`, which a native gave: a composite of counted type with no
+   * count yet is one it built, counted once and holding each of its parts; any other part is held,
+   * or shared where it is a heap value.
+   */
+  adopt(value: Value | undefined, type: TypeReference): void {
+    const pending: [Value | undefined, TypeReference][] = [[value, type]];
+    for (let next = pending.pop(); next !== undefined; next = pending.pop()) {
+      const [part, partType] = next;
+      const lifetime = lifetimeOf(this.#types, partType);
+      if (lifetime === 'heap') {
+        this.share(part);
+      } else if (lifetime === 'counted' && isNode(part) && !this.#counts.has(part)) {
+        this.#counts.set(part, 1);
+        pending.push(...typedParts(this.#types, part, partType));
+      } else if (lifetime === 'counted') {
+        this.hold(part);
+      }
+    }
+  }
 
   /** Marks `value`, a heap value, as having another holder. */
   readonly share = (value: Value | undefined): void => {
@@ -185,6 +215,38 @@ export class Lifetimes {
         this.#release(value, zeros);
       }
     }
+  }
+}
+
+/** The parts of `node`, of `type`, each with its type; a closure's captures, untyped, are held as functions are. */
+function typedParts(
+  types: readonly TypeDefinition[],
+  node: CompositeValue,
+  type: TypeReference,
+): [Value, TypeReference][] {
+  const function_: TypeReference = { kind: 'function', parameters: [], result: { kind: 'primitive', name: 'Unit' } };
+  const of = (values: readonly Value[], typeAt: (at: number) => TypeReference | undefined) =>
+    values.map((value, at): [Value, TypeReference] => [value, typeAt(at) ?? function_]);
+  if (type.kind === 'tuple' && node.kind === 'tuple') {
+    return of(node.elements, (at) => type.elements[at]);
+  }
+  const entry = type.kind === 'named' ? types[type.type] : undefined;
+  switch (entry?.kind) {
+    case 'alias':
+      return typedParts(types, node, entry.type);
+    case 'struct':
+      return node.kind === 'struct' ? of(node.fields, (at) => entry.fields[at]?.type) : [];
+    case 'enum':
+      return node.kind === 'variant'
+        ? of(node.fields, (at) => entry.variants[node.variant]?.fields[at]?.type)
+        : [];
+    case 'extern':
+      if (node.kind === 'array') {
+        return of(node.elements, () => entry.arguments[0]);
+      }
+      return node.kind === 'map' ? of(node.entries.flat(), (at) => entry.arguments[at % 2]) : [];
+    default:
+      return of(childValues(node), () => undefined);
   }
 }
 

@@ -79,7 +79,7 @@ export function bindNatives(run: Run, binding: NativeBinding): (index: number) =
     const native = binding.natives[entry.key] as Native;
     let current: readonly Value[] = [];
     const context = contextOf(run, entry, { binding, random, passed: () => current });
-    const counted = run.isCounted(entry.result);
+  
     const references = entry.parameters.flatMap((parameter, at) =>
       parameter.type.kind === 'reference' ? [at] : [],
     );
@@ -95,9 +95,7 @@ export function bindNatives(run: Run, binding: NativeBinding): (index: number) =
             );
       try {
         const result = native(values, context);
-        if (counted) {
-          run.lifetimes.hold(result);
-        }
+        run.lifetimes.adopt(result, entry.result);
         return result;
       } finally {
         current = outer;
