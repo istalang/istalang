@@ -5,7 +5,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { compiledText } from '../../compiler/compile.test-kit.ts';
+import { compiledEncoded } from '../../compiler/compile.test-kit.ts';
 import { lines } from '../../compiler/parser/parse.test-kit.ts';
 import { FormatError } from '../../definition/formats/format.ts';
 import { Refusal } from '../refusal.ts';
@@ -13,7 +13,7 @@ import { startToEnd, testRuntime } from '../runtime.test-kit.ts';
 import { type Snapshot, snapshotFormat } from './format.ts';
 
 /** A program whose spawned instance `p/1` commits waiting on a timer. */
-const waitingProgram = compiledText(
+const waitingProgram = compiledEncoded(
   lines(
     "import * as runtime from 'runtime'",
     "import * as time from 'time'",
@@ -39,7 +39,7 @@ async function readingBack(changed: (snapshot: Snapshot) => string) {
   return testRuntime({ store: first.store, clock: first.clock });
 }
 
-const written = (snapshot: Snapshot) => snapshotFormat.write(snapshot).text;
+const written = (snapshot: Snapshot) => snapshotFormat.write(snapshot);
 
 const versionAtEnd = /"version":\d+\}$/u;
 const version99Refused = /version 99 is not supported/u;

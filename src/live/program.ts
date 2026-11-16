@@ -1,9 +1,11 @@
 /**
  * The runtime library's entry, `istalang/live`: a built program's module (`ista build`)
- * default-exports `program(…)` over its Definition's text and its code, which a host starts as any
- * host starts a program (runtime/program.ts), on the std's natives.
+ * default-exports `program(…)` over its Definition, as definition/definition.ts embeds it, and its
+ * code, which a host starts as any host starts a program (runtime/program.ts), on the std's natives.
  *
- * - The module brings its code, emitted once at build time, so starting it emits nothing again.
+ * - The module brings its code, emitted once at build time, so starting it emits nothing again, and
+ *   its Definition with its hash, the toolchain's own, so it is decoded alone: neither validated
+ *   nor encoded again to key it.
  * - A start names a function by key, `main` without one, with its arguments as JSON and the host's
  *   externs written against JSON (`HostExterns`, runtime/boundary/host-natives.ts). What doesn't fit
  *   refuses it before anything runs.
@@ -13,7 +15,7 @@
  */
 
 import type { EmittedProgram } from '../codegen/emit.ts';
-import { definitionFormat } from '../definition/definition.ts';
+import { embeddedDefinition } from '../definition/definition.ts';
 import type { HostExterns } from '../runtime/boundary/host-natives.ts';
 import { type Clock, realTime } from '../runtime/clock.ts';
 import type { LogRecord } from '../runtime/instance-state.ts';
@@ -43,14 +45,14 @@ export interface LiveProgram {
   readonly start: (start?: LiveStart) => Promise<LiveEnded>;
 }
 
-/** The program a Definition's `text` and its emitted `code` make, started by a host. */
+/** The program a Definition's embedded `text` and its emitted `code` make, started by a host. */
 export function program(text: string, code: EmittedProgram): LiveProgram {
-  const definition = definitionFormat.read(text);
+  const keyed = embeddedDefinition(text);
   return {
-    starts: definition.starts.map(({ key }) => key),
+    starts: keyed.definition.starts.map(({ key }) => key),
     start: async (start = {}) => {
       const { end, logs } = await startLive(
-        definition,
+        keyed,
         {
           natives: stdNatives,
           ...(start.externs === undefined ? {} : { externs: start.externs }),

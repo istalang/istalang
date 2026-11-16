@@ -14,7 +14,7 @@
 import { statSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { compileTests, diagnose } from '../../compiler/compile.ts';
-import { definitionFormat } from '../../definition/definition.ts';
+import { encodeDefinition } from '../../definition/definition.ts';
 import { testModuleSuffix } from '../../foundation/language/well-known/testing.ts';
 import { findSources, loadProject } from '../../project/project.ts';
 import { realTime } from '../../runtime/clock.ts';
@@ -86,9 +86,8 @@ export async function testModules(
     }
     return exitCodes.problems;
   }
-  const { text } = definitionFormat.write(compiled.definition);
   const counts = { passed: 0, failed: 0, skipped: 0 };
-  for await (const report of runTests(text, {
+  for await (const report of runTests(encodeDefinition(compiled.definition), {
     natives: stdNatives,
     clock: realTime,
     timeout,

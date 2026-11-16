@@ -10,7 +10,7 @@ import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { decodeJson } from '../../../../definition/formats/codec.ts';
 import { startToEnd, testRuntime } from '../../../../runtime/runtime.test-kit.ts';
-import { compiledText, wholeProgramTimeout } from '../../../compile.test-kit.ts';
+import { compiledEncoded, wholeProgramTimeout } from '../../../compile.test-kit.ts';
 import { reported } from '../../check.test-kit.ts';
 
 /** What `async fn main() -> Future<String>: body` gives after `declarations`. */
@@ -20,7 +20,7 @@ async function outcome(declarations: readonly string[], body: string): Promise<u
     "import * as runtime from 'runtime'\nlive async fn main() -> String: await runtime.run(runtime.id()) _main()\nista async fn _main() -> String:",
     `  ${body}`,
   ].join('\n');
-  const state = await startToEnd(testRuntime(), compiledText(source));
+  const state = await startToEnd(testRuntime(), compiledEncoded(source));
   return state.kind === 'finished' ? decodeJson(String(state.outcome)) : state;
 }
 

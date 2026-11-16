@@ -22,6 +22,7 @@ import { z } from 'zod';
 import type { MapOf } from '../../foundation/language/values.ts';
 import { pushAll } from '../../foundation/structures/stack.ts';
 import { unreachable } from '../../foundation/structures/unreachable.ts';
+import { avroForms } from '../formats/avro/forms.ts';
 import { encodeJson } from '../formats/codec.ts';
 import { functionId, objectId, typeId, variantIndex } from '../operands.ts';
 
@@ -48,7 +49,9 @@ const float = z.codec(
     kind: z.literal('float'),
     value: z.union([z.number(), z.bigint(), z.enum(specialFloats)]),
   }),
-  z.custom<number>((inMemory) => typeof inMemory === 'number', 'Expected a float'),
+  z
+    .custom<number>((inMemory) => typeof inMemory === 'number', 'Expected a float')
+    .register(avroForms, { avro: 'double' }),
   {
     decode: (onDisk) => Number(onDisk.value),
     encode: (inMemory: unknown) => ({

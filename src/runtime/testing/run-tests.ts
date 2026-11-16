@@ -17,7 +17,7 @@
 import { sha256 } from '@noble/hashes/sha2.js';
 import { utf8ToBytes } from '@noble/hashes/utils.js';
 import { emitProgram } from '../../codegen/emit.ts';
-import { type Definition, definitionFormat } from '../../definition/definition.ts';
+import type { Definition, KeyedDefinition } from '../../definition/definition.ts';
 import { fieldValueOf } from '../../definition/values/declared-values.ts';
 import { elementsOf, type Value } from '../../definition/values/values.ts';
 import { unreachable } from '../../foundation/structures/unreachable.ts';
@@ -62,14 +62,13 @@ interface Listing {
 type RunInWorld = (call: WorldCall, title: string) => Promise<Ended>;
 
 /**
- * Runs the tests of the Definition `text`, yielding each report; the Definition must be one built
+ * Runs the tests of `keyed`'s Definition, yielding each report; the Definition must be one built
  * to run tests.
  */
 export async function* runTests(
-  text: string,
+  { definition, hash: version }: KeyedDefinition,
   options: TestRunOptions,
 ): AsyncGenerator<TestReport, void, undefined> {
-  const { value: definition, hash: version } = definitionFormat.readKeyed(text);
   const { purpose } = definition;
   if (purpose.kind !== 'tests') {
     unreachable('This Definition was not built to run tests.');

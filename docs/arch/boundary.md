@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-11-15
-last_updated: 2026-11-16
+last_updated: 2026-11-17
 tags: [boundary, json, externs, host, runtime, lowering]
 ---
 
@@ -160,7 +160,7 @@ host reads that JSON as text (`host/programs.ts`, `outcomeText`); any other outc
 primitive's text. What a host reads of a start's outcome is its encoded JSON, as JavaScript values or
 as text, which `ista run` prints.
 
-The host API (`runtime/host/index.ts`, `createRuntime`) deploys a Definition text (`deploy`),
+The host API (`runtime/host/index.ts`, `createRuntime`) deploys an encoded Definition (`deploy`),
 giving its program (`runtime/host/programs.ts`), whose `start` runs a function by key with JSON
 arguments as a live run named by the host; the `Runtime` wakes a stored instance (`wake`), reads
 its program and where it stands (`programOf`, `inspect`), and operates panicked instances: `retry`

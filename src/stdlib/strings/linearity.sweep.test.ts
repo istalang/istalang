@@ -6,7 +6,8 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { compiledText } from '../../compiler/compile.test-kit.ts';
+import { compiledEncoded } from '../../compiler/compile.test-kit.ts';
+import type { EncodedDefinition } from '../../definition/definition.ts';
 import { startToEnd, testRuntime } from '../../runtime/runtime.test-kit.ts';
 
 /** Each operation, as the expression giving an Int that runs it over `n` items. */
@@ -23,8 +24,8 @@ const operations: Readonly<Record<string, (n: number) => string>> = {
 };
 
 /** The program whose `main` gives what `expression` does. */
-function program(expression: string): string {
-  return compiledText(`import * as runtime from 'runtime'
+function program(expression: string): EncodedDefinition {
+  return compiledEncoded(`import * as runtime from 'runtime'
 import * as strings from 'strings'
 import Decimal from 'decimal'
 

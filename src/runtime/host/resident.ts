@@ -5,7 +5,7 @@
  */
 
 import type { EmittedProgram } from '../../codegen/emit.ts';
-import type { Definition } from '../../definition/definition.ts';
+import type { KeyedDefinition } from '../../definition/definition.ts';
 import { copied } from '../../definition/values/replacing.ts';
 import type { Value } from '../../definition/values/values.ts';
 import type { LogRecord } from '../instance-state.ts';
@@ -16,9 +16,7 @@ import type { PersistedStatus, Replay } from '../snapshot/format.ts';
 import { rootInvocation } from '../snapshot/restore.ts';
 
 /** The program a world runs: its Definition, the hash the store keys it by, its emitted code. */
-export interface WorldProgram {
-  readonly definition: Definition;
-  readonly hash: string;
+export interface WorldProgram extends KeyedDefinition {
   readonly emitted: EmittedProgram;
 }
 

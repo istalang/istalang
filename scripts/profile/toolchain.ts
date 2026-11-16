@@ -17,7 +17,7 @@ import { parse } from '../../src/compiler/parser/parse.ts';
 import { moduleIdOf } from '../../src/compiler/program/program.ts';
 import { scan } from '../../src/compiler/scanner/scan.ts';
 import type { FunctionDeclaration } from '../../src/compiler/syntax/declarations/index.ts';
-import { definitionFormat } from '../../src/definition/definition.ts';
+import { encodeDefinition } from '../../src/definition/definition.ts';
 import { completionsAt } from '../../src/editor/language-service/completion/index.ts';
 import { inlayHintsIn } from '../../src/editor/language-service/inlay-hints.ts';
 import { referencesAt } from '../../src/editor/language-service/navigation/references.ts';
@@ -197,9 +197,9 @@ function profileStdTests(outDir: string | undefined, root: string) {
     const { program } = loadProject(root, stdTestFiles);
     const compiled = compileTests(program);
     if (compiled.kind === 'compiled') {
-      const { text } = definitionFormat.write(compiled.definition);
+      const encoded = encodeDefinition(compiled.definition);
       const clock = new ManualClock(initialClockMs);
-      for await (const _ of runTests(text, {
+      for await (const _ of runTests(encoded, {
         natives: stdNatives,
         clock,
         timeout: defaultTimeoutMs,

@@ -43,8 +43,6 @@ export function recordExternSignatures(store: InstanceStore, definition: Definit
   }
   const added = declared.filter(([key]) => known[key] === undefined);
   if (added.length > 0) {
-    store.writeExterns(
-      externSignaturesFormat.write({ ...known, ...Object.fromEntries(added) }).text,
-    );
+    store.writeExterns(externSignaturesFormat.write({ ...known, ...Object.fromEntries(added) }));
   }
 }

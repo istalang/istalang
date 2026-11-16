@@ -5,12 +5,12 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { definitionFormat } from '../definition/definition.ts';
+import type { KeyedDefinition } from '../definition/definition.ts';
 import { startToEnd, testRuntime } from '../runtime/runtime.test-kit.ts';
 import { stdProgramOf } from './binder/bind.test-kit.ts';
 import { reported } from './checker/check.test-kit.ts';
 import { checkerDiagnostics } from './checker/diagnostics/index.ts';
-import { compiledText, diagnosedAt } from './compile.test-kit.ts';
+import { compiledEncoded, diagnosedAt } from './compile.test-kit.ts';
 import { lines } from './parser/parse.test-kit.ts';
 
 /** The codes checking `source` reports. */
@@ -21,11 +21,10 @@ function codesOf(source: string): readonly number[] {
 /** What an entry's name writes after its function's: an instance's type arguments. */
 const typeArguments = /<.*$/u;
 
-/** The modes of the code entries named `name`, each once, any instance of it, in `text`'s Definition. */
-function modesOf(text: string, name: string): readonly string[] {
-  return definitionFormat
-    .read(text)
-    .functions.flatMap((entry) =>
+/** The modes of the code entries named `name`, each once, any instance of it, in `keyed`'s Definition. */
+function modesOf({ definition }: KeyedDefinition, name: string): readonly string[] {
+  return definition.functions
+    .flatMap((entry) =>
       entry.kind === 'code' && entry.name.replace(typeArguments, '') === name ? [entry.mode] : [],
     )
     .filter((mode, index, all) => all.indexOf(mode) === index)
@@ -67,7 +66,7 @@ describe('proposal 8 behaviour table: kinds', () => {
   });
 
   it('a function generic over its kind has an entry per kind it is used at', () => {
-    const text = compiledText(
+    const text = compiledEncoded(
       lines(
         twice,
         'live async fn fromLive() -> Int: await twice(1)',
@@ -79,11 +78,11 @@ describe('proposal 8 behaviour table: kinds', () => {
 
   it('each entry of a function generic over its kind runs as its kind', async () => {
     const live = testRuntime();
-    const fromLive = compiledText(lines(twice, 'live async fn main() -> Int: await twice(1)'));
+    const fromLive = compiledEncoded(lines(twice, 'live async fn main() -> Int: await twice(1)'));
     expect(await startToEnd(live, fromLive)).toEqual({ kind: 'finished', outcome: '2' });
     expect(live.store.commits).toEqual([]);
     const ista = testRuntime();
-    const fromIsta = compiledText(
+    const fromIsta = compiledEncoded(
       lines(
         twice,
         "import * as runtime from 'runtime'\nlive async fn main() -> Int: await runtime.run(runtime.id()) _main()\nista async fn _main() -> Int: await twice(2)",
@@ -95,7 +94,7 @@ describe('proposal 8 behaviour table: kinds', () => {
 
   it('a `live async fn` waits in memory and writes nothing to the store across its wait', async () => {
     const test = testRuntime();
-    const text = compiledText(
+    const text = compiledEncoded(
       lines(timeImport, 'live async fn main() -> Int:', '  await time.delay(5ms)', '  7'),
     );
     expect(await startToEnd(test, text)).toEqual({ kind: 'finished', outcome: '7' });
@@ -104,7 +103,7 @@ describe('proposal 8 behaviour table: kinds', () => {
 
   it('an ista main commits at its wait, as every main did', async () => {
     const test = testRuntime();
-    const text = compiledText(
+    const text = compiledEncoded(
       lines(
         timeImport,
         "import * as runtime from 'runtime'\nlive async fn main() -> Int: await runtime.run(runtime.id()) _main()\nista async fn _main() -> Int:",
@@ -225,7 +224,7 @@ describe('proposal 8 behaviour table: kinds', () => {
       'ista fn g() -> Int: charge("o/1")',
     );
     expect(codesOf(charging)).toContain(checkerDiagnostics.kindsMeet.code);
-    const delegated = compiledText(
+    const delegated = compiledEncoded(
       lines(
         "import * as runtime from 'runtime'",
         'extern live async fn get(u: String) -> String',
@@ -248,7 +247,7 @@ describe('proposal 8 behaviour table: kinds', () => {
 
   it('`time.delay` in live code is a live timer', async () => {
     const test = testRuntime();
-    const text = compiledText(
+    const text = compiledEncoded(
       lines(
         timeImport,
         'live async fn wait() -> Int:',
@@ -262,7 +261,7 @@ describe('proposal 8 behaviour table: kinds', () => {
   });
 
   it('`retry` given a live function runs live, and given an ista one runs ista', () => {
-    const text = compiledText(
+    const text = compiledEncoded(
       lines(
         retry,
         'live async fn fetchLive() -> Int: 1',

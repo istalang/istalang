@@ -11,7 +11,7 @@ import {
   reportedOnce,
 } from '../../../../foundation/diagnostics/diagnostic.test-kit.ts';
 import { startToEnd, testRuntime } from '../../../../runtime/runtime.test-kit.ts';
-import { compiledText, wholeProgramTimeout } from '../../../compile.test-kit.ts';
+import { compiledEncoded, wholeProgramTimeout } from '../../../compile.test-kit.ts';
 import { reported } from '../../check.test-kit.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 
@@ -111,7 +111,7 @@ describe('computed constants', () => {
           `  const local: ${type} = ${value}`,
           '  computed == local',
         ].join('\n');
-        expect(await startToEnd(testRuntime(), compiledText(main))).toEqual({
+        expect(await startToEnd(testRuntime(), compiledEncoded(main))).toEqual({
           kind: 'finished',
           outcome: 'true',
         });
@@ -132,7 +132,7 @@ describe('computed constants', () => {
       '  const localNested: Array<(Int,)> = [5, (6,)]',
       '  (tupled, untupled, nested) == (localTupled, localUntupled, localNested)',
     ].join('\n');
-    expect(await startToEnd(testRuntime(), compiledText(main))).toEqual({
+    expect(await startToEnd(testRuntime(), compiledEncoded(main))).toEqual({
       kind: 'finished',
       outcome: 'true',
     });
@@ -150,7 +150,7 @@ describe('computed constants', () => {
       '  const localMixed: Array<Int | String> = [1, "a"]',
       '  (wrapped, missing, mixed) == (localWrapped, localMissing, localMixed)',
     ].join('\n');
-    expect(await startToEnd(testRuntime(), compiledText(main))).toEqual({
+    expect(await startToEnd(testRuntime(), compiledEncoded(main))).toEqual({
       kind: 'finished',
       outcome: 'true',
     });
@@ -188,7 +188,7 @@ describe('computed constants', () => {
       'ista async fn _main() -> Bool: (limit, marker, tag) == (3, lib.Marker, lib.Tag<Int>)',
     ].join('\n');
     expect(reported(main, { lib })).toEqual(reportedNothing);
-    expect(await startToEnd(testRuntime(), compiledText(main, { lib }))).toEqual({
+    expect(await startToEnd(testRuntime(), compiledEncoded(main, { lib }))).toEqual({
       kind: 'finished',
       outcome: 'true',
     });

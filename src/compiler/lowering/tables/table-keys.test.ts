@@ -9,7 +9,7 @@
 import fc from 'fast-check';
 import { describe, expect, it, vi } from 'vitest';
 import { resolveWrittenTypes } from '../../../../test/written-types.test-kit.ts';
-import { definitionFormat } from '../../../definition/definition.ts';
+import { encodeDefinition } from '../../../definition/definition.ts';
 import { unreachable } from '../../../foundation/structures/unreachable.ts';
 import { mainGives } from '../../../stdlib/prelude/prelude.test-kit.ts';
 import { stdProgramOf } from '../../binder/bind.test-kit.ts';
@@ -263,8 +263,8 @@ fn grow(t: Arbor<Int>) -> Int: count(t)`;
 
 describe("a program's Definition", () => {
   it('is the same alone as beside modules it never imports', () => {
-    const text = (modules: Record<string, string>) =>
-      definitionFormat.write(compiledDefinition(stdProgramOf(modules), 'main.ista')).text;
-    expect(text({ 'a.ista': another, 'main.ista': tree })).toBe(text({ 'main.ista': tree }));
+    const hash = (modules: Record<string, string>) =>
+      encodeDefinition(compiledDefinition(stdProgramOf(modules), 'main.ista')).hash;
+    expect(hash({ 'a.ista': another, 'main.ista': tree })).toBe(hash({ 'main.ista': tree }));
   });
 });

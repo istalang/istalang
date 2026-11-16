@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-11-15
-last_updated: 2026-11-16
+last_updated: 2026-11-17
 tags: [architecture, compiler, runtime, tooling]
 ---
 
@@ -265,7 +265,7 @@ src/
     refusal.ts          the runtime refusing what a host asked of it, as opposed to failing
     clock.ts            the Clock seam, real time (`realTime`, for a process or a browser), and a manual clock
     host/               the host runtime (index.ts): createRuntime(seams) → deploy, then wake, retry, terminate and inspect;
-                        programs.ts (a Definition text read and emitted once per hash; a start as a live run named by the host,
+                        programs.ts (a Definition emitted once per hash; a start as a live run named by the host,
                         finishing the moment its root returns); host-turns.ts (every host call on a turn of its own);
                         open-runtimes.ts (the runtimes live code opens: resuming the store, serving jobs); durable-world.ts (the one World: live runs and resident ista
                         instances, segments ending at every await, commits writing the store and letting effects out, a crash at
@@ -423,7 +423,7 @@ Every analysis result is a memoized function of immutable inputs: text → token
 - **Positions are UTF-16 offsets**, the LSP default. They are converted only at the edges.
 - **Formatter layout algorithm comes from a library:** Prettier's doc printer (`prettier/doc`, pinned exactly), which formatter/ alone imports. The formatter supplies only the printers from tree to doc and the comment placement (formatter.md, Decisions).
 - **Runtime keeps frames as data.** The Definition is linear register code, so a frame is a function, a pc and registers, and any `await` can be persisted (spec §5). Code is untyped, and generics are compiled per instantiation. The chosen and rejected options are in definition.md, Decisions.
-- **One description per persisted format.** A zod schema validates, decodes and encodes it; texts are canonical JSON (lossless-json with sorted keys) nested in a `{format, version, body}` envelope, keyed by content hash. The codec and envelope live in `definition/formats/` (`codec.ts`, `format.ts`), the lowest layer every persisted format already depends on; `runtime/` (snapshots, and from M3 the boundary) imports them from there. Values use `bigint` for `Int`.
+- **One description per persisted format.** A zod schema describes it, in a `{format, version, body}` envelope. A snapshot's text is canonical JSON (lossless-json with sorted keys) that the schema validates, decodes and encodes; a Definition's bytes are avsc's, their type derived from the schema, which never runs on one, keyed by their SHA-256 (docs/arch/definition.md). The codecs and envelopes live in `definition/formats/` (`codec.ts`, `format.ts`, `binary-format.ts`, `avro/`), the lowest layer every persisted format already depends on; `runtime/` imports them from there. Values use `bigint` for `Int`.
 - **`Decimal` is Istalang over ints.** The `decimal` module computes on its units and scale with ints and keeps the result in one form, so every backend runs the same code; decimal.js is only the tests' oracle. A `Decimal` is still a value of an extern type, whose payload is that form (`_decimal`, `_parts`): fields can't be private (spec §3.1), so a struct could be built in a second form, and `==` and map keys would compare forms, not numbers. `time.Zone` is an extern type for the same reason, its payload the zone's canonical IANA id.
 - **`regex` runs on re2js,** a pure JavaScript port of RE2: matching is linear in the text, so no pattern can make an instance hang, and RE2's syntax refuses backreferences and lookaround. A regex is its pattern's text, so its compiled program is derived from that text: memoized by it in one bounded, process-wide cache (`lru-cache`).
 - **A wait on another instance's end** (spec §9) is a watch future of the waiting run, which the world settles as the watched instance commits its end, and which the waiter's snapshot keeps, so a restored waiter watches again (docs/arch/runtime.md).

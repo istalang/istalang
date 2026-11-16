@@ -2,12 +2,13 @@
  * A runtime under test (host/index.ts): time that moves only when the test says so, a store that
  * keeps every commit it was asked to write, and a fixed seed, so a run repeats.
  *
- * - A test starts a program's live `main` from its Definition text, as a host does, and reads how
+ * - A test starts a program's live `main` from its encoded Definition, as a host does, and reads how
  *   it ended: an outcome as the JSON text its start encoded (§9), as a host reads it.
  * - A run, or an instance the store keeps, that waits on nothing that can wake it fails the test:
  *   no host is left to wake it.
  */
 
+import type { EncodedDefinition } from '../definition/definition.ts';
 import { stdNatives } from '../stdlib/natives.ts';
 import type { HostExterns } from './boundary/host-natives.ts';
 import { ManualClock } from './clock.ts';
@@ -35,9 +36,9 @@ export function recordingStore(inner: InstanceStore = memoryStore()): RecordingS
       commits.push(text);
       inner.writeSnapshot(instance, text);
     },
-    writeDefinition: (hash, text) => {
+    writeDefinition: (hash, bytes) => {
       definitions.push(hash);
-      inner.writeDefinition(hash, text);
+      inner.writeDefinition(hash, bytes);
     },
   };
 }
@@ -84,8 +85,8 @@ export function testRuntime({
     ...(reports === undefined ? {} : { reports }),
   });
   const starters = new Map<string, DeployedProgram>();
-  const deploy: Runtime['deploy'] = (text) => {
-    const program = inner.deploy(text);
+  const deploy: Runtime['deploy'] = (encoded) => {
+    const program = inner.deploy(encoded);
     return {
       ...program,
       start: async (instance, request) => {
@@ -119,15 +120,15 @@ function endedOf(test: TestRuntime, instance: string, state: InstanceState): End
 }
 
 /**
- * Deploys `text` and starts its live `main` under the name `instance`, a run that drives its
+ * Deploys `encoded` and starts its live `main` under the name `instance`, a run that drives its
  * contexts itself and has ended once its start returns; how it ended.
  */
 export async function startToEnd(
   test: TestRuntime,
-  text: string,
+  encoded: EncodedDefinition,
   { instance = 'test', ...options }: StartOptions & { readonly instance?: string } = {},
 ): Promise<Ended> {
-  const { state } = await test.runtime.deploy(text).start(instance, options);
+  const { state } = await test.runtime.deploy(encoded).start(instance, options);
   return endedOf(test, instance, state);
 }
 

@@ -14,7 +14,7 @@ import { corpusDirectory } from '../../../../test/corpus/programs.ts';
 import type { Definition } from '../../../definition/definition.ts';
 import { startToEnd, testRuntime } from '../../../runtime/runtime.test-kit.ts';
 import { stdProgramOf } from '../../binder/bind.test-kit.ts';
-import { compiledDefinition, compiledText } from '../../compile.test-kit.ts';
+import { compiledDefinition, compiledEncoded } from '../../compile.test-kit.ts';
 
 const named = [
   'trait Named:',
@@ -68,7 +68,7 @@ describe('lowering trait objects', () => {
   });
 
   it('runs a mixed Array<any T> the same with every segment re-run from its snapshot', async () => {
-    const text = compiledText(
+    const text = compiledEncoded(
       readFileSync(`${corpusDirectory}trait-objects/dispatch.ista`, 'utf8'),
     );
     const uninterrupted = await startToEnd(testRuntime(), text);
@@ -79,7 +79,7 @@ describe('lowering trait objects', () => {
 
 /** The outcome `main`, after `lines`, finishes with, as JSON text. */
 async function outcomeOf(lines: readonly string[]): Promise<unknown> {
-  const ended = await startToEnd(testRuntime(), compiledText(lines.join('\n')));
+  const ended = await startToEnd(testRuntime(), compiledEncoded(lines.join('\n')));
   return ended.kind === 'finished' ? ended.outcome : ended;
 }
 
@@ -153,7 +153,7 @@ describe('lowering a call through an instantiation standing for another (§3.10)
   });
 
   it('runs the corpus of conversions through `any` the same with every segment re-run', async () => {
-    const text = compiledText(
+    const text = compiledEncoded(
       readFileSync(`${corpusDirectory}trait-objects/variance.ista`, 'utf8'),
     );
     const uninterrupted = await startToEnd(testRuntime(), text);

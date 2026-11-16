@@ -15,7 +15,7 @@
  */
 
 import { z } from 'zod';
-import { contentHashText } from '../../definition/formats/codec.ts';
+import { contentHashText } from '../../definition/formats/binary-format.ts';
 import { defineFormat } from '../../definition/formats/format.ts';
 import {
   count,

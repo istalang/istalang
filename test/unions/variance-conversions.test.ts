@@ -7,7 +7,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { checkerDiagnostics } from '../../src/compiler/checker/diagnostics/index.ts';
-import { compiledText } from '../../src/compiler/compile.test-kit.ts';
+import { compiledEncoded } from '../../src/compiler/compile.test-kit.ts';
 import { parserDiagnostics } from '../../src/compiler/parser/diagnostics.ts';
 import { startToEnd, testRuntime } from '../../src/runtime/runtime.test-kit.ts';
 import { codesOf, runMain } from '../written-types.test-kit.ts';
@@ -211,7 +211,7 @@ describe('conversions composing inside types (§2, §3.1, §3.5, §3.14, §3.15)
       `  ${body}`,
     ].join('\n');
     const env = testRuntime();
-    const ended = await startToEnd(env, compiledText(source));
+    const ended = await startToEnd(env, compiledEncoded(source));
     expect(env.store.commits.length).toBeGreaterThan(0);
     for (const instance of env.store.instances()) {
       expect(() => env.runtime.inspect(instance)).not.toThrow();

@@ -21,7 +21,6 @@
 
 import { randomBytes, randomUUID } from 'node:crypto';
 import { resolve } from 'node:path';
-import { definitionFormat } from '../../definition/definition.ts';
 import { FormatError } from '../../definition/formats/format.ts';
 import { realTime } from '../../runtime/clock.ts';
 import { createRuntime, type Runtime } from '../../runtime/host/index.ts';
@@ -132,9 +131,8 @@ async function start(session: Session, entry: string, options: RunOptions): Prom
   if ('exit' in compiled) {
     return compiled.exit;
   }
-  const { text } = definitionFormat.write(compiled.definition);
   const outcome = await unlessRefused(environment, async () => {
-    const deployed = runtime.deploy(text);
+    const deployed = runtime.deploy(compiled.encoded);
     const name = randomUUID();
     if (options.store !== undefined) {
       environment.writeError(`ista: run ${name}\n`);

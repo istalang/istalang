@@ -12,7 +12,11 @@ import { decodeJson } from '../../../definition/formats/codec.ts';
 import { compareOrdered } from '../../../foundation/language/order.ts';
 import { startToEnd, testRuntime } from '../../../runtime/runtime.test-kit.ts';
 import { stdProgramOf } from '../../binder/bind.test-kit.ts';
-import { compiledDefinition, compiledText, wholeProgramTimeout } from '../../compile.test-kit.ts';
+import {
+  compiledDefinition,
+  compiledEncoded,
+  wholeProgramTimeout,
+} from '../../compile.test-kit.ts';
 
 /**
  * camelCase names whose UTF-16 order differs from any other: `aB` before `aa`, `z10` before `z9`.
@@ -88,7 +92,7 @@ describe('struct layout', () => {
   });
 
   it('reads JSON into a struct field by field in name order, reporting the first mismatch (§9)', async () => {
-    const text = compiledText(
+    const text = compiledEncoded(
       [
         "import * as json from 'json'\nimport * as runtime from 'runtime'",
         'struct Late { b: Int, a: Int }',
@@ -103,7 +107,7 @@ describe('struct layout', () => {
   });
 
   it('builds a range by its fields, whatever order they are laid out in (§3.8)', async () => {
-    const text = compiledText(
+    const text = compiledEncoded(
       [
         "import * as runtime from 'runtime'\nlive async fn main() -> Array<Int>: await runtime.run(runtime.id()) _main()\nista async fn _main() -> Array<Int>:",
         '  [for i in 1..7 by 2: i]',
@@ -134,7 +138,7 @@ describe('struct layout', () => {
         expect(entry?.kind === 'struct' && entry.fields.map((f) => f.name)).toEqual(
           inNameOrder(fields),
         );
-        const state = await startToEnd(testRuntime(), compiledText(main));
+        const state = await startToEnd(testRuntime(), compiledEncoded(main));
         const expected = expectedValues(fields);
         const values = fields.map(({ name }) => expected[name]);
         expect(state.kind === 'finished' && decodeJson(String(state.outcome))).toEqual([

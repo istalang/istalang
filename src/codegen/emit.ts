@@ -111,7 +111,10 @@ export function emitProgram(
   return { body: body.join('\n'), lines };
 }
 
-/** The module of a built program: the runtime library's `program` over its Definition and code. */
+/**
+ * The module of a built program: the runtime library's `program` over its Definition, as the text
+ * definition/definition.ts embeds it, and its code.
+ */
 export function builtModule(definition: string, code: EmittedProgram): string {
   const made = `program(${JSON.stringify(definition)}, ${JSON.stringify(code)})`;
   return `import { program } from "istalang/live";\n\nexport default ${made};\n`;

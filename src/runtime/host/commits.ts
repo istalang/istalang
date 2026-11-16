@@ -76,7 +76,7 @@ export function commitTerminated(
   resident.text = snapshotFormat.write({
     ...emptySnapshot(resident),
     ...header(resident, resident.status),
-  }).text;
+  });
   seams.store.writeSnapshot(resident.name, resident.text);
   letOut(resident, seams.reports);
 }
@@ -115,14 +115,14 @@ function header(resident: Resident, status: PersistedStatus) {
 /** The text committing `resident` with `status`: a panicked one as it stood before the segment. */
 function written(resident: Resident, status: PersistedStatus): string {
   if (status.kind !== 'panicked') {
-    return snapshotFormat.write(snapshotOf(resident.run, header(resident, status))).text;
+    return snapshotFormat.write(snapshotOf(resident.run, header(resident, status)));
   }
   const before =
     resident.text === undefined ? emptySnapshot(resident) : snapshotFormat.read(resident.text);
   // A failed segment keeps the call that started it, which a retry runs again.
   const { replay } = resident;
   const panicked = replay === undefined ? status : { ...status, replay };
-  return snapshotFormat.write({ ...before, ...header(resident, panicked) } as Snapshot).text;
+  return snapshotFormat.write({ ...before, ...header(resident, panicked) } as Snapshot);
 }
 
 /**

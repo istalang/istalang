@@ -7,7 +7,7 @@ import { describe, expect, it } from 'vitest';
 import { stdProgramOf } from '../../compiler/binder/bind.test-kit.ts';
 import { compileTests } from '../../compiler/compile.ts';
 import { withModeChanged } from '../definition.test-kit.ts';
-import { definitionFormat } from '../definition.ts';
+import { encodeDefinition, readDefinition } from '../definition.ts';
 
 describe('the call rule over the purpose', () => {
   it("refuses a test's suite that ista code may not call", () => {
@@ -24,12 +24,15 @@ describe('the call rule over the purpose', () => {
     if (compiled.kind !== 'compiled') {
       throw new Error(`The test module didn't compile (${compiled.kind}).`);
     }
-    const { text } = definitionFormat.write(compiled.definition);
-    expect(() => definitionFormat.read(text)).not.toThrow();
-    expect(() =>
-      definitionFormat.read(
-        withModeChanged(text, { name: 'main.test.ista.suite', from: 'simple', to: 'live' }),
-      ),
-    ).toThrow('suite s: ista code may not call main.test.ista.suite.');
+    const encoded = encodeDefinition(compiled.definition);
+    expect(() => readDefinition(encoded.bytes)).not.toThrow();
+    const changed = withModeChanged(encoded, {
+      name: 'main.test.ista.suite',
+      from: 'simple',
+      to: 'live',
+    });
+    expect(() => readDefinition(changed.bytes)).toThrow(
+      'suite s: ista code may not call main.test.ista.suite.',
+    );
   });
 });

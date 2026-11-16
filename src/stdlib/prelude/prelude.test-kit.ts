@@ -1,6 +1,6 @@
 /** Running a program's `main` for what the prelude's functions give it. */
 
-import { compiledText } from '../../compiler/compile.test-kit.ts';
+import { compiledEncoded } from '../../compiler/compile.test-kit.ts';
 import { decodeJson } from '../../definition/formats/codec.ts';
 import { startToEnd, testRuntime } from '../../runtime/runtime.test-kit.ts';
 
@@ -18,7 +18,7 @@ export async function mainOutcome(
   const program = `${declarations}\nimport * as runtime from 'runtime'
 live async fn main() -> ${result}: await runtime.run(runtime.id()) _main()
 ista async fn _main() -> ${result}:\n  ${block}`;
-  const state = await startToEnd(testRuntime(), compiledText(program));
+  const state = await startToEnd(testRuntime(), compiledEncoded(program));
   return state.kind === 'finished' ? decodeJson(String(state.outcome)) : state;
 }
 

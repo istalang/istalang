@@ -12,7 +12,7 @@ import { stdProgramOf } from '../src/compiler/binder/bind.test-kit.ts';
 import { isCycle } from '../src/compiler/checker/rules/lifetimes/lifetimes.test-kit.ts';
 import {
   checkedAfterStd,
-  compiledText,
+  compiledEncoded,
   diagnosedAt,
   wholeProgramTimeout,
 } from '../src/compiler/compile.test-kit.ts';
@@ -182,7 +182,7 @@ describe('static lifetimes over fragment soups', () => {
     const program = stdProgramOf({ main: text });
     checkedAfterStd(program);
     expect(diagnosedAt(program, 'main').diagnostics.filter(isError)).toEqual([]);
-    expect(await startToEnd(testRuntime(), compiledText(text))).toEqual({
+    expect(await startToEnd(testRuntime(), compiledEncoded(text))).toEqual({
       kind: 'finished',
       outcome: '0',
     });
@@ -199,7 +199,7 @@ describe('static lifetimes over fragment soups', () => {
         const errors = diagnosedAt(program, 'main').diagnostics.filter(isError);
         expect(errors.filter((error) => !isCycle(error))).toEqual([]);
         const ended =
-          errors.length > 0 ? 'rejected' : await startToEnd(testRuntime(), compiledText(text));
+          errors.length > 0 ? 'rejected' : await startToEnd(testRuntime(), compiledEncoded(text));
         expect(['rejected', { kind: 'finished', outcome: '0' }]).toContainEqual(ended);
       }),
       { numRuns: 60 },
@@ -215,7 +215,7 @@ describe('static lifetimes over fragment soups', () => {
       const errors = diagnosedAt(program, 'main').diagnostics.filter(isError);
       expect(errors.filter((error) => !isCycle(error))).toEqual([]);
       const ended =
-        errors.length > 0 ? 'rejected' : await startToEnd(testRuntime(), compiledText(text));
+        errors.length > 0 ? 'rejected' : await startToEnd(testRuntime(), compiledEncoded(text));
       expect(ended).toBe('rejected');
     },
   );

@@ -7,7 +7,7 @@
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { compiledText, wholeProgramTimeout } from '../../compiler/compile.test-kit.ts';
+import { compiledEncoded, wholeProgramTimeout } from '../../compiler/compile.test-kit.ts';
 import { decodeJson } from '../../definition/formats/codec.ts';
 import { startToEnd, testRuntime } from '../runtime.test-kit.ts';
 import { aliasingProgram, caseSteps } from './aliasing.test-kit.ts';
@@ -19,7 +19,7 @@ describe('values changed in place', () => {
       await fc.assert(
         fc.asyncProperty(fc.array(caseSteps, { minLength: 4, maxLength: 8 }), async (cases) => {
           const { text, expected } = aliasingProgram(cases);
-          const state = await startToEnd(testRuntime(), compiledText(text));
+          const state = await startToEnd(testRuntime(), compiledEncoded(text));
           expect(state.kind === 'finished' ? decodeJson(String(state.outcome)) : state).toEqual(
             expected,
           );

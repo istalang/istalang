@@ -6,7 +6,7 @@
 
 import { stdProgramOf } from '../../compiler/binder/bind.test-kit.ts';
 import { compileTests, diagnose } from '../../compiler/compile.ts';
-import { definitionFormat } from '../../definition/definition.ts';
+import { encodeDefinition } from '../../definition/definition.ts';
 import { renderDiagnostics } from '../../foundation/diagnostics/render.ts';
 import { stdNatives } from '../../stdlib/natives.ts';
 import { ManualClock } from '../clock.ts';
@@ -34,7 +34,7 @@ export async function reportsOf(
   const clock = new ManualClock(1_000_000n);
   const { tick } = options;
   const reports: TestReport[] = [];
-  for await (const report of runTests(definitionFormat.write(compiled.definition).text, {
+  for await (const report of runTests(encodeDefinition(compiled.definition), {
     natives: stdNatives,
     clock: {
       now: () => {

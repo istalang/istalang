@@ -20,7 +20,7 @@ import { loadHostModule } from '../../../src/cli/host-module.ts';
 import type { EmittedProgram } from '../../../src/codegen/emit.ts';
 import { compileProgram, diagnose } from '../../../src/compiler/compile.ts';
 import { type ModuleId, moduleIdOf, type Program } from '../../../src/compiler/program/program.ts';
-import type { Definition } from '../../../src/definition/definition.ts';
+import { type Definition, encodeDefinition } from '../../../src/definition/definition.ts';
 import { isError } from '../../../src/foundation/diagnostics/diagnostic.ts';
 import { tempProject } from '../../../src/project/project.test-kit.ts';
 import { loadProject } from '../../../src/project/project.ts';
@@ -144,7 +144,7 @@ async function shownByRun(
     seed: new Uint8Array(32),
   };
   const live = readBack === undefined ? {} : { readBack: () => readBack(definition) };
-  const { end, logs } = await startLive(definition, binding, start, live);
+  const { end, logs } = await startLive(encodeDefinition(definition), binding, start, live);
   const shown = { logs: logs.map(logLine), hostCalls: host.calls };
   switch (end.kind) {
     case 'finished':

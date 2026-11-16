@@ -4,14 +4,14 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { compiledText } from '../../compiler/compile.test-kit.ts';
+import { compiledEncoded } from '../../compiler/compile.test-kit.ts';
 import { lines } from '../../compiler/parser/parse.test-kit.ts';
 import { recordingStore, testRuntime } from '../runtime.test-kit.ts';
 
 describe('extern signatures across deploys', () => {
   it('refuse a deploy that declares an extern its host provides with another type', () => {
     const declaring = (type: string) =>
-      compiledText(lines(`extern limit: ${type}`, `live async fn main() -> ${type}: limit`));
+      compiledEncoded(lines(`extern limit: ${type}`, `live async fn main() -> ${type}: limit`));
     const host = { 'main.limit': () => 1 };
     const store = recordingStore();
     testRuntime({ store, host }).runtime.deploy(declaring('Int'));

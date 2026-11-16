@@ -8,8 +8,12 @@
  * alike; a program compiled to text is compiled once per test file.
  */
 
-import type { Definition } from '../definition/definition.ts';
-import { definitionFormat } from '../definition/definition.ts';
+import {
+  type Definition,
+  type EncodedDefinition,
+  encodeDefinition,
+  requireValid,
+} from '../definition/definition.ts';
 import { isError } from '../foundation/diagnostics/diagnostic.ts';
 import { memo } from '../foundation/structures/memo.ts';
 import { stdProgramOf } from './binder/bind.test-kit.ts';
@@ -65,15 +69,21 @@ export function compiledDefinition(program: Program, entry: string): Definition 
  */
 export const wholeProgramTimeout = 60_000;
 
-const compiledTexts = new Map<string, string>();
+const compiledPrograms = new Map<string, EncodedDefinition>();
+
+/** `definition`, the compiler's, encoded as a deploy takes it, once validation holds it to its rules. */
+function validEncoded(definition: Definition): EncodedDefinition {
+  requireValid(definition);
+  return encodeDefinition(definition);
+}
 
 /**
- * The Definition text of the program rooted at `main`, with every std module, though static
+ * The encoded Definition of the program rooted at `main`, with every std module, though static
  * lifetimes rejects its cycles (design.md §7): lowering reads no verdict of the rule, so tests run
  * such programs anyway, those the rule over-rejects (docs/work/static-lifetimes/findings.md).
  * Throws at any other error.
  */
-export function textDespiteCycles(main: string): string {
+export function encodedDespiteCycles(main: string): EncodedDefinition {
   const program = stdProgramOf({ main });
   const checker = checkedAfterStd(program);
   const errors = [...diagnose(program).values()].flatMap(({ diagnostics }) =>
@@ -83,16 +93,16 @@ export function textDespiteCycles(main: string): string {
   if (errors.length > 0 || entry === undefined) {
     throw new Error(`main doesn't compile: ${errors.map(({ message }) => message).join('; ')}`);
   }
-  return definitionFormat.write(lower(checker, entry)).text;
+  return validEncoded(lower(checker, entry));
 }
 
-/** The Definition text of the program rooted at `main`, beside `others`, with every std module. */
-export function compiledText(main: string, others: Files = {}): string {
+/** The encoded Definition of the program rooted at `main`, beside `others`, with every std module. */
+export function compiledEncoded(main: string, others: Files = {}): EncodedDefinition {
   const files = { main, ...others };
-  return memo(compiledTexts, JSON.stringify(Object.entries(files).sort()), () => {
+  return memo(compiledPrograms, JSON.stringify(Object.entries(files).sort()), () => {
     const program = stdProgramOf(files);
     checkedAfterStd(program);
-    return definitionFormat.write(compiledDefinition(program, 'main')).text;
+    return validEncoded(compiledDefinition(program, 'main'));
   });
 }
 

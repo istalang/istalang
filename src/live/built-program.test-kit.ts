@@ -9,12 +9,12 @@ import { join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { afterAll } from 'vitest';
 import { builtModule, emitProgram } from '../codegen/emit.ts';
-import { type Definition, definitionFormat } from '../definition/definition.ts';
+import { type EncodedDefinition, embeddedText } from '../definition/definition.ts';
 import type { LiveProgram } from './program.ts';
 
-/** `definition` built into a folder under `dist/`, removed after the file's tests, and loaded. */
-export async function builtProgram(definition: Definition): Promise<LiveProgram> {
-  const text = builtModule(definitionFormat.write(definition).text, emitProgram(definition));
+/** `encoded` built into a folder under `dist/`, removed after the file's tests, and loaded. */
+export async function builtProgram(encoded: EncodedDefinition): Promise<LiveProgram> {
+  const text = builtModule(embeddedText(encoded), emitProgram(encoded.definition));
   const folder = mkdtempSync(fileURLToPath(new URL('../../dist/bench-', import.meta.url)));
   afterAll(() => {
     rmSync(folder, { recursive: true, force: true });

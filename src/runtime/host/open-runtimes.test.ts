@@ -4,7 +4,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { compiledText } from '../../compiler/compile.test-kit.ts';
+import { compiledEncoded } from '../../compiler/compile.test-kit.ts';
 import { lines } from '../../compiler/parser/parse.test-kit.ts';
 import type { HostExterns } from '../boundary/host-natives.ts';
 import { recordingStore, startToEnd, testRuntime } from '../runtime.test-kit.ts';
@@ -14,7 +14,7 @@ import { memoryStore } from '../store.ts';
  * A program whose first run leaves `o/1/1` waiting on a timer as it ends, and whose second opens a
  * runtime and waits past that timer.
  */
-const resuming = compiledText(
+const resuming = compiledEncoded(
   lines(
     "import * as time from 'time'",
     "import * as runtime from 'runtime'",

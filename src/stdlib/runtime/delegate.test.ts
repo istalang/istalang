@@ -11,20 +11,20 @@ import { describe, expect, it } from 'vitest';
 import { reported } from '../../compiler/checker/check.test-kit.ts';
 import { checkerDiagnostics } from '../../compiler/checker/diagnostics/index.ts';
 import {
-  compiledText,
-  textDespiteCycles,
+  compiledEncoded,
+  encodedDespiteCycles,
   wholeProgramTimeout,
 } from '../../compiler/compile.test-kit.ts';
 import { lines } from '../../compiler/parser/parse.test-kit.ts';
-import { definitionFormat } from '../../definition/definition.ts';
+import type { EncodedDefinition, KeyedDefinition } from '../../definition/definition.ts';
 import type { HostExterns } from '../../runtime/boundary/host-natives.ts';
 import { recordingStore, startToEnd, testRuntime } from '../../runtime/runtime.test-kit.ts';
 import { memoryStore } from '../../runtime/store.ts';
 import { chargeKey, countingHost, header } from './delegate.test-kit.ts';
 
 /** A program whose `main` runs `body`, ista code, in the context "o/1". */
-function running(...body: string[]): string {
-  return compiledText(
+function running(...body: string[]): EncodedDefinition {
+  return compiledEncoded(
     lines(
       ...header,
       ...body,
@@ -40,7 +40,10 @@ function running(...body: string[]): string {
 type Step = 'awaited' | 'started' | 'dropped' | 'commit';
 
 /** The purchase taking `steps`, its jobs named by their step's position, and what it gives. */
-function purchaseOf(steps: readonly Step[]): { readonly text: string; readonly gives: string } {
+function purchaseOf(steps: readonly Step[]): {
+  readonly program: EncodedDefinition;
+  readonly gives: string;
+} {
   const body = steps.map((step, position) => {
     if (step === 'commit') {
       return '  await runtime.commit()';
@@ -56,7 +59,7 @@ function purchaseOf(steps: readonly Step[]): { readonly text: string; readonly g
   const named = (kind: Step) =>
     steps.flatMap((step, position) => (step === kind ? [`receipt for j${position}`] : []));
   return {
-    text: running(
+    program: running(
       'ista async fn purchase(id: String) -> String:',
       '  let got = id',
       '  let started: Array<Future<String, "ista">> = []',
@@ -150,8 +153,8 @@ describe('delegate', () => {
         }),
         async (steps) => {
           const { host, calls } = countingHost();
-          const { text, gives } = purchaseOf(steps);
-          const ended = await startToEnd(testRuntime({ host }), text, { crashEveryAwait: true });
+          const { program, gives } = purchaseOf(steps);
+          const ended = await startToEnd(testRuntime({ host }), program, { crashEveryAwait: true });
           expect(ended).toEqual({ kind: 'finished', outcome: JSON.stringify(gives) });
           const jobs = steps.flatMap((step, position) =>
             step === 'awaited' || step === 'started' ? [`j${position}`] : [],
@@ -164,14 +167,14 @@ describe('delegate', () => {
   });
 
   it('lowers the loop serving jobs only with a program that delegates', () => {
-    const served = (text: string) => {
-      const { purpose, functions } = definitionFormat.read(text);
+    const served = ({ definition }: KeyedDefinition) => {
+      const { purpose, functions } = definition;
       const jobServer = purpose.kind === 'program' ? purpose.jobServer : undefined;
       const named = jobServer === undefined ? undefined : functions[jobServer]?.name;
       return [named, functions.some((entry) => entry.name.startsWith('runtime._nextWork'))];
     };
     expect(served(purchase)).toEqual(['runtime._serve', true]);
-    const plain = compiledText(
+    const plain = compiledEncoded(
       lines(
         "import * as runtime from 'runtime'",
         'ista async fn purchase(id: String) -> String: id',
@@ -234,7 +237,7 @@ describe('delegate', () => {
         });
       },
     };
-    const raced = compiledText(
+    const raced = compiledEncoded(
       lines(
         ...header,
         "import * as time from 'time'",
@@ -269,7 +272,7 @@ describe('delegate', () => {
       },
     };
     // By types, the job table's closures may hold `kept`: what closures capture isn't refined.
-    const disposedMidJob = textDespiteCycles(
+    const disposedMidJob = encodedDespiteCycles(
       lines(
         "import * as runtime from 'runtime'",
         "import * as time from 'time'",
@@ -305,7 +308,7 @@ describe('delegate', () => {
       'main.phase()': () => BigInt(phase),
     };
     // By types, the job table's closures may hold `kept`: what closures capture isn't refined.
-    const program = textDespiteCycles(
+    const program = encodedDespiteCycles(
       lines(
         ...header,
         "import * as time from 'time'",

@@ -6,15 +6,14 @@
  */
 
 import { test as it } from 'vitest';
-import { compiledText } from '../compiler/compile.test-kit.ts';
-import { definitionFormat } from '../definition/definition.ts';
+import { compiledEncoded } from '../compiler/compile.test-kit.ts';
 import { builtProgram } from './built-program.test-kit.ts';
 
 const iterations = 100_000;
 /** A prime the loop's total stays below, so its arithmetic stays on small ints. */
 const modulus = 1_000_003n;
 
-const text = compiledText(
+const compiled = compiledEncoded(
   [
     'fn mix(n: Int) -> Int:',
     '  let total = 0',
@@ -40,7 +39,7 @@ function mix(n: bigint): bigint {
 }
 
 it(`an Int loop of ${iterations} iterations`, async ({ bench, expect }) => {
-  const built = await builtProgram(definitionFormat.read(text));
+  const built = await builtProgram(compiled);
   const start = { function: 'main.mix(Int)', arguments: [iterations] };
   expect(await built.start(start)).toMatchObject({
     kind: 'finished',

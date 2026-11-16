@@ -66,6 +66,7 @@
   },
   "dependencies": {
     "@noble/hashes": "2.4.0",
+    "avsc": "5.7.9",
     "commander": "15.0.0",
     "lossless-json": "4.3.3",
     "lru-cache": "11.5.3",

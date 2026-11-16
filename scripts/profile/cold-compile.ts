@@ -1,7 +1,6 @@
 /**
- * The toolchain end to end and cold: load (scan, parse), bind, check every module, lower, write the
- * Definition's text, then what a host does with it: deploy (read, validate, emit) and start, or run
- * the tests. Each run is in its own process, so no run is warmed by another and nothing is cached. A
+ * The toolchain end to end and cold: load (scan, parse), bind, check every module, lower, encode
+ * the Definition, then what a host does with it: deploy (emit, store) and start, or run the tests. Each run is in its own process, so no run is warmed by another and nothing is cached. A
  * run imports the modules first and starts the profiler after, so a profile holds the toolchain's
  * work only, not loading it.
  * - `minimal`: one module whose `main` opens a runtime and returns, compiled, deployed and run.
@@ -21,7 +20,11 @@ import process from 'node:process';
 import { bindProgram } from '../../src/compiler/binder/bind.ts';
 import { compileProgram, compileTests, diagnose } from '../../src/compiler/compile.ts';
 import type { Program } from '../../src/compiler/program/program.ts';
-import { type Definition, definitionFormat } from '../../src/definition/definition.ts';
+import {
+  type Definition,
+  type EncodedDefinition,
+  encodeDefinition,
+} from '../../src/definition/definition.ts';
 import { realTime } from '../../src/runtime/clock.ts';
 import { createRuntime } from '../../src/runtime/host/index.ts';
 import { memoryStore } from '../../src/runtime/store.ts';
@@ -38,8 +41,8 @@ interface Loaded {
   readonly program: Program;
   /** Lowers the program once it is checked: the compilation's outcome. */
   readonly lower: () => { readonly kind: string; readonly definition?: Definition };
-  /** What a host does with the Definition's text, lapping each phase. */
-  readonly host: (text: string, lap: Lap) => Promise<void>;
+  /** What a host does with the encoded Definition, lapping each phase. */
+  readonly host: (encoded: EncodedDefinition, lap: Lap) => Promise<void>;
 }
 
 const minimalMain = [
@@ -71,8 +74,8 @@ const workloads = {
     return {
       program,
       lower: () => compileProgram(program, mainId),
-      host: async (text, lap) => {
-        const deployed = runtimeOf().deploy(text);
+      host: async (encoded, lap) => {
+        const deployed = runtimeOf().deploy(encoded);
         lap('deploy');
         await deployed.start('main');
         lap('start');
@@ -84,8 +87,8 @@ const workloads = {
     return {
       program,
       lower: () => compileProgram(program, mainId),
-      host: (text, lap) => {
-        runtimeOf().deploy(text);
+      host: (encoded, lap) => {
+        runtimeOf().deploy(encoded);
         lap('deploy');
         return Promise.resolve();
       },
@@ -96,9 +99,9 @@ const workloads = {
     return {
       program,
       lower: () => compileTests(program),
-      host: async (text, lap) => {
+      host: async (encoded, lap) => {
         const options = { natives: stdNatives, clock: realTime, timeout: testTimeoutMs };
-        for await (const _ of runTests(text, options)) {
+        for await (const _ of runTests(encoded, options)) {
           // Only the run's time is measured, not its reports.
         }
         lap('run');
@@ -136,9 +139,9 @@ async function runChild(outDir: string, name: WorkloadName, run: string): Promis
     const { kind, definition } = lower();
     lap('lower');
     if (definition !== undefined) {
-      const { text } = definitionFormat.write(definition);
+      const encoded = encodeDefinition(definition);
       lap('write');
-      await host(text, lap);
+      await host(encoded, lap);
     }
     return kind;
   });

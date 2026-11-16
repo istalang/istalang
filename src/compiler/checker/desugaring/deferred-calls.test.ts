@@ -10,7 +10,7 @@ import { describe, expect, it } from 'vitest';
 import { decodeJson } from '../../../definition/formats/codec.ts';
 import { reportedOnce } from '../../../foundation/diagnostics/diagnostic.test-kit.ts';
 import { startToEnd, testRuntime } from '../../../runtime/runtime.test-kit.ts';
-import { compiledText, wholeProgramTimeout } from '../../compile.test-kit.ts';
+import { compiledEncoded, wholeProgramTimeout } from '../../compile.test-kit.ts';
 import { reported } from '../check.test-kit.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 
@@ -120,7 +120,7 @@ function program(body: string): string {
 }
 
 async function outcomeOf(text: string): Promise<unknown> {
-  const state = await startToEnd(testRuntime(), compiledText(text));
+  const state = await startToEnd(testRuntime(), compiledEncoded(text));
   return state.kind === 'finished' ? decodeJson(String(state.outcome)) : state;
 }
 

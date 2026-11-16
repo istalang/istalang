@@ -12,7 +12,7 @@
  */
 
 import { type EmittedProgram, emitProgram } from '../codegen/emit.ts';
-import { type Definition, definitionFormat } from '../definition/definition.ts';
+import type { Definition, KeyedDefinition } from '../definition/definition.ts';
 import { jsonText, jsonTypeOf, plainOfJson } from '../definition/values/json-values.ts';
 import type { Value } from '../definition/values/values.ts';
 import { memo } from '../foundation/structures/memo.ts';
@@ -63,15 +63,14 @@ export interface LiveCode {
 }
 
 const emitted = new WeakMap<Definition, EmittedProgram>();
-const hashes = new WeakMap<Definition, string>();
 
 /**
- * Starts `definition`'s live code as `start` says, bound by `binding`, running `live`'s code; how
- * it ended. The ista instances it reaches are the world's, in a store of their own that ends with
+ * Starts `keyed`'s live code as `start` says, bound by `binding`, running `live`'s code; how it
+ * ended. The ista instances it reaches are the world's, in a store of their own that ends with
  * the start, committed at every await as any host's are (§5).
  */
 export async function startLive(
-  definition: Definition,
+  { definition, hash }: KeyedDefinition,
   binding: HostBinding,
   start: Start = {},
   live: LiveCode = {},
@@ -79,7 +78,7 @@ export async function startLive(
   const logs: LogRecord[] = [];
   const program = {
     definition,
-    hash: memo(hashes, definition, () => definitionFormat.write(definition).hash),
+    hash,
     emitted: live.code ?? memo(emitted, definition, () => emitProgram(definition)),
   };
   const { readBack } = live;

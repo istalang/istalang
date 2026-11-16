@@ -7,10 +7,10 @@
 
 import { expect } from 'vitest';
 import { numberBackwards } from '../../../src/compiler/compile.test-kit.ts';
-import { definitionFormat } from '../../../src/definition/definition.ts';
+import { encodeDefinition } from '../../../src/definition/definition.ts';
 import { compiledAt } from '../../golden/pipeline/index.ts';
 import type { ProgramSubject } from '../../golden/subjects.ts';
-import { type Check, writtenOf } from '../swept.ts';
+import { type Check, encodedOf } from '../swept.ts';
 
 function writtenAlike(_: undefined, { subject }: { readonly subject: ProgramSubject }) {
   const { directory, path, text, name } = subject;
@@ -18,7 +18,7 @@ function writtenAlike(_: undefined, { subject }: { readonly subject: ProgramSubj
   if ('problem' in twin) {
     throw new Error(`${name} numbered backwards doesn't compile: ${twin.problem}`);
   }
-  expect(definitionFormat.write(twin.definition).text).toBe(writtenOf(subject));
+  expect(encodeDefinition(twin.definition).hash).toBe(encodedOf(subject).hash);
   return 1;
 }
 

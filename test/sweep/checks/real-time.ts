@@ -15,7 +15,7 @@ import { stdNatives } from '../../../src/stdlib/natives.ts';
 import { logLine } from '../../golden/observation.ts';
 import { hostOf } from '../../golden/pipeline/index.ts';
 import { type ProgramSubject, statedEnding } from '../../golden/subjects.ts';
-import { type Check, observedOf, writtenOf } from '../swept.ts';
+import { type Check, encodedOf, observedOf } from '../swept.ts';
 
 /** A trace's line: a frame's name, then its module, line and column. */
 const frameLine = /^at .+ \(\S+:\d+:\d+\)$/u;
@@ -34,7 +34,7 @@ async function endsAsStated(_: undefined, { subject }: { readonly subject: Progr
       panicked: (instance, { message }) => unheard.push(`${instance}: ${message}`),
     },
   });
-  const program = runtime.deploy(writtenOf(subject));
+  const program = runtime.deploy(encodedOf(subject));
   const { state, logs: own } = await program.start('run');
   logs.push(...own.map(logLine));
   switch (state.kind) {

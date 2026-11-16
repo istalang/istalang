@@ -1,6 +1,6 @@
 /**
- * Deployed programs (§9): a Definition text read, validated, emitted and stored once per hash, and
- * starting what a host may start of it by key, with its arguments as JSON.
+ * Deployed programs (§9): a Definition emitted and stored once per hash, and starting what a host
+ * may start of it by key, with its arguments as JSON.
  *
  * - A start runs on a turn of its own, as every host call does (host-turns.ts).
  * - A host starts live or simple code only, as a live run: in memory, never written to the store,
@@ -12,7 +12,7 @@
  */
 
 import { emitProgram } from '../../codegen/emit.ts';
-import { type Definition, definitionFormat } from '../../definition/definition.ts';
+import type { Definition, KeyedDefinition } from '../../definition/definition.ts';
 import { jsonText, jsonTypeOf } from '../../definition/values/json-values.ts';
 import type { Value } from '../../definition/values/values.ts';
 import { jsonIn, startOf } from '../boundary/starts.ts';
@@ -47,9 +47,8 @@ export interface DeployedProgram {
   readonly outcomeText: (finished: Finished) => string;
 }
 
-/** Reads a Definition text, validating it: its value, the hash a store keys it by, its code. */
-export function readDefinition(text: string): WorldProgram {
-  const { value: definition, hash } = definitionFormat.readKeyed(text);
+/** The program a world runs of `keyed`: its code emitted. */
+export function worldProgram({ definition, hash }: KeyedDefinition): WorldProgram {
   return { definition, hash, emitted: emitProgram(definition) };
 }
 

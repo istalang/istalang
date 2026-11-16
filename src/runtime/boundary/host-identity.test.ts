@@ -5,8 +5,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { compiledText } from '../../compiler/compile.test-kit.ts';
-import { definitionFormat } from '../../definition/definition.ts';
+import { compiledEncoded } from '../../compiler/compile.test-kit.ts';
 import { stdNatives } from '../../stdlib/natives.ts';
 import { ManualClock } from '../clock.ts';
 import { startLive } from '../program.ts';
@@ -21,7 +20,7 @@ interface Showing {
 
 /** What `show` got at each call, `_main`'s `body` running in an instance. */
 async function shown({ declarations, key }: Showing, body: readonly string[]): Promise<unknown[]> {
-  const program = compiledText(
+  const program = compiledEncoded(
     [
       "import Json from 'json'\nimport * as json from 'json'\nimport * as runtime from 'runtime'",
       ...declarations,
@@ -203,7 +202,7 @@ describe('a value given to a host again', () => {
   });
 
   it('is the same object when given to an extern and returned in the outcome, its codec running once', async () => {
-    const program = compiledText(
+    const program = compiledEncoded(
       [
         "import Json from 'json'",
         'struct Item { name: String }',
@@ -238,7 +237,7 @@ describe('a value given to a host again', () => {
       clock: new ManualClock(),
       seed: testSeed,
     };
-    const { end } = await startLive(definitionFormat.read(program), binding);
+    const { end } = await startLive(program, binding);
     if (end.kind !== 'finished') {
       throw new Error(`The program didn't finish: ${JSON.stringify(end)}`);
     }
@@ -249,7 +248,7 @@ describe('a value given to a host again', () => {
   });
 
   it('is the same object for a disposable host value kept, dereferenced from a WeakRef, and disposed', async () => {
-    const program = compiledText(
+    const program = compiledEncoded(
       [
         "import * as runtime from 'runtime'",
         'extern shared struct Lease',
@@ -343,7 +342,7 @@ describe('one object given as two types', () => {
 
 describe('a value two instances give a host', () => {
   it("is written by each instance's codec, reading its own context constant", async () => {
-    const program = compiledText(
+    const program = compiledEncoded(
       [
         "import Json from 'json'\nimport * as runtime from 'runtime'",
         'ista const label: String = runtime.id()',

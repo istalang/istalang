@@ -1,13 +1,12 @@
 /**
- * The codec: exact integers at any size, one canonical text per value whatever its key order,
- * and a hash of that text.
+ * The codec: exact integers at any size, one canonical text per value whatever its key order.
  */
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { Unreachable } from '../../foundation/structures/unreachable.ts';
 import { exactJson, looseText, reverseKeys } from './codec.test-kit.ts';
-import { contentHash, decodeJson, encodeJson } from './codec.ts';
+import { decodeJson, encodeJson } from './codec.ts';
 
 describe('codec', () => {
   it('round-trips integers of any size, floats and strings exactly', () => {
@@ -54,13 +53,6 @@ describe('codec', () => {
       -1000,
       1.5,
     ]);
-  });
-
-  it('hashes equal texts equally, as 64 hex digits', () => {
-    const text = encodeJson({ a: 10n ** 40n });
-    expect(contentHash(text)).toHaveLength(64);
-    expect(contentHash(text)).toBe(contentHash(encodeJson(decodeJson(text))));
-    expect(contentHash(text)).not.toBe(contentHash(encodeJson({ a: 10n ** 40n + 1n })));
   });
 
   it('refuses values JSON cannot hold', () => {

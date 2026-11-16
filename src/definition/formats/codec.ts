@@ -1,12 +1,12 @@
 /**
- * The one JSON text form for everything the toolchain persists or hashes: Definitions, snapshots
- * and, from M3, values crossing the host boundary.
+ * The one JSON text form for everything the toolchain persists as text: snapshots, extern
+ * signatures, extern payloads and values crossing the host boundary.
  *
  * - Integers are exact at any size. lossless-json writes a bigint as plain digits and gives the
  *   decoder each number's source text, so an integer outside the safe range decodes to a bigint
  *   instead of being rounded. A safe integer decodes to a number, which keeps indexes plain.
  * - The text is canonical: object keys sorted by UTF-16 code unit (the order RFC 8785 uses), no
- *   whitespace. Equal values therefore have one text and one hash, whatever order their keys were
+ *   whitespace. Equal values therefore have one text, whatever order their keys were
  *   built or received in. It is written from the sorted entries themselves, since a JavaScript
  *   object puts keys that spell array indexes first, in numeric order, whatever order it is given.
  * - A reader may bound how deeply the text nests: that is checked on the text itself, before the
@@ -15,17 +15,11 @@
  *   floats (values/values.ts); this layer stays type-agnostic.
  */
 
-import { sha256 } from '@noble/hashes/sha2.js';
-import { bytesToHex, utf8ToBytes } from '@noble/hashes/utils.js';
 import { parse } from 'lossless-json';
-import { z } from 'zod';
 import { compareOrdered } from '../../foundation/language/order.ts';
 import { unreachable } from '../../foundation/structures/unreachable.ts';
 
 const integerSyntax = /^-?\d+$/u;
-
-/** What `contentHash` returns, for formats that refer to content by hash. */
-export const contentHashText = z.string().regex(/^[0-9a-f]{64}$/u);
 
 /**
  * Encodes a JSON-shaped value (bigints allowed) as canonical text: `undefined` is left out of an
@@ -110,11 +104,6 @@ export function jsonDepth(value: unknown): number {
     }
   }
   return deepest;
-}
-
-/** The SHA-256 of a canonical text, as lowercase hex: the identity a store keys content by. */
-export function contentHash(text: string): string {
-  return bytesToHex(sha256(utf8ToBytes(text)));
 }
 
 function decodeNumber(text: string): number | bigint {

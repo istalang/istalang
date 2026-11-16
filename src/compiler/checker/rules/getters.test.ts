@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { decodeJson } from '../../../definition/formats/codec.ts';
 import { startToEnd, testRuntime } from '../../../runtime/runtime.test-kit.ts';
 import { mainGives } from '../../../stdlib/prelude/prelude.test-kit.ts';
-import { compiledText } from '../../compile.test-kit.ts';
+import { compiledEncoded } from '../../compile.test-kit.ts';
 import { reported, reportedAt } from '../check.test-kit.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 
@@ -103,7 +103,7 @@ describe('reading a getter (§3.1)', () => {
     ].join('\n');
     const state = await startToEnd(
       testRuntime(),
-      compiledText(main, { './people': `${person}\n` }),
+      compiledEncoded(main, { './people': `${person}\n` }),
     );
     expect(state.kind === 'finished' && decodeJson(String(state.outcome))).toEqual([
       'Ada Lovelace',

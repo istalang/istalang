@@ -2,35 +2,41 @@
  * Definitions edited for tests:
  *
  * - Ones a compiler would never write, for tests of what refuses or catches them: a compiled
- *   Definition's text with its body edited as plain JSON, which reading it validates afresh.
+ *   Definition edited and encoded again, unvalidated, as bytes from outside the toolchain could be.
  * - What a Definition says apart from where its code stands in its sources, so two compiles of
  *   one program laid out differently compare alike.
  */
 
-import type { Definition } from './definition.ts';
-import { decodeJson, encodeJson } from './formats/codec.ts';
-
-/** The JSON of a Definition's body, as far as these edits reach into it. */
-interface EditableBody {
-  readonly functions: { readonly name: string; mode?: string }[];
-}
+import {
+  type Definition,
+  type EncodedDefinition,
+  encodeDefinition,
+  type KeyedDefinition,
+} from './definition.ts';
+import type { CodeMode } from './tables/functions.ts';
 
 /** A code entry's change of mode: the entry named `name` of mode `from` (a start's wrapper shares its name). */
 interface ModeChange {
   readonly name: string;
-  readonly from: string;
-  readonly to: string;
+  readonly from: CodeMode;
+  readonly to: CodeMode;
 }
 
-/** `text`, a Definition's, with one code entry's mode changed. */
-export function withModeChanged(text: string, { name, from, to }: ModeChange): string {
-  const envelope = decodeJson(text) as { readonly body: EditableBody };
-  const entry = envelope.body.functions.find((each) => each.name === name && each.mode === from);
-  if (entry === undefined) {
+/** `keyed`'s Definition with one code entry's mode changed, encoded. */
+export function withModeChanged(
+  { definition }: KeyedDefinition,
+  { name, from, to }: ModeChange,
+): EncodedDefinition {
+  const at = definition.functions.findIndex(
+    (entry) => entry.kind === 'code' && entry.name === name && entry.mode === from,
+  );
+  if (at < 0) {
     throw new Error(`The Definition has no ${from} code entry named ${name}.`);
   }
-  entry.mode = to;
-  return encodeJson(envelope);
+  const functions = definition.functions.map((entry, index) =>
+    index === at && entry.kind === 'code' ? { ...entry, mode: to } : entry,
+  );
+  return encodeDefinition({ ...definition, functions });
 }
 
 /** The fields that say where code stands in its module's text: an instruction's or entry's, a module's lines. */

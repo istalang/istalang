@@ -12,7 +12,7 @@
  */
 
 import process from 'node:process';
-import { definitionFormat } from '../../src/definition/definition.ts';
+import { type EncodedDefinition, encodeDefinition } from '../../src/definition/definition.ts';
 import type { Handlers } from '../../src/foundation/structures/kind-table.ts';
 import { memo } from '../../src/foundation/structures/memo.ts';
 import type { Observation } from '../golden/observation.ts';
@@ -90,7 +90,7 @@ export function visitOf(swept: Swept): Swept {
 }
 
 const compiles = new WeakMap<ProgramSubject, ReturnType<typeof compiledAt>>();
-const writes = new WeakMap<ProgramSubject, string>();
+const encodings = new WeakMap<ProgramSubject, EncodedDefinition>();
 const observations = new WeakMap<ProgramSubject, Promise<Observation>>();
 
 /** `subject` compiled; throws the first error it reports, every time it is asked. */
@@ -104,9 +104,9 @@ export function compiledOf(subject: ProgramSubject): Compiled {
   return compiled;
 }
 
-/** The text of `subject`'s Definition, as a host deploys it. */
-export function writtenOf(subject: ProgramSubject): string {
-  return memo(writes, subject, () => definitionFormat.write(compiledOf(subject).definition).text);
+/** `subject`'s Definition encoded, as a host deploys it. */
+export function encodedOf(subject: ProgramSubject): EncodedDefinition {
+  return memo(encodings, subject, () => encodeDefinition(compiledOf(subject).definition));
 }
 
 /** What `subject` showed run as the goldens run it. */

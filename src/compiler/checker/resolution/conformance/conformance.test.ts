@@ -11,7 +11,7 @@ import { describe, expect, it } from 'vitest';
 import { decodeJson } from '../../../../definition/formats/codec.ts';
 import { startToEnd, testRuntime } from '../../../../runtime/runtime.test-kit.ts';
 import { stdProgramOf } from '../../../binder/bind.test-kit.ts';
-import { compiledText, diagnosedAt } from '../../../compile.test-kit.ts';
+import { compiledEncoded, diagnosedAt } from '../../../compile.test-kit.ts';
 import { idOf } from '../../../program/program.test-kit.ts';
 import { checkedApart, reported } from '../../check.test-kit.ts';
 import { checkProgram } from '../../check.ts';
@@ -31,7 +31,7 @@ function unmet(text: string, others: Readonly<Record<string, string>> = {}): boo
 }
 
 async function runSource(source: string): Promise<unknown> {
-  const state = await startToEnd(testRuntime(), compiledText(source));
+  const state = await startToEnd(testRuntime(), compiledEncoded(source));
   return state.kind === 'finished' ? decodeJson(String(state.outcome)) : state;
 }
 

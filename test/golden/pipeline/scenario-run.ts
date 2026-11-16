@@ -6,7 +6,7 @@
 
 import { readFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
-import { definitionFormat } from '../../../src/definition/definition.ts';
+import { type EncodedDefinition, encodeDefinition } from '../../../src/definition/definition.ts';
 import { ManualClock } from '../../../src/runtime/clock.ts';
 import { createRuntime, type Runtime } from '../../../src/runtime/host/index.ts';
 import type { HostReports } from '../../../src/runtime/host/programs.ts';
@@ -26,7 +26,7 @@ export async function observeScenario(scenario: Scenario): Promise<readonly unkn
   if ('problem' in compiled) {
     throw new Error(`${scenario.name}'s program doesn't compile: ${compiled.problem}`);
   }
-  const definition = definitionFormat.write(compiled.definition).text;
+  const definition = encodeDefinition(compiled.definition);
   const host = recording(await hostOf({ ...scenario, path, text }));
   const heard = hearing(directory);
   const store = memoryStore();
@@ -62,7 +62,7 @@ interface ScenarioWorld {
   readonly store: InstanceStore;
   readonly clock: ManualClock;
   readonly directory: string;
-  readonly definition: string;
+  readonly definition: EncodedDefinition;
 }
 
 type Step = Scenario['steps'][number];

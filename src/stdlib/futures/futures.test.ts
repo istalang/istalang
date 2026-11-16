@@ -8,7 +8,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { reported } from '../../compiler/checker/check.test-kit.ts';
-import { compiledText } from '../../compiler/compile.test-kit.ts';
+import { compiledEncoded } from '../../compiler/compile.test-kit.ts';
 import { testRuntime } from '../../runtime/runtime.test-kit.ts';
 
 /** Each scenario: a `live async fn` named for it, comparing what it awaits with what it expects. */
@@ -74,7 +74,7 @@ const scenarios = {
 
 type Scenario = keyof typeof scenarios;
 
-const text = compiledText(
+const text = compiledEncoded(
   [
     "import * as futures from 'futures'",
     "import * as time from 'time'",

@@ -5,14 +5,14 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { compiledText } from '../../compiler/compile.test-kit.ts';
+import { compiledEncoded } from '../../compiler/compile.test-kit.ts';
 import { lines } from '../../compiler/parser/parse.test-kit.ts';
 import { withModeChanged } from '../../definition/definition.test-kit.ts';
 import { startToEnd, testRuntime } from '../runtime.test-kit.ts';
 
 describe('an execution started', () => {
   it('is code of its instance’s kind: a live run refuses to start ista code', async () => {
-    const text = compiledText(
+    const text = compiledEncoded(
       lines('live async fn helper() -> Int: 1', 'live async fn main() -> Int: await helper()'),
     );
     expect(await startToEnd(testRuntime(), text)).toEqual({ kind: 'finished', outcome: '1' });

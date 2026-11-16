@@ -14,6 +14,7 @@ import { sha1 } from '@noble/hashes/legacy.js';
 import { sha256, sha384, sha512 } from '@noble/hashes/sha2.js';
 import { bytesToHex, hexToBytes, utf8ToBytes } from '@noble/hashes/utils.js';
 import type { Value } from '../../definition/values/values.ts';
+import { base64Of, bytesOfBase64 } from '../../foundation/text/base64.ts';
 import type { NativeContext, Natives } from '../../runtime/natives.ts';
 import type { NativeKeys } from '../std-module.ts';
 import { text, variantEntry } from '../values/arguments.ts';
@@ -23,15 +24,6 @@ interface Encoding {
   readonly name: string;
   readonly encode: (bytes: Uint8Array) => string;
   readonly decode: (encoded: string) => Uint8Array | undefined;
-}
-
-/** Bytes as the binary string `btoa` takes and `atob` gives, one character per byte. */
-function binaryOf(bytes: Uint8Array): string {
-  let binary = '';
-  for (const byte of bytes) {
-    binary += String.fromCharCode(byte);
-  }
-  return binary;
 }
 
 /** What `read` gives, or none when it throws: a decoder's refusal of what isn't its text. */
@@ -45,9 +37,8 @@ function readOrNone(read: () => Uint8Array): Uint8Array | undefined {
 
 const base64: Encoding = {
   name: 'base64',
-  encode: (bytes) => btoa(binaryOf(bytes)),
-  decode: (encoded) =>
-    readOrNone(() => Uint8Array.from(atob(encoded), (each) => each.charCodeAt(0))),
+  encode: base64Of,
+  decode: (encoded) => readOrNone(() => bytesOfBase64(encoded)),
 };
 
 // biome-ignore-start lint/style/useNamingConvention: the keys are the enums' variant names.

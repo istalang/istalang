@@ -5,7 +5,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { compiledText } from '../../compiler/compile.test-kit.ts';
+import { compiledEncoded } from '../../compiler/compile.test-kit.ts';
 import { lines } from '../../compiler/parser/parse.test-kit.ts';
 import type { LogRecord } from '../instance-state.ts';
 import { startToEnd, testRuntime } from '../runtime.test-kit.ts';
@@ -39,7 +39,7 @@ const leases = [
 
 describe('a spawned instance', () => {
   it('disposes the call its outcome awaits as it is terminated, and a disposable outcome as it finishes', async () => {
-    const text = compiledText(
+    const text = compiledEncoded(
       lines(
         "import * as time from 'time'",
         ...leases,
@@ -72,7 +72,7 @@ describe('a spawned instance', () => {
   });
 
   it("disposes its root's own defers before the outcome the root returns, spawned as a call or as a function value", async () => {
-    const text = compiledText(
+    const text = compiledEncoded(
       lines(
         ...leases,
         'ista async fn make() -> Lease:',
@@ -91,7 +91,7 @@ describe('a spawned instance', () => {
     expect(logged.get('p/2')).toEqual(['defer', 'disposed out']);
   });
   it('is terminated at once when isolated and it panics, keeping its panic (§9 runtime.isolate)', async () => {
-    const text = compiledText(
+    const text = compiledEncoded(
       lines(
         "import * as runtime from 'runtime'",
         "import * as time from 'time'",
@@ -122,7 +122,7 @@ describe('a spawned instance', () => {
 
 describe("an instance's context constants", () => {
   it('are disposed with what they hold once the instance ends, a host extern lease included', async () => {
-    const text = compiledText(
+    const text = compiledEncoded(
       lines(
         "import * as runtime from 'runtime'",
         'extern shared struct Lease',
@@ -170,7 +170,7 @@ describe("an instance's context constants", () => {
           },
         },
       });
-      const text = compiledText(
+      const text = compiledEncoded(
         lines(
           "import * as runtime from 'runtime'",
           'shared struct Count:',

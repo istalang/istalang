@@ -5,7 +5,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { compiledText } from '../../compiler/compile.test-kit.ts';
+import { compiledEncoded } from '../../compiler/compile.test-kit.ts';
 import { lines } from '../../compiler/parser/parse.test-kit.ts';
 import type { LogRecord } from '../instance-state.ts';
 import { startToEnd, testRuntime } from '../runtime.test-kit.ts';
@@ -16,7 +16,7 @@ describe('a panicked segment', () => {
     const test = testRuntime({
       reports: { logs: (records) => logs.push(...records), panicked: () => undefined },
     });
-    const text = compiledText(
+    const text = compiledEncoded(
       lines(
         "import * as log from 'log'",
         "import * as runtime from 'runtime'",

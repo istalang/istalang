@@ -1,19 +1,19 @@
 /**
  * The ownership verifier catches a register never let go of (ir-first design, "Verification"):
  * every leaking mutant of a program's verified code (ownership.test-kit.ts) is refused. What it
- * holds of a program is each mutant, and its own code read back as a host deploys it, which
- * validates it: writing checks a Definition's shape alone (definition/formats/format.ts).
+ * holds of a program is each mutant, and its own code read back as bytes from a store are, which
+ * validates them: encoding checks a Definition's shape alone (definition/definition.ts).
  */
 
 import { expect } from 'vitest';
-import { definitionFormat } from '../../../src/definition/definition.ts';
+import { readDefinition } from '../../../src/definition/definition.ts';
 import { leakingMutants } from '../../../src/definition/validation/ownership.test-kit.ts';
 import { ownershipIssues } from '../../../src/definition/validation/ownership.ts';
 import type { ProgramSubject } from '../../golden/subjects.ts';
-import { type Check, compiledOf, writtenOf } from '../swept.ts';
+import { type Check, compiledOf, encodedOf } from '../swept.ts';
 
 function leaksRefused(_: undefined, { subject }: { readonly subject: ProgramSubject }) {
-  expect(() => definitionFormat.read(writtenOf(subject))).not.toThrow();
+  expect(() => readDefinition(encodedOf(subject).bytes)).not.toThrow();
   const mutants = leakingMutants(compiledOf(subject).definition);
   const passed = mutants.filter((mutant) => ownershipIssues(mutant).length === 0);
   expect(passed.map(({ name }) => name)).toEqual([]);

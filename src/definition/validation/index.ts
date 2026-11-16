@@ -25,8 +25,8 @@ import { ownershipIssues } from './ownership.ts';
 export function validationIssues(definition: Tables): readonly string[] {
   const issues: string[] = [];
   const within = (what: string, index: number, size: number, where: string) => {
-    if (index >= size) {
-      issues.push(`${where}: ${what} ${String(index)} is past the table's ${String(size)}.`);
+    if (index < 0 || index >= size) {
+      issues.push(`${where}: ${what} ${String(index)} is outside the table's ${String(size)}.`);
     }
   };
   const { types, functions } = definition;

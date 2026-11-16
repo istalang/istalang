@@ -13,6 +13,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { test as it } from 'vitest';
 import { compiledAt } from '../../test/golden/pipeline/index.ts';
+import { encodeDefinition } from '../definition/definition.ts';
 import type { HostExterns } from '../runtime/boundary/host-natives.ts';
 import { builtProgram } from './built-program.test-kit.ts';
 
@@ -71,7 +72,7 @@ function browser(): {
 
 it('a change of the supplier form, compiled to JavaScript', async ({ bench, expect }) => {
   expect(form).toBeDefined();
-  const built = await builtProgram(definition);
+  const built = await builtProgram(encodeDefinition(definition));
   const host = browser();
   const ended = built
     .start({ function: form?.key ?? '', arguments: [params, user], externs: host.externs })

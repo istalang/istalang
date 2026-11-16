@@ -14,7 +14,7 @@
 import { writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { builtModule, emitProgram } from '../../codegen/emit.ts';
-import { definitionFormat } from '../../definition/definition.ts';
+import { embeddedText } from '../../definition/definition.ts';
 import {
   type CliEnvironment,
   type CommandDefinition,
@@ -43,8 +43,8 @@ function build(entry: string, options: BuildOptions, environment: CliEnvironment
   if ('exit' in compiled) {
     return compiled.exit;
   }
-  const { definition } = compiled;
-  const text = builtModule(definitionFormat.write(definition).text, emitProgram(definition));
+  const { encoded } = compiled;
+  const text = builtModule(embeddedText(encoded), emitProgram(encoded.definition));
   const out = resolve(environment.cwd, options.out);
   try {
     writeFileSync(out, text);

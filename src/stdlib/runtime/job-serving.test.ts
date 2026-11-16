@@ -4,7 +4,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { compiledText } from '../../compiler/compile.test-kit.ts';
+import { compiledEncoded } from '../../compiler/compile.test-kit.ts';
 import { lines } from '../../compiler/parser/parse.test-kit.ts';
 import { startToEnd, testRuntime } from '../../runtime/runtime.test-kit.ts';
 import { countingHost, header } from './delegate.test-kit.ts';
@@ -24,7 +24,7 @@ describe('the loop serving jobs', () => {
         },
       },
     });
-    const program = compiledText(
+    const program = compiledEncoded(
       lines(
         ...header,
         "import * as time from 'time'",

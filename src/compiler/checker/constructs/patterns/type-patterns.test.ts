@@ -8,7 +8,7 @@ import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { startToEnd, testRuntime } from '../../../../runtime/runtime.test-kit.ts';
 import { entityOfName, stdProgramOf } from '../../../binder/bind.test-kit.ts';
-import { compiledText, wholeProgramTimeout } from '../../../compile.test-kit.ts';
+import { compiledEncoded, wholeProgramTimeout } from '../../../compile.test-kit.ts';
 
 const words = /^[a-z ]{0,6}$/u;
 const letters = /^[a-z]{1,6}$/u;
@@ -45,7 +45,7 @@ describe('type patterns', () => {
           `  const value: any Stringable = ${literal}`,
           `  [${testedTypes.map((tested) => `value is ${tested}`).join(', ')}]`,
         ].join('\n');
-        expect(await startToEnd(testRuntime(), compiledText(main))).toEqual({
+        expect(await startToEnd(testRuntime(), compiledEncoded(main))).toEqual({
           kind: 'finished',
           outcome: JSON.stringify(testedTypes.map((tested) => tested === type)),
         });

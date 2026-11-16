@@ -5,13 +5,13 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { compiledText } from '../../compiler/compile.test-kit.ts';
+import { compiledEncoded } from '../../compiler/compile.test-kit.ts';
 import { lines } from '../../compiler/parser/parse.test-kit.ts';
 import { type TestRuntime, testRuntime } from '../runtime.test-kit.ts';
 import { snapshotFormat } from '../snapshot/format.ts';
 
 /** A program whose live run `x` spawns `x/1`, which pings its host once its timer is due. */
-const pinging = compiledText(
+const pinging = compiledEncoded(
   lines(
     "import * as time from 'time'",
     "import * as runtime from 'runtime'",

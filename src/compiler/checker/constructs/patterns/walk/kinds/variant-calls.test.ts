@@ -12,7 +12,11 @@ import { describe, expect, it } from 'vitest';
 import { decodeJson } from '../../../../../../definition/formats/codec.ts';
 import { startToEnd, testRuntime } from '../../../../../../runtime/runtime.test-kit.ts';
 import { stdProgramOf } from '../../../../../binder/bind.test-kit.ts';
-import { compiledText, diagnosedAt, wholeProgramTimeout } from '../../../../../compile.test-kit.ts';
+import {
+  compiledEncoded,
+  diagnosedAt,
+  wholeProgramTimeout,
+} from '../../../../../compile.test-kit.ts';
 import { reported } from '../../../../check.test-kit.ts';
 import { checkerDiagnostics } from '../../../../diagnostics/index.ts';
 
@@ -190,7 +194,7 @@ function matcher(name: string, pattern: string, bound: readonly string[]): strin
 }
 
 async function outcomeOf(source: string): Promise<unknown> {
-  const state = await startToEnd(testRuntime(), compiledText(source));
+  const state = await startToEnd(testRuntime(), compiledEncoded(source));
   return state.kind === 'finished' ? decodeJson(String(state.outcome)) : state;
 }
 

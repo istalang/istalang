@@ -1,5 +1,5 @@
 ---
-description: canonical JSON codecs, versioned formats, snapshots, run objects, holders and disposal, the World, segments and commits, and the host API — read before changing src/runtime or anything persisted
+description: canonical JSON codecs, versioned JSON and avsc formats, the Definition's persisted form, snapshots, run objects, holders and disposal, the World, segments and commits, and the host API — read before changing src/runtime or anything persisted
 owner: tech-lead
 status: active
 applies_to: istalang
@@ -14,9 +14,11 @@ How the run works: docs/arch/runtime.md.
 
 ## Units
 
-- encode/decode canonical JSON text, refuse text nesting too deeply before it is parsed, hash a text → `encodeJson`, `decodeJson`, `NestingError`, `contentHash` (`src/definition/formats/codec.ts`)
-- define a versioned format `{ format, version, body }` with depth/zod validation → `defineFormat`, `Format`, `FormatError` (`src/definition/formats/format.ts`)
-- read (validating it) or write (checking its shape) a persisted `Definition` text, with the hash a store keys it by → `definitionFormat`, `Format.readKeyed` (`src/definition/definition.ts`); what a format checks beyond its shape, once as it reads → `defineFormat`'s `problemsOf`
+- encode/decode canonical JSON text, refuse text nesting too deeply before it is parsed → `encodeJson`, `decodeJson`, `NestingError` (`src/definition/formats/codec.ts`)
+- define a versioned JSON format `{ format, version, body }` with depth/zod validation → `defineFormat`, `Format`, `FormatError`; check an envelope's name and version → `requireEnvelope` (`src/definition/formats/format.ts`)
+- define a versioned binary format over a zod schema, avsc bytes with no zod run on a value; hash bytes → `defineBinaryFormat`, `contentHash`, `contentHashText` (`src/definition/formats/binary-format.ts`); an avsc type from a zod schema → `avroTypeOf` (`src/definition/formats/avro/index.ts`), a custom schema's Avro primitive → `avroForms` (`avro/forms.ts`)
+- carry a Definition with its bytes and hash: encode the toolchain's own once → `encodeDefinition`; bytes from a store or file, decoded and validated → `readDefinition`; validate in memory → `requireValid`; embed in a built module and read it back unvalidated → `embeddedText`, `embeddedDefinition`; types `EncodedDefinition`, `KeyedDefinition` (`src/definition/definition.ts`)
+- bytes as base64 and back, in Node and a browser → `base64Of`, `bytesOfBase64` (`src/foundation/text/base64.ts`)
 - read or write an instance's snapshot → `snapshotFormat`, `Snapshot` (`src/runtime/snapshot/format.ts`); write one from a run → `snapshotOf`, `TooDeep` (`snapshot/write.ts`); read one back into a fresh run → `restore`, `rootInvocation` (`snapshot/restore.ts`)
 - a run of one instance: calls, starts, parks, the ready queue, settling futures, timers, host fillings, its random draws → `Run` (`src/runtime/run/run.ts`); what a snapshot keeps of it beside its objects → `Run.persisted`, `Run.restored`
 - act on a run's object from outside it, in whichever run of its instance the turn lands in, the turn kept as an input a segment run again applies again → `Run.arrive`, `Run.onArrivalTaken`, `Run.succeededBy`
@@ -41,7 +43,8 @@ How the run works: docs/arch/runtime.md.
 
 ## One-way rules
 
-- Persisted formats use `defineFormat` and `encodeJson`/`decodeJson`, never `JSON.parse`/`JSON.stringify`.
+- Persisted formats use `defineFormat` and `encodeJson`/`decodeJson`, or `defineBinaryFormat`, never `JSON.parse`/`JSON.stringify`.
+- Nothing outside `src/definition/definition.ts` encodes, decodes or embeds a Definition; only `src/definition/formats/avro/` imports avsc.
 - Snapshots store only what can't be derived: never holders or counts; `restore` counts them again from what holds them.
 - Runs meet only through the `World`; what crosses is copied, and an answer arrives in its run as a turn of its own (`Run.arrive`), naming the object it acts on rather than capturing the run.
 - Whatever is random in an instance draws from its own seed (`Run.draw`), kept in its snapshot, so a segment run again draws alike.

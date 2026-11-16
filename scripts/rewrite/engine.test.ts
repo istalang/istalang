@@ -15,7 +15,7 @@ import { embedTypeScript } from './sources/typescript/index.ts';
 describe('rewriteFile', () => {
   it('makes rewrites in a test file wherever its literals spell them', () => {
     const contents = [
-      "compiledText(['fn f():', '  defer fn():', '    g()', '  h()'].join('\\n'));",
+      "compiledEncoded(['fn f():', '  defer fn():', '    g()', '  h()'].join('\\n'));",
       "run('fn main():\\n  defer fn(): log(\\'done\\')');",
       'run(`await spawn ${name}().result()`);',
     ].join('\n');
@@ -27,7 +27,7 @@ describe('rewriteFile', () => {
     );
     expect(after).toBe(
       [
-        "compiledText(['fn f():', '  _ = defer(fn():', '    g())', '  h()'].join('\\n'));",
+        "compiledEncoded(['fn f():', '  _ = defer(fn():', '    g())', '  h()'].join('\\n'));",
         "run('fn main():\\n  _ = defer(fn(): log(\\'done\\'))');",
         'run(`await (spawn ${name}()).result()`);',
       ].join('\n'),

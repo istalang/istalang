@@ -94,6 +94,12 @@
       }
     },
     {
+      // avsc's package.json gives `main` as a directory (./lib), which biome's resolver doesn't
+      // resolve; TypeScript and Node do, with its types. Only the Avro folder imports it.
+      "includes": ["src/definition/formats/avro/**"],
+      "linter": { "rules": { "correctness": { "noUnresolvedImports": "off" } } }
+    },
+    {
       // Tool configuration files must default-export their config, a host module (`ista run
       // --host`) its externs, and a text import (an `.ista` source compiled in by the build) has
       // nothing but a default export to declare.

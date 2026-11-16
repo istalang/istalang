@@ -1,11 +1,11 @@
 ---
-description: the Definition (compiled program, IR v4) — tables, typed registers, the instruction families, lifetimes as instructions, starts, and how spec constructs lower; read before changing lowering, codegen, the verifier, or anything persisted
+description: the Definition (compiled program, IR v4, persisted as avsc bytes v5) — tables, typed registers, the instruction families, lifetimes as instructions, starts, and how spec constructs lower; read before changing lowering, codegen, the verifier, or anything persisted
 owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-11-16
 last_updated: 2026-11-17
-tags: [definition, ir, lowering]
+tags: [definition, ir, lowering, avro]
 ---
 
 # Definition
@@ -17,10 +17,14 @@ every decision; a backend (docs/arch/codegen.md) writes what each instruction sa
 (docs/arch/runtime.md) executes it. A committed instance's **snapshot** is the run's
 (`src/runtime/snapshot/`, docs/arch/runtime.md).
 
-A Definition is persisted for an instance's whole life: one zod schema decodes and encodes it,
-`write` giving canonical JSON in a version envelope, and a reader keys the text it was given by its
-content hash (`formats/format.ts`). Validation runs once, as a text is read, which every text goes
-through before any of it runs: writing checks the shape alone. Validation checks every index, holds the entries a purpose names to the
+A Definition is persisted for an instance's whole life as avsc bytes in a version envelope
+(`formats/binary-format.ts`), keyed by their SHA-256. Its zod schema is the one description: the Avro
+type is derived from it once (`formats/avro/`), and zod never runs on a Definition. Everything that
+carries one carries an `EncodedDefinition` (value, bytes, hash) or the text a built module embeds
+(hash and base64 bytes), both made and read by `definition.ts` alone, so a change of encoding stays
+there. The toolchain's own output is trusted: encoded once, never read back or validated again.
+Validation runs where bytes come from outside it, a store or a file (`readDefinition`), and as an
+assertion in the compile test kit. Validation checks every index, holds the entries a purpose names to the
 call rule (a test's runner and suites ista code calls, the job server live code calls), and runs
 the ownership verifier (`validation/ownership.ts`), which judges each instruction on its last visit
 of a dataflow fixpoint. A function type carries no mark, so the run holds every async call it starts
@@ -38,7 +42,7 @@ to the rule: an instance starts code of its own kind alone.
 | Calls | **One function table**; an extern is an entry naming its native by key, with its capabilities and keeps. Natives speak primitives: optionals, `Result`s and enums are built by Istalang wrappers. | Separate extern tables and natives knowing program layouts. |
 | Defaults | **Computed by the callee's prologue**: a parameter left out arrives absent (`given`). | Caller-computed defaults or a sentinel value. |
 | Starts | **`starts[{key, function, encode}]`**: `function` decodes the arguments from `Json` and calls the root, giving an async one's future unawaited; `encode` writes the outcome as `Json`, called the moment it settles, so a run ends when its root returns (spec §10). | A start awaiting the root then encoding: readied work would run between. |
-| JSON | **lossless-json with sorted keys**, read and written through zod codecs; an `Int` is a `bigint`, a float a tagged `number` on disk. | Native `JSON`, a hand-rolled canonicalizer. |
+| Encoding | **avsc binary, its type derived from the zod schema's in-memory side**: records in shape order, literals in no bytes, unions by JS type then literal tag, an `Int` its two's complement as bytes (any size), a float a double, an extern payload its canonical JSON. One Definition gives one byte string. | Canonical JSON (lossless-json): larger, and reading it ran zod and a parser over every value; a hand-written Avro schema beside the zod one. |
 
 ## Frames
 
@@ -74,15 +78,15 @@ An indexed element is no step of a place, so every element read and write is a c
 | In memory | On disk |
 | --- | --- |
 | `null` (unit), boolean, string | the same |
-| `bigint` (`Int`) | a JSON integer |
-| `number` (`Float`) | `{kind: 'float', value}`; NaN, ±Infinity and -0 as strings |
+| `bigint` (`Int`) | two's-complement bytes; a snapshot: a JSON integer |
+| `number` (`Float`) | a double; a snapshot: `{kind: 'float', value}`, NaN, ±Infinity and -0 as strings |
 | tuple, struct, variant, array, map, closure | `{kind, …}` with child values; structs and variants by type index, a struct's fields in name order (§3.1 "Field order"), a variant's in declaration order |
-| extern value | `{kind: 'extern', type, payload}`; the payload is plain JSON, which `==` and map keys compare by its canonical text (codec.ts) |
+| extern value | `{kind: 'extern', type, payload}`; the payload is plain JSON, persisted and compared by `==` and map keys as its canonical text (codec.ts) |
 | handle | `{kind: 'handle', object}`; never in a constant |
 
 Map entries keep the runtime's order, so a restore iterates the same way.
 
-A persisted value nests at most `maximumDepth` (256) levels (spec §5), since the JSON and zod codecs recurse on the host's stack; a format refuses a body deeper than any valid one before either codec runs. Walks over values in memory (`==`, map keys, handles, depth) keep stacks of their own, so a deeper value lives within a segment, and the runtime panics a segment that would commit one.
+A persisted value nests at most `maximumDepth` (256) levels (spec §5), since the codecs recurse on the host's stack; the snapshot format refuses a body deeper than any valid one before either codec runs, and a Definition's bytes too deep for avsc to walk are refused as a FormatError. Walks over values in memory (`==`, map keys, handles, depth) keep stacks of their own, so a deeper value lives within a segment, and the runtime panics a segment that would commit one.
 
 The built-in `==` and map keys are `foundation/language/values.ts`'s rules, shown the runtime's values by `definition/values/equality.ts` and compile time's constant forms by the checker, so the two can't disagree. Neither compares a value's instantiated type: two values compared are of one static type, and a value converted part by part keeps its own type id where its layout stays (spec §3.5), so a `Box<"s">` taken as a `Box<String>` equals one built as a `Box<String>`.
 
