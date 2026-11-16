@@ -103,7 +103,9 @@ function hostNative(extern: HostExtern): Native<HostContext> {
   return (values, context) => {
     const shape = jsonTypeOf(context.types);
     const read = (plain: unknown) => jsonOfPlain(plain, shape);
-    const filled = fillsFuture(context) ? context.futures.filling(values.at(-1) ?? null) : undefined;
+    const filled = fillsFuture(context)
+      ? context.futures.filling(values.at(-1) ?? null)
+      : undefined;
     const passed = filled === undefined ? values : values.slice(0, -1);
     let taken: HostResolver | undefined;
     let running = true;

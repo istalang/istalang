@@ -32,7 +32,7 @@ export function issuesOf(definition: Tables): readonly string[] {
       issues.push(`${where}: ${what} ${String(index)} is past the table's ${String(size)}.`);
     }
   };
-  const { types, functions, constants } = definition;
+  const { types, functions } = definition;
   types.forEach((entry, type) => {
     for (const named of entry.arguments.flatMap(typesIn)) {
       within('type', named, types.length, `type ${String(type)}`);
@@ -48,7 +48,6 @@ export function issuesOf(definition: Tables): readonly string[] {
       issues.push(...ownershipIssues(entry).map((issue) => `${entry.name}: ${issue}`));
     }
   });
-  void constants;
   return issues;
 }
 
@@ -57,32 +56,18 @@ function codeIssues(entry: CodeFunction, where: string, definition: Tables): rea
   const { instructions, registers } = entry;
   instructions.forEach((each, pc) => {
     const operands = operandsOf(each);
-    const at = `${where} at ${String(pc)} (${each.kind})`;
-    for (const register of [...operands.read, ...operands.written]) {
-      if (register >= registers.length) {
-        issues.push(`${at}: register ${String(register)} is past the frame.`);
+    const past = (what: string, indices: readonly number[], size: number, of: string) => {
+      for (const index of indices.filter((at) => at >= size)) {
+        issues.push(
+          `${where} at ${String(pc)} (${each.kind}): ${what} ${String(index)} is past ${of}.`,
+        );
       }
-    }
-    for (const label of operands.labels) {
-      if (label >= instructions.length) {
-        issues.push(`${at}: label ${String(label)} is past the code.`);
-      }
-    }
-    for (const called of operands.functions) {
-      if (called >= definition.functions.length) {
-        issues.push(`${at}: function ${String(called)} is past the table.`);
-      }
-    }
-    for (const type of operands.types) {
-      if (type >= definition.types.length) {
-        issues.push(`${at}: type ${String(type)} is past the table.`);
-      }
-    }
-    for (const constant of operands.constants) {
-      if (constant >= definition.constants.length) {
-        issues.push(`${at}: constant ${String(constant)} is past the table.`);
-      }
-    }
+    };
+    past('register', [...operands.read, ...operands.written], registers.length, 'the frame');
+    past('label', operands.labels, instructions.length, 'the code');
+    past('function', operands.functions, definition.functions.length, 'the table');
+    past('type', operands.types, definition.types.length, 'the table');
+    past('constant', operands.constants, definition.constants.length, 'the table');
   });
   const last = instructions.at(-1);
   if (last !== undefined && !endsBlock(last)) {

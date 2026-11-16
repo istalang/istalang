@@ -76,9 +76,9 @@ export function declareFrame(
   const arguments_: (Register | undefined)[] = [];
   const listed = slots.flatMap(({ parameter, elements: types }, position) => {
     if (types !== undefined) {
-      const elements = types.map((type) => code.borrow(tables.types.reference(type)));
-      packs.push({ position, elements });
-      return elements.map((register) => ({ register, hasDefault: false }));
+      const packed = types.map((type) => code.borrow(tables.types.reference(type)));
+      packs.push({ position, elements: packed });
+      return packed.map((element) => ({ register: element, hasDefault: false }));
     }
     const register = code.borrow(parameterType(context, parameter));
     arguments_[position] = register;
@@ -138,14 +138,13 @@ function enterParameters(
   const values: Register[] = [];
   for (const [position, { parameter }] of slots.entries()) {
     const argument = arguments_[position];
-    if (argument === undefined) {
-      continue;
+    if (argument !== undefined) {
+      const value = mayBeLeftOut(parameter)
+        ? computeLeftOut(context, parameter, { argument, before: values.slice(0, position) })
+        : argument;
+      declareVariable(context, parameter, value);
+      values[position] = value;
     }
-    const value = mayBeLeftOut(parameter)
-      ? computeLeftOut(context, parameter, { argument, before: values.slice(0, position) })
-      : argument;
-    declareVariable(context, parameter, value);
-    values[position] = value;
   }
   return values;
 }
@@ -197,7 +196,11 @@ function declareVariable(
   const { name } = parameter.node;
   if (name !== undefined) {
     context.code.pin(register);
-    context.variables.declare(name, typeKey(context, concreteType(context, parameter.type)), register);
+    context.variables.declare(
+      name,
+      typeKey(context, concreteType(context, parameter.type)),
+      register,
+    );
   }
 }
 
@@ -215,7 +218,11 @@ export function declareOwnCall(context: EntryContext): void {
   if (call !== undefined) {
     const type =
       context.checker.wellKnownType(wellKnown.call) ?? unreachable('The prelude has no calls.');
-    declareFilled(context, call.name, type, (dst) => ({ kind: 'currentCall', span: owner.span, dst }));
+    declareFilled(context, call.name, type, (dst) => ({
+      kind: 'currentCall',
+      span: owner.span,
+      dst,
+    }));
   }
 }
 

@@ -78,8 +78,13 @@ function cleared(scope: EntryScope, moved: readonly Register[]): string {
     .join('');
 }
 
+/** The collection an append moved out of, when it writes into another register. */
+function movedApart(i: { readonly dst: Register; readonly collection: Register }): Register[] {
+  return i.collection === i.dst ? [] : [i.collection];
+}
+
 /** `dst = expression`, then what its holding takes. */
-function assigned(scope: EntryScope, dst: Register, expression: string, keep: string): string {
+function assigned(dst: Register, expression: string, keep: string): string {
   return `${register(dst)} = ${expression};${keep}`;
 }
 
@@ -98,7 +103,14 @@ function pathOf(place: Place): string {
   );
 }
 
-/** The expression a place's root is read by, as `rt.load` and `rt.store` take it. */
+/** The helper writing a place, by its root's kind (runtime/run/places.ts). */
+const storeHelpers = {
+  register: 'storeRegister',
+  cell: 'storeCell',
+  reference: 'storeReference',
+} as const satisfies Record<Place['root']['kind'], string>;
+
+/** The expression a place's root is read by, as `load` and `reference` take it. */
 function rootOf(place: Place): string {
   return `${literal(place.root.kind)}, ${register(place.root.register)}`;
 }
@@ -122,26 +134,23 @@ function callExpression(scope: EntryScope, index: number, passed: string): strin
 }
 
 const emitters: Handlers<EntryScope, Instruction, [], string> = {
-  constant: (scope, i) => assigned(scope, i.dst, constantExpression(scope, i.constant), ''),
+  constant: (scope, i) => assigned(i.dst, constantExpression(scope, i.constant), ''),
   move: (_, i) => `${register(i.dst)} = ${register(i.src)}; ${register(i.src)} = undefined;`,
-  copy: (scope, i) => assigned(scope, i.dst, register(i.src), held(scope, i.dst)),
+  copy: (scope, i) => assigned(i.dst, register(i.src), held(scope, i.dst)),
   tuple: (scope, i) =>
     assigned(
-      scope,
       i.dst,
       `{ kind: 'tuple', elements: [${i.elements.map(register).join(', ')}] }`,
       made(scope, i.dst) + cleared(scope, i.elements),
     ),
   struct: (scope, i) =>
     assigned(
-      scope,
       i.dst,
       `{ kind: 'struct', type: ${i.type}, fields: [${i.fields.map(register).join(', ')}] }`,
       made(scope, i.dst) + cleared(scope, i.fields),
     ),
   variant: (scope, i) =>
     assigned(
-      scope,
       i.dst,
       `{ kind: 'variant', type: ${i.type}, variant: ${i.variant}, fields: [${i.fields.map(register).join(', ')}] }`,
       made(scope, i.dst) + cleared(scope, i.fields),
@@ -153,7 +162,6 @@ const emitters: Handlers<EntryScope, Instruction, [], string> = {
     );
     const moved = i.elements.filter((element) => !element.spread).map((element) => element.value);
     return assigned(
-      scope,
       i.dst,
       `{ kind: 'array', elements: [${items.join(', ')}] }`,
       made(scope, i.dst) + cleared(scope, moved),
@@ -170,15 +178,26 @@ const emitters: Handlers<EntryScope, Instruction, [], string> = {
       entry.kind === 'entry' ? [entry.key, entry.value] : [],
     );
     return assigned(
-      scope,
       i.dst,
       `mapOf([${entries.join(', ')}])`,
       made(scope, i.dst) + cleared(scope, moved),
     );
   },
+  // The collection's holder becomes `dst`'s: the same value, or the copy `owned` made of it.
+  append: (scope, i) =>
+    assigned(
+      i.dst,
+      `append(${register(i.collection)}, ${register(i.item)})`,
+      cleared(scope, [i.item, ...movedApart(i)]),
+    ),
+  appendEntry: (scope, i) =>
+    assigned(
+      i.dst,
+      `appendEntry(${register(i.collection)}, ${register(i.key)}, ${register(i.value)}, ${lifetime(scope, i.dst) === 'counted'})`,
+      cleared(scope, [i.key, i.value, ...movedApart(i)]),
+    ),
   closure: (scope, i) =>
     assigned(
-      scope,
       i.dst,
       `{ kind: 'closure', function: ${i.function}, captures: [${i.captures.map(register).join(', ')}] }`,
       made(scope, i.dst) + cleared(scope, i.captures),
@@ -210,7 +229,6 @@ const emitters: Handlers<EntryScope, Instruction, [], string> = {
   load: (scope, i) => {
     const borrowed = scope.entry.registers[i.dst]?.borrowed === true;
     return assigned(
-      scope,
       i.dst,
       `load(${rootOf(i.place)}, ${pathOf(i.place)})`,
       borrowed ? '' : held(scope, i.dst),
@@ -218,7 +236,7 @@ const emitters: Handlers<EntryScope, Instruction, [], string> = {
   },
   store: (scope, i) => {
     const counted = lifetime(scope, i.value) === 'counted';
-    const written = `store(${rootOf(i.place)}, ${pathOf(i.place)}, ${register(i.value)}, ${counted})`;
+    const written = `${storeHelpers[i.place.root.kind]}(${register(i.place.root.register)}, ${pathOf(i.place)}, ${register(i.value)}, ${counted})`;
     const done = cleared(scope, [i.value]);
     return i.place.root.kind === 'register'
       ? `${register(i.place.root.register)} = ${written};${done}`
@@ -308,6 +326,6 @@ export function emitInstruction(scope: EntryScope, instruction: Instruction): st
 }
 
 /** The line a parked frame resumes at, which takes the position its wait was decided for. */
-export function resumed(scope: EntryScope, park: InstructionOf<'park'>): string {
+export function resumed(park: InstructionOf<'park'>): string {
   return `${register(park.dst)} = frame.decision; frame.decision = undefined; if (${register(park.dst)} === STOP) { ${goTo(park.stop)} }`;
 }

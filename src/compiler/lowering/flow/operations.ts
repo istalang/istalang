@@ -23,17 +23,13 @@ import { wellKnown } from '../../../foundation/language/well-known/index.ts';
 import { unreachable } from '../../../foundation/structures/unreachable.ts';
 import { type ConstantForm, literalTypeForm } from '../../checker/surface/constant-form.ts';
 import type { Argument, Operation, ValueId } from '../../checker/surface/flow-ir.ts';
-import type { Type } from '../../checker/types/type/index.ts';
 import { substitute } from '../../checker/types/parts/substitution.ts';
+import type { Type } from '../../checker/types/type/index.ts';
 import { isPrimitive } from '../../checker/types/type/primitives.ts';
 import { wellKnownArguments } from '../../checker/types/type/well-known.ts';
 import type { SyntaxNode } from '../../syntax/tree/index.ts';
 import type { AnchoredSpan } from '../../syntax/tree/positions.ts';
-import {
-  type ClosedCall,
-  calledParameters,
-  substitutionOfCall,
-} from '../calls/closed-calls.ts';
+import { type ClosedCall, calledParameters, substitutionOfCall } from '../calls/closed-calls.ts';
 import { emitCall, emitFunctionCall } from '../calls/emit-call.ts';
 import { packElementsOf } from '../calls/packs.ts';
 import {
@@ -52,7 +48,8 @@ import { noneOf } from '../values/optionals.ts';
 import { structValue, tupleOf } from '../values/struct-values.ts';
 import { variantAt } from '../values/variant-values.ts';
 import { globalRead, partRead } from './parts.ts';
-import { passedArguments, writePlace } from './places.ts';
+import { passedArguments, rootKindOf, writePlace } from './places.ts';
+import { waypointAt } from './waypoints.ts';
 import type { FlowWriter } from './writer.ts';
 
 type Of<Op extends Operation['op']> = Extract<Operation, { readonly op: Op }>;
@@ -69,7 +66,7 @@ export const operationWriters: {
     const { into, from, part, site } = operation;
     const read =
       part.kind === 'given'
-        ? writer.givenBy(from, site.span)
+        ? writer.waits.givenBy(from, site.span)
         : partRead(writer, { from, into, part }, site);
     writer.define(into, read, site.span, operation);
   },
@@ -82,10 +79,13 @@ export const operationWriters: {
     }
     const { code } = writer.context;
     const { span } = site;
-    const { open, futures } = writer.takeWait();
-    code.letGo([parked(writer.context, open, { waypoint: writer.waypointAt(site), span })], span);
+    const { open, futures } = writer.waits.take();
+    code.letGo(
+      [parked(writer.context, open, { waypoint: waypointAt(writer.context, site), span })],
+      span,
+    );
     futures.forEach((future, position) => {
-      writer.give(future, code.copy(caseValue(writer.context, open, position, span), span));
+      writer.waits.give(future, code.copy(caseValue(writer.context, open, position, span), span));
     });
     code.letGo(waitRegisters(open), span);
   },
@@ -114,9 +114,9 @@ export const operationWriters: {
     );
   },
   release: (writer, { values, site }) => writer.release(writer.registersEnding(values), site.span),
-  unknown: ({ flow, context }, { site }) =>
+  unknown: ({ context }, { site }) =>
     unreachable(
-      `Code checking found a mistake in, a ${site.kind} at ${site.span.from} of module ${context.module} in ${(context as unknown as { frame?: { header?: { name?: string } } }).frame?.header?.name}, is lowered.`,
+      `A ${site.kind} at ${site.span.from} of module ${context.module}, which checking found a mistake in, is lowered.`,
     ),
 };
 
@@ -188,7 +188,12 @@ function made(writer: FlowWriter, { into, made: what, parts, site }: Of<'make'>)
     }
     case 'map': {
       const dst = code.allocate(tables.types.reference(type));
-      code.emit({ kind: 'map', span, dst, entries: mapEntries(writer, registers, what.spreads, span) });
+      code.emit({
+        kind: 'map',
+        span,
+        dst,
+        entries: mapEntries(writer, registers, what.spreads, span),
+      });
       return dst;
     }
     case 'variant': {
@@ -261,7 +266,10 @@ function mapEntries(
 function structMade(
   writer: FlowWriter,
   type: Type,
-  { fields, parts }: { readonly fields: readonly (string | undefined)[]; readonly parts: readonly ValueId[] },
+  {
+    fields,
+    parts,
+  }: { readonly fields: readonly (string | undefined)[]; readonly parts: readonly ValueId[] },
   span: AnchoredSpan,
 ): Register {
   // A pass visiting no field is never written, so its part is never read.
@@ -288,13 +296,12 @@ function copied(writer: FlowWriter, operation: Of<'copy'>): void {
     writer.valueOf(into).kind === 'temporary'
   ) {
     const register = writer.registerOf(from);
-    const through: 'cell' | 'reference' | undefined =
-      code.typeOf(register).kind === 'reference' ? 'reference' : source.inCell ? 'cell' : undefined;
-    if (through === undefined) {
+    const rootKind = rootKindOf(writer, from);
+    if (rootKind === 'register') {
       writer.alias(into, register);
     } else {
       const read = code.borrow(writer.context.tables.types.reference(writer.typeOf(from)));
-      const place = { root: { kind: through, register }, path: [] };
+      const place = { root: { kind: rootKind, register }, path: [] };
       code.emit({ kind: 'load', span, dst: read, place });
       writer.alias(into, read);
     }
@@ -348,8 +355,8 @@ function awaitedBy(
   }
   const { context } = writer;
   const [given, mode] = resolverArguments(writer, closed);
-  const open = writer.openedWait(() => openWait(context, mode, span));
-  writer.awaiting(future.value);
+  const open = writer.waits.opened(() => openWait(context, mode, span));
+  writer.waits.awaiting(future.value);
   return caseResolver(context, open, given, span);
 }
 

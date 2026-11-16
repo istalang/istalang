@@ -111,7 +111,10 @@ export function checkKeeps(checker: Reader, declaration: FunctionDeclaration): v
 }
 
 /** Whether `declaration`'s callers read what it does off its declaration: a native, or `@Keeps`'s. */
-export function summarizedByDeclaration(checker: Reader, declaration: FunctionDeclaration): boolean {
+export function summarizedByDeclaration(
+  checker: Reader,
+  declaration: FunctionDeclaration,
+): boolean {
   return declaration.isExtern || annotationNamed(checker, declaration, 'keeps') !== undefined;
 }
 

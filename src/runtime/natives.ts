@@ -326,6 +326,24 @@ export class Panic extends Error {
   constructor(message: string, options?: ErrorOptions & { readonly trace?: string }) {
     super(message, options);
     this.trace = options?.trace;
+    const stack = wholeStack(`${this.name}: ${message}`);
+    if (stack !== undefined) {
+      this.stack = stack;
+    }
+  }
+}
+
+/**
+ * The stack where it is read, every frame of it, under `heading`: the engine keeps only the
+ * innermost few in an `Error` by default, which would cut a deep trace short (§3.12).
+ */
+export function wholeStack(heading: string): string | undefined {
+  const limit = Error.stackTraceLimit;
+  Error.stackTraceLimit = Number.POSITIVE_INFINITY;
+  try {
+    return new Error(heading).stack;
+  } finally {
+    Error.stackTraceLimit = limit;
   }
 }
 

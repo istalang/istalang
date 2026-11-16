@@ -95,17 +95,67 @@ export function knownVariableRegister(
   return context.variables.registerOf(value.entity.name, context.checker.typeKeys.typeKey(type));
 }
 
+/**
+ * The variables living in cells made once `operations` ran from `made`, which it changes: each
+ * write making one anew joins `declaring`, and a release ends one.
+ */
+function madeAfter(
+  operations: readonly Operation[],
+  made: Set<ValueId>,
+  {
+    flow,
+    inCell,
+    declaring,
+  }: {
+    readonly flow: FlowFunction;
+    readonly inCell: (value: ValueId) => boolean;
+    readonly declaring: Set<Operation>;
+  },
+): Set<ValueId> {
+  for (const operation of operations) {
+    if (operation.op === 'release') {
+      for (const value of operation.values) {
+        made.delete(value);
+      }
+    }
+    const written = variableWritten(flow, operation);
+    if (written !== undefined && inCell(written)) {
+      if (!made.has(written)) {
+        declaring.add(operation);
+      }
+      made.add(written);
+    }
+  }
+  return made;
+}
+
+/** What each block `exit` goes on to starts with: a transient test's found branch has its variable. */
+function exitStates(
+  exit: FlowFunction['blocks'][number]['exit'],
+  made: Set<ValueId>,
+): [BlockId, Set<ValueId>][] {
+  const shared =
+    exit.kind === 'branch' && exit.test.kind === 'transient'
+      ? { block: exit.to[0], variable: exit.test.variable }
+      : undefined;
+  return [...successorsOf(exit)].map((next) => [
+    next,
+    next === shared?.block ? new Set([...made, shared.variable]) : made,
+  ]);
+}
+
 /** The variable `operation` writes whole: its `into`, or the root of a place it writes with no path. */
 function variableWritten(flow: FlowFunction, operation: Operation): ValueId | undefined {
-  const written =
-    operation.op === 'write'
-      ? operation.place.path.length === 0
-        ? operation.place.root
-        : undefined
-      : 'into' in operation
-        ? operation.into
-        : undefined;
+  const written = writtenWhole(operation);
   return written !== undefined && flow.values[written]?.kind === 'variable' ? written : undefined;
+}
+
+/** The value `operation` writes whole, if any. */
+function writtenWhole(operation: Operation): ValueId | undefined {
+  if (operation.op === 'write') {
+    return operation.place.path.length === 0 ? operation.place.root : undefined;
+  }
+  return 'into' in operation ? operation.into : undefined;
 }
 
 /**
@@ -119,35 +169,21 @@ export function declaringWrites(flow: FlowFunction): ReadonlySet<Operation> {
     const flowValue = flow.values[value];
     return flowValue?.kind === 'variable' && flowValue.inCell;
   };
-  const bound = [...flow.parameters, ...flow.captures, ...(flow.self === undefined ? [] : [flow.self])];
+  const bound = [
+    ...flow.parameters,
+    ...flow.captures,
+    ...(flow.self === undefined ? [] : [flow.self]),
+  ];
   const entry = new Set(bound.filter(inCell));
   const states = new Map<BlockId, Set<ValueId>>([[0, entry]]);
   const declaring = new Set<Operation>();
   const pending: BlockId[] = [0];
   while (pending.length > 0) {
     const block = pending.pop() ?? 0;
-    const made = new Set(states.get(block) ?? unreachable(`Block ${block} is unreached.`));
     const { operations, exit } = flow.blocks[block] ?? unreachable(`No block ${block}.`);
-    for (const operation of operations) {
-      if (operation.op === 'release') {
-        for (const value of operation.values) {
-          made.delete(value);
-        }
-      }
-      const written = variableWritten(flow, operation);
-      if (written !== undefined && inCell(written)) {
-        if (!made.has(written)) {
-          declaring.add(operation);
-        }
-        made.add(written);
-      }
-    }
-    const shared =
-      exit.kind === 'branch' && exit.test.kind === 'transient'
-        ? { block: exit.to[0], variable: exit.test.variable }
-        : undefined;
-    for (const next of successorsOf(exit)) {
-      const out = next === shared?.block ? new Set([...made, shared.variable]) : made;
+    const before = states.get(block) ?? unreachable(`Block ${block} is unreached.`);
+    const made = madeAfter(operations, new Set(before), { flow, inCell, declaring });
+    for (const [next, out] of exitStates(exit, made)) {
       const known = states.get(next);
       const merged = known === undefined ? out : new Set([...known].filter((v) => out.has(v)));
       if (known === undefined || merged.size !== known.size) {

@@ -39,9 +39,7 @@ import { stringNatives } from './strings.ts';
 import { textFormNatives } from './text-forms.ts';
 import { weakNatives } from './weak-natives.ts';
 
-export const preludeNatives = (
-  keys: NativeKeys,
-): Natives<NativeContext & WithWeakSide> => ({
+export const preludeNatives = (keys: NativeKeys): Natives<NativeContext & WithWeakSide> => ({
   ...arrayNatives(keys),
   ...mapNatives(keys),
   ...rangeNatives(keys),

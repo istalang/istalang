@@ -124,7 +124,12 @@ export function payloadOf(
   const variant = variantIndexOf(checker, type, name);
   const field =
     checker.variantsOf(type)?.[variant]?.fields[0] ?? unreachable(`'${name}' holds no field.`);
-  return code.variantField(register, variant, 0, tables.types.reference(field.type), span);
+  return code.variantField(
+    register,
+    { variant, field: 0 },
+    tables.types.reference(field.type),
+    span,
+  );
 }
 
 /**

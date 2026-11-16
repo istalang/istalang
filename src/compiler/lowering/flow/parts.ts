@@ -117,8 +117,10 @@ function stepRead(
           : undefined;
       return code.variantField(
         value.register,
-        variant ?? unreachable(`No variant '${step.variant}' of ${enumType.kind}.`),
-        step.index,
+        {
+          variant: variant ?? unreachable(`No variant '${step.variant}' of ${enumType.kind}.`),
+          field: step.index,
+        },
         typed(step.type),
         span,
       );
@@ -128,8 +130,7 @@ function stepRead(
       return any.kind === 'any'
         ? code.variantField(
             value.register,
-            tables.types.anyVariant(any, baseOf(step.to)),
-            0,
+            { variant: tables.types.anyVariant(any, baseOf(step.to)), field: 0 },
             typed(step.to),
             span,
           )

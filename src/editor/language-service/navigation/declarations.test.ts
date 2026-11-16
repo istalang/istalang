@@ -87,11 +87,11 @@ describe('the declarations a name denotes', () => {
     expect(declared?.at.module).toBe('std:prelude');
   });
 
-  it("are a parameter's for a name a std extern's @Keeps gives", () => {
+  it("are a parameter's for a name a std function's @Keeps gives", () => {
     const { program } = navigable({ main: '' });
     const prelude = stdModuleIdOf('prelude');
     const { text } = programModule(program, prelude).tree.source;
-    const put = text.indexOf('@Keeps{["self": ["value"]]}\nextern ista fn put<');
+    const put = text.indexOf('@Keeps{["self": ["value"]]}\nista fn put<');
     const kept = text.indexOf('"value"', put) + 1;
     const declared = declaredAround(program, prelude, kept).map(({ at }) => placeOf(program, at));
     expect(declared).toEqual([`prelude:${text.indexOf('value: T)', put)}`]);

@@ -20,6 +20,7 @@
 
 import type { Place } from '../../../definition/instructions/places.ts';
 import type { Register } from '../../../definition/operands.ts';
+import { memo } from '../../../foundation/structures/memo.ts';
 import { unreachable } from '../../../foundation/structures/unreachable.ts';
 import type {
   BlockId,
@@ -29,20 +30,17 @@ import type {
   Operation,
   ValueId,
 } from '../../checker/surface/flow-ir.ts';
-import { valuesReadBy } from '../../checker/surface/flow-ir.ts';
 import type { Type } from '../../checker/types/type/index.ts';
-import { programModule } from '../../program/program.ts';
-import type { LabelledScope, Statement } from '../../syntax/statements/index.ts';
-import { ancestorsOf, type SyntaxNode } from '../../syntax/tree/index.ts';
-import type { NodeOf } from '../../syntax/tree/node.ts';
+import type { LabelledScope } from '../../syntax/statements/index.ts';
 import type { AnchoredSpan } from '../../syntax/tree/positions.ts';
-import type { OpenWait } from '../calls/waits.ts';
 import type { FunctionContext } from '../context.ts';
 import type { Label } from '../functions/code-writer.ts';
 import type { TypedValue } from '../values/holdings.ts';
 import { exitWriters } from './exits.ts';
+import { FlowWaits } from './flow-waits.ts';
 import { type FlowLayout, layoutOf } from './layout.ts';
 import { operationWriters } from './operations.ts';
+import { type FlowUses, usesOf } from './uses.ts';
 import {
   concreteType,
   declaringWrites,
@@ -82,22 +80,14 @@ export class FlowWriter {
   /** How many registers the entry had where each block written so far began. */
   readonly #started = new Map<BlockId, number>();
   /** Where what each held variable holds is kept until (§7). */
-  readonly #kept = new Map<ValueId, LabelledScope | 'function'>();
+  readonly #uses: FlowUses;
+  readonly waits = new FlowWaits();
   /** The arrays what `hold`s keep is kept in, by scope and type. */
   readonly #lists = new Map<LabelledScope | 'function', Map<string, Register>>();
-  /** How often each value is read: one read more than once is copied where it is taken. */
-  readonly #reads = new Map<ValueId, number>();
-  /** How many operations give each value: one several paths give shares one register. */
-  readonly #writes = new Map<ValueId, number>();
   /** The writes of a variable living in a cell that make its cell (variables.ts). */
   readonly declaring: ReadonlySet<Operation>;
   /** A value converted into the field a key of several names names, by the value it converts. */
   readonly keyed = new Map<ValueId, ValueId>();
-  /** What each future awaited gave, in an owned register, once its wait was decided. */
-  readonly #given = new Map<ValueId, Register>();
-  /** The futures of each case of the wait being opened, by position. */
-  readonly #awaited: ValueId[] = [];
-  #wait: OpenWait | undefined;
   #block: BlockId = 0;
   #next: BlockId | undefined;
   readonly #after: Label;
@@ -109,32 +99,12 @@ export class FlowWriter {
     this.#after = context.code.newLabel();
     this.#layout = layoutOf(flow);
     this.declaring = declaringWrites(flow);
-    for (const { operations, exit } of flow.blocks) {
-      for (const operation of operations) {
-        if (operation.op === 'keep') {
-          for (const value of operation.values) {
-            this.#kept.set(value, operation.until);
-          }
-        }
-        const reads = operation.op === 'release' || operation.op === 'keep' ? [] : valuesReadBy(operation);
-        for (const value of reads) {
-          this.#reads.set(value, (this.#reads.get(value) ?? 0) + 1);
-        }
-        if ('into' in operation) {
-          this.#writes.set(operation.into, (this.#writes.get(operation.into) ?? 0) + 1);
-        }
-      }
-      const tested = exit.kind === 'branch' && 'value' in exit.test ? [exit.test.value] : [];
-      const returned = exit.kind === 'return' && exit.value !== undefined ? [exit.value] : [];
-      for (const value of [...tested, ...returned]) {
-        this.#reads.set(value, (this.#reads.get(value) ?? 0) + 1);
-      }
-    }
+    this.#uses = usesOf(flow);
   }
 
   write(): void {
     const { order } = this.#layout;
-    for (const [value, until] of this.#kept) {
+    for (const [value, until] of this.#uses.kept) {
       this.listOf(until, this.typeOf(value));
     }
     for (const [position, block] of order.entries()) {
@@ -173,15 +143,11 @@ export class FlowWriter {
 
   /** Whether some value lives in `register`, a variable's or what a future gave included. */
   #isValues(register: Register): boolean {
-    if (this.context.variables.isVariable(register)) {
-      return true;
-    }
-    for (const each of [...this.#registers.values(), ...this.#given.values()]) {
-      if (each === register) {
-        return true;
-      }
-    }
-    return false;
+    return (
+      this.context.variables.isVariable(register) ||
+      [...this.#registers.values()].includes(register) ||
+      this.waits.holdsGiven(register)
+    );
   }
 
   // Values.
@@ -240,7 +206,7 @@ export class FlowWriter {
   /** Makes `register` `value`'s; a variable's, or a value read twice, is copied where taken. */
   bind(value: ValueId, register: Register): void {
     this.#registers.set(value, register);
-    if (this.valueOf(value).kind === 'variable' || (this.#reads.get(value) ?? 0) > 1) {
+    if (this.valueOf(value).kind === 'variable' || (this.#uses.reads.get(value) ?? 0) > 1) {
       this.context.code.pin(register);
     }
   }
@@ -273,7 +239,12 @@ export class FlowWriter {
       return;
     }
     if (flowValue.inCell) {
-      this.writeCell(register, produced, span, operation !== undefined && this.declaring.has(operation));
+      this.writeCell(
+        register,
+        produced,
+        span,
+        operation !== undefined && this.declaring.has(operation),
+      );
       return;
     }
     code.letGo([register], span);
@@ -290,7 +261,7 @@ export class FlowWriter {
     if (known === produced) {
       return;
     }
-    const shared = (this.#writes.get(value) ?? 0) > 1;
+    const shared = (this.#uses.writes.get(value) ?? 0) > 1;
     if (known === undefined && !shared && !this.#isValues(produced)) {
       this.bind(value, produced);
       return;
@@ -313,14 +284,19 @@ export class FlowWriter {
       code.letGo([cell], span);
       code.emit({ kind: 'newCell', span, dst: cell, value });
     } else {
-      code.emit({ kind: 'store', span, place: { root: { kind: 'cell', register: cell }, path: [] }, value });
+      code.emit({
+        kind: 'store',
+        span,
+        place: { root: { kind: 'cell', register: cell }, path: [] },
+        value,
+      });
     }
   }
 
   /** The registers `values` end: each one's and its extras, a held one's lists where it ends. */
   registersEnding(values: readonly ValueId[]): readonly Register[] {
     const registers = values.flatMap((value) => {
-      const until = this.#kept.get(value);
+      const until = this.#uses.kept.get(value);
       if (until !== undefined) {
         return until === 'function' ? [] : [...(this.#lists.get(until)?.values() ?? [])];
       }
@@ -365,49 +341,10 @@ export class FlowWriter {
     return list;
   }
 
-  // Waits.
-
-  /** The wait the `onAwait` calls being written hand their resolvers from, opened by the first. */
-  openedWait(open: () => OpenWait): OpenWait {
-    this.#wait ??= open();
-    return this.#wait;
-  }
-
-  /** Notes that the case of the wait being opened waits on `future`. */
-  awaiting(future: ValueId): void {
-    this.#awaited.push(future);
-  }
-
-  /** The wait opened, which the `await` or `select` written now waits on, and its futures. */
-  takeWait(): { readonly open: OpenWait; readonly futures: readonly ValueId[] } {
-    const open = this.#wait ?? unreachable('An await waits on no wait opened.');
-    this.#wait = undefined;
-    return { open, futures: this.#awaited.splice(0) };
-  }
-
-  /** Makes `register`, which owns it, what `future` gave once it settled. */
-  give(future: ValueId, register: Register): void {
-    this.#given.set(future, register);
-  }
-
-  /** What `future` gave once it settled. */
-  givenBy(future: ValueId, span: AnchoredSpan): Register {
-    return (
-      this.#given.get(future) ??
-      unreachable(`What the future at ${span.from} gave is read before it settled.`)
-    );
-  }
-
   // Blocks.
 
   labelOf(block: BlockId): Label {
-    const known = this.#labels.get(block);
-    if (known !== undefined) {
-      return known;
-    }
-    const label = this.context.code.newLabel();
-    this.#labels.set(block, label);
-    return label;
+    return memo(this.#labels, block, () => this.context.code.newLabel());
   }
 
   /**
@@ -422,7 +359,7 @@ export class FlowWriter {
       const { code, variables } = this.context;
       const turns = Array.from({ length: code.registerCount - started }, (_, at) => started + at);
       code.letGo(
-        turns.filter((register) => !variables.isVariable(register) && !this.#isList(register)),
+        turns.filter((register) => !(variables.isVariable(register) || this.#isList(register))),
         span,
       );
     }
@@ -438,14 +375,7 @@ export class FlowWriter {
 
   /** Whether `register` keeps what `hold`s keep. */
   #isList(register: Register): boolean {
-    for (const lists of this.#lists.values()) {
-      for (const list of lists.values()) {
-        if (list === register) {
-          return true;
-        }
-      }
-    }
-    return false;
+    return [...this.#lists.values()].some((lists) => [...lists.values()].includes(register));
   }
 
   /** Where the field loop whose top is being written goes first. */
@@ -458,25 +388,6 @@ export class FlowWriter {
     if (this.#next !== undefined) {
       this.context.code.jump(this.#after, span);
     }
-  }
-
-  /** The name the innermost statement around `site` gives where it waits (§10). */
-  waypointAt(site: NodeOf<string>): string | undefined {
-    const { checker, module } = this.context;
-    const { tree } = programModule(checker.program, module);
-    for (const node of ancestorsOf(tree, site as SyntaxNode)) {
-      if (node.kind === 'Lambda' || node.kind === 'FunctionDeclaration') {
-        return undefined;
-      }
-      const waypoint =
-        'annotations' in node
-          ? checker.annotations.waypointOf(module, node as Statement)
-          : undefined;
-      if (waypoint !== undefined) {
-        return waypoint;
-      }
-    }
-    return undefined;
   }
 }
 

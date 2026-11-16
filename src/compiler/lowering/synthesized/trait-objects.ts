@@ -170,7 +170,11 @@ export function anyConversionEntry(
  */
 export function anyFieldEntry(
   lowering: Lowering,
-  { on, required, result }: { readonly on: AnyType; readonly required: RequiredField; readonly result: Type },
+  {
+    on,
+    required,
+    result,
+  }: { readonly on: AnyType; readonly required: RequiredField; readonly result: Type },
 ): FunctionDefinition {
   const { checker, tables } = lowering;
   const { trait } = required.constraint;

@@ -57,6 +57,8 @@ const operandTable: Handlers<undefined, Instruction, [], Partial<Operands>> = {
       entry.kind === 'entry' ? [entry.key, entry.value] : [entry.value],
     ),
   }),
+  append: (_, i) => ({ written: [i.dst], read: [i.collection, i.item] }),
+  appendEntry: (_, i) => ({ written: [i.dst], read: [i.collection, i.key, i.value] }),
   closure: (_, i) => ({ written: [i.dst], read: i.captures, functions: [i.function] }),
   currentClosure: (_, i) => ({ written: [i.dst] }),
   tupleItem: (_, i) => ({ written: [i.dst], read: [i.src] }),

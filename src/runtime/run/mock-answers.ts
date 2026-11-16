@@ -18,7 +18,10 @@ import { isResourceType, type TypeReference } from '../../definition/tables/type
 import { replacingParts } from '../../definition/values/replacing.ts';
 import type { Value } from '../../definition/values/values.ts';
 import { Panic } from '../natives.ts';
-import { Future, type MockObject, Resource, RunObject } from './objects.ts';
+import { Future } from './objects/future.ts';
+import type { MockObject } from './objects/mock-object.ts';
+import { Resource } from './objects/resource.ts';
+import { RunObject } from './objects/run-object.ts';
 import type { Run } from './run.ts';
 
 /** Who answers a call with a mock: the instance holding it, which may be the caller's own. */
@@ -37,8 +40,8 @@ export function answerOfMock(
   const within = holder === caller;
   const given = passed.map((each) => crossing(each, within, hostJson));
   const answer = within
-    ? holder.answer(mock, given)
-    : holder.asCall(() => holder.answer(mock, given));
+    ? holder.mocking.answer(mock, given)
+    : holder.asCall(() => holder.mocking.answer(mock, given));
   if (answer === undefined) {
     // The replacement panicked, ending the holder's instance; the call it answered ends with it.
     throw new Panic(`The instance ${holder.instance.name} holding the mock panicked.`);
@@ -105,7 +108,7 @@ function followed(
 function arrived(caller: Run, value: Value, within: boolean): Value {
   return crossing(value, within, (part) =>
     isResourceType(caller.definition.types, part.type)
-      ? (caller.resource(part.type, part.payload) as unknown as Value)
+      ? (caller.resources.of(part.type, part.payload, () => caller.newId()) as unknown as Value)
       : part,
   );
 }

@@ -8,13 +8,13 @@
 import type { Register } from '../../../definition/operands.ts';
 import { unreachable } from '../../../foundation/structures/unreachable.ts';
 import { laidOut } from '../../checker/types/type/field-order.ts';
-import { unitType } from '../../checker/types/type/primitives.ts';
 import type {
   AnonymousStructType,
   NominalType,
   StructValueType,
   Type,
 } from '../../checker/types/type/index.ts';
+import { unitType } from '../../checker/types/type/primitives.ts';
 import type { AnchoredSpan } from '../../syntax/tree/positions.ts';
 import type { CodeContext } from '../context.ts';
 

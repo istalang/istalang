@@ -13,11 +13,15 @@
  * - A place passed by `&` that no cell or reference roots, or that is behind a handle and passed to
  *   code, is copied into a cell of its own and written back once the call returns (copy-in/copy-
  *   out, §3.7): code could read the handle's value meanwhile, which still holds the old one.
- * - Appending an item to an array or a `Map` being built builds the next value from the last.
+ * - Appending an item to an array or a `Map` being built changes it in place where nothing else
+ *   holds it (`append`, `appendEntry`).
  */
 
 import type { Argument as DefinitionArgument } from '../../../definition/instructions/calls.ts';
-import type { Place as DefinitionPlace, PlaceStep } from '../../../definition/instructions/places.ts';
+import type {
+  Place as DefinitionPlace,
+  PlaceStep,
+} from '../../../definition/instructions/places.ts';
 import type { Register } from '../../../definition/operands.ts';
 import { wellKnown } from '../../../foundation/language/well-known/index.ts';
 import { unreachable } from '../../../foundation/structures/unreachable.ts';
@@ -52,7 +56,10 @@ interface Located {
 }
 
 /** Writes `value` at `place`, or appends it to the array or `Map` being built there. */
-export function writePlace(writer: FlowWriter, operation: Extract<Operation, { readonly op: 'write' }>): void {
+export function writePlace(
+  writer: FlowWriter,
+  operation: Extract<Operation, { readonly op: 'write' }>,
+): void {
   const { place, value, site } = operation;
   const { span } = site;
   if (place.path.at(-1)?.kind === 'item') {
@@ -60,7 +67,8 @@ export function writePlace(writer: FlowWriter, operation: Extract<Operation, { r
     return;
   }
   const root = writer.valueOf(place.root);
-  const throughReference = writer.context.code.typeOf(writer.registerOf(place.root)).kind === 'reference';
+  const throughReference =
+    writer.context.code.typeOf(writer.registerOf(place.root)).kind === 'reference';
   if (
     place.path.length === 0 &&
     root.kind === 'variable' &&
@@ -80,53 +88,47 @@ export function writePlace(writer: FlowWriter, operation: Extract<Operation, { r
       writer.context,
       { keyed, value: writer.typed(source), site: place.site },
       (_, position, converted) =>
-        writeAt(writer, deeper(within, [{ kind: 'field', field: position }, ...path]), converted, span),
+        writeAt(
+          writer,
+          deeper(within, [{ kind: 'field', field: position }, ...path]),
+          converted,
+          span,
+        ),
     );
   } else {
-    const converted = fittedInto(writer.context, writer.typed(source), writer.typeOf(value), place.site);
+    const converted = fittedInto(
+      writer.context,
+      writer.typed(source),
+      writer.typeOf(value),
+      place.site,
+    );
     writeAt(writer, location, converted, span);
   }
 }
 
 /**
- * `item` appended to the array in `collection`, or, a key and value pair, to the `Map` there, the
- * next value built from the last.
+ * `item` appended to the array in `collection`, or, a key and value pair, to the `Map` there, in
+ * place where nothing else holds it.
  */
 function appended(writer: FlowWriter, root: ValueId, item: Register, span: AnchoredSpan): void {
   const { code, checker, tables } = writer.context;
   const collection = writer.registerOf(root);
   const type = writer.typeOf(root);
-  const longer = code.allocate(code.typeOf(collection));
   const entries = wellKnownArguments(checker, wellKnown.map, type);
   if (entries === undefined) {
-    code.emit({
-      kind: 'array',
-      span,
-      dst: longer,
-      elements: [
-        { value: collection, spread: true },
-        { value: code.take(item, span), spread: false },
-      ],
-    });
+    code.emit({ kind: 'append', span, dst: collection, collection, item: code.take(item, span) });
   } else {
     const [keyType, valueType] = entries.map((each) => tables.types.reference(each));
-    const key = code.copy(code.tupleItem(item, 0, keyType ?? unreachable('A key type.'), span), span);
+    const key = code.copy(
+      code.tupleItem(item, 0, keyType ?? unreachable('A key type.'), span),
+      span,
+    );
     const value = code.copy(
       code.tupleItem(item, 1, valueType ?? unreachable('A value type.'), span),
       span,
     );
-    code.emit({
-      kind: 'map',
-      span,
-      dst: longer,
-      entries: [
-        { kind: 'spread', value: collection },
-        { kind: 'entry', key, value },
-      ],
-    });
+    code.emit({ kind: 'appendEntry', span, dst: collection, collection, key, value });
   }
-  code.letGo([collection], span);
-  code.emit({ kind: 'move', span, dst: collection, src: longer });
 }
 
 /**
@@ -163,7 +165,12 @@ export function passedArguments(
     const current = loadAt(writer, location.place, type, span);
     code.emit({ kind: 'newCell', span, dst: cell, value: current });
     leaves.push(() => {
-      writeAt(writer, location, loadAt(writer, { root: { kind: 'cell', register: cell }, path: [] }, type, span), span);
+      writeAt(
+        writer,
+        location,
+        loadAt(writer, { root: { kind: 'cell', register: cell }, path: [] }, type, span),
+        span,
+      );
       code.letGo([cell], span);
     });
     return { kind: 'value', register: referenceTo(writer.context, cell, reference, span) };
@@ -176,41 +183,62 @@ export function passedArguments(
   return { arguments: passed, leave };
 }
 
+/**
+ * What a place rooted at `value` is rooted at: the reference its register holds, the cell a captured
+ * or `&`-passed variable lives in, or its register.
+ */
+export function rootKindOf(writer: FlowWriter, value: ValueId): DefinitionPlace['root']['kind'] {
+  if (writer.context.code.typeOf(writer.registerOf(value)).kind === 'reference') {
+    return 'reference';
+  }
+  const known = writer.valueOf(value);
+  return known.kind === 'variable' && known.inCell ? 'cell' : 'register';
+}
+
 /** Locates `place`, entered at `span`: its root, then each part into it. */
 function locate(writer: FlowWriter, { root, path }: Place, span: AnchoredSpan): Located {
-  const { code } = writer.context;
   const register = writer.registerOf(root);
-  const value = writer.valueOf(root);
-  const rootKind =
-    code.typeOf(register).kind === 'reference'
-      ? 'reference'
-      : value.kind === 'variable' && value.inCell
-        ? 'cell'
-        : 'register';
   const start: Located = {
-    location: { kind: 'place', place: { root: { kind: rootKind, register }, path: [] }, behind: false },
+    location: {
+      kind: 'place',
+      place: { root: { kind: rootKindOf(writer, root), register }, path: [] },
+      behind: false,
+    },
     type: writer.typeOf(root),
   };
   return path.reduce((located, part) => stepped(writer, located, part, span), start);
 }
 
 /** `located`, then `part` into it: the value behind its handle, a field, an element of a tuple. */
-function stepped(writer: FlowWriter, { location, type }: Located, part: Part, span: AnchoredSpan): Located {
+function stepped(
+  writer: FlowWriter,
+  { location, type }: Located,
+  part: Part,
+  span: AnchoredSpan,
+): Located {
   const { checker } = writer.context;
   const field = (name: string) => {
     const { member, read } = fieldOf(writer, type, name);
-    return { location: deeper(location, [{ kind: 'field', field: read.index }]), type: member.type };
+    return {
+      location: deeper(location, [{ kind: 'field', field: read.index }]),
+      type: member.type,
+    };
   };
   switch (part.kind) {
     case 'behind': {
       if (location.kind !== 'place') {
         return unreachable('A handle is no field a key names.');
       }
-      const handle = location.place.path.length === 0 && location.place.root.kind === 'register'
-        ? location.place.root.register
-        : loadAt(writer, location.place, type, span);
+      const handle =
+        location.place.path.length === 0 && location.place.root.kind === 'register'
+          ? location.place.root.register
+          : loadAt(writer, location.place, type, span);
       return {
-        location: { kind: 'place', place: { root: { kind: 'cell', register: handle }, path: [] }, behind: true },
+        location: {
+          kind: 'place',
+          place: { root: { kind: 'cell', register: handle }, path: [] },
+          behind: true,
+        },
         type: checker.sharedValueOf(type) ?? unreachable('A handle holds no shape.'),
       };
     }
@@ -229,7 +257,9 @@ function stepped(writer: FlowWriter, { location, type }: Located, part: Part, sp
         const element = tupleElements(type)?.[step] ?? unreachable(`No element ${step}.`);
         return { location: deeper(location, [{ kind: 'tuple', index: step }]), type: element };
       }
-      return step.kind === 'field' ? field(step.name) : unreachable(`A place steps into a ${step.kind}.`);
+      return step.kind === 'field'
+        ? field(step.name)
+        : unreachable(`A place steps into a ${step.kind}.`);
     }
     default:
       return unreachable(`A place reaches a part '${part.kind}' into it.`);
@@ -240,7 +270,10 @@ function stepped(writer: FlowWriter, { location, type }: Located, part: Part, sp
 function deeper(location: Location, steps: readonly PlaceStep[]): Location {
   switch (location.kind) {
     case 'place':
-      return { ...location, place: { ...location.place, path: [...location.place.path, ...steps] } };
+      return {
+        ...location,
+        place: { ...location.place, path: [...location.place.path, ...steps] },
+      };
     case 'keyed':
       return { ...location, path: [...location.path, ...steps] };
     default: {
@@ -251,7 +284,12 @@ function deeper(location: Location, steps: readonly PlaceStep[]): Location {
 }
 
 /** A fresh register owning another holder of the value of `type` at `place`, as it stands now. */
-function loadAt(writer: FlowWriter, place: DefinitionPlace, type: Type, span: AnchoredSpan): Register {
+function loadAt(
+  writer: FlowWriter,
+  place: DefinitionPlace,
+  type: Type,
+  span: AnchoredSpan,
+): Register {
   const { code, tables } = writer.context;
   if (place.root.kind === 'register' && place.path.length === 0) {
     return code.copy(place.root.register, span);
@@ -262,12 +300,22 @@ function loadAt(writer: FlowWriter, place: DefinitionPlace, type: Type, span: An
 }
 
 /** Writes `value` at `location`: behind a handle, into its value as it stands now. */
-function writeAt(writer: FlowWriter, location: Location, value: Register, span: AnchoredSpan): void {
+function writeAt(
+  writer: FlowWriter,
+  location: Location,
+  value: Register,
+  span: AnchoredSpan,
+): void {
   if (location.kind === 'keyed') {
     // Each case writes the value, so none moves it out.
     writer.context.code.pin(value);
     eachKeyedField(writer.context, location.keyed, span, (_, position) =>
-      writeAt(writer, deeper(location.within, [{ kind: 'field', field: position }, ...location.path]), value, span),
+      writeAt(
+        writer,
+        deeper(location.within, [{ kind: 'field', field: position }, ...location.path]),
+        value,
+        span,
+      ),
     );
     return;
   }

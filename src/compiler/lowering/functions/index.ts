@@ -66,9 +66,7 @@ import type { DefinitionTables, EntryHeader } from '../tables/tables.ts';
 import { CodeWriter } from './code-writer.ts';
 import { fittedValue } from './fits/index.ts';
 import {
-  declareFilled,
   declareFrame,
-  declareOwnCall,
   type EntryContext,
   type EntryParameter,
   type FrameSlot,

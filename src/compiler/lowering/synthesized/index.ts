@@ -19,8 +19,8 @@
 import type { Argument } from '../../../definition/instructions/calls.ts';
 import type { PlaceStep } from '../../../definition/instructions/places.ts';
 import type { FunctionId, Register } from '../../../definition/operands.ts';
-import type { TypeReference } from '../../../definition/tables/types.ts';
 import type { CodeFunction, CodeMode } from '../../../definition/tables/functions.ts';
+import type { TypeReference } from '../../../definition/tables/types.ts';
 import type { Value } from '../../../definition/values/values.ts';
 import { resultVariants } from '../../../foundation/language/well-known/variants.ts';
 import { unreachable } from '../../../foundation/structures/unreachable.ts';
@@ -180,7 +180,7 @@ export class SynthesizedCode implements CodeContext {
 
   /** Borrows field `index`, of `type`, of the variant `variant` the enum value in `value` holds. */
   variantField(value: Register, variant: number, index: number, type: Type): Register {
-    return this.code.variantField(value, variant, index, this.typed(type), this.span);
+    return this.code.variantField(value, { variant, field: index }, this.typed(type), this.span);
   }
 
   /**

@@ -25,14 +25,17 @@ import { transientRegistersOf } from '../tables/functions.ts';
 /** A register's state where control reaches: empty, owning, or owning on some paths. */
 type State = 'empty' | 'owning' | 'maybe';
 
-/** What an instruction does to ownership: what it moves out of, and what it writes owning. */
+/**
+ * What an instruction does to ownership: what it moves out of, and what it writes owning. A
+ * conditional write (`taken`) owns only on the jump to its label, as a context constant found or a
+ * mock that holds: going on past it, its register stays empty.
+ */
 interface Effect {
   readonly moved: readonly Register[];
   readonly owned: readonly Register[];
-  /** What it writes owning only where it jumps to. */
-  readonly ownedWhereJumping: readonly Register[];
   readonly borrowed: readonly Register[];
   readonly letGo: readonly Register[];
+  readonly taken: { readonly owned: readonly Register[]; readonly to: number } | undefined;
 }
 
 const none: readonly Register[] = [];
@@ -52,6 +55,8 @@ const effects: Handlers<CodeFunction, Instruction, [], Partial<Effect>> = {
     moved: i.entries.flatMap((entry) => (entry.kind === 'entry' ? [entry.key, entry.value] : [])),
     owned: [i.dst],
   }),
+  append: (_, i) => ({ moved: [i.collection, i.item], owned: [i.dst] }),
+  appendEntry: (_, i) => ({ moved: [i.collection, i.key, i.value], owned: [i.dst] }),
   closure: (_, i) => ({ moved: i.captures, owned: [i.dst] }),
   currentClosure: (_, i) => ({ borrowed: [i.dst] }),
   tupleItem: (_, i) => ({ borrowed: [i.dst] }),
@@ -67,7 +72,7 @@ const effects: Handlers<CodeFunction, Instruction, [], Partial<Effect>> = {
   store: (_, i) => ({ moved: [i.value] }),
   reference: (_, i) => ({ borrowed: [i.dst] }),
   transient: (_, i) => ({ borrowed: [i.dst] }),
-  contextConstant: (_, i) => ({ ownedWhereJumping: [i.dst] }),
+  contextConstant: (_, i) => ({ taken: { owned: [i.dst], to: i.target } }),
   makeContextConstant: () => ({}),
   jump: () => ({}),
   branch: () => ({}),
@@ -77,7 +82,7 @@ const effects: Handlers<CodeFunction, Instruction, [], Partial<Effect>> = {
   call: (_, i) => ({ owned: i.dst === undefined ? none : [i.dst] }),
   currentCall: (_, i) => ({ borrowed: [i.dst] }),
   given: () => ({}),
-  mocked: (_, i) => ({ ownedWhereJumping: [i.dst] }),
+  mocked: (_, i) => ({ taken: { owned: [i.dst], to: i.landing } }),
   park: (_, i) => ({ owned: [i.dst] }),
   stopped: () => ({}),
   letGo: (_, i) => ({ letGo: i.registers }),
@@ -88,9 +93,9 @@ function effectOf(code: CodeFunction, subject: Instruction): Effect {
   return {
     moved: found.moved ?? none,
     owned: found.owned ?? none,
-    ownedWhereJumping: found.ownedWhereJumping ?? none,
     borrowed: found.borrowed ?? none,
     letGo: found.letGo ?? none,
+    taken: found.taken,
   };
 }
 
@@ -121,92 +126,147 @@ function joined(first: State, second: State): State {
 
 /** Every way `code` breaks the ownership rules, each naming the instruction. */
 export function ownershipIssues(code: CodeFunction): readonly string[] {
-  const exempt = new Set<Register>(transientRegistersOf(code));
-  code.registers.forEach((entry, register) => {
-    if (entry.borrowed) {
-      exempt.add(register);
-    }
-  });
-  const tracked = (register: Register) => !exempt.has(register);
+  const transients = new Set<Register>(transientRegistersOf(code));
+  const borrowed = new Set<Register>(
+    code.registers.flatMap((entry, register) => (entry.borrowed ? [register] : [])),
+  );
+  const registers: Registers = {
+    transients,
+    tracked: (register) => !(transients.has(register) || borrowed.has(register)),
+  };
   const states: (State[] | undefined)[] = code.instructions.map(() => undefined);
   states[0] = code.registers.map(() => 'empty');
   // An instruction is judged on its last visit, at the state the analysis settles on for it.
-  const issuesAt = new Map<number, string[]>();
+  const issuesAt = new Map<number, readonly string[]>();
   const pending = [0];
   while (pending.length > 0) {
     const pc = pending.pop() ?? 0;
     const before = states[pc];
     const subject = code.instructions[pc];
-    if (before === undefined || subject === undefined) {
-      continue;
-    }
-    const after = [...before];
-    const found: string[] = [];
-    issuesAt.set(pc, found);
-    const issue = (message: string) => found.push(`at ${String(pc)} (${subject.kind}): ${message}`);
-    const effect = effectOf(code, subject);
-    for (const register of operandsOf(subject).read) {
-      if (tracked(register) && after[register] === 'empty' && !effect.letGo.includes(register)) {
-        issue(`reads register ${String(register)}, empty on every path.`);
-      }
-    }
-    for (const register of effect.moved) {
-      if (!tracked(register)) {
-        issue(`moves out of register ${String(register)}, which owns nothing.`);
-      } else if (after[register] !== 'owning') {
-        issue(`moves out of register ${String(register)}, empty on some path.`);
-      }
-      after[register] = 'empty';
-    }
-    for (const register of effect.letGo) {
-      if (!tracked(register)) {
-        issue(`lets go of register ${String(register)}, which owns nothing.`);
-      }
-      after[register] = 'empty';
-    }
-    for (const register of effect.owned) {
-      if (exempt.has(register) && !transientRegistersOf(code).includes(register)) {
-        issue(`writes an owned value into borrowed register ${String(register)}.`);
-      } else if (tracked(register)) {
-        if (after[register] !== 'empty') {
-          issue(`overwrites what register ${String(register)} owns.`);
-        }
-        after[register] = 'owning';
-      }
-    }
-    const jumped = [...after];
-    for (const register of effect.ownedWhereJumping.filter(tracked)) {
-      if (after[register] !== 'empty') {
-        issue(`overwrites what register ${String(register)} owns.`);
-      }
-      jumped[register] = 'owning';
-    }
-    for (const register of effect.borrowed) {
-      if (tracked(register)) {
-        issue(`borrows into owning register ${String(register)}.`);
-      }
-    }
-    if (subject.kind === 'return' || subject.kind === 'stopped') {
-      after.forEach((state, register) => {
-        if (state !== 'empty' && tracked(register)) {
-          issue(`ends the call while register ${String(register)} still owns its value.`);
-        }
-      });
-    }
-    for (const next of successorsOf(code, pc)) {
-      const arriving = next === pc + 1 ? after : jumped;
-      const known = states[next];
-      const merged =
-        known === undefined
-          ? arriving
-          : known.map((state, r) => joined(state, arriving[r] ?? 'empty'));
-      if (known === undefined || merged.some((state, r) => state !== known[r])) {
-        states[next] = merged;
-        pending.push(next);
-      }
+    if (before !== undefined && subject !== undefined) {
+      const { after, found, taken } = judged(code, subject, before, registers);
+      issuesAt.set(
+        pc,
+        found.map((message) => `at ${String(pc)} (${subject.kind}): ${message}`),
+      );
+      pending.push(
+        ...successorsOf(code, pc).filter((next) =>
+          reachedAnew(states, next, next === taken?.to ? taken.after : after),
+        ),
+      );
     }
   }
   return [...issuesAt.entries()]
     .toSorted(([first], [second]) => first - second)
     .flatMap(([, found]) => found);
+}
+
+/** Joins `after` into what `next` starts with; whether that changed it, so it is judged again. */
+function reachedAnew(
+  states: (State[] | undefined)[],
+  next: number,
+  after: readonly State[],
+): boolean {
+  const known = states[next];
+  const merged =
+    known === undefined ? [...after] : known.map((state, r) => joined(state, after[r] ?? 'empty'));
+  if (known !== undefined && merged.every((state, r) => state === known[r])) {
+    return false;
+  }
+  states[next] = merged;
+  return true;
+}
+
+/** Which registers the rules follow: neither borrowed nor a transient's. */
+interface Registers {
+  readonly transients: ReadonlySet<Register>;
+  readonly tracked: (register: Register) => boolean;
+}
+
+/** The states after `subject` runs from `before`, and every rule it breaks there. */
+function judged(
+  code: CodeFunction,
+  subject: Instruction,
+  before: readonly State[],
+  registers: Registers,
+): {
+  readonly after: State[];
+  readonly found: readonly string[];
+  readonly taken: { readonly after: State[]; readonly to: number } | undefined;
+} {
+  const after = [...before];
+  const effect = effectOf(code, subject);
+  const { tracked } = registers;
+  const taken =
+    effect.taken === undefined ? undefined : { after: [...before], to: effect.taken.to };
+  const found = [
+    ...operandsOf(subject)
+      .read.filter((r) => tracked(r) && after[r] === 'empty' && !effect.letGo.includes(r))
+      .map((r) => `reads register ${String(r)}, empty on every path.`),
+    ...movedOut(effect.moved, after, tracked),
+    ...letGoOf(effect.letGo, after, tracked),
+    ...writtenOwning(effect.owned, after, registers),
+    ...effect.borrowed.filter(tracked).map((r) => `borrows into owning register ${String(r)}.`),
+    ...(subject.kind === 'return' || subject.kind === 'stopped' ? stillOwning(after, tracked) : []),
+    ...(taken === undefined
+      ? []
+      : writtenOwning(effect.taken?.owned ?? none, taken.after, registers)),
+  ];
+  return { after, found, taken };
+}
+
+function movedOut(
+  moved: readonly Register[],
+  after: State[],
+  tracked: (register: Register) => boolean,
+): string[] {
+  return moved.flatMap((register) => {
+    const was = after[register];
+    after[register] = 'empty';
+    if (!tracked(register)) {
+      return [`moves out of register ${String(register)}, which owns nothing.`];
+    }
+    return was === 'owning'
+      ? []
+      : [`moves out of register ${String(register)}, empty on some path.`];
+  });
+}
+
+function letGoOf(
+  letGo: readonly Register[],
+  after: State[],
+  tracked: (register: Register) => boolean,
+): string[] {
+  return letGo.flatMap((register) => {
+    after[register] = 'empty';
+    return tracked(register)
+      ? []
+      : [`lets go of register ${String(register)}, which owns nothing.`];
+  });
+}
+
+function writtenOwning(
+  owned: readonly Register[],
+  after: State[],
+  { transients, tracked }: Registers,
+): string[] {
+  return owned.flatMap((register) => {
+    if (transients.has(register)) {
+      return [];
+    }
+    if (!tracked(register)) {
+      return [`writes an owned value into borrowed register ${String(register)}.`];
+    }
+    const was = after[register];
+    after[register] = 'owning';
+    return was === 'empty' ? [] : [`overwrites what register ${String(register)} owns.`];
+  });
+}
+
+function stillOwning(after: readonly State[], tracked: (register: Register) => boolean): string[] {
+  return after.flatMap((state, register) =>
+    state !== 'empty' && tracked(register)
+      ? [`ends the call while register ${String(register)} still owns its value.`]
+      : [],
+  );
 }

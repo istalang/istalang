@@ -10,15 +10,16 @@
  *   the start's encoding entry, the moment the root call's outcome settles.
  */
 
+import { emitProgram } from '../../codegen/emit.ts';
 import { type Definition, definitionFormat } from '../../definition/definition.ts';
 import { jsonText, jsonTypeOf } from '../../definition/values/json-values.ts';
 import type { Value } from '../../definition/values/values.ts';
-import { emitProgram } from '../../codegen/emit.ts';
 import { jsonIn, startOf } from '../boundary/starts.ts';
-import { Refusal } from '../refusal.ts';
 import type { Advanced, Finished, LogRecord, StartOptions } from '../instance-state.ts';
-import { Future } from '../run/objects.ts';
-import type { DurableWorld, WorldProgram } from './durable-world.ts';
+import { Refusal } from '../refusal.ts';
+import { Future } from '../run/objects/future.ts';
+import type { DurableWorld } from './durable-world.ts';
+import type { WorldProgram } from './resident.ts';
 
 /** What a host hears of the instances it doesn't advance itself: their log records and panics. */
 export interface HostReports {
@@ -95,7 +96,7 @@ async function started(
     world.drain();
     return { state: { kind: 'finished', outcome, encoded }, spawned: [], logs };
   } catch (error) {
-    const { message, trace } = run.panicOf(error);
+    const { message, trace } = run.traces.panicOf(error);
     return { state: { kind: 'panicked', message, trace }, spawned: [], logs };
   } finally {
     world.endLive(run);
@@ -117,7 +118,9 @@ async function settled(world: DurableWorld, given: unknown): Promise<Value | und
     const timer = world.nextTimer();
     if (world.awaitsHost) {
       // biome-ignore lint/performance/noAwaitInLoops: each turn waits on what the last one left.
-      await (timer === undefined ? world.arrival() : Promise.race([world.arrival(), clock.until(timer)]));
+      await (timer === undefined
+        ? world.arrival()
+        : Promise.race([world.arrival(), clock.until(timer)]));
     } else if (timer === undefined) {
       return undefined;
     } else {
@@ -135,8 +138,13 @@ function plainText(outcome: Value): string {
   if (typeof outcome === 'bigint') {
     return outcome.toString();
   }
-  if (outcome === null || typeof outcome === 'string' || typeof outcome === 'boolean' || typeof outcome === 'number') {
+  if (
+    outcome === null ||
+    typeof outcome === 'string' ||
+    typeof outcome === 'boolean' ||
+    typeof outcome === 'number'
+  ) {
     return JSON.stringify(outcome);
   }
-  throw new Refusal('noJsonForm', 'The outcome has no JSON form without its type\'s codec.');
+  throw new Refusal('noJsonForm', "The outcome has no JSON form without its type's codec.");
 }

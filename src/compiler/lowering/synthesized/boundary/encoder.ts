@@ -53,7 +53,11 @@ export class Encoder {
       }
       case 'record':
         code.return(
-          this.#object(form.fields, (index, field) => code.structField(value, index, field.type), []),
+          this.#object(
+            form.fields,
+            (index, field) => code.structField(value, index, field.type),
+            [],
+          ),
         );
         return;
       case 'tuple': {
@@ -137,7 +141,8 @@ export class Encoder {
       }),
     ];
     const { checker } = code;
-    const isObject = (member: Type) => wellKnownArguments(checker, wellKnown.map, member) !== undefined;
+    const isObject = (member: Type) =>
+      wellKnownArguments(checker, wellKnown.map, member) !== undefined;
     return this.#member(isObject, code.map(entries, this.#memberType(isObject)));
   }
 

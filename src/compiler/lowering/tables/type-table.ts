@@ -37,15 +37,10 @@ import type {
 } from '../../../definition/tables/types.ts';
 import type { Value } from '../../../definition/values/values.ts';
 import { compareOrdered } from '../../../foundation/language/order.ts';
-import {
-  type WellKnownDeclaration,
-  wellKnown,
-} from '../../../foundation/language/well-known/index.ts';
 import { unionLayout } from '../../../foundation/language/well-known/variants.ts';
 import { unreachable } from '../../../foundation/structures/unreachable.ts';
 import type { Checker, Disposal } from '../../checker/check.ts';
 import type { CheckedAnnotation } from '../../checker/surface/checked-annotation.ts';
-import { isHostExtern } from '../../checker/surface/host-externs.ts';
 import type { FunctionInstance } from '../../checker/surface/witness-closing.ts';
 import { folded } from '../../checker/types/identity/folding.ts';
 import { sameType } from '../../checker/types/identity/identity.ts';
@@ -63,6 +58,8 @@ import { hasOneValue } from '../../checker/types/unions/unions.ts';
 import type { FunctionDeclaration } from '../../syntax/declarations/index.ts';
 import { type ClosedCall, closeFunctionCall } from '../calls/closed-calls.ts';
 import { foundCodecCall } from '../synthesized/boundary/codec-calls.ts';
+import { type AnyEntry, anyEnum } from './any-entries.ts';
+import { enumRoles, externRoles, roleOf } from './entry-roles.ts';
 import { qualifiedNameOf, tableKey } from './names.ts';
 
 /** What a type entry refers to outside the type table. */
@@ -77,26 +74,17 @@ interface TypeTableSeams {
   readonly annotationValues: (annotations: readonly CheckedAnnotation[]) => Value[];
 }
 
+/** What every entry states of its type: whether it reaches a disposable, and whether it is heap. */
+type EntryFacts = Pick<TypeDefinition, 'disposable' | 'heap'>;
+
+/** What every declared type's entry starts with: its name, its type arguments and its facts. */
+type EntryHead = EntryFacts & Pick<TypeDefinition, 'name' | 'arguments'>;
+
 /** A type with an entry of its own: a declared struct, enum or extern type, a shape or a union. */
 type EntryType = NominalType | AnonymousStructType | UnionType;
 
 /** The name of the one field of an `any` type's or a union's variant: the member's value. */
 const memberValueField = unionLayout.valueField;
-
-/**
- * An `any` type's entry while lowering runs: the types converted into it so far, each with its
- * name and how the Definition refers to it, from which its enum is built (`anyEnum`).
- */
-interface AnyEntry {
-  readonly kind: 'any';
-  readonly name: string;
-  readonly disposable: boolean;
-  readonly members: {
-    readonly type: Type;
-    readonly name: string;
-    readonly reference: TypeReference;
-  }[];
-}
 
 /** What an entry stands as while its layout, which may refer back to it, is computed. */
 const placeholder: TypeDefinition = {
@@ -107,44 +95,6 @@ const placeholder: TypeDefinition = {
   disposable: false,
   heap: true,
 };
-
-/** The enum entry `entry` stands for: one variant per member, holding its value. */
-function anyEnum(entry: AnyEntry): TypeDefinition {
-  const variants = entry.members.map(({ name, reference }) => ({
-    name,
-    fields: [{ name: memberValueField, type: reference, annotations: [] }],
-  }));
-  return {
-    kind: 'enum',
-    name: entry.name,
-    arguments: [],
-    variants,
-    disposable: entry.disposable,
-    heap: true,
-  };
-}
-
-/**
- * The std type each role of an extern type entry is (definition/tables/types.ts), so the runtime
- * recognizes none by its name; a shared struct's role comes from its declaration's kind instead
- * (§3.18).
- */
-const externRoles = {
-  array: wellKnown.array,
-  map: wellKnown.map,
-  cell: wellKnown.cell,
-  weakRef: wellKnown.weakRef,
-  instance: wellKnown.instance,
-  call: wellKnown.call,
-} as const satisfies Record<ExternRole, WellKnownDeclaration>;
-
-/**
- * The std type each role of an enum entry is (definition/tables/types.ts): `json.Json`, a recursive
- * alias whose union is an enum entry (§3.17).
- */
-const enumRoles = {
-  json: wellKnown.json,
-} as const satisfies Record<EnumRole, WellKnownDeclaration>;
 
 export class TypeTable {
   readonly #checker: Checker;
@@ -314,81 +264,81 @@ export class TypeTable {
   #layout(type: EntryType): TypeDefinition {
     const facts = this.#facts(type);
     if (type.kind === 'anonymous') {
-      return { kind: 'struct', name: '', arguments: [], fields: this.#fields(type.fields), ...facts };
+      return {
+        kind: 'struct',
+        name: '',
+        arguments: [],
+        fields: this.#fields(type.fields),
+        ...facts,
+      };
     }
     if (type.kind === 'union') {
       return this.#unionLayout(type);
     }
+    return this.#declaredLayout(type, facts);
+  }
+
+  /** The entry of a declared type: a struct, a shared struct, an enum or an extern type. */
+  #declaredLayout(type: NominalType, facts: EntryFacts): TypeDefinition {
     const { declaration } = type.entity;
-    const name = qualifiedNameOf(this.#checker, declaration);
-    const typeArguments = type.arguments.map((argument) => this.reference(argument));
+    const head: EntryHead = {
+      name: qualifiedNameOf(this.#checker, declaration),
+      arguments: type.arguments.map((argument) => this.reference(argument)),
+      ...facts,
+    };
     const dispose = this.#dispose(type);
-    const disposing: { readonly dispose?: FunctionId } = dispose === undefined ? {} : { dispose };
+    const disposing = dispose === undefined ? {} : { dispose };
+    /**
+     * An extern entry, with its role if it has one: a host type, or a shared struct the std knows;
+     * an instance's with the entry encoding its outcome.
+     */
+    const extern = (role: ExternRole | undefined, encoder?: FunctionId): TypeDefinition => ({
+      kind: 'extern',
+      ...head,
+      ...(role === undefined ? {} : { role }),
+      ...disposing,
+      ...(encoder === undefined ? {} : { encoder }),
+    });
     switch (declaration.kind) {
       case 'SharedStructDeclaration': {
         const value = this.#checker.sharedValueOf(type);
-        const role = this.#roleOf(externRoles, declaration);
-        if (value === undefined || role !== undefined) {
-          return {
-            kind: 'extern',
-            name,
-            arguments: typeArguments,
-            ...(role === undefined ? {} : { role }),
-            ...disposing,
-            ...facts,
-          };
-        }
-        return {
-          kind: 'shared',
-          name,
-          arguments: typeArguments,
-          value: this.#typeEntry(value as EntryType),
-          ...disposing,
-          ...facts,
-        };
+        const role = roleOf(this.#checker, externRoles, declaration);
+        return value === undefined || role !== undefined
+          ? extern(role)
+          : { kind: 'shared', ...head, value: this.#typeEntry(value as EntryType), ...disposing };
       }
       case 'StructDeclaration':
         return {
           kind: 'struct',
-          name,
-          arguments: typeArguments,
+          ...head,
           fields: this.#fields(this.#checker.fieldsOf(type) ?? []),
-          ...facts,
         };
-      case 'EnumDeclaration': {
-        const role = this.#roleOf(enumRoles, declaration);
-        const variants = (this.#checker.variantsOf(type) ?? []).map((variant) => ({
-          name: variant.name,
-          fields: this.#fields(variant.fields),
-        }));
-        return {
-          kind: 'enum',
-          name,
-          arguments: typeArguments,
-          variants,
-          ...(role === undefined ? {} : { role }),
-          ...facts,
-          heap: variants.some((variant) => variant.fields.length > 0),
-        };
-      }
+      case 'EnumDeclaration':
+        return this.#enumLayout(type, head, roleOf(this.#checker, enumRoles, declaration));
       case 'ExternStructDeclaration': {
-        const role = this.#roleOf(externRoles, declaration);
-        const encoder = role === 'instance' ? this.#outcomeEncoder(type) : undefined;
-        return {
-          kind: 'extern',
-          name,
-          arguments: typeArguments,
-          ...(role === undefined ? {} : { role }),
-          ...disposing,
-          ...(encoder === undefined ? {} : { encoder }),
-          ...facts,
-        };
+        const role = roleOf(this.#checker, externRoles, declaration);
+        return extern(role, role === 'instance' ? this.#outcomeEncoder(type) : undefined);
       }
       default: {
         const unhandled: never = declaration;
         return unhandled;
       }
     }
+  }
+
+  /** An enum's entry: a heap value only when some variant has fields. */
+  #enumLayout(type: NominalType, head: EntryHead, role: EnumRole | undefined): TypeDefinition {
+    const variants = (this.#checker.variantsOf(type) ?? []).map((variant) => ({
+      name: variant.name,
+      fields: this.#fields(variant.fields),
+    }));
+    return {
+      kind: 'enum',
+      ...head,
+      variants,
+      ...(role === undefined ? {} : { role }),
+      heap: variants.some((variant) => variant.fields.length > 0),
+    };
   }
 
   /** The entry encoding the outcome of an instance of `instance`, `Instance<T>`: `T`'s codec's. */
@@ -427,18 +377,9 @@ export class TypeTable {
   }
 
   /** Which of `roles` the type `declaration` declares has: what the runtime makes of its values. */
-  #roleOf<Role extends string>(
-    roles: Readonly<Record<Role, WellKnownDeclaration>>,
-    declaration: object,
-  ): Role | undefined {
-    return (Object.keys(roles) as Role[]).find((role) => {
-      const entity = this.#checker.wellKnownEntity(roles[role]);
-      return entity !== undefined && 'declaration' in entity && entity.declaration === declaration;
-    });
-  }
 
   /** What every entry states: whether its values may reach a disposable, and are allocations. */
-  #facts(type: Type): { readonly disposable: boolean; readonly heap: boolean } {
+  #facts(type: Type): EntryFacts {
     return { disposable: this.#checker.reachesDisposable(type), heap: true };
   }
 

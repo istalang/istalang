@@ -252,7 +252,11 @@ function boundArgument(argument: BoundPatternArgument) {
 /** The part of a value of `part` holding `variant` its `index`-th field, `field`, holds. */
 function fieldPart(
   part: ValuePart,
-  { variant, field, index }: { readonly variant: string; readonly field: FieldMember; readonly index: number },
+  {
+    variant,
+    field,
+    index,
+  }: { readonly variant: string; readonly field: FieldMember; readonly index: number },
 ): ValuePart {
   return {
     type: field.type,
@@ -334,7 +338,10 @@ function takeReached(
     if (fieldReached === undefined || fieldReached.isItem || field === undefined) {
       walk.take(argument, { type: errorType, path: part.path });
     } else {
-      walk.take(argument, fieldPart(part, { variant: variant.key, field, index: fieldReached.index }));
+      walk.take(
+        argument,
+        fieldPart(part, { variant: variant.key, field, index: fieldReached.index }),
+      );
     }
   }
 }

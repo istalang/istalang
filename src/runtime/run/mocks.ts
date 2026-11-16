@@ -10,7 +10,7 @@
  *   replacement takes every parameter; a native is asked as its extern is called (natives.ts).
  */
 
-import type { MockObject } from './objects.ts';
+import type { MockObject } from './objects/mock-object.ts';
 
 /** The mocks one instance holds, by target, newest last. */
 export class Mocks {

@@ -9,24 +9,23 @@
  *   holder it is read under.
  */
 
+import type { CodeFunction } from '../../definition/tables/functions.ts';
 import { lifetimeOf } from '../../definition/tables/types.ts';
 import { replacingParts } from '../../definition/values/replacing.ts';
 import type { Value } from '../../definition/values/values.ts';
+import { type Handlers, handlerOf } from '../../foundation/structures/kind-table.ts';
 import { unreachable } from '../../foundation/structures/unreachable.ts';
-import type { CodeFunction } from '../../definition/tables/functions.ts';
-import {
-  Cell,
-  Execution,
-  Future,
-  MockObject,
-  Reference,
-  Resource,
-  type RunObject,
-  type Step,
-  WeakReference,
-} from '../run/objects.ts';
 import type { InstanceEnd } from '../run/instances.ts';
-import type { Invocation, Run } from '../run/run.ts';
+import type { Invocation } from '../run/invocations.ts';
+import { Cell } from '../run/objects/cell.ts';
+import { Execution } from '../run/objects/execution.ts';
+import { Future } from '../run/objects/future.ts';
+import { MockObject } from '../run/objects/mock-object.ts';
+import { Reference, type Step } from '../run/objects/reference.ts';
+import { Resource } from '../run/objects/resource.ts';
+import type { RunObject } from '../run/objects/run-object.ts';
+import { WeakReference } from '../run/objects/weak-reference.ts';
+import type { Run } from '../run/run.ts';
 import type { PersistedObject, PersistedRegister, Snapshot } from './format.ts';
 
 /**
@@ -46,11 +45,13 @@ export function restore(
   const object = (id: number): RunObject =>
     objects.get(id) ?? unreachable(`A snapshot names no object ${id}.`);
   const restored = (value: Value): Value =>
-    replacingParts(value, (part) => (part.kind === 'handle' ? (object(part.object) as unknown as Value) : undefined));
+    replacingParts(value, (part) =>
+      part.kind === 'handle' ? (object(part.object) as unknown as Value) : undefined,
+    );
   for (const persisted of snapshot.objects) {
     filled(run, persisted, { object, restored });
   }
-  run.restoredObjects(objects);
+  run.arrivals.restoredObjects(objects);
   const { instance, lifetimes } = run;
   instance.draws = snapshot.draws;
   instance.spawned = snapshot.spawned;
@@ -69,7 +70,10 @@ export function restore(
     })),
     ready: snapshot.ready.map((ready) => {
       if ('execution' in ready) {
-        return { execution: object(ready.execution) as Execution, decision: restored(ready.decision) };
+        return {
+          execution: object(ready.execution) as Execution,
+          decision: restored(ready.decision),
+        };
       }
       const call = restored(ready.call);
       const passed = ready.arguments.map(restored);
@@ -87,39 +91,40 @@ export function restore(
 
 /** Makes the object `persisted` describes, empty, under its id; an execution makes its future. */
 function made(run: Run, persisted: PersistedObject, objects: Map<number, RunObject>): void {
-  switch (persisted.kind) {
-    case 'cell':
-      objects.set(persisted.id, new Cell(persisted.id, null, persisted.counted, persisted.dispose));
-      return;
-    case 'future':
-      if (!objects.has(persisted.id)) {
-        objects.set(persisted.id, new Future(persisted.id));
-      }
-      return;
-    case 'execution': {
-      const execution = new Execution(persisted.id, persisted.future, run.instance);
-      objects.set(persisted.id, execution);
-      objects.set(persisted.future, execution.future);
-      return;
-    }
-    case 'weakReference':
-      objects.set(persisted.id, new WeakReference(persisted.id, undefined as never));
-      return;
-    case 'resource': {
-      const resource = new Resource(persisted.id, persisted.type, persisted.payload);
-      resource.disposed = persisted.disposed;
-      objects.set(persisted.id, resource);
-      return;
-    }
-    case 'mock':
-      objects.set(persisted.id, new MockObject(persisted.id, persisted.target, null));
-      return;
-    default: {
-      const unhandled: never = persisted;
-      return unhandled;
-    }
-  }
+  handlerOf(makers, persisted)({ run, objects }, persisted);
 }
+
+const makers: Handlers<
+  { readonly run: Run; readonly objects: Map<number, RunObject> },
+  PersistedObject,
+  [],
+  void
+> = {
+  cell: ({ objects }, cell) => {
+    objects.set(cell.id, new Cell(cell.id, null, cell.counted, cell.dispose));
+  },
+  future: ({ objects }, future) => {
+    if (!objects.has(future.id)) {
+      objects.set(future.id, new Future(future.id));
+    }
+  },
+  execution: ({ run, objects }, persisted) => {
+    const execution = new Execution(persisted.id, persisted.future, run.instance);
+    objects.set(persisted.id, execution);
+    objects.set(persisted.future, execution.future);
+  },
+  weakReference: ({ objects }, weak) => {
+    objects.set(weak.id, new WeakReference(weak.id, undefined as never));
+  },
+  resource: ({ objects }, persisted) => {
+    const resource = new Resource(persisted.id, persisted.type, persisted.payload);
+    resource.disposed = persisted.disposed;
+    objects.set(persisted.id, resource);
+  },
+  mock: ({ objects }, persisted) => {
+    objects.set(persisted.id, new MockObject(persisted.id, persisted.target, null));
+  },
+};
 
 interface Reading {
   readonly object: (id: number) => RunObject;
@@ -127,92 +132,97 @@ interface Reading {
 }
 
 /** Fills the object `persisted` describes, counting what it holds. */
-function filled(run: Run, persisted: PersistedObject, { object, restored }: Reading): void {
-  const { lifetimes } = run;
-  switch (persisted.kind) {
-    case 'cell': {
-      const cell = object(persisted.id) as Cell;
-      cell.value = restored(persisted.value);
-      if (cell.counted) {
-        lifetimes.adoptRestored(cell.value);
-      }
-      return;
+function filled(run: Run, persisted: PersistedObject, reading: Reading): void {
+  handlerOf(fillers, persisted)({ run, ...reading }, persisted);
+}
+
+const fillers: Handlers<{ readonly run: Run } & Reading, PersistedObject, [], void> = {
+  cell: ({ run, object, restored }, persisted) => {
+    const cell = object(persisted.id) as Cell;
+    cell.value = restored(persisted.value);
+    if (cell.counted) {
+      run.lifetimes.adoptRestored(cell.value);
     }
-    case 'future': {
-      const future = object(persisted.id) as Future;
-      future.settled = persisted.settled;
-      future.value = restored(persisted.value);
-      future.lost = persisted.lost;
-      future.callbacks = persisted.callbacks.map(({ callback, rank, standing }) => ({
-        callback: restored(callback),
-        rank,
-        standing: restored(standing),
-      }));
-      future.onAwaited.push(...persisted.onAwaited.map(restored));
-      if (future.settled) {
-        lifetimes.adoptRestored(future.value);
-      }
-      for (const held of [...future.callbacks.flatMap(({ callback, standing }) => [callback, standing]), ...future.onAwaited]) {
-        lifetimes.adoptRestored(held);
-      }
-      return;
+  },
+  future: ({ run, object, restored }, persisted) => {
+    const future = object(persisted.id) as Future;
+    future.settled = persisted.settled;
+    future.value = restored(persisted.value);
+    future.lost = persisted.lost;
+    future.callbacks = persisted.callbacks.map(({ callback, rank, standing }) => ({
+      callback: restored(callback),
+      rank,
+      standing: restored(standing),
+    }));
+    future.onAwaited.push(...persisted.onAwaited.map(restored));
+    const held = [
+      ...(future.settled ? [future.value] : []),
+      ...future.callbacks.flatMap(({ callback, standing }) => [callback, standing]),
+      ...future.onAwaited,
+    ];
+    for (const each of held) {
+      run.lifetimes.adoptRestored(each);
     }
-    case 'execution': {
-      const execution = object(persisted.id) as Execution;
-      const entry = run.definition.functions[persisted.function] as CodeFunction;
-      execution.frame = {
-        function: persisted.function,
-        pc: persisted.pc,
-        registers: persisted.registers.map((register) => registerOf(register, { object, restored })),
-        closure: persisted.closure === undefined ? undefined : restored(persisted.closure),
-        decision: undefined,
-        execution,
-        stopping: false,
-      };
-      execution.parked = persisted.parked;
-      execution.given = persisted.given.map(
-        (given) => registerOf(given, { object, restored }) ?? null,
-      );
-      if (persisted.disposing !== undefined) {
-        execution.disposing = object(persisted.disposing) as Future;
-      }
-      execution.frame.registers.forEach((register, index) => {
-        const slot = entry.registers[index];
-        if (slot !== undefined && !slot.borrowed && lifetimeOf(run.definition.types, slot.type) === 'counted') {
-          lifetimes.adoptRestored(register as Value | undefined);
-        }
-      });
-      for (const given of execution.given) {
-        lifetimes.adoptRestored(given);
-      }
-      return;
+  },
+  execution: (reading, persisted) => {
+    filledExecution(reading, persisted);
+  },
+  weakReference: ({ run, object }, persisted) => {
+    const weak = object(persisted.id) as WeakReference;
+    weak.target = persisted.target === undefined ? undefined : object(persisted.target);
+    if (persisted.disposed !== undefined) {
+      weak.disposed = object(persisted.disposed) as Future;
     }
-    case 'weakReference': {
-      const weak = object(persisted.id) as WeakReference;
-      weak.target = persisted.target === undefined ? undefined : object(persisted.target);
-      if (persisted.disposed !== undefined) {
-        weak.disposed = object(persisted.disposed) as Future;
-      }
-      run.restoredWeakReference(weak);
-      return;
+    run.weakReferences.restored(weak);
+  },
+  resource: ({ run, object }, persisted) => {
+    run.resources.restored(object(persisted.id) as Resource);
+  },
+  mock: ({ run, object, restored }, persisted) => {
+    const mock = object(persisted.id) as MockObject;
+    mock.replacement = restored(persisted.replacement);
+    mock.calls.push(...persisted.calls.map(restored));
+    for (const held of [mock.replacement, ...mock.calls]) {
+      run.lifetimes.adoptRestored(held);
     }
-    case 'resource':
-      run.restoredResource(object(persisted.id) as Resource);
-      return;
-    case 'mock': {
-      const mock = object(persisted.id) as MockObject;
-      mock.replacement = restored(persisted.replacement);
-      mock.calls.push(...persisted.calls.map(restored));
-      for (const held of [mock.replacement, ...mock.calls]) {
-        lifetimes.adoptRestored(held);
-      }
-      run.restoredMock(mock);
-      return;
+    run.mocking.held.hold(mock);
+  },
+};
+
+/** Fills a persisted execution: its frame, what it was given, each counted register held. */
+function filledExecution(
+  { run, ...reading }: { readonly run: Run } & Reading,
+  persisted: Extract<PersistedObject, { readonly kind: 'execution' }>,
+): void {
+  const { object, restored } = reading;
+  const execution = object(persisted.id) as Execution;
+  const entry = run.definition.functions[persisted.function] as CodeFunction;
+  execution.frame = {
+    function: persisted.function,
+    pc: persisted.pc,
+    registers: persisted.registers.map((register) => registerOf(register, reading)),
+    closure: persisted.closure === undefined ? undefined : restored(persisted.closure),
+    decision: undefined,
+    execution,
+    stopping: false,
+  };
+  execution.parked = persisted.parked;
+  execution.given = persisted.given.map((given) => registerOf(given, reading) ?? null);
+  if (persisted.disposing !== undefined) {
+    execution.disposing = object(persisted.disposing) as Future;
+  }
+  execution.frame.registers.forEach((register, index) => {
+    const slot = entry.registers[index];
+    if (
+      slot !== undefined &&
+      !slot.borrowed &&
+      lifetimeOf(run.definition.types, slot.type) === 'counted'
+    ) {
+      run.lifetimes.adoptRestored(register as Value | undefined);
     }
-    default: {
-      const unhandled: never = persisted;
-      return unhandled;
-    }
+  });
+  for (const given of execution.given) {
+    run.lifetimes.adoptRestored(given);
   }
 }
 
@@ -249,6 +259,6 @@ function finished(run: Run, outcome: Value, encoder: number | undefined): Instan
   try {
     return { kind: 'finished', outcome, encoded: run.call(encoder, [outcome]) as Value };
   } catch (error) {
-    return { kind: 'panicked', ...run.panicOf(error) };
+    return { kind: 'panicked', ...run.traces.panicOf(error) };
   }
 }

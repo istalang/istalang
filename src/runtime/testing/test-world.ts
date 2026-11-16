@@ -14,7 +14,7 @@
  *   instances wait on nothing that can wake them fails, naming where each waits; so does one whose
  *   next timer falls past its deadline.
  * - What an instance shows a test (`inspect`, `idle()`, `reaches(label)`) is what it last
- *   committed, as a host reads it (host/index.ts `inspectionOf`).
+ *   committed, as a host reads it (host/instance-calls.ts `inspectionOf`).
  * - Instances it spawned that still wait when it ends are dropped with the world.
  */
 
@@ -25,10 +25,10 @@ import type { Value } from '../../definition/values/values.ts';
 import { jobWaypoint } from '../../foundation/language/well-known/jobs.ts';
 import type { Clock } from '../clock.ts';
 import { DurableWorld } from '../host/durable-world.ts';
-import { inspectionOf } from '../host/index.ts';
+import { inspectionOf } from '../host/instance-calls.ts';
 import type { Inspection, LogRecord } from '../instance-state.ts';
 import type { Natives, TestWatch } from '../natives.ts';
-import { Future } from '../run/objects.ts';
+import { Future } from '../run/objects/future.ts';
 import type { Run } from '../run/run.ts';
 import type { TestingWorld } from '../run/world.ts';
 import { memoryStore } from '../store.ts';

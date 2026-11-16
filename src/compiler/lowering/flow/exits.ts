@@ -32,6 +32,7 @@ import { equal } from '../values/operators.ts';
 import { branchOnPresent } from '../values/optionals.ts';
 import { outOfUnion } from '../values/unions.ts';
 import { branchOnVariant } from '../values/variant-values.ts';
+import { waypointAt } from './waypoints.ts';
 import type { FlowWriter } from './writer.ts';
 
 type ExitOf<Kind extends Exit['kind']> = Extract<Exit, { readonly kind: Kind }>;
@@ -176,7 +177,11 @@ function branchOnMembers(
  * lets go of the wait and of the losing cases' holdings, its own moving to the scope around the
  * `select` (spec amendment, "select losers").
  */
-function selected(writer: FlowWriter, { node, holds }: TestOf<'select'>, to: readonly BlockId[]): void {
+function selected(
+  writer: FlowWriter,
+  { node, holds }: TestOf<'select'>,
+  to: readonly BlockId[],
+): void {
   const { context } = writer;
   const { code } = context;
   const { span } = node;
@@ -185,10 +190,10 @@ function selected(writer: FlowWriter, { node, holds }: TestOf<'select'>, to: rea
     writer.goTo(to[0] ?? unreachable('A select goes nowhere.'), span);
     return;
   }
-  const { open, futures } = writer.takeWait();
+  const { open, futures } = writer.waits.take();
   const position =
     node.elseClause === undefined
-      ? parked(context, open, { waypoint: writer.waypointAt(node), span })
+      ? parked(context, open, { waypoint: waypointAt(writer.context, node), span })
       : decidedAt(context, open, span);
   const landings = cases.map(() => code.newLabel());
   const otherwise = node.elseClause === undefined ? undefined : code.newLabel();
@@ -209,7 +214,7 @@ function selected(writer: FlowWriter, { node, holds }: TestOf<'select'>, to: rea
     code.place(landing);
     const future = futures[index];
     if (future !== undefined) {
-      writer.give(future, code.copy(caseValue(context, open, index, span), span));
+      writer.waits.give(future, code.copy(caseValue(context, open, index, span), span));
     }
     const losers = holds.flatMap((held, other) => (other === index ? [] : held));
     code.letGo([position, ...waitRegisters(open), ...writer.registersEnding(losers)], span);

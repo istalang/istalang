@@ -10,11 +10,14 @@
  *   skips (functions/frame-variables.ts), so a default's trace starts at its caller.
  * - A frame on a frame record shows only from where it last resumed: the stack holds nothing of
  *   what awaited it.
+ * - A panic is a thrown `Panic`, or a host limit `panicOf` names (a stack overflow is the recursion
+ *   panic); anything else thrown is a bug.
  */
 
 import type { Definition } from '../../definition/definition.ts';
-import { traceText, callerTraceText, type TracedFrame } from '../../definition/traces.ts';
 import type { CodeFunction } from '../../definition/tables/functions.ts';
+import { callerTraceText, type TracedFrame, traceText } from '../../definition/traces.ts';
+import { panicOf, wholeStack } from '../natives.ts';
 
 /** A stack frame's location: where it is, then its line and column. */
 const frameLocation = /(?<where>[^\s(@]+):(?<line>\d+):\d+\)?\s*$/u;
@@ -40,14 +43,31 @@ export class Traces {
     this.#shift = located === undefined ? 0 : located.line - siteLine;
   }
 
-  /** The trace of where `stack`, an `Error`'s, stands, innermost first. */
-  of(stack: string | undefined): string {
-    return traceText(this.#definition, this.#frames(stack));
+  /** The panic `error` is, its trace read off its stack; anything else is a bug, rethrown. */
+  panicOf(error: unknown): { readonly message: string; readonly trace: string } {
+    const panic = panicOf(error);
+    if (panic === undefined) {
+      throw error;
+    }
+    const cause = panic.cause instanceof Error ? panic.cause : panic;
+    return { message: panic.message, trace: panic.trace ?? this.#of(cause.stack) };
   }
 
-  /** The trace of the code a default gives its value to: `of` without a frame in its prologue. */
-  callerOf(stack: string | undefined): string {
-    return callerTraceText(this.#definition, this.#frames(stack));
+  /** Where every running frame is, innermost first, as an `Error`'s `trace` reads (§3.12). */
+  here(): string {
+    return this.#of(wholeStack('the stack, read for a trace'));
+  }
+
+  /** The trace of the code a default gives its value to: `here` without a frame in its prologue. */
+  callerHere(): string {
+    return callerTraceText(
+      this.#definition,
+      this.#frames(wholeStack('the stack, read for a trace')),
+    );
+  }
+
+  #of(stack: string | undefined): string {
+    return traceText(this.#definition, this.#frames(stack));
   }
 
   #frames(stack: string | undefined): TracedFrame[] {

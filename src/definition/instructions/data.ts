@@ -14,14 +14,7 @@
  */
 
 import { z } from 'zod';
-import {
-  constantId,
-  fieldIndex,
-  functionId,
-  register,
-  typeId,
-  variantIndex,
-} from '../operands.ts';
+import { constantId, fieldIndex, functionId, register, typeId, variantIndex } from '../operands.ts';
 import { defineInstruction } from './define-instruction.ts';
 import { primitiveOp } from './primitive-ops.ts';
 
@@ -65,6 +58,24 @@ const mapEntry = z.discriminatedUnion('kind', [
 
 /** A `Map` of its entries in order, a later key replacing an earlier; a spread as `array`'s. */
 const map = defineInstruction('map', { dst: register, entries: z.array(mapEntry) });
+
+/**
+ * `collection`, an array being built, with `item` appended, both moved in: changed in place where
+ * nothing else holds it, so a comprehension builds its array in linear time (§4).
+ */
+const append = defineInstruction('append', {
+  dst: register,
+  collection: register,
+  item: register,
+});
+
+/** `collection`, a `Map` being built, with `key` set to `value`, as `append` appends: a key there is replaced. */
+const appendEntry = defineInstruction('appendEntry', {
+  dst: register,
+  collection: register,
+  key: register,
+  value: register,
+});
 
 /** A closure of `function` carrying `captures` (§3.14). */
 const closure = defineInstruction('closure', {
@@ -124,6 +135,8 @@ export const dataInstructions = [
   variant,
   array,
   map,
+  append,
+  appendEntry,
   closure,
   currentClosure,
   tupleItem,

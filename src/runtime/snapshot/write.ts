@@ -13,16 +13,14 @@ import { bytesToHex } from '@noble/hashes/utils.js';
 import { replacingParts } from '../../definition/values/replacing.ts';
 import { depthOf, maximumDepth, type Value } from '../../definition/values/values.ts';
 import type { Instance } from '../run/instances.ts';
-import {
-  Cell,
-  Execution,
-  Future,
-  MockObject,
-  Reference,
-  Resource,
-  RunObject,
-  WeakReference,
-} from '../run/objects.ts';
+import { Cell } from '../run/objects/cell.ts';
+import { Execution } from '../run/objects/execution.ts';
+import { Future } from '../run/objects/future.ts';
+import { MockObject } from '../run/objects/mock-object.ts';
+import { Reference } from '../run/objects/reference.ts';
+import { Resource } from '../run/objects/resource.ts';
+import { RunObject } from '../run/objects/run-object.ts';
+import { WeakReference } from '../run/objects/weak-reference.ts';
 import type { Run } from '../run/run.ts';
 import type { PersistedObject, PersistedRegister, PersistedStatus, Snapshot } from './format.ts';
 
@@ -31,7 +29,9 @@ export class TooDeep extends Error {
   override readonly name = 'TooDeep';
 
   constructor(depth: number) {
-    super(`A value nests ${depth} levels deep, deeper than the ${maximumDepth} an instance can persist.`);
+    super(
+      `A value nests ${depth} levels deep, deeper than the ${maximumDepth} an instance can persist.`,
+    );
   }
 }
 

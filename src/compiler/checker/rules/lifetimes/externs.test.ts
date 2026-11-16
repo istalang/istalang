@@ -53,11 +53,13 @@ describe('what a value of an extern type holds', () => {
     expect(heldTypes(checker, weak).map(typeText)).toEqual([typeText(weak)]);
   });
 
-  it("is its type arguments without one, or what @Holds names at them: a future's value and resolvers", () => {
+  it("is its type arguments without one, or what @Holds names at them: a future's value and callbacks", () => {
     const future = preludeType('future', preludeType('slot', intType), ista);
     expect(checker.externHeldOf(future).map(typeText)).toEqual([
       'Slot<Int>',
-      'Resolver<Slot<Int>, "ista">',
+      'ista fn(Slot<Int>) -> Unit',
+      'ista fn() -> Int',
+      'ista fn() -> Unit',
     ]);
     expect(checker.externHeldOf(preludeType('array', intType)).map(typeText)).toEqual(['Int']);
   });

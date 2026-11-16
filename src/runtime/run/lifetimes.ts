@@ -25,13 +25,14 @@ import {
 } from '../../definition/tables/types.ts';
 import { copiedMap, forgetDerived } from '../../definition/values/equality.ts';
 import {
-  childValues,
   type CompositeValue,
+  childValues,
   forgetSummary,
   isComposite,
   type Value,
 } from '../../definition/values/values.ts';
-import { RunObject, type Step } from './objects.ts';
+import type { Step } from './objects/reference.ts';
+import { RunObject } from './objects/run-object.ts';
 
 /** What disposing an object that lost its last holder does: its `dispose`, its stop, its contents. */
 export type Disposer = (object: RunObject) => readonly Value[];
@@ -223,24 +224,27 @@ export class Lifetimes {
   /** Lets go of `value` into `zeros`: a counted composite losing its last holder lets go of its parts. */
   #release(first: Value | undefined, zeros: RunObject[]): void {
     const pending: (Value | undefined)[] = [first];
-    for (let value = pending.pop(); pending.length > 0 || value !== undefined; value = pending.pop()) {
+    for (
+      let value = pending.pop();
+      pending.length > 0 || value !== undefined;
+      value = pending.pop()
+    ) {
       if (value instanceof RunObject) {
-        if (value.count > 0) {
-          value.count -= 1;
-          if (value.count === 0) {
-            zeros.push(value);
-          }
-        }
+        releaseObject(value, zeros);
       } else if (isNode(value)) {
-        const count = this.#counts.get(value);
-        if (count !== undefined) {
-          this.#counts.set(value, count - 1);
-          if (count === 1) {
-            pending.push(...childValues(value));
-          }
-        }
+        pending.push(...this.#releasedNode(value));
       }
     }
+  }
+
+  /** Lets go of the composite `node`; the parts it held, should that be its last holder. */
+  #releasedNode(node: CompositeValue): readonly Value[] {
+    const count = this.#counts.get(node);
+    if (count === undefined) {
+      return [];
+    }
+    this.#counts.set(node, count - 1);
+    return count === 1 ? childValues(node) : [];
   }
 
   /** Disposes `zeros` in rounds, newest first, what each held losing it in the round after. */
@@ -258,13 +262,27 @@ export class Lifetimes {
   }
 }
 
+/** Lets go of `object`, a counted one into `zeros` once it loses its last holder. */
+function releaseObject(object: RunObject, zeros: RunObject[]): void {
+  if (object.count > 0) {
+    object.count -= 1;
+    if (object.count === 0) {
+      zeros.push(object);
+    }
+  }
+}
+
 /** The parts of `node`, of `type`, each with its type; a closure's captures, untyped, are held as functions are. */
 function typedParts(
   types: readonly TypeDefinition[],
   node: CompositeValue,
   type: TypeReference,
 ): [Value, TypeReference][] {
-  const function_: TypeReference = { kind: 'function', parameters: [], result: { kind: 'primitive', name: 'Unit' } };
+  const function_: TypeReference = {
+    kind: 'function',
+    parameters: [],
+    result: { kind: 'primitive', name: 'Unit' },
+  };
   const of = (values: readonly Value[], typeAt: (at: number) => TypeReference | undefined) =>
     values.map((value, at): [Value, TypeReference] => [value, typeAt(at) ?? function_]);
   if (type.kind === 'tuple' && node.kind === 'tuple') {

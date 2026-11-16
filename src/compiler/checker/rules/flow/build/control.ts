@@ -282,12 +282,7 @@ export function propagate(builder: FlowBuilder, node: Propagate): ValueId {
   const value = madeVariant(builder, err, [converted]);
   builder.end({ kind: 'return', value, site: node });
   builder.resumeIn(ok);
-  return readAlong(
-    builder,
-    operand,
-    [payload(resultVariants.ok, builder.body.typeOf(node))],
-    node,
-  );
+  return readAlong(builder, operand, [payload(resultVariants.ok, builder.body.typeOf(node))], node);
 }
 
 /** `a ?? b`: the value inside `a`, or else `b`'s value, evaluated only then. */

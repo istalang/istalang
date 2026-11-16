@@ -16,10 +16,10 @@
  * - A failure names its path from the extern's qualified name: `purchase.chargeCard.receipt`.
  */
 
-import { hostFutureFunction } from '../../../../foundation/language/well-known/implicit-calls.ts';
-import type { TypeReference } from '../../../../definition/tables/types.ts';
 import type { FunctionId, Register } from '../../../../definition/operands.ts';
 import type { CodeFunction, FunctionDefinition } from '../../../../definition/tables/functions.ts';
+import type { TypeReference } from '../../../../definition/tables/types.ts';
+import { hostFutureFunction } from '../../../../foundation/language/well-known/implicit-calls.ts';
 import { wellKnown } from '../../../../foundation/language/well-known/index.ts';
 import { unreachable } from '../../../../foundation/structures/unreachable.ts';
 import type { Checker } from '../../../checker/check.ts';
@@ -38,10 +38,10 @@ import { emitCall, emitFunctionCall } from '../../calls/emit-call.ts';
 import { awaitFuture } from '../../calls/waits.ts';
 import type { CodeContext } from '../../context.ts';
 import { declaredTypeOf, keyOf } from '../../tables/extern-keys.ts';
+import { rootInstance } from '../../tables/instances.ts';
 import { qualifiedNameOf } from '../../tables/names.ts';
 import type { DefinitionTables, HostExternDeclaration } from '../../tables/tables.ts';
 import { SynthesizedCode } from '../index.ts';
-import { rootInstance } from '../../tables/instances.ts';
 import { codecCall } from './codec-calls.ts';
 import { emitInbound, inboundOf } from './inbound.ts';
 

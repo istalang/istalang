@@ -289,8 +289,7 @@ function rebuiltVariant(
         {
           register: code.variantField(
             register,
-            index,
-            position,
+            { variant: index, field: position },
             context.tables.types.reference(field.type),
             span,
           ),

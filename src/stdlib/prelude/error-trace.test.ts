@@ -32,8 +32,8 @@ const frameLines = [
 ];
 
 /**
- * Declarations whose `made` leaves out a default that builds an `Error`, by a literal or by a
- * native; `main` continues at line 7.
+ * Declarations whose `made` leaves out a default that builds an `Error`, by a literal or by the
+ * std's `Int.parse`; `main` continues at line 7.
  */
 const builtInDefaults = [
   'struct Job:',
@@ -44,9 +44,16 @@ const builtInDefaults = [
   '',
 ].join('\n');
 
-/** `Job`'s entry computing its defaults, where each builds its `Error`: by a literal, and by a native. */
+/** `Job`'s entry computing its defaults, where each builds its `Error`: by a literal, and by a call. */
 const failureLine = /^at \S*Job \(\S+:2:20\)$/u;
 const numberLine = /^at \S*Job \(\S+:3:25\)$/u;
+
+/** The std's frames building a parse error, innermost first, which `Int.parse` returns (§3.10). */
+const parseLines = [
+  /^at prelude\.Error\.unparsed \(std:prelude:\d+:\d+\)$/u,
+  /^at prelude\._parsed<Int> \(std:prelude:\d+:\d+\)$/u,
+  /^at prelude\.Int\.parse \(std:prelude:\d+:\d+\)$/u,
+];
 
 /** `made`'s frame, at the literal leaving the defaults out. */
 const madeLine = /^at \S*made \(\S+:5:3\)$/u;
@@ -76,9 +83,10 @@ describe("an Error's trace", () => {
     ]);
   });
 
-  it("built by a native in a default, starts at the default's line, as a panic there would", async () => {
+  it("built by a call in a default, has the default's line after the frames of the call", async () => {
     const read = 'match made().number:\n    case Ok(value): ""\n    case Err(error): error.trace';
     expect(linesOf(await mainGives('String', read, builtInDefaults))).toEqual([
+      ...parseLines.map((line) => expect.stringMatching(line)),
       expect.stringMatching(numberLine),
       expect.stringMatching(madeLine),
       expect.stringMatching(mainMatchLine),

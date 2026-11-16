@@ -13,7 +13,7 @@
  */
 
 import type { Value } from '../../definition/values/values.ts';
-import type { Future } from './objects.ts';
+import type { Future } from './objects/future.ts';
 
 /** An instance's state: running, or ended with what it gave or the panic that ended it. */
 export type InstanceEnd =

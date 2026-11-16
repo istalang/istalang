@@ -15,33 +15,42 @@
 import type { Definition } from '../definition/definition.ts';
 import { emitEntry, runsOnFrames } from './entry.ts';
 
-/** The helpers of the run the body reads, as locals. */
+/**
+ * The helpers the body takes into locals, by the part of the run (runtime/run/run.ts) holding them;
+ * `key: local` names a local apart from its key.
+ */
 const helpers = [
-  'hold',
-  'share',
-  'letGo',
-  'equal',
-  'mapOf',
-  'items',
-  'entries',
-  'cell',
-  'load',
-  'store',
-  'reference',
-  'transient',
-  'shareTransient',
-  'unshareTransient',
-  'contextConstant',
-  'makeContextConstant',
-  'callValue',
-  'currentExecution',
-  'start',
-  'mocked',
-  'unreachableHere',
-  'NOT_MOCKED',
-  'PARKED',
-  'STOPPED',
-  'STOP',
+  [
+    'rt',
+    [
+      'equal',
+      'mapOf',
+      'contextConstant',
+      'makeContextConstant',
+      'callValue',
+      'start',
+      'unreachableHere',
+    ],
+  ],
+  ['rt.lifetimes', ['hold', 'share', 'letGo']],
+  ['rt.builders', ['items', 'entries', 'cell', 'append', 'appendEntry']],
+  [
+    'rt.primitives',
+    [
+      'floorDivide',
+      'remainder',
+      'intPower',
+      'shiftLeft',
+      'shiftRight',
+      'floatCompare',
+      'intFromFloat',
+    ],
+  ],
+  ['rt.places', ['load', 'storeRegister', 'storeCell', 'storeReference', 'reference']],
+  ['rt.transients', ['transient', 'shareTransient', 'unshareTransient']],
+  ['rt.executions', ['current: currentExecution']],
+  ['rt.mocking', ['mocked']],
+  ['rt.signals', ['parked: PARKED', 'stopped: STOPPED', 'stop: STOP', 'notMocked: NOT_MOCKED']],
 ] as const;
 
 /** A program's code: the body of a function of the run, and the instruction each line runs. */
@@ -62,7 +71,9 @@ export function emitProgram(definition: Definition): EmittedProgram {
   };
   line('"use strict";');
   line('const site = new Error();');
-  line(`const { ${helpers.join(', ')} } = rt;`);
+  for (const [owner, names] of helpers) {
+    line(`const { ${names.join(', ')} } = ${owner};`);
+  }
   line('const K = rt.constants;');
   functions.forEach((entry, index) => {
     if (entry.kind === 'extern') {

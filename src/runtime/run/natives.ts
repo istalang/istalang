@@ -8,12 +8,12 @@
  *   a copy that takes its place (lifetimes.ts).
  * - What a native gives lands in the call's register, which owns it, so a counted result is held:
  *   a native gives back a part of its argument as readily as a value it made.
- * - The context is built once per extern: what the call is, the run's clock, random draws, log and
- *   resources, and the program's types.
+ * - The context is built once per extern: what the call is and the program's types, over the
+ *   run's capabilities (capabilities.ts), built once.
  */
 
 import type { ExternFunction } from '../../definition/tables/functions.ts';
-import { outcomeEncoderOf } from '../../definition/tables/types.ts';
+import { lifetimeOf } from '../../definition/tables/types.ts';
 import { deleteEntryInPlace, setEntryInPlace } from '../../definition/values/equality.ts';
 import type { CompositeValue, Value } from '../../definition/values/values.ts';
 import type { Clock } from '../clock.ts';
@@ -21,20 +21,15 @@ import type { LogRecord } from '../instance-state.ts';
 import {
   type FullNativeContext,
   type Native,
+  type NativeCapabilities,
   type Natives,
   requireNatives,
   type ValueChanges,
 } from '../natives.ts';
+import { capabilitiesOf } from './capabilities.ts';
 import type { Instance } from './instances.ts';
-import {
-  Execution,
-  Future,
-  type MockObject,
-  Reference,
-  Resource,
-  type RunObject,
-  type WeakReference,
-} from './objects.ts';
+import type { Reference } from './objects/reference.ts';
+import { deref } from './places.ts';
 import type { Run } from './run.ts';
 import type { World } from './world.ts';
 
@@ -58,21 +53,20 @@ type Entry = (...parameters: never[]) => unknown;
 export function bindNatives(run: Run, binding: NativeBinding): (index: number) => Entry {
   const { functions } = run.definition;
   requireNatives(functions, binding.natives);
-  const random = { draw: () => run.draw() };
+  const capabilities = capabilitiesOf(run, binding);
   return (index) => {
     const entry = functions[index] as ExternFunction;
     const native = binding.natives[entry.key] as Native;
     let current: readonly Value[] = [];
-    const context = contextOf(run, entry, { binding, random, passed: () => current });
-
+    const context = contextOf(run, entry, { binding, capabilities, passed: () => current });
     const references = entry.parameters.flatMap((parameter, at) =>
       parameter.type.kind === 'reference' ? [at] : [],
     );
     const mocking = run.definition.purpose.kind === 'tests';
     return ((...given: Value[]) => {
       if (mocking) {
-        const answer = run.mocked(index, given);
-        if (answer !== run.NOT_MOCKED) {
+        const answer = run.mocking.mocked(index, given);
+        if (answer !== run.signals.notMocked) {
           return answer;
         }
       }
@@ -83,7 +77,7 @@ export function bindNatives(run: Run, binding: NativeBinding): (index: number) =
         references.length === 0
           ? given
           : given.map((value, at) =>
-              references.includes(at) ? run.deref(value as unknown as Reference) : value,
+              references.includes(at) ? deref(value as unknown as Reference) : value,
             );
       try {
         const result = native(values, context);
@@ -96,32 +90,29 @@ export function bindNatives(run: Run, binding: NativeBinding): (index: number) =
   };
 }
 
-/** The context the native of `entry` runs in. */
+/** The context the native of `entry` runs in: its own call, and the run's capabilities. */
 function contextOf(
   run: Run,
   entry: ExternFunction,
   {
     binding,
-    random,
+    capabilities,
     passed,
   }: {
-    readonly binding: NativeBinding;
-    readonly random: { readonly draw: () => Uint8Array };
+    readonly binding: Pick<NativeBinding, 'clock' | 'version'>;
+    readonly capabilities: NativeCapabilities;
     readonly passed: () => readonly Value[];
   },
 ): FullNativeContext {
-  const { types } = run.definition;
-  const unavailable = (capability: string) => () => {
-    throw new Error(`${entry.key} needs ${capability}, which this run lacks.`);
-  };
   return {
+    ...capabilities,
     name: entry.name,
     resultType: entry.result.kind === 'named' ? entry.result.type : undefined,
     signature: {
       parameters: entry.parameters.map((parameter) => parameter.type),
       result: entry.result,
     },
-    types,
+    types: run.definition.types,
     get instance() {
       return run.instance.name;
     },
@@ -129,72 +120,13 @@ function contextOf(
     now: () => binding.clock.now(),
     changes: (position) => {
       const parameter = entry.parameters[position]?.type;
-      const counted = parameter?.kind === 'reference' && run.isCounted(parameter.to);
+      const counted =
+        parameter?.kind === 'reference' &&
+        lifetimeOf(run.definition.types, parameter.to) === 'counted';
       return changesOf(run, passed()[position] as unknown as Reference, counted);
     },
-    trace: () => run.trace(),
-    callerTrace: () => run.callerTrace(),
-    futures: {
-      resolved: (value) => {
-        const future = new Future(run.newId());
-        future.settled = true;
-        future.value = value;
-        return future as unknown as Value;
-      },
-      timer: (at) => run.timer(at) as unknown as Value,
-      filling: (future) => run.filling(future as unknown as Future),
-    },
-    weak: {
-      reference: (referent) =>
-        run.weakReference(referent as unknown as RunObject) as unknown as Value,
-      target: (weak) => (weak as unknown as WeakReference).target as unknown as Value | undefined,
-      watch: (watched) =>
-        (watched instanceof Execution
-          ? run.disposingOf(watched)
-          : run.disposedOf(watched as unknown as WeakReference)) as unknown as Value,
-    },
-    resources: {
-      create: (type, payload) => new Resource(run.newId(), type, payload) as unknown as Value,
-      payloadOf: (handle) => (handle as unknown as Resource).payload,
-    },
-    random,
-    logs: {
-      write: (record) =>
-        binding.log({ instance: run.instance.name, time: binding.clock.now(), ...record }),
-    },
-    instances: {
-      spawn: (closure, type, options) => {
-        const encoder = outcomeEncoderOf(types, type);
-        return { kind: 'extern', type, payload: run.world.spawn(run, closure, { options, encoder }) } as Value;
-      },
-      ended: (name) => run.watchEnd(name) as unknown as Value,
-    },
-    testing: {
-      mock: (target, replacement) => run.mock(target, replacement) as unknown as Value,
-      calls: (mock) => (mock as unknown as MockObject).calls,
-      inspect: (instance) => run.world.testing?.inspect(instance),
-      watch: (instance, until) =>
-        (run.world.testing ?? unavailable('the test world')()).watch(run, instance, until),
-      handle: (type) => (run.world.testing ?? unavailable('the test world')()).handle(type),
-    },
-    contexts: {
-      hostStore: (type) => ({ kind: 'extern', type, payload: 'host' }) as Value,
-      open: (store, type) =>
-        new Resource(run.newId(), type, { store }) as unknown as Value,
-      call: (_runtime, { key, call }) => {
-        const future = new Future(run.newId());
-        run.world.call(run, key, call, future);
-        return future as unknown as Value;
-      },
-      served: () => new Future(run.newId()) as unknown as Value,
-      jobServer: () => {
-        const { purpose } = run.definition;
-        return purpose.kind === 'program' && purpose.jobServer !== undefined
-          ? ({ kind: 'closure', function: purpose.jobServer, captures: [] } as Value)
-          : undefined;
-      },
-    },
-    encodings: { of: () => undefined, remember: () => undefined },
+    trace: () => run.traces.here(),
+    callerTrace: () => run.traces.callerHere(),
   };
 }
 
@@ -206,7 +138,7 @@ function contextOf(
 export function changesOf(run: Run, reference: Reference, counted: boolean): ValueChanges {
   const unique = (): CompositeValue => {
     const { cell, path } = reference;
-    const current = run.deref(reference);
+    const current = deref(reference);
     const own = run.lifetimes.owned(current as CompositeValue);
     cell.value = path.length === 0 ? own : run.lifetimes.withPart(cell.value, path, own, false);
     return own;

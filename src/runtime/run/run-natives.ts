@@ -14,15 +14,22 @@
  *   goes on without parking (`_stayRunning`), as a `select` that doesn't wait does.
  */
 
-import type { Native, Natives } from '../natives.ts';
 import type { Value } from '../../definition/values/values.ts';
-import { type Execution, Future, type Waiting } from './objects.ts';
+import type { Natives } from '../natives.ts';
+import type { Execution } from './objects/execution.ts';
+import { Future, type Waiting } from './objects/future.ts';
 import type { Run } from './run.ts';
 
 /** The run's natives, by key, over `run`. */
 export function runNatives(run: Run): Natives {
-  let made = 0;
-  const future = (value: Value | undefined) => value as unknown as Future;
+  return { ...futureNatives(run), ...callNatives(run) };
+}
+
+/** `future` given as a value, the handle of one. */
+const futureOf = (value: Value | undefined) => value as unknown as Future;
+
+/** What futures, their callbacks and their settling stand on. */
+function futureNatives(run: Run): Natives {
   /** `waited`'s callbacks whose resolvers may still decide, letting go of the others. */
   const live = (waited: Future): Waiting[] =>
     waited.callbacks.filter((waiting) => {
@@ -33,16 +40,16 @@ export function runNatives(run: Run): Natives {
       }
       return standing === 0n;
     });
-  const natives: Record<string, Native> = {
-    'prelude._settled(prelude.Future<T, K>)': ([given]) => future(given).settled,
-    'prelude._valueOf(prelude.Future<T, K>)': ([given]) => future(given).value,
+  return {
+    'prelude._settled(prelude.Future<T, K>)': ([given]) => futureOf(given).settled,
+    'prelude._valueOf(prelude.Future<T, K>)': ([given]) => futureOf(given).value,
     'prelude._onSettled(prelude.Future<T, K>, fn(T) -> Unit, prelude.Array<Int>, fn() -> Int)': ([
       given,
       callback,
       rank,
       standing,
     ]) => {
-      const waited = future(given);
+      const waited = futureOf(given);
       run.lifetimes.hold(callback);
       run.lifetimes.hold(standing);
       const ranks = (rank as { readonly elements: readonly bigint[] }).elements;
@@ -54,17 +61,17 @@ export function runNatives(run: Run): Natives {
       return null;
     },
     'prelude._givenUp(prelude.Future<T, K>)': ([given]) => {
-      const waited = future(given);
+      const waited = futureOf(given);
       waited.callbacks = live(waited);
       return waited.lost && !waited.settled && waited.callbacks.length === 0;
     },
     'prelude._onAwaited(prelude.Future<T, K>, fn() -> Unit)': ([given, callback]) => {
       run.lifetimes.hold(callback);
-      future(given).onAwaited.push(callback ?? null);
+      futureOf(given).onAwaited.push(callback ?? null);
       return null;
     },
     'prelude._settleAll(prelude.Array<prelude.Future<T, K>>, T)': ([given, value]) => {
-      const futures = (given as { readonly elements: readonly Value[] }).elements.map(future);
+      const futures = (given as { readonly elements: readonly Value[] }).elements.map(futureOf);
       for (const _ of futures) {
         run.lifetimes.hold(value);
       }
@@ -74,29 +81,35 @@ export function runNatives(run: Run): Natives {
     'prelude._pendingFuture()': () => new Future(run.newId()) as unknown as Value,
     'prelude._settle(prelude.Future<T, K>, T)': ([given, value]) => {
       run.lifetimes.hold(value);
-      run.settle(future(given), value ?? null);
+      run.settle(futureOf(given), value ?? null);
       return null;
     },
+  };
+}
+
+/** What calls readied, parked and unparked stand on. */
+function callNatives(run: Run): Natives {
+  let made = 0;
+  const call = (value: Value | undefined) => value as unknown as Execution;
+  return {
     'prelude._later(fn() -> Unit)': ([callback]) => {
       run.lifetimes.hold(callback);
-      run.enqueue(callback ?? null, []);
+      run.queue.call(callback ?? null, []);
       return null;
     },
-    'prelude._unpark(prelude._Call, Int)': ([call, position]) => {
-      run.unpark(call as unknown as Execution, position ?? null);
+    'prelude._unpark(prelude._Call, Int)': ([given, position]) => {
+      run.executions.unpark(call(given), position ?? null);
       return null;
     },
-    'prelude._stayRunning(prelude._Call)': ([call]) => {
-      run.stayRunning(call as unknown as Execution);
+    'prelude._stayRunning(prelude._Call)': ([given]) => {
+      run.queue.unready(call(given));
       return null;
     },
-    'prelude._disposingWins(prelude._Call)': ([call]) =>
-      run.disposingWins(call as unknown as Execution),
-    'prelude._idOf(prelude._Call)': ([call]) => BigInt((call as unknown as Execution).object),
+    'prelude._disposingWins(prelude._Call)': ([given]) => run.executions.disposingWins(call(given)),
+    'prelude._idOf(prelude._Call)': ([given]) => BigInt(call(given).object),
     'prelude._made()': () => {
       made += 1;
       return BigInt(made);
     },
   };
-  return natives;
 }

@@ -13,8 +13,8 @@
  *   (`lines`), which traces read.
  */
 
-import type { CodeFunction } from '../definition/tables/functions.ts';
 import { endsBlock, operandsOf } from '../definition/instructions/instruction.ts';
+import type { CodeFunction } from '../definition/tables/functions.ts';
 import {
   type EntryScope,
   emitInstruction,
@@ -38,12 +38,7 @@ export interface EmittedEntry {
 /** The function of the entry `scope` describes. */
 export function emitEntry(scope: Omit<EntryScope, 'jumps'>): EmittedEntry {
   const { entry, index, onFrames } = scope;
-  const targets = new Set<number>();
-  for (const instruction of entry.instructions) {
-    for (const label of operandsOf(instruction).labels) {
-      targets.add(label);
-    }
-  }
+  const targets = jumpTargets(entry);
   const jumps = targets.size > 0 || onFrames;
   const full: EntryScope = { ...scope, jumps };
   const lines: string[] = [];
@@ -56,7 +51,7 @@ export function emitEntry(scope: Omit<EntryScope, 'jumps'>): EmittedEntry {
   const parameters = entry.parameters.length;
   if (onFrames) {
     line(`function f${index}(frame) {`);
-    line(`  const cl = frame.closure;`);
+    line('  const cl = frame.closure;');
     if (registers.length > 0) {
       line(`  let [${registers.join(', ')}] = frame.registers;`);
     }
@@ -85,14 +80,19 @@ export function emitEntry(scope: Omit<EntryScope, 'jumps'>): EmittedEntry {
     line(`    ${emitInstruction(full, instruction)}`, pc);
     if (instruction.kind === 'park') {
       line(`  case ${parkResumeOf(full, instruction)}:`);
-      line(`    ${resumed(full, instruction)}`, pc);
+      line(`    ${resumed(instruction)}`, pc);
     }
   });
   if (jumps) {
     line('  }');
-  } else if (!endsBlock(entry.instructions.at(-1) ?? { kind: 'return' } as never)) {
+  } else if (!endsBlock(entry.instructions.at(-1) ?? ({ kind: 'return' } as never))) {
     line('  throw unreachableHere();');
   }
   line('}');
   return { lines, instructions };
+}
+
+/** The instructions some instruction of `entry` jumps to. */
+function jumpTargets(entry: CodeFunction): Set<number> {
+  return new Set(entry.instructions.flatMap((instruction) => operandsOf(instruction).labels));
 }

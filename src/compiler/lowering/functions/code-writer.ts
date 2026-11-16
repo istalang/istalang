@@ -62,14 +62,16 @@ export class CodeWriter {
   readonly #resultType: TypeReference;
   readonly #epilogue: Label;
   readonly #stopEpilogue: Label;
-  #returns = false;
-  #parks = false;
+  #returns: boolean;
+  #parks: boolean;
 
   /** A writer of an entry giving values of `result`. */
   constructor(result: TypeReference) {
     this.#resultType = result;
     this.#epilogue = this.newLabel();
     this.#stopEpilogue = this.newLabel();
+    this.#returns = false;
+    this.#parks = false;
   }
 
   /** A fresh register owning values of `type`. */
@@ -183,8 +185,7 @@ export class CodeWriter {
   /** Borrows field `field` of variant `variant` of the enum value in `src`, of `type`. */
   variantField(
     src: Register,
-    variant: number,
-    field: number,
+    { variant, field }: { readonly variant: number; readonly field: number },
     type: TypeReference,
     span: AnchoredSpan,
   ): Register {

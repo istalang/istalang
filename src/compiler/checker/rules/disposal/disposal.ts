@@ -46,6 +46,7 @@ import { isSimpleMark, kindOfFunction } from '../../types/type/function-kinds.ts
 import type { NominalType, Type } from '../../types/type/index.ts';
 import { unitType } from '../../types/type/primitives.ts';
 import { typeText } from '../../types/type/type-text.ts';
+import { summarizedByDeclaration } from '../lifetimes/externs.ts';
 
 const none: Disposal = { kind: 'none' };
 
@@ -209,8 +210,9 @@ export function checkDisposeDeclaration(
 }
 
 /**
- * Reports each use of `dispose`'s `self` other than `*self` or an argument of an extern call, in the
- * code as checked: what a deferred call computes now is kept in a constant its function captures.
+ * Reports each use of `dispose`'s `self` other than `*self` or an argument of a call its callers
+ * read off its declaration (an extern's, or a std function's `@Keeps`), in the code as checked:
+ * what a deferred call computes now is kept in a constant its function captures.
  */
 function checkSelfStays(
   checker: CheckerContext,
@@ -219,21 +221,23 @@ function checkSelfStays(
 ): void {
   const module = checker.moduleOf(declaration);
   const body = checker.bodyOf(declaration);
-  const isExternCall = (node: SyntaxNode | undefined): boolean =>
-    node?.kind === 'Call' && body?.resolved.get(node)?.function.isExtern === true;
+  const isDeclaredCall = (node: SyntaxNode | undefined): boolean => {
+    const called = node?.kind === 'Call' ? body?.resolved.get(node)?.function : undefined;
+    return called !== undefined && summarizedByDeclaration(checker, called);
+  };
   // A local function's body is read as checking reads bodies, not through the tree.
   const bodyHeldApart = (node: SyntaxNode): readonly SyntaxNode[] => {
     const held =
       node.kind === 'FunctionDeclaration' ? checker.inputs.bodyOf(module, node) : undefined;
     return held === undefined ? [] : [held];
   };
-  /** Whether `self`, at `node` under `outer`, stays: dereferenced, or given to an extern call. */
+  /** Whether `self`, at `node` under `outer`, stays: dereferenced, or given to a declared call. */
   const stays = (node: SyntaxNode, outer: readonly SyntaxNode[]): boolean => {
     const [parent, ...around] = outer.filter((each) => each.kind !== 'Parenthesized');
     return (
       parent?.kind === 'Dereference' ||
-      (parent?.kind === 'Call' && parent.callee !== node && isExternCall(parent)) ||
-      (parent?.kind === 'MemberAccess' && isExternCall(callOfCallee(parent, around)))
+      (parent?.kind === 'Call' && parent.callee !== node && isDeclaredCall(parent)) ||
+      (parent?.kind === 'MemberAccess' && isDeclaredCall(callOfCallee(parent, around)))
     );
   };
   const visit = (node: SyntaxNode, outer: readonly SyntaxNode[], nested: boolean): void => {

@@ -146,7 +146,9 @@ K fn dispose<T, K in Persistence>(self: Resolver<T, K>):
   _cancel(self)
 
 # Cancels `resolver`, still pending or resolved to no effect, running its `onCancel` callbacks;
-# `withdrawn` by a `select` that didn't wait.
+# `withdrawn` by a `select` that didn't wait. It keeps nothing of the resolver, which a `dispose`
+# passes it.
+@Keeps{[:]}
 K fn _cancel<T, K in Persistence>(resolver: Resolver<T, K>, withdrawn: Bool = false):
   if resolver->state == 0 or resolver->state == 4:
     resolver->state = if withdrawn: 3 else: 2
@@ -361,7 +363,9 @@ ista fn _servedOnce<T>(slot: Slot<T>) -> Bool:
       case Read(weak):
         if _waiting(weak) is Future<T, "ista"> as future:
           if not full: return _readersServed(slot, readers, [...kept, ...waiting.slice(index)])
-          readers.push(future)
+          # Not pushed in place: a future pushed into a local it may reach would make the cycle §7
+          # forbids, which the analysis can't rule out.
+          readers = [...readers, future]
         elif weak._held(): kept.push(operation)
       case Take(weak):
         if _waiting(weak) is Future<T, "ista"> as future:

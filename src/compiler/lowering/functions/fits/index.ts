@@ -167,7 +167,12 @@ function partsConverted(
   const target = unfolded(to);
   if (from.kind === 'function' && target.kind === 'function') {
     const entry = tables.conversionIndex({ kind: 'wrapping', from, to: target, at: how.at });
-    return closureOf(context, entry, [typed.value], tables.types.reference(to), how.span);
+    return closureOf(
+      context,
+      { entry, captures: [typed.value] },
+      tables.types.reference(to),
+      how.span,
+    );
   }
   const entry = tables.conversionIndex({ kind: 'converting', from: typed.type, to, at: how.at });
   return emitCall(
@@ -180,8 +185,7 @@ function partsConverted(
 /** A closure of `entry`, of `type`, capturing `captures`. */
 function closureOf(
   context: CodeContext,
-  entry: FunctionId,
-  captures: readonly Register[],
+  { entry, captures }: { readonly entry: FunctionId; readonly captures: readonly Register[] },
   type: TypeReference,
   span: AnchoredSpan,
 ): Register {
@@ -202,7 +206,12 @@ function applyingIn(code: SynthesizedCode, at: ConversionSite): Applying {
     at,
     madeAsync: (value, plain, to) => {
       const entry = code.tables.conversionIndex({ kind: 'wrapping', from: plain, to, at });
-      return closureOf(code, entry, [value], code.tables.types.reference(to), at.span);
+      return closureOf(
+        code,
+        { entry, captures: [value] },
+        code.tables.types.reference(to),
+        at.span,
+      );
     },
   };
 }
@@ -236,8 +245,7 @@ function rebuildingIn(code: SynthesizedCode, how: Applying): Rebuilding {
     converter: (from, to) =>
       closureOf(
         code,
-        tables.conversionIndex({ kind: 'converting', from, to, at }),
-        [],
+        { entry: tables.conversionIndex({ kind: 'converting', from, to, at }), captures: [] },
         {
           kind: 'function',
           parameters: [tables.types.reference(from)],
@@ -248,8 +256,7 @@ function rebuildingIn(code: SynthesizedCode, how: Applying): Rebuilding {
     wrapped: (value, from, to) =>
       closureOf(
         code,
-        tables.conversionIndex({ kind: 'wrapping', from, to, at }),
-        [value],
+        { entry: tables.conversionIndex({ kind: 'wrapping', from, to, at }), captures: [value] },
         tables.types.reference(to),
         span,
       ),
@@ -387,7 +394,7 @@ function baseOfAll(type: Type): Type {
 function asyncFitClosure(context: CodeContext, fit: AsyncFit, value: Register): Register {
   const entry = context.tables.asyncFitIndex(fit);
   const type = context.tables.types.reference(fit.made);
-  return closureOf(context, entry, [value], type, fit.site.span);
+  return closureOf(context, { entry, captures: [value] }, type, fit.site.span);
 }
 
 /** The async entry of `fit`: it calls the value it captures with its own arguments. */

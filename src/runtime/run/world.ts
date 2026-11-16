@@ -13,7 +13,7 @@ import type { Value } from '../../definition/values/values.ts';
 import type { Inspection, SpawnOptions } from '../instance-state.ts';
 import type { TestWatch } from '../natives.ts';
 import type { HeldMock } from './mock-answers.ts';
-import type { Future } from './objects.ts';
+import type { Future } from './objects/future.ts';
 import type { Run } from './run.ts';
 
 /** What one run asks of the instances beside it. */

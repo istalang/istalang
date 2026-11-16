@@ -40,6 +40,7 @@ function shiftCount(count: bigint): bigint {
   return count;
 }
 
+// biome-ignore-start lint/suspicious/noBitwiseOperators: these are the language's shift operators.
 export function shiftLeft(value: bigint, count: bigint): bigint {
   return value << shiftCount(count);
 }
@@ -47,6 +48,7 @@ export function shiftLeft(value: bigint, count: bigint): bigint {
 export function shiftRight(value: bigint, count: bigint): bigint {
   return value >> shiftCount(count);
 }
+// biome-ignore-end lint/suspicious/noBitwiseOperators: these are the language's shift operators.
 
 /**
  * A comparison's result as the int `compare` returns (§3.9). One int can't say "unordered", so a
@@ -64,3 +66,14 @@ export function intFromFloat(value: number): bigint {
   }
   return BigInt(Math.trunc(value));
 }
+
+/** The operations compiled code calls rather than writes inline (codegen/primitives.ts). */
+export const calledPrimitives = {
+  floorDivide,
+  remainder,
+  intPower,
+  shiftLeft,
+  shiftRight,
+  floatCompare,
+  intFromFloat,
+};

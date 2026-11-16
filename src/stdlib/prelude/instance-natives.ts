@@ -11,7 +11,7 @@ import { wellKnown } from '../../foundation/language/well-known/index.ts';
 import type { NativeContext, Natives, WithInstances } from '../../runtime/natives.ts';
 import { futureKey, knownTypeKey, type NativeKeys } from '../std-module.ts';
 import { given } from '../values/arguments.ts';
-import { declaredResult, resultTypeArgument } from '../values/results.ts';
+import { declaredResult } from '../values/results.ts';
 
 export const instanceNatives = (keys: NativeKeys): Natives<NativeContext & WithInstances> => ({
   [keys.of('spawn', functionKey([], futureKey(parameterKey('R'), 'ista'), 'ista'))]: (

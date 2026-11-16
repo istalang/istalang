@@ -93,8 +93,7 @@ export function readHeld(
     holder.kind === 'union' && variant !== undefined
       ? code.variantField(
           value.register,
-          tables.types.unionVariant(holder, variant),
-          0,
+          { variant: tables.types.unionVariant(holder, variant), field: 0 },
           tables.types.reference(inAny ?? variant),
           span,
         )
@@ -103,8 +102,7 @@ export function readHeld(
     ? inVariant
     : code.variantField(
         inVariant,
-        tables.types.anyVariant(inAny, baseOf(member)),
-        0,
+        { variant: tables.types.anyVariant(inAny, baseOf(member)), field: 0 },
         tables.types.reference(baseOf(member)),
         span,
       );
@@ -226,8 +224,8 @@ export function branchOnHeld(
   for (const { label, variant, inside, members: absorbed } of pending) {
     code.place(label);
     const reference = context.tables.types.reference(inside);
-    const held = code.variantField(value.register, variant, 0, reference, span);
-    const any = { register: held, type: inside };
+    const inner = code.variantField(value.register, { variant, field: 0 }, reference, span);
+    const any = { register: inner, type: inside };
     branchOnAnyVariants(context, { value: any, members: absorbed }, { matched, otherwise }, span);
   }
 }

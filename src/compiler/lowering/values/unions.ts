@@ -35,10 +35,10 @@ import { emitConstant } from '../tables/constants.ts';
 import {
   branchOnHeld,
   heldIn,
-  readHeld,
   holdingOf,
   laidOutAs,
   memberValue,
+  readHeld,
   type TypedValue,
 } from './holdings.ts';
 
@@ -209,8 +209,7 @@ function remapped(
           ? emitConstant(context, oneValueOf(member), member, span)
           : context.code.variantField(
               value.register,
-              context.tables.types.unionVariant(value.type, member),
-              0,
+              { variant: context.tables.types.unionVariant(value.type, member), field: 0 },
               context.tables.types.reference(member),
               span,
             );
@@ -305,7 +304,8 @@ function eachVariant(
   const { code } = context;
   const result = code.allocate(context.tables.types.reference(type));
   onEachMember(context, value, span, {
-    each: (member) => code.emit({ kind: 'move', span, dst: result, src: code.take(each(member), span) }),
+    each: (member) =>
+      code.emit({ kind: 'move', span, dst: result, src: code.take(each(member), span) }),
     runs,
   });
   return result;

@@ -47,13 +47,12 @@ export interface OpenWait {
 
 /** A new wait of the running call, of `mode`. */
 export function openWait(context: CodeContext, mode: WaitingMode, span: AnchoredSpan): OpenWait {
-  const { checker, code, tables } = context;
+  const { code, tables } = context;
   const call = wellKnownTypeOf(context, wellKnown.call, []);
   const handle = code.borrow(tables.types.reference(call));
   code.emit({ kind: 'currentCall', span, dst: handle });
   const instance = preludeInstance(context, waitFunctions.wait, [literalType(mode)]);
   const waitType = wellKnownTypeOf(context, wellKnown.wait, [literalType(mode)]);
-  void checker;
   const wait = emitCall(
     context,
     { span, callee: tables.functionIndex(instance), arguments: [handle] },
@@ -161,7 +160,11 @@ export function waitRegisters(open: OpenWait): readonly Register[] {
 /** Awaits the future in `future`, of type `type`, in code of `mode`; the register of its value. */
 export function awaitFuture(
   context: CodeContext,
-  { future, type, mode }: { readonly future: Register; readonly type: Type; readonly mode: WaitingMode },
+  {
+    future,
+    type,
+    mode,
+  }: { readonly future: Register; readonly type: Type; readonly mode: WaitingMode },
   span: AnchoredSpan,
 ): Register {
   const { checker, tables, code } = context;

@@ -44,7 +44,7 @@ const functionType = z.strictObject({
 });
 
 /** A `&` parameter's register: a reference to a place of type `to` (§3.7). */
-const reference = z.strictObject({
+const referenceType = z.strictObject({
   kind: z.literal('reference'),
   get to() {
     return typeReference;
@@ -57,7 +57,7 @@ export const typeReference = z.discriminatedUnion('kind', [
   named,
   tuple,
   functionType,
-  reference,
+  referenceType,
 ]);
 
 export type TypeReference = z.output<typeof typeReference>;
@@ -221,11 +221,11 @@ export function lifetimeOf(
       if (entry === undefined || !entry.heap) {
         return 'plain';
       }
-      return entry.kind === 'extern' && entry.role !== 'array' && entry.role !== 'map'
-        ? 'plain'
-        : entry.kind === 'shared'
-          ? 'plain'
-          : 'heap';
+      // A host value and a shared struct's handle change only behind their own seams.
+      const behindSeam =
+        (entry.kind === 'extern' && entry.role !== 'array' && entry.role !== 'map') ||
+        entry.kind === 'shared';
+      return behindSeam ? 'plain' : 'heap';
     }
     default: {
       const unhandled: never = reference;

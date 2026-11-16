@@ -26,10 +26,10 @@ import type { FunctionId, Register } from '../../../definition/operands.ts';
 import type { TypeReference } from '../../../definition/tables/types.ts';
 import { unreachable } from '../../../foundation/structures/unreachable.ts';
 import type { SignatureParameter } from '../../checker/check.ts';
+import type { FunctionInstance } from '../../checker/surface/witness-closing.ts';
 import { substitute } from '../../checker/types/parts/substitution.ts';
 import { constructedVariant } from '../../syntax/declarations/field-defaults.ts';
 import type { AnchoredSpan } from '../../syntax/tree/positions.ts';
-import type { FunctionInstance } from '../../checker/surface/witness-closing.ts';
 import type { CodeContext } from '../context.ts';
 import { keyOf } from '../tables/extern-keys.ts';
 import { buildConstructed } from '../values/variant-values.ts';
@@ -126,7 +126,7 @@ export function emitFunctionCall(
 function primitiveOf(context: CodeContext, instance: FunctionInstance): PrimitiveOp | undefined {
   const { checker } = context;
   const { declaration } = instance;
-  if (!declaration.isExtern || !checker.isStd(checker.moduleOf(declaration))) {
+  if (!(declaration.isExtern && checker.isStd(checker.moduleOf(declaration)))) {
     return undefined;
   }
   return primitiveOfExtern[keyOf(checker, declaration, checker.parametersOf(declaration))];

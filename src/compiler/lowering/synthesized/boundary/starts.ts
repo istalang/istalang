@@ -18,9 +18,9 @@
  */
 
 import type { Register } from '../../../../definition/operands.ts';
-import { wellKnown } from '../../../../foundation/language/well-known/index.ts';
 import type { CodeFunction } from '../../../../definition/tables/functions.ts';
 import { isStartable, type StartShape } from '../../../../foundation/language/starts.ts';
+import { wellKnown } from '../../../../foundation/language/well-known/index.ts';
 import { unreachable } from '../../../../foundation/structures/unreachable.ts';
 import type { Checker } from '../../../checker/check.ts';
 import { persistenceOf } from '../../../checker/types/type/function-kinds.ts';
@@ -37,11 +37,11 @@ import { startShapeOf } from '../../../syntax/declarations/starts.ts';
 import { awaits } from '../../../syntax/tokens/modifiers.ts';
 import type { Invalid } from '../../../syntax/tree/node.ts';
 import { emitCall } from '../../calls/emit-call.ts';
-import { SynthesizedCode } from '../index.ts';
 import { constantValue } from '../../tables/constants.ts';
 import { keyOf } from '../../tables/extern-keys.ts';
 import { rootInstance } from '../../tables/instances.ts';
 import type { DefinitionTables, StartTarget } from '../../tables/tables.ts';
+import { SynthesizedCode } from '../index.ts';
 import { codecCall } from './codec-calls.ts';
 import { jsonOf } from './host-externs.ts';
 import { emitInbound, inboundOf } from './inbound.ts';
@@ -158,11 +158,11 @@ export function startEntry(
   startable: Startable,
 ): CodeFunction {
   const { checker, tables } = lowering;
-  const { target, parameters, key, outcome, awaits } = startable;
+  const { target, parameters, key, outcome } = startable;
   const json = jsonOf(checker);
   const header = tables.declarationHeader(target);
   const future = checker.wellKnownType(wellKnown.future, [outcome, literalType('live')]);
-  const given = awaits ? (future ?? unreachable('The prelude has futures.')) : outcome;
+  const given = startable.awaits ? (future ?? unreachable('The prelude has futures.')) : outcome;
   const code = new SynthesizedCode(lowering, startSpanOf(target), {
     parameters: parameters.map(() => tables.types.reference(json)),
     result: tables.types.reference(given),
@@ -173,8 +173,8 @@ export function startEntry(
       from: 'input',
       path: `${key} argument ${index + 1}`,
     });
-    const given = code.parameters[index] ?? unreachable(`No argument ${index} of a start.`);
-    return emitInbound(code, given, inbound, code.span);
+    const argument = code.parameters[index] ?? unreachable(`No argument ${index} of a start.`);
+    return emitInbound(code, argument, inbound, code.span);
   });
   code.return(calledTarget(code, target, { values, given }));
   return code.entry(header);

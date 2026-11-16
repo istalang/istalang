@@ -41,7 +41,8 @@ export function jsonIn(program: Pick<Tables, 'types'>, json: unknown): Value {
     return jsonOfPlain(json, jsonTypeOf(program.types));
   } catch (error) {
     if (error instanceof JsonError) {
-      throw new Refusal('unfitJson', error.message);
+      // biome-ignore lint/style/useErrorCause: a Refusal takes its reason first, so the cause is third.
+      throw new Refusal('unfitJson', error.message, { cause: error });
     }
     throw error;
   }
