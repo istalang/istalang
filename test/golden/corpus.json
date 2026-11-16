@@ -23,6 +23,9 @@
   "collections/panic-zero-step.ista": {
     "frame": "at collections/panic-zero-step._main (collections/panic-zero-step.ista:8:3)"
   },
+  "contexts/constant-read-while-made.ista": {
+    "frame": "at contexts/constant-read-while-made.sneaky (contexts/constant-read-while-made.ista:20:1)"
+  },
   "contexts/constant-reads-itself.ista": {
     "frame": "at contexts/constant-reads-itself.looped (contexts/constant-reads-itself.ista:17:1)"
   },
