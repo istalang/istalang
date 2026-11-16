@@ -50,7 +50,7 @@ export class Invocations {
     this.waitOnEnd(invocation);
     const returned = (value: Value) => {
       this.#running.delete(future);
-      this.answer(invocation, value);
+      this.answer(invocation, value, future as unknown as Value);
     };
     if (future.settled) {
       returned(future.value);
@@ -60,14 +60,17 @@ export class Invocations {
     }
   }
 
-  /** Tells `invocation` its call returned `value`, no longer waiting on the instance's end. */
-  answer(invocation: Invocation, value: Value): void {
+  /**
+   * Tells `invocation` its call returned `value`, which `holder` holds, no longer waiting on the
+   * instance's end.
+   */
+  answer(invocation: Invocation, value: Value, holder: Value = value): void {
     const { endWatchers } = this.#instance;
     const at = endWatchers.indexOf(invocation);
     if (at >= 0) {
       endWatchers.splice(at, 1);
     }
-    invocation.answer({ kind: 'returned', value });
+    invocation.answer({ kind: 'returned', value, holder });
   }
 
   persisted(): RunningInvocation[] {

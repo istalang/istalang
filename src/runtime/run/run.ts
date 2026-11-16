@@ -350,7 +350,8 @@ export class Run {
   /**
    * Finishes the run once its outcome is encoded (§7): what is readied never runs, what it was to
    * be called with let go of, every call still suspended stops, and `held` is let go of, the
-   * outcome's holder; all together, newest first.
+   * outcome's holder; all together, newest first. Its context constants go last (context-
+   * constants.ts), each disposing what it held before the next goes.
    */
   finish(held: readonly Value[]): void {
     const readied = this.queue.dropped();
@@ -358,6 +359,7 @@ export class Run {
       this.lifetimes.letGo(...held, ...readied);
       this.executions.stopAll();
     });
+    this.instance.contextConstants.release((value) => this.lifetimes.letGo(value));
   }
 
   /** Runs an invocation readied by `invoke`, its instance's panic ending it. */

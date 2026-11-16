@@ -94,6 +94,11 @@ it as a native, with exactly the summary its extern predecessor had (spec §3.16
 - An async call holds what it was given until it ends (`Execution.given`).
 - A disposed call resumes only on its `disposing()` case; otherwise it stops where it waits, runs no
   code, and its frame lets go in the round after; an ended call is never readied again.
+- An instance finishes in the segment its root returns in (`Run.finish`): readied calls dropped,
+  suspended ones stopped and what holds the outcome let go of, then its context constants, last
+  made first, each disposed before the next, a read of one let go of panicking
+  (`run/context-constants.ts`); a disposal panicking there ends the instance panicked. A terminated
+  one finishes the same way, from where it stood before its failed segment.
 - A weak reference refers to nothing from the moment its referent's last holder lets go, before its
   disposal in that round (`referentOf`, `run/weak-references.ts`).
 

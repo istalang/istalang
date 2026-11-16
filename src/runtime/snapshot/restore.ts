@@ -282,7 +282,9 @@ function registerOf(register: PersistedRegister, { object, restored }: Reading):
 export function rootInvocation(run: Run, encoder: number | undefined): Invocation {
   return {
     answer: (end) => {
-      run.instance.ended(end.kind === 'returned' ? finished(run, end.value, encoder) : end);
+      run.instance.ended(
+        end.kind === 'returned' ? finished(run, end.value, end.holder, encoder) : end,
+      );
     },
     root: true,
     hears: false,
@@ -290,15 +292,21 @@ export function rootInvocation(run: Run, encoder: number | undefined): Invocatio
 }
 
 /**
- * How `run`'s instance ends, its root call having returned `outcome`: finished, its outcome encoded
- * by `encoder` in the instance (§9), as a mock replacing it answers; panicked if encoding panics.
+ * How `run`'s instance ends, its root call having returned `outcome`, which `holder` holds: its
+ * outcome encoded by `encoder` in the instance (§9), as a mock replacing it answers, then the run
+ * finished, letting go of `holder` and of all else the instance holds (§7); panicked if encoding
+ * or a disposal panics.
  */
-function finished(run: Run, outcome: Value, encoder: number | undefined): InstanceEnd {
-  if (encoder === undefined) {
-    return { kind: 'finished', outcome };
-  }
+function finished(
+  run: Run,
+  outcome: Value,
+  holder: Value,
+  encoder: number | undefined,
+): InstanceEnd {
   try {
-    return { kind: 'finished', outcome, encoded: run.call(encoder, [outcome]) as Value };
+    const encoded = encoder === undefined ? {} : { encoded: run.call(encoder, [outcome]) as Value };
+    run.finish([holder]);
+    return { kind: 'finished', outcome, ...encoded };
   } catch (error) {
     return { kind: 'panicked', ...run.traces.panicOf(error) };
   }

@@ -87,5 +87,10 @@ export function instanceEnding(end: InvocationEnd): Value {
   }
 }
 
-/** How an invocation in an instance ended: what it gave, or how its instance ended. */
-export type InvocationEnd = InstanceEnd | { readonly kind: 'returned'; readonly value: Value };
+/**
+ * How an invocation in an instance ended: what it gave, with what holds it (its call's future, or
+ * the value itself where a plain call gave it at once), or how its instance ended.
+ */
+export type InvocationEnd =
+  | InstanceEnd
+  | { readonly kind: 'returned'; readonly value: Value; readonly holder: Value };
