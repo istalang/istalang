@@ -15,6 +15,7 @@ import { replacingParts } from '../../definition/values/replacing.ts';
 import type { Value } from '../../definition/values/values.ts';
 import { type Handlers, handlerOf } from '../../foundation/structures/kind-table.ts';
 import { unreachable } from '../../foundation/structures/unreachable.ts';
+import { Refusal } from '../refusal.ts';
 import type { InstanceEnd } from '../run/instances.ts';
 import type { Invocation } from '../run/invocations.ts';
 import { Cell } from '../run/objects/cell.ts';
@@ -43,8 +44,15 @@ export function restore(
   for (const persisted of snapshot.objects) {
     made(run, persisted, objects);
   }
-  const object = (id: number): RunObject =>
-    objects.get(id) ?? unreachable(`A snapshot names no object ${id}.`);
+  // A store's snapshot naming an object it doesn't hold doesn't fit its instance: refused, as a
+  // host's, before anything of it resumes.
+  const object = (id: number): RunObject => {
+    const found = objects.get(id);
+    if (found === undefined) {
+      throw new Refusal('snapshotMismatch', `The snapshot names no object ${id}.`);
+    }
+    return found;
+  };
   const restored = (value: Value): Value =>
     replacingParts(value, (part) =>
       part.kind === 'handle' ? (object(part.object) as unknown as Value) : undefined,

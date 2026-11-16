@@ -167,7 +167,9 @@ In a Definition built to run tests (spec §10):
   counted it (`Lifetimes.adoptRestored`): a composite comes back held by one holder, so value
   semantics can't tell it from the shared original. The root invocation ends the instance again as
   it returns; any other is re-answered from the resident's last commit, or dropped when its caller
-  is gone.
+  is gone. A snapshot naming an object it doesn't hold is refused (`snapshotMismatch`), as are an
+  unknown format version or shape (`FormatError`) and a Definition the store lacks
+  (`unknownDefinition`), before anything of it resumes.
 
 ## The host runtime (`host/`)
 
