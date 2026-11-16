@@ -1,0 +1,52 @@
+# Spawned instances and waits on their ends (spec §9): what a spawn computes now and carries over,
+# what an instance's root ends with, and a wait on an end that already happened. Each rule is its
+# own function, and its test asserts what the old runtime's unit test did.
+
+import Suite, Test, test, assertEq from 'testing'
+import * as time from 'time'
+import * as runtime from 'runtime'
+
+ista async fn child(n: Int) -> Int:
+  await time.delay(10ms)
+  n * 2
+
+fn twice(n: Int) -> Int: n * 2
+
+ista async fn work(x: Int = 42) -> Int:
+  await time.delay(1ms)
+  x
+
+fn quick() -> Int: 7
+
+ista async fn closureCaptures() -> Result<Int>:
+  const base = 40
+  const add = fn(n: Int): base + n
+  await (spawn add(2)).result()
+
+ista async fn shorterFunctionValue() -> Result<Int>:
+  const f: sendable ista async fn() -> Int = work
+  await spawn(f).result()
+
+ista async fn asyncAndPlainRoots() -> (Result<Int>, Result<Int>):
+  const fromAsync = spawn child(1)
+  const fromPlain = spawn twice(2)
+  (await fromAsync.result(), await fromPlain.result())
+
+ista async fn futureExternRoots() -> (Result<Unit>, Result<Unit>):
+  (await spawn(runtime.commit).result(), await runtime.isolate(runtime.commit))
+
+ista async fn endedBeforeWait() -> Int:
+  const ending = (spawn quick()).result()
+  await time.delay(5ms)
+  match await ending:
+    case Ok(value): value
+    case Err(_): 0
+
+@Suite{"instances"}
+fn suite() -> Array<Test>: [
+  test("a spawn carries a sendable closure's captures into the child", async fn(): assertEq(await closureCaptures(), Ok(42)))
+  test("a child started through a shorter function value computes what it left out", async fn(): assertEq(await shorterFunctionValue(), Ok(42)))
+  test("an instance ends with the value of the future its function gives, an async or a plain callee", async fn(): assertEq(await asyncAndPlainRoots(), (Ok(2), Ok(4))))
+  test("an instance starts given a future-returning std function as a function value, by spawn or isolate", async fn(): assertEq(await futureExternRoots(), (Ok(()), Ok(()))))
+  test("a wait on an instance that ended before the wait began resolves", async fn(): assertEq(await endedBeforeWait(), 7))
+]

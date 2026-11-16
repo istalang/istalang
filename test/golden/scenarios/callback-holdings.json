@@ -1,0 +1,9 @@
+{
+  "program": "callback-holdings.ista",
+  "host": "callback-holdings.host.mjs",
+  "steps": [
+    { "start": "finishing", "function": "callback-holdings.finishing()" },
+    { "start": "terminating" },
+    { "terminate": "terminating" }
+  ]
+}

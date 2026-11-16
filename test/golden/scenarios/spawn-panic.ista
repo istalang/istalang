@@ -1,0 +1,14 @@
+# A segment that panics spawns nothing (§9): the child its code spawned before the panic is never
+# written, so the store keeps the panicked instance alone.
+import * as time from 'time'
+import * as runtime from 'runtime'
+
+ista async fn child(n: Int) -> Int:
+  await time.delay(10ms)
+  n * 2
+
+live async fn main() -> Int: await runtime.run(runtime.id()) _main()
+
+ista async fn _main() -> Int:
+  spawn child(1)
+  panic("no")

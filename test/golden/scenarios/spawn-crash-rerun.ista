@@ -1,0 +1,15 @@
+# A child is spawned by name once its parent's segment commits (§9): a segment run again before it
+# commits spawns the same child, which the store holds once.
+import * as time from 'time'
+import * as runtime from 'runtime'
+
+ista async fn child(n: Int) -> Int:
+  await time.delay(10ms)
+  n * 2
+
+live async fn main() -> Int: await runtime.run(runtime.id()) _main()
+
+ista async fn _main() -> Int:
+  spawn child(1)
+  await runtime.commit()
+  5

@@ -1,0 +1,4 @@
+{
+  "program": "instance-ends.ista",
+  "steps": [{ "start": "run" }, { "stored": true }]
+}

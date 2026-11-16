@@ -437,6 +437,18 @@
       "✓ callbacks › the losing futures.first and select cases are disposed when the winner resolves across commits",
       "✓ callbacks › a callback let go of unresolved, registered on nothing, is cancelled",
       "✓ disposal › the current round finishes before what a disposal in that round held is disposed",
+      "✓ functions › a default left out is computed in the function, after the call's arguments, each seeing the parameters before it",
+      "✓ functions › a default left out of a deferred call is computed when it runs, reading what it reads then",
+      "✓ functions › defaults of a struct, a variant and a std function are computed when left out, and taken when given",
+      "✓ functions › a constant is computed in its own module, even when another imports it",
+      "✓ functions › a namespace's function-typed constant is called, and spawned",
+      "✓ functions › a select with only an else runs its else body",
+      "✓ functions › a constant evaluates to the value it spells: an Int beyond a double, -0 and a large Float",
+      "✓ instances › a spawn carries a sendable closure's captures into the child",
+      "✓ instances › a child started through a shorter function value computes what it left out",
+      "✓ instances › an instance ends with the value of the future its function gives, an async or a plain callee",
+      "✓ instances › an instance starts given a future-returning std function as a function value, by spawn or isolate",
+      "✓ instances › a wait on an instance that ended before the wait began resolves",
       "✓ waits › futures.first in a select wins at its case when its future resolves together with a later case",
       "✓ waits › futures.first in a select decides as its value arrives, a later case taking nothing",
       "✓ waits › futures.first takes nothing from a later future once an earlier one had resolved",
@@ -450,7 +462,7 @@
       "✓ waits › a wait decides at its first case in order when several timers resolve together",
       "✓ waits › a wait decides at its first case in order when several disposal watches resolve together",
       "✓ waits › waiters readied together by their timers run in execution creation order",
-      "41 passed, 0 failed, 0 skipped."
+      "53 passed, 0 failed, 0 skipped."
     ]
   }
 }

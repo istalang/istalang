@@ -1,0 +1,27 @@
+# A callback a resolver readied holds the values it is called with until it runs; an instance that
+# finishes or ends runs none still pending, and lets go of what they hold (§7): a host's lease is
+# disposed when its instance finishes, and when its panicked instance is terminated.
+import * as runtime from 'runtime'
+
+extern shared struct Lease
+
+extern fn makeLease() -> Lease
+
+extern fn dispose(self: Lease)
+
+ista async fn finishWithRun() -> Int:
+  const lease = makeLease()
+  const r = Resolver.of(fn(l: Lease): { _ = l; () })
+  r.resolve(lease)
+  0
+
+live async fn main() -> Int: await runtime.run(runtime.id()) _main()
+
+ista async fn _main() -> Int:
+  const lease = makeLease()
+  const r = Resolver.of(fn(l: Lease): { _ = l; () })
+  r.resolve(lease)
+  await runtime.commit()
+  panic("boom")
+
+live async fn finishing() -> Int: await runtime.run(runtime.id()) finishWithRun()

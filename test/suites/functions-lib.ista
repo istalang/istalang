@@ -1,0 +1,9 @@
+# What functions.test.ista imports: constants a module computes for its importers.
+
+struct Limits { high: Int }
+
+const base = 7
+
+const limits = Limits{high: base}
+
+const twice = fn(x: Int) -> Int: x * 2

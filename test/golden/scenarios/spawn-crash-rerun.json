@@ -1,0 +1,4 @@
+{
+  "program": "spawn-crash-rerun.ista",
+  "steps": [{ "start": "run", "crashEveryAwait": true }, { "stored": true }]
+}

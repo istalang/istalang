@@ -1,0 +1,14 @@
+{
+  "program": "spawn-inspect.ista",
+  "steps": [
+    { "start": "run" },
+    { "inspect": "run/1" },
+    { "clock": 1 },
+    { "wake": "run" },
+    { "clock": 10 },
+    { "wake": "run/1" },
+    { "clock": 11 },
+    { "wake": "run/2" },
+    { "stored": true }
+  ]
+}

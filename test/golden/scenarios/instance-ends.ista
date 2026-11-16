@@ -1,0 +1,19 @@
+# Waiting for an instance's end (§9): a parent waits on its child's result, and an isolated panic
+# comes back to it as an `Err`.
+import * as runtime from 'runtime'
+import * as time from 'time'
+
+ista async fn child(n: Int) -> Int:
+  await time.delay(10ms)
+  n * 2
+
+fn broken() -> Int: panic("broken")
+
+live async fn main() -> String: await runtime.run(runtime.id()) _main()
+
+ista async fn _main() -> String:
+  const doubled = await (spawn child(21)).result()
+  const isolated = await runtime.isolate(fn(): broken())
+  match (doubled, isolated):
+    case (Ok(value), Err(error)): "" + value + " " + error.code + " " + error.message
+    case _: "unexpected"

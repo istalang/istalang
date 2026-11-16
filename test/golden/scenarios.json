@@ -1,4 +1,25 @@
 {
+  "callback-holdings": {
+    "steps": [
+      {
+        "finished": "0",
+        "hostCalls": [
+          "callback-holdings.makeLease() []",
+          "callback-holdings.dispose(callback-holdings.Lease) [\"lease-1\"]"
+        ]
+      },
+      {
+        "panicked": "boom",
+        "frame": "at callback-holdings._main (callback-holdings.ista:25:3)",
+        "hostCalls": ["callback-holdings.makeLease() []"]
+      },
+      {
+        "terminated": "boom",
+        "frame": "at callback-holdings._main (callback-holdings.ista:25:3)",
+        "hostCalls": ["callback-holdings.dispose(callback-holdings.Lease) [\"lease-2\"]"]
+      }
+    ]
+  },
   "crash-every-await": {
     "steps": [
       {
@@ -39,6 +60,16 @@
           "host-future.quote(String) [\"pear\"]",
           "host-future.record(String, Int) [\"pair\",\"7n\"]"
         ]
+      }
+    ]
+  },
+  "instance-ends": {
+    "steps": [
+      {
+        "finished": "\"42 panic broken\""
+      },
+      {
+        "stored": ["run", "run/1", "run/2"]
       }
     ]
   },
@@ -95,6 +126,59 @@
       },
       {
         "refused": "notPanicked"
+      }
+    ]
+  },
+  "spawn-crash-rerun": {
+    "steps": [
+      {
+        "finished": "5"
+      },
+      {
+        "stored": ["run", "run/1"]
+      }
+    ]
+  },
+  "spawn-inspect": {
+    "steps": [
+      {
+        "finished": "5"
+      },
+      {
+        "waiting": {
+          "until": 10
+        },
+        "waitingAt": [
+          {
+            "location": "spawn-inspect.ista:8:3"
+          }
+        ]
+      },
+      {},
+      {
+        "waiting": {}
+      },
+      {},
+      {
+        "finished": "2"
+      },
+      {},
+      {
+        "finished": "4"
+      },
+      {
+        "stored": ["run", "run/1", "run/2"]
+      }
+    ]
+  },
+  "spawn-panic": {
+    "steps": [
+      {
+        "panicked": "no",
+        "frame": "at spawn-panic._main (spawn-panic.ista:14:3)"
+      },
+      {
+        "stored": ["run"]
       }
     ]
   },
