@@ -36,6 +36,7 @@ import {
   WeakReference,
 } from './objects.ts';
 import * as primitives from './primitives.ts';
+import { Instance, type InstanceEnd } from './instances.ts';
 import { Traces } from './traces.ts';
 
 /** What a parked frame's resumable function returns. */
@@ -52,7 +53,13 @@ type Entry = (...parameters: never[]) => unknown;
 /** Something readied to run: an execution unparked with its decision, or a closure's call. */
 type Ready =
   | { readonly kind: 'resume'; readonly execution: Execution; readonly decision: unknown }
-  | { readonly kind: 'call'; readonly closure: Value; readonly arguments: readonly Value[] };
+  | { readonly kind: 'call'; readonly closure: Value; readonly arguments: readonly Value[] }
+  | {
+      readonly kind: 'invoke';
+      readonly instance: Instance;
+      readonly closure: Value;
+      readonly answer: (end: InstanceEnd | { readonly kind: 'returned'; readonly value: Value }) => void;
+    };
 
 export class Run {
   readonly definition: Definition;
@@ -65,13 +72,18 @@ export class Run {
   #objects = 0;
   /** The transients shared now, by `function:register`, innermost last (§3.4). */
   readonly #transients = new Map<string, Cell[]>();
-  readonly #contextConstants = new Map<string, Value>();
   readonly #weakReferences = new WeakMap<RunObject, WeakReference>();
   /** The execution running now, whose code a native or `currentCall` reads. */
   #running: Execution | undefined;
+  /** The live run a host started, which every other instance it drives runs beside. */
+  readonly root: Instance;
+  readonly #contexts = new Map<string, Instance>();
+  /** The instance an invocation is starting in, while its first call runs. */
+  #invoking: Instance | undefined;
 
   constructor(definition: Definition, program: EmittedProgram, binding: NativeBinding) {
     this.definition = definition;
+    this.root = new Instance(binding.instance, false);
     this.lifetimes = new Lifetimes((object) => this.#disposed(object));
     this.constants = definition.constants;
     for (const constant of this.constants) {
@@ -249,12 +261,41 @@ export class Run {
   };
 
   /** The instance's value of the context constant `name`, once made (§3.4). */
-  readonly contextConstant = (name: string): Value | undefined => this.#contextConstants.get(name);
+  readonly contextConstant = (name: string): Value | undefined =>
+    this.instance.contextConstants.get(name);
 
   readonly makeContextConstant = (name: string, value: Value): void => {
     this.lifetimes.hold(value);
-    this.#contextConstants.set(name, value);
+    this.instance.contextConstants.set(name, value);
   };
+
+  /** The instance the running code is of. */
+  get instance(): Instance {
+    return this.#running?.instance ?? this.#invoking ?? this.root;
+  }
+
+  /** The context named `key`, made by the first call into it (§9). */
+  contextOf(key: string): Instance {
+    const known = this.#contexts.get(key);
+    if (known !== undefined) {
+      return known;
+    }
+    const made = new Instance(key, true);
+    this.#contexts.set(key, made);
+    return made;
+  }
+
+  /**
+   * Readies an invocation of `closure` in `instance`: its function run as an execution of the
+   * instance, `answer` told what it gave, or the instance's end if it panicked or had ended.
+   */
+  invoke(
+    instance: Instance,
+    closure: Value,
+    answer: (end: InstanceEnd | { readonly kind: 'returned'; readonly value: Value }) => void,
+  ): void {
+    this.#ready.push({ kind: 'invoke', instance, closure, answer });
+  }
 
   /** Calls the function value `callee` with `passed`, as its entry is called. */
   readonly callValue = (callee: Value, passed: readonly Value[]): unknown => {
@@ -275,7 +316,7 @@ export class Run {
   /** Starts async entry `index` with `passed`: runs it until it parks or returns; its future. */
   readonly start = (index: number, passed: readonly Value[], closure: Value | undefined): Future => {
     const entry = this.definition.functions[index] as CodeFunction;
-    const execution = new Execution(this.newId(), this.newId());
+    const execution = new Execution(this.newId(), this.newId(), this.instance);
     const registers: (Value | undefined)[] = Array.from({ length: entry.registers.length });
     passed.forEach((value, at) => {
       registers[at] = value;
@@ -346,6 +387,9 @@ export class Run {
       this.lifetimes.letGo(result as Value);
       this.lifetimes.letGo(callback);
     }
+    for (const listener of future.listeners.splice(0)) {
+      listener(value);
+    }
   }
 
   /** Runs the ready queue until it is empty. */
@@ -353,6 +397,8 @@ export class Run {
     for (let next = this.#ready.shift(); next !== undefined; next = this.#ready.shift()) {
       if (next.kind === 'resume') {
         this.#resume(next.execution, next.decision);
+      } else if (next.kind === 'invoke') {
+        this.#invoked(next);
       } else {
         const result = this.callValue(next.closure, next.arguments);
         this.lifetimes.letGo(result as Value);
@@ -360,8 +406,50 @@ export class Run {
     }
   }
 
+  /** Runs an invocation readied by `invoke`, its instance's panic ending it. */
+  #invoked({ instance, closure, answer }: Extract<Ready, { kind: 'invoke' }>): void {
+    if (instance.end !== undefined) {
+      answer(instance.end);
+      return;
+    }
+    instance.endWatchers.push(answer);
+    const outer = this.#invoking;
+    this.#invoking = instance;
+    try {
+      const future = this.#guarded(instance, () => this.callValue(closure, [])) as Future | undefined;
+      const returned = (value: Value) => {
+        const at = instance.endWatchers.indexOf(answer);
+        if (at >= 0) {
+          instance.endWatchers.splice(at, 1);
+        }
+        answer({ kind: 'returned', value });
+      };
+      if (future?.settled === true) {
+        returned(future.value);
+      } else {
+        future?.listeners.push(returned);
+      }
+    } finally {
+      this.#invoking = outer;
+    }
+  }
+
+  /** What `run` gives, in `instance`, whose panic it ends, the root's propagating to the host. */
+  #guarded<Result>(instance: Instance, run: () => Result): Result | undefined {
+    if (instance === this.root) {
+      return run();
+    }
+    try {
+      return run();
+    } catch (error) {
+      const { message, trace } = this.panicOf(error);
+      instance.ended({ kind: 'panicked', message, trace });
+      return undefined;
+    }
+  }
+
   #resume(execution: Execution, decision: unknown): void {
-    if (execution.ended) {
+    if (execution.ended || execution.instance.end !== undefined) {
       return;
     }
     const outer = this.#running;
@@ -369,12 +457,14 @@ export class Run {
     const { frame } = execution;
     frame.decision = decision as Value;
     try {
-      const result = (this.#entries[frame.function] as (given: Frame) => unknown)(frame);
+      const result = this.#guarded(execution.instance, () =>
+        (this.#entries[frame.function] as (given: Frame) => unknown)(frame),
+      );
       if (result === PARKED) {
         return;
       }
       execution.ended = true;
-      if (result !== STOPPED) {
+      if (result !== STOPPED && result !== undefined) {
         this.settle(execution.future, result as Value);
       }
     } finally {

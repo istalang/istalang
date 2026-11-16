@@ -67,6 +67,17 @@ function made(scope: EntryScope, index: Register): string {
   return lifetime(scope, index) === 'counted' ? ` hold(${register(index)});` : '';
 }
 
+/**
+ * Empties the registers `moved` an instruction moved its value out of, where letting go of them
+ * would count: their holder is now what the instruction made.
+ */
+function cleared(scope: EntryScope, moved: readonly Register[]): string {
+  return moved
+    .filter((each) => lifetime(scope, each) === 'counted')
+    .map((each) => ` ${register(each)} = undefined;`)
+    .join('');
+}
+
 /** `dst = expression`, then what its holding takes. */
 function assigned(scope: EntryScope, dst: Register, expression: string, keep: string): string {
   return `${register(dst)} = ${expression};${keep}`;
@@ -119,32 +130,33 @@ const emitters: Handlers<EntryScope, Instruction, [], string> = {
       scope,
       i.dst,
       `{ kind: 'tuple', elements: [${i.elements.map(register).join(', ')}] }`,
-      made(scope, i.dst),
+      made(scope, i.dst) + cleared(scope, i.elements),
     ),
   struct: (scope, i) =>
     assigned(
       scope,
       i.dst,
       `{ kind: 'struct', type: ${i.type}, fields: [${i.fields.map(register).join(', ')}] }`,
-      made(scope, i.dst),
+      made(scope, i.dst) + cleared(scope, i.fields),
     ),
   variant: (scope, i) =>
     assigned(
       scope,
       i.dst,
       `{ kind: 'variant', type: ${i.type}, variant: ${i.variant}, fields: [${i.fields.map(register).join(', ')}] }`,
-      made(scope, i.dst),
+      made(scope, i.dst) + cleared(scope, i.fields),
     ),
   array: (scope, i) => {
     const counted = lifetime(scope, i.dst) === 'counted';
     const items = i.elements.map((element) =>
       element.spread ? `...items(${register(element.value)}, ${counted})` : register(element.value),
     );
+    const moved = i.elements.filter((element) => !element.spread).map((element) => element.value);
     return assigned(
       scope,
       i.dst,
       `{ kind: 'array', elements: [${items.join(', ')}] }`,
-      made(scope, i.dst),
+      made(scope, i.dst) + cleared(scope, moved),
     );
   },
   map: (scope, i) => {
@@ -154,14 +166,22 @@ const emitters: Handlers<EntryScope, Instruction, [], string> = {
         ? `...entries(${register(entry.value)}, ${counted})`
         : `[${register(entry.key)}, ${register(entry.value)}]`,
     );
-    return assigned(scope, i.dst, `mapOf([${entries.join(', ')}])`, made(scope, i.dst));
+    const moved = i.entries.flatMap((entry) =>
+      entry.kind === 'entry' ? [entry.key, entry.value] : [],
+    );
+    return assigned(
+      scope,
+      i.dst,
+      `mapOf([${entries.join(', ')}])`,
+      made(scope, i.dst) + cleared(scope, moved),
+    );
   },
   closure: (scope, i) =>
     assigned(
       scope,
       i.dst,
       `{ kind: 'closure', function: ${i.function}, captures: [${i.captures.map(register).join(', ')}] }`,
-      made(scope, i.dst),
+      made(scope, i.dst) + cleared(scope, i.captures),
     ),
   currentClosure: (_, i) => `${register(i.dst)} = cl;`,
   tupleItem: (_, i) => `${register(i.dst)} = ${register(i.src)}.elements[${i.index}];`,
@@ -182,7 +202,7 @@ const emitters: Handlers<EntryScope, Instruction, [], string> = {
     );
     const type = scope.entry.registers[i.dst]?.type;
     const dispose = type?.kind === 'named' ? disposeOf(scope.types, type.type) : undefined;
-    const made_ = `${register(i.dst)} = cell(${register(i.value)}, ${counted}${dispose === undefined ? '' : `, ${dispose}`});`;
+    const made_ = `${register(i.dst)} = cell(${register(i.value)}, ${counted}${dispose === undefined ? '' : `, ${dispose}`});${cleared(scope, [i.value])}`;
     return shared ? `${made_} shareTransient(${transientKey(scope, i.dst)}, ${register(i.dst)});` : made_;
   },
   load: (scope, i) => {
@@ -197,9 +217,10 @@ const emitters: Handlers<EntryScope, Instruction, [], string> = {
   store: (scope, i) => {
     const counted = lifetime(scope, i.value) === 'counted';
     const written = `store(${rootOf(i.place)}, ${pathOf(i.place)}, ${register(i.value)}, ${counted})`;
+    const done = cleared(scope, [i.value]);
     return i.place.root.kind === 'register'
-      ? `${register(i.place.root.register)} = ${written};`
-      : `${written};`;
+      ? `${register(i.place.root.register)} = ${written};${done}`
+      : `${written};${done}`;
   },
   reference: (_, i) =>
     `${register(i.dst)} = reference(${rootOf(i.place)}, ${pathOf(i.place)});`,

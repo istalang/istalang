@@ -18,6 +18,7 @@
  */
 
 import type { Value } from '../../definition/values/values.ts';
+import type { Instance } from './instances.ts';
 
 /** A step into a value: its tuple's `elements` or its struct's or variant's `fields`, at a position. */
 export type Step = readonly [part: 'elements' | 'fields', position: number];
@@ -82,6 +83,8 @@ export class Future extends RunObject {
   value: Value = null;
   /** The closures called with its value once it settles, in the order they were added. */
   readonly callbacks: Waiting[] = [];
+  /** What of the run itself waits on it: a call into a context waits on its invocation's. */
+  readonly listeners: ((value: Value) => void)[] = [];
   /** The execution it is the future of, for an async call's. */
   readonly execution: Execution | undefined;
 
@@ -94,12 +97,15 @@ export class Future extends RunObject {
 export class Execution extends RunObject {
   frame!: Frame;
   readonly future: Future;
+  /** The instance it runs in. */
+  readonly instance: Instance;
   /** Whether it has returned or stopped. */
   ended = false;
 
-  constructor(id: number, futureId: number) {
+  constructor(id: number, futureId: number, instance: Instance) {
     super(id);
     this.future = new Future(futureId, this);
+    this.instance = instance;
   }
 }
 

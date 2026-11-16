@@ -28,7 +28,20 @@ import {
   setEntryInPlace,
 } from '../../definition/values/equality.ts';
 import type { CompositeValue, Value } from '../../definition/values/values.ts';
+import { errorOf, okOf } from '../../definition/values/declared-values.ts';
+import type { TypeDefinition } from '../../definition/tables/types.ts';
+import { Instance, type InstanceEnd } from './instances.ts';
 import { Future, Reference, Resource, type RunObject, type WeakReference } from './objects.ts';
+
+/** The instances spawned so far, by name, whose ends `result()` waits for. */
+const spawnedInstances = new Map<string, Instance>();
+
+/** What an instance's end answers a wait on it of `Result` entry `result` with (§9). */
+function answerOf(types: readonly TypeDefinition[], result: number, end: InstanceEnd): Value {
+  return end.kind === 'finished'
+    ? okOf(types, result, end.outcome)
+    : errorOf(types, result, { message: end.message, code: 'panic', trace: end.trace });
+}
 import type { Run } from './run.ts';
 
 /** What binding natives takes: the natives table, the clock, the seed, and where logs go. */
@@ -47,11 +60,11 @@ type Entry = (...parameters: never[]) => unknown;
 export function bindNatives(run: Run, binding: NativeBinding): (index: number) => Entry {
   const { functions } = run.definition;
   requireNatives(functions, binding.natives);
-  let draws = 0;
   const random = {
     draw: () => {
-      draws += 1;
-      return drawOf(binding.seed, draws - 1);
+      const { instance } = run;
+      instance.draws += 1;
+      return drawOf(binding.seed, instance.draws - 1);
     },
   };
   return (index) => {
@@ -102,7 +115,9 @@ function contextOf(
       result: entry.result,
     },
     types,
-    instance: binding.instance,
+    get instance() {
+      return run.instance.name;
+    },
     version: '',
     now: () => binding.clock.now(),
     changes: (position) => {
@@ -151,7 +166,32 @@ function contextOf(
       write: (record) =>
         binding.log({ instance: binding.instance, time: binding.clock.now(), ...record }),
     },
-    instances: { spawn: unavailable('instances'), ended: unavailable('instances') },
+    instances: {
+      spawn: (closure, type) => {
+        const parent = run.instance;
+        parent.spawned += 1;
+        const child = new Instance(`${parent.name}/${parent.spawned}`, true);
+        run.lifetimes.hold(closure);
+        run.invoke(child, closure, (end) => {
+          run.lifetimes.letGo(closure);
+          child.ended(end.kind === 'returned' ? { kind: 'finished', outcome: end.value } : end);
+        });
+        spawnedInstances.set(child.name, child);
+        return { kind: 'extern', type, payload: child.name } as Value;
+      },
+      ended: (name, result) => {
+        const future = new Future(run.newId());
+        const child = spawnedInstances.get(name);
+        const settle = (end: InstanceEnd) =>
+          run.settle(future, answerOf(types, result, end));
+        if (child?.end !== undefined) {
+          settle(child.end);
+        } else {
+          child?.endWatchers.push(settle);
+        }
+        return future as unknown as Value;
+      },
+    },
     testing: {
       mock: unavailable('the test world'),
       calls: unavailable('the test world'),
@@ -160,11 +200,30 @@ function contextOf(
       handle: unavailable('the test world'),
     },
     contexts: {
-      hostStore: unavailable('contexts'),
-      open: unavailable('contexts'),
-      call: unavailable('contexts'),
-      served: unavailable('contexts'),
-      jobServer: unavailable('contexts'),
+      hostStore: (type) => ({ kind: 'extern', type, payload: 'host' }) as Value,
+      open: (store, type) =>
+        new Resource(run.newId(), type, { store }) as unknown as Value,
+      call: (_runtime, { key, call, result }) => {
+        const future = new Future(run.newId());
+        run.lifetimes.hold(call);
+        run.invoke(run.contextOf(key), call, (end) => {
+          run.lifetimes.letGo(call);
+          run.settle(
+            future,
+            end.kind === 'returned'
+              ? okOf(types, result, end.value)
+              : answerOf(types, result, end),
+          );
+        });
+        return future as unknown as Value;
+      },
+      served: () => new Future(run.newId()) as unknown as Value,
+      jobServer: () => {
+        const { purpose } = run.definition;
+        return purpose.kind === 'program' && purpose.jobServer !== undefined
+          ? ({ kind: 'closure', function: purpose.jobServer, captures: [] } as Value)
+          : undefined;
+      },
     },
     encodings: { of: () => undefined, remember: () => undefined },
   };

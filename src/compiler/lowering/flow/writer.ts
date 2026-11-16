@@ -161,9 +161,9 @@ export class FlowWriter {
     exitWriters[exit.kind](this, exit as never);
   }
 
-  /** Whether some value lives in `register`. */
+  /** Whether some value lives in `register`, what a future gave included. */
   #isValues(register: Register): boolean {
-    for (const each of this.#registers.values()) {
+    for (const each of [...this.#registers.values(), ...this.#given.values()]) {
       if (each === register) {
         return true;
       }
