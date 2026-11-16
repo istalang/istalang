@@ -83,7 +83,10 @@ export function hostCallOf(lowering: Lowering, instance: FunctionInstance): Host
   };
 }
 
-/** The entry reading a host's extern constant of type `type`. */
+/**
+ * The entry reading a host's extern constant of type `type`: read from the host once per instance,
+ * then kept as the instance's, across its commits (§3.6), as a context constant is (§3.4).
+ */
 export function hostConstantEntry(
   lowering: Lowering,
   declaration: ExternConstantDeclaration,
@@ -95,13 +98,24 @@ export function hostConstantEntry(
     result: tables.types.reference(type),
     mode: 'simple',
   });
-  const native = code.call(tables.constantNativeIndex(declaration, type), [], jsonOf(checker));
   const header = tables.declarationHeader(declaration);
+  const { span } = code;
+  const name = `extern ${header.name}`;
+  const value = code.code.allocate(tables.types.reference(type));
+  const kept = code.code.newLabel();
+  code.code.contextConstant(value, name, kept, span);
+  const native = code.call(tables.constantNativeIndex(declaration, type), [], jsonOf(checker));
   const inbound = inboundOf(checker, undefined, type, {
     from: 'result',
     path: header.name,
   });
-  code.return(emitInbound(code, native, inbound, code.span));
+  const read = emitInbound(code, native, inbound, span);
+  const taken = code.code.take(read, span);
+  code.code.letGo([value], span);
+  code.code.emit({ kind: 'move', span, dst: value, src: taken });
+  code.code.emit({ kind: 'makeContextConstant', span, name, value });
+  code.code.place(kept);
+  code.return(value);
   return code.entry(header);
 }
 

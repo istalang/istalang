@@ -142,7 +142,23 @@ export class Lifetimes {
       return true;
     }
     const count = this.#counts.get(node);
-    return count === undefined ? !this.#shared.has(node) : count <= 1;
+    return (count === undefined || count <= 1) && !this.#shared.has(node);
+  }
+
+  /**
+   * Another holder of `value`, read back from a snapshot: an object is held once more; a composite,
+   * which comes back held by this holder alone, is counted once and holds each of its parts in turn.
+   */
+  adoptRestored(value: Value | undefined): void {
+    const pending: (Value | undefined)[] = [value];
+    for (let next = pending.pop(); pending.length > 0 || next !== undefined; next = pending.pop()) {
+      if (isNode(next) && !this.#counts.has(next)) {
+        this.#counts.set(next, 1);
+        pending.push(...childValues(next));
+      } else {
+        this.hold(next);
+      }
+    }
   }
 
   /**

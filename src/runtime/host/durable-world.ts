@@ -1,0 +1,470 @@
+/**
+ * The world of a host runtime (§5, §9): its live runs and its ista instances, each instance
+ * resident in memory while it runs and committed to the store at the end of every segment, so a
+ * runtime opened over the same store goes on where it committed.
+ *
+ * - **Segments.** An instance's segment starts with what wakes it (a call into it, its spawn, a due
+ *   timer, another instance's end) and runs until it has nothing ready; then it commits. Its clock
+ *   reads the time the segment started, and what it does to others (answering a call, ending, and
+ *   the instances it spawned) and its log records leave it only at that commit (§5).
+ * - **A crash at every await** (§10): before committing, the segment runs again on the instance as
+ *   it last committed, from the same inputs, and that run commits; the first one's effects never
+ *   leave it.
+ * - **A panic** commits the instance as it stood before the failed segment, with the panic, the
+ *   time the segment started and the call it was starting, if any, so a retry runs the segment
+ *   again (§3.12) and a termination disposes what it held then (§7).
+ */
+
+import type { Definition } from '../../definition/definition.ts';
+import { copied } from '../../definition/values/replacing.ts';
+import type { Value } from '../../definition/values/values.ts';
+import type { EmittedProgram } from '../../codegen/emit.ts';
+import type { Clock } from '../clock.ts';
+import type { LogRecord, StartOptions } from '../instance-state.ts';
+import type { Natives } from '../natives.ts';
+import type { InstanceStore } from '../store.ts';
+import { Instance, type InstanceEnd } from '../run/instances.ts';
+import { type Invocation, Run } from '../run/run.ts';
+import type { InvocationEnd, World } from '../run/world.ts';
+import { type PersistedStatus, type Snapshot, snapshotFormat } from '../snapshot/format.ts';
+import { restore, rootInvocation } from '../snapshot/restore.ts';
+import { snapshotOf, TooDeep } from '../snapshot/write.ts';
+import type { HostReports } from './programs.ts';
+
+
+/** The program a world runs: its Definition, the hash the store keys it by, its emitted code. */
+export interface WorldProgram {
+  readonly definition: Definition;
+  readonly hash: string;
+  readonly emitted: EmittedProgram;
+}
+
+export interface WorldSeams {
+  readonly natives: Natives;
+  readonly store: InstanceStore;
+  readonly clock: Clock;
+  readonly seed: () => Uint8Array;
+  readonly reports?: HostReports;
+}
+
+type Input = (run: Run) => void;
+
+/** An ista instance of the world, resident while the world holds it. */
+export class Resident {
+  readonly name: string;
+  readonly program: WorldProgram;
+  crashEveryAwait: boolean;
+  status: PersistedStatus = { kind: 'active' };
+  run: Run;
+  /** The snapshot it last committed, if it ever did. */
+  text: string | undefined;
+  /** Whether it was spawned and hasn't run yet. */
+  unstarted = false;
+  /** What woke its segment, since its last commit, and when the segment started. */
+  inputs: Input[] = [];
+  /** The call starting it, which a retry of its failed first segment runs again (§3.12). */
+  replay: Value | undefined;
+  startedAt = 0n;
+  /** What leaves it at its next commit: what it did to others, and its log records. */
+  effects: (() => void)[] = [];
+  logs: LogRecord[] = [];
+  /** Where its log records go while a host advances it itself, rather than to the host's reports. */
+  heardBy: ((records: readonly LogRecord[]) => void) | undefined;
+  /** The answers of the calls into it running as it last committed, by their futures' ids. */
+  answers = new Map<number, Invocation>();
+  /** What waits on its end, told as it commits one (§9). */
+  readonly endWatchers: ((end: InstanceEnd) => void)[] = [];
+  /** The instances it spawned in the segment committing next. */
+  spawned: string[] = [];
+
+  constructor(name: string, program: WorldProgram, run: Run, crashEveryAwait: boolean) {
+    this.name = name;
+    this.program = program;
+    this.run = run;
+    this.crashEveryAwait = crashEveryAwait;
+  }
+
+  /** Whether its instance has ended: finished, panicked or terminated. */
+  get ended(): boolean {
+    return this.status.kind !== 'active';
+  }
+}
+
+export class DurableWorld implements World {
+  readonly seams: WorldSeams;
+  readonly residents = new Map<string, Resident>();
+  /** The live runs a host's starts are running now, the program each runs and its options. */
+  readonly #live = new Map<Run, WorldProgram>();
+  readonly #options = new Map<Run, StartOptions>();
+  readonly #bind: (hash: string) => WorldProgram;
+
+  constructor(seams: WorldSeams, bind: (hash: string) => WorldProgram) {
+    this.seams = seams;
+    this.#bind = bind;
+  }
+
+  /** A live run of `program`, named `name`, which a host's start drives (§9). */
+  liveRun(
+    program: WorldProgram,
+    name: string,
+    log: (record: LogRecord) => void,
+    options: StartOptions = {},
+  ): Run {
+    const run = new Run(program.definition, program.emitted, {
+      natives: this.seams.natives,
+      clock: this.seams.clock,
+      seed: this.seams.seed(),
+      log,
+      instance: new Instance(name, false),
+      world: this,
+    });
+    this.#live.set(run, program);
+    this.#options.set(run, options);
+    return run;
+  }
+
+  /** Lets go of a live run that ended. */
+  endLive(run: Run): void {
+    this.#live.delete(run);
+    this.#options.delete(run);
+  }
+
+  readonly spawn = (parent: Run, closure: Value): string => {
+    parent.instance.spawned += 1;
+    const name = `${parent.instance.name}/${parent.instance.spawned}`;
+    const sent = copied(closure);
+    const owner = this.#residentOfRun(parent);
+    const started = () => {
+      const child = this.#made(name, this.#programOf(parent), owner?.crashEveryAwait ?? false);
+      child.unstarted = true;
+      child.replay = sent;
+      owner?.spawned.push(name);
+      this.feed(child, (run) => this.spawned(child, run, copied(sent)));
+    };
+    if (owner === undefined) {
+      started();
+    } else {
+      owner.effects.push(started);
+    }
+    return name;
+  };
+
+  readonly call = (caller: Run, key: string, closure: Value, answer: (end: InvocationEnd) => void): void => {
+    const crashEveryAwait = this.#options.get(caller)?.crashEveryAwait ?? false;
+    const context =
+      this.residents.get(key) ?? this.load(key) ?? this.#made(key, this.#programOf(caller), crashEveryAwait);
+    const sent = copied(closure);
+    this.feed(context, (run) =>
+      run.invoke(copied(sent), (end) => {
+        const crossed = end.kind === 'returned' ? { ...end, value: copied(end.value) } : end;
+        context.effects.push(() => caller.arrive(() => answer(crossed)));
+      }),
+    );
+  };
+
+  readonly watchEnd = (watcher: Run, name: string, watch: (end: InstanceEnd) => void): void => {
+    const watched = this.residents.get(name) ?? this.load(name);
+    const told = (end: InstanceEnd) => {
+      const crossed = end.kind === 'finished' ? { ...end, outcome: copied(end.outcome) } : end;
+      watcher.arrive(() => watch(crossed));
+    };
+    const end = watched === undefined ? undefined : endOf(watched.status);
+    if (end !== undefined) {
+      told(end);
+    } else {
+      watched?.endWatchers.push(told);
+    }
+  };
+
+  /** The instance `name`, read from the store, or undefined when the store lacks it. */
+  load(name: string): Resident | undefined {
+    const text = this.seams.store.readSnapshot(name);
+    if (text === undefined) {
+      return undefined;
+    }
+    const snapshot = snapshotFormat.read(text);
+    const resident = this.#made(name, this.#bind(snapshot.definition), snapshot.crashEveryAwait);
+    resident.text = text;
+    this.#restoreInto(resident, snapshot);
+    return resident;
+  }
+
+  /** Every run, live ones first, then each resident's in the order it was made. */
+  get runs(): readonly Run[] {
+    return [...this.#live.keys(), ...[...this.residents.values()].map(({ run }) => run)];
+  }
+
+  /**
+   * Runs every run's arrivals and ready work until none has any or `done` says the host's run is
+   * done, committing each resident whose segment ran, once it has nothing ready.
+   */
+  drain(done: () => boolean = () => false): void {
+    for (let busy = true; busy && !done(); ) {
+      busy = false;
+      for (const run of this.#live.keys()) {
+        busy = run.takeArrivals(done) || busy;
+        busy = run.drain(done) || busy;
+      }
+      for (const resident of [...this.residents.values()]) {
+        busy = this.#advanced(resident) || busy;
+      }
+    }
+  }
+
+  /** Starts a segment of `resident` at the clock's time, firing its due timers; whether any fired. */
+  wake(resident: Resident, at = this.seams.clock.now()): void {
+    const due = resident.run.nextTimer();
+    if (due !== undefined && due <= at) {
+      this.feed(resident, (run) => run.fireDue(at), at);
+    }
+  }
+
+  /** The earliest timer any run waits on. */
+  nextTimer(): bigint | undefined {
+    const timers = this.runs.flatMap((run) => {
+      const next = run.nextTimer();
+      return next === undefined ? [] : [next];
+    });
+    return timers.length === 0 ? undefined : timers.reduce((first, second) => (second < first ? second : first));
+  }
+
+  /** Fires every run's due timers: a live run's at once, a resident's as a segment of its own. */
+  fireDue(now: bigint): void {
+    for (const run of this.#live.keys()) {
+      run.fireDue(now);
+    }
+    for (const resident of this.residents.values()) {
+      this.wake(resident, now);
+    }
+  }
+
+  get awaitsHost(): boolean {
+    return [...this.#live.keys()].some((run) => run.awaitsHost);
+  }
+
+  arrival(): Promise<void> {
+    return Promise.race([...this.#live.keys()].map((run) => run.arrival()));
+  }
+
+  /**
+   * Runs `resident`'s segment until it has nothing ready or one of its calls parks, then commits it,
+   * as every await commits (§6); whether it ran any.
+   */
+  #advanced(resident: Resident): boolean {
+    const { run } = resident;
+    if (!run.parkedSinceCommit && resident.inputs.length === 0 && !run.idle) {
+      resident.startedAt = this.seams.clock.now();
+      resident.inputs.push(() => undefined);
+    }
+    const took = run.takeArrivals(undefined, true);
+    const ran = run.drain(undefined, true);
+    const atCommit = run.idle || (run.parkedSinceCommit && !run.invoking);
+    if (resident.inputs.length > 0 && !took && !ran && atCommit) {
+      this.commit(resident);
+      return true;
+    }
+    return took || ran;
+  }
+
+  /** Applies `input` to `resident`, starting its segment if none is going. */
+  feed(resident: Resident, input: Input, at = this.seams.clock.now()): void {
+    if (resident.inputs.length === 0) {
+      resident.startedAt = at;
+    }
+    resident.inputs.push(input);
+    input(resident.run);
+  }
+
+  /** Commits `resident`'s segment: run again first at every crash, then written, then let out. */
+  commit(resident: Resident): void {
+    if (resident.crashEveryAwait) {
+      this.#rerun(resident);
+    }
+    const end = resident.run.instance.end;
+    const segment = { inputs: resident.inputs, startedAt: resident.startedAt };
+    resident.inputs = [];
+    resident.unstarted = false;
+    let status: PersistedStatus =
+      end === undefined
+        ? { kind: 'active' }
+        : end.kind === 'finished'
+          ? { kind: 'finished', outcome: end.outcome }
+          : { kind: 'panicked', message: end.message, trace: end.trace, segmentStartedAt: segment.startedAt };
+    let text: string;
+    try {
+      text = this.#written(resident, status);
+    } catch (error) {
+      if (!(error instanceof TooDeep)) {
+        throw error;
+      }
+      status = { kind: 'panicked', message: error.message, trace: '', segmentStartedAt: segment.startedAt };
+      text = this.#written(resident, status);
+    }
+    resident.status = snapshotFormat.read(text).status;
+    resident.text = text;
+    resident.run.parkedSinceCommit = false;
+    resident.answers = new Map(
+      resident.run.persisted().invocations.map(({ future, invocation }) => [future.object, invocation]),
+    );
+    this.seams.store.writeSnapshot(resident.name, text);
+    this.#letOut(resident);
+  }
+
+  /** The text committing `resident` with `status`: a panicked one as it stood before the segment. */
+  #written(resident: Resident, status: PersistedStatus): string {
+    const written = { definition: resident.program.hash, status, crashEveryAwait: resident.crashEveryAwait };
+    if (status.kind !== 'panicked') {
+      return snapshotFormat.write(snapshotOf(resident.run, written)).text;
+    }
+    const before = resident.text === undefined ? emptySnapshot(resident.name) : snapshotFormat.read(resident.text);
+    const replay = before.status.kind === 'active' && resident.text !== undefined ? undefined : resident.replay;
+    return snapshotFormat.write({ ...before, ...written, status: { ...status, ...(replay === undefined ? {} : { replay }) } as never }).text;
+  }
+
+  /** What leaves `resident` as it commits: its effects, its log records and its end. */
+  #letOut(resident: Resident): void {
+    for (const effect of resident.effects.splice(0)) {
+      effect();
+    }
+    const end = endOf(resident.status);
+    if (end !== undefined) {
+      const watchers = resident.endWatchers.splice(0);
+      for (const watcher of watchers) {
+        watcher(end);
+      }
+      const { status } = resident;
+      if (status.kind === 'panicked' && watchers.length === 0 && !resident.run.instance.heard) {
+        this.seams.reports?.panicked(resident.name, status);
+      }
+    }
+    const logs = resident.logs.splice(0);
+    if (logs.length > 0) {
+      (resident.heardBy ?? this.seams.reports?.logs)?.(logs);
+    }
+  }
+
+  /** Runs `resident`'s segment again on the instance as it last committed, from the same inputs. */
+  #rerun(resident: Resident): void {
+    const inputs = resident.inputs;
+    const { answers } = resident;
+    resident.effects = [];
+    resident.logs = [];
+    resident.spawned = [];
+    resident.run = this.#runOf(resident.name, resident);
+    if (resident.text !== undefined) {
+      restore(resident.run, snapshotFormat.read(resident.text), answers);
+    }
+    for (const input of inputs) {
+      input(resident.run);
+    }
+    for (let busy = true; busy; ) {
+      busy = resident.run.takeArrivals() || resident.run.drain();
+    }
+  }
+
+  #restoreInto(resident: Resident, snapshot: Snapshot, statusToo = true): void {
+    restore(resident.run, snapshot);
+    if (statusToo) {
+      resident.status = snapshot.status;
+    }
+  }
+
+  /** Starts in `run` the call `resident` was spawned to run: its instance ends with what it gave. */
+  spawned(resident: Resident, run: Run, closure: Value): void {
+    const { answer } = rootInvocation(run);
+    run.invoke(closure, answer, true);
+    resident.replay = closure;
+  }
+
+  /** `resident`, panicked, running again from where it stood before its failed segment (§3.12). */
+  restart(resident: Resident): void {
+    const text = resident.text ?? '';
+    const snapshot = snapshotFormat.read(text);
+    resident.run = this.#runOf(resident.name, resident);
+    restore(resident.run, snapshot);
+    resident.status = { kind: 'active' };
+    resident.inputs = [];
+  }
+
+  /**
+   * Ends `resident`, panicked, as terminated (§3.12): what it held as it stood before its failed
+   * segment is disposed (§7), and it commits holding nothing.
+   */
+  terminate(resident: Resident, panic: { readonly message: string; readonly trace: string }): void {
+    this.restart(resident);
+    resident.startedAt = this.seams.clock.now();
+    const { run } = resident;
+    run.finish([...run.instance.contextConstants.values()]);
+    run.instance.contextConstants.clear();
+    resident.status = { kind: 'terminated', ...panic };
+    const written = { definition: resident.program.hash, status: resident.status, crashEveryAwait: resident.crashEveryAwait };
+    resident.text = snapshotFormat.write({ ...emptySnapshot(resident.name), ...written }).text;
+    this.seams.store.writeSnapshot(resident.name, resident.text);
+    this.#letOut(resident);
+  }
+
+  #made(name: string, program: WorldProgram, crashEveryAwait: boolean): Resident {
+    const resident = new Resident(name, program, undefined as never, crashEveryAwait);
+    resident.run = this.#runOf(name, resident);
+    this.residents.set(name, resident);
+    return resident;
+  }
+
+  /** A fresh run of the instance `name`, its clock reading its segment's start, its logs kept. */
+  #runOf(name: string, resident: Resident): Run {
+    const { program } = resident;
+    return new Run(program.definition, program.emitted, {
+      natives: this.seams.natives,
+      clock: { now: () => resident.startedAt, until: this.seams.clock.until },
+      seed: this.seams.seed(),
+      log: (record) => resident.logs.push(record),
+      instance: new Instance(name, true),
+      world: this,
+    });
+  }
+
+  #residentOfRun(run: Run): Resident | undefined {
+    return run.instance.durable ? this.residents.get(run.instance.name) : undefined;
+  }
+
+  #programOf(run: Run): WorldProgram {
+    const program = this.#residentOfRun(run)?.program ?? this.#live.get(run);
+    if (program === undefined) {
+      throw new Error(`The run of ${run.instance.name} belongs to no world.`);
+    }
+    return program;
+  }
+}
+
+/** How an instance in `status` ended; undefined while it runs. */
+export function endOf(status: PersistedStatus): InstanceEnd | undefined {
+  switch (status.kind) {
+    case 'finished':
+      return { kind: 'finished', outcome: status.outcome };
+    case 'panicked':
+    case 'terminated':
+      return { kind: 'panicked', message: status.message, trace: status.trace };
+    default:
+      return undefined;
+  }
+}
+
+/** A snapshot of an instance that never committed: nothing in it yet. */
+function emptySnapshot(instance: string): Snapshot {
+  return {
+    definition: '0'.repeat(64),
+    instance,
+    status: { kind: 'active' },
+    serial: 0,
+    draws: 0,
+    spawned: 0,
+    crashEveryAwait: false,
+    objects: [],
+    live: [],
+    timers: [],
+    watches: [],
+    ready: [],
+    invocations: [],
+    contextConstants: [],
+  };
+}

@@ -36,7 +36,7 @@ import {
   WeakReference,
 } from './objects.ts';
 import * as primitives from './primitives.ts';
-import type { Instance } from './instances.ts';
+import { endAnswer, type Instance } from './instances.ts';
 import type { InvocationEnd, World } from './world.ts';
 import { Traces } from './traces.ts';
 
@@ -58,8 +58,35 @@ type Ready =
   | {
       readonly kind: 'invoke';
       readonly closure: Value;
-      readonly answer: (end: InvocationEnd) => void;
+      readonly invocation: Invocation;
     };
+
+/**
+ * An invocation's answer: told how the call into the instance ended. The root one, an instance's
+ * spawned call, ends its instance, which a snapshot keeps, so reading it back answers it again.
+ */
+export interface Invocation {
+  readonly answer: (end: InvocationEnd) => void;
+  readonly root: boolean;
+}
+
+/** What a run keeps beside its objects, as a snapshot writes it. */
+export interface PersistedRun {
+  readonly serial: number;
+  readonly live: readonly Execution[];
+  readonly timers: readonly { readonly at: bigint; readonly future: Future }[];
+  readonly watches: readonly {
+    readonly future: Future;
+    readonly instance: string;
+    readonly result: number;
+  }[];
+  readonly invocations: readonly { readonly future: Future; readonly invocation: Invocation }[];
+  /** What is ready to run as it commits, in order: resumes of parked calls and readied callbacks. */
+  readonly ready: readonly (
+    | { readonly execution: Execution; readonly decision: Value }
+    | { readonly call: Value; readonly arguments: readonly Value[] }
+  )[];
+}
 
 export class Run {
   readonly definition: Definition;
@@ -73,6 +100,11 @@ export class Run {
   readonly #live = new Set<Execution>();
   /** The execution whose call is being disposed now, its `disposing()` future settling. */
   #disposingNow: Execution | undefined;
+  /**
+   * The futures settling with how another instance ends (§9): the instance each watches, and the
+   * `Result` entry it answers with.
+   */
+  readonly #watches = new Map<Future, { readonly instance: string; readonly result: number }>();
   #objects = 0;
   /** The transients shared now, by `function:register`, innermost last (§3.4). */
   readonly #transients = new Map<string, Cell[]>();
@@ -282,8 +314,8 @@ export class Run {
    * Readies an invocation of `closure` in this run's instance: its function run as an execution of
    * it, `answer` told what it gave, or the instance's end if it panicked or had ended.
    */
-  invoke(closure: Value, answer: (end: InvocationEnd) => void): void {
-    this.#ready.push({ kind: 'invoke', closure, answer });
+  invoke(closure: Value, answer: (end: InvocationEnd) => void, root = false): void {
+    this.#ready.push({ kind: 'invoke', closure, invocation: { answer, root } });
   }
 
   /** Calls the function value `callee` with `passed`, as its entry is called. */
@@ -404,6 +436,93 @@ export class Run {
   /** Takes back the resume readied for `execution`, which goes on without parking. */
   stayRunning(execution: Execution): void {
     this.#unready(execution);
+  }
+
+  /**
+   * A future settling with how the instance `name` ends, as `answer` says (§9): the world tells it,
+   * and a snapshot keeps the watch.
+   */
+  watchEnd(name: string, result: number): Future {
+    const future = new Future(this.newId());
+    this.#watch(future, { instance: name, result });
+    return future;
+  }
+
+  #watch(future: Future, watched: { readonly instance: string; readonly result: number }): void {
+    this.#watches.set(future, watched);
+    this.world.watchEnd(this, watched.instance, (end) => {
+      this.#watches.delete(future);
+      this.settle(future, endAnswer(this.definition.types, watched.result, end));
+    });
+  }
+
+  /** What a snapshot of this run's instance keeps besides what its objects hold (snapshot/). */
+  persisted(): PersistedRun {
+    return {
+      serial: this.#objects,
+      live: [...this.#live],
+      timers: [...this.#timers],
+      watches: [...this.#watches].map(([future, watched]) => ({ future, ...watched })),
+      invocations: [...this.#invocations].map(([future, invocation]) => ({ future, invocation })),
+      ready: this.#ready.flatMap((ready): PersistedRun['ready'] => {
+        switch (ready.kind) {
+          case 'resume':
+            return [{ execution: ready.execution, decision: ready.decision as Value }];
+          case 'call':
+            return [{ call: ready.closure, arguments: ready.arguments }];
+          default:
+            return [];
+        }
+      }),
+    };
+  }
+
+  /**
+   * Resumes keeping what a snapshot read back kept (snapshot/restore.ts): its objects already made,
+   * each holder counted again; its watches asked of the world again.
+   */
+  restored(state: PersistedRun): void {
+    this.#objects = state.serial;
+    for (const execution of state.live) {
+      this.#live.add(execution);
+    }
+    this.#timers = [...state.timers];
+    for (const { future, ...watched } of state.watches) {
+      this.#watch(future, watched);
+    }
+    for (const { future, invocation } of state.invocations) {
+      this.attachInvocation(future, invocation);
+    }
+    for (const ready of state.ready) {
+      this.#ready.push(
+        'execution' in ready
+          ? { kind: 'resume', execution: ready.execution, decision: ready.decision }
+          : { kind: 'call', closure: ready.call, arguments: ready.arguments },
+      );
+    }
+  }
+
+  /** Whether an invocation waits to start: one a snapshot can't keep, its answer being the caller's. */
+  get invoking(): boolean {
+    return this.#ready.some((ready) => ready.kind === 'invoke');
+  }
+
+  /** Remembers `weak` as the one weak reference to its target, as a snapshot read back gives it. */
+  restoredWeakReference(weak: WeakReference): void {
+    if (weak.target !== undefined) {
+      this.#weakReferences.set(weak.target, weak);
+    }
+  }
+
+  /** Whether an execution parked since the instance last committed: each await commits (§6). */
+  parkedSinceCommit = false;
+
+  /** The invocations still running, by the future of the call each started. */
+  readonly #invocations = new Map<Future, Invocation>();
+
+  /** Whether nothing is ready to run in it, nor has anything arrived. */
+  get idle(): boolean {
+    return this.#ready.length === 0 && this.#arrivals.length === 0;
   }
 
   /** Readies a call of `closure` with `passed`. */
@@ -541,13 +660,13 @@ export class Run {
    * Runs what arrived from outside the run, one turn at a time, each draining what it readied;
    * whether there was any.
    */
-  takeArrivals(done: () => boolean = () => false): boolean {
+  takeArrivals(done: () => boolean = () => false, untilParked = false): boolean {
     let took = false;
     for (let turn = this.#arrivals.shift(); turn !== undefined; turn = this.#arrivals.shift()) {
       took = true;
       turn();
-      this.drain(done);
-      if (done()) {
+      this.drain(done, untilParked);
+      if (done() || (untilParked && this.parkedSinceCommit)) {
         break;
       }
     }
@@ -558,9 +677,9 @@ export class Run {
    * Runs the ready queue until it is empty, or until `done` says the run is done; whether it ran
    * anything.
    */
-  drain(done: () => boolean = () => false): boolean {
+  drain(done: () => boolean = () => false, untilParked = false): boolean {
     let ran = false;
-    while (!done()) {
+    while (!(done() || (untilParked && this.parkedSinceCommit))) {
       const next = this.#ready.shift();
       if (next === undefined) {
         break;
@@ -597,25 +716,48 @@ export class Run {
   }
 
   /** Runs an invocation readied by `invoke`, its instance's panic ending it. */
-  #invoked({ closure, answer }: Extract<Ready, { kind: 'invoke' }>): void {
+  #invoked({ closure, invocation }: Extract<Ready, { kind: 'invoke' }>): void {
     const { instance } = this;
     if (instance.end !== undefined) {
-      answer(instance.end);
+      invocation.answer(instance.end);
       return;
     }
-    instance.endWatchers.push(answer);
-    const future = this.#guarded(() => this.callValue(closure, [])) as Future | undefined;
+    if (!invocation.root) {
+      instance.endWatchers.push(invocation.answer);
+    }
+    const given = this.#guarded(() => this.callValue(closure, []));
+    if (given instanceof Future) {
+      this.attachInvocation(given, invocation);
+    } else if (instance.end === undefined) {
+      // A plain function's call gives its value at once (§9).
+      this.#answered(invocation, given as Value);
+    }
+  }
+
+  /** Tells `invocation` its call returned `value`, no longer waiting on the instance's end. */
+  #answered(invocation: Invocation, value: Value): void {
+    const at = this.instance.endWatchers.indexOf(invocation.answer);
+    if (at >= 0) {
+      this.instance.endWatchers.splice(at, 1);
+    }
+    invocation.answer({ kind: 'returned', value });
+  }
+
+  /** Answers `invocation` as `future`, its call's, settles, or as the instance ends first. */
+  attachInvocation(future: Future, invocation: Invocation): void {
+    const { instance } = this;
+    if (!(invocation.root || instance.endWatchers.includes(invocation.answer))) {
+      instance.endWatchers.push(invocation.answer);
+    }
     const returned = (value: Value) => {
-      const at = instance.endWatchers.indexOf(answer);
-      if (at >= 0) {
-        instance.endWatchers.splice(at, 1);
-      }
-      answer({ kind: 'returned', value });
+      this.#invocations.delete(future);
+      this.#answered(invocation, value);
     };
-    if (future?.settled === true) {
+    if (future.settled) {
       returned(future.value);
     } else {
-      future?.listeners.push(returned);
+      this.#invocations.set(future, invocation);
+      future.listeners.push(returned);
     }
   }
 
@@ -648,6 +790,7 @@ export class Run {
       );
       if (result === PARKED) {
         execution.parked = true;
+        this.parkedSinceCommit = true;
         return;
       }
       execution.ended = true;

@@ -12,6 +12,8 @@
  *   after its parent; its end settles what waits on its `result()`.
  */
 
+import type { TypeDefinition } from '../../definition/tables/types.ts';
+import { errorOf, okOf } from '../../definition/values/declared-values.ts';
 import type { Value } from '../../definition/values/values.ts';
 import type { Future } from './objects.ts';
 
@@ -30,6 +32,8 @@ export class Instance {
   /** How many instances it spawned, which names the next. */
   spawned = 0;
   end: InstanceEnd | undefined;
+  /** Whether a call into it was waiting as it ended, to hear its panic (§9). */
+  heard = false;
   /** What waits on its end: its parent's `result()` futures and the calls into it still waiting. */
   readonly endWatchers: ((end: InstanceEnd) => void)[] = [];
   /** The futures of the calls into it still waiting, each answered once its invocation ends. */
@@ -46,8 +50,16 @@ export class Instance {
       return;
     }
     this.end = end;
+    this.heard = this.endWatchers.length > 0;
     for (const watcher of this.endWatchers.splice(0)) {
       watcher(end);
     }
   }
+}
+
+/** What an instance's end answers a wait on it of `Result` entry `result` with (§9). */
+export function endAnswer(types: readonly TypeDefinition[], result: number, end: InstanceEnd): Value {
+  return end.kind === 'finished'
+    ? okOf(types, result, end.outcome)
+    : errorOf(types, result, { message: end.message, code: 'panic', trace: end.trace });
 }

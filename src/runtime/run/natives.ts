@@ -30,7 +30,7 @@ import {
 import type { CompositeValue, Value } from '../../definition/values/values.ts';
 import { errorOf, okOf } from '../../definition/values/declared-values.ts';
 import type { TypeDefinition } from '../../definition/tables/types.ts';
-import type { Instance, InstanceEnd } from './instances.ts';
+import { endAnswer, type Instance } from './instances.ts';
 import type { World } from './world.ts';
 import {
   Execution,
@@ -41,12 +41,6 @@ import {
   type WeakReference,
 } from './objects.ts';
 
-/** What an instance's end answers a wait on it of `Result` entry `result` with (§9). */
-function answerOf(types: readonly TypeDefinition[], result: number, end: InstanceEnd): Value {
-  return end.kind === 'finished'
-    ? okOf(types, result, end.outcome)
-    : errorOf(types, result, { message: end.message, code: 'panic', trace: end.trace });
-}
 import type { Run } from './run.ts';
 
 /** What binding natives takes: the natives table, the clock, the seed, and where logs go. */
@@ -181,11 +175,8 @@ function contextOf(
     instances: {
       spawn: (closure, type) =>
         ({ kind: 'extern', type, payload: run.world.spawn(run, closure) }) as Value,
-      ended: (name, result) => {
-        const future = new Future(run.newId());
-        run.world.watchEnd(run, name, (end) => run.settle(future, answerOf(types, result, end)));
-        return future as unknown as Value;
-      },
+      ended: (name, result) =>
+        run.watchEnd(name, result) as unknown as Value,
     },
     testing: {
       mock: unavailable('the test world'),
@@ -203,7 +194,7 @@ function contextOf(
         run.world.call(run, key, call, (end) => {
           run.settle(
             future,
-            end.kind === 'returned' ? okOf(types, result, end.value) : answerOf(types, result, end),
+            end.kind === 'returned' ? okOf(types, result, end.value) : endAnswer(types, result, end),
           );
         });
         return future as unknown as Value;
