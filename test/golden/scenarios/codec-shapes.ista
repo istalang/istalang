@@ -1,0 +1,7 @@
+# What host-codecs.ista sends through a generic extern: a struct whose codec its own module declares.
+import Json from 'json'
+
+struct Point { x: Int }
+
+fn toJson(self: Point) -> Json:
+  "point " + String(self.x)

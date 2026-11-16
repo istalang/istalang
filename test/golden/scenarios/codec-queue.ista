@@ -1,0 +1,4 @@
+# A generic extern host-codecs.ista sends through, taking any encodable value.
+import Encodable from 'json'
+
+extern fn send<T is Encodable>(value: T)

@@ -1,0 +1,5 @@
+{
+  "program": "extern-constant-type.ista",
+  "host": "extern-constant-type.host.mjs",
+  "steps": [{ "start": "run" }]
+}

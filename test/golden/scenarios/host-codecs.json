@@ -1,0 +1,5 @@
+{
+  "program": "host-codecs.ista",
+  "host": "host-codecs.host.mjs",
+  "steps": [{ "start": "run" }]
+}

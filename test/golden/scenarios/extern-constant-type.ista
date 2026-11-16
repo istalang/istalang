@@ -1,0 +1,9 @@
+# An extern constant is read as its declared type (§3.6): a host giving a value of another type
+# panics the instance reading it.
+import * as runtime from 'runtime'
+
+extern limit: Int
+
+live async fn main() -> Int: await runtime.run(runtime.id()) _main()
+
+ista async fn _main() -> Int: limit

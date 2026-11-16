@@ -1,0 +1,24 @@
+# outcome: "context"
+# Executions that become ready together run in the order they were created (§6): a context's child
+# and the live run's timer are both due at 5ms, and the context, readied by that timer, answers
+# before the live run decides what waited on both.
+
+import * as runtime from 'runtime'
+import * as time from 'time'
+
+ista async fn child() -> Int:
+  await time.delay(5ms)
+  1
+
+ista async fn parent() -> String:
+  drop await spawn(child).result()
+  "context"
+
+live async fn main() -> String:
+  const rt = await runtime.Runtime.open(runtime.hostStore())
+  const call = rt.call("o/1") parent()
+  await select:
+    case call as answer:
+      drop answer
+      "context"
+    case time.delay(5ms): "timer"

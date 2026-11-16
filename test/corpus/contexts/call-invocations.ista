@@ -1,0 +1,25 @@
+# outcome: 24
+# Every call to a context starts an invocation of its own (§9): two calls in flight on one context
+# answer each with its own result.
+
+import * as runtime from 'runtime'
+import * as time from 'time'
+
+struct Order:
+  id: String
+  amount: Int
+
+ista async fn purchase(order: Order) -> Int:
+  await time.delay(1s)
+  await runtime.commit()
+  order.amount * 2
+
+ista async fn refund(order: Order) -> Int: panic("no refunds for " + order.id)
+
+live async fn main() -> Int:
+  const rt = await runtime.Runtime.open(runtime.hostStore())
+  const first = rt.call("o/1") purchase(Order{id: "a", amount: 1})
+  const second = rt.call("o/1") purchase(Order{id: "b", amount: 2})
+  match (await first, await second):
+    case (Ok(one), Ok(two)): one * 10 + two
+    case _: -1

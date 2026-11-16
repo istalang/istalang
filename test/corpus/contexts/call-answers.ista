@@ -1,0 +1,23 @@
+# outcome: 42
+# A live run calls ista code in a context of a runtime it opens (§9), and the call answers with
+# `Ok` of what that code gave.
+
+import * as runtime from 'runtime'
+import * as time from 'time'
+
+struct Order:
+  id: String
+  amount: Int
+
+ista async fn purchase(order: Order) -> Int:
+  await time.delay(1s)
+  await runtime.commit()
+  order.amount * 2
+
+ista async fn refund(order: Order) -> Int: panic("no refunds for " + order.id)
+
+live async fn main() -> Int:
+  const rt = await runtime.Runtime.open(runtime.hostStore())
+  match await rt.call("o/1") purchase(Order{id: "o/1", amount: 21}):
+    case Ok(value): value
+    case Err(error): error.message.length()

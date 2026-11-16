@@ -51,6 +51,32 @@
       }
     ]
   },
+  "extern-constant-type": {
+    "steps": [
+      {
+        "panicked": "The host gave what doesn't fit: extern-constant-type.limit: expected an integer, found a string",
+        "frame": "at extern-constant-type.limit (extern-constant-type.ista:5:8)",
+        "hostCalls": ["extern-constant-type.limit []"]
+      }
+    ]
+  },
+  "host-codecs": {
+    "steps": [
+      {
+        "finished": "\"hello ada | [[{\\\"id\\\":\\\"a\\\"},{\\\"id\\\":\\\"b\\\"}],{\\\"id\\\":\\\"c\\\"}]\"",
+        "hostCalls": [
+          "codec-queue.send(T) [\"point 1\"]",
+          "host-codecs.greet(host-codecs.Name) [\"ada\"]",
+          "host-codecs.openAll() []",
+          "host-codecs.find() []",
+          "host-codecs.describeAll(prelude.Array<host-codecs.Lease>, prelude.Optional<host-codecs.Lease>) [[{\"id\":\"a\"},{\"id\":\"b\"}],{\"id\":\"c\"}]",
+          "host-codecs.release(host-codecs.Lease) [{\"id\":\"c\"}]",
+          "host-codecs.release(host-codecs.Lease) [{\"id\":\"b\"}]",
+          "host-codecs.release(host-codecs.Lease) [{\"id\":\"a\"}]"
+        ]
+      }
+    ]
+  },
   "host-future": {
     "steps": [
       {
