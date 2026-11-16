@@ -46,6 +46,8 @@ export class BodyScopes implements Scopes {
   readonly #settling: ScopeSettling;
   readonly #seams: ScopeSeams;
   #current: ConstraintScope | undefined;
+  /** The scopes still open but made not current around the current one, innermost last. */
+  readonly #around: ConstraintScope[] = [];
 
   readonly decidesItems: (expected: Type) => boolean;
 
@@ -174,12 +176,17 @@ export class BodyScopes implements Scopes {
   }
 
   /**
-   * Notes a record written as `type`, which `write` writes again with it solved once the current
-   * scope settles, when the scope holds it.
+   * Notes a record written as `type`, which `write` writes again with it solved once the innermost
+   * open scope holding it settles: the current one, or one around it, as a lambda's body checked
+   * with none current records what its parameters hold of the scope it was judged in.
    */
   recorded(type: Type, write: (solved: Type) => void): void {
-    if (this.#current?.holds(type) === true) {
-      this.whenSolved((solved) => write(solved(type)));
+    const holding = [this.#current, ...this.#around.toReversed()].find(
+      (scope) => scope?.holds(type) === true,
+    );
+    if (holding !== undefined) {
+      const here = this.#seams.here();
+      holding.whenSolved((solved) => here(() => write(solved(type))));
     }
   }
 
@@ -203,26 +210,38 @@ export class BodyScopes implements Scopes {
 
   /** Runs `check` with `scope` current, the outer one current again after. */
   #within<Result>(scope: ConstraintScope | undefined, check: () => Result): Result {
-    const outer = this.#current;
-    this.#current = scope;
-    try {
-      return check();
-    } finally {
-      this.#current = outer;
-    }
+    return this.#inside(scope, check, () => undefined);
   }
 
   /** Runs `check` in `scope`, settling it once done, on every path; the outer one current again. */
   #opening<Result>(scope: ConstraintScope, check: () => Result): Result {
+    return this.#inside(scope, check, () => scope.settle(this.#settling));
+  }
+
+  /**
+   * Runs `check` with `scope` current, the outer one around it, then `after` on every path; the
+   * outer one current again.
+   */
+  #inside<Result>(
+    scope: ConstraintScope | undefined,
+    check: () => Result,
+    after: () => void,
+  ): Result {
     const outer = this.#current;
+    if (outer !== undefined) {
+      this.#around.push(outer);
+    }
     this.#current = scope;
     try {
       return check();
     } finally {
       try {
-        scope.settle(this.#settling);
+        after();
       } finally {
         this.#current = outer;
+        if (outer !== undefined) {
+          this.#around.pop();
+        }
       }
     }
   }
