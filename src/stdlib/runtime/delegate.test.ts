@@ -159,7 +159,8 @@ describe('delegate', () => {
 
   it('lowers the loop serving jobs only with a program that delegates', () => {
     const served = (text: string) => {
-      const { jobServer, functions } = definitionFormat.read(text);
+      const { purpose, functions } = definitionFormat.read(text);
+      const jobServer = purpose.kind === 'program' ? purpose.jobServer : undefined;
       const named = jobServer === undefined ? undefined : functions[jobServer]?.name;
       return [named, functions.some((entry) => entry.name.startsWith('runtime._nextWork'))];
     };

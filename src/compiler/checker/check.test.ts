@@ -15,7 +15,7 @@ import { describe, expect, it } from 'vitest';
 import { brokenText } from '../../../test/broken.ts';
 import { runPrograms } from '../../../test/corpus/programs.ts';
 import { type SpecExample, specExamples } from '../../../test/corpus/spec-examples.ts';
-import { subsetSource } from '../../../test/definitions/subset.ts';
+import { subsetSource } from '../../../test/subset.ts';
 import {
   reportedIn,
   reportedNothing,

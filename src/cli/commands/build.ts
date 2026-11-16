@@ -1,18 +1,20 @@
 /**
  * `ista build <entry> --out <file>`: compile the program rooted at `entry` to one JavaScript ES
- * module (docs/work/js-codegen/design.md), which imports the runtime library as `istalang/live` and
- * default-exports the program a host starts. Its live and simple code runs in a browser or Node;
- * ista code stays on the interpreter, so a program reaching any is refused, naming it.
+ * module, which imports the runtime library as `istalang/live` and default-exports the program a
+ * host starts (live/program.ts): its Definition's text and the code compiled from it, so starting
+ * it compiles nothing. It runs in a browser or Node, its ista code too, the contexts it calls kept
+ * in memory for the run.
  *
  * Nothing is written unless the whole program checks clean. Diagnostics, warnings included, go to
  * the error stream as `check` renders them.
- * Exit codes: 0 when the module is written; 1 when the program has errors, declares no `main`, or
- * reaches ista code; 2 when the entry can't be read or the module can't be written.
+ * Exit codes: 0 when the module is written; 1 when the program has errors or declares no `main`;
+ * 2 when the entry can't be read or the module can't be written.
  */
 
 import { writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { emitProgram } from '../../codegen/emit.ts';
+import { type EmittedProgram, emitProgram } from '../../codegen/emit.ts';
+import { definitionFormat } from '../../definition/definition.ts';
 import {
   type CliEnvironment,
   type CommandDefinition,
@@ -41,17 +43,20 @@ function build(entry: string, options: BuildOptions, environment: CliEnvironment
   if ('exit' in compiled) {
     return compiled.exit;
   }
-  const emitted = emitProgram(compiled.definition, { runtime: 'istalang/live' });
-  if (emitted.kind === 'refused') {
-    environment.writeError(`ista: ${emitted.problem}.\n`);
-    return exitCodes.problems;
-  }
+  const { definition } = compiled;
+  const text = builtModule(definitionFormat.write(definition).text, emitProgram(definition));
   const out = resolve(environment.cwd, options.out);
   try {
-    writeFileSync(out, emitted.text);
+    writeFileSync(out, text);
   } catch (error) {
     environment.writeError(`ista: can't write ${out}: ${String(error)}\n`);
     return exitCodes.couldNotRun;
   }
   return exitCodes.clean;
+}
+
+/** The module of a built program: the runtime library's `program` over its Definition and code. */
+function builtModule(definition: string, code: EmittedProgram): string {
+  const made = `program(${JSON.stringify(definition)}, ${JSON.stringify(code)})`;
+  return `import { program } from "istalang/live";\n\nexport default ${made};\n`;
 }

@@ -10,9 +10,7 @@ import { checkerDiagnostics } from '../../src/compiler/checker/diagnostics/index
 import { compiledText } from '../../src/compiler/compile.test-kit.ts';
 import { parserDiagnostics } from '../../src/compiler/parser/diagnostics.ts';
 import { startToEnd, testRuntime } from '../../src/runtime/runtime.test-kit.ts';
-import { checkSnapshot } from '../../src/runtime/snapshot/check/index.ts';
-import { snapshotFormat } from '../../src/runtime/snapshot/snapshot.ts';
-import { codesOf, definitionOf, runMain } from '../written-types.test-kit.ts';
+import { codesOf, runMain } from '../written-types.test-kit.ts';
 
 describe('contextual variance words `gives` and `takes` (§2, §3.5)', () => {
   it('allows `gives` and `takes` as ordinary identifiers outside type parameter prefixes', async () => {
@@ -212,12 +210,11 @@ describe('conversions composing inside types (§2, §3.1, §3.5, §3.14, §3.15)
       "import * as runtime from 'runtime'\nlive async fn main() -> String: await runtime.run(runtime.id()) _main()\nista async fn _main() -> String:",
       `  ${body}`,
     ].join('\n');
-    const definition = definitionOf(source);
     const env = testRuntime();
     const ended = await startToEnd(env, compiledText(source));
     expect(env.store.commits.length).toBeGreaterThan(0);
-    for (const saved of env.store.commits) {
-      expect(() => checkSnapshot(definition, snapshotFormat.read(saved))).not.toThrow();
+    for (const instance of env.store.instances()) {
+      expect(() => env.runtime.inspect(instance)).not.toThrow();
     }
     expect(ended).toEqual({ kind: 'finished', outcome: '"[10,20,30]:60"' });
   });

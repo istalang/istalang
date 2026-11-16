@@ -1,7 +1,7 @@
 /**
  * The std's extern functions as the runtime binds them: each under the key lowering gives its
- * declaration, so a test reads what the checker knows of one by the key a Definition's entry names,
- * such as what its parameters keep (docs/work/static-lifetimes/design.md §6.6).
+ * declaration, so a test reads what the checker knows of one by the key a Definition's entry
+ * names.
  */
 
 import type { Checker } from '../compiler/checker/check.ts';
@@ -10,7 +10,6 @@ import {
   declaredFunctions,
   type FunctionDeclaration,
 } from '../compiler/syntax/declarations/index.ts';
-import type { NativeKeeps } from '../runtime/lifetimes/native-audit.test-kit.ts';
 import { everyStdModule } from './std-modules.test-kit.ts';
 
 /** A std extern function: its key, its module's name, and its declaration. */
@@ -42,9 +41,4 @@ export function stdExterns(): StdExterns {
     ),
   );
   return { checker, externs };
-}
-
-/** What each std extern's parameters keep, by its key. */
-export function stdNativeKeeps({ checker, externs }: StdExterns = stdExterns()): NativeKeeps {
-  return new Map(externs.map(({ key, declaration }) => [key, checker.keepsOf(declaration)]));
 }

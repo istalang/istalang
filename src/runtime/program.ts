@@ -3,14 +3,15 @@
  * binding of natives, the host's externs, a clock and a seed serves `ista run`, `ista test`, `ista
  * build`'s output and an embedding host alike.
  *
- * - A program is compiled once per Definition (codegen), and each start is a run of its own.
+ * - A program is compiled once per Definition (codegen), and each start is a run of its own; a
+ *   built program brings its code, compiled when it was built (live/program.ts).
  * - A start runs the start entry its key names, `main`'s with none (boundary/starts.ts), with the
  *   host's JSON arguments, and drives the run until the outcome settles: what is ready first, then
  *   what arrives from a host, then the clock to the next timer, while anything is left to wait for.
  *   The outcome is the JSON its start encoded; a panic ends the run with its message and trace.
  */
 
-import { emitProgram, type EmittedProgram } from '../codegen/emit.ts';
+import { type EmittedProgram, emitProgram } from '../codegen/emit.ts';
 import type { Definition } from '../definition/definition.ts';
 import { jsonText, jsonTypeOf, plainOfJson } from '../definition/values/json-values.ts';
 import type { Value } from '../definition/values/values.ts';
@@ -51,16 +52,20 @@ export interface Start {
 
 const emitted = new WeakMap<Definition, EmittedProgram>();
 
-/** Starts `definition`'s live code as `start` says, bound by `binding`; how it ended. */
+/**
+ * Starts `definition`'s live code as `start` says, bound by `binding`, running `code`, the code
+ * compiled from it; how it ended.
+ */
 export async function startLive(
   definition: Definition,
   binding: HostBinding,
   start: Start = {},
+  code: EmittedProgram = memo(emitted, definition, () => emitProgram(definition)),
 ): Promise<LiveRun> {
   const passed = start.arguments ?? [];
   const started = startOf(definition, start.key, passed.length);
   const logs: LogRecord[] = [];
-  const world = new MemoryWorld(definition, memo(emitted, definition, () => emitProgram(definition)), {
+  const world = new MemoryWorld(definition, code, {
     natives: withHost(binding.natives, binding.externs ?? {}),
     clock: binding.clock,
     seed: binding.seed,
@@ -87,7 +92,11 @@ export async function startLive(
 }
 
 /** The outcome `given` gives: at once from simple code, else once its future settles, if it does. */
-async function settled(world: MemoryWorld, clock: Clock, given: unknown): Promise<Value | undefined> {
+async function settled(
+  world: MemoryWorld,
+  clock: Clock,
+  given: unknown,
+): Promise<Value | undefined> {
   if (!(given instanceof Future)) {
     return given as Value;
   }
@@ -100,7 +109,9 @@ async function settled(world: MemoryWorld, clock: Clock, given: unknown): Promis
     const timer = world.nextTimer();
     if (world.awaitsHost) {
       // biome-ignore lint/performance/noAwaitInLoops: each turn waits on what the last one left.
-      await (timer === undefined ? world.arrival() : Promise.race([world.arrival(), clock.until(timer)]));
+      await (timer === undefined
+        ? world.arrival()
+        : Promise.race([world.arrival(), clock.until(timer)]));
     } else if (timer === undefined) {
       return undefined;
     } else {
