@@ -392,6 +392,9 @@ export class Run {
    * anew as its call is disposed (`disposingWins`), it resumes where it was readied first.
    */
   unpark(execution: Execution, decision: Value): void {
+    if (this.#disposingNow === execution) {
+      execution.decidedDisposing = decision;
+    }
     const at = this.#ready.findIndex(
       (ready) => ready.kind === 'resume' && ready.execution === execution,
     );
@@ -689,9 +692,11 @@ export class Run {
           this.#disposingNow = outer;
         }
       }
+      // It resumes on its `disposing()` case, if it waits on one; else it stops where it waits,
+      // whatever else decided its wait (§7).
       if (execution.parked) {
-        const ready = this.#unready(execution);
-        this.#resume(execution, ready?.kind === 'resume' ? ready.decision : STOP);
+        this.#unready(execution);
+        this.#resume(execution, execution.decidedDisposing ?? STOP);
       }
     });
   }

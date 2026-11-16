@@ -115,6 +115,8 @@ export class Execution extends RunObject {
   disposing: Future | undefined;
   /** What it was called with, its closure among them, which it holds until it ends. */
   given: readonly Value[] = [];
+  /** The position its wait was decided for as its call is disposed: its `disposing()` case's. */
+  decidedDisposing: Value | undefined;
 
   constructor(id: number, futureId: number, instance: Instance) {
     super(id);
