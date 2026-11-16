@@ -38,7 +38,7 @@ import type { TypedValue } from '../values/holdings.ts';
 import { exitWriters } from './exits.ts';
 import { type FlowLayout, layoutOf, type PassVisit } from './layout.ts';
 import { operationWriters } from './operations.ts';
-import { cellRegister, holdsType } from './variables.ts';
+import { cellHolds, cellRegister, holdsType } from './variables.ts';
 
 /** How a flow's root gives its value: by returning from the entry, or into a register. */
 type FlowEnd = { readonly kind: 'return' } | { readonly kind: 'into'; readonly into: Register };
@@ -84,8 +84,6 @@ export class FlowWriter {
   #wait: OpenWait | undefined;
   #block: BlockId = 0;
   #next: BlockId | undefined;
-  /** How many passes of field loops the block being written is in (§4). */
-  #passes = 0;
   readonly #after: Label;
 
   constructor(context: FunctionContext, flow: FlowFunction, end: FlowEnd) {
@@ -111,9 +109,7 @@ export class FlowWriter {
       this.#block = block;
       this.#next = order[position + 1];
       this.context.code.place(this.labelOf(block));
-      const passes = this.#layout.passesOf(block);
-      this.#passes = passes.length;
-      this.context.inFieldPasses(passes, () =>
+      this.context.inFieldPasses(this.#layout.passesOf(block), () =>
         this.#writeBlock(this.flow.blocks[block] as FlowBlock),
       );
     }
@@ -151,8 +147,19 @@ export class FlowWriter {
     return this.flow.values[value] ?? unreachable(`No value ${value} in the flow.`);
   }
 
+  /**
+   * `value`'s type as the pass being written reads it: a variable's as its body declares it there,
+   * as one variable holds each pass's field in a field loop (§4) where the flow types it as one
+   * pass reads it.
+   */
   typeOf(value: ValueId): Type {
-    return this.valueOf(value).type ?? unreachable(`Value ${value} was never checked.`);
+    return this.#typeIn(this.valueOf(value)) ?? unreachable(`Value ${value} was never checked.`);
+  }
+
+  #typeIn(value: FlowValue): Type | undefined {
+    return value.kind === 'variable'
+      ? (this.context.body.declaredTypeOf(value.entity.name) ?? value.type)
+      : value.type;
   }
 
   /** `value`'s register, and its type. */
@@ -175,26 +182,23 @@ export class FlowWriter {
   bind(value: ValueId, register: Register): void {
     this.#registers.set(value, register);
     this.#held.add(register);
-    const bound = this.valueOf(value);
-    if (bound.type !== undefined && this.#typesItsRegister(bound, register)) {
-      holdsType(this.context, register, bound.type);
+    const type = this.#typeIn(this.valueOf(value));
+    if (type !== undefined) {
+      this.#holds(register, type);
     }
   }
 
   /**
-   * Whether `value`'s type says what `register` holds: not a cell's (`cellRegister` says it), nor,
-   * in a field loop's pass, a variable's register, even one a read of it copies into. One register
-   * holds each pass's value there, but the flow types a variable as one pass reads it (§4): what is
-   * written says instead (functions/plain-registers.ts).
+   * Notes that `register` holds values of `type` in the pass being written: a cell register, a cell
+   * holding them (`cellHolds`).
    */
-  #typesItsRegister(value: FlowValue, register: Register): boolean {
-    if (value.kind === 'variable' && value.inCell) {
-      return false;
+  #holds(register: Register, type: Type): void {
+    const { context } = this;
+    if (context.variables.isCell(register)) {
+      cellHolds(context, register, type);
+    } else {
+      holdsType(context, register, type);
     }
-    return (
-      this.#passes === 0 ||
-      (value.kind !== 'variable' && !this.context.variables.isVariable(register))
-    );
   }
 
   /** `value` given `produced`: its own register, or moved into the one it has. */
@@ -219,14 +223,11 @@ export class FlowWriter {
     const { variables } = this.context;
     const { name } = value.entity;
     if (!variables.has(name)) {
-      const type = value.type ?? unreachable(`'${name.text}' was never checked.`);
+      const type = this.#typeIn(value) ?? unreachable(`'${name.text}' was never checked.`);
       const register = value.inCell
         ? cellRegister(this.context, type)
         : this.context.code.allocate();
-      if (value.inCell && this.#passes > 0) {
-        // Its cell, made as the first pass's type says, may hold another pass's disposable.
-        this.context.code.holdsCounted(register);
-      } else if (this.#typesItsRegister(value, register)) {
+      if (!value.inCell) {
         holdsType(this.context, register, type);
       }
       variables.declare(name, register);

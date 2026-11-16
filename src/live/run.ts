@@ -199,23 +199,18 @@ export class Run {
     return future;
   }
 
-  /** A new cell of entry `type` holding `value`, counted as its type entry says, or `counted`. */
-  cell(
-    type: number,
-    value: Value,
-    counted = countsHoldersOf(this.seams.program.types, type),
-  ): Cell {
+  /** A new cell of entry `type` holding `value`, counted as its type entry says. */
+  cell(type: number, value: Value): Cell {
     const { lifetimes } = this;
-    return counted ? lifetimes.madeCell(new Cell(type, value, lifetimes)) : new Cell(type, value);
+    return countsHoldersOf(this.seams.program.types, type)
+      ? lifetimes.madeCell(new Cell(type, value, lifetimes))
+      : new Cell(type, value);
   }
 
-  /**
-   * A cell register holding `cell`, a cell of entry `type`, writes `value`: the cell, made by its
-   * first write, counted as lowering counts the register (`counted`).
-   */
-  cellWrite(cell: Cell | undefined, type: number, value: Value, counted: boolean): Cell {
+  /** A register holding `cell`, a cell of entry `type`, writes `value`: the cell, made by its first. */
+  cellWrite(cell: Cell | undefined, type: number, value: Value): Cell {
     if (cell === undefined) {
-      return this.lifetimes.swap(undefined, this.cell(type, value, counted));
+      return this.lifetimes.swap(undefined, this.cell(type, value));
     }
     cell.v = value;
     return cell;

@@ -53,6 +53,17 @@ export class VariableRegisters {
     this.#cells.push(cell);
   }
 
+  /** Whether `register` holds a cell. */
+  isCell(register: Register): boolean {
+    return this.#cells.some((cell) => cell.register === register);
+  }
+
+  /** The cell register `register` is made as the cell entry `type`, in place of the one it had. */
+  remakeCell(register: Register, type: TypeId): void {
+    const at = this.#cells.findIndex((cell) => cell.register === register);
+    this.#cells.splice(at, 1, { register, type });
+  }
+
   get cells(): readonly CellRegister[] {
     return this.#cells;
   }
@@ -65,6 +76,18 @@ export function cellRegister(context: FunctionContext, type: Type): Register {
   context.variables.addCell({ register, type: context.tables.types.index(cellType) });
   holdsType(context, register, cellType);
   return register;
+}
+
+/**
+ * Notes that the cell register `register` holds a value of `type`, as another pass of a field loop
+ * may (§4): when that reaches a disposable, its cell is made as `type`'s, which both runtimes count.
+ */
+export function cellHolds(context: FunctionContext, register: Register, type: Type): void {
+  const cellType = context.checker.cellOf(concreteType(context, type));
+  holdsType(context, register, cellType);
+  if (context.checker.reachesDisposable(cellType)) {
+    context.variables.remakeCell(register, context.tables.types.index(cellType));
+  }
 }
 
 /**
