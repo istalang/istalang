@@ -13,8 +13,7 @@
  */
 
 import type { ExternFunction } from '../../definition/tables/functions.ts';
-import { outcomeEncoderOf, type TypeDefinition } from '../../definition/tables/types.ts';
-import { errorOf, okOf } from '../../definition/values/declared-values.ts';
+import { outcomeEncoderOf } from '../../definition/tables/types.ts';
 import { deleteEntryInPlace, setEntryInPlace } from '../../definition/values/equality.ts';
 import type { CompositeValue, Value } from '../../definition/values/values.ts';
 import type { Clock } from '../clock.ts';
@@ -26,7 +25,7 @@ import {
   requireNatives,
   type ValueChanges,
 } from '../natives.ts';
-import { type Instance, instanceEnding } from './instances.ts';
+import type { Instance } from './instances.ts';
 import {
   Execution,
   Future,

@@ -495,7 +495,7 @@ export class DurableWorld implements World {
   /** A fresh run of the instance `name`, its clock reading its segment's start, its logs kept. */
   #runOf(name: string, resident: Resident): Run {
     const { program } = resident;
-    return new Run(program.definition, program.emitted, {
+    const run = new Run(program.definition, program.emitted, {
       natives: this.seams.natives,
       clock: { now: () => resident.startedAt, until: this.seams.clock.until },
       seed: resident.seed,
@@ -504,6 +504,9 @@ export class DurableWorld implements World {
       world: this,
       version: program.hash,
     });
+    // What arrives is an input of the segment taking it, which a segment run again applies again.
+    run.onArrivalTaken = (input) => resident.inputs.push(input);
+    return run;
   }
 
   #residentOfRun(run: Run): Resident | undefined {

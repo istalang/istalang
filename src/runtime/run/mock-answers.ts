@@ -74,12 +74,12 @@ function followed(
     }
   };
   // Settles the caller's future in whichever run of its instance the answer lands in.
-  const settleIn = (run: Run, followed: Future, sent: Value) => {
+  const settleIn = (run: Run, target: Future, sent: Value) => {
     const owned = arrived(run, sent, within);
     if (type !== undefined) {
       run.lifetimes.adopt(owned, type);
     }
-    run.settle(followed, owned);
+    run.settle(target, owned);
   };
   const settle = (value: Value) => {
     const sent = crossing(value, within, hostJson);
@@ -87,7 +87,7 @@ function followed(
     if (within) {
       settleIn(caller, future, sent);
     } else {
-      caller.arrive(future, (run, followed) => settleIn(run, followed, sent));
+      caller.arrive(future, (run, target) => settleIn(run, target, sent));
     }
   };
   // A replacement that never waited gives a future settled already.
