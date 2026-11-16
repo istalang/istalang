@@ -85,7 +85,7 @@ export const operationWriters: {
       span,
     );
     futures.forEach((future, position) => {
-      writer.waits.give(future, code.copy(caseValue(writer.context, open, position, span), span));
+      writer.waits.give(future, caseValue(writer.context, open, position, span));
     });
     code.letGo(waitRegisters(open), span);
   },

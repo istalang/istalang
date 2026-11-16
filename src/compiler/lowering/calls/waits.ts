@@ -132,7 +132,10 @@ export function decidedAt(context: CodeContext, open: OpenWait, span: AnchoredSp
   );
 }
 
-/** Takes the value case `position` of `open` was resolved with, once the wait was decided for it. */
+/**
+ * Takes the value case `position` of `open` was resolved with, once the wait was decided for it, into
+ * a register of its own, letting go of the optional that held it.
+ */
 export function caseValue(
   context: CodeContext,
   open: OpenWait,
@@ -149,7 +152,14 @@ export function caseValue(
   };
   code.emit({ kind: 'load', span, dst: held, place });
   code.emit({ kind: 'store', span, place, value: noneOf(context, optional, span) });
-  return insideOptional(context, { register: held, type: optional, to: decided.type }, span);
+  const inside = insideOptional(
+    context,
+    { register: held, type: optional, to: decided.type },
+    span,
+  );
+  const value = code.copy(inside, span);
+  code.letGo([held], span);
+  return value;
 }
 
 /** What `open` holds once decided: its wait and its cases' shared values, to be let go of. */
@@ -183,7 +193,7 @@ export function awaitFuture(
   const result = emitCall(context, { span, callee, arguments: [future, done] }, unit);
   code.letGo([done, result], span);
   code.letGo([parked(context, open, { waypoint: undefined, span })], span);
-  const value = code.copy(caseValue(context, open, 0, span), span);
+  const value = caseValue(context, open, 0, span);
   code.letGo(waitRegisters(open), span);
   return value;
 }

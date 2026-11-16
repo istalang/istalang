@@ -214,7 +214,7 @@ function selected(
     code.place(landing);
     const future = futures[index];
     if (future !== undefined) {
-      writer.waits.give(future, code.copy(caseValue(context, open, index, span), span));
+      writer.waits.give(future, caseValue(context, open, index, span));
     }
     const losers = holds.flatMap((held, other) => (other === index ? [] : held));
     code.letGo([position, ...waitRegisters(open), ...writer.registersEnding(losers)], span);
