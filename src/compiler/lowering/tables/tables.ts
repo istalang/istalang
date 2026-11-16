@@ -79,7 +79,7 @@ export type PendingEntry =
       readonly declaration: ExternConstantDeclaration;
       readonly type: Type;
     }
-  | { readonly kind: 'start'; readonly target: StartTarget }
+  | { readonly kind: 'start' | 'startEncode'; readonly target: StartTarget }
   | { readonly kind: 'contextConstant'; readonly declaration: ContextConstantDeclaration }
   | { readonly kind: 'asyncFit'; readonly fit: AsyncFit }
   | ConversionEntry;
@@ -333,12 +333,11 @@ export class DefinitionTables {
 
   /** The index of the entry a host starts `target` through, listed under `key` (§9). */
   startIndex(target: StartTarget, key: string): FunctionId {
-    const index = this.#entryIndex(`start:${this.#checker.typeKeys.identityOf(target)}`, {
-      kind: 'start',
-      target,
-    });
+    const identity = this.#checker.typeKeys.identityOf(target);
+    const index = this.#entryIndex(`start:${identity}`, { kind: 'start', target });
+    const encode = this.#entryIndex(`startEncode:${identity}`, { kind: 'startEncode', target });
     if (!this.#starts.some((start) => start.function === index)) {
-      this.#starts.push({ key, function: index });
+      this.#starts.push({ key, function: index, encode });
     }
     return index;
   }

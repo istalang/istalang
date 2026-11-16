@@ -38,7 +38,13 @@ import {
   hostConstantEntry,
   hostNativeEntry,
 } from './synthesized/boundary/host-externs.ts';
-import { listStart, startableOf, startables, startEntry } from './synthesized/boundary/starts.ts';
+import {
+  listStart,
+  startableOf,
+  startables,
+  startEncodeEntry,
+  startEntry,
+} from './synthesized/boundary/starts.ts';
 import { anyConversionEntry, anyFieldEntry, dispatchEntry } from './synthesized/trait-objects.ts';
 import { keyOf } from './tables/extern-keys.ts';
 import { rootInstance } from './tables/instances.ts';
@@ -152,12 +158,15 @@ function pendingEntry(
         pending.declaration,
         qualifiedNameOf(checker, pending.declaration),
       );
-    case 'start': {
+    case 'start':
+    case 'startEncode': {
       const startable = startableOf(checker, pending.target);
       if (startable === undefined) {
         unreachable('A start entry was made for what no host can start.');
       }
-      return startEntry(lowering, startable);
+      return pending.kind === 'start'
+        ? startEntry(lowering, startable)
+        : startEncodeEntry(lowering, startable);
     }
     case 'dispatch':
       return dispatchEntry(lowering, pending.dispatch);

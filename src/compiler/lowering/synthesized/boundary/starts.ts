@@ -11,8 +11,10 @@
  *   Anything else simply isn't startable.
  * - A start entry wraps the function (ir-first design, decision 7): it takes each argument as
  *   `Json` and decodes it, so JSON that doesn't fit fails the host's start before the function
- *   runs; it calls the function, awaits what an async one gives, and gives the outcome encoded as
- *   `Json`, letting go of it then. The runtime runs a start as any call.
+ *   runs, and calls the function, giving what it gives: an async one's future, unawaited. Its
+ *   encoding entry writes the outcome as `Json`, which the runtime calls the moment the outcome
+ *   settles: a run ends when its root call returns, with no wait between that a callback readied
+ *   meanwhile could run in (§10).
  */
 
 import type { Register } from '../../../../definition/operands.ts';
@@ -159,10 +161,12 @@ export function startEntry(
   const { target, parameters, key, outcome, awaits } = startable;
   const json = jsonOf(checker);
   const header = tables.declarationHeader(target);
+  const future = checker.wellKnownType(wellKnown.future, [outcome, literalType('live')]);
+  const given = awaits ? (future ?? unreachable('The prelude has futures.')) : outcome;
   const code = new SynthesizedCode(lowering, startSpanOf(target), {
     parameters: parameters.map(() => tables.types.reference(json)),
-    result: tables.types.reference(json),
-    mode: awaits ? 'live' : 'simple',
+    result: tables.types.reference(given),
+    mode: 'simple',
   });
   const values = parameters.map((type, index) => {
     const inbound = inboundOf(checker, undefined, type, {
@@ -172,12 +176,26 @@ export function startEntry(
     const given = code.parameters[index] ?? unreachable(`No argument ${index} of a start.`);
     return emitInbound(code, given, inbound, code.span);
   });
-  const future = checker.wellKnownType(wellKnown.future, [outcome, literalType('live')]);
-  const given = awaits ? (future ?? unreachable('The prelude has futures.')) : outcome;
-  const called = calledTarget(code, target, { values, given });
-  const value = awaits ? code.await(called, given) : called;
-  code.return(code.call(codecCall(checker, undefined, outcome, 'write'), [value], json));
+  code.return(calledTarget(code, target, { values, given }));
   return code.entry(header);
+}
+
+/** The entry encoding `startable`'s outcome as `Json` (the banner). */
+export function startEncodeEntry(
+  lowering: { readonly checker: Checker; readonly tables: DefinitionTables },
+  startable: Startable,
+): CodeFunction {
+  const { checker, tables } = lowering;
+  const { target, outcome } = startable;
+  const json = jsonOf(checker);
+  const code = new SynthesizedCode(lowering, startSpanOf(target), {
+    parameters: [tables.types.reference(outcome)],
+    result: tables.types.reference(json),
+    mode: 'simple',
+  });
+  const value = code.parameters[0] ?? unreachable('An encoding takes its outcome.');
+  code.return(code.call(codecCall(checker, undefined, outcome, 'write'), [value], json));
+  return code.entry(tables.declarationHeader(target));
 }
 
 /** Calls `target` with `values`, giving a value of `given`: a function, or a constant's lambda. */

@@ -570,7 +570,11 @@ export class Run {
 
   /** Runs the ready queue until it is empty, or until `done` says the run is done. */
   drain(done: () => boolean = () => false): void {
-    for (let next = this.#ready.shift(); next !== undefined; next = this.#ready.shift()) {
+    while (!done()) {
+      const next = this.#ready.shift();
+      if (next === undefined) {
+        return;
+      }
       if (next.kind === 'resume') {
         this.#resume(next.execution, next.decision);
       } else if (next.kind === 'invoke') {
@@ -578,9 +582,6 @@ export class Run {
       } else {
         const result = this.callValue(next.closure, next.arguments);
         this.lifetimes.letGo(result as Value, next.closure, ...next.arguments);
-      }
-      if (done()) {
-        return;
       }
     }
   }

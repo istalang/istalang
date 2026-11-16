@@ -26,7 +26,12 @@ const sourceModule = z.strictObject({
   lineStarts: z.array(offset).min(1),
 });
 
-const start = z.strictObject({ key: z.string(), function: functionId });
+/**
+ * A function a host may start: the entry calling it with its arguments decoded from `Json`, which
+ * gives what it gives, an async one's future unawaited; and the entry encoding its outcome as
+ * `Json`, which a runtime calls as the outcome settles, with no wait between.
+ */
+const start = z.strictObject({ key: z.string(), function: functionId, encode: functionId });
 
 const program = z.strictObject({
   kind: z.literal('program'),

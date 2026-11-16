@@ -21,9 +21,9 @@
   "run-end-disposal.ista": {
     "logs": [
       "info returning {}",
-      "info disposed callback's {}",
       "info disposed held sleeper's {}",
-      "info disposed sleeper's {}"
+      "info disposed sleeper's {}",
+      "info disposed callback's {}"
     ]
   }
 }

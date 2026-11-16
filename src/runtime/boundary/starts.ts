@@ -10,7 +10,6 @@
  *   can't hold is refused.
  */
 
-import type { FunctionId } from '../../definition/operands.ts';
 import type { Tables } from '../../definition/tables/index.ts';
 import { JsonError, jsonOfPlain, jsonTypeOf } from '../../definition/values/json-values.ts';
 import type { Value } from '../../definition/values/values.ts';
@@ -18,20 +17,22 @@ import { Refusal } from '../refusal.ts';
 
 type Startable = Pick<Tables, 'functions' | 'starts' | 'purpose'>;
 
-/** The start entry of the function `key` names, or `main`'s; refused when `count` doesn't fit. */
-export function startOf(program: Startable, key: string | undefined, count: number): FunctionId {
+type Start = Tables['starts'][number];
+
+/** The start of the function `key` names, or `main`'s; refused when `count` doesn't fit. */
+export function startOf(program: Startable, key: string | undefined, count: number): Start {
   const named = key ?? (program.purpose.kind === 'program' ? program.purpose.main : undefined);
-  const entry = program.starts.find((start) => start.key === named)?.function;
-  const code = entry === undefined ? undefined : program.functions[entry];
+  const start = program.starts.find((each) => each.key === named);
+  const code = start === undefined ? undefined : program.functions[start.function];
   const what = key === undefined ? "'main'" : `'${key}'`;
-  if (entry === undefined || code === undefined) {
+  if (start === undefined || code === undefined) {
     throw new Refusal('notStartable', `The program has no ${what} a host can start.`);
   }
   const takes = code.parameters.length;
   if (takes !== count) {
     throw new Refusal('notStartable', `${what} takes ${takes} arguments, not ${count}.`);
   }
-  return entry;
+  return start;
 }
 
 /** A host's JSON as a `Json` value; refused when it holds what JSON can't. */

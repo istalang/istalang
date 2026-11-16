@@ -40,6 +40,7 @@ export function issuesOf(definition: Tables): readonly string[] {
   });
   for (const start of definition.starts) {
     within('function', start.function, functions.length, `start ${start.key}`);
+    within('function', start.encode, functions.length, `start ${start.key}'s encoding`);
   }
   functions.forEach((entry, index) => {
     if (entry.kind === 'code') {

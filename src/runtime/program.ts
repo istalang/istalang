@@ -58,7 +58,7 @@ export async function startLive(
   start: Start = {},
 ): Promise<LiveRun> {
   const passed = start.arguments ?? [];
-  const entry = startOf(definition, start.key, passed.length);
+  const started = startOf(definition, start.key, passed.length);
   const logs: LogRecord[] = [];
   const run = new Run(
     definition,
@@ -73,14 +73,14 @@ export async function startLive(
   );
   try {
     const given = run.call(
-      entry,
+      started.function,
       passed.map((each) => jsonIn(definition, each)),
     );
     const outcome = await settled(run, binding.clock, given);
     if (outcome === undefined) {
       return { end: { kind: 'unsettled' }, logs };
     }
-    const end = finished(definition, outcome);
+    const end = finished(definition, run.call(started.encode, [outcome]) as Value);
     run.finish([given as Value]);
     return { end, logs };
   } catch (error) {
