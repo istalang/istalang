@@ -12,7 +12,7 @@ import { decodeJson } from '../../../definition/formats/codec.ts';
 import { compareOrdered } from '../../../foundation/language/order.ts';
 import { startToEnd, testRuntime } from '../../../runtime/runtime.test-kit.ts';
 import { stdProgramOf } from '../../binder/bind.test-kit.ts';
-import { compiledDefinition, compiledText } from '../../compile.test-kit.ts';
+import { compiledDefinition, compiledText, wholeProgramTimeout } from '../../compile.test-kit.ts';
 
 /**
  * camelCase names whose UTF-16 order differs from any other: `aB` before `aa`, `z10` before `z9`.
@@ -113,7 +113,9 @@ describe('struct layout', () => {
     expect(state.kind === 'finished' && decodeJson(String(state.outcome))).toEqual([1, 3, 5]);
   });
 
-  it('gives every field its value, defaults evaluated in declaration order', async () => {
+  it('gives every field its value, defaults evaluated in declaration order', {
+    timeout: wholeProgramTimeout,
+  }, async () => {
     await fc.assert(
       fc.asyncProperty(declaredFields, async (fields) => {
         const reads = fields.map(({ name }) => `s.${name}`).join(', ');

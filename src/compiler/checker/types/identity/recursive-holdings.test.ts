@@ -11,6 +11,7 @@ import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { reportedNothing } from '../../../../foundation/diagnostics/diagnostic.test-kit.ts';
 import { mainGives } from '../../../../stdlib/prelude/prelude.test-kit.ts';
+import { wholeProgramTimeout } from '../../../compile.test-kit.ts';
 import { lines } from '../../../parser/parse.test-kit.ts';
 import { reported } from '../../check.test-kit.ts';
 
@@ -97,7 +98,9 @@ describe('a member of a recursive union flattened into a recursive union', () =>
     expect(await mainGives('Bool', 'return isForest()', declarations)).toBe(true);
   });
 
-  it('is selected by type patterns at every level, through a chain of any length, one type', async () => {
+  it('is selected by type patterns at every level, through a chain of any length, one type', {
+    timeout: wholeProgramTimeout,
+  }, async () => {
     await fc.assert(
       fc.asyncProperty(
         fc.integer({ min: 1, max: 4 }),

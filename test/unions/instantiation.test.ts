@@ -9,6 +9,7 @@
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
+import { wholeProgramTimeout } from '../../src/compiler/compile.test-kit.ts';
 import { runMain } from '../written-types.test-kit.ts';
 
 /** A type argument as written, and values of it, as written. */
@@ -132,7 +133,9 @@ function comparisons(type: string, value: string): readonly string[] {
 }
 
 describe('generic code over unions, instantiated (§3.5)', () => {
-  it('gives what the same code written for the type argument gives', async () => {
+  it('gives what the same code written for the type argument gives', {
+    timeout: wholeProgramTimeout,
+  }, async () => {
     await fc.assert(
       fc.asyncProperty(typeArgument, async ({ text, values }) => {
         const named = values.map((value, index) => ({ name: `a${index}`, value }));

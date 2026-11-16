@@ -12,7 +12,7 @@ import { describe, expect, it } from 'vitest';
 import { decodeJson } from '../../../../../../definition/formats/codec.ts';
 import { startToEnd, testRuntime } from '../../../../../../runtime/runtime.test-kit.ts';
 import { stdProgramOf } from '../../../../../binder/bind.test-kit.ts';
-import { compiledText, diagnosedAt } from '../../../../../compile.test-kit.ts';
+import { compiledText, diagnosedAt, wholeProgramTimeout } from '../../../../../compile.test-kit.ts';
 import { reported } from '../../../../check.test-kit.ts';
 import { checkerDiagnostics } from '../../../../diagnostics/index.ts';
 
@@ -195,7 +195,9 @@ async function outcomeOf(source: string): Promise<unknown> {
 }
 
 describe('a call pattern', () => {
-  it('matches and binds what the call pattern naming each field it gives does', async () => {
+  it('matches and binds what the call pattern naming each field it gives does', {
+    timeout: wholeProgramTimeout,
+  }, async () => {
     await fc.assert(
       fc.asyncProperty(
         variants.chain((variant) =>

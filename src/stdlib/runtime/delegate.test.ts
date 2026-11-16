@@ -10,7 +10,11 @@ import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { reported } from '../../compiler/checker/check.test-kit.ts';
 import { checkerDiagnostics } from '../../compiler/checker/diagnostics/index.ts';
-import { compiledText, textDespiteCycles } from '../../compiler/compile.test-kit.ts';
+import {
+  compiledText,
+  textDespiteCycles,
+  wholeProgramTimeout,
+} from '../../compiler/compile.test-kit.ts';
 import { lines } from '../../compiler/parser/parse.test-kit.ts';
 import { definitionFormat } from '../../definition/definition.ts';
 import type { HostExterns } from '../../runtime/boundary/host-natives.ts';
@@ -136,7 +140,9 @@ describe('delegate', () => {
     expect(calls).toEqual(new Map([['o/1', 2]]));
   });
 
-  it('runs every job a committed segment still holds once, and none withdrawn or discarded', async () => {
+  it('runs every job a committed segment still holds once, and none withdrawn or discarded', {
+    timeout: wholeProgramTimeout,
+  }, async () => {
     await fc.assert(
       fc.asyncProperty(
         fc.array(fc.constantFrom<Step>('awaited', 'started', 'dropped', 'commit'), {

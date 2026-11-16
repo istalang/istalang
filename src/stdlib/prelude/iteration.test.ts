@@ -7,6 +7,7 @@
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
+import { wholeProgramTimeout } from '../../compiler/compile.test-kit.ts';
 import { mainGives } from './prelude.test-kit.ts';
 
 const ends = fc.integer({ min: -5, max: 5 });
@@ -23,7 +24,9 @@ function literalOf(text: string): string {
 }
 
 describe('a cursor', () => {
-  it('gives the ints from a range start below its end, and nothing from any other', async () => {
+  it('gives the ints from a range start below its end, and nothing from any other', {
+    timeout: wholeProgramTimeout,
+  }, async () => {
     await fc.assert(
       fc.asyncProperty(ends, ends, async (start, end) => {
         const ints = Array.from(
@@ -47,7 +50,9 @@ describe('a cursor', () => {
     expect(await mainGives('Int', body.join('\n'))).toBe(3);
   });
 
-  it("gives a string's code points, astral ones whole", async () => {
+  it("gives a string's code points, astral ones whole", {
+    timeout: wholeProgramTimeout,
+  }, async () => {
     await fc.assert(
       fc.asyncProperty(fc.string({ unit: 'binary', maxLength: 6 }), async (text) => {
         expect(await mainGives('Array<String>', `[for c in ${literalOf(text)}: c]`)).toEqual([
@@ -65,7 +70,9 @@ describe('a cursor', () => {
     ]);
   });
 
-  it('gives every item of an array of optionals, a stored none never ending it', async () => {
+  it('gives every item of an array of optionals, a stored none never ending it', {
+    timeout: wholeProgramTimeout,
+  }, async () => {
     await fc.assert(
       fc.asyncProperty(
         fc.array(fc.option(ends, { nil: null }), { maxLength: 4 }),

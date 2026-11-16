@@ -11,6 +11,7 @@ import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { reported } from '../../src/compiler/checker/check.test-kit.ts';
 import { checkerDiagnostics } from '../../src/compiler/checker/diagnostics/index.ts';
+import { wholeProgramTimeout } from '../../src/compiler/compile.test-kit.ts';
 import { codesOf, hoverCodeAt, runMain } from '../written-types.test-kit.ts';
 
 const matchDecls = [
@@ -330,7 +331,9 @@ describe('fast-check properties: union exhaustiveness and collapse (note 12)', (
     );
   });
 
-  it('keeps the first matching arm when a union collapses after substitution, without unreachable warnings', async () => {
+  it('keeps the first matching arm when a union collapses after substitution, without unreachable warnings', {
+    timeout: wholeProgramTimeout,
+  }, async () => {
     const concreteTypes = fc.constantFrom(
       { type: 'Int', value: '7', tag: 'int' },
       { type: 'String', value: '"hi"', tag: 'str' },

@@ -13,6 +13,7 @@ import { typeKeys } from '../../src/compiler/checker/types/identity/type-keys.ts
 import { substitute, substituteKept } from '../../src/compiler/checker/types/parts/substitution.ts';
 import { unfoldRecursive } from '../../src/compiler/checker/types/type/computed-types.ts';
 import { intType } from '../../src/compiler/checker/types/type/primitives.ts';
+import { wholeProgramTimeout } from '../../src/compiler/compile.test-kit.ts';
 import type { FunctionDeclaration } from '../../src/compiler/syntax/declarations/index.ts';
 import { codesOf, resolveWrittenTypes, runMain, spelledTypeOf } from '../written-types.test-kit.ts';
 
@@ -161,7 +162,9 @@ describe('a `struct{…}` literal passed as a call argument', () => {
     expect(await runMain('Int', `count(${tree})`, decls)).toBe(3);
   });
 
-  it('agrees with the literal given the parameter type, for any fields a call decides', async () => {
+  it('agrees with the literal given the parameter type, for any fields a call decides', {
+    timeout: wholeProgramTimeout,
+  }, async () => {
     const field = fc.constantFrom(
       { type: 'Array<Int>', literal: '[]', length: 'x.f.length()' },
       { type: 'Int?', literal: 'none', length: '(x.f ?? 0)' },

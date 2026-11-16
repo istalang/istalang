@@ -8,6 +8,7 @@
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
+import { wholeProgramTimeout } from '../../src/compiler/compile.test-kit.ts';
 import { compareOrdered } from '../../src/foundation/language/order.ts';
 import { compareWrittenTypes, runMain } from '../written-types.test-kit.ts';
 import { generatedFieldsArbitrary, sameComputedType } from './computed.test-kit.ts';
@@ -42,7 +43,9 @@ describe('keys and mapped types of generated structs', () => {
     );
   });
 
-  it('reads and writes a field by a generic key as by its name, one key or several', async () => {
+  it('reads and writes a field by a generic key as by its name, one key or several', {
+    timeout: wholeProgramTimeout,
+  }, async () => {
     await fc.assert(
       fc.asyncProperty(generatedFieldsArbitrary, fc.nat(), async (fields, pick) => {
         const field = fields[pick % fields.length] ?? fields[0];

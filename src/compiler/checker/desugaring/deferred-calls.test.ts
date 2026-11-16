@@ -10,7 +10,7 @@ import { describe, expect, it } from 'vitest';
 import { decodeJson } from '../../../definition/formats/codec.ts';
 import { reportedOnce } from '../../../foundation/diagnostics/diagnostic.test-kit.ts';
 import { startToEnd, testRuntime } from '../../../runtime/runtime.test-kit.ts';
-import { compiledText } from '../../compile.test-kit.ts';
+import { compiledText, wholeProgramTimeout } from '../../compile.test-kit.ts';
 import { reported } from '../check.test-kit.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 
@@ -125,7 +125,7 @@ async function outcomeOf(text: string): Promise<unknown> {
 }
 
 describe('a deferred call', () => {
-  it('runs as the closure it stands for', async () => {
+  it('runs as the closure it stands for', { timeout: wholeProgramTimeout }, async () => {
     await fc.assert(
       fc.asyncProperty(fc.constantFrom<0 | 1 | 2>(0, 1, 2), deferred, async (calls, node) => {
         const own = { label: 'k', value: 7 };

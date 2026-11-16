@@ -11,6 +11,7 @@ import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { binderDiagnostics } from '../../compiler/binder/diagnostics.ts';
 import { reported } from '../../compiler/checker/check.test-kit.ts';
+import { wholeProgramTimeout } from '../../compiler/compile.test-kit.ts';
 import { lines } from '../../compiler/parser/parse.test-kit.ts';
 import { reportedNothing } from '../../foundation/diagnostics/diagnostic.test-kit.ts';
 import { mainGives } from '../prelude/prelude.test-kit.ts';
@@ -232,7 +233,9 @@ describe('property: Json literals of generated nesting equal json.parse<Json> of
     ),
   })).pair;
 
-  it('evaluates every generated Json literal to the same value as json.parse<Json> of its JSON text', async () => {
+  it('evaluates every generated Json literal to the same value as json.parse<Json> of its JSON text', {
+    timeout: wholeProgramTimeout,
+  }, async () => {
     await fc.assert(
       fc.asyncProperty(jsonPairs, async ({ istaLiteral, jsonText }) => {
         const body = lines(

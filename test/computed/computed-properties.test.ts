@@ -9,6 +9,7 @@
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
+import { wholeProgramTimeout } from '../../src/compiler/compile.test-kit.ts';
 import { compareOrdered } from '../../src/foundation/language/order.ts';
 import { compareWrittenTypes, runMain } from '../written-types.test-kit.ts';
 import { generatedFieldsArbitrary, sameComputedType } from './computed.test-kit.ts';
@@ -70,7 +71,7 @@ describe('a struct that is also iterable', () => {
 });
 
 describe('every computed construct over a generated struct', () => {
-  it('agrees with its fields in name order', async () => {
+  it('agrees with its fields in name order', { timeout: wholeProgramTimeout }, async () => {
     await fc.assert(
       fc.asyncProperty(generatedFieldsArbitrary, async (fields) => {
         const [first] = fields;
@@ -127,7 +128,9 @@ describe('generic code over computed types, instantiated', () => {
     '  rest["b"]',
   ];
 
-  it('agrees with the same code written for the type substituted', async () => {
+  it('agrees with the same code written for the type substituted', {
+    timeout: wholeProgramTimeout,
+  }, async () => {
     await fc.assert(
       fc.asyncProperty(typeArguments, async ({ type, value, other }) => {
         const generic = templates.map((line) => line.replace('$', 'G<T>'));

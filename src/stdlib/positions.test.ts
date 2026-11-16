@@ -6,6 +6,7 @@
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
+import { wholeProgramTimeout } from '../compiler/compile.test-kit.ts';
 import { Panic } from '../runtime/natives.ts';
 import { atPosition, checkedIndex, selected, selectionOf, splicesOf } from './positions.ts';
 import type { RangeValue } from './ranges.ts';
@@ -38,7 +39,7 @@ describe('positions in sequences', () => {
     );
   });
 
-  it('index only inside the bounds, panicking outside', () => {
+  it('index only inside the bounds, panicking outside', { timeout: wholeProgramTimeout }, () => {
     fc.assert(
       fc.property(sizes, positions, (size, key) => {
         const inside = key >= 0n && key < BigInt(size);
@@ -49,7 +50,9 @@ describe('positions in sequences', () => {
     );
   });
 
-  it('slice only inside the bounds, open ends meaning the whole length', () => {
+  it('slice only inside the bounds, open ends meaning the whole length', {
+    timeout: wholeProgramTimeout,
+  }, () => {
     fc.assert(
       fc.property(sizes, ends, ends, (size, start, end) => {
         const from = start ?? 0n;
@@ -62,7 +65,9 @@ describe('positions in sequences', () => {
     );
   });
 
-  it("select with a step what Python's extended slice selects, inside the bounds", () => {
+  it("select with a step what Python's extended slice selects, inside the bounds", {
+    timeout: wholeProgramTimeout,
+  }, () => {
     fc.assert(
       fc.property(sizes, ends, ends, steps, (size, start, end, step) => {
         const items = Array.from({ length: size }, (_, index) => index);
@@ -74,7 +79,9 @@ describe('positions in sequences', () => {
     );
   });
 
-  it('replace a span by any number of items, and a stepped slice by as many as it selects', () => {
+  it('replace a span by any number of items, and a stepped slice by as many as it selects', {
+    timeout: wholeProgramTimeout,
+  }, () => {
     fc.assert(
       fc.property(sizes, steps, fc.nat({ max: 10 }), (size, step, count) => {
         const items = Array.from({ length: size }, (_, index) => index);

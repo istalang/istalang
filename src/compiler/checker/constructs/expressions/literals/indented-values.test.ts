@@ -14,6 +14,7 @@ import {
 } from '../../../../../foundation/diagnostics/diagnostic.test-kit.ts';
 import { mainGives } from '../../../../../stdlib/prelude/prelude.test-kit.ts';
 import { stdProgramOf } from '../../../../binder/bind.test-kit.ts';
+import { wholeProgramTimeout } from '../../../../compile.test-kit.ts';
 import { parserDiagnostics } from '../../../../parser/diagnostics.ts';
 import { lines } from '../../../../parser/parse.test-kit.ts';
 import { idOf } from '../../../../program/program.test-kit.ts';
@@ -384,7 +385,9 @@ describe('commutation property: indented values vs brace and bracket literals (Â
     ),
   })).val;
 
-  it('checks to the same type and runs to the same value whether written indented or with braces/brackets', async () => {
+  it('checks to the same type and runs to the same value whether written indented or with braces/brackets', {
+    timeout: wholeProgramTimeout,
+  }, async () => {
     await fc.assert(
       fc.asyncProperty(nestedValues, async (generated) => {
         const source = lines(

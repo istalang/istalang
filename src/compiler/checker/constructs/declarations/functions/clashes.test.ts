@@ -7,6 +7,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
+import { wholeProgramTimeout } from '../../../../compile.test-kit.ts';
 import { reported } from '../../../check.test-kit.ts';
 import { checkerDiagnostics } from '../../../diagnostics/index.ts';
 
@@ -74,7 +75,7 @@ function clashes(first: Signature, second: Signature): boolean {
 }
 
 describe('overload clashes', () => {
-  it("don't depend on which function is declared first", () => {
+  it("don't depend on which function is declared first", { timeout: wholeProgramTimeout }, () => {
     for (const [index, first] of signatures.entries()) {
       for (const second of signatures.slice(index + 1)) {
         expect(clashes(first, second), `${first} and ${second}`).toBe(clashes(second, first));

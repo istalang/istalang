@@ -10,7 +10,7 @@ import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { decodeJson } from '../../../../definition/formats/codec.ts';
 import { startToEnd, testRuntime } from '../../../../runtime/runtime.test-kit.ts';
-import { compiledText } from '../../../compile.test-kit.ts';
+import { compiledText, wholeProgramTimeout } from '../../../compile.test-kit.ts';
 import { reported } from '../../check.test-kit.ts';
 
 /** What `async fn main() -> Future<String>: body` gives after `declarations`. */
@@ -109,7 +109,9 @@ describe('a literal argument of items with types of their own', () => {
     ).toBe('1 same');
   });
 
-  it('agrees with the literal written where the parameter type is expected', async () => {
+  it('agrees with the literal written where the parameter type is expected', {
+    timeout: wholeProgramTimeout,
+  }, async () => {
     const items = fc.array(fc.integer({ min: -9, max: 9 }), { minLength: 1, maxLength: 4 });
     await fc.assert(
       fc.asyncProperty(items, async (values) => {

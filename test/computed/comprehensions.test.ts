@@ -10,6 +10,7 @@
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
+import { wholeProgramTimeout } from '../../src/compiler/compile.test-kit.ts';
 import { codesOf, runMain } from '../written-types.test-kit.ts';
 import { generatedFieldsArbitrary } from './computed.test-kit.ts';
 
@@ -88,7 +89,9 @@ describe('elements holding keys', () => {
     expect(await runText(lines, declarations)).toBe('a3,b2,a4,b2,a2,b4;2');
   });
 
-  it('agree over any struct, as the array literal written out per field', async () => {
+  it('agree over any struct, as the array literal written out per field', {
+    timeout: wholeProgramTimeout,
+  }, async () => {
     await fc.assert(
       fc.asyncProperty(generatedFieldsArbitrary, async (fields) => {
         const struct = `struct S { ${fields.map(({ name, type }) => `${name}: ${type}`).join(', ')} }`;
@@ -186,7 +189,9 @@ describe('a struct comprehension', () => {
 });
 
 describe('the commute law of a struct comprehension', () => {
-  it('agrees: generic and instantiated, over the concrete struct, and written out by hand', async () => {
+  it('agrees: generic and instantiated, over the concrete struct, and written out by hand', {
+    timeout: wholeProgramTimeout,
+  }, async () => {
     await fc.assert(
       fc.asyncProperty(generatedFieldsArbitrary, async (fields) => {
         const declared = fields.map((field) => `${field.name}: ${field.type}`).join(', ');
@@ -219,7 +224,9 @@ describe('the commute law of a struct comprehension', () => {
     );
   });
 
-  it('evaluates the named fields as written, then the comprehension in name order', async () => {
+  it('evaluates the named fields as written, then the comprehension in name order', {
+    timeout: wholeProgramTimeout,
+  }, async () => {
     await fc.assert(
       fc.asyncProperty(generatedFieldsArbitrary, fc.nat(), async (fields, cut) => {
         const named = fields.slice(0, cut % (fields.length + 1));

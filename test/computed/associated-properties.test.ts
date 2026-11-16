@@ -8,6 +8,7 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { checkerDiagnostics } from '../../src/compiler/checker/diagnostics/index.ts';
+import { wholeProgramTimeout } from '../../src/compiler/compile.test-kit.ts';
 import { codesOf, compareWrittenTypes, runMain } from '../written-types.test-kit.ts';
 import {
   type GeneratedField,
@@ -46,7 +47,9 @@ describe('an associated type of a generic type (§1)', () => {
     );
   });
 
-  it('runs a generic body reading it as the body written for the argument does', async () => {
+  it('runs a generic body reading it as the body written for the argument does', {
+    timeout: wholeProgramTimeout,
+  }, async () => {
     await fc.assert(
       fc.asyncProperty(argument, body, async (given, shape) => {
         const written = shape.written(`(${given.type})`);

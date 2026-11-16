@@ -13,7 +13,7 @@ import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { decodeJson } from '../../../../../definition/formats/codec.ts';
 import { startToEnd, testRuntime } from '../../../../../runtime/runtime.test-kit.ts';
-import { compiledText } from '../../../../compile.test-kit.ts';
+import { compiledText, wholeProgramTimeout } from '../../../../compile.test-kit.ts';
 import { reported } from '../../../check.test-kit.ts';
 import { checkerDiagnostics } from '../../../diagnostics/index.ts';
 
@@ -128,7 +128,9 @@ function argumentsOf({ taken, takesRest, extra }: GeneratedShape, spread: boolea
 }
 
 describe('a variant call', () => {
-  it('builds what the call naming every field, defaults written out, builds', async () => {
+  it('builds what the call naming every field, defaults written out, builds', {
+    timeout: wholeProgramTimeout,
+  }, async () => {
     await fc.assert(
       fc.asyncProperty(
         variants.chain((variant) => callsOf(variant).map((made) => ({ variant, made }))),
@@ -148,7 +150,9 @@ describe('a variant call', () => {
 });
 
 describe('a variant named as a value', () => {
-  it('builds what calling the variant builds, and is a sendable value equal to another naming it', async () => {
+  it('builds what calling the variant builds, and is a sendable value equal to another naming it', {
+    timeout: wholeProgramTimeout,
+  }, async () => {
     await fc.assert(
       fc.asyncProperty(
         variants.chain((variant) => shapesOf(variant).map((shape) => ({ variant, shape }))),

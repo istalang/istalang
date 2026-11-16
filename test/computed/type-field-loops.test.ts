@@ -7,6 +7,7 @@
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
+import { wholeProgramTimeout } from '../../src/compiler/compile.test-kit.ts';
 import { codesOf, hoverCodeAt, runMain } from '../written-types.test-kit.ts';
 import { declaredPlacesAt, generatedFieldsArbitrary } from './computed.test-kit.ts';
 
@@ -244,7 +245,9 @@ describe('a loop over a type, nested and degenerate', () => {
 });
 
 describe('the commute law of a loop over a type', () => {
-  it('agrees: generic and instantiated, over the concrete struct, and written out by hand', async () => {
+  it('agrees: generic and instantiated, over the concrete struct, and written out by hand', {
+    timeout: wholeProgramTimeout,
+  }, async () => {
     await fc.assert(
       fc.asyncProperty(generatedFieldsArbitrary, async (fields) => {
         const declared = fields.map((field) => `${field.name}: ${field.type}`).join(', ');

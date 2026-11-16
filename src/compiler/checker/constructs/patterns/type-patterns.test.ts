@@ -8,7 +8,7 @@ import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { startToEnd, testRuntime } from '../../../../runtime/runtime.test-kit.ts';
 import { entityOfName, stdProgramOf } from '../../../binder/bind.test-kit.ts';
-import { compiledText } from '../../../compile.test-kit.ts';
+import { compiledText, wholeProgramTimeout } from '../../../compile.test-kit.ts';
 
 const words = /^[a-z ]{0,6}$/u;
 const letters = /^[a-z]{1,6}$/u;
@@ -31,7 +31,9 @@ const emailDeclarations = [
 ].join('\n');
 
 describe('type patterns', () => {
-  it('match exactly the values converted from their type into an any', async () => {
+  it('match exactly the values converted from their type into an any', {
+    timeout: wholeProgramTimeout,
+  }, async () => {
     const converted = fc.oneof(
       ...typedValues.map(([type, literals]) => literals.map((literal) => ({ type, literal }))),
     );

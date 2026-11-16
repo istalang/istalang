@@ -8,7 +8,7 @@ import fc from 'fast-check';
 import { describe, expect, it, vi } from 'vitest';
 import { lineMapOf } from '../../../../foundation/text/line-map.ts';
 import { stdProgramOf } from '../../../binder/bind.test-kit.ts';
-import { diagnosedAt } from '../../../compile.test-kit.ts';
+import { diagnosedAt, wholeProgramTimeout } from '../../../compile.test-kit.ts';
 import { idOf } from '../../../program/program.test-kit.ts';
 import { checkProgram } from '../../check.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
@@ -60,7 +60,9 @@ function leadsTo(made: readonly Call[], from: number, to: number): boolean {
 }
 
 describe('endless instantiation', () => {
-  it('is reported at exactly the expanding calls on a cycle', () => {
+  it('is reported at exactly the expanding calls on a cycle', {
+    timeout: wholeProgramTimeout,
+  }, () => {
     fc.assert(
       fc.property(calls, (made) => {
         const { text, lines } = programMaking(made);

@@ -10,7 +10,12 @@ import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { stdProgramOf } from '../src/compiler/binder/bind.test-kit.ts';
 import { isCycle } from '../src/compiler/checker/rules/lifetimes/lifetimes.test-kit.ts';
-import { checkedAfterStd, compiledText, diagnosedAt } from '../src/compiler/compile.test-kit.ts';
+import {
+  checkedAfterStd,
+  compiledText,
+  diagnosedAt,
+  wholeProgramTimeout,
+} from '../src/compiler/compile.test-kit.ts';
 import { isError } from '../src/foundation/diagnostics/diagnostic.ts';
 import { startToEnd, testRuntime } from '../src/runtime/runtime.test-kit.ts';
 import { cyclicPrograms } from './cyclic-programs.ts';
@@ -183,7 +188,9 @@ describe('static lifetimes over fragment soups', () => {
     });
   });
 
-  it('never lets a program it accepts trip the oracle, and rejects only for cycles', async () => {
+  it('never lets a program it accepts trip the oracle, and rejects only for cycles', {
+    timeout: wholeProgramTimeout,
+  }, async () => {
     await fc.assert(
       fc.asyncProperty(fc.array(fc.constantFrom(...fragments), { maxLength: 8 }), async (body) => {
         const text = programOf(body);

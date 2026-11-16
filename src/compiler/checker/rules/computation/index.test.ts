@@ -11,7 +11,7 @@ import {
   reportedOnce,
 } from '../../../../foundation/diagnostics/diagnostic.test-kit.ts';
 import { startToEnd, testRuntime } from '../../../../runtime/runtime.test-kit.ts';
-import { compiledText } from '../../../compile.test-kit.ts';
+import { compiledText, wholeProgramTimeout } from '../../../compile.test-kit.ts';
 import { reported } from '../../check.test-kit.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 
@@ -101,7 +101,7 @@ const initializers = shapes.chain((shape) =>
 );
 
 describe('computed constants', () => {
-  it('equal their initializer run as a local', async () => {
+  it('equal their initializer run as a local', { timeout: wholeProgramTimeout }, async () => {
     await fc.assert(
       fc.asyncProperty(initializers, async ({ type, value }) => {
         const main = [

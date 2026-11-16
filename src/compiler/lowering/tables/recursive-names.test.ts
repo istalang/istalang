@@ -12,7 +12,7 @@ import { resolveWrittenTypes } from '../../../../test/written-types.test-kit.ts'
 import { unreachable } from '../../../foundation/structures/unreachable.ts';
 import { mainGives } from '../../../stdlib/prelude/prelude.test-kit.ts';
 import { stdProgramOf } from '../../binder/bind.test-kit.ts';
-import { compiledDefinition } from '../../compile.test-kit.ts';
+import { compiledDefinition, wholeProgramTimeout } from '../../compile.test-kit.ts';
 import { tableKey } from './names.ts';
 
 const modules = {
@@ -97,7 +97,9 @@ const spelledReads = aliasName.chain((alias) =>
 );
 
 describe('a union holding a recursive type no alias names', () => {
-  it('holds `none` as `None` through every spelling, whichever lowering meets first', async () => {
+  it('holds `none` as `None` through every spelling, whichever lowering meets first', {
+    timeout: wholeProgramTimeout,
+  }, async () => {
     await fc.assert(
       fc.asyncProperty(spelledReads, async ({ alias, reads }) => {
         const body = `[${reads.join(', ')}].join(" ")`;
@@ -105,7 +107,7 @@ describe('a union holding a recursive type no alias names', () => {
       }),
       { numRuns: 12 },
     );
-  }, 30_000);
+  });
 
   it('spells it alike through every alias, as the type table orders variants by', () => {
     const dataOf = `type DataOf<D> = match D:

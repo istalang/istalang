@@ -9,6 +9,7 @@
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
+import { wholeProgramTimeout } from '../../src/compiler/compile.test-kit.ts';
 import { formatText } from '../../src/formatter/format.ts';
 import { codesOf, runMain } from '../written-types.test-kit.ts';
 import { type GeneratedField, generatedFieldsArbitrary } from './computed.test-kit.ts';
@@ -192,7 +193,9 @@ function splitText(named: GeneratedField, rest: readonly GeneratedField[]): stri
 }
 
 describe('the commute law for rests', () => {
-  it('agrees generic, over the concrete struct and written by hand, empty rests included', async () => {
+  it('agrees generic, over the concrete struct and written by hand, empty rests included', {
+    timeout: wholeProgramTimeout,
+  }, async () => {
     await fc.assert(
       fc.asyncProperty(generatedFieldsArbitrary, async (fields) => {
         const [named, ...rest] = fields;

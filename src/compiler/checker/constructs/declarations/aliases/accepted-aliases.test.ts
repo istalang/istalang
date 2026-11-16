@@ -7,7 +7,7 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { stdProgramOf } from '../../../../binder/bind.test-kit.ts';
-import { checkedAfterStd } from '../../../../compile.test-kit.ts';
+import { checkedAfterStd, wholeProgramTimeout } from '../../../../compile.test-kit.ts';
 import { compileProgram, diagnose } from '../../../../compile.ts';
 import { idOf } from '../../../../program/program.test-kit.ts';
 import { programModule } from '../../../../program/program.ts';
@@ -78,7 +78,9 @@ function unexplained(type: Type): string | undefined {
 }
 
 describe('a program the checker accepts', () => {
-  it('uses no type a diagnostic should have explained, and lowers', () => {
+  it('uses no type a diagnostic should have explained, and lowers', {
+    timeout: wholeProgramTimeout,
+  }, () => {
     fc.assert(
       fc.property(typeBuilt, typeBuilt, dataBuilt, (a, b, data) => {
         const program = stdProgramOf({ main: programText(a, b, data) });
@@ -102,5 +104,5 @@ describe('a program the checker accepts', () => {
       { numRuns: 300 },
     );
     // Each run checks a program whole, static lifetimes' summaries included.
-  }, 30_000);
+  });
 });

@@ -8,7 +8,8 @@
  * A run of every project (`npm run test:full`, `verify`) runs both.
  *
  * A test gets 7 s, not vitest's 5: suites of several worktrees run side by side, and a property
- * over the corpus slows past 5 s under that load.
+ * over the corpus slows past 5 s under that load. One compiling whole programs case after case
+ * takes `wholeProgramTimeout` (src/compiler/compile.test-kit.ts).
  *
  * `.ista` imports become their text through the same plugin the build uses, so tests see what the
  * package embeds. The package is built before the tests run, so the CLI's end-to-end test always
