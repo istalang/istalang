@@ -35,7 +35,12 @@ const register = z.union([
   z.null(),
 ]);
 
-const waiting = z.strictObject({ callback: value, rank: z.array(integer), standing: value });
+const waiting = z.strictObject({
+  callback: value,
+  rank: z.array(integer),
+  standing: value,
+  cancelled: value,
+});
 
 const object = z.discriminatedUnion('kind', [
   z.strictObject({
@@ -64,6 +69,8 @@ const object = z.discriminatedUnion('kind', [
     closure: value.optional(),
     parked: z.boolean(),
     given: z.array(register),
+    /** What holds the futures its wait's cases are registered on, which it holds (§7). */
+    awaiting: z.array(value),
     disposing: objectId.optional(),
     /** The transients' cells visible where it started (§3.4), which it keeps. */
     transients: z

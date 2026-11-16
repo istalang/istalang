@@ -24,7 +24,7 @@ import { Unreachable } from '../../foundation/structures/unreachable.ts';
 import type { HostFilling } from '../natives.ts';
 import { drawOf } from '../random-draws.ts';
 import { type Arrival, Arrivals } from './arrivals.ts';
-import { disposerOf } from './disposal.ts';
+import { type DisposalSeams, disposerOf } from './disposal.ts';
 import { EndWatches, type PendingWatch } from './end-watches.ts';
 import { Executions, PARKED, STOP, STOPPED } from './executions.ts';
 import type { Instance } from './instances.ts';
@@ -104,19 +104,7 @@ export class Run {
     this.world = binding.world;
     this.seed = binding.seed;
     this.mocking = new Mocking(this);
-    this.lifetimes = new Lifetimes(
-      disposerOf({
-        weakReferences: this.weakReferences,
-        resources: this.resources,
-        mocks: this.mocking.held,
-        disposeOf: (type) => disposeOf(definition.types, type),
-        call: (index, passed) => this.call(index, passed),
-        letGo: (...values) => this.lifetimes.letGo(...values),
-        stop: (execution) => this.executions.stop(execution),
-        settle: (future, value) => this.settle(future, value),
-      }),
-      definition.types,
-    );
+    this.lifetimes = new Lifetimes(disposerOf(this.#disposal()), definition.types);
     for (const constant of this.constants) {
       this.lifetimes.share(constant);
     }
@@ -153,6 +141,21 @@ export class Run {
     const { site, entries } = made(this);
     this.#entries = entries;
     this.traces = new Traces(definition, program.lines, site);
+  }
+
+  /** What disposing this run's objects needs of it (disposal.ts). */
+  #disposal(): DisposalSeams {
+    return {
+      weakReferences: this.weakReferences,
+      resources: this.resources,
+      mocks: this.mocking.held,
+      disposeOf: (type) => disposeOf(this.definition.types, type),
+      call: (index, passed) => this.call(index, passed),
+      callValue: (closure) => this.callValue(closure, []),
+      letGo: (...values) => this.lifetimes.letGo(...values),
+      stop: (execution) => this.executions.stop(execution),
+      settle: (future, value) => this.settle(future, value),
+    };
   }
 
   // What compiled code calls besides its parts' helpers.

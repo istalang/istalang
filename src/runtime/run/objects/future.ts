@@ -38,4 +38,11 @@ export interface Waiting {
   readonly rank: readonly bigint[];
   /** What the resolver the callback resolves stands for (prelude.ista `_standing`). */
   readonly standing: Value;
+  /** What cancels that resolver, run if the future is disposed before it settles (§6). */
+  readonly cancelled: Value;
+}
+
+/** The closures `waiting` holds, which its future holds while it waits. */
+export function closuresOf({ callback, standing, cancelled }: Waiting): readonly Value[] {
+  return [callback, standing, cancelled];
 }

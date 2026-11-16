@@ -55,9 +55,9 @@ export class Settler {
       if (!future.settled) {
         future.settled = true;
         future.value = value;
-        for (const { callback, rank, standing } of future.callbacks.splice(0)) {
+        for (const { callback, rank, standing, cancelled } of future.callbacks.splice(0)) {
           waiting.push({ callback, rank, value });
-          this.#lifetimes.letGo(standing);
+          this.#lifetimes.letGo(standing, cancelled);
         }
         this.#lifetimes.letGo(...future.onAwaited.splice(0));
       }

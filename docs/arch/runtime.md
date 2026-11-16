@@ -39,23 +39,31 @@ settle once and call their callbacks in rank order, park and unpark of an execut
 (enqueue a closure call), timers, weak references, cells, stopping a disposed call and the
 `disposing()` priority resume. Everything above them is Istalang in the prelude:
 
-- **Futures** are run objects; `onAwait` registers a callback with a rank and a `standing` probe
-  (`_standing`: pending, lost, or withdrawn). What settling a set of futures settles in turn (a
+- **Futures** are run objects; `onAwait` registers a callback with a rank, a `standing` probe
+  (`_standing`: pending, lost, or withdrawn) and what cancels its resolver if the future is disposed
+  first. Every future a resolver is registered on resolves it as `tryResolve` does: the first
+  decides. What settling a set of futures settles in turn (a
   future following another, as a mock's answer does) settles together after it
   (`Run.settleTogether`).
 - **Resolvers** are shared structs of `decide` and their state, a `_Resolution<K>` (`rank`, `state`,
-  `cancels`, ...), which takes no value: only what passes a value on is compiled per awaited type,
-  the rest once per mode (ir-first B116). `resolve` panics on a second resolve; one resolved to no
-  effect (state 4) stays cancellable.
-- **Waits** (`_Wait`): `_caseResolver` decides the wait and unparks the call; `_parking`, emitted
-  before every `park`, marks every case known; losers are cancelled once the wait is decided and its
+  `cancels`, what it comes down to deciding: a wait's case, the resolver a `Resolver.at` one decides,
+  or a callback), which takes no value: only what passes a value on is compiled per awaited type, the
+  rest once per mode (ir-first B116). `resolve` panics on a second resolve; one resolved to no effect
+  (state 4) stays cancellable.
+- **Waits** (`_Wait`): `_caseResolver` decides the wait and unparks the call, reaching the wait
+  weakly; the wait's call holds the futures its cases' chains are registered on until the wait is
+  let go of (`_awaiting`, `Execution.awaiting`, spec §7), a hold the run keeps since no value could
+  without a cycle the analysis of lifetimes refuses. `_parking`, emitted before every `park`, marks
+  every case known; losers are cancelled once the wait is decided and its
   cases known (`_losersCancelled`). A `select` with `else` (`_decided`) takes back its call's resume
   (`_stayRunning`) and *withdraws* its cases, so it gives up on nothing. A case on the call's own
   `disposing()` overrides an earlier decision while the call is being disposed (`_disposingWins`).
 - **Slots** are shared structs: `contents: Array<T>` (one item while full) and one queue of
   operations holding their futures weakly, so an operation its holders let go of leaves the queue;
   one given up on (every case awaiting it lost) is passed over, and served where it stands once
-  awaited again (`_onAwaited`). `put`, `take` and `read` carry `@Keeps` (below).
+  awaited again (`_onAwaited`). Reads at the head are one event and a take after them the next, so
+  a `select` the reads decide has cancelled a losing take before it is reached. `put`, `take` and
+  `read` carry `@Keeps` (below).
 - **Instance ends** cross as a plain `(Array<R>, String, String)` ending; `Instance.result()` and
   `runtime._call` are Istalang wrappers making the `Result`. No native builds an optional, a
   `Result` or an enum: natives speak primitives (decision 8; `stdlib/values/results.ts`).
@@ -77,7 +85,9 @@ it as a native, with exactly the summary its extern predecessor had (spec §3.16
   only while unique; **plain** values are passed over.
 - What loses its last holder is disposed in rounds, newest object first; what a disposed value held
   loses its holder in the next round. A disposed call's cleanup (its frame's let-gos and what it
-  returns, which settles nothing) is collected `apart`, before its call is gone (spec §7).
+  returns, which settles nothing) is collected `apart` from the round disposing the call, each
+  let-go as it happens, so before its call is gone (spec §7) and a `select`'s losers before its
+  winning case's body (§8).
 - A native's result is `adopt`ed by its declared type: a composite it built holds its parts.
 - An async call holds what it was given until it ends (`Execution.given`).
 - A disposed call resumes only on its `disposing()` case; otherwise it stops where it waits.

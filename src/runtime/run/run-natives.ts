@@ -12,12 +12,15 @@
  * - `_unpark` readies a parked call to resume with its wait's decided position; a wait decided
  *   before its call parks readies it all the same, as awaiting still yields (§6), unless the call
  *   goes on without parking (`_stayRunning`), as a `select` that doesn't wait does.
+ * - A call holds what its wait's cases are registered on (`_awaiting`) until the wait is let go of
+ *   (`_waitEnded`): the run holds it, since a future may reach whatever its callbacks do, so no
+ *   value of the program's could hold it without a cycle the analysis of lifetimes would refuse.
  */
 
 import type { Value } from '../../definition/values/values.ts';
 import type { Natives } from '../natives.ts';
 import type { Execution } from './objects/execution.ts';
-import { Future, type Waiting } from './objects/future.ts';
+import { closuresOf, Future, type Waiting } from './objects/future.ts';
 import type { Run } from './run.ts';
 
 /** The run's natives, by key, over `run`. */
@@ -36,30 +39,32 @@ function futureNatives(run: Run): Natives {
       const standing = run.callValue(waiting.standing, []);
       if (standing !== 0n) {
         waited.lost ||= standing === 1n;
-        run.lifetimes.letGo(waiting.callback, waiting.standing);
+        run.lifetimes.letGo(...closuresOf(waiting));
       }
       return standing === 0n;
     });
   return {
     'prelude._settled(prelude.Future<T, K>)': ([given]) => futureOf(given).settled,
     'prelude._valueOf(prelude.Future<T, K>)': ([given]) => futureOf(given).value,
-    'prelude._onSettled(prelude.Future<T, K>, fn(T) -> Unit, prelude.Array<Int>, fn() -> Int)': ([
-      given,
-      callback,
-      rank,
-      standing,
-    ]) => {
-      const waited = futureOf(given);
-      run.lifetimes.hold(callback);
-      run.lifetimes.hold(standing);
-      const ranks = (rank as { readonly elements: readonly bigint[] }).elements;
-      const added = { callback: callback ?? null, rank: ranks, standing: standing ?? null };
-      waited.callbacks = [...live(waited), added];
-      for (const awaited of [...waited.onAwaited]) {
-        run.lifetimes.letGo(run.callValue(awaited, []) as Value);
-      }
-      return null;
-    },
+    'prelude._onSettled(prelude.Future<T, K>, fn(T) -> Unit, prelude.Array<Int>, fn() -> Int, fn() -> Unit)':
+      ([given, callback, rank, standing, cancelled]) => {
+        const waited = futureOf(given);
+        const ranks = (rank as { readonly elements: readonly bigint[] }).elements;
+        const added: Waiting = {
+          callback: callback ?? null,
+          rank: ranks,
+          standing: standing ?? null,
+          cancelled: cancelled ?? null,
+        };
+        for (const closure of closuresOf(added)) {
+          run.lifetimes.hold(closure);
+        }
+        waited.callbacks = [...live(waited), added];
+        for (const awaited of [...waited.onAwaited]) {
+          run.lifetimes.letGo(run.callValue(awaited, []) as Value);
+        }
+        return null;
+      },
     'prelude._givenUp(prelude.Future<T, K>)': ([given]) => {
       const waited = futureOf(given);
       waited.callbacks = live(waited);
@@ -99,6 +104,15 @@ function callNatives(run: Run): Natives {
     },
     'prelude._unpark(prelude._Call, Int)': ([given, position]) => {
       run.executions.unpark(call(given), position ?? null);
+      return null;
+    },
+    'prelude._awaiting(prelude._Call, fn() -> Unit)': ([given, holding]) => {
+      run.lifetimes.hold(holding);
+      call(given).awaiting.push(holding ?? null);
+      return null;
+    },
+    'prelude._waitEnded(prelude._Call)': ([given]) => {
+      run.lifetimes.letGo(...call(given).awaiting.splice(0));
       return null;
     },
     'prelude._stayRunning(prelude._Call)': ([given]) => {

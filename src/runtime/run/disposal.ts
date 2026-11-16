@@ -3,8 +3,8 @@
  * values it held are given back, to lose their holder in the next round.
  *
  * - A **cell** of a shared struct runs its declared `dispose`, then lets go of its value.
- * - A **future** cancels what a host was to fill, stops its call (executions.ts), and lets go of
- *   what waits on it and of its value.
+ * - A **future** cancels what a host was to fill and the resolvers waiting on it (§6), stops its
+ *   call (executions.ts), and lets go of what waits on it and of its value.
  * - A **resource** is marked disposed and forgotten, and released: by the runtime, where its
  *   disposal is the runtime's own, else by its host through its type's `dispose` (§7, §9).
  * - A **mock** no call reaches any more lets go of its replacement and the calls it recorded (§10).
@@ -16,7 +16,7 @@ import type { Disposer } from './lifetimes.ts';
 import type { Mocks } from './mocks.ts';
 import { Cell } from './objects/cell.ts';
 import type { Execution } from './objects/execution.ts';
-import { Future } from './objects/future.ts';
+import { closuresOf, Future } from './objects/future.ts';
 import { MockObject } from './objects/mock-object.ts';
 import { Resource } from './objects/resource.ts';
 import type { RunObject } from './objects/run-object.ts';
@@ -32,6 +32,8 @@ export interface DisposalSeams {
   readonly disposeOf: (type: number) => number | undefined;
   /** Runs entry `index`, a declared `dispose`, on `passed`; what it gives. */
   readonly call: (index: number, passed: readonly Value[]) => unknown;
+  /** Calls the closure `closure` with nothing; what it gives. */
+  readonly callValue: (closure: Value) => unknown;
   readonly letGo: (...values: (Value | undefined)[]) => void;
   readonly stop: (execution: Execution) => void;
   readonly settle: (future: Future, value: Value) => void;
@@ -76,17 +78,18 @@ function releasedBy(object: RunObject, seams: DisposalSeams): readonly Value[] {
 }
 
 function releasedByFuture(future: Future, seams: DisposalSeams): readonly Value[] {
+  const waiting = future.callbacks.splice(0);
   if (!future.settled) {
     for (const cancel of future.cancels.splice(0)) {
       cancel();
+    }
+    for (const { cancelled } of waiting) {
+      seams.letGo(seams.callValue(cancelled) as Value);
     }
   }
   if (future.execution !== undefined) {
     seams.stop(future.execution);
   }
-  const callbacks = future.callbacks
-    .splice(0)
-    .flatMap(({ callback, standing }) => [callback, standing]);
-  const held = [...callbacks, ...future.onAwaited.splice(0)];
+  const held = [...waiting.flatMap(closuresOf), ...future.onAwaited.splice(0)];
   return future.settled ? [future.value, ...held] : held;
 }

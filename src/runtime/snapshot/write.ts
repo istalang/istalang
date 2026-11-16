@@ -121,10 +121,11 @@ function objectOf(object: RunObject, { named, persisted }: Naming): PersistedObj
       id,
       settled: object.settled,
       value: persisted(object.value),
-      callbacks: object.callbacks.map(({ callback, rank, standing }) => ({
+      callbacks: object.callbacks.map(({ callback, rank, standing, cancelled }) => ({
         callback: persisted(callback),
         rank: [...rank],
         standing: persisted(standing),
+        cancelled: persisted(cancelled),
       })),
       lost: object.lost,
       onAwaited: object.onAwaited.map(persisted),
@@ -176,6 +177,7 @@ function executionOf(execution: Execution, { named, persisted }: Naming): Persis
     ...(frame.closure === undefined ? {} : { closure: persisted(frame.closure) }),
     parked: execution.parked,
     given: execution.given.map((given) => registerOf(given, { named, persisted })),
+    awaiting: execution.awaiting.map(persisted),
     ...(execution.disposing === undefined ? {} : { disposing: named(execution.disposing) }),
     ...(kept.length === 0
       ? {}

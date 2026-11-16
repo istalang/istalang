@@ -19,7 +19,7 @@ import type { InstanceEnd } from '../run/instances.ts';
 import type { Invocation } from '../run/invocations.ts';
 import { Cell } from '../run/objects/cell.ts';
 import { Execution, type Frame } from '../run/objects/execution.ts';
-import { Future } from '../run/objects/future.ts';
+import { closuresOf, Future } from '../run/objects/future.ts';
 import { MockObject } from '../run/objects/mock-object.ts';
 import { Reference, type Step } from '../run/objects/reference.ts';
 import { Resource } from '../run/objects/resource.ts';
@@ -154,15 +154,16 @@ const fillers: Handlers<{ readonly run: Run } & Reading, PersistedObject, [], vo
     future.settled = persisted.settled;
     future.value = restored(persisted.value);
     future.lost = persisted.lost;
-    future.callbacks = persisted.callbacks.map(({ callback, rank, standing }) => ({
+    future.callbacks = persisted.callbacks.map(({ callback, rank, standing, cancelled }) => ({
       callback: restored(callback),
       rank,
       standing: restored(standing),
+      cancelled: restored(cancelled),
     }));
     future.onAwaited.push(...persisted.onAwaited.map(restored));
     const held = [
       ...(future.settled ? [future.value] : []),
-      ...future.callbacks.flatMap(({ callback, standing }) => [callback, standing]),
+      ...future.callbacks.flatMap(closuresOf),
       ...future.onAwaited,
     ];
     for (const each of held) {
@@ -216,6 +217,7 @@ function filledExecution(
   };
   execution.parked = persisted.parked;
   execution.given = persisted.given.map((given) => registerOf(given, reading) ?? null);
+  execution.awaiting = persisted.awaiting.map(restored);
   execution.transients = transientsOf(entry, execution.frame, persisted, object);
   if (persisted.disposing !== undefined) {
     execution.disposing = object(persisted.disposing) as Future;
@@ -230,8 +232,8 @@ function filledExecution(
       run.lifetimes.adoptRestored(register as Value | undefined);
     }
   });
-  for (const given of execution.given) {
-    run.lifetimes.adoptRestored(given);
+  for (const held of [...execution.given, ...execution.awaiting]) {
+    run.lifetimes.adoptRestored(held);
   }
   for (const { cell } of execution.transients.kept) {
     if (cell.counted) {

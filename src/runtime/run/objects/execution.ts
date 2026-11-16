@@ -22,6 +22,11 @@ export class Execution extends RunObject {
   disposing: Future | undefined;
   /** What it was called with, its closure among them, which it holds until it ends. */
   given: readonly Value[] = [];
+  /**
+   * What holds the futures its wait's cases are registered on through their chains, which it holds
+   * until that wait is let go of (§7, prelude.ista `_awaiting`).
+   */
+  awaiting: Value[] = [];
   /** The transients' cells its code sees (§3.4): those visible where it started, then its calls'. */
   transients = new TransientScope();
   /** The position its wait was decided for as its call is disposed: its `disposing()` case's. */
