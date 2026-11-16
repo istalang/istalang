@@ -40,8 +40,9 @@ tags: [plan, rewrite, goldens, contracts]
 
 ## Natives during the rewrite
 
-S1a deletes every native its goldens don't need. An extern without a native is unbound, so the
-goldens using it belong to the phase owning it below, which writes it new on the native contract
+S1a deletes every native its goldens don't need. Natives are bound per extern a program reaches,
+so an unbound extern fails only the programs using it; those goldens belong to the phase owning it
+below, which writes it new on the native contract
 (the old one stays readable at `ir-first-base`).
 
 ## Owners of shared surface
@@ -49,10 +50,13 @@ goldens using it belong to the phase owning it below, which writes it new on the
 | Surface | Owner | Others |
 |---|---|---|
 | Definition schema, extern entry schema, native contract | S1a | amend through the tech-lead |
+| Starting a program (one start API) | S1a | S2 extends it with the host binding |
+| Array and Map primitive natives (`length`, `index`, `size`, `get`, …) | S1b | |
+| The six `&` collection changes | S3 | |
 | `prelude.ista`: futures, resolvers, waits, timers, watches | S2 | |
 | `prelude.ista`: `WeakRef.from`, `deref` | S3 | |
 | Ista-only externs: slots, `disposed()`, `WeakMap`, `Revertible`, `Inbox` | S5a | |
 | `copy` lowering | S5b | S5c stubs it until S5b lands |
 | Host API: deploy, wake, inspect | S5a | S7 exports it |
 | Host API: retry, terminate | S5c | S7 exports it |
-| Every other std module and native; `std-modules.ts` | S4 | S2 adds run primitives as externs |
+| Every std module and native not above; `std-modules.ts` | S4 | S2 adds run primitives as externs |

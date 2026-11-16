@@ -41,4 +41,4 @@ Design: `design.md`. Contracts between phases: `contracts.md`. Evidence: `resear
 | S5b Instances (∥ S5c) | Spawn, crossings (`copy`), result, isolate. | S5b goldens green. |
 | S5c Contexts (∥ S5b) | Contexts, context constants, jobs; host retry and terminate. | S5c goldens green. |
 | S6 Tests and mocks | Spikes: starts past the mock check, a function's identity as a value, cross-instance ancestor lookup. `mocked`, `mockOf`, the registry in Istalang; the test runner; CLI `test`. | Every `.test.ista` golden green. A production Definition holds no mock check. |
-| S7 Finish | Export the host API; browser bundle; LLVM doc (`native-binary.md`); merge review of the branch against `ir-first-base`. | Every golden green. Verify green. The run bundles with no Node built-in. |
+| S7 Finish | Export the host API; browser bundle; LLVM doc (`native-binary.md`); merge review of the branch against its merge base with main. | Every golden green. Verify green. The run bundles with no Node built-in. |
