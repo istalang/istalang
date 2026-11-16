@@ -8,8 +8,9 @@
  *   (`_caseResolver`), which puts the value it is resolved with there and decides the wait for the
  *   case's position. The resolver is handed to the case's `onAwait` and let go of at once, so what
  *   `onAwait` did with it is all that holds it, and one it dropped panics;
- * - `park`, which gives the position the wait was decided for; the case at that position reads its
- *   value out of its shared value.
+ * - `park`, which gives the position the wait was decided for; the case at that position takes its
+ *   value out of its shared value, leaving it empty: a resolver outliving the wait still reaches
+ *   the shared value, and must not keep the value its waiter moved on with (§7).
  *
  * Code with a body calls each case's `onAwait` as the checker recorded it; synthesized code awaits
  * only futures, through the prelude's.
@@ -115,7 +116,7 @@ export function decidedAt(context: CodeContext, open: OpenWait, span: AnchoredSp
   );
 }
 
-/** The value case `position` of `open` was resolved with, once the wait was decided for it. */
+/** Takes the value case `position` of `open` was resolved with, once the wait was decided for it. */
 export function caseValue(
   context: CodeContext,
   open: OpenWait,
@@ -126,12 +127,12 @@ export function caseValue(
   const decided = open.cases[position] ?? unreachable(`A wait has no case ${position}.`);
   const optional = optionalOf(decided.type, checker.typeRules);
   const held = code.allocate(tables.types.reference(optional));
-  code.emit({
-    kind: 'load',
-    span,
-    dst: held,
-    place: { root: { kind: 'cell', register: decided.shared }, path: [{ kind: 'field', field: 0 }] },
-  });
+  const place = {
+    root: { kind: 'cell', register: decided.shared },
+    path: [{ kind: 'field', field: 0 }],
+  } as const;
+  code.emit({ kind: 'load', span, dst: held, place });
+  code.emit({ kind: 'store', span, place, value: noneOf(context, optional, span) });
   return insideOptional(context, { register: held, type: optional, to: decided.type }, span);
 }
 
