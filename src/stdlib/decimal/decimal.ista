@@ -199,13 +199,12 @@ fn _aligned(left: Decimal, right: Decimal) -> ((Int, Int), Int):
   const scale = math.max(leftScale, rightScale)
   ((leftUnits * 10 ** (scale - leftScale), rightUnits * 10 ** (scale - rightScale)), scale)
 
-# `left / right` as a dividend and a divisor of ints; a Decimal has no infinity, so a divisor of
-# zero panics.
+# `left / right` as a dividend and a divisor of ints, their units at one scale; a Decimal has no
+# infinity, so a divisor of zero panics.
 fn _ratio(left: Decimal, right: Decimal) -> (Int, Int):
-  const leftUnits, leftScale = left._parts()
-  const rightUnits, rightScale = right._parts()
-  if rightUnits == 0: panic("Division by zero.")
-  (leftUnits * 10 ** rightScale, rightUnits * 10 ** leftScale)
+  const (dividend, divisor), _ = _aligned(left, right)
+  if divisor == 0: panic("Division by zero.")
+  (dividend, divisor)
 
 # `dividend / divisor` moved `shift` places to the left of the point, rounded to an int in `mode`.
 fn _scaledQuotient(dividend: Int, divisor: Int, shift: Int, mode: Rounding) -> Int:

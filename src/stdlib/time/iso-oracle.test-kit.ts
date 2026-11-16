@@ -22,6 +22,10 @@ import {
 
 /** The furthest a JavaScript `Date` reaches from the epoch, either way. */
 const maximumTime = 8_640_000_000_000_000n;
+/** The Gregorian calendar's cycle, in years and in milliseconds, and a year a Date holds to start one. */
+const cycleYears = 400;
+const cycleMilliseconds = 146_097n * millisecondsPerDay;
+const cycleStart = 2000;
 /** How many digits a millisecond count has as a fraction of a second. */
 const millisecondDigits = 3;
 
@@ -52,8 +56,12 @@ export function readTime(text: string): bigint | undefined {
     parts.minute,
     parts.second,
   ].map(Number);
+  // The calendar repeats every 400 years, so a year a Date can't hold is read in the cycle near
+  // 2000 and moved back by whole cycles: only the instant, after its offset, must be one a Date holds.
+  const year = Number(parts.year);
+  const nearYear = cycleStart + (((year % cycleYears) + cycleYears) % cycleYears);
   const date = new Date(0);
-  date.setUTCFullYear(Number(parts.year), month - 1, day);
+  date.setUTCFullYear(nearYear, month - 1, day);
   date.setUTCHours(hour, minute, second, Number(fractionOf(parts.fraction)));
   const offset = zoneOffset(parts);
   const isCalendarTime =
@@ -62,10 +70,12 @@ export function readTime(text: string): bigint | undefined {
     BigInt(hour) < hoursPerDay &&
     BigInt(minute) < minutesPerHour &&
     BigInt(second) < secondsPerMinute;
-  if (!isCalendarTime || Number.isNaN(date.getTime()) || offset === undefined) {
+  if (!isCalendarTime || offset === undefined) {
     return undefined;
   }
-  return BigInt(date.getTime()) - offset;
+  const cycles = BigInt((year - nearYear) / cycleYears);
+  const instant = BigInt(date.getTime()) + cycles * cycleMilliseconds - offset;
+  return instant < -maximumTime || instant > maximumTime ? undefined : instant;
 }
 
 /** `duration` milliseconds as `Temporal.Duration` writes the time between two instants. */
