@@ -19,11 +19,15 @@ tags: [plan, rewrite, goldens, contracts]
   observations. Observations never read the snapshot's shape.
 - **Fixed inputs:** the clock and the random seed are part of each golden.
 - **The schema** is a doc R0 writes beside the runner.
-- **Manifest:** every golden is assigned to exactly one phase. The runner reports per phase and
-  fails on any red golden of a phase at or before the current one.
-- **Coverage map:** every test file the old pipeline's deletion removes maps to a golden, a
-  scenario, an `.ista` test, or "internal, dropped". It also names the property that replaces
-  `differential.sweep` (generated programs).
+- **Amended goldens:** those a spec amendment changes are written by hand to the amended spec,
+  marked expected red on the old pipeline.
+- **Manifest:** every golden is assigned to exactly one phase. The runner reads the set of landed
+  phases (each phase adds itself on merge) and fails on any red golden of a landed phase.
+- **Coverage map:** every test that imports code S1a deletes maps to a golden, a scenario, an
+  `.ista` test, a rewrite in its owner's phase, or "internal, dropped". It also names the property
+  that replaces `differential.sweep` (generated programs).
+- **Round trip across builds:** the second build emits the same Definition's functions in a
+  shuffled order into a fresh module.
 - **Baselines:** `form-builder.bench.ts` on today's compiled code, and a new `Int` loop bench
   against hand-written bigint.
 
@@ -34,12 +38,21 @@ tags: [plan, rewrite, goldens, contracts]
 - One entry builder; entry kinds a typed table; no ambient lowering state; nothing stored that
   is derived (`counted`).
 
+## Natives during the rewrite
+
+S1a deletes every native its goldens don't need. An extern without a native is unbound, so the
+goldens using it belong to the phase owning it below, which writes it new on the native contract
+(the old one stays readable at `ir-first-base`).
+
 ## Owners of shared surface
 
 | Surface | Owner | Others |
 |---|---|---|
 | Definition schema, extern entry schema, native contract | S1a | amend through the tech-lead |
 | `prelude.ista`: futures, resolvers, waits, timers, watches | S2 | |
-| `prelude.ista`: weak references | S3 | |
-| `prelude.ista`: slots | S5a | |
+| `prelude.ista`: `WeakRef.from`, `deref` | S3 | |
+| Ista-only externs: slots, `disposed()`, `WeakMap`, `Revertible`, `Inbox` | S5a | |
+| `copy` lowering | S5b | S5c stubs it until S5b lands |
+| Host API: deploy, wake, inspect | S5a | S7 exports it |
+| Host API: retry, terminate | S5c | S7 exports it |
 | Every other std module and native; `std-modules.ts` | S4 | S2 adds run primitives as externs |
