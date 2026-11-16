@@ -136,9 +136,9 @@ export class EntryScope {
           ? `${name} = lt.uncounted(${value});`
           : `${name} = ${value};`;
       case 'cell':
-        return `${name} = run.cellWrite(${name}, ${this.cellType(register)}, ${value});`;
+        return `${name} = run.cellWrite(${name}, ${this.cellType(register)}, ${value}, ${this.isCounted(register)});`;
       case 'transient':
-        return `if (${name} === undefined) { ${name} = run.cellWrite(undefined, ${this.cellType(register)}, ${value}); run.share(${this.index}, ${register}, ${name}); } else ${name}.v = ${value};`;
+        return `if (${name} === undefined) { ${name} = run.cellWrite(undefined, ${this.cellType(register)}, ${value}, ${this.isCounted(register)}); run.share(${this.index}, ${register}, ${name}); } else ${name}.v = ${value};`;
       case 'reference':
         return `${name}.write(${value});`;
       default:

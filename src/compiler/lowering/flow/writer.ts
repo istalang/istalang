@@ -84,8 +84,8 @@ export class FlowWriter {
   #wait: OpenWait | undefined;
   #block: BlockId = 0;
   #next: BlockId | undefined;
-  /** Whether the block being written is in a field loop's passes (§4). */
-  #inPasses = false;
+  /** How many passes of field loops the block being written is in (§4). */
+  #passes = 0;
   readonly #after: Label;
 
   constructor(context: FunctionContext, flow: FlowFunction, end: FlowEnd) {
@@ -112,7 +112,7 @@ export class FlowWriter {
       this.#next = order[position + 1];
       this.context.code.place(this.labelOf(block));
       const passes = this.#layout.passesOf(block);
-      this.#inPasses = passes.length > 0;
+      this.#passes = passes.length;
       this.context.inFieldPasses(passes, () =>
         this.#writeBlock(this.flow.blocks[block] as FlowBlock),
       );
@@ -176,19 +176,25 @@ export class FlowWriter {
     this.#registers.set(value, register);
     this.#held.add(register);
     const bound = this.valueOf(value);
-    if (bound.type !== undefined && this.#typesItsRegister(bound)) {
+    if (bound.type !== undefined && this.#typesItsRegister(bound, register)) {
       holdsType(this.context, register, bound.type);
     }
   }
 
   /**
-   * Whether `value`'s type says what its register holds: not a cell's (`cellRegister` says it), nor
-   * a variable's in a field loop's pass, where one register holds each pass's field but the flow
-   * types the variable as one pass reads it (§4); what is written there says instead
-   * (functions/plain-registers.ts).
+   * Whether `value`'s type says what `register` holds: not a cell's (`cellRegister` says it), nor,
+   * in a field loop's pass, a variable's register, even one a read of it copies into. One register
+   * holds each pass's value there, but the flow types a variable as one pass reads it (§4): what is
+   * written says instead (functions/plain-registers.ts).
    */
-  #typesItsRegister(value: FlowValue): boolean {
-    return value.kind !== 'variable' || !(value.inCell || this.#inPasses);
+  #typesItsRegister(value: FlowValue, register: Register): boolean {
+    if (value.kind === 'variable' && value.inCell) {
+      return false;
+    }
+    return (
+      this.#passes === 0 ||
+      (value.kind !== 'variable' && !this.context.variables.isVariable(register))
+    );
   }
 
   /** `value` given `produced`: its own register, or moved into the one it has. */
@@ -217,7 +223,10 @@ export class FlowWriter {
       const register = value.inCell
         ? cellRegister(this.context, type)
         : this.context.code.allocate();
-      if (this.#typesItsRegister(value)) {
+      if (value.inCell && this.#passes > 0) {
+        // Its cell, made as the first pass's type says, may hold another pass's disposable.
+        this.context.code.holdsCounted(register);
+      } else if (this.#typesItsRegister(value, register)) {
         holdsType(this.context, register, type);
       }
       variables.declare(name, register);

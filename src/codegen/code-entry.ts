@@ -110,7 +110,7 @@ function locals(scope: EntryScope): string[] {
   for (const [register, parameter] of entry.parameters.entries()) {
     if (!parameter.reference && scope.holding(register) !== 'value') {
       declared.push(
-        `if (r${register} !== undefined) r${register} = run.cellWrite(undefined, ${scope.cellType(register)}, r${register});`,
+        `if (r${register} !== undefined) r${register} = run.cellWrite(undefined, ${scope.cellType(register)}, r${register}, ${scope.isCounted(register)});`,
       );
     } else if (scope.isCounted(register)) {
       declared.push(`lt.hold(r${register});`);
