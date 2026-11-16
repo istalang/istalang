@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-11-15
-last_updated: 2026-11-15
+last_updated: 2026-11-16
 tags: [boundary, json, externs, host, runtime, lowering]
 ---
 
@@ -143,37 +143,31 @@ its instance is numbered by, so its native sees only JSON:
 A startable function (top-level, not generic, extern or ista code, or a constant holding a sendable
 lambda that isn't ista code; by-value parameters that can be read, an outcome that can be written;
 the rule is `foundation/language/starts.ts`'s, which the compiler, the checker, lowering and the
-Definition's validation read) gets a start entry, listed in
-the Definition's `starts` under its key. A start entry is the function's own body compiled once
-more with its arguments as JSON (`lowering/synthesized/boundary/starts.ts`, `instanceLowering` in `functions/index.ts`): it
-decodes each argument, a mismatch failing the host's start, so the run is one execution of the
-function and its traces and waits are the function's own. A start is live or simple code, its
-head's mark (spec §3.3): ista code runs only in an instance, a context live code calls, so `main`
-is `live async fn main()`. `starts` lists it with its outcome's
-encoder, the entry of the codec writing the declared result (`synthesized/boundary/starts.ts`), which the
-instance keeps for life and its segment calls with the outcome on top of the root's last frame as
-it returns, so what that frame holds is disposed after (`scheduler/segment/root-outcome.ts`): a
-finished instance keeps both, the outcome for `result()` and its JSON for the host. A spawned
-instance's encoder is its `Instance<T>` type entry's, the codec writing `T`
-(`lowering/tables/type-table.ts`), which every spawning native reads from the type it gives
-(`runtime/natives.ts`, `NativeInstances.spawn`), `spawn`'s, `runtime.isolate`'s and
-`testing.spawnCrashingEveryAwait`'s alike; the expansion rule counts that codec's calls wherever
-code makes an `Instance<T>` type (§3.5, `checker/surface/reach.ts`). `main` is started through its own; what a host reads of an outcome is JSON by the declared result,
-as JavaScript values (`outcome`) like everything else it exchanges, or as text (`outcomeText`),
-which `ista run` prints (`runtime/boundary/outbound.ts`).
+Definition's validation read) gets a start, listed in the Definition's `starts` under its key with
+two entries (`lowering/synthesized/boundary/starts.ts`):
+
+- `function` decodes each argument from `Json`, a mismatch failing the host's start before anything
+  runs, and calls the function, giving what it gives: an async one's future, unawaited.
+- `encode` writes the outcome as `Json` with the codec of the declared result. The runtime calls it
+  the moment the root's outcome settles, and the live run finishes then (spec §10): nothing readied
+  meanwhile runs, and what `main` held was disposed as it returned.
+
+A start is live or simple code, its head's mark (spec §3.3): ista code runs only in an instance, a
+context live code calls, so `main` is `live async fn main()`. A spawned instance's outcome is kept as
+its value; a host reads it as JSON text where it is a primitive (`host/programs.ts`,
+`outcomeText`). What a host reads of a start's outcome is its encoded JSON, as JavaScript values or
+as text, which `ista run` prints.
 
 The host API (`runtime/host/index.ts`, `createRuntime`) deploys a Definition text (`deploy`),
 giving its program (`runtime/host/programs.ts`), whose `start` runs a function by key with JSON
-arguments as a live run; the `Runtime` wakes a stored instance (`wake`), reads its program and
-where it stands (`programOf`, `inspect`), and operates panicked instances: `retry` re-runs the failed segment from the
-last commit at the time it first started, `terminate` ends it from its last commit: its root stops, so what
-it held is disposed as any release disposes it, a disposed call's `disposing()` cleanup included,
-and any execution only other executions hold stops after it (`scheduler/segment/`, `endInstance`);
-a disposal that panics counts as done, so the rest still tell their hosts. No host fills an
-instance's future: what reaches an instance from outside is a call into it as a context, a
-delegated job's result among them (`runtime.delegate`). A host names only its
-live runs, which never reach the store; the store's instances are contexts, named by the program's
-keys, and the instances they spawn, `<parent>/<n>`.
+arguments as a live run named by the host; the `Runtime` wakes a stored instance (`wake`), reads
+its program and where it stands (`programOf`, `inspect`), and operates panicked instances: `retry`
+runs the failed segment again from where the instance stood before it, at the time it first
+started, replaying the call it was starting; `terminate` disposes what it held then and commits it
+holding nothing (docs/arch/runtime.md). No host fills an instance's future: what reaches an
+instance from outside is a call into it as a context, a delegated job's result among them
+(`runtime.delegate`). A host names only its live runs, which never reach the store; the store's
+instances are contexts, named by the program's keys, and the instances they spawn, `<parent>/<n>`.
 
 ## The host contract
 
