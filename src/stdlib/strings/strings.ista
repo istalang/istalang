@@ -6,28 +6,135 @@
 # since `in` calls it (§3.9).
 
 extern fn indexOf(self: String, search: String, from: Int = 0) -> Int
-extern fn lastIndexOf(self: String, search: String) -> Int
-extern fn startsWith(self: String, prefix: String) -> Bool
-extern fn endsWith(self: String, suffix: String) -> Bool
+
+fn lastIndexOf(self: String, search: String) -> Int:
+  if search == "": return self.length()
+  let last = -1
+  let found = self._find(search, 0)
+  while found >= 0:
+    last = found
+    found = self._find(search, found + 1)
+  if last < 0: -1
+  else: self._between(0, last).length()
+
+fn startsWith(self: String, prefix: String) -> Bool:
+  self._between(0, utf16Length(prefix)) == prefix
+
+fn endsWith(self: String, suffix: String) -> Bool:
+  const start = utf16Length(self) - utf16Length(suffix)
+  start >= 0 and self._between(start, utf16Length(self)) == suffix
 
 extern fn slice(self: String, start: Int = 0, end: Int? = none) -> String
-extern fn split(self: String, separator: String) -> Array<String>
+
+fn split(self: String, separator: String) -> Array<String>:
+  if separator == "": return [for character in self: character]
+  let parts: Array<String> = []
+  let start = 0
+  let found = self._find(separator, 0)
+  while found >= 0:
+    parts.push(self._between(start, found))
+    start = found + utf16Length(separator)
+    found = self._find(separator, start)
+  parts.push(self._between(start, utf16Length(self)))
+  parts
 
 extern fn trim(self: String) -> String
 extern fn trimStart(self: String) -> String
 extern fn trimEnd(self: String) -> String
-extern fn padStart(self: String, length: Int, fill: String = " ") -> String
-extern fn padEnd(self: String, length: Int, fill: String = " ") -> String
-extern fn repeat(self: String, count: Int) -> String
 
-# Plain text: `$` in a replacement is just a `$`. Patterns are the regex module's.
-extern fn replace(self: String, search: String, replacement: String) -> String
-extern fn replaceAll(self: String, search: String, replacement: String) -> String
+fn padStart(self: String, length: Int, fill: String = " ") -> String:
+  _padding(self, length, fill) + self
+
+fn padEnd(self: String, length: Int, fill: String = " ") -> String:
+  self + _padding(self, length, fill)
+
+# `self` written `count` times. What is built doubles, so a count of n takes about twice log n
+# appends; a negative count is a bug in the program.
+fn repeat(self: String, count: Int) -> String:
+  if count < 0: panic("A string can't be repeated " + count + " times.")
+  let repeated = ""
+  let doubled = self
+  let rest = count
+  while rest > 0:
+    if rest % 2 == 1: repeated += doubled
+    rest = rest // 2
+    if rest > 0: doubled += doubled
+  repeated
+
+# Plain text: `$` in a replacement is just a `$`. Patterns are the regex module's. An empty search
+# matches before every code point and at the end, so `replace` puts its replacement first.
+fn replace(self: String, search: String, replacement: String) -> String:
+  const found = self._find(search, 0)
+  if found < 0: return self
+  const after = found + utf16Length(search)
+  self._between(0, found) + replacement + self._between(after, utf16Length(self))
+
+fn replaceAll(self: String, search: String, replacement: String) -> String:
+  if search != "": return self.split(search).join(replacement)
+  let replaced = replacement
+  for character in self: replaced += character + replacement
+  replaced
 
 extern fn toUpperCase(self: String) -> String
 extern fn toLowerCase(self: String) -> String
 
-extern fn format(template: String, ...values: Array<String>) -> String
+# A template's `{}` takes the next value, `{n}` value `n`, and `{{` and `}}` write a brace. The
+# template is the program's own text, so a placeholder without a value, or a brace that is neither,
+# is a bug in it and panics (§3.12). `{}` counts on from the last `{}` alone, so writing `{n}`
+# between them doesn't move it; values no placeholder takes are left out.
+fn format(template: String, ...values: Array<String>) -> String:
+  let written = ""
+  let next = 0
+  # A brace read and not yet written, with the digits read after an opening one.
+  let brace = ""
+  let digits = ""
+  for character in template:
+    if brace == "{" and character == "{" and digits == "":
+      written += "{"
+      brace = ""
+    elif brace == "{" and character >= "0" and character <= "9": digits += character
+    elif brace == "{" and character == "}":
+      const position = if digits == "": next else: _placeholder(digits)
+      if digits == "": next += 1
+      if position >= values.length():
+        const given = ": it was given " + values.length() + "."
+        panic("The template '" + template + "' has no value for placeholder " + position + given)
+      written += values[position]
+      brace = ""
+      digits = ""
+    elif brace == "}" and character == "}":
+      written += "}"
+      brace = ""
+    elif brace != "": _strayBrace(template, brace)
+    elif character == "{" or character == "}": brace = character
+    else: written += character
+  if brace != "": _strayBrace(template, brace)
+  written
 
 extern fn graphemes(s: String) -> Array<String>
 extern fn utf16Length(s: String) -> Int
+
+# Searching and cutting by UTF-16 offset, which every function above keeps to a string's own text so
+# each step reads on from the last, never counting code points from the start: where `search` is
+# first found at or after `offset`, or -1, and the text between two offsets. Only offsets these give
+# are passed back, so none splits a code point.
+extern fn _find(self: String, search: String, offset: Int) -> Int
+extern fn _between(self: String, start: Int, end: Int) -> String
+
+# What pads `text` to `length` code points: `fill` repeated and cut to fit; none when it is long
+# enough.
+fn _padding(text: String, length: Int, fill: String) -> String:
+  const missing = length - text.length()
+  const fillLength = fill.length()
+  if missing <= 0 or fillLength == 0: return ""
+  fill.repeat(missing // fillLength) + fill.slice(0, missing % fillLength)
+
+fn _placeholder(digits: String) -> Int:
+  match Int.parse(digits):
+    case Ok(position): position
+    case Err(error): panic(error.message)
+
+fn _strayBrace(template: String, brace: String) -> Never:
+  panic(
+    "The template '" + template + "' has a stray '" + brace + "'; '" + brace + brace + "' writes one."
+  )

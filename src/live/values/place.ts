@@ -64,9 +64,6 @@ export class Place {
         this.write({ kind: 'array', elements: changed });
         return last;
       },
-      reverse: () => {
-        this.write({ kind: 'array', elements: elements().reverse() });
-      },
       splice: (start, count, items) => {
         const changed = elements();
         changed.splice(start, count, ...items);

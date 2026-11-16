@@ -244,6 +244,8 @@
       "✓ prelude › ranges › include an int they reach, an open end reaching without bound",
       "✓ prelude › ranges › panic on a step of 0, an open start stepping by more than 1, and iterating an open one",
       "✓ prelude › limits › a string outgrowing what the runtime can hold panics",
+      "✓ prelude › numbers › an int and a float mix into a float, the int converted",
+      "✓ prelude › numbers › a Bool writes and reads back its words, and refuses anything else",
       "✓ prelude › numbers › ** › of two ints is an exact int, grouping to the right",
       "✓ prelude › numbers › ** › with a float is a float, its right operand taking a sign",
       "✓ prelude › numbers › ** › assigns compounded, and works through Powerable",
@@ -255,7 +257,7 @@
       "✓ prelude › instances › result gives what a spawned instance's function returned",
       "✓ prelude › instances › result gives a spawned instance's panic as an Err",
       "✓ prelude › instances › an instance's handle compares by identity",
-      "34 passed, 0 failed, 0 skipped."
+      "36 passed, 0 failed, 0 skipped."
     ]
   },
   "src/stdlib/random": {

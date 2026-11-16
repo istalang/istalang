@@ -7,9 +7,8 @@
 import { Decimal } from 'decimal.js';
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import type { Rounding } from '../math/rounding.ts';
+import { decimalJsRoundings, type Rounding, roundings } from '../math/rounding-oracle.test-kit.ts';
 import { mainGives } from '../prelude/prelude.test-kit.ts';
-import { decimalJsRoundings } from './decimal-js.test-kit.ts';
 
 /** Exact arithmetic, whose text never takes an exponent. */
 const exact = Decimal.clone({
@@ -21,8 +20,6 @@ const exact = Decimal.clone({
 });
 
 const quotient = exact.clone({ precision: 34 });
-
-const modes = Object.keys(decimalJsRoundings) as Rounding[];
 
 /** Text in the language's grammar: a sign, digits with leading zeros, and maybe a fraction. */
 const decimalText = fc
@@ -50,7 +47,7 @@ const cases = fc.array(
     left: decimalText,
     right: decimalText,
     places: fc.integer({ min: 0, max: 8 }),
-    mode: fc.constantFrom(...modes),
+    mode: fc.constantFrom(...roundings),
     exponent: fc.integer({ min: -4, max: 6 }),
   }),
   { minLength: 20, maxLength: 20 },
@@ -66,7 +63,7 @@ const smallDivisions = fc.array(
     left: smallText,
     right: smallText.filter((text) => !new exact(text).isZero()),
     places: fc.integer({ min: 0, max: 4 }),
-    mode: fc.constantFrom(...modes),
+    mode: fc.constantFrom(...roundings),
   }),
   { minLength: 20, maxLength: 20 },
 );

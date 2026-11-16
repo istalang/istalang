@@ -169,6 +169,8 @@ struct Range:
 fn _inclusiveRange(start: Int?, end: Int, step: Int) -> Range:
   Range{start, end: if step < 0: end - 1 else: end + 1, step}
 
+extern fn includes(self: Range, value: Int) -> Bool
+
 extern fn panic(message: String) -> Never
 
 # Collections (§3.8, §3.9, §3.10). Indexing panics outside the bounds, while `at` and `get` return an
@@ -179,18 +181,34 @@ extern fn at<T>(self: Array<T>, index: Int) -> T?
 extern fn push<T>(self: &Array<T>, item: T)
 extern fn pop<T>(self: &Array<T>) -> T?
 extern fn slice<T>(self: Array<T>, start: Int = 0, end: Int? = none) -> Array<T>
-extern fn indexOf<T>(self: Array<T>, item: T) -> Int
-extern fn lastIndexOf<T>(self: Array<T>, item: T) -> Int
-extern fn includes<T>(self: Array<T>, item: T) -> Bool
-extern fn includes(self: Range, value: Int) -> Bool
-extern fn reverse<T>(self: &Array<T>)
-extern fn flat<T>(self: Array<Array<T>>) -> Array<T>
-extern fn join(self: Array<String>, separator: String) -> String
 extern fn index<T>(self: Array<T>, key: Int) -> T
 extern fn index<T>(self: Array<T>, key: Range) -> Array<T>
 extern fn setIndex<T>(self: &Array<T>, key: Int, value: T)
 extern fn setIndex<T>(self: &Array<T>, key: Range, value: Array<T>)
 extern fn Array.default<T>() -> Array<T>
+
+fn indexOf<T>(self: Array<T>, item: T) -> Int: self.findIndex(fn(each): each == item)
+
+fn lastIndexOf<T>(self: Array<T>, item: T) -> Int: self.findLastIndex(fn(each): each == item)
+
+fn includes<T>(self: Array<T>, item: T) -> Bool: self.indexOf(item) >= 0
+
+fn reverse<T>(self: &Array<T>):
+  const last = self.length() - 1
+  self = [for position in 0..=last: self[last - position]]
+
+fn flat<T>(self: Array<Array<T>>) -> Array<T>:
+  let items: Array<T> = []
+  for inner in self:
+    for item in inner: items.push(item)
+  items
+
+fn join(self: Array<String>, separator: String) -> String:
+  let joined = ""
+  for position in 0..self.length():
+    if position > 0: joined += separator
+    joined += self[position]
+  joined
 
 # What an array pattern reads once its length test passed (§3.11): the item `offset` from the start,
 # or from the end when negative, and the items between the first `before` and the last `after`.
@@ -200,14 +218,18 @@ extern fn _patternRest<T>(self: Array<T>, before: Int, after: Int) -> Array<T>
 extern fn size<K, V>(self: Map<K, V>) -> Int
 extern fn get<K, V>(self: Map<K, V>, key: K) -> V?
 extern fn has<K, V>(self: Map<K, V>, key: K) -> Bool
-extern fn includes<K, V>(self: Map<K, V>, key: K) -> Bool # as `has`, for `in`
 extern fn delete<K, V>(self: &Map<K, V>, key: K) -> Bool
-extern fn keys<K, V>(self: Map<K, V>) -> Array<K>
-extern fn values<K, V>(self: Map<K, V>) -> Array<V>
-extern fn entries<K, V>(self: Map<K, V>) -> Array<(K, V)>
 extern fn index<K, V>(self: Map<K, V>, key: K) -> V
 extern fn setIndex<K, V>(self: &Map<K, V>, key: K, value: V)
 extern fn Map.default<K, V>() -> Map<K, V>
+
+fn includes<K, V>(self: Map<K, V>, key: K) -> Bool: self.has(key) # as `has`, for `in`
+
+fn keys<K, V>(self: Map<K, V>) -> Array<K>: [for key, _ in self: key]
+
+fn values<K, V>(self: Map<K, V>) -> Array<V>: [for _, value in self: value]
+
+fn entries<K, V>(self: Map<K, V>) -> Array<(K, V)>: [for entry in self: entry]
 
 extern fn length(self: String) -> Int
 extern fn at(self: String, index: Int) -> String?
@@ -338,34 +360,35 @@ extern fn _characterAt(self: String, offset: Int) -> (String, Int)?
 # default of an `Error`'s `trace`, which runs in an entry of its own (§3.1, §3.12).
 extern fn _trace() -> String
 
-# Operators on primitives (§3.9). They are built in: the runtime implements each, and declaring
-# them here lets an operator resolve like any other call. Mixed operands are overloads, as a
-# program's own are: mixing int and float gives a float, and `/` always gives a float.
+# Operators on primitives (§3.9). The runtime implements those on two operands of one type, and
+# declaring them here lets an operator resolve like any other call. Mixed operands are overloads,
+# as a program's own are, written over those: mixing int and float converts the int and gives a
+# float, and `/` always gives a float.
 extern fn add(left: Int, right: Int) -> Int
 extern fn add(left: Float, right: Float) -> Float
-extern fn add(left: Int, right: Float) -> Float
-extern fn add(left: Float, right: Int) -> Float
+fn add(left: Int, right: Float) -> Float: Float(left) + right
+fn add(left: Float, right: Int) -> Float: left + Float(right)
 extern fn add(left: String, right: String) -> String
 extern fn subtract(left: Int, right: Int) -> Int
 extern fn subtract(left: Float, right: Float) -> Float
-extern fn subtract(left: Int, right: Float) -> Float
-extern fn subtract(left: Float, right: Int) -> Float
+fn subtract(left: Int, right: Float) -> Float: Float(left) - right
+fn subtract(left: Float, right: Int) -> Float: left - Float(right)
 extern fn multiply(left: Int, right: Int) -> Int
 extern fn multiply(left: Float, right: Float) -> Float
-extern fn multiply(left: Int, right: Float) -> Float
-extern fn multiply(left: Float, right: Int) -> Float
-extern fn divide(left: Int, right: Int) -> Float
+fn multiply(left: Int, right: Float) -> Float: Float(left) * right
+fn multiply(left: Float, right: Int) -> Float: left * Float(right)
+fn divide(left: Int, right: Int) -> Float: Float(left) / Float(right)
 extern fn divide(left: Float, right: Float) -> Float
-extern fn divide(left: Int, right: Float) -> Float
-extern fn divide(left: Float, right: Int) -> Float
+fn divide(left: Int, right: Float) -> Float: Float(left) / right
+fn divide(left: Float, right: Int) -> Float: left / Float(right)
 extern fn floorDivide(left: Int, right: Int) -> Int
 extern fn remainder(left: Int, right: Int) -> Int
 # An int to an int power stays an int, which a negative exponent can't; a float operand makes the
 # result a float.
 extern fn power(base: Int, exponent: Int) -> Int
 extern fn power(base: Float, exponent: Float) -> Float
-extern fn power(base: Int, exponent: Float) -> Float
-extern fn power(base: Float, exponent: Int) -> Float
+fn power(base: Int, exponent: Float) -> Float: Float(base) ** exponent
+fn power(base: Float, exponent: Int) -> Float: base ** Float(exponent)
 # The bitwise operators work on an int's two's complement of unbounded width, as Python's do, so
 # `~x` is `-x - 1` and `>>` rounds toward negative infinity; a negative shift count panics.
 extern fn bitAnd(left: Int, right: Int) -> Int
@@ -378,8 +401,8 @@ extern fn negate(value: Int) -> Int
 extern fn negate(value: Float) -> Float
 extern fn compare(left: Int, right: Int) -> Int
 extern fn compare(left: Float, right: Float) -> Int
-extern fn compare(left: Int, right: Float) -> Int
-extern fn compare(left: Float, right: Int) -> Int
+fn compare(left: Int, right: Float) -> Int: compare(Float(left), right)
+fn compare(left: Float, right: Int) -> Int: compare(left, Float(right))
 extern fn compare(left: String, right: String) -> Int
 
 # Conversions (§3.10): only the ones that can't fail are written T(x). `Int(x)` truncates toward
@@ -399,13 +422,20 @@ fn add<T is Stringable>(left: T, right: String) -> String: left.toString() + rig
 
 extern fn toString(self: Int) -> String
 extern fn toString(self: Float) -> String
-extern fn toString(self: Bool) -> String
+
+fn toString(self: Bool) -> String:
+  if self: "true"
+  else: "false"
 
 fn toString(self: String) -> String: self
 
 extern fn Int.parse(text: String) -> Result<Int>
 extern fn Float.parse(text: String) -> Result<Float>
-extern fn Bool.parse(text: String) -> Result<Bool>
+
+fn Bool.parse(text: String) -> Result<Bool>:
+  if text == "true": Ok(true)
+  elif text == "false": Ok(false)
+  else: Err(Error{message: "'" + text + "' is not a Bool.", code: "parse"})
 
 fn String.parse(text: String) -> Result<String>: Ok(text)
 

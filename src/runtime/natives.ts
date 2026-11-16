@@ -350,7 +350,6 @@ export interface ValueChanges {
   readonly push: (items: readonly Value[]) => void;
   /** Removes the last element; it, or undefined for an empty array. */
   readonly pop: () => Value | undefined;
-  readonly reverse: () => void;
   /** Replaces `count` elements from `start` with `items`. */
   readonly splice: (start: number, count: number, items: readonly Value[]) => void;
   /** Sets `key` to `value`: a key the map holds keeps its place, a new one goes last. */

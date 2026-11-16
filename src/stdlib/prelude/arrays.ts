@@ -1,7 +1,8 @@
 /**
- * The prelude's natives for arrays (§3.8, §3.9, §3.10, §3.11): reading, `&self` methods, indexing,
- * and what an array pattern reads.
- * Methods taking a function are the prelude's code (prelude.ista), since only code calls one.
+ * The prelude's natives for arrays (§3.8, §3.9, §3.10, §3.11): the primitives, reading, `&self`
+ * methods, indexing by position and range, and what an array pattern reads, which share their
+ * positions' rules with strings (positions.ts). The methods written over them, searching, joining
+ * and those taking a function, are the prelude's code (prelude.ista).
  *
  * An array is a value, so a method taking `&self` changes it through its context
  * (runtime/natives.ts), which changes it in place only when nothing else holds it. Elements compare
@@ -9,7 +10,6 @@
  */
 
 import { parameterKey, referenceKey } from '../../definition/extern-key.ts';
-import { valuesEqual } from '../../definition/values/equality.ts';
 import { elementsOf } from '../../definition/values/values.ts';
 import { wellKnown } from '../../foundation/language/well-known/index.ts';
 import type { NativeContext, Natives } from '../../runtime/natives.ts';
@@ -23,7 +23,7 @@ import {
 } from '../positions.ts';
 import { rangeOf } from '../ranges.ts';
 import { knownTypeKey, type NativeKeys } from '../std-module.ts';
-import { arrayOf, int, optionalInt, text } from '../values/arguments.ts';
+import { arrayOf, int, optionalInt } from '../values/arguments.ts';
 import { resultOptional } from '../values/results.ts';
 
 const item = parameterKey('T');
@@ -42,16 +42,6 @@ export const arrayNatives = (keys: NativeKeys): Natives<NativeContext> => ({
     [xs, start, end],
     context,
   ) => arrayOf(sliced(elementsOf(xs), int(start), optionalInt(context, end))),
-  [keys.of('indexOf', array, item)]: ([xs, element]) =>
-    BigInt(elementsOf(xs).findIndex((each) => valuesEqual(each, element ?? null))),
-  [keys.of('lastIndexOf', array, item)]: ([xs, element]) =>
-    BigInt(elementsOf(xs).findLastIndex((each) => valuesEqual(each, element ?? null))),
-  [keys.of('flat', knownTypeKey(wellKnown.array, array))]: ([xss]) =>
-    arrayOf(elementsOf(xss).flatMap((inner) => elementsOf(inner))),
-  [keys.of('includes', array, item)]: ([xs, element]) =>
-    elementsOf(xs).some((each) => valuesEqual(each, element ?? null)),
-  [keys.of('join', knownTypeKey(wellKnown.array, 'String'), 'String')]: ([xs, separator]) =>
-    elementsOf(xs).map(text).join(text(separator)),
   [keys.of('index', array, 'Int')]: ([xs, index]) => {
     const elements = elementsOf(xs);
     return elements[checkedIndex(int(index), elements.length, what)] ?? null;
@@ -73,10 +63,6 @@ const changingNatives = (keys: NativeKeys): Natives<NativeContext> => ({
   },
   [keys.of('pop', referenceKey(array))]: (_values, context) =>
     resultOptional(context, context.changes(0).pop()),
-  [keys.of('reverse', referenceKey(array))]: (_values, context) => {
-    context.changes(0).reverse();
-    return null;
-  },
   [keys.of('setIndex', referenceKey(array), 'Int', item)]: ([xs, index, element], context) => {
     const position = checkedIndex(int(index), elementsOf(xs).length, what);
     context.changes(0).splice(position, 1, [element ?? null]);

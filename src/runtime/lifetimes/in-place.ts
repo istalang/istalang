@@ -127,7 +127,6 @@ export class InPlace {
     return {
       push: (items) => change(items, (node) => this.#push(node, items)),
       pop: () => change([], (node) => this.#pop(node)),
-      reverse: () => change([], (node) => this.#reverse(node)),
       splice: (start, count, items) =>
         change(items, (node) => this.#splice(node, start, count, items)),
       setEntry: (key, value) => change([key, value], (node) => this.#setEntry(node, key, value)),
@@ -245,12 +244,6 @@ export class InPlace {
     this.#counts.partHeld(node, part);
     this.#counts.partReleased(node, old);
     this.#forgetDerivedOf(node);
-  }
-
-  /** Reverses `array`, which holds what it held, so no count changes. */
-  #reverse(array: CompositeValue): void {
-    mutableElements(array).reverse();
-    this.#forgetDerivedOf(array);
   }
 
   /** Forgets what was derived from `node`, which changed in place. */

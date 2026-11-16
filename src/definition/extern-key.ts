@@ -12,8 +12,8 @@
  * - Lowering builds keys from declarations, and natives from their own tables, both through
  *   `externKey`, so the two can't drift apart. A natives table spells its types with the builders
  *   below.
- * - A rest parameter is spelled with its `...`, `strings.format(String, ...prelude.Array<String>)`:
- *   its native takes the array the call collects (§3.3).
+ * - A rest parameter is spelled with its `...`, `log(String, ...prelude.Array<String>)`: its host
+ *   function takes the array the call collects (§3.3, §9). No std native takes one.
  * - An extern constant has no parameters to tell overloads apart, so its key is its qualified
  *   name alone: `purchase.approvalDeadline` (§9).
  */
@@ -112,20 +112,8 @@ export function referenceKey(type: KeyType): ReferenceKey {
   return { reference: type };
 }
 
-/** A rest parameter, as a natives table writes it (§3.3). */
-interface RestKey {
-  readonly rest: KeyType;
-}
-
-export function restKey(type: KeyType): RestKey {
-  return { rest: type };
-}
-
-/**
- * A parameter as a natives table writes it: a type, a primitive's name, a `referenceKey` or a
- * `restKey`.
- */
-export type NativeParameter = WrittenType | ReferenceKey | RestKey;
+/** A parameter as a natives table writes it: a type, a primitive's name or a `referenceKey`. */
+export type NativeParameter = WrittenType | ReferenceKey;
 
 /**
  * The key of extern `name` of `module` taking `parameters`, as a natives table writes it: each a
@@ -146,9 +134,6 @@ export function nativeKey(
 function keyParameterOf(parameter: NativeParameter): KeyParameter {
   if (typeof parameter !== 'string' && 'reference' in parameter) {
     return { type: parameter.reference, passing: 'reference' };
-  }
-  if (typeof parameter !== 'string' && 'rest' in parameter) {
-    return { type: parameter.rest, passing: 'rest' };
   }
   return { type: typeOf(parameter), passing: 'value' };
 }

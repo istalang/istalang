@@ -7,7 +7,7 @@ import { fieldValueOf } from '../../definition/values/declared-values.ts';
 import type { Value } from '../../definition/values/values.ts';
 import type { NativeContext } from '../../runtime/natives.ts';
 import { int } from '../values/arguments.ts';
-import { okStruct, resultStruct } from '../values/results.ts';
+import { resultStruct } from '../values/results.ts';
 
 /** The field of a `Time` or a `Duration` holding its milliseconds. */
 const millisecondsField = 'value';
@@ -20,9 +20,4 @@ export function millisecondsOf(context: NativeContext, value: Value | undefined)
 /** A `Time` or a `Duration` holding `milliseconds`, the type the extern declares it returns. */
 export function resultMilliseconds(context: NativeContext, milliseconds: bigint): Value {
   return resultStruct(context, { [millisecondsField]: milliseconds });
-}
-
-/** A `Time` or a `Duration` holding `milliseconds`, the type the extern's `Result` holds. */
-export function okMilliseconds(context: NativeContext, milliseconds: bigint): Value {
-  return okStruct(context, { [millisecondsField]: milliseconds });
 }
