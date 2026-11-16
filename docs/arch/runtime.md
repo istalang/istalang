@@ -84,13 +84,18 @@ it as a native, with exactly the summary its extern predecessor had (spec §3.16
   WeakMap for a composite; **heap** values are marked shared on a second holder, changed in place
   only while unique; **plain** values are passed over.
 - What loses its last holder is disposed in rounds, newest object first; what a disposed value held
-  loses its holder in the next round. A disposed call's cleanup (its frame's let-gos and what it
-  returns, which settles nothing) is collected `apart` from the round disposing the call, each
-  let-go as it happens, so before its call is gone (spec §7) and a `select`'s losers before its
-  winning case's body (§8).
-- A native's result is `adopt`ed by its declared type: a composite it built holds its parts.
+  loses its holder in the next round. Code a disposal runs, a declared `dispose` or a disposed
+  call's cleanup (its frame's let-gos and what it returns, which settles nothing), is collected
+  `apart` from the round disposing it, each let-go as it happens, so before its value or call is
+  gone (spec §7) and a `select`'s losers before its winning case's body (§8).
+- A native's result is `adopt`ed by its declared type: a composite it built holds its parts. One
+  storing an item through `&` (`push`, `setEntry`, ...) keeps it by its item type first, so the
+  item, even read from the place it changes, keeps its value (`keepItems`).
 - An async call holds what it was given until it ends (`Execution.given`).
-- A disposed call resumes only on its `disposing()` case; otherwise it stops where it waits.
+- A disposed call resumes only on its `disposing()` case; otherwise it stops where it waits, runs no
+  code, and its frame lets go in the round after; an ended call is never readied again.
+- A weak reference refers to nothing from the moment its referent's last holder lets go, before its
+  disposal in that round (`referentOf`, `run/weak-references.ts`).
 
 ## Segments and commits (`host/durable-world.ts`)
 
