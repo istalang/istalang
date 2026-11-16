@@ -52,7 +52,7 @@ tags: [reuse, lowering, definition, ir, instructions]
 - list an instruction's operands → `operandsOf` (`src/definition/instructions/instruction.ts`)
 - inspect instruction wait/termination flow → `waitRegister`, `waits`, `terminates` (`src/definition/instructions/flow.ts`)
 - write a wait's instruction, or await a future from synthesized code → `awaitWait`, `awaitFuture` (`src/compiler/lowering/calls/waits.ts`); a body's waits are its flow's `onAwait` calls, each given its case's resolver (`src/compiler/lowering/flow/operations.ts`)
-- inspect `Definition` function parameters or captures → `takesReference`, `mayLeaveOut`, `capturesOf`; where a code entry's body begins, past its prologue → `bodyStart` (`src/definition/tables/functions.ts`)
+- inspect `Definition` function parameters or captures → `takesReference`, `capturesOf`; where a code entry's body begins, past its prologue → `bodyStart` (`src/definition/tables/functions.ts`)
 - check an entry can encode an instance's outcome → `encoderProblem` (`src/definition/tables/functions.ts`); the encoder an `Instance<T>` type entry names for what it spawns → `outcomeEncoderOf` (`src/definition/tables/types.ts`)
 - inspect `Definition` type references, roles, cell or resource types → `typesIn`, `isResourceType`, `isCellType`, `hasRole` (`src/definition/tables/types.ts`)
 - validate `Definition` table references or value shapes → `checkReferences`, `valueProblems` (`src/definition/validation/references.ts`)

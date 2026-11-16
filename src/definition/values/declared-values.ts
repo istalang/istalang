@@ -6,11 +6,7 @@
  * end (§9). `Result`'s `Ok` and `Err(Error)` are built here once for both (§3.12).
  */
 
-import {
-  resultFields,
-  resultVariants,
-  unionLayout,
-} from '../../foundation/language/well-known/variants.ts';
+import { unionLayout } from '../../foundation/language/well-known/variants.ts';
 import { unreachable } from '../../foundation/structures/unreachable.ts';
 import type { TypeId } from '../operands.ts';
 import type { TypeDefinition, TypeReference } from '../tables/types.ts';
@@ -20,25 +16,13 @@ import { isComposite, type Value } from './values.ts';
 export type NamedFields = Readonly<Record<string, Value>>;
 
 /** The type entry `reference` names; undefined when it names none, as a primitive doesn't. */
-export function namedTypeOf(reference: TypeReference | undefined): TypeId | undefined {
+function namedTypeOf(reference: TypeReference | undefined): TypeId | undefined {
   return reference?.kind === 'named' ? reference.type : undefined;
 }
 
 /** The type entry `reference` names, which it must. */
 export function namedType(reference: TypeReference | undefined): TypeId {
   return namedTypeOf(reference) ?? unreachable('Expected a named type.');
-}
-
-/** The declared type of field `name` of struct entry `type`. */
-export function fieldTypeOf(
-  types: readonly TypeDefinition[],
-  type: TypeId,
-  name: string,
-): TypeReference {
-  const declared = types[type];
-  const field =
-    declared?.kind === 'struct' ? declared.fields.find((each) => each.name === name) : undefined;
-  return field?.type ?? unreachable(`Type ${type} isn't a struct with a field ${name}.`);
 }
 
 /** Type argument `position` of type entry `type`, a named type: `T` of an `Array<T>`. */
@@ -96,28 +80,6 @@ export function fieldValueOf(
     : field;
 }
 
-/** Variant `name` of enum entry `type`, holding `fields` by name. */
-export function variantOf(
-  types: readonly TypeDefinition[],
-  type: TypeId,
-  name: string,
-  fields: NamedFields,
-): Value {
-  const { variant, fields: declared } = variantShape(types, type, name);
-  return { kind: 'variant', type, variant, fields: inDeclaredOrder(declared, fields) };
-}
-
-/** The declared type of field `field` of variant `variant` of enum entry `type`. */
-function variantFieldType(
-  types: readonly TypeDefinition[],
-  type: TypeId,
-  variant: string,
-  field: string,
-): TypeReference {
-  const declared = variantShape(types, type, variant).fields.find(({ name }) => name === field);
-  return declared?.type ?? unreachable(`Variant ${variant} of type ${type} has no field ${field}.`);
-}
-
 /** Where enum entry `type` has variant `name`, with its declared fields. */
 function variantShape(types: readonly TypeDefinition[], type: TypeId, name: string) {
   const declared = types[type];
@@ -128,51 +90,6 @@ function variantShape(types: readonly TypeDefinition[], type: TypeId, name: stri
     unreachable(`Type ${type} isn't an enum with a variant ${name}.`);
   }
   return { variant, fields: shape.fields };
-}
-
-/**
- * A value of the optional entry `type`, a union holding `None` (§2): `none` for no value, else
- * `value` as the member it is. A value of the union already passes as it is; a value of a union
- * of several members goes into the variant of its member's name, holding what it held.
- */
-export function optionalOf(
-  types: readonly TypeDefinition[],
-  type: TypeId,
-  value: Value | undefined,
-): Value {
-  if (value === undefined) {
-    return variantOf(types, type, unionLayout.noneVariant, {});
-  }
-  if (isComposite(value) && value.kind === 'variant' && value.type === type) {
-    return value;
-  }
-  const only = onlyMemberVariant(types, type);
-  if (only !== undefined) {
-    return variantOf(types, type, only, { [unionLayout.valueField]: value });
-  }
-  if (!isComposite(value) || value.kind !== 'variant') {
-    unreachable(`A value of several members isn't one of type ${type}.`);
-  }
-  const memberName = enumVariants(types, value.type)[value.variant]?.name;
-  const { variant } = variantShape(types, type, memberName ?? unreachable('A variant has a name.'));
-  return { ...value, type, variant };
-}
-
-/**
- * What a value of the optional entry `type`, a union of `None` and one other member, holds: that
- * member's entry, the type of its variant's one field.
- */
-export function optionalInnerOf(types: readonly TypeDefinition[], type: TypeId): TypeId {
-  const only = onlyMemberVariant(types, type) ?? unreachable(`Type ${type} holds several members.`);
-  return namedType(variantFieldType(types, type, only, unionLayout.valueField));
-}
-
-/** The name of optional entry `type`'s one variant besides `None`; undefined where it has several. */
-function onlyMemberVariant(types: readonly TypeDefinition[], type: TypeId): string | undefined {
-  const [only, ...more] = enumVariants(types, type).filter(
-    ({ name }) => name !== unionLayout.noneVariant,
-  );
-  return more.length === 0 ? only?.name : undefined;
 }
 
 /** The value optional `optional` holds, read by its declared variant; undefined for `none`. */
@@ -189,12 +106,6 @@ export function optionalValueOf(
     : variantFieldOf(types, optional, unionLayout.valueField);
 }
 
-/** The variants of enum entry `type`. */
-function enumVariants(types: readonly TypeDefinition[], type: TypeId) {
-  const declared = types[type];
-  return declared?.kind === 'enum' ? declared.variants : unreachable(`Type ${type} isn't an enum.`);
-}
-
 /** Field `name` of variant value `value`, found by the name its variant declares. */
 function variantFieldOf(
   types: readonly TypeDefinition[],
@@ -205,36 +116,4 @@ function variantFieldOf(
   const shape = declared?.kind === 'enum' ? declared.variants[value.variant] : undefined;
   const position = shape?.fields.findIndex((field) => field.name === name) ?? -1;
   return value.fields[position] ?? unreachable(`Variant ${value.variant} has no field '${name}'.`);
-}
-
-/** What an `Error` says (§3.12). */
-interface ErrorFields {
-  readonly message: string;
-  readonly code: string;
-  readonly trace: string;
-}
-
-/** The type `Result` entry `result` holds when `Ok`. */
-export function okTypeOf(types: readonly TypeDefinition[], result: TypeId): TypeId {
-  return namedType(variantFieldType(types, result, resultVariants.ok, resultFields.ok));
-}
-
-/** `Ok` of `value`, of `Result` entry `result` (§3.12). */
-export function okOf(types: readonly TypeDefinition[], result: TypeId, value: Value): Value {
-  return variantOf(types, result, resultVariants.ok, { [resultFields.ok]: value });
-}
-
-/** `Err` of `error`, of `Result` entry `result` (§3.12). */
-export function errOf(types: readonly TypeDefinition[], result: TypeId, error: Value): Value {
-  return variantOf(types, result, resultVariants.err, { [resultFields.err]: error });
-}
-
-/** `Err` of an `Error` saying `fields`, of `Result` entry `result` (§3.12). */
-export function errorOf(
-  types: readonly TypeDefinition[],
-  result: TypeId,
-  fields: ErrorFields,
-): Value {
-  const error = namedType(variantFieldType(types, result, resultVariants.err, resultFields.err));
-  return errOf(types, result, structOf(types, error, { ...fields }));
 }

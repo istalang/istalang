@@ -86,13 +86,13 @@ export function compiledAt(
 }
 
 /** A host's externs, and the calls they were given, in order, as observation lines. */
-export interface RecordingHost {
+interface RecordingHost {
   readonly externs: HostExterns;
   readonly calls: readonly string[];
 }
 
 /** `externs`, recording every call they are given. */
-export function recording(externs: HostExterns): RecordingHost {
+function recording(externs: HostExterns): RecordingHost {
   const calls: string[] = [];
   return {
     calls,
@@ -109,7 +109,7 @@ export function recording(externs: HostExterns): RecordingHost {
 }
 
 /** The externs of the host module at `path`, loaded afresh: a module may keep what it served. */
-export async function freshHost(path: string): Promise<HostExterns> {
+async function freshHost(path: string): Promise<HostExterns> {
   vi.resetModules();
   const loaded = await loadHostModule(path);
   if (loaded.kind === 'unfit') {
@@ -125,7 +125,7 @@ export async function freshHost(path: string): Promise<HostExterns> {
 export type ReadBack = (definition: Definition) => EmittedProgram;
 
 /** What running `definition`'s `main` on the run showed, started as `start` says. */
-export async function shownByRun(
+async function shownByRun(
   definition: Definition,
   host: RecordingHost = recording({}),
   start: Start = {},

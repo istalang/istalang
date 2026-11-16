@@ -54,11 +54,6 @@ export interface SpawnOptions extends StartOptions {
   readonly terminatesOnPanic?: boolean;
 }
 
-/** Whether an instance in `state` has ended, so a wait on its end resolves (§9). */
-export function hasEnded({ kind }: InstanceState): boolean {
-  return kind === 'finished' || kind === 'panicked' || kind === 'terminated';
-}
-
 /**
  * What advancing an instance did: where it stands now, the instances it spawned and the log
  * records its committed segments wrote, in order (§9).

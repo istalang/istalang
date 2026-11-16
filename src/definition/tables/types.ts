@@ -68,9 +68,6 @@ const field = z.strictObject({
   /** Annotation values in source order, each a struct value of the annotation's type. */
   annotations: z.array(value),
 });
-
-export type Field = z.output<typeof field>;
-
 /** What every entry states: its label, and its reach facts. */
 const common = {
   /** A declared type's module-qualified name, `time.Duration`; any other's table key. */
@@ -112,7 +109,7 @@ const shared = z.strictObject({
  * weak reference (§7), every `Instance<T>` `spawn` gives, holding the instance's name (§9), and
  * the handle of an async call, the execution running it (§7).
  */
-export const externRole = z.enum(['array', 'map', 'cell', 'weakRef', 'instance', 'call']);
+const externRole = z.enum(['array', 'map', 'cell', 'weakRef', 'instance', 'call']);
 
 export type ExternRole = z.output<typeof externRole>;
 
@@ -174,10 +171,7 @@ export function typesIn(reference: TypeReference): readonly number[] {
  * Whether a value of `reference` may reach a disposable: a function value may, its type not saying
  * what it captured (§7), and a reference reaches what its place holds.
  */
-export function reachesDisposable(
-  types: readonly TypeDefinition[],
-  reference: TypeReference,
-): boolean {
+function reachesDisposable(types: readonly TypeDefinition[], reference: TypeReference): boolean {
   switch (reference.kind) {
     case 'primitive':
       return false;

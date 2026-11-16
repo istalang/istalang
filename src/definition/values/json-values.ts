@@ -53,7 +53,7 @@ export interface JsonType {
 const jsonTypes = new WeakMap<readonly TypeDefinition[], JsonType | undefined>();
 
 /** Where `types` holds `Json`, looked up once per table; undefined for a program without it. */
-export function jsonTypeIn(types: readonly TypeDefinition[]): JsonType | undefined {
+function jsonTypeIn(types: readonly TypeDefinition[]): JsonType | undefined {
   return memo(jsonTypes, types, () => findJsonType(types));
 }
 
@@ -263,7 +263,7 @@ export function jsonOfPlain(plain: unknown, shape: JsonType, depth = 0): Value {
 }
 
 /** Whether `value` is a value of the program's `Json`. */
-export function isJsonValue(
+function isJsonValue(
   value: Value,
   shape: JsonType,
 ): value is Extract<Value, { readonly kind: 'variant' }> {

@@ -78,7 +78,7 @@ export interface NativeContext {
 }
 
 /** The futures the runtime makes for an extern returning one (§3.6). */
-export interface NativeFutures {
+interface NativeFutures {
   /** A future already resolved with `value`. */
   readonly resolved: (value: Value) => Value;
   /** A future that resolves at `at`, in milliseconds since the Unix epoch (`time.at`). */
@@ -101,32 +101,13 @@ export interface HostFilling {
   readonly state: () => ResolverState;
 }
 
-export type ResolverState = 'pending' | 'resolved' | 'cancelled';
-
-/** A live future's one-shot resolver, as a native resolves it (proposal 8, Rules 5 and 9). */
-export interface NativeResolver {
-  readonly state: ResolverState;
-  /** Resolves its future with `value` unless it is no longer pending; whether it took `value`. */
-  readonly tryResolve: (value: Value) => boolean;
-  /** Fails its wait unless it is no longer pending: its run panics with `panic`. */
-  readonly fail: (panic: Panic) => void;
-  /** Panics its run with `panic`, however it stands: whoever resolves it misused it. */
-  readonly panic: (panic: Panic) => void;
-  /** Has `callback` called once its future is disposed unresolved. */
-  readonly onCancel: (callback: () => void) => void;
-}
-
-/** A live future, and the resolver that resolves it. */
-export interface Resolvable {
-  readonly future: Value;
-  readonly resolver: NativeResolver;
-}
+type ResolverState = 'pending' | 'resolved' | 'cancelled';
 
 /**
  * The running instance's weak references (§7). A referent is a handle to a disposable, and each
  * has one weak reference, which holds nothing.
  */
-export interface NativeWeakSide {
+interface NativeWeakSide {
   /** The weak reference to `referent`. */
   readonly reference: (referent: Value) => Value;
   /** A handle to what `weak` refers to, until it is disposed. */
@@ -142,7 +123,7 @@ export interface NativeWeakSide {
  * The running instance's resources (§7): values of a host type a `dispose` makes disposable, each
  * an object holding its host's JSON, `payload`, made as the value arrives from the host.
  */
-export interface NativeResources {
+interface NativeResources {
   /** A new resource of the host type entry `type`, holding `payload`; a handle to it. */
   readonly create: (type: TypeId, payload: unknown) => Value;
   /** What the resource `handle` points at holds. */
@@ -150,7 +131,7 @@ export interface NativeResources {
 }
 
 /** The instances the running one spawns and waits for (§9). */
-export interface NativeInstances {
+interface NativeInstances {
   /**
    * Spawns the closure `entry`, which takes nothing, as a new instance with `options` once the
    * segment commits, its outcome encoded by the encoder `Instance<T>` type entry `type` names; a
@@ -205,7 +186,7 @@ export interface NativeContexts {
  * of another instance's last commit that only the runtime running a test can answer
  * (runtime/testing/) panics anywhere else.
  */
-export interface NativeTesting {
+interface NativeTesting {
   /** A mock replacing `target` with `replacement` while it is held; its handle. */
   readonly mock: (target: FunctionId, replacement: Value) => Value;
   /** The calls the mock `mock` names recorded, oldest first. */
@@ -219,7 +200,7 @@ export interface NativeTesting {
 }
 
 /** The running instance's random source (§3.8 `random`, snapshot/random.ts). */
-export interface NativeRandom {
+interface NativeRandom {
   /** The next draw, 32 bytes; a segment that runs again draws the same ones (§5). */
   readonly draw: () => Uint8Array;
 }
@@ -228,7 +209,7 @@ export interface NativeRandom {
  * The running instance's log (§3.8 `log`): a record joins its segment's, stamped with the instance
  * and the segment's start time, and reaches the host only once the segment commits.
  */
-export interface NativeLogs {
+interface NativeLogs {
   readonly write: (entry: Omit<LogRecord, 'instance' | 'time'>) => void;
 }
 

@@ -12,9 +12,6 @@ export const unionLayout = { noneVariant: 'None', valueField: 'value' } as const
 /** The variants of `Result` (§3.12): `?` passes on an `Err` and takes the `Ok` value. */
 export const resultVariants = { ok: 'Ok', err: 'Err' } as const;
 
-/** The one field of each of `Result`'s variants (§3.12): `Ok`'s value and `Err`'s error. */
-export const resultFields = { ok: 'value', err: 'error' } as const;
-
 /**
  * The variants of `Step` (§3.10): a loop runs its body on a `Next`'s one field, and ends on `Done`.
  */

@@ -33,7 +33,7 @@ export interface HostReports {
 }
 
 /** What a host asks a start for: which function, with what JSON arguments, and how it runs. */
-export interface StartRequest extends StartOptions {
+interface StartRequest extends StartOptions {
   readonly function?: string;
   readonly arguments?: readonly unknown[];
 }

@@ -12,13 +12,10 @@ import {
   type TreeBodies,
   type TreePlaces,
 } from './index.ts';
-import type { AnchoredSpan, Segment, SegmentBases } from './positions.ts';
+import type { AnchoredSpan, Segment } from './positions.ts';
 
 /** The segment of the nodes and spans a test makes by hand, which starts its text. */
 const handMade: Segment = { kind: 'module' };
-
-/** Where `handMadeSpan`'s segment starts, as a tree would give it. */
-export const handMadeBases: SegmentBases = { bases: new Map([[handMade, 0]]) };
 
 /** A span a test makes by hand, from `from` to `to` of its text. */
 export function handMadeSpan(from: number, to = from): AnchoredSpan {

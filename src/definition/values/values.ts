@@ -331,11 +331,6 @@ export function withChildValues(
  */
 export const maximumDepth = 256;
 
-/** The heap objects a value holds handles to, at any depth, each once, in the order of its parts. */
-export function handlesIn(contents: Value): readonly number[] {
-  return isComposite(contents) ? summaryOf(contents).handles : noHandles;
-}
-
 /** How deep `candidate` nests: 0 for a primitive, one more than its deepest part for a composite. */
 export function depthOf(candidate: Value): number {
   return isComposite(candidate) ? summaryOf(candidate).depth : 0;

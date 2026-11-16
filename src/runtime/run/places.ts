@@ -17,7 +17,7 @@ import type { Cell } from './objects/cell.ts';
 import { Reference, type Step } from './objects/reference.ts';
 
 /** What a place is rooted at. */
-export type PlaceRoot = 'register' | 'cell' | 'reference';
+type PlaceRoot = 'register' | 'cell' | 'reference';
 
 /** The value at a reference's place, as a native taking it by `&` reads it. */
 export function deref(reference: Reference): Value {
@@ -73,7 +73,7 @@ const rootValues = {
 } satisfies Record<PlaceRoot, (root: Value) => Value>;
 
 /** The value at `path` in the place a root of `kind` in `root` reaches. */
-export function load(kind: PlaceRoot, root: Value, path: readonly Step[]): Value {
+function load(kind: PlaceRoot, root: Value, path: readonly Step[]): Value {
   return valueAt(rootValues[kind](root), path);
 }
 

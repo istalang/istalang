@@ -135,7 +135,7 @@ function contextOf(
  * unique there first, every value on the way to it too; items it adds held, and those it removes let
  * go of, when `counted`.
  */
-export function changesOf(run: Run, reference: Reference, counted: boolean): ValueChanges {
+function changesOf(run: Run, reference: Reference, counted: boolean): ValueChanges {
   const unique = (): CompositeValue => {
     const { cell, path } = reference;
     const current = deref(reference);

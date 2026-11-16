@@ -11,19 +11,9 @@
 
 import { hmac } from '@noble/hashes/hmac.js';
 import { sha256 } from '@noble/hashes/sha2.js';
-import { Refusal } from './refusal.ts';
 
 /** How many bytes a seed has. */
 export const seedBytes = 32;
-
-/** `bytes`, a host's seed; a Refusal unless there are `seedBytes` of them. */
-export function seedOf(bytes: Uint8Array): Uint8Array {
-  if (bytes.length !== seedBytes) {
-    throw new Refusal('unfitSeed', `A seed has ${seedBytes} bytes, not ${bytes.length}.`);
-  }
-  return bytes;
-}
-
 /** How many bytes a draw's index is hashed as: a 64-bit unsigned integer, most significant first. */
 const indexBytes = 8;
 

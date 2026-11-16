@@ -37,11 +37,9 @@ export type WrittenInstruction = Instruction extends infer Each
 
 type Jumping = Extract<WrittenInstruction, { target: number }>;
 
-export const intType: TypeReference = { kind: 'primitive', name: 'Int' };
+const intType: TypeReference = { kind: 'primitive', name: 'Int' };
 
 export const boolType: TypeReference = { kind: 'primitive', name: 'Bool' };
-
-export const unitType: TypeReference = { kind: 'primitive', name: 'Unit' };
 
 /** A code entry's code as written. */
 export interface WrittenCode {

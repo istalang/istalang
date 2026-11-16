@@ -13,7 +13,7 @@
 import { readdirSync, readFileSync } from 'node:fs';
 
 /** One thing a host does. */
-export type Step =
+type Step =
   /** Starts `start`, a live run, calling `main` or the function `function` keys, with JSON arguments. */
   | {
       readonly start: string;

@@ -47,7 +47,7 @@ const tests = z.strictObject({
   suites: z.array(z.strictObject({ title: z.string(), function: functionId })),
 });
 
-export const purpose = z.discriminatedUnion('kind', [program, tests]);
+const purpose = z.discriminatedUnion('kind', [program, tests]);
 
 export type Purpose = z.output<typeof purpose>;
 

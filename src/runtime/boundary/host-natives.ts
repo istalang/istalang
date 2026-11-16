@@ -45,7 +45,7 @@ import {
 import { Refusal } from '../refusal.ts';
 
 /** What a host extern is told about the call it runs. */
-export interface HostCall {
+interface HostCall {
   /** The instance or live run calling, as the host named it in `start`. */
   readonly instance: string;
   /**
@@ -56,7 +56,7 @@ export interface HostCall {
 }
 
 /** A live future's resolver, as a host resolves it with JSON (proposal 8, Rule 9). */
-export interface HostResolver {
+interface HostResolver {
   /** Resolves the future with `value`; a second time panics the run, after `onCancel` nothing. */
   readonly resolve: (value: unknown) => void;
   /** Resolves the future with `value` unless it resolved or was cancelled; whether it took it. */

@@ -14,18 +14,18 @@ function nonZero(by: bigint): bigint {
 }
 
 /** `dividend` divided by `by`, rounded toward negative infinity; by zero panics (§3.12). */
-export function floorDivide(dividend: bigint, by: bigint): bigint {
+function floorDivide(dividend: bigint, by: bigint): bigint {
   const quotient = dividend / nonZero(by);
   const inexact = quotient * by !== dividend;
   return inexact && dividend < 0n !== by < 0n ? quotient - 1n : quotient;
 }
 
 /** What floor division of `dividend` by `by` leaves, of the divisor's sign. */
-export function remainder(dividend: bigint, by: bigint): bigint {
+function remainder(dividend: bigint, by: bigint): bigint {
   return dividend - floorDivide(dividend, by) * by;
 }
 
-export function intPower(base: bigint, exponent: bigint): bigint {
+function intPower(base: bigint, exponent: bigint): bigint {
   if (exponent < 0n) {
     throw new Panic(`${base} to the power ${exponent} is no int; use a float base.`);
   }
@@ -41,11 +41,11 @@ function shiftCount(count: bigint): bigint {
 }
 
 // biome-ignore-start lint/suspicious/noBitwiseOperators: these are the language's shift operators.
-export function shiftLeft(value: bigint, count: bigint): bigint {
+function shiftLeft(value: bigint, count: bigint): bigint {
   return value << shiftCount(count);
 }
 
-export function shiftRight(value: bigint, count: bigint): bigint {
+function shiftRight(value: bigint, count: bigint): bigint {
   return value >> shiftCount(count);
 }
 // biome-ignore-end lint/suspicious/noBitwiseOperators: these are the language's shift operators.
@@ -54,13 +54,13 @@ export function shiftRight(value: bigint, count: bigint): bigint {
  * A comparison's result as the int `compare` returns (§3.9). One int can't say "unordered", so a
  * NaN compares as equal; `==` alone follows IEEE 754 and finds NaN equal to nothing.
  */
-export function floatCompare(left: number, right: number): bigint {
+function floatCompare(left: number, right: number): bigint {
   const difference = left - right;
   return Number.isNaN(difference) ? 0n : BigInt(Math.sign(difference));
 }
 
 /** A float's int, truncated toward zero; a float that is no number has none, a bug. */
-export function intFromFloat(value: number): bigint {
+function intFromFloat(value: number): bigint {
   if (!Number.isFinite(value)) {
     throw new Panic(`${value} has no int.`);
   }

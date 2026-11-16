@@ -33,7 +33,7 @@ const step = z.discriminatedUnion('kind', [
 
 export type PlaceStep = z.output<typeof step>;
 
-export const place = z.strictObject({ root, path: z.array(step) });
+const place = z.strictObject({ root, path: z.array(step) });
 
 export type Place = z.output<typeof place>;
 

@@ -25,7 +25,7 @@ export function validate(definition: Tables, context: z.RefinementCtx): void {
 }
 
 /** Every way `definition` breaks the rules above, each a message naming where. */
-export function issuesOf(definition: Tables): readonly string[] {
+function issuesOf(definition: Tables): readonly string[] {
   const issues: string[] = [];
   const within = (what: string, index: number, size: number, where: string) => {
     if (index >= size) {

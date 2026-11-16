@@ -22,7 +22,7 @@ import type { FieldLoopHeader } from '../../syntax/expressions/index.ts';
 import type { FieldPassStep } from '../tables/instances.ts';
 
 /** A field loop's pass a block is written in: its field, its loop's top, and what follows it. */
-export interface PassVisit extends FieldPassStep {
+interface PassVisit extends FieldPassStep {
   readonly top: BlockId;
   readonly next: BlockId;
 }

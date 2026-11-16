@@ -208,7 +208,7 @@ function declareVariable(
  * Declares the variable an async function reads its own call through (§7), when it reads it, where
  * its body begins: a default reads no call, since it runs before the body starts.
  */
-export function declareOwnCall(context: EntryContext): void {
+function declareOwnCall(context: EntryContext): void {
   const { mode, function: owner } = context.frame;
   // A context constant's initializer never waits, so it is simple code, which reads no call.
   const call =
@@ -227,7 +227,7 @@ export function declareOwnCall(context: EntryContext): void {
 }
 
 /** Declares `name`, of `type`, in a borrowed register of its own, which `fill` writes. */
-export function declareFilled(
+function declareFilled(
   context: FunctionContext,
   name: Identifier,
   type: Type,

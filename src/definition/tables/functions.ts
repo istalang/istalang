@@ -37,7 +37,7 @@ const common = {
   annotations: z.array(value),
 };
 
-export const codeMode = z.enum(['simple', 'live', 'ista']);
+const codeMode = z.enum(['simple', 'live', 'ista']);
 
 export type CodeMode = z.output<typeof codeMode>;
 
@@ -70,7 +70,7 @@ const code = z.strictObject({
  * random draws, log records, the run's primitives (executions, timers, host futures), the instance
  * and its contexts, a host's externs, and the test world.
  */
-export const capability = z.enum([
+const capability = z.enum([
   'clock',
   'random',
   'logs',
@@ -80,9 +80,6 @@ export const capability = z.enum([
   'host',
   'testing',
 ]);
-
-export type Capability = z.output<typeof capability>;
-
 /**
  * A host or runtime function, bound by `key` to a native: the module and declared signature,
  * `time.at(Time)`, so overloads get distinct keys while every instantiation of a generic extern
@@ -115,17 +112,6 @@ export type FunctionDefinition = z.output<typeof functionDefinition>;
 export type CodeFunction = Extract<FunctionDefinition, { kind: 'code' }>;
 
 export type ExternFunction = Extract<FunctionDefinition, { kind: 'extern' }>;
-
-/** Whether a call may leave parameter `index` of `entry` out: only a code entry computes one. */
-export function mayLeaveOut(entry: FunctionDefinition, index: number): boolean {
-  return entry.kind === 'code' && entry.parameters[index]?.hasDefault === true;
-}
-
-/** Whether a call of `entry` gives its value at once: an extern's does, as simple code's does. */
-export function returnsAtOnce(entry: FunctionDefinition): boolean {
-  return entry.kind !== 'code' || entry.mode === 'simple';
-}
-
 const transientRegisters = new WeakMap<CodeFunction, readonly Register[]>();
 
 /**

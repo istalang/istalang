@@ -5,13 +5,7 @@
  */
 
 import { unreachable } from '../../foundation/structures/unreachable.ts';
-import type { TypeId } from '../operands.ts';
 import { isComposite, type Value } from './values.ts';
-
-/** A handle of `Instance<T>` type entry `type` to the instance named `name`. */
-export function instanceHandle(type: TypeId, name: string): Value {
-  return { kind: 'extern', type, payload: name };
-}
 
 /** The name of the instance `handle` is a handle to. */
 export function instanceNameOf(handle: Value | undefined): string {

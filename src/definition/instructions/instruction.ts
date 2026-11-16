@@ -28,7 +28,7 @@ export const instruction = z.discriminatedUnion('kind', [
 
 export type Instruction = z.output<typeof instruction>;
 
-export type InstructionKind = Instruction['kind'];
+type InstructionKind = Instruction['kind'];
 
 /** One kind of instruction. */
 export type InstructionOf<Kind extends InstructionKind> = Extract<Instruction, { kind: Kind }>;
@@ -113,7 +113,7 @@ export function operandsOf(subject: Instruction): Operands {
 }
 
 /** The register a place starts from. */
-export function placeRoot(place: Place): Register {
+function placeRoot(place: Place): Register {
   return place.root.register;
 }
 
