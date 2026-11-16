@@ -136,7 +136,8 @@ export function rebuilt(
   const from = unfolded(value.type);
   const target = unfolded(to);
   if (from.kind === 'union') {
-    return eachMember(context, { register: value.register, type: from }, how.span, (member) =>
+    const cases = { result: to, span: how.span };
+    return eachMember(context, { register: value.register, type: from }, cases, (member) =>
       how.converted(member, target),
     );
   }
@@ -169,7 +170,15 @@ function rebuiltTuple(
 ): Register {
   const elements = type.elements.map((element, index) =>
     how.converted(
-      { register: context.code.field(register, index, how.span), type: element },
+      {
+        register: context.code.tupleItem(
+          register,
+          index,
+          context.tables.types.reference(element),
+          how.span,
+        ),
+        type: element,
+      },
       to.elements[index] ?? unreachable('Tuples converted part by part are as long.'),
     ),
   );
@@ -193,7 +202,9 @@ function rebuiltStruct(
   const named = new Map(
     fields.map((field, index) => {
       const target = targets[index]?.type ?? field.type;
-      const part = { register: context.code.field(register, index, how.span), type: field.type };
+      const reference = context.tables.types.reference(field.type);
+      const read = context.code.structField(register, index, reference, how.span);
+      const part = { register: read, type: field.type };
       return [field.name, how.converted(part, target)] as const;
     }),
   );
@@ -261,7 +272,7 @@ function rebuiltVariant(
   const { span } = how;
   const variants = checker.variantsOf(type) ?? [];
   const targets = checker.variantsOf(to) ?? [];
-  const result = code.allocate();
+  const result = code.allocate(context.tables.types.reference(to));
   const labels = variants.map(() => code.newLabel());
   const end = code.newLabel();
   code.switch(register, labels, span);
@@ -270,7 +281,16 @@ function rebuiltVariant(
     const target = targets[index]?.fields ?? [];
     const fields = variant.fields.map((field, position) =>
       how.converted(
-        { register: code.field(register, position, span), type: field.type },
+        {
+          register: code.variantField(
+            register,
+            index,
+            position,
+            context.tables.types.reference(field.type),
+            span,
+          ),
+          type: field.type,
+        },
         target[position]?.type ?? field.type,
       ),
     );

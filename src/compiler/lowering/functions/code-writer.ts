@@ -1,34 +1,31 @@
 /**
- * Writing one function's code (docs/arch/definition.md, "Frames"): its registers, its
- * instructions, and the labels its jumps name.
+ * Writing one code entry (docs/arch/definition.md, "Functions"): its typed registers, its
+ * instructions, the labels its jumps name, and where it ends.
  *
- * - Registers are numbered as the frame lays them out: parameters first, then locals and
- *   temporaries, each a fresh register. Nothing is reused, so a register's meaning never changes
- *   within a function, which keeps the code easy to read back from a snapshot.
- * - An instruction is written at the span of the syntax it stands for (syntax/tree/positions.ts),
- *   and finishing turns every span into its module's text positions, the one place lowering does.
- * - A jump to a label not yet placed is patched when the label is placed, so code is written in a
- *   single pass. A label a jump names but nothing places would leave the jump at instruction 0,
- *   which loading can't tell from a real target, so finishing refuses code with one.
+ * - **Every register is typed when allocated,** owning or borrowed, and never reused, so a
+ *   register's meaning never changes within an entry and a snapshot reads back plainly.
+ * - **One way out.** A `return` moves its value into the entry's result register and jumps to the
+ *   epilogue, which lets go of everything still owned and returns it; a stopped execution's `park`
+ *   lands on the stop epilogue, which lets go of everything and stops. Both are written once, at
+ *   `finish`, when every register is known, so no path can forget one (ir-first design, decision 5).
+ *   Letting go of an empty register does nothing, so the epilogues list every owning register.
+ * - An instruction is written at the span of the syntax it stands for, and finishing turns every
+ *   span into its module's text positions, the one place lowering does.
+ * - A jump to a label not yet placed is patched when the label is placed, so code is written in one
+ *   pass; finishing refuses a label jumped to and never placed, a bug in lowering.
  */
 
 import type { Instruction } from '../../../definition/instructions/instruction.ts';
 import type { Register } from '../../../definition/operands.ts';
+import type { RegisterEntry } from '../../../definition/tables/functions.ts';
+import type { TypeReference } from '../../../definition/tables/types.ts';
 import { addToGroup } from '../../../foundation/structures/groups.ts';
 import { unreachable } from '../../../foundation/structures/unreachable.ts';
 import { type AnchoredSpan, type SegmentBases, spanIn } from '../../syntax/tree/positions.ts';
-import { plainRegisters, type TypedOnly } from './plain-registers.ts';
 
 /** A place in the code, known once the code before it has been written. */
 export interface Label {
   readonly id: number;
-}
-
-/** One case of a `select` being written: what it holds, its `as` register, its body. */
-interface SelectCaseCode {
-  readonly holds: readonly Register[];
-  readonly bind: Register | undefined;
-  readonly target: Label;
 }
 
 /** An instruction as lowering writes it: at the span of the syntax it stands for. */
@@ -38,40 +35,65 @@ export type WrittenInstruction = Instruction extends infer Each
     : never
   : never;
 
-/**
- * A function's code as written: how many registers its frame needs, which of them may hold what
- * reaches a disposable, and its instructions.
- */
-interface WrittenCode {
-  readonly registers: number;
-  readonly counted: Register[];
+type Jumping = Extract<WrittenInstruction, { target: number }>;
+
+export const intType: TypeReference = { kind: 'primitive', name: 'Int' };
+
+export const boolType: TypeReference = { kind: 'primitive', name: 'Bool' };
+
+export const unitType: TypeReference = { kind: 'primitive', name: 'Unit' };
+
+/** A code entry's code as written. */
+export interface WrittenCode {
+  readonly registers: RegisterEntry[];
   readonly instructions: Instruction[];
 }
 
 export class CodeWriter {
   readonly #instructions: WrittenInstruction[] = [];
-  /** The name `@Waypoint` gives the waits written now (§10); undefined outside such a statement. */
-  #waypoint: string | undefined;
+  readonly #registers: RegisterEntry[] = [];
   readonly #placed = new Map<number, number>();
   readonly #patches = new Map<number, ((position: number) => void)[]>();
-  #registers = 0;
   #labels = 0;
-  /**
-   * The registers types say hold only what reaches no disposable (`holdsPlain`), or all of them
-   * (`holdsOnlyPlain`).
-   */
-  #plain: Set<Register> | 'all' = new Set();
-  /**
-   * The registers some binding gives a type that may reach a disposable (`holdsCounted`): a field
-   * loop's passes may bind one register to values of several types (§4), so no type makes it plain.
-   */
-  readonly #typedCounted = new Set<Register>();
+  readonly #pinned = new Set<Register>();
+  readonly #taken = new Set<Register>();
+  readonly #transients = new Set<Register>();
+  #result: Register | undefined;
+  readonly #resultType: TypeReference;
+  readonly #epilogue: Label;
+  readonly #stopEpilogue: Label;
+  #returns = false;
+  #parks = false;
 
-  /** A fresh register. */
-  allocate(): Register {
-    const register = this.#registers;
-    this.#registers += 1;
-    return register;
+  /** A writer of an entry giving values of `result`. */
+  constructor(result: TypeReference) {
+    this.#resultType = result;
+    this.#epilogue = this.newLabel();
+    this.#stopEpilogue = this.newLabel();
+  }
+
+  /** A fresh register owning values of `type`. */
+  allocate(type: TypeReference): Register {
+    this.#registers.push({ type, borrowed: false });
+    return this.#registers.length - 1;
+  }
+
+  /** A fresh register borrowing values of `type`, holding none. */
+  borrow(type: TypeReference): Register {
+    this.#registers.push({ type, borrowed: true });
+    return this.#registers.length - 1;
+  }
+
+  typeOf(register: Register): TypeReference {
+    return this.#registers[register]?.type ?? unreachable(`No register ${register}.`);
+  }
+
+  isBorrowed(register: Register): boolean {
+    return this.#registers[register]?.borrowed === true;
+  }
+
+  emit(instruction: WrittenInstruction): void {
+    this.#instructions.push(instruction);
   }
 
   /** Runs `write`; what it gave, and the registers allocated meanwhile, in order. */
@@ -79,56 +101,98 @@ export class CodeWriter {
     readonly result: Result;
     readonly registers: readonly Register[];
   } {
-    const first = this.#registers;
+    const first = this.#registers.length;
     const result = write();
     return {
       result,
-      registers: Array.from({ length: this.#registers - first }, (_, offset) => first + offset),
+      registers: Array.from({ length: this.#registers.length - first }, (_, at) => first + at),
     };
   }
 
+  /** A fresh register owning another holder of `src`'s value. */
+  copy(src: Register, span: AnchoredSpan): Register {
+    const dst = this.allocate(this.typeOf(src));
+    this.emit({ kind: 'copy', span, dst, src });
+    return dst;
+  }
+
   /**
-   * Notes that `register` holds only values reaching no disposable (spec §7), as their types say:
-   * a runtime counting holders per register needn't count it. A register nothing says this of is
-   * counted, so a register whose values lowering can't name stays safe.
+   * Notes that `register` is read again after any one use: a variable's, or a value used twice, so
+   * taking it copies it (`take`).
    */
-  holdsPlain(register: Register): void {
-    if (this.#plain !== 'all') {
-      this.#plain.add(register);
+  pin(register: Register): void {
+    this.#pinned.add(register);
+  }
+
+  /**
+   * A register owning `src`'s value, for an instruction moving it in: `src` itself, moved out, when
+   * it owns a value used once; else a copy. Taking one register twice is a bug in lowering.
+   */
+  take(src: Register, span: AnchoredSpan): Register {
+    if (this.isBorrowed(src) || this.#pinned.has(src)) {
+      return this.copy(src, span);
+    }
+    if (this.#taken.has(src)) {
+      unreachable(`Register ${src} is moved out twice.`);
+    }
+    this.#taken.add(src);
+    return src;
+  }
+
+  /** Whether `register` holds a transient's cell, which the runtime keeps for its call (§3.4). */
+  isTransient(register: Register): boolean {
+    return this.#transients.has(register);
+  }
+
+  /** Lets go of what `registers` own; borrowed ones and transients' cells own nothing. */
+  letGo(registers: readonly Register[], span: AnchoredSpan): void {
+    const owning = [...new Set(registers)].filter(
+      (register) => !this.isBorrowed(register) && !this.#transients.has(register),
+    );
+    if (owning.length > 0) {
+      this.emit({ kind: 'letGo', span, registers: owning });
     }
   }
 
-  /** Notes that every register, allocated or to be, holds only values reaching no disposable. */
-  /** Notes that `register` may hold values reaching a disposable, as one of their types says. */
-  holdsCounted(register: Register): void {
-    this.#typedCounted.add(register);
-  }
-
-  holdsOnlyPlain(): void {
-    this.#plain = 'all';
-  }
-
-  emit(instruction: WrittenInstruction): void {
-    this.#instructions.push(instruction);
-  }
-
-  /** Reads field `index` of the struct, variant or tuple in `src`; its register. */
-  field(src: Register, index: number, span: AnchoredSpan): Register {
-    const dst = this.allocate();
-    this.emit({ kind: 'field', span, dst, src, index });
+  /** A constant of the table, in a fresh register of `type`. */
+  constant(constant: number, type: TypeReference, span: AnchoredSpan): Register {
+    const dst = this.allocate(type);
+    this.emit({ kind: 'constant', span, dst, constant });
     return dst;
   }
 
-  /** Whether the values in `left` and `right` are equal, by the built-in `equal`; its register. */
+  /** Borrows element `index` of the tuple in `src`, of `type`. */
+  tupleItem(src: Register, index: number, type: TypeReference, span: AnchoredSpan): Register {
+    const dst = this.borrow(type);
+    this.emit({ kind: 'tupleItem', span, dst, src, index });
+    return dst;
+  }
+
+  /** Borrows field `field` of the struct in `src`, of `type`. */
+  structField(src: Register, field: number, type: TypeReference, span: AnchoredSpan): Register {
+    const dst = this.borrow(type);
+    this.emit({ kind: 'structField', span, dst, src, field });
+    return dst;
+  }
+
+  /** Borrows field `field` of variant `variant` of the enum value in `src`, of `type`. */
+  variantField(
+    src: Register,
+    variant: number,
+    field: number,
+    type: TypeReference,
+    span: AnchoredSpan,
+  ): Register {
+    const dst = this.borrow(type);
+    this.emit({ kind: 'variantField', span, dst, src, variant, field });
+    return dst;
+  }
+
+  /** Whether the values in `left` and `right` are equal, by the built-in `==`. */
   equal(left: Register, right: Register, span: AnchoredSpan): Register {
-    const dst = this.allocate();
+    const dst = this.allocate(boolType);
     this.emit({ kind: 'equal', span, dst, left, right });
     return dst;
-  }
-
-  /** Reads the part of the value in `src` at `path`, field and element positions; its register. */
-  readPath(src: Register, path: readonly number[], span: AnchoredSpan): Register {
-    return path.reduce((current, index) => this.field(current, index, span), src);
   }
 
   newLabel(): Label {
@@ -173,33 +237,47 @@ export class CodeWriter {
   }
 
   /**
-   * Reads the instance's value of the context constant `name` into `dst` and jumps to `target` once
-   * it has made one; while it hasn't, goes on to make it (§3.4).
+   * Another holder of the instance's value of the context constant `name` into `dst`, and a jump to
+   * `target` once it has made one; while it hasn't, on to make it (§3.4).
    */
   contextConstant(dst: Register, name: string, target: Label, span: AnchoredSpan): void {
     this.#emitJumping({ kind: 'contextConstant', span, dst, name, target: 0 }, target);
   }
 
   /**
-   * Shares into `dst`, a transient's cell register, the cell of a call this one is nested in, of the
-   * same function, and jumps to `target`; where none has one, goes on to make it (§3.4).
+   * Borrows into `dst`, a transient's cell register, the cell of a call this one is nested in, of
+   * the same function, and jumps to `target`; where none has one, on to make it (§3.4).
    */
   transient(dst: Register, target: Label, span: AnchoredSpan): void {
+    this.#transients.add(dst);
     this.#emitJumping({ kind: 'transient', span, dst, target: 0 }, target);
   }
 
-  /** Emits `instruction`, whose `target` becomes where `target` is placed. */
-  #emitJumping(instruction: Extract<WrittenInstruction, { target: number }>, target: Label): void {
+  /**
+   * Where a mock is held for the entry (§10), its result for the parameters in a fresh register
+   * returned through the epilogue; else on to the body.
+   */
+  mocked(span: AnchoredSpan): void {
+    const dst = this.allocate(this.#resultType);
+    const landing = this.newLabel();
+    const body = this.newLabel();
+    const instruction: Extract<WrittenInstruction, { kind: 'mocked' }> = {
+      kind: 'mocked',
+      span,
+      dst,
+      landing: 0,
+    };
     this.emit(instruction);
-    this.#refer(target, (position) => {
-      instruction.target = position;
+    this.#refer(landing, (position) => {
+      instruction.landing = position;
     });
+    this.jump(body, span);
+    this.place(landing);
+    this.return(dst, span);
+    this.place(body);
   }
 
-  /**
-   * Jumps by the variant of the enum value in `value`: to `targets[i]` for variant i, and to
-   * `otherwise` for every variant past them.
-   */
+  /** Jumps by the variant of the enum value in `value`: `targets[i]` for variant i (§3.15). */
   switch(value: Register, targets: readonly Label[], span: AnchoredSpan, otherwise?: Label): void {
     const instruction: Extract<WrittenInstruction, { kind: 'switch' }> = {
       kind: 'switch',
@@ -220,80 +298,57 @@ export class CodeWriter {
     }
   }
 
-  /** Writes what `write` writes, every wait in it named `waypoint` (§10). */
-  withWaypoint(waypoint: string | undefined, write: () => void): void {
-    const outer = this.#waypoint;
-    this.#waypoint = waypoint ?? outer;
-    try {
-      write();
-    } finally {
-      this.#waypoint = outer;
-    }
-  }
-
-  /** A new wait (proposal 8, Rule 5); its register. */
-  wait(span: AnchoredSpan): Register {
-    const dst = this.allocate();
-    this.emit({ kind: 'wait', span, dst });
-    return dst;
-  }
-
-  /** A new resolver of the wait in `wait`, for its case `position`; its register. */
-  resolver(wait: Register, position: number, span: AnchoredSpan): Register {
-    const dst = this.allocate();
-    this.emit({ kind: 'resolver', span, dst, wait, position });
-    return dst;
-  }
-
-  /** Waits until the wait in `wait` is decided, its value then in `dst` (§5). */
-  await(dst: Register, wait: Register, span: AnchoredSpan): void {
-    this.emit({ kind: 'await', span, dst, wait, ...this.#waypointField() });
-  }
-
   /**
-   * Chooses among `cases` as the wait in `wait` is decided (§8): waits for it, or goes to
-   * `otherwise` at once when it is undecided.
+   * Parks the running execution (§5); the position the wait was decided for, once unparked. A stop
+   * lands on the stop epilogue.
    */
-  select(
-    wait: Register,
-    cases: readonly SelectCaseCode[],
-    otherwise: Label | undefined,
-    span: AnchoredSpan,
-  ): void {
-    const instruction: Extract<WrittenInstruction, { kind: 'select' }> = {
-      kind: 'select',
+  park(waypoint: string | undefined, span: AnchoredSpan): Register {
+    this.#parks = true;
+    const dst = this.allocate(intType);
+    const instruction: Extract<WrittenInstruction, { kind: 'park' }> = {
+      kind: 'park',
       span,
-      wait,
-      ...this.#waypointField(),
-      cases: cases.map(({ holds, bind }) => ({
-        holds: [...holds],
-        ...(bind === undefined ? {} : { bind }),
-        target: 0,
-      })),
+      dst,
+      stop: 0,
+      ...(waypoint === undefined ? {} : { waypoint }),
     };
     this.emit(instruction);
-    for (const [index, { target }] of cases.entries()) {
-      this.#refer(target, (position) => {
-        const written = instruction.cases[index];
-        if (written !== undefined) {
-          written.target = position;
-        }
-      });
-    }
-    if (otherwise !== undefined) {
-      instruction.otherwise = 0;
-      this.#refer(otherwise, (position) => {
-        instruction.otherwise = position;
-      });
-    }
+    this.#refer(this.#stopEpilogue, (position) => {
+      instruction.stop = position;
+    });
+    return dst;
+  }
+
+  /** Returns `value`'s value from the entry, through its epilogue. */
+  return(value: Register, span: AnchoredSpan): void {
+    this.#returns = true;
+    this.#result ??= this.allocate(this.#resultType);
+    this.emit({ kind: 'move', span, dst: this.#result, src: this.take(value, span) });
+    this.jump(this.#epilogue, span);
   }
 
   /**
-   * The code written, at text positions in `tree`, the module of the entry it is for, `typedOnly`
-   * naming the registers only types say are plain (plain-registers.ts). Throws when a jump names a
-   * label nothing placed, a bug in lowering.
+   * The code written, at text positions in `tree`, the module of the entry, its epilogues placed
+   * at `span`. Throws when a jump names a label nothing placed, a bug in lowering.
    */
-  finish(tree: SegmentBases, typedOnly: TypedOnly): WrittenCode {
+  finish(tree: SegmentBases, span: AnchoredSpan): WrittenCode {
+    const owning = () =>
+      this.#registers.flatMap((entry, register) =>
+        entry.borrowed || register === this.#result ? [] : [register],
+      );
+    if (this.#returns && this.#result !== undefined) {
+      this.place(this.#epilogue);
+      this.letGo(owning(), span);
+      this.emit({ kind: 'return', span, value: this.#result });
+    }
+    if (this.#parks) {
+      this.place(this.#stopEpilogue);
+      this.letGo(
+        this.#result === undefined ? owning() : [...owning(), this.#result],
+        span,
+      );
+      this.emit({ kind: 'stopped', span });
+    }
     if (this.#patches.size > 0) {
       const labels = [...this.#patches.keys()].join(', ');
       unreachable(`Labels ${labels} are jumped to but never placed.`);
@@ -301,29 +356,17 @@ export class CodeWriter {
     // A written instruction differs from its Definition one by its span alone, which the spread
     // replaces; the type system can't follow that through the union.
     const instructions = this.#instructions.map(
-      ({ span, ...written }) => ({ ...written, span: spanIn(tree, span) }) as Instruction,
+      ({ span: written, ...rest }) => ({ ...rest, span: spanIn(tree, written) }) as Instruction,
     );
-    const typed = this.#plain;
-    const plain =
-      typed === 'all'
-        ? 'all'
-        : plainRegisters(
-            instructions,
-            this.#registers,
-            typedOnly,
-            new Set([...typed].filter((register) => !this.#typedCounted.has(register))),
-          );
-    const counted =
-      plain === 'all'
-        ? []
-        : Array.from({ length: this.#registers }, (_, register) => register).filter(
-            (register) => !plain.has(register),
-          );
-    return { registers: this.#registers, counted, instructions };
+    return { registers: this.#registers, instructions };
   }
 
-  #waypointField(): { readonly waypoint?: string } {
-    return this.#waypoint === undefined ? {} : { waypoint: this.#waypoint };
+  /** Emits `instruction`, whose `target` becomes where `target` is placed. */
+  #emitJumping(instruction: Jumping, target: Label): void {
+    this.emit(instruction);
+    this.#refer(target, (position) => {
+      instruction.target = position;
+    });
   }
 
   /** Sets a label's position into an instruction now, or when the label is placed. */

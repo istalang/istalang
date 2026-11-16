@@ -52,7 +52,12 @@ export type TargetOwner =
 export type PartStep =
   | number
   | { readonly kind: 'member'; readonly union: Type; readonly member: Type }
-  | { readonly kind: 'variantField'; readonly index: number; readonly type: Type }
+  | {
+      readonly kind: 'variantField';
+      readonly variant: string;
+      readonly index: number;
+      readonly type: Type;
+    }
   | { readonly kind: 'downcast'; readonly to: Type }
   | ArrayStep
   | StructStep;

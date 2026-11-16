@@ -33,7 +33,7 @@ export function buildVariant(
   context: CodeContext,
   { type, name, fields }: VariantValue,
   span: AnchoredSpan,
-  dst: Register = context.code.allocate(),
+  dst: Register = context.code.allocate(context.tables.types.reference(type)),
 ): Register {
   const variant = variantIndexOf(context.checker, type, name);
   return variantAt(context, { type, variant, fields }, span, dst);
@@ -48,10 +48,18 @@ export function variantAt(
     fields,
   }: { readonly type: NominalType; readonly variant: number; readonly fields: readonly Register[] },
   span: AnchoredSpan,
-  dst: Register = context.code.allocate(),
+  dst: Register = context.code.allocate(context.tables.types.reference(type)),
 ): Register {
+  const { code } = context;
   const entry = context.tables.types.index(type);
-  context.code.emit({ kind: 'variant', span, dst, type: entry, variant, fields: [...fields] });
+  code.emit({
+    kind: 'variant',
+    span,
+    dst,
+    type: entry,
+    variant,
+    fields: fields.map((field) => code.take(field, span)),
+  });
   return dst;
 }
 
@@ -106,9 +114,17 @@ export function branchOnVariant(
   context.code.switch(test.register, targets, span, labels.otherwise);
 }
 
-/** The value an `Ok` or `Err` in `register` holds: its one field (§3.11, §3.12). */
-export function payloadOf(context: CodeContext, register: Register, span: AnchoredSpan): Register {
-  return context.code.field(register, 0, span);
+/** Borrows the one field of the variant `tested` holds, an `Ok`'s or `Err`'s (§3.11, §3.12). */
+export function payloadOf(
+  context: CodeContext,
+  { register, type, name }: VariantCase,
+  span: AnchoredSpan,
+): Register {
+  const { checker, tables, code } = context;
+  const variant = variantIndexOf(checker, type, name);
+  const field =
+    checker.variantsOf(type)?.[variant]?.fields[0] ?? unreachable(`'${name}' holds no field.`);
+  return code.variantField(register, variant, 0, tables.types.reference(field.type), span);
 }
 
 /**
@@ -129,7 +145,7 @@ export function payloadOr(
   code.place(unmatched);
   otherwise();
   code.place(matched);
-  return payloadOf(context, tested.register, span);
+  return payloadOf(context, tested, span);
 }
 
 /** The value of the enum `type` in `register`, tested for its variant `name`. */
@@ -143,7 +159,7 @@ function variantTestOf(
 }
 
 /** A value of the enum `type` in `register`, tested for its variant `name`, which has one field. */
-interface VariantCase {
+export interface VariantCase {
   readonly register: Register;
   readonly type: NominalType;
   readonly name: string;

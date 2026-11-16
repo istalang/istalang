@@ -128,9 +128,9 @@ export function readAlong(
   return part;
 }
 
-/** The step to the one field of a variant holding a value of `type`: an `Ok`'s, a `Next`'s. */
-export function payload(type: Type | undefined): PartStep {
-  return { kind: 'variantField', index: 0, type: type ?? errorType };
+/** The step to the one field of the variant `variant`, of `type`: an `Ok`'s, a `Next`'s. */
+export function payload(variant: string, type: Type | undefined): PartStep {
+  return { kind: 'variantField', variant, index: 0, type: type ?? errorType };
 }
 
 /** The type of the part `step` reaches in a value of type `within`. */

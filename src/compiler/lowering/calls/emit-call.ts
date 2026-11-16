@@ -17,9 +17,9 @@
  * elements, as the instantiation flattens the pack (packs.ts).
  */
 
-import type { Callee } from '../../../definition/instructions/calls.ts';
-import type { Argument } from '../../../definition/instructions/places.ts';
+import type { Argument, Callee } from '../../../definition/instructions/calls.ts';
 import type { FunctionId, Register } from '../../../definition/operands.ts';
+import type { TypeReference } from '../../../definition/tables/types.ts';
 import { unreachable } from '../../../foundation/structures/unreachable.ts';
 import type { SignatureParameter } from '../../checker/check.ts';
 import { substitute } from '../../checker/types/parts/substitution.ts';
@@ -39,11 +39,12 @@ interface CallToEmit {
   readonly arguments: readonly (Register | Argument)[];
 }
 
-/** Writes `call`; `dst` holds its result. */
+/** Writes `call`, giving a value of `result`; `dst` holds it. */
 export function emitCall(
   context: CodeContext,
   call: CallToEmit,
-  dst: Register = context.code.allocate(),
+  result: TypeReference,
+  dst: Register = context.code.allocate(result),
 ): Register {
   context.code.emit({
     kind: 'call',
@@ -73,13 +74,14 @@ interface FunctionCallToEmit {
 export function emitFunctionCall(
   context: CodeContext,
   toEmit: FunctionCallToEmit,
+  result: TypeReference,
   dst?: Register,
 ): Register {
   const { span, call } = toEmit;
   const parameters = boundParameters(context, toEmit);
   if (call.kind === 'dispatch') {
     const callee = context.tables.dispatchIndex(call.dispatch);
-    return emitCall(context, { span, callee, arguments: parameters }, dst);
+    return emitCall(context, { span, callee, arguments: parameters }, result, dst);
   }
   const { instance } = call;
   const leftOut = parameters.some(isOmitted);
@@ -90,7 +92,7 @@ export function emitFunctionCall(
   const callee = leftOut
     ? context.tables.leavingOutIndex(instance)
     : context.tables.functionIndex(instance);
-  return emitCall(context, { span, callee, arguments: parameters }, dst);
+  return emitCall(context, { span, callee, arguments: parameters }, result, dst);
 }
 
 /** A parameter a call leaves out, which the callee computes from its default (§3.3). */
@@ -176,11 +178,13 @@ function restParameters(
       isSpread ? packElementsOf(context, value, { type, span }) : [value],
     );
   }
+  const { code, checker, tables } = context;
   const elements = items.map(({ value, isSpread }) =>
-    isSpread ? ({ kind: 'spread', value } as const) : ({ kind: 'item', value } as const),
+    isSpread ? { value, spread: true } : { value: code.take(value, span), spread: false },
   );
-  const dst = context.code.allocate();
-  context.code.emit({ kind: 'array', span, dst, elements });
+  const type = substitute(declared.type, substitutionOfCall(checker, call), checker.typeRules);
+  const dst = code.allocate(tables.types.reference(type));
+  code.emit({ kind: 'array', span, dst, elements });
   return [dst];
 }
 
@@ -198,7 +202,19 @@ function registerOf(argument: Register | Argument): Register {
   return argument.register;
 }
 
-/** A register's whole value passed by `&`. */
-export function referenceTo(register: Register): Argument {
-  return { kind: 'reference', place: { register, path: [] } };
+/** A reference, of `type`, to the whole value in the cell `cell`, as `&` passes it (§3.7). */
+export function referenceTo(
+  context: CodeContext,
+  cell: Register,
+  type: TypeReference,
+  span: AnchoredSpan,
+): Register {
+  const dst = context.code.borrow({ kind: 'reference', to: type });
+  context.code.emit({
+    kind: 'reference',
+    span,
+    dst,
+    place: { root: { kind: 'cell', register: cell }, path: [] },
+  });
+  return dst;
 }

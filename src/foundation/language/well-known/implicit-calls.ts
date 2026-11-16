@@ -48,5 +48,17 @@ export const panicFunction = 'panic';
 /** What `await` and each `select` case call on what they wait on (proposal 8, Rule 5). */
 export const awaitFunction = 'onAwait';
 
+/**
+ * What lowering calls around a wait (proposal 8, Rule 5): the prelude's new wait of the running
+ * call; the resolver of one of its cases, which puts the value it is resolved with into the case's
+ * shared value and decides the wait for the case's position; and, for a `select` with an `else`,
+ * the position a wait was decided for at once, or -1, the wait then given up.
+ */
+export const waitFunctions = {
+  wait: '_wait',
+  caseResolver: '_caseResolver',
+  decided: '_decided',
+} as const;
+
 /** The function `Disposable` requires (§3.10, §7). */
 export const disposeFunction = 'dispose';

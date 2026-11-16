@@ -30,7 +30,7 @@ export function convertedIntoAny(
         });
   }
   if (from.kind === 'union') {
-    return eachMember(context, { register: value, type: from }, span, (member) =>
+    return eachMember(context, { register: value, type: from }, { result: to, span }, (member) =>
       convertedIntoAny(context, { value: member.register, from: member.type, to }, span),
     );
   }

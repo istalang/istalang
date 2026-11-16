@@ -34,4 +34,7 @@ const switchVariant = defineInstruction('switch', {
  */
 const returnValue = defineInstruction('return', { value: register });
 
-export const controlInstructions = [jump, branch, switchVariant, returnValue] as const;
+/** Where no path goes on: past a call giving `Never` (§3.1), such as a `panic`. */
+const unreachable = defineInstruction('unreachable', {});
+
+export const controlInstructions = [jump, branch, switchVariant, returnValue, unreachable] as const;

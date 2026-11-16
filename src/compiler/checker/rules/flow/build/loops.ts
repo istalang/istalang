@@ -62,7 +62,7 @@ export function itemLoop(
       exit: done,
       passes: () => {
         builder.resumeIn(next);
-        pass(readAlong(builder, step, [payload(form?.item)], node));
+        pass(readAlong(builder, step, [payload(stepVariants.next, form?.item)], node));
         builder.end({ kind: 'goto', to: top });
       },
     };

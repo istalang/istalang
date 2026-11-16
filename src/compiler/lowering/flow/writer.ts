@@ -3,17 +3,19 @@
  * runs in and what it releases where from its flow, and maps each operation and exit to the
  * instructions it is (operations.ts, exits.ts), in the blocks' order (layout.ts).
  *
- * - **One register per value.** A variable's is its declaring name's (`VariableRegisters`), shared
- *   by every flow the entry writes (its defaults', then its body's), a cell where it lives in one. A
- *   read of a variable at a name is the variable's register. Any other value gets the register its
- *   first operation made, unless another value holds it already, which it is then moved out of.
- * - **What an operation allocates beside its value** (a fit's parts, a union's tag, a copy-in
- *   cell) is that value's, released with it; an operation giving no value releases them at once.
+ * - **One register per value.** A variable's is its declaring name's at its type (variables.ts),
+ *   shared by every flow the entry writes; a field loop's passes bind one name to several types,
+ *   so each pass has its own. A read of a variable at a name is the variable's register, which
+ *   nothing releases. Any other value gets the register its operation gave: owning what it made, or
+ *   borrowing the part it read.
+ * - **Ownership** (docs/arch/definition.md, "Holders"). A value used once is moved where an
+ *   instruction takes it (`CodeWriter.take`); a variable, or a value used twice, is copied. Writing
+ *   a variable lets go of what it held first. A value's release lets go of its register and of
+ *   what its operation allocated beside it (`extras`), which nothing else took.
  * - **A flow returns** from the entry; a default's or an initializer's written inline gives its
  *   value instead (`FlowEnd`), where its root returns it, then goes on past it.
  * - **Each block is written inside the passes of the field loops it is in** (§4), so its calls
- *   close and its nested functions are keyed there. The flow says all else: the writer reads no
- *   checked body.
+ *   close and its nested functions are keyed there.
  */
 
 import type { Register } from '../../../definition/operands.ts';
@@ -26,28 +28,28 @@ import type {
   Operation,
   ValueId,
 } from '../../checker/surface/flow-ir.ts';
+import { valuesReadBy } from '../../checker/surface/flow-ir.ts';
 import type { Type } from '../../checker/types/type/index.ts';
 import { programModule } from '../../program/program.ts';
-import type { LabelledScope, Statement } from '../../syntax/statements/index.ts';
-import { ancestorsOf, type SyntaxNode } from '../../syntax/tree/index.ts';
+import type { Statement } from '../../syntax/statements/index.ts';
+import type { LabelledScope } from '../../syntax/statements/index.ts';
+import { ancestorsOf } from '../../syntax/tree/ancestors.ts';
+import type { SyntaxNode } from '../../syntax/tree/index.ts';
 import type { NodeOf } from '../../syntax/tree/node.ts';
 import type { AnchoredSpan } from '../../syntax/tree/positions.ts';
+import type { OpenWait } from '../calls/waits.ts';
 import type { FunctionContext } from '../context.ts';
 import type { Label } from '../functions/code-writer.ts';
 import type { TypedValue } from '../values/holdings.ts';
 import { exitWriters } from './exits.ts';
 import { type FlowLayout, layoutOf, type PassVisit } from './layout.ts';
 import { operationWriters } from './operations.ts';
-import { cellHolds, cellRegister, holdsType } from './variables.ts';
+import { concreteType, declaringWrites, variableRegister } from './variables.ts';
 
 /** How a flow's root gives its value: by returning from the entry, or into a register. */
-type FlowEnd = { readonly kind: 'return' } | { readonly kind: 'into'; readonly into: Register };
-
-/** A wait being opened: its register, and the futures handed to its cases so far. */
-interface OpenWait {
-  readonly wait: Register;
-  readonly futures: ValueId[];
-}
+export type FlowEnd =
+  | { readonly kind: 'return' }
+  | { readonly kind: 'into'; readonly into: Register };
 
 /** Writes `flow`, its parameters in `parameters`, its root's value given as `end` says. */
 export function writeFlow(
@@ -68,19 +70,24 @@ export class FlowWriter {
   readonly end: FlowEnd;
   readonly #layout: FlowLayout;
   readonly #registers = new Map<ValueId, Register>();
-  /** The registers some value holds, which no other value's operation may take. */
-  readonly #held = new Set<Register>();
+  /** The values whose register is another's, a variable's read at a name: nothing releases them. */
+  readonly #aliases = new Set<ValueId>();
   readonly #extras = new Map<ValueId, readonly Register[]>();
   readonly #labels = new Map<BlockId, Label>();
   /** Where what each held variable holds is kept until (§7). */
   readonly #kept = new Map<ValueId, LabelledScope | 'function'>();
-  readonly #lists = new Map<LabelledScope | 'function', Register>();
-  /** What a future gave once it settled: an `await`'s result, a `select` case's binding. */
-  readonly #given = new Map<ValueId, Register>();
+  /** The arrays what `hold`s keep is kept in, by scope and type. */
+  readonly #lists = new Map<LabelledScope | 'function', Map<string, Register>>();
+  /** How often each value is read: one read more than once is copied where it is taken. */
+  readonly #reads = new Map<ValueId, number>();
+  /** The writes of a variable living in a cell that make its cell (variables.ts). */
+  readonly declaring: ReadonlySet<Operation>;
   /** A value converted into the field a key of several names names, by the value it converts. */
   readonly keyed = new Map<ValueId, ValueId>();
-  /** The `Map`s being built, which an item appended to is a key and value pair. */
-  readonly maps = new Set<ValueId>();
+  /** What each future awaited gave, in an owned register, once its wait was decided. */
+  readonly #given = new Map<ValueId, Register>();
+  /** The futures of each case of the wait being opened, by position. */
+  readonly #awaited: ValueId[] = [];
   #wait: OpenWait | undefined;
   #block: BlockId = 0;
   #next: BlockId | undefined;
@@ -92,13 +99,22 @@ export class FlowWriter {
     this.end = end;
     this.#after = context.code.newLabel();
     this.#layout = layoutOf(flow);
-    for (const { operations } of flow.blocks) {
+    this.declaring = declaringWrites(flow);
+    for (const { operations, exit } of flow.blocks) {
       for (const operation of operations) {
         if (operation.op === 'keep') {
           for (const value of operation.values) {
             this.#kept.set(value, operation.until);
           }
         }
+        for (const value of valuesReadBy(operation)) {
+          this.#reads.set(value, (this.#reads.get(value) ?? 0) + 1);
+        }
+      }
+      const tested = exit.kind === 'branch' && 'value' in exit.test ? [exit.test.value] : [];
+      const returned = exit.kind === 'return' && exit.value !== undefined ? [exit.value] : [];
+      for (const value of [...tested, ...returned]) {
+        this.#reads.set(value, (this.#reads.get(value) ?? 0) + 1);
       }
     }
   }
@@ -116,29 +132,36 @@ export class FlowWriter {
     this.context.code.place(this.#after);
     const last = this.flow.blocks[order.at(-1) ?? 0]?.exit;
     if (this.end.kind === 'return' && last?.kind === 'stop') {
-      // Code no path goes past still ends in a `return`, as loading requires.
-      this.context.code.emit({
-        kind: 'return',
-        span: this.flow.root.span,
-        value: this.context.code.allocate(),
-      });
+      this.context.code.emit({ kind: 'unreachable', span: this.flow.root.span });
     }
   }
 
   #writeBlock({ operations, exit }: FlowBlock): void {
     for (const operation of operations) {
-      const { registers } = this.context.code.allocating(() =>
-        writerOf(operation)(this, operation),
-      );
+      const { code } = this.context;
+      const { registers } = code.allocating(() => writerOf(operation)(this, operation));
       const own = 'into' in operation ? operation.into : undefined;
-      const extras = registers.filter((register) => !this.#held.has(register));
+      const value = own === undefined ? undefined : this.#registers.get(own);
+      const extras = registers.filter(
+        (register) => register !== value && !code.isBorrowed(register) && !this.#isValues(register),
+      );
       if (own === undefined) {
-        this.release(extras, operation.site.span);
+        code.letGo(extras, operation.site.span);
       } else if (extras.length > 0) {
         this.#extras.set(own, [...(this.#extras.get(own) ?? []), ...extras]);
       }
     }
     exitWriters[exit.kind](this, exit as never);
+  }
+
+  /** Whether some value lives in `register`. */
+  #isValues(register: Register): boolean {
+    for (const each of this.#registers.values()) {
+      if (each === register) {
+        return true;
+      }
+    }
+    return false;
   }
 
   // Values.
@@ -149,17 +172,15 @@ export class FlowWriter {
 
   /**
    * `value`'s type as the pass being written reads it: a variable's as its body declares it there,
-   * as one variable holds each pass's field in a field loop (§4) where the flow types it as one
-   * pass reads it.
+   * as one name holds each pass's field in a field loop (§4).
    */
   typeOf(value: ValueId): Type {
-    return this.#typeIn(this.valueOf(value)) ?? unreachable(`Value ${value} was never checked.`);
-  }
-
-  #typeIn(value: FlowValue): Type | undefined {
-    return value.kind === 'variable'
-      ? (this.context.body.declaredTypeOf(value.entity.name) ?? value.type)
-      : value.type;
+    const flowValue = this.valueOf(value);
+    const type =
+      flowValue.kind === 'variable'
+        ? (this.context.body.declaredTypeOf(flowValue.entity.name) ?? flowValue.type)
+        : flowValue.type;
+    return concreteType(this.context, type ?? unreachable(`Value ${value} was never checked.`));
   }
 
   /** `value`'s register, and its type. */
@@ -167,104 +188,134 @@ export class FlowWriter {
     return { register: this.registerOf(value), type: this.typeOf(value) };
   }
 
-  /** `value`'s register: its variable's, or the one its operation gave, or a new one. */
+  /** `value`'s register: its variable's, or the one its operation gave. */
   registerOf(value: ValueId): Register {
     const known = this.#registers.get(value);
     if (known !== undefined) {
       return known;
     }
-    const register = this.#variableRegister(this.valueOf(value)) ?? this.context.code.allocate();
+    const flowValue = this.valueOf(value);
+    if (flowValue.kind !== 'variable') {
+      return unreachable(`Value ${value} is read before anything gave it.`);
+    }
+    const register = variableRegister(this.context, flowValue, this.typeOf(value));
     this.bind(value, register);
     return register;
   }
 
-  /** Makes `register` `value`'s, holding values of its type alone, or its cell (`cellRegister`). */
+  /** Makes `register` `value`'s; a variable's, or a value read twice, is copied where taken. */
   bind(value: ValueId, register: Register): void {
     this.#registers.set(value, register);
-    this.#held.add(register);
-    const type = this.#typeIn(this.valueOf(value));
-    if (type !== undefined) {
-      this.#holds(register, type);
+    if (this.valueOf(value).kind === 'variable' || (this.#reads.get(value) ?? 0) > 1) {
+      this.context.code.pin(register);
     }
+  }
+
+  /** Makes `value` the variable's read `register` is, which nothing releases. */
+  alias(value: ValueId, register: Register): void {
+    this.#registers.set(value, register);
+    this.#aliases.add(value);
   }
 
   /**
-   * Notes that `register` holds values of `type` in the pass being written: a cell register, a cell
-   * holding them (`cellHolds`).
+   * `value` given `produced` by `operation`: a temporary's own register, or written into its
+   * variable, which lets go of what it held first; into its cell, made anew where `operation`
+   * declares it (variables.ts).
    */
-  #holds(register: Register, type: Type): void {
-    const { context } = this;
-    if (context.variables.isCell(register)) {
-      cellHolds(context, register, type);
-    } else {
-      holdsType(context, register, type);
-    }
-  }
-
-  /** `value` given `produced`: its own register, or moved into the one it has. */
-  define(value: ValueId, produced: Register, span: AnchoredSpan): void {
-    const known = this.#registers.get(value) ?? this.#variableRegister(this.valueOf(value));
-    if (known === undefined && !this.#held.has(produced)) {
-      this.bind(value, produced);
+  define(value: ValueId, produced: Register, span: AnchoredSpan, operation?: Operation): void {
+    const flowValue = this.valueOf(value);
+    const { code } = this.context;
+    if (flowValue.kind !== 'variable') {
+      this.bind(value, this.#isValues(produced) ? code.copy(produced, span) : produced);
       return;
     }
-    const dst = known ?? this.registerOf(value);
-    this.bind(value, dst);
-    if (dst !== produced) {
-      this.context.code.emit({ kind: 'move', span, dst, src: produced });
+    const register = this.registerOf(value);
+    if (register === produced) {
+      return;
+    }
+    if (flowValue.inCell) {
+      this.writeCell(register, produced, span, operation !== undefined && this.declaring.has(operation));
+      return;
+    }
+    code.letGo([register], span);
+    code.emit({ kind: 'move', span, dst: register, src: code.take(produced, span) });
+  }
+
+  /** Writes `produced` into the variable living in the cell `cell`: a new cell where it is made. */
+  writeCell(cell: Register, produced: Register, span: AnchoredSpan, declares: boolean): void {
+    const { code } = this.context;
+    const value = code.take(produced, span);
+    if (declares) {
+      code.letGo([cell], span);
+      code.emit({ kind: 'newCell', span, dst: cell, value });
+    } else {
+      code.emit({ kind: 'store', span, place: { root: { kind: 'cell', register: cell }, path: [] }, value });
     }
   }
 
-  /** The register a variable lives in, declared on its first write; undefined for a temporary. */
-  #variableRegister(value: FlowValue): Register | undefined {
-    if (value.kind !== 'variable') {
-      return undefined;
-    }
-    const { variables } = this.context;
-    const { name } = value.entity;
-    if (!variables.has(name)) {
-      const type = this.#typeIn(value) ?? unreachable(`'${name.text}' was never checked.`);
-      const register = value.inCell
-        ? cellRegister(this.context, type)
-        : this.context.code.allocate();
-      if (!value.inCell) {
-        holdsType(this.context, register, type);
-      }
-      variables.declare(name, register);
-    }
-    return variables.registerOf(name);
-  }
-
-  /** The registers `values` end: each one's and its extras, a held one's list where it ends. */
+  /** The registers `values` end: each one's and its extras, a held one's lists where it ends. */
   registersEnding(values: readonly ValueId[]): readonly Register[] {
     const registers = values.flatMap((value) => {
       const until = this.#kept.get(value);
       if (until !== undefined) {
-        return until === 'function' ? [] : [this.listOf(until)];
+        return until === 'function' ? [] : [...(this.#lists.get(until)?.values() ?? [])];
       }
-      const known = this.#registers.get(value) ?? this.#variableRegister(this.valueOf(value));
+      if (this.#aliases.has(value)) {
+        return [];
+      }
+      const known = this.#registers.get(value);
       return known === undefined ? [] : [known, ...(this.#extras.get(value) ?? [])];
     });
     return [...new Set(registers)];
   }
 
-  /** Releases `registers`, if there are any. */
+  /** Lets go of `registers`, if there are any. */
   release(registers: readonly Register[], span: AnchoredSpan): void {
-    if (registers.length > 0) {
-      this.context.code.emit({ kind: 'release', span, registers: [...registers] });
-    }
+    this.context.code.letGo(registers, span);
   }
 
-  /** The list what `hold`s keep until `until` ends is kept in (§7). */
-  listOf(until: LabelledScope | 'function'): Register {
-    const known = this.#lists.get(until);
+  /** The array what `hold`s keep of `type` until `until` ends is kept in (§7). */
+  listOf(until: LabelledScope | 'function', type: Type): Register {
+    const lists = this.#lists.get(until) ?? new Map<string, Register>();
+    this.#lists.set(until, lists);
+    const key = this.context.checker.typeKeys.typeKey(type);
+    const known = lists.get(key);
     if (known !== undefined) {
       return known;
     }
-    const list = this.context.code.allocate();
-    this.#lists.set(until, list);
-    this.#held.add(list);
+    const { checker, tables, code } = this.context;
+    const arrayType = checker.wellKnownType({ module: 'prelude', name: 'Array' }, [type]);
+    const list = code.allocate(
+      tables.types.reference(arrayType ?? unreachable('The prelude has arrays.')),
+    );
+    code.pin(list);
+    lists.set(key, list);
     return list;
+  }
+
+  // Waits.
+
+  /** The wait the `onAwait` calls being written hand their resolvers from, opened by the first. */
+  openedWait(open: () => OpenWait): OpenWait {
+    this.#wait ??= open();
+    return this.#wait;
+  }
+
+  /** Notes that the case of the wait being opened waits on `future`. */
+  awaiting(future: ValueId): void {
+    this.#awaited.push(future);
+  }
+
+  /** The wait opened, which the `await` or `select` written now waits on, and its futures. */
+  takeWait(): { readonly open: OpenWait; readonly futures: readonly ValueId[] } {
+    const open = this.#wait ?? unreachable('An await waits on no wait opened.');
+    this.#wait = undefined;
+    return { open, futures: this.#awaited.splice(0) };
+  }
+
+  /** Makes `register`, which owns it, what `future` gave once it settled. */
+  give(future: ValueId, register: Register): void {
+    this.#given.set(future, register);
   }
 
   /** What `future` gave once it settled. */
@@ -273,25 +324,6 @@ export class FlowWriter {
       this.#given.get(future) ??
       unreachable(`What the future at ${span.from} gave is read before it settled.`)
     );
-  }
-
-  /** Makes `register` what `future` gave once it settled. */
-  give(future: ValueId, register: Register): void {
-    this.#given.set(future, register);
-    this.#held.add(register);
-  }
-
-  /** The wait the `onAwait` calls being written hand their resolvers from, opened by the first. */
-  openWait(span: AnchoredSpan): OpenWait {
-    this.#wait ??= { wait: this.context.code.wait(span), futures: [] };
-    return this.#wait;
-  }
-
-  /** The wait opened, which the `await` or `select` written now waits on. */
-  takeWait(): OpenWait {
-    const wait = this.#wait ?? unreachable('An await waits on no wait opened.');
-    this.#wait = undefined;
-    return wait;
   }
 
   // Blocks.
@@ -337,7 +369,7 @@ export class FlowWriter {
     const { checker, module } = this.context;
     const { tree } = programModule(checker.program, module);
     for (const node of ancestorsOf(tree, site as SyntaxNode)) {
-      if (isNested(node)) {
+      if (node.kind === 'Lambda' || node.kind === 'FunctionDeclaration') {
         return undefined;
       }
       const waypoint =
@@ -350,11 +382,6 @@ export class FlowWriter {
     }
     return undefined;
   }
-}
-
-/** Whether `node` is a function's own: a waypoint outside it is none of its code's. */
-function isNested(node: SyntaxNode): boolean {
-  return node.kind === 'Lambda' || node.kind === 'FunctionDeclaration';
 }
 
 function writerOf(operation: Operation): (writer: FlowWriter, operation: Operation) => void {

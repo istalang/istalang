@@ -72,10 +72,42 @@ export function holdingOf(context: CodeContext, given: Type, member: Type): Hold
   return absorbing === undefined ? undefined : { variant: absorbing, inAny: absorbing };
 }
 
-/** The fields read from a value of `holder` down to the value it holds where `holding` says. */
-export function heldPositions(holder: Type, holding: Holding): readonly number[] {
-  const inVariant = laidOutAs(holder).kind === 'union' && holding.variant !== undefined;
-  return [...(inVariant ? [0] : []), ...(holding.inAny === undefined ? [] : [0])];
+/**
+ * Borrows the value of `member` that `value` holds where `holdingOf` says, which a test made sure
+ * it does: out of its union's variant, then out of the `any` type's variant holding it.
+ */
+export function readHeld(
+  context: CodeContext,
+  value: TypedValue,
+  member: Type,
+  span: AnchoredSpan,
+): Register {
+  const { code, tables } = context;
+  const holder = laidOutAs(value.type);
+  const holding = holdingOf(context, holder, member);
+  if (holding === undefined) {
+    return value.register;
+  }
+  const { variant, inAny } = holding;
+  const inVariant =
+    holder.kind === 'union' && variant !== undefined
+      ? code.variantField(
+          value.register,
+          tables.types.unionVariant(holder, variant),
+          0,
+          tables.types.reference(inAny ?? variant),
+          span,
+        )
+      : value.register;
+  return inAny === undefined
+    ? inVariant
+    : code.variantField(
+        inVariant,
+        tables.types.anyVariant(inAny, baseOf(member)),
+        0,
+        tables.types.reference(baseOf(member)),
+        span,
+      );
 }
 
 /** A value of a type, which `inside` gives once asked, with its type. */
@@ -127,10 +159,10 @@ export interface IntoAny {
  */
 export function heldInAny(context: CodeContext, { value, from, to }: IntoAny, span: AnchoredSpan) {
   const { tables, code } = context;
-  const dst = code.allocate();
+  const dst = code.allocate(tables.types.reference(to));
   const type = tables.types.anyIndex(to);
   const variant = tables.types.anyVariant(to, baseOf(from));
-  code.emit({ kind: 'variant', span, dst, type, variant, fields: [value] });
+  code.emit({ kind: 'variant', span, dst, type, variant, fields: [code.take(value, span)] });
   return dst;
 }
 
@@ -172,8 +204,8 @@ export function branchOnHeld(
     );
     return;
   }
-  const pending: { label: Label; inside: AnyType; members: Type[] }[] = [];
-  const targets = context.tables.types.unionMembers(type).map((variant) => {
+  const pending: { label: Label; variant: number; inside: AnyType; members: Type[] }[] = [];
+  const targets = context.tables.types.unionMembers(type).map((variant, position) => {
     const here = held.filter(({ holding }) => sameType(holding.variant ?? variant, variant));
     if (here.some(({ holding }) => holding.inAny === undefined)) {
       return matched;
@@ -182,13 +214,20 @@ export function branchOnHeld(
       return otherwise;
     }
     const label = code.newLabel();
-    pending.push({ label, inside: variant, members: here.map(({ member }) => member) });
+    pending.push({
+      label,
+      variant: position,
+      inside: variant,
+      members: here.map(({ member }) => member),
+    });
     return label;
   });
   code.switch(value.register, targets, span, otherwise);
-  for (const { label, inside, members: absorbed } of pending) {
+  for (const { label, variant, inside, members: absorbed } of pending) {
     code.place(label);
-    const any = { register: code.field(value.register, 0, span), type: inside };
+    const reference = context.tables.types.reference(inside);
+    const held = code.variantField(value.register, variant, 0, reference, span);
+    const any = { register: held, type: inside };
     branchOnAnyVariants(context, { value: any, members: absorbed }, { matched, otherwise }, span);
   }
 }
@@ -240,14 +279,15 @@ export function memberValue(
   { union, member, fields }: MemberBuilt,
   span: AnchoredSpan,
 ): Register {
-  const dst = context.code.allocate();
-  context.code.emit({
+  const { code, tables } = context;
+  const dst = code.allocate(tables.types.reference(union));
+  code.emit({
     kind: 'variant',
     span,
     dst,
-    type: context.tables.types.index(union),
-    variant: context.tables.types.unionVariant(union, member),
-    fields: [...fields],
+    type: tables.types.index(union),
+    variant: tables.types.unionVariant(union, member),
+    fields: fields.map((field) => code.take(field, span)),
   });
   return dst;
 }

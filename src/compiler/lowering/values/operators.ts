@@ -8,6 +8,7 @@ import type { Register } from '../../../definition/operands.ts';
 import type { Relation } from '../../syntax/expressions/operators.ts';
 import type { AnchoredSpan } from '../../syntax/tree/positions.ts';
 import type { CodeContext } from '../context.ts';
+import { boolType } from '../functions/code-writer.ts';
 
 /** Whether `left` and `right` are `==`, or `!=` when `isNegated`. */
 export function equal(
@@ -21,7 +22,7 @@ export function equal(
 }
 
 export function negated(context: CodeContext, src: Register, span: AnchoredSpan): Register {
-  const dst = context.code.allocate();
+  const dst = context.code.allocate(boolType);
   context.code.emit({ kind: 'not', span, dst, src });
   return dst;
 }
@@ -36,7 +37,7 @@ export function ordered(
   comparison: Register,
   relation: Relation,
 ): Register {
-  const dst = context.code.allocate();
+  const dst = context.code.allocate(boolType);
   context.code.emit({ kind: 'order', span, dst, comparison, relation });
   return dst;
 }

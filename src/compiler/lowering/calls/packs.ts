@@ -31,5 +31,7 @@ export function packElementsOf(
   tuple: Register,
   { type, span }: { readonly type: Type; readonly span: AnchoredSpan },
 ): readonly Register[] {
-  return packElements(type).map((_, index) => context.code.field(tuple, index, span));
+  return packElements(type).map((element, index) =>
+    context.code.tupleItem(tuple, index, context.tables.types.reference(element), span),
+  );
 }

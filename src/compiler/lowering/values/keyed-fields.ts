@@ -39,12 +39,13 @@ export function readKeyed(
   readAt: (field: FieldMember, position: number) => TypedValue,
   span: AnchoredSpan,
 ): Register {
-  const dst = context.code.allocate();
+  const { code } = context;
+  const dst = code.allocate(context.tables.types.reference(result));
   eachKeyedField(context, keyed, span, (field, position) => {
     const value = readAt(field, position);
     const inside = () => value.register;
     const held = heldIn(context, { member: value.type, inside }, result, span);
-    context.code.emit({ kind: 'move', span, dst, src: held });
+    code.emit({ kind: 'move', span, dst, src: code.take(held, span) });
   });
   return dst;
 }
@@ -62,6 +63,8 @@ export function writeKeyed(
   }: { readonly keyed: KeyedField; readonly value: TypedValue; readonly site: Expression },
   writeAt: (field: FieldMember, position: number, value: Register) => void,
 ): void {
+  // Each case writes the value, so none moves it out.
+  context.code.pin(value.register);
   eachKeyedField(context, keyed, site.span, (field, position) => {
     writeAt(field, position, fittedInto(context, value, field.type, site));
   });

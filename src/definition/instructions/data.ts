@@ -105,7 +105,7 @@ const not = defineInstruction('not', { dst: register, src: register });
 const order = defineInstruction('order', {
   dst: register,
   comparison: register,
-  relation: z.enum(['<', '<=', '>', '>=']),
+  relation: z.enum(['less', 'lessOrEqual', 'greater', 'greaterOrEqual']),
 });
 
 /** A primitive operation of a backend's own (./primitive-ops.ts). */

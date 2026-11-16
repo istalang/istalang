@@ -34,7 +34,8 @@ export function readRequiredField(
   const { register, type } = value;
   const stored = structFieldOf(checker, type, field.name.text);
   if (stored?.read.kind === 'position') {
-    return context.code.field(register, stored.read.index, span);
+    const reference = context.tables.types.reference(stored.member.type);
+    return context.code.structField(register, stored.read.index, reference, span);
   }
   const getter =
     fieldGetterAmong(witnesses() ?? [], field) ??

@@ -2,31 +2,41 @@
  * Each operation of a flow as the instructions it is (writer.ts), one writer per kind.
  *
  * - `compute` and `make` build their value with the helpers synthesized code builds with; a
- *   `none` is the constant `null` put in the optional (or union, or `any`) it is made for.
+ *   `none` is the constant `null` put in the optional (or union, or `any`) it is made for. What a
+ *   construction is built of is moved in, or copied where read again (`CodeWriter.take`).
  * - A struct is built by its fields' names, whatever order its literal gives them in; its
  *   comprehension's parts are the fields its passes visit.
- * - A `copy` out of a variable at a name is the variable's value; one into the field a key of
- *   several names names converts as the place is written (places.ts); any other is a `move`, or
- *   the conversion checking fitted. A `read` reads a part (parts.ts).
+ * - A `copy` out of a variable at a name is the variable's value, read in place; one into the field
+ *   a key of several names names converts as the place is written (places.ts); any other is a
+ *   move or copy into its own, or the conversion checking fitted. A `read` borrows a part
+ *   (parts.ts).
  * - A call's `&` arguments are entered as places; a function value's pack spread passes its
- *   tuple's elements (§3.5). An `onAwait` gets the wait's resolver for its case (calls/waits.ts);
- *   the codec of an instance's outcome is the runtime's to call, named by its type entry.
- * - `keep` keeps a held variable's value in its scope's list, then lets go of it (§7); a scope
- *   ending releases that list instead.
+ *   tuple's elements (§3.5). An `onAwait` gets the resolver of its case of the wait being opened
+ *   (calls/waits.ts); `await` parks once every case has one, then takes what the future gave.
+ * - `keep` copies a held variable's value into its scope's array of its type, then lets go of it
+ *   (§7); a scope ending lets go of those arrays instead.
  */
 
-import type { Argument as DefinitionArgument } from '../../../definition/instructions/places.ts';
+import type { Argument as DefinitionArgument } from '../../../definition/instructions/calls.ts';
 import type { Register } from '../../../definition/operands.ts';
+import { wellKnown } from '../../../foundation/language/well-known/index.ts';
 import { unreachable } from '../../../foundation/structures/unreachable.ts';
 import { type ConstantForm, literalTypeForm } from '../../checker/surface/constant-form.ts';
 import type { Argument, Operation } from '../../checker/surface/flow-ir.ts';
 import type { Type } from '../../checker/types/type/index.ts';
+import { substitute } from '../../checker/types/parts/substitution.ts';
 import { isPrimitive } from '../../checker/types/type/primitives.ts';
+import { wellKnownArguments } from '../../checker/types/type/well-known.ts';
 import type { SyntaxNode } from '../../syntax/tree/index.ts';
 import type { AnchoredSpan } from '../../syntax/tree/positions.ts';
+import {
+  type ClosedCall,
+  calledParameters,
+  substitutionOfCall,
+} from '../calls/closed-calls.ts';
 import { emitCall, emitFunctionCall } from '../calls/emit-call.ts';
 import { packElementsOf } from '../calls/packs.ts';
-import { awaitWait } from '../calls/waits.ts';
+import { caseResolver, caseValue, openWait, parked, waitRegisters } from '../calls/waits.ts';
 import { nestedSpanOf } from '../functions/bodies.ts';
 import { constantValue } from '../tables/constants.ts';
 import { ownEntryOf } from '../tables/own-entries.ts';
@@ -44,32 +54,57 @@ export const operationWriters: {
   readonly [Op in Operation['op']]: (writer: FlowWriter, operation: Of<Op>) => void;
 } = {
   compute: (writer, operation) =>
-    writer.define(operation.into, computed(writer, operation), operation.site.span),
+    writer.define(operation.into, computed(writer, operation), operation.site.span, operation),
   make: (writer, operation) =>
-    writer.define(operation.into, made(writer, operation), operation.site.span),
+    writer.define(operation.into, made(writer, operation), operation.site.span, operation),
   copy: copied,
-  read: (writer, { into, from, part, site }) =>
-    part.kind === 'given'
-      ? writer.bind(into, writer.givenBy(from, site.span))
-      : writer.define(into, partRead(writer, { from, into, part }, site), site.span),
+  read: (writer, operation) => {
+    const { into, from, part, site } = operation;
+    const read =
+      part.kind === 'given'
+        ? writer.givenBy(from, site.span)
+        : partRead(writer, { from, into, part }, site);
+    writer.define(into, read, site.span, operation);
+  },
   write: writePlace,
   call: called,
   callValue: calledValue,
-  suspend: (writer, { site, awaited: [future] }) => {
-    if (site.kind !== 'Await' || future === undefined) {
+  suspend: (writer, { site, awaited }) => {
+    if (site.kind !== 'Await' || awaited.length === 0) {
       return;
     }
     const { code } = writer.context;
-    const wait = writer.takeWait();
-    code.withWaypoint(writer.waypointAt(site), () =>
-      writer.give(future, awaitWait(writer.context, wait.wait, site.span)),
-    );
+    const { span } = site;
+    const { open, futures } = writer.takeWait();
+    code.letGo([parked(writer.context, writer.waypointAt(site), span)], span);
+    futures.forEach((future, position) => {
+      writer.give(future, code.copy(caseValue(writer.context, open, position, span), span));
+    });
+    code.letGo(waitRegisters(open), span);
   },
   keep: (writer, { values, until, site }) => {
-    const registers = values.map((value) => writer.registerOf(value));
-    const into = writer.listOf(until);
-    writer.context.code.emit({ kind: 'keep', span: site.span, registers, into });
-    writer.release(registers, site.span);
+    const { code } = writer.context;
+    const { span } = site;
+    for (const value of values) {
+      const list = writer.listOf(until, writer.typeOf(value));
+      const longer = code.allocate(code.typeOf(list));
+      const item = code.copy(writer.registerOf(value), span);
+      code.emit({
+        kind: 'array',
+        span,
+        dst: longer,
+        elements: [
+          { value: list, spread: true },
+          { value: item, spread: false },
+        ],
+      });
+      code.letGo([list], span);
+      code.emit({ kind: 'move', span, dst: list, src: longer });
+    }
+    writer.release(
+      values.map((value) => writer.registerOf(value)),
+      span,
+    );
   },
   release: (writer, { values, site }) => writer.release(writer.registersEnding(values), site.span),
   unknown: ({ flow }) =>
@@ -117,44 +152,47 @@ function constantOf(
   const holdsNone = type.kind === 'union' || type.kind === 'any' || isPrimitive(type, 'None');
   return form.kind === 'primitive' && form.value === null && holdsNone
     ? noneOf(context, type, span)
-    : context.constant(constantValue(context.tables, form), span);
+    : context.constant(constantValue(context.tables, form), type, span);
 }
 
 function made(writer: FlowWriter, { into, made: what, parts, site }: Of<'make'>): Register {
   const { context } = writer;
-  const { code } = context;
+  const { code, tables } = context;
   const { span } = site;
   const registers = parts.map((part) => writer.registerOf(part));
-  const dst = code.allocate();
+  const type = writer.typeOf(into);
   switch (what.kind) {
     case 'struct':
     case 'handle':
-      return structMade(writer, writer.typeOf(into), { fields: what.fields, registers }, span);
+      return structMade(writer, type, { fields: what.fields, registers }, span);
     case 'tuple':
       return tupleOf(context, registers, span);
     case 'array': {
+      const dst = code.allocate(tables.types.reference(type));
       const elements = registers.map((value, index) =>
         what.spreads.includes(index)
-          ? ({ kind: 'spread', value } as const)
-          : ({ kind: 'item', value } as const),
+          ? { value, spread: true }
+          : { value: code.take(value, span), spread: false },
       );
       code.emit({ kind: 'array', span, dst, elements });
       return dst;
     }
-    case 'map':
-      writer.maps.add(into);
-      code.emit({ kind: 'map', span, dst, entries: mapEntries(registers, what.spreads) });
+    case 'map': {
+      const dst = code.allocate(tables.types.reference(type));
+      code.emit({ kind: 'map', span, dst, entries: mapEntries(writer, registers, what.spreads, span) });
       return dst;
+    }
     case 'variant': {
-      const { type, variant } = what;
-      return type.kind === 'nominal'
-        ? variantAt(context, { type, variant, fields: registers }, span)
-        : unreachable(`A variant of a ${type.kind} type is made.`);
+      const { type: enumType, variant } = what;
+      return enumType.kind === 'nominal'
+        ? variantAt(context, { type: enumType, variant, fields: registers }, span)
+        : unreachable(`A variant of a ${enumType.kind} type is made.`);
     }
     case 'closure':
-      return closureMade(writer, what.function.root, registers);
+      return closureMade(writer, what.function.root, registers, type);
     case 'function': {
-      const callee = context.tables.callIndex(context.closed(what.call));
+      const dst = code.allocate(tables.types.reference(type));
+      const callee = tables.callIndex(context.closed(what.call));
       code.emit({ kind: 'closure', span, dst, function: callee, captures: [] });
       return dst;
     }
@@ -165,25 +203,34 @@ function made(writer: FlowWriter, { into, made: what, parts, site }: Of<'make'>)
   }
 }
 
-/** The closure of the nested function `node`, carrying `captures` (§3.14). */
+/** The closure of the nested function `node`, of `type`, carrying `captures` (§3.14). */
 function closureMade(
   writer: FlowWriter,
   node: SyntaxNode,
   captures: readonly Register[],
+  type: Type,
 ): Register {
   const { context } = writer;
+  const { code } = context;
   if (node.kind !== 'Lambda' && node.kind !== 'FunctionDeclaration') {
     return unreachable(`A closure of a ${node.kind} is made.`);
   }
-  const dst = context.code.allocate();
+  const dst = code.allocate(context.tables.types.reference(type));
   const span = nestedSpanOf(context.checker.program, context.module, node);
   const function_ = context.nestedIndex(node);
-  context.code.emit({ kind: 'closure', span, dst, function: function_, captures: [...captures] });
+  const taken = captures.map((capture) => code.take(capture, span));
+  code.emit({ kind: 'closure', span, dst, function: function_, captures: taken });
   return dst;
 }
 
 /** A `Map`'s entries of `registers`: each spread whole at `spreads`, any other two a pair. */
-function mapEntries(registers: readonly Register[], spreads: readonly number[]) {
+function mapEntries(
+  writer: FlowWriter,
+  registers: readonly Register[],
+  spreads: readonly number[],
+  span: AnchoredSpan,
+) {
+  const { code } = writer.context;
   const entries: (
     | { kind: 'spread'; value: Register }
     | { kind: 'entry'; key: Register; value: Register }
@@ -194,7 +241,8 @@ function mapEntries(registers: readonly Register[], spreads: readonly number[]) 
       entries.push({ kind: 'spread', value: key });
     } else {
       index += 1;
-      entries.push({ kind: 'entry', key, value: registers[index] as Register });
+      const value = registers[index] as Register;
+      entries.push({ kind: 'entry', key: code.take(key, span), value: code.take(value, span) });
     }
   }
   return entries;
@@ -220,21 +268,30 @@ function structMade(
     : unreachable(`A struct of a ${type.kind} type is made.`);
 }
 
-function copied(writer: FlowWriter, { into, from, fit, site }: Of<'copy'>): void {
+function copied(writer: FlowWriter, operation: Of<'copy'>): void {
+  const { into, from, fit, site } = operation;
   const source = writer.valueOf(from);
   const { span } = site;
+  const { code } = writer.context;
   if (source.kind === 'global') {
-    writer.define(into, globalRead(writer, source, span), span);
+    writer.define(into, globalRead(writer, source, span), span, operation);
   } else if (
     fit === undefined &&
     source.kind === 'variable' &&
     writer.valueOf(into).kind === 'temporary'
   ) {
-    writer.bind(into, writer.registerOf(from));
+    const register = writer.registerOf(from);
+    if (source.inCell) {
+      const read = code.borrow(writer.context.tables.types.reference(writer.typeOf(from)));
+      code.emit({ kind: 'load', span, dst: read, place: { root: { kind: 'cell', register }, path: [] } });
+      writer.alias(into, read);
+    } else {
+      writer.alias(into, register);
+    }
   } else if (fit === 'intoKeyedField') {
     writer.keyed.set(into, from);
   } else if (fit === undefined) {
-    writer.define(into, writer.registerOf(from), span);
+    writer.define(into, writer.registerOf(from), span, operation);
   } else {
     const converted = writer.context.fitted(
       writer.registerOf(from),
@@ -242,14 +299,12 @@ function copied(writer: FlowWriter, { into, from, fit, site }: Of<'copy'>): void
       fit,
       site,
     );
-    writer.define(into, converted, span);
+    writer.define(into, converted, span, operation);
   }
 }
 
-function called(
-  writer: FlowWriter,
-  { into, call, role, arguments: given, site }: Of<'call'>,
-): void {
+function called(writer: FlowWriter, operation: Of<'call'>): void {
+  const { into, call, role, arguments: given, site } = operation;
   const { context } = writer;
   const { span } = site;
   const closed = context.closed(call);
@@ -258,39 +313,55 @@ function called(
   const passed = passedArguments(writer, given, { site, native });
   const [future] = given;
   // A case hands its resolver to what it waits on, which keeps it if it is to decide the wait.
-  const done = role === 'onAwait' ? awaitedBy(writer, future, span) : undefined;
+  const done = role === 'onAwait' ? awaitedBy(writer, { future, closed }, span) : undefined;
   const arguments_ = done === undefined ? passed.arguments : [...passed.arguments, done];
-  const dst = emitFunctionCall(context, {
-    span,
-    call: closed,
-    arguments: arguments_,
-  });
+  const result = context.tables.types.reference(writer.typeOf(into));
+  const dst = emitFunctionCall(context, { span, call: closed, arguments: arguments_ }, result);
   passed.leave();
-  writer.define(into, dst, span);
+  writer.define(into, dst, span, operation);
   if (done !== undefined) {
-    writer.release([done.register], span);
+    writer.release([done], span);
   }
 }
 
-/** The resolver of the case of the wait being opened that waits on `future` (calls/waits.ts). */
+/**
+ * The resolver of the case of the wait being opened, or opened now, that waits on `future`
+ * (calls/waits.ts).
+ */
 function awaitedBy(
   writer: FlowWriter,
-  future: Argument | undefined,
+  { future, closed }: { readonly future: Argument | undefined; readonly closed: ClosedCall },
   span: AnchoredSpan,
-): { readonly kind: 'value'; readonly register: Register } {
+): Register {
   if (future?.kind !== 'value') {
     return unreachable(`What an await at ${span.from} waits on is no value.`);
   }
-  const wait = writer.openWait(span);
-  const register = writer.context.code.resolver(wait.wait, wait.futures.length, span);
-  wait.futures.push(future.value);
-  return { kind: 'value', register };
+  const { context } = writer;
+  const open = writer.openedWait(() => openWait(context, context.waitingMode(), span));
+  writer.awaiting(future.value);
+  return caseResolver(context, open, givenType(writer, closed), span);
 }
 
-function calledValue(
-  writer: FlowWriter,
-  { into, callee, arguments: given, spreads, site }: Of<'callValue'>,
-): void {
+/**
+ * The type of what a case's awaitable gives once it settles: the `T` of the `Resolver<T, K>` its
+ * `onAwait`, `closed`, takes.
+ */
+function givenType(writer: FlowWriter, closed: ClosedCall): Type {
+  const { checker } = writer.context;
+  const done = calledParameters(checker, closed)[1]?.type;
+  const resolver =
+    done === undefined
+      ? undefined
+      : substitute(done, substitutionOfCall(checker, closed), checker.typeRules);
+  const [given] =
+    (resolver === undefined
+      ? undefined
+      : wellKnownArguments(checker, wellKnown.resolver, resolver)) ?? [];
+  return given ?? unreachable(`An onAwait takes no resolver at ${closed.kind}.`);
+}
+
+function calledValue(writer: FlowWriter, operation: Of<'callValue'>): void {
+  const { into, callee, arguments: given, spreads, site } = operation;
   const { context } = writer;
   const { span } = site;
   const passed = passedArguments(writer, given, { site, native: false });
@@ -303,7 +374,8 @@ function calledValue(
       : [argument];
   });
   const target = { kind: 'value', register: writer.registerOf(callee) } as const;
-  const dst = emitCall(context, { span, callee: target, arguments: arguments_ });
+  const result = context.tables.types.reference(writer.typeOf(into));
+  const dst = emitCall(context, { span, callee: target, arguments: arguments_ }, result);
   passed.leave();
-  writer.define(into, dst, span);
+  writer.define(into, dst, span, operation);
 }

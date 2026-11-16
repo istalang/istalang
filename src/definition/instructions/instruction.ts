@@ -80,6 +80,7 @@ const operandTable: Handlers<undefined, Instruction, [], Partial<Operands>> = {
     labels: [...i.targets, ...(i.otherwise === undefined ? [] : [i.otherwise])],
   }),
   return: (_, i) => ({ read: [i.value] }),
+  unreachable: () => ({}),
   call: (_, i) => ({
     written: i.dst === undefined ? [] : [i.dst],
     read: [
@@ -124,6 +125,7 @@ export function endsBlock(subject: Instruction): boolean {
     case 'switch':
     case 'return':
     case 'stopped':
+    case 'unreachable':
       return true;
     default:
       return false;

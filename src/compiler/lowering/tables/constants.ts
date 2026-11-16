@@ -11,19 +11,20 @@ import type { Value } from '../../../definition/values/values.ts';
 import type { CheckedAnnotation } from '../../checker/surface/checked-annotation.ts';
 import type { ConstantForm } from '../../checker/surface/constant-form.ts';
 import { hasOneValue } from '../../checker/types/unions/unions.ts';
+import type { Type } from '../../checker/types/type/index.ts';
 import type { AnchoredSpan } from '../../syntax/tree/positions.ts';
 import type { CodeWriter } from '../functions/code-writer.ts';
 import type { DefinitionTables } from './tables.ts';
 
-/** Allocates a register and emits a `constant` instruction loading `value` into it. */
+/** A fresh register of `type` owning the constant `value`. */
 export function emitConstant(
   context: { readonly code: CodeWriter; readonly tables: DefinitionTables },
   value: Value,
+  type: Type,
   span: AnchoredSpan,
 ): Register {
-  const dst = context.code.allocate();
-  context.code.emit({ kind: 'constant', span, dst, constant: context.tables.constant(value) });
-  return dst;
+  const { code, tables } = context;
+  return code.constant(tables.constant(value), tables.types.reference(type), span);
 }
 
 /** The persisted value of a form the checker computed. */

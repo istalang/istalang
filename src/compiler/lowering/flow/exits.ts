@@ -19,10 +19,12 @@ import type { TypeTest } from '../../checker/surface/checked-pattern.ts';
 import type { BlockId, BranchTest, Exit } from '../../checker/surface/flow-ir.ts';
 import { sameType } from '../../checker/types/identity/identity.ts';
 import type { LiteralType, Type } from '../../checker/types/type/index.ts';
+import { intType, unitType } from '../../checker/types/type/primitives.ts';
 import { baseOf } from '../../checker/types/unions/union-members.ts';
 import { hasMember } from '../../checker/types/unions/unions.ts';
 import { selectCasesOf } from '../../syntax/expressions/readings.ts';
 import type { AnchoredSpan } from '../../syntax/tree/positions.ts';
+import { caseValue, decidedAt, parked, waitRegisters } from '../calls/waits.ts';
 import type { Label } from '../functions/code-writer.ts';
 import { emitConstant } from '../tables/constants.ts';
 import { branchOnHeld, laidOutAs, type TypedValue } from '../values/holdings.ts';
@@ -51,17 +53,19 @@ export const exitWriters: {
       ) => void
     )(writer, test, to),
   return: (writer, { value, site }) => {
-    const { code } = writer.context;
+    const { context } = writer;
+    const { code } = context;
     const { span } = site;
-    const register = value === undefined ? code.allocate() : writer.registerOf(value);
+    const register =
+      value === undefined ? context.constant(null, unitType, span) : writer.registerOf(value);
     if (writer.end.kind === 'into' && site === writer.flow.root) {
-      code.emit({ kind: 'move', span, dst: writer.end.into, src: register });
+      code.emit({ kind: 'move', span, dst: writer.end.into, src: code.take(register, span) });
       writer.leave(span);
     } else {
-      code.emit({ kind: 'return', span, value: register });
+      code.return(register, span);
     }
   },
-  stop: () => undefined,
+  stop: (writer) => writer.context.code.emit({ kind: 'unreachable', span: writer.flow.root.span }),
 };
 
 const testWriters: {
@@ -89,29 +93,7 @@ const testWriters: {
     branchOnType(writer, writer.typed(value), test, { matched: holds, otherwise: fails });
   },
   fieldPass: (writer) => writer.goTo(writer.firstPass(), writer.flow.root.span),
-  select: (writer, { node, holds }, to) => {
-    const { code } = writer.context;
-    const targets = labelsOf(writer, to);
-    const cases = selectCasesOf(node);
-    if (cases.length === 0) {
-      writer.goTo(to[0] ?? unreachable('A select goes nowhere.'), node.span);
-      return;
-    }
-    const wait = writer.takeWait();
-    const written = cases.map((selectCase, index) => {
-      const bind = selectCase.binding === undefined ? undefined : code.allocate();
-      const future = wait.futures[index];
-      if (bind !== undefined && future !== undefined) {
-        writer.give(future, bind);
-      }
-      const held = writer.registersEnding(holds[index] ?? []);
-      return { holds: held, bind, target: targets[index] as Label };
-    });
-    const otherwise = node.elseClause === undefined ? undefined : targets[cases.length];
-    code.withWaypoint(writer.waypointAt(node), () =>
-      code.select(wait.wait, written, otherwise, node.span),
-    );
-  },
+  select: (writer, test, to) => selected(writer, test, to),
   transient: (writer, { variable }, to) => {
     const [shared, unmade] = to as [BlockId, BlockId];
     const { span } = writer.flow.root;
@@ -183,7 +165,59 @@ function branchOnMembers(
     );
     code.place(holdsBase);
     const inside = outOfUnion(context, value, base, span);
-    const constant = emitConstant(context, literal.value, span);
+    const constant = emitConstant(context, literal.value, literal, span);
     code.branch(equal(context, span, [inside, constant]), matched, next, span);
+  }
+}
+
+/**
+ * A `select` (§8): parks until one of its cases decides its wait, or, with an `else`, asks at once
+ * whether one has (`decidedAt`); then goes to the case decided, which takes what its future gave and
+ * lets go of the wait and of the losing cases' holdings, its own moving to the scope around the
+ * `select` (spec amendment, "select losers").
+ */
+function selected(writer: FlowWriter, { node, holds }: TestOf<'select'>, to: readonly BlockId[]): void {
+  const { context } = writer;
+  const { code } = context;
+  const { span } = node;
+  const cases = selectCasesOf(node);
+  if (cases.length === 0) {
+    writer.goTo(to[0] ?? unreachable('A select goes nowhere.'), span);
+    return;
+  }
+  const { open, futures } = writer.takeWait();
+  const position =
+    node.elseClause === undefined
+      ? parked(context, writer.waypointAt(node), span)
+      : decidedAt(context, open, span);
+  const landings = cases.map(() => code.newLabel());
+  const otherwise = node.elseClause === undefined ? undefined : code.newLabel();
+  landings.forEach((landing, index) => {
+    if (index === landings.length - 1 && otherwise === undefined) {
+      code.jump(landing, span);
+      return;
+    }
+    const next = code.newLabel();
+    const at = context.constant(BigInt(index), intType, span);
+    code.branch(code.equal(position, at, span), landing, next, span);
+    code.place(next);
+  });
+  if (otherwise !== undefined) {
+    code.jump(otherwise, span);
+  }
+  landings.forEach((landing, index) => {
+    code.place(landing);
+    const future = futures[index];
+    if (future !== undefined) {
+      writer.give(future, code.copy(caseValue(context, open, index, span), span));
+    }
+    const losers = holds.flatMap((held, other) => (other === index ? [] : held));
+    code.letGo([position, ...waitRegisters(open), ...writer.registersEnding(losers)], span);
+    writer.goTo(to[index] ?? unreachable('A select case goes nowhere.'), span);
+  });
+  if (otherwise !== undefined) {
+    code.place(otherwise);
+    code.letGo([position, ...waitRegisters(open), ...writer.registersEnding(holds.flat())], span);
+    writer.goTo(to[cases.length] ?? unreachable('A select has no else.'), span);
   }
 }

@@ -140,7 +140,8 @@ export class SynthesizedCode implements CodeContext {
    */
   ok(result: Register, type: NominalType, failed: (error: Register) => void): Register {
     const tested = { register: result, type, name: resultVariants.ok };
-    return payloadOr(this, tested, () => failed(payloadOf(this, result, this.span)), this.span);
+    const error = { register: result, type, name: resultVariants.err };
+    return payloadOr(this, tested, () => failed(payloadOf(this, error, this.span)), this.span);
   }
 
   /** The value of the future in `future`, of type `type`, awaited. */

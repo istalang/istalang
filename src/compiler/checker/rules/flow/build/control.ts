@@ -274,7 +274,7 @@ export function propagate(builder: FlowBuilder, node: Propagate): ValueId {
   const test = variantTest(builder, operand, resultVariants.ok);
   const [ok, failed] = builder.branch(test) as [BlockId, BlockId];
   builder.resumeIn(failed);
-  const passed = readAlong(builder, operand, [payload(error)], node);
+  const passed = readAlong(builder, operand, [payload(resultVariants.err, error)], node);
   const [, returned] = argumentsOf(builder.result);
   const fit = error && returned && checker.fitOf(error, returned);
   const converted = builder.fitted(node, passed, { type: returned, fit });
@@ -282,7 +282,12 @@ export function propagate(builder: FlowBuilder, node: Propagate): ValueId {
   const value = madeVariant(builder, err, [converted]);
   builder.end({ kind: 'return', value, site: node });
   builder.resumeIn(ok);
-  return readAlong(builder, operand, [payload(builder.body.typeOf(node))], node);
+  return readAlong(
+    builder,
+    operand,
+    [payload(resultVariants.ok, builder.body.typeOf(node))],
+    node,
+  );
 }
 
 /** `a ?? b`: the value inside `a`, or else `b`'s value, evaluated only then. */

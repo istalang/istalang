@@ -18,6 +18,7 @@
 
 import type { FunctionId, Register } from '../../../../definition/operands.ts';
 import type { CodeFunction } from '../../../../definition/tables/functions.ts';
+import type { TypeReference } from '../../../../definition/tables/types.ts';
 import { unreachable } from '../../../../foundation/structures/unreachable.ts';
 import { type Fit, singleElement } from '../../../checker/types/fitting/fit/index.ts';
 import { resultFitBetween } from '../../../checker/types/fitting/part-pairs.ts';
@@ -134,7 +135,8 @@ function convertedValue(
       if (element === undefined) {
         unreachable('Only a one-element tuple is untupled.');
       }
-      return { value: context.code.field(typed.value, 0, span), type: element };
+      const reference = context.tables.types.reference(element);
+      return { value: context.code.tupleItem(typed.value, 0, reference, span), type: element };
     }
     case 'parts': {
       const { to } = conversion;
@@ -165,21 +167,24 @@ function partsConverted(
   const target = unfolded(to);
   if (from.kind === 'function' && target.kind === 'function') {
     const entry = tables.conversionIndex({ kind: 'wrapping', from, to: target, at: how.at });
-    return closureOf(context, entry, [typed.value], how.span);
+    return closureOf(context, entry, [typed.value], tables.types.reference(to), how.span);
   }
   const entry = tables.conversionIndex({ kind: 'converting', from: typed.type, to, at: how.at });
   return emitCall(context, { span: how.span, callee: entry, arguments: [typed.value] });
 }
 
-/** A closure of `entry`, capturing `captures`. */
+/** A closure of `entry`, of `type`, capturing `captures`. */
 function closureOf(
   context: CodeContext,
   entry: FunctionId,
   captures: readonly Register[],
+  type: TypeReference,
   span: AnchoredSpan,
 ): Register {
-  const dst = context.code.allocate();
-  context.code.emit({ kind: 'closure', span, dst, function: entry, captures: [...captures] });
+  const { code } = context;
+  const dst = code.allocate(type);
+  const taken = captures.map((capture) => code.take(capture, span));
+  code.emit({ kind: 'closure', span, dst, function: entry, captures: taken });
   return dst;
 }
 
@@ -193,7 +198,7 @@ function applyingIn(code: SynthesizedCode, at: ConversionSite): Applying {
     at,
     madeAsync: (value, plain, to) => {
       const entry = code.tables.conversionIndex({ kind: 'wrapping', from: plain, to, at });
-      return closureOf(code, entry, [value], at.span);
+      return closureOf(code, entry, [value], code.tables.types.reference(to), at.span);
     },
   };
 }
@@ -225,9 +230,25 @@ function rebuildingIn(code: SynthesizedCode, how: Applying): Rebuilding {
         how,
       ),
     converter: (from, to) =>
-      closureOf(code, tables.conversionIndex({ kind: 'converting', from, to, at }), [], span),
+      closureOf(
+        code,
+        tables.conversionIndex({ kind: 'converting', from, to, at }),
+        [],
+        {
+          kind: 'function',
+          parameters: [tables.types.reference(from)],
+          result: tables.types.reference(to),
+        },
+        span,
+      ),
     wrapped: (value, from, to) =>
-      closureOf(code, tables.conversionIndex({ kind: 'wrapping', from, to, at }), [value], span),
+      closureOf(
+        code,
+        tables.conversionIndex({ kind: 'wrapping', from, to, at }),
+        [value],
+        tables.types.reference(to),
+        span,
+      ),
   };
 }
 
@@ -348,11 +369,9 @@ function baseOfAll(type: Type): Type {
 
 /** `value`, the plain function `fit` makes async: a closure of its fit's entry. */
 function asyncFitClosure(context: CodeContext, fit: AsyncFit, value: Register): Register {
-  const dst = context.code.allocate();
   const entry = context.tables.asyncFitIndex(fit);
-  const { span } = fit.site;
-  context.code.emit({ kind: 'closure', span, dst, function: entry, captures: [value] });
-  return dst;
+  const type = context.tables.types.reference(fit.made);
+  return closureOf(context, entry, [value], type, fit.site.span);
 }
 
 /** The async entry of `fit`: it calls the value it captures with its own arguments. */

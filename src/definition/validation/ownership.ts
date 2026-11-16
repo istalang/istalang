@@ -69,6 +69,7 @@ const effects: Handlers<undefined, Instruction, [], Partial<Effect>> = {
   branch: () => ({}),
   switch: () => ({}),
   return: (_, i) => ({ moved: [i.value] }),
+  unreachable: () => ({}),
   call: (_, i) => ({ owned: i.dst === undefined ? none : [i.dst] }),
   currentCall: (_, i) => ({ borrowed: [i.dst] }),
   given: () => ({}),
@@ -102,6 +103,7 @@ function successorsOf(code: CodeFunction, pc: number): readonly number[] {
       return labels;
     case 'return':
     case 'stopped':
+    case 'unreachable':
       return none;
     default:
       return [pc + 1, ...labels];

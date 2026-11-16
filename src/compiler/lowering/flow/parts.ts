@@ -16,18 +16,22 @@ import type { Register } from '../../../definition/operands.ts';
 import { unreachable } from '../../../foundation/structures/unreachable.ts';
 import { structFieldOf } from '../../checker/surface/checked-field.ts';
 import type { PartStep } from '../../checker/surface/checked-pattern.ts';
+import { variantNamedIn } from '../../checker/surface/named-variants.ts';
 import type { Part, ValueId } from '../../checker/surface/flow-ir.ts';
 import type { FieldMember, Type } from '../../checker/types/type/index.ts';
+import { tupleElements } from '../../checker/types/type/primitives.ts';
+import { baseOf } from '../../checker/types/unions/union-members.ts';
 import type { NodeOf } from '../../syntax/tree/node.ts';
 import type { AnchoredSpan } from '../../syntax/tree/positions.ts';
 import { emitCall } from '../calls/emit-call.ts';
 import { constantValue } from '../tables/constants.ts';
-import type { TypedValue } from '../values/holdings.ts';
+import { laidOutAs, type TypedValue } from '../values/holdings.ts';
 import { readKeyed } from '../values/keyed-fields.ts';
 import { insideOptional } from '../values/optionals.ts';
 import { readRequiredField } from '../values/required-fields.ts';
 import { rebuiltAs } from '../values/struct-values.ts';
 import { outOfUnion } from '../values/unions.ts';
+import { concreteType } from './variables.ts';
 import type { FlowWriter } from './writer.ts';
 
 /** The part `part` of `from`, read at `site` into `into`. */
@@ -39,6 +43,7 @@ export function partRead(
   const { context } = writer;
   const { span } = site;
   const value = writer.typed(from);
+  const resultType = () => context.tables.types.reference(writer.typeOf(into));
   switch (part.kind) {
     case 'step':
       return stepRead(writer, value, part.step, span);
@@ -50,11 +55,16 @@ export function partRead(
         return readRequiredField(context, { value, field }, witnesses, span);
       }
       const callee = context.tables.anyFieldIndex(value.type, part.required);
-      return emitCall(context, { span, callee, arguments: [value.register] });
+      return emitCall(context, { span, callee, arguments: [value.register] }, resultType());
     }
     case 'behind': {
-      const dst = context.code.allocate();
-      context.code.emit({ kind: 'readCell', span, dst, cell: value.register });
+      const dst = context.code.borrow(resultType());
+      context.code.emit({
+        kind: 'load',
+        span,
+        dst,
+        place: { root: { kind: 'cell', register: value.register }, path: [] },
+      });
       return dst;
     }
     case 'inside':
@@ -84,17 +94,43 @@ function stepRead(
   span: AnchoredSpan,
 ): Register {
   const { context } = writer;
-  const { code } = context;
+  const { code, tables, checker } = context;
+  const typed = (type: Type) => tables.types.reference(concreteType(context, type));
   if (typeof step === 'number') {
-    return code.field(value.register, step, span);
+    const element = tupleElements(value.type)?.[step] ?? unreachable(`No element ${step}.`);
+    return code.tupleItem(value.register, step, typed(element), span);
   }
   switch (step.kind) {
-    case 'field':
-      return code.field(value.register, fieldOf(writer, step.of, step.name).read.index, span);
-    case 'variantField':
-      return code.field(value.register, step.index, span);
-    case 'downcast':
-      return code.field(value.register, 0, span);
+    case 'field': {
+      const { member, read } = fieldOf(writer, step.of, step.name);
+      return code.structField(value.register, read.index, typed(member.type), span);
+    }
+    case 'variantField': {
+      const enumType = laidOutAs(value.type);
+      const variant =
+        enumType.kind === 'nominal'
+          ? variantNamedIn(checker, enumType, step.variant)?.index
+          : undefined;
+      return code.variantField(
+        value.register,
+        variant ?? unreachable(`No variant '${step.variant}' of ${enumType.kind}.`),
+        step.index,
+        typed(step.type),
+        span,
+      );
+    }
+    case 'downcast': {
+      const any = laidOutAs(value.type);
+      return any.kind === 'any'
+        ? code.variantField(
+            value.register,
+            tables.types.anyVariant(any, baseOf(step.to)),
+            0,
+            typed(step.to),
+            span,
+          )
+        : unreachable(`A downcast out of a ${any.kind} type.`);
+    }
     case 'member':
       return outOfUnion(context, { register: value.register, type: step.union }, step.member, span);
     case 'fieldRest':
@@ -136,15 +172,23 @@ function keyedRead(
 ): Register {
   const { context } = writer;
   const name = key.type.kind === 'literal' ? key.type.value : undefined;
+  const { code, tables } = context;
   if (typeof name === 'string') {
-    return context.code.field(
+    const { member, read } = fieldOf(writer, container.type, name);
+    return code.structField(
       container.register,
-      fieldOf(writer, container.type, name).read.index,
+      read.index,
+      tables.types.reference(member.type),
       span,
     );
   }
   const readAt = (field: { readonly type: Type }, position: number) => ({
-    register: context.code.field(container.register, position, span),
+    register: code.structField(
+      container.register,
+      position,
+      tables.types.reference(field.type),
+      span,
+    ),
     type: field.type,
   });
   return readKeyed(context, { keyed: { on: container.type, key }, result }, readAt, span);
@@ -158,17 +202,18 @@ export function globalRead(
 ): Register {
   const { context } = writer;
   const { owner } = entity;
+  const known = concreteType(
+    context,
+    type ?? unreachable(`'${entity.name.text}' was never checked.`),
+  );
+  const result = context.tables.types.reference(known);
   if (owner.kind === 'ExternConstantDeclaration') {
-    const known = type ?? unreachable(`'${entity.name.text}' was never checked.`);
     const callee = context.tables.externConstantIndex(owner, known);
-    return emitCall(context, { span, callee, arguments: [] });
+    return emitCall(context, { span, callee, arguments: [] }, result);
   }
   if (owner.kind === 'ContextConstantDeclaration') {
-    return emitCall(context, {
-      span,
-      callee: context.tables.contextConstantIndex(owner),
-      arguments: [],
-    });
+    const callee = context.tables.contextConstantIndex(owner);
+    return emitCall(context, { span, callee, arguments: [] }, result);
   }
   const { checker } = context;
   const form =
@@ -176,5 +221,5 @@ export function globalRead(
       ? checker.constantNamed(checker.moduleOf(owner), entity.name)?.form
       : undefined) ??
     unreachable(`'${entity.name.text}' has no value; the checker should have said so.`);
-  return context.constant(constantValue(context.tables, form), span);
+  return context.constant(constantValue(context.tables, form), known, span);
 }

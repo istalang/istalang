@@ -35,7 +35,7 @@ import { emitConstant } from '../tables/constants.ts';
 import {
   branchOnHeld,
   heldIn,
-  heldPositions,
+  readHeld,
   holdingOf,
   laidOutAs,
   memberValue,
@@ -55,7 +55,7 @@ export function oneValueIn(
   member: Type,
   span: AnchoredSpan,
 ): Register {
-  const inside = () => emitConstant(context, oneValueOf(member), span);
+  const inside = () => emitConstant(context, oneValueOf(member), member, span);
   return heldIn(context, { member, inside }, holder, span);
 }
 
@@ -80,7 +80,7 @@ export function intoUnion(
   }
   return union.kind === 'union'
     ? remapped(context, { register, type }, union, span)
-    : eachMember(context, { register, type }, span, (member) =>
+    : eachMember(context, { register, type }, { result: union, span }, (member) =>
         intoUnion(context, member, union, span),
       );
 }
@@ -112,11 +112,9 @@ export function outOfUnion(
       : literalIn(context, value, to, span);
   }
   if (hasOneValue(to)) {
-    return emitConstant(context, oneValueOf(to), span);
+    return emitConstant(context, oneValueOf(to), to, span);
   }
-  const holding = holdingOf(context, type, to);
-  const positions = holding === undefined ? [] : heldPositions(type, holding);
-  return context.code.readPath(register, positions, span);
+  return readHeld(context, { register, type }, to, span);
 }
 
 /**
@@ -131,7 +129,7 @@ function outOfAny(
   span: AnchoredSpan,
 ): Register {
   const { code } = context;
-  const result = code.allocate();
+  const result = code.allocate(context.tables.types.reference(to));
   const end = code.newLabel();
   const carriers = distinctItems(
     to.members.map((member) => (member.kind === 'literal' ? baseOf(member) : member)),
@@ -153,7 +151,7 @@ function outOfAny(
     const built = to.members.some((member) => sameType(member, carrier))
       ? heldIn(context, { member: carrier, inside }, to, span)
       : literalIn(context, { register: inside(), type: carrier }, to, span);
-    code.emit({ kind: 'move', span, dst: result, src: built });
+    code.emit({ kind: 'move', span, dst: result, src: code.take(built, span) });
     code.jump(end, span);
     code.place(next);
   }
@@ -170,8 +168,10 @@ export function asBase(context: CodeContext, value: TypedValue, span: AnchoredSp
   if (type.kind !== 'union') {
     return value.register;
   }
+  const base = baseOf(type.members[0] ?? unreachable('A union has members.'));
   return eachVariant(context, { register: value.register, type }, span, {
-    each: (member) => emitConstant(context, oneValueOf(member), span),
+    result: base,
+    each: (member) => emitConstant(context, oneValueOf(member), member, span),
   });
 }
 
@@ -202,11 +202,18 @@ function remapped(
 ): Register {
   const holds = (member: Type) => holdingOf(context, to, member) !== undefined;
   return eachVariant(context, value, span, {
+    result: to,
     each: (member) => {
       const inside = () =>
         hasOneValue(member)
-          ? emitConstant(context, oneValueOf(member), span)
-          : context.code.field(value.register, 0, span);
+          ? emitConstant(context, oneValueOf(member), member, span)
+          : context.code.variantField(
+              value.register,
+              context.tables.types.unionVariant(value.type, member),
+              0,
+              context.tables.types.reference(member),
+              span,
+            );
       return holds(member)
         ? heldIn(context, { member, inside }, to, span)
         : literalIn(context, { register: inside(), type: member }, to, span);
@@ -233,7 +240,7 @@ function literalIn(
   span: AnchoredSpan,
 ): Register {
   const { code } = context;
-  const result = code.allocate();
+  const result = code.allocate(context.tables.types.reference(to));
   const end = code.newLabel();
   const literals = literalsOf(to, value.type);
   if (literals.length === 0) {
@@ -243,12 +250,12 @@ function literalIn(
     const next = code.newLabel();
     if (index < literals.length - 1) {
       const equals = code.newLabel();
-      const constant = emitConstant(context, literalValue(literal), span);
+      const constant = emitConstant(context, literalValue(literal), literal, span);
       code.branch(code.equal(value.register, constant, span), equals, next, span);
       code.place(equals);
     }
     const built = memberValue(context, { union: to, member: literal, fields: [] }, span);
-    code.emit({ kind: 'move', span, dst: result, src: built });
+    code.emit({ kind: 'move', span, dst: result, src: code.take(built, span) });
     code.jump(end, span);
     code.place(next);
   }
@@ -263,10 +270,11 @@ function literalIn(
 export function eachMember(
   context: CodeContext,
   value: UnionValue,
-  span: AnchoredSpan,
+  { result, span }: { readonly result: Type; readonly span: AnchoredSpan },
   each: (member: TypedValue) => Register,
 ): Register {
   return eachVariant(context, value, span, {
+    result,
     each: (member) => each({ register: outOfUnion(context, value, member, span), type: member }),
   });
 }
@@ -279,6 +287,7 @@ interface MemberCases {
 
 /** What each member's case of a switch writes, and which members it never reaches. */
 interface VariantCases {
+  readonly result: Type;
   readonly each: (member: Type) => Register;
   readonly runs?: (member: Type) => boolean;
 }
@@ -291,11 +300,12 @@ function eachVariant(
   context: CodeContext,
   value: UnionValue,
   span: AnchoredSpan,
-  { each, runs = () => true }: VariantCases,
+  { result: type, each, runs = () => true }: VariantCases,
 ): Register {
-  const result = context.code.allocate();
+  const { code } = context;
+  const result = code.allocate(context.tables.types.reference(type));
   onEachMember(context, value, span, {
-    each: (member) => context.code.emit({ kind: 'move', span, dst: result, src: each(member) }),
+    each: (member) => code.emit({ kind: 'move', span, dst: result, src: code.take(each(member), span) }),
     runs,
   });
   return result;

@@ -205,7 +205,11 @@ export function takeVariantCall(
     );
   }
   const shapes = variant.fields.map((field, index) =>
-    takeField(walk, { call, field, source: binding[index] }, fieldPart(part, field, index)),
+    takeField(
+      walk,
+      { call, field, source: binding[index] },
+      fieldPart(part, { variant: variant.key, field, index }),
+    ),
   );
   return constructed(variant.key, shapes);
 }
@@ -245,11 +249,14 @@ function boundArgument(argument: BoundPatternArgument) {
   };
 }
 
-/** The part of a variant's value of `part` its `index`-th field, `field`, holds. */
-function fieldPart(part: ValuePart, field: FieldMember, index: number): ValuePart {
+/** The part of a value of `part` holding `variant` its `index`-th field, `field`, holds. */
+function fieldPart(
+  part: ValuePart,
+  { variant, field, index }: { readonly variant: string; readonly field: FieldMember; readonly index: number },
+): ValuePart {
   return {
     type: field.type,
-    path: [...part.path, { kind: 'variantField', index, type: field.type }],
+    path: [...part.path, { kind: 'variantField', variant, index, type: field.type }],
   };
 }
 
@@ -327,7 +334,7 @@ function takeReached(
     if (fieldReached === undefined || fieldReached.isItem || field === undefined) {
       walk.take(argument, { type: errorType, path: part.path });
     } else {
-      walk.take(argument, fieldPart(part, field, fieldReached.index));
+      walk.take(argument, fieldPart(part, { variant: variant.key, field, index: fieldReached.index }));
     }
   }
 }
