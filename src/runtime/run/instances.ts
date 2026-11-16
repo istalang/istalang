@@ -14,6 +14,7 @@
 
 import type { Value } from '../../definition/values/values.ts';
 import type { Persistence } from '../../foundation/language/well-known/index.ts';
+import { ContextConstants } from './context-constants.ts';
 import type { Future } from './objects/future.ts';
 
 /** An instance's state: running, or ended with what it gave or the panic that ended it. */
@@ -31,7 +32,7 @@ export class Instance {
   readonly name: string;
   /** Whether it commits at every wait: ista code's instance, not the live run. */
   readonly durable: boolean;
-  readonly contextConstants = new Map<string, Value>();
+  readonly contextConstants = new ContextConstants();
   /** How many random draws it has made (§3.8). */
   draws = 0;
   /** How many instances it spawned, which names the next. */

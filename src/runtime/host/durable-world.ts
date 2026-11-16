@@ -331,7 +331,7 @@ export class DurableWorld implements World {
     this.#restored(resident);
     resident.startedAt = this.seams.clock.now();
     const { run } = resident;
-    run.finish([...run.instance.contextConstants.values()]);
+    run.finish(run.instance.contextConstants.entries().map(([, value]) => value));
     run.instance.contextConstants.clear();
     commitTerminated(resident, panic, this.#commits);
   }

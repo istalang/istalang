@@ -58,7 +58,7 @@ export function restore(
   instance.spawned = snapshot.spawned;
   for (const [name, value] of snapshot.contextConstants) {
     const constant = restored(value);
-    instance.contextConstants.set(name, constant);
+    instance.contextConstants.made(name, constant);
     run.lifetimes.adoptRestored(constant);
   }
   run.restored({

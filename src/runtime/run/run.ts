@@ -172,11 +172,11 @@ export class Run {
 
   /** The instance's value of the context constant `name`, once made (§3.4). */
   readonly contextConstant = (name: string): Value | undefined =>
-    this.instance.contextConstants.get(name);
+    this.instance.contextConstants.read(name);
 
   readonly makeContextConstant = (name: string, value: Value): void => {
     this.lifetimes.hold(value);
-    this.instance.contextConstants.set(name, value);
+    this.instance.contextConstants.made(name, value);
   };
 
   /** Calls the function value `callee` with `passed`, as its entry is called. */

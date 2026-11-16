@@ -83,9 +83,9 @@ export function snapshotOf(run: Run, written: Written): Snapshot {
       future: named(future),
       root: invocation.root,
     })),
-    contextConstants: [...instance.contextConstants].map(
-      ([name, value]) => [name, persisted(value)] as [string, Value],
-    ),
+    contextConstants: instance.contextConstants
+      .entries()
+      .map(([name, value]) => [name, persisted(value)] as [string, Value]),
   };
   for (let object = pending.pop(); object !== undefined; object = pending.pop()) {
     objects.set(object.object, objectOf(object, { named, persisted }));
