@@ -60,8 +60,14 @@ export interface EmittedProgram {
   readonly lines: readonly (readonly [entry: number, instruction: number] | undefined)[];
 }
 
-/** The code of `definition`. */
-export function emitProgram(definition: Definition): EmittedProgram {
+/**
+ * The code of `definition`, its functions emitted in `order`, each index once: a test's second
+ * build of one Definition takes another (docs/work/ir-first/contracts.md), meaning the same.
+ */
+export function emitProgram(
+  definition: Definition,
+  order: readonly number[] = [...definition.functions.keys()],
+): EmittedProgram {
   const { functions, types, constants } = definition;
   const body: string[] = [];
   const lines: (readonly [number, number] | undefined)[] = [];
@@ -75,15 +81,16 @@ export function emitProgram(definition: Definition): EmittedProgram {
     line(`const { ${names.join(', ')} } = ${owner};`);
   }
   line('const K = rt.constants;');
-  functions.forEach((entry, index) => {
-    if (entry.kind === 'extern') {
+  for (const index of order) {
+    if (functions[index]?.kind === 'extern') {
       line(`const x${index} = rt.native(${index});`);
     }
+  }
+  const code = order.flatMap((index) => {
+    const entry = functions[index];
+    return entry?.kind === 'code' ? [{ index, entry }] : [];
   });
-  functions.forEach((entry, index) => {
-    if (entry.kind !== 'code') {
-      return;
-    }
+  for (const { index, entry } of code) {
     const emitted = emitEntry({
       index,
       entry,
@@ -96,7 +103,7 @@ export function emitProgram(definition: Definition): EmittedProgram {
       const instruction = emitted.instructions[at] ?? -1;
       line(text, instruction < 0 ? undefined : [index, instruction]);
     });
-  });
+  }
   const entries = functions.map((entry, index) =>
     entry.kind === 'code' ? `f${index}` : `x${index}`,
   );

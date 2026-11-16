@@ -15,6 +15,7 @@ import { pathToFileURL } from 'node:url';
 import { vi } from 'vitest';
 import { testModules } from '../../src/cli/commands/test.ts';
 import { loadHostModule } from '../../src/cli/host-module.ts';
+import type { EmittedProgram } from '../../src/codegen/emit.ts';
 import { compileProgram, diagnose } from '../../src/compiler/compile.ts';
 import { moduleIdOf } from '../../src/compiler/program/program.ts';
 import type { Definition } from '../../src/definition/definition.ts';
@@ -117,11 +118,18 @@ export async function freshHost(path: string): Promise<HostExterns> {
   return loaded.externs;
 }
 
+/**
+ * A second build of a Definition, which each run read back from a snapshot runs instead of the
+ * first (docs/work/ir-first/contracts.md, "Typed-IR gate").
+ */
+export type ReadBack = (definition: Definition) => EmittedProgram;
+
 /** What running `definition`'s `main` on the run showed, started as `start` says. */
 export async function shownByRun(
   definition: Definition,
   host: RecordingHost = recording({}),
   start: Start = {},
+  readBack?: ReadBack,
 ): Promise<Observation> {
   const binding = {
     natives: stdNatives,
@@ -129,7 +137,8 @@ export async function shownByRun(
     clock: new ManualClock(),
     seed: new Uint8Array(32),
   };
-  const { end, logs } = await startLive(definition, binding, start);
+  const live = readBack === undefined ? {} : { readBack: () => readBack(definition) };
+  const { end, logs } = await startLive(definition, binding, start, live);
   const shown = { logs: logs.map(logLine), hostCalls: host.calls };
   switch (end.kind) {
     case 'finished':
@@ -141,17 +150,21 @@ export async function shownByRun(
   }
 }
 
-/** What running `program` showed; the first error it reports when it doesn't compile. */
+/**
+ * What running `program` showed, each run read back from a snapshot into `readBack`'s build if
+ * given; the first error it reports when it doesn't compile.
+ */
 export async function observeProgram(
   program: ProgramRun,
   start: Start = {},
+  readBack?: ReadBack,
 ): Promise<Observation | { readonly problem: string }> {
   const compiled = compiledAt(program.directory, program.path, program.text);
   if ('problem' in compiled) {
     return compiled;
   }
   const host = recording(await hostOf(program));
-  const observed = await shownByRun(compiled.definition, host, start);
+  const observed = await shownByRun(compiled.definition, host, start, readBack);
   const { ending: ended } = observed;
   return 'frame' in ended
     ? { ...observed, ending: { ...ended, frame: relativeFrame(program.directory, ended.frame) } }

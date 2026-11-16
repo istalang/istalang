@@ -94,7 +94,8 @@ it as a native, with exactly the summary its extern predecessor had (spec §3.16
   made into it after a call parked still starts before the commit, which can't keep it
   (`ReadyQueue.nextInvocation`).
 - **Crash at every await** (spec §10): before committing, the segment runs again from the same
-  inputs on the instance as it last committed, read back into a fresh run that takes the instance
+  inputs on the instance as it last committed, read back, as a restart's is, into a fresh run of
+  the program bound to its Definition's hash (a test binds a second build), which takes the instance
   over (`Run.succeededBy`: what arrives later lands there), and stops at its first park, as the first
   run did; that run commits and the first run's effects never leave. Answers of calls running across
   the rerun come from the last commit (`Resident.answers`).

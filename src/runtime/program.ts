@@ -52,26 +52,37 @@ export interface Start {
   readonly crashEveryAwait?: boolean;
 }
 
+/** The code a start runs: compiled from its Definition once, unless a built program brings it. */
+export interface LiveCode {
+  readonly code?: EmittedProgram;
+  /**
+   * The code each run read back from a snapshot runs: `code`, but in a test of two builds of one
+   * Definition (docs/work/ir-first/contracts.md), which gives another.
+   */
+  readonly readBack?: () => EmittedProgram;
+}
+
 const emitted = new WeakMap<Definition, EmittedProgram>();
 const hashes = new WeakMap<Definition, string>();
 
 /**
- * Starts `definition`'s live code as `start` says, bound by `binding`, running `code`, the code
- * compiled from it; how it ended. The ista instances it reaches are the world's, in a store of
- * their own that ends with the start, committed at every await as any host's are (§5).
+ * Starts `definition`'s live code as `start` says, bound by `binding`, running `live`'s code; how
+ * it ended. The ista instances it reaches are the world's, in a store of their own that ends with
+ * the start, committed at every await as any host's are (§5).
  */
 export async function startLive(
   definition: Definition,
   binding: HostBinding,
   start: Start = {},
-  code: EmittedProgram = memo(emitted, definition, () => emitProgram(definition)),
+  live: LiveCode = {},
 ): Promise<LiveRun> {
   const logs: LogRecord[] = [];
   const program = {
     definition,
     hash: memo(hashes, definition, () => definitionFormat.write(definition).hash),
-    emitted: code,
+    emitted: live.code ?? memo(emitted, definition, () => emitProgram(definition)),
   };
+  const { readBack } = live;
   const world = new DurableWorld(
     {
       natives: withHost(binding.natives, binding.externs ?? {}),
@@ -80,7 +91,7 @@ export async function startLive(
       seed: () => binding.seed,
       reports: { logs: (records) => logs.push(...records), panicked: () => undefined },
     },
-    () => program,
+    () => (readBack === undefined ? program : { ...program, emitted: readBack() }),
   );
   const { state, logs: own } = await deployed(world, program).start(start.instance ?? 'run', {
     ...(start.key === undefined ? {} : { function: start.key }),

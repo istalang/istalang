@@ -62,7 +62,7 @@ export function program(text: string, code: EmittedProgram): LiveProgram {
           ...(start.arguments === undefined ? {} : { arguments: start.arguments }),
           ...(start.name === undefined ? {} : { instance: start.name }),
         },
-        code,
+        { code },
       );
       return { ...end, logs };
     },

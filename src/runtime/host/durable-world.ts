@@ -78,7 +78,7 @@ export class DurableWorld implements World {
     this.#commits = {
       store: seams.store,
       reports: seams.reports,
-      freshRun: (resident) => this.#runOf(resident),
+      freshRun: (resident) => this.#readBack(resident),
     };
   }
 
@@ -313,7 +313,7 @@ export class DurableWorld implements World {
   /** `resident`, panicked, as it stood before its failed segment. */
   #restored(resident: Resident): void {
     const snapshot = snapshotFormat.read(resident.text ?? '');
-    resident.run = this.#runOf(resident);
+    resident.run = this.#readBack(resident);
     restore(resident.run, snapshot);
     resident.status = { kind: 'active' };
     resident.inputs = [];
@@ -342,9 +342,17 @@ export class DurableWorld implements World {
     return resident;
   }
 
-  /** A fresh run of `resident`, its clock reading its segment's start, its logs kept. */
-  #runOf(resident: Resident): Run {
-    const { name, program } = resident;
+  /**
+   * A fresh run of `resident` that its snapshot is read back into: of the program bound to its
+   * Definition's hash, as an instance loaded from the store is.
+   */
+  #readBack(resident: Resident): Run {
+    return this.#runOf(resident, this.#bind(resident.program.hash));
+  }
+
+  /** A fresh run of `resident` over `program`, its clock reading its segment's start, its logs kept. */
+  #runOf(resident: Resident, program = resident.program): Run {
+    const { name } = resident;
     const run = new Run(program.definition, program.emitted, {
       natives: this.seams.natives,
       clock: { now: () => resident.startedAt, until: this.seams.clock.until },
