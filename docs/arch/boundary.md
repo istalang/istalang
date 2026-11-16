@@ -165,8 +165,9 @@ giving its program (`runtime/host/programs.ts`), whose `start` runs a function b
 arguments as a live run named by the host; the `Runtime` wakes a stored instance (`wake`), reads
 its program and where it stands (`programOf`, `inspect`), and operates panicked instances: `retry`
 runs the failed segment again from where the instance stood before it, at the time it first
-started, replaying the call it was starting; `terminate` disposes what it held then and commits it
-holding nothing (docs/arch/runtime.md). No host fills an instance's future: what reaches an
+started, replaying the call that started it; `terminate` disposes what it held then and commits it
+holding nothing (docs/arch/runtime.md). Each call that runs code starts on a turn of its own, so one
+a host's extern makes into the runtime starts once the call it was made in ended. No host fills an instance's future: what reaches an
 instance from outside is a call into it as a context, a delegated job's result among them
 (`runtime.delegate`). A host names only its live runs, which never reach the store; the store's
 instances are contexts, named by the program's keys, and the instances they spawn, `<parent>/<n>`.

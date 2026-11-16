@@ -9,10 +9,10 @@ import type { Definition } from '../../definition/definition.ts';
 import { copied } from '../../definition/values/replacing.ts';
 import type { Value } from '../../definition/values/values.ts';
 import type { LogRecord } from '../instance-state.ts';
-import type { InstanceEnd } from '../run/instances.ts';
+import type { InstanceEnd, InvocationEnd } from '../run/instances.ts';
 import type { Invocation } from '../run/invocations.ts';
 import type { Run } from '../run/run.ts';
-import type { PersistedStatus } from '../snapshot/format.ts';
+import type { PersistedStatus, Replay } from '../snapshot/format.ts';
 import { rootInvocation } from '../snapshot/restore.ts';
 
 /** The program a world runs: its Definition, the hash the store keys it by, its emitted code. */
@@ -22,12 +22,14 @@ export interface WorldProgram {
   readonly emitted: EmittedProgram;
 }
 
-/** What makes a resident: its name, its program, and the seed of its random source. */
+/** What makes a resident: its name, its program, the seed of its random source, its status. */
 export interface ResidentMade {
   readonly name: string;
   readonly program: WorldProgram;
   /** A host's for one it starts, a draw of its parent's for one spawned. */
   readonly seed: Uint8Array;
+  /** Where one read back from the store stands; a new one is active. */
+  readonly status?: PersistedStatus;
 }
 
 /** Something waking a segment, applied to the run; a rerun applies it again. */
@@ -40,7 +42,7 @@ export class Resident {
   crashEveryAwait: boolean;
   /** The entry encoding its outcome, a spawned instance's whose type a codec writes (§9). */
   encoder: number | undefined;
-  status: PersistedStatus = { kind: 'active' };
+  status: PersistedStatus;
   run: Run;
   /** The snapshot it last committed, if it ever did. */
   text: string | undefined;
@@ -48,8 +50,11 @@ export class Resident {
   unstarted: boolean;
   /** What woke its segment, since its last commit. */
   inputs: Input[] = [];
-  /** The call starting it, which a retry of its failed first segment runs again (§3.12). */
-  replay: Value | undefined;
+  /**
+   * The call that started its segment since its last commit, which a retry of that segment runs
+   * again (§3.12); none for a segment a timer or another instance started.
+   */
+  replay: Replay | undefined;
   /** When its segment started: the time its clock reads all segment long. */
   startedAt = 0n;
   /** What leaves it at its next commit: what it did to others, and its log records. */
@@ -65,13 +70,14 @@ export class Resident {
   spawned: string[] = [];
 
   constructor(
-    { name, program, seed }: ResidentMade,
+    { name, program, seed, status = { kind: 'active' } }: ResidentMade,
     crashEveryAwait: boolean,
     runOf: (resident: Resident) => Run,
   ) {
     this.name = name;
     this.program = program;
     this.seed = seed;
+    this.status = status;
     this.crashEveryAwait = crashEveryAwait;
     this.encoder = undefined;
     this.unstarted = false;
@@ -83,10 +89,14 @@ export class Resident {
     return this.status.kind !== 'active';
   }
 
-  /** Applies `input` to its run, starting its segment at `at` if none is going. */
-  feed(input: Input, at: bigint): void {
+  /**
+   * Applies `input` to its run, starting its segment at `at` if none is going, which `replay` runs
+   * again if it is a call.
+   */
+  feed(input: Input, at: bigint, replay?: Replay): void {
     if (this.inputs.length === 0) {
       this.startedAt = at;
+      this.replay = replay;
     }
     this.inputs.push(input);
     input(this.run);
@@ -103,15 +113,42 @@ export class Resident {
   /** The input starting the call it was spawned to run, which its end is what that gives. */
   starting(closure: Value): Input {
     return (run) => {
-      run.invoke(copied(closure), rootInvocation(run, this.encoder).answer, { root: true });
-      this.replay = closure;
+      run.invoke(copied(closure), [], rootInvocation(run, this.encoder));
     };
+  }
+
+  /**
+   * The input running `replay` again: a call into it answers nobody, its caller told of the panic,
+   * which a panic again is the host's to hear.
+   */
+  replayed(replay: Replay): Input {
+    if (replay.kind === 'start') {
+      return this.starting(replay.call);
+    }
+    const { call: closure, passed } = replay;
+    return invoking({ closure, passed, hears: false }, () => undefined);
   }
 
   /** How it ended, as what waits on its end is told; undefined while it runs. */
   get end(): InstanceEnd | undefined {
     return endOf(this.status);
   }
+}
+
+/**
+ * A call into an instance: the closure it calls and what it passes, and whether its caller hears
+ * the instance's panic, which the loop serving jobs leaves to the host (§9).
+ */
+export interface CallInto {
+  readonly closure: Value;
+  readonly passed: readonly Value[];
+  readonly hears: boolean;
+}
+
+/** The input starting `call` in an instance, `answer` told how it ended. */
+export function invoking(call: CallInto, answer: (end: InvocationEnd) => void): Input {
+  const { closure, passed, hears } = call;
+  return (run) => run.invoke(copied(closure), passed.map(copied), { answer, root: false, hears });
 }
 
 /** How an instance in `status` ended; undefined while it runs. */

@@ -5,8 +5,8 @@
  * - A **cell** of a shared struct runs its declared `dispose`, then lets go of its value.
  * - A **future** cancels what a host was to fill, stops its call (executions.ts), and lets go of
  *   what waits on it and of its value.
- * - A **resource** is marked disposed and forgotten, and its host releases it through its type's
- *   `dispose` (§7, §9).
+ * - A **resource** is marked disposed and forgotten, and released: by the runtime, where its
+ *   disposal is the runtime's own, else by its host through its type's `dispose` (§7, §9).
  * - A **mock** no call reaches any more lets go of its replacement and the calls it recorded (§10).
  * - Its weak reference is cleared first, and its `disposed()` settles once it is gone.
  */
@@ -62,6 +62,7 @@ function releasedBy(object: RunObject, seams: DisposalSeams): readonly Value[] {
   if (object instanceof Resource) {
     object.disposed = true;
     seams.resources.released(object);
+    object.release?.();
     const dispose = seams.disposeOf(object.type);
     if (dispose !== undefined) {
       seams.letGo(seams.call(dispose, [object as unknown as Value]) as Value);

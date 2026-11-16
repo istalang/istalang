@@ -55,6 +55,7 @@ export function commit(resident: Resident, seams: CommitSeams): void {
   }
   resident.status = snapshotFormat.read(text).status;
   resident.text = text;
+  resident.replay = undefined;
   resident.run.executions.parkedSinceCommit = false;
   resident.answers = new Map(
     resident.run.invocations
@@ -117,9 +118,8 @@ function written(resident: Resident, status: PersistedStatus): string {
   }
   const before =
     resident.text === undefined ? emptySnapshot(resident) : snapshotFormat.read(resident.text);
-  // A first segment's failure keeps the call starting it, which a retry runs again.
-  const replay =
-    before.status.kind === 'active' && resident.text !== undefined ? undefined : resident.replay;
+  // A failed segment keeps the call that started it, which a retry runs again.
+  const { replay } = resident;
   const panicked = replay === undefined ? status : { ...status, replay };
   return snapshotFormat.write({ ...before, ...header(resident, panicked) } as Snapshot).text;
 }

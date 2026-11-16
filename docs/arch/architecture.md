@@ -266,7 +266,8 @@ src/
     clock.ts            the Clock seam, real time (`realTime`, for a process or a browser), and a manual clock
     host/               the host runtime (index.ts): createRuntime(seams) → deploy, then wake, retry, terminate and inspect;
                         programs.ts (a Definition text read and emitted once per hash; a start as a live run named by the host,
-                        finishing the moment its root returns); durable-world.ts (the one World: live runs and resident ista
+                        finishing the moment its root returns); host-turns.ts (every host call on a turn of its own);
+                        open-runtimes.ts (the runtimes live code opens: resuming the store, serving jobs); durable-world.ts (the one World: live runs and resident ista
                         instances, segments ending at every await, commits writing the store and letting effects out, a crash at
                         every await rerunning the segment, panics committing the instance as it stood before) — docs/arch/runtime.md
     run/                one Run per instance (run.ts): the emitted program instantiated over it, its objects (objects.ts), ready

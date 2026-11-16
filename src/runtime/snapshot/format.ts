@@ -85,6 +85,17 @@ const object = z.discriminatedUnion('kind', [
 export type PersistedObject = z.output<typeof object>;
 export type PersistedRegister = z.output<typeof register>;
 
+/**
+ * What a retry runs again of a segment that panicked (§3.12): the call the instance was spawned to
+ * run, before its first commit, or the call into it that started the segment.
+ */
+const replay = z.discriminatedUnion('kind', [
+  z.strictObject({ kind: z.literal('start'), call: value }),
+  z.strictObject({ kind: z.literal('invocation'), call: value, passed: z.array(value) }),
+]);
+
+export type Replay = z.output<typeof replay>;
+
 const status = z.discriminatedUnion('kind', [
   z.strictObject({ kind: z.literal('active') }),
   z.strictObject({
@@ -92,8 +103,7 @@ const status = z.discriminatedUnion('kind', [
     message: z.string(),
     trace: z.string(),
     segmentStartedAt: integer,
-    /** The call its failed segment was starting, before it ever committed, which a retry runs. */
-    replay: value.optional(),
+    replay: replay.optional(),
   }),
   z.strictObject({ kind: z.literal('finished'), outcome: value, encoded: value.optional() }),
   z.strictObject({ kind: z.literal('terminated'), message: z.string(), trace: z.string() }),

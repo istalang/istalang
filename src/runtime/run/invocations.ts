@@ -12,10 +12,15 @@ import type { Value } from '../../definition/values/values.ts';
 import type { Instance, InvocationEnd } from './instances.ts';
 import type { Future } from './objects/future.ts';
 
-/** An invocation's answer: told how the call into the instance ended. */
+/**
+ * An invocation's answer: told how the call into the instance ended. Its caller hears the
+ * instance's panic (`hears`), but for the loop serving jobs, whose instance's panic stays the
+ * host's to hear (§9), and the root's, whose end is the instance's own.
+ */
 export interface Invocation {
   readonly answer: (end: InvocationEnd) => void;
   readonly root: boolean;
+  readonly hears: boolean;
 }
 
 /** An invocation still running, by the future of the call it started, as a snapshot keeps it. */
@@ -35,8 +40,8 @@ export class Invocations {
   /** Has `invocation` hear the instance's end until its call returns. */
   waitOnEnd(invocation: Invocation): void {
     const { endWatchers } = this.#instance;
-    if (!(invocation.root || endWatchers.includes(invocation.answer))) {
-      endWatchers.push(invocation.answer);
+    if (!(invocation.root || endWatchers.includes(invocation))) {
+      endWatchers.push(invocation);
     }
   }
 
@@ -58,7 +63,7 @@ export class Invocations {
   /** Tells `invocation` its call returned `value`, no longer waiting on the instance's end. */
   answer(invocation: Invocation, value: Value): void {
     const { endWatchers } = this.#instance;
-    const at = endWatchers.indexOf(invocation.answer);
+    const at = endWatchers.indexOf(invocation);
     if (at >= 0) {
       endWatchers.splice(at, 1);
     }

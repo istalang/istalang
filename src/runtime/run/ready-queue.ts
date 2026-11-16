@@ -5,8 +5,9 @@
  *   decision taken anew as its call is disposed replaces the first, keeping its place.
  * - A **call** runs a closure readied as a call of its own (a `Resolver.of` callback, an
  *   `onCancel`).
- * - An **invoke** starts a call into the instance (§9), with what the caller passed. Its answer is the caller's, which no
- *   snapshot keeps, so an instance commits only once none waits.
+ * - An **invoke** starts a call into the instance (§9), with what the caller passed. Its answer is
+ *   the caller's, which no snapshot keeps, so an instance commits only once none waits: one made
+ *   after a call parked starts before that segment commits (`nextInvocation`).
  */
 
 import type { Value } from '../../definition/values/values.ts';
@@ -65,6 +66,12 @@ export class ReadyQueue {
 
   get empty(): boolean {
     return this.#items.length === 0;
+  }
+
+  /** The first invocation waiting to start, taken out of the queue. */
+  nextInvocation(): Ready | undefined {
+    const at = this.#items.findIndex((ready) => ready.kind === 'invoke');
+    return at < 0 ? undefined : this.#items.splice(at, 1)[0];
   }
 
   /** Whether an invocation waits to start. */

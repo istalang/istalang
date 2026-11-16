@@ -273,18 +273,11 @@ export class Run {
   }
 
   /**
-   * Readies an invocation of `closure` with `passed` in this run's instance, `answer` told how it
-   * ended; the root one, an instance's spawned call, ends its instance.
+   * Readies `invocation` of `closure` with `passed` in this run's instance; the root one, an
+   * instance's spawned call, ends its instance.
    */
-  invoke(
-    closure: Value,
-    answer: Invocation['answer'],
-    {
-      root = false,
-      passed = [],
-    }: { readonly root?: boolean; readonly passed?: readonly Value[] } = {},
-  ): void {
-    this.queue.invoke(closure, passed, { answer, root });
+  invoke(closure: Value, passed: readonly Value[], invocation: Invocation): void {
+    this.queue.invoke(closure, passed, invocation);
   }
 
   /**
@@ -340,9 +333,13 @@ export class Run {
     return done() || (untilParked && this.executions.parkedSinceCommit);
   }
 
-  /** What runs next, unless the run is done or, `untilParked`, a call parked to commit. */
+  /** What runs next unless done; once a call parked, `untilParked`, only a waiting invocation. */
   #nextToRun(done: () => boolean, untilParked: boolean): Ready | undefined {
-    return this.#stopsDraining(done, untilParked) ? undefined : this.queue.next();
+    if (done()) {
+      return undefined;
+    }
+    const parked = untilParked && this.executions.parkedSinceCommit;
+    return parked ? this.queue.nextInvocation() : this.queue.next();
   }
 
   /**

@@ -162,33 +162,34 @@ export interface NativeInstances {
 }
 
 /**
- * The contexts live code runs ista code in (§9): instances named by key, in the host's store, run
- * by the runtimes the live run opens over it while it runs. Only a live run has them; the call rule
- * keeps ista code from these natives (proposal 8, Rule 2).
- */
-/**
  * A call into a context as code makes it: the context's key, the closure it calls, which takes
  * nothing, and who makes it.
  */
-interface NativeContextCall {
+export interface ContextCall {
   readonly key: string;
   readonly call: Value;
   readonly maker: CallMaker;
 }
 
+/**
+ * The contexts live code runs ista code in (§9): instances named by key, in the host's store, run
+ * by the runtimes the live run opens over it while it runs. Only a live run has them; the call rule
+ * keeps ista code from these natives (proposal 8, Rule 2).
+ */
 export interface NativeContexts {
   /** The host's store, a value of the extern type entry `type`. */
   readonly hostStore: (type: TypeId) => Value;
   /**
-   * A runtime over `store`, a resource of the extern type entry `type`, which resumes the work
-   * persisted there and runs it while the live run does, until it is disposed, which stops it.
+   * A runtime over `store`, a resource of the extern type entry `type`: opening the first resumes
+   * the work persisted there, which runs while the live run does; disposing it closes it, so it
+   * serves no jobs any more.
    */
   readonly open: (store: Value, type: TypeId) => Value;
   /**
    * Makes `call` into its context of `runtime`, made if new: a live future resolving with how it
    * ended (`instanceEnding`): what it gave, or the context's panic.
    */
-  readonly call: (runtime: Value, call: NativeContextCall) => Value;
+  readonly call: (runtime: Value, call: ContextCall) => Value;
   /**
    * A live future resolving with the names of the instances `runtime` serves the jobs of, once
    * they are more than `known`: every instance it drives while it is the earliest open runtime.

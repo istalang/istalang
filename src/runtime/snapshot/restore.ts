@@ -249,6 +249,7 @@ export function rootInvocation(run: Run, encoder: number | undefined): Invocatio
       run.instance.ended(end.kind === 'returned' ? finished(run, end.value, encoder) : end);
     },
     root: true,
+    hears: false,
   };
 }
 

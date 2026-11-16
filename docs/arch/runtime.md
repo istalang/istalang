@@ -90,7 +90,9 @@ it as a native, with exactly the summary its extern predecessor had (spec §3.16
   spawns nothing), its end told to watchers, its log records (to the host's reports, or to the
   `Advanced` of a host call advancing it).
 - **Inputs.** What starts a segment and every turn it takes as it runs is an input of it
-  (`Run.onArrivalTaken` into `Resident.inputs`), which a segment run again applies again.
+  (`Run.onArrivalTaken` into `Resident.inputs`), which a segment run again applies again. A call
+  made into it after a call parked still starts before the commit, which can't keep it
+  (`ReadyQueue.nextInvocation`).
 - **Crash at every await** (spec §10): before committing, the segment runs again from the same
   inputs on the instance as it last committed, read back into a fresh run that takes the instance
   over (`Run.succeededBy`: what arrives later lands there), and stops at its first park, as the first
@@ -101,7 +103,8 @@ it as a native, with exactly the summary its extern predecessor had (spec §3.16
   spawns it alike), a test's from its title. Its snapshot keeps the seed and the draws made, so a
   segment run again draws the same values.
 - **A panic** commits the instance as it stood before the failed segment, with the panic, the time
-  the segment started and the call it was starting, if any (`replay`). A panic no caller hears is
+  the segment started and the call that started it, if one did (`replay`): its spawn's, or a call
+  into it. A panic no caller hears is
   reported to the host (`HostReports.panicked`).
 - **Too deep to persist** (spec §5): a value nesting past `maximumDepth` panics the instance at the
   await that would commit it, named by the call that parked last.
@@ -145,17 +148,24 @@ In a Definition built to run tests (spec §10):
 - `index.ts`: `createRuntime({natives, store, clock, seed, host?, reports?})` gives
   `deploy(text)`, `wake`, `retry`, `terminate`, `inspect` and `programOf`. A Definition is read and
   emitted once per hash and written to the store once.
-- `programs.ts`: `DeployedProgram.start(name, {function?, arguments?, crashEveryAwait?})` runs a
-  live run named `name` (what `runtime.id()` reads). Its start entry decodes the arguments and calls
-  the root without awaiting; the start's encoding entry runs the moment the root's outcome settles,
 - **Host turns** (`host-turns.ts`): the world's work runs synchronously to its end once begun, and a
   host's extern runs inside it. So every host call that runs code (a start, a wake, a retry, a
   termination) starts on a turn of its own: one an extern makes starts once the call it was made in
   ended, and calls on one instance run one after another.
+- `programs.ts`: `DeployedProgram.start(name, {function?, arguments?, crashEveryAwait?})` runs a
+  live run named `name` (what `runtime.id()` reads). Its start entry decodes the arguments and calls
+  the root without awaiting; the start's encoding entry runs the moment the root's outcome settles,
   and the live run finishes then: readied work never runs, suspended calls stop (spec §10). The
   instances it reached go on as far as they can without waiting.
+- **Runtimes over the store** (`open-runtimes.ts`, spec §9): opening the first one resumes the
+  store's work, every instance stored there that hasn't ended read back for the world to run on.
+  The earliest one open serves the jobs (`runtime._served`) of every instance running its live
+  code's program that began since: running then, made since, or run again by a retry, whose panic
+  ended the loop serving it. A `_Runtime` is a resource whose disposal is the runtime's own
+  (`Resource.release`): it closes the runtime, and the next earliest serves.
 - `retry` restores a panicked instance as it stood before its failed segment and runs it again at
-  the time it first started, replaying the call it was starting; `terminate` disposes what it held
+  the time it first started, replaying the call that started it (answering nobody: its caller heard
+  the panic); `terminate` disposes what it held
   then and commits it holding nothing; `inspect` reads the last commit: state (a finished one with
   its outcome's JSON, where encoded), and where each parked execution waits (`parkedAt`: function,
   waypoint, source location).

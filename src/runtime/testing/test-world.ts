@@ -92,7 +92,7 @@ export async function runInWorld(seams: WorldSeams, call: WorldCall): Promise<En
   host.world = world;
   const root = world.liveRun(tested, 'host', (record) => logs.push(record));
   const closure: Value = { kind: 'closure', function: call.function, captures: [] };
-  world.invokeIn(root, testInstance, { closure, passed: call.arguments }, (end) => {
+  world.invokeIn(root, testInstance, { closure, passed: call.arguments, hears: true }, (end) => {
     if (end.kind === 'returned') {
       ended ??= { kind: 'finished', outcome: end.value };
     } else if (end.kind === 'panicked') {

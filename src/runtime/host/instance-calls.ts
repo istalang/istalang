@@ -6,7 +6,7 @@
  *   finished with its outcome, panicked or terminated, with the instances it spawned and the log
  *   records its committed segments wrote, which go to that call rather than the host's reports.
  * - A retry runs the failed segment again from the instance as it stood before it, at the time it
- *   started (§3.12), the call starting it included when it was the first.
+ *   started (§3.12), the call that started it included: its spawn's, or a call into it.
  * - Inspecting reads its last commit only.
  * - Each call that runs code runs on a turn of its own (host-turns.ts), so calls on one instance
  *   run one after another, and a refusal rejects.
@@ -77,7 +77,7 @@ function retried(world: DurableWorld, resident: Resident, status: Panicked): voi
   world.restart(resident);
   const { replay } = status;
   if (replay !== undefined) {
-    resident.feed(resident.starting(replay), status.segmentStartedAt);
+    resident.feed(resident.replayed(replay), status.segmentStartedAt, replay);
   }
   resident.wake(status.segmentStartedAt);
 }

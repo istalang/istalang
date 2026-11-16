@@ -20,6 +20,12 @@ export type InstanceEnd =
   | { readonly kind: 'finished'; readonly outcome: Value; readonly encoded?: Value }
   | { readonly kind: 'panicked'; readonly message: string; readonly trace: string };
 
+/** What waits on an instance's end, told how it ended; whether its panic is heard there (§9). */
+export interface EndWatcher {
+  readonly answer: (end: InstanceEnd) => void;
+  readonly hears: boolean;
+}
+
 export class Instance {
   readonly name: string;
   /** Whether it commits at every wait: ista code's instance, not the live run. */
@@ -32,8 +38,8 @@ export class Instance {
   end: InstanceEnd | undefined;
   /** Whether a call into it was waiting as it ended, to hear its panic (§9). */
   heard = false;
-  /** What waits on its end: its parent's `result()` futures and the calls into it still waiting. */
-  readonly endWatchers: ((end: InstanceEnd) => void)[] = [];
+  /** What waits on its end: the calls into it still waiting. */
+  readonly endWatchers: EndWatcher[] = [];
   /** The futures of the calls into it still waiting, each answered once its invocation ends. */
   readonly calls = new Set<Future>();
 
@@ -48,9 +54,9 @@ export class Instance {
       return;
     }
     this.end = end;
-    this.heard = this.endWatchers.length > 0;
+    this.heard = this.endWatchers.some(({ hears }) => hears);
     for (const watcher of this.endWatchers.splice(0)) {
-      watcher(end);
+      watcher.answer(end);
     }
   }
 }

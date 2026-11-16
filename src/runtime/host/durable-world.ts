@@ -20,7 +20,7 @@ import type { Value } from '../../definition/values/values.ts';
 import { unreachable } from '../../foundation/structures/unreachable.ts';
 import type { Clock } from '../clock.ts';
 import type { LogRecord, StartOptions } from '../instance-state.ts';
-import type { Natives } from '../natives.ts';
+import type { ContextCall, Natives } from '../natives.ts';
 import { seedBytes } from '../random-draws.ts';
 import {
   Instance,
@@ -36,8 +36,15 @@ import { snapshotFormat } from '../snapshot/format.ts';
 import { restore } from '../snapshot/restore.ts';
 import type { InstanceStore } from '../store.ts';
 import { atCommit, type CommitSeams, commit, commitTerminated } from './commits.ts';
+import { OpenRuntimes } from './open-runtimes.ts';
 import type { HostReports } from './programs.ts';
-import { Resident, type ResidentMade, type WorldProgram } from './resident.ts';
+import {
+  type CallInto,
+  invoking,
+  Resident,
+  type ResidentMade,
+  type WorldProgram,
+} from './resident.ts';
 
 export interface WorldSeams {
   readonly natives: Natives;
@@ -60,6 +67,7 @@ export class DurableWorld implements World {
   /** What waits on the end of an instance spawned but not yet made, its parent's segment uncommitted. */
   readonly #awaitingSpawn = new Map<string, ((end: InstanceEnd) => void)[]>();
   readonly #commits: CommitSeams;
+  readonly #runtimes = new OpenRuntimes();
 
   constructor(seams: WorldSeams, bind: (hash: string) => WorldProgram) {
     this.seams = seams;
@@ -115,9 +123,8 @@ export class DurableWorld implements World {
       this.#awaitingSpawn.delete(name);
       child.encoder = encoder;
       child.unstarted = true;
-      child.replay = sent;
       owner?.spawned.push(name);
-      child.feed(child.starting(sent), this.seams.clock.now());
+      child.feed(child.starting(sent), this.seams.clock.now(), { kind: 'start', call: sent });
     };
     if (owner === undefined) {
       started();
@@ -127,37 +134,28 @@ export class DurableWorld implements World {
     return name;
   };
 
-  readonly call = (caller: Run, key: string, closure: Value, future: Future): void => {
-    this.invokeIn(caller, key, { closure, passed: [] }, (end) =>
+  readonly call = (caller: Run, { key, call, maker }: ContextCall, future: Future): void => {
+    const into = { closure: call, passed: [], hears: maker === 'program' };
+    this.invokeIn(caller, key, into, (end) =>
       caller.arrivals.arrive(future, (run, answered) => run.settle(answered, instanceEnding(end))),
     );
   };
 
-  /**
-   * Runs `closure` with `passed` in the context `key` (§9); `answer` is told how it ended as the
-   * context commits.
-   */
-  invokeIn(
-    caller: Run,
-    key: string,
-    { closure, passed }: { readonly closure: Value; readonly passed: readonly Value[] },
-    answer: (end: InvocationEnd) => void,
-  ): void {
+  /** Makes `into` in the context `key` (§9); `answer` is told how it ended as the context commits. */
+  invokeIn(caller: Run, key: string, into: CallInto, answer: (end: InvocationEnd) => void): void {
     const crashEveryAwait = this.#options.get(caller)?.crashEveryAwait ?? false;
     const program = this.#programOf(caller);
     const context =
       this.residents.get(key) ??
       this.load(key) ??
       this.#made({ name: key, program, seed: this.seams.seed() }, crashEveryAwait);
-    const sent = copied(closure);
+    const sent = { ...into, closure: copied(into.closure), passed: into.passed.map(copied) };
     const answered = (end: InvocationEnd) => {
       const crossed = end.kind === 'returned' ? { ...end, value: copied(end.value) } : end;
       context.effects.push(() => answer(crossed));
     };
-    context.feed(
-      (run) => run.invoke(copied(sent), answered, { passed: passed.map(copied) }),
-      this.seams.clock.now(),
-    );
+    const replay = { kind: 'invocation', call: sent.closure, passed: sent.passed } as const;
+    context.feed(invoking(sent, answered), this.seams.clock.now(), replay);
   }
 
   readonly heldMock = (caller: Run, index: number): HeldMock | undefined => {
@@ -187,6 +185,14 @@ export class DurableWorld implements World {
     }
   };
 
+  readonly open = (opener: Run): number =>
+    this.#runtimes.open(this.#programOf(opener).hash, () => this.#resume());
+
+  readonly close = (runtime: number): void => this.#runtimes.close(runtime);
+
+  readonly served = (waiter: Run, runtime: number, known: number, future: Future): void =>
+    this.#runtimes.served(waiter, { runtime, known, future });
+
   /** The instance `name`, read from the store, or undefined when the store lacks it. */
   load(name: string): Resident | undefined {
     const text = this.seams.store.readSnapshot(name);
@@ -196,12 +202,30 @@ export class DurableWorld implements World {
     const snapshot = snapshotFormat.read(text);
     const program = this.#bind(snapshot.definition);
     const seed = hexToBytes(snapshot.seed);
-    const resident = this.#made({ name, program, seed }, snapshot.crashEveryAwait);
+    const made = { name, program, seed, status: snapshot.status };
+    const resident = this.#made(made, snapshot.crashEveryAwait);
     resident.text = text;
     resident.encoder = snapshot.encoder;
     restore(resident.run, snapshot);
-    resident.status = snapshot.status;
     return resident;
+  }
+
+  /**
+   * Has the work persisted in the store begin, as the first runtime opens (open-runtimes.ts): every
+   * instance running already, and every one the store keeps that hasn't ended, read back.
+   */
+  #resume(): void {
+    for (const resident of this.residents.values()) {
+      if (!resident.ended) {
+        this.#runtimes.began(resident.name, resident.program.hash);
+      }
+    }
+    for (const name of this.seams.store.instances()) {
+      const text = this.residents.has(name) ? undefined : this.seams.store.readSnapshot(name);
+      if (text !== undefined && snapshotFormat.read(text).status.kind === 'active') {
+        this.load(name);
+      }
+    }
   }
 
   /** Every run, live ones first, then each resident's in the order it was made. */
@@ -277,8 +301,17 @@ export class DurableWorld implements World {
     return took || ran;
   }
 
-  /** `resident`, panicked, running again from where it stood before its failed segment (§3.12). */
+  /**
+   * `resident`, panicked, running again from where it stood before its failed segment (§3.12): a
+   * life of its own, since its panic ended the loop serving its jobs.
+   */
   restart(resident: Resident): void {
+    this.#restored(resident);
+    this.#runtimes.began(resident.name, resident.program.hash);
+  }
+
+  /** `resident`, panicked, as it stood before its failed segment. */
+  #restored(resident: Resident): void {
     const snapshot = snapshotFormat.read(resident.text ?? '');
     resident.run = this.#runOf(resident);
     restore(resident.run, snapshot);
@@ -291,7 +324,7 @@ export class DurableWorld implements World {
    * segment is disposed (§7), and it commits holding nothing.
    */
   terminate(resident: Resident, panic: { readonly message: string; readonly trace: string }): void {
-    this.restart(resident);
+    this.#restored(resident);
     resident.startedAt = this.seams.clock.now();
     const { run } = resident;
     run.finish([...run.instance.contextConstants.values()]);
@@ -299,9 +332,13 @@ export class DurableWorld implements World {
     commitTerminated(resident, panic, this.#commits);
   }
 
+  /** A resident `made`, which begins a life if it runs (open-runtimes.ts). */
   #made(made: ResidentMade, crashEveryAwait: boolean): Resident {
     const resident = new Resident(made, crashEveryAwait, (each) => this.#runOf(each));
     this.residents.set(made.name, resident);
+    if (!resident.ended) {
+      this.#runtimes.began(made.name, made.program.hash);
+    }
     return resident;
   }
 

@@ -7,11 +7,12 @@
  *   (§3.8); a log record is stamped with the instance and the time its segment started.
  * - A spawn carries the entry encoding the instance's outcome, where its type's codec has one.
  * - A call into a context settles a live future with how it ended (`instanceEnding`), which the
- *   std's Istalang makes the `Result` code reads.
+ *   std's Istalang makes the `Result` code reads. A runtime opened is a resource holding its number,
+ *   whose disposal closes it (host/open-runtimes.ts).
  * - The test world (inspection, watches) is the world's, in a test only; mocks are the run's own.
- */
  * - What `json.encode` wrote values as is the run's (lifetimes.ts `written`), but a test world's,
  *   which keeps none (§10).
+ */
 
 import { outcomeEncoderOf } from '../../definition/tables/types.ts';
 import type { Value } from '../../definition/values/values.ts';
@@ -21,8 +22,8 @@ import type { LogRecord } from '../instance-state.ts';
 import type {
   NativeCapabilities,
   NativeContexts,
-  WithFutures,
   NativeEncodings,
+  WithFutures,
   WithTesting,
   WithWeakSide,
 } from '../natives.ts';
@@ -69,10 +70,10 @@ export function capabilitiesOf(run: Run, seams: CapabilitySeams): NativeCapabili
   };
 }
 
-/** What a test's code asks of its world (§10); a native asking outside a test is a bug. */
 /** The encodings of a run in a test world, which keeps none, so a mock sees every codec call. */
 const keepingNone: NativeEncodings = { of: () => undefined, remember: () => undefined };
 
+/** What a test's code asks of its world (§10); a native asking outside a test is a bug. */
 function testingOf(run: Run): WithTesting['testing'] {
   const testWorld = (): TestingWorld =>
     run.world.testing ?? unreachable('A native asked for the test world, which only a test has.');
@@ -91,6 +92,7 @@ function futuresOf(run: Run): WithFutures['futures'] {
       const future = new Future(run.newId());
       future.settled = true;
       future.value = value;
+      run.lifetimes.hold(value);
       return future as unknown as Value;
     },
     timer: (at) => run.timer(at) as unknown as Value,
@@ -115,13 +117,21 @@ function weakSideOf(run: Run): WithWeakSide['weak'] {
 function contextsOf(run: Run): NativeContexts {
   return {
     hostStore: (type) => ({ kind: 'extern', type, payload: 'host' }) as Value,
-    open: (store, type) => new Resource(run.newId(), type, { store }) as unknown as Value,
-    call: (_runtime, { key, call }) => {
+    open: (_store, type) => {
+      const runtime = run.world.open(run);
+      const close = () => run.world.close(runtime);
+      return new Resource(run.newId(), type, runtime, close) as unknown as Value;
+    },
+    call: (_runtime, call) => {
       const future = new Future(run.newId());
-      run.world.call(run, key, call, future);
+      run.world.call(run, call, future);
       return future as unknown as Value;
     },
-    served: () => new Future(run.newId()) as unknown as Value,
+    served: (runtime, known) => {
+      const future = new Future(run.newId());
+      run.world.served(run, numberOf(runtime), known, future);
+      return future as unknown as Value;
+    },
     jobServer: () => {
       const { purpose } = run.definition;
       return purpose.kind === 'program' && purpose.jobServer !== undefined
@@ -129,4 +139,10 @@ function contextsOf(run: Run): NativeContexts {
         : undefined;
     },
   };
+}
+
+/** The number of the runtime `runtime`, a resource `open` made, names. */
+function numberOf(runtime: Value): number {
+  const { payload } = runtime as unknown as Resource;
+  return typeof payload === 'number' ? payload : unreachable('A runtime holds its number.');
 }
