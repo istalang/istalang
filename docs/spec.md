@@ -1037,7 +1037,7 @@ for notifier in notifiers:
 | `Convertible<From, T = Self>` | `fn Self.from(value: From) -> Self` | `T(x)` |
 | `Default` | `fn Self.default() -> Self` | map literals for other types (§2); what a `@JsonSkip` field reads back as (§9) |
 | `Stringable` | `toString(self) -> String` | `String(x)`; appending to a string with `+` (§3.9); map keys in JSON, and `json.encodeText` (§9) |
-| `Parsable` | `fn Self.parse(text: String) -> Result<Self>` | reading map keys from JSON, and `json.decodeText` (§9) |
+| `Parsable` | `fn Self.parse(text: String) -> Result<Self>`, failing with the prelude's `Error.unparsed(text, what)`: code `parse`, message `'<text>' is not <what>.`, `what` naming the type with its article (`an Int`) | reading map keys from JSON, and `json.decodeText` (§9) |
 | `Encodable`, `Decodable` | `toJson(self) -> json.Json`, and `fn Self.fromJson(json: json.Json, path: String) -> Result<Self>`, the codecs that write and read a type as JSON (§9); each implies `Sendable`, since a value written as JSON and read back is a copy, as sending makes one. Declared in the `json` module, so code naming them imports them; derived for a struct, an enum, a tuple, a literal type, a union of literals or a host type declaring neither function | extern parameters, and extern results and constants (§3.6); `json` |
 | `Container<T, C = Self>` | `includes(self: C, item: T) -> Bool` | `x in c`, `x not in c` (§3.9) |
 | `Addable`, `Subtractable`, `Multipliable`, `Divisible`, `FloorDivisible`, `Negatable`, `Powerable`, `Bitwise`, `Shiftable`, `Comparable` | the functions in §3.9 | operators in generic code |
