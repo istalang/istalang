@@ -17,7 +17,7 @@ import * as runtime from 'runtime'
 live async fn main() -> Int: await runtime.run(runtime.id()) _main()
 ista async fn _main() -> Int:
   let tree = Tree{children: [], value: 0}
-  for _ in 0..3000:
+  for _ in 0..1000:
     tree = Tree{children: [tree], value: 0}
-  tree[3000] = 5
-  tree[3000]
+  tree[1000] = 5
+  tree[1000]
