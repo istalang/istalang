@@ -137,7 +137,12 @@ async function runOrBreak(subject: Subject): Promise<Run> {
     return await runOf(subject);
   } catch (error) {
     if (error instanceof Unreachable && subject.kind === 'program') {
-      return { golden: {}, stated: statedEnding(subject), shown: { panic: error.message } };
+      const stated = statedEnding(subject);
+      return {
+        golden: {},
+        shown: { panic: error.message },
+        ...(stated === undefined ? {} : { stated }),
+      };
     }
     throw error;
   }
