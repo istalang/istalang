@@ -129,7 +129,7 @@ export class DurableWorld implements World {
 
   readonly call = (caller: Run, key: string, closure: Value, future: Future): void => {
     this.invokeIn(caller, key, { closure, passed: [] }, (end) =>
-      caller.arrive(future, (run, answered) => run.settle(answered, instanceEnding(end))),
+      caller.arrivals.arrive(future, (run, answered) => run.settle(answered, instanceEnding(end))),
     );
   };
 
@@ -175,7 +175,7 @@ export class DurableWorld implements World {
     const watched = this.residents.get(name) ?? this.load(name);
     const told = (end: InstanceEnd) => {
       const crossed = end.kind === 'finished' ? { ...end, outcome: copied(end.outcome) } : end;
-      watcher.arrive(future, (run, watching) => run.endWatches.ended(watching, crossed));
+      watcher.arrivals.arrive(future, (run, watching) => run.endWatches.ended(watching, crossed));
     };
     const ended = watched?.end;
     if (ended !== undefined) {
@@ -348,8 +348,8 @@ function parentOf(name: string): string | undefined {
 function firstArrived(residents: ReadonlySet<Resident>): Resident | undefined {
   let first: Resident | undefined;
   for (const resident of residents) {
-    const at = resident.run.firstArrival;
-    const firstAt = first?.run.firstArrival;
+    const at = resident.run.arrivals.first;
+    const firstAt = first?.run.arrivals.first;
     if (first === undefined || (at !== undefined && (firstAt === undefined || at < firstAt))) {
       first = resident;
     }

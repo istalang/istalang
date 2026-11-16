@@ -72,7 +72,9 @@ function followed(
       if (within) {
         holder.lifetimes.letGo(answer as unknown as Value);
       } else {
-        holder.arrive(answer, (run, given) => run.lifetimes.letGo(given as unknown as Value));
+        holder.arrivals.arrive(answer, (run, given) =>
+          run.lifetimes.letGo(given as unknown as Value),
+        );
       }
     }
   };
@@ -90,7 +92,7 @@ function followed(
     if (within) {
       settleIn(caller, future, sent);
     } else {
-      caller.arrive(future, (run, target) => settleIn(run, target, sent));
+      caller.arrivals.arrive(future, (run, target) => settleIn(run, target, sent));
     }
   };
   // A replacement that never waited gives a future settled already.

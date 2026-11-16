@@ -156,7 +156,7 @@ function rerun(resident: Resident, seams: CommitSeams): void {
   if (resident.text !== undefined) {
     restore(resident.run, snapshotFormat.read(resident.text), answers);
   }
-  replaced.succeededBy(resident.run);
+  replaced.arrivals.succeededBy(resident.run.arrivals);
   for (const input of inputs) {
     input(resident.run);
   }

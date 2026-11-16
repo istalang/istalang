@@ -52,7 +52,7 @@ import type { AnchoredSpan } from '../../syntax/tree/positions.ts';
 import { type ClosedCall, closeCallWithin } from '../calls/closed-calls.ts';
 import type { WaitingMode } from '../calls/waits.ts';
 import { awaitFuture } from '../calls/waits.ts';
-import type { CodeContext, FunctionContext } from '../context.ts';
+import type { FunctionContext } from '../context.ts';
 import { VariableRegisters } from '../flow/variables.ts';
 import { writeFlow } from '../flow/writer.ts';
 import { emitConstant } from '../tables/constants.ts';

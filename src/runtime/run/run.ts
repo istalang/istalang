@@ -34,7 +34,6 @@ import { Mocking, NOT_MOCKED } from './mocking.ts';
 import { bindNatives, type NativeBinding } from './natives.ts';
 import type { Execution, Frame } from './objects/execution.ts';
 import { Future } from './objects/future.ts';
-import type { RunObject } from './objects/run-object.ts';
 import type { WeakReference } from './objects/weak-reference.ts';
 import { Places } from './places.ts';
 import { calledPrimitives } from './primitives.ts';
@@ -264,23 +263,6 @@ export class Run {
       this.settle(weak.disposed, null);
     }
     return weak.disposed;
-  }
-
-  // Arrivals.
-
-  /** Readies `turn` on `object`, arriving from outside the run (arrivals.ts). */
-  arrive<Target extends RunObject>(object: Target, turn: (run: Run, object: Target) => void): void {
-    this.arrivals.arrive(object, turn);
-  }
-
-  /** Hands the instance on to `next`, a run of it read back from a snapshot (§5). */
-  succeededBy(next: Run): void {
-    this.arrivals.succeededBy(next.arrivals);
-  }
-
-  /** Where the oldest turn waiting arrived among every run's; undefined with none waiting. */
-  get firstArrival(): number | undefined {
-    return this.arrivals.first;
   }
 
   // The loop.

@@ -10,6 +10,8 @@
  *   skips (functions/frame-variables.ts), so a default's trace starts at its caller.
  * - A frame on a frame record shows only from where it last resumed: the stack holds nothing of
  *   what awaited it.
+ * - A frame standing at its `mocked` handed its call over to a mock (§10), whose frames stand for
+ *   it: it runs none of its own code, so it shows none.
  * - A panic is a thrown `Panic`, or a host limit `panicOf` names (a stack overflow is the recursion
  *   panic); anything else thrown is a bug.
  */
@@ -77,7 +79,7 @@ export class Traces {
     });
   }
 
-  /** The frame standing at program line `line` (1-based), if it runs an instruction. */
+  /** The frame standing at program line `line` (1-based), if it runs an instruction of its own. */
   #frameAt(line: number): TracedFrame | undefined {
     const [index, pc] = this.#lines[line - 1] ?? [];
     const entry = index === undefined ? undefined : this.#definition.functions[index];
@@ -85,6 +87,9 @@ export class Traces {
       return undefined;
     }
     const instruction = entry.instructions[pc];
+    if (instruction?.kind === 'mocked') {
+      return undefined;
+    }
     return {
       name: entry.name,
       module: entry.module,

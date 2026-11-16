@@ -345,7 +345,9 @@ export class TypeTable {
   #outcomeEncoder(instance: NominalType): FunctionId | undefined {
     const [outcome] = instance.arguments;
     const codec =
-      outcome === undefined ? undefined : foundCodecCall(this.#checker, undefined, outcome, 'write');
+      outcome === undefined
+        ? undefined
+        : foundCodecCall(this.#checker, undefined, outcome, 'write');
     return codec === undefined ? undefined : this.#seams.callIndex(codec);
   }
 

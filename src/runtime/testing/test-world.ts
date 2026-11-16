@@ -156,7 +156,7 @@ class TestHost implements TestingWorld {
     const holding = this.#watches.filter((watch) => this.#holds(watch));
     this.#watches = this.#watches.filter((watch) => !holding.includes(watch));
     for (const { watcher, future } of holding) {
-      watcher.arrive(future, (run, watched) => run.settle(watched, null));
+      watcher.arrivals.arrive(future, (run, watched) => run.settle(watched, null));
     }
     return holding.length > 0;
   }
