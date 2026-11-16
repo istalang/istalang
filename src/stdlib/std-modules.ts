@@ -11,10 +11,10 @@ import { decimalNatives } from './decimal/natives.ts';
 import { jsonNatives } from './json/natives.ts';
 import { logNatives } from './log/natives.ts';
 import { mathNatives } from './math/natives.ts';
-import { preludeInterpreterNatives, preludeNatives } from './prelude/natives.ts';
+import { preludeNatives } from './prelude/natives.ts';
 import { randomNatives } from './random/natives.ts';
 import { regexNatives } from './regex/natives.ts';
-import { runtimeInterpreterNatives, runtimeNatives } from './runtime/natives.ts';
+import { runtimeNatives } from './runtime/natives.ts';
 import { type ModuleNatives, type StdModule, stdModule } from './std-module.ts';
 import { type StdModuleName, stdModuleSources } from './std-sources.ts';
 import { stringsNatives } from './strings/natives.ts';
@@ -23,18 +23,18 @@ import { timeNatives } from './time/natives.ts';
 
 /** The natives of each std module that declares externs, from the keys of its name. */
 const nativesOf: Partial<Record<StdModuleName, ModuleNatives>> = {
-  [languageModules.prelude]: { everywhere: preludeNatives, interpreter: preludeInterpreterNatives },
-  [languageModules.time]: { everywhere: timeNatives },
-  [languageModules.json]: { everywhere: jsonNatives },
-  runtime: { everywhere: runtimeNatives, interpreter: runtimeInterpreterNatives },
-  strings: { everywhere: stringsNatives },
-  regex: { everywhere: regexNatives },
-  math: { everywhere: mathNatives },
-  decimal: { everywhere: decimalNatives },
-  random: { everywhere: randomNatives },
-  log: { everywhere: logNatives },
-  crypto: { everywhere: cryptoNatives },
-  [languageModules.testing]: { interpreter: testingNatives },
+  [languageModules.prelude]: preludeNatives,
+  [languageModules.time]: timeNatives,
+  [languageModules.json]: jsonNatives,
+  runtime: runtimeNatives,
+  strings: stringsNatives,
+  regex: regexNatives,
+  math: mathNatives,
+  decimal: decimalNatives,
+  random: randomNatives,
+  log: logNatives,
+  crypto: cryptoNatives,
+  [languageModules.testing]: testingNatives,
 };
 
 const natives = new Map(Object.entries(nativesOf));

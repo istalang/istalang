@@ -25,11 +25,6 @@ export interface StdModule {
   readonly name: string;
   readonly source: string;
   readonly natives: Natives;
-  /**
-   * The keys of its natives that reach instances, contexts, slots or tests, which only the
-   * interpreter has: compiled JavaScript refuses a program calling one (codegen/emit.ts).
-   */
-  readonly interpreterKeys: readonly string[];
 }
 
 /** The keys of one std module's natives (definition/extern-key.ts). */
@@ -46,22 +41,12 @@ export interface NativeKeys {
   ) => string;
 }
 
-/** The natives of a std module's externs, built from its keys: those any runtime runs, and the interpreter's alone. */
-export interface ModuleNatives {
-  readonly everywhere?: (keys: NativeKeys) => Natives;
-  readonly interpreter?: (keys: NativeKeys) => Natives;
-}
+/** The natives of a std module's externs, built from its keys. */
+export type ModuleNatives = (keys: NativeKeys) => Natives;
 
 /** Std module `name` with its `source`, and the natives `natives` builds from its keys. */
-export function stdModule(name: string, source: string, natives: ModuleNatives = {}): StdModule {
-  const keys = nativeKeysOf(name);
-  const interpreter = natives.interpreter?.(keys) ?? {};
-  return {
-    name,
-    source,
-    natives: { ...natives.everywhere?.(keys), ...interpreter },
-    interpreterKeys: Object.keys(interpreter),
-  };
+export function stdModule(name: string, source: string, natives?: ModuleNatives): StdModule {
+  return { name, source, natives: natives?.(nativeKeysOf(name)) ?? {} };
 }
 
 /** The keys of std module `module`'s natives. */
