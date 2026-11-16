@@ -82,9 +82,13 @@ export function restore(
       }
       return { call, arguments: passed };
     }),
-    invocations: snapshot.invocations.flatMap(({ future, root }) => {
-      const invocation = root ? rootInvocation(run, snapshot.encoder) : answers.get(future);
-      return invocation === undefined ? [] : [{ future: object(future) as Future, invocation }];
+    invocations: snapshot.invocations.flatMap(({ future: id, root }) => {
+      // A call into the instance holds its future while it runs, as the run starting it does, so
+      // its work goes on to its end even with no caller left to answer (§9).
+      const future = object(id) as Future;
+      lifetimes.adoptRestored(future as unknown as Value);
+      const invocation = root ? rootInvocation(run, snapshot.encoder) : answers.get(id);
+      return invocation === undefined ? [] : [{ future, invocation }];
     }),
   });
 }

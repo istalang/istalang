@@ -13,7 +13,7 @@
 
 import { writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { type EmittedProgram, emitProgram } from '../../codegen/emit.ts';
+import { builtModule, emitProgram } from '../../codegen/emit.ts';
 import { definitionFormat } from '../../definition/definition.ts';
 import {
   type CliEnvironment,
@@ -53,10 +53,4 @@ function build(entry: string, options: BuildOptions, environment: CliEnvironment
     return exitCodes.couldNotRun;
   }
   return exitCodes.clean;
-}
-
-/** The module of a built program: the runtime library's `program` over its Definition and code. */
-function builtModule(definition: string, code: EmittedProgram): string {
-  const made = `program(${JSON.stringify(definition)}, ${JSON.stringify(code)})`;
-  return `import { program } from "istalang/live";\n\nexport default ${made};\n`;
 }

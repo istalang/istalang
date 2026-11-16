@@ -118,6 +118,12 @@ export function placeRoot(place: Place): Register {
 }
 
 /** Whether control never goes on from `subject` to the instruction after it. */
+/** Where control goes from `subject`, at `pc`: its labels, and on to the next unless it ends a block. */
+export function successorsOf(subject: Instruction, pc: number): readonly number[] {
+  const { labels } = operandsOf(subject);
+  return endsBlock(subject) ? labels : [pc + 1, ...labels];
+}
+
 export function endsBlock(subject: Instruction): boolean {
   switch (subject.kind) {
     case 'jump':

@@ -27,7 +27,7 @@ import { ManualClock } from '../../src/runtime/clock.ts';
 import { createRuntime, type Runtime } from '../../src/runtime/host/index.ts';
 import type { HostReports } from '../../src/runtime/host/programs.ts';
 import type { Advanced, Inspection, InstanceState } from '../../src/runtime/instance-state.ts';
-import { startLive } from '../../src/runtime/program.ts';
+import { type Start, startLive } from '../../src/runtime/program.ts';
 import { Refusal } from '../../src/runtime/refusal.ts';
 import { type InstanceStore, memoryStore } from '../../src/runtime/store.ts';
 import { stdNatives } from '../../src/stdlib/natives.ts';
@@ -117,17 +117,19 @@ export async function freshHost(path: string): Promise<HostExterns> {
   return loaded.externs;
 }
 
-/** What running `definition`'s `main` on the run showed. */
+/** What running `definition`'s `main` on the run showed, started as `start` says. */
 export async function shownByRun(
   definition: Definition,
   host: RecordingHost = recording({}),
+  start: Start = {},
 ): Promise<Observation> {
-  const { end, logs } = await startLive(definition, {
+  const binding = {
     natives: stdNatives,
     externs: host.externs,
     clock: new ManualClock(),
     seed: new Uint8Array(32),
-  });
+  };
+  const { end, logs } = await startLive(definition, binding, start);
   const shown = { logs: logs.map(logLine), hostCalls: host.calls };
   switch (end.kind) {
     case 'finished':
@@ -142,12 +144,14 @@ export async function shownByRun(
 /** What running `program` showed; the first error it reports when it doesn't compile. */
 export async function observeProgram(
   program: ProgramRun,
+  start: Start = {},
 ): Promise<Observation | { readonly problem: string }> {
   const compiled = compiledAt(program.directory, program.path, program.text);
   if ('problem' in compiled) {
     return compiled;
   }
-  const observed = await shownByRun(compiled.definition, recording(await hostOf(program)));
+  const host = recording(await hostOf(program));
+  const observed = await shownByRun(compiled.definition, host, start);
   const { ending: ended } = observed;
   return 'frame' in ended
     ? { ...observed, ending: { ...ended, frame: relativeFrame(program.directory, ended.frame) } }

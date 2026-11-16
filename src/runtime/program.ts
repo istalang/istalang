@@ -48,6 +48,8 @@ export interface Start {
   readonly key?: string;
   readonly arguments?: readonly unknown[];
   readonly instance?: string;
+  /** Whether the contexts it makes crash at every await (§10). */
+  readonly crashEveryAwait?: boolean;
 }
 
 const emitted = new WeakMap<Definition, EmittedProgram>();
@@ -83,6 +85,7 @@ export async function startLive(
   const { state, logs: own } = await deployed(world, program).start(start.instance ?? 'run', {
     ...(start.key === undefined ? {} : { function: start.key }),
     ...(start.arguments === undefined ? {} : { arguments: start.arguments }),
+    ...(start.crashEveryAwait === undefined ? {} : { crashEveryAwait: start.crashEveryAwait }),
   });
   logs.push(...own);
   switch (state.kind) {

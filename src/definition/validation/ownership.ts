@@ -17,7 +17,7 @@
  */
 
 import { type Handlers, handlerOf } from '../../foundation/structures/kind-table.ts';
-import { type Instruction, operandsOf } from '../instructions/instruction.ts';
+import { type Instruction, operandsOf, successorsOf } from '../instructions/instruction.ts';
 import type { Register } from '../operands.ts';
 import type { CodeFunction } from '../tables/functions.ts';
 import { transientRegistersOf } from '../tables/functions.ts';
@@ -99,33 +99,32 @@ function effectOf(code: CodeFunction, subject: Instruction): Effect {
   };
 }
 
-/** Where control goes from the instruction at `pc` of `code`. */
-function successorsOf(code: CodeFunction, pc: number): readonly number[] {
-  const subject = code.instructions[pc];
-  if (subject === undefined) {
-    return none;
-  }
-  const { labels } = operandsOf(subject);
-  switch (subject.kind) {
-    case 'jump':
-    case 'branch':
-    case 'switch':
-      return labels;
-    case 'return':
-    case 'stopped':
-    case 'unreachable':
-      return none;
-    default:
-      return [pc + 1, ...labels];
-  }
-}
-
 function joined(first: State, second: State): State {
   return first === second ? first : 'maybe';
 }
 
 /** Every way `code` breaks the ownership rules, each naming the instruction. */
 export function ownershipIssues(code: CodeFunction): readonly string[] {
+  return analyzed(code).issues;
+}
+
+/**
+ * The registers each instruction of `code` finds owning their value on every path reaching it; none
+ * for an instruction no path reaches. Borrowed registers and transients' own nothing.
+ */
+export function owningBefore(code: CodeFunction): readonly (ReadonlySet<Register> | undefined)[] {
+  return analyzed(code).states.map((state) =>
+    state === undefined
+      ? undefined
+      : new Set(state.flatMap((each, register) => (each === 'owning' ? [register] : []))),
+  );
+}
+
+/** The forward analysis of `code`: each instruction's settled state, and every rule broken. */
+function analyzed(code: CodeFunction): {
+  readonly states: readonly (State[] | undefined)[];
+  readonly issues: readonly string[];
+} {
   const transients = new Set<Register>(transientRegistersOf(code));
   const borrowed = new Set<Register>(
     code.registers.flatMap((entry, register) => (entry.borrowed ? [register] : [])),
@@ -150,15 +149,16 @@ export function ownershipIssues(code: CodeFunction): readonly string[] {
         found.map((message) => `at ${String(pc)} (${subject.kind}): ${message}`),
       );
       pending.push(
-        ...successorsOf(code, pc).filter((next) =>
+        ...successorsOf(subject, pc).filter((next) =>
           reachedAnew(states, next, next === taken?.to ? taken.after : after),
         ),
       );
     }
   }
-  return [...issuesAt.entries()]
+  const issues = [...issuesAt.entries()]
     .toSorted(([first], [second]) => first - second)
     .flatMap(([, found]) => found);
+  return { states, issues };
 }
 
 /** Joins `after` into what `next` starts with; whether that changed it, so it is judged again. */
